@@ -148,6 +148,63 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 	return next
 }
 
+// detectPrivatePrimary rescues the release of a private image-port service
+// whose process never binds the primary its image declares (w3/m273 t010):
+// Render serves a private service on the port it binds, but the probe targets
+// the declared primary, and scanPrivatePorts reads only Ready instances.
+// While the TCP check fails for a service with no PORT or configured port, it
+// scans the unready candidate; when the primary is closed and the same other
+// listener (3000 if open, else the lowest) answers two scans in a row, that
+// listener becomes the candidate network's primary and joins its ports, so
+// the next pass probes and publishes on it. It returns text for the stall
+// message.
+func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
+	network := app.Status.ImageNetwork
+	if r.PortScanner == nil || !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" || network == nil ||
+		int(network.PrimaryPort) != port || network.Revision != releaseRevision(app) ||
+		dep.Spec.Template.Labels[labelRevision] != network.Revision || rolloutDeadline(app, dep) != nil {
+		return ""
+	}
+	if _, configured := app.ConfiguredImagePort(); configured {
+		return ""
+	}
+	key, ip := r.dueUnreadyScan(ctx, app, dep)
+	if ip == "" {
+		return ""
+	}
+
+	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
+	defer cancel()
+	open, err := scanBoundPort(scanCtx, r.PortScanner, ip, port)
+	if err != nil {
+		logf.FromContext(ctx).Info("private primary port scan failed", "app", app.Name, "error", err.Error())
+		return " Port detection could not reach the instance, so a process listening on another port cannot be detected yet."
+	}
+	found := listenerSet(open)
+	if len(found) == 0 || slices.Contains(found, network.PrimaryPort) {
+		return "" // nothing to choose, or the primary answers now and the check will pass
+	}
+	chosen := found[0]
+	if slices.Contains(found, imagePortPreferred) {
+		chosen = imagePortPreferred
+	}
+	if !slices.Contains(network.Ports, chosen) && len(network.Ports) >= appv1alpha1.MaxImagePorts {
+		return ""
+	}
+	// The same listener in two scans: a port opened early while the declared
+	// primary is still booting is not mistaken for it.
+	if prev, ok := r.portCandidate.Load(key); !ok || prev.(int) != int(chosen) {
+		r.portCandidate.Store(key, int(chosen))
+		return fmt.Sprintf(" The process is listening on port %d.", chosen)
+	}
+	r.portCandidate.Delete(key)
+	logf.FromContext(ctx).Info("selected the port the process listens on as the private primary", "app", app.Name,
+		"port", chosen, "was", network.PrimaryPort)
+	network.PrimaryPort = chosen
+	network.Ports = mergePorts(network.Ports, []int32{chosen})
+	return fmt.Sprintf(" The process is listening on port %d, which the service now uses as its primary port.", chosen)
+}
+
 // listenerSet is a scan's answer as a sorted, deduplicated status set without
 // reserved ports, within the CRD's 75 entries.
 func listenerSet(open []int) []int32 {

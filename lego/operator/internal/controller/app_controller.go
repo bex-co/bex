@@ -675,10 +675,10 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 
 	port := int(app.Spec.EffectivePort())
 	// A service's own PORT selects the serving port (w5/m149), decided before
-	// the cancel branch so a cancel settles on the same port it reports.
-	if app.Spec.UsesImagePorts() {
-		app.Status.EnvPort = 0
-	} else if port, err = r.envPort(ctx, &app, port); err != nil {
+	// the cancel branch so a cancel settles on the same port it reports. An
+	// image-port service's PORT, web or private, becomes its image network's
+	// primary (App.ConfiguredImagePort, w3/m273 t010).
+	if port, err = r.envPort(ctx, &app, port); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -5773,6 +5773,7 @@ func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alp
 			msg += " No port answered HTTP during startup discovery; set PORT to the HTTP listener."
 		}
 		msg += r.detectBoundPort(ctx, app, dep, port)
+		msg += r.detectPrivatePrimary(ctx, app, dep, port)
 	}
 	return reason, msg
 }
@@ -5792,7 +5793,7 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 	}
 	source := ""
 	switch {
-	case app.Spec.UsesWebImagePorts() && app.Status.EnvPort > 0:
+	case app.Status.EnvPort > 0:
 		source = "the service's PORT environment variable"
 	case configuredPortMode(app.Spec.PortMode):
 		source = "the service's configured port"

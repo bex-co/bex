@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -318,6 +319,74 @@ func TestWakeReadyIsStampedFromThePod(t *testing.T) {
 			app.Status.Conditions = []metav1.Condition{{Type: appv1alpha1.ConditionReady, Status: tc.status, Reason: tc.reason, LastTransitionTime: parkedAt}}
 			if got := r.wakeReadySince(context.Background(), app, dep); !got.Equal(&tc.want) {
 				t.Fatalf("wakeReadySince = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// w3/m273 t010: a private image-port service whose process binds only a port
+// its image does not declare has that listener chosen as its primary once two
+// scans of the unready candidate agree. PORT, a configured port, an HTTP
+// check, a primary that answers (ClickHouse's 8123 beside 9000) and a web
+// service are left alone.
+func TestDetectPrivatePrimary(t *testing.T) {
+	private := func(primary int32, ports ...int32) func(*appv1alpha1.App, *corev1.Pod) {
+		return func(a *appv1alpha1.App, _ *corev1.Pod) {
+			a.Spec.Type, a.Spec.PortMode, a.Spec.Port = appv1alpha1.TypePrivateService, appv1alpha1.PortModeImageV1, 0
+			a.Status.ReleaseGeneration = 1
+			a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{
+				Image: "i@sha256:x", Revision: "rev-1", PrimaryPort: primary, Ports: ports, ConfiguredPort: new(int32(0)),
+			}
+		}
+	}
+	t.Run("an undeclared listener becomes the primary", func(t *testing.T) {
+		r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: []int{8080}}, private(80, 80))
+		if hint := r.detectPrivatePrimary(t.Context(), app, dep, 80); app.Status.ImageNetwork.PrimaryPort != 80 || !strings.Contains(hint, "port 8080") {
+			t.Fatalf("first scan: primary=%d hint=%q, want only a candidate", app.Status.ImageNetwork.PrimaryPort, hint)
+		}
+		time.Sleep(time.Millisecond)
+		hint := r.detectPrivatePrimary(t.Context(), app, dep, 80)
+		network := app.Status.ImageNetwork
+		if network.PrimaryPort != 8080 || !slices.Equal(network.Ports, []int32{80, 8080}) || !strings.Contains(hint, "now uses") {
+			t.Fatalf("second scan: network=%+v hint=%q, want primary 8080 over [80 8080]", network, hint)
+		}
+	})
+	for name, tc := range map[string]struct {
+		open   []int
+		mutate func(*appv1alpha1.App, *corev1.Pod)
+	}{
+		"ClickHouse's declared primary answers": {open: []int{8123, 9000}, mutate: private(8123, 8123, 9000, 9009)},
+		"nothing answers":                       {open: nil, mutate: private(80, 80)},
+		"a PORT variable": {open: []int{9090}, mutate: func(a *appv1alpha1.App, p *corev1.Pod) {
+			private(8080, 80, 8080)(a, p)
+			a.Status.EnvPort = 8080
+		}},
+		"a configured port": {open: []int{9090}, mutate: func(a *appv1alpha1.App, p *corev1.Pod) {
+			private(80, 80)(a, p)
+			a.Spec.PortMode, a.Spec.Port = appv1alpha1.PortModeImageConfiguredV1, 80
+		}},
+		"an HTTP health check": {open: []int{8080}, mutate: func(a *appv1alpha1.App, p *corev1.Pod) {
+			private(80, 80)(a, p)
+			a.Spec.HealthCheckPath = "/healthz"
+		}},
+		"a web image service": {open: []int{8080}, mutate: func(a *appv1alpha1.App, p *corev1.Pod) {
+			private(80, 80)(a, p)
+			a.Spec.Type, a.Spec.PortMode = appv1alpha1.TypeWebService, appv1alpha1.PortModeWebImageV1
+		}},
+		"a ready instance": {open: []int{8080}, mutate: func(a *appv1alpha1.App, p *corev1.Pod) {
+			private(80, 80)(a, p)
+			p.Status.ContainerStatuses[0].Ready = true
+		}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, app, dep := detectFixture(t, time.Minute, &cannedScanner{open: tc.open}, tc.mutate)
+			want := app.Status.ImageNetwork.DeepCopy()
+			for range 3 {
+				r.detectPrivatePrimary(t.Context(), app, dep, int(want.PrimaryPort))
+				time.Sleep(time.Millisecond)
+			}
+			if got := app.Status.ImageNetwork; got.PrimaryPort != want.PrimaryPort || !slices.Equal(got.Ports, want.Ports) {
+				t.Fatalf("network = %+v, want unchanged %+v", got, want)
 			}
 		})
 	}

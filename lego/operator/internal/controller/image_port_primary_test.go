@@ -138,6 +138,11 @@ func TestImagePortStallHintNamesAConfiguredPrimary(t *testing.T) {
 			a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "i", Revision: "r", PrimaryPort: 10000, Ports: ports}
 		})
 	}
+	privatePORT := projectionApp(func(a *appv1alpha1.App) {
+		a.Spec.Type, a.Spec.PortMode = appv1alpha1.TypePrivateService, appv1alpha1.PortModeImageV1
+		a.Status.EnvPort = 8080
+		a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "i", Revision: "r", PrimaryPort: 8080, Ports: []int32{80, 8080}}
+	})
 	for _, tc := range []struct {
 		name      string
 		app       *appv1alpha1.App
@@ -154,6 +159,9 @@ func TestImagePortStallHintNamesAConfiguredPrimary(t *testing.T) {
 			[]string{"set by the service's configured port", "(80)"}, []string{"8080)", "80, 8080"}},
 		{"explicit port and no other declared", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 10000), 10000,
 			[]string{"declares no other TCP port"}, nil},
+		// w3/m273 t010: a private service's PORT is its primary too.
+		{"private PORT env the image does not declare", privatePORT, 8080,
+			[]string{"port 8080, set by the service's PORT environment variable", "(80)"}, []string{"80, 8080"}},
 	} {
 		hint := imagePortStallHint(tc.app, tc.port)
 		for _, want := range tc.want {

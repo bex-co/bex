@@ -1,6 +1,6 @@
 # w3 · m273 — Private services discover runtime ports and web services answer on private port 10000, as on Render
 
-**Worker:** worker3 **Goal:** an undeclared private-service listener is reachable on the private network, and every web service answers on private port 10000 **Status:** todo (t001–t004, t006–t008 done; t010 fixes the case the 2026-11-05 live check failed, then t005 reruns acceptance)
+**Worker:** worker3 **Goal:** an undeclared private-service listener is reachable on the private network, and every web service answers on private port 10000 **Status:** blocked — t001–t004, t006–t008, t010 done; t005 hosted acceptance waits on t010's production deploy
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | t002 | Extend the port scanner to private services (image and native) and publish openPorts — **DONE** | 3h | t001 |
 | t003 | Port-10000 alias on web-service ClusterIP Services — **DONE** | 1.5h | t001 |
 | t004 | Republish and pin revision when the discovered set changes — **DONE** | 1.5h | t002 |
-| t010 | A private image service bound only to an undeclared port never becomes Ready, so discovery never runs | 50m | t004 |
+| t010 | A private image service bound only to an undeclared port never becomes Ready, so discovery never runs — **DONE** | 50m | t004 |
 | t005 | Hosted acceptance on dev-3 or the canary | 2h | t003, t004, t010 |
 | t006 | Render parity — **DONE** | 30m | t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
@@ -49,3 +49,8 @@
   - Cause and fix: **t010** (readiness gates discovery; `PORT` discarded for image-port private services).
 - **Observation for m276 (not concluded):** that web service's `openPorts` still read `[80, 8080]` at 17:34:09Z, about 4 minutes after Live and past the 2-minute scan interval; nothing binds 80. Whether a scan ran was not observable from outside. Recheck in m276's live check.
 - **Next:** t010, then t005 with the failing case above plus the original undeclared-port and `:10000` checks.
+
+## Blocked (2026-11-08, loopx w3)
+
+- t010 shipped (PORT selects a private image service's primary; an undeclared listener on an unready first rollout becomes the primary). Its live rerun is part of t005.
+- **Gate:** a `chore(deploy): pin platform images to <sha>` commit on main at or after t010's commit. Then a worker runs t005 with the QA account (`scripts/qa-login.sh`): the t010 whoami case with and without `PORT`, an undeclared-port private service reached from a peer, and a web service at `:10000`; then t009 Closeout. Run it together with `blocked/m276`'s live check. No user decision needed.

@@ -118,6 +118,31 @@ func TestWebImagePortsPublishTheServingNetwork(t *testing.T) {
 	}
 }
 
+// A private image-port service's PORT selects its primary, as a web
+// service's does, but every port its image declares stays open beside it
+// (w3/m273 t010).
+func TestPrivateImagePortsHonorPORTAsThePrimary(t *testing.T) {
+	app := &App{ObjectMeta: metav1.ObjectMeta{Name: "pserv"}, Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}}
+	if _, ok := app.ConfiguredImagePort(); ok {
+		t.Fatal("without PORT the image chooses")
+	}
+	app.Status.EnvPort = 8080
+	if port, ok := app.ConfiguredImagePort(); !ok || port != 8080 {
+		t.Fatalf("ConfiguredImagePort = %d, %v; want PORT 8080", port, ok)
+	}
+	if app.ServicePort() != 8080 || !reflect.DeepEqual(app.OpenPorts(), []int32{8080}) {
+		t.Fatalf("before discovery PORT is the only answer: service=%d open=%v", app.ServicePort(), app.OpenPorts())
+	}
+	app.Status.ImageNetwork = &ImageNetworkStatus{Image: "i", Revision: "rev-1", PrimaryPort: 8080, Ports: []int32{80, 8080}}
+	if app.ServicePort() != 8080 || !reflect.DeepEqual(app.OpenPorts(), []int32{80, 8080}) || app.InternalAddress() != "pserv:8080" {
+		t.Fatalf("service=%d open=%v address=%s; want primary 8080 over [80 8080]", app.ServicePort(), app.OpenPorts(), app.InternalAddress())
+	}
+	app.Spec.PortMode, app.Spec.Port = PortModeImageConfiguredV1, 9000
+	if port, ok := app.ConfiguredImagePort(); !ok || port != 8080 {
+		t.Fatalf("ConfiguredImagePort = %d, %v; PORT wins over the configured port", port, ok)
+	}
+}
+
 // Persisted Apps carry the CRD default, so it must not hide runtime detection.
 func TestDetectedPortOverridesTheDefaultAcrossReaders(t *testing.T) {
 	for _, port := range []int32{0, DefaultPort, 8080} {

@@ -34,8 +34,11 @@ import (
 // routes to it (w5/m149; ADR018 row "PORT env var"). So when the service
 // configures a valid PORT, the operator serves, routes and probes on that
 // port instead of spec.port, and records it as status.envPort for every
-// reader (App.ServingPort). An unusable value is ignored with a log line, and
-// spec.port applies, rather than taking the service off the network.
+// reader (App.ServingPort). An image-port service, web or private, reads the
+// recorded PORT as its image network's primary instead
+// (App.ConfiguredImagePort; w4/m243, w3/m273 t010). An unusable value is
+// ignored with a log line, and spec.port applies, rather than taking the
+// service off the network.
 //
 // Historical selections read their recorded inline values and selected Secret
 // sources even before their new record is materialized. Saved configuration

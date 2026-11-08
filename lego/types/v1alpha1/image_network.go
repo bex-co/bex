@@ -189,11 +189,13 @@ func (a *App) ActiveImageNetwork() *ImageNetworkStatus {
 	return a.Status.ImageNetwork
 }
 
-// ConfiguredImagePort is an image-port service's configured primary: a web
-// service's own PORT env (Status.EnvPort), which wins, else spec.port in a
-// configured mode. ok is false while the image chooses (w4/m243).
+// ConfiguredImagePort is an image-port service's configured primary: its own
+// PORT env (Status.EnvPort), which wins, else spec.port in a configured mode.
+// ok is false while the image chooses (w4/m243). A private service's PORT
+// selects its primary as a web service's does (w3/m273 t010): Render serves a
+// private service on the port it binds, whatever its image declares.
 func (a *App) ConfiguredImagePort() (port int32, ok bool) {
-	if a.Spec.UsesWebImagePorts() && a.Status.EnvPort > 0 {
+	if a.Spec.HasImagePorts() && a.Status.EnvPort > 0 {
 		return a.Status.EnvPort, true
 	}
 	if a.Spec.HasImagePorts() && (a.Spec.PortMode == PortModeImageConfiguredV1 || a.Spec.PortMode == PortModeWebImageConfiguredV1) {
@@ -231,8 +233,7 @@ func (a *App) ServicePort() int32 {
 	if network := a.ActiveImageNetwork(); network != nil {
 		return network.PrimaryPort
 	}
-	// Before discovery a web service's PORT env is the only answer; the
-	// operator zeroes EnvPort for private image-port services.
+	// Before discovery the service's PORT env is the only answer.
 	return a.Status.EnvPort
 }
 
@@ -280,7 +281,9 @@ func (a *App) ownPorts() []int32 {
 		return []int32{}
 	}
 	// A web service's PORT names the one port it serves; the serving network
-	// already carries it as primary.
+	// already carries it as primary. A private service's PORT names only its
+	// primary: the network carries it beside every other port the image
+	// declares, and all of them stay open (w3/m273 t010).
 	if a.Spec.UsesWebImagePorts() && a.Status.EnvPort > 0 {
 		return []int32{network.PrimaryPort}
 	}

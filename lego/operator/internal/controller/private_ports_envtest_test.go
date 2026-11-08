@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -69,6 +70,26 @@ func readyEnvtestPod(nn types.NamespacedName, name, ip string) {
 	}
 	Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
 	DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod, client.GracePeriodSeconds(0)) })
+}
+
+// unreadyEnvtestPod stands in for the kubelet: a pod of the Deployment's
+// current template, Running at ip for a minute, whose check keeps failing.
+func unreadyEnvtestPod(nn types.NamespacedName, name, ip string) *corev1.Pod {
+	GinkgoHelper()
+	tmpl := envtestDeployment(nn).Spec.Template
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: nn.Namespace, Labels: tmpl.Labels}, Spec: tmpl.Spec}
+	Expect(k8sClient.Create(ctx, pod)).To(Succeed())
+	pod.Status = corev1.PodStatus{
+		Phase: corev1.PodRunning, PodIP: ip,
+		Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionFalse}},
+		ContainerStatuses: []corev1.ContainerStatus{{
+			Name: appContainerName, Ready: false,
+			State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(time.Now().Add(-time.Minute))}},
+		}},
+	}
+	Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
+	DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod, client.GracePeriodSeconds(0)) })
+	return pod
 }
 
 // servicePortTargets maps a Service's published ports to their targets.
@@ -249,6 +270,88 @@ var _ = Describe("Private network ports (w3/m273)", func() {
 		scanner.set("10.3.0.1", 8123, 9000, 9009, 9363)
 		reconcileToFixedPoint(run)
 		Expect(envtestApp(nn).OpenPorts()).To(Equal([]int32{8123, 9000, 9009, 9363}))
+	})
+
+	// w3/m273 t010 (QA run 87): traefik/whoami declares 80, and run as
+	// `/whoami --port 8080` it binds 8080 alone. Render deploys it and serves
+	// it on 8080.
+	whoamiPrivate := func(name string, env []appv1alpha1.EnvVar) (types.NamespacedName, *ipScanner, func() (ctrl.Result, error)) {
+		GinkgoHelper()
+		nn := types.NamespacedName{Name: name, Namespace: "default"}
+		scanner := &ipScanner{open: map[string][]int{}}
+		r := &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
+			PortScanner: scanner, portDetectEvery: time.Nanosecond,
+			HTTPClient: imageConfigRegistry(GinkgoT(), `"80/tcp":{}`),
+		}
+		run := func() (ctrl.Result, error) { return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}) }
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+			Spec: appv1alpha1.AppSpec{
+				Image: "docker.io/traefik/whoami:v1.10", Type: appv1alpha1.TypePrivateService,
+				PortMode: appv1alpha1.PortModeImageV1, Replicas: 1,
+				Env: env,
+			},
+		})).To(Succeed())
+		DeferCleanup(func() { deleteOwner(ctx, envtestApp(nn), run) })
+		return nn, scanner, run
+	}
+
+	It("serves a private image service on its PORT when the image declares another port (w3/m273 t010)", func() {
+		nn, scanner, run := whoamiPrivate("private-image-port-env", []appv1alpha1.EnvVar{{Name: "PORT", Value: "8080"}})
+		reconcileToFixedPoint(run)
+		app := envtestApp(nn)
+		Expect(app.Status.EnvPort).To(Equal(int32(8080)))
+		Expect(app.Status.ImageNetwork.PrimaryPort).To(Equal(int32(8080)), "PORT wins over the declared 80")
+		Expect(app.Status.ImageNetwork.Ports).To(Equal([]int32{80, 8080}), "the declared port stays in the set")
+		assertImagePortRuntime(nn, 8080)
+
+		scanner.set("10.4.0.1", 8080)
+		readyEnvtestPod(nn, nn.Name+"-a", "10.4.0.1")
+		markEnvtestDeploymentReady(nn)
+		reconcileToFixedPoint(run)
+		app = envtestApp(nn)
+		Expect(meta.IsStatusConditionTrue(app.Status.Conditions, appv1alpha1.ConditionReady)).To(BeTrue(), "%+v", app.Status.Conditions)
+		Expect(app.Status.ServingNetwork.PrimaryPort).To(Equal(int32(8080)))
+		Expect(app.ServicePort()).To(Equal(int32(8080)))
+		Expect(app.OpenPorts()).To(ContainElement(int32(8080)))
+		for _, name := range []string{nn.Name, app.Spec.PlatformSubdomain(nn.Name)} {
+			Expect(servicePortTargets(name)).To(HaveKeyWithValue(int32(8080), intstr.FromInt32(8080)), name)
+		}
+	})
+
+	It("makes the listener of a private image service bound to an undeclared port its primary (w3/m273 t010)", func() {
+		nn, scanner, run := whoamiPrivate("private-image-port-found", nil)
+		reconcileToFixedPoint(run)
+		app := envtestApp(nn)
+		Expect(app.Status.EnvPort).To(BeZero())
+		Expect(app.Status.ImageNetwork.PrimaryPort).To(Equal(int32(80)))
+		assertImagePortRuntime(nn, 80)
+
+		By("scanning the candidate's unready instance while its check of 80 keeps failing")
+		scanner.set("10.5.0.1", 8080)
+		unreadyEnvtestPod(nn, nn.Name+"-a", "10.5.0.1")
+		reconcileToFixedPoint(run)
+		app = envtestApp(nn)
+		Expect(app.Status.ImageNetwork.PrimaryPort).To(Equal(int32(8080)))
+		Expect(app.Status.ImageNetwork.Ports).To(Equal([]int32{80, 8080}))
+		assertImagePortRuntime(nn, 8080)
+		Expect(app.Status.ActiveRevision).To(BeEmpty(), "nothing has served yet")
+
+		By("going live on 8080 once the new instance is Ready")
+		readyEnvtestPod(nn, nn.Name+"-b", "10.5.0.2")
+		scanner.set("10.5.0.2", 8080)
+		Expect(k8sClient.Delete(ctx, &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: nn.Name + "-a", Namespace: nn.Namespace}},
+			client.GracePeriodSeconds(0))).To(Succeed())
+		markEnvtestDeploymentReady(nn)
+		reconcileToFixedPoint(run)
+		app = envtestApp(nn)
+		Expect(meta.IsStatusConditionTrue(app.Status.Conditions, appv1alpha1.ConditionReady)).To(BeTrue(), "%+v", app.Status.Conditions)
+		Expect(app.Status.ActiveRevision).To(Equal(releaseRevision(app)))
+		Expect(app.Status.ServingNetwork.PrimaryPort).To(Equal(int32(8080)))
+		Expect(app.OpenPorts()).To(Equal([]int32{8080}), "the declared 80 nothing binds is not listed")
+		Expect(app.InternalAddress()).To(HaveSuffix(":8080"))
+		assertImagePortService(nn, 8080)
 	})
 
 	It("answers a web service's private port 10000 with its primary listener", func() {

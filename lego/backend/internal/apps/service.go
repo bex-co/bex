@@ -2331,13 +2331,11 @@ func checkSpecEnv(env []appv1alpha1.EnvVar) error {
 }
 
 // provisionalEnvPort is the port a new service's literal PORT variable will
-// select once the operator resolves it (env_port.go), 0 when it sets none or
-// serves image-detected ports. A PORT that only a linked group supplies stays
-// unknown until the operator runs.
+// select once the operator resolves it (env_port.go), 0 when it sets none. An
+// image-port service's PORT, web or private, selects its primary
+// (App.ConfiguredImagePort, w3/m273 t010). A PORT that only a linked group
+// supplies stays unknown until the operator runs.
 func provisionalEnvPort(a *appv1alpha1.App, seed createSeed) int32 {
-	if a.Spec.UsesImagePorts() {
-		return 0
-	}
 	value, set := seed.env["PORT"]
 	for _, item := range a.Spec.Env {
 		if item.Name == "PORT" && item.ValueFrom == nil {

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -83,6 +84,24 @@ func detectedServingPort(app *appv1alpha1.App, port int) int {
 	return port
 }
 
+// dueUnreadyScan returns the App's scan key and its rollout's Running but
+// unready pod IP when a scan is due (at most one per portDetectInterval per
+// App, shared by both detectors), recording the scan; ip is "" otherwise.
+func (r *AppReconciler) dueUnreadyScan(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) (key, ip string) {
+	key = app.Namespace + "/" + app.Name
+	every := portDetectInterval
+	if r.portDetectEvery > 0 {
+		every = r.portDetectEvery
+	}
+	if last, ok := r.portScanned.Load(key); ok && time.Since(last.(time.Time)) < every {
+		return key, ""
+	}
+	if ip = r.unreadyPodIP(ctx, dep); ip != "" {
+		r.portScanned.Store(key, time.Now())
+	}
+	return key, ip
+}
+
 // detectBoundPort scans the rollout's unready pod when the App qualifies, sets
 // status.detectedPort when exactly one other port answers, and returns text to
 // append to the stall message (empty when there is nothing to add).
@@ -91,19 +110,10 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 		(app.Spec.Type != "" && app.Spec.Type != appv1alpha1.TypeWebService) {
 		return ""
 	}
-	key := app.Namespace + "/" + app.Name
-	every := portDetectInterval
-	if r.portDetectEvery > 0 {
-		every = r.portDetectEvery
-	}
-	if last, ok := r.portScanned.Load(key); ok && time.Since(last.(time.Time)) < every {
-		return ""
-	}
-	ip := r.unreadyPodIP(ctx, dep)
+	key, ip := r.dueUnreadyScan(ctx, app, dep)
 	if ip == "" {
 		return ""
 	}
-	r.portScanned.Store(key, time.Now())
 
 	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 	defer cancel()
@@ -160,10 +170,17 @@ type portsScanner interface {
 }
 
 // scanBoundPort runs the bounded common-port phase first, then the full
-// sweep when nothing answered there.
-func scanBoundPort(ctx context.Context, scanner portscan.Scanner, ip string) ([]int, error) {
+// sweep when nothing answered there. also joins the bounded phase: a port the
+// caller must know the state of, such as the probed primary.
+func scanBoundPort(ctx context.Context, scanner portscan.Scanner, ip string, also ...int) ([]int, error) {
 	if bounded, ok := scanner.(portsScanner); ok {
-		open, err := bounded.ScanPorts(ctx, ip, commonHTTPPorts)
+		likely := commonHTTPPorts
+		for _, p := range also {
+			if !slices.Contains(likely, p) {
+				likely = append(slices.Clone(likely), p)
+			}
+		}
+		open, err := bounded.ScanPorts(ctx, ip, likely)
 		if err != nil {
 			return nil, err
 		}
