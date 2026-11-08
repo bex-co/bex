@@ -52,3 +52,47 @@ mutation UpdateAgentSkill(
 mutation DeleteAgentSkill($ownerId: String!, $skill: String!) {
   deleteAgentSkill(ownerId: $ownerId, skill: $skill)
 }
+
+# Version history (ADR099 D3): every save keeps a version. The list carries no
+# content; one version carries the whole SKILL.md and the diff against the
+# version before it.
+query AgentSkillVersions(
+  $ownerId: String!
+  $id: String!
+  $cursor: String
+  $limit: Int
+) {
+  agentSkillVersions(
+    ownerId: $ownerId
+    id: $id
+    cursor: $cursor
+    limit: $limit
+  ) {
+    skillId
+    ownerId
+    nextCursor
+    versions {
+      version
+      shortId
+      message
+      createdBy
+      createdAt
+      current
+    }
+  }
+}
+
+query AgentSkillVersion($ownerId: String!, $id: String!, $version: Int!) {
+  agentSkillVersion(ownerId: $ownerId, id: $id, version: $version) {
+    skillId
+    version
+    shortId
+    message
+    createdBy
+    createdAt
+    current
+    content
+    previousVersion
+    diff
+  }
+}

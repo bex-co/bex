@@ -12,8 +12,15 @@ import {
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/common/components/ui/tabs";
 import { Textarea } from "@/common/components/ui/textarea";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { AgentSkillHistory } from "@/features/agent-environment/components/agent-skill-history";
 import type { AgentSkillInput } from "@/graphql/definitions";
 import type { AgentSkillDetail } from "@/features/agent-environment/hooks/use-agent-skills";
 import {
@@ -32,6 +39,7 @@ export type AgentSkillDialogTarget =
   | { kind: "edit" | "view"; skill: AgentSkillDetail };
 
 interface AgentSkillDialogProps {
+  ownerId: string;
   target: AgentSkillDialogTarget;
   onOpenChange: (open: boolean) => void;
   onSave: (input: AgentSkillInput) => Promise<void>;
@@ -45,6 +53,7 @@ interface AgentSkillDialogProps {
  * version it opened, and a concurrent change is refused (AGENT_SKILL_CONFLICT).
  */
 export function AgentSkillDialog({
+  ownerId,
   target,
   onOpenChange,
   onSave,
@@ -68,6 +77,17 @@ export function AgentSkillDialog({
   );
   const [body, setBody] = useState(existing?.body ?? "");
   const [errorKey, setErrorKey] = useState<string | null>(null);
+  const [tab, setTab] = useState<"edit" | "history">("edit");
+  // The version "Load into editor" filled the form from; the form is dirty.
+  const [loadedFrom, setLoadedFrom] = useState<number | null>(null);
+
+  function loadVersion(versionContent: string, version: number) {
+    setContent(versionContent);
+    setAsFile(true);
+    setLoadedFrom(version);
+    setErrorKey(null);
+    setTab("edit");
+  }
 
   const trimmedName = name.trim();
   const problem = asFile
@@ -79,7 +99,7 @@ export function AgentSkillDialog({
       skillBodyProblem(body));
   const touched = asFile || trimmedName !== "" || description !== "";
   const shownError = (touched ? problem : null) ?? errorKey;
-  const canSave = !readOnly && !saving && problem == null;
+  const canSave = !readOnly && !saving && problem == null && tab === "edit";
 
   async function save() {
     setErrorKey(null);
@@ -118,111 +138,160 @@ export function AgentSkillDialog({
             {t("agentEnvironment.skills.dialogDescription")}
           </DialogDescription>
         </DialogHeader>
-        <form
-          id="agent-skill-form"
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (canSave) void save();
-          }}
+        <Tabs
+          value={tab}
+          onValueChange={(v) => setTab(v === "history" ? "history" : "edit")}
+          className="min-w-0"
         >
-          {asFile ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="agent-skill-content">
-                {t("agentEnvironment.skills.contentLabel")}
-              </Label>
-              <Textarea
-                id="agent-skill-content"
-                value={content}
-                onChange={(e) => {
-                  setContent(e.target.value);
-                  setErrorKey(null);
-                }}
-                readOnly={readOnly}
-                spellCheck={false}
-                className="h-80 resize-y font-mono text-xs"
-              />
-            </div>
-          ) : (
-            <>
-              <div className="grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
-                <div className="space-y-1.5">
-                  <Label htmlFor="agent-skill-name">
-                    {t("agentEnvironment.skills.nameLabel")}
-                  </Label>
-                  <Input
-                    id="agent-skill-name"
-                    value={name}
-                    onChange={(e) => {
-                      setName(e.target.value);
-                      setErrorKey(null);
-                    }}
-                    readOnly={readOnly}
-                    placeholder={t("agentEnvironment.skills.namePlaceholder")}
-                    spellCheck={false}
-                    autoCapitalize="off"
-                    autoComplete="off"
-                    className="font-mono"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="agent-skill-description">
-                    {t("agentEnvironment.skills.descriptionLabel")}
-                  </Label>
-                  <Input
-                    id="agent-skill-description"
-                    value={description}
-                    onChange={(e) => {
-                      setDescription(e.target.value);
-                      setErrorKey(null);
-                    }}
-                    readOnly={readOnly}
-                    placeholder={t(
-                      "agentEnvironment.skills.descriptionPlaceholder",
-                    )}
-                  />
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Switch
-                  id="agent-skill-user-only"
-                  checked={userOnly}
-                  onCheckedChange={setUserOnly}
-                  disabled={readOnly}
-                />
-                <div className="space-y-0.5">
-                  <Label htmlFor="agent-skill-user-only">
-                    {t("agentEnvironment.skills.onlyWhenAskedLabel")}
-                  </Label>
-                  <p className="text-muted-foreground text-xs">
-                    {t("agentEnvironment.skills.onlyWhenAskedHint")}
-                  </p>
-                </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="agent-skill-body">
-                  {t("agentEnvironment.skills.bodyLabel")}
-                </Label>
-                <Textarea
-                  id="agent-skill-body"
-                  value={body}
-                  onChange={(e) => {
-                    setBody(e.target.value);
-                    setErrorKey(null);
-                  }}
-                  readOnly={readOnly}
-                  placeholder={t("agentEnvironment.skills.bodyPlaceholder")}
-                  className="h-56 resize-y font-mono text-xs"
-                />
-              </div>
-            </>
-          )}
-          {shownError ? (
-            <p className="text-destructive text-sm" role="alert">
-              {t(shownError)}
-            </p>
+          {existing ? (
+            <TabsList>
+              <TabsTrigger value="edit">
+                {t(
+                  readOnly
+                    ? "agentEnvironment.skills.viewTab"
+                    : "agentEnvironment.skills.history.editTab",
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="history">
+                {t("agentEnvironment.skills.history.tab")}
+              </TabsTrigger>
+            </TabsList>
           ) : null}
-        </form>
+          <TabsContent
+            value="edit"
+            forceMount
+            className="data-[state=inactive]:hidden"
+          >
+            <form
+              id="agent-skill-form"
+              data-dirty={loadedFrom != null}
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (canSave) void save();
+              }}
+            >
+              {asFile ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="agent-skill-content">
+                    {t("agentEnvironment.skills.contentLabel")}
+                  </Label>
+                  <Textarea
+                    id="agent-skill-content"
+                    value={content}
+                    onChange={(e) => {
+                      setContent(e.target.value);
+                      setErrorKey(null);
+                    }}
+                    readOnly={readOnly}
+                    spellCheck={false}
+                    className="h-80 resize-y font-mono text-xs"
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-[minmax(0,14rem)_minmax(0,1fr)]">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="agent-skill-name">
+                        {t("agentEnvironment.skills.nameLabel")}
+                      </Label>
+                      <Input
+                        id="agent-skill-name"
+                        value={name}
+                        onChange={(e) => {
+                          setName(e.target.value);
+                          setErrorKey(null);
+                        }}
+                        readOnly={readOnly}
+                        placeholder={t(
+                          "agentEnvironment.skills.namePlaceholder",
+                        )}
+                        spellCheck={false}
+                        autoCapitalize="off"
+                        autoComplete="off"
+                        className="font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="agent-skill-description">
+                        {t("agentEnvironment.skills.descriptionLabel")}
+                      </Label>
+                      <Input
+                        id="agent-skill-description"
+                        value={description}
+                        onChange={(e) => {
+                          setDescription(e.target.value);
+                          setErrorKey(null);
+                        }}
+                        readOnly={readOnly}
+                        placeholder={t(
+                          "agentEnvironment.skills.descriptionPlaceholder",
+                        )}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <Switch
+                      id="agent-skill-user-only"
+                      checked={userOnly}
+                      onCheckedChange={setUserOnly}
+                      disabled={readOnly}
+                    />
+                    <div className="space-y-0.5">
+                      <Label htmlFor="agent-skill-user-only">
+                        {t("agentEnvironment.skills.onlyWhenAskedLabel")}
+                      </Label>
+                      <p className="text-muted-foreground text-xs">
+                        {t("agentEnvironment.skills.onlyWhenAskedHint")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="agent-skill-body">
+                      {t("agentEnvironment.skills.bodyLabel")}
+                    </Label>
+                    <Textarea
+                      id="agent-skill-body"
+                      value={body}
+                      onChange={(e) => {
+                        setBody(e.target.value);
+                        setErrorKey(null);
+                      }}
+                      readOnly={readOnly}
+                      placeholder={t("agentEnvironment.skills.bodyPlaceholder")}
+                      className="h-56 resize-y font-mono text-xs"
+                    />
+                  </div>
+                </>
+              )}
+              {loadedFrom != null ? (
+                <p
+                  className="text-muted-foreground text-sm"
+                  data-testid="agent-skill-loaded-notice"
+                >
+                  {t("agentEnvironment.skills.history.loadedNotice", {
+                    version: loadedFrom,
+                  })}
+                </p>
+              ) : null}
+              {shownError ? (
+                <p className="text-destructive text-sm" role="alert">
+                  {t(shownError)}
+                </p>
+              ) : null}
+            </form>
+          </TabsContent>
+          {existing && tab === "history" ? (
+            <TabsContent value="history" className="min-w-0">
+              <AgentSkillHistory
+                ownerId={ownerId}
+                skillId={existing.id}
+                canLoad={!readOnly}
+                onLoad={loadVersion}
+              />
+            </TabsContent>
+          ) : null}
+        </Tabs>
         <DialogFooter className="gap-2 sm:justify-between">
           {readOnly ? (
             <span />
@@ -231,6 +300,7 @@ export function AgentSkillDialog({
               type="button"
               variant="ghost"
               size="sm"
+              disabled={loadedFrom != null}
               onClick={() => {
                 setAsFile((v) => !v);
                 setErrorKey(null);

@@ -547,6 +547,54 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "按字段编辑",
     description: "Switch the dialog back to separate fields",
   },
+  "agentEnvironment.skills.history.tab": {
+    message: "版本历史",
+    description: "Skill dialog tab listing the saved versions",
+  },
+  "agentEnvironment.skills.history.editTab": {
+    message: "编辑",
+    description: "Skill dialog tab with the editing form",
+  },
+  "agentEnvironment.skills.history.current": {
+    message: "当前",
+    description: "Badge on the newest saved version",
+  },
+  "agentEnvironment.skills.history.changes": {
+    message: "变更",
+    description: "Version view: line diff against the previous version",
+  },
+  "agentEnvironment.skills.history.content": {
+    message: "内容",
+    description: "Version view: the full SKILL.md",
+  },
+  "agentEnvironment.skills.history.load": {
+    message: "载入编辑器",
+    description: "Button that fills the editor with the selected version",
+  },
+  "agentEnvironment.skills.history.loadMore": {
+    message: "加载更多",
+    description: "Button that loads the next page of versions",
+  },
+  "agentEnvironment.skills.history.noChanges": {
+    message: "此版本没有任何变更。",
+    description: "Changes view of a version identical to the previous one",
+  },
+  "agentEnvironment.skills.history.loadFailed": {
+    message: "无法加载版本历史。",
+    description: "Version history list query failed",
+  },
+  "agentEnvironment.skills.history.versionFailed": {
+    message: "无法加载此版本。",
+    description: "Single version query failed",
+  },
+  "agentEnvironment.skills.history.loadedNotice": {
+    message: "已载入版本 {version}。保存后将作为新版本保留。",
+    description: "Notice in the editor after Load into editor",
+  },
+  "agentEnvironment.skills.viewTab": {
+    message: "预览",
+    description: "Read-only skill dialog tab showing the skill",
+  },
   "agentEnvironment.skills.save": {
     message: "保存技能",
     description: "Skill dialog save button",

@@ -562,6 +562,54 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Edit fields",
     description: "Switch the dialog back to separate fields",
   },
+  "agentEnvironment.skills.history.tab": {
+    message: "Version history",
+    description: "Skill dialog tab listing the saved versions",
+  },
+  "agentEnvironment.skills.history.editTab": {
+    message: "Edit",
+    description: "Skill dialog tab with the editing form",
+  },
+  "agentEnvironment.skills.history.current": {
+    message: "Current",
+    description: "Badge on the newest saved version",
+  },
+  "agentEnvironment.skills.history.changes": {
+    message: "Changes",
+    description: "Version view: line diff against the previous version",
+  },
+  "agentEnvironment.skills.history.content": {
+    message: "Content",
+    description: "Version view: the full SKILL.md",
+  },
+  "agentEnvironment.skills.history.load": {
+    message: "Load into editor",
+    description: "Button that fills the editor with the selected version",
+  },
+  "agentEnvironment.skills.history.loadMore": {
+    message: "Load more",
+    description: "Button that loads the next page of versions",
+  },
+  "agentEnvironment.skills.history.noChanges": {
+    message: "This version changed nothing.",
+    description: "Changes view of a version identical to the previous one",
+  },
+  "agentEnvironment.skills.history.loadFailed": {
+    message: "Couldn't load the version history.",
+    description: "Version history list query failed",
+  },
+  "agentEnvironment.skills.history.versionFailed": {
+    message: "Couldn't load this version.",
+    description: "Single version query failed",
+  },
+  "agentEnvironment.skills.history.loadedNotice": {
+    message: "Loaded version {version}. Save to keep it as a new version.",
+    description: "Notice in the editor after Load into editor",
+  },
+  "agentEnvironment.skills.viewTab": {
+    message: "Preview",
+    description: "Read-only skill dialog tab showing the skill",
+  },
   "agentEnvironment.skills.save": {
     message: "Save skill",
     description: "Skill dialog save button",

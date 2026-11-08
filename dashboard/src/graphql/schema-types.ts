@@ -573,6 +573,30 @@ export type AgentSkillList = {
   skills: Array<AgentSkill>;
 };
 
+/** One saved version of a workspace skill (ADR099 D2). content, previousVersion and diff are on a single version read only; diff is a unified line diff against the previous version. */
+export type AgentSkillVersion = {
+  __typename: 'AgentSkillVersion';
+  content: Maybe<Scalars['String']['output']>;
+  createdAt: Maybe<Scalars['String']['output']>;
+  createdBy: Maybe<Scalars['String']['output']>;
+  current: Scalars['Boolean']['output'];
+  diff: Maybe<Scalars['String']['output']>;
+  message: Scalars['String']['output'];
+  ownerId: Scalars['String']['output'];
+  previousVersion: Maybe<Scalars['Int']['output']>;
+  shortId: Scalars['String']['output'];
+  skillId: Scalars['String']['output'];
+  version: Scalars['Int']['output'];
+};
+
+export type AgentSkillVersionList = {
+  __typename: 'AgentSkillVersionList';
+  nextCursor: Maybe<Scalars['String']['output']>;
+  ownerId: Scalars['String']['output'];
+  skillId: Scalars['String']['output'];
+  versions: Array<AgentSkillVersion>;
+};
+
 export type ApiKey = {
   __typename: 'ApiKey';
   createdAt: Maybe<Scalars['String']['output']>;
@@ -3605,6 +3629,10 @@ export type Query = {
   agentSessions: Array<AgentSession>;
   /** One workspace skill by skl- id or name, with its body and SKILL.md. */
   agentSkill: AgentSkill;
+  /** One saved version of a workspace skill with its content and the diff against the previous version. */
+  agentSkillVersion: AgentSkillVersion;
+  /** A workspace skill's saved versions, newest first, without content. id is a skl- id or name. */
+  agentSkillVersions: AgentSkillVersionList;
   /** The workspace's skills for cloud agents, without bodies. */
   agentSkills: AgentSkillList;
   apiKeys: Maybe<Array<Maybe<ApiKey>>>;
@@ -3822,6 +3850,21 @@ export type QueryAgentSessionsArgs = {
 export type QueryAgentSkillArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   skill: Scalars['String']['input'];
+};
+
+
+export type QueryAgentSkillVersionArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  version: Scalars['Int']['input'];
+};
+
+
+export type QueryAgentSkillVersionsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4656,12 +4699,25 @@ export type Sandbox = {
 export type SandboxNetworkPolicy = {
   __typename: 'SandboxNetworkPolicy';
   default: Scalars['String']['output'];
+  rules: Maybe<Array<SandboxNetworkPolicyRule>>;
   type: Scalars['String']['output'];
 };
 
 export type SandboxNetworkPolicyInput = {
   default?: InputMaybe<Scalars['String']['input']>;
+  rules?: InputMaybe<Array<SandboxNetworkPolicyRuleInput>>;
   type?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type SandboxNetworkPolicyRule = {
+  __typename: 'SandboxNetworkPolicyRule';
+  domain: Scalars['String']['output'];
+  protocol: Scalars['String']['output'];
+};
+
+export type SandboxNetworkPolicyRuleInput = {
+  domain: Scalars['String']['input'];
+  protocol?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type SecretFile = {

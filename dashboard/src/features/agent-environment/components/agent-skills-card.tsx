@@ -297,6 +297,7 @@ export function AgentSkillsCard({ ownerId }: { ownerId: string }) {
       </CardContent>
       {dialog ? (
         <AgentSkillDialog
+          ownerId={ownerId}
           key={dialog.kind === "create" ? "create" : dialog.skill.id}
           target={dialog}
           onOpenChange={(o) => {
