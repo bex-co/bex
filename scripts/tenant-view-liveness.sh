@@ -32,8 +32,9 @@
 #                       type=app must return the service's own output.
 #   3 (exit 5) METRICS  GET /v1/metrics/cpu + /memory over the last hour must
 #                       carry at least one sample (a woken service always does).
-#   4 (exit 6) EVENTS   GET /v1/services/{id}/events must carry an event newer
-#                       than the window.
+#   4 (exit 6) EVENTS   GET /v1/services/{id}/events must carry this run's
+#                       service_woken when stage 1 woke the service, else an
+#                       event newer than the event window (both polled).
 #
 # Usage:   scripts/tenant-view-liveness.sh
 # Env:     BEX_API_URL              default https://api.bex.co
@@ -45,6 +46,8 @@
 #          BEX_CANARY_LOG_BUDGET    seconds for stage 2 (default 180)
 #          BEX_CANARY_METRIC_BUDGET seconds for stage 3 (default 120)
 #          BEX_CANARY_EVENT_WINDOW  seconds an event may be older than (default 3600)
+#          BEX_CANARY_WOKEN_BUDGET  seconds stage 4 polls the events feed (default 120)
+#          BEX_CANARY_WAKE_THRESHOLD stage 1 seconds that count as a wake (default 3)
 #          BEX_CANARY_REQUIRE_NONCE 1 (default) = stage 2 must find THIS run's
 #                       request line. The nonce rides in the URL PATH, never in a
 #                       query parameter: the edge drops every query parameter
@@ -82,6 +85,11 @@ EVENT_WINDOW="${BEX_CANARY_EVENT_WINDOW:-3600}"
 # service Running (store/reconciler.go resyncs every 30s), so allow a few.
 WOKEN_BUDGET="${BEX_CANARY_WOKEN_BUDGET:-120}"
 REQUIRE_NONCE="${BEX_CANARY_REQUIRE_NONCE:-1}"
+# A hibernated service is woken by the activator HOLDING the first request until
+# the pod is Ready (~14s, w4/517), and answering it 200 — no retry happens. So a
+# wake is measured by elapsed time, not by retries: anything this slow was not
+# served by an already-running pod.
+WAKE_THRESHOLD="${BEX_CANARY_WAKE_THRESHOLD:-3}"
 
 canary_require_tools
 
@@ -123,6 +131,10 @@ PROBE_PATH="/bexProbe/$NONCE"
 # hide the line the probe is looking for.
 WINDOW_START="$(date -u -d '-10 minutes' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
   || date -u -v-10M +%Y-%m-%dT%H:%M:%SZ)"
+# Stage 4 reads the events feed over EVENT_WINDOW, not the 10-minute log window:
+# the window it asserts and the window it asks for must be the same one.
+EVENTS_START="$(date -u -d "-${EVENT_WINDOW} seconds" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
+  || date -u -v-"${EVENT_WINDOW}"S +%Y-%m-%dT%H:%M:%SZ)"
 
 echo "== w3/m83 tenant-view canary: $SERVICE_ID =="
 
@@ -137,6 +149,7 @@ WAKE_START="$(date -u -d '-30 seconds' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
   || date -u -v-30S +%Y-%m-%dT%H:%M:%SZ)"
 status=000
 waited=0
+wake_t0="$(date -u +%s)"
 while [ "$waited" -lt "$WAKE_BUDGET" ]; do
   status="$(curl -sS -o /dev/null -w '%{http_code}' \
     --connect-timeout 5 --max-time 30 "$CANARY_URL$PROBE_PATH" 2>/dev/null || echo 000)"
@@ -150,8 +163,8 @@ if [ "$status" != "200" ]; then
   echo "      This is the tenant-visible symptom: a service that exists but does not serve."
   exit 3
 fi
-echo "  ok: 200 in ${waited}s (nonce recorded, not a secret: $NONCE)"
-wake_seconds=$waited
+wake_seconds=$(($(date -u +%s) - wake_t0))
+echo "  ok: 200 in ${wake_seconds}s (nonce recorded, not a secret: $NONCE)"
 
 # --- Stage 2: bex-api reports that request back through the logs pipeline ------
 echo "==> 2/4 logs: bex-api must return this run's request line and the app stream (budget ${LOG_BUDGET}s)"
@@ -264,13 +277,13 @@ echo "  ok: cpu and memory both carry samples (after ${waited}s)"
 # --- Stage 4: the events feed advanced -----------------------------------------
 fetch_events() {
   if ! acurl -o "$TMP_DIR/events.json" --get "$API/v1/services/$SERVICE_ID/events" \
-    --data-urlencode "startTime=$WINDOW_START" \
+    --data-urlencode "startTime=$EVENTS_START" \
     --data-urlencode "limit=20" 2>/dev/null; then
     echo "FAIL(4/4 events): GET /v1/services/$SERVICE_ID/events failed"
     exit 6
   fi
 }
-if [ "$wake_seconds" -gt 0 ]; then
+if [ "$wake_seconds" -ge "$WAKE_THRESHOLD" ]; then
   # A service this probe had to wake must report that wake as service_woken
   # (w1/m173): any recent event would also pass while the projection had
   # stopped recording wakes.
@@ -295,18 +308,28 @@ if [ "$wake_seconds" -gt 0 ]; then
   fi
   echo "  ok: service_woken $woken (after ${waited}s)"
 else
-  echo "==> 4/4 events: the newest event must be within ${EVENT_WINDOW}s"
-  fetch_events
-  newest="$(jq -r '[.[]? | (.event // .).timestamp] | sort | last // empty' "$TMP_DIR/events.json")"
+  # Stage 1 answered fast, so the pod was most likely already running — but a
+  # wake just under the threshold still lands its service_woken on the
+  # projection's next ~30s pass, so poll instead of reading once.
+  echo "==> 4/4 events: the newest event must be within ${EVENT_WINDOW}s (budget ${WOKEN_BUDGET}s)"
+  waited=0
+  while :; do
+    fetch_events
+    newest="$(jq -r '[.[]? | (.event // .).timestamp] | sort | last // empty' "$TMP_DIR/events.json")"
+    if [ -n "$newest" ] || [ "$waited" -ge "$WOKEN_BUDGET" ]; then break; fi
+    sleep 5
+    waited=$((waited + 5))
+  done
   if [ -z "$newest" ]; then
-    # w1/m173: from 2026-10-07 to 10-15 this read as a projection fault, but the
-    # canary had simply never slept: a local cert-manager's ACME self-check hit
-    # its public URL every ~10s. No sleep means no wake and no event.
-    echo "FAIL(4/4 events): the canary's events feed is empty for the probe window."
-    echo "      Stage 1 answered at once, so the service was already awake: it has"
-    echo "      not slept for the whole window, and a service that never sleeps"
-    echo "      emits no service_woken. Look for whatever keeps it awake first:"
-    echo "      its request logs (GET /v1/logs?type=request) name a repeating caller."
+    # Events come only from state edges (store/event_facts.go): a service that
+    # stayed up for the whole window has an empty feed, as on Render. w1/m173:
+    # from 2026-10-07 to 10-15 the canary never slept because a cert-manager
+    # ACME self-check hit its public URL every ~10s.
+    echo "FAIL(4/4 events): no event in the last ${EVENT_WINDOW}s after ${waited}s of polling."
+    echo "      Stage 1 answered in ${wake_seconds}s (under the ${WAKE_THRESHOLD}s wake threshold),"
+    echo "      so the service was serving before this run. Either it has not"
+    echo "      slept for the whole window — its request logs (GET /v1/logs?type=request)"
+    echo "      name a repeating caller — or the events projection stopped recording."
     exit 6
   fi
   newest_epoch="$(date -u -d "$newest" +%s 2>/dev/null || echo 0)"
