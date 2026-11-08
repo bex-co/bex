@@ -25,9 +25,10 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **m175** — [Knowledge and Playbooks for cloud agents (Devin parity)](done/m175/README.md) (8 tasks)
 - [x] **m176** — [Approval mode: the agent asks before risky actions (`needs_input`)](done/m176/README.md) (7 tasks) ← coordinates with w11/m7 (mobile client)
 - [ ] **m177** — **BLOCKED (your actions: check a signed-in bex-desktop shows the cloud-agents tools; authorize the CLI release — implementation done)** — [Cloud Agents from the terminal and the editor: `bex agent` and bex desktop MCP preconfig](blocked/m177/README.md) (7 tasks)
+- [ ] **m179** — [Remove approval mode (ADR100 withdrawn)](m179/README.md) (7 tasks) ← user decision 2026-11-07, DO_NOT_DO #APPROVAL-MODE
 - [ ] **079** — **BLOCKED (time/usage trigger: re-evaluate on 2026-12-05 or at 10 GB in `bex-agent-attachments`, whichever comes first; no user action needed)** — [ADR095 residuals: attachment storage metering and malware scanning](blocked/079.md)
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
-- [ ] **081** — **BLOCKED (your resource: a QA workspace with an OpenAI model key for the live codex check; code shipped in 5ffbe82b3)** — [Approval mode for codex sessions: gate in-sandbox risky commands](blocked/081.md)
+- [x] **081** — [Approval mode for codex sessions (withdrawn)](done/081.md) — withdrawn 2026-11-07 with ADR100; removed by m179
 - [x] **082** — [Settings: the Team card skeleton is shorter than the ready card](done/082.md) ← w9 final skeleton check 2026-11-06
 - [x] **075** — [`outcome.files`: the files the agent shared, in the session outcome](done/075.md) — **DONE 2026-11-05** (ADR095 D11 follow-up once ADR094 `outcome` shipped)
 - [x] **m168** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](done/m168/README.md) — **DONE 2026-11-05:** live acceptance passed after the dispatch-archive fix (t011): the agent read the attached log and PNG, a follow-up file reached turn 2, downloads byte-exact

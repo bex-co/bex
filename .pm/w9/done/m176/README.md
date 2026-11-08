@@ -111,3 +111,7 @@ QA user (admin of `bex`), API via the browser-cookie session.
   - The workspace environment was restored to its recorded values (`approvalMode: autonomous`, `approvalBypassAllowed: true`) and verified by GET.
   - Both sessions were deleted (204, then 404).
   - The Kratos session was logged out with its jar, and the state file, jar and run dir were removed. No CLI grant was minted.
+
+## Withdrawn (2026-11-07)
+
+The user decided cloud agents stay purely autonomous and withdrew ADR100 (`DO_NOT_DO.md` #APPROVAL-MODE). Everything this milestone shipped is removed by w9/m179. The record stays for history.
