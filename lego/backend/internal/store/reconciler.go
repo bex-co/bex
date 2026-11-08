@@ -1063,7 +1063,7 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 		}
 	case status == DeployUpdateFailed:
 		if msg, reason, ok := recordedRolloutFailure(cur, open.Generation); ok {
-			if reason == "ImagePullBackOff" {
+			if imagePullFailure(reason) {
 				return msg, EventReasonImagePullBackoff
 			}
 			return msg, ""
@@ -1412,7 +1412,7 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 	}
 	for i := range app.Status.Conditions {
 		condition := &app.Status.Conditions[i]
-		if condition.Type != appv1alpha1.ConditionReady || condition.ObservedGeneration != app.Generation || condition.Reason != "ImagePullBackOff" {
+		if condition.Type != appv1alpha1.ConditionReady || condition.ObservedGeneration != app.Generation || !imagePullFailure(condition.Reason) {
 			continue
 		}
 		at := condition.LastTransitionTime.Time
@@ -1434,6 +1434,15 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 		}, true
 	}
 	return ServiceEventFact{}, false
+}
+
+// imagePullFailure reports a Ready or Rollout reason that Render reports as
+// Image Pull Failed: the kubelet's ImagePullBackOff, or the operator's registry
+// refusal of a missing tag or a refused credential before any pod was
+// dispatched (appv1alpha1.ReasonImagePullFailed, w2/072). Either closes its
+// deploy with an image_pull_failed fact, and so the Image Pull Failed email.
+func imagePullFailure(reason string) bool {
+	return reason == "ImagePullBackOff" || reason == appv1alpha1.ReasonImagePullFailed
 }
 
 // deployTimedOut applies the budget for the deploy row's last observed phase.
@@ -1953,7 +1962,7 @@ func currentFailureReason(app *appv1alpha1.App) (string, string, bool) {
 			continue
 		}
 		switch {
-		case c.Reason == "ImagePullBackOff":
+		case imagePullFailure(c.Reason):
 			return c.Message, EventReasonImagePullBackoff, true
 		case stallDiagnosis(c.Reason) || c.Reason == appv1alpha1.ReasonPreDeployFailed:
 			return c.Message, "", true

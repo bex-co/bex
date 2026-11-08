@@ -465,6 +465,18 @@ const (
 	imageRegistryRetryMax = 5 * time.Minute
 )
 
+// imageMetadataFailureReason is the reason a failed image metadata read fails
+// its deploy under. A registry refusal (missing image or tag, refused
+// credential) is what Render reports as Image Pull Failed, so it fails under
+// ReasonImagePullFailed and bex-api emits image_pull_failed for it (w2/072);
+// any other failure stays ImageMetadataUnavailable.
+func imageMetadataFailureReason(err error) string {
+	if _, refused := errors.AsType[*registry.RefusedError](err); refused {
+		return appv1alpha1.ReasonImagePullFailed
+	}
+	return "ImageMetadataUnavailable"
+}
+
 // imageRefusalError says in plain words why the registry refused an image's
 // metadata read, naming the image and what to check, in the style of the
 // startup diagnosis (w4/534); the raw "image metadata request returned status

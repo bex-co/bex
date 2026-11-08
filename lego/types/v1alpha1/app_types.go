@@ -329,6 +329,12 @@ const (
 	// deploy's stall reason, so the wait is never silent (w4/m243 t013).
 	ReasonImageRegistryRateLimited = "ImageRegistryRateLimited"
 	ReasonImageRegistryUnavailable = "ImageRegistryUnavailable"
+	// ReasonImagePullFailed names a deploy the registry refused before any pod
+	// was dispatched: the image or tag does not exist (404), or it will not be
+	// served without a valid credential (401/403). Render reports each as an
+	// Image Pull Failed service event and email, so bex-api records the same
+	// image_pull_failed fact it records for a kubelet ImagePullBackOff (w2/072).
+	ReasonImagePullFailed = "ImagePullFailed"
 
 	// ReasonCrashLoopBackOff is the kubelet's verdict for a container that keeps
 	// exiting, passed through as the Ready reason; ReasonHealthCheckFailing is a

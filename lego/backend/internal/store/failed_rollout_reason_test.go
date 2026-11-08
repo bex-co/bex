@@ -157,3 +157,51 @@ func TestAFailedRowsStallReasonReadsAsTheOutcome(t *testing.T) {
 		t.Fatalf("reason = %q, want %q", got, want)
 	}
 }
+
+// w2/072: a deploy of a tag that does not exist, or of an image the registry
+// will not serve without a credential, is what Render reports as Image Pull
+// Failed. The operator's registry pre-check refuses it before any pod is
+// dispatched, under ReasonImagePullFailed: the row closes update_failed with
+// the image-pull code, so TransitionDeploy records the image_pull_failed fact
+// (and the Image Pull Failed email) exactly as for a kubelet ImagePullBackOff.
+func TestImagePullRefusedBeforeDispatchClosesAsAnImagePullFailure(t *testing.T) {
+	const notFound = "the image docker.io/library/busybox:no-such-tag was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists"
+	open := Deploy{ID: "dep-tag", AppID: "srv-tag", Image: "docker.io/library/busybox:no-such-tag", Generation: 3, Status: DeployUpdateInProgress}
+
+	t.Run("over a served release", func(t *testing.T) {
+		app := servingAppWithFailedRollout(3, appv1alpha1.ReasonImagePullFailed, notFound)
+		if got := observedDeployStatus(open, app, false); got != DeployUpdateFailed {
+			t.Fatalf("status = %q, want %q", got, DeployUpdateFailed)
+		}
+		for _, matches := range []bool{true, false} {
+			if got, code := deployCloseFailureReason(app, open, DeployUpdateFailed, matches); got != notFound || code != EventReasonImagePullBackoff {
+				t.Errorf("matches=%v: reason = (%q, %q), want (%q, %q)", matches, got, code, notFound, EventReasonImagePullBackoff)
+			}
+		}
+	})
+
+	t.Run("with nothing served", func(t *testing.T) {
+		app := &appv1alpha1.App{}
+		app.Generation = 3
+		app.Spec.Image = open.Image
+		app.Status.Phase = appv1alpha1.PhaseFailed
+		app.Status.ReleaseGeneration = 3
+		app.Status.Conditions = []metav1.Condition{{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonImagePullFailed,
+			Message: notFound, ObservedGeneration: 3, LastTransitionTime: metav1.Now(),
+		}}
+		if got, code := deployCloseFailureReason(app, open, DeployUpdateFailed, true); got != notFound || code != EventReasonImagePullBackoff {
+			t.Errorf("reason = (%q, %q), want (%q, %q)", got, code, notFound, EventReasonImagePullBackoff)
+		}
+		fact, ok := observedImagePullFailure(open, app)
+		if !ok || fact.Type != EventFactImagePullFailed || fact.SourceKey != "deploy:dep-tag:image_pull_failed" || fact.Image != open.Image {
+			t.Errorf("image-pull fact = %+v, %v; want image_pull_failed for the missing tag", fact, ok)
+		}
+	})
+
+	// Any other metadata failure stays a plain failed deploy.
+	other := servingAppWithFailedRollout(3, "ImageMetadataUnavailable", "served release has no matching image network metadata")
+	if _, code := deployCloseFailureReason(other, open, DeployUpdateFailed, true); code != "" {
+		t.Errorf("ImageMetadataUnavailable code = %q, want none", code)
+	}
+}
