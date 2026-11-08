@@ -29,27 +29,11 @@ fragment AgentSessionFields on AgentSession {
   sshAddress
   phase
   state
-  # Why a needs_input turn is paused (ADR100 D1): approval | user.
-  waitingFor
-  # The session's approval mode (ADR100 D3), fixed at create.
-  approvalMode
   steerable
   outcome {
     state
     steerable
     turn
-    waitingFor
-    # The oldest open decision (ADR100 D2); filled on the single-session read,
-    # null on a list read (the cache keeps the detail read's copy).
-    pendingDecision {
-      id
-      kind
-      title
-      detail
-      state
-      createdAt
-      expiresAt
-    }
     summary
     deliveryNote
     failureReasonCode
@@ -117,7 +101,6 @@ query AgentSessions(
   $ownerId: String
   $archived: String
   $phases: [String!]
-  $states: [String!]
   $repo: String
   $tag: String
   $cursor: String
@@ -127,7 +110,6 @@ query AgentSessions(
     ownerId: $ownerId
     archived: $archived
     phases: $phases
-    states: $states
     repo: $repo
     tag: $tag
     cursor: $cursor
@@ -155,8 +137,6 @@ mutation CreateAgentSession(
   $secretNames: [String!]
   $secrets: [AgentSessionSecretInput!]
   $skills: [AgentSessionSkillInput!]
-  $approvalMode: String
-  $bypassApproval: Boolean
 ) {
   createAgentSession(
     ownerId: $ownerId
@@ -170,8 +150,6 @@ mutation CreateAgentSession(
     secretNames: $secretNames
     secrets: $secrets
     skills: $skills
-    approvalMode: $approvalMode
-    bypassApproval: $bypassApproval
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields
@@ -337,29 +315,5 @@ query AgentSessionAttachments($id: String!, $cursor: String, $limit: Int) {
     mediaType
     size
     createdAt
-  }
-}
-
-# Answer a pending decision (ADR100 D2): {allow, scope} approves or denies an
-# approval ("session" also allows the same rule for the rest of the session),
-# {answer} replies to a question. Idempotent by decision id; a second answer is
-# AGENT_SESSION_DECISION_ANSWERED and a late one AGENT_SESSION_DECISION_EXPIRED.
-mutation AnswerAgentSessionDecision(
-  $id: String!
-  $decisionId: String!
-  $allow: Boolean
-  $scope: String
-  $answer: String
-) {
-  answerAgentSessionDecision(
-    id: $id
-    decisionId: $decisionId
-    allow: $allow
-    scope: $scope
-    answer: $answer
-  ) {
-    id
-    state
-    answeredAt
   }
 }

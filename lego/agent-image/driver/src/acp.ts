@@ -15,6 +15,8 @@
  */
 
 import { spawn, type ChildProcessByStdio } from "node:child_process";
+import { rm } from "node:fs/promises";
+import { homedir } from "node:os";
 import path from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { Readable, Writable } from "node:stream";
@@ -36,8 +38,6 @@ import {
   type SessionUpdate,
 } from "@agentclientprotocol/sdk/unstable";
 import type { AgentDriverConfig } from "./config.js";
-import { grant } from "./approval.js";
-import { installCodexApprovalRules } from "./codex-rules.js";
 import { describeError } from "./errors.js";
 
 const maximumConnectTimeoutMs = 60_000;
@@ -89,65 +89,6 @@ export interface CreateSessionOptions {
   abortSignal?: AbortSignal;
   // overlay is the rendered bex platform overlay; empty sends none.
   overlay?: string;
-  // requestPermission answers the engine's session/request_permission (ADR100
-  // D5): the approval policy, which may wait on a person. Absent grants every
-  // request, the autonomous behavior.
-  requestPermission?: (
-    request: RequestPermissionRequest,
-  ) => Promise<RequestPermissionResponse>;
-}
-
-// A permission request's toolCall is an update of a call the agent already
-// announced in session/update, and adapters may send only what changed.
-// claude-agent-acp sends a client that advertises the AIR extension (which
-// this driver does, for codex's typed failures) just {toolCallId, title,
-// rawInput}: kind, locations and content live on the earlier tool_call
-// (claude-agent-acp 0.94.0 dist/tool-calls/renderer.js permissionToolCall).
-// The approval policy needs the kind, or `sudo true` reads as an "other"
-// call and runs ungated (ADR100, w9/m176 production finding 2026-11-06).
-export type KnownToolCall = Pick<
-  RequestPermissionRequest["toolCall"],
-  "kind" | "title" | "rawInput" | "locations"
->;
-
-export function rememberToolCall(
-  known: Map<string, KnownToolCall>,
-  update: SessionUpdate,
-): void {
-  if (
-    update.sessionUpdate !== "tool_call" &&
-    update.sessionUpdate !== "tool_call_update"
-  )
-    return;
-  if (update.status === "completed" || update.status === "failed") {
-    known.delete(update.toolCallId);
-    return;
-  }
-  const previous = known.get(update.toolCallId) ?? {};
-  const next: KnownToolCall = { ...previous };
-  if (update.kind != null) next.kind = update.kind;
-  if (update.title != null) next.title = update.title;
-  if (update.rawInput !== undefined) next.rawInput = update.rawInput;
-  if (update.locations != null) next.locations = update.locations;
-  known.set(update.toolCallId, next);
-}
-
-export function completePermissionToolCall(
-  request: RequestPermissionRequest,
-  known: Map<string, KnownToolCall>,
-): RequestPermissionRequest {
-  const previous = known.get(request.toolCall.toolCallId);
-  if (!previous) return request;
-  const toolCall = { ...request.toolCall };
-  if (toolCall.kind == null && previous.kind != null)
-    toolCall.kind = previous.kind;
-  if (toolCall.title == null && previous.title != null)
-    toolCall.title = previous.title;
-  if (toolCall.rawInput === undefined && previous.rawInput !== undefined)
-    toolCall.rawInput = previous.rawInput;
-  if (toolCall.locations == null && previous.locations != null)
-    toolCall.locations = previous.locations;
-  return { ...request, toolCall };
 }
 
 // bexMcpServerScript is the compiled `bex` MCP server next to this module
@@ -170,14 +111,7 @@ export function bexMcpServers(
     "deliver" | "repoUrl" | "prRecordPath" | "shareUrl"
   > &
     Partial<
-      Pick<
-        AgentDriverConfig,
-        | "resultUrl"
-        | "outputSchema"
-        | "resultRecordPath"
-        | "decisionUrl"
-        | "decisionClockPath"
-      >
+      Pick<AgentDriverConfig, "resultUrl" | "outputSchema" | "resultRecordPath">
     >,
 ): McpServer[] {
   const env: Array<{ name: string; value: string }> = [];
@@ -198,15 +132,6 @@ export function bexMcpServers(
       { name: "BEX_RESULT_ENDPOINT", value: config.resultUrl },
       { name: "BEX_RESULT_SCHEMA", value: config.outputSchema },
       { name: "BEX_RESULT_RECORD_PATH", value: config.resultRecordPath ?? "" },
-    );
-  }
-  if (config.decisionUrl) {
-    env.push(
-      { name: "BEX_DECISION_ENDPOINT", value: config.decisionUrl },
-      {
-        name: "BEX_DECISION_CLOCK_PATH",
-        value: config.decisionClockPath ?? "",
-      },
     );
   }
   if (env.length === 0) return [];
@@ -320,6 +245,21 @@ function withTimeout<T>(
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
+// autoApprove selects a permission option for a headless run. The sandbox is the
+// security boundary (ADR047 D5 egress + fs confinement), so the driver grants
+// the requested action rather than blocking a fire-and-forget turn on a prompt.
+function autoApprove(
+  request: RequestPermissionRequest,
+): RequestPermissionResponse {
+  const option =
+    request.options.find((candidate) => candidate.kind === "allow_always") ??
+    request.options.find((candidate) => candidate.kind === "allow_once") ??
+    request.options.find((candidate) => candidate.kind.startsWith("allow")) ??
+    request.options[0];
+  if (!option) return { outcome: { outcome: "cancelled" } };
+  return { outcome: { outcome: "selected", optionId: option.optionId } };
+}
+
 class SessionStateUnavailable extends Error {}
 
 function canRebuildSession(error: unknown): boolean {
@@ -367,6 +307,19 @@ export async function createSessionProvider(
   }
 }
 
+// The withdrawn approval mode (ADR100, .pm/DO_NOT_DO.md #APPROVAL-MODE) once
+// wrote codex exec-policy prompt rules here, and a session's .codex directory
+// persists across turns: remove any such file before codex starts, so a
+// session created while it existed never keeps pausing for a person.
+export const staleCodexRulesFile = "bex-approval.rules";
+
+export async function removeStaleCodexRules(
+  env: Record<string, string | undefined>,
+): Promise<void> {
+  const home = env.CODEX_HOME || path.join(env.HOME || homedir(), ".codex");
+  await rm(path.join(home, "rules", staleCodexRulesFile), { force: true });
+}
+
 async function createSessionAttempt(
   config: AgentDriverConfig,
   agentEnv: Record<string, string>,
@@ -378,10 +331,7 @@ async function createSessionAttempt(
   // channel is decided before spawn because CODEX_CONFIG is read at startup.
   const codexOverlay = overlay !== "" && config.profile === "codex";
   const childEnv = { ...process.env, ...agentEnv };
-  // Approval mode for codex goes through its exec policy (codex-rules.ts):
-  // written before spawn, because codex reads its rules at startup.
-  if (config.profile === "codex")
-    await installCodexApprovalRules(config.approvalMode, childEnv);
+  if (config.profile === "codex") await removeStaleCodexRules(childEnv);
   const spawnEnv = codexOverlay
     ? { ...childEnv, ...codexOverlayEnv(overlay, childEnv.CODEX_CONFIG) }
     : childEnv;
@@ -481,27 +431,19 @@ async function createSessionAttempt(
   options.abortSignal?.addEventListener("abort", onAbort, { once: true });
   if (options.abortSignal?.aborted) onAbort();
 
-  const knownToolCalls = new Map<string, KnownToolCall>();
   const app = client({ name: "bex-agent-driver" })
     .onNotification(methods.client.session.update, ({ params }) => {
       // Native load replays the old conversation to ACP clients. bex already
       // owns that history; mapping it here would charge it to the new turn.
       if (loadingSession) return;
-      rememberToolCall(knownToolCalls, params.update);
       if (promptInFlight) {
         promptFailure ??= typedSessionFailure(params.update);
       }
       options.onUpdate(params.update);
     })
-    // The sandbox is the security boundary (ADR047 D5 egress + fs
-    // confinement), so an autonomous run grants every request; an approval
-    // mode routes it through the session's policy (ADR100).
-    .onRequest(methods.client.session.requestPermission, ({ params }) => {
-      const request = completePermissionToolCall(params, knownToolCalls);
-      return options.requestPermission
-        ? options.requestPermission(request)
-        : grant(request);
-    });
+    .onRequest(methods.client.session.requestPermission, ({ params }) =>
+      autoApprove(params),
+    );
 
   // Writable.toWeb logs some pipe-write failures without propagating them to
   // the ChildProcess stream's `error` event. Own each write callback so an

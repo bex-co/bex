@@ -19,6 +19,7 @@ package agentcred
 import (
 	"context"
 	"errors"
+	"io"
 	"log"
 	"mime"
 	"net/http"
@@ -59,14 +60,35 @@ func (b *Broker) serveResult(w http.ResponseWriter, r *http.Request) {
 		fail(agentsession.ResultInvalidRequest, "this is not a result URL")
 		return
 	}
-	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), refusalWriter(fail, "this sandbox may only submit a result for its own session"))
+	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), func(refusal admissionRefusal) {
+		switch refusal {
+		case refusedSource:
+			fail(agentsession.ResultForbidden, "unidentified source")
+		case refusedConcurrency:
+			fail(agentsession.ResultRateLimited, "too many concurrent requests from this sandbox")
+		case refusedPod:
+			fail(agentsession.ResultForbidden, "this request does not come from the session's sandbox")
+		case refusedTarget:
+			fail(agentsession.ResultForbidden, "this sandbox may only submit a result for its own session")
+		case refusedSessionBudget:
+			fail(agentsession.ResultRateLimited, "request budget exhausted for this session")
+		case refusedWorkspaceBudget:
+			fail(agentsession.ResultRateLimited, "request budget exhausted for this workspace")
+		}
+	})
 	if !ok {
 		return
 	}
 	defer admitted.release()
 	r, pod, verified := admitted.r, admitted.pod, admitted.verified
-	raw, ok := readJSONBody(w, r, agentsession.MaxResultRequestBytes, fail)
-	if !ok {
+	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, agentsession.MaxResultRequestBytes))
+	if err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			fail(agentsession.ResultTooLarge, "the request body is too large")
+			return
+		}
+		fail(agentsession.ResultInvalidRequest, "request body could not be read")
 		return
 	}
 	content, invalid := agentsession.DecodeResultContent(raw)

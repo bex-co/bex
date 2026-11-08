@@ -95,9 +95,6 @@ export async function tempConfig(
     modelBaseUrlEnvName: "",
     networkTier: "",
     secretValues: new Map(),
-    approvalMode: "autonomous",
-    decisionUrl: "",
-    decisionClockPath: path.join(root, "decision-waits"),
     root,
     ...overrides,
   };

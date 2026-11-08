@@ -1,6 +1,16 @@
 # ADR100 — Approval mode for cloud agents (`needs_input`, Devin parity)
 
-**Status:** accepted (design, w9/m176 t001) · **Date:** 2026-11-06 · **Extends:** [ADR094](ADR094-coding-agent-mcp.md) D7 (`needs_input`), [ADR047](ADR047-cloud-coding-agent-sessions.md) (driver), [ADR090](ADR090-agent-owned-delivery.md) (overlay) · **Unblocks:** w11/m7 t003 (decision-request contract)
+**Status:** withdrawn (2026-11-07, user decision) · was accepted (design, w9/m176 t001) · **Date:** 2026-11-06 · **Extends:** [ADR094](ADR094-coding-agent-mcp.md) D7 (`needs_input`), [ADR047](ADR047-cloud-coding-agent-sessions.md) (driver), [ADR090](ADR090-agent-owned-delivery.md) (overlay) · **Unblocks:** w11/m7 t003 (decision-request contract)
+
+## Withdrawn (2026-11-07)
+
+- **Decision:** the user withdrew this ADR. bex cloud agent sessions are long-running and unattended by design, and pausing a turn for a person contradicts that. ADR090's overlay already tells the agent to make reasonable assumptions, keep going, and state any blocking question at the end of its reply.
+- **Why the parity argument does not hold:** Devin's cloud sessions also run autonomously by default, and its approval "safe mode" is optional. The Devin-reference rule covers the behavior bex offers, not every optional mode.
+- **Removal:**
+  - w9/m179 removes everything this ADR shipped (w9/m176, w9/081): the decision store (migration 0207 undoes 0205), the answer routes and MCP tool, `approvalMode`/`bypassApproval`/`approvalBypassAllowed`, `waitingFor`/`pendingDecision`, the gateway `/agent-decisions` channel, driver gating, `ask_user` and the codex exec-policy rules, the dashboard UI, and `bex agent answer` and its flags.
+  - `needs_input` stays reserved and never emitted (ADR094 D7).
+  - The anti-goal is recorded in [`.pm/DO_NOT_DO.md` #APPROVAL-MODE](../.pm/DO_NOT_DO.md).
+- **Status of the body:** the design below is kept as history only. It does not describe current behavior.
 
 ## Context
 

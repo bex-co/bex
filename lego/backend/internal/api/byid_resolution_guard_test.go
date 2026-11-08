@@ -262,7 +262,6 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.AgentModelRequest.Prefix():        {"", "gateway-internal usage-report idempotency key, no API"},
 	ids.AgentAttachment.Prefix():          {"agent-attachments", ""},
 	ids.AgentSkill.Prefix():               {"agent-skills", ""},
-	ids.AgentDecision.Prefix():            {"agent-sessions", "addressed under its agent session"},
 	ids.BuildSource.Prefix():              {"", "build-source routes still answer a named 404; w2/m254 t003 adds their by-id family"},
 	ids.Build.Prefix():                    {"", "a build is addressed under its build source"},
 }

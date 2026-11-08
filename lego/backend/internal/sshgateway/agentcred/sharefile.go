@@ -62,7 +62,22 @@ func (b *Broker) serveShareFile(w http.ResponseWriter, r *http.Request) {
 		agentsession.WriteShareFileError(w, invalid)
 		return
 	}
-	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), refusalWriter(fail, "this sandbox may only share files for its own session"))
+	admitted, ok := b.admit(r, namespace, authorizeSession(sessionID), func(refusal admissionRefusal) {
+		switch refusal {
+		case refusedSource:
+			fail(agentsession.ShareFileForbidden, "unidentified source")
+		case refusedConcurrency:
+			fail(agentsession.ShareFileRateLimited, "too many concurrent requests from this sandbox")
+		case refusedPod:
+			fail(agentsession.ShareFileForbidden, "this request does not come from the session's sandbox")
+		case refusedTarget:
+			fail(agentsession.ShareFileForbidden, "this sandbox may only share files for its own session")
+		case refusedSessionBudget:
+			fail(agentsession.ShareFileRateLimited, "request budget exhausted for this session")
+		case refusedWorkspaceBudget:
+			fail(agentsession.ShareFileRateLimited, "request budget exhausted for this workspace")
+		}
+	})
 	if !ok {
 		return
 	}

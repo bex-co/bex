@@ -169,7 +169,7 @@ The input is `{ ids: [ags-…] (1–20), until: "any" | "all" (default "all"), t
 | `state` | When | Terminal for this turn? |
 | --- | --- | --- |
 | `working` | phase `creating`, `running`, `resuming`, `redispatching`, `canceling` | no |
-| `needs_input` | a running turn paused on a decision: an approval or a question ([ADR100](ADR100-agent-approval-mode.md), w9/m176); `waitingFor` says which and `outcome.pendingDecision` holds it | yes, waits for `answer_agent_session_decision` |
+| `needs_input` | reserved and never emitted: cloud agent sessions run unattended and never pause for a person ([`DO_NOT_DO.md` #APPROVAL-MODE](../.pm/DO_NOT_DO.md); ADR100 withdrawn) | — |
 | `succeeded` | phase `completed` | yes |
 | `failed` | phase `failed`; see `failureReasonCode` | yes |
 | `canceled` | phase `canceled` | yes, session closed |
@@ -241,7 +241,7 @@ GraphQL spells the fields `cost { modelUSD computeUSD totalUSD }`; REST, MCP and
 **As built (w21/m260, 2026-11-05).**
 
 - **Source.** Migration 0202 adds `agent_session_turn_events` and a trigger on `agent_sessions` that writes one row when the phase becomes `completed` or `failed` (`ON CONFLICT DO NOTHING` on `(session, turn, phase)`), so every path that terminalizes a turn is covered by one choke point. The webhook feed query (`ListWebhookEvents`) gained an `agent` arm over it; the push and alert-email consumers of the same feed ignore the new source. A cancel produces no event.
-- **Vocabulary.** `agent_session_turn_succeeded` (phase `completed`), `agent_session_turn_failed` and `agent_session_needs_input` are subscribable bex extensions (the dashboard picker has a "Cloud Agents" group, and the Render vocabulary fixture lists them under `bexExtensions`). An endpoint with an empty event filter (all events) receives them like any new type. `agent_session_needs_input` fires once per decision a turn pauses on ([ADR100](ADR100-agent-approval-mode.md), w9/m176), from the `agent_session_decisions` arm of the same feed.
+- **Vocabulary.** `agent_session_turn_succeeded` (phase `completed`), `agent_session_turn_failed` and `agent_session_needs_input` are subscribable bex extensions (the dashboard picker has a "Cloud Agents" group, and the Render vocabulary fixture lists them under `bexExtensions`). An endpoint with an empty event filter (all events) receives them like any new type. **`agent_session_needs_input` is advertised but never emitted**: no session phase waits for input, and none will (`state: needs_input` covers no phase; [`DO_NOT_DO.md` #APPROVAL-MODE](../.pm/DO_NOT_DO.md)).
 - **Payload.** `{"type", "timestamp", "data": {"id", "state", "outcome"}}`: `id` is the session id, `state` the session `state` vocabulary for the phase the turn ended in, and `outcome` the same object as the session read minus `summary` and `files`. It is read from the session when the event is delivered, a second or two after the turn ended. If the session has meanwhile moved on to another turn, `outcome` is just `{state, steerable: false, turn}` so it never mixes in the newer turn's fields. `webhook-id` is the event id derived from the row key, so retries and the two replicas deduplicate.
 - **Delivery.** The outcome is read only for an endpoint that wants the event, and a read failure fails the dispatch pass so the watermark stays and the event is retried. A deleted session drops its event.
 

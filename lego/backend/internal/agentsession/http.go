@@ -26,7 +26,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -280,92 +279,4 @@ func (c *Client) now() time.Time {
 		return c.Now()
 	}
 	return time.Now()
-}
-
-// signedVerb is one domain-separated, JSON-envelope internal verb (the
-// structured result, ADR094 D5, and the decision, ADR100 D5): the gateway
-// signs the envelope under the verb's MAC domain and bex-api verifies it, both
-// answering refusals in the shared *ResultError shape.
-type signedVerb struct {
-	maxEnvelope int64
-	mac         func([]byte) []byte
-	refuse      func(code, message string) *ResultError
-	// subject names the verb in refusal messages ("result", "decision").
-	subject string
-}
-
-// serveSignedVerb is the bex-api half: bound the body, verify the HMAC within
-// the clock skew, decode strictly, claim the nonce once, then handle. A
-// handler error that is not a *ResultError is reported as unavailable.
-func serveSignedVerb[E any](w http.ResponseWriter, r *http.Request, v signedVerb, secret []byte, now time.Time, claimer NonceClaimer,
-	decode func([]byte) (E, bool), nonce func(E) string, handle func(context.Context, E) (any, error)) {
-	raw, err := io.ReadAll(io.LimitReader(r.Body, v.maxEnvelope+1))
-	if err != nil || len(raw) == 0 || int64(len(raw)) > v.maxEnvelope {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if err := Verify(secret, v.mac(raw), r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), now, mintClockSkew); err != nil {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
-		return
-	}
-	envelope, ok := decode(raw)
-	if !ok {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if !claimNonce(r.Context(), claimer, nonce(envelope), now) {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
-		return
-	}
-	response, err := handle(r.Context(), envelope)
-	if err != nil {
-		var typed *ResultError
-		if !errors.As(err, &typed) {
-			typed = v.refuse(ResultUnavailable, "the "+v.subject+" could not be recorded")
-		}
-		WriteResultError(w, typed)
-		return
-	}
-	WriteNoStoreJSON(w, http.StatusOK, response)
-}
-
-// forwardSignedVerb is the gateway half: sign envelope under the verb's MAC
-// domain, POST it, and decode a response valid accepts. Every failure is a
-// *ResultError safe to relay to the sandbox; a refusal's status and hint are
-// re-derived from its code, since the gateway relays only its own vocabulary.
-func forwardSignedVerb[R any](ctx context.Context, v signedVerb, url string, secret []byte, now time.Time, client *http.Client, envelope any, valid func(R) bool) (R, error) {
-	var zero R
-	raw, err := json.Marshal(envelope)
-	if err != nil {
-		return zero, v.refuse(ResultUnavailable, "the "+v.subject+" request could not be built")
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, bytes.NewReader(raw))
-	if err != nil {
-		return zero, v.refuse(ResultUnavailable, "the "+v.subject+" request could not be built")
-	}
-	req.Header.Set("Content-Type", "application/json")
-	signHeaders(req.Header, secret, v.mac(raw), now)
-	resp, err := client.Do(req)
-	if err != nil {
-		return zero, v.refuse(ResultUnavailable, "the "+v.subject+" service is unreachable")
-	}
-	defer func() { _ = resp.Body.Close() }()
-	payload, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-	if resp.StatusCode == http.StatusOK {
-		var out R
-		if err := json.Unmarshal(payload, &out); err != nil || !valid(out) {
-			return zero, v.refuse(ResultUnavailable, "the "+v.subject+" service returned an invalid response")
-		}
-		return out, nil
-	}
-	var refusal struct {
-		Error *ResultError `json:"error"`
-	}
-	if json.Unmarshal(payload, &refusal) == nil && refusal.Error != nil && refusal.Error.Code != "" {
-		return zero, v.refuse(refusal.Error.Code, refusal.Error.Message)
-	}
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return zero, v.refuse(ResultForbidden, "the "+v.subject+" request was not authorized")
-	}
-	return zero, v.refuse(ResultUnavailable, "the "+v.subject+" service returned status "+strconv.Itoa(resp.StatusCode))
 }

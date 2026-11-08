@@ -292,19 +292,6 @@ func (a *api) steer(ctx context.Context, id string, in steerRequest) (session, [
 	return decodeSession(raw)
 }
 
-// answer gives a session's pending decision its answer (ADR100 D2).
-func (a *api) answer(ctx context.Context, id, decisionID string, in answerRequest) (decision, []byte, error) {
-	raw, err := a.post(ctx, request{path: []string{"agent-sessions", id, "decisions", decisionID}}, in)
-	if err != nil {
-		return decision{}, nil, fmt.Errorf("answer agent session %s: %w", id, err)
-	}
-	var d decision
-	if err := json.Unmarshal(raw, &d); err != nil {
-		return decision{}, nil, fmt.Errorf("decode decision: %w", err)
-	}
-	return d, raw, nil
-}
-
 func (a *api) cancel(ctx context.Context, id string) (session, []byte, error) {
 	raw, err := a.post(ctx, request{path: []string{"agent-sessions", id, "cancel"}}, nil)
 	if err != nil {

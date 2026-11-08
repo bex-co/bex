@@ -48,12 +48,9 @@ const (
 	EventSourceDeploy = "deploy"
 	EventSourceAudit  = "audit"
 	EventSourceFact   = "fact"
-	// EventSourceAgent rows come from agent_session_turn_events (ADR094 D9)
-	// and agent_session_decisions (ADR100), read only by the webhook feed.
+	// EventSourceAgent rows come from agent_session_turn_events (ADR094 D9),
+	// read only by the webhook feed.
 	EventSourceAgent = "agent"
-	// AgentSessionNeedsInputPhase is the phase of an agent row for a decision
-	// a turn paused on: one per decision.
-	AgentSessionNeedsInputPhase = AgentSessionNeedsInput
 )
 
 // Deploy-event phases: one deploys row yields a started event at created_at and,

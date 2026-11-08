@@ -297,13 +297,6 @@ func main() {
 			Secret: []byte(secret),
 		}
 
-		// ADR100 D5: a turn pauses on an approval or a question through its
-		// Pod-bound decision URL and long-polls the same URL for the answer.
-		credentials.Decisions = &agentsession.DecisionClient{
-			URL:    envOr("BEX_AGENT_DECISION_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalDecisionPath),
-			Secret: []byte(secret),
-		}
-
 		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
 		model.API = &agentsession.ModelClient{URL: modelAPIURL, Secret: []byte(secret)}
@@ -440,7 +433,6 @@ func main() {
 		credentialMux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
 		credentialMux.Handle("POST "+agentsession.ShareFileProxyPath, credentials.ShareFileHandler())
 		credentialMux.Handle("POST "+agentsession.ResultProxyPath, credentials.ResultHandler())
-		credentialMux.Handle("POST "+agentsession.DecisionProxyPath, credentials.DecisionHandler())
 		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_GIT_READ_TIMEOUT", 10*time.Minute)

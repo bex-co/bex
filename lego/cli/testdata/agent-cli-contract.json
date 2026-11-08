@@ -5,7 +5,9 @@
     "repo": "acme/api",
     "branch": "main",
     "title": "Fix the crash",
-    "tags": ["ci"],
+    "tags": [
+      "ci"
+    ],
     "agentConfig": {
       "agent": "claude",
       "model": "claude-sonnet-5-5",
@@ -48,13 +50,6 @@
         "modelUSD": "0.42",
         "computeUSD": "0.0895",
         "totalUSD": "0.5095"
-      },
-      "waitingFor": "approval",
-      "pendingDecision": {
-        "id": "dcs-d0abc123def456ghij78",
-        "kind": "approval",
-        "title": "Run (force-push): git push --force origin main",
-        "state": "pending"
       }
     }
   },

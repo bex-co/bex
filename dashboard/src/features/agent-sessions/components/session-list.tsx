@@ -1,11 +1,6 @@
 import { Fragment, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
-import {
-  Archive,
-  ArchiveRestore,
-  GitPullRequest,
-  ShieldAlert,
-} from "lucide-react";
+import { Archive, ArchiveRestore, GitPullRequest } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -27,12 +22,10 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
-import {
-  isAgentSessionBlocked,
-  type AgentSessionArchivedFilter,
-  type AgentSessionPhase,
-  type AgentSessionStateFilter,
-  type AgentSessionView,
+import type {
+  AgentSessionArchivedFilter,
+  AgentSessionPhase,
+  AgentSessionView,
 } from "@/features/agent-sessions/types";
 import { AgentSessionsEmptyState } from "@/features/agent-sessions/components/empty-state";
 import {
@@ -159,22 +152,6 @@ export interface SessionListProps {
   phase?: AgentSessionPhase;
   /** The active tag filter, when the list is narrowed to one tag (w21/002). */
   tag?: string;
-  /** The active state filter (`?state=needs_input`, ADR100). */
-  state?: AgentSessionStateFilter;
-}
-
-/** "Blocked": the session waits on a person's answer (ADR100). */
-export function AgentSessionBlockedBadge() {
-  const { t } = useTranslations();
-  return (
-    <Badge
-      variant="outline"
-      className="gap-1 border-transparent bg-amber-500/15 text-amber-700 dark:text-amber-400"
-    >
-      <ShieldAlert className="size-3" />
-      {t("agentSessions.blockedBadge")}
-    </Badge>
-  );
 }
 
 /**
@@ -277,7 +254,6 @@ export function SessionList({
   archiveFilter,
   phase,
   tag,
-  state,
 }: SessionListProps) {
   const { t } = useTranslations();
   const { toggle, busyId } = useArchiveToggle(onChanged);
@@ -306,7 +282,7 @@ export function SessionList({
     return (
       <AgentSessionsEmptyState
         mode={
-          phase || tag || state
+          phase || tag
             ? "filtered"
             : archiveFilter === "archived"
               ? "archived"
@@ -318,77 +294,45 @@ export function SessionList({
   }
 
   if (!dense) {
-    const row = (s: AgentSessionView) => (
-      <li key={s.id} className="group">
-        <div className="flex items-start gap-1">
-          <Link
-            to="/agents/$agentSessionId"
-            params={{ agentSessionId: s.id }}
-            search={{
-              fromArchived: archiveFilter,
-              fromPhase: phase,
-            }}
-            className="hover:bg-muted/40 min-w-0 flex-1 rounded-md px-2 py-3"
-            title={sessionTitleShort(s)}
-          >
-            <span className="block truncate font-medium">
-              {sessionTitleShort(s)}
-            </span>
-            <MetaLine
-              parts={[
-                t(agentSessionStatusPhraseKey(s)),
-                s.repo,
-                <RelativeAge value={s.createdAt} />,
-              ]}
-            />
-          </Link>
-          <div className="flex shrink-0 items-center gap-1 py-3 pr-1">
-            <PrBadge session={s} hideEmpty />
-            <ArchiveRowAction
-              session={s}
-              busy={busyId === s.id}
-              onToggle={(session) => void toggle(session)}
-            />
-          </div>
-        </div>
-        <SessionTags tags={s.tags} activeTag={tag} />
-      </li>
-    );
-    // Devin's Blocked group (ADR100): sessions waiting on a person lead.
-    // A list already narrowed to needs_input needs no second heading.
-    const blocked = state ? [] : sessions.filter(isAgentSessionBlocked);
-    const rest = blocked.length
-      ? sessions.filter((s) => !isAgentSessionBlocked(s))
-      : sessions;
     return (
-      <div className="space-y-4">
-        {blocked.length > 0 ? (
-          <section
-            aria-labelledby="agent-sessions-blocked-heading"
-            data-testid="agent-sessions-blocked"
-          >
-            <h3
-              id="agent-sessions-blocked-heading"
-              className="flex items-center gap-2 px-2 text-sm font-medium"
-            >
-              <ShieldAlert
-                className="size-4 text-amber-600 dark:text-amber-400"
-                aria-hidden
-              />
-              {t("agentSessions.blockedGroup")}
-              <span className="text-muted-foreground tabular-nums">
-                {blocked.length}
-              </span>
-            </h3>
-            <ul className="divide-y">{blocked.map(row)}</ul>
-          </section>
-        ) : null}
-        {rest.length > 0 ? (
-          <ul className="divide-y" data-testid="agent-sessions-recents">
-            {rest.map(row)}
-          </ul>
-        ) : null}
-      </div>
+      <ul className="divide-y" data-testid="agent-sessions-recents">
+        {sessions.map((s) => (
+          <li key={s.id} className="group">
+            <div className="flex items-start gap-1">
+              <Link
+                to="/agents/$agentSessionId"
+                params={{ agentSessionId: s.id }}
+                search={{
+                  fromArchived: archiveFilter,
+                  fromPhase: phase,
+                }}
+                className="hover:bg-muted/40 min-w-0 flex-1 rounded-md px-2 py-3"
+                title={sessionTitleShort(s)}
+              >
+                <span className="block truncate font-medium">
+                  {sessionTitleShort(s)}
+                </span>
+                <MetaLine
+                  parts={[
+                    t(agentSessionStatusPhraseKey(s)),
+                    s.repo,
+                    <RelativeAge value={s.createdAt} />,
+                  ]}
+                />
+              </Link>
+              <div className="flex shrink-0 items-center gap-1 py-3 pr-1">
+                <PrBadge session={s} hideEmpty />
+                <ArchiveRowAction
+                  session={s}
+                  busy={busyId === s.id}
+                  onToggle={(session) => void toggle(session)}
+                />
+              </div>
+            </div>
+            <SessionTags tags={s.tags} activeTag={tag} />
+          </li>
+        ))}
+      </ul>
     );
   }
 
@@ -447,9 +391,6 @@ export function SessionList({
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5">
                     <AgentSessionPhaseChip phase={s.phase} />
-                    {isAgentSessionBlocked(s) ? (
-                      <AgentSessionBlockedBadge />
-                    ) : null}
                     {s.isArchived ? (
                       <Badge variant="outline" className="gap-1">
                         <Archive className="size-3" />

@@ -36,11 +36,6 @@ import { readResultRecord, resultReminder } from "./submit-result.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 import { TurnLogSink } from "./turn-log.js";
 import { SecretRedactor } from "./redact.js";
-import {
-  createPermissionHandler,
-  readDecisionClock,
-  resetDecisionClock,
-} from "./approval.js";
 
 interface RunTurnOptions {
   prompt?: string;
@@ -222,38 +217,11 @@ export async function runHeadlessTurn(
     once: true,
   });
   if (options.abortSignal?.aborted) abortFromOutside();
-  // The turn timeout counts the agent's own time: waits on a person (ADR100
-  // decisions) are read from the decision clock and pushed onto the deadline.
-  const turnStarted = Date.now();
-  await resetDecisionClock(config.decisionClockPath);
-  let turnTimer: NodeJS.Timeout | undefined;
-  let turnSettled = false;
-  const armTurnTimer = (delayMs: number) => {
-    turnTimer = setTimeout(() => {
-      void readDecisionClock(config.decisionClockPath).then((clock) => {
-        if (turnSettled) return;
-        const used = Date.now() - turnStarted - clock.waitedMs;
-        if (clock.pending || used < config.turnTimeoutMs) {
-          armTurnTimer(clock.pending ? 60_000 : config.turnTimeoutMs - used);
-          return;
-        }
-        const error = new Error(`ACP turn exceeded ${config.turnTimeoutMs}ms`);
-        turnAbort.abort(error);
-        rejectDeadline(error);
-      });
-    }, Math.max(1, delayMs));
-  };
-  armTurnTimer(config.turnTimeoutMs);
-  const requestPermission = config.decisionUrl
-    ? createPermissionHandler({
-        mode: config.approvalMode,
-        decisionUrl: config.decisionUrl,
-        cwd: config.cwd,
-        clockPath: config.decisionClockPath,
-        scrub: (text) => redactor.redactString(text),
-        signal: turnAbort.signal,
-      })
-    : undefined;
+  const turnTimer = setTimeout(() => {
+    const error = new Error(`ACP turn exceeded ${config.turnTimeoutMs}ms`);
+    turnAbort.abort(error);
+    rejectDeadline(error);
+  }, config.turnTimeoutMs);
   try {
     if (!prompt)
       throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
@@ -279,7 +247,6 @@ export async function runHeadlessTurn(
               },
               abortSignal: turnAbort.signal,
               overlay,
-              requestPermission,
             });
             // Continuity ladder (ADR047 D3, w5/m84): the rung depends on
             // whether session/load actually happened, known only now. The
@@ -404,7 +371,6 @@ export async function runHeadlessTurn(
     });
     throw terminalError;
   } finally {
-    turnSettled = true;
     clearTimeout(turnTimer);
     options.abortSignal?.removeEventListener("abort", abortFromOutside);
     // Idempotent safety net for errors thrown before the success/catch path

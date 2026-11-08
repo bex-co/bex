@@ -66,8 +66,6 @@ describe("FailureCallout", () => {
       turn: 1,
       summary: null,
       deliveryNote: null,
-      waitingFor: null,
-      pendingDecision: null,
       failureReasonCode: "AGENT_MODEL_SPEND_CAP_REACHED",
       result: null,
       cost: { modelUSD, computeUSD: null, totalUSD: null },

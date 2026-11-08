@@ -26,7 +26,6 @@ var CloudAgentsTools = []string{
 	"get_agent_session",
 	"list_agent_sessions",
 	"send_agent_session_message",
-	"answer_agent_session_decision",
 	"get_agent_session_transcript",
 	"get_agent_session_tool_output",
 	"cancel_agent_session",
@@ -182,7 +181,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 		out, err := s.Create(ctx, in)
 		return nil, out, err
 	}
-	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_session", Description: "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript. Pass skills to make the turn follow workspace skills (list_agent_skills). approvalMode (autonomous, risky, all) makes the agent pause in state needs_input before risky actions until answer_agent_session_decision; bypassApproval runs it autonomous."}, createSession)
+	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_session", Description: "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript. Pass skills to make the turn follow workspace skills (list_agent_skills)."}, createSession)
 	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_agent_session", Description: "Alias of create_agent_session. Start a cloud coding-agent session on a repository; it does not return an attach ticket (call attach_agent_session for one)."}, createSession)
 	s.registerWaitMCP(server)
 	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end)."},
@@ -285,24 +284,9 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	}
 	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled). Pass outputSchema to require a machine-readable result for this turn, read from outcome.result."}, sendMessage)
 	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."}, sendMessage)
-	mcputil.AddTool(server, &mcp.Tool{Name: "answer_agent_session_decision", Description: "Answer the decision a cloud coding-agent session paused on (state needs_input; the decision is outcome.pendingDecision of get_agent_session or wait_agent_sessions). For an approval (waitingFor approval) pass allow, and scope once (default) or session; for a question (waitingFor user) pass answer. The turn then continues. A decision is answered once; one left 24 hours expires (an approval as denied)."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in answerDecisionArgs) (*mcp.CallToolResult, Decision, error) {
-			req := in.AnswerDecisionRequest
-			req.SessionID, req.DecisionID = in.ID, in.Decision
-			out, err := s.AnswerDecision(ctx, req)
-			return nil, out, err
-		})
 	s.registerAttachmentMCP(server)
 	s.registerSecretMCP(server)
 	s.registerSkillMCP(server)
-}
-
-// answerDecisionArgs is answer_agent_session_decision's input: the ids REST
-// carries in the path, plus the answer body itself.
-type answerDecisionArgs struct {
-	ID       string `json:"id" jsonschema:"the agent session id (ags-…)"`
-	Decision string `json:"decisionId" jsonschema:"the decision id (dcs-…) from outcome.pendingDecision"`
-	AnswerDecisionRequest
 }
 
 // registerSkillMCP adds the ADR099 D3 workspace skill tools.

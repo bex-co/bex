@@ -171,9 +171,10 @@ const (
 	TypeAutoscalingStarted    = "autoscaling_started"
 	TypeAutoscalingEnded      = "autoscaling_ended"
 	// Cloud coding-agent turn outcomes (ADR094 D9; w21/m260) — bex extensions
-	// with no Render twin. A session's turn ending succeeded or failed, or
-	// pausing on a decision (ADR100: one needs_input event per decision),
-	// pushes {id, state, outcome} so an orchestrator need not poll.
+	// with no Render twin. A session's turn ending succeeded or failed pushes
+	// {id, state, outcome} so an orchestrator need not poll. TypeAgentSession-
+	// NeedsInput is advertised for subscription but never emitted: cloud agent
+	// sessions never pause for a person (.pm/DO_NOT_DO.md #APPROVAL-MODE).
 	TypeAgentSessionTurnSucceeded = "agent_session_turn_succeeded"
 	TypeAgentSessionTurnFailed    = "agent_session_turn_failed"
 	TypeAgentSessionNeedsInput    = "agent_session_needs_input"
@@ -182,9 +183,8 @@ const (
 // agentTurnEvents maps the phase an agent session turn ended in (the
 // agent_session_turn_events row) to its webhook event type.
 var agentTurnEvents = map[string]string{
-	"completed":                       TypeAgentSessionTurnSucceeded,
-	"failed":                          TypeAgentSessionTurnFailed,
-	store.AgentSessionNeedsInputPhase: TypeAgentSessionNeedsInput,
+	"completed": TypeAgentSessionTurnSucceeded,
+	"failed":    TypeAgentSessionTurnFailed,
 }
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key

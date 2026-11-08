@@ -19,8 +19,6 @@ function withResult(result: string | null): AgentSessionView["outcome"] {
     turn: 1,
     summary: null,
     deliveryNote: null,
-    waitingFor: null,
-    pendingDecision: null,
     failureReasonCode: null,
     result,
     cost: null,

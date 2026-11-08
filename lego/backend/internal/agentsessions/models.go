@@ -23,8 +23,6 @@ package agentsessions
 import (
 	"encoding/json"
 	"time"
-
-	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 const (
@@ -42,16 +40,14 @@ const (
 // client reads instead of decoding Phase. Phase stays the lifecycle field.
 const (
 	StateWorking    = "working"
-	StateNeedsInput = store.AgentSessionNeedsInput // a running turn paused on a decision (ADR100 D1)
+	StateNeedsInput = "needs_input" // reserved and never emitted (.pm/DO_NOT_DO.md #APPROVAL-MODE)
 	StateSucceeded  = "succeeded"
 	StateFailed     = "failed"
 	StateCanceled   = "canceled"
 )
 
 // stateOf maps a lifecycle phase to its coarse state. An unknown phase reads as
-// working: a client keeps waiting rather than treating it as finished. A
-// running turn paused on a decision is needs_input; sessionState adds that
-// (store.AgentSessionStateSQL is the same mapping in SQL).
+// working: a client keeps waiting rather than treating it as finished.
 func stateOf(phase string) string {
 	switch phase {
 	case PhaseCompleted:
@@ -65,8 +61,23 @@ func stateOf(phase string) string {
 	}
 }
 
-// validStates are the state names a list filter accepts.
-var validStates = map[string]bool{StateWorking: true, StateNeedsInput: true, StateSucceeded: true, StateFailed: true, StateCanceled: true}
+// phasesOfState lists the phases a state covers (the inverse of stateOf);
+// ok is false for a name that is not a state. needs_input covers no phase yet.
+func phasesOfState(state string) ([]string, bool) {
+	switch state {
+	case StateWorking:
+		return []string{PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching, PhaseCanceling}, true
+	case StateNeedsInput:
+		return nil, true
+	case StateSucceeded:
+		return []string{PhaseCompleted}, true
+	case StateFailed:
+		return []string{PhaseFailed}, true
+	case StateCanceled:
+		return []string{PhaseCanceled}, true
+	}
+	return nil, false
+}
 
 // steerable reports whether a follow-up message is accepted now: the turn has
 // ended (completed or failed), the session is not canceled, and it is not
@@ -190,11 +201,6 @@ type CreateRequest struct {
 	// most 5: Devin's playbook_id.
 	Skills      []SkillInvocation `json:"skills,omitempty" jsonschema:"workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS"`
 	MaxSpendUSD *float64          `json:"maxSpendUSD,omitempty" jsonschema:"a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE"`
-	// ApprovalMode and BypassApproval set when the agent pauses for approval
-	// (ADR100 D3): the workspace's mode by default; Devin's bypass_approval
-	// runs it autonomous. Lowering the mode needs the workspace to allow it.
-	ApprovalMode   string `json:"approvalMode,omitempty" jsonschema:"autonomous, risky (ask before destructive, publishing and cloud-mutating actions) or all (ask before every action that changes something); default the workspace's mode"`
-	BypassApproval bool   `json:"bypassApproval,omitempty" jsonschema:"true runs the session autonomous, never pausing for approval (Devin's bypass_approval); refused when the workspace does not allow bypass"`
 }
 
 // SteerRequest is a follow-up prompt turn on an existing session (ADR047 D8
@@ -242,13 +248,6 @@ type View struct {
 	// accepted now, so a finished-but-open session is never ambiguous.
 	State     string `json:"state"`
 	Steerable bool   `json:"steerable"`
-	// WaitingFor says what a needs_input session waits for (ADR100 D1):
-	// approval (Devin's waiting_for_approval) or user (waiting_for_user).
-	// The decision itself is outcome.pendingDecision on the single read.
-	WaitingFor string `json:"waitingFor,omitempty"`
-	// ApprovalMode is the session's approval mode (ADR100 D3): autonomous,
-	// risky or all.
-	ApprovalMode string `json:"approvalMode,omitempty"`
 	// MaxSpendUSD is the session's maxSpendUSD ceiling as a decimal string, or
 	// absent when it has none (ADR094 D8).
 	MaxSpendUSD string `json:"maxSpendUSD,omitempty"`
@@ -310,11 +309,6 @@ type Outcome struct {
 	State     string `json:"state"`
 	Steerable bool   `json:"steerable"`
 	Turn      int    `json:"turn"`
-	// WaitingFor and PendingDecision say what a needs_input session waits for
-	// and the decision to answer (ADR100). PendingDecision, like Summary, is
-	// filled only by the single-session read, wait and webhook.
-	WaitingFor      string    `json:"waitingFor,omitempty"`
-	PendingDecision *Decision `json:"pendingDecision,omitempty"`
 	// Summary is the final assistant text of the latest completed turn, clipped
 	// to maxOutcomeSummaryChars head-and-tail. Empty until a turn completes.
 	Summary           string       `json:"summary,omitempty"`

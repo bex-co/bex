@@ -13,10 +13,6 @@ import {
   type AgentEnvironmentFieldsFragment,
   type AgentEnvironmentInput,
 } from "@/graphql/definitions";
-import {
-  parseApprovalMode,
-  type ApprovalMode,
-} from "@/features/agent-environment/lib/approval";
 
 /** The network-tier options, shared by the ready card and its skeleton. */
 export const TIERS = [
@@ -60,10 +56,6 @@ export interface AgentEnvironmentDraft {
   /** One hostname per line, as typed. */
   hostsText: string;
   defaultModel: string;
-  /** When agents pause for approval (ADR100 D3). */
-  approvalMode: ApprovalMode;
-  /** Whether a session may start below approvalMode. */
-  approvalBypassAllowed: boolean;
 }
 
 export function draftFrom(env: AgentEnvironmentView): AgentEnvironmentDraft {
@@ -71,8 +63,6 @@ export function draftFrom(env: AgentEnvironmentView): AgentEnvironmentDraft {
     networkTier: env.networkTier,
     hostsText: env.customHosts.join("\n"),
     defaultModel: env.defaultModel ?? "",
-    approvalMode: parseApprovalMode(env.approvalMode),
-    approvalBypassAllowed: env.approvalBypassAllowed,
   };
 }
 
@@ -143,12 +133,6 @@ export function buildPatch(
   if (!saved.modelPinned) {
     const model = draft.defaultModel.trim();
     if (model !== (saved.defaultModel ?? "")) patch.defaultModel = model;
-  }
-  if (draft.approvalMode !== parseApprovalMode(saved.approvalMode)) {
-    patch.approvalMode = draft.approvalMode;
-  }
-  if (draft.approvalBypassAllowed !== saved.approvalBypassAllowed) {
-    patch.approvalBypassAllowed = draft.approvalBypassAllowed;
   }
   return patch;
 }

@@ -17,7 +17,6 @@ import {
   UnarchiveAgentSessionDocument,
   DeleteAgentSessionDocument,
   AgentSessionDocument,
-  AnswerAgentSessionDecisionDocument,
 } from "@/graphql/definitions";
 import {
   toAgentSessionTicket,
@@ -62,10 +61,6 @@ export interface CreateAgentSessionInput {
   secrets?: AgentSessionSecretInput[];
   /** Workspace skills the first turn must follow (ADR099 D4). */
   skills?: AgentSessionSkillInput[];
-  /** A stricter approval mode than the workspace's (ADR100 D3). */
-  approvalMode?: string;
-  /** Devin's bypass_approval: never pause, where the workspace allows it. */
-  bypassApproval?: boolean;
   // No model / egressAllowlist: the dashboard leaves both to the workspace's
   // agent environment (w10/m17). The API still accepts them for CLI/MCP.
 }
@@ -79,21 +74,7 @@ export interface SteerOptions {
   skills?: AgentSessionSkillInput[];
 }
 
-/**
- * An answer to a pending decision (ADR100 D2): allow or deny an approval
- * ("session" also allows the same rule for the rest of the session), or reply
- * to a question in text.
- */
-export type DecisionAnswer =
-  { allow: boolean; scope?: "once" | "session" } | { text: string };
-
 export interface UseAgentSessionMutationsResult {
-  /** Answers a paused turn's decision; resolves the decision's new state. */
-  answerDecision: (
-    id: string,
-    decisionId: string,
-    answer: DecisionAnswer,
-  ) => Promise<string>;
   /** Fires `createAgentSession`; resolves the new session + attach ticket. */
   create: (input: CreateAgentSessionInput) => Promise<AgentSessionTicket>;
   /** Steers an idle session with a follow-up prompt (redispatch path). */
@@ -203,7 +184,6 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
   const [resumeMutation] = useMutation(ResumeAgentSessionDocument);
   const [attachMutation] = useMutation(AttachAgentSessionDocument);
   const [deleteMutation] = useMutation(DeleteAgentSessionDocument);
-  const [answerMutation] = useMutation(AnswerAgentSessionDecisionDocument);
   const cancel = useByIdViewMutation(
     CancelAgentSessionDocument,
     (d) => d.cancelAgentSession,
@@ -247,8 +227,6 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
                 : undefined,
               secrets: input.secrets?.length ? input.secrets : undefined,
               skills: input.skills?.length ? input.skills : undefined,
-              approvalMode: input.approvalMode || undefined,
-              bypassApproval: input.bypassApproval || undefined,
             },
             fetchPolicy: "no-cache",
           }),
@@ -355,40 +333,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     [deleteMutation, invalidateDeletedSession],
   );
 
-  // Not no-cache: the answer's {id, state} updates the cached decision the
-  // callout reads, so it closes before the session poll catches up.
-  const answerDecision = useCallback(
-    async (
-      id: string,
-      decisionId: string,
-      answer: DecisionAnswer,
-    ): Promise<string> => {
-      try {
-        const res = await answerMutation({
-          variables:
-            "text" in answer
-              ? { id, decisionId, answer: answer.text }
-              : {
-                  id,
-                  decisionId,
-                  allow: answer.allow,
-                  scope: answer.allow ? (answer.scope ?? "once") : undefined,
-                },
-        });
-        const decision = res.data?.answerAgentSessionDecision;
-        if (!decision) {
-          throw new Error("answerAgentSessionDecision returned no decision");
-        }
-        return decision.state;
-      } catch (err) {
-        throw toAgentSessionError(err);
-      }
-    },
-    [answerMutation],
-  );
-
   return {
-    answerDecision,
     create,
     steer,
     resume,

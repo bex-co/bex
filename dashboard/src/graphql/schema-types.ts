@@ -82,8 +82,6 @@ export type AgentEnvironment = {
   agentModelSpendCapTierLimited: Maybe<Scalars['Boolean']['output']>;
   /** Month-to-date agent-model spend in USD (UTC calendar month). */
   agentModelSpendMonthToDateUsd: Maybe<Scalars['Float']['output']>;
-  approvalBypassAllowed: Scalars['Boolean']['output'];
-  approvalMode: Scalars['String']['output'];
   /** A failed invoice is unpaid, so platform-model requests are refused with BILLING_BALANCE_DUE until it is paid. */
   billingBalanceDue: Maybe<Scalars['Boolean']['output']>;
   customHosts: Array<Scalars['String']['output']>;
@@ -107,10 +105,6 @@ export type AgentEnvironment = {
 export type AgentEnvironmentInput = {
   /** Monthly agent-model spend cap in USD (more than 0, at most 10x the plan default). */
   agentModelMonthlySpendCapUsd?: InputMaybe<Scalars['Float']['input']>;
-  /** Whether a session may start below approvalMode (bypassApproval). */
-  approvalBypassAllowed?: InputMaybe<Scalars['Boolean']['input']>;
-  /** When agents pause for approval: autonomous (never), risky or all. */
-  approvalMode?: InputMaybe<Scalars['String']['input']>;
   /** true removes the workspace's own model provider key. */
   clearModelApiKey?: InputMaybe<Scalars['Boolean']['input']>;
   /** Replaces the whole list; [] clears it. Opened only by the CUSTOM tier. */
@@ -171,7 +165,6 @@ export type AgentSecretList = {
 export type AgentSession = {
   __typename: 'AgentSession';
   agentConfig: AgentSessionConfig;
-  approvalMode: Maybe<Scalars['String']['output']>;
   archivedAt: Maybe<Scalars['String']['output']>;
   branch: Scalars['String']['output'];
   canceledAt: Maybe<Scalars['String']['output']>;
@@ -205,7 +198,6 @@ export type AgentSession = {
   turns: Maybe<Scalars['Int']['output']>;
   updatedAt: Scalars['String']['output'];
   url: Maybe<Scalars['String']['output']>;
-  waitingFor: Maybe<Scalars['String']['output']>;
 };
 
 export type AgentSessionCapabilities = {
@@ -243,24 +235,6 @@ export type AgentSessionCost = {
   totalUSD: Scalars['String']['output'];
 };
 
-/** An approval or question a running agent turn paused on (ADR100). */
-export type AgentSessionDecision = {
-  __typename: 'AgentSessionDecision';
-  /** The final answer as JSON text ({allow, scope} or {text}); null while pending. */
-  answer: Maybe<Scalars['String']['output']>;
-  answeredAt: Maybe<Scalars['String']['output']>;
-  createdAt: Maybe<Scalars['String']['output']>;
-  /** What the agent asked, as JSON text: {toolKind, command, paths, rule} for an approval, {question, options} for a question. */
-  detail: Maybe<Scalars['String']['output']>;
-  expiresAt: Maybe<Scalars['String']['output']>;
-  id: Scalars['String']['output'];
-  kind: Scalars['String']['output'];
-  sessionId: Scalars['String']['output'];
-  state: Scalars['String']['output'];
-  title: Scalars['String']['output'];
-  turn: Maybe<Scalars['Int']['output']>;
-};
-
 export type AgentSessionGitHubReadiness = {
   __typename: 'AgentSessionGitHubReadiness';
   accountLogin: Maybe<Scalars['String']['output']>;
@@ -286,7 +260,6 @@ export type AgentSessionOutcome = {
   deliveryNote: Maybe<Scalars['String']['output']>;
   failureReasonCode: Maybe<Scalars['String']['output']>;
   files: Maybe<Array<AgentSessionTurnAttachment>>;
-  pendingDecision: Maybe<AgentSessionDecision>;
   pullRequest: Maybe<AgentSessionPullRequest>;
   /** The current turn's last valid final structured result (ADR094 D5) as JSON text, or null. */
   result: Maybe<Scalars['String']['output']>;
@@ -294,7 +267,6 @@ export type AgentSessionOutcome = {
   steerable: Scalars['Boolean']['output'];
   summary: Maybe<Scalars['String']['output']>;
   turn: Maybe<Scalars['Int']['output']>;
-  waitingFor: Maybe<Scalars['String']['output']>;
 };
 
 export type AgentSessionProfile = {
@@ -1590,8 +1562,6 @@ export type Mutation = {
   acceptWorkspaceInvite: Maybe<AcceptedWorkspaceInvite>;
   addCustomDomain: Maybe<CustomDomain>;
   addDisk: Maybe<Disk>;
-  /** Answer the decision a running agent turn paused on: allow (and scope once|session) for an approval, answer for a question. */
-  answerAgentSessionDecision: AgentSessionDecision;
   approveBlueprint: Maybe<BlueprintApprovedSync>;
   archiveAgentSession: Maybe<AgentSession>;
   attachAgentSession: Maybe<AgentSession>;
@@ -1817,15 +1787,6 @@ export type MutationAddDiskArgs = {
 };
 
 
-export type MutationAnswerAgentSessionDecisionArgs = {
-  allow?: InputMaybe<Scalars['Boolean']['input']>;
-  answer?: InputMaybe<Scalars['String']['input']>;
-  decisionId: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-  scope?: InputMaybe<Scalars['String']['input']>;
-};
-
-
 export type MutationApproveBlueprintArgs = {
   id: Scalars['String']['input'];
   manualEnvVars?: InputMaybe<Array<InputMaybe<BlueprintManualEnvVarInput>>>;
@@ -1906,10 +1867,8 @@ export type MutationConnectGitArgs = {
 
 export type MutationCreateAgentSessionArgs = {
   agentConfig: AgentSessionConfigInput;
-  approvalMode?: InputMaybe<Scalars['String']['input']>;
   attachmentIds?: InputMaybe<Array<Scalars['String']['input']>>;
   branch?: InputMaybe<Scalars['String']['input']>;
-  bypassApproval?: InputMaybe<Scalars['Boolean']['input']>;
   egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
   idempotencyKey?: InputMaybe<Scalars['String']['input']>;
   maxSpendUSD?: InputMaybe<Scalars['Float']['input']>;

@@ -43,22 +43,22 @@ describe("AgentsPageSkeleton", () => {
       "pb-1.5",
     );
     const controls = Array.from(toolbar?.children ?? []);
-    // Agent select, attach, Secrets, Skills, Approvals, spend limit, the
-    // repository mention and Start: the ready toolbar's eight controls.
-    expect(controls).toHaveLength(8);
+    // Agent select, attach, Secrets, Skills, spend limit, the repository
+    // mention and Start: the ready toolbar's seven controls.
+    expect(controls).toHaveLength(7);
     expect(controls[0]).toHaveClass("h-8", "w-[7.5rem]");
-    for (const icon of controls.slice(1, 5)) expect(icon).toHaveClass("size-8");
-    expect(controls[5]).toHaveClass("h-8", "w-28");
+    for (const icon of controls.slice(1, 4)) expect(icon).toHaveClass("size-8");
+    expect(controls[4]).toHaveClass("h-8", "w-28");
     // The text controls size to their real labels, drawn invisibly.
-    expect(controls[6]).toHaveTextContent("Add repository or session");
-    expect(controls[6]).toHaveClass(
+    expect(controls[5]).toHaveTextContent("Add repository or session");
+    expect(controls[5]).toHaveClass(
       "max-w-56",
       "px-2",
       "text-xs",
       "text-transparent",
     );
-    expect(controls[7]).toHaveClass("ml-auto", "h-8", "text-transparent");
-    expect(controls[7]?.textContent?.length).toBeGreaterThan(0);
+    expect(controls[6]).toHaveClass("ml-auto", "h-8", "text-transparent");
+    expect(controls[6]?.textContent?.length).toBeGreaterThan(0);
   });
 
   it("matches filtered history without inventing the composer or tabs", () => {

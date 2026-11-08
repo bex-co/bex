@@ -55,7 +55,22 @@ func (b *Broker) servePullRequest(w http.ResponseWriter, r *http.Request, namesp
 		fail(agentsession.PullRequestInvalidRequest, "POST a JSON object to this URL")
 		return
 	}
-	admitted, ok := b.admit(r, namespace, authorizeBranch(claimed), refusalWriter(fail, "this sandbox may only open the pull request for its own session branch"))
+	admitted, ok := b.admit(r, namespace, authorizeBranch(claimed), func(refusal admissionRefusal) {
+		switch refusal {
+		case refusedSource:
+			fail(agentsession.PullRequestForbidden, "unidentified source")
+		case refusedConcurrency:
+			fail(agentsession.PullRequestRateLimited, "too many concurrent requests from this sandbox")
+		case refusedPod:
+			fail(agentsession.PullRequestForbidden, "this request does not come from the session's sandbox")
+		case refusedTarget:
+			fail(agentsession.PullRequestForbidden, "this sandbox may only open the pull request for its own session branch")
+		case refusedSessionBudget:
+			fail(agentsession.PullRequestRateLimited, "request budget exhausted for this session")
+		case refusedWorkspaceBudget:
+			fail(agentsession.PullRequestRateLimited, "request budget exhausted for this workspace")
+		}
+	})
 	if !ok {
 		return
 	}

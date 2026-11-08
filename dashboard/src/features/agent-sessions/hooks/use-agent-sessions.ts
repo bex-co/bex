@@ -40,8 +40,6 @@ export interface UseAgentSessionsOptions {
   archived?: "false" | "archived" | "all";
   /** Phase filter (repeatable); omitted ⇒ every phase. */
   phases?: string[];
-  /** State filter (repeatable, e.g. needs_input); omitted ⇒ every state. */
-  states?: string[];
   /** Exact owner/repository filter; omitted ⇒ every repo. */
   repo?: string;
   /** Tag filter (w21/m258 `tag`); omitted ⇒ every session. */
@@ -86,7 +84,6 @@ export function useAgentSessions({
   poll = true,
   archived,
   phases,
-  states,
   repo,
   tag,
   limit,
@@ -102,7 +99,6 @@ export function useAgentSessions({
         ownerId: currentWorkspaceId,
         archived: backendArchived,
         phases: phases?.length ? phases : null,
-        states: states?.length ? states : null,
         repo: repo || null,
         tag: tag || null,
         limit: effectiveLimit,
@@ -129,7 +125,6 @@ export function useAgentSessions({
     currentWorkspaceId,
     archived ?? "",
     phases ?? [],
-    states ?? [],
     repo ?? "",
     tag ?? "",
     limit ?? 0,

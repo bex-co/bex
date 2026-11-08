@@ -19,8 +19,6 @@ export function agentEnvironment(
     modelKeySet: false,
     modelSource: AgentModelSource.Platform,
     registryHosts: [],
-    approvalMode: "autonomous",
-    approvalBypassAllowed: true,
     updatedAt: null,
     agentModelMonthlySpendCapUsd: null,
     agentModelPlanSpendCapUsd: null,

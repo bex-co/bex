@@ -624,48 +624,6 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "无法保存更改，请重试。",
     description: "Generic skill write failure",
   },
-  "agentEnvironment.approvalTitle": {
-    message: "审批",
-    description: "Settings \u2192 Agents approval section heading (ADR100)",
-  },
-  "agentEnvironment.approvalDescription": {
-    message:
-      "智能体在执行操作前何时停下来征求你的同意。等待你处理的会话会显示为“已阻塞”，直到有人回复；24 小时后审批会被拒绝，问题视为无人回答。",
-    description: "Approval section description",
-  },
-  "agentEnvironment.approvalAutonomousTitle": {
-    message: "自主运行",
-    description: "Approval mode option: never ask",
-  },
-  "agentEnvironment.approvalAutonomousDescription": {
-    message: "智能体从不暂停等待审批。",
-    description: "Approval mode autonomous description",
-  },
-  "agentEnvironment.approvalRiskyTitle": {
-    message: "高风险操作前询问",
-    description: "Approval mode option: risky",
-  },
-  "agentEnvironment.approvalRiskyDescription": {
-    message:
-      "智能体在强制推送、删除仓库外的文件、发布软件包、变更基础设施或调用部署 API 之前会先询问。",
-    description: "Approval mode risky description",
-  },
-  "agentEnvironment.approvalAllTitle": {
-    message: "每个操作前都询问",
-    description: "Approval mode option: all",
-  },
-  "agentEnvironment.approvalAllDescription": {
-    message: "智能体在每条命令和每次文件改动前都会询问；读取操作仍自动进行。",
-    description: "Approval mode all description",
-  },
-  "agentEnvironment.approvalBypassLabel": {
-    message: "允许成员启动询问更少的会话",
-    description: "Approval bypass switch label",
-  },
-  "agentEnvironment.approvalBypassHelp": {
-    message: "关闭后，新会话只能与此设置同样谨慎或更谨慎。",
-    description: "Approval bypass switch help",
-  },
 };
 
 export default zhAgentEnvironment;

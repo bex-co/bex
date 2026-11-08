@@ -114,7 +114,7 @@ func newCommand(d deps) *cobra.Command {
 			"  2    usage error\n" +
 			"  3    the turn failed (failureReasonCode says why)\n" +
 			"  4    the session was canceled\n" +
-			"  5    the agent needs input — reply with `bex agent send`\n" +
+			"  5    reserved: needs_input, which sessions never enter\n" +
 			"  124  --timeout elapsed while the session was still working\n" +
 			"  130  interrupted (Ctrl-C or SIGTERM)\n\n" +
 			"Use -o json (or yaml) for the API's own answer on stdout; streamed\n" +
@@ -129,7 +129,7 @@ func newCommand(d deps) *cobra.Command {
 	})
 	for _, sub := range []*cobra.Command{
 		runCommand(d), sendCommand(d), waitCommand(d), getCommand(d), listCommand(d),
-		logsCommand(d), filesCommand(d), answerCommand(d), cancelCommand(d), openCommand(d),
+		logsCommand(d), filesCommand(d), cancelCommand(d), openCommand(d),
 	} {
 		// Cobra reads SilenceUsage from the executed command and the root
 		// only, and a failed turn is not a usage mistake.
@@ -419,7 +419,6 @@ func runCommand(d deps) *cobra.Command {
 		turn    turnFlags
 		spend   float64
 		key     string
-		bypass  bool
 		waiting waitFlags
 	)
 	c := &cobra.Command{
@@ -432,8 +431,7 @@ func runCommand(d deps) *cobra.Command {
 			"network error returns the same session, never a second one.",
 		Example: "  bex agent run --repo acme/api \"Upgrade the Go toolchain to 1.26\"\n" +
 			"  bex agent run --attach screenshot.png --wait -o json \"Fix the layout bug in the screenshot\"\n" +
-			"  bex agent run --output-schema schema.json --max-spend 2 --follow -f task.md\n" +
-			"  bex agent run --approval-mode risky --wait \"Deploy the fix to staging\"",
+			"  bex agent run --output-schema schema.json --max-spend 2 --follow -f task.md",
 		RunE: func(c *cobra.Command, args []string) error {
 			if err := waiting.validate(); err != nil {
 				return err
@@ -449,15 +447,6 @@ func runCommand(d deps) *cobra.Command {
 				}
 				in.MaxSpendUSD = &spend
 			}
-			switch in.ApprovalMode {
-			case "", approvalAutonomous, approvalRisky, approvalAll:
-			default:
-				return usageError("--approval-mode must be autonomous, risky or all, not %q", in.ApprovalMode)
-			}
-			if bypass && in.ApprovalMode != "" && in.ApprovalMode != approvalAutonomous {
-				return usageError("--bypass-approval runs the session autonomous; drop --approval-mode %s", in.ApprovalMode)
-			}
-			in.BypassApproval = bypass
 			if key == "" {
 				key = d.newKey()
 			}
@@ -494,8 +483,6 @@ func runCommand(d deps) *cobra.Command {
 	f.StringArrayVar(&in.Tags, "tag", nil, "label for filtering and cost attribution; repeatable")
 	f.Float64Var(&spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")
 	f.StringVar(&key, "idempotency-key", "", "reuse a key to make re-running this command safe (default: one per invocation)")
-	f.StringVar(&in.ApprovalMode, "approval-mode", "", "when the agent pauses for approval: autonomous, risky or all (default: the workspace's mode)")
-	f.BoolVar(&bypass, "bypass-approval", false, "run autonomous even if the workspace asks for approvals (when it allows bypass)")
 	turn.bind(c)
 	waiting.bindTurn(c)
 	return c
@@ -714,87 +701,6 @@ func logsCommand(d deps) *cobra.Command {
 	return c
 }
 
-// Approval modes (ADR100 D3).
-const (
-	approvalAutonomous = "autonomous"
-	approvalRisky      = "risky"
-	approvalAll        = "all"
-)
-
-func answerCommand(d deps) *cobra.Command {
-	var (
-		allow, deny bool
-		scope, text string
-	)
-	c := &cobra.Command{
-		Use:   "answer <ags-id> (--allow [--scope session] | --deny | --text <answer>)",
-		Short: "Answer the approval or question an agent session is waiting on",
-		Long: "A session in state needs_input waits for a person (approval mode). Allow or\n" +
-			"deny the action it asked to run, or answer its question; the turn then\n" +
-			"continues. --scope session also allows the same kind of action for the rest\n" +
-			"of the session.",
-		Example: "  bex agent answer ags-… --allow\n" +
-			"  bex agent answer ags-… --text \"Use the eu region\"",
-		Args: sessionArgs(0),
-		RunE: func(c *cobra.Command, args []string) error {
-			given := 0
-			for _, set := range []bool{allow, deny, c.Flags().Changed("text")} {
-				if set {
-					given++
-				}
-			}
-			if given != 1 {
-				return usageError("pass exactly one of --allow, --deny or --text")
-			}
-			if scope != "" && !allow {
-				return usageError("--scope applies only to --allow")
-			}
-			if scope != "" && scope != "once" && scope != "session" {
-				return usageError("--scope must be once or session, not %q", scope)
-			}
-			inv, cancel, err := d.start(c)
-			if err != nil {
-				return err
-			}
-			defer cancel()
-			s, _, err := inv.api.session(inv.ctx, args[0])
-			if err != nil {
-				return err
-			}
-			if s.Outcome == nil || s.Outcome.PendingDecision == nil {
-				return fmt.Errorf("agent session %s is not waiting on a decision (state %s)", s.ID, s.State)
-			}
-			pending := s.Outcome.PendingDecision
-			in := answerRequest{Scope: scope}
-			switch {
-			case pending.Kind == "question" && !c.Flags().Changed("text"):
-				return usageError("agent session %s asked a question: answer it with --text", s.ID)
-			case pending.Kind != "question" && c.Flags().Changed("text"):
-				return usageError("agent session %s asks for approval: use --allow or --deny", s.ID)
-			case c.Flags().Changed("text"):
-				in.Answer = &text
-			default:
-				in.Allow = &allow
-			}
-			answered, raw, err := inv.api.answer(inv.ctx, s.ID, pending.ID, in)
-			if err != nil {
-				return err
-			}
-			if inv.format != formatText {
-				return writeRaw(inv.out, inv.format, raw)
-			}
-			_, err = fmt.Fprintf(inv.out, "%s %s: %s\n", s.ID, answered.ID, answered.State)
-			return err
-		},
-	}
-	f := c.Flags()
-	f.BoolVar(&allow, "allow", false, "allow the action the agent asked to run")
-	f.BoolVar(&deny, "deny", false, "refuse the action")
-	f.StringVar(&scope, "scope", "", "with --allow: once (default) or session")
-	f.StringVar(&text, "text", "", "the answer to the agent's question")
-	return c
-}
-
 func cancelCommand(d deps) *cobra.Command {
 	return &cobra.Command{
 		Use:   "cancel <ags-id>",
@@ -951,11 +857,7 @@ func stateExit(result waitResult, timeout time.Duration) error {
 	case stateCanceled:
 		return command.NewExitError(exitCanceled, fmt.Errorf("agent session %s was canceled", worst.ID))
 	default:
-		what := "is waiting on a decision"
-		if worst.Outcome != nil && worst.Outcome.PendingDecision != nil {
-			what = "asks: " + worst.Outcome.PendingDecision.Title
-		}
-		return command.NewExitError(exitNeedsInput, fmt.Errorf("agent session %s %s; answer with `bex agent answer %s …`", worst.ID, what, worst.ID))
+		return command.NewExitError(exitNeedsInput, fmt.Errorf("agent session %s needs input: reply with `bex agent send %s …`", worst.ID, worst.ID))
 	}
 }
 

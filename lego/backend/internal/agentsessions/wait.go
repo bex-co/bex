@@ -50,24 +50,20 @@ type WaitResult struct {
 }
 
 // stateBus fans the pod's single LISTEN connection out to waiters. A waiter
-// subscribes to a channel poked on a session's state change (any session's,
-// or one named session's), then re-reads only its own sessions.
+// subscribes to a channel that is poked on any session phase change; it then
+// re-reads only its own sessions, so the payload needs no routing table.
 type stateBus struct {
 	mu   sync.Mutex
-	subs map[chan struct{}]string // channel → session filter ("" = all)
+	subs map[chan struct{}]struct{}
 }
 
-func (b *stateBus) subscribe() (<-chan struct{}, func()) { return b.subscribeSession("") }
-
-// subscribeSession wakes only on sessionID's state changes; "" wakes on every
-// session's.
-func (b *stateBus) subscribeSession(sessionID string) (<-chan struct{}, func()) {
+func (b *stateBus) subscribe() (<-chan struct{}, func()) {
 	ch := make(chan struct{}, 1)
 	b.mu.Lock()
 	if b.subs == nil {
-		b.subs = map[chan struct{}]string{}
+		b.subs = map[chan struct{}]struct{}{}
 	}
-	b.subs[ch] = sessionID
+	b.subs[ch] = struct{}{}
 	b.mu.Unlock()
 	return ch, func() {
 		b.mu.Lock()
@@ -76,13 +72,10 @@ func (b *stateBus) subscribeSession(sessionID string) (<-chan struct{}, func()) 
 	}
 }
 
-func (b *stateBus) poke(sessionID string) {
+func (b *stateBus) poke() {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	for ch, want := range b.subs {
-		if want != "" && want != sessionID {
-			continue
-		}
+	for ch := range b.subs {
 		select {
 		case ch <- struct{}{}:
 		default: // a wake-up is already pending
@@ -98,7 +91,7 @@ func (s *Service) bus() *stateBus {
 			ListenAgentSessionStates(ctx context.Context, fn func(id string)) error
 		}); ok {
 			go func() {
-				_ = listener.ListenAgentSessionStates(context.Background(), func(id string) { s.stateBus.poke(id) })
+				_ = listener.ListenAgentSessionStates(context.Background(), func(string) { s.stateBus.poke() })
 			}()
 		}
 	})
@@ -257,7 +250,7 @@ func (s *Service) registerWaitMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{
 		Name: "wait_agent_sessions",
 		Description: "Block until cloud coding-agent sessions settle, instead of polling get_agent_session in a loop. " +
-			"ids: 1-20 sessions. until: all (default) returns when every session has left state working, any when the first does; needs_input (paused on a decision, see outcome.pendingDecision) counts as left. " +
+			"ids: 1-20 sessions. until: all (default) returns when every session has left state working, any when the first does. " +
 			"timeoutSeconds: 1-25 (default 25). Returns each session's id, state and outcome, the ids that settled, and timedOut. " +
 			"When timedOut is true the sessions are still working: call again.",
 		Annotations: &mcp.ToolAnnotations{ReadOnlyHint: true, IdempotentHint: true, DestructiveHint: boolPtr(false), OpenWorldHint: boolPtr(false)},

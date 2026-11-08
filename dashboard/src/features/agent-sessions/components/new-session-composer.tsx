@@ -62,11 +62,6 @@ import { useComposerSpendGate } from "@/features/agent-sessions/hooks/use-compos
 import { blocksCreate } from "@/features/agent-environment/lib/spend";
 import { ComposerSecrets } from "@/features/agent-sessions/components/composer-secrets";
 import {
-  ComposerApproval,
-  type ComposerApprovalChoice,
-} from "@/features/agent-sessions/components/composer-approval";
-import { sessionApprovalInput } from "@/features/agent-environment/lib/approval";
-import {
   ComposerSkillChips,
   ComposerSkills,
 } from "@/features/agent-sessions/components/composer-skills";
@@ -131,8 +126,6 @@ export function NewSessionComposer() {
   // Workspace skills this first turn must follow (ADR099 D4), sent once.
   const [skills, setSkills] = useState<ComposerSkill[]>([]);
   const skillsInvalid = !composerSkillsValid(skills);
-  // A per-session approval mode (ADR100 D3); null follows the workspace.
-  const [approval, setApproval] = useState<ComposerApprovalChoice | null>(null);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
   const noRepos = !reposLoading && repos.length === 0;
@@ -226,12 +219,7 @@ export function NewSessionComposer() {
       [...secrets.secretNames].sort(),
       [...secrets.secrets].sort((a, b) => a.name.localeCompare(b.name)),
       composerSkillsFingerprint(skills),
-      approval?.mode ?? null,
     ]);
-    const approvalInput = sessionApprovalInput(
-      approval?.mode ?? null,
-      approval?.workspaceMode ?? "autonomous",
-    );
     if (submitKey.current?.fingerprint !== fingerprint) {
       submitKey.current = { fingerprint, key: crypto.randomUUID() };
     }
@@ -248,12 +236,10 @@ export function NewSessionComposer() {
         secretNames: secrets.secretNames,
         secrets: secrets.secrets,
         skills: composerSkillsInput(skills),
-        ...approvalInput,
       });
       uploads.clear(sentAttachmentIds);
       setSecrets(EMPTY_COMPOSER_SECRETS);
       setSkills([]);
-      setApproval(null);
       submitKey.current = null;
       await navigate({
         to: "/agents/$agentSessionId",
@@ -412,13 +398,6 @@ export function NewSessionComposer() {
                 ownerId={currentWorkspaceId}
                 value={skills}
                 onChange={setSkills}
-                disabled={isSubmitting}
-              />
-
-              <ComposerApproval
-                ownerId={currentWorkspaceId}
-                value={approval}
-                onChange={setApproval}
                 disabled={isSubmitting}
               />
 

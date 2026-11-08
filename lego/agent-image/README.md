@@ -61,27 +61,6 @@ The sandbox never holds a real model key. `BEX_AGENT_MODEL_API_KEY` is only the 
 
 The gateway's `internal/sshgateway/agentcred` tests exercise clone/fetch/push smart-HTTP mediation, exact-ref rejection, Pod binding, and the no-token-response invariant. Driver tests lock ACP spawn, typed chunks, session resume gating, listener behavior, signed turn grants, the overlay channels, the `bex` MCP tool, the agent Git environment and the post-turn delivery check.
 
-## Real-adapter approval test
-
-The driver's unit and fixture tests use the bundled ACP fixture agent. `driver/test/real-adapter-approval.test.ts` drives the pinned `claude-agent-acp` itself, with a fake Anthropic Messages API and a fake decision gateway, through an approval-mode turn (ADR100). It is skipped unless the adapter path is set:
-
-```sh
-npm --prefix /tmp/acp install @agentclientprotocol/claude-agent-acp@0.94.0
-cd lego/agent-image/driver
-BEX_REAL_CLAUDE_ACP=/tmp/acp/node_modules/.bin/claude-agent-acp npm test
-```
-
-Re-run it when the adapter pin changes. The fixture never reproduced the AIR-shaped permission requests that let `sudo true` run ungated on 2026-11-06.
-
-`driver/test/real-codex-approval.test.ts` does the same for the pinned `codex-acp`, against a fake OpenAI Responses API. It checks that the exec-policy rules the driver writes for approval mode (`src/codex-rules.ts`) make codex ask (w9/081). `BEX_REAL_CODEX_BIN` also lets `codex-rules.test.ts` check the generated rules with `codex execpolicy check`:
-
-```sh
-npm --prefix /tmp/codex install @agentclientprotocol/codex-acp@1.4.0
-cd lego/agent-image/driver
-BEX_REAL_CODEX_ACP=/tmp/codex/node_modules/.bin/codex-acp \
-  BEX_REAL_CODEX_BIN=/tmp/codex/node_modules/.bin/codex npm test
-```
-
 ## Live verification
 
 The disposable production-equivalent sandbox verifier has an opt-in m37 leg. After the image and policy are deployed, an explicitly authorized run creates an `agent` template sandbox, executes a hermetic one-turn commit in its real gVisor worktree, round-trips the bundled ACP agent's `initialize`, and proves port `8787` admits the exact gateway workload identity while rejecting a label spoof and peer sandbox:

@@ -297,7 +297,6 @@ var accountDeletionDispositions = map[string]string{
 	"push_deliveries.subject":                   "cascade: membership deletion removes notifications and their deliveries",
 	"agent_session_attachments.created_by":      "anonymize: CleanupAccountSubject replaces the uploader; an unbound upload then has no owner and expires within 24 hours",
 	"agent_skills.updated_by":                   "anonymize: CleanupAccountSubject replaces the last editor on surviving workspace skills (ADR099)",
-	"agent_session_decisions.answered_by":       "anonymize: CleanupAccountSubject replaces who answered an agent's approval or question (ADR100)",
 	"alert_email_events.subject":                "cascade: membership deletion removes failure-alert dedupe records",
 	"alert_email_streams.subject":               "cascade: membership deletion removes failure-alert state",
 	"push_notifications.subject":                "cascade: membership deletion removes personal notification state",

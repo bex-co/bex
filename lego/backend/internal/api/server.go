@@ -400,9 +400,6 @@ type Deps struct {
 	// AgentSkillStore is the ADR099 workspace skills table; nil ⇒ skills
 	// unavailable.
 	AgentSkillStore agentsessions.SkillStore
-	// AgentDecisionStore is the ADR100 decision table; nil ⇒ sessions run
-	// autonomous and the answer verb is unavailable.
-	AgentDecisionStore agentsessions.DecisionStore
 	// AgentRegistryHosts is the session-egress package-registry catalog,
 	// reported by the agent environment for display.
 	AgentRegistryHosts       []string
@@ -1077,7 +1074,6 @@ func NewServer(base *core.Base, d Deps) *Server {
 			AttachmentRows:   d.AgentAttachmentStore,
 			AttachmentCopier: agentCopier,
 			Skills:           d.AgentSkillStore,
-			Decisions:        d.AgentDecisionStore,
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},

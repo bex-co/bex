@@ -28,8 +28,8 @@ import {
 } from "@/features/notifications/lib/push-policy";
 
 // bex-api's published table (notifications.pushEventUrgency, w4/m231): four
-// Routine events; everything else Important or Critical. agent_needs_decision
-// is sent once per approval-mode decision (w9/m176, ADR100).
+// Routine events; everything else Important or Critical. Nothing sends
+// agent_needs_decision yet (w4/349).
 const { Routine, Important, Critical } = PushNotificationUrgency;
 const publishedUrgencies: PushEventUrgencies = publishedPushEvents(
   (

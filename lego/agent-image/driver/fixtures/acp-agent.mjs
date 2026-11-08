@@ -139,10 +139,7 @@ function resultBehavior(promptIndex) {
   const mode = process.env.ACP_FIXTURE_RESULT;
   const record = bexEnv("BEX_RESULT_RECORD_PATH");
   if (!mode || !record) return;
-  if (
-    (mode === "first" && promptIndex === 0) ||
-    (mode === "on-reminder" && promptIndex === 1)
-  ) {
+  if ((mode === "first" && promptIndex === 0) || (mode === "on-reminder" && promptIndex === 1)) {
     writeFileSync(record, JSON.stringify({ final: true }));
   }
 }
@@ -161,24 +158,10 @@ function commitFixture() {
   if (committed.status !== 0) throw new Error(committed.stderr.toString());
 }
 
-// Requests this agent sent to the client (session/request_permission), by id.
-const pendingRequests = new Map();
-let nextRequestId = 0;
-function request(method, params) {
-  const id = `fixture-${nextRequestId++}`;
-  send({ jsonrpc: "2.0", id, method, params });
-  return new Promise((resolve) => pendingRequests.set(id, resolve));
-}
-
 let rejectedLoad = false;
 const lines = readline.createInterface({ input: process.stdin });
 lines.on("line", async (line) => {
   const message = JSON.parse(line);
-  if (message.method === undefined && pendingRequests.has(message.id)) {
-    pendingRequests.get(message.id)(message.result ?? { error: message.error });
-    pendingRequests.delete(message.id);
-    return;
-  }
   record(message.method);
   switch (message.method) {
     case "initialize":
@@ -414,43 +397,6 @@ lines.on("line", async (line) => {
       }
       const delay = Number(process.env.ACP_FIXTURE_DELAY_MS || 0);
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
-      // ADR100: ask the client's permission for a tool call, the way an
-      // engine does before running it, and report the chosen option.
-      if (process.env.ACP_FIXTURE_REQUEST_PERMISSION) {
-        // An engine announces the call first; an AIR-capable client then gets
-        // a permission request carrying only the changed fields
-        // (claude-agent-acp 0.94.0 permissionToolCall).
-        if (process.env.ACP_FIXTURE_ANNOUNCE_TOOL_CALL) {
-          update(sessionId, {
-            sessionUpdate: "tool_call",
-            toolCallId: "perm-call",
-            status: "pending",
-            ...JSON.parse(process.env.ACP_FIXTURE_ANNOUNCE_TOOL_CALL),
-          });
-        }
-        const answer = await request("session/request_permission", {
-          sessionId,
-          toolCall: {
-            toolCallId: "perm-call",
-            ...JSON.parse(process.env.ACP_FIXTURE_REQUEST_PERMISSION),
-          },
-          options: [
-            { optionId: "allow-once", name: "Allow", kind: "allow_once" },
-            {
-              optionId: "allow-always",
-              name: "Always allow",
-              kind: "allow_always",
-            },
-            { optionId: "reject", name: "Reject", kind: "reject_once" },
-          ],
-        });
-        const chosen =
-          answer?.outcome?.optionId ?? answer?.outcome?.outcome ?? "none";
-        update(sessionId, {
-          sessionUpdate: "agent_message_chunk",
-          content: { type: "text", text: `permission: ${chosen}` },
-        });
-      }
       // ADR098: echo a session secret the way an agent would leak it, split
       // across two text chunks and whole in a tool output.
       const echoed = process.env.ACP_FIXTURE_ECHO_SECRET;

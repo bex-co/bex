@@ -1,12 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useRouterState } from "@tanstack/react-router";
-import {
-  Archive,
-  GitPullRequest,
-  List,
-  Search,
-  ShieldAlert,
-} from "lucide-react";
+import { Archive, GitPullRequest, List, Search } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   SidebarGroup,
@@ -25,7 +19,6 @@ import {
   sessionTitleShort,
 } from "@/features/agent-sessions/lib/mapper";
 import {
-  isAgentSessionBlocked,
   parseAgentSessionArchivedFilter,
   type AgentSessionView,
 } from "@/features/agent-sessions/types";
@@ -92,16 +85,6 @@ export function AgentSessionsNavSection() {
           sessionSearchMatch(query, s.repo),
       ),
     [sessions, query],
-  );
-  // Devin's Blocked group (ADR100): sessions waiting on a person lead the
-  // list, so an approval or a question is not buried among running work.
-  const blocked = useMemo(
-    () => filtered.filter(isAgentSessionBlocked),
-    [filtered],
-  );
-  const recent = useMemo(
-    () => filtered.filter((s) => !isAgentSessionBlocked(s)),
-    [filtered],
   );
 
   return (
@@ -175,50 +158,15 @@ export function AgentSessionsNavSection() {
             {t("agentSessions.sidebarNoMatches")}
           </p>
         ) : (
-          <>
-            {blocked.length > 0 ? (
-              <div data-testid="agent-sessions-blocked-group">
-                <SidebarGroupLabel asChild>
-                  <Link
-                    to="/agents"
-                    search={{ state: "needs_input" }}
-                    className="flex items-center gap-1.5"
-                  >
-                    <ShieldAlert className="size-3.5" aria-hidden />
-                    <span>{t("agentSessions.blockedGroup")}</span>
-                    <span
-                      className="bg-amber-500/15 text-amber-700 dark:text-amber-400 ml-auto rounded-full px-1.5 text-[0.7rem] tabular-nums"
-                      aria-label={t("agentSessions.blockedCount", {
-                        count: blocked.length,
-                      })}
-                    >
-                      {blocked.length}
-                    </span>
-                  </Link>
-                </SidebarGroupLabel>
-                <SidebarMenu>
-                  {blocked.map((s) => (
-                    <SessionRow
-                      key={s.id}
-                      session={s}
-                      active={s.id === agentSessionId}
-                    />
-                  ))}
-                </SidebarMenu>
-              </div>
-            ) : null}
-            {recent.length > 0 ? (
-              <SidebarMenu>
-                {recent.map((s) => (
-                  <SessionRow
-                    key={s.id}
-                    session={s}
-                    active={s.id === agentSessionId}
-                  />
-                ))}
-              </SidebarMenu>
-            ) : null}
-          </>
+          <SidebarMenu>
+            {filtered.map((s) => (
+              <SessionRow
+                key={s.id}
+                session={s}
+                active={s.id === agentSessionId}
+              />
+            ))}
+          </SidebarMenu>
         )}
       </SidebarGroupContent>
     </SidebarGroup>
@@ -259,13 +207,7 @@ function SessionRow({
         >
           <span className="w-full truncate text-sm font-medium">{title}</span>
           <span className="text-muted-foreground flex w-full items-center gap-1.5 text-xs">
-            <span
-              className={
-                isAgentSessionBlocked(session)
-                  ? "truncate text-amber-700 dark:text-amber-400"
-                  : "truncate"
-              }
-            >
+            <span className="truncate">
               {t(agentSessionStatusPhraseKey(session))}
             </span>
             {session.prNumber != null &&

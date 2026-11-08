@@ -31,8 +31,6 @@ export function agentSessionView({
     maxSpendUSD: null,
     state: null,
     outcome: null,
-    waitingFor: null,
-    approvalMode: null,
     agentConfig: agentConfig ?? {
       agent: "claude",
       model: null,

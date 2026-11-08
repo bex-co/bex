@@ -4,48 +4,11 @@
 // stable lifecycle enum), never the free-text `status`; `lib/mapper.ts` derives
 // the isTerminal/isSteerable/duration helpers so pages never re-encode phase.
 
-/**
- * What a paused agent asked (ADR100 D2), parsed from the decision's `detail`.
- * An approval names the gated tool call; a question carries its text and any
- * suggested answers. Fields the driver did not send are absent.
- */
-export interface AgentSessionDecisionDetail {
-  toolKind?: string;
-  command?: string;
-  paths?: string[];
-  rule?: string;
-  question?: string;
-  options?: string[];
-}
-
-/** An open decision a needs_input turn waits on (ADR100 D2). */
-export interface AgentSessionDecisionView {
-  id: string;
-  kind: "approval" | "question";
-  /** One line the driver wrote, e.g. "Run (force push): git push -f origin main". */
-  title: string;
-  detail: AgentSessionDecisionDetail;
-  /** pending until answered, then allowed / denied / answered / expired / canceled. */
-  state: string;
-  createdAt: string | null;
-  /** When an unanswered decision resolves on its own (24h). */
-  expiresAt: string | null;
-}
-
-/** Why a needs_input turn is paused (ADR100 D1). */
-export type AgentSessionWaitingFor = "approval" | "user";
-
 /** The latest turn's machine-readable outcome (w21/m257). */
 export interface AgentSessionOutcome {
   state: string;
   steerable: boolean;
   turn: number;
-  waitingFor: AgentSessionWaitingFor | null;
-  /**
-   * The oldest open decision while the turn is paused; filled by the
-   * single-session read only (ADR100 As built), null on a list read.
-   */
-  pendingDecision: AgentSessionDecisionView | null;
   summary: string | null;
   deliveryNote: string | null;
   failureReasonCode: string | null;
@@ -119,18 +82,6 @@ export interface AgentSessionListSearch {
   phase?: AgentSessionPhase;
   /** Show only sessions carrying this tag (w21/002). */
   tag?: string;
-  /** Show only sessions in this state: needs_input is the Blocked list (ADR100). */
-  state?: AgentSessionStateFilter;
-}
-
-/** The session states the list URL filters by (`?state=`). */
-export type AgentSessionStateFilter = "needs_input";
-
-/** A route search's state filter, when it names one the list supports. */
-export function parseAgentSessionStateFilter(
-  value: unknown,
-): AgentSessionStateFilter | undefined {
-  return value === "needs_input" ? "needs_input" : undefined;
 }
 
 /** How a turn's sandbox was obtained (backend Delivery* constants). */
@@ -252,20 +203,6 @@ export interface AgentSessionView {
   state: string | null;
   /** The server-computed outcome of the latest turn; null before one exists. */
   outcome: AgentSessionOutcome | null;
-  /** Why the turn is paused when state is needs_input (ADR100 D1). */
-  waitingFor: AgentSessionWaitingFor | null;
-  /** autonomous | risky | all, fixed at create (ADR100 D3); null on old rows. */
-  approvalMode: string | null;
-}
-
-/** The session state a paused turn reports (ADR094 D7, ADR100 D1). */
-export const AGENT_SESSION_NEEDS_INPUT = "needs_input";
-
-/** True while the agent waits on a person: Devin's Blocked group. */
-export function isAgentSessionBlocked(
-  view: Pick<AgentSessionView, "state">,
-): boolean {
-  return view.state === AGENT_SESSION_NEEDS_INPUT;
 }
 
 /**

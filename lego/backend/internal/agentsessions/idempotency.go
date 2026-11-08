@@ -52,10 +52,7 @@ func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurn
 		Secrets []string `json:"s,omitempty"`
 		// Invoked skills and their arguments (ADR099 D4); omitted when none.
 		Skills []SkillInvocation `json:"k,omitempty"`
-		// The requested approval policy (ADR100 D3); omitted when unset.
-		ApprovalMode   string `json:"p,omitempty"`
-		BypassApproval bool   `json:"y,omitempty"`
-	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput), req.Skills, req.ApprovalMode, req.BypassApproval})
+	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput), req.Skills})
 	if err != nil {
 		return "", "", err
 	}

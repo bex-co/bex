@@ -71,25 +71,6 @@ type outcome struct {
 	Files             []turnAttachment `json:"files"`
 	Result            json.RawMessage  `json:"result"`
 	Cost              *cost            `json:"cost"`
-	// WaitingFor and PendingDecision say what a needs_input session waits for
-	// (ADR100): approval or user, and the decision `bex agent answer` answers.
-	WaitingFor      string    `json:"waitingFor"`
-	PendingDecision *decision `json:"pendingDecision"`
-}
-
-// decision is the approval or question a turn paused on.
-type decision struct {
-	ID    string `json:"id"`
-	Kind  string `json:"kind"`
-	Title string `json:"title"`
-	State string `json:"state"`
-}
-
-// answerRequest is POST /v1/agent-sessions/{id}/decisions/{decisionId}.
-type answerRequest struct {
-	Allow  *bool   `json:"allow,omitempty"`
-	Scope  string  `json:"scope,omitempty"`
-	Answer *string `json:"answer,omitempty"`
 }
 
 type pullRequest struct {
@@ -132,8 +113,6 @@ type createRequest struct {
 	AttachmentIDs  []string          `json:"attachmentIds,omitempty"`
 	OutputSchema   json.RawMessage   `json:"outputSchema,omitempty"`
 	MaxSpendUSD    *float64          `json:"maxSpendUSD,omitempty"`
-	ApprovalMode   string            `json:"approvalMode,omitempty"`
-	BypassApproval bool              `json:"bypassApproval,omitempty"`
 	IdempotencyKey string            `json:"-"`
 	Skills         []skillInvocation `json:"skills,omitempty"`
 	sessionSecrets

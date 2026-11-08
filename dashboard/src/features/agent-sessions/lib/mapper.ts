@@ -8,78 +8,11 @@ import type {
 } from "@/graphql/definitions";
 import type {
   AgentSessionConfigView,
-  AgentSessionDecisionDetail,
-  AgentSessionDecisionView,
   AgentSessionDeliveryMode,
   AgentSessionPhase,
   AgentSessionTicket,
   AgentSessionView,
-  AgentSessionWaitingFor,
 } from "@/features/agent-sessions/types";
-
-type WireDecision = NonNullable<
-  NonNullable<AgentSessionFieldsFragment["outcome"]>["pendingDecision"]
->;
-
-function waitingForOf(
-  value: string | null | undefined,
-): AgentSessionWaitingFor | null {
-  return value === "approval" || value === "user" ? value : null;
-}
-
-const stringList = (value: unknown): string[] | undefined =>
-  Array.isArray(value) && value.every((item) => typeof item === "string")
-    ? value
-    : undefined;
-
-/**
- * Parses a decision's `detail` JSON text (ADR100 D2), keeping only the
- * well-typed fields the callout renders: malformed or extra fields drop out
- * rather than reach the page.
- */
-export function parseDecisionDetail(
-  text: string | null | undefined,
-): AgentSessionDecisionDetail {
-  if (!text) return {};
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    return {};
-  }
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return {};
-  const record = raw as Record<string, unknown>;
-  const str = (key: string) =>
-    typeof record[key] === "string" && record[key] !== ""
-      ? (record[key] as string)
-      : undefined;
-  const detail: AgentSessionDecisionDetail = {};
-  const toolKind = str("toolKind");
-  if (toolKind) detail.toolKind = toolKind;
-  const command = str("command");
-  if (command) detail.command = command;
-  const rule = str("rule");
-  if (rule) detail.rule = rule;
-  const question = str("question");
-  if (question) detail.question = question;
-  const paths = stringList(record.paths);
-  if (paths?.length) detail.paths = paths;
-  const options = stringList(record.options);
-  if (options?.length) detail.options = options;
-  return detail;
-}
-
-function toDecisionView(wire: WireDecision): AgentSessionDecisionView {
-  return {
-    id: wire.id,
-    kind: wire.kind === "question" ? "question" : "approval",
-    title: wire.title,
-    detail: parseDecisionDetail(wire.detail),
-    state: wire.state,
-    createdAt: wire.createdAt ?? null,
-    expiresAt: wire.expiresAt ?? null,
-  };
-}
 
 /** Phases after which the session will not change on its own. */
 const TERMINAL_PHASES: ReadonlySet<AgentSessionPhase> = new Set([
@@ -163,10 +96,6 @@ export function toAgentSessionView(
           state: wire.outcome.state,
           steerable: wire.outcome.steerable,
           turn: wire.outcome.turn ?? 0,
-          waitingFor: waitingForOf(wire.outcome.waitingFor),
-          pendingDecision: wire.outcome.pendingDecision
-            ? toDecisionView(wire.outcome.pendingDecision)
-            : null,
           summary: wire.outcome.summary ?? null,
           deliveryNote: wire.outcome.deliveryNote ?? null,
           failureReasonCode: wire.outcome.failureReasonCode ?? null,
@@ -180,8 +109,6 @@ export function toAgentSessionView(
             : null,
         }
       : null,
-    waitingFor: waitingForOf(wire.waitingFor),
-    approvalMode: wire.approvalMode ?? null,
   };
 }
 
@@ -380,8 +307,6 @@ export function isSandboxCapacityFailure(
 export type AgentSessionStatusPhraseKey =
   | "agentSessions.statusPhrase.prReady"
   | "agentSessions.statusPhrase.working"
-  | "agentSessions.statusPhrase.waitingForApproval"
-  | "agentSessions.statusPhrase.waitingForAnswer"
   | "agentSessions.phase.completed"
   | "agentSessions.phase.failed"
   | "agentSessions.phase.canceled";
@@ -393,15 +318,8 @@ export type AgentSessionStatusPhraseKey =
  * (creating/running/resuming/redispatching) collapses to "Working…".
  */
 export function agentSessionStatusPhraseKey(
-  view: Pick<AgentSessionView, "phase" | "prNumber"> &
-    Partial<Pick<AgentSessionView, "state" | "waitingFor">>,
+  view: Pick<AgentSessionView, "phase" | "prNumber">,
 ): AgentSessionStatusPhraseKey {
-  // A paused turn (ADR100) is still running, but the person is what it needs.
-  if (view.state === "needs_input") {
-    return view.waitingFor === "user"
-      ? "agentSessions.statusPhrase.waitingForAnswer"
-      : "agentSessions.statusPhrase.waitingForApproval";
-  }
   switch (view.phase) {
     case "completed":
       return view.prNumber != null && view.prNumber !== 0

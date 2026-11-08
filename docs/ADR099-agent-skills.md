@@ -129,4 +129,4 @@ Skeletons match the ready geometry (AGENTS.md rule).
   - per-save version history (Devin playbooks keep one);
   - "Devin writes a skill from this session" (suggested skills);
   - enterprise or cross-workspace skills and plugins;
-  - the `allowed-tools` and `permissions` frontmatter, which depend on approval mode (w9/m176). Until then bex stores them in `content` but does not enforce them.
+  - the `allowed-tools` and `permissions` frontmatter. bex stores them in `content` but does not enforce them; sessions are unattended, so there is no approval mode to apply them to (`.pm/DO_NOT_DO.md` #APPROVAL-MODE, ADR100 withdrawn).

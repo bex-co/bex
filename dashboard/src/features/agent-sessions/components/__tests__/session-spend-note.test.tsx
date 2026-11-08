@@ -10,8 +10,6 @@ const outcome = (cost: AgentSessionOutcome["cost"]): AgentSessionOutcome => ({
   turn: 1,
   summary: null,
   deliveryNote: null,
-  waitingFor: null,
-  pendingDecision: null,
   failureReasonCode: null,
   result: null,
   cost,

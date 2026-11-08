@@ -1,17 +1,17 @@
 # w9 · m179 — Remove approval mode (ADR100 withdrawn)
 
-**Worker:** worker9 **Goal:** cloud agent sessions are purely autonomous again, and every approval-mode surface w9/m176 shipped is gone from the backend, gateway, driver, dashboard, CLI and docs. **Status:** todo
+**Worker:** worker9 **Goal:** cloud agent sessions are purely autonomous again, and every approval-mode surface w9/m176 shipped is gone from the backend, gateway, driver, dashboard, CLI and docs. **Status:** in progress — t001–t006 done; t007 after the production check
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Backend: remove decisions, approval fields and routes; drop the schema | 90m | — |
-| t002 | Gateway and driver: remove the decision channel, gating, `ask_user` and codex rules | 60m | — |
-| t003 | Dashboard: remove the callout, Blocked grouping, settings section and composer picker | 60m | — |
-| t004 | CLI and docs: remove `--approval-mode`/`--bypass-approval`/`answer`; mark ADR100 withdrawn | 30m | t001 |
-| t005 | Simplify | 15m | t001, t002, t003, t004 |
-| t006 | Test coverage | 30m | t005 |
+| t001 | Backend: remove decisions, approval fields and routes; drop the schema — **DONE** | 90m | — |
+| t002 | Gateway and driver: remove the decision channel, gating, `ask_user` and codex rules — **DONE** | 60m | — |
+| t003 | Dashboard: remove the callout, Blocked grouping, settings section and composer picker — **DONE** | 60m | — |
+| t004 | CLI and docs: remove `--approval-mode`/`--bypass-approval`/`answer`; mark ADR100 withdrawn — **DONE** | 30m | t001 |
+| t005 | Simplify — **DONE** | 15m | t001, t002, t003, t004 |
+| t006 | Test coverage — **DONE** | 30m | t005 |
 | t007 | Closeout | 10m | t006 |
 
 ## Definition of done

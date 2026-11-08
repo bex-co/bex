@@ -204,22 +204,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, view)
 	})
-	// ADR100 D2: answer the decision a running turn paused on.
-	mux.HandleFunc("POST /v1/agent-sessions/{id}/decisions/{decisionId}", func(w http.ResponseWriter, r *http.Request) {
-		var req AnswerDecisionRequest
-		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
-		if err := core.DecodeJSON(r, &req); err != nil {
-			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		req.SessionID, req.DecisionID = r.PathValue("id"), r.PathValue("decisionId")
-		decision, err := s.AnswerDecision(r.Context(), req)
-		if err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		core.WriteJSON(w, http.StatusOK, decision)
-	})
 	s.registerAttachmentREST(mux)
 	s.registerSecretREST(mux)
 	s.registerSkillREST(mux)

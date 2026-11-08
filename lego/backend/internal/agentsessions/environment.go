@@ -79,12 +79,7 @@ type Environment struct {
 	ModelKeySet   bool        `json:"modelKeySet"`
 	ModelSource   ModelSource `json:"modelSource"`
 	RegistryHosts []string    `json:"registryHosts"`
-	// ApprovalMode is when the workspace's agents pause for approval (ADR100
-	// D3): autonomous (never), risky or all. ApprovalBypassAllowed lets a
-	// session start below it (bypassApproval).
-	ApprovalMode          string     `json:"approvalMode"`
-	ApprovalBypassAllowed bool       `json:"approvalBypassAllowed"`
-	UpdatedAt             *time.Time `json:"updatedAt"`
+	UpdatedAt     *time.Time  `json:"updatedAt"`
 	// The agent-model spend controls (ADR091 D5, D10.1); all nil when the
 	// store is off. AgentModelMonthlySpendCapUSD is the effective cap:
 	// min(the admin override or the plan default, the trust tier's ceiling).
@@ -123,9 +118,6 @@ type EnvironmentInput struct {
 	// log line or the audit trail.
 	ModelAPIKey      *string `json:"modelApiKey,omitempty" jsonschema:"write-only: sets or rotates the workspace's own model provider key (admins only); it is never returned, and sessions then use it instead of the bex-provided model"`
 	ClearModelAPIKey bool    `json:"clearModelApiKey,omitempty" jsonschema:"true removes the workspace's own model provider key"`
-	// ApprovalMode and ApprovalBypassAllowed set the approval policy (ADR100 D3).
-	ApprovalMode          *string `json:"approvalMode,omitempty" jsonschema:"when the workspace's agents pause for approval: autonomous (never, the default), risky (before destructive, publishing and cloud-mutating actions) or all (before every action that changes something)"`
-	ApprovalBypassAllowed *bool   `json:"approvalBypassAllowed,omitempty" jsonschema:"whether a session may start below the workspace's approval mode (bypassApproval); default true"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
 	// nil value with it set clears the override.
 	AgentModelMonthlySpendCapSet bool `json:"-"`
@@ -380,14 +372,6 @@ func validateEnvironmentInput(workspaceID string, input EnvironmentInput, byoKey
 		}
 		patch.DefaultModel = &model
 	}
-	if input.ApprovalMode != nil {
-		if _, ok := approvalRank[*input.ApprovalMode]; !ok {
-			return patch, core.NewBadRequestError("AGENT_ENVIRONMENT_APPROVAL_MODE_INVALID",
-				"approvalMode must be autonomous, risky or all", map[string]any{"field": "approvalMode"})
-		}
-		patch.ApprovalMode = input.ApprovalMode
-	}
-	patch.ApprovalBypassAllowed = input.ApprovalBypassAllowed
 	return patch, nil
 }
 
@@ -424,8 +408,7 @@ func workspaceHosts(entries []string) ([]string, error) {
 // customized it (or with the store off), the defaults. A read failure fails
 // the caller closed: a session must not dispatch on a guessed network posture.
 func (s *Service) workspaceEnvironment(ctx context.Context, workspaceID string) (store.AgentEnvironment, error) {
-	defaults := store.AgentEnvironment{WorkspaceID: workspaceID, NetworkTier: NetworkTierRegistries,
-		ApprovalMode: ApprovalAutonomous, ApprovalBypassAllowed: true}
+	defaults := store.AgentEnvironment{WorkspaceID: workspaceID, NetworkTier: NetworkTierRegistries}
 	if s.Environments == nil {
 		return defaults, nil
 	}
@@ -446,10 +429,6 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		NetworkTier:   row.NetworkTier,
 		CustomHosts:   slices.Clone(row.CustomHosts),
 		RegistryHosts: s.registryHosts(),
-		ApprovalMode:  row.ApprovalMode, ApprovalBypassAllowed: row.ApprovalBypassAllowed,
-	}
-	if view.ApprovalMode == "" {
-		view.ApprovalMode = ApprovalAutonomous
 	}
 	if view.CustomHosts == nil {
 		view.CustomHosts = []string{}

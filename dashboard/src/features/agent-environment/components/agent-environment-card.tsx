@@ -25,7 +25,6 @@ import {
 import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agent-environment";
 import { ModelKeySection } from "@/features/agent-environment/components/model-key-section";
 import { SpendCapSection } from "@/features/agent-environment/components/spend-cap-section";
-import { ApprovalModeSection } from "@/features/agent-environment/components/approval-mode-section";
 import {
   AgentEnvironmentCardSkeleton,
   AgentSectionHeading,
@@ -275,16 +274,6 @@ function AgentEnvironmentForm({
             </div>
           ) : null}
         </div>
-
-        <ApprovalModeSection
-          mode={draft.approvalMode}
-          bypassAllowed={draft.approvalBypassAllowed}
-          onModeChange={(approvalMode) => edit({ approvalMode }, ["form"])}
-          onBypassAllowedChange={(approvalBypassAllowed) =>
-            edit({ approvalBypassAllowed }, ["form"])
-          }
-          readOnly={readOnly}
-        />
 
         <div className="space-y-2 border-t pt-6">
           <Label htmlFor={modelId}>{t("agentEnvironment.modelLabel")}</Label>
