@@ -1340,9 +1340,12 @@ groups:
           summary: "{{ $value }} orphaned live sandbox(es) still running"
           description: "Inventory reconcile found sandboxes whose agent session is terminal or absent. Check bex_sandbox_live{class} and Completer logs for terminate failures (bex_sandbox_teardown_failures_total). Prefer the reconcile reclaiming them; a stuck substrate may need kubectl -n <ws>-sandbox. Runbook: docs/ADR014-sandboxes.md"
 
+      # long_lived is an EA sandbox on a paid workspace whose owner chose a
+      # lifetime past 24h (up to 30 days, or none — w2/m263 D3=A, as on
+      # Render); every other class keeps the 86400s bound.
       - alert: SandboxOldestOverBound
         expr: |
-          max(bex_sandbox_oldest_age_seconds) > 86400
+          max(bex_sandbox_oldest_age_seconds{class!="long_lived"}) > 86400
         for: 15m
         labels:
           severity: warning

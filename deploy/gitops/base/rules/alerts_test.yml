@@ -1549,6 +1549,9 @@ tests:
     input_series:
       - series: 'bex_sandbox_oldest_age_seconds{class="claimed",job="bex-api"}'
         values: "3600x20"
+      # A paid workspace's no-timeout / 30-day sandbox (w2/m263 D3=A).
+      - series: 'bex_sandbox_oldest_age_seconds{class="long_lived",job="bex-api"}'
+        values: "900000x20"
     alert_rule_test:
       - eval_time: 16m
         alertname: SandboxOldestOverBound

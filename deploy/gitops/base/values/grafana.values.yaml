@@ -4992,7 +4992,7 @@ dashboards:
              "id": 22,
              "type": "timeseries",
              "title": "Sandbox inventory by class",
-             "description": "Live sandboxes classified by the Completer inventory reconcile (w5/m99). terminal_orphan / no_row_orphan must stay at zero — SandboxOrphansPresent warns after 2m. claimed is healthy ownership; timed is an EA sandbox inside its lifetime bound; inconclusive is a conservative skip.",
+             "description": "Live sandboxes classified by the Completer inventory reconcile (w5/m99). terminal_orphan / no_row_orphan must stay at zero — SandboxOrphansPresent warns after 2m. claimed is healthy ownership; timed is an EA sandbox inside its lifetime bound; long_lived is a paid workspace's EA sandbox with a lifetime past 24h or no timeout (w2/m263); inconclusive is a conservative skip.",
              "gridPos": {
                "h": 9,
                "w": 12,
@@ -5027,7 +5027,7 @@ dashboards:
              "id": 23,
              "type": "timeseries",
              "title": "Oldest sandbox age by class",
-             "description": "Age of the oldest live sandbox in each inventory class. SandboxOldestOverBound warns when any class exceeds the 86400s lifetime maximum for 15m.",
+             "description": "Age of the oldest live sandbox in each inventory class. SandboxOldestOverBound warns when any class except long_lived exceeds the 86400s lifetime bound for 15m.",
              "gridPos": {
                "h": 9,
                "w": 12,

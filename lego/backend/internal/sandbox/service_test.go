@@ -260,9 +260,8 @@ func TestCreateRejectsUnpersistableRegionAndTimeout(t *testing.T) {
 		code string
 	}{
 		{name: "region", req: CreateRequest{Template: "node", Region: "not/a/label"}, code: "SANDBOX_REGION_INVALID"},
-		{name: "negative timeout", req: CreateRequest{Template: "node", TimeoutSeconds: -1}, code: "SANDBOX_TIMEOUT_INVALID"},
-		{name: "below upstream minimum timeout", req: CreateRequest{Template: "node", TimeoutSeconds: minSandboxTimeout - 1}, code: "SANDBOX_TIMEOUT_INVALID"},
-		{name: "excess timeout", req: CreateRequest{Template: "node", TimeoutSeconds: maxSandboxTimeout + 1}, code: "SANDBOX_TIMEOUT_INVALID"},
+		{name: "negative timeout", req: CreateRequest{Template: "node", TimeoutSeconds: ptr(-1)}, code: "SANDBOX_TIMEOUT_INVALID"},
+		{name: "excess timeout", req: CreateRequest{Template: "node", TimeoutSeconds: ptr(paidSandboxMaxTimeout + 1)}, code: "SANDBOX_TIMEOUT_INVALID"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := svc.Create(callerCtx(), tc.req)
@@ -536,7 +535,7 @@ func TestCreateUsesDefaultTemplateWhenEmpty(t *testing.T) {
 		DefaultTemplate: "base",
 	}
 	// The Render CLI sends no template — an empty Template must resolve to the default.
-	sb, err := svc.Create(callerCtx(), CreateRequest{Plan: PlanStarter, Region: "oregon", TimeoutSeconds: 3600})
+	sb, err := svc.Create(callerCtx(), CreateRequest{Plan: PlanStarter, Region: "oregon", TimeoutSeconds: ptr(3600)})
 	if err != nil {
 		t.Fatalf("create with empty template should use default: %v", err)
 	}

@@ -28,11 +28,12 @@ import (
 // registered image; plan is the Render-compatible size; ownerId scopes the
 // workspace (empty => the caller's default).
 type spawnSandboxArgs struct {
-	Template       string `json:"template,omitempty"`
-	Plan           string `json:"plan,omitempty"`
-	OwnerID        string `json:"ownerId,omitempty"`
-	Region         string `json:"region,omitempty"`
-	TimeoutSeconds int    `json:"timeoutSeconds,omitempty"`
+	Template string `json:"template,omitempty"`
+	Plan     string `json:"plan,omitempty"`
+	OwnerID  string `json:"ownerId,omitempty"`
+	Region   string `json:"region,omitempty"`
+	// TimeoutSeconds: omitted = 86400 s, 0 = no timeout (see resolveTimeout).
+	TimeoutSeconds *int `json:"timeoutSeconds,omitempty"`
 	// IdleTimeoutSeconds is Render's create field; see validateIdleTimeout.
 	IdleTimeoutSeconds int            `json:"idleTimeoutSeconds,omitempty"`
 	NetworkPolicy      *NetworkPolicy `json:"networkPolicy,omitempty"`

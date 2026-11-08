@@ -35,11 +35,13 @@ import (
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			OwnerID        string         `json:"ownerId"`
-			Plan           Plan           `json:"plan"`
-			Template       string         `json:"template"`
-			Region         string         `json:"region"`
-			TimeoutSeconds int            `json:"timeoutSeconds"`
+			OwnerID  string `json:"ownerId"`
+			Plan     Plan   `json:"plan"`
+			Template string `json:"template"`
+			Region   string `json:"region"`
+			// A pointer so an omitted timeout (86400 s) differs from an
+			// explicit 0 (no timeout); see resolveTimeout.
+			TimeoutSeconds *int           `json:"timeoutSeconds"`
 			NetworkPolicy  *NetworkPolicy `json:"networkPolicy"`
 			// Env and SnapshotID are DECLARED so they can be REFUSED BY NAME.
 			// The pinned client sends `env` for `--env-var`/`--env-file` and

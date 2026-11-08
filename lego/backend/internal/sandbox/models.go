@@ -118,8 +118,9 @@ type Sandbox struct {
 	Plan   Plan   `json:"plan"`
 	Status Status `json:"status"`
 	Region string `json:"region,omitempty"`
-	// TimeoutSeconds is the effective lifetime bound in seconds. 0 is never
-	// returned — omitted/legacy "no expiry" is normalized to 86400 (w5/m99).
+	// TimeoutSeconds is the effective lifetime in seconds; 0 means no timeout,
+	// as on Render (w2/m263 D3=A). Legacy metadata without a bound reads as
+	// 86400 (w5/m99); see timeoutFromMetadata.
 	TimeoutSeconds int `json:"timeoutSeconds"`
 	// IdleTimeoutSeconds is always 0: bex never suspends a sandbox for
 	// inactivity (see validateIdleTimeout), so Render's

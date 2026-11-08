@@ -1,20 +1,20 @@
 # w2 · m263 — Sandbox flags the Render CLI v2.35 sends: honor or refuse each by name
 
-**Worker:** worker2 **Goal:** every sandbox flag the pinned Render CLI v2.35.0 sends behaves as on render.com, or is refused by name, instead of a generic `unknown field` 400 or a silently ignored filter. **Status:** todo — t001, t003, t004, t006–t008 done; t002 (D3=A) and t005 (D4=A) next
+**Worker:** worker2 **Goal:** every sandbox flag the pinned Render CLI v2.35.0 sends behaves as on render.com, or is refused by name, instead of a generic `unknown field` 400 or a silently ignored filter. **Status:** done (2026-11-08); idle suspension continues in w2/m278
 
 ## Tasks (in order)
 
 | id   | title                                                              | est | depends_on                   |
 | ---- | ------------------------------------------------------------------ | --- | ---------------------------- |
 | t001 | `idleTimeoutSeconds` on sandbox create and detail — **DONE** (parity → w2/m278)                  | 1h  | —                            |
-| t002 | `--timeout=0` creates a sandbox with no timeout                    | 30m | —                            |
+| t002 | `--timeout=0` creates a sandbox with no timeout — **DONE**                    | 30m | —                            |
 | t003 | Sandbox plan names `1c-2g` … `8c-16g` — **DONE**                              | 45m | —                            |
 | t004 | Named refusals for sandbox groups and images on create and list — **DONE**    | 45m | —                            |
-| t005 | `ea blueprints` next-step hints name `bex`, not `render`           | 45m | —                            |
+| t005 | `ea blueprints` next-step hints name `bex`, not `render` — **DONE**           | 45m | —                            |
 | t006 | Render parity — **DONE**                                                      | 15m | t001, t002, t003, t004, t005 |
 | t007 | Simplify — **DONE**                                                           | 15m | t006                         |
 | t008 | Test coverage — **DONE**                                                      | 30m | t006                         |
-| t009 | Closeout                                                           | 10m | t007, t008                   |
+| t009 | Closeout — **DONE**                                                           | 10m | t007, t008                   |
 
 ## Definition of done
 
@@ -60,3 +60,20 @@ Three divergences, recorded in ADR018 § Sandbox create flags and § CLI runtime
   - Render 的 sandbox 默认空闲 900 秒后挂起。
   - Render 自己的 CLI 提示 `render`；bex 用户使用 `bex`，提示也应是 `bex`。
 - **worker 下一步：** 依次完成 t002、t005，然后 t009 收尾。
+
+## Work log — 2026-11-08 (`/loopx w2`): t002, t005 done; closed
+
+- **t002 (D3=A), Render semantics now in force:** the rules match the pinned v2.35 CLI help ("up to 2592000 (30 days), or 86400 (24 hours) on Hobby workspaces. 0 means no timeout. Omit to use the default of 86400").
+  - Omitted → 86400 s.
+  - Paid workspaces: `0` = no timeout (metadata `none`, no OpenSandbox expireTime, the reaper never expires it, inventory class `long_lived`).
+  - Hobby: `0` → 86400.
+  - Out of range → `400 SANDBOX_TIMEOUT_INVALID`.
+  - Agent-session sandboxes keep 24 h.
+  - OpenSandbox `max_sandbox_timeout_seconds` is raised to 2592000 in all three configs.
+  - ADR014 is amended and the ADR018 row is ✅.
+- **t005 (D4=A):** `internal/branding/runtime.go` rewrites run-time command references `render <cmd>` to `bex <cmd>`:
+  - in returned errors, for every command (e.g. ``Use `bex workspace set` ``);
+  - in the stdout of `ea blueprints create|plan|approve|update` and `logout` (text "Next:", JSON/YAML `meta.next`, with JSON spliced byte-exact).
+
+  URLs, `render.yaml`, `RENDER_*` and API data are untouched. Prose ("Render will start applying…") and the interactive `pg create` wizard remain, recorded in docs/bex-cli.md and ADR018.
+- **Checks:** /simplify applied four fixes: lazy plan read, shared short-write helper, exact command-word matching, and a single format read. Backend sandbox/api/gqlutil tests, the real-DB suite, CLI tests, `bex-cli-validate.sh`, promtool and `make lint` all pass.

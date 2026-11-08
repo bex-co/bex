@@ -45,8 +45,8 @@ const (
 // chrome uses bexVersion, and `docs` opens DocsURL. Upstream setupCommands
 // adds more children during Execute (after this returns), so HelpFunc and
 // UsageFunc re-walk the tree before help or usage output (see Refresh for
-// completion). Explicit login output is wrapped; only `docs` replaces the
-// upstream command runner.
+// completion). Explicit login output is wrapped, as are run-time command
+// references (runtime.go); only `docs` replaces the upstream command runner.
 func Apply(root *cobra.Command, bexVersion string) {
 	if root == nil {
 		return
@@ -67,6 +67,7 @@ func Apply(root *cobra.Command, bexVersion string) {
 	brandTree(root)
 	overrideDocs(root)
 	brandLoginOutput(root)
+	brandRuntimeOutput(root)
 
 	prevHelp := root.HelpFunc()
 	root.SetHelpFunc(func(c *cobra.Command, args []string) {
@@ -111,13 +112,15 @@ const maxHelpTextWidth = 80
 // The launcher registers it once as a cobra initializer so successful shell
 // completion — which reads Short directly and calls neither HelpFunc nor
 // UsageFunc — also sees Bex descriptions for setupCommands children (w2/043).
-// The walk is idempotent.
+// The walk is idempotent, and wraps the late children's run-time output
+// before cobra runs them (initializers run before RunE).
 func Refresh(root *cobra.Command) {
 	if root == nil {
 		return
 	}
 	brandTree(root)
 	overrideDocs(root)
+	brandRuntimeOutput(root)
 }
 
 func brandTree(root *cobra.Command) {
@@ -155,6 +158,9 @@ treated as unset.`
 		c.Example = RewriteText(c.Example)
 		c.Short = RewriteText(c.Short)
 		c.Long = RewriteText(c.Long)
+		// cobra prints Deprecated at run time ("use `render workflows tasks
+		// runs` instead"), part of the run-time copy class (runtime.go).
+		c.Deprecated = RewriteText(c.Deprecated)
 	})
 }
 
@@ -198,15 +204,21 @@ func (w loginOutput) Write(p []byte) (int, error) {
 	}
 	// Upstream prints the entire prompt in one Write. Limit the rewrite to its
 	// fixed prefix so the device code and verification URL remain byte-exact.
-	branded := []byte("Complete login in the Bex dashboard" + string(p[len(prompt):]))
-	n, err := w.Writer.Write(branded)
+	return writeBranded(w.Writer, p, []byte("Complete login in the Bex dashboard"+string(p[len(prompt):])))
+}
+
+// writeBranded writes branded in place of p and reports the write in terms of
+// p, as io.Writer requires: len(p) once all of branded is written, otherwise
+// a short count with an error.
+func writeBranded(w io.Writer, p, branded []byte) (int, error) {
+	n, err := w.Write(branded)
 	if n == len(branded) {
 		return len(p), err
 	}
 	if err == nil {
 		err = io.ErrShortWrite
 	}
-	return n, err
+	return min(n, len(p)), err
 }
 
 func walk(c *cobra.Command, fn func(*cobra.Command)) {

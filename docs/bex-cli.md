@@ -1,6 +1,6 @@
 # `bex` CLI
 
-`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most runtime behavior are upstream. The Bex bridge changes the default API origin and local configuration location, registers Bex-native commands (`bex code`, `bex edit`, `bex upgrade`) alongside the imported command tree, and applies a help-chrome branding overlay plus a fixed-prefix explicit-login prompt rewrite (`internal/branding`) without modifying upstream implementations.
+`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most runtime behavior are upstream. The Bex bridge changes the default API origin and local configuration location, registers Bex-native commands (`bex code`, `bex edit`, `bex upgrade`) alongside the imported command tree, and applies a help-chrome branding overlay, a fixed-prefix explicit-login prompt rewrite, and a run-time `render <command>` → `bex <command>` rewrite (`internal/branding`) without modifying upstream implementations.
 
 The current pin and its update procedure are recorded in [`lego/cli/UPSTREAM_RENDER_CLI.md`](../lego/cli/UPSTREAM_RENDER_CLI.md).
 
@@ -233,7 +233,17 @@ The dashboard's secret-file upload refuses a non-UTF-8 file with the same hint i
 - **`bex docs`:** opens the Bex CLI guide on GitHub (`branding.DocsURL`), not `render.com/docs`.
 - **`bex -v`:** leads with `bex vX.Y.Z`, then a separate `compatible with Render CLI v…` line; update checks still hit this repo's `bex-cli/v*` releases.
 
-Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias). They do not rewrite upstream `RunE` bodies, so the residuals below remain until an explicit upstream-hook or fork decision. That decision should be taken against the **whole** class, so this inventory is reproducible rather than a sample — regenerate it on every pin bump (step 4 of the re-diff) with:
+Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias).
+
+**Run-time command references name `bex` (user decision 2026-11-07, w2/m263 D4=A).** Upstream output that tells the user to run `render <command>` says `bex <command>` instead. This covers text output, the JSON/YAML `meta.next` field agents follow, and backtick or quoted forms such as ``Use `render workspace set` ``. The rule covers the whole class. It is implemented in `internal/branding/runtime.go` as wrappers around the upstream `RunE`, like `brandLoginOutput`. No upstream `RunE` body is rewritten:
+
+- **Returned errors, every command.** Upstream returns most hints as errors, which cobra prints to stderr. The wrapper rewrites the message, and `errors.Is`/`errors.As` still reach the original, so exit codes and `ErrLogin` handling are unchanged. This covers the resource-not-found, auth and workspace hints below, the `psql` usage line, and the stale manual env var file refusal.
+- **Stdout, for the commands listed in `runtimeStdout`:** `ea blueprints create|plan|approve|update` and `logout`. For the blueprint commands only the next step changes: JSON and YAML `meta.next`, or the line after the text `Next:` title. Blueprint names, repos, paths, notices and the rest of the API data stay byte-exact. `logout` prints only upstream copy, so every reference in it is rewritten. Stdout is not wrapped for every command, for two reasons. A wrapped writer hides the terminal from upstream's `*os.File` checks (table width, color, `ssh`'s TTY). And `logs`, `sandboxes exec` and `ssh` stream user data through stdout, which must never be edited.
+- **cobra `Deprecated` notices**, rewritten as command metadata with the help overlay. cobra prints a notice before the launcher's initializer runs, so this reaches only commands that exist when `branding.Apply` runs. The late-added deprecated aliases (`sandbox-groups builds`, the `workflows` shortcuts) keep upstream's notice. Both belong to commands bex does not serve (see below).
+
+A reference is `render`, a space, and a command the root actually has (`ea`, `workspace`, `services`, …). It must sit at the start of a line (after indentation), right after a backtick, a quote or `| `, or be a bare `` `render` ``. URLs (`render.com`), file names (`render.yaml`), `RENDER_*` variables, data such as a service named `render-x`, and "Render" prose (for example "Render will start applying your planned changes") never match.
+
+Regenerate the inventory on every pin bump (step 4 of the re-diff) and check that each hit reaches one of the three seams:
 
 ```bash
 MOD=$(cd lego/cli && go list -m -f '{{.Dir}}' github.com/render-oss/cli)
@@ -241,48 +251,43 @@ grep -rnE '"[^"]*\brender [a-z]' "$MOD" --include='*.go' \
   | grep -v '_test.go' | grep -vE 'Example|Short:|Long:|Use:|Deprecated:'
 ```
 
-At the current pin (**v2.35.0**, `24ac2d60fdb2`) that yields the following; v2.35.0 added the `ea blueprints` hints at the end of this list (the rest is unchanged from v2.27.0). The first group is the one a user hits most often — mistyping a resource name — which the earlier version of this list omitted entirely (`w9/065`, live-verified 2026-09-21):
+At the current pin (**v2.35.0**, `24ac2d60fdb2`) it yields the following.
 
-**Resource-not-found, one per resource type** — each ends by telling a Bex user to run `render workspace set`:
+**Resource-not-found, one per resource type** (returned errors, rewritten). Each ends "run `bex workspace set <name|ID>`":
 
 - `pkg/service/repo.go:233` — "No service named '\<x>' in workspace tea-…. To search another workspace, run `render workspace set <name|ID>`, or pass the service ID instead."
 - `pkg/postgres/resolve.go:186` — same shape, "No Postgres database named …"
 - `pkg/keyvalue/resolve.go:187` — same shape, "No Key Value named …"
 
-**Auth / workspace state:**
+**Auth / workspace state** (returned errors and `logout` stdout, rewritten):
 
-- `pkg/config/config.go:27` (`ErrLogin`) — "run `render login` to authenticate", and the logout success strings (`cmd/logout.go:29,83`)
-- `pkg/config/config.go:26` (`ErrNoWorkspace`) — "no workspace set. Use `render workspace set` to set a workspace", on every list command with no active workspace (`w8/016`)
-- `pkg/command/wrapper.go:20` (`ErrTokenExpired`) — "your token is expired; run `render login` to get a new one"
+- `pkg/config/config.go:27` (`ErrLogin`) — "run `render login` to authenticate", and the logout strings (`cmd/logout.go:29,84`)
+- `pkg/config/config.go:26` (`ErrNoWorkspace`) — "no workspace set. Use `render workspace set` to set a workspace", on `workspace current` and every list command with no active workspace (`w8/016`)
+- `pkg/command/wrapper.go:21` (`ErrTokenExpired`) — "your token is expired; run `render login` to get a new one"
 - `pkg/validate/workspace.go:17` — the cross-workspace mismatch, "Run `render workspace set <id>` to change contexts"
 - `cmd/blueprintvalidate.go:92` — `no workspace specified and no default workspace set. Use --workspace or run 'render workspace set'`
 
-**Usage / follow-up hints printed from `RunE`:**
+**Usage / follow-up hints:**
 
-- `cmd/psql.go:96` — `Usage: render psql <postgresID> --command "SELECT ..." -o json` (non-interactive without `--command`)
-- `pkg/tui/views/pgcreate.go:797` — "Run `render pg get <id>` to check if it's ready yet."
-- `cmd/kvcreate.go:51` — the `--workspace` flag help citing `'render workspace set'`
+- `cmd/psql.go:96` — `Usage: render psql <postgresID> --command "SELECT ..." -o json` (a returned error, rewritten)
+- `cmd/kvcreate.go:51` — the `--workspace` flag help citing `'render workspace set'` (help overlay, rewritten)
+- `pkg/tui/views/pgcreate.go:797` — "Run `render pg get <id>` to check if it's ready yet." **Residual:** the interactive `pg create` wizard draws this in its bubbletea view, which writes to the terminal directly and has no Cobra writer to wrap.
 
-**`ea blueprints` next steps (v2.35.0, w2/m256)** — printed as text and returned as `meta.next` in JSON/YAML, so an agent that follows `next` is pointed at Render's CLI:
+**`ea blueprints` next steps (v2.35.0)** (stdout `meta.next` and text `Next:`, rewritten):
 
 - `pkg/blueprint/output.go:120,127` — "render ea blueprints approve \<id>" after a plan, "fix the errors above, then run \"render ea blueprints plan \<id>\"" after a failed plan
 - `pkg/blueprint/output.go:60,110` — the no-changes hints citing `render ea blueprints plan` / `approve`
-- `pkg/blueprint/output.go:149` — after approve: "Render will start applying your planned changes … `render services` and `render deploys` commands"
-- `pkg/blueprint/manualenvvars.go:71` — the stale manual env var file refusal citing `render ea blueprints approve`
+- `pkg/blueprint/output.go:149` — after approve: "Render will start applying your planned changes … `render services` and `render deploys` commands". The command references change; the leading "Render will start applying" is prose and stays.
+- `pkg/blueprint/manualenvvars.go:71` — the stale manual env var file refusal citing `render ea blueprints approve` (a returned error)
 
-These next steps are functional, not just copy: `meta.next` is the field agents are told to follow, so an agent ends up running Render's CLI. w2/m263 t005 looked for a fix within this policy and found none:
-
-- The overlay cannot reach the strings. Upstream builds them in `pkg/blueprint/output.go` at run time, and they are not command help.
-- The only working seam is the one `bex login` uses: wrap each command's Cobra stdout so the rewrite happens on the way out, without touching the `RunE` body. Here that means replacing `render ea blueprints `, `render services`, `render deploys` and the leading "Render will start applying" in the four commands' text and JSON/YAML output. The login rewrite is a single fixed prefix. This one would be a second runtime-copy rewrite and would edit structured output.
-- That is the per-command extension this section says to decide for the whole class, so it was not shipped.
-
-The residual stays recorded in ADR018 § CLI runtime copy as awaiting user sign-off. If the user approves the stdout-wrapper approach (for these four commands or for the whole list above), add it in `internal/branding` next to `brandLoginOutput`. Its tests should cover text, JSON and YAML output, and re-diffing `pkg/blueprint/output.go` should join step 4 of the pin-bump procedure.
+Tests: `internal/branding/runtime_test.go` (the reference rule, JSON/YAML/text next-step rewrites, error unwrapping) and `runtime_copy_test.go`. The latter drives the built binary against a stub API: `ea blueprints create` in text, JSON and YAML, `workspace current` with no workspace, and render-shaped data (`render-x`, `render.yaml`, `render.com`, `RENDER_*`) that must survive.
 
 **`bex skills` installs bex's own skills (w8/m143).** The launcher replaces upstream's `skills` tree. Upstream clones `render-oss/skills`, whose skills drive the `render` CLI, `mcp.render.com` and `dashboard.render.com`. The bex tree installs a pack embedded in the binary, derived from that MIT-licensed repository at a pinned commit by `lego/cli/internal/skills/packgen` and regenerated with `lego/cli/hack/sync-skills.sh`. The pack's 20 `bex-*` skills operate bex (`bex` CLI, `https://api.bex.co/mcp`, `dashboard.bex.co`, `onbex.co`). They keep Render's docs as the behavior reference and drop Render Workflows and sandboxes. The subcommands and flags are Render's (`install`, `list`, `update`, `remove`; `--tool`, `--skill`, `--scope`, `--dry-run`, `--all`, `--force`). State is `bex-skills.yaml` in the bex config directory. Selections are always explicit `bex-*` names, so a user's genuine `render-*` skills and `~/.render/skills.yaml` are never touched. In a terminal with no `--output`, `install` prompts for scope, tools and skills, and `remove` prompts for the skills to remove, as Render's commands do; each flag skips its prompt (w8/214). `list` and `update` print text there, and none of the commands panics non-interactively. The previous "accepted branding residual" (w8/m29 t004) was withdrawn because its effect was functional, not copy.
 
 **Identity, storage and copy that branding deliberately leaves alone:**
 
 - automatic login TUI inside other interactive commands (`views.LoginView`) saying “Render Dashboard”; explicit `bex login` rewrites only its fixed prompt prefix through Cobra stdout, preserving the device code and verification URL byte-for-byte
+- "Render" prose in run-time output ("Successfully logged out of Render.", "Render will start applying …"): the run-time rule covers command references only
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)

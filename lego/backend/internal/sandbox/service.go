@@ -55,8 +55,6 @@ const (
 	// agent-session sandbox, whose canonical id stays the substrate id.
 	metadataPublicID     = "bex.co/sandbox-id"
 	metadataAgentSession = agentsession.LabelSession
-	minSandboxTimeout    = 60
-	maxSandboxTimeout    = 86400
 	// Render's idleTimeoutSeconds bounds for a positive value.
 	minIdleTimeout = 300
 	maxIdleTimeout = 86400
@@ -129,13 +127,14 @@ type Service struct {
 // since the Render CLI sends no template); Plan/Region/TimeoutSeconds/NetworkPolicy
 // are Render CLI create fields echoed back on the resource. A named Plan sizes
 // the sandbox (planResources); an omitted one keeps the template's own size.
+// TimeoutSeconds nil is an omitted timeout (see resolveTimeout).
 // IdleTimeoutSeconds is Render's create field; see validateIdleTimeout.
 type CreateRequest struct {
 	OwnerID            string
 	Template           string
 	Plan               Plan
 	Region             string
-	TimeoutSeconds     int
+	TimeoutSeconds     *int
 	IdleTimeoutSeconds int
 	NetworkPolicy      *NetworkPolicy
 }
@@ -289,19 +288,12 @@ func invalidPlan(plan Plan) error {
 		map[string]any{"field": "plan", "supported": planNames()})
 }
 
-func validateCreateMetadata(region string, timeout int) error {
+func validateRegion(region string) error {
 	if region != "" && len(validation.IsValidLabelValue(region)) != 0 {
 		return core.NewBadRequestError(
 			"SANDBOX_REGION_INVALID",
 			"sandbox region must be a Kubernetes label-safe value",
 			map[string]any{"field": "region"},
-		)
-	}
-	if timeout < 0 || (timeout > 0 && timeout < minSandboxTimeout) || timeout > maxSandboxTimeout {
-		return core.NewBadRequestError(
-			"SANDBOX_TIMEOUT_INVALID",
-			fmt.Sprintf("sandbox timeoutSeconds must be 0 (default %d) or between %d and %d", maxSandboxTimeout, minSandboxTimeout, maxSandboxTimeout),
-			map[string]any{"field": "timeoutSeconds", "default": maxSandboxTimeout, "minimumNonZero": minSandboxTimeout, "max": maxSandboxTimeout},
 		)
 	}
 	return nil
@@ -329,7 +321,7 @@ func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan,
 		metadataWorkspace:     workspace,
 		metadataNetworkPolicy: string(policy.Default),
 		metadataPlan:          string(plan),
-		metadataTimeout:       strconv.Itoa(timeout),
+		metadataTimeout:       timeoutMetadata(timeout),
 		metadataTemplate:      template,
 		metadataRegime:        metadataSandboxRegime,
 		metadataComputeWeight: strconv.FormatInt(weight, 10),
@@ -561,13 +553,12 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 	if policy.Default == "" {
 		policy = nil
 	}
-	timeout, _ := strconv.Atoi(raw.Metadata[metadataTimeout])
 	return Sandbox{
 		ID:             canonicalID(raw),
 		Plan:           Plan(raw.Metadata[metadataPlan]),
 		Status:         mapOpenSandboxStatus(raw.Status.State),
 		Region:         raw.Metadata[metadataRegion],
-		TimeoutSeconds: EffectiveTimeoutSeconds(timeout),
+		TimeoutSeconds: timeoutFromMetadata(raw.Metadata[metadataTimeout]),
 		NetworkPolicy:  policy,
 		Owner:          raw.Metadata[metadataOwner],
 		Workspace:      raw.Metadata[metadataWorkspace],
@@ -603,7 +594,21 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if plan != "" && !ValidPlan(plan) {
 		return Sandbox{}, invalidPlan(plan)
 	}
-	if err := validateCreateMetadata(req.Region, req.TimeoutSeconds); err != nil {
+	if err := validateRegion(req.Region); err != nil {
+		return Sandbox{}, err
+	}
+	ws := s.WorkspaceOrDefault(ctx)
+	// Only an explicit timeout depends on the plan; an omitted one is the
+	// 86400 s default everywhere, so it needs no plan read.
+	var workspacePlan string
+	if req.TimeoutSeconds != nil {
+		var err error
+		if workspacePlan, _, err = s.WorkspacePlanOf(ctx, ws); err != nil {
+			return Sandbox{}, err
+		}
+	}
+	timeout, err := resolveTimeout(req.TimeoutSeconds, workspacePlan)
+	if err != nil {
 		return Sandbox{}, err
 	}
 	if err := validateIdleTimeout(req.IdleTimeoutSeconds); err != nil {
@@ -626,13 +631,14 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if size, named := planResources[req.Plan]; named {
 		tmpl.CPU, tmpl.Memory = size.CPU, size.Memory
 	}
-	ws := s.WorkspaceOrDefault(ctx)
 	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
 	// so bex stamps its own and carries it as durable metadata (metadataPublicID).
-	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, req.TimeoutSeconds, policy, nil,
+	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, timeout, policy, nil,
 		map[string]string{metadataPublicID: ids.New(ids.Sandbox)})
 }
 
+// createResolved starts a sandbox whose timeout is already resolved in
+// Render's semantics (0 = no timeout; see resolveTimeout).
 func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, env, extraMetadata map[string]string) (Sandbox, error) {
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
@@ -664,14 +670,11 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	if len(entry) == 0 {
 		entry = []string{"sleep", "infinity"}
 	}
-	// Normalize 0 → 86400 so EA creates, agent-session creates, and legacy
-	// metadata all share one enforced bound (w5/m99 t001).
-	timeout = EffectiveTimeoutSeconds(timeout)
 	metadata := sandboxMetadata(ctx, workspace, template, plan, region, timeout, policy, weight)
 	for k, v := range extraMetadata {
 		metadata[k] = v
 	}
-	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, timeout, env, metadata)
+	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, openSandboxTimeout(timeout), env, metadata)
 	if err != nil {
 		if errors.Is(err, errPodReadyTimeout) {
 			return Sandbox{}, s.podReadyTimeoutError(ctx, key, workspace, cpu, mem)
@@ -781,7 +784,8 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	// Setup policy belongs to the session, not this attempt. A late failure
 	// must not delete a newer generation's policy; durable dispatch recovery
 	// removes this attempt's sandbox independently.
-	return s.createResolved(ctx, workspaceID, template, tmpl, plan, "", 0, policy, env, bindings)
+	// Agent-session sandboxes keep the 86400 s bound on every plan (w5/m99).
+	return s.createResolved(ctx, workspaceID, template, tmpl, plan, "", defaultSandboxTimeout, policy, env, bindings)
 }
 
 // EnterAgentSessionPhase narrows one exact session sandbox from setup registry

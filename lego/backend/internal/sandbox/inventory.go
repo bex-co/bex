@@ -19,7 +19,6 @@ package sandbox
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
@@ -39,7 +38,12 @@ const (
 	InventoryClassTerminalOrphan = "terminal_orphan"
 	InventoryClassNoRowOrphan    = "no_row_orphan"
 	InventoryClassTimed          = "timed"
-	InventoryClassInconclusive   = "inconclusive"
+	// InventoryClassLongLived is an ordinary EA sandbox inside a lifetime the
+	// owner chose past the 86400 s default — up to 30 days, or no timeout, on
+	// a paid workspace (w2/m263 D3=A). Its age legitimately exceeds 24 h, so
+	// SandboxOldestOverBound excludes it.
+	InventoryClassLongLived    = "long_lived"
+	InventoryClassInconclusive = "inconclusive"
 )
 
 // InventoryCounts is one reconcile pass's classification tallies.
@@ -48,6 +52,7 @@ type InventoryCounts struct {
 	TerminalOrphan int
 	NoRowOrphan    int
 	Timed          int
+	LongLived      int
 	Inconclusive   int
 	OldestAge      map[string]float64 // class → seconds
 	Terminated     int
@@ -59,6 +64,7 @@ func (c *InventoryCounts) Merge(o InventoryCounts) {
 	c.TerminalOrphan += o.TerminalOrphan
 	c.NoRowOrphan += o.NoRowOrphan
 	c.Timed += o.Timed
+	c.LongLived += o.LongLived
 	c.Inconclusive += o.Inconclusive
 	c.Terminated += o.Terminated
 	if c.OldestAge == nil {
@@ -135,7 +141,7 @@ func (l *AgentSessionLifecycle) ReconcileWorkspaceInventory(ctx context.Context,
 		if mapOpenSandboxStatus(raw.Status.State) == StatusTerminated {
 			continue
 		}
-		timeout, _ := strconv.Atoi(raw.Metadata[metadataTimeout])
+		timeout := timeoutFromMetadata(raw.Metadata[metadataTimeout])
 		age := 0.0
 		if raw.Created != nil {
 			age = now.Sub(*raw.Created).Seconds()
@@ -153,9 +159,13 @@ func (l *AgentSessionLifecycle) ReconcileWorkspaceInventory(ctx context.Context,
 			shouldStop = true
 		case sessionID == "":
 			// Ordinary EA sandbox still inside its bound — leave it.
-			class = InventoryClassTimed
+			if timeout == 0 || timeout > defaultSandboxTimeout {
+				class = InventoryClassLongLived
+				counts.LongLived++
+			} else {
+				counts.Timed++
+			}
 			noteOldest(counts.OldestAge, class, age)
-			counts.Timed++
 			continue
 		default:
 			claim, err := lookup(ctx, sessionID)

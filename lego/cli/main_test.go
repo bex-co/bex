@@ -164,7 +164,8 @@ func TestBexBinaryMissingCredentialsDoesNotFallBackToRenderConfig(t *testing.T) 
 	if err == nil {
 		t.Fatal("bex workspaces unexpectedly succeeded without Bex credentials")
 	}
-	if !strings.Contains(string(output), "run `render login` to authenticate") {
+	// Run-time command references name bex (w2/m263 D4=A).
+	if !strings.Contains(string(output), "run `bex login` to authenticate") {
 		t.Errorf("missing credential output = %q", output)
 	}
 	if got, err := os.ReadFile(renderConfigPath); err != nil || string(got) != renderConfig {

@@ -125,7 +125,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Template:           gqlutil.Str(p.Args, "template"),
 					Plan:               Plan(gqlutil.Str(p.Args, "plan")),
 					Region:             gqlutil.Str(p.Args, "region"),
-					TimeoutSeconds:     gqlutil.Int(p.Args, "timeoutSeconds"),
+					TimeoutSeconds:     gqlutil.IntPtr(p.Args, "timeoutSeconds"),
 					IdleTimeoutSeconds: gqlutil.Int(p.Args, "idleTimeoutSeconds"),
 					NetworkPolicy:      policy,
 				})

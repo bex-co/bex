@@ -143,6 +143,7 @@ func (m *Metrics) SetInventory(counts InventoryCounts) {
 		{InventoryClassTerminalOrphan, counts.TerminalOrphan},
 		{InventoryClassNoRowOrphan, counts.NoRowOrphan},
 		{InventoryClassTimed, counts.Timed},
+		{InventoryClassLongLived, counts.LongLived},
 		{InventoryClassInconclusive, counts.Inconclusive},
 	}
 	for _, c := range classes {

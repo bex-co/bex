@@ -135,6 +135,66 @@ func TestReconcileWorkspaceInventoryReclaimsOrphans(t *testing.T) {
 	}
 }
 
+// TestReconcileWorkspaceInventoryHonorsLongLifetimes: a paid workspace's
+// no-timeout or 30-day sandbox outlives 24 h untouched and is counted as
+// long_lived (which SandboxOldestOverBound excludes); a 30-day sandbox past
+// its own deadline and a legacy "0" past 24 h are still reaped (w2/m263).
+func TestReconcileWorkspaceInventoryHonorsLongLifetimes(t *testing.T) {
+	now := time.Now().UTC()
+	box := func(id, timeout string, age time.Duration) map[string]any {
+		return map[string]any{
+			"id": id,
+			"metadata": map[string]string{
+				metadataWorkspace: "tea-a", metadataOwner: "id-a",
+				metadataNetworkPolicy: "deny-all", metadataRegime: metadataSandboxRegime,
+				metadataTimeout: timeout,
+			},
+			"status":    map[string]string{"state": "Running"},
+			"createdAt": now.Add(-age).Format(time.RFC3339Nano),
+		}
+	}
+	sandboxes := []map[string]any{
+		box("no-timeout", timeoutNone, 90*24*time.Hour),
+		box("thirty-days", "2592000", 10*24*time.Hour),
+		box("thirty-days-over", "2592000", 31*24*time.Hour),
+		box("legacy-zero", "0", 25*time.Hour),
+	}
+	var mu sync.Mutex
+	deleted := map[string]bool{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if r.Method == http.MethodDelete {
+			deleted[r.URL.Path[len("/sandboxes/"):]] = true
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(sandboxes)
+	}))
+	t.Cleanup(srv.Close)
+	svc := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: NewClient(srv.URL),
+		Keys:   staticKey("ws-key"),
+	}
+	counts, err := NewAgentSessionLifecycle(svc).ReconcileWorkspaceInventory(context.Background(), "tea-a", "ws-key", now,
+		func(context.Context, string) (SessionClaim, error) { return SessionClaim{}, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if deleted["no-timeout"] || deleted["thirty-days"] || !deleted["thirty-days-over"] || !deleted["legacy-zero"] {
+		t.Fatalf("deleted = %v counts %+v", deleted, counts)
+	}
+	if counts.LongLived != 2 || counts.Timed != 2 || counts.Terminated != 2 {
+		t.Fatalf("counts = %+v", counts)
+	}
+	if age := counts.OldestAge[InventoryClassLongLived]; age < 89*24*3600 {
+		t.Fatalf("long_lived oldest age = %v", age)
+	}
+}
+
 func TestReconcileWorkspaceInventoryListErrorTerminatesNothing(t *testing.T) {
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

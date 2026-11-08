@@ -424,6 +424,16 @@ func BoolPtr(args map[string]any, key string) *bool {
 	return nil
 }
 
+// IntPtr reads an optional Int argument as a nil-able pointer — nil when
+// absent, so an explicit 0 stays distinct from an omitted value. Int's
+// pointer-returning sibling, like StrPtr and BoolPtr.
+func IntPtr(args map[string]any, key string) *int {
+	if v, ok := args[key].(int); ok {
+		return &v
+	}
+	return nil
+}
+
 // Page applies Render's cursor-pagination contract to a list resolver's result:
 // it reads the shared `cursor`/`limit` arguments, defaults an absent limit to
 // core.DefaultPageLimit, clamps a supplied one through core.PageLimit, and hands
