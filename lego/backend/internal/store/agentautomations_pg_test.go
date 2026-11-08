@@ -492,7 +492,7 @@ func TestPGAgentAutomationStaleRunsAndSettle(t *testing.T) {
 	}
 }
 
-// The 0208 migration applies, reverses and re-applies cleanly.
+// The 0209 migration applies, reverses and re-applies cleanly.
 func TestAgentAutomationsMigrationRoundTrip(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -538,16 +538,16 @@ func TestAgentAutomationsMigrationRoundTrip(t *testing.T) {
 		}
 	}
 	// Whatever state the database is in (migrated already), go down, up, down, up.
-	exec(read("0208_agent_automations.down.sql"))
+	exec(read("0209_agent_automations.down.sql"))
 	if exists("agent_automations") || exists("agent_automation_runs") || hasColumn() {
 		t.Fatal("down left objects behind")
 	}
-	exec(read("0208_agent_automations.up.sql"))
+	exec(read("0209_agent_automations.up.sql"))
 	if !exists("agent_automations") || !exists("agent_automation_runs") || !hasColumn() || !exists("agent_automations_due_idx") {
 		t.Fatal("up did not create objects")
 	}
-	exec(read("0208_agent_automations.down.sql"))
-	exec(read("0208_agent_automations.up.sql"))
+	exec(read("0209_agent_automations.down.sql"))
+	exec(read("0209_agent_automations.up.sql"))
 	if !exists("agent_automations") || !hasColumn() {
 		t.Fatal("second up failed")
 	}
