@@ -31,7 +31,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/rest"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 )
@@ -80,7 +79,7 @@ var _ = Describe("Operator pod label admission", func() {
 				Name: kvName + "-0", Namespace: "default",
 				Labels: map[string]string{labelKeyValue: kvName, "app.bex.co/workspace": "tea-podlabel"},
 				OwnerReferences: []metav1.OwnerReference{{
-					APIVersion: "apps/v1", Kind: "StatefulSet", Name: kvName, UID: "sts-uid", Controller: ptr.To(true),
+					APIVersion: "apps/v1", Kind: "StatefulSet", Name: kvName, UID: "sts-uid", Controller: new(true),
 				}},
 			},
 			Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "valkey", Image: "valkey/valkey:8"}}},
