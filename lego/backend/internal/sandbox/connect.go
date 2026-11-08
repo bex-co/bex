@@ -265,7 +265,8 @@ func (s *Service) ConnectStreamHandler() http.Handler {
 				f.Flush()
 			}
 		}
-		if err := s.StreamExec(ctx, ExecRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Command: claims.Command}, w, flush); err != nil {
+		r = allowLongResume(w, r.WithContext(ctx))
+		if err := s.StreamExec(r.Context(), ExecRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Command: claims.Command}, w, flush); err != nil {
 			core.WriteErr(w, err)
 		}
 	})

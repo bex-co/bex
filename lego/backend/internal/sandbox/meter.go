@@ -119,20 +119,8 @@ func requestFor(cpu, memory string) (reqCPU, reqMem string) {
 }
 
 func canonicalMeterPhase(state string) string {
-	switch mapOpenSandboxStatus(state) {
-	case StatusRunning:
-		return "running"
-	case StatusCreating:
-		return "creating"
-	case StatusSuspended:
-		return "suspended"
-	case StatusResuming:
-		return "resuming"
-	case StatusTerminated:
-		return "terminated"
-	default:
-		return "errored"
-	}
+	// Unknown states already map to errored.
+	return string(mapOpenSandboxStatus(state))
 }
 
 func meterObservation(raw osSandbox, observedAt time.Time) (store.SandboxMeterObservation, bool) {

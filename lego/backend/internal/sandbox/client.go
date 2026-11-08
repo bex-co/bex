@@ -36,6 +36,12 @@ const tenantKeyHeader = "OPEN-SANDBOX-API-KEY"
 
 var errOpenSandboxNotFound = errors.New("opensandbox sandbox not found")
 
+// errOpenSandboxConflict is the server's 409 for a pause or resume that the
+// sandbox's current phase refuses (already Pausing/Paused/Resuming). Idle
+// suspension and wake-on-exec race each other across replicas by design, so
+// callers treat it as "someone else is already moving the sandbox".
+var errOpenSandboxConflict = errors.New("opensandbox lifecycle conflict")
+
 // errPodReadyTimeout marks the one create failure whose cause bex can honestly
 // name: the OpenSandbox server answered with its pod-ready-timeout error code,
 // meaning the sandbox pod never became Running within the server's synchronous
@@ -230,12 +236,13 @@ func (c *Client) List(ctx context.Context, tenantKey string) ([]osSandbox, error
 	return wrap.Items, nil
 }
 
-// Suspend pauses a sandbox (OpenSandbox rootfs snapshot, ADR042 D5).
+// Suspend pauses a sandbox (OpenSandbox rootfs snapshot, ADR042 D5). The
+// server answers 202 and moves the sandbox through Pausing to Paused.
 func (c *Client) Suspend(ctx context.Context, tenantKey, id string) error {
 	return c.expectOK(c.do(ctx, http.MethodPost, "/sandboxes/"+url.PathEscape(id)+"/pause", tenantKey, nil))
 }
 
-// Resume wakes a suspended sandbox.
+// Resume wakes a suspended sandbox: 202, then Resuming until Running.
 func (c *Client) Resume(ctx context.Context, tenantKey, id string) error {
 	return c.expectOK(c.do(ctx, http.MethodPost, "/sandboxes/"+url.PathEscape(id)+"/resume", tenantKey, nil))
 }
@@ -256,10 +263,15 @@ func (c *Client) expectOK(_ []byte, code int, err error) error {
 	if err != nil {
 		return err
 	}
-	if code != http.StatusOK && code != http.StatusNoContent && code != http.StatusAccepted {
-		return fmt.Errorf("opensandbox: unexpected status %d", code)
+	switch code {
+	case http.StatusOK, http.StatusNoContent, http.StatusAccepted:
+		return nil
+	case http.StatusConflict:
+		return errOpenSandboxConflict
+	case http.StatusNotFound:
+		return errOpenSandboxNotFound
 	}
-	return nil
+	return fmt.Errorf("opensandbox: unexpected status %d", code)
 }
 
 func truncate(b []byte) string {

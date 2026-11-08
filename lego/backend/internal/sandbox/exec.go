@@ -93,22 +93,33 @@ func (s *Service) execEnabled() bool {
 // who still owns a pre-existing sandbox must not keep choosing arbitrary shell
 // after losing can_create. Agent-session sandboxes keep the stronger
 // can_view_sensitive gate below.
-func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Response, error) {
+//
+// The returned release ends the command's hold on the sandbox's idle timer
+// (holdActive); the caller runs it when the stream ends.
+func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Response, func(), error) {
 	ws, raw, err := s.authorizeExecTarget(ctx, req)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
+	release := s.holdActive(ctx, ws, raw)
 	// The ticket binds the SUBSTRATE id, not the caller's: the gateway derives
 	// the pod name as `<id>-0`, and a caller may address the sandbox by its
 	// public `sbx-` id (w9/m94).
-	return s.mintAndDial(ctx, ws, raw.ID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
+	resp, err := s.mintAndDial(ctx, ws, raw.ID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
+	if err != nil {
+		release()
+		return nil, nil, err
+	}
+	return resp, release, nil
 }
 
 // authorizeExecTarget is the exec gate shared by the direct exec verbs and the
 // run connect-token mint (ConnectRun): it resolves the workspace, authorizes
 // can_create, resolves the owned sandbox, and applies the agent-session rule
 // below. It returns the resolved workspace and the live sandbox object; it
-// opens no stream and mints nothing.
+// opens no stream and mints nothing, but it does record the interaction and
+// resume a sandbox that was suspended for inactivity (ensureRunning), so the
+// run token is minted, and the command runs, against a running sandbox.
 func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (string, osSandbox, error) {
 	ctx, err := s.scopeSandbox(ctx, req.OwnerID, req.SandboxID)
 	if err != nil {
@@ -147,6 +158,10 @@ func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (str
 		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, agentsession.SessionObject(sessionID)); err != nil {
 			return "", osSandbox{}, err
 		}
+	}
+	raw, err = s.ensureRunning(ctx, key, ws, raw)
+	if err != nil {
+		return "", osSandbox{}, err
 	}
 	return ws, raw, nil
 }
@@ -224,10 +239,11 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID
 // adapter renders as a normal HTTP status instead of a half-open event stream —
 // the Render CLI's single-POST-reads-SSE contract (docs/render-artifacts/ea-sandbox.md).
 func (s *Service) StreamExec(ctx context.Context, req ExecRequest, w http.ResponseWriter, flush func()) error {
-	resp, err := s.dialGateway(ctx, req)
+	resp, release, err := s.dialGateway(ctx, req)
 	if err != nil {
 		return err
 	}
+	defer release()
 	defer func() { _ = resp.Body.Close() }()
 
 	w.Header().Set("Content-Type", "text/event-stream")
@@ -285,10 +301,11 @@ const maxExecOutputBytes = 2 << 20
 // ticket + gateway path as StreamExec, but it consumes the SSE and returns the
 // assembled result rather than streaming. Used by MCP `sandbox_exec`.
 func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult, error) {
-	resp, err := s.dialGateway(ctx, req)
+	resp, release, err := s.dialGateway(ctx, req)
 	if err != nil {
 		return ExecResult{}, err
 	}
+	defer release()
 	defer func() { _ = resp.Body.Close() }()
 	return bufferExec(resp)
 }

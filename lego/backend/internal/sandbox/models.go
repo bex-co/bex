@@ -90,8 +90,9 @@ func ValidPlan(p Plan) bool {
 }
 
 // Status is the Render-compatible sandbox lifecycle status (SandboxStatus).
-// bex maps its OpenSandbox states onto these: pause⇄Suspended, resume⇄Resuming,
-// delete⇄Terminated (docs/render-artifacts/ea-sandbox.md).
+// bex maps its OpenSandbox states onto these: Pausing⇄suspending,
+// Paused⇄suspended, Resuming⇄resuming, delete⇄terminated
+// (docs/render-artifacts/ea-sandbox.md, w2/m278).
 type Status string
 
 const (
@@ -101,9 +102,8 @@ const (
 	StatusResuming   Status = "resuming"
 	StatusErrored    Status = "errored"
 	StatusTerminated Status = "terminated"
-	// StatusSuspending is in Render's list `status` filter enum but is never
-	// reported by bex: its pause is synchronous, so a sandbox goes straight
-	// from running to suspended.
+	// StatusSuspending is a sandbox whose idle (or explicit) pause is
+	// committing its root filesystem: OpenSandbox's Pausing phase.
 	StatusSuspending Status = "suspending"
 )
 
@@ -122,9 +122,9 @@ type Sandbox struct {
 	// as on Render (w2/m263 D3=A). Legacy metadata without a bound reads as
 	// 86400 (w5/m99); see timeoutFromMetadata.
 	TimeoutSeconds int `json:"timeoutSeconds"`
-	// IdleTimeoutSeconds is always 0: bex never suspends a sandbox for
-	// inactivity (see validateIdleTimeout), so Render's
-	// "0 disables automatic idle suspension" is the honest answer (w2/m263).
+	// IdleTimeoutSeconds is the inactivity window after which the sandbox
+	// suspends; 0 disables idle suspension, as on Render (w2/m278). See
+	// resolveIdleTimeout.
 	IdleTimeoutSeconds int            `json:"idleTimeoutSeconds"`
 	NetworkPolicy      *NetworkPolicy `json:"networkPolicy,omitempty"`
 	Owner              string         `json:"owner,omitempty"`
@@ -182,8 +182,10 @@ func mapOpenSandboxStatus(s string) Status {
 	switch s {
 	case "Running", "running", "Ready", "ready":
 		return StatusRunning
-	case "Creating", "creating", "Pending", "pending":
+	case "Creating", "creating", "Pending", "pending", "Allocated", "allocated":
 		return StatusCreating
+	case "Pausing", "pausing", "Suspending", "suspending":
+		return StatusSuspending
 	case "Paused", "paused", "Stopped", "stopped", "Suspended", "suspended":
 		return StatusSuspended
 	case "Resuming", "resuming":
@@ -195,8 +197,7 @@ func mapOpenSandboxStatus(s string) Status {
 	}
 }
 
-// renderListStatuses is Render's list-sandboxes `status` enum. Filtering on
-// StatusSuspending matches nothing, as a status no sandbox is in does on Render.
+// renderListStatuses is Render's list-sandboxes `status` enum.
 var renderListStatuses = []string{
 	string(StatusCreating), string(StatusRunning), string(StatusSuspending), string(StatusSuspended),
 	string(StatusResuming), string(StatusErrored), string(StatusTerminated),

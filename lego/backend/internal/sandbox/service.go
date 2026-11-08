@@ -25,6 +25,7 @@ import (
 	"log"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -55,9 +56,6 @@ const (
 	// agent-session sandbox, whose canonical id stays the substrate id.
 	metadataPublicID     = "bex.co/sandbox-id"
 	metadataAgentSession = agentsession.LabelSession
-	// Render's idleTimeoutSeconds bounds for a positive value.
-	minIdleTimeout = 300
-	maxIdleTimeout = 86400
 )
 
 // KeyProvider mints/looks up a workspace's OpenSandbox tenant key (OSEP-0014):
@@ -120,6 +118,13 @@ type Service struct {
 	// Metrics reports /v1/sandboxes lifecycle outcomes (w5/m95). nil is a
 	// working no-op, so a Service built without a registry needs no guard.
 	Metrics *Metrics
+	// Activity records exec and file activity for idle suspension (w2/m278).
+	// nil (store off) disables idle suspension; wake-on-exec still works.
+	Activity ActivityStore
+	// ResumePoll and ActivityHeartbeat override the wake-on-exec poll interval
+	// and the open-stream activity heartbeat; zero uses the defaults.
+	ResumePoll        time.Duration
+	ActivityHeartbeat time.Duration
 }
 
 // CreateRequest is the caller's create input. OwnerID binds the workspace (as
@@ -127,15 +132,15 @@ type Service struct {
 // since the Render CLI sends no template); Plan/Region/TimeoutSeconds/NetworkPolicy
 // are Render CLI create fields echoed back on the resource. A named Plan sizes
 // the sandbox (planResources); an omitted one keeps the template's own size.
-// TimeoutSeconds nil is an omitted timeout (see resolveTimeout).
-// IdleTimeoutSeconds is Render's create field; see validateIdleTimeout.
+// TimeoutSeconds nil is an omitted timeout (see resolveTimeout), and
+// IdleTimeoutSeconds nil an omitted idle timeout (see resolveIdleTimeout).
 type CreateRequest struct {
 	OwnerID            string
 	Template           string
 	Plan               Plan
 	Region             string
 	TimeoutSeconds     *int
-	IdleTimeoutSeconds int
+	IdleTimeoutSeconds *int
 	NetworkPolicy      *NetworkPolicy
 }
 
@@ -256,28 +261,6 @@ func refuseGroupAndImage(sandboxGroupID string, hasImage bool) error {
 			map[string]any{"fields": []string{"buildId", "buildName", "image"}, "flags": []string{"--image", "--build"}})
 	}
 	return nil
-}
-
-// validateIdleTimeout applies Render's idleTimeoutSeconds contract (0, or 300
-// through 86400): 0 is honored, and a positive value is refused by name
-// (w2/m263). bex has no idle suspension: OpenSandbox reports no activity
-// signal, and a Kubernetes pause snapshots only the root filesystem (ADR042
-// D5), so suspending an "idle" sandbox would kill its processes and nothing
-// resumes it on the next exec. 0 — "disable automatic idle suspension" — is
-// exactly what bex does, and is what every sandbox reports (ADR018 § Sandbox
-// create flags).
-func validateIdleTimeout(idle int) error {
-	if idle == 0 {
-		return nil
-	}
-	if idle < minIdleTimeout || idle > maxIdleTimeout {
-		return core.NewBadRequestError("SANDBOX_IDLE_TIMEOUT_INVALID",
-			fmt.Sprintf("sandbox idleTimeoutSeconds must be 0 (disabled) or between %d and %d", minIdleTimeout, maxIdleTimeout),
-			map[string]any{"field": "idleTimeoutSeconds", "minimumNonZero": minIdleTimeout, "max": maxIdleTimeout})
-	}
-	return core.NewBadRequestError("SANDBOX_IDLE_TIMEOUT_UNSUPPORTED",
-		"automatic idle suspension is not supported: a bex sandbox runs until its timeout or until you stop it; omit --idle-timeout or pass --idle-timeout=0",
-		map[string]any{"field": "idleTimeoutSeconds", "flags": []string{"--idle-timeout"}, "supported": []int{0}})
 }
 
 // invalidPlan is Render's invalid_sandbox_plan refusal: the message lists the
@@ -559,11 +542,14 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 		Status:         mapOpenSandboxStatus(raw.Status.State),
 		Region:         raw.Metadata[metadataRegion],
 		TimeoutSeconds: timeoutFromMetadata(raw.Metadata[metadataTimeout]),
-		NetworkPolicy:  policy,
-		Owner:          raw.Metadata[metadataOwner],
-		Workspace:      raw.Metadata[metadataWorkspace],
-		CreatedAt:      raw.Created,
-		Image:          raw.Image.URI,
+		// Agent-session sandboxes carry no stamp and read 0: they never
+		// idle-suspend (their feature owns their lifecycle).
+		IdleTimeoutSeconds: idleTimeoutFromMetadata(raw.Metadata[metadataIdleTimeout]),
+		NetworkPolicy:      policy,
+		Owner:              raw.Metadata[metadataOwner],
+		Workspace:          raw.Metadata[metadataWorkspace],
+		CreatedAt:          raw.Created,
+		Image:              raw.Image.URI,
 	}
 }
 
@@ -611,7 +597,8 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err != nil {
 		return Sandbox{}, err
 	}
-	if err := validateIdleTimeout(req.IdleTimeoutSeconds); err != nil {
+	idle, err := resolveIdleTimeout(req.IdleTimeoutSeconds)
+	if err != nil {
 		return Sandbox{}, err
 	}
 	policy, err := normalizeNetworkPolicy(req.NetworkPolicy)
@@ -634,7 +621,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
 	// so bex stamps its own and carries it as durable metadata (metadataPublicID).
 	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, timeout, policy, nil,
-		map[string]string{metadataPublicID: ids.New(ids.Sandbox)})
+		map[string]string{metadataPublicID: ids.New(ids.Sandbox), metadataIdleTimeout: strconv.Itoa(idle)})
 }
 
 // createResolved starts a sandbox whose timeout is already resolved in
@@ -1138,7 +1125,21 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		}
 	}
 	if err := op(ctx, key, raw); err != nil {
+		switch {
+		case errors.Is(err, errOpenSandboxNotFound):
+			return sandboxNotFound(id)
+		case errors.Is(err, errOpenSandboxConflict):
+			return core.NewConflictError("SANDBOX_LIFECYCLE_CONFLICT",
+				fmt.Sprintf("sandbox %s is %s; wait for it to settle and retry", id, mapOpenSandboxStatus(raw.Status.State)),
+				map[string]any{"id": id, "status": string(mapOpenSandboxStatus(raw.Status.State))})
+		}
 		return err
+	}
+	if phase == StatusResuming && idleTracked(raw) {
+		// A resumed sandbox starts a fresh idle window, and any idle-sweeper
+		// claim on it is spent.
+		s.touchActivity(ctx, ws, raw.ID)
+		s.clearSuspendClaim(ctx, ws, raw.ID)
 	}
 	raw.Status.State = string(phase)
 	s.Meter.Observe(ctx, raw)

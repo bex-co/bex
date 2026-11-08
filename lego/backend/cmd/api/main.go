@@ -450,6 +450,13 @@ func main() {
 		if srv.AgentSessions != nil {
 			srv.AgentSessions.SandboxMetrics = m
 		}
+		// Idle suspension (w2/m278): pause sandboxes past idleTimeoutSeconds
+		// with no exec or file transfer. Every replica sweeps; the store's
+		// claim makes one of them pause each sandbox. Store-off has no
+		// activity record and no tenant keys to sweep.
+		if st != nil {
+			go (&sandbox.IdleSuspender{Service: srv.Sandbox, Tenants: st}).Run(ctx)
+		}
 	}
 	// codex round-8 #9: the signed git webhook durably claims each processed
 	// delivery body so a captured (body, signature) pair cannot be replayed into
@@ -1317,6 +1324,9 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			deps.SandboxKeys = sandboxKeyProvider{st}
 			deps.SandboxMeter = &sandbox.Meter{Client: deps.SandboxClient, Store: st}
 			go deps.SandboxMeter.Run(ctx)
+			// Idle suspension (w2/m278): exec/file activity is recorded in the
+			// store; the sweeper itself starts once the Service exists.
+			deps.SandboxActivity = st
 			// Workspace-delete sandbox teardown (w1/m61): stop the workspace's
 			// running OpenSandbox sandboxes before the tenant row (and its sandbox
 			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so

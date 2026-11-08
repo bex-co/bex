@@ -142,6 +142,11 @@ func (s *Service) authorizeFileTarget(ctx context.Context, req FileConnectReques
 			return "", osSandbox{}, err
 		}
 	}
+	// A file transfer is activity and wakes a suspended sandbox, as on Render.
+	raw, err = s.ensureRunning(ctx, key, ws, raw)
+	if err != nil {
+		return "", osSandbox{}, err
+	}
 	return ws, raw, nil
 }
 
@@ -235,11 +240,12 @@ func (s *Service) ConnectFileHandler() http.Handler {
 			_ = controller.SetReadDeadline(time.Time{})
 			_ = controller.SetWriteDeadline(time.Time{})
 		}()
-		ws, raw, err := s.authorizeFileTarget(ctx, FileConnectRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Operation: claims.Operation, Path: claims.Path})
+		ws, raw, err := s.authorizeFileTarget(withResumeWait(ctx, LongResumeWait), FileConnectRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Operation: claims.Operation, Path: claims.Path})
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
+		defer s.holdActive(ctx, ws, raw)()
 		ticket, gateway, err := s.gatewayFileTicket(claims.Subject, ws, raw, claims.Operation, claims.Path)
 		if err != nil {
 			core.WriteErr(w, err)

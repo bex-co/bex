@@ -34,8 +34,9 @@ type spawnSandboxArgs struct {
 	Region   string `json:"region,omitempty"`
 	// TimeoutSeconds: omitted = 86400 s, 0 = no timeout (see resolveTimeout).
 	TimeoutSeconds *int `json:"timeoutSeconds,omitempty"`
-	// IdleTimeoutSeconds is Render's create field; see validateIdleTimeout.
-	IdleTimeoutSeconds int            `json:"idleTimeoutSeconds,omitempty"`
+	// IdleTimeoutSeconds: omitted = 900 s, 0 disables idle suspension (see
+	// resolveIdleTimeout).
+	IdleTimeoutSeconds *int           `json:"idleTimeoutSeconds,omitempty"`
 	NetworkPolicy      *NetworkPolicy `json:"networkPolicy,omitempty"`
 }
 

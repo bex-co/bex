@@ -195,11 +195,12 @@ func TestExecTicketBindsSubstrateID(t *testing.T) {
 		Client: NewClient(srv.URL),
 		Exec:   &ExecConfig{Secret: secret, GatewayURL: gateway.URL, Client: gateway.Client()},
 	}
-	resp, err := svc.dialGateway(callerCtx(), ExecRequest{SandboxID: publicID, Command: "true"})
+	resp, release, err := svc.dialGateway(callerCtx(), ExecRequest{SandboxID: publicID, Command: "true"})
 	if err != nil {
 		t.Fatalf("exec by public id: %v", err)
 	}
 	_ = resp.Body.Close()
+	release()
 
 	claims, err := sandboxexec.Verify(secret, ticket, time.Now())
 	if err != nil {

@@ -60,7 +60,6 @@ func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing
 		status                   int
 		code                     string
 	}{
-		{"--idle-timeout 600", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","idleTimeoutSeconds":600}`, 400, "SANDBOX_IDLE_TIMEOUT_UNSUPPORTED"},
 		{"--idle-timeout 100", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","idleTimeoutSeconds":100}`, 400, "SANDBOX_IDLE_TIMEOUT_INVALID"},
 		{"--group", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","sandboxGroupId":"` + group + `"}`, 400, "SANDBOX_GROUPS_UNSUPPORTED"},
 		{"--image by id", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","buildId":"sbb-` + strings.Repeat("c", 20) + `"}`, 400, "SANDBOX_IMAGES_UNSUPPORTED"},

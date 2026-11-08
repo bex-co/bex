@@ -111,7 +111,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"ownerId":        gqlutil.Arg(graphql.String),
 				"region":         gqlutil.Arg(graphql.String),
 				"timeoutSeconds": gqlutil.Arg(graphql.Int),
-				// Render's idleTimeoutSeconds; see validateIdleTimeout.
+				// Render's idleTimeoutSeconds: omitted = 900, 0 disables idle
+				// suspension; see resolveIdleTimeout.
 				"idleTimeoutSeconds": gqlutil.Arg(graphql.Int),
 				"networkPolicy":      gqlutil.Arg(sandboxNetworkPolicyInput),
 			},
@@ -126,7 +127,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Plan:               Plan(gqlutil.Str(p.Args, "plan")),
 					Region:             gqlutil.Str(p.Args, "region"),
 					TimeoutSeconds:     gqlutil.IntPtr(p.Args, "timeoutSeconds"),
-					IdleTimeoutSeconds: gqlutil.Int(p.Args, "idleTimeoutSeconds"),
+					IdleTimeoutSeconds: gqlutil.IntPtr(p.Args, "idleTimeoutSeconds"),
 					NetworkPolicy:      policy,
 				})
 			},

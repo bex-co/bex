@@ -38,9 +38,9 @@ The shared contract and real handler/launcher tests live in `lego/cli/testdata/s
 
 **SandboxPlan** (compute size): `1c-2g` · `2c-4g` · `4c-8g` · `8c-16g`, plus the deprecated `starter` · `standard` · `pro` (sized like the Workflow plans of the same name). Since w2/m263 each plan sets the sandbox container's CPU/memory limit (`starter` 0.5 CPU/512 MiB, `standard` = `1c-2g`, `pro` = `2c-4g`); see [ADR018 § Sandbox create flags](../ADR018-render-parity.md#sandbox-create-flags-w2m263) for `idleTimeoutSeconds`, `timeoutSeconds: 0`, groups and images.
 
-**SandboxStatus**: `creating` · `running` · `suspended` · `resuming` · `errored` · `terminated`.
+**SandboxStatus**: `creating` · `running` · `suspending` · `suspended` · `resuming` · `errored` · `terminated`.
 
-Note: Render's sandbox lifecycle has a `suspended`/`resuming` pair (pause/resume) distinct from `terminated`. bex maps `suspended` ⇄ OpenSandbox pause (rootfs-only on the k8s substrate, ADR042 D5) and `terminated` ⇄ delete.
+Note: Render's sandbox lifecycle has a `suspending`/`suspended`/`resuming` set (idle suspension and wake-on-exec) distinct from `terminated`. bex maps OpenSandbox `Pausing` ⇄ `suspending`, `Paused` ⇄ `suspended`, `Resuming` ⇄ `resuming` (rootfs-only on the k8s substrate, ADR042 D5) and delete ⇄ `terminated`. Since w2/m278 bex suspends a sandbox after `idleTimeoutSeconds` (default 900) with no exec or file transfer, and the next exec or file transfer resumes it ([ADR014 D4](../ADR014-sandboxes.md#d4--idle-hibernate--gateway-observed-autopause)).
 
 ## Deliberate bex divergences
 

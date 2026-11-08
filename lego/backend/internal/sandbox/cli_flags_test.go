@@ -128,43 +128,48 @@ func TestUnknownPlanIsRefusedWithTheAcceptedNames(t *testing.T) {
 	}
 }
 
+// TestIdleTimeout pins Render's idleTimeoutSeconds contract (w2/m278): an
+// omitted value is 900 s, 0 disables idle suspension, 300–86400 is honored,
+// and the value is stamped where the idle sweeper reads it and reported back.
 func TestIdleTimeout(t *testing.T) {
-	t.Run("zero disables idle suspension, as bex always does", func(t *testing.T) {
-		svc, _ := recordingUpstream(t)
-		mux := http.NewServeMux()
-		svc.RegisterREST(mux)
-		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/sandboxes",
-			strings.NewReader(`{"template":"node","idleTimeoutSeconds":0}`)).WithContext(callerCtx()))
-		if rec.Code != http.StatusCreated {
-			t.Fatalf("create = %d %s", rec.Code, rec.Body.String())
-		}
-		// Detail reports the real value — the CLI prints "Idle timeout: disabled".
-		if !strings.Contains(rec.Body.String(), `"idleTimeoutSeconds":0`) {
-			t.Fatalf("detail %s does not report idleTimeoutSeconds 0", rec.Body.String())
-		}
-	})
 	for _, tc := range []struct {
-		idle int
-		code string
+		name, body string
+		want       string
 	}{
-		{600, "SANDBOX_IDLE_TIMEOUT_UNSUPPORTED"},
-		{300, "SANDBOX_IDLE_TIMEOUT_UNSUPPORTED"},
-		{86400, "SANDBOX_IDLE_TIMEOUT_UNSUPPORTED"},
-		{299, "SANDBOX_IDLE_TIMEOUT_INVALID"},
-		{86401, "SANDBOX_IDLE_TIMEOUT_INVALID"},
-		{-1, "SANDBOX_IDLE_TIMEOUT_INVALID"},
+		{"omitted defaults to 900", `{"template":"node"}`, "900"},
+		{"zero disables idle suspension", `{"template":"node","idleTimeoutSeconds":0}`, "0"},
+		{"minimum", `{"template":"node","idleTimeoutSeconds":300}`, "300"},
+		{"maximum", `{"template":"node","idleTimeoutSeconds":86400}`, "86400"},
 	} {
-		_, err := refusingUpstream(t).Create(callerCtx(), CreateRequest{Template: "node", IdleTimeoutSeconds: tc.idle})
-		wantCode(t, err, tc.code)
-		if tc.code == "SANDBOX_IDLE_TIMEOUT_UNSUPPORTED" && !strings.Contains(err.Error(), "--idle-timeout") {
-			t.Errorf("idle %d: message %q does not name the flag", tc.idle, err.Error())
-		}
+		t.Run(tc.name, func(t *testing.T) {
+			svc, got := recordingUpstream(t)
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/sandboxes",
+				strings.NewReader(tc.body)).WithContext(callerCtx()))
+			if rec.Code != http.StatusCreated {
+				t.Fatalf("create = %d %s", rec.Code, rec.Body.String())
+			}
+			if got.Metadata[metadataIdleTimeout] != tc.want {
+				t.Errorf("stamped idle timeout = %q, want %s", got.Metadata[metadataIdleTimeout], tc.want)
+			}
+			if !strings.Contains(rec.Body.String(), `"idleTimeoutSeconds":`+tc.want+`,`) {
+				t.Errorf("detail %s does not report idleTimeoutSeconds %s", rec.Body.String(), tc.want)
+			}
+		})
+	}
+	for _, idle := range []int{299, 86401, -1, 1} {
+		_, err := refusingUpstream(t).Create(callerCtx(), CreateRequest{Template: "node", IdleTimeoutSeconds: &idle})
+		wantCode(t, err, "SANDBOX_IDLE_TIMEOUT_INVALID")
 	}
 }
 
+// TestIdleTimeoutAgreesAcrossGraphQLAndMCP: GraphQL and MCP create through
+// the same resolve, so an omitted value is 900 and an explicit one is honored
+// and reported on both.
 func TestIdleTimeoutAgreesAcrossGraphQLAndMCP(t *testing.T) {
-	svc := refusingUpstream(t)
+	svc, got := recordingUpstream(t)
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
@@ -172,23 +177,58 @@ func TestIdleTimeoutAgreesAcrossGraphQLAndMCP(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	for _, tc := range []struct{ args, want string }{
+		{`template: "node"`, "900"},
+		{`template: "node", idleTimeoutSeconds: 600`, "600"},
+		{`template: "node", idleTimeoutSeconds: 0`, "0"},
+	} {
+		res := graphql.Do(graphql.Params{
+			Schema:        schema,
+			RequestString: `mutation { createSandbox(` + tc.args + `) { id idleTimeoutSeconds } }`,
+			Context:       callerCtx(),
+		})
+		if len(res.Errors) != 0 {
+			t.Fatalf("GraphQL %s: %#v", tc.args, res.Errors)
+		}
+		raw, _ := json.Marshal(res.Data)
+		if !strings.Contains(string(raw), `"idleTimeoutSeconds":`+tc.want) || got.Metadata[metadataIdleTimeout] != tc.want {
+			t.Errorf("GraphQL %s = %s (stamped %q), want %s", tc.args, raw, got.Metadata[metadataIdleTimeout], tc.want)
+		}
+	}
 	res := graphql.Do(graphql.Params{
 		Schema:        schema,
-		RequestString: `mutation { createSandbox(template: "node", idleTimeoutSeconds: 600) { id idleTimeoutSeconds } }`,
+		RequestString: `mutation { createSandbox(template: "node", idleTimeoutSeconds: 100) { id } }`,
 		Context:       callerCtx(),
 	})
-	if len(res.Errors) != 1 || res.Errors[0].Extensions["code"] != "SANDBOX_IDLE_TIMEOUT_UNSUPPORTED" {
+	if len(res.Errors) != 1 || res.Errors[0].Extensions["code"] != "SANDBOX_IDLE_TIMEOUT_INVALID" {
 		t.Fatalf("GraphQL refusal = %#v", res.Errors)
 	}
 
 	client := mcpClient(t, svc)
+	for _, tc := range []struct {
+		args map[string]any
+		want string
+	}{
+		{map[string]any{"template": "node"}, "900"},
+		{map[string]any{"template": "node", "idleTimeoutSeconds": 1800}, "1800"},
+		{map[string]any{"template": "node", "idleTimeoutSeconds": 0}, "0"},
+	} {
+		toolRes, err := client.CallTool(callerCtx(), &mcp.CallToolParams{Name: "spawn_sandbox", Arguments: tc.args})
+		if err != nil || toolRes.IsError {
+			t.Fatalf("MCP %v: %v %#v", tc.args, err, toolRes)
+		}
+		raw, _ := json.Marshal(toolRes.StructuredContent)
+		if !strings.Contains(string(raw), `"idleTimeoutSeconds":`+tc.want) || got.Metadata[metadataIdleTimeout] != tc.want {
+			t.Errorf("MCP %v = %s (stamped %q), want %s", tc.args, raw, got.Metadata[metadataIdleTimeout], tc.want)
+		}
+	}
 	toolRes, err := client.CallTool(callerCtx(), &mcp.CallToolParams{
-		Name: "spawn_sandbox", Arguments: map[string]any{"template": "node", "idleTimeoutSeconds": 600},
+		Name: "spawn_sandbox", Arguments: map[string]any{"template": "node", "idleTimeoutSeconds": 100},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !toolRes.IsError || !strings.Contains(toolRes.Content[0].(*mcp.TextContent).Text, "SANDBOX_IDLE_TIMEOUT_UNSUPPORTED") {
+	if !toolRes.IsError || !strings.Contains(toolRes.Content[0].(*mcp.TextContent).Text, "SANDBOX_IDLE_TIMEOUT_INVALID") {
 		t.Fatalf("MCP refusal = %#v", toolRes.Content)
 	}
 }

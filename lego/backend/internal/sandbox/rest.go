@@ -58,8 +58,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// Render CLI v2.29's `--from <name>` sends snapshotName (an ID
 			// still goes as snapshotId); refused the same way.
 			SnapshotName string `json:"snapshotName"`
-			// Render CLI v2.31+ `--idle-timeout`; see validateIdleTimeout.
-			IdleTimeoutSeconds int `json:"idleTimeoutSeconds"`
+			// Render CLI v2.31+ `--idle-timeout`. A pointer so an omitted value
+			// (900 s) differs from an explicit 0 (disabled); see
+			// resolveIdleTimeout.
+			IdleTimeoutSeconds *int `json:"idleTimeoutSeconds"`
 			// Declared to be refused by name, like Env/SnapshotID above:
 			// v2.32 `--group`/`--sandbox-group` sends sandboxGroupId, and
 			// v2.34 `--image` sends buildId (an `sbb-` id) or buildName. A raw
@@ -154,6 +156,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 				f.Flush()
 			}
 		}
+		r = allowLongResume(w, r)
 		err := s.StreamExec(r.Context(), ExecRequest{
 			OwnerID: owner, SandboxID: r.PathValue("id"), Command: body.Command,
 		}, w, flush)
@@ -178,6 +181,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if owner == "" {
 			owner = body.OwnerID
 		}
+		// Minting resumes a sandbox suspended for inactivity, so this
+		// request may wait for it (the pinned client sets no timeout).
+		r = allowLongResume(w, r)
 		out, err := s.ConnectRun(r.Context(), ConnectRequest{
 			OwnerID: owner, SandboxID: r.PathValue("id"), Operation: r.PathValue("operation"), Command: body.Command,
 		}, s.connectBaseURL(r))
@@ -190,6 +196,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// The pinned file-copy client sends no JSON body: both ownerId and path
 	// are query parameters, and operation is part of the mint route.
 	mux.HandleFunc("POST /v1/sandboxes/{id}/files/{operation}/token", func(w http.ResponseWriter, r *http.Request) {
+		r = allowLongResume(w, r)
 		out, err := s.ConnectFile(r.Context(), FileConnectRequest{
 			OwnerID: r.URL.Query().Get("ownerId"), SandboxID: r.PathValue("id"),
 			Operation: r.PathValue("operation"), Path: r.URL.Query().Get("path"),

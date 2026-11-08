@@ -366,6 +366,9 @@ type Deps struct {
 	SandboxDefaultPlan     sandbox.Plan
 	SandboxDefaultTemplate string
 	SandboxMeter           *sandbox.Meter
+	// SandboxActivity is the exec/file activity record behind sandbox idle
+	// suspension (w2/m278); nil (store off) disables idle suspension.
+	SandboxActivity sandbox.ActivityStore
 	// SandboxExec wires `render ea sandbox exec` (w3/m33) — bex-api authorizes and
 	// reverse-proxies the SSE from the isolated gateway; nil => the exec verb 503s.
 	SandboxExec *sandbox.ExecConfig
@@ -1212,6 +1215,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		Exec:            d.SandboxExec,
 		Meter:           d.SandboxMeter,
 		SessionEgress:   d.SandboxSessionEgress,
+		Activity:        d.SandboxActivity,
 	}
 }
 
