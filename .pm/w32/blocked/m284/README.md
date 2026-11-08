@@ -1,6 +1,6 @@
 # w32 · m284 — Render SDK v1.8.0 sandbox compatibility: the unmodified SDKs drive bex sandboxes, each method graded
 
-**Worker:** worker32 **Goal:** a user's unmodified Render Python or TypeScript SDK script, pointed at bex with `base_url`, creates, runs commands in, copies files to and from, and terminates a bex sandbox, and every SDK sandbox method has a recorded grade **Status:** in progress — t001 done; t003 static fixes shipped ahead of the walk; t002 live walk next, after the deploy
+**Worker:** worker32 **Goal:** a user's unmodified Render Python or TypeScript SDK script, pointed at bex with `base_url`, creates, runs commands in, copies files to and from, and terminates a bex sandbox, and every SDK sandbox method has a recorded grade **Status:** blocked — t001 done; t003 static fixes shipped and deployed (`2d453686f`, 2026-11-08 12:41 UTC); t002 live walk waits on a working QA sign-in
 
 ## Tasks (in order)
 
@@ -33,3 +33,10 @@
 - **t001:** `scripts/render-sdk-compat.sh` + `scripts/render-sdk-compat/scenario.{py,mjs}` run the pinned unmodified `render-sdk==1.8.0` and `@renderinc/sdk@1.8.0` against a bex origin. The static wire map (every SDK sandbox method → route → bex answer) is summarized in `docs/cli-compatibility-checklist.md` § Render SDK.
 - **t003 (static part, ahead of the walk):** sandbox reads now carry Render's required `region`, `createdAt` and list `cursor` (the Python SDK raised on their absence even after a successful create); opt-in `cursor`/`limit` paging; the file gateway answers Render's JSON error body with `file_not_found`; the exec gateway sends a 15 s SSE keep-alive (the Python SDK times out at 45 s of silence); `name` is refused by name on create and list.
 - **Follow-ups found:** relative remote paths (Render resolves them under the user's home; bex refuses) and a resume that outlasts the Python SDK's 5 s HTTP timeout — filed as inbox notes once the walk confirms them.
+
+## Blocked — 2026-11-08 (`/loopx w32`)
+
+- **Gate (user):** the live SDK walk (t002) needs a bex bearer token for the QA user on production. `bash scripts/qa-login.sh` failed twice on 2026-11-08 ~12:45 UTC with `error: login failed — no session established` (Kratos password flow submitted, but `GET /sessions/whoami` was not 200). It is not exit 2, so `QA_EMAIL`/`QA_PASSWORD` are present; the likely causes are a stale password or a second factor now required on the QA account. The credential files were not read.
+- **Release condition:** `bash scripts/qa-login.sh` prints `ok …` again (fix the QA credentials in `.env`/`muse.env`, or remove the second factor from the QA account), **or** an already-authorized QA OAuth token is supplied privately as `BEX_ACCESS_TOKEN`. Then `/unblock w32` and run t002.
+- **Walk recipe once unblocked:** isolated `BEX_CLI_CONFIG_PATH` + `BEX_HOST=https://api.bex.co/v1/` → `bex login` (device URL) → with the QA session jar, open the device URL and POST the dashboard's `/auth/device` confirmation, then `qa-login.sh --login-challenge` for the login challenge → read the token into `RENDER_API_KEY` without printing it → `BEX_API_URL=https://api.bex.co RENDER_WORKSPACE_ID=<QA workspace> bash scripts/render-sdk-compat.sh`. Record the PASS/FAIL lines here and regrade `docs/cli-compatibility-checklist.md` § Render SDK.
+- **Already true without the walk:** the t003 fixes are covered by unit tests (`internal/sandbox/sdk_compat_test.go`, the `internal/sshgateway/sandboxsse` keep-alive test, the `internal/sshgateway/sandboxfiles` `file_not_found` test) and are deployed.

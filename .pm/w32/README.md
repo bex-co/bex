@@ -5,7 +5,7 @@
 ## Milestones
 
 - [ ] **m283** — Sandbox network policy as on Render: allow-all by default, plus an HTTPS hostname allow-list (8 tasks) ← from `/pm-brainstorm` w32 2026-11-07 #3
-- [ ] **m284** — Render SDK v1.8.0 sandbox compatibility: the unmodified SDKs drive bex sandboxes, each method graded (7 tasks) ← from `/pm-brainstorm` w32 2026-11-07 #4
+- [ ] **m284** — **BLOCKED (user: `scripts/qa-login.sh` fails with "no session established" on production — fix the QA credentials or the QA account's second factor, or supply a QA `BEX_ACCESS_TOKEN`; `/unblock w32`)** — [Render SDK v1.8.0 sandbox compatibility](blocked/m284/README.md) (7 tasks; t001 done, t003 static fixes deployed; t002 live walk next)
 - [ ] **m285** — **BLOCKED (upstream: w2/m278 — its production walk must prove the rootfs pause/resume commit on production, and its pending user decision on memory/process loss also settles whether `--kind runtime` (Render's default) can be served or must be refused; `/unblock w2` / `/unblock w32`)** — [Sandbox filesystem snapshots, as on Render](blocked/m285/README.md) (8 tasks; none started)
 
 ## Inbox
