@@ -45,3 +45,17 @@ func TestHideCauseLogsWhatItHides(t *testing.T) {
 		t.Fatalf("a canceled request was logged: %q", strings.TrimPrefix(logged(), before))
 	}
 }
+
+// w5/m286: a timed-out call answers REQUEST_TIMEOUT on MCP as on REST, never
+// the dependency's wrapped text; a coded refusal that wraps a deadline keeps
+// its own code.
+func TestMCPErrorReportsATimeout(t *testing.T) {
+	err := MCPError(fmt.Errorf("get pod: Get https://10.0.0.1/api: %w", context.DeadlineExceeded))
+	if err == nil || err.Error() != RequestTimeoutCode+": "+RequestTimedOutMessage {
+		t.Fatalf("MCPError = %v, want REQUEST_TIMEOUT", err)
+	}
+	coded := NewConflictError("BUSY", "busy", nil)
+	if got := MCPError(fmt.Errorf("%w: %w", coded, context.DeadlineExceeded)); !strings.HasPrefix(got.Error(), "BUSY: ") {
+		t.Fatalf("coded timeout = %v, want its own code", got)
+	}
+}

@@ -19,8 +19,8 @@ User decision 2026-11-07: all five items of the seventh `/pm-brainstorm for w5` 
 
 - [ ] **m283** — [MCP Blueprint tools match Render's: create_blueprint plans, approve_blueprint applies](m283/README.md) (9 tasks; 5h55m total) ← round 7 item 1; Render MCP server #205–#230 — **in progress**: shipped; production MCP walk (t005) pending deploy
 - [ ] **m284** — [Restart waits for an in-flight deploy under Render's Wait policy](m284/README.md) (9 tasks; 6h45m total) ← round 7 item 2; ADR018:95 — **in progress**: shipped; production restart-during-build walk (t005) pending deploy
-- [ ] **m285** — [A webhook's signing secret is readable after create, as on Render](m285/README.md) (8 tasks; 5h15m total) ← round 7 item 3; ADR018:300 unsigned ◐
-- [ ] **m286** — [REST and MCP requests have a deadline instead of a 502 that keeps running](m286/README.md) (8 tasks; 5h30m total) ← round 7 item 4; w3/m248 findings
+- [x] **m285** — [A webhook's signing secret is readable after create, as on Render](done/m285/README.md) (8 tasks; 5h15m total) ← round 7 item 3; ADR018:300 unsigned ◐ — **DONE 2026-11-08: already met by w3/m282** (secret readable for managers on every surface; no code change)
+- [x] **m286** — [REST and MCP requests have a deadline instead of a 502 that keeps running](done/m286/README.md) (8 tasks; 5h30m total) ← round 7 item 4; w3/m248 findings — **DONE 2026-11-08**: REST and MCP calls stop at 28 s with REQUEST_TIMEOUT; streaming routes and the git webhook exempt
 - [ ] **m287** — [Sandboxes have names (`--name`), as in Render CLI v2.36](m287/README.md) (7 tasks; 4h30m total) ← round 7 item 5; Render CLI v2.36.0
 - [ ] **181** — [Render's planned Blueprint create reads `main`, not the repository's default branch](181.md) (~45m) ← found by w5/m283
 

@@ -65,6 +65,8 @@ func AddTool[In, Out any](s *mcp.Server, t *mcp.Tool, h mcp.ToolHandlerFor[In, O
 				res, err = nil, errors.New("internal error")
 			}
 		}()
+		ctx, cancel := context.WithTimeout(ctx, core.RequestBudget)
+		defer cancel()
 		res, out, err = h(ctx, req, in)
 		return res, out, core.MCPError(err)
 	})

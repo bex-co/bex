@@ -301,6 +301,10 @@ func MCPError(err error) error {
 		}
 		return fmt.Errorf("%s: %w", coded.Code, err)
 	}
+	if timedOut(err) {
+		log.Printf("bex-api mcp: request timed out: %v", err)
+		return fmt.Errorf("%s: %s", RequestTimeoutCode, RequestTimedOutMessage)
+	}
 	// Parity with WriteErr (REST) and the GraphQL sanitizer: an unclassified
 	// internal failure must not spill its raw text (pgx/Kubernetes internals)
 	// into the tool result. Log the real cause and return a generic error; every

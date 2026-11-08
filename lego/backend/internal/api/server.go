@@ -292,6 +292,8 @@ type Server struct {
 	schema graphql.Schema
 	// gqlBudget overrides gqlExecTimeout in tests; zero means gqlExecTimeout.
 	gqlBudget time.Duration
+	// restBudget overrides core.RequestBudget in tests; zero means it.
+	restBudget time.Duration
 
 	mcpOnce   sync.Once
 	mcpServer *mcp.Server
@@ -1437,7 +1439,7 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// wrappers outside it clone the request, so reading r.Pattern after the
 	// fact would only ever see the outer `/v1/` mount, not the specific route
 	// the telemetry needs (w3/m84).
-	mux.Handle(restMountPattern, auth(rl(withValidQueryText(restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, rest))))))))
+	mux.Handle(restMountPattern, auth(rl(withValidQueryText(restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, s.withRequestBudget(rest)))))))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies).

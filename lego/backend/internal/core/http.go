@@ -301,6 +301,29 @@ func emptyArray(body any) any {
 
 var jsonMarshalerType = reflect.TypeFor[json.Marshaler]()
 
+// RequestBudget bounds a REST request's or MCP tool call's handler work
+// (w5/m286), as gqlExecTimeout bounds a GraphQL document. It sits inside
+// bex-api's 30 s HTTP write timeout (api.HTTPWriteTimeout, which a test holds
+// it under), so a request past it is answered with REQUEST_TIMEOUT rather than
+// cut into a CORS-less 502 while its work runs on; and above
+// wait_agent_sessions' 25 s wait, which answers timedOut itself.
+const RequestBudget = 28 * time.Second
+
+// RequestTimeoutCode is the error code of a request that ran out of
+// RequestBudget (or whose dependency call timed out).
+const RequestTimeoutCode = "REQUEST_TIMEOUT"
+
+// RequestTimedOutMessage says what a timed-out caller can rely on: the work
+// was stopped, but a write may have committed first.
+const RequestTimedOutMessage = "the request did not finish in time and was stopped; a change it was making may still have been applied, so check before retrying"
+
+// timedOut is a deadline that is not already a developer-coded refusal. Its
+// wrapped text can name internal hosts, so it is never shown.
+func timedOut(err error) bool {
+	var ce *CodedError
+	return errors.Is(err, context.DeadlineExceeded) && !errors.As(err, &ce)
+}
+
 // WriteErr maps a domain error sentinel onto its HTTP status and writes the
 // body. The envelope carries BOTH bex's original {"error": msg} shape (kept
 // for existing tooling) and Render's public-API error schema
@@ -311,6 +334,12 @@ var jsonMarshalerType = reflect.TypeFor[json.Marshaler]()
 // callers keep reading `.error` unchanged. One mapper for every feature's
 // REST fragment, so the surfaces answer identically.
 func WriteErr(w http.ResponseWriter, err error) {
+	if timedOut(err) {
+		log.Printf("bex-api: request timed out: %v", err)
+		WriteJSON(w, http.StatusServiceUnavailable, map[string]any{"error": RequestTimedOutMessage, "message": RequestTimedOutMessage,
+			"id": statusErrID(http.StatusServiceUnavailable), "code": RequestTimeoutCode})
+		return
+	}
 	code := http.StatusInternalServerError
 	switch {
 	case errors.Is(err, ErrNotFound):

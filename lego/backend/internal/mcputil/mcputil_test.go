@@ -159,3 +159,21 @@ func TestAddToolDoesNotDoubleWrap(t *testing.T) {
 		t.Fatalf("code appears more than once: %q", alreadyWrapped)
 	}
 }
+
+// w5/m286: every tool call runs under core.RequestBudget, and a call that runs
+// out of it answers REQUEST_TIMEOUT.
+func TestAddToolBoundsTheCallWithTheRequestBudget(t *testing.T) {
+	var deadline bool
+	got := callTool(t, func(s *mcp.Server, tool *mcp.Tool, _ mcp.ToolHandlerFor[args, any]) {
+		mcputil.AddTool(s, tool, func(ctx context.Context, _ *mcp.CallToolRequest, _ args) (*mcp.CallToolResult, any, error) {
+			_, deadline = ctx.Deadline()
+			return nil, nil, context.DeadlineExceeded
+		})
+	}, nil)
+	if !deadline {
+		t.Error("the tool handler ran without a deadline")
+	}
+	if !strings.HasPrefix(got, core.RequestTimeoutCode+": ") {
+		t.Fatalf("timed-out tool answered %q, want REQUEST_TIMEOUT", got)
+	}
+}
