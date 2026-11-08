@@ -2451,8 +2451,8 @@ func assertWorkspaceDomainClaimCount(ctx context.Context, t *testing.T, s *PGSto
 }
 
 // assertWebhooks exercises w3/m11's outbound-webhook store methods against
-// real Postgres: endpoint CRUD (secret write-only past creation, enforced by
-// the read column lists), cross-workspace scoping, the watermark's
+// real Postgres: endpoint CRUD (every read returns the stored secret,
+// w3/m282), cross-workspace scoping, the watermark's
 // seed-once/advance semantics, the composed workspace-wide event feed
 // (webhookEventsQuery — the ascending twin of the service-events view, with
 // its tenant/app join and truthfulness predicates), and the delivery queue's
@@ -2484,15 +2484,15 @@ func assertWebhooks(ctx context.Context, t *testing.T, s *PGStore, pool *pgxpool
 	if err != nil {
 		t.Fatalf("get webhook endpoint: %v", err)
 	}
-	if got.Secret != "" {
-		t.Errorf("Get returned the secret %q — reads must never select it", got.Secret)
+	if got.Secret != "whsec_secret-a" {
+		t.Errorf("Get secret = %q, want the stored one (Render returns it on reads, w3/m282)", got.Secret)
 	}
 	if len(got.EventTypes) != 2 || got.EventTypes[0] != "deploy_started" {
 		t.Errorf("event types did not round-trip: %+v", got.EventTypes)
 	}
 	list, err := s.ListWebhookEndpoints(ctx, []string{ten.ID}, time.Time{}, "", 20)
-	if err != nil || len(list) != 2 || list[0].Secret != "" || list[1].Secret != "" {
-		t.Errorf("list = %+v (err %v), want 2 endpoints with no secret", list, err)
+	if err != nil || len(list) != 2 || list[0].Secret != "whsec_secret-b" || list[1].Secret != "whsec_secret-a" {
+		t.Errorf("list = %+v (err %v), want 2 endpoints with their secrets", list, err)
 	}
 	page1, err := s.ListWebhookEndpoints(ctx, []string{ten.ID}, time.Time{}, "", 1)
 	if err != nil || len(page1) != 1 {

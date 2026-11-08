@@ -55,7 +55,6 @@ func newFakeEndpointStore() *fakeEndpointStore {
 	return &fakeEndpointStore{rows: map[string]store.WebhookEndpoint{}, deliveries: map[string][]store.WebhookAttempt{}}
 }
 
-// redact mirrors the real store's reads, which never select the secret column.
 func (f *fakeEndpointStore) CreateWebhookEndpoint(_ context.Context, tenantID, name, url, secret string, eventTypes []string, enabled bool, createdBy string) (store.WebhookEndpoint, error) {
 	for _, existing := range f.rows {
 		if existing.TenantID == tenantID && strings.EqualFold(existing.Name, name) {
