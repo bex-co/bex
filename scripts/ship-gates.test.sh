@@ -87,8 +87,17 @@ if bash "$root/scripts/ship-gates.sh" 2>/dev/null; then fail "a missing base ref
 # dashboard change runs lint and test from dashboard/, a failing check blocks,
 # and a push without dashboard changes runs nothing.
 repo="$tmp/repo"
-mkdir -p "$repo/scripts" "$repo/dashboard" "$repo/docs"
+mkdir -p "$repo/scripts" "$repo/dashboard" "$repo/docs" "$repo/.github/scripts" "$repo/.github/workflows" "$repo/lego/operator"
 cp "$root/scripts/ship-gates.sh" "$root/scripts/repo-artifact-guard.sh" "$repo/scripts/"
+cp "$root/.github/scripts/native-common-qualify.py" "$repo/.github/scripts/"
+# Stands in for the native custody suites: logs that it ran, fails on demand.
+cat >"$repo/.github/scripts/test_native_oci_stub.py" <<PY
+import os, unittest
+class Custody(unittest.TestCase):
+    def test_custody(self):
+        open("$tmp/native.log", "a").write("ran\\n")
+        self.assertFalse(os.environ.get("NATIVE_FAIL"))
+PY
 git -C "$repo" init -q -b main
 commit() { git -C "$repo" add -A && git -C "$repo" -c user.name=t -c user.email=t@t -c core.hooksPath=/dev/null -c commit.gpgsign=false commit -qm "$1"; }
 echo '{}' >"$repo/dashboard/package.json"
@@ -121,5 +130,32 @@ grep -q "ship-gates: ok" "$tmp/err" && fail "a failing dashboard test still repo
 rm -f "$tmp/yarn.log"
 if YARN_FAIL="install" gate HEAD~1; then fail "a failing dashboard install did not block the push"; fi
 grep -qx "dashboard lint" "$tmp/yarn.log" && fail "lint ran after a failed install"
+
+
+# The native custody gate (w6/107): a custody-pinned file, a native workflow or
+# a native module runs the custody suites, a failure blocks, and anything else
+# runs nothing.
+native_gate() { # <path> <expect: ran|skipped> [NATIVE_FAIL]
+  echo "$RANDOM" >>"$repo/$1"
+  commit "$1"
+  rm -f "$tmp/native.log"
+  if NATIVE_FAIL="${3:-}" gate HEAD~1; then
+    [ -z "${3:-}" ] || fail "$1: a failing custody suite did not block the push"
+  else
+    [ -n "${3:-}" ] || fail "$1: a passing push failed the gate: $(cat "$tmp/err")"
+  fi
+  case "$2" in
+    ran) [ -e "$tmp/native.log" ] || fail "$1: the custody suites did not run: $(cat "$tmp/err")" ;;
+    skipped) [ ! -e "$tmp/native.log" ] || fail "$1: an unrelated change ran the custody suites" ;;
+  esac
+}
+native_gate lego/operator/go.sum ran
+native_gate .github/workflows/native-base-image.yml ran
+native_gate .github/workflows/native-backport-acceptance.yml ran
+native_gate .github/scripts/native-oci-mirror.py ran
+native_gate .github/workflows/native-base-image.yml ran fail
+native_gate docs/b.md skipped
+native_gate lego/operator/go.mod.orig skipped
+native_gate .github/workflows/deploy.yml skipped
 
 echo "ship-gates.test: ok"

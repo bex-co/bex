@@ -22,6 +22,11 @@
 #      1 MiB or a binary/archive under .pm/ (scripts/repo-artifact-guard.sh,
 #      w6/100 D10). Blocks; this is also what stops a stale checkout from
 #      replaying pre-rewrite history.
+#   5. The push changes a native custody-pinned path (native-common-qualify.py
+#      custody-paths), a .github/scripts native module or a native-* workflow,
+#      and the native custody suites fail (about a minute). Blocks: one-line
+#      edits to pinned files passed every local check and turned native-common
+#      red for hours (w6/107).
 #
 #   bash scripts/ship-gates.sh [--fixes-red-main] <base-ref>   # e.g. origin/main
 set -euo pipefail
@@ -97,5 +102,17 @@ if [ -n "$dashboard_changed" ]; then
   }
   rm -f "$install_log"
   (cd dashboard && yarn lint && yarn test)
+fi
+# The custody list comes from the module itself (no copy to drift), and is
+# captured first so a broken module fails the gate closed.
+custody=$(python3 -B .github/scripts/native-common-qualify.py custody-paths)
+all_changed=$(git diff --name-only "$base"..HEAD)
+native_changed=$({
+  grep -xF -f <(printf '%s\n' "$custody") <<<"$all_changed"
+  grep -E '^\.github/(scripts/[^/]*native[^/]*|workflows/native-[^/]*)$' <<<"$all_changed"
+} || true)
+if [ -n "$native_changed" ]; then
+  echo "ship-gates: native custody paths changed — running the native custody suites" >&2
+  python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'
 fi
 echo "ship-gates: ok" >&2

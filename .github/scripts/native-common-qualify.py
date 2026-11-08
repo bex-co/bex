@@ -1275,6 +1275,7 @@ def main():
     commands.add_parser("init")
     commands.add_parser("plan")
     commands.add_parser("profile-env")
+    commands.add_parser("custody-paths", help="print every byte-pinned path, one per line (scripts/ship-gates.sh)")
     commands.add_parser("checkout-evidence").add_argument("source", choices=("fresh", "reviewed-candidate"))
     commands.add_parser("materialize-evidence").add_argument("source", choices=("fresh", "reviewed-candidate"))
     for name in ("bootstrap", "cleanup", "manifest"):
@@ -1290,6 +1291,8 @@ def main():
         plan()
     elif args.command == "profile-env":
         profile_environment()
+    elif args.command == "custody-paths":
+        print("\n".join(sorted(set(SOURCE_FILES) | IMAGE_INPUT_PATHS)))
     elif args.command == "checkout-evidence":
         checkout_evidence(args.source)
     elif args.command == "materialize-evidence":
