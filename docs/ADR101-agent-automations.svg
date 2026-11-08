@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#1f2328">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#57606a"/>
+    </marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#cf222e"/>
+    </marker>
+    <style>
+      .t { font-weight: 600; font-size: 14px; }
+      .s { fill: #57606a; font-size: 12px; }
+      .m { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+      .lane { font-weight: 700; font-size: 12px; letter-spacing: .08em; fill: #57606a; }
+      .ln { stroke: #57606a; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+      .dash { stroke-dasharray: 6 4; }
+      .red { stroke: #cf222e; marker-end: url(#r); }
+      .req { fill: #ddf4ff; stroke: #54aeff; }
+      .met { fill: #dafbe1; stroke: #4ac26b; }
+      .bil { fill: #fff8c5; stroke: #d4a72c; }
+      .ui  { fill: #f6f8fa; stroke: #8c959f; }
+      .ext { fill: #fbefff; stroke: #c297ff; }
+      .bad { fill: #ffebe9; stroke: #ff8182; }
+      rect.b { stroke-width: 1.5; rx: 8; }
+    </style>
+  </defs>
+
+  <text x="20" y="34" font-size="20" font-weight="700">ADR101 — Agent Automations architecture</text>
+  <text x="20" y="56" class="s">an automation = triggers[] + a session template · scheduler loop in bex-api (every replica) · each fire is an ordinary session through Service.Create</text>
+
+  <!-- lane 1 -->
+  <rect x="10" y="72" width="1420" height="196" fill="#f6fbff" rx="10"/>
+  <text x="22" y="90" class="lane">1 · DEFINE (customer or API client)</text>
+
+  <rect class="b ui" x="30" y="108" width="210" height="64"/>
+  <text x="44" y="132" class="t">Dashboard</text>
+  <text x="44" y="152" class="s">/automations · Mine / All</text>
+
+  <rect class="b ui" x="30" y="188" width="210" height="64"/>
+  <text x="44" y="212" class="t">REST · GraphQL · MCP</text>
+  <text x="44" y="232" class="s">/v1/agent-automations</text>
+
+  <rect class="b req" x="340" y="108" width="400" height="144"/>
+  <text x="354" y="132" class="t">agentautomations.Service</text>
+  <text x="354" y="154" class="m">validate template (same validateCreate)</text>
+  <text x="354" y="172" class="m">can_create · only the creator edits</text>
+  <text x="354" y="190" class="m">cron + IANA time zone → nextFireAt</text>
+  <text x="354" y="208" class="m">min interval 5 min · maxSpendUSD required</text>
+  <text x="354" y="226" class="m">if metered · admins: pause/delete/take over</text>
+
+  <rect class="b met" x="840" y="108" width="560" height="144"/>
+  <text x="854" y="132" class="t">Postgres</text>
+  <text x="854" y="154" class="m">agent_automations  (aut-)  template jsonb, triggers jsonb,</text>
+  <text x="854" y="172" class="m">   enabled, created_by, next_fire_at (partial index), paused_reason</text>
+  <text x="854" y="190" class="m">agent_automation_runs  PK (automation_id, fire_at)</text>
+  <text x="854" y="208" class="m">   outcome, session_id, missed_ticks, claimed_until</text>
+  <text x="854" y="226" class="m">agent_sessions.automation_id  (nullable, filterable)</text>
+
+  <path class="ln" d="M240 140 L340 160"/>
+  <path class="ln" d="M240 220 L340 200"/>
+  <path class="ln" d="M740 180 L840 180"/>
+
+  <!-- lane 2 -->
+  <rect x="10" y="280" width="1420" height="272" fill="#f7fff9" rx="10"/>
+  <text x="22" y="298" class="lane">2 · FIRE (runs on every bex-api replica; SKIP LOCKED makes them cooperate)</text>
+
+  <rect class="b req" x="30" y="316" width="250" height="76"/>
+  <text x="44" y="340" class="t">Scheduler loop</text>
+  <text x="44" y="360" class="s">next to the webhook worker in</text>
+  <text x="44" y="376" class="s">cmd/api/main.go · every 15 s</text>
+
+  <rect class="b req" x="340" y="316" width="320" height="76"/>
+  <text x="354" y="338" class="t">① Claim due automations</text>
+  <text x="354" y="358" class="m">WHERE enabled AND next_fire_at&lt;=now()</text>
+  <text x="354" y="376" class="m">FOR UPDATE SKIP LOCKED LIMIT n</text>
+
+  <rect class="b req" x="720" y="316" width="380" height="76"/>
+  <text x="734" y="338" class="t">② Record + advance (one transaction)</text>
+  <text x="734" y="358" class="m">INSERT run(automation_id, fire_at)</text>
+  <text x="734" y="376" class="m">next_fire_at → next tick · missed → latest</text>
+
+  <rect class="b ext" x="1160" y="316" width="240" height="76"/>
+  <text x="1174" y="338" class="t">crash recovery</text>
+  <text x="1174" y="358" class="s">stale "claimed" rows, 1 min lease</text>
+  <text x="1174" y="374" class="s">retried with the same key</text>
+
+  <rect class="b req" x="30" y="448" width="330" height="88"/>
+  <text x="44" y="470" class="t">③ Re-authorize as the creator</text>
+  <text x="44" y="490" class="m">core.WithIdentity(creator) → can_create?</text>
+  <text x="44" y="508" class="m">no → denied, pause: creator_lost_access</text>
+  <text x="44" y="526" class="s">same check a manual session gets</text>
+
+  <rect class="b req" x="420" y="448" width="300" height="88"/>
+  <text x="434" y="470" class="t">④ Overlap check</text>
+  <text x="434" y="490" class="m">previous session still active?</text>
+  <text x="434" y="508" class="m">yes → skipped_overlap (policy: skip)</text>
+  <text x="434" y="526" class="s">needs_input counts until 24 h expiry</text>
+
+  <rect class="b met" x="780" y="448" width="620" height="88"/>
+  <text x="794" y="470" class="t">⑤ agentsessions.Service.Create</text>
+  <text x="794" y="490" class="m">idempotencyKey = "aut:&lt;id&gt;:&lt;fire_at&gt;" → replay, never a 2nd sandbox</text>
+  <text x="794" y="508" class="m">re-validates the template · resolves secretNames (ADR098) now</text>
+  <text x="794" y="526" class="s">authz, egress, skills, approval mode, billing admission, spend ceiling: unchanged</text>
+
+  <path class="ln" d="M280 354 L340 354"/>
+  <path class="ln" d="M660 354 L720 354"/>
+  <path class="ln dash" d="M1100 354 L1160 354"/>
+  <path class="ln" d="M910 392 L910 414 L195 414 L195 448"/>
+  <path class="ln" d="M360 492 L420 492"/>
+  <path class="ln" d="M720 492 L780 492"/>
+
+  <!-- lane 3 -->
+  <rect x="10" y="564" width="1420" height="226" fill="#fffdf2" rx="10"/>
+  <text x="22" y="582" class="lane">3 · RUN AND OBSERVE</text>
+
+  <rect class="b bil" x="30" y="600" width="340" height="168"/>
+  <text x="44" y="622" class="t">Run outcome (agent_automation_runs)</text>
+  <text x="44" y="646" class="m">started</text><text x="200" y="646" class="s">session id recorded</text>
+  <text x="44" y="664" class="m">skipped_overlap</text><text x="200" y="664" class="s">nothing started</text>
+  <text x="44" y="682" class="m">failed_create</text><text x="200" y="682" class="s">real error kept</text>
+  <text x="44" y="700" class="m">denied</text><text x="200" y="700" class="s">creator lost access</text>
+  <text x="44" y="718" class="m">claimed</text><text x="200" y="718" class="s">crash window, retried</text>
+  <text x="44" y="742" class="s">missed ticks counted inside the run that fired</text>
+
+  <rect class="b bad" x="430" y="600" width="300" height="168"/>
+  <text x="444" y="622" class="t">Auto-pause</text>
+  <text x="444" y="646" class="m">3 consecutive failed_create / denied</text>
+  <text x="444" y="664" class="m">→ enabled=false, paused_reason</text>
+  <text x="444" y="682" class="m">repeated_failures · template_invalid</text>
+  <text x="444" y="700" class="m">creator_lost_access</text>
+  <text x="444" y="724" class="s">push to the creator · Resume in the</text>
+  <text x="444" y="740" class="s">dashboard · admins may take over</text>
+
+  <rect class="b met" x="790" y="600" width="320" height="168"/>
+  <text x="804" y="622" class="t">Agent session (existing path)</text>
+  <text x="804" y="646" class="m">accept fast, provision async (ADR047)</text>
+  <text x="804" y="664" class="m">phase creating → running</text>
+  <text x="804" y="682" class="m">needs_input → push (ADR100)</text>
+  <text x="804" y="700" class="m">draft PR delivery (ADR090)</text>
+  <text x="804" y="724" class="s">billed under ADR091 · automation adds no fee</text>
+
+  <rect class="b ext" x="1170" y="600" width="230" height="168"/>
+  <text x="1184" y="622" class="t">Sandbox</text>
+  <text x="1184" y="646" class="s">ssh-gateway model proxy</text>
+  <text x="1184" y="664" class="s">egress allowlist</text>
+  <text x="1184" y="682" class="s">secrets + skills overlay</text>
+  <text x="1184" y="700" class="s">spend ceiling per run</text>
+
+  <path class="ln" d="M1090 536 L1090 566 L950 566 L950 600"/>
+  <path class="ln" d="M1110 684 L1170 684"/>
+  <path class="ln dash" d="M320 536 L320 600"/>
+  <path class="ln dash" d="M570 536 L570 570 L345 570 L345 600"/>
+  <path class="ln red" d="M370 684 L430 684"/>
+
+  <!-- footer -->
+  <text x="22" y="818" class="lane">LEGEND</text>
+  <rect class="b req" x="22" y="830" width="16" height="16"/><text x="46" y="843" class="s">bex-api logic</text>
+  <rect class="b met" x="150" y="830" width="16" height="16"/><text x="174" y="843" class="s">durable state / existing session path</text>
+  <rect class="b bil" x="400" y="830" width="16" height="16"/><text x="424" y="843" class="s">observability</text>
+  <rect class="b bad" x="520" y="830" width="16" height="16"/><text x="544" y="843" class="s">failure control</text>
+  <rect class="b ext" x="650" y="830" width="16" height="16"/><text x="674" y="843" class="s">supporting / external</text>
+  <rect class="b ui" x="810" y="830" width="16" height="16"/><text x="834" y="843" class="s">client</text>
+  <text x="22" y="874" class="s">Phase 1 ships one trigger type (schedule). The triggers[] array is already the public shape, so Webhook and GitHub triggers add no API break. Dashed arrows: every step writes the run row.</text>
+</svg>
