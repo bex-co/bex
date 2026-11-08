@@ -77,7 +77,8 @@ query ValidateBlueprint($bexYaml: String!, $blueprintId: String) {
 
 query BlueprintPreview(
   $repo: String!
-  $branch: String!
+  # Omitted: the repository's default branch, reported back as branch (w4/532).
+  $branch: String
   $path: String
   $ownerId: String
   $blueprintId: String
@@ -90,6 +91,7 @@ query BlueprintPreview(
     blueprintId: $blueprintId
   ) {
     found
+    branch
     commitId
     error
     # reason/retryable (w2/m97): the machine-readable cause, so the page picks

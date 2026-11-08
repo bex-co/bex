@@ -69,8 +69,11 @@ describe("pending state across the input debounce (w4/282)", () => {
   afterEach(() => vi.useRealTimers());
 
   it.each([
-    ["the branch last", { repo: REPO, branch: "", path: "render.yaml" }],
     ["the repository last", { repo: "", branch: "main", path: "render.yaml" }],
+    [
+      "the repository after the path",
+      { repo: "", branch: "", path: "render.yaml" },
+    ],
   ])("is pending from the render that completes %s", (_label, initial) => {
     const { result, rerender } = mount(initial);
     expect(result.current.loading).toBe(false);
@@ -116,12 +119,24 @@ describe("pending state across the input debounce (w4/282)", () => {
 
   it("is idle, with no preview and no request, while the inputs are incomplete", () => {
     const { result, rerender } = mount({ repo: "", branch: "", path: "" });
-    rerender({ repo: REPO, branch: "", path: "" });
+    rerender({ repo: "", branch: "main", path: "" });
     expect(result.current.loading).toBe(false);
     act(() => vi.advanceTimersByTime(400));
     expect(result.current.loading).toBe(false);
     expect(result.current.preview).toBeNull();
     expect(query.mock.calls.every(([, options]) => options.skip)).toBe(true);
+  });
+
+  // w4/532: with no branch the review reads the repository's default branch,
+  // so a repo alone is a complete request, sent with no branch.
+  it("previews a repository with no branch as its default branch", () => {
+    const { rerender } = mount({ repo: "", branch: "", path: "" });
+    rerender({ repo: REPO, branch: "", path: "" });
+    act(() => vi.advanceTimersByTime(400));
+    expect(lastOptions()).toMatchObject({
+      skip: false,
+      variables: expect.objectContaining({ repo: REPO, branch: null }),
+    });
   });
 
   it("schedules nothing after unmount", () => {

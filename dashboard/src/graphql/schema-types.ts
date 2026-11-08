@@ -631,6 +631,7 @@ export type BlueprintPlannedSync = {
 
 export type BlueprintPreview = {
   __typename: 'BlueprintPreview';
+  branch: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
   error: Maybe<Scalars['String']['output']>;
   found: Maybe<Scalars['Boolean']['output']>;
@@ -1910,7 +1911,7 @@ export type MutationCreateBillingPortalSessionArgs = {
 
 
 export type MutationCreateBlueprintArgs = {
-  branch: Scalars['String']['input'];
+  branch?: InputMaybe<Scalars['String']['input']>;
   confirm?: InputMaybe<Scalars['String']['input']>;
   envVarValues?: InputMaybe<Array<InputMaybe<BlueprintEnvVarValueInput>>>;
   name?: InputMaybe<Scalars['String']['input']>;
@@ -3624,7 +3625,7 @@ export type QueryBlueprintPlannedSyncArgs = {
 
 export type QueryBlueprintPreviewArgs = {
   blueprintId?: InputMaybe<Scalars['String']['input']>;
-  branch: Scalars['String']['input'];
+  branch?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];

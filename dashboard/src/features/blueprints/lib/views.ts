@@ -192,6 +192,7 @@ export function toBlueprintPreviewResult(
 ): BlueprintPreviewResult {
   return {
     found: preview.found,
+    branch: preview.branch || null,
     commitId: preview.commitId,
     error: preview.error,
     reason: (preview.reason || null) as BlueprintPreviewReason | null,

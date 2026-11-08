@@ -1144,7 +1144,10 @@ var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"manifest": gqlutil.StrField(func(p BlueprintPreview) any { return p.Manifest }),
 		"commitId": gqlutil.StrField(func(p BlueprintPreview) any { return p.CommitID }),
 		"warning":  gqlutil.StrField(func(p BlueprintPreview) any { return p.Warning }),
-		"error":    gqlutil.StrField(func(p BlueprintPreview) any { return p.Error }),
+		// branch is the branch previewed — the repository's default when the
+		// request named none (w4/532).
+		"branch": gqlutil.StrField(func(p BlueprintPreview) any { return p.Branch }),
+		"error":  gqlutil.StrField(func(p BlueprintPreview) any { return p.Error }),
 		// reason is the machine-readable cause the dashboard keys its copy off
 		// (w2/m97); `error` stays a human sentence for API clients.
 		"reason":    gqlutil.StrField(func(p BlueprintPreview) any { return string(p.Reason) }),
@@ -1376,8 +1379,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"blueprintPreview": &graphql.Field{
 			Type: blueprintPreviewGQLType,
 			Args: graphql.FieldConfigArgument{
-				"repo":    gqlutil.ReqArg(graphql.String),
-				"branch":  gqlutil.ReqArg(graphql.String),
+				"repo": gqlutil.ReqArg(graphql.String),
+				// branch defaults to the repository's default branch (w4/532).
+				"branch":  gqlutil.Arg(graphql.String),
 				"path":    gqlutil.Arg(graphql.String),
 				"ownerId": gqlutil.Arg(graphql.String),
 				// blueprintId previews on behalf of an existing blueprint, so
@@ -1386,7 +1390,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.PreviewBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"),
-					p.Args["repo"].(string), p.Args["branch"].(string), gqlutil.Str(p.Args, "path"),
+					p.Args["repo"].(string), gqlutil.Str(p.Args, "branch"), gqlutil.Str(p.Args, "path"),
 					gqlutil.Str(p.Args, "blueprintId"))
 			},
 		},
@@ -1945,8 +1949,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"createBlueprint": &graphql.Field{
 			Type: blueprintGQLType,
 			Args: graphql.FieldConfigArgument{
-				"repo":         gqlutil.ReqArg(graphql.String),
-				"branch":       gqlutil.ReqArg(graphql.String),
+				"repo": gqlutil.ReqArg(graphql.String),
+				// branch defaults to the repository's default branch (w4/532).
+				"branch":       gqlutil.Arg(graphql.String),
 				"path":         gqlutil.Arg(graphql.String),
 				"name":         gqlutil.Arg(graphql.String),
 				"ownerId":      gqlutil.Arg(graphql.String),
@@ -1960,7 +1965,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				}
 				return s.CreateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), CreateBlueprintRequest{
 					Repo:         p.Args["repo"].(string),
-					Branch:       p.Args["branch"].(string),
+					Branch:       gqlutil.Str(p.Args, "branch"),
 					Path:         gqlutil.Str(p.Args, "path"),
 					Name:         gqlutil.Str(p.Args, "name"),
 					EnvVarValues: values,

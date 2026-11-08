@@ -125,6 +125,8 @@ export type BlueprintPreviewReason =
 
 export interface BlueprintPreviewResult {
   found: boolean | null;
+  /** The branch reviewed: the repository's default when none was given. */
+  branch: string | null;
   commitId: string | null;
   /** Human sentence for API clients; the dashboard renders its own copy instead. */
   error: string | null;

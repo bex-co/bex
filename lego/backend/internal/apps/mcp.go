@@ -450,7 +450,7 @@ type syncBlueprintArgs struct {
 // previewBlueprintArgs is preview_blueprint's input.
 type previewBlueprintArgs struct {
 	Repo   string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
-	Branch string `json:"branch" jsonschema:"branch holding render.yaml"`
+	Branch string `json:"branch,omitempty" jsonschema:"branch holding render.yaml (default: the repository's default branch)"`
 	Path   string `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
 	// blueprintId previews on behalf of an existing blueprint, so its own
 	// repo+branch is not reported as a connection conflict (w4/m125).
@@ -468,7 +468,7 @@ type generateBlueprintArgs struct {
 // createBlueprintArgs is create_blueprint's input (w2/m62).
 type createBlueprintArgs struct {
 	Repo         string            `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
-	Branch       string            `json:"branch" jsonschema:"branch to track"`
+	Branch       string            `json:"branch,omitempty" jsonschema:"branch to track (default: the repository's default branch)"`
 	Path         string            `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
 	Name         string            `json:"name,omitempty" jsonschema:"human-readable name (default: repo basename)"`
 	EnvVarValues map[string]string `json:"envVarValues,omitempty" jsonschema:"values for sync:false Blueprint env-var prompts; never returned"`

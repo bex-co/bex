@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -499,5 +500,50 @@ func TestM120_ReconnectingSaysSoInSyncHistory(t *testing.T) {
 		if run.Note != "" {
 			t.Fatalf("a first connection recorded %q, want no note", run.Note)
 		}
+	}
+}
+
+// w4/532: a Public Git URL with no branch previewed nothing and created
+// nothing ("repo and branch are required"), while a service create resolves
+// the repository's default branch. Preview and create now resolve it the same
+// way and report the branch they read; a failed lookup is the preview's own
+// reason, and with no opinion (GitHub unconfigured) a branch stays required.
+func TestBlueprintWithoutBranchUsesTheRepositoryDefault(t *testing.T) {
+	ctx := ownershipCtx()
+
+	svc, _ := connectionService(t)
+	gh := &fakeCloneTokens{defaultBranch: "main"}
+	svc.GitHub = gh
+	p, err := svc.PreviewBlueprint(ctx, connOwner, repoBex, "", pathCron, "")
+	if err != nil || !p.Found || p.Branch != "main" || gh.validateCalls != 1 {
+		t.Fatalf("preview = %+v, %v after %d lookups; want found on main after one", p, err, gh.validateCalls)
+	}
+	if _, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Path: pathCron, Name: "bpDefault"}); err != nil {
+		t.Fatalf("create without branch: %v", err)
+	}
+
+	// An explicit branch asks GitHub nothing and is reported as given.
+	gh.validateCalls = 0
+	if p, err := svc.PreviewBlueprint(ctx, connOwner, repoBex, "main", pathCron, ""); err != nil || p.Branch != "main" || gh.validateCalls != 0 {
+		t.Fatalf("explicit preview = %+v, %v after %d lookups", p, err, gh.validateCalls)
+	}
+
+	for name, tc := range map[string]struct {
+		err  error
+		want BlueprintPreviewReason
+	}{
+		"not accessible": {fmt.Errorf("%w: repository is not accessible", core.ErrBadRequest), BlueprintFetchRepoNotFound},
+		"rate limited":   {core.NewUnavailableError("GITHUB_RATE_LIMITED", "GitHub is rate-limiting bex right now. Try again in a few minutes.", nil), BlueprintFetchRateLimited},
+		"unreachable":    {core.NewUnavailableError("GITHUB_UNAVAILABLE", "Could not reach GitHub to check the repository. Try again in a few minutes.", nil), BlueprintFetchUnavailable},
+	} {
+		svc.GitHub = &fakeCloneTokens{validateErr: tc.err}
+		if p, err := svc.PreviewBlueprint(ctx, connOwner, repoBex, "", pathCron, ""); err != nil || p.Found || p.Reason != tc.want {
+			t.Errorf("%s: preview = %+v, %v; want reason %s", name, p, err, tc.want)
+		}
+	}
+
+	svc.GitHub = &fakeCloneTokens{} // no opinion: not a github.com repo, or GitHub off
+	if _, err := svc.PreviewBlueprint(ctx, connOwner, repoBex, "", pathCron, ""); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("no default to offer = %v, want a 400", err)
 	}
 }

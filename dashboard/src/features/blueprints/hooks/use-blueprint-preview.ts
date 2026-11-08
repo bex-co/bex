@@ -18,7 +18,8 @@ const DEBOUNCE_MS = 400;
 /**
  * Fetches the pre-create Blueprint review (Render's "Review Blueprint
  * configurations" step): bex-api pulls repo/branch/path from Git and dry-run
- * validates it. Skipped until both repo and branch are set. A missing file
+ * validates it. Skipped until the repo is set; with no branch it reviews the
+ * repository's default branch and reports which. A missing file
  * comes back as preview.found === false with preview.error — only transport
  * failures surface through `error`.
  */
@@ -46,11 +47,13 @@ export function useBlueprintPreview(
     return () => clearTimeout(handle);
   }, [repo, branch, path]);
 
-  const skip = !debounced.repo || !debounced.branch;
+  // An empty branch previews the repository's default branch, which the
+  // result reports back (w4/532); only the repo is required.
+  const skip = !debounced.repo;
   const { data, loading, error, refetch } = useQuery(BlueprintPreviewDocument, {
     variables: {
       repo: debounced.repo,
-      branch: debounced.branch,
+      branch: debounced.branch || null,
       path: debounced.path || null,
       ownerId: currentWorkspaceId,
       blueprintId: forBlueprintId ?? null,
@@ -76,8 +79,7 @@ export function useBlueprintPreview(
   // Inputs that just became complete are pending from that very render: the
   // query is still skipped for one debounce, and a caller that read "not
   // loading" then would offer its action before anything was reviewed.
-  const awaitingDebounce =
-    !settled && (!skip || (repo !== "" && branch !== ""));
+  const awaitingDebounce = !settled && (!skip || repo !== "");
 
   return {
     preview: skip ? null : preview,

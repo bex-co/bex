@@ -145,6 +145,21 @@ export function NewBlueprintPage() {
     }
   }, [branches, branch]);
 
+  // A Public Git URL with no branch typed previews the repository's default
+  // branch; show it in the field once the preview names it (w4/532). Once
+  // per repository, so clearing the field to type another branch sticks.
+  const defaultBranchFilledFor = useRef("");
+  useEffect(() => {
+    if (
+      branch === "" &&
+      preview?.branch &&
+      defaultBranchFilledFor.current !== sourceRepo
+    ) {
+      defaultBranchFilledFor.current = sourceRepo;
+      setBranch(preview.branch);
+    }
+  }, [branch, preview?.branch, sourceRepo]);
+
   const branchOptions = useMemo(
     () => branches.map((b) => ({ value: b, label: b })),
     [branches],

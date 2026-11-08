@@ -585,7 +585,10 @@ type SyncBlueprintResult struct {
 // dashboard can render Render's "Blueprint file not found on branch" + Retry
 // state instead of a toast.
 type BlueprintPreview struct {
-	Found    bool   `json:"found"`
+	Found bool `json:"found"`
+	// Branch is the branch previewed: the one asked for, or the repository's
+	// default branch when none was (w4/532).
+	Branch   string `json:"branch,omitempty"`
 	Manifest string `json:"manifest,omitempty"`
 	CommitID string `json:"commitId,omitempty"`
 	Warning  string `json:"warning,omitempty"`
@@ -1090,17 +1093,21 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 	if err := s.AuthorizeFresh(ctx, core.RelCanViewSensitive); err != nil {
 		return BlueprintPreview{}, err
 	}
-	if repo == "" || branch == "" {
-		return BlueprintPreview{}, fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
-	}
 	if s.GitFetcher == nil {
 		return BlueprintPreview{}, ErrBlueprintFetchUnavailable
 	}
 	tenantID := s.resolveTenantID(ctx)
+	branch, err = s.blueprintBranch(ctx, tenantID, repo, branch)
+	if err != nil {
+		if reason, message, ok := blueprintBranchRefusal(err); ok {
+			return BlueprintPreview{Reason: reason, Error: message}, nil
+		}
+		return BlueprintPreview{}, err
+	}
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, repo, branch, filePath)
 	if err != nil {
 		reason, message := classifyBlueprintFetchError(err, filePath, branch)
-		return BlueprintPreview{Reason: reason, Error: message}, nil
+		return BlueprintPreview{Branch: branch, Reason: reason, Error: message}, nil
 	}
 	validation, err := s.blueprintValidationFor(ctx, repo, branch, contents, forBlueprintID)
 	if err != nil {
@@ -1113,7 +1120,7 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 		validation.Valid = false
 		validation.Errors = append(validation.Errors, *entry)
 	}
-	preview := BlueprintPreview{Found: true, Manifest: contents, CommitID: commitSHA, Validation: &validation}
+	preview := BlueprintPreview{Found: true, Branch: branch, Manifest: contents, CommitID: commitSHA, Validation: &validation}
 	if filePath == "" && discoveredPath == LegacyBlueprintFilename {
 		preview.Warning = "bex.yml is a deprecated filename-only alias; rename it to render.yaml"
 	}
@@ -1133,9 +1140,6 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if s.Blueprints == nil {
 		return BlueprintView{}, ErrBlueprintsUnavailable
 	}
-	if req.Repo == "" || req.Branch == "" {
-		return BlueprintView{}, fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
-	}
 	if req.Name == "" {
 		req.Name = repoName(req.Repo)
 	}
@@ -1143,6 +1147,10 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 
 	if s.GitFetcher == nil {
 		return BlueprintView{}, ErrBlueprintFetchUnavailable
+	}
+	var err error
+	if req.Branch, err = s.blueprintBranch(ctx, tenantID, req.Repo, req.Branch); err != nil {
+		return BlueprintView{}, err
 	}
 	contents, commitSHA, discoveredPath, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, req.Repo, req.Branch, req.Path)
 	if err != nil {
@@ -2328,4 +2336,48 @@ func errMsgPtr(err error) *string {
 // connection with: the history below it belongs to the earlier one (w4/120).
 func reconnectionNote(repo, branch string) string {
 	return "re-established a previously disconnected connection to " + repo + "@" + branch + "; earlier sync history below belongs to that connection"
+}
+
+// blueprintBranch is the branch a Blueprint preview or create reads: the one
+// asked for, or else the repository's default branch, resolved as a service
+// create resolves it (ValidateRepo, anonymous for a public repo) (w4/532).
+// With no opinion — GitHub unconfigured, or not a github.com repository — a
+// branch stays required.
+func (s *Service) blueprintBranch(ctx context.Context, tenantID, repo, branch string) (string, error) {
+	if repo == "" {
+		return "", errBlueprintBranchRequired
+	}
+	if branch != "" {
+		return branch, nil
+	}
+	if s.GitHub != nil {
+		defaultBranch, err := s.GitHub.ValidateRepo(ctx, tenantID, repo)
+		if err != nil {
+			return "", err
+		}
+		if defaultBranch != "" {
+			return defaultBranch, nil
+		}
+	}
+	return "", errBlueprintBranchRequired
+}
+
+var errBlueprintBranchRequired = fmt.Errorf("%w: repo and branch are required", core.ErrBadRequest)
+
+// blueprintBranchRefusal turns a failed default-branch lookup into the
+// preview's own reason, so the Review step keeps saying why in one place.
+// A missing branch with no default to offer stays a 400.
+func blueprintBranchRefusal(err error) (BlueprintPreviewReason, string, bool) {
+	var coded *core.CodedError
+	switch {
+	case errors.As(err, &coded) && coded.Code == github.CodeGitHubRateLimited:
+		return BlueprintFetchRateLimited, coded.Error(), true
+	case errors.As(err, &coded) && coded.Code == github.CodeGitHubAccessDenied:
+		return BlueprintFetchAccessDenied, coded.Error(), true
+	case errors.Is(err, core.ErrUnavailable):
+		return BlueprintFetchUnavailable, "Could not reach GitHub to read the Blueprint file. Try again in a few minutes.", true
+	case errors.Is(err, core.ErrBadRequest) && !errors.Is(err, errBlueprintBranchRequired):
+		return BlueprintFetchRepoNotFound, "Repository not found, or bex's GitHub app cannot access it.", true
+	}
+	return "", "", false
 }

@@ -143,6 +143,7 @@ function repo(overrides: Partial<RepoView> = {}): RepoView {
 function validPreview(): BlueprintPreviewResult {
   return {
     found: true,
+    branch: null,
     commitId: "abc1234",
     reason: null,
     retryable: false,
@@ -579,6 +580,35 @@ describe("NewBlueprintPage", () => {
     expect(create).toHaveBeenCalledWith(
       "https://github.com/acme/public-app",
       "main",
+      "render.yaml",
+      "public-app",
+      undefined,
+      [],
+    );
+  });
+
+  // w4/532: a Public Git URL with no branch typed left an empty picker and
+  // no preview; the review now reads the repository's default branch and the
+  // field shows it.
+  it("previews and deploys a Public Git URL's default branch", async () => {
+    previewState.preview = { ...validPreview(), branch: "master" };
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: /public git/i }));
+    await user.type(
+      screen.getByLabelText("Repository URL"),
+      "https://github.com/acme/public-app",
+    );
+    expect(
+      await screen.findByRole("combobox", { name: /branch/i }),
+    ).toHaveValue("master");
+    const deploy = screen.getByRole("button", { name: /deploy blueprint/i });
+    expect(deploy).toBeEnabled();
+    await user.click(deploy);
+    expect(create).toHaveBeenCalledWith(
+      "https://github.com/acme/public-app",
+      "master",
       "render.yaml",
       "public-app",
       undefined,
