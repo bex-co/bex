@@ -333,3 +333,26 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
   - [x] `skills update` — compares installed skills with the bundled pack; `--force` reinstalls; no panic
   - [x] `skills remove` — `--skill` or `--all`, bex skills only
 - [x] **`help [command]`** — CLI builtin, no bex call
+
+## Render SDK (sandboxes)
+
+The unmodified Render SDKs are clients to verify against bex-api, like the CLI (w32/m284): Python [`render-sdk`](https://pypi.org/project/render-sdk/) and TypeScript [`@renderinc/sdk`](https://www.npmjs.com/package/@renderinc/sdk), both **v1.8.0** (`render-oss/sdk`). Point either at bex with `base_url` / `baseUrl` set to the bare bex-api origin (the SDK appends `/v1`), `RENDER_API_KEY` set to a bex bearer token, and `RENDER_WORKSPACE_ID` set to the workspace. `bash scripts/render-sdk-compat.sh` installs both pinned SDKs into a temporary environment and walks one disposable deny-all sandbox through every served method.
+
+Static wire review (w32/m284 t001) against `lego/backend/internal/sandbox`, and the fixes it led to:
+
+- **Reads carry Render's required fields.** The Python SDK validates every sandbox against Render's schema, which requires `region` and `createdAt`, and `cursor` on each list item. bex omitted `region` when a create named none and never set `cursor`, so `create`, `from_id` and `list` raised even when they succeeded. A sandbox now reports the platform region (`BEX_REGION` through Render's alias, e.g. `frankfurt`), a create echo always carries `createdAt`, and each list item's `cursor` is its sandbox id. `cursor`/`limit` page the list only when sent, so a client that never pages still gets every sandbox.
+- **A missing remote file is `file_not_found`.** The sandbox file gateway now answers Render's JSON error body (`{"message", "code"?}`); a missing path is 404 `file_not_found`, which the SDK raises as `SandboxFileNotFoundError` (it read any other 404 as the sandbox being gone). The pinned CLI prints the same message as before.
+- **Exec keeps a quiet stream alive.** The Python SDK's exec read timeout is 45 s, three of Render's 15 s SSE keep-alives; bex sent none, so a command silent for 45 s failed. The exec gateway now writes a `: keep-alive` comment every 15 s, which every SSE reader (the CLI's and bex-api's included) ignores.
+- **Sandbox names are refused by name.** `create(name=…)` and `list(name=…)` answer `400 SANDBOX_NAMES_UNSUPPORTED` naming `--name`, instead of a strict-decoding `unknown field` and a silently ignored filter.
+
+| SDK method (Python / TypeScript) | Grade | Notes |
+| --- | --- | --- |
+| `sandboxes.create` / `create` | pending live walk | `plan`, both timeouts and `network_policy` honored; `env`, snapshot, group and image inputs refused by name (as for the CLI); `name` refused by name |
+| `wait_until_running`, `from_id` / `waitUntilRunning`, `get` | pending live walk | identical status vocabulary |
+| `list` / `list` | pending live walk | `status`, `cursor`, `limit`; group and name filters refused by name |
+| `exec` / `exec` | pending live walk | run connect-token handshake, SSE `output`/`exit`/`error` |
+| `copy_to`, `copy_from` / `upload`, `download` | pending live walk | file connect-token handshake; absolute remote paths only (see below) |
+| `terminate` / `terminate` | pending live walk | 204 |
+| `snapshots.*`, `*_group`, `images.*`, `builds.*` | [-] | sandbox snapshots (w32/m285), groups (non-goal, w7/m150) and images are refused by name |
+
+Known residuals: a relative remote path is refused (`400`), where Render resolves it under the sandbox user's home; a mint against a suspended sandbox can wait for its resume longer than the Python SDK's default 5 s HTTP timeout.

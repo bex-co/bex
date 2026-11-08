@@ -69,6 +69,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			BuildID        string `json:"buildId"`
 			BuildName      string `json:"buildName"`
 			Image          string `json:"image"`
+			// Render CLI v2.36 / SDK v1.8 `--name`.
+			Name string `json:"name"`
 		}
 		// A missing/empty body is fine — template+plan fall back to defaults —
 		// but malformed or unknown nested policy fields must never be ignored.
@@ -83,6 +85,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		if err := refuseGroupAndImage(body.SandboxGroupID, body.BuildID != "" || body.BuildName != "" || body.Image != ""); err != nil {
 			core.WriteErr(w, err)
+			return
+		}
+		if body.Name != "" {
+			core.WriteErr(w, sandboxNamesUnsupported())
 			return
 		}
 		// The Render CLI sends ownerId in the BODY; the query param is the REST
@@ -114,17 +120,27 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, sandboxGroupsUnsupported("sandboxGroupId"))
 			return
 		}
+		if query.Get("name") != "" {
+			core.WriteErr(w, sandboxNamesUnsupported())
+			return
+		}
 		ctx := core.WithWorkspace(r.Context(), query.Get("ownerId"))
 		out, err := s.listFiltered(ctx, core.QueryList(query, "status"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		// The Render CLI reads a cursor-paginated `[{sandbox, cursor}]` array, not
-		// a bare list — wrap each item so `render ea sandbox list` renders it.
+		// Render's list is a cursor-paginated `[{sandbox, cursor}]` array, and
+		// its schema requires each cursor (the Render SDK refuses an item
+		// without one). The cursor is the sandbox id; a page is cut only when
+		// the caller asks for one, so a client that never pages still gets
+		// every sandbox.
+		after, limit := core.PageParams(query)
+		requested := query.Has("cursor") || query.Has("limit")
+		out = core.StablePage(out, after, limit, requested, func(sb Sandbox) string { return sb.ID })
 		envelopes := make([]SandboxEnvelope, 0, len(out))
 		for _, sb := range out {
-			envelopes = append(envelopes, SandboxEnvelope{Sandbox: sb})
+			envelopes = append(envelopes, SandboxEnvelope{Sandbox: sb, Cursor: sb.ID})
 		}
 		core.WriteJSON(w, http.StatusOK, envelopes)
 	})

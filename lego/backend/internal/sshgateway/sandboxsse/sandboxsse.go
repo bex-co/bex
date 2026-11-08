@@ -62,7 +62,16 @@ type Server struct {
 
 	SessionTimeout     time.Duration
 	RevalidateInterval time.Duration
+	// KeepAlive is the SSE comment interval while a command runs; zero uses
+	// keepAliveInterval.
+	KeepAlive time.Duration
 }
+
+// keepAliveInterval is Render's sandbox SSE keep-alive. The Render SDK sets
+// its read timeout to three of these (45 s), so a command that printed nothing
+// for longer was cut off before bex sent one (w32/m284). A comment line is
+// ignored by every SSE reader, including the pinned CLI's and bex-api's.
+const keepAliveInterval = 15 * time.Second
 
 // Revalidator re-runs a verified ticket's authorization at redemption and on
 // every live-stream revalidation tick (round-13 #3). Any error refuses the
@@ -118,6 +127,9 @@ func (s *Server) defaults() {
 	}
 	if s.RevalidateInterval == 0 {
 		s.RevalidateInterval = sshgateway.DefaultRevalidateInterval
+	}
+	if s.KeepAlive <= 0 {
+		s.KeepAlive = keepAliveInterval
 	}
 	if s.Limits == nil {
 		s.Limits = sshgateway.NewSessionLimiter(0, 0)
@@ -221,8 +233,11 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	}
 	// No TTY: separate stdout/stderr so each maps to its own SSE output stream; no
 	// stdin — `ea sandbox exec` runs one non-interactive command.
+	stopKeepAlive := sse.keepAlive(r.Context(), s.KeepAlive)
+	defer stopKeepAlive()
 	code, err := s.Executor.Execute(execCtx, target, claims.Command, false, nil, nil,
 		sse.stream("stdout"), sse.stream("stderr"))
+	stopKeepAlive()
 	switch {
 	case err != nil && errors.Is(err, sshgateway.ErrTargetTerminated):
 		log.Printf("sandbox exec target terminal (sandbox=%s)", claims.SandboxID)
@@ -310,6 +325,36 @@ func (s *sseWriter) emit(event string, payload any) {
 	_, _ = s.w.Write(data)
 	_, _ = s.w.Write([]byte("\n\n"))
 	s.flusher.Flush()
+}
+
+// keepAlive writes an SSE comment every interval until the request ends or
+// the returned stop is called. stop is idempotent and waits for the writer, so
+// no comment follows the terminal event.
+func (s *sseWriter) keepAlive(ctx context.Context, interval time.Duration) (stop func()) {
+	done, exited := make(chan struct{}), make(chan struct{})
+	go func() {
+		defer close(exited)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				s.mu.Lock()
+				_, _ = s.w.Write([]byte(": keep-alive\n\n"))
+				s.flusher.Flush()
+				s.mu.Unlock()
+			}
+		}
+	}()
+	var once sync.Once
+	return func() {
+		once.Do(func() { close(done) })
+		<-exited
+	}
 }
 
 type sseStream struct {

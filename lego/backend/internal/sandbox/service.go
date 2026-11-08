@@ -131,6 +131,9 @@ type Service struct {
 	// Ordinary Render
 	// sandboxes retain the m35 compatibility policy when it is nil.
 	SessionEgress SessionEgress
+	// Region is the public Render region sandboxes run in (BEX_REGION through
+	// resourcemeta.RenderRegion), reported when a create named none.
+	Region string
 	// SandboxEgress installs a Render allow-list sandbox's per-sandbox policy
 	// (w32/m283). allow-all and deny-all need none (static platform policies
 	// select them by label). nil refuses allow-list creates by name.
@@ -325,6 +328,18 @@ func refuseGroupAndImage(sandboxGroupID string, hasImage bool) error {
 			map[string]any{"fields": []string{"buildId", "buildName", "image"}, "flags": []string{"--image", "--build"}})
 	}
 	return nil
+}
+
+// CodeSandboxNamesUnsupported refuses Render's sandbox `name` by name.
+const CodeSandboxNamesUnsupported = "SANDBOX_NAMES_UNSUPPORTED"
+
+// sandboxNamesUnsupported refuses Render's sandbox `name` (create input and
+// list filter) by name: a create must not fail as a malformed body, and a
+// list must never silently ignore a filter it was given.
+func sandboxNamesUnsupported() error {
+	return core.NewBadRequestError(CodeSandboxNamesUnsupported,
+		"sandbox names are not supported yet (--name): address the sandbox by its id",
+		map[string]any{"field": "name", "flags": []string{"--name"}})
 }
 
 // invalidPlan is Render's invalid_sandbox_plan refusal: the message lists the
@@ -607,6 +622,17 @@ func (s *Service) ownedSandbox(ctx context.Context, key, workspace, id string) (
 	return raw, nil
 }
 
+// sandboxView is a sandbox's public read shape. Render requires `region` on
+// every sandbox, and the Render SDK refuses a response without it; a sandbox
+// created without one runs in the platform region, so it reads that.
+func (s *Service) sandboxView(raw osSandbox, workspace string) Sandbox {
+	box := sandboxFromOpenSandbox(raw, workspace)
+	if box.Region == "" {
+		box.Region = s.Region
+	}
+	return box
+}
+
 func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 	policy := &NetworkPolicy{Default: NetworkPolicyDefault(raw.Metadata[metadataNetworkPolicy])}
 	if policy.Default == "" {
@@ -799,9 +825,14 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	if raw.Image.URI == "" {
 		raw.Image.URI = tmpl.Image
 	}
+	if raw.Created == nil {
+		// Render requires createdAt; an OpenSandbox create echo may omit it.
+		now := s.Now()
+		raw.Created = &now
+	}
 	s.Meter.Observe(ctx, raw)
 	s.Meter.Label(ctx, raw)
-	return sandboxFromOpenSandbox(raw, workspace), nil
+	return s.sandboxView(raw, workspace), nil
 }
 
 // AgentSessionLifecycle is intentionally separate from Service's public API
@@ -1131,7 +1162,7 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 			continue
 		}
 		if r.Metadata[metadataOwner] == callerOwner {
-			out = append(out, sandboxFromOpenSandbox(r, ws))
+			out = append(out, s.sandboxView(r, ws))
 			continue
 		}
 		// A list can contain many sandboxes owned by other members. Resolve the
@@ -1144,7 +1175,7 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 			adminChecked = true
 		}
 		if admin {
-			out = append(out, sandboxFromOpenSandbox(r, ws))
+			out = append(out, s.sandboxView(r, ws))
 		}
 	}
 	for i := range out {
@@ -1193,7 +1224,7 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 	if err != nil {
 		return Sandbox{}, err
 	}
-	return s.withRules(ctx, ws, sandboxFromOpenSandbox(raw, ws))
+	return s.withRules(ctx, ws, s.sandboxView(raw, ws))
 }
 
 // Suspend/Resume/Terminate are the lifecycle verbs; suspend/resume need operate,

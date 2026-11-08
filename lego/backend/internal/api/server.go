@@ -1223,6 +1223,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		Meter:           d.SandboxMeter,
 		SessionEgress:   d.SandboxSessionEgress,
 		SandboxEgress:   d.SandboxEgress,
+		Region:          resourcemeta.RenderRegion(d.Region),
 		Activity:        d.SandboxActivity,
 	}
 }

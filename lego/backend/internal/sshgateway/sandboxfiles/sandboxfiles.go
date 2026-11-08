@@ -87,31 +87,31 @@ func (s *Server) Handler() http.Handler {
 
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	if !s.Enabled() || s.Executor == nil || s.Nonces == nil || s.Nonces.Store == nil {
-		http.Error(w, "sandbox file transfer unavailable", http.StatusServiceUnavailable)
+		writeJSONError(w, http.StatusServiceUnavailable, errors.New("sandbox file transfer unavailable"))
 		return
 	}
 	c, err := files.Verify(s.Secret, r.Header.Get(files.TicketHeader), time.Now())
 	if err != nil {
-		http.Error(w, "invalid file ticket", http.StatusUnauthorized)
+		writeJSONError(w, http.StatusUnauthorized, errors.New("invalid file ticket"))
 		return
 	}
 	if (c.Operation == files.OperationUpload && r.Method != http.MethodPut) ||
 		(c.Operation == files.OperationDownload && r.Method != http.MethodGet) {
-		http.Error(w, "file operation does not match ticket", http.StatusForbidden)
+		writeJSONError(w, http.StatusForbidden, errors.New("file operation does not match ticket"))
 		return
 	}
 	if !c.PlatformUploadAllowed(sandboxexec.SystemSubject) {
-		http.Error(w, "file operation does not match ticket", http.StatusForbidden)
+		writeJSONError(w, http.StatusForbidden, errors.New("file operation does not match ticket"))
 		return
 	}
 	if !s.Nonces.Consume(r.Context(), c.Nonce, c.NonceExpiry(), time.Now()) {
-		http.Error(w, "file ticket already used", http.StatusConflict)
+		writeJSONError(w, http.StatusConflict, errors.New("file ticket already used"))
 		return
 	}
 	limitKey := c.LimitKey(sandboxexec.SystemSubject)
 	if acquired, scope := s.Limits.Acquire(limitKey); !acquired {
 		s.Metrics.LimitRejected(scope)
-		http.Error(w, "session limit reached", http.StatusTooManyRequests)
+		writeJSONError(w, http.StatusTooManyRequests, errors.New("session limit reached"))
 		return
 	}
 	defer s.Limits.Release(limitKey)
@@ -126,7 +126,7 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		return s.Revalidator.RevalidateFiles(ctx, c)
 	}
 	if err := check(r.Context()); err != nil {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		writeJSONError(w, http.StatusForbidden, errors.New("forbidden"))
 		return
 	}
 	timed, cancelTimeout := context.WithTimeout(r.Context(), s.TransferTimeout)
@@ -175,13 +175,21 @@ var (
 type statusError struct {
 	status  int
 	message string
+	// code is Render's machine-readable error code, where one exists: the
+	// Render SDK tells a missing remote path (file_not_found) from a gone
+	// sandbox only by it.
+	code string
 }
 
 func (e *statusError) Error() string { return e.message }
 
+// codeFileNotFound is Render's code for a missing remote path; the Render SDK
+// raises SandboxFileNotFoundError on it.
+const codeFileNotFound = "file_not_found"
+
 var (
-	errOperationFailed = &statusError{http.StatusServiceUnavailable, "sandbox file operation failed"}
-	errRevoked         = &statusError{http.StatusForbidden, "access was revoked during this transfer"}
+	errOperationFailed = &statusError{status: http.StatusServiceUnavailable, message: "sandbox file operation failed"}
+	errRevoked         = &statusError{status: http.StatusForbidden, message: "access was revoked during this transfer"}
 )
 
 // hideCause answers errOperationFailed in place of an unclassified failure: a
@@ -213,7 +221,20 @@ func writeError(w http.ResponseWriter, sandbox string, err error) {
 	default:
 		err, status = hideCause(sandbox, err), errOperationFailed.status
 	}
-	http.Error(w, err.Error(), status)
+	writeJSONError(w, status, err)
+}
+
+// writeJSONError answers bex's REST error body (core.WriteErrStatus), plus
+// Render's machine code where one exists. The pinned Render CLI prints its
+// message and the Render SDK reads its code; a plain-text body left the SDK
+// unable to tell a missing file from a missing sandbox.
+func writeJSONError(w http.ResponseWriter, status int, err error) {
+	var se *statusError
+	if errors.As(err, &se) && se.code != "" {
+		core.WriteJSON(w, status, map[string]any{"error": se.message, "message": se.message, "code": se.code, "id": se.code})
+		return
+	}
+	core.WriteErrStatus(w, status, err.Error())
 }
 
 // archiveError marks err as the client's bad archive when the archive's own
@@ -238,9 +259,9 @@ func executionError(code int, err error) error {
 	case 0:
 		return nil
 	case 66:
-		return &statusError{http.StatusNotFound, "sandbox source or destination parent does not exist"}
+		return &statusError{status: http.StatusNotFound, message: "sandbox source or destination parent does not exist", code: codeFileNotFound}
 	case 73:
-		return &statusError{http.StatusConflict, "sandbox destination exists or is not a supported file target"}
+		return &statusError{status: http.StatusConflict, message: "sandbox destination exists or is not a supported file target"}
 	default:
 		return errOperationFailed
 	}
@@ -309,7 +330,7 @@ func shell(script string, args ...string) []string {
 func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, destination string, r *http.Request) error {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil {
-		return &statusError{http.StatusUnsupportedMediaType, "expected application/octet-stream or application/x-tar"}
+		return &statusError{status: http.StatusUnsupportedMediaType, message: "expected application/octet-stream or application/x-tar"}
 	}
 	kind := "file"
 	encoding := r.Header.Get("Content-Encoding")
@@ -317,7 +338,7 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	switch mediaType {
 	case "application/octet-stream":
 		if encoding != "" && encoding != "identity" {
-			return &statusError{http.StatusUnsupportedMediaType, "raw uploads do not accept Content-Encoding"}
+			return &statusError{status: http.StatusUnsupportedMediaType, message: "raw uploads do not accept Content-Encoding"}
 		}
 		if expectedSize < 0 {
 			// The pinned CLI passes an open os.File even for an empty upload.
@@ -328,17 +349,17 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 				if err != nil {
 					return err
 				}
-				return &statusError{http.StatusLengthRequired, "nonempty raw uploads require Content-Length"}
+				return &statusError{status: http.StatusLengthRequired, message: "nonempty raw uploads require Content-Length"}
 			}
 			expectedSize = 0
 		}
 	case "application/x-tar":
 		kind = "directory"
 		if encoding != "" && encoding != "identity" && encoding != "gzip" {
-			return &statusError{http.StatusUnsupportedMediaType, "unsupported archive Content-Encoding"}
+			return &statusError{status: http.StatusUnsupportedMediaType, message: "unsupported archive Content-Encoding"}
 		}
 	default:
-		return &statusError{http.StatusUnsupportedMediaType, "unsupported upload Content-Type"}
+		return &statusError{status: http.StatusUnsupportedMediaType, message: "unsupported upload Content-Type"}
 	}
 	if r.ContentLength > files.MaxTransferBytes {
 		return errTooLarge

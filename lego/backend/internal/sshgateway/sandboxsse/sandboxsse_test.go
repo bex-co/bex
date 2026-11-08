@@ -345,3 +345,44 @@ func TestSandboxExecDisabledWhenNoSecret(t *testing.T) {
 	}
 	resp.Body.Close()
 }
+
+// quietExecutor prints nothing for a while, then exits: the shape a Render SDK
+// client reads with a 45 s read timeout that relies on the server's keep-alive.
+type quietExecutor struct{ quiet time.Duration }
+
+func (q quietExecutor) Execute(ctx context.Context, _ apps.SSHInstanceTarget, _ []string, _ bool, _ remotecommand.TerminalSizeQueue, _ io.Reader, _, _ io.Writer) (int, error) {
+	select {
+	case <-time.After(q.quiet):
+		return 0, nil
+	case <-ctx.Done():
+		return 0, ctx.Err()
+	}
+}
+
+func TestSandboxExecKeepsAQuietStreamAlive(t *testing.T) {
+	secret := []byte("exec-secret")
+	gw := newSandboxExecGateway(quietExecutor{quiet: 300 * time.Millisecond}, secret)
+	gw.KeepAlive = 50 * time.Millisecond
+	srv := httptest.NewServer(gw.Handler())
+	defer srv.Close()
+	tok, _ := sandboxexec.Mint(secret, sandboxexec.Claims{
+		Subject: "id-a", SandboxID: "os-1", Namespace: "tea-a-sandbox",
+		Command: []string{"sleep", "1"}, ExpiresAt: time.Now().Add(time.Minute).Unix(),
+	})
+	req, _ := http.NewRequest(http.MethodPost, srv.URL, nil)
+	req.Header.Set(sandboxexec.TicketHeader, tok)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	got := string(body)
+	exit := strings.Index(got, "event: exit")
+	if exit < 0 || strings.Count(got[:exit], ": keep-alive\n\n") < 2 {
+		t.Fatalf("a quiet command got no keep-alive before its exit:\n%s", got)
+	}
+	if strings.Contains(got[exit:], "keep-alive") {
+		t.Fatalf("a keep-alive followed the terminal event:\n%s", got)
+	}
+}

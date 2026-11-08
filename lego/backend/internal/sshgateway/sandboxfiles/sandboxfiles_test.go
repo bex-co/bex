@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -504,7 +505,7 @@ func TestAnExecutorFailureAnswersWithoutItsText(t *testing.T) {
 			t.Fatalf("the cause was not logged: %q", logs.String())
 		}
 	}
-	const failed = "sandbox file operation failed\n"
+	const failed = `{"error":"sandbox file operation failed","id":"unavailable","message":"sandbox file operation failed"}` + "\n"
 	const execURL = "https://10.96.0.1:443/api/v1/namespaces/tea-a-sandbox/pods/os-a/exec"
 	for name, tc := range map[string]struct {
 		err          error
@@ -513,7 +514,7 @@ func TestAnExecutorFailureAnswersWithoutItsText(t *testing.T) {
 	}{
 		"dropped stream":    {&url.Error{Op: "Post", URL: execURL, Err: io.ErrUnexpectedEOF}, http.StatusServiceUnavailable, failed, execURL},
 		"exec deadline":     {&url.Error{Op: "Post", URL: execURL, Err: context.DeadlineExceeded}, http.StatusServiceUnavailable, failed, execURL},
-		"terminated target": {fmt.Errorf("%w: pod no longer exists", sshgateway.ErrTargetTerminated), http.StatusNotFound, "sandbox target terminated: pod no longer exists\n", ""},
+		"terminated target": {fmt.Errorf("%w: pod no longer exists", sshgateway.ErrTargetTerminated), http.StatusNotFound, `{"error":"sandbox target terminated: pod no longer exists","id":"not_found","message":"sandbox target terminated: pod no longer exists"}` + "\n", ""},
 	} {
 		for _, method := range []string{http.MethodPut, http.MethodGet} {
 			t.Run(name+"/"+method, func(t *testing.T) {
@@ -611,5 +612,29 @@ func TestPlatformCopiesAreLimitedPerSession(t *testing.T) {
 	user := files.Claims{Subject: "alice", AgentSessionID: "ags-a"}
 	if user.LimitKey(sandboxexec.SystemSubject) != "alice" {
 		t.Fatal("a user's transfers must stay limited per user")
+	}
+}
+
+// A missing remote path is Render's `file_not_found` 404, in a JSON body: the
+// Render SDK raises SandboxFileNotFoundError on that code and otherwise reads a
+// 404 as the sandbox being gone (w32/m284).
+func TestAMissingPathIsAFileNotFoundCode(t *testing.T) {
+	for _, method := range []string{http.MethodPut, http.MethodGet} {
+		s := serverFor(func(_ context.Context, _ []string, input io.Reader, _ io.Writer) (int, error) {
+			if input != nil {
+				_, _ = io.Copy(io.Discard, input)
+			}
+			return 66, nil
+		})
+		w := httptest.NewRecorder()
+		s.Handler().ServeHTTP(w, requestFor(t, method, []byte("data")))
+		var body struct{ Code, Message string }
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Fatalf("%s: body %q is not JSON: %v", method, w.Body, err)
+		}
+		if w.Code != http.StatusNotFound || body.Code != "file_not_found" || body.Message == "" ||
+			w.Header().Get("Content-Type") != "application/json" {
+			t.Fatalf("%s answered %d %q (%s), want 404 file_not_found JSON", method, w.Code, w.Body, w.Header().Get("Content-Type"))
+		}
 	}
 }

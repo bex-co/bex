@@ -188,7 +188,7 @@ const (
 // (docs/render-artifacts/ea-sandbox.md — `ea sandbox list`).
 type SandboxEnvelope struct {
 	Sandbox Sandbox `json:"sandbox"`
-	Cursor  string  `json:"cursor,omitempty"`
+	Cursor  string  `json:"cursor"`
 }
 
 // mapOpenSandboxStatus maps an OpenSandbox lifecycle state string onto the
