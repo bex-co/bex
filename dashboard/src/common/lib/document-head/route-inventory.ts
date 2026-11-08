@@ -27,6 +27,11 @@ export const ROUTE_HEAD_INVENTORY: Record<
     // This inventory entry is the tripwire — renaming back to the nested form
     // fails this test.
     "agents_.$agentSessionId.tsx",
+    // Same flat `automations_` form as agents_: the list has no <Outlet/>.
+    "automations.tsx",
+    "automations_.$automationId.tsx",
+    "automations_.$automationId_.edit.tsx",
+    "automations_.new.tsx",
     "auth.account-deleted.tsx",
     "auth.consent.tsx",
     "auth.device.success.tsx",

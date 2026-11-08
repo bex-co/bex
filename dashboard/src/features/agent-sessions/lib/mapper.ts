@@ -57,6 +57,7 @@ export function toAgentSessionView(
     tags: wire.tags ?? [],
     secretNames: wire.secretNames ?? [],
     maxSpendUSD: wire.maxSpendUSD || null,
+    automationId: wire.automationId || null,
     agentConfig: {
       agent: config?.agent ?? "",
       model: config?.model ?? null,

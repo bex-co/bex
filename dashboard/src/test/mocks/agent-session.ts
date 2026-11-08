@@ -29,6 +29,7 @@ export function agentSessionView({
     tags: [],
     secretNames: [],
     maxSpendUSD: null,
+    automationId: null,
     state: null,
     outcome: null,
     agentConfig: agentConfig ?? {

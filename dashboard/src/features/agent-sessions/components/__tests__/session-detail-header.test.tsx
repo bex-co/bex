@@ -1,5 +1,5 @@
 import { beforeEach, describe, it, expect, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
@@ -39,6 +39,17 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   }),
 }));
 
+// "Started by automation" reads the automation's name on its own (ADR101 D9).
+const automationName = vi.hoisted(() => ({ name: null as string | null }));
+vi.mock("@/features/agent-automations/hooks/use-agent-automation", () => ({
+  useAgentAutomation: () => ({
+    automation: automationName.name ? { name: automationName.name } : null,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  }),
+}));
+
 // The header's model cost (ADR091 D6) reads its own query.
 const modelCost = vi.hoisted(() => ({
   cost: null as AgentSessionModelCost | null,
@@ -74,6 +85,23 @@ describe("SessionDetailHeader", () => {
     archiveMock.mockClear();
     unarchiveMock.mockClear();
     deleteMock.mockClear();
+  });
+
+  it("links a session an automation started back to that automation", () => {
+    automationName.name = "nightly-deps";
+    render(<SessionDetailHeader session={view({ automationId: "aut-1" })} />);
+    const started = screen.getByTestId("started-by");
+    expect(started).toHaveTextContent("Started by automation nightly-deps");
+    expect(within(started).getByText("nightly-deps")).toHaveAttribute(
+      "to",
+      "/automations/$automationId",
+    );
+    automationName.name = null;
+  });
+
+  it("shows no automation note for a session a person started", () => {
+    render(<SessionDetailHeader session={view()} />);
+    expect(screen.queryByTestId("started-by")).not.toBeInTheDocument();
   });
 
   it("preserves the originating list filters in the Back link", () => {

@@ -176,6 +176,9 @@ type CreateRequest struct {
 	// request within 24 h returns the first session (created=false); the same key
 	// with a different request is a 409. 1-128 printable ASCII.
 	IdempotencyKey string `json:"idempotencyKey,omitempty"`
+	// AutomationID is the automation that fires this create (ADR101 D5). Only
+	// the scheduler sets it; no client surface decodes it.
+	AutomationID string `json:"-"`
 	// Title is the display title (default: the task's first line); Tags are up to
 	// 20 filter and cost-attribution labels, each [a-z0-9:_-]{1,64} (ADR094 D3).
 	Title string   `json:"title,omitempty"`
@@ -253,13 +256,16 @@ type View struct {
 	MaxSpendUSD string `json:"maxSpendUSD,omitempty"`
 	// SecretNames are the names of the secrets attached to the session
 	// (ADR098); a value is never returned.
-	SecretNames  []string `json:"secretNames,omitempty"`
-	Status       string   `json:"status"`
-	HeadSHA      string   `json:"headSha,omitempty"`
-	PRURL        string   `json:"prUrl,omitempty"`
-	PRNumber     int      `json:"prNumber,omitempty"`
-	Turns        int      `json:"turns,omitempty"`
-	DeliveryMode string   `json:"deliveryMode,omitempty"`
+	SecretNames []string `json:"secretNames,omitempty"`
+	// AutomationID is the agent automation that started the session (ADR101
+	// D5); absent for a session started by a person or client.
+	AutomationID string `json:"automationId,omitempty"`
+	Status       string `json:"status"`
+	HeadSHA      string `json:"headSha,omitempty"`
+	PRURL        string `json:"prUrl,omitempty"`
+	PRNumber     int    `json:"prNumber,omitempty"`
+	Turns        int    `json:"turns,omitempty"`
+	DeliveryMode string `json:"deliveryMode,omitempty"`
 	// DeliveryNote is the driver's plain-language account of what a completed
 	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
 	// a pushed branch with no pull request. The work stays in the sandbox only
@@ -382,9 +388,12 @@ type ListRequest struct {
 	// States filters by the coarse derived state (ADR094 D7); it expands to the
 	// phases it covers and intersects with Phases when both are given. Tag keeps
 	// sessions carrying that tag (ADR094 D3).
-	States        []string
-	Tag           string
-	Repo          string
+	States []string
+	Tag    string
+	Repo   string
+	// AutomationID keeps the sessions one automation started (ADR101 D5). The
+	// REST, GraphQL and MCP list filters do not carry it yet.
+	AutomationID  string `json:"-"`
 	CreatedBefore time.Time
 	CreatedAfter  time.Time
 	Cursor        string

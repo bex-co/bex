@@ -41,6 +41,16 @@ var CloudAgentsTools = []string{
 	"create_agent_skill",
 	"update_agent_skill",
 	"delete_agent_skill",
+	"list_agent_automations",
+	"get_agent_automation",
+	"create_agent_automation",
+	"update_agent_automation",
+	"delete_agent_automation",
+	"pause_agent_automation",
+	"resume_agent_automation",
+	"run_agent_automation",
+	"take_over_agent_automation",
+	"list_agent_automation_runs",
 }
 
 type listArgs struct {
@@ -287,6 +297,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	s.registerAttachmentMCP(server)
 	s.registerSecretMCP(server)
 	s.registerSkillMCP(server)
+	s.registerAutomationMCP(server)
 }
 
 // registerSkillMCP adds the ADR099 D3 workspace skill tools.

@@ -13,6 +13,7 @@ import {
   Settings,
   Webhook,
   Network,
+  CalendarClock,
 } from "lucide-react";
 import {
   Sidebar,
@@ -67,6 +68,11 @@ const NAV_GROUPS: SidebarNavGroup[] = [
       { labelKey: "common.navBlueprints", to: "/blueprints", icon: Layers },
       { labelKey: "common.navRouter", to: "/router", icon: Network },
       { labelKey: "common.navAgents", to: "/agents", icon: Bot },
+      {
+        labelKey: "common.navAutomations",
+        to: "/automations",
+        icon: CalendarClock,
+      },
       { labelKey: "common.navEnvGroups", to: "/env-groups", icon: Boxes },
     ],
   },
@@ -101,7 +107,8 @@ export function DashboardSidebar() {
         ...group,
         items: group.items.filter(
           (item) =>
-            (item.to !== "/agents" || agentsEnabled) &&
+            ((item.to !== "/agents" && item.to !== "/automations") ||
+              agentsEnabled) &&
             (item.to !== "/router" || routerEnabled),
         ),
       })).filter((group) => group.items.length > 0),

@@ -315,23 +315,24 @@ func jsonTextField[T any](description string, value func(T) any) *graphql.Field 
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
 	Fields: graphql.Fields{
-		"id":          gqlutil.ReqStrField(func(v View) any { return v.ID }),
-		"ownerId":     gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
-		"repo":        gqlutil.ReqStrField(func(v View) any { return v.Repo }),
-		"branch":      gqlutil.ReqStrField(func(v View) any { return v.Branch }),
-		"title":       gqlutil.StrField(func(v View) any { return v.Title }),
-		"maxSpendUSD": gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
-		"tags":        &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
-		"secretNames": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
-		"agentConfig": gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
-		"sandboxId":   gqlutil.StrField(func(v View) any { return v.SandboxID }),
-		"sshAddress":  gqlutil.StrField(func(v View) any { return v.SSHAddress }),
-		"phase":       gqlutil.ReqStrField(func(v View) any { return v.Phase }),
-		"state":       gqlutil.ReqStrField(func(v View) any { return v.State }),
-		"steerable":   &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
-		"status":      gqlutil.ReqStrField(func(v View) any { return v.Status }),
-		"headSha":     gqlutil.StrField(func(v View) any { return v.HeadSHA }),
-		"prUrl":       gqlutil.StrField(func(v View) any { return v.PRURL }),
+		"id":           gqlutil.ReqStrField(func(v View) any { return v.ID }),
+		"ownerId":      gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
+		"repo":         gqlutil.ReqStrField(func(v View) any { return v.Repo }),
+		"branch":       gqlutil.ReqStrField(func(v View) any { return v.Branch }),
+		"title":        gqlutil.StrField(func(v View) any { return v.Title }),
+		"maxSpendUSD":  gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
+		"tags":         &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
+		"secretNames":  &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
+		"automationId": &graphql.Field{Type: graphql.String, Description: "The agent automation (aut-…) that started this session, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.AutomationID })},
+		"agentConfig":  gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
+		"sandboxId":    gqlutil.StrField(func(v View) any { return v.SandboxID }),
+		"sshAddress":   gqlutil.StrField(func(v View) any { return v.SSHAddress }),
+		"phase":        gqlutil.ReqStrField(func(v View) any { return v.Phase }),
+		"state":        gqlutil.ReqStrField(func(v View) any { return v.State }),
+		"steerable":    &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
+		"status":       gqlutil.ReqStrField(func(v View) any { return v.Status }),
+		"headSha":      gqlutil.StrField(func(v View) any { return v.HeadSHA }),
+		"prUrl":        gqlutil.StrField(func(v View) any { return v.PRURL }),
 		"prNumber": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any {
 			if v.PRNumber == 0 {
 				return nil
@@ -673,6 +674,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		},
 	}
 	maps.Copy(fields, s.skillQueries())
+	maps.Copy(fields, s.automationQueries())
 	return fields
 }
 
@@ -808,5 +810,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 	}
 	maps.Copy(fields, s.skillMutations())
+	maps.Copy(fields, s.automationMutations())
 	return fields
 }

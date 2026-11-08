@@ -28,6 +28,11 @@ interface ComposerSecretsProps {
   value: ComposerSecretsValue;
   onChange: (value: ComposerSecretsValue) => void;
   disabled?: boolean;
+  /**
+   * Offer only the workspace's stored secrets. An automation template (ADR101
+   * D5) carries names, never inline values, so its form hides the inline half.
+   */
+  workspaceOnly?: boolean;
 }
 
 /**
@@ -41,6 +46,7 @@ export function ComposerSecrets({
   value,
   onChange,
   disabled,
+  workspaceOnly = false,
 }: ComposerSecretsProps) {
   const { t } = useTranslations();
   const count = composerSecretNames(value).length;
@@ -65,7 +71,12 @@ export function ComposerSecrets({
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-80 space-y-4">
-        <SecretsPanel ownerId={ownerId} value={value} onChange={onChange} />
+        <SecretsPanel
+          ownerId={ownerId}
+          value={value}
+          onChange={onChange}
+          workspaceOnly={workspaceOnly}
+        />
       </PopoverContent>
     </Popover>
   );
@@ -75,6 +86,7 @@ function SecretsPanel({
   ownerId,
   value,
   onChange,
+  workspaceOnly = false,
 }: Omit<ComposerSecretsProps, "disabled">) {
   const { t } = useTranslations();
   const ids = useId();
@@ -176,91 +188,96 @@ function SecretsPanel({
           </ul>
         )}
       </div>
-      <div className="space-y-2 border-t pt-3">
-        <p className="text-xs font-medium">
-          {t("agentSessions.secretsInline")}
-        </p>
-        {value.secrets.length > 0 ? (
-          <ul className="space-y-1" data-testid="agent-composer-inline-secrets">
-            {value.secrets.map((s) => (
-              <li
-                key={s.name}
-                className="flex items-center justify-between gap-2 text-xs"
-              >
-                <span className="truncate font-mono">{s.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="size-6"
-                  aria-label={t("agentSessions.secretsRemove", {
-                    name: s.name,
-                  })}
-                  onClick={() =>
-                    onChange({
-                      ...value,
-                      secrets: value.secrets.filter((x) => x.name !== s.name),
-                    })
-                  }
+      {workspaceOnly ? null : (
+        <div className="space-y-2 border-t pt-3">
+          <p className="text-xs font-medium">
+            {t("agentSessions.secretsInline")}
+          </p>
+          {value.secrets.length > 0 ? (
+            <ul
+              className="space-y-1"
+              data-testid="agent-composer-inline-secrets"
+            >
+              {value.secrets.map((s) => (
+                <li
+                  key={s.name}
+                  className="flex items-center justify-between gap-2 text-xs"
                 >
-                  <X className="size-3.5" />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-        <div className="flex gap-1.5">
-          <Input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={addOnEnter}
-            placeholder={t("agentSessions.secretsNamePlaceholder")}
-            aria-label={t("agentSessions.secretsNameLabel")}
-            aria-invalid={problem != null}
-            spellCheck={false}
-            autoCapitalize="off"
-            autoComplete="off"
-            className="h-8 w-28 font-mono text-xs"
-          />
-          <Input
-            type="password"
-            value={secretValue}
-            onChange={(e) => setSecretValue(e.target.value)}
-            onKeyDown={addOnEnter}
-            placeholder={t("agentSessions.secretsValuePlaceholder")}
-            aria-label={t("agentSessions.secretsValueLabel")}
-            aria-invalid={valueProblem != null}
-            {...SECRET_INPUT_PROPS}
-            className="h-8 min-w-0 flex-1 font-mono text-xs"
-          />
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            className="h-8"
-            disabled={!canAdd}
-            onClick={add}
+                  <span className="truncate font-mono">{s.name}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-6"
+                    aria-label={t("agentSessions.secretsRemove", {
+                      name: s.name,
+                    })}
+                    onClick={() =>
+                      onChange({
+                        ...value,
+                        secrets: value.secrets.filter((x) => x.name !== s.name),
+                      })
+                    }
+                  >
+                    <X className="size-3.5" />
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <div className="flex gap-1.5">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={addOnEnter}
+              placeholder={t("agentSessions.secretsNamePlaceholder")}
+              aria-label={t("agentSessions.secretsNameLabel")}
+              aria-invalid={problem != null}
+              spellCheck={false}
+              autoCapitalize="off"
+              autoComplete="off"
+              className="h-8 w-28 font-mono text-xs"
+            />
+            <Input
+              type="password"
+              value={secretValue}
+              onChange={(e) => setSecretValue(e.target.value)}
+              onKeyDown={addOnEnter}
+              placeholder={t("agentSessions.secretsValuePlaceholder")}
+              aria-label={t("agentSessions.secretsValueLabel")}
+              aria-invalid={valueProblem != null}
+              {...SECRET_INPUT_PROPS}
+              className="h-8 min-w-0 flex-1 font-mono text-xs"
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              disabled={!canAdd}
+              onClick={add}
+            >
+              {t("agentSessions.secretsAdd")}
+            </Button>
+          </div>
+          <p
+            className={
+              (problem ?? valueProblem)
+                ? "text-destructive text-xs"
+                : "text-muted-foreground text-xs"
+            }
+            role={(problem ?? valueProblem) ? "alert" : undefined}
           >
-            {t("agentSessions.secretsAdd")}
-          </Button>
+            {t(
+              problem ??
+                valueProblem ??
+                (full
+                  ? "agentSessions.secretsFull"
+                  : "agentSessions.secretsHint"),
+            )}
+          </p>
         </div>
-        <p
-          className={
-            (problem ?? valueProblem)
-              ? "text-destructive text-xs"
-              : "text-muted-foreground text-xs"
-          }
-          role={(problem ?? valueProblem) ? "alert" : undefined}
-        >
-          {t(
-            problem ??
-              valueProblem ??
-              (full
-                ? "agentSessions.secretsFull"
-                : "agentSessions.secretsHint"),
-          )}
-        </p>
-      </div>
+      )}
     </>
   );
 }

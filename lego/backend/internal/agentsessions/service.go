@@ -252,6 +252,9 @@ type Service struct {
 	// Skills is the ADR099 workspace skills table. nil ⇒ every skill verb
 	// answers AGENT_SKILLS_UNAVAILABLE and dispatches deliver none.
 	Skills SkillStore
+	// Automations is the ADR101 agent automations table. nil => every
+	// automation verb answers AGENT_AUTOMATIONS_UNAVAILABLE.
+	Automations AutomationStore
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -484,6 +487,52 @@ func validateCreate(req *CreateRequest) error {
 	return nil
 }
 
+// validateCreateInput is the request-shape half of Create's validation, run
+// before anything is read or admitted: required fields, repo and branch,
+// attachments, secrets, skills and the structured-output schema. Automation
+// templates (ADR101 D5) run the same checks on save. It normalizes req in
+// place and returns the parsed output contract.
+func (s *Service) validateCreateInput(req *CreateRequest) (store.AgentTurnOutput, error) {
+	if err := validateCreate(req); err != nil {
+		return store.AgentTurnOutput{}, err
+	}
+	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
+		return store.AgentTurnOutput{}, err
+	}
+	if err := validateSecretInput(req.SecretNames, req.Secrets); err != nil {
+		return store.AgentTurnOutput{}, err
+	}
+	if err := validateSkillInvocations(req.Skills); err != nil {
+		return store.AgentTurnOutput{}, err
+	}
+	return parseTurnOutput(req.OutputSchema, req.OutputRequired)
+}
+
+// resolveCreateModel is the workspace-dependent half: the agent environment
+// (w10/m17) supplies the network tier's hosts and the default model, the
+// request's explicit fields still win, and the agent must have a model
+// credential. It sets req's model and model endpoint and returns the
+// environment and the effective egress allowlist. Shared with the
+// automation save-time validation.
+func (s *Service) resolveCreateModel(ctx context.Context, workspaceID string, req *CreateRequest) (store.AgentEnvironment, []string, error) {
+	env, err := s.workspaceEnvironment(ctx, workspaceID)
+	if err != nil {
+		return env, nil, err
+	}
+	if err := s.requireModelCredential(ctx, workspaceID, req.AgentConfig.Agent, env); err != nil {
+		return env, nil, err
+	}
+	if req.AgentConfig.Model, err = sessionModel(workspaceID, req.AgentConfig, env, true); err != nil {
+		return env, nil, err
+	}
+	modelEndpoint, egressAllowlist, err := createEgress(workspaceID, req.AgentConfig, effectiveHosts(env), req.EgressAllowlist, env.ModelKeySet())
+	if err != nil {
+		return env, nil, err
+	}
+	req.AgentConfig.ModelEndpoint = modelEndpoint
+	return env, egressAllowlist, nil
+}
+
 // Create starts a new session or resumes ResumeSessionID. New sessions check
 // can_operate on the named workspace before persistence; resume checks the
 // first-class agent_session object directly, avoiding a caller-default-workspace
@@ -512,19 +561,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !s.enabled() || !s.modelProxyEnabled() || !s.ticketEnabled() {
 		return View{}, core.ErrAgentSessionsUnavailable
 	}
-	if err := validateCreate(&req); err != nil {
-		return View{}, err
-	}
-	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
-		return View{}, err
-	}
-	if err := validateSecretInput(req.SecretNames, req.Secrets); err != nil {
-		return View{}, err
-	}
-	if err := validateSkillInvocations(req.Skills); err != nil {
-		return View{}, err
-	}
-	output, err := parseTurnOutput(req.OutputSchema, req.OutputRequired)
+	output, err := s.validateCreateInput(&req)
 	if err != nil {
 		return View{}, err
 	}
@@ -543,23 +580,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 			return view, err
 		}
 	}
-	// The workspace agent environment (w10/m17) supplies the network tier's
-	// hosts and the default model; the request's explicit fields still win.
-	env, err := s.workspaceEnvironment(ctx, workspaceID)
+	env, egressAllowlist, err := s.resolveCreateModel(ctx, workspaceID, &req)
 	if err != nil {
 		return View{}, err
 	}
-	if err := s.requireModelCredential(ctx, workspaceID, req.AgentConfig.Agent, env); err != nil {
-		return View{}, err
-	}
-	if req.AgentConfig.Model, err = sessionModel(workspaceID, req.AgentConfig, env, true); err != nil {
-		return View{}, err
-	}
-	modelEndpoint, egressAllowlist, err := createEgress(workspaceID, req.AgentConfig, effectiveHosts(env), req.EgressAllowlist, env.ModelKeySet())
-	if err != nil {
-		return View{}, err
-	}
-	req.AgentConfig.ModelEndpoint = modelEndpoint
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
@@ -592,6 +616,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		Title:         req.Title, Tags: req.Tags,
 		MaxSpendMicroUSD: ceiling, SecretNames: secrets.names,
 		IdempotencyKey: idemKey, IdempotencyHash: idemHash,
+		AutomationID: req.AutomationID,
 		InitialAttachments: store.AgentAttachmentBinding{
 			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
 		},
@@ -635,7 +660,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	modelAPIKey := agentsession.ModelKeyPlaceholder(record.ID)
 	spec := dispatchSpec{
 		template:      strings.TrimSpace(req.AgentConfig.Template),
-		modelEndpoint: modelEndpoint,
+		modelEndpoint: req.AgentConfig.ModelEndpoint,
 		modelAPIKey:   modelAPIKey,
 		egress:        sessionEgress(env, egressAllowlist),
 		env:           s.withOutputEnv(s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env.ModelKeySet()), env.NetworkTier, record), record, output),
@@ -904,6 +929,7 @@ func normalizeLimit(limit, def, max int) (int, error) {
 func (req *ListRequest) storeQuery() (store.AgentSessionListQuery, error) {
 	q := store.AgentSessionListQuery{
 		Repo:          strings.TrimSpace(req.Repo),
+		AutomationID:  req.AutomationID,
 		CreatedBefore: req.CreatedBefore,
 		CreatedAfter:  req.CreatedAfter,
 		Cursor:        strings.TrimSpace(req.Cursor),
@@ -1849,7 +1875,7 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames}
+		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AutomationID: record.AutomationID}
 	if record.MaxSpendMicroUSD != nil {
 		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)
 	}

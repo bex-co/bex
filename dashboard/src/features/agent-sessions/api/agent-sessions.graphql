@@ -16,6 +16,8 @@ fragment AgentSessionFields on AgentSession {
   title
   tags
   maxSpendUSD
+  # The automation (ADR101) that started the session, when one did.
+  automationId
   # Names of the attached secrets (ADR098); values are never readable.
   secretNames
   agentConfig {

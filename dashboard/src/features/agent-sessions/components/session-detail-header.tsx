@@ -35,6 +35,7 @@ import {
   TooltipTrigger,
 } from "@/common/components/ui/tooltip";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useAgentAutomation } from "@/features/agent-automations/hooks/use-agent-automation";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
@@ -208,6 +209,9 @@ export function SessionDetailHeader({
           </span>
           <span>{t("agentSessions.metaTurns", { count: session.turns })}</span>
           <SessionModelCost session={session} />
+          {session.automationId ? (
+            <StartedByAutomation automationId={session.automationId} />
+          ) : null}
           {session.secretNames.length > 0 ? (
             <span
               className="inline-flex items-center gap-1"
@@ -468,5 +472,27 @@ function CancelButton({
       </TooltipTrigger>
       <TooltipContent>{reason}</TooltipContent>
     </Tooltip>
+  );
+}
+
+/**
+ * "Started by automation <name>" (ADR101 D9): the link from a session back to
+ * the automation whose schedule fired it. The name is read on its own, so a
+ * viewer who cannot read automations still sees the link, labelled by its id.
+ */
+function StartedByAutomation({ automationId }: { automationId: string }) {
+  const { t } = useTranslations();
+  const { automation } = useAgentAutomation(automationId);
+  return (
+    <span data-testid="started-by">
+      {t("agentAutomations.startedBy")}{" "}
+      <Link
+        to="/automations/$automationId"
+        params={{ automationId }}
+        className="text-foreground underline underline-offset-2"
+      >
+        {automation?.name ?? automationId}
+      </Link>
+    </span>
   );
 }

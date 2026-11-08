@@ -818,6 +818,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentSessionStore = st    // ADR047 D3: durable agent-session lifecycle
 	deps.AgentAttachmentStore = st // ADR095: attachment metadata
 	deps.AgentSkillStore = st      // ADR099: workspace skills
+	deps.AgentAutomationStore = st // ADR101: agent automations
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
@@ -1503,6 +1504,12 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 			whWorker.AgentOutcomes = agentsessions.TurnOutcomes{Service: srv.AgentSessions}
 		}
 		go whWorker.Run(ctx)
+		// Agent automations (ADR101 D3): every replica ticks; the claim, the
+		// run-row key and the idempotent session create keep a fire single.
+		// It runs only when a session create could succeed.
+		if srv.AgentSessions.AutomationsRunnable() {
+			go (&agentsessions.AutomationScheduler{Service: srv.AgentSessions}).Run(ctx)
+		}
 	}
 	// Failure alert emails (w2/m252): a crashing service, a failed cron run, a
 	// failed image pull or a failed Blueprint sync email the workspace, as

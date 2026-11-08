@@ -54,6 +54,9 @@
             "string"
           ]
         },
+        "automationId": {
+          "type": "string"
+        },
         "branch": {
           "type": "string"
         },
@@ -347,6 +350,9 @@
             "string"
           ]
         },
+        "automationId": {
+          "type": "string"
+        },
         "branch": {
           "type": "string"
         },
@@ -637,6 +643,9 @@
             "string"
           ]
         },
+        "automationId": {
+          "type": "string"
+        },
         "branch": {
           "type": "string"
         },
@@ -879,6 +888,479 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
+    "description": "Add an agent automation: a name, exactly one schedule trigger and a session template (task, repo, agentConfig, and maxSpendUSD when the model is platform-metered). Every fire starts a session as you. At most 50 per workspace.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "description": "default true on create; resume a paused automation with resume, not enabled",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "ifVersion": {
+          "description": "update only: refuse with AGENT_AUTOMATION_CONFLICT unless the automation is still at this version",
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "name": {
+          "description": "lowercase letters, digits and single hyphens, at most 64",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "template": {
+          "additionalProperties": false,
+          "description": "the session each fire starts",
+          "properties": {
+            "agentConfig": {
+              "additionalProperties": false,
+              "properties": {
+                "agent": {
+                  "description": "a supported agent profile, as on a session create",
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "agent"
+              ],
+              "type": "object"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "maxSpendUSD": {
+              "description": "required when the model is platform-metered",
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "outputRequired": {
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "outputSchema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "task": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "agentConfig"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "triggers": {
+          "description": "exactly one trigger, of type schedule",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "schedule": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "frequency": {
+                    "type": "string"
+                  },
+                  "minute": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "runAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  }
+                },
+                "required": [
+                  "frequency",
+                  "timezone"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "type": {
+                "description": "schedule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "name": "create_agent_automation",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "consecutiveFailures": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "lastSessionId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nextFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "overlapPolicy": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "pausedReason": {
+          "type": "string"
+        },
+        "template": {
+          "additionalProperties": false,
+          "properties": {
+            "agentConfig": {
+              "additionalProperties": false,
+              "properties": {
+                "agent": {
+                  "description": "a supported agent profile, as on a session create",
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "agent"
+              ],
+              "type": "object"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "maxSpendUSD": {
+              "description": "required when the model is platform-metered",
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "outputRequired": {
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "outputSchema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "task": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "agentConfig"
+          ],
+          "type": "object"
+        },
+        "triggers": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "schedule": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "frequency": {
+                    "type": "string"
+                  },
+                  "minute": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "runAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  }
+                },
+                "required": [
+                  "frequency",
+                  "timezone"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "type": {
+                "description": "schedule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "enabled",
+        "createdBy",
+        "triggers",
+        "template",
+        "overlapPolicy",
+        "nextFireAt",
+        "lastFireAt",
+        "consecutiveFailures",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
     "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript. Pass skills to make the turn follow workspace skills (list_agent_skills).",
     "inputSchema": {
       "additionalProperties": false,
@@ -1068,6 +1550,9 @@
             "null",
             "string"
           ]
+        },
+        "automationId": {
+          "type": "string"
         },
         "branch": {
           "type": "string"
@@ -1475,6 +1960,44 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
+    "description": "Delete an agent automation and its run history (its creator or a workspace admin). Sessions it already started stay.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "description": "the automation's aut- id or its name",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "automation"
+      ],
+      "type": "object"
+    },
+    "name": "delete_agent_automation",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
     "description": "Delete a workspace agent secret (workspace admins only). A session that still references it fails its next turn with failureReasonCode AGENT_SESSION_SECRET_UNAVAILABLE.",
     "inputSchema": {
       "additionalProperties": false,
@@ -1647,6 +2170,281 @@
         "size",
         "sha256",
         "createdAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Read one agent automation by aut- id or name: its triggers, template, next and last fire, and pause reason.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "description": "the automation's aut- id or its name",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "automation"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_automation",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "consecutiveFailures": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "lastSessionId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nextFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "overlapPolicy": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "pausedReason": {
+          "type": "string"
+        },
+        "template": {
+          "additionalProperties": false,
+          "properties": {
+            "agentConfig": {
+              "additionalProperties": false,
+              "properties": {
+                "agent": {
+                  "description": "a supported agent profile, as on a session create",
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "agent"
+              ],
+              "type": "object"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "maxSpendUSD": {
+              "description": "required when the model is platform-metered",
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "outputRequired": {
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "outputSchema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "task": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "agentConfig"
+          ],
+          "type": "object"
+        },
+        "triggers": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "schedule": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "frequency": {
+                    "type": "string"
+                  },
+                  "minute": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "runAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  }
+                },
+                "required": [
+                  "frequency",
+                  "timezone"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "type": {
+                "description": "schedule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "enabled",
+        "createdBy",
+        "triggers",
+        "template",
+        "overlapPolicy",
+        "nextFireAt",
+        "lastFireAt",
+        "consecutiveFailures",
+        "version",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     }
@@ -1863,6 +2661,9 @@
             "null",
             "string"
           ]
+        },
+        "automationId": {
+          "type": "string"
         },
         "branch": {
           "type": "string"
@@ -2669,6 +3470,402 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
+    "description": "List an agent automation's runs, newest first: fire time, outcome, the session it started and any missed ticks. Page with cursor (the previous nextCursor).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "description": "the automation's aut- id or its name",
+          "type": "string"
+        },
+        "cursor": {
+          "description": "the previous page's nextCursor",
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "automation"
+      ],
+      "type": "object"
+    },
+    "name": "list_agent_automation_runs",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automationId": {
+          "type": "string"
+        },
+        "nextCursor": {
+          "type": "string"
+        },
+        "runs": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "automationId": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "fireAt": {
+                "type": "string"
+              },
+              "missedTicks": {
+                "type": "integer"
+              },
+              "outcome": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "settledAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              }
+            },
+            "required": [
+              "automationId",
+              "fireAt",
+              "outcome",
+              "missedTicks",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "automationId",
+        "runs"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "List a workspace's agent automations, newest first: a schedule plus a session template that starts a cloud agent session on each fire, as the member who created it. mine=true keeps only yours. Page with cursor (the previous nextCursor).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "description": "the previous page's nextCursor",
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "mine": {
+          "description": "only the automations you created",
+          "type": "boolean"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_agent_automations",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automations": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "consecutiveFailures": {
+                "type": "integer"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "createdBy": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "lastFireAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "lastSessionId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "nextFireAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "overlapPolicy": {
+                "type": "string"
+              },
+              "ownerId": {
+                "type": "string"
+              },
+              "pausedReason": {
+                "type": "string"
+              },
+              "template": {
+                "additionalProperties": false,
+                "properties": {
+                  "agentConfig": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "agent": {
+                        "description": "a supported agent profile, as on a session create",
+                        "type": "string"
+                      },
+                      "model": {
+                        "type": "string"
+                      },
+                      "template": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "agent"
+                    ],
+                    "type": "object"
+                  },
+                  "branch": {
+                    "type": "string"
+                  },
+                  "egressAllowlist": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "maxSpendUSD": {
+                    "description": "required when the model is platform-metered",
+                    "type": [
+                      "null",
+                      "number"
+                    ]
+                  },
+                  "outputRequired": {
+                    "type": [
+                      "null",
+                      "boolean"
+                    ]
+                  },
+                  "outputSchema": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "repo": {
+                    "type": "string"
+                  },
+                  "secretNames": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "skills": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "arguments": {
+                          "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "a workspace skill name (list_agent_skills)",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "tags": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "task": {
+                    "type": "string"
+                  },
+                  "title": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "task",
+                  "agentConfig"
+                ],
+                "type": "object"
+              },
+              "triggers": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "schedule": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "at": {
+                          "type": "string"
+                        },
+                        "cron": {
+                          "type": "string"
+                        },
+                        "endsAt": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "frequency": {
+                          "type": "string"
+                        },
+                        "minute": {
+                          "type": [
+                            "null",
+                            "integer"
+                          ]
+                        },
+                        "runAt": {
+                          "type": [
+                            "null",
+                            "string"
+                          ]
+                        },
+                        "timezone": {
+                          "type": "string"
+                        },
+                        "weekdays": {
+                          "items": {
+                            "type": "string"
+                          },
+                          "type": [
+                            "null",
+                            "array"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "frequency",
+                        "timezone"
+                      ],
+                      "type": [
+                        "null",
+                        "object"
+                      ]
+                    },
+                    "type": {
+                      "description": "schedule",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "ownerId",
+              "name",
+              "enabled",
+              "createdBy",
+              "triggers",
+              "template",
+              "overlapPolicy",
+              "nextFireAt",
+              "lastFireAt",
+              "consecutiveFailures",
+              "version",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "nextCursor": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ownerId",
+        "automations"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
     "description": "List a workspace's agent secrets by name (values are never returned). Pass names in secretNames to create_agent_session or send_agent_session_message to expose them to the agent as env vars.",
     "inputSchema": {
       "additionalProperties": false,
@@ -2913,6 +4110,9 @@
                   "null",
                   "string"
                 ]
+              },
+              "automationId": {
+                "type": "string"
               },
               "branch": {
                 "type": "string"
@@ -3259,6 +4459,556 @@
   },
   {
     "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "description": "Stop an agent automation firing (its creator or a workspace admin). Pausing a paused automation changes nothing.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "description": "the automation's aut- id or its name",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "automation"
+      ],
+      "type": "object"
+    },
+    "name": "pause_agent_automation",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "consecutiveFailures": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "lastSessionId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nextFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "overlapPolicy": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "pausedReason": {
+          "type": "string"
+        },
+        "template": {
+          "additionalProperties": false,
+          "properties": {
+            "agentConfig": {
+              "additionalProperties": false,
+              "properties": {
+                "agent": {
+                  "description": "a supported agent profile, as on a session create",
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "agent"
+              ],
+              "type": "object"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "maxSpendUSD": {
+              "description": "required when the model is platform-metered",
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "outputRequired": {
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "outputSchema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "task": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "agentConfig"
+          ],
+          "type": "object"
+        },
+        "triggers": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "schedule": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "frequency": {
+                    "type": "string"
+                  },
+                  "minute": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "runAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  }
+                },
+                "required": [
+                  "frequency",
+                  "timezone"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "type": {
+                "description": "schedule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "enabled",
+        "createdBy",
+        "triggers",
+        "template",
+        "overlapPolicy",
+        "nextFireAt",
+        "lastFireAt",
+        "consecutiveFailures",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "description": "Re-enable a paused agent automation (its creator or a workspace admin): clears the pause reason and failure count and schedules the next fire.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "description": "the automation's aut- id or its name",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "automation"
+      ],
+      "type": "object"
+    },
+    "name": "resume_agent_automation",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "consecutiveFailures": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "lastSessionId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nextFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "overlapPolicy": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "pausedReason": {
+          "type": "string"
+        },
+        "template": {
+          "additionalProperties": false,
+          "properties": {
+            "agentConfig": {
+              "additionalProperties": false,
+              "properties": {
+                "agent": {
+                  "description": "a supported agent profile, as on a session create",
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "agent"
+              ],
+              "type": "object"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "maxSpendUSD": {
+              "description": "required when the model is platform-metered",
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "outputRequired": {
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "outputSchema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "task": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "agentConfig"
+          ],
+          "type": "object"
+        },
+        "triggers": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "schedule": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "frequency": {
+                    "type": "string"
+                  },
+                  "minute": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "runAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  }
+                },
+                "required": [
+                  "frequency",
+                  "timezone"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "type": {
+                "description": "schedule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "enabled",
+        "createdBy",
+        "triggers",
+        "template",
+        "overlapPolicy",
+        "nextFireAt",
+        "lastFireAt",
+        "consecutiveFailures",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
       "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": true,
@@ -3311,6 +5061,9 @@
             "null",
             "string"
           ]
+        },
+        "automationId": {
+          "type": "string"
         },
         "branch": {
           "type": "string"
@@ -3549,6 +5302,72 @@
   },
   {
     "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Fire an agent automation now, as a normal run that starts a cloud agent session under the same authorization, overlap and spend rules as a scheduled fire. Each call is a new run.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "description": "the automation's aut- id or its name",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "automation"
+      ],
+      "type": "object"
+    },
+    "name": "run_agent_automation",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automationId": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "fireAt": {
+          "type": "string"
+        },
+        "missedTicks": {
+          "type": "integer"
+        },
+        "outcome": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "settledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      },
+      "required": [
+        "automationId",
+        "fireAt",
+        "outcome",
+        "missedTicks",
+        "createdAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
       "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": true,
@@ -3694,6 +5513,9 @@
             "null",
             "string"
           ]
+        },
+        "automationId": {
+          "type": "string"
         },
         "branch": {
           "type": "string"
@@ -4170,6 +5992,9 @@
             "string"
           ]
         },
+        "automationId": {
+          "type": "string"
+        },
         "branch": {
           "type": "string"
         },
@@ -4553,6 +6378,577 @@
             "string"
           ]
         },
+        "automationId": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "maxSpendUSD": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
+                "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "result": true,
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": false
+    },
+    "description": "Make yourself (a workspace admin) the creator of an agent automation, so its fires run as you. Use it when the creator left or lost access.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "automation": {
+          "description": "the automation's aut- id or its name",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "automation"
+      ],
+      "type": "object"
+    },
+    "name": "take_over_agent_automation",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "consecutiveFailures": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "lastSessionId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nextFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "overlapPolicy": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "pausedReason": {
+          "type": "string"
+        },
+        "template": {
+          "additionalProperties": false,
+          "properties": {
+            "agentConfig": {
+              "additionalProperties": false,
+              "properties": {
+                "agent": {
+                  "description": "a supported agent profile, as on a session create",
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "agent"
+              ],
+              "type": "object"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "maxSpendUSD": {
+              "description": "required when the model is platform-metered",
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "outputRequired": {
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "outputSchema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "task": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "agentConfig"
+          ],
+          "type": "object"
+        },
+        "triggers": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "schedule": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "frequency": {
+                    "type": "string"
+                  },
+                  "minute": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "runAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  }
+                },
+                "required": [
+                  "frequency",
+                  "timezone"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "type": {
+                "description": "schedule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "enabled",
+        "createdBy",
+        "triggers",
+        "template",
+        "overlapPolicy",
+        "nextFireAt",
+        "lastFireAt",
+        "consecutiveFailures",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "unarchive_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "automationId": {
+          "type": "string"
+        },
         "branch": {
           "type": "string"
         },
@@ -4795,153 +7191,117 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer.",
+    "description": "Change an agent automation (its creator only); omitted fields keep their value, triggers and template replace the stored ones whole. Pass ifVersion to refuse the write if someone changed it since you read it.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
-        "id": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id"
-      ],
-      "type": "object"
-    },
-    "name": "unarchive_agent_session",
-    "outputSchema": {
-      "additionalProperties": false,
-      "properties": {
-        "agentConfig": {
-          "additionalProperties": false,
-          "properties": {
-            "agent": {
-              "type": "string"
-            },
-            "model": {
-              "type": "string"
-            },
-            "modelEndpoint": {
-              "type": "string"
-            },
-            "task": {
-              "type": "string"
-            },
-            "template": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "agent",
-            "task"
-          ],
-          "type": "object"
-        },
-        "archivedAt": {
-          "type": [
-            "null",
-            "string"
-          ]
-        },
-        "branch": {
+        "automation": {
+          "description": "the automation's aut- id or its name",
           "type": "string"
         },
-        "canceledAt": {
-          "type": [
-            "null",
-            "string"
-          ]
-        },
-        "created": {
+        "enabled": {
+          "description": "default true on create; resume a paused automation with resume, not enabled",
           "type": [
             "null",
             "boolean"
           ]
         },
-        "createdAt": {
-          "type": "string"
+        "ifVersion": {
+          "description": "update only: refuse with AGENT_AUTOMATION_CONFLICT unless the automation is still at this version",
+          "type": [
+            "null",
+            "integer"
+          ]
         },
-        "deliveryMode": {
-          "type": "string"
-        },
-        "deliveryNote": {
-          "type": "string"
-        },
-        "expiresAt": {
+        "name": {
+          "description": "lowercase letters, digits and single hyphens, at most 64",
           "type": [
             "null",
             "string"
           ]
         },
-        "failureReason": {
+        "ownerId": {
           "type": "string"
         },
-        "failureReasonCode": {
-          "type": "string"
-        },
-        "headSha": {
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "maxSpendUSD": {
-          "type": "string"
-        },
-        "outcome": {
+        "template": {
           "additionalProperties": false,
+          "description": "the session each fire starts",
           "properties": {
-            "cost": {
+            "agentConfig": {
               "additionalProperties": false,
               "properties": {
-                "computeUSD": {
+                "agent": {
+                  "description": "a supported agent profile, as on a session create",
                   "type": "string"
                 },
-                "modelUSD": {
+                "model": {
                   "type": "string"
                 },
-                "totalUSD": {
+                "template": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD",
-                "computeUSD",
-                "totalUSD"
+                "agent"
               ],
+              "type": "object"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
               "type": [
                 "null",
-                "object"
+                "array"
               ]
             },
-            "deliveryNote": {
+            "maxSpendUSD": {
+              "description": "required when the model is platform-metered",
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "outputRequired": {
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "outputSchema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "repo": {
               "type": "string"
             },
-            "failureReasonCode": {
-              "type": "string"
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
             },
-            "files": {
+            "skills": {
               "items": {
                 "additionalProperties": false,
                 "properties": {
-                  "id": {
-                    "type": "string"
-                  },
-                  "mediaType": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
                     "type": "string"
                   },
                   "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
                     "type": "string"
-                  },
-                  "size": {
-                    "type": "integer"
                   }
                 },
                 "required": [
-                  "id",
-                  "name",
-                  "mediaType",
-                  "size"
+                  "name"
                 ],
                 "type": "object"
               },
@@ -4950,128 +7310,354 @@
                 "array"
               ]
             },
-            "pullRequest": {
-              "additionalProperties": false,
-              "properties": {
-                "headSha": {
-                  "type": "string"
-                },
-                "number": {
-                  "type": "integer"
-                },
-                "url": {
-                  "type": "string"
-                }
+            "tags": {
+              "items": {
+                "type": "string"
               },
-              "required": [
-                "url"
-              ],
               "type": [
                 "null",
-                "object"
+                "array"
               ]
             },
-            "result": true,
-            "state": {
+            "task": {
               "type": "string"
             },
-            "steerable": {
-              "type": "boolean"
-            },
-            "summary": {
+            "title": {
               "type": "string"
-            },
-            "turn": {
-              "type": "integer"
             }
           },
           "required": [
-            "state",
-            "steerable",
-            "turn"
+            "task",
+            "agentConfig"
           ],
           "type": [
             "null",
             "object"
           ]
         },
+        "triggers": {
+          "description": "exactly one trigger, of type schedule",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "schedule": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "frequency": {
+                    "type": "string"
+                  },
+                  "minute": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "runAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  }
+                },
+                "required": [
+                  "frequency",
+                  "timezone"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "type": {
+                "description": "schedule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "automation"
+      ],
+      "type": "object"
+    },
+    "name": "update_agent_automation",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "consecutiveFailures": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lastFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "lastSessionId": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nextFireAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "overlapPolicy": {
+          "type": "string"
+        },
         "ownerId": {
           "type": "string"
         },
-        "phase": {
+        "pausedReason": {
           "type": "string"
         },
-        "prNumber": {
-          "type": "integer"
+        "template": {
+          "additionalProperties": false,
+          "properties": {
+            "agentConfig": {
+              "additionalProperties": false,
+              "properties": {
+                "agent": {
+                  "description": "a supported agent profile, as on a session create",
+                  "type": "string"
+                },
+                "model": {
+                  "type": "string"
+                },
+                "template": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "agent"
+              ],
+              "type": "object"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "maxSpendUSD": {
+              "description": "required when the model is platform-metered",
+              "type": [
+                "null",
+                "number"
+              ]
+            },
+            "outputRequired": {
+              "type": [
+                "null",
+                "boolean"
+              ]
+            },
+            "outputSchema": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "repo": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "tags": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "task": {
+              "type": "string"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "task",
+            "agentConfig"
+          ],
+          "type": "object"
         },
-        "prUrl": {
-          "type": "string"
-        },
-        "repo": {
-          "type": "string"
-        },
-        "sandboxId": {
-          "type": "string"
-        },
-        "secretNames": {
+        "triggers": {
           "items": {
-            "type": "string"
+            "additionalProperties": false,
+            "properties": {
+              "schedule": {
+                "additionalProperties": false,
+                "properties": {
+                  "at": {
+                    "type": "string"
+                  },
+                  "cron": {
+                    "type": "string"
+                  },
+                  "endsAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "frequency": {
+                    "type": "string"
+                  },
+                  "minute": {
+                    "type": [
+                      "null",
+                      "integer"
+                    ]
+                  },
+                  "runAt": {
+                    "type": [
+                      "null",
+                      "string"
+                    ]
+                  },
+                  "timezone": {
+                    "type": "string"
+                  },
+                  "weekdays": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  }
+                },
+                "required": [
+                  "frequency",
+                  "timezone"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "type": {
+                "description": "schedule",
+                "type": "string"
+              }
+            },
+            "required": [
+              "type"
+            ],
+            "type": "object"
           },
           "type": [
             "null",
             "array"
           ]
-        },
-        "sshAddress": {
-          "type": "string"
-        },
-        "state": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string"
-        },
-        "steerable": {
-          "type": "boolean"
-        },
-        "streamUrl": {
-          "type": "string"
-        },
-        "tags": {
-          "items": {
-            "type": "string"
-          },
-          "type": [
-            "null",
-            "array"
-          ]
-        },
-        "ticket": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        },
-        "turns": {
-          "type": "integer"
         },
         "updatedAt": {
           "type": "string"
         },
-        "url": {
-          "type": "string"
+        "version": {
+          "type": "integer"
         }
       },
       "required": [
         "id",
         "ownerId",
-        "repo",
-        "branch",
-        "agentConfig",
-        "phase",
-        "state",
-        "steerable",
-        "status",
+        "name",
+        "enabled",
+        "createdBy",
+        "triggers",
+        "template",
+        "overlapPolicy",
+        "nextFireAt",
+        "lastFireAt",
+        "consecutiveFailures",
+        "version",
         "createdAt",
         "updatedAt"
       ],

@@ -1,0 +1,162 @@
+# Agent automations (ADR101): a schedule trigger plus a session template that
+# starts a cloud agent session as the member who created it. Anyone who can
+# start a session (developer and up) lists and reads; only the creator edits;
+# the creator or an admin pauses, resumes, runs and deletes; only an admin
+# takes one over.
+
+fragment AgentAutomationFields on AgentAutomation {
+  id
+  ownerId
+  name
+  enabled
+  createdBy
+  triggers {
+    type
+    schedule {
+      frequency
+      minute
+      at
+      weekdays
+      runAt
+      cron
+      timezone
+      endsAt
+    }
+  }
+  template {
+    task
+    repo
+    branch
+    title
+    agentConfig {
+      agent
+      model
+      template
+    }
+    maxSpendUSD
+    secretNames
+    skills {
+      name
+      arguments
+    }
+    egressAllowlist
+    tags
+    outputSchema
+    outputRequired
+  }
+  nextFireAt
+  lastFireAt
+  lastSessionId
+  pausedReason
+  consecutiveFailures
+  version
+  createdAt
+  updatedAt
+}
+
+query AgentAutomations(
+  $ownerId: String!
+  $mine: Boolean
+  $cursor: String
+  $limit: Int
+) {
+  agentAutomations(
+    ownerId: $ownerId
+    mine: $mine
+    cursor: $cursor
+    limit: $limit
+  ) {
+    ownerId
+    nextCursor
+    automations {
+      ...AgentAutomationFields
+    }
+  }
+}
+
+query AgentAutomation($ownerId: String!, $id: String!) {
+  agentAutomation(ownerId: $ownerId, id: $id) {
+    ...AgentAutomationFields
+  }
+}
+
+query AgentAutomationRuns(
+  $ownerId: String!
+  $id: String!
+  $cursor: String
+  $limit: Int
+) {
+  agentAutomationRuns(
+    ownerId: $ownerId
+    id: $id
+    cursor: $cursor
+    limit: $limit
+  ) {
+    automationId
+    nextCursor
+    runs {
+      automationId
+      fireAt
+      outcome
+      sessionId
+      missedTicks
+      error
+      createdAt
+      settledAt
+    }
+  }
+}
+
+mutation CreateAgentAutomation(
+  $ownerId: String!
+  $input: AgentAutomationInput!
+) {
+  createAgentAutomation(ownerId: $ownerId, input: $input) {
+    ...AgentAutomationFields
+  }
+}
+
+mutation UpdateAgentAutomation(
+  $ownerId: String!
+  $id: String!
+  $input: AgentAutomationInput!
+) {
+  updateAgentAutomation(ownerId: $ownerId, id: $id, input: $input) {
+    ...AgentAutomationFields
+  }
+}
+
+mutation DeleteAgentAutomation($ownerId: String!, $id: String!) {
+  deleteAgentAutomation(ownerId: $ownerId, id: $id)
+}
+
+mutation PauseAgentAutomation($ownerId: String!, $id: String!) {
+  pauseAgentAutomation(ownerId: $ownerId, id: $id) {
+    ...AgentAutomationFields
+  }
+}
+
+mutation ResumeAgentAutomation($ownerId: String!, $id: String!) {
+  resumeAgentAutomation(ownerId: $ownerId, id: $id) {
+    ...AgentAutomationFields
+  }
+}
+
+mutation TakeOverAgentAutomation($ownerId: String!, $id: String!) {
+  takeOverAgentAutomation(ownerId: $ownerId, id: $id) {
+    ...AgentAutomationFields
+  }
+}
+
+mutation RunAgentAutomation($ownerId: String!, $id: String!) {
+  runAgentAutomation(ownerId: $ownerId, id: $id) {
+    automationId
+    fireAt
+    outcome
+    sessionId
+    missedTicks
+    error
+    createdAt
+    settledAt
+  }
+}

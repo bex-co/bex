@@ -1,6 +1,6 @@
 # ADR101 — Agent Automations: scheduled cloud-agent sessions (Devin parity)
 
-**Status:** proposed (design) · **Date:** 2026-11-07 · **Extends:** [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions), [ADR094](ADR094-coding-agent-mcp.md) D4 (idempotent create), [ADR098](ADR098-agent-session-secrets.md) (secrets), [ADR099](ADR099-agent-skills.md) (skills) · **Parity:** Devin Automations (no Render equivalent; see [Parity](#parity)).
+**Status:** accepted (w21/m278 t001, 2026-11-07; the four defaults below stand until the user says otherwise) · **Date:** 2026-11-07 · **Extends:** [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions), [ADR094](ADR094-coding-agent-mcp.md) D4 (idempotent create), [ADR098](ADR098-agent-session-secrets.md) (secrets), [ADR099](ADR099-agent-skills.md) (skills) · **Parity:** Devin Automations (no Render equivalent; see [Parity](#parity)).
 
 ![ADR101 agent automations architecture](ADR101-agent-automations.svg)
 
@@ -73,7 +73,7 @@ No new service, no Kubernetes `CronJob`, no in-process timers. A scheduler loop 
 
 1. **Claim.** Every 15 s: `SELECT … FROM agent_automations WHERE enabled AND next_fire_at <= now() ORDER BY next_fire_at FOR UPDATE SKIP LOCKED LIMIT n`. A partial index on `next_fire_at WHERE enabled` keeps this cheap.
 2. **Record and advance, in the same transaction.** Insert `agent_automation_runs(automation_id, fire_at, outcome)`, whose primary key is `(automation_id, fire_at)`, then move `next_fire_at` to the next future tick. If several ticks were missed (bex-api was down), only the **latest** is run and the run row records `missedTicks = k`. A restart after an outage does not start sixty sessions.
-3. **Fire, outside the transaction.** Re-authorize (D4), check overlap (D6), then call `agentsessions.Service.Create` with `idempotencyKey = "aut:<id>:<fire_at unix>"`. If the process dies after step 2 and the run is retried, Create replays the first result instead of starting a second sandbox.
+3. **Fire, outside the transaction.** Re-authorize (D4), check overlap (D6), then call `agentsessions.Service.Create` with `idempotencyKey = "aut:<id>:<fire_at unix microseconds>"`. If the process dies after step 2 and the run is retried, Create replays the first result instead of starting a second sandbox.
 4. **Settle.** Update the run row with the outcome and the `ags-` id.
 
 **Crash recovery.** A crash between 2 and 3 leaves a run row in `claimed`. A recovery pass retries `claimed` rows older than one minute with the same idempotency key. It claims them the same way the main loop does: `SELECT … FROM agent_automation_runs WHERE outcome = 'claimed' AND claimed_until < now() FOR UPDATE SKIP LOCKED`, then extends `claimed_until` (a lease of one minute) in the same transaction. Two replicas therefore never retry the same run at once. The worst case is a late fire, never a double fire and never a lost one.
@@ -189,14 +189,18 @@ There is no Render surface for this, and the Render "Cron Jobs" service type is 
 | Agent type "message existing session" | Not in phase 1 |
 | Network policy, MCP selection, notifications | Egress allowlist as on create; MCP and notification choices are follow-ups |
 
-## Open decisions
+## Decisions
 
-These need the user's sign-off before the milestone's first task starts; each has a default so work is not blocked.
+The four choices below were put to the user on 2026-11-07 with a default each. The user had not answered when work started, so the worker adopted the defaults under the Devin-consistent rule (an optional decision never blocks the reference behavior). Each is one constant or one check, so overriding it later is a small change.
 
-1. **Run as the creator, not a system user** (D4). Default: creator. A system-user or service-account option is a follow-up.
-2. **Missed ticks run once, the latest** (D3). Default: latest only.
-3. **Minimum interval 5 minutes** (D2). One secondary source says Claude Code routines allow no more often than hourly during preview. Default: 5 minutes, adjustable by a constant, with the required `maxSpendUSD` as the real spending guard.
-4. **`maxSpendUSD` required on platform-metered templates** (D7). Default: required.
+1. **Run as the creator, not a system user** (D4). Adopted: creator. A system-user or service-account option is a follow-up.
+2. **Missed ticks run once, the latest** (D3). Adopted: latest only.
+3. **Minimum interval 5 minutes** (D2). One secondary source says Claude Code routines allow no more often than hourly during preview; Devin's limit was not found. Adopted: 5 minutes, one constant (`minScheduleInterval`), with the required `maxSpendUSD` as the real spending guard.
+4. **`maxSpendUSD` required on platform-metered templates** (D7). Adopted: required.
+
+## Implementation placement (m278 t001)
+
+The service, store, REST, GraphQL and MCP code lives in package `agentsessions` (files `automations*.go`) and `internal/store/agentautomations.go`, not in a new `agentautomations` package. Workspace skills (ADR099) set the precedent: they share the session `Service`, its workspace authorization helpers (`AuthorizeWorkspace`, `AuthorizeWorkspaceTarget`, `ScopeByID`), its audit targets and its MCP/GraphQL registration, and a separate package would only re-export them. Names in this ADR such as `agentautomations.Service` mean the automation methods on `agentsessions.Service`.
 
 ## Alternatives rejected
 

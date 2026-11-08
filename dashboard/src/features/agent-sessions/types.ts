@@ -146,6 +146,8 @@ export interface AgentSessionView {
    * w21/m260); null when the caller set none.
    */
   maxSpendUSD: string | null;
+  /** The agent automation (aut-…) that started the session, ADR101. */
+  automationId: string | null;
   /** The lifecycle enum the whole UI keys off. */
   phase: AgentSessionPhase;
   /** Free-text human status line; display-only, never branched on. */

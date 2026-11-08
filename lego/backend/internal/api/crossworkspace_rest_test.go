@@ -172,6 +172,10 @@ var callerScopedRoutes = map[string]bool{
 	// ownerId; the by-ref routes route a skl- id by its row.
 	"GET /v1/agent-skills":  true,
 	"POST /v1/agent-skills": true,
+	// Agent automations (ADR101): the list and create are addressed by
+	// ownerId; the by-id routes route an aut- id by its row.
+	"GET /v1/agent-automations":  true,
+	"POST /v1/agent-automations": true,
 	// The caller's OWN effective permissions (w9/m84): scoped by the ownerId
 	// query param, addresses no resource by path; its own can_view gate denies
 	// an ownerId naming a workspace the caller isn't in.

@@ -204,6 +204,9 @@ type AgentSession struct {
 	// InitialPrompt is create-only input used to atomically insert turn 1 with
 	// the session row. It is not an agent_sessions column and is never scanned.
 	InitialPrompt string
+	// AutomationID is the agent automation (ADR101) that started the session;
+	// empty for a session a person or client started. Set only by the scheduler.
+	AutomationID string
 	// IdempotencyKey and IdempotencyHash are create-only input (ADR094 D4): the
 	// client's key and the digest of its normalized request. Not scanned by
 	// scanAgentSession; FindAgentSessionByIdempotencyKey reads the hash back.
@@ -264,14 +267,14 @@ const AgentSessionIdempotencyWindow = 24 * time.Hour
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
-	archived_at, title, tags, max_spend_microusd, secret_names`
+	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, '')`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
-		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames)
+		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID)
 	return s, err
 }
 
@@ -313,10 +316,10 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 		}
 		row, err = scanAgentSession(tx.QueryRow(ctx, `
-			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names)
-			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12)
+			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names, automation_id)
+			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12, NULLIF($13, ''))
 			RETURNING `+agentSessionColumns,
-			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames)))
+			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames), in.AutomationID))
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "agent_sessions_idempotency_key_idx" {
@@ -362,7 +365,7 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 	err := row.Scan(&out.ID, &out.WorkspaceID, &out.Repo, &out.Branch, &out.AgentConfig,
 		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
 		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
-		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &hash)
+		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID, &hash)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -535,8 +538,10 @@ type AgentSessionListQuery struct {
 	Archived ArchivedFilter
 	Phases   []string
 	// Tag keeps only sessions carrying this tag (ADR094 D3).
-	Tag           string
-	Repo          string
+	Tag  string
+	Repo string
+	// AutomationID keeps only the sessions an agent automation started (ADR101 D5).
+	AutomationID  string
 	CreatedBefore time.Time
 	CreatedAfter  time.Time
 	Cursor        string
@@ -552,7 +557,7 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	}
 	// A filter text cannot hold matches nothing, like any unknown value
 	// (w4/518): binding it would raise SQLSTATE 22021, a server fault.
-	if !textBindable(q.Tag) || !textBindable(q.Repo) || !textBindable(q.Cursor) {
+	if !textBindable(q.Tag) || !textBindable(q.Repo) || !textBindable(q.Cursor) || !textBindable(q.AutomationID) {
 		return []AgentSession{}, nil
 	}
 	sql := `SELECT ` + agentSessionColumns + ` FROM agent_sessions WHERE workspace_id=$1`
@@ -576,6 +581,9 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	}
 	if q.Repo != "" {
 		sql += ` AND repo = ` + arg(q.Repo)
+	}
+	if q.AutomationID != "" {
+		sql += ` AND automation_id = ` + arg(q.AutomationID)
 	}
 	if !q.CreatedBefore.IsZero() {
 		sql += ` AND created_at < ` + arg(q.CreatedBefore)

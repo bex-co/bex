@@ -62,6 +62,30 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "agents-list",
     regions: ["composer", "session-list"],
   },
+  "/automations": {
+    kind: "render",
+    owner: "routes/automations.tsx",
+    shape: "automations-list",
+    regions: ["page-header", "scope-tabs", "automation-list"],
+  },
+  "/automations/new": {
+    kind: "render",
+    owner: "routes/automations_.new.tsx",
+    shape: "automation-create",
+    regions: ["details", "schedule", "session", "actions"],
+  },
+  "/automations/$automationId": {
+    kind: "render",
+    owner: "routes/automations_.$automationId.tsx",
+    shape: "automation-detail",
+    regions: ["actions", "settings", "task", "run-history"],
+  },
+  "/automations/$automationId/edit": {
+    kind: "render",
+    owner: "routes/automations_.$automationId_.edit.tsx",
+    shape: "automation-edit",
+    regions: ["details", "schedule", "session", "actions"],
+  },
   "/billing": {
     kind: "render",
     owner: "routes/billing.tsx",

@@ -207,6 +207,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	s.registerAttachmentREST(mux)
 	s.registerSecretREST(mux)
 	s.registerSkillREST(mux)
+	s.registerAutomationREST(mux)
 }
 
 // registerSkillREST mounts the ADR099 D3 workspace skills. {ref} is a skl-

@@ -261,6 +261,11 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Sidebar nav link to the cloud coding-agent sessions page (/agents)",
   },
+  "common.navAutomations": {
+    message: "Automations",
+    description:
+      "Sidebar nav link to the scheduled agent automations page (/automations)",
+  },
   "common.navSettings": {
     message: "Settings",
     description:

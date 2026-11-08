@@ -2,6 +2,7 @@ import { Link, useParams, useRouterState } from "@tanstack/react-router";
 import {
   Bell,
   Bot,
+  CalendarClock,
   Network,
   Boxes,
   ChevronDown,
@@ -526,6 +527,11 @@ const PAGE_DEFINITIONS: PageDefinition[] = [
     match: (path) => path.startsWith("/agents"),
     labelKey: "common.navAgents",
     icon: Bot,
+  },
+  {
+    match: (path) => path.startsWith("/automations"),
+    labelKey: "common.navAutomations",
+    icon: CalendarClock,
   },
   {
     match: (path) => path.startsWith("/notifications"),

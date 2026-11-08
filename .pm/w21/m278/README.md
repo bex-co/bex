@@ -1,18 +1,18 @@
 # w21 · m278 — Agent Automations: scheduled cloud-agent sessions (Devin parity)
 
-**Worker:** worker21 **Goal:** a customer defines an automation (a schedule trigger plus a session template) and bex starts an agent session at each tick, safely across replicas, as the creator, with spend and failure controls. **Status:** todo
+**Worker:** worker21 **Goal:** a customer defines an automation (a schedule trigger plus a session template) and bex starts an agent session at each tick, safely across replicas, as the creator, with spend and failure controls. **Status:** todo (t001, t002, t003, t004, t005, t006, t007 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Record the ADR101 decisions | 30m | — |
-| t002 | Schema, store and id kind | 90m | t001 |
-| t003 | Schedule model: cron, time zone, once, ends-at | 75m | t001 |
-| t004 | Service: CRUD, template validation, authorization | 90m | t002, t003 |
-| t005 | Scheduler loop: claim, record, fire, recover | 120m | t004 |
-| t006 | REST, GraphQL and MCP adapters | 90m | t004 |
-| t007 | Dashboard: Automations list, form and run history | 120m | t006 |
+| t001 | Record the ADR101 decisions — **DONE** | 30m | — |
+| t002 | Schema, store and id kind — **DONE** | 90m | t001 |
+| t003 | Schedule model: cron, time zone, once, ends-at — **DONE** | 75m | t001 |
+| t004 | Service: CRUD, template validation, authorization — **DONE** | 90m | t002, t003 |
+| t005 | Scheduler loop: claim, record, fire, recover — **DONE** | 120m | t004 |
+| t006 | REST, GraphQL and MCP adapters — **DONE** | 90m | t004 |
+| t007 | Dashboard: Automations list, form and run history — **DONE** | 120m | t006 |
 | t008 | Live verification on production as the QA user | 45m | t005, t007 |
 | t009 | Render parity (Devin reference for agent surfaces) | 25m | t008 |
 | t010 | Simplify | 15m | t009 |

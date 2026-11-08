@@ -68,6 +68,158 @@ export type AgentAttachmentLimits = {
   maxSessionBytes: Scalars['Float']['output'];
 };
 
+/** A schedule trigger plus a session template that runs as the member who created it (ADR101). */
+export type AgentAutomation = {
+  __typename: 'AgentAutomation';
+  consecutiveFailures: Scalars['Int']['output'];
+  createdAt: Maybe<Scalars['String']['output']>;
+  createdBy: Scalars['String']['output'];
+  enabled: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  lastFireAt: Maybe<Scalars['String']['output']>;
+  lastSessionId: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+  nextFireAt: Maybe<Scalars['String']['output']>;
+  overlapPolicy: Scalars['String']['output'];
+  ownerId: Scalars['String']['output'];
+  pausedReason: Maybe<Scalars['String']['output']>;
+  template: AgentAutomationTemplate;
+  triggers: Array<AgentAutomationTrigger>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+  version: Scalars['Int']['output'];
+};
+
+export type AgentAutomationAgentConfig = {
+  __typename: 'AgentAutomationAgentConfig';
+  agent: Scalars['String']['output'];
+  model: Maybe<Scalars['String']['output']>;
+  template: Maybe<Scalars['String']['output']>;
+};
+
+export type AgentAutomationAgentConfigInput = {
+  agent: Scalars['String']['input'];
+  model?: InputMaybe<Scalars['String']['input']>;
+  template?: InputMaybe<Scalars['String']['input']>;
+};
+
+/** An automation's fields. On update, omitted fields keep their value; triggers and template replace the stored ones whole. */
+export type AgentAutomationInput = {
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Update only: refuse unless the automation is still at this version. */
+  ifVersion?: InputMaybe<Scalars['Int']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  template?: InputMaybe<AgentAutomationTemplateInput>;
+  /** Exactly one trigger, of type schedule. */
+  triggers?: InputMaybe<Array<AgentAutomationTriggerInput>>;
+};
+
+export type AgentAutomationList = {
+  __typename: 'AgentAutomationList';
+  automations: Array<AgentAutomation>;
+  nextCursor: Maybe<Scalars['String']['output']>;
+  ownerId: Scalars['String']['output'];
+};
+
+/** One fire of an automation (ADR101 D3, D7). */
+export type AgentAutomationRun = {
+  __typename: 'AgentAutomationRun';
+  automationId: Scalars['String']['output'];
+  createdAt: Maybe<Scalars['String']['output']>;
+  error: Maybe<Scalars['String']['output']>;
+  fireAt: Maybe<Scalars['String']['output']>;
+  missedTicks: Scalars['Int']['output'];
+  outcome: Scalars['String']['output'];
+  sessionId: Maybe<Scalars['String']['output']>;
+  settledAt: Maybe<Scalars['String']['output']>;
+};
+
+export type AgentAutomationRunList = {
+  __typename: 'AgentAutomationRunList';
+  automationId: Scalars['String']['output'];
+  nextCursor: Maybe<Scalars['String']['output']>;
+  runs: Array<AgentAutomationRun>;
+};
+
+/** When an automation fires (ADR101 D2). */
+export type AgentAutomationSchedule = {
+  __typename: 'AgentAutomationSchedule';
+  at: Maybe<Scalars['String']['output']>;
+  cron: Maybe<Scalars['String']['output']>;
+  endsAt: Maybe<Scalars['String']['output']>;
+  frequency: Scalars['String']['output'];
+  minute: Maybe<Scalars['Int']['output']>;
+  runAt: Maybe<Scalars['String']['output']>;
+  timezone: Scalars['String']['output'];
+  weekdays: Maybe<Array<Scalars['String']['output']>>;
+};
+
+export type AgentAutomationScheduleInput = {
+  /** HH:MM, 24-hour. */
+  at?: InputMaybe<Scalars['String']['input']>;
+  /** Five fields, for custom. */
+  cron?: InputMaybe<Scalars['String']['input']>;
+  /** RFC 3339 instant, exclusive. */
+  endsAt?: InputMaybe<Scalars['String']['input']>;
+  /** once, hour, day, week or custom. */
+  frequency: Scalars['String']['input'];
+  minute?: InputMaybe<Scalars['Int']['input']>;
+  /** RFC 3339 instant, for once. */
+  runAt?: InputMaybe<Scalars['String']['input']>;
+  /** An IANA time zone name. */
+  timezone: Scalars['String']['input'];
+  /** mon..sun */
+  weekdays?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+/** The session each fire starts (ADR101 D5). */
+export type AgentAutomationTemplate = {
+  __typename: 'AgentAutomationTemplate';
+  agentConfig: AgentAutomationAgentConfig;
+  branch: Maybe<Scalars['String']['output']>;
+  egressAllowlist: Maybe<Array<Scalars['String']['output']>>;
+  maxSpendUSD: Maybe<Scalars['Float']['output']>;
+  outputRequired: Maybe<Scalars['Boolean']['output']>;
+  /** The JSON Schema each session's result must satisfy, as JSON text, or null. */
+  outputSchema: Maybe<Scalars['String']['output']>;
+  repo: Maybe<Scalars['String']['output']>;
+  secretNames: Maybe<Array<Scalars['String']['output']>>;
+  skills: Maybe<Array<AgentSessionSkill>>;
+  tags: Maybe<Array<Scalars['String']['output']>>;
+  task: Scalars['String']['output'];
+  title: Maybe<Scalars['String']['output']>;
+};
+
+/** The session each fire starts: a create-session request without resumeSessionId, attachments, inline secrets and idempotencyKey. */
+export type AgentAutomationTemplateInput = {
+  agentConfig: AgentAutomationAgentConfigInput;
+  branch?: InputMaybe<Scalars['String']['input']>;
+  egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
+  /** Required when the model is platform-metered. */
+  maxSpendUSD?: InputMaybe<Scalars['Float']['input']>;
+  outputRequired?: InputMaybe<Scalars['Boolean']['input']>;
+  /** A JSON Schema object as JSON text. */
+  outputSchema?: InputMaybe<Scalars['String']['input']>;
+  repo?: InputMaybe<Scalars['String']['input']>;
+  /** Workspace agent secrets exposed as env vars. */
+  secretNames?: InputMaybe<Array<Scalars['String']['input']>>;
+  skills?: InputMaybe<Array<AgentSessionSkillInput>>;
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
+  task: Scalars['String']['input'];
+  title?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type AgentAutomationTrigger = {
+  __typename: 'AgentAutomationTrigger';
+  schedule: Maybe<AgentAutomationSchedule>;
+  type: Scalars['String']['output'];
+};
+
+export type AgentAutomationTriggerInput = {
+  schedule?: InputMaybe<AgentAutomationScheduleInput>;
+  /** schedule */
+  type: Scalars['String']['input'];
+};
+
 export type AgentEnvironment = {
   __typename: 'AgentEnvironment';
   /** The highest override an admin may set (10x the plan default). */
@@ -166,6 +318,8 @@ export type AgentSession = {
   __typename: 'AgentSession';
   agentConfig: AgentSessionConfig;
   archivedAt: Maybe<Scalars['String']['output']>;
+  /** The agent automation (aut-…) that started this session, when one did. */
+  automationId: Maybe<Scalars['String']['output']>;
   branch: Scalars['String']['output'];
   canceledAt: Maybe<Scalars['String']['output']>;
   created: Maybe<Scalars['Boolean']['output']>;
@@ -1576,6 +1730,8 @@ export type Mutation = {
   claimGit: Maybe<GitClaim>;
   cloneEnvGroup: Maybe<EnvGroup>;
   connectGit: Maybe<GitConnection>;
+  /** Add an automation owned by the caller. */
+  createAgentAutomation: AgentAutomation;
   createAgentSession: Maybe<AgentSession>;
   /** Add a workspace skill (admins only). */
   createAgentSkill: AgentSkill;
@@ -1606,6 +1762,8 @@ export type Mutation = {
   deleteAccount: Maybe<AccountDeletion>;
   /** Deletes your own upload that no turn has attached yet. */
   deleteAgentAttachment: Maybe<Scalars['Boolean']['output']>;
+  /** Delete an automation and its run history (its creator or a workspace admin). */
+  deleteAgentAutomation: Maybe<Scalars['Boolean']['output']>;
   /** Delete a workspace agent secret (admins only). */
   deleteAgentSecret: Maybe<Scalars['Boolean']['output']>;
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
@@ -1648,6 +1806,8 @@ export type Mutation = {
   moveEnvGroup: Maybe<EnvGroup>;
   patchEnvGroupEnvironment: Maybe<EnvGroupEnvironmentPatchResult>;
   patchServiceEnvironment: EnvironmentPatchResult;
+  /** Stop an automation firing. */
+  pauseAgentAutomation: AgentAutomation;
   planBlueprintSync: Maybe<BlueprintPlanResult>;
   prepareWorkspaceCreation: Maybe<WorkspaceCreationAttempt>;
   purgeServiceCache: Maybe<Service>;
@@ -1667,6 +1827,8 @@ export type Mutation = {
   restartDatabase: Maybe<Database>;
   restartServer: Maybe<Deploy>;
   restoreDiskSnapshot: Maybe<Disk>;
+  /** Re-enable an automation. */
+  resumeAgentAutomation: AgentAutomation;
   resumeAgentSession: Maybe<AgentSession>;
   resumeDatabase: Maybe<Database>;
   resumeKeyValue: Maybe<KeyValue>;
@@ -1675,6 +1837,8 @@ export type Mutation = {
   revokeNotificationDeviceSubscriptions: Maybe<Scalars['Int']['output']>;
   revokeWorkspaceInvite: Maybe<Scalars['String']['output']>;
   rollbackService: Maybe<Deploy>;
+  /** Fire an automation now, as a normal run. */
+  runAgentAutomation: AgentAutomationRun;
   runCronJob: Maybe<CronRun>;
   scaleService: Maybe<Service>;
   selectGitClaim: Maybe<GitConnection>;
@@ -1736,6 +1900,8 @@ export type Mutation = {
   suspendKeyValue: Maybe<KeyValue>;
   suspendService: Maybe<Service>;
   syncBlueprint: Maybe<SyncBlueprintResult>;
+  /** Make the calling workspace admin the automation's creator. */
+  takeOverAgentAutomation: AgentAutomation;
   terminateSandbox: Scalars['Boolean']['output'];
   triggerBuild: Maybe<Build>;
   triggerDeploy: Maybe<Deploy>;
@@ -1743,6 +1909,8 @@ export type Mutation = {
   unlinkEnvGroup: Maybe<Scalars['Boolean']['output']>;
   unregisterNotificationDeviceSubscription: Maybe<Scalars['Boolean']['output']>;
   unregisterNotificationWebPushSubscription: Maybe<Scalars['Boolean']['output']>;
+  /** Change an automation (its creator only). */
+  updateAgentAutomation: AgentAutomation;
   updateAgentEnvironment: AgentEnvironment;
   /** Change a workspace skill (admins only). */
   updateAgentSkill: AgentSkill;
@@ -1862,6 +2030,12 @@ export type MutationCloneEnvGroupArgs = {
 
 
 export type MutationConnectGitArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationCreateAgentAutomationArgs = {
+  input: AgentAutomationInput;
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -2137,6 +2311,12 @@ export type MutationDeleteAgentAttachmentArgs = {
 };
 
 
+export type MutationDeleteAgentAutomationArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDeleteAgentSecretArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -2366,6 +2546,12 @@ export type MutationPatchServiceEnvironmentArgs = {
 };
 
 
+export type MutationPauseAgentAutomationArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationPlanBlueprintSyncArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -2499,6 +2685,12 @@ export type MutationRestoreDiskSnapshotArgs = {
 };
 
 
+export type MutationResumeAgentAutomationArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationResumeAgentSessionArgs = {
   id: Scalars['String']['input'];
 };
@@ -2541,6 +2733,12 @@ export type MutationRollbackServiceArgs = {
   deployId: Scalars['String']['input'];
   disableAutoDeploy?: InputMaybe<Scalars['Boolean']['input']>;
   serviceId: Scalars['String']['input'];
+};
+
+
+export type MutationRunAgentAutomationArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2962,6 +3160,12 @@ export type MutationSyncBlueprintArgs = {
 };
 
 
+export type MutationTakeOverAgentAutomationArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationTerminateSandboxArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -3003,6 +3207,13 @@ export type MutationUnregisterNotificationDeviceSubscriptionArgs = {
 
 export type MutationUnregisterNotificationWebPushSubscriptionArgs = {
   browserId: Scalars['String']['input'];
+};
+
+
+export type MutationUpdateAgentAutomationArgs = {
+  id: Scalars['String']['input'];
+  input: AgentAutomationInput;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3374,6 +3585,12 @@ export type Query = {
   accountDeletionPreview: Maybe<AccountDeletionPreview>;
   /** One agent attachment with a fresh 15-minute downloadUrl (ADR095). */
   agentAttachment: Maybe<AgentAttachment>;
+  /** One automation by aut- id or name. */
+  agentAutomation: AgentAutomation;
+  /** An automation's runs, newest first. */
+  agentAutomationRuns: AgentAutomationRunList;
+  /** The workspace's agent automations, newest first. mine keeps the caller's own. */
+  agentAutomations: AgentAutomationList;
   agentEnvironment: AgentEnvironment;
   /** The workspace's agent secrets, names only. */
   agentSecrets: AgentSecretList;
@@ -3515,6 +3732,28 @@ export type Query = {
 
 export type QueryAgentAttachmentArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type QueryAgentAutomationArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentAutomationRunsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentAutomationsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  mine?: InputMaybe<Scalars['Boolean']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
