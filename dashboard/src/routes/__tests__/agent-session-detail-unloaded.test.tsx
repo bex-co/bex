@@ -27,6 +27,10 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session", () => ({
   useAgentSession: () => ({ ...hook.state, refetch: async () => undefined }),
 }));
 
+vi.mock("@/features/agent-sessions/hooks/use-agent-session-tree", () => ({
+  useAgentSessionTree: () => ({ sessions: [], loading: false }),
+}));
+
 vi.mock("@/common/hooks/use-loader-error-retry", () => ({
   useLoaderErrorRetry: () => undefined,
 }));

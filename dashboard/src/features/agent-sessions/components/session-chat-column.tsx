@@ -10,6 +10,7 @@ import { SteeringComposer } from "@/features/agent-sessions/components/steering-
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
+import { ChildSessionCards } from "@/features/agent-sessions/components/child-session-cards";
 import type {
   AgentSessionListSearch,
   AgentSessionView,
@@ -25,6 +26,10 @@ export interface SessionChatColumnProps {
   onChatStateChange: (handle: ConversationChatHandle | null) => void;
   onChanged: () => void | Promise<unknown>;
   backSearch?: AgentSessionListSearch;
+  /** The sessions this one spawned, oldest first (ADR102); cards in the transcript. */
+  childSessions?: readonly AgentSessionView[];
+  /** The Agents panel, passed only for a session in a lineage. */
+  agentsPanel?: ReactNode;
 }
 
 /**
@@ -47,6 +52,8 @@ export function SessionChatColumn({
   onChatStateChange,
   onChanged,
   backSearch,
+  childSessions,
+  agentsPanel,
 }: SessionChatColumnProps) {
   const { t } = useTranslations();
   const [transportState, setTransportState] =
@@ -94,6 +101,7 @@ export function SessionChatColumn({
       {showPendingSteer ? (
         <OptimisticUserBubble text={pendingSteer.prompt} />
       ) : null}
+      <ChildSessionCards childSessions={childSessions ?? []} />
       <StructuredResultCallout session={session} />
       <SessionSpendNote session={session} />
       <FailureCallout session={session} onRetried={onChanged} />
@@ -150,14 +158,8 @@ export function SessionChatColumn({
     />
   );
 
-  return (
+  const main = (
     <>
-      <SessionDetailHeader
-        session={session}
-        onChanged={onChanged}
-        backSearch={backSearch}
-      />
-
       <div className="min-h-0 flex-1">{conversation}</div>
 
       {/* An archived session refuses steer/resume (AGENT_SESSION_ARCHIVED), so
@@ -173,6 +175,27 @@ export function SessionChatColumn({
             setPendingSteer(prompt ? { prompt, atTurns: session.turns } : null)
           }
         />
+      )}
+    </>
+  );
+
+  return (
+    <>
+      <SessionDetailHeader
+        session={session}
+        onChanged={onChanged}
+        backSearch={backSearch}
+      />
+
+      {agentsPanel ? (
+        // A lineage session: the panel stacks above the chat below `lg` and
+        // takes the right-hand column from `lg` (its own `lg:order-last`).
+        <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+          {agentsPanel}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">{main}</div>
+        </div>
+      ) : (
+        main
       )}
     </>
   );

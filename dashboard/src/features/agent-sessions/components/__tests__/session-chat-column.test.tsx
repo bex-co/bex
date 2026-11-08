@@ -46,6 +46,13 @@ vi.mock("@/features/agent-sessions/components/delivery-note-callout", () => ({
   DeliveryNoteCallout: () => null,
 }));
 
+vi.mock("@/features/agent-sessions/components/child-session-cards", () => ({
+  ChildSessionCards: ({ childSessions }: { childSessions: unknown[] }) =>
+    childSessions.length > 0 ? (
+      <div data-testid="cards">{childSessions.length}</div>
+    ) : null,
+}));
+
 function view(
   phase: AgentSessionPhase,
   over: Partial<AgentSessionView> = {},
@@ -166,5 +173,35 @@ describe("SessionChatColumn optimistic redispatch echo (w2/m64)", () => {
     // prompt is the only copy, so the optimistic echo must stay hidden.
     rerender(column(view("completed", { sandboxId: "", turns: 4 })));
     expect(screen.queryByText("echoed prompt")).not.toBeInTheDocument();
+  });
+});
+
+describe("SessionChatColumn lineage (ADR102)", () => {
+  it("adds the panel region and child cards only for a lineage session", () => {
+    const base = view("running", { sandboxId: "sandbox-1" });
+    const { rerender } = render(column(base));
+    expect(screen.queryByTestId("panel")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("cards")).not.toBeInTheDocument();
+
+    rerender(
+      <SessionChatColumn
+        session={base}
+        chat={null}
+        onChatStateChange={noop}
+        onChanged={noop}
+        childSessions={[view("running", { id: "c1" })]}
+        agentsPanel={<aside data-testid="panel" />}
+      />,
+    );
+    expect(screen.getByTestId("cards")).toHaveTextContent("1");
+    // The panel precedes the conversation in the DOM (stacked above it on
+    // narrow screens) and shares the row wrapper with it.
+    const panel = screen.getByTestId("panel");
+    const conversation = screen.getByTestId("conversation");
+    expect(
+      panel.compareDocumentPosition(conversation) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(panel.parentElement).toHaveClass("lg:flex-row");
   });
 });

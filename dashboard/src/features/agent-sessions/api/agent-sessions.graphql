@@ -18,6 +18,11 @@ fragment AgentSessionFields on AgentSession {
   maxSpendUSD
   # The automation (ADR101) that started the session, when one did.
   automationId
+  # The lineage (ADR102): the session that spawned this one, the top of its
+  # tree, and the distance from that top. Absent/0 on a top-level session.
+  parentSessionId
+  rootSessionId
+  depth
   # Names of the attached secrets (ADR098); values are never readable.
   secretNames
   agentConfig {
@@ -124,6 +129,18 @@ query AgentSessions(
 query AgentSession($id: String!) {
   agentSession(id: $id) {
     ...AgentSessionFields
+  }
+}
+
+# The whole spawn tree the session belongs to (ADR102 D8): the root first, then
+# by depth and creation. Read by the session page's Agents panel and child
+# cards; the list rows never run it.
+query AgentSessionTree($id: String!) {
+  agentSessionTree(id: $id) {
+    rootSessionId
+    sessions {
+      ...AgentSessionFields
+    }
   }
 }
 

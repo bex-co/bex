@@ -216,4 +216,70 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     await screen.findByText("Recent");
     expect(pollingMounts).toBe(1);
   });
+
+  describe("lineage nesting (ADR102)", () => {
+    function named(id: string, task: string, parent: string | null = null) {
+      return view({
+        id,
+        parentSessionId: parent,
+        agentConfig: { ...view().agentConfig, task },
+      });
+    }
+
+    it("nests two children under their parent row, oldest first", async () => {
+      sessionsState.sessions = [
+        {
+          ...named("as-c2", "second child", "as-p"),
+          createdAt: "2026-08-05T00:00:02Z",
+        },
+        {
+          ...named("as-c1", "first child", "as-p"),
+          createdAt: "2026-08-05T00:00:01Z",
+        },
+        named("as-p", "the parent"),
+      ];
+      renderAt("/agents");
+
+      const nested = await screen.findByTestId("session-children");
+      const links = Array.from(nested.querySelectorAll("a")).map((a) =>
+        a.getAttribute("href"),
+      );
+      expect(links).toEqual(["/agents/as-c1", "/agents/as-c2"]);
+      // The children are inside the parent's own list item, not top-level.
+      expect(nested.closest("li")).toContainElement(
+        screen.getByRole("link", { name: /the parent/ }),
+      );
+    });
+
+    it("keeps a child whose parent is not loaded as a top-level row", async () => {
+      sessionsState.sessions = [named("as-o", "orphan child", "as-gone")];
+      renderAt("/agents");
+
+      expect(await screen.findByText("orphan child")).toBeInTheDocument();
+      expect(screen.queryByTestId("session-children")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /child sessions/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("collapses and re-expands the nested children", async () => {
+      sessionsState.sessions = [
+        named("as-c1", "first child", "as-p"),
+        named("as-p", "the parent"),
+      ];
+      renderAt("/agents");
+
+      await screen.findByTestId("session-children");
+      await userEvent.click(
+        screen.getByRole("button", { name: "Hide child sessions" }),
+      );
+      expect(screen.queryByTestId("session-children")).not.toBeInTheDocument();
+      expect(screen.queryByText("first child")).not.toBeInTheDocument();
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Show child sessions" }),
+      );
+      expect(screen.getByText("first child")).toBeInTheDocument();
+    });
+  });
 });

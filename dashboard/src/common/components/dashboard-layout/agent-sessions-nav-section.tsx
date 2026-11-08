@@ -1,6 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link, useParams, useRouterState } from "@tanstack/react-router";
-import { Archive, GitPullRequest, List, Search } from "lucide-react";
+import {
+  Archive,
+  ChevronDown,
+  ChevronRight,
+  GitPullRequest,
+  List,
+  Search,
+} from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import {
   SidebarGroup,
@@ -11,6 +18,7 @@ import {
   SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
 } from "@/common/components/ui/sidebar.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
@@ -19,9 +27,10 @@ import {
   sessionTitleShort,
 } from "@/features/agent-sessions/lib/mapper";
 import {
-  parseAgentSessionArchivedFilter,
-  type AgentSessionView,
-} from "@/features/agent-sessions/types";
+  nestSessions,
+  type SessionNode,
+} from "@/features/agent-sessions/lib/lineage";
+import { parseAgentSessionArchivedFilter } from "@/features/agent-sessions/types";
 
 /** Substring match for prose titles — avoids the mention picker's subsequence fallback. */
 function sessionSearchMatch(query: string, candidate: string): boolean {
@@ -86,6 +95,9 @@ export function AgentSessionsNavSection() {
       ),
     [sessions, query],
   );
+  // Children nest under a parent that is in the (filtered) list; one whose
+  // parent is not loaded or does not match the search stays a top-level row.
+  const rows = useMemo(() => nestSessions(filtered), [filtered]);
 
   return (
     <SidebarGroup
@@ -159,11 +171,11 @@ export function AgentSessionsNavSection() {
           </p>
         ) : (
           <SidebarMenu>
-            {filtered.map((s) => (
+            {rows.map((node) => (
               <SessionRow
-                key={s.id}
-                session={s}
-                active={s.id === agentSessionId}
+                key={node.session.id}
+                node={node}
+                activeId={agentSessionId}
               />
             ))}
           </SidebarMenu>
@@ -180,13 +192,17 @@ export function AgentSessionsNavSection() {
  * be invalid HTML and would swallow the row's own navigation.
  */
 function SessionRow({
-  session,
-  active,
+  node,
+  activeId,
 }: {
-  session: AgentSessionView;
-  active: boolean;
+  node: SessionNode;
+  activeId: string | undefined;
 }) {
   const { t } = useTranslations();
+  const { session } = node;
+  const active = session.id === activeId;
+  const hasChildren = node.children.length > 0;
+  const [expanded, setExpanded] = useState(true);
   const title = sessionTitleShort(session);
   const hasPrLink =
     session.prNumber != null &&
@@ -199,7 +215,7 @@ function SessionRow({
         asChild
         isActive={active}
         tooltip={title}
-        className="h-auto flex-col items-start gap-0.5 py-1.5"
+        className={`h-auto flex-col items-start gap-0.5 py-1.5${hasChildren ? " pr-7" : ""}`}
       >
         <Link
           to="/agents/$agentSessionId"
@@ -238,6 +254,36 @@ function SessionRow({
             <GitPullRequest className="size-3" aria-hidden />#{session.prNumber}
           </a>
         </SidebarMenuAction>
+      ) : null}
+      {hasChildren ? (
+        // Pinned to the TITLE line, opposite the PR marker on the status line.
+        <SidebarMenuAction
+          type="button"
+          aria-expanded={expanded}
+          aria-label={
+            expanded
+              ? t("agentSessions.lineage.collapseChildren")
+              : t("agentSessions.lineage.expandChildren")
+          }
+          onClick={() => setExpanded((v) => !v)}
+        >
+          {expanded ? (
+            <ChevronDown aria-hidden />
+          ) : (
+            <ChevronRight aria-hidden />
+          )}
+        </SidebarMenuAction>
+      ) : null}
+      {hasChildren && expanded ? (
+        <SidebarMenuSub data-testid="session-children">
+          {node.children.map((child) => (
+            <SessionRow
+              key={child.session.id}
+              node={child}
+              activeId={activeId}
+            />
+          ))}
+        </SidebarMenuSub>
       ) : null}
     </SidebarMenuItem>
   );

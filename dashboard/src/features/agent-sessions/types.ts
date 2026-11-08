@@ -148,6 +148,12 @@ export interface AgentSessionView {
   maxSpendUSD: string | null;
   /** The agent automation (aut-…) that started the session, ADR101. */
   automationId: string | null;
+  /** The session (ags-…) that spawned this one (ADR102); null on a top-level session. */
+  parentSessionId: string | null;
+  /** The top of this session's tree (ADR102); null on a top-level session. */
+  rootSessionId: string | null;
+  /** Distance from the root of the tree; 0 on a top-level session. */
+  depth: number;
   /** The lifecycle enum the whole UI keys off. */
   phase: AgentSessionPhase;
   /** Free-text human status line; display-only, never branched on. */

@@ -1400,6 +1400,67 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Skills used in this turn",
     description: "Accessible label of a transcript turn's skill pills",
   },
+  "agentSessions.lineage.childSessions": {
+    message: "Child sessions",
+    description:
+      "Heading of the block listing sessions the agent spawned, in the parent session's transcript",
+  },
+  "agentSessions.lineage.childCardTitle": {
+    message: "Created a session",
+    description:
+      "Small label above a child session's title on its card in the parent's transcript",
+  },
+  "agentSessions.lineage.agentsPanel": {
+    message: "Agents",
+    description:
+      "Heading of the session page's right-hand panel listing the sessions below this one",
+  },
+  "agentSessions.lineage.viewSession": {
+    message: "View session",
+    description: "Link on an Agents panel row that opens that child session",
+  },
+  "agentSessions.lineage.parentSession": {
+    message: "Parent session",
+    description:
+      "Link in the Agents panel of a child session that opens its parent",
+  },
+  "agentSessions.lineage.collapsePanel": {
+    message: "Collapse the Agents panel",
+    description:
+      "Accessible label of the button that collapses the Agents panel",
+  },
+  "agentSessions.lineage.expandPanel": {
+    message: "Expand the Agents panel",
+    description: "Accessible label of the button that expands the Agents panel",
+  },
+  "agentSessions.lineage.collapseChildren": {
+    message: "Hide child sessions",
+    description:
+      "Accessible label of a sidebar row's button that collapses its nested child sessions",
+  },
+  "agentSessions.lineage.expandChildren": {
+    message: "Show child sessions",
+    description:
+      "Accessible label of a sidebar row's button that expands its nested child sessions",
+  },
+  "agentSessions.lineage.status.working": {
+    message: "Working",
+    description:
+      "Status group and badge of a child session that is still running",
+  },
+  "agentSessions.lineage.status.done": {
+    message: "Done",
+    description:
+      "Status group and badge of a child session that finished successfully",
+  },
+  "agentSessions.lineage.status.failed": {
+    message: "Failed",
+    description: "Status group and badge of a child session that failed",
+  },
+  "agentSessions.lineage.status.canceled": {
+    message: "Canceled",
+    description: "Status group and badge of a child session that was canceled",
+  },
 };
 
 export default enAgentSessions;

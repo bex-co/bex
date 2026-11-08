@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowLeft } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
@@ -22,6 +22,13 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { useAgentSession } from "@/features/agent-sessions/hooks/use-agent-session";
+import { useAgentSessionTree } from "@/features/agent-sessions/hooks/use-agent-session-tree";
+import { AgentsPanel } from "@/features/agent-sessions/components/agents-panel";
+import {
+  descendantsOf,
+  directChildren,
+  showAgentsPanel,
+} from "@/features/agent-sessions/lib/lineage";
 import {
   agentSessionDisplayName,
   agentSessionNameSource,
@@ -127,6 +134,15 @@ function AgentSessionDetailPage() {
   useLoaderErrorRetry(Route.useLoaderData(), agentSessionId);
   // Lifted from the conversation column so the steering composer can send a live
   // turn through the column's own useChat instance (null ⇒ live path disabled).
+  const tree = useAgentSessionTree(agentSessionId);
+  const children = useMemo(
+    () => directChildren(tree.sessions, agentSessionId),
+    [tree.sessions, agentSessionId],
+  );
+  const descendants = useMemo(
+    () => descendantsOf(tree.sessions, agentSessionId),
+    [tree.sessions, agentSessionId],
+  );
   const [chat, setChat] = useState<ConversationChatHandle | null>(null);
 
   return (
@@ -149,6 +165,16 @@ function AgentSessionDetailPage() {
           ) : null}
           {session ? (
             <SessionChatColumn
+              childSessions={children}
+              agentsPanel={
+                showAgentsPanel(session, descendants) ? (
+                  <AgentsPanel
+                    descendants={descendants}
+                    parentSessionId={session.parentSessionId}
+                    loading={tree.loading}
+                  />
+                ) : null
+              }
               session={session}
               chat={chat}
               onChatStateChange={setChat}

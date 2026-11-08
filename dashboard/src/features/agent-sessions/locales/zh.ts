@@ -1317,6 +1317,67 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "本轮使用的技能",
     description: "Accessible label of a transcript turn's skill pills",
   },
+  "agentSessions.lineage.childSessions": {
+    message: "子会话",
+    description:
+      "Heading of the block listing sessions the agent spawned, in the parent session's transcript",
+  },
+  "agentSessions.lineage.childCardTitle": {
+    message: "已创建会话",
+    description:
+      "Small label above a child session's title on its card in the parent's transcript",
+  },
+  "agentSessions.lineage.agentsPanel": {
+    message: "智能体",
+    description:
+      "Heading of the session page's right-hand panel listing the sessions below this one",
+  },
+  "agentSessions.lineage.viewSession": {
+    message: "查看会话",
+    description: "Link on an Agents panel row that opens that child session",
+  },
+  "agentSessions.lineage.parentSession": {
+    message: "父会话",
+    description:
+      "Link in the Agents panel of a child session that opens its parent",
+  },
+  "agentSessions.lineage.collapsePanel": {
+    message: "收起智能体面板",
+    description:
+      "Accessible label of the button that collapses the Agents panel",
+  },
+  "agentSessions.lineage.expandPanel": {
+    message: "展开智能体面板",
+    description: "Accessible label of the button that expands the Agents panel",
+  },
+  "agentSessions.lineage.collapseChildren": {
+    message: "收起子会话",
+    description:
+      "Accessible label of a sidebar row's button that collapses its nested child sessions",
+  },
+  "agentSessions.lineage.expandChildren": {
+    message: "展开子会话",
+    description:
+      "Accessible label of a sidebar row's button that expands its nested child sessions",
+  },
+  "agentSessions.lineage.status.working": {
+    message: "进行中",
+    description:
+      "Status group and badge of a child session that is still running",
+  },
+  "agentSessions.lineage.status.done": {
+    message: "已完成",
+    description:
+      "Status group and badge of a child session that finished successfully",
+  },
+  "agentSessions.lineage.status.failed": {
+    message: "失败",
+    description: "Status group and badge of a child session that failed",
+  },
+  "agentSessions.lineage.status.canceled": {
+    message: "已取消",
+    description: "Status group and badge of a child session that was canceled",
+  },
 };
 
 export default zhAgentSessions;

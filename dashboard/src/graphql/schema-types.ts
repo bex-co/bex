@@ -326,6 +326,8 @@ export type AgentSession = {
   createdAt: Scalars['String']['output'];
   deliveryMode: Maybe<Scalars['String']['output']>;
   deliveryNote: Maybe<Scalars['String']['output']>;
+  /** Distance from the root of the session's tree; 0 for a top-level session. */
+  depth: Scalars['Int']['output'];
   expiresAt: Maybe<Scalars['String']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
   failureReasonCode: Maybe<Scalars['String']['output']>;
@@ -334,10 +336,14 @@ export type AgentSession = {
   maxSpendUSD: Maybe<Scalars['String']['output']>;
   outcome: Maybe<AgentSessionOutcome>;
   ownerId: Scalars['String']['output'];
+  /** The agent session (ags-…) that spawned this one, when one did. */
+  parentSessionId: Maybe<Scalars['String']['output']>;
   phase: Scalars['String']['output'];
   prNumber: Maybe<Scalars['Int']['output']>;
   prUrl: Maybe<Scalars['String']['output']>;
   repo: Scalars['String']['output'];
+  /** The top of this session's tree, absent on a top-level session. */
+  rootSessionId: Maybe<Scalars['String']['output']>;
   sandboxId: Maybe<Scalars['String']['output']>;
   /** Names of the secrets attached to the session; values are never returned. */
   secretNames: Maybe<Array<Scalars['String']['output']>>;
@@ -511,6 +517,14 @@ export type AgentSessionTranscriptTurn = {
   transcriptTruncated: Scalars['Boolean']['output'];
   truncationReason: Scalars['String']['output'];
   turn: Scalars['Int']['output'];
+};
+
+/** The tree of agent sessions a session belongs to (ADR102): its root and every session below it. */
+export type AgentSessionTree = {
+  __typename: 'AgentSessionTree';
+  rootSessionId: Scalars['String']['output'];
+  /** The root first, then by depth and creation time. */
+  sessions: Array<AgentSession>;
 };
 
 export type AgentSessionTurnAttachment = {
@@ -2074,6 +2088,7 @@ export type MutationCreateAgentSessionArgs = {
   outputRequired?: InputMaybe<Scalars['Boolean']['input']>;
   outputSchema?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  parentSessionId?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];
   secretNames?: InputMaybe<Array<Scalars['String']['input']>>;
   secrets?: InputMaybe<Array<AgentSessionSecretInput>>;
@@ -3626,6 +3641,7 @@ export type Query = {
   /** The complete output of one tool call whose transcript part is flagged fullOutput (w10/m18). Not found when no full copy was kept. */
   agentSessionToolOutput: AgentSessionToolOutput;
   agentSessionTranscript: AgentSessionTranscriptPage;
+  agentSessionTree: AgentSessionTree;
   agentSessions: Array<AgentSession>;
   /** One workspace skill by skl- id or name, with its body and SKILL.md. */
   agentSkill: AgentSkill;
@@ -3833,13 +3849,20 @@ export type QueryAgentSessionTranscriptArgs = {
 };
 
 
+export type QueryAgentSessionTreeArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type QueryAgentSessionsArgs = {
   archived?: InputMaybe<Scalars['String']['input']>;
+  automationId?: InputMaybe<Scalars['String']['input']>;
   createdAfter?: InputMaybe<Scalars['String']['input']>;
   createdBefore?: InputMaybe<Scalars['String']['input']>;
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  parentSessionId?: InputMaybe<Scalars['String']['input']>;
   phases?: InputMaybe<Array<Scalars['String']['input']>>;
   repo?: InputMaybe<Scalars['String']['input']>;
   states?: InputMaybe<Array<Scalars['String']['input']>>;
