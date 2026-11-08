@@ -8,9 +8,9 @@
 - [x] **m258** — Cloud Agents MCP phase 2: the `/mcp/cloud-agents` toolset, `wait_agent_sessions`, idempotent create, `bex.cloud_agents` scope (11 tasks) → [`done/m258/`](done/m258/README.md) ← from ADR094 D10 phase 2; after m257
 - [x] **m259** — Cloud Agents MCP phase 3: schema-validated structured output (`submit_result`) (9 tasks) → [`done/m259/`](done/m259/README.md) ← from ADR094 D10 phase 3; after m258 — DONE 2026-11-05
 - [ ] **m260** — moved to **w9/m172** (2026-11-05, user decision: w9 follows up all w21 work) → [`../w9/m172/`](../w9/m172/README.md)
-- [ ] **m278** — [Agent Automations: scheduled cloud-agent sessions (Devin parity)](m278/README.md) (12 tasks) ← from [ADR101](../../docs/ADR101-agent-automations.md)
-- [ ] **m279** — [Agent child sessions: an agent can spawn and track child sessions (Devin parity)](m279/README.md) (11 tasks) ← from [ADR094](../../docs/ADR094-coding-agent-mcp.md) deferral; t002–t003 after w9/m179
-- [ ] **m280** — [Skill version history: every save keeps a version you can read, diff and restore (Devin parity)](m280/README.md) (8 tasks) ← from [ADR099](../../docs/ADR099-agent-skills.md) follow-up
+- [x] **m278** — [Agent Automations: scheduled cloud-agent sessions (Devin parity)](done/m278/README.md) (12 tasks) ← from [ADR101](../../docs/ADR101-agent-automations.md)
+- [x] **m279** — [Agent child sessions: an agent can spawn and track child sessions (Devin parity)](done/m279/README.md) (11 tasks) ← from [ADR094](../../docs/ADR094-coding-agent-mcp.md) deferral; t002–t003 after w9/m179
+- [x] **m280** — [Skill version history: every save keeps a version you can read, diff and restore (Devin parity)](done/m280/README.md) (8 tasks) ← from [ADR099](../../docs/ADR099-agent-skills.md) follow-up
 
 ## Inbox
 
@@ -25,3 +25,6 @@
 - [ ] **009** — **BLOCKED (needs a disposable mailbox, a GitHub account and a test card from the user; the logged-out half is verified)** — Check the Deploy-to-bex link survives sign-up and the payment gate for a new account → [`blocked/009.md`](blocked/009.md)
 - [x] **010** — Automations: count a workspace's automations in the database, and read the previous run's phase with one query → [`done/010.md`](done/010.md)
 - [x] **011** — Skill versions saved before migration 0210 read with SQL-style YAML quoting, so their next diff shows one spurious description line → [`done/011.md`](done/011.md)
+- [ ] **012** — Blueprint deploys sit `queued` for 20-35 minutes, sync/create answer 500/502, and a missed rollout deadline is never retried → [`012.md`](012.md)
+- [ ] **013** — Automation create form logs React hydration error #418 (time zone default differs between server and browser) → [`013.md`](013.md)
+- [ ] **014** — Skill version history shows the author as a raw user id → [`014.md`](014.md)
