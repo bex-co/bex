@@ -33,12 +33,18 @@ jobs:
       - name: Check CLI release staleness
         id: check
         run: |
-          if scripts/cli-release-staleness.sh > staleness.txt; then
-            echo "stale=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "stale=true" >> "$GITHUB_OUTPUT"
-          fi
+          set +e
+          scripts/cli-release-staleness.sh > staleness.txt 2>&1
+          rc=$?
+          set -e
           cat staleness.txt
+          # Exit 2 means the script cannot tell (w6/112): fail the run rather
+          # than ask for a release.
+          case "$rc" in
+            0) echo "stale=false" >> "$GITHUB_OUTPUT" ;;
+            1) echo "stale=true" >> "$GITHUB_OUTPUT" ;;
+            *) exit "$rc" ;;
+          esac
       - name: Open or update the tracking issue
         if: steps.check.outputs.stale == 'true'
         run: |

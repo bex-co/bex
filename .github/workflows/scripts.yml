@@ -96,6 +96,9 @@ jobs:
       # w6/110 (#134): an activator-held wake is a wake, and stage 4 polls.
       - name: Tenant-view canary stage 4 self-test
         run: bash scripts/tenant-view-liveness.test.sh
+      # w6/112 (#111): a release tag left off main by a rewrite counts from its copy.
+      - name: CLI release staleness self-test
+        run: bash scripts/cli-release-staleness.test.sh
       # w3/m173 t006 (ADR079 F1): .env loaders refuse a group/world-readable file.
       - name: .env permission guard self-test
         run: bash scripts/env-file.test.sh
@@ -222,6 +225,7 @@ jobs:
           scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
           scripts/request-logs-liveness.sh
           scripts/lib/canary-api.sh scripts/tenant-view-liveness.sh scripts/tenant-view-liveness.test.sh
+          scripts/cli-release-staleness.sh scripts/cli-release-staleness.test.sh
           scripts/deploy-canary.sh
           scripts/funnel-counters.sh
       - name: Local cluster lock and kubeconfig publication contracts
