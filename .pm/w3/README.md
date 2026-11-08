@@ -90,6 +90,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 - [x] **m177** — Move the Prometheus rule pack out of the inline Argo Application values (7 tasks) — **done 2026-10-29** ([done/m177](done/m177/README.md)): rules live in `deploy/gitops/base/rules/alerting_rules.yml` via a mounted, reloader-watched ConfigMap; Application size 392,955 / 421,080 of 1,310,720 bytes; production `/api/v1/rules` loads the same 123 rules from `/etc/rules` with Watchdog firing (verified by `/unblock w3`).
 ## Inbox
 
+- [x] **055** — **done 2026-11-07** ([done/055.md](done/055.md)): moving a Key Value into an environment no longer fails its reconcile — the `bex-operator-pod-labels` admission policy admits the `environment-id` relabel the operator has made since w4/451, covered by an envtest against the production manifest.
 - [ ] **057** — [ADR018 ledger carries stale claims](057.md) ← from `/pm-brainstorm w3` 2026-11-07
 - [ ] **056** — [Scale and Enterprise workspaces are capped at 25 webhook endpoints; Render allows 100](056.md) ← from `/pm-brainstorm w3` 2026-11-07
 - [ ] **054** — **BLOCKED (your decision: how private traffic reaches pods for any protocol — (a) headless private Service (recommended, Render's any-port/any-protocol with no discovery), (b) exec-based UDP discovery, (c) image-declared UDP only)** — [Private network for any protocol (UDP included): design the routing](blocked/054.md). Run `/unblock w3`.

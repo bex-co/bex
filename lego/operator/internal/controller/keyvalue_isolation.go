@@ -54,7 +54,10 @@ func keyValueJobPeer(kv *appv1alpha1.KeyValue) *metav1.LabelSelector {
 // the isolation label (w8/220) and the environment label itself (w4/451).
 // NetworkPolicies select pods by both, and both change when the store joins,
 // leaves or is isolated with an environment, so for an existing workload
-// neither may roll a pod: they are relabelled in place instead.
+// neither may roll a pod: they are relabelled in place instead. The
+// bex-operator-pod-labels admission policy
+// (deploy/gitops/base/operator-pod-label-admission.yaml) must admit exactly
+// these keys, or the relabel is denied and the store reads Failed (w3/055).
 var inPlacePodLabels = []string{labelNetworkIsolation, labelEnvironment}
 
 // holdIsolationLabel sets the in-place labels on tmpl to the CR's values
