@@ -84,6 +84,22 @@ describe("AgentsPanel", () => {
     ]);
   });
 
+  it("shows every status group with its count, in Working, Done, Failed, Canceled order", async () => {
+    const failed = agentSessionView({ id: "c3", phase: "failed", state: "failed" });
+    const canceled = agentSessionView({ id: "c4", phase: "canceled", state: "canceled" });
+    const done2 = agentSessionView({ id: "c5", phase: "completed", state: "succeeded" });
+    renderWithRouter(
+      <AgentsPanel
+        descendants={[canceled, done, failed, working, done2]}
+        parentSessionId={null}
+        loading={false}
+      />,
+    );
+    const panel = await screen.findByTestId("agents-panel");
+    const headings = [...panel.querySelectorAll("h3")].map((h) => h.textContent);
+    expect(headings).toEqual(["Working 1", "Done 2", "Failed 1", "Canceled 1"]);
+  });
+
   it("links a child's panel back to its parent and collapses", async () => {
     renderWithRouter(
       <AgentsPanel descendants={[]} parentSessionId="p1" loading={false} />,

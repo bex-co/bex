@@ -135,16 +135,7 @@ function refuse(code: string, message: string, hint?: string): Refusal {
   return { ok: false, error: { code, message, ...(hint ? { hint } : {}) } };
 }
 
-const spawnFields = [
-  "task",
-  "repo",
-  "branch",
-  "title",
-  "tags",
-  "maxSpendUSD",
-  "secretNames",
-  "idempotencyKey",
-];
+const spawnFields = Object.keys(spawnSessionToolDefinition.inputSchema.properties);
 
 // validateSpawnInput mirrors the gateway's SpawnContent.Validate and its
 // strict body decoding before any network call. It returns the body to send.

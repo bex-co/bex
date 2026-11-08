@@ -109,9 +109,39 @@ describe("nestSessions", () => {
     expect(nodes.map((n) => n.session.id)).toEqual(["c1", "a"]);
   });
 
-  it("does not loop on a cyclic payload", () => {
-    const nodes = nestSessions([s("a", "b"), s("b", "a")]);
-    expect(nodes.length).toBeGreaterThan(0);
+  it("keeps every session exactly once when parent ids form a cycle", () => {
+    const flat = (nodes: ReturnType<typeof nestSessions>): string[] =>
+      nodes.flatMap((n) => [n.session.id, ...flat(n.children)]);
+    for (const list of [
+      [s("a", "b"), s("b", "a")],
+      [s("a", "c"), s("b", "a"), s("c", "b")],
+      [s("a", "a")],
+      [s("x", null), s("a", "b"), s("b", "a"), s("c", "a")],
+    ]) {
+      const nodes = nestSessions(list);
+      expect(flat(nodes).sort()).toEqual(list.map((x) => x.id).sort());
+      expect(nodes.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("terminates on cyclic payloads in the flat selectors", () => {
+    const cyc = [s("r", null), s("a", "b"), s("b", "a"), s("c", "r")];
+    expect(descendantsOf(cyc, "r").map((x) => x.id)).toEqual(["c"]);
+    expect(descendantsOf(cyc, "a").map((x) => x.id)).toEqual(["b"]);
+    expect(descendantsOf([s("a", "a")], "a")).toEqual([]);
+  });
+
+  it("nests a very deep chain without blowing the stack", () => {
+    const n = 5000;
+    const chain = Array.from({ length: n }, (_, i) =>
+      s(`n${i}`, i === 0 ? null : `n${i - 1}`),
+    );
+    const roots = nestSessions(chain);
+    expect(roots).toHaveLength(1);
+    let depth = 0;
+    for (let cur = roots[0]; cur; cur = cur.children[0]) depth++;
+    expect(depth).toBe(n);
+    expect(descendantsOf(chain, "n0")).toHaveLength(n - 1);
   });
 });
 

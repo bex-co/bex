@@ -204,10 +204,8 @@ function SessionRow({
   const hasChildren = node.children.length > 0;
   const [expanded, setExpanded] = useState(true);
   const title = sessionTitleShort(session);
-  const hasPrLink =
-    session.prNumber != null &&
-    session.prNumber !== 0 &&
-    Boolean(session.prUrl);
+  const hasPr = session.prNumber != null && session.prNumber !== 0;
+  const hasPrLink = hasPr && Boolean(session.prUrl);
 
   return (
     <SidebarMenuItem>
@@ -226,9 +224,7 @@ function SessionRow({
             <span className="truncate">
               {t(agentSessionStatusPhraseKey(session))}
             </span>
-            {session.prNumber != null &&
-            session.prNumber !== 0 &&
-            !hasPrLink ? (
+            {hasPr && !hasPrLink ? (
               <span className="inline-flex shrink-0 items-center gap-0.5">
                 <GitPullRequest className="size-3" aria-hidden />#
                 {session.prNumber}

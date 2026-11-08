@@ -39,6 +39,17 @@ func lineageSession(t *testing.T, s *PGStore, workspaceID, parentID string, ceil
 	return row
 }
 
+// childrenOf lists parentID's direct children, oldest first, optionally only
+// those in the given phases.
+func childrenOf(t *testing.T, s *PGStore, workspaceID, parentID string, phases ...string) []AgentSession {
+	t.Helper()
+	kids, err := s.ListAgentSessions(context.Background(), workspaceID, AgentSessionListQuery{ParentSessionID: parentID, Phases: phases, Limit: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return kids
+}
+
 func setPhase(t *testing.T, s *PGStore, id, phase string) {
 	t.Helper()
 	if _, err := s.Pool.Exec(context.Background(), `UPDATE agent_sessions SET phase = $2 WHERE id = $1`, id, phase); err != nil {
@@ -108,7 +119,7 @@ func TestPGAgentSessionParentRefusals(t *testing.T) {
 	if err := create(tenant.ID, parent.ID); err != nil {
 		t.Fatalf("a running parent = %v", err)
 	}
-	if n, _ := s.CountLiveAgentSessionChildren(ctx, tenant.ID, parent.ID); n != 1 {
+	if n := len(childrenOf(t, s, tenant.ID, parent.ID, ActiveAgentSessionPhases...)); n != 1 {
 		t.Fatalf("refused creates left %d children, want 1", n)
 	}
 }
@@ -151,12 +162,11 @@ func TestPGAgentSessionFanOutLimitIsAtomic(t *testing.T) {
 			t.Fatalf("round %d: admitted %d refused %d, want exactly one of each", round, admitted, refused)
 		}
 	}
-	if n, err := s.CountLiveAgentSessionChildren(ctx, tenant.ID, parent.ID); err != nil || n != MaxLiveAgentSessionChildren-1 {
-		t.Fatalf("live children = %d / %v", n, err)
+	if n := len(childrenOf(t, s, tenant.ID, parent.ID, ActiveAgentSessionPhases...)); n != MaxLiveAgentSessionChildren-1 {
+		t.Fatalf("live children = %d", n)
 	}
-	all, err := s.ListAgentSessionChildren(ctx, tenant.ID, parent.ID)
-	if err != nil || len(all) != MaxLiveAgentSessionChildren-1+5 {
-		t.Fatalf("children = %d / %v, want every phase listed", len(all), err)
+	if all := childrenOf(t, s, tenant.ID, parent.ID); len(all) != MaxLiveAgentSessionChildren-1+5 {
+		t.Fatalf("children = %d, want every phase listed", len(all))
 	}
 }
 
@@ -326,4 +336,60 @@ func TestPGAgentSessionCeilingHeadroom(t *testing.T) {
 	if h, bounded, _ := s.AgentSessionCeilingHeadroom(ctx, "tea-nobody", grand.ID); bounded || h != 0 {
 		t.Fatalf("another workspace read headroom %d (bounded %v)", h, bounded)
 	}
+}
+
+// ADR102 D2/D6: a cancel that is moving a parent to canceling and a child
+// insert under it are serialized by the parent's row lock. Whatever the
+// interleaving, a child that was admitted is in the set the cancel then walks,
+// and one that was not is refused: no child is ever left running under a
+// canceled parent.
+func TestPGAgentSessionCancelRacingAChildInsertLeavesNoOrphanRunning(t *testing.T) {
+	s, _, tenant := agentSessionPGStore(t, "lineage-cancel-race")
+	ctx := context.Background()
+	admittedRounds := 0
+	for round := range 20 {
+		parent := lineageSession(t, s, tenant.ID, "", nil)
+		var (
+			wg       sync.WaitGroup
+			child    AgentSession
+			childErr error
+			walked   []AgentSession
+			walkErr  error
+		)
+		start := make(chan struct{})
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			<-start
+			child, childErr = s.CreateAgentSession(ctx, AgentSession{WorkspaceID: tenant.ID, InitialPrompt: "x", ParentSessionID: parent.ID})
+		}()
+		go func() {
+			defer wg.Done()
+			<-start
+			time.Sleep(time.Duration(round) * 25 * time.Microsecond) // sweep the cancel across the insert's window
+			if _, walkErr = s.SetAgentSessionLifecycle(ctx, parent.ID, "", "canceling", "canceling", false); walkErr != nil {
+				return
+			}
+			walked, walkErr = s.ListUnfinishedAgentSessionDescendants(ctx, tenant.ID, parent.ID)
+		}()
+		close(start)
+		wg.Wait()
+		if walkErr != nil {
+			t.Fatalf("round %d: cancel walk: %v", round, walkErr)
+		}
+		switch {
+		case childErr == nil:
+			admittedRounds++
+			if !slices.ContainsFunc(walked, func(d AgentSession) bool { return d.ID == child.ID }) {
+				t.Fatalf("round %d: child %s was admitted but the cancel walk missed it: %v", round, child.ID, walked)
+			}
+		case errors.Is(childErr, ErrAgentSessionParentInactive):
+			if len(walked) != 0 {
+				t.Fatalf("round %d: refused child still walked: %v", round, walked)
+			}
+		default:
+			t.Fatalf("round %d: child create: %v", round, childErr)
+		}
+	}
+	t.Logf("%d of 20 rounds admitted the child before the cancel", admittedRounds)
 }

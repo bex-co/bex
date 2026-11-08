@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"errors"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -94,12 +95,7 @@ func lockParentLineage(ctx context.Context, tx pgx.Tx, workspaceID, parentID str
 }
 
 func isActiveAgentSessionPhase(phase string) bool {
-	for _, p := range ActiveAgentSessionPhases {
-		if p == phase {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(ActiveAgentSessionPhases, phase)
 }
 
 func (s *PGStore) queryAgentSessions(ctx context.Context, sql string, args ...any) ([]AgentSession, error) {
@@ -117,31 +113,6 @@ func (s *PGStore) queryAgentSessions(ctx context.Context, sql string, args ...an
 		out = append(out, v)
 	}
 	return out, rows.Err()
-}
-
-// ListAgentSessionChildren returns the direct children of parentID in the
-// workspace, oldest first, in every phase.
-func (s *PGStore) ListAgentSessionChildren(ctx context.Context, workspaceID, parentID string) ([]AgentSession, error) {
-	if !textBindable(parentID) {
-		return []AgentSession{}, nil
-	}
-	return s.queryAgentSessions(ctx, `SELECT `+agentSessionColumns+`
-		FROM agent_sessions WHERE workspace_id = $1 AND parent_session_id = $2
-		ORDER BY created_at, id`, workspaceID, parentID)
-}
-
-// CountLiveAgentSessionChildren counts parentID's children in an active phase:
-// the number the fan-out limit bounds.
-func (s *PGStore) CountLiveAgentSessionChildren(ctx context.Context, workspaceID, parentID string) (int, error) {
-	if !textBindable(parentID) {
-		return 0, nil
-	}
-	var n int
-	err := s.Pool.QueryRow(ctx, `
-		SELECT count(*) FROM agent_sessions
-		WHERE workspace_id = $1 AND parent_session_id = $2 AND `+activeAgentSessionPhasesSQL,
-		workspaceID, parentID).Scan(&n)
-	return n, err
 }
 
 // AgentSessionSubtree returns rootID and every session below it, shallowest

@@ -198,3 +198,86 @@ test("the MCP registration carries only the spawn URL, never a credential", () =
   );
   assert.equal(loadConfig(hosted).spawnUrl, "");
 });
+
+test("spawn requests carry no credential header and a replay reports created: false", async (t) => {
+  let seen: Record<string, string | string[] | undefined> = {};
+  const http = createServer((request, response) => {
+    seen = request.headers;
+    request.resume();
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ sessionId: childId, state: "working", created: false }));
+  });
+  await new Promise<void>((resolve) => http.listen(0, "127.0.0.1", resolve));
+  t.after(() => new Promise<void>((resolve) => http.close(() => resolve())));
+  const endpoint = `http://127.0.0.1:${(http.address() as AddressInfo).port}/agent-children/a/b`;
+  // A credential in the process environment must not leak into the request.
+  const env = {
+    BEX_SPAWN_ENDPOINT: endpoint,
+    BEX_API_KEY: "secret-key",
+    BEX_AGENT_MODEL_API_KEY: "secret-model",
+  } as NodeJS.ProcessEnv;
+  const outcome = await spawnSession({ task: "t", idempotencyKey: "k" }, env);
+  assert.deepEqual(outcome, { ok: true, result: { sessionId: childId, state: "working", created: false } });
+  for (const name of ["authorization", "x-api-key", "cookie"]) assert.equal(seen[name], undefined, name);
+  await getChildSession({ sessionId: childId }, env);
+  for (const name of ["authorization", "x-api-key", "cookie"]) assert.equal(seen[name], undefined, name);
+});
+
+test("every limit and policy code passes through spawn_session unchanged", async (t) => {
+  const codes = [
+    "AGENT_SESSION_PARENT_NOT_FOUND",
+    "AGENT_SESSION_PARENT_NOT_ACTIVE",
+    "AGENT_SESSION_DEPTH_LIMIT",
+    "AGENT_SESSION_CHILD_LIMIT",
+    "AGENT_SESSION_CHILD_SPEND_EXCEEDS_PARENT",
+    "AGENT_SESSION_CHILD_SPEND_EXHAUSTED",
+    "AGENT_SESSION_CHILD_SECRET_NOT_INHERITED",
+    "AGENT_SESSION_SPAWN_CREATOR_FORBIDDEN",
+    "AGENT_SESSION_SPAWN_NO_CREATOR",
+    "AGENT_SESSION_CHILD_REPO_MISMATCH",
+  ];
+  for (const code of codes) {
+    const error = { code, message: `m ${code}` };
+    const gateway = await stubGateway({ status: 400, body: { error } });
+    const outcome = await spawnSession({ task: "t" }, { BEX_SPAWN_ENDPOINT: gateway.endpoint });
+    await gateway.close();
+    assert.deepEqual(outcome, { ok: false, error }, code);
+  }
+});
+
+test("failure modes: not found on read, unparsable or malformed replies, unreachable gateway", async (t) => {
+  const missing = await stubGateway({
+    status: 404,
+    body: { error: { code: "not_found", message: "no such session" } },
+  });
+  t.after(missing.close);
+  const read = await getChildSession({ sessionId: childId }, { BEX_SPAWN_ENDPOINT: missing.endpoint });
+  assert.deepEqual(read, { ok: false, error: { code: "not_found", message: "no such session" } });
+
+  // 200 with a body that is not a child view is never passed to the agent.
+  const odd = await stubGateway({ status: 200, body: { hello: "world" } });
+  t.after(odd.close);
+  const env = { BEX_SPAWN_ENDPOINT: odd.endpoint } as NodeJS.ProcessEnv;
+  const spawned = await spawnSession({ task: "t" }, env);
+  assert.equal(spawned.ok === false && spawned.error.code, "unavailable");
+  const got = await getChildSession({ sessionId: childId }, env);
+  assert.equal(got.ok === false && got.error.code, "unavailable");
+
+  // A refusal-shaped 200 is not a child view either.
+  const disguised = await stubGateway({
+    status: 200,
+    body: { sessionId: childId, error: { code: "x", message: "y" } },
+  });
+  t.after(disguised.close);
+  const g2 = await getChildSession({ sessionId: childId }, { BEX_SPAWN_ENDPOINT: disguised.endpoint });
+  assert.equal(g2.ok, false);
+
+  // Nothing listening: a typed error, not a throw.
+  const dead = await spawnSession({ task: "t" }, { BEX_SPAWN_ENDPOINT: "http://127.0.0.1:1/agent-children/a/b" });
+  assert.equal(dead.ok === false && dead.error.code, "unavailable");
+});
+
+test("get_child_session is not callable from a session that cannot spawn", async () => {
+  const outcome = await getChildSession({ sessionId: childId }, {});
+  assert.equal(outcome.ok === false && outcome.error.code, "unavailable");
+});

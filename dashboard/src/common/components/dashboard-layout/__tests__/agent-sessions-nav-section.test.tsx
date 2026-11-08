@@ -281,5 +281,17 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
       );
       expect(screen.getByText("first child")).toBeInTheDocument();
     });
+
+    it("renders a cyclic payload once per session without hanging", async () => {
+      sessionsState.sessions = [
+        named("as-a", "cycle a", "as-b"),
+        named("as-b", "cycle b", "as-a"),
+      ];
+      renderAt("/agents");
+
+      expect(await screen.findByText("cycle a")).toBeInTheDocument();
+      expect(screen.getAllByText("cycle a")).toHaveLength(1);
+      expect(screen.getAllByText("cycle b")).toHaveLength(1);
+    });
   });
 });

@@ -144,18 +144,23 @@ An agent reaches D1–D8 through the sandbox's `bex` MCP server, the same one th
 
 ## Parity
 
-**Reference product: Devin, verified live 2026-11-06.** Devin lets a parent start children with their own prompt, tags and spend limit, message running children, see "Created a Devin session" cards, an Agents panel grouped by status, and nested sidebar rows. Render has no agent sessions, so [ADR018](ADR018-render-parity.md) has no rule to apply.
+**Reference product: Devin, verified live 2026-11-06; docs.devin.ai re-read 2026-11-08 (advanced capabilities, API v3 sessions).** Render has no agent sessions, so [ADR018](ADR018-render-parity.md) has no rule to apply; it records this feature in its cloud coding-agent area.
 
-| Devin | bex |
+**Consistency across bex surfaces (checked 2026-11-08).** REST, GraphQL, MCP, the in-sandbox tools and the dashboard carry the same fields (`parentSessionId`, `rootSessionId`, `depth`), the same filters, the same tree read and the same `AGENT_SESSION_*` codes, because every adapter is a thin shell over `agentsessions.Service` (ADR006). Two tests pin it: `TestLineageIsTheSameOnEverySurface` (fields, filters, tree) and `TestChildCreateRefusalsCarryTheSameCodeOnEverySurface` (seven create refusals: same code, same status class). The three in-sandbox-only codes (`_SPAWN_CREATOR_FORBIDDEN`, `_SPAWN_NO_CREATOR`, `_CHILD_REPO_MISMATCH`) exist only on the spawn path, by design: the other surfaces take a person's identity and an explicit repo.
+
+| Devin (observed) | bex |
 | --- | --- |
-| `parent_session_id` on the session | `parentSessionId`, plus `rootSessionId` and `depth` (D1) |
-| Child with its own prompt, tags, spend limit | Same fields on create; the child's limit is capped by the parent's remaining ceiling (D3) |
-| Message a running child | `send_agent_session_message` on the child's id |
-| "Created a Devin session" card, Agents panel, nested sidebar | Dashboard child cards, status-grouped Agents panel, nested sidebar (D8, t006) |
-| "Allow auto-start of child sessions" switch | None: children always start unattended ([`DO_NOT_DO.md` #APPROVAL-MODE](../.pm/DO_NOT_DO.md)); not a divergence to sign off |
-| (not documented) | bex adds hard limits (depth 3, five live children), a shared ceiling and secret narrowing, which are safety controls, not removed behaviour |
+| `parent_session_id` and `child_session_ids` on the session response; `parent_session_id` as a list filter; the create body documents no parent argument (a child is made by a running Devin) | `parentSessionId`, `rootSessionId`, `depth` on the view and `parentSessionId` filter. **Differences:** bex also accepts `parentSessionId` on create (so an orchestrator outside the sandbox can attach a child, with `can_operate` on the parent); bex has no `childSessionIds` list on the parent, the parent filter and the tree read give it |
+| Child with its own prompt, skill, tags, ACU limit | Same fields on create; the child's limit is capped by the parent's remaining ceiling (D3) |
+| Coordinator messages running children, tracks their ACU, sleeps or terminates them | `send_agent_session_message`, the tree read and cost on the child's id, Cancel |
+| The coordinator is woken when a child finishes or needs input, without polling | **Not built.** An orchestrator uses `wait_agent_sessions`; an in-sandbox parent reads `get_child_session`. Follow-up |
+| "Created a Devin session" card, Agents panel grouped by status, nested sidebar | Dashboard child cards, status-grouped Agents panel, nested sidebar (D8) |
+| Setting "Auto-approve child sessions" (default on) | None: children always start unattended ([`DO_NOT_DO.md` #APPROVAL-MODE](../.pm/DO_NOT_DO.md)); not a divergence to sign off |
+| Child repository, depth, fan-out, spend roll-up, secret inheritance, behavior when the parent ends | **Not documented by Devin**, so unverified. bex records its own: child repo equals the parent's (`AGENT_SESSION_CHILD_REPO_MISMATCH`), depth 3, five live children, a shared ceiling, secrets inherit and may narrow, and a parent that ends on its own does not cancel its children while an explicit Cancel does (D6) |
 
-No divergence from Devin's visible behaviour needs sign-off. The limits are bex additions that Devin's public docs do not state; if Devin documents different limits, change the numbers, not the design.
+**Could not verify:** the Devin dashboard behavior beyond what 2026-11-06 recorded (no live session was opened on 2026-11-08); whether Devin cascades a parent's termination to its children; Devin's nesting and fan-out limits; whether its children inherit secrets or repositories. If Devin documents any of these differently, change the numbers or rule, not the design.
+
+No divergence from Devin's visible behavior needs sign-off. The limits and the shared ceiling are bex safety additions, and the wake-up notification and `childSessionIds` are gaps recorded as follow-ups, not shipped divergences.
 
 ## Decisions
 

@@ -1,6 +1,6 @@
 # w21 · m279 — Agent child sessions: an agent can spawn and track child sessions (Devin parity)
 
-**Worker:** worker21 **Goal:** a running agent can start child sessions through a controlled path, their lineage, spend and cancellation are tracked, and the dashboard shows the tree. **Status:** todo (t001, t002, t003, t004, t005, t006 done)
+**Worker:** worker21 **Goal:** a running agent can start child sessions through a controlled path, their lineage, spend and cancellation are tracked, and the dashboard shows the tree. **Status:** todo (t001, t002, t003, t004, t005, t006, t008, t009, t010 done)
 
 ## Tasks (in order)
 
@@ -13,9 +13,9 @@
 | t005 | REST, GraphQL and MCP: lineage and children — **DONE** | 60m | t003 |
 | t006 | Dashboard: child cards, Agents panel, sidebar tree — **DONE** | 90m | t005 |
 | t007 | Live end-to-end on production as the QA user | 45m | t004, t006 |
-| t008 | Render parity (Devin reference for agent surfaces) | 25m | t007 |
-| t009 | Simplify | 15m | t008 |
-| t010 | Test coverage | 45m | t008, t009 |
+| t008 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t007 |
+| t009 | Simplify — **DONE** | 15m | t008 |
+| t010 | Test coverage — **DONE** | 45m | t008, t009 |
 | t011 | Closeout | 10m | t010 |
 
 ## Definition of done

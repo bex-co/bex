@@ -72,11 +72,9 @@ type Store interface {
 	// just failed with exactly that reason.
 	StampAgentSessionFailureCode(ctx context.Context, id, reason, code string) error
 	DeleteAgentSession(context.Context, string) error
-	// Parent and child sessions (ADR102): the direct children, the live-children
-	// count, a whole tree, the sessions a cancel must cancel, the recorded cancel
-	// cause, and the spend headroom of a session's tree.
-	ListAgentSessionChildren(ctx context.Context, workspaceID, parentID string) ([]store.AgentSession, error)
-	CountLiveAgentSessionChildren(ctx context.Context, workspaceID, parentID string) (int, error)
+	// Parent and child sessions (ADR102): a whole tree, the descendant check,
+	// the sessions a cancel must cancel, the recorded cancel cause, and the
+	// spend headroom of a session's tree.
 	AgentSessionSubtree(ctx context.Context, workspaceID, rootID string) ([]store.AgentSession, error)
 	IsAgentSessionDescendant(ctx context.Context, workspaceID, ancestorID, sessionID string) (bool, error)
 	ListUnfinishedAgentSessionDescendants(ctx context.Context, workspaceID, sessionID string) ([]store.AgentSession, error)

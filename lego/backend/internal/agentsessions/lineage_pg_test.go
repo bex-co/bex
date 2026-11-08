@@ -103,6 +103,17 @@ func (e lineageEnv) phase(t *testing.T, id string) string {
 	return row.Phase
 }
 
+// children lists parentID's direct children in every phase; live counts the
+// ones the fan-out limit counts.
+func (e lineageEnv) children(t *testing.T, parentID string, phases ...string) []store.AgentSession {
+	t.Helper()
+	kids, err := e.pg.ListAgentSessions(context.Background(), e.ws, store.AgentSessionListQuery{ParentSessionID: parentID, Phases: phases, Limit: 100})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return kids
+}
+
 func (e lineageEnv) setPhase(t *testing.T, id, phase string) {
 	t.Helper()
 	if _, err := e.pg.Pool.Exec(context.Background(), `UPDATE agent_sessions SET phase = $2 WHERE id = $1`, id, phase); err != nil {
@@ -217,7 +228,7 @@ func TestChildCreateIsIdempotentWithAParent(t *testing.T) {
 	if err != nil || again.ID != first.ID || again.Created == nil || *again.Created {
 		t.Fatalf("replay = %+v / %v, want the first child with created=false", again, err)
 	}
-	if n, _ := e.pg.CountLiveAgentSessionChildren(context.Background(), e.ws, parent.ID); n != 1 {
+	if n := len(e.children(t, parent.ID, store.ActiveAgentSessionPhases...)); n != 1 {
 		t.Fatalf("a replay made %d children, want 1", n)
 	}
 	// The parent is part of the request's identity.

@@ -26,31 +26,6 @@ import (
 // rules (limits, locks, spend) are tested against Postgres; the fake only
 // answers what the non-lineage tests ask of it.
 
-func (f *fakeStore) ListAgentSessionChildren(_ context.Context, _, parentID string) ([]store.AgentSession, error) {
-	f.rowMu.Lock()
-	defer f.rowMu.Unlock()
-	var out []store.AgentSession
-	for _, r := range f.rows {
-		if r.ParentSessionID == parentID {
-			out = append(out, r)
-		}
-	}
-	return out, nil
-}
-
-func (f *fakeStore) CountLiveAgentSessionChildren(ctx context.Context, ws, parentID string) (int, error) {
-	children, _ := f.ListAgentSessionChildren(ctx, ws, parentID)
-	n := 0
-	for _, c := range children {
-		for _, p := range store.ActiveAgentSessionPhases {
-			if c.Phase == p {
-				n++
-			}
-		}
-	}
-	return n, nil
-}
-
 func (f *fakeStore) AgentSessionSubtree(context.Context, string, string) ([]store.AgentSession, error) {
 	return nil, nil
 }

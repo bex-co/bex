@@ -127,10 +127,10 @@ func TestSpawnSessionParentComesOnlyFromTheVerifiedPod(t *testing.T) {
 			t.Errorf("a %s session spawning = %v, want forbidden", phase, err)
 		}
 	}
-	if kids, _ := e.pg.ListAgentSessionChildren(context.Background(), e.ws, parent.ID); len(kids) != 0 {
+	if kids := e.children(t, parent.ID); len(kids) != 0 {
 		t.Fatalf("refused calls created %d children", len(kids))
 	}
-	if kids, _ := e.pg.ListAgentSessionChildren(context.Background(), e.ws, other.ID); len(kids) != 0 {
+	if kids := e.children(t, other.ID); len(kids) != 0 {
 		t.Fatalf("the other session got %d children", len(kids))
 	}
 }
@@ -249,7 +249,7 @@ func TestSpawnSessionIsIdempotentPerParentAndKey(t *testing.T) {
 	if err != nil || again.SessionID != first.SessionID || again.Created {
 		t.Fatalf("retry = %+v / %v, want the first child with created=false", again, err)
 	}
-	if n, _ := e.pg.CountLiveAgentSessionChildren(context.Background(), e.ws, parent.ID); n != 1 {
+	if n := len(e.children(t, parent.ID, store.ActiveAgentSessionPhases...)); n != 1 {
 		t.Fatalf("a retry made %d children", n)
 	}
 	if _, err := e.spawn(t, parent.ID, agentsession.SpawnContent{Task: "different", IdempotencyKey: "k1"}); spawnCode(err) != "AGENT_SESSION_IDEMPOTENCY_KEY_REUSED" {
@@ -300,7 +300,7 @@ func TestSpawnSessionStopsWhenTheCreatorLostAccess(t *testing.T) {
 	if _, err := e.spawn(t, parent.ID, agentsession.SpawnContent{Task: "t3"}); spawnCode(err) != SpawnCreatorForbiddenCode {
 		t.Fatalf("a creator who cannot operate the parent = %v", err)
 	}
-	if kids, _ := e.pg.ListAgentSessionChildren(context.Background(), e.ws, parent.ID); len(kids) != 1 {
+	if kids := e.children(t, parent.ID); len(kids) != 1 {
 		t.Fatalf("refused spawns created children: %d", len(kids))
 	}
 	e.svc.Authz = allow

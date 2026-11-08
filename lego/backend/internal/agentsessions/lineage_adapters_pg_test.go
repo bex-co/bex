@@ -19,6 +19,8 @@ package agentsessions
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -29,8 +31,10 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // ADR102 D8: lineage, the two list filters and the tree read, through the REST
@@ -301,5 +305,78 @@ func TestLineageFiltersRefuseMalformedValuesWithANamed400(t *testing.T) {
 	getStatus, _ := a.rest(http.MethodGet, "/v1/agent-sessions/"+url.PathEscape("ags-\x00x"), nil, "alice")
 	if status, body := a.rest(http.MethodGet, "/v1/agent-sessions/"+url.PathEscape("ags-\x00x")+"/tree", nil, "alice"); status != getStatus || status >= 500 {
 		t.Errorf("NUL tree id = %d %v, a Get answers %d", status, body, getStatus)
+	}
+}
+
+// Every named refusal of a child create (ADR102 D2 to D4) is the same code,
+// with the same class of HTTP status, on REST, GraphQL and MCP: the adapters
+// add no rule and rename none.
+func TestChildCreateRefusalsCarryTheSameCodeOnEverySurface(t *testing.T) {
+	a := newLineageAdapters(t)
+	e := a.e
+	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", []string{e.ws}, "sk-platform-test"); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = agentsession.EnablePlatformModelRoute("", "", nil, "") })
+	root := func(usd *float64) View {
+		t.Helper()
+		in := e.input("")
+		in.AgentConfig, in.MaxSpendUSD = AgentConfig{Agent: "claude", Task: "split the work"}, usd
+		view, err := e.svc.Create(caller("alice"), in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return view
+	}
+
+	unknown := ids.New(ids.AgentSession)
+	e.fga.parents[unknown] = e.ws
+	finished := root(nil)
+	e.setPhase(t, finished.ID, PhaseCompleted)
+	deep := root(nil)
+	for range store.MaxAgentSessionDepth {
+		deep = e.create(t, deep.ID)
+	}
+	full := root(nil)
+	for range store.MaxLiveAgentSessionChildren {
+		e.create(t, full.ID)
+	}
+	capped := root(ptr(5.0))
+	spent := root(ptr(1.0))
+	e.spend(t, spent.ID, 1_000_000)
+
+	for _, tc := range []struct {
+		name   string
+		args   map[string]any
+		status int
+		code   string
+	}{
+		{"parent not found", map[string]any{"parentSessionId": unknown}, http.StatusNotFound, ParentNotFoundCode},
+		{"parent not active", map[string]any{"parentSessionId": finished.ID}, http.StatusConflict, ParentNotActiveCode},
+		{"depth limit", map[string]any{"parentSessionId": deep.ID}, http.StatusConflict, DepthLimitCode},
+		{"child limit", map[string]any{"parentSessionId": full.ID}, http.StatusConflict, ChildLimitCode},
+		{"spend above the parent's", map[string]any{"parentSessionId": capped.ID, "maxSpendUSD": 6.0}, http.StatusBadRequest, ChildSpendExceedsParentCode},
+		{"spend exhausted", map[string]any{"parentSessionId": spent.ID}, http.StatusConflict, ChildSpendExhaustedCode},
+		{"secret not inherited", map[string]any{"parentSessionId": capped.ID, "secretNames": []string{"NOT_THE_PARENTS"}}, http.StatusBadRequest, ChildSecretNotInheritedCode},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			body := map[string]any{"ownerId": e.ws, "repo": "bex-co/example", "agentConfig": map[string]any{"agent": "claude", "task": "x"}}
+			maps.Copy(body, tc.args)
+			status, restBody := a.rest(http.MethodPost, "/v1/agent-sessions", body, "alice")
+			if status != tc.status || restBody["code"] != tc.code {
+				t.Errorf("REST = %d %v, want %d %s", status, restBody, tc.status, tc.code)
+			}
+			gqlArgs := fmt.Sprintf(`ownerId: %q, repo: "bex-co/example", agentConfig: {agent: "claude", task: "x"}`, e.ws)
+			for key, value := range tc.args {
+				raw, _ := json.Marshal(value)
+				gqlArgs += fmt.Sprintf(", %s: %s", key, raw)
+			}
+			if _, code := a.gql(`mutation { createAgentSession(`+gqlArgs+`) { id } }`, "alice"); code != tc.code {
+				t.Errorf("GraphQL code = %q, want %s", code, tc.code)
+			}
+			if _, errText := a.mcp("create_agent_session", body, "alice"); !strings.Contains(errText, tc.code) {
+				t.Errorf("MCP error = %q, want it to carry %s", errText, tc.code)
+			}
+		})
 	}
 }
