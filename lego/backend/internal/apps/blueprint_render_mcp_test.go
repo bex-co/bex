@@ -153,3 +153,28 @@ func TestParseBlueprintRepoURL(t *testing.T) {
 		}
 	}
 }
+
+// w5/181: a planned create without a branch reads the repository's default
+// branch, as Render does; main only when GitHub has no opinion.
+func TestPlannedBlueprintCreateReadsTheDefaultBranch(t *testing.T) {
+	for _, c := range []struct {
+		name, defaultBranch, want string
+	}{
+		{"github default", "trunk", "trunk"},
+		{"no opinion", "", DefaultBlueprintBranch},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			svc, _, ctx := newOnboardingService(t, onboardingManifest)
+			svc.GitHub = &fakeCloneTokens{ok: true, defaultBranch: c.defaultBranch}
+			res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{
+				Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"},
+			})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if res.Blueprint == nil || res.Blueprint.Branch != c.want {
+				t.Fatalf("branch = %+v, want %q", res.Blueprint, c.want)
+			}
+		})
+	}
+}

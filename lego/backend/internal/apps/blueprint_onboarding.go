@@ -189,9 +189,22 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 		return BlueprintPlanResult{}, core.NewConflictError("BLUEPRINT_NAME_TAKEN",
 			fmt.Sprintf("a Blueprint named %q already exists in this workspace", req.Name), map[string]any{"name": req.Name})
 	}
-	branch := DefaultBlueprintBranch
-	if req.Source.Branch != nil && strings.TrimSpace(*req.Source.Branch) != "" {
+	branch := ""
+	if req.Source.Branch != nil {
 		branch = strings.TrimSpace(*req.Source.Branch)
+	}
+	// Render reads the repository's default branch, as the legacy create does
+	// since w4/532 (w5/181); main only when no GitHub lookup is available.
+	if branch == "" {
+		resolved, err := s.blueprintBranch(ctx, tenantID, req.Source.Repo, "")
+		switch {
+		case err == nil:
+			branch = resolved
+		case errors.Is(err, errBlueprintBranchRequired):
+			branch = DefaultBlueprintBranch
+		default:
+			return BlueprintPlanResult{}, err
+		}
 	}
 	path := ""
 	if req.Source.Path != nil {
@@ -237,9 +250,9 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	return result, nil
 }
 
-// DefaultBlueprintBranch is the branch a create without source.branch reads.
-// Render reads the repository's default branch; bex's GitHub reader resolves
-// branches by name, so it uses the conventional default.
+// DefaultBlueprintBranch is the branch a create without source.branch reads
+// when the repository's default branch cannot be looked up (no GitHub
+// service, or a host GitHub has no opinion on).
 const DefaultBlueprintBranch = "main"
 
 // PlanBlueprint plans a sync of an existing Blueprint at its branch head.
@@ -759,7 +772,7 @@ func (s *Service) onboardingGraphQLMutations() graphql.Fields {
 
 type createBlueprintArgs struct {
 	RepoURL           string  `json:"repoUrl" jsonschema:"Repository URL starting with https:// or ssh://, without a query string or fragment. SSH URLs are converted to HTTPS. Specify the branch separately with branch."`
-	Branch            *string `json:"branch,omitempty" jsonschema:"Branch containing the Blueprint file (default main)."`
+	Branch            *string `json:"branch,omitempty" jsonschema:"Branch containing the Blueprint file (default: the repository's default branch)."`
 	Path              *string `json:"path,omitempty" jsonschema:"Blueprint file path relative to the repository root (default render.yaml)."`
 	Name              *string `json:"name,omitempty" jsonschema:"Blueprint name (default: the repository name without the .git suffix)."`
 	AutoSync          *bool   `json:"autoSync,omitempty" jsonschema:"Automatically apply later pushes to the branch after the first sync is approved (default true)."`
