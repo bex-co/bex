@@ -1,6 +1,6 @@
 # w3 · m270 — Blueprints accept buildSources and services[].buildSource, as on Render
 
-**Worker:** worker3 **Goal:** a render.yaml that declares `buildSources` validates, plans and syncs into one build feeding several services, instead of being refused by name **Status:** blocked — t001–t008 done; t009 Closeout waits on w2/m254's production acceptance (its t016) and a live production check of a `buildSources` Blueprint
+**Worker:** worker3 **Goal:** a render.yaml that declares `buildSources` validates, plans and syncs into one build feeding several services, instead of being refused by name **Status:** todo (t001–t008 done; t009 next: live production check, then Closeout)
 
 ## Tasks (in order)
 
@@ -38,3 +38,18 @@
 - **DoD note:** ADR018's row reads ◐, not ✅: two edge divergences remain and are filed as `w3/050` (buildSources-only projects; non-literal build-time env vars). Closeout should either land 050 first or record the user's acceptance of ◐.
 
 - **2026-11-05 update:** `w3/m275` closed the two residual gaps; ADR018's row now reads ✅, so the DoD note above is resolved. Only the w2/m254 + live production gate remains.
+
+## Unblock (2026-11-07, /pm unblock w3/m270)
+
+- **Affected:** w3/m270 (t009).
+- **Source:** verified board evidence, not a user decision.
+  - `.pm/w2/README.md` marks `w2/m254` **DONE 2026-11-08**: on production, one build source build deploys two linked services.
+  - `.pm/w2/done/m254/README.md` marks t016 done.
+  - Together with the 2026-11-05 update above (m275 closed the residual gaps; ADR018 reads ✅), the dependency gate is clear.
+- **Scope:** unchanged. The DoD is not reduced.
+- **Remaining work (no gate):** with m270 in the production pin, a worker runs the live check through the QA account (`scripts/qa-login.sh`):
+  1. Validate and sync a render.yaml that declares one git build source and two linked services.
+  2. See one carrier build feed both services.
+  3. Re-sync and confirm a no-op plan.
+  4. Then run t009 Closeout.
+- **Acceptance:** the live check output is recorded in t009, and every DoD bullet above is verified.
