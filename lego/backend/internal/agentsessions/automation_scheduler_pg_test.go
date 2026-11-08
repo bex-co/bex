@@ -172,7 +172,12 @@ func newSchedEnv(t *testing.T, name string) *schedEnv {
 	}
 	fga := &schedFGA{ws: tenant.ID, parents: map[string]string{},
 		roles: map[string]string{"alice": "developer", "bob": "developer", "root": "admin", "eve": "viewer"}}
-	clock := &schedClock{t: time.Now().UTC().Truncate(time.Minute)}
+	// A fixed instant, not the wall clock: the fixture's schedule is every five
+	// minutes, and the tests move the clock by minutes, so a clock that started
+	// wherever the run happened to start would cross a tick boundary in some runs
+	// and not others. 12:01 puts the next tick at 12:05, out of reach of every
+	// advance below.
+	clock := &schedClock{t: time.Date(2026, time.June, 15, 12, 1, 0, 0, time.UTC)}
 	svc := &Service{
 		Base:  &core.Base{Authz: fga, Workspace: fga, Clock: clock.Now},
 		Store: pg, Tuples: fga, Sandbox: &fakeLifecycle{}, TicketSecret: []byte("session-secret"), GatewayURL: "wss://ssh.bex.co/agent-sessions",
