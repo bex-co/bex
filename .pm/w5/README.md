@@ -22,6 +22,7 @@ User decision 2026-11-07: all five items of the seventh `/pm-brainstorm for w5` 
 - [ ] **m285** — [A webhook's signing secret is readable after create, as on Render](m285/README.md) (8 tasks; 5h15m total) ← round 7 item 3; ADR018:300 unsigned ◐
 - [ ] **m286** — [REST and MCP requests have a deadline instead of a 502 that keeps running](m286/README.md) (8 tasks; 5h30m total) ← round 7 item 4; w3/m248 findings
 - [ ] **m287** — [Sandboxes have names (`--name`), as in Render CLI v2.36](m287/README.md) (7 tasks; 4h30m total) ← round 7 item 5; Render CLI v2.36.0
+- [ ] **181** — [Render's planned Blueprint create reads `main`, not the repository's default branch](181.md) (~45m) ← found by w5/m283
 
 ## Approved queue — 2026-11-05 (brainstorm round 6)
 
