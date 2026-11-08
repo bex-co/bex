@@ -27,7 +27,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
-// TestPGAgentApprovalModeWithdrawn pins migration 0207 (ADR100 withdrawn,
+// TestPGAgentApprovalModeWithdrawn pins migration 0207 (approval mode withdrawn,
 // DO_NOT_DO #APPROVAL-MODE): after every migration the decision table, its
 // mirror columns and the approval settings are gone, the cancel trigger is
 // dropped, and the session state notification fires on phase changes only,

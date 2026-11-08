@@ -23,7 +23,7 @@ import test from "node:test";
 import { removeStaleCodexRules, staleCodexRulesFile } from "../src/acp.js";
 
 // A session's persisted .codex may still hold the withdrawn approval mode's
-// prompt rules (ADR100); they go before codex starts, other rules stay, and a
+// prompt rules (the withdrawn approval mode, .pm/DO_NOT_DO.md #APPROVAL-MODE); they go before codex starts, other rules stay, and a
 // home without the file is fine.
 test("removes the withdrawn approval rules from CODEX_HOME and keeps others", async () => {
   const home = await mkdtemp(path.join(tmpdir(), "codex-home-"));

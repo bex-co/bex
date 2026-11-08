@@ -307,7 +307,7 @@ export async function createSessionProvider(
   }
 }
 
-// The withdrawn approval mode (ADR100, .pm/DO_NOT_DO.md #APPROVAL-MODE) once
+// The withdrawn approval mode (.pm/DO_NOT_DO.md #APPROVAL-MODE) once
 // wrote codex exec-policy prompt rules here, and a session's .codex directory
 // persists across turns: remove any such file before codex starts, so a
 // session created while it existed never keeps pausing for a person.

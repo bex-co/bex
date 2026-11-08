@@ -29,7 +29,7 @@
 ## Design decision (2026-11-06, loopx w9, Devin-reference rule)
 
 - **Source:** existing rule (cloud-agent work matches Devin) plus verified Devin behavior. v3 `status_detail` has `waiting_for_user` and `waiting_for_approval` ("awaiting action approval in safe mode"); create takes `bypass_approval`; Devin's permission model asks before destructive, publishing, cloud-CLI and outside-workspace actions ([Get Session](https://docs.devin.ai/api-reference/v3/sessions/get-organizations-session), [Create Session](https://docs.devin.ai/api-reference/v3/sessions/post-organizations-sessions), [permissions](https://docs.devin.ai/cli/reference/permissions)).
-- **Chosen:** [ADR100](../../../docs/ADR100-agent-approval-mode.md).
+- **Chosen:** ADR100 (withdrawn 2026-11-07, deleted 2026-11-08; see `.pm/DO_NOT_DO.md` #APPROVAL-MODE).
   - `needs_input` gets a `waitingFor` field (`approval` or `user`), backed by durable `agent_session_decisions` with a 24h expiry.
   - Workspace `approvalMode` is `autonomous` (default, unchanged behavior), `risky` or `all`, plus `bypassApproval` on create.
   - The driver gates ACP `request_permission` against one risky-action table, and an `ask_user` tool covers questions.
