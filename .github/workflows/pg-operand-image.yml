@@ -103,15 +103,22 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - uses: oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d # v2.0.1
+        with:
+          version: 1.3.1
+
       # Production nodes are linux/amd64; local CAPD clusters on Apple silicon
-      # are linux/arm64.
+      # are linux/arm64. The build goes to an OCI layout, not GHCR: only an
+      # image that passed the gate below is ever published (w6/109), and
+      # `oras cp` publishes the layout byte for byte, so the gated digest is
+      # the published one.
       - id: build
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: deploy/pg-operand
           file: deploy/pg-operand/Dockerfile
           platforms: linux/amd64,linux/arm64
-          push: true
+          outputs: type=oci,dest=${{ runner.temp }}/operand,tar=false
           build-args: |
             BASE_IMAGE=${{ steps.recipe.outputs.base }}
             DUCKDB_IMAGE=${{ steps.recipe.outputs.duckdb }}
@@ -124,12 +131,15 @@ jobs:
             org.opencontainers.image.base.name=${{ steps.recipe.outputs.base }}
           tags: ${{ env.OPERAND_IMAGE }}:${{ steps.recipe.outputs.tag }}
 
-      # The ADR092 D3 gate on the exact pushed digest, per platform, with
-      # networking disabled: every allowlisted extension created and used by a
-      # non-superuser owner, the closed list, and pg_dump/restore.
-      - name: verify the allowlist on the pushed digest
+      # The ADR092 D3 gate on the exact digest that will be published, per
+      # platform, with networking disabled: every allowlisted extension created
+      # and used by a non-superuser owner, the closed list, and
+      # pg_dump/restore. dockerd shares the runner's network namespace and
+      # treats 127.0.0.0/8 as plain HTTP, so it pulls from a job-local registry.
+      - name: verify the allowlist before publishing
         env:
-          REF: ${{ env.OPERAND_IMAGE }}@${{ steps.build.outputs.digest }}
+          LAYOUT: ${{ runner.temp }}/operand@${{ steps.build.outputs.digest }}
+          DIGEST: ${{ steps.build.outputs.digest }}
           MAJOR: ${{ matrix.major }}
           EXTENSIONS: ${{ steps.recipe.outputs.extensions }}
           VERSION: ${{ steps.recipe.outputs.version }}
@@ -137,13 +147,33 @@ jobs:
         # digest twice with different --platform values fails on the runner's
         # image store ("cannot overwrite digest"), as run 41188121287 did.
         run: |
-          index=$(docker buildx imagetools inspect --raw "$REF")
+          docker run -d --rm --name "pg-operand-gate-$MAJOR" -p 127.0.0.1::5000 registry:3 >/dev/null
+          registry=$(docker port "pg-operand-gate-$MAJOR" 5000/tcp | head -1)
+          for _ in $(seq 30); do curl -fsS "http://$registry/v2/" >/dev/null 2>&1 && break; sleep 1; done
+          local_ref="$registry/operand"
+          oras cp --from-oci-layout "$LAYOUT" "$local_ref:gate" --to-plain-http
+          index=$(oras manifest fetch --plain-http "$local_ref@$DIGEST")
           for arch in arm64 amd64; do
             digest=$(jq -er --arg a "$arch" \
               '[.manifests[] | select(.platform.os == "linux" and .platform.architecture == $a) | .digest] | if length == 1 then .[0] else error("want one \($a) manifest") end' <<<"$index")
             docker run --rm --pull missing --platform "linux/$arch" --network none --memory 256m --memory-swap 256m \
-              -v "$PWD/deploy/pg-operand:/check:ro" "${REF%@*}@$digest" bash /check/check.sh "$MAJOR" "$EXTENSIONS" "$VERSION"
+              -v "$PWD/deploy/pg-operand:/check:ro" "$local_ref@$digest" bash /check/check.sh "$MAJOR" "$EXTENSIONS" "$VERSION"
           done
+      - name: stop the gate registry
+        if: always()
+        env:
+          MAJOR: ${{ matrix.major }}
+        run: docker rm -f "pg-operand-gate-$MAJOR" >/dev/null 2>&1 || true
+
+      - name: publish the gated image
+        env:
+          LAYOUT: ${{ runner.temp }}/operand@${{ steps.build.outputs.digest }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAG: ${{ env.OPERAND_IMAGE }}:${{ steps.recipe.outputs.tag }}
+        run: |
+          oras cp --from-oci-layout "$LAYOUT" "$TAG"
+          published=$(oras manifest fetch --descriptor "$TAG" | jq -r .digest)
+          [ "$published" = "$DIGEST" ] || { echo "published $published, gated $DIGEST" >&2; exit 1; }
 
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:

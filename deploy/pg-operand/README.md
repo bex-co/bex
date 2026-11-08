@@ -23,7 +23,7 @@ Notes on the recipe:
 
 ## The gate
 
-`check.sh` runs inside the pushed digest, per platform, with networking disabled. It configures a throwaway server the way the operator projects a cluster (`pgExtensionParameters`) and then checks, as a non-superuser database owner:
+`check.sh` runs inside the exact digest about to be published, per platform, with networking disabled; the workflow publishes and signs only an image that passed it, so a failed gate leaves nothing in GHCR. It configures a throwaway server the way the operator projects a cluster (`pgExtensionParameters`) and then checks, as a non-superuser database owner:
 
 - every allowlisted extension is created and does real work: a GiST spatial query, a raster, a topology, address normalization, an incremental view, `pg_partman` partitions and maintenance, a hypertable;
 - untrusted extensions not on the list (`file_fdw`, `dblink`, `adminpack`) still fail with Postgres's normal error, and trusted ones (`hstore`) still work;
