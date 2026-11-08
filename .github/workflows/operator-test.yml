@@ -73,7 +73,10 @@ jobs:
           done
       - name: make test (operator + envtest)
         working-directory: lego/operator
-        run: make test
+        # The persistent runner keeps $HOME across jobs, unlike bin/ (a checkout
+        # wipes it): a version already in the cache is used without contacting
+        # GitHub releases (the Makefile's ENVTEST_ASSETS_DIR).
+        run: ENVTEST_ASSETS_DIR="$HOME/.cache/bex-envtest" make test
       # w1/m68: `make test` REGENERATES manifests/deepcopy before running, so a
       # stale committed CRD is silently repaired in the runner and the job stays
       # green — drift ships. That is not hypothetical: `spec.deletedUsers` was

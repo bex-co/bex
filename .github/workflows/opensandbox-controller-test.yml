@@ -66,6 +66,27 @@ jobs:
           # (w8/m42 t003). Same choice as backend/operator; see
           # docs/runbooks/runner-pool-relabel.md.
           cache: false
+      # Upstream's Makefile downloads the envtest control plane into its own
+      # bin/ (wiped with the workspace above) with a single attempt, so every
+      # run fetched it from GitHub releases, whose 502/503s failed two deploys'
+      # test stages on 2026-11-08 (runs 42463190719, 42471620968). Keep the
+      # binaries in the persistent runner's home cache, fetched with retries
+      # only when missing, and point upstream's bin/k8s at it: setup-envtest
+      # then finds the version on disk and never contacts GitHub.
+      - name: Envtest binaries from the persistent cache
+        working-directory: ${{ steps.upstream.outputs.path }}/kubernetes
+        run: |
+          cache="$HOME/.cache/bex-envtest"
+          mkdir -p "$cache" bin
+          make envtest
+          version="$(go list -m -f '{{ .Version }}' k8s.io/api | awk -F'[v.]' '{printf "1.%d", $3}')"
+          for attempt in 1 2 3 4 5; do
+            bin/setup-envtest use "$version" --bin-dir "$cache" -p path && break
+            [ "$attempt" -lt 5 ] || exit 1
+            echo "envtest $version attempt $attempt failed; retrying in $((attempt * 15))s..."
+            sleep $((attempt * 15))
+          done
+          ln -sfn "$cache/k8s" bin/k8s
       - name: Real-controller envtest suite
         working-directory: ${{ steps.upstream.outputs.path }}/kubernetes
         run: make test

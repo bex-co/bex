@@ -64,7 +64,7 @@ vet: ## Run go vet against code.
 # grew from ~350s to past go test's default 10m package deadline (red main
 # 2026-10-20), so the deadline is explicit and leaves room for runner load.
 test: test-tool-download manifests generate fmt vet setup-envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path)" go test -timeout 30m $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(ENVTEST_ASSETS_DIR)" -p path)" go test -timeout 30m $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
 .PHONY: test-tool-download
 test-tool-download: ## Test pinned tool download retries without network access.
@@ -217,6 +217,12 @@ KIND ?= kind
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+# ENVTEST_ASSETS_DIR holds the downloaded control-plane binaries. setup-envtest
+# reuses a version already on disk without contacting GitHub, so CI points it at
+# the persistent runner's home cache: a checkout wipes bin/, so every job
+# re-downloaded from GitHub releases, whose 502/503s failed two deploys' test
+# stages on 2026-11-08 (runs 42463190719 and 42471620968).
+ENVTEST_ASSETS_DIR ?= $(LOCALBIN)
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 DEADCODE = $(LOCALBIN)/deadcode
 
@@ -258,14 +264,14 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: setup-envtest
 setup-envtest: envtest ## Download the binaries required for ENVTEST in the local bin directory.
 	@echo "Setting up envtest binaries for Kubernetes version $(ENVTEST_K8S_VERSION)..."
-	@for attempt in 1 2 3; do \
-		if "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(LOCALBIN)" -p path; then exit 0; fi; \
-		if [ "$$attempt" -eq 3 ]; then \
+	@for attempt in 1 2 3 4 5; do \
+		if "$(ENVTEST)" use $(ENVTEST_K8S_VERSION) --bin-dir "$(ENVTEST_ASSETS_DIR)" -p path; then exit 0; fi; \
+		if [ "$$attempt" -eq 5 ]; then \
 			echo "Error: Failed to set up envtest binaries for version $(ENVTEST_K8S_VERSION) after $$attempt attempts." >&2; \
 			exit 1; \
 		fi; \
-		echo "Envtest setup attempt $$attempt failed; retrying..." >&2; \
-		sleep $$((attempt * 2)); \
+		echo "Envtest setup attempt $$attempt failed; retrying in $$((attempt * 15))s..." >&2; \
+		sleep $$((attempt * 15)); \
 	done
 
 .PHONY: envtest
