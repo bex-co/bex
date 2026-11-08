@@ -78,13 +78,13 @@ function renderWithZone(mode: "create" | "edit", zone: string) {
 }
 
 describe("AutomationForm time zone", () => {
-  it("a create form that starts on UTC takes the browser's zone after mount", async () => {
+  it("an unchosen create-form zone is the browser's zone", async () => {
     const spy = vi
       .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
       .mockReturnValue({
         timeZone: "Asia/Tokyo",
       } as Intl.ResolvedDateTimeFormatOptions);
-    renderWithZone("create", "UTC");
+    renderWithZone("create", "");
     await waitFor(() =>
       expect(screen.getByText(/Runs:.*Asia\/Tokyo/)).toBeInTheDocument(),
     );

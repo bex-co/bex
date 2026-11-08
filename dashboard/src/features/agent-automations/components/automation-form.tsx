@@ -1,9 +1,9 @@
 import {
-  useEffect,
   useId,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
 } from "react";
 import { Link } from "@tanstack/react-router";
@@ -72,6 +72,8 @@ interface AutomationFormProps {
  * too frequent, a missing spend limit, a taken name) are shown beside the field
  * they name, with the server's own wording.
  */
+const subscribeNever = () => () => {};
+
 export function AutomationForm({
   mode,
   initial,
@@ -85,20 +87,24 @@ export function AutomationForm({
   const formRef = useRef<HTMLFormElement>(null);
   const { currentWorkspaceId } = useWorkspace();
   const { repos } = useRepos();
-  const [values, setValues] = useState<AutomationFormValues>(initial);
+  const [chosen, setValues] = useState<AutomationFormValues>(initial);
+  // A create form leaves the zone "" until the person picks one; until then it
+  // reads "UTC" on the server and during hydration, and the browser's zone
+  // after, so the first client render equals the server render.
+  const browserZone = useSyncExternalStore(
+    subscribeNever,
+    browserTimeZone,
+    () => "UTC",
+  );
+  const values = useMemo(
+    () =>
+      chosen.schedule.timezone === ""
+        ? { ...chosen, schedule: { ...chosen.schedule, timezone: browserZone } }
+        : chosen,
+    [chosen, browserZone],
+  );
   const [attempted, setAttempted] = useState(false);
 
-  // A create form starts on "UTC" so the server and first client render agree,
-  // then takes the browser's zone unless the person already chose one.
-  useEffect(() => {
-    if (mode !== "create") return;
-    const zone = browserTimeZone();
-    setValues((prev) =>
-      prev.schedule.timezone === "UTC" && zone !== "UTC"
-        ? { ...prev, schedule: { ...prev.schedule, timezone: zone } }
-        : prev,
-    );
-  }, [mode]);
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<MappedError | null>(null);
 
