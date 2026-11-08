@@ -432,11 +432,6 @@ type listBlueprintsResult struct {
 	Blueprints []BlueprintView `json:"blueprints"`
 }
 
-// getBlueprintArgs is get_blueprint's input (w2/m41).
-type getBlueprintArgs struct {
-	ID string `json:"id" jsonschema:"the blueprint id (exs-…, or the legacy blp-…), as returned by list_blueprints or a prior deploy call"`
-}
-
 // syncBlueprintArgs is sync_blueprint's input (w2/m15 + w8/m41 reviewed pin).
 type syncBlueprintArgs struct {
 	ID       string `json:"id" jsonschema:"the blueprint id (exs-…, or the legacy blp-…), as returned by list_blueprints or a prior deploy call"`
@@ -465,16 +460,6 @@ type generateBlueprintArgs struct {
 	EnvGroupIDs []string `json:"envGroupIds,omitempty" jsonschema:"Environment group ids (evg-…) to export as root envVarGroups + fromGroup links"`
 }
 
-// createBlueprintArgs is create_blueprint's input (w2/m62).
-type createBlueprintArgs struct {
-	Repo         string            `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
-	Branch       string            `json:"branch,omitempty" jsonschema:"branch to track (default: the repository's default branch)"`
-	Path         string            `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
-	Name         string            `json:"name,omitempty" jsonschema:"human-readable name (default: repo basename)"`
-	EnvVarValues map[string]string `json:"envVarValues,omitempty" jsonschema:"values for sync:false Blueprint env-var prompts; never returned"`
-	Confirm      string            `json:"confirm,omitempty" jsonschema:"confirmation phrase for a protected-environment override, a resource takeover, or replacing the blueprint that already tracks this repo+branch. Do not guess it: make the call without this argument and copy the exact phrase out of the refusal"`
-}
-
 // listBlueprintSyncsArgs is list_blueprint_syncs's input (w2/m62).
 type listBlueprintSyncsArgs struct {
 	ID     string `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…)"`
@@ -485,15 +470,6 @@ type listBlueprintSyncsArgs struct {
 // listBlueprintSyncsResult wraps the array.
 type listBlueprintSyncsResult struct {
 	Syncs []BlueprintSyncView `json:"syncs"`
-}
-
-// updateBlueprintArgs is update_blueprint's input (w2/m62).
-type updateBlueprintArgs struct {
-	ID       string  `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…)"`
-	Name     *string `json:"name,omitempty" jsonschema:"new display name"`
-	AutoSync *bool   `json:"autoSync,omitempty" jsonschema:"enable or disable auto-sync on push"`
-	Path     *string `json:"path,omitempty" jsonschema:"new Blueprint path within the repo"`
-	Branch   *string `json:"branch,omitempty" jsonschema:"move the Blueprint to another branch; it must hold the Blueprint file, and no sync is planned"`
 }
 
 // disconnectedBlueprintResult is disconnect_blueprint's output.
@@ -1082,34 +1058,11 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
-		Name:        "create_blueprint",
-		Description: "Create a Git-connected Blueprint by fetching render.yaml from a repo, validating, and applying the full stack. bex.yml is a filename-only alias; if both files exist, specify path explicitly. Returns the new blueprint and deployed resources. The repo must be accessible via the workspace's GitHub connection or be public. bex extension (w2/m62).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
-		view, err := s.CreateBlueprint(ctx, core.NamedWorkspace(ctx), CreateBlueprintRequest{
-			Repo:         in.Repo,
-			Branch:       in.Branch,
-			Path:         in.Path,
-			Name:         in.Name,
-			EnvVarValues: in.EnvVarValues,
-			Confirm:      in.Confirm,
-		})
-		return nil, view, err
-	})
-
-	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_blueprints",
 		Description: "List Git-connected Blueprint instances for a workspace. Returns {blueprints: [{id, name, repo, branch, path, autoSync, status, lastSync, createdAt, updatedAt}]}. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ listBlueprintsArgs) (*mcp.CallToolResult, listBlueprintsResult, error) {
 		views, err := s.ListBlueprints(ctx, core.NamedWorkspace(ctx))
 		return nil, listBlueprintsResult{Blueprints: views}, err
-	})
-
-	mcputil.AddTool(srv, &mcp.Tool{
-		Name:        "get_blueprint",
-		Description: "Get a single blueprint by its id, including managed resources (id/name/type). bex extension.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
-		view, err := s.GetBlueprintByID(ctx, in.ID, core.NamedWorkspace(ctx))
-		return nil, view, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
@@ -1127,19 +1080,6 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 		reviewed := optionalReviewedBlueprintSource(in.Repo, in.Path, in.CommitID)
 		res, err := s.SyncBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), in.BexYAML, in.Confirm, reviewed)
 		return nil, res, err
-	})
-
-	mcputil.AddTool(srv, &mcp.Tool{
-		Name:        "update_blueprint",
-		Description: "Update a Blueprint's name, autoSync flag, render.yaml path, or branch (the branch must hold the Blueprint file; changing it plans no sync). Setting autoSync=false pauses auto-sync on push; true re-enables it. bex extension (w2/m62).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
-		view, err := s.UpdateBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), UpdateBlueprintRequest{
-			Name:     in.Name,
-			AutoSync: in.AutoSync,
-			Path:     in.Path,
-			Branch:   in.Branch,
-		})
-		return nil, view, err
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{

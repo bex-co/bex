@@ -187,6 +187,19 @@ func TestBlueprintEmptyEnvironmentGitAdapters(t *testing.T) {
 					}
 					result = response.Data.(map[string]any)[field].(map[string]any)
 				case "MCP":
+					if verb == "create" {
+						// Render's create_blueprint plans; approve_blueprint applies (w5/m283).
+						created, refused := mcpCall("create_blueprint", map[string]any{"repoUrl": repoBex, "branch": "main",
+							"path": CanonicalBlueprintFilename, "existingResources": "adopt"})
+						if refused || created["planningOutcome"] != PlanningPlanned {
+							t.Fatalf("create: %v", created)
+						}
+						id := created["blueprint"].(map[string]any)["id"].(string)
+						if approved, refused := mcpCall("approve_blueprint", map[string]any{"blueprintId": id}); refused {
+							t.Fatalf("approve: %v", approved)
+						}
+						return map[string]any{"id": id}
+					}
 					if verb == "preview" {
 						args["blueprintId"] = blueprintID
 					} else if verb == "sync" {
@@ -237,6 +250,9 @@ func TestBlueprintEmptyEnvironmentGitAdapters(t *testing.T) {
 			wantRuns := 3 // creation and two explicit syncs still record successful history.
 			if surface == "REST" {
 				wantRuns++ // The auto-sync worker must have applied, rather than skipped, its intent.
+			}
+			if surface == "MCP" {
+				wantRuns++ // Render's create plans first: the planning attempt is recorded before approval applies it.
 			}
 			if len(fs.insertedSyncs) != wantRuns {
 				t.Fatalf("sync history = %d runs, want %d", len(fs.insertedSyncs), wantRuns)

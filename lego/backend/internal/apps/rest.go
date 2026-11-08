@@ -1634,11 +1634,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		detail := blueprintDetail{BlueprintView: v, Resources: v.Resources}
-		if detail.Resources == nil {
-			detail.Resources = []BlueprintResource{}
-		}
-		return detail, nil
+		return toBlueprintDetail(v), nil
 	}))
 	mux.HandleFunc("PATCH /v1/blueprints/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
@@ -2039,11 +2035,8 @@ func renderBlueprintsWithCursor(views []BlueprintView) []blueprintWithCursor {
 	out := make([]blueprintWithCursor, len(views))
 	for i, v := range views {
 		out[i] = blueprintWithCursor{
-			Blueprint: renderBlueprint{
-				ID: v.ID, Name: v.Name, OwnerID: v.OwnerID, Status: v.Status, AutoSync: v.AutoSync,
-				Repo: v.Repo, Branch: v.Branch, Path: v.Path, LastSync: v.LastSync,
-			},
-			Cursor: v.ID,
+			Blueprint: toRenderBlueprint(v),
+			Cursor:    v.ID,
 		}
 	}
 	return out

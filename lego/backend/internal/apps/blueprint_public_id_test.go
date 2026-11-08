@@ -97,7 +97,7 @@ func TestBlueprintPublicIDOnEverySurface(t *testing.T) {
 			raw, _ := json.Marshal(out.Data)
 			answers(t, "GraphQL blueprint", string(raw))
 
-			res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "get_blueprint", Arguments: map[string]any{"id": spelling}})
+			res, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "get_blueprint", Arguments: map[string]any{"blueprintId": spelling}})
 			if err != nil || res.IsError {
 				t.Fatalf("MCP get_blueprint = %+v, %v", res, err)
 			}

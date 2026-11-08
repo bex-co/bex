@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -231,9 +232,8 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	if err != nil {
 		return BlueprintPlanResult{}, err
 	}
-	view := toBlueprintView(b)
-	result.Blueprint = &renderBlueprint{ID: view.ID, Name: view.Name, OwnerID: view.OwnerID, Status: view.Status,
-		AutoSync: view.AutoSync, Repo: view.Repo, Branch: view.Branch, Path: view.Path, LastSync: view.LastSync}
+	bp := toRenderBlueprint(toBlueprintView(b))
+	result.Blueprint = &bp
 	return result, nil
 }
 
@@ -750,47 +750,223 @@ func (s *Service) onboardingGraphQLMutations() graphql.Fields {
 	}
 }
 
-type createPlannedBlueprintArgs struct {
-	Name              string  `json:"name" jsonschema:"Blueprint name, unique among approved Blueprints in the workspace"`
-	Repo              string  `json:"repo" jsonschema:"Git repository URL"`
-	Branch            *string `json:"branch,omitempty" jsonschema:"branch to read (default main)"`
-	Path              *string `json:"path,omitempty" jsonschema:"Blueprint file path (default render.yaml)"`
-	AutoSync          *bool   `json:"autoSync,omitempty" jsonschema:"sync on every push once a sync is approved (default true)"`
-	ExistingResources *string `json:"existingResources,omitempty" jsonschema:"adopt (default) brings matching existing resources under the Blueprint; create_new manages a separate copy whose names carry a random suffix, leaving existing resources unchanged"`
+// Render's Blueprint MCP tools (w5/m283; render-oss/render-mcp-server #205,
+// #218, #221, #222, #224, #230): create_blueprint plans the first sync without
+// applying it, plan_blueprint re-plans, approve_blueprint applies, and
+// get_blueprint/update_blueprint read and edit settings. Upstream's tools wrap
+// Render's REST onboarding routes, so bex's run the same verbs REST does.
+
+type createBlueprintArgs struct {
+	RepoURL           string  `json:"repoUrl" jsonschema:"Repository URL starting with https:// or ssh://, without a query string or fragment. SSH URLs are converted to HTTPS. Specify the branch separately with branch."`
+	Branch            *string `json:"branch,omitempty" jsonschema:"Branch containing the Blueprint file (default main)."`
+	Path              *string `json:"path,omitempty" jsonschema:"Blueprint file path relative to the repository root (default render.yaml)."`
+	Name              *string `json:"name,omitempty" jsonschema:"Blueprint name (default: the repository name without the .git suffix)."`
+	AutoSync          *bool   `json:"autoSync,omitempty" jsonschema:"Automatically apply later pushes to the branch after the first sync is approved (default true)."`
+	ExistingResources *string `json:"existingResources,omitempty" jsonschema:"create_new (default) creates a separate set of resources whose names carry a Blueprint-specific suffix, leaving existing resources unchanged; adopt brings matching existing resources under this Blueprint and updates them to match the file.,enum=adopt,enum=create_new"`
 }
 
-type planBlueprintArgs struct {
-	ID string `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…)"`
+type blueprintIDArgs struct {
+	BlueprintID string `json:"blueprintId" jsonschema:"The Blueprint ID (exs-…, or the legacy blp-…). Use the Blueprint ID rather than a sync ID."`
 }
 
 type approveBlueprintArgs struct {
-	ID            string         `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…)"`
-	ManualEnvVars []ManualEnvVar `json:"manualEnvVars,omitempty" jsonschema:"values for the planned sync's requiredManualEnvVars"`
+	BlueprintID   string         `json:"blueprintId" jsonschema:"The Blueprint ID (exs-…, or the legacy blp-…). Use the Blueprint ID, not a sync ID."`
+	ManualEnvVars []ManualEnvVar `json:"manualEnvVars,omitempty" jsonschema:"Values for the environment variables listed in sync.requiredManualEnvVars: {serviceType, serviceName, key, value}."`
 }
 
-// registerOnboardingMCP adds create_planned_blueprint, plan_blueprint_sync and
-// approve_blueprint — the REST onboarding verbs as bex MCP extensions.
+type updateBlueprintArgs struct {
+	BlueprintID string  `json:"blueprintId" jsonschema:"The Blueprint ID (exs-…, or the legacy blp-…). Use the Blueprint ID rather than a sync ID."`
+	Name        *string `json:"name,omitempty" jsonschema:"The Blueprint's new name. Omit to keep the current name."`
+	Branch      *string `json:"branch,omitempty" jsonschema:"The Git branch the Blueprint file is read from. A different branch also creates a plan. Omit to keep the current branch."`
+	Path        *string `json:"path,omitempty" jsonschema:"The Blueprint file's new path relative to the repository root. A different path also creates a plan. Omit to keep the current path."`
+	AutoSync    *bool   `json:"autoSync,omitempty" jsonschema:"true enables automatic syncing on later Git pushes, false disables it. Omit to keep the current value."`
+}
+
+// updateBlueprintResult is upstream's update_blueprint response: the
+// Blueprint, plus the plan a branch or path change creates. planningOutcome
+// and error both null means planning was skipped.
+type updateBlueprintResult struct {
+	Blueprint       renderBlueprint        `json:"blueprint"`
+	PlanningOutcome *string                `json:"planningOutcome"`
+	Sync            *SyncWithPlan          `json:"sync"`
+	Notices         []BlueprintNotice      `json:"notices"`
+	Error           *updateBlueprintFailed `json:"error"`
+}
+
+type updateBlueprintFailed struct {
+	Stage   string `json:"stage"`
+	Message string `json:"message"`
+}
+
+// toBlueprintDetail is Render's by-id Blueprint: the view plus its resources,
+// an empty array rather than null when it manages none.
+func toBlueprintDetail(v BlueprintView) blueprintDetail {
+	detail := blueprintDetail{BlueprintView: v, Resources: v.Resources}
+	if detail.Resources == nil {
+		detail.Resources = []BlueprintResource{}
+	}
+	return detail
+}
+
+func toRenderBlueprint(v BlueprintView) renderBlueprint {
+	return renderBlueprint{ID: v.ID, Name: v.Name, OwnerID: v.OwnerID, Status: v.Status,
+		AutoSync: v.AutoSync, Repo: v.Repo, Branch: v.Branch, Path: v.Path, LastSync: v.LastSync}
+}
+
+// parseBlueprintRepoURL is upstream's repoUrl rule: https:// or ssh:// only,
+// no query or fragment, a repository name present; an ssh:// URL becomes its
+// https:// form. It returns the URL and the default Blueprint name.
+func parseBlueprintRepoURL(raw string) (string, string, error) {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Hostname() == "" || (u.Scheme != "https" && u.Scheme != "ssh") {
+		return "", "", fmt.Errorf("%w: repoUrl must be an HTTPS or SSH repository URL starting with https:// or ssh://", core.ErrBadRequest)
+	}
+	if u.RawQuery != "" || u.Fragment != "" {
+		return "", "", fmt.Errorf("%w: repoUrl must be a repository URL without a query or fragment; specify the branch with branch", core.ErrBadRequest)
+	}
+	u.Path = strings.TrimRight(u.Path, "/")
+	name := repoName(u.Path)
+	if name == "" || name == "." || name == "/" {
+		return "", "", fmt.Errorf("%w: repoUrl must include a repository name", core.ErrBadRequest)
+	}
+	if u.Scheme == "ssh" {
+		u.Scheme, u.Host, u.User = "https", u.Hostname(), nil
+	}
+	return u.String(), name, nil
+}
+
+// blankSetting refuses a supplied but blank string setting, as upstream does.
+func blankSetting(field string, v *string, omit string) error {
+	if v != nil && strings.TrimSpace(*v) == "" {
+		return fmt.Errorf("%w: %s cannot be empty; omit it to %s", core.ErrBadRequest, field, omit)
+	}
+	return nil
+}
+
+func (s *Service) createBlueprintTool(ctx context.Context, in createBlueprintArgs) (BlueprintPlanResult, error) {
+	repo, name, err := parseBlueprintRepoURL(in.RepoURL)
+	if err != nil {
+		return BlueprintPlanResult{}, err
+	}
+	for _, c := range []struct {
+		field string
+		v     *string
+		omit  string
+	}{{"name", in.Name, "use the repository name"}, {"branch", in.Branch, "use the default branch"}, {"path", in.Path, "use render.yaml"}} {
+		if err := blankSetting(c.field, c.v, c.omit); err != nil {
+			return BlueprintPlanResult{}, err
+		}
+	}
+	if in.Name != nil {
+		name = *in.Name
+	}
+	mode := store.BlueprintExistingCreateNew
+	if in.ExistingResources != nil {
+		mode = *in.ExistingResources
+	}
+	return s.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: name, OwnerID: core.NamedWorkspace(ctx),
+		Source: RenderBlueprintSource{Repo: repo, Branch: in.Branch, Path: in.Path}, AutoSync: in.AutoSync, ExistingResources: &mode})
+}
+
+func (s *Service) updateBlueprintTool(ctx context.Context, in updateBlueprintArgs) (updateBlueprintResult, error) {
+	for _, c := range []struct {
+		field string
+		v     *string
+	}{{"name", in.Name}, {"branch", in.Branch}, {"path", in.Path}} {
+		if err := blankSetting(c.field, c.v, "keep its current value"); err != nil {
+			return updateBlueprintResult{}, err
+		}
+	}
+	if in.Name == nil && in.Branch == nil && in.Path == nil && in.AutoSync == nil {
+		return updateBlueprintResult{}, fmt.Errorf("%w: provide at least one of name, branch, path, or autoSync", core.ErrBadRequest)
+	}
+	if in.Path != nil {
+		clean, err := approvedBlueprintPath(*in.Path)
+		if err != nil {
+			return updateBlueprintResult{}, err
+		}
+		in.Path = &clean
+	}
+	// The edit right is checked even when nothing changes: a no-op answer must
+	// not tell a read-only member the update succeeded.
+	owner := core.NamedWorkspace(ctx)
+	scoped, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, in.BlueprintID, owner)
+	if err != nil {
+		return updateBlueprintResult{}, err
+	}
+	stored, err := s.Blueprints.GetBlueprint(scoped, bpID, s.resolveTenantID(scoped))
+	if err != nil {
+		return updateBlueprintResult{}, store.MapError(err)
+	}
+	current := toBlueprintView(stored)
+	branchChanged := in.Branch != nil && strings.TrimSpace(*in.Branch) != current.Branch
+	pathChanged := in.Path != nil && *in.Path != current.Path
+	changed := branchChanged || pathChanged ||
+		(in.Name != nil && *in.Name != current.Name) || (in.AutoSync != nil && *in.AutoSync != current.AutoSync)
+	out := updateBlueprintResult{Blueprint: toRenderBlueprint(current), Notices: []BlueprintNotice{}}
+	if !changed {
+		return out, nil
+	}
+	updated, err := s.UpdateBlueprint(ctx, in.BlueprintID, owner, UpdateBlueprintRequest{
+		Name: in.Name, AutoSync: in.AutoSync, Path: in.Path, Branch: in.Branch})
+	if err != nil {
+		return updateBlueprintResult{}, err
+	}
+	out.Blueprint = toRenderBlueprint(updated)
+	if branchChanged || pathChanged {
+		plan, err := s.PlanBlueprint(ctx, in.BlueprintID, owner)
+		if err != nil {
+			out.Error = &updateBlueprintFailed{Stage: "planning", Message: fmt.Sprintf(
+				"The Blueprint was updated, but no planning result is available: %v. Review the error before calling plan_blueprint again. Do not approve changes based on this response.", core.MCPError(err))}
+			return out, nil
+		}
+		out.PlanningOutcome, out.Sync, out.Notices = &plan.PlanningOutcome, plan.Sync, plan.Notices
+	}
+	return out, nil
+}
+
+// planningGuidance is upstream's next-step guidance for a planning outcome.
+const planningGuidance = "Read planningOutcome to determine the next step: failed — inspect the errors in notices, fix and push the Blueprint file, then call plan_blueprint again (never approve a failed plan); no_changes — nothing to apply, do not call approve_blueprint; planned — sync holds the proposed changes: summarize them for the user (or share sync.dashboardUrl) and call approve_blueprint only after the user authorizes applying them."
+
+// registerOnboardingMCP registers Render's five Blueprint tools.
 func (s *Service) registerOnboardingMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
-		Name:        "create_planned_blueprint",
-		Description: "Create a Blueprint and plan its first sync without applying it (Render's Blueprint onboarding). Returns {blueprint, planningOutcome: planned|no_changes|failed, notices, sync}; approve the planned sync with approve_blueprint. A no_changes plan needs no approval: the Blueprint is in sync. bex extension (w2/m256).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPlannedBlueprintArgs) (*mcp.CallToolResult, BlueprintPlanResult, error) {
-		res, err := s.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: in.Name, OwnerID: core.NamedWorkspace(ctx),
-			Source: RenderBlueprintSource{Repo: in.Repo, Branch: in.Branch, Path: in.Path}, AutoSync: in.AutoSync, ExistingResources: in.ExistingResources})
+		Name:        "create_blueprint",
+		Description: "Create a Blueprint from a Blueprint YAML file in a public repository or one reachable through the workspace's GitHub connection, and plan its first sync. Resource changes are applied only after approval with approve_blueprint; after the first approval, later pushes deploy automatically when autoSync is enabled. All Blueprint changes are read from the remote repository: push local changes first. Returns {blueprint, planningOutcome, sync, notices}. " + planningGuidance,
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createBlueprintArgs) (*mcp.CallToolResult, BlueprintPlanResult, error) {
+		res, err := s.createBlueprintTool(ctx, in)
 		return nil, res, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
-		Name:        "plan_blueprint_sync",
-		Description: "Plan a sync of a Blueprint at its branch head without applying it. Returns {planningOutcome, notices, sync}. bex extension (w2/m256).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in planBlueprintArgs) (*mcp.CallToolResult, BlueprintPlanResult, error) {
-		res, err := s.PlanBlueprint(ctx, in.ID, core.NamedWorkspace(ctx))
+		Name:        "get_blueprint",
+		Description: "Retrieve a Blueprint's settings and status, with the IDs of the resources it manages (the REST GET /v1/blueprints/{blueprintId} object). The status stays \"created\" until the first sync is approved. Do not use the status alone to judge service health or whether infrastructure matches the file; use plan_blueprint for that. This tool creates no plan and applies nothing.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in blueprintIDArgs) (*mcp.CallToolResult, blueprintDetail, error) {
+		v, err := s.GetBlueprintByID(ctx, in.BlueprintID, core.NamedWorkspace(ctx))
+		if err != nil {
+			return nil, blueprintDetail{}, err
+		}
+		return nil, toBlueprintDetail(v), nil
+	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "plan_blueprint",
+		Description: "Preview infrastructure changes for an existing Blueprint using its configured branch and Blueprint file path; push local changes first. Planning applies nothing: review the plan with the user before calling approve_blueprint, even when auto-sync is enabled. Returns {planningOutcome, sync, notices}. " + planningGuidance,
+		Annotations: &mcp.ToolAnnotations{DestructiveHint: new(false), OpenWorldHint: new(true)},
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in blueprintIDArgs) (*mcp.CallToolResult, BlueprintPlanResult, error) {
+		res, err := s.PlanBlueprint(ctx, in.BlueprintID, core.NamedWorkspace(ctx))
 		return nil, res, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "approve_blueprint",
-		Description: "Apply a Blueprint's newest planned sync, supplying values for its requiredManualEnvVars. Refused when the newest sync failed planning or is not awaiting approval. bex extension (w2/m256).",
+		Description: "Approve and apply the Blueprint's newest planned sync after confirming that planning succeeded; approval can update existing resources. Call it only after the user authorizes applying the reviewed plan. Supply a user-provided value in manualEnvVars for every entry in sync.requiredManualEnvVars; never invent a value (they appear as plaintext in the agent context — the user can instead approve through POST /v1/blueprints/{blueprintId}/approve or the dashboard). Refused when the newest sync failed planning or is not awaiting approval. Returns the approved sync, before its deployments finish.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in approveBlueprintArgs) (*mcp.CallToolResult, ApprovedSync, error) {
-		res, err := s.ApproveBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), in.ManualEnvVars)
+		res, err := s.ApproveBlueprint(ctx, in.BlueprintID, core.NamedWorkspace(ctx), in.ManualEnvVars)
+		return nil, res, err
+	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "update_blueprint",
+		Description: "Update a Blueprint's name, Git branch, Blueprint file path, or auto-sync setting; omitted settings keep their values, and blank values are refused. If every supplied value already matches, the Blueprint is returned unchanged and no plan is created. Changing the branch or path also creates a plan (from the remote repository: push first); changing only the name or auto-sync does not. Returns {blueprint, planningOutcome, sync, notices, error}: planningOutcome and error both null means planning was skipped; a non-null error means the Blueprint was updated but no plan is available. " + planningGuidance,
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateBlueprintArgs) (*mcp.CallToolResult, updateBlueprintResult, error) {
+		res, err := s.updateBlueprintTool(ctx, in)
 		return nil, res, err
 	})
 }

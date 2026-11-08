@@ -4230,7 +4230,7 @@ func TestBlueprintByIDNotFoundIsIdenticalAcrossSurfaces(t *testing.T) {
 	t.Cleanup(func() { _ = cs.Close() })
 	toolRes, err := cs.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "get_blueprint",
-		Arguments: map[string]any{"id": "blp-absent"},
+		Arguments: map[string]any{"blueprintId": "blp-absent"},
 	})
 	if err != nil {
 		t.Fatalf("transport error: %v", err)

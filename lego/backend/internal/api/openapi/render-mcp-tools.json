@@ -1,6 +1,6 @@
 {
   "pin": {
-    "capturedAt": "2026-10-20",
+    "capturedAt": "2026-11-07",
     "capturedBy": "scripts/render-mcp-capture.py --ref main (MCP stdio tools/list)",
     "latestRelease": {
       "tag": "v0.3.0",
@@ -32,16 +32,93 @@
       "dockerCommand/dockerContext/dockerfilePath while buildCommand/startCommand became",
       "optional (bc94f8d, #154, Dockerfile-based creation). The tools array is the capture",
       "verbatim; only this 'pin' block and 'source' are hand-maintained.",
-      "w5/m145 (2026-10-20): re-captured at the same upstream commit with each argument's JSON type (and enum) and the tools' behavior hints (readOnly/destructive/idempotent/openWorld), which a client acts on; descriptions and annotation titles stay out."
+      "w5/m145 (2026-10-20): re-captured at the same upstream commit with each argument's JSON type (and enum) and the tools' behavior hints (readOnly/destructive/idempotent/openWorld), which a client acts on; descriptions and annotation titles stay out.",
+      "w5/m283 (2026-11-07): re-captured at 16fe2e9 (2026-11-06). Upstream added create_blueprint (plans without applying), plan_blueprint, approve_blueprint, get_blueprint and update_blueprint (#205, #218, #221, #222, #224, #230); bex implements all five to this contract. No other tool moved."
     ]
   },
   "source": {
     "repo": "github.com/render-oss/render-mcp-server",
     "ref": "main",
-    "commit": "d9a8abd5366944987d89031ae014cc44cd683420",
-    "commitDate": "2026-09-25T16:21:45Z"
+    "commit": "16fe2e9977b0cf4837d6b68fe7f02f3cd85c4bd7",
+    "commitDate": "2026-11-06T09:18:10Z"
   },
   "tools": [
+    {
+      "name": "approve_blueprint",
+      "args": [
+        "blueprintId",
+        "manualEnvVars",
+        "workspaceId"
+      ],
+      "required": [
+        "blueprintId"
+      ],
+      "argTypes": {
+        "blueprintId": {
+          "type": "string"
+        },
+        "manualEnvVars": {
+          "type": "array"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "create_blueprint",
+      "args": [
+        "autoSync",
+        "branch",
+        "existingResources",
+        "name",
+        "path",
+        "repoUrl",
+        "workspaceId"
+      ],
+      "required": [
+        "repoUrl"
+      ],
+      "argTypes": {
+        "autoSync": {
+          "type": "boolean"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "existingResources": {
+          "type": "string",
+          "enum": [
+            "adopt",
+            "create_new"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "repoUrl": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
+    },
     {
       "name": "create_cron_job",
       "args": [
@@ -500,6 +577,30 @@
         "idempotentHint": false,
         "openWorldHint": true,
         "readOnlyHint": false
+      }
+    },
+    {
+      "name": "get_blueprint",
+      "args": [
+        "blueprintId",
+        "workspaceId"
+      ],
+      "required": [
+        "blueprintId"
+      ],
+      "argTypes": {
+        "blueprintId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
       }
     },
     {
@@ -990,6 +1091,30 @@
       }
     },
     {
+      "name": "plan_blueprint",
+      "args": [
+        "blueprintId",
+        "workspaceId"
+      ],
+      "required": [
+        "blueprintId"
+      ],
+      "argTypes": {
+        "blueprintId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "query_render_postgres",
       "args": [
         "postgresId",
@@ -1053,6 +1178,46 @@
           "type": "boolean"
         },
         "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "update_blueprint",
+      "args": [
+        "autoSync",
+        "blueprintId",
+        "branch",
+        "name",
+        "path",
+        "workspaceId"
+      ],
+      "required": [
+        "blueprintId"
+      ],
+      "argTypes": {
+        "autoSync": {
+          "type": "boolean"
+        },
+        "blueprintId": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
           "type": "string"
         },
         "workspaceId": {

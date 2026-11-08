@@ -236,15 +236,20 @@ func TestMCPParityInventory(t *testing.T) {
 	// contract (1:1 9 → 10, total 189 → 190).
 	// w8/152 added Render's region to the four create tools (Divergent 6 → 2,
 	// Superset 5 → 9).
+	// w5/m283 re-pinned at 16fe2e9: upstream's five Blueprint tools are now
+	// served to its contract (1:1 10 → 15); bex's create/get/update/approve
+	// extensions took those names, and create_planned_blueprint and
+	// plan_blueprint_sync were removed for create_blueprint and plan_blueprint
+	// (Extension 204 → 198, total 225 → 224).
 	// Update this table and ADR018's MCP inventory together — that pairing is
 	// the point.
 	want := map[mcpParityClass]int{
-		mcpParity1to1:      10,  // +list_events (w1/m165); -list_logs -list_log_label_values (w4/m189); +update_environment_variables (w2/046)
+		mcpParity1to1:      15,  // +create_blueprint +plan_blueprint +approve_blueprint +get_blueprint +update_blueprint (w5/m283); +list_events (w1/m165); -list_logs -list_log_label_values (w4/m189); +update_environment_variables (w2/046)
 		mcpParitySuperset:  9,   // +get_metrics (w2/m91 Render arg names); +list_logs +list_log_label_values (w4/m189 textMode); +4 create tools (w8/152 region)
 		mcpParityDivergent: 2,   // -get_metrics (w2/m91); -create_web_service -create_cron_job -create_postgres -create_key_value (w8/152 region)
-		mcpParityExtension: 204, // +list_agent_skills +get_agent_skill +create_agent_skill +update_agent_skill +delete_agent_skill (ADR099, w9/m175); +list_agent_secrets +set_agent_secret +delete_agent_secret (ADR098, w9/m174); +get_agent_session_model_cost (ADR091 D6, w10/m14 t013); +enable_keyvalue_internal_auth (w5/m268); +get_owner_notification_settings +update_owner_notification_settings (w3/m271); +list_postgres_credentials +create_postgres_credential +delete_postgres_credential (w5/m265); +link_service_to_build_source (w2/m254 t008); +8 build source tools (w2/m254 t007); +upload_agent_attachment +get_agent_attachment +list_agent_session_attachments +delete_agent_attachment (ADR095 D11, w9/m171); +create_planned_blueprint +plan_blueprint_sync +approve_blueprint (w2/m256); +wait_agent_sessions (ADR094 D6, w21/m258); +create_agent_session +send_agent_session_message (ADR094 D2 canonical names; spawn_/steer_ stay as aliases, w21/m257); +get_agent_session_tool_output (w10/m18); +get_agent_environment +update_agent_environment (w10/m17); -pin_agent_session -unpin_agent_session (w10/m15); +leave_workspace (w5/m102); +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
+		mcpParityExtension: 198, // -create_blueprint -get_blueprint -update_blueprint -approve_blueprint -create_planned_blueprint -plan_blueprint_sync (w5/m283 Render names); +list_agent_skills +get_agent_skill +create_agent_skill +update_agent_skill +delete_agent_skill (ADR099, w9/m175); +list_agent_secrets +set_agent_secret +delete_agent_secret (ADR098, w9/m174); +get_agent_session_model_cost (ADR091 D6, w10/m14 t013); +enable_keyvalue_internal_auth (w5/m268); +get_owner_notification_settings +update_owner_notification_settings (w3/m271); +list_postgres_credentials +create_postgres_credential +delete_postgres_credential (w5/m265); +link_service_to_build_source (w2/m254 t008); +8 build source tools (w2/m254 t007); +upload_agent_attachment +get_agent_attachment +list_agent_session_attachments +delete_agent_attachment (ADR095 D11, w9/m171); +create_planned_blueprint +plan_blueprint_sync +approve_blueprint (w2/m256); +wait_agent_sessions (ADR094 D6, w21/m258); +create_agent_session +send_agent_session_message (ADR094 D2 canonical names; spawn_/steer_ stay as aliases, w21/m257); +get_agent_session_tool_output (w10/m18); +get_agent_environment +update_agent_environment (w10/m17); -pin_agent_session -unpin_agent_session (w10/m15); +leave_workspace (w5/m102); +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
 	}
-	const wantTotal = 225
+	const wantTotal = 224
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",
