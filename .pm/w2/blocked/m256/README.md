@@ -97,3 +97,7 @@ Everything implementable is shipped. What remains is the production walk, and pr
 
 - **卡点已消失：** 生产固定版本已推进到 `92ff0029334d`（`bab5d417e`）。它包含 t018（`c071550db`）、m269（`eaf967d80`）和 m263（`21175a4d2`）。以 QA 会话调用 `GET /v1/blueprints` 返回的已是 `exs-…`。
 - **worker 下一步：** 按上文的生产验收步骤直接执行，无需用户决定。
+
+## Blocked (2026-11-08): waiting for the t014 deploy
+
+Everything is shipped. t014 (`49ffa1735`) only needs its production re-check, and production is pinned to `19dfc298275a`, nine minutes before t014. Deploys are starved by superseded runs (owned by w6/m156). **Release condition:** a `pin platform images` commit whose revision contains `49ffa1735`. Then re-run t014's reproduction on production (create → approve → delete Blueprint and service → re-create → plan shows `create`, approve recreates), then t011.

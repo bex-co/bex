@@ -54,3 +54,10 @@
   - `-race`, `make lint` and the real-DB sandbox/store/api suites pass.
 - **Divergence (in ADR018) needing the user's sign-off:** memory, processes and `/tmp` do not survive a suspension (Render keeps them). Closing it needs memory checkpointing (`runsc checkpoint`/CRIU; the ADR042 D5 watch item). The workaround is `--idle-timeout 0`.
 - **Implementable gap, now t010:** the timeout restart on resume and the 30-day resumable window.
+
+## Blocked (2026-11-08)
+
+t001–t008 and t010 are shipped (`be753e48d`, `9cb1c257a`). Two gates remain:
+
+1. **User sign-off** on the one remaining divergence: memory, running processes and `/tmp` do not survive an idle suspension, while Render keeps them (ADR018 § Sandbox create flags; closing it needs `runsc checkpoint`/CRIU, the ADR042 D5 watch item; the workaround is `--idle-timeout 0`). Accept it as a recorded divergence, or fund memory checkpointing as a new milestone. Run `/unblock w2`.
+2. **Production deploy** of `9cb1c257a` (starved, w6/m156). Then walk it with the QA user: create a sandbox with `--idle-timeout 300`; after 5 min it reports `suspended`; `bex sandboxes exec` resumes it and runs the command; a file written before the suspension is still there.
