@@ -556,7 +556,10 @@ func checkpointServiceSuspended(previousPhase, observedPhase string, previousSus
 		return previousSuspended
 	}
 	hibernated := string(appv1alpha1.PhaseHibernated)
-	if previousPhase == hibernated && observedPhase == hibernated {
+	if observedPhase == hibernated {
+		// Entering Hibernated keeps a reason recorded while still Running, so
+		// a Resume that cleared the flag first cannot turn the episode into an
+		// idle sleep (w4/527).
 		return previousSuspended || observedSuspended
 	}
 	return observedSuspended
@@ -600,13 +603,24 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 		}
 	}
 	var facts []ServiceEventFact
+	// A Suspend undone before the service ever stopped (w4/527): the flag rose
+	// and fell while the phase stayed up, so no phase edge will report it.
+	// Render records both actions however quickly they follow each other.
+	hibernated := string(appv1alpha1.PhaseHibernated)
+	if previousSuspended && !obs.Suspended && previousPhase != hibernated && obs.ServicePhase != hibernated {
+		facts = append(facts, makeFact("suspended", EventFactServiceSuspended), makeFact("resumed", EventFactServiceResumed))
+	}
 	if obs.ServicePhase != previousPhase {
 		switch obs.ServicePhase {
 		case string(appv1alpha1.PhaseHibernated):
 			// Both mechanisms land on Hibernated; spec.suspended is what tells
 			// them apart. Keep the source-key suffixes distinct so an App that
 			// sleeps and is later suspended at the same instant cannot collide.
-			if obs.Suspended {
+			// The reason may already be recorded: the pass a Suspend's write
+			// kicks sees the service still Running with spec.suspended set, and
+			// a Resume can clear the flag before any pass sees Hibernated
+			// (w4/527).
+			if obs.Suspended || previousSuspended {
 				facts = append(facts, makeFact("suspended", EventFactServiceSuspended))
 			} else {
 				facts = append(facts, makeFact("hibernated", EventFactServiceHibernated))

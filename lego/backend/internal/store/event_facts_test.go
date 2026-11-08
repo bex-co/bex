@@ -186,6 +186,33 @@ func TestAutoHibernateFactsStayApartFromSuspend(t *testing.T) {
 		onlyFact(record(st, "srv-race", 3*time.Minute, "Running", false), EventFactServiceResumed)
 	})
 
+	// w4/527: a Resume that lands before any pass saw the service Hibernated.
+	// The pass after the Suspend saw it still Running with spec.suspended set;
+	// the first Hibernated pass already reads suspended=false.
+	t.Run("a Resume before the Hibernated pass still records suspend and resume", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-early", 0, "Running", false)
+		if facts := record(st, "srv-early", time.Second, "Running", true); len(facts) != 0 {
+			t.Fatalf("the suspend flag alone emitted %+v", facts)
+		}
+		onlyFact(record(st, "srv-early", time.Minute, "Hibernated", false), EventFactServiceSuspended)
+		onlyFact(record(st, "srv-early", 2*time.Minute, "Running", false), EventFactServiceResumed)
+	})
+
+	// w4/527 run B: Suspend and Resume both land before the service ever stops.
+	t.Run("a Suspend undone before the service stops records the pair", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-quick", 0, "Running", false)
+		record(st, "srv-quick", time.Second, "Running", true)
+		facts := record(st, "srv-quick", 5*time.Second, "Running", false)
+		if len(facts) != 2 || facts[0].Type != EventFactServiceSuspended || facts[1].Type != EventFactServiceResumed {
+			t.Fatalf("facts = %+v, want service_suspended then service_resumed", facts)
+		}
+		// The episode is closed: a later idle sleep is an idle sleep.
+		onlyFact(record(st, "srv-quick", time.Hour, "Hibernated", false), EventFactServiceHibernated)
+		onlyFact(record(st, "srv-quick", 2*time.Hour, "Running", false), EventFactServiceWoken)
+	})
+
 	t.Run("an idle sleep stays an idle wake across repeated Hibernated passes", func(t *testing.T) {
 		st := newMemStore()
 		record(st, "srv-idle", 0, "Running", false)
