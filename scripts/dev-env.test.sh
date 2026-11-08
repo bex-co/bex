@@ -392,6 +392,67 @@ assert "an image built from this source is fresh" "! (cd '$fp_repo' && FAKE_LABE
 assert "AGENT_REBUILD=1 forces a rebuild" "(cd '$fp_repo' && FAKE_LABEL='$fp2' AGENT_REBUILD=1 image_stale img src)"
 unset -f docker
 
+echo "==> a fresh cluster's missing edge/operator fail up early (w2/m289 t001/t002)"
+eval "$(awk '/^require_shared_platform\(\)/,/^}$/' scripts/dev-env.sh)"
+# The fake kubectl answers from SHARED_HAVE: which of traefik/crd/operator exist.
+kubectl() {
+  case "$*" in
+  "get crd middlewares.traefik.io ingressroutes.traefik.io") [[ $SHARED_HAVE == *traefik* ]] ;;
+  "get crd apps.app.bex.co") [[ $SHARED_HAVE == *crd* ]] ;;
+  "-n bex-system get deploy bex-controller-manager") [[ $SHARED_HAVE == *operator* ]] ;;
+  *) return 1 ;;
+  esac
+}
+platform_out() { (SHARED_HAVE="$1" require_shared_platform) 2>&1 && echo "rc=0" || echo "rc=$?"; }
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
+no_traefik="$(platform_out "crd operator")"
+assert "no Traefik CRDs stops up" "printf '%s' \"\$no_traefik\" | grep -q 'rc=1'"
+assert "the Traefik refusal names mock-cluster.sh" \
+  "printf '%s' \"\$no_traefik\" | grep -q \"Run 'bash scripts/mock-cluster.sh'\""
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
+no_operator="$(platform_out "traefik crd")"
+assert "no operator Deployment stops up" "printf '%s' \"\$no_operator\" | grep -q 'rc=1'"
+assert "the operator refusal names mock-cluster.sh operator" \
+  "printf '%s' \"\$no_operator\" | grep -q \"Run 'bash scripts/mock-cluster.sh operator'\""
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
+no_crd="$(platform_out "traefik operator")"
+assert "no App CRD stops up" "printf '%s' \"\$no_crd\" | grep -q 'rc=1'"
+assert "a complete shared platform passes" "[ \"\$(platform_out 'traefik crd operator')\" = 'rc=0' ]"
+unset -f kubectl platform_out
+assert "cmd_up checks the shared platform right after refreshing its kubeconfig" \
+  "awk '/^cmd_up\\(\\)/,/^}\$/' scripts/dev-env.sh | grep -A1 '^  refresh_kubeconfig\$' | grep -q '^  require_shared_platform\$'"
+
+assert "up waits for every CNPG Cluster to be Ready before installing Kratos/Hydra" \
+  "awk '/^cmd_up\\(\\)/,/^}\$/' scripts/dev-env.sh | awk '/cluster.postgresql.cnpg.io\\/\\\$cluster\" --for=condition=Ready/{w=NR} /helm upgrade --install kratos/{h=NR} END{exit !(w && h && w<h)}'"
+
+echo "==> dev-N never depends on the global kube context (w2/m289 t003)"
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
+dev_code="$(sed -e 's/^[[:space:]]*#.*//' scripts/dev-env.sh)"
+assert "dev-env never switches or edits a kube context" \
+  "! printf '%s\n' \"\$dev_code\" | grep -qE 'kubectl[^|;]*config (use-context|set-context|unset)'"
+assert "every kubectl in up/down/status uses the private per-N kubeconfig" \
+  "[ \"\$(grep -c 'export KUBECONFIG=\"\$PWD/\$KUBECONFIG_FILE\"' scripts/dev-env.sh)\" -ge 4 ]"
+
+echo "==> helm runs with isolated registry credentials (w2/m289 t004)"
+assert "dev-env sources the helm isolation" "grep -q '^\. scripts/lib/helm-isolated.sh\$' scripts/dev-env.sh"
+helm_tmp="$(mktemp -d)"
+cat >"$helm_tmp/helm" <<'FAKE'
+#!/usr/bin/env bash
+printf '%s\n%s\n' "${HELM_REGISTRY_CONFIG:-}" "${DOCKER_CONFIG:-}"
+FAKE
+chmod +x "$helm_tmp/helm"
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
+helm_seen="$(PATH="$helm_tmp:$PATH" BEX_HELM_ISOLATED_DIR="$helm_tmp/reg" bash -c '. scripts/lib/helm-isolated.sh; helm repo list')"
+assert "helm sees the private registry config" \
+  "[ \"\$(sed -n 1p <<<\"\$helm_seen\")\" = '$helm_tmp/reg/config.json' ]"
+assert "helm's Docker-config fallback is the same private dir" \
+  "[ \"\$(sed -n 2p <<<\"\$helm_seen\")\" = '$helm_tmp/reg' ]"
+assert "the private config names no credential store" \
+  "! grep -qE 'credsStore|credHelpers' '$helm_tmp/reg/config.json'"
+assert "the private config holds a placeholder auths entry (no native-store detection)" \
+  "grep -q '\"auths\":{\"bex-anonymous.invalid\":{}}' '$helm_tmp/reg/config.json'"
+rm -rf "$helm_tmp"
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "dev-env: all checks passed"

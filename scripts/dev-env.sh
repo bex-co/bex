@@ -30,6 +30,11 @@ cd "$(dirname "$0")/.." # repo root
 
 TEMPLATES="scripts/dev-env"
 
+# helm with isolated registry credentials (w2/m289 t004): a locked macOS
+# keychain must not hang a chart pull. Repo cache and KUBECONFIG are untouched.
+# shellcheck source=lib/helm-isolated.sh
+. scripts/lib/helm-isolated.sh
+
 AGENT_TEMPLATES="scripts/dev-env/agent"
 
 usage() {
@@ -377,6 +382,19 @@ refresh_kubeconfig() {
     { echo "error: cluster 'bex' has no default StorageClass — CNPG databases and Loki cannot bind their PVCs. Reprovision it ('bash scripts/mock-cluster.sh')." >&2; exit 1; }
 }
 
+# require_shared_platform — dev-N reuses the shared cluster's Traefik edge and
+# bex operator; it never installs either. Without Traefik's CRDs every web
+# service fails with `no matches for kind "Middleware"`, and without the
+# operator no App is ever reconciled, both long after `up` reported success
+# (w2/m289). Fail here instead, naming the one command that fixes each.
+require_shared_platform() {
+  kubectl get crd middlewares.traefik.io ingressroutes.traefik.io >/dev/null 2>&1 ||
+    { echo "error: cluster 'bex' has no Traefik CRDs (traefik.io) — web services cannot be routed. Run 'bash scripts/mock-cluster.sh' (idempotent; installs the Traefik edge)." >&2; exit 1; }
+  kubectl get crd apps.app.bex.co >/dev/null 2>&1 &&
+    kubectl -n bex-system get deploy bex-controller-manager >/dev/null 2>&1 ||
+    { echo "error: the bex operator is not deployed on cluster 'bex' — no App would ever reconcile. Run 'bash scripts/mock-cluster.sh operator'." >&2; exit 1; }
+}
+
 # ensure_cnpg — install the CNPG operator when the CRD is absent rather than
 # assuming the shared cluster has it, then wait for it to be READY. Pins the
 # same chart deploy/gitops/base/cnpg-operator.yaml does, minus the platform
@@ -461,7 +479,9 @@ ensure_observability() {
     -f "$ENVDIR/.rendered-loki.values.yaml" >/dev/null
   helm upgrade --install log-shipper grafana/alloy --version '1.*' -n monitoring \
     -f "$ENVDIR/.rendered-log-shipper.values.yaml" >/dev/null
-  kubectl -n monitoring rollout status statefulset/loki --timeout=180s ||
+  # 600s, not 180s: on a fresh cluster the PVC provisioning and first image
+  # pull alone took ~4 minutes and failed `up` (w2/m289). Reruns are instant.
+  kubectl -n monitoring rollout status statefulset/loki --timeout=600s ||
     { echo "error: Loki did not become ready — dev-$N's log store is down ('kubectl -n monitoring describe pod loki-0'; an unbound PVC means no default StorageClass)." >&2; exit 1; }
 }
 
@@ -494,10 +514,10 @@ ensure_prometheus() {
       --from-file=volume-usage.sh="$TEMPLATES/prometheus/volume-usage.sh" \
       --dry-run=client -o yaml | kubectl apply -f - >/dev/null
   fi
-  kubectl -n monitoring rollout status deploy/prometheus-server --timeout=180s ||
+  kubectl -n monitoring rollout status deploy/prometheus-server --timeout=600s ||
     { echo "error: Prometheus did not become ready ('kubectl -n monitoring describe pod -l app.kubernetes.io/name=prometheus')." >&2; exit 1; }
   if kubectl -n local-path-volume-usage get daemonset local-path-volume-usage >/dev/null 2>&1; then
-    kubectl -n local-path-volume-usage rollout status daemonset/local-path-volume-usage --timeout=180s ||
+    kubectl -n local-path-volume-usage rollout status daemonset/local-path-volume-usage --timeout=600s ||
       { echo "error: the local-path volume-usage DaemonSet did not become ready." >&2; exit 1; }
   fi
 }
@@ -687,6 +707,7 @@ cmd_up() {
 
   preflight
   refresh_kubeconfig
+  require_shared_platform
 
   # A stale dashboard/.env (written by `yarn local-bex`) silently breaks every
   # SSR GraphQL query: a .env VITE_SSR_API_URL beats an UNSET shell var, so a
@@ -740,6 +761,15 @@ cmd_up() {
     done
     kubectl -n "$DEV_AUTH_NS" get secret "$cluster-app" >/dev/null 2>&1 ||
       { echo "error: $cluster never produced its -app credentials secret" >&2; exit 1; }
+  done
+  # The -app secret exists long before Postgres accepts connections. On a
+  # fresh cluster the first Postgres image pull and initdb took ~5 minutes,
+  # which ran Kratos's pre-install migration Job past helm's 5m --wait and
+  # failed `up` (w2/m289). Wait for the Clusters themselves first.
+  for cluster in kratos-db hydra-db bex-db; do
+    echo "    waiting for $cluster to accept connections (CNPG Ready)..."
+    kubectl -n "$DEV_AUTH_NS" wait "cluster.postgresql.cnpg.io/$cluster" --for=condition=Ready --timeout=600s >/dev/null ||
+      { echo "error: CNPG Cluster $cluster never became Ready — inspect: KUBECONFIG=$PWD/$KUBECONFIG_FILE kubectl -n $DEV_AUTH_NS describe cluster.postgresql.cnpg.io $cluster" >&2; exit 1; }
   done
 
   echo "==> mailpit"

@@ -216,7 +216,7 @@ jobs:
           scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
           scripts/fetch-app-kubeconfig.test.sh
-          scripts/mock-cluster.sh scripts/mock-cluster.test.sh
+          scripts/mock-cluster.sh scripts/mock-cluster.test.sh scripts/lib/helm-isolated.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
           scripts/ci-schedule-drift.sh scripts/ci-schedule-drift.test.sh
           scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh

@@ -32,6 +32,7 @@ All three platform suites + `dashboard/yarn test` must pass before `deploy.yml` 
 
 - `bash scripts/mock-cluster.sh` — kind infra + CAPI + CAPD app cluster; kubeconfig `infra/local/bex.kubeconfig` (gitignored)
 - `bash scripts/mock-cluster.sh scale N` — add/remove workers
+- `bash scripts/mock-cluster.sh operator` — build `bex-operator:dev` from the tree, import it on every node, `make deploy`, wait (the bring-up already installs the Traefik edge + CRDs)
 - `scripts/app-apply.sh <bex.yml>` — `render.yaml`-shaped `bex.yml` → App CR (`DRY_RUN=1` preview)
 - `scripts/deploy-sample.sh` / `kubectl get apps.app.bex.co` — deploy + status
 

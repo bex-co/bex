@@ -4,13 +4,33 @@
 #   cluster whose "machines" are Docker-container nodes. Add/remove a machine by
 #   scaling the worker pool. Swap CAPD -> CAPH for Hetzner; bex is unchanged.
 #
-#   bash scripts/mock-cluster.sh            # bring it up
+#   bash scripts/mock-cluster.sh            # bring it up (substrate + Traefik edge)
+#   bash scripts/mock-cluster.sh operator   # build bex-operator:dev from this tree and deploy it
 #   bash scripts/mock-cluster.sh scale 3    # set worker machines = 3 (add/remove)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export CLUSTER_TOPOLOGY=true                 # CAPD's flavor uses ClusterClass/topology
 MGMT="kind-bex-mgmt"
 WL_KUBECONFIG=infra/local/bex.kubeconfig
+# --- No global kube context (w2/m289 t003) -----------------------------------
+# Every mgmt-cluster call names its kubeconfig AND its context. This script
+# used to `kubectl config use-context` and then run context-less kubectl and
+# clusterctl against ~/.kube/config, so another session clearing or switching
+# the global current-context broke `clusterctl get kubeconfig` mid-bring-up
+# (w2, 2026-11-07). kind writes the mgmt context into this private file, never
+# into ~/.kube/config, and nothing here reads or changes the global one.
+MGMT_KUBECONFIG=infra/local/bex-mgmt.kubeconfig
+mgmt_kubectl() { kubectl --kubeconfig "$MGMT_KUBECONFIG" --context "$MGMT" "$@"; }
+mgmt_clusterctl() { clusterctl --kubeconfig "$MGMT_KUBECONFIG" --kubeconfig-context "$MGMT" "$@"; }
+# The workload kubeconfig names its own context (clusterctl writes
+# current-context into it), so KUBECONFIG=$WL_KUBECONFIG never falls back to
+# the global file either.
+wl_kubectl() { KUBECONFIG="$WL_KUBECONFIG" kubectl "$@"; }
+
+# helm with isolated registry credentials (w2/m289 t004): a locked macOS
+# keychain must not hang an OCI chart pull. See scripts/lib/helm-isolated.sh.
+# shellcheck source=lib/helm-isolated.sh
+. scripts/lib/helm-isolated.sh
 
 # --- Single-writer lock (w7/m148 t001) ---------------------------------------
 # Bring-up and scale are read-modify-write against ONE shared mgmt cluster:
@@ -29,7 +49,13 @@ release_lock() {
   rm -rf "$LOCK_DIR"
   LOCK_HELD=
 }
-trap release_lock EXIT INT TERM
+# INT/TERM must END the run, not just drop the lock: a bare `trap release_lock
+# TERM` ran the handler and then resumed the script, which carried on
+# provisioning with the lock already released (w2/m289, seen live). Exiting
+# runs the EXIT trap, which releases it once.
+trap release_lock EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # --- Required-stage failures are fatal (w7/m148 t003) ------------------------
 # These waits used to end in `|| true`, so a cluster that never became ready
@@ -92,7 +118,7 @@ publish_kubeconfig() {
     echo "       $WL_KUBECONFIG is unchanged." >&2
   }
 
-  if ! clusterctl get kubeconfig bex >"$tmp" 2>/dev/null; then
+  if ! mgmt_clusterctl get kubeconfig bex >"$tmp" 2>/dev/null; then
     refuse "clusterctl could not produce a kubeconfig for cluster 'bex'"
     return 1
   fi
@@ -134,11 +160,34 @@ publish_kubeconfig() {
 # replicas field, handing ownership back to the autoscaler.
 scale() {
   local n=$1 max=5; [ "$n" -gt 5 ] && max=$n
-  kubectl --context "$MGMT" patch cluster bex --type merge \
+  mgmt_kubectl patch cluster bex --type merge \
     -p "{\"spec\":{\"topology\":{\"workers\":{\"machineDeployments\":[{\"name\":\"worker-0\",\"class\":\"default-worker\",\"metadata\":{\"annotations\":{\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size\":\"1\",\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size\":\"1\"}}},{\"name\":\"tenant-0\",\"class\":\"tenant-worker\",\"metadata\":{\"annotations\":{\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size\":\"$n\",\"cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size\":\"$max\"}}}]}}}}"
   echo "tenant worker floor -> $n machine(s) (min-size $n / max-size $max; platform stays at 1)"
   echo "watch: docker ps --format '{{.Names}}' | grep bex-tenant-0"
 }
+# Every node Ready — and at least one node. `! kubectl get nodes | grep -qv
+# Ready` alone passes when kubectl fails and prints nothing, which reported a
+# dead cluster as healthy; an empty node list is not "all ready".
+nodes_ready() {
+  local out
+  out=$(wl_kubectl --request-timeout=20s get nodes --no-headers 2>/dev/null) || return 1
+  [ -n "$out" ] || return 1
+  ! printf '%s\n' "$out" | grep -qv ' Ready'
+}
+
+# wait_nodes_ready SECONDS polls nodes_ready rather than `kubectl wait node
+# --all`: under load CAPI's MachineHealthCheck replaces a slow tenant machine,
+# and `wait --all` then fails on the Node that vanished ("nodes ... not
+# found") although its replacement goes Ready moments later (w2/m289, seen on
+# a fresh bring-up).
+wait_nodes_ready() {
+  local deadline=$((SECONDS + $1))
+  until nodes_ready; do
+    [ "$SECONDS" -lt "$deadline" ] || return 1
+    sleep "${BEX_NODE_POLL_SECONDS:-5}"
+  done
+}
+
 # --- Verify before claiming success (w7/m148 t004) ---------------------------
 # The banner below used to print unconditionally, so a cluster missing its CNI,
 # storage class or metrics still read as "up" — and the next script to fail got
@@ -160,16 +209,6 @@ verify_substrate() {
     fi
   }
 
-  # Every node Ready — and at least one node. `! kubectl get nodes | grep -qv
-  # Ready` alone passes when kubectl fails and prints nothing, which reported a
-  # dead cluster as healthy; an empty node list is not "all ready".
-  nodes_ready() {
-    local out
-    out=$(wl kubectl --request-timeout=20s get nodes --no-headers 2>/dev/null) || return 1
-    [ -n "$out" ] || return 1
-    ! printf '%s\n' "$out" | grep -qv ' Ready'
-  }
-
   default_storageclass() {
     wl kubectl get storageclass -o jsonpath='{.items[*].metadata.annotations.storageclass\.kubernetes\.io/is-default-class}' 2>/dev/null \
       | grep -q true
@@ -184,7 +223,10 @@ verify_substrate() {
   check "cert-manager Available" wl kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=15s
   check "metrics API serving (metrics.k8s.io)" wl kubectl get --raw /apis/metrics.k8s.io/v1beta1
   check "build boundary (bex-build RBAC for the operator)" wl kubectl -n bex-build get rolebinding bex-build-credentials
-  check "cluster-autoscaler Available (mgmt)" kubectl --context "$MGMT" -n kube-system wait deploy --all --for=condition=Available --timeout=15s
+  check "Traefik CRDs established (traefik.io)" traefik_crds_established
+  check "Traefik edge Available (traefik)" traefik_available
+  check "CNPG operator installed (postgresql.cnpg.io)" cnpg_installed
+  check "cluster-autoscaler Available (mgmt)" mgmt_kubectl -n kube-system wait deploy --all --for=condition=Available --timeout=15s
 
   if [ "$failures" -ne 0 ]; then
     echo >&2
@@ -270,22 +312,318 @@ apply_build_boundary() {
     | KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f -
 }
 
+# refresh_mgmt_kubeconfig writes the kind mgmt cluster's kubeconfig to the
+# private $MGMT_KUBECONFIG (t003). `kind get kubeconfig` reads the cluster
+# itself, so this works whatever ~/.kube/config holds, and it re-reads the
+# apiserver port Docker may have changed on a restart. Written privately and
+# moved into place, like publish_kubeconfig: it is a client credential.
+refresh_mgmt_kubeconfig() {
+  local tmp
+  mkdir -p "$(dirname "$MGMT_KUBECONFIG")"
+  tmp=$(mktemp "${TMPDIR:-/tmp}/bex-mgmt-kubeconfig.XXXXXX")
+  chmod 600 "$tmp"
+  if ! kind get kubeconfig --name bex-mgmt >"$tmp" 2>/dev/null || [ ! -s "$tmp" ]; then
+    rm -f "$tmp"
+    echo "error: kind could not produce a kubeconfig for cluster 'bex-mgmt'" >&2
+    return 1
+  fi
+  mv "$tmp" "$MGMT_KUBECONFIG"
+}
+
+# --- Traefik edge (w2/m289 t001) ---------------------------------------------
+# The operator writes traefik.io objects for every web service (Middleware,
+# IngressRoute) and `make deploy` ships bex-system IngressRoutes, so a mock
+# without Traefik's CRDs failed both: web services stuck on `no matches for
+# kind "Middleware"`, and the operator deploy aborted part-way. Production
+# installs Traefik — CRDs included — from the chart deploy/helm-artifacts.lock
+# pins (deploy/gitops/base/traefik.yaml mirrors that exact archive), so this
+# installs the same archive, verified against the same sha256, with the same
+# base values the local GitOps overlay uses. That gives the mock a real edge
+# too: dev-N web services answer through Traefik exactly as in production.
+TRAEFIK_VALUES=deploy/gitops/base/values/traefik.values.yaml
+TRAEFIK_CRDS="ingressroutes.traefik.io ingressroutetcps.traefik.io middlewares.traefik.io tlsstores.traefik.io"
+
+# helm_pin CHART prints "VERSION REPO SHA256" for CHART from
+# deploy/helm-artifacts.lock — the one place production's chart pins live.
+helm_pin() {
+  awk -F'|' -v chart="$1" '$1 == chart { print $2, $3, $4; exit }' deploy/helm-artifacts.lock
+}
+
+sha256_of() { shasum -a 256 "$1" | awk '{print $1}'; }
+
+# fetch_pinned_chart CHART DIR pulls CHART's locked archive into DIR, refuses
+# it unless its sha256 matches the lock, and prints the archive's path.
+fetch_pinned_chart() {
+  local chart=$1 dir=$2 version repo sha got
+  read -r version repo sha <<<"$(helm_pin "$chart")" || true
+  if [ -z "${sha:-}" ]; then
+    echo "error: deploy/helm-artifacts.lock has no $chart|VERSION|REPO|SHA256 line" >&2
+    return 1
+  fi
+  if ! helm pull "$chart" --repo "$repo" --version "$version" --destination "$dir" >/dev/null; then
+    echo "error: could not fetch the $chart $version chart from $repo" >&2
+    return 1
+  fi
+  got=$(sha256_of "$dir/$chart-$version.tgz")
+  if [ "$got" != "$sha" ]; then
+    echo "error: $chart $version archive sha256 $got does not match deploy/helm-artifacts.lock ($sha)" >&2
+    return 1
+  fi
+  printf '%s\n' "$dir/$chart-$version.tgz"
+}
+
+traefik_crds_established() {
+  local crd
+  for crd in $TRAEFIK_CRDS; do
+    wl_kubectl wait --for=condition=established "crd/$crd" --timeout=60s >/dev/null || return 1
+  done
+}
+
+traefik_available() {
+  wl_kubectl -n traefik wait deploy --all --for=condition=Available --timeout=15s
+}
+
+install_traefik() {
+  if argo_manages traefik; then
+    return 0
+  fi
+  local dir chart
+  dir=$(mktemp -d "${TMPDIR:-/tmp}/bex-traefik-chart.XXXXXX")
+  if ! chart=$(fetch_pinned_chart traefik "$dir"); then
+    rm -rf "$dir"
+    return 1
+  fi
+  # hostNetwork + NET_BIND_SERVICE is outside this cluster's default
+  # PodSecurity baseline, so the edge namespace is exempted like
+  # local-path-storage. The plugin ConfigMaps must exist first: the values
+  # mount them by their content-hashed names.
+  if ! { wl_kubectl create namespace traefik --dry-run=client -o yaml | wl_kubectl apply -f - >/dev/null &&
+    wl_kubectl label namespace traefik pod-security.kubernetes.io/enforce=privileged --overwrite >/dev/null &&
+    wl_kubectl apply -k deploy/gitops/charts/traefik-plugins >/dev/null &&
+    KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install traefik "$chart" -n traefik \
+      -f "$TRAEFIK_VALUES" --wait --timeout 5m >/dev/null; }; then
+    rm -rf "$dir"
+    echo "error: installing traefik (namespace, plugins or helm release) failed" >&2
+    return 1
+  fi
+  rm -rf "$dir"
+  traefik_crds_established
+}
+
+# --- CNPG operator (w2/m289 t002) --------------------------------------------
+# The bex manager watches postgresql.cnpg.io Clusters and exits when that
+# cache cannot sync, so on a fresh mock the operator crashlooped until some
+# dev-N `up` happened to install CNPG. The shared cluster now carries it
+# from the start, from production's lock pin, under the release name
+# dev-env.sh's ensure_cnpg looks for (`cnpg`), which then only pins and waits.
+cnpg_installed() {
+  wl_kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1 &&
+    [ -n "$(wl_kubectl -n cnpg-system get deploy -l app.kubernetes.io/name=cloudnative-pg -o name 2>/dev/null)" ]
+}
+
+install_cnpg() {
+  if argo_manages cnpg-operator || cnpg_installed; then
+    return 0
+  fi
+  local dir chart
+  dir=$(mktemp -d "${TMPDIR:-/tmp}/bex-cnpg-chart.XXXXXX")
+  if ! chart=$(fetch_pinned_chart cloudnative-pg "$dir"); then
+    rm -rf "$dir"
+    return 1
+  fi
+  if ! KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install cnpg "$chart" -n cnpg-system --create-namespace \
+    --wait --timeout 5m >/dev/null; then
+    rm -rf "$dir"
+    echo "error: installing the CNPG operator (release cnpg, namespace cnpg-system) failed" >&2
+    return 1
+  fi
+  rm -rf "$dir"
+  wl_kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=60s >/dev/null
+}
+
+# --- `operator`: the bex operator from this tree (w2/m289 t002) --------------
+# After every reprovision the operator used to be rebuilt, side-loaded onto
+# each node, deployed and patched by hand. This is that runbook as one
+# command. CAPD nodes cannot pull a local tag, so the image is imported into
+# every node's containerd, and every bex-system workload running it is set to
+# IfNotPresent (config/ ships Always, which would try docker.io and fail).
+OPERATOR_IMG="${BEX_OPERATOR_IMG:-bex-operator:dev}"
+
+# operator_step NAME HINT CMD... — run one step; on failure name the step,
+# say what to check, and stop: every later step depends on the earlier ones.
+operator_step() {
+  local stage=$1 hint=$2; shift 2
+  echo "==> $stage"
+  if ! "$@"; then
+    echo >&2
+    echo "error: operator step '$stage' failed." >&2
+    echo "       $hint" >&2
+    echo "       Re-run: bash scripts/mock-cluster.sh operator   (idempotent)" >&2
+    exit 1
+  fi
+}
+
+abs_path() { case $1 in /*) printf '%s\n' "$1" ;; *) printf '%s/%s\n' "$PWD" "$1" ;; esac; }
+
+operator_prereqs() {
+  traefik_crds_established &&
+    wl_kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=30s >/dev/null &&
+    wl_kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=30s >/dev/null
+}
+
+operator_build() { docker build -t "$OPERATOR_IMG" -f lego/Dockerfile lego; }
+
+# operator_import_image loads the image into containerd on every node the
+# workload cluster reports. CAPD names each node container after its Node,
+# so the Node list is the authoritative set — including scaled tenant nodes.
+operator_import_image() {
+  local tar node imported=0
+  tar=$(mktemp "${TMPDIR:-/tmp}/bex-operator-image.XXXXXX")
+  if ! docker save "$OPERATOR_IMG" -o "$tar"; then
+    rm -f "$tar"
+    echo "error: docker save $OPERATOR_IMG failed" >&2
+    return 1
+  fi
+  while IFS= read -r node; do
+    [ -n "$node" ] || continue
+    if ! docker exec -i "$node" ctr -n k8s.io images import - <"$tar" >/dev/null; then
+      rm -f "$tar"
+      echo "error: importing $OPERATOR_IMG into node container '$node' failed" >&2
+      return 1
+    fi
+    echo "    $OPERATOR_IMG -> $node"
+    imported=$((imported + 1))
+  done < <(wl_kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}')
+  rm -f "$tar"
+  if [ "$imported" -eq 0 ]; then
+    echo "error: the workload cluster reported no nodes to import onto" >&2
+    return 1
+  fi
+}
+
+operator_make_deploy() {
+  env KUBECONFIG="$(abs_path "$WL_KUBECONFIG")" GOWORK=off \
+    make -C lego/operator deploy IMG="$OPERATOR_IMG"
+}
+
+# operator_workloads prints kind/name for each bex-system Deployment or
+# DaemonSet with a container (or init container) running $OPERATOR_IMG.
+operator_workloads() {
+  wl_kubectl -n bex-system get deployments,daemonsets -o json |
+    jq -r --arg img "$OPERATOR_IMG" '.items[]
+      | select([.spec.template.spec.containers[]?, .spec.template.spec.initContainers[]?] | any(.image == $img))
+      | "\(.kind | ascii_downcase)/\(.metadata.name)"'
+}
+
+# operator_pull_policy_patch reads one workload's JSON and prints the JSON
+# patch that sets IfNotPresent on each of its $OPERATOR_IMG containers, or
+# nothing when every one already has it.
+operator_pull_policy_patch() {
+  jq -c --arg img "$OPERATOR_IMG" '
+    [ ("containers", "initContainers") as $field
+      | (.spec.template.spec[$field] // []) | to_entries[]
+      | select(.value.image == $img and .value.imagePullPolicy != "IfNotPresent")
+      | {op: "add", path: "/spec/template/spec/\($field)/\(.key)/imagePullPolicy", value: "IfNotPresent"} ]
+    | select(length > 0)'
+}
+
+# operator_roll pins IfNotPresent, then restarts every workload on the image:
+# the tag is unchanged, so without a restart the pods keep the previous build.
+operator_roll() {
+  local w patch found=0
+  while IFS= read -r w; do
+    [ -n "$w" ] || continue
+    found=1
+    patch=$(wl_kubectl -n bex-system get "$w" -o json | operator_pull_policy_patch) || return 1
+    if [ -n "$patch" ]; then
+      wl_kubectl -n bex-system patch "$w" --type json -p "$patch" >/dev/null || return 1
+    fi
+    wl_kubectl -n bex-system rollout restart "$w" >/dev/null || return 1
+    echo "    $w: imagePullPolicy IfNotPresent, restarted"
+  done < <(operator_workloads)
+  if [ "$found" -eq 0 ]; then
+    echo "error: no bex-system workload runs $OPERATOR_IMG — did make deploy apply?" >&2
+    return 1
+  fi
+}
+
+operator_wait() {
+  wl_kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=300s &&
+    wl_kubectl wait --for=condition=established crd/apps.app.bex.co --timeout=60s >/dev/null
+}
+
+deploy_operator() {
+  operator_step "workload cluster reachable" \
+    "Bring the cluster up first: bash scripts/mock-cluster.sh" \
+    wl_kubectl --request-timeout=20s get --raw /readyz
+  operator_step "substrate prerequisites (Traefik CRDs, CNPG CRDs, cert-manager)" \
+    "The manager needs all three; bash scripts/mock-cluster.sh installs them (idempotent)." \
+    operator_prereqs
+  operator_step "build $OPERATOR_IMG from lego/Dockerfile" \
+    "The docker build output above names the failing layer; is the Docker daemon up?" \
+    operator_build
+  operator_step "import $OPERATOR_IMG onto every node" \
+    "Check the node containers: docker ps --filter label=io.x-k8s.kind.cluster=bex" \
+    operator_import_image
+  operator_step "make -C lego/operator deploy IMG=$OPERATOR_IMG" \
+    "The kubectl apply errors above name the object; a 'no matches for kind' means a CRD is missing." \
+    operator_make_deploy
+  # The manager watches Secrets in the apps namespace (default); production
+  # grants that through Argo from deploy/gitops/base, outside config/, and
+  # without it the manager crashloops on cache sync (w1/043).
+  operator_step "operator apps-namespace RBAC (deploy/gitops/base/operator-apps-rbac.yaml)" \
+    "The kubectl apply error above names the object." \
+    wl_kubectl apply -f deploy/gitops/base/operator-apps-rbac.yaml
+  operator_step "imagePullPolicy IfNotPresent + restart onto the new image" \
+    "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n bex-system get deploy,ds" \
+    operator_roll
+  operator_step "bex-controller-manager rolled out" \
+    "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n bex-system logs deploy/bex-controller-manager --tail=50" \
+    operator_wait
+  echo
+  echo "bex operator running $OPERATOR_IMG (built from this tree)."
+  # Informational: config/default also ships in-cluster bex-api, ssh-gateway
+  # and static-server, which need platform Secrets the mock does not create
+  # (dev-N runs its own bex-api on the host). Only the manager is required.
+  wl_kubectl -n bex-system get deploy,ds 2>/dev/null | sed 's/^/  /' || true
+  echo "  next:      bash scripts/dev-env.sh <N> up"
+}
+
 if [ -n "${BEX_MOCK_CLUSTER_LIB:-}" ]; then return 0 2>/dev/null || exit 0; fi
 
-if [ "${1:-}" = scale ]; then acquire_lock; scale "${2:?usage: scale N}"; exit 0; fi
+case "${1:-}" in
+scale)
+  acquire_lock
+  require "mgmt kubeconfig (kind get kubeconfig)" refresh_mgmt_kubeconfig
+  scale "${2:?usage: scale N}"
+  exit 0
+  ;;
+operator)
+  acquire_lock
+  deploy_operator
+  exit 0
+  ;;
+'') ;;
+*)
+  echo "usage: bash scripts/mock-cluster.sh [scale N | operator]" >&2
+  exit 2
+  ;;
+esac
 
 acquire_lock
 
-# 1. infra cluster (kind) with the docker socket mounted (CAPD needs it)
-kind get clusters 2>/dev/null | grep -qx bex-mgmt || kind create cluster --config infra/local/kind-mgmt.yaml
-kubectl config use-context "$MGMT" >/dev/null
+# 1. infra cluster (kind) with the docker socket mounted (CAPD needs it).
+# --kubeconfig keeps kind from writing (and switching) ~/.kube/config (t003).
+kind get clusters 2>/dev/null | grep -qx bex-mgmt ||
+  kind create cluster --config infra/local/kind-mgmt.yaml --kubeconfig "$MGMT_KUBECONFIG"
+require "mgmt kubeconfig (kind get kubeconfig)" refresh_mgmt_kubeconfig
 
 # 2. Cluster API core + Docker provider (topology enabled from the start).
 # clusterctl init returns before the webhooks serve; wait or the apply below
 # fails with "failed calling webhook ... connection refused".
-kubectl get ns capd-system >/dev/null 2>&1 || clusterctl init --infrastructure docker
+mgmt_kubectl get ns capd-system >/dev/null 2>&1 || mgmt_clusterctl init --infrastructure docker
 for ns in capi-system capd-system capi-kubeadm-bootstrap-system capi-kubeadm-control-plane-system; do
-  kubectl -n "$ns" wait deploy --all --for=condition=Available --timeout=300s
+  mgmt_kubectl -n "$ns" wait deploy --all --for=condition=Available --timeout=300s
 done
 
 # 3. the app cluster (Cluster + ClusterClass + MachineDeployment, machines = containers)
@@ -299,7 +637,7 @@ done
 # but was unusable, and the failure was invisible unless you read the whole log.
 # Templates are pure declarations referenced by name, so recreating the drifted
 # ones converges the mgmt cluster onto whatever this repo now declares.
-if ! apply_err=$(kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml 2>&1); then
+if ! apply_err=$(mgmt_kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml 2>&1); then
   echo "$apply_err"
   grep -q "field is immutable" <<<"$apply_err" || {
     echo "error: applying cluster.yaml failed for a reason other than template immutability" >&2
@@ -310,23 +648,23 @@ if ! apply_err=$(kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.y
   # at creation time, so deleting one cannot disturb a running node.
   for kind in kubeadmcontrolplanetemplate kubeadmconfigtemplate \
               dockerclustertemplate dockermachinetemplate dockermachinepooltemplate; do
-    kubectl delete "$kind" --all --ignore-not-found >/dev/null 2>&1 || true
+    mgmt_kubectl delete "$kind" --all --ignore-not-found >/dev/null 2>&1 || true
   done
-  kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml
+  mgmt_kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml
 fi
 
 echo "waiting for the app cluster to provision..."
-kubectl --context "$MGMT" wait --for=condition=Available cluster/bex --timeout=600s || true
+mgmt_kubectl wait --for=condition=Available cluster/bex --timeout=600s || true
 for _ in $(seq 1 60); do
-  [ "$(kubectl --context "$MGMT" get machines --no-headers 2>/dev/null | grep -c Running)" -ge 2 ] && break; sleep 8
+  [ "$(mgmt_kubectl get machines --no-headers 2>/dev/null | grep -c Running)" -ge 2 ] && break; sleep 8
 done
 # Required: clusterctl cannot produce a usable kubeconfig for a cluster whose
 # machines never came up, and every stage below depends on that kubeconfig.
-machines_running=$(kubectl --context "$MGMT" get machines --no-headers 2>/dev/null | grep -c Running || true)
+machines_running=$(mgmt_kubectl get machines --no-headers 2>/dev/null | grep -c Running || true)
 if [ "${machines_running:-0}" -lt 2 ]; then
   echo >&2
   echo "error: only ${machines_running:-0} CAPI machine(s) reached Running within 8m (need 2)." >&2
-  echo "       Inspect: kubectl --context $MGMT get machines" >&2
+  echo "       Inspect: kubectl --kubeconfig $MGMT_KUBECONFIG --context $MGMT get machines" >&2
   echo "       Re-run: bash scripts/mock-cluster.sh   (idempotent)" >&2
   exit 1
 fi
@@ -338,8 +676,7 @@ KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
   https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml >/dev/null
 # Required, and deliberately ordered after the Calico apply above: nodes cannot
 # go Ready until a CNI is installed, so this must not move earlier (t003).
-require "node readiness (post-CNI)" \
-  env KUBECONFIG="$WL_KUBECONFIG" kubectl wait --for=condition=Ready node --all --timeout=300s
+require "node readiness (post-CNI)" wait_nodes_ready 300
 # The fixed platform worker joins with bex.co/pool=platform; the scalable tenant
 # pool joins with bex.co/pool=tenant. The split mirrors production and lets live
 # isolation checks prove tenant execution cannot land on the platform pool.
@@ -489,6 +826,14 @@ require "metrics-server availability" \
   env KUBECONFIG="$WL_KUBECONFIG" kubectl -n kube-system wait deploy/metrics-server \
   --for=condition=Available --timeout=180s
 
+# Traefik edge + its CRDs, from the production chart pin (t001). After the
+# CSR approver (the Traefik pod's logs/port-forward need approved kubelet
+# serving certs) and before the operator, whose make deploy and web services
+# need the traefik.io CRDs.
+require "Traefik edge (traefik.io CRDs + controller)" install_traefik
+# The CNPG operator: the bex manager cannot start without its CRDs.
+require "CNPG operator (postgresql.cnpg.io)" install_cnpg
+
 # The build boundary: the operator runs builds in bex-build
 # (BEX_BUILD_NAMESPACE) and reclaims a deleted App's build credentials there,
 # which needs the namespace and its RBAC. Production gets both from
@@ -518,16 +863,16 @@ require "render-v1 seccomp profile" \
 
 # 5. cluster-autoscaler beside CAPI (w1/m3) — same installer as prod CI.
 #    Why on the mgmt cluster: infra/clusterapi/autoscaler-values.yaml.
-bash scripts/install-autoscaler.sh "$MGMT"
+#    Its helm reads the private mgmt kubeconfig and the isolated registry config.
+KUBECONFIG="$MGMT_KUBECONFIG" helm_isolated bash scripts/install-autoscaler.sh "$MGMT"
 
 verify_substrate
 
 echo
-echo "app cluster 'bex' up. kubeconfig: $WL_KUBECONFIG"
-# Scope, stated plainly: this script publishes a substrate. It does NOT install
-# the bex operator or the App CRD — that stays `make deploy` from lego/operator.
-echo "  note:         substrate only — the bex operator and App CRD are a"
-echo "                separate step (make -C lego/operator deploy)"
+echo "app cluster 'bex' up. kubeconfig: $WL_KUBECONFIG (mgmt: $MGMT_KUBECONFIG)"
+# Scope, stated plainly: this run publishes a substrate plus the Traefik edge.
+# The bex operator and App CRD are the separate `operator` step.
+echo "  next:         bash scripts/mock-cluster.sh operator   (bex operator + App CRD)"
 echo "  nodes:        KUBECONFIG=$WL_KUBECONFIG kubectl get nodes"
 echo "  add machine:  bash scripts/mock-cluster.sh scale 3"
 echo "  remove:       bash scripts/mock-cluster.sh scale 1"
