@@ -3,8 +3,8 @@ import { useApolloClient, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentKeyValuesDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { publishEnvironments } from "@/features/environments/lib/refresh-environments";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 export interface UseSetEnvironmentKeyValuesResult {
   /**
@@ -51,9 +51,10 @@ export function useSetEnvironmentKeyValues(): UseSetEnvironmentKeyValuesResult {
           projectId = res.data?.setEnvironmentKeyValues?.projectId;
         } catch (err) {
           toast.error(
-            mutationErrorMessage(
+            placementErrorMessage(
               err,
               t("environments.assignKeyValuesError", { name: envName }),
+              t,
             ),
           );
           return false;

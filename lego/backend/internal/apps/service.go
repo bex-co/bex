@@ -228,6 +228,12 @@ type Service struct {
 	// envVarGroups/fromGroup is rejected before any write (env groups unavailable),
 	// never silently dropped.
 	EnvGroups EnvGroupApplier
+	// EnvGroupPlacements reads the acting workspace's env groups by name, each
+	// mapped to its environment ("" for workspace scope), for the Blueprint
+	// protected-placement check (w3/m281). The composition root wires
+	// envgroups.GroupPlacements; nil counts every declared group as moving,
+	// failing closed.
+	EnvGroupPlacements func(ctx context.Context) (map[string]string, error)
 	// EnvSeeder, when set (OpenBao is wired), seeds a render.yaml's sync:false and
 	// generateValue vars into the mutable env-vars store SEED-ONCE (w1/m35), so a
 	// later dashboard edit wins and a re-sync never overwrites/re-mints. nil => a

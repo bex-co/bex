@@ -3,7 +3,7 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentServicesDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 export interface UseSetEnvironmentServicesResult {
   /**
@@ -49,9 +49,10 @@ export function useSetEnvironmentServices(): UseSetEnvironmentServicesResult {
         return true;
       } catch (err) {
         toast.error(
-          mutationErrorMessage(
+          placementErrorMessage(
             err,
             t("environments.assignError", { name: envName }),
+            t,
           ),
         );
         return false;

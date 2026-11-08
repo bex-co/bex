@@ -3,7 +3,7 @@ import { useApolloClient, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentEnvGroupsDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 export interface UseSetEnvironmentEnvGroupsResult {
   setEnvGroups: (
@@ -64,9 +64,10 @@ export function useSetEnvironmentEnvGroups(): UseSetEnvironmentEnvGroupsResult {
         return true;
       } catch (err) {
         toast.error(
-          mutationErrorMessage(
+          placementErrorMessage(
             err,
             t("environments.assignEnvGroupsError", { name: environmentName }),
+            t,
           ),
         );
         await readPlacement();

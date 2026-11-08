@@ -26,6 +26,8 @@ export function ScopeSelect({
   environments,
   projects,
   loading = false,
+  restricts,
+  restrictedReason,
   onValueChange,
 }: {
   id: string;
@@ -34,9 +36,18 @@ export function ScopeSelect({
   /** Names each option's project; same-named environments are common. */
   projects: ProjectView[];
   loading?: boolean;
+  /** An environment the caller may not place the group in — a protected one
+   *  for a non-Admin (w3/m281). Its option is disabled and restrictedReason
+   *  describes the trigger. */
+  restricts?: (environment: EnvironmentView) => boolean;
+  restrictedReason?: string;
   onValueChange: (value: string) => void;
 }) {
   const { t } = useTranslations();
+  const restricted = (environment: EnvironmentView) =>
+    restricts?.(environment) ?? false;
+  const anyRestricted = environments.some(restricted);
+  const reasonId = `${id}-restricted-reason`;
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{t("envGroups.environmentLabel")}</Label>
@@ -47,6 +58,7 @@ export function ScopeSelect({
             (w4/270). */}
         <SelectTrigger
           id={id}
+          aria-describedby={anyRestricted ? reasonId : undefined}
           className="min-h-9 max-w-full text-left whitespace-normal wrap-anywhere data-[size=default]:h-auto *:data-[slot=select-value]:line-clamp-none"
         >
           <SelectValue placeholder={t("envGroups.environmentPlaceholder")} />
@@ -60,12 +72,22 @@ export function ScopeSelect({
               key={environment.id}
               value={environment.id}
               className="wrap-anywhere"
+              disabled={restricted(environment)}
             >
-              {environmentScopeName(environment, projects)}
+              {restricted(environment)
+                ? t("environments.protectedOptionAdminOnly", {
+                    environment: environmentScopeName(environment, projects),
+                  })
+                : environmentScopeName(environment, projects)}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
+      {anyRestricted && restrictedReason ? (
+        <p id={reasonId} className="text-sm text-muted-foreground">
+          {restrictedReason}
+        </p>
+      ) : null}
     </div>
   );
 }

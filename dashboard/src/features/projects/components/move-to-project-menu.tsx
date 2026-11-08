@@ -12,6 +12,17 @@ import {
   useMoveToProject,
   type ProjectResourceKind,
 } from "@/features/projects/hooks/use-move-to-project";
+import type { ProjectResourceFamily } from "@/features/projects/lib/resource-filter";
+import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
+import { placementIndex } from "@/features/environments/lib/placement";
+import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
+import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
+
+const FAMILY: Record<ProjectResourceKind, ProjectResourceFamily> = {
+  service: "services",
+  database: "databases",
+  keyvalue: "keyvalues",
+};
 
 export interface MoveToProjectMenuProps {
   kind: ProjectResourceKind;
@@ -37,22 +48,47 @@ export interface MoveToProjectMenuProps {
  * only needs to render this one item. Renders nothing when the workspace has
  * no projects yet.
  */
-export function MoveToProjectMenu({
+export function MoveToProjectMenu(props: MoveToProjectMenuProps) {
+  const moves = useMoveToProject(props.kind);
+  if (moves.projects.length === 0) return null;
+  return <MoveToProjectItems {...props} moves={moves} />;
+}
+
+/**
+ * The submenu itself, mounted only when there is a project to move to, so the
+ * environment read behind its protected-placement gate runs only then.
+ */
+function MoveToProjectItems({
   kind,
   resourceId,
   resourceName,
   disabled,
   onMoveRequested,
-}: MoveToProjectMenuProps) {
+  moves,
+}: MoveToProjectMenuProps & { moves: ReturnType<typeof useMoveToProject> }) {
   const { t } = useTranslations();
   const { projects, currentProjectId, moveTo, removeFromProject, busyId } =
-    useMoveToProject(kind);
+    moves;
   const current = currentProjectId(resourceId);
   const busy = busyId === resourceId;
   const attempt = (action: () => void) =>
     onMoveRequested ? onMoveRequested(action) : action();
-
-  if (projects.length === 0) return null;
+  // A project move takes the resource out of its environment, which a
+  // non-Admin may not do to a protected one (w3/m281).
+  const { environments } = useEnvGroupScopeIndex();
+  const placement = useProtectedPlacement();
+  const leaves = placementIndex(environments)(FAMILY[kind], resourceId);
+  if (placement.restricts(leaves)) {
+    return (
+      <>
+        <DropdownMenuSeparator />
+        <PermissionMenuItem permissionReason={placement.reason}>
+          <FolderKanban />
+          {t("projects.moveToProject")}
+        </PermissionMenuItem>
+      </>
+    );
+  }
 
   // Owns its own leading separator (rather than each row-actions caller adding
   // one) so a workspace with no projects yet renders no dangling separator.

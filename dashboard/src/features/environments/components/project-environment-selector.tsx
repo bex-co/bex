@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useId } from "react";
 import {
   Select,
   SelectContent,
@@ -11,6 +11,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useCatalogRetry } from "@/common/hooks/use-catalog-retry";
 import { ReadUnavailable } from "@/common/components/read-unavailable";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
+import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 
 export interface ProjectEnvironmentSelectorProps {
@@ -31,6 +32,7 @@ export function ProjectEnvironmentSelector({
   onEnvironmentChange,
 }: ProjectEnvironmentSelectorProps) {
   const { t } = useTranslations();
+  const protectedReasonId = useId();
   const {
     projects,
     loading: projectsLoading,
@@ -43,6 +45,13 @@ export function ProjectEnvironmentSelector({
     error: environmentsError,
     refetch: refetchEnvironments,
   } = useEnvironments(projectId);
+  // A non-Admin cannot create in a protected environment (w3/m281): its
+  // option is disabled and the reason is the trigger's description, so a
+  // keyboard or screen-reader user hears it without opening the list.
+  const placement = useProtectedPlacement();
+  const blockedEnvironments = environments.some((environment) =>
+    placement.restricts(environment),
+  );
   // Only a list that settled without an error proves a selection missing. A
   // failed or pending read keeps the customer's placement (w4/m221): clearing
   // it would silently create the resource outside its Project.
@@ -133,18 +142,35 @@ export function ProjectEnvironmentSelector({
             onEnvironmentChange(value === "unassigned" ? null : value)
           }
         >
-          <SelectTrigger aria-label={t("environments.assignmentEnvironment")}>
+          <SelectTrigger
+            aria-label={t("environments.assignmentEnvironment")}
+            aria-describedby={
+              blockedEnvironments ? protectedReasonId : undefined
+            }
+          >
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="unassigned">
               {t("environments.assignmentEnvironmentNone")}
             </SelectItem>
-            {environments.map((environment) => (
-              <SelectItem key={environment.id} value={environment.id}>
-                {environment.name}
-              </SelectItem>
-            ))}
+            {environments.map((environment) =>
+              placement.restricts(environment) ? (
+                <SelectItem
+                  key={environment.id}
+                  value={environment.id}
+                  disabled
+                >
+                  {t("environments.protectedOptionAdminOnly", {
+                    environment: environment.name,
+                  })}
+                </SelectItem>
+              ) : (
+                <SelectItem key={environment.id} value={environment.id}>
+                  {environment.name}
+                </SelectItem>
+              ),
+            )}
             {unlistedEnvironment ? (
               <SelectItem value={environmentId}>
                 {pendingLabel(environmentsError)}
@@ -159,6 +185,11 @@ export function ProjectEnvironmentSelector({
           onRetry={() => void retry()}
           retrying={retrying}
         />
+      ) : null}
+      {blockedEnvironments ? (
+        <p id={protectedReasonId} className="text-sm text-muted-foreground">
+          {placement.reason}
+        </p>
       ) : null}
       <p className="text-sm text-muted-foreground">
         {t("environments.assignmentHint")}

@@ -67,6 +67,12 @@ type Service struct {
 	// groups available while honestly refusing an association the process cannot
 	// validate.
 	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
+	// Environments is the resource-create environment resolver every other
+	// kind places through (environments.NewCreateResolver): when wired, an
+	// association is validated there, so creating a group in a protected
+	// environment or moving one into it needs an Admin, as on Render (w3/m281).
+	// nil keeps the EnvironmentWorkspace same-workspace check alone.
+	Environments core.EnvironmentResolver
 	// RebuildService starts one full rebuild for a linked service. The API
 	// composition root wires deploys.Service.Rebuild, recorded as a
 	// configuration change (w4/347); nil makes only the explicit
@@ -679,11 +685,14 @@ func (s *Service) MoveEnvGroup(ctx context.Context, gid, environmentID string) (
 	if err != nil {
 		return EnvGroupView{}, err
 	}
-	if err := s.validateEnvironment(ctx, environmentID, g.TenantID); err != nil {
-		return EnvGroupView{}, err
-	}
+	// Staying put places nothing, so it needs no placement check (w3/m281): a
+	// Blueprint re-apply of a group already in a protected environment stays
+	// open to non-Admins, as Render's Blueprint exception allows.
 	if g.EnvironmentID == environmentID {
 		return viewOf(g), nil
+	}
+	if err := s.validateEnvironment(ctx, environmentID, g.TenantID); err != nil {
+		return EnvGroupView{}, err
 	}
 	exit, err := s.ExitGuards.Load(ctx, g.TenantID)
 	if err != nil {
@@ -1430,6 +1439,25 @@ func (s *Service) GroupIDsByName(ctx context.Context) (map[string]string, error)
 	return out, nil
 }
 
+// GroupPlacements is s's group-placement read as the Blueprint
+// protected-placement check is wired with (w3/m281): each of the acting
+// workspace's groups by name, mapped to the environment it is scoped to (""
+// for workspace scope), behind the same can_view as GroupIDsByName. A
+// function, not a Service method, so the verb sweeps do not take it for a verb.
+func GroupPlacements(s *Service) func(ctx context.Context) (map[string]string, error) {
+	return func(ctx context.Context) (map[string]string, error) {
+		groups, err := s.listGroups(ctx, "")
+		if err != nil {
+			return nil, err
+		}
+		out := make(map[string]string, len(groups))
+		for _, g := range groups {
+			out[g.Name] = g.EnvironmentID
+		}
+		return out, nil
+	}
+}
+
 // ApplyEnvGroup materializes one blueprint `envVarGroups:` entry (w1/m35),
 // keyed by NAME (Render's env groups are name-addressed): create the group if no
 // group of that name exists IN THE ACTING WORKSPACE (w6/m24 — findGroupByName is
@@ -1686,11 +1714,17 @@ func (s *Service) envGroupQuota(ctx context.Context, workspace string) error {
 }
 
 // validateEnvironment proves that an optional Environment belongs to the same
-// workspace as the group. Cross-workspace association is always forbidden; an
-// unwired Environments service reports the control-plane dependency honestly.
+// workspace as the group and, through the shared create resolver, admits the
+// placement (a protected one needs an Admin, w3/m281). Cross-workspace
+// association is always forbidden; an unwired Environments service reports the
+// control-plane dependency honestly.
 func (s *Service) validateEnvironment(ctx context.Context, environmentID, workspace string) error {
 	if environmentID == "" {
 		return nil
+	}
+	if s.Environments != nil {
+		_, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, environmentID, workspace)
+		return err
 	}
 	if s.EnvironmentWorkspace == nil {
 		return core.ErrWorkspacesUnavailable

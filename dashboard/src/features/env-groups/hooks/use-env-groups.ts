@@ -1,3 +1,4 @@
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 import { nonNull } from "@/common/lib/non-null";
 import { useCallback, useRef, useState } from "react";
 import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
@@ -232,7 +233,7 @@ export function useEnvGroupMutations(
         return id;
       } catch (error) {
         toast.error(t("envGroups.createError", { name: input.name }), {
-          description: relayableReason(error) || undefined,
+          description: placementErrorMessage(error, "", t) || undefined,
         });
         // A create that failed may still have been saved — its answer can be
         // lost after the write (w4/m206). Re-read the list before the user
@@ -357,7 +358,7 @@ export function useEnvGroupMutations(
         return true;
       } catch (error) {
         toast.error(t("envGroups.moveError"), {
-          description: relayableReason(error) || undefined,
+          description: placementErrorMessage(error, "", t) || undefined,
         });
         return false;
       } finally {
@@ -397,7 +398,7 @@ export function useEnvGroupMutations(
         return cloneID;
       } catch (error) {
         toast.error(t("envGroups.cloneError"), {
-          description: relayableReason(error) || undefined,
+          description: placementErrorMessage(error, "", t) || undefined,
         });
         return null;
       } finally {

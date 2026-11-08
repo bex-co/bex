@@ -785,6 +785,12 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		if entries := s.blueprintPlanLimitErrors(ctx, source, st.groupings); len(entries) > 0 {
 			return BlueprintValidation{Errors: entries}, nil
 		}
+		// A non-Admin's create in, or move into or out of, a protected
+		// environment, which the apply refuses before any write (w3/m281).
+		var placed blueprintResourceErrors
+		if placed, err = s.blueprintProtectedPlacementProblems(ctx, st, snap); len(placed) > 0 {
+			return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, placed)}, nil
+		}
 	}
 	if err == nil && repo != "" && s.Blueprints != nil {
 		// Ownership conflicts surface in the preview/validation result (the

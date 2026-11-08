@@ -85,6 +85,8 @@ import { useSetEnvironmentKeyValues } from "@/features/environments/hooks/use-se
 import { useSetEnvironmentEnvGroups } from "@/features/environments/hooks/use-set-environment-env-groups";
 import { toast } from "sonner";
 import { useStrandedLinkGuard } from "@/features/env-groups/hooks/use-stranded-link-guard";
+import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { strandedPromptItems } from "@/features/env-groups/lib/stranded";
 import {
   StrandedGroupsConfirmDialog,
@@ -224,6 +226,13 @@ export function EnvironmentCard({
   const moveTargets = allEnvironments.filter(
     (candidate) => candidate.id !== environment.id,
   );
+  // Every change to a protected environment's membership is an Admin's move
+  // (w3/m281): a non-Admin sees Manage resources and Move disabled with the
+  // reason, and a protected destination disabled in the move picker.
+  const placement = useProtectedPlacement();
+  const placementReason = placement.restricts(environment)
+    ? placement.reason
+    : undefined;
   const moving = [
     servicesBusyId,
     databasesBusyId,
@@ -355,14 +364,17 @@ export function EnvironmentCard({
           </span>
         </CardTitle>
         <CardAction className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setAssignOpen(true)}
-          >
-            <Settings2 />
-            {t("environments.manageButton")}
-          </Button>
+          <PermissionTooltip reason={placementReason}>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={placementReason !== undefined}
+              onClick={() => setAssignOpen(true)}
+            >
+              <Settings2 />
+              {t("environments.manageButton")}
+            </Button>
+          </PermissionTooltip>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -429,29 +441,48 @@ export function EnvironmentCard({
                 <SelectTrigger
                   className="w-48"
                   aria-label={t("projects.moveTargetLabel")}
-                  disabled={moveTargets.length === 0 || moving}
+                  disabled={
+                    moveTargets.length === 0 ||
+                    moving ||
+                    placementReason !== undefined
+                  }
                 >
                   <SelectValue
                     placeholder={t("projects.moveTargetPlaceholder")}
                   />
                 </SelectTrigger>
                 <SelectContent>
-                  {moveTargets.map((target) => (
-                    <SelectItem key={target.id} value={target.id}>
-                      {target.name}
-                    </SelectItem>
-                  ))}
+                  {moveTargets.map((target) =>
+                    placement.restricts(target) ? (
+                      <SelectItem key={target.id} value={target.id} disabled>
+                        {t("environments.protectedOptionAdminOnly", {
+                          environment: target.name,
+                        })}
+                      </SelectItem>
+                    ) : (
+                      <SelectItem key={target.id} value={target.id}>
+                        {target.name}
+                      </SelectItem>
+                    ),
+                  )}
                 </SelectContent>
               </Select>
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={selectedHere.size === 0 || !moveTargetId || moving}
-                onClick={() => void handleMove()}
-              >
-                {moving ? <Loader2 className="animate-spin" /> : null}
-                {t("projects.moveSelected")}
-              </Button>
+              <PermissionTooltip reason={placementReason}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={
+                    selectedHere.size === 0 ||
+                    !moveTargetId ||
+                    moving ||
+                    placementReason !== undefined
+                  }
+                  onClick={() => void handleMove()}
+                >
+                  {moving ? <Loader2 className="animate-spin" /> : null}
+                  {t("projects.moveSelected")}
+                </Button>
+              </PermissionTooltip>
             </div>
             <ResourceTable
               rows={visibleRows}

@@ -43,6 +43,8 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { isValidEnvGroupName } from "@/features/env-groups/lib/validation";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { EnvGroupView } from "@/features/env-groups/types";
+import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
+import { PermissionMenuItem } from "@/features/capabilities/components/permission-menu-item";
 
 export function EnvGroupActions({
   group,
@@ -95,6 +97,15 @@ export function EnvGroupActions({
   const cloneProjects =
     cloneOwnerId === currentWorkspaceId ? projects : remoteCloneScope.projects;
   const deletePhrase = `sudo delete env group ${group.name}`;
+  // Leaving a protected environment is an Admin's move too (w3/m281), so a
+  // non-Admin's Move is disabled with the reason; inside the dialog, protected
+  // destinations are.
+  const placement = useProtectedPlacement();
+  const moveReason = placement.restricts(
+    environments.find((environment) => environment.id === group.environmentId),
+  )
+    ? placement.reason
+    : undefined;
 
   function open(next: NonNullable<typeof dialog>) {
     setName(next === "clone" ? `${group.name}-copy` : group.name);
@@ -159,9 +170,12 @@ export function EnvGroupActions({
           <DropdownMenuItem onSelect={() => open("rename")}>
             <Pencil /> {t("envGroups.renameButton")}
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => open("move")}>
+          <PermissionMenuItem
+            permissionReason={moveReason}
+            onSelect={() => open("move")}
+          >
             <MoveRight /> {t("envGroups.moveButton")}
-          </DropdownMenuItem>
+          </PermissionMenuItem>
           <DropdownMenuItem onSelect={() => open("clone")}>
             <Copy /> {t("envGroups.cloneButton")}
           </DropdownMenuItem>
@@ -216,6 +230,8 @@ export function EnvGroupActions({
             value={moveTarget}
             environments={environments}
             projects={projects}
+            restricts={placement.restricts}
+            restrictedReason={placement.reason}
             onValueChange={setMoveTarget}
           />
           <DialogFooter>
@@ -274,6 +290,14 @@ export function EnvGroupActions({
             environments={cloneEnvironments}
             projects={cloneProjects}
             loading={remoteCloneScope.loading}
+            // The capability answer is this workspace's; another workspace's
+            // protected destinations are left to its server-side refusal.
+            restricts={
+              cloneOwnerId === currentWorkspaceId
+                ? placement.restricts
+                : undefined
+            }
+            restrictedReason={placement.reason}
             onValueChange={setCloneEnvironmentId}
           />
           <DialogFooter>

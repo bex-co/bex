@@ -1,3 +1,8 @@
+import type { Translate } from "@/common/hooks/use-translations";
+import {
+  hasGraphQLErrorCode,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { ProjectResourceFamily } from "@/features/projects/lib/resource-filter";
 
@@ -65,4 +70,29 @@ export function restrictionMarkers(e: EnvironmentView): string[] {
   if (e.networkIsolationEnabled) markers.push("environments.markerIsolated");
   if (restrictsInbound(e)) markers.push("environments.markerAllowList");
   return markers;
+}
+
+/** bex-api's refusal of a non-Admin's protected placement (w3/m281). */
+export const PROTECTED_PLACEMENT_CODE = "PROTECTED_ENVIRONMENT_ADMIN_REQUIRED";
+
+/** Whether e is a protected environment (Render's `protectedStatus`). */
+export function protectedEnvironment(
+  e: { protectedStatus?: string } | null | undefined,
+): boolean {
+  return e?.protectedStatus === "protected";
+}
+
+/**
+ * mutationErrorMessage for a create or move: a raced protected-placement 403
+ * reads as the same localized reason the disabled control shows (w3/m281);
+ * anything else keeps the server's words or the caller's generic copy.
+ */
+export function placementErrorMessage(
+  err: unknown,
+  generic: string,
+  t: Translate,
+): string {
+  return hasGraphQLErrorCode(err, PROTECTED_PLACEMENT_CODE)
+    ? t("environments.protectedPlacementAdminOnly")
+    : mutationErrorMessage(err, generic);
 }

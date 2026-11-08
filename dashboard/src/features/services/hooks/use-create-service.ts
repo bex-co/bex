@@ -11,6 +11,7 @@ import {
 } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 export interface EnvVarEntry {
   key: string;
@@ -167,9 +168,10 @@ export function useCreateService(): UseCreateServiceResult {
           );
         } else {
           toast.error(
-            mutationErrorMessage(
+            placementErrorMessage(
               err,
               t("services.createError", { name: input.name }),
+              t,
             ),
           );
         }

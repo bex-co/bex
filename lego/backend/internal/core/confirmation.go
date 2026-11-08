@@ -18,6 +18,9 @@ package core
 
 import (
 	"context"
+	"errors"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 type confirmationKey struct{}
@@ -81,20 +84,48 @@ func EnvironmentProtectionPrecondition(ctx context.Context, store EnvironmentPro
 
 // ProtectedVerbRestricted reports whether verb is one of the actions Render
 // restricts to workspace Admins in a protected environment
-// (render.com/docs/projects): deleting the environment's resources, suspending
-// or resuming services, turning maintenance mode on ("take offline") and shell
-// access ("shell"; environment variables and secret files are the secrets
-// package's, w8/193). The
-// rest of a service's life — deploys, rollbacks, settings, queries — is open to
-// anyone who may do it elsewhere, and no verb asks for a typed phrase (w8/187;
-// the phrase gate of w4/m126 and w4/m127 is retired). The dashboard may still
-// confirm in its own UI.
+// (render.com/docs/projects): creating resources in the environment
+// ("create"), moving resources into or out of it ("move"; PlacementRefusal
+// below), deleting the environment's resources, suspending or resuming
+// services, turning maintenance mode on ("take offline") and shell access
+// ("shell"; environment variables and secret files are the secrets package's,
+// w8/193). The rest of a service's life — deploys, rollbacks, settings,
+// queries — is open to anyone who may do it elsewhere, and no verb asks for a
+// typed phrase (w8/187; the phrase gate of w4/m126 and w4/m127 is retired).
+// The dashboard may still confirm in its own UI.
 func ProtectedVerbRestricted(verb string) bool {
 	switch verb {
-	case "delete", "suspend", "resume", "take offline", "shell":
+	case "create", "move", "delete", "suspend", "resume", "take offline", "shell":
 		return true
 	}
 	return false
+}
+
+// ProtectedPlacementCode is the 403 a non-Admin receives for creating a
+// resource in, or moving one into or out of, a protected environment (w3/m281).
+// A coded refusal, unlike the bare FORBIDDEN the other restricted verbs
+// return, so every surface — and the dashboard's raced-403 path — can name the
+// reason without parsing the message.
+const ProtectedPlacementCode = "PROTECTED_ENVIRONMENT_ADMIN_REQUIRED"
+
+// ProtectedPlacementRefusal is the ProtectedPlacementCode refusal for
+// environmentID (either id spelling; the params carry the public one).
+func ProtectedPlacementRefusal(environmentID string) *CodedError {
+	return NewForbiddenError(ProtectedPlacementCode,
+		"only workspace Admins can create resources in, or move resources into or out of, a protected environment",
+		map[string]any{"environmentId": ids.EnvironmentPublicID(environmentID)})
+}
+
+// PlacementRefusal is err, a fresh workspace-manage check's answer for a
+// "create" or "move" in the protected environment environmentID, with its role
+// refusal coded as ProtectedPlacementRefusal. nil and any other error (an
+// unreachable authorizer) pass through, so an outage never reads as a role
+// refusal.
+func PlacementRefusal(environmentID string, err error) error {
+	if errors.Is(err, ErrForbidden) {
+		return ProtectedPlacementRefusal(environmentID)
+	}
+	return err
 }
 
 // RequireEnvironmentAdmin refuses a restricted verb on a member of a protected

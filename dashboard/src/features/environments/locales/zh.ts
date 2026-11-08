@@ -469,6 +469,17 @@ const zhEnvironments: Record<string, TranslationEntry> = {
       "创建资源时，选择项目只会筛选其环境列表。选择一个环境，资源才会加入该环境所属的项目。保持“无环境”会在所有项目之外创建资源。如果项目还没有环境，请先在项目页面创建一个。",
     description: "Shared create-form Environment-assignment hint",
   },
+  "environments.protectedPlacementAdminOnly": {
+    message:
+      "只有管理员可以在受保护的环境中创建资源，或将资源移入或移出该环境。",
+    description:
+      "Why a create or move control that targets (or leaves) a protected environment is disabled for a non-admin, and the message for the same server refusal (w3/m281)",
+  },
+  "environments.protectedOptionAdminOnly": {
+    message: "{environment}（仅限管理员）",
+    description:
+      "A protected environment in a create or move picker that a non-admin cannot choose ({environment} = its name)",
+  },
 };
 
 export default zhEnvironments;

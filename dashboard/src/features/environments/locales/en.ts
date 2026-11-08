@@ -486,6 +486,17 @@ const enEnvironments: Record<string, TranslationEntry> = {
       "When creating a resource, selecting a Project filters its Environments. Choose an Environment to add the resource to that Project. Leaving No environment selected creates the resource outside any Project. If the Project has no Environment yet, create one from the Project's page first.",
     description: "Shared create-form Environment-assignment hint",
   },
+  "environments.protectedPlacementAdminOnly": {
+    message:
+      "Only an admin can create resources in a protected environment or move them into or out of it.",
+    description:
+      "Why a create or move control that targets (or leaves) a protected environment is disabled for a non-admin, and the message for the same server refusal (w3/m281)",
+  },
+  "environments.protectedOptionAdminOnly": {
+    message: "{environment} (admins only)",
+    description:
+      "A protected environment in a create or move picker that a non-admin cannot choose ({environment} = its name)",
+  },
 };
 
 export default enEnvironments;

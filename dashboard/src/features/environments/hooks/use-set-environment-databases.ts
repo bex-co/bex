@@ -3,8 +3,8 @@ import { useApolloClient, useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { SetEnvironmentDatabasesDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import { publishEnvironments } from "@/features/environments/lib/refresh-environments";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 export interface UseSetEnvironmentDatabasesResult {
   /**
@@ -52,9 +52,10 @@ export function useSetEnvironmentDatabases(): UseSetEnvironmentDatabasesResult {
           projectId = res.data?.setEnvironmentDatabases?.projectId;
         } catch (err) {
           toast.error(
-            mutationErrorMessage(
+            placementErrorMessage(
               err,
               t("environments.assignDatabasesError", { name: envName }),
+              t,
             ),
           );
           return false;

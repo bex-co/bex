@@ -12,11 +12,11 @@ import {
   SetProjectKeyValuesDocument,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
 import {
   useProjects,
   type ProjectView,
 } from "@/features/projects/hooks/use-projects";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 export type ProjectResourceKind = "service" | "database" | "keyvalue";
 
@@ -187,9 +187,10 @@ export function useMoveToProject(
         await runSet(to.id, [...idsOf(kind, to), resourceId]);
       } catch (err) {
         toast.error(
-          mutationErrorMessage(
+          placementErrorMessage(
             err,
             t("projects.moveError", { name: resourceName }),
+            t,
           ),
         );
         return false;
@@ -217,9 +218,10 @@ export function useMoveToProject(
         );
       } catch (err) {
         toast.error(
-          mutationErrorMessage(
+          placementErrorMessage(
             err,
             t("projects.removeError", { name: resourceName }),
+            t,
           ),
         );
         return false;

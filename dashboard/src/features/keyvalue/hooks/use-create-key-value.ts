@@ -6,11 +6,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   freeInstanceMessage,
-  mutationErrorMessage,
   workspaceCapMessage,
 } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 /** The create form's collected values (Render's `/new/redis` subset bex serves). */
 export interface CreateKeyValueInput {
@@ -94,9 +94,10 @@ export function useCreateKeyValue(): UseCreateKeyValueResult {
           setCapLimit(capMessage);
         } else {
           toast.error(
-            mutationErrorMessage(
+            placementErrorMessage(
               err,
               t("keyvalue.createError", { name: input.name }),
+              t,
             ),
           );
         }

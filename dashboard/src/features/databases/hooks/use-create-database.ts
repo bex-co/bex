@@ -7,11 +7,11 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
   freeInstanceMessage,
   graphQLErrorExtensions,
-  mutationErrorMessage,
   workspaceCapMessage,
 } from "@/common/lib/graphql-error";
 import { usePaymentRequiredGate } from "@/features/usage/context/payment-required-context";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 /** The create form's collected values (Render's create-form subset bex serves). */
 export interface CreateDatabaseInput {
@@ -117,9 +117,10 @@ export function useCreateDatabase(): UseCreateDatabaseResult {
           toast.error(t("databases.fieldPhysicalNameReserved", { name }));
         } else {
           toast.error(
-            mutationErrorMessage(
+            placementErrorMessage(
               err,
               t("databases.createError", { name: input.name }),
+              t,
             ),
           );
         }

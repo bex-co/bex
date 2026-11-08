@@ -16,6 +16,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { nonNull } from "@/common/lib/non-null";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import { placementErrorMessage } from "@/features/environments/lib/placement";
 
 export interface BackupItem {
   id: string;
@@ -171,7 +172,7 @@ export function useRecovery(id: string) {
         return recoveredID;
       } catch (e) {
         toast.error(
-          mutationErrorMessage(e, t("databases.recoveryRestoreError")),
+          placementErrorMessage(e, t("databases.recoveryRestoreError"), t),
         );
         return null;
       }

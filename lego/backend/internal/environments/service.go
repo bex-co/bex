@@ -156,6 +156,8 @@ var ErrEnvironmentsUnavailable = core.Unavailable("environments store not config
 // context and authorized can_create against that workspace; this helper owns
 // the remaining lookup + same-workspace rule once so the three resource
 // packages cannot drift. A foreign existing id is 403, an unknown id is 404.
+// The protected-environment Admin gate is createResolver.RequirePlacement,
+// which core.ResolveEnvironmentForCreate applies after this lookup (w3/m281).
 func (s *Service) resolveForCreate(ctx context.Context, environmentID, workspaceID string) (core.EnvironmentAssignment, error) {
 	if s.Store == nil {
 		return core.EnvironmentAssignment{}, core.ErrWorkspacesUnavailable
@@ -173,6 +175,7 @@ func (s *Service) resolveForCreate(ctx context.Context, environmentID, workspace
 		WorkspaceID:             e.TenantID,
 		NetworkIsolationEnabled: e.NetworkIsolationEnabled,
 		IPAllowList:             append([]core.IPAllowListEntry(nil), e.IPAllowList...),
+		Protected:               e.ProtectedStatus == ProtectedStatusProtected,
 	}, nil
 }
 
@@ -180,6 +183,17 @@ type createResolver struct{ service *Service }
 
 func (r createResolver) ResolveForCreate(ctx context.Context, environmentID, workspaceID string) (core.EnvironmentAssignment, error) {
 	return r.service.resolveForCreate(ctx, environmentID, workspaceID)
+}
+
+// RequirePlacement is the protected-environment placement gate every
+// core.ResolveEnvironmentForCreate caller inherits: creating a resource in a
+// protected environment, or moving one into it, needs the workspace's fresh
+// can_manage — an Admin or Owner, as on Render (w3/m281).
+func (r createResolver) RequirePlacement(ctx context.Context, assignment core.EnvironmentAssignment) error {
+	if !assignment.Protected {
+		return nil
+	}
+	return core.PlacementRefusal(assignment.ID, r.service.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(assignment.WorkspaceID)))
 }
 
 // NewCreateResolver returns the shared resource-create assignment seam. Its
@@ -1120,7 +1134,7 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	// layers from existing members. ACL-bearing environments are administrator-
 	// governed, so authorize before the store mutation (which is otherwise
 	// irreversible if the later CR projection fails).
-	if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
+	if err := s.authorizeMembershipChange(ctx, e); err != nil {
 		return EnvironmentView{}, err
 	}
 	// Services pulled in from another environment leave it: each ACL-bearing
@@ -1221,7 +1235,7 @@ func (s *Service) setResourceMembers(ctx context.Context, idx resourceIndex, id 
 	if idx == nil {
 		return EnvironmentView{}, ErrEnvironmentsUnavailable
 	}
-	if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
+	if err := s.authorizeMembershipChange(ctx, e); err != nil {
 		return EnvironmentView{}, err
 	}
 	// Act inside the environment's OWN workspace: env group writes authorize
@@ -1318,13 +1332,20 @@ func (s *Service) loadExitGuard(ctx context.Context, workspaceID string) (core.E
 		return nil, err
 	}
 	bare := make(map[string]bool, len(environments))
+	protected := make(map[string]bool, len(environments))
 	for _, e := range environments {
 		bare[e.ID] = !aclBearing(e)
+		protected[e.ID] = e.ProtectedStatus == ProtectedStatusProtected
 	}
 	admin := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID))
 	return func(environmentIDs ...string) error {
 		for _, raw := range environmentIDs {
 			if eid := ids.EnvironmentStorageID(raw); eid != "" && !bare[eid] {
+				// Leaving a protected environment is a "move" Render restricts
+				// to Admins (w3/m281), refused with the placement code.
+				if protected[eid] {
+					return core.PlacementRefusal(eid, admin)
+				}
 				return admin
 			}
 		}
@@ -1348,6 +1369,17 @@ func (s *Service) authorizeACLBearingMutation(ctx context.Context, e store.Envir
 		return nil
 	}
 	return s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(e.TenantID))
+}
+
+// authorizeMembershipChange is authorizeACLBearingMutation for the Set*
+// membership verbs, whose every change moves a resource into or out of e: in a
+// protected e the refusal is the placement one Render documents (w3/m281).
+func (s *Service) authorizeMembershipChange(ctx context.Context, e store.Environment) error {
+	err := s.authorizeACLBearingMutation(ctx, e)
+	if e.ProtectedStatus == ProtectedStatusProtected {
+		return core.PlacementRefusal(e.ID, err)
+	}
+	return err
 }
 
 // SetACL replaces an environment's full protected-environment ACL triple

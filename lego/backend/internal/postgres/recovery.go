@@ -359,8 +359,10 @@ func tenantParameters(params map[string]string) map[string]string {
 }
 
 // sourceEnvironment resolves the environment a recovery joins: the source's,
-// through the same resolver a create uses. A source in no environment yields
-// none; one that cannot be resolved refuses the recovery (w4/356).
+// through the same resolver a create uses, so a recovery into a protected
+// environment needs an Admin, as any create there does (w3/m281). A source in
+// no environment yields none; one that cannot be resolved refuses the recovery
+// (w4/356).
 func (s *Service) sourceEnvironment(ctx context.Context, src *appv1alpha1.Database, tenantID string) (core.EnvironmentAssignment, error) {
 	environmentID := src.Labels[core.LabelEnvironment]
 	if environmentID == "" {

@@ -925,6 +925,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	environmentCreateResolver := environments.NewCreateResolver(environmentsSvc)
 	pg.Environments = environmentCreateResolver
 	kv.Environments = environmentCreateResolver
+	envGroupsSvc.Environments = environmentCreateResolver
 	var blueprintGroups apps.BlueprintGroupingStore
 	if groups, ok := d.Store.(apps.BlueprintGroupingStore); ok {
 		blueprintGroups = groups
@@ -1045,6 +1046,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// Environment deletes call the normal service delete (w4/m264); the apps
 	// service is built after environments, so the seam is closed here.
 	environmentsSvc.Services = appsSvc
+	if envGroupApplier != nil {
+		appsSvc.EnvGroupPlacements = envgroups.GroupPlacements(envGroupsSvc)
+	}
 	srv := &Server{
 		Apps: appsSvc,
 		Logs: logSvc,

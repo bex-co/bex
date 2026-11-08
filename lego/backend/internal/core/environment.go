@@ -33,6 +33,9 @@ type EnvironmentAssignment struct {
 	WorkspaceID             string
 	NetworkIsolationEnabled bool
 	IPAllowList             []IPAllowListEntry
+	// Protected is the environment's protectedStatus=protected, which the
+	// placement gate (EnvironmentPlacementGuard) reads (w3/m281).
+	Protected bool
 }
 
 // EnvironmentResolver validates that environmentID belongs to workspaceID and
@@ -52,12 +55,42 @@ type EnvironmentResolver interface {
 	ResolveForCreate(ctx context.Context, environmentID, workspaceID string) (EnvironmentAssignment, error)
 }
 
+// EnvironmentPlacementGuard is the optional half of an EnvironmentResolver
+// that authorizes placing a resource in the environment it resolved: Render
+// lets only workspace Admins create resources in a protected environment or
+// move them into it (render.com/docs/projects; w3/m281). environments.Service's
+// resolver implements it; a resolver without it (test fixtures) places freely.
+type EnvironmentPlacementGuard interface {
+	RequirePlacement(ctx context.Context, assignment EnvironmentAssignment) error
+}
+
 // ResolveEnvironmentForCreate is the create-time assignment lookup shared by
 // every resource kind that can join an environment (services, Postgres, Key
-// Value). An empty environmentID means unassigned and resolves to the zero
-// assignment; a non-empty one needs both a wired resolver and a known
-// workspace, since an environment is only meaningful inside one.
+// Value, environment groups, recoveries, Blueprint services). An empty
+// environmentID means unassigned and resolves to the zero assignment; a
+// non-empty one needs both a wired resolver and a known workspace, since an
+// environment is only meaningful inside one. A resolved environment must
+// then admit the placement (EnvironmentPlacementGuard), so every create and
+// move-in that resolves here inherits the protected-environment Admin gate.
 func ResolveEnvironmentForCreate(ctx context.Context, resolver EnvironmentResolver, environmentID, workspaceID string) (EnvironmentAssignment, error) {
+	assignment, err := ResolveEnvironmentMembership(ctx, resolver, environmentID, workspaceID)
+	if err != nil || assignment.ID == "" {
+		return assignment, err
+	}
+	if guard, ok := resolver.(EnvironmentPlacementGuard); ok {
+		if err := guard.RequirePlacement(ctx, assignment); err != nil {
+			return EnvironmentAssignment{}, err
+		}
+	}
+	return assignment, nil
+}
+
+// ResolveEnvironmentMembership is ResolveEnvironmentForCreate without the
+// placement gate, for re-reading the environment a resource already belongs
+// to: a Blueprint re-apply that leaves a service where it is places nothing,
+// and Render lets non-Admins update Blueprint-managed resources in a protected
+// environment.
+func ResolveEnvironmentMembership(ctx context.Context, resolver EnvironmentResolver, environmentID, workspaceID string) (EnvironmentAssignment, error) {
 	if environmentID == "" {
 		return EnvironmentAssignment{}, nil
 	}

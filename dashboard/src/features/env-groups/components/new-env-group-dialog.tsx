@@ -26,6 +26,7 @@ import type { ServiceView } from "@/features/services/types";
 import type { ProjectView } from "@/features/projects/hooks/use-projects";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { ScopeSelect } from "@/features/env-groups/components/scope-select";
+import { useProtectedPlacement } from "@/features/environments/hooks/use-protected-placement";
 import {
   scopeEnvironmentId,
   scopeValue,
@@ -214,6 +215,7 @@ function NewEnvGroupForm({
 }) {
   const { t } = useTranslations();
   const { createGroup, busy } = useEnvGroupMutations(refetch);
+  const placement = useProtectedPlacement();
   const nextRowId = useRef(0);
   const [name, setName] = useState("");
   const [envVars, setEnvVars] = useState<EnvVarRow[]>([]);
@@ -549,6 +551,8 @@ function NewEnvGroupForm({
           environments={environments}
           projects={projects}
           loading={busy || unavailable}
+          restricts={placement.restricts}
+          restrictedReason={placement.reason}
           onValueChange={changeScope}
         />
         {linkable.length === 0 ? (

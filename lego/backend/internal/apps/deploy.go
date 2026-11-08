@@ -865,7 +865,7 @@ func refuseServicesStillDeleting(ctx context.Context, st parsedStack, existing m
 // 2. Read the workspace's Apps and datastores through the request's snapshot
 // 3. Refuse another Blueprint's resources, then gate on payment method (paid plans)
 // 4. Resolve cross-references to existing resources (by name → id/CR name)
-// 5. Preflight env-groups and env-vars (seam availability checks)
+// 5. Preflight env-groups, env-vars and protected placement (w3/m281)
 // 6. Apply groupings (projects, environments) — asserts Blueprint execution first
 // 7. Apply env-groups → datastores → services (each family re-asserts)
 // 8. Patch forward-referenced services (deferred fromService host slugs)
@@ -918,6 +918,11 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	// whose backing store isn't wired is rejected here, as is an unknown fromGroup
 	// name — so nothing is partially created.
 	if err := s.preflightBlueprintEnv(ctx, st); err != nil {
+		return StackResult{}, err
+	}
+	// Creating in, or moving into or out of, a protected environment needs an
+	// Admin (w3/m281) — refused here, before the groupings' first write.
+	if err := s.requireBlueprintPlacement(ctx, st, snap); err != nil {
 		return StackResult{}, err
 	}
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
@@ -3744,7 +3749,13 @@ func (s *Service) stackEnvironmentChange(ctx context.Context, req CreateRequest,
 		return core.EnvironmentAssignment{}, false, nil
 	}
 	tenantID := existing.Labels[core.LabelTenant]
-	assignment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
+	// A service the re-apply leaves in its environment places nothing; one it
+	// moves in passes the protected placement gate (w3/m281).
+	resolve := core.ResolveEnvironmentForCreate
+	if current := existing.Labels[core.LabelEnvironment]; current != "" && current == id.EnvironmentStorageID(req.EnvironmentID) {
+		resolve = core.ResolveEnvironmentMembership
+	}
+	assignment, err := resolve(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
 		return core.EnvironmentAssignment{}, false, err
 	}
