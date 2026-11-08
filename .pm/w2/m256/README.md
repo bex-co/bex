@@ -1,6 +1,6 @@
 # w2 · m256 — Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does
 
-**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** todo — t001–t010, t013 done; t014 (stuck re-created Blueprint) and t012 (dashboard check) next, then t011
+**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** todo — all done but t014 (implemented, awaiting a production re-check once deployed) and t011
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 | t008 | Render parity — **DONE** | 15m | t007 |
 | t009 | Simplify — **DONE** | 15m | t008 |
 | t010 | Test coverage — **DONE** | 30m | t008 |
-| t012 | Dashboard: a created Blueprint shows its plan and an Approve action, and Sync cannot apply it past the plan | 1h | t006 |
+| t012 | Dashboard: a created Blueprint shows its plan and an Approve action, and Sync cannot apply it past the plan — **DONE** | 1h | t006 |
 | t013 | Planned Blueprint page: the reconnection note on a revived row, the right status chip, and approve-not-sync empty copy — **DONE** | 30m | t012 |
 | t014 | A recreated Blueprint whose plan finds no changes is stuck in created, and planning ignores resources deleted since the last sync — implemented 2026-11-08, awaiting production re-check | 1.5h | t006 |
 | t011 | Closeout | 10m | t009, t010, t012, t013, t014 |
