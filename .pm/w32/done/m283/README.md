@@ -1,6 +1,6 @@
 # w32 · m283 — Sandbox network policy as on Render: allow-all by default, plus an HTTPS hostname allow-list
 
-**Worker:** worker32 **Goal:** a sandbox created without a policy can reach the internet as on Render, `--allow-egress-https` limits it to listed hostnames over HTTPS, and the platform floor (cluster, metadata, private ranges, other tenants) stays denied under every policy **Status:** todo — t001–t003, t005–t007 done (shipped code, unit- and admission-tested); t004 production drill next, after the deploy
+**Worker:** worker32 **Goal:** a sandbox created without a policy can reach the internet as on Render, `--allow-egress-https` limits it to listed hostnames over HTTPS, and the platform floor (cluster, metadata, private ranges, other tenants) stays denied under every policy **Status:** done (2026-11-08)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | Amend ADR042 and ADR018: user sandboxes default to allow-all; define allow-list — **DONE** | 1h | — |
 | t002 | Enforce allow-all and allow-list per sandbox with Cilium policy — **DONE** | 2.5h | t001 |
 | t003 | Accept allow-all and allow-list on create across REST, GraphQL and MCP — **DONE** | 1h | t002 |
-| t004 | Live drill: each policy enforced on the mock cluster, then production | 1.5h | t003 |
+| t004 | Live drill: each policy enforced on the mock cluster, then production — **DONE** | 1.5h | t003 |
 | t005 | Render parity — **DONE** | 15m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 30m | t005 |
-| t008 | Closeout | 10m | t006, t007 |
+| t008 | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -40,3 +40,7 @@
 - **Local gates:** `go test ./...` (lego/backend), `scripts/gitops-validate.sh` (full, `LC_ALL=C`).
 - **Simplify (t006):** shared DNS/FQDN rule helpers; rules read back from the policy's FQDN selectors (no duplicate annotation); create-first Apply; bounded cleanup contexts; constants for the code and protocol; exact except-list check. Skipped: List reads each allow-list sandbox's policy with one GET (N small); a single List would need a cluster-wide `list` RBAC verb for bex-api.
 - **t004 next:** after the production deploy, dispatch `isolation-matrix.yml` (its sandbox leg now probes all three policies plus the allow-list admission boundary) and record the result here.
+
+## Closed — 2026-11-08
+
+Every definition-of-done point holds on production: deploy `2d453686f`, then isolation matrix run 42482375396 green (see `done/t004.md` for the per-policy probes). REST/GraphQL/MCP accept and report the same policies (t005), and ADR042/ADR018/checklist describe the shipped behavior.
