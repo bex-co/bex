@@ -93,7 +93,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 - [ ] **059** — [Protected placement follow-ups from w3/m281](059.md) ← from w3/m281, 2026-11-08
 - [x] **058** — **done 2026-11-08** ([done/058.md](done/058.md)): creating a webhook lands on its detail page with no secret step, as on Render.
 - [x] **055** — **done 2026-11-07** ([done/055.md](done/055.md)): moving a Key Value into an environment no longer fails its reconcile — the `bex-operator-pod-labels` admission policy admits the `environment-id` relabel the operator has made since w4/451, covered by an envtest against the production manifest.
-- [ ] **057** — [ADR018 ledger carries stale claims](057.md) ← from `/pm-brainstorm w3` 2026-11-07
+- [x] **057** — **done 2026-11-08** ([done/057.md](done/057.md)): ADR018's stale claims (rows 82, 107, 300, the Build Sources backlog row) and the webhooks package's divergence comment now match the board and code.
 - [x] **056** — **done 2026-11-08** ([done/056.md](done/056.md)): Scale and Enterprise workspaces reach 100 webhook destinations, as on Render — the store cap was raised from 25 to the top plan's 100.
 - [ ] **054** — **BLOCKED (your decision: how private traffic reaches pods for any protocol — (a) headless private Service (recommended, Render's any-port/any-protocol with no discovery), (b) exec-based UDP discovery, (c) image-declared UDP only)** — [Private network for any protocol (UDP included): design the routing](blocked/054.md). Run `/unblock w3`.
 - [x] **053** — **done 2026-11-05** ([done/053.md](done/053.md)): REST `serviceDetails.disk.id` from the disk row, MCP `list_logs` without `container`, and `dryRun`'s 200 recorded as a bex extension.

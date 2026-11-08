@@ -52,10 +52,8 @@ limitations under the License.
 //
 // # Deliberate divergences from Render
 //
-//   - No plan-tier gating: every workspace may register up to 25 endpoints,
-//     independent of plan (Render: Pro=1, Scale=100).
-//   - Endpoint management is a full REST/GraphQL/MCP/UI surface; Render's
-//     public docs manage webhooks from the dashboard only.
+//   - GraphQL and MCP management and the retry diagnostics are bex
+//     extensions; Render publishes the REST family and the dashboard only.
 //
 // Requires the control-plane store (BEX_CP_DB_URI): endpoints, deliveries,
 // and both event sources live there, so with it unwired every verb reports
