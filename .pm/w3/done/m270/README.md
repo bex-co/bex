@@ -1,6 +1,6 @@
 # w3 · m270 — Blueprints accept buildSources and services[].buildSource, as on Render
 
-**Worker:** worker3 **Goal:** a render.yaml that declares `buildSources` validates, plans and syncs into one build feeding several services, instead of being refused by name **Status:** todo (t001–t008 done; t009 next: live production check, then Closeout)
+**Worker:** worker3 **Goal:** a render.yaml that declares `buildSources` validates, plans and syncs into one build feeding several services, instead of being refused by name **Status:** done
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity — **DONE** | 30m | t004, t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
 | t008 | Test coverage — **DONE** | 40m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -53,3 +53,7 @@
   3. Re-sync and confirm a no-op plan.
   4. Then run t009 Closeout.
 - **Acceptance:** the live check output is recorded in t009, and every DoD bullet above is verified.
+
+## Closed — 2026-11-08
+
+On production, one render.yaml build source built once and fed two linked services to `live`; a re-sync and an export → import both planned `noop`. Evidence in `done/t009.md`.
