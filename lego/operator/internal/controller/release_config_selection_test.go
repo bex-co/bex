@@ -493,10 +493,49 @@ func TestInFlightReleaseCarriesSavedConfiguration(t *testing.T) {
 		r, app := ordinary(t)
 		check(t, r, app, true)
 	})
-	t.Run("nothing is rolling once the phase settles", func(t *testing.T) {
+	// w4/529: the requested deploy carries the saved settings before the
+	// operator dispatches it (still Running) and while it builds.
+	for _, phase := range []appv1alpha1.AppPhase{appv1alpha1.PhaseRunning, appv1alpha1.PhasePending, appv1alpha1.PhaseBuilding} {
+		t.Run("a requested deploy not yet rolling, "+string(phase), func(t *testing.T) {
+			r, app := ordinary(t)
+			app.Status.Phase = phase
+			check(t, r, app, true)
+		})
+	}
+	t.Run("a Save only stamps no release and carries nothing", func(t *testing.T) {
 		r, app := ordinary(t)
 		app.Status.Phase = appv1alpha1.PhaseRunning
+		delete(app.Annotations, appv1alpha1.AnnotationReleaseGeneration)
 		check(t, r, app, false)
+	})
+	t.Run("nothing is rolling once the release served", func(t *testing.T) {
+		r, app := ordinary(t)
+		app.Status.Phase = appv1alpha1.PhaseRunning
+		app.Status.ActiveRevision = "rev-3"
+		check(t, r, app, false)
+	})
+	t.Run("a failed release carries nothing", func(t *testing.T) {
+		for name, fail := range map[string]func(*appv1alpha1.App){
+			"failed phase": func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseFailed },
+			"rollout verdict": func(a *appv1alpha1.App) {
+				a.Status.Phase = appv1alpha1.PhaseRunning
+				a.Status.Conditions = append(a.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: "ProgressDeadlineExceeded", ObservedGeneration: 3})
+			},
+			"prior release serving": func(a *appv1alpha1.App) {
+				a.Status.Phase = appv1alpha1.PhaseRunning
+				a.Status.Conditions = append(a.Status.Conditions, metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reasonPriorReleaseServing})
+			},
+			"pre-deploy": func(a *appv1alpha1.App) {
+				a.Status.Phase = appv1alpha1.PhaseRunning
+				a.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Status: appv1alpha1.PreDeployFailed, Generation: 3}
+			},
+		} {
+			r, app := ordinary(t)
+			fail(app)
+			if got, err := r.inFlightCarriesSavedConfiguration(ctx, app); err != nil || got {
+				t.Errorf("%s: carries saved = %v, %v; want false", name, got, err)
+			}
+		}
 	})
 	t.Run("a canceled release carries nothing", func(t *testing.T) {
 		r, app := ordinary(t)

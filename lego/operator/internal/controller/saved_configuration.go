@@ -25,6 +25,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -64,7 +65,10 @@ func (savedConfigurationPredicate) Update(e event.UpdateEvent) bool {
 	for _, key := range []string{appv1alpha1.AnnotationSavedConfigRevision,
 		appv1alpha1.PendingEnvSecretAnnotation, appv1alpha1.PendingFilesSecretAnnotation,
 		appv1alpha1.AnnotationCanceledReleaseGeneration, appv1alpha1.AnnotationSurvivingReleaseGeneration,
-		appv1alpha1.AnnotationReleaseConfigScaled} {
+		appv1alpha1.AnnotationReleaseConfigScaled,
+		// A deploy request stamps its release here, sometimes with no spec
+		// change; it starts carrying the saved settings at once (w4/529).
+		appv1alpha1.AnnotationReleaseGeneration} {
 		if old.Annotations[key] != next.Annotations[key] {
 			return true
 		}
@@ -119,8 +123,8 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 // does, so it carries them.
 func (r *AppReconciler) inFlightCarriesSavedConfiguration(ctx context.Context, app *appv1alpha1.App) (bool, error) {
 	pending := requestedReleaseGeneration(app)
-	if app.Status.Phase != appv1alpha1.PhaseDeploying || canceledReleaseIsLatest(app) ||
-		pending <= successfulReleaseGeneration(app) {
+	if !releaseRequestedOrRolling(app, pending) || canceledReleaseIsLatest(app) ||
+		pending <= successfulReleaseGeneration(app) || requestedReleaseFailed(app, pending) {
 		return false, nil
 	}
 	if ref := app.ActiveReleaseConfig(); ref != nil && (ref.SourceGeneration > 0 || ref.PreserveGroupValues) {
@@ -137,6 +141,38 @@ func (r *AppReconciler) inFlightCarriesSavedConfiguration(ctx context.Context, a
 	runtime.Status.ConfigSnapshotGeneration = pending
 	differs, err := r.savedConfigurationDiffers(ctx, app, runtime)
 	return !differs && err == nil, err
+}
+
+// releaseRequestedOrRolling reports whether pending is a deploy that is on its
+// way: rolling (Deploying), or requested and not yet dispatched — still
+// queued behind the operator, or building (w4/529). The deploy stamps its
+// release generation at request time, so a stamp equal to pending is the
+// request itself; a Save only stamps no release.
+func releaseRequestedOrRolling(app *appv1alpha1.App, pending int64) bool {
+	if app.Status.Phase == appv1alpha1.PhaseDeploying {
+		return true
+	}
+	stamped, ok := stampedReleaseGeneration(app)
+	return ok && stamped == pending && app.Status.Phase != appv1alpha1.PhaseFailed
+}
+
+// requestedReleaseFailed reports whether the pending release already ended in
+// a failure — its rollout verdict, its pre-deploy step, or a failed step the
+// prior release serves through — so it carries nothing live (w4/m184).
+func requestedReleaseFailed(app *appv1alpha1.App, pending int64) bool {
+	if app.Status.Phase == appv1alpha1.PhaseFailed {
+		return true
+	}
+	if c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout); c != nil &&
+		c.Status == metav1.ConditionFalse && c.ObservedGeneration == pending {
+		return true
+	}
+	if c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady); c != nil &&
+		c.Reason == reasonPriorReleaseServing {
+		return true
+	}
+	pd := app.Status.PreDeploy
+	return pd != nil && pd.Status == appv1alpha1.PreDeployFailed && pd.Generation == pending
 }
 
 // savedChangePending reports whether a saved configuration change is still
