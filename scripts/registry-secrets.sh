@@ -56,7 +56,9 @@ cd "$(dirname "$0")/.."
 REGISTRY_NS="${REGISTRY_NS:-bex-registry}"
 
 # Load .env when present (local use); in CI the keys arrive as environment vars.
-if [ -f .env ]; then
+# BEX_REGISTRY_SECRETS_NO_ENV_FILE=1 skips it: scripts/mock-cluster.sh passes a
+# freshly generated dev password and must never pick up an operator's real one.
+if [ -f .env ] && [ "${BEX_REGISTRY_SECRETS_NO_ENV_FILE:-}" != 1 ]; then
   . scripts/lib/env-file.sh && bex_load_env ./.env || exit 1
 fi
 

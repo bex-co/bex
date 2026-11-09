@@ -425,10 +425,13 @@ operator_import_image() { echo import >>"$steps"; }
 operator_make_deploy() { echo deploy >>"$steps"; }
 operator_roll() { echo roll >>"$steps"; }
 operator_wait() { echo wait >>"$steps"; }
+operator_registry_credentials() { echo regcreds >>"$steps"; }
 deploy_operator >/dev/null
 check "operator steps run in order" \
-  "$(grep -vE '^wl (--request-timeout|-n bex-system get deploy,ds)' "$steps" | sed 's/^wl apply -f deploy\/gitops\/base\/operator-apps-rbac.yaml$/rbac/' | tr '\n' ' ')" \
-  "prereqs build import deploy rbac roll wait "
+  "$(grep -vE '^wl (--request-timeout|-n bex-system get deploy,ds)' "$steps" |
+     sed -e 's/^wl apply -f deploy\/gitops\/base\/operator-apps-rbac.yaml$/rbac/' \
+         -e 's/^wl apply -f deploy\/gitops\/base\/operator-registry-rbac.yaml$/regrbac/' | tr '\n' ' ')" \
+  "prereqs build import deploy rbac regrbac regcreds roll wait "
 operator_make_deploy() { echo deploy >>"$steps"; return 1; }
 : >"$steps"
 set +e
@@ -444,6 +447,195 @@ out="$(env -u BEX_MOCK_CLUSTER_LIB bash scripts/mock-cluster.sh bogus 2>&1)"; rc
 set -e
 check "an unknown subcommand exits 2" "$rc" "2"
 check "the usage names the operator subcommand" "$(grep -c 'operator' <<<"$out")" "1"
+
+unset -f operator_registry_credentials
+eval "$(awk '/^operator_registry_credentials\(\)/,/^}$/' scripts/mock-cluster.sh)"
+
+echo "platform registry: Zot from the production pin (w2/m293 t001/t002):"
+# 24. The archive, values and Service are production's.
+check "the Zot pin is production's lock line" \
+  "$(helm_pin zot | awk '{print $1, $2}')" "$(awk -F'|' '$1=="zot"{print $2, $3}' deploy/helm-artifacts.lock)"
+check "production's Argo zot Application runs the same locked archive" \
+  "$(grep -c "targetRevision: \"$(awk -F'|' '$1=="zot"{print $5}' deploy/helm-artifacts.lock)\"" deploy/gitops/base/zot.yaml)" "1"
+zvals="$(zot_values)"
+check "the values are production's (NodePort 30500 behind :5000)" \
+  "$(yq '.service.type + " " + (.service.port|tostring) + " " + (.service.nodePort|tostring)' <<<"$zvals")" "NodePort 5000 30500"
+check "the config and htpasswd come from the external Secrets the operator manages" \
+  "$(yq '[.mountConfig, (.externalSecrets[].secretName)] | join(" ")' <<<"$zvals")" "false zot-config zot-htpasswd"
+check "the containerd hosts.toml on every local-capd pool points the registry name at that NodePort" \
+  "$(grep -c "printf 'server = \"http://127.0.0.1:30500\"" infra/clusterapi/overlays/local-capd/cluster.yaml)" "3"
+# 25. The seeded zot-config is the operator's canonical base: same port,
+#     htpasswd path, builder identity, platform builder repo and GC delay as
+#     lego/operator/internal/registry, and anonymous access denied.
+seed="$(zot_seed_config)"
+go_const() { grep -hE "^\s*$1\s*=" lego/operator/internal/registry/*.go | grep -v _test | head -1 | sed -E 's/.*= *"([^"]*)".*/\1/'; }
+check "the seed listens on the operator's zotHTTPPort" "$(jq -r .http.port <<<"$seed")" "$(go_const zotHTTPPort)"
+check "the seed reads the htpasswd at the operator's zotHTPasswdPath" "$(jq -r .http.auth.htpasswd.path <<<"$seed")" "$(go_const zotHTPasswdPath)"
+check "the seed's adminPolicy is the operator's builder identity with read/create/update/delete" \
+  "$(jq -r '.http.accessControl.adminPolicy | (.users|join(",")) + " " + (.actions|join(","))' <<<"$seed")" "$(go_const zotBuilderUser) read,create,update,delete"
+check "the seed denies anonymous access on **" \
+  "$(jq -r '.http.accessControl.repositories["**"].defaultPolicy // [] | length' <<<"$seed")" "0"
+check "the platform builder repository is read-only for authenticated users" \
+  "$(jq -r --arg r "$(go_const platformBuilderRepository)" '.http.accessControl.repositories[$r].defaultPolicy | join(",")' <<<"$seed")" "read"
+check "the seed's GC delay is the operator's ZotGCDelay" "$(jq -r .storage.gcDelay <<<"$seed")" "$(go_const ZotGCDelay)"
+check "the seed names no retired bex-puller" "$(grep -c bex-puller <<<"$seed" || true)" "0"
+# 26. Credentials: a verifying dev password is kept; anything else re-mints a
+#     random one through registry-secrets.sh with .env ignored, never printed.
+regcalls="$tmp/regsecrets-calls"
+cat >"$tmp/fake-registry-secrets.sh" <<'FAKE'
+#!/usr/bin/env bash
+printf 'noenv=%s pwlen=%s pwhex=%s ns=%s registry=%s build=%s\n' "$BEX_REGISTRY_SECRETS_NO_ENV_FILE" \
+  "${#BEX_REGISTRY_BUILDER_PASSWORD}" "$([[ $BEX_REGISTRY_BUILDER_PASSWORD =~ ^[0-9a-f]+$ ]] && echo yes || echo no)" \
+  "$REGISTRY_NS" "$BEX_REGISTRY" "$BEX_BUILD_NAMESPACE" >>"$REGCALLS"
+printf '%s\n' "$BEX_REGISTRY_BUILDER_PASSWORD" >"$REGCALLS.pw"
+FAKE
+export REGCALLS="$regcalls"
+REGISTRY_SECRETS_SCRIPT="$tmp/fake-registry-secrets.sh"
+dev_pw=0123456789abcdef0123456789abcdef
+dev_hash="$(printf '%s\n' "$dev_pw" | "$HTPASSWD_BIN" -nB -i bex-builder)"
+push_json() { jq -cn --arg pw "$1" '{data: {"config.json": ({auths: {"zot.bex-registry.svc:5000": {username: "bex-builder", password: $pw}}} | tojson | @base64)}}'; }
+htpasswd_json() { jq -cn --arg h "$1" '{data: {htpasswd: ($h + "\napp-tea-x-web:$2y$05$abc" | @base64)}}'; }
+fake_pw="$dev_pw"; fake_hash="$dev_hash"; fake_missing=
+wl_kubectl() {
+  case "$*" in
+  *"get secret bex-registry-push -o json") push_json "$fake_pw" ;;
+  *"get secret zot-htpasswd -o json") htpasswd_json "$fake_hash" ;;
+  *"get secret bex-registry-push bex-registry-push-kpack bex-registry-pull") [ -z "$fake_missing" ] ;;
+  *) return 0 ;;
+  esac
+}
+: >"$regcalls"
+out="$(ensure_registry_credentials; echo "rotated=$REGISTRY_CREDS_ROTATED")"
+check "a password that verifies against zot-htpasswd is kept" "$(wc -l <"$regcalls" | tr -d ' ')" "0"
+check "keeping it is not a rotation" "$(grep -c 'rotated=$' <<<"$out")" "1"
+fake_hash="$(printf 'other\n' | "$HTPASSWD_BIN" -nB -i bex-builder)"
+ensure_registry_credentials >"$tmp/regout"
+check "a hash that no longer verifies re-mints through registry-secrets.sh" "$(wc -l <"$regcalls" | tr -d ' ')" "1"
+check "the re-mint is a rotation (Zot must restart)" "$REGISTRY_CREDS_ROTATED" "1"
+check "the minted password is 32 random hex chars, .env ignored, production names" \
+  "$(cat "$regcalls")" "noenv=1 pwlen=32 pwhex=yes ns=bex-registry registry=zot.bex-registry.svc:5000 build=bex-build"
+check "the minted password is never printed" "$(grep -cF "$(cat "$regcalls.pw")" "$tmp/regout" || true)" "0"
+check "a second mint draws a different password" "$([ "$(cat "$regcalls.pw")" != "$dev_pw" ] && echo differs)" "differs"
+fake_hash="$dev_hash"; fake_missing=1; : >"$regcalls"
+ensure_registry_credentials >/dev/null
+check "a missing push/pull Secret re-mints the set" "$(wc -l <"$regcalls" | tr -d ' ')" "1"
+fake_missing=; fake_pw=; : >"$regcalls"
+ensure_registry_credentials >/dev/null
+check "no push Secret at all mints one" "$(wc -l <"$regcalls" | tr -d ' ')" "1"
+unset -f wl_kubectl push_json htpasswd_json go_const
+eval "$(awk '/^wl_kubectl\(\)/' scripts/mock-cluster.sh)"
+# registry-secrets.sh itself: BEX_REGISTRY_SECRETS_NO_ENV_FILE=1 keeps a
+# repo .env from replacing the dev password (here .env empties it).
+rs="$tmp/rs-repo"; mkdir -p "$rs/scripts/lib"
+cp scripts/registry-secrets.sh "$rs/scripts/"; cp scripts/lib/secret-install.sh scripts/lib/env-file.sh "$rs/scripts/lib/"
+printf 'BEX_REGISTRY_BUILDER_PASSWORD=\n' >"$rs/.env"; chmod 600 "$rs/.env"
+printf '#!/bin/sh\nexit 0\n' >"$fakebin/htpasswd"; chmod +x "$fakebin/htpasswd"
+set +e
+PATH="$fakebin:$PATH" DRY_RUN=1 BEX_REGISTRY_BUILDER_PASSWORD="$dev_pw" bash "$rs/scripts/registry-secrets.sh" >/dev/null 2>&1; rc_env=$?
+PATH="$fakebin:$PATH" DRY_RUN=1 BEX_REGISTRY_SECRETS_NO_ENV_FILE=1 BEX_REGISTRY_BUILDER_PASSWORD="$dev_pw" \
+  bash "$rs/scripts/registry-secrets.sh" >/dev/null 2>&1; rc_noenv=$?
+set -e
+check "registry-secrets.sh still loads .env by default (production path unchanged)" "$rc_env" "1"
+check "BEX_REGISTRY_SECRETS_NO_ENV_FILE=1 skips .env" "$rc_noenv" "0"
+rm -f "$fakebin/htpasswd"
+# 27. Every node must answer 401 anonymously and 200 for bex-builder on
+#     127.0.0.1:30500; the credential reaches curl on stdin, never argv.
+dcalls="$tmp/docker-calls"; : >"$dcalls"
+registry_builder_password() { printf '%s\n' "$dev_pw"; }
+wl_node_names() { printf 'bex-cp\nbex-worker-0-a\n'; }
+docker() {
+  echo "docker $*" >>"$dcalls"
+  if [ "$2" = -i ]; then grep -q "^user = \"bex-builder:$dev_pw\"$" && printf 200 || printf 401; else printf 401; fi
+}
+zot_serving; rc=$?
+check "401 anonymous + 200 authenticated on every node is serving" "$rc" "0"
+check "both probes ran on each node" "$(grep -c '127.0.0.1:30500/v2/' "$dcalls")" "4"
+check "the password never appears in docker's argv" "$(grep -cF "$dev_pw" "$dcalls" || true)" "0"
+docker() { [ "$2" = -i ] && cat >/dev/null; printf 200; }
+set +e; zot_serving; rc=$?; set -e
+check "a registry that answers anonymous pulls is not serving" "$rc" "1"
+docker() { [ "$2" = -i ] && cat >/dev/null; printf 401; }
+set +e; zot_serving; rc=$?; set -e
+check "a registry that refuses bex-builder is not serving" "$rc" "1"
+unset -f docker registry_builder_password wl_node_names
+eval "$(awk '/^registry_builder_password\(\)/,/^}$/' scripts/mock-cluster.sh)"
+eval "$(awk '/^wl_node_names\(\)/' scripts/mock-cluster.sh)"
+# 28. install_zot: Argo-managed means hands off; a mismatched archive never
+#     installs; the verified one installs as release zot with production's
+#     values, seeding zot-config only when the operator has not written one.
+zcalls="$tmp/zot-calls"; : >"$zcalls"
+kubectl() { echo "kubectl $*" >>"$zcalls"; [ "$*" = "-n argocd get application zot" ]; }
+helm() { echo "helm $*" >>"$zcalls"; }
+install_zot >/dev/null
+check "an Argo-managed Zot gets no Helm call and no Secret writes" "$(grep -cE '^helm|create secret' "$zcalls" || true)" "0"
+zcfg_exists=; zsts_absent=
+kubectl() {
+  case "$*" in
+  "apply -f -") echo "kubectl apply -f - $(jq -r '.metadata.name + ":" + (.data["config.json"] // "" | @base64d | fromjson? | .http.port // "")' 2>/dev/null)" >>"$zcalls"; return 0 ;;
+  *"create secret generic zot-config"*) jq -Rs '{metadata: {name: "zot-config"}, data: {"config.json": @base64}}' ;;
+  *"create namespace"*) printf '{}' ;;
+  esac
+  echo "kubectl $*" >>"$zcalls"
+  case "$*" in
+  "-n argocd get application zot") return 1 ;;
+  *"get secret zot-config") [ -n "$zcfg_exists" ] ;;
+  *"get statefulset zot") [ -z "$zsts_absent" ] ;;
+  *) return 0 ;;
+  esac
+}
+ensure_registry_credentials() { echo ensure-creds >>"$zcalls"; REGISTRY_CREDS_ROTATED=; }
+zot_serving() { echo serving >>"$zcalls"; }
+helm() {
+  echo "helm $*" >>"$zcalls"
+  if [ "$1" = pull ]; then
+    local dest="" ver=""
+    while [ $# -gt 0 ]; do
+      case $1 in --destination) dest=$2; shift ;; --version) ver=$2; shift ;; esac
+      shift
+    done
+    printf 'fake-zot-bytes' >"$dest/zot-$ver.tgz"
+  fi
+}
+set +e; install_zot >/dev/null 2>&1; rc=$?; set -e
+check "a Zot archive that misses the lock's sha256 is refused" "$rc" "1"
+check "a mismatched Zot archive never reaches helm upgrade" "$(grep -c '^helm upgrade' "$zcalls" || true)" "0"
+printf 'fake-zot-bytes' >"$tmp/fake-zot.tgz"
+helm_pin() { echo "0.1.121 https://zotregistry.dev/helm-charts $(sha256_of "$tmp/fake-zot.tgz")"; }
+: >"$zcalls"
+install_zot >/dev/null
+check "the verified archive installs as release zot in bex-registry with values, waiting" \
+  "$(grep -cE '^helm upgrade --install zot .*/zot-0\.1\.121\.tgz -n bex-registry -f .*/values\.yaml --wait' "$zcalls")" "1"
+check "a missing zot-config is seeded with the canonical config (port 5000)" "$(grep -c 'apply -f - zot-config:5000$' "$zcalls")" "1"
+check "credentials exist before the release and serving is proven after it" \
+  "$(grep -oE '^(ensure-creds|helm upgrade|serving)' "$zcalls" | tr '\n' ' ')" "ensure-creds helm upgrade serving "
+check "kept credentials leave a running Zot alone" \
+  "$(grep -c 'rollout restart statefulset/zot' "$zcalls" || true)" "0"
+ensure_registry_credentials() { echo ensure-creds >>"$zcalls"; REGISTRY_CREDS_ROTATED=1; }
+: >"$zcalls"
+install_zot >/dev/null
+check "a re-mint over a running Zot bounces it onto the new htpasswd" \
+  "$(grep -c 'rollout restart statefulset/zot' "$zcalls")" "1"
+zsts_absent=1; : >"$zcalls"
+install_zot >/dev/null
+check "a first install starts on the fresh credentials with no bounce" \
+  "$(grep -c 'rollout restart statefulset/zot' "$zcalls" || true)" "0"
+zsts_absent=; zcfg_exists=1; : >"$zcalls"
+install_zot >/dev/null
+check "an existing (operator-owned) zot-config is never overwritten" "$(grep -c 'zot-config:' "$zcalls" || true)" "0"
+unset -f kubectl helm helm_pin ensure_registry_credentials zot_serving
+eval "$(awk '/^helm_pin\(\)/,/^}$/' scripts/mock-cluster.sh)"
+eval "$(awk '/^ensure_registry_credentials\(\)/,/^}$/' scripts/mock-cluster.sh)"
+eval "$(awk '/^zot_serving\(\)/,/^}$/' scripts/mock-cluster.sh)"
+REGISTRY_SECRETS_SCRIPT=scripts/registry-secrets.sh
+# 29. Wiring: the bring-up installs Zot after the build boundary; the end
+#     state checks it; the operator step needs it and grants the RBAC.
+check "the bring-up requires the Zot stage after the build boundary" \
+  "$(awk '/^require "build boundary/{b=NR} /^require "platform registry \(Zot/{z=NR} END{print (b && z && b<z) ? "ordered" : "unordered"}' scripts/mock-cluster.sh)" "ordered"
+check "the end-state verification checks Zot on every node" "$(grep -c 'check "Zot registry on every node' scripts/mock-cluster.sh)" "1"
+check "the operator prerequisites include Zot" \
+  "$(awk '/^operator_prereqs\(\)/,/^}$/' scripts/mock-cluster.sh | grep -c 'statefulset zot')" "1"
+check "the operator registry RBAC grants secrets and pod delete in bex-registry" \
+  "$(yq -N 'select(.kind == "Role") | .metadata.namespace + " " + ([.rules[].resources[]] | join(","))' deploy/gitops/base/operator-registry-rbac.yaml)" "bex-registry secrets,pods"
 
 echo "cluster.yaml apply on a just-initialised mgmt cluster:"
 # A webhook that is not serving yet is retried; any other error is not.

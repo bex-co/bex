@@ -4,7 +4,7 @@
 #   cluster whose "machines" are Docker-container nodes. Add/remove a machine by
 #   scaling the worker pool. Swap CAPD -> CAPH for Hetzner; bex is unchanged.
 #
-#   bash scripts/mock-cluster.sh            # bring it up (substrate + Traefik edge)
+#   bash scripts/mock-cluster.sh            # bring it up (substrate + Traefik edge + Zot)
 #   bash scripts/mock-cluster.sh operator   # build bex-operator:dev from this tree and deploy it
 #   bash scripts/mock-cluster.sh scale 3    # set worker machines = 3 (add/remove)
 set -euo pipefail
@@ -226,6 +226,7 @@ verify_substrate() {
   check "Traefik CRDs established (traefik.io)" traefik_crds_established
   check "Traefik edge Available (traefik)" traefik_available
   check "CNPG operator installed (postgresql.cnpg.io)" cnpg_installed
+  check "Zot registry on every node (401 anonymous, 200 bex-builder)" zot_serving
   check "cluster-autoscaler Available (mgmt)" mgmt_kubectl -n kube-system wait deploy --all --for=condition=Available --timeout=15s
 
   if [ "$failures" -ne 0 ]; then
@@ -441,6 +442,191 @@ install_cnpg() {
   wl_kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=60s >/dev/null
 }
 
+# --- Platform registry: Zot (w2/m293 t001/t002) ------------------------------
+# The operator runs with BEX_REGISTRY=zot.bex-registry.svc:5000 and
+# BEX_REGISTRY_NS=bex-registry (config/manager), so on a mock with no Zot every
+# repo-backed App failed at create (PerAppRegistryCredsFailed) and every App
+# deletion hung restoring its per-App credential. Production installs Zot from
+# the lock's archive with deploy/gitops/base/zot.yaml's values; this installs
+# that same archive (sha-checked) with those same values, so the Service is
+# `zot` on :5000 (plain HTTP) plus NodePort 30500, which the local-capd
+# overlay's containerd hosts.toml already points zot.bex-registry.svc:5000 and
+# zot.local:5000 at on every node.
+#
+# The credentials are production's shape from scripts/registry-secrets.sh:
+# zot-htpasswd with bex-builder, and bex-builder's docker configs in bex-build
+# (bex-registry-push, -push-kpack, bex-registry-pull) and bex-system
+# (bex-registry-push-kpack). There is no bex-puller: production retired it for
+# the per-App app-* users the operator mints. The password is random per
+# cluster, lives only in those Secrets and is never printed; a re-run keeps it
+# while the htpasswd still verifies it, so it does not churn.
+ZOT_NS=bex-registry
+ZOT_REGISTRY=zot.bex-registry.svc:5000
+ZOT_BUILD_NS=bex-build
+ZOT_APP_SOURCE=deploy/gitops/base/zot.yaml
+REGISTRY_SECRETS_SCRIPT=scripts/registry-secrets.sh
+HTPASSWD_BIN="$(command -v htpasswd || echo /usr/sbin/htpasswd)"
+
+# zot_values prints the Helm values production's Argo Application carries.
+zot_values() { yq '.spec.source.helm.values' "$ZOT_APP_SOURCE"; }
+
+# zot_seed_config prints the operator's canonical base config
+# (lego/operator/internal/registry/zotconfig.go baseZotConfig): anonymous
+# denied, bex-builder holding the global adminPolicy and the ** grant, and the
+# shared kpack builder repository read-only for every authenticated user. The
+# chart mounts zot-config (mountConfig: false), so Zot cannot start until it
+# exists; in production the operator bootstraps it on its first App. Seeded
+# only when absent: from then on the operator owns it (per-App ACL entries,
+# storage migrations), exactly as in production.
+zot_seed_config() {
+  jq -cn '
+    {users: ["bex-builder"], actions: ["read", "create", "update", "delete"]} as $builder
+    | {distSpecVersion: "1.1.0",
+       storage: {rootDirectory: "/var/lib/registry", dedupe: true, gc: true,
+                 gcDelay: "3h", gcInterval: "3h",
+                 retention: {dryRun: false, policies: [{repositories: ["**"], deleteUntagged: true,
+                   keepTags: [{patterns: [".*"], mostRecentlyPushedCount: 5},
+                              {patterns: ["^live-.*"], mostRecentlyPushedCount: 10}]}]}},
+       http: {address: "0.0.0.0", port: "5000", compat: ["docker2s2"],
+              readTimeout: "60s", writeTimeout: "60s",
+              auth: {htpasswd: {path: "/secret/htpasswd"}},
+              accessControl: {repositories: {"**": {policies: [$builder]},
+                                             "bex-cnb-builder": {policies: [], defaultPolicy: ["read"]}},
+                              adminPolicy: $builder}},
+       log: {level: "info"},
+       extensions: {scrub: {enable: true, interval: "24h"}}}'
+}
+
+# registry_builder_password prints bex-builder's password from the build-ns
+# push Secret, or nothing. Callers keep it in a variable; it is never echoed.
+registry_builder_password() {
+  wl_kubectl -n "$ZOT_BUILD_NS" get secret bex-registry-push -o json 2>/dev/null |
+    jq -r --arg r "$ZOT_REGISTRY" '.data["config.json"] // empty | @base64d | fromjson | .auths[$r].password // empty' 2>/dev/null
+}
+
+# registry_htpasswd_verifies PASSWORD — zot-htpasswd's bex-builder hash matches.
+# The password reaches htpasswd on stdin, never argv.
+registry_htpasswd_verifies() {
+  local file rc=1
+  file=$(mktemp "${TMPDIR:-/tmp}/bex-zot-htpasswd.XXXXXX")
+  chmod 600 "$file"
+  wl_kubectl -n "$ZOT_NS" get secret zot-htpasswd -o json 2>/dev/null |
+    jq -r '.data.htpasswd // empty | @base64d' 2>/dev/null | grep '^bex-builder:' >"$file" || true
+  if [ -s "$file" ] && printf '%s\n' "$1" | "$HTPASSWD_BIN" -v -i "$file" bex-builder >/dev/null 2>&1; then
+    rc=0
+  fi
+  rm -f "$file"
+  return "$rc"
+}
+
+# registry_secrets_present — every Secret registry-secrets.sh creates exists.
+registry_secrets_present() {
+  wl_kubectl -n "$ZOT_BUILD_NS" get secret bex-registry-push bex-registry-push-kpack bex-registry-pull >/dev/null 2>&1 &&
+    wl_kubectl -n bex-system get secret bex-registry-push-kpack >/dev/null 2>&1
+}
+
+# ensure_registry_credentials keeps the existing dev password when it still
+# verifies against zot-htpasswd and every Secret is there; otherwise it mints
+# a new one and (re)applies the whole set with scripts/registry-secrets.sh,
+# which preserves the operator's app-* users. Sets REGISTRY_CREDS_ROTATED=1
+# when it wrote, because a running Zot reads htpasswd only at start.
+REGISTRY_CREDS_ROTATED=
+ensure_registry_credentials() {
+  local pass
+  REGISTRY_CREDS_ROTATED=
+  pass=$(registry_builder_password)
+  if [ -n "$pass" ] && registry_htpasswd_verifies "$pass" && registry_secrets_present; then
+    echo "    registry credentials present (bex-builder verifies against zot-htpasswd)"
+    return 0
+  fi
+  pass=$(openssl rand -hex 16) || return 1
+  if ! env KUBECONFIG="$WL_KUBECONFIG" BEX_REGISTRY_SECRETS_NO_ENV_FILE=1 \
+    BEX_REGISTRY_BUILDER_PASSWORD="$pass" REGISTRY_NS="$ZOT_NS" BEX_REGISTRY="$ZOT_REGISTRY" \
+    BEX_KPACK_REGISTRY=zot.local:5000 BEX_BUILD_NAMESPACE="$ZOT_BUILD_NS" BEX_KPACK_NAMESPACE=bex-system \
+    bash "$REGISTRY_SECRETS_SCRIPT" >/dev/null; then
+    echo "error: $REGISTRY_SECRETS_SCRIPT could not apply the dev registry credentials" >&2
+    return 1
+  fi
+  REGISTRY_CREDS_ROTATED=1
+  echo "    registry credentials minted (new random dev password for bex-builder; not printed)"
+}
+
+# zot_restart_if_rotated bounces a running Zot onto credentials just rewritten.
+zot_restart_if_rotated() {
+  [ -n "$REGISTRY_CREDS_ROTATED" ] || return 0
+  wl_kubectl -n "$ZOT_NS" get statefulset zot >/dev/null 2>&1 || return 0
+  wl_kubectl -n "$ZOT_NS" rollout restart statefulset/zot >/dev/null &&
+    wl_kubectl -n "$ZOT_NS" rollout status statefulset/zot --timeout=300s >/dev/null
+}
+
+# zot_node_probe NODE [--auth] prints the HTTP status Zot answers on NODE's
+# 127.0.0.1:30500 — the exact path containerd's hosts.toml sends kubelet pulls
+# down. With --auth, bex-builder's credential rides curl's stdin config.
+zot_node_probe() {
+  local node=$1 pass=
+  if [ "${2:-}" = --auth ]; then
+    pass=$(registry_builder_password)
+    [ -n "$pass" ] || { echo 000; return 0; }
+  fi
+  if [ -n "$pass" ]; then
+    printf 'user = "bex-builder:%s"\n' "$pass" |
+      docker exec -i "$node" curl -s -o /dev/null -w '%{http_code}' -K - http://127.0.0.1:30500/v2/ 2>/dev/null || echo 000
+  else
+    docker exec "$node" curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:30500/v2/ 2>/dev/null || echo 000
+  fi
+}
+
+wl_node_names() { wl_kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\n"}{end}'; }
+
+# zot_serving: on every node, anonymous /v2/ is refused (401: auth is on) and
+# bex-builder is accepted (200).
+zot_serving() {
+  local node seen=0
+  while IFS= read -r node; do
+    [ -n "$node" ] || continue
+    seen=1
+    [ "$(zot_node_probe "$node")" = 401 ] || return 1
+    [ "$(zot_node_probe "$node" --auth)" = 200 ] || return 1
+  done < <(wl_node_names)
+  [ "$seen" -eq 1 ]
+}
+
+install_zot() {
+  if argo_manages zot; then
+    return 0
+  fi
+  local dir chart values
+  wl_kubectl create namespace "$ZOT_NS" --dry-run=client -o yaml | wl_kubectl apply -f - >/dev/null || return 1
+  ensure_registry_credentials || return 1
+  if ! wl_kubectl -n "$ZOT_NS" get secret zot-config >/dev/null 2>&1; then
+    # A labelled Opaque Secret like the operator's own bootstrap (secretwrite.go).
+    zot_seed_config | wl_kubectl -n "$ZOT_NS" create secret generic zot-config \
+      --from-file=config.json=/dev/stdin --dry-run=client -o json |
+      jq '.metadata.labels["app.bex.co/managed-by"] = "bex-operator"' |
+      wl_kubectl apply -f - >/dev/null || return 1
+  fi
+  # A first install starts Zot on the credentials just written: no bounce.
+  wl_kubectl -n "$ZOT_NS" get statefulset zot >/dev/null 2>&1 || REGISTRY_CREDS_ROTATED=
+  dir=$(mktemp -d "${TMPDIR:-/tmp}/bex-zot-chart.XXXXXX")
+  values="$dir/values.yaml"
+  if ! chart=$(fetch_pinned_chart zot "$dir") || ! zot_values >"$values"; then
+    rm -rf "$dir"
+    return 1
+  fi
+  if ! KUBECONFIG="$WL_KUBECONFIG" helm upgrade --install zot "$chart" -n "$ZOT_NS" \
+    -f "$values" --wait --timeout 5m >/dev/null; then
+    rm -rf "$dir"
+    echo "error: installing Zot (release zot, namespace $ZOT_NS) failed" >&2
+    return 1
+  fi
+  rm -rf "$dir"
+  zot_restart_if_rotated || return 1
+  zot_serving || {
+    echo "error: Zot is installed but a node's 127.0.0.1:30500 does not answer 401 anonymous / 200 bex-builder" >&2
+    return 1
+  }
+}
+
 # --- `operator`: the bex operator from this tree (w2/m289 t002) --------------
 # After every reprovision the operator used to be rebuilt, side-loaded onto
 # each node, deployed and patched by hand. This is that runbook as one
@@ -467,8 +653,13 @@ abs_path() { case $1 in /*) printf '%s\n' "$1" ;; *) printf '%s/%s\n' "$PWD" "$1
 
 operator_prereqs() {
   traefik_crds_established &&
+    wl_kubectl -n "$ZOT_NS" get statefulset zot >/dev/null &&
     wl_kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=30s >/dev/null &&
     wl_kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=30s >/dev/null
+}
+
+operator_registry_credentials() {
+  ensure_registry_credentials && zot_restart_if_rotated && zot_serving
 }
 
 operator_build() { docker build -t "$OPERATOR_IMG" -f lego/Dockerfile lego; }
@@ -556,8 +747,8 @@ deploy_operator() {
   operator_step "workload cluster reachable" \
     "Bring the cluster up first: bash scripts/mock-cluster.sh" \
     wl_kubectl --request-timeout=20s get --raw /readyz
-  operator_step "substrate prerequisites (Traefik CRDs, CNPG CRDs, cert-manager)" \
-    "The manager needs all three; bash scripts/mock-cluster.sh installs them (idempotent)." \
+  operator_step "substrate prerequisites (Traefik CRDs, Zot, CNPG CRDs, cert-manager)" \
+    "The manager needs all four; bash scripts/mock-cluster.sh installs them (idempotent)." \
     operator_prereqs
   operator_step "build $OPERATOR_IMG from lego/Dockerfile" \
     "The docker build output above names the failing layer; is the Docker daemon up?" \
@@ -574,6 +765,20 @@ deploy_operator() {
   operator_step "operator apps-namespace RBAC (deploy/gitops/base/operator-apps-rbac.yaml)" \
     "The kubectl apply error above names the object." \
     wl_kubectl apply -f deploy/gitops/base/operator-apps-rbac.yaml
+  # Per-App registry credentials (w2/m293 t002): the manager reads and patches
+  # zot-htpasswd/zot-config and bounces the zot pod in bex-registry. Production
+  # grants that through Argo from deploy/gitops/base (outside config/, whose
+  # namespace transform would rewrite the Role into bex-system); without it
+  # every create fails PerAppRegistryCredsFailed and every delete hangs.
+  operator_step "operator registry RBAC (deploy/gitops/base/operator-registry-rbac.yaml)" \
+    "bex-registry must exist: bash scripts/mock-cluster.sh installs Zot there (idempotent)." \
+    wl_kubectl apply -f deploy/gitops/base/operator-registry-rbac.yaml
+  # The build-ns push/pull Secrets the manager's BEX_REGISTRY_PUSH_SECRET (and
+  # the BEX_REGISTRY_BUILD_PULL_SECRET default) name, from the same dev
+  # bex-builder credential zot-htpasswd holds; re-minted if either drifted.
+  operator_step "registry push/pull credentials (bex-build/bex-registry-push, bex-registry-pull)" \
+    "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n $ZOT_NS get statefulset,secret" \
+    operator_registry_credentials
   operator_step "imagePullPolicy IfNotPresent + restart onto the new image" \
     "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n bex-system get deploy,ds" \
     operator_roll
@@ -857,6 +1062,11 @@ require "CNPG operator (postgresql.cnpg.io)" install_cnpg
 # not install, so without it every App deletion on a dev-N stack stalls on its
 # finalizer (w5/084). See apply_build_boundary.
 require "build boundary (bex-build)" apply_build_boundary
+
+# The platform registry (w2/m293 t001): Zot in bex-registry from production's
+# pin and values, with dev bex-builder credentials. After the build boundary,
+# whose bex-build namespace holds the push/pull Secrets.
+require "platform registry (Zot in $ZOT_NS)" install_zot
 
 # The bex-datastore PriorityClass (w2/m247): the operator stamps it on every
 # new Postgres/Key Value Pod so the workspace compute quota excludes them, and
