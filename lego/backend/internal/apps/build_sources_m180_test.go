@@ -29,6 +29,7 @@ import (
 	"sigs.k8s.io/yaml"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -479,5 +480,34 @@ func TestBuildSourceExportReadsEachProjectOnce(t *testing.T) {
 	}
 	if reads := st.projectReads - before; reads != 1 {
 		t.Fatalf("three lookups read the project %d times, want 1", reads)
+	}
+}
+
+// w9/m180 production check: a build source's env-group link is staged until
+// its next build (Render gives the group "at build time"), so Spec carries no
+// ref yet. Export reads the links the owner asked for, staged ones included,
+// and keeps the fromGroup.
+func TestBuildSourceExportKeepsAStagedGroupLink(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	created, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	carrier := getTenantApp(t, svc.Client, "tea-a", created.ID)
+	carrier.Spec.EnvFromSecrets = nil
+	rollout.StageGroupLink(carrier, "evg-shared-env", "evg-shared-files", true)
+	svc.EnvGroupExport = fakeEnvGroupExport{groups: map[string]struct {
+		name string
+		keys []string
+	}{"evg-shared": {name: "shared-config", keys: []string{"API_TOKEN"}}}}
+	selected := map[string]exportedEnvGroup{"evg-shared": {name: "shared-config"}}
+	entry, err := svc.generateBuildSourceEntry(ctx, carrier, nil, nil, selected, map[string]exportedEnvGroup{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	git, _ := entry["git"].(map[string]any)
+	env, _ := git["envVars"].([]map[string]any)
+	if !slices.ContainsFunc(env, func(e map[string]any) bool { return maps.Equal(e, map[string]any{"fromGroup": "shared-config"}) }) {
+		t.Fatalf("build source envVars = %v, want the staged group's fromGroup", env)
 	}
 }

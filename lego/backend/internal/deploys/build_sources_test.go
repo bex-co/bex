@@ -20,15 +20,18 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -69,6 +72,33 @@ func TestTriggerBuildDeploysTheCarrierAndReportsABuild(t *testing.T) {
 	got, err := svc.GetBuild(ctx, "bds-git", b.ID)
 	if err != nil || got.ID != b.ID {
 		t.Fatalf("GetBuild = %+v, %v", got, err)
+	}
+}
+
+// ADR097: a build source owns its linked env groups and reads them at build
+// time. A link is staged on the carrier until its next build (w2/m254), and
+// that build's release carries it: the group's Secret lands in the carrier's
+// spec and the staged annotation clears (w9/m180 production check).
+func TestTriggerBuildShipsAStagedGroupLink(t *testing.T) {
+	ds := newFakeStore()
+	ds.mintIDs = true
+	carrier := sampleBuildSource("bds-git", "https://github.com/acme/web")
+	rollout.StageGroupLink(carrier, "evg-shared-env", "evg-shared-files", true)
+	svc, cl := newService(ds, carrier)
+	ctx := context.Background()
+
+	if _, err := svc.TriggerBuild(ctx, "bds-git"); err != nil {
+		t.Fatalf("TriggerBuild: %v", err)
+	}
+	var got appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(carrier), &got); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Contains(got.Spec.EnvFromSecrets, "evg-shared-env") {
+		t.Fatalf("carrier envFrom = %v, want the staged group's Secret in the build's release", got.Spec.EnvFromSecrets)
+	}
+	if got.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != "" {
+		t.Fatalf("staged links still pending after the build: %q", got.Annotations[appv1alpha1.AnnotationPendingGroupLinks])
 	}
 }
 

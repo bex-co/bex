@@ -108,11 +108,17 @@ func TestBuildSourceMCPTools(t *testing.T) {
 		return out, result.IsError
 	}
 
-	created, failed := call("create_build_source", map[string]any{"ownerId": "tea-a", "name": "Mono",
+	created, failed := call("create_build_source", map[string]any{"name": "Mono",
 		"git": map[string]any{"repoUrl": "https://github.com/acme/mono", "branch": "main", "runtime": "node", "buildCommand": "npm ci"}})
 	id, _ := created["id"].(string)
 	if failed || !strings.HasPrefix(id, "bds-") {
 		t.Fatalf("create_build_source = %+v (error %v)", created, failed)
+	}
+	// The tool takes no ownerId: MCP names the workspace with workspaceId,
+	// which the gateway moves into the context (w9/m180 production check).
+	if _, failed := call("create_build_source", map[string]any{"ownerId": "tea-a", "name": "Owned",
+		"git": map[string]any{"repoUrl": "https://github.com/acme/mono", "branch": "main", "runtime": "node", "buildCommand": "npm ci"}}); !failed {
+		t.Error("create_build_source accepted ownerId, which the MCP gateway refuses")
 	}
 	if got, failed := call("get_build_source", map[string]any{"buildSourceId": id}); failed || got["name"] != "Mono" {
 		t.Fatalf("get_build_source = %+v (error %v)", got, failed)
@@ -120,11 +126,11 @@ func TestBuildSourceMCPTools(t *testing.T) {
 	if got, failed := call("list_build_sources", map[string]any{"ownerId": "tea-a"}); failed || len(got["buildSources"].([]any)) != 1 {
 		t.Fatalf("list_build_sources = %+v (error %v)", got, failed)
 	}
-	if _, failed := call("create_build_source", map[string]any{"ownerId": "tea-a", "name": "NoBuild",
+	if _, failed := call("create_build_source", map[string]any{"name": "NoBuild",
 		"git": map[string]any{"repoUrl": "https://github.com/acme/mono", "runtime": "node"}}); !failed {
 		t.Error("a native build source without a buildCommand was created; every build would fail")
 	}
-	if _, failed := call("create_build_source", map[string]any{"ownerId": "tea-a", "name": "Bad",
+	if _, failed := call("create_build_source", map[string]any{"name": "Bad",
 		"git": map[string]any{"repoUrl": "https://github.com/acme/mono", "runtime": "cobol"}}); !failed {
 		t.Error("create_build_source with a runtime outside Render's enum succeeded")
 	}

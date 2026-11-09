@@ -339,3 +339,32 @@ func TestCronLinkedToANativeSourceRunsUnderItsEntrypoint(t *testing.T) {
 		t.Fatalf("shell launch: command %q args %q, want the shell Command", c.Command, c.Args)
 	}
 }
+
+// w9/m180: a web service linked to an image-backed source gets the carrier's
+// image-port mode, so its network is read from the source's image — the
+// image the service deploys — not refused for lacking an own build (the
+// production failure "image port discovery requires this service's built
+// image repository").
+func TestLinkedServiceResolvesTheSourceImageNetwork(t *testing.T) {
+	const image = "docker.io/library/nginx:1.27"
+	app := workerLinkedTo(image)
+	app.Spec.Type = appv1alpha1.TypeWebService
+	app.Spec.PortMode = appv1alpha1.PortModeWebImageV1
+	r, _, _ := buildSourceReconciler(t, app, carrierApp(image))
+	r.Registry = "registry.test"
+	r.HTTPClient = imageConfigRegistry(t, `"8080/tcp":{}`)
+
+	_, port, err := r.resolveImageNetwork(t.Context(), app, image)
+	if err != nil {
+		t.Fatalf("resolve the linked image's network: %v", err)
+	}
+	if port != 8080 {
+		t.Fatalf("primary port = %d, want the source image's 8080", port)
+	}
+
+	// Only the linked image itself reads as the source's: anything else a
+	// linked service might be handed stays refused.
+	if _, _, err := r.resolveImageNetwork(t.Context(), app, "docker.io/library/redis:7"); err == nil {
+		t.Fatal("a linked service resolved an image that is not its source's")
+	}
+}

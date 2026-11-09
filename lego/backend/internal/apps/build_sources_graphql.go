@@ -250,6 +250,21 @@ func (s *Service) buildSourceGQLMutationFields() graphql.Fields {
 	}
 }
 
+// createBuildSourceArgs is CreateBuildSourceRequest without ownerId: an MCP
+// tool names its workspace with workspaceId, which the gateway strips into
+// the context (api/mcp_workspace.go), so a required ownerId in the schema made
+// the tool impossible to call (w9/m180 production check).
+type createBuildSourceArgs struct {
+	Name        string            `json:"name" jsonschema:"the build source name, unique in the workspace"`
+	ProjectID   string            `json:"projectId,omitempty" jsonschema:"optional project to scope the build source to"`
+	Git         *BuildSourceGit   `json:"git,omitempty" jsonschema:"a git-backed source; exactly one of git or image"`
+	Image       *BuildSourceImage `json:"image,omitempty" jsonschema:"an image-backed source; exactly one of git or image"`
+	EnvVars     []envVarInput     `json:"envVars,omitempty" jsonschema:"initial build-time env vars (git sources only)"`
+	SecretFiles []secretFileInput `json:"secretFiles,omitempty" jsonschema:"initial build-time secret files (git sources only)"`
+	ServiceIDs  []string          `json:"serviceIds,omitempty" jsonschema:"service ids (srv-…) to link to the new build source; each is checked as a PATCH buildSourceId is, and none deploys until the deploy API is called"`
+	EnvGroupIDs []string          `json:"envGroupIds,omitempty" jsonschema:"environment group ids (evg-…) to link into the build-time environment; git sources only, and not groups scoped to an environment"`
+}
+
 type listBuildSourcesArgs struct {
 	OwnerID       string   `json:"ownerId,omitempty" jsonschema:"the workspace id; defaults to your workspace"`
 	Name          []string `json:"name,omitempty" jsonschema:"only build sources with these names"`
@@ -313,8 +328,12 @@ func (s *Service) registerBuildSourceTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_build_source",
 		Description: "Create a git- or image-backed build source (exactly one of git or image), optionally seeding its build-time envVars, secretFiles and envGroupIds (git sources only) and linking serviceIds, as Render's create does. Change the environment later with the env-var tools, passing the build source id as serviceId; link more services by creating or updating them with buildSourceId. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateBuildSourceRequest) (*mcp.CallToolResult, BuildSourceView, error) {
-		v, err := s.CreateBuildSource(ctx, in)
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createBuildSourceArgs) (*mcp.CallToolResult, BuildSourceView, error) {
+		v, err := s.CreateBuildSource(ctx, CreateBuildSourceRequest{
+			OwnerID: core.NamedWorkspace(ctx), Name: in.Name, ProjectID: in.ProjectID,
+			Git: in.Git, Image: in.Image, EnvVars: in.EnvVars, SecretFiles: in.SecretFiles,
+			ServiceIDs: in.ServiceIDs, EnvGroupIDs: in.EnvGroupIDs,
+		})
 		return nil, v, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{

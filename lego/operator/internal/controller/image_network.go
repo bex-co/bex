@@ -148,6 +148,30 @@ const dockerHubAPIHost = "registry-1.docker.io"
 
 var dockerHubConfigKeys = []string{dockerHubAPIHost, "docker.io", "index.docker.io", "https://index.docker.io/v1/"}
 
+// externalImageCredentials reports whether image is a prebuilt image this App
+// deploys, and the App whose registry credential reads it: its own Spec.Image,
+// or the image of the image-backed build source it is linked to (ADR097),
+// read with the build source's credential since that is where the source's
+// registry credential lives (w9/m180). A git-built source's image reaches the
+// service as a digest in its own repository, which ownImageReference covers.
+func (r *AppReconciler) externalImageCredentials(ctx context.Context, app *appv1alpha1.App, image string) (*appv1alpha1.App, bool, error) {
+	if app.Spec.Image != "" {
+		return app, true, nil
+	}
+	link := app.Spec.BuildSource
+	if link == nil || link.Image == "" || image != link.Image {
+		return nil, false, nil
+	}
+	if _, _, platform := r.platformRepoReference(image); platform {
+		return nil, false, nil
+	}
+	carrier, err := r.linkedCarrier(ctx, app)
+	if err != nil {
+		return nil, false, err
+	}
+	return carrier, true, nil
+}
+
 // resolveImageNetwork is deliberately scoped to the App's own built repository.
 // An arbitrary image host can never receive platform registry credentials; a
 // prebuilt image (web, w4/m243; private, w6/095) is read anonymously, or with
@@ -193,12 +217,14 @@ func (r *AppReconciler) resolveImageNetwork(ctx context.Context, app *appv1alpha
 		if err2 != nil {
 			return "", 0, err2
 		}
-	} else if app.Spec.Image != "" {
+	} else if credentials, external, err := r.externalImageCredentials(ctx, app, image); err != nil {
+		return "", 0, err
+	} else if external {
 		host, repo, repoPath, reference, ok := parseExternalImageReference(image)
 		if !ok {
 			return "", 0, fmt.Errorf("image port discovery cannot parse image %q", image)
 		}
-		authorization, err := r.externalImageAuthHeader(ctx, app, host)
+		authorization, err := r.externalImageAuthHeader(ctx, credentials, host)
 		if err != nil {
 			return "", 0, err
 		}

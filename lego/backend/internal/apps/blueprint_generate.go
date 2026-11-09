@@ -41,6 +41,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -682,7 +683,12 @@ func (s *Service) generateEnvVars(ctx context.Context, a *appv1alpha1.App, dbDis
 		}
 	}
 	if s.EnvGroupExport != nil {
-		for _, secret := range a.Spec.EnvFromSecrets {
+		// The links the owner asked for, including ones staged until the next
+		// release: a build source's group link is staged until its next build
+		// (w2/m254), and an Auto-Deploy-off service's until its next deploy, so
+		// Spec.EnvFromSecrets alone dropped them (w9/m180 production check).
+		linked, _ := rollout.EffectiveGroupSecrets(a)
+		for _, secret := range linked {
 			gid, ok := envGroupIDFromSecret(secret)
 			if !ok {
 				continue
