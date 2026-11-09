@@ -404,6 +404,29 @@ cnpg_deployment() {
     -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true
 }
 
+# apply_retrying_webhook — kubectl apply stdin, retrying (bounded) while an
+# admission webhook is not serving yet. A just-installed operator (CNPG here)
+# reports its Deployment rolled out a few seconds before its webhook answers,
+# so the first apply on a fresh cluster failed `up` with "failed calling
+# webhook" (w2/m289). Any other error fails at once.
+apply_retrying_webhook() {
+  local manifest out attempt
+  manifest=$(cat)
+  for attempt in $(seq 1 24); do
+    if out=$(printf '%s\n' "$manifest" | kubectl apply -f - 2>&1); then
+      return 0
+    fi
+    if ! grep -q "failed calling webhook" <<<"$out"; then
+      echo "$out" >&2
+      return 1
+    fi
+    echo "    admission webhook not serving yet (attempt $attempt/24); retrying in 5s"
+    sleep 5
+  done
+  echo "$out" >&2
+  return 1
+}
+
 ensure_cnpg() {
   echo "==> CNPG operator (self-installing if absent)"
   if ! kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1; then
@@ -479,9 +502,9 @@ ensure_observability() {
     -f "$ENVDIR/.rendered-loki.values.yaml" >/dev/null
   helm upgrade --install log-shipper grafana/alloy --version '1.*' -n monitoring \
     -f "$ENVDIR/.rendered-log-shipper.values.yaml" >/dev/null
-  # 600s, not 180s: on a fresh cluster the PVC provisioning and first image
-  # pull alone took ~4 minutes and failed `up` (w2/m289). Reruns are instant.
-  kubectl -n monitoring rollout status statefulset/loki --timeout=600s ||
+  # 900s, not 180s: on a fresh cluster the PVC provisioning and first image
+  # pulls took 4-10 minutes and failed `up` (w2/m289). Reruns are instant.
+  kubectl -n monitoring rollout status statefulset/loki --timeout=900s ||
     { echo "error: Loki did not become ready — dev-$N's log store is down ('kubectl -n monitoring describe pod loki-0'; an unbound PVC means no default StorageClass)." >&2; exit 1; }
 }
 
@@ -751,7 +774,7 @@ cmd_up() {
   echo "==> CNPG Clusters (kratos-db, hydra-db, bex-db)"
   local cluster
   for cluster in kratos hydra bex; do
-    render "$TEMPLATES/db/$cluster-db.yaml" | kubectl apply -f - >/dev/null
+    render "$TEMPLATES/db/$cluster-db.yaml" | apply_retrying_webhook
   done
   for cluster in kratos-db hydra-db bex-db; do
     echo "    waiting for $cluster-app credentials secret..."

@@ -38,7 +38,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m269** — [Blueprint ids answer as `exs-`, Render's prefix, so the v2.35 CLI can address them](done/m269/README.md) — **DONE 2026-11-08**: production serves exs-; the v2.35 CLI approve/plan/update pass
 - [ ] **m278** — [Idle sandboxes suspend and wake on exec, as on Render](blocked/m278/README.md) (9 tasks) ← from w2/m263 t001, user decision D2=A 2026-11-07; Render parity included — **BLOCKED (user: sign off memory/process loss on suspension or fund checkpointing — `/unblock w2`; plus the production walk once 9cb1c257a deploys)**; t001–t008, t010 done
 - [x] **m288** — [Blueprint sync ids answer as `exe-`, Render's prefix](done/m288/README.md) — **DONE 2026-11-08**: every client-read sync id is exe-; bsr- still accepted and stored
-- [ ] **m289** — [A fresh local cluster runs dev-N end to end](m289/README.md) (7 tasks) ← from `/pm-brainstorm for w2` 2026-11-08; Render parity omitted (local tooling)
+- [x] **m289** — [A fresh local cluster runs dev-N end to end](done/m289/README.md) — **DONE 2026-11-08**: from no cluster, three commands bring up dev-N unattended
 - [x] **m261** — [Blueprint create with `existingResources: create_new`](done/m261/README.md) (8 tasks) — **DONE 2026-11-03** ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
 - [x] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](done/064.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**

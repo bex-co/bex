@@ -589,6 +589,22 @@ deploy_operator() {
   echo "  next:      bash scripts/dev-env.sh <N> up"
 }
 
+# A just-initialised mgmt cluster reports the CAPI/CAPD Deployments Available a
+# few seconds before their webhooks serve, so the first apply can fail with
+# "failed calling webhook". That is retried (bounded); any other failure is not.
+apply_cluster_yaml() {
+  local attempt
+  for attempt in $(seq 1 24); do
+    if apply_err=$(mgmt_kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml 2>&1); then
+      return 0
+    fi
+    grep -q "failed calling webhook" <<<"$apply_err" || return 1
+    echo "    CAPI webhooks not serving yet (attempt $attempt/24); retrying in 5s"
+    sleep 5
+  done
+  return 1
+}
+
 if [ -n "${BEX_MOCK_CLUSTER_LIB:-}" ]; then return 0 2>/dev/null || exit 0; fi
 
 case "${1:-}" in
@@ -637,7 +653,7 @@ done
 # but was unusable, and the failure was invisible unless you read the whole log.
 # Templates are pure declarations referenced by name, so recreating the drifted
 # ones converges the mgmt cluster onto whatever this repo now declares.
-if ! apply_err=$(mgmt_kubectl apply -f infra/clusterapi/overlays/local-capd/cluster.yaml 2>&1); then
+if ! apply_cluster_yaml; then
   echo "$apply_err"
   grep -q "field is immutable" <<<"$apply_err" || {
     echo "error: applying cluster.yaml failed for a reason other than template immutability" >&2

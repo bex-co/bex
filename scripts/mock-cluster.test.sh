@@ -445,6 +445,19 @@ set -e
 check "an unknown subcommand exits 2" "$rc" "2"
 check "the usage names the operator subcommand" "$(grep -c 'operator' <<<"$out")" "1"
 
+echo "cluster.yaml apply on a just-initialised mgmt cluster:"
+# A webhook that is not serving yet is retried; any other error is not.
+calls="$tmp/apply-calls"; : >"$calls"
+sleep() { :; }
+mgmt_kubectl() { echo x >>"$calls"; [ "$(wc -l <"$calls")" -ge 3 ] && return 0; echo 'Internal error occurred: failed calling webhook "default.dockerclustertemplate"'; return 1; }
+apply_cluster_yaml >/dev/null
+check "a not-yet-serving webhook is retried until the apply lands" "$?:$(wc -l <"$calls" | tr -d ' ')" "0:3"
+: >"$calls"
+mgmt_kubectl() { echo x >>"$calls"; echo 'error: field is immutable'; return 1; }
+set +e; apply_cluster_yaml >/dev/null; rc=$?; set -e
+check "any other failure is returned at once" "$rc:$(wc -l <"$calls" | tr -d ' ')" "1:1"
+unset -f mgmt_kubectl sleep
+
 echo
 if [ "$fails" -ne 0 ]; then
   echo "FAILED: $fails check(s)" >&2

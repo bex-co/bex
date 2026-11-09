@@ -453,6 +453,20 @@ assert "the private config holds a placeholder auths entry (no native-store dete
   "grep -q '\"auths\":{\"bex-anonymous.invalid\":{}}' '$helm_tmp/reg/config.json'"
 rm -rf "$helm_tmp"
 
+echo "==> CNPG Clusters apply waits out a not-yet-serving webhook (w2/m289)"
+eval "$(awk '/^apply_retrying_webhook\(\)/,/^}$/' scripts/dev-env.sh)"
+wh_tmp=$(mktemp -d)
+kubectl() { echo x >>"$wh_tmp/calls"; [ "$(wc -l <"$wh_tmp/calls")" -ge 3 ] && return 0; echo 'Internal error occurred: failed calling webhook "mcluster.cnpg.io"'; return 1; }
+sleep() { :; }
+rc=0; echo 'kind: Cluster' | apply_retrying_webhook >/dev/null || rc=$?
+assert "a not-yet-serving webhook is retried until the apply lands" "[ '$rc:$(wc -l <"$wh_tmp/calls" | tr -d ' ')' = '0:3' ]"
+: >"$wh_tmp/calls"
+kubectl() { echo x >>"$wh_tmp/calls"; echo 'error: the server could not find the requested resource'; return 1; }
+rc=0; echo 'kind: Cluster' | apply_retrying_webhook >/dev/null 2>&1 || rc=$?
+assert "any other apply error fails at once" "[ '$rc:$(wc -l <"$wh_tmp/calls" | tr -d ' ')' = '1:1' ]"
+unset -f kubectl sleep
+rm -rf "$wh_tmp"
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "dev-env: all checks passed"

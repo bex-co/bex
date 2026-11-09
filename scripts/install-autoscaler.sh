@@ -37,4 +37,4 @@ helm upgrade --install cluster-autoscaler cluster-autoscaler \
   --set clusterAPIKubeconfigSecret=bex-kubeconfig \
   --version 9.58.0 --namespace default \
   -f infra/clusterapi/autoscaler-values.yaml \
-  --wait --timeout 3m
+  --wait --timeout 10m
