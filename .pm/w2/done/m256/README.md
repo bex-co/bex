@@ -1,6 +1,6 @@
 # w2 · m256 — Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does
 
-**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** todo — t015 (500 on re-create) then the t014 production re-check, then t011
+**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** done (2026-11-08)
 
 ## Tasks (in order)
 
@@ -18,9 +18,9 @@
 | t010 | Test coverage — **DONE** | 30m | t008 |
 | t012 | Dashboard: a created Blueprint shows its plan and an Approve action, and Sync cannot apply it past the plan — **DONE** | 1h | t006 |
 | t013 | Planned Blueprint page: the reconnection note on a revived row, the right status chip, and approve-not-sync empty copy — **DONE** | 30m | t012 |
-| t014 | A recreated Blueprint whose plan finds no changes is stuck in created, and planning ignores resources deleted since the last sync — implemented 2026-11-08, awaiting production re-check | 1.5h | t006 |
-| t015 | Re-creating a Blueprint right after deleting it and its service answers 500 and leaves a half-revived row — implemented 2026-11-08, awaiting the production re-check with t014 | 1h | t014 |
-| t011 | Closeout | 10m | t009, t010, t012, t013, t014, t015 |
+| t014 | A recreated Blueprint whose plan finds no changes is stuck in created, and planning ignores resources deleted since the last sync — **DONE** | 1.5h | t006 |
+| t015 | Re-creating a Blueprint right after deleting it and its service answers 500 and leaves a half-revived row — **DONE** | 1h | t014 |
+| t011 | Closeout — **DONE** | 10m | t009, t010, t012, t013, t014, t015 |
 
 ## Definition of done
 
@@ -115,3 +115,17 @@ Production is pinned to `76061b0f7517`, which contains `49ffa1735`.
 6. `ea blueprints plan <id>` **answered 500**, reproducibly.
 
 The Blueprint was deleted afterwards (204). Production logs are not readable by the agent (the classifier denied it), so the defect is being reproduced on dev-2. Filed as **t015**; t014 stays open until the re-check passes.
+
+## Closed — 2026-11-08: t014 and t015 pass on production
+
+Production is pinned to `af0b05c0abee` (t015); bex CLI v2.35 built from main; QA workspace.
+
+1. `create` (static-site, adopt) returned `planned` with `create static-site`.
+2. `approve` returned `success` and created `srv-dboj570h9uuc73f5ddr0`.
+3. The Blueprint and the service were deleted (204 each).
+4. Re-running `create` returned `planned` with `create static-site`. There was no 500 and no half-revived row.
+5. `plan` returned `planned` with `create static-site`.
+6. `approve` while the old App was still tearing down returned `409 BLUEPRINT_SERVICE_STILL_DELETING` ("…retry in a minute to re-create it"). One retry got the same answer.
+7. About 1 minute later, `approve` returned `success` and the service was recreated (`srv-dboj5t1p7t1c73bcn0cg`).
+
+The test resources were deleted afterwards (204). Every DoD point holds, so t014, t015 and t011 are done.
