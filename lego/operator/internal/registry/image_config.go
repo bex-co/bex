@@ -34,13 +34,55 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// Platform is the OS/architecture of the hosting node pool: the platform
+// manifest an index resolves to and the config every image must declare.
+type Platform struct {
+	OS           string
+	Architecture string
+}
+
+// DefaultPlatform is production's node pool. Every cluster but the local
+// arm64 CAPD mock runs it (w2/m293 t007).
+var DefaultPlatform = Platform{OS: "linux", Architecture: "amd64"}
+
+// ParsePlatform parses BEX_IMAGE_PLATFORM: "" is DefaultPlatform; otherwise
+// exactly "linux/amd64" or "linux/arm64", the architectures native builds
+// support.
+func ParsePlatform(value string) (Platform, error) {
+	if value == "" {
+		return DefaultPlatform, nil
+	}
+	switch value {
+	case "linux/amd64", "linux/arm64":
+		goos, arch, _ := strings.Cut(value, "/")
+		return Platform{OS: goos, Architecture: arch}, nil
+	}
+	return Platform{}, fmt.Errorf("image platform %q is not linux/amd64 or linux/arm64", value)
+}
+
+// String names the platform the way refusals do, e.g. "Linux/amd64".
+func (p Platform) String() string {
+	if p.OS == "linux" {
+		return "Linux/" + p.Architecture
+	}
+	return p.OS + "/" + p.Architecture
+}
+
+// hostingPlatform is set once at manager startup, before any reconcile.
+var hostingPlatform = DefaultPlatform
+
+// SetHostingPlatform selects the platform every image metadata read resolves
+// and verifies. The manager calls it once, before starting controllers.
+func SetHostingPlatform(p Platform) { hostingPlatform = p }
+
 // ImageConfig is verified metadata for an immutable image reference, with its
-// Linux/amd64 config selected for the current hosting node pool.
+// hosting-platform config (Linux/amd64 in production) selected for the
+// current hosting node pool.
 type ImageConfig struct {
 	// Digest identifies the requested reference: the outer index for a multiarch
 	// image, or the manifest itself for a single-platform image.
 	Digest string
-	// PlatformDigest identifies the verified Linux/amd64 manifest whose config
+	// PlatformDigest identifies the verified hosting-platform manifest whose config
 	// supplied TCPPorts. It equals Digest for a single-platform reference.
 	PlatformDigest string
 	TCPPorts       []int32
@@ -118,7 +160,11 @@ const maxBlobRedirects = 3
 // fetches elsewhere; a config blob may follow https storage redirects without
 // the credential.
 func ReadImageConfig(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (ImageConfig, error) {
-	digest, platformDigest, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization)
+	return readImageConfig(ctx, httpClient, registryHost, repo, reference, authorization, hostingPlatform)
+}
+
+func readImageConfig(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string, platform Platform) (ImageConfig, error) {
+	digest, platformDigest, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization, platform)
 	if err != nil {
 		return ImageConfig{}, err
 	}
@@ -137,7 +183,7 @@ const RevisionLabel = "org.opencontainers.image.revision"
 // same authorized, digest-verified, layer-free read, without the port rules,
 // which say nothing about provenance. "" when the image carries no label.
 func ReadImageRevision(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (string, error) {
-	_, _, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization)
+	_, _, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization, hostingPlatform)
 	if err != nil {
 		return "", err
 	}
@@ -147,7 +193,7 @@ func ReadImageRevision(ctx context.Context, httpClient *http.Client, registryHos
 // ReadImageRuntimeMetadata reads environment and build provenance through the
 // same bounded, digest-verified path as the image's ports and revision.
 func ReadImageRuntimeMetadata(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (env, history []string, err error) {
-	_, _, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization)
+	_, _, document, err := readImageConfigDocument(ctx, httpClient, registryHost, repo, reference, authorization, hostingPlatform)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -285,7 +331,7 @@ func exchangesForBearer(authorization, challenge string) bool {
 	return authorization == "" || strings.HasPrefix(authorization, "Basic ") && strings.HasPrefix(challenge, "Bearer ")
 }
 
-func readImageConfigDocument(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string) (string, string, imageConfigDocument, error) {
+func readImageConfigDocument(ctx context.Context, httpClient *http.Client, registryHost, repo, reference, authorization string, platform Platform) (string, string, imageConfigDocument, error) {
 	base, err := imageRepoBase(registryHost, repo, reference, authorization)
 	if err != nil {
 		return "", "", imageConfigDocument{}, err
@@ -373,7 +419,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 		case "application/vnd.oci.image.index.v1+json", "application/vnd.docker.distribution.manifest.list.v2+json":
 			reference = ""
 			for _, child := range manifest.Manifests {
-				if child.Platform.OS == "linux" && child.Platform.Architecture == "amd64" {
+				if child.Platform.OS == platform.OS && child.Platform.Architecture == platform.Architecture {
 					if !imageDigestPattern.MatchString(child.Digest) {
 						return "", "", imageConfigDocument{}, fmt.Errorf("invalid image manifest digest")
 					}
@@ -382,7 +428,7 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 				}
 			}
 			if reference == "" {
-				return "", "", imageConfigDocument{}, fmt.Errorf("image has no Linux/amd64 manifest")
+				return "", "", imageConfigDocument{}, fmt.Errorf("image has no %s manifest", platform)
 			}
 			continue
 		case "application/vnd.oci.image.manifest.v1+json", "application/vnd.docker.distribution.manifest.v2+json":
@@ -400,8 +446,8 @@ func readImageConfigDocument(ctx context.Context, httpClient *http.Client, regis
 		if err := json.Unmarshal(config, &document); err != nil {
 			return "", "", imageConfigDocument{}, fmt.Errorf("decode image config: %w", err)
 		}
-		if document.OS != "linux" || document.Architecture != "amd64" {
-			return "", "", imageConfigDocument{}, fmt.Errorf("image config is not Linux/amd64")
+		if document.OS != platform.OS || document.Architecture != platform.Architecture {
+			return "", "", imageConfigDocument{}, fmt.Errorf("image config is not %s", platform)
 		}
 		return requestedDigest, digest, document, nil
 	}

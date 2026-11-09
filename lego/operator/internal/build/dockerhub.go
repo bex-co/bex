@@ -57,7 +57,7 @@ type ExactImageResolver interface {
 	ResolveTag(ctx context.Context, repo, tag string) (digest string, ok bool, err error)
 	// ListTags returns the repo's tags that begin with prefix.
 	ListTags(ctx context.Context, repo, prefix string) ([]string, error)
-	// ImageMetadata returns the pinned image's verified Linux/amd64 environment and build history.
+	// ImageMetadata returns the pinned image's verified hosting-platform (Linux/amd64 in production) environment and build history.
 	ImageMetadata(ctx context.Context, image string) (env, history []string, err error)
 	// NodeSourceDigest binds an exact EOL Node rebuild to its official source archive.
 	NodeSourceDigest(ctx context.Context, version string) (string, error)

@@ -1,6 +1,6 @@
 # w2 · m293 — dev-N has a working platform registry, so repo builds, static publishes and deletes work locally
 
-**Worker:** worker2 **Goal:** the local CAPD mock runs the platform Zot registry that the operator's `BEX_REGISTRY` names (`zot.bex-registry.svc:5000`), with its htpasswd and config Secrets. Per-App registry credentials can then be issued, repo-backed services build and deploy on dev-N, and deleting any App finishes on its own. **Status:** todo — t001, t002 done; t007 (image architecture on the arm64 mock) then t003
+**Worker:** worker2 **Goal:** the local CAPD mock runs the platform Zot registry that the operator's `BEX_REGISTRY` names (`zot.bex-registry.svc:5000`), with its htpasswd and config Secrets. Per-App registry credentials can then be issued, repo-backed services build and deploy on dev-N, and deleting any App finishes on its own. **Status:** done (2026-11-08)
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | ---- | --------------------------------------------------------------------------------------- | ---- | ---------- |
 | t001 | `mock-cluster.sh` installs Zot in `bex-registry` (production chart/pin, htpasswd + config Secrets, bex-builder/bex-puller), idempotent — **DONE** | 1.5h | — |
 | t002 | `mock-cluster.sh operator` wires the build/push and pull credentials the operator expects (`RegistryPushSecret`, the pull secret) — **DONE** | 45m  | t001 |
-| t007 | The operator accepts the cluster's node architecture for built images (arm64 mock); production stays amd64 | 1h | t002 |
-| t003 | dev-2 walk: a repo-backed web service builds and goes Live; a static site deploys; deleting each finishes with no manual finalizer edits | 45m  | t007 |
-| t004 | Simplify                                                                                | 15m  | t003 |
-| t005 | Test coverage                                                                           | 30m  | t004 |
-| t006 | Closeout                                                                                | 10m  | t005 |
+| t007 | The operator accepts the cluster's node architecture for built images (arm64 mock); production stays amd64 — **DONE** | 1h | t002 |
+| t003 | dev-2 walk: a repo-backed web service builds and goes Live; a static site deploys; deleting each finishes with no manual finalizer edits — **DONE** | 45m  | t007 |
+| t004 | Simplify — **DONE**                                                                                | 15m  | t003 |
+| t005 | Test coverage — **DONE**                                                                           | 30m  | t004 |
+| t006 | Closeout — **DONE**                                                                                | 10m  | t005 |
 
 ## Definition of done
 
@@ -49,3 +49,15 @@
   - **Repo-built service** (`examples/hello-go`): per-App credentials were issued, with no `PerAppRegistryCredsFailed`. It cloned, built and pushed to Zot, and the node pulled with the per-App credential (refused anonymously). It did **not go Live**: the image is arm64 and the operator requires linux/amd64. That is filed as **t007**.
   - **Delete:** the service's CR was gone in 5 s; its htpasswd user, ACL and pull Secret were removed.
   - **Static site:** publish failed with `StaticCredentialUnavailable` as expected (no local object store). Delete finished in about 6 min with no manual edits; the delay came from one registry-probe timeout plus backoff.
+
+## Closed — 2026-11-08
+
+- **t007:**
+  - **Setting:** `BEX_IMAGE_PLATFORM` is read once at manager startup. Unset means `linux/amd64`. Only `linux/amd64` and `linux/arm64` are accepted; any other value refuses startup.
+  - **Where it applies:** index selection and the config check in `registry/image_config.go`. Production is unchanged: refusal texts are identical, every existing operator test passes, and nothing in `config/` or `deploy/gitops` sets it.
+  - **Mock deploy:** `mock-cluster.sh operator` sets it from the nodes' `.status.nodeInfo.architecture`. All nodes must agree; a mixed or unknown set is refused.
+- **t003 on dev-2:** `hello-go` built from `https://github.com/bex-co/bex` (`examples/hello-go`) in 2m19s and went live at 02:39:03Z (Ready=True, PublicRouting=True). HTTPS through Traefik with `Host: t003-hello.onbex.co` returned **200 OK**.
+  - Delete took 5 s and also removed the htpasswd user and ACL.
+  - A static site deleted in 51 s with no manual edits. Publishing is unavailable locally (no object store), as recorded above.
+- **Checks (t004–t005):** `/simplify` review done. `GOWORK=off make test`, `make lint` and `mock-cluster.test.sh` (including the platform checks) pass.
+- **Not looked into:** the Live service showed `Serving=True` with reason `PriorReleaseServing` after two ReplicaSets rolled on its first deploy.

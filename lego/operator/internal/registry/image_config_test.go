@@ -339,3 +339,78 @@ func TestReadImageRuntimeMetadataVerifiesTheConfig(t *testing.T) {
 		t.Fatalf("accepted tampered image environment: %v, %v", env, err)
 	}
 }
+
+// archFixture serves one single-platform image whose config declares arch,
+// tagged "single", and an index tagged "index" that lists it under arch. An
+// arm64 index lists an unresolvable amd64 entry first, so selection must skip
+// it; an amd64 index is amd64-only.
+func archFixture(t *testing.T, arch string) (*http.Client, string) {
+	t.Helper()
+	config := []byte(fmt.Sprintf(`{"architecture":%q,"os":"linux","config":{"ExposedPorts":{"8080/tcp":{}}}}`, arch))
+	configDigest := fmt.Sprintf("sha256:%x", sha256.Sum256(config))
+	manifest := []byte(fmt.Sprintf(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.manifest.v1+json","config":{"digest":%q}}`, configDigest))
+	digest := fmt.Sprintf("sha256:%x", sha256.Sum256(manifest))
+	entries := fmt.Sprintf(`{"digest":%q,"platform":{"os":"linux","architecture":%q}}`, digest, arch)
+	if arch == "arm64" {
+		entries = `{"digest":"sha256:` + strings.Repeat("0", 64) + `","platform":{"os":"linux","architecture":"amd64"}},` + entries
+	}
+	routes := map[string][]byte{
+		"/v2/owned/app/manifests/single":      manifest,
+		"/v2/owned/app/manifests/" + digest:   manifest,
+		"/v2/owned/app/manifests/index":       []byte(`{"schemaVersion":2,"mediaType":"application/vnd.oci.image.index.v1+json","manifests":[` + entries + `]}`),
+		"/v2/owned/app/blobs/" + configDigest: config,
+	}
+	return imageMetadataClient(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, ok := routes[r.URL.Path]
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		_, _ = w.Write(body)
+	})), digest
+}
+
+// w2/m293 t007: a non-default hosting platform resolves and verifies its own
+// architecture, and refuses another with a message naming the expected one.
+func TestReadImageConfigHonorsTheHostingPlatform(t *testing.T) {
+	arm64 := Platform{OS: "linux", Architecture: "arm64"}
+	arm, armDigest := archFixture(t, "arm64")
+	for _, reference := range []string{"single", "index"} {
+		result, err := readImageConfig(t.Context(), arm, "https://registry.test", "owned/app", reference, "", arm64)
+		if err != nil || result.PlatformDigest != armDigest || !reflect.DeepEqual(result.TCPPorts, []int32{8080}) {
+			t.Fatalf("arm64 %s: metadata=%+v err=%v", reference, result, err)
+		}
+	}
+	amd, _ := archFixture(t, "amd64")
+	for reference, want := range map[string]string{"single": "image config is not Linux/arm64", "index": "image has no Linux/arm64 manifest"} {
+		result, err := readImageConfig(t.Context(), amd, "https://registry.test", "owned/app", reference, "", arm64)
+		if err == nil || err.Error() != want || !reflect.DeepEqual(result, ImageConfig{}) {
+			t.Fatalf("amd64-only %s under arm64: metadata=%+v err=%v want %q", reference, result, err, want)
+		}
+	}
+	// The default platform still refuses the arm64 image, naming Linux/amd64,
+	// and the package default is production's.
+	if _, err := readImageConfig(t.Context(), arm, "https://registry.test", "owned/app", "single", "", DefaultPlatform); err == nil || err.Error() != "image config is not Linux/amd64" {
+		t.Fatalf("default platform accepted arm64: %v", err)
+	}
+	if hostingPlatform != DefaultPlatform || DefaultPlatform != (Platform{OS: "linux", Architecture: "amd64"}) {
+		t.Fatalf("hosting platform default = %+v", hostingPlatform)
+	}
+}
+
+func TestParsePlatform(t *testing.T) {
+	for value, want := range map[string]Platform{
+		"":            DefaultPlatform,
+		"linux/amd64": DefaultPlatform,
+		"linux/arm64": {OS: "linux", Architecture: "arm64"},
+	} {
+		if got, err := ParsePlatform(value); err != nil || got != want {
+			t.Fatalf("ParsePlatform(%q) = %+v, %v", value, got, err)
+		}
+	}
+	for _, value := range []string{"amd64", "arm64", "linux", "linux/", "windows/amd64", "linux/arm/v7", "Linux/amd64", " linux/amd64"} {
+		if _, err := ParsePlatform(value); err == nil || !strings.Contains(err.Error(), "linux/amd64 or linux/arm64") {
+			t.Fatalf("ParsePlatform(%q) err = %v", value, err)
+		}
+	}
+}

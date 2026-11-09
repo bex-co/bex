@@ -426,12 +426,13 @@ operator_make_deploy() { echo deploy >>"$steps"; }
 operator_roll() { echo roll >>"$steps"; }
 operator_wait() { echo wait >>"$steps"; }
 operator_registry_credentials() { echo regcreds >>"$steps"; }
+operator_set_platform() { echo platform >>"$steps"; }
 deploy_operator >/dev/null
 check "operator steps run in order" \
   "$(grep -vE '^wl (--request-timeout|-n bex-system get deploy,ds)' "$steps" |
      sed -e 's/^wl apply -f deploy\/gitops\/base\/operator-apps-rbac.yaml$/rbac/' \
          -e 's/^wl apply -f deploy\/gitops\/base\/operator-registry-rbac.yaml$/regrbac/' | tr '\n' ' ')" \
-  "prereqs build import deploy rbac regrbac regcreds roll wait "
+  "prereqs build import deploy rbac regrbac regcreds platform roll wait "
 operator_make_deploy() { echo deploy >>"$steps"; return 1; }
 : >"$steps"
 set +e
@@ -440,7 +441,41 @@ set -e
 check "a failed step stops the run" "$rc" "1"
 check "the failure names its step" "$(grep -c "operator step 'make -C lego/operator deploy IMG=bex-operator:dev' failed" <<<"$out")" "1"
 check "nothing after the failed step runs" "$(grep -cE '^(roll|wait)$' "$steps" || true)" "0"
+unset -f wl_kubectl operator_set_platform
+eval "$(awk '/^operator_set_platform\(\)/,/^}$/' scripts/mock-cluster.sh)"
+# 22b. BEX_IMAGE_PLATFORM follows the nodes' one architecture (w2/m293 t007):
+#      arm64 on the Apple-Silicon mock, amd64 elsewhere; a mixed, unknown or
+#      empty node set is refused rather than guessed.
+pcalls="$tmp/platform-calls"
+node_archs='arm64\narm64\narm64\n'
+wl_kubectl() {
+  case "$*" in
+  "get nodes -o jsonpath="*) printf "$node_archs" ;;
+  *) echo "wl $*" >>"$pcalls" ;;
+  esac
+}
+: >"$pcalls"
+check "arm64 nodes map to linux/arm64" "$(operator_image_platform)" "linux/arm64"
+operator_set_platform >/dev/null
+check "the manager container gets BEX_IMAGE_PLATFORM=linux/arm64" \
+  "$(cat "$pcalls")" "wl -n bex-system set env deploy/bex-controller-manager -c manager BEX_IMAGE_PLATFORM=linux/arm64"
+node_archs='amd64\namd64\n'
+check "amd64 nodes map to production's linux/amd64" "$(operator_image_platform)" "linux/amd64"
+for node_archs in 'amd64\narm64\n' 's390x\n' ''; do
+  : >"$pcalls"
+  set +e
+  out="$(operator_set_platform 2>&1)"; rc=$?
+  set -e
+  check "node architectures '$node_archs' are refused" "$rc" "1"
+  check "a refused node set patches nothing" "$(cat "$pcalls")" ""
+done
+check "the refusal names the architectures it saw" \
+  "$(node_archs='amd64\narm64\n'; operator_image_platform 2>&1 >/dev/null | grep -c "'amd64 arm64'")" "1"
 unset -f wl_kubectl
+check "the manager reads BEX_IMAGE_PLATFORM" \
+  "$(grep -c 'os.Getenv("BEX_IMAGE_PLATFORM")' lego/operator/cmd/manager/main.go)" "1"
+check "config/ leaves BEX_IMAGE_PLATFORM unset (production linux/amd64)" \
+  "$(grep -rc BEX_IMAGE_PLATFORM lego/operator/config deploy/gitops | grep -vc ':0$' || true)" "0"
 # 23. Unknown subcommands are refused before the lock is taken.
 set +e
 out="$(env -u BEX_MOCK_CLUSTER_LIB bash scripts/mock-cluster.sh bogus 2>&1)"; rc=$?

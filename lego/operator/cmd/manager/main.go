@@ -142,7 +142,8 @@ type managerConfig struct {
 }
 
 // parseManagerConfig registers and parses the manager flags, installs the
-// logger, and validates the shared tenant hosting suffix.
+// logger, validates the shared tenant hosting suffix, and sets the image
+// platform.
 func parseManagerConfig() managerConfig {
 	var cfg managerConfig
 	flag.StringVar(&cfg.metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
@@ -188,6 +189,15 @@ func parseManagerConfig() managerConfig {
 			os.Exit(1)
 		}
 	}
+	// The hosting node pool's platform: which manifest an image index resolves
+	// to and which config every image must declare. Unset is production's
+	// linux/amd64; only the arm64 local mock sets it (w2/m293 t007).
+	platform, err := registry.ParsePlatform(os.Getenv("BEX_IMAGE_PLATFORM"))
+	if err != nil {
+		setupLog.Error(err, "invalid BEX_IMAGE_PLATFORM; refusing startup")
+		os.Exit(1)
+	}
+	registry.SetHostingPlatform(platform)
 	return cfg
 }
 

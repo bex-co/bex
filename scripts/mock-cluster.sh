@@ -738,6 +738,36 @@ operator_roll() {
   fi
 }
 
+# operator_image_platform prints linux/<arch> for the workload nodes' single
+# architecture (w2/m293 t007). BuildKit builds for the node it runs on, so on
+# the Apple-Silicon CAPD mock a repo build is arm64; the manager must resolve
+# and verify that platform, not production's linux/amd64 default.
+operator_image_platform() {
+  local archs
+  archs=$(wl_kubectl get nodes -o jsonpath='{range .items[*]}{.status.nodeInfo.architecture}{"\n"}{end}' | sort -u) || return 1
+  case $archs in
+  amd64 | arm64) echo "linux/$archs" ;;
+  '')
+    echo "error: the workload cluster reported no node architecture" >&2
+    return 1
+    ;;
+  *)
+    echo "error: nodes report architecture(s) '$(tr '\n' ' ' <<<"$archs" | sed 's/ $//')'; the operator needs every node on one of amd64 or arm64" >&2
+    return 1
+    ;;
+  esac
+}
+
+# operator_set_platform sets BEX_IMAGE_PLATFORM on the manager to the nodes'
+# architecture. Idempotent: an unchanged value does not roll the Deployment.
+operator_set_platform() {
+  local platform
+  platform=$(operator_image_platform) || return 1
+  wl_kubectl -n bex-system set env deploy/bex-controller-manager -c manager \
+    "BEX_IMAGE_PLATFORM=$platform" >/dev/null || return 1
+  echo "    bex-controller-manager: BEX_IMAGE_PLATFORM=$platform"
+}
+
 operator_wait() {
   wl_kubectl -n bex-system rollout status deploy/bex-controller-manager --timeout=300s &&
     wl_kubectl wait --for=condition=established crd/apps.app.bex.co --timeout=60s >/dev/null
@@ -779,6 +809,9 @@ deploy_operator() {
   operator_step "registry push/pull credentials (bex-build/bex-registry-push, bex-registry-pull)" \
     "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n $ZOT_NS get statefulset,secret" \
     operator_registry_credentials
+  operator_step "BEX_IMAGE_PLATFORM = the nodes' architecture" \
+    "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl get nodes -o wide" \
+    operator_set_platform
   operator_step "imagePullPolicy IfNotPresent + restart onto the new image" \
     "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n bex-system get deploy,ds" \
     operator_roll
