@@ -27,7 +27,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **m177** — **BLOCKED (your actions: check a signed-in bex-desktop shows the cloud-agents tools; authorize the CLI release — implementation done)** — [Cloud Agents from the terminal and the editor: `bex agent` and bex desktop MCP preconfig](blocked/m177/README.md) (7 tasks)
 - [x] **m179** — [Remove approval mode (ADR100 withdrawn)](done/m179/README.md) (7 tasks) ← user decision 2026-11-07, DO_NOT_DO #APPROVAL-MODE
 - [ ] **m180** — [Build Sources: close the gaps between ADR097 and the code](m180/README.md) (10 tasks) ← ADR097 audit 2026-11-08
-- [ ] **083** — [A service linked to a private image build source cannot pull the image](083.md) ← w9/m180 production fix
+- [ ] **083** — **BLOCKED (your resource: a private test image plus a read-only registry credential for the live check; code shipped in 95f1e1f39)** — [A service linked to a private image build source cannot pull the image](blocked/083.md)
 - [ ] **079** — **BLOCKED (time/usage trigger: re-evaluate on 2026-12-05 or at 10 GB in `bex-agent-attachments`, whichever comes first; no user action needed)** — [ADR095 residuals: attachment storage metering and malware scanning](blocked/079.md)
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
 - [x] **081** — [Approval mode for codex sessions (withdrawn)](done/081.md) — withdrawn 2026-11-07 with ADR100; removed by m179
