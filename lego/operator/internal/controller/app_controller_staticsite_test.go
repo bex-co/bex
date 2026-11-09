@@ -301,6 +301,9 @@ var _ = Describe("reconciling a static_site App", func() {
 		jobNN := types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ns}
 		Eventually(func() error { return k8sClient.Get(ctx, jobNN, &job) }, "30s", "250ms").Should(Succeed())
 		Eventually(done, "30s").Should(BeClosed())
+		By("persisting the publish-dispatch marker deletion's purge decision reads (w2/076)")
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.Annotations).To(HaveKeyWithValue(annotStaticPublishDispatched, string(app.UID)))
 		Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 		clone := job.Spec.Template.Spec.InitContainers[0]
 		Expect(clone.Name).To(Equal("clone"))
@@ -662,6 +665,45 @@ var _ = Describe("reconciling a static_site App", func() {
 		var publishJob batchv1.Job
 		Expect(apierrors.IsNotFound(k8sClient.Get(ctx,
 			types.NamespacedName{Name: "pub-" + name + "-rev-1", Namespace: ns}, &publishJob))).To(BeTrue())
+		Expect(app.Annotations).NotTo(HaveKey(annotStaticPublishDispatched))
+
+		By("deleting the never-published site without its credential (w2/076)")
+		Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+		Eventually(func() bool {
+			_, _ = staticReconciler().Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+			return apierrors.IsNotFound(k8sClient.Get(ctx, nn, &appv1alpha1.App{}))
+		}, "30s", "250ms").Should(BeTrue())
+	})
+
+	It("holds a published site's deletion while the publish credential is missing (w2/076)", func() {
+		const name = "site-published-no-credential"
+		nn := types.NamespacedName{Name: name, Namespace: ns}
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
+			Spec: appv1alpha1.AppSpec{
+				Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/site", PublishPath: "dist", Expose: true,
+			},
+		}
+		Expect(k8sClient.Create(ctx, app)).To(Succeed())
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		app.Status.ActiveRevision = revFor(app)
+		Expect(k8sClient.Status().Update(ctx, app)).To(Succeed())
+		reconcileFailing(staticReconciler(), nn) // adds the finalizer
+
+		Expect(k8sClient.Delete(ctx, app)).To(Succeed())
+		var err error
+		for range 3 {
+			_, err = staticReconciler().Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+		}
+		Expect(err).To(MatchError(ContainSubstring("static publish credential Secret default/static-s3 is unavailable")))
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		Expect(app.DeletionTimestamp.IsZero()).To(BeFalse())
+
+		// Envtest cannot run a purge Job; drop the finalizer so the shared
+		// namespace stays clean for later specs.
+		Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+		app.Finalizers = nil
+		Expect(k8sClient.Update(ctx, app)).To(Succeed())
 	})
 
 	It("fails a static_site with no publishPath", func() {

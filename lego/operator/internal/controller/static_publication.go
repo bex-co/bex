@@ -18,15 +18,21 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"strconv"
 
+	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/identity"
+	"github.com/bex-co/bex/lego/operator/internal/publish"
 	"github.com/bex-co/bex/lego/types/k8sname"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -100,6 +106,60 @@ func (r *AppReconciler) writeStaticPublicationRecord(ctx context.Context, app *a
 	}
 	if err := r.uncachedSecretClient().Create(ctx, rec); err != nil && !apierrors.IsAlreadyExists(err) {
 		return err
+	}
+	return nil
+}
+
+// markStaticPublishDispatched persists annotStaticPublishDispatched before a
+// publish Job may upload content.
+func (r *AppReconciler) markStaticPublishDispatched(ctx context.Context, app *appv1alpha1.App) error {
+	if app.Annotations[annotStaticPublishDispatched] != "" {
+		return nil
+	}
+	return r.patchAppMeta(ctx, app, func(meta *metav1.ObjectMeta) {
+		metav1.SetMetaDataAnnotation(meta, annotStaticPublishDispatched, string(app.UID))
+	})
+}
+
+// staticPublishRecorded reports whether app's own object carries publish
+// evidence: the dispatch marker, or a served/recorded revision.
+func staticPublishRecorded(app *appv1alpha1.App) bool {
+	return app.Annotations[annotStaticPublishDispatched] != "" ||
+		app.Status.ActiveRevision != "" || app.Status.StaticPrefix != ""
+}
+
+// latchStaticPublishEvidence runs first in a static_site's deletion, before
+// execution cleanup reaps its Jobs. An App without the dispatch marker (e.g.
+// one an operator predating it published) may still have left traces: a
+// publish Job in the build namespace or a retained-publication record. Either
+// latches the marker onto the App, so a purge that cannot run yet keeps
+// failing closed on every later pass after those traces are gone (w2/076).
+func (r *AppReconciler) latchStaticPublishEvidence(ctx context.Context, app *appv1alpha1.App, buildNamespace string, cl client.Client) error {
+	if app.Spec.Type != appv1alpha1.TypeStaticSite || staticPublishRecorded(app) {
+		return nil
+	}
+	var records corev1.SecretList
+	if err := r.uncachedSecretClient().List(ctx, &records, client.InNamespace(app.Namespace),
+		client.MatchingLabels{snapshotOfLabel: k8sname.Fit(app.Name + "-static")}); err != nil {
+		return fmt.Errorf("list static publication records: %w", err)
+	}
+	traced := slices.ContainsFunc(records.Items, func(rec corev1.Secret) bool { return metav1.IsControlledBy(&rec, app) })
+	if !traced {
+		selector := client.MatchingLabels{execution.LabelApp: app.Name, execution.LabelComponent: publish.Component}
+		if app.UID != "" {
+			selector[execution.LabelAppUID] = string(app.UID)
+		}
+		var jobs batchv1.JobList
+		if err := cl.List(ctx, &jobs, client.InNamespace(buildNamespace), selector); err != nil {
+			return fmt.Errorf("list publish Jobs: %w", err)
+		}
+		traced = len(jobs.Items) > 0
+	}
+	if !traced {
+		return nil
+	}
+	if err := r.markStaticPublishDispatched(ctx, app); err != nil {
+		return fmt.Errorf("record static publish evidence: %w", err)
 	}
 	return nil
 }

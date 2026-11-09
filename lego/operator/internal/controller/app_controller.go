@@ -283,6 +283,11 @@ const annotTLSSecretHistory = "app.bex.co/tls-secret-history"
 const maxTLSSecretHistoryEntries = 500
 
 const annotStaticPurgeComplete = "app.bex.co/static-purge-complete"
+
+// annotStaticPublishDispatched is stamped (value: the App UID) before the
+// first publish Job is dispatched, so deletion knows content may exist in the
+// object store even after the Job is reaped (w2/076).
+const annotStaticPublishDispatched = "app.bex.co/static-publish-dispatched"
 const annotRegistryPurgeComplete = "app.bex.co/registry-purge-complete"
 
 // Runtime modes.
@@ -4400,6 +4405,12 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 			}
 		}
 	}
+	// Persist the publish evidence BEFORE a Job can upload anything: deletion
+	// treats an App without it (and without any other publish trace) as
+	// having no object-store content to purge.
+	if err := r.markStaticPublishDispatched(ctx, app); err != nil {
+		return r.fail(ctx, app, reasonPublishFailed, fmt.Errorf("recording static publish dispatch: %w", err))
+	}
 	obs, err := publish.Ensure(ctx, opts)
 	if err != nil {
 		return r.fail(ctx, app, reasonPublishFailed, err)
@@ -7416,9 +7427,12 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		// namespace — ownerRefs are invalid across namespaces so nothing cascades.
 		ns := r.buildNamespace(app.Namespace)
 		cl := r.buildPlaneClient()
+		// Latch static publish evidence before execution cleanup reaps the
+		// publish Jobs that may be its only trace (w2/076).
+		staticEvidenceErr := r.latchStaticPublishEvidence(ctx, app, ns, cl)
 		executionPending, err := r.reclaimAppExecution(ctx, app, ns, cl)
 		errs = append(errs, err)
-		externalPending, err := r.reclaimAppExternalArtifacts(ctx, app, ns, cl)
+		externalPending, err := r.reclaimAppExternalArtifacts(ctx, app, ns, cl, staticEvidenceErr)
 		errs = append(errs, err)
 		cleanupErr := errors.Join(errs...)
 		// A finalization that outruns its bound is surfaced, not hidden (w3/m81):
@@ -7536,7 +7550,7 @@ func deleteOwnedObject(ctx context.Context, cl client.Client, namespace, name st
 	return false, nil
 }
 
-func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client) (bool, error) {
+func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *appv1alpha1.App, namespace string, cl client.Client, staticEvidenceErr error) (bool, error) {
 	var errs []error
 	pending := false
 	diskDone, diskErr := r.reconcileDiskSnapshotCleanup(ctx, app)
@@ -7556,10 +7570,28 @@ func (r *AppReconciler) reclaimAppExternalArtifacts(ctx context.Context, app *ap
 		errs = append(errs, tlsErr)
 	}
 	if app.Spec.Type == appv1alpha1.TypeStaticSite {
+		var unavailable error
 		if !r.StaticStore.Configured() {
-			errs = append(errs, fmt.Errorf("static purge configuration is unavailable"))
+			unavailable = fmt.Errorf("static purge configuration is unavailable")
 		} else if credentialErr := validateAWSCredentialSecret(ctx, r.buildPlaneClient(), namespace, r.StaticStore.Secret); credentialErr != nil {
-			errs = append(errs, fmt.Errorf("static publish %w", credentialErr))
+			unavailable = fmt.Errorf("static publish %w", credentialErr)
+		}
+		if unavailable != nil {
+			// Without the store or its credential the purge cannot run. That
+			// blocks deletion only while content may exist: an App that never
+			// dispatched a publish (e.g. a dev cluster with no publish
+			// credential) has nothing in the object store (w2/076). Any
+			// publish evidence, or failing to look for it, keeps the
+			// finalizer failing closed.
+			switch {
+			case staticEvidenceErr != nil:
+				errs = append(errs, unavailable, staticEvidenceErr)
+			case staticPublishRecorded(app):
+				errs = append(errs, unavailable)
+			default:
+				logf.FromContext(ctx).Info("static site never published; no object-store content to purge",
+					"app", app.Name, "reason", unavailable.Error())
+			}
 		} else {
 			purgeJob := publish.PurgeJob(app.Name, string(app.UID), app.Labels[labelWorkspace],
 				app.Namespace, r.StaticStore, namespace, r.RegistryBuildPullSecret, "",

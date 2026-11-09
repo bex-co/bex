@@ -39,6 +39,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] **m278** — [Idle sandboxes suspend and wake on exec, as on Render](blocked/m278/README.md) (9 tasks) ← from w2/m263 t001, user decision D2=A 2026-11-07; Render parity included — **BLOCKED (user: sign off memory/process loss on suspension or fund checkpointing — `/unblock w2`; plus the production walk once 9cb1c257a deploys)**; t001–t008, t010 done
 - [x] **m288** — [Blueprint sync ids answer as `exe-`, Render's prefix](done/m288/README.md) — **DONE 2026-11-08**: every client-read sync id is exe-; bsr- still accepted and stored
 - [x] **m289** — [A fresh local cluster runs dev-N end to end](done/m289/README.md) — **DONE 2026-11-08**: from no cluster, three commands bring up dev-N unattended
+- [ ] **m293** — [dev-N has a working platform registry, so repo builds, static publishes and deletes work locally](m293/README.md) (6 tasks) ← from the w2/076 dev-2 walk 2026-11-08; Render parity omitted (local tooling)
 - [x] **m261** — [Blueprint create with `existingResources: create_new`](done/m261/README.md) (8 tasks) — **DONE 2026-11-03** ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
 - [x] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](done/064.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
@@ -52,7 +53,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] [073 — Rebrand the remaining run-time CLI prose that names Render (extends D4)](blocked/073.md) — **BLOCKED (user: confirm extending D4 to product-name prose; `/unblock w2`)**
 - [x] [074 — Blueprint Sync History repeats the reconnection note on every row](done/074.md) — **DONE 2026-11-08**: premise not reproduced — one note per connection boundary (real-DB test)
 - [x] [075 — Creating a service under a name whose App is still being deleted may answer 500](done/075.md) — **DONE 2026-11-08**: named 409 SERVICE_NAME_STILL_DELETING on every surface; Render-style immediate reuse recorded as a divergence awaiting sign-off
-- [ ] [076 — A deleted static site never finishes deleting on dev-N (missing static publish credential)](076.md) ← w2/m256 t015 finding 2026-11-08
+- [x] [076 — A deleted static site never finishes deleting on dev-N (missing static publish credential)](done/076.md) — **DONE 2026-11-08** (static purge); acceptance continues in m293
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
 

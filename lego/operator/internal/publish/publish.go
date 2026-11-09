@@ -65,6 +65,11 @@ const publishTimeout = 10 * time.Minute
 // plane's ADR060 §D1 shape.
 const ObserveInterval = 3 * time.Second
 
+// Component is the execution component label every publish Job carries. A
+// publish Job that exists for an App is evidence it may have uploaded content
+// (the operator's deletion purge decision reads it).
+const Component = "publish"
+
 // outVolume is the emptyDir the extract init-container copies PublishPath into
 // and the upload container syncs from.
 const outVolume = "out"
@@ -440,9 +445,9 @@ func PublishJob(o Options) *batchv1.Job {
 		appNamespace = o.AppNamespace
 	}
 	verifyImage := o.VerifyImage && o.Image != ""
-	labels := execution.PodLabels(o.AppID, o.AppUID, "publish", o.Workspace, appNamespace, verifyImage)
+	labels := execution.PodLabels(o.AppID, o.AppUID, Component, o.Workspace, appNamespace, verifyImage)
 	labels["app.bex.co/publish"] = o.AppID
-	podLabels := execution.PodLabels(o.AppID, o.AppUID, "publish", o.Workspace, appNamespace, verifyImage)
+	podLabels := execution.PodLabels(o.AppID, o.AppUID, Component, o.Workspace, appNamespace, verifyImage)
 	podLabels["app.bex.co/publish"] = o.AppID
 	podSpec := corev1.PodSpec{
 		// No legacy Docker-link env vars (w4/m123) — a platform maintenance pod.
