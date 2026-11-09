@@ -2161,12 +2161,12 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// App as "taken" merely because the caller also belongs to A, refusing a
 	// creation the milestone exists to allow (two workspaces both owning
 	// "web").
-	taken, err := s.nameTaken(ctx, tenantID, req.Name)
+	holder, err := s.nameHolder(ctx, tenantID, req.Name)
 	if err != nil {
 		return AppView{}, err
 	}
-	if taken {
-		return AppView{}, errServiceNameInUse(req.Name)
+	if holder != nil {
+		return AppView{}, errNameHeldBy(holder, req.Name)
 	}
 
 	// Refuse at create what every later env write refuses: a malformed name
@@ -2228,7 +2228,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		seed.env = takeCreateEnvLiterals(&a.Spec)
 	}
 	if err := s.planNewApp(ctx, req, a, tenantID, seed); err != nil {
-		return AppView{}, err
+		return AppView{}, s.nameStorageRefusal(ctx, tenantID, req.Name, err)
 	}
 	// Dry-run: the plan above is every refusal the real create meets, so stop
 	// here, before its first write (w2/m29, w5/m116). The preview keeps the
@@ -2245,7 +2245,46 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		stampEnvironmentMembership(preview, environment)
 		return s.view(preview), nil
 	}
-	return s.materializeNewApp(ctx, req, a, tenantID, environment, seed)
+	v, err := s.materializeNewApp(ctx, req, a, tenantID, environment, seed)
+	if err != nil {
+		return AppView{}, s.nameStorageRefusal(ctx, tenantID, req.Name, err)
+	}
+	return v, nil
+}
+
+// nameStorageRefusal answers a create whose App the API server's storage
+// refused as already existing: admission passed, then storage met the name
+// still held (dry-run and write alike check it last). The probe above misses
+// such a holder only in a race, so the holder is read again and named; with
+// no holder found (the conflict was another object's) err stands. A raw
+// AlreadyExists would otherwise answer 500 (w2/075).
+func (s *Service) nameStorageRefusal(ctx context.Context, tenantID, name string, err error) error {
+	if !apierrors.IsAlreadyExists(err) {
+		return err
+	}
+	holder, readErr := s.nameHolder(ctx, tenantID, name)
+	if readErr != nil || holder == nil {
+		return err
+	}
+	return errNameHeldBy(holder, name)
+}
+
+// ServiceNameStillDeletingCode refuses a service create under the name of a
+// service the workspace just deleted whose App is still being torn down: its
+// App object holds the name until the teardown finishes (w2/075), as
+// ServiceStillDeletingCode refuses a Blueprint apply's re-create.
+const ServiceNameStillDeletingCode = "SERVICE_NAME_STILL_DELETING"
+
+// errNameHeldBy is the refusal of a create whose name holder is holder: a
+// live service's name is in use; a deleted one's is free again once its
+// teardown finishes, so the create is retried then.
+func errNameHeldBy(holder *appv1alpha1.App, name string) error {
+	if holder.DeletionTimestamp.IsZero() {
+		return errServiceNameInUse(name)
+	}
+	return core.NewConflictError(ServiceNameStillDeletingCode,
+		fmt.Sprintf("a service named %q was just deleted and its cleanup is still finishing; retry in a minute to create a service with this name", name),
+		map[string]any{"service": name})
 }
 
 // planNewApp is every refusal a create meets, run before its first write: the
@@ -2396,7 +2435,7 @@ func takeCreateEnvLiterals(spec *appv1alpha1.AppSpec) map[string]string {
 	return literals
 }
 
-// nameTaken reports whether name is already claimed in the exactly-one
+// nameHolder is the App that already claims name in the exactly-one
 // workspace this create targets (w4/m19): tenantID's own object name
 // (CRName(tenantID, name)) first, then the bare name IF it belongs to that
 // SAME tenant — a store-managed App created before this scheme shipped is
@@ -2404,7 +2443,9 @@ func takeCreateEnvLiterals(spec *appv1alpha1.AppSpec) map[string]string {
 // still see it as taken; a bare-named App belonging to a DIFFERENT tenant (or
 // none) must not. tenantID == "" (store off / unbound caller) falls back to
 // the single flat bare-name probe, the pre-migration behavior for that mode.
-func (s *Service) nameTaken(ctx context.Context, tenantID, name string) (bool, error) {
+// A holder still being deleted counts too: its object keeps the name until
+// its teardown finishes (errNameHeldBy). nil means the name is free.
+func (s *Service) nameHolder(ctx context.Context, tenantID, name string) (*appv1alpha1.App, error) {
 	get := func(objName string) (*appv1alpha1.App, error) {
 		var a appv1alpha1.App
 		err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.AppNamespace(tenantID), Name: objName}, &a)
@@ -2417,17 +2458,16 @@ func (s *Service) nameTaken(ctx context.Context, tenantID, name string) (bool, e
 		return &a, nil
 	}
 	if tenantID == "" {
-		a, err := get(name)
-		return a != nil, err
+		return get(name)
 	}
 	if a, err := get(core.CRName(tenantID, name)); a != nil || err != nil {
-		return a != nil, err
+		return a, err
 	}
 	a, err := get(name)
-	if err != nil {
-		return false, err
+	if err != nil || a == nil || a.Labels[core.LabelTenant] != tenantID {
+		return nil, err
 	}
-	return a != nil && a.Labels[core.LabelTenant] == tenantID, nil
+	return a, nil
 }
 
 // stackAppPlan is a stack create that passed its plan: the App as the create

@@ -51,7 +51,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [072 — A missing image tag raises `image_pull_failed`, as Render does](done/072.md) — **DONE 2026-11-08**: registry refusals before dispatch emit image_pull_failed and its email
 - [ ] [073 — Rebrand the remaining run-time CLI prose that names Render (extends D4)](blocked/073.md) — **BLOCKED (user: confirm extending D4 to product-name prose; `/unblock w2`)**
 - [x] [074 — Blueprint Sync History repeats the reconnection note on every row](done/074.md) — **DONE 2026-11-08**: premise not reproduced — one note per connection boundary (real-DB test)
-- [ ] [075 — Creating a service under a name whose App is still being deleted may answer 500](075.md) ← w2/m256 t015 finding 2026-11-08
+- [x] [075 — Creating a service under a name whose App is still being deleted may answer 500](done/075.md) — **DONE 2026-11-08**: named 409 SERVICE_NAME_STILL_DELETING on every surface; Render-style immediate reuse recorded as a divergence awaiting sign-off
 - [ ] [076 — A deleted static site never finishes deleting on dev-N (missing static publish credential)](076.md) ← w2/m256 t015 finding 2026-11-08
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
