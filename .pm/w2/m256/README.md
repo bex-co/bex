@@ -1,6 +1,6 @@
 # w2 · m256 — Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does
 
-**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** todo — all done but t014 (implemented, awaiting a production re-check once deployed) and t011
+**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** todo — t015 (500 on re-create) then the t014 production re-check, then t011
 
 ## Tasks (in order)
 
@@ -19,7 +19,8 @@
 | t012 | Dashboard: a created Blueprint shows its plan and an Approve action, and Sync cannot apply it past the plan — **DONE** | 1h | t006 |
 | t013 | Planned Blueprint page: the reconnection note on a revived row, the right status chip, and approve-not-sync empty copy — **DONE** | 30m | t012 |
 | t014 | A recreated Blueprint whose plan finds no changes is stuck in created, and planning ignores resources deleted since the last sync — implemented 2026-11-08, awaiting production re-check | 1.5h | t006 |
-| t011 | Closeout | 10m | t009, t010, t012, t013, t014 |
+| t015 | Re-creating a Blueprint right after deleting it and its service answers 500 and leaves a half-revived row | 1h | t014 |
+| t011 | Closeout | 10m | t009, t010, t012, t013, t014, t015 |
 
 ## Definition of done
 
@@ -101,3 +102,16 @@ Everything implementable is shipped. What remains is the production walk, and pr
 ## Blocked (2026-11-08): waiting for the t014 deploy
 
 Everything is shipped. t014 (`49ffa1735`) only needs its production re-check, and production is pinned to `19dfc298275a`, nine minutes before t014. Deploys are starved by superseded runs (owned by w6/m156). **Release condition:** a `pin platform images` commit whose revision contains `49ffa1735`. Then re-run t014's reproduction on production (create → approve → delete Blueprint and service → re-create → plan shows `create`, approve recreates), then t011.
+
+## t014 production re-check — 2026-11-08: new defect, back in the queue
+
+Production is pinned to `76061b0f7517`, which contains `49ffa1735`.
+
+1. `ea blueprints create` (static-site, adopt) returned `planned` with `create static-site`.
+2. `approve` returned `success` and created `srv-dbohe4fr74fc7382gn50`.
+3. The Blueprint and the service were deleted (204 each).
+4. Re-running `create` **answered 500**, yet it revived the row: `created`, renamed `qa-20261108-t014b`, `resources: []`, and no new planned row.
+5. A retry returned `409 BLUEPRINT_CONNECTION_CONFLICT` against itself.
+6. `ea blueprints plan <id>` **answered 500**, reproducibly.
+
+The Blueprint was deleted afterwards (204). Production logs are not readable by the agent (the classifier denied it), so the defect is being reproduced on dev-2. Filed as **t015**; t014 stays open until the re-check passes.
