@@ -172,6 +172,34 @@ func (r *AppReconciler) externalImageCredentials(ctx context.Context, app *appv1
 	return carrier, true, nil
 }
 
+// withLinkedSourcePullSecret adds the build source's registry pull secret when
+// app deploys the external image of the image-backed build source it is
+// linked to (ADR097, w9/083): a private image's credential lives on the
+// source, and the source shares the service's namespace, so the pod names it
+// directly. Every other App gets base unchanged. A source that cannot be read
+// leaves base as is, so the pull fails visibly at the kubelet; port discovery
+// (resolveImageNetwork) reports the same read error on its own path.
+func (r *AppReconciler) withLinkedSourcePullSecret(ctx context.Context, app *appv1alpha1.App, image string, base []corev1.LocalObjectReference) []corev1.LocalObjectReference {
+	if app.Spec.BuildSource == nil {
+		return base
+	}
+	holder, external, err := r.externalImageCredentials(ctx, app, image)
+	if err != nil {
+		logf.FromContext(ctx).Error(err, "read the build source's pull secret", "app", app.Name)
+		return base
+	}
+	if !external || holder == app || holder.Spec.ExternalRegistryPullSecret == "" {
+		return base
+	}
+	name := holder.Spec.ExternalRegistryPullSecret
+	for _, ref := range base {
+		if ref.Name == name {
+			return base
+		}
+	}
+	return append(append([]corev1.LocalObjectReference(nil), base...), corev1.LocalObjectReference{Name: name})
+}
+
 // resolveImageNetwork is deliberately scoped to the App's own built repository.
 // An arbitrary image host can never receive platform registry credentials; a
 // prebuilt image (web, w4/m243; private, w6/095) is read anonymously, or with

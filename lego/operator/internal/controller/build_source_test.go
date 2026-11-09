@@ -368,3 +368,61 @@ func TestLinkedServiceResolvesTheSourceImageNetwork(t *testing.T) {
 		t.Fatal("a linked service resolved an image that is not its source's")
 	}
 }
+
+// w9/083: a private image-backed source's registry credential lives on the
+// source; the linked service's pods name it so the kubelet can pull the
+// source's image, next to the service's own pull secret and never twice.
+func TestLinkedServicePullsAPrivateSourceImageWithTheSourceCredential(t *testing.T) {
+	const image = "ghcr.io/acme/private:1"
+	carrier := carrierApp(image)
+	carrier.Spec.ExternalRegistryPullSecret = "src-registry"
+	app := workerLinkedTo(image)
+	r, cl, nn := buildSourceReconciler(t, app, carrier)
+	reconcileTwice(t, r, nn)
+	var dep appsv1.Deployment
+	if err := cl.Get(context.Background(), nn, &dep); err != nil {
+		t.Fatalf("Deployment: %v", err)
+	}
+	if got := dep.Spec.Template.Spec.ImagePullSecrets; len(got) != 1 || got[0].Name != "src-registry" {
+		t.Fatalf("Deployment imagePullSecrets = %v, want the source's src-registry", got)
+	}
+
+	ctx := t.Context()
+	own := workerLinkedTo(image)
+	own.Spec.ExternalRegistryPullSecret = "src-registry"
+	base := r.imagePullSecrets(own, image)
+	if got := r.withLinkedSourcePullSecret(ctx, own, image, base); len(got) != 1 {
+		t.Fatalf("the source's secret already named by the service was added twice: %v", got)
+	}
+	// Another image (not the source's) and an unlinked App get nothing extra.
+	if got := r.withLinkedSourcePullSecret(ctx, app, "docker.io/library/redis:7", nil); len(got) != 0 {
+		t.Fatalf("a non-source image got %v", got)
+	}
+	plain := heldWorkerApp("tea-bsrc")
+	plain.Spec.ExternalRegistryPullSecret = "mine"
+	if got, want := r.withLinkedSourcePullSecret(ctx, plain, plain.Spec.Image, r.imagePullSecrets(plain, plain.Spec.Image)), r.imagePullSecrets(plain, plain.Spec.Image); !localObjectReferencesEqual(got, want) {
+		t.Fatalf("an unlinked App's pull secrets changed: %v, want %v", got, want)
+	}
+}
+
+// A git-built source's image is a platform-registry digest the service runs
+// from its own repository copy: no source credential applies, and a source
+// that cannot be read leaves the service's own secrets for the kubelet to fail
+// on visibly.
+func TestLinkedSourcePullSecretSkipsPlatformBuildsAndMissingSources(t *testing.T) {
+	carrier := carrierApp("")
+	carrier.Spec.ExternalRegistryPullSecret = "src-registry"
+	r, _, _ := buildSourceReconciler(t, workerLinkedTo(""), carrier)
+	r.Registry = "registry.test"
+	platform := "registry.test/tea-bsrc/src@sha256:" + strings.Repeat("a", 64)
+	app := workerLinkedTo(platform)
+	if got := r.withLinkedSourcePullSecret(t.Context(), app, platform, nil); len(got) != 0 {
+		t.Fatalf("a platform build got the source's secret: %v", got)
+	}
+	orphan := workerLinkedTo("ghcr.io/acme/private:1")
+	orphan.Spec.BuildSource.Name = "gone"
+	base := []corev1.LocalObjectReference{{Name: "own"}}
+	if got := r.withLinkedSourcePullSecret(t.Context(), orphan, "ghcr.io/acme/private:1", base); !localObjectReferencesEqual(got, base) {
+		t.Fatalf("a missing source changed the pull secrets: %v", got)
+	}
+}

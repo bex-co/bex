@@ -2700,7 +2700,7 @@ func (r *AppReconciler) reconcileKubernetesRuntime(ctx context.Context, app *app
 		// Authenticate kubelet pulls against the auth-enabled registry
 		// (w7/m8). nil when no pull secret is configured or the image isn't
 		// registry-hosted, so a prebuilt public image is left untouched.
-		pullSecrets:    r.imagePullSecrets(app, image),
+		pullSecrets:    r.withLinkedSourcePullSecret(ctx, app, image, r.imagePullSecrets(app, image)),
 		userNamespaces: r.userNamespacesFor(app),
 	}, restore); err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
@@ -4854,6 +4854,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		tmpl = *restore
 	} else {
 		tmpl = r.cronPodSpec(effectiveApp, image, port, labels, launch, r.imageCommit(ctx, app, image))
+		tmpl.Spec.ImagePullSecrets = r.withLinkedSourcePullSecret(ctx, effectiveApp, image, tmpl.Spec.ImagePullSecrets)
 	}
 	res, err := r.applyServingCronJob(ctx, app, tmpl, restore != nil)
 	if err != nil {
@@ -6806,7 +6807,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		vols = []corev1.Volume{*vol}
 		mounts = []corev1.VolumeMount{*mount}
 	}
-	pullSecrets := r.imagePullSecrets(app, image)
+	pullSecrets := r.withLinkedSourcePullSecret(ctx, app, image, r.imagePullSecrets(app, image))
 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
 		return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
 	}
