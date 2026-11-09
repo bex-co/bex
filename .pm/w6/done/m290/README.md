@@ -1,6 +1,6 @@
 # w6 · m290 — Deleting an environment or project handles its Postgres, Key Value and env groups as Render does
 
-**Worker:** worker6 **Goal:** deleting an environment or a project leaves every contained datastore and env group in the state Render leaves it in (verified on a live Render account first), identically on REST, GraphQL, MCP and the dashboard. **Status:** in progress (t001–t006, t008, t009 done; t007 live parity check and t010 closeout after deploy)
+**Worker:** worker6 **Goal:** deleting an environment or a project leaves every contained datastore and env group in the state Render leaves it in (verified on a live Render account first), identically on REST, GraphQL, MCP and the dashboard. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,10 +12,10 @@
 | t004 | [REST, GraphQL and MCP report the cascade with the same semantics and error shapes](done/t004.md) — **DONE** | 45m | t002 |
 | t005 | [Dashboard delete confirmation lists the datastores and env groups that will be deleted](done/t005.md) — **DONE** | 45m | t002 |
 | t006 | [Amend ADR032 and ADR018 row 225 with the Render evidence and the shipped behavior](done/t006.md) — **DONE** | 30m | t001 |
-| t007 | [Render parity](t007.md) | 30m | t003, t004, t005, t006 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 30m | t003, t004, t005, t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t008 |
-| t010 | [Closeout](t010.md) | 10m | t009 |
+| t010 | [Closeout](done/t010.md) — **DONE** | 10m | t009 |
 
 ## Definition of done
 

@@ -37,7 +37,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 Materialized from all five proposals of `/pm-brainstorm for w6` 2026-11-08 plus its ledger follow-up, approved by the user's `/pm them all to w6 and then /loopx w6`. Numbers shifted from the proposal: m288/m289 were taken by w2 the same day, and w3/057 had closed, so its follow-up is 113.
 
-1. **[m290](m290/README.md)** — deleting an environment or project handles its datastores and env groups as Render does (10 tasks).
+1. **[m290](done/m290/README.md)** — **done** — deleting an environment or project handles its datastores and env groups as Render does (10 tasks).
 2. **[m291](blocked/m291/README.md)** — **BLOCKED** (w8 custody + runner link) — build toolchain digests are fresh again and #105 closes (7 tasks).
 3. **[110](done/110.md)** — **done** — tenant-view probe detects an activator-held wake (#134).
 4. **[111](done/111.md)** — **done** — main-only branch policies on five production environments (#101), split from w3/blocked/m173 t005.
@@ -46,7 +46,7 @@ Materialized from all five proposals of `/pm-brainstorm for w6` 2026-11-08 plus 
 
 ## Milestones
 
-- [ ] **m290** — [Deleting an environment or project handles its Postgres, Key Value and env groups as Render does](m290/README.md) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 1
+- [x] **m290** — [Deleting an environment or project handles its Postgres, Key Value and env groups as Render does](done/m290/README.md) — **done 2026-11-08**: verified on production (REST 409; GraphQL env and project deletes remove Postgres and Key Value; env groups detached) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 1
 - [ ] **m291** — **BLOCKED (w8/user: `toolchain-freshness.json` and the native inputs are byte-pinned by w8/m91's D3 custody, the same gate as m163; plus a normal runner link for the native-common rebuild, #133. t001 is done and PR #106 is closed)** — [Build toolchain digests are fresh again and #105 closes](blocked/m291/README.md) (7 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 2
 - [ ] **m164** — **BLOCKED (user: make the GHCR package `bex-evidence` public in Package settings; t001–t003 done, evidence pinned at `ghcr.io/bex-co/bex-evidence@sha256:1203a4e7…`)** — [Native-common qualification evidence restored from the pre-purge bundle into object storage](blocked/m164/README.md) (7 tasks)
 - [ ] **m165** — **BLOCKED (time: the 24 h placement window ends 2026-11-09 07:57Z; t001–t005 done, other-ci live and bex-ci grants only bex)** — [The bex-ci pool serves bex only; other repositories get their own runner pool](blocked/m165/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-07
