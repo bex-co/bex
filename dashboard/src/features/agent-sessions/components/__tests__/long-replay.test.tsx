@@ -59,9 +59,12 @@ const mintTicket = async () => ({ ticket: "fixture" });
 function Harness({
   transport,
   isTerminal = true,
+  onChat,
 }: {
   transport: ReturnType<typeof createAgentSessionTransport>;
   isTerminal?: boolean;
+  /** Must be stable: the component re-publishes when its identity changes. */
+  onChat?: (handle: ConversationChatHandle | null) => void;
 }) {
   const [, setChat] = useState<ConversationChatHandle | null>(null);
   const [, setState] = useState<ConversationState>("not-started");
@@ -71,10 +74,53 @@ function Harness({
       isTerminal={isTerminal}
       phase={isTerminal ? "completed" : "running"}
       transport={transport}
-      onChatStateChange={setChat}
+      onChatStateChange={onChat ?? setChat}
       onConversationStateChange={setState}
     />
   );
+}
+
+// Fake milliseconds the clock advances per chunk the transport hands over.
+//
+// `useChat`'s `experimental_throttle` (throttleit) renders synchronously each
+// time `Date.now()` has moved 50ms, and the replay runs entirely in
+// microtasks. On the wall clock the number of full-transcript renders is
+// therefore "wall time / 50ms": a loaded host renders the ever-growing log
+// many more times, each render costs more, and the test ran 7+ minutes at load
+// ~60 (w2/077). Driving `Date.now()` from stream progress makes the render
+// count a function of the chunk sequence alone. 1ms/chunk ≈ one render per 50
+// chunks, about what an idle host does on the wall clock. The clock must still
+// advance per chunk: the pre-fix useStreamDuration only queued its per-chunk
+// update when the elapsed value changed, and that update is the #185 shape.
+const MS_PER_CHUNK = 1;
+
+/** makeFixtureFetch, but each chunk pulled advances the mocked `Date.now()`. */
+function makeClockedFixtureFetch(
+  chunks: UIMessageChunk[],
+  tick: () => void,
+): typeof globalThis.fetch {
+  return (async () => {
+    const encoder = new TextEncoder();
+    let i = 0;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (i < chunks.length) {
+          tick();
+          controller.enqueue(encoder.encode(encodeChunk(chunks[i++])));
+          return;
+        }
+        controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+        controller.close();
+      },
+    });
+    return new Response(body, {
+      status: 200,
+      headers: {
+        "content-type": "text/event-stream",
+        "x-vercel-ai-ui-message-stream": "v1",
+      },
+    });
+  }) as typeof globalThis.fetch;
 }
 
 describe("long replay (ags-dbf8nggkbcjs73a5r3u0)", () => {
@@ -98,21 +144,40 @@ describe("long replay (ags-dbf8nggkbcjs73a5r3u0)", () => {
     const spy = vi.spyOn(console, "error").mockImplementation((...args) => {
       errors.push(args.map(String).join(" "));
     });
+    let clock = Date.now();
+    const clockSpy = vi.spyOn(Date, "now").mockImplementation(() => clock);
+    // Settles once the replay leaves the busy statuses: "ready" after a clean
+    // finish, or a withdrawn (null) handle when useChat errored — which is
+    // what #185 does mid-replay. Awaited instead of a `waitFor(getByText)`
+    // whose MutationObserver re-queried (and pretty-printed on every miss)
+    // the whole growing transcript after each throttled commit.
+    let busy = false;
+    let settle!: () => void;
+    const settled = new Promise<void>((resolve) => (settle = resolve));
+    const onChat = (handle: ConversationChatHandle | null) => {
+      if (handle && handle.status !== "ready") busy = true;
+      else if (busy) settle();
+    };
     try {
       render(
         <Harness
+          onChat={onChat}
           transport={createAgentSessionTransport({
             sessionId: "ags-dbf8nggkbcjs73a5r3u0",
             mintTicket,
-            fetch: makeFixtureFetch(REPLAY, { terminal: true }),
+            fetch: makeClockedFixtureFetch(REPLAY, () => {
+              clock += MS_PER_CHUNK;
+            }),
           })}
         />,
       );
 
-      await waitFor(
-        () => expect(screen.getByText("Session ended.")).toBeInTheDocument(),
-        { timeout: 60_000 },
+      await act(() => settled);
+      expect(errors.filter((e) => e.includes("Maximum update depth"))).toEqual(
+        [],
       );
+      // The terminus waits on the resume promise, one commit after "ready".
+      expect(await screen.findByText("Session ended.")).toBeInTheDocument();
       const log = screen.getByRole("log");
       // All 96 reasoning blocks, collapsed (a terminal replay never opens one).
       const reasoning = log.querySelectorAll("[data-block='reasoning']");
@@ -139,13 +204,14 @@ describe("long replay (ags-dbf8nggkbcjs73a5r3u0)", () => {
       // Terminal replay: no live status line, no partial-load row.
       expect(screen.queryByLabelText("Agent status")).not.toBeInTheDocument();
       expect(screen.queryByText(/partially loaded/)).not.toBeInTheDocument();
-      expect(errors.filter((e) => e.includes("Maximum update depth"))).toEqual(
-        [],
-      );
     } finally {
+      clockSpy.mockRestore();
       spy.mockRestore();
     }
-  }, 120_000);
+    // Generous on purpose: the work is now fixed (~5s idle, dominated by
+    // useChat deep-cloning the growing message per chunk), so this only has to
+    // cover a host starved for CPU, not a load-dependent render count.
+  }, 180_000);
 });
 
 describe("terminal replay loading state (t001)", () => {

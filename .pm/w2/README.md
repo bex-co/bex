@@ -56,8 +56,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [074 — Blueprint Sync History repeats the reconnection note on every row](done/074.md) — **DONE 2026-11-08**: premise not reproduced — one note per connection boundary (real-DB test)
 - [x] [075 — Creating a service under a name whose App is still being deleted may answer 500](done/075.md) — **DONE 2026-11-08**: named 409 SERVICE_NAME_STILL_DELETING on every surface; Render-style immediate reuse recorded as a divergence awaiting sign-off
 - [x] [076 — A deleted static site never finishes deleting on dev-N (missing static publish credential)](done/076.md) — **DONE 2026-11-08** (static purge); acceptance continues in m293
-- [ ] [077 — Dashboard long-replay.test.tsx times out under host load and turns ship gates red](077.md) ← `/pm-brainstorm more for w2` 2026-11-09
-- [ ] [078 — A brand-new service's first deploy reports PriorReleaseServing and rolls two ReplicaSets](078.md) ← `/pm-brainstorm more for w2` 2026-11-09
+- [x] [077 — Dashboard long-replay.test.tsx times out under host load and turns ship gates red](done/077.md) — **DONE 2026-11-09**: fixed work per run; passes in ~20 s under load where it failed at 430 s
+- [x] [078 — A brand-new service's first deploy reports PriorReleaseServing and rolls two ReplicaSets](done/078.md) — **DONE 2026-11-09**: a first deploy rolls one ReplicaSet and reports ReleaseServing
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
 
