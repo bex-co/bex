@@ -1,6 +1,6 @@
 # w5 · m287 — Sandboxes have names (`--name`), as in Render CLI v2.36
 
-**Worker:** worker5 **Goal:** `render sandboxes create --name`, the NAME column and `list --name` work against bex, with Render's `invalid_sandbox_name` error. **Status:** in progress — t001, t002 and t004–t006 done (shipped); t003's checklist update is done, and its Render CLI v2.36 walk runs on production once deployed, then t007
+**Worker:** worker5 **Goal:** `render sandboxes create --name`, the NAME column and `list --name` work against bex, with Render's `invalid_sandbox_name` error. **Status:** done
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | --- | --- | --- | --- |
 | t001 | Store and validate a sandbox name — **DONE** | 1h | — |
 | t002 | REST, GraphQL and MCP return the name and filter by it — **DONE** | 1h | t001 |
-| t003 | CLI checklist, OpenAPI pin and CLI v2.36 walk | 45m | t002 |
+| t003 | CLI checklist, OpenAPI pin and CLI v2.36 walk — **DONE** | 45m | t002 |
 | t004 | Render parity — **DONE** | 30m | t003 |
 | t005 | Simplify — **DONE** | 20m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 Total: **7 tasks, about 4h30m**.
 
@@ -44,3 +44,15 @@ Total: **7 tasks, about 4h30m**.
 - **t003:** `docs/cli-compatibility-checklist.md` is updated (the SDK row and the w32/m284 note). The live walk with Render CLI v2.36 (`ea sandboxes create --name`, `list --name`) is pending the production deploy.
 - **t004 Render parity:** checked against the live OpenAPI as above; the dashboard has no sandbox list to change, on Render or on bex.
 - **t006 tests:** `TestSandboxNames` covers both refusals before any OpenSandbox call, a non-ASCII name, `null` when unnamed, duplicate names, exact list filtering, get, and a failed create leaving no name. `TestSandboxNamesPG` (real Postgres) covers per-workspace isolation, the 64-character check, young rows surviving a prune, prune and delete.
+
+## Closeout — 2026-11-08 (loopx w5)
+
+- **t003, production walk with the upstream Render CLI v2.36.0** (`RENDER_HOST=https://api.bex.co/v1/`, workspace bex-canary). Auth used a temporary workspace API key exchanged for a token with `client_credentials`; the key was revoked afterwards.
+  - `sandboxes create --name sbx-bad` → `400 (invalid_sandbox_name)`.
+  - `sandboxes create --name 'w5 m287 walk'` → `"name": "w5 m287 walk"`, running.
+  - An unnamed create answered `name: null`, and `sandboxes list` showed the NAME column with `-` for it.
+  - `sandboxes list --name 'w5 m287 walk'` returned only that sandbox; `--name nope` → `[]`.
+  - Both sandboxes were stopped afterwards.
+- **Found and fixed during the walk:** `list --name` first answered `400 unsupported query parameter "name"`. The REST gate's pinned OpenAPI predated Render adding `name` (and `cursor`/`limit`) to list-sandboxes. `7ed129d08` admitted them, and the 255-operation re-pin `548af90d4` (another workstream, same day) now declares them, superseding that extension. The walk passed on that deploy.
+- The bex CLI launcher pins Render CLI v2.35.0, so `bex sandboxes create --name` arrives with the launcher's next upstream bump (`lego/cli/UPSTREAM_RENDER_CLI.md`). The server side is ready for it.
+- **DoD:** both bullets hold.
