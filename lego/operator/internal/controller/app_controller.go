@@ -3386,6 +3386,11 @@ func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, d
 func (r *AppReconciler) settleReady(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, reason, message string) (bool, error) {
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.ActiveRevision = releaseRevision(app)
+	if dep != nil {
+		// Running settles Serving too, so a release that never paused in a
+		// rollout pass still reports its own pods serving (w2/078).
+		r.observeServingRevision(ctx, app, dep, specReplicas(dep))
+	}
 	r.recordImageDigest(ctx, app, dep)
 	r.protectServingImage(ctx, app)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{

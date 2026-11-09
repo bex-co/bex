@@ -51,6 +51,12 @@ func (r *AppReconciler) observeServingRevision(ctx context.Context, app *appv1al
 		condition.Status = metav1.ConditionTrue
 		condition.Reason = appv1alpha1.ReasonPriorReleaseServing
 		condition.Message = "the active revision's pods remain ready during the rollout"
+		// The Deployment's own revision is the active one: its release serves,
+		// not a prior one. A first deploy always ends here (w2/078).
+		if dep.Spec.Template.Labels[labelRevision] == app.Status.ActiveRevision {
+			condition.Reason = appv1alpha1.ReasonReleaseServing
+			condition.Message = "the active revision's pods are ready"
+		}
 		return
 	}
 	// Observed, and nothing serves: the transition dates the stop (w5/083).
@@ -71,16 +77,21 @@ func (r *AppReconciler) refreshServingWhileBuilding(ctx context.Context, app *ap
 	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &dep); err != nil {
 		return false
 	}
-	replicas := int32(1)
-	if dep.Spec.Replicas != nil {
-		replicas = *dep.Spec.Replicas
-	}
 	before := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
 	var was metav1.Condition
 	if before != nil {
 		was = *before
 	}
-	r.observeServingRevision(ctx, app, &dep, replicas)
+	r.observeServingRevision(ctx, app, &dep, specReplicas(&dep))
 	now := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
 	return before == nil || now.Status != was.Status || now.Reason != was.Reason || now.ObservedGeneration != was.ObservedGeneration
+}
+
+// specReplicas is the Deployment's desired replica count, defaulted to 1 as
+// the API server does.
+func specReplicas(dep *appsv1.Deployment) int32 {
+	if dep.Spec.Replicas != nil {
+		return *dep.Spec.Replicas
+	}
+	return 1
 }

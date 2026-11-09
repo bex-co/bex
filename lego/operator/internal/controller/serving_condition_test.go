@@ -32,10 +32,11 @@ func TestServingRevisionIgnoresFailingReplacement(t *testing.T) {
 		name, active string
 		ready        bool
 		want         metav1.ConditionStatus
+		reason       string
 	}{
-		{"healthy prior release", "rev-old", true, metav1.ConditionTrue},
-		{"crashed serving release", "rev-old", false, metav1.ConditionFalse},
-		{"first deploy", "", true, metav1.ConditionUnknown},
+		{"healthy prior release", "rev-old", true, metav1.ConditionTrue, appv1alpha1.ReasonPriorReleaseServing},
+		{"crashed serving release", "rev-old", false, metav1.ConditionFalse, appv1alpha1.ReasonServingRevisionUnavailable},
+		{"first deploy", "", true, metav1.ConditionUnknown, appv1alpha1.ReasonServingUnobserved},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Generation: 2}, Status: appv1alpha1.AppStatus{ActiveRevision: tc.active}}
@@ -48,8 +49,8 @@ func TestServingRevisionIgnoresFailingReplacement(t *testing.T) {
 			r := &AppReconciler{Client: fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(old, replacement).Build()}
 			r.observeServingRevision(context.Background(), app, dep, 1)
 			c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
-			if c == nil || c.Status != tc.want || c.ObservedGeneration != 2 {
-				t.Fatalf("serving = %+v, want %s", c, tc.want)
+			if c == nil || c.Status != tc.want || c.Reason != tc.reason || c.ObservedGeneration != 2 {
+				t.Fatalf("serving = %+v, want %s/%s", c, tc.want, tc.reason)
 			}
 			// A new observation must not retain a healthy condition after the pods vanish.
 			if err := r.Delete(context.Background(), old); err != nil {
@@ -58,6 +59,33 @@ func TestServingRevisionIgnoresFailingReplacement(t *testing.T) {
 			r.observeServingRevision(context.Background(), app, dep, 1)
 			if meta.IsStatusConditionTrue(app.Status.Conditions, appv1alpha1.ConditionServing) {
 				t.Fatal("retained stale healthy signal")
+			}
+		})
+	}
+}
+
+// The Deployment's own revision serving is that release, not a prior one: a
+// first deploy whose pods are Ready, or a release its rollout has reached
+// (w2/078). The prior-release reason belongs to a newer template rolling over
+// the active revision.
+func TestServingReasonNamesWhoseReleaseServes(t *testing.T) {
+	for _, tc := range []struct {
+		name, active, template, want string
+	}{
+		{"first release serving", "rev-1", "rev-1", appv1alpha1.ReasonReleaseServing},
+		{"newer release rolling over the active one", "rev-1", "rev-2", appv1alpha1.ReasonPriorReleaseServing},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Generation: 1}, Status: appv1alpha1.AppStatus{ActiveRevision: tc.active}}
+			dep := progressDeadlineDep("web")
+			dep.Spec.Template.Labels[labelRevision] = tc.template
+			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "p", Namespace: "default", Labels: map[string]string{"app": "web", labelRevision: tc.active}},
+				Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}}}
+			r := &AppReconciler{Client: fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(pod).Build()}
+			r.observeServingRevision(context.Background(), app, dep, 1)
+			c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
+			if c == nil || c.Status != metav1.ConditionTrue || c.Reason != tc.want {
+				t.Fatalf("serving = %+v, want True/%s", c, tc.want)
 			}
 		})
 	}

@@ -348,9 +348,12 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 	// never have to learn.
 	if !p.worker {
 		path := app.Spec.HealthCheckPath
-		if path == "" && webImageHTTPSelectionPending(app) {
+		if path == "" && webImageHTTPSelectionGuardsServing(app) {
 			// A binary listener can pass TCP readiness and let the Deployment
-			// drain the serving release before HTTP discovery finishes.
+			// drain the serving release before HTTP discovery finishes. A
+			// first release has nothing to drain, so it keeps the final TCP
+			// probe: switching it after discovery would roll a second
+			// ReplicaSet for no reason (w2/078).
 			path = "/"
 		}
 		handler := healthCheckHandler(path, p.port, probeHost)

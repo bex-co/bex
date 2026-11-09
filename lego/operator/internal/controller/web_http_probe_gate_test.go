@@ -29,9 +29,14 @@ func TestWebImagePendingHTTPSelectionGatesEveryProbe(t *testing.T) {
 		mode      string
 		envPort   int32
 		path      string
+		first     bool
 		wantHTTP  bool
 	}{
 		{name: "pending binary primary", mode: appv1alpha1.PortModeWebImageV1, wantHTTP: true},
+		// Nothing serves yet, so nothing can drain: the first release keeps the
+		// final probe, and discovery does not roll a second ReplicaSet (w2/078).
+		{name: "pending first release", mode: appv1alpha1.PortModeWebImageV1, first: true},
+		{name: "first release with configured health path", mode: appv1alpha1.PortModeWebImageV1, first: true, path: "/healthz", wantHTTP: true},
 		{name: "HTTP selected", mode: appv1alpha1.PortModeWebImageV1, selection: "http"},
 		{name: "fallback selected", mode: appv1alpha1.PortModeWebImageV1, selection: "fallback"},
 		{name: "existing serving choice retained", mode: appv1alpha1.PortModeWebImageV1, selection: "retained"},
@@ -45,6 +50,9 @@ func TestWebImagePendingHTTPSelectionGatesEveryProbe(t *testing.T) {
 			app.Spec.PortMode = tc.mode
 			app.Spec.HealthCheckPath = tc.path
 			app.Status.EnvPort = tc.envPort
+			if !tc.first {
+				app.Status.ActiveRevision = "rev-0"
+			}
 			if tc.mode == appv1alpha1.PortModeImageV1 {
 				app.Spec.Type = appv1alpha1.TypePrivateService
 			}

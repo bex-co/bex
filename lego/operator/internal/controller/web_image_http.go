@@ -46,6 +46,15 @@ func webImageHTTPSelectionPending(app *appv1alpha1.App) bool {
 		app.Status.ImageNetwork != nil && app.Status.ImageNetwork.HTTPSelection == ""
 }
 
+// webImageHTTPSelectionGuardsServing reports a pending HTTP selection while an
+// earlier release serves: only then must the candidate's probes wait for HTTP,
+// so TCP readiness on a binary listener cannot drain the serving pods. A first
+// release has no serving pods, and its probe must not change once discovery
+// ends, or the first deploy rolls twice (w2/078).
+func webImageHTTPSelectionGuardsServing(app *appv1alpha1.App) bool {
+	return webImageHTTPSelectionPending(app) && (app.Status.ActiveRevision != "" || app.Status.ServingNetwork != nil)
+}
+
 // Keep an unconfigured listener decision across releases of the same image.
 // Unknown legacy provenance may only retain a choice matching fresh metadata;
 // otherwise a removed PORT could be injected into the next candidate again.
@@ -203,11 +212,7 @@ func (r *AppReconciler) reportWebHTTPSelection(ctx context.Context, app *appv1al
 	}
 	app.Status.Image = image
 	app.Status.Phase = appv1alpha1.PhaseDeploying
-	replicas := int32(1)
-	if dep.Spec.Replicas != nil {
-		replicas = *dep.Spec.Replicas
-	}
-	r.observeServingRevision(ctx, app, dep, replicas)
+	r.observeServingRevision(ctx, app, dep, specReplicas(dep))
 	reason := appv1alpha1.ReasonHTTPPortDiscovery
 	// A pod the workspace quota refuses never exists, so port discovery would
 	// wait on it until the deadline; name the quota instead, as the ordinary
