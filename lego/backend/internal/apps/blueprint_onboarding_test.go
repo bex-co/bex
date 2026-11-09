@@ -40,17 +40,17 @@ import (
 
 // --- fakeBlueprintStore: blueprintPlanStore (w2/m256) ---
 
-func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.Blueprint) (store.Blueprint, bool, error) {
+func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.Blueprint) (store.Blueprint, *store.Blueprint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	revived := false
+	var prior *store.Blueprint
 	for _, existing := range f.blueprints {
 		if existing.TenantID == b.TenantID && existing.Repo == b.Repo && existing.Branch == b.Branch {
 			if existing.Status != "disconnected" {
-				return store.Blueprint{}, false, fmt.Errorf("blueprint: %w", store.ErrConflict)
+				return store.Blueprint{}, nil, fmt.Errorf("blueprint: %w", store.ErrConflict)
 			}
 			// The PG store revives the disconnected row under its id.
-			b.ID, revived = existing.ID, true
+			b.ID, prior = existing.ID, &existing
 			if f.connectionStart == nil {
 				f.connectionStart = map[string]int{}
 			}
@@ -65,7 +65,18 @@ func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.B
 		b.ResourceSuffix = "t3st" // the PG store mints a random one
 	}
 	f.blueprints[b.ID] = b
-	return b, revived, nil
+	return b, prior, nil
+}
+
+func (f *fakeBlueprintStore) UndoPlannedBlueprintCreate(_ context.Context, created store.Blueprint, prior *store.Blueprint) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if prior == nil {
+		delete(f.blueprints, created.ID)
+		return nil
+	}
+	f.blueprints[created.ID] = *prior
+	return nil
 }
 
 func (f *fakeBlueprintStore) BlueprintNameTaken(_ context.Context, tenantID, name, exceptID string) (bool, error) {

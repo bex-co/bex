@@ -18,9 +18,15 @@ package apps
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
@@ -39,6 +45,44 @@ services:
     image:
       url: docker.io/library/nginx:1.27
 `
+
+// apiServerDryRuns gives the fake client's dry-run create the API server's
+// last check, which the fake skips: storage refuses a name another object
+// still holds — one whose deletion is still finishing included ("object is
+// being deleted: … already exists") — after admission passed (w2/m256 t014).
+type apiServerDryRuns struct{ client.Client }
+
+func (c apiServerDryRuns) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	var o client.CreateOptions
+	o.ApplyOptions(opts)
+	if slices.Contains(o.DryRun, metav1.DryRunAll) && obj.GetName() != "" {
+		held := obj.DeepCopyObject().(client.Object)
+		if err := c.Get(ctx, client.ObjectKeyFromObject(obj), held); err == nil {
+			gr := schema.GroupResource{Group: "app.bex.co", Resource: "apps"}
+			if !held.GetDeletionTimestamp().IsZero() {
+				return apierrors.NewAlreadyExists(gr, "object is being deleted: "+obj.GetName())
+			}
+			return apierrors.NewAlreadyExists(gr, obj.GetName())
+		}
+	}
+	return c.Client.Create(ctx, obj, opts...)
+}
+
+// failingAppLists fails every App list while failing is set: the workspace's
+// current resources cannot be read, so a plan cannot be made.
+type failingAppLists struct {
+	client.Client
+	failing *atomic.Bool
+}
+
+var errAppListDown = errors.New("apps list unavailable")
+
+func (c failingAppLists) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	if _, apps := list.(*appv1alpha1.AppList); apps && c.failing.Load() {
+		return errAppListDown
+	}
+	return c.Client.List(ctx, list, opts...)
+}
 
 // holdAppFinalizer gives the service's App the operator's finalizer, so a
 // delete leaves it Terminating while the teardown runs (w3/m81).
@@ -86,6 +130,9 @@ func plannedActions(res BlueprintPlanResult) string {
 // once the teardown is over.
 func TestRecreatedBlueprintPlansADeletedServiceAsCreate(t *testing.T) {
 	svc, st, ctx := newOnboardingService(t, recreateManifest)
+	// The production 500: the plan's dry-run create of the re-created App
+	// met the deleted App's name, still held by its teardown.
+	svc.Client = apiServerDryRuns{svc.Client}
 	req := RenderCreateBlueprintRequest{Name: "qa-bp", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}}
 	first, err := svc.CreatePlannedBlueprint(ctx, req)
 	if err != nil {
@@ -242,5 +289,62 @@ func TestNoChangesPlanSupersedesAWaitingPlan(t *testing.T) {
 	}
 	if _, err := svc.SyncBlueprint(ctx, res.Blueprint.ID, "tea-a", "", "", nil); err != nil {
 		t.Fatalf("sync after the no_changes plan: %v", err)
+	}
+}
+
+// w2/m256 t014: a create whose plan cannot be made is all-or-nothing. The
+// revived row goes back to disconnected with its earlier name, so it is not
+// left created-but-unplanned, and retrying the create is not refused as a
+// connection conflict with itself.
+func TestRecreateWhosePlanFailsLeavesNoRevivedRow(t *testing.T) {
+	svc, st, ctx := newOnboardingService(t, recreateManifest)
+	failing := &atomic.Bool{}
+	svc.Client = failingAppLists{Client: svc.Client, failing: failing}
+	req := RenderCreateBlueprintRequest{Name: "qa-bp", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}}
+	first, err := svc.CreatePlannedBlueprint(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.DisconnectBlueprint(ctx, first.Blueprint.ID, "tea-a"); err != nil {
+		t.Fatal(err)
+	}
+	id := ids.BlueprintStorageID(first.Blueprint.ID)
+	before := st.blueprints[id]
+
+	failing.Store(true)
+	req.Name = "qa-bp-2"
+	if _, err := svc.CreatePlannedBlueprint(ctx, req); !errors.Is(err, errAppListDown) {
+		t.Fatalf("re-create while the workspace is unreadable: err = %v, want %v", err, errAppListDown)
+	}
+	if got := st.blueprints[id]; got.Status != "disconnected" || got.Name != before.Name {
+		t.Fatalf("after the failed re-create the row is %q %q, want it back to disconnected %q", got.Status, got.Name, before.Name)
+	}
+
+	failing.Store(false)
+	again, err := svc.CreatePlannedBlueprint(ctx, req)
+	if err != nil {
+		t.Fatalf("retrying the re-create: %v", err)
+	}
+	if again.Blueprint.ID != first.Blueprint.ID || again.PlanningOutcome != PlanningPlanned || again.Blueprint.Name != "qa-bp-2" {
+		t.Fatalf("retry = %s %s %q, want the revived row planned as qa-bp-2", again.Blueprint.ID, again.PlanningOutcome, again.Blueprint.Name)
+	}
+}
+
+// A first create whose plan cannot be made leaves no row at all.
+func TestCreateWhosePlanFailsLeavesNoRow(t *testing.T) {
+	svc, st, ctx := newOnboardingService(t, recreateManifest)
+	failing := &atomic.Bool{}
+	failing.Store(true)
+	svc.Client = failingAppLists{Client: svc.Client, failing: failing}
+	req := RenderCreateBlueprintRequest{Name: "qa-bp", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}}
+	if _, err := svc.CreatePlannedBlueprint(ctx, req); !errors.Is(err, errAppListDown) {
+		t.Fatalf("create: err = %v, want %v", err, errAppListDown)
+	}
+	if len(st.blueprints) != 0 {
+		t.Fatalf("the failed create left %d Blueprint rows", len(st.blueprints))
+	}
+	failing.Store(false)
+	if res, err := svc.CreatePlannedBlueprint(ctx, req); err != nil || res.PlanningOutcome != PlanningPlanned {
+		t.Fatalf("retry = %+v err=%v, want planned", res, err)
 	}
 }

@@ -22,6 +22,7 @@ import (
 	"slices"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -79,6 +80,12 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 		desired, err := blueprintReadSpec(ctx, svc.req)
 		if err == nil {
 			_, err = s.planStackApp(ctx, svc.req, desired)
+		}
+		if apierrors.IsAlreadyExists(err) {
+			var readErr error
+			if err, readErr = previewNameHeld(ctx, svc.req.Name, snap); readErr != nil {
+				return nil, readErr
+			}
 		}
 		if fatal := record(BlueprintResourceService, svc.req.Name, err); fatal != nil {
 			return nil, fatal
@@ -187,6 +194,24 @@ func (s *Service) previewStackCountCaps(ctx context.Context, planned map[Bluepri
 		overCap = append(overCap, blueprintResourceError{kind: kind.kind, name: first, err: kind.countCap.Exceeded(limit)})
 	}
 	return overCap, nil
+}
+
+// previewNameHeld answers a planned service create whose dry-run admission
+// passed but whose App object name storage found taken (the API server checks
+// the name last). The plan creates only names the workspace snapshot lacks, so
+// the holder is normally the customer's just-deleted service still in its
+// teardown: the create is planned, and approving it answers
+// ServiceStillDeletingCode until the teardown finishes (w2/m256 t014). Any
+// other holder is the name conflict a create would meet.
+func previewNameHeld(ctx context.Context, name string, snap *workspaceSnapshot) (refusal, fatal error) {
+	deleting, err := snap.serviceDeleting(ctx, name)
+	if err != nil {
+		return nil, err
+	}
+	if deleting {
+		return nil, nil
+	}
+	return errServiceNameInUse(name), nil
 }
 
 // blueprintManifestProblem reports a refusal the manifest can fix, which a

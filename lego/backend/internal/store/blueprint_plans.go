@@ -51,8 +51,10 @@ type PlannedBlueprintSync struct {
 // first sync is planned, not applied, and auto-sync does not run until a sync
 // is approved. A live Blueprint on the same repo and branch is a conflict; a
 // disconnected one is reconnected under a fresh generation, keeping its id and
-// history, which revived reports (w4/120, as AdmitBlueprintCreate does).
-func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (out Blueprint, revived bool, err error) {
+// history (w4/120, as AdmitBlueprintCreate does). prior is the disconnected
+// row as it stood before the revive, nil for a fresh insert: what
+// UndoPlannedBlueprintCreate restores when the create's plan fails.
+func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (out Blueprint, prior *Blueprint, err error) {
 	if b.ID == "" {
 		b.ID = ids.New(ids.Blueprint)
 	}
@@ -67,9 +69,23 @@ func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (out 
 	}
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return Blueprint{}, false, err
+		return Blueprint{}, nil, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	// The row the upsert may revive, as it stands now (locked until commit).
+	var before Blueprint
+	err = tx.QueryRow(ctx, `
+		SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status, last_sync_at,
+		       created_at, updated_at, existing_resources, resource_suffix
+		FROM blueprints WHERE tenant_id = $1 AND repo = $2 AND branch = $3 FOR UPDATE`,
+		b.TenantID, b.Repo, b.Branch,
+	).Scan(&before.ID, &before.TenantID, &before.Name, &before.Repo, &before.Branch, &before.Path, &before.AutoSync,
+		&before.Manifest, &before.Status, &before.LastSyncAt, &before.CreatedAt, &before.UpdatedAt,
+		&before.ExistingResources, &before.ResourceSuffix)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return Blueprint{}, nil, err
+	}
+	var revived bool
 	// prior reads the row's status before the upsert, the only way to tell a
 	// revive from a fresh insert once the conflict arm has run.
 	err = tx.QueryRow(ctx, `
@@ -94,20 +110,70 @@ func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (out 
 		&out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt, &out.ExistingResources, &out.ResourceSuffix,
 		&revived)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Blueprint{}, false, fmt.Errorf("blueprint: %w", ErrConflict)
+		return Blueprint{}, nil, fmt.Errorf("blueprint: %w", ErrConflict)
 	}
 	if err != nil {
-		return Blueprint{}, false, classify("blueprint", err)
+		return Blueprint{}, nil, classify("blueprint", err)
 	}
 	// A reconnected Blueprint keeps its id and history; a plan left waiting by
-	// the earlier connection must not be approvable under the new one.
+	// the earlier connection must not be approvable under the new one. The
+	// supersede is stamped with the revive's own created_at (both are this
+	// transaction's now()), so an undo finds exactly these rows.
 	if _, err := tx.Exec(ctx, `
 		UPDATE blueprint_syncs SET state = 'error', completed_at = now(),
-			error_message = 'superseded: the Blueprint was reconnected'
-		WHERE blueprint_id = $1 AND state = 'created'`, out.ID); err != nil {
-		return Blueprint{}, false, err
+			error_message = $2
+		WHERE blueprint_id = $1 AND state = 'created'`, out.ID, reconnectSupersededMessage); err != nil {
+		return Blueprint{}, nil, err
 	}
-	return out, revived, tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return Blueprint{}, nil, err
+	}
+	if revived {
+		prior = &before
+	}
+	return out, prior, nil
+}
+
+// reconnectSupersededMessage ends an earlier connection's waiting plan when
+// its Blueprint is reconnected.
+const reconnectSupersededMessage = "superseded: the Blueprint was reconnected"
+
+// UndoPlannedBlueprintCreate takes back a CreatePlannedBlueprint whose plan
+// could not be made, so a failed create leaves nothing behind (w2/m256 t014):
+// a fresh row is deleted, and a revived one returns to prior — disconnected,
+// with its earlier name, file and settings, and the waiting plans the revive
+// superseded. Its execution generation stays bumped, so the fence only ever
+// moves forward. It changes nothing once the row has moved on from the
+// create (a sync admitted, or no longer `created`).
+func (s *PGStore) UndoPlannedBlueprintCreate(ctx context.Context, created Blueprint, prior *Blueprint) error {
+	if prior == nil {
+		_, err := s.Pool.Exec(ctx, `
+			DELETE FROM blueprints
+			WHERE id = $1 AND tenant_id = $2 AND status = 'created' AND active_run_id IS NULL
+			  AND NOT EXISTS (SELECT 1 FROM blueprint_syncs WHERE blueprint_id = $1)`,
+			created.ID, created.TenantID)
+		return err
+	}
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `
+			UPDATE blueprints SET name = $3, path = $4, auto_sync = $5, manifest = $6, status = $7,
+				last_sync_at = $8, created_at = $9, updated_at = $10,
+				existing_resources = $11, resource_suffix = $12
+			WHERE id = $1 AND tenant_id = $2 AND status = 'created' AND active_run_id IS NULL
+			  AND created_at = $13
+			  AND NOT EXISTS (SELECT 1 FROM blueprint_syncs WHERE blueprint_id = $1 AND created_at >= $13)`,
+			created.ID, created.TenantID, prior.Name, prior.Path, prior.AutoSync, prior.Manifest, prior.Status,
+			prior.LastSyncAt, prior.CreatedAt, prior.UpdatedAt, prior.ExistingResources, prior.ResourceSuffix,
+			created.CreatedAt)
+		if err != nil || tag.RowsAffected() == 0 {
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE blueprint_syncs SET state = 'created', completed_at = NULL, error_message = NULL
+			WHERE blueprint_id = $1 AND state = 'error' AND error_message = $2 AND completed_at = $3`,
+			created.ID, reconnectSupersededMessage, created.CreatedAt)
+		return err
+	})
 }
 
 // BlueprintNameTaken reports whether another live, approved Blueprint in the

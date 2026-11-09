@@ -55,7 +55,8 @@ const (
 // blueprintPlanStore is the persistence onboarding needs; *store.PGStore
 // satisfies it.
 type blueprintPlanStore interface {
-	CreatePlannedBlueprint(ctx context.Context, b store.Blueprint) (store.Blueprint, bool, error)
+	CreatePlannedBlueprint(ctx context.Context, b store.Blueprint) (created store.Blueprint, prior *store.Blueprint, err error)
+	UndoPlannedBlueprintCreate(ctx context.Context, created store.Blueprint, prior *store.Blueprint) error
 	BlueprintNameTaken(ctx context.Context, tenantID, name, exceptID string) (bool, error)
 	InsertPlannedBlueprintSync(ctx context.Context, p store.PlannedBlueprintSync) (store.PlannedBlueprintSync, error)
 	LatestBlueprintPlan(ctx context.Context, blueprintID string) (store.PlannedBlueprintSync, error)
@@ -223,7 +224,7 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	if req.AutoSync != nil {
 		autoSync = *req.AutoSync
 	}
-	b, revived, err := plans.CreatePlannedBlueprint(ctx, store.Blueprint{
+	b, prior, err := plans.CreatePlannedBlueprint(ctx, store.Blueprint{
 		TenantID: tenantID, Name: req.Name, Repo: req.Source.Repo, Branch: branch, Path: discoveredPath,
 		AutoSync: autoSync, ExistingResources: mode,
 	})
@@ -238,11 +239,19 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	// A revived row keeps its sync history: its planned sync marks where this
 	// connection's history begins, as the legacy create's run does (w4/120).
 	note := ""
-	if revived {
+	if prior != nil {
 		note = reconnectionNote(req.Source.Repo, branch)
 	}
+	created := b
 	result, err := s.planBlueprintSync(ctx, plans, &b, contents, commitSHA, note)
 	if err != nil {
+		// The create is all-or-nothing: a plan that could not be made (not
+		// one that found problems in the file, which is recorded) leaves no
+		// new or revived row behind, so retrying the create is not refused
+		// as a conflict with itself (w2/m256 t014).
+		if undoErr := plans.UndoPlannedBlueprintCreate(context.WithoutCancel(ctx), created, prior); undoErr != nil {
+			return BlueprintPlanResult{}, errors.Join(err, fmt.Errorf("undo the Blueprint create: %w", undoErr))
+		}
 		return BlueprintPlanResult{}, err
 	}
 	bp := toRenderBlueprint(toBlueprintView(b))

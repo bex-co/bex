@@ -60,7 +60,7 @@ func TestPlannedBlueprintSyncsPG(t *testing.T) {
 	repo := "https://github.com/acme/plans-" + stamp
 
 	b, revived, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Stack", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true})
-	if revived {
+	if revived != nil {
 		t.Error("a first create reported a revived row")
 	}
 	if err != nil || b.Status != store.BlueprintStatusCreated || b.ExistingResources != store.BlueprintExistingAdopt {
@@ -146,8 +146,8 @@ func TestPlannedBlueprintSupersedeAndBusyPG(t *testing.T) {
 	if err != nil {
 		t.Fatalf("reconnect: %v", err)
 	}
-	if !revived || again.ID != b.ID {
-		t.Fatalf("reconnect = %s revived=%v, want the disconnected row %s revived (w4/120)", again.ID, revived, b.ID)
+	if revived == nil || again.ID != b.ID {
+		t.Fatalf("reconnect = %s prior=%+v, want the disconnected row %s revived (w4/120)", again.ID, revived, b.ID)
 	}
 	stale, err := st.BlueprintPlannedSync(ctx, b.ID, old.ID)
 	if err != nil || stale.State != store.BlueprintSyncStateError {
@@ -331,8 +331,8 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	revived, wasRevived, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
-	if err != nil || !wasRevived || revived.ID != b.ID {
-		t.Fatalf("reconnect = %+v revived=%v err=%v", revived, wasRevived, err)
+	if err != nil || wasRevived == nil || revived.ID != b.ID {
+		t.Fatalf("reconnect = %+v prior=%+v err=%v", revived, wasRevived, err)
 	}
 	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); !errors.Is(err, store.ErrNotFound) {
 		t.Fatalf("latest plan of the new connection = %+v err=%v, want ErrNotFound (the earlier connection's do not count)", latest, err)

@@ -19,7 +19,7 @@
 | t012 | Dashboard: a created Blueprint shows its plan and an Approve action, and Sync cannot apply it past the plan — **DONE** | 1h | t006 |
 | t013 | Planned Blueprint page: the reconnection note on a revived row, the right status chip, and approve-not-sync empty copy — **DONE** | 30m | t012 |
 | t014 | A recreated Blueprint whose plan finds no changes is stuck in created, and planning ignores resources deleted since the last sync — implemented 2026-11-08, awaiting production re-check | 1.5h | t006 |
-| t015 | Re-creating a Blueprint right after deleting it and its service answers 500 and leaves a half-revived row | 1h | t014 |
+| t015 | Re-creating a Blueprint right after deleting it and its service answers 500 and leaves a half-revived row — implemented 2026-11-08, awaiting the production re-check with t014 | 1h | t014 |
 | t011 | Closeout | 10m | t009, t010, t012, t013, t014, t015 |
 
 ## Definition of done

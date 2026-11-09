@@ -18,8 +18,10 @@ package apps
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -74,6 +76,9 @@ func newRecreatePGService(t *testing.T) (*Service, *store.PGStore, *pgxpool.Pool
 // teardown is over (w2/m256 t014).
 func TestRecreatedBlueprintRecreatesDeletedServicePG(t *testing.T) {
 	svc, st, pool, ctx, wsID := newRecreatePGService(t)
+	// As the API server does, the plan's dry-run create meets the deleted
+	// App's name while its teardown holds it: the production 500.
+	svc.Client = apiServerDryRuns{svc.Client}
 	repo := "https://github.com/acme/recreate-" + wsID
 	req := RenderCreateBlueprintRequest{Name: "qa-bp", OwnerID: wsID, Source: RenderBlueprintSource{Repo: repo}}
 
@@ -177,6 +182,90 @@ func TestNoChangesFirstPlanLeavesCreatedPG(t *testing.T) {
 	res, err := svc.SyncBlueprint(ctx, again.Blueprint.ID, wsID, "", "", nil)
 	if err != nil || res.Blueprint.Status != store.BlueprintStatusInSync {
 		t.Fatalf("manual sync = %+v err=%v, want in_sync", res.Blueprint, err)
+	}
+}
+
+// TestRecreateWhosePlanFailsLeavesNoRevivedRowPG: a re-create whose plan
+// cannot be made takes the revive back on real Postgres — the row is
+// disconnected again with its earlier name, connection start and waiting plan
+// — so the retry revives it cleanly instead of answering
+// BLUEPRINT_CONNECTION_CONFLICT against itself (w2/m256 t014).
+func TestRecreateWhosePlanFailsLeavesNoRevivedRowPG(t *testing.T) {
+	svc, _, pool, ctx, wsID := newRecreatePGService(t)
+	failing := &atomic.Bool{}
+	svc.Client = failingAppLists{Client: svc.Client, failing: failing}
+	repo := "https://github.com/acme/undo-" + wsID
+	req := RenderCreateBlueprintRequest{Name: "qa-bp", OwnerID: wsID, Source: RenderBlueprintSource{Repo: repo}}
+	first, err := svc.CreatePlannedBlueprint(ctx, req)
+	if err != nil || first.PlanningOutcome != PlanningPlanned {
+		t.Fatalf("create = %+v err=%v", first, err)
+	}
+	// Disconnected with its plan still waiting.
+	if err := svc.DisconnectBlueprint(ctx, first.Blueprint.ID, wsID); err != nil {
+		t.Fatal(err)
+	}
+	type row struct {
+		name, status, path string
+		createdAt          time.Time
+		waiting            int
+	}
+	read := func() (r row) {
+		t.Helper()
+		if err := pool.QueryRow(ctx, `
+			SELECT b.name, b.status, b.path, b.created_at,
+			       (SELECT count(*) FROM blueprint_syncs s WHERE s.blueprint_id = b.id AND s.state = 'created')
+			FROM blueprints b WHERE b.tenant_id = $1 AND b.repo = $2`, wsID, repo,
+		).Scan(&r.name, &r.status, &r.path, &r.createdAt, &r.waiting); err != nil {
+			t.Fatal(err)
+		}
+		return r
+	}
+	before := read()
+	if before.status != "disconnected" || before.waiting != 1 {
+		t.Fatalf("before = %+v, want disconnected with its plan waiting", before)
+	}
+
+	failing.Store(true)
+	req.Name = "qa-bp-2"
+	if _, err := svc.CreatePlannedBlueprint(ctx, req); !errors.Is(err, errAppListDown) {
+		t.Fatalf("re-create while the workspace is unreadable: err = %v, want %v", err, errAppListDown)
+	}
+	if after := read(); after != before {
+		t.Fatalf("after the failed re-create = %+v, want the row as it was: %+v", after, before)
+	}
+
+	failing.Store(false)
+	again, err := svc.CreatePlannedBlueprint(ctx, req)
+	if err != nil {
+		t.Fatalf("retrying the re-create: %v", err)
+	}
+	if again.Blueprint.ID != first.Blueprint.ID || again.PlanningOutcome != PlanningPlanned || again.Blueprint.Name != "qa-bp-2" {
+		t.Fatalf("retry = %s %s %q, want the revived row planned as qa-bp-2", again.Blueprint.ID, again.PlanningOutcome, again.Blueprint.Name)
+	}
+	if r := read(); r.status != store.BlueprintStatusCreated || r.waiting != 1 {
+		t.Fatalf("after the retry = %+v, want created with only its own plan waiting", r)
+	}
+}
+
+// TestCreateWhosePlanFailsLeavesNoRowPG: a first create whose plan cannot be
+// made leaves no row.
+func TestCreateWhosePlanFailsLeavesNoRowPG(t *testing.T) {
+	svc, _, pool, ctx, wsID := newRecreatePGService(t)
+	failing := &atomic.Bool{}
+	failing.Store(true)
+	svc.Client = failingAppLists{Client: svc.Client, failing: failing}
+	repo := "https://github.com/acme/undo-new-" + wsID
+	req := RenderCreateBlueprintRequest{Name: "qa-bp", OwnerID: wsID, Source: RenderBlueprintSource{Repo: repo}}
+	if _, err := svc.CreatePlannedBlueprint(ctx, req); !errors.Is(err, errAppListDown) {
+		t.Fatalf("create: err = %v, want %v", err, errAppListDown)
+	}
+	var rows int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM blueprints WHERE tenant_id = $1 AND repo = $2`, wsID, repo).Scan(&rows); err != nil || rows != 0 {
+		t.Fatalf("the failed create left %d rows (err %v)", rows, err)
+	}
+	failing.Store(false)
+	if res, err := svc.CreatePlannedBlueprint(ctx, req); err != nil || res.PlanningOutcome != PlanningPlanned {
+		t.Fatalf("retry = %+v err=%v, want planned", res, err)
 	}
 }
 
