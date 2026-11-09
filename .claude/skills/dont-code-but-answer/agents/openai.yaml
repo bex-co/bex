@@ -1,0 +1,5 @@
+interface:
+  display_name: "Don't Code, Answer"
+  short_description: "Answer the question without changing any code"
+policy:
+  allow_implicit_invocation: false
