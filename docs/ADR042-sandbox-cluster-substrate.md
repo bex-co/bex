@@ -103,6 +103,15 @@ On create, bex stamps reserved `bex.co/owner`, `bex.co/workspace`, effective net
 
 **Unchanged.** Agent-session sandboxes (ADR047 D5, ADR062) are never selected by `sandbox-egress-allow-all`; they keep their per-session policy and the gateway model proxy, so no platform or tenant credential is exposed to direct internet egress. A sandbox created before w32/m283 carries no `bex.co/egress` label and keeps `sandbox-egress-legacy-allowlist`, reported as `deny-all`, until it ends; that policy can be removed once no unlabeled sandbox Pod remains. Free-plan SMTP blocking ([ADR022](ADR022-tenant-isolation.md)) is a hosting-service rule on Render and is not applied to sandboxes.
 
+#### Sandbox environment variables (w32/m297)
+
+**Added 2026-11-09 for Render parity.** Render's create body takes `env`, a `{name: value}` map "injected into the sandbox at creation", and no Render read returns it. bex does the same on REST (`env`), GraphQL (`env: [EnvVarInput!]`, refusing `generateValue` and a repeated key) and MCP (`spawn_sandbox` `env`). The pinned CLI's `--env-var`/`--env-file` and the SDKs' `create(env=…)` work unchanged.
+
+- **Limits are Render's:** at most 100 variables, 256 KB across names and values (render.com/docs/sandboxes-limits, checked 2026-11-09). Over either answers `400 SANDBOX_ENV_INVALID`. A create body is capped at 2 MiB.
+- **Names and values follow a service's env rules** (`core.CheckEnvKey`): letters, digits, `-`, `_` and `.`, at most 253 characters; a value holds no NUL, and one `NAME=value` entry stays under execve's 128 KiB. Names starting with `BEX_`, `EXECD_` or `OPENSANDBOX_` (any case) are refused: those prefixes belong to the platform and to OpenSandbox's in-sandbox exec daemon, and a caller value would shadow them. Render documents no name rules, so this is a narrow, recorded divergence. A refusal names the variable, never its value.
+- **Storage.** The values travel in the OpenSandbox create request and live in the sandbox's BatchSandbox and Pod spec, like a Render-style inline env. Only platform operators can read those objects; tenants never reach the Kubernetes API. No bex-api response, log line or event carries a value. The reusable BYO model key of an agent session still never enters a Pod spec (ADR047 D7); that path is unchanged.
+- **Suspend and resume** recreate the Pod from the same spec (D5), so the variables survive a suspension.
+
 ### D5 — Snapshot semantics: v1 is rootfs-only; memory hibernation is a watch item
 
 The k8s BatchSandbox pause/resume commits the rootfs to an OCI image and recreates the pod ([ADR044](ADR044-sandbox-runtime-comparison.md)); gVisor does not change this. So v1 "sleep = free" preserves the **filesystem only — memory and processes do not survive pause.** This is weaker than E2B's memory hibernation and weaker than the single-host Docker path ADR014 D5 described. The k8s-native path to memory hibernation is containerd checkpoint/restore (CRIU) — recorded as a watch item, not v1 work.

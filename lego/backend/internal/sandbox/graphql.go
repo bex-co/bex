@@ -18,6 +18,7 @@ package sandbox
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/graphql-go/graphql"
 
@@ -117,6 +118,32 @@ var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// envFromArgs turns GraphQL's `[{key, value}]` into Render's env map. A
+// sandbox has no generated values, and a repeated key is ambiguous.
+func envFromArgs(raw any) (map[string]string, error) {
+	list, _ := raw.([]any)
+	if len(list) == 0 {
+		return nil, nil
+	}
+	env := make(map[string]string, len(list))
+	for _, item := range list {
+		m, _ := item.(map[string]any)
+		key, _ := m["key"].(string)
+		if generate, _ := m["generateValue"].(bool); generate {
+			return nil, core.NewBadRequestError(CodeSandboxEnvInvalid,
+				fmt.Sprintf("environment variable %q: generateValue is not supported for sandboxes; pass a value", key),
+				map[string]any{"field": "env", "name": key})
+		}
+		if _, dup := env[key]; dup {
+			return nil, core.NewBadRequestError(CodeSandboxEnvInvalid,
+				fmt.Sprintf("environment variable %q is given more than once", key),
+				map[string]any{"field": "env", "name": key})
+		}
+		env[key], _ = m["value"].(string)
+	}
+	return env, nil
+}
+
 // ownerScoped selects the requested workspace while preserving the default when omitted.
 func ownerScoped(p graphql.ResolveParams) context.Context {
 	return core.WithWorkspace(p.Context, gqlutil.Str(p.Args, "ownerId"))
@@ -165,8 +192,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"idleTimeoutSeconds": gqlutil.Arg(graphql.Int),
 				"networkPolicy":      gqlutil.Arg(sandboxNetworkPolicyInput),
 				"name":               gqlutil.Arg(graphql.String),
+				// Render's create-time env; write-only, so no read field.
+				"env": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.EnvVarInputType))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
+				env, err := envFromArgs(p.Args["env"])
+				if err != nil {
+					return nil, err
+				}
 				var policy *NetworkPolicy
 				if raw, ok := p.Args["networkPolicy"].(map[string]any); ok {
 					policy = networkPolicyFromArgs(raw)
@@ -180,6 +213,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					IdleTimeoutSeconds: gqlutil.IntPtr(p.Args, "idleTimeoutSeconds"),
 					Name:               gqlutil.Str(p.Args, "name"),
 					NetworkPolicy:      policy,
+					Env:                env,
 				})
 			},
 		},

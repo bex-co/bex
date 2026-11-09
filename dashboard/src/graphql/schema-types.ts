@@ -2270,6 +2270,7 @@ export type MutationCreateSshKeyArgs = {
 
 
 export type MutationCreateSandboxArgs = {
+  env?: InputMaybe<Array<EnvVarInput>>;
   idleTimeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   networkPolicy?: InputMaybe<SandboxNetworkPolicyInput>;

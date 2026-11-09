@@ -18,6 +18,7 @@ package sandbox
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -41,6 +42,8 @@ type spawnSandboxArgs struct {
 	// Name is Render's optional, non-unique sandbox name (at most 64
 	// characters, never sbx-…).
 	Name string `json:"name,omitempty"`
+	// Env is Render's create-time env: injected into the sandbox, never read back.
+	Env map[string]string `json:"env,omitempty"`
 }
 
 // listSandboxesArgs is the MCP input for list_sandboxes: Render's list
@@ -79,7 +82,7 @@ type execSandboxArgs struct {
 // Render `ea sandbox create` intent; sandbox_exec runs a command via the same
 // authorized gateway path the CLI uses, returning buffered output (no SSE dance).
 func (s *Service) RegisterMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: "Create a hosted agent sandbox from a registered template and return its id and status. networkPolicy is Render's: omitted means allow-all (any public destination); {type:\"deny-all\"} blocks all outbound traffic; {type:\"allow-list\", rules:[{domain}]} allows only HTTPS to the listed hostnames (a leading *. covers one subdomain level)."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: fmt.Sprintf("Create a hosted agent sandbox from a registered template and return its id and status. networkPolicy is Render's: omitted means allow-all (any public destination); {type:\"deny-all\"} blocks all outbound traffic; {type:\"allow-list\", rules:[{domain}]} allows only HTTPS to the listed hostnames (a leading *. covers one subdomain level). env sets environment variables inside the sandbox (at most %d, %d KB across names and values); values are never returned.", maxSandboxEnvVars, maxSandboxEnvBytes/1024)},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in spawnSandboxArgs) (*mcp.CallToolResult, Sandbox, error) {
 			sb, err := s.Create(ctx, CreateRequest{
 				OwnerID:            in.OwnerID,
@@ -90,6 +93,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 				IdleTimeoutSeconds: in.IdleTimeoutSeconds,
 				NetworkPolicy:      in.NetworkPolicy,
 				Name:               in.Name,
+				Env:                in.Env,
 			})
 			return nil, sb, err
 		})

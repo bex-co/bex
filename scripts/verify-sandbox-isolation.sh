@@ -274,14 +274,37 @@ expect_status() {
   [ "$got" = "$want" ] || fail "$method $path returned $got, want $want"
 }
 
-# create_sandbox <auth> <workspace> <output> <networkPolicy JSON>: Render's
-# three postures (w32/m283) — allow-all (the default), deny-all, allow-list.
+# create_sandbox <auth> <workspace> <output> <networkPolicy JSON> [extra JSON
+# fields]: Render's three postures (w32/m283) — allow-all (the default),
+# deny-all, allow-list — plus optional create fields such as env (w32/m297).
 create_sandbox() {
-  local auth_file="$1" workspace="$2" output="$3" policy="$4"
+  local auth_file="$1" workspace="$2" output="$3" policy="$4" extra="${5:-}"
   expect_status 201 "$auth_file" POST "/v1/sandboxes" "$output" \
     --header 'Content-Type: application/json' \
-    --data "{\"ownerId\":\"$workspace\",\"plan\":\"starter\",\"networkPolicy\":$policy}"
+    --data "{\"ownerId\":\"$workspace\",\"plan\":\"starter\",\"networkPolicy\":$policy${extra:+,$extra}}"
   jq -er '.id' "$output"
+}
+
+# sandbox_exec <auth> <workspace> <sandbox id> <command> <output>: run one
+# command through bex's public exec path, as the Render CLI and SDK do (mint a
+# run connect token, then redeem it for the SSE stream), and write the
+# command's stdout to <output>.
+sandbox_exec() {
+  local auth_file="$1" workspace="$2" id="$3" command="$4" output="$5" body token_file
+  body="$(jq -cn --arg c "$command" '{command: $c}')"
+  expect_status 201 "$auth_file" POST "/v1/sandboxes/$id/runs/stream/token?ownerId=$workspace" "$output.mint" \
+    --header 'Content-Type: application/json' --data "$body"
+  token_file="$output.token.curl"
+  write_auth_config "$(jq -er '.token' "$output.mint")" "$token_file"
+  curl --config "$token_file" --silent --show-error --fail-with-body --max-time 120 \
+    --request POST --header 'Accept: text/event-stream' --header 'Content-Type: application/json' \
+    --data "$body" --output "$output.sse" "$(jq -er '.uri' "$output.mint")" \
+    || fail "exec in $id failed: $(head -c 300 "$output.sse" 2>/dev/null)"
+  # Only `event: output` frames carry {stream, data}; anything not stderr is
+  # stdout, as bex's own reader treats it.
+  awk '/^event: /{ev=substr($0, 8)} /^data: /{if (ev == "output") print substr($0, 7)}' "$output.sse" \
+    | jq -rj 'select(.stream != "stderr") | .data' >"$output" \
+    || fail "exec in $id returned an unreadable output frame"
 }
 
 preflight_cluster
@@ -306,7 +329,10 @@ fi
   || fail "allow-list without rules did not return SANDBOX_NETWORK_POLICY_INVALID"
 # A is the attacker: allow-all is the most permissive tenant posture, so every
 # floor probe below runs against it. B and C are deny-all; D is an allow-list.
-sandbox_a_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-a.json" '{"type":"allow-all"}')"
+# Render's create-time env (w32/m297): sandbox A carries one variable whose
+# value is a per-run nonce, so a read that leaks it is unambiguous.
+env_probe_value="m297-$run_id"
+sandbox_a_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-a.json" '{"type":"allow-all"}' "\"env\":{\"MATRIX_ENV_PROBE\":\"$env_probe_value\"}")"
 sandbox_b_id="$(create_sandbox "$fixture_dir/member-b.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-b.json" '{"type":"deny-all"}')"
 sandbox_c_id="$(create_sandbox "$fixture_dir/owner-c.curl" "$BEX_WORKSPACE_B" "$fixture_dir/sandbox-c.json" '{"type":"deny-all"}')"
 sandbox_d_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-d.json" '{"type":"allow-list","rules":[{"domain":"api.github.com","protocol":"https"}]}')"
@@ -333,6 +359,18 @@ jq -e '.networkPolicy.rules == [{"domain":"api.github.com","protocol":"https"}]'
   || fail "a read of the allow-list sandbox lost its rules"
 pass "public create returns each Render network policy durably for distinct principals"
 
+reserved_env_status="$(api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes" "$fixture_dir/reserved-env.json" \
+  --header 'Content-Type: application/json' \
+  --data "{\"ownerId\":\"$BEX_WORKSPACE_A\",\"plan\":\"starter\",\"env\":{\"BEX_PROBE\":\"1\"}}")"
+if [ "$reserved_env_status" != 400 ]; then
+  if [[ "$reserved_env_status" =~ ^2 ]] && jq -e '.id' "$fixture_dir/reserved-env.json" >/dev/null 2>&1; then
+    api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$(jq -r '.id' "$fixture_dir/reserved-env.json")/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-reserved.json" >/dev/null
+  fi
+  fail "a reserved env name returned $reserved_env_status, want 400"
+fi
+[ "$(jq -r '.code' "$fixture_dir/reserved-env.json")" = "SANDBOX_ENV_INVALID" ] \
+  || fail "a reserved env name did not return SANDBOX_ENV_INVALID"
+
 echo "==> verify owner/member/admin and cross-workspace behavior"
 expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/get-own.json"
 expect_status 404 "$fixture_dir/member-b.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/get-cross-owner.json"
@@ -349,6 +387,10 @@ expect_status 200 "$fixture_dir/admin-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WO
 jq -e --arg a "$sandbox_a_id" --arg b "$sandbox_b_id" \
   '([.[].sandbox.id] | index($a)) != null and ([.[].sandbox.id] | index($b)) != null' \
   "$fixture_dir/list-admin.json" >/dev/null || fail "workspace admin could not list both owned sandboxes"
+for file in sandbox-a.json get-own.json list-admin.json; do
+  ! grep -q "$env_probe_value" "$fixture_dir/$file" || fail "$file returns the sandbox's env value"
+done
+pass "create-time env is accepted, reserved names are refused, and no read returns a value"
 pass "owner isolation fails closed and can_manage is the sole override"
 
 find_batchsandbox() {
@@ -412,6 +454,10 @@ workload_container() {
 container_a="$(workload_container "$namespace_a" "$pod_a")"
 container_b="$(workload_container "$namespace_a" "$pod_b")"
 container_d="$(workload_container "$namespace_a" "$pod_d")"
+sandbox_exec "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$sandbox_a_id" 'printenv MATRIX_ENV_PROBE' "$fixture_dir/exec-env.txt"
+[ "$(tr -d '\n' <"$fixture_dir/exec-env.txt")" = "$env_probe_value" ] \
+  || fail "a command in sandbox A does not see its create-time env"
+pass "a command run through bex's exec path sees the sandbox's create-time env"
 if [ "$verify_agent_driver" = 1 ]; then
   container_agent="$(workload_container "$namespace_a" "$pod_agent")"
 fi

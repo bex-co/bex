@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"maps"
 	"slices"
 	"strconv"
 	"strings"
@@ -171,6 +172,9 @@ type CreateRequest struct {
 	NetworkPolicy      *NetworkPolicy
 	// Name is Render's sandbox name; empty means none.
 	Name string
+	// Env is Render's create-time `env`: injected into the sandbox, never
+	// returned by a read.
+	Env map[string]string
 }
 
 func (s *Service) enabled() bool { return s.Client != nil }
@@ -271,27 +275,78 @@ func ruleDomains(rules []NetworkPolicyRule) []string {
 	return domains
 }
 
-// refuseUnsupportedCreateOptions names the create options bex does not serve, in
-// the same shape as the networkPolicy refusal above: the feature and the CLI
-// flag that produced it, never the wire key. `--env-var`/`--env-file` are
-// documented on `ea sandboxes create` and send `env`; `--snapshot-id` sends
-// `snapshotId` and is an explicitly graded non-goal (the ea snapshot surface).
-// Both previously fell through strict decoding as `unknown field "env"`, which
-// tells a user nothing about what to do (w9/067).
-func refuseUnsupportedCreateOptions(hasEnv, hasSnapshot bool) error {
-	if hasEnv {
-		return core.NewBadRequestError(
-			"SANDBOX_ENV_UNSUPPORTED",
-			"sandbox environment variables are not supported (--env-var/--env-file); create the sandbox without them and set what you need inside it",
-			map[string]any{"field": "env", "flags": []string{"--env-var", "--env-file"}},
-		)
+// refuseSnapshotCreate names Render's snapshot create options, which bex does
+// not serve yet, by the feature and the CLI flag rather than the wire key:
+// `--snapshot-id` sends `snapshotId` and `--from` sends `snapshotName`
+// (w9/067 found strict decoding answering `unknown field`, which tells a user
+// nothing).
+func refuseSnapshotCreate(hasSnapshot bool) error {
+	if !hasSnapshot {
+		return nil
 	}
-	if hasSnapshot {
-		return core.NewBadRequestError(
-			codeSandboxSnapshotsUnsupported,
-			"sandbox snapshots are not supported (--from/--snapshot-id); create a sandbox from a template instead",
-			map[string]any{"field": "snapshotId", "flags": []string{"--from", "--snapshot-id"}},
-		)
+	return core.NewBadRequestError(
+		codeSandboxSnapshotsUnsupported,
+		"sandbox snapshots are not supported (--from/--snapshot-id); create a sandbox from a template instead",
+		map[string]any{"field": "snapshotId", "flags": []string{"--from", "--snapshot-id"}},
+	)
+}
+
+// CodeSandboxEnvInvalid refuses a create-time `env` bex cannot inject.
+const CodeSandboxEnvInvalid = "SANDBOX_ENV_INVALID"
+
+// Render's sandbox env limits (render.com/docs/sandboxes-limits, checked
+// 2026-11-09): "100 variables, with a combined size of 256 KB across names
+// and values".
+const (
+	maxSandboxEnvVars  = 100
+	maxSandboxEnvBytes = 256 * 1024
+)
+
+// reservedSandboxEnvPrefixes are the platform's own variables in a sandbox:
+// bex's, and those OpenSandbox gives its in-sandbox exec daemon. A caller
+// value would shadow them in its own sandbox, so they are refused by name.
+var reservedSandboxEnvPrefixes = []string{"BEX_", "EXECD_", "OPENSANDBOX_"}
+
+// validateSandboxEnv applies Render's limits, the platform prefixes above, and
+// a service's env rules. A
+// refusal names the variable, never its value: values are often secrets.
+func validateSandboxEnv(env map[string]string) error {
+	if len(env) > maxSandboxEnvVars {
+		return core.NewBadRequestError(CodeSandboxEnvInvalid,
+			fmt.Sprintf("a sandbox takes at most %d environment variables, got %d", maxSandboxEnvVars, len(env)),
+			map[string]any{"field": "env", "max": maxSandboxEnvVars})
+	}
+	size := 0
+	// Sorted so a refusal is the same for the same input.
+	for _, name := range slices.Sorted(maps.Keys(env)) {
+		// A service's env rules: a Secret-key name, and a value a process
+		// environment can carry.
+		if err := core.CheckEnvKey(name); err != nil {
+			return err
+		}
+		value := env[name]
+		if !core.ValidEnvValue(value) {
+			return core.NewBadRequestError(CodeSandboxEnvInvalid, core.EnvValueSentence(name), map[string]any{"field": "env", "name": name})
+		}
+		if len(name)+len("=")+len(value)+len("\x00") > core.MaxEnvEntryBytes {
+			return core.NewBadRequestError(CodeSandboxEnvInvalid,
+				fmt.Sprintf("environment variable %q is too large: a process cannot start with a NAME=value entry over %d bytes", name, core.MaxEnvEntryBytes-1),
+				map[string]any{"field": "env", "name": name, "maxBytes": core.MaxEnvEntryBytes - 1})
+		}
+		upper := strings.ToUpper(name)
+		for _, prefix := range reservedSandboxEnvPrefixes {
+			if strings.HasPrefix(upper, prefix) {
+				return core.NewBadRequestError(CodeSandboxEnvInvalid,
+					fmt.Sprintf("environment variable %q is reserved for the platform (names starting with %s)", name, prefix),
+					map[string]any{"field": "env", "name": name})
+			}
+		}
+		size += len(name) + len(value)
+	}
+	if size > maxSandboxEnvBytes {
+		return core.NewBadRequestError(CodeSandboxEnvInvalid,
+			fmt.Sprintf("sandbox environment variables total %d bytes; the limit is %d across names and values", size, maxSandboxEnvBytes),
+			map[string]any{"field": "env", "maxBytes": maxSandboxEnvBytes})
 	}
 	return nil
 }
@@ -721,6 +776,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err := validateSandboxName(req.Name); err != nil {
 		return Sandbox{}, err
 	}
+	if err := validateSandboxEnv(req.Env); err != nil {
+		return Sandbox{}, err
+	}
 	if req.Name != "" && s.Names == nil {
 		return Sandbox{}, fmt.Errorf("%w: sandbox names need the control-plane store", core.ErrSandboxesUnavailable)
 	}
@@ -746,7 +804,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 		if err := s.Names.SetSandboxName(ctx, ws, publicID, req.Name); err != nil {
 			return Sandbox{}, err
 		}
-		box, err := s.createWithID(ctx, ws, publicID, name, tmpl, plan, req.Region, timeout, idle, policy)
+		box, err := s.createWithID(ctx, ws, publicID, name, tmpl, plan, req.Region, timeout, idle, policy, req.Env)
 		if err != nil {
 			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
 			defer cancel()
@@ -758,18 +816,18 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 		box.Name = &req.Name
 		return box, nil
 	}
-	return s.createWithID(ctx, ws, publicID, name, tmpl, plan, req.Region, timeout, idle, policy)
+	return s.createWithID(ctx, ws, publicID, name, tmpl, plan, req.Region, timeout, idle, policy, req.Env)
 }
 
 // createWithID creates the sandbox under the public id bex minted for it.
-func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, tmpl Template, plan Plan, region string, timeout, idle int, policy *NetworkPolicy) (Sandbox, error) {
+func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, tmpl Template, plan Plan, region string, timeout, idle int, policy *NetworkPolicy, env map[string]string) (Sandbox, error) {
 	extra := map[string]string{
 		metadataPublicID:    publicID,
 		metadataIdleTimeout: strconv.Itoa(idle),
 		metadataEgress:      string(policy.Default),
 	}
 	if policy.Default != NetworkPolicyAllowList {
-		return s.createResolved(ctx, ws, name, tmpl, plan, region, timeout, policy, nil, extra)
+		return s.createResolved(ctx, ws, name, tmpl, plan, region, timeout, policy, env, extra)
 	}
 	// An allow-list's per-sandbox policy exists before the Pod does, so the Pod
 	// is never selected by anything looser than its own rules.
@@ -780,7 +838,7 @@ func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, t
 	if err := s.SandboxEgress.Apply(ctx, namespace, publicID, ruleDomains(policy.Rules)); err != nil {
 		return Sandbox{}, err
 	}
-	box, err := s.createResolved(ctx, ws, name, tmpl, plan, region, timeout, policy, nil, extra)
+	box, err := s.createResolved(ctx, ws, name, tmpl, plan, region, timeout, policy, env, extra)
 	if err != nil {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
 		defer cancel()

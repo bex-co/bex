@@ -1,19 +1,19 @@
 # w32 · m297 — Sandbox environment variables, as on Render
 
-**Worker:** worker32 **Goal:** `bex ea sandboxes create --env-var K=V` and the SDK's `create(env=…)` inject variables into the sandbox, write-only, as on Render **Status:** todo
+**Worker:** worker32 **Goal:** `bex ea sandboxes create --env-var K=V` and the SDK's `create(env=…)` inject variables into the sandbox, write-only, as on Render **Status:** in progress (t001–t003, t005–t008 done; t004, the production isolation-matrix run, follows the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design: storage, reserved names and limits, checked against render.com | 30m | — |
-| t002 | Accept `env` on REST create, GraphQL and MCP; validate names and limits | 60m | t001 |
-| t003 | Pass env to OpenSandbox and keep values off every read, log and event | 40m | t002 |
+| t001 | Design: storage, reserved names and limits, checked against render.com — **DONE** | 30m | — |
+| t002 | Accept `env` on REST create, GraphQL and MCP; validate names and limits — **DONE** | 60m | t001 |
+| t003 | Pass env to OpenSandbox and keep values off every read, log and event — **DONE** | 40m | t002 |
 | t004 | Production check: env probe in the isolation matrix | 40m | t003 |
-| t005 | Docs: parity ledger, ea-sandbox and checklists | 20m | t004 |
-| t006 | Render parity | 20m | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t006 |
+| t005 | Docs: parity ledger, ea-sandbox and checklists — **DONE** | 20m | t004 |
+| t006 | Render parity — **DONE** | 20m | t005 |
+| t007 | Simplify — **DONE** | 15m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t006 |
 | t009 | Closeout | 10m | t007, t008 |
 
 ## Definition of done
@@ -30,3 +30,10 @@
 - **Expected outcome:** The last everyday create flag the pinned CLI and SDK still refuse works, so Render sandbox scripts that pass env run unchanged.
 - **Why now:** The create plumbing already carries env, and m283 established the isolation matrix as a production verification path that doesn't depend on the broken QA login (m284's gate).
 - **Render parity:** Included: REST/GraphQL/MCP create surfaces change. Dashboard N/A (bex has no sandbox page).
+
+## Progress — 2026-11-09
+
+- **Shipped:** REST, GraphQL (`env: [EnvVarInput!]`) and MCP (`spawn_sandbox` `env`) accept create-time env. Validation is in `validateSandboxEnv` (`lego/backend/internal/sandbox/service.go`): Render's 100-variable and 256 KB limits, a service's name and value rules (`core.CheckEnvKey`, no NUL, an execve-sized entry), and refused `BEX_`/`EXECD_`/`OPENSANDBOX_` prefixes. The create body is capped at 2 MiB. `env_test.go` covers injection, the values never being echoed, and every refusal.
+- **t006 Render parity:** all three surfaces share one validator and one create path, with the same codes and write-only reads. GraphQL adds two refusals of its own (a generated value, a repeated key) because its list shape allows them. Dashboard N/A (no sandbox page; regenerated `schema-types.ts` carries the new argument).
+- **t007 Simplify:** applied the reuse of `core.CheckEnvKey`/`ValidEnvValue`, the body cap, a single upper-casing, the MCP limits built from the constants, and the probe-script fixes (`--fail-with-body`, `event: output` parsing, cleanup on a wrongly accepted create, no duplicate reads). Skipped: folding `createWithID`'s parameters into a struct (an existing shape; not worth the churn here).
+- **t004 next:** after the deploy, dispatch `isolation-matrix.yml` on production. It now creates sandbox A with `env`, checks `printenv` through bex's exec path, checks that no read returns the value, and checks that a reserved name is refused.

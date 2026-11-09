@@ -334,16 +334,17 @@ func firstSandboxID(t *testing.T, raw []byte) string {
 	return ""
 }
 
-// w9/067: `--env-var`/`--env-file` and `--snapshot-id` are documented flags on
-// `ea sandboxes create` that bex does not serve. Strict decoding used to refuse
-// them with `unknown field "env"` — an internal wire key, not the flag the user
-// typed — which reads as a malformed request rather than an unsupported
-// feature. They now refuse by name.
+// w9/067: `--snapshot-id`/`--from` are documented flags on `ea sandboxes
+// create` that bex does not serve. Strict decoding used to refuse them with
+// `unknown field` — an internal wire key, not the flag the user typed. They
+// refuse by name, as do the invalid inputs of options bex does serve (the
+// "flag" column is then the part of the input the message must name).
 func TestCreateRefusesUnsupportedOptionsByName(t *testing.T) {
 	for _, tc := range []struct {
 		name, body, wantCode, wantFlag string
 	}{
-		{"env vars", `{"plan":"starter","env":{"QA":"1"}}`, "SANDBOX_ENV_UNSUPPORTED", "--env-var"},
+		{"reserved env name", `{"plan":"starter","template":"node","env":{"BEX_TOKEN":"1"}}`, "SANDBOX_ENV_INVALID", "BEX_TOKEN"},
+		{"invalid env name", `{"plan":"starter","template":"node","env":{"A=B":"1"}}`, "ENVIRONMENT_VARIABLE_INVALID", "A=B"},
 		{"snapshot", `{"plan":"starter","snapshotId":"snp-1"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--snapshot-id"},
 		// Render CLI v2.29 `--from gold` sends a snapshot name (w8/m67).
 		{"snapshot name", `{"plan":"starter","snapshotName":"gold"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--from"},
@@ -385,8 +386,7 @@ func TestCreateRefusesUnsupportedOptionsByName(t *testing.T) {
 	}
 }
 
-// A create with no unsupported option is untouched — the pinned client only
-// sends `env` when non-empty, which is why plain creates always worked.
+// A create with no unsupported option is untouched.
 func TestCreateWithoutUnsupportedOptionsStillSucceeds(t *testing.T) {
 	svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusCreated)

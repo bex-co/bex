@@ -32,6 +32,9 @@ import (
 // below plus the redeem route in connect.go, mounted outside the auth gate —
 // while the single-step `POST /exec` stays for pre-v2.24 clients and MCP.
 // ownerId is Render's workspace binding (query param).
+// maxCreateBodyBytes bounds a sandbox create body.
+const maxCreateBodyBytes = 8 * maxSandboxEnvBytes
+
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -43,17 +46,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// explicit 0 (no timeout); see resolveTimeout.
 			TimeoutSeconds *int           `json:"timeoutSeconds"`
 			NetworkPolicy  *NetworkPolicy `json:"networkPolicy"`
-			// Env and SnapshotID are DECLARED so they can be REFUSED BY NAME.
-			// The pinned client sends `env` for `--env-var`/`--env-file` and
-			// `snapshotId` for `--snapshot-id`; with the fields absent, strict
-			// decoding answered `unknown field "env"`, which names an internal
-			// wire key rather than the flag the user typed and reads like a
-			// malformed request rather than an unsupported feature (w9/067).
-			// Declaring them costs nothing at runtime — neither is ever read
-			// into CreateRequest — and lets the refusal below say what bex does
-			// not support.
-			Env        map[string]string `json:"env"`
-			SnapshotID string            `json:"snapshotId"`
+			// Render's create-time env (`--env-var`/`--env-file`).
+			Env map[string]string `json:"env"`
+			// SnapshotID is DECLARED so it can be REFUSED BY NAME: the pinned
+			// client sends it for `--snapshot-id`, and strict decoding would
+			// otherwise answer `unknown field`, an internal wire key (w9/067).
+			SnapshotID string `json:"snapshotId"`
 			// Render CLI v2.29's `--from <name>` sends snapshotName (an ID
 			// still goes as snapshotId); refused the same way.
 			SnapshotName string `json:"snapshotName"`
@@ -61,7 +59,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// (900 s) differs from an explicit 0 (disabled); see
 			// resolveIdleTimeout.
 			IdleTimeoutSeconds *int `json:"idleTimeoutSeconds"`
-			// Declared to be refused by name, like Env/SnapshotID above:
+			// Declared to be refused by name, like SnapshotID above:
 			// v2.32 `--group`/`--sandbox-group` sends sandboxGroupId, and
 			// v2.34 `--image` sends buildId (an `sbb-` id) or buildName. A raw
 			// `image` ref (ea-sandbox.md's original wire table) is the same request.
@@ -75,11 +73,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// A missing/empty body is fine — template+plan fall back to defaults —
 		// but malformed or unknown nested policy fields must never be ignored.
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		// The body is read whole before env's 256 KB limit can apply; bound it
+		// (JSON escaping can grow a value several-fold, hence the headroom).
+		r.Body = http.MaxBytesReader(w, r.Body, maxCreateBodyBytes)
 		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		if err := refuseUnsupportedCreateOptions(len(body.Env) > 0, body.SnapshotID != "" || body.SnapshotName != ""); err != nil {
+		if err := refuseSnapshotCreate(body.SnapshotID != "" || body.SnapshotName != ""); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
@@ -102,6 +103,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			IdleTimeoutSeconds: body.IdleTimeoutSeconds,
 			NetworkPolicy:      body.NetworkPolicy,
 			Name:               body.Name,
+			Env:                body.Env,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
