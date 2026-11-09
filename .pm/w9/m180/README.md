@@ -43,3 +43,29 @@ On production:
 - **Why now:** w2/m254 closed on its happy path. These gaps surface only on restarts, image sources and Blueprints, which are exactly where users will hit them next.
 - **Overlap:** w3/057 already tracks two ADR018 corrections (line 82's unexplained ◐ and line 420's stale `w2/m254` "open"); this milestone does not repeat them. t006 fixes only the "16 operations" count.
 - **Parity:** included, because these are user-facing REST/GraphQL/MCP/Blueprint behaviors with Render as the reference.
+
+## Live check (2026-11-08, production 548af90d4)
+
+- **Setup:** QA user (cookie session) in workspace `tea-daif693dqjvc73e7as3g` (bex-canary). All `qa-bs-` fixtures were deleted and verified 404, the workspace is back to its 5 services and no build sources, and the Kratos session was logged out. No CLI grant was minted.
+- **1. Create with `serviceIds` links (PASS):**
+  - `POST /v1/build-sources` (image `docker.io/nginxinc/nginx-unprivileged:alpine`) with `serviceIds:["srv-dboi0u1ogl4s73954gog"]` returned 201 `bds-dboi10pf86qs73b56vhg` with `serviceLinks:[qa-bs-own]`, and the service's `buildSourceId` read back the source.
+  - **Observation:** an image source records its first build at create (`bld-dboi10pf86qs73b56vig`), and that build's fan-out deployed the newly linked auto-deploy service (`dep-dboi15pf86qs73b56vjg`). A PATCH link saves without deploying, but create-with-`serviceIds` deploys through the first build's fan-out. Render documents nothing here; decide whether that is intended.
+- **2. Duplicate name (REST, GraphQL PASS; MCP FAIL, pre-existing):**
+  - REST answered 409 `BUILD_SOURCE_NAME_TAKEN`, and GraphQL `createBuildSource` returned an error with `extensions.code: BUILD_SOURCE_NAME_TAKEN`.
+  - MCP `create_build_source` fails for every input: "validating root: required: missing properties: [ownerId]". Passing `ownerId` is refused ("ownerId is not supported by MCP tools; use workspaceId").
+  - Cause: the tool binds `CreateBuildSourceRequest` directly, and its `OwnerID` is tagged `json:"ownerId"` without `omitempty` (`lego/backend/internal/apps/build_sources.go:120`), so the SDK's inferred input schema requires it while the advertised schema (`workspaceId`) does not. This predates m180, which changed only the tool description (`build_sources_graphql.go:313-318`).
+- **3. Linked image service gets the image port (FAIL):**
+  - Web services linked to an image source cannot deploy. `srv-dboi061ogl4s73954gmg` (created with `buildSourceId`) and `srv-dboi0u1ogl4s73954gog` (linked at create) both went `update_failed`: "image port discovery requires this service's built image repository" (`dep-dboi07pf86qs73b56vgg`, `dep-dboi15pf86qs73b56vjg`). The URL answered 503.
+  - Cause: t003 now gives the linked service the carrier's image-port mode, but the operator's `resolveImageNetwork` reads only the App's own built image (`ownImageReference`) or an external `Spec.Image` (`lego/operator/internal/controller/image_network.go:182-211`). A linked service's image is `Spec.BuildSource.Image`, so it falls through to the error at :211.
+  - Before m180 this path was not taken: the service fell back to port 10000 and nginx on 8080 would not have answered either.
+  - Fix: resolve the network from `Spec.BuildSource.Image`, treating an external ref like `Spec.Image` and a registry build like the own-image branch.
+- **4. Fan-out deploys each auto-deploy linked service exactly once (PASS, normal path):**
+  - Git source `bds-dboi2j1f86qs73b570b0` (express-hello-world) and linked `srv-dboi6o9f86qs73b570f0` (start `node app.js`, auto-deploy yes) went live and served 200.
+  - A triggered build `bld-dboicahf86qs73b570gg` succeeded in 150 s and opened exactly one deploy, `dep-dboicspf86qs73b570h0`, which went live. After another 90 s there was still one, and the service served 200.
+  - The restart-recovery path was not exercised live; it is covered by the PG and reconciler tests.
+- **5. Export of a project-scoped source with `fromGroup` (PARTIAL FAIL):**
+  - For `bds-dboif31ogl4s73954h70`, created with `projectId` and `envGroupIds:[evg-dboif2pf86qs73b570j0]`, and its linked `srv-dboif69f86qs73b570kg`, Generate Blueprint wrote the source under `projects[{name: qa-bs-proj, buildSources: [qa-bs-scoped]}]` (PASS).
+  - **No `fromGroup`** appeared under it, not even after an explicit `POST /v1/build-sources/{id}/env-groups/{evg}` (200). The group's `serviceLinks` read `[]`. Not even the unselected-group `sync: false` expansion appeared, so the carrier App's `Spec.EnvFromSecrets` looks empty in production.
+  - Export reads `carrier.Spec.EnvFromSecrets` (`blueprint_generate.go:531` → `generateEnvVars` ~:684), and the link path is envgroups `linkFetched`/`rollLinked` (`envgroups/service.go:1060-1112`). Not verified (no prod kubeconfig here): whether the group's vars actually reach the carrier's build Job. If not, this is a functional gap, not just export.
+- **6. Carrier builds are not service deploy webhook events: NOT RUN.** It needs a webhook receiver; it is covered by `TestPGCarrierBuildsAreNotServiceDeployWebhookEvents` (real Postgres).
+- **7. A project's service list never moves a carrier (PASS):** `PUT /v1/projects/prj-dboieq1ogl4s73954h5g/service-links` with `["bds-dboi2j1f86qs73b570b0","srv-dboi6o9f86qs73b570f0"]` moved the service into the project and left the carrier with no `projectId`.
