@@ -1,6 +1,6 @@
 # w9 · m180 — Build Sources: close the gaps between ADR097 and the code
 
-**Worker:** worker9 **Goal:** Build Sources behave as ADR097 and Render say on every path. A create can link services, a successful build always reaches every auto-deploy linked service, linked image/Docker services get the right port and container policy, and Blueprints and the API agree on names, scope and export. **Status:** in progress — t001–t009 done; t010 after the production check
+**Worker:** worker9 **Goal:** Build Sources behave as ADR097 and Render say on every path. A create can link services, a successful build always reaches every auto-deploy linked service, linked image/Docker services get the right port and container policy, and Blueprints and the API agree on names, scope and export. **Status:** done (2026-11-08)
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t007 | Render parity: REST, GraphQL, MCP and dashboard against Render's Build Sources — **DONE** | 20m | t001, t002, t003, t004, t005, t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 45m | t007, t008 |
-| t010 | Closeout | 10m | t009 |
+| t010 | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
@@ -69,3 +69,23 @@ On production:
   - Export reads `carrier.Spec.EnvFromSecrets` (`blueprint_generate.go:531` → `generateEnvVars` ~:684), and the link path is envgroups `linkFetched`/`rollLinked` (`envgroups/service.go:1060-1112`). Not verified (no prod kubeconfig here): whether the group's vars actually reach the carrier's build Job. If not, this is a functional gap, not just export.
 - **6. Carrier builds are not service deploy webhook events: NOT RUN.** It needs a webhook receiver; it is covered by `TestPGCarrierBuildsAreNotServiceDeployWebhookEvents` (real Postgres).
 - **7. A project's service list never moves a carrier (PASS):** `PUT /v1/projects/prj-dboieq1ogl4s73954h5g/service-links` with `["bds-dboi2j1f86qs73b570b0","srv-dboi6o9f86qs73b570f0"]` moved the service into the project and left the carrier with no `projectId`.
+
+## Recheck (2026-11-08, production 39e7575af)
+
+- **Setup:** pin 39e7575af (deploy run 42552534729), which includes e367297c1. QA user (cookie session) in `bex-canary` (`tea-daif693dqjvc73e7as3g`), public images, fixtures prefixed `qa-bs2-`. Baseline before and after: 1 service (`hello-go`), 0 build sources, 1 env group, 0 projects.
+- **1. Create with `serviceIds` links (PASS):** `qa-bs2-own` (`srv-dbojtvne526s73al62pg`, its own image) was linked at create by `POST /v1/build-sources` → 201 `bds-dboju1ve526s73al62r0` with `serviceLinks:[qa-bs2-own]`. The service read back `buildSourceId` = that source.
+- **2. Duplicate name, MCP (PASS):**
+  - `create_build_source` with `workspaceId` created `bds-dboju83uv3ts73f84ls0`.
+  - Repeating the name returned `isError` with `BUILD_SOURCE_NAME_TAKEN`. Passing `ownerId` was refused ("ownerId is not supported by MCP tools; use workspaceId").
+  - REST repeat: 409 `BUILD_SOURCE_NAME_TAKEN` (id `conflict`).
+- **3. Linked image service deploys and serves on the image's port (PASS):**
+  - `qa-bs2-web` (`srv-dbojskfe526s73al62ng`, `serviceDetails.buildSourceId` = `bds-dbojseve526s73al62l0`, image `docker.io/nginxinc/nginx-unprivileged:alpine`): `dep-dbojskfe526s73al62o0` went `live` in about 120 s.
+  - `https://qa-bs2-web.onbex.co/` answered 200 ("Welcome to nginx!"). `serviceDetails.port` and `openPorts` were 8080, the image's port, not the 10000 fallback.
+  - The `render-v1` container policy is not exposed by the API, and no production kubeconfig is available here. It is covered by `TestServiceLinkedToImageSourceGetsImageRules`.
+- **5. Export of a project-scoped source with `fromGroup` (PASS):**
+  - Fixtures: project `qa-bs2-proj` (`prj-dbojum3uv3ts73f84lu0`, env `evm-dbojum3uv3ts73f84lug`), env group `qa-bs2-grp` (`evg-dbojumfe526s73al6320`), git source `qa-bs2-scoped` (`bds-dbojuofe526s73al6330`, `projectId` plus `envGroupIds`; express-hello-world, node), and linked `qa-bs2-svc` (`srv-dbojurfe526s73al6360`, start `node app.js`) in the project's environment.
+  - `POST /v1/blueprints/generate` with `serviceIds` only: the source sits under `projects[{name: qa-bs2-proj, buildSources: [qa-bs2-scoped]}]`, and the group's `QA_BS2_FLAG` appears as `sync: false`, because the group is not selected.
+  - With `envGroupIds:[qa-bs2-grp]` selected: `git.envVars: [{fromGroup: qa-bs2-grp}]`. In the previous check neither form appeared.
+- **Observation (out of scope):** the selected env group's own var exported as `generateValue: true`, not its literal value. That is existing env-group export behavior.
+- **Not rerun:** checks 4, 6 and 7 passed or were covered by tests in the previous check, and none of them changed in e367297c1.
+- **Cleanup:** 3 services, 4 build sources, the env group and the project deleted (204, then 404 each); `bex-canary` is back to its baseline. The Kratos session logged out (`ok logged-out`; later requests got 401). The jar, the state file and the `/tmp` run dir were removed, and nothing was written in the repo root. No CLI grant was minted (cookie path).
