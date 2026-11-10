@@ -109,9 +109,8 @@ These are work to verify, not DoD facts:
 
 ### Seen but not filed
 
-- During the first deploy, the header read "Service: Building" while the deploy read Created, then Queued (07:28).
-- `build_started` was stamped 07:27:53, the deploy's `createdAt`, although its `startedAt` was 07:28:57.
-- This was one sample. `buildStartedAt` (`lego/backend/internal/store/reconciler.go`) deliberately handles queued rows (w4/m156, w6/m123). It was not reproduced and its cause is unverified.
+- During the first deploy, the header read "Service: Building" while the deploy read Created, then Queued (07:28). This remains one untraced observation; its cause is unverified.
+- `build_started` was stamped 07:27:53, the deploy's `createdAt`, although its `startedAt` was 07:28:57. **Reproduced in round 2 and filed as [w4/535](../535.md)**, a regression of w6/035: `buildStartedAt` treats a `created` row as already dispatched.
 
 ### Dedupe
 
