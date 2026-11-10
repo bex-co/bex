@@ -13,6 +13,7 @@
 
 ## Inbox
 
+- [ ] [008](008.md) — `bex ssh --help` and `bex ea blueprints --help` link Render's docs instead of Bex's (v0.5.0, from the v2.35.0 pin)
 - [x] [006](done/006.md) — List makes one Cilium read per allow-list sandbox — DONE (concurrent reads; no RBAC widening)
 - [x] [007](done/007.md) — The Docker promtool fallback can't read the rule file — DONE
 
