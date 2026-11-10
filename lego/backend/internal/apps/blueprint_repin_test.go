@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -139,29 +140,61 @@ func TestBlueprintRejectsComputePlanSizesBexDoesNotOffer(t *testing.T) {
 	}
 }
 
-// Render's cronPlan has no free rung, and since w8/048 bex sells no free cron
-// either: the pinned schema refuses plan: free on a cron job, and a paid plan
-// still compiles.
-func TestBlueprintCronPlanFreeIsRefused(t *testing.T) {
-	manifest := "services:\n  - type: cron\n    name: c\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '* * * * *'\n    plan: free\n"
-	_, problems := CompileBlueprintSource(manifest)
-	if len(problems) != 1 || problems[0].Code != "BLUEPRINT_SCHEMA_INVALID" || problems[0].Path != "#/services/0/plan" ||
-		!strings.Contains(problems[0].Message, "a cron_job requires a paid plan") {
-		t.Fatalf("cron plan: free problems = %+v, want the named paid-plan refusal at #/services/0/plan", problems)
+// Render sells no free cron, worker or private service (w8/048, w1/111). A
+// Blueprint refuses each at its own services[N].plan in Blueprint spelling,
+// every hinted plan validates when written back (w6/093, w8/241), and a file
+// with all three reports all three in one run.
+func TestBlueprintPaidOnlyTypesRefuseFreeInBlueprintSpelling(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	validate := func(t *testing.T, manifest string) BlueprintValidation {
+		t.Helper()
+		v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+		if err != nil {
+			t.Fatalf("ValidateBlueprint: %v", err)
+		}
+		return v
 	}
-	// The hint lists only plans a Blueprint cron can write, in Blueprint
-	// spelling, and each of them compiles (w6/093).
-	if msg := problems[0].Message; !strings.HasSuffix(msg, "plan must be one of starter|standard|pro|pro plus") {
-		t.Errorf("hint = %q, want the cronPlan rungs in Blueprint spelling", msg)
+	for _, tc := range []struct{ entry, svcType, hint string }{
+		{"  - type: cron\n    name: c\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '* * * * *'\n    plan: free\n", "cron_job", "starter|standard|pro|pro plus"},
+		{"  - type: worker\n    name: w\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n", "background_worker", ""},
+		{"  - type: pserv\n    name: p\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n", "private_service", ""},
+	} {
+		t.Run(tc.svcType, func(t *testing.T) {
+			manifest := "services:\n" + tc.entry
+			v := validate(t, manifest)
+			if v.Valid || len(v.Errors) != 1 || v.Errors[0].Path == nil || *v.Errors[0].Path != "services[0].plan" ||
+				!strings.Contains(v.Errors[0].Error, "a "+tc.svcType+" requires a paid plan; plan must be one of ") {
+				t.Fatalf("plan: free = %+v, want the named paid-plan refusal at services[0].plan", v.Errors)
+			}
+			message := v.Errors[0].Error
+			hinted := strings.Split(message[strings.Index(message, "one of ")+len("one of "):], "|")
+			if tc.hint != "" && strings.Join(hinted, "|") != tc.hint {
+				t.Errorf("hint = %v, want %s", hinted, tc.hint)
+			}
+			if slices.ContainsFunc(hinted, func(plan string) bool { return strings.Contains(plan, "_") }) {
+				t.Errorf("hint %v uses the API's underscore spelling", hinted)
+			}
+			for _, plan := range hinted {
+				if v := validate(t, strings.Replace(manifest, "plan: free", "plan: "+plan, 1)); !v.Valid {
+					t.Errorf("hinted plan %q is refused: %+v", plan, v.Errors)
+				}
+			}
+		})
 	}
-	for _, plan := range blueprintCronPlanNames() {
-		if _, problems := CompileBlueprintSource(strings.Replace(manifest, "plan: free", "plan: "+plan, 1)); len(problems) != 0 {
-			t.Errorf("hinted plan %q is refused: %+v", plan, problems)
+
+	three := "services:\n" +
+		"  - type: cron\n    name: c\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '* * * * *'\n    plan: free\n" +
+		"  - type: worker\n    name: w\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n" +
+		"  - type: pserv\n    name: p\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: free\n"
+	var paths []string
+	for _, e := range validate(t, three).Errors {
+		if e.Path != nil {
+			paths = append(paths, *e.Path)
 		}
 	}
-	st := parseBlueprintStackForTest(t, strings.Replace(manifest, "plan: free", "plan: starter", 1))
-	if tier, err := normalizeTierForType(effectiveType(st.services[0].req.Type), st.services[0].req.Plan, ""); err != nil || tier != "starter" {
-		t.Fatalf("cron plan: starter => tier %q, %v; want starter", tier, err)
+	slices.Sort(paths)
+	if want := []string{"services[0].plan", "services[1].plan", "services[2].plan"}; !slices.Equal(paths, want) {
+		t.Fatalf("three free paid-only services report %v, want %v", paths, want)
 	}
 }
 

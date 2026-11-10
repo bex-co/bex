@@ -1408,6 +1408,13 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locat
 	if additional, ok := validation.ErrorKind.(*kind.AdditionalProperties); ok && len(additional.Properties) == 1 {
 		path = renderSchemaPointer(append(append([]string(nil), validation.InstanceLocation...), additional.Properties[0]))
 	}
+	// Only cronPlan lacks free among the service plan enums. A free cron is
+	// refused by the service stage beside a free worker or private service
+	// instead, so a file with several of them reports each in one run
+	// (w8/241); this stage would stop at the first.
+	if got, ok := blueprintSchemaGotValue(validation.ErrorKind); ok && got == "free" && blueprintServicePlanLocation(validation.InstanceLocation) {
+		return
+	}
 	location := lookupBlueprintLocation(path, locations)
 	message := "Blueprint does not satisfy the reviewed Render schema"
 	if validation.ErrorKind != nil {
@@ -1419,12 +1426,20 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locat
 // blueprintServiceTypeValues is the union of services[] discriminators.
 const blueprintServiceTypeValues = "'web', 'worker', 'pserv', 'cron', 'keyvalue', 'redis'"
 
-// blueprintCronFreePlanMessage words a refused free cron plan as every other
-// paid-only type's refusal, but lists the named rungs of the pinned schema's
-// cronPlan enum in Blueprint spelling ("pro plus"): the API ladder's
-// pro_plus|pro_max|pro_ultra are not values a Blueprint cron can write (w6/093).
-func blueprintCronFreePlanMessage() string {
-	return fmt.Sprintf("a %s requires a paid plan; plan must be one of %s", appv1alpha1.TypeCronJob, strings.Join(blueprintCronPlanNames(), "|"))
+// blueprintFreePlanMessage is freePlanForTypeMessage in Blueprint spelling,
+// so following it validates (w6/093, w8/241): a cron lists the named rungs of
+// the pinned schema's cronPlan enum, a worker or private service the
+// selectable paid ladder written as serverPlan writes it ("pro plus", not the
+// API's pro_plus).
+func blueprintFreePlanMessage(svcType string) string {
+	plans := blueprintCronPlanNames()
+	if svcType != appv1alpha1.TypeCronJob {
+		plans = paidRenderPlans()
+		for i, plan := range plans {
+			plans[i] = strings.ReplaceAll(plan, "_", " ")
+		}
+	}
+	return fmt.Sprintf("a %s requires a paid plan; plan must be one of %s", svcType, strings.Join(plans, "|"))
 }
 
 // blueprintCronPlanNames is the cronPlan enum without its size ids.
@@ -1448,13 +1463,6 @@ var blueprintCronPlanNames = sync.OnceValue(func() []string {
 
 func blueprintSchemaLeafMessage(validation *jsonschema.ValidationError) string {
 	message := validation.Error()
-	// Only cronPlan lacks free among the service plan enums, so a refused free
-	// plan is a cron job's: word it as every other paid-only type's (w8/048).
-	if loc := validation.InstanceLocation; blueprintServicePlanLocation(loc) {
-		if got, ok := blueprintSchemaGotValue(validation.ErrorKind); ok && got == "free" {
-			return blueprintCronFreePlanMessage()
-		}
-	}
 	if loc := validation.InstanceLocation; blueprintServiceTypeLocation(loc) {
 		if got, ok := blueprintSchemaGotValue(validation.ErrorKind); ok && !blueprintKnownServiceType(got) {
 			if i := strings.LastIndex(message, ": "); i >= 0 {

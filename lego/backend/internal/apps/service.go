@@ -3943,8 +3943,18 @@ func defaultPaidTierID() string {
 // plan-change verbs, Blueprint validation and export word the refusal
 // identically, listing only the plans that type may use.
 func errFreePlanForType(svcType string) error {
-	return fmt.Errorf("%w: %s", core.ErrBadRequest, freePlanForTypeMessage(svcType))
+	return &freePlanForTypeError{svcType: svcType}
 }
+
+// freePlanForTypeError is a paid-only type's refusal of the free plan: a bad
+// request whose type a Blueprint rewords in its own spelling (w8/241).
+type freePlanForTypeError struct{ svcType string }
+
+func (e *freePlanForTypeError) Error() string {
+	return core.ErrBadRequest.Error() + ": " + freePlanForTypeMessage(e.svcType)
+}
+
+func (e *freePlanForTypeError) Unwrap() error { return core.ErrBadRequest }
 
 // freePlanForTypeMessage names the type the caller actually asked for, not a
 // fixed noun: a message naming the wrong paid-only type sends the reader to

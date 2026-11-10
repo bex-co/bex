@@ -1699,6 +1699,10 @@ func copyRefusal(consumer *parsedService, c stateCopy, why string) blueprintReso
 func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService, appsByName map[string]*appv1alpha1.App) error {
 	desired, err := blueprintReadSpec(ctx, withCurrentTier(svc.req, appsByName[svc.req.Name]))
 	if err != nil {
+		var free *freePlanForTypeError
+		if errors.As(err, &free) {
+			err = fmt.Errorf("%w: %s", core.ErrBadRequest, blueprintFreePlanMessage(free.svcType))
+		}
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
 	if err := s.validateNewSpecMaintenanceMode(ctx, svc.req.Name, desired); err != nil {
