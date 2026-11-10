@@ -143,6 +143,16 @@ describe("LogLineList request-line rendering (w5/008)", () => {
     fireEvent.click(instanceButton);
     expect(onInstanceFilter).toHaveBeenCalledWith(instance);
   });
+
+  // w21/019: the faded `/70` token measured 3.13:1 in the light theme.
+  it("draws the instance id at full muted-foreground contrast", () => {
+    render(<LogLineList lines={[line()]} onInstanceFilter={vi.fn()} />);
+    const button = screen.getByRole("button", {
+      name: /Filter logs by instance/,
+    });
+    expect(button.className).toContain("text-muted-foreground");
+    expect(button.className).not.toContain("text-muted-foreground/");
+  });
 });
 
 describe("LogLineList virtualization (w9/m83)", () => {

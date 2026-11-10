@@ -256,7 +256,7 @@ function CoverageCaveat({ coverage }: { coverage: Coverage }) {
   // screen-reader users learn what is incomplete too (w4/495).
   return (
     <div className="mt-1 space-y-0.5 text-xs">
-      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-500">
+      <span className="flex items-center gap-1 text-amber-700 dark:text-amber-500">
         <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
         {t("usage.coveragePartial")}
       </span>

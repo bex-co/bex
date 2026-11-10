@@ -26,7 +26,7 @@ function statusChipClass(status: string): string {
     case "3":
       return "bg-blue-500/15 text-blue-700 dark:text-blue-400";
     case "4":
-      return "bg-amber-500/15 text-amber-700 dark:text-amber-400";
+      return "bg-amber-500/15 text-amber-800 dark:text-amber-400";
     case "5":
       return "bg-red-500/15 text-red-700 dark:text-red-400";
     default:
@@ -416,7 +416,7 @@ const LogRow = memo(function LogRow({
         onInstanceFilter ? (
           <button
             type="button"
-            className="shrink-0 cursor-pointer rounded-sm text-muted-foreground/70 underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            className="shrink-0 cursor-pointer rounded-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             aria-label={t("logs.filterByInstance", {
               instance: line.instance,
             })}
@@ -430,7 +430,7 @@ const LogRow = memo(function LogRow({
           // (`red-<id>-<opaque>`) left no room for the message on a narrow
           // screen, which wrapped one character per line (w5/m139).
           <span
-            className="shrink-0 text-muted-foreground/70"
+            className="shrink-0 text-muted-foreground"
             title={line.instance}
           >
             [{shortInstance(line.instance)}]

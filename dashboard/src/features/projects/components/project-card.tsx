@@ -44,7 +44,7 @@ export function ProjectCard({ id, name, rows }: ProjectCardProps) {
           {t("projects.cardInProgress", { count: converging })}
         </span>
       ) : (
-        <span className="flex items-center gap-1.5 text-sm text-emerald-600 dark:text-emerald-400">
+        <span className="flex items-center gap-1.5 text-sm text-emerald-700 dark:text-emerald-400">
           <CheckCircle2 className="size-4" />
           {t("projects.cardHealthy")}
         </span>
