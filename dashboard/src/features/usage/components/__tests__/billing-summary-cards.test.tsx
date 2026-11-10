@@ -94,13 +94,16 @@ describe("CreditBalanceCard", () => {
 // of 1,000 or more is grouped and the messages carry no literal `$` of their own.
 describe("grouped money amounts", () => {
   it("groups the balance, the applied/due line, the expiry note and an invoice", () => {
+    const base = creditedPeriod();
     const big = creditedPeriod({
       currentCost: {
+        ...base.currentCost!,
         amountUsd: "1234.50",
         creditsAppliedUsd: "1234.50",
         amountDueUsd: "1234.50",
       },
       credits: {
+        ...base.credits!,
         availableUsd: "1000551.64",
         grants: [
           {
