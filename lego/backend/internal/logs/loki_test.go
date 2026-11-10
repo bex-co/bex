@@ -987,12 +987,21 @@ func TestFallbackRefusesStoreOnlyFilters(t *testing.T) {
 		if _, err := svc.QueryLogs(context.Background(), q); !errors.Is(err, core.ErrLogStoreUnavailable) {
 			t.Errorf("%s without the store => ErrLogStoreUnavailable, got %v", name, err)
 		}
-		// The live tail refuses the same filters — but as a BAD REQUEST, not "the
-		// store is missing": the pod producer reads stdout even on a cluster that
-		// has Loki, so blaming the store would be a lie there. The refusal is
-		// the producers' (w4/m237 keeps it for store-only filters over app lines).
-		if err := svc.FollowLogs(context.Background(), q, func(LogEntry) error { return nil }); !errors.Is(err, core.ErrBadRequest) {
-			t.Errorf("%s on the tail => ErrBadRequest, got %v", name, err)
+		// The live tail routes request filters to request lines (w8/m147), whose
+		// only producer is the store poll: without a store it is unavailable,
+		// as a type=request tail is. `level` is the pod producer's, below.
+		if name == "level" {
+			continue
+		}
+		if err := svc.FollowLogs(context.Background(), q, func(LogEntry) error { return nil }); !errors.Is(err, core.ErrLogStoreUnavailable) {
+			t.Errorf("%s on the tail without the store => ErrLogStoreUnavailable, got %v", name, err)
+		}
+		// Over app lines alone, a request filter is the caller's error, not the
+		// store's: the 400 names it.
+		q.Types = []string{LogTypeApp}
+		err := svc.FollowLogs(context.Background(), q, func(LogEntry) error { return nil })
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), name) {
+			t.Errorf("type=app + %s on the tail => a 400 naming %s, got %v", name, name, err)
 		}
 	}
 
@@ -1007,18 +1016,8 @@ func TestFallbackRefusesStoreOnlyFilters(t *testing.T) {
 		t.Errorf("request on the tail without the store => ErrLogStoreUnavailable, got %v", err)
 	}
 
-	// …and that holds with the store wired, where ErrLogStoreUnavailable would be
-	// flatly untrue.
-	withStore := newService(map[string][]string{webInst: {"2026-07-05T00:00:01Z hi"}},
-		sampleApp("web"), podFor("web", webInst))
-	withStore.History = func(context.Context, string, LogQuery) ([]LogEntry, error) { return nil, nil }
-	err := withStore.FollowLogs(context.Background(), LogQuery{App: "web", Level: []string{"error"}}, func(LogEntry) error { return nil })
-	if !errors.Is(err, core.ErrBadRequest) {
-		t.Errorf("tail + level WITH the store wired => ErrBadRequest (transport limit), got %v", err)
-	}
-
 	// type=build without the store is ErrLogStoreUnavailable (w7/m28 — same honesty rule as request).
-	_, err = svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}})
+	_, err := svc.QueryLogs(context.Background(), LogQuery{App: "web", Types: []string{LogTypeBuild}})
 	if !errors.Is(err, core.ErrLogStoreUnavailable) {
 		t.Errorf("type=build without store => ErrLogStoreUnavailable, got %v", err)
 	}

@@ -176,21 +176,26 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// acquiring a slot — a type=predeploy (or other producerless) request would
 	// otherwise park on an idle stream and hold one of the process-global SSE
 	// slots until it chose to disconnect, letting one tenant exhaust the pool.
-	// Every resource answers to its own contract — a datastore tail can filter
-	// by level, an App tail cannot (w5/m139) — and the check reads only the
-	// id's kind and the query, so it confirms nothing about existence.
+	// Every resource answers to its own contract — a datastore's filters
+	// (w5/m139), an App's routed to the producers whose lines carry them
+	// (w8/m147) — and the check reads only the id's kind and the query, so it
+	// confirms nothing about existence.
+	requestOnly := false
 	for _, resource := range resources {
 		each := q
 		each.App = resource
-		if err := each.liveSubscribable(); err != nil {
+		routed, err := each.liveSubscribable()
+		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
+		requestOnly = requestOnly || routed.onlyRequest()
 	}
 	// The request producer polls the log store: with none wired, a
-	// request-only subscription fails closed here too, before a slot or a
-	// header. Mixed streams still serve their pod lines without it.
-	if q.onlyRequest() && s.History == nil {
+	// request-only subscription (request filters alone narrow to one) fails
+	// closed here too, before a slot or a header — after every resource's
+	// own 400. Mixed streams still serve their pod lines without it.
+	if requestOnly && s.History == nil {
 		core.WriteErr(w, core.ErrLogStoreUnavailable)
 		return
 	}

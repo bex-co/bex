@@ -135,7 +135,9 @@ describe("service Logs follows navigation it did not write (w4/m204)", () => {
     await waitFor(() =>
       expect(reads.at(-1)).toEqual({ type: "all", text: "", level: "error" }),
     );
-    expect(tails.at(-1)).toMatchObject({ enabled: false });
+    // A level tails live on the all view (w8/m147); the paused entry below
+    // gets its own paused state back.
+    expect(tails.at(-1)).toMatchObject({ enabled: true });
 
     act(() => router.history.back());
     await waitFor(() =>

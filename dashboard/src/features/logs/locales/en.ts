@@ -94,9 +94,9 @@ const enLogs: Record<string, TranslationEntry> = {
   },
   "logs.liveUnsupported": {
     message:
-      "Live tail is off — request-log and structured filters can't be tailed.",
+      "Live tail is off — level filters app logs and method, status, path and host filter request logs, so this log type can't be tailed with them.",
     description:
-      "Note when a store-only filter disables live tail (the tail reads pod stdout)",
+      "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs, or a level on request logs)",
   },
   "logs.storeRequiredTitle": {
     message: "Request logs need the log store",

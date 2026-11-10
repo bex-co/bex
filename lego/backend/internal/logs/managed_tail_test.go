@@ -33,7 +33,7 @@ import (
 // its instance manager's own JSON (dropped), and Valkey lines whose markers
 // carry their levels beside the start-up banner (no level).
 var managedTailLogs = map[string][]string{
-	"web-1": {"2026-07-05T00:00:01Z from web"},
+	"web-1": {"2026-07-05T00:00:01Z from web", `2026-07-05T00:00:01Z {"level":"warn","msg":"web warned"}`},
 	postgresID + "-1": {
 		`2026-07-05T00:00:02Z {"level":"info","logger":"instance-manager","msg":"Starting EventSource"}`,
 		`2026-07-05T00:00:03Z {"logger":"postgres","msg":"record","record":{"log_time":"2026-07-05 00:00:03 UTC","process_id":"7","error_severity":"FATAL","message":"password authentication failed"}}`,
@@ -67,6 +67,9 @@ func TestSubscribeTailsManagedDatastores(t *testing.T) {
 		{"resource=" + keyValueID, []string{"Ready to accept connections", "Memory overcommit", "Valkey 8.1.1"}, []string{"from web"}},
 		{"resource=" + keyValueID + "&level=warning", []string{"Memory overcommit"}, []string{"Ready to accept connections", "Valkey 8.1.1"}},
 		{"resource=web&resource=" + postgresID, []string{"from web", record}, []string{"Starting EventSource"}},
+		// w8/m147: each resource takes `level` under its own contract — the
+		// datastore's line markers, the App's shipper-parsed severity.
+		{"resource=" + keyValueID + "&level=warning&resource=web", []string{"Memory overcommit", "web warned"}, []string{"Ready to accept connections", "from web"}},
 	} {
 		for _, accept := range []string{"text/event-stream", ""} {
 			mux := http.NewServeMux()
@@ -117,9 +120,8 @@ func TestSubscribeTailsManagedDatastores(t *testing.T) {
 
 // A datastore tail is refused exactly as its historical read is, before any
 // streaming header or WebSocket 101: a caller the datastore's workspace denies
-// gets 403, and an app-only filter (level beside an App, or an HTTP filter on a
-// datastore) gets the named 400 — the pinned CLI reads a closed socket as a
-// finished tail (w8/083).
+// gets 403, and an HTTP filter on a datastore gets the named 400 — the pinned
+// CLI reads a closed socket as a finished tail (w8/083).
 func TestSubscribeRefusesManagedTailsBeforeStreaming(t *testing.T) {
 	for _, tc := range []struct {
 		query  string
@@ -129,7 +131,7 @@ func TestSubscribeRefusesManagedTailsBeforeStreaming(t *testing.T) {
 		{"resource=" + postgresID, true, http.StatusForbidden},
 		{"resource=" + keyValueID, true, http.StatusForbidden},
 		{"resource=" + keyValueID + "&method=GET", false, http.StatusBadRequest},
-		{"resource=" + keyValueID + "&level=warning&resource=web", false, http.StatusBadRequest},
+		{"resource=web&resource=" + keyValueID + "&method=GET", false, http.StatusBadRequest},
 	} {
 		for _, accept := range []string{"text/event-stream", ""} {
 			svc := newManagedTailService()

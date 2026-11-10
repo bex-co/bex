@@ -569,7 +569,7 @@ describe("LogViewer combined live reader (w4/m192)", () => {
     expect(shown).toEqual(["QA START", "QA n=369", "QA n=370"]);
   });
 
-  it("keys the tail's reader identity on store-only filters, not on Live", () => {
+  it("keys the tail's reader identity on line filters, not on Live", () => {
     const { rerender } = render(<LogViewer resource="web" />);
     const readerKey = () =>
       (useLiveLogsSpy.mock.calls.at(-1)?.[0] as { readerKey: string })

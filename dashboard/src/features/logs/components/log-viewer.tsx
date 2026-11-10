@@ -31,7 +31,7 @@ import {
   LOG_TEXT_MODE_DISPLAY,
   STRUCTURED_FILTER_KEYS,
   hasActiveLogFilters,
-  storeOnlyFilterKey,
+  lineFilterKey,
   liveTailUnsupported,
   type LogFilters,
 } from "../types";
@@ -178,9 +178,9 @@ export function LogViewer({
     onFiltersChangeRef.current?.(queryFilters, live);
   }, [queryFilters, live, urlKey]);
 
-  // Request views stream from the store poll producer (instance is fine too,
-  // it's a pod name); a store-only filter over app lines still has no
-  // producer and just pauses the tail (w4/m237).
+  // Request filters stream request lines from the store poll and a level
+  // streams app lines (w8/m147); only a type that cannot carry an active
+  // filter pauses the tail.
   const liveSupported = !liveTailUnsupported(queryFilters);
 
   // Stable identity so LogLineList's memoized rows actually skip re-rendering
@@ -226,8 +226,9 @@ export function LogViewer({
     text: committedText,
     textMode: LOG_TEXT_MODE_DISPLAY,
     instance: queryFilters.instance,
-    // The structured filters the store poll honors for request lines ride
-    // the subscription so streamed lines match the history beside them.
+    // The structured filters ride the subscription so streamed lines match
+    // the history beside them: the store poll honors the request filters,
+    // the pod tail the level (w8/m147).
     requestFilters: {
       level: queryFilters.level,
       method: queryFilters.method,
@@ -235,10 +236,10 @@ export function LogViewer({
       path: queryFilters.path,
       host: queryFilters.host,
     },
-    // The store-only filters pause the app tail instead of narrowing it, so they
-    // join its reader identity: toggling one clears lines streamed for the old
-    // query, while a plain Live pause keeps them on screen (w4/m192).
-    readerKey: storeOnlyFilterKey(queryFilters),
+    // The line-selecting filters join the tail's reader identity: toggling one
+    // clears lines streamed for the old query, while a plain Live pause keeps
+    // them on screen (w4/m192).
+    readerKey: lineFilterKey(queryFilters),
     // Follow the pod from the selected window's edge, not kubelet offset 0, so a
     // narrow range no longer surfaces lines older than it on first connect
     // (w6/m111). The tail freezes this per-subscription — the sliding window

@@ -297,7 +297,7 @@ type LogQuery struct {
 	appID     string
 	notBefore time.Time
 
-	levelFilter *regexp.Regexp // datastore pod severity matcher, compiled once per query
+	levelFilter *regexp.Regexp // pod-line severity matcher (datastore, App tail), compiled once per query
 	// textMatchers are Search's compiled terms, built by normalized().
 	textMatchers []func(original, lower string) bool
 	// noRequest drops request lines from an all-types query: the workspace plan
@@ -422,8 +422,7 @@ func (q LogQuery) needsStore() bool {
 // attached by the shipper on the way into the store, and are simply not
 // present on a stream read straight off the kubelet.
 func (q LogQuery) hasStoreOnlyFilters() bool {
-	return len(q.Level) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 ||
-		len(q.Method) > 0 || len(q.Path) > 0
+	return len(q.Level) > 0 || len(q.requestFilters()) > 0
 }
 
 // onlyRequest reports whether the query asks for request logs and nothing a
@@ -432,29 +431,65 @@ func (q LogQuery) onlyRequest() bool {
 	return len(q.Types) == 1 && q.Types[0] == LogTypeRequest
 }
 
-// liveSubscribable reports (as an error) when a subscription has no live
-// producer for some part of what it asks. The stream has three producers —
-// app pod stdout, build Job stdout, and a short-interval store poll for
-// request logs (w4/m237) — so what stays refused is: a producerless type
-// (e.g. type=predeploy), and store-only filters over anything the pod tail
-// must also answer (the poll honors those filters only for request lines).
-// Refusing up front keeps such a subscription from being accepted into an
-// idle stream that holds a process-global SSE slot until the client
-// disconnects (codex #3). Note: build logs CAN be tailed live (the build
-// Job's pod stdout, w3/m14).
-func (q LogQuery) liveSubscribable() error {
+// requestFilters names the request-only filters the query sets, in Render's
+// parameter spelling: only request lines carry a status code, method, host or
+// path.
+func (q LogQuery) requestFilters() []string {
+	var names []string
+	for _, f := range []struct {
+		name   string
+		values []string
+	}{{LabelStatusCode, q.StatusCode}, {LabelMethod, q.Method}, {LabelHost, q.Host}, {"path", q.Path}} {
+		if len(f.values) > 0 {
+			names = append(names, f.name)
+		}
+	}
+	return names
+}
+
+// liveSubscribable returns q routed to its live producers, or refuses (as a
+// 400) a subscription with no live producer for some part of what it asks.
+// The stream has three producers — app pod stdout, build Job stdout, and a
+// short-interval store poll for request logs (w4/m237). An App tail's
+// structured filters select producers the way the same labels narrow a
+// history query's streams (w8/m147): request filters select request lines and
+// `level` app lines (request lines have no level), so a type-less tail with
+// only one kind follows that producer alone and one with both follows each
+// under its own filters. Refused: a filter the requested type cannot carry,
+// named, and a producerless type (e.g. type=predeploy). Refusing up front
+// keeps such a subscription from being accepted into an idle stream that
+// holds a process-global SSE slot until the client disconnects (codex #3).
+// Note: build logs CAN be tailed live (the build Job's pod stdout, w3/m14).
+func (q LogQuery) liveSubscribable() (LogQuery, error) {
 	// A datastore tail reads its pods' process log and applies the level
 	// filter per line (compileLevelFilter), so its own contract decides.
 	if isDatastoreResource(q.App) {
-		return q.datastoreFilters(q.App)
+		return q, q.datastoreFilters(q.App)
 	}
-	if q.hasStoreOnlyFilters() && !q.onlyRequest() {
-		return fmt.Errorf("%w: the live tail reads pod logs, so it cannot filter app or build lines by level/statusCode/method/path/host — query the logs API for those, or subscribe to request logs alone", core.ErrBadRequest)
+	var level []string
+	if len(q.Level) > 0 {
+		level = []string{LabelLevel}
+	}
+	var routed []string
+	for _, producer := range []struct {
+		logType string
+		filters []string
+	}{{LogTypeApp, level}, {LogTypeRequest, q.requestFilters()}} {
+		if len(producer.filters) == 0 {
+			continue
+		}
+		if !q.wants(producer.logType) {
+			return q, fmt.Errorf("%w: %s filters %s logs, which type=%v does not include — add type=%s or drop the filter", core.ErrBadRequest, strings.Join(producer.filters, ", "), producer.logType, q.Types, producer.logType)
+		}
+		routed = append(routed, producer.logType)
+	}
+	if routed != nil {
+		q.Types = routed
 	}
 	if len(q.Types) > 0 && !q.wants(LogTypeApp) && !q.wants(LogTypeBuild) && !q.wants(LogTypeRequest) {
-		return fmt.Errorf("%w: the live tail streams only app, build and request logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
+		return q, fmt.Errorf("%w: the live tail streams only app, build and request logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
 	}
-	return nil
+	return q, nil
 }
 
 // keepPod reports whether a pod satisfies the `instance` filter.
@@ -841,7 +876,7 @@ func isDatastoreResource(resource string) bool {
 // filters are service concepts; refusing them is safer than silently dropping
 // them. resource names the datastore family in the refusal.
 func (q LogQuery) datastoreFilters(resource string) error {
-	if len(q.Types) > 0 || len(q.Host) > 0 || len(q.StatusCode) > 0 || len(q.Method) > 0 || len(q.Path) > 0 {
+	if len(q.Types) > 0 || len(q.requestFilters()) > 0 {
 		family := "Key Value"
 		if isPostgresResource(resource) {
 			family = "Postgres"
@@ -851,10 +886,11 @@ func (q LogQuery) datastoreFilters(resource string) error {
 	return nil
 }
 
-// compileLevelFilter turns a datastore query's level filter into the
-// line-level matcher its pod reads apply (the store applies it as a label
-// matcher instead). Postgres and Key Value lines carry the shipper's level
-// vocabulary, so storedLevels maps Render's names the same way for both.
+// compileLevelFilter turns a query's level filter into the line-level matcher
+// its pod reads apply — a datastore's reads and an App's tail (the store
+// applies it as a label matcher instead). App, Postgres and Key Value lines
+// carry the shipper's level vocabulary (an App tail line through
+// appLineLevel), so storedLevels maps Render's names the same way for all.
 func (q *LogQuery) compileLevelFilter() error {
 	if len(q.Level) == 0 {
 		return nil
@@ -1012,7 +1048,18 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if err := q.validate(); err != nil {
 		return err
 	}
+	// The refusal is about the PRODUCERS, not the deployment: a filter the
+	// requested type cannot carry is a bad request (400), never "the store is
+	// missing". It routes before the plan rule: request filters select
+	// request lines, so on a plan without request logs they answer its plan
+	// error, as type=request does.
+	if q, err = q.liveSubscribable(); err != nil {
+		return err
+	}
 	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
+		return err
+	}
+	if err := q.compileLevelFilter(); err != nil {
 		return err
 	}
 	// Each producer needs its own source: pod lines (and the build tail) read
@@ -1036,13 +1083,6 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	// resolved from the pods present now.
 	selectors := slices.Clone(q.Instance)
 	s.translateInstanceFilter(ctx, resource, app.Namespace, &q, candidatesFromPods(podsLive))
-	// The refusal is about the PRODUCERS, not the deployment: store-only
-	// filters over pod lines are something this stream structurally cannot
-	// do — a bad request (400), not "the store is missing" (503), which
-	// would be an outright lie on a cluster that has one.
-	if err := q.liveSubscribable(); err != nil {
-		return err
-	}
 	// Authorization lifetime (w4/034): admission authorized once above, but an
 	// established tail must not outlive the grant. The watchdog re-checks FRESH
 	// (uncached) on the interval; a deny, a checker failure, or the App's
@@ -1069,8 +1109,8 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 		// type=predeploy) has nothing to stream; it must NOT park on
 		// ctx.Done() holding one of the process-global SSE slots until the
 		// client disconnects. Refuse immediately so the slot is released.
-		// (logsSubscribe also rejects this pre-slot via liveSubscribable;
-		// this guards any other FollowLogs caller.)
+		// (liveSubscribable refuses it above and pre-slot in logsSubscribe;
+		// this is the backstop beside the producers.)
 		return fmt.Errorf("%w: the live tail streams only app, build and request logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
 	}
 
@@ -1191,6 +1231,11 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 		go s.pollRequestLogs(ctx, q, target.namespace, ch)
 	}
 
+	// The level filter is the pod producer's: a request line carries no level,
+	// and reaches a tail beside one only when request filters selected it.
+	requestFilter := q
+	requestFilter.levelFilter = nil
+
 	relist := time.NewTicker(target.relist)
 	defer relist.Stop()
 	var beat <-chan time.Time
@@ -1230,7 +1275,11 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 				return err
 			}
 		case e := <-ch:
-			if !q.keep(e) {
+			filter := &q
+			if e.Labels[LabelType] == LogTypeRequest {
+				filter = &requestFilter
+			}
+			if !filter.keep(e) {
 				continue
 			}
 			setLogEntryResource(&e, target.resource)
@@ -1291,6 +1340,7 @@ func (c *requestCursor) admit(e LogEntry) bool {
 func (s *Service) pollRequestLogs(ctx context.Context, q LogQuery, namespace string, ch chan<- LogEntry) {
 	pq := q
 	pq.Types = []string{LogTypeRequest}
+	pq.Level, pq.levelFilter = nil, nil // the pod producer's filter: request lines carry no level
 	pq.Direction = DirectionForward
 	pq.Limit = maxLogLimit
 	pq.End = time.Time{}
@@ -1911,7 +1961,7 @@ func (s *Service) streamContainerLogs(ctx context.Context, namespace, service, p
 			continue
 		}
 		if held != nil {
-			if !send(newLogEntry(service, pod, container, logType, "", *held)) {
+			if !send(tenantLogEntry(service, pod, container, logType, "", *held)) {
 				return
 			}
 			held = nil
@@ -1949,9 +1999,23 @@ func parseContainerLogLine(service, pod, container, logType, line string) LogEnt
 	// (w5/m122): the shipper reads containers' files, which hold only what
 	// they wrote.
 	if !stamped {
-		container, msg = progressContainer, logsGoneMessage
+		return newLogEntry(service, pod, progressContainer, logType, ts, logsGoneMessage)
 	}
-	return newLogEntry(service, pod, container, logType, ts, msg)
+	return tenantLogEntry(service, pod, container, logType, ts, msg)
+}
+
+// tenantLogEntry is a line a container wrote. An App line carries the level
+// the shipper would store for it (appLineLevel), so a tail's line has the
+// labels the same line has in history, and a tail's level filter selects what
+// history's does (w8/m147).
+func tenantLogEntry(service, pod, container, logType, ts, msg string) LogEntry {
+	entry := newLogEntry(service, pod, container, logType, ts, msg)
+	if logType == LogTypeApp {
+		if level := appLineLevel(msg); level != "" {
+			entry.Labels[LabelLevel] = level
+		}
+	}
+	return entry
 }
 
 // capLogMessage applies maxLogMessageBytes. Every reader — live pod stream,

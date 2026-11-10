@@ -90,9 +90,9 @@ function subscribeUrl(opts: {
 }
 
 /** The structured filters a subscription carries: the store poll honors them
- *  for request lines (w4/m237), and a datastore tail applies `level` per line
- *  (w5/m139). A slice of the viewer's one filter state, not a parallel
- *  vocabulary. */
+ *  for request lines (w4/m237), and an App or datastore tail applies `level`
+ *  per line (w8/m147, w5/m139). A slice of the viewer's one filter state, not
+ *  a parallel vocabulary. */
 export type RequestLogFilters = Pick<
   LogFilters,
   "level" | "method" | "statusCode" | "path" | "host"

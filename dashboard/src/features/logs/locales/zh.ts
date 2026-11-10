@@ -92,9 +92,10 @@ const zhLogs: Record<string, TranslationEntry> = {
     description: "Placeholder for the request-host filter input",
   },
   "logs.liveUnsupported": {
-    message: "实时日志已关闭——请求日志与结构化筛选无法实时跟踪。",
+    message:
+      "实时日志已关闭——级别只筛选应用日志，方法、状态码、路径和主机只筛选请求日志，当前日志类型无法按这些条件实时跟踪。",
     description:
-      "Note when a store-only filter disables live tail (the tail reads pod stdout)",
+      "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs, or a level on request logs)",
   },
   "logs.storeRequiredTitle": {
     message: "请求日志需要日志存储",

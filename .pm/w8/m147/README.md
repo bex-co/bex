@@ -1,18 +1,18 @@
 # w8 · m147 — `bex logs --tail` takes every filter Render's subscribe takes
 
-**Worker:** worker8 **Goal:** a live tail accepts the same `level`, `statusCode`, `method`, `host` and `path` filters as Render's `GET /v1/logs/subscribe`, and applies them the way bex's own history query does, instead of answering 400. **Status:** todo
+**Worker:** worker8 **Goal:** a live tail accepts the same `level`, `statusCode`, `method`, `host` and `path` filters as Render's `GET /v1/logs/subscribe`, and applies them the way bex's own history query does, instead of answering 400. **Status:** in progress — t001–t007 done 2026-11-10; t008 (live DoD) after the deploy
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | A tail with only request filters and no `type` follows request lines, as history does | 45m | — |
-| t002 | An App tail filters app lines by `level` with the shipper's own parse | 90m | — |
-| t003 | The dashboard keeps live tail on for the filters the stream now honors | 40m | t001, t002 |
-| t004 | Blast radius: every subscribe caller and resource kind | 25m | t001, t002 |
-| t005 | Render parity | 20m | t003, t004 |
-| t006 | Simplify | 20m | t005 |
-| t007 | Test coverage | 40m | t005 |
+| [t001](done/t001.md) | A tail with only request filters and no `type` follows request lines, as history does — **DONE** | 45m | — |
+| [t002](done/t002.md) | An App tail filters app lines by `level` with the shipper's own parse — **DONE** | 90m | — |
+| [t003](done/t003.md) | The dashboard keeps live tail on for the filters the stream now honors — **DONE** | 40m | t001, t002 |
+| [t004](done/t004.md) | Blast radius: every subscribe caller and resource kind — **DONE** | 25m | t001, t002 |
+| [t005](done/t005.md) | Render parity — **DONE** | 20m | t003, t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
 | t008 | Closeout (live CLI DoD on production) | 20m | t007 |
 
 ## Definition of done

@@ -120,30 +120,34 @@ export const EMPTY_LOG_FILTERS: LogFilters = {
   host: "",
 };
 
-// Structured filters the live tail cannot honor — everything in
-// STRUCTURED_FILTER_KEYS except `instance` (a pod name is a pod name).
-const STORE_ONLY_STRUCTURED_KEYS = STRUCTURED_FILTER_KEYS.filter(
+// The structured filters that select which lines a tail streams: all but
+// `instance`, a pod name.
+const LINE_FILTER_KEYS = STRUCTURED_FILTER_KEYS.filter(
   (key) => key !== "instance",
 );
 
-// Whether the live stream has no producer for this filter set, mirroring
-// bex-api's subscribe acceptance exactly (w4/m237). Request logs stream from
-// the log store's poll producer, which honors the structured filters — so a
-// request view is live with any of them active. What still has no producer
-// is a store-only filter over pod lines: the labels those filters select on
-// are attached by the shipper into the store, never present on stdout read
-// straight off the kubelet — those keep the tail paused (ADR010).
+// Only request lines carry a method, status code, path or host.
+const REQUEST_FILTER_KEYS = LINE_FILTER_KEYS.filter((key) => key !== "level");
+
+// Whether bex-api refuses the live stream for this filter set, mirroring its
+// subscribe routing exactly (w8/m147): as in history, the request filters
+// select request lines (streamed from the log store's poll, w4/m237) and
+// `level` selects app lines (parsed per line the way the shipper parses it).
+// So every view tails live except one whose type cannot carry a filter: a
+// request filter on the app view, or a level on the request view.
 export function liveTailUnsupported(f: LogFilters): boolean {
-  if (f.type === LOG_TYPE_REQUEST) return false;
-  return STORE_ONLY_STRUCTURED_KEYS.some((key) => f[key] !== "");
+  if (f.type === LOG_TYPE_APP) {
+    return REQUEST_FILTER_KEYS.some((key) => f[key] !== "");
+  }
+  if (f.type === LOG_TYPE_REQUEST) return f.level !== "";
+  return false;
 }
 
-// The store-only filter values as one identity string — the live tail's
-// readerKey: on app lines these pause the tail rather than narrow it, and on
-// request lines they ride the subscription as parameters; either way a
-// change must clear lines streamed for the previous query (w4/m192).
-export function storeOnlyFilterKey(f: LogFilters): string {
-  return STORE_ONLY_STRUCTURED_KEYS.map((key) => f[key]).join("|");
+// The line-selecting filter values as one identity string — the live tail's
+// readerKey: a change must clear lines streamed for the previous query, and
+// for a combination bex-api refuses it pauses the tail (w4/m192).
+export function lineFilterKey(f: LogFilters): string {
+  return LINE_FILTER_KEYS.map((key) => f[key]).join("|");
 }
 
 // Whether any filter narrows the visible log set — drives the filtered vs
