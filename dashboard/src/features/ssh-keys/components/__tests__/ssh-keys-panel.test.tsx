@@ -51,6 +51,18 @@ beforeEach(() => {
 });
 
 describe("SSHKeysPanel", () => {
+  // w21/034: the shared label rule counts 100 characters, like the form.
+  it("caps the key name at 100 characters", async () => {
+    const user = userEvent.setup();
+    render(<SSHKeysPanel />);
+    await user.click(screen.getByRole("button", { name: "Add SSH key" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText("Name")).toHaveAttribute(
+      "maxlength",
+      "100",
+    );
+  });
+
   it("validates before submit and sends only public material", async () => {
     create.mockResolvedValue(true);
     const user = userEvent.setup();

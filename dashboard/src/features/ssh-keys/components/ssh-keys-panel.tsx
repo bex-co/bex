@@ -106,7 +106,7 @@ export function SSHKeysPanel() {
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     autoComplete="off"
-                    maxLength={120}
+                    maxLength={100}
                   />
                 </div>
                 <div className="space-y-2">

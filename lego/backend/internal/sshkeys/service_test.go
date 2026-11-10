@@ -103,6 +103,33 @@ func identity(subject string) context.Context {
 	return core.WithIdentity(context.Background(), core.Identity{Subject: subject, Method: "session"})
 }
 
+// TestCreateAppliesTheSharedLabelRule pins w21/034: no control characters, at
+// most 100 code points (not bytes), and a refused name stores nothing.
+func TestCreateAppliesTheSharedLabelRule(t *testing.T) {
+	st := &memoryStore{keys: map[string]store.SSHKey{}}
+	svc := &Service{Base: &core.Base{}, Store: st}
+	raw := publicKey(t)
+
+	for name, bad := range map[string]string{
+		"newline":         "a\nb",
+		"bel":             "a\x07b",
+		"101 code points": strings.Repeat("x", 101),
+		"101 CJK":         strings.Repeat("测", 101),
+		"blank":           "   ",
+	} {
+		if _, err := svc.Create(identity("user-a"), bad, raw); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("%s => %v, want ErrBadRequest", name, err)
+		}
+	}
+	if len(st.keys) != 0 {
+		t.Fatalf("a refused name stored a key: %+v", st.keys)
+	}
+	// 100 Chinese characters is 300 bytes: the old byte cap refused it.
+	if _, err := svc.Create(identity("user-a"), strings.Repeat("测", 100), raw); err != nil {
+		t.Fatalf("100 CJK characters must save: %v", err)
+	}
+}
+
 func TestServiceOwnsCanonicalKeysAndRejectsAmbiguity(t *testing.T) {
 	st := &memoryStore{keys: map[string]store.SSHKey{}}
 	svc := &Service{Base: &core.Base{}, Store: st}

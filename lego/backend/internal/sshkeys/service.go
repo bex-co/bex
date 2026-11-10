@@ -33,10 +33,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-const (
-	maxKeyNameBytes   = 120
-	maxPublicKeyBytes = 16 << 10
-)
+const maxPublicKeyBytes = 16 << 10
 
 // Store is the public management service's narrow persistence seam.
 // The separately deployed gateway owns its own lookup-and-audit interface so
@@ -117,9 +114,14 @@ func (s *Service) Create(ctx context.Context, name, rawPublicKey string) (store.
 	if err != nil {
 		return store.SSHKey{}, err
 	}
-	name = strings.TrimSpace(name)
-	if name == "" || len(name) > maxKeyNameBytes {
-		return store.SSHKey{}, fmt.Errorf("%w: SSH key name must be 1-%d bytes", core.ErrBadRequest, maxKeyNameBytes)
+	// The one free-form label rule (no control characters, at most 100 code
+	// points), counted in characters like the form, not bytes (w21/034).
+	name, err = core.TrimmedLabel(name)
+	if err != nil {
+		return store.SSHKey{}, err
+	}
+	if name == "" {
+		return store.SSHKey{}, fmt.Errorf("%w: SSH key name must not be blank", core.ErrBadRequest)
 	}
 	canonical, fingerprint, err := NormalizePublicKey(rawPublicKey)
 	if err != nil {
