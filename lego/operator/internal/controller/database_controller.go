@@ -1348,6 +1348,13 @@ func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha
 	if !poolerAdoptsDatastorePriority(pooler, cluster) {
 		delete(spec, "template")
 	}
+	digest, err := r.servedCertificateDigest(ctx, db.Namespace, cluster)
+	if err != nil {
+		return false, fmt.Errorf("read served certificate: %w", err)
+	}
+	if digest != "" {
+		stampPoolerCertificate(spec, pooler, digest)
+	}
 	if err := upsertOwnedObject(ctx, r.Client, r.Scheme, db, pooler, spec); err != nil {
 		return false, fmt.Errorf("create pooler: %w", err)
 	}
