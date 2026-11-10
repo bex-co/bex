@@ -1,3 +1,4 @@
+import { parseSearchOperators } from "@/features/logs/lib/log-search-operators";
 import {
   useCallback,
   useEffect,
@@ -97,8 +98,12 @@ export function LogViewer({
 
   // An adopted URL sets each draft and its committed value together, which
   // cancels a timer still pending for text typed before the navigation.
-  const { text: committedText, path: committedPath } = committed;
-  const { text: draftText, path: draftPath } = filters;
+  const {
+    text: committedText,
+    path: committedPath,
+    host: committedHost,
+  } = committed;
+  const { text: draftText, path: draftPath, host: draftHost } = filters;
   useEffect(() => {
     if (draftText === committedText) return;
     const id = setTimeout(
@@ -115,6 +120,14 @@ export function LogViewer({
     );
     return () => clearTimeout(id);
   }, [draftPath, committedPath]);
+  useEffect(() => {
+    if (draftHost === committedHost) return;
+    const id = setTimeout(
+      () => setState((previous) => commitDraft(previous, "host", draftHost)),
+      COMMIT_DELAY_MS,
+    );
+    return () => clearTimeout(id);
+  }, [draftHost, committedHost]);
 
   // Scalar deps (not the filters object, whose identity churns per keystroke)
   // keep queryFilters' identity stable while typing, so the URL-sync effect
@@ -129,8 +142,18 @@ export function LogViewer({
       instance,
       text: committedText,
       path: committedPath,
+      host: committedHost,
     }),
-    [type, level, method, statusCode, instance, committedText, committedPath],
+    [
+      type,
+      level,
+      method,
+      statusCode,
+      instance,
+      committedText,
+      committedPath,
+      committedHost,
+    ],
   );
 
   // Mirror the committed state into the URL (w7/m42). The first run is
@@ -210,6 +233,7 @@ export function LogViewer({
       method: queryFilters.method,
       statusCode: queryFilters.statusCode,
       path: queryFilters.path,
+      host: queryFilters.host,
     },
     // The store-only filters pause the app tail instead of narrowing it, so they
     // join its reader identity: toggling one clears lines streamed for the old
@@ -354,14 +378,14 @@ const COMMIT_DELAY_MS = 300;
 interface LogViewState {
   filters: LogFilters;
   live: boolean;
-  committed: { text: string; path: string };
+  committed: { text: string; path: string; host: string };
 }
 
 function viewFromUrl(filters: LogFilters, live: boolean): LogViewState {
   return {
     filters,
     live,
-    committed: { text: filters.text, path: filters.path },
+    committed: { text: filters.text, path: filters.path, host: filters.host },
   };
 }
 
@@ -377,9 +401,31 @@ function logStateKey(filters: LogFilters, live: boolean) {
 
 function commitDraft(
   state: LogViewState,
-  field: "text" | "path",
+  field: "text" | "path" | "host",
   value: string,
 ): LogViewState {
+  if (field === "text") {
+    // Render's `status_code:/4../`-style operators become the matching
+    // structured filters (chips) and only the remaining words search text
+    // (w4/538).
+    const parsed = parseSearchOperators(value);
+    if (Object.keys(parsed.filters).length > 0) {
+      const filters = {
+        ...state.filters,
+        ...parsed.filters,
+        text: parsed.text,
+      };
+      return {
+        ...state,
+        filters,
+        committed: {
+          text: parsed.text,
+          path: filters.path,
+          host: filters.host,
+        },
+      };
+    }
+  }
   return { ...state, committed: { ...state.committed, [field]: value } };
 }
 

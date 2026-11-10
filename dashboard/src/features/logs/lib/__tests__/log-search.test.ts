@@ -92,6 +92,7 @@ describe("log filter URL state (w7/m42)", () => {
       statusCode: "5xx",
       instance: "web-abc12",
       path: "/api",
+      host: "",
       text: "boom",
     } satisfies LogFilters);
 

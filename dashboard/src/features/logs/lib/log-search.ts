@@ -29,6 +29,7 @@ export interface LogSearch {
   statusCode?: string;
   instance?: string;
   path?: string;
+  host?: string;
   text?: string;
   /** Present only when the live tail is toggled off (`?live=0`); absent = on. */
   live?: 0;

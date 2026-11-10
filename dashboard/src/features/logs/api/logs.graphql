@@ -28,6 +28,7 @@ query Logs(
   $statusCode: [String!]
   $method: [String!]
   $path: [String!]
+  $host: [String!]
   $startTime: String
   $endTime: String
   $limit: Int
@@ -42,6 +43,7 @@ query Logs(
     statusCode: $statusCode
     method: $method
     path: $path
+    host: $host
     startTime: $startTime
     endTime: $endTime
     limit: $limit

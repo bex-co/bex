@@ -89,6 +89,9 @@ export interface LogFilters {
   method: string;
   statusCode: string;
   path: string;
+  /** Request host (Render's `host` log filter; w4/538), like path a free-text
+   *  pattern with `*` wildcards or `/RE2/`. */
+  host: string;
 }
 
 // The five structured filter fields (everything but the type dropdown and the
@@ -102,6 +105,7 @@ export const STRUCTURED_FILTER_KEYS = [
   "statusCode",
   "instance",
   "path",
+  "host",
 ] as const;
 export type StructuredFilterKey = (typeof STRUCTURED_FILTER_KEYS)[number];
 
@@ -113,6 +117,7 @@ export const EMPTY_LOG_FILTERS: LogFilters = {
   method: "",
   statusCode: "",
   path: "",
+  host: "",
 };
 
 // Structured filters the live tail cannot honor — everything in

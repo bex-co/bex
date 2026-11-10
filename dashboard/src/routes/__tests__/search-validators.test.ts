@@ -42,6 +42,7 @@ const NO_LOG_FILTERS = {
   statusCode: undefined,
   instance: undefined,
   path: undefined,
+  host: undefined,
   text: undefined,
   live: undefined,
 };

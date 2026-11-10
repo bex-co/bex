@@ -77,6 +77,7 @@ function subscribeUrl(opts: {
   if (requestFilters.statusCode)
     params.set("statusCode", requestFilters.statusCode);
   if (requestFilters.path) params.set("path", requestFilters.path);
+  if (requestFilters.host) params.set("host", requestFilters.host);
   // The tail's lower bound: the selected history window's start (w6/m111). The
   // FIRST connect then follows the pod from the window edge instead of replaying
   // its whole log from kubelet's offset 0 — which is what made a "Last hour"
@@ -94,7 +95,7 @@ function subscribeUrl(opts: {
  *  vocabulary. */
 export type RequestLogFilters = Pick<
   LogFilters,
-  "level" | "method" | "statusCode" | "path"
+  "level" | "method" | "statusCode" | "path" | "host"
 >;
 
 const NO_REQUEST_FILTERS: RequestLogFilters = {
@@ -102,6 +103,7 @@ const NO_REQUEST_FILTERS: RequestLogFilters = {
   method: "",
   statusCode: "",
   path: "",
+  host: "",
 };
 
 export interface UseLiveLogsOptions {
@@ -207,7 +209,7 @@ export function useLiveLogs({
   // The request filters join the identity in the hook (not only via the
   // caller's readerKey): they parameterize the stream itself, so a change
   // must reopen it even for a caller that passes no readerKey (w4/m237).
-  const subKey = `${resource}|${type}|${text}|${textMode}|${instance}|${readerKey}|${requestFilters.level}|${requestFilters.method}|${requestFilters.statusCode}|${requestFilters.path}`;
+  const subKey = `${resource}|${type}|${text}|${textMode}|${instance}|${readerKey}|${requestFilters.level}|${requestFilters.method}|${requestFilters.statusCode}|${requestFilters.path}|${requestFilters.host}`;
   const [buffer, setBuffer] = useState<{ key: string; lines: LogLine[] }>({
     key: subKey,
     lines: [],

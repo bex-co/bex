@@ -82,6 +82,15 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "按路径筛选",
     description: "Placeholder for the request-path filter input",
   },
+  "logs.hostLabel": {
+    message: "请求主机",
+    description:
+      "Accessible label for the request-host filter input and its chip (Render's host log filter, w4/538)",
+  },
+  "logs.hostPlaceholder": {
+    message: "按主机筛选",
+    description: "Placeholder for the request-host filter input",
+  },
   "logs.liveUnsupported": {
     message: "实时日志已关闭——请求日志与结构化筛选无法实时跟踪。",
     description:

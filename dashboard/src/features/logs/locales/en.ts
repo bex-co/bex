@@ -83,6 +83,15 @@ const enLogs: Record<string, TranslationEntry> = {
     message: "Filter by path",
     description: "Placeholder for the request-path filter input",
   },
+  "logs.hostLabel": {
+    message: "Request host",
+    description:
+      "Accessible label for the request-host filter input and its chip (Render's host log filter, w4/538)",
+  },
+  "logs.hostPlaceholder": {
+    message: "Filter by host",
+    description: "Placeholder for the request-host filter input",
+  },
   "logs.liveUnsupported": {
     message:
       "Live tail is off — request-log and structured filters can't be tailed.",

@@ -656,6 +656,7 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
       instance: "pod-2",
       text: "needle",
       path: "/api",
+      host: "",
     };
     const { rerender } = render(<LogViewer resource="web" />);
     rerender(
@@ -721,6 +722,37 @@ describe("LogViewer adopts navigation it did not write (w4/m204)", () => {
     settle(200);
     expect(historyFilters()).toMatchObject({ text: "ab" });
     expect(search().value).toBe("ab");
+  });
+
+  // w4/538: Render's documented field operators typed into the search box
+  // become the structured filters (chips and query params); only the
+  // remaining words search text.
+  it("turns Render's search operators into structured filters", () => {
+    render(<LogViewer resource="web" />);
+    type("status_code:/2../ method:/(GET|POST)/ host:web.onbex.co qa-alpha");
+    settle();
+    expect(historyFilters()).toMatchObject({
+      statusCode: "/2../",
+      method: "/(GET|POST)/",
+      host: "web.onbex.co",
+      text: "qa-alpha",
+    });
+    expect(search().value).toBe("qa-alpha");
+    expect(tail()).toMatchObject({
+      text: "qa-alpha",
+      requestFilters: {
+        statusCode: "/2../",
+        method: "/(GET|POST)/",
+        host: "web.onbex.co",
+      },
+    });
+    // An unknown name stays text.
+    type("color:red");
+    settle();
+    expect(historyFilters()).toMatchObject({
+      text: "color:red",
+      statusCode: "/2../",
+    });
   });
 
   it("cancels a draft timer when the destination changes another field", () => {

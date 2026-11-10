@@ -109,6 +109,7 @@ const STRUCTURED_LABEL_KEYS: Record<StructuredFilterKey, keyof typeof en> = {
   statusCode: "logs.statusCodeLabel",
   instance: "logs.instanceLabel",
   path: "logs.pathLabel",
+  host: "logs.hostLabel",
 };
 
 interface LogFilterBarProps {
@@ -254,6 +255,15 @@ export function LogFilterBar({
               onChange={(e) => onChange({ path: e.target.value })}
               placeholder={t("logs.pathPlaceholder")}
               aria-label={t("logs.pathLabel")}
+              className="h-9"
+            />
+          </FilterRow>
+          <FilterRow label={t("logs.hostLabel")}>
+            <Input
+              value={filters.host}
+              onChange={(e) => onChange({ host: e.target.value })}
+              placeholder={t("logs.hostPlaceholder")}
+              aria-label={t("logs.hostLabel")}
               className="h-9"
             />
           </FilterRow>

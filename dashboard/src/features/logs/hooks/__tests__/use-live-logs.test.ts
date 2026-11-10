@@ -397,6 +397,7 @@ describe("useLiveLogs", () => {
             method: "GET",
             statusCode: "500",
             path: "/api",
+            host: "",
           },
         }),
       ),

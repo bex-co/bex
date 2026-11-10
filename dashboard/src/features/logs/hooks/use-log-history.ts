@@ -86,6 +86,7 @@ export function useLogHistory(
       statusCode: list(filters.statusCode),
       method: list(filters.method),
       path: list(filters.path),
+      host: list(filters.host),
       startTime: window?.startTime,
       endTime: window?.endTime,
       limit: HISTORY_LIMIT,
@@ -100,6 +101,7 @@ export function useLogHistory(
       filters.statusCode,
       filters.method,
       filters.path,
+      filters.host,
       window?.startTime,
       window?.endTime,
     ],
@@ -121,6 +123,7 @@ export function useLogHistory(
     filters.statusCode,
     filters.method,
     filters.path,
+    filters.host,
     readerSelection ?? window,
   ]);
   const denied = !data?.logs && logReadAccessDenied(error);
