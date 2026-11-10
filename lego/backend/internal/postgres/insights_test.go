@@ -191,7 +191,9 @@ func TestMCPInsightTools(t *testing.T) {
 // → postgres://postgres:pw@localhost:5433/postgres?sslmode=disable
 
 // TestProcessesIntegration asserts that at least one process appears in
-// pg_stat_activity (our own connection).
+// pg_stat_activity. The platform's own sessions are filtered out (w21/026), so
+// the list may be empty on a bare test database: it only has to answer cleanly;
+// TestProcessesHidePlatformActivityIntegration pins what it shows.
 func TestProcessesIntegration(t *testing.T) {
 	uri := testDBURI(t)
 	svc, _ := newService()
@@ -201,8 +203,58 @@ func TestProcessesIntegration(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Processes => %v", err)
 	}
-	if len(out) == 0 {
-		t.Error("Processes: expected at least one process")
+	t.Logf("Processes returned %d rows", len(out))
+}
+
+// TestProcessesHidePlatformActivityIntegration pins w21/026: the platform's own
+// sessions (role postgres, background workers) never reach the customer's
+// Active processes, while a customer role's session does.
+func TestProcessesHidePlatformActivityIntegration(t *testing.T) {
+	uri := testDBURI(t)
+	ctx := context.Background()
+	admin, err := pgx.Connect(ctx, uri)
+	if err != nil {
+		t.Fatalf("admin connect: %v", err)
+	}
+	defer admin.Close(ctx)
+	const role = "w21_026_app"
+	_, _ = admin.Exec(ctx, `DROP ROLE IF EXISTS `+role)
+	if _, err := admin.Exec(ctx, `CREATE ROLE `+role+` LOGIN PASSWORD 'pw'`); err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+	defer func() { _, _ = admin.Exec(ctx, `DROP ROLE IF EXISTS `+role) }()
+
+	cfg, err := pgx.ParseConfig(uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg.User, cfg.Password = role, "pw"
+	app, err := pgx.ConnectConfig(ctx, cfg)
+	if err != nil {
+		t.Fatalf("app connect: %v", err)
+	}
+	defer app.Close(ctx)
+	if _, err := app.Exec(ctx, `SELECT 1`); err != nil {
+		t.Fatal(err)
+	}
+
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "proc-platform", uri)
+	out, err := svc.Processes(ctx, "proc-platform")
+	if err != nil {
+		t.Fatalf("Processes => %v", err)
+	}
+	var sawApp bool
+	for _, p := range out {
+		switch p.UserName {
+		case role:
+			sawApp = true
+		case "", "postgres", "streaming_replica":
+			t.Errorf("platform activity leaked into Processes: %+v", p)
+		}
+	}
+	if !sawApp {
+		t.Errorf("the customer role's session is missing: %+v", out)
 	}
 }
 

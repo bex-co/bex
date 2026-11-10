@@ -314,6 +314,14 @@ type ParameterSpecView struct {
 	ObservedUnit      *string `json:"observedUnit"`
 }
 
+// platformRoles are the roles the platform itself connects as: CloudNativePG's
+// instance manager and metrics exporter (superuser `postgres`), streaming
+// replication, and the PgBouncer pooler's own login. w4/m115 projected the
+// owner into pg_monitor so their processes and statements stop reading
+// "Hidden", which also exposes these — constant exporter scrapes that otherwise
+// outrank the customer's own work (w21/026). Matched by role name.
+const platformRoles = `('postgres', 'streaming_replica', 'cnpg_pooler_pgbouncer')`
+
 const (
 	sqlProcesses = `
 SELECT pid::int,
@@ -326,6 +334,8 @@ SELECT pid::int,
        COALESCE(extract(epoch FROM clock_timestamp() - query_start)::int, 0) AS duration_sec
 FROM pg_stat_activity
 WHERE pid <> pg_backend_pid()
+  AND backend_type = 'client backend'
+  AND COALESCE(usename, '') NOT IN ` + platformRoles + `
 ORDER BY state, duration_sec DESC NULLS LAST`
 
 	sqlTopQueries = `
@@ -337,6 +347,7 @@ SELECT COALESCE(left(query, 500), '')   AS query,
        shared_blks_hit                  AS hit_blks,
        shared_blks_read                 AS read_blks
 FROM pg_stat_statements
+WHERE userid NOT IN (SELECT oid FROM pg_roles WHERE rolname IN ` + platformRoles + `)
 ORDER BY total_exec_time DESC
 LIMIT 25`
 
