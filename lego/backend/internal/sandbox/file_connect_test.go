@@ -162,7 +162,7 @@ func TestFileConnectPinnedMintAndUpload(t *testing.T) {
 func TestFileConnectMintRefusesUnauthorizedAndUnsafePaths(t *testing.T) {
 	f := newFileConnectFixture(t, "id-a", nil, nil)
 	base := FileConnectRequest{OwnerID: "tea-a", SandboxID: "os-1", Operation: "upload", Path: "/workspace/out.txt"}
-	for _, bad := range []string{"", "relative", "/", "/workspace/../etc/passwd", "/workspace/./x", "/workspace//x", "/workspace/nul\x00x", strings.Repeat("x", 4097)} {
+	for _, bad := range []string{"", "../escape", "/", "/workspace/../etc/passwd", "/workspace/./x", "/workspace//x", "/workspace/nul\x00x", strings.Repeat("x", 4097)} {
 		req := base
 		req.Path = bad
 		if _, err := f.svc.ConnectFile(identityCtx("id-a"), req, f.api.URL); !errors.Is(err, core.ErrBadRequest) {

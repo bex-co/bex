@@ -280,13 +280,30 @@ func (s *Server) execute(ctx context.Context, target apps.SSHInstanceTarget, com
 	return executionError(code, err)
 }
 
+// cdParent enters parent directory $1 physically, refusing a symlinked
+// ancestor; a relative $1 is under the (physically resolved) home directory.
+const cdParent = `cd_parent() {
+  case $1 in
+  /*) dir=$1 ;;
+  *)
+    [ -n "${HOME:-}" ] || exit 66
+    home=$(cd -P "$HOME" && pwd -P) || exit 66
+    if [ "$1" = . ]; then dir=$home
+    elif [ "$home" = / ]; then dir=/$1
+    else dir=$home/$1
+    fi ;;
+  esac
+  cd -P "$dir" || exit 66
+  [ "$(pwd -P)" = "$dir" ] || exit 73
+}
+`
+
 // Both supported images supply POSIX sh, tar, cat, wc, rm, mkdir and Linux mv.
 // Untrusted paths are positional argv, never interpolated into shell source.
 // Extraction always starts in an empty private staging tree; existing target
 // trees are never merged, so their symlinks cannot redirect archive writes.
-const stageScript = `set -eu
-cd -P "$1" || exit 66
-[ "$(pwd -P)" = "$1" ] || exit 73
+const stageScript = cdParent + `set -eu
+cd_parent "$1"
 name=$2 stage=$3 kind=$4 size=$5
 if [ "$kind" = directory ]; then
   [ ! -e "$name" ] && [ ! -L "$name" ] || exit 73
@@ -308,9 +325,8 @@ fi
 complete=1
 `
 
-const publishScript = `set -eu
-cd -P "$1" || exit 66
-[ "$(pwd -P)" = "$1" ] || exit 73
+const publishScript = cdParent + `set -eu
+cd_parent "$1"
 name=$2 stage=$3 kind=$4
 [ -d "$stage" ] && [ ! -L "$stage" ] || exit 73
 if [ "$kind" = directory ]; then
@@ -392,7 +408,7 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 		defer cancel()
 		// Its outcome is discarded, so it skips execute, whose log would repeat
 		// the transfer's own failure.
-		_, _ = s.Executor.Execute(cleanupCtx, target, shell(`cd -P "$1" && rm -rf -- "$2"`, parent, stage), false, nil, nil, io.Discard, io.Discard)
+		_, _ = s.Executor.Execute(cleanupCtx, target, shell(cdParent+`cd_parent "$1" && rm -rf -- "$2"`, parent, stage), false, nil, nil, io.Discard, io.Discard)
 	}()
 	reader, writer := io.Pipe()
 	stopPipe := context.AfterFunc(ctx, func() {
@@ -438,10 +454,9 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	return err
 }
 
-const downloadScript = `set -eu
-parent=$1 name=$2
-cd -P "$parent" || exit 66
-[ "$(pwd -P)" = "$parent" ] || exit 73
+const downloadScript = cdParent + `set -eu
+name=$2
+cd_parent "$1"
 [ ! -L "$name" ] || exit 73
 if [ -d "$name" ]; then
   printf 'directory\n'

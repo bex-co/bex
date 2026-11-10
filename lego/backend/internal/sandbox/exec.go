@@ -266,14 +266,24 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID
 
 // StreamExec authorizes, opens the gateway stream, and copies its SSE response
 // (stdout/stderr chunks + a terminal exit event) into w. It writes the SSE headers
-// only once the gateway accepts, so a pre-stream failure returns an error the
-// adapter renders as a normal HTTP status instead of a half-open event stream —
-// the Render CLI's single-POST-reads-SSE contract (docs/render-artifacts/ea-sandbox.md).
+// once the gateway accepts, so a pre-stream failure returns an error the adapter
+// renders as a normal HTTP status instead of a half-open event stream — the
+// Render CLI's single-POST-reads-SSE contract (docs/render-artifacts/ea-sandbox.md).
+// The one exception is a wait for a resume (w32/m299): the stream opens and
+// sends keep-alives, since a reader's idle timeout (the Render SDK's 45 s)
+// would expire before a cold resume finishes, and a failure after that is an
+// SSE error event.
 func (s *Service) StreamExec(ctx context.Context, req ExecRequest, w http.ResponseWriter, flush func()) error {
+	stream := &execStream{w: w, flush: flush}
+	ctx = withResumeHeartbeat(ctx, stream.beat)
 	resp, release, target, err := s.dialGateway(ctx, req)
 	if err != nil {
 		// A token's record ends here: its command never ran.
 		s.stopExecution(ctx, req.OwnerID, req.ExecutionID, nil)
+		if stream.started {
+			stream.fail(err)
+			return nil
+		}
 		return err
 	}
 	defer release()
@@ -283,18 +293,57 @@ func (s *Service) StreamExec(ctx context.Context, req ExecRequest, w http.Respon
 	// Synchronous, so a listing right after the stream ends sees it stopped;
 	// the write is one bounded keyed UPDATE.
 	defer func() { s.stopExecution(ctx, target.workspace, executionID, exit.exitCode) }()
-
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.WriteHeader(http.StatusOK)
-	if flush != nil {
-		flush()
-	}
+	stream.start()
 	// Either end failing — client disconnect, or upstream ending on context
 	// cancel/timeout — closes the stream with nothing left to report, so the
 	// copy's error is deliberately discarded.
 	_, _ = io.Copy(flushingWriter{w: w, flush: flush}, io.TeeReader(resp.Body, sniffWriter{&exit}))
 	return nil
+}
+
+// execStream is StreamExec's response before the gateway's bytes flow.
+type execStream struct {
+	w        http.ResponseWriter
+	flush    func()
+	started  bool
+	lastSent time.Time
+}
+
+func (e *execStream) start() {
+	if e.started {
+		return
+	}
+	e.started = true
+	e.w.Header().Set("Content-Type", "text/event-stream")
+	e.w.Header().Set("Cache-Control", "no-cache")
+	e.w.WriteHeader(http.StatusOK)
+	e.sent()
+}
+
+func (e *execStream) sent() {
+	if e.flush != nil {
+		e.flush()
+	}
+	e.lastSent = time.Now()
+}
+
+// beat runs on each poll of a resume wait.
+func (e *execStream) beat() {
+	if !e.started {
+		e.start()
+		return
+	}
+	if time.Since(e.lastSent) >= sandboxexec.KeepAliveInterval {
+		_, _ = io.WriteString(e.w, ": keep-alive\n\n")
+		e.sent()
+	}
+}
+
+// fail reports err as the gateway's `error` event.
+func (e *execStream) fail(err error) {
+	data, _ := json.Marshal(sandboxexec.NewErrorEvent(core.ErrorReply(err)))
+	_, _ = fmt.Fprintf(e.w, "event: error\ndata: %s\n\n", data)
+	e.sent()
 }
 
 // sniffWriter feeds an exitSniffer from an io.TeeReader.

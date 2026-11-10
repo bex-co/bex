@@ -120,3 +120,22 @@ func (c Claims) NonceExpiry() time.Time { return hmacticket.NonceExpiry(c.Expire
 // PodName is the sandbox's pod name: OpenSandbox names the workload pod
 // `<sandbox-id>-0` (validated live, w3/m32).
 func (c Claims) PodName() string { return c.SandboxID + "-0" }
+
+// KeepAliveInterval is Render's sandbox SSE keep-alive. The Render SDK sets
+// its read timeout to three of these (45 s), so both the gateway and
+// bex-api's resume wait send one at least this often.
+const KeepAliveInterval = 15 * time.Second
+
+// ErrorEvent is an exec stream's `error` event: the pinned Render CLI's
+// {status, message} beside the internal {error, code}.
+type ErrorEvent struct {
+	Status  int    `json:"status"`
+	Message string `json:"message"`
+	Error   string `json:"error"`
+	Code    string `json:"code,omitempty"`
+}
+
+// NewErrorEvent carries one message under both keys.
+func NewErrorEvent(status int, msg, code string) ErrorEvent {
+	return ErrorEvent{Status: status, Message: msg, Error: msg, Code: code}
+}

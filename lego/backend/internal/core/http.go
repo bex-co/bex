@@ -340,25 +340,7 @@ func WriteErr(w http.ResponseWriter, err error) {
 			"id": statusErrID(http.StatusServiceUnavailable), "code": RequestTimeoutCode})
 		return
 	}
-	code := http.StatusInternalServerError
-	switch {
-	case errors.Is(err, ErrNotFound):
-		code = http.StatusNotFound
-	case errors.Is(err, ErrUnavailable):
-		code = http.StatusServiceUnavailable
-	case errors.Is(err, ErrBadRequest):
-		code = http.StatusBadRequest
-	case errors.Is(err, ErrForbidden):
-		code = http.StatusForbidden
-	case errors.Is(err, ErrConflict), errors.Is(err, ErrBillingEnforced):
-		code = http.StatusConflict
-	case errors.Is(err, ErrPaymentRequired):
-		code = http.StatusPaymentRequired
-	case errors.Is(err, ErrGone):
-		code = http.StatusGone
-	case errors.Is(err, ErrTooLarge):
-		code = http.StatusRequestEntityTooLarge
-	}
+	code := ErrorStatus(err)
 	msg := err.Error()
 	var ce *CodedError
 	if errors.As(err, &ce) {
@@ -805,4 +787,47 @@ func (c *TTLCache[V]) Put(key string, v V, expires time.Time) {
 		}
 	}
 	c.m[key] = ttlEntry[V]{v: v, expires: expires}
+}
+
+// ErrorStatus is the HTTP status WriteErr answers err with (a timeout aside),
+// for a surface that reports an error after its own headers are sent, such as
+// an event stream's error event.
+func ErrorStatus(err error) int {
+	switch {
+	case errors.Is(err, ErrNotFound):
+		return http.StatusNotFound
+	case errors.Is(err, ErrUnavailable):
+		return http.StatusServiceUnavailable
+	case errors.Is(err, ErrBadRequest):
+		return http.StatusBadRequest
+	case errors.Is(err, ErrForbidden):
+		return http.StatusForbidden
+	case errors.Is(err, ErrConflict), errors.Is(err, ErrBillingEnforced):
+		return http.StatusConflict
+	case errors.Is(err, ErrPaymentRequired):
+		return http.StatusPaymentRequired
+	case errors.Is(err, ErrGone):
+		return http.StatusGone
+	case errors.Is(err, ErrTooLarge):
+		return http.StatusRequestEntityTooLarge
+	}
+	return http.StatusInternalServerError
+}
+
+// ErrorReply is the status, public message and machine code WriteErr answers
+// err with, timeout included, for a surface that reports an error after its
+// own headers are sent.
+func ErrorReply(err error) (status int, message, code string) {
+	if timedOut(err) {
+		return http.StatusServiceUnavailable, RequestTimedOutMessage, RequestTimeoutCode
+	}
+	status, message = ErrorStatus(err), "internal error"
+	if IsPublicError(err) {
+		message = err.Error()
+	}
+	var ce *CodedError
+	if errors.As(err, &ce) {
+		code = ce.Code
+	}
+	return status, message, code
 }

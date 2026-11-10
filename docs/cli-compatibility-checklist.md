@@ -351,9 +351,9 @@ Static wire review (w32/m284 t001) against `lego/backend/internal/sandbox`, and 
 | `wait_until_running`, `from_id` / `waitUntilRunning`, `get` | pending live walk | identical status vocabulary |
 | `list` / `list` | pending live walk | `status`, `cursor`, `limit`; group and name filters refused by name |
 | `exec` / `exec` | pending live walk | run connect-token handshake, SSE `output`/`exit`/`error` |
-| `copy_to`, `copy_from` / `upload`, `download` | pending live walk | file connect-token handshake; absolute remote paths only (see below) |
+| `copy_to`, `copy_from` / `upload`, `download` | pending live walk | file connect-token handshake; absolute and home-relative remote paths (w32/m299) |
 | `terminate` / `terminate` | pending live walk | 204 |
 | generated `list_sandbox_executions`, `retrieve_sandbox_execution` | pending live walk | served since w32/m298: newest first, Render's fields, `cursor`/`limit` |
 | `snapshots.*`, `*_group`, `images.*`, `builds.*` | [-] | sandbox snapshots (w32/m285), groups (non-goal, w7/m150) and images are refused by name |
 
-Known residuals: a relative remote path is refused (`400`), where Render resolves it under the sandbox user's home; a mint against a suspended sandbox can wait for its resume longer than the Python SDK's default 5 s HTTP timeout.
+Former residuals, fixed by w32/m299: a relative remote path now resolves under the sandbox user's home directory, as Render resolves it ("as scp does", SDK `copy_to`); and a token mint against a suspended sandbox starts the resume and answers at once, inside the Python SDK's 5 s HTTP timeout, while the exec stream that follows opens early and sends a keep-alive every 15 s until the resume finishes. Still open: a download from a sandbox that is still resuming answers only once the resume finishes, so a resume longer than the Python SDK's 45 s read timeout fails that one download (a binary body has no keep-alive).

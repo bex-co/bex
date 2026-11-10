@@ -205,9 +205,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if owner == "" {
 			owner = body.OwnerID
 		}
-		// Minting resumes a sandbox suspended for inactivity, so this
-		// request may wait for it (the pinned client sets no timeout).
-		r = allowLongResume(w, r)
+		// Minting starts the resume of a sandbox suspended for inactivity and
+		// answers at once, as Render does; the redeem waits for the resume.
+		r = r.WithContext(withoutResumeWait(r.Context()))
 		out, err := s.ConnectRun(r.Context(), ConnectRequest{
 			OwnerID: owner, SandboxID: r.PathValue("id"), Operation: r.PathValue("operation"), Command: body.Command,
 		}, s.connectBaseURL(r))
@@ -220,7 +220,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	// The pinned file-copy client sends no JSON body: both ownerId and path
 	// are query parameters, and operation is part of the mint route.
 	mux.HandleFunc("POST /v1/sandboxes/{id}/files/{operation}/token", func(w http.ResponseWriter, r *http.Request) {
-		r = allowLongResume(w, r)
+		r = r.WithContext(withoutResumeWait(r.Context()))
 		out, err := s.ConnectFile(r.Context(), FileConnectRequest{
 			OwnerID: r.URL.Query().Get("ownerId"), SandboxID: r.PathValue("id"),
 			Operation: r.PathValue("operation"), Path: r.URL.Query().Get("path"),

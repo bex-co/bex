@@ -67,11 +67,11 @@ type Server struct {
 	KeepAlive time.Duration
 }
 
-// keepAliveInterval is Render's sandbox SSE keep-alive. The Render SDK sets
-// its read timeout to three of these (45 s), so a command that printed nothing
-// for longer was cut off before bex sent one (w32/m284). A comment line is
-// ignored by every SSE reader, including the pinned CLI's and bex-api's.
-const keepAliveInterval = 15 * time.Second
+// keepAliveInterval: a command that printed nothing for longer than the
+// Render SDK's read timeout was cut off before bex sent one (w32/m284). A
+// comment line is ignored by every SSE reader, including the pinned CLI's and
+// bex-api's.
+const keepAliveInterval = sandboxexec.KeepAliveInterval
 
 // Revalidator re-runs a verified ticket's authorization at redemption and on
 // every live-stream revalidation tick (round-13 #3). Any error refuses the
@@ -281,12 +281,7 @@ type exitEvent struct {
 	ExitCode       int `json:"exit_code"`
 	LegacyExitCode int `json:"exitCode"`
 }
-type errorEvent struct {
-	Status  int    `json:"status"`
-	Message string `json:"message"`
-	Error   string `json:"error"`
-	Code    string `json:"code,omitempty"`
-}
+type errorEvent = sandboxexec.ErrorEvent
 
 func newExitEvent(code int) exitEvent {
 	return exitEvent{ExitCode: code, LegacyExitCode: code}
@@ -296,7 +291,7 @@ func newExitEvent(code int) exitEvent {
 // the CLI prints: 404 for a terminated target, 403 for revoked access, 503
 // when the exec could not start.
 func newErrorEvent(status int, msg, code string) errorEvent {
-	return errorEvent{Status: status, Message: msg, Error: msg, Code: code}
+	return sandboxexec.NewErrorEvent(status, msg, code)
 }
 
 // sseWriter serializes SSE writes to one HTTP response (output chunks and the

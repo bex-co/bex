@@ -82,3 +82,55 @@ func TestStageUsesLiteralArgumentsAndNeverPublishes(t *testing.T) {
 		}
 	}
 }
+
+// w32/m299: a relative path is under the sandbox user's home, as Render
+// resolves it, even when the home itself is reached through a symlink; a
+// symlink inside the part the caller named is still refused.
+func TestShellResolvesRelativePathsUnderHome(t *testing.T) {
+	root, err := filepath.EvalSymlinks(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	home, homeLink := filepath.Join(root, "home"), filepath.Join(root, "home-link")
+	if err := os.MkdirAll(filepath.Join(home, "rel"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(home, homeLink); err != nil {
+		t.Fatal(err)
+	}
+	run := func(stdin []byte, command []string) ([]byte, error) {
+		cmd := exec.Command(command[0], command[1:]...)
+		cmd.Env = []string{"HOME=" + homeLink, "PATH=" + os.Getenv("PATH")}
+		cmd.Dir = root // the exec's cwd is not the home
+		cmd.Stdin = bytes.NewReader(stdin)
+		return cmd.Output()
+	}
+	for _, parent := range []string{"rel", "."} {
+		if out, err := run([]byte("abc"), shell(stageScript, parent, "f.txt", ".bex-copy-test", "file", "3")); err != nil {
+			t.Fatalf("stage under %q: %v %s", parent, err, out)
+		}
+		if out, err := run(nil, shell(publishScript, parent, "f.txt", ".bex-copy-test", "file")); err != nil {
+			t.Fatalf("publish under %q: %v %s", parent, err, out)
+		}
+		want := filepath.Join(home, parent, "f.txt")
+		if got, err := os.ReadFile(want); err != nil || string(got) != "abc" {
+			t.Fatalf("%s = %q, %v", want, got, err)
+		}
+		out, err := run(nil, shell(downloadScript, parent, "f.txt"))
+		if err != nil || string(out) != "file\nabc" {
+			t.Fatalf("download of %s/f.txt = %q, %v", parent, out, err)
+		}
+	}
+	if err := os.Symlink(filepath.Join(root, "elsewhere"), filepath.Join(home, "sneaky")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "elsewhere"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := run([]byte("x"), shell(stageScript, "sneaky", "f.txt", ".bex-copy-test", "file", "1")); err == nil {
+		t.Fatal("a symlinked directory under home was entered")
+	}
+	if _, err := run(nil, shell(downloadScript, "missing", "f.txt")); err == nil {
+		t.Fatal("a missing relative parent read as success")
+	}
+}

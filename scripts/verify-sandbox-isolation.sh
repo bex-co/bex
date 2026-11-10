@@ -71,6 +71,7 @@ sandbox_a_id=""
 sandbox_b_id=""
 sandbox_c_id=""
 sandbox_d_id=""
+sandbox_e_id=""
 sandbox_agent_id=""
 cr_a=""
 cr_b=""
@@ -113,6 +114,7 @@ cleanup() {
   [ -n "$sandbox_b_id" ] && api_call "$fixture_dir/member-b.curl" POST "/v1/sandboxes/$sandbox_b_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-b.json" >/dev/null
   [ -n "$sandbox_c_id" ] && api_call "$fixture_dir/owner-c.curl" POST "/v1/sandboxes/$sandbox_c_id/terminate?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/cleanup-c.json" >/dev/null
   [ -n "$sandbox_d_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_d_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-d.json" >/dev/null
+  [ -n "$sandbox_e_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_e_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-e.json" >/dev/null
   [ -n "$sandbox_agent_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_agent_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-agent.json" >/dev/null
   kubectl -n "$BEX_WORKSPACE_A" delete pod "$hosting_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n bex-system delete pod "$platform_pod" --ignore-not-found --wait=false >/dev/null 2>&1
@@ -336,6 +338,9 @@ sandbox_a_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$
 sandbox_b_id="$(create_sandbox "$fixture_dir/member-b.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-b.json" '{"type":"deny-all"}')"
 sandbox_c_id="$(create_sandbox "$fixture_dir/owner-c.curl" "$BEX_WORKSPACE_B" "$fixture_dir/sandbox-c.json" '{"type":"deny-all"}')"
 sandbox_d_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-d.json" '{"type":"allow-list","rules":[{"domain":"api.github.com","protocol":"https"}]}')"
+# E (w32/m299) idles from here, so it is suspended by the end of the run,
+# when a mint against it must still answer at once.
+sandbox_e_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-e.json" '{"type":"deny-all"}' '"idleTimeoutSeconds":300')"
 if [ "$verify_agent_driver" = 1 ]; then
   expect_status 201 "$fixture_dir/owner-a.curl" POST "/v1/sandboxes" "$fixture_dir/sandbox-agent.json" \
     --header 'Content-Type: application/json' \
@@ -481,6 +486,18 @@ expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$sandbox_a_id/e
 expect_status 404 "$fixture_dir/member-b.curl" GET "/v1/sandboxes/$sandbox_a_id/execs?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/execs-cross-owner.json"
 expect_status 404 "$fixture_dir/owner-c.curl" GET "/v1/sandboxes/$sandbox_a_id/execs/$run_exe?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/execs-cross-workspace.json"
 pass "execution history lists the exec and the upload with Render's fields, and only to the sandbox's readers"
+
+# A relative remote path is under the sandbox user's home, as on Render
+# (w32/m299; the SDK's copy_to("m299-rel.txt") sends it as is).
+expect_status 201 "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_a_id/files/upload/token?ownerId=$BEX_WORKSPACE_A&path=m299-rel.txt" "$fixture_dir/rel-upload.mint"
+write_auth_config "$(jq -er '.token' "$fixture_dir/rel-upload.mint")" "$fixture_dir/rel-upload.curl"
+curl --config "$fixture_dir/rel-upload.curl" --silent --show-error --fail-with-body --max-time 120 \
+  --request PUT --header 'Content-Type: application/octet-stream' --data-binary "@$upload_body" \
+  --output "$fixture_dir/rel-upload.out" "$(jq -er '.uri' "$fixture_dir/rel-upload.mint")" \
+  || fail "relative upload to sandbox A failed: $(head -c 300 "$fixture_dir/rel-upload.out" 2>/dev/null)"
+sandbox_exec "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$sandbox_a_id" 'cat "$HOME/m299-rel.txt"' "$fixture_dir/rel-read.txt"
+[ "$(cat "$fixture_dir/rel-read.txt")" = m298 ] || fail "a relative upload did not land under the sandbox user's home"
+pass "a relative remote path resolves under the sandbox user's home"
 if [ "$verify_agent_driver" = 1 ]; then
   container_agent="$(workload_container "$namespace_a" "$pod_agent")"
 fi
@@ -1188,5 +1205,29 @@ grep -q "$pod_a" "$fixture_dir/hubble-drops.txt" \
 grep -q "${run_id}.attacker.test" "$fixture_dir/hubble-drops.txt" \
   || fail "Hubble drops do not contain the unique denied DNS-exfiltration query"
 pass "Hubble attributes policy drops to the attacker sandbox"
+
+echo "==> a token mint against a suspended sandbox answers at once (w32/m299)"
+for _ in $(seq 1 60); do
+  expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$sandbox_e_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/sandbox-e-get.json"
+  [ "$(jq -r '.status' "$fixture_dir/sandbox-e-get.json")" = suspended ] && break
+  sleep 10
+done
+[ "$(jq -r '.status' "$fixture_dir/sandbox-e-get.json")" = suspended ] \
+  || fail "sandbox E (idleTimeoutSeconds 300) never suspended: $(jq -c '{status, idleTimeoutSeconds}' "$fixture_dir/sandbox-e-get.json")"
+mint_seconds="$(curl --config "$fixture_dir/owner-a.curl" --silent --show-error --request POST \
+  --header 'Content-Type: application/json' --data '{"command":"printf resumed"}' \
+  --output "$fixture_dir/sandbox-e.mint" --write-out '%{http_code} %{time_total}' \
+  "$api_url/v1/sandboxes/$sandbox_e_id/runs/stream/token?ownerId=$BEX_WORKSPACE_A")"
+[ "${mint_seconds%% *}" = 201 ] || fail "mint against suspended sandbox E returned ${mint_seconds%% *}"
+awk -v t="${mint_seconds#* }" 'BEGIN { exit !(t < 5) }' \
+  || fail "mint against suspended sandbox E took ${mint_seconds#* }s, over the Render SDK's 5 s timeout"
+write_auth_config "$(jq -er '.token' "$fixture_dir/sandbox-e.mint")" "$fixture_dir/sandbox-e.curl"
+curl --config "$fixture_dir/sandbox-e.curl" --silent --show-error --fail-with-body --max-time 300 \
+  --request POST --header 'Accept: text/event-stream' --header 'Content-Type: application/json' \
+  --data '{"command":"printf resumed"}' --output "$fixture_dir/sandbox-e.sse" "$(jq -er '.uri' "$fixture_dir/sandbox-e.mint")" \
+  || fail "exec in resuming sandbox E failed: $(head -c 300 "$fixture_dir/sandbox-e.sse" 2>/dev/null)"
+grep -q '"data":"resumed"' "$fixture_dir/sandbox-e.sse" && grep -q '"exit_code":0' "$fixture_dir/sandbox-e.sse" \
+  || fail "exec in resuming sandbox E did not complete: $(head -c 600 "$fixture_dir/sandbox-e.sse")"
+pass "a mint against a suspended sandbox answers in ${mint_seconds#* }s and its exec completes after the resume"
 
 echo "PASS: sandbox isolation, ownership, ingress, egress, and RBAC matrix"

@@ -125,6 +125,24 @@ func resumeWait(ctx context.Context) time.Duration {
 	return defaultResumeWait
 }
 
+type noResumeWaitKey struct{}
+
+// withoutResumeWait makes wake-on-exec start a suspended sandbox's resume and
+// return at once. A connect-token mint uses it: Render answers the mint while
+// the sandbox resumes (the Render SDK mints under its 5 s HTTP timeout), and
+// the redeem that follows waits for the resume instead.
+func withoutResumeWait(ctx context.Context) context.Context {
+	return context.WithValue(ctx, noResumeWaitKey{}, true)
+}
+
+type resumeHeartbeatKey struct{}
+
+// withResumeHeartbeat has wake-on-exec call beat on each poll while it waits
+// for a resume, so a stream can keep its client alive meanwhile.
+func withResumeHeartbeat(ctx context.Context, beat func()) context.Context {
+	return context.WithValue(ctx, resumeHeartbeatKey{}, beat)
+}
+
 // allowLongResume lets a REST exec or file route wait LongResumeWait for a
 // suspended sandbox to resume. It pushes the connection's write deadline out
 // by that wait (net/http's WriteTimeout would otherwise cut the response at
@@ -240,6 +258,8 @@ func (s *Service) ensureRunning(ctx context.Context, key, ws string, raw osSandb
 	if poll <= 0 {
 		poll = defaultResumePoll
 	}
+	noWait, _ := ctx.Value(noResumeWaitKey{}).(bool)
+	beat, _ := ctx.Value(resumeHeartbeatKey{}).(func())
 	var lastResume time.Time
 	resumed := false
 	for {
@@ -272,8 +292,14 @@ func (s *Service) ensureRunning(ctx context.Context, key, ws string, raw osSandb
 		default:
 			return raw, nil
 		}
+		if noWait {
+			return raw, nil
+		}
 		if !now.Before(deadline) {
 			return raw, sandboxResumingError(canonicalID(raw), budget)
+		}
+		if beat != nil {
+			beat()
 		}
 		if err := sleepCtx(ctx, poll); err != nil {
 			return raw, err

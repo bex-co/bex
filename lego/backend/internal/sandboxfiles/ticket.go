@@ -126,13 +126,25 @@ func (c Claims) LimitKey(platformSubject string) string {
 }
 func (c Claims) PodName() string { return c.SandboxID + "-0" }
 
-// ValidatePath requires one exact absolute sandbox path. Rejecting instead of
-// silently cleaning preserves the byte binding of the public connect token.
+// pathDepth counts a path's levels below / or below the home directory.
+func pathDepth(value string) int {
+	if path.IsAbs(value) {
+		return strings.Count(value, "/")
+	}
+	return strings.Count(value, "/") + 1
+}
+
+// ValidatePath requires one exact clean sandbox path: absolute, or relative
+// to the sandbox user's home directory, as Render resolves it ("as scp
+// does", Render SDK v1.8.0 copy_to). Rejecting instead of silently cleaning
+// preserves the byte binding of the public connect token, and a relative path
+// may not climb out of the home directory.
 func ValidatePath(value string) error {
-	if value == "/" || !path.IsAbs(value) || len(value) > MaxPathBytes || path.Clean(value) != value ||
+	if value == "" || value == "/" || value == "." || value == ".." || strings.HasPrefix(value, "../") ||
+		len(value) > MaxPathBytes || path.Clean(value) != value ||
 		strings.ContainsRune(value, '\\') || strings.IndexFunc(value, unicode.IsControl) >= 0 ||
-		strings.Count(value, "/") > MaxPathDepth {
-		return fmt.Errorf("sandbox path must be a clean absolute non-root path, at most %d bytes and %d levels, without control characters", MaxPathBytes, MaxPathDepth)
+		pathDepth(value) > MaxPathDepth {
+		return fmt.Errorf("sandbox path must be a clean non-root path (absolute, or relative to the home directory without '..'), at most %d bytes and %d levels, without control characters", MaxPathBytes, MaxPathDepth)
 	}
 	return nil
 }

@@ -70,12 +70,12 @@ func TestFileTicketDomainAndPathBinding(t *testing.T) {
 }
 
 func TestValidatePath(t *testing.T) {
-	for _, value := range []string{"", "/", "relative", "/a/../b", "/a/./b", "/a//b", "/a/", "/a\x00b", "/a\nb", "/a\\b", "/" + strings.Repeat("x", MaxPathBytes), "/" + strings.Repeat("a/", MaxPathDepth) + "b"} {
+	for _, value := range []string{"", "/", ".", "..", "../escape", "a/../../b", "./a", "a/", "/a/../b", "/a/./b", "/a//b", "/a/", "/a\x00b", "/a\nb", "/a\\b", "/" + strings.Repeat("x", MaxPathBytes), "/" + strings.Repeat("a/", MaxPathDepth) + "b", strings.Repeat("a/", MaxPathDepth) + "b"} {
 		if ValidatePath(value) == nil {
 			t.Errorf("accepted unsafe path %q", value)
 		}
 	}
-	for _, value := range []string{"/workspace/file", "/tmp/空 白", "/tmp/$(literal);'name"} {
+	for _, value := range []string{"/workspace/file", "/tmp/空 白", "/tmp/$(literal);'name", "relative", "rel/f.txt", "a..b/c"} {
 		if err := ValidatePath(value); err != nil {
 			t.Errorf("rejected safe literal path %q: %v", value, err)
 		}
