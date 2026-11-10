@@ -35,6 +35,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"golang.org/x/sync/errgroup"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
@@ -855,6 +856,10 @@ func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, t
 	return box, nil
 }
 
+// maxConcurrentRuleReads bounds a list's parallel policy reads against the
+// Kubernetes API.
+const maxConcurrentRuleReads = 8
+
 // withRules fills an allow-list sandbox's `networkPolicy.rules` from its
 // per-sandbox policy, which is where they live (labels cannot hold them).
 func (s *Service) withRules(ctx context.Context, workspace string, box Sandbox) (Sandbox, error) {
@@ -1280,10 +1285,19 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 			out = append(out, s.sandboxView(r, ws))
 		}
 	}
+	// Each allow-list sandbox's rules are one policy read; run them side by
+	// side so a list costs about one round trip, not one per sandbox.
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.SetLimit(maxConcurrentRuleReads)
 	for i := range out {
-		if out[i], err = s.withRules(ctx, ws, out[i]); err != nil {
-			return nil, err
-		}
+		group.Go(func() error {
+			box, err := s.withRules(groupCtx, ws, out[i])
+			out[i] = box
+			return err
+		})
+	}
+	if err := group.Wait(); err != nil {
+		return nil, err
 	}
 	return s.withNames(ctx, ws, out)
 }

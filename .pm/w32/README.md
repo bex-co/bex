@@ -13,7 +13,7 @@
 
 ## Inbox
 
-- [ ] [006](006.md) — List makes one Cilium read per allow-list sandbox (~40m)
+- [x] [006](done/006.md) — List makes one Cilium read per allow-list sandbox — DONE (concurrent reads; no RBAC widening)
 - [ ] [007](007.md) — The Docker promtool fallback can't read the rule file (~20m)
 
 - [x] [005](done/005.md) — `bex docs` opens GitHub source markdown instead of the public docs site — DONE

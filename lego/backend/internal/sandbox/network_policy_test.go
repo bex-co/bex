@@ -20,12 +20,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -360,5 +363,69 @@ func TestGraphQLAndMCPAllowListCreateReportRules(t *testing.T) {
 	policy, _ := json.Marshal(created.NetworkPolicy)
 	if string(policy) != `{"default":"allow-list","rules":[{"domain":"api.github.com","protocol":"https"}],"type":"allow-list"}` {
 		t.Fatalf("MCP create policy = %s", policy)
+	}
+}
+
+// barrierEgress answers Rules only once `want` reads are in flight at the
+// same time, so a list that reads policies one by one fails.
+type barrierEgress struct {
+	*fakeSandboxEgress
+	want    int
+	arrived chan struct{}
+	failID  string
+}
+
+func (b *barrierEgress) Rules(ctx context.Context, namespace, id string) ([]string, error) {
+	b.arrived <- struct{}{}
+	deadline := time.After(2 * time.Second)
+	for len(b.arrived) < b.want {
+		select {
+		case <-deadline:
+			return nil, errors.New("policy reads were not concurrent")
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Millisecond):
+		}
+	}
+	if id == b.failID {
+		return nil, errors.New("policy read failed")
+	}
+	return []string{"api.github.com"}, nil
+}
+
+// w32/006: a list's allow-list rules are read side by side, not one policy
+// GET after another, and one failed read fails the list.
+func TestListReadsAllowListRulesConcurrently(t *testing.T) {
+	up := &policyUpstream{}
+	seed := stubServer(t, func(w http.ResponseWriter, r *http.Request) { up.handler(t)(w, r) })
+	seed.SandboxEgress = &fakeSandboxEgress{}
+	if _, err := seed.Create(callerCtx(), allowListRequest("api.github.com")); err != nil {
+		t.Fatal(err)
+	}
+	const n = 3
+	var rows []map[string]any
+	for i := range n {
+		meta := maps.Clone(up.created.Metadata)
+		meta[metadataPublicID] = fmt.Sprintf("sbx-%020d", i)
+		rows = append(rows, map[string]any{"id": fmt.Sprintf("os-%d", i), "metadata": meta, "status": map[string]any{"state": "Running"}})
+	}
+	for _, failID := range []string{"", "sbx-00000000000000000001"} {
+		svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) { _ = json.NewEncoder(w).Encode(rows) })
+		svc.SandboxEgress = &barrierEgress{fakeSandboxEgress: &fakeSandboxEgress{}, want: n, arrived: make(chan struct{}, n), failID: failID}
+		listed, err := svc.List(callerCtx())
+		if failID != "" {
+			if err == nil {
+				t.Fatal("a failed policy read did not fail the list")
+			}
+			continue
+		}
+		if err != nil || len(listed) != n {
+			t.Fatalf("list = %d sandboxes, %v", len(listed), err)
+		}
+		for _, box := range listed {
+			if box.NetworkPolicy == nil || len(box.NetworkPolicy.Rules) != 1 || box.NetworkPolicy.Rules[0].Domain != "api.github.com" {
+				t.Errorf("%s policy = %#v", box.ID, box.NetworkPolicy)
+			}
+		}
 	}
 }
