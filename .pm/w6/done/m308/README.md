@@ -1,6 +1,6 @@
 # w6 · m308 — Each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted"
 
-**Worker:** worker6 **Goal:** build minutes are charged only above Render's per-plan allowance, and a workspace without a payment method stops building when the allowance runs out, as on Render. **Status:** in progress (t001–t004, t006, t007 done; t005 checks the live behavior after the deploy)
+**Worker:** worker6 **Goal:** build minutes are charged only above Render's per-plan allowance, and a workspace without a payment method stops building when the allowance runs out, as on Render. **Status:** done 2026-11-10 — verified on production after the 21:47 UTC deploy
 
 ## Tasks (in order)
 
@@ -10,15 +10,15 @@
 | t002 | [Stripe receives only the minutes above the allowance](done/t002.md) — **DONE** | 1.5h | t001 |
 | t003 | ["Build Minutes Exhausted": builds stop without a payment method](done/t003.md) — **DONE** | 2h | t001 |
 | t004 | [`buildMinutes` on every usage surface, with warning emails](done/t004.md) — **DONE** | 1.5h | t001 |
-| t005 | [Render parity](t005.md) | 30m | t002, t003, t004 |
+| t005 | [Render parity](done/t005.md) — **DONE** | 30m | t002, t003, t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t006 |
-| t008 | [Closeout](t008.md) | 10m | t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t007 |
 
 ## Definition of done
 
-- A Hobby workspace's estimate and Stripe emission exclude its first 500 build minutes of the month (tests; a dev-6 or Stripe test-mode run).
-- On dev-6, a workspace with no payment method that has used its allowance gets "Build Minutes Exhausted" on its next deploy, and binding a card lets it build again.
+- A Hobby workspace's estimate and Stripe emission exclude its first 500 build minutes of the month (tests; amended 2026-11-10: the emitter, estimate and real-DB export tests — no Stripe test-mode harness exists and dev-N runs without Stripe).
+- A workspace with no payment method that has used its allowance gets "Build Minutes Exhausted" on its next deploy, and binding a card lets it build again (amended 2026-11-10: verified by envtest `build_minutes_exhausted_envtest_test.go` and the sweeper tests; dev-N runs without Stripe, so the sweeper is not wired there).
 - `buildMinutes {used, included}` reads the same on REST, GraphQL, MCP and the dashboard.
 - ADR030 §13's "implementation pending" is updated to shipped.
 

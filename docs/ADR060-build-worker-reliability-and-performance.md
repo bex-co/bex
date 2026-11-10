@@ -1,6 +1,6 @@
 # ADR060 — Build-worker reliability and performance: async dispatch, failure classes, remote cache, and build SLOs
 
-**Status:** Accepted · 2026-08-15 · D1–D8 implemented; D3 is gated and off in production since its trial was rolled back (2026-10-26) · **D6 amended 2026-11-10** for Render parity (one build per service is the only customer-visible limit; the per-workspace cap is retired), implementation pending
+**Status:** Accepted · 2026-08-15 · D1–D8 implemented; D3 is gated and off in production since its trial was rolled back (2026-10-26) · **D6 amended 2026-11-10** for Render parity (one build per service is the only customer-visible limit; the per-workspace cap is retired), shipped 2026-11-10 (`w6/m306`); production confirmation that admission no longer holds a workspace's third build awaits the ops metrics (`w6/blocked/m306`)
 
 Refines [ADR034](ADR034-scalable-build-pipeline.md), which accepted the ephemeral-builder architecture and explicitly deferred three follow-ups: the non-blocking reconcile, atomic admission, and remote cache. This ADR turns those deferrals — plus the reliability and observability gaps found since — into one coherent plan, informed by how the current fast-build platforms (Depot, Namespace, Docker Build Cloud, Railway, Fly.io) and the Kubernetes-native build systems (kpack, Tekton, Kueue) solve the same problems.
 

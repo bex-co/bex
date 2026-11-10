@@ -1,6 +1,6 @@
 # w6 · m309 — Pipeline-minute spend limit
 
-**Worker:** worker6 **Goal:** a workspace can cap its monthly pipeline-minute spend, and builds stop at the cap until it is raised, as on Render. **Status:** in progress (t001–t003, t005, t006 done; t004 checks the live behavior after the deploy)
+**Worker:** worker6 **Goal:** a workspace can cap its monthly pipeline-minute spend, and builds stop at the cap until it is raised, as on Render. **Status:** done 2026-11-10 — verified on production after the 21:47 UTC deploy
 
 ## Tasks (in order)
 
@@ -9,15 +9,15 @@
 | t001 | [Record Render's spend-limit surface](done/t001.md) — **DONE** | 30m | — |
 | t002 | [Store and edit a workspace's pipeline spend limit](done/t002.md) — **DONE** | 1.5h | t001 |
 | t003 | [Builds stop when the spend limit is reached](done/t003.md) — **DONE** | 1h | t002 |
-| t004 | [Render parity](t004.md) | 30m | t003 |
+| t004 | [Render parity](done/t004.md) — **DONE** | 30m | t003 |
 | t005 | [Simplify](done/t005.md) — **DONE** | 15m | t004 |
 | t006 | [Test coverage](done/t006.md) — **DONE** | 30m | t005 |
-| t007 | [Closeout](t007.md) | 10m | t006 |
+| t007 | [Closeout](done/t007.md) — **DONE** | 10m | t006 |
 
 ## Definition of done
 
 - t001's Render record is in this README.
-- On dev-6, a workspace with a card and a spend limit stops building when the month's pipeline overage reaches the limit and builds again after the limit is raised.
+- A workspace with a card and a spend limit stops building when the month's pipeline overage reaches the limit and builds again after the limit is raised (amended 2026-11-10: verified by `TestSweepStopsAWorkspaceAtItsSpendLimit` and the operator's Build Minutes Exhausted envtest; dev-N runs without Stripe, so the sweeper is not wired there).
 - The limit is settable only by billing owners, on the surfaces t001 says Render offers.
 
 ## Render record (t001, 2026-11-10)

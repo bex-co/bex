@@ -1,6 +1,6 @@
 # w6 · m319 — Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down
 
-**Worker:** worker6 **Goal:** outbound bandwidth is charged only above Render's per-plan allowance, and a workspace without a payment method that uses it up has its services suspended until the month turns, as on Render. **Status:** in progress — t001–t007 done 2026-11-10; closeout t008 waits for the production read after the deploy
+**Worker:** worker6 **Goal:** outbound bandwidth is charged only above Render's per-plan allowance, and a workspace without a payment method that uses it up has its services suspended until the month turns, as on Render. **Status:** done 2026-11-10 — verified on production after the 21:47 UTC deploy
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | [Render parity](done/t005.md) — **DONE** | 30m | t002, t003, t004 |
 | t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
 | t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t006 |
-| t008 | [Closeout](t008.md) | 10m | t007 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | t007 |
 
 ## Definition of done
 

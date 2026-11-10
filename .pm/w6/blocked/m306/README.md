@@ -1,6 +1,6 @@
 # w6 · m306 — Builds of different services start together, and a held build is visible
 
-**Worker:** worker6 **Goal:** a workspace's builds are limited only per service, as on Render, and a release held before its build Job exists is measured and alerted on. **Status:** in progress (t001–t005 and t008 done; t006 waits for the deploy)
+**Worker:** worker6 **Goal:** a workspace's builds are limited only per service, as on Render, and a release held before its build Job exists is measured and alerted on. **Status:** BLOCKED 2026-11-10 — t001–t005, t007–t009 done; t006's production probe ran builds two at a time and the cause needs the ops metrics (see the gate below)
 
 ## Tasks (in order)
 
@@ -12,17 +12,26 @@
 | t004 | [Fair order at the cluster ceiling](done/t004.md) — **DONE** | 1.5h | t001, t003 |
 | t005 | [Wake held releases when a build ends](done/t005.md) — **DONE** | 1h | t004 |
 | t006 | [Verify on production and close the ADR018 divergence](t006.md) | 45m | t005 |
-| t007 | [Render parity](t007.md) | 30m | t006 |
+| t007 | [Render parity](done/t007.md) — **DONE** | 30m | t006 |
 | t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
-| t009 | [Test coverage](t009.md) | 30m | t008 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 30m | t008 |
 | t010 | [Closeout](t010.md) | 10m | t009 |
 
 ## Definition of done
 
 - On production, a four-service Blueprint on an otherwise idle build plane runs its four builds at once (t006 record).
-- A release held by the cluster ceiling or a datastore wait appears in `bex_builds_queued`, and `BuildQueuedTooLong` fires on such a stall (alert unit test; series visible on production).
+- A release held by the cluster ceiling or a datastore wait appears in `bex_builds_held{cause}` (shipped beside `bex_builds_queued`, t002), and `BuildHeldTooLong` fires on such a stall (alert unit test; series visible on production).
 - At a full ceiling, a freed slot goes to the workspace with the fewest active builds, and a held release starts within seconds of a slot freeing (envtest).
 - ADR018 records build concurrency as aligned with Render; ADR060's status says the D6 amendment shipped.
+
+## Gate (2026-11-10)
+
+**Needs someone with ops access (obs.bex.co, the ops workspace) or the cluster:** repeat t006's four-build probe and read `bex_builds_held{cause="admission"}` and `bex_builds_queued` while it runs (or the operator's live `BEX_MAX_CONCURRENT_BUILDS`).
+
+- If builds 3–4 were **queued** (waiting for a burst node) with nothing held, admission is aligned: rewrite ADR018/ADR060 as t006 says and close. The remaining two-at-a-time is ADR060 §D8 capacity, whose warm size is the user's cost decision (keep `bex-tenant-burst` warm, or raise `bex-tenant-lg`), to be filed as its own item.
+- If they were **held**, a cap is still in force: find which.
+
+The production record is in [t006](t006.md).
 
 ## Source + Goal linkage
 
