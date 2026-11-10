@@ -295,6 +295,15 @@ func blueprintServiceRuntimeProblems(object map[string]any, path []string, locat
 	}
 	runtime, _ := object["runtime"].(string)
 	runtime = strings.ToLower(strings.TrimSpace(runtime))
+	switch {
+	case runtime == "", blueprintNativeRuntime(runtime), runtime == "docker", runtime == "image", runtime == "static":
+	default:
+		// The schema refuses a runtime outside its enum at services[N].runtime.
+		// Judging the build fields against it would only add a false second
+		// error calling a misspelled native runtime a Dockerfile or
+		// prebuilt-image service (w8/238).
+		return nil
+	}
 	_, hasImage := object["image"]
 	// runtime docker beside x-bex.builder: buildpack is a buildpack build
 	// (w5/m117), so only runtime docker without it reads a Dockerfile.
