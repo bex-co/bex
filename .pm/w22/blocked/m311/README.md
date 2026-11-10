@@ -1,6 +1,6 @@
 # w22 · m311 — Sandbox groups, as on Render: a default group per workspace, a concurrency limit, and 429 at the limit
 
-**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** todo (t001–t006, t008–t010 and t012 done; t007 needs the deploy and the isolation-matrix run)
+**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** blocked (t001–t006, t008–t010 and t012 done and shipped; t007 and t011 wait for the production deploy)
 
 ## Tasks (in order)
 
