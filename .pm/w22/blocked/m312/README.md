@@ -1,6 +1,6 @@
 # w22 · m312 — Docker and Compose in a sandbox: a measured spike on a throwaway gVisor node
 
-**Worker:** worker22 **Goal:** ADR104 D6's unverified claims about Docker in a gVisor sandbox are measured, with a recommended option for the user to sign off, and no customer-facing runtime setting changed **Status:** todo
+**Worker:** worker22 **Goal:** ADR104 D6's unverified claims about Docker in a gVisor sandbox are measured, with a recommended option for the user to sign off, and no customer-facing runtime setting changed **Status:** blocked (t003 and t006 done and shipped; the rest needs a throwaway Kubernetes node with Cilium: t001/t002/t004 are half done on a local VM, t005 and t007 are not started)
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | t001 | Find or provision a throwaway gVisor node that is not the production sandbox pool | 45m | — |
 | t002 | Configure the throwaway runtime for Docker: net-raw flags and a second RuntimeClass | 30m | t001 |
-| t003 | Functional matrix: hello-world, build, and a two-service Compose file | 1h | t002 |
+| t003 | Functional matrix: hello-world, build, and a two-service Compose file — **DONE** | 1h | t002 |
 | t004 | Pod Security and sandbox pod-template check | 30m | t001 |
 | t005 | Isolation tests with net-raw on: spoofing, raw packets and the DNS/SNI allow-list bypass | 1h30m | t002 |
-| t006 | Make the checks repeatable: scripts/sandbox-docker-spike.sh | 45m | t003, t005 |
+| t006 | Make the checks repeatable: scripts/sandbox-docker-spike.sh — **DONE** | 45m | t003, t005 |
 | t007 | Record findings, recommend one of D6's four options, tear down | 45m | t004, t006 |
 | t008 | Simplify | 20m | t007 |
 | t009 | Test coverage | 40m | t007 |

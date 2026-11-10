@@ -127,6 +127,10 @@ jobs:
         run: bash scripts/ship-gates.test.sh
       - name: gh retry helper self-test
         run: bash scripts/gh-retry.test.sh
+      # w22/m312 t006: the Docker-in-gVisor spike script refuses the production
+      # sandbox pool; proven with stubbed kubectl/docker, no cluster.
+      - name: Sandbox Docker spike guard self-test
+        run: bash scripts/sandbox-docker-spike.test.sh
       - name: Tracking-issue helper self-test
         run: bash scripts/tracking-issue.test.sh
       - name: Repo artifact guard self-test
@@ -215,6 +219,7 @@ jobs:
           scripts/render-mcp-drift.sh scripts/render-mcp-drift.test.sh
           scripts/render-schema-drift.sh scripts/render-schema-drift.test.sh
           scripts/dev-env.sh scripts/dev-env.test.sh
+          scripts/sandbox-docker-spike.sh scripts/sandbox-docker-spike.test.sh
           scripts/fetch-app-kubeconfig.test.sh
           scripts/mock-cluster.sh scripts/mock-cluster.test.sh scripts/lib/helm-isolated.sh
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
