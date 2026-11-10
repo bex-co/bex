@@ -13,7 +13,14 @@ cd "$(dirname "$0")/.."
 
 fails=0
 assert() { # desc  condition
-  if eval "$2"; then echo "    ok: $1"; else
+  # Conditions pipe kilobytes into `grep -q`, which exits at its first match;
+  # the writer then fails on the closed pipe, and pipefail would turn a true
+  # condition into a FAIL. The condition's status is its last command's.
+  local rc=0
+  set +o pipefail
+  eval "$2" || rc=$?
+  set -o pipefail
+  if [ "$rc" -eq 0 ]; then echo "    ok: $1"; else
     echo "FAIL: $1" >&2
     fails=$((fails + 1))
   fi
@@ -332,7 +339,9 @@ EOF
 
   # Pre-fix regression: tag-presence skip would treat the stale node as done.
   set +e
-  docker exec "$stale" ctr -n k8s.io images ls -q 2>/dev/null | grep -qx "$PROBE_REF"
+  # grep reads the whole listing (no -q): an early exit would fail ctr on the
+  # closed pipe, and pipefail would report a present tag as absent.
+  docker exec "$stale" ctr -n k8s.io images ls -q 2>/dev/null | grep -x "$PROBE_REF" >/dev/null
   old_skip_rc=$?
   set -e
   assert "pre-fix tag-presence check would skip the stale node" "[ '$old_skip_rc' -eq 0 ]"

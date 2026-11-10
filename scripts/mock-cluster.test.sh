@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2218
+# (file-wide: the tests source scripts/mock-cluster.sh and then redefine its
+# functions as stubs further down, so ShellCheck 0.10 sees each call before
+# the stub it resolves to and reports it as a call to a later definition.)
 # Contract tests for scripts/mock-cluster.sh (w7/m148 t006).
 #
 # These cover the two behaviours that used to fail silently and destructively:

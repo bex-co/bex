@@ -1,12 +1,12 @@
 # w2 · m306 — CI on main reports only real reds after the move to GitHub-hosted runners
 
-**Worker:** worker2 **Goal:** a red workflow on main means a real defect again: `scripts (test)` is green, every step it skipped since 2026-11-08 runs, and the red-streak and schedule-drift trackers stop listing signals that are stale or mis-calibrated. **Status:** todo
+**Worker:** worker2 **Goal:** a red workflow on main means a real defect again: `scripts (test)` is green, every step it skipped since 2026-11-08 runs, and the red-streak and schedule-drift trackers stop listing signals that are stale or mis-calibrated. **Status:** todo (t001 done)
 
 ## Tasks (in order)
 
 | id   | title | est | depends_on |
 | ---- | ----- | --- | ---------- |
-| t001 | `scripts (test)` is green: a reasoned SC2218 directive in `mock-cluster.test.sh`; `dev-env.test.sh`'s `assert()` evaluates without `pipefail` | 20m | — |
+| t001 | `scripts (test)` is green: a reasoned SC2218 directive in `mock-cluster.test.sh`; `dev-env.test.sh`'s `assert()` evaluates without `pipefail` — **DONE** | 20m | — |
 | t002 | The steps CI has not reached since 2026-11-08 (mock-cluster, restore and disk-snapshot tests) pass on `ubuntu-24.04-arm` | 30m | t001 |
 | t003 | Local and CI run the same ShellCheck (0.11.0 in `scripts.yml` and the `github-actions-validate.sh` sha table) | 20m | t001 |
 | t004 | `ci-red-streak.sh` groups runs by workflow id, and a later success of any event ends a jobless parse-failure streak | 45m | — |
