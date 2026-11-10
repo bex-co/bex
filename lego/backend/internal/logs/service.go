@@ -1155,8 +1155,16 @@ type podFollow struct {
 }
 
 type followEnd struct {
-	pod    string
+	key    string // the pod incarnation's podFollowKey
 	opened bool
+}
+
+// podFollowKey names one pod incarnation: its name and UID. A StatefulSet
+// replaces a Key Value or Postgres pod under the same name with a new
+// container whose restart count starts at 0 again, so a tail keyed by the
+// name alone never attached to the replacement (w8/239).
+func podFollowKey(pod *corev1.Pod) string {
+	return pod.Name + "/" + string(pod.UID)
 }
 
 // tailTarget is what a pod tail follows: one App's app container, or one
@@ -1186,6 +1194,8 @@ type tailTarget struct {
 // follow ended is attached again — kubelet follows the current container, so
 // the new follow reads only the new life's log — which is what a crash-looping
 // service's tail used to get from the client reconnecting when its stream ended.
+// A pod replaced under the same name (a StatefulSet's Key Value or Postgres
+// pod) is a new incarnation, attached as a new pod (w8/239).
 func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string, target tailTarget, pods []corev1.Pod, emit func(LogEntry) error, heartbeat func() error) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -1200,7 +1210,8 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 				continue
 			}
 			restarts := containerRestarts(pod, target.container)
-			if f := follows[pod.Name]; f != nil {
+			key := podFollowKey(pod)
+			if f := follows[key]; f != nil {
 				restarted := f.opened && restarts > f.restarts
 				// A follow kubelet refused is retried while the pod can still
 				// produce output; a finished pod's unreadable log is not retried
@@ -1210,15 +1221,15 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 					continue
 				}
 			}
-			follows[pod.Name] = &podFollow{active: true, restarts: restarts}
-			go func(name string) {
+			follows[key] = &podFollow{active: true, restarts: restarts}
+			go func(name, key string) {
 				var opened atomic.Bool
 				s.streamContainerLogs(ctx, target.namespace, target.name, name, target.container, target.logType, q.Since, ch, &opened)
 				select {
-				case ended <- followEnd{pod: name, opened: opened.Load()}:
+				case ended <- followEnd{key: key, opened: opened.Load()}:
 				case <-ctx.Done():
 				}
-			}(pod.Name)
+			}(pod.Name, key)
 		}
 	}
 	// A request-only subscription follows no pods: its only producer is the
@@ -1267,7 +1278,7 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 			}
 			attach(current)
 		case end := <-ended:
-			if f := follows[end.pod]; f != nil {
+			if f := follows[end.key]; f != nil {
 				f.active, f.opened = false, end.opened
 			}
 		case <-beat:

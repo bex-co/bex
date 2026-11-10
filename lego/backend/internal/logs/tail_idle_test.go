@@ -268,6 +268,37 @@ func TestAppTailReattachesARestartedContainer(t *testing.T) {
 	run.expectMessage(t, "second life")
 }
 
+// w8/239: a StatefulSet replaces a Key Value or Postgres pod under the same
+// name, with a new UID and a restart count back at 0. The tail attaches to the
+// replacement instead of going silent after the old pod's last line.
+func TestTailAttachesAPodReplacedUnderTheSameName(t *testing.T) {
+	stream := newScriptedStream(map[string][]string{
+		"kv-0": {"2026-11-08T10:49:57Z Valkey is now ready to exit, bye bye...", "2026-11-08T10:50:06Z Ready to accept connections tcp"},
+	})
+	first := appPodIn("web", "kv-0", corev1.PodRunning, containerRunning, 0)
+	first.UID = "uid-old"
+	svc := tailService(stream.follow, sampleApp("web"), first)
+
+	run := startTail(t, svc, LogQuery{App: "web"})
+	run.expectMessage(t, "Valkey is now ready to exit, bye bye...")
+	run.expectOpen(t, 100*time.Millisecond)
+	if n := stream.openedFor("kv-0"); n != 1 {
+		t.Fatalf("the unreplaced pod was followed %d times, want once", n)
+	}
+
+	var old corev1.Pod
+	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "kv-0"}, &old); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Client.Delete(context.Background(), &old); err != nil {
+		t.Fatal(err)
+	}
+	replacement := appPodIn("web", "kv-0", corev1.PodRunning, containerRunning, 0)
+	replacement.UID = "uid-new"
+	createPod(t, svc, replacement)
+	run.expectMessage(t, "Ready to accept connections tcp")
+}
+
 // A pod that starts after subscribe is still subject to the caller's instance
 // filter, resolved against the pods that exist when it appears.
 func TestAppTailAppliesTheInstanceFilterToLaterPods(t *testing.T) {
