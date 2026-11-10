@@ -100,17 +100,26 @@ func TestBuildFailureMessageQuotesTheFailingStep(t *testing.T) {
 // platform's, with its own sentence, not "build failed in the docker build
 // step:" followed by a digest.
 func TestBuildFailureMessageNamesAPlatformFetch(t *testing.T) {
-	const fetch = "bex could not download its Hugo toolchain (HTTP 504 from github.com); this is a platform problem, not a problem with your code — trigger a new deploy to retry, and contact support if it keeps happening"
-	obs := build.Observation{
-		Phase: build.PhaseFailed, Fault: build.FaultInfra, FailedStep: "docker build",
-		Tail: "error: failed to solve: digest mismatch sha256:bef140a1", PlatformFetch: fetch,
-	}
-	view := viewForBuildFault(obs.Fault)
-	if got := buildFailureMessage(view, obs); got != fetch {
-		t.Errorf("message = %q, want the platform fetch sentence", got)
-	}
-	if view.reason != appv1alpha1.ReasonBuildFailedInfrastructure || view.outcome != buildOutcomeInfraFailed {
-		t.Errorf("view = %+v, want the infrastructure class", view)
+	for _, tc := range []struct {
+		fetch build.PlatformFetch
+		want  string
+	}{
+		{build.PlatformFetch{Tool: "Hugo toolchain", Host: "github.com", Status: "504"}, "bex could not download its Hugo toolchain (HTTP 504 from github.com); this is a platform problem"},
+		{build.PlatformFetch{Tool: "Hugo toolchain", Host: "github.com", ChecksumMismatch: true}, "bex could not download its Hugo toolchain (github.com served a file that did not match its pinned checksum); this is a platform problem"},
+		{build.PlatformFetch{Tool: "FFmpeg toolchain", Host: "docker.io"}, "bex could not download its FFmpeg toolchain (from docker.io); this is a platform problem"},
+	} {
+		fetch := tc.fetch
+		obs := build.Observation{
+			Phase: build.PhaseFailed, Fault: build.FaultInfra, FailedStep: "docker build",
+			Tail: "error: failed to solve: digest mismatch sha256:bef140a1", PlatformFetch: &fetch,
+		}
+		view := viewForBuildFault(obs.Fault)
+		if got := buildFailureMessage(view, obs); !strings.HasPrefix(got, tc.want) || !strings.Contains(got, "trigger a new deploy to retry") || strings.Contains(got, "sha256") {
+			t.Errorf("message = %q, want it to start %q and say to retry", got, tc.want)
+		}
+		if view.reason != appv1alpha1.ReasonBuildFailedInfrastructure || view.outcome != buildOutcomeInfraFailed {
+			t.Errorf("view = %+v, want the infrastructure class", view)
+		}
 	}
 }
 

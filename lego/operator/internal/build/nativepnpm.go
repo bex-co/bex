@@ -86,8 +86,8 @@ func nativePnpmFor(line string) string {
 	return nativePnpmInstall()
 }
 
-// nativeLegacyPnpmStages fetches the standalone the way nativeStaticTools
-// fetches Hugo: each architecture's tarball is an ADD --checksum (fetched by
+// nativeLegacyPnpmStages fetches the standalone per architecture: each
+// architecture's tarball is an ADD --checksum (fetched by
 // BuildKit, so it needs no network inside the build and is stored once), only
 // the build platform's (TARGETARCH) is reached, and the pinned busybox unpacks
 // just the executable. Builders are amd64 or arm64 only; another TARGETARCH

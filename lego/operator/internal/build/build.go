@@ -508,10 +508,10 @@ type Observation struct {
 	// failureTail) from the termination message captureFailureTail arranges.
 	// Empty when unavailable — the failure message must stand without it.
 	Tail string
-	// PlatformFetch is the failure reason's sentence when a native build's
-	// failed step was fetching a toolchain bex supplies (platformFetchFailure);
-	// empty otherwise.
-	PlatformFetch string
+	// PlatformFetch is the fetch a native build's failed step was making when
+	// it fetched something bex supplies (platformFetchFailure); nil otherwise.
+	// Such a failure is FaultInfra.
+	PlatformFetch *PlatformFetch
 	// Fault attributes a PhaseFailed build (docs/ADR060 D2). Empty for
 	// non-terminal phases.
 	Fault Fault
@@ -659,7 +659,7 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 		start, finish := jobRunWindow(cur)
 		step, tail, platformFetch := failureDetail(ctx, o, cur.Name)
 		fault := faultFromJob(execution.JobFailedReason(cur))
-		if platformFetch != "" {
+		if platformFetch != nil {
 			// A toolchain bex supplies failed to arrive: the platform's
 			// failure whatever exit the build step chose (w8/m148), so the
 			// correlated-failure alert counts it.
@@ -732,13 +732,13 @@ var buildStepNames = map[string]string{
 // captureFailureTail arranges, which nothing read before w6/m123 — and, for a
 // native build's docker build step, whether it failed fetching a toolchain bex
 // supplies (platformFetchFailure). Best-effort by design: a reaped pod (Job
-// TTL, a gone node) or a List error yields ("", "", ""), and the caller's
+// TTL, a gone node) or a List error yields ("", "", nil), and the caller's
 // message must stand without it. When backoff spent a second attempt, the most
 // recently finished failed container wins.
-func failureDetail(ctx context.Context, o Options, jobName string) (step, tail, platformFetch string) {
+func failureDetail(ctx context.Context, o Options, jobName string) (step, tail string, platformFetch *PlatformFetch) {
 	pods, err := listJobPods(ctx, o.Client, o.Namespace, jobName)
 	if err != nil {
-		return "", "", ""
+		return "", "", nil
 	}
 	var at time.Time
 	for i := range pods {
@@ -757,9 +757,9 @@ func failureDetail(ctx context.Context, o Options, jobName string) (step, tail, 
 				step = s
 			}
 			tail = failureTail(buildkitFailureSummary(nativeCommandFailure(t.Message)))
-			platformFetch = ""
+			platformFetch = nil
 			if o.Builder == BuilderNative && cs.Name == "buildkit" {
-				platformFetch, _ = platformFetchFailure(t.Message)
+				platformFetch = platformFetchFailure(t.Message)
 			}
 		}
 	}
@@ -776,8 +776,7 @@ var buildkitProcessFailure = regexp.MustCompile(`(?:failed to solve: )?process (
 // unquoting, so it is not JSON: quotes and backslashes come out bare and a
 // newline stays a literal \n, which a \n the command itself contains reads the
 // same as. Group 1 is the command as printed. BuildKit's error summary ends
-// the header with a colon (` > [stage-0 5/5] RUN …:`; a static build's main stage
-// follows its Hugo helper stages, so it is stage-5) and its progress log
+// the header with a colon (` > [stage-0 5/5] RUN …:`) and its progress log
 // does not; group 2 keeps it.
 var buildkitNativeRunStep = regexp.MustCompile(`(?m)RUN --mount=type=secret,id=render-env,target=` +
 	regexp.QuoteMeta(nativeEnvSecretPath) + `(?: --mount=\S+)* \["/bin/bash","-c","` +

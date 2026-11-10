@@ -87,7 +87,7 @@
       "upstream": "docker.io/alpine/git:v2.52.0",
       "committed": "alpine/git:v2.52.0@sha256:4a0e72d49596a1f5d3701aeedafdadc5c0da4062be4657c7bdc4017387f591cc",
       "resolved_at": "2026-10-16T00:00:00Z",
-      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes \u2014 w8/m89)",
+      "source": "Docker Hub alpine/git:v2.52.0 multi-arch index (git 2.52.0, past CVE-2025-48384, which submodule init exposes — w8/m89)",
       "files": [
         "lego/operator/internal/build/build.go",
         "lego/operator/internal/publish/publish.go"
@@ -99,7 +99,7 @@
       "upstream": "quay.io/skopeo/stable:v1.22.2",
       "committed": "quay.io/skopeo/stable:v1.22.2@sha256:2b7d76dde38c5924e1945348840c58786fc192201f2fd545832e58b53d26f7b8",
       "resolved_at": "2026-09-30T18:08:55Z",
-      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable \u2014 w7/m85)",
+      "source": "Quay skopeo/stable:v1.22.2 OCI image index (the digest quay STORES; the converted Docker manifest-list digest it reports for that media type is not addressable — w7/m85)",
       "files": [
         "lego/operator/internal/build/build.go"
       ]
@@ -187,9 +187,9 @@
       "upstream": "github.com/gohugoio/hugo/hugo_extended_0.111.3_linux-amd64.tar.gz:v0.111.3",
       "committed": "hugo_extended_0.111.3_linux-amd64.tar.gz@sha256:b382aacb522a470455ab771d0e8296e42488d3ea4e61fe49c11c32ec7fb6ee8b",
       "resolved_at": "2026-10-17T12:00:00Z",
-      "source": "GitHub release gohugoio/hugo v0.111.3 asset hugo_extended_0.111.3_linux-amd64.tar.gz, sha256 matching the release's hugo_0.111.3_checksums.txt; Hugo extended for every native static build (w8/m106), Debian 12's release because Render's Hugo quickstart theme needs resources.ToCSS, which later Hugo removed; a fixed tag, so drift means a re-uploaded asset, and a new Hugo is a reviewed bump",
+      "source": "GitHub release gohugoio/hugo v0.111.3 asset hugo_extended_0.111.3_linux-amd64.tar.gz, sha256 matching the release's hugo_0.111.3_checksums.txt; Hugo extended for every native static build (w8/m106), built into ghcr.io/bex-co/bex-hugo by deploy/hugo (w8/m148), Debian 12's release because Render's Hugo quickstart theme needs resources.ToCSS, which later Hugo removed; a fixed tag, so drift means a re-uploaded asset, and a new Hugo is a reviewed bump",
       "files": [
-        "lego/operator/internal/build/nativehugo.go"
+        "deploy/hugo/Dockerfile"
       ]
     },
     {
@@ -198,7 +198,18 @@
       "upstream": "github.com/gohugoio/hugo/hugo_extended_0.111.3_linux-arm64.tar.gz:v0.111.3",
       "committed": "hugo_extended_0.111.3_linux-arm64.tar.gz@sha256:695176416dbe09d8c84abeb093f5f27132e6811221569811c855b577122bd670",
       "resolved_at": "2026-10-17T12:00:00Z",
-      "source": "GitHub release gohugoio/hugo v0.111.3 asset hugo_extended_0.111.3_linux-arm64.tar.gz, sha256 matching the release's hugo_0.111.3_checksums.txt; Hugo extended for every native static build (w8/m106), Debian 12's release because Render's Hugo quickstart theme needs resources.ToCSS, which later Hugo removed; a fixed tag, so drift means a re-uploaded asset, and a new Hugo is a reviewed bump",
+      "source": "GitHub release gohugoio/hugo v0.111.3 asset hugo_extended_0.111.3_linux-arm64.tar.gz, sha256 matching the release's hugo_0.111.3_checksums.txt; Hugo extended for every native static build (w8/m106), built into ghcr.io/bex-co/bex-hugo by deploy/hugo (w8/m148), Debian 12's release because Render's Hugo quickstart theme needs resources.ToCSS, which later Hugo removed; a fixed tag, so drift means a re-uploaded asset, and a new Hugo is a reviewed bump",
+      "files": [
+        "deploy/hugo/Dockerfile"
+      ]
+    },
+    {
+      "id": "native-hugo-image",
+      "kind": "helper",
+      "upstream": "ghcr.io/bex-co/bex-hugo:0.111.3",
+      "committed": "ghcr.io/bex-co/bex-hugo:0.111.3@sha256:bd3086eab038804155c0736780102f29efd5cd7731fda72449c49b00981f87e4",
+      "resolved_at": "2026-11-10T10:35:00Z",
+      "source": "ghcr.io multi-arch index (linux/amd64 + linux/arm64) from hugo-image.yml run 42799436346 at b05e83e1d: the native-hugo-amd64/arm64 tarballs' hugo binary at /hugo; hugo version 0.111.3 extended verified natively on both platforms; cosign workflow identity verified (w8/m148)",
       "files": [
         "lego/operator/internal/build/nativehugo.go"
       ]

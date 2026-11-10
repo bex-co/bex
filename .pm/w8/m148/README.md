@@ -1,17 +1,17 @@
 # w8 · m148 — Static-site builds keep working when GitHub release downloads fail
 
-**Worker:** worker8 **Goal:** a native static-site build no longer fetches Hugo from `github.com/gohugoio/hugo/releases` on each build. When a platform toolchain fetch does fail, the deploy says which download failed and how, not `digest mismatch sha256:…`. **Status:** in progress — t002 done, t003 recorded 2026-11-10; t001's image recipe and publish workflow shipped, pin pending its first publish
+**Worker:** worker8 **Goal:** a native static-site build no longer fetches Hugo from `github.com/gohugoio/hugo/releases` on each build. When a platform toolchain fetch does fail, the deploy says which download failed and how, not `digest mismatch sha256:…`. **Status:** in progress — t001–t006 done 2026-11-10 (Hugo from `ghcr.io/bex-co/bex-hugo`, platform fetch failures named); t007 (live static deploy DoD) after the deploy
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Serve the pinned Hugo tarballs from bex-controlled supply | 90m | — |
-| t002 | A failed platform toolchain fetch names the download and its HTTP status | 45m | — |
-| t003 | Blast radius: every third-party fetch a native build makes | 30m | t001 |
-| t004 | Render parity | 20m | t002, t003 |
-| t005 | Simplify | 20m | t004 |
-| t006 | Test coverage | 40m | t004 |
+| [t001](done/t001.md) | Serve the pinned Hugo tarballs from bex-controlled supply — **DONE** | 90m | — |
+| [t002](done/t002.md) | A failed platform toolchain fetch names the download and its HTTP status — **DONE** | 45m | — |
+| [t003](done/t003.md) | Blast radius: every third-party fetch a native build makes — **DONE** | 30m | t001 |
+| [t004](done/t004.md) | Render parity — **DONE** | 20m | t002, t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
 | t007 | Closeout (live static deploy DoD) | 20m | t006 |
 
 ## Definition of done

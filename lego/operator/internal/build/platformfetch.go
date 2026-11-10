@@ -17,7 +17,6 @@ limitations under the License.
 package build
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 )
@@ -42,8 +41,8 @@ var (
 	// scrolled off: ` > [bex-hugo-amd64 1/1] ADD …:`.
 	buildkitSummaryHeader = regexp.MustCompile(`^ > \[([^\]]+)\] (.*?):?$`)
 	platformStage         = regexp.MustCompile(`^bex-([a-z0-9]+)`)
-	copyFromImage         = regexp.MustCompile(`^COPY (?:--\S+ )*--from=(\S+/\S+)`)
-	fetchURL              = regexp.MustCompile(`https?://([^/\s]+)/(\S*/)?([^/\s]+)`)
+	fetchImageStep        = regexp.MustCompile(`^(?:load metadata for |FROM |COPY (?:--\S+ )*--from=)(\S+/\S+)`)
+	fetchURL              = regexp.MustCompile(`https?://([^/\s]+)/(?:\S*/)?([^/\s]+)`)
 	// The HTTP status of a failed fetch, as BuildKit's HTTP source
 	// (`invalid response status 504`) or a registry client (`… 503 Service
 	// Unavailable`) reports it.
@@ -59,20 +58,31 @@ var platformToolNames = map[string]string{
 	"busybox":       "build helper image",
 }
 
-// platformFetchFailure reads a native build's captured BuildKit transcript and,
-// when the failed step was a fetch bex makes, returns the sentence the deploy's
-// failure reason carries. ok is false for every other failure, including the
-// tenant's own build command.
-func platformFetchFailure(transcript string) (sentence string, ok bool) {
+// PlatformFetch is a native build step that failed fetching something bex
+// supplies: what (Tool), from where (Host, when known) and how (Status, the
+// HTTP status when one was reported; ChecksumMismatch when the download did
+// not match its pinned digest).
+type PlatformFetch struct {
+	Tool             string
+	Host             string
+	Status           string
+	ChecksumMismatch bool
+}
+
+// platformFetchFailure reads a native build's captured BuildKit transcript and
+// returns the failed step's fetch when it was one bex makes — an ADD, an image
+// pull, or a COPY from an image — or nil for every other failure, including
+// the tenant's build command and a compile step inside a helper stage.
+func platformFetchFailure(transcript string) *PlatformFetch {
 	headers := map[string]string{}
-	var failed, cause, header string
+	var failed, header string
 	for l := range strings.SplitSeq(transcript, "\n") {
 		if m := buildkitStepHeader.FindStringSubmatch(l); m != nil {
 			if _, seen := headers[m[1]]; !seen {
 				headers[m[1]] = "[" + m[2] + "] " + m[3]
 			}
 		} else if m := buildkitStepError.FindStringSubmatch(l); m != nil && failed == "" {
-			failed, cause = m[1], m[2]
+			failed = m[1]
 		} else if m := buildkitSummaryHeader.FindStringSubmatch(l); m != nil && header == "" {
 			header = "[" + m[1] + "] " + m[2]
 		}
@@ -81,54 +91,43 @@ func platformFetchFailure(transcript string) (sentence string, ok bool) {
 		header = h
 	}
 	stage, step, _ := strings.Cut(strings.TrimPrefix(header, "["), "] ")
-	var tool, host string
-	if m := fetchURL.FindStringSubmatch(step); m != nil {
-		host, tool = m[1], m[3]
-	}
-	switch {
-	case platformStage.MatchString(stage):
-		tool = platformStage.FindStringSubmatch(stage)[1]
-	case strings.HasPrefix(step, "ADD ") && strings.Contains(step, "--checksum=") && tool != "":
+	var fetch PlatformFetch
+	var tool string
+	if m := fetchImageStep.FindStringSubmatch(step); m != nil {
+		fetch.Host, tool = imageSource(m[1])
+	} else if m := fetchURL.FindStringSubmatch(step); strings.HasPrefix(step, "ADD ") && m != nil {
+		fetch.Host, tool = m[1], m[2]
 		if i := strings.IndexAny(tool, "-_."); i > 0 {
 			tool = tool[:i] // the file's name before its version: pnpm-10.34.7.tgz
 		}
-	case strings.HasPrefix(step, "load metadata for "):
-		host, tool = imageSource(strings.TrimPrefix(step, "load metadata for "))
-	case copyFromImage.MatchString(step):
-		host, tool = imageSource(copyFromImage.FindStringSubmatch(step)[1])
-	default:
-		return "", false
-	}
-	if name, known := platformToolNames[tool]; known {
-		tool = name
 	} else {
-		tool += " toolchain"
+		return nil
 	}
-	verdict := cause + "\n" + transcript
-	var how string
-	switch m := fetchStatus.FindStringSubmatch(verdict); {
-	case m != nil:
-		how = "HTTP " + m[1] + m[2]
-		if host != "" {
-			how += " from " + host
+	if m := platformStage.FindStringSubmatch(stage); m != nil {
+		tool = m[1] // a helper stage names its tool: bex-hugo-amd64
+	}
+	fetch.Tool = platformToolNames[tool]
+	if fetch.Tool == "" {
+		fetch.Tool = tool + " toolchain"
+	}
+	// The verdict is the failed step's own lines and BuildKit's closing
+	// error, so a parallel step's status cannot be read as this one's.
+	var verdict strings.Builder
+	for l := range strings.SplitSeq(transcript, "\n") {
+		if failed == "" || strings.HasPrefix(l, "#"+failed+" ") || strings.HasPrefix(l, "error:") {
+			verdict.WriteString(l + "\n")
 		}
-	case strings.Contains(verdict, "digest mismatch"):
-		how = "the download did not match its pinned checksum"
-		if host != "" {
-			how = host + " served a file that did not match its pinned checksum"
-		}
-	case host != "":
-		how = "from " + host
 	}
-	if how != "" {
-		how = " (" + how + ")"
+	if m := fetchStatus.FindStringSubmatch(verdict.String()); m != nil {
+		fetch.Status = m[1] + m[2]
 	}
-	return fmt.Sprintf("bex could not download its %s%s; this is a platform problem, not a problem with your code — trigger a new deploy to retry, and contact support if it keeps happening", tool, how), true
+	fetch.ChecksumMismatch = strings.Contains(verdict.String(), "digest mismatch")
+	return &fetch
 }
 
 // imageSource is the registry host an image reference pulls from and the name
 // its repository goes by, without a `bex-` prefix: ghcr.io/bex-co/bex-hugo:…
-// is ("ghcr.io", "hugo"), busybox:… is ("docker.io", "busybox").
+// is ("ghcr.io", "hugo"), docker.io/library/busybox:… is ("docker.io", "busybox").
 func imageSource(ref string) (host, name string) {
 	ref, _, _ = strings.Cut(ref, "@")
 	if slash := strings.LastIndexByte(ref, '/'); strings.LastIndexByte(ref, ':') > slash {

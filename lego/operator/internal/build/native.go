@@ -328,16 +328,16 @@ while IFS= read -r record; do
 done < ` + nativeEnvSecretPath + "\n"
 	installLines, installStep := nativeStaticInstall(o)
 	run := shellJSON(nativeEnvLoaderPrefix + installStep + o.BuildCommand)
-	stages, hugo := nativeStaticTools(o)
+	hugo := nativeStaticTools(o)
 	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
-%sFROM %s
+FROM %s
 %sWORKDIR /opt/render/project/src
 COPY . .
 COPY <<'%s' %s
 %s%s
 %sARG RENDER_GIT_COMMIT
 RUN --mount=type=secret,id=render-env,target=%s%s %s
-`, stages, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		installLines, nativeEnvSecretPath, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish

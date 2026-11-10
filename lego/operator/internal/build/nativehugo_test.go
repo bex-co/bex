@@ -26,9 +26,10 @@ import (
 	"testing"
 )
 
-// Every native static build, on any runtime, carries the pinned Hugo step
+// Every native static build, on any runtime, carries the pinned Hugo copy
 // before its source and authored command, also after the resolve phase picks
-// its line; a compute build does not (w8/m106).
+// its line; a compute build does not (w8/m106). The copy comes from bex's own
+// digest-pinned image, never a github.com download (w8/m148).
 func TestNativeStaticBuildCarriesHugo(t *testing.T) {
 	static := nativeOptions()
 	static.StaticSite, static.Runtime, static.StartCommand, static.StaticPublishPath = true, "", "", "public"
@@ -36,21 +37,19 @@ func TestNativeStaticBuildCarriesHugo(t *testing.T) {
 	python.Runtime = nativePythonRuntime
 	for _, o := range []Options{static, python} {
 		df := resolvedDockerfileFrom(t, o, map[string]string{"NODE_VERSION": "22"}, nil)
-		stages, lines := nativeStaticTools(o)
+		lines := nativeStaticTools(o)
 		reviewed := nativeToolchains[nativeRuntime(o)].defaultImage()
 		if o.Runtime == "" {
 			node22, _ := nativeToolchains[nativeNodeRuntime].find("22")
 			reviewed = node22.image
 		}
 		base := strings.Index(df, "\nFROM "+expectedNativeBase(reviewed)+"\n")
-		if !strings.HasPrefix(df, "# syntax=docker/dockerfile:1.7\n"+stages) || base < 0 || strings.Count(df, lines) != 1 ||
+		if base < 0 || strings.Count(df, lines) != 1 ||
 			strings.Index(df, lines) < base || strings.Index(df, lines) > strings.Index(df, "COPY . .") {
-			t.Fatalf("%s static build lacks the Hugo stages before its base or the copy before its source:\n%s", nativeRuntime(o), df)
+			t.Fatalf("%s static build lacks the Hugo copy after its base and before its source:\n%s", nativeRuntime(o), df)
 		}
-		for _, pin := range []string{nativeHugo.amd64, nativeHugo.arm64} {
-			if !strings.Contains(stages, "ADD --checksum="+pin+" ") {
-				t.Errorf("Hugo stages lack the pinned checksum %s:\n%s", pin, stages)
-			}
+		if !strings.Contains(lines, "--from="+nativeHugoImage+" ") || strings.Contains(df, "github.com") {
+			t.Fatalf("%s static build does not copy Hugo from %s alone:\n%s", nativeRuntime(o), nativeHugoImage, df)
 		}
 	}
 	if df := nativeDockerfile(nativeOptions()); strings.Contains(df, "hugo") {
@@ -95,7 +94,7 @@ func sourceTree(t *testing.T, dir string) map[string]string {
 // TestNativeStaticBuildRunsHugo is w8/m106's execution gate: Render's Hugo
 // quickstart, unchanged, builds and publishes through the generated static
 // image with its documented command, on the pinned Hugo extended release.
-// Opt-in: needs Docker and network for GitHub.
+// Opt-in: needs Docker, and network for GitHub (the clone) and the registry.
 func TestNativeStaticBuildRunsHugo(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build the generated image")
@@ -114,7 +113,7 @@ func TestNativeStaticBuildRunsHugo(t *testing.T) {
 			buildResolvedImage(t, o, nil, src, tag)
 			index, err := exec.Command("docker", "run", "--rm", "--platform", platform, "--entrypoint", "/bin/cat", tag,
 				"/opt/render/project/src/public/index.html").CombinedOutput()
-			for _, want := range []string{"<title>Deploy Hugo on Render", `content="Hugo ` + nativeHugo.version + `"`, "ananke/css/main.min.css"} {
+			for _, want := range []string{"<title>Deploy Hugo on Render", `content="Hugo ` + nativeHugoVersion + `"`, "ananke/css/main.min.css"} {
 				if err != nil || !strings.Contains(string(index), want) {
 					t.Fatalf("published index = %v %q, want %q", err, index, want)
 				}
@@ -126,7 +125,7 @@ func TestNativeStaticBuildRunsHugo(t *testing.T) {
 // TestNativeHugoLayerIsShared pins why hugo is copied to /: cold static builds
 // on two different bases both carry the exact layer the copy makes on its own,
 // so every static image shares one Hugo layer. Opt-in: needs Docker and
-// network for GitHub.
+// network for the registry.
 func TestNativeHugoLayerIsShared(t *testing.T) {
 	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
 		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build the generated images")
@@ -147,9 +146,9 @@ func TestNativeHugoLayerIsShared(t *testing.T) {
 	}
 	static := nativeOptions()
 	static.StaticSite, static.Runtime, static.StartCommand = true, "", ""
-	stages, lines := nativeStaticTools(static)
+	lines := nativeStaticTools(static)
 	alone := t.TempDir()
-	must(t, os.WriteFile(filepath.Join(alone, "Dockerfile"), []byte(stages+"FROM scratch\n"+strings.SplitAfter(lines, "\n")[0]), 0o644))
+	must(t, os.WriteFile(filepath.Join(alone, "Dockerfile"), []byte("FROM scratch\n"+strings.SplitAfter(lines, "\n")[0]), 0o644))
 	want := layers(t, fmt.Sprintf("bex-native-hugo-layer-alone:%d", os.Getpid()), alone)
 	if len(want) != 1 {
 		t.Fatalf("the copy alone made layers %q, want one", want)

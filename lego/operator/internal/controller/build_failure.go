@@ -79,13 +79,11 @@ func viewForBuildFault(f build.Fault) buildFaultView {
 // PodFailurePolicy rule indices) stays in the operator log; it must not enter
 // the string this returns.
 func buildFailureMessage(v buildFaultView, obs build.Observation) string {
-	// A toolchain bex supplies failed to arrive (w8/m148): name it, since a
-	// tenant reading "digest mismatch sha256:…" blames their own build.
-	if obs.PlatformFetch != "" {
-		return obs.PlatformFetch
-	}
 	switch obs.Fault {
 	case build.FaultInfra:
+		if obs.PlatformFetch != nil {
+			return platformFetchMessage(*obs.PlatformFetch)
+		}
 		// A tenant cannot act on an infrastructure tail (it names registry
 		// endpoints and platform components), so this class carries guidance
 		// instead of output — with or without a captured tail.
@@ -106,6 +104,26 @@ func buildFailureMessage(v buildFaultView, obs build.Observation) string {
 		return fmt.Sprintf("%s%s — check the build logs for the failing step's output", v.message, step)
 	}
 	return fmt.Sprintf("%s%s:\n%s", v.message, step, obs.Tail)
+}
+
+// platformFetchMessage names a toolchain bex supplies that failed to arrive
+// (w8/m148): a tenant reading "digest mismatch sha256:…" blames their own
+// build, and the remedy is a retry, not a code change.
+func platformFetchMessage(f build.PlatformFetch) string {
+	var how string
+	switch {
+	case f.Status != "" && f.Host != "":
+		how = " (HTTP " + f.Status + " from " + f.Host + ")"
+	case f.Status != "":
+		how = " (HTTP " + f.Status + ")"
+	case f.ChecksumMismatch && f.Host != "":
+		how = " (" + f.Host + " served a file that did not match its pinned checksum)"
+	case f.ChecksumMismatch:
+		how = " (the download did not match its pinned checksum)"
+	case f.Host != "":
+		how = " (from " + f.Host + ")"
+	}
+	return "bex could not download its " + f.Tool + how + "; this is a platform problem, not a problem with your code — trigger a new deploy to retry, and contact support if it keeps happening"
 }
 
 // stampBuildRun records a failed build's execution window on the App status
