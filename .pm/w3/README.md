@@ -99,7 +99,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 - [ ] **063** — [Remove the sandbox sub-minute timeout floor after 2026-12-10](063.md) ← w3/m303 2026-11-10
 - [ ] **062** — [Terminated and errored sandboxes stay readable, as on Render](062.md) ← w3/m303 t004 2026-11-10
 - [ ] **061** — [Disk, maintenance-mode and auto-deploy events carry the details Render requires](061.md) ← w3/m302 2026-11-10
-- [ ] **060** — [Postgres SQL and insights on a Creating, Upgrading or Restarting database answer 503 with the reason, not 500](060.md) (~45m) ← `/pm-brainstorm for w3` 2026-11-10 item 5
+- [x] **060** — **done 2026-11-10** ([done/060.md](done/060.md)): SQL and insight reads on a Postgres that is being created, upgraded or restarted answer 503 with the reason on REST, GraphQL and MCP, instead of a redacted 500.
 - [x] **059** — **promoted 2026-11-08 → [`m292`](m292/README.md)** ([done/059.md](done/059.md)): protected placement follow-ups from m281.
 - [x] **058** — **done 2026-11-08** ([done/058.md](done/058.md)): creating a webhook lands on its detail page with no secret step, as on Render.
 - [x] **055** — **done 2026-11-07** ([done/055.md](done/055.md)): moving a Key Value into an environment no longer fails its reconcile — the `bex-operator-pod-labels` admission policy admits the `environment-id` relabel the operator has made since w4/451, covered by an envtest against the production manifest.

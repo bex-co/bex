@@ -608,3 +608,65 @@ func TestExecuteQueryOnSuspendedDatabaseIsUnavailable(t *testing.T) {
 		t.Fatalf("denied suspended query = %v, want ErrForbidden", err)
 	}
 }
+
+// w3/060: a database being created, upgraded or restarted refuses SQL and
+// insight reads with its lifecycle reason (503 unavailable) on every entry
+// point, as the dashboard console does (w4/177), instead of a redacted 500
+// "internal error" from a dial that cannot succeed.
+func TestExecuteQueryOnANotReadyDatabaseIsUnavailable(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		phase       appv1alpha1.DatabasePhase
+		provisioned bool
+		reason      string
+	}{
+		{name: "creating", phase: appv1alpha1.DBPhaseProvisioning, reason: "database is still being created"},
+		{name: "restarting", phase: appv1alpha1.DBPhaseProvisioning, provisioned: true, reason: "database is restarting"},
+		{name: "upgrading", phase: appv1alpha1.DBPhaseUpgrading, provisioned: true, reason: "database is upgrading"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svc, _ := newService()
+			seedDatabaseAt(t, svc, "busy-db", "postgres://resolved/uri")
+			ctx := context.Background()
+			var db appv1alpha1.Database
+			if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: "default", Name: "busy-db"}, &db); err != nil {
+				t.Fatal(err)
+			}
+			db.Status.Phase, db.Status.Provisioned = tc.phase, tc.provisioned
+			if err := svc.Client.Update(ctx, &db); err != nil {
+				t.Fatal(err)
+			}
+			svc.queryExecutor = func(context.Context, string, string, queryLimits, bool) (QueryResult, error) {
+				t.Fatalf("SQL ran against a %s database", tc.name)
+				return QueryResult{}, nil
+			}
+
+			if _, err := svc.ExecuteQuery(ctx, "busy-db", "SELECT 1", false); !errors.Is(err, core.ErrUnavailable) || !strings.Contains(err.Error(), tc.reason) {
+				t.Fatalf("ExecuteQuery = %v, want unavailable: %s", err, tc.reason)
+			}
+			if _, err := svc.Query(ctx, "busy-db", "SELECT 1"); !errors.Is(err, core.ErrUnavailable) {
+				t.Fatalf("Query (MCP query_render_postgres) = %v, want unavailable", err)
+			}
+			if _, err := svc.TopQueries(ctx, "busy-db"); !errors.Is(err, core.ErrUnavailable) || !strings.Contains(err.Error(), tc.reason) {
+				t.Fatalf("TopQueries = %v, want unavailable: %s", err, tc.reason)
+			}
+
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/postgres/busy-db/query", strings.NewReader(`{"sql":"SELECT 1"}`)).WithContext(ctx))
+			if rec.Code != http.StatusServiceUnavailable || !strings.Contains(rec.Body.String(), tc.reason) {
+				t.Fatalf("REST query => %d %s, want 503 naming %q", rec.Code, rec.Body, tc.reason)
+			}
+			schema, err := pgGQLSchema(svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			res := graphql.Do(graphql.Params{Schema: schema, Context: ctx,
+				RequestString: `mutation { executeDatabaseQuery(id:"busy-db", sql:"SELECT 1") { rowCount } }`})
+			if len(res.Errors) != 1 || !strings.Contains(res.Errors[0].Message, tc.reason) {
+				t.Fatalf("GraphQL query errors = %v, want %q", res.Errors, tc.reason)
+			}
+		})
+	}
+}

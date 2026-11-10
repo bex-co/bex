@@ -405,10 +405,33 @@ func (s *Service) insightDatabase(ctx context.Context, relation, dbID string) (*
 	return db, nil
 }
 
+// requireQueryable refuses SQL on a database that cannot run it right now,
+// naming why, as the dashboard console does (w4/177): a suspended database has
+// no compute, and one being created, upgraded or restarted accepts no
+// connections yet. Without it the dial fails and the caller reads a redacted
+// 500 "internal error" (w3/060).
+func requireQueryable(db *appv1alpha1.Database) error {
+	if db.Spec.Suspended {
+		return fmt.Errorf("%w: database is suspended; resume it to run SQL", core.ErrUnavailable)
+	}
+	state := map[string]string{
+		core.DatastoreCreating:      "still being created",
+		"upgrading":                 "upgrading",
+		core.DatastoreConfigRestart: "restarting",
+	}[dbStatus(db)]
+	if state == "" {
+		return nil
+	}
+	return fmt.Errorf("%w: database is %s; run SQL once it is available", core.ErrUnavailable, state)
+}
+
 // runAuthorizedInsight runs sql on a database the caller already authorized.
 // serverSettings dials without the session rails, which only the pg_settings
 // read wants (queryLimits.serverSettings).
 func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Database, sql string, serverSettings bool) (QueryResult, error) {
+	if err := requireQueryable(db); err != nil {
+		return QueryResult{}, err
+	}
 	sec, err := s.databaseSecret(ctx, db)
 	if err != nil {
 		return QueryResult{}, err
@@ -515,8 +538,9 @@ func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, 
 	if err != nil {
 		return nil, err
 	}
-	if db.Spec.Suspended {
-		return nil, fmt.Errorf("%w: database is suspended", core.ErrUnavailable)
+	// Ahead of the read: its own failure text below would hide the reason.
+	if err := requireQueryable(db); err != nil {
+		return nil, err
 	}
 	res, err := s.runAuthorizedInsight(ctx, db, sqlTopQueries, false)
 	if err != nil {
