@@ -113,7 +113,10 @@ EOF
     chmod +x "$shim_dir/promtool"
     # Prove the shim reads a rule file the way the suite writes one.
     local probe
-    probe="$(mktemp -d)"
+    # BSD mktemp -d ignores $TMPDIR; name the template so the probe lives where
+    # the suite's own tempdirs do (a Docker VM that shares only $HOME, such as
+    # colima, needs TMPDIR under $HOME).
+    probe="$(mktemp -d "${TMPDIR:-/tmp}/promtool-probe.XXXXXX")"
     chmod 700 "$probe"
     printf 'groups:\n- name: probe\n  rules:\n  - record: probe:up\n    expr: up\n' >"$probe/rules.yml"
     if ! "$shim_dir/promtool" check rules "$probe/rules.yml" >/dev/null 2>&1; then
