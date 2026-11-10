@@ -615,6 +615,9 @@ type BuildMinutesUsage struct {
 	WorkspaceID string
 	Seconds     int64
 	CanPay      bool
+	// SpendLimitCents is the workspace's monthly pipeline spend limit; nil
+	// when it has none (w6/m309).
+	SpendLimitCents *int64
 }
 
 // BuildSecondsByWorkspace sums each billable workspace's build_seconds in
@@ -623,7 +626,7 @@ type BuildMinutesUsage struct {
 func (s *PGStore) BuildSecondsByWorkspace(ctx context.Context, monthStart, now time.Time) ([]BuildMinutesUsage, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT u.workspace_id, SUM(u.quantity)::bigint,
-		       (t.billing_comped OR m.payment_method_bound_at IS NOT NULL)
+		       (t.billing_comped OR m.payment_method_bound_at IS NOT NULL), t.pipeline_spend_limit_cents
 		FROM (
 			SELECT workspace_id, quantity FROM usage_hourly
 			WHERE kind = 'build_seconds' AND window_start >= $1 AND window_start < $2
@@ -634,7 +637,7 @@ func (s *PGStore) BuildSecondsByWorkspace(ctx context.Context, monthStart, now t
 		JOIN tenants t ON t.id = u.workspace_id
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
 		WHERE NOT t.billing_excluded
-		GROUP BY u.workspace_id, t.billing_comped, m.payment_method_bound_at`, monthStart, now)
+		GROUP BY u.workspace_id, t.billing_comped, m.payment_method_bound_at, t.pipeline_spend_limit_cents`, monthStart, now)
 	if err != nil {
 		return nil, err
 	}
@@ -642,12 +645,36 @@ func (s *PGStore) BuildSecondsByWorkspace(ctx context.Context, monthStart, now t
 	var out []BuildMinutesUsage
 	for rows.Next() {
 		var u BuildMinutesUsage
-		if err := rows.Scan(&u.WorkspaceID, &u.Seconds, &u.CanPay); err != nil {
+		if err := rows.Scan(&u.WorkspaceID, &u.Seconds, &u.CanPay, &u.SpendLimitCents); err != nil {
 			return nil, err
 		}
 		out = append(out, u)
 	}
 	return out, rows.Err()
+}
+
+// PipelineSpendLimit is workspaceID's monthly pipeline spend limit in cents;
+// nil when it has none (w6/m309).
+func (s *PGStore) PipelineSpendLimit(ctx context.Context, workspaceID string) (*int64, error) {
+	var cents *int64
+	err := s.Pool.QueryRow(ctx, `SELECT pipeline_spend_limit_cents FROM tenants WHERE id = $1`, workspaceID).Scan(&cents)
+	if err != nil {
+		return nil, classify("pipeline spend limit", err)
+	}
+	return cents, nil
+}
+
+// SetPipelineSpendLimit sets workspaceID's monthly pipeline spend limit in
+// cents; nil removes it.
+func (s *PGStore) SetPipelineSpendLimit(ctx context.Context, workspaceID string, cents *int64) error {
+	tag, err := s.Pool.Exec(ctx, `UPDATE tenants SET pipeline_spend_limit_cents = $2 WHERE id = $1`, workspaceID, cents)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }
 
 // ClaimBuildMinutesNotice is ClaimFreeHoursNotice for build-minutes emails.

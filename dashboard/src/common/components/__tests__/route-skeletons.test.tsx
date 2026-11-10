@@ -219,7 +219,8 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   it.each([
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 7],
-    [<WorkspaceSettingsPageSkeleton key="workspace" />, 7],
+    // 8: Build Pipeline (w6/m309) joined the billing manager's rail.
+    [<WorkspaceSettingsPageSkeleton key="workspace" />, 8],
     [<ServiceSettingsSkeleton key="service" />, 13],
   ])(
     "keeps long-page section navigation at narrow and wide breakpoints",

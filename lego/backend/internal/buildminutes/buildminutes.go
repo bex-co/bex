@@ -43,6 +43,9 @@ const warnFraction = 0.8
 const (
 	StageWarned    = "warned"
 	StageExhausted = "exhausted"
+	// StageLimited: a workspace that can pay reached its pipeline spend limit
+	// (w6/m309), so its builds stop too.
+	StageLimited = "limited"
 )
 
 // Store is the persistence the sweeper needs; *store.PGStore satisfies it.
@@ -114,11 +117,25 @@ func (w *Sweeper) SweepOnce(ctx context.Context) error {
 		used, includedMin := float64(u.Seconds)/60, float64(included)/60
 		switch {
 		case u.Seconds >= included:
-			stopped[u.WorkspaceID] = !u.CanPay
-			if _, err := w.Store.ClaimBuildMinutesNotice(ctx, u.WorkspaceID, monthStart, StageWarned); err != nil {
-				errs = append(errs, err)
+			// Past its included minutes a workspace buys more, unless it has no
+			// payment method or has reached its spend limit (w6/m309).
+			limited := u.CanPay && u.SpendLimitCents != nil &&
+				pricing.Default.BuildCentsAbove(u.Seconds, included) >= *u.SpendLimitCents
+			stopped[u.WorkspaceID] = !u.CanPay || limited
+			// Earlier stages a later one supersedes are claimed silently: a
+			// workspace stopped by its limit is never told minutes are billed
+			// on, nor told it is nearly out.
+			skip := []string{StageWarned}
+			send := StageExhausted
+			if limited {
+				skip, send = append(skip, StageExhausted), StageLimited
 			}
-			errs = append(errs, w.notify(ctx, u, monthStart, StageExhausted, used, includedMin))
+			for _, stage := range skip {
+				if _, err := w.Store.ClaimBuildMinutesNotice(ctx, u.WorkspaceID, monthStart, stage); err != nil {
+					errs = append(errs, err)
+				}
+			}
+			errs = append(errs, w.notify(ctx, u, monthStart, send, used, includedMin))
 		case float64(u.Seconds) >= float64(included)*warnFraction:
 			errs = append(errs, w.notify(ctx, u, monthStart, StageWarned, used, includedMin))
 		}

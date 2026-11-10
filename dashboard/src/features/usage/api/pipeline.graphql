@@ -1,0 +1,21 @@
+# Build Pipeline settings (w6/m309): Render's Workspace Settings → Build
+# Pipeline → Set spend limit. GraphQL-only; billing managers only.
+query PipelineSettings($workspaceId: String!) {
+  pipelineSettings(workspaceId: $workspaceId) {
+    workspaceId
+    # spendLimitUsd: the monthly spend limit on build minutes beyond the
+    # plan's included ones ("25.00"); null when there is none.
+    spendLimitUsd
+  }
+}
+
+# spendLimitUsd null (or "") removes the limit.
+mutation SetPipelineSpendLimit($workspaceId: String!, $spendLimitUsd: String) {
+  setPipelineSpendLimit(
+    workspaceId: $workspaceId
+    spendLimitUsd: $spendLimitUsd
+  ) {
+    workspaceId
+    spendLimitUsd
+  }
+}

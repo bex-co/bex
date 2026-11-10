@@ -310,6 +310,17 @@ func (s *Sheet) IncludedBuildSeconds(plan string) int64 {
 	return s.buildIncluded[plan]
 }
 
+// BuildCentsAbove is what seconds of build minutes above a plan's included ones
+// cost, in whole cents spent: the overage a pipeline spend limit caps
+// (w6/m309). A part-cent is not yet spent; the tolerance absorbs the float
+// rate's representation error, so 100 minutes at $0.0035 is exactly 35.
+func (s *Sheet) BuildCentsAbove(seconds, includedSeconds int64) int64 {
+	if seconds <= includedSeconds {
+		return 0
+	}
+	return int64(math.Floor(float64(seconds-includedSeconds)*s.build*100 + 1e-6))
+}
+
 // PlanReader reads a workspace's plan; *core.Base satisfies it.
 type PlanReader interface {
 	WorkspacePlanOf(ctx context.Context, workspaceID string) (plan string, ok bool, err error)

@@ -105,6 +105,15 @@ vi.mock("@/features/team/components/leave-workspace-card", () => ({
   LeaveWorkspaceCard: () => <div>Leave workspace card</div>,
 }));
 
+// Build Pipeline (w6/m309) holds billing settings: billing managers only.
+const capabilityState = { canManageBilling: true };
+vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
+  useCapabilities: () => capabilityState,
+}));
+vi.mock("@/features/usage/components/build-pipeline-card", () => ({
+  BuildPipelineCard: () => <div>Build pipeline card</div>,
+}));
+
 const primaryWorkspace: WorkspaceView = {
   id: "tea-primary",
   name: "primary",
@@ -140,6 +149,7 @@ async function renderPage() {
 }
 
 beforeEach(() => {
+  capabilityState.canManageBilling = true;
   auditState.forbidden = false;
   workspaceState.currentWorkspace = primaryWorkspace;
   workspaceState.workspaces = [primaryWorkspace];
@@ -226,6 +236,22 @@ describe("WorkspaceSettingsPage", () => {
       screen.queryByRole("link", { name: "Audit Log" }),
     ).not.toBeInTheDocument();
     expect(screen.getByText("Registry credentials panel")).toBeInTheDocument();
+  });
+
+  it("shows Build Pipeline to billing managers only (w6/m309)", async () => {
+    const { unmount } = await renderPage();
+    expect(screen.getByText("Build pipeline card")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Build Pipeline" }),
+    ).toHaveAttribute("href", "#build-pipeline");
+    unmount();
+
+    capabilityState.canManageBilling = false;
+    await renderPage();
+    expect(screen.queryByText("Build pipeline card")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Build Pipeline" }),
+    ).not.toBeInTheDocument();
   });
 
   it("hides Audit Logs when the audit log answers forbidden", async () => {

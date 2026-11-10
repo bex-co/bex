@@ -55,11 +55,18 @@ func buildMinutesEmail(stage string, usedMinutes, includedMinutes float64, canPa
 		} else {
 			paragraph = fmt.Sprintf("Your workspace has used the %.0f build minutes its plan includes this month, so new builds and pre-deploy commands stop until the start of next month. Add a payment method to keep building.", includedMinutes)
 		}
+	case buildminutes.StageLimited:
+		title = "Your workspace reached its pipeline spend limit"
+		paragraph = "Your workspace has spent its monthly pipeline spend limit on build minutes beyond its plan's, so new builds and pre-deploy commands stop until the start of next month. Raise the spend limit in Workspace Settings to keep building."
 	default:
 		return "", email.Message{}, fmt.Errorf("unknown build minutes stage %q", stage)
 	}
 	msg := email.Message{Title: title, Paragraphs: []string{paragraph}}
-	if dashboardBaseURL != "" {
+	switch {
+	case dashboardBaseURL == "":
+	case stage == buildminutes.StageLimited:
+		msg.CTA = &email.CTA{Lead: "Raise or remove the limit", Label: "Open Build Pipeline settings", URL: dashboardBaseURL + "/workspace/settings#build-pipeline"}
+	default:
 		msg.CTA = &email.CTA{Lead: "See your monthly included usage", Label: "Open billing", URL: dashboardBaseURL + "/billing"}
 	}
 	return "[bex] " + title, msg, nil

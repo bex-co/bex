@@ -18,6 +18,9 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
     // One notification policy per workspace (w3/m271): keyed by its owner so a
     // save refreshes the settings card and every service page's default label.
     OwnerNotificationSettings: { keyFields: ["ownerId"] },
+    // setPipelineSpendLimit's result refreshes the settings query in place
+    // (w6/m309).
+    PipelineSettings: { keyFields: ["workspaceId"] },
     AgentSession: {
       fields: { outcome: { merge: mergeAgentSessionOutcome } },
     },

@@ -6,6 +6,9 @@ import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { WorkspaceDetailsCard } from "@/features/workspaces/components/workspace-details-card";
+import { BuildPipelineCard } from "@/features/usage/components/build-pipeline-card";
+import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-workspace-card";
 import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
 import { TeamPanel } from "@/features/team/components/team-panel";
@@ -73,6 +76,11 @@ function WorkspaceSettingsPage() {
   // Audit logs are admin-only: the role is known before the query's 403, so a
   // non-admin never sees the section, its link or its skeleton flash.
   const showAuditLogs = currentWorkspace?.role === "admin" && !audit.forbidden;
+  // Build Pipeline (w6/m309) holds billing settings: billing managers only.
+  // While capabilities load, the skeleton keeps its region, so the card does
+  // not push the sections below it down when it appears.
+  const capabilities = useCapabilities();
+  const showBuildPipeline = capabilities.canManageBilling;
 
   // The URL owns whether the plan dialog is open, so the blocked-invite CTA can
   // open it from the team page by navigating here. `replace` keeps opening and
@@ -93,6 +101,7 @@ function WorkspaceSettingsPage() {
             className={SECTION_NAVIGATION_STICKY_CLASS}
             showDangerZone
             showAuditLogs={showAuditLogs}
+            showBuildPipeline={showBuildPipeline}
           />
 
           <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
@@ -109,6 +118,11 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="general">
                   <CardSkeleton rows={5} />
                 </section>
+                {showBuildPipeline || capabilities.loading ? (
+                  <section data-skeleton-region="build-pipeline">
+                    <BuildPipelineCardSkeleton />
+                  </section>
+                ) : null}
                 <section data-skeleton-region="team">
                   <TeamPanelSkeleton />
                 </section>
@@ -154,6 +168,16 @@ function WorkspaceSettingsPage() {
                     onChangePlanOpenChange={setChangePlanOpen}
                   />
                 </section>
+                {/* Workspace Settings → Build Pipeline (w6/m309), where Render
+                    sets the monthly pipeline spend limit. */}
+                {showBuildPipeline ? (
+                  <section
+                    id="build-pipeline"
+                    className={SECTION_NAVIGATION_TARGET_CLASS}
+                  >
+                    <BuildPipelineCard workspaceId={currentWorkspace.id} />
+                  </section>
+                ) : null}
                 {/* Team management lives here (w1/m33/t006) — members are
                     workspace-scoped objects, and this is where Render puts them;
                     it lived on account /settings from w4/m12 until now. */}

@@ -88,6 +88,73 @@ const enUsage: Record<string, TranslationEntry> = {
     description:
       "Part of a charge line's quantity that the plan's included build minutes covered (w6/m308)",
   },
+  "usage.pipelineTitle": {
+    message: "Build Pipeline",
+    description:
+      "Title of the Build Pipeline card in workspace settings (w6/m309)",
+  },
+  "usage.pipelineDescription": {
+    message:
+      "Builds and pre-deploy commands use pipeline minutes. Minutes beyond your plan's included ones are billed per minute, up to the monthly spend limit you set. When the limit is reached, builds stop until next month.",
+    description: "Explains the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitValue": {
+    message: "Spend limit: {limit} a month",
+    description: "The workspace pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitNone": {
+    message: "No spend limit",
+    description: "The workspace has no pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitSet": {
+    message: "Set spend limit",
+    description: "Button that opens the pipeline spend limit dialog (w6/m309)",
+  },
+  "usage.pipelineSpendLimitEdit": {
+    message: "Edit",
+    description: "Button that edits the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitRemove": {
+    message: "Remove limit",
+    description: "Button that removes the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitDialogTitle": {
+    message: "Set spend limit",
+    description: "Title of the pipeline spend limit dialog (w6/m309)",
+  },
+  "usage.pipelineSpendLimitDialogDescription": {
+    message:
+      "The most this workspace spends a month on build minutes beyond its plan's included ones. When it is reached, new builds and pre-deploy commands stop until the start of next month.",
+    description: "Explains what the pipeline spend limit caps (w6/m309)",
+  },
+  "usage.pipelineSpendLimitLabel": {
+    message: "Monthly limit (USD)",
+    description: "Label of the pipeline spend limit input (w6/m309)",
+  },
+  "usage.pipelineSpendLimitSave": {
+    message: "Save",
+    description: "Saves the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitSaved": {
+    message: "Spend limit set to {limit} a month",
+    description: "Toast after setting the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitRemoved": {
+    message: "Spend limit removed",
+    description: "Toast after removing the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitError": {
+    message: "Couldn't update the spend limit",
+    description: "Toast when updating the pipeline spend limit fails (w6/m309)",
+  },
+  "usage.pipelineSpendLimitUnreadable": {
+    message: "Couldn't load the spend limit. Reload to try again.",
+    description: "The pipeline spend limit could not be read (w6/m309)",
+  },
+  "usage.pipelineSpendLimitForbidden": {
+    message: "Only billing managers can see and change the spend limit.",
+    description: "The caller may not read the pipeline spend limit (w6/m309)",
+  },
   "usage.resourceCapsNearLimit": {
     message: "Near limit",
     description:

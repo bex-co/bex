@@ -1,6 +1,7 @@
 import {
   Bell,
   Bot,
+  Hammer,
   KeyRound,
   ScrollText,
   Settings2,
@@ -18,11 +19,14 @@ export function WorkspaceSettingsNavigation({
   className,
   showDangerZone,
   showAuditLogs = true,
+  showBuildPipeline = false,
 }: {
   className?: string;
   showDangerZone: boolean;
   /** Audit Logs is admin-only; a non-admin's page has no such section. */
   showAuditLogs?: boolean;
+  /** Build Pipeline (w6/m309) is for billing managers only. */
+  showBuildPipeline?: boolean;
 }) {
   const { t } = useTranslations();
   const items = [
@@ -31,6 +35,15 @@ export function WorkspaceSettingsNavigation({
       label: t("workspaces.generalTitle"),
       icon: Settings2,
     },
+    ...(showBuildPipeline
+      ? [
+          {
+            href: "#build-pipeline",
+            label: t("usage.pipelineTitle"),
+            icon: Hammer,
+          },
+        ]
+      : []),
     { href: "#team", label: t("team.title"), icon: Users },
     {
       href: "#notifications",

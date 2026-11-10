@@ -84,3 +84,16 @@ func TestIncludedBuildMinutesCatalogIsValidated(t *testing.T) {
 		}
 	}
 }
+
+// w6/m309: the spend a pipeline spend limit caps counts whole cents spent.
+func TestBuildCentsAbove(t *testing.T) {
+	for _, tc := range []struct{ seconds, included, want int64 }{
+		{600 * 60, 500 * 60, 35}, // 100 minutes at $0.0035
+		{599 * 60, 500 * 60, 34}, // 34.65 cents: the 35th is not spent yet
+		{400 * 60, 500 * 60, 0},
+	} {
+		if got := Default.BuildCentsAbove(tc.seconds, tc.included); got != tc.want {
+			t.Errorf("BuildCentsAbove(%d, %d) = %d, want %d", tc.seconds, tc.included, got, tc.want)
+		}
+	}
+}

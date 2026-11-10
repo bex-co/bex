@@ -269,8 +269,9 @@ func IsBuildFailureReason(reason string) bool {
 }
 
 // AnnotationBuildMinutesExhausted marks an App whose workspace has used its
-// plan's included pipeline minutes this month with no payment method to buy
-// more (w6/m308, docs/ADR030 §13). Its value is that UTC month ("2006-01").
+// plan's included pipeline minutes this month and cannot buy more: no payment
+// method, or its pipeline spend limit is reached (w6/m308, w6/m309,
+// docs/ADR030 §13). Its value is that UTC month ("2006-01").
 // bex-api's sweeper writes and removes it; while it names the current month,
 // the operator starts no build or pre-deploy run, as Render stops pipeline
 // tasks for the rest of the month.
@@ -278,7 +279,7 @@ const AnnotationBuildMinutesExhausted = "app.bex.co/build-minutes-exhausted"
 
 // BuildMinutesExhaustedMessage is what a deploy that could not build reads.
 // "Build Minutes Exhausted" is Render's own name for the error.
-const BuildMinutesExhaustedMessage = "Build Minutes Exhausted: this workspace has used its plan's included pipeline minutes for the month. Add a payment method to keep building, or wait for next month's minutes."
+const BuildMinutesExhaustedMessage = "Build Minutes Exhausted: this workspace has used its plan's included pipeline minutes for the month and cannot buy more. Add a payment method or raise the pipeline spend limit to keep building, or wait for next month's minutes."
 
 // BuildMinutesMonth is t's UTC month as AnnotationBuildMinutesExhausted
 // spells it, for the sweeper that writes the mark and the operator that reads it.

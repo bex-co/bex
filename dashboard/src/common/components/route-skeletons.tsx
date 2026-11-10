@@ -61,6 +61,7 @@ import {
   LeaveWorkspaceCardSkeleton,
   TeamPanelSkeleton,
 } from "@/features/team/components/team-panel-skeleton";
+import { BuildPipelineCardSkeleton } from "@/features/usage/components/build-pipeline-card-skeleton";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { NotificationOverridesCardSkeleton } from "@/features/notifications/components/notification-overrides-card-skeleton";
@@ -1274,7 +1275,7 @@ export function WorkspaceSettingsPageSkeleton() {
       className="flex-1 overflow-auto p-4 sm:p-6"
     >
       <div className="mx-auto grid w-full max-w-4xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-        <ResponsiveSectionNavigationSkeleton count={7} />
+        <ResponsiveSectionNavigationSkeleton count={8} />
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
           <Region name="page-header" className="space-y-2">
             <Skeleton className="h-6 w-48" />
@@ -1282,6 +1283,10 @@ export function WorkspaceSettingsPageSkeleton() {
           </Region>
           <Region name="general">
             <CardSkeleton rows={5} />
+          </Region>
+          {/* Build Pipeline (w6/m309): billing managers only, like Audit Logs below. */}
+          <Region name="build-pipeline">
+            <BuildPipelineCardSkeleton />
           </Region>
           <Region name="team">
             <TeamPanelSkeleton />

@@ -193,3 +193,56 @@ func TestPGStoreBuildSecondsByWorkspace(t *testing.T) {
 		t.Errorf("second claim won=%v err=%v, want the notice claimed once", won, err)
 	}
 }
+
+// w6/m309: the pipeline spend limit is stored per workspace and reaches the
+// sweeper's read.
+func TestPGStorePipelineSpendLimit(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	ws, err := s.CreateTenant(ctx, "limited", "pro")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.PipelineSpendLimit(ctx, ws.ID); err != nil || got != nil {
+		t.Fatalf("new workspace limit = %v, %v; want none", got, err)
+	}
+	cents := int64(2500)
+	if err := s.SetPipelineSpendLimit(ctx, ws.ID, &cents); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.PipelineSpendLimit(ctx, ws.ID); err != nil || got == nil || *got != 2500 {
+		t.Fatalf("limit = %v, %v; want 2500", got, err)
+	}
+	month := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	if err := s.UpsertUsageHourly(ctx, HourlyRow{WorkspaceID: ws.ID, ServiceID: "srv-lim", Kind: UsageKindBuildSeconds, ResourceKind: ResourceKindService, WindowStart: month.Add(time.Hour), Quantity: 60}); err != nil {
+		t.Fatal(err)
+	}
+	usage, err := s.BuildSecondsByWorkspace(ctx, month, month.Add(24*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, u := range usage {
+		if u.WorkspaceID == ws.ID {
+			found = true
+			if u.SpendLimitCents == nil || *u.SpendLimitCents != 2500 {
+				t.Errorf("usage limit = %v, want 2500", u.SpendLimitCents)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("workspace missing from the build-minutes read")
+	}
+	if err := s.SetPipelineSpendLimit(ctx, ws.ID, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := s.PipelineSpendLimit(ctx, ws.ID); got != nil {
+		t.Errorf("removed limit = %v, want none", *got)
+	}
+	if err := s.SetPipelineSpendLimit(ctx, "tea-missing", &cents); err == nil {
+		t.Error("an unknown workspace must not be written")
+	}
+	won, err := s.ClaimBuildMinutesNotice(ctx, ws.ID, month, "limited")
+	if err != nil || !won {
+		t.Errorf("limited notice claim = %v, %v; want won", won, err)
+	}
+}

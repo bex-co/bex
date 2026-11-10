@@ -172,3 +172,37 @@ func TestSweepLiftsTheStopWhenTheWorkspaceCanPayOrTheMonthTurns(t *testing.T) {
 		t.Errorf("marks = web %q, old %q; want both lifted", apps.mark("web"), apps.mark("old"))
 	}
 }
+
+// w6/m309: a workspace that can pay stops once the overage it bought reaches
+// its pipeline spend limit; below the limit it keeps buying.
+func TestSweepStopsAWorkspaceAtItsSpendLimit(t *testing.T) {
+	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	limit := int64(35) // $0.35: 100 minutes above Hobby's 500 at $0.0035
+	st := &fakeStore{usage: []store.BuildMinutesUsage{
+		{WorkspaceID: "tea-out", Seconds: 600 * 60, CanPay: true, SpendLimitCents: &limit},  // at the limit
+		{WorkspaceID: "tea-card", Seconds: 599 * 60, CanPay: true, SpendLimitCents: &limit}, // just under it
+	}}
+	apps := &fakeApps{now: now, items: []appv1alpha1.App{app("web", "tea-out"), app("paid", "tea-card")}}
+	n := &fakeNotifier{}
+
+	if err := sweeper(st, apps, n).SweepOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if apps.mark("web") != "2026-11" || apps.mark("paid") != "" {
+		t.Errorf("marks = web %q, paid %q; want only the workspace at its limit stopped", apps.mark("web"), apps.mark("paid"))
+	}
+	var limited []string
+	for _, s := range n.sent {
+		if s.stage == StageLimited {
+			limited = append(limited, s.ws)
+		}
+	}
+	if len(limited) != 1 || limited[0] != "tea-out" {
+		t.Errorf("limit notices = %v, want only tea-out", limited)
+	}
+	for _, s := range n.sent {
+		if s.ws == "tea-out" && s.stage != StageLimited {
+			t.Errorf("tea-out was also sent %q; a workspace stopped by its limit gets only the limit notice", s.stage)
+		}
+	}
+}

@@ -1929,6 +1929,7 @@ export type Mutation = {
   setMaxShutdownDelay: Maybe<Service>;
   setNotificationsToSend: Maybe<Service>;
   setNotifyOnFail: Maybe<Service>;
+  setPipelineSpendLimit: Maybe<PipelineSettings>;
   setPort: Maybe<Service>;
   setPreDeployCommand: Maybe<Service>;
   setProjectDatabases: Maybe<Project>;
@@ -3077,6 +3078,12 @@ export type MutationSetNotifyOnFailArgs = {
 };
 
 
+export type MutationSetPipelineSpendLimitArgs = {
+  spendLimitUsd?: InputMaybe<Scalars['String']['input']>;
+  workspaceId: Scalars['String']['input'];
+};
+
+
 export type MutationSetPortArgs = {
   id: Scalars['String']['input'];
   port: Scalars['Int']['input'];
@@ -3538,6 +3545,13 @@ export enum PaymentMethodRejection {
   UnpaidBalance = 'UNPAID_BALANCE'
 }
 
+/** A workspace's Build Pipeline settings (w6/m309): Render's Workspace Settings → Build Pipeline. */
+export type PipelineSettings = {
+  __typename: 'PipelineSettings';
+  spendLimitUsd: Maybe<Scalars['String']['output']>;
+  workspaceId: Scalars['String']['output'];
+};
+
 export type PostgresConnectionInfo = {
   __typename: 'PostgresConnectionInfo';
   externalConnectionPoolString: Maybe<Scalars['String']['output']>;
@@ -3783,6 +3797,7 @@ export type Query = {
   notificationSettings: Maybe<NotificationSettings>;
   notificationWebPushSubscriptions: Maybe<Array<Maybe<NotificationWebPushSubscription>>>;
   ownerNotificationSettings: OwnerNotificationSettings;
+  pipelineSettings: Maybe<PipelineSettings>;
   project: Maybe<Project>;
   projects: Maybe<Array<Maybe<Project>>>;
   pushEventUrgencies: Array<PushEventUrgency>;
@@ -4416,6 +4431,11 @@ export type QueryNotificationSettingsArgs = {
 
 export type QueryOwnerNotificationSettingsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryPipelineSettingsArgs = {
+  workspaceId: Scalars['String']['input'];
 };
 
 

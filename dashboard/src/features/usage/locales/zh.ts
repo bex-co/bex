@@ -87,6 +87,73 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "Part of a charge line's quantity that the plan's included build minutes covered (w6/m308)",
   },
+  "usage.pipelineTitle": {
+    message: "构建流水线",
+    description:
+      "Title of the Build Pipeline card in workspace settings (w6/m309)",
+  },
+  "usage.pipelineDescription": {
+    message:
+      "构建和部署前命令会消耗流水线分钟。超出套餐包含额度的分钟按分钟计费，不超过您设置的每月消费上限。达到上限后，构建将停止到下月。",
+    description: "Explains the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitValue": {
+    message: "消费上限：每月 {limit}",
+    description: "The workspace pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitNone": {
+    message: "未设置消费上限",
+    description: "The workspace has no pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitSet": {
+    message: "设置消费上限",
+    description: "Button that opens the pipeline spend limit dialog (w6/m309)",
+  },
+  "usage.pipelineSpendLimitEdit": {
+    message: "编辑",
+    description: "Button that edits the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitRemove": {
+    message: "移除上限",
+    description: "Button that removes the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitDialogTitle": {
+    message: "设置消费上限",
+    description: "Title of the pipeline spend limit dialog (w6/m309)",
+  },
+  "usage.pipelineSpendLimitDialogDescription": {
+    message:
+      "此工作区每月在超出套餐包含额度的构建分钟上的最高花费。达到后，新的构建和部署前命令将停止，直到下月初。",
+    description: "Explains what the pipeline spend limit caps (w6/m309)",
+  },
+  "usage.pipelineSpendLimitLabel": {
+    message: "每月上限（美元）",
+    description: "Label of the pipeline spend limit input (w6/m309)",
+  },
+  "usage.pipelineSpendLimitSave": {
+    message: "保存",
+    description: "Saves the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitSaved": {
+    message: "消费上限已设为每月 {limit}",
+    description: "Toast after setting the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitRemoved": {
+    message: "已移除消费上限",
+    description: "Toast after removing the pipeline spend limit (w6/m309)",
+  },
+  "usage.pipelineSpendLimitError": {
+    message: "无法更新消费上限",
+    description: "Toast when updating the pipeline spend limit fails (w6/m309)",
+  },
+  "usage.pipelineSpendLimitUnreadable": {
+    message: "无法加载消费上限。请重新加载后重试。",
+    description: "The pipeline spend limit could not be read (w6/m309)",
+  },
+  "usage.pipelineSpendLimitForbidden": {
+    message: "只有账单管理员可以查看和更改消费上限。",
+    description: "The caller may not read the pipeline spend limit (w6/m309)",
+  },
   "usage.resourceCapsNearLimit": {
     message: "接近上限",
     description:

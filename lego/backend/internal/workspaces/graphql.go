@@ -45,6 +45,17 @@ var workspaceGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var pipelineSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "PipelineSettings",
+	Description: "A workspace's Build Pipeline settings (w6/m309): Render's Workspace Settings → Build Pipeline.",
+	Fields: graphql.Fields{
+		"workspaceId": gqlutil.ReqStrField(func(p PipelineSettings) any { return p.WorkspaceID }),
+		// spendLimitUsd is the monthly spend limit on build minutes beyond the
+		// plan's included ones ("25.00"); null when there is none.
+		"spendLimitUsd": gqlutil.StrField(func(p PipelineSettings) any { return p.SpendLimitUSD }),
+	},
+})
+
 var workspaceCreationPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WorkspaceCreationPolicy",
 	Fields: graphql.Fields{
@@ -115,6 +126,15 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.ResumeWorkspaceCreation(p.Context, p.Args["id"].(string))
 			},
 		},
+		// pipelineSettings is the workspace's Build Pipeline settings (w6/m309),
+		// for billing managers. GraphQL-only: Render's REST and MCP have none.
+		"pipelineSettings": &graphql.Field{
+			Type: pipelineSettingsGQLType,
+			Args: graphql.FieldConfigArgument{"workspaceId": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.PipelineSettings(p.Context, p.Args["workspaceId"].(string))
+			},
+		},
 		// workspaceLimits returns the named workspace's resource usage vs. cap
 		// (w7/m9): "3/5 services" visibility surface. Authorizes can_view on the
 		// workspace (the same membership source as the workspaces list).
@@ -176,6 +196,22 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"renameWorkspace": gqlutil.ArgMutation(workspaceGQLType, "name", s.Rename),
+		// setPipelineSpendLimit sets the workspace's monthly pipeline spend
+		// limit, or removes it when spendLimitUsd is null or left out (w6/m309).
+		"setPipelineSpendLimit": &graphql.Field{
+			Type: pipelineSettingsGQLType,
+			Args: graphql.FieldConfigArgument{
+				"workspaceId":   gqlutil.ReqArg(graphql.String),
+				"spendLimitUsd": &graphql.ArgumentConfig{Type: graphql.String},
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				var limit *string
+				if v, ok := p.Args["spendLimitUsd"].(string); ok {
+					limit = &v
+				}
+				return s.SetPipelineSpendLimit(p.Context, p.Args["workspaceId"].(string), limit)
+			},
+		},
 		"changeWorkspacePlan": &graphql.Field{
 			// w6/m12: upgrade/downgrade a workspace's plan
 			// (docs/render-artifacts/workspace-plan-change.md). GraphQL-only —
