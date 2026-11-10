@@ -20,7 +20,10 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
@@ -122,6 +125,13 @@ func TierDisplayName(id string) string {
 // unknown one is left to the caller's plan validation, which names the valid
 // plans.
 func CheckHighAvailabilityPlan(plan string) error {
+	return checkHighAvailabilityPlanNamed(plan, plan)
+}
+
+// checkHighAvailabilityPlanNamed is CheckHighAvailabilityPlan naming the plan
+// as the caller spelled it (w8/246): named, or the tier's spec-based id when
+// the request named none.
+func checkHighAvailabilityPlanNamed(plan, named string) error {
 	tier, ok := tiers.Postgres.ByID(tiers.Postgres.CanonicalID(plan))
 	if !ok {
 		if plan != "" {
@@ -132,11 +142,24 @@ func CheckHighAvailabilityPlan(plan string) error {
 	if tier.SupportsHighAvailability() {
 		return nil
 	}
+	if named == "" {
+		named = tiers.PostgresSpecID(tier.ID)
+	}
 	return core.NewBadRequestError(
 		"POSTGRES_HA_PLAN_UNSUPPORTED",
-		fmt.Sprintf("high availability requires a Postgres plan with at least 1 CPU; plan %q has %s CPU", tier.ID, tier.CPU),
-		map[string]any{"plan": tier.ID, "cpu": tier.CPU},
+		fmt.Sprintf("high availability requires a Postgres plan with at least 1 CPU; plan %q has %s CPU", named, renderCPU(tier.CPU)),
+		map[string]any{"plan": named, "cpu": renderCPU(tier.CPU)},
 	)
+}
+
+// renderCPU writes a Kubernetes CPU quantity as Render shows a plan's CPU:
+// 100m is "0.1", 1 is "1".
+func renderCPU(quantity string) string {
+	q, err := resource.ParseQuantity(quantity)
+	if err != nil {
+		return quantity
+	}
+	return strconv.FormatFloat(float64(q.MilliValue())/1000, 'f', -1, 64)
 }
 
 // checkHighAvailabilityPatch applies CheckHighAvailabilityPlan to a PATCH or
@@ -146,22 +169,22 @@ func CheckHighAvailabilityPlan(plan string) error {
 // on an unsupported plan keeps it through unrelated edits and an idempotent
 // re-enable (no silent conversion; w8/m43 t004).
 func checkHighAvailabilityPatch(d *appv1alpha1.Database, plan *string, enableHA *bool) error {
-	target := d.Spec.Plan
+	target, named := d.Spec.Plan, ""
 	if plan != nil {
-		target = *plan
+		target, named = *plan, *plan
 	}
 	switch {
 	case enableHA != nil && *enableHA:
 		if d.Spec.HighAvailability && plan == nil {
 			return nil
 		}
-		return CheckHighAvailabilityPlan(target)
+		return checkHighAvailabilityPlanNamed(target, named)
 	case enableHA == nil && plan != nil && d.Spec.HighAvailability:
-		if err := CheckHighAvailabilityPlan(target); err != nil {
+		if err := checkHighAvailabilityPlanNamed(target, named); err != nil {
 			return core.NewBadRequestError(
 				"POSTGRES_HA_PLAN_UNSUPPORTED",
 				err.Error()+"; disable high availability first",
-				map[string]any{"plan": tiers.Postgres.CanonicalID(target)},
+				map[string]any{"plan": named},
 			)
 		}
 	}

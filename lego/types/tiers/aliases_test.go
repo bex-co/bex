@@ -112,3 +112,13 @@ func TestComputeByRenderPlanAcceptsExactSizeAliases(t *testing.T) {
 		t.Errorf("legacy pro_plus must still resolve, got %+v %v", tier, ok)
 	}
 }
+
+// w8/246: a refusal about a plan the caller did not name uses its Render
+// spec-based id; a rung without one keeps its own id.
+func TestPostgresSpecID(t *testing.T) {
+	for id, want := range map[string]string{"basic-256mb": "0.1c-256mb", "basic-1gb": "0.5c-1g", "pro-4gb": "1c-4g", "free": "free"} {
+		if got := PostgresSpecID(id); got != want {
+			t.Errorf("PostgresSpecID(%q) = %q, want %q", id, got, want)
+		}
+	}
+}

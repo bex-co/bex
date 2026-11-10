@@ -35,6 +35,18 @@ var postgresInputAliases = map[string]string{
 	"basic_4gb":   "basic-4gb",
 }
 
+// PostgresSpecID is a Postgres rung's Render spec-based plan id ("0.1c-256mb"
+// for basic-256mb), for a message about a plan the caller did not name; a rung
+// without one keeps its id (w8/246).
+func PostgresSpecID(id string) string {
+	for alias, target := range postgresInputAliases {
+		if target == id && strings.Contains(alias, "c-") {
+			return alias
+		}
+	}
+	return id
+}
+
 // valkeyInputAliases: Render's Key Value size plan ids onto bex's rungs, which
 // keep Render's legacy names (render.com/docs/compute-plans: "Legacy plan
 // names remain valid across all Render tooling"). 3g and 50g have no legacy

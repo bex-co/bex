@@ -82,9 +82,20 @@ func CheckDatabaseAdmission(current *appv1alpha1.Database, desired appv1alpha1.D
 	if checkReplicas {
 		limit := tier.MaxReadReplicas()
 		if limit == 0 {
+			// Named as the request spelled the plan, or by its spec-based id
+			// when it named none; the remedy fits what the request did: adding
+			// replicas, or moving a database that has them (w8/246).
+			named := desired.Plan
+			if !planChanged || named == "" {
+				named = tiers.PostgresSpecID(plan)
+			}
+			remedy := "choose a plan with at least " + renderCPU(tiers.PostgresReadReplicaMinCPU) + " CPU (for example 0.5c-1g) to add read replicas"
+			if current != nil && len(current.Spec.ReadReplicas) > 0 && planChanged {
+				remedy = "remove read replicas before selecting this plan"
+			}
 			return core.NewBadRequestError("POSTGRES_READ_REPLICA_PLAN_UNSUPPORTED",
-				fmt.Sprintf("read replicas require a Postgres plan with at least %s CPU; plan %q has %s CPU; remove read replicas before selecting this plan", tiers.PostgresReadReplicaMinCPU, plan, tier.CPU),
-				map[string]any{"field": "readReplicas", "plan": plan, "cpu": tier.CPU})
+				fmt.Sprintf("read replicas require a Postgres plan with at least %s CPU; plan %q has %s CPU; %s", renderCPU(tiers.PostgresReadReplicaMinCPU), named, renderCPU(tier.CPU), remedy),
+				map[string]any{"field": "readReplicas", "plan": named, "cpu": renderCPU(tier.CPU)})
 		}
 		if len(desired.ReadReplicas) > limit {
 			return core.NewBadRequestError("POSTGRES_READ_REPLICA_LIMIT_EXCEEDED",
