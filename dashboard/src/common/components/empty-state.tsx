@@ -27,16 +27,26 @@ interface EmptyStateProps {
   /** Text, or text with an inline link (a plan notice's Billing link). */
   description: React.ReactNode;
   iconName?: string;
+  /**
+   * `alert` for a load failure that replaces the pane, so assistive technology
+   * announces it (WCAG 4.1.3); empty and notice states stay silent (w21/025).
+   */
+  role?: "alert";
 }
 
-export function EmptyState({ title, description, iconName }: EmptyStateProps) {
+export function EmptyState({
+  title,
+  description,
+  iconName,
+  role,
+}: EmptyStateProps) {
   const Icon: LucideIcon =
     (iconName ? ICONS[iconName] : undefined) ?? FileSpreadsheet;
 
   return (
     <Card>
       <CardContent className="flex items-center justify-center py-16">
-        <div className="text-center">
+        <div className="text-center" role={role}>
           <Icon className="h-8 w-8 text-muted-foreground/50 mx-auto mb-3" />
           <p className="font-medium mb-1">{title}</p>
           <p className="text-muted-foreground text-sm">{description}</p>

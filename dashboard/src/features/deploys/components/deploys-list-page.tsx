@@ -160,6 +160,7 @@ export function DeploysListPage({
   if (error && deploys.length === 0) {
     body = (
       <EmptyState
+        role="alert"
         iconName="AlertCircle"
         title={t("deploys.listTitle")}
         description={mutationErrorMessage(error, t("common.loadErrorRetry"))}

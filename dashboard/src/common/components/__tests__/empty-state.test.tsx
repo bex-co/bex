@@ -48,3 +48,19 @@ describe("EmptyState icon map", () => {
     expect(iconClassOf(missing.container)).toContain("lucide");
   });
 });
+
+// w21/025: only the error flavour announces itself.
+describe("EmptyState role", () => {
+  it("is silent by default and an alert when asked", () => {
+    const { container, rerender } = render(
+      <EmptyState title="Nothing here" description="Empty" />,
+    );
+    expect(container.querySelector("[role]")).toBeNull();
+    rerender(
+      <EmptyState role="alert" title="Couldn't load" description="Retry" />,
+    );
+    expect(container.querySelector('[role="alert"]')).toHaveTextContent(
+      "Couldn't load",
+    );
+  });
+});

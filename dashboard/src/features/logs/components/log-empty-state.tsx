@@ -37,6 +37,7 @@ export function LogEmptyState(
       // the same search would time out again (w4/m140).
       return (
         <EmptyState
+          role="alert"
           iconName="AlertCircle"
           title={t("logs.timeoutTitle")}
           description={t("logs.timeoutBody")}
@@ -45,6 +46,7 @@ export function LogEmptyState(
     case "failed":
       return (
         <EmptyState
+          role="alert"
           iconName="AlertCircle"
           title={props.title}
           description={mutationErrorMessage(
