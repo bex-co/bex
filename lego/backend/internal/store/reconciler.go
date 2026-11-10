@@ -1261,10 +1261,10 @@ func CanceledBuildLifecycleFacts(open Deploy) []ServiceEventFact {
 //
 // started_at is stamped by TransitionDeploy on the first dispatch-observing
 // phase, which IS the dispatch point, so it wins whenever the row already
-// carries one. A never-queued deploy keeps riding CreatedAt: it is dispatched
-// as the row opens, and that path must keep emitting the fact even when a fast
-// build fails before any pass observes it mid-build. A queued row observed
-// straight at a terminal failure (w6/m123), and any row first observed already
+// carries one. A created row has not dispatched either — rows open created and
+// queue before dispatch (w4/535) — so it is treated like a queued one. A
+// created or queued row observed straight at a terminal failure (w6/m123), and
+// any row first observed already
 // live (w4/m156), reports the operator's recorded build window when there is
 // one — observedStart — and otherwise reports no build start at all, matching
 // the row's own null started_at.
@@ -1276,7 +1276,10 @@ func buildStartedAt(open Deploy, newStatus string, observedStart *time.Time) (ti
 	if eff == "" {
 		eff = open.Status
 	}
-	if open.Status == DeployQueued {
+	// Neither created nor queued has dispatched (w4/535: rows open created,
+	// sit there, then queue before dispatch; only queued was handled, so a
+	// pass that saw a created row dated build_started at row creation).
+	if open.Status == DeployQueued || open.Status == DeployCreated {
 		// Never dispatched yet, so whether there is a build to report is
 		// exactly whether this status means execution began.
 		if !DeployStatusStartsExecution(eff) {
@@ -1294,7 +1297,7 @@ func buildStartedAt(open Deploy, newStatus string, observedStart *time.Time) (ti
 		// build window.
 		return evidencedStart(observedStart)
 	}
-	if eff == DeployQueued {
+	if eff == DeployQueued || eff == DeployCreated {
 		return time.Time{}, false
 	}
 	// Live without a stamped start was never seen executing; the row's

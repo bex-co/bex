@@ -2791,11 +2791,36 @@ func TestBuildFactsForSuccessfulSkip(t *testing.T) {
 		t.Errorf("observed build → live = %+v, want build_started at the observed %v", facts, observed)
 	}
 
-	// Unchanged: a never-queued build that failed between passes still rides
-	// its creation time (w6/035's dispatched-as-the-row-opens contract).
+	// w4/535: a created row has not dispatched either (rows open created and
+	// queue before dispatch), so one observed straight at a build failure is
+	// dated by the operator's recorded build window, never by created_at.
 	open := Deploy{ID: "dep-3", AppID: "srv-1", Status: DeployCreated, CreatedAt: created}
-	if facts := buildLifecycleFacts(open, DeployBuildFailed, nil); len(facts) != 2 || !facts[0].At.Equal(created) {
-		t.Errorf("created→build_failed = %+v, want build_started at created_at", facts)
+	if facts := buildLifecycleFacts(open, DeployBuildFailed, &window); len(facts) != 2 || !facts[0].At.Equal(window) {
+		t.Errorf("created→build_failed = %+v, want build_started at the recorded window %v", facts, window)
+	}
+	if facts := buildLifecycleFacts(open, DeployBuildFailed, nil); facts != nil {
+		t.Errorf("created→build_failed without evidence = %+v, want none", facts)
+	}
+}
+
+// w4/535: a pass that sees a still-created row emits no build facts, and the
+// pass that sees it leave for a dispatching status dates build_started now —
+// the instant TransitionDeploy stamps started_at — never at row creation.
+func TestBuildStartedWaitsForACreatedRowsDispatch(t *testing.T) {
+	created := time.Now().UTC().Add(-2 * time.Minute)
+	open := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployCreated, CreatedAt: created}
+	for _, idle := range []string{"", DeployCreated, DeployQueued} {
+		if facts := buildLifecycleFacts(open, idle, nil); facts != nil {
+			t.Errorf("created with newStatus %q emitted %+v, want none", idle, facts)
+		}
+	}
+	before := time.Now().UTC()
+	facts := buildLifecycleFacts(open, DeployBuildInProgress, nil)
+	if len(facts) != 1 || facts[0].Type != EventFactBuildStarted || facts[0].At.Before(before) {
+		t.Fatalf("created→build_in_progress = %+v, want build_started at now (not %v)", facts, created)
+	}
+	if facts := CanceledBuildLifecycleFacts(open); facts != nil {
+		t.Errorf("cancel while created emitted %+v, want none (no build ran)", facts)
 	}
 }
 
