@@ -1,19 +1,19 @@
 # w3 · m302 — Service events carry Render's per-type details: keys, types and ids, as on Render
 
-**Worker:** worker3 **Goal:** every Render-defined event type's `details` matches its member in Render's pinned schema on REST and MCP **Status:** todo
+**Worker:** worker3 **Goal:** every Render-defined event type's `details` matches its member in Render's pinned schema on REST and MCP **Status:** blocked — t001–t008 done; t009 Closeout waits on the production deploy and the live check
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Per-type schema check: each event's details must match the member its type names | 1h | — |
-| t002 | Lifecycle-step events use Render's status keys and ids | 1h | t001 |
-| t003 | Rename the keys Render spells differently | 1.5h | t001 |
-| t004 | Fill details bex stores but sends empty | 1h | t001 |
-| t005 | Retire the allowlist entry and update the ledger | 45m | t002, t003, t004 |
-| t006 | Render parity | 30m | t005 |
-| t007 | Simplify | 20m | t006 |
-| t008 | Test coverage | 40m | t006 |
+| t001 | Per-type schema check: each event's details must match the member its type names — **DONE** | 1h | — |
+| t002 | Lifecycle-step events use Render's status keys and ids — **DONE** | 1h | t001 |
+| t003 | Rename the keys Render spells differently — **DONE** | 1.5h | t001 |
+| t004 | Fill details bex stores but sends empty — **DONE** | 1h | t001 |
+| t005 | Retire the allowlist entry and update the ledger — **DONE** | 45m | t002, t003, t004 |
+| t006 | Render parity — **DONE** | 30m | t005 |
+| t007 | Simplify — **DONE** | 20m | t006 |
+| t008 | Test coverage — **DONE** | 40m | t006 |
 | t009 | Closeout | 10m | t007, t008 |
 
 ## Definition of done
@@ -31,3 +31,13 @@
 - **Why now:** the `status` type conflict breaks typed decoders today and the renamed keys lose data silently; every new event type grows the dialect, and external consumers will start depending on it now that signup is open
 - **Recommendation in place of an open decision:** the proposal recommended replacing bex's keys on REST/MCP without dual-writing the old ones (Render parity first). Keeping the old keys alongside would be a divergence needing the user's sign-off in ADR018; none was given
 - **Render parity:** included — REST and MCP response shapes change
+
+## Scope change (2026-11-10, loopx w3)
+
+- **t004:** the disk, maintenance-mode and auto-deploy-reason details are not recorded on the audit rows, contrary to the brainstorm's assumption, so they stay omitted (never invented) and the write-side work is `w3/061`. The DoD's "no longer empty" bullet therefore holds for `branch_deleted` and `job_run_ended`, and for the other three types it is recorded as owed in ADR018's events row and pinned by `TestRenderEventDetailsMatchTheirMember`.
+
+## Blocked (2026-11-10, loopx w3)
+
+- **Gate:** the live DoD bullet needs bex-api built from this milestone's commit (`feat(events): … (w3/m302)`).
+- **Release condition:** a `chore(deploy): pin platform images to <sha>` on main whose sha contains the commit (`git merge-base --is-ancestor`). Then, with the QA account and read-only, find a `build_ended` and an `instance_count_changed` event in `bex-canary` (`GET /v1/services/{id}/events?type=…`; scale a throwaway starter service 1 → 2 if none exists, then delete it with a 404 proof), read each through `GET /v1/events/{id}` and MCP `get_service_event`, and confirm `buildStatus` (no string `status`) and `fromInstances`/`toInstances`. Then run t009.
+- No user decision needed.

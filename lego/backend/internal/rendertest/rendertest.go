@@ -201,7 +201,11 @@ func Validate(route *routers.Route, status int, header http.Header, body []byte)
 		// bex sends beyond it is an extension, not a service to check.
 		return found
 	}
-	return checkServiceDetails(route.Spec, body, found)
+	var root any
+	if json.Unmarshal(body, &root) != nil {
+		return found
+	}
+	return checkEventDetails(route.Spec, root, checkServiceDetails(route.Spec, root, found))
 }
 
 // documentsBody reports whether status's documented response has a schema.
@@ -239,11 +243,7 @@ var serviceDetailsBranch = map[string]string{
 // cron member) and reports a member's missing field only as one opaque union
 // failure; this reports each violation at its own pointer, replacing that
 // service's union failure.
-func checkServiceDetails(doc *openapi3.T, body []byte, found []string) []string {
-	var root any
-	if json.Unmarshal(body, &root) != nil {
-		return found
-	}
+func checkServiceDetails(doc *openapi3.T, root any, found []string) []string {
 	var refined []string
 	replaced := map[string]bool{}
 	walkServices(root, "", func(pointer string, service map[string]any) {
@@ -259,6 +259,119 @@ func checkServiceDetails(doc *openapi3.T, body []byte, found []string) []string 
 	})
 	out := slices.DeleteFunc(found, func(v string) bool { return replaced[v] })
 	return append(out, refined...)
+}
+
+// checkEventDetails validates every event's details in body against the
+// member of Render's details union its type names (w3/m302). The union alone
+// matches empty details to every member without required keys, so it fails
+// them as ambiguous, and it reports a member's renamed or mistyped key only as
+// one opaque union failure; this reports each violation at its own pointer,
+// replacing that event's union failure; each names the event type last, so an
+// Allowlist entry can excuse one type's field. A bex-named type has no member, and
+// its type is already its own enum violation, so its union failure goes too.
+// A documented type without a member keeps it.
+func checkEventDetails(doc *openapi3.T, root any, found []string) []string {
+	events := eventSchemaOf(doc)
+	if events.members == nil {
+		return found
+	}
+	var refined []string
+	replaced := map[string]bool{}
+	walkEvents(root, "", func(pointer string, event map[string]any) {
+		kind := event["type"].(string)
+		member := events.members[eventMemberKey(kind)]
+		if member == nil && events.documented[kind] {
+			return
+		}
+		replaced[pointer+"/details"+unionMismatch] = true
+		if member == nil {
+			return
+		}
+		err := member.VisitJSON(event["details"], openapi3.MultiErrors(), openapi3.EnableFormatValidation())
+		for _, v := range violations(err) {
+			refined = append(refined, fmt.Sprintf("%s/details%s (%s)", pointer, strings.TrimPrefix(v, "$"), kind))
+		}
+	})
+	out := slices.DeleteFunc(found, func(v string) bool { return replaced[v] })
+	return append(out, refined...)
+}
+
+// eventSchema is the pinned spec's event details union members, keyed by
+// eventMemberKey of their titles, and the event types it documents.
+type eventSchema struct {
+	members    map[string]*openapi3.Schema
+	documented map[string]bool
+}
+
+// eventSchemas caches eventSchemaOf per document: Validate runs on every
+// response a suite produces, and the pinned document does not change.
+var eventSchemas sync.Map // *openapi3.T → eventSchema
+
+// eventSchemaOf reads doc's event details union; its members are nil when the
+// spec has no single-event operation.
+func eventSchemaOf(doc *openapi3.T) eventSchema {
+	if cached, ok := eventSchemas.Load(doc); ok {
+		return cached.(eventSchema)
+	}
+	var out eventSchema
+	if item := doc.Paths.Value("/events/{eventId}"); item != nil && item.Get != nil {
+		if ok := item.Get.Responses.Status(http.StatusOK); ok != nil && ok.Value != nil && ok.Value.Content.Get("application/json") != nil {
+			event := ok.Value.Content.Get("application/json").Schema.Value
+			if details, kind := event.Properties["details"], event.Properties["type"]; details != nil && kind != nil {
+				out.members, out.documented = map[string]*openapi3.Schema{}, map[string]bool{}
+				for _, group := range details.Value.OneOf {
+					for _, member := range group.Value.OneOf {
+						out.members[eventMemberKey(member.Value.Title)] = member.Value
+					}
+				}
+				for _, v := range kind.Value.Enum {
+					out.documented[fmt.Sprint(v)] = true
+				}
+			}
+		}
+	}
+	eventSchemas.Store(doc, out)
+	return out
+}
+
+// MissingEventDetail is the violation for an eventType event whose details
+// lack field, a JSON pointer tail under details ("suspendedByUser/email").
+func MissingEventDetail(eventType, field string) string {
+	return fmt.Sprintf(`/details/%s: property %q is missing (%s)`, field, field[strings.LastIndex(field, "/")+1:], eventType)
+}
+
+// eventMemberKey matches an event type to its details member's title: Render
+// titles each member after its type ("Build Ended" for build_ended, "Postgres
+// HA Status Changed" for postgres_ha_status_changed), except plan_changed,
+// whose member is "Instance Type Changed".
+func eventMemberKey(name string) string {
+	if name == "plan_changed" {
+		name = "Instance Type Changed"
+	}
+	return strings.ToLower(memberKeySeparators.Replace(name))
+}
+
+var memberKeySeparators = strings.NewReplacer(" ", "", "_", "")
+
+// walkEvents calls visit for every event object in node (one with a type, a
+// timestamp and details), with its JSON pointer, in document order.
+func walkEvents(node any, pointer string, visit func(string, map[string]any)) {
+	switch n := node.(type) {
+	case map[string]any:
+		_, timed := n["timestamp"].(string)
+		_, detailed := n["details"]
+		if _, typed := n["type"].(string); typed && timed && detailed {
+			visit(pointer, n)
+			return
+		}
+		for _, key := range slices.Sorted(maps.Keys(n)) {
+			walkEvents(n[key], pointer+"/"+key, visit)
+		}
+	case []any:
+		for i, item := range n {
+			walkEvents(item, pointer+"/"+strconv.Itoa(i), visit)
+		}
+	}
 }
 
 // walkServices calls visit for every object in node that has a service type

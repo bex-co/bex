@@ -334,7 +334,7 @@ func (s *Service) recordJobRunEnded(ctx context.Context, appID string, j store.J
 		at = j.FinishedAt.UTC()
 	}
 	fact := store.ServiceEventFact{
-		SourceKey: "job:" + j.ID + ":run_ended",
+		SourceKey: store.JobRunEndedKey(j.ID),
 		AppID:     appID,
 		Type:      store.EventFactJobRunEnded,
 		At:        at,

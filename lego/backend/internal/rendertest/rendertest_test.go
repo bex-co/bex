@@ -33,8 +33,11 @@ import (
 
 // allowlistSize pins the number of Allowlist entries. Lower it when an entry
 // goes; raising it means accepting a new divergence, which this milestone's
-// rule forbids without a recorded, signed-off ADR018 row.
-const allowlistSize = 106
+// rule forbids without a recorded, signed-off ADR018 row. w3/m302 raised it
+// once, from 106 to 112, without a new divergence: it split the two event
+// details union entries, which excused any mismatch of any type, into one
+// entry per type and missing field, each recorded in ADR018's events row.
+const allowlistSize = 112
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0
@@ -201,6 +204,39 @@ func TestValidateSelectsTheServiceDetailsMember(t *testing.T) {
 	suspend := Load(t).Operation("suspend-service")
 	if got := Validate(suspend, 202, jsonHeader, service("web_service", fmt.Sprintf(cron, `5`))); len(got) != 0 {
 		t.Fatalf("a bodiless 202 reported %q", got)
+	}
+}
+
+// Each event's details are checked against the member its type names, with
+// the type named last; a bex-named type is left to its enum violation, and
+// empty details no longer fail as matching several members (w3/m302).
+func TestValidateSelectsTheEventDetailsMember(t *testing.T) {
+	route := Load(t).Operation("retrieve-event")
+	event := func(kind, details string) []byte {
+		return []byte(`{"id":"evt-0123456789abcdefghij","timestamp":"2026-11-10T09:00:00Z","serviceId":"srv-0123456789abcdefghij","type":"` + kind + `","details":` + details + `}`)
+	}
+	for _, tc := range []struct {
+		kind, details string
+		want          []string
+	}{
+		{kind: "instance_count_changed", details: `{"fromInstances":1,"toInstances":2}`},
+		{kind: "service_resumed", details: `{}`},
+		{kind: "instance_count_changed", details: `{"from":1,"to":2}`, want: []string{
+			`/details/fromInstances: property "fromInstances" is missing (instance_count_changed)`,
+			`/details/toInstances: property "toInstances" is missing (instance_count_changed)`,
+		}},
+		{kind: "build_ended", details: `{"buildId":"bld-1","buildStatus":"failed","reason":{},"status":"failed"}`, want: []string{
+			`/details/status: value must be an integer (build_ended)`,
+		}},
+		{kind: "branch_changed", details: `{"from":"a","to":"b"}`, want: []string{
+			`/type: "branch_changed" is not in the documented enum`,
+		}},
+	} {
+		got := Validate(route, 200, jsonHeader, event(tc.kind, tc.details))
+		slices.Sort(got)
+		if !slices.Equal(got, tc.want) {
+			t.Errorf("%s %s reported %q, want %q", tc.kind, tc.details, got, tc.want)
+		}
 	}
 }
 

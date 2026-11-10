@@ -616,6 +616,20 @@ func cronRunSourceKey(appID, runName, phase string) string {
 	return "cron:" + appID + ":" + runName + ":" + phase
 }
 
+// JobRunEndedKey is the source key of a one-off job's job_run_ended fact.
+func JobRunEndedKey(jobID string) string { return "job:" + jobID + ":run_ended" }
+
+// JobIDFromRunEndedKey reads the job id back from a JobRunEndedKey; ok is
+// false for any other key.
+func JobIDFromRunEndedKey(key string) (string, bool) {
+	id, ok := strings.CutPrefix(key, "job:")
+	if !ok {
+		return "", false
+	}
+	id, ok = strings.CutSuffix(id, ":run_ended")
+	return id, ok && id != ""
+}
+
 // CronRunNameFromStartedKey recovers the run (Job) name from a cron-start feed
 // row's Key. Starts recorded before w4/259 stored no run id, and the source key
 // is insert-once, so the feed derives their id from the key instead. Anything

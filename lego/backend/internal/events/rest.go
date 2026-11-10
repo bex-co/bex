@@ -45,8 +45,13 @@ import (
 //
 // Diverging, deliberately:
 //
-//   - Render's `status` (deprecated integer) is not emitted on deploy_ended;
-//     deployStatus, its replacement, is.
+//   - Render's `status` (deprecated integer) is not emitted on deploy_ended,
+//     build_ended or pre_deploy_ended; deployStatus / buildStatus /
+//     preDeployStatus, its replacements, are.
+//   - Required fields bex does not record are omitted, never invented: an
+//     actor's email, build and pre-deploy execution ids, a deleted branch's
+//     successor, autoscaling criteria, and the disk, maintenance-mode and
+//     auto-deploy-reason facts the audit row lacks (w3/m302, w3/061).
 //   - Rejecting a malformed cursor with 400 (Render's behavior here is unspecified).
 //
 // Mounted under /v1/services, like every other apps-adjacent
@@ -66,9 +71,8 @@ type renderEvent struct {
 // (service_resumed, maintenance_ended, and bex's config-change types) serializes
 // as `{}` — Render's own shape for those.
 //
-// from/to use `any` so the same JSON keys work for string (plan_changed) and
-// int (instance_count_changed): only one set is non-nil per event, omitempty
-// suppresses the other. autoscaling_config_changed uses previous/current objects.
+// Each Render-documented type uses the keys of the details member its type
+// names (w3/m302); the rest are bex extras a Render client ignores.
 //
 // Deploy detail enrichment (w1/m47): image, commit info, timing — populated for
 // deploy events to enable rich dashboard display without additional queries.
@@ -87,10 +91,14 @@ type renderDetails struct {
 	CancelReason string `json:"cancelReason,omitempty"`
 	// StallReason is why an OPEN deploy is not progressing (w4/m112). bex extra.
 	StallReason string `json:"stallReason,omitempty"`
-	// Status is the terminal outcome of a lifecycle-step event (w7/m66):
-	// build_ended / pre_deploy_ended / job_run_ended carry succeeded|failed|canceled.
-	Status  string         `json:"status,omitempty"`
-	Trigger *renderTrigger `json:"trigger,omitempty"`
+	// Status is a run's terminal outcome on job_run_ended and
+	// cron_job_run_ended. build_ended and pre_deploy_ended carry theirs as
+	// buildStatus / preDeployStatus, Render's keys; Render's integer status
+	// there is deprecated and not emitted (w3/m302).
+	Status string `json:"status,omitempty"`
+	// BuildStatus is build_ended's succeeded|failed|canceled (w7/m66).
+	BuildStatus string         `json:"buildStatus,omitempty"`
+	Trigger     *renderTrigger `json:"trigger,omitempty"`
 	// Deploy enrichment for dashboard (w1/m47)
 	Image         string `json:"image,omitempty"`
 	CommitID      string `json:"commitId,omitempty"`
@@ -104,14 +112,25 @@ type renderDetails struct {
 	ResumedByUser   *renderUser `json:"resumedByUser,omitempty"`
 	TriggeredByUser string      `json:"triggeredByUser,omitempty"`
 	ReasonCode      string      `json:"reasonCode,omitempty"`
-	InstanceID      string      `json:"instanceId,omitempty"`
-	CommitURL       string      `json:"commitUrl,omitempty"`
-	FromInstances   *int32      `json:"fromInstances,omitempty"`
-	ToInstances     *int32      `json:"toInstances,omitempty"`
-	// plan_changed and instance_count_changed both use "from"/"to" — the value
-	// type (string vs int pointer) differs, so `any` is required for a flat struct.
-	From any `json:"from,omitempty"`
-	To   any `json:"to,omitempty"`
+	InstanceID      string      `json:"instanceID,omitempty"`
+	// FromInstances / ToInstances are the instance counts of
+	// instance_count_changed and the autoscaling pair.
+	FromInstances *int32 `json:"fromInstances,omitempty"`
+	ToInstances   *int32 `json:"toInstances,omitempty"`
+	// plan_changed ("Instance Type Changed" on Render) and bex's
+	// branch_changed carry a from/to string pair.
+	From *string `json:"from,omitempty"`
+	To   *string `json:"to,omitempty"`
+	// ID / URL are commit_ignored's commit (Render's "Commit Ignored").
+	ID  string `json:"id,omitempty"`
+	URL string `json:"url,omitempty"`
+	// ImageURL / Message are image_pull_failed's image and its cause.
+	ImageURL string `json:"imageURL,omitempty"`
+	Message  string `json:"message,omitempty"`
+	// DeletedBranch is branch_deleted's branch.
+	DeletedBranch string `json:"deletedBranch,omitempty"`
+	// JobID is job_run_ended's job.
+	JobID string `json:"jobId,omitempty"`
 	// service_moved (w6/m134): the before/after public prj-/evm- ids. A side
 	// with no placement is omitted, so assign shows only *To, unassign only
 	// *From, and a move both.
@@ -119,9 +138,9 @@ type renderDetails struct {
 	ProjectTo       *string `json:"projectTo,omitempty"`
 	EnvironmentFrom *string `json:"environmentFrom,omitempty"`
 	EnvironmentTo   *string `json:"environmentTo,omitempty"`
-	// autoscaling_config_changed uses nested previous/current objects.
-	Previous *autoscalingState `json:"previous,omitempty"`
-	Current  *autoscalingState `json:"current,omitempty"`
+	// FromConfig / ToConfig are autoscaling_config_changed's policies.
+	FromConfig *autoscalingState `json:"fromConfig,omitempty"`
+	ToConfig   *autoscalingState `json:"toConfig,omitempty"`
 	// cron_job_run_ended: Render's run id, and its reason object on a run that
 	// failed for an observed cause (w4/m114). deploy_ended and build_ended
 	// always carry Render's buildDeployEndReason here (w8/m146).
@@ -137,44 +156,42 @@ type renderDetails struct {
 	ThresholdPercent *float64 `json:"thresholdPercent,omitempty"`
 }
 
-// cronRunReason is the reason object on Render's "Cron Job Run Ended" event.
-// Evicted is required there; every other field is present only for its cause.
-type cronRunReason struct {
-	Evicted         bool              `json:"evicted"`
-	NonZeroExit     *int32            `json:"nonZeroExit,omitempty"`
-	OOMKilled       *cronRunOOMKilled `json:"oomKilled,omitempty"`
-	TimedOutSeconds *int64            `json:"timedOutSeconds,omitempty"`
-}
+// unhealthyMessage is server_failed's reason when an instance failed its
+// health check; the fact records which check, not its output.
+const unhealthyMessage = "The instance failed its health check"
 
-// cronRunOOMKilled is Render's oomKilled object. bex does not record the limit
-// a run was killed at, so memoryLimit is present (Render requires it) but empty.
-type cronRunOOMKilled struct {
-	MemoryLimit string `json:"memoryLimit"`
-}
-
-// toCronRunReason maps a failed run's closed reason code onto Render's reason
-// object; nil when the run did not fail or its cause was not observed.
-func toCronRunReason(d Details) *cronRunReason {
+// toFailureReason maps a failure's closed reason code onto Render's
+// failureReason object, the one Render's cron run, job and server_failed
+// events share; nil when the cause was not observed. timed_out is a cron
+// run's deadline, the only failure that records it.
+func toFailureReason(d Details) *FailureReason {
 	switch d.ReasonCode {
 	case store.EventReasonNonZeroExit:
-		return &cronRunReason{NonZeroExit: d.ExitCode}
+		return &FailureReason{NonZeroExit: d.ExitCode}
 	case store.EventReasonOOMKilled:
-		return &cronRunReason{OOMKilled: &cronRunOOMKilled{}}
+		return &FailureReason{OOMKilled: &OOMKilledInfo{}}
 	case store.EventReasonEvicted:
-		return &cronRunReason{Evicted: true}
+		return &FailureReason{Evicted: true}
 	case store.EventReasonTimedOut:
 		timeout := appv1alpha1.CronRunActiveDeadlineSeconds
-		return &cronRunReason{TimedOutSeconds: &timeout}
+		return &FailureReason{TimedOutSeconds: &timeout}
+	case store.EventReasonReadinessFailed:
+		return &FailureReason{Unhealthy: unhealthyMessage}
 	}
 	return nil
 }
 
-// autoscalingState is the per-config snapshot for autoscaling_config_changed
-// details — previous and current, matching Render's shape.
+// imagePullFailedMessage is image_pull_failed's message; the event records no
+// registry text, so the message is the one cause the fact can carry.
+const imagePullFailedMessage = "The image could not be pulled"
+
+// autoscalingState is one side of autoscaling_config_changed: Render's
+// autoscaling config, less the CPU/memory criteria the event row does not
+// record.
 type autoscalingState struct {
-	Enabled      bool   `json:"enabled"`
-	MinInstances *int32 `json:"minInstances,omitempty"`
-	MaxInstances *int32 `json:"maxInstances,omitempty"`
+	Enabled bool   `json:"enabled"`
+	Min     *int32 `json:"min,omitempty"`
+	Max     *int32 `json:"max,omitempty"`
 }
 
 // renderTrigger is deploy_started's trigger object — Render's six booleans
@@ -208,8 +225,9 @@ type renderTrigger struct {
 
 // renderCronRunStatus maps the stored lifecycle word onto Render's cronJobRun
 // status enum (pending|successful|unsuccessful|canceled), the vocabulary the
-// same run carries on GET /v1/cron-jobs/{id}/runs (w4/507). Other *_ended
-// events keep succeeded|failed|canceled, which Render documents for them.
+// same run carries on GET /v1/cron-jobs/{id}/runs (w4/507). job_run_ended's
+// status and the build/pre-deploy statuses keep succeeded|failed|canceled,
+// which Render documents for them.
 func renderCronRunStatus(status string) string {
 	switch status {
 	case store.EventStatusSucceeded:
@@ -229,7 +247,6 @@ func toRenderEvent(e Event) renderEvent {
 		FailureReason:    e.Details.FailureReason,
 		CancelReason:     e.Details.CancelReason,
 		StallReason:      e.Details.StallReason,
-		Status:           e.Details.Status,
 		Image:            e.Details.Image,
 		CommitID:         e.Details.CommitID,
 		CommitMessage:    e.Details.CommitMessage,
@@ -241,7 +258,6 @@ func toRenderEvent(e Event) renderEvent {
 		TriggeredByUser:  e.Details.TriggeredByUser,
 		ReasonCode:       e.Details.ReasonCode,
 		InstanceID:       e.Details.InstanceID,
-		CommitURL:        e.Details.CommitURL,
 	}
 	if t := e.Details.Trigger; t != nil {
 		d.Trigger = &renderTrigger{
@@ -260,30 +276,37 @@ func toRenderEvent(e Event) renderEvent {
 		d.From = e.Details.PlanFrom
 		d.To = e.Details.PlanTo
 	case TypeInstanceCountChanged:
-		d.From = e.Details.InstanceCountFrom
-		d.To = e.Details.InstanceCountTo
+		d.FromInstances = e.Details.InstanceCountFrom
+		d.ToInstances = e.Details.InstanceCountTo
 	case TypeAutoscalingConfigChanged:
-		if e.Details.AutoscalingMinFrom != nil || e.Details.AutoscalingMaxFrom != nil {
-			d.Previous = &autoscalingState{Enabled: true, MinInstances: e.Details.AutoscalingMinFrom, MaxInstances: e.Details.AutoscalingMaxFrom}
-		} else {
-			d.Previous = &autoscalingState{Enabled: false}
-		}
-		if e.Details.AutoscalingMinTo != nil || e.Details.AutoscalingMaxTo != nil {
-			d.Current = &autoscalingState{Enabled: true, MinInstances: e.Details.AutoscalingMinTo, MaxInstances: e.Details.AutoscalingMaxTo}
-		} else {
-			d.Current = &autoscalingState{Enabled: false}
-		}
+		d.FromConfig = &autoscalingState{Min: e.Details.AutoscalingMinFrom, Max: e.Details.AutoscalingMaxFrom}
+		d.FromConfig.Enabled = d.FromConfig.Min != nil || d.FromConfig.Max != nil
+		d.ToConfig = &autoscalingState{Min: e.Details.AutoscalingMinTo, Max: e.Details.AutoscalingMaxTo}
+		d.ToConfig.Enabled = d.ToConfig.Min != nil || d.ToConfig.Max != nil
 	case TypeBranchChanged:
-		d.From = e.Details.BranchFrom
-		d.To = e.Details.BranchTo
+		d.From = &e.Details.BranchFrom
+		d.To = &e.Details.BranchTo
+	case TypeBranchDeleted:
+		d.DeletedBranch = e.Details.BranchFrom
+	case TypeCommitIgnored:
+		d.ID, d.URL = e.Details.CommitID, e.Details.CommitURL
+		d.CommitID = ""
+	case TypeServerFailed:
+		if reason := toFailureReason(e.Details); reason != nil {
+			d.Reason = reason
+		}
+		d.ReasonCode = ""
+	case TypeImagePullFailed:
+		d.ImageURL, d.Message = e.Details.Image, imagePullFailedMessage
+		d.Image, d.ReasonCode = "", ""
+	case TypeJobRunEnded:
+		d.Status, d.JobID = e.Details.Status, e.Details.JobID
 	case TypeServiceMoved:
 		d.ProjectFrom = e.Details.ProjectFrom
 		d.ProjectTo = e.Details.ProjectTo
 		d.EnvironmentFrom = e.Details.EnvironmentFrom
 		d.EnvironmentTo = e.Details.EnvironmentTo
 	case TypeAutoscalingStarted, TypeAutoscalingEnded:
-		// Render's event-detail contract calls these fromInstances/toInstances,
-		// unlike manual scaling's generic from/to pair.
 		d.FromInstances = e.Details.FromCount
 		d.ToInstances = e.Details.ToCount
 	case TypeCronJobRunStarted:
@@ -291,10 +314,20 @@ func toRenderEvent(e Event) renderEvent {
 	case TypeCronJobRunEnded:
 		d.CronJobRunID = e.Details.CronJobRunID
 		d.Status = renderCronRunStatus(e.Details.Status)
-		if reason := toCronRunReason(e.Details); reason != nil {
+		if reason := toFailureReason(e.Details); reason != nil {
 			d.Reason = reason
 		}
-	case TypeDeployEnded, TypeBuildEnded:
+	case TypeBuildEnded:
+		d.BuildStatus = e.Details.Status
+		if e.Details.EndReason != nil {
+			d.Reason = e.Details.EndReason
+		}
+	case TypePreDeployEnded:
+		d.PreDeployStatus = e.Details.Status
+		if e.Details.EndReason != nil {
+			d.Reason = e.Details.EndReason
+		}
+	case TypeDeployEnded:
 		if e.Details.EndReason != nil {
 			d.Reason = e.Details.EndReason
 		}

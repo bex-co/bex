@@ -348,8 +348,11 @@ func TestLifecycleFactStatusAcrossSurfaces(t *testing.T) {
 	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil || len(rest) != 1 {
 		t.Fatalf("REST events = %s (err %v)", res.Body.String(), err)
 	}
-	if rest[0].Event.Type != events.TypeBuildEnded || rest[0].Event.Details["status"] != "failed" {
-		t.Errorf("REST build_ended details = %+v, want type=build_ended status=failed", rest[0].Event)
+	// REST and MCP speak Render's buildStatus and never send the string in
+	// status, which Render types as an integer (w3/m302); GraphQL keeps its
+	// own status field.
+	if d := rest[0].Event.Details; rest[0].Event.Type != events.TypeBuildEnded || d["buildStatus"] != "failed" || d["status"] != nil {
+		t.Errorf("REST build_ended details = %+v, want type=build_ended buildStatus=failed and no status", rest[0].Event)
 	}
 
 	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-07-01T00:00:00Z") { type details { status } } }`)
@@ -362,8 +365,8 @@ func TestLifecycleFactStatusAcrossSurfaces(t *testing.T) {
 	}
 
 	mcpEvents := callListServiceEvents(t, srv, map[string]any{"serviceId": "web", "startTime": "2026-07-01T00:00:00Z"})
-	if len(mcpEvents) != 1 || mcpEvents[0].Event.Details["status"] != "failed" {
-		t.Errorf("MCP build_ended details = %+v, want status=failed", mcpEvents)
+	if len(mcpEvents) != 1 || mcpEvents[0].Event.Details["buildStatus"] != "failed" || mcpEvents[0].Event.Details["status"] != nil {
+		t.Errorf("MCP build_ended details = %+v, want buildStatus=failed and no status", mcpEvents)
 	}
 }
 
@@ -643,7 +646,7 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 		{Key: "aud-domain-verified:", At: at, Source: store.EventSourceAudit, Verb: "apps.VerifyDomain", Caller: "user-x"},
 		{Key: "aud-disk-created:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: "apps.AddDisk", Caller: "user-x"},
 		{Key: "aud-disk-deleted:", At: at.Add(-2 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.DeleteDisk", Caller: "user-x"},
-		{Key: "aud-disk-restored:", At: at.Add(-3 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x", DiskID: new("dsk-restored")},
+		{Key: "aud-disk-restored:", At: at.Add(-3 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x", DiskID: new("dsk-0123456789abcdefghij")},
 		// A restore recorded before audit rows carried disk_id (w2/064).
 		{Key: "aud-disk-restored-old:", At: at.Add(-4 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x"},
 	}}
@@ -700,8 +703,8 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 	// store does not narrow rows, so we assert the push-down rather than the
 	// response body shape (real-Postgres coverage lives in store tests).
 	// Render's Disk Snapshot Restored details: diskId and triggeredByUser.
-	if d := rest[3].Event.Details; d["diskId"] != "dsk-restored" || d["triggeredByUser"] != "user-x" {
-		t.Errorf("disk_snapshot_restored details = %+v, want diskId dsk-restored triggeredByUser user-x", d)
+	if d := rest[3].Event.Details; d["diskId"] != "dsk-0123456789abcdefghij" || d["triggeredByUser"] != "user-x" {
+		t.Errorf("disk_snapshot_restored details = %+v, want diskId dsk-0123456789abcdefghij triggeredByUser user-x", d)
 	}
 	if d := rest[4].Event.Details; d["diskId"] != nil || d["triggeredByUser"] != "user-x" {
 		t.Errorf("pre-064 restore details = %+v, want no diskId and triggeredByUser user-x", d)

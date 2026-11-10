@@ -152,7 +152,7 @@ func TestCronJobRunStartedCarriesItsRunID(t *testing.T) {
 
 // w4/507: cron_job_run_ended speaks Render's cronJobRun status enum, matching
 // GET /v1/cron-jobs/{id}/runs for the same run; a canceled run keeps
-// "canceled", and the other *_ended events keep succeeded|failed|canceled.
+// "canceled", and job_run_ended keeps succeeded|failed|canceled.
 func TestCronJobRunEndedStatusUsesTheRunEnum(t *testing.T) {
 	status := func(factType, fact string) string {
 		row := store.ServiceEventRow{
@@ -169,8 +169,13 @@ func TestCronJobRunEndedStatusUsesTheRunEnum(t *testing.T) {
 			t.Errorf("cron_job_run_ended %s -> %q, want %q", fact, got, want)
 		}
 	}
-	if got := status(TypeBuildEnded, store.EventStatusFailed); got != store.EventStatusFailed {
-		t.Errorf("build_ended failed -> %q, want it unchanged", got)
+	// build_ended carries its outcome as Render's buildStatus, never as the
+	// integer-typed status (w3/m302).
+	built := toRenderEvent(view(store.ServiceEventRow{
+		Key: "k:build", Source: store.EventSourceFact, FactType: TypeBuildEnded, FactStatus: store.EventStatusFailed,
+	}, "srv-1")).Details
+	if built.BuildStatus != store.EventStatusFailed || built.Status != "" {
+		t.Errorf("build_ended failed -> buildStatus %q status %q, want buildStatus failed and no status", built.BuildStatus, built.Status)
 	}
 	if got := status(TypeJobRunEnded, store.EventStatusSucceeded); got != store.EventStatusSucceeded {
 		t.Errorf("job_run_ended succeeded -> %q, want it unchanged", got)

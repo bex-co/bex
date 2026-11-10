@@ -639,6 +639,8 @@ type FailureReason struct {
 	NonZeroExit     *int32         `json:"nonZeroExit,omitempty"`
 	OOMKilled       *OOMKilledInfo `json:"oomKilled,omitempty"`
 	TimedOutSeconds *int64         `json:"timedOutSeconds,omitempty"`
+	// Unhealthy says a service instance failed its health check (server_failed).
+	Unhealthy string `json:"unhealthy,omitempty"`
 }
 
 // OOMKilledInfo is Render's oomKilled object. bex does not record the limit
@@ -799,7 +801,9 @@ type Details struct {
 	// cronJobRunId) and, with ReasonCode non_zero_exit or oom_killed, the failed
 	// run's container exit status.
 	CronJobRunID string
-	ExitCode     *int32
+	// JobID is job_run_ended's job-… id, read back from its fact key.
+	JobID    string
+	ExitCode *int32
 	// postgres_cluster_leader_changed (w2/m171): the instance that became
 	// primary — Render's leaderId.
 	LeaderID string
@@ -1296,6 +1300,9 @@ func view(r store.ServiceEventRow, service string) Event {
 				ev.Details.CronJobRunID = ids.Derive(ids.CronRun, name)
 			}
 		}
+		if ev.Type == TypeJobRunEnded {
+			ev.Details.JobID, _ = store.JobIDFromRunEndedKey(r.Key)
+		}
 		ev.Details.ExitCode = r.FactExitCode
 		ev.Details.LeaderID = r.LeaderID
 		if u := r.DiskUsage; u != nil {
@@ -1303,8 +1310,14 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.DiskID, ev.Details.DiskName, ev.Details.MountPath = u.DiskID, u.DiskName, u.MountPath
 			ev.Details.UsagePercent, ev.Details.ThresholdPercent = &usage, &threshold
 		}
-		if ev.Type == TypeBuildEnded {
+		switch ev.Type {
+		case TypeBuildEnded:
 			ev.Details.EndReason = buildEndReason(r)
+		case TypePreDeployEnded:
+			// Render requires the end reason; a pre-deploy step records no
+			// superseding build or deploy, so it is the empty reason a plain
+			// success or failure carries on deploy_ended.
+			ev.Details.EndReason = &EndReason{}
 		}
 	}
 	return ev

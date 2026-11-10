@@ -89,13 +89,14 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 - [x] **m176** — New workspaces get actionable empty states and a getting-started checklist (ADR075 D1+D2) (9 tasks) — **done 2026-10-30** ([done/m176](done/m176/README.md)): action-bearing empty states and a dismissible checklist; on dev-3, a fresh account walked through every checklist transition. Fixed along the way: the empty workspace's skeleton now matches its ready layout at 1440/390, and Hobby's dead-end invite item now opens the plan change. Render comparison is in ADR018. Follow-ups: `047`, `048`, `049`.
 
 - [x] **m177** — Move the Prometheus rule pack out of the inline Argo Application values (7 tasks) — **done 2026-10-29** ([done/m177](done/m177/README.md)): rules live in `deploy/gitops/base/rules/alerting_rules.yml` via a mounted, reloader-watched ConfigMap; Application size 392,955 / 421,080 of 1,310,720 bytes; production `/api/v1/rules` loads the same 123 rules from `/etc/rules` with Watchdog firing (verified by `/unblock w3`).
-- [ ] **m302** — [Service events carry Render's per-type details: keys, types and ids, as on Render](m302/README.md) (9 tasks) ← `/pm-brainstorm for w3` 2026-11-10 item 1
+- [ ] **m302** — **BLOCKED (t009 waits on this milestone's production deploy; then a worker reads a `build_ended` and an `instance_count_changed` event in `bex-canary` through REST and MCP — no user decision needed)** — [Service events carry Render's per-type details: keys, types and ids, as on Render](blocked/m302/README.md) (9 tasks; **t001–t008 done**; disk/maintenance/auto-deploy facts owed by `061`)
 - [ ] **m303** — [Render CLI v2.36.0: adopt it, match its sandbox contract, and notice the next release](m303/README.md) (10 tasks) ← `/pm-brainstorm for w3` 2026-11-10 item 2
 - [ ] **m304** — [Security review of the static-site external-rewrite proxy](m304/README.md) (8 tasks) ← `/pm-brainstorm for w3` 2026-11-10 item 3
 - [ ] **m305** — [Workspace Settings has Render's sections: audit-log CSV export, registry credentials and notification overrides](m305/README.md) (9 tasks) ← `/pm-brainstorm for w3` 2026-11-10 item 4
 
 ## Inbox
 
+- [ ] **061** — [Disk, maintenance-mode and auto-deploy events carry the details Render requires](061.md) ← w3/m302 2026-11-10
 - [ ] **060** — [Postgres SQL and insights on a Creating, Upgrading or Restarting database answer 503 with the reason, not 500](060.md) (~45m) ← `/pm-brainstorm for w3` 2026-11-10 item 5
 - [x] **059** — **promoted 2026-11-08 → [`m292`](m292/README.md)** ([done/059.md](done/059.md)): protected placement follow-ups from m281.
 - [x] **058** — **done 2026-11-08** ([done/058.md](done/058.md)): creating a webhook lands on its detail page with no secret step, as on Render.

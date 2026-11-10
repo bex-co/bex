@@ -112,13 +112,27 @@ var Allowlist = map[string][]Divergence{
 	"retrieve-project": missing(RowMetadata, SuiteAPI, "owner/email"),
 	"create-project":   missing(RowMetadata, SuiteAPI, "owner/email"),
 
-	// Events: bex-named types (configuration changes, placement moves,
-	// custom-domain verification) and a partial details dialect.
-	"list-events": {
-		{Contains: `event/type: "`, ADR018: RowEvents, Suite: SuiteAPI},
-		{Contains: `event/details: does not match the documented union`, ADR018: RowEvents, Suite: SuiteAPI},
-	},
-	"retrieve-event": {{Contains: `/details: does not match the documented union`, ADR018: RowEvents, Suite: SuiteAPI}},
+	// Events: bex-named types keep their enum violation; every other event's
+	// details are checked against the member its type names (w3/m302), and
+	// these are the Render-required fields bex does not record.
+	"list-events": join(
+		[]Divergence{{Contains: `event/type: "`, ADR018: RowEvents, Suite: SuiteAPI}},
+		eventDetails(SuiteAPI, "deploy_ended", "status"),
+		eventDetails(SuiteAPI, "build_ended", "status", "buildId"),
+		eventDetails(SuiteAPI, "suspender_added", "suspendedByUser/email"),
+		eventDetails(SuiteAPI, "disk_created", "diskId", "sizeGB"),
+		eventDetails(SuiteAPI, "disk_deleted", "diskId"),
+		eventDetails(SuiteAPI, "disk_snapshot_restored", "diskId"),
+	),
+}
+
+// eventDetails is the missing-field entries for one event type's details.
+func eventDetails(suite, eventType string, fields ...string) []Divergence {
+	out := make([]Divergence, 0, len(fields))
+	for _, field := range fields {
+		out = append(out, Divergence{Contains: MissingEventDetail(eventType, field), ADR018: RowEvents, Suite: suite})
+	}
+	return out
 }
 
 // dryRun excuses a create's dry-run preview answering 200 (the bex dryRun
