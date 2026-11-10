@@ -44,8 +44,24 @@ Materialized from all five proposals of `/pm-brainstorm for w6` 2026-11-08 plus 
 5. **[112](done/112.md)** — **done** — CLI staleness monitor counts from the rewritten release tag (#111).
 6. **[113](done/113.md)** — **done** — ADR018 rows 222 and 225 stale or unsigned claims.
 
+## Approved queue (priority order, 2026-11-10)
+
+Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenant build experience → Render parity), approved by the user's `/pmx … to w6`. Scheduled items for worker6, not a workstream specialty.
+
+1. **[m306](m306/README.md)** — builds of different services start together, and a held build is visible (10 tasks).
+2. **[m307](m307/README.md)** — `build_seconds` counts what Render counts as pipeline minutes (9 tasks).
+3. **[m308](m308/README.md)** — each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted" (8 tasks); after m307.
+4. **[m309](m309/README.md)** — pipeline-minute spend limit (7 tasks); after m308.
+5. **[m310](m310/README.md)** — Performance pipeline tier (8 tasks); expected gate: the Hetzner dedicated-vCPU limit (`w2/blocked/m250`).
+6. **[115](115.md)** — ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository (~15m).
+
 ## Milestones
 
+- [ ] **m306** — [Builds of different services start together, and a held build is visible](m306/README.md) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-10 proposal 1; ADR060 §D5/§D6
+- [ ] **m307** — [`build_seconds` counts what Render counts as pipeline minutes](m307/README.md) (9 tasks) ← proposal 2; ADR023
+- [ ] **m308** — [Each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted"](m308/README.md) (8 tasks) ← proposal 3; ADR030 §13; after m307
+- [ ] **m309** — [Pipeline-minute spend limit](m309/README.md) (7 tasks) ← proposal 4; after m308
+- [ ] **m310** — [Performance pipeline tier (16 CPU / 64 GB builds)](m310/README.md) (8 tasks) ← proposal 5; expected gate `w2/blocked/m250` (Hetzner dedicated vCPUs)
 - [x] **m290** — [Deleting an environment or project handles its Postgres, Key Value and env groups as Render does](done/m290/README.md) — **done 2026-11-08**: verified on production (REST 409; GraphQL env and project deletes remove Postgres and Key Value; env groups detached) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 1
 - [ ] **m291** — **BLOCKED (w8/user: `toolchain-freshness.json` and the native inputs are byte-pinned by w8/m91's D3 custody, the same gate as m163; plus a normal runner link for the native-common rebuild, #133. t001 is done and PR #106 is closed)** — [Build toolchain digests are fresh again and #105 closes](blocked/m291/README.md) (7 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 2
 - [ ] **m164** — **BLOCKED (user: make the GHCR package `bex-evidence` public in Package settings; t001–t003 done, evidence pinned at `ghcr.io/bex-co/bex-evidence@sha256:1203a4e7…`)** — [Native-common qualification evidence restored from the pre-purge bundle into object storage](blocked/m164/README.md) (7 tasks)
@@ -218,6 +234,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](115.md) (~15m) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
 - [x] **110** — [tenant-view probe detects an activator-held wake and polls for `service_woken` (#134)](done/110.md) — done 2026-11-08 ← `/pm-brainstorm for w6` 2026-11-08 proposal 3
 - [x] **111** — [Main-only deployment branch policies on the five unrestricted production environments (#101)](done/111.md) — done 2026-11-08: drift script OK, #101 closes on run 42467710122 ← proposal 4; split from w3/blocked/m173 t005
 - [x] **112** — [cli-release-staleness.sh counts from the rewritten copy of an off-main release tag (#111)](done/112.md) — done 2026-11-08 (11 real unreleased commits; `/release cli` still owed)
