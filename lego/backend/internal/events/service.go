@@ -807,13 +807,24 @@ type Details struct {
 	// postgres_cluster_leader_changed (w2/m171): the instance that became
 	// primary — Render's leaderId.
 	LeaderID string
-	// service_disk_usage_high / _recovered (w2/m255) and disk_snapshot_restored
-	// (w2/064): Render's disk details.
+	// service_disk_usage_high / _recovered (w2/m255), disk_snapshot_restored
+	// (w2/064) and disk_created / _updated / _deleted (w3/m317): Render's disk
+	// details. A disk event's size is DiskSizeGB, a resize's before DiskSizeFromGB.
 	DiskID           string
 	DiskName         string
 	MountPath        string
 	UsagePercent     *float64
 	ThresholdPercent *float64
+	DiskSizeFromGB   *int32
+	// maintenance_mode_enabled's toggle and maintenance_mode_uri_updated's
+	// before/after page (w3/m317).
+	MaintenanceEnabled *bool
+	MaintenanceURIFrom *string
+	MaintenanceURITo   *string
+	// auto_deploy_enabled / _disabled (w3/m317): Render's trigger after an
+	// enable or before a disable, and why a disable happened.
+	AutoDeployTrigger *string
+	AutoDeployReason  *string
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -1224,6 +1235,10 @@ func view(r store.ServiceEventRow, service string) Event {
 		if ev.Type == "" {
 			ev.Type = indexedAuditEventTypes[r.Verb]
 		}
+		// Only disk verbs record a disk (w2/064, w3/m317).
+		if r.DiskID != nil {
+			ev.Details.DiskID = *r.DiskID
+		}
 		switch ev.Type {
 		case TypeSuspenderAdded, TypeSuspenderRemoved:
 			if r.Caller != "" {
@@ -1236,9 +1251,6 @@ func view(r store.ServiceEventRow, service string) Event {
 			}
 		case TypeServerRestarted, TypeDiskSnapshotRestored:
 			ev.Details.TriggeredByUser = r.Caller
-			if r.DiskID != nil {
-				ev.Details.DiskID = *r.DiskID
-			}
 		case TypePlanChanged:
 			ev.Details.PlanFrom = r.PlanFrom
 			ev.Details.PlanTo = r.PlanTo
@@ -1267,6 +1279,12 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.ConnectionPoolEnabled = r.ConnectionPoolEnabled
 		case TypePostgresDiskSizeChanged:
 			ev.Details.DiskSizeGB = r.DiskSizeGB
+		case TypeDiskCreated, TypeDiskUpdated, TypeDiskDeleted:
+			ev.Details.DiskSizeFromGB, ev.Details.DiskSizeGB = r.DiskSizeFromGB, r.DiskSizeGB
+		case TypeMaintenanceModeEnabled:
+			ev.Details.MaintenanceEnabled = r.MaintenanceModeTo
+		case TypeMaintenanceModeURIUpdated:
+			ev.Details.MaintenanceURIFrom, ev.Details.MaintenanceURITo = r.MaintenanceURIFrom, r.MaintenanceURITo
 		case TypeKeyValueConfigRestart:
 			ev.Details.MaxmemoryPolicy = r.MaxmemoryPolicy
 			ev.Details.PersistenceMode = r.PersistenceMode
@@ -1279,6 +1297,7 @@ func view(r store.ServiceEventRow, service string) Event {
 					ev.Type = TypeAutoDeployDisabled
 				}
 			}
+			ev.Details.AutoDeployTrigger, ev.Details.AutoDeployReason = r.AutoDeployTrigger, r.AutoDeployReason
 		}
 	case store.EventSourceFact:
 		ev.Type = r.FactType

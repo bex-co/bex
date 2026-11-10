@@ -20,8 +20,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -192,6 +194,45 @@ func TestUpdateDiskGrowsButNeverShrinks(t *testing.T) {
 	}
 	if got := getApp(t, cl, "web").Spec.Disk; got.SizeGB != 50 {
 		t.Fatalf("a refused shrink still changed spec.disk to %dGB", got.SizeGB)
+	}
+}
+
+// TestDiskVerbsRecordRendersDiskDetails pins w3/m317: each disk verb's audit
+// row carries what Render's Disk Created {diskId, sizeGB}, Disk Updated
+// {diskId, fromSizeGB, toSizeGB} and Disk Deleted {diskId} require, and a
+// refused resize records nothing.
+func TestDiskVerbsRecordRendersDiskDetails(t *testing.T) {
+	svc, _, _ := newDiskService(diskEligibleApp("web"))
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	ctx := context.Background()
+	created, err := svc.AddDisk(ctx, "web", "data", "/var/data", 10)
+	if err != nil {
+		t.Fatalf("AddDisk: %v", err)
+	}
+	if _, err := svc.UpdateDisk(ctx, created.ID, nil, nil, ptr.To(int32(50))); err != nil {
+		t.Fatalf("grow: %v", err)
+	}
+	if _, err := svc.UpdateDisk(ctx, created.ID, nil, nil, ptr.To(int32(20))); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("shrink error = %v, want bad request", err)
+	}
+	if err := svc.DeleteDisk(ctx, created.ID); err != nil {
+		t.Fatalf("DeleteDisk: %v", err)
+	}
+
+	var got []string
+	for _, ev := range sink.events {
+		if ev.Outcome == core.AuditAllowed {
+			got = append(got, fmt.Sprintf("%s %s %v→%v", ev.Verb, ev.DiskID, ptrValue(ev.DiskSizeFromGB), ptrValue(ev.DiskSizeGB)))
+		}
+	}
+	want := []string{
+		core.AuditVerbAddDisk + " " + created.ID + " <nil>→10",
+		core.AuditVerbUpdateDisk + " " + created.ID + " 10→50",
+		core.AuditVerbDeleteDisk + " " + created.ID + " <nil>→<nil>",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("disk audit rows = %q, want %q", got, want)
 	}
 }
 

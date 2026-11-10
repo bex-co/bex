@@ -4997,6 +4997,8 @@ export type ServiceEvent = {
 export type ServiceEventDetails = {
   __typename: 'ServiceEventDetails';
   actor: Maybe<Scalars['String']['output']>;
+  autoDeployDisabledReason: Maybe<Scalars['String']['output']>;
+  autoDeployTrigger: Maybe<Scalars['String']['output']>;
   autoscalingMaxFrom: Maybe<Scalars['Int']['output']>;
   autoscalingMaxTo: Maybe<Scalars['Int']['output']>;
   autoscalingMinFrom: Maybe<Scalars['Int']['output']>;
@@ -5018,12 +5020,15 @@ export type ServiceEventDetails = {
   failureReason: Maybe<Scalars['String']['output']>;
   finishedAt: Maybe<Scalars['String']['output']>;
   fromCount: Maybe<Scalars['Int']['output']>;
+  fromSizeGB: Maybe<Scalars['Int']['output']>;
+  fromURI: Maybe<Scalars['String']['output']>;
   fullDeployStatus: Maybe<Scalars['String']['output']>;
   image: Maybe<Scalars['String']['output']>;
   instanceCountFrom: Maybe<Scalars['Int']['output']>;
   instanceCountTo: Maybe<Scalars['Int']['output']>;
   instanceId: Maybe<Scalars['String']['output']>;
   leaderId: Maybe<Scalars['String']['output']>;
+  maintenanceEnabled: Maybe<Scalars['Boolean']['output']>;
   mountPath: Maybe<Scalars['String']['output']>;
   planFrom: Maybe<Scalars['String']['output']>;
   planTo: Maybe<Scalars['String']['output']>;
@@ -5033,12 +5038,14 @@ export type ServiceEventDetails = {
   reason: Maybe<BuildDeployEndReason>;
   reasonCode: Maybe<Scalars['String']['output']>;
   resumedByUser: Maybe<EventUser>;
+  sizeGB: Maybe<Scalars['Int']['output']>;
   stallReason: Maybe<Scalars['String']['output']>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   suspendedByUser: Maybe<EventUser>;
   thresholdPercent: Maybe<Scalars['Float']['output']>;
   toCount: Maybe<Scalars['Int']['output']>;
+  toURI: Maybe<Scalars['String']['output']>;
   trigger: Maybe<DeployTrigger>;
   triggeredByUser: Maybe<Scalars['String']['output']>;
   usagePercent: Maybe<Scalars['Float']['output']>;

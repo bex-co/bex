@@ -120,8 +120,6 @@ var Allowlist = map[string][]Divergence{
 		eventDetails(SuiteAPI, "deploy_ended", "status"),
 		eventDetails(SuiteAPI, "build_ended", "status", "buildId"),
 		eventDetails(SuiteAPI, "suspender_added", "suspendedByUser/email"),
-		eventDetails(SuiteAPI, "disk_created", "diskId", "sizeGB"),
-		eventDetails(SuiteAPI, "disk_deleted", "diskId"),
 		eventDetails(SuiteAPI, "disk_snapshot_restored", "diskId"),
 	),
 }

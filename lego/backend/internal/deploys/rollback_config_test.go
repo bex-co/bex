@@ -153,11 +153,26 @@ func TestRollbackRestartAndNextDeployKeepSeparateConfigurations(t *testing.T) {
 
 func TestDashboardRollbackTurnsAutoDeployOff(t *testing.T) {
 	svc, cl, d1 := rollbackFixture(t, true)
+	sink := &deployHookAuditSink{}
+	svc.Audit = sink
 	if _, err := svc.Rollback(context.Background(), "web", d1.ID, RollbackOptions{DisableAutoDeploy: true}); err != nil {
 		t.Fatalf("Rollback: %v", err)
 	}
 	if getApp(t, cl, "web").Spec.AutoDeploy {
 		t.Error("a dashboard rollback must turn auto-deploy off so the next push does not undo it")
+	}
+	// Render's Auto Deploy Disabled says why (w3/m317): reason rollback, and the
+	// trigger that was on before it.
+	var disabled []core.AuditEvent
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbSetAutoDeploy {
+			disabled = append(disabled, ev)
+		}
+	}
+	if len(disabled) != 1 || disabled[0].AutoDeployEnabled == nil || *disabled[0].AutoDeployEnabled ||
+		disabled[0].AutoDeployReason == nil || *disabled[0].AutoDeployReason != core.AutoDeployReasonRollback ||
+		disabled[0].AutoDeployTrigger == nil || *disabled[0].AutoDeployTrigger != "commit" {
+		t.Fatalf("auto-deploy audit = %+v, want one disable with reason rollback from trigger commit", disabled)
 	}
 }
 

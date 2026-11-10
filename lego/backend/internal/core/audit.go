@@ -42,8 +42,9 @@ const (
 // typed detail fields (MaintenanceModeTo, PlanFrom/PlanTo,
 // InstanceCountFrom/InstanceCountTo, Autoscaling*From/*To, AutoDeployEnabled,
 // and the datastore configuration values below) are non-secret scalars
-// required by Render's event contracts; there is no free-form path for a
-// secret to reach an event.
+// required by Render's event contracts; the one string a tenant chose is the
+// maintenance page URI, which the service itself already shows to any reader.
+// There is no free-form path for a secret to reach an event.
 type AuditEvent struct {
 	// ID is normally empty (the sink mints one). A writer that may deliver the
 	// same fact more than once — a redelivered webhook — sets a derived id so
@@ -111,9 +112,24 @@ type AuditEvent struct {
 	ProjectTo       *string
 	EnvironmentFrom *string
 	EnvironmentTo   *string
-	// DiskID is the dsk- id a disk snapshot restore replaced the contents of
-	// (w2/064, Render's DiskSnapshotRestored.diskId). Empty for every other verb.
+	// DiskID is the dsk- id a disk verb acted on: the disk a snapshot restore
+	// replaced the contents of (w2/064), or the disk created, resized or
+	// deleted (w3/m317). Empty for every other verb.
 	DiskID string
+	// DiskSizeFromGB is a disk resize's size before it (Render's DiskUpdated
+	// fromSizeGB); DiskSizeGB is the size it was created with or resized to.
+	DiskSizeFromGB *int32
+	// MaintenanceURIFrom/MaintenanceURITo are a maintenance-page change's
+	// before/after (Render's MaintenanceModeURIUpdated fromURI/toURI): the
+	// service's own maintenanceMode.uri, which any reader of the service sees.
+	MaintenanceURIFrom *string
+	MaintenanceURITo   *string
+	// AutoDeployReason is why auto-deploy was turned off (Render's
+	// AutoDeployDisabled reason, AutoDeployReason*); AutoDeployTrigger is the
+	// trigger before a disable or after an enable (fromTrigger / newTrigger).
+	// Both closed vocabularies; nil on enable rows' reason and older rows.
+	AutoDeployReason  *string
+	AutoDeployTrigger *string
 	// Relation is the RelCan… the decision was made against. Empty on typed
 	// system events that are not an authorization check (billing lifecycle).
 	Relation string
@@ -124,8 +140,6 @@ type AuditEvent struct {
 	OAuthAudience string
 	OAuthScopes   []string
 }
-
-type auditMaintenanceModeToKey struct{}
 
 type deferAllowedWriteAuditKey struct{}
 
@@ -337,14 +351,6 @@ var keyValueAuditVerbs = map[KeyValueAuditEffect]string{
 	KeyValueCreated:     AuditVerbKeyValueCreated,
 }
 
-// WithAuditMaintenanceModeTo attaches Render's one typed maintenance-toggle
-// audit detail to the authorization context. It is deliberately narrower than
-// a generic metadata map so value-bearing verb arguments remain structurally
-// unable to enter the audit store.
-func WithAuditMaintenanceModeTo(ctx context.Context, enabled bool) context.Context {
-	return context.WithValue(ctx, auditMaintenanceModeToKey{}, enabled)
-}
-
 // WithDeferredAllowedWriteAudit keeps denied authorization attempts visible
 // while deferring an allowed write event until the caller confirms its state
 // mutation succeeded. Composite atomic verbs use it when their successful
@@ -358,14 +364,18 @@ func defersAllowedWriteAudit(ctx context.Context) bool {
 	return deferred
 }
 
+// MaintenanceURIChange is a maintenance-page change's before and after.
+type MaintenanceURIChange struct{ From, To string }
+
 // RecordMaintenanceModeEffects records the successful field-level effects of
-// one atomic maintenance-mode write. URI precedes enabled when both changed,
-// matching the documented deterministic ordering. The fixed verbs keep this
-// narrow: callers cannot inject arbitrary audit vocabulary or metadata.
+// one atomic maintenance-mode write: uri when the page changed (Render's
+// fromURI/toURI), enabledChanged when the toggle did. URI precedes enabled
+// when both changed, matching the documented deterministic ordering. The fixed
+// verbs keep this narrow: callers cannot inject arbitrary audit vocabulary.
 func (b *Base) RecordMaintenanceModeEffects(
 	ctx context.Context,
 	app *appv1alpha1.App,
-	uriChanged bool,
+	uri *MaintenanceURIChange,
 	enabledChanged *bool,
 ) {
 	resource, err := b.resourceWorkspace(ctx, app.Labels)
@@ -374,12 +384,17 @@ func (b *Base) RecordMaintenanceModeEffects(
 		return
 	}
 	target := canonicalAppTarget(app)
-	if uriChanged {
-		b.emit(ctx, AuditVerbMaintenanceModeURIUpdated, RelCanOperate, resource, target, nil)
+	if uri != nil {
+		ev := b.verbAuditEvent(ctx, AuditVerbMaintenanceModeURIUpdated, resource, target)
+		ev.Relation = RelCanOperate
+		ev.MaintenanceURIFrom, ev.MaintenanceURITo = &uri.From, &uri.To
+		b.recordAudit(ctx, ev)
 	}
 	if enabledChanged != nil {
-		toggleCtx := WithAuditMaintenanceModeTo(ctx, *enabledChanged)
-		b.emit(toggleCtx, AuditVerbMaintenanceModeEnabled, RelCanOperate, resource, target, nil)
+		ev := b.verbAuditEvent(ctx, AuditVerbMaintenanceModeEnabled, resource, target)
+		ev.Relation = RelCanOperate
+		ev.MaintenanceModeTo = enabledChanged
+		b.recordAudit(ctx, ev)
 	}
 }
 
@@ -488,17 +503,58 @@ func (b *Base) RecordAutoscalingChanged(ctx context.Context, app *appv1alpha1.Ap
 	b.recordAudit(ctx, ev)
 }
 
-// RecordAutoDeployChanged records the typed enabled detail for a successful
-// SetAutoDeploy. Called after the write path confirms success, paired with
-// WithDeferredAllowedWriteAudit on the AuthorizeApp call.
-func (b *Base) RecordAutoDeployChanged(ctx context.Context, app *appv1alpha1.App, enabled bool) {
+// Render's autoDeployTrigger values (components.schemas.autoDeployTrigger).
+const (
+	AutoDeployTriggerOff        = "off"
+	AutoDeployTriggerCommit     = "commit"
+	AutoDeployTriggerChecksPass = "checksPass"
+)
+
+// Render's AutoDeployDisabled reasons bex produces (w3/m317). bex has no path
+// that turns auto-deploy off on a manual deploy, so Render's manual_deploy is
+// never written.
+const (
+	AutoDeployReasonSettingChange = "setting_change"
+	AutoDeployReasonRollback      = "rollback"
+)
+
+// RenderAutoDeployTrigger is Render's autoDeployTrigger for spec.autoDeploy
+// and its checks gate: off, commit (a push redeploys) or checksPass (a push
+// redeploys once its GitHub checks pass, w1/m181).
+func RenderAutoDeployTrigger(autoDeploy bool, trigger string) string {
+	switch {
+	case !autoDeploy:
+		return AutoDeployTriggerOff
+	case trigger == AutoDeployTriggerChecksPass:
+		return AutoDeployTriggerChecksPass
+	default:
+		return AutoDeployTriggerCommit
+	}
+}
+
+// RecordAutoDeployEnabled records auto-deploy turned on, with the trigger now
+// in force (Render's AutoDeployEnabled newTrigger). Called after the write
+// path confirms success, paired with WithDeferredAllowedWriteAudit on the
+// AuthorizeApp call.
+func (b *Base) RecordAutoDeployEnabled(ctx context.Context, app *appv1alpha1.App, newTrigger string) {
+	b.recordAutoDeploy(ctx, app, true, newTrigger, nil)
+}
+
+// RecordAutoDeployDisabled records auto-deploy turned off, with the trigger it
+// turned off and why, one of AutoDeployReason* (Render's AutoDeployDisabled
+// fromTrigger and reason). Called like RecordAutoDeployEnabled.
+func (b *Base) RecordAutoDeployDisabled(ctx context.Context, app *appv1alpha1.App, fromTrigger, reason string) {
+	b.recordAutoDeploy(ctx, app, false, fromTrigger, &reason)
+}
+
+func (b *Base) recordAutoDeploy(ctx context.Context, app *appv1alpha1.App, enabled bool, trigger string, reason *string) {
 	resource, err := b.resourceWorkspace(ctx, app.Labels)
 	if err != nil {
 		log.Printf("audit: resolve auto-deploy resource: %v", err)
 		return
 	}
 	ev := b.verbAuditEvent(ctx, AuditVerbSetAutoDeploy, resource, canonicalAppTarget(app))
-	ev.AutoDeployEnabled = &enabled
+	ev.AutoDeployEnabled, ev.AutoDeployTrigger, ev.AutoDeployReason = &enabled, &trigger, reason
 	b.recordAudit(ctx, ev)
 }
 
@@ -547,7 +603,6 @@ var appConfigVerbs = map[string]bool{
 	AuditVerbSetSecretFile: true, AuditVerbSetSecretFiles: true, AuditVerbDeleteSecretFile: true,
 	AuditVerbLinkService: true, AuditVerbUnlinkService: true, AuditVerbLinkEnvGroup: true,
 	AuditVerbJobCreate: true, AuditVerbJobCancel: true,
-	AuditVerbAddDisk: true, AuditVerbUpdateDisk: true, AuditVerbDeleteDisk: true,
 }
 
 // RecordAppConfigChanged records one service-configuration verb that actually
@@ -582,17 +637,25 @@ func (b *Base) RecordAppConfigChanged(ctx context.Context, app *appv1alpha1.App,
 	b.recordAudit(ctx, b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app)))
 }
 
-// RecordDiskSnapshotRestored records a successful snapshot restore with the
-// restored disk's id — Render's disk_snapshot_restored detail (w2/064).
-// Paired with WithDeferredAllowedWriteAudit on the authorize call.
-func (b *Base) RecordDiskSnapshotRestored(ctx context.Context, app *appv1alpha1.App, diskID string) {
-	resource, err := b.resourceWorkspace(ctx, app.Labels)
-	if err != nil {
-		log.Printf("audit: resolve %s resource: %v", AuditVerbRestoreDiskSnapshot, err)
+// RecordDiskChanged records a disk verb that completed with Render's disk
+// details: the disk's id on every one (a snapshot restore's since w2/064, the
+// rest since w3/m317), the size it was created with or resized to (sizeGB /
+// toSizeGB) and a resize's size before it (fromSizeGB). Paired with
+// WithDeferredAllowedWriteAudit on the authorize call.
+func (b *Base) RecordDiskChanged(ctx context.Context, app *appv1alpha1.App, verb, diskID string, fromGB, toGB *int32) {
+	switch verb {
+	case AuditVerbAddDisk, AuditVerbUpdateDisk, AuditVerbDeleteDisk, AuditVerbRestoreDiskSnapshot:
+	default:
+		log.Printf("audit: refusing to record %q as a disk effect", verb)
 		return
 	}
-	ev := b.verbAuditEvent(ctx, AuditVerbRestoreDiskSnapshot, resource, canonicalAppTarget(app))
-	ev.DiskID = diskID
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve %s resource: %v", verb, err)
+		return
+	}
+	ev := b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app))
+	ev.DiskID, ev.DiskSizeFromGB, ev.DiskSizeGB = diskID, fromGB, toGB
 	b.recordAudit(ctx, ev)
 }
 
@@ -1139,11 +1202,6 @@ func (b *Base) emit(ctx context.Context, verb, relation, resource, target string
 		outcome = AuditDenied
 	}
 	ev := AuditEvent{Verb: verb, Resource: resource, Target: target, Outcome: outcome, At: b.Now(), Relation: relation}
-	if verb == AuditVerbMaintenanceModeEnabled {
-		if enabled, ok := ctx.Value(auditMaintenanceModeToKey{}).(bool); ok {
-			ev.MaintenanceModeTo = &enabled
-		}
-	}
 	if id, ok := IdentityFrom(ctx); ok {
 		ev.Caller, ev.CallerMethod = id.Subject, id.Method
 		id.AttachOAuthProvenance(&ev)

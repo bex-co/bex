@@ -227,7 +227,7 @@ type renderService struct {
 	LinkedEnvGroupIDs []string `json:"linkedEnvGroupIds,omitempty"`
 	// AutoDeployTrigger is Render's newer representation of the same Auto-Deploy
 	// toggle (components.schemas.autoDeployTrigger): "off"|"commit"|"checksPass",
-	// from spec.autoDeploy and spec.autoDeployTrigger (triggerEnum; checksPass
+	// from spec.autoDeploy and spec.autoDeployTrigger (core.RenderAutoDeployTrigger; checksPass
 	// since w1/m181). Emitted alongside the legacy string enum so both Render API
 	// generations read it.
 	AutoDeployTrigger string `json:"autoDeployTrigger"`
@@ -374,20 +374,6 @@ func yesNoEnum(autoDeploy bool) string {
 		return "yes"
 	}
 	return "no"
-}
-
-// triggerEnum renders Render's autoDeployTrigger from spec.autoDeploy and its
-// checks gate: "off", "commit" (a push redeploys) or "checksPass" (a push
-// redeploys once its GitHub checks pass, w1/m181).
-func triggerEnum(autoDeploy bool, trigger string) string {
-	switch {
-	case !autoDeploy:
-		return "off"
-	case trigger == checksPassTrigger:
-		return checksPassTrigger
-	default:
-		return "commit"
-	}
 }
 
 func toRenderService(a AppView) renderService {

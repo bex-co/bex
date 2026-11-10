@@ -1197,6 +1197,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 		return DeployView{}, err
 	}
 	disablesAutoDeploy := o.DisableAutoDeploy && a.Spec.AutoDeploy
+	fromTrigger := core.RenderAutoDeployTrigger(a.Spec.AutoDeploy, a.Spec.AutoDeployTrigger)
 	d, err := s.openSelectedRelease(ctx, a, func(*appv1alpha1.App) (store.Deploy, *appv1alpha1.ReleaseConfigReference, error) {
 		return target, selected, nil
 	}, true, o.DisableAutoDeploy)
@@ -1204,7 +1205,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 		return DeployView{}, err
 	}
 	if disablesAutoDeploy {
-		s.RecordAutoDeployChanged(ctx, a, false)
+		s.RecordAutoDeployDisabled(ctx, a, fromTrigger, core.AutoDeployReasonRollback)
 	}
 	return view(d), nil
 }

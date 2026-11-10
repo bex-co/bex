@@ -37,7 +37,7 @@ import (
 // once, from 106 to 112, without a new divergence: it split the two event
 // details union entries, which excused any mismatch of any type, into one
 // entry per type and missing field, each recorded in ADR018's events row.
-const allowlistSize = 112
+const allowlistSize = 109
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0

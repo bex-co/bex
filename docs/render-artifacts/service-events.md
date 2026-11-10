@@ -47,8 +47,8 @@ The result supports **19 of the 31 supplied labels** truthfully: 10 existing sou
 | Maintenance | Maintenance Ended | — | Omitted: same provider-maintenance source boundary |
 | Maintenance | Maintenance Deploy Started | — | Omitted: same provider-maintenance source boundary |
 | Maintenance | Maintenance Deploy Finished | — | Omitted: same provider-maintenance source boundary |
-| Maintenance Mode | Config Changed | `maintenance_mode_enabled` | Existing: typed accepted maintenance-mode toggle |
-| Maintenance Mode | URI Updated | `maintenance_mode_uri_updated` | Existing: accepted URI update; URI/value is not copied into the event |
+| Maintenance Mode | Config Changed | `maintenance_mode_enabled` | Existing: typed accepted maintenance-mode toggle; details carry Render's `enabled` (w3/m317) |
+| Maintenance Mode | URI Updated | `maintenance_mode_uri_updated` | Existing: accepted URI update; since w3/m317 details carry Render's required `fromURI`/`toURI` (the service's own `maintenanceMode.uri`, readable on the service) |
 | Edge Cache | Enabled | — | Omitted: bex has no mutable edge-cache mode |
 | Edge Cache | Disabled | — | Omitted: bex has no mutable edge-cache mode |
 | Edge Cache | Purged | — | Omitted: static revisions are immutable; cache purge is a rejected anti-goal |

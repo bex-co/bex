@@ -1197,7 +1197,7 @@ func view(a *appv1alpha1.App) AppView {
 		// Like Branch: an image service stored with auto-deploy on (writable
 		// before w4/418) has no repository to watch, and create refuses it.
 		AutoDeploy:            imageBackedAutoDeploy(a),
-		AutoDeployTrigger:     triggerEnum(imageBackedAutoDeploy(a), a.Spec.AutoDeployTrigger),
+		AutoDeployTrigger:     core.RenderAutoDeployTrigger(imageBackedAutoDeploy(a), a.Spec.AutoDeployTrigger),
 		NotifyOnFail:          notifyOnFail,
 		NotificationsToSend:   policy,
 		RenderSubdomainPolicy: subdomainPolicy,
@@ -5150,6 +5150,7 @@ func (s *Service) setAutoDeployFetched(ctx context.Context, a *appv1alpha1.App, 
 	if enabled && prebuiltImageSource(a.Spec) {
 		return AppView{}, errPrebuiltImageField("autoDeploy")
 	}
+	fromTrigger := core.RenderAutoDeployTrigger(imageBackedAutoDeploy(a), a.Spec.AutoDeployTrigger)
 	trigger := a.Spec.AutoDeployTrigger
 	if checksPass != nil {
 		trigger = createAutoDeployTrigger(true, checksPass)
@@ -5169,7 +5170,14 @@ func (s *Service) setAutoDeployFetched(ctx context.Context, a *appv1alpha1.App, 
 	if err != nil {
 		return AppView{}, err
 	}
-	s.RecordAutoDeployChanged(ctx, a, enabled)
+	// An unchanged re-save changes nothing Render would announce.
+	switch {
+	case result.AutoDeployTrigger == fromTrigger:
+	case enabled:
+		s.RecordAutoDeployEnabled(ctx, a, result.AutoDeployTrigger)
+	default:
+		s.RecordAutoDeployDisabled(ctx, a, fromTrigger, core.AutoDeployReasonSettingChange)
+	}
 	return result, nil
 }
 
@@ -5321,7 +5329,10 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 	if current == in {
 		return s.view(a), nil
 	}
-	uriChanged := current.URI != in.URI
+	var uri *core.MaintenanceURIChange
+	if current.URI != in.URI {
+		uri = &core.MaintenanceURIChange{From: current.URI, To: in.URI}
+	}
 	var enabledChanged *bool
 	if current.Enabled != in.Enabled {
 		enabled := in.Enabled
@@ -5333,7 +5344,7 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 	if err != nil {
 		return AppView{}, err
 	}
-	s.RecordMaintenanceModeEffects(ctx, a, uriChanged, enabledChanged)
+	s.RecordMaintenanceModeEffects(ctx, a, uri, enabledChanged)
 	return result, nil
 }
 

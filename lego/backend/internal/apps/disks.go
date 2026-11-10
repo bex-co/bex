@@ -136,7 +136,7 @@ func (s *Service) AddDisk(ctx context.Context, serviceID, name, mountPath string
 		// still needs to know the rollout has not happened yet.
 		return DiskView{}, fmt.Errorf("attach disk: %w", err)
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbAddDisk)
+	s.RecordDiskChanged(ctx, a, core.AuditVerbAddDisk, disk.ID, nil, &disk.SizeGB)
 	return diskView(disk), nil
 }
 
@@ -233,7 +233,7 @@ func (s *Service) UpdateDisk(ctx context.Context, diskID string, name, mountPath
 	}); err != nil {
 		return DiskView{}, fmt.Errorf("update disk: %w", err)
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbUpdateDisk)
+	s.RecordDiskChanged(ctx, a, core.AuditVerbUpdateDisk, updated.ID, &disk.SizeGB, &updated.SizeGB)
 	return diskView(updated), nil
 }
 
@@ -241,7 +241,7 @@ func (s *Service) UpdateDisk(ctx context.Context, diskID string, name, mountPath
 // so is bex: "All data on the disk will be lost. The disk's associated service
 // will immediately lose access to it."
 func (s *Service) DeleteDisk(ctx context.Context, diskID string) error {
-	_, a, err := s.authorizeDisk(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, diskID)
+	disk, a, err := s.authorizeDisk(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, diskID)
 	if err != nil {
 		return err
 	}
@@ -253,7 +253,7 @@ func (s *Service) DeleteDisk(ctx context.Context, diskID string) error {
 	}); err != nil {
 		return fmt.Errorf("detach disk: %w", err)
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteDisk)
+	s.RecordDiskChanged(ctx, a, core.AuditVerbDeleteDisk, disk.ID, nil, nil)
 	return nil
 }
 

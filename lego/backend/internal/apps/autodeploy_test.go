@@ -19,6 +19,8 @@ package apps
 import (
 	"context"
 	"errors"
+	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
@@ -47,8 +49,8 @@ func TestAutoDeployTriggerMapping(t *testing.T) {
 		if got := yesNoEnum(c.autoDeploy); got != c.yesNo {
 			t.Errorf("yesNoEnum(%v) = %q, want %q", c.autoDeploy, got, c.yesNo)
 		}
-		if got := triggerEnum(c.autoDeploy, c.specTrigger); got != c.trigger {
-			t.Errorf("triggerEnum(%v, %q) = %q, want %q", c.autoDeploy, c.specTrigger, got, c.trigger)
+		if got := core.RenderAutoDeployTrigger(c.autoDeploy, c.specTrigger); got != c.trigger {
+			t.Errorf("RenderAutoDeployTrigger(%v, %q) = %q, want %q", c.autoDeploy, c.specTrigger, got, c.trigger)
 		}
 	}
 }
@@ -139,5 +141,40 @@ func TestSetAutoDeployFlipsFlagWithoutRebuild(t *testing.T) {
 	}
 	if !getApp(t, cl, "web").Spec.AutoDeploy {
 		t.Error("autoDeploy should be true after SetAutoDeploy(true)")
+	}
+}
+
+// TestAutoDeployAuditCarriesRendersTriggerAndReason pins w3/m317: turning
+// auto-deploy off in settings records Render's reason setting_change and the
+// trigger it turned off (fromTrigger); turning it on records the trigger now
+// in force (newTrigger) and no reason; an unchanged re-save records nothing.
+func TestAutoDeployAuditCarriesRendersTriggerAndReason(t *testing.T) {
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
+		Spec:       appv1alpha1.AppSpec{Repo: "https://github.com/x/app", AutoDeploy: true, AutoDeployTrigger: checksPassTrigger},
+	}
+	svc, _ := newService(nil, app)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	ctx := context.Background()
+	if _, err := svc.SetAutoDeploy(ctx, "web", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetAutoDeployTrigger(ctx, "web", "commit"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.SetAutoDeployTrigger(ctx, "web", "commit"); err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbSetAutoDeploy && ev.Outcome == core.AuditAllowed {
+			got = append(got, fmt.Sprintf("%v %v %v", ptrValue(ev.AutoDeployEnabled), ptrValue(ev.AutoDeployTrigger), ptrValue(ev.AutoDeployReason)))
+		}
+	}
+	// The repeated "commit" changed nothing, so it announces nothing.
+	want := []string{"false checksPass setting_change", "true commit <nil>"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("auto-deploy audit rows = %q, want %q", got, want)
 	}
 }

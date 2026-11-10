@@ -41,7 +41,7 @@ import (
 // check_suite for that commit deploys it once all of its check runs pass.
 
 // checksPassTrigger is spec.autoDeployTrigger's checks-gated value.
-const checksPassTrigger = "checksPass"
+const checksPassTrigger = core.AutoDeployTriggerChecksPass
 
 // Pending acceptance and the release receipt live on the same App so a single
 // optimistic write can request the release without losing accepted work.

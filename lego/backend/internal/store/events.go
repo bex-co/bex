@@ -19,6 +19,9 @@ package store
 import (
 	"context"
 	"fmt"
+	"maps"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -147,9 +150,14 @@ type ServiceEventRow struct {
 	DiskSizeGB              *int32
 	MaxmemoryPolicy         *string
 	PersistenceMode         *string
-	// DiskID is the dsk- id a disk_snapshot_restored row restored (w2/064).
-	// Nil for every other verb and for rows written before the column existed.
+	// DiskID is the dsk- id a disk verb acted on: the disk a snapshot restore
+	// restored (w2/064), or the disk created, resized or deleted (w3/m317).
+	// Nil for every other verb and for rows written before it was recorded.
 	DiskID *string
+	// AuditChanges are the maintenance-mode, disk-resize and auto-deploy facts
+	// (w3/m317): attached after a feed page is read (attachAuditChanges),
+	// selected directly by the by-id lookup.
+	AuditChanges
 
 	// Typed service_event_facts columns. FactType is the closed discriminator;
 	// all remaining values are bounded scalars used only by the types that own
@@ -521,7 +529,75 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 	if err := s.attachDeployEnds(ctx, out); err != nil {
 		return nil, err
 	}
+	if err := s.attachAuditChanges(ctx, out); err != nil {
+		return nil, err
+	}
 	return out, s.attachDiskUsage(ctx, out)
+}
+
+// AuditChanges are the audit_events columns Render's maintenance-mode,
+// disk-resize and auto-deploy event members need beyond the feed's UNION. Nil
+// for every other verb and for rows recorded before they existed.
+type AuditChanges struct {
+	MaintenanceModeTo  *bool
+	DiskSizeFromGB     *int32
+	MaintenanceURIFrom *string
+	MaintenanceURITo   *string
+	AutoDeployReason   *string
+	AutoDeployTrigger  *string
+}
+
+// auditChangesColumns are AuditChanges' columns of audit_events aliased a, in
+// scanDestinations' order.
+const auditChangesColumns = `a.maintenance_mode_to, a.disk_size_from_gb, a.maintenance_uri_from, a.maintenance_uri_to,
+       a.auto_deploy_reason, a.auto_deploy_trigger`
+
+func (c *AuditChanges) scanDestinations() []any {
+	return []any{&c.MaintenanceModeTo, &c.DiskSizeFromGB, &c.MaintenanceURIFrom, &c.MaintenanceURITo,
+		&c.AutoDeployReason, &c.AutoDeployTrigger}
+}
+
+// auditRowID is an audit row's id from its feed key ("<audit row id>:").
+func auditRowID(feedKey string) string { return strings.TrimSuffix(feedKey, ":") }
+
+// auditChangeVerbs are the verbs whose rows carry attachAuditChanges' facts.
+var auditChangeVerbs = map[string]bool{
+	core.AuditVerbMaintenanceModeEnabled: true, core.AuditVerbMaintenanceModeURIUpdated: true,
+	core.AuditVerbUpdateDisk: true, core.AuditVerbSetAutoDeploy: true,
+}
+
+// attachAuditChanges fills the maintenance-mode, disk-resize and auto-deploy
+// facts on a page's audit rows from audit_events in one read (w3/m317), so the
+// feed's UNION projection stays as it is.
+func (s *PGStore) attachAuditChanges(ctx context.Context, rows []ServiceEventRow) error {
+	at := map[string][]int{}
+	for i, r := range rows {
+		if r.Source == EventSourceAudit && auditChangeVerbs[r.Verb] {
+			id := auditRowID(r.Key)
+			at[id] = append(at[id], i)
+		}
+	}
+	if len(at) == 0 {
+		return nil
+	}
+	found, err := s.Pool.Query(ctx,
+		`SELECT a.id, `+auditChangesColumns+` FROM audit_events a WHERE a.id = ANY($1)`,
+		slices.Collect(maps.Keys(at)))
+	if err != nil {
+		return fmt.Errorf("read audit change details: %w", err)
+	}
+	defer found.Close()
+	for found.Next() {
+		var id string
+		var c AuditChanges
+		if err := found.Scan(append([]any{&id}, c.scanDestinations()...)...); err != nil {
+			return fmt.Errorf("read audit change details: %w", err)
+		}
+		for _, i := range at[id] {
+			rows[i].AuditChanges = c
+		}
+	}
+	return found.Err()
 }
 
 // attachDeployEnds fills End on a page's ended deploy rows from their deploy
@@ -676,7 +752,11 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.clear_cache ELSE false END AS clear_cache,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.disk_id END AS disk_id,
        COALESCE(h.app_id, h.service_id),
-       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(df.leader_id, '') ELSE '' END AS leader_id
+       CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(df.leader_id, '') ELSE '' END AS leader_id,
+       -- AuditChanges (w3/m317), read off the audit row this query already
+       -- joins rather than in attachAuditChanges' second round trip; the join
+       -- matches audit hits only, so any other hit reads NULLs.
+       ` + auditChangesColumns + `
 FROM hit h
 LEFT JOIN deploys d
   ON h.source = '` + EventSourceDeploy + `' AND d.id = h.source_row_id
@@ -701,7 +781,7 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	var out ServiceEventLookup
 	r := &out.Event
 	err := s.Pool.QueryRow(ctx, getServiceEventQuery, workspaceID, eventID).Scan(
-		serviceEventScanDestinations(r, &out.ServiceID, &r.LeaderID)...,
+		serviceEventScanDestinations(r, append([]any{&out.ServiceID, &r.LeaderID}, r.AuditChanges.scanDestinations()...)...)...,
 	)
 	if err != nil {
 		return ServiceEventLookup{}, classify("service event", err)

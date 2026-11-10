@@ -51,7 +51,7 @@ import (
 //   - Required fields bex does not record are omitted, never invented: an
 //     actor's email, build and pre-deploy execution ids, a deleted branch's
 //     successor, autoscaling criteria, and the disk, maintenance-mode and
-//     auto-deploy-reason facts the audit row lacks (w3/m302, w3/061).
+//     auto-deploy facts of a row recorded before w3/m317 kept them (w3/m302).
 //   - Rejecting a malformed cursor with 400 (Render's behavior here is unspecified).
 //
 // Mounted under /v1/services, like every other apps-adjacent
@@ -154,6 +154,19 @@ type renderDetails struct {
 	MountPath        string   `json:"mountPath,omitempty"`
 	UsagePercent     *float64 `json:"usagePercent,omitempty"`
 	ThresholdPercent *float64 `json:"thresholdPercent,omitempty"`
+	// disk_created's size, disk_updated's before and after (w3/m317).
+	SizeGB     *int32 `json:"sizeGB,omitempty"`
+	FromSizeGB *int32 `json:"fromSizeGB,omitempty"`
+	ToSizeGB   *int32 `json:"toSizeGB,omitempty"`
+	// maintenance_mode_enabled's toggle and maintenance_mode_uri_updated's
+	// pages; an empty URI is Render's default page, so it is sent, not omitted.
+	Enabled *bool   `json:"enabled,omitempty"`
+	FromURI *string `json:"fromURI,omitempty"`
+	ToURI   *string `json:"toURI,omitempty"`
+	// auto_deploy_disabled's trigger before it (its reason rides on Reason) and
+	// auto_deploy_enabled's trigger after it.
+	FromTrigger *string `json:"fromTrigger,omitempty"`
+	NewTrigger  *string `json:"newTrigger,omitempty"`
 }
 
 // unhealthyMessage is server_failed's reason when an instance failed its
@@ -333,8 +346,23 @@ func toRenderEvent(e Event) renderEvent {
 		}
 	case TypePostgresClusterLeaderChanged:
 		d.LeaderID = e.Details.LeaderID
-	case TypeDiskSnapshotRestored:
+	case TypeDiskSnapshotRestored, TypeDiskDeleted:
 		d.DiskID = e.Details.DiskID
+	case TypeDiskCreated:
+		d.DiskID, d.SizeGB = e.Details.DiskID, e.Details.DiskSizeGB
+	case TypeDiskUpdated:
+		d.DiskID, d.FromSizeGB, d.ToSizeGB = e.Details.DiskID, e.Details.DiskSizeFromGB, e.Details.DiskSizeGB
+	case TypeMaintenanceModeEnabled:
+		d.Enabled = e.Details.MaintenanceEnabled
+	case TypeMaintenanceModeURIUpdated:
+		d.FromURI, d.ToURI = e.Details.MaintenanceURIFrom, e.Details.MaintenanceURITo
+	case TypeAutoDeployEnabled:
+		d.NewTrigger = e.Details.AutoDeployTrigger
+	case TypeAutoDeployDisabled:
+		d.FromTrigger = e.Details.AutoDeployTrigger
+		if reason := e.Details.AutoDeployReason; reason != nil {
+			d.Reason = *reason
+		}
 	case TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered:
 		d.DiskID, d.DiskName, d.MountPath = e.Details.DiskID, e.Details.DiskName, e.Details.MountPath
 		d.UsagePercent, d.ThresholdPercent = e.Details.UsagePercent, e.Details.ThresholdPercent

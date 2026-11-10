@@ -196,6 +196,17 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"mountPath":        gqlutil.StrField(func(d Details) any { return d.MountPath }),
 		"usagePercent":     gqlutil.FloatField(func(d Details) any { return d.UsagePercent }),
 		"thresholdPercent": gqlutil.FloatField(func(d Details) any { return d.ThresholdPercent }),
+		// disk_created / _updated (w3/m317): the size, and a resize's before.
+		"sizeGB":     gqlutil.IntField(func(d Details) any { return d.DiskSizeGB }),
+		"fromSizeGB": gqlutil.IntField(func(d Details) any { return d.DiskSizeFromGB }),
+		// maintenance_mode_enabled / _uri_updated (w3/m317).
+		"maintenanceEnabled": gqlutil.BoolField(func(d Details) any { return d.MaintenanceEnabled }),
+		"fromURI":            gqlutil.StrField(func(d Details) any { return d.MaintenanceURIFrom }),
+		"toURI":              gqlutil.StrField(func(d Details) any { return d.MaintenanceURITo }),
+		// auto_deploy_enabled / _disabled (w3/m317): Render's trigger after an
+		// enable or before a disable, and why a disable happened.
+		"autoDeployTrigger":        gqlutil.StrField(func(d Details) any { return d.AutoDeployTrigger }),
+		"autoDeployDisabledReason": gqlutil.StrField(func(d Details) any { return d.AutoDeployReason }),
 		"trigger": &graphql.Field{Type: triggerGQLType, Resolve: gqlutil.Field(func(d Details) any {
 			if d.Trigger == nil {
 				return nil

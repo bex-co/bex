@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -68,6 +69,94 @@ func TestPGDiskSnapshotRestoreCarriesDiskID(t *testing.T) {
 	}
 	if got := lookup.Event.DiskID; got == nil || *got != "dsk-restored" {
 		t.Fatalf("by-id DiskID = %v, want dsk-restored", got)
+	}
+}
+
+// TestPGAuditChangeDetailsRoundTrip pins w3/m317: a disk resize, a
+// maintenance-page change and toggle, and an auto-deploy disable keep the facts
+// Render's members require, and both the feed and the by-id lookup read them
+// back. A row recorded without them (any row from before 0222) reads nil.
+func TestPGAuditChangeDetailsRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	t.Cleanup(pool.Close)
+	tenant, err := st.CreateWorkspace(ctx, "audit-changes-"+ids.New(ids.Workspace), PlanHobby, "fixture-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, tenant.ID)
+		_ = st.DeleteTenant(context.Background(), tenant.ID)
+	})
+	app, err := st.CreateApp(ctx, App{
+		TenantID: tenant.ID, Name: "changed", Image: "nginx:1", Type: "web_service",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	from, to := int32(10), int32(20)
+	at := time.Now().UTC().Truncate(time.Second)
+	record := func(minute int, verb string, set func(*core.AuditEvent)) {
+		t.Helper()
+		ev := core.AuditEvent{
+			Caller: "fixture-owner", Verb: verb, Resource: core.WorkspaceObject(tenant.ID),
+			Target: core.ServiceTarget(app.ID), Outcome: core.AuditAllowed, At: at.Add(time.Duration(minute) * time.Minute),
+		}
+		set(&ev)
+		if err := st.Record(ctx, ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+	record(0, core.AuditVerbUpdateDisk, func(ev *core.AuditEvent) {
+		ev.DiskID, ev.DiskSizeFromGB, ev.DiskSizeGB = "dsk-resized", &from, &to
+	})
+	record(1, core.AuditVerbMaintenanceModeURIUpdated, func(ev *core.AuditEvent) {
+		ev.MaintenanceURIFrom, ev.MaintenanceURITo = new("https://status.example.com"), new("")
+	})
+	record(2, core.AuditVerbMaintenanceModeEnabled, func(ev *core.AuditEvent) { ev.MaintenanceModeTo = new(true) })
+	record(3, core.AuditVerbSetAutoDeploy, func(ev *core.AuditEvent) {
+		ev.AutoDeployEnabled = new(false)
+		ev.AutoDeployTrigger, ev.AutoDeployReason = new("checksPass"), new(core.AutoDeployReasonRollback)
+	})
+	record(4, core.AuditVerbSetAutoDeploy, func(ev *core.AuditEvent) { ev.AutoDeployEnabled = new(false) })
+
+	page, err := st.ListServiceEvents(ctx, app.ID, tenant.ID, ServiceEventFilter{Verbs: []string{
+		core.AuditVerbUpdateDisk, core.AuditVerbMaintenanceModeURIUpdated,
+		core.AuditVerbMaintenanceModeEnabled, core.AuditVerbSetAutoDeploy,
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(page) != 5 {
+		t.Fatalf("feed rows = %+v, want 5", page)
+	}
+	// Newest first: the bare disable, the rollback disable, toggle, URI, resize.
+	if bare := page[0].AuditChanges; bare != (AuditChanges{}) {
+		t.Errorf("a row without the facts = %+v, want none", bare)
+	}
+	checks := []struct {
+		row  ServiceEventRow
+		ok   bool
+		what string
+	}{
+		{page[1], deref(page[1].AutoDeployReason) == "rollback" && deref(page[1].AutoDeployTrigger) == "checksPass", "auto-deploy reason rollback, trigger checksPass"},
+		{page[2], page[2].MaintenanceModeTo != nil && *page[2].MaintenanceModeTo, "maintenance enabled"},
+		{page[3], deref(page[3].MaintenanceURIFrom) == "https://status.example.com" && deref(page[3].MaintenanceURITo) == "", "maintenance URI from status.example.com to the default page"},
+		{page[4], deref(page[4].DiskID) == "dsk-resized" && page[4].DiskSizeFromGB != nil && *page[4].DiskSizeFromGB == 10 &&
+			page[4].DiskSizeGB != nil && *page[4].DiskSizeGB == 20, "disk dsk-resized from 10 to 20 GB"},
+	}
+	for _, c := range checks {
+		if !c.ok {
+			t.Errorf("feed row %s = %+v, want %s", c.row.Verb, c.row, c.what)
+		}
+		lookup, err := st.GetServiceEvent(ctx, tenant.ID, ids.Derive(ids.Event, c.row.Key))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := lookup.Event.AuditChanges; !reflect.DeepEqual(got, c.row.AuditChanges) {
+			t.Errorf("by-id %s = %+v, want the feed's %+v", c.row.Verb, got, c.row.AuditChanges)
+		}
 	}
 }
 

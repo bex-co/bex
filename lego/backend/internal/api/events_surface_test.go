@@ -644,8 +644,8 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 	at := time.Date(2026, 8, 27, 11, 54, 7, 0, time.UTC)
 	fake := &fakeEventStore{rows: []store.ServiceEventRow{
 		{Key: "aud-domain-verified:", At: at, Source: store.EventSourceAudit, Verb: "apps.VerifyDomain", Caller: "user-x"},
-		{Key: "aud-disk-created:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: "apps.AddDisk", Caller: "user-x"},
-		{Key: "aud-disk-deleted:", At: at.Add(-2 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.DeleteDisk", Caller: "user-x"},
+		{Key: "aud-disk-created:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: "apps.AddDisk", Caller: "user-x", DiskID: new("dsk-0123456789abcdefghij"), DiskSizeGB: new(int32(10))},
+		{Key: "aud-disk-deleted:", At: at.Add(-2 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.DeleteDisk", Caller: "user-x", DiskID: new("dsk-0123456789abcdefghij")},
 		{Key: "aud-disk-restored:", At: at.Add(-3 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x", DiskID: new("dsk-0123456789abcdefghij")},
 		// A restore recorded before audit rows carried disk_id (w2/064).
 		{Key: "aud-disk-restored-old:", At: at.Add(-4 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x"},
@@ -678,7 +678,7 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 		}
 	}
 
-	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-08-01T00:00:00Z") { id type serviceId timestamp cursor } }`)
+	gqlData := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-08-01T00:00:00Z") { id type serviceId timestamp cursor details { diskId sizeGB } } }`)
 	gqlList, ok := gqlData["serviceEvents"].([]any)
 	if !ok || len(gqlList) != len(wantTypes) {
 		t.Fatalf("GraphQL serviceEvents = %v, want %d events", gqlData["serviceEvents"], len(wantTypes))
@@ -698,10 +698,19 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 		}
 	}
 
-	// Render's pinned enum accepts disk_created/disk_deleted/disk_updated; the
-	// handler must push the matching verb filter into the store query. The fake
-	// store does not narrow rows, so we assert the push-down rather than the
-	// response body shape (real-Postgres coverage lives in store tests).
+	// Render's Disk Created and Disk Deleted details (w3/m317).
+	if d := rest[1].Event.Details; d["diskId"] != "dsk-0123456789abcdefghij" || d["sizeGB"] != float64(10) {
+		t.Errorf("disk_created details = %+v, want diskId dsk-0123456789abcdefghij sizeGB 10", d)
+	}
+	if d := rest[2].Event.Details; d["diskId"] != "dsk-0123456789abcdefghij" || d["sizeGB"] != nil {
+		t.Errorf("disk_deleted details = %+v, want diskId dsk-0123456789abcdefghij alone", d)
+	}
+	if d := gqlList[1].(map[string]any)["details"].(map[string]any); d["diskId"] != "dsk-0123456789abcdefghij" || d["sizeGB"] != float64(10) {
+		t.Errorf("GraphQL disk_created details = %+v, want the REST diskId and sizeGB", d)
+	}
+	if d := mcpEvents[1].Event.Details; d["diskId"] != "dsk-0123456789abcdefghij" || d["sizeGB"] != float64(10) {
+		t.Errorf("MCP disk_created details = %+v, want the REST diskId and sizeGB", d)
+	}
 	// Render's Disk Snapshot Restored details: diskId and triggeredByUser.
 	if d := rest[3].Event.Details; d["diskId"] != "dsk-0123456789abcdefghij" || d["triggeredByUser"] != "user-x" {
 		t.Errorf("disk_snapshot_restored details = %+v, want diskId dsk-0123456789abcdefghij triggeredByUser user-x", d)
@@ -710,6 +719,10 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 		t.Errorf("pre-064 restore details = %+v, want no diskId and triggeredByUser user-x", d)
 	}
 
+	// Render's pinned enum accepts disk_created/disk_deleted/disk_updated; the
+	// handler must push the matching verb filter into the store query. The fake
+	// store does not narrow rows, so we assert the push-down rather than the
+	// response body shape (real-Postgres coverage lives in store tests).
 	for _, diskType := range []string{events.TypeDiskCreated, events.TypeDiskDeleted, events.TypeDiskUpdated, events.TypeDiskSnapshotRestored} {
 		fake.gotFil = store.ServiceEventFilter{}
 		filtered := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z&type="+diskType, testToken, "")
