@@ -1,6 +1,6 @@
 # w3 · m276 — Web services' extra private listeners are discovered, and openPorts lists only ports that listen, as on Render
 
-**Worker:** worker3 **Goal:** every service's private-network listeners are reachable and reported the way Render's are: a web service's extra listeners too, and never a declared port nothing listens on **Status:** todo — t001–t006 done; live check then t007 Closeout pending (gate cleared 2026-11-10)
+**Worker:** worker3 **Goal:** every service's private-network listeners are reachable and reported the way Render's are: a web service's extra listeners too, and never a declared port nothing listens on **Status:** blocked — t001–t006, t008 done; t007 Closeout waits on t008's production deploy and the live recheck
 
 ## Tasks (in order)
 
@@ -12,7 +12,8 @@
 | t004 | Render parity — **DONE** | 30m | t003 |
 | t005 | Simplify — **DONE** | 20m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| t008 | Unfinished sweeps prove declared ports directly — **DONE** | 1h | t006 |
+| t007 | Closeout | 10m | t005, t006, t008 |
 
 ## Definition of done
 
@@ -41,3 +42,17 @@
 - **Gate cleared:** main's latest `chore(deploy): pin platform images to 4630a48a765e` (`043519226`, deploy.yml run 42777932436, success) contains `dd31fbdef` (this milestone), checked with `git merge-base --is-ancestor`. Moved `w3/blocked/m276/` → `w3/m276/`.
 - **Status:** pending live verification; the deploy alone does not close it.
 - **Next:** with the QA account, together with m273 t005: a web service listening on a second port is reachable on it from a sibling and lists it in `openPorts`; an image-declared port with no listener drops from `openPorts` after the first scan (recheck the `[80, 8080]` observation from m273's 2026-11-05 record). Then t007 Closeout.
+
+## Live check (2026-11-10, loopx w3 via /pmx)
+
+- Run with m273 t005 on production pin `4630a48a765e` (`bex-canary`, QA account).
+- **DoD 1 passes:** web service `qa-m273-web2` (`python:3.12-alpine` on 8080 and 9090) listed `openPorts: [8080, 9090]`, and a sibling worker reached `qa-m273-web2:9090` (200).
+- **DoD 2 fails:** three `traefik/whoami` services serving 8080 (image-declared 80) kept `openPorts: [80, 8080]` for 7+ minutes; `:80` from the sibling failed to connect. Their `status.runtimePorts.ports` read `[80, 8080]` (read-only `kubectl get`, under m174's D1 authorization): production sweeps run out of time, and the unfinished-sweep rule kept the declared 80 forever. This is the `[80, 8080]` observation m273 recorded on 2026-11-05.
+- **Fix:** t008 (direct check of unproven declared ports, with a found listener as control).
+- **Kept for the recheck:** `qa-m273-web1` (`srv-dbpdvqqj0hgs73eavog0`, web) and `qa-m273-wp` (`srv-dbpdvqa0mi5c73c5pifg`, private), both starter in `bex-canary`. Delete both after the recheck, with 404 proofs.
+
+## Blocked (2026-11-10, loopx w3 via /pmx)
+
+- **Gate:** the live DoD 2 recheck needs an operator built from t008's commit (`fix(operator): … (w3/m276 t008)`); dev-N shares the cluster's one operator.
+- **Release condition:** a `chore(deploy): pin platform images to <sha>` on main whose sha contains t008's commit (`git merge-base --is-ancestor`). Then, read-only, `GET /v1/services/srv-dbpdvqqj0hgs73eavog0` and `…/srv-dbpdvqa0mi5c73c5pifg` with the QA account: both must read `openPorts: [8080]` within two scan intervals (existing services self-heal on rescan). Record it, delete both fixtures with 404 proofs, run t007.
+- No user decision needed.

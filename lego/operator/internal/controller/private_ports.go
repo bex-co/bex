@@ -125,27 +125,79 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 	}
 	found := listenerSet(open)
 	next := &appv1alpha1.RuntimePortsStatus{Revision: revision, Ports: found}
+	network := releaseNetwork(app, revision)
+	if partial {
+		// The sweep did not reach every port. A rescan may add, and a new
+		// release's first record keeps its image's declared ports as unproven;
+		// either way a declared port the direct check shows nothing binds goes.
+		switch {
+		case sameRevision:
+			next.Ports = mergePorts(prev.Ports, found)
+		case network != nil:
+			next.Ports = mergePorts(found, network.Ports)
+		}
+		next.Ports = capPorts(withoutPorts(next.Ports, r.declaredPortsClosed(ctx, ip, network, next.Ports, found)))
+	}
 	if sameRevision {
 		next.Retained = prev.Retained
-		if partial {
-			// The sweep did not reach every port: it may add, never remove.
-			next.Ports = capPorts(mergePorts(prev.Ports, found))
-		}
 		return next
-	}
-	if network := app.Status.ImageNetwork; partial && network != nil && network.Revision == revision {
-		// A new release's first sweep did not finish: a declared port it did
-		// not reach is unproven, so it stays listed (openPorts leaves out a
-		// declared port only once a scan shows nothing binds it).
-		next.Ports = capPorts(mergePorts(found, network.Ports))
 	}
 	if prev != nil {
 		// A new revision: the old instances still serve what they bound until
 		// the rollout replacing them completes.
-		next.Retained = capPorts(slices.DeleteFunc(mergePorts(prev.Ports, prev.Retained),
-			func(p int32) bool { return slices.Contains(next.Ports, p) }))
+		next.Retained = capPorts(withoutPorts(mergePorts(prev.Ports, prev.Retained), next.Ports))
 	}
 	return next
+}
+
+// declaredCheckTimeout bounds the direct check of a release's declared ports
+// after its sweep ran out of time. ScanPorts dials 64 at once with a 400 ms
+// connect timeout, so 75 declared ports and a control finish in two rounds.
+const declaredCheckTimeout = 3 * time.Second
+
+// releaseNetwork is the image network of the release at revision: the
+// candidate's, else the serving one's; nil when neither is that release.
+func releaseNetwork(app *appv1alpha1.App, revision string) *appv1alpha1.ImageNetworkStatus {
+	for _, network := range []*appv1alpha1.ImageNetworkStatus{app.Status.ImageNetwork, app.Status.ServingNetwork} {
+		if network != nil && network.Revision == revision {
+			return network
+		}
+	}
+	return nil
+}
+
+// declaredPortsClosed is the ports of listed that network declares, that a
+// sweep which ran out of time did not find, and that a direct connect shows
+// nothing binds (w3/m276 t008). Closed ports that drop probes keep a
+// production sweep from finishing, so without this an image-declared port
+// nothing listens on stayed in openPorts for the life of its release. A port
+// the sweep found open, the primary when it can, is dialed in the same pass as
+// a control: unless it answers, the pod is not answering and the check proves
+// nothing.
+func (r *AppReconciler) declaredPortsClosed(ctx context.Context, ip string, network *appv1alpha1.ImageNetworkStatus, listed, found []int32) []int32 {
+	bounded, ok := r.PortScanner.(portsScanner)
+	if !ok || network == nil || len(found) == 0 {
+		return nil
+	}
+	unproven := withoutPorts(slices.DeleteFunc(slices.Clone(listed), func(p int32) bool { return !slices.Contains(network.Ports, p) }), found)
+	if len(unproven) == 0 {
+		return nil
+	}
+	control := found[0]
+	if slices.Contains(found, network.PrimaryPort) {
+		control = network.PrimaryPort
+	}
+	dial := []int{int(control)}
+	for _, p := range unproven {
+		dial = append(dial, int(p))
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, declaredCheckTimeout)
+	defer cancel()
+	open, err := bounded.ScanPorts(checkCtx, ip, dial)
+	if err != nil || !slices.Contains(open, int(control)) {
+		return nil
+	}
+	return withoutPorts(unproven, listenerSet(open))
 }
 
 // detectPrivatePrimary rescues the release of a private image-port service
@@ -221,6 +273,11 @@ func mergePorts(sets ...[]int32) []int32 {
 	out := slices.Concat(sets...)
 	slices.Sort(out)
 	return slices.Compact(out)
+}
+
+// withoutPorts is ports without any port in drop, as a new slice.
+func withoutPorts(ports, drop []int32) []int32 {
+	return slices.DeleteFunc(slices.Clone(ports), func(p int32) bool { return slices.Contains(drop, p) })
 }
 
 // capPorts bounds a set to the CRD's 75 entries; an empty set is nil, as

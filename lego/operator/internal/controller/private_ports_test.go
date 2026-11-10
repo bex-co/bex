@@ -36,7 +36,7 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-func privateScanFixture(scanner *cannedScanner, ready bool, every time.Duration) (*AppReconciler, *appv1alpha1.App, *appsv1.Deployment) {
+func privateScanFixture(scanner portscan.Scanner, ready bool, every time.Duration) (*AppReconciler, *appv1alpha1.App, *appsv1.Deployment) {
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "db", Namespace: "tea-a"},
 		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Image: "ghcr.io/example/db:1", Port: 5432},
@@ -120,6 +120,101 @@ func TestScanPrivatePorts(t *testing.T) {
 			}
 			if got == nil || got.Revision != tc.want.Revision || !slices.Equal(got.Ports, tc.want.Ports) || !slices.Equal(got.Retained, tc.want.Retained) {
 				t.Fatalf("scan = %+v, want %+v", got, tc.want)
+			}
+		})
+	}
+}
+
+// boundedScanner's sweep runs out of time with open found; its direct check
+// answers the ports in listening.
+type boundedScanner struct {
+	partialScanner
+	listening []int
+	checkErr  error
+	checked   [][]int
+}
+
+func (s *boundedScanner) ScanPorts(_ context.Context, _ string, ports []int) ([]int, error) {
+	s.checked = append(s.checked, slices.Clone(ports))
+	if s.checkErr != nil {
+		return nil, s.checkErr
+	}
+	var open []int
+	for _, p := range ports {
+		if slices.Contains(s.listening, p) {
+			open = append(open, p)
+		}
+	}
+	return open, nil
+}
+
+// A sweep that ran out of time no longer keeps a declared port nothing binds
+// (w3/m276 t008): production sweeps rarely finish, so whoami's declared 80
+// stayed in openPorts beside the 8080 it serves for the life of the release.
+func TestScanPrivatePortsDirectCheck(t *testing.T) {
+	network := &appv1alpha1.ImageNetworkStatus{Revision: "rev-2", PrimaryPort: 8080, Ports: []int32{80, 8080}}
+	for name, tc := range map[string]struct {
+		scanner *boundedScanner
+		prev    *appv1alpha1.RuntimePortsStatus
+		serving bool // the network is the serving one, not the candidate
+		want    []int32
+		checked []int // the ports the direct check dialed, nil for none
+	}{
+		"a new release drops a declared port nothing binds": {
+			scanner: &boundedScanner{partialScanner: partialScanner{open: []int{8080}}, listening: []int{8080}},
+			want:    []int32{8080}, checked: []int{8080, 80},
+		},
+		"a declared port the sweep did not reach but that binds stays": {
+			scanner: &boundedScanner{partialScanner: partialScanner{open: []int{8080}}, listening: []int{80, 8080}},
+			want:    []int32{80, 8080}, checked: []int{8080, 80},
+		},
+		"a control that does not answer proves nothing": {
+			scanner: &boundedScanner{partialScanner: partialScanner{open: []int{8080}}},
+			want:    []int32{80, 8080}, checked: []int{8080, 80},
+		},
+		"a check that fails proves nothing": {
+			scanner: &boundedScanner{partialScanner: partialScanner{open: []int{8080}}, listening: []int{8080}, checkErr: portscan.ErrUnreachable},
+			want:    []int32{80, 8080}, checked: []int{8080, 80},
+		},
+		"a rescan drops the declared port and keeps an undeclared listener it did not reach": {
+			scanner: &boundedScanner{partialScanner: partialScanner{open: []int{8080}}, listening: []int{8080, 9187}},
+			prev:    &appv1alpha1.RuntimePortsStatus{Revision: "rev-2", Ports: []int32{80, 8080, 9187}},
+			serving: true,
+			want:    []int32{8080, 9187}, checked: []int{8080, 80},
+		},
+		"a rescan whose record already left the declared port out dials nothing": {
+			scanner: &boundedScanner{partialScanner: partialScanner{open: []int{8080}}, listening: []int{8080}},
+			prev:    &appv1alpha1.RuntimePortsStatus{Revision: "rev-2", Ports: []int32{8080}},
+			serving: true,
+			want:    []int32{8080},
+		},
+		"the control is the primary when the sweep found it": {
+			scanner: &boundedScanner{partialScanner: partialScanner{open: []int{3000, 8080}}, listening: []int{3000, 8080}},
+			want:    []int32{3000, 8080}, checked: []int{8080, 80},
+		},
+		"nothing declared is left to check": {
+			scanner: &boundedScanner{partialScanner: partialScanner{open: []int{80, 8080}}, listening: []int{80, 8080}},
+			want:    []int32{80, 8080},
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, app, dep := privateScanFixture(tc.scanner, true, time.Nanosecond)
+			app.Status.RuntimePorts = tc.prev
+			if tc.serving {
+				app.Status.ServingNetwork = network
+			} else {
+				app.Status.ImageNetwork = network
+			}
+			got := r.scanPrivatePorts(context.Background(), app, dep)
+			if got == nil || !slices.Equal(got.Ports, tc.want) {
+				t.Fatalf("scan = %+v, want ports %v", got, tc.want)
+			}
+			var checked []int
+			if len(tc.scanner.checked) > 0 {
+				checked = tc.scanner.checked[0]
+			}
+			if len(tc.scanner.checked) > 1 || !slices.Equal(checked, tc.checked) {
+				t.Fatalf("direct checks = %v, want a single check of %v", tc.scanner.checked, tc.checked)
 			}
 		})
 	}
