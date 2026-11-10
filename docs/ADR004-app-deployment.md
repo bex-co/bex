@@ -159,7 +159,7 @@ services:
 
 **Image-port private services (w6/m148, 2026-10-20).** The paragraph above is the configured-port contract. It still holds for web services, native private services, and every private service created before w6/m148 (prebuilt-image private services before w6/095, 2026-10-29).
 
-- **The exception.** A new Docker private service — Git-built, or prebuilt from an `image:` (w6/095; read anonymously, or with the workspace registry credential bound to it) — created **without** a port (the dashboard leaves the field blank for that shape) publishes every TCP port its image declares with `EXPOSE`, under its stable hostname.
+- **The exception.** A new Docker private service — Git-built, or prebuilt from an `image:` (w6/095; read anonymously, or with the registry credential the service selected; w4/m301) — created **without** a port (the dashboard leaves the field blank for that shape) publishes every TCP port its image declares with `EXPOSE`, under its stable hostname.
 - **`PORT`** is the resolved **primary**, which is also the TCP health-checked port and the `internalAddress` suffix:
   - an explicit port wins;
   - otherwise 3000, if the image declares it;

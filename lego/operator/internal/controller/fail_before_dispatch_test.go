@@ -114,7 +114,7 @@ func TestImageRefusalNamesTheImageAndTheFix(t *testing.T) {
 		if tc.name == "forbidden on another host" {
 			ref = "ghcr.io/acme/private:1"
 		}
-		got := imageRefusalError(ref, fmt.Errorf("wrapped: %w", tc.err)).Error()
+		got := imageRefusalError(ref, fmt.Errorf("wrapped: %w", tc.err), false).Error()
 		for _, want := range tc.want {
 			if !strings.Contains(got, want) {
 				t.Errorf("%s: %q, want it to contain %q", tc.name, got, want)
@@ -125,8 +125,22 @@ func TestImageRefusalNamesTheImageAndTheFix(t *testing.T) {
 		}
 	}
 	other := errors.New("image port discovery cannot parse image")
-	if got := imageRefusalError(image, other); got != other {
+	if got := imageRefusalError(image, other, false); got != other {
 		t.Errorf("a non-refusal = %v, want it unchanged", got)
+	}
+	// w4/m301 (done/476): with the service's selected credential, Docker
+	// Hub's 401 and GHCR's 403 both name the registry and the credential.
+	for _, c := range []struct {
+		ref    string
+		status int
+		host   string
+	}{{image, 401, "docker.io"}, {"ghcr.io/traefik/whoami:latest", 403, "ghcr.io"}} {
+		got := imageRefusalError(c.ref, &registry.RefusedError{Status: c.status}, true).Error()
+		for _, want := range []string{c.host + " refused this service's registry credential", c.ref, fmt.Sprintf("HTTP %d", c.status), "remove the credential"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("credentialed %d: %q, want %q", c.status, got, want)
+			}
+		}
 	}
 }
 
@@ -181,7 +195,7 @@ func TestImageRefusalFailsUnderImagePullFailed(t *testing.T) {
 		scheme := wakeScheme()
 		cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(app).WithObjects(app).Build()
 		r := wakeReconciler(cl, scheme)
-		_, _ = r.failBeforeDispatch(context.Background(), app, imageMetadataFailureReason(missing), imageRefusalError(app.Spec.Image, missing))
+		_, _ = r.failBeforeDispatch(context.Background(), app, imageMetadataFailureReason(missing), imageRefusalError(app.Spec.Image, missing, false))
 		got := &appv1alpha1.App{}
 		if err := r.Get(context.Background(), client.ObjectKeyFromObject(app), got); err != nil {
 			t.Fatal(err)

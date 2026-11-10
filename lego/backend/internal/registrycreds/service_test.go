@@ -97,15 +97,6 @@ func (f *fakeStore) GetRegistryCredentialsByIDs(_ context.Context, workspaceID s
 	return out, nil
 }
 
-func (f *fakeStore) GetRegistryCredentialByHost(_ context.Context, workspaceID, host string) (store.RegistryCredential, error) {
-	for _, c := range f.rows {
-		if c.WorkspaceID == workspaceID && c.Host == host {
-			return c, nil
-		}
-	}
-	return store.RegistryCredential{}, store.ErrNotFound
-}
-
 func (f *fakeStore) UpdateRegistryCredential(_ context.Context, workspaceID, id, name, username string, expiresAt *time.Time) (store.RegistryCredential, error) {
 	c, ok := f.rows[id]
 	if !ok || c.WorkspaceID != workspaceID {
@@ -492,10 +483,11 @@ func TestDeleteRefusesWhileExplicitlyBound(t *testing.T) {
 	}
 }
 
-// TestDeleteRefusesWhileImplicitlyBoundByHostMatch covers the legacy
-// host-match binding path (no explicit registryCredentialId), which
-// materializePullSecret also resolves credentials through.
-func TestDeleteRefusesWhileImplicitlyBoundByHostMatch(t *testing.T) {
+// TestDeleteProceedsForACredentialNoServiceSelected is w4/474: a credential
+// for a host some service pulls from, but which that service never selected,
+// is not in use and deletes (Render: "can't remove a credential if at least
+// one service uses it" — by selecting it).
+func TestDeleteProceedsForACredentialNoServiceSelected(t *testing.T) {
 	st := newFakeStore()
 	kv := newFakeSecretKV()
 	created, err := (&Service{Base: &core.Base{Namespace: "default"}, Store: st, Secret: kv}).Create(
@@ -509,8 +501,8 @@ func TestDeleteRefusesWhileImplicitlyBoundByHostMatch(t *testing.T) {
 	}
 	s := &Service{Base: &core.Base{Namespace: "default", Client: fakeK8sClient(app)}, Store: st, Secret: kv}
 
-	if err := s.Delete(context.Background(), created.ID); !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("Delete while host-matched = %v, want ErrConflict", err)
+	if err := s.Delete(context.Background(), created.ID); err != nil {
+		t.Fatalf("Delete of an unselected credential = %v, want success", err)
 	}
 }
 

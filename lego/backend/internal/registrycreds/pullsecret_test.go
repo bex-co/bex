@@ -81,11 +81,13 @@ func TestMaterializePullSecretUpsertsDockerConfigJSON(t *testing.T) {
 	s := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, Store: newFakeStore(), Secret: newFakeSecretKV()}
 	ctx := context.Background()
 
-	if _, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"}); err != nil {
+	created, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"})
+	if err != nil {
 		t.Fatalf("Create: %v", err)
 	}
+	credID := created.ID
 
-	name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil)
+	name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", &credID)
 	if err != nil || !ok || name != "web-registry-pull" {
 		t.Fatalf("materializePullSecret = name=%q ok=%v err=%v", name, ok, err)
 	}
@@ -130,7 +132,7 @@ func TestMaterializePullSecretUpsertsDockerConfigJSON(t *testing.T) {
 	// A second call with the same credential is idempotent (upsert, not a
 	// duplicate object), and re-materializing after a username/secret rotation
 	// picks up the new value.
-	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil); err != nil {
+	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", &credID); err != nil {
 		t.Fatalf("second materialize: %v", err)
 	}
 }
@@ -143,12 +145,13 @@ func TestMaterializePullSecretMissingOpenBaoValueErrors(t *testing.T) {
 
 	// A metadata row with no corresponding OpenBao secret (e.g. deleted
 	// out-of-band) must refuse rather than materialize an empty-password Secret.
-	if _, err := st.CreateRegistryCredential(ctx, core.DefaultTenant, "", "ghcr.io", "alice", "", nil); err != nil {
+	seeded, err := st.CreateRegistryCredential(ctx, core.DefaultTenant, "", "ghcr.io", "alice", "", nil)
+	if err != nil {
 		t.Fatalf("seed row: %v", err)
 	}
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}
 
-	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", nil); err == nil {
+	if _, _, err := s.materializePullSecret(ctx, core.DefaultTenant, app, "ghcr.io/acme/private-app:1.0", &seeded.ID); err == nil {
 		t.Fatal("want an error when the credential's OpenBao secret is missing")
 	}
 }

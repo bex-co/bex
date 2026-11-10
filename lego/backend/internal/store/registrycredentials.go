@@ -160,19 +160,6 @@ func (s *PGStore) GetRegistryCredentialsByIDs(ctx context.Context, workspaceID s
 	return out, rows.Err()
 }
 
-// GetRegistryCredentialByHost returns the workspace's credential for host, if
-// any — the lookup the operator-wiring materialization path (w2/m14/t002)
-// uses to decide whether an App's image needs a pull secret. Newest wins when
-// a workspace somehow has more than one credential for the same host.
-func (s *PGStore) GetRegistryCredentialByHost(ctx context.Context, workspaceID, host string) (RegistryCredential, error) {
-	c, err := scanRegistryCredential(s.Pool.QueryRow(ctx,
-		`SELECT `+registryCredentialColumns+` FROM registry_credentials WHERE workspace_id = $1 AND host = $2 ORDER BY created_at DESC LIMIT 1`, workspaceID, host))
-	if err != nil {
-		return RegistryCredential{}, classify("registry credential", err)
-	}
-	return c, nil
-}
-
 // UpdateRegistryCredential changes name/username/expiresAt in place (a
 // rotated secret is a separate OpenBao write the caller makes itself — this
 // method never touches secret material). Nil expiresAt clears any existing

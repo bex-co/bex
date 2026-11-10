@@ -535,8 +535,11 @@ func imageMetadataFailureReason(err error) string {
 // metadata read, naming the image and what to check, in the style of the
 // startup diagnosis (w4/534); the raw "image metadata request returned status
 // 404" named neither. Registry bodies and tokens never reach it. Any other
-// error is returned unchanged.
-func imageRefusalError(image string, err error) error {
+// error is returned unchanged. credentialed says the read carried the
+// service's selected registry credential: a 401 or 403 then means the
+// registry refused that credential, which is what the owner must fix (Docker
+// Hub answers 401, GHCR 403, even for a public image; w4/m301).
+func imageRefusalError(image string, err error, credentialed bool) error {
 	var refused *registry.RefusedError
 	if !errors.As(err, &refused) {
 		return err
@@ -545,6 +548,9 @@ func imageRefusalError(image string, err error) error {
 	case http.StatusNotFound:
 		return fmt.Errorf("the image %s was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists", image)
 	case http.StatusUnauthorized, http.StatusForbidden:
+		if credentialed {
+			return fmt.Errorf("%s refused this service's registry credential for the image %s (HTTP %d). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously", imageRegistryHost(image), image, refused.Status)
+		}
 		return fmt.Errorf("the registry refused access to the image %s. If the image is private, add a registry credential for %s to this service", image, imageRegistryHost(image))
 	}
 	return fmt.Errorf("the registry refused to read the image %s (HTTP %d). Check the image URL and tag", image, refused.Status)

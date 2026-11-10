@@ -736,14 +736,6 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 		t.Errorf("get scoped to the wrong workspace: want ErrNotFound, got %v", err)
 	}
 
-	byHost, err := s.GetRegistryCredentialByHost(ctx, ten.ID, "docker.io")
-	if err != nil || byHost.ID != c2.ID {
-		t.Fatalf("get by host = %+v (err %v)", byHost, err)
-	}
-	if _, err := s.GetRegistryCredentialByHost(ctx, ten.ID, "no-such-host.example"); !errors.Is(err, ErrNotFound) {
-		t.Errorf("get by unknown host: want ErrNotFound, got %v", err)
-	}
-
 	updated, err := s.UpdateRegistryCredential(ctx, ten.ID, c.ID, "GHCR alice", "alice2", &expires)
 	if err != nil || updated.Name != "GHCR alice" || updated.Username != "alice2" || updated.ExpiresAt == nil || !updated.ExpiresAt.Equal(expires) {
 		t.Fatalf("update = %+v (err %v)", updated, err)

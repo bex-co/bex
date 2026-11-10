@@ -98,15 +98,12 @@ func (s *Service) resolvePullCredential(ctx context.Context, workspaceID, image 
 			host = cred.Host // explicit Docker-build binding: FROM host is not known at create time
 		}
 	} else {
-		if host == "" {
-			return "", store.RegistryCredential{}, "", false, nil // repo builds never guess which private FROM registry to use
-		}
-		cred, lookupErr = s.Store.GetRegistryCredentialByHost(ctx, workspaceID, host)
-		if errors.Is(lookupErr, store.ErrNotFound) {
-			// A row stored before hosts were canonicalized ("https://ghcr.io/",
-			// "index.docker.io") misses the exact lookup; match it canonically.
-			cred, lookupErr = s.credentialForHost(ctx, workspaceID, host)
-		}
+		// No credential selected: the image is read anonymously, as on Render,
+		// where a credential applies only to the services that choose it. A
+		// workspace credential for the same host is never picked up by host
+		// (w4/m301): it used to capture every public image from that host, so
+		// one bad token broke unrelated deploys and could not be deleted.
+		return "", store.RegistryCredential{}, "", false, nil
 	}
 	if lookupErr != nil {
 		if errors.Is(lookupErr, store.ErrNotFound) {
@@ -268,14 +265,12 @@ func (p pullSecretSource) FindCredentialIDByName(ctx context.Context, workspaceI
 func (s *Service) DeployPullSecretSource() pullSecretSource { return pullSecretSource{s} }
 
 // appBoundToCredential reports whether any App in workspaceID's namespace
-// still resolves to cred — either explicitly (spec.registryCredentialId) or
-// implicitly (an image whose registry host matches cred.Host with no explicit
-// override), the same two paths materializePullSecret resolves from. Deleting
-// a credential still bound to an App would leave that App's derived
-// <app>-registry-pull Secret live with a now-unrecoverable password forever:
-// the Secret carries no ownerRef (see materializePullSecret's doc comment) and
-// is only reaped on the App's own delete, not the credential's (w4/029.md
-// #12).
+// selects cred explicitly (spec.registryCredentialId), the only way an App
+// uses a credential (w4/m301). Deleting a credential still bound to an App
+// would leave that App's derived <app>-registry-pull Secret live with a
+// now-unrecoverable password forever: the Secret carries no ownerRef (see
+// materializePullSecret's doc comment) and is only reaped on the App's own
+// delete, not the credential's (w4/029.md #12).
 func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, cred store.RegistryCredential) (string, bool, error) {
 	var list appv1alpha1.AppList
 	opts := []client.ListOption{client.InNamespace(s.AppNamespace(workspaceID))}
@@ -289,31 +284,10 @@ func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, 
 		return "", false, err
 	}
 	for _, a := range list.Items {
-		if a.Spec.RegistryCredentialID != nil {
-			if strings.TrimSpace(*a.Spec.RegistryCredentialID) == cred.ID {
-				return a.Name, true, nil
-			}
-			continue // explicit binding to a different (or cleared) credential overrides host matching
-		}
-		if a.Spec.Image != "" && sameRegistryHost(cred.Host, registryHost(a.Spec.Image)) {
+		if a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) == cred.ID {
 			return a.Name, true, nil
 		}
 	}
 	return "", false, nil
 }
 
-// credentialForHost is the canonical-comparison fallback for the host
-// auto-match: the newest workspace credential whose stored host, however it
-// was spelled, is host. store.ErrNotFound when none is.
-func (s *Service) credentialForHost(ctx context.Context, workspaceID, host string) (store.RegistryCredential, error) {
-	rows, err := s.Store.ListRegistryCredentials(ctx, workspaceID)
-	if err != nil {
-		return store.RegistryCredential{}, err
-	}
-	for _, c := range rows { // newest first
-		if sameRegistryHost(c.Host, host) {
-			return c, nil
-		}
-	}
-	return store.RegistryCredential{}, store.ErrNotFound
-}

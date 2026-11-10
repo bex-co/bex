@@ -716,7 +716,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return res, nil
 		}
 		if err != nil {
-			return r.failBeforeDispatch(ctx, &app, imageMetadataFailureReason(err), imageRefusalError(requested, err))
+			return r.failBeforeDispatch(ctx, &app, imageMetadataFailureReason(err), imageRefusalError(requested, err, app.Spec.ExternalRegistryPullSecret != ""))
 		}
 	}
 	return r.dispatchRuntime(ctx, &app, image, port)

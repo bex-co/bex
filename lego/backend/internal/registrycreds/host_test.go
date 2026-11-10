@@ -69,7 +69,8 @@ func TestCreateStoresTheCanonicalHost(t *testing.T) {
 }
 
 // Rows stored before canonicalization ("https://ghcr.io/", "index.docker.io")
-// match their images too, by explicit binding and by host auto-match.
+// match their images by explicit binding; nothing is picked up by host for a
+// service that selected no credential (w4/m301, as on Render).
 func TestLegacyUncanonicalHostsStillMatchTheirImages(t *testing.T) {
 	ctx := context.Background()
 	s, st, kv := newTestService()
@@ -85,8 +86,8 @@ func TestLegacyUncanonicalHostsStillMatchTheirImages(t *testing.T) {
 	}
 
 	for _, image := range []string{"ghcr.io/acme/private:1", "docker.io/library/nginx:latest", "index.docker.io/library/nginx:latest", "nginx:latest"} {
-		if name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, image, nil); err != nil || !ok || name == "" {
-			t.Errorf("auto-match %s = name %q ok %v err %v", image, name, ok, err)
+		if name, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, image, nil); err != nil || ok || name != "" {
+			t.Errorf("unselected %s = name %q ok %v err %v, want an anonymous pull", image, name, ok, err)
 		}
 	}
 	rows, _ := st.ListRegistryCredentials(ctx, core.DefaultTenant)
