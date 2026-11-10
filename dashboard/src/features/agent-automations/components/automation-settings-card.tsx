@@ -3,6 +3,7 @@ import { Badge } from "@/common/components/ui/badge";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { MetadataList } from "@/common/components/metadata-list";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { formatPreciseUsd } from "@/features/agent-sessions/lib/spend-limit";
 import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { InstantLabel } from "@/features/agent-automations/components/instant-label";
 import { AutomationStatusBadge } from "@/features/agent-automations/components/automation-status";
@@ -81,7 +82,7 @@ export function AutomationSettingsCard({
           agent: t(`agentSessions.agent.${tpl.agentConfig.agent}`),
           spendLimit:
             tpl.maxSpendUSD != null
-              ? `$${tpl.maxSpendUSD}`
+              ? formatPreciseUsd(String(tpl.maxSpendUSD), i18n.language)
               : t("agentAutomations.noSpendLimit"),
           secrets: tpl.secretNames?.length
             ? tpl.secretNames.join(", ")
