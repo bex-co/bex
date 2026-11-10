@@ -757,16 +757,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 		return Sandbox{}, err
 	}
 	ws := s.WorkspaceOrDefault(ctx)
-	// Only an explicit timeout depends on the plan; an omitted one is the
-	// 86400 s default everywhere, so it needs no plan read.
-	var workspacePlan string
-	if req.TimeoutSeconds != nil {
-		var err error
-		if workspacePlan, _, err = s.WorkspacePlanOf(ctx, ws); err != nil {
-			return Sandbox{}, err
-		}
-	}
-	timeout, err := resolveTimeout(req.TimeoutSeconds, workspacePlan)
+	timeout, err := resolveTimeout(req.TimeoutSeconds)
 	if err != nil {
 		return Sandbox{}, err
 	}

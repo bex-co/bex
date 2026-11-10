@@ -117,19 +117,18 @@ Because bex-api is the single funnel (D1), it is the natural **admission-control
 - **Warm-pool bounds.** `min_ready`/`max_ready`; keep the pool as _paused_ snapshots so it doesn't burn RAM while idle-warm (opensandbox `pools`).
 - **Node-level elasticity (deferred).** Unschedulable sandboxes → pressure → autoscaler adds a machine; empty nodes → scale down — the same bin-pack + idle-evict loop Apps use ([ADR002-architecture.md](ADR002-architecture.md), "node-aware but provision-unaware"). **This does not hold yet:** the Docker-runtime opensandbox is **single-host** (:8077), so today's capacity control is the single-host subset (concurrent cap + evict + quota); cross-node scheduling waits on the k8s-runtime snapshot path (containerd-CRI cluster).
 
-### Lifetime bound (w5/m99, amended by w2/m263 D3=A)
+### Lifetime bound (w5/m99, amended by w2/m263 D3=A and w3/m303)
 
-A sandbox's lifetime follows Render's `timeoutSeconds` contract (pinned CLI v2.35 `--timeout` help and the `CreateSandbox` `invalid_timeout_seconds` 400). The user approved this on 2026-11-07 (w2/m263 D3=A), amending w5/m99's single 86400 s cap on every workspace:
+A sandbox's lifetime follows Render's `timeoutSeconds` contract. On 2026-11-07 the user chose to match Render (w2/m263 D3=A), which then capped Hobby at 24 h. Render removed that cap on 2026-11-03 (CLI commit `c280b0b6`, INF-7261 "remove the 24-hour sandbox lifetime limit for Hobby", shipped in CLI v2.36.0; [render.com/docs/sandboxes-limits](https://render.com/docs/sandboxes-limits) lists one limit for every workspace), so w3/m303 follows it. The contract is now the same on every plan:
 
-| Request | Paid workspace (Pro, Scale, Enterprise) | Hobby workspace |
-| --- | --- | --- |
-| `timeoutSeconds` omitted | 86400 s (24 h) | 86400 s |
-| `timeoutSeconds: 0` | no timeout; reported as `0` | 86400 s, reported as `86400` |
-| `1` … `86400` | honored | honored |
-| `86401` … `2592000` (30 days) | honored | `400 SANDBOX_TIMEOUT_INVALID` naming the Hobby plan |
-| below 0, or above 2592000 | `400 SANDBOX_TIMEOUT_INVALID` | `400 SANDBOX_TIMEOUT_INVALID` |
+| Request                               | Every workspace               |
+| ------------------------------------- | ----------------------------- |
+| `timeoutSeconds` omitted              | 86400 s (24 h)                |
+| `timeoutSeconds: 0`                   | no timeout; reported as `0`   |
+| `60` … `2592000` (30 days)            | honored                       |
+| `1` … `59`, below 0, or above 2592000 | `400 SANDBOX_TIMEOUT_INVALID` |
 
-Render refuses only values below 0 or above the plan maximum, so a Hobby `0` is accepted and held to the Hobby 24 h maximum. A workspace whose plan cannot be read (store off) gets the paid limits, the degrade every other plan gate uses. Agent-session sandboxes keep the 86400 s bound on every plan.
+The 60 s minimum is the pinned `CreateSandbox` description ("Positive values must be at least 60"); before w3/m303 bex accepted 1–59 and enforced them at the exact deadline. Agent-session sandboxes keep the 86400 s bound on every plan.
 
 bex-api stamps the effective lifetime into `bex.co/timeout-seconds` metadata. The value is seconds, or `none` for no timeout. A distinct marker is used because legacy pre-w5/m99 metadata `0` still means 86400 s, so no old sandbox becomes immortal. REST, GraphQL and MCP return the effective value, and `0` means no timeout, as on Render. OpenSandbox gets no `timeout` for a no-timeout sandbox, so the BatchSandbox has no `expireTime`. A positive value goes to OpenSandbox raised to its 60 s floor. Its `max_sandbox_timeout_seconds` is 2592000, a backstop under bex-api's per-plan check.
 

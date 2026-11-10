@@ -293,21 +293,19 @@ func TestMCPNetworkPolicyNamedRefusal(t *testing.T) {
 }
 
 // TestTimeoutSecondsAgreesAcrossRESTGraphQLMCP pins Render's timeoutSeconds
-// contract (w2/m263 D3=A) on every surface: an explicit 0 is no timeout on a
-// paid workspace (no OpenSandbox expiry, reported as 0), 86400 s on Hobby; an
-// omitted timeout is 86400 s everywhere.
+// contract on every surface (the same on every plan since w3/m303): an
+// explicit 0 is no timeout (no OpenSandbox expiry, reported as 0); an omitted
+// timeout is 86400 s.
 func TestTimeoutSecondsAgreesAcrossRESTGraphQLMCP(t *testing.T) {
 	for _, tc := range []struct {
-		name, plan string
-		explicit   bool // send timeoutSeconds: 0, else omit it
-		upstream   int  // OpenSandbox timeout (0 = omitted, no expiry)
-		reported   int
-		metadata   string
+		name     string
+		explicit bool // send timeoutSeconds: 0, else omit it
+		upstream int  // OpenSandbox timeout (0 = omitted, no expiry)
+		reported int
+		metadata string
 	}{
-		{name: "paid zero", plan: "pro", explicit: true, upstream: 0, reported: 0, metadata: timeoutNone},
-		{name: "hobby zero", plan: "hobby", explicit: true, upstream: 86400, reported: 86400, metadata: "86400"},
-		{name: "paid omitted", plan: "pro", upstream: 86400, reported: 86400, metadata: "86400"},
-		{name: "hobby omitted", plan: "hobby", upstream: 86400, reported: 86400, metadata: "86400"},
+		{name: "zero", explicit: true, upstream: 0, reported: 0, metadata: timeoutNone},
+		{name: "omitted", upstream: 86400, reported: 86400, metadata: "86400"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var gotTimeout *int
@@ -334,8 +332,7 @@ func TestTimeoutSecondsAgreesAcrossRESTGraphQLMCP(t *testing.T) {
 			}))
 			t.Cleanup(upstream.Close)
 			svc := &Service{
-				Base: &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"},
-					Plans: core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return tc.plan, nil })},
+				Base:            &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
 				Client:          NewClient(upstream.URL),
 				Templates:       map[string]Template{"node": {Image: "node:20"}},
 				DefaultTemplate: "node",

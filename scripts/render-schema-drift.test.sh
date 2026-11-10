@@ -10,6 +10,8 @@ script="$repo_root/scripts/render-schema-drift.sh"
 pinned="$repo_root/lego/backend/internal/apps/schema/render.yaml.json"
 fixture="$repo_root/docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-11-02.json"
 pinned_openapi="$repo_root/lego/backend/internal/api/openapi/render-public-api-1.json"
+omissions="$repo_root/lego/backend/internal/api/render_operation_coverage_test.go"
+cli_pin="$repo_root/lego/cli/UPSTREAM_RENDER_CLI.md"
 
 failures=0
 check() {
@@ -40,15 +42,23 @@ jq --slurpfile fx "$fixture" \
   '.paths["/events/{eventId}"].get.responses["200"].content["application/json"].schema.properties.type.enum = $fx[0].renderOpenAPI' \
   "$pinned_openapi" >"$sandbox/openapi.json"
 
+# The "upstream" CLI release: one older than any pin, unless a case says otherwise.
+jq -n '{tag_name: "v0.0.1"}' >"$sandbox/cli-latest.json"
+jq -n '{tag_name: "v99.0.0"}' >"$sandbox/cli-newer.json"
+
 root="$sandbox/repo"
-run_with() { # run_with <upstream-schema-file> <upstream-openapi-file>
+run_with() { # run_with <upstream-schema-file> <upstream-openapi-file> [upstream-cli-release-file]
   rm -rf "$root"
-  mkdir -p "$root/scripts" "$root/lego/backend/internal/apps/schema" "$root/lego/backend/internal/api/openapi" "$root/docs/render-artifacts/fixtures"
+  mkdir -p "$root/scripts" "$root/lego/backend/internal/apps/schema" "$root/lego/backend/internal/api/openapi" "$root/docs/render-artifacts/fixtures" "$root/lego/cli"
   cp "$script" "$root/scripts/render-schema-drift.sh"
   cp "$pinned" "$root/lego/backend/internal/apps/schema/render.yaml.json"
-  cp "$pinned_openapi" "$root/lego/backend/internal/api/openapi/render-public-api-1.json"
+  # The pinned OpenAPI is the same baseline the matching upstream serves, so
+  # only a case's deliberate mutation differs.
+  cp "$sandbox/openapi.json" "$root/lego/backend/internal/api/openapi/render-public-api-1.json"
+  cp "$omissions" "$root/lego/backend/internal/api/"
+  cp "$cli_pin" "$root/lego/cli/"
   cp "$fixture" "$root/docs/render-artifacts/fixtures/"
-  RENDER_BLUEPRINT_SCHEMA_URL="file://$1" RENDER_OPENAPI_URL="file://$2" \
+  RENDER_BLUEPRINT_SCHEMA_URL="file://$1" RENDER_OPENAPI_URL="file://$2" RENDER_CLI_LATEST_URL="file://${3:-$sandbox/cli-latest.json}" \
     "$root/scripts/render-schema-drift.sh"
 }
 
@@ -103,6 +113,36 @@ check "operation drift names the removed operation" 1 "POST /services/{serviceId
   run_with "$pinned" "$sandbox/openapi-ops.json"
 check "operation drift names the action" 1 "renderOperationOmissions" \
   run_with "$pinned" "$sandbox/openapi-ops.json"
+
+# In-operation drift (w3/m303): a served operation's response schema changes
+# under an unchanged method+path; an omitted operation's change is not bex's.
+jq '.paths["/services/{serviceId}/suspend"].post.responses["202"].description = "bex drift probe"' \
+  "$sandbox/openapi.json" >"$sandbox/openapi-op-schema.json"
+# cancelFlowRun is a Render Workflows operation, a recorded omission.
+grep -q '"cancelFlowRun":' "$omissions" || { echo "FAIL: cancelFlowRun is no longer in renderOperationOmissions; pick another omitted operation" >&2; exit 1; }
+jq '(.paths[][] | objects | select(.operationId? == "cancelFlowRun") | .description) = "bex drift probe"' \
+  "$sandbox/openapi.json" >"$sandbox/openapi-omitted-schema.json"
+cmp -s "$sandbox/openapi.json" "$sandbox/openapi-omitted-schema.json" && { echo "FAIL: the omitted-operation mutation changed nothing" >&2; exit 1; }
+# A shared component change shows on every served operation that reaches it.
+jq '.components.schemas.serviceRuntime.description = "bex drift probe"' \
+  "$sandbox/openapi.json" >"$sandbox/openapi-component.json"
+cmp -s "$sandbox/openapi.json" "$sandbox/openapi-component.json" && { echo "FAIL: the component mutation changed nothing" >&2; exit 1; }
+check "matching operation schemas pass" 0 "Render REST operation schemas match the pinned contract" \
+  run_with "$pinned" "$sandbox/openapi.json"
+check "a served operation's schema drift fails" 1 "::error title=Render REST operation schema drift::" \
+  run_with "$pinned" "$sandbox/openapi-op-schema.json"
+check "schema drift names the changed operation" 1 "POST /services/{serviceId}/suspend" \
+  run_with "$pinned" "$sandbox/openapi-op-schema.json"
+check "an omitted operation's schema drift is not bex's" 0 "Render REST operation schemas match the pinned contract" \
+  run_with "$pinned" "$sandbox/openapi-omitted-schema.json"
+check "a shared component's drift fails on the operations reaching it" 1 "GET /services" \
+  run_with "$pinned" "$sandbox/openapi-component.json"
+
+# Render CLI release drift (w3/m303).
+check "an older upstream CLI release passes" 0 "is the latest upstream release" \
+  run_with "$pinned" "$sandbox/openapi.json"
+check "a newer CLI release fails" 1 "::error title=Render CLI release drift::render-oss/cli v99.0.0 is newer than bex's pin" \
+  run_with "$pinned" "$sandbox/openapi.json" "$sandbox/cli-newer.json"
 
 # Both halves report on one run: Blueprint drift must not hide webhook drift.
 check "Blueprint and webhook drift are both reported" 1 "Render webhook OpenAPI drift" \

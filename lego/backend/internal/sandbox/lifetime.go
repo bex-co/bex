@@ -25,20 +25,24 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// Render's timeoutSeconds contract (pinned CLI v2.35 `--timeout` help and the
-// CreateSandbox 400 `invalid_timeout_seconds`): omitted means 86400 s; 0 means
-// no timeout; the maximum is 2592000 s (30 days), or 86400 s on Hobby
-// workspaces (w2/m263 D3=A, amending w5/m99's single 86400 s cap).
+// Render's timeoutSeconds contract, the same for every workspace (CLI v2.36
+// commit c280b0b6, INF-7261 "remove the 24-hour sandbox lifetime limit for
+// Hobby"; render.com/docs/sandboxes-limits; the pinned CreateSandbox
+// description "Use 0 for no timeout. Positive values must be at least 60"):
+// omitted means 86400 s, 0 means no timeout, and positive values run from 60
+// to 2592000 s (30 days). w3/m303 dropped the Hobby cap w2/m263 D3=A had
+// matched, because Render dropped it.
 const (
-	defaultSandboxTimeout  = 86400
-	hobbySandboxMaxTimeout = 86400
-	paidSandboxMaxTimeout  = 2592000
+	defaultSandboxTimeout = 86400
+	minSandboxTimeout     = 60
+	maxSandboxTimeout     = 2592000
 	// osMinTimeout is OpenSandbox's own floor (CreateSandboxRequest.timeout
-	// ge=60). A shorter Render timeout is sent as this floor and enforced at
-	// its exact deadline by the inventory reconcile (lifetimeExpired).
+	// ge=60), which Render's minimum now meets. Only a sandbox created with a
+	// sub-minute timeout before w3/m303 still needs it, when a resume re-sends
+	// its timeout; such a sandbox is gone by 2026-12-10 (30 days suspended at
+	// most), and w3/063 removes the floor then.
 	osMinTimeout = 60
 	// timeoutNone is the bex.co/timeout-seconds value of a sandbox created
 	// with no timeout. A distinct marker, not "0": pre-w5/m99 metadata "0"
@@ -47,34 +51,17 @@ const (
 	timeoutNone = "none"
 )
 
-// resolveTimeout applies Render's timeoutSeconds contract for a workspace on
-// plan. requested nil is an omitted timeout. The result uses Render's
-// semantics: 0 is no timeout, otherwise the lifetime in seconds. On Hobby an
-// explicit 0 is held to the Hobby maximum (86400 s, reported truthfully),
-// since Render caps Hobby at 24 h and refuses only values below 0 or above
-// the plan maximum. An unknown plan (store off) gets the paid maximum, the
-// degrade every other plan gate uses.
-func resolveTimeout(requested *int, plan string) (int, error) {
+// resolveTimeout applies Render's timeoutSeconds contract. requested nil is an
+// omitted timeout. The result uses Render's semantics: 0 is no timeout,
+// otherwise the lifetime in seconds.
+func resolveTimeout(requested *int) (int, error) {
 	if requested == nil {
 		return defaultSandboxTimeout, nil
 	}
-	hobby := plan == store.PlanHobby
-	maxTimeout := paidSandboxMaxTimeout
-	if hobby {
-		maxTimeout = hobbySandboxMaxTimeout
-	}
 	t := *requested
-	switch {
-	case t < 0 || t > maxTimeout:
-		msg := fmt.Sprintf("sandbox timeoutSeconds must be 0 (no timeout) or between 1 and %d", maxTimeout)
-		params := map[string]any{"field": "timeoutSeconds", "max": maxTimeout}
-		if hobby {
-			msg = fmt.Sprintf("sandbox timeoutSeconds must be between 0 and %d on a Hobby workspace; upgrade the workspace plan for up to %d (30 days) or no timeout", maxTimeout, paidSandboxMaxTimeout)
-			params["plan"] = plan
-		}
-		return 0, core.NewBadRequestError("SANDBOX_TIMEOUT_INVALID", msg, params)
-	case t == 0 && hobby:
-		return hobbySandboxMaxTimeout, nil
+	if t < 0 || t > maxSandboxTimeout || t > 0 && t < minSandboxTimeout {
+		msg := fmt.Sprintf("sandbox timeoutSeconds must be 0 (no timeout) or between %d and %d", minSandboxTimeout, maxSandboxTimeout)
+		return 0, core.NewBadRequestError("SANDBOX_TIMEOUT_INVALID", msg, map[string]any{"field": "timeoutSeconds", "minimumNonZero": minSandboxTimeout, "max": maxSandboxTimeout})
 	}
 	return t, nil
 }

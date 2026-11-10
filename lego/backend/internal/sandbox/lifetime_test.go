@@ -17,7 +17,6 @@ limitations under the License.
 package sandbox
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -29,39 +28,33 @@ import (
 
 func ptr[T any](v T) *T { return &v }
 
-// TestResolveTimeout is Render's timeoutSeconds truth table (pinned CLI v2.35
-// `--timeout` help + CreateSandbox invalid_timeout_seconds; w2/m263 D3=A).
+// TestResolveTimeout is Render's timeoutSeconds truth table, the same for
+// every workspace (CLI v2.36 commit c280b0b6; the pinned CreateSandbox
+// description: 0 is no timeout, positive values at least 60, at most 30 days).
 func TestResolveTimeout(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		requested *int
-		plan      string
 		want      int
 		invalid   bool
 	}{
-		{name: "omitted paid", plan: "pro", want: 86400},
-		{name: "omitted hobby", plan: "hobby", want: 86400},
-		{name: "omitted unknown plan", plan: "", want: 86400},
-		{name: "paid zero is no timeout", requested: ptr(0), plan: "pro", want: 0},
-		{name: "scale zero is no timeout", requested: ptr(0), plan: "scale", want: 0},
-		{name: "store-off zero is no timeout", requested: ptr(0), plan: "", want: 0},
-		{name: "paid 7 days", requested: ptr(604800), plan: "pro", want: 604800},
-		{name: "paid max", requested: ptr(2592000), plan: "enterprise", want: 2592000},
-		{name: "paid over max", requested: ptr(2592001), plan: "pro", invalid: true},
-		{name: "paid short", requested: ptr(30), plan: "pro", want: 30},
-		{name: "paid negative", requested: ptr(-1), plan: "pro", invalid: true},
-		{name: "hobby zero is the 24h cap", requested: ptr(0), plan: "hobby", want: 86400},
-		{name: "hobby 1h", requested: ptr(3600), plan: "hobby", want: 3600},
-		{name: "hobby max", requested: ptr(86400), plan: "hobby", want: 86400},
-		{name: "hobby over 24h", requested: ptr(86401), plan: "hobby", invalid: true},
-		{name: "hobby 30 days", requested: ptr(2592000), plan: "hobby", invalid: true},
+		{name: "omitted", want: 86400},
+		{name: "zero is no timeout", requested: ptr(0), want: 0},
+		{name: "minimum", requested: ptr(60), want: 60},
+		{name: "1h", requested: ptr(3600), want: 3600},
+		{name: "past the old Hobby cap", requested: ptr(86401), want: 86401},
+		{name: "30 days", requested: ptr(2592000), want: 2592000},
+		{name: "over 30 days", requested: ptr(2592001), invalid: true},
+		{name: "under the minimum", requested: ptr(59), invalid: true},
+		{name: "one second", requested: ptr(1), invalid: true},
+		{name: "negative", requested: ptr(-1), invalid: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := resolveTimeout(tc.requested, tc.plan)
+			got, err := resolveTimeout(tc.requested)
 			if tc.invalid {
 				var coded *core.CodedError
-				if !errors.As(err, &coded) || coded.Code != "SANDBOX_TIMEOUT_INVALID" {
-					t.Fatalf("err = %v, want SANDBOX_TIMEOUT_INVALID", err)
+				if !errors.As(err, &coded) || coded.Code != "SANDBOX_TIMEOUT_INVALID" || coded.Params["minimumNonZero"] != 60 || coded.Params["max"] != 2592000 {
+					t.Fatalf("err = %#v, want SANDBOX_TIMEOUT_INVALID naming minimumNonZero 60 and max 2592000", err)
 				}
 				return
 			}
@@ -69,14 +62,6 @@ func TestResolveTimeout(t *testing.T) {
 				t.Fatalf("resolveTimeout = %d, %v; want %d", got, err, tc.want)
 			}
 		})
-	}
-}
-
-func TestHobbyRefusalNamesThePlan(t *testing.T) {
-	_, err := resolveTimeout(ptr(86401), "hobby")
-	var coded *core.CodedError
-	if !errors.As(err, &coded) || coded.Params["plan"] != "hobby" || coded.Params["max"] != 86400 {
-		t.Fatalf("hobby refusal = %#v", err)
 	}
 }
 
@@ -167,21 +152,19 @@ func TestLifetimeExpired(t *testing.T) {
 	}
 }
 
-// TestCreateTimeoutByPlan drives Service.Create end to end against a stub
+// TestCreateTimeout drives Service.Create end to end against a stub
 // OpenSandbox: what it is asked for, and what the caller is told.
-func TestCreateTimeoutByPlan(t *testing.T) {
+func TestCreateTimeout(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
-		plan      string
 		requested *int
 		upstream  int // 0 = field omitted, no expiry
 		reported  int
 	}{
-		{name: "paid zero", plan: "pro", requested: ptr(0), upstream: 0, reported: 0},
-		{name: "paid 30 days", plan: "pro", requested: ptr(2592000), upstream: 2592000, reported: 2592000},
-		{name: "paid sub-minute", plan: "pro", requested: ptr(30), upstream: 60, reported: 30},
-		{name: "hobby zero", plan: "hobby", requested: ptr(0), upstream: 86400, reported: 86400},
-		{name: "omitted", plan: "pro", upstream: 86400, reported: 86400},
+		{name: "zero", requested: ptr(0), upstream: 0, reported: 0},
+		{name: "30 days", requested: ptr(2592000), upstream: 2592000, reported: 2592000},
+		{name: "minimum", requested: ptr(60), upstream: 60, reported: 60},
+		{name: "omitted", upstream: 86400, reported: 86400},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var got *int
@@ -199,7 +182,6 @@ func TestCreateTimeoutByPlan(t *testing.T) {
 					"status": map[string]string{"state": "Running"},
 				})
 			})
-			svc.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return tc.plan, nil })
 			box, err := svc.Create(callerCtx(), CreateRequest{Template: "node", TimeoutSeconds: tc.requested})
 			if err != nil {
 				t.Fatal(err)
@@ -215,13 +197,14 @@ func TestCreateTimeoutByPlan(t *testing.T) {
 	}
 }
 
-func TestCreateRefusesOverPlanMaximumBeforeServer(t *testing.T) {
+func TestCreateRefusesAnInvalidTimeoutBeforeServer(t *testing.T) {
 	svc := stubServer(t, func(http.ResponseWriter, *http.Request) { t.Error("must not reach server") })
-	svc.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return "hobby", nil })
-	_, err := svc.Create(callerCtx(), CreateRequest{Template: "node", TimeoutSeconds: ptr(86401)})
-	var coded *core.CodedError
-	if !errors.As(err, &coded) || coded.Code != "SANDBOX_TIMEOUT_INVALID" {
-		t.Fatalf("err = %v", err)
+	for _, timeout := range []int{30, 2592001} {
+		_, err := svc.Create(callerCtx(), CreateRequest{Template: "node", TimeoutSeconds: ptr(timeout)})
+		var coded *core.CodedError
+		if !errors.As(err, &coded) || coded.Code != "SANDBOX_TIMEOUT_INVALID" {
+			t.Fatalf("timeout %d: err = %v", timeout, err)
+		}
 	}
 }
 

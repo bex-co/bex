@@ -11,9 +11,9 @@
 [server]
 host = "0.0.0.0"
 port = 8077
-# Render's paid-plan maximum (30 days). bex-api enforces each workspace's own
-# limit (86400 s on Hobby) and sends no timeout for a paid `--timeout=0`
-# (w2/m263 D3=A); this is only the substrate's backstop.
+# Render's maximum (30 days), the same on every plan (w3/m303). bex-api
+# enforces it and sends no timeout for `--timeout=0`; this is only the
+# substrate's backstop.
 max_sandbox_timeout_seconds = 2592000
 # Multi-tenant mode below authenticates every request through its workspace key.
 # Do not set server.api_key, OPENSANDBOX_SERVER_API_KEY, or

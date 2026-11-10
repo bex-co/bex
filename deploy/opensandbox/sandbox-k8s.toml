@@ -9,9 +9,9 @@
 [server]
 host = "127.0.0.1"
 port = 8078
-# Render's paid-plan maximum (30 days). bex-api enforces each workspace's own
-# limit (86400 s on Hobby) and sends no timeout for a paid `--timeout=0`
-# (w2/m263 D3=A); this is only the substrate's backstop.
+# Render's maximum (30 days), the same on every plan (w3/m303). bex-api
+# enforces it and sends no timeout for `--timeout=0`; this is only the
+# substrate's backstop.
 max_sandbox_timeout_seconds = 2592000
 
 [log]

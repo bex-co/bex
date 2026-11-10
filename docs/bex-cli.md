@@ -58,7 +58,7 @@ These are Bex-owned inputs. An explicitly set corresponding `RENDER_*` variable 
 | `BEX_WORKSPACE` | Active workspace id or name. A name is resolved to its id once per command (one `GET /v1/owners?name=` request; an id costs none). Only a command that reads the active workspace resolves it. For such a command, an unknown name exits 1 with `no workspace named "<x>"`, and a name shared by several workspaces asks for the id. Help, `--version`, `workspaces`, `whoami`, `workspace set`, `login`/`logout`, completion and an explicit `--workspace` never look the name up. A command whose argument is a typed resource ID (`pg get dpg-…`) tries the name but is not blocked by it, so a stale name never prevents recovery (w8/064). Without a usable login the value passes through and the login error is reported as usual. An explicit `RENDER_WORKSPACE` is never resolved. |
 | `BEX_OUTPUT` | Default output mode accepted by the upstream CLI. |
 | `BEX_ACCESS_TOKEN` | Already-issued, short-lived OAuth bearer token for an unattended invocation. It is not persisted by the bridge. `bex logout` neither revokes nor unsets this environment credential. |
-| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.35.0` line) and checks this repo's `bex-cli/v*` releases for something newer; every hint names the upgrade command for the install channel (`bex upgrade`, or `brew upgrade bex` for a Homebrew-owned binary); a successful `bex login` ends with the same hint (TTY or not — it replaces upstream's banner, which advertised Render CLI releases); after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
+| `BEX_NO_UPDATE_NOTIFIER` | Any non-empty value disables the update check entirely. By default `bex -v` reports bex's own release identity (`bex vX.Y.Z` plus a `compatible with Render CLI v2.36.0` line) and checks this repo's `bex-cli/v*` releases for something newer; every hint names the upgrade command for the install channel (`bex upgrade`, or `brew upgrade bex` for a Homebrew-owned binary); a successful `bex login` ends with the same hint (TTY or not — it replaces upstream's banner, which advertised Render CLI releases); after normal commands a gh-style passive notice appears at most once per 24h (cached under `~/.bex/cache/`), only on a TTY, and never when `CI` is set. Check failures are always silent. |
 | `BEX_CLI_DISABLE_ANALYTICS` | Any non-empty value disables CLI usage telemetry (see below). Telemetry is otherwise on: one event per invocation to bex-api, never to Render. |
 
 The launcher sends the active workspace from `bex workspace set` or `BEX_WORKSPACE` to the configured API in `X-Bex-Workspace`. Service names on `/v1/services/{name}/…` resolve only in that workspace, including renamed services, deploys, restart, instances and jobs. A missing name returns 404; it never falls through to another workspace. Without a selection, a name must be unique across visible workspaces or the API returns `409 SERVICE_NAME_AMBIGUOUS` with the candidate IDs. Service IDs remain global addresses and authorize against the resource's workspace. This header is a bex extension; Render's corresponding paths accept IDs.
@@ -251,7 +251,7 @@ grep -rnE '"[^"]*\brender [a-z]' "$MOD" --include='*.go' \
   | grep -v '_test.go' | grep -vE 'Example|Short:|Long:|Use:|Deprecated:'
 ```
 
-At the current pin (**v2.35.0**, `24ac2d60fdb2`) it yields the following.
+At the current pin (**v2.36.0**, `4fd34231b637`) it yields the following.
 
 **Resource-not-found, one per resource type** (returned errors, rewritten). Each ends "run `bex workspace set <name|ID>`":
 
@@ -291,6 +291,8 @@ Tests: `internal/branding/runtime_test.go` (the reference rule, JSON/YAML/text n
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)
+
+**`sandbox-groups` (v2.36.0)**: `pkg/sandboxgroup/repo.go` returns "make another group the default with `render sandbox-groups default set <sandboxGroupId>` first" (a returned error, rewritten); the other new hits (`cmd/sandboxgroups.go`, `sandboxgroupsdefault.go`, `sandboxgroupsdelete.go`, the `sandboxcredentialscreate.go` example) are help, rewritten by the overlay. bex answers every one of these commands with `SANDBOX_GROUPS_UNSUPPORTED` (w3/m303), so the repo error is not reachable today.
 
 Strings inside commands Bex does not serve (`render workflows …` deprecation notices and the `render workflows flows list` / `tasks list` slug hints in `cmd/flow.go` and `pkg/tui/views/workflows/loader.go`, the `render sandbox-groups images …` deprecation notices on the hidden `sandbox-groups builds` alias, `render sandboxes snapshots …` help) are in the grep output but are not user-reachable residuals here — the underlying operations are non-goals in [`docs/cli-compatibility-checklist.md`](cli-compatibility-checklist.md).
 

@@ -23,9 +23,10 @@ const (
 	snapshotsNotOffered = "bex does not support Render's sandbox snapshots (sandboxes snapshots create|list|get|delete, sandboxes create --from)"
 )
 
-// NotOfferedRoutes are the Render sandbox image and snapshot operations the
-// pinned Render CLI v2.35 calls (`sandbox-groups images import|get`,
-// `sandboxes snapshots …`) and bex does not serve. Each answers a 404 naming the
+// NotOfferedRoutes are the Render sandbox image, snapshot and group-management
+// operations the pinned Render CLI calls (`sandbox-groups images import|get`,
+// `sandboxes snapshots …`; v2.36's `sandbox-groups delete|default set|credentials`)
+// and bex does not serve. Each answers a 404 naming the
 // unsupported feature instead of the router's bare one, which the CLI prints
 // verbatim (ADR018 § Render operation omissions, w2/m263). The group routes
 // themselves (`sandbox-groups create|list`, retrieve, update) are served by the
@@ -33,12 +34,24 @@ const (
 // the sandbox Service: they answer the same whether or not OpenSandbox is
 // configured, and they reach no workspace data.
 var NotOfferedRoutes = map[string]core.NotOffered{
-	"GET /v1/sandbox-groups/{sandboxGroupId}/builds":                 {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
-	"POST /v1/sandbox-groups/{sandboxGroupId}/builds":                {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}":       {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
-	"POST /v1/sandboxes/{id}/snapshots":                              {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots":              {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}": {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
+	// CLI v2.36's `sandbox-groups delete`, `default set` and `credentials`
+	// (w3/m303), absent from the public OpenAPI and not served by the group
+	// routes w22/m311 added.
+	"DELETE /v1/sandbox-groups/{sandboxGroupId}":                                  {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"POST /v1/sandbox-groups/{sandboxGroupId}/set-default":                        {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials":                         {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials":                        {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":          {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"PATCH /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":        {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"DELETE /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":       {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/versions": {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/restore": {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/builds":                              {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
+	"POST /v1/sandbox-groups/{sandboxGroupId}/builds":                             {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}":                    {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
+	"POST /v1/sandboxes/{id}/snapshots":                                           {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots":                           {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}":              {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
 	"DELETE /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}": {
 		Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered,
 	},

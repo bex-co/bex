@@ -40,8 +40,8 @@ const (
 	InventoryClassTimed          = "timed"
 	// InventoryClassLongLived is an ordinary EA sandbox inside a lifetime that
 	// ends more than 86400 s after its creation: a timeout the owner chose
-	// past the default — up to 30 days, or no timeout, on a paid workspace
-	// (w2/m263 D3=A) — or a deadline a suspension (30 days resumable) or a
+	// past the default — up to 30 days, or no timeout, on any plan (w3/m303)
+	// — or a deadline a suspension (30 days resumable) or a
 	// resume (timeout restarts) moved (w2/m278 t010). Its age legitimately
 	// exceeds 24 h, so SandboxOldestOverBound excludes it.
 	InventoryClassLongLived    = "long_lived"

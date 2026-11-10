@@ -90,12 +90,14 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 
 - [x] **m177** — Move the Prometheus rule pack out of the inline Argo Application values (7 tasks) — **done 2026-10-29** ([done/m177](done/m177/README.md)): rules live in `deploy/gitops/base/rules/alerting_rules.yml` via a mounted, reloader-watched ConfigMap; Application size 392,955 / 421,080 of 1,310,720 bytes; production `/api/v1/rules` loads the same 123 rules from `/etc/rules` with Watchdog firing (verified by `/unblock w3`).
 - [ ] **m302** — **BLOCKED (t009 waits on this milestone's production deploy; then a worker reads a `build_ended` and an `instance_count_changed` event in `bex-canary` through REST and MCP — no user decision needed)** — [Service events carry Render's per-type details: keys, types and ids, as on Render](blocked/m302/README.md) (9 tasks; **t001–t008 done**; disk/maintenance/auto-deploy facts owed by `061`)
-- [ ] **m303** — [Render CLI v2.36.0: adopt it, match its sandbox contract, and notice the next release](m303/README.md) (10 tasks) ← `/pm-brainstorm for w3` 2026-11-10 item 2
+- [ ] **m303** — **BLOCKED (t005 waits on this milestone's production deploy; then a worker walks the unmodified v2.36.0 binary in `bex-canary` — no user decision needed)** — [Render CLI v2.36.0: adopt it, match its sandbox contract, and notice the next release](blocked/m303/README.md) (10 tasks; **t001–t004, t006–t009 done**; ended-sandbox reads owed by `062`)
 - [ ] **m304** — [Security review of the static-site external-rewrite proxy](m304/README.md) (8 tasks) ← `/pm-brainstorm for w3` 2026-11-10 item 3
 - [ ] **m305** — [Workspace Settings has Render's sections: audit-log CSV export, registry credentials and notification overrides](m305/README.md) (9 tasks) ← `/pm-brainstorm for w3` 2026-11-10 item 4
 
 ## Inbox
 
+- [ ] **063** — [Remove the sandbox sub-minute timeout floor after 2026-12-10](063.md) ← w3/m303 2026-11-10
+- [ ] **062** — [Terminated and errored sandboxes stay readable, as on Render](062.md) ← w3/m303 t004 2026-11-10
 - [ ] **061** — [Disk, maintenance-mode and auto-deploy events carry the details Render requires](061.md) ← w3/m302 2026-11-10
 - [ ] **060** — [Postgres SQL and insights on a Creating, Upgrading or Restarting database answer 503 with the reason, not 500](060.md) (~45m) ← `/pm-brainstorm for w3` 2026-11-10 item 5
 - [x] **059** — **promoted 2026-11-08 → [`m292`](m292/README.md)** ([done/059.md](done/059.md)): protected placement follow-ups from m281.

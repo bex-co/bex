@@ -459,6 +459,15 @@ func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
 		{http.MethodGet, "/v1/sandbox-groups/sbg-1/builds/sbb-1", CodeSandboxImagesUnsupported, "images import|get"},
 		{http.MethodPost, "/v1/sandboxes/sbx-1/snapshots", codeSandboxSnapshotsUnsupported, "snapshots"},
 		{http.MethodDelete, "/v1/sandbox-groups/sbg-1/snapshots/snp-1", codeSandboxSnapshotsUnsupported, "snapshots"},
+		// CLI v2.36's sandbox-groups delete, default set and credentials (w3/m303).
+		{http.MethodDelete, "/v1/sandbox-groups/sbg-1", CodeSandboxGroupsUnsupported, "sandbox groups"},
+		{http.MethodPost, "/v1/sandbox-groups/sbg-1/set-default", CodeSandboxGroupsUnsupported, "sandbox groups"},
+		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxGroupsUnsupported, "sandbox groups"},
+		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxGroupsUnsupported, "sandbox groups"},
+		{http.MethodPatch, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxGroupsUnsupported, "sandbox groups"},
+		{http.MethodDelete, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxGroupsUnsupported, "sandbox groups"},
+		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials/sbc-1/versions", CodeSandboxGroupsUnsupported, "sandbox groups"},
+		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials/sbc-1/restore", CodeSandboxGroupsUnsupported, "sandbox groups"},
 	} {
 		_, pattern := mux.Handler(httptest.NewRequest(tc.method, tc.path, nil))
 		refusal, ok := NotOfferedRoutes[pattern]
