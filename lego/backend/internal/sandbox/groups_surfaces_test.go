@@ -212,7 +212,7 @@ func (d gqlDriver) run(root, query string, vars map[string]any) outcome {
 }
 
 const gqlGroupFields = `id ownerId name region isDefault environmentId concurrencyLimit createdAt updatedAt`
-const gqlSandboxFields = `id name plan status region timeoutSeconds idleTimeoutSeconds sandboxGroupId`
+const gqlSandboxFields = `id name plan status region timeoutSeconds idleTimeoutSeconds sandboxGroupId terminatedAt`
 
 func (d gqlDriver) createGroup(name string) outcome {
 	return d.run("createSandboxGroup", `mutation($n: String!) { createSandboxGroup(name: $n) { `+gqlGroupFields+` } }`, map[string]any{"n": name})

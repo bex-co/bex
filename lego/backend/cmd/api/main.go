@@ -1348,6 +1348,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// store; the sweeper itself starts once the Service exists.
 			deps.SandboxActivity = st
 			deps.SandboxNames = st
+			deps.SandboxRecords = st
 			deps.SandboxExecutions = st
 			// Sandbox groups and their concurrency limits (w22/m311).
 			deps.SandboxGroups = st

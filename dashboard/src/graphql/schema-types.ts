@@ -4800,6 +4800,7 @@ export type SshKey = {
 
 export type Sandbox = {
   __typename: 'Sandbox';
+  createdAt: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   idleTimeoutSeconds: Maybe<Scalars['Int']['output']>;
   image: Maybe<Scalars['String']['output']>;
@@ -4810,6 +4811,7 @@ export type Sandbox = {
   region: Maybe<Scalars['String']['output']>;
   sandboxGroupId: Maybe<Scalars['String']['output']>;
   status: Scalars['String']['output'];
+  terminatedAt: Maybe<Scalars['String']['output']>;
   timeoutSeconds: Maybe<Scalars['Int']['output']>;
   workspace: Maybe<Scalars['String']['output']>;
 };

@@ -152,6 +152,9 @@ type Service struct {
 	Names NameStore
 	// Executions holds Render's execution history (w32/m298); nil serves none.
 	Executions ExecutionStore
+	// Records keeps each sandbox's record past its end (w3/m318); nil (store
+	// off) keeps none, and an ended sandbox is not found.
+	Records RecordStore
 	// Groups holds Render's sandbox groups and each sandbox's group (w22/m311);
 	// nil (store off) serves no group route, refuses a create that names a group
 	// and enforces no concurrency limit.
@@ -617,10 +620,29 @@ func (s *Service) mayAccessSandbox(ctx context.Context, workspace string, raw os
 	if !validOwnedSandbox(raw, workspace) {
 		return false, nil // legacy, foreign, or incompletely hardened metadata fails closed
 	}
-	if raw.Metadata[metadataOwner] == ownerID(ctx) {
-		return true, nil
+	return s.ownerCheck(ctx, workspace)(raw.Metadata[metadataOwner])
+}
+
+// ownerCheck is the caller's sandbox boundary in workspace: a sandbox the
+// caller owns, or any one for a workspace admin. A list can hold many other
+// members' sandboxes, so the admin check runs once, on the first of them, not
+// once per sandbox.
+func (s *Service) ownerCheck(ctx context.Context, workspace string) func(owner string) (bool, error) {
+	caller := ownerID(ctx)
+	admin, checked := false, false
+	return func(owner string) (bool, error) {
+		if owner == caller {
+			return true, nil
+		}
+		if !checked {
+			var err error
+			if admin, err = s.isWorkspaceAdmin(ctx, workspace); err != nil {
+				return false, err
+			}
+			checked = true
+		}
+		return admin, nil
 	}
-	return s.isWorkspaceAdmin(ctx, workspace)
 }
 
 // canonicalID is the tenant-facing id of a sandbox: the stamped public
@@ -808,6 +830,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	}
 	s.settleSlot(ctx, ws, publicID)
 	box.SandboxGroupID = group.ID
+	s.recordLive(ctx, ws, box)
 	return box, nil
 }
 
@@ -1131,6 +1154,7 @@ func (s *Service) terminateObserved(ctx context.Context, key string, raw *osSand
 	}
 	raw.Status.State = string(StatusTerminated)
 	s.Meter.Observe(ctx, *raw)
+	s.recordEnded(ctx, raw.Metadata[metadataWorkspace], *raw)
 	return nil
 }
 
@@ -1272,26 +1296,14 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 		return nil, err
 	}
 	out := make([]Sandbox, 0, len(raw))
-	callerOwner := ownerID(ctx)
-	admin, adminChecked := false, false
+	visible := s.ownerCheck(ctx, ws)
 	for _, r := range raw {
 		if !validOwnedSandbox(r, ws) {
 			continue
 		}
-		if r.Metadata[metadataOwner] == callerOwner {
-			out = append(out, s.sandboxView(r, ws))
-			continue
-		}
-		// A list can contain many sandboxes owned by other members. Resolve the
-		// workspace-admin override once, not once per object/FGA round trip.
-		if !adminChecked {
-			admin, err = s.isWorkspaceAdmin(ctx, ws)
-			if err != nil {
-				return nil, err
-			}
-			adminChecked = true
-		}
-		if admin {
+		if ok, err := visible(r.Metadata[metadataOwner]); err != nil {
+			return nil, err
+		} else if ok {
 			out = append(out, s.sandboxView(r, ws))
 		}
 	}
@@ -1396,6 +1408,13 @@ func (s *Service) listFiltered(ctx context.Context, status []string, name, group
 	if err != nil {
 		return nil, err
 	}
+	if want[StatusTerminated] {
+		endedBoxes, err := s.endedSandboxes(ctx, s.WorkspaceOrDefault(ctx), out)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, endedBoxes...)
+	}
 	out = filterStatuses(out, want)
 	if groupID != "" {
 		// Render: "the group must belong to ownerId". A group of another
@@ -1438,7 +1457,7 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 	ws := s.WorkspaceOrDefault(ctx)
 	raw, err := s.ownedSandbox(ctx, key, ws, id)
 	if err != nil {
-		return Sandbox{}, err
+		return s.orEnded(ctx, ws, id, err)
 	}
 	box, err := s.withRules(ctx, ws, s.sandboxView(raw, ws))
 	if err != nil {
@@ -1518,7 +1537,15 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	ws := s.WorkspaceOrDefault(ctx)
 	raw, err := s.ownedSandbox(ctx, key, ws, id)
 	if err != nil {
-		return err
+		box, endedErr := s.orEnded(ctx, ws, id, err)
+		switch {
+		case endedErr != nil:
+			return endedErr
+		case phase == StatusTerminated:
+			return nil // Render: terminate is idempotent, 204 from any state
+		default:
+			return sandboxEndedError(box)
+		}
 	}
 	undoAdmission := func() {}
 	if phase == StatusResuming {
@@ -1573,6 +1600,9 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	}
 	raw.Status.State = string(phase)
 	s.Meter.Observe(ctx, raw)
+	if phase == StatusTerminated {
+		s.recordEnded(ctx, ws, raw)
+	}
 	if phase == StatusTerminated && s.SessionEgress != nil {
 		if sessionID := raw.Metadata[metadataAgentSession]; sessionID != "" {
 			if err := s.SessionEgress.Delete(ctx, store.SandboxNamespace(ws), sessionID); err != nil {

@@ -35,15 +35,16 @@ func (s *Service) scopeSandbox(ctx context.Context, ownerID, id string) (context
 	return s.ScopeByVisibleID(ctx, ownerID, s.sandboxOwner(id))
 }
 
-// sandboxOwner is the unscoped routing read behind scopeSandbox. bex keeps no
-// sandbox table (OpenSandbox is the source of truth, ADR042 D4), so it probes
-// the caller's member workspaces through each one's EXISTING tenant key —
-// looked up, never minted (a workspace with no key has never created a
-// sandbox) — default first, stopping at the first whose namespace holds the id
-// with matching workspace metadata: a sandbox in the caller's default never
-// depends on another member namespace answering. It only routes:
-// ownedSandbox still applies the owner/admin boundary in the chosen workspace.
-// Anything it cannot decide (no membership listing) leaves the verb on its
+// sandboxOwner is the unscoped routing read behind scopeSandbox. A live
+// sandbox's truth is OpenSandbox (ADR042 D4), so it probes the caller's member
+// workspaces through each one's EXISTING tenant key — looked up, never minted
+// (a workspace with no key has never created a sandbox) — default first,
+// stopping at the first whose namespace holds the id with matching workspace
+// metadata: a sandbox in the caller's default never depends on another member
+// namespace answering. An id no namespace holds is routed to the member
+// workspace holding its ended record (w3/m318). It only routes: ownedSandbox
+// still applies the owner/admin boundary in the chosen workspace. Anything it
+// cannot decide (no membership listing) leaves the verb on its
 // default-workspace path.
 func (s *Service) sandboxOwner(id string) core.ResourceOwner {
 	return func(ctx context.Context) ([]string, error) {
@@ -62,36 +63,64 @@ func (s *Service) sandboxOwner(id string) core.ResourceOwner {
 		if len(members) == 1 && members[0] == def {
 			return nil, nil // the verb's default path already looks there
 		}
-		if s.Keys == nil {
-			// Single-tenant OpenSandbox: one keyless namespace holds every
-			// workspace's sandboxes, so one read names the owner.
-			ws, found, err := s.probeSandbox(ctx, "", id)
-			if err != nil || !found || !slices.Contains(members, ws) {
-				return nil, err
-			}
-			return []string{ws}, nil
+		live, err := s.liveSandboxOwner(ctx, id, members, def)
+		if err != nil || live != nil {
+			return live, err
 		}
-		if i := slices.Index(members, def); i > 0 {
-			members = slices.Concat([]string{def}, members[:i], members[i+1:])
-		}
-		for _, member := range members {
-			key, minted, err := s.Keys.SandboxKeyLookup(ctx, member)
-			if err != nil {
-				return nil, err
-			}
-			if !minted {
-				continue
-			}
-			ws, found, err := s.probeSandbox(ctx, key, id)
-			if err != nil {
-				return nil, err
-			}
-			if found && ws == member {
-				return []string{member}, nil
-			}
-		}
+		return s.endedSandboxOwner(ctx, id, members)
+	}
+}
+
+// endedSandboxOwner routes an ended sandbox (w3/m318), which OpenSandbox no
+// longer answers for, to the member workspace holding its record.
+func (s *Service) endedSandboxOwner(ctx context.Context, id string, members []string) ([]string, error) {
+	if s.Records == nil {
 		return nil, nil
 	}
+	holders, err := s.Records.EndedSandboxWorkspaces(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	for _, ws := range holders {
+		if slices.Contains(members, ws) {
+			return []string{ws}, nil
+		}
+	}
+	return nil, nil
+}
+
+// liveSandboxOwner is the member workspace whose OpenSandbox namespace holds
+// id, probed default first; nil when none does.
+func (s *Service) liveSandboxOwner(ctx context.Context, id string, members []string, def string) ([]string, error) {
+	if s.Keys == nil {
+		// Single-tenant OpenSandbox: one keyless namespace holds every
+		// workspace's sandboxes, so one read names the owner.
+		ws, found, err := s.probeSandbox(ctx, "", id)
+		if err != nil || !found || !slices.Contains(members, ws) {
+			return nil, err
+		}
+		return []string{ws}, nil
+	}
+	if i := slices.Index(members, def); i > 0 {
+		members = slices.Concat([]string{def}, members[:i], members[i+1:])
+	}
+	for _, member := range members {
+		key, minted, err := s.Keys.SandboxKeyLookup(ctx, member)
+		if err != nil {
+			return nil, err
+		}
+		if !minted {
+			continue
+		}
+		ws, found, err := s.probeSandbox(ctx, key, id)
+		if err != nil {
+			return nil, err
+		}
+		if found && ws == member {
+			return []string{member}, nil
+		}
+	}
+	return nil, nil
 }
 
 // probeSandbox reads one sandbox's workspace metadata through tenant key.

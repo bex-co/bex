@@ -133,6 +133,9 @@ type Sandbox struct {
 	Owner              string         `json:"owner,omitempty"`
 	Workspace          string         `json:"workspace,omitempty"`
 	CreatedAt          *time.Time     `json:"createdAt,omitempty"`
+	// TerminatedAt is when an ended sandbox ended (Render's nullable
+	// terminatedAt, w3/m318); null while it lives.
+	TerminatedAt *time.Time `json:"terminatedAt"`
 	// Image is the resolved template image (bex Create is template-based,
 	// ADR014 D2) — informational; the request never picks an arbitrary image.
 	Image string `json:"image,omitempty"`

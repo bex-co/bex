@@ -172,10 +172,12 @@ func TestReconcileWorkspaceInventoryHonorsLongLifetimes(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(sandboxes)
 	}))
 	t.Cleanup(srv.Close)
+	records := &fakeRecords{}
 	svc := &Service{
-		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
-		Client: NewClient(srv.URL),
-		Keys:   staticKey("ws-key"),
+		Base:    &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}, Clock: func() time.Time { return now }},
+		Client:  NewClient(srv.URL),
+		Keys:    staticKey("ws-key"),
+		Records: records,
 	}
 	counts, err := NewAgentSessionLifecycle(svc).ReconcileWorkspaceInventory(context.Background(), "tea-a", "ws-key", now,
 		func(context.Context, string) (SessionClaim, error) { return SessionClaim{}, nil })
@@ -186,6 +188,16 @@ func TestReconcileWorkspaceInventoryHonorsLongLifetimes(t *testing.T) {
 	defer mu.Unlock()
 	if deleted["no-timeout"] || deleted["thirty-days"] || !deleted["thirty-days-over"] || !deleted["legacy-zero"] {
 		t.Fatalf("deleted = %v counts %+v", deleted, counts)
+	}
+	// A reaped sandbox stays readable as terminated (w3/m318).
+	for _, id := range []string{"thirty-days-over", "legacy-zero"} {
+		r, ok := records.ended[id]
+		if !ok || r.WorkspaceID != "tea-a" || r.Owner != "id-a" || r.TerminatedAt == nil || !r.TerminatedAt.Equal(now) {
+			t.Fatalf("record of reaped %s = %+v (recorded %v), want it ended now in tea-a", id, r, ok)
+		}
+	}
+	if len(records.ended) != 2 {
+		t.Fatalf("ended records = %v, want only the two reaped", records.ended)
 	}
 	if counts.LongLived != 2 || counts.Timed != 2 || counts.Terminated != 2 {
 		t.Fatalf("counts = %+v", counts)

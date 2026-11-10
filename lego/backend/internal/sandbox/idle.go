@@ -422,6 +422,12 @@ func (w *IdleSuspender) Sweep(ctx context.Context) int {
 		}
 		suspended += w.sweepWorkspace(ctx, key)
 	}
+	if records := w.Service.Records; records != nil {
+		// Ended records past retention go, whatever their workspace (w3/m318).
+		if err := records.ExpireSandboxRecords(ctx, w.Service.Now()); err != nil {
+			log.Printf("sandbox idle: expire records: %v", err)
+		}
+	}
 	return suspended
 }
 
@@ -450,6 +456,13 @@ func (w *IdleSuspender) sweepWorkspace(ctx context.Context, key store.SandboxTen
 	public := make([]string, 0, len(rows))
 	for _, raw := range rows {
 		public = append(public, canonicalID(raw))
+	}
+	if s.Records != nil {
+		// A recorded sandbox OpenSandbox stopped listing ended on its own, at
+		// its expireTime (w3/m318).
+		if err := s.Records.EndAbsentSandboxes(ctx, key.WorkspaceID, public, s.Now().UTC()); err != nil {
+			log.Printf("sandbox idle: end absent sandboxes workspace=%s: %v", key.WorkspaceID, err)
+		}
 	}
 	if s.Names != nil {
 		if err := s.Names.PruneSandboxNames(ctx, key.WorkspaceID, public); err != nil {

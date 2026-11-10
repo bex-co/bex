@@ -193,7 +193,9 @@ func (s *Service) executionsTarget(ctx context.Context, sandboxID string) (strin
 	ws := s.WorkspaceOrDefault(ctx)
 	raw, err := s.ownedSandbox(ctx, key, ws, sandboxID)
 	if err != nil {
-		return "", "", err
+		// An ended sandbox's history stays readable with its record (w3/m318).
+		box, err := s.orEnded(ctx, ws, sandboxID, err)
+		return ws, box.ID, err
 	}
 	return ws, canonicalID(raw), nil
 }

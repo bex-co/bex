@@ -380,6 +380,9 @@ type Deps struct {
 	SandboxActivity sandbox.ActivityStore
 	// SandboxNames holds Render sandbox names (w5/m287); nil refuses --name.
 	SandboxNames sandbox.NameStore
+	// SandboxRecords keeps each sandbox's record past its end (w3/m318); nil
+	// answers an ended sandbox as not found.
+	SandboxRecords sandbox.RecordStore
 	// SandboxExecutions holds Render's sandbox execution history (w32/m298);
 	// nil answers the /execs reads as unavailable.
 	SandboxExecutions sandbox.ExecutionStore
@@ -1263,6 +1266,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		Region:          resourcemeta.RenderRegion(d.Region),
 		Activity:        d.SandboxActivity,
 		Names:           d.SandboxNames,
+		Records:         d.SandboxRecords,
 		Executions:      d.SandboxExecutions,
 		UserIDs:         userIDLookup(d.SandboxExecutions),
 

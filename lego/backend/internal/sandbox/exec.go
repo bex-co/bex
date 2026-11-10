@@ -175,7 +175,7 @@ func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (str
 	}
 	raw, err := s.ownedSandbox(ctx, key, ws, req.SandboxID)
 	if err != nil {
-		return "", osSandbox{}, err
+		return "", osSandbox{}, s.endedConflict(ctx, ws, req.SandboxID, err)
 	}
 	// An agent-session sandbox is a credential-capable pod (the Git-write and
 	// model proxies live behind it), and model.fga deliberately gates a real
@@ -189,6 +189,9 @@ func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (str
 		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, agentsession.SessionObject(sessionID)); err != nil {
 			return "", osSandbox{}, err
 		}
+	}
+	if endedLive(raw) {
+		return "", osSandbox{}, sandboxEndedError(s.sandboxView(raw, ws))
 	}
 	raw, err = s.ensureRunning(ctx, key, ws, raw)
 	if err != nil {

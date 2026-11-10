@@ -139,18 +139,21 @@ func (s *PGStore) SandboxExecution(ctx context.Context, workspaceID, sandboxID, 
 const SandboxExecutionRetention = 30 * 24 * time.Hour
 
 // PruneSandboxExecutions deletes the executions of one workspace's sandboxes
-// absent from a complete OpenSandbox list (a sandbox that is gone has no
-// readable history; a row younger than ten minutes is kept, as for names),
-// and any record older than SandboxExecutionRetention.
+// absent from a complete OpenSandbox list and with no record (a sandbox that
+// is gone and was never recorded has no readable history; an ended one keeps
+// its history while its record lasts, w3/m318; a row younger than ten minutes
+// is kept, as for names), and any record older than SandboxExecutionRetention.
 func (s *PGStore) PruneSandboxExecutions(ctx context.Context, workspaceID string, live []string) error {
 	if live == nil {
 		live = []string{}
 	}
 	_, err := s.Pool.Exec(ctx, `
-		DELETE FROM sandbox_executions
-		WHERE workspace_id = $1 AND (
-		    (NOT (sandbox_id = ANY($2::text[])) AND started_at < now() - interval '10 minutes')
-		    OR started_at < now() - make_interval(secs => $3))`,
+		DELETE FROM sandbox_executions e
+		WHERE e.workspace_id = $1 AND (
+		    (NOT (e.sandbox_id = ANY($2::text[])) AND e.started_at < now() - interval '10 minutes'
+		     AND NOT EXISTS (SELECT 1 FROM sandbox_records r
+		                     WHERE r.workspace_id = e.workspace_id AND r.sandbox_id = e.sandbox_id))
+		    OR e.started_at < now() - make_interval(secs => $3))`,
 		workspaceID, live, SandboxExecutionRetention.Seconds())
 	return err
 }

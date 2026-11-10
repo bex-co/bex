@@ -123,6 +123,9 @@ var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"workspace": gqlutil.StrField(func(s Sandbox) any { return s.Workspace }),
 		"image":     gqlutil.StrField(func(s Sandbox) any { return s.Image }),
 		"region":    gqlutil.StrField(func(s Sandbox) any { return s.Region }),
+		// Render's createdAt and nullable terminatedAt (w3/m318), RFC3339.
+		"createdAt":    gqlutil.TimeField(func(s Sandbox) any { return s.CreatedAt }),
+		"terminatedAt": gqlutil.TimeField(func(s Sandbox) any { return s.TerminatedAt }),
 		"timeoutSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(s Sandbox) any {
 			return s.TimeoutSeconds
 		})},

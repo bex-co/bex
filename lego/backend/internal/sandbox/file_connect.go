@@ -135,7 +135,7 @@ func (s *Service) authorizeFileTarget(ctx context.Context, req FileConnectReques
 	}
 	raw, err := s.ownedSandbox(ctx, key, ws, req.SandboxID)
 	if err != nil {
-		return "", osSandbox{}, err
+		return "", osSandbox{}, s.endedConflict(ctx, ws, req.SandboxID, err)
 	}
 	if session := raw.Metadata[metadataAgentSession]; session != "" {
 		if err := s.AuthorizeFreshOn(ctx, core.RelCanViewSensitive, agentsession.SessionObject(session)); err != nil {
@@ -143,6 +143,9 @@ func (s *Service) authorizeFileTarget(ctx context.Context, req FileConnectReques
 		}
 	}
 	// A file transfer is activity and wakes a suspended sandbox, as on Render.
+	if endedLive(raw) {
+		return "", osSandbox{}, sandboxEndedError(s.sandboxView(raw, ws))
+	}
 	raw, err = s.ensureRunning(ctx, key, ws, raw)
 	if err != nil {
 		return "", osSandbox{}, err
