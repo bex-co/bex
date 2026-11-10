@@ -906,8 +906,10 @@ func TestPoolerConnectionStrings(t *testing.T) {
 	if info.InternalConnectionPoolString != wantInternal {
 		t.Errorf("internal pool string = %q", info.InternalConnectionPoolString)
 	}
-	if !strings.Contains(info.ExternalConnectionPoolString, ":6432/pool_db") {
-		t.Errorf("external pool string = %q, want port 6432", info.ExternalConnectionPoolString)
+	// The edge does not listen on 6432 yet (w2/m316), so the external pooled
+	// string must keep the port the edge serves.
+	if !strings.Contains(info.ExternalConnectionPoolString, ":5432/pool_db") {
+		t.Errorf("external pool string = %q, want port 5432 until the edge serves 6432", info.ExternalConnectionPoolString)
 	}
 	for name, direct := range map[string]string{"internal": info.InternalConnectionString, "external": info.ExternalConnectionString} {
 		if direct != "" && !strings.Contains(direct, ":5432/pool_db") {

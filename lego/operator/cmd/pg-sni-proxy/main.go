@@ -19,8 +19,7 @@ limitations under the License.
 // the TLS ClientHello, but the libpq default (preamble-mode) sends a cleartext
 // SSLRequest BEFORE the TLS ClientHello — so Traefik can't route it.
 //
-// The proxy sits on :5432 (the edge forwards both :5432 and the pooled-URL port
-// :6432 to it, w2/m316), handles the SSLRequest negotiation, peeks at the
+// The proxy sits on :5432, handles the SSLRequest negotiation, peeks at the
 // TLS ClientHello to extract the SNI hostname, and dials the correct CNPG
 // backend directly. Direct-TLS clients (PG 17+ sslnegotiation=direct) are also
 // handled transparently. See docs/ADR009-postgresql-management.md.

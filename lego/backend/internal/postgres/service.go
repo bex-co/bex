@@ -1112,10 +1112,12 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		info.InternalConnectionPoolString = fmt.Sprintf(
 			"postgresql://%s:%s@%s:%d/%s", user, pass, d.Status.PoolerHost, appv1alpha1.PoolerPort, dbn)
 	}
+	// The external pooled string stays on 5432 until the edge serves 6432:
+	// its load balancer (lb11) has no free listener (w2/m316).
 	if d.Status.PoolerExternalHost != "" {
 		info.ExternalConnectionPoolString = fmt.Sprintf(
-			"postgresql://%s:%s@%s:%d/%s%s",
-			user, pass, d.Status.PoolerExternalHost, appv1alpha1.PoolerPort, dbn, tlsQuery)
+			"postgresql://%s:%s@%s:5432/%s%s",
+			user, pass, d.Status.PoolerExternalHost, dbn, tlsQuery)
 	}
 	// Per-replica read-only connection strings (CNPG -ro service or external SNI).
 	if len(d.Status.ReadReplicaStatuses) > 0 {
