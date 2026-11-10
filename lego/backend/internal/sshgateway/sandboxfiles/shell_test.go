@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -87,6 +88,12 @@ func TestStageUsesLiteralArgumentsAndNeverPublishes(t *testing.T) {
 // resolves it, even when the home itself is reached through a symlink; a
 // symlink inside the part the caller named is still refused.
 func TestShellResolvesRelativePathsUnderHome(t *testing.T) {
+	// The publish script runs in the sandbox's Linux userland and uses GNU
+	// `mv -T`; BSD mv (a macOS ship-gate host) answers usage exit 64. CI's
+	// Linux runners execute it.
+	if runtime.GOOS != "linux" {
+		t.Skip("publishScript needs GNU coreutils (mv -T); runs on Linux CI")
+	}
 	root, err := filepath.EvalSymlinks(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
