@@ -58,8 +58,8 @@ lego/operator/cmd/activator/activator
 __pycache__/
 *.py[cod]
 
-# Upstream OpenSandbox checkout created by the controller-patch CI job; on a
-# self-hosted runner this lands inside the reused workspace (never committed).
+# Upstream OpenSandbox checkout created by the controller-patch CI job inside
+# the workspace (never committed).
 .opensandbox-upstream/
 bex-desktop/
 # External CI runner source checkout.

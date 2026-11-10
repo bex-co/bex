@@ -22,9 +22,9 @@ permissions:
 
 jobs:
   cli:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -38,9 +38,10 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/cli/go.mod
-          # Multi-GB remote Go caches outlive signed download URLs and stall
-          # uploads on this fleet; keep the runner-local Go caches instead.
-          cache: false
+          # Hosted runners start empty: restore the module + build caches
+          # (shared by every job with the same Go version and go.sum set).
+          cache-dependency-path: |
+            lego/cli/go.sum
       - name: validate upstream import pin
         run: bash scripts/bex-cli-validate.sh
       - name: test launcher

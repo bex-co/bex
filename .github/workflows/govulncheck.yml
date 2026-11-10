@@ -45,17 +45,17 @@ permissions:
   contents: read
 
 # One running + one pending run per branch: without a group every main push
-# queued a full run, which starved the bex-ci pool. Only PRs cancel a running
-# check.
+# queued a full run, which starved the old CI runner pool; hosted jobs still
+# share the org's concurrent-job limit. Only PRs cancel a running check.
 concurrency:
   group: govulncheck-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   govulncheck:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 125
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -87,7 +87,12 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: "${{ steps.goline.outputs.version }}"
-          cache: false
+          # Hosted runners start empty: restore the module + build caches
+          # (shared by every job with the same Go version and go.sum set).
+          cache-dependency-path: |
+            lego/types/go.sum
+            lego/operator/go.sum
+            lego/backend/go.sum
       - name: Install govulncheck (pinned, checksum-DB verified)
         run: go install golang.org/x/vuln/cmd/govulncheck@v1.1.4
       - name: Scan the Go platform modules (fail on any reachable vuln)

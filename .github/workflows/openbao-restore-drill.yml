@@ -32,7 +32,7 @@ jobs:
     # same-repo branch is skipped before any secret is touched. Defense in depth
     # alongside GitHub-side protected environments (see infra.yml).
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     # codex-security round-19 #4: this job's own comments named "GitHub-side
     # protected environments (see infra.yml)" as the authoritative control, but
@@ -56,9 +56,9 @@ jobs:
         with:
           version: v1.36.1
 
-      # Tier-A snapshots are age-encrypted. The minimal self-hosted runner has
-      # no age package and no sudo; install the reviewed upstream release under
-      # RUNNER_TEMP, verifying it before extraction or execution.
+      # Tier-A snapshots are age-encrypted. The hosted runner image has no age
+      # package; install the reviewed upstream release under RUNNER_TEMP,
+      # verifying it before extraction or execution.
       - name: install age (checksum-pinned, rootless)
         env:
           AGE_VERSION: "1.3.1"
@@ -85,8 +85,8 @@ jobs:
           BEX_SSH_KNOWN_HOSTS: ${{ secrets.BEX_SSH_KNOWN_HOSTS }}
         run: |
           # codex-security 2026-08 F6: stage under $RUNNER_TEMP (auto-deleted
-          # at job end, scrubbed again below) — never ~/.ssh, which persists on
-          # the shared self-hosted runner.
+          # at job end, scrubbed again below) — never ~/.ssh or a fixed path
+          # (defense in depth; the hosted VM is discarded after the job).
           install -m700 -d "$RUNNER_TEMP/bex-ssh"
           printf '%s\n' "$BEX_SSH_PRIVATE_KEY" > "$RUNNER_TEMP/bex-ssh/id_bex"
           chmod 600 "$RUNNER_TEMP/bex-ssh/id_bex"

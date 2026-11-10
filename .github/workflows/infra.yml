@@ -2,7 +2,8 @@ name: infra (terraform)
 
 # The bex infra-cluster base as IDEMPOTENT IaC — not a one-shot. PRs get a
 # CREDENTIAL-LESS fmt/validate check; merges plan+apply, a daily schedule does
-# drift detection. Runs in CI on self-hosted runners (ADR083), NEVER on a laptop.
+# drift detection. Runs in CI on GitHub-hosted runners (ADR083 amendment
+# 2026-11-09), NEVER on a laptop.
 #
 # SECURITY (w1/m65 F3): pull-request Terraform is UNTRUSTED — a same-repo branch
 # contributor could otherwise modify it to exfiltrate credentials during `plan`.
@@ -51,9 +52,9 @@ jobs:
   # backend-less validate catch structural errors, and anything that needs
   # credentials or state runs only from reviewed main in the `terraform` job.
   validate:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -88,7 +89,7 @@ jobs:
   # this job, not the workflow.
   terraform:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     environment: production-infra
     env:
       TF_VAR_hcloud_token: ${{ secrets.HCLOUD_TOKEN }}

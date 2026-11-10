@@ -219,7 +219,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 # ENVTEST_ASSETS_DIR holds the downloaded control-plane binaries. setup-envtest
 # reuses a version already on disk without contacting GitHub, so CI points it at
-# the persistent runner's home cache: a checkout wipes bin/, so every job
+# a home cache restored from the Actions cache: a checkout wipes bin/, so every job
 # re-downloaded from GitHub releases, whose 502/503s failed two deploys' test
 # stages on 2026-11-08 (runs 42463190719 and 42471620968).
 ENVTEST_ASSETS_DIR ?= $(LOCALBIN)

@@ -16,7 +16,7 @@ jobs:
   acceptance:
     if: github.ref == 'refs/heads/main'
     name: ${{ matrix.name }}
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-latest
     timeout-minutes: 45
     strategy:
       fail-fast: false
@@ -53,7 +53,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
-          cache: false
+          # Hosted runners start empty; the x64 key is shared with
+          # native-common-image.yml's qualification jobs.
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
       - name: record source, existing builder and disk usage
         run: |
           git rev-parse HEAD

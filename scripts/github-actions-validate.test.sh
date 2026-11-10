@@ -72,42 +72,59 @@ assert "tracking-issue helper passes" 0 "$(body "      # gh issue create is not 
       - uses: $PINNED
       - run: bash scripts/lib/tracking-issue.sh open --label l --title t --body-file f")"
 
-# --- ADR083 / #CI-RUNNERS: self-hosted runner custody -----------------------
+# --- ADR083 amendment 2026-11-09 / #CI-RUNNERS: GitHub-hosted runners --------
+ARM=ubuntu-24.04-arm
 job_body() {
-  printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, %s]\n    steps:\n%s' "$1" "$2"
+  printf 'jobs:\n  x:\n    runs-on: %s\n    steps:\n%s' "$1" "$2"
 }
-# RED: GitHub-hosted ubuntu-latest is a rejected remediation.
-assert "ubuntu-latest fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: %s' "$PINNED")" \
-  "GitHub-hosted ubuntu runners"
-# RED: the legacy shared label pool no longer passes.
-assert "shared self-hosted pool fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
-  "missing bex-ci, bex-production or bex-build pool label"
-# RED: an arbitrary label cannot silently create a fourth trust class.
-assert "unknown pool label fails" 1 "$(job_body "default" "      - uses: $PINNED")" \
-  "unapproved pool label"
-# RED: group-only routing does not satisfy the repository pool-label contract.
-# Org groups exist, but their names do not automatically become runner labels.
-assert "runner-group mapping syntax fails" 1 "$(printf 'jobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
-  "runner-group syntax is outside the workflow contract"
-# GREEN: both canonical pool labels pass the structural contract.
-assert "CI pool label passes" 0 "$(job_body "bex-ci" "      - uses: $PINNED")"
-assert "production pool label passes" 0 "$(job_body "bex-production" "      - uses: $PINNED")"
-# RED: the runner account deliberately has no sudo; tools belong in RUNNER_TEMP.
-assert "sudo workflow fails" 1 "$(job_body "bex-ci" "      - uses: $PINNED
-      - run: sudo apt-get install shellcheck")" "must not require sudo"
+# GREEN: the two approved hosted labels, scalar form.
+assert "ubuntu-24.04-arm passes" 0 "$(job_body "$ARM" "      - uses: $PINNED")"
+assert "ubuntu-latest passes" 0 "$(job_body ubuntu-latest "      - uses: $PINNED")"
+# RED: the retired self-hosted pools, in any form, and any mention at all.
+assert "self-hosted pool label fails" 1 "$(job_body "[self-hosted, Linux, ARM64, bex-ci]" "      - uses: $PINNED")" \
+  "must not mention self-hosted runners"
+assert "self-hosted mention in a comment fails" 1 "$(job_body "$ARM" "      # runs on the self-hosted pool
+      - uses: $PINNED")" "ci.yml:5"
+# RED: any other label, a list, an expression, or a runner group.
+assert "unapproved hosted label fails" 1 "$(job_body ubuntu-22.04 "      - uses: $PINNED")" \
+  "runs-on must be the scalar ubuntu-24.04-arm (default) or ubuntu-latest"
+assert "list-form runs-on fails" 1 "$(job_body "[$ARM]" "      - uses: $PINNED")" \
+  "runs-on must be the scalar"
+assert "expression runs-on fails" 1 "$(job_body "\${{ matrix.os }}" "      - uses: $PINNED")" \
+  "runs-on must be the scalar"
+assert "runner-group mapping fails" 1 "$(printf 'jobs:\n  x:\n    runs-on:\n      group: bex-ci\n      labels: [%s]\n    steps:\n      - uses: %s' "$ARM" "$PINNED")" \
+  "runs-on must be the scalar"
+# GREEN: hosted runners have sudo; the disk-cleanup step needs it.
+assert "sudo step passes on hosted runners" 0 "$(job_body ubuntu-latest "      - run: sudo rm -rf /usr/share/dotnet
+      - uses: $PINNED")"
 
-# RED: secrets and write-capable tokens must never land on the PR-capable pool.
-assert "secret on CI runner fails" 1 "$(job_body "bex-ci" "      - env:
-          TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
-        run: ./deploy")" "credential-bearing job must use bex-production"
-assert "write token on CI runner fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-ci]\n    permissions:\n      contents: write\n    steps:\n      - uses: %s' "$PINNED")" \
-  "credential-bearing job must use bex-production"
-assert "write-all token on CI runner fails" 1 "$(printf 'permissions: write-all\njobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-ci]\n    steps:\n      - uses: %s' "$PINNED")" \
-  "credential-bearing job must use bex-production"
-assert "environment on CI runner fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-ci]\n    environment: production-deploy\n    steps:\n      - uses: %s' "$PINNED")" \
-  "credential-bearing job must use bex-production"
-# GREEN: the same credential material is allowed only on the production pool.
-assert "secret on production runner passes" 0 "$(job_body "bex-production" "      - env:
+# --- check 6a: credentials never reach a pull_request job ---------------------
+pr_wf() { # <job if-line or empty> <job extra lines> [trigger]
+  printf 'on:\n  %s:\njobs:\n  x:\n%b    runs-on: %s\n%b    steps:\n      - uses: %s' \
+    "${3:-pull_request}" "${1:+    $1\n}" "$ARM" "$2" "$PINNED"
+}
+SAME_REPO="if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository"
+assert "secret in a PR job fails" 1 "$(pr_wf "$SAME_REPO" '    env:\n      T: ${{ secrets.PRODUCTION_TOKEN }}\n')" \
+  "x: credential-bearing job must reject pull_request events"
+assert "write token in a PR job fails" 1 "$(pr_wf "$SAME_REPO" '    permissions:\n      contents: write\n')" \
+  "credential-bearing job must reject pull_request events"
+assert "workflow write-all in a PR workflow fails" 1 "$(printf 'permissions: write-all\n%s' "$(pr_wf "$SAME_REPO" '')")" \
+  "credential-bearing job must reject pull_request events"
+assert "environment in a PR job fails" 1 "$(pr_wf "$SAME_REPO" '    environment: production-deploy\n')" \
+  "credential-bearing job must reject pull_request events"
+assert "toJSON(secrets) in a PR job fails" 1 "$(pr_wf "$SAME_REPO" '    env:\n      ALL: ${{ toJSON(secrets) }}\n')" \
+  "credential-bearing job must reject pull_request events"
+# RED: a same-repository gate alone still lets a branch PR read the secret.
+assert "same-repository gate does not admit a credentialed PR job" 1 "$(pr_wf "if: github.event.pull_request.head.repo.full_name == github.repository" '    environment: production-deploy\n')" \
+  "credential-bearing job must reject pull_request events"
+# RED: pull_request_target needs its own exclusion.
+assert "credentialed pull_request_target job fails" 1 "$(pr_wf "if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository" '    environment: production-deploy\n' pull_request_target)" \
+  "credential-bearing job must reject pull_request events"
+# GREEN: the infra.yml terraform shape -- PR events excluded before scheduling.
+assert "PR-excluded credentialed job passes" 0 "$(pr_wf "if: github.event_name != 'pull_request'" '    environment: production-infra\n    env:\n      T: ${{ secrets.PRODUCTION_TOKEN }}\n')"
+# GREEN: an uncredentialed same-repository PR job, and credentials off PR workflows.
+assert "uncredentialed PR job passes" 0 "$(pr_wf "$SAME_REPO" '')"
+assert "secret in a push-only workflow passes" 0 "$(job_body "$ARM" "      - env:
           TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
         run: ./deploy")"
 
@@ -115,122 +132,133 @@ assert "secret on production runner passes" 0 "$(job_body "bex-production" "    
 BUILD_PUSH='docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0'
 # RED: a deploy-class secret in an image-build job is exfiltratable by any
 # poisoned build input — exactly the pre-split deploy.yml shape.
-assert "deploy secret in image-build job fails" 1 "$(job_body "bex-production" "      - uses: $BUILD_PUSH
+assert "deploy secret in image-build job fails" 1 "$(job_body "$ARM" "      - uses: $BUILD_PUSH
       - env:
           HCLOUD_TOKEN: \${{ secrets.HCLOUD_TOKEN }}
         run: ./deploy")" "image-build job must reference no secret beyond the registry-push GITHUB_TOKEN"
 # RED: an environment gate on the build job would scope every environment
 # secret into repo-controlled build code.
-assert "environment gate on image-build job fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    environment: production-deploy\n    steps:\n      - uses: %s' "$BUILD_PUSH")" \
+assert "environment gate on image-build job fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: %s\n    environment: production-deploy\n    steps:\n      - uses: %s' "$ARM" "$BUILD_PUSH")" \
   "image-build job must not carry an environment gate"
 # RED: a workflow-header secret leaks into every job, including the build.
-assert "workflow-header secret with image build fails" 1 "$(printf 'env:\n  TOKEN: ${{ secrets.PRODUCTION_TOKEN }}\njobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    steps:\n      - uses: %s' "$BUILD_PUSH")" \
+assert "workflow-header secret with image build fails" 1 "$(printf 'env:\n  TOKEN: ${{ secrets.PRODUCTION_TOKEN }}\njobs:\n  x:\n    runs-on: %s\n    steps:\n      - uses: %s' "$ARM" "$BUILD_PUSH")" \
   "image-build job must reference no secret beyond the registry-push GITHUB_TOKEN"
 # GREEN: the registry-push GITHUB_TOKEN is the build job's entire credential
 # budget (the post-split deploy.yml build job shape).
-assert "registry-only image-build job passes" 0 "$(job_body "bex-production" "      - env:
+assert "registry-only image-build job passes" 0 "$(job_body ubuntu-latest "      - env:
           REGISTRY_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: docker login
       - uses: $BUILD_PUSH")"
 # RED: the bracket secrets form GitHub also resolves must not slip past.
-assert "bracket-form secret in image-build job fails" 1 "$(job_body "bex-production" "      - uses: $BUILD_PUSH
+assert "bracket-form secret in image-build job fails" 1 "$(job_body "$ARM" "      - uses: $BUILD_PUSH
       - env:
           TOKEN: \${{ secrets['HCLOUD_TOKEN'] }}
         run: ./deploy")" "image-build job must reference no secret beyond the registry-push GITHUB_TOKEN"
 # RED: a job key with a trailing comment defeats the job-header parser; an
 # image build must then fail closed rather than silently skip classification.
-assert "annotated job key with image build fails" 1 "$(printf 'jobs:\n  x: # image build\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    steps:\n      - uses: %s' "$BUILD_PUSH")" \
+assert "annotated job key with image build fails" 1 "$(printf 'jobs:\n  x: # image build\n    runs-on: %s\n    steps:\n      - uses: %s' "$ARM" "$BUILD_PUSH")" \
   "outside a recognized job header"
-# GREEN: deploy-class secrets remain legal in a non-build job (byte-identical
-# to check 6's production fixture above — re-proved here as check 8's boundary:
-# the secretless rule keys on the image build, not on the pool).
-assert "deploy secret in non-build job passes" 0 "$(job_body "bex-production" "      - env:
+# GREEN: deploy-class secrets remain legal in a non-build job: the secretless
+# rule keys on the image build.
+assert "deploy secret in non-build job passes" 0 "$(job_body "$ARM" "      - env:
           TOKEN: \${{ secrets.PRODUCTION_TOKEN }}
         run: ./deploy")"
 
-# --- Public-fork isolation --------------------------------------------------
-# bex-build (w6/m155): main-only image publication holding only GITHUB_TOKEN.
+# --- check 6b: main-only registry publication (was the bex-build pool) --------
 build_job() {
-  printf 'jobs:\n  x:\n    if: %s\n    runs-on: [self-hosted, Linux, ARM64, bex-build]\n    permissions:\n      contents: read\n      packages: write\n      id-token: write\n%s    steps:\n%s' \
-    "${1:-github.ref == 'refs/heads/main'}" "${2:-}" "${3:-      - uses: $PINNED}"
+  printf 'jobs:\n  x:\n    if: %s\n    runs-on: %s\n    permissions:\n      contents: read\n      packages: write\n      id-token: write\n%b    steps:\n%s' \
+    "${1:-github.ref == 'refs/heads/main'}" "$ARM" "${2:-}" "${3:-      - uses: $PINNED}"
 }
 # GREEN: a main-gated job with GITHUB_TOKEN write scopes and secrets.GITHUB_TOKEN.
-assert "main-only GITHUB_TOKEN image build on bex-build passes" 0 "$(build_job "" "" "      - env:
+assert "main-only GITHUB_TOKEN publisher passes" 0 "$(build_job "" "" "      - env:
           GHCR_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: ./publish")"
-# RED: any other secret, dot or bracket form.
-assert "deploy secret on bex-build fails" 1 "$(build_job "" "" "      - env:
+# RED: any other secret, dot or bracket form, or via the workflow header.
+assert "deploy secret on a publisher fails" 1 "$(build_job "" "" "      - env:
           T: \${{ secrets.BEX_SSH_PRIVATE_KEY }}
-        run: ./x")" "bex-build job may hold only GITHUB_TOKEN"
-assert "bracket-form secret on bex-build fails" 1 "$(build_job "" "" "      - env:
+        run: ./x")" "registry-publishing job may hold only GITHUB_TOKEN"
+assert "bracket-form secret on a publisher fails" 1 "$(build_job "" "" "      - env:
           T: \${{ secrets['HCLOUD_TOKEN'] }}
-        run: ./x")" "bex-build job may hold only GITHUB_TOKEN"
-assert "workflow-header secret reaching bex-build fails" 1 "$(printf 'env:\n  T: ${{ secrets.HCLOUD_TOKEN }}\n%s' "$(build_job)")" \
-  "bex-build job may hold only GITHUB_TOKEN"
-# RED: an environment, write-all, or a job not gated to main.
-assert "environment on bex-build fails" 1 "$(build_job "" "    environment: production-deploy\n")" \
-  "bex-build job must not use an environment"
-assert "write-all on bex-build fails" 1 "$(printf 'permissions: write-all\n%s' "$(build_job)")" \
-  "bex-build job must not use write-all"
-assert "ungated bex-build job fails" 1 "$(build_job "always()")" \
-  "bex-build job must be gated to refs/heads/main"
-# RED: a pull_request workflow must keep PR events off bex-build too.
-assert "bex-build job in a PR workflow fails" 1 "$(printf 'on:\n  pull_request:\n%s' "$(build_job)")" \
-  "bex-build job must reject pull_request events"
-
-# Bypass regressions (w6/m155 review).
-assert "lower-case github_token on bex-build passes" 0 "$(build_job "" "" "      - env:
+        run: ./x")" "registry-publishing job may hold only GITHUB_TOKEN"
+assert "workflow-header secret reaching a publisher fails" 1 "$(printf 'env:\n  T: ${{ secrets.HCLOUD_TOKEN }}\n%s' "$(build_job)")" \
+  "registry-publishing job may hold only GITHUB_TOKEN"
+assert "toJSON(secrets) on a publisher fails" 1 "$(build_job "" "" "      - env:
+          ALL: \${{ toJSON(secrets) }}
+        run: ./x")" "registry-publishing job may hold only GITHUB_TOKEN"
+assert "lower-case github_token on a publisher passes" 0 "$(build_job "" "" "      - env:
           T: \${{ secrets.github_token }}
         run: ./publish")"
-assert "toJSON(secrets) on bex-build fails" 1 "$(build_job "" "" "      - env:
-          ALL: \${{ toJSON(secrets) }}
-        run: ./x")" "bex-build job may hold only GITHUB_TOKEN"
-assert "toJSON(secrets) on bex-ci fails" 1 "$(job_body "bex-ci" "      - env:
-          ALL: \${{ toJSON(secrets) }}
-        run: ./x")" "credential-bearing job must use bex-production"
-assert "main lookalike gate on bex-build fails" 1 "$(build_job "github.ref == 'refs/heads/main-x'")" \
-  "bex-build job must be gated to refs/heads/main"
-assert "ORed main gate on bex-build fails" 1 "$(build_job "github.ref == 'refs/heads/main' || true")" \
-  "bex-build job must be gated to refs/heads/main"
+# RED: write-all, or a job not gated to main.
+assert "write-all on a publisher fails" 1 "$(printf 'permissions: write-all\n%s' "$(build_job)")" \
+  "registry-publishing job must not use write-all"
+assert "ungated publisher fails" 1 "$(build_job "always()")" \
+  "registry-publishing job must be gated to refs/heads/main"
+assert "main lookalike gate fails" 1 "$(build_job "github.ref == 'refs/heads/main-x'")" \
+  "registry-publishing job must be gated to refs/heads/main"
+assert "ORed main gate fails" 1 "$(build_job "github.ref == 'refs/heads/main' || true")" \
+  "registry-publishing job must be gated to refs/heads/main"
+assert "negated term beside the main gate fails" 1 "$(build_job "github.ref == 'refs/heads/main' && !cancelled()")" \
+  "registry-publishing job must be gated to refs/heads/main"
 assert "main gate only in a comment fails" 1 "$(build_job "always()" "    # if: github.ref == 'refs/heads/main'\n")" \
-  "bex-build job must be gated to refs/heads/main"
-assert "ANDed main gate on bex-build passes" 0 "$(build_job "github.ref == 'refs/heads/main' && needs.plan.outputs.ok == 'true'")"
-assert "caller passing secrets to a bex-build workflow fails" 1 "$(printf '%s\n  caller:\n    uses: ./.github/workflows/ci.yml\n    secrets: inherit\n' "$(build_job)")" \
-  "which runs on bex-build"
+  "registry-publishing job must be gated to refs/heads/main"
+# RED: workflow-level packages: write reaches a job without its own permissions.
+assert "workflow-level packages write on an ungated job fails" 1 "$(printf 'permissions:\n  contents: read\n  packages: write\njobs:\n  x:\n    runs-on: %s\n    steps:\n      - uses: %s' "$ARM" "$PINNED")" \
+  "registry-publishing job must be gated to refs/heads/main"
+# GREEN: ANDed gates, either side, including a != comparison (deploy.yml build).
+assert "ANDed main gate passes" 0 "$(build_job "github.ref == 'refs/heads/main' && needs.plan.outputs.ok == 'true'")"
+assert "deploy build gate shape passes" 0 "$(build_job "needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'")"
+# GREEN: an environment-gated publisher is a production job (checks 8/9).
+assert "environment-gated publisher passes" 0 "$(build_job "github.ref == 'refs/heads/main'" "    environment: production-deploy\n" "      - env:
+          T: \${{ secrets.HCLOUD_TOKEN }}
+        run: ./deploy")"
+# RED: a PR workflow must keep PR events off a publisher (check 6a).
+assert "publisher in a PR workflow fails" 1 "$(printf 'on:\n  pull_request:\n%s' "$(build_job)")" \
+  "credential-bearing job must reject pull_request events"
+assert "caller passing secrets to a publishing workflow fails" 1 "$(printf '%s\n  caller:\n    uses: ./.github/workflows/ci.yml\n    secrets: inherit\n' "$(build_job)")" \
+  "which publishes to the registry"
 
 # Checkout size (w6/m157): skip /.pm/ or name why the job needs it.
 CHECKOUT='actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1'
-assert "full-tree checkout fails" 1 "$(job_body "bex-ci" "      - uses: $CHECKOUT")" \
+assert "full-tree checkout fails" 1 "$(job_body "$ARM" "      - uses: $CHECKOUT")" \
   "actions/checkout must use a sparse-checkout that skips /.pm/"
-assert "sparse checkout skipping .pm passes" 0 "$(job_body "bex-ci" "      - uses: $CHECKOUT
+assert "sparse checkout skipping .pm passes" 0 "$(job_body "$ARM" "      - uses: $CHECKOUT
         with:
           filter: blob:none
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             /*
             !/.pm/")"
-assert "named full checkout passes" 0 "$(job_body "bex-ci" "      # full-checkout: gitleaks scans every tracked byte
+assert "named full checkout passes" 0 "$(job_body "$ARM" "      # full-checkout: gitleaks scans every tracked byte
       - uses: $CHECKOUT")"
-assert "full-checkout without a reason fails" 1 "$(job_body "bex-ci" "      # full-checkout:
+assert "full-checkout without a reason fails" 1 "$(job_body "$ARM" "      # full-checkout:
       - uses: $CHECKOUT")" "actions/checkout must use a sparse-checkout"
 
+# --- check 7: public-fork isolation for every PR-reachable job ---------------
 pr_job_body() {
-  printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on: [self-hosted, Linux, ARM64, %s]\n    steps:\n      - uses: %s' "$1" "${2:-bex-ci}" "$PINNED"
+  printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on: %s\n    steps:\n      - uses: %s' "$1" "$ARM" "$PINNED"
 }
-# RED: a pull_request job without a repository-identity gate can schedule fork
-# code on a persistent self-hosted runner.
+# RED: a pull_request job without a repository-identity gate runs fork code
+# in this repository's CI (cache scope, runner minutes, logs).
 assert "unguarded fork PR job fails" 1 "$(pr_job_body "name: unguarded")" \
   "reject public fork heads"
 # GREEN: same-repository PR branches continue to run, while fork heads skip.
 assert "same-repository PR guard passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository")"
 # GREEN: a job in a mixed-event workflow may instead exclude all PR events.
-assert "PR-excluded self-hosted job passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request'")"
-# RED: even a same-repository gate cannot schedule PR work onto production.
-assert "same-repository PR on production runner fails" 1 "$(pr_job_body "if: github.event.pull_request.head.repo.full_name == github.repository" "bex-production")" \
-  "bex-production job must reject pull_request events"
-# GREEN: a production job may live in a mixed-event workflow only when it
-# rejects pull_request before scheduling (the infra.yml terraform shape).
-assert "PR-excluded production job passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request'" "bex-production")"
+assert "PR-excluded job passes" 0 "$(pr_job_body "if: github.event_name != 'pull_request'")"
+
+# --- check 10: bounded uncredentialed jobs (opt-in for fixtures) --------------
+export BOUNDED_JOBS_CHECK=1
+assert "uncredentialed job without a timeout fails" 1 "$(job_body "$ARM" "      - uses: $PINNED")" \
+  "ci.yml:x"
+assert "uncredentialed job with a timeout passes" 0 "$(printf 'jobs:\n  x:\n    runs-on: %s\n    timeout-minutes: 10\n    steps:\n      - uses: %s' "$ARM" "$PINNED")"
+assert "secret-holding job without a timeout passes" 0 "$(job_body "$ARM" "      - env:
+          T: \${{ secrets.PRODUCTION_TOKEN }}
+        run: ./deploy")"
+assert "environment job without a timeout passes" 0 "$(printf 'jobs:\n  x:\n    runs-on: %s\n    environment: production-observe\n    steps:\n      - uses: %s' "$ARM" "$PINNED")"
+assert "write-token job without a timeout passes" 0 "$(printf 'jobs:\n  x:\n    if: github.ref == '"'"'refs/heads/main'"'"'\n    runs-on: %s\n    permissions:\n      issues: write\n    steps:\n      - uses: %s' "$ARM" "$PINNED")"
+assert "second job is checked on its own" 1 "$(printf 'jobs:\n  a:\n    runs-on: %s\n    environment: production-observe\n    steps:\n      - uses: %s\n  b:\n    runs-on: %s\n    steps:\n      - uses: %s' "$ARM" "$PINNED" "$ARM" "$PINNED")" \
+  "ci.yml:b"
+unset BOUNDED_JOBS_CHECK
 
 # --- w1/m68 F3: host-key pin coverage for admin.conf fetchers ---------------
 # RED: a workflow that fetches admin.conf over SSH without wiring the pin. This
@@ -330,7 +358,7 @@ fi
 secrets_table="$tmp/production-secrets.txt"
 printf '%s\n' '# fixture table' 'PROD_TOKEN production-deploy,production-observe' >"$secrets_table"
 prod_job() { # <environment-line-or-empty> <secret-name>
-  printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n%s    steps:\n      - run: echo ok\n        env:\n          T: ${{ secrets.%s }}' "$1" "$2"
+  printf 'jobs:\n  x:\n    runs-on: ubuntu-24.04-arm\n%s    steps:\n      - run: echo ok\n        env:\n          T: ${{ secrets.%s }}' "$1" "$2"
 }
 export PRODUCTION_SECRETS_FILE="$secrets_table"
 # GREEN: the secret is read inside one of its assigned environments.
@@ -352,9 +380,9 @@ assert "production secret in wrong environment fails" 1 "$(prod_job '    environ
 assert "workflow-level production secret fails" 1 "$(printf 'env:\n  T: ${{ secrets.PROD_TOKEN }}\n%s' "$(prod_job '    environment: production-deploy
 ' OTHER_TOKEN)")" "above jobs:"
 # GREEN: a commented-out reference is not a read.
-assert "commented production secret ignored" 0 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    steps:\n      # T: ${{ secrets.PROD_TOKEN }}\n      - run: echo ok')"
+assert "commented production secret ignored" 0 "$(printf 'jobs:\n  x:\n    runs-on: ubuntu-24.04-arm\n    steps:\n      # T: ${{ secrets.PROD_TOKEN }}\n      - run: echo ok')"
 # RED: a commented job header must not hand its secrets to the previous job's environment.
-assert "commented job header does not inherit the previous environment" 1 "$(printf 'jobs:\n  a:\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    environment: production-deploy\n    steps:\n      - run: echo ok\n  b: # probe\n    runs-on: [self-hosted, Linux, ARM64, bex-production]\n    steps:\n      - run: echo ok\n        env:\n          T: ${{ secrets.PROD_TOKEN }}')" \
+assert "commented job header does not inherit the previous environment" 1 "$(printf 'jobs:\n  a:\n    runs-on: ubuntu-24.04-arm\n    environment: production-deploy\n    steps:\n      - run: echo ok\n  b: # probe\n    runs-on: ubuntu-24.04-arm\n    steps:\n      - run: echo ok\n        env:\n          T: ${{ secrets.PROD_TOKEN }}')" \
   "b: reads production secret PROD_TOKEN outside a production environment"
 # GREEN: mapping form with a trailing comment on `environment:`.
 assert "commented mapping-form environment passes" 0 "$(prod_job '    environment: # gate

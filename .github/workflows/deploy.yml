@@ -88,7 +88,7 @@ jobs:
   # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
   secret-scan:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     steps:
       # full-checkout: gitleaks must scan every tracked byte, board evidence included (w6/m157)
@@ -140,7 +140,7 @@ jobs:
   # never cancelled; only a not-yet-started one is skipped. ---
   check-supersession:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     outputs:
       superseded: ${{ steps.check.outputs.superseded }}
@@ -214,7 +214,7 @@ jobs:
     # Ref guard (scan finding #2): only the reviewed default branch may build
     # and publish the production images this run's deploy job will pin.
     if: needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-latest
     outputs:
       operator_digest: ${{ steps.build_operator.outputs.digest }}
       dashboard_digest: ${{ steps.build_dashboard.outputs.digest }}
@@ -222,6 +222,13 @@ jobs:
       opensandbox_controller_digest: ${{ steps.build_opensandbox_controller.outputs.digest }}
       agent_sandbox_digest: ${{ steps.build_agent_sandbox.outputs.digest }}
     steps:
+      # Hosted runners ship ~25 GB of preinstalled toolchains this job never
+      # uses; free them before the multi-GB image builds, scans and SBOMs.
+      - name: free preinstalled toolchains
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # w6/m157: .pm is 93% of the tree (board evidence); skip it.
@@ -279,9 +286,8 @@ jobs:
           context: lego
           platforms: linux/amd64
           push: true
-          # The bex-production runner's CPU limit (block-eden-mono
-          # projects/github-runner/docker-compose.yml).
-          build-args: GOMAXPROCS=12
+          # The hosted ubuntu-latest runner's 4 vCPUs.
+          build-args: GOMAXPROCS=4
           # Layer cache in GHCR (w6/m158 t002): unchanged layers and module
           # downloads come from the previous main build. Only main-only, reviewed
           # workflows hold write access to these packages, so a cache layer is as
@@ -346,8 +352,8 @@ jobs:
           file: deploy/opensandbox/controller.Dockerfile
           platforms: linux/amd64
           push: true
-          # The bex-production runner's CPU limit, as for the operator image.
-          build-args: GOMAXPROCS=12
+          # The hosted runner's 4 vCPUs, as for the operator image.
+          build-args: GOMAXPROCS=4
           cache-from: type=registry,ref=${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:buildcache
           cache-to: type=registry,ref=${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:buildcache,mode=max,ignore-error=true
           tags: |
@@ -388,7 +394,7 @@ jobs:
         # Bounded so a stalled sigstore/registry call cannot hold the production
         # deploy group for the 6 h job default (run 41942865946, 2026-11-05).
         # The budget is sized for syft, which legitimately takes ~5 min
-        # (operator) and ~9 min (agent sandbox) on this runner: 8b68cbcf1 gave
+        # (operator) and ~9 min (agent sandbox) on the former 12-CPU runner: 8b68cbcf1 gave
         # every call the same 300 s and failed every SBOM since (w9/m173).
         timeout-minutes: 45
         env:
@@ -449,7 +455,7 @@ jobs:
           done
           todo=()
           for i in "${!refs[@]}"; do [ -e "/tmp/sbom-needed-$i" ] && todo+=("${refs[$i]}"); done
-          # Every SBOM at once (at most five images, on a 12-CPU / 24 GB
+          # Every SBOM at once (at most five images, on the hosted 4-vCPU / 16 GB
           # runner): the slowest image sets the wall clock instead of the sum.
           sbom() {
             retry 1200 2 syft "$1" -o "spdx-json=/tmp/sbom-$2.spdx.json" \
@@ -638,7 +644,7 @@ jobs:
     # Every test suite must pass before a pin; the build no longer waits for them.
     needs: [build, test-backend, test-operator, test-dashboard, test-opensandbox-controller]
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     environment: production-deploy
     # The maintenance mirror publishes the same version tags. Queue both
     # callers so timestamp normalization cannot race or cancel a pending deploy.
@@ -809,9 +815,10 @@ jobs:
 
       # --- 2. fetch the app cluster kubeconfig via a CP node (self-managed, w1/m19.1) ---
       # codex-security 2026-08 F6: every credential stages under $RUNNER_TEMP
-      # (auto-deleted at job end) — never ~/.ssh, $PWD, or a fixed /tmp path,
-      # which persist on the self-hosted runner and are readable by any later
-      # job running as the same uid (ADR083's shared pool). The key is pointed
+      # (auto-deleted at job end) — never ~/.ssh, $PWD, or a fixed /tmp path.
+      # Hosted runners discard the VM after each job (since 2026-11-09, ADR083
+      # amendment), so this is defense in depth: no credential lands in the
+      # checkout or a well-known path later steps read. The key is pointed
       # at via BEX_SSH_KEY_PATH, which fetch-app-kubeconfig.sh honors.
       - name: get app cluster kubeconfig
         id: app_kubeconfig
@@ -1251,7 +1258,8 @@ jobs:
           kubectl -n dashboard rollout status deploy/dashboard --timeout=300s
 
       # Final F6 scrub: runs even when everything above failed, so no staged
-      # credential survives the job on the shared self-hosted pool.
+      # credential outlives the steps that need it (defense in depth; the
+      # hosted VM is discarded at job end).
       - name: final credential scrub
         if: ${{ always() }}
         run: |

@@ -111,7 +111,7 @@ concurrency:
 jobs:
   cli-analytics:
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -146,9 +146,9 @@ jobs:
         run: docker rm -f gitops-cli-analytics-postgres
 
   render:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 125
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -177,10 +177,10 @@ jobs:
           "$RUNNER_TEMP/bin/helm" version --short
       - name: install yq
         # Always download + checksum-verify into the ephemeral $RUNNER_TEMP and
-        # prepend it to PATH — never short-circuit on a yq already in PATH. On a
-        # persistent self-hosted runner a prior (possibly attacker-planted) yq
-        # could otherwise be reused unverified across jobs (codex-security
-        # target #2); $RUNNER_TEMP is per-job, so the verified binary always wins.
+        # prepend it to PATH — never short-circuit on a yq already in PATH: the
+        # hosted image's own yq is unpinned, and a reviewed version must not
+        # depend on runner image contents (codex-security target #2).
+        # $RUNNER_TEMP is per-job, so the verified binary always wins.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -228,6 +228,8 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: deploy/gitops/charts/traefik-plugins/clientipheaders/go.mod
+          # The plugins are standard-library only (no go.sum): nothing worth a
+          # slot in the 10 GB repository cache.
           cache: false
       - name: Traefik local plugins # the edge loads them; a broken one is an outage (abortOnPluginFailure)
         run: |

@@ -157,6 +157,8 @@ A second evidence-backed pass (six focused audits) covered the surface added sin
 
 ## 7. CI runner custody (accepted — ADR083)
 
+**Amended 2026-11-09:** by owner decision every bex job runs on a GitHub-hosted runner again (`ubuntu-24.04-arm` by default, `ubuntu-latest` for linux/amd64 image work), and `scripts/github-actions-validate.sh` now rejects self-hosted labels — see [ADR083 §Amendment 2026-11-09](ADR083-security-review-round20.md#amendment-2026-11-09--github-hosted-runners). The rest of this section records the 2026-08-23 posture.
+
 **Posture.** All GitHub Actions workflows run on **self-hosted ARM64** runners (`[self-hosted, Linux, ARM64]`). This trades GitHub-hosted per-job ephemeral VMs for operator-custodied persistent hosts — a deliberate custody shift accepted 2026-08-23. Production images are still built for `linux/amd64` (Hetzner worker pool) via Docker Buildx cross-build on the ARM runners.
 
 **Residual risks accepted** (persistent runner state, PR code on shared hardware, runner compromise equals platform secret exposure): see [ADR083-security-review-round20.md](ADR083-security-review-round20.md). ADR080's protected-environment gates (`production-deploy`, `production-cluster`, `production-restore`, etc.) and main-branch ref guards remain load-bearing workflow-side controls; they do not replace runner isolation.

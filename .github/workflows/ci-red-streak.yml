@@ -27,7 +27,7 @@ permissions:
 
 jobs:
   streak:
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     env:
       GH_TOKEN: ${{ github.token }}
       BEX_CI_STREAK_THRESHOLD: ${{ inputs.threshold || '3' }}

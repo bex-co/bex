@@ -33,7 +33,9 @@ env:
 jobs:
   matrix:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-build]
+    runs-on: ubuntu-24.04-arm
+    # unit tests + matrix read; slowest recent success 6 min (github-actions-validate.sh check 10).
+    timeout-minutes: 15
     outputs:
       majors: ${{ steps.read.outputs.majors }}
     steps:
@@ -60,11 +62,11 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    runs-on: [self-hosted, Linux, ARM64, bex-build]
+    runs-on: ubuntu-24.04-arm
     strategy:
       fail-fast: false
-      # Deploys run on bex-production (w6/m155); two majors at a time still
-      # leave the build pool to the other image builds.
+      # Two majors at a time keep image builds well inside the org's
+      # concurrent hosted-job limit, leaving room for CI and deploys.
       max-parallel: 2
       matrix:
         major: ${{ fromJSON(needs.matrix.outputs.majors) }}
@@ -96,6 +98,14 @@ jobs:
             echo "tag=$version-postgres-$GITHUB_SHA"
             echo "version=$version"
           } >> "$GITHUB_OUTPUT"
+      # Hosted runners register no binfmt handlers: install QEMU so the amd64
+      # leg's RUN steps execute on this arm64 runner. The binfmt image is
+      # digest-pinned like every other image bex runs.
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          image: docker.io/tonistiigi/binfmt:qemu-v10.2.3@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: amd64
+          cache-image: false
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:

@@ -36,7 +36,7 @@ env:
 jobs:
   matrix:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     outputs:
       images: ${{ steps.matrix.outputs.images }}
       publish: ${{ steps.matrix.outputs.publish }}
@@ -76,7 +76,7 @@ jobs:
   build:
     needs: matrix
     if: github.ref == 'refs/heads/main' && needs.matrix.outputs.publish == 'true'
-    runs-on: [self-hosted, Linux, ARM64, bex-build]
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
@@ -97,6 +97,13 @@ jobs:
       group: native-base-${{ matrix.name }}
       cancel-in-progress: false
     steps:
+      # Hosted runners ship ~25 GB of preinstalled toolchains this job never
+      # uses; free them before the multi-GB image builds, scans and SBOMs.
+      - name: free preinstalled toolchains
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

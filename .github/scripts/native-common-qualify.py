@@ -163,6 +163,9 @@ PUBLICATION_GATES = LEGACY_PUBLICATION_GATES
 # One reviewed compatibility transition, not an arbitrary source-policy waiver.
 # Only the exact original0941 proof may cross this exact workflow-byte change;
 # the other32 image inputs, all retained proof bodies and source identities stay exact.
+# Re-pinned 2026-11-09 (owner decision, ADR083 amendment): "after" now also
+# carries the move to GitHub-hosted runners (the amd64 build job on
+# ubuntu-latest plus its disk-cleanup step); no build, gate or proof step changed.
 D3_LEGACY_0941 = {'ref': 'ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0',
  'producer': '1feba939b4697894e800ed0abb4f25a0bf415641',
  'verification': '1feba939b4697894e800ed0abb4f25a0bf415641',
@@ -172,8 +175,8 @@ D3_LEGACY_0941 = {'ref': 'ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad
             'bytes': 18402,
             'mode': '100644',
             'type': 'regular'},
- 'after': {'sha256': 'fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759',
-           'bytes': 15859,
+ 'after': {'sha256': '523e15966cebbd7957357fd8b1d26bcf3418d8bc0cd6a6d1159cb66eda27f10c',
+           'bytes': 16179,
            'mode': '100644',
            'type': 'regular'}}
 

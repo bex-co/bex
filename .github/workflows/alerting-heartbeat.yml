@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   heartbeat:
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     # Main-only and reviewer-free, so the schedule never waits for a human.
     environment: production-observe
     env:

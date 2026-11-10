@@ -1,7 +1,7 @@
 name: test (OpenSandbox controller patches)
 
-# Main pushes run once through deploy.yml; avoid duplicate gates competing on
-# the shared Mac host. deploy.yml includes this workflow and all test inputs.
+# Main pushes run once through deploy.yml; avoid duplicate gates competing for
+# runners. deploy.yml includes this workflow and all test inputs.
 on:
   pull_request:
     paths:
@@ -15,25 +15,11 @@ permissions:
 
 jobs:
   controller:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
-      # A self-hosted runner REUSES its _work directory between runs, unlike an
-      # ephemeral hosted one. This job's envtest step downloads the Kubernetes
-      # control-plane binaries into .opensandbox-upstream/kubernetes/bin/k8s/…
-      # and setup-envtest marks those directories read-only (0555) — so on the
-      # NEXT run actions/checkout cannot clean the workspace and the job dies at
-      # step 2 with `EACCES: permission denied, unlink '…/bin/k8s/…/etcd'`,
-      # before a single test runs. Restore write permission and drop the tree
-      # before checkout looks at it. Idempotent, and a no-op on a clean runner.
-      - name: reclaim the persistent runner workspace
-        run: |
-          stale="${GITHUB_WORKSPACE}/.opensandbox-upstream"
-          [ -e "$stale" ] || exit 0
-          chmod -R u+w "$stale" 2>/dev/null || true
-          rm -rf "$stale"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # w6/m157: .pm is 93% of the tree (board evidence); skip it.
@@ -59,21 +45,24 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: 1.25.7
-          # The persistent runner already keeps ~/go/pkg/mod, so the remote
-          # cache only re-extracted ~82k read-only files over identical copies
-          # (`tar: Cannot open: File exists`, 3+ min of disk I/O on the shared
-          # host) right before an envtest whose etcd writes then timed out
-          # (w8/m42 t003). Same choice as backend/operator; see
-          # docs/runbooks/runner-pool-relabel.md.
-          cache: false
+          # Hosted runners start empty. The old runner kept ~/go/pkg/mod, so a
+          # restore there only re-extracted identical files (w8/m42 t003); on a
+          # fresh VM it replaces every module download of the upstream tree.
+          cache-dependency-path: .opensandbox-upstream/kubernetes/go.sum
       # Upstream's Makefile downloads the envtest control plane into its own
-      # bin/ (wiped with the workspace above) with a single attempt, so every
-      # run fetched it from GitHub releases, whose 502/503s failed two deploys'
-      # test stages on 2026-11-08 (runs 42463190719, 42471620968). Keep the
-      # binaries in the persistent runner's home cache, fetched with retries
-      # only when missing, and point upstream's bin/k8s at it: setup-envtest
-      # then finds the version on disk and never contacts GitHub.
-      - name: Envtest binaries from the persistent cache
+      # bin/ with a single attempt, so every run fetched it from GitHub
+      # releases, whose 502/503s failed two deploys' test stages on 2026-11-08
+      # (runs 42463190719, 42471620968). Keep the binaries in a home cache
+      # restored from the Actions cache (keyed on the pinned upstream commit,
+      # which fixes the Kubernetes version), fetched with retries only when
+      # missing, and point upstream's bin/k8s at it: setup-envtest then finds
+      # the version on disk and never contacts GitHub.
+      - name: restore envtest binaries
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/bex-envtest
+          key: bex-envtest-opensandbox-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('deploy/opensandbox/controller.Dockerfile') }}
+      - name: Envtest binaries from the cache
         working-directory: ${{ steps.upstream.outputs.path }}/kubernetes
         run: |
           cache="$HOME/.cache/bex-envtest"

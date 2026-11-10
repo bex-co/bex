@@ -4,8 +4,8 @@ name: test (backend)
 # reusable workflow called by deploy.yml to gate the build+push+deploy job.
 # Integration tests run against real ephemeral Postgres, OpenFGA, and OpenBao
 # containers started as steps, all digest-pinned and enforced by scripts/image-pin-validate.sh.
-# Main pushes run once through deploy.yml; avoid duplicate gates competing on
-# the shared Mac host. deploy.yml includes this workflow and all test inputs.
+# Main pushes run once through deploy.yml; avoid duplicate gates competing for
+# runners. deploy.yml includes this workflow and all test inputs.
 on:
   pull_request:
     paths:
@@ -27,9 +27,9 @@ permissions:
 
 jobs:
   backend:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 180
     env:
       # GOWORK=off, same as operator-test.yml: the backend module resolves
@@ -70,7 +70,7 @@ jobs:
       # gets the retries above. Digest-pinned like every other image bex
       # resolves (w7/m85): the integration suite runs real SQL against it.
       # Pinned to the linux/arm64/v8 manifest, not the multi-arch index: this
-      # runner is self-hosted ARM64, and a services: pull once resolved the
+      # job runs on ubuntu-24.04-arm, and a services: pull once resolved the
       # index to a wrong-arch binary (entrypoint exec EINVAL).
       - name: start Postgres
         run: |
@@ -93,9 +93,10 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/backend/go.mod
-          # Multi-GB remote Go caches outlive signed download URLs and stall
-          # uploads on this fleet; keep the runner-local Go caches instead.
-          cache: false
+          # Hosted runners start empty: restore the module + build caches
+          # (shared by every job with the same Go version and go.sum set).
+          cache-dependency-path: |
+            lego/backend/go.sum
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22

@@ -41,7 +41,7 @@ jobs:
     if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     # Full-repository checkout has taken over seven minutes on these runners.
     # Keep the planning job bounded while allowing setup before validation.
     timeout-minutes: 15
@@ -129,7 +129,7 @@ jobs:
             needs.publish.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
     permissions:
       contents: read
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-latest
     timeout-minutes: 180
     strategy:
       fail-fast: false
@@ -141,6 +141,13 @@ jobs:
       GOMAXPROCS: "2"
       GODEBUG: http2client=0
     steps:
+      # Hosted runners ship ~25 GB of preinstalled toolchains this job never
+      # uses; free them before the multi-GB image builds, scans and SBOMs.
+      - name: free preinstalled toolchains
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -186,7 +193,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
-          cache: false
+          # Hosted runners start empty; the x64 key is shared with
+          # native-backport-acceptance.yml.
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
       - id: owned
         name: record gated inputs and assign ownership before creating resources
         env:
@@ -279,7 +290,7 @@ jobs:
             needs.qualify.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
     permissions:
       contents: read
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-latest
     timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}
     strategy:
       fail-fast: false
@@ -291,6 +302,13 @@ jobs:
       GOMAXPROCS: "2"
       GODEBUG: http2client=0
     steps:
+      # Hosted runners ship ~25 GB of preinstalled toolchains this job never
+      # uses; free them before the multi-GB image builds, scans and SBOMs.
+      - name: free preinstalled toolchains
+        run: |
+          df -h /
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL
+          df -h /
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -336,7 +354,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
-          cache: false
+          # Hosted runners start empty; the x64 key is shared with
+          # native-backport-acceptance.yml.
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
       - name: export only the validated single-case profile environment
         env:
           QUALIFICATION_PROFILE: ${{ needs.plan.outputs.profile }}
@@ -417,7 +439,7 @@ jobs:
     needs: plan
     if: github.ref == 'refs/heads/main' && needs.plan.outputs.source == 'fresh'
     continue-on-error: true
-    runs-on: [self-hosted, Linux, ARM64, bex-build]
+    runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
       packages: write

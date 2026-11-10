@@ -9,7 +9,7 @@ permissions:
 jobs:
   fingerprints:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     environment: production-deploy
     timeout-minutes: 5
     steps:

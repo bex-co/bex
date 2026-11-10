@@ -57,7 +57,7 @@ permissions:
 
 jobs:
   public-edge-liveness:
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     env:
       GH_TOKEN: ${{ github.token }}
       # Same workspace/toolchain split as backend-test.yml: the backend module
@@ -77,12 +77,13 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/backend/go.mod
-          # Multi-GB remote caches stall transfers on this fleet.
+          # A scheduled probe: not cached, so the 10 GB repository cache stays
+          # with the CI suites.
           cache: false
-      # The bex-production pool is not homogeneous: one host lacks the gh CLI,
-      # and the issue-bookkeeping steps below fail on `gh: command not found`
-      # even when the probe itself is healthy (observed run 33961859926,
-      # 2026-09-05). Pinned + checksummed so a compromised release mirror
+      # Fallback for a runner image without the gh CLI: the issue-bookkeeping
+      # steps below fail on `gh: command not found` even when the probe itself
+      # is healthy (a former runner host, run 33961859926, 2026-09-05).
+      # Hosted images ship gh, so this normally exits at once. Pinned + checksummed so a compromised release mirror
       # fails closed rather than executing arbitrary code on the runner.
       - name: Ensure gh CLI
         run: |
@@ -114,7 +115,7 @@ jobs:
           if [[ "$class" == "banner but no KEXINIT"* ]]; then
             body+="The gateway answered but stopped before key exchange — the w6/m132 shape. Likely a PROXY-protocol mismatch between Traefik and the gateway: confirm the gateway Deployment sets BEX_SSH_PROXY_PROTOCOL_TRUSTED_CIDRS to the cluster pod CIDR while the ssh IngressRouteTCP sets proxyProtocol. \`scripts/gitops-validate.sh\` guards the manifests; this checks the live edge."
           else
-            body+="No SSH conversation happened, so this is reachability, not the gateway's handshake. Check the load balancer's targets and Traefik's ssh entrypoint, and whether the runner host itself lost network (the self-hosted pool shares one host) before changing the gateway."
+            body+="No SSH conversation happened, so this is reachability, not the gateway's handshake. Check the load balancer's targets and Traefik's ssh entrypoint, and whether the GitHub-hosted runner itself lost network before changing the gateway."
           fi
           printf '%s\n' "$body" > issue-body.md
           bash scripts/lib/tracking-issue.sh open --label ssh-edge-down \
@@ -150,7 +151,7 @@ jobs:
             if certificate_failure "$class"; then
               printf 'cert-manager renews this certificate over DNS-01 (docs/ADR093). Check `kubectl -n traefik describe certificate onbex-wildcard` and its latest Order/Challenge; a revoked or missing Cloudflare token (`BEX_CLOUDFLARE_DNS_TOKEN`, installed as `traefik/cloudflare-dns-token`) is the usual cause.\n'
             else
-              printf 'The certificate is not what failed, so rotating it would not help. Check the load balancer targets and the Traefik default route, and whether the runner host itself lost network (the self-hosted pool shares one host).\n'
+              printf 'The certificate is not what failed, so rotating it would not help. Check the load balancer targets and the Traefik default route, and whether the GitHub-hosted runner itself lost network.\n'
             fi
           } > issue-body.md
           bash scripts/lib/tracking-issue.sh open --label onbex-fallback-tls-down \
@@ -222,7 +223,7 @@ jobs:
   # are unrelated (an attribution regex vs. the Alloy DaemonSet's reach), and a
   # healthy sibling must never mask a dark pipeline.
   request-logs-liveness:
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     # Main-only and reviewer-free, so the schedule never waits for a human.
     environment: production-observe
     env:
@@ -250,8 +251,8 @@ jobs:
           tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
       # Same credential staging as deploy.yml: everything under $RUNNER_TEMP
-      # (auto-deleted at job end), never ~/.ssh or a fixed path on the shared
-      # self-hosted runner, and the control-plane host key is pinned so the
+      # (auto-deleted at job end), never ~/.ssh or a fixed path on the runner,
+      # and the control-plane host key is pinned so the
       # fetch fails closed rather than trusting an unknown key.
       - name: Get app cluster kubeconfig
         env:
@@ -371,7 +372,7 @@ jobs:
   # failing: an unconfigured fixture is an operator to-do, not a production
   # incident, and a red run here must always mean "production is broken".
   tenant-view-liveness:
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     # Main-only and reviewer-free, so the schedule never waits for a human.
     environment: production-observe
     env:

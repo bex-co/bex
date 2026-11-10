@@ -29,7 +29,7 @@ concurrency:
 jobs:
   validate:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -60,7 +60,7 @@ jobs:
   cluster:
     needs: validate
     if: github.ref == 'refs/heads/main' && inputs.operation != 'observer-channel-smoke'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     environment: production-cluster
     timeout-minutes: ${{ inputs.operation == 'fixture-cleanup-observe' && 110 || 40 }}
     steps:
@@ -166,7 +166,7 @@ jobs:
   observer-channel-smoke:
     needs: validate
     if: github.ref == 'refs/heads/main' && inputs.operation == 'observer-channel-smoke'
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 5
     steps:
       - name: write resource-free artifact protocol marker

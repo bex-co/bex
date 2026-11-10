@@ -22,17 +22,17 @@ permissions:
   contents: read
 
 # One running + one pending run per branch: without a group every main push
-# queued a full run, which starved the bex-ci pool. Only PRs cancel a running
-# check.
+# queued a full run, which starved the old CI runner pool; hosted jobs still
+# share the org's concurrent-job limit. Only PRs cancel a running check.
 concurrency:
   group: docs-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   prettier:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
       # full-checkout: prettier checks every markdown file, .pm included (w6/m157)

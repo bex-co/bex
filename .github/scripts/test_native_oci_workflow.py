@@ -281,7 +281,13 @@ class PublisherInputControls(unittest.TestCase):
         self.assertNotIn('steps.recovery.outputs', WORKFLOW_TEXT)
         self.assertNotIn("path = Path('.github/native-base-recovery.json')", WORKFLOW_TEXT)
         self.assertIn('Historical recovery authorizations name multiarch indexes', WORKFLOW_TEXT)
-        self.assertIn('runs-on: [self-hosted, Linux, ARM64, bex-build]', WORKFLOW_TEXT)
+        # D3's amd64-only publisher builds natively on the hosted x64 runner,
+        # after freeing the toolchains its 28 GiB SBOM/scan floor needs.
+        build = WORKFLOW_TEXT.split('\n  build:\n', 1)[1]
+        self.assertIn('    runs-on: ubuntu-latest\n', build)
+        self.assertNotIn('ubuntu-24.04-arm', build)
+        self.assertLess(build.index('name: free preinstalled toolchains'), build.index('uses: actions/checkout@'))
+        self.assertIn('    runs-on: ubuntu-24.04-arm\n', WORKFLOW_TEXT.split('\n  build:\n', 1)[0])
         self.assertLess(WORKFLOW_TEXT.index('sign and attest the immutable candidate'),
                         WORKFLOW_TEXT.index('expose the fully gated immutable image'))
 

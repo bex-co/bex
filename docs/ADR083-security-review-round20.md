@@ -1,6 +1,6 @@
 # ADR083: Security review round 20 — self-hosted GitHub Actions disposition
 
-- **Status**: Accepted (2026-08-23); pool routing implemented (2026-09-02); host separation rejected — label-level split final (2026-09-07, `.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`)
+- **Status**: Accepted (2026-08-23); pool routing implemented (2026-09-02); host separation rejected — label-level split final (2026-09-07, `.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`); **superseded 2026-11-09 by owner decision: all bex CI runs on GitHub-hosted runners** ([§Amendment 2026-11-09](#amendment-2026-11-09--github-hosted-runners))
 - **Trigger**: operator decision to migrate every workflow from GitHub-hosted (`ubuntu-latest` / `ubuntu-24.04-arm`) to self-hosted runners, now split between the `bex-ci`, `bex-production` and (since 2026-11-02) `bex-build` trust-pool runner labels
 - **Lineage**: twentieth pass in the ADR028 → … → ADR080 lineage; re-confirms ADR080 residuals (onbex.co PSL, secretless-build split) unchanged
 
@@ -19,6 +19,30 @@ The remaining persistence risks are **accepted** for bex.co production CI, with 
 | 5 | Docker layer / toolchain cache poisoning across sequential jobs | medium | **Accepted residual** — `docker/setup-buildx-action` + pinned downloads; no shared cache hardening in YAML |
 | 6 | ARM64 runner fleet required | low | **Accepted residual** — operator provisions Linux ARM64 self-hosted runners with Docker |
 | 7 | onbex.co PSL cross-tenant cookie poisoning | low | **Accepted residual** (fifteenth report) — unchanged from ADR080 #8; `.pm/DO_NOT_DO.md` `#PSL` |
+
+## Amendment 2026-11-09 — GitHub-hosted runners
+
+The owner explicitly decided on 2026-11-09 to move **all** bex CI — CI/tests, image builds and production jobs — off the `bex-ci`, `bex-production` and `bex-build` pools onto free GitHub-hosted runners. This re-opens `.pm/DO_NOT_DO.md` `#CI-RUNNERS` (2026-08-23) and `#RUNNER-HOSTS` (2026-09-07). The reasons:
+
+- **Cost:** hosted minutes are free for this public repository.
+- **Emulation:** linux/amd64 image builds ran under QEMU on the ARM host and took hours (`native-base-image` up to ~187 min).
+- **Network:** the home internet link carried ~1 MB/s on 2026-11-06, stalling every job.
+- **Isolation:** a fresh VM per job removes the persistent-host residuals this ADR accepted.
+
+Every job now uses one scalar label: `runs-on: ubuntu-24.04-arm` by default (native ARM64; the checksum-pinned `*_linux_arm64` downloads and `scripts/hashicorp-install.sh` stay valid), or `ubuntu-latest` (x64) only for linux/amd64 image work that was emulated (`deploy.yml` `build`, the `native-base-image.yml` publisher, `native-common-image.yml` `qualify` / `qualify-profile`, `native-backport-acceptance.yml`). Multi-arch builds that run foreign-arch `RUN` steps on the ARM runner (`cnb-run-image.yml`, `pg-operand-image.yml`) register QEMU with the SHA-pinned `docker/setup-qemu-action` and a digest-pinned binfmt image, since the host's binfmt handlers are gone.
+
+Findings 1–6 are re-dispositioned:
+
+| # | Disposition after 2026-11-09 |
+| --- | --- |
+| 1 | **Closed** — GitHub discards the VM after each job. |
+| 2 | **Reduced** — PR jobs run on a single-use VM with no host to probe; check 7 still keeps fork heads off every PR-reachable job, and same-repository PRs still rely on review. |
+| 3 | **Closed** — no job shares a host or Docker daemon with another. The pool split is replaced by job-level checks in `scripts/github-actions-validate.sh`: a job holding a secret, environment or write token in a `pull_request` workflow must reject PR events (check 6a), and a registry-publishing job without an environment is main-only with only `GITHUB_TOKEN` (check 6b, formerly `bex-build`). |
+| 4 | **Reduced** — a compromised job reaches only the secrets of that job; ADR080's main-only environment gates and check 9 still confine production secrets. The trust anchor returns to GitHub's VM hygiene. |
+| 5 | **Reduced** — no Docker or toolchain state survives a job. The Actions cache is the remaining cross-job channel: it is scoped by branch (PR caches never reach `main`), and its keys are the `go.sum` / `go.mod` / pinned-commit hashes that select its contents. |
+| 6 | **Closed** — GitHub provides ARM64 (`ubuntu-24.04-arm`) and x64 runners. |
+
+Operator obligations 1–4 and 6–7 lapse with the pools; obligation 5 (main-only `production-*` environments) stays load-bearing. Decommissioning the bex runner registrations on the operator's Mac is operator follow-up. The sections below are kept as the record of the 2026-08-23 → 2026-11-09 posture; where they conflict with this amendment, the amendment wins. [`docs/runbooks/runner-pool-relabel.md`](runbooks/runner-pool-relabel.md) is superseded.
 
 ## Context — what changed
 
@@ -105,6 +129,8 @@ These are required for the accepted dispositions above to be meaningful (items 1
 7. Patch the runner OS and `actions-runner` agent on a schedule; reprovision hosts after any suspected compromise.
 
 ## Guidance for future security scans and agents
+
+_Superseded 2026-11-09 (see the amendment above): GitHub-hosted runners are now the required shape, and `scripts/github-actions-validate.sh` rejects self-hosted labels. The guidance below is historical._
 
 **Do not remediate findings 1–5 by reverting `runs-on` to GitHub-hosted `ubuntu-latest`, `ubuntu-24.04-arm`, or any other GitHub-hosted label.** That is the wrong fix and CI will reject it (`scripts/github-actions-validate.sh`, `.pm/DO_NOT_DO.md` `#CI-RUNNERS`).
 

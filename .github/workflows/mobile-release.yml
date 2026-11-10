@@ -21,7 +21,9 @@ permissions: {}
 
 jobs:
   authorize:
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
+    # a tag-name gate; recent success 12 s (github-actions-validate.sh check 10).
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:
@@ -59,7 +61,7 @@ jobs:
 
   release:
     needs: authorize
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     # Main-only deployment rule over environment-scoped credentials; no manual
     # gate (#ENV-REVIEWERS).
     environment: production-release
@@ -121,7 +123,7 @@ jobs:
           fi
           # eas-cli reads the key from a file. Keep it in RUNNER_TEMP rather than
           # the workspace so it is never part of the uploaded project archive,
-          # and delete it however the step ends (shared self-hosted runner).
+          # and delete it however the step ends (defense in depth on the hosted VM).
           if [ -n "$EXPO_ASC_API_KEY_P8" ]; then
             KEY_FILE="$RUNNER_TEMP/asc-api-key.p8"
             (umask 177 && printf '%s' "$EXPO_ASC_API_KEY_P8" > "$KEY_FILE")

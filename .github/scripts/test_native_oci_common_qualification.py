@@ -71,7 +71,10 @@ class QualificationControls(unittest.TestCase):
         jobs = ProfileRoutingControls.jobs()
         for name in ("qualify", "qualify-profile"):
             job = jobs[name]
-            self.assertIn("runs-on: [self-hosted, Linux, ARM64, bex-ci]", job)
+            # amd64 qualification runs natively on the hosted x64 runner.
+            self.assertIn("    runs-on: ubuntu-latest\n", job)
+            self.assertNotIn("aarch64", job)
+            self.assertNotIn("ARM64", job)
             self.assertIn("    permissions:\n      contents: read\n", job)
             self.assertNotIn("packages:", job)
             self.assertNotIn("${{ secrets.", job)
@@ -1533,7 +1536,7 @@ sys.exit(int(os.environ['CONTROL_EXIT']))
         self.assertIn('needs: plan\n', local)
         self.assertIn('continue-on-error: true', local)
         self.assertIn("needs.plan.outputs.source == 'fresh'", local)
-        self.assertIn('runs-on: [self-hosted, Linux, ARM64, bex-build]', local)
+        self.assertIn('    runs-on: ubuntu-24.04-arm\n', local)
         self.assertIn('platforms: linux/arm64', local)
         self.assertEqual(local.count('provenance: false'), 2)
         self.assertEqual(local.count('sbom: false'), 2)

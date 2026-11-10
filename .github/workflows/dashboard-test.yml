@@ -2,8 +2,8 @@ name: test (dashboard)
 
 # Run the dashboard test suite on every PR touching dashboard/, and as a
 # reusable workflow called by deploy.yml to gate the build+push+deploy job.
-# Main pushes run once through deploy.yml; avoid duplicate gates competing on
-# the shared Mac host. deploy.yml includes this workflow and all test inputs.
+# Main pushes run once through deploy.yml; avoid duplicate gates competing for
+# runners. deploy.yml includes this workflow and all test inputs.
 on:
   pull_request:
     paths:
@@ -16,9 +16,9 @@ permissions:
 
 jobs:
   dashboard:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     # The slowest successful run in the last 40 was 23 min. A starved host once
     # left vitest silent for 47 min after a forks worker would not terminate,
     # holding a deploy gate for most of an hour (w8/m42 t001). Fail it instead.

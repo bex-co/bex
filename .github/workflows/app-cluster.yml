@@ -46,7 +46,7 @@ jobs:
     # skipped before any secret is touched. Defense in depth alongside GitHub-side
     # protected environments (see infra.yml).
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     # The main-only production-cluster environment holds this job's
     # credentials (scripts/production-secrets.txt; codex-security round-19 #1).
     environment: production-cluster
@@ -73,7 +73,7 @@ jobs:
       # --- fetch the cluster's own kubeconfig via a CP node (self-managed, w1/m19.1) ---
       # codex-security 2026-08 F6: credentials stage under $RUNNER_TEMP
       # (auto-deleted at job end; scrubbed again by the final step) — never
-      # ~/.ssh or $PWD, which persist on the shared self-hosted runner.
+      # ~/.ssh or $PWD (defense in depth; the hosted VM is discarded after the job).
       - name: fetch app cluster kubeconfig (via a CP node)
         env:
           # Funneled through env rather than interpolated into the script body,

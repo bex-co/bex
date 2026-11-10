@@ -40,7 +40,7 @@ concurrency:
 
 jobs:
   deploy-canary:
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     # Main-only and reviewer-free, so the schedule never waits for a human.
     environment: production-observe
     env:
@@ -60,9 +60,9 @@ jobs:
           sparse-checkout: |
             /*
             !/.pm/
-      # The bex-production pool is not homogeneous: one host lacks the gh CLI,
-      # so the issue-bookkeeping steps fail on `gh: command not found` even when
-      # the probe itself is healthy. Pinned + checksummed so a compromised
+      # Fallback for a runner image without the gh CLI (a former runner
+      # host lacked it), so the issue-bookkeeping steps cannot fail on
+      # `gh: command not found` while the probe itself is healthy. Pinned + checksummed so a compromised
       # release mirror fails closed rather than executing arbitrary code.
       - name: Ensure gh CLI
         run: |

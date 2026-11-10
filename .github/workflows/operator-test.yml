@@ -4,8 +4,8 @@ name: test (operator)
 # lego/operator or lego/types, and as a reusable workflow called by deploy.yml
 # to gate the build+push+deploy job.
 # `make test` auto-runs manifests/generate/fmt/vet before the test run.
-# Main pushes run once through deploy.yml; avoid duplicate gates competing on
-# the shared Mac host. deploy.yml includes this workflow and all test inputs.
+# Main pushes run once through deploy.yml; avoid duplicate gates competing for
+# runners. deploy.yml includes this workflow and all test inputs.
 on:
   pull_request:
     paths:
@@ -19,9 +19,9 @@ permissions:
 
 jobs:
   operator:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 100
     env:
       # GOWORK=off: the operator module resolves standalone via its
@@ -44,9 +44,11 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
-          # Multi-GB remote Go caches outlive signed download URLs and stall
-          # uploads on this fleet; keep the runner-local Go caches instead.
-          cache: false
+          # Hosted runners start empty: restore the module + build caches
+          # (shared by every job with the same Go version and go.sum set).
+          cache-dependency-path: |
+            lego/operator/go.sum
+            lego/types/go.sum
       # TestValkeyPersistenceEngine's `docker run` of the pinned Valkey images
       # was killed at its 240s budget while the runner's Docker Hub pull stalled
       # (run 39524511518). Pull the exact pins the operator ships, read from its
@@ -71,11 +73,17 @@ jobs:
             [ "$i" -lt 3 ] || exit 1
             echo "go mod download attempt $i failed, retrying in $((i * 15))s..."; sleep $((i * 15))
           done
+      # The envtest control plane (the Makefile's ENVTEST_ASSETS_DIR) is
+      # restored from the Actions cache, so a version already there is used
+      # without contacting GitHub releases. The key follows go.mod, which picks
+      # the Kubernetes version (k8s.io/api) and setup-envtest's release branch.
+      - name: restore envtest binaries
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/bex-envtest
+          key: bex-envtest-operator-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('lego/operator/go.mod') }}
       - name: make test (operator + envtest)
         working-directory: lego/operator
-        # The persistent runner keeps $HOME across jobs, unlike bin/ (a checkout
-        # wipes it): a version already in the cache is used without contacting
-        # GitHub releases (the Makefile's ENVTEST_ASSETS_DIR).
         run: ENVTEST_ASSETS_DIR="$HOME/.cache/bex-envtest" make test
       # w1/m68: `make test` REGENERATES manifests/deepcopy before running, so a
       # stale committed CRD is silently repaired in the runner and the job stays

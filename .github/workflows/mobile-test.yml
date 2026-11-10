@@ -20,9 +20,9 @@ permissions:
 
 jobs:
   mobile:
-    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 70
     env:
       # GOWORK=off, same as backend-test.yml/operator-test.yml: the schema-dump
@@ -45,8 +45,9 @@ jobs:
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/backend/go.mod
-          # Multi-GB remote Go caches outlive signed download URLs and stall
-          # uploads on this fleet; keep the runner-local Go caches instead.
+          # Not cached: setup-go would reuse backend-test.yml's key (same Go
+          # version and go.sum), and this job's smaller cache could win the
+          # save and leave the backend suite with a cold build cache.
           cache: false
       - name: enable corepack
         run: corepack enable

@@ -139,7 +139,7 @@ Each entry is a codex-security triage; earlier rounds' residuals are re-confirme
 - [ADR077-security-review-round17.md](ADR077-security-review-round17.md) — round 17: 15 findings, 11 fixed
 - [ADR079-security-review-round18.md](ADR079-security-review-round18.md) — round 18: 10 findings (1 crit), 8 fixed
 - [ADR080-security-review-round19.md](ADR080-security-review-round19.md) — round 19: 8 findings, 7 fixed (CI env gates, secrets CAS, metrics scoping)
-- [ADR083-security-review-round20.md](ADR083-security-review-round20.md) — round 20: self-hosted CI runner risks accepted (persistent hosts, shared pool, fork-PR policy)
+- [ADR083-security-review-round20.md](ADR083-security-review-round20.md) — round 20: self-hosted CI runner risks accepted (persistent hosts, shared pool, fork-PR policy); amended 2026-11-09: CI moved to GitHub-hosted runners
 - [ADR084-security-review-round22.md](ADR084-security-review-round22.md) — round 22: dnR05P triage; 3 security fixes, 5 boundary/correctness hardenings, 2 accepted residuals
 - [ADR085-security-review-round23.md](ADR085-security-review-round23.md) — round 23: 5PePz5 managed-Postgres credential resurrection fixed
 

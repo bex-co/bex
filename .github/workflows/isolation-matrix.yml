@@ -40,7 +40,7 @@ concurrency:
 
 jobs:
   isolation-matrix:
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: ubuntu-24.04-arm
     # Main-only and reviewer-free, so the schedule never waits for a human.
     environment: production-observe
     env:
@@ -58,9 +58,9 @@ jobs:
       - uses: azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0
         with:
           version: v1.36.1
-      # Same not-every-host-has-gh guard as ssh-edge-liveness.yml: one host in
-      # the bex-production pool lacks the gh CLI, and the issue bookkeeping
-      # below fails on `gh: command not found` even when the probes are healthy.
+      # Same gh CLI fallback as ssh-edge-liveness.yml: the issue bookkeeping
+      # below must not fail on `gh: command not found` while the probes are
+      # healthy (hosted images ship gh, so this normally exits at once).
       - name: Ensure gh CLI
         run: |
           command -v gh >/dev/null && exit 0
@@ -70,8 +70,8 @@ jobs:
           tar -xzf "$RUNNER_TEMP/gh.tgz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/gh_${v}_linux_arm64/bin" >> "$GITHUB_PATH"
       # Same credential staging as deploy.yml: everything under $RUNNER_TEMP
-      # (auto-deleted at job end), never ~/.ssh or a fixed path on the shared
-      # self-hosted runner, and the control-plane host key is pinned so the
+      # (auto-deleted at job end), never ~/.ssh or a fixed path on the runner,
+      # and the control-plane host key is pinned so the
       # fetch fails closed rather than trusting an unknown key.
       - name: Get app cluster kubeconfig
         env:

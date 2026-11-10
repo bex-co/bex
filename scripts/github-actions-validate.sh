@@ -13,17 +13,16 @@
 #     Gitleaks scan and its w1/m59 supersession wiring.
 #  4. Workflows fetching admin.conf pin the SSH host and keep the fetched
 #     kubeconfig alive until their last cluster command.
-#  5. Self-hosted runner custody (ADR083, `.pm/DO_NOT_DO.md` #CI-RUNNERS): every
-#     job `runs-on` must be the scalar [self-hosted, Linux, ARM64, <pool>] form
-#     carrying exactly one of the non-overlapping `bex-ci` / `bex-production` / `bex-build`
-#     pool labels (an unmatched label queues; org group membership is managed
-#     independently at runner registration) and install tools without sudo,
-#     which the deliberately unprivileged runner account does not have.
-#  6. Trust separation: credential-bearing jobs must use `bex-production` (or
-#     `bex-build` for main-only image publication holding only GITHUB_TOKEN), and
-#     production-pool jobs in a `pull_request` workflow must reject PR events.
-#  7. Public-fork isolation: any self-hosted job in a `pull_request` workflow
-#     must either reject fork PRs by repository identity or reject all PR events.
+#  5. GitHub-hosted runners (owner decision 2026-11-09; ADR083 amendment,
+#     `.pm/DO_NOT_DO.md` #CI-RUNNERS re-opened): every job `runs-on` is the
+#     scalar `ubuntu-24.04-arm` (default) or `ubuntu-latest` (x64, for
+#     linux/amd64 image work only), and no workflow mentions `self-hosted`.
+#  6. Credential boundary: a credential-bearing job (secrets, environment or a
+#     write token) in a `pull_request` workflow must reject PR events, and a
+#     registry-publishing job without an environment is main-only and holds no
+#     secret beyond GITHUB_TOKEN (what the retired bex-build pool enforced).
+#  7. Public-fork isolation: any job in a `pull_request` workflow must either
+#     reject fork PRs by repository identity or reject all PR events.
 #  8. Secretless image build (ADR080 F2, w2/m89): a job that builds images with
 #     docker/build-push-action executes repo-controlled code, so it may
 #     reference no secret beyond the registry-push GITHUB_TOKEN and must not
@@ -198,99 +197,105 @@ if [ "$ageless_restore_count" -gt 0 ]; then
   exit 1
 fi
 
-# 5. Self-hosted runner custody and trust-pool separation (ADR083,
-# .pm/DO_NOT_DO.md #CI-RUNNERS). All jobs stay on operator-custodied ARM64
-# self-hosted runners. Each runner registration carries exactly one of the
-# `bex-ci` / `bex-production` labels, so requiring the label here schedules a
-# job only onto its trust class -- and a not-yet-labeled fleet queues jobs
-# (fail-safe) instead of running them on the wrong pool. Existing org runner
-# groups are separate registration metadata; this repository standardizes on
-# labels. Both pools share the operator's single host by decision
-# (.pm/DO_NOT_DO.md #RUNNER-HOSTS); the split is label-level routing only.
-hosted_runners=""
+# 5. GitHub-hosted runners (owner decision 2026-11-09, re-opening
+# .pm/DO_NOT_DO.md #CI-RUNNERS; ADR083 amendment). Every job runs on a fresh
+# GitHub-hosted VM that is discarded afterwards, so no job inherits another
+# job's files, tools or credentials. `runs-on` is exactly one scalar label:
+# `ubuntu-24.04-arm` by default (native ARM64, so the pinned *_linux_arm64
+# tool downloads and scripts/hashicorp-install.sh stay valid) or
+# `ubuntu-latest` (x64) for linux/amd64 image work that would otherwise run
+# under QEMU. Matrix/expression labels, runner groups and every `self-hosted`
+# mention fail: the operator-custodied pools are retired, and a stale label
+# would queue forever rather than run.
 invalid_runner_contract=""
+self_hosted_mentions=""
 for wf in $(collect_workflow_files); do
-  if grep -E '^[[:space:]]*runs-on:[[:space:]]+ubuntu' "$wf" >/dev/null 2>&1; then
-    hosted_runners="$hosted_runners $wf"
-  fi
+  mentions="$(grep -n 'self-hosted' "$wf" | cut -d: -f1 | sed "s|^|$wf:|" || true)"
+  [ -z "$mentions" ] || self_hosted_mentions="${self_hosted_mentions}${self_hosted_mentions:+
+}${mentions}"
   violations="$(awk -v file="$wf" '
     /^[[:space:]]*runs-on:/ {
-      if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64, bex-(ci|production|build)\][[:space:]]*$/) next
-      if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64\][[:space:]]*$/) {
-        print file ":" NR ": missing bex-ci, bex-production or bex-build pool label"
-        next
-      }
-      if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64, [A-Za-z0-9_-]+\][[:space:]]*$/) {
-        print file ":" NR ": unapproved pool label (only bex-ci, bex-production or bex-build exist)"
-        next
-      }
-      print file ":" NR ": runs-on must be the scalar [self-hosted, Linux, ARM64, <pool>] label form"
-    }
-    /^[[:space:]]+group: bex-(ci|production|build)[[:space:]]*$/ {
-      print file ":" NR ": runner-group syntax is outside the workflow contract; use the pool label form"
+      if ($0 ~ /^    runs-on: (ubuntu-24\.04-arm|ubuntu-latest)[[:space:]]*$/) next
+      print file ":" NR ": runs-on must be the scalar ubuntu-24.04-arm (default) or ubuntu-latest (amd64 image work)"
     }
   ' "$wf")"
   [ -z "$violations" ] || invalid_runner_contract="${invalid_runner_contract}${invalid_runner_contract:+
 }${violations}"
 done
-if [ -n "$hosted_runners" ]; then
-  echo "FAIL: workflows must not use GitHub-hosted ubuntu runners — bex CI is self-hosted (ADR083, .pm/DO_NOT_DO.md #CI-RUNNERS):" >&2
-  printf '  %s\n' $hosted_runners >&2
-  echo "      Reverting to ubuntu-latest is a rejected remediation; split runner pools or add ephemeral self-hosted runners instead." >&2
+if [ -n "$self_hosted_mentions" ]; then
+  echo "FAIL: workflows must not mention self-hosted runners — bex CI runs on GitHub-hosted runners (ADR083 amendment 2026-11-09, .pm/DO_NOT_DO.md #CI-RUNNERS):" >&2
+  printf '  %s\n' $self_hosted_mentions >&2
   exit 1
 fi
 if [ -n "$invalid_runner_contract" ]; then
-  echo "FAIL: every job must carry exactly one approved trust-pool label on the canonical self-hosted ARM64 runs-on:" >&2
+  echo "FAIL: every job must run on exactly one approved GitHub-hosted runner label:" >&2
   printf '%s\n' "$invalid_runner_contract" >&2
   exit 1
 fi
-sudo_workflows="$(grep -lE '(^|[[:space:]])sudo([[:space:]]|$)' $(collect_workflow_files) 2>/dev/null || true)"
-if [ -n "$sudo_workflows" ]; then
-  echo "FAIL: self-hosted workflow steps must not require sudo; install verified tools under RUNNER_TEMP and export GITHUB_PATH:" >&2
-  printf '  %s\n' $sudo_workflows >&2
-  exit 1
-fi
 
-# 6. Credential boundary. Repository/environment secrets and write-capable job
-# tokens never land on a host that runs PR code. A top-level secret or write
-# permission applies to every job in that workflow; job-local credentials apply
-# only to that job. A production-pool job inside a mixed-event workflow must
-# also reject pull_request before GitHub schedules it.
+# 6. Credential boundary, keyed on what the retired trust pools signaled.
 #
-# bex-build (w6/m155) is the main-only image-publication pool: a job there may
-# hold GITHUB_TOKEN write scopes (packages, id-token, attestations) but never
-# another secret, an environment or write-all, must be gated to refs/heads/main,
-# and rejects pull_request like bex-production. Hours-long image builds then
-# never hold the runners deploys need.
+# 6a (was "bex-ci holds no credential; bex-production rejects PRs"): a job that
+# can run for a pull_request must hold nothing worth stealing. A job holding
+# repository/environment secrets, an `environment:`, write-all or any write
+# token scope, in a workflow a pull_request(_target) triggers, must reject
+# that event before GitHub schedules it (the infra.yml terraform shape). A
+# top-level secret or write permission applies to every job in the workflow.
+# The rejection must be an ANDed `github.event_name != 'pull_request'` on the
+# job's `if:`; the fork guard's `… || same repository` form still admits PRs.
+#
+# 6b (was the bex-build pool, w6/m155): a registry-publishing job
+# (`packages: write`, job- or workflow-level) without an environment is
+# main-only image publication. It may hold GITHUB_TOKEN write scopes but no
+# other secret and not write-all, and its `if:` must AND in
+# github.ref == 'refs/heads/main' (no `||`, no negation). Environment-gated
+# publishers (the deploy job) are production jobs instead: checks 8 and 9.
 runner_trust_violations() {
   local wf
   for wf in $(collect_workflow_files); do
     awk -v file="$wf" '
       function check_job() {
         if (job == "" || block !~ /\n    runs-on:/) return
-        production = block ~ /\n    runs-on: \[self-hosted, Linux, ARM64, bex-production\]/
-        build = block ~ /\n    runs-on: \[self-hosted, Linux, ARM64, bex-build\]/
         foreign_secret = workflow_foreign_secret || block_foreign_secret(block)
+        environment = block ~ /\n    environment:/
+        job_write_all = block ~ /\n    permissions:[[:space:]]*write-all([[:space:]]|$)/
         credentialed = workflow_credentialed \
           || block ~ /\$\{\{[[:space:]]*secrets\./ \
           || whole_secrets(block) \
-          || block ~ /\n    environment:/ \
-          || block ~ /\n    permissions:[[:space:]]*write-all([[:space:]]|$)/ \
+          || environment || job_write_all \
           || block ~ /\n      [A-Za-z0-9_-]+:[[:space:]]*write([[:space:]]|$)/
-        excludes_pr = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request/
-        excludes_pr_target = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request_target/
-        if (credentialed && !production && !build) {
-          print file ":" job ": credential-bearing job must use bex-production"
+        own_permissions = block ~ /\n    permissions:/
+        publishes = block ~ /\n      packages:[[:space:]]*write([[:space:]]|$)/ \
+          || job_write_all || (!own_permissions && (workflow_packages_write || workflow_write_all))
+        if (credentialed && ((has_pull_request && !rejects_event(block, "pull_request")) \
+          || (has_pull_request_target && !rejects_event(block, "pull_request_target")))) {
+          print file ":" job ": credential-bearing job must reject pull_request events"
         }
-        if ((production || build) && ((has_pull_request && !excludes_pr) || (has_pull_request_target && !excludes_pr_target))) {
-          print file ":" job ": " (build ? "bex-build" : "bex-production") " job must reject pull_request events"
+        if (publishes && !environment) {
+          if (foreign_secret) print file ":" job ": registry-publishing job may hold only GITHUB_TOKEN, not another secret"
+          if (workflow_write_all || job_write_all) print file ":" job ": registry-publishing job must not use write-all"
+          if (!main_gated(block)) print file ":" job ": registry-publishing job must be gated to refs/heads/main"
         }
-        if (build) {
-          if (foreign_secret) print file ":" job ": bex-build job may hold only GITHUB_TOKEN, not another secret"
-          if (block ~ /\n    environment:/) print file ":" job ": bex-build job must not use an environment"
-          if (workflow_write_all || block ~ /\n    permissions:[[:space:]]*write-all([[:space:]]|$)/) print file ":" job ": bex-build job must not use write-all"
-          if (block !~ /\n    if: github\.ref == \047refs\/heads\/main\047([[:space:]]+&&[^|!\n]*)?\n/) print file ":" job ": bex-build job must be gated to refs/heads/main"
-        }
+      }
+      # The job-level single-line `if:` ANDs in `github.event_name != <event>`.
+      # An `||` (as in the fork guard "!= pull_request || same repository")
+      # would still schedule same-repository PRs, so it does not count.
+      function rejects_event(text, event,    cond) {
+        if (!match(text, /\n    if: [^\n]*/)) return 0
+        cond = substr(text, RSTART + 9, RLENGTH - 9)
+        if (cond ~ /\|\|/) return 0
+        return index(cond, "github.event_name != \047" event "\047") > 0
+      }
+      # The job-level single-line `if:` ANDs in the exact main ref; any `||`
+      # or negation (other than a `!=` comparison) could re-open other refs.
+      function main_gated(text,    cond) {
+        if (!match(text, /\n    if: [^\n]*/)) return 0
+        cond = substr(text, RSTART + 9, RLENGTH - 9)
+        sub(/[[:space:]]+$/, "", cond)
+        if (cond ~ /\|\|/) return 0
+        gsub(/!=/, "", cond)
+        if (cond ~ /!/) return 0
+        return cond ~ /(^|&&[[:space:]]*)github\.ref == \047refs\/heads\/main\047[[:space:]]*(&&|$)/
       }
       # The whole secrets object inside an expression, e.g. toJSON(secrets):
       # it carries every secret at once.
@@ -311,6 +316,7 @@ runner_trust_violations() {
         return 0
       }
       !in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*write([[:space:]]|$)/ { workflow_credentialed = 1 }
+      !in_jobs && /^  packages:[[:space:]]*write([[:space:]]|$)/ { workflow_packages_write = 1 }
       !in_jobs && /^permissions:[[:space:]]*write-all([[:space:]]|$)/ { workflow_credentialed = 1 }
       !in_jobs && /\$\{\{[[:space:]]*secrets\./ { workflow_credentialed = 1 }
       !in_jobs && block_foreign_secret($0) { workflow_foreign_secret = 1 }
@@ -331,19 +337,19 @@ runner_trust_violations() {
   done
 }
 
-# A reusable workflow with a bex-build job must not be handed secrets by its
-# caller (`secrets:` mapping or `secrets: inherit`): the callee's own scan
-# cannot see what the caller passes.
+# 6c. A reusable workflow that publishes to the registry must not be handed
+# secrets by its caller (`secrets:` mapping or `secrets: inherit`): the
+# callee's own scan cannot see what the caller passes.
 build_caller_violations() {
   local wf callee name
   for callee in $(collect_workflow_files); do
-    grep -q '^    runs-on: \[self-hosted, Linux, ARM64, bex-build\]' "$callee" || continue
+    grep -qE '^ *packages:[[:space:]]*write([[:space:]]|$)' "$callee" || continue
     name="$(basename "$callee")"
     for wf in $(collect_workflow_files); do
       awk -v file="$wf" -v callee="$name" '
         function check() {
           if (job != "" && block ~ ("\n    uses: \\./\\.github/workflows/" callee) && block ~ /\n    secrets:/)
-            print file ":" job ": passes secrets to " callee ", which runs on bex-build"
+            print file ":" job ": passes secrets to " callee ", which publishes to the registry"
         }
         /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
         in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { check(); job = $1; sub(/:$/, "", job); block = "\n" $0; next }
@@ -399,14 +405,14 @@ fi
 
 trust_violations="$(runner_trust_violations; build_caller_violations)"
 if [ -n "$trust_violations" ]; then
-  echo "FAIL: CI, build and production runner trust classes overlap:" >&2
+  echo "FAIL: credentials reach pull_request jobs, or registry publication escapes main:" >&2
   printf '%s\n' "$trust_violations" >&2
   exit 1
 fi
 
 # 7. Public-fork isolation. A public fork can control code reached by `make`,
 # package-manager, and test steps without editing the workflow itself. Every
-# self-hosted job in a pull_request workflow therefore has to prove one of two
+# job in a pull_request workflow therefore has to prove one of two
 # things before GitHub schedules it: the PR head belongs to this repository, or
 # the job excludes pull_request events entirely. This is defense in depth with
 # the repository's "Require approval for all external contributors" setting;
@@ -446,7 +452,7 @@ unguarded_pr_jobs() {
 
 unguarded_fork_jobs="$(unguarded_pr_jobs)"
 if [ -n "$unguarded_fork_jobs" ]; then
-  echo "FAIL: self-hosted jobs reachable from pull_request must reject public fork heads:" >&2
+  echo "FAIL: jobs reachable from pull_request must reject public fork heads:" >&2
   printf '  %s\n' $unguarded_fork_jobs >&2
   echo "      Require github.event.pull_request.head.repo.full_name == github.repository," >&2
   echo "      or explicitly exclude pull_request events from the job." >&2
@@ -588,10 +594,77 @@ if [ -n "$production_violations" ]; then
   exit 1
 fi
 
+# 10. Bounded CI jobs (w9/m173): every job holding no credential (no secret,
+# environment or write token: exactly the class the retired `bex-ci` pool
+# ran) sets a job-level timeout-minutes. Without one a hung step holds a
+# runner for GitHub's 6 h default: a go-lint checkout stuck from 08:54 to
+# 12:30 on 2026-11-06 left deploy tests queued, and hosted jobs still share
+# the org's concurrent-job limit. Budgets are measured, about 2.5x the recent
+# successful maximum. Credentialed production jobs are out of scope until
+# their budgets are measured. A fixture run applies it only when the self-test
+# sets BOUNDED_JOBS_CHECK=1, so fixtures written for other checks need no
+# timeout.
+unbounded_ci_jobs=""
+if [ "$canonical_tree" -eq 1 ] || [ "${BOUNDED_JOBS_CHECK:-0}" = 1 ]; then
+  unbounded_ci_jobs="$(python3 - "$WORKFLOWS_DIR" <<'PY'
+import pathlib, re, sys
+# Text scan (no YAML library assumed): jobs sit at two-space indent under
+# `jobs:`, their keys at four.
+# native-base-image.yml is byte-pinned by w8/m91's D3 custody transition
+# (native-common-qualify.py D3_LEGACY_0941 "after"; test_d3_transition_pin_*):
+# a timeout added there broke native-common (run of 759e447ff). Changing those
+# bytes is w8's custody decision, as for check 6b; the 2026-11-09 re-pin
+# carried only the hosted-runner move.
+EXEMPT = {"native-base-image.yml"}
+SECRET = re.compile(r"\$\{\{[^}]*\bsecrets\b|write-all")
+HEADER_WRITE = re.compile(r"^  [A-Za-z0-9_-]+:\s*write\b")
+JOB_CREDENTIAL = re.compile(r"^    environment:|^      [A-Za-z0-9_-]+:\s*write\b")
+for path in sorted(pathlib.Path(sys.argv[1]).glob("*.yml")):
+    if path.name in EXEMPT:
+        continue
+    job, in_jobs, header_credential = None, False, False
+    def report():
+        if job and runs and not bounded and not credential:
+            print(f"{path.name}:{job}")
+    for line in path.read_text().splitlines():
+        if re.match(r"^jobs:\s*$", line):
+            in_jobs = True
+            continue
+        if not in_jobs:
+            if SECRET.search(line) or HEADER_WRITE.match(line):
+                header_credential = True
+            continue
+        if re.match(r"^\S", line):
+            report()
+            job, in_jobs = None, False
+            continue
+        head = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
+        if head:
+            report()
+            job, runs, bounded, credential = head.group(1), False, False, header_credential
+            continue
+        if job is None:
+            continue
+        if re.match(r"^    runs-on:", line):
+            runs = True
+        elif re.match(r"^    timeout-minutes:", line):
+            bounded = True
+        if SECRET.search(line) or JOB_CREDENTIAL.match(line):
+            credential = True
+    report()
+PY
+)"
+fi
+if [ -n "$unbounded_ci_jobs" ]; then
+  echo "FAIL: uncredentialed jobs without a job-level timeout-minutes (a hung step would hold a runner for 6 h):" >&2
+  echo "$unbounded_ci_jobs" >&2
+  exit 1
+fi
+
 # The remaining checks pin the canonical tree's reviewed inventory + deploy.yml
 # wiring; they don't apply to a fixture dir, so stop here under an override.
 if [ "$canonical_tree" -eq 0 ]; then
-  echo "PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner trust separation, public-fork isolation and production-secret confinement intact (fixture: $WORKFLOWS_DIR)"
+  echo "PASS: third-party refs SHA-pinned, Node 20 absent, hosted-runner contract, credential boundary, public-fork isolation, production-secret confinement and bounded jobs (when requested) intact (fixture: $WORKFLOWS_DIR)"
   exit 0
 fi
 
@@ -610,6 +683,7 @@ azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d
 docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
 docker/login-action@dbcb813823bdd20940b903addbd779551569679f
 docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
+docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1
 oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d
 sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6'
 
@@ -676,58 +750,12 @@ if [ "${#restore_workflow_files[@]}" -lt 1 ]; then
   exit 1
 fi
 
-if [ "$(grep -Rh 'self-hosted' .github/workflows lego/operator/.github/workflows 2>/dev/null | wc -l | tr -d ' ')" -lt 20 ]; then
-  echo "FAIL: expected self-hosted runs-on across the workflow tree — the custody check (5) has gone vacuous" >&2
+# Anti-vacuity for check 5: it inspects only the lines it recognizes as
+# runs-on, so a reformatted tree with none would pass. Pin a floor of
+# approved labels.
+if [ "$(grep -RhE '^    runs-on: (ubuntu-24\.04-arm|ubuntu-latest)[[:space:]]*$' .github/workflows lego/operator/.github/workflows 2>/dev/null | wc -l | tr -d ' ')" -lt 20 ]; then
+  echo "FAIL: expected GitHub-hosted runs-on across the workflow tree — the runner check (5) has gone vacuous" >&2
   exit 1
 fi
 
-# 10. Bounded shared-runner jobs (w9/m173): every job on the shared `bex-ci`
-# pool sets a job-level timeout-minutes. Without one a hung step holds a
-# runner for GitHub's 6 h default: a go-lint checkout stuck from 08:54 to
-# 12:30 on 2026-11-06 left deploy tests queued. Budgets are measured, about
-# 2.5x the recent successful maximum.
-unbounded_ci_jobs="$(python3 - .github/workflows <<'PY'
-import pathlib, re, sys
-# Text scan (no YAML library on the runners): jobs sit at two-space indent
-# under `jobs:`, their keys at four.
-# native-base-image.yml is byte-pinned by w8/m91's D3 custody transition
-# (native-common-qualify.py D3_LEGACY_0941 "after"; test_d3_transition_pin_*):
-# a timeout added there broke native-common (run of 759e447ff). Changing those
-# bytes is w8's custody decision, as for check 6b.
-EXEMPT = {"native-base-image.yml"}
-for path in sorted(pathlib.Path(sys.argv[1]).glob("*.yml")):
-    if path.name in EXEMPT:
-        continue
-    job, in_jobs, ci, bounded = None, False, False, False
-    def report():
-        if job and ci and not bounded:
-            print(f"{path.name}:{job}")
-    for line in path.read_text().splitlines():
-        if re.match(r"^jobs:\s*$", line):
-            in_jobs = True
-            continue
-        if not in_jobs:
-            continue
-        if re.match(r"^\S", line):
-            report()
-            job, in_jobs = None, False
-            continue
-        head = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
-        if head:
-            report()
-            job, ci, bounded = head.group(1), False, False
-            continue
-        if re.match(r"^    runs-on:.*\bbex-ci\b", line):
-            ci = True
-        elif re.match(r"^    timeout-minutes:", line):
-            bounded = True
-    report()
-PY
-)"
-if [ -n "$unbounded_ci_jobs" ]; then
-  echo "FAIL: bex-ci jobs without a job-level timeout-minutes (a hung step would hold a shared runner for 6 h):" >&2
-  echo "$unbounded_ci_jobs" >&2
-  exit 1
-fi
-
-echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody, bounded bex-ci jobs, public-fork isolation and production-secret confinement intact"
+echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, GitHub-hosted runner contract, bounded uncredentialed jobs, credential boundary, public-fork isolation and production-secret confinement intact"
