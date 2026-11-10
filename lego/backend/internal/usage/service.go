@@ -26,7 +26,6 @@ limitations under the License.
 package usage
 
 import (
-	"cmp"
 	"context"
 	"fmt"
 	"log"
@@ -37,7 +36,6 @@ import (
 	"sync"
 	"time"
 
-	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -1145,15 +1143,14 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 			health[i].ExpectedFrom = expectedFrom
 		}
 	case store.UsageKindBuildSeconds:
-		// Same identity defect as instance_seconds above: the operator stamps
-		// app.bex.co/build with the App CR's name (operator/internal/build/build.go),
-		// and the Job lives in BEX_BUILD_NAMESPACE — never the store name in the
-		// shared namespace.
+		// Same identity defect as instance_seconds above: the operator labels
+		// the build and pre-deploy runs with the App CR's name, never the store
+		// name (queryBuildSeconds).
 		cr, _ := s.resolveAppCR(ctx, app, store.UsageKindBuildSeconds)
 		if crName, namespace, identified := s.appPodIdentity(app, cr); identified {
 			var exempt map[string]bool
 			if exempt, ok = s.platformRebuildRevisions(ctx, app.ID); ok {
-				quantity, ok = s.queryBuildSeconds(ctx, crName, cmp.Or(s.BuildNamespace, namespace), window, end, exempt)
+				quantity, ok = s.queryBuildSeconds(ctx, crName, namespace, window, end, exempt)
 			}
 		}
 		health = oneSourceHealth(store.UsageSourceBuild, ok, expectedFrom)
@@ -1559,54 +1556,6 @@ func (s *Service) platformRebuildRevisions(ctx context.Context, appID string) (m
 		return nil, false
 	}
 	return revisions, true
-}
-
-// queryBuildSeconds sums the durations of completed build Jobs whose
-// completionTime falls in [window, end). It lists Jobs by the app-name label in
-// the namespace the operator actually runs them in — BEX_BUILD_NAMESPACE, or
-// the App's own namespace when the two are co-located. The Kubernetes client
-// comes from core.Base.
-//
-// crName is the App CR's name: the operator stamps app.bex.co/build with
-// exactly that (build.Options{Name: app.Name} in app_controller.go), so the
-// workspace-scoped store name never matches.
-//
-// Jobs of an exempt build revision (a platform-opened release, w1/m184) are
-// the platform's maintenance and meter nothing.
-func (s *Service) queryBuildSeconds(ctx context.Context, crName, namespace string, window, end time.Time, exempt map[string]bool) (int64, bool) {
-	if s.Client == nil {
-		return 0, false
-	}
-	var jobs batchv1.JobList
-	if err := s.Client.List(ctx, &jobs,
-		client.InNamespace(namespace),
-		client.MatchingLabels{appv1alpha1.LabelBuild: crName},
-	); err != nil {
-		log.Printf("usage: build_seconds list jobs for %s: %v", crName, err)
-		return 0, false
-	}
-	var total int64
-	for _, job := range jobs.Items {
-		if exempt[job.Labels[appv1alpha1.LabelBuildRevision]] {
-			continue // the platform's rebuild, not the tenant's (w1/m184)
-		}
-		ct := job.Status.CompletionTime
-		if ct == nil {
-			continue // still running
-		}
-		t := ct.UTC()
-		if t.Before(window) || !t.Before(end) {
-			continue // not in this window
-		}
-		if job.Status.StartTime == nil {
-			continue
-		}
-		dur := ct.Sub(job.Status.StartTime.Time)
-		if dur > 0 {
-			total += int64(dur / time.Second)
-		}
-	}
-	return total, true
 }
 
 // catchUpDisksThrough meters provisioned disk capacity for every closed hour

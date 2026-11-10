@@ -18,13 +18,19 @@ package build
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Retry classification labels (docs/ADR060 D5). A CLOSED set: the reason is a
@@ -72,6 +78,9 @@ type Signals struct {
 	// the slow cases and inflate the p95 the capacity alert pages on.
 	QueueSeconds  float64
 	QueueMeasured bool
+	// PlacedAt is that first placement: when the build's own work could start,
+	// so the start of what the tenant is metered for (StampMetering).
+	PlacedAt metav1.Time
 	// PushSeconds is the skopeo push phase's own terminated duration on the final
 	// attempt, and PushFailed whether it exited non-zero. The push phase is the
 	// one part of a build the platform owns end to end (docs/ADR060 D4), so its
@@ -100,6 +109,32 @@ func ReadSignals(ctx context.Context, cl client.Client, namespace, jobName strin
 	return signalsFrom(&job, pods), nil
 }
 
+// StampMetering records on a finished build Job what bex-api's build_seconds
+// meter needs and cannot see once the pods are reaped (w6/m307, docs/ADR023):
+// when the build's pod was first placed, and, for a failed build, its fault.
+// A zero placement or an empty fault leaves that annotation off.
+func StampMetering(ctx context.Context, cl client.Client, namespace, jobName string, placedAt metav1.Time, fault Fault) error {
+	annotations := map[string]string{}
+	if !placedAt.IsZero() {
+		annotations[appv1alpha1.AnnotationBuildPlacedAt] = placedAt.UTC().Format(time.RFC3339)
+	}
+	if fault != FaultNone {
+		annotations[appv1alpha1.AnnotationBuildFault] = string(fault)
+	}
+	if len(annotations) == 0 {
+		return nil
+	}
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: jobName, Namespace: namespace}}
+	patch, err := json.Marshal(map[string]any{"metadata": map[string]any{"annotations": annotations}})
+	if err != nil {
+		return err
+	}
+	if err := cl.Patch(ctx, job, client.RawPatch(types.MergePatchType, patch)); err != nil && !apierrors.IsNotFound(err) {
+		return fmt.Errorf("stamp metering on build job %s: %w", jobName, err)
+	}
+	return nil
+}
+
 // signalsFrom is the pure half of ReadSignals, so the derivation is testable
 // without a cluster.
 func signalsFrom(job *batchv1.Job, pods []corev1.Pod) Signals {
@@ -126,6 +161,7 @@ func signalsFrom(job *batchv1.Job, pods []corev1.Pod) Signals {
 		if at, ok := scheduledAt(pod); ok {
 			sig.QueueSeconds = max(at.Sub(job.CreationTimestamp.Time).Seconds(), 0)
 			sig.QueueMeasured = true
+			sig.PlacedAt = at
 			break
 		}
 	}

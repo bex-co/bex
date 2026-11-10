@@ -8,7 +8,7 @@ bex records month-to-date resource consumption per workspace and exposes it over
 | --- | --- | --- |
 | `instance_seconds` | seconds (per tier) | cAdvisor container-presence signal via Prometheus — per-pod running time: 15 s steps at which each pod had reported within 59 s (containers collapsed per pod), × 15 s |
 | `egress_bytes` | bytes | loss-detecting sum of exact App HTTP + WebSocket + direct-public sources, or the public datastore proxy response source |
-| `build_seconds` | seconds | k8s build-Job `completionTime − startTime` for Jobs whose completion falls in the window |
+| `build_seconds` | seconds | build and pre-deploy runs that ended in the window — Jobs and kpack Builds, failed ones included — from pod placement to their end (§ `build_seconds` against Render's pipeline minutes) |
 | `storage_gb_seconds` | decimal GB-seconds | average `kubelet_volume_stats_used_bytes` over the window × window seconds, summed across a datastore's PVCs |
 | `sandbox_compute_seconds` | milli-vCPU-equivalent seconds | OpenSandbox lifecycle phase × shape; CPU millicores plus memory GiB folded at the AgentCore `$0.00945/GB-hour ÷ $0.0895/vCPU-hour` reference ratio; only `running` intervals accrue |
 | `agent_model_{input,output,cache_read,cache_write}_tokens` | tokens (tier = model id) | platform model route only (w10/m14, ADR090): the gateway model proxy reads Anthropic usage from each platform-key exchange and reports it once per request id; `resource_kind` `agent_session`, `service_id` the session |
@@ -16,16 +16,16 @@ bex records month-to-date resource consumption per workspace and exposes it over
 
 The first three meters match Render's compute, bandwidth, and pipeline-minute dimensions. Storage adds the separately-priced Postgres dimension while remaining API-first. Render charges provisioned Postgres capacity; bex meters actual used PVC bytes, so the rate is comparable but the usage basis is deliberately more usage-sensitive. Render has no separate Key Value storage line; bex exposes the same storage meter for Valkey because it also owns a persistent volume.
 
-### `build_seconds` against Render's pipeline minutes (2026-11-10)
+### `build_seconds` against Render's pipeline minutes (2026-11-10, w6/m307)
 
-Render counts every pipeline task against pipeline minutes: the build command, a Dockerfile image build, and the pre-deploy command ([build pipeline](https://render.com/docs/build-pipeline)). [ADR030 §13](ADR030-pricing.md) brings in Render's included minutes, which makes the meter's basis matter. It differs from Render's in four ways (read from `internal/usage/service.go` `queryBuildSeconds`):
+Render counts every pipeline task against pipeline minutes: the build command, a Dockerfile image build, and the pre-deploy command ([build pipeline](https://render.com/docs/build-pipeline)). [ADR030 §13](ADR030-pricing.md) brings in Render's included minutes, which makes the meter's basis matter. `queryBuildSeconds` (`internal/usage/build_seconds.go`) bills a run in the hour it ended:
 
-- **Pre-deploy runs meter nothing.** The query lists Jobs labelled `app.bex.co/build`, and pre-deploy Jobs do not carry the label.
-- **Failed and canceled builds meter nothing.** A Job is counted only once it has a `completionTime`, which Kubernetes sets on success alone.
-- **The wait for a build node is billed.** The duration starts at the Job's `startTime`, which the Job controller sets when it starts processing the Job, before its pod is scheduled. The node wait (`bex_build_queue_seconds`, ADR060 §D5) is the platform's time, not the tenant's.
-- **Buildpack builds meter nothing.** The `builder: buildpack` extension runs as a kpack Image and creates no Job.
+- **Every build that ran, failed ones included.** A Job ends at its `completionTime`, which Kubernetes sets on success only, or else at its `Failed` condition. A build that failed for a platform reason bills nothing. That is the operator's verdict when it stamped one on the Job (`app.bex.co/build-fault`, which also covers its overrides, such as a toolchain bex supplies failing to arrive), else the Job's own failure reason (`BuildJobFault` in `lego/types`: used-up retries are the platform's). A tenant failure or a timeout bills like a success.
+- **From when the build pod was placed.** The operator stamps the first placement on the finished Job (`app.bex.co/build-placed-at`). The Job's own `startTime` comes earlier by the wait for a build node, which is the platform's time; it is the fallback for a Job the stamp missed.
+- **Pre-deploy runs.** The App's pre-deploy Jobs (`app.bex.co/predeploy`, in the App's own namespace) count too, from their `startTime`. A failed one always bills: it has no pod failure policy, so its failure reason says nothing about fault. They carry the release revision (`app.bex.co/build-revision`), so a platform-opened release's pre-deploy run is exempt like its build (w1/m184).
+- **Buildpack builds.** A `builder: buildpack` release builds through kpack, which runs Builds rather than Jobs and copies the operator's labels from the release's Image onto each Build and its pod. Each of the App's Builds counts from its pod's start (its creation, once the pod is gone) to its terminal `Succeeded` condition. bex-api may read kpack Builds in the build namespace for this (`build-boundary.yaml`).
 
-The decision follows Render: count pre-deploy and every build that ran, failed ones included, and start the clock when the build pod starts rather than when the Job is created. It lands with ADR030 §13's allowance, because both change what a customer pays for a build (`w6/m307`, then `w6/m308`).
+Residuals: time that leaves no object behind bills nothing. A build canceled while running is deleted with its Job; a kpack Build goes with its Image when the next release's build is stored; and a finished Job lives an hour (its TTL), so a rollup that runs later than that misses it.
 
 ### Complete outbound-bandwidth contract (w8/m15)
 
@@ -91,7 +91,7 @@ The rollup loop emits meters for four resource kinds. Not every meter applies to
 | --- | --- | --- | --- | --- |
 | `instance_seconds` | ✅ ReplicaSet pods (`<name>-[a-z0-9]+-[a-z0-9]{5}`) | ✅ CNPG stateful pods (`<name>-[0-9]+`) | ✅ Valkey stateful pods (`<name>-[0-9]+`) | — separate weighted meter |
 | `egress_bytes` | ✅ exact HTTP router + WebSocket downstream + direct-public composition | ✅ public proxy response bytes; private is explicit zero | ✅ public proxy response bytes; private is explicit zero | — not yet metered |
-| `build_seconds` | ✅ CNB build Job `completionTime − startTime` | — no build step | — no build step | — no build step |
+| `build_seconds` | ✅ build and pre-deploy runs (Jobs, kpack Builds), placement → end | — no build step | — no build step | — no build step |
 | `storage_gb_seconds` | — stateless App storage is not a supported product surface | ✅ CNPG PVCs (`<name>-<n>`) | ✅ Valkey PVC (`data-<name>-<n>`) | — rootfs storage not priced |
 | `sandbox_compute_seconds` | — | — | — | ✅ durable OpenSandbox phase cursor × weighted shape |
 

@@ -25,6 +25,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 const censusNS = "bex-build"
@@ -222,5 +224,44 @@ func TestTrimOvershootNeverDeletesFinishedBuilds(t *testing.T) {
 	}
 	if len(deleted) != 1 || deleted[0] != "bld-new-running" {
 		t.Errorf("deleted = %v, want [bld-new-running] — the newest ACTIVE build", deleted)
+	}
+}
+
+// TestStampMeteringRecordsPlacementAndFault: bex-api bills a build from its
+// pod's first placement and skips the platform's own failures (w6/m307), and it
+// can only read both off the Job once the pods are gone.
+func TestStampMeteringRecordsPlacementAndFault(t *testing.T) {
+	job := censusJob("bld-meter", "tea-a", time.Minute, true)
+	cl := fakeClient(job)
+	placed := metav1.NewTime(time.Date(2026, 11, 10, 9, 30, 0, 0, time.UTC))
+
+	if err := StampMetering(context.Background(), cl, censusNS, "bld-meter", placed, FaultInfra); err != nil {
+		t.Fatalf("StampMetering: %v", err)
+	}
+	var got batchv1.Job
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: censusNS, Name: "bld-meter"}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if v := got.Annotations[appv1alpha1.AnnotationBuildPlacedAt]; v != "2026-11-10T09:30:00Z" {
+		t.Errorf("started-at = %q, want 2026-11-10T09:30:00Z", v)
+	}
+	if v := got.Annotations[appv1alpha1.AnnotationBuildFault]; v != appv1alpha1.BuildFaultInfra {
+		t.Errorf("fault = %q, want infra", v)
+	}
+	if got.Labels["app.bex.co/workspace"] != "tea-a" {
+		t.Error("the stamp must not disturb the Job's labels")
+	}
+
+	// A succeeded build with no observed placement writes nothing.
+	plain := censusJob("bld-plain", "tea-a", time.Minute, true)
+	cl = fakeClient(plain)
+	if err := StampMetering(context.Background(), cl, censusNS, "bld-plain", metav1.Time{}, FaultNone); err != nil {
+		t.Fatalf("StampMetering: %v", err)
+	}
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: censusNS, Name: "bld-plain"}, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Annotations) != 0 {
+		t.Errorf("annotations = %v, want none", got.Annotations)
 	}
 }

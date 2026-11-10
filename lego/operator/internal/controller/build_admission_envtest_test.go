@@ -306,6 +306,20 @@ var _ = Describe("Build metering is once per build, not once per reconcile (ADR0
 			}
 			Expect(queueObservations()).To(Equal(before+1),
 				"the same build's queue wait was observed more than once — bex_build_queue_seconds' p95 would count one slow build many times")
+
+			// bex-api bills the build from its placement, and skips the
+			// platform's failures, from these stamps (w6/m307).
+			app := &appv1alpha1.App{}
+			Expect(k8sClient.Get(ctx, nn(name), app)).To(Succeed())
+			job := &batchv1.Job{}
+			Expect(k8sClient.Get(ctx, client.ObjectKey{Namespace: buildNS, Name: build.JobName(name, releaseBuildRevision(app))}, job)).To(Succeed())
+			Expect(job.Annotations).To(HaveKeyWithValue(appv1alpha1.AnnotationBuildPlacedAt,
+				job.CreationTimestamp.Add(4*time.Minute).UTC().Format(time.RFC3339)))
+			if complete {
+				Expect(job.Annotations).NotTo(HaveKey(appv1alpha1.AnnotationBuildFault))
+			} else {
+				Expect(job.Annotations).To(HaveKeyWithValue(appv1alpha1.AnnotationBuildFault, appv1alpha1.BuildFaultTenant))
+			}
 		},
 		Entry("a succeeded build", "meter-ok", true),
 		Entry("a failed build", "meter-fail", false),

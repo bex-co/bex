@@ -1263,7 +1263,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		if obs.Fault == build.FaultInfra {
 			recordBuildInfraFailure(app.Labels[labelWorkspace])
 		}
-		r.meterBuildSignals(ctx, app, buildNs)
+		r.meterBuildSignals(ctx, app, buildNs, obs.Fault)
 		r.wakeHeldBuilds(ctx, buildNs)
 		// The Job/pod identity and Kubernetes' own verdict stay in the operator
 		// log, where they are useful; the tenant-facing message carries the
@@ -1315,7 +1315,7 @@ func (r *AppReconciler) storeBuiltArtifact(ctx context.Context, app *appv1alpha1
 	if app.Status.ObservedGeneration != app.Generation {
 		recordBuildOutcome(buildOutcomeSucceeded)
 		recordBuildRunSeconds(obs.RunSeconds)
-		r.meterBuildSignals(ctx, app, buildNs)
+		r.meterBuildSignals(ctx, app, buildNs, build.FaultNone)
 		r.consumeClearCacheAnnotation(ctx, app)
 		r.wakeHeldBuilds(ctx, buildNs)
 	}
@@ -1445,9 +1445,16 @@ func legacyReadyBuildVerdict(app *appv1alpha1.App) bool {
 // Failure to read is logged, never fatal: these are observability series, and
 // the kpack path legitimately has no build Job at all (the Get 404s), so a
 // missing signal is an expected outcome rather than an error worth surfacing.
-func (r *AppReconciler) meterBuildSignals(ctx context.Context, app *appv1alpha1.App, buildNs string) {
+func (r *AppReconciler) meterBuildSignals(ctx context.Context, app *appv1alpha1.App, buildNs string, fault build.Fault) {
 	jobName := build.JobName(app.Name, releaseBuildRevision(app))
 	sig, err := build.ReadSignals(ctx, r.buildPlaneClient(), buildNs, jobName)
+	// bex-api bills the build from its placement and skips a platform failure
+	// by these stamps (w6/m307). The fault goes on even without signals: a
+	// lost stamp bills from the Job's startTime and reads the fault off the
+	// Job's own failure reason, which misses only the operator's overrides.
+	if stampErr := build.StampMetering(ctx, r.buildPlaneClient(), buildNs, jobName, sig.PlacedAt, fault); stampErr != nil {
+		logf.FromContext(ctx).Error(stampErr, "build metering stamp failed; build_seconds falls back to the Job's own times", "app", app.Name)
+	}
 	if err != nil {
 		logf.FromContext(ctx).V(1).Info("build signals unavailable; queue/push/retry series not metered",
 			"app", app.Name, "job", jobName, "error", err.Error())

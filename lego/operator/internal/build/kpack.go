@@ -49,8 +49,8 @@ const (
 )
 
 var (
-	kpackImageGVK = schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Image"}
-	kpackBuildGVK = schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Build"}
+	kpackImageGVK = appv1alpha1.KpackGroupVersion.WithKind("Image")
+	kpackBuildGVK = appv1alpha1.KpackGroupVersion.WithKind("Build")
 	// ClusterBuilderGVK is the cluster-scoped kpack builder the metrics
 	// collector reads without importing kpack's Go types.
 	ClusterBuilderGVK = schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "ClusterBuilder"}

@@ -106,6 +106,10 @@ func TestSignalsQueueSecondsIsAdmissionToFirstPlacement(t *testing.T) {
 	if sig.QueueSeconds != 240 {
 		t.Errorf("QueueSeconds = %v, want 240 (admission → first placement)", sig.QueueSeconds)
 	}
+	// The metered build starts at the same first placement (w6/m307).
+	if want := job.CreationTimestamp.Add(4 * time.Minute); !sig.PlacedAt.Time.Equal(want) {
+		t.Errorf("PlacedAt = %v, want the first placement %v", sig.PlacedAt, want)
+	}
 	if len(sig.Retries) != 1 || sig.Retries[0] != RetryDisruption {
 		t.Errorf("Retries = %v, want exactly [%s]", sig.Retries, RetryDisruption)
 	}

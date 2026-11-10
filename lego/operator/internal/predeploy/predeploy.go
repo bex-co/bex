@@ -175,6 +175,9 @@ func Job(o Options) *batchv1.Job {
 	}
 	labels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	labels[LabelService] = o.Name
+	// The release revision, as on build Jobs: bex-api meters pre-deploy runs as
+	// build minutes and exempts the platform's own rebuilds by it (w6/m307).
+	labels[appv1alpha1.LabelBuildRevision] = o.Revision
 	podLabels := execution.PodLabels(o.Name, o.AppUID, ComponentValue, o.Workspace, appNamespace, o.VerifyImage)
 	podLabels[LabelService] = o.Name
 	// Every widened policy (image-v1, render-v1) carries its admission marker;

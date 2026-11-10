@@ -534,14 +534,14 @@ const (
 	FaultNone Fault = ""
 	// FaultTenant is a deterministic failure in tenant input — a bad git ref, a
 	// Dockerfile that does not build. Not retried, not counted against the SLO.
-	FaultTenant Fault = "tenant"
+	FaultTenant Fault = appv1alpha1.BuildFaultTenant
 	// FaultInfra is a failure the platform owns: a transient that exhausted its
 	// retries, or any unclassified failure that did the same.
-	FaultInfra Fault = "infra"
+	FaultInfra Fault = appv1alpha1.BuildFaultInfra
 	// FaultTimeout is the build exceeding activeDeadlineSeconds. Its own class
 	// rather than a fault of either side: the deadline is a platform policy, but
 	// hitting it is usually the tenant's build being slow.
-	FaultTimeout Fault = "timeout"
+	FaultTimeout Fault = appv1alpha1.BuildFaultTimeout
 )
 
 // faultFromJob reads the class off the Job's own failure reason, which needs no
@@ -550,16 +550,7 @@ const (
 // reason IS the statement that a tenant-classified phase failed. Anything that
 // instead exhausted the backoff budget was, by construction, not tenant-classified.
 func faultFromJob(reason string) Fault {
-	switch reason {
-	case batchv1.JobReasonPodFailurePolicy:
-		return FaultTenant
-	case batchv1.JobReasonBackoffLimitExceeded:
-		return FaultInfra
-	case batchv1.JobReasonDeadlineExceeded:
-		return FaultTimeout
-	default:
-		return FaultNone
-	}
+	return Fault(appv1alpha1.BuildJobFault(reason))
 }
 
 // RepoPath is the OCI repository (no host, no tag) this build pushes to.

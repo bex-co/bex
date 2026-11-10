@@ -19,6 +19,8 @@ package v1alpha1
 import (
 	"strconv"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+
 	"github.com/bex-co/bex/lego/types/k8sname"
 )
 
@@ -63,6 +65,49 @@ const (
 	LabelAppUID        = "app.bex.co/app-uid"        // the App's UID: one lifetime of the name
 	LabelBuildRevision = "app.bex.co/build-revision" // the release's BuildRevision
 )
+
+// Annotations the operator stamps on a build Job once it has finished, for
+// bex-api's build_seconds meter (w6/m307, docs/ADR023): Render counts pipeline
+// minutes from when the build runs, and does not bill the platform's own
+// failures.
+const (
+	// AnnotationBuildPlacedAt is when the build's pod was first placed on a
+	// node (RFC3339). The Job's own startTime precedes that by the wait for a
+	// build node, which is the platform's time, not the tenant's.
+	AnnotationBuildPlacedAt = "app.bex.co/build-placed-at"
+	// AnnotationBuildFault is the operator's verdict on a failed build:
+	// BuildFaultTenant, BuildFaultInfra or BuildFaultTimeout. It can differ
+	// from BuildJobFault, e.g. a toolchain bex supplies that failed to arrive
+	// is the platform's failure whatever the build step exited with.
+	AnnotationBuildFault = "app.bex.co/build-fault"
+
+	BuildFaultTenant  = "tenant"
+	BuildFaultInfra   = "infra"
+	BuildFaultTimeout = "timeout"
+)
+
+// BuildJobFault reads a failed build Job's fault off its Failed condition's
+// reason, which Kubernetes writes: the build's pod failure policy fails the
+// Job at once only on the tenant-error exit, so PodFailurePolicy means the
+// tenant's input failed, while a failure that used up the retries
+// (BackoffLimitExceeded) is the platform's, and DeadlineExceeded is the
+// timeout. "" for any other reason. Only build Jobs carry that policy.
+func BuildJobFault(reason string) string {
+	switch reason {
+	case "PodFailurePolicy":
+		return BuildFaultTenant
+	case "BackoffLimitExceeded":
+		return BuildFaultInfra
+	case "DeadlineExceeded":
+		return BuildFaultTimeout
+	default:
+		return ""
+	}
+}
+
+// KpackGroupVersion is the kpack API the operator builds buildpack releases
+// with and bex-api reads them through.
+var KpackGroupVersion = schema.GroupVersion{Group: "kpack.io", Version: "v1alpha2"}
 
 // ReleaseBuildLabels selects the kpack artifacts of appName's release revision
 // in the App lifetime appUID.

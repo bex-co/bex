@@ -1414,7 +1414,9 @@ func TestFaultFromJobReadsTheClassOffTheJobReason(t *testing.T) {
 	// The classification is derived from the Job's own failure reason, which
 	// costs no extra API call: buildPodFailurePolicy's only FailJob rule matches
 	// ExitTenantError, so "PodFailurePolicy" IS the statement that a
-	// tenant-classified phase failed.
+	// tenant-classified phase failed. faultFromJob is appv1alpha1.BuildJobFault,
+	// which bex-api also bills from (w6/m307) and which spells these reasons as
+	// literals (lego/types has no k8s.io/api), so this pins them to Kubernetes'.
 	for _, tc := range []struct {
 		reason string
 		want   Fault

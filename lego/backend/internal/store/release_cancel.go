@@ -29,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/util/retry"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -39,7 +38,7 @@ import (
 
 // kpackImageGVK is a buildpack build's resource. Unstructured keeps the
 // backend independent of the operator's and kpack's implementation modules.
-var kpackImageGVK = schema.GroupVersionKind{Group: "kpack.io", Version: "v1alpha2", Kind: "Image"}
+var kpackImageGVK = appv1alpha1.KpackGroupVersion.WithKind("Image")
 
 // CancelRelease ends the release a deploy row requested — the half of a cancel
 // the row cannot express — for user Cancel and for a rollout a suspend

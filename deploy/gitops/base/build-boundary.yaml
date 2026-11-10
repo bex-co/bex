@@ -68,6 +68,10 @@ rules:
   - apiGroups: ["kpack.io"]
     resources: ["images"]
     verbs: ["get", "list", "delete"]
+  # Read-only: build_seconds meters a buildpack release's kpack Builds (w6/m307).
+  - apiGroups: ["kpack.io"]
+    resources: ["builds"]
+    verbs: ["get", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding

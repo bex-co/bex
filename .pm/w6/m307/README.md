@@ -1,19 +1,19 @@
 # w6 · m307 — `build_seconds` counts what Render counts as pipeline minutes
 
-**Worker:** worker6 **Goal:** the build meter follows Render's pipeline-minute basis: every build that ran (failed ones included), pre-deploy runs and buildpack builds, timed from the build pod's start. **Status:** todo
+**Worker:** worker6 **Goal:** the build meter follows Render's pipeline-minute basis: every build that ran (failed ones included), pre-deploy runs and buildpack builds, timed from the build pod's start. **Status:** in progress (t001–t005, t007, t008 done; t006 checks production after the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Failed builds are metered](t001.md) | 45m | — |
-| t002 | [The build clock starts when the build pod starts](t002.md) | 1h | — |
-| t003 | [Pre-deploy runs count toward `build_seconds`](t003.md) | 45m | — |
-| t004 | [Buildpack (kpack) builds are metered](t004.md) | 1h | — |
-| t005 | [Record the new basis in ADR023](t005.md) | 20m | t001, t002, t003, t004 |
+| t001 | [Failed builds are metered](done/t001.md) — **DONE** | 45m | — |
+| t002 | [The build clock starts when the build pod starts](done/t002.md) — **DONE** | 1h | — |
+| t003 | [Pre-deploy runs count toward `build_seconds`](done/t003.md) — **DONE** | 45m | — |
+| t004 | [Buildpack (kpack) builds are metered](done/t004.md) — **DONE** | 1h | — |
+| t005 | [Record the new basis in ADR023](done/t005.md) — **DONE** | 20m | t001, t002, t003, t004 |
 | t006 | [Render parity](t006.md) | 30m | t005 |
-| t007 | [Simplify](t007.md) | 15m | t006 |
-| t008 | [Test coverage](t008.md) | 30m | t007 |
+| t007 | [Simplify](done/t007.md) — **DONE** | 15m | t006 |
+| t008 | [Test coverage](done/t008.md) — **DONE** | 30m | t007 |
 | t009 | [Closeout](t009.md) | 10m | t008 |
 
 ## Definition of done
