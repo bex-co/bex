@@ -1785,6 +1785,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Re-check",
     description: "Button that re-checks a domain's DNS/certificate status",
   },
+  "services.domainRecheckAria": {
+    message: "Re-check {domain}",
+    description:
+      "Accessible name of a custom domain's DNS-panel Re-check button, naming the domain (w4/540)",
+  },
   "services.domainCopied": {
     message: "Copied to clipboard",
     description: "Toast when a DNS record value is copied",

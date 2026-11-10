@@ -378,7 +378,10 @@ describe("CustomDomainsSection", () => {
     const user = userEvent.setup();
     render(<CustomDomainsSection serviceId="web" />);
 
-    await user.click(screen.getByRole("button", { name: "Re-check" }));
+    // The button names its domain (w4/540).
+    await user.click(
+      screen.getByRole("button", { name: "Re-check api.example.com" }),
+    );
     await waitFor(() =>
       expect(mockVerifyDomain).toHaveBeenCalledWith("api.example.com"),
     );

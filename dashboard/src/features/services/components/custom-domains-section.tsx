@@ -427,6 +427,8 @@ function DnsInstructions({
           variant="outline"
           size="sm"
           disabled={busy}
+          // Names its domain like the row's other controls (w4/540).
+          aria-label={t("services.domainRecheckAria", { domain: domain.name })}
           onClick={() => void onVerify(domain.name)}
         >
           <RefreshCw /> {t("services.domainRecheck")}

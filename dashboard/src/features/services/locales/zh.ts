@@ -1750,6 +1750,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "重新检查",
     description: "Button that re-checks a domain's DNS/certificate status",
   },
+  "services.domainRecheckAria": {
+    message: "重新检查 {domain}",
+    description:
+      "Accessible name of a custom domain's DNS-panel Re-check button, naming the domain (w4/540)",
+  },
   "services.domainCopied": {
     message: "已复制到剪贴板",
     description: "Toast when a DNS record value is copied",
