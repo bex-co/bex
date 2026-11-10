@@ -40,8 +40,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m288** — [Blueprint sync ids answer as `exe-`, Render's prefix](done/m288/README.md) — **DONE 2026-11-08**: every client-read sync id is exe-; bsr- still accepted and stored
 - [x] **m289** — [A fresh local cluster runs dev-N end to end](done/m289/README.md) — **DONE 2026-11-08**: from no cluster, three commands bring up dev-N unattended
 - [x] **m293** — [dev-N has a working platform registry, so repo builds, static publishes and deletes work locally](done/m293/README.md) — **DONE 2026-11-08**: a repo-built service goes Live on dev-N and deletes finish unattended
-- [ ] **m294** — [dev-N publishes and serves static sites (local object store)](m294/README.md) (6 tasks) ← `/pm-brainstorm more for w2` 2026-11-09; Render parity omitted (local tooling)
-- [ ] **m295** — [The local cluster survives a Docker restart; docker build and CNPG pins match production](m295/README.md) (6 tasks) ← `/pm-brainstorm more for w2` 2026-11-09; Render parity omitted (local tooling)
+- [x] **m294** — [dev-N publishes and serves static sites (local object store)](done/m294/README.md) — **DONE 2026-11-09**: static sites publish to local MinIO, serve 200 and purge on delete
+- [ ] **m295** — [The local cluster survives a Docker restart; docker build and CNPG pins match production](blocked/m295/README.md) — **BLOCKED (user: verify a real Docker restart yourself, allow the agent to stop/start the bex node containers, or accept the stub-tested recovery — `/unblock w2`)**; t002–t005 done
 - [x] **m261** — [Blueprint create with `existingResources: create_new`](done/m261/README.md) (8 tasks) — **DONE 2026-11-03** ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
 - [x] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](done/064.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**

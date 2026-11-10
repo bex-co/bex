@@ -34,6 +34,9 @@ TEMPLATES="scripts/dev-env"
 # keychain must not hang a chart pull. Repo cache and KUBECONFIG are untouched.
 # shellcheck source=lib/helm-isolated.sh
 . scripts/lib/helm-isolated.sh
+# Production's chart pins (deploy/helm-artifacts.lock), sha-checked (w2/m295 t003).
+# shellcheck source=lib/helm-pinned.sh
+. scripts/lib/helm-pinned.sh
 
 AGENT_TEMPLATES="scripts/dev-env/agent"
 
@@ -396,9 +399,12 @@ require_shared_platform() {
 }
 
 # ensure_cnpg — install the CNPG operator when the CRD is absent rather than
-# assuming the shared cluster has it, then wait for it to be READY. Pins the
-# same chart deploy/gitops/base/cnpg-operator.yaml does, minus the platform
-# nodeSelector a disposable kind node does not carry.
+# assuming the shared cluster has it, then wait for it to be READY. Installs
+# production's archive — the cloudnative-pg line of deploy/helm-artifacts.lock,
+# sha-checked, which deploy/gitops/base/cnpg-operator.yaml mirrors — under the
+# release name mock-cluster.sh uses (`cnpg`), minus the platform nodeSelector
+# a disposable kind node does not carry. The old fallback pulled 0.26.0 by
+# version label while production ran 0.29.1 (w2/m289, w2/m295 t003).
 cnpg_deployment() {
   kubectl -n cnpg-system get deploy -l app.kubernetes.io/name=cloudnative-pg \
     -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || true
@@ -427,14 +433,23 @@ apply_retrying_webhook() {
   return 1
 }
 
+install_pinned_cnpg() {
+  local dir chart rc=0
+  echo "    CNPG operator absent — installing cloudnative-pg $(helm_pin cloudnative-pg | awk '{print $1}') from deploy/helm-artifacts.lock"
+  dir=$(mktemp -d "${TMPDIR:-/tmp}/bex-cnpg-chart.XXXXXX")
+  if chart=$(fetch_pinned_chart cloudnative-pg "$dir"); then
+    helm upgrade --install cnpg "$chart" -n cnpg-system --create-namespace >/dev/null || rc=$?
+  else
+    rc=1
+  fi
+  rm -rf "$dir"
+  [ "$rc" -eq 0 ] || { echo "error: installing the lock-pinned CNPG operator (release cnpg, namespace cnpg-system) failed" >&2; exit 1; }
+}
+
 ensure_cnpg() {
   echo "==> CNPG operator (self-installing if absent)"
   if ! kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1; then
-    echo "    CNPG operator absent — installing cloudnative-pg 0.26.0"
-    helm repo add cnpg https://cloudnative-pg.github.io/charts >/dev/null 2>&1 || true
-    helm repo update cnpg >/dev/null
-    helm upgrade --install cnpg cnpg/cloudnative-pg --version 0.26.0 \
-      -n cnpg-system --create-namespace >/dev/null
+    install_pinned_cnpg
   fi
   kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=60s >/dev/null 2>&1 ||
     { echo "error: the CNPG 'clusters' CRD never established — operator install failed" >&2; exit 1; }

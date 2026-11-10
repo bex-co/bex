@@ -4,9 +4,13 @@
 #   cluster whose "machines" are Docker-container nodes. Add/remove a machine by
 #   scaling the worker pool. Swap CAPD -> CAPH for Hetzner; bex is unchanged.
 #
-#   bash scripts/mock-cluster.sh            # bring it up (substrate + Traefik edge + Zot)
+#   bash scripts/mock-cluster.sh            # bring it up (substrate + Traefik edge + Zot + MinIO)
 #   bash scripts/mock-cluster.sh operator   # build bex-operator:dev from this tree and deploy it
 #   bash scripts/mock-cluster.sh scale 3    # set worker machines = 3 (add/remove)
+#   bash scripts/mock-cluster.sh reprovision # delete both clusters, then bring up from nothing
+#
+# After a Docker restart, the plain bring-up puts the clusters back first (see
+# recover_after_docker_restart) or names the reprovision command.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 export CLUSTER_TOPOLOGY=true                 # CAPD's flavor uses ClusterClass/topology
@@ -31,6 +35,9 @@ wl_kubectl() { KUBECONFIG="$WL_KUBECONFIG" kubectl "$@"; }
 # keychain must not hang an OCI chart pull. See scripts/lib/helm-isolated.sh.
 # shellcheck source=lib/helm-isolated.sh
 . scripts/lib/helm-isolated.sh
+# Production's chart pins (deploy/helm-artifacts.lock), sha-checked.
+# shellcheck source=lib/helm-pinned.sh
+. scripts/lib/helm-pinned.sh
 
 # --- Single-writer lock (w7/m148 t001) ---------------------------------------
 # Bring-up and scale are read-modify-write against ONE shared mgmt cluster:
@@ -227,6 +234,7 @@ verify_substrate() {
   check "Traefik edge Available (traefik)" traefik_available
   check "CNPG operator installed (postgresql.cnpg.io)" cnpg_installed
   check "Zot registry on every node (401 anonymous, 200 bex-builder)" zot_serving
+  check "static store bucket $STATIC_BUCKET answers its publish/read identities" static_store_serving
   check "cluster-autoscaler Available (mgmt)" mgmt_kubectl -n kube-system wait deploy --all --for=condition=Available --timeout=15s
 
   if [ "$failures" -ne 0 ]; then
@@ -343,35 +351,6 @@ refresh_mgmt_kubeconfig() {
 # too: dev-N web services answer through Traefik exactly as in production.
 TRAEFIK_VALUES=deploy/gitops/base/values/traefik.values.yaml
 TRAEFIK_CRDS="ingressroutes.traefik.io ingressroutetcps.traefik.io middlewares.traefik.io tlsstores.traefik.io"
-
-# helm_pin CHART prints "VERSION REPO SHA256" for CHART from
-# deploy/helm-artifacts.lock — the one place production's chart pins live.
-helm_pin() {
-  awk -F'|' -v chart="$1" '$1 == chart { print $2, $3, $4; exit }' deploy/helm-artifacts.lock
-}
-
-sha256_of() { shasum -a 256 "$1" | awk '{print $1}'; }
-
-# fetch_pinned_chart CHART DIR pulls CHART's locked archive into DIR, refuses
-# it unless its sha256 matches the lock, and prints the archive's path.
-fetch_pinned_chart() {
-  local chart=$1 dir=$2 version repo sha got
-  read -r version repo sha <<<"$(helm_pin "$chart")" || true
-  if [ -z "${sha:-}" ]; then
-    echo "error: deploy/helm-artifacts.lock has no $chart|VERSION|REPO|SHA256 line" >&2
-    return 1
-  fi
-  if ! helm pull "$chart" --repo "$repo" --version "$version" --destination "$dir" >/dev/null; then
-    echo "error: could not fetch the $chart $version chart from $repo" >&2
-    return 1
-  fi
-  got=$(sha256_of "$dir/$chart-$version.tgz")
-  if [ "$got" != "$sha" ]; then
-    echo "error: $chart $version archive sha256 $got does not match deploy/helm-artifacts.lock ($sha)" >&2
-    return 1
-  fi
-  printf '%s\n' "$dir/$chart-$version.tgz"
-}
 
 traefik_crds_established() {
   local crd
@@ -627,6 +606,228 @@ install_zot() {
   }
 }
 
+# --- Local static-site store: MinIO (w2/m294 t001/t002) ----------------------
+# Production publishes static sites to the Wasabi bucket bex-static
+# (config/manager BEX_STATIC_S3_*), with a write/delete identity in
+# bex-build/bex-static-publish-s3 and the static-server's read-only identity in
+# bex-system/bex-static-read-s3. The mock had neither a store nor the Secrets,
+# so every dev-N static site failed with StaticCredentialUnavailable and
+# bex-static-server sat at 0/2 (w2/076, w2/m293). This installs a local
+# S3-compatible store in its place: MinIO, digest-pinned (the community image
+# is frozen at Bitnami's legacy archive, built from MinIO's own release), with
+# the same bucket name and production's two Secret names, each holding its
+# own MinIO user scoped to that bucket the way the Wasabi identities are. The
+# store's address reaches the operator and static-server only through the mock
+# overrides in `operator`; config/ and deploy/gitops are untouched.
+#
+# The dev credentials are random per cluster, live only in those Secrets (and
+# MinIO's root in bex-static-store/minio-root), are never printed, and are kept
+# across runs: every run converges MinIO's users onto the Secrets' values.
+STATIC_NS=bex-static-store
+STATIC_IMAGE="docker.io/bitnamilegacy/minio:2025.7.23-debian-12-r5@sha256:6dabb4a2088c9a79908de3bc05f4586c23ad2182c8908e7e3acbf61c1467fb20"
+STATIC_BUCKET=bex-static
+STATIC_REGION=us-east-1
+# Path-style is what both clients use here: the static-server's SDK sets
+# UsePathStyle, and the publish/purge aws-cli resolves this host:port endpoint
+# path-style (no bucket.<host> DNS is needed).
+STATIC_ENDPOINT="http://minio.$STATIC_NS.svc.cluster.local:9000"
+STATIC_ROOT_SECRET=minio-root
+STATIC_PUBLISH_NS=$ZOT_BUILD_NS
+STATIC_PUBLISH_SECRET=bex-static-publish-s3
+STATIC_PUBLISH_USER=bex-static-publish
+STATIC_READ_NS=bex-system
+STATIC_READ_SECRET=bex-static-read-s3
+STATIC_READ_USER=bex-static-read
+
+# static_store_manifest prints MinIO's PVC, Deployment and Service.
+static_store_manifest() {
+  cat <<YAML
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata: {name: minio-data, namespace: $STATIC_NS}
+spec:
+  accessModes: [ReadWriteOnce]
+  resources: {requests: {storage: 5Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: minio, namespace: $STATIC_NS, labels: {app.kubernetes.io/name: minio}}
+spec:
+  replicas: 1
+  strategy: {type: Recreate}
+  selector: {matchLabels: {app.kubernetes.io/name: minio}}
+  template:
+    metadata: {labels: {app.kubernetes.io/name: minio}}
+    spec:
+      nodeSelector: {bex.co/pool: platform}
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1001
+        runAsGroup: 1001
+        fsGroup: 1001
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: minio
+          image: $STATIC_IMAGE
+          command: [minio, server, /data, --address, ":9000"]
+          env:
+            - {name: MINIO_ROOT_USER, valueFrom: {secretKeyRef: {name: $STATIC_ROOT_SECRET, key: MINIO_ROOT_USER}}}
+            - {name: MINIO_ROOT_PASSWORD, valueFrom: {secretKeyRef: {name: $STATIC_ROOT_SECRET, key: MINIO_ROOT_PASSWORD}}}
+            - {name: MINIO_BROWSER, value: "off"}
+            - {name: HOME, value: /tmp}
+            - {name: MC_CONFIG_DIR, value: /tmp/.mc}
+          ports: [{containerPort: 9000, name: s3}]
+          readinessProbe:
+            httpGet: {path: /minio/health/ready, port: 9000}
+            periodSeconds: 5
+          resources:
+            requests: {cpu: 10m, memory: 128Mi}
+            limits: {memory: 1Gi}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          volumeMounts:
+            - {name: data, mountPath: /data}
+            - {name: tmp, mountPath: /tmp}
+      volumes:
+        - {name: data, persistentVolumeClaim: {claimName: minio-data}}
+        - {name: tmp, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: minio, namespace: $STATIC_NS}
+spec:
+  selector: {app.kubernetes.io/name: minio}
+  ports: [{name: s3, port: 9000, targetPort: 9000}]
+YAML
+}
+
+# static_store_egress_policy prints the mock-only allowance for the publish and
+# purge Jobs to reach the store. bex-build's own policy (build-boundary.yaml)
+# allows public object stores on :443 and refuses every private range, which
+# is right for Wasabi and leaves an in-cluster store unreachable. NetworkPolicy
+# allows add up, so this widens nothing else.
+static_store_egress_policy() {
+  cat <<YAML
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: {name: allow-local-static-store-egress, namespace: $STATIC_PUBLISH_NS}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: app.bex.co/component, operator: In, values: [publish, static-purge]}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector: {matchLabels: {kubernetes.io/metadata.name: $STATIC_NS}}
+          podSelector: {matchLabels: {app.kubernetes.io/name: minio}}
+      ports: [{protocol: TCP, port: 9000}]
+YAML
+}
+
+# secret_key NS SECRET KEY prints one decoded value, or nothing. Callers keep
+# it in a variable; it is never echoed.
+secret_key() {
+  wl_kubectl -n "$1" get secret "$2" -o json 2>/dev/null | jq -r --arg k "$3" '.data[$k] // empty | @base64d' 2>/dev/null || true
+}
+
+# apply_env_secret NS NAME — apply an Opaque Secret from KEY=VALUE lines on
+# stdin, so no value reaches argv.
+apply_env_secret() {
+  wl_kubectl -n "$1" create secret generic "$2" --from-env-file=/dev/stdin --dry-run=client -o json |
+    wl_kubectl apply -f - >/dev/null
+}
+
+# ensure_static_credentials keeps each identity's existing secret key and
+# mints a random one only where none exists, then (re)applies the Secrets.
+ensure_static_credentials() {
+  local root publish_key read_key
+  root=$(secret_key "$STATIC_NS" "$STATIC_ROOT_SECRET" MINIO_ROOT_PASSWORD)
+  if [ -z "$root" ]; then
+    root=$(openssl rand -hex 24) || return 1
+    printf 'MINIO_ROOT_USER=bex-static-admin\nMINIO_ROOT_PASSWORD=%s\n' "$root" | apply_env_secret "$STATIC_NS" "$STATIC_ROOT_SECRET" || return 1
+    echo "    static store root credential minted (random; not printed)"
+  fi
+  publish_key=$(secret_key "$STATIC_PUBLISH_NS" "$STATIC_PUBLISH_SECRET" AWS_SECRET_ACCESS_KEY)
+  [ -n "$publish_key" ] || publish_key=$(openssl rand -hex 24) || return 1
+  read_key=$(secret_key "$STATIC_READ_NS" "$STATIC_READ_SECRET" AWS_SECRET_ACCESS_KEY)
+  [ -n "$read_key" ] || read_key=$(openssl rand -hex 24) || return 1
+  wl_kubectl create namespace "$STATIC_READ_NS" --dry-run=client -o yaml | wl_kubectl apply -f - >/dev/null || return 1
+  printf 'AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\n' "$STATIC_PUBLISH_USER" "$publish_key" |
+    apply_env_secret "$STATIC_PUBLISH_NS" "$STATIC_PUBLISH_SECRET" || return 1
+  printf 'AWS_ACCESS_KEY_ID=%s\nAWS_SECRET_ACCESS_KEY=%s\n' "$STATIC_READ_USER" "$read_key" |
+    apply_env_secret "$STATIC_READ_NS" "$STATIC_READ_SECRET"
+}
+
+# static_policy ACTIONS... prints a bucket-scoped MinIO policy: ListBucket on
+# the bucket, ACTIONS on its objects.
+static_policy() {
+  jq -cn --arg b "$STATIC_BUCKET" '$ARGS.positional as $obj |
+    {Version: "2012-10-17", Statement: [
+      {Effect: "Allow", Action: ["s3:ListBucket", "s3:GetBucketLocation"], Resource: ["arn:aws:s3:::\($b)"]},
+      {Effect: "Allow", Action: $obj, Resource: ["arn:aws:s3:::\($b)/*"]}]}' --args "$@"
+}
+
+# static_store_exec SCRIPT — run SCRIPT in the MinIO container with the
+# publish and read secret keys on its stdin (lines 1 and 2). Inside, `mc`
+# reaches the server as root through MC_HOST_*, built from the container's
+# own MINIO_ROOT_* env, so the root credential never crosses kubectl at all.
+static_store_exec() {
+  local publish_key read_key
+  publish_key=$(secret_key "$STATIC_PUBLISH_NS" "$STATIC_PUBLISH_SECRET" AWS_SECRET_ACCESS_KEY)
+  read_key=$(secret_key "$STATIC_READ_NS" "$STATIC_READ_SECRET" AWS_SECRET_ACCESS_KEY)
+  [ -n "$publish_key" ] && [ -n "$read_key" ] || { echo "error: the static store's publish/read Secrets are missing" >&2; return 1; }
+  printf '%s\n%s\n' "$publish_key" "$read_key" |
+    wl_kubectl -n "$STATIC_NS" exec -i deploy/minio -c minio -- sh -c "$1"
+}
+
+# static_store_converge creates the bucket, both policies and both users (with
+# the Secrets' keys) and attaches each policy. Every mc call is idempotent.
+static_store_converge() {
+  static_store_exec "set -e
+read -r publish_key; read -r read_key
+export MC_HOST_local=\"http://\$MINIO_ROOT_USER:\$MINIO_ROOT_PASSWORD@127.0.0.1:9000\"
+mc mb --ignore-existing local/$STATIC_BUCKET >/dev/null
+printf '%s' '$(static_policy s3:GetObject s3:PutObject s3:DeleteObject s3:AbortMultipartUpload s3:ListMultipartUploadParts)' >/tmp/publish-policy.json
+printf '%s' '$(static_policy s3:GetObject)' >/tmp/read-policy.json
+mc admin policy create local $STATIC_PUBLISH_USER /tmp/publish-policy.json >/dev/null
+mc admin policy create local $STATIC_READ_USER /tmp/read-policy.json >/dev/null
+rm -f /tmp/publish-policy.json /tmp/read-policy.json
+mc admin user add local $STATIC_PUBLISH_USER \"\$publish_key\" >/dev/null
+mc admin user add local $STATIC_READ_USER \"\$read_key\" >/dev/null
+mc admin policy attach local $STATIC_PUBLISH_USER --user $STATIC_PUBLISH_USER >/dev/null
+mc admin policy attach local $STATIC_READ_USER --user $STATIC_READ_USER >/dev/null"
+}
+
+# static_store_serving: the bucket answers with each dev identity, scoped as
+# in production — publish writes and deletes; read reads and cannot write.
+static_store_serving() {
+  static_store_exec "read -r publish_key; read -r read_key
+export MC_CONFIG_DIR=/tmp/.mc-probe
+export MC_HOST_pub=\"http://$STATIC_PUBLISH_USER:\$publish_key@127.0.0.1:9000\" MC_HOST_ro=\"http://$STATIC_READ_USER:\$read_key@127.0.0.1:9000\"
+probe=$STATIC_BUCKET/.bex-mock-probe
+echo probe | mc pipe pub/\$probe >/dev/null 2>&1 || { echo 'publish identity cannot write' >&2; exit 1; }
+[ \"\$(mc cat ro/\$probe 2>/dev/null)\" = probe ] || { echo 'read identity cannot read' >&2; exit 1; }
+if echo x | mc pipe ro/\$probe.ro >/dev/null 2>&1; then echo 'read identity can write' >&2; exit 1; fi
+mc rm pub/\$probe >/dev/null 2>&1 || { echo 'publish identity cannot delete' >&2; exit 1; }" 2>&1 | sed 's/^/    /' >&2
+  [ "${PIPESTATUS[0]}" -eq 0 ]
+}
+
+install_static_store() {
+  if ! { wl_kubectl create namespace "$STATIC_NS" --dry-run=client -o yaml | wl_kubectl apply -f - >/dev/null &&
+    ensure_static_credentials &&
+    static_store_manifest | wl_kubectl apply -f - >/dev/null &&
+    static_store_egress_policy | wl_kubectl apply -f - >/dev/null &&
+    wl_kubectl -n "$STATIC_NS" rollout status deploy/minio --timeout=300s >/dev/null; }; then
+    echo "error: installing the local static store (MinIO in $STATIC_NS) failed" >&2
+    return 1
+  fi
+  static_store_converge || { echo "error: could not create the $STATIC_BUCKET bucket and its two identities in MinIO" >&2; return 1; }
+  static_store_serving || { echo "error: the $STATIC_BUCKET bucket does not answer the dev identities as scoped" >&2; return 1; }
+}
+
 # --- `operator`: the bex operator from this tree (w2/m289 t002) --------------
 # After every reprovision the operator used to be rebuilt, side-loaded onto
 # each node, deployed and patched by hand. This is that runbook as one
@@ -654,6 +855,7 @@ abs_path() { case $1 in /*) printf '%s\n' "$1" ;; *) printf '%s/%s\n' "$PWD" "$1
 operator_prereqs() {
   traefik_crds_established &&
     wl_kubectl -n "$ZOT_NS" get statefulset zot >/dev/null &&
+    wl_kubectl -n "$STATIC_NS" get deploy minio >/dev/null &&
     wl_kubectl wait --for=condition=established crd/clusters.postgresql.cnpg.io --timeout=30s >/dev/null &&
     wl_kubectl -n cert-manager wait deploy --all --for=condition=Available --timeout=30s >/dev/null
 }
@@ -662,7 +864,39 @@ operator_registry_credentials() {
   ensure_registry_credentials && zot_restart_if_rotated && zot_serving
 }
 
-operator_build() { docker build -t "$OPERATOR_IMG" -f lego/Dockerfile lego; }
+# operator_static_credentials re-ensures the publish and read Secrets and the
+# MinIO users behind them (w2/m294 t002), then proves the bucket answers.
+operator_static_credentials() {
+  ensure_static_credentials && static_store_converge && static_store_serving
+}
+
+# operator_set_static_store is the mock-only override of production's Wasabi
+# origin, like BEX_IMAGE_PLATFORM: the manager's BEX_STATIC_S3_* env and the
+# static-server's optional bex-static-config ConfigMap (config/prod ships
+# that one; config/default renders none). The Secret names stay production's.
+# Idempotent: unchanged values do not roll the manager.
+operator_set_static_store() {
+  wl_kubectl -n bex-system set env deploy/bex-controller-manager -c manager \
+    "BEX_STATIC_S3_ENDPOINT=$STATIC_ENDPOINT" "BEX_STATIC_S3_BUCKET=$STATIC_BUCKET" \
+    "BEX_STATIC_S3_REGION=$STATIC_REGION" >/dev/null || return 1
+  wl_kubectl -n bex-system create configmap bex-static-config \
+    --from-literal="BEX_STATIC_S3_ENDPOINT=$STATIC_ENDPOINT" --from-literal="BEX_STATIC_S3_BUCKET=$STATIC_BUCKET" \
+    --from-literal="BEX_STATIC_S3_REGION=$STATIC_REGION" --dry-run=client -o json |
+    jq '.metadata.labels["app.bex.co/mock-override"] = "true"' | wl_kubectl apply -f - >/dev/null || return 1
+  echo "    manager + static-server: static store $STATIC_ENDPOINT, bucket $STATIC_BUCKET"
+}
+
+# The static-server opens its listener only after its read identity passes a
+# signed ListBucket against the origin, so Ready means the store answered.
+operator_static_server_ready() {
+  wl_kubectl -n bex-system rollout status deploy/bex-static-server --timeout=180s
+}
+
+# The build runs with a private, store-less Docker config that keeps the
+# active docker context (w2/m295 t002): with the caller's credsStore
+# osxkeychain, a locked keychain hung the base-image pulls forever. See
+# scripts/lib/helm-isolated.sh.
+operator_build() { docker_isolated docker build -t "$OPERATOR_IMG" -f lego/Dockerfile lego; }
 
 # operator_import_image loads the image into containerd on every node the
 # workload cluster reports. CAPD names each node container after its Node,
@@ -777,8 +1011,8 @@ deploy_operator() {
   operator_step "workload cluster reachable" \
     "Bring the cluster up first: bash scripts/mock-cluster.sh" \
     wl_kubectl --request-timeout=20s get --raw /readyz
-  operator_step "substrate prerequisites (Traefik CRDs, Zot, CNPG CRDs, cert-manager)" \
-    "The manager needs all four; bash scripts/mock-cluster.sh installs them (idempotent)." \
+  operator_step "substrate prerequisites (Traefik CRDs, Zot, MinIO, CNPG CRDs, cert-manager)" \
+    "The manager needs all five; bash scripts/mock-cluster.sh installs them (idempotent)." \
     operator_prereqs
   operator_step "build $OPERATOR_IMG from lego/Dockerfile" \
     "The docker build output above names the failing layer; is the Docker daemon up?" \
@@ -809,6 +1043,14 @@ deploy_operator() {
   operator_step "registry push/pull credentials (bex-build/bex-registry-push, bex-registry-pull)" \
     "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n $ZOT_NS get statefulset,secret" \
     operator_registry_credentials
+  # The local static-site store (w2/m294 t002): production's Secret names,
+  # the local endpoint. Before the roll, which restarts the static-server.
+  operator_step "static-site store credentials (bex-build/$STATIC_PUBLISH_SECRET, bex-system/$STATIC_READ_SECRET)" \
+    "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n $STATIC_NS get deploy,pod" \
+    operator_static_credentials
+  operator_step "static store endpoint/bucket/region = the local MinIO (mock override)" \
+    "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n bex-system get deploy bex-controller-manager -o yaml" \
+    operator_set_static_store
   operator_step "BEX_IMAGE_PLATFORM = the nodes' architecture" \
     "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl get nodes -o wide" \
     operator_set_platform
@@ -818,13 +1060,351 @@ deploy_operator() {
   operator_step "bex-controller-manager rolled out" \
     "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n bex-system logs deploy/bex-controller-manager --tail=50" \
     operator_wait
+  operator_step "bex-static-server Ready on the local store" \
+    "Inspect: KUBECONFIG=$WL_KUBECONFIG kubectl -n bex-system logs deploy/bex-static-server --tail=50" \
+    operator_static_server_ready
   echo
   echo "bex operator running $OPERATOR_IMG (built from this tree)."
-  # Informational: config/default also ships in-cluster bex-api, ssh-gateway
-  # and static-server, which need platform Secrets the mock does not create
-  # (dev-N runs its own bex-api on the host). Only the manager is required.
+  # Informational: config/default also ships in-cluster bex-api and
+  # ssh-gateway, which need platform Secrets the mock does not create (dev-N
+  # runs its own bex-api on the host). The manager and static-server are
+  # required.
   wl_kubectl -n bex-system get deploy,ds 2>/dev/null | sed 's/^/  /' || true
   echo "  next:      bash scripts/dev-env.sh <N> up"
+}
+
+# --- Docker restart recovery (w2/m295 t001) ----------------------------------
+# Docker hands out `kind` network addresses lowest-free in START order, and
+# nothing pins them, so a Docker Desktop restart that starts the containers in
+# a different order reshuffles them. Two failures followed on the shared mock:
+#   - 2026-11-04: a CAPD node started first and took the address the mgmt
+#     node held; the mgmt control plane could not come back.
+#   - 2026-11-08: the CAPD control plane came back on a new address. kind's
+#     entrypoint then deletes /etc/kubernetes/pki/apiserver.{crt,key} and
+#     regenerates them from /kind/kubeadm.conf — which CAPD nodes do not have —
+#     so the apiserver crashlooped and the cluster (with dev-3's data) was
+#     rebuilt.
+# The workload cluster also depends on two addresses: every kubeconfig in it
+# names the load balancer's (controlPlaneEndpoint), and the load balancer
+# sends the API to the control plane's. A wrong start order breaks both.
+#
+# recover_after_docker_restart runs first in every bring-up. On a healthy
+# cluster it reads state and changes nothing. Otherwise it stops the cluster's
+# containers and starts them in creation order (mgmt, load balancer, control
+# plane, workers), which hands each its address back; it then regenerates a
+# missing apiserver certificate from the same kubeadm ClusterConfiguration the
+# node was bootstrapped with (CAPI's bootstrap Secret), against the cluster's
+# existing CA, and waits for the API and every node. Anything it cannot put
+# back exits with what it found and the one command that rebuilds instead.
+MGMT_NODE=bex-mgmt-control-plane
+WL_NODE_LABEL=io.x-k8s.kind.cluster=bex
+REPROVISION_CMD="bash scripts/mock-cluster.sh reprovision"
+
+container_state() { docker inspect -f '{{.State.Status}}' "$1" 2>/dev/null; }
+container_ipv4() { docker inspect -f '{{with index .NetworkSettings.Networks "kind"}}{{.IPAddress}}{{end}}' "$1" 2>/dev/null; }
+
+# wl_containers prints "ROLE NAME" for each node container of cluster bex in
+# start order: the load balancer, the control plane(s), then the workers,
+# oldest first within each role.
+wl_containers() {
+  docker ps -a --filter "label=$WL_NODE_LABEL" \
+    --format '{{.Label "io.x-k8s.kind.role"}}|{{.CreatedAt}}|{{.Names}}' 2>/dev/null |
+    awk -F'|' 'NF == 3 { r = ($1 == "external-load-balancer") ? 0 : ($1 == "control-plane") ? 1 : 2; print r "|" $2 "|" $1 " " $3 }' |
+    sort -t'|' -k1,1n -k2,2 | cut -d'|' -f3
+}
+
+# node_file NAME PATH prints a file from a node container, running or not.
+node_file() { docker cp "$1:$2" - 2>/dev/null | tar -xOf - 2>/dev/null; }
+
+# expected_lb_ip CP — the load balancer address every kubeconfig on the
+# control plane names. Only the server line is read: the file holds a client
+# key and is never printed.
+expected_lb_ip() {
+  node_file "$1" /etc/kubernetes/admin.conf |
+    sed -n 's#^[[:space:]]*server: https://\([0-9.]*\):[0-9]*[[:space:]]*$#\1#p' | head -1
+}
+
+# expected_cp_ip LB CP — the address the load balancer sends CP's API to.
+expected_cp_ip() {
+  node_file "$1" /usr/local/etc/haproxy/haproxy.cfg |
+    awk -v n="$2" '$1 == "server" && $2 == n { sub(/:.*/, "", $3); print $3; exit }'
+}
+
+cp_has_apiserver_cert() {
+  docker exec "$1" test -s /etc/kubernetes/pki/apiserver.crt -a -s /etc/kubernetes/pki/apiserver.key 2>/dev/null
+}
+
+# restart_problems prints one "KIND|NODE|what" line per problem: KIND `order`
+# is fixed by restarting in creation order, `start` by starting that worker,
+# `cert` by regenerating NODE's apiserver certificate, `fatal` by neither. No
+# output means the cluster is intact.
+restart_problems() {
+  local role name state ip want lb=
+  local -a cps=()
+  state=$(container_state "$MGMT_NODE")
+  [ "$state" = running ] || echo "order|$MGMT_NODE|management node $MGMT_NODE is ${state:-missing}"
+  while read -r role name; do
+    [ -n "$name" ] || continue
+    state=$(container_state "$name")
+    if [ "$state" != running ]; then
+      # A worker's address matters to nothing, so a stopped worker only needs
+      # starting; the mgmt node, load balancer and control plane need order.
+      case $role in
+      worker) echo "start|$name|worker node $name is ${state:-missing}" ;;
+      *) echo "order|$name|$role node $name is ${state:-missing}" ;;
+      esac
+    fi
+    case $role in
+    external-load-balancer) lb=$name ;;
+    control-plane) cps+=("$name") ;;
+    esac
+  done < <(wl_containers)
+  [ -n "$lb" ] || { echo "fatal|-|cluster 'bex' has node containers but no load balancer container"; return 0; }
+  [ "${#cps[@]}" -gt 0 ] || { echo "fatal|-|cluster 'bex' has node containers but no control-plane container"; return 0; }
+  want=$(expected_lb_ip "${cps[0]}")
+  if [ "$(container_state "$lb")" = running ] && [ -n "$want" ]; then
+    ip=$(container_ipv4 "$lb")
+    [ "$ip" = "$want" ] || echo "order|$lb|load balancer $lb is on ${ip:-no address}, but every kubeconfig in the cluster names $want"
+  fi
+  for name in "${cps[@]}"; do
+    [ "$(container_state "$name")" = running ] || continue
+    want=$(expected_cp_ip "$lb" "$name")
+    ip=$(container_ipv4 "$name")
+    if [ -n "$want" ] && [ "$ip" != "$want" ]; then
+      echo "order|$name|control plane $name is on ${ip:-no address}, but the load balancer sends the API to $want"
+    fi
+    cp_has_apiserver_cert "$name" ||
+      echo "cert|$name|control plane $name has no /etc/kubernetes/pki/apiserver.crt (kind's entrypoint deletes it when the node's address changes)"
+  done
+}
+
+RESTART_PROBLEMS=
+# restart_unrecoverable REASON — say what was found and how to rebuild; exit.
+restart_unrecoverable() {
+  {
+    echo
+    echo "error: the local cluster cannot be recovered in place: $1"
+    if [ -n "$RESTART_PROBLEMS" ]; then
+      echo "       found:"
+      printf '%s\n' "$RESTART_PROBLEMS" | cut -d'|' -f3- | sed 's/^/         - /'
+    fi
+    echo "       Rebuild it (deletes and recreates bex-mgmt and bex; every dev-N on it loses its data):"
+    echo "         $REPROVISION_CMD"
+  } >&2
+  exit 1
+}
+
+# restart_in_order stops every container of both clusters, then starts them in
+# creation order, checking the two addresses the workload cluster depends on.
+restart_in_order() {
+  local role name want holder i lb='' want_lb=''
+  local -a cps=() workers=() cp_want=()
+  while read -r role name; do
+    [ -n "$name" ] || continue
+    case $role in
+    external-load-balancer) lb=$name ;;
+    control-plane) cps+=("$name") ;;
+    *) workers+=("$name") ;;
+    esac
+  done < <(wl_containers)
+  # Read the expected addresses before anything moves; both files survive.
+  want_lb=$(expected_lb_ip "${cps[0]}")
+  for name in "${cps[@]}"; do cp_want+=("$(expected_cp_ip "$lb" "$name")"); done
+
+  echo "    stopping both clusters' containers to start them again in creation order"
+  docker stop "${workers[@]}" "${cps[@]}" "$lb" "$MGMT_NODE" >/dev/null || return 1
+  # An address held by a container outside these clusters cannot be won back
+  # by ordering; name the holder instead of guessing.
+  for want in "$want_lb" "${cp_want[@]}"; do
+    [ -n "$want" ] || continue
+    holder=$(docker network inspect kind -f '{{range .Containers}}{{.Name}} {{.IPv4Address}}{{"\n"}}{{end}}' 2>/dev/null |
+      awk -v ip="$want" '{ split($2, a, "/") } a[1] == ip { print $1; exit }')
+    if [ -n "$holder" ]; then
+      echo "error: container '$holder' (not part of the local clusters) holds $want on the kind network" >&2
+      return 1
+    fi
+  done
+  docker start "$MGMT_NODE" >/dev/null || return 1
+  echo "    started $MGMT_NODE on $(container_ipv4 "$MGMT_NODE")"
+  docker start "$lb" >/dev/null || return 1
+  if [ -n "$want_lb" ] && [ "$(container_ipv4 "$lb")" != "$want_lb" ]; then
+    echo "error: load balancer $lb came back on $(container_ipv4 "$lb"), not $want_lb" >&2
+    return 1
+  fi
+  echo "    started $lb on $(container_ipv4 "$lb")"
+  for i in "${!cps[@]}"; do
+    docker start "${cps[$i]}" >/dev/null || return 1
+    if [ -n "${cp_want[$i]}" ] && [ "$(container_ipv4 "${cps[$i]}")" != "${cp_want[$i]}" ]; then
+      echo "error: control plane ${cps[$i]} came back on $(container_ipv4 "${cps[$i]}"), not ${cp_want[$i]}" >&2
+      return 1
+    fi
+    echo "    started ${cps[$i]} on $(container_ipv4 "${cps[$i]}")"
+  done
+  for name in "${workers[@]}"; do
+    docker start "$name" >/dev/null || return 1
+    echo "    started $name on $(container_ipv4 "$name")"
+  done
+}
+
+# wait_until SECONDS CMD... polls CMD every BEX_RECOVER_POLL_SECONDS (5).
+wait_until() {
+  local deadline=$((SECONDS + $1))
+  shift
+  until "$@"; do
+    [ "$SECONDS" -lt "$deadline" ] || return 1
+    sleep "${BEX_RECOVER_POLL_SECONDS:-5}"
+  done
+}
+
+mgmt_api_ready() { mgmt_kubectl --request-timeout=10s get --raw /readyz >/dev/null 2>&1; }
+
+# kubeadm_cert_config NODE IP prints the kubeadm config that regenerates
+# NODE's apiserver certificate: the ClusterConfiguration CAPI bootstrapped the
+# node with (its bootstrap Secret's /run/kubeadm/kubeadm.yaml; certSANs, the
+# controlPlaneEndpoint, the service subnet) plus an InitConfiguration naming
+# the node and its current address. That Secret also carries the cluster's CA
+# keys, so only the ClusterConfiguration document ever leaves the pipe.
+kubeadm_cert_config() {
+  local node=$1 ip=$2 secret cluster_cfg
+  secret=$(mgmt_kubectl get machines -o json 2>/dev/null |
+    jq -r --arg n "$node" '.items[] | select(.metadata.name == $n or .status.nodeRef.name == $n) | .spec.bootstrap.dataSecretName // empty' | head -1)
+  [ -n "$secret" ] || { echo "error: no CAPI Machine (bootstrap Secret) for node $node" >&2; return 1; }
+  cluster_cfg=$(mgmt_kubectl get secret "$secret" -o json 2>/dev/null |
+    jq -r '.data.value // empty | @base64d' |
+    yq '.write_files[] | select(.path == "/run/kubeadm/kubeadm.yaml") | .content' 2>/dev/null |
+    yq 'select(.kind == "ClusterConfiguration")' 2>/dev/null)
+  if [ -z "$cluster_cfg" ] || [ -z "$ip" ]; then
+    echo "error: could not read node $node's kubeadm ClusterConfiguration (or its address)" >&2
+    return 1
+  fi
+  printf '%s\n---\napiVersion: kubeadm.k8s.io/v1beta4\nkind: InitConfiguration\nlocalAPIEndpoint:\n  advertiseAddress: %s\nnodeRegistration:\n  name: %s\n' \
+    "$cluster_cfg" "$ip" "$node"
+}
+
+# write_kind_kubeadm_conf NODE installs that config as the node's
+# /kind/kubeadm.conf: the file kind's entrypoint rewrites to the node's new
+# address and regenerates the certificate from on its own next time.
+write_kind_kubeadm_conf() {
+  local cfg
+  cfg=$(kubeadm_cert_config "$1" "$(container_ipv4 "$1")") || return 1
+  printf '%s\n' "$cfg" | docker exec -i "$1" sh -c 'umask 077 && cat >/kind/kubeadm.conf.tmp && mv /kind/kubeadm.conf.tmp /kind/kubeadm.conf'
+}
+
+# repair_apiserver_cert NODE regenerates the apiserver serving certificate
+# with the cluster's existing CA (/etc/kubernetes/pki/ca.*), then restarts the
+# kubelet so the crashlooping static pod starts now, not after its backoff.
+repair_apiserver_cert() {
+  write_kind_kubeadm_conf "$1" &&
+    docker exec "$1" kubeadm init phase certs apiserver --config /kind/kubeadm.conf >/dev/null &&
+    docker exec "$1" systemctl restart kubelet
+}
+
+# seed_kind_kubeadm_conf gives every running control plane a /kind/kubeadm.conf
+# when it has none, so kind's entrypoint itself survives an address change.
+seed_kind_kubeadm_conf() {
+  local role name
+  while read -r role name; do
+    [ "$role" = control-plane ] || continue
+    docker exec "$name" test -s /kind/kubeadm.conf 2>/dev/null && continue
+    write_kind_kubeadm_conf "$name" || return 1
+    echo "    $name: /kind/kubeadm.conf written (kind regenerates its apiserver cert after an address change)"
+  done < <(wl_containers)
+}
+
+# wl_ready_from CP — the API answers through the load balancer (CP's own
+# admin.conf names it) and every node is Ready. No host port is involved:
+# those change on every container start, and publish_kubeconfig re-reads them.
+wl_ready_from() {
+  local out
+  docker exec "$1" kubectl --kubeconfig /etc/kubernetes/admin.conf --request-timeout=10s get --raw /readyz >/dev/null 2>&1 || return 1
+  out=$(docker exec "$1" kubectl --kubeconfig /etc/kubernetes/admin.conf --request-timeout=10s get nodes --no-headers 2>/dev/null) || return 1
+  [ -n "$out" ] && ! printf '%s\n' "$out" | grep -qv ' Ready'
+}
+
+# cluster_paused true|false — CAPI's own pause: while the repair runs, no
+# MachineHealthCheck replaces a node (and the local volumes on it) for being
+# unreachable, and KCP does not remediate the control plane.
+cluster_paused() {
+  mgmt_kubectl patch cluster bex --type merge -p "{\"spec\":{\"paused\":$1}}" >/dev/null
+}
+
+recover_after_docker_restart() {
+  local role name kind cp=
+  if [ -z "$(container_state "$MGMT_NODE")" ]; then
+    [ -z "$(wl_containers)" ] && return 0 # nothing provisioned yet
+    RESTART_PROBLEMS="fatal|$MGMT_NODE|management node $MGMT_NODE is missing"
+    restart_unrecoverable "the node containers of cluster 'bex' exist, but the management cluster that owns them does not"
+  fi
+  if [ -z "$(wl_containers)" ]; then
+    # Only the mgmt cluster so far: the bring-up below creates cluster bex.
+    [ "$(container_state "$MGMT_NODE")" = running ] || docker start "$MGMT_NODE" >/dev/null ||
+      restart_unrecoverable "the management node $MGMT_NODE does not start"
+    return 0
+  fi
+  RESTART_PROBLEMS=$(restart_problems)
+  [ -n "$RESTART_PROBLEMS" ] || return 0
+
+  echo "==> the local clusters did not come back intact (a Docker restart?):"
+  printf '%s\n' "$RESTART_PROBLEMS" | cut -d'|' -f3- | sed 's/^/    - /'
+  grep -q '^fatal|' <<<"$RESTART_PROBLEMS" && restart_unrecoverable "a cluster container is missing"
+  if grep -q '^order|' <<<"$RESTART_PROBLEMS"; then
+    restart_in_order || restart_unrecoverable "restarting the containers in creation order did not restore their addresses"
+  else
+    while IFS='|' read -r kind name _; do
+      [ "$kind" = start ] || continue
+      docker start "$name" >/dev/null || restart_unrecoverable "worker node $name does not start"
+      echo "    started $name"
+    done <<<"$RESTART_PROBLEMS"
+  fi
+  refresh_mgmt_kubeconfig && wait_until 180 mgmt_api_ready ||
+    restart_unrecoverable "the management cluster's apiserver did not answer within 3m"
+  cluster_paused true || restart_unrecoverable "could not pause cluster 'bex' for the repair"
+
+  # Re-read: a restart moves things, and the CP has only now come back.
+  RESTART_PROBLEMS=$(restart_problems)
+  if grep -qE '^(order|fatal)\|' <<<"$RESTART_PROBLEMS"; then
+    cluster_paused false || true
+    restart_unrecoverable "the containers' addresses are still wrong after the ordered restart"
+  fi
+  while IFS='|' read -r kind name _; do
+    [ "$kind" = cert ] || continue
+    echo "    regenerating $name's apiserver certificate (existing CA, bootstrap ClusterConfiguration)"
+    repair_apiserver_cert "$name" || { cluster_paused false || true; restart_unrecoverable "regenerating $name's apiserver certificate failed"; }
+  done <<<"$RESTART_PROBLEMS"
+
+  while read -r role name; do
+    [ "$role" = control-plane ] && { cp=$name; break; }
+  done < <(wl_containers)
+  echo "    waiting for the workload apiserver and every node to be Ready..."
+  if ! wait_until 300 wl_ready_from "$cp"; then
+    cluster_paused false || true
+    RESTART_PROBLEMS=$(restart_problems)
+    restart_unrecoverable "the workload apiserver or a node was not Ready within 5m of the repair"
+  fi
+  cluster_paused false || restart_unrecoverable "could not unpause cluster 'bex' after the repair"
+  RESTART_PROBLEMS=
+  echo "    recovered: both clusters are serving again (the bring-up below re-publishes the kubeconfig)"
+}
+
+# reprovision_clusters deletes both local clusters so the bring-up recreates
+# them from nothing: the kind mgmt cluster, and every container labelled as a
+# node of cluster bex (with its anonymous volumes). Nothing else on the Docker
+# host is touched. The mgmt cluster is not asked to delete cluster bex: with
+# its nodes broken that waits on drains that never finish.
+reprovision_clusters() {
+  local nodes namespaces
+  echo "==> reprovision: deleting the local clusters bex-mgmt and bex"
+  namespaces=$(wl_kubectl --request-timeout=10s get ns -o name 2>/dev/null | sed -n 's#^namespace/\(dev-[0-9]*\)$#\1#p' | tr '\n' ' ')
+  [ -z "$namespaces" ] || echo "    dev-N data on the cluster that is lost: $namespaces"
+  if kind get clusters 2>/dev/null | grep -qx bex-mgmt; then
+    kind delete cluster --name bex-mgmt --kubeconfig "$MGMT_KUBECONFIG" || return 1
+  fi
+  nodes=$(docker ps -aq --filter "label=$WL_NODE_LABEL")
+  if [ -n "$nodes" ]; then
+    # shellcheck disable=SC2086 # one container id per word
+    docker rm -f -v $nodes >/dev/null || return 1
+  fi
+  echo "    deleted; bringing both clusters up from nothing"
 }
 
 # A just-initialised mgmt cluster reports the CAPI/CAPD Deployments Available a
@@ -857,14 +1437,23 @@ operator)
   deploy_operator
   exit 0
   ;;
+reprovision)
+  # Delete both local clusters, then fall through to the full bring-up.
+  acquire_lock
+  require "deleting the local clusters" reprovision_clusters
+  ;;
 '') ;;
 *)
-  echo "usage: bash scripts/mock-cluster.sh [scale N | operator]" >&2
+  echo "usage: bash scripts/mock-cluster.sh [scale N | operator | reprovision]" >&2
   exit 2
   ;;
 esac
 
-acquire_lock
+[ -n "$LOCK_HELD" ] || acquire_lock
+
+# 0. A Docker restart can leave the clusters stopped, renumbered or without an
+# apiserver certificate; put them back first (or say why not and exit).
+recover_after_docker_restart
 
 # 1. infra cluster (kind) with the docker socket mounted (CAPD needs it).
 # --kubeconfig keeps kind from writing (and switching) ~/.kube/config (t003).
@@ -926,6 +1515,10 @@ fi
 # 4. app-cluster kubeconfig — rewrite the server to the lb's host-published port
 #    (CAPD's internal API IP isn't reachable from the host), then install a CNI.
 publish_kubeconfig
+# Give the control plane the /kind/kubeadm.conf CAPD omits, so kind's
+# entrypoint regenerates its apiserver certificate itself after an address
+# change instead of deleting it (w2/m295 t001).
+require "control-plane /kind/kubeadm.conf" seed_kind_kubeadm_conf
 KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f \
   https://raw.githubusercontent.com/projectcalico/calico/v3.28.2/manifests/calico.yaml >/dev/null
 # Required, and deliberately ordered after the Calico apply above: nodes cannot
@@ -1100,6 +1693,11 @@ require "build boundary (bex-build)" apply_build_boundary
 # pin and values, with dev bex-builder credentials. After the build boundary,
 # whose bex-build namespace holds the push/pull Secrets.
 require "platform registry (Zot in $ZOT_NS)" install_zot
+
+# The local static-site store (w2/m294 t001): MinIO with the bex-static
+# bucket and production's two Secret names. After the build boundary, whose
+# bex-build namespace holds the publish Secret.
+require "static-site store (MinIO in $STATIC_NS)" install_static_store
 
 # The bex-datastore PriorityClass (w2/m247): the operator stamps it on every
 # new Postgres/Key Value Pod so the workspace compute quota excludes them, and

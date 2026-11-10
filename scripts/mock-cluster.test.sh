@@ -292,7 +292,8 @@ install_traefik >/dev/null
 check "an Argo-managed Traefik gets no Helm call" "$(grep -c '^helm' "$tcalls" || true)" "0"
 unset -f helm kubectl
 unset -f helm_pin
-eval "$(awk '/^helm_pin\(\)/,/^}$/' scripts/mock-cluster.sh)"
+# shellcheck source=lib/helm-pinned.sh
+. scripts/lib/helm-pinned.sh
 # 17a. The CNPG operator the manager depends on comes from production's pin
 #      too, and is skipped when present or Argo-managed.
 check "the CNPG pin is production's cloudnative-pg line" \
@@ -310,7 +311,8 @@ install_cnpg
 check "a missing CNPG operator is installed as release cnpg in cnpg-system" \
   "$(grep -c "^helm upgrade --install cnpg $tmp/cloudnative-pg-0.29.1.tgz -n cnpg-system --create-namespace --wait" "$ccalls")" "1"
 unset -f helm kubectl fetch_pinned_chart
-eval "$(awk '/^fetch_pinned_chart\(\)/,/^}$/' scripts/mock-cluster.sh)"
+# shellcheck source=lib/helm-pinned.sh
+. scripts/lib/helm-pinned.sh
 check "the bring-up requires the CNPG stage" "$(grep -c '^require "CNPG operator' scripts/mock-cluster.sh)" "1"
 check "the operator prerequisites include the CNPG CRD" \
   "$(awk '/^operator_prereqs\(\)/,/^}$/' scripts/mock-cluster.sh | grep -c 'crd/clusters.postgresql.cnpg.io')" "1"
@@ -427,12 +429,15 @@ operator_roll() { echo roll >>"$steps"; }
 operator_wait() { echo wait >>"$steps"; }
 operator_registry_credentials() { echo regcreds >>"$steps"; }
 operator_set_platform() { echo platform >>"$steps"; }
+operator_static_credentials() { echo staticcreds >>"$steps"; }
+operator_set_static_store() { echo staticstore >>"$steps"; }
+operator_static_server_ready() { echo staticready >>"$steps"; }
 deploy_operator >/dev/null
 check "operator steps run in order" \
   "$(grep -vE '^wl (--request-timeout|-n bex-system get deploy,ds)' "$steps" |
      sed -e 's/^wl apply -f deploy\/gitops\/base\/operator-apps-rbac.yaml$/rbac/' \
          -e 's/^wl apply -f deploy\/gitops\/base\/operator-registry-rbac.yaml$/regrbac/' | tr '\n' ' ')" \
-  "prereqs build import deploy rbac regrbac regcreds platform roll wait "
+  "prereqs build import deploy rbac regrbac regcreds staticcreds staticstore platform roll wait staticready "
 operator_make_deploy() { echo deploy >>"$steps"; return 1; }
 : >"$steps"
 set +e
@@ -441,7 +446,7 @@ set -e
 check "a failed step stops the run" "$rc" "1"
 check "the failure names its step" "$(grep -c "operator step 'make -C lego/operator deploy IMG=bex-operator:dev' failed" <<<"$out")" "1"
 check "nothing after the failed step runs" "$(grep -cE '^(roll|wait)$' "$steps" || true)" "0"
-unset -f wl_kubectl operator_set_platform
+unset -f wl_kubectl operator_set_platform operator_static_credentials operator_set_static_store operator_static_server_ready
 eval "$(awk '/^operator_set_platform\(\)/,/^}$/' scripts/mock-cluster.sh)"
 # 22b. BEX_IMAGE_PLATFORM follows the nodes' one architecture (w2/m293 t007):
 #      arm64 on the Apple-Silicon mock, amd64 elsewhere; a mixed, unknown or
@@ -658,9 +663,11 @@ zsts_absent=; zcfg_exists=1; : >"$zcalls"
 install_zot >/dev/null
 check "an existing (operator-owned) zot-config is never overwritten" "$(grep -c 'zot-config:' "$zcalls" || true)" "0"
 unset -f kubectl helm helm_pin ensure_registry_credentials zot_serving
-eval "$(awk '/^helm_pin\(\)/,/^}$/' scripts/mock-cluster.sh)"
+# shellcheck source=lib/helm-pinned.sh
+. scripts/lib/helm-pinned.sh
 eval "$(awk '/^ensure_registry_credentials\(\)/,/^}$/' scripts/mock-cluster.sh)"
 eval "$(awk '/^zot_serving\(\)/,/^}$/' scripts/mock-cluster.sh)"
+# shellcheck disable=SC2034 # read by the sourced registry functions
 REGISTRY_SECRETS_SCRIPT=scripts/registry-secrets.sh
 # 29. Wiring: the bring-up installs Zot after the build boundary; the end
 #     state checks it; the operator step needs it and grants the RBAC.
@@ -684,6 +691,373 @@ mgmt_kubectl() { echo x >>"$calls"; echo 'error: field is immutable'; return 1; 
 set +e; apply_cluster_yaml >/dev/null; rc=$?; set -e
 check "any other failure is returned at once" "$rc:$(wc -l <"$calls" | tr -d ' ')" "1:1"
 unset -f mgmt_kubectl sleep
+
+# Fresh definitions for the sections below (earlier checks replaced some).
+# shellcheck source=/dev/null
+. scripts/mock-cluster.sh
+trap 'rm -rf "$tmp"' EXIT
+
+echo "Docker restart recovery (w2/m295 t001):"
+# A fake Docker host: each container's state, kind-network address and (for
+# the control plane) apiserver certificate live in files under $dk. `docker
+# start` hands out the lowest free address, as Docker does, so start order
+# decides who gets what; `docker stop` releases it.
+dk="$tmp/docker"
+fake_host() { # NAME=STATE:IP[:cert] ... (mgmt, lb, cp, w1; foreign=IP)
+  rm -rf "$dk"; mkdir -p "$dk"
+  : >"$dk/calls"
+  local spec name rest
+  for spec in "$@"; do
+    name=${spec%%=*}; rest=${spec#*=}
+    printf '%s\n' "$rest" | cut -d: -f1 >"$dk/$name.state"
+    printf '%s\n' "$rest" | cut -d: -f2 >"$dk/$name.ip"
+    case $rest in *:cert) : >"$dk/$name.cert" ;; esac
+  done
+}
+cname() { case $1 in mgmt) echo bex-mgmt-control-plane ;; lb) echo bex-lb ;; cp) echo bex-cp-a ;; w1) echo bex-worker-0-a ;; *) echo "$1" ;; esac; }
+short() { case $1 in bex-mgmt-control-plane) echo mgmt ;; bex-lb) echo lb ;; bex-cp-a) echo cp ;; bex-worker-0-a) echo w1 ;; *) echo "$1" ;; esac; }
+lowest_free() {
+  local n
+  for n in 2 3 4 5 6 7 8 9; do
+    grep -qx "172.22.0.$n" "$dk"/*.ip 2>/dev/null || { echo "172.22.0.$n"; return; }
+  done
+}
+docker() {
+  echo "docker $*" >>"$dk/calls"
+  local s
+  case $1 in
+  inspect)
+    s=$(short "$4"); [ -f "$dk/$s.state" ] || return 1
+    case $3 in *State.Status*) cat "$dk/$s.state" ;; *) cat "$dk/$s.ip" ;; esac ;;
+  ps)
+    local n
+    for n in lb cp w1; do
+      [ -f "$dk/$n.state" ] || continue
+      case $n in lb) r=external-load-balancer ;; cp) r=control-plane ;; *) r=worker ;; esac
+      echo "$r|2026-11-08 23:5$(grep -c . <<<"$n") +0000 UTC|$(cname "$n")"
+    done | sort -r ;;
+  stop)
+    shift
+    for s in "$@"; do s=$(short "$s"); echo exited >"$dk/$s.state"; : >"$dk/$s.ip"; done ;;
+  start)
+    s=$(short "$2")
+    [ -z "${START_FAILS:-}" ] || [ "$START_FAILS" != "$s" ] || return 1
+    echo running >"$dk/$s.state"; lowest_free >"$dk/$s.ip.new"; mv "$dk/$s.ip.new" "$dk/$s.ip"
+    # kind's entrypoint: a control plane whose address changed loses its cert
+    # unless /kind/kubeadm.conf lets it regenerate one.
+    if [ "$s" = cp ] && [ "$(cat "$dk/cp.ip")" != "$(cat "$dk/cp.lastip" 2>/dev/null || cat "$dk/cp.ip")" ] && [ ! -f "$dk/cp.kubeadmconf" ]; then rm -f "$dk/cp.cert"; fi
+    cp "$dk/$s.ip" "$dk/$s.lastip" ;;
+  network)
+    for s in mgmt lb cp w1 foreign; do
+      [ -s "$dk/$s.ip" ] && [ "$(cat "$dk/$s.state")" = running ] && echo "$(cname "$s") $(cat "$dk/$s.ip")/16"
+    done ;;
+  exec)
+    shift; [ "$1" = -i ] && shift
+    s=$(short "$1"); shift
+    case "$*" in
+    "test -s /etc/kubernetes/pki/apiserver.crt"*) [ -f "$dk/$s.cert" ] ;;
+    "test -s /kind/kubeadm.conf") [ -f "$dk/$s.kubeadmconf" ] ;;
+    "sh -c "*kubeadm.conf*) cat >"$dk/$s.kubeadmconf" ;;
+    "kubeadm init phase certs apiserver --config /kind/kubeadm.conf") [ -z "${KUBEADM_FAILS:-}" ] && : >"$dk/$s.cert" ;;
+    "systemctl restart kubelet") return 0 ;;
+    *"get --raw /readyz") [ -f "$dk/cp.cert" ] && [ "$(cat "$dk/lb.ip")" = 172.22.0.3 ] && [ "$(cat "$dk/cp.ip")" = 172.22.0.4 ] ;;
+    *"get nodes --no-headers") echo "bex-cp-a Ready control-plane"; echo "bex-worker-0-a Ready <none>" ;;
+    esac ;;
+  rm) return 0 ;;
+  esac
+}
+node_file() {
+  case $2 in
+  /etc/kubernetes/admin.conf) printf 'apiVersion: v1\nclusters:\n- cluster:\n    server: https://172.22.0.3:6443\nusers:\n- user:\n    client-key-data: SECRET-CLIENT-KEY\n' ;;
+  /usr/local/etc/haproxy/haproxy.cfg) printf 'backend kube-apiservers\n  server bex-cp-a 172.22.0.4:6443 weight 100 check\n' ;;
+  esac
+}
+bootstrap_value() {
+  cat <<'YAML' | base64 | tr -d '\n'
+write_files:
+  - path: /etc/kubernetes/pki/ca.key
+    content: SECRET-CA-KEY
+  - path: /run/kubeadm/kubeadm.yaml
+    content: |
+      ---
+      apiServer:
+        certSANs: [localhost, 127.0.0.1]
+      apiVersion: kubeadm.k8s.io/v1beta4
+      controlPlaneEndpoint: 172.22.0.3:6443
+      kind: ClusterConfiguration
+      networking: {serviceSubnet: 10.128.0.0/12}
+      ---
+      apiVersion: kubeadm.k8s.io/v1beta4
+      kind: InitConfiguration
+      bootstrapTokens: [{token: SECRET-TOKEN}]
+YAML
+}
+mgmt_kubectl() {
+  echo "mgmt $*" >>"$dk/calls"
+  case "$*" in
+  *"get --raw /readyz") [ "$(cat "$dk/mgmt.state")" = running ] ;;
+  "patch cluster bex"*) echo "$*" | grep -o '"paused":[a-z]*' >>"$dk/paused" ;;
+  "get machines -o json") printf '{"items":[{"metadata":{"name":"bex-cp-a"},"spec":{"bootstrap":{"dataSecretName":"bex-cp-a-boot"}},"status":{"nodeRef":{"name":"bex-cp-a"}}}]}' ;;
+  "get secret bex-cp-a-boot -o json") printf '{"data":{"value":"%s"}}' "$(bootstrap_value)" ;;
+  esac
+}
+refresh_mgmt_kubeconfig() { :; }
+sleep() { :; }
+# Bounded polls without real time: three tries, then the timeout path.
+wait_until() { shift; local _try; for _try in 1 2 3; do "$@" && return 0; done; return 1; }
+recover() { (recover_after_docker_restart) >"$dk/out" 2>&1; echo $?; }
+starts() { sed -n 's/^docker start //p' "$dk/calls" | while read -r n; do short "$n"; done | tr '\n' ' '; }
+
+# 1. A healthy cluster: read only — nothing is stopped, started or patched.
+fake_host mgmt=running:172.22.0.2 lb=running:172.22.0.3 cp=running:172.22.0.4:cert w1=running:172.22.0.5
+check "a healthy cluster recovers trivially" "$(recover)" "0"
+check "a healthy cluster is never stopped, started or paused" \
+  "$(grep -cE '^docker (stop|start)|^mgmt patch' "$dk/calls" || true)" "0"
+check "a healthy cluster prints nothing" "$(cat "$dk/out")" ""
+# 2. Nothing provisioned yet (fresh bring-up): nothing to recover.
+fake_host
+check "no containers at all is a fresh bring-up" "$(recover)" "0"
+# 3. The 2026-11-04/08 shape: Docker started the worker and control plane
+#    first, so the mgmt node is down, the lb and CP hold the wrong addresses,
+#    and the CP lost its apiserver certificate.
+fake_host mgmt=exited: w1=running:172.22.0.2 cp=running:172.22.0.3 lb=running:172.22.0.4
+rc=$(recover)
+check "a scrambled restart is recovered" "$rc" "0"
+check "the diagnosis names the down mgmt node and both misplaced addresses" \
+  "$(grep -cE 'management node bex-mgmt-control-plane is exited|load balancer bex-lb is on 172.22.0.4, but every kubeconfig in the cluster names 172.22.0.3|control plane bex-cp-a is on 172.22.0.3, but the load balancer sends the API to 172.22.0.4' "$dk/out")" "3"
+check "everything is stopped first, then started in creation order" "$(starts)" "mgmt lb cp w1 "
+check "the lb and control plane get their own addresses back" "$(cat "$dk/lb.ip") $(cat "$dk/cp.ip")" "172.22.0.3 172.22.0.4"
+check "the lost apiserver certificate is regenerated" "$([ -f "$dk/cp.cert" ] && echo present)" "present"
+check "the kubelet restarts onto it" "$(grep -c '^docker exec bex-cp-a systemctl restart kubelet' "$dk/calls")" "1"
+kconf="$(cat "$dk/cp.kubeadmconf")"
+check "the regeneration config advertises the node's current address and name" \
+  "$(yq 'select(.kind == "InitConfiguration") | .localAPIEndpoint.advertiseAddress + " " + .nodeRegistration.name' <<<"$kconf")" "172.22.0.4 bex-cp-a"
+check "it carries the bootstrap ClusterConfiguration (endpoint + SANs)" \
+  "$(yq 'select(.kind == "ClusterConfiguration") | .controlPlaneEndpoint + " " + (.apiServer.certSANs | join(","))' <<<"$kconf")" "172.22.0.3:6443 localhost,127.0.0.1"
+check "no CA key or bootstrap token from the Secret reaches the node or the log" \
+  "$(cat "$dk/cp.kubeadmconf" "$dk/out" | grep -cE 'SECRET-CA-KEY|SECRET-TOKEN|SECRET-CLIENT-KEY' || true)" "0"
+check "the cluster is paused for the repair and unpaused after" "$(tr '\n' ' ' <"$dk/paused")" '"paused":true "paused":false '
+check "the repair happens while paused" \
+  "$(awk '/patch cluster bex.*true/{p=NR} /kubeadm init phase certs/{k=NR} /patch cluster bex.*false/{u=NR} END{print (p<k && k<u) ? "ordered" : "unordered"}' "$dk/calls")" "ordered"
+# 4. Only the certificate is gone (the addresses are right): no restart.
+fake_host mgmt=running:172.22.0.2 lb=running:172.22.0.3 cp=running:172.22.0.4 w1=running:172.22.0.5
+check "a lost certificate alone is repaired" "$(recover)" "0"
+check "repairing only the certificate restarts no container" "$(grep -cE '^docker (stop|start)' "$dk/calls" || true)" "0"
+# 5. A stopped worker is only started; its address matters to nothing.
+fake_host mgmt=running:172.22.0.2 lb=running:172.22.0.3 cp=running:172.22.0.4:cert w1=exited:
+check "a stopped worker is recovered" "$(recover)" "0"
+check "only the worker is started, nothing stopped" "$(starts)/$(grep -c '^docker stop' "$dk/calls" || true)" "w1 /0"
+# 6. A container outside the clusters holds the lb's address: diagnosed, and
+#    the one reprovision command is named.
+fake_host mgmt=exited: foreign=running:172.22.0.3 lb=exited: cp=exited: w1=exited:
+check "an address held by a foreign container is not recoverable" "$(recover)" "1"
+check "the diagnosis names the holder" "$(grep -c "container 'foreign' (not part of the local clusters) holds 172.22.0.3" "$dk/out")" "1"
+check "it names the reprovision command" "$(grep -c '^         bash scripts/mock-cluster.sh reprovision$' "$dk/out")" "1"
+# 7. The certificate cannot be regenerated: diagnosed, cluster left unpaused.
+fake_host mgmt=running:172.22.0.2 lb=running:172.22.0.3 cp=running:172.22.0.4 w1=running:172.22.0.5
+check "a failed regeneration is not recoverable" "$(KUBEADM_FAILS=1 recover)" "1"
+check "the diagnosis says what failed and names reprovision" \
+  "$(grep -cE "regenerating bex-cp-a's apiserver certificate failed|bash scripts/mock-cluster.sh reprovision" "$dk/out")" "2"
+check "a failed repair does not leave the cluster paused" "$(tail -1 "$dk/paused")" '"paused":false'
+# 8. The mgmt node does not start at all.
+fake_host mgmt=exited: lb=running:172.22.0.3 cp=running:172.22.0.4:cert w1=running:172.22.0.5
+check "a mgmt node that will not start is not recoverable" "$(START_FAILS=mgmt recover)" "1"
+check "that diagnosis names reprovision" "$(grep -c 'bash scripts/mock-cluster.sh reprovision' "$dk/out")" "1"
+# 9. Node containers with no mgmt cluster to own them.
+fake_host lb=running:172.22.0.3 cp=running:172.22.0.4:cert
+check "orphaned node containers are not recoverable" "$(recover)" "1"
+check "the orphan diagnosis explains itself" "$(grep -c 'the management cluster that owns them does not' "$dk/out")" "1"
+# 10. The API never comes back: a bounded wait, then a diagnosis, never a hang.
+fake_host mgmt=running:172.22.0.2 lb=running:172.22.0.3 cp=running:172.22.0.4 w1=running:172.22.0.5
+wl_ready_from() { return 1; }
+check "a workload API that never answers ends in a diagnosis" "$(recover)" "1"
+check "the timeout says what did not come back" "$(grep -c 'not Ready within 5m of the repair' "$dk/out")" "1"
+unset -f wl_ready_from
+eval "$(awk '/^wl_ready_from\(\)/,/^}$/' scripts/mock-cluster.sh)"
+# 11. With /kind/kubeadm.conf seeded, a later address change no longer
+#     loses the certificate (kind regenerates it), and seeding is idempotent.
+fake_host mgmt=running:172.22.0.2 lb=running:172.22.0.3 cp=running:172.22.0.4:cert w1=running:172.22.0.5
+seed_kind_kubeadm_conf >/dev/null
+check "seeding writes the control plane's /kind/kubeadm.conf" "$(yq 'select(.kind == "InitConfiguration") | .localAPIEndpoint.advertiseAddress' "$dk/cp.kubeadmconf")" "172.22.0.4"
+: >"$dk/calls"; seed_kind_kubeadm_conf >/dev/null
+check "an existing /kind/kubeadm.conf is left alone" "$(grep -c '^mgmt get secret' "$dk/calls" || true)" "0"
+docker stop bex-cp-a; docker start bex-worker-0-a; docker start bex-cp-a
+check "a seeded control plane keeps a certificate across an address change" "$([ -f "$dk/cp.cert" ] && echo kept)" "kept"
+# 12. reprovision deletes the kind mgmt cluster through the private
+#     kubeconfig and only containers labelled as bex nodes, with volumes.
+rcalls="$tmp/reprov"; : >"$rcalls"
+kind() { echo "kind $*" >>"$rcalls"; [ "$1" != get ] || echo bex-mgmt; }
+docker() { echo "docker $*" >>"$rcalls"; [ "$1" != ps ] || printf 'id1\nid2\n'; }
+wl_kubectl() { printf 'namespace/dev-2\nnamespace/kube-system\n'; }
+reprovision_clusters >"$tmp/reprov.out"
+check "reprovision deletes bex-mgmt through the private kubeconfig" \
+  "$(grep -c "^kind delete cluster --name bex-mgmt --kubeconfig $MGMT_KUBECONFIG$" "$rcalls")" "1"
+check "reprovision removes only the bex-labelled node containers, with their volumes" \
+  "$(grep -E '^docker (ps|rm)' "$rcalls" | tr '\n' ';')" "docker ps -aq --filter label=io.x-k8s.kind.cluster=bex;docker rm -f -v id1 id2;"
+check "reprovision says which dev-N loses its data" "$(grep -c 'lost: dev-2' "$tmp/reprov.out")" "1"
+unset -f kind docker wl_kubectl node_file mgmt_kubectl refresh_mgmt_kubeconfig sleep wait_until
+eval "$(awk '/^wait_until\(\)/,/^}$/' scripts/mock-cluster.sh)"
+# 13. Wiring: recovery runs before anything else in the bring-up, and
+#     reprovision falls through to it holding the one lock.
+code="$(sed -e 's/^[[:space:]]*#.*//' scripts/mock-cluster.sh)"
+check "the bring-up recovers before it creates or reads the mgmt cluster" \
+  "$(awk '/^recover_after_docker_restart$/{r=NR} /^kind get clusters/{k=NR} END{print (r && k && r<k) ? "ordered" : "unordered"}' scripts/mock-cluster.sh)" "ordered"
+check "reprovision deletes, then falls through to the bring-up" \
+  "$(awk '/^reprovision\)/,/;;/' scripts/mock-cluster.sh | grep -cE 'reprovision_clusters|exit')" "1"
+check "the bring-up takes the lock only when reprovision did not" "$(grep -c '^\[ -n "\$LOCK_HELD" \] || acquire_lock$' scripts/mock-cluster.sh)" "1"
+check "the bring-up seeds /kind/kubeadm.conf once the kubeconfig is published" \
+  "$(awk '/^publish_kubeconfig$/{p=NR} /^require "control-plane \/kind\/kubeadm.conf" seed_kind_kubeadm_conf$/{s=NR} END{print (p && s && p<s) ? "ordered" : "unordered"}' scripts/mock-cluster.sh)" "ordered"
+check "the usage names reprovision" "$(env -u BEX_MOCK_CLUSTER_LIB bash scripts/mock-cluster.sh bogus 2>&1 | grep -c 'reprovision')" "1"
+check "the restart repair never prints a node's kubeconfig or the bootstrap Secret" \
+  "$(printf '%s\n' "$code" | awk '/^expected_lb_ip\(\)/,/^}$/' | grep -c 'server: https')" "1"
+
+echo "docker build with isolated credentials (w2/m295 t002):"
+# 14. A locked keychain hung `docker build` in the operator step: the CLI's
+#     credsStore osxkeychain answers every base-image pull. The build must run
+#     with a private, store-less config that still targets the active context.
+real_cfg="$tmp/real-docker"; mkdir -p "$real_cfg/contexts/meta" "$real_cfg/cli-plugins"
+printf '{"credsStore":"osxkeychain","currentContext":"desktop-linux","auths":{"r.example":{"auth":"SECRET"}}}\n' >"$real_cfg/config.json"
+cat >"$fakebin/docker" <<'FAKE'
+#!/usr/bin/env bash
+if [ "$1 $2" = "context show" ]; then
+  [ "${DOCKER_CONFIG:-}" = "$REAL_DOCKER_CONFIG" ] || { echo "context show read the wrong config" >&2; exit 1; }
+  echo desktop-linux; exit 0
+fi
+cfg="${DOCKER_CONFIG:-$HOME/.docker}/config.json"
+# A credential lookup with a store configured calls its helper.
+store=$(jq -r '.credsStore // empty' "$cfg")
+[ -z "$store" ] || "docker-credential-$store" get </dev/null
+{ echo "DOCKER_CONFIG=${DOCKER_CONFIG:-}"; echo "ARGS=$*"; } >>"$DOCKER_LOG"
+FAKE
+cat >"$fakebin/docker-credential-osxkeychain" <<'FAKE'
+#!/usr/bin/env bash
+echo called >>"$HELPER_LOG"
+exit 1 # a hanging helper in real life; the test only counts the call
+FAKE
+chmod +x "$fakebin/docker" "$fakebin/docker-credential-osxkeychain"
+export DOCKER_LOG="$tmp/docker-log" HELPER_LOG="$tmp/helper-log" REAL_DOCKER_CONFIG="$real_cfg"
+: >"$DOCKER_LOG"; : >"$HELPER_LOG"
+unset -f docker
+(DOCKER_CONFIG="$real_cfg" BEX_DOCKER_ISOLATED_DIR="$tmp/docker-iso" PATH="$fakebin:$PATH" operator_build)
+iso="$(sed -n 's/^DOCKER_CONFIG=//p' "$DOCKER_LOG")"
+check "operator_build runs docker build" "$(grep -c '^ARGS=build -t bex-operator:dev -f lego/Dockerfile lego$' "$DOCKER_LOG")" "1"
+check "the build's DOCKER_CONFIG is the private dir" "$iso" "$tmp/docker-iso"
+check "the credential helper is never called" "$(wc -l <"$HELPER_LOG" | tr -d ' ')" "0"
+check "the private config names no credential store or helper" \
+  "$(jq -r '[has("credsStore"), has("credHelpers")] | any' "$iso/config.json")" "false"
+check "the private config counts as configured (no native-store detection)" "$(jq -r '.auths | length > 0' "$iso/config.json")" "true"
+check "the private config carries no real auths" "$(grep -c SECRET "$iso/config.json" || true)" "0"
+check "the active context is kept" "$(jq -r .currentContext "$iso/config.json")" "desktop-linux"
+check "the context metadata and CLI plugins are the caller's own" \
+  "$(readlink "$iso/contexts") $(readlink "$iso/cli-plugins")" "$real_cfg/contexts $real_cfg/cli-plugins"
+check "the private dir is owner-only" "$(stat -c '%a' "$iso" 2>/dev/null || stat -f '%Lp' "$iso")" "700"
+# The control: the caller's own config would have called the helper.
+: >"$HELPER_LOG"
+(DOCKER_CONFIG="$real_cfg" PATH="$fakebin:$PATH" docker build -t x . >/dev/null 2>&1 || true)
+check "control: the unisolated config does call the helper" "$(wc -l <"$HELPER_LOG" | tr -d ' ')" "1"
+check "the operator build goes through docker_isolated" "$(grep -c '^operator_build() { docker_isolated docker build ' scripts/mock-cluster.sh)" "1"
+rm -f "$fakebin/docker" "$fakebin/docker-credential-osxkeychain"
+
+echo "local static-site store (w2/m294 t001/t002):"
+# 15. MinIO is digest-pinned and multi-arch-agnostic (an index digest), and
+#     the bucket and Secret names are production's.
+check "the MinIO image is pinned by sha256 digest" "$(grep -cE '@sha256:[0-9a-f]{64}$' <<<"$STATIC_IMAGE")" "1"
+check "the bucket is production's" "$STATIC_BUCKET" "$(yq '.spec.template.spec.containers[0].env[] | select(.name == "BEX_STATIC_S3_BUCKET") | .value' lego/operator/config/manager/manager.yaml)"
+check "the publish Secret is the one the manager names" "$STATIC_PUBLISH_SECRET" \
+  "$(yq '.spec.template.spec.containers[0].env[] | select(.name == "BEX_STATIC_PUBLISH_S3_SECRET") | .value' lego/operator/config/manager/manager.yaml)"
+check "the publish Secret lives in the manager's build namespace" "$STATIC_PUBLISH_NS" \
+  "$(yq '.spec.template.spec.containers[0].env[] | select(.name == "BEX_BUILD_NAMESPACE") | .value' lego/operator/config/manager/manager.yaml)"
+check "the read Secret is the one the static-server requires" "$STATIC_READ_SECRET" \
+  "$(yq '.spec.template.spec.containers[0].envFrom[] | select(.secretRef) | .secretRef.name' lego/operator/config/staticserver/deployment.yaml)"
+check "the static-server's optional ConfigMap is the one overridden" "bex-static-config" \
+  "$(yq '.spec.template.spec.containers[0].envFrom[] | select(.configMapRef) | .configMapRef.name' lego/operator/config/staticserver/deployment.yaml)"
+manifest="$(static_store_manifest)"
+check "the store runs the pinned image, non-root, read-only root" \
+  "$(yq 'select(.kind == "Deployment") | .spec.template.spec.containers[0] | .image + " " + (.securityContext.readOnlyRootFilesystem|tostring)' <<<"$manifest") $(yq 'select(.kind == "Deployment") | .spec.template.spec.securityContext.runAsNonRoot' <<<"$manifest")" \
+  "$STATIC_IMAGE true true"
+check "the root credential comes only from its Secret" \
+  "$(yq 'select(.kind == "Deployment") | [.spec.template.spec.containers[0].env[] | select(.name | test("^MINIO_ROOT")) | .valueFrom.secretKeyRef.name] | unique | join(",")' <<<"$manifest" | sed '/^$/d')" "minio-root"
+check "the Service is the endpoint's host and port" \
+  "$(yq 'select(.kind == "Service") | .metadata.name + "." + .metadata.namespace + ".svc.cluster.local:" + (.spec.ports[0].port|tostring)' <<<"$manifest")" "${STATIC_ENDPOINT#http://}"
+netpol="$(static_store_egress_policy)"
+check "only publish/purge pods in bex-build may reach the store, on :9000" \
+  "$(yq '.metadata.namespace + " " + (.spec.podSelector.matchExpressions[0].values | join(",")) + " " + .spec.egress[0].to[0].namespaceSelector.matchLabels["kubernetes.io/metadata.name"] + ":" + (.spec.egress[0].ports[0].port|tostring)' <<<"$netpol")" \
+  "bex-build publish,static-purge bex-static-store:9000"
+check "the allowed components are the labels publish and purge Jobs carry" \
+  "$(grep -c 'Component = "publish"' lego/operator/internal/publish/publish.go) $(grep -c '"static-purge"' lego/operator/internal/publish/publish.go)" "1 1"
+check "the publish policy writes and deletes objects in the bucket only" \
+  "$(static_policy s3:PutObject s3:DeleteObject | jq -r '[.Statement[] | (.Action | join(",")) + "@" + (.Resource | join(","))] | join(" ")')" \
+  "s3:ListBucket,s3:GetBucketLocation@arn:aws:s3:::bex-static s3:PutObject,s3:DeleteObject@arn:aws:s3:::bex-static/*"
+# 16. Credentials: minted once, random, kept on re-runs, never printed.
+sdir="$tmp/secrets"; rm -rf "$sdir"; mkdir -p "$sdir"
+wl_kubectl() {
+  case "$*" in
+  *" get secret "*" -o json")
+    local f; f="$sdir/$2-$5"
+    [ -f "$f" ] || return 1
+    jq -Rn '[inputs | split("=") | {key: .[0], value: (.[1:] | join("=") | @base64)}] | {data: from_entries}' <"$f" ;;
+  *" create secret generic "*) cat >"$sdir/$2-$6.pending"; echo "{\"ns\":\"$2\",\"name\":\"$6\"}" ;;
+  "apply -f -") local j; j=$(cat); [ -z "$j" ] || { local ns name; ns=$(jq -r .ns <<<"$j" 2>/dev/null) name=$(jq -r .name <<<"$j" 2>/dev/null); [ -f "$sdir/$ns-$name.pending" ] && mv "$sdir/$ns-$name.pending" "$sdir/$ns-$name"; }; return 0 ;;
+  *"create namespace"*) echo '{}' ;;
+  *) return 0 ;;
+  esac
+}
+ensure_static_credentials >"$tmp/sc.out"
+check "the publish Secret holds the publish identity" "$(sed -n 's/^AWS_ACCESS_KEY_ID=//p' "$sdir/bex-build-bex-static-publish-s3")" "bex-static-publish"
+check "the read Secret is in bex-system with the read identity" "$(sed -n 's/^AWS_ACCESS_KEY_ID=//p' "$sdir/bex-system-bex-static-read-s3")" "bex-static-read"
+pk1="$(sed -n 's/^AWS_SECRET_ACCESS_KEY=//p' "$sdir/bex-build-bex-static-publish-s3")"
+rk1="$(sed -n 's/^AWS_SECRET_ACCESS_KEY=//p' "$sdir/bex-system-bex-static-read-s3")"
+root1="$(sed -n 's/^MINIO_ROOT_PASSWORD=//p' "$sdir/bex-static-store-minio-root")"
+check "each secret key is 48 random hex chars, and all three differ" \
+  "$([[ $pk1 =~ ^[0-9a-f]{48}$ && $rk1 =~ ^[0-9a-f]{48}$ && $root1 =~ ^[0-9a-f]{48}$ ]] && [ "$pk1" != "$rk1" ] && [ "$rk1" != "$root1" ] && echo yes)" "yes"
+check "no secret value is printed" "$(grep -cF -e "$pk1" -e "$rk1" -e "$root1" "$tmp/sc.out" || true)" "0"
+ensure_static_credentials >/dev/null
+check "a re-run keeps every existing key" \
+  "$(sed -n 's/^AWS_SECRET_ACCESS_KEY=//p' "$sdir/bex-build-bex-static-publish-s3" "$sdir/bex-system-bex-static-read-s3"; sed -n 's/^MINIO_ROOT_PASSWORD=//p' "$sdir/bex-static-store-minio-root")" \
+  "$(printf '%s\n%s\n%s' "$pk1" "$rk1" "$root1")"
+# 17. The MinIO side: keys reach the container on stdin only, never argv;
+#     every mc call is idempotent; the probe checks the read identity cannot write.
+execlog="$tmp/exec"
+wl_kubectl() {
+  case "$*" in
+  *" get secret bex-static-publish-s3 -o json") jq -cn --arg v "$pk1" '{data: {AWS_SECRET_ACCESS_KEY: ($v | @base64)}}' ;;
+  *" get secret bex-static-read-s3 -o json") jq -cn --arg v "$rk1" '{data: {AWS_SECRET_ACCESS_KEY: ($v | @base64)}}' ;;
+  *" exec -i deploy/minio -c minio -- sh -c "*) { echo "ARGV: $*"; echo "STDIN: $(cat | tr '\n' ' ')"; } >>"$execlog" ;;
+  esac
+}
+: >"$execlog"
+static_store_converge
+check "the keys travel on stdin" "$(grep -c "^STDIN: $pk1 $rk1 $" "$execlog")" "1"
+check "no key is on kubectl's argv" "$(grep '^ARGV' "$execlog" | grep -cF -e "$pk1" -e "$rk1" || true)" "0"
+check "the bucket create is idempotent" "$(grep -c 'mc mb --ignore-existing local/bex-static' "$execlog")" "1"
+check "both users get their own policy" \
+  "$(grep -o 'mc admin policy attach local [a-z-]* --user [a-z-]*' "$execlog" | tr '\n' ';')" \
+  "mc admin policy attach local bex-static-publish --user bex-static-publish;mc admin policy attach local bex-static-read --user bex-static-read;"
+check "mc reaches MinIO as root from the container's own env" "$(grep -c 'MC_HOST_local="http://$MINIO_ROOT_USER:$MINIO_ROOT_PASSWORD@127.0.0.1:9000"' "$execlog")" "1"
+: >"$execlog"
+static_store_serving
+check "the probe fails if the read identity can write" "$(grep -c "read identity can write" "$execlog")" "1"
+unset -f wl_kubectl
+eval "$(awk '/^wl_kubectl\(\)/' scripts/mock-cluster.sh)"
+# 18. The operator override: only the endpoint/bucket/region, mock-only.
+ocalls="$tmp/static-op"; : >"$ocalls"
+wl_kubectl() { echo "wl $*" >>"$ocalls"; [ "$*" != "apply -f -" ] || cat >>"$ocalls"; case "$*" in *"--dry-run=client -o json") echo '{"metadata":{}}' ;; esac; }
+operator_set_static_store >/dev/null
+check "the manager's static store env points at the local MinIO" \
+  "$(grep -c "^wl -n bex-system set env deploy/bex-controller-manager -c manager BEX_STATIC_S3_ENDPOINT=$STATIC_ENDPOINT BEX_STATIC_S3_BUCKET=bex-static BEX_STATIC_S3_REGION=us-east-1$" "$ocalls")" "1"
+check "the static-server ConfigMap is labelled as the mock override" "$(grep -c '"app.bex.co/mock-override": "true"' "$ocalls")" "1"
+check "the publish Secret name is not overridden" "$(grep -c 'BEX_STATIC_PUBLISH_S3_SECRET' "$ocalls" || true)" "0"
+unset -f wl_kubectl
+eval "$(awk '/^wl_kubectl\(\)/' scripts/mock-cluster.sh)"
+check "config/ and deploy/gitops keep production's Wasabi origin" \
+  "$(grep -c 'value: https://s3.eu-central-2.wasabisys.com' lego/operator/config/manager/manager.yaml) $(grep -c 'BEX_STATIC_S3_ENDPOINT: https://s3.eu-central-2.wasabisys.com' lego/operator/config/prod/static-config.yaml)" "2 1"
+check "nothing outside the mock script names the local store" \
+  "$(grep -rlE 'bex-static-store|bitnamilegacy/minio' lego/operator/config deploy/gitops | wc -l | tr -d ' ')" "0"
+# 19. Wiring.
+check "the bring-up installs the store after the build boundary" \
+  "$(awk '/^require "build boundary/{b=NR} /^require "static-site store/{s=NR} END{print (b && s && b<s) ? "ordered" : "unordered"}' scripts/mock-cluster.sh)" "ordered"
+check "the end-state verification probes the bucket" "$(grep -c 'check "static store bucket' scripts/mock-cluster.sh)" "1"
+check "the operator prerequisites include MinIO" "$(awk '/^operator_prereqs\(\)/,/^}$/' scripts/mock-cluster.sh | grep -c 'get deploy minio')" "1"
 
 echo
 if [ "$fails" -ne 0 ]; then

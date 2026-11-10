@@ -467,6 +467,45 @@ assert "any other apply error fails at once" "[ '$rc:$(wc -l <"$wh_tmp/calls" | 
 unset -f kubectl sleep
 rm -rf "$wh_tmp"
 
+echo "==> CNPG fallback installs production's lock-pinned chart (w2/m295 t003)"
+assert "dev-env sources the shared chart pins" "grep -q '^\. scripts/lib/helm-pinned.sh\$' scripts/dev-env.sh"
+assert "no version-label CNPG install remains" "! grep -qE 'cnpg/cloudnative-pg|--version 0\.26' scripts/dev-env.sh"
+assert "ensure_cnpg installs through install_pinned_cnpg" \
+  "awk '/^ensure_cnpg\\(\\)/,/^}\$/' scripts/dev-env.sh | grep -q '^    install_pinned_cnpg\$'"
+cn_tmp=$(mktemp -d)
+# shellcheck source=lib/helm-pinned.sh
+. scripts/lib/helm-pinned.sh
+eval "$(awk '/^install_pinned_cnpg\(\)/,/^}$/' scripts/dev-env.sh)"
+helm() {
+  echo "helm $*" >>"$cn_tmp/calls"
+  if [ "$1" = pull ]; then
+    local dest="" ver=""
+    while [ $# -gt 0 ]; do
+      case $1 in --destination) dest=$2; shift ;; --version) ver=$2; shift ;; esac
+      shift
+    done
+    printf 'fake-cnpg-bytes' >"$dest/cloudnative-pg-$ver.tgz"
+  fi
+}
+# shellcheck disable=SC2034 # referenced by the assertion commands evaluated below.
+lock_line="$(awk -F'|' '$1 == "cloudnative-pg" { print $2, $3 }' deploy/helm-artifacts.lock)"
+rc=0; (install_pinned_cnpg) >/dev/null 2>&1 || rc=$?
+assert "the chart is pulled at the lock's version from the lock's repository" \
+  "grep -q \"^helm pull cloudnative-pg --repo \$(cut -d' ' -f2 <<<\"\$lock_line\") --version \$(cut -d' ' -f1 <<<\"\$lock_line\") \" '$cn_tmp/calls'"
+assert "the lock pins production's 0.29.1" "[ \"\$(cut -d' ' -f1 <<<\"\$lock_line\")\" = 0.29.1 ]"
+assert "an archive that misses the lock's sha256 stops up" "[ '$rc' = 1 ]"
+assert "a mismatched archive is never installed" "! grep -q '^helm upgrade' '$cn_tmp/calls'"
+: >"$cn_tmp/calls"
+printf 'fake-cnpg-bytes' >"$cn_tmp/fake.tgz"
+helm_pin() { echo "0.29.1 https://cloudnative-pg.github.io/charts $(sha256_of "$cn_tmp/fake.tgz")"; }
+rc=0; (install_pinned_cnpg) >/dev/null 2>&1 || rc=$?
+assert "a verified archive installs" "[ '$rc' = 0 ]"
+assert "it installs as release cnpg in cnpg-system, from the verified archive" \
+  "grep -qE '^helm upgrade --install cnpg .*/cloudnative-pg-0\.29\.1\.tgz -n cnpg-system --create-namespace\$' '$cn_tmp/calls'"
+assert "the release name matches mock-cluster.sh's" "grep -q 'helm upgrade --install cnpg \"\$chart\" -n cnpg-system' scripts/mock-cluster.sh"
+unset -f helm helm_pin install_pinned_cnpg
+rm -rf "$cn_tmp"
+
 echo
 if [ "$fails" -eq 0 ]; then
   echo "dev-env: all checks passed"
