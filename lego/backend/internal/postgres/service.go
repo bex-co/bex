@@ -910,7 +910,7 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			ReadReplicas:     readReplicaSpecs(req.ReadReplicas),
 		},
 	}
-	if err := CheckDatabaseAdmission(nil, d.Spec); err != nil {
+	if err := CheckNewDatabase(d.Spec); err != nil {
 		return PostgresView{}, err
 	}
 	// Stamp both the tenant label (ownerId scoping — pgView/ListPostgres read
@@ -1377,6 +1377,31 @@ func DatabaseStorageHighWater(d *appv1alpha1.Database) int32 {
 	return tiers.Postgres.EffectiveStorageGB(d.Spec.Plan, d.Spec.StorageGB, d.Status.AllocatedStorageGB)
 }
 
+// Render's storage contract (w2/m317, render.com/docs/postgresql-creating-connecting):
+// a new database takes "1 GB or any multiple of 5 GB", an increase is "any
+// multiple of 5 GB greater than the current storage capacity", and "after you
+// increase a database's storage, you can't increase it again for 6 hours".
+const (
+	storageStepGB       = 5
+	storageIncreaseWait = 6 * time.Hour
+)
+
+func storageStepError(message string, requested int32) error {
+	return core.NewBadRequestError("POSTGRES_STORAGE_STEP_INVALID", message,
+		map[string]any{"field": "diskSizeGB", "diskSizeGB": requested, "stepGB": storageStepGB})
+}
+
+// CheckNewDatabase is CheckDatabaseAdmission for a database a caller asks to
+// create (the create API and Blueprint): an explicit diskSizeGB must be 1 GB
+// or a multiple of 5 GB. A restore keeps its source's size, so recovery runs
+// CheckDatabaseAdmission alone.
+func CheckNewDatabase(spec appv1alpha1.DatabaseSpec) error {
+	if spec.StorageGB > 1 && spec.StorageGB%storageStepGB != 0 {
+		return storageStepError(fmt.Sprintf("diskSizeGB must be 1 GB or a multiple of %d GB, got %d", storageStepGB, spec.StorageGB), spec.StorageGB)
+	}
+	return CheckDatabaseAdmission(nil, spec)
+}
+
 func validateDatabaseStorageResize(d *appv1alpha1.Database, requested *int32) error {
 	if requested == nil {
 		return nil
@@ -1385,7 +1410,52 @@ func validateDatabaseStorageResize(d *appv1alpha1.Database, requested *int32) er
 	if *requested < current {
 		return fmt.Errorf("%w: Postgres storage is grow-only: requested %d GB is below the allocated %d GB", core.ErrBadRequest, *requested, current)
 	}
+	// Only an increase takes the step: an unchanged legacy size still syncs.
+	if *requested > current && *requested%storageStepGB != 0 {
+		return storageStepError(fmt.Sprintf("diskSizeGB must be a multiple of %d GB greater than the current %d GB, got %d", storageStepGB, current, *requested), *requested)
+	}
 	return nil
+}
+
+// lastStorageIncrease is the later of the operator's autoscale stamp and
+// bex-api's manual-increase stamp (zero when neither is set or parses).
+func lastStorageIncrease(d *appv1alpha1.Database) time.Time {
+	var last time.Time
+	for _, key := range []string{appv1alpha1.AnnotationDiskAutoscaleAt, appv1alpha1.AnnotationStorageIncreasedAt} {
+		if at, err := time.Parse(time.RFC3339, d.Annotations[key]); err == nil && at.After(last) {
+			last = at
+		}
+	}
+	return last
+}
+
+// CheckStorageIncreaseWait refuses an increase within storageIncreaseWait of
+// the database's last storage increase, manual or autoscaled, naming when the
+// next one is allowed. Anything but an increase passes.
+func CheckStorageIncreaseWait(d *appv1alpha1.Database, requested int32, now time.Time) error {
+	if requested <= DatabaseStorageHighWater(d) {
+		return nil
+	}
+	last := lastStorageIncrease(d)
+	if last.IsZero() {
+		return nil
+	}
+	next := last.Add(storageIncreaseWait)
+	if !now.Before(next) {
+		return nil
+	}
+	return core.NewConflictError("POSTGRES_STORAGE_INCREASE_TOO_SOON",
+		fmt.Sprintf("Postgres storage was last increased at %s; it can be increased again from %s", last.UTC().Format(time.RFC3339), next.UTC().Format(time.RFC3339)),
+		map[string]any{"field": "diskSizeGB", "lastIncreaseAt": last.UTC().Format(time.RFC3339), "nextIncreaseAt": next.UTC().Format(time.RFC3339)})
+}
+
+// StampStorageIncrease records an applied manual increase for the next
+// CheckStorageIncreaseWait.
+func StampStorageIncrease(d *appv1alpha1.Database, now time.Time) {
+	if d.Annotations == nil {
+		d.Annotations = map[string]string{}
+	}
+	d.Annotations[appv1alpha1.AnnotationStorageIncreasedAt] = now.UTC().Format(time.RFC3339)
 }
 
 func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
@@ -1588,7 +1658,13 @@ func (s *Service) updatePostgres(ctx context.Context, name string, patch Postgre
 		return PostgresView{}, err
 	}
 	before := d.Spec
-	view, err := s.patchDatabaseObj(ctx, d, patch.apply, dryRun)
+	highWater := DatabaseStorageHighWater(d)
+	view, err := s.patchDatabaseObj(ctx, d, func(d *appv1alpha1.Database) {
+		patch.apply(d)
+		if patch.DiskSizeGB != nil && *patch.DiskSizeGB > highWater {
+			StampStorageIncrease(d, s.Now())
+		}
+	}, dryRun)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -1659,6 +1735,11 @@ func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patc
 	}
 	if err := checkPostgresPatchAdmission(d, patch); err != nil {
 		return err
+	}
+	if patch.DiskSizeGB != nil {
+		if err := CheckStorageIncreaseWait(d, *patch.DiskSizeGB, s.Now()); err != nil {
+			return err
+		}
 	}
 	if patch.Name != nil {
 		if err := s.ensureDatabaseNameAvailable(ctx, d.Labels[core.LabelTenant], *patch.Name, d.Name); err != nil {

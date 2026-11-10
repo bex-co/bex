@@ -229,6 +229,17 @@ The Render-compatible REST update path, including the official CLI's `postgres u
 
 This is deliberately separate from automatic growth below. Manual and plan-driven growth establish the same persisted high-water mark that disk autoscaling consumes; neither path can erase the other. Controller tests prove `5 GiB + plan downgrade -> 5 GiB`, explicit `10 GiB` growth, and a later shrink rejection that leaves the live CNPG request untouched.
 
+### Render's storage sizes and 6-hour wait (w2/m317)
+
+Render's storage contract ([creating & connecting § storage](https://render.com/docs/postgresql-creating-connecting)): a new database takes "1 GB or any multiple of 5 GB", an increase is "any multiple of 5 GB greater than the current storage capacity", and "after you increase a database's storage, you can't increase it again for 6 hours". bex applies all three on every surface:
+
+- **Create:** an explicit `diskSizeGB` other than 1 or a multiple of 5 is a 400 `POSTGRES_STORAGE_STEP_INVALID`, on REST/GraphQL/MCP (`postgres.CheckNewDatabase`) and on a Blueprint database create. A restore keeps its source's size whatever it is, because recovery is not a caller-chosen size.
+- **Increase:**
+  - An off-step size is the same 400. It applies only to an increase, so an unchanged legacy size keeps syncing.
+  - A second increase within 6 hours of the later of `app.bex.co/storage-increased-at` (stamped by bex-api and Blueprint sync when they apply a manual increase) and `app.bex.co/disk-autoscale-at` (the operator's autoscale stamp) is a 409 `POSTGRES_STORAGE_INCREASE_TOO_SOON`, whose params name `nextIncreaseAt`.
+  - A dry run does not stamp. Blueprint reports both refusals as `diskSizeGB` field conflicts.
+- The dashboard Storage edit (w2/m307) enforces the step client-side and shows the server's refusal as is.
+
 ### Disk autoscaling (w8/m14)
 
 - `Database.spec.diskAutoscaling` is desired intent. When enabled, the operator samples the existing Prometheus `kubelet_volume_stats_{used,capacity}_bytes` series once a minute and uses the fullest CNPG instance PVC. It is independent of the optional control-plane database (`BEX_CP_DB_URI`); unset `BEX_PROM_URL` disables the loop without changing API round-trip behavior.

@@ -127,7 +127,7 @@ func TestBlueprintDatabaseAdmissionPreservesAllocatedAndLegacyState(t *testing.T
 			{"diskSizeGB", appv1alpha1.DatabaseSpec{StorageGB: 1}},
 		} {
 			got := db.DeepCopy()
-			changed, err := ApplyBlueprintDatabaseSpec(got, tc.want, map[string]BlueprintField{tc.field: {}})
+			changed, err := ApplyBlueprintDatabaseSpec(got, tc.want, map[string]BlueprintField{tc.field: {}}, blueprintTestNow)
 			var conflict *BlueprintFieldConflictError
 			if changed || !errors.As(err, &conflict) || conflict.Path != tc.field || !reflect.DeepEqual(got, db) {
 				t.Fatalf("%s: changed=%v err=%v database=%+v", tc.field, changed, err, got)
@@ -142,11 +142,11 @@ func TestBlueprintDatabaseAdmissionPreservesAllocatedAndLegacyState(t *testing.T
 	t.Run("legacy free state allows unrelated edits and disabling", func(t *testing.T) {
 		db := &appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Plan: "free", StorageGB: 15, Pooler: true, DiskAutoscaling: true,
 			ReadReplicas: []appv1alpha1.DatabaseReadReplica{{Name: "legacy"}}}, Status: appv1alpha1.DatabaseStatus{AllocatedStorageGB: 20}}
-		changed, err := ApplyBlueprintDatabaseSpec(db, appv1alpha1.DatabaseSpec{IPAllowList: []appv1alpha1.IPAllowEntry{{CIDR: "10.0.0.0/8"}}}, map[string]BlueprintField{"ipAllowList": {}})
+		changed, err := ApplyBlueprintDatabaseSpec(db, appv1alpha1.DatabaseSpec{IPAllowList: []appv1alpha1.IPAllowEntry{{CIDR: "10.0.0.0/8"}}}, map[string]BlueprintField{"ipAllowList": {}}, blueprintTestNow)
 		if err != nil || !changed || !db.Spec.Pooler || !db.Spec.DiskAutoscaling || len(db.Spec.ReadReplicas) != 1 {
 			t.Fatalf("unrelated legacy edit: %+v, %v", db, err)
 		}
-		changed, err = ApplyBlueprintDatabaseSpec(db, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{"connectionPool": {}, "storageAutoscalingEnabled": {}, "readReplicas": {}})
+		changed, err = ApplyBlueprintDatabaseSpec(db, appv1alpha1.DatabaseSpec{}, map[string]BlueprintField{"connectionPool": {}, "storageAutoscalingEnabled": {}, "readReplicas": {}}, blueprintTestNow)
 		if err != nil || !changed || db.Spec.Pooler || db.Spec.DiskAutoscaling || len(db.Spec.ReadReplicas) != 0 || db.Spec.StorageGB != 15 || db.Status.AllocatedStorageGB != 20 {
 			t.Fatalf("disable must preserve storage: %+v, %v", db, err)
 		}

@@ -401,7 +401,7 @@ services:
 
 func applyBlueprintDatabaseSpecForTest(dst *appv1alpha1.DatabaseSpec, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
 	db := &appv1alpha1.Database{Spec: *dst.DeepCopy()}
-	changed, err := ApplyBlueprintDatabaseSpec(db, want, fields)
+	changed, err := ApplyBlueprintDatabaseSpec(db, want, fields, blueprintTestNow)
 	*dst = db.Spec
 	return changed, err
 }

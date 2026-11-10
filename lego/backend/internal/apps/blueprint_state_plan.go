@@ -179,7 +179,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			if !ok {
 				return BlueprintPlanAction{}, fmt.Errorf("compiled database is missing")
 			}
-			if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
+			if err := postgres.CheckNewDatabase(db.spec); err != nil {
 				return BlueprintPlanAction{}, blueprintDatabaseResourceError(resource.Name, blueprintDatabaseAdmissionConflict(err, db.fields))
 			}
 		}
@@ -260,7 +260,8 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			return BlueprintPlanAction{}, fmt.Errorf("compiled database is missing")
 		}
 		probe := r.databases[resource.Name].DeepCopy()
-		changed, err := ApplyBlueprintDatabaseSpec(probe, database.spec, database.fields)
+		now := r.service.Now()
+		changed, err := ApplyBlueprintDatabaseSpec(probe, database.spec, database.fields, now)
 		if err != nil {
 			return BlueprintPlanAction{}, blueprintDatabaseResourceError(resource.Name, err)
 		}
@@ -268,7 +269,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			action.Operation = BlueprintPlanUpdate
 			live := r.databases[resource.Name]
 			action.ChangedFields = blueprintPlanFieldChanges(maps.Keys(resource.Fields), func(name string) (bool, error) {
-				return ApplyBlueprintDatabaseSpec(live.DeepCopy(), database.spec, oneField(database.fields, name))
+				return ApplyBlueprintDatabaseSpec(live.DeepCopy(), database.spec, oneField(database.fields, name), now)
 			})
 			return action, nil
 		}

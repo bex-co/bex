@@ -65,7 +65,7 @@ type createPostgresArgs struct {
 	Version any `json:"version,omitempty" jsonschema:"the PostgreSQL major version, e.g. 16 (a number, as Render's MCP server sends; \"16\" also accepted). Omit for the default."`
 	// DiskSizeGb is Render's MCP spelling. DiskSizeGB is the legacy bex alias
 	// (w2/m91); when both are set, DiskSizeGb wins.
-	DiskSizeGb            *int32             `json:"diskSizeGb,omitempty" jsonschema:"disk size in GB (omit for the plan default); Render's MCP spelling"`
+	DiskSizeGb            *int32             `json:"diskSizeGb,omitempty" jsonschema:"disk size in GB, 1 or a multiple of 5 (omit for the plan default); Render's MCP spelling"`
 	DiskSizeGB            *int32             `json:"diskSizeGB,omitempty" jsonschema:"legacy bex alias of diskSizeGb; ignored when diskSizeGb is also set"`
 	EnableDiskAutoscaling bool               `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full; requires a paid plan"`
 	ReadReplicas          []ReadReplicaInput `json:"readReplicas,omitempty" jsonschema:"named read replicas; at most five, requiring at least 0.5 CPU and 10 GB storage"`
@@ -325,7 +325,7 @@ type updatePostgresArgs struct {
 	Name                  *string `json:"name,omitempty" jsonschema:"the new name: a free-form label of at most 100 characters, no control characters, not blank or padded. A rename changes only the label — the id, connection details, and data plane stay put"`
 	Plan                  *string `json:"plan,omitempty" jsonschema:"the target instance plan (free, basic-256mb, basic-1gb, 1c-2g, pro-4gb, basic-4gb). A rolling update, not a data-loss operation — and it CHANGES WHAT THE WORKSPACE IS BILLED"`
 	Version               *string `json:"version,omitempty" jsonschema:"the target PostgreSQL major version; must be a supported major newer than the running version and at least 16 (upgrades to 14 or 15 are refused). The database is OFFLINE during CNPG's pg_upgrade, and durable plans require a completed physical backup first"`
-	DiskSizeGB            *int32  `json:"diskSizeGB,omitempty" jsonschema:"requested logical storage in GB; grow-only, and fixed at 1 GB on free"`
+	DiskSizeGB            *int32  `json:"diskSizeGB,omitempty" jsonschema:"requested logical storage in GB: a multiple of 5 GB above the current size, at most one increase every 6 hours (as on Render); grow-only, and fixed at 1 GB on free"`
 	ConnectionPool        string  `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it; omission leaves it unchanged"`
 	EnableDiskAutoscaling *bool   `json:"enableDiskAutoscaling,omitempty" jsonschema:"paid plans only; automatic grow-only storage scaling: at 90% full, storage grows by 50% rounded up to 5 GB, capped, with a 12-hour cooldown"`
 	// EnableHighAvailability is REST's PATCH enableHighAvailability (w2/m171).

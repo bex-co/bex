@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
@@ -501,7 +502,7 @@ func (e *BlueprintFieldConflictError) Error() string {
 // ApplyBlueprintDatabaseSpec applies only declared database fields. Its
 // immutability and grow-only checks happen before the caller mutates a CR, so a
 // plan cannot report a change that the operator would later ignore.
-func ApplyBlueprintDatabaseSpec(db *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
+func ApplyBlueprintDatabaseSpec(db *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField, now time.Time) (bool, error) {
 	before := *db.Spec.DeepCopy()
 	dst := before.DeepCopy()
 	present := func(name string) bool { _, ok := fields[name]; return ok }
@@ -552,13 +553,25 @@ func ApplyBlueprintDatabaseSpec(db *appv1alpha1.Database, want appv1alpha1.Datab
 			return false, &BlueprintFieldConflictError{Path: "plan", Message: err.Error() + "; disable high availability first"}
 		}
 	}
-	if present("diskSizeGB") && dst.StorageGB < postgres.DatabaseStorageHighWater(db) {
+	highWater := postgres.DatabaseStorageHighWater(db)
+	if present("diskSizeGB") && dst.StorageGB < highWater {
 		return false, &BlueprintFieldConflictError{Path: "diskSizeGB", Message: "cannot shrink allocated storage"}
 	}
 	if err := postgres.CheckDatabaseAdmission(db, *dst); err != nil {
 		return false, blueprintDatabaseAdmissionConflict(err, fields)
 	}
+	// A sync that grows storage is a manual increase, held to the same 6-hour
+	// wait as the API (w2/m317).
+	increased := present("diskSizeGB") && dst.StorageGB > highWater
+	if increased {
+		if err := postgres.CheckStorageIncreaseWait(db, dst.StorageGB, now); err != nil {
+			return false, blueprintDatabaseAdmissionConflict(err, fields)
+		}
+	}
 	db.Spec = *dst
+	if increased {
+		postgres.StampStorageIncrease(db, now)
+	}
 	return !reflect.DeepEqual(before, *dst), nil
 }
 
@@ -590,7 +603,7 @@ func blueprintDatabaseResourceError(name string, err error) blueprintResourceErr
 // check after merging so omitted plan/storage fields retain their live values.
 func checkBlueprintDatabaseCreates(st parsedStack) error {
 	for _, db := range st.databases {
-		if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
+		if err := postgres.CheckNewDatabase(db.spec); err != nil {
 			return blueprintDatabaseResourceError(db.name, blueprintDatabaseAdmissionConflict(err, db.fields))
 		}
 	}

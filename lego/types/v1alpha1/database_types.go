@@ -322,6 +322,19 @@ func ApplicationSecretName(resourceID string) string { return resourceID + "-app
 // Database's PgBouncer Service with its default credential.
 func PoolerSecretName(resourceID string) string { return resourceID + "-pooler-app" }
 
+// Storage-increase stamps on a Database (RFC 3339, UTC). Render allows one
+// storage increase every 6 hours (w2/m317), so bex-api's manual-resize paths
+// read both and refuse a second increase too soon after either.
+const (
+	// AnnotationDiskAutoscaleAt is written by the operator when disk
+	// autoscaling grows the volume; it also gates the autoscaler's own
+	// 12-hour cooldown.
+	AnnotationDiskAutoscaleAt = "app.bex.co/disk-autoscale-at"
+	// AnnotationStorageIncreasedAt is written by bex-api when it applies a
+	// manual storage increase (REST/GraphQL/MCP update or Blueprint sync).
+	AnnotationStorageIncreasedAt = "app.bex.co/storage-increased-at"
+)
+
 // PoolerPort is the port in-cluster pooled connection strings name: PgBouncer's
 // 6432, as Render's pooled URLs use (w2/m316). The pooler Service also keeps
 // serving 5432, so pooled URIs handed out before keep working. External pooled

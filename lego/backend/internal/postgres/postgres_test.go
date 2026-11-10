@@ -1007,6 +1007,10 @@ func TestRESTSetPostgresPlan(t *testing.T) {
 // optional; omitting one must leave it untouched, not fail the whole request.
 func TestRESTUpdatePostgresPartial(t *testing.T) {
 	svc, cl := newService()
+	// Render's 6-hour wait between storage increases (w2/m317): the clock moves
+	// past it before this test's second increase.
+	now := time.Date(2026, 11, 10, 12, 0, 0, 0, time.UTC)
+	svc.Clock = func() time.Time { return now }
 	seedDatabase(t, cl, "upd-db")
 	ctx := context.Background()
 	var got appv1alpha1.Database
@@ -1065,7 +1069,9 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	if !reflect.DeepEqual(got.Spec.Parameters, before) {
 		t.Fatalf("refused parameterOverrides PATCH changed spec.parameters: %v -> %v", before, got.Spec.Parameters)
 	}
-	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"diskSizeGB":21}`)
+	// Render's step (w2/m317): an increase is a multiple of 5 GB.
+	now = now.Add(6 * time.Hour)
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"diskSizeGB":25}`)
 	if w.Code != http.StatusOK {
 		t.Fatalf("disk grow PATCH => 200, got %d: %s", w.Code, w.Body.String())
 	}
@@ -1077,7 +1083,7 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 		t.Fatalf("disk shrink => named 400, got %d: %s", w.Code, w.Body.String())
 	}
 	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
-	if got.Spec.StorageGB != 21 {
+	if got.Spec.StorageGB != 25 {
 		t.Fatalf("rejected shrink changed spec.storageGB to %d", got.Spec.StorageGB)
 	}
 
@@ -1183,16 +1189,17 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 	}
 
 	// dry-run: previews the disk change without writing it.
-	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db?dryRun=true", `{"diskSizeGB":99}`)
+	now = now.Add(6 * time.Hour)
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db?dryRun=true", `{"diskSizeGB":100}`)
 	if w.Code != 200 {
 		t.Fatalf("dry-run PATCH => 200, got %d: %s", w.Code, w.Body.String())
 	}
 	_ = json.Unmarshal(w.Body.Bytes(), &pg)
-	if pg.DiskSizeGB != 99 {
-		t.Errorf("dry-run response diskSizeGB = %d, want 99 (preview)", pg.DiskSizeGB)
+	if pg.DiskSizeGB != 100 {
+		t.Errorf("dry-run response diskSizeGB = %d, want 100 (preview)", pg.DiskSizeGB)
 	}
 	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
-	if got.Spec.StorageGB == 99 {
+	if got.Spec.StorageGB == 100 {
 		t.Error("dry-run must not write to the CR")
 	}
 }

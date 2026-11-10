@@ -46,7 +46,7 @@ const (
 	databaseDiskResizeHistoryLimit = 20
 	databaseDiskSampleFailureLimit = 3
 
-	annotDiskAutoscaleAt       = "app.bex.co/disk-autoscale-at"
+	annotDiskAutoscaleAt       = appv1alpha1.AnnotationDiskAutoscaleAt
 	annotDiskAutoscaleFromGB   = "app.bex.co/disk-autoscale-from-gb"
 	annotDiskAutoscaleToGB     = "app.bex.co/disk-autoscale-to-gb"
 	annotDiskAutoscaleUsed     = "app.bex.co/disk-autoscale-used-bytes"

@@ -4114,8 +4114,8 @@ func applyBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	return ApplyBlueprintServiceSpec(dst, want, fields)
 }
 
-func blueprintDatabaseSpecChanged(cur *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField) (bool, error) {
-	return ApplyBlueprintDatabaseSpec(cur.DeepCopy(), want, fields)
+func blueprintDatabaseSpecChanged(cur *appv1alpha1.Database, want appv1alpha1.DatabaseSpec, fields map[string]BlueprintField, now time.Time) (bool, error) {
+	return ApplyBlueprintDatabaseSpec(cur.DeepCopy(), want, fields, now)
 }
 
 func blueprintKeyValueSpecChanged(cur, want appv1alpha1.KeyValueSpec, fields map[string]BlueprintField) bool {
@@ -4150,7 +4150,10 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q storage is grow-only: requested %d GB is below the allocated %d GB", core.ErrBadRequest, db.name, db.spec.StorageGB, allocated)
 			}
 		}
-		specChanged, err := blueprintDatabaseSpecChanged(existing, db.spec, db.fields)
+		// One instant for the whole sync: the storage wait check and the
+		// increase stamp must agree.
+		now := s.Now()
+		specChanged, err := blueprintDatabaseSpecChanged(existing, db.spec, db.fields, now)
 		if err != nil {
 			return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
 		}
@@ -4165,7 +4168,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 		}
 		if specChanged {
 			fromPlan := existing.Spec.Plan
-			if _, err := ApplyBlueprintDatabaseSpec(existing, db.spec, db.fields); err != nil {
+			if _, err := ApplyBlueprintDatabaseSpec(existing, db.spec, db.fields, now); err != nil {
 				return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
 			}
 			postgres.SyncFreeClock(fromPlan, existing, s.Now())
@@ -4260,7 +4263,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 // Blueprint preview dry-runs it through admission (w5/m126), so the CRD's
 // rules and the plan's count cap refuse both alike.
 func (s *Service) planStackDatabase(ctx context.Context, db parsedDatabase, assignment core.EnvironmentAssignment) (*appv1alpha1.Database, error) {
-	if err := postgres.CheckDatabaseAdmission(nil, db.spec); err != nil {
+	if err := postgres.CheckNewDatabase(db.spec); err != nil {
 		return nil, fmt.Errorf("%w: database %q %s", core.ErrBadRequest, db.name, blueprintDatabaseAdmissionConflict(err, db.fields))
 	}
 	tenantID, scoped := s.Tenant(ctx)
