@@ -89,6 +89,61 @@ describe("EnvironmentSettingsDialog inbound IP rules by plan", () => {
     ).toBeInTheDocument();
   });
 
+  // w21/038: the dialog holds every block to the server's CIDR grammar.
+  it.each(["foo", "10.0.0.0/33", "10.0.0.0/024"])(
+    "refuses %s inline and never adds or sends it",
+    async (value) => {
+      mocks.plan = "scale";
+      const user = userEvent.setup();
+      render(
+        <EnvironmentSettingsDialog
+          environment={environment([])}
+          open
+          onOpenChange={vi.fn()}
+        />,
+      );
+      await user.type(
+        screen.getByRole("textbox", { name: "New CIDR block" }),
+        value,
+      );
+      await user.click(screen.getByRole("button", { name: "Add source" }));
+
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Enter unique, valid IPv4 or IPv6 CIDR blocks.",
+      );
+      expect(screen.queryByText(value, { selector: "input" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+      expect(mocks.saveACL).not.toHaveBeenCalled();
+    },
+  );
+
+  it("adds a valid block and blocks Save while a hand-edited row is invalid", async () => {
+    mocks.plan = "scale";
+    const user = userEvent.setup();
+    render(
+      <EnvironmentSettingsDialog
+        environment={environment([
+          { cidrBlock: "203.0.113.0/24", description: "" },
+        ])}
+        open
+        onOpenChange={vi.fn()}
+      />,
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: "New CIDR block" }),
+      "10.0.0.0/24",
+    );
+    await user.click(screen.getByRole("button", { name: "Add source" }));
+    expect(screen.getByDisplayValue("10.0.0.0/24")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    const row = screen.getByDisplayValue("203.0.113.0/24");
+    await user.clear(row);
+    await user.type(row, "10.0.0.0/024");
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
   // w8/m138: isolation is a Pro feature; an environment that has it can still
   // turn it off.
   it("locks the isolation switch on Hobby unless it is already on", () => {

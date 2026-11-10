@@ -9,6 +9,7 @@ describe("isValidCIDR", () => {
     "2001:db8::/32",
     "::1/128",
     "::/0",
+    "10.0.0.0/8",
   ])("accepts %s", (value) => expect(isValidCIDR(value)).toBe(true));
 
   it.each([
@@ -19,5 +20,11 @@ describe("isValidCIDR", () => {
     "01.2.3.4/24",
     "2001:db8::/129",
     "not-an-ip/24",
+    // w21/038: a zero-padded prefix is refused by netip.ParsePrefix, so by us.
+    "10.0.0.0/024",
+    "10.0.0.0/08",
+    "10.0.0.0/00",
+    "::1/0128",
+    "2001:db8::/032",
   ])("rejects %s", (value) => expect(isValidCIDR(value)).toBe(false));
 });

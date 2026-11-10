@@ -408,6 +408,11 @@ const enEnvironments: Record<string, TranslationEntry> = {
     description:
       "Button resetting an environment's inbound IP rules to allow-all below the Scale plan (w8/m137)",
   },
+  "environments.ipAllowListInvalid": {
+    message: "Enter unique, valid IPv4 or IPv6 CIDR blocks.",
+    description:
+      "Inline validation when an environment allow list block is not a unique, valid CIDR",
+  },
   "environments.ipAllowListAdd": {
     message: "Add source",
     description: "Button adding an inbound-IP CIDR rule",

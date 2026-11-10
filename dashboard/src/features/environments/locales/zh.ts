@@ -393,6 +393,11 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description:
       "Button resetting an environment's inbound IP rules to allow-all below the Scale plan (w8/m137)",
   },
+  "environments.ipAllowListInvalid": {
+    message: "请输入唯一且有效的 IPv4 或 IPv6 CIDR。",
+    description:
+      "Inline validation when an environment allow list block is not a unique, valid CIDR",
+  },
   "environments.ipAllowListAdd": {
     message: "添加来源",
     description: "Button adding an inbound-IP CIDR rule",

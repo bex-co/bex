@@ -14,6 +14,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { isValidCIDR } from "@/common/lib/cidr";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import { useSetEnvironmentACL } from "@/features/environments/hooks/use-set-environment-acl";
 import { useWorkspace } from "@/features/workspaces/context";
@@ -97,6 +98,7 @@ function EnvironmentSettingsForm({
   );
   const [cidrBlock, setCIDRBlock] = useState("");
   const [description, setDescription] = useState("");
+  const [cidrInvalid, setCIDRInvalid] = useState(false);
 
   const originalEntries = JSON.stringify(environment.ipAllowListEntries);
   const draftEntries = JSON.stringify(ipAllowListEntries);
@@ -106,16 +108,27 @@ function EnvironmentSettingsForm({
     networkIsolationEnabled !== environment.networkIsolationEnabled ||
     draftEntries !== originalEntries;
 
+  // The same rule as the shared allow list editor: every block a valid, unique
+  // CIDR, so the server's raw `"…" is not a valid CIDR` toast is unreachable.
+  const rowCIDRs = ipAllowListEntries.map((entry) => entry.cidrBlock.trim());
+  const draftInvalid =
+    rowCIDRs.some((cidr) => !isValidCIDR(cidr)) ||
+    new Set(rowCIDRs).size !== rowCIDRs.length;
+
   function addCIDR() {
     const cidr = cidrBlock.trim();
-    if (cidr && !ipAllowListEntries.some((entry) => entry.cidrBlock === cidr)) {
-      setIPAllowListEntries([
-        ...ipAllowListEntries,
-        { cidrBlock: cidr, description: description.trim() },
-      ]);
+    if (!cidr) return;
+    if (!isValidCIDR(cidr) || rowCIDRs.includes(cidr)) {
+      setCIDRInvalid(true);
+      return;
     }
+    setIPAllowListEntries([
+      ...ipAllowListEntries,
+      { cidrBlock: cidr, description: description.trim() },
+    ]);
     setCIDRBlock("");
     setDescription("");
+    setCIDRInvalid(false);
   }
 
   function updateEntry(
@@ -248,6 +261,7 @@ function EnvironmentSettingsForm({
                         onChange={(event) =>
                           updateEntry(index, "cidrBlock", event.target.value)
                         }
+                        aria-invalid={!isValidCIDR(entry.cidrBlock)}
                         aria-label={t("environments.ipAllowListRuleCIDR", {
                           number: index + 1,
                         })}
@@ -290,7 +304,14 @@ function EnvironmentSettingsForm({
               <div className="flex flex-wrap gap-2">
                 <Input
                   value={cidrBlock}
-                  onChange={(event) => setCIDRBlock(event.target.value)}
+                  onChange={(event) => {
+                    setCIDRBlock(event.target.value);
+                    setCIDRInvalid(false);
+                  }}
+                  aria-invalid={cidrInvalid}
+                  aria-describedby={
+                    cidrInvalid ? "environment-cidr-error" : undefined
+                  }
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
                       event.preventDefault();
@@ -328,6 +349,15 @@ function EnvironmentSettingsForm({
                   {t("environments.ipAllowListAdd")}
                 </Button>
               </div>
+              {cidrInvalid || draftInvalid ? (
+                <p
+                  id="environment-cidr-error"
+                  role="alert"
+                  className="text-xs text-destructive"
+                >
+                  {t("environments.ipAllowListInvalid")}
+                </p>
+              ) : null}
             </>
           )}
         </section>
@@ -337,7 +367,10 @@ function EnvironmentSettingsForm({
         <Button variant="outline" onClick={onClose} disabled={saving}>
           {t("environments.cancel")}
         </Button>
-        <Button onClick={() => void save()} disabled={saving || !dirty}>
+        <Button
+          onClick={() => void save()}
+          disabled={saving || !dirty || draftInvalid}
+        >
           {saving ? <Loader2 className="animate-spin" /> : null}
           {t("environments.settingsSave")}
         </Button>
