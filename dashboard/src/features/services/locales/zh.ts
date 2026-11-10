@@ -1642,6 +1642,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Custom-domain delete confirmation for a still-pending domain and its auto-paired sibling (w4/142)",
   },
+  "services.domainDeletePendingGeneratedConfirmBody": {
+    message:
+      "这只会删除 {name} 的待验证声明。{canonical} 仍是规范域名。{name} 从未通过验证，因此没有在它上面提供过服务，也没有签发证书。",
+    description:
+      "Custom-domain delete confirmation for a still-pending generated sibling: only it is removed, its canonical claim stays (w4/539)",
+  },
   "services.domainAdd": {
     message: "添加自定义域名",
     description: "Custom-domains button to open the add-domain dialog",

@@ -497,6 +497,26 @@ describe("CustomDomainsSection", () => {
     );
   });
 
+  // w4/539: deleting only the pending generated sibling keeps the canonical,
+  // as ADR005 specifies, so the copy must not claim both go.
+  it("says deleting a pending generated sibling removes only it", async () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([apexDomain, wwwSiblingDomain]),
+    );
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Actions for www.foo.com" }),
+    );
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "This removes only the pending claim for www.foo.com. foo.com stays as the canonical domain.",
+    );
+    expect(dialog).not.toHaveTextContent("pending claims for");
+  });
+
   it("deletes a domain after confirming from the row menu", async () => {
     mockUseCustomDomains.mockReturnValue(domainsResult([verifiedDomain]));
     const user = userEvent.setup();

@@ -206,12 +206,26 @@ function CustomDomainRow({
   if (!domain.dnsVerified) {
     // An unverified claim was never routed and never got a certificate: deleting
     // it removes nothing that was serving (w4/142).
-    deleteDescription = sibling
-      ? t("services.domainDeletePendingPairConfirmBody", {
+    // Deleting only a generated sibling keeps its canonical claim (ADR005
+    // § www ↔ apex pairing), pending or not (w4/539).
+    if (!sibling) {
+      deleteDescription = t("services.domainDeletePendingConfirmBody", {
+        name: domain.name,
+      });
+    } else if (domain.redirectForName) {
+      deleteDescription = t(
+        "services.domainDeletePendingGeneratedConfirmBody",
+        {
           name: domain.name,
-          sibling: sibling.name,
-        })
-      : t("services.domainDeletePendingConfirmBody", { name: domain.name });
+          canonical: sibling.name,
+        },
+      );
+    } else {
+      deleteDescription = t("services.domainDeletePendingPairConfirmBody", {
+        name: domain.name,
+        sibling: sibling.name,
+      });
+    }
   } else if (sibling) {
     if (domain.redirectForName) {
       deleteDescription = t("services.domainDeleteGeneratedConfirmBody", {

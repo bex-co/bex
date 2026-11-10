@@ -1673,6 +1673,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Custom-domain delete confirmation for a still-pending domain and its auto-paired sibling (w4/142)",
   },
+  "services.domainDeletePendingGeneratedConfirmBody": {
+    message:
+      "This removes only the pending claim for {name}. {canonical} stays as the canonical domain. It was never verified, so nothing was served on it and no certificate was issued.",
+    description:
+      "Custom-domain delete confirmation for a still-pending generated sibling: only it is removed, its canonical claim stays (w4/539)",
+  },
   "services.domainAdd": {
     message: "Add Custom Domain",
     description: "Custom-domains button to open the add-domain dialog",
