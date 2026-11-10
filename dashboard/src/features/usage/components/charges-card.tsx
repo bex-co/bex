@@ -346,6 +346,10 @@ export function ChargesCard({
   // (w4/m139: "$75.30 month to date" sat over a $292.85 tree).
   const treeTotal = categories.reduce((sum, c) => sum + c.totalUsd, 0);
   const total = rated ?? treeTotal;
+  // An empty tree while the month is still loading is not a $0.00 total: the
+  // card says nothing rather than a wrong figure until the data arrives, as the
+  // rows and the description already do (w21/040).
+  const totalPending = loading && categories.length === 0 && rated == null;
   // Credit grants and Mode B comps sit between the charge and the bill. The
   // charge stays the headline — it is what the tree adds up to — and the
   // amount actually collected gets its own line, but only when the two differ.
@@ -459,7 +463,11 @@ export function ChargesCard({
                   : t("usage.totalForPeriod")}
             </dt>
             <dd className="font-mono text-lg font-semibold tabular-nums">
-              {money(total, i18n.language)} USD
+              {totalPending ? (
+                <Skeleton className="h-7 w-28" />
+              ) : (
+                <>{money(total, i18n.language)} USD</>
+              )}
             </dd>
           </div>
           {rated != null && categories.length > 0 && (

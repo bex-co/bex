@@ -177,6 +177,35 @@ describe("billingWindow", () => {
   });
 });
 
+describe("ChargesCard total while loading (w21/040)", () => {
+  it("shows no figure for an empty tree that is still loading, then the real total", () => {
+    const { container, rerender } = render(
+      <ChargesCard
+        estimatedCost={null}
+        invoicedUsd={null}
+        loading
+        period="2026-06"
+        now={MID_JULY}
+      />,
+    );
+    expect(screen.queryByText(/\$0\.00 USD/)).toBeNull();
+    expect(container.querySelector("dd .animate-pulse")).not.toBeNull();
+
+    // A month that truly has no usage still reads $0.00 once loaded.
+    rerender(
+      <ChargesCard
+        estimatedCost={estimate([], "0.00")}
+        invoicedUsd={null}
+        loading={false}
+        period="2026-06"
+        now={MID_JULY}
+      />,
+    );
+    expect(screen.getByText("$0.00 USD")).toBeInTheDocument();
+    expect(container.querySelector("dd .animate-pulse")).toBeNull();
+  });
+});
+
 describe("ChargesCard", () => {
   it("shows categories collapsed, and drills to resource then charge line", () => {
     render(
