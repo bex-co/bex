@@ -4,18 +4,6 @@ import { useWorkspace } from "@/features/workspaces/context";
 import { lazy, Suspense, useCallback, useMemo } from "react";
 import { useParams, useRouterState } from "@tanstack/react-router";
 import {
-  Bell,
-  Bot,
-  Boxes,
-  CreditCard,
-  FolderKanban,
-  Layers,
-  Settings,
-  Webhook,
-  Network,
-  CalendarClock,
-} from "lucide-react";
-import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
@@ -27,6 +15,7 @@ import {
 import { isNavItemActive } from "./nav-active";
 import { SidebarBrand } from "./sidebar-brand";
 import { SidebarNavGroups, type SidebarNavGroup } from "./sidebar-nav-groups";
+import { NAV_GROUPS, visibleNavGroups } from "./dashboard-nav";
 
 // Contextual rails are route-scoped; keep them out of the always-mounted chrome
 // chunk until the matching pathname/param is active (vercel bundle-dynamic /
@@ -43,75 +32,13 @@ const ServiceSidebar = lazy(() =>
   import("./service-sidebar").then((m) => ({ default: m.ServiceSidebar })),
 );
 
-// Render parity: one "Projects" entry groups every resource type (services,
-// databases, key value) on a single page (`routes/index.tsx`), rather than a
-// separate nav item per resource kind — `/databases`/`/keyvalue` still exist as
-// routes (detail pages, deep links) but no longer get their own sidebar entry.
-// The sidebar sits under the workspace switcher, so every entry in it is
-// workspace-scoped — Settings included, pointing at the workspace's own settings
-// (team, plan, integrations). Account settings (`/settings`) belong to the
-// user, not the workspace, and hang off the header's user menu instead —
-// Render's own split.
-//
-// Grouping mirrors Render's live sidebar (2026-07-16 capture,
-// docs/render-artifacts/dashboard-routes.md § Sidebar navigation): an
-// unlabeled top group (Projects/Blueprints/Environment Groups), then
-// **Integrations** (Webhooks, Notifications — Render also lists
-// Observability, a drains non-goal) and **Workspace** (Usage standing in for
-// Render's Billing — ADR023 — plus Settings). Render's Networking group
-// (Private Links, Dedicated IPs) is omitted entirely: both entries are
-// DO_NOT_DO non-goals, and an empty group is worse than none.
-const NAV_GROUPS: SidebarNavGroup[] = [
-  {
-    items: [
-      { labelKey: "common.navProjects", to: "/", icon: FolderKanban },
-      { labelKey: "common.navBlueprints", to: "/blueprints", icon: Layers },
-      { labelKey: "common.navRouter", to: "/router", icon: Network },
-      { labelKey: "common.navAgents", to: "/agents", icon: Bot },
-      {
-        labelKey: "common.navAutomations",
-        to: "/automations",
-        icon: CalendarClock,
-      },
-      { labelKey: "common.navEnvGroups", to: "/env-groups", icon: Boxes },
-    ],
-  },
-  {
-    labelKey: "common.navIntegrationsGroup",
-    items: [
-      { labelKey: "common.navWebhooks", to: "/webhooks", icon: Webhook },
-      { labelKey: "common.navNotifications", to: "/notifications", icon: Bell },
-    ],
-  },
-  {
-    labelKey: "common.navWorkspaceGroup",
-    items: [
-      { labelKey: "common.navUsage", to: "/billing", icon: CreditCard },
-      {
-        labelKey: "common.navSettings",
-        to: "/workspace/settings",
-        icon: Settings,
-      },
-    ],
-  },
-];
-
 export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { projectId, serviceId } = useParams({ strict: false });
   const agentsEnabled = useAgentsFeatureEnabled();
   const routerEnabled = useRouterFeatureEnabled();
   const navGroups = useMemo(
-    () =>
-      NAV_GROUPS.map((group) => ({
-        ...group,
-        items: group.items.filter(
-          (item) =>
-            ((item.to !== "/agents" && item.to !== "/automations") ||
-              agentsEnabled) &&
-            (item.to !== "/router" || routerEnabled),
-        ),
-      })).filter((group) => group.items.length > 0),
+    () => visibleNavGroups(NAV_GROUPS, { agentsEnabled, routerEnabled }),
     [agentsEnabled, routerEnabled],
   );
   const isItemActive = useCallback(

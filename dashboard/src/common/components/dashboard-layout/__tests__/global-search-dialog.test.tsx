@@ -3,6 +3,7 @@ import { act, fireEvent, render, screen } from "@testing-library/react";
 import i18n from "@/i18n/init";
 import { SERVICE_TYPE_LABEL } from "@/features/services/lib/service-type";
 import { GlobalSearchDialog } from "../global-search-dialog";
+import { NAV_GROUPS, visibleNavGroups } from "../dashboard-nav";
 
 // The dialog resolves resources through six feature hooks + the router; mock
 // them so the test drives only the service-result rendering. Only services are
@@ -57,6 +58,13 @@ vi.mock("@/features/blueprints/hooks/use-blueprints", () => ({
   }),
 }));
 
+// The sidebar's feature gates, mutable per test (w21/031).
+const flags = vi.hoisted(() => ({ agents: true, router: true }));
+vi.mock("@/config/use-growthbook", () => ({
+  useAgentsFeatureEnabled: () => flags.agents,
+  useRouterFeatureEnabled: () => flags.router,
+}));
+
 const SERVICES = [
   { id: "srv-web", name: "web-app", type: "web_service" },
   { id: "srv-cron", name: "nightly", type: "cron_job" },
@@ -64,6 +72,8 @@ const SERVICES = [
 ];
 
 beforeEach(() => {
+  flags.agents = true;
+  flags.router = true;
   for (const list of Object.values(lists)) {
     list.rows = [];
     list.loading = false;
@@ -88,6 +98,70 @@ describe("GlobalSearchDialog", () => {
     // dialog to document.body, so query the whole document, not the root.
     expect(document.querySelector(".lucide-clock")).not.toBeNull();
     expect(document.querySelector(".lucide-globe-2")).toBeNull();
+  });
+
+  // w21/031: the palette's pages come from the sidebar's own list behind the
+  // same gates, so a sidebar destination is never missing from ⌘K.
+  describe("Navigation follows the sidebar (w21/031)", () => {
+    const optionNames = () =>
+      screen.getAllByRole("option").map((o) => o.textContent ?? "");
+
+    it("lists every enabled sidebar destination plus the two Settings entries", () => {
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      const names = optionNames();
+      const expected = visibleNavGroups(NAV_GROUPS, {
+        agentsEnabled: true,
+        routerEnabled: true,
+      })
+        .flatMap((group) => group.items)
+        .map((item) => i18n.t(item.labelKey))
+        .filter((label) => label !== i18n.t("common.navSettings"));
+      for (const label of expected) {
+        expect(names.some((n) => n.includes(label))).toBe(true);
+      }
+      expect(names.some((n) => n.includes("Workspace Settings"))).toBe(true);
+      expect(names.some((n) => n.includes("Account Settings"))).toBe(true);
+    });
+
+    it("finds Agents and Automations by name, in en and zh", async () => {
+      const { rerender } = render(
+        <GlobalSearchDialog open onOpenChange={vi.fn()} />,
+      );
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "agents" },
+      });
+      expect(
+        screen.getByRole("option", { name: /Agents/ }),
+      ).toBeInTheDocument();
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "automations" },
+      });
+      expect(
+        screen.getByRole("option", { name: /Automations/ }),
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        await i18n.changeLanguage("zh");
+      });
+      rerender(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "智能体" },
+      });
+      expect(
+        screen.getByRole("option", { name: /智能体/ }),
+      ).toBeInTheDocument();
+      await act(async () => {
+        await i18n.changeLanguage("en");
+      });
+    });
+
+    it("hides Agents, Automations and Router when their flags are off", () => {
+      flags.agents = false;
+      flags.router = false;
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      const names = optionNames().join("|");
+      expect(names).not.toMatch(/Agents|Automations|Router/);
+    });
   });
 
   // w21/018: a renamed service's original name sits beside the current one with

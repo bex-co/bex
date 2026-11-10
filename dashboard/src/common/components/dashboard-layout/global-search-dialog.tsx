@@ -1,16 +1,13 @@
 import { useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  Bell,
   Boxes,
-  CreditCard,
   Database,
   FolderKanban,
   KeyRound,
   Layers,
-  Settings,
   UserRound,
-  Webhook,
+  type LucideIcon,
 } from "lucide-react";
 import {
   CommandDialog,
@@ -22,6 +19,11 @@ import {
 } from "@/common/components/ui/command";
 import { DialogDescription, DialogTitle } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  useAgentsFeatureEnabled,
+  useRouterFeatureEnabled,
+} from "@/config/use-growthbook";
+import { NAV_GROUPS, visibleNavGroups } from "./dashboard-nav";
 import { useBlueprints } from "@/features/blueprints/hooks/use-blueprints";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
@@ -142,48 +144,31 @@ function SearchResults({
     run();
   }
 
-  const pages = [
-    {
-      label: t("common.navProjects"),
-      icon: FolderKanban,
-      run: () => void navigate({ to: "/" }),
-    },
-    {
-      label: t("common.navBlueprints"),
-      icon: Layers,
-      run: () => void navigate({ to: "/blueprints" }),
-    },
-    {
-      label: t("common.navEnvGroups"),
-      icon: Boxes,
-      run: () => void navigate({ to: "/env-groups" }),
-    },
-    {
-      label: t("common.navWebhooks"),
-      icon: Webhook,
-      run: () => void navigate({ to: "/webhooks" }),
-    },
-    {
-      label: t("common.navNotifications"),
-      icon: Bell,
-      run: () => void navigate({ to: "/notifications" }),
-    },
-    {
-      label: t("common.navUsage"),
-      icon: CreditCard,
-      run: () => void navigate({ to: "/billing" }),
-    },
-    {
-      label: t("common.topbarWorkspaceSettings"),
-      icon: Settings,
-      run: () => void navigate({ to: "/workspace/settings" }),
-    },
-    {
-      label: t("common.userMenuSettings"),
-      icon: UserRound,
-      run: () => void navigate({ to: "/settings" }),
-    },
-  ];
+  // The palette's pages are the sidebar's own destinations behind the same
+  // feature gates (w21/031); the sidebar's one Settings entry becomes the
+  // palette's two, Workspace and Account.
+  const agentsEnabled = useAgentsFeatureEnabled();
+  const routerEnabled = useRouterFeatureEnabled();
+  const pages = visibleNavGroups(NAV_GROUPS, { agentsEnabled, routerEnabled })
+    .flatMap((group) => group.items)
+    .flatMap((item) => {
+      const page = (
+        label: string,
+        icon: LucideIcon | undefined,
+        to: string,
+      ) => ({
+        label,
+        icon,
+        run: () => void navigate({ to }),
+      });
+      if (item.to === "/workspace/settings") {
+        return [
+          page(t("common.topbarWorkspaceSettings"), item.icon, item.to),
+          page(t("common.userMenuSettings"), UserRound, "/settings"),
+        ];
+      }
+      return [page(t(item.labelKey), item.icon, item.to)];
+    });
 
   const loading =
     servicesLoading ||
@@ -260,7 +245,7 @@ function SearchResults({
               value={page.label}
               onSelect={() => select(page.run)}
             >
-              <page.icon />
+              {page.icon ? <page.icon /> : null}
               {page.label}
             </CommandItem>
           ))}
