@@ -255,12 +255,14 @@ export function compareLogTimestamps(a: string, b: string): number {
 // history. Equal stamps keep source order (history, then arrival). A line with
 // an empty/unparseable stamp sorts with the line before it in that sequence, so
 // it stays beside its neighbor instead of jumping to either end. Lines stamped
-// before `notBeforeMs` (the selected window's start) are dropped; a stampless
+// before `notBeforeMs` (the selected window's start) or after `notAfterMs` (a
+// custom window's end, w21/016) are dropped; a stampless
 // line is kept. Neither input array is mutated.
 export function mergeLogLines(
   history: LogLine[],
   live: LogLine[],
   notBeforeMs = -Infinity,
+  notAfterMs = Infinity,
 ): LogLine[] {
   let ms = -Infinity;
   let sub = "";
@@ -268,7 +270,7 @@ export function mergeLogLines(
   for (const line of dedupeLogLines([...history, ...live])) {
     const parsed = Date.parse(line.timestamp);
     if (!Number.isNaN(parsed)) {
-      if (parsed < notBeforeMs) continue;
+      if (parsed < notBeforeMs || parsed > notAfterMs) continue;
       ms = parsed;
       sub = subMillis(line.timestamp);
     }

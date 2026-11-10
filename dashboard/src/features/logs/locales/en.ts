@@ -98,6 +98,12 @@ const enLogs: Record<string, TranslationEntry> = {
     description:
       "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs, or a level on request logs)",
   },
+  "logs.liveWindowClosed": {
+    message:
+      "Live tail is off — this custom range has already ended, so no new lines can arrive in it.",
+    description:
+      "Note when the selected custom time range ended before it was applied, so live tail is off",
+  },
   "logs.storeRequiredTitle": {
     message: "Request logs need the log store",
     description:

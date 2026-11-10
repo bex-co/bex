@@ -181,7 +181,27 @@ export function LogViewer({
   // Request filters stream request lines from the store poll and a level
   // streams app lines (w8/m147); only a type that cannot carry an active
   // filter pauses the tail.
-  const liveSupported = !liveTailUnsupported(queryFilters);
+  // A custom window that had already ended when it was applied is closed:
+  // nothing can stream into it, so the tail never opens (w21/016). A window
+  // ending in the future keeps tailing, bounded by its end below.
+  const customEndMs = "startTime" in range ? Date.parse(range.endTime) : null;
+  const rangeKey = JSON.stringify(range);
+  // The clock is sampled when the range is applied, not on every render.
+  const [appliedAt, setAppliedAt] = useState(() => ({
+    key: rangeKey,
+    now: Date.now(),
+  }));
+  let appliedNow = appliedAt.now;
+  if (appliedAt.key !== rangeKey) {
+    appliedNow = new Date().getTime();
+    setAppliedAt({ key: rangeKey, now: appliedNow });
+  }
+  const windowClosed = customEndMs !== null && customEndMs <= appliedNow;
+  const filtersLiveSupported = !liveTailUnsupported(queryFilters);
+  const liveSupported = filtersLiveSupported && !windowClosed;
+  const liveOffReason = filtersLiveSupported
+    ? t("logs.liveWindowClosed")
+    : t("logs.liveUnsupported");
 
   // Stable identity so LogLineList's memoized rows actually skip re-rendering
   // when a live line appends (an inline arrow would defeat the memo).
@@ -256,8 +276,9 @@ export function LogViewer({
         history.lines,
         stream.lines,
         Date.parse(historyWindow.startTime),
+        customEndMs ?? Infinity,
       ),
-    [history.lines, stream.lines, historyWindow.startTime],
+    [history.lines, stream.lines, historyWindow.startTime, customEndMs],
   );
 
   const filtered = hasActiveLogFilters(queryFilters);
@@ -343,6 +364,7 @@ export function LogViewer({
         <StreamStatus
           live={live && liveSupported}
           liveSupported={liveSupported}
+          unsupportedReason={liveOffReason}
           status={stream.status}
         />
       </div>
@@ -360,6 +382,7 @@ export function LogViewer({
           setState((previous) => ({ ...previous, live: next }))
         }
         liveSupported={liveSupported}
+        unsupportedReason={liveOffReason}
         range={range}
         onRangeChange={onRangeChange}
       />
@@ -435,10 +458,13 @@ function commitDraft(
 export function StreamStatus({
   live,
   liveSupported,
+  unsupportedReason,
   status,
 }: {
   live: boolean;
   liveSupported: boolean;
+  /** Why the tail is off; defaults to the filter explanation. */
+  unsupportedReason?: string;
   status: LiveStatus;
 }) {
   const { t } = useTranslations();
@@ -447,7 +473,7 @@ export function StreamStatus({
       {!liveSupported ? (
         <>
           <AlertCircle className="h-3.5 w-3.5" />
-          {t("logs.liveUnsupported")}
+          {unsupportedReason ?? t("logs.liveUnsupported")}
         </>
       ) : live && status === "open" ? (
         <>

@@ -143,6 +143,30 @@ describe("newest-first pages keep the chronological tie order (w4/457)", () => {
   });
 });
 
+describe("mergeLogLines upper bound (w21/016)", () => {
+  it("drops lines stamped after the window end and keeps the rest", () => {
+    const live = [
+      fromRenderLog({
+        id: "in",
+        message: "in",
+        timestamp: "2026-11-02T00:00:00.000Z",
+      }),
+      fromRenderLog({
+        id: "out",
+        message: "out",
+        timestamp: "2026-11-10T00:00:00.000Z",
+      }),
+    ];
+    const merged = mergeLogLines(
+      [],
+      live,
+      Date.parse("2026-11-01T00:00:00.000Z"),
+      Date.parse("2026-11-02T08:00:00.000Z"),
+    );
+    expect(merged.map((l) => l.message)).toEqual(["in"]);
+  });
+});
+
 describe("fromRenderLog (SSE frame)", () => {
   it("reads instance/type out of the Render labels array", () => {
     const line = fromRenderLog({

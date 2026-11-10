@@ -125,6 +125,8 @@ interface LogFilterBarProps {
    * so the toggle is disabled with a hint (docs/ADR010-observability.md).
    */
   liveSupported: boolean;
+  /** Why the toggle is disabled; defaults to the filter explanation. */
+  unsupportedReason?: string;
   range?: RangeSelection;
   onRangeChange?: (range: RangeSelection) => void;
 }
@@ -136,6 +138,7 @@ export function LogFilterBar({
   live,
   onLiveChange,
   liveSupported,
+  unsupportedReason,
   range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
 }: LogFilterBarProps) {
@@ -275,7 +278,11 @@ export function LogFilterBar({
         checked={live && liveSupported}
         disabled={!liveSupported}
         onCheckedChange={onLiveChange}
-        title={liveSupported ? undefined : t("logs.liveUnsupported")}
+        title={
+          liveSupported
+            ? undefined
+            : (unsupportedReason ?? t("logs.liveUnsupported"))
+        }
       />
 
       {active.length > 0 ? (

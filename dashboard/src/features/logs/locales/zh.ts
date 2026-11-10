@@ -91,6 +91,11 @@ const zhLogs: Record<string, TranslationEntry> = {
     message: "按主机筛选",
     description: "Placeholder for the request-host filter input",
   },
+  "logs.liveWindowClosed": {
+    message: "实时日志已关闭——该自定义时间范围已经结束，不会再有新日志进入。",
+    description:
+      "Note when the selected custom time range ended before it was applied, so live tail is off",
+  },
   "logs.liveUnsupported": {
     message:
       "实时日志已关闭——级别只筛选应用日志，方法、状态码、路径和主机只筛选请求日志，当前日志类型无法按这些条件实时跟踪。",

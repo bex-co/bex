@@ -922,6 +922,33 @@ describe("LogViewer search committed while paused (w4/306)", () => {
     });
   });
 
+  it("never opens the tail for a custom window that already ended (w21/016)", () => {
+    const custom = {
+      id: "custom" as const,
+      startTime: "2026-11-01T07:00:00.000Z",
+      endTime: new Date(Date.now() - 3_600_000).toISOString(),
+      resolutionSeconds: 30,
+    };
+    render(<LogViewer resource="web" range={custom} />);
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      enabled: false,
+    });
+    expect(screen.getByRole("switch", { name: /live/i })).toBeDisabled();
+  });
+
+  it("keeps tailing a custom window that ends in the future (w21/016)", () => {
+    const custom = {
+      id: "custom" as const,
+      startTime: new Date(Date.now() - 3_600_000).toISOString(),
+      endTime: new Date(Date.now() + 3_600_000).toISOString(),
+      resolutionSeconds: 30,
+    };
+    render(<LogViewer resource="web" range={custom} />);
+    expect(useLiveLogsSpy.mock.calls.at(-1)?.[0]).toMatchObject({
+      enabled: true,
+    });
+  });
+
   it("keeps a custom window fixed when the search changes", () => {
     const custom = {
       id: "custom" as const,
