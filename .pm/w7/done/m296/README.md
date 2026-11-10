@@ -1,6 +1,6 @@
 # w7 · m296 — Agent sessions record who started them: a "started by me" filter and editable tags (Devin parity)
 
-**Worker:** worker7 **Goal:** every agent session says who started it on every surface, the `/agents` list opens on the sessions you started, and a session's tags can be replaced after create, as in Devin. **Status:** in progress (t001–t007 done; t008 closes after the live check)
+**Worker:** worker7 **Goal:** every agent session says who started it on every surface, the `/agents` list opens on the sessions you started, and a session's tags can be replaced after create, as in Devin. **Status:** done
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity (Devin): creator, filter and tags agree across REST, GraphQL, MCP and the dashboard — **DONE** | 30m | t004 |
 | t006 | Simplify the code this milestone changed — **DONE** | 30m | t005 |
 | t007 | Test coverage for creator, creator filter and tag replacement — **DONE** | 45m | t005 |
-| t008 | Closeout | 10m | t006, t007 |
+| t008 | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -38,6 +38,7 @@
 - **Why now:** automations (ADR101) and child sessions (ADR102) both shipped this week and multiply the sessions in a shared workspace list. The column already exists, so exposing it is cheap now. It is also the base that Devin-style personal Memory and per-user budgets would build on.
 - **Render parity:** included (t005). This milestone changes REST, GraphQL, MCP and dashboard surfaces of agent sessions; the reference product is Devin (ADR047).
 - **Rows from before 0212:** the backfill (migration 0218) covers only sessions of automations still at `version = 1`. The scheduler bumps `updated_at` on every fire and a take-over can change an automation's creator, so `version = 1` is the one condition under which today's `created_by` is certainly the one the session ran as.
+- **Older sessions under Mine:** sessions created before `created_by` was recorded (0212, deployed 2026-11-08) have no exact starter. The audit log records the create against the workspace, not the new session, so it cannot attribute them either. They appear under **Everyone** only, and the Mine empty state says so ("No sessions started by you. Older sessions are under Everyone."). `mine` and `createdBy` stay exact on every API surface, as Devin's `user_ids` is.
 - **Out of scope:** renaming a session's title (file separately once Devin's behavior is verified), Devin's session folders, bulk archive, and personal Memory.
 
 ## Render parity (Devin) — t005, 2026-11-09
@@ -51,3 +52,14 @@
 | Archived session | "can be viewed but not modified" | `409 AGENT_SESSION_ARCHIVED` | same | same | **Edit tags** disabled with the reason |
 
 Drift found and fixed in t005: MCP read `"tags": null` as a clear while REST refused it; MCP now refuses it too (`TestMCPSetTagsAndMine`). API-key sessions record the key's client id, which matches Devin's service-user attribution, so it is not filed as drift.
+
+## Live verification — 2026-11-10
+
+Shipped in `a08efa99a`; deployed by deploy run 42733283907 (`2ca11c439`, success). Checked as the QA user on production:
+
+- **API:** GraphQL `agentSessions` returns `createdBy` on every row, and `mine: true` returns only the caller's sessions. REST `PUT /v1/agent-sessions/{id}/tags` replaced the tags with `["m296-live"]`. `?tag=m296-live` then found that session. `{}` returned `400 AGENT_SESSION_TAGS_INVALID` ("tags is required; send [] to clear them"). `?mine=true` returned only the caller's subject. `[]` restored the session's tags.
+- **Dashboard:** `/agents` opens with the rail's **Mine** pressed. **Everyone** names each row's starter. The session header reads "Started by automation … for &lt;member&gt;". **Edit tags** saved `m296-live, qa`, which then showed in the header meta line. Reopening the editor prefilled the saved tags, and clearing them removed the meta entry.
+- **Narrow mobile (390px):** the header meta line stays one 16px line, the height the route skeleton draws.
+- **Cleanup:** all QA sessions were logged out, and the test tags were cleared.
+
+Follow-up shipped with this closeout: the Mine empty state now says older sessions are under Everyone (see "Older sessions under Mine" above).
