@@ -36,6 +36,6 @@ jobs:
         with:
           version: v1.36.1
       - name: Install kind
-        run: go install sigs.k8s.io/kind@v0.30.0
+        run: go install sigs.k8s.io/kind@v0.33.0
       - name: Run isolated Cilium traffic matrix
         run: bash scripts/verify-egress-meter.sh
