@@ -716,3 +716,38 @@ func stripSettingsFingerprint(t *testing.T, r *AppReconciler, app *appv1alpha1.A
 		t.Fatal(err)
 	}
 }
+
+// w4/536: an env-group link or unlink staged on an Auto-Deploy-off service is
+// a saved change the running service does not have yet; folding it (the next
+// release drops the annotation) clears it. Static sites, which skip the
+// release comparison, report it the same way.
+func TestStagedGroupLinkIsAnUndeployedChange(t *testing.T) {
+	for _, serviceType := range []string{appv1alpha1.TypeWebService, appv1alpha1.TypeStaticSite} {
+		t.Run(serviceType, func(t *testing.T) {
+			r, app := savedConfigurationFixture(t, appv1alpha1.TypeWebService, nil)
+			if serviceType == appv1alpha1.TypeStaticSite {
+				app.Spec.Type = appv1alpha1.TypeStaticSite
+			}
+			app = reconcileSavedConfiguration(t, r, app, false)
+			app.Annotations[appv1alpha1.AnnotationPendingGroupLinks] = `{"env":{"add":["evg-x"]},"files":{}}`
+			if err := r.Update(t.Context(), app); err != nil {
+				t.Fatal(err)
+			}
+			app = reconcileSavedConfiguration(t, r, app, true)
+			if app.Status.UndeployedChangesReason != appv1alpha1.UndeployedReasonSaved || app.Status.UndeployedChangesApplying {
+				t.Fatalf("reason=%q applying=%v, want saved, not applying", app.Status.UndeployedChangesReason, app.Status.UndeployedChangesApplying)
+			}
+			delete(app.Annotations, appv1alpha1.AnnotationPendingGroupLinks)
+			if err := r.Update(t.Context(), app); err != nil {
+				t.Fatal(err)
+			}
+			reconcileSavedConfiguration(t, r, app, false)
+		})
+	}
+	if !(savedConfigurationPredicate{}).Update(event.UpdateEvent{
+		ObjectOld: &appv1alpha1.App{},
+		ObjectNew: &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Annotations: map[string]string{appv1alpha1.AnnotationPendingGroupLinks: "{}"}}},
+	}) {
+		t.Error("staging a group link does not requeue the saved-configuration status")
+	}
+}

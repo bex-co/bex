@@ -66,6 +66,9 @@ func (savedConfigurationPredicate) Update(e event.UpdateEvent) bool {
 		appv1alpha1.PendingEnvSecretAnnotation, appv1alpha1.PendingFilesSecretAnnotation,
 		appv1alpha1.AnnotationCanceledReleaseGeneration, appv1alpha1.AnnotationSurvivingReleaseGeneration,
 		appv1alpha1.AnnotationReleaseConfigScaled,
+		// A staged env-group link or unlink is a saved change the next release
+		// ships (w4/536).
+		appv1alpha1.AnnotationPendingGroupLinks,
 		// A deploy request stamps its release here, sometimes with no spec
 		// change; it starts carrying the saved settings at once (w4/529).
 		appv1alpha1.AnnotationReleaseGeneration} {
@@ -81,29 +84,30 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 	if err := r.Get(ctx, req.NamespacedName, app); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
-	// Static publications do not retain build-input configuration records. They
-	// cannot use pod-release comparison to claim their artifact's inputs match.
-	if !app.DeletionTimestamp.IsZero() || !r.canonicalNamespace(app) ||
-		r.Mode != ModeKubernetes || app.Spec.Type == appv1alpha1.TypeStaticSite {
+	if !app.DeletionTimestamp.IsZero() || !r.canonicalNamespace(app) || r.Mode != ModeKubernetes {
 		return ctrl.Result{}, nil
+	}
+	// An env-group link or unlink staged on an Auto-Deploy-off service waits
+	// for the owner's next deploy, which folds it in and drops the annotation
+	// (w4/m239). Until then the service runs the old set, so it is a saved
+	// change not yet live (w4/536); no release carries it while it is staged.
+	staged := app.Annotations[appv1alpha1.AnnotationPendingGroupLinks] != ""
+	// Static publications do not retain build-input configuration records. They
+	// cannot use pod-release comparison to claim their artifact's inputs match,
+	// so only a staged link marks them.
+	if app.Spec.Type == appv1alpha1.TypeStaticSite {
+		return ctrl.Result{}, r.recordUndeployedChanges(ctx, app, staged, false, undeployedChangesReason(app, staged, false))
 	}
 	different, imageOnly, compareErr := r.servingConfigurationDiffers(ctx, app)
 	applying := false
 	if different && compareErr == nil {
 		applying, compareErr = r.inFlightCarriesSavedConfiguration(ctx, app)
 	}
-	reason := undeployedChangesReason(app, different, imageOnly)
-	if app.Status.UndeployedChanges != different || app.Status.UndeployedChangesApplying != applying ||
-		app.Status.UndeployedChangesReason != reason {
-		// A concurrent save or serving-revision change invalidates the comparison.
-		// Patch only these fields and retry the complete read on a conflict.
-		if err := r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
-			status.UndeployedChanges = different
-			status.UndeployedChangesApplying = applying
-			status.UndeployedChangesReason = reason
-		}); err != nil {
-			return ctrl.Result{}, err
-		}
+	if staged {
+		different, imageOnly, applying = true, false, false
+	}
+	if err := r.recordUndeployedChanges(ctx, app, different, applying, undeployedChangesReason(app, different, imageOnly)); err != nil {
+		return ctrl.Result{}, err
 	}
 	// A failed save can restore projected Secrets without ever changing the App
 	// resourceVersion. Repair a comparison that raced that compensation even
@@ -113,6 +117,21 @@ func (r *AppReconciler) reconcileSavedConfigurationStatus(ctx context.Context, r
 		result.RequeueAfter = time.Minute
 	}
 	return result, compareErr
+}
+
+// recordUndeployedChanges writes the saved-configuration status when it moved.
+// A concurrent save or serving-revision change invalidates the comparison, so
+// only these fields are patched and a conflict retries the complete read.
+func (r *AppReconciler) recordUndeployedChanges(ctx context.Context, app *appv1alpha1.App, different, applying bool, reason string) error {
+	if app.Status.UndeployedChanges == different && app.Status.UndeployedChangesApplying == applying &&
+		app.Status.UndeployedChangesReason == reason {
+		return nil
+	}
+	return r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
+		status.UndeployedChanges = different
+		status.UndeployedChangesApplying = applying
+		status.UndeployedChangesReason = reason
+	})
 }
 
 // inFlightCarriesSavedConfiguration reports whether a release newer than the
