@@ -158,6 +158,23 @@ jobs:
           if [ -f /etc/apparmor.d/gs ]; then
             sudo apparmor_parser -R /etc/apparmor.d/gs
           fi
+      # Docker 29 on hosted runners defaults to the containerd image store, where
+      # an image's ID is its manifest digest; Syft names the config digest, so
+      # the SPDX custody binding refused the generated image ("Syft source
+      # differs from actual generated Docker config", run 42799028971). The
+      # former ARM runners' nested dockerd used the classic overlay2 store, on
+      # which the qualification passed. Switch this VM's daemon back before any
+      # image exists on it.
+      - name: use the classic Docker image store
+        run: |
+          conf=/etc/docker/daemon.json
+          current='{}'
+          if [ -s "$conf" ]; then current="$(sudo cat "$conf")"; fi
+          jq '.features = ((.features // {}) + {"containerd-snapshotter": false})' <<<"$current" | sudo tee "$conf" >/dev/null
+          sudo systemctl restart docker
+          driver="$(docker info --format '{{.Driver}}')"
+          echo "storage driver: $driver"
+          [ "$driver" = overlay2 ]
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -329,6 +346,23 @@ jobs:
           if [ -f /etc/apparmor.d/gs ]; then
             sudo apparmor_parser -R /etc/apparmor.d/gs
           fi
+      # Docker 29 on hosted runners defaults to the containerd image store, where
+      # an image's ID is its manifest digest; Syft names the config digest, so
+      # the SPDX custody binding refused the generated image ("Syft source
+      # differs from actual generated Docker config", run 42799028971). The
+      # former ARM runners' nested dockerd used the classic overlay2 store, on
+      # which the qualification passed. Switch this VM's daemon back before any
+      # image exists on it.
+      - name: use the classic Docker image store
+        run: |
+          conf=/etc/docker/daemon.json
+          current='{}'
+          if [ -s "$conf" ]; then current="$(sudo cat "$conf")"; fi
+          jq '.features = ((.features // {}) + {"containerd-snapshotter": false})' <<<"$current" | sudo tee "$conf" >/dev/null
+          sudo systemctl restart docker
+          driver="$(docker info --format '{{.Driver}}')"
+          echo "storage driver: $driver"
+          [ "$driver" = overlay2 ]
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false

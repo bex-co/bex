@@ -286,6 +286,7 @@ apiVersion: app.bex.co/v1alpha1
 kind: Database
 metadata: {name: db-live, namespace: default}
 spec:
+  name: db-live
   public: true
   ipAllowList: [{cidr: 192.0.2.0/24}]
 ---
@@ -293,6 +294,7 @@ apiVersion: app.bex.co/v1alpha1
 kind: KeyValue
 metadata: {name: kv-live, namespace: default}
 spec:
+  name: kv-live
   public: true
   ipAllowList: [{cidr: 192.0.2.0/24}]
 ---
