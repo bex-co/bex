@@ -1,6 +1,6 @@
 # w3 · m273 — Private services discover runtime ports and web services answer on private port 10000, as on Render
 
-**Worker:** worker3 **Goal:** an undeclared private-service listener is reachable on the private network, and every web service answers on private port 10000 **Status:** todo — t001–t004, t006–t008, t010 done; t005 live check pending (gate cleared 2026-11-10)
+**Worker:** worker3 **Goal:** an undeclared private-service listener is reachable on the private network, and every web service answers on private port 10000 **Status:** done
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | Port-10000 alias on web-service ClusterIP Services — **DONE** | 1.5h | t001 |
 | t004 | Republish and pin revision when the discovered set changes — **DONE** | 1.5h | t002 |
 | t010 | A private image service bound only to an undeclared port never becomes Ready, so discovery never runs — **DONE** | 50m | t004 |
-| t005 | Hosted acceptance on dev-3 or the canary | 2h | t003, t004, t010 |
+| t005 | Hosted acceptance on dev-3 or the canary — **DONE** | 2h | t003, t004, t010 |
 | t006 | Render parity — **DONE** | 30m | t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
 | t008 | Test coverage — **DONE** | 40m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -61,3 +61,10 @@
 - **Gate cleared:** main's latest `chore(deploy): pin platform images to 4630a48a765e` (`043519226`, deploy.yml run 42777932436, success) contains `c6bcb8741` (this milestone), `1aad33901` (t010) and `dd31fbdef` (m276), each checked with `git merge-base --is-ancestor`. Moved `w3/blocked/m273/` → `w3/m273/`.
 - **Status:** a deployed version is not proof the DoD passed; t005 is pending live verification.
 - **Next:** t005 with the QA account (`scripts/qa-login.sh`), together with m276's live check: the t010 whoami case with and without `PORT`, an undeclared-port private service reached from a peer, and a web service at `:10000`. Then t009 Closeout. Delete fixtures by id with 404 proofs.
+
+## Closed (2026-11-10, loopx w3 via /pmx)
+
+- **DoD 1:** a private image service bound only to an undeclared port (8080, with and without `PORT`) went `live`, was reachable from a sibling worker (200) and is listed in `openPorts` (t005).
+- **DoD 2:** both web services answered 200 on private port 10000 (t005).
+- **DoD 3:** REST and GraphQL agree live; MCP and the dashboard read the same `App.OpenPorts` projection (t006 parity guard). The "ADR018 row 107 reads ✅" clause predates the 2026-11-05 split of `w3/052`, which moved UDP and any-protocol parity to `w3/054`; the row (now 109) records this milestone's TCP result and stays ◐ only for `w3/054`, as the split decided.
+- The declared-port listing defect the run surfaced belongs to m276's DoD and is fixed there (t008).
