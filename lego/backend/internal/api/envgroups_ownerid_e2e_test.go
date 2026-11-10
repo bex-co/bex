@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 	"os"
+	"slices"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -124,14 +125,18 @@ func TestEnvGroupReadSideOwnerIDTargetingE2E(t *testing.T) {
 		t.Errorf("created group missing timestamps: %+v", groupB)
 	}
 
-	// --- list: no ownerId (default alpha) sees only shared-alpha; ownerId=bravo
-	// sees only shared-bravo — before this milestone List had NO tenant filter at
-	// all and returned every workspace's groups. The list rides Render's
-	// [{envGroup, cursor}] envelope (w6/m32). ---
+	// --- list: ownerId=alpha sees only shared-alpha and ownerId=bravo only
+	// shared-bravo — before w6/m24 List had NO tenant filter at all and returned
+	// every workspace's groups. With no ownerId the list spans dana's own two
+	// workspaces, as Render's lists do (w8/m149), and still nobody else's. The
+	// list rides Render's [{envGroup, cursor}] envelope (w6/m32). ---
 
-	alphaList := decodeJSON[[]envGroupCursorPage](t, call(dana, "GET", "/v1/env-groups", ""))
+	alphaList := decodeJSON[[]envGroupCursorPage](t, call(dana, "GET", "/v1/env-groups?ownerId="+wsA.ID, ""))
 	if !onlyContainsGroup(alphaList, groupA.ID) {
-		t.Errorf("GET /v1/env-groups (no ownerId) = %+v, want exactly [%s]", idsOfGroups(alphaList), groupA.ID)
+		t.Errorf("GET /v1/env-groups?ownerId=alpha = %+v, want exactly [%s]", idsOfGroups(alphaList), groupA.ID)
+	}
+	if got := idsOfGroups(decodeJSON[[]envGroupCursorPage](t, call(dana, "GET", "/v1/env-groups", ""))); !slices.Contains(got, groupA.ID) || !slices.Contains(got, groupB.ID) {
+		t.Errorf("GET /v1/env-groups (no ownerId) = %v, want both of dana's groups (%s, %s)", got, groupA.ID, groupB.ID)
 	}
 
 	bravoList := decodeJSON[[]envGroupCursorPage](t, call(dana, "GET", "/v1/env-groups?ownerId="+wsB.ID, ""))
