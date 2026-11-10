@@ -1,0 +1,146 @@
+# w4 · m320 — An image web service's deploy takes no traffic until it is the live release: HTTP port discovery doesn't put the candidate in front of users, an image change rolls once, and a canceled deploy never answered
+
+**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** todo
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| [t001](t001.md) | Keep the Services on the serving release while HTTP discovery is pending, and move them at promotion | 60m | — |
+| [t002](t002.md) | One rollout per image change: no second ReplicaSet after discovery drains the serving release | 45m | t001 |
+| [t003](t003.md) | Cancel before promotion keeps the serving pods, and the canceled candidate never answered | 30m | t001, t002 |
+| [t004](t004.md) | A deploy whose release already holds all traffic reads `live` in the same pass | 40m | t001 |
+| [t005](t005.md) | Blast radius: every rollout kind through the Service selector and the discovery hold | 40m | t002, t003, t004 |
+| [t006](t006.md) | Live verification on an owned image web service | 30m | t005 |
+| [t007](t007.md) | Render parity | 20m | t006 |
+| [t008](t008.md) | Simplify | 15m | t007 |
+| [t009](t009.md) | Test coverage | 30m | t007 |
+| [t010](t010.md) | Closeout | 10m | t008, t009 |
+
+Ten tasks, 320m (5h20m). **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
+
+## Finding
+
+Live `/qa-find-bugs w4` loop, round 35, 2026-11-10 18:10–19:16 UTC (`muse.env`, workspace `bex-canary`, pin `c12cd57facb1`).
+
+**Fixture:** Free web service `qa-20261110-dh35` (`srv-dbplsbs5ngvc73e8u12g`), with no port set. It was created in the dashboard from `docker.io/mendhak/http-https-echo:35` and later switched with `PATCH image` to `docker.io/library/nginx:1.27-alpine`. Deleted afterwards (GET 404).
+
+**Probes, run together:**
+
+- A poller read the `Server` header of `https://qa-20261110-dh35.onbex.co/` every ~0.5 s. `nginx/1.27.5` and `nginx/1.26.3` name the release that answered.
+- In-page polling of `GET /v1/services/srv-dbplsbs5ngvc73e8u12g/deploys?limit=1` every 1–1.5 s.
+- `GET /v1/logs` (`resource=srv-dbplsbs5ngvc73e8u12g`) for the instance label on each access-log line.
+
+**Run A: a hook deploy of a new tag, left to finish.**
+
+1. The live release was 1.27.5 (instance `…2e38qqode71fqfan5u17`).
+2. `GET <deploy hook URL>&imgURL=docker.io%2Flibrary%2Fnginx%3A1.26-alpine` returned `200 {"deploy":{"id":"dep-dbpm2mtme2kc73f2ld5g"}}` at 18:24:25.
+3. Deploy status: `update_in_progress` from 18:24:43, then `live` at 18:26:13.
+4. What actually answered:
+   - **Candidate 1** (`…00ipsl8s5h6227hc9pif`) started at 18:24:37. It answered public requests from 18:24:49, alternating with the live 1.27.5 until 18:25:36: 41 × `nginx/1.26.3` and 28 × `nginx/1.27.5` over the whole poll.
+   - **Candidate 2**, another 1.26.3 instance (`…slc7ps9odpcgn8bcbisl`), started at 18:25:30. From 18:25:37 every request returned 1.26.3.
+5. The candidate answered for **84 s before the deploy was live**, alone for the last 36 s. Meanwhile REST and the dashboard still named the 1.27-alpine deploy as live.
+
+**Run B: canceled while the candidate already answered.**
+
+1. A hook with `imgURL=…nginx%3A1.27-alpine` started `dep-dbpm3slme2kc73f2ld60` at 18:26:58.
+2. `nginx/1.27.5` first answered at 18:27:18.
+3. `POST /v1/services/srv-dbplsbs5ngvc73e8u12g/deploys/dep-dbpm3slme2kc73f2ld60/cancel` at 18:27:24.18 returned `200` with `"status":"canceled"`.
+4. The canceled 1.27.5 still answered at 18:27:28.0, 18:27:36.9 and 18:27:38.9, 14.7 s after the cancel returned.
+
+**Run 0: the same through the dashboard, on the echo image (:35 → :34 via the hook).**
+
+- **Before the cancel.**
+  - The :34 candidate (`…67lad53h1n8n8tu1lucg`) answered public `GET /qa-probe` at 18:15:00 and 18:15:02.
+  - At the same time the deploy detail page read "Deploy status In Progress" and "Waiting for the container to start before detecting its HTTP port".
+  - A second :34 instance (`…tvm1h80ad7avcv1cmg08`) started at 18:15:26.
+- **The cancel.** I clicked `button "Cancel deploy dep-dbpltvdme2kc73f2ld40"`. The dialog said "If an earlier deploy succeeded, it stays live". Proceed → toast "Deploy canceled." (`finishedAt` 18:15:31).
+- **After the cancel.**
+  - `…tvm1h…` (canceled :34) still answered `/qa-probe-1` at 18:15:46 and `/qa-probe-2` at 18:15:50.
+  - The prior release came back on a **fresh** pod (`…auiu7jql1kalvl7shudj`, started 18:15:48), because the second roll had already drained the live pod `…5182h8nuvpaqvlb3rsft`. That pod logged its SIGTERM at 18:16:26.
+
+**Control: a same-image redeploy, which needs no discovery.**
+
+- `POST …/deploys` `{}` with the saved image unchanged → `dep-dbpmq1c5ngvc73e8u1f0`.
+- One instance switch at 19:14:35 (`…5ejrbnnat4cdg93dvd8p`), with no alternation and no second ReplicaSet. Live at 19:14:59.
+- The deploy took 46 s, against 108 s for Run A. The 24 s between the switch and `live` is the gap [w4/405](../done/405.md) recorded and accepted (see t004).
+
+Poller output is saved locally as `.playwright-mcp/qa-deploys-35-poll-a.txt` and `qa-deploys-35-poll-b.txt` (gitignored). The durable artifact is the probe above, which anyone can re-run.
+
+## Root cause
+
+- **The candidate becomes Ready during discovery.**
+  - An image web service without an explicit port (`PortModeWebImageV1`) re-enters HTTP discovery on every image change. `retainWebHTTPSelection` keeps a decision only for an identical digest-qualified image (`lego/operator/internal/controller/web_image_http.go:62-89`, `retainableWebHTTPSelection` `:93`).
+  - The backend gives that mode to both git-built and prebuilt web services (`lego/backend/internal/apps/service.go:2734-2746`).
+  - With a serving release, discovery gives the candidate a provisional HTTP `GET /` probe (`deployment_projection.go:351-358`, `webImageHTTPSelectionGuardsServing` `web_image_http.go:54-56`). nginx and the echo server pass it at once.
+- **The hold keeps the old pods, but not the traffic.**
+  - The Deployment's `MinReadySeconds` is set to `webImageHTTPSelectionHoldSeconds` (150 s; `deployment_projection.go:627-628`, `web_image_http.go:38-42`).
+  - `MinReadySeconds` delays *availability*, not endpoint membership: a Ready pod joins the Service at once.
+  - `privateServiceProjection` pins the selector to a revision only for port-changing rollouts (`image_network.go:316-325`, `changesImagePorts` `:353`, `replacedImagePorts` `:368`). Discovery leaves the selector on `labelApp`/`labelAppID`, so both releases serve.
+- **Detection rolls the release a second time.**
+  - `selectWebImageHTTP` returns "reproject probes and routing on the chosen port first" (`web_image_http.go:164`).
+  - The template drops the provisional probe, and `MinReadySeconds` returns to 0. That rolls a second ReplicaSet, which becomes available at once, so the Deployment drains the serving release while the deploy is still in progress.
+  - [w2/078](../../w2/done/078.md) removed this second roll only for a first deploy (comment at `deployment_projection.go:353-357`).
+- **Status lags traffic.** While the Service already routes only to the new revision, the operator reports `RolloutSettling` and keeps phase `Deploying` (`app_controller.go:3706-3715`). The backend counts `RolloutSettling` as serving for availability (`lego/backend/internal/store/reconciler.go:2210-2216`), but the row still waits to close `live`.
+- **Cancel puts the prior release back by re-projecting it.**
+  - `settleCanceledRelease` (`app_controller.go:789`) restores the prior release's snapshot.
+  - The candidate's pods keep answering until that roll completes.
+  - If the second roll had already drained the prior pods, the restore creates fresh ones.
+
+## Target behavior
+
+This is Render's documented sequence (render.com/docs/deploys, zero-downtime deploys): "your _original_ instance continues to receive all incoming traffic while the new instance is spinning up". Then: "Once the new instance becomes healthy, Render updates its networking configuration so that your _new_ instance begins receiving all incoming traffic."
+
+- **While the deploy is not live, traffic stays on the serving release.** During HTTP discovery, every public and private Service selects only the serving revision's pods, whatever the candidate's readiness.
+- **One step moves traffic and status.** When the candidate is chosen, routing moves to it and its deploy row turns `live` in that same step. Old pods then drain, as on Render.
+- **An image change rolls once.** No second ReplicaSet drains the serving release before promotion. If discovery must change the template, the serving release keeps its pods and its traffic until promotion.
+- **Cancel before promotion has nothing to undo.** The canceled candidate answered no request. The serving pods are the same pods before and after (same instance IDs in `GET …/instances` and in the logs).
+- **REST, GraphQL, MCP and the dashboard keep their current shapes.** Only *when* rows become `live` or `canceled` changes. The cancel dialog's "If an earlier deploy succeeded, it stays live" becomes literally true.
+
+## Definition of done
+
+Live on production after the release pins this build, on an owned Free image web service in `bex-canary`: `docker.io/library/nginx:1.27-alpine`, no port. Run the Server-header poller from the Finding, with in-page deploy polling at ≤1.5 s.
+
+- **No early traffic.** A hook deploy with `imgURL=…nginx%3A1.26-alpine`, left to finish:
+  - every response is `nginx/1.27.5` until the poll that first reads the deploy `live`;
+  - after that, every response is `nginx/1.26.3` within one poll interval plus Render's drain;
+  - no alternation appears while the row is `update_in_progress`.
+- **One instance per change.** `GET /v1/logs` for the deploy window shows exactly one new instance for that deploy, and the deploy log keeps its "Detected HTTP on port 80" narration.
+- **Cancel before promotion.** Trigger the next tag with the hook and cancel it with `POST …/deploys/{id}/cancel` before it is live. Then:
+  - not one response names the candidate's version, before or after the cancel;
+  - `GET …/instances` lists the same instance ID before and after;
+  - the logs show no new instance for the prior release.
+  - Repeat once through the dashboard's Cancel → Proceed.
+- **Same-image redeploy control.** The row turns `live` within one poll of the instance switch seen in the logs; today the gap is 24 s.
+- **Unchanged neighbours.** A port-changing image deploy (w4/428), an env save and a restart still roll with no response error.
+- **Checks.** The operator suite (`make test`) and lint pass.
+- **Cleanup.** No fixture remains, and only that run's session is revoked.
+
+## Unverified (carried into tasks)
+
+- **Git-built Docker web services with no port.** I didn't probe one this round. Whether a new commit's digest re-enters discovery, and whether image `ENV PORT` (as in `examples/hello-go`) exempts it through `Status.EnvPort`, was read from source only (t005).
+- **What exactly closes the row `live` 24 s after the switch.** Deployment status convergence, the operator requeue or the backend reconcile period. Not traced (t004).
+- **Network errors during the runs.** The poller saw a few curl errors in Run B and in a later uncontrolled run. My own machine lost connectivity in that window (the dashboard console logged `ERR_INTERNET_DISCONNECTED`), so no downtime is claimed. t006 re-checks for errors with a stable client.
+- **Multi-instance services.** Paid plans weren't exercised. The pin must hold for every replica (t005).
+
+## Dedupe
+
+- **[w8/m141](../../w8/done/m141/README.md)** (done) built HTTP discovery and the 150 s hold. Its DoD says "Pending discovery cannot promote a binary TCP listener or drain the prior release". The second roll now drains the prior release before promotion, so the drain half of that guarantee regressed. Its other DoD bullets aren't touched: lowest HTTP port, no-EXPOSE fallback, per-digest reuse, narration, and the RabbitMQ/nginx hosted checks. t005 keeps their tests. Where traffic goes during discovery was never specified.
+- **[w2/078](../../w2/done/078.md)** (done) removed the second ReplicaSet for a first deploy only.
+- **[w4/428](../done/428.md)** (done) pinned routing for port-changing rollouts. That pin is the precedent for t001.
+- **[w4/405](../done/405.md)** (done) stamps `activeRevision` early so a superseded row reads `live`. It accepted "serving before Live" as correct; t004 revisits that against Render's sequence.
+- **[w1/m152](../../w1/done/m152/README.md)** (done) made cancel restore the prior configuration. It didn't cover which pods serve.
+- `grep -rliE "second ReplicaSet|rolls twice|serv(es|ing) traffic before" .pm` finds no open item.
+- **Not deploy lag:** `git log c12cd57facb1..origin/main` on `web_image_http.go`, `deployment_projection.go` and `image_network.go` is empty.
+- No `.pm/DO_NOT_DO.md` entry applies.
+
+## Source + Goal linkage
+
+- **Source:** live `/qa-find-bugs w4` loop, round 35, 2026-11-10 (the probes above; fixture deleted).
+- **Goal linkage:**
+  - [ADR004](../../../docs/ADR004-app-deployment.md) (deploys and rollouts);
+  - [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first) (Render's zero-downtime sequence);
+  - truthful product state: the deploy list says which release users are getting.
+- **Expected outcome:** a CI pipeline that ships image tags through the deploy hook never exposes an unverified release early. Cancel means the change never reached users.
+- **Why now:** the deploy hook with `imgURL` is the documented CI path for image services, so every such deploy hits this. A bad build reaches users while the dashboard still calls it "In Progress". The second roll also doubles deploy time (108 s against 46 s).
+- **Render parity included:** the deploy states on REST, GraphQL, MCP and the dashboard change timing, and the cancel dialog's promise depends on it (t007).
