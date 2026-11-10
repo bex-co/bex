@@ -3,12 +3,9 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useServiceNotifications } from "@/features/services/hooks/use-service-notifications";
 import { useOwnerNotificationSettings } from "@/features/notifications/hooks/use-owner-notification-settings";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
+import { SERVICE_NOTIFICATION_LEVEL_LABEL_KEYS } from "@/features/notifications/lib/notification-levels";
 
-const LEVEL_LABEL_KEYS = {
-  all: "services.notificationsOptionAll",
-  failure: "services.notificationsOptionFailure",
-  none: "services.notificationsOptionNone",
-} as const;
+const LEVEL_LABEL_KEYS = SERVICE_NOTIFICATION_LEVEL_LABEL_KEYS;
 
 const OPTIONS = [
   { value: "default", labelKey: null },

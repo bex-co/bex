@@ -3,13 +3,28 @@ import { render, screen } from "@testing-library/react";
 import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
 import { formatDateTime } from "@/common/lib/format";
 import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
+import type { ReactNode } from "react";
 
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
   useWorkspaceSubjectLabel: (subject: string) => subject,
 }));
 
-// The panel is presentational (w4/m15): its owner (SecurityComplianceSection)
-// runs the query and passes the result down, so tests inject `state` directly.
+vi.mock("@/features/audit/components/audit-log-export", () => ({
+  AuditLogExport: ({ ownerId }: { ownerId: string }) => (
+    <div>Export control {ownerId}</div>
+  ),
+}));
+
+// The plan notice links to Billing; render the router Link as its anchor.
+vi.mock("@tanstack/react-router", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@tanstack/react-router")>()),
+  Link: ({ to, children }: { to: string; children: ReactNode }) => (
+    <a href={to}>{children}</a>
+  ),
+}));
+
+// The panel is presentational (w4/m15): its owner (Workspace Settings since
+// w3/m305) runs the query and passes the result down, so tests inject `state`.
 const loadMore = vi.fn();
 const auditState: UseAuditLogResult = {
   events: [],
@@ -24,7 +39,12 @@ const auditState: UseAuditLogResult = {
 };
 
 function renderPanel(overrides: Partial<UseAuditLogResult> = {}) {
-  return render(<AuditLogPanel state={{ ...auditState, ...overrides }} />);
+  return render(
+    <AuditLogPanel
+      state={{ ...auditState, ...overrides }}
+      ownerId="tea-primary"
+    />,
+  );
 }
 
 beforeEach(() => {
@@ -40,6 +60,33 @@ beforeEach(() => {
 });
 
 describe("AuditLogPanel", () => {
+  it("offers Render's CSV export to an admin whose plan has audit logs (w3/m305)", () => {
+    renderPanel();
+    expect(screen.getByText("Export control tea-primary")).toBeInTheDocument();
+  });
+
+  it("shows the Pro-plan notice with a Billing link, and no export, on a Hobby workspace (w8/m138)", () => {
+    renderPanel({ planRequired: true });
+    expect(
+      screen.getByText("Audit logs require the Pro plan"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Open Billing" })).toHaveAttribute(
+      "href",
+      "/billing",
+    );
+    expect(screen.queryByText(/Export control/)).not.toBeInTheDocument();
+  });
+
+  it("offers no export when the audit store is not configured", () => {
+    renderPanel({ unavailable: true });
+    expect(screen.queryByText(/Export control/)).not.toBeInTheDocument();
+  });
+
+  it("offers no export until the plan is known", () => {
+    renderPanel({ loading: true });
+    expect(screen.queryByText(/Export control/)).not.toBeInTheDocument();
+  });
+
   it("renders nothing for a non-admin (forbidden) caller", () => {
     auditState.forbidden = true;
     const { container } = renderPanel();

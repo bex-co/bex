@@ -70,7 +70,7 @@ function renderInRouter(component: React.ReactNode) {
   });
   const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: "/settings",
+    path: "/workspace/settings",
     component: () => null,
   });
   const router = createRouter({
@@ -128,7 +128,7 @@ describe("RegistryCredentialSelect", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Manage registry credentials" }),
-    ).toHaveAttribute("href", "/settings#registry-credentials");
+    ).toHaveAttribute("href", "/workspace/settings#registry-credentials");
   });
 });
 

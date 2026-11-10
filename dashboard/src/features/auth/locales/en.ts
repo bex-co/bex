@@ -80,7 +80,7 @@ const enAuth: Record<string, TranslationEntry> = {
       "Settings page integrations section heading and navigation label",
   },
   "auth.integrationsSectionSubtitle": {
-    message: "Connect source control and private image registries.",
+    message: "Connect source control.",
     description: "Settings page integrations section description",
   },
   "auth.accessSection": {
@@ -92,12 +92,12 @@ const enAuth: Record<string, TranslationEntry> = {
     description: "Settings page access section description",
   },
   "auth.securityComplianceSection": {
-    message: "Security & Compliance",
+    message: "Security",
     description:
-      "Settings page section heading grouping security and audit cards",
+      "Settings page section heading grouping the account's security cards",
   },
   "auth.securityComplianceSectionSubtitle": {
-    message: "Account security controls and your workspace's audit trail.",
+    message: "Account security controls: connected agents and active sessions.",
     description: "Settings page Security & Compliance section description",
   },
   "auth.dangerZoneSection": {

@@ -22,7 +22,14 @@ import { AgentSkillsCard } from "@/features/agent-environment/components/agent-s
 import { AgentSkillsCardSkeleton } from "@/features/agent-environment/components/agent-skills-card-skeleton";
 import { WorkspaceNotificationsCard } from "@/features/notifications/components/workspace-notifications-card";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
+import { NotificationOverridesCard } from "@/features/notifications/components/notification-overrides-card";
+import { NotificationOverridesCardSkeleton } from "@/features/notifications/components/notification-overrides-card-skeleton";
+import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credentials/components/registry-credentials-panel-skeleton";
+import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
+import { RegistryCredentialsPanel } from "@/features/registry-credentials/components/registry-credentials-panel";
+import { AuditLogPanel } from "@/features/audit/components/audit-log-panel";
+import { useAuditLog } from "@/features/audit/hooks/use-audit-log";
 import {
   SECTION_NAVIGATION_STICKY_CLASS,
   SECTION_NAVIGATION_TARGET_CLASS,
@@ -62,6 +69,10 @@ function WorkspaceSettingsPage() {
   const { plan } = Route.useSearch();
   const navigate = Route.useNavigate();
   const hasMultipleWorkspaces = workspaces.length > 1;
+  const audit = useAuditLog();
+  // Audit logs are admin-only: the role is known before the query's 403, so a
+  // non-admin never sees the section, its link or its skeleton flash.
+  const showAuditLogs = currentWorkspace?.role === "admin" && !audit.forbidden;
 
   // The URL owns whether the plan dialog is open, so the blocked-invite CTA can
   // open it from the team page by navigating here. `replace` keeps opening and
@@ -81,6 +92,7 @@ function WorkspaceSettingsPage() {
           <WorkspaceSettingsNavigation
             className={SECTION_NAVIGATION_STICKY_CLASS}
             showDangerZone
+            showAuditLogs={showAuditLogs}
           />
 
           <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
@@ -100,13 +112,23 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="team">
                   <TeamPanelSkeleton />
                 </section>
-                <section data-skeleton-region="notifications">
+                <section
+                  data-skeleton-region="notifications"
+                  className="space-y-6"
+                >
                   <WorkspaceNotificationsCardSkeleton />
+                  <NotificationOverridesCardSkeleton />
                 </section>
                 <section data-skeleton-region="agents" className="space-y-6">
                   <AgentEnvironmentCardSkeleton />
                   <AgentSecretsCardSkeleton />
                   <AgentSkillsCardSkeleton />
+                </section>
+                <section data-skeleton-region="registry-credentials">
+                  <RegistryCredentialsPanelSkeleton />
+                </section>
+                <section data-skeleton-region="audit-logs">
+                  <AuditLogPanelSkeleton />
                 </section>
                 <section
                   data-skeleton-region="danger-zone"
@@ -146,9 +168,10 @@ function WorkspaceSettingsPage() {
                     default" follows — Render's owner notification settings. */}
                 <section
                   id="notifications"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                  className={cn(SECTION_NAVIGATION_TARGET_CLASS, "space-y-6")}
                 >
                   <WorkspaceNotificationsCard ownerId={currentWorkspace.id} />
+                  <NotificationOverridesCard ownerId={currentWorkspace.id} />
                 </section>
                 <section
                   id="agents"
@@ -161,6 +184,18 @@ function WorkspaceSettingsPage() {
                       agent session receives. */}
                   <AgentSkillsCard ownerId={currentWorkspace.id} />
                 </section>
+                <RegistryCredentialsPanel />
+                {showAuditLogs ? (
+                  <section
+                    id="audit-logs"
+                    className={SECTION_NAVIGATION_TARGET_CLASS}
+                  >
+                    <AuditLogPanel
+                      state={audit}
+                      ownerId={currentWorkspace.id}
+                    />
+                  </section>
+                ) : null}
                 {/* The danger zone is now always present: Leave workspace
                     (w5/m102) lives here for every member, while Delete stays
                     gated on having somewhere else to land. The Leave card

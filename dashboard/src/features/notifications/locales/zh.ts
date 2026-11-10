@@ -474,6 +474,23 @@ const zhNotifications: Record<string, TranslationEntry> = {
     message: "重试",
     description: "Workspace notification policy: retry button",
   },
+  "notifications.overridesTitle": {
+    message: "通知覆盖",
+    description:
+      "Workspace notifications: overrides list title (Render's label)",
+  },
+  "notifications.overridesDescription": {
+    message: "通知设置与工作区默认值不同的服务。",
+    description: "Workspace notifications: overrides list description",
+  },
+  "notifications.overridesEmpty": {
+    message: "没有服务覆盖工作区默认设置。",
+    description: "Workspace notifications: no overrides",
+  },
+  "notifications.overridesError": {
+    message: "无法加载覆盖默认设置的服务。",
+    description: "Workspace notifications: overrides failed to load",
+  },
 };
 
 export default zhNotifications;

@@ -80,7 +80,7 @@ const zhAuth: Record<string, TranslationEntry> = {
       "Settings page integrations section heading and navigation label",
   },
   "auth.integrationsSectionSubtitle": {
-    message: "连接源代码管理和私有镜像仓库。",
+    message: "连接源代码管理。",
     description: "Settings page integrations section description",
   },
   "auth.accessSection": {
@@ -92,12 +92,12 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Settings page access section description",
   },
   "auth.securityComplianceSection": {
-    message: "安全与合规",
+    message: "安全",
     description:
-      "Settings page section heading grouping security and audit cards",
+      "Settings page section heading grouping the account's security cards",
   },
   "auth.securityComplianceSectionSubtitle": {
-    message: "账户安全控制以及您工作区的审计记录。",
+    message: "账户安全控制：已连接的代理和活动会话。",
     description: "Settings page Security & Compliance section description",
   },
   "auth.dangerZoneSection": {

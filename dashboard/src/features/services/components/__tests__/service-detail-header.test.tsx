@@ -569,7 +569,7 @@ describe("ServiceDetailHeader", () => {
     expect(await screen.findByText("Registry credential:")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Private GHCR" })).toHaveAttribute(
       "href",
-      "/settings#registry-credentials",
+      "/workspace/settings#registry-credentials",
     );
   });
 

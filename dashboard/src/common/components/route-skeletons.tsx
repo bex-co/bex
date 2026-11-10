@@ -63,6 +63,9 @@ import {
 } from "@/features/team/components/team-panel-skeleton";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
+import { NotificationOverridesCardSkeleton } from "@/features/notifications/components/notification-overrides-card-skeleton";
+import { RegistryCredentialsPanelSkeleton } from "@/features/registry-credentials/components/registry-credentials-panel-skeleton";
+import { AuditLogPanelSkeleton } from "@/features/audit/components/audit-log-panel-skeleton";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
 import { InstanceTypePickerCardSkeleton } from "@/features/services/components/instance-type-groups";
 import {
@@ -1269,7 +1272,7 @@ export function WorkspaceSettingsPageSkeleton() {
       className="flex-1 overflow-auto p-4 sm:p-6"
     >
       <div className="mx-auto grid w-full max-w-4xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-        <ResponsiveSectionNavigationSkeleton count={5} />
+        <ResponsiveSectionNavigationSkeleton count={7} />
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
           <Region name="page-header" className="space-y-2">
             <Skeleton className="h-6 w-48" />
@@ -1281,13 +1284,20 @@ export function WorkspaceSettingsPageSkeleton() {
           <Region name="team">
             <TeamPanelSkeleton />
           </Region>
-          <Region name="notifications">
+          <Region name="notifications" className="space-y-6">
             <WorkspaceNotificationsCardSkeleton />
+            <NotificationOverridesCardSkeleton />
           </Region>
           <Region name="agents" className="space-y-6">
             <AgentEnvironmentCardSkeleton />
             <AgentSecretsCardSkeleton />
             <AgentSkillsCardSkeleton />
+          </Region>
+          <Region name="registry-credentials">
+            <RegistryCredentialsPanelSkeleton />
+          </Region>
+          <Region name="audit-logs">
+            <AuditLogPanelSkeleton />
           </Region>
           <Region name="danger-zone">
             <LeaveWorkspaceCardSkeleton />
@@ -1323,9 +1333,9 @@ export function AccountSettingsPageSkeleton() {
           <div className="mt-8 space-y-10 lg:mt-10">
             {[
               { name: "account", count: 2 },
-              { name: "integrations", count: 2 },
+              { name: "integrations", count: 1 },
               { name: "access", count: 2 },
-              { name: "security", count: 3 },
+              { name: "security", count: 2 },
               { name: "danger-zone", count: 1 },
             ].map(({ name, count }) => (
               <Region key={name} name={name} className="space-y-4">

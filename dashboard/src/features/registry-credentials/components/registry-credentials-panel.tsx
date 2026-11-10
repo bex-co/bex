@@ -28,12 +28,10 @@ import { CreateRegistryCredentialDialog } from "@/features/registry-credentials/
 import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
 
 /**
- * Settings → Integrations → Registry Credentials (w2/m14): a workspace's
- * stored credentials for private external image registries (Docker Hub,
- * GHCR, GitLab Container Registry, ECR, etc.), so an existing-image service
- * can pull from a non-public, non-Zot source. The first tenant of an
- * "Integrations" area — a future outbound-webhooks feature has an obvious
- * home to join here.
+ * Workspace Settings → Container Registry Credentials (w2/m14; in Render's
+ * place since w3/m305): a workspace's stored credentials for private external
+ * image registries (Docker Hub, GHCR, GitLab Container Registry, ECR, etc.),
+ * so an existing-image service can pull from a non-public, non-Zot source.
  */
 export function RegistryCredentialsPanel() {
   const { t } = useTranslations();

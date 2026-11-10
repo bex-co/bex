@@ -512,6 +512,24 @@ const enNotifications: Record<string, TranslationEntry> = {
     message: "Retry",
     description: "Workspace notification policy: retry button",
   },
+  "notifications.overridesTitle": {
+    message: "Notification Overrides",
+    description:
+      "Workspace notifications: overrides list title (Render's label)",
+  },
+  "notifications.overridesDescription": {
+    message:
+      "Services whose notification setting differs from the workspace default.",
+    description: "Workspace notifications: overrides list description",
+  },
+  "notifications.overridesEmpty": {
+    message: "No service overrides the workspace default.",
+    description: "Workspace notifications: no overrides",
+  },
+  "notifications.overridesError": {
+    message: "Couldn't load the services that override the default.",
+    description: "Workspace notifications: overrides failed to load",
+  },
 };
 
 export default enNotifications;

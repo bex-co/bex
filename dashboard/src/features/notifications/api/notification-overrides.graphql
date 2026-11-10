@@ -1,0 +1,14 @@
+# Render's Notification Overrides (render.com/docs/notifications): the services
+# whose notification setting is not "Use workspace default". bex reads each
+# service's own `notificationsToSend` — the value REST's
+# GET /v1/notification-settings/overrides projects (w3/m305) — and the card
+# keeps the ones that differ from "default".
+query NotificationOverrides($ownerId: String) {
+  services(ownerId: $ownerId) {
+    id
+    name
+    displayName
+    type
+    notificationsToSend
+  }
+}

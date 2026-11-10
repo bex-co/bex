@@ -67,7 +67,7 @@ export function RegistryCredentialSelect({
             ? t("services.registryCredentialEmpty")
             : description}{" "}
         <Link
-          to="/settings"
+          to="/workspace/settings"
           hash="registry-credentials"
           className="text-primary hover:underline"
         >

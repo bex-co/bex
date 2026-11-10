@@ -73,6 +73,30 @@ vi.mock(
   }),
 );
 
+vi.mock(
+  "@/features/notifications/components/notification-overrides-card",
+  () => ({
+    NotificationOverridesCard: ({ ownerId }: { ownerId: string }) => (
+      <div>Notification overrides card {ownerId}</div>
+    ),
+  }),
+);
+
+vi.mock(
+  "@/features/registry-credentials/components/registry-credentials-panel",
+  () => ({
+    RegistryCredentialsPanel: () => <div>Registry credentials panel</div>,
+  }),
+);
+
+const auditState = { forbidden: false };
+vi.mock("@/features/audit/hooks/use-audit-log", () => ({
+  useAuditLog: () => auditState,
+}));
+vi.mock("@/features/audit/components/audit-log-panel", () => ({
+  AuditLogPanel: () => <div>Audit log panel</div>,
+}));
+
 // The danger zone gained a permanent resident in w5/m102: Leave workspace is
 // available to every member, so the section now exists regardless of how many
 // workspaces the caller has — only the DELETE card stays gated on having
@@ -116,6 +140,7 @@ async function renderPage() {
 }
 
 beforeEach(() => {
+  auditState.forbidden = false;
   workspaceState.currentWorkspace = primaryWorkspace;
   workspaceState.workspaces = [primaryWorkspace];
   workspaceState.loading = false;
@@ -168,6 +193,46 @@ describe("WorkspaceSettingsPage", () => {
       "href",
       "#notifications",
     );
+  });
+
+  // w3/m305: Render keeps workspace-scoped registry credentials, the
+  // notification overrides list and the audit log in Workspace Settings.
+  it("renders Registry Credentials, Audit Logs and Notification Overrides here", async () => {
+    await renderPage();
+
+    expect(screen.getByText("Registry credentials panel")).toBeInTheDocument();
+    expect(screen.getByText("Audit log panel")).toBeInTheDocument();
+    expect(
+      screen.getByText("Notification overrides card tea-primary"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Registry Credentials" }),
+    ).toHaveAttribute("href", "#registry-credentials");
+    expect(screen.getByRole("link", { name: "Audit Log" })).toHaveAttribute(
+      "href",
+      "#audit-logs",
+    );
+  });
+
+  it("hides Audit Logs and its link from a non-admin, before any 403", async () => {
+    workspaceState.currentWorkspace = {
+      ...primaryWorkspace,
+      role: "developer",
+    };
+    await renderPage();
+
+    expect(screen.queryByText("Audit log panel")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Audit Log" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Registry credentials panel")).toBeInTheDocument();
+  });
+
+  it("hides Audit Logs when the audit log answers forbidden", async () => {
+    auditState.forbidden = true;
+    await renderPage();
+
+    expect(screen.queryByText("Audit log panel")).not.toBeInTheDocument();
   });
 
   it("shows the delete section and navigation link when another workspace exists", async () => {

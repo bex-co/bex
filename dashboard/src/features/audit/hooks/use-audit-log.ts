@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useApolloClient, useQuery } from "@apollo/client/react";
-import { AuditLogsDocument, type AuditLogsQuery } from "@/graphql/definitions";
+import { AuditLogsDocument } from "@/graphql/definitions";
+import { toAuditEvents } from "@/features/audit/lib/audit-events";
 import type { AuditEvent } from "@/features/audit/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import {
@@ -9,29 +10,6 @@ import {
 } from "@/common/lib/graphql-error";
 
 const PAGE_SIZE = 20;
-
-type RawEvent = NonNullable<AuditLogsQuery["auditLogs"]>[number];
-
-function toEvents(raw: AuditLogsQuery["auditLogs"] | undefined): AuditEvent[] {
-  return (raw ?? [])
-    .filter((e): e is NonNullable<RawEvent> & { id: string } => !!e?.id)
-    .map((e) => ({
-      id: e.id,
-      timestamp: e.timestamp ?? "",
-      actor: e.actor ?? "",
-      actorMethod: e.actorMethod ?? "",
-      action: e.action ?? "",
-      status: e.status === "denied" ? "denied" : "success",
-      resource: e.resource ?? "",
-      targetName: e.targetName ?? "",
-      relation: e.relation ?? "",
-      oauthClientId: e.oauthClientId ?? "",
-      oauthAudience: e.oauthAudience ?? "",
-      oauthScopes: (e.oauthScopes ?? []).filter(
-        (scope): scope is string => typeof scope === "string" && scope !== "",
-      ),
-    }));
-}
 
 export interface UseAuditLogResult {
   events: AuditEvent[];
@@ -97,7 +75,7 @@ export function useAuditLog(): UseAuditLogResult {
     fetchPolicy: "network-only",
     errorPolicy: "all",
   });
-  const firstPage = useMemo(() => toEvents(data?.auditLogs), [data]);
+  const firstPage = useMemo(() => toAuditEvents(data?.auditLogs), [data]);
 
   const [appended, setAppended] = useState<AppendedPages>(NO_APPENDED);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -132,7 +110,7 @@ export function useAuditLog(): UseAuditLogResult {
         fetchPolicy: "network-only",
         errorPolicy: "all",
       });
-      const page = toEvents(result.data?.auditLogs);
+      const page = toAuditEvents(result.data?.auditLogs);
       // Defensive only — the exclusive keyset cursor shouldn't ever hand back
       // an id already loaded. Bounded to the current tail, not the full
       // history, so a click's cost doesn't grow as a user pages deeper in.

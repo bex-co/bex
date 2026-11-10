@@ -954,7 +954,7 @@ describe("NewServicePage", () => {
       ).toBeInTheDocument();
       expect(
         screen.getByRole("link", { name: "Manage registry credentials" }),
-      ).toHaveAttribute("href", "/settings#registry-credentials");
+      ).toHaveAttribute("href", "/workspace/settings#registry-credentials");
     });
 
     it("keeps the credential selector hidden for a native Git source", async () => {

@@ -19,7 +19,6 @@ import { AccountDeletionCard } from "@/features/auth/pages/settings-page/account
 import { SettingsNavigation } from "@/features/auth/pages/settings-page/settings-navigation";
 import { SettingsSection } from "@/features/auth/pages/settings-page/settings-section";
 import { ConnectGithubCard } from "@/features/git/components/connect-github-card";
-import { RegistryCredentialsPanel } from "@/features/registry-credentials/components/registry-credentials-panel";
 import { SSHKeysPanel } from "@/features/ssh-keys/components/ssh-keys-panel";
 
 const settingsRoute = getRouteApi("/settings");
@@ -89,7 +88,6 @@ export default function SettingsPage() {
                   callbackError={search.git_error}
                   claimSelectionId={search.git_claim_selection}
                 />
-                <RegistryCredentialsPanel />
               </SettingsSection>
 
               <SettingsSection

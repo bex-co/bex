@@ -1,4 +1,12 @@
-import { Bell, Bot, Settings2, TriangleAlert, Users } from "lucide-react";
+import {
+  Bell,
+  Bot,
+  KeyRound,
+  ScrollText,
+  Settings2,
+  TriangleAlert,
+  Users,
+} from "lucide-react";
 import { SectionNavigation } from "@/common/components/section-navigation";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -9,9 +17,12 @@ import { useTranslations } from "@/common/hooks/use-translations";
 export function WorkspaceSettingsNavigation({
   className,
   showDangerZone,
+  showAuditLogs = true,
 }: {
   className?: string;
   showDangerZone: boolean;
+  /** Audit Logs is admin-only; a non-admin's page has no such section. */
+  showAuditLogs?: boolean;
 }) {
   const { t } = useTranslations();
   const items = [
@@ -27,6 +38,14 @@ export function WorkspaceSettingsNavigation({
       icon: Bell,
     },
     { href: "#agents", label: t("agentEnvironment.title"), icon: Bot },
+    {
+      href: "#registry-credentials",
+      label: t("registryCredentials.title"),
+      icon: KeyRound,
+    },
+    ...(showAuditLogs
+      ? [{ href: "#audit-logs", label: t("audit.title"), icon: ScrollText }]
+      : []),
     ...(showDangerZone
       ? [
           {

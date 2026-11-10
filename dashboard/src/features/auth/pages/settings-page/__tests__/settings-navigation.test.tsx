@@ -12,7 +12,7 @@ describe("SettingsNavigation", () => {
       ["Account", "#account"],
       ["Integrations", "#integrations"],
       ["Access credentials", "#access"],
-      ["Security & Compliance", "#security"],
+      ["Security", "#security"],
       ["Danger zone", "#danger-zone"],
     ];
     for (const [name, href] of expected) {

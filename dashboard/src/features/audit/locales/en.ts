@@ -88,6 +88,45 @@ const enAudit: Record<string, TranslationEntry> = {
       "Audit logs are available on the Pro plan and higher. This workspace is on Hobby.",
     description: "Audit Log plan notice body on a Hobby workspace (w8/m138)",
   },
+  "audit.exportStart": {
+    message: "Start date (UTC)",
+    description: "Audit Log CSV export start-date label",
+  },
+  "audit.exportEnd": {
+    message: "End date (UTC)",
+    description: "Audit Log CSV export end-date label",
+  },
+  "audit.exportCSV": {
+    message: "Export as CSV",
+    description: "Audit Log CSV export button (Render's label)",
+  },
+  "audit.exportHint": {
+    message:
+      "Exports up to {days} days of events: timestamp, actor, event, status and metadata.",
+    description: "Audit Log CSV export help text; {days} is the longest range",
+  },
+  "audit.exportRangeOrder": {
+    message: "The end date must be on or after the start date.",
+    description: "Audit Log CSV export: end before start",
+  },
+  "audit.exportRangeTooLong": {
+    message: "An export can span at most {days} days.",
+    description:
+      "Audit Log CSV export: range over the limit; {days} is the limit",
+  },
+  "audit.exportTooLarge": {
+    message:
+      "This range has too many events to export at once. Choose a shorter range.",
+    description: "Audit Log CSV export: row budget exceeded",
+  },
+  "audit.exportFailed": {
+    message: "The export failed. Try again.",
+    description: "Audit Log CSV export: request failed",
+  },
+  "audit.exportRangeMissing": {
+    message: "Choose a start and an end date.",
+    description: "Audit Log CSV export: a date is empty",
+  },
 };
 
 export default enAudit;

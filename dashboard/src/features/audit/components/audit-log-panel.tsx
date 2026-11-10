@@ -28,18 +28,25 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { UseAuditLogResult } from "@/features/audit/hooks/use-audit-log";
 import { AuditEventRow } from "@/features/audit/components/audit-event-row";
+import { AuditLogExport } from "@/features/audit/components/audit-log-export";
 
 /**
- * Settings → Audit Log (w4/m14): a workspace's write-verb trail, newest-first —
- * the human-facing counterpart of w4/m10's REST/GraphQL surface. Presentational:
- * its `state` (the `useAuditLog` result) is owned by the enclosing
- * `SecurityComplianceSection` (w4/m15), which shares the single query and gates
- * the whole section on `forbidden` so a non-admin sees no empty heading.
- * Entirely admin-gated (unlike Team, which shows a read-only list to
+ * Workspace Settings → Audit Logs (w4/m14; moved from account settings by
+ * w3/m305 to Render's place): a workspace's write-verb trail, newest-first —
+ * the human-facing counterpart of w4/m10's REST/GraphQL surface — with Render's
+ * date-range CSV export. Its `state` (the `useAuditLog` result) is owned by the
+ * caller. Entirely admin-gated (unlike Team, which shows a read-only list to
  * non-admins): a `forbidden` result renders nothing — a non-admin shouldn't
  * even learn this feature exists.
  */
-export function AuditLogPanel({ state }: { state: UseAuditLogResult }) {
+export function AuditLogPanel({
+  state,
+  ownerId,
+}: {
+  state: UseAuditLogResult;
+  /** The workspace the export reads; the caller resolved it. */
+  ownerId: string;
+}) {
   const { t } = useTranslations();
   const {
     events,
@@ -61,7 +68,10 @@ export function AuditLogPanel({ state }: { state: UseAuditLogResult }) {
         <CardTitle>{t("audit.title")}</CardTitle>
         <CardDescription>{t("audit.description")}</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-6">
+        {!loading && !planRequired && !unavailable ? (
+          <AuditLogExport ownerId={ownerId} />
+        ) : null}
         {planRequired ? (
           <PanelCenteredState
             icon={<LockKeyhole />}

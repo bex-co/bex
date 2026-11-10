@@ -86,6 +86,43 @@ const zhAudit: Record<string, TranslationEntry> = {
     message: "审计日志仅在 Pro 及更高套餐中提供。此工作区为 Hobby 套餐。",
     description: "Audit Log plan notice body on a Hobby workspace (w8/m138)",
   },
+  "audit.exportStart": {
+    message: "开始日期（UTC）",
+    description: "Audit Log CSV export start-date label",
+  },
+  "audit.exportEnd": {
+    message: "结束日期（UTC）",
+    description: "Audit Log CSV export end-date label",
+  },
+  "audit.exportCSV": {
+    message: "导出为 CSV",
+    description: "Audit Log CSV export button (Render's label)",
+  },
+  "audit.exportHint": {
+    message: "最多导出 {days} 天的事件：时间、操作者、事件、状态和元数据。",
+    description: "Audit Log CSV export help text; {days} is the longest range",
+  },
+  "audit.exportRangeOrder": {
+    message: "结束日期不能早于开始日期。",
+    description: "Audit Log CSV export: end before start",
+  },
+  "audit.exportRangeTooLong": {
+    message: "单次导出最多 {days} 天。",
+    description:
+      "Audit Log CSV export: range over the limit; {days} is the limit",
+  },
+  "audit.exportTooLarge": {
+    message: "该时间范围内的事件过多，无法一次导出，请缩短范围。",
+    description: "Audit Log CSV export: row budget exceeded",
+  },
+  "audit.exportFailed": {
+    message: "导出失败，请重试。",
+    description: "Audit Log CSV export: request failed",
+  },
+  "audit.exportRangeMissing": {
+    message: "请选择开始日期和结束日期。",
+    description: "Audit Log CSV export: a date is empty",
+  },
 };
 
 export default zhAudit;

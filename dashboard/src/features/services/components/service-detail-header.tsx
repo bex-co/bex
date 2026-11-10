@@ -344,7 +344,7 @@ function RegistryCredentialFact({ id }: { id: string }) {
       <KeyRound className="size-3.5 shrink-0" />
       <span>{t("services.headerRegistryCredential")}</span>
       <Link
-        to="/settings"
+        to="/workspace/settings"
         hash="registry-credentials"
         className="text-foreground truncate hover:underline"
       >
