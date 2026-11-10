@@ -30,9 +30,12 @@ Do not pad the count by splitting one outcome into artificial items, inflating s
 5. **Size and gate** each cluster of work using `/pm`'s sizing rule and milestone quality gate. Undersized work → propose an inbox note instead of a milestone, and say so. Work that fails the quality gate → mark it **not meaningful**, do not propose it as a milestone, and suggest a better-scoped alternative.
 6. **Emit the proposal as text only.** Give the full detail first: the target workstream, each proposed milestone (task table + definition of done + source + goal linkage + expected outcome + why-now rationale) and/or inbox note, numbered in proposed priority order. Propose **implementation tasks only**: `/pm` appends the standing closing tasks (Render parity when the milestone is feature dev/a fix touching REST/GraphQL/MCP/UI, then Simplify, then Test coverage, then Closeout) itself when it materializes, so do not include them — but do flag in the proposal whether you expect Render parity to apply, so `/pm` and the user aren't guessing. Close with a **"Summary (priority order)"** section: a numbered list of every candidate (milestones and inbox notes together) using the same numbers as above — one line each: `N. <title> (wN, ~size) — one-line outcome` — so the user can scan and pick by number without rereading the detail. Do **not** write files.
 7. **Hand off to `/pm`.** End by giving the exact `/pm` command(s) to materialize the proposal, e.g.:
+
    - `/pm new milestone w1 <title>` (then the tasks), or
    - `/pm add w1 <idea>` for sub-hour work, or
    - `/pm promote w1/NNN` to promote an existing inbox note.
+
+   Also note that `/pmx them all to w1` (or `/pmx 1,3 to w1`) files the selected items, ships the filing and drains the workstream with `/loopx` in one step.
 
 ## Topic
 
