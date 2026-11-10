@@ -595,6 +595,14 @@ function EnvGroupItem({
           variant="outline"
           size="sm"
           disabled={busy}
+          // Each row's control names its group (w4/537); the visible text
+          // stays "Link"/"Unlink".
+          aria-label={t(
+            linked
+              ? "services.envGroupUnlinkAria"
+              : "services.envGroupLinkAria",
+            { name: group.name },
+          )}
           onClick={() =>
             void (linked
               ? onUnlink(group.id, serviceId)

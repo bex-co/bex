@@ -1086,6 +1086,16 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Env-groups button: detach this group from the current service",
   },
+  "services.envGroupLinkAria": {
+    message: "链接 {name}",
+    description:
+      "Accessible name of an env-group row's Link button on the service Environment tab, naming the group (w4/537)",
+  },
+  "services.envGroupUnlinkAria": {
+    message: "取消链接 {name}",
+    description:
+      "Accessible name of an env-group row's Unlink button on the service Environment tab, naming the group (w4/537)",
+  },
   "services.envGroupDelete": {
     message: "删除",
     description: "Env-groups action: delete the group",

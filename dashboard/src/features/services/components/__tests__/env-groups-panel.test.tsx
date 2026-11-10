@@ -173,8 +173,11 @@ describe("EnvGroupsPanel", () => {
     expect(screen.getByText("FOO")).toBeInTheDocument();
     expect(screen.getByText("BAR")).toBeInTheDocument();
     expect(screen.getByText("cert.pem")).toBeInTheDocument();
-    // not linked to "web" => shows Link, not the Linked badge
-    expect(screen.getByRole("button", { name: /^Link$/ })).toBeInTheDocument();
+    // not linked to "web" => shows Link, not the Linked badge; the control
+    // names its group (w4/537)
+    expect(
+      screen.getByRole("button", { name: "Link shared" }),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Linked")).not.toBeInTheDocument();
   });
 
@@ -222,7 +225,7 @@ describe("EnvGroupsPanel", () => {
     const user = userEvent.setup();
     render(<EnvGroupsPanel serviceId="web" />);
 
-    await user.click(screen.getByRole("button", { name: /^Link$/ }));
+    await user.click(screen.getByRole("button", { name: /^Link / }));
     await waitFor(() =>
       expect(mockLinkGroup).toHaveBeenCalledWith("eg1", "web"),
     );
@@ -691,7 +694,7 @@ describe("EnvGroupsPanel authoritative service environment (w4/220)", () => {
     expect(screen.getByText("evg-clone")).toBeInTheDocument();
     expect(screen.queryByText("evg-production")).toBeNull();
     expect(screen.getByText("Available to link (2)")).toBeInTheDocument();
-    const link = screen.getAllByRole("button", { name: /^Link$/ })[0];
+    const link = screen.getAllByRole("button", { name: /^Link / })[0];
     expect(link).toBeEnabled();
     await user.click(link);
     expect(mockLinkGroup).toHaveBeenCalledWith("evg-staging", "web");
@@ -759,7 +762,7 @@ describe("EnvGroupsPanel authoritative service environment (w4/220)", () => {
       screen.getByText(/Checking which groups share/).closest("[role]"),
     ).toHaveAttribute("role", "status");
     expect(screen.queryByText("evg-clone")).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Link$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Link / })).toBeNull();
     // The linked row and its Unlink stay available during the gate.
     await user.click(screen.getByRole("button", { name: /Unlink/ }));
     expect(mockUnlinkGroup).toHaveBeenCalledWith("evg-linked", "web");
@@ -808,7 +811,7 @@ describe("EnvGroupsPanel authoritative service environment (w4/220)", () => {
     ).toBeInTheDocument();
     expect(screen.queryByText("evg-clone")).toBeNull();
     expect(screen.queryByText("evg-staging")).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Link$/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Link / })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Try again" }));
     expect(scopeState.retry).toHaveBeenCalledTimes(2);
 

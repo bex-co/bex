@@ -215,10 +215,10 @@ describe("EnvGroupsPanel link order after a membership write (w4/322)", () => {
   it("claims no winner until the post-link Server read lands, then ranks the new link first", async () => {
     const user = userEvent.setup();
     renderPanel();
-    await screen.findByRole("button", { name: /^Link$/ });
+    await screen.findByRole("button", { name: /^Link / });
 
     server.holdServer = true;
-    await user.click(screen.getByRole("button", { name: /^Link$/ }));
+    await user.click(screen.getByRole("button", { name: /^Link / }));
     // Membership is fresh (both linked) while the order read is held: the
     // stale cached order [Z] must not strike through A, the actual winner.
     await waitFor(() =>
@@ -263,7 +263,7 @@ describe("EnvGroupsPanel link order after a membership write (w4/322)", () => {
     await waitFor(() =>
       expect(within(linkedSection()).getAllByRole("link")).toHaveLength(1),
     );
-    await user.click(screen.getByRole("button", { name: /^Link$/ }));
+    await user.click(screen.getByRole("button", { name: /^Link / }));
     await waitFor(() =>
       expect(
         document.querySelectorAll(`[title="${loserTitle("z-new")}"]`),
@@ -277,10 +277,10 @@ describe("EnvGroupsPanel link order after a membership write (w4/322)", () => {
   it("keeps the write but leaves precedence unclaimed with a retry when the order read fails", async () => {
     const user = userEvent.setup();
     renderPanel();
-    await screen.findByRole("button", { name: /^Link$/ });
+    await screen.findByRole("button", { name: /^Link / });
 
     server.failServerReads = 1;
-    await user.click(screen.getByRole("button", { name: /^Link$/ }));
+    await user.click(screen.getByRole("button", { name: /^Link / }));
     await screen.findByText(/couldn't confirm which group wins/);
     // The same failed read also leaves the service's scope unknown, which the
     // panel already reports; one successful re-read clears both.
