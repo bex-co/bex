@@ -293,7 +293,14 @@ func (s *Service) StreamExec(ctx context.Context, req ExecRequest, w http.Respon
 	// Synchronous, so a listing right after the stream ends sees it stopped;
 	// the write is one bounded keyed UPDATE.
 	defer func() { s.stopExecution(ctx, target.workspace, executionID, exit.exitCode) }()
+	defer s.keepExecutionAlive(ctx, target.workspace, executionID)()
 	stream.start()
+	// The gateway accepted: the command now runs as long as it needs, bounded
+	// by the gateway session and the sandbox, as on Render. allowLongResume's
+	// write deadline only had to outlast a resume; left in place it cut every
+	// exec at 210 s, printing or not (w8/m151). The log tail lifts it the same
+	// way.
+	_ = http.NewResponseController(w).SetWriteDeadline(time.Time{})
 	// Either end failing — client disconnect, or upstream ending on context
 	// cancel/timeout — closes the stream with nothing left to report, so the
 	// copy's error is deliberately discarded.
@@ -403,7 +410,9 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 	defer release()
 	defer func() { _ = resp.Body.Close() }()
 	executionID := s.openExecution(ctx, req, target, ExecutionOperationSync)
+	stopHeartbeat := s.keepExecutionAlive(ctx, target.workspace, executionID)
 	res, err := bufferExec(resp)
+	stopHeartbeat()
 	var exitCode *int
 	if err == nil && !res.Truncated {
 		exitCode = &res.ExitCode

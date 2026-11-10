@@ -37,6 +37,37 @@ type fakeExecutions struct {
 	mu        sync.Mutex
 	rows      []store.SandboxExecution
 	recordErr error
+	seen      map[string]time.Time
+}
+
+func (f *fakeExecutions) TouchSandboxExecution(_ context.Context, ws, id string, at time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for _, r := range f.rows {
+		if r.WorkspaceID == ws && r.ID == id && r.StoppedAt == nil {
+			if f.seen == nil {
+				f.seen = map[string]time.Time{}
+			}
+			f.seen[id] = at
+		}
+	}
+	return nil
+}
+
+func (f *fakeExecutions) StopStaleSandboxExecutions(_ context.Context, ws, box string, before time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i := range f.rows {
+		r := &f.rows[i]
+		last, seen := f.seen[r.ID]
+		if !seen {
+			last = r.StartedAt
+		}
+		if r.WorkspaceID == ws && r.SandboxID == box && r.StoppedAt == nil && last.Before(before) {
+			r.StoppedAt = &last
+		}
+	}
+	return nil
 }
 
 func (f *fakeExecutions) RecordSandboxExecution(_ context.Context, e store.SandboxExecution) error {
@@ -171,6 +202,51 @@ func TestARunIsRecordedAtMintAndStoppedWithItsExitCode(t *testing.T) {
 	}
 	if code := getJSON(t, f.api.URL+"/v1/sandboxes/os-1/execs/exe-cph1rs3idesc73a2b2mg", &one); code != http.StatusNotFound || one["code"] != "SANDBOX_EXECUTION_NOT_FOUND" {
 		t.Errorf("unknown execution = %d %v", code, one)
+	}
+}
+
+// w8/m151: a record whose stream never stopped it (bex-api restarted
+// mid-exec, or a minted token was never redeemed) reads as stopped at its last
+// heartbeat once it has gone unrefreshed past executionStaleAfter; a record
+// still inside that window stays open.
+func TestAnAbandonedExecutionRecordReadsStopped(t *testing.T) {
+	c := loadExecContract(t)
+	f := newConnectFixture(t, "id-a", nil)
+	execs := &fakeExecutions{}
+	f.svc.Executions = execs
+	minted := *f.clock
+	_, out := f.mint(t, c.Connect.Path+"?"+c.Connect.Query, c.Command)
+
+	list := func() map[string]any {
+		t.Helper()
+		var page []map[string]any
+		if code := getJSON(t, f.api.URL+"/v1/sandboxes/os-1/execs?ownerId=tea-a", &page); code != http.StatusOK || len(page) != 1 {
+			t.Fatalf("list = %d %v", code, page)
+		}
+		exec, _ := page[0]["execution"].(map[string]any)
+		return exec
+	}
+	*f.clock = minted.Add(executionStaleAfter - time.Second)
+	if exec := list(); exec["stoppedAt"] != nil {
+		t.Fatalf("inside the window: %v, want still open", exec)
+	}
+	*f.clock = minted.Add(executionStaleAfter + time.Second)
+	exec := list()
+	if stopped, _ := exec["stoppedAt"].(string); stopped == "" || exec["exitCode"] != nil || exec["id"] != out["executionId"] {
+		t.Fatalf("abandoned: %v, want stopped with no exit code", exec)
+	}
+	if got, err := time.Parse(time.RFC3339Nano, exec["stoppedAt"].(string)); err != nil || !got.Equal(minted) {
+		t.Errorf("stoppedAt = %v (%v), want the last time it was seen, %v", exec["stoppedAt"], err, minted)
+	}
+
+	// A running stream's heartbeat refreshes the record at once and on each
+	// tick until it stops.
+	svc := &Service{Base: f.svc.Base, Executions: &fakeExecutions{rows: []store.SandboxExecution{{ID: "exe-live", WorkspaceID: "tea-a", SandboxID: "os-1", StartedAt: minted}}}}
+	stop := svc.keepExecutionAlive(context.Background(), "tea-a", "exe-live")
+	stop()
+	live := svc.Executions.(*fakeExecutions)
+	if _, seen := live.seen["exe-live"]; !seen {
+		t.Fatal("keepExecutionAlive never refreshed the record")
 	}
 }
 

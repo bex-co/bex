@@ -118,3 +118,53 @@ func TestSandboxExecutionsPG(t *testing.T) {
 		t.Errorf("after the retention prune = %+v, want the two recent records", page)
 	}
 }
+
+// w8/m151: an open execution refreshed by its stream stays open; one whose
+// stream went away is stopped at its last heartbeat, or at its start when it
+// was never seen; a stopped record is left alone.
+func TestSandboxExecutionHeartbeatPG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-exec-heartbeat").ID
+	stamp := time.Now().UnixNano()
+	box := fmt.Sprintf("sbx-h%d", stamp)
+	start := time.Now().Add(-time.Hour).UTC().Truncate(time.Microsecond)
+	live, seen, never := fmt.Sprintf("exe-%d-live", stamp), fmt.Sprintf("exe-%d-seen", stamp), fmt.Sprintf("exe-%d-never", stamp)
+	for _, id := range []string{live, seen, never} {
+		if err := st.RecordSandboxExecution(ctx, SandboxExecution{ID: id, WorkspaceID: ws, SandboxID: box, Type: "runs", Operation: "stream", Subject: "s", StartedAt: start}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	now := start.Add(time.Hour)
+	if err := st.TouchSandboxExecution(ctx, ws, live, now.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.TouchSandboxExecution(ctx, ws, seen, start.Add(10*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.StopStaleSandboxExecutions(ctx, ws, box, now.Add(-5*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	for id, want := range map[string]*time.Time{live: nil, seen: ptrTime(start.Add(10 * time.Minute)), never: ptrTime(start)} {
+		e, err := st.SandboxExecution(ctx, ws, box, id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		switch {
+		case want == nil && e.StoppedAt != nil:
+			t.Errorf("%s: stopped at %v, want open (refreshed a minute ago)", id, e.StoppedAt)
+		case want != nil && (e.StoppedAt == nil || !e.StoppedAt.Equal(*want)):
+			t.Errorf("%s: stopped at %v, want %v", id, e.StoppedAt, *want)
+		}
+	}
+	// A touch after a stop changes nothing, and a stopped record keeps its end.
+	if err := st.TouchSandboxExecution(ctx, ws, never, now); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.StopStaleSandboxExecutions(ctx, ws, box, now.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if e, _ := st.SandboxExecution(ctx, ws, box, never); e.StoppedAt == nil || !e.StoppedAt.Equal(start) {
+		t.Errorf("a stopped record moved: %v, want %v", e.StoppedAt, start)
+	}
+}

@@ -67,6 +67,28 @@ func (s *PGStore) StopSandboxExecution(ctx context.Context, workspaceID, executi
 	return err
 }
 
+// TouchSandboxExecution records that an open execution's stream is still
+// running (w8/m151).
+func (s *PGStore) TouchSandboxExecution(ctx context.Context, workspaceID, executionID string, seenAt time.Time) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE sandbox_executions SET seen_at = $3
+		WHERE workspace_id = $1 AND id = $2 AND stopped_at IS NULL`,
+		workspaceID, executionID, seenAt)
+	return err
+}
+
+// StopStaleSandboxExecutions ends a sandbox's open executions whose stream
+// was last seen (or, never seen, started) before staleBefore, at that
+// instant: their stream is gone without having stopped them (w8/m151).
+func (s *PGStore) StopStaleSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, staleBefore time.Time) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE sandbox_executions SET stopped_at = COALESCE(seen_at, started_at)
+		WHERE workspace_id = $1 AND sandbox_id = $2 AND stopped_at IS NULL
+		  AND COALESCE(seen_at, started_at) < $3`,
+		workspaceID, sandboxID, staleBefore)
+	return err
+}
+
 // StopOpenSandboxExecutions ends every execution still open in a sandbox,
 // for its termination.
 func (s *PGStore) StopOpenSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, stoppedAt time.Time) error {

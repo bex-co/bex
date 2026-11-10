@@ -557,3 +557,67 @@ func TestReadSessionStatusFailsClosedOnTerminalSandbox(t *testing.T) {
 		})
 	}
 }
+
+// deadlineRecorder is a ResponseWriter whose connection deadlines are
+// observable: http.ResponseController finds SetWriteDeadline on it.
+type deadlineRecorder struct {
+	*httptest.ResponseRecorder
+	deadlines []time.Time
+	headerAt  int // len(deadlines) when the status was written
+}
+
+func (d *deadlineRecorder) SetWriteDeadline(t time.Time) error {
+	d.deadlines = append(d.deadlines, t)
+	return nil
+}
+
+func (d *deadlineRecorder) WriteHeader(code int) {
+	d.headerAt = len(d.deadlines)
+	d.ResponseRecorder.WriteHeader(code)
+}
+
+// w8/m151: allowLongResume's 210 s write deadline only has to outlast a
+// resume. Once the gateway accepts, the stream lifts it, so an exec runs as
+// long as its command does instead of dying 210 s in, printing or not.
+func TestStreamExecLiftsTheResumeWriteDeadlineOnceTheGatewayAccepts(t *testing.T) {
+	secret := []byte("exec-secret")
+	gw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":6}\n\n"))
+	}))
+	defer gw.Close()
+	svc := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: execSandboxClient(t, "id-a"),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gw.URL, Client: gw.Client()},
+	}
+	w := &deadlineRecorder{ResponseRecorder: httptest.NewRecorder()}
+	r := allowLongResume(w, httptest.NewRequest(http.MethodPost, "/", nil).WithContext(callerCtx()))
+	if len(w.deadlines) != 1 || time.Until(w.deadlines[0]) < LongResumeWait {
+		t.Fatalf("allowLongResume set %v, want one deadline past the resume wait", w.deadlines)
+	}
+	if err := svc.StreamExec(r.Context(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "long"}, w, w.Flush); err != nil {
+		t.Fatalf("StreamExec: %v", err)
+	}
+	if len(w.deadlines) != 2 || !w.deadlines[1].IsZero() || w.headerAt != 1 {
+		t.Fatalf("deadlines %v (header written after %d), want the resume deadline lifted after the gateway accepted", w.deadlines, w.headerAt)
+	}
+	if !strings.Contains(w.Body.String(), `"exit_code":6`) {
+		t.Errorf("exit event not relayed: %s", w.Body.String())
+	}
+
+	// A refused dial keeps the deadline: nothing streams, and the error is an
+	// ordinary HTTP answer.
+	refused := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: execSandboxClient(t, "id-a"),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: "http://127.0.0.1:1", Client: gw.Client()},
+	}
+	w2 := &deadlineRecorder{ResponseRecorder: httptest.NewRecorder()}
+	r2 := allowLongResume(w2, httptest.NewRequest(http.MethodPost, "/", nil).WithContext(callerCtx()))
+	_ = refused.StreamExec(r2.Context(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "long"}, w2, w2.Flush)
+	if len(w2.deadlines) != 1 {
+		t.Fatalf("a refused dial changed the deadline: %v", w2.deadlines)
+	}
+}

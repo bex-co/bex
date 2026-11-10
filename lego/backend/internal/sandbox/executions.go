@@ -56,6 +56,8 @@ type ExecutionStore interface {
 	RecordSandboxExecution(ctx context.Context, e store.SandboxExecution) error
 	StopSandboxExecution(ctx context.Context, workspaceID, executionID string, stoppedAt time.Time, exitCode *int) error
 	StopOpenSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, stoppedAt time.Time) error
+	TouchSandboxExecution(ctx context.Context, workspaceID, executionID string, seenAt time.Time) error
+	StopStaleSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, staleBefore time.Time) error
 	SandboxExecutions(ctx context.Context, workspaceID, sandboxID, after string, limit int) ([]store.SandboxExecution, error)
 	SandboxExecution(ctx context.Context, workspaceID, sandboxID, executionID string) (store.SandboxExecution, error)
 	PruneSandboxExecutions(ctx context.Context, workspaceID string, live []string) error
@@ -103,6 +105,58 @@ func (s *Service) recordExecution(ctx context.Context, e store.SandboxExecution)
 	defer cancel()
 	if err := s.Executions.RecordSandboxExecution(ctx, e); err != nil {
 		log.Printf("sandbox: record execution %s of %s: %v", e.ID, e.SandboxID, err)
+	}
+}
+
+// executionHeartbeat is how often a running execution refreshes its record;
+// executionStaleAfter is how long a record may go unrefreshed before a read
+// closes it. It outlasts LongResumeWait: a record minted with its connect
+// token is first refreshed only once a resume wait ends and the stream opens
+// (w8/m151).
+const (
+	executionHeartbeat  = 30 * time.Second
+	executionStaleAfter = LongResumeWait + 2*time.Minute
+)
+
+// keepExecutionAlive refreshes an open record every executionHeartbeat until
+// the returned stop runs, so a record whose bex-api went away mid-stream ends
+// at its last heartbeat (closeStaleExecutions) instead of reading "running"
+// forever (w8/m151).
+func (s *Service) keepExecutionAlive(ctx context.Context, workspace, executionID string) (stop func()) {
+	if s.Executions == nil || executionID == "" {
+		return func() {}
+	}
+	ctx, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(executionHeartbeat)
+		defer ticker.Stop()
+		for {
+			s.touchExecution(ctx, workspace, executionID)
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
+	return func() { cancel(); <-done }
+}
+
+func (s *Service) touchExecution(ctx context.Context, workspace, executionID string) {
+	ctx, cancel := context.WithTimeout(ctx, executionRecordTimeout)
+	defer cancel()
+	if err := s.Executions.TouchSandboxExecution(ctx, workspace, executionID, s.Now()); err != nil && ctx.Err() == nil {
+		log.Printf("sandbox: refresh execution %s: %v", executionID, err)
+	}
+}
+
+// closeStaleExecutions ends the sandbox's records whose stream stopped
+// refreshing them, before a history read reports them (w8/m151).
+func (s *Service) closeStaleExecutions(ctx context.Context, workspace, sandboxID string) {
+	if err := s.Executions.StopStaleSandboxExecutions(ctx, workspace, sandboxID, s.Now().Add(-executionStaleAfter)); err != nil {
+		log.Printf("sandbox: close stale executions of %s: %v", sandboxID, err)
 	}
 }
 
@@ -163,6 +217,7 @@ func (s *Service) listExecutionViews(ctx context.Context, sandboxID, after strin
 	if err != nil {
 		return nil, err
 	}
+	s.closeStaleExecutions(ctx, ws, box)
 	rows, err := s.Executions.SandboxExecutions(ctx, ws, box, after, limit)
 	if err != nil {
 		return nil, err
@@ -176,6 +231,7 @@ func (s *Service) GetExecution(ctx context.Context, sandboxID, executionID strin
 	if err != nil {
 		return Execution{}, err
 	}
+	s.closeStaleExecutions(ctx, ws, box)
 	row, err := s.Executions.SandboxExecution(ctx, ws, box, executionID)
 	if errors.Is(err, store.ErrNotFound) {
 		return Execution{}, core.NewNotFoundError("SANDBOX_EXECUTION_NOT_FOUND", "sandbox execution not found", map[string]any{"id": executionID})

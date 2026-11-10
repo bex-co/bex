@@ -235,6 +235,7 @@ func (s *Service) ConnectFileHandler() http.Handler {
 		// A transfer reports no exit code; its record ends with the request,
 		// whether the transfer or a later reauthorization ended it.
 		defer s.stopExecution(ctx, claims.Workspace, claims.ExecutionID, nil)
+		defer s.keepExecutionAlive(ctx, claims.Workspace, claims.ExecutionID)()
 		ctx, cancel := context.WithTimeout(ctx, sandboxfiles.DefaultTransferTimeout)
 		defer cancel()
 		// A canceled proxy context stops the gateway request, but alone cannot
