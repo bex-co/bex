@@ -259,6 +259,33 @@ describe("NewEnvGroupDialog", () => {
     );
   });
 
+  it("marks duplicate keys on both rows and disables Create (w21/015)", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Group name"), "shared");
+    const add = screen.getByRole("button", {
+      name: "Add Environment Variable",
+    });
+    await user.click(add);
+    await user.click(add);
+    const [first, second] = screen.getAllByLabelText("Key");
+    await user.type(first, "ALPHA");
+    await user.type(second, "ALPHA");
+
+    const submit = screen.getByRole("button", {
+      name: "Create Environment Group",
+    });
+    expect(submit).toBeDisabled();
+    expect(
+      screen.getAllByText("Each variable key must be unique."),
+    ).toHaveLength(2);
+
+    await user.clear(second);
+    await user.type(second, "Alpha");
+    expect(submit).toBeEnabled();
+  });
+
   it("stays open and does not navigate when creation fails", async () => {
     createGroup.mockResolvedValue(null);
     const onCreated = vi.fn();

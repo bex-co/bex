@@ -4,6 +4,7 @@ import { commandText } from "@/features/services/lib/command-text";
 import { isValidCron } from "@/features/services/lib/cron";
 import {
   VALID_ENV_KEY,
+  duplicateNames,
   isValidSecretFileName,
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
@@ -190,9 +191,11 @@ export function isSubmittable(form: NewServiceForm): boolean {
     submittableEnvVars(form.envVars).every((row) =>
       VALID_ENV_KEY.test(row.key),
     ) &&
+    duplicateNames(form.envVars.map((row) => row.key)).size === 0 &&
     submittableSecretFiles(form.secretFiles).every((file) =>
       isValidSecretFileName(file.name),
     ) &&
+    duplicateNames(form.secretFiles.map((file) => file.name)).size === 0 &&
     // A port the backend would refuse never leaves the browser: the form blocks
     // Submit (w4/m121/t003). Types that bind no port never read the field at
     // all.

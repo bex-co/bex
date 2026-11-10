@@ -32,6 +32,7 @@ import {
   scopeValue,
   serviceMatchesScope,
 } from "@/features/env-groups/lib/scope";
+import { duplicateNames } from "@/features/services/lib/environment-draft";
 import { EnvImportDialog } from "@/features/services/components/env-import-dialog";
 import {
   upsertDotenvEntries,
@@ -224,9 +225,14 @@ function NewEnvGroupForm({
   const [scope, setScope] = useState(scopeValue(initialEnvironmentId));
   const [invalid, setInvalid] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const duplicateKeys = duplicateNames(envVars.map((variable) => variable.key));
+  const duplicateFiles = duplicateNames(secretFiles.map((file) => file.name));
+  const contentsDistinct =
+    duplicateKeys.size === 0 && duplicateFiles.size === 0;
   const contentsValid =
     envVars.every((variable) => isValidEnvVarKey(variable.key)) &&
-    secretFiles.every((file) => isValidSecretFileName(file.name));
+    secretFiles.every((file) => isValidSecretFileName(file.name)) &&
+    contentsDistinct;
 
   function addEnvVar() {
     setEnvVars((current) => [
@@ -281,7 +287,11 @@ function NewEnvGroupForm({
     environmentId === null ||
     environments.some((environment) => environment.id === environmentId);
   const canSubmit =
-    isValidEnvGroupName(name) && !busy && !unavailable && scopeExists;
+    isValidEnvGroupName(name) &&
+    contentsDistinct &&
+    !busy &&
+    !unavailable &&
+    scopeExists;
 
   function changeScope(next: string) {
     setScope(next);
@@ -384,9 +394,26 @@ function NewEnvGroupForm({
                   );
                   setInvalid(false);
                 }}
-                aria-invalid={invalid && !isValidEnvVarKey(variable.key)}
+                aria-invalid={
+                  (invalid && !isValidEnvVarKey(variable.key)) ||
+                  duplicateKeys.has(variable.key.trim())
+                }
+                aria-describedby={
+                  duplicateKeys.has(variable.key.trim())
+                    ? `env-group-var-key-${variable.id}-duplicate`
+                    : undefined
+                }
                 placeholder={t("envGroups.varKeyPlaceholder")}
               />
+              {duplicateKeys.has(variable.key.trim()) ? (
+                <p
+                  id={`env-group-var-key-${variable.id}-duplicate`}
+                  role="alert"
+                  className="text-destructive text-sm"
+                >
+                  {t("services.environmentDuplicateKey")}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1">
               <Label htmlFor={`env-group-var-value-${variable.id}`}>
@@ -483,9 +510,26 @@ function NewEnvGroupForm({
                   );
                   setInvalid(false);
                 }}
-                aria-invalid={invalid && !isValidSecretFileName(file.name)}
+                aria-invalid={
+                  (invalid && !isValidSecretFileName(file.name)) ||
+                  duplicateFiles.has(file.name.trim())
+                }
+                aria-describedby={
+                  duplicateFiles.has(file.name.trim())
+                    ? `env-group-file-name-${file.id}-duplicate`
+                    : undefined
+                }
                 placeholder={t("envGroups.fileNamePlaceholder")}
               />
+              {duplicateFiles.has(file.name.trim()) ? (
+                <p
+                  id={`env-group-file-name-${file.id}-duplicate`}
+                  role="alert"
+                  className="text-destructive text-sm"
+                >
+                  {t("services.secretFileDuplicateName")}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1">
               <Label htmlFor={`env-group-file-content-${file.id}`}>

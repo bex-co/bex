@@ -246,6 +246,41 @@ describe("buildCreateServiceInput", () => {
   });
 });
 
+describe("isSubmittable duplicates (w21/015)", () => {
+  it("refuses a repeated env key or secret-file name, trimmed", () => {
+    const dup = [
+      { key: "ALPHA", value: "one" },
+      { key: "ALPHA", value: "two" },
+    ];
+    expect(isSubmittable(form({ envVars: dup }))).toBe(false);
+    expect(
+      isSubmittable(
+        form({
+          secretFiles: [
+            { name: "dup.txt", content: "a" },
+            { name: "dup.txt", content: "b" },
+          ],
+        }),
+      ),
+    ).toBe(false);
+  });
+
+  it("keeps case-different keys and blank placeholders submittable", () => {
+    expect(
+      isSubmittable(
+        form({
+          envVars: [
+            { key: "ALPHA", value: "1" },
+            { key: "Alpha", value: "2" },
+            { key: "", value: "" },
+            { key: "", value: "" },
+          ],
+        }),
+      ),
+    ).toBe(true);
+  });
+});
+
 describe("isSubmittable", () => {
   // w4/406: the Existing Image path holds submit for a reference the server
   // would refuse, instead of a toast-only round trip.

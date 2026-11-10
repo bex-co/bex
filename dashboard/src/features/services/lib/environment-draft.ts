@@ -194,6 +194,22 @@ const FILE_LENS: RowLens<SecretFileDraftRow> = {
   readOnly: () => false,
 };
 
+/**
+ * The trimmed non-empty names that appear on more than one row. The create
+ * forms and the Edit editors share this one comparison (w21/015).
+ */
+export function duplicateNames(names: readonly string[]): Set<string> {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const raw of names) {
+    const name = raw.trim();
+    if (name === "") continue;
+    if (seen.has(name)) duplicates.add(name);
+    else seen.add(name);
+  }
+  return duplicates;
+}
+
 function validateRows<
   R extends { id: string; deleted: boolean },
   E extends string,

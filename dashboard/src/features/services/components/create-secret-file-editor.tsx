@@ -5,7 +5,10 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Textarea } from "@/common/components/ui/textarea";
-import { isValidSecretFileName } from "@/features/services/lib/environment-draft";
+import {
+  duplicateNames,
+  isValidSecretFileName,
+} from "@/features/services/lib/environment-draft";
 import { removeRow, updateRow } from "@/features/services/lib/row-editor";
 import type { SecretFileEntry } from "@/features/services/hooks/use-create-service";
 
@@ -19,6 +22,7 @@ export function CreateSecretFileEditor({
 }) {
   const { t } = useTranslations();
   const baseId = useId();
+  const duplicates = duplicateNames(rows.map((row) => row.name));
 
   function addRow() {
     onChange([...rows, { name: "", content: "" }]);
@@ -43,7 +47,10 @@ export function CreateSecretFileEditor({
         </Button>
       </div>
       {rows.map((row, i) => {
-        const invalid = row.name !== "" && !isValidSecretFileName(row.name);
+        const syntaxInvalid =
+          row.name !== "" && !isValidSecretFileName(row.name);
+        const duplicate = duplicates.has(row.name.trim());
+        const invalid = syntaxInvalid || duplicate;
         return (
           <div key={i} className="space-y-1 rounded-md border p-3">
             <div className="flex items-start gap-2">
@@ -87,7 +94,9 @@ export function CreateSecretFileEditor({
                 role="alert"
                 className="text-xs text-destructive"
               >
-                {t("services.createFieldSecretFilesNameError")}
+                {syntaxInvalid
+                  ? t("services.createFieldSecretFilesNameError")
+                  : t("services.secretFileDuplicateName")}
               </p>
             ) : null}
           </div>

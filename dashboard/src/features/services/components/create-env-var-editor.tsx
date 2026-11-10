@@ -5,7 +5,10 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { AutoTextarea } from "@/common/components/ui/auto-textarea";
 import { Label } from "@/common/components/ui/label";
-import { VALID_ENV_KEY } from "@/features/services/lib/environment-draft";
+import {
+  duplicateNames,
+  VALID_ENV_KEY,
+} from "@/features/services/lib/environment-draft";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
 import { removeRow, updateRow } from "@/features/services/lib/row-editor";
 import type { EnvVarEntry } from "@/features/services/hooks/use-create-service";
@@ -21,6 +24,7 @@ export function CreateEnvVarEditor({
   const { t } = useTranslations();
 
   const baseId = useId();
+  const duplicates = duplicateNames(rows.map((row) => row.key));
 
   function addRow() {
     onChange([...rows, { key: "", value: "" }]);
@@ -52,7 +56,10 @@ export function CreateEnvVarEditor({
             <span />
           </div>
           {rows.map((row, i) => {
-            const keyInvalid = row.key !== "" && !VALID_ENV_KEY.test(row.key);
+            const keySyntaxInvalid =
+              row.key !== "" && !VALID_ENV_KEY.test(row.key);
+            const keyDuplicate = duplicates.has(row.key.trim());
+            const keyInvalid = keySyntaxInvalid || keyDuplicate;
             return (
               <div key={i} className="space-y-1">
                 <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
@@ -101,7 +108,9 @@ export function CreateEnvVarEditor({
                     role="alert"
                     className="text-xs text-destructive"
                   >
-                    {t("services.createFieldEnvVarsKeyError")}
+                    {keySyntaxInvalid
+                      ? t("services.createFieldEnvVarsKeyError")
+                      : t("services.environmentDuplicateKey")}
                   </p>
                 )}
               </div>
