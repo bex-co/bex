@@ -22,7 +22,9 @@ jobs:
   mobile:
     # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: ubuntu-24.04-arm
+    # x64: the Expo bundle step runs hermes-compiler's linux64-bin/hermesc, an
+    # x86-64-only binary (the ARM host ran it through binfmt QEMU).
+    runs-on: ubuntu-latest
     timeout-minutes: 70
     env:
       # GOWORK=off, same as backend-test.yml/operator-test.yml: the schema-dump

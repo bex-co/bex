@@ -552,6 +552,11 @@ loki.process "fixture_clock" {
                 for filename in ["config.alloy", "zot.log", "other.log"]:
                     run("docker", "cp", str(tmp / filename), f"{name}:/tmp/{filename}")
                 run("docker", "start", name)
+                # docker cp can keep the host file owner. In the sticky /tmp, Linux
+                # fs.protected_regular (on by default on Ubuntu hosts, GitHub-hosted
+                # runners included) then refuses the O_CREAT open of `cat >>` even
+                # for root, whatever the mode. Owned by /tmp's owner, it is allowed.
+                run("docker", "exec", "-u", "0", name, "chown", "0:0", "/tmp/zot.log", "/tmp/other.log")
 
                 def scrape():
                     response = scrape_metrics(self, name)
