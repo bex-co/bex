@@ -52,7 +52,7 @@ func TestKeyValueConnectionInfoWaitsForInternalAuthCutover(t *testing.T) {
 					},
 				}
 				if public {
-					kv.Status.ExternalHost = name + ".kv.bex.co"
+					kv.Status.ExternalHost, kv.Status.TLSListener = name+".kv.bex.co", true
 				}
 				sec := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name + "-auth", Namespace: "default"}, Data: map[string][]byte{"password": password}}
 				svc, _ := newService(kv, sec)

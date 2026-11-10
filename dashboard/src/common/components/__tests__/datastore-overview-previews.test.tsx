@@ -146,6 +146,7 @@ describe("datastore Details and Connections previews (w4/298)", () => {
         id={keyValue.id}
         name={keyValue.name}
         internalAuth={false}
+        isPublic={false}
       />,
     ],
   ] as const) {

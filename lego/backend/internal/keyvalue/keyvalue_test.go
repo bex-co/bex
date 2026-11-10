@@ -109,7 +109,7 @@ func seedKeyValue(t *testing.T, cl client.Client, name string) {
 		Spec:       appv1alpha1.KeyValueSpec{Plan: "free", Public: true},
 		Status: appv1alpha1.KeyValueStatus{
 			Phase: appv1alpha1.KVPhaseReady, Host: name + ".default.svc", Port: 6379,
-			SecretName: name, ExternalHost: name + ".kv.bex.co",
+			SecretName: name, ExternalHost: name + ".kv.bex.co", TLSListener: true,
 		},
 	}
 	sec := &corev1.Secret{
@@ -1879,7 +1879,7 @@ func TestPublishedStoreGetsAnExternalConnectionString(t *testing.T) {
 	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "connkv"}, &kv); err != nil {
 		t.Fatalf("get: %v", err)
 	}
-	kv.Status.ExternalHost = "connkv.kv.bex.co"
+	kv.Status.ExternalHost, kv.Status.TLSListener = "connkv.kv.bex.co", true
 	if err := cl.Update(ctx, &kv); err != nil {
 		t.Fatalf("status update: %v", err)
 	}
@@ -1901,5 +1901,40 @@ func TestPublishedStoreGetsAnExternalConnectionString(t *testing.T) {
 	}
 	if !strings.Contains(info.CLICommand, "connkv.kv.bex.co") {
 		t.Fatalf("cliCommand must target the external host once published: %q", info.CLICommand)
+	}
+}
+
+// w8/237: on a first enable the operator sets externalHost about a minute
+// before the TLS listener opens; connection-info advertised the rediss:// URL
+// at once, and a client handed it saw `SSL_connect failed: unexpected eof`.
+// The URL (and the --sni CLI command) now wait for the listener.
+func TestConnectionInfoWaitsForTheTLSListener(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "opening-kv")
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "opening-kv"}, &kv); err != nil {
+		t.Fatal(err)
+	}
+	kv.Status.TLSListener = false
+	if err := cl.Update(context.Background(), &kv); err != nil {
+		t.Fatal(err)
+	}
+	read := func() KeyValueConnectionInfo {
+		t.Helper()
+		var ci KeyValueConnectionInfo
+		if err := json.Unmarshal(serveREST(svc, "GET", "/v1/key-value/opening-kv/connection-info", "").Body.Bytes(), &ci); err != nil {
+			t.Fatal(err)
+		}
+		return ci
+	}
+	if ci := read(); ci.ExternalConnectionString != "" || strings.Contains(ci.CLICommand, "--sni") || ci.InternalConnectionString == "" {
+		t.Fatalf("listener not open yet: connection-info = %+v, want the internal URL only", ci)
+	}
+	kv.Status.TLSListener = true
+	if err := cl.Update(context.Background(), &kv); err != nil {
+		t.Fatal(err)
+	}
+	if ci := read(); ci.ExternalConnectionString != "rediss://default:s3cret@opening-kv.kv.bex.co:6379" || !strings.Contains(ci.CLICommand, "--sni opening-kv.kv.bex.co") {
+		t.Fatalf("listener open: connection-info = %+v, want the external URL and --sni command", ci)
 	}
 }

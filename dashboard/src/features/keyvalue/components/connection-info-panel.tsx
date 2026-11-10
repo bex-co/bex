@@ -36,10 +36,15 @@ export function ConnectionInfoPanel({
   id,
   name,
   internalAuth,
+  isPublic,
 }: {
   id: string;
   name: string;
   internalAuth: boolean;
+  /** Whether external access is enabled: an absent external URL then means
+   *  its TLS listener is still opening (w8/237), not that the store is
+   *  private. */
+  isPublic: boolean;
 }) {
   const { t } = useTranslations();
   const { info, loading, error, reveal, hide } = useConnectionInfo(id);
@@ -69,7 +74,7 @@ export function ConnectionInfoPanel({
 
         {info ? (
           <>
-            <RevealedInfo info={info} />
+            <RevealedInfo info={info} isPublic={isPublic} />
             <Button variant="outline" size="sm" onClick={hide}>
               {t("keyvalue.connHide")}
             </Button>
@@ -142,7 +147,13 @@ function InternalAuthSection({
   );
 }
 
-function RevealedInfo({ info }: { info: KeyValueConnectionInfoView }) {
+function RevealedInfo({
+  info,
+  isPublic,
+}: {
+  info: KeyValueConnectionInfoView;
+  isPublic: boolean;
+}) {
   const { t } = useTranslations();
   const copiedText = t("keyvalue.copied");
   const copyErrorText = t("keyvalue.copyError");
@@ -163,7 +174,11 @@ function RevealedInfo({ info }: { info: KeyValueConnectionInfoView }) {
         />
       ) : (
         <p className="text-sm text-muted-foreground">
-          {t("keyvalue.connExternalUnavailable")}
+          {t(
+            isPublic
+              ? "keyvalue.connExternalPending"
+              : "keyvalue.connExternalUnavailable",
+          )}
         </p>
       )}
       <ConnectionField

@@ -1322,6 +1322,14 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 			external = keyValueURI("rediss", string(password), kv.Status.ExternalHost, port)
 		}
 	}
+	// The external URL is advertised once its TLS listener accepts
+	// connections (w8/237): on a first enable the certificate is issued and
+	// the operator opens tls-port about a minute after externalHost is set,
+	// and a client handed the URL sooner only saw `SSL_connect failed:
+	// unexpected eof`.
+	if !kv.Status.TLSListener {
+		external = ""
+	}
 
 	if kv.Status.InternalAuthOptional && !kv.Spec.InternalAuth {
 		// Status is set only after the stable Service routes through a ready

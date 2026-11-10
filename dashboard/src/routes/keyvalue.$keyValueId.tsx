@@ -248,6 +248,7 @@ export function KeyValueDetailPage() {
                     id={keyValue.id}
                     name={keyValue.name}
                     internalAuth={keyValue.internalAuth ?? false}
+                    isPublic={keyValue.public}
                   />
                 </section>
                 <section

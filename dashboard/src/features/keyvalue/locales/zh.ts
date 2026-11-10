@@ -439,6 +439,12 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "外部键值存储 URL",
     description: "Connection-info field label (public rediss:// URL)",
   },
+  "keyvalue.connExternalPending": {
+    message:
+      "正在开启外部访问。存储开始接受 TLS 连接后（通常在一分钟内）会显示外部 URL；可隐藏后重新显示以刷新。",
+    description:
+      "Shown instead of the external URL while a public store's TLS listener is still opening",
+  },
   "keyvalue.connExternalUnavailable": {
     message: "未公开。在「网络」中添加入站 IP 规则即可启用外部访问。",
     description:

@@ -449,6 +449,12 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "External Key Value URL",
     description: "Connection-info field label (public rediss:// URL)",
   },
+  "keyvalue.connExternalPending": {
+    message:
+      "External access is being enabled. The external URL appears once the store accepts TLS connections, usually within a minute; hide and reveal again to refresh.",
+    description:
+      "Shown instead of the external URL while a public store's TLS listener is still opening",
+  },
   "keyvalue.connExternalUnavailable": {
     message:
       "Not public. Add an inbound IP rule under Networking to enable external access.",
