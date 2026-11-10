@@ -9,7 +9,7 @@
 - [ ] **m313** — [Sandbox storage and memory meters: a suspended sandbox pays snapshot storage, as on Render](blocked/m313/README.md) (11 tasks) ← from docs/ADR104 gaps 8, 14 — **BLOCKED (t006's production check needs, from the user or infra: the deploy of this change; the two Zot users with read and delete rights and bex-api's credential and `BEX_SANDBOX_SNAPSHOT_REGISTRY_*` env, filed as w22/006, now m321; `scripts/stripe-billing-setup.py` run on the test and live Stripe accounts and then `BEX_STRIPE_SANDBOX_STORAGE_METER=1`; then a suspended sandbox to compare with the registry)**; t001–t005 and t007–t010 done and shipped, t006 and t011 remain
 - [ ] **m314** — [Sandbox CPU billed on use, as on Render: a gVisor accuracy spike, then the cutover](blocked/m314/README.md) (9 tasks) ← from docs/ADR104 gap 8; depends on m313 — **BLOCKED (t001's spike needs production: a sandbox to load and Prometheus to read, from the user or infra; QA login is broken, w32/m284; every other task depends on its verdict)**; thresholds recorded before any measurement, nothing built
 
-- [ ] **m321** — [The storage meter's registry credentials: the operator mints a read user and a delete user for bex-api](m321/README.md) (8 tasks) ← promoted from w22/006
+- [ ] **m321** — [The storage meter's registry credentials: the operator mints a read user and a delete user for bex-api](blocked/m321/README.md) (8 tasks) ← promoted from w22/006 — **BLOCKED (the deploy of this change, which makes the operator mint the two Zot users and bounce Zot; then t005's production check: sizing a suspended sandbox's image, then `BEX_SANDBOX_SNAPSHOT_REAP=on` and a terminated sandbox's tags deleted)**; t001–t004, t006 and t007 done and shipped
 
 ## Inbox
 

@@ -58,7 +58,11 @@ type RegistryConfig struct {
 	Container string // the sandbox container's name in the pod; default DefaultSnapshotContainer
 	User      string
 	Password  string
-	HTTP      *http.Client
+	// Credentials, when set, supplies the user and password for each call in
+	// place of User and Password, so a credential rotated in a Secret is picked up
+	// without a restart.
+	Credentials func(context.Context) (user, password string, err error)
+	HTTP        *http.Client
 }
 
 // RegistrySizer sizes a snapshot from its OCI image manifest in the registry:
@@ -124,8 +128,15 @@ func (r *RegistryConfig) request(ctx context.Context, method, path, accept strin
 	if accept != "" {
 		req.Header.Set("Accept", accept)
 	}
-	if r.User != "" {
-		req.SetBasicAuth(r.User, r.Password)
+	user, password := r.User, r.Password
+	if r.Credentials != nil {
+		var err error
+		if user, password, err = r.Credentials(ctx); err != nil {
+			return nil, nil, fmt.Errorf("registry credentials: %w", err)
+		}
+	}
+	if user != "" {
+		req.SetBasicAuth(user, password)
 	}
 	resp, err := r.client().Do(req)
 	if err != nil {

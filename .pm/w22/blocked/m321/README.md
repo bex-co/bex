@@ -1,18 +1,18 @@
 # w22 · m321 — The storage meter's registry credentials: the operator mints a read user and a delete user for bex-api
 
-**Worker:** worker22 **Goal:** bex-api can read a suspended sandbox's image size from Zot and delete a terminated sandbox's `snap-gen` tags, through two operator-managed Zot users scoped to `snapshots/**`, with no admin credential in bex-api **Status:** todo
+**Worker:** worker22 **Goal:** bex-api can read a suspended sandbox's image size from Zot and delete a terminated sandbox's `snap-gen` tags, through two operator-managed Zot users scoped to `snapshots/**`, with no admin credential in bex-api **Status:** blocked (t001–t004, t006 and t007 done and shipped; t005's production check and t008's closeout wait for the deploy and the Zot bounce it causes)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design: where the two Zot credentials live, and how the operator may write them | 45m | — |
-| t002 | Operator: mint the two Zot users, their ACL entries and the Secret | 1h30m | w22/m321/t001 |
-| t003 | Hook it into the operator: reconcile, RBAC and manifests | 1h | w22/m321/t002 |
-| t004 | bex-api: read the Secret into the storage meter's environment | 45m | w22/m321/t003 |
+| t001 | Design: where the two Zot credentials live, and how the operator may write them — **DONE** | 45m | — |
+| t002 | Operator: mint the two Zot users, their ACL entries and the Secret — **DONE** | 1h30m | w22/m321/t001 |
+| t003 | Hook it into the operator: reconcile, RBAC and manifests — **DONE** | 1h | w22/m321/t002 |
+| t004 | bex-api: read the Secret into the storage meter's environment — **DONE** | 45m | w22/m321/t003 |
 | t005 | Production check: a suspended sandbox is sized, a terminated one's images are deleted | 1h | w22/m321/t004 |
-| t006 | Simplify | 20m | w22/m321/t005 |
-| t007 | Test coverage | 40m | w22/m321/t005 |
+| t006 | Simplify — **DONE** | 20m | w22/m321/t005 |
+| t007 | Test coverage — **DONE** | 40m | w22/m321/t005 |
 | t008 | Closeout | 10m | w22/m321/t006, w22/m321/t007 |
 
 ## Definition of done

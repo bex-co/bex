@@ -211,3 +211,45 @@ func TestMeterWithoutASizerNeverSizesButStillAccrues(t *testing.T) {
 		t.Errorf("sized = %v accrual passes = %d: with no sizer nothing is sized and an already-sized object still accrues", fake.sized, fake.accrueCalls)
 	}
 }
+
+// A credentials provider replaces the fixed user and password on every call, so a
+// rotated Secret is picked up, and a provider that fails stops the call instead of
+// sending it unauthenticated.
+func TestRegistryConfigUsesItsCredentialsProviderPerCall(t *testing.T) {
+	var seen []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		user, pass, _ := r.BasicAuth()
+		seen = append(seen, user+":"+pass)
+		if strings.HasSuffix(r.URL.Path, "/tags/list") {
+			_, _ = fmt.Fprint(w, `{"tags":["snap-gen10"]}`)
+			return
+		}
+		_, _ = fmt.Fprint(w, gen2Manifest)
+	}))
+	t.Cleanup(srv.Close)
+	password, fail := "first", false
+	sizer := &RegistrySizer{RegistryConfig{
+		BaseURL: srv.URL, User: "ignored", Password: "ignored",
+		Credentials: func(context.Context) (string, string, error) {
+			if fail {
+				return "", "", errors.New("secret not readable")
+			}
+			return "bex-sandbox-meter", password, nil
+		},
+	}}
+	if _, err := sizer.SnapshotBytes(context.Background(), "tea-a", "os-1"); err != nil {
+		t.Fatal(err)
+	}
+	password = "rotated"
+	if _, err := sizer.SnapshotBytes(context.Background(), "tea-a", "os-1"); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := strings.Join(seen, ","), strings.Repeat("bex-sandbox-meter:first,", 2)+strings.Repeat("bex-sandbox-meter:rotated,", 2); got+"," != want {
+		t.Errorf("credentials sent = %s, want the provider's value on every call", got)
+	}
+	before := len(seen)
+	fail = true
+	if _, err := sizer.SnapshotBytes(context.Background(), "tea-a", "os-1"); err == nil || len(seen) != before {
+		t.Errorf("a failing provider must stop the call before it is sent: err %v, %d new requests", err, len(seen)-before)
+	}
+}

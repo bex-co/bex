@@ -1,0 +1,40 @@
+# bex-api reads the sandbox storage meter's Zot credentials (w22/m321,
+# docs/ADR023 § Sandbox snapshot storage): the bex-sandbox-registry Secret the
+# operator mints in the registry namespace (a read user for sizing a suspended
+# sandbox's image, a read-and-delete user for deleting a terminated sandbox's).
+#
+# Exactly one Secret, by name, and only `get`: a compromised bex-api pod can read
+# these two credentials, which reach only snapshots/** in Zot, and no other
+# registry Secret (zot-htpasswd, zot-config, the per-App pull secrets). The
+# operator's own Secret access in this namespace is unchanged
+# (operator-registry-rbac.yaml); bex-api is in bex-system, and a secretKeyRef
+# cannot cross namespaces, so it reads the Secret through the API instead.
+#
+# This file lives in deploy/gitops (not lego/operator/config/api) so the Role keeps
+# its explicit bex-registry namespace; config/api inherits the bex-system
+# namespace transform. Same pattern as operator-registry-rbac.yaml.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: bex-api-sandbox-registry
+  namespace: bex-registry
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["bex-sandbox-registry"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: bex-api-sandbox-registry
+  namespace: bex-registry
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: bex-api-sandbox-registry
+subjects:
+  # bex-api's ServiceAccount lives in bex-system.
+  - kind: ServiceAccount
+    name: bex-api
+    namespace: bex-system

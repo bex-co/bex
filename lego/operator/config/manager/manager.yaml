@@ -147,6 +147,14 @@ spec:
           # this unset strands the Zot pod on a missing-Secret mount.
           - name: BEX_REGISTRY_NS
             value: bex-registry
+          # The sandbox storage meter's registry users (w22/m321): the operator mints a
+          # read user (sizing) and a read-and-delete user (the reaper), both on
+          # snapshots/** only, into the bex-sandbox-registry Secret in the registry
+          # namespace, which bex-api reads by name (deploy/gitops/base/
+          # bex-api-sandbox-registry-rbac.yaml). Minting changes Zot's ACL and bounces
+          # it once. Unset, nothing is minted.
+          - name: BEX_SANDBOX_METER_CREDS
+            value: "1"
           # Namespace containing tenant App/Database/KeyValue CRs and their
           # credentials Secrets. The manager caches Secrets only in this namespace
           # so its namespace Role is sufficient; keep aligned with bex-api's

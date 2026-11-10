@@ -264,6 +264,20 @@ spec:
             # dropped) if the catalog Price were ever retired.
             - name: BEX_STRIPE_AGENT_MODEL_METER
               value: "1"
+            - name: BEX_SANDBOX_SNAPSHOT_REGISTRY_URL
+              value: http://zot.bex-registry.svc:5000
+            # The sandbox storage meter's Zot users (w22/m321): the operator mints
+            # them into this Secret and bex-api reads it through a Role limited to
+            # this one name (deploy/gitops/base/bex-api-sandbox-registry-rbac.yaml).
+            # Sizing starts once the Secret exists; until then reads fail, the
+            # meter retries, and SandboxStorageUnsized says why.
+            - name: BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET
+              value: bex-registry/bex-sandbox-registry
+            # Deleting a terminated sandbox's images is the first registry write
+            # bex-api makes: turn it on ("on") only after sizing is verified on
+            # production (w22/m321 t005).
+            - name: BEX_SANDBOX_SNAPSHOT_REAP
+              value: "off"
             - name: BEX_STRIPE_COMP_COUPON_ID
               valueFrom:
                 secretKeyRef:

@@ -964,6 +964,14 @@ if [ -n "$ssh_cluster_role_rules" ] && [ "$ssh_cluster_role_rules" != 'app.bex.c
   echo "FAIL: SSH gateway ClusterRole may grant only read-only Apps (get,list,watch); got '$ssh_cluster_role_rules'" >&2
   fail=1
 fi
+# bex-api reads the sandbox storage meter's Zot credentials (w22/m321): exactly
+# one Secret, by name, and only `get`. Any widening would let a compromised bex-api
+# pod read the registry namespace's other credentials (zot-htpasswd, zot-config).
+sandbox_registry_rules="$(yq -N '. | select(.kind == "Role" and .metadata.name == "bex-api-sandbox-registry") | .rules[] | [.apiGroups | join(","), .resources | join(","), (.resourceNames // []) | join(","), .verbs | sort | join(",")] | join("|")' deploy/gitops/base/bex-api-sandbox-registry-rbac.yaml)"
+if [ "$sandbox_registry_rules" != '|secrets|bex-sandbox-registry|get' ]; then
+  echo "FAIL: bex-api's registry-namespace Role must grant exactly get on the Secret bex-sandbox-registry; got '$sandbox_registry_rules'" >&2
+  fail=1
+fi
 bex_api_ingress_verbs="$(yq -N '. | select(.kind == "Role" and .metadata.name == "bex-api-apps") | .rules[] | select(.apiGroups[] == "networking.k8s.io" and .resources[] == "ingresses") | .verbs | sort | join(",")' deploy/gitops/base/bex-api-apps-rbac.yaml)"
 if [ "$bex_api_ingress_verbs" != "get,list" ]; then
   echo "FAIL: bex-api tenant Role needs exactly get,list on Ingresses for exact-router egress accounting; got '$bex_api_ingress_verbs'" >&2

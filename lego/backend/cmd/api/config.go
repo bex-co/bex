@@ -271,7 +271,16 @@ type Config struct {
 	// suspended sandboxes retain, in decimal GB (bex's own bound, ADR104 D11; 0
 	// disables). The GC credential, with the delete action on the snapshot
 	// prefix, turns on deleting a gone sandbox's images.
-	SandboxMaxStorageGBPerWorkspace    int
+	SandboxMaxStorageGBPerWorkspace int
+	// SandboxSnapshotRegistrySecret ("<namespace>/<name>") names the Secret the
+	// operator mints with the meter's two Zot users; bex-api reads it instead of
+	// the user and password variables, which stay as an override for a registry
+	// the operator does not manage. SandboxSnapshotReap turns on deleting a gone
+	// sandbox's images with the Secret's reaper user: a deliberate second step
+	// after sizing is verified, because it is the first registry write bex-api
+	// has made.
+	SandboxSnapshotRegistrySecret      string
+	SandboxSnapshotReap                bool
 	SandboxSnapshotRegistryGCUser      string
 	SandboxSnapshotRegistryGCPass      string
 	SandboxSnapshotRegistryUser        string
@@ -603,6 +612,14 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		}
 	}
 	cfg.SandboxMaxStorageGBPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE", 500)
+	cfg.SandboxSnapshotRegistrySecret = strings.TrimSpace(getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET"))
+	if ref := cfg.SandboxSnapshotRegistrySecret; ref != "" {
+		if _, err := parseSecretRef(ref); err != nil {
+			p.warnf("BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET: %v; sandbox storage is not metered from it", err)
+			cfg.SandboxSnapshotRegistrySecret = ""
+		}
+	}
+	cfg.SandboxSnapshotReap = p.onOff("BEX_SANDBOX_SNAPSHOT_REAP", false)
 	cfg.SandboxSnapshotRegistryGCUser = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_USER")
 	cfg.SandboxSnapshotRegistryGCPass = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_PASSWORD")
 	cfg.SandboxSnapshotRegistryUser = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_USER")

@@ -50,6 +50,7 @@ resources:
   - bex-ssh-apps-rbac.yaml # SSH gateway's namespace-scoped pod read + exec grant
   - operator-apps-rbac.yaml # operator's apps-namespace-scoped secrets grants (w7/m7)
   - operator-registry-rbac.yaml # operator's bex-registry-namespace secrets grants for per-App pull creds (w7/m36)
+  - bex-api-sandbox-registry-rbac.yaml # bex-api reads the one Secret holding the sandbox storage meter's Zot credentials (w22/m321)
   - operator-daytoday-rbac.yaml # scoped (non-system:masters) operator SA + ClusterRole for day-to-day ops (w7/m37, docs/ADR019-infra-credentials.md)
   - disk-storageclass.yaml # LUKS-encrypted class for persistent service disks (ADR082); prod operator overlay names it via BEX_DISK_STORAGE_CLASS (w2/m86)
   - disk-bounded-storageclass.yaml # dormant until the reviewed bounded CSI derivative is ready (w8/m144)

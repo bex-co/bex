@@ -518,6 +518,17 @@ func setupAppReconciler(
 			setupLog.Error(err, "Failed to create controller", "controller", "sandboxnamespaceregistry")
 			os.Exit(1)
 		}
+		// The sandbox storage meter's two platform-wide Zot users (w22/m321,
+		// docs/ADR023 § Sandbox snapshot storage): a read user for sizing and a
+		// read-and-delete user for the reaper, both on snapshots/** only, in a
+		// Secret bex-api reads by name. Opt-in: minting them changes Zot's ACL and
+		// bounces it once.
+		if os.Getenv("BEX_SANDBOX_METER_CREDS") == "1" {
+			if err := mgr.Add(&controller.SandboxMeterCredsRunnable{Registry: appReconciler.PerAppRegistry}); err != nil {
+				setupLog.Error(err, "Failed to add runnable", "runnable", "sandbox-meter-creds")
+				os.Exit(1)
+			}
+		}
 	}
 }
 

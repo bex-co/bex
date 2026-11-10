@@ -177,6 +177,16 @@ func TestLoadConfigSandboxSnapshotRegistry(t *testing.T) {
 	if gc.SandboxSnapshotRegistryGCUser != "reaper" || gc.SandboxSnapshotRegistryGCPass != "gc-pw" {
 		t.Errorf("gc credential = %q/%q", gc.SandboxSnapshotRegistryGCUser, gc.SandboxSnapshotRegistryGCPass)
 	}
+	// The operator-minted Secret and the separate reaper switch.
+	if cfg, _ := read(nil); cfg.SandboxSnapshotRegistrySecret != "" || cfg.SandboxSnapshotReap {
+		t.Errorf("defaults = %q reap %v, want no Secret and the reaper off", cfg.SandboxSnapshotRegistrySecret, cfg.SandboxSnapshotReap)
+	}
+	if cfg, _ := read(map[string]string{"BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET": "bex-registry/bex-sandbox-registry", "BEX_SANDBOX_SNAPSHOT_REAP": "on"}); cfg.SandboxSnapshotRegistrySecret != "bex-registry/bex-sandbox-registry" || !cfg.SandboxSnapshotReap {
+		t.Errorf("configured = %q reap %v", cfg.SandboxSnapshotRegistrySecret, cfg.SandboxSnapshotReap)
+	}
+	if cfg, warnings := read(map[string]string{"BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET": "not-a-ref"}); cfg.SandboxSnapshotRegistrySecret != "" || !hasWarning(warnings, "BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET") {
+		t.Errorf("a malformed ref = %q (warnings %v), want it dropped with a warning", cfg.SandboxSnapshotRegistrySecret, warnings)
+	}
 	for _, bad := range []string{"zot.bex-registry.svc:5000", "ftp://zot:5000", "http://"} {
 		cfg, warnings := read(map[string]string{"BEX_SANDBOX_SNAPSHOT_REGISTRY_URL": bad})
 		if cfg.SandboxSnapshotRegistryURL != "" || !hasWarning(warnings, "BEX_SANDBOX_SNAPSHOT_REGISTRY_URL") {
