@@ -1,6 +1,6 @@
 # w22 · m314 — Sandbox CPU billed on use, as on Render: a gVisor accuracy spike, then the cutover
 
-**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** todo
+**Worker:** worker22 **Goal:** a running sandbox is billed for the CPU it uses plus the memory allocated, and the billing switches in one step, or the fallback is recorded for the user's sign-off **Status:** blocked (t001, the production CPU-accuracy spike, has its thresholds recorded and no measurement; t002–t009 depend on its verdict and are not started)
 
 ## Tasks (in order)
 

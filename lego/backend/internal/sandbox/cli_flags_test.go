@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -478,6 +479,54 @@ func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
 		refusal, ok := NotOfferedRoutes[pattern]
 		if !ok || refusal.Code != tc.code || !strings.Contains(refusal.Message, tc.mentions) {
 			t.Errorf("%s %s = %q %+v, want %s mentioning %q", tc.method, tc.path, pattern, refusal, tc.code, tc.mentions)
+		}
+	}
+}
+
+// The pinned OpenAPI (list-sandboxes) gives `limit` a default of 20, a minimum of
+// 1 and a maximum of 100. Once `limit` or `cursor` is present bex pages by the
+// repo's policy (core.PageParams): the default is 20, and a value outside 1..100
+// is clamped, never refused. Omitting both returns the full list, which is the
+// platform-wide divergence ADR006 records ("pre-pagination clients"); Render
+// returns 20 there. Whether Render clamps or refuses a 101 is not in the OpenAPI
+// (w22/001, ADR104 D7).
+func TestListLimitIsClampedToOneHundredAndAnUnpagedListIsComplete(t *testing.T) {
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var items []map[string]any
+		for i := range 130 {
+			items = append(items, map[string]any{
+				"id": fmt.Sprintf("os-%03d", i),
+				"metadata": map[string]string{
+					metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
+					metadataNetworkPolicy: string(NetworkPolicyDenyAll),
+				},
+				"status": map[string]string{"state": "Running"},
+			})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+	}))
+	t.Cleanup(up.Close)
+	svc := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}}, Client: NewClient(up.URL)}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	for query, want := range map[string]int{
+		"":               130, // no limit or cursor: the full list (ADR006's recorded divergence from Render's 20)
+		"?limit=1":       1,   // minimum
+		"?limit=100":     100, // the maximum is accepted
+		"?limit=101":     100, // above it is clamped, not refused
+		"?limit=100000":  100,
+		"?limit=0":       1,  // below the minimum clamps up
+		"?limit=junk":    20, // present but unparseable: the paged default
+		"?cursor=os-000": 20, // a cursor alone pages at the default
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/sandboxes"+query, nil).WithContext(callerCtx()))
+		var envelopes []SandboxEnvelope
+		if err := json.Unmarshal(rec.Body.Bytes(), &envelopes); err != nil || rec.Code != http.StatusOK {
+			t.Fatalf("list %q = %d %s", query, rec.Code, rec.Body.String())
+		}
+		if len(envelopes) != want {
+			t.Errorf("list %q returned %d sandboxes, want %d", query, len(envelopes), want)
 		}
 	}
 }

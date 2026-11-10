@@ -621,3 +621,43 @@ func TestStreamExecLiftsTheResumeWriteDeadlineOnceTheGatewayAccepts(t *testing.T
 		t.Fatalf("a refused dial changed the deadline: %v", w2.deadlines)
 	}
 }
+
+// Render's exec contract (render.com/docs/sandboxes-executing, read 2026-11-10):
+// the command is one string, run through `sh -c` so pipes, `&&`, quoting and
+// redirection are interpreted inside the sandbox. bex must hand the string to
+// the shell untouched, as ONE argument: splitting it on spaces, or quoting it
+// again, would change what runs. The page names `sh`, not `bash` (the Alpine
+// default image has no bash), and bex runs `/bin/sh -c` (w22/001).
+func TestExecHandsTheCommandStringToShAsOneUntouchedArgument(t *testing.T) {
+	secret := []byte("exec-secret")
+	var gotCommand []string
+	gw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		gotCommand = claims.Command
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":3}\n\n"))
+	}))
+	defer gw.Close()
+	svc := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: execSandboxClient(t, "id-a"),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gw.URL, Client: gw.Client()},
+	}
+	const command = `ls /tmp | wc -l && echo "a  b" > /tmp/out; cat < /tmp/out; exit 3`
+	res, err := svc.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: command})
+	if err != nil {
+		t.Fatalf("Exec: %v", err)
+	}
+	if want := []string{"/bin/sh", "-c", command}; strings.Join(gotCommand, "\x00") != strings.Join(want, "\x00") {
+		t.Errorf("argv = %q, want %q: the string must reach sh as one untouched argument", gotCommand, want)
+	}
+	// A nonzero exit is data the caller reads, never an error (the SDK does not
+	// raise on one, per the same page).
+	if res.ExitCode != 3 {
+		t.Errorf("exit code = %d, want 3 returned as data", res.ExitCode)
+	}
+}
