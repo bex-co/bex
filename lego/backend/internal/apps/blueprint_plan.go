@@ -200,7 +200,13 @@ var blueprintServiceFieldAppliers = []struct {
 	names []string
 	apply func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec)
 }{
-	{names: []string{"type"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Type = want.Type }},
+	{names: []string{"type"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {
+		// An empty spec.type is a web service (the CRD's own rule), so a legacy
+		// App that predates the field is not a changed type (w21/030).
+		if effectiveType(dst.Type) != effectiveType(want.Type) {
+			dst.Type = want.Type
+		}
+	}},
 	{names: []string{"schedule"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) { dst.Schedule = want.Schedule }},
 	{names: []string{"repo"}, apply: applyBlueprintRepo},
 	{names: []string{"image"}, apply: func(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) {

@@ -88,6 +88,13 @@ func roundTripFixture() (*Service, GenerateBlueprintRequest) {
 	static.Spec.BuildCommand = "npm run build"
 	static.Spec.Runtime = ""
 
+	// An App that predates spec.type: the CRD treats an empty type as a web
+	// service, so its export must re-plan as noop too (w21/030).
+	legacy := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "legacy", Namespace: "default"},
+		Spec:       svcSpec(""),
+	}
+
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-rt", Namespace: "default"},
 		Spec: appv1alpha1.DatabaseSpec{
@@ -100,10 +107,10 @@ func roundTripFixture() (*Service, GenerateBlueprintRequest) {
 			Name: "rt-cache", Plan: "standard", MaxmemoryPolicy: "allkeys-lru",
 		},
 	}
-	cl := fakeClient(web, private, worker, cron, static, db, kv)
+	cl := fakeClient(web, private, worker, cron, static, legacy, db, kv)
 	svc := &Service{Base: &core.Base{Client: cl, Namespace: "default"}, EnvNames: fakeEnvNames{}}
 	return svc, GenerateBlueprintRequest{
-		ServiceIDs:  []string{"web", "private", "worker", "cron", "site"},
+		ServiceIDs:  []string{"web", "private", "worker", "cron", "site", "legacy"},
 		PostgresIDs: []string{"dpg-rt"},
 		KeyValueIDs: []string{"red-rt"},
 	}
@@ -303,4 +310,38 @@ func fieldPaths(changes []BlueprintFieldChange) []string {
 		out = append(out, c.Path)
 	}
 	return out
+}
+
+// TestBlueprintStillDetectsARealTypeChange guards the w21/030 normalization: an
+// empty spec.type is a web service, but a real type change still plans an
+// update that names `type`.
+func TestBlueprintStillDetectsARealTypeChange(t *testing.T) {
+	svc, req := roundTripFixture()
+	ctx := context.Background()
+	out, err := svc.GenerateBlueprint(ctx, req)
+	if err != nil {
+		t.Fatalf("GenerateBlueprint: %v", err)
+	}
+	// The legacy web App is exported as `type: web`; declare it private instead.
+	head, tail, found := strings.Cut(out.Manifest, "name: legacy")
+	if !found {
+		t.Fatalf("exported manifest has no legacy entry:\n%s", out.Manifest)
+	}
+	manifest := head + "name: legacy" + strings.Replace(tail, "type: web", "type: pserv", 1)
+	if manifest == out.Manifest {
+		t.Fatalf("legacy entry has no `type: web` to change:\n%s", out.Manifest)
+	}
+	v, err := svc.ValidateBlueprint(ctx, "", manifest, "")
+	if err != nil || v.Plan == nil {
+		t.Fatalf("validate: %+v err=%v", v, err)
+	}
+	for _, action := range v.Plan.Actions {
+		if action.Name == "legacy" {
+			if action.Operation != BlueprintPlanUpdate || !slices.Contains(fieldPaths(action.ChangedFields), "type") {
+				t.Fatalf("a real type change re-plans as %q %v, want update naming type", action.Operation, fieldPaths(action.ChangedFields))
+			}
+			return
+		}
+	}
+	t.Fatal("no plan action for the legacy service")
 }
