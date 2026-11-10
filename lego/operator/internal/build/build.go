@@ -1721,6 +1721,21 @@ func ActiveBuildsByWorkspace(ctx context.Context, cl client.Client, namespace st
 // hold a finished one for a slot it no longer needs (w5/108, w5/119 for kpack,
 // whose Image is per revision too, matched as ensureBuildpack takes it over).
 func ObservingAppBuild(ctx context.Context, cl client.Client, namespace, name, appUID, revision string) (bool, error) {
+	return findAppBuild(ctx, cl, namespace, name, appUID, revision, true)
+}
+
+// ReleaseBuildStarted reports whether the release built for revision already
+// has its own build Job or kpack Image, in any state. Unlike ObservingAppBuild
+// it ignores the App's other builds: a gate that must stop a NEW build of this
+// release (docs/ADR030 §13, out of build minutes) must not let one start just
+// because an older revision's build is still running.
+func ReleaseBuildStarted(ctx context.Context, cl client.Client, namespace, name, appUID, revision string) (bool, error) {
+	return findAppBuild(ctx, cl, namespace, name, appUID, revision, false)
+}
+
+// findAppBuild is ObservingAppBuild, or with anyActive false
+// ReleaseBuildStarted.
+func findAppBuild(ctx context.Context, cl client.Client, namespace, name, appUID, revision string, anyActive bool) (bool, error) {
 	sel := AppBuildSelector(name, appUID)
 	jobs, err := listBuildJobs(ctx, cl, namespace, sel)
 	if err != nil {
@@ -1729,7 +1744,7 @@ func ObservingAppBuild(ctx context.Context, cl client.Client, namespace, name, a
 	owner := execution.ArtifactIdentity{Name: name, UID: appUID}
 	job := JobName(name, revision)
 	for i := range jobs {
-		if !execution.JobFinished(&jobs[i]) || (jobs[i].Name == job && owner.Owns(&jobs[i])) {
+		if (anyActive && !execution.JobFinished(&jobs[i])) || (jobs[i].Name == job && owner.Owns(&jobs[i])) {
 			return true, nil
 		}
 	}
@@ -1739,7 +1754,7 @@ func ObservingAppBuild(ctx context.Context, cl client.Client, namespace, name, a
 	}
 	release := Options{Name: name, AppUID: appUID, Revision: revision}
 	for i := range images {
-		if !kpackImageTerminal(&images[i]) || checkKpackArtifact(&images[i], release, kpackImagePurpose) == nil {
+		if (anyActive && !kpackImageTerminal(&images[i])) || checkKpackArtifact(&images[i], release, kpackImagePurpose) == nil {
 			return true, nil
 		}
 	}

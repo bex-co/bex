@@ -29,10 +29,12 @@ limitations under the License.
 package pricing
 
 import (
+	"context"
 	_ "embed"
 	"fmt"
 	"math"
 	"math/big"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,9 +64,12 @@ type Sheet struct {
 	keyvalueMicroUSD map[string]*big.Rat
 	bandwidth        float64 // $/byte for egress_bytes
 	build            float64 // $/second for build_seconds
-	storage          float64 // $/GB-second of USED datastore volume for storage_gb_seconds
-	disk             float64 // $/GB-second of PROVISIONED capacity for disk_gb_seconds
-	sandbox          float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
+	// buildIncluded is plan → build_seconds a month the plan includes before
+	// build_seconds is charged (docs/ADR030 §13).
+	buildIncluded map[string]int64
+	storage       float64 // $/GB-second of USED datastore volume for storage_gb_seconds
+	disk          float64 // $/GB-second of PROVISIONED capacity for disk_gb_seconds
+	sandbox       float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
 	// sandboxUSD is the same rate, exact, for pricing one session's compute
 	// (SandboxComputeMicroUSD).
 	sandboxUSD *big.Rat
@@ -266,6 +271,10 @@ type ChargeLine struct {
 	RateUSD string `json:"rateUsd"`
 	// Quantity is the metered amount expressed in Unit ("436.26").
 	Quantity string `json:"quantity"`
+	// Included is the part of Quantity the workspace plan's included build
+	// minutes covered, in Unit; empty when none did. CostUSD prices only the
+	// rest.
+	Included string `json:"included,omitempty"`
 	// CostUSD is RateUSD × Quantity, formatted to cents. "0.00" is a real and
 	// common value (free tiers, sub-cent usage) and is never omitted.
 	CostUSD string `json:"costUsd"`
@@ -291,6 +300,42 @@ type MeterEstimate struct {
 // Meters whose rounded cost is below $0.01 are omitted from the breakdown but
 // still counted toward TotalUSD. Meters is always a non-nil slice.
 func (s *Sheet) Estimate(rows []store.UsageSummaryRow) EstimatedCost {
+	return s.EstimateIncluding(rows, 0)
+}
+
+// IncludedBuildSeconds is the build_seconds a month plan includes before build
+// minutes are charged: Render's included pipeline minutes. An unknown plan
+// includes none.
+func (s *Sheet) IncludedBuildSeconds(plan string) int64 {
+	return s.buildIncluded[plan]
+}
+
+// PlanReader reads a workspace's plan; *core.Base satisfies it.
+type PlanReader interface {
+	WorkspacePlanOf(ctx context.Context, workspaceID string) (plan string, ok bool, err error)
+}
+
+// IncludedBuildSecondsFor is the build_seconds workspaceID's plan includes a
+// month, the one answer the estimate, the Stripe emitter and the build-minutes
+// sweeper share. Where no plan applies (none wired, the default tenant) it is
+// zero.
+func IncludedBuildSecondsFor(ctx context.Context, plans PlanReader, workspaceID string) (int64, error) {
+	if plans == nil {
+		return 0, nil
+	}
+	plan, ok, err := plans.WorkspacePlanOf(ctx, workspaceID)
+	if err != nil || !ok {
+		return 0, err
+	}
+	return Default.IncludedBuildSeconds(plan), nil
+}
+
+// EstimateIncluding is Estimate for a workspace whose plan includes
+// includedBuildSeconds of build_seconds this month: those are free, so only the
+// minutes above them are priced. The allowance is spent on the rows in order,
+// and each resource's build line records how much of its quantity it covered.
+func (s *Sheet) EstimateIncluding(rows []store.UsageSummaryRow, includedBuildSeconds int64) EstimatedCost {
+	rows, covered := applyIncludedBuild(rows, includedBuildSeconds)
 	type key struct{ kind, tier, resourceKind string }
 	byKey := map[key]int64{}
 	var order []key
@@ -325,15 +370,37 @@ func (s *Sheet) Estimate(rows []store.UsageSummaryRow) EstimatedCost {
 	return EstimatedCost{
 		TotalUSD:  FormatUSD(totalRaw),
 		Meters:    meters,
-		Resources: s.resourceEstimates(rows),
+		Resources: s.resourceEstimates(rows, covered),
 	}
+}
+
+// applyIncludedBuild spends the allowance on the build_seconds rows in order.
+// It returns the rows with each one's quantity cut to what is charged, and how
+// many seconds the allowance covered per resource.
+func applyIncludedBuild(rows []store.UsageSummaryRow, included int64) ([]store.UsageSummaryRow, map[[2]string]int64) {
+	if included <= 0 {
+		return rows, nil
+	}
+	charged := make([]store.UsageSummaryRow, len(rows))
+	covered := map[[2]string]int64{}
+	for i, r := range rows {
+		charged[i] = r
+		if r.Kind != store.UsageKindBuildSeconds || r.Total <= 0 || included <= 0 {
+			continue
+		}
+		free := min(included, r.Total)
+		included -= free
+		charged[i].Total -= free
+		covered[[2]string{r.ServiceID, r.ResourceKind}] += free
+	}
+	return charged, covered
 }
 
 // resourceEstimates breaks the same rows down by resource instead of by meter
 // dimension. Rows are grouped by (serviceID × resourceKind) and, within a
 // resource, by (kind × tier) — both in first-seen order, so the result is
 // deterministic for a deterministic query.
-func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow) []ResourceEstimate {
+func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow, covered map[[2]string]int64) []ResourceEstimate {
 	type resKey struct{ serviceID, resourceKind string }
 	type lineKey struct{ kind, tier string }
 
@@ -341,7 +408,7 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow) []ResourceEstima
 	var resOrder []resKey
 	lineOrder := map[resKey][]lineKey{}
 	for _, r := range rows {
-		if r.Total == 0 {
+		if r.Total == 0 && !(r.Kind == store.UsageKindBuildSeconds && covered[[2]string{r.ServiceID, r.ResourceKind}] > 0) {
 			continue
 		}
 		rk := resKey{r.ServiceID, r.ResourceKind}
@@ -366,14 +433,21 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow) []ResourceEstima
 			cost := rate * float64(qty)
 			resRaw += cost
 			unit := unitFor(lk.kind)
-			charges = append(charges, ChargeLine{
+			line := ChargeLine{
 				Kind:     lk.kind,
 				Tier:     lk.tier,
 				Unit:     unit.label,
 				RateUSD:  formatRate(rate * unit.per),
 				Quantity: formatQuantity(float64(qty) / unit.per),
 				CostUSD:  FormatUSD(cost),
-			})
+			}
+			if free := covered[[2]string{rk.serviceID, rk.resourceKind}]; lk.kind == store.UsageKindBuildSeconds && free > 0 {
+				// Quantity stays what was used; the plan's included minutes
+				// covered Included of it, and Cost prices only the rest.
+				line.Quantity = formatQuantity(float64(qty+free) / unit.per)
+				line.Included = formatQuantity(float64(free) / unit.per)
+			}
+			charges = append(charges, line)
 		}
 		out = append(out, ResourceEstimate{
 			ServiceID:    rk.serviceID,
@@ -533,7 +607,11 @@ type sheetFile struct {
 		USDPerByte float64 `json:"usdPerByte"`
 	} `json:"bandwidth"`
 	Build struct {
-		USDPerSecond float64 `json:"usdPerSecond"`
+		USDPerSecond    float64 `json:"usdPerSecond"`
+		IncludedMinutes []struct {
+			Plan    string `json:"plan"`
+			Minutes int64  `json:"minutes"`
+		} `json:"includedMinutes"`
 	} `json:"build"`
 	Storage struct {
 		USDPerGBSecond float64 `json:"usdPerGBSecond"`
@@ -628,6 +706,19 @@ func parseSheet(raw []byte) (*Sheet, error) {
 			}
 			s.keyvalueMicroUSD[e.Tier] = r.Mul(r, big.NewRat(1_000_000, 1))
 		}
+	}
+	s.buildIncluded = make(map[string]int64, len(f.Build.IncludedMinutes))
+	for _, e := range f.Build.IncludedMinutes {
+		if !slices.Contains(store.WorkspacePlans, e.Plan) {
+			return nil, fmt.Errorf("build includedMinutes plan %q is not a workspace plan", e.Plan)
+		}
+		if _, dup := s.buildIncluded[e.Plan]; dup {
+			return nil, fmt.Errorf("build includedMinutes lists plan %s twice", e.Plan)
+		}
+		if e.Minutes < 0 {
+			return nil, fmt.Errorf("build includedMinutes for %s is negative", e.Plan)
+		}
+		s.buildIncluded[e.Plan] = e.Minutes * 60
 	}
 	for _, e := range f.Workspace {
 		if e.Plan == "" {

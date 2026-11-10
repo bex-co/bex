@@ -199,7 +199,7 @@ func (s *PGStore) SelectWorkspaceUnemittedUsage(ctx context.Context, workspaceID
 // workspace.
 func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, floor time.Time, seal UsageSeal, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity
+		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity, u.billing_export_quantity
 		FROM usage_hourly u
 		JOIN tenants t ON t.id = u.workspace_id
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
@@ -217,7 +217,7 @@ func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, fl
 	var out []HourlyRow
 	for rows.Next() {
 		var r HourlyRow
-		if err := rows.Scan(&r.WorkspaceID, &r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.WindowStart, &r.Quantity); err != nil {
+		if err := rows.Scan(&r.WorkspaceID, &r.ServiceID, &r.Kind, &r.Tier, &r.ResourceKind, &r.WindowStart, &r.Quantity, &r.BilledQuantity); err != nil {
 			return nil, err
 		}
 		out = append(out, r)
@@ -242,8 +242,8 @@ type ExportedUsageTotal struct {
 // invoices. Served by the (workspace_id, window_start) index.
 func (s *PGStore) ExportedUsageTotals(ctx context.Context, workspaceID string, from, to, recentSince time.Time) ([]ExportedUsageTotal, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT kind, tier, resource_kind, sum(quantity)::bigint,
-		       COALESCE(sum(quantity) FILTER (WHERE emitted_at >= $4), 0)::bigint
+		SELECT kind, tier, resource_kind, sum(COALESCE(billing_export_quantity, quantity))::bigint,
+		       COALESCE(sum(COALESCE(billing_export_quantity, quantity)) FILTER (WHERE emitted_at >= $4), 0)::bigint
 		FROM usage_hourly
 		WHERE workspace_id = $1 AND window_start >= $2 AND window_start < $3
 		  AND billing_export_state = 'emitted'
@@ -270,6 +270,10 @@ type UsageExportAttempt struct {
 	Row           HourlyRow
 	TransactionID string
 	EventName     string
+	// BilledQuantity, when set, is the part of Row.Quantity sent to the
+	// provider: build_seconds above the plan's included minutes (w6/m308).
+	// The first attempt's value is kept.
+	BilledQuantity *int64
 }
 
 // UsageExportReject is the non-secret, bounded context retained for a
@@ -299,24 +303,30 @@ func (s *PGStore) MarkUsageAttempted(ctx context.Context, attempts []UsageExport
 	resourceKinds, serviceIDs, kinds, tiers, windows := usageExportKeys(attempts)
 	transactionIDs := make([]string, len(attempts))
 	eventNames := make([]string, len(attempts))
+	billed := make([]int64, len(attempts)) // -1: sent whole
 	for i, attempt := range attempts {
 		transactionIDs[i] = attempt.TransactionID
 		eventNames[i] = attempt.EventName
+		billed[i] = -1
+		if attempt.BilledQuantity != nil {
+			billed[i] = *attempt.BilledQuantity
+		}
 	}
 	tag, err := s.Pool.Exec(ctx, `
 		UPDATE usage_hourly u
 		SET billing_export_attempted_at = COALESCE(u.billing_export_attempted_at, $1),
 		    billing_export_transaction_id = k.transaction_id,
-		    billing_export_event_name = k.event_name
-		FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::timestamptz[], $7::text[], $8::text[])
-			AS k(resource_kind, service_id, kind, tier, window_start, transaction_id, event_name)
+		    billing_export_event_name = k.event_name,
+		    billing_export_quantity = COALESCE(u.billing_export_quantity, NULLIF(k.billed, -1))
+		FROM unnest($2::text[], $3::text[], $4::text[], $5::text[], $6::timestamptz[], $7::text[], $8::text[], $9::bigint[])
+			AS k(resource_kind, service_id, kind, tier, window_start, transaction_id, event_name, billed)
 		WHERE u.resource_kind = k.resource_kind
 		  AND u.service_id = k.service_id
 		  AND u.kind = k.kind
 		  AND u.tier = k.tier
 		  AND u.window_start = k.window_start
 		  AND u.billing_export_state = 'pending'`,
-		at.UTC(), resourceKinds, serviceIDs, kinds, tiers, windows, transactionIDs, eventNames)
+		at.UTC(), resourceKinds, serviceIDs, kinds, tiers, windows, transactionIDs, eventNames, billed)
 	if err != nil {
 		return err
 	}
@@ -324,6 +334,23 @@ func (s *PGStore) MarkUsageAttempted(ctx context.Context, attempts []UsageExport
 		return fmt.Errorf("persisted %d of %d billing export attempts", tag.RowsAffected(), len(attempts))
 	}
 	return nil
+}
+
+// BuildSecondsBefore sums workspaceID's build_seconds in row's calendar month
+// (UTC) that sort before row by (window_start, resource_kind, service_id): the
+// minutes already counted against the plan's allowance when row is exported.
+// The order is fixed by the rows themselves, not by when they were exported,
+// so two replicas exporting the same row send the same quantity.
+func (s *PGStore) BuildSecondsBefore(ctx context.Context, row HourlyRow) (int64, error) {
+	var total int64
+	err := s.Pool.QueryRow(ctx, `
+		SELECT COALESCE(sum(quantity), 0)::bigint
+		FROM usage_hourly
+		WHERE workspace_id = $1 AND kind = 'build_seconds' AND quantity > 0
+		  AND window_start >= $2
+		  AND (window_start, resource_kind, service_id) < ($3, $4, $5)`,
+		row.WorkspaceID, MonthStartUTC(row.WindowStart), row.WindowStart.UTC(), row.ResourceKind, row.ServiceID).Scan(&total)
+	return total, err
 }
 
 // RecordUsageExportResult atomically stamps accepted rows and moves permanent

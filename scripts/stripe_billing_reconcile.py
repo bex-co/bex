@@ -27,7 +27,10 @@ def decimal(value: object) -> Decimal:
 
 
 def normalized_value(row: dict) -> Decimal:
-    value = decimal(row["quantity"])
+    # billedQuantity is what was sent when it was not the whole row: build
+    # minutes above the plan's included minutes (w6/m308).
+    billed = row.get("billedQuantity")
+    value = decimal(row["quantity"] if billed is None else billed)
     if row["kind"] == "egress_bytes":
         return (value / BYTES_PER_GIB).quantize(STRIPE_METER_PRECISION, rounding=ROUND_HALF_UP)
     if row["kind"] == "storage_gb_seconds":

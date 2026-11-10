@@ -122,6 +122,20 @@ class ReconcileTest(TestCase):
         )
         self.assertTrue(result["ok"], result)
 
+    def test_build_minutes_compare_the_billed_part(self):
+        # w6/m308: only build minutes above the plan's included minutes reach
+        # Stripe, and the export row records that part as billedQuantity.
+        covered = row("build_seconds", 200, "local_zero_rate", transaction="tx-1")
+        covered["billedQuantity"] = 0
+        straddle = row("build_seconds", 200, "build_seconds", transaction="tx-2")
+        straddle["billedQuantity"] = 100
+        whole = row("build_seconds", 50, "build_seconds", transaction="tx-3")
+        local = {"workspaceId": "tea-test", "livemode": False, "rows": [covered, straddle, whole]}
+        line = {"lookupKey": "build_seconds", "quantity": 150, "amount": 15, "currency": "usd", "unitAmountDecimal": "0.1"}
+        self.assertTrue(RECONCILE.compare(local, {"build_seconds": "150"}, [line])["ok"])
+        self.assertFalse(RECONCILE.compare(local, {"build_seconds": "250"}, [line])["ok"],
+                         "the used quantity must not be what Stripe is compared with")
+
     def test_missing_and_rounding_mismatch_fail(self):
         local = {
             "workspaceId": "tea-test",

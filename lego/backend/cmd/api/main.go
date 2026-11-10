@@ -503,6 +503,9 @@ func main() {
 	// Monthly Free instance hours (w8/m139): warn at 80%, suspend Free web
 	// services when spent, resume at the month boundary.
 	go srv.FreeHours.Run(ctx)
+	// Included build minutes (w6/m308): warn at 80%; out of them with no way
+	// to pay, builds stop until the month turns.
+	go srv.BuildMinutes.Run(ctx)
 	// Crash-loop suspension (w2/m253): a service failing to start and become
 	// healthy for 24h is suspended (stuck_crashlooping) and its owners emailed.
 	go srv.CrashLoop.Run(ctx)
@@ -1013,6 +1016,9 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		// 48h seal — what lets a Stripe usage threshold charge promptly.
 		emitter.FastKinds = []string{store.UsageKindAgentModelCostMicroUSD}
 		emitter.HoldKinds = heldMeters
+		// docs/ADR030 §13: each plan's included pipeline minutes are free, so
+		// only the build minutes above them reach Stripe.
+		emitter.Plans = base
 		if cfg.StripeSealHoursSet {
 			emitter.SealHours = time.Duration(cfg.StripeSealHours) * time.Hour
 		}

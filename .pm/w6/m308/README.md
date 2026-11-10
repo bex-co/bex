@@ -1,18 +1,18 @@
 # w6 · m308 — Each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted"
 
-**Worker:** worker6 **Goal:** build minutes are charged only above Render's per-plan allowance, and a workspace without a payment method stops building when the allowance runs out, as on Render. **Status:** todo
+**Worker:** worker6 **Goal:** build minutes are charged only above Render's per-plan allowance, and a workspace without a payment method stops building when the allowance runs out, as on Render. **Status:** in progress (t001–t004, t006, t007 done; t005 checks the live behavior after the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Per-plan included minutes in the price catalog and the estimate](t001.md) | 1h | — |
-| t002 | [Stripe receives only the minutes above the allowance](t002.md) | 1.5h | t001 |
-| t003 | ["Build Minutes Exhausted": builds stop without a payment method](t003.md) | 2h | t001 |
-| t004 | [`buildMinutes` on every usage surface, with warning emails](t004.md) | 1.5h | t001 |
+| t001 | [Per-plan included minutes in the price catalog and the estimate](done/t001.md) — **DONE** | 1h | — |
+| t002 | [Stripe receives only the minutes above the allowance](done/t002.md) — **DONE** | 1.5h | t001 |
+| t003 | ["Build Minutes Exhausted": builds stop without a payment method](done/t003.md) — **DONE** | 2h | t001 |
+| t004 | [`buildMinutes` on every usage surface, with warning emails](done/t004.md) — **DONE** | 1.5h | t001 |
 | t005 | [Render parity](t005.md) | 30m | t002, t003, t004 |
-| t006 | [Simplify](t006.md) | 15m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t006 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t006 |
 | t008 | [Closeout](t008.md) | 10m | t007 |
 
 ## Definition of done

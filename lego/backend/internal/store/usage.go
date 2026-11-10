@@ -106,6 +106,10 @@ type HourlyRow struct {
 	// SourceHealth is durable evidence for this exact window. nil means the
 	// caller has no modern coverage evidence (not healthy by default).
 	SourceHealth []UsageSourceObservation
+	// BilledQuantity is the part of Quantity a first billing-export attempt
+	// froze (usage_hourly.billing_export_quantity, w6/m308); the outbox read
+	// returns it so a retry sends that same value. nil: none frozen yet.
+	BilledQuantity *int64
 }
 
 // UsageSourceObservation is one source's accounting health for an hourly
@@ -602,6 +606,60 @@ func (s *PGStore) FreeInstanceSecondsByWorkspace(ctx context.Context, monthStart
 		out[workspaceID] = total
 	}
 	return out, rows.Err()
+}
+
+// BuildMinutesUsage is one workspace's month-to-date build minutes and whether
+// it can buy minutes beyond its plan's: a payment method, or comped (the
+// outbox read's selectPendingUsage applies the same rule).
+type BuildMinutesUsage struct {
+	WorkspaceID string
+	Seconds     int64
+	CanPay      bool
+}
+
+// BuildSecondsByWorkspace sums each billable workspace's build_seconds in
+// [monthStart, now), with whether it can pay for more (w6/m308).
+// A workspace excluded from billing is never stopped and is left out.
+func (s *PGStore) BuildSecondsByWorkspace(ctx context.Context, monthStart, now time.Time) ([]BuildMinutesUsage, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT u.workspace_id, SUM(u.quantity)::bigint,
+		       (t.billing_comped OR m.payment_method_bound_at IS NOT NULL)
+		FROM (
+			SELECT workspace_id, quantity FROM usage_hourly
+			WHERE kind = 'build_seconds' AND window_start >= $1 AND window_start < $2
+			UNION ALL
+			SELECT workspace_id, quantity FROM usage_monthly
+			WHERE kind = 'build_seconds' AND month = ($1::timestamptz AT TIME ZONE 'UTC')::date
+		) u
+		JOIN tenants t ON t.id = u.workspace_id
+		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
+		WHERE NOT t.billing_excluded
+		GROUP BY u.workspace_id, t.billing_comped, m.payment_method_bound_at`, monthStart, now)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []BuildMinutesUsage
+	for rows.Next() {
+		var u BuildMinutesUsage
+		if err := rows.Scan(&u.WorkspaceID, &u.Seconds, &u.CanPay); err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, rows.Err()
+}
+
+// ClaimBuildMinutesNotice is ClaimFreeHoursNotice for build-minutes emails.
+func (s *PGStore) ClaimBuildMinutesNotice(ctx context.Context, workspaceID string, month time.Time, stage string) (bool, error) {
+	tag, err := s.Pool.Exec(ctx, `
+		INSERT INTO build_minutes_notices (workspace_id, month, stage)
+		VALUES ($1, $2::date, $3)
+		ON CONFLICT DO NOTHING`, workspaceID, month.UTC().Format("2006-01-02"), stage)
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
 }
 
 // ClaimFreeHoursNotice records that stage ('warned' or 'exhausted') has been

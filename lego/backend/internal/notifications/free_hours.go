@@ -19,7 +19,6 @@ package notifications
 import (
 	"context"
 	"fmt"
-	"log"
 
 	"github.com/bex-co/bex/lego/backend/internal/email"
 )
@@ -32,27 +31,9 @@ type FreeHoursNotifier struct{ Service *Service }
 
 // NotifyFreeHours satisfies freehours.Notifier.
 func (n FreeHoursNotifier) NotifyFreeHours(ctx context.Context, workspaceID, stage string, usedHours, budgetHours float64) error {
-	s := n.Service
-	if s == nil {
-		return fmt.Errorf("free hours notifier unavailable")
-	}
-	owners, ok := s.Store.(billingOwnerStore)
-	if !ok || s.Mailer == nil || s.Identities == nil {
-		log.Printf("notifications: free instance hours %s for %s not emailed (store, SMTP or identity lookup unavailable)", stage, workspaceID)
-		return nil
-	}
-	subjects, err := owners.ListBillingOwnerSubjects(ctx, workspaceID)
-	if err != nil {
-		return err
-	}
-	if len(subjects) == 0 {
-		return nil
-	}
-	subject, msg, err := freeHoursEmail(stage, usedHours, budgetHours, s.DashboardBaseURL)
-	if err != nil {
-		return err
-	}
-	return s.mailOwners(ctx, fmt.Sprintf("free instance hours %s for %s", stage, workspaceID), subjects, subject, msg, nil)
+	return n.Service.mailBillingOwners(ctx, workspaceID, fmt.Sprintf("free instance hours %s for %s", stage, workspaceID), func() (string, email.Message, error) {
+		return freeHoursEmail(stage, usedHours, budgetHours, n.Service.DashboardBaseURL)
+	})
 }
 
 func freeHoursEmail(stage string, usedHours, budgetHours float64, dashboardBaseURL string) (string, email.Message, error) {

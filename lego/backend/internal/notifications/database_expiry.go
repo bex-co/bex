@@ -19,7 +19,6 @@ package notifications
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/email"
@@ -34,27 +33,9 @@ type DatabaseExpiryNotifier struct{ Service *Service }
 
 // NotifyFreeDatabaseExpiry satisfies postgres.FreeExpiryNotifier.
 func (n DatabaseExpiryNotifier) NotifyFreeDatabaseExpiry(ctx context.Context, workspaceID, databaseID, name, stage string, expiresAt, deleteAt time.Time) error {
-	s := n.Service
-	if s == nil {
-		return fmt.Errorf("database expiry notifier unavailable")
-	}
-	owners, ok := s.Store.(billingOwnerStore)
-	if !ok || s.Mailer == nil || s.Identities == nil {
-		log.Printf("notifications: free database %s %s not emailed (store, SMTP or identity lookup unavailable)", databaseID, stage)
-		return nil
-	}
-	subjects, err := owners.ListBillingOwnerSubjects(ctx, workspaceID)
-	if err != nil {
-		return err
-	}
-	if len(subjects) == 0 {
-		return nil
-	}
-	subject, msg, err := databaseExpiryEmail(databaseID, name, stage, expiresAt, deleteAt, s.DashboardBaseURL)
-	if err != nil {
-		return err
-	}
-	return s.mailOwners(ctx, fmt.Sprintf("free database %s %s", databaseID, stage), subjects, subject, msg, nil)
+	return n.Service.mailBillingOwners(ctx, workspaceID, fmt.Sprintf("free database %s %s", databaseID, stage), func() (string, email.Message, error) {
+		return databaseExpiryEmail(databaseID, name, stage, expiresAt, deleteAt, n.Service.DashboardBaseURL)
+	})
 }
 
 // databaseExpiryEmail is the message for one stage: warned, expired,

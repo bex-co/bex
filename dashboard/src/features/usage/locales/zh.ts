@@ -56,6 +56,37 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "Notice once the monthly Free instance hours are spent (w8/m139)",
   },
+  "usage.buildMinutesTitle": {
+    message: "流水线分钟",
+    description:
+      "Title of the included build minutes card on the billing page (w6/m308)",
+  },
+  "usage.buildMinutesDescription": {
+    message:
+      "构建和部署前命令会消耗流水线分钟。您的套餐每月包含一定额度；超出部分按分钟计费。",
+    description: "Explains the plan's included build minutes (w6/m308)",
+  },
+  "usage.buildMinutesUsed": {
+    message: "本月已使用 {used} / {included} 包含的构建分钟",
+    description:
+      "Build minutes used against the plan's included minutes (w6/m308)",
+  },
+  "usage.buildMinutesNear": {
+    message:
+      "包含的构建分钟即将用尽。如果没有付款方式，用尽后新的构建和部署前命令将停止，直到下月初。",
+    description:
+      "Warning once build minutes reach 80 percent of the included minutes (w6/m308)",
+  },
+  "usage.buildMinutesSpent": {
+    message:
+      "包含的构建分钟已用尽。超出部分按分钟计费；如果没有付款方式，新的构建和部署前命令将停止，直到下月初。",
+    description: "Notice once the included build minutes are spent (w6/m308)",
+  },
+  "usage.chargeIncluded": {
+    message: "其中 {included} 为套餐包含",
+    description:
+      "Part of a charge line's quantity that the plan's included build minutes covered (w6/m308)",
+  },
   "usage.resourceCapsNearLimit": {
     message: "接近上限",
     description:

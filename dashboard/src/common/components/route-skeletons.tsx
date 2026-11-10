@@ -667,6 +667,8 @@ export function BillingPageSkeleton() {
           </Region>
           <Region name="included-usage">
             <CardSkeleton rows={4} />
+            {/* Pipeline minutes (w6/m308), below the Free instance hours. */}
+            <CardSkeleton rows={3} />
           </Region>
           <Region name="charges">
             <CardSkeleton rows={7} />

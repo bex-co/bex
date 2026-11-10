@@ -43,6 +43,7 @@ function resource(over: Partial<ResourceEstimate> = {}): ResourceEstimate {
         unit: "hr",
         rateUsd: "0.006713",
         quantity: "730.00",
+        included: "",
         costUsd: "4.90",
       },
     ],
@@ -201,6 +202,36 @@ describe("ChargesCard", () => {
     // Rate and quantity share a unit so the arithmetic reads correctly.
     expect(screen.getByText("$0.006713/hr")).toBeInTheDocument();
     expect(screen.getByText("730.00 hr")).toBeInTheDocument();
+  });
+
+  it("says how much of a build line the plan's included minutes covered", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([
+          resource({
+            costUsd: "0.35",
+            charges: [
+              {
+                kind: "build_seconds",
+                tier: "",
+                unit: "min",
+                rateUsd: "0.0035",
+                quantity: "600.00",
+                included: "500.00",
+                costUsd: "0.35",
+              },
+            ],
+          }),
+        ])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Services/ }));
+    fireEvent.click(screen.getByRole("button", { name: /api/ }));
+    expect(screen.getByText("500.00 included")).toBeInTheDocument();
   });
 
   it("expands and collapses every category at once", () => {

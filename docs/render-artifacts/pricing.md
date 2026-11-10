@@ -95,5 +95,5 @@ $0.005 per build-minute above the plan's included build-minute allowance.
 
 - All prices in USD.
 - Render bills on a calendar-month cycle.
-- "Included allowances" (free bandwidth, free build minutes per plan tier) are not tracked in bex's meter — bex meters raw quantities only.
+- "Included allowances": bex's meters record raw quantities. Build minutes per plan (Hobby 500, Pro 1,000, Scale 5,000) are applied on top since 2026-11-10 (w6/m308, [ADR030 §13](../ADR030-pricing.md)); free bandwidth per plan is not tracked.
 - Snapshot taken 2026-07-13 from public Render docs; prices may change.

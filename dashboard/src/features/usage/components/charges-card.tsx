@@ -112,6 +112,11 @@ function ChargeRow({ charge }: { charge: ChargeLine }) {
       </span>
       <span className="font-mono text-xs text-muted-foreground tabular-nums sm:w-28 sm:text-right">
         {charge.quantity} {charge.unit}
+        {charge.included && (
+          <span className="block">
+            {t("usage.chargeIncluded", { included: charge.included })}
+          </span>
+        )}
       </span>
       <span className="font-mono text-sm tabular-nums sm:w-20 sm:text-right">
         {money(usd(charge.costUsd), i18n.language)}

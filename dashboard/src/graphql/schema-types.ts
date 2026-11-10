@@ -945,6 +945,13 @@ export type BuildImage = {
   sha: Maybe<Scalars['String']['output']>;
 };
 
+/** The period's build minutes against the build minutes the workspace plan includes (w6/m308); included is 0 where no plan applies. */
+export type BuildMinutes = {
+  __typename: 'BuildMinutes';
+  included: Maybe<Scalars['Float']['output']>;
+  used: Maybe<Scalars['Float']['output']>;
+};
+
 export type BuildRun = {
   __typename: 'BuildRun';
   buildFinishedAt: Maybe<Scalars['String']['output']>;
@@ -1026,6 +1033,7 @@ export type CapabilityGrant = {
 export type ChargeLine = {
   __typename: 'ChargeLine';
   costUsd: Maybe<Scalars['String']['output']>;
+  included: Maybe<Scalars['String']['output']>;
   kind: Maybe<Scalars['String']['output']>;
   quantity: Maybe<Scalars['String']['output']>;
   rateUsd: Maybe<Scalars['String']['output']>;
@@ -5136,6 +5144,7 @@ export type UsageSummary = {
   __typename: 'UsageSummary';
   agentModel: AgentModelUsage;
   billing: Maybe<Billing>;
+  buildMinutes: BuildMinutes;
   coverage: UsageCoverage;
   estimatedCost: Maybe<EstimatedCost>;
   freeInstanceHours: FreeInstanceHours;

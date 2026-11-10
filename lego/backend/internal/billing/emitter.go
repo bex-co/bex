@@ -26,6 +26,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -128,6 +129,10 @@ type Emitter struct {
 	// (BEX_STRIPE_AGENT_MODEL_METER unset). Releasing the hold ships the
 	// backlog, so held usage is delayed, never dropped.
 	HoldKinds []string
+	// Plans reads workspace plans for their included build minutes
+	// (docs/ADR030 §13): only the part of a month's build minutes above them
+	// is sent to Stripe. Nil sends build_seconds whole.
+	Plans pricing.PlanReader
 
 	now       func() time.Time
 	gapOnce   sync.Once
@@ -289,6 +294,7 @@ func (e *Emitter) emitOnce(ctx context.Context, fastOnly bool) {
 func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time.Time, customerReady map[string]bool) int {
 	attempts := make([]store.UsageExportAttempt, 0, len(rows))
 	events := make([]Event, 0, len(rows))
+	included := map[string]int64{}
 	for _, r := range rows {
 		ready, seen := customerReady[r.WorkspaceID]
 		if !seen {
@@ -306,11 +312,23 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 			continue
 		}
 		event := toEvent(r)
+		attempt := store.UsageExportAttempt{Row: r, TransactionID: event.TransactionID}
+		if r.Kind == store.UsageKindBuildSeconds && e.Plans != nil {
+			billed, ok := e.billedBuildSeconds(ctx, r, included)
+			if !ok {
+				continue // retried next cycle; never sent whole by mistake
+			}
+			// Frozen with the first attempt, so every retry sends this value
+			// whatever the plan has become since.
+			attempt.BilledQuantity = &billed
+			event.Properties["value"] = strconv.FormatInt(billed, 10)
+		}
 		eventName, _, skip := stripeMeterEvent(event)
 		if skip {
 			eventName = "local_zero_rate"
 		}
-		attempts = append(attempts, store.UsageExportAttempt{Row: r, TransactionID: event.TransactionID, EventName: eventName})
+		attempt.EventName = eventName
+		attempts = append(attempts, attempt)
 		events = append(events, event)
 	}
 	if len(events) == 0 {
@@ -365,6 +383,62 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 		return 0 // stop this pass so retryable rows cannot hot-loop
 	}
 	return len(accepted) + len(rejected)
+}
+
+// buildSecondsBeforeReader is the store capability billedBuildSeconds needs;
+// *store.PGStore has it.
+type buildSecondsBeforeReader interface {
+	BuildSecondsBefore(ctx context.Context, row store.HourlyRow) (int64, error)
+}
+
+// allowanceUnreadable marks a workspace whose plan could not be read in this
+// batch, so its other rows skip the read instead of repeating it.
+const allowanceUnreadable = -1
+
+// billedBuildSeconds is the part of build row r that is owed: what lies above
+// the workspace plan's included seconds, given the month's build seconds that
+// sort before r. Both inputs are fixed once r is sealed, and a value an
+// earlier attempt sent is reused, so every replica and every retry sends the
+// same value. included caches each workspace's allowance for the batch. ok is
+// false when a read failed; the row then waits for the next cycle.
+func (e *Emitter) billedBuildSeconds(ctx context.Context, r store.HourlyRow, included map[string]int64) (int64, bool) {
+	if r.BilledQuantity != nil {
+		return *r.BilledQuantity, true
+	}
+	if r.Quantity == 0 {
+		return 0, true
+	}
+	reader, has := e.Store.(buildSecondsBeforeReader)
+	if !has {
+		return r.Quantity, true
+	}
+	allowance, seen := included[r.WorkspaceID]
+	if !seen {
+		var err error
+		if allowance, err = pricing.IncludedBuildSecondsFor(ctx, e.Plans, r.WorkspaceID); err != nil {
+			log.Printf("billing: included build minutes for %s: %v; its build rows wait", r.WorkspaceID, err)
+			allowance = allowanceUnreadable
+		}
+		included[r.WorkspaceID] = allowance
+	}
+	switch {
+	case allowance == allowanceUnreadable:
+		return 0, false
+	case allowance == 0:
+		return r.Quantity, true
+	}
+	before, err := reader.BuildSecondsBefore(ctx, r)
+	if err != nil {
+		log.Printf("billing: earlier build minutes for %s: %v; the row waits", r.WorkspaceID, err)
+		return 0, false
+	}
+	return owedAbove(before, r.Quantity, allowance), true
+}
+
+// owedAbove is how much of quantity lies above allowance when before has
+// already been counted against it.
+func owedAbove(before, quantity, allowance int64) int64 {
+	return max(before+quantity-allowance, 0) - max(before-allowance, 0)
 }
 
 func (e *Emitter) refreshMetrics(ctx context.Context, now time.Time) {

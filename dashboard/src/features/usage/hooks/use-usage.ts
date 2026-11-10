@@ -31,6 +31,12 @@ export interface ChargeLine {
   unit: string;
   rateUsd: string;
   quantity: string;
+  /**
+   * The part of `quantity` the workspace plan's included build minutes
+   * covered (w6/m308); empty or absent when none did. `costUsd` prices only
+   * the rest.
+   */
+  included?: string;
   costUsd: string;
 }
 
@@ -135,6 +141,15 @@ export interface FreeInstanceHours {
   included: number;
 }
 
+/**
+ * Build minutes this period against the minutes the workspace plan includes
+ * (w6/m308); `included` is 0 where no plan applies.
+ */
+export interface BuildMinutes {
+  used: number;
+  included: number;
+}
+
 /** One model's share of the period's agent model spend (ADR091 D6). */
 export interface AgentModelBreakdown {
   model: string;
@@ -159,6 +174,7 @@ export interface UsageSummary {
   period: string; // "YYYY-MM"
   coverage: Coverage;
   freeInstanceHours: FreeInstanceHours;
+  buildMinutes: BuildMinutes;
   agentModel: AgentModelUsage | null;
   estimatedCost: EstimatedCost | null;
   billing: Billing | null;
@@ -207,6 +223,10 @@ export function useUsage(period?: string): UseUsageResult {
               used: raw.freeInstanceHours?.used ?? 0,
               included: raw.freeInstanceHours?.included ?? 750,
             },
+            buildMinutes: {
+              used: raw.buildMinutes?.used ?? 0,
+              included: raw.buildMinutes?.included ?? 0,
+            },
             agentModel: raw.agentModel
               ? {
                   monthToDateUsd: raw.agentModel.monthToDateUsd,
@@ -237,6 +257,7 @@ export function useUsage(period?: string): UseUsageResult {
                         unit: c!.unit ?? "",
                         rateUsd: c!.rateUsd ?? "0",
                         quantity: c!.quantity ?? "0",
+                        included: c!.included ?? "",
                         costUsd: c!.costUsd ?? "0.00",
                       })),
                     })),

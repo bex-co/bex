@@ -207,6 +207,31 @@ func (s *Service) notifyBilling(ctx context.Context, n store.BillingNotification
 // owner with no address, or one the server refused for good, is logged and
 // skipped, since a retry would only mail the others again (w5/153, w5/m136).
 // mailed, when set, records each owner the message reached.
+// mailBillingOwners mails workspaceID's billing owners the message compose
+// builds, the scaffolding the worker notifiers (Free instance hours, build
+// minutes, Free database expiry) share. what names the email in logs. A store,
+// mailer or identity lookup that is not wired logs and sends nothing; a
+// workspace with no billing owners is nothing to send.
+func (s *Service) mailBillingOwners(ctx context.Context, workspaceID, what string, compose func() (string, email.Message, error)) error {
+	if s == nil {
+		return fmt.Errorf("%s: notifier unavailable", what)
+	}
+	owners, ok := s.Store.(billingOwnerStore)
+	if !ok || s.Mailer == nil || s.Identities == nil {
+		log.Printf("notifications: %s not emailed (store, SMTP or identity lookup unavailable)", what)
+		return nil
+	}
+	subjects, err := owners.ListBillingOwnerSubjects(ctx, workspaceID)
+	if err != nil || len(subjects) == 0 {
+		return err
+	}
+	subject, msg, err := compose()
+	if err != nil {
+		return err
+	}
+	return s.mailOwners(ctx, what, subjects, subject, msg, nil)
+}
+
 func (s *Service) mailOwners(ctx context.Context, what string, owners []string, subject string, msg email.Message, mailed func(owner string) error) error {
 	text, html := msg.Text(), msg.HTML()
 	emails, lookupErr := s.Identities.LookupEmails(ctx, owners)

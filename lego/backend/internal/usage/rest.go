@@ -62,13 +62,18 @@ type usageResponse struct {
 	// FreeInstanceHours is the workspace's monthly included Free instance hours
 	// (w8/m139): hours used against the allowance, as Render's Billing page
 	// shows it.
-	FreeInstanceHours usageFreeHours `json:"freeInstanceHours"`
+	FreeInstanceHours usageIncluded `json:"freeInstanceHours"`
+	// BuildMinutes is the period's build minutes against the plan's included
+	// pipeline minutes (w6/m308, docs/ADR030 §13).
+	BuildMinutes usageIncluded `json:"buildMinutes"`
 	// AgentModel is the platform-route agent model spend by model and token
 	// kind (ADR091 D6), billed at the provider's cost + 30%.
 	AgentModel AgentModelSummary `json:"agentModel"`
 }
 
-type usageFreeHours struct {
+// usageIncluded is a used-against-included pair: Free instance hours, or
+// build minutes.
+type usageIncluded struct {
 	Used     float64 `json:"used"`
 	Included float64 `json:"included"`
 }
@@ -128,7 +133,8 @@ func toUsageResponse(sum Summary) usageResponse {
 		EstimatedCost:     sum.EstimatedCost,
 		Billing:           sum.Billing,
 		Coverage:          coverage,
-		FreeInstanceHours: usageFreeHours{Used: sum.FreeInstanceHours.Used, Included: sum.FreeInstanceHours.Included},
+		FreeInstanceHours: usageIncluded{Used: sum.FreeInstanceHours.Used, Included: sum.FreeInstanceHours.Included},
+		BuildMinutes:      usageIncluded{Used: sum.BuildMinutes.Used, Included: sum.BuildMinutes.Included},
 		AgentModel:        sum.AgentModel,
 	}
 }

@@ -90,6 +90,8 @@ describe("useUsage", () => {
       // coverage absent from the response ⇒ the honest "unknown" default (w4/048).
       coverage: { state: "unknown", through: "", degradedSources: [] },
       freeInstanceHours: { used: 0, included: 750 },
+      // buildMinutes absent from the response ⇒ none used, no allowance.
+      buildMinutes: { used: 0, included: 0 },
       estimatedCost: {
         totalUsd: "4.92",
         resources: [
@@ -106,6 +108,7 @@ describe("useUsage", () => {
                 unit: "hr",
                 rateUsd: "0.006713",
                 quantity: "730.00",
+                included: "",
                 costUsd: "4.90",
               },
               {
@@ -114,6 +117,7 @@ describe("useUsage", () => {
                 unit: "GB",
                 rateUsd: "0.015",
                 quantity: "1.00",
+                included: "",
                 costUsd: "0.02",
               },
             ],

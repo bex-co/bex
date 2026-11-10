@@ -157,6 +157,9 @@ type Summary struct {
 	// usage" for the period (w8/m139): hours its Free web services ran against
 	// the monthly allowance.
 	FreeInstanceHours FreeInstanceHours
+	// BuildMinutes is the period's build minutes against the plan's included
+	// pipeline minutes (docs/ADR030 §13): the estimate prices only those above.
+	BuildMinutes BuildMinutes
 	// AgentModel is the period's platform-route agent model spend by model
 	// and token kind (ADR091 D6).
 	AgentModel AgentModelSummary
@@ -168,6 +171,13 @@ const DefaultFreeInstanceHours = 750
 
 // FreeInstanceHours is Free instance hours used against the allowance.
 type FreeInstanceHours struct {
+	Used     float64
+	Included float64
+}
+
+// BuildMinutes is build minutes used against the plan's included pipeline
+// minutes. Included is zero where no plan applies.
+type BuildMinutes struct {
 	Used     float64
 	Included float64
 }
@@ -235,7 +245,12 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	s.resolveServiceNames(ctx, tenantID, sum.Services)
 	sum.Period = now.Format(periodLayout)
 	sum.FreeInstanceHours = s.freeInstanceHours(rows)
-	sum.EstimatedCost = pricing.Default.Estimate(rows)
+	includedBuild, err := pricing.IncludedBuildSecondsFor(ctx, s.Base, tenantID)
+	if err != nil {
+		return Summary{}, fmt.Errorf("usage: %w", err)
+	}
+	sum.BuildMinutes = buildMinutes(rows, includedBuild)
+	sum.EstimatedCost = pricing.Default.EstimateIncluding(rows, includedBuild)
 	sum.AgentModel = summariseAgentModel(rows, sum.EstimatedCost)
 	nameResourceEstimates(&sum.EstimatedCost, sum.Services)
 	// The Stripe projection (real cost, invoices, credit grants) is a billing
@@ -1631,6 +1646,18 @@ func (s *Service) meterDiskWindow(ctx context.Context, window time.Time) error {
 		}
 	}
 	return nil
+}
+
+// buildMinutes sums the period's build_seconds as minutes against included,
+// the same measure the buildminutes sweeper enforces.
+func buildMinutes(rows []store.UsageSummaryRow, includedSeconds int64) BuildMinutes {
+	var seconds int64
+	for _, r := range rows {
+		if r.Kind == store.UsageKindBuildSeconds {
+			seconds += r.Total
+		}
+	}
+	return BuildMinutes{Used: float64(seconds) / 60, Included: float64(includedSeconds) / 60}
 }
 
 // freeInstanceHours sums the Free service instance-seconds in rows against the

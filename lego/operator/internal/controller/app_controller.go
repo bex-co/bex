@@ -1093,6 +1093,20 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	buildNs := r.buildNamespace(app.Namespace)
 	builder := effectiveBuilder(app.Spec)
 
+	// Out of build minutes with no way to buy more (docs/ADR030 §13): start no
+	// new build this month, as Render stops pipeline tasks. A build already
+	// running finishes.
+	if appv1alpha1.BuildMinutesExhaustedIn(app, time.Now()) {
+		started, err := build.ReleaseBuildStarted(ctx, r.buildPlaneClient(), buildNs, app.Name, string(app.UID), releaseBuildRevision(app))
+		if err != nil {
+			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("finding the release's build: %w", err)))
+		}
+		if !started {
+			// Through %s: the tenant reads it as sentences, period included.
+			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildMinutesExhausted, fmt.Errorf("%s", appv1alpha1.BuildMinutesExhaustedMessage)))
+		}
+	}
+
 	// The build's serial push phase uses this App's repository-scoped Zot
 	// credential. Zot reads htpasswd and ACL Secrets only at startup, so a new
 	// App's freshly minted credential may not be active yet. The workload gate
@@ -6863,6 +6877,19 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		return &appv1alpha1.PreDeployStatus{
 			Job: job, Generation: gen, Status: appv1alpha1.PreDeployFailed,
 			StartedAt: started, FinishedAt: time.Now().UTC().Format(time.RFC3339), Message: msg,
+		}
+	}
+
+	// A pre-deploy run is a pipeline task too (docs/ADR030 §13): out of build
+	// minutes, none starts this month. One whose Job already exists (its
+	// status write lost) runs on.
+	if firstForGen && appv1alpha1.BuildMinutesExhaustedIn(app, time.Now()) {
+		err := r.Get(ctx, client.ObjectKey{Namespace: ns, Name: jobName}, &batchv1.Job{})
+		if apierrors.IsNotFound(err) {
+			return r.failPreDeploy(ctx, app, failedPD(jobName, appv1alpha1.BuildMinutesExhaustedMessage))
+		}
+		if err != nil {
+			return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
 		}
 	}
 

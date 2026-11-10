@@ -52,6 +52,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/billing"
+	"github.com/bex-co/bex/lego/backend/internal/buildminutes"
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/clitelemetry"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -139,6 +140,9 @@ type Server struct {
 	// monthly Free instance hours (w8/m139). main.go starts it with the serve
 	// context.
 	FreeHours *freehours.Sweeper
+	// BuildMinutes stops builds of a workspace out of included pipeline
+	// minutes with no way to pay for more (w6/m308); nil without billing.
+	BuildMinutes *buildminutes.Sweeper
 	// CrashLoop suspends services that keep failing to start (w2/m253).
 	// main.go starts it with the serve context.
 	CrashLoop *crashloop.Sweeper
@@ -1117,6 +1121,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
 		FreeHours:          newFreeHours(appsSvc, d, notificationsSvc),
+		BuildMinutes:       newBuildMinutes(appsSvc, d, notificationsSvc),
 		CrashLoop:          newCrashLoop(appsSvc, d),
 		DiskUsageAlerts:    newDiskUsage(appsSvc, d),
 		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},

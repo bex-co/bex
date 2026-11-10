@@ -505,6 +505,10 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 		// (provisioned vs used) and the rate both differ (ADR082 D8/D9).
 		return "disk_gb_hours", scaleDown(e.Properties["value"], secondsPerHour), false
 	case store.UsageKindBuildSeconds:
+		// An hour the plan's included minutes covered owes nothing (w6/m308).
+		if e.Properties["value"] == "0" {
+			return "", "", true
+		}
 		return "build_seconds", e.Properties["value"], false
 	case store.UsageKindSandboxComputeSeconds:
 		if _, ok := billableMeterNames[store.UsageKindSandboxComputeSeconds]; !ok {

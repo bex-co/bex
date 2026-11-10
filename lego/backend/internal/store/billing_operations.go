@@ -30,19 +30,22 @@ import (
 const billingRepairHorizon = 34 * 24 * time.Hour
 
 type BillingExportRow struct {
-	WorkspaceID   string     `json:"workspaceId"`
-	ResourceKind  string     `json:"resourceKind"`
-	ServiceID     string     `json:"serviceId"`
-	Kind          string     `json:"kind"`
-	Tier          string     `json:"tier,omitempty"`
-	WindowStart   time.Time  `json:"windowStart"`
-	Quantity      int64      `json:"quantity"`
-	State         string     `json:"state"`
-	AttemptedAt   *time.Time `json:"attemptedAt,omitempty"`
-	EmittedAt     *time.Time `json:"emittedAt,omitempty"`
-	TransactionID string     `json:"transactionId,omitempty"`
-	EventName     string     `json:"eventName,omitempty"`
-	ErrorCode     string     `json:"errorCode,omitempty"`
+	WorkspaceID  string    `json:"workspaceId"`
+	ResourceKind string    `json:"resourceKind"`
+	ServiceID    string    `json:"serviceId"`
+	Kind         string    `json:"kind"`
+	Tier         string    `json:"tier,omitempty"`
+	WindowStart  time.Time `json:"windowStart"`
+	Quantity     int64     `json:"quantity"`
+	// BilledQuantity is the part of Quantity sent to the provider when it was
+	// not all of it: build_seconds above the plan's included minutes (w6/m308).
+	BilledQuantity *int64     `json:"billedQuantity,omitempty"`
+	State          string     `json:"state"`
+	AttemptedAt    *time.Time `json:"attemptedAt,omitempty"`
+	EmittedAt      *time.Time `json:"emittedAt,omitempty"`
+	TransactionID  string     `json:"transactionId,omitempty"`
+	EventName      string     `json:"eventName,omitempty"`
+	ErrorCode      string     `json:"errorCode,omitempty"`
 }
 
 type BillingExportReport struct {
@@ -95,7 +98,7 @@ func (s *PGStore) BillingExportReport(ctx context.Context, workspaceID string, s
 		return BillingExportReport{}, classify("billing export workspace", err)
 	}
 	rows, err := s.Pool.Query(ctx, `
-		SELECT workspace_id, resource_kind, service_id, kind, tier, window_start, quantity,
+		SELECT workspace_id, resource_kind, service_id, kind, tier, window_start, quantity, billing_export_quantity,
 		       billing_export_state, billing_export_attempted_at, emitted_at,
 		       COALESCE(billing_export_transaction_id,''), COALESCE(billing_export_event_name,''),
 		       billing_export_error_code
@@ -109,7 +112,7 @@ func (s *PGStore) BillingExportReport(ctx context.Context, workspaceID string, s
 	for rows.Next() {
 		var r BillingExportRow
 		if err := rows.Scan(&r.WorkspaceID, &r.ResourceKind, &r.ServiceID, &r.Kind, &r.Tier,
-			&r.WindowStart, &r.Quantity, &r.State, &r.AttemptedAt, &r.EmittedAt,
+			&r.WindowStart, &r.Quantity, &r.BilledQuantity, &r.State, &r.AttemptedAt, &r.EmittedAt,
 			&r.TransactionID, &r.EventName, &r.ErrorCode); err != nil {
 			return BillingExportReport{}, err
 		}

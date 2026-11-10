@@ -30,6 +30,12 @@ query Usage($period: String, $ownerId: String) {
       used
       included
     }
+    # buildMinutes: the month's build minutes against the build minutes the
+    # workspace plan includes (w6/m308); only those above are charged.
+    buildMinutes {
+      used
+      included
+    }
     # agentModel: the period's platform-route agent model spend (ADR091 D6),
     # billed at the model provider's cost + 30%, by model and token kind.
     agentModel {
@@ -65,6 +71,9 @@ query Usage($period: String, $ownerId: String) {
           unit
           rateUsd
           quantity
+          # included: the part of quantity the plan's included build minutes
+          # covered; costUsd prices only the rest.
+          included
           costUsd
         }
       }

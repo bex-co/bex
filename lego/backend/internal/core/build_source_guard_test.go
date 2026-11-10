@@ -60,6 +60,7 @@ var appEnumerationsThatMayIncludeBuildSources = map[string]string{
 	"apps/checks_worker.go:tick":                                "a carrier opens no checked deploy",
 	"apps/nameavailable.go:tenantNames":                         "carrier names are bds- ids, never a service's",
 	"billing/enforcement.go:Enforce":                            "an unpaid workspace's build sources stop too",
+	"apps/build_minutes.go:List":                                "a carrier builds, so it stops when the workspace is out of build minutes",
 	"store/reconciler.go:ReconcileOnce":                         "every App CR, carriers included, is projected",
 	"store/product_inventory.go:listResources":                  "product inventory counts build sources as their own type",
 }

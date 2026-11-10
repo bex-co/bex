@@ -57,6 +57,37 @@ const enUsage: Record<string, TranslationEntry> = {
     description:
       "Notice once the monthly Free instance hours are spent (w8/m139)",
   },
+  "usage.buildMinutesTitle": {
+    message: "Pipeline minutes",
+    description:
+      "Title of the included build minutes card on the billing page (w6/m308)",
+  },
+  "usage.buildMinutesDescription": {
+    message:
+      "Builds and pre-deploy commands use pipeline minutes. Your plan includes some every month; minutes beyond them are billed per minute.",
+    description: "Explains the plan's included build minutes (w6/m308)",
+  },
+  "usage.buildMinutesUsed": {
+    message: "{used} of {included} included build minutes used this month",
+    description:
+      "Build minutes used against the plan's included minutes (w6/m308)",
+  },
+  "usage.buildMinutesNear": {
+    message:
+      "You are close to your included build minutes. Without a payment method, new builds and pre-deploy commands stop when they run out, until the start of next month.",
+    description:
+      "Warning once build minutes reach 80 percent of the included minutes (w6/m308)",
+  },
+  "usage.buildMinutesSpent": {
+    message:
+      "The included build minutes are spent. Further minutes are billed per minute; without a payment method, new builds and pre-deploy commands stop until the start of next month.",
+    description: "Notice once the included build minutes are spent (w6/m308)",
+  },
+  "usage.chargeIncluded": {
+    message: "{included} included",
+    description:
+      "Part of a charge line's quantity that the plan's included build minutes covered (w6/m308)",
+  },
   "usage.resourceCapsNearLimit": {
     message: "Near limit",
     description:
