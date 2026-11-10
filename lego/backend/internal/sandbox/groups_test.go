@@ -113,13 +113,25 @@ func newGroupFixture(t *testing.T) *groupFixture {
 // do calls the REST surface as the workspace's member.
 func (f *groupFixture) do(t *testing.T, method, path, body string) (int, string) {
 	t.Helper()
-	req := httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(callerCtx())
+	return f.doAs(t, "id-a", method, path, body)
+}
+
+// doAs calls the REST surface as another subject.
+func (f *groupFixture) doAs(t *testing.T, subject, method, path, body string) (int, string) {
+	t.Helper()
+	rec := f.record(subject, method, path, body)
+	return rec.Code, rec.Body.String()
+}
+
+// record is doAs with the whole response, for a test that reads its headers.
+func (f *groupFixture) record(subject, method, path, body string) *httptest.ResponseRecorder {
+	req := httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(identityCtx(subject))
 	if body != "" {
 		req.Header.Set("Content-Type", "application/json")
 	}
 	rec := httptest.NewRecorder()
 	f.handler.ServeHTTP(rec, req)
-	return rec.Code, rec.Body.String()
+	return rec
 }
 
 // addBox puts a sandbox of the workspace straight into OpenSandbox with no
@@ -221,15 +233,15 @@ func TestSandboxGroupRoutes(t *testing.T) {
 	if code, body := f.do(t, http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"ownerId":%q,"name":"Fourth"}`, f.ws)); code != http.StatusBadRequest || errCode(body) != CodeSandboxGroupLimitReached {
 		t.Errorf("create past the cap = %d %s, want 400 %s", code, body, CodeSandboxGroupLimitReached)
 	}
-	for name, tc := range map[string]string{
-		"region":      `{"ownerId":"` + f.ws + `","name":"x","region":"frankfurt"}`,
-		"empty name":  `{"ownerId":"` + f.ws + `","name":""}`,
-		"padded name": `{"ownerId":"` + f.ws + `","name":" x"}`,
-		"long name":   `{"ownerId":"` + f.ws + `","name":"` + strings.Repeat("a", 101) + `"}`,
-		"no name":     `{"ownerId":"` + f.ws + `"}`,
+	for name, tc := range map[string]struct{ body, code string }{
+		"region":      {`{"ownerId":"` + f.ws + `","name":"x","region":"frankfurt"}`, CodeSandboxGroupRegionInvalid},
+		"empty name":  {`{"ownerId":"` + f.ws + `","name":""}`, CodeSandboxGroupNameInvalid},
+		"padded name": {`{"ownerId":"` + f.ws + `","name":" x"}`, CodeSandboxGroupNameInvalid},
+		"long name":   {`{"ownerId":"` + f.ws + `","name":"` + strings.Repeat("a", 101) + `"}`, CodeSandboxGroupNameInvalid},
+		"no name":     {`{"ownerId":"` + f.ws + `"}`, CodeSandboxGroupNameInvalid},
 	} {
-		if code, body := f.do(t, http.MethodPost, "/v1/sandbox-groups", tc); code != http.StatusBadRequest {
-			t.Errorf("%s = %d %s, want 400", name, code, body)
+		if code, body := f.do(t, http.MethodPost, "/v1/sandbox-groups", tc.body); code != http.StatusBadRequest || errCode(body) != tc.code {
+			t.Errorf("%s = %d %s, want 400 %s", name, code, body, tc.code)
 		}
 	}
 	if code, body := f.do(t, http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"ownerId":%q,"name":"x","region":"oregon"}`, f.ws)); code != http.StatusBadRequest || errCode(body) != CodeSandboxGroupLimitReached {

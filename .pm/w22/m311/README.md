@@ -1,6 +1,6 @@
 # w22 · m311 — Sandbox groups, as on Render: a default group per workspace, a concurrency limit, and 429 at the limit
 
-**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** todo (t001–t006 and t012 done; t007 needs the deploy)
+**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** todo (t001–t006, t008–t010 and t012 done; t007 needs the deploy and the isolation-matrix run)
 
 ## Tasks (in order)
 
@@ -14,10 +14,10 @@
 | t006 | Resource and abuse bounds for compute (ADR104 D11); the egress alert moved to w22/002 — **DONE** | 1h30m | t004 |
 | t012 | Dashboard: "+ New > Sandbox Group", as on Render — **DONE** | 1h30m | t005 |
 | t007 | Production walk with the unmodified CLI, and flip the ledger rows | 1h | t005, t006, t012 |
-| t008 | Render parity | 30m | t007 |
-| t009 | Simplify | 20m | t008 |
-| t010 | Test coverage | 40m | t008 |
-| t011 | Closeout | 10m | t009, t010 |
+| t008 | Render parity — **DONE** | 30m | t007 |
+| t009 | Simplify — **DONE** | 20m | t008 |
+| t010 | Test coverage — **DONE** | 40m | t008 |
+| t011 | Closeout | 10m | t007, t009, t010 |
 
 ## Definition of done
 

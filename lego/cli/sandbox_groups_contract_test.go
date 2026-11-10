@@ -83,6 +83,9 @@ func groupsContractServer(t *testing.T, c sandboxGroupsContract) (*httptest.Serv
 			reply(w, c.List.Status, c.List.Response)
 		case c.SandboxCreate.Method + " " + c.SandboxCreate.Path:
 			reply(w, c.SandboxCreate.Status, c.SandboxCreate.Response)
+		case http.MethodGet + " " + c.SandboxCreate.Path:
+			// Render's sandbox list is a cursor-paginated [{sandbox, cursor}] array.
+			reply(w, http.StatusOK, []map[string]any{{"sandbox": c.SandboxCreate.Response, "cursor": c.SandboxCreate.Response["id"]}})
 		default:
 			http.NotFound(w, r)
 		}
@@ -162,5 +165,26 @@ func TestPinnedSandboxCreateSendsTheGroup(t *testing.T) {
 	seen := calls()
 	if len(seen) != 1 || seen[0].path != c.SandboxCreate.Path || seen[0].body["sandboxGroupId"] != group {
 		t.Fatalf("requests = %+v, want one create carrying sandboxGroupId %s", seen, group)
+	}
+}
+
+// `sandboxes list --group` sends the group as the sandboxGroupId query filter
+// next to the workspace, and the pinned client reads the group off each sandbox.
+func TestPinnedSandboxListSendsTheGroupFilter(t *testing.T) {
+	c := loadSandboxGroupsContract(t)
+	srv, calls := groupsContractServer(t, c)
+	group, _ := c.SandboxCreate.RequestBodyHas["sandboxGroupId"].(string)
+
+	stdout, stderr, err := runBexAgainst(t, srv.URL, "sandboxes", "list", "--group", group, "-o", "json")
+	if err != nil {
+		t.Fatalf("sandboxes list --group: %v\n%s", err, stderr)
+	}
+	if !strings.Contains(stdout, group) {
+		t.Errorf("list output %q does not carry the sandbox's group", stdout)
+	}
+	seen := calls()
+	if len(seen) != 1 || seen[0].method != http.MethodGet || seen[0].path != c.SandboxCreate.Path ||
+		!strings.Contains(seen[0].query, "sandboxGroupId="+group) || !strings.Contains(seen[0].query, "ownerId=tea-bex") {
+		t.Fatalf("requests = %+v, want one list of %s filtered by sandboxGroupId=%s for the workspace", seen, c.SandboxCreate.Path, group)
 	}
 }

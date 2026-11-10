@@ -47,6 +47,10 @@ const unsupportedSurface = "unsupported-by-this-surface"
 
 type groupDriver interface {
 	createGroup(groupName string) outcome
+	getGroup(id string) outcome
+	// listGroups reads one page: after is the cursor ("" = the first page) and
+	// limit the page size (0 = the surface's default).
+	listGroups(after string, limit int) outcome
 	updateGroup(id string, limit int) outcome
 	createSandbox(groupID string) outcome
 	listSandboxes(groupID string) outcome
@@ -113,6 +117,31 @@ func (d restDriver) call(method, path, body string) outcome {
 
 func (d restDriver) createGroup(name string) outcome {
 	return d.call(http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"name":%q}`, name))
+}
+
+func (d restDriver) getGroup(id string) outcome {
+	return d.call(http.MethodGet, "/v1/sandbox-groups/"+id, "")
+}
+
+func (d restDriver) listGroups(after string, limit int) outcome {
+	query := ""
+	if after != "" {
+		query += "&cursor=" + after
+	}
+	if limit > 0 {
+		query += fmt.Sprintf("&limit=%d", limit)
+	}
+	out := d.call(http.MethodGet, "/v1/sandbox-groups?ownerId="+d.f.ws+query, "")
+	if out.Code != "" {
+		return out
+	}
+	// REST wraps each group as {sandboxGroup, cursor}; the other surfaces list groups.
+	items, _ := out.Fields["result"].([]any)
+	var groups []any
+	for _, item := range items {
+		groups = append(groups, item.(map[string]any)["sandboxGroup"])
+	}
+	return outcome{Fields: map[string]any{"result": groups}}
 }
 
 func (d restDriver) updateGroup(id string, limit int) outcome {
@@ -189,6 +218,21 @@ func (d gqlDriver) createGroup(name string) outcome {
 	return d.run("createSandboxGroup", `mutation($n: String!) { createSandboxGroup(name: $n) { `+gqlGroupFields+` } }`, map[string]any{"n": name})
 }
 
+func (d gqlDriver) getGroup(id string) outcome {
+	return d.run("sandboxGroup", `query($id: String!) { sandboxGroup(id: $id) { `+gqlGroupFields+` } }`, map[string]any{"id": id})
+}
+
+func (d gqlDriver) listGroups(after string, limit int) outcome {
+	vars := map[string]any{}
+	if after != "" {
+		vars["c"] = after
+	}
+	if limit > 0 {
+		vars["l"] = limit
+	}
+	return d.run("sandboxGroups", `query($c: String, $l: Int) { sandboxGroups(cursor: $c, limit: $l) { `+gqlGroupFields+` } }`, vars)
+}
+
 func (d gqlDriver) updateGroup(id string, limit int) outcome {
 	return d.run("updateSandboxGroup", `mutation($id: String!, $l: Int!) { updateSandboxGroup(id: $id, concurrencyLimit: $l) { `+gqlGroupFields+` } }`,
 		map[string]any{"id": id, "l": limit})
@@ -245,6 +289,27 @@ func (d mcpDriver) createGroup(name string) outcome {
 	return d.call("create_sandbox_group", map[string]any{"name": name})
 }
 
+func (d mcpDriver) getGroup(id string) outcome {
+	return d.call("get_sandbox_group", map[string]any{"id": id})
+}
+
+func (d mcpDriver) listGroups(after string, limit int) outcome {
+	args := map[string]any{}
+	if after != "" {
+		args["cursor"] = after
+	}
+	if limit > 0 {
+		args["limit"] = limit
+	}
+	out := d.call("list_sandbox_groups", args)
+	if out.Code != "" {
+		return out
+	}
+	// MCP wraps the list as {sandboxGroups: [...]}.
+	inner, _ := out.Fields["result"].(map[string]any)
+	return outcome{Fields: map[string]any{"result": inner["sandboxGroups"]}}
+}
+
 func (d mcpDriver) updateGroup(id string, limit int) outcome {
 	return d.call("update_sandbox_group", map[string]any{"id": id, "concurrencyLimit": limit})
 }
@@ -276,8 +341,8 @@ func (d mcpDriver) execOn(id string) outcome {
 }
 
 // canonical makes a list outcome comparable: an empty or null list is one thing,
-// and the order of items is not part of the contract.
-func canonical(o outcome) outcome {
+// and, unless the list is ordered, the order of items is not part of the contract.
+func canonical(o outcome, ordered bool) outcome {
 	if o.Fields == nil {
 		return o
 	}
@@ -286,16 +351,28 @@ func canonical(o outcome) outcome {
 		list, ok = []any{}, true
 	}
 	if ok {
-		// A list's order is not part of the contract (OpenSandbox's list is a map).
-		sorted := slices.Clone(list)
-		slices.SortFunc(sorted, func(a, b any) int {
-			ja, _ := json.Marshal(a)
-			jb, _ := json.Marshal(b)
-			return strings.Compare(string(ja), string(jb))
-		})
+		sorted := append([]any{}, list...) // never nil: an empty list is one thing
+		if !ordered {
+			// OpenSandbox's list is a map, so a sandbox list has no order.
+			slices.SortFunc(sorted, func(a, b any) int {
+				ja, _ := json.Marshal(a)
+				jb, _ := json.Marshal(b)
+				return strings.Compare(string(ja), string(jb))
+			})
+		}
 		o.Fields = map[string]any{"result": sorted}
 	}
 	return o
+}
+
+// groupNames is the names in a group list outcome, in order.
+func groupNames(o outcome) []string {
+	names := []string{}
+	list, _ := o.Fields["result"].([]any)
+	for _, item := range list {
+		names = append(names, item.(map[string]any)["name"].(string))
+	}
+	return names
 }
 
 func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
@@ -373,6 +450,42 @@ func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 			e.f.mustCreate(t, g.ID)
 			return e.d.execOn(asleep.ID)
 		}},
+		{"retrieving a group", "", func(e env) outcome {
+			return e.d.getGroup(e.f.createGroup(t, "one").ID)
+		}},
+		{"retrieving an unknown group", CodeSandboxGroupNotFound, func(e env) outcome {
+			return e.d.getGroup("sbg-" + strings.Repeat("a", 20))
+		}},
+		{"retrieving a malformed group id", CodeInvalidSandboxGroupID, func(e env) outcome {
+			return e.d.getGroup("nope")
+		}},
+		{"listing a workspace's groups", "", func(e env) outcome {
+			for _, name := range []string{"g0", "g1", "g2"} {
+				e.f.createGroup(t, name)
+			}
+			return e.d.listGroups("", 0)
+		}},
+		{"listing a page of groups after a cursor", "", func(e env) outcome {
+			e.f.svc.MaxGroups = 0 // the fixture's cap of 3 is below the 4 this needs
+			for _, name := range []string{"g0", "g1", "g2", "g3"} {
+				e.f.createGroup(t, name)
+			}
+			newestFirst, err := e.f.st.SandboxGroups(context.Background(), e.f.ws)
+			if err != nil {
+				t.Fatal(err)
+			}
+			return e.d.listGroups(newestFirst[1].ID, 1) // after g2, one group: g1
+		}},
+		{"listing a workspace with no groups", "", func(e env) outcome {
+			return e.d.listGroups("", 0)
+		}},
+	}
+	// A group list is ordered, newest first, and these are the names each must
+	// carry; every other scenario's list is unordered.
+	groupLists := map[string][]string{
+		"listing a workspace's groups":            {"g2", "g1", "g0"},
+		"listing a page of groups after a cursor": {"g1"},
+		"listing a workspace with no groups":      {},
 	}
 	// Only these surfaces have the operation at all: GraphQL has no exec verb, so
 	// waking a sandbox by exec is REST and MCP.
@@ -391,7 +504,8 @@ func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 				case "MCP":
 					e.d = mcpDriver{t: t, client: mcpClient(t, f.svc)}
 				}
-				got[driver] = canonical(sc.run(e))
+				_, ordered := groupLists[sc.name]
+				got[driver] = canonical(sc.run(e), ordered)
 			}
 			var surfaces []string
 			for driver, out := range got {
@@ -407,6 +521,11 @@ func TestGroupBehaviorsAgreeAcrossRESTGraphQLAndMCP(t *testing.T) {
 			ref := got[surfaces[0]]
 			if ref.Code != sc.want {
 				t.Fatalf("%s answered code %q, want %q", surfaces[0], ref.Code, sc.want)
+			}
+			if want, listed := groupLists[sc.name]; listed {
+				if names := groupNames(ref); !slices.Equal(names, want) {
+					t.Errorf("%s listed %v, want %v", surfaces[0], names, want)
+				}
 			}
 			for _, driver := range surfaces[1:] {
 				if got[driver].Code != ref.Code {

@@ -71,6 +71,9 @@ type fakeOpenSandbox struct {
 	createDelay  time.Duration
 	createStatus int
 	createBody   string
+	// resumeStatus, when set, is what a resume answers instead of accepting it (a
+	// failing runtime).
+	resumeStatus int
 }
 
 func newFakeOpenSandbox(t *testing.T) (*fakeOpenSandbox, *Client) {
@@ -237,6 +240,10 @@ func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "resume":
 		f.calls = append(f.calls, "resume "+parts[0])
+		if f.resumeStatus != 0 {
+			w.WriteHeader(f.resumeStatus)
+			return
+		}
 		if b.state != "Paused" {
 			w.WriteHeader(http.StatusConflict)
 			return

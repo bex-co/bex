@@ -42,10 +42,12 @@ const (
 	// resume and its list showing the sandbox active. It only matters for a
 	// sandbox the list shows absent or still suspended.
 	settleLease = 2 * time.Minute
-	// admissionListTimeout bounds the live list read while the admission lock is
-	// held, so a hung OpenSandbox cannot hold every create of one workspace.
-	admissionListTimeout = 10 * time.Second
 )
+
+// admissionListTimeout bounds the live list read while the admission lock is
+// held, so a hung OpenSandbox cannot hold every create of one workspace. A var
+// only so a test can shorten it.
+var admissionListTimeout = 10 * time.Second
 
 // holdsSlotStatus reports whether a sandbox in this status counts toward a
 // concurrency limit. Render: "suspended sandboxes do not count"
@@ -189,17 +191,7 @@ func (s *Service) resolveGroup(ctx context.Context, workspace, groupID string) (
 	if groupID == "" {
 		return s.defaultGroup(ctx, workspace)
 	}
-	if err := validateGroupID(groupID); err != nil {
-		return store.SandboxGroup{}, err
-	}
-	g, err := s.Groups.SandboxGroup(ctx, workspace, groupID)
-	if errors.Is(err, store.ErrNotFound) {
-		return store.SandboxGroup{}, groupNotFound(groupID)
-	}
-	if err != nil {
-		return store.SandboxGroup{}, store.MapError(err)
-	}
-	return g, nil
+	return s.loadGroup(ctx, workspace, groupID)
 }
 
 func (s *Service) defaultGroup(ctx context.Context, workspace string) (store.SandboxGroup, error) {
@@ -277,53 +269,45 @@ func (s *Service) admitResume(ctx context.Context, key, workspace string, raw os
 	return release, nil
 }
 
-// slotBookkeeping runs fn on a context that survives the request's own
-// cancellation, bounded by egressCleanupTimeout: releasing or settling a slot
-// must land even after the client hung up, and must never hang the response.
-func slotBookkeeping(ctx context.Context, fn func(context.Context) error) error {
+// slotWrite runs one slot bookkeeping write on a context that survives the
+// request's own cancellation, bounded by egressCleanupTimeout: releasing or
+// settling a slot must land even after the client hung up, and must never hang
+// the response. A failure is logged, not returned: the lease ends on its own. It
+// does nothing without a group store.
+func (s *Service) slotWrite(ctx context.Context, what, workspace, sandboxID string, write func(context.Context) error) {
+	if s.Groups == nil {
+		return
+	}
 	cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
 	defer cancel()
-	return fn(cleanup)
+	if err := write(cleanup); err != nil {
+		log.Printf("sandbox groups: %s workspace=%s sandbox=%s: %v", what, workspace, sandboxID, err)
+	}
 }
 
 // settleSlot shortens a created sandbox's slot reservation to the lag window
 // once the create has succeeded.
 func (s *Service) settleSlot(ctx context.Context, workspace, sandboxID string) {
-	if s.Groups == nil {
-		return
-	}
-	until := s.Now().Add(settleLease)
-	if err := slotBookkeeping(ctx, func(c context.Context) error {
+	s.slotWrite(ctx, "settle slot", workspace, sandboxID, func(c context.Context) error {
+		until := s.Now().Add(settleLease)
 		return s.Groups.SetSandboxSlotLease(c, workspace, sandboxID, &until)
-	}); err != nil {
-		log.Printf("sandbox groups: settle slot workspace=%s sandbox=%s: %v", workspace, sandboxID, err)
-	}
+	})
 }
 
 // clearSlotLease ends a sandbox's slot reservation: it is suspended, or its
 // resume failed, so it holds nothing the list does not show.
 func (s *Service) clearSlotLease(ctx context.Context, workspace, sandboxID string) {
-	if s.Groups == nil {
-		return
-	}
-	if err := slotBookkeeping(ctx, func(c context.Context) error {
+	s.slotWrite(ctx, "clear slot lease", workspace, sandboxID, func(c context.Context) error {
 		return s.Groups.SetSandboxSlotLease(c, workspace, sandboxID, nil)
-	}); err != nil {
-		log.Printf("sandbox groups: clear slot lease workspace=%s sandbox=%s: %v", workspace, sandboxID, err)
-	}
+	})
 }
 
 // releaseSlot removes a sandbox's group binding: its create failed, or it was
 // terminated.
 func (s *Service) releaseSlot(ctx context.Context, workspace, sandboxID string) {
-	if s.Groups == nil {
-		return
-	}
-	if err := slotBookkeeping(ctx, func(c context.Context) error {
+	s.slotWrite(ctx, "release slot", workspace, sandboxID, func(c context.Context) error {
 		return s.Groups.ReleaseSandboxSlot(c, workspace, sandboxID)
-	}); err != nil {
-		log.Printf("sandbox groups: release slot workspace=%s sandbox=%s: %v", workspace, sandboxID, err)
-	}
+	})
 }
 
 // releaseFailedCreate gives back the slot of a create that failed. A timeout

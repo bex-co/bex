@@ -73,6 +73,13 @@ func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing
 		{"list --group malformed", http.MethodGet, "/v1/sandboxes?ownerId=tea-a&sandboxGroupId=nope", "", 400, "invalid_sandbox_group_id"},
 		{"sandbox-groups retrieve malformed", http.MethodGet, "/v1/sandbox-groups/nope", "", 400, "invalid_sandbox_group_id"},
 		{"sandbox-groups update malformed", http.MethodPatch, "/v1/sandbox-groups/nope", `{"concurrencyLimit":5}`, 400, "invalid_sandbox_group_id"},
+		// The pinned schema requires a concurrencyLimit of at least 1, so the gate
+		// refuses these before the Service does; the code is the one GraphQL and
+		// MCP answer with (the cross-surface table test drives REST on a bare mux,
+		// where only the Service's own check is reachable).
+		{"sandbox-groups update limit zero", http.MethodPatch, "/v1/sandbox-groups/" + group, `{"concurrencyLimit":0}`, 400, "SANDBOX_GROUP_LIMIT_INVALID"},
+		{"sandbox-groups update limit negative", http.MethodPatch, "/v1/sandbox-groups/" + group, `{"concurrencyLimit":-3}`, 400, "SANDBOX_GROUP_LIMIT_INVALID"},
+		{"sandbox-groups update limit absent", http.MethodPatch, "/v1/sandbox-groups/" + group, `{}`, 400, "SANDBOX_GROUP_LIMIT_INVALID"},
 		{"--image by id", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","buildId":"sbb-` + strings.Repeat("c", 20) + `"}`, 400, "SANDBOX_IMAGES_UNSUPPORTED"},
 		{"--image by name", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","buildName":"python"}`, 400, "SANDBOX_IMAGES_UNSUPPORTED"},
 		{"unknown plan", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","plan":"16c-32g"}`, 400, "SANDBOX_PLAN_INVALID"},

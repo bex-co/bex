@@ -105,6 +105,42 @@ func TestLoadConfigDefaults(t *testing.T) {
 	}
 }
 
+// TestLoadConfigSandboxGroupLimits pins Render's sandbox numbers as the defaults
+// (10 groups a workspace, 1,000 concurrent sandboxes a group), bex's own bound on
+// active sandboxes across a workspace's groups (100), that 0 disables each, and
+// that a bad value falls back to the default with a warning instead of lifting
+// the bound (w22/m311).
+func TestLoadConfigSandboxGroupLimits(t *testing.T) {
+	type limits struct{ groups, concurrency, active int }
+	read := func(env map[string]string) (limits, []string) {
+		t.Helper()
+		cfg, warnings, err := loadFor(t, env)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return limits{cfg.SandboxMaxGroupsPerWorkspace, cfg.SandboxMaxGroupConcurrency, cfg.SandboxMaxActivePerWorkspace}, warnings
+	}
+	if got, warnings := read(nil); got != (limits{10, 1000, 100}) || len(warnings) != 0 {
+		t.Errorf("defaults = %+v (warnings %v), want 10 groups, 1000 a group, 100 active", got, warnings)
+	}
+	set := map[string]string{
+		"BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE": "3", "BEX_SANDBOX_MAX_GROUP_CONCURRENCY": "50", "BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE": "20",
+	}
+	if got, _ := read(set); got != (limits{3, 50, 20}) {
+		t.Errorf("configured = %+v, want 3, 50, 20", got)
+	}
+	off := map[string]string{
+		"BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE": "0", "BEX_SANDBOX_MAX_GROUP_CONCURRENCY": "0", "BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE": "0",
+	}
+	if got, _ := read(off); got != (limits{0, 0, 0}) {
+		t.Errorf("0 = %+v, want each bound disabled", got)
+	}
+	bad := map[string]string{"BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE": "many", "BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE": "-1"}
+	if got, warnings := read(bad); got != (limits{10, 1000, 100}) || !hasWarning(warnings, "BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE") || !hasWarning(warnings, "BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE") {
+		t.Errorf("bad values = %+v (warnings %v), want the defaults and a warning for each", got, warnings)
+	}
+}
+
 // TestLoadConfigFatalKnobs pins the "fatal" policy: each previously
 // log.Fatalf'd parse is now a collected error, raised before any side effect.
 func TestLoadConfigFatalKnobs(t *testing.T) {

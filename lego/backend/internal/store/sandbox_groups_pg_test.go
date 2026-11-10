@@ -180,6 +180,32 @@ func TestFirstExplicitGroupIsTheDefaultPG(t *testing.T) {
 	}
 }
 
+// A workspace that has groups but no default (which these writes cannot produce,
+// but a manual repair or a future delete could) gets its oldest group as the
+// default, instead of a second "Default" group or an error.
+func TestEnsureDefaultPromotesTheOldestGroupWhenNoneIsDefaultPG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-nodefault").ID
+	oldest, err := st.CreateSandboxGroup(ctx, ws, "Oldest", SandboxGroupRegion, 7, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.CreateSandboxGroup(ctx, ws, "Newer", SandboxGroupRegion, 7, 10); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.Pool.Exec(ctx, `UPDATE sandbox_groups SET is_default = false WHERE workspace_id = $1`, ws); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.EnsureDefaultSandboxGroup(ctx, ws, 1000)
+	if err != nil || got.ID != oldest.ID || !got.IsDefault {
+		t.Fatalf("ensure with no default = %+v, %v, want the oldest group %s promoted", got, err, oldest.ID)
+	}
+	if list, err := st.SandboxGroups(ctx, ws); err != nil || len(list) != 2 {
+		t.Fatalf("workspace has %d groups (%v), want its 2 and no extra Default", len(list), err)
+	}
+}
+
 // Bindings carry the lease, refuse a group of another workspace, are pruned only
 // once old and unleased and absent from the live list, and die with the workspace.
 func TestSandboxGroupMembersPG(t *testing.T) {

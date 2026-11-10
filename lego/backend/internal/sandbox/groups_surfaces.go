@@ -112,12 +112,6 @@ type listGroupsResult struct {
 	SandboxGroups []Group `json:"sandboxGroups"`
 }
 
-type createGroupArgs struct {
-	Name    string `json:"name"`
-	Region  string `json:"region,omitempty"`
-	OwnerID string `json:"ownerId,omitempty"`
-}
-
 type updateGroupArgs struct {
 	ID               string `json:"id"`
 	ConcurrencyLimit int    `json:"concurrencyLimit"`
@@ -135,8 +129,8 @@ func (s *Service) registerGroupMCP(server *mcp.Server) {
 			return nil, g, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups, and a group runs in region oregon only."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in createGroupArgs) (*mcp.CallToolResult, Group, error) {
-			g, err := s.CreateGroup(ctx, CreateGroupRequest{OwnerID: in.OwnerID, Name: in.Name, Region: in.Region})
+		func(ctx context.Context, _ *mcp.CallToolRequest, in CreateGroupRequest) (*mcp.CallToolResult, Group, error) {
+			g, err := s.CreateGroup(ctx, in)
 			return nil, g, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "update_sandbox_group", Description: "Set a sandbox group's concurrencyLimit, the most active sandboxes it allows (at least 1; a higher value is capped to the platform's maximum and the response returns the effective limit). Lowering it stops no running sandbox; the group just admits no new one until its active count is below the limit. Suspended sandboxes do not count."},

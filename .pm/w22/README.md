@@ -14,3 +14,4 @@
 - [ ] [001](001.md) — Pin sandbox `bash -c`, the list `limit` cap and the 40 GB filesystem with tests
 - [ ] [002](002.md) — Meter sandbox egress, then alert on a workspace whose allow-all sandboxes egress far above its plan
 - [ ] [003](003.md) — Sandbox groups: the optional project environment on "+ New > Sandbox Group"
+- [ ] [004](004.md) — Sandbox group list and paging: where bex's answers differ from Render's error vocabulary

@@ -877,14 +877,18 @@ func unsupportedQueryMessage(unknown []string, operationID string) string {
 	return fmt.Sprintf("unsupported query %s %s for %s", noun, list, operationID)
 }
 
-// renderValidationErrorCodes names the Render errorCode a malformed value of a
-// parameter (path, query or top-level body field) answers: the pinned OpenAPI's
+// renderValidationErrorCodes names the machine code a refused value of a
+// parameter (path, query or top-level body field) answers. The pinned OpenAPI's
 // `errorCode` vocabulary says an id that is not a well-formed `sbg-` identifier
-// is `invalid_sandbox_group_id`. The gate otherwise answers a codeless 400, so
-// without this a malformed group id on REST would carry no code while GraphQL
-// and MCP, which reach the Service's own check, do (w22/m311).
+// is `invalid_sandbox_group_id`; and `update-sandbox-group` requires an integer
+// `concurrencyLimit` of at least 1, which the gate refuses before the Service's
+// own check (SANDBOX_GROUP_LIMIT_INVALID) can. The gate otherwise answers a
+// codeless 400, so without these a malformed group id or an absent or zero limit
+// on REST would carry no code while GraphQL and MCP, which reach the Service's
+// own checks, do (w22/m311). Each name is unique to its operation in the pin.
 var renderValidationErrorCodes = map[string]string{
-	"sandboxGroupId": sandbox.CodeInvalidSandboxGroupID,
+	"sandboxGroupId":   sandbox.CodeInvalidSandboxGroupID,
+	"concurrencyLimit": sandbox.CodeSandboxGroupLimitInvalid,
 }
 
 // renderValidationCode is the field and code of a request error that has one.

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strings"
 	"time"
@@ -114,12 +115,13 @@ type GroupEnvelope struct {
 	Cursor       string `json:"cursor"`
 }
 
-// CreateGroupRequest is the caller's group create input. OwnerID binds the
-// workspace; an empty Region is Render's default, oregon.
+// CreateGroupRequest is the caller's group create input, and the body of REST's
+// POST and MCP's create_sandbox_group. OwnerID binds the workspace; an empty
+// Region is Render's default, oregon.
 type CreateGroupRequest struct {
-	OwnerID string
-	Name    string
-	Region  string
+	OwnerID string `json:"ownerId,omitempty"`
+	Name    string `json:"name"`
+	Region  string `json:"region,omitempty"`
 }
 
 // CodeSandboxGroupsUnavailable is the 503 of a deployment with no control-plane
@@ -133,35 +135,25 @@ func (s *Service) requireGroups() error {
 	return nil
 }
 
-// groupConcurrencyCeiling is the most a group's limit can be (0: unbounded).
-func (s *Service) groupConcurrencyCeiling() int { return s.MaxGroupConcurrency }
+// clampLimit applies the platform's ceiling on a group's concurrencyLimit, which
+// is Render's rule that a value above it is capped, not refused ("capped by
+// Render's limit for this workspace"). With no ceiling (0) a value is capped at
+// what the column holds. It is the one place the ceiling is applied: to a
+// requested limit, to the one a group starts with, and to a stored one read back.
+func (s *Service) clampLimit(limit int) int {
+	if c := s.MaxGroupConcurrency; c > 0 {
+		return min(limit, c)
+	}
+	return min(limit, math.MaxInt32)
+}
 
 // newGroupLimit is the limit a group starts with: Render's 1,000, or the
 // ceiling when that is lower.
-func (s *Service) newGroupLimit() int {
-	if c := s.groupConcurrencyCeiling(); c > 0 {
-		return min(RenderMaxGroupConcurrency, c)
-	}
-	return RenderMaxGroupConcurrency
-}
-
-// clampLimit applies Render's rule that a concurrencyLimit above the ceiling is
-// capped, not refused ("capped by Render's limit for this workspace").
-func (s *Service) clampLimit(limit int) int {
-	if c := s.groupConcurrencyCeiling(); c > 0 {
-		return min(limit, c)
-	}
-	return min(limit, 1<<31-1)
-}
+func (s *Service) newGroupLimit() int { return s.clampLimit(RenderMaxGroupConcurrency) }
 
 // effectiveLimit is the limit a group is held to: its configured value capped by
 // the ceiling, so lowering the ceiling lowers every group without a rewrite.
-func (s *Service) effectiveLimit(g store.SandboxGroup) int {
-	if c := s.groupConcurrencyCeiling(); c > 0 {
-		return min(g.ConcurrencyLimit, c)
-	}
-	return g.ConcurrencyLimit
-}
+func (s *Service) effectiveLimit(g store.SandboxGroup) int { return s.clampLimit(g.ConcurrencyLimit) }
 
 func (s *Service) groupView(g store.SandboxGroup) Group {
 	return Group{
@@ -188,7 +180,7 @@ func groupNotFound(id string) error {
 // no control characters, at most 100 characters.
 func validateGroupName(name string) error {
 	bad := name == "" || strings.TrimSpace(name) != name || utf8.RuneCountInString(name) > maxGroupName ||
-		strings.ContainsFunc(name, func(r rune) bool { return unicode.IsControl(r) || r == ' ' || r == ' ' })
+		strings.ContainsFunc(name, func(r rune) bool { return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' })
 	if !bad {
 		return nil
 	}
@@ -258,11 +250,12 @@ func (s *Service) ListGroups(ctx context.Context, after string, limit int) ([]Gr
 	if err != nil {
 		return nil, store.MapError(err)
 	}
-	groups := make([]Group, 0, len(rows))
-	for _, g := range rows {
+	page := core.Page(rows, after, core.PageLimitOrDefault(limit), func(g store.SandboxGroup) string { return g.ID })
+	groups := make([]Group, 0, len(page))
+	for _, g := range page {
 		groups = append(groups, s.groupView(g))
 	}
-	return core.Page(groups, after, core.PageLimitOrDefault(limit), func(g Group) string { return g.ID }), nil
+	return groups, nil
 }
 
 // GetGroup returns one group. With no workspace named it acts in the group's
@@ -321,10 +314,17 @@ func (s *Service) storedGroup(ctx context.Context, id string) (store.SandboxGrou
 	if err := s.requireGroups(); err != nil {
 		return store.SandboxGroup{}, err
 	}
+	return s.loadGroup(ctx, s.WorkspaceOrDefault(ctx), id)
+}
+
+// loadGroup reads one group of a workspace by id. A malformed id is Render's
+// invalid_sandbox_group_id; an id the workspace does not hold, unused or another
+// workspace's, is the same not-found.
+func (s *Service) loadGroup(ctx context.Context, workspace, id string) (store.SandboxGroup, error) {
 	if err := validateGroupID(id); err != nil {
 		return store.SandboxGroup{}, err
 	}
-	g, err := s.Groups.SandboxGroup(ctx, s.WorkspaceOrDefault(ctx), id)
+	g, err := s.Groups.SandboxGroup(ctx, workspace, id)
 	if errors.Is(err, store.ErrNotFound) {
 		return store.SandboxGroup{}, groupNotFound(id)
 	}
@@ -357,21 +357,16 @@ func (s *Service) groupOwner(id string) core.ResourceOwner {
 // registerGroupREST mounts Render's four sandbox-group routes.
 func (s *Service) registerGroupREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandbox-groups", func(w http.ResponseWriter, r *http.Request) {
-		var body struct {
-			OwnerID string `json:"ownerId"`
-			Name    string `json:"name"`
-			Region  string `json:"region"`
-		}
+		var req CreateGroupRequest
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
-		if err := core.DecodeJSON(r, &body); err != nil {
+		if err := core.DecodeJSON(r, &req); err != nil {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		owner := r.URL.Query().Get("ownerId")
-		if owner == "" {
-			owner = body.OwnerID
+		if owner := r.URL.Query().Get("ownerId"); owner != "" {
+			req.OwnerID = owner
 		}
-		g, err := s.CreateGroup(r.Context(), CreateGroupRequest{OwnerID: owner, Name: body.Name, Region: body.Region})
+		g, err := s.CreateGroup(r.Context(), req)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
