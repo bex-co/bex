@@ -36,6 +36,7 @@ EDGE=(
   http:80:31218:true
   https:443:31976:true
   postgres:5432:31056:true
+  postgres_pooled:6432:31056:true
   valkey:6379:31892:true
 )
 

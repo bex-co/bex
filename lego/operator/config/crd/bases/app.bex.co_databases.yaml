@@ -694,7 +694,7 @@ spec:
                 description: |-
                   PoolerHost is the in-cluster PgBouncer service host ("<name>-pooler.<ns>.svc")
                   when Pooler is enabled (empty otherwise). The pooled internal URL routes
-                  through it.
+                  through it: postgresql://<user>:<pass>@<PoolerHost>:<PoolerPort>/<db>.
                 type: string
               port:
                 description: Port the database listens on.

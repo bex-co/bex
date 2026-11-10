@@ -214,7 +214,7 @@ BAD_LB=$(jq --argjson id "$NETWORK_ID" '[.load_balancers[]
       or (($targets | length) == 0)
       or any($targets[]?; .use_private_ip != true)
       or (($ports - $healthy_ports) | length) > 0)] | length' <<<"$LBS_JSON")
-[ "$TRAEFIK_PORTS" = "22,80,443,5432,6379" ] && [ "$APISERVER_PORTS" = "443" ] && [ "$BAD_LB" -eq 0 ] \
+[ "$TRAEFIK_PORTS" = "22,80,443,5432,6379,6432" ] && [ "$APISERVER_PORTS" = "443" ] && [ "$BAD_LB" -eq 0 ] \
   || fail "network: LB ports traefik/api=$TRAEFIK_PORTS/$APISERVER_PORTS, unavailable-or-public-target LBs=$BAD_LB"
 
 SOURCE_IP=$(jq -r '[.servers[] | select(.labels.machine_type == "control_plane")][0].public_net.ipv4.ip // ""' <<<"$SERVERS_JSON")

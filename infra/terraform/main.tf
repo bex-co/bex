@@ -252,6 +252,28 @@ resource "hcloud_load_balancer_service" "postgres" {
   }
 }
 
+# Pooled Postgres URLs name PgBouncer's 6432, as Render's do (w2/m316). The
+# same pg-sni-proxy NodePort serves them: it routes by SNI (<db>-pool hosts go
+# to the pooler) and never reads the port the client dialed. :5432 above
+# keeps serving pooled URLs handed out before the change.
+resource "hcloud_load_balancer_service" "postgres_pooled" {
+  count = var.app_network_id == 0 ? 0 : 1
+
+  load_balancer_id = hcloud_load_balancer.traefik.id
+  protocol         = "tcp"
+  listen_port      = 6432
+  destination_port = 31056
+  proxyprotocol    = true
+
+  health_check {
+    protocol = "tcp"
+    port     = 31056
+    interval = 15
+    timeout  = 10
+    retries  = 3
+  }
+}
+
 resource "hcloud_load_balancer_service" "valkey" {
   count = var.app_network_id == 0 ? 0 : 1
 

@@ -900,9 +900,19 @@ func TestPoolerConnectionStrings(t *testing.T) {
 	if info.InternalConnectionPoolString == "" || info.ExternalConnectionPoolString == "" {
 		t.Fatalf("pooler strings should be populated: %+v", info)
 	}
-	wantInternal := "postgresql://pool_db_user:s3cret@pool-db-pooler.default.svc:5432/pool_db"
+	// Pooled strings name PgBouncer's 6432, as Render's do (w2/m316); the
+	// direct strings keep Postgres's 5432.
+	wantInternal := "postgresql://pool_db_user:s3cret@pool-db-pooler.default.svc:6432/pool_db"
 	if info.InternalConnectionPoolString != wantInternal {
 		t.Errorf("internal pool string = %q", info.InternalConnectionPoolString)
+	}
+	if !strings.Contains(info.ExternalConnectionPoolString, ":6432/pool_db") {
+		t.Errorf("external pool string = %q, want port 6432", info.ExternalConnectionPoolString)
+	}
+	for name, direct := range map[string]string{"internal": info.InternalConnectionString, "external": info.ExternalConnectionString} {
+		if direct != "" && !strings.Contains(direct, ":5432/pool_db") {
+			t.Errorf("%s direct string = %q, want port 5432", name, direct)
+		}
 	}
 }
 

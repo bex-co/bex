@@ -322,6 +322,11 @@ func ApplicationSecretName(resourceID string) string { return resourceID + "-app
 // Database's PgBouncer Service with its default credential.
 func PoolerSecretName(resourceID string) string { return resourceID + "-pooler-app" }
 
+// PoolerPort is the port every pooled connection string names: PgBouncer's
+// 6432, as Render's pooled URLs use (w2/m316). The pooler Service and the
+// edge also keep serving 5432, so pooled URIs handed out before keep working.
+const PoolerPort = 6432
+
 // DefaultConnectionSecretName is the operator-owned Secret holding the
 // connection details of a Database whose default credential is not the owner
 // (spec.defaultUser). Same keys as ApplicationSecretName's.
@@ -575,7 +580,7 @@ type DatabaseStatus struct {
 
 	// PoolerHost is the in-cluster PgBouncer service host ("<name>-pooler.<ns>.svc")
 	// when Pooler is enabled (empty otherwise). The pooled internal URL routes
-	// through it.
+	// through it: postgresql://<user>:<pass>@<PoolerHost>:<PoolerPort>/<db>.
 	// +optional
 	PoolerHost string `json:"poolerHost,omitempty"`
 

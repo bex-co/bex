@@ -96,7 +96,7 @@ func TestPubliclyTrustedDatabaseServesRenderShapedURLsWithoutCA(t *testing.T) {
 	user, db := "lets_db_user", "lets_db"
 	want := map[string]string{
 		"external":         "postgresql://" + user + ":s3cret@lets-db.db.bex.co:5432/" + db,
-		"external pool":    "postgresql://" + user + ":s3cret@lets-db-pool.db.bex.co:5432/" + db,
+		"external pool":    "postgresql://" + user + ":s3cret@lets-db-pool.db.bex.co:6432/" + db,
 		"external replica": "postgresql://" + user + ":s3cret@lets-db-ro-reader.db.bex.co:5432/" + db,
 		"psql":             "PGPASSWORD=s3cret psql -h lets-db.db.bex.co -U " + user + " " + db,
 	}
@@ -189,7 +189,7 @@ func TestExternalURLFollowsTheServedCertificateBackToPrivateCA(t *testing.T) {
 			t.Fatalf("externalCertificate %q: connection-info => %d", cert, code)
 		}
 		if ci.ExternalConnectionString != "postgresql://flip_db_user:s3cret@flip-db.db.bex.co:5432/flip_db?sslmode=verify-full" ||
-			!strings.HasSuffix(ci.ExternalConnectionPoolString, ":5432/flip_db?sslmode=verify-full") ||
+			!strings.HasSuffix(ci.ExternalConnectionPoolString, ":6432/flip_db?sslmode=verify-full") ||
 			!strings.Contains(ci.PSQLCommand, "sslmode=verify-full") ||
 			!strings.Contains(ci.ServerCACertificate, "BEGIN CERTIFICATE") {
 			t.Fatalf("externalCertificate %q kept the publicly trusted contract: %+v", cert, ci)

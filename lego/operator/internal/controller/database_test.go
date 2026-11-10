@@ -141,7 +141,7 @@ func TestPoolerConnectionSecretProjectsCNPGCredentials(t *testing.T) {
 	if err := cl.Get(context.Background(), types.NamespacedName{Name: "dpg-orders-pooler-app", Namespace: "tenant-a"}, pooled); err != nil {
 		t.Fatalf("pooler Secret: %v", err)
 	}
-	if got, want := string(pooled.Data["uri"]), "postgresql://orders_user:secret@dpg-orders-pooler.tenant-a.svc:5432/orders"; got != want {
+	if got, want := string(pooled.Data["uri"]), "postgresql://orders_user:secret@dpg-orders-pooler.tenant-a.svc:6432/orders"; got != want {
 		t.Errorf("pooler URI = %q, want %q", got, want)
 	}
 }
@@ -551,6 +551,14 @@ func TestPoolerSpec(t *testing.T) {
 	}
 	if p["pgbouncer"].(map[string]any)["poolMode"] != "transaction" {
 		t.Errorf("poolMode = %v", p["pgbouncer"])
+	}
+	// The extra port must not be named `pgbouncer`: CNPG would then drop its
+	// default 5432 port, and every pooled URI already handed out would stop
+	// connecting.
+	ports := p["serviceTemplate"].(map[string]any)["spec"].(map[string]any)["ports"].([]any)
+	want := []any{map[string]any{"name": "pgbouncer-pooled", "port": int64(6432), "protocol": "TCP", "targetPort": "pgbouncer"}}
+	if !reflect.DeepEqual(ports, want) {
+		t.Errorf("serviceTemplate ports = %v, want %v", ports, want)
 	}
 }
 

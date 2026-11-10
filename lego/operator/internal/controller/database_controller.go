@@ -664,6 +664,9 @@ func onDemandBackupSpec(clusterName string) map[string]any {
 // poolerSpec builds a CNPG Pooler .spec: a single-instance PgBouncer in
 // transaction mode fronting the cluster's read-write endpoint. CNPG creates a
 // Service named after the Pooler ("<db>-pooler") that the pooled URLs target.
+// Its template adds appv1alpha1.PoolerPort onto PgBouncer's named container
+// port. CNPG adds its default `pgbouncer`/5432 port unless the template already
+// names one `pgbouncer`, so the Service serves both.
 func poolerSpec(clusterName string) map[string]any {
 	return map[string]any{
 		cnpgClusterRef: map[string]any{"name": clusterName},
@@ -671,6 +674,9 @@ func poolerSpec(clusterName string) map[string]any {
 		"type":         "rw",
 		"pgbouncer":    map[string]any{"poolMode": "transaction"},
 		"template":     poolerTemplate(),
+		"serviceTemplate": map[string]any{"spec": map[string]any{"ports": []any{
+			map[string]any{"name": "pgbouncer-pooled", "port": int64(appv1alpha1.PoolerPort), "protocol": "TCP", "targetPort": "pgbouncer"},
+		}}},
 	}
 }
 
@@ -1385,7 +1391,7 @@ func (r *DatabaseReconciler) reconcilePoolerConnectionSecret(ctx context.Context
 	_, err = controllerutil.CreateOrUpdate(ctx, r.secretClient(), target, func() error {
 		target.Type = corev1.SecretTypeOpaque
 		target.Data = map[string][]byte{
-			"uri": fmt.Appendf(nil, "postgresql://%s:%s@%s:5432/%s", username, password, db.Status.PoolerHost, databaseName),
+			"uri": fmt.Appendf(nil, "postgresql://%s:%s@%s:%d/%s", username, password, db.Status.PoolerHost, appv1alpha1.PoolerPort, databaseName),
 		}
 		return controllerutil.SetControllerReference(db, target, r.Scheme)
 	})
