@@ -1,6 +1,6 @@
 # w4 · m300 — A triggered cron run exists from the moment it is acknowledged: readable, cancellable, and canceled (not lost) when a second trigger replaces it, as on Render
 
-**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** in progress — t001–t007 done (shipped); t008 runs the P1–P4 production replay once the release pins this build
+**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** blocked — t001–t007 done (shipped); t008 live replay waits for the 19:00 UTC production deploy
 
 ## Tasks (in order)
 
@@ -148,9 +148,9 @@ Live on production after the release pins this build. The fixture is a Starter c
 
 - **Source:** live `/qa-find-bugs w4` loop, round 1 of the 2026-11-10 loop, 07:27–07:42 UTC (`muse.env`, workspace `bex-canary` `tea-daif693dqjvc73e7as3g`, platform pin `1672bb379c0c`, research on main `3a12969ed`). Fixture: cron job `qa-20261110-cron` (`srv-dbpceuf5g1is7398kqd0`; Docker, `examples/cron-demo`, `*/5`, Starter). It was created through the dashboard and deleted at the end of the pass (GET 404, gone from the services list). The durable evidence is the probe record above. The local screenshot `.playwright-mcp/qa-cron-2.png` is gitignored.
 - **Goal linkage:**
-  - [ADR038](../../../docs/ADR038-cron-jobs.md) (cron jobs).
-  - [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first) and [ADR018](../../../docs/ADR018-render-parity.md).
-  - [ADR006](../../../docs/ADR006-bex-api.md): REST, GraphQL and MCP move together.
+  - [ADR038](../../../../docs/ADR038-cron-jobs.md) (cron jobs).
+  - [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first) and [ADR018](../../../../docs/ADR018-render-parity.md).
+  - [ADR006](../../../../docs/ADR006-bex-api.md): REST, GraphQL and MCP move together.
 - **Expected outcome:** Render's own trigger-then-cancel sequence works on bex. No acknowledged run ID is ever unknown. The dashboard shows a triggered run while it is pending and lets the user cancel it.
 - **Why now:** P3 drops a user's run without a trace, and P2 runs a job its owner just canceled. Both happen at normal API speed, not under load.
 - **Render parity included:** this changes REST, GraphQL, MCP and dashboard behavior, so t005 checks every surface against the Render contract above.
@@ -179,3 +179,5 @@ Live on production after the release pins this build. The fixture is a Starter c
   - **Operator.** `TestUnmaterializedCancelRecordsTheRunWithoutExecutingIt` and `TestReplacedUnmaterializedRunIsRecordedOnceAndReplacementRuns` cover cancellation, replacement and no resurrection after eleven later runs. Both fail with the recording disabled.
   - **Dashboard.** The toggle-name test now asserts no `crr-`, and the hook test shows the triggered run pending before the read includes it.
   - **Suites.** Operator `make test`, backend `go test ./...`, dashboard `yarn lint` (0 errors) and `vitest` (1241 passed) all pass.
+
+- **2026-11-10 — parked (loopx w4):** the code is shipped; only the live DoD replay remains. Production deploys moved to 19:00/00:00/05:00 UTC plus manual dispatch (`4630a48a7`, 2026-11-09), so this waits for the 2026-11-10 19:00 UTC deploy. Then replay the DoD and close. No user action.
