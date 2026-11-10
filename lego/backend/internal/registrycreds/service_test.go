@@ -573,6 +573,39 @@ func (f fakeWorkspaceResolver) IsMember(context.Context, core.Identity, string) 
 	return true, nil
 }
 
+// TestNameIsCountedInCodePointsNotBytes pins w21/035: a 100-character Chinese
+// name (300 bytes) saves on Create and Update, 101 is refused, and the byte
+// caps on host and username stand.
+func TestNameIsCountedInCodePointsNotBytes(t *testing.T) {
+	s, _, _ := newTestService()
+	ctx := context.Background()
+	cjk100 := strings.Repeat("受", 100)
+
+	created, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Name: cjk100, Username: "u", Secret: "t"})
+	if err != nil || created.Name != cjk100 {
+		t.Fatalf("100 CJK characters on Create = %q, %v", created.Name, err)
+	}
+	other := strings.Repeat("受", 99)
+	updated, err := s.Update(ctx, created.ID, UpdateRequest{Name: &other})
+	if err != nil || updated.Name != other {
+		t.Fatalf("99 CJK on Update = %q, %v", updated.Name, err)
+	}
+	if _, err := s.Update(ctx, created.ID, UpdateRequest{Name: &cjk100}); err != nil {
+		t.Errorf("100 CJK characters on Update: %v", err)
+	}
+	tooLong := strings.Repeat("受", 101)
+	if _, err := s.Create(ctx, CreateRequest{Host: "docker.io", Name: tooLong, Username: "u", Secret: "t"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("101 CJK characters = %v, want ErrBadRequest", err)
+	}
+	// The byte caps that remain.
+	if _, err := s.Create(ctx, CreateRequest{Host: "quay.io", Username: strings.Repeat("u", maxCredentialFieldBytes+1), Secret: "t"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("oversized username = %v, want ErrBadRequest", err)
+	}
+	if _, err := s.Create(ctx, CreateRequest{Host: strings.Repeat("a", maxCredentialFieldBytes+1) + ".io", Username: "u", Secret: "t"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("oversized host = %v, want ErrBadRequest", err)
+	}
+}
+
 // TestNameAndUsernameRefuseControlCharacters is w4/483: a supplied name follows
 // core.CheckLabel on create and update, a NUL or newline username is refused,
 // and the host fallback name is not held to the label cap.

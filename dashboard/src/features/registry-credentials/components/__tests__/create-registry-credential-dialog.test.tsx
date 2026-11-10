@@ -44,6 +44,18 @@ describe("CreateRegistryCredentialDialog", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
+  // w21/035: the name is a label held to 100 characters, like the server.
+  it("stops the optional name at 100 characters", async () => {
+    const user = userEvent.setup();
+    render(<CreateRegistryCredentialDialog onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Add credential" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByLabelText(/^Display name/)).toHaveAttribute(
+      "maxlength",
+      "100",
+    );
+  });
+
   it("keeps submit disabled until host/username/authToken are all filled", async () => {
     const user = userEvent.setup();
     render(<CreateRegistryCredentialDialog onCreated={vi.fn()} />);

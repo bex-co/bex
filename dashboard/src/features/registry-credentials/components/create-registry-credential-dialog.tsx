@@ -136,6 +136,7 @@ export function CreateRegistryCredentialDialog({
             </Label>
             <Input
               id="rc-name"
+              maxLength={100}
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder={

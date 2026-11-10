@@ -73,6 +73,14 @@ describe("EditRegistryCredentialDialog", () => {
     expect(host).toBeDisabled();
   });
 
+  it("stops the name at 100 characters (w21/035)", async () => {
+    await openDialog();
+    expect(screen.getByDisplayValue("GHCR prod (detail)")).toHaveAttribute(
+      "maxlength",
+      "100",
+    );
+  });
+
   it("keeps the stored token when the token field is left blank", async () => {
     const user = await openDialog();
     await user.click(screen.getByRole("button", { name: "Save changes" }));

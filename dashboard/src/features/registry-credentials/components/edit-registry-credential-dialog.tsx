@@ -174,6 +174,7 @@ function EditForm({
           </Label>
           <Input
             id="rc-edit-name"
+            maxLength={100}
             value={name}
             onChange={(e) => setName(e.target.value)}
           />

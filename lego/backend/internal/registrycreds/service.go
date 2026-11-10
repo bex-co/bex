@@ -247,7 +247,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CredentialView
 	} else if name, err = core.CheckLabel(name); err != nil { // a supplied name only; the host fallback is not capped (w4/483)
 		return CredentialView{}, err
 	}
-	if err := validateCredentialFields(name, host, username, req.Secret); err != nil {
+	if err := validateCredentialFields(host, username, req.Secret); err != nil {
 		return CredentialView{}, err
 	}
 	createdBy := ""
@@ -325,9 +325,6 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 		var err error
 		if name, err = core.CheckLabel(name); err != nil {
 			return CredentialView{}, err
-		}
-		if len(name) > maxCredentialFieldBytes {
-			return CredentialView{}, fmt.Errorf("%w: name must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
 		}
 	}
 	username := existing.Username
@@ -408,13 +405,15 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	return mapStoreErr(s.Store.DeleteRegistryCredential(ctx, workspaceID, id))
 }
 
-func validateCredentialFields(name, host, username, secret string) error {
+// validateCredentialFields bounds the byte-sized fields. The name is not one of
+// them: it is a label held to core.CheckLabel's 100 code points, so a CJK name
+// is not cut short by a byte count (w21/035); a host-derived default name is
+// already bounded by the host check.
+func validateCredentialFields(host, username, secret string) error {
 	if hasControlCharacter(username) {
 		return fmt.Errorf("%w: username must not contain control characters", core.ErrBadRequest)
 	}
 	switch {
-	case len(name) > maxCredentialFieldBytes:
-		return fmt.Errorf("%w: name must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
 	case len(host) > maxCredentialFieldBytes:
 		return fmt.Errorf("%w: host must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
 	case len(username) > maxCredentialFieldBytes:
