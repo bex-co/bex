@@ -330,7 +330,14 @@ func (s *Service) resumeForActivity(ctx context.Context, key, ws string, raw osS
 	if err := s.RequireBillingMutation(ctx, ws); err != nil {
 		return err
 	}
+	// The implicit resume needs a free slot in the sandbox's group, exactly as the
+	// explicit one does: a group at its concurrency limit answers 429 here too.
+	undoAdmission, err := s.admitResume(ctx, key, ws, raw)
+	if err != nil {
+		return err
+	}
 	if err := s.beforeResume(ctx, key, raw); err != nil {
+		undoAdmission()
 		return err
 	}
 	switch err := s.Client.Resume(ctx, key, raw.ID); {
@@ -340,8 +347,10 @@ func (s *Service) resumeForActivity(ctx context.Context, key, ws string, raw osS
 	case errors.Is(err, errOpenSandboxConflict):
 		// Another request or replica is resuming it and renews the expiry.
 	case errors.Is(err, errOpenSandboxNotFound):
+		undoAdmission()
 		return sandboxNotFound(canonicalID(raw))
 	default:
+		undoAdmission()
 		return err
 	}
 	s.clearSuspendClaim(ctx, ws, raw.ID)
@@ -447,6 +456,11 @@ func (w *IdleSuspender) sweepWorkspace(ctx context.Context, key store.SandboxTen
 			log.Printf("sandbox idle: prune names workspace=%s: %v", key.WorkspaceID, err)
 		}
 	}
+	if s.Groups != nil {
+		if err := s.Groups.PruneSandboxGroupMembers(ctx, key.WorkspaceID, public); err != nil {
+			log.Printf("sandbox idle: prune group bindings workspace=%s: %v", key.WorkspaceID, err)
+		}
+	}
 	if s.Executions != nil {
 		if err := s.Executions.PruneSandboxExecutions(ctx, key.WorkspaceID, public); err != nil {
 			log.Printf("sandbox idle: prune executions workspace=%s: %v", key.WorkspaceID, err)
@@ -491,6 +505,8 @@ func (w *IdleSuspender) suspendIfIdle(ctx context.Context, key store.SandboxTena
 		}
 		return false
 	}
+	// A suspended sandbox holds no concurrency slot.
+	s.clearSlotLease(ctx, key.WorkspaceID, canonicalID(raw))
 	// Close the running interval now: compute stops accruing at the moment
 	// of suspension, not at the meter's next poll.
 	raw.Status.State = string(StatusSuspending)

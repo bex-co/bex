@@ -35,6 +35,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/logs"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/usage"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
@@ -249,7 +250,13 @@ type Config struct {
 	// 0 means Render's 24h.
 	CrashLoopSuspendAfter time.Duration
 
-	AgentMaxLiveSandboxesPerWorkspace  int
+	AgentMaxLiveSandboxesPerWorkspace int
+	// Sandbox groups (w22/m311): the group cap per workspace, the ceiling and
+	// default of a group's concurrency limit, and the workspace-wide cap on
+	// active sandboxes across groups. 0 disables each.
+	SandboxMaxGroupsPerWorkspace       int
+	SandboxMaxGroupConcurrency         int
+	SandboxMaxActivePerWorkspace       int
 	MaxBlueprintGroupings              int
 	ImageCompatibilityWorkspaces       map[string]bool
 	PrivateImagePortsDisabled          bool
@@ -559,6 +566,13 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.AgentTurnTimeout = p.zeroableDuration("BEX_AGENT_TURN_TIMEOUT", 30*time.Minute)
 	cfg.AgentMaxLiveSandboxesPerWorkspace = p.zeroableInt("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
 	cfg.MaxBlueprintGroupings = p.zeroableInt("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
+	// Render's sandbox numbers (render.com/docs/sandboxes-limits, read
+	// 2026-11-10) are targets, not capacity (ADR104 D7): 10 groups per workspace
+	// and 1,000 concurrent sandboxes per group, plus bex's own workspace-wide
+	// bound across groups (ADR104 D11; 100 is a recorded guess, not Render's).
+	cfg.SandboxMaxGroupsPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE", sandbox.RenderMaxSandboxGroups)
+	cfg.SandboxMaxGroupConcurrency = p.zeroableInt("BEX_SANDBOX_MAX_GROUP_CONCURRENCY", sandbox.RenderMaxGroupConcurrency)
+	cfg.SandboxMaxActivePerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE", 100)
 	cfg.ImageCompatibilityWorkspaces = p.imageCompatibilityWorkspaces("BEX_IMAGE_COMPATIBILITY_WORKSPACES")
 	cfg.PrivateImagePortsDisabled = !p.onOff("BEX_PRIVATE_IMAGE_PORTS", true)
 	// Round-11 #3, ADR075 §2, codex-security geyRc8 F1 + round 18 quotas.

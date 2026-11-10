@@ -81,7 +81,7 @@
   },
   "nonGoals": {
     "_comment": "Recorded so a later reader does not re-litigate them.",
-    "sandboxGroups": "deliberate non-goal (approved w7 brainstorm item 3); sandbox-groups commands stay ungraded",
+    "sandboxGroups": "no longer a non-goal: bex-api serves sandbox groups since w22/m311 (testdata/sandbox-groups-contract.json)",
     "appSsh": "App SSH restrictions are unchanged by this work"
   }
 }

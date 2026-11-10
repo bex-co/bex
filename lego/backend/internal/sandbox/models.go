@@ -136,6 +136,13 @@ type Sandbox struct {
 	// Image is the resolved template image (bex Create is template-based,
 	// ADR014 D2) — informational; the request never picks an arbitrary image.
 	Image string `json:"image,omitempty"`
+	// SandboxGroupID is the group the sandbox belongs to (Render's
+	// `sandboxGroupId`, w22/m311). Empty, so omitted, for an agent-session
+	// sandbox, which has none, and when the deployment has no group store.
+	SandboxGroupID string `json:"sandboxGroupId,omitempty"`
+	// ungrouped marks an agent-session sandbox, which belongs to no group. It is
+	// not part of any wire shape.
+	ungrouped bool
 }
 
 // NetworkPolicy mirrors Render's per-sandbox outbound posture (w32/m283,

@@ -69,6 +69,7 @@ type Metrics struct {
 	live             *prometheus.GaugeVec
 	oldestAge        *prometheus.GaugeVec
 	teardownFailures *prometheus.CounterVec
+	refusals         *prometheus.CounterVec
 }
 
 func NewMetrics(reg prometheus.Registerer) *Metrics {
@@ -101,8 +102,12 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 			Name: "bex_sandbox_teardown_failures_total",
 			Help: "Durable sandbox teardown failures by bounded reason (previous_sandbox, idle_reap, inventory).",
 		}, []string{"reason"}),
+		refusals: prometheus.NewCounterVec(prometheus.CounterOpts{
+			Name: "bex_sandbox_concurrency_refusals_total",
+			Help: "Sandbox creates and resumes refused with 429 because a group (limit=group) or a workspace (limit=workspace) was at its concurrency limit, by bounded op (create, resume). A refusal is decided before any runtime call, so it is not a create failure.",
+		}, []string{"limit", "op"}),
 	}
-	reg.MustRegister(m.creates, m.createTime, m.terminates, m.live, m.oldestAge, m.teardownFailures)
+	reg.MustRegister(m.creates, m.createTime, m.terminates, m.live, m.oldestAge, m.teardownFailures, m.refusals)
 	return m
 }
 
@@ -152,6 +157,14 @@ func (m *Metrics) SetInventory(counts InventoryCounts) {
 	}
 }
 
+// observeRefusal counts a 429 concurrency refusal. Both labels are closed sets.
+func (m *Metrics) observeRefusal(limit, op string) {
+	if m == nil {
+		return
+	}
+	m.refusals.WithLabelValues(limit, op).Inc()
+}
+
 // ObserveTeardownFailure counts a durable teardown that did not confirm.
 func (m *Metrics) ObserveTeardownFailure(reason string) {
 	if m == nil {
@@ -174,9 +187,12 @@ func createOutcome(err error) string {
 		return outcomeSucceeded
 	case IsCapacityLimit(err):
 		return outcomeCapacity
-	case errors.Is(err, core.ErrSandboxesUnavailable):
+	case errors.Is(err, core.ErrSandboxesUnavailable), hasCode(err, CodeSandboxGroupsUnavailable):
 		return outcomeUnavailable
 	case errors.Is(err, core.ErrBadRequest),
+		// A group or workspace at its concurrency limit refuses before any runtime
+		// call (w22/m311); it is the caller's limit, not a substrate failure.
+		errors.Is(err, core.ErrTooManyRequests),
 		errors.Is(err, core.ErrForbidden),
 		errors.Is(err, core.ErrNotFound),
 		errors.Is(err, core.ErrConflict),
@@ -186,4 +202,10 @@ func createOutcome(err error) string {
 	default:
 		return outcomeFailed
 	}
+}
+
+// hasCode reports whether err is a coded refusal with exactly this code.
+func hasCode(err error, code string) bool {
+	var coded *core.CodedError
+	return errors.As(err, &coded) && coded.Code == code
 }

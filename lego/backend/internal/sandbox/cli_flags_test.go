@@ -250,11 +250,10 @@ func mcpClient(t *testing.T, svc *Service) *mcp.ClientSession {
 	return client
 }
 
-func TestGroupAndImageCreateFieldsAreRefusedByName(t *testing.T) {
+func TestImageCreateFieldsAreRefusedByName(t *testing.T) {
 	for _, tc := range []struct {
 		name, body, code, flag string
 	}{
-		{"--group", `{"sandboxGroupId":"sbg-aaaaaaaaaaaaaaaaaaaa"}`, CodeSandboxGroupsUnsupported, "--group"},
 		{"--image by id", `{"buildId":"sbb-aaaaaaaaaaaaaaaaaaaa"}`, CodeSandboxImagesUnsupported, "--image"},
 		{"--image by name", `{"buildName":"python"}`, CodeSandboxImagesUnsupported, "--image"},
 		{"raw image ref", `{"image":"python:3.13"}`, CodeSandboxImagesUnsupported, "--image"},
@@ -335,10 +334,50 @@ func TestListNeverIgnoresAFilter(t *testing.T) {
 	if code, _, body := listStatuses(t, mux, "?status=sleeping"); code != http.StatusBadRequest || !strings.Contains(body, "SANDBOX_STATUS_INVALID") {
 		t.Errorf("unknown status = %d %s, want 400 SANDBOX_STATUS_INVALID", code, body)
 	}
-	// A group filter cannot be applied (bex has no groups), so it is refused
-	// rather than answered with the unfiltered list.
-	if code, _, body := listStatuses(t, mux, "?sandboxGroupId=sbg-aaaaaaaaaaaaaaaaaaaa"); code != http.StatusBadRequest || !strings.Contains(body, CodeSandboxGroupsUnsupported) {
-		t.Errorf("group filter = %d %s, want 400 %s", code, body, CodeSandboxGroupsUnsupported)
+	// A group filter this deployment cannot apply (no group store) is refused
+	// rather than answered with the unfiltered list; a malformed one is a 400
+	// naming Render's code. (The filter itself is covered in groups_test.go.)
+	if code, _, body := listStatuses(t, mux, "?sandboxGroupId=sbg-aaaaaaaaaaaaaaaaaaaa"); code != http.StatusServiceUnavailable || errCode(body) != CodeSandboxGroupsUnavailable {
+		t.Errorf("group filter without a group store = %d %s, want 503", code, body)
+	}
+	if code, _, body := listStatuses(t, mux, "?sandboxGroupId=nope"); code != http.StatusBadRequest || !strings.Contains(body, CodeInvalidSandboxGroupID) {
+		t.Errorf("malformed group filter = %d %s, want 400 %s", code, body, CodeInvalidSandboxGroupID)
+	}
+}
+
+// Without the control-plane store a create that names a group is refused, not
+// created outside any group, and an unnamed create still works with no limit.
+func TestCreateNamingAGroupNeedsTheGroupStore(t *testing.T) {
+	var created int
+	svc := stubServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		created++
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"os-1","status":{"state":"Running"}}`))
+	})
+	svc.DefaultTemplate = "node"
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	post := func(body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(body)).WithContext(callerCtx()))
+		return rec
+	}
+	if rec := post(`{"sandboxGroupId":"sbg-aaaaaaaaaaaaaaaaaaaa"}`); rec.Code != http.StatusServiceUnavailable || created != 0 {
+		t.Fatalf("create naming a group = %d %s (created %d), want a 503 before anything is created", rec.Code, rec.Body, created)
+	}
+	if rec := post(`{}`); rec.Code != http.StatusCreated || created != 1 || strings.Contains(rec.Body.String(), "sandboxGroupId") {
+		t.Fatalf("unnamed create without a store = %d %s (created %d), want a plain create", rec.Code, rec.Body, created)
+	}
+	for _, route := range []struct{ method, path string }{
+		{http.MethodGet, "/v1/sandbox-groups"},
+		{http.MethodPost, "/v1/sandbox-groups"},
+		{http.MethodGet, "/v1/sandbox-groups/sbg-aaaaaaaaaaaaaaaaaaaa"},
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(route.method, route.path, strings.NewReader(`{"name":"x"}`)).WithContext(callerCtx()))
+		if rec.Code != http.StatusServiceUnavailable {
+			t.Errorf("%s %s without a group store = %d %s, want 503", route.method, route.path, rec.Code, rec.Body)
+		}
 	}
 }
 
@@ -406,10 +445,16 @@ func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
 	for pattern := range NotOfferedRoutes {
 		mux.HandleFunc(pattern, func(http.ResponseWriter, *http.Request) {})
 	}
+	// The four group routes are served since w22/m311 and are no longer here.
+	for _, served := range []string{
+		"GET /v1/sandbox-groups", "POST /v1/sandbox-groups",
+		"GET /v1/sandbox-groups/{sandboxGroupId}", "PATCH /v1/sandbox-groups/{sandboxGroupId}",
+	} {
+		if _, refused := NotOfferedRoutes[served]; refused {
+			t.Errorf("%s is served by the Service, so it must not also be a not-offered refusal", served)
+		}
+	}
 	for _, tc := range []struct{ method, path, code, mentions string }{
-		{http.MethodGet, "/v1/sandbox-groups", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodPost, "/v1/sandbox-groups", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodPatch, "/v1/sandbox-groups/sbg-1", CodeSandboxGroupsUnsupported, "sandbox groups"},
 		{http.MethodPost, "/v1/sandbox-groups/sbg-1/builds", CodeSandboxImagesUnsupported, "images import"},
 		{http.MethodGet, "/v1/sandbox-groups/sbg-1/builds/sbb-1", CodeSandboxImagesUnsupported, "images import|get"},
 		{http.MethodPost, "/v1/sandboxes/sbx-1/snapshots", codeSandboxSnapshotsUnsupported, "snapshots"},

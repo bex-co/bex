@@ -152,6 +152,20 @@ type Service struct {
 	Names NameStore
 	// Executions holds Render's execution history (w32/m298); nil serves none.
 	Executions ExecutionStore
+	// Groups holds Render's sandbox groups and each sandbox's group (w22/m311);
+	// nil (store off) serves no group route, refuses a create that names a group
+	// and enforces no concurrency limit.
+	Groups GroupStore
+	// MaxGroups caps a workspace's groups (Render: 10; 0 = uncapped), past which a
+	// group create answers 400 sandbox_group_limit_reached.
+	MaxGroups int
+	// MaxGroupConcurrency is the ceiling and default of a group's concurrencyLimit
+	// (Render: 1,000; 0 = no ceiling). A higher requested value is capped to it.
+	MaxGroupConcurrency int
+	// MaxActive caps the active sandboxes of one workspace across all its groups
+	// (bex's own bound, ADR104 D11; 0 = uncapped), past which a create or resume
+	// answers 429.
+	MaxActive int
 	// UserIDs shows an execution's caller as its Render usr- id.
 	UserIDs core.UserIDLookup
 	// ResumePoll and ActivityHeartbeat override the wake-on-exec poll interval
@@ -180,6 +194,9 @@ type CreateRequest struct {
 	// Env is Render's create-time `env`: injected into the sandbox, never
 	// returned by a read.
 	Env map[string]string
+	// SandboxGroupID is the group to create in (Render's `sandboxGroupId`); empty
+	// means the workspace's default group.
+	SandboxGroupID string
 }
 
 func (s *Service) enabled() bool { return s.Client != nil }
@@ -360,40 +377,22 @@ func validateSandboxEnv(env map[string]string) error {
 // `snapshotId`/`snapshotName` create fields and every snapshot route.
 const codeSandboxSnapshotsUnsupported = "SANDBOX_SNAPSHOTS_UNSUPPORTED"
 
-// CodeSandboxGroupsUnsupported names Render's sandbox groups — every
-// `/sandbox-groups` route and the `sandboxGroupId` create field and list
-// filter. bex has no group layer: each workspace's sandboxes live in its one
-// `<ws>-sandbox` namespace (ADR018 § Render operation omissions).
-const CodeSandboxGroupsUnsupported = "SANDBOX_GROUPS_UNSUPPORTED"
-
 // CodeSandboxImagesUnsupported names Render's imported sandbox images
 // (`sandbox-groups images import|get`, `sandboxes create --image`). bex starts
 // every sandbox from a registered template (ADR014 D2), never a caller image.
 const CodeSandboxImagesUnsupported = "SANDBOX_IMAGES_UNSUPPORTED"
 
-// sandboxGroupsUnsupported is the refusal for a sandbox-group reference.
-func sandboxGroupsUnsupported(field string) error {
-	return core.NewBadRequestError(CodeSandboxGroupsUnsupported,
-		"sandbox groups are not supported: every sandbox belongs to its workspace directly; omit --group/--sandbox-group",
-		map[string]any{"field": field, "flags": []string{"--group", "--sandbox-group"}})
-}
-
-// refuseGroupAndImage names the Render create fields that select a sandbox
-// group (`sandboxGroupId`, from `--group`/`--sandbox-group`) or an imported
-// image (`buildId`/`buildName` from `--image` and its deprecated alias
-// `--build`, or a raw `image` ref). Without these declarations strict decoding
-// answered `unknown field "sandboxGroupId"` — an internal wire key, not the
-// flag the user typed (w2/m263).
-func refuseGroupAndImage(sandboxGroupID string, hasImage bool) error {
-	if sandboxGroupID != "" {
-		return sandboxGroupsUnsupported("sandboxGroupId")
+// refuseImage names the Render create fields that select an imported image
+// (`buildId`/`buildName` from `--image` and its deprecated alias `--build`, or a
+// raw `image` ref). Without this declaration strict decoding answered `unknown
+// field "buildId"` — an internal wire key, not the flag the user typed (w2/m263).
+func refuseImage(hasImage bool) error {
+	if !hasImage {
+		return nil
 	}
-	if hasImage {
-		return core.NewBadRequestError(CodeSandboxImagesUnsupported,
-			"sandbox images are not supported (--image, or its deprecated alias --build): bex starts every sandbox from its base image; create the sandbox without --image and install what you need inside it",
-			map[string]any{"fields": []string{"buildId", "buildName", "image"}, "flags": []string{"--image", "--build"}})
-	}
-	return nil
+	return core.NewBadRequestError(CodeSandboxImagesUnsupported,
+		"sandbox images are not supported (--image, or its deprecated alias --build): bex starts every sandbox from its base image; create the sandbox without --image and install what you need inside it",
+		map[string]any{"fields": []string{"buildId", "buildName", "image"}, "flags": []string{"--image", "--build"}})
 }
 
 // CodeInvalidSandboxName is Render's invalid_sandbox_name.
@@ -723,6 +722,7 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 		Workspace:          raw.Metadata[metadataWorkspace],
 		CreatedAt:          raw.Created,
 		Image:              raw.Image.URI,
+		ungrouped:          !idleTracked(raw),
 	}
 }
 
@@ -803,6 +803,25 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
 	// so bex stamps its own and carries it as durable metadata (metadataPublicID).
 	publicID := ids.New(ids.Sandbox)
+	// The group's slot is taken before anything is created, under the workspace's
+	// admission lock, so a group at its concurrency limit answers 429 without
+	// starting a pod, and parallel creates cannot all fit into one slot.
+	group, err := s.admitCreate(ctx, ws, req.SandboxGroupID, publicID)
+	if err != nil {
+		return Sandbox{}, err
+	}
+	box, err := s.launch(ctx, req, ws, publicID, name, tmpl, plan, timeout, idle, policy)
+	if err != nil {
+		s.releaseFailedCreate(ctx, ws, publicID, err)
+		return Sandbox{}, err
+	}
+	s.settleSlot(ctx, ws, publicID)
+	box.SandboxGroupID = group.ID
+	return box, nil
+}
+
+// launch records the sandbox's name, then creates it under the public id.
+func (s *Service) launch(ctx context.Context, req CreateRequest, ws, publicID, name string, tmpl Template, plan Plan, timeout, idle int, policy *NetworkPolicy) (Sandbox, error) {
 	if req.Name != "" {
 		// Written first, under the id about to be created, so a listed sandbox
 		// never appears without its name; a failed create removes it.
@@ -1299,7 +1318,45 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 	if err := group.Wait(); err != nil {
 		return nil, err
 	}
-	return s.withNames(ctx, ws, out)
+	named, err := s.withNames(ctx, ws, out)
+	if err != nil {
+		return nil, err
+	}
+	return s.withGroups(ctx, ws, named)
+}
+
+// withGroups fills each Render sandbox's group: the one it was created in, or
+// the workspace's default for a sandbox with no binding (one created before
+// groups existed). A workspace with such a sandbox gets its default group here
+// if it has none yet. Agent-session sandboxes are not Render sandboxes and have
+// no group.
+func (s *Service) withGroups(ctx context.Context, workspace string, boxes []Sandbox) ([]Sandbox, error) {
+	if s.Groups == nil || len(boxes) == 0 {
+		return boxes, nil
+	}
+	members, err := s.Groups.SandboxGroupMembers(ctx, workspace)
+	if err != nil {
+		return nil, store.MapError(err)
+	}
+	var defaultID string
+	for i := range boxes {
+		if boxes[i].ungrouped {
+			continue
+		}
+		if member, bound := members[boxes[i].ID]; bound {
+			boxes[i].SandboxGroupID = member.GroupID
+			continue
+		}
+		if defaultID == "" {
+			def, err := s.defaultGroup(ctx, workspace)
+			if err != nil {
+				return nil, err
+			}
+			defaultID = def.ID
+		}
+		boxes[i].SandboxGroupID = defaultID
+	}
+	return boxes, nil
 }
 
 // NameStore is where Render sandbox names live; *store.PGStore implements it.
@@ -1331,16 +1388,32 @@ func (s *Service) withNames(ctx context.Context, workspace string, boxes []Sandb
 // the REST, GraphQL and MCP list adapters share, so all three apply the same
 // default and refuse the same unknown status. The filter is validated before
 // the authorized List runs.
-func (s *Service) listFiltered(ctx context.Context, status []string, name string) ([]Sandbox, error) {
+func (s *Service) listFiltered(ctx context.Context, status []string, name, groupID string) ([]Sandbox, error) {
 	want, err := parseStatusFilter(status)
 	if err != nil {
 		return nil, err
+	}
+	if groupID != "" {
+		if err := validateGroupID(groupID); err != nil {
+			return nil, err
+		}
+		if err := s.requireGroups(); err != nil {
+			return nil, err
+		}
 	}
 	out, err := s.List(ctx)
 	if err != nil {
 		return nil, err
 	}
 	out = filterStatuses(out, want)
+	if groupID != "" {
+		// Render: "the group must belong to ownerId". A group of another
+		// workspace is the same not-found as one that does not exist.
+		if _, err := s.storedGroup(ctx, groupID); err != nil {
+			return nil, err
+		}
+		out = core.Filter(out, func(sb Sandbox) bool { return sb.SandboxGroupID == groupID })
+	}
 	if name == "" {
 		return out, nil
 	}
@@ -1384,7 +1457,11 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 	if err != nil {
 		return Sandbox{}, err
 	}
-	return named[0], nil
+	grouped, err := s.withGroups(ctx, ws, named)
+	if err != nil {
+		return Sandbox{}, err
+	}
+	return grouped[0], nil
 }
 
 // Suspend/Resume/Terminate are the lifecycle verbs; suspend/resume need operate,
@@ -1452,6 +1529,7 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	if err != nil {
 		return err
 	}
+	undoAdmission := func() {}
 	if phase == StatusResuming {
 		// Generic retained sandboxes and agent-session sandboxes share this
 		// trusted seam; the billing decision must be made immediately before the
@@ -1459,7 +1537,13 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		if err := s.RequireBillingMutation(ctx, ws); err != nil {
 			return err
 		}
+		// A resume needs a free slot in the sandbox's group, like the implicit one
+		// an exec starts (resumeForActivity).
+		if undoAdmission, err = s.admitResume(ctx, key, ws, raw); err != nil {
+			return err
+		}
 		if err := s.beforeResume(ctx, key, raw); err != nil {
+			undoAdmission()
 			return err
 		}
 	}
@@ -1469,6 +1553,7 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		}
 	}
 	if err := op(ctx, key, raw); err != nil {
+		undoAdmission()
 		switch {
 		case errors.Is(err, errOpenSandboxNotFound):
 			return sandboxNotFound(id)
@@ -1485,6 +1570,15 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		s.afterResume(ctx, key, raw)
 		s.touchActivity(ctx, ws, raw.ID)
 		s.clearSuspendClaim(ctx, ws, raw.ID)
+	}
+	if idleTracked(raw) {
+		switch phase {
+		case StatusSuspended:
+			// A suspended sandbox holds no slot.
+			s.clearSlotLease(ctx, ws, canonicalID(raw))
+		case StatusTerminated:
+			s.releaseSlot(ctx, ws, canonicalID(raw))
+		}
 	}
 	raw.Status.State = string(phase)
 	s.Meter.Observe(ctx, raw)

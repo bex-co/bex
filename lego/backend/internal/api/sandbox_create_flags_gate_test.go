@@ -32,6 +32,8 @@ import (
 // flags through the real composed handler — auth gate, Render request
 // validator, strict decoding — so a refusal that a bare-mux test proves can
 // not be pre-empted by a generic validator or `unknown field` 400 (w2/m263).
+// The group routes reach the Service through the same path (w22/m311); with
+// no control-plane store they answer a named 503.
 func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("a refused sandbox request reached OpenSandbox: %s %s", r.Method, r.URL.Path)
@@ -61,13 +63,24 @@ func TestSandboxCLIv235FlagsReachNamedAnswersThroughTheComposedServer(t *testing
 		code                     string
 	}{
 		{"--idle-timeout 100", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","idleTimeoutSeconds":100}`, 400, "SANDBOX_IDLE_TIMEOUT_INVALID"},
-		{"--group", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","sandboxGroupId":"` + group + `"}`, 400, "SANDBOX_GROUPS_UNSUPPORTED"},
+		// Groups are served since w22/m311; this server has no control-plane
+		// store, so a request that names one is a named 503, never a create
+		// outside any group and never an unfiltered list.
+		{"--group", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","sandboxGroupId":"` + group + `"}`, 503, "SANDBOX_GROUPS_UNAVAILABLE"},
+		// A malformed id is refused by the Render gate before the Service, and
+		// still carries Render's own code, as GraphQL and MCP do.
+		{"--group malformed", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","sandboxGroupId":"nope"}`, 400, "invalid_sandbox_group_id"},
+		{"list --group malformed", http.MethodGet, "/v1/sandboxes?ownerId=tea-a&sandboxGroupId=nope", "", 400, "invalid_sandbox_group_id"},
+		{"sandbox-groups retrieve malformed", http.MethodGet, "/v1/sandbox-groups/nope", "", 400, "invalid_sandbox_group_id"},
+		{"sandbox-groups update malformed", http.MethodPatch, "/v1/sandbox-groups/nope", `{"concurrencyLimit":5}`, 400, "invalid_sandbox_group_id"},
 		{"--image by id", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","buildId":"sbb-` + strings.Repeat("c", 20) + `"}`, 400, "SANDBOX_IMAGES_UNSUPPORTED"},
 		{"--image by name", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","buildName":"python"}`, 400, "SANDBOX_IMAGES_UNSUPPORTED"},
 		{"unknown plan", http.MethodPost, "/v1/sandboxes", `{"ownerId":"tea-a","plan":"16c-32g"}`, 400, "SANDBOX_PLAN_INVALID"},
-		{"list --group", http.MethodGet, "/v1/sandboxes?ownerId=tea-a&sandboxGroupId=" + group, "", 400, "SANDBOX_GROUPS_UNSUPPORTED"},
-		{"sandbox-groups list", http.MethodGet, "/v1/sandbox-groups?ownerId=tea-a", "", 404, "SANDBOX_GROUPS_UNSUPPORTED"},
-		{"sandbox-groups create", http.MethodPost, "/v1/sandbox-groups", `{"ownerId":"tea-a","name":"agents"}`, 404, "SANDBOX_GROUPS_UNSUPPORTED"},
+		{"list --group", http.MethodGet, "/v1/sandboxes?ownerId=tea-a&sandboxGroupId=" + group, "", 503, "SANDBOX_GROUPS_UNAVAILABLE"},
+		{"sandbox-groups list", http.MethodGet, "/v1/sandbox-groups?ownerId=tea-a", "", 503, "SANDBOX_GROUPS_UNAVAILABLE"},
+		{"sandbox-groups create", http.MethodPost, "/v1/sandbox-groups", `{"ownerId":"tea-a","name":"agents"}`, 503, "SANDBOX_GROUPS_UNAVAILABLE"},
+		{"sandbox-groups retrieve", http.MethodGet, "/v1/sandbox-groups/" + group, "", 503, "SANDBOX_GROUPS_UNAVAILABLE"},
+		{"sandbox-groups update", http.MethodPatch, "/v1/sandbox-groups/" + group, `{"concurrencyLimit":5}`, 503, "SANDBOX_GROUPS_UNAVAILABLE"},
 		{"sandbox-groups images import", http.MethodPost, "/v1/sandbox-groups/" + group + "/builds", `{"name":"python","sourceImage":"python:3.13"}`, 404, "SANDBOX_IMAGES_UNSUPPORTED"},
 		{"sandbox-groups images get", http.MethodGet, "/v1/sandbox-groups/" + group + "/builds/sbb-" + strings.Repeat("c", 20), "", 404, "SANDBOX_IMAGES_UNSUPPORTED"},
 		{"sandboxes snapshots create", http.MethodPost, "/v1/sandboxes/" + sbx + "/snapshots?ownerId=tea-a", `{"name":"gold"}`, 404, "SANDBOX_SNAPSHOTS_UNSUPPORTED"},

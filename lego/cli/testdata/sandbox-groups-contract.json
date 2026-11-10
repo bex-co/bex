@@ -1,0 +1,71 @@
+{
+  "_comment": "The wire contract of Render's sandbox-group routes as bex-api serves them (w22/m311). The pinned Render CLI's `sandbox-groups create|list` and `sandboxes create --group` run against it (sandbox_groups_contract_test.go), and bex-api's REST handlers are proven to emit exactly this shape (lego/backend/internal/sandbox/groups_contract_test.go), so a CLI pin bump that changes what the client sends or reads fails here until the contract and bex-api move together. Ids and timestamps are fixtures; the backend test compares keys, types and the fixed values.",
+  "create": {
+    "method": "POST",
+    "path": "/v1/sandbox-groups",
+    "requestBody": { "name": "agents" },
+    "status": 201,
+    "response": {
+      "id": "sbg-cph1rs3idesc73a2b2mg",
+      "ownerId": "tea-cph1rs3idesc73a2b2mg",
+      "name": "agents",
+      "region": "oregon",
+      "isDefault": true,
+      "environmentId": null,
+      "concurrencyLimit": 1000,
+      "createdAt": "2026-11-10T12:00:00Z",
+      "updatedAt": "2026-11-10T12:00:00Z"
+    }
+  },
+  "list": {
+    "method": "GET",
+    "path": "/v1/sandbox-groups",
+    "status": 200,
+    "response": [
+      {
+        "sandboxGroup": {
+          "id": "sbg-cph1rs3idesc73a2b2mg",
+          "ownerId": "tea-cph1rs3idesc73a2b2mg",
+          "name": "agents",
+          "region": "oregon",
+          "isDefault": true,
+          "environmentId": null,
+          "concurrencyLimit": 1000,
+          "createdAt": "2026-11-10T12:00:00Z",
+          "updatedAt": "2026-11-10T12:00:00Z"
+        },
+        "cursor": "sbg-cph1rs3idesc73a2b2mg"
+      }
+    ]
+  },
+  "sandboxCreate": {
+    "method": "POST",
+    "path": "/v1/sandboxes",
+    "requestBodyHas": { "sandboxGroupId": "sbg-cph1rs3idesc73a2b2mg" },
+    "status": 201,
+    "response": {
+      "id": "sbx-cph1rs3idesc73a2b2mg",
+      "name": null,
+      "sandboxGroupId": "sbg-cph1rs3idesc73a2b2mg",
+      "status": "creating",
+      "plan": "1c-2g",
+      "networkPolicy": { "type": "allow-all", "default": "allow-all" },
+      "region": "oregon",
+      "timeoutSeconds": 86400,
+      "idleTimeoutSeconds": 900,
+      "createdAt": "2026-11-10T12:00:00Z"
+    }
+  },
+  "errors": {
+    "nameTaken": {
+      "status": 409,
+      "code": "SANDBOX_GROUP_NAME_TAKEN",
+      "id": "conflict"
+    },
+    "groupLimit": {
+      "status": 400,
+      "code": "sandbox_group_limit_reached",
+      "id": "bad_request"
+    }
+  }
+}

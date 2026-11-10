@@ -19,7 +19,6 @@ package sandbox
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -109,11 +108,6 @@ func TestNetworkPolicyTypeIsRendersFieldAndDefaultItsAlias(t *testing.T) {
 	if _, err := normalizeNetworkPolicy(&NetworkPolicy{Type: "allow-some"}); !hasCode(err, "SANDBOX_NETWORK_POLICY_INVALID") {
 		t.Errorf("unknown type = %v, want SANDBOX_NETWORK_POLICY_INVALID", err)
 	}
-}
-
-func hasCode(err error, code string) bool {
-	var coded *core.CodedError
-	return errors.As(err, &coded) && coded.Code == code
 }
 
 // invalidPolicyBodies are network policies every surface refuses with

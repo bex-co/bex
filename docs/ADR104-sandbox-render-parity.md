@@ -26,7 +26,7 @@ The rows below are the **contract**: what Render does and what bex must do. A ro
 
 **Authority.** The state ledgers are [ADR018](ADR018-render-parity.md) (§ Sandbox create flags and the sandbox rows) and [cli-compatibility-checklist.md](cli-compatibility-checklist.md); this ADR owns the contract and the decisions. The State columns below are a dated snapshot (2026-11-10), not a second ledger. Landing this ADR requires amending the ADR018 rows it contradicts (gap 11), so the two cannot disagree.
 
-**Surfaces.** Every row applies to REST, GraphQL and MCP (the dashboard is N/A: Render documents no sandbox UI). A row is not ✅ until all three answer the same way.
+**Surfaces.** Every row applies to REST, GraphQL and MCP (the dashboard is N/A for sandboxes except groups: Render's docs show a Dashboard "+ New > Sandbox Group" menu, with an optional project environment, read 2026-11-10; w22/m311 t012). A row is not ✅ until all three answer the same way.
 
 ### D2 — Lifecycle, timeouts and suspension
 
@@ -42,7 +42,7 @@ The rows below are the **contract**: what Render does and what bex must do. A ro
 | Exec runs via `bash -c`, streams `output` events then `exit`; a nonzero exit code is data, not an error; list is newest first, excludes `terminated` unless filtered in, and caps `limit` at 100 | Exec, SSE and the status filter shipped and live-verified (m147, m263). The `bash -c` form and the list `limit` cap are not pinned by a test | 🚧 gap 4 |
 | Execution history: `GET /sandboxes/{id}/execs` | Shipped (w32/m298), verified on production 2026-11-10 | ✅ |
 | Suspend keeps files, memory and running processes (runtime snapshot by default) | Files only: the rootfs is committed and the pod recreated, so memory and processes are lost and `/tmp` is empty (ADR042 D5) | ⚠️ D5 |
-| Create inputs `env`, `name`, `group` | `env` is served (w32/m297: 100 variables, 256 KB, write-only) and so is `name` (w5/m287). `group` answers `400 SANDBOX_GROUPS_UNSUPPORTED` | ✅ `env`, `name`; ⚠️ `group`, gap 2 |
+| Create inputs `env`, `name`, `group` | `env` is served (w32/m297: 100 variables, 256 KB, write-only) and so is `name` (w5/m287). `group` is served by w22/m311: a sandbox is created in the named group or the workspace's default one, which is created on first use; the code is in, the production walk is w22/m311 t007 | ✅ `env`, `name`; 🚧 `group`, m311 t007 |
 | Billing: running sandboxes bill used CPU plus allocated memory; suspended bill snapshot storage only | Different model today; D8 decides to adopt Render's | 🚧 D8 |
 
 ### D3 — Network policy
@@ -91,7 +91,7 @@ So Docker in a sandbox is feasible on bex's substrate, not impossible, with real
 ### D7 — Groups, plans, limits and regions
 
 - **Plans:** `1c-2g` (default), `2c-4g`, `4c-8g`, `8c-16g`, each with a **40 GB** writable filesystem. The plans ship (w2/m263); the 40 GB figure is not yet pinned by a test or an ephemeral-storage limit. 🚧
-- **Groups:** a workspace may have 10 sandbox groups; each carries a `concurrencyLimit` (default 1,000 concurrent sandboxes, lowerable per group); suspended sandboxes do not count; create and resume answer **429** at the limit; snapshots belong to the source sandbox's group. Region is `oregon` only, and the group sets it. bex answers `SANDBOX_GROUPS_UNSUPPORTED` today (ADR018, w2/m263), which is a named refusal, not parity. **Groups are the largest unscheduled parity gap**: snapshots (D4) are scoped to a group, so m285 needs at least an implicit default group per workspace. File as a new milestone before m285 t002 (gap 2).
+- **Groups:** a workspace may have 10 sandbox groups; each carries a `concurrencyLimit` (default 1,000 concurrent sandboxes, lowerable per group, capped at 1,000 even if a higher value is sent); suspended sandboxes do not count; create and resume answer **429** at the limit; snapshots belong to the source sandbox's group. Region is `oregon` only, and the group sets it. **Shipped by w22/m311** ([ADR042 § Sandbox groups](ADR042-sandbox-cluster-substrate.md#sandbox-groups-w22m311)): the default group is created on first use, so every workspace has exactly one without a hook or a backfill; the limit is counted under a per-workspace lock with a slot lease, so parallel creates and resumes cannot exceed it; every resume path (explicit, exec, and the run and file token mints) is held to it; the status rule (creating, running, suspending and resuming count) is bex's reading of Render's silence; and Render's own `sandbox_group_limit_reached` (a 400, from the pinned `errorCode` vocabulary) answers the 11th group. The three numbers are configurable (`BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE`, `BEX_SANDBOX_MAX_GROUP_CONCURRENCY`, `BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE`). The groups were the largest unscheduled parity gap and a prerequisite of snapshots (D4); m285 t002 now has its default group. Live verification is w22/m311 t007.
 - **Numbers are targets, not capacity.** 10 groups, 1,000 concurrent sandboxes per group and 40 GB are Render's beta figures. bex implements them as configurable constants with its own quotas (D11); a 1,000-sandbox group on a Hetzner pool is a capacity and cost decision this ADR does not make.
 - **Region:** the Python SDK accepts `region` as a compatibility parameter that does not affect placement. bex ignores it the same way.
 
@@ -167,7 +167,7 @@ Parity widens what a sandbox can do: `allow-all` egress by default, 30-day reten
 | # | Gap | Owner |
 | --- | --- | --- |
 | 1 | Prove D2 live on production (D3 is proved: w32/m283 is done) | w2/m278 t009, blocked on the D5 decision and a production walk |
-| 2 | Sandbox groups: default group per workspace, `concurrencyLimit`, 429, 10 per workspace | **new milestone**, before m285 t002 |
+| 2 | Sandbox groups: default group per workspace, `concurrencyLimit`, 429, 10 per workspace | w22/m311 t001–t005, and t006's workspace cap, shipped in code; the production walk with the unmodified CLI and the ledger flip are t007 |
 | 3 | Filesystem snapshots and restore, including policy inheritance and D4's capture-path constraints | w32/m285 (blocked behind m278) |
 | 4 | Pin `bash -c`, list `limit` ≤ 100 and 40 GB storage with tests | **new task** in w32; m284 is blocked on QA credentials, so do not wait for it |
 | 5 | SDK walk grades every method | w32/m284 (blocked on QA credentials) |
@@ -177,9 +177,9 @@ Parity widens what a sandbox can do: `allow-all` egress by default, 30-day reten
 | 9 | Hobby timeout cap: confirm Render's current rule, then sign off or lift (D2) | **new task**, w2 |
 | 10 | Pin is Render CLI v2.35.0; v2.36.0 (2026-11-06) is out (D10) | bump task, w2 CLI train |
 | 11 | Amend ADR018's sandbox rows that file groups, images and snapshots as omissions or non-goals (§ _Render sandbox groups and snapshots_, and the `sandboxGroupId`, `buildId`/`buildName` and `snapshotId`/`snapshotName` rows of § Sandbox create flags) and the checklist's matching `[-]` rows (`sandboxes snapshots`, `--group`, `--image`, `sandbox-groups`), which this ADR contradicts (D1). Cite them by name: line numbers have drifted | same change that accepts this ADR |
-| 12 | `group` on create and list (D2). `env` (w32/m297) and `name` (w5/m287) are done | follows gap 2 |
+| 12 | `group` on create and list (D2). `env` (w32/m297) and `name` (w5/m287) are done | w22/m311 t003 shipped in code (REST, GraphQL and MCP); verified live in t007 |
 | 13 | Images/builds (`buildId`, `/sandbox-groups/{id}/builds`) refused today | follow-up, after the REST schema is confirmed |
-| 14 | Storage, compute and egress bounds (D11) | with gaps 2 and 3 |
+| 14 | Storage, compute and egress bounds (D11) | with gaps 2 and 3. **Compute: done in code** by w22/m311 t004 and t006 (the per-group and per-workspace 429, `BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE`). **Egress: open.** The operator's egress meter selects pods by `app.bex.co/app` and `bex.co/app-id`, which a `<ws>-sandbox` pod does not carry, so sandbox egress is not metered and no alert exists (ADR042 § Sandbox groups); the fix is an operator change to the meter's pod selector, then the alert, its promtool test and its Grafana panel. **Storage: open** (w22/m313 t004, w32/m285) |
 | 15 | Drift watch: re-diff Render's sandbox docs, limits and OpenAPI on every CLI pin bump and at least monthly during the beta, through ADR018's re-baseline rounds; freeze the SDK/OpenAPI shapes as contract fixtures like `lego/cli/testdata` | w2 |
 
 ## Out of scope

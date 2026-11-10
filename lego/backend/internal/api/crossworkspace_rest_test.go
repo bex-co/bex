@@ -155,6 +155,11 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/disks":          true,
 	"GET /v1/sandboxes":      true,
 	"GET /v1/agent-sessions": true,
+	// Sandbox groups (w22/m311): the list is scoped by ownerId like the sandbox
+	// list and gates on can_view of that exact workspace; the create names its
+	// workspace by ownerId and gates on can_create there. The by-id routes are
+	// in the wildcard deny matrix.
+	"GET /v1/sandbox-groups": true,
 	// Caller/workspace-scoped readiness projection (w11/m6 t001): scoped by
 	// ownerId like the list route, addresses no session by path; its own
 	// Authorize denies non-member callers (TestCapabilitiesProjection).
@@ -221,8 +226,9 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/ssh-keys":            true,
 	// Create names its service in the BODY, which AddDisk authorizes against
 	// that service's own workspace before any row is written.
-	"POST /v1/disks":     true,
-	"POST /v1/sandboxes": true,
+	"POST /v1/disks":          true,
+	"POST /v1/sandboxes":      true,
+	"POST /v1/sandbox-groups": true,
 	// An attachment upload (ADR095) names its workspace by ownerId and is gated
 	// by can_create there; the new upload is the caller's own until a turn of
 	// a session they can steer attaches it.

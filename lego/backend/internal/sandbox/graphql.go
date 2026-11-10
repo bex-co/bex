@@ -19,6 +19,7 @@ package sandbox
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	"github.com/graphql-go/graphql"
 
@@ -131,6 +132,9 @@ var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"networkPolicy": &graphql.Field{Type: sandboxNetworkPolicyGQLType, Resolve: gqlutil.Field(func(s Sandbox) any {
 			return s.NetworkPolicy
 		})},
+		// The group the sandbox belongs to (w22/m311); null for an agent-session
+		// sandbox and when the deployment has no group store.
+		"sandboxGroupId": gqlutil.OptionalStrField(func(s Sandbox) any { return s.SandboxGroupID }),
 	},
 })
 
@@ -166,7 +170,7 @@ func ownerScoped(p graphql.ResolveParams) context.Context {
 }
 
 func (s *Service) GraphQLQuery() graphql.Fields {
-	return graphql.Fields{
+	fields := graphql.Fields{
 		"sandboxes": &graphql.Field{
 			Type: graphql.NewList(sandboxGQLType),
 			Args: graphql.FieldConfigArgument{
@@ -175,9 +179,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"status": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				// Render's exact-match name filter.
 				"name": gqlutil.Arg(graphql.String),
+				// Render's group filter (w22/m311): the group must belong to ownerId.
+				"sandboxGroupId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.listFiltered(ownerScoped(p), gqlutil.StringList(p.Args["status"]), gqlutil.Str(p.Args, "name"))
+				return s.listFiltered(ownerScoped(p), gqlutil.StringList(p.Args["status"]), gqlutil.Str(p.Args, "name"), gqlutil.Str(p.Args, "sandboxGroupId"))
 			},
 		},
 		// Render's execution history, newest first (w32/m298).
@@ -215,10 +221,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 	}
+	maps.Copy(fields, s.groupQueryFields())
+	return fields
 }
 
 func (s *Service) GraphQLMutation() graphql.Fields {
-	return graphql.Fields{
+	fields := graphql.Fields{
 		"createSandbox": &graphql.Field{
 			Type: sandboxGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -232,6 +240,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"idleTimeoutSeconds": gqlutil.Arg(graphql.Int),
 				"networkPolicy":      gqlutil.Arg(sandboxNetworkPolicyInput),
 				"name":               gqlutil.Arg(graphql.String),
+				// Render's sandboxGroupId (w22/m311): omitted = the default group.
+				"sandboxGroupId": gqlutil.Arg(graphql.String),
 				// Render's create-time env; write-only, so no read field.
 				"env": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.EnvVarInputType))),
 			},
@@ -254,6 +264,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Name:               gqlutil.Str(p.Args, "name"),
 					NetworkPolicy:      policy,
 					Env:                env,
+					SandboxGroupID:     gqlutil.Str(p.Args, "sandboxGroupId"),
 				})
 			},
 		},
@@ -271,4 +282,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
+	maps.Copy(fields, s.groupMutationFields())
+	return fields
 }

@@ -388,7 +388,8 @@ func IsPublicError(err error) bool {
 		errors.Is(err, ErrBillingEnforced),
 		errors.Is(err, ErrPaymentRequired),
 		errors.Is(err, ErrGone),
-		errors.Is(err, ErrTooLarge):
+		errors.Is(err, ErrTooLarge),
+		errors.Is(err, ErrTooManyRequests):
 		return true
 	}
 	return false
@@ -810,6 +811,8 @@ func ErrorStatus(err error) int {
 		return http.StatusGone
 	case errors.Is(err, ErrTooLarge):
 		return http.StatusRequestEntityTooLarge
+	case errors.Is(err, ErrTooManyRequests):
+		return http.StatusTooManyRequests
 	}
 	return http.StatusInternalServerError
 }

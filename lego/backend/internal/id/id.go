@@ -127,6 +127,10 @@ var (
 	// rejects anything else), so the substrate's own UUID can never be the
 	// public identity (w9/m94).
 	Sandbox = Kind{prefix: "sbx", desc: "hosted agent sandbox"}
+	// SandboxGroup is Render's `sbg-` sandbox group (w22/m311): the unit a
+	// sandbox is created in and a concurrency limit applies to. Render's own id
+	// pattern is ^sbg-[0-9a-v]{20}$, which is exactly xid's shape.
+	SandboxGroup = Kind{prefix: "sbg", desc: "sandbox group"}
 	// StaticRoute / StaticHeader are static-site rules stored as plain lists on
 	// the App spec, so their ids are derived (Derive, never New) — w8/062.
 	StaticRoute  = Kind{prefix: "rte", desc: "static site redirect/rewrite rule (derived)"}
@@ -155,7 +159,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

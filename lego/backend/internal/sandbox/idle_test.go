@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"maps"
 	"net/http"
 	"net/http/httptest"
@@ -44,6 +45,7 @@ type fakeBox struct {
 	delay       int    // reads before next takes effect
 	stuck       bool   // never settle (a resume that hangs)
 	afterResume string // where a resume settles; default Running
+	lag         bool   // a resume is accepted (202) but the box keeps reading Paused until the test moves it
 	metadata    map[string]string
 	created     time.Time
 	expires     *time.Time // BatchSandbox spec.expireTime; nil = no timeout
@@ -61,6 +63,14 @@ type fakeOpenSandbox struct {
 	renewals []string // "<id> <expiresAt>", in order
 	pauseOK  bool
 	patchOK  bool
+
+	// Create (w22/m311): POST /sandboxes adds a Running box carrying the request's
+	// metadata. createDelay slows it (outside the lock, like a real pod start),
+	// createStatus/createBody make it fail.
+	nextID       int
+	createDelay  time.Duration
+	createStatus int
+	createBody   string
 }
 
 func newFakeOpenSandbox(t *testing.T) (*fakeOpenSandbox, *Client) {
@@ -131,7 +141,61 @@ func (f *fakeOpenSandbox) view(id string, b *fakeBox) osSandbox {
 	return out
 }
 
+// create serves POST /sandboxes.
+func (f *fakeOpenSandbox) create(w http.ResponseWriter, r *http.Request) {
+	var body createRequest
+	_ = json.NewDecoder(r.Body).Decode(&body)
+	f.mu.Lock()
+	delay, status, failure := f.createDelay, f.createStatus, f.createBody
+	f.mu.Unlock()
+	if delay > 0 {
+		time.Sleep(delay)
+	}
+	if status != 0 {
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(failure))
+		return
+	}
+	f.mu.Lock()
+	f.nextID++
+	id := fmt.Sprintf("os-new-%d", f.nextID)
+	f.boxes[id] = &fakeBox{state: "Running", metadata: maps.Clone(body.Metadata), created: time.Now()}
+	f.calls = append(f.calls, "create "+id)
+	f.mu.Unlock()
+	w.WriteHeader(http.StatusCreated)
+	_, _ = fmt.Fprintf(w, `{"id":%q,"status":{"state":"Running"}}`, id)
+}
+
+// count is how many boxes are in one of the states.
+func (f *fakeOpenSandbox) count(states ...string) int {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n := 0
+	for _, b := range f.boxes {
+		if slices.Contains(states, b.state) {
+			n++
+		}
+	}
+	return n
+}
+
+// idOf is the substrate id of the box stamped with a public sandbox id.
+func (f *fakeOpenSandbox) idOf(public string) string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for id, b := range f.boxes {
+		if b.metadata[metadataPublicID] == public {
+			return id
+		}
+	}
+	return ""
+}
+
 func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost && r.URL.Path == "/sandboxes" {
+		f.create(w, r)
+		return
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	path := strings.TrimPrefix(r.URL.Path, "/sandboxes")
@@ -175,6 +239,10 @@ func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 		f.calls = append(f.calls, "resume "+parts[0])
 		if b.state != "Paused" {
 			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		if b.lag {
+			w.WriteHeader(http.StatusAccepted) // accepted, but the list still reads Paused
 			return
 		}
 		b.state, b.next = "Resuming", "Running"

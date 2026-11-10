@@ -56,14 +56,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// (900 s) differs from an explicit 0 (disabled); see
 			// resolveIdleTimeout.
 			IdleTimeoutSeconds *int `json:"idleTimeoutSeconds"`
+			// v2.32 `--group`/`--sandbox-group` sends sandboxGroupId (w22/m311).
+			SandboxGroupID string `json:"sandboxGroupId"`
 			// Declared to be refused by name, like SnapshotID above:
-			// v2.32 `--group`/`--sandbox-group` sends sandboxGroupId, and
 			// v2.34 `--image` sends buildId (an `sbb-` id) or buildName. A raw
 			// `image` ref (ea-sandbox.md's original wire table) is the same request.
-			SandboxGroupID string `json:"sandboxGroupId"`
-			BuildID        string `json:"buildId"`
-			BuildName      string `json:"buildName"`
-			Image          string `json:"image"`
+			BuildID   string `json:"buildId"`
+			BuildName string `json:"buildName"`
+			Image     string `json:"image"`
 			// Render CLI v2.36 / SDK v1.8 `--name`.
 			Name string `json:"name"`
 		}
@@ -78,7 +78,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		if err := refuseGroupAndImage(body.SandboxGroupID, body.BuildID != "" || body.BuildName != "" || body.Image != ""); err != nil {
+		if err := refuseImage(body.BuildID != "" || body.BuildName != "" || body.Image != ""); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
@@ -98,6 +98,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			NetworkPolicy:      body.NetworkPolicy,
 			Name:               body.Name,
 			Env:                body.Env,
+			SandboxGroupID:     body.SandboxGroupID,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
@@ -107,14 +108,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("GET /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query()
-		// A list never ignores a filter it was given: a group filter has no
-		// groups to match (refused by name), and status filters apply.
-		if query.Get("sandboxGroupId") != "" {
-			core.WriteErr(w, sandboxGroupsUnsupported("sandboxGroupId"))
-			return
-		}
+		// A list never ignores a filter it was given: the group and status
+		// filters apply (an unknown status is refused by name).
 		ctx := core.WithWorkspace(r.Context(), query.Get("ownerId"))
-		out, err := s.listFiltered(ctx, core.QueryList(query, "status"), query.Get("name"))
+		out, err := s.listFiltered(ctx, core.QueryList(query, "status"), query.Get("name"), query.Get("sandboxGroupId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return
@@ -242,6 +239,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandboxes/{id}/resume", func(w http.ResponseWriter, r *http.Request) {
 		s.lifecycleREST(w, r, s.Resume)
 	})
+	s.registerGroupREST(mux)
 }
 
 func (s *Service) lifecycleREST(w http.ResponseWriter, r *http.Request, op func(ctx context.Context, id string) error) {

@@ -1263,6 +1263,9 @@ func startOpsRoleServer(ctx context.Context, cfg *Config, h *opsrole.Handler, id
 func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.Client, st *store.PGStore) {
 	if cfg.OpenSandboxURL != "" {
 		deps.SandboxClient = sandbox.NewClient(cfg.OpenSandboxURL)
+		deps.SandboxMaxGroups = cfg.SandboxMaxGroupsPerWorkspace
+		deps.SandboxMaxGroupConcurrency = cfg.SandboxMaxGroupConcurrency
+		deps.SandboxMaxActive = cfg.SandboxMaxActivePerWorkspace
 		// Both defaults are digest-pinned (w7/m85): a sandbox template names an
 		// image bex RUNS, so a floating tag let two creates months apart start
 		// different code with no record of the change. The tag is retained ahead
@@ -1340,6 +1343,8 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			deps.SandboxActivity = st
 			deps.SandboxNames = st
 			deps.SandboxExecutions = st
+			// Sandbox groups and their concurrency limits (w22/m311).
+			deps.SandboxGroups = st
 			// Workspace-delete sandbox teardown (w1/m61): stop the workspace's
 			// running OpenSandbox sandboxes before the tenant row (and its sandbox
 			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so

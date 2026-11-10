@@ -34,6 +34,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/api/openapi"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/types/tiers"
 )
@@ -737,7 +738,12 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	r.GetBody = validationRequest.GetBody
 	r.ContentLength = validationRequest.ContentLength
 	if err != nil {
-		core.WriteErrStatus(w, http.StatusBadRequest, safeRenderValidationMessage(err))
+		message := safeRenderValidationMessage(err)
+		if field, code := renderValidationCode(err); code != "" {
+			core.WriteErr(w, core.NewBadRequestError(code, message, map[string]any{"field": field}))
+			return
+		}
+		core.WriteErrStatus(w, http.StatusBadRequest, message)
 		return
 	}
 
@@ -869,6 +875,35 @@ func unsupportedQueryMessage(unknown []string, operationID string) string {
 		noun = "parameters"
 	}
 	return fmt.Sprintf("unsupported query %s %s for %s", noun, list, operationID)
+}
+
+// renderValidationErrorCodes names the Render errorCode a malformed value of a
+// parameter (path, query or top-level body field) answers: the pinned OpenAPI's
+// `errorCode` vocabulary says an id that is not a well-formed `sbg-` identifier
+// is `invalid_sandbox_group_id`. The gate otherwise answers a codeless 400, so
+// without this a malformed group id on REST would carry no code while GraphQL
+// and MCP, which reach the Service's own check, do (w22/m311).
+var renderValidationErrorCodes = map[string]string{
+	"sandboxGroupId": sandbox.CodeInvalidSandboxGroupID,
+}
+
+// renderValidationCode is the field and code of a request error that has one.
+func renderValidationCode(err error) (field, code string) {
+	var requestError *openapi3filter.RequestError
+	if !errors.As(err, &requestError) {
+		return "", ""
+	}
+	if requestError.Parameter != nil {
+		field = requestError.Parameter.Name
+		return field, renderValidationErrorCodes[field]
+	}
+	var schemaError *openapi3.SchemaError
+	if requestError.RequestBody != nil && errors.As(err, &schemaError) {
+		if pointer := schemaError.JSONPointer(); len(pointer) > 0 {
+			return pointer[0], renderValidationErrorCodes[pointer[0]]
+		}
+	}
+	return "", ""
 }
 
 func safeRenderValidationMessage(err error) string {

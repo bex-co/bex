@@ -114,3 +114,34 @@ func TestBillingEnforcedCrossSurfaceEnvelope(t *testing.T) {
 		t.Fatalf("REST body = %#v", body)
 	}
 }
+
+// A bound on concurrent work answers 429 with its code on every surface, and
+// the message reaches the client (it is a refusal, not an internal failure).
+func TestTooManyRequestsCrossSurfaceEnvelope(t *testing.T) {
+	err := NewTooManyRequestsError("SANDBOX_GROUP_CONCURRENCY_LIMIT", "the group is at its limit of 2 active sandboxes", map[string]any{"limit": 2})
+	if !errors.Is(err, ErrTooManyRequests) || errors.Is(err, ErrBadRequest) || errors.Is(err, ErrConflict) {
+		t.Fatalf("class = %v, want only ErrTooManyRequests", err)
+	}
+	if !IsPublicError(err) {
+		t.Fatal("a 429 refusal must reach the client, not be redacted to \"internal error\"")
+	}
+	if got := ErrorStatus(err); got != http.StatusTooManyRequests {
+		t.Fatalf("ErrorStatus = %d, want 429", got)
+	}
+	if ext := err.Extensions(); ext["code"] != "SANDBOX_GROUP_CONCURRENCY_LIMIT" || ext["limit"] != 2 {
+		t.Fatalf("GraphQL extensions = %#v", ext)
+	}
+	if got := MCPError(err).Error(); got != "SANDBOX_GROUP_CONCURRENCY_LIMIT: the group is at its limit of 2 active sandboxes" {
+		t.Fatalf("MCP text = %q", got)
+	}
+
+	rec := httptest.NewRecorder()
+	WriteErr(rec, err)
+	var body map[string]any
+	if decodeErr := json.Unmarshal(rec.Body.Bytes(), &body); decodeErr != nil {
+		t.Fatal(decodeErr)
+	}
+	if rec.Code != http.StatusTooManyRequests || body["id"] != "too_many_requests" || body["code"] != "SANDBOX_GROUP_CONCURRENCY_LIMIT" {
+		t.Fatalf("REST = %d %#v", rec.Code, body)
+	}
+}

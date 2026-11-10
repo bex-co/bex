@@ -379,6 +379,18 @@ type Deps struct {
 	// SandboxExecutions holds Render's sandbox execution history (w32/m298);
 	// nil answers the /execs reads as unavailable.
 	SandboxExecutions sandbox.ExecutionStore
+	// SandboxGroups holds Render's sandbox groups and each sandbox's group
+	// (w22/m311); nil (store off) serves no group route, refuses a create that
+	// names a group and enforces no concurrency limit.
+	SandboxGroups sandbox.GroupStore
+	// SandboxMaxGroups caps a workspace's groups (BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE,
+	// Render's 10; 0 = uncapped), SandboxMaxGroupConcurrency is the ceiling and
+	// default of a group's concurrencyLimit (BEX_SANDBOX_MAX_GROUP_CONCURRENCY,
+	// Render's 1,000; 0 = none) and SandboxMaxActive caps a workspace's active
+	// sandboxes across its groups (BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE; 0 = none).
+	SandboxMaxGroups           int
+	SandboxMaxGroupConcurrency int
+	SandboxMaxActive           int
 	// SandboxExec wires `render ea sandbox exec` (w3/m33) — bex-api authorizes and
 	// reverse-proxies the SSE from the isolated gateway; nil => the exec verb 503s.
 	SandboxExec *sandbox.ExecConfig
@@ -1248,6 +1260,11 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		Names:           d.SandboxNames,
 		Executions:      d.SandboxExecutions,
 		UserIDs:         userIDLookup(d.SandboxExecutions),
+
+		Groups:              d.SandboxGroups,
+		MaxGroups:           d.SandboxMaxGroups,
+		MaxGroupConcurrency: d.SandboxMaxGroupConcurrency,
+		MaxActive:           d.SandboxMaxActive,
 	}
 }
 

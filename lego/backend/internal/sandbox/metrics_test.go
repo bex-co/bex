@@ -27,6 +27,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // TestCreateOutcomeSeparatesRefusalsFromSubstrateFailures is the whole point of
@@ -46,6 +47,14 @@ func TestCreateOutcomeSeparatesRefusalsFromSubstrateFailures(t *testing.T) {
 		{"denied", core.ErrForbidden, outcomeRejected},
 		{"card required", core.ErrPaymentRequired, outcomeRejected},
 		{"billing enforced", core.ErrBillingEnforced, outcomeRejected},
+		// w22/m311: a group or workspace at its limit refuses before any runtime
+		// call. Counted as a failure it would raise SandboxProvisionFailing for a
+		// client that merely hit its own limit.
+		{"group at its concurrency limit", (&Service{}).groupConcurrencyError(store.SandboxGroup{ID: "sbg-x", Name: "g"}, 2, 2), outcomeRejected},
+		{"workspace at its cap", (&Service{}).workspaceConcurrencyError(100, 100), outcomeRejected},
+		{"no group store", (&Service{}).requireGroups(), outcomeUnavailable},
+		// The platform-side start failure is also a 503, and must stay a failure.
+		{"sandbox did not start", sandboxStartError(), outcomeFailed},
 		{"unexplained runtime error", errors.New("connection reset by peer"), outcomeFailed},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -145,4 +154,22 @@ func TestAgentSessionCreatesStayOutOfTheSandboxSurfaceSignal(t *testing.T) {
 	if got := testutil.ToFloat64(svc.Metrics.creates.WithLabelValues(outcomeSucceeded)); got != 1 {
 		t.Fatalf("sandbox-surface counter = %v after an agent-path create, want it unchanged at 1", got)
 	}
+}
+
+// A refused create or resume is counted by the limit that refused it and the
+// verb; nothing tenant-chosen becomes a label.
+func TestObserveRefusalCountsByLimitAndOp(t *testing.T) {
+	m := NewMetrics(prometheus.NewRegistry())
+	m.observeRefusal("group", "create")
+	m.observeRefusal("group", "create")
+	m.observeRefusal("workspace", "resume")
+	for labels, want := range map[[2]string]float64{
+		{"group", "create"}: 2, {"workspace", "resume"}: 1, {"group", "resume"}: 0, {"workspace", "create"}: 0,
+	} {
+		if got := testutil.ToFloat64(m.refusals.WithLabelValues(labels[0], labels[1])); got != want {
+			t.Errorf("refusals%v = %v, want %v", labels, got, want)
+		}
+	}
+	var nilMetrics *Metrics
+	nilMetrics.observeRefusal("group", "create")
 }

@@ -163,6 +163,12 @@ var (
 	// byte limit, such as an agent attachment over its cap (ADR095 D8);
 	// adapters map it to 413. Use NewTooLargeError so the refusal is coded.
 	ErrTooLarge = errors.New("payload too large")
+	// ErrTooManyRequests is the class of a request refused because a bound on
+	// concurrent work is full, such as a sandbox group at its concurrency limit
+	// (Render answers 429 there, w22/m311); adapters map it to 429. It is not a
+	// rate limit: waiting does not clear it, finishing or suspending other work
+	// does. Use NewTooManyRequestsError so the refusal is coded.
+	ErrTooManyRequests = errors.New("too many requests")
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).
@@ -534,6 +540,12 @@ func NewGoneError(code, msg string, params map[string]any) *CodedError {
 // byte limit.
 func NewTooLargeError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrTooLarge, msg: msg}
+}
+
+// NewTooManyRequestsError returns a machine-readable 429 for a request refused
+// because a bound on concurrent work is full.
+func NewTooManyRequestsError(code, msg string, params map[string]any) *CodedError {
+	return &CodedError{Code: code, Params: params, sentinel: ErrTooManyRequests, msg: msg}
 }
 
 // Agent-session availability codes deliberately distinguish a platform that
