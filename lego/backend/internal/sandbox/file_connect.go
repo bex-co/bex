@@ -175,6 +175,11 @@ func (s *Service) ConnectFile(ctx context.Context, req FileConnectRequest, baseU
 	if err != nil {
 		return ConnectResponse{}, err
 	}
+	s.recordExecution(ctx, store.SandboxExecution{
+		ID: claims.ExecutionID, WorkspaceID: ws, SandboxID: claims.SandboxID,
+		Type: ExecutionTypeFiles, Operation: claims.Operation, Command: claims.Path,
+		Subject: identity.Subject, StartedAt: now,
+	})
 	return ConnectResponse{
 		ExecutionID: claims.ExecutionID, ExpiresAt: time.Unix(claims.ExpiresAt, 0).UTC(),
 		Method: fileOperationMethod(claims.Operation), Token: token,
@@ -227,6 +232,9 @@ func (s *Service) ConnectFileHandler() http.Handler {
 			return
 		}
 		ctx := core.WithIdentity(r.Context(), core.Identity{Subject: claims.Subject, Method: "sandbox-file-connect"})
+		// A transfer reports no exit code; its record ends with the request,
+		// whether the transfer or a later reauthorization ended it.
+		defer s.stopExecution(ctx, claims.Workspace, claims.ExecutionID, nil)
 		ctx, cancel := context.WithTimeout(ctx, sandboxfiles.DefaultTransferTimeout)
 		defer cancel()
 		// A canceled proxy context stops the gateway request, but alone cannot

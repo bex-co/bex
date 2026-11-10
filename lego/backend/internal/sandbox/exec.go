@@ -29,8 +29,10 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // ExecConfig wires the sandbox-exec bridge (w3/m33, `render ea sandbox exec`).
@@ -71,6 +73,16 @@ type ExecRequest struct {
 	OwnerID   string
 	SandboxID string
 	Command   string
+	// ExecutionID names the execution record a run connect token already
+	// opened; empty means the exec opens its own. When it is set, OwnerID is
+	// the token's resolved workspace (the record's key), not a caller's raw
+	// ownerId.
+	ExecutionID string
+}
+
+// execTarget is the sandbox an exec resolved to: its workspace and public id.
+type execTarget struct {
+	workspace, sandboxID string
 }
 
 // systemExecSubject is the ticket subject the trusted Completer's status read
@@ -96,10 +108,10 @@ func (s *Service) execEnabled() bool {
 //
 // The returned release ends the command's hold on the sandbox's idle timer
 // (holdActive); the caller runs it when the stream ends.
-func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Response, func(), error) {
+func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Response, func(), execTarget, error) {
 	ws, raw, err := s.authorizeExecTarget(ctx, req)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, execTarget{}, err
 	}
 	release := s.holdActive(ctx, ws, raw)
 	// The ticket binds the SUBSTRATE id, not the caller's: the gateway derives
@@ -108,9 +120,28 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	resp, err := s.mintAndDial(ctx, ws, raw.ID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
 	if err != nil {
 		release()
-		return nil, nil, err
+		return nil, nil, execTarget{}, err
 	}
-	return resp, release, nil
+	return resp, release, execTarget{workspace: ws, sandboxID: canonicalID(raw)}, nil
+}
+
+// openExecution returns the record an exec reports to: the one its connect
+// token opened, or a new one for an exec that had no token.
+func (s *Service) openExecution(ctx context.Context, req ExecRequest, target execTarget, operation string) string {
+	if req.ExecutionID != "" {
+		return req.ExecutionID
+	}
+	executionID := id.New(id.SandboxExecution)
+	subject := ""
+	if idn, ok := core.IdentityFrom(ctx); ok {
+		subject = idn.Subject
+	}
+	s.recordExecution(ctx, store.SandboxExecution{
+		ID: executionID, WorkspaceID: target.workspace, SandboxID: target.sandboxID,
+		Type: ExecutionTypeRuns, Operation: operation, Command: req.Command,
+		Subject: subject, StartedAt: s.Now(),
+	})
+	return executionID
 }
 
 // authorizeExecTarget is the exec gate shared by the direct exec verbs and the
@@ -239,12 +270,19 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID
 // adapter renders as a normal HTTP status instead of a half-open event stream —
 // the Render CLI's single-POST-reads-SSE contract (docs/render-artifacts/ea-sandbox.md).
 func (s *Service) StreamExec(ctx context.Context, req ExecRequest, w http.ResponseWriter, flush func()) error {
-	resp, release, err := s.dialGateway(ctx, req)
+	resp, release, target, err := s.dialGateway(ctx, req)
 	if err != nil {
+		// A token's record ends here: its command never ran.
+		s.stopExecution(ctx, req.OwnerID, req.ExecutionID, nil)
 		return err
 	}
 	defer release()
 	defer func() { _ = resp.Body.Close() }()
+	executionID := s.openExecution(ctx, req, target, ConnectOperationStream)
+	var exit exitSniffer
+	// Synchronous, so a listing right after the stream ends sees it stopped;
+	// the write is one bounded keyed UPDATE.
+	defer func() { s.stopExecution(ctx, target.workspace, executionID, exit.exitCode) }()
 
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
@@ -255,8 +293,16 @@ func (s *Service) StreamExec(ctx context.Context, req ExecRequest, w http.Respon
 	// Either end failing — client disconnect, or upstream ending on context
 	// cancel/timeout — closes the stream with nothing left to report, so the
 	// copy's error is deliberately discarded.
-	_, _ = io.Copy(flushingWriter{w: w, flush: flush}, resp.Body)
+	_, _ = io.Copy(flushingWriter{w: w, flush: flush}, io.TeeReader(resp.Body, sniffWriter{&exit}))
 	return nil
+}
+
+// sniffWriter feeds an exitSniffer from an io.TeeReader.
+type sniffWriter struct{ x *exitSniffer }
+
+func (w sniffWriter) Write(p []byte) (int, error) {
+	w.x.observe(p)
+	return len(p), nil
 }
 
 // flushingWriter flushes the transport after every chunk, so an SSE consumer
@@ -301,13 +347,20 @@ const maxExecOutputBytes = 2 << 20
 // ticket + gateway path as StreamExec, but it consumes the SSE and returns the
 // assembled result rather than streaming. Used by MCP `sandbox_exec`.
 func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult, error) {
-	resp, release, err := s.dialGateway(ctx, req)
+	resp, release, target, err := s.dialGateway(ctx, req)
 	if err != nil {
 		return ExecResult{}, err
 	}
 	defer release()
 	defer func() { _ = resp.Body.Close() }()
-	return bufferExec(resp)
+	executionID := s.openExecution(ctx, req, target, ExecutionOperationSync)
+	res, err := bufferExec(resp)
+	var exitCode *int
+	if err == nil && !res.Truncated {
+		exitCode = &res.ExitCode
+	}
+	s.stopExecution(ctx, target.workspace, executionID, exitCode)
+	return res, err
 }
 
 // bufferExec drains one gateway SSE exec response into a collected result. It is
@@ -370,20 +423,8 @@ func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, e
 					}
 				}
 			case "exit":
-				// The gateway emits the pinned Render CLI's `exit_code` (w7/m147)
-				// and, for one release, the pre-m147 `exitCode` beside it; a reader
-				// may meet either while the gateway and bex-api roll out apart.
-				var ev struct {
-					ExitCode       *int `json:"exit_code"`
-					LegacyExitCode *int `json:"exitCode"`
-				}
-				if json.Unmarshal([]byte(payload), &ev) == nil {
-					switch {
-					case ev.ExitCode != nil:
-						out.ExitCode, exitSeen = *ev.ExitCode, true
-					case ev.LegacyExitCode != nil:
-						out.ExitCode, exitSeen = *ev.LegacyExitCode, true
-					}
+				if code := decodeExitCode([]byte(payload)); code != nil {
+					out.ExitCode, exitSeen = *code, true
 				}
 			case "error":
 				// Same transition: the pinned CLI's {status, message} beside the

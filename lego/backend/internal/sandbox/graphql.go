@@ -85,6 +85,22 @@ func networkPolicyFromArgs(raw map[string]any) *NetworkPolicy {
 	return policy
 }
 
+// sandboxExecutionGQLType is Render's execution record (w32/m298).
+var sandboxExecutionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SandboxExecution",
+	Fields: graphql.Fields{
+		"id":        gqlutil.ReqStrField(func(e Execution) any { return e.ID }),
+		"sandboxId": gqlutil.ReqStrField(func(e Execution) any { return e.SandboxID }),
+		"type":      gqlutil.ReqStrField(func(e Execution) any { return e.Type }),
+		"operation": gqlutil.ReqStrField(func(e Execution) any { return e.Operation }),
+		"command":   gqlutil.StrField(func(e Execution) any { return e.Command }),
+		"userId":    gqlutil.ReqStrField(func(e Execution) any { return e.UserID }),
+		"startedAt": gqlutil.TimeField(func(e Execution) any { return e.StartedAt }),
+		"stoppedAt": gqlutil.TimeField(func(e Execution) any { return e.StoppedAt }),
+		"exitCode":  gqlutil.IntField(func(e Execution) any { return e.ExitCode }),
+	},
+})
+
 // sandboxGQLType is the GraphQL projection of a Sandbox, keeping the third
 // surface behavior-identical to REST/MCP (internal/api/AGENTS.md three-adapter
 // parity). Extra fields (owner/workspace/image) are a safe superset over the
@@ -162,6 +178,30 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.listFiltered(ownerScoped(p), gqlutil.StringList(p.Args["status"]), gqlutil.Str(p.Args, "name"))
+			},
+		},
+		// Render's execution history, newest first (w32/m298).
+		"sandboxExecutions": &graphql.Field{
+			Type: graphql.NewList(sandboxExecutionGQLType),
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+				"cursor":  gqlutil.Arg(graphql.String),
+				"limit":   gqlutil.Arg(graphql.Int),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.listExecutionViews(ownerScoped(p), p.Args["id"].(string), gqlutil.Str(p.Args, "cursor"), core.PageLimitOrDefault(gqlutil.Int(p.Args, "limit")))
+			},
+		},
+		"sandboxExecution": &graphql.Field{
+			Type: sandboxExecutionGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":          gqlutil.ReqArg(graphql.String),
+				"executionId": gqlutil.ReqArg(graphql.String),
+				"ownerId":     gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetExecution(ownerScoped(p), p.Args["id"].(string), p.Args["executionId"].(string))
 			},
 		},
 		"sandbox": &graphql.Field{

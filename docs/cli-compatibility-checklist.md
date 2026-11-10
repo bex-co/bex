@@ -353,6 +353,7 @@ Static wire review (w32/m284 t001) against `lego/backend/internal/sandbox`, and 
 | `exec` / `exec` | pending live walk | run connect-token handshake, SSE `output`/`exit`/`error` |
 | `copy_to`, `copy_from` / `upload`, `download` | pending live walk | file connect-token handshake; absolute remote paths only (see below) |
 | `terminate` / `terminate` | pending live walk | 204 |
+| generated `list_sandbox_executions`, `retrieve_sandbox_execution` | pending live walk | served since w32/m298: newest first, Render's fields, `cursor`/`limit` |
 | `snapshots.*`, `*_group`, `images.*`, `builds.*` | [-] | sandbox snapshots (w32/m285), groups (non-goal, w7/m150) and images are refused by name |
 
 Known residuals: a relative remote path is refused (`400`), where Render resolves it under the sandbox user's home; a mint against a suspended sandbox can wait for its resume longer than the Python SDK's default 5 s HTTP timeout.

@@ -149,6 +149,10 @@ type Service struct {
 	// Names holds Render sandbox names (w5/m287); nil (store off) refuses a
 	// named create and lists every sandbox unnamed.
 	Names NameStore
+	// Executions holds Render's execution history (w32/m298); nil serves none.
+	Executions ExecutionStore
+	// UserIDs shows an execution's caller as its Render usr- id.
+	UserIDs core.UserIDLookup
 	// ResumePoll and ActivityHeartbeat override the wake-on-exec poll interval
 	// and the open-stream activity heartbeat; zero uses the defaults.
 	ResumePoll        time.Duration
@@ -1392,6 +1396,14 @@ func (s *Service) clientResume(ctx context.Context, key string, raw osSandbox) e
 func (s *Service) clientTerminate(ctx context.Context, key string, raw osSandbox) error {
 	if err := s.Client.Terminate(ctx, key, raw.ID); err != nil {
 		return err
+	}
+	// Render finalizes a terminated sandbox's open executions.
+	if s.Executions != nil {
+		stopCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), executionStopTimeout)
+		defer cancel()
+		if err := s.Executions.StopOpenSandboxExecutions(stopCtx, raw.Metadata[metadataWorkspace], canonicalID(raw), s.Now()); err != nil {
+			log.Printf("sandbox: stop executions of terminated %s: %v", canonicalID(raw), err)
+		}
 	}
 	// A terminated allow-list sandbox's policy selects nothing any more; remove
 	// it so the namespace does not accumulate them. Failure only leaks an inert

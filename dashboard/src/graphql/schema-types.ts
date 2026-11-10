@@ -3743,6 +3743,8 @@ export type Query = {
   routerAvailable: Maybe<Scalars['Boolean']['output']>;
   routerOverview: Maybe<RouterOverview>;
   sandbox: Maybe<Sandbox>;
+  sandboxExecution: Maybe<SandboxExecution>;
+  sandboxExecutions: Maybe<Array<Maybe<SandboxExecution>>>;
   sandboxes: Maybe<Array<Maybe<Sandbox>>>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
@@ -4423,6 +4425,21 @@ export type QuerySandboxArgs = {
 };
 
 
+export type QuerySandboxExecutionArgs = {
+  executionId: Scalars['String']['input'];
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySandboxExecutionsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QuerySandboxesArgs = {
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -4723,6 +4740,19 @@ export type Sandbox = {
   status: Scalars['String']['output'];
   timeoutSeconds: Maybe<Scalars['Int']['output']>;
   workspace: Maybe<Scalars['String']['output']>;
+};
+
+export type SandboxExecution = {
+  __typename: 'SandboxExecution';
+  command: Maybe<Scalars['String']['output']>;
+  exitCode: Maybe<Scalars['Int']['output']>;
+  id: Scalars['String']['output'];
+  operation: Scalars['String']['output'];
+  sandboxId: Scalars['String']['output'];
+  startedAt: Maybe<Scalars['String']['output']>;
+  stoppedAt: Maybe<Scalars['String']['output']>;
+  type: Scalars['String']['output'];
+  userId: Scalars['String']['output'];
 };
 
 export type SandboxNetworkPolicy = {

@@ -376,6 +376,9 @@ type Deps struct {
 	SandboxActivity sandbox.ActivityStore
 	// SandboxNames holds Render sandbox names (w5/m287); nil refuses --name.
 	SandboxNames sandbox.NameStore
+	// SandboxExecutions holds Render's sandbox execution history (w32/m298);
+	// nil answers the /execs reads as unavailable.
+	SandboxExecutions sandbox.ExecutionStore
 	// SandboxExec wires `render ea sandbox exec` (w3/m33) — bex-api authorizes and
 	// reverse-proxies the SSE from the isolated gateway; nil => the exec verb 503s.
 	SandboxExec *sandbox.ExecConfig
@@ -1243,6 +1246,8 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		Region:          resourcemeta.RenderRegion(d.Region),
 		Activity:        d.SandboxActivity,
 		Names:           d.SandboxNames,
+		Executions:      d.SandboxExecutions,
+		UserIDs:         userIDLookup(d.SandboxExecutions),
 	}
 }
 

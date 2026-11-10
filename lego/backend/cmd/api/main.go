@@ -1339,6 +1339,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// store; the sweeper itself starts once the Service exists.
 			deps.SandboxActivity = st
 			deps.SandboxNames = st
+			deps.SandboxExecutions = st
 			// Workspace-delete sandbox teardown (w1/m61): stop the workspace's
 			// running OpenSandbox sandboxes before the tenant row (and its sandbox
 			// key, migration 0056) cascade away. It joins the PRE-cascade purgers so

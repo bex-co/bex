@@ -32,9 +32,6 @@ import (
 // below plus the redeem route in connect.go, mounted outside the auth gate —
 // while the single-step `POST /exec` stays for pre-v2.24 clients and MCP.
 // ownerId is Render's workspace binding (query param).
-// maxCreateBodyBytes bounds a sandbox create body.
-const maxCreateBodyBytes = 8 * maxSandboxEnvBytes
-
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
@@ -73,9 +70,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		// A missing/empty body is fine — template+plan fall back to defaults —
 		// but malformed or unknown nested policy fields must never be ignored.
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
-		// The body is read whole before env's 256 KB limit can apply; bound it
-		// (JSON escaping can grow a value several-fold, hence the headroom).
-		r.Body = http.MaxBytesReader(w, r.Body, maxCreateBodyBytes)
 		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 			return
@@ -147,6 +141,26 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, sb)
+	})
+	// Render's execution history (w32/m298): newest first, `cursor`/`limit`.
+	mux.HandleFunc("GET /v1/sandboxes/{id}/execs", func(w http.ResponseWriter, r *http.Request) {
+		ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
+		after, limit := core.PageParams(r.URL.Query())
+		out, err := s.ListExecutions(ctx, r.PathValue("id"), after, limit)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("GET /v1/sandboxes/{id}/execs/{execId}", func(w http.ResponseWriter, r *http.Request) {
+		ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
+		out, err := s.GetExecution(ctx, r.PathValue("id"), r.PathValue("execId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
 	})
 	// Render CLI `exec` → run one command, stream stdout/stderr + exitCode as SSE.
 	// The CLI POSTs {"command":"…"} and reads the response as an event stream

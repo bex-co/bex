@@ -458,6 +458,29 @@ sandbox_exec "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$sandbox_a_id" 'pri
 [ "$(tr -d '\n' <"$fixture_dir/exec-env.txt")" = "$env_probe_value" ] \
   || fail "a command in sandbox A does not see its create-time env"
 pass "a command run through bex's exec path sees the sandbox's create-time env"
+
+# Render's execution history (w32/m298): the exec above and an upload are
+# listed newest first with Render's fields, and only to who may read the box.
+upload_body="$fixture_dir/execs-upload.txt"
+printf 'm298\n' >"$upload_body"
+expect_status 201 "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_a_id/files/upload/token?ownerId=$BEX_WORKSPACE_A&path=/tmp/m298-upload.txt" "$fixture_dir/execs-upload.mint"
+write_auth_config "$(jq -er '.token' "$fixture_dir/execs-upload.mint")" "$fixture_dir/execs-upload.curl"
+curl --config "$fixture_dir/execs-upload.curl" --silent --show-error --fail-with-body --max-time 120 \
+  --request "$(jq -er '.method' "$fixture_dir/execs-upload.mint")" --header 'Content-Type: application/octet-stream' \
+  --data-binary "@$upload_body" --output "$fixture_dir/execs-upload.out" "$(jq -er '.uri' "$fixture_dir/execs-upload.mint")" \
+  || fail "upload to sandbox A failed: $(head -c 300 "$fixture_dir/execs-upload.out" 2>/dev/null)"
+expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$sandbox_a_id/execs?ownerId=$BEX_WORKSPACE_A&limit=10" "$fixture_dir/execs.json"
+run_exe="$(jq -er '.executionId' "$fixture_dir/exec-env.txt.mint")"
+upload_exe="$(jq -er '.executionId' "$fixture_dir/execs-upload.mint")"
+jq -e --arg run "$run_exe" --arg up "$upload_exe" '
+  (.[0].execution | .id == $up and .type == "files" and .operation == "upload" and .command == "/tmp/m298-upload.txt" and (.stoppedAt != null))
+  and (.[1].execution | .id == $run and .type == "runs" and .operation == "stream" and .command == "printenv MATRIX_ENV_PROBE" and .exitCode == 0)
+  and all(.[]; .cursor == .execution.id and (.execution.userId | type == "string") and (.execution.startedAt | type == "string"))' \
+  "$fixture_dir/execs.json" >/dev/null || fail "sandbox A's execution history is not the exec and upload, newest first: $(head -c 600 "$fixture_dir/execs.json")"
+expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$sandbox_a_id/execs/$run_exe?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/exec-one.json"
+expect_status 404 "$fixture_dir/member-b.curl" GET "/v1/sandboxes/$sandbox_a_id/execs?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/execs-cross-owner.json"
+expect_status 404 "$fixture_dir/owner-c.curl" GET "/v1/sandboxes/$sandbox_a_id/execs/$run_exe?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/execs-cross-workspace.json"
+pass "execution history lists the exec and the upload with Render's fields, and only to the sandbox's readers"
 if [ "$verify_agent_driver" = 1 ]; then
   container_agent="$(workload_container "$namespace_a" "$pod_agent")"
 fi

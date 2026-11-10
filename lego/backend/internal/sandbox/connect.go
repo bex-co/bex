@@ -32,6 +32,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // The pinned Render CLI (v2.24.0 and later) runs a sandbox command in two
@@ -169,6 +170,12 @@ func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL st
 	if err != nil {
 		return ConnectResponse{}, err
 	}
+	// Render's startedAt is the token provisioning time.
+	s.recordExecution(ctx, store.SandboxExecution{
+		ID: claims.ExecutionID, WorkspaceID: ws, SandboxID: sandboxID,
+		Type: ExecutionTypeRuns, Operation: req.Operation, Command: req.Command,
+		Subject: idn.Subject, StartedAt: now,
+	})
 	return ConnectResponse{
 		ExecutionID: claims.ExecutionID,
 		ExpiresAt:   time.Unix(claims.ExpiresAt, 0).UTC(),
@@ -266,7 +273,7 @@ func (s *Service) ConnectStreamHandler() http.Handler {
 			}
 		}
 		r = allowLongResume(w, r.WithContext(ctx))
-		if err := s.StreamExec(r.Context(), ExecRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Command: claims.Command}, w, flush); err != nil {
+		if err := s.StreamExec(r.Context(), ExecRequest{OwnerID: claims.Workspace, SandboxID: claims.SandboxID, Command: claims.Command, ExecutionID: claims.ExecutionID}, w, flush); err != nil {
 			core.WriteErr(w, err)
 		}
 	})

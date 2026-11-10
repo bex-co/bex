@@ -22,6 +22,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
@@ -56,6 +57,19 @@ type listSandboxesArgs struct {
 
 type sandboxIDArgs struct {
 	ID string `json:"id"`
+}
+
+// listExecutionsArgs is the MCP input for list_sandbox_executions: Render's
+// cursor and limit (omitted = 20, at most 100).
+type listExecutionsArgs struct {
+	ID      string `json:"id"`
+	OwnerID string `json:"ownerId,omitempty"`
+	Cursor  string `json:"cursor,omitempty"`
+	Limit   int    `json:"limit,omitempty"`
+}
+
+type listExecutionsResult struct {
+	Executions []ExecutionEnvelope `json:"executions"`
 }
 
 type listSandboxesResult struct {
@@ -106,6 +120,11 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, stopSandboxResult, error) {
 			err := s.Terminate(ctx, in.ID)
 			return nil, stopSandboxResult{Stopped: err == nil}, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandbox_executions", Description: "List a sandbox's recorded command runs and file transfers, newest first, with each one's command or path, caller, start and stop time, and exit code."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in listExecutionsArgs) (*mcp.CallToolResult, listExecutionsResult, error) {
+			out, err := s.ListExecutions(core.WithWorkspace(ctx, in.OwnerID), in.ID, in.Cursor, core.PageLimitOrDefault(in.Limit))
+			return nil, listExecutionsResult{Executions: out}, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "sandbox_exec", Description: "Run a shell command in a sandbox and return its stdout, stderr, and exit code."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in execSandboxArgs) (*mcp.CallToolResult, ExecResult, error) {

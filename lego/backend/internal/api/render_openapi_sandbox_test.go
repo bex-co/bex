@@ -39,6 +39,8 @@ func TestSandboxCallsPassTheRenderGate(t *testing.T) {
 		"POST /v1/sandboxes/{id}/terminate",
 		"POST /v1/sandboxes/{id}/runs/{operation}/token",
 		"POST /v1/sandboxes/{id}/files/{operation}/token",
+		"GET /v1/sandboxes/{id}/execs",
+		"GET /v1/sandboxes/{id}/execs/{execId}",
 	} {
 		mux.HandleFunc(pattern, func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(299) })
 	}
@@ -55,6 +57,12 @@ func TestSandboxCallsPassTheRenderGate(t *testing.T) {
 		{http.MethodPost, "/v1/sandboxes/" + sbx + "/terminate", ""},
 		{http.MethodPost, "/v1/sandboxes/" + sbx + "/runs/stream/token", `{"command":"true"}`},
 		{http.MethodPost, "/v1/sandboxes/" + sbx + "/files/upload/token?path=/workspace/a", ""},
+		// Render's execution history (w32/m298), with and without bex's
+		// optional ownerId.
+		{http.MethodGet, "/v1/sandboxes/" + sbx + "/execs?limit=5", ""},
+		{http.MethodGet, "/v1/sandboxes/" + sbx + "/execs?ownerId=tea-a&cursor=" + ids.New(ids.SandboxExecution), ""},
+		{http.MethodGet, "/v1/sandboxes/" + sbx + "/execs/" + ids.New(ids.SandboxExecution), ""},
+		{http.MethodGet, "/v1/sandboxes/" + sbx + "/execs/" + ids.New(ids.SandboxExecution) + "?ownerId=tea-a", ""},
 	} {
 		contentType := ""
 		if c.body != "" {
