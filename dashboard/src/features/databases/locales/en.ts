@@ -809,6 +809,14 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Leave empty to restore the latest available point.",
     description: "Restore dialog target-time helper text",
   },
+  "databases.recoveryRestoreTimeZone": {
+    message: "Times are in your local time zone ({zone}).",
+    description: "Restore dialog target-time zone note",
+  },
+  "databases.recoveryRestoreTimeOutOfWindow": {
+    message: "Pick a time between the earliest restore point and now.",
+    description: "Restore dialog target-time out-of-window error",
+  },
   "databases.recoveryRestoreConfirm": {
     message: "Restore",
     description: "Restore dialog confirm button",

@@ -788,6 +788,14 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "留空则恢复到最新可用时间点。",
     description: "Restore dialog target-time helper text",
   },
+  "databases.recoveryRestoreTimeZone": {
+    message: "时间按你的本地时区（{zone}）计算。",
+    description: "Restore dialog target-time zone note",
+  },
+  "databases.recoveryRestoreTimeOutOfWindow": {
+    message: "请选择最早恢复点与现在之间的时间。",
+    description: "Restore dialog target-time out-of-window error",
+  },
   "databases.recoveryRestoreConfirm": {
     message: "恢复",
     description: "Restore dialog confirm button",

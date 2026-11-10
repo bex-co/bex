@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { RecoveryPanel } from "@/features/databases/components/recovery-panel";
 import { formatDateTime } from "@/common/lib/format";
+import { toLocalInput } from "@/features/databases/lib/restore-time";
 import type {
   BackupItem,
   ExportItem,
@@ -216,6 +217,51 @@ describe("RecoveryPanel logical exports", () => {
       to: "/databases/$databaseId",
       params: { databaseId: "dpg-recovered-id" },
     });
+  });
+
+  // w21/020: the picked wall time is the viewer's, not UTC.
+  it("sends the instant the picked local time denotes and bounds the field", async () => {
+    recover.mockResolvedValue("dpg-recovered-id");
+    const user = userEvent.setup();
+    render(<RecoveryPanel id="dpg-source" />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Restore to new instance" }),
+    );
+    await user.type(screen.getByLabelText("New database name"), "recovered");
+    const time = screen.getByLabelText(/Point in time/);
+    expect(time).toHaveAttribute(
+      "min",
+      toLocalInput(Date.parse("2026-07-13T12:00:00Z")),
+    );
+    expect(time).toHaveAttribute("max");
+    expect(screen.getByText(/local time zone/)).toBeInTheDocument();
+
+    fireEvent.change(time, {
+      target: { value: toLocalInput(Date.parse("2026-07-13T18:30:00Z")) },
+    });
+    await user.click(screen.getByRole("button", { name: "Restore" }));
+    expect(recover).toHaveBeenCalledWith({
+      name: "recovered",
+      targetTime: "2026-07-13T18:30:00Z",
+    });
+  });
+
+  it("disables Restore for a time outside the recovery window", async () => {
+    const user = userEvent.setup();
+    render(<RecoveryPanel id="dpg-source" />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Restore to new instance" }),
+    );
+    await user.type(screen.getByLabelText("New database name"), "recovered");
+    fireEvent.change(screen.getByLabelText(/Point in time/), {
+      target: { value: "2026-06-01T12:00" },
+    });
+    expect(screen.getByRole("button", { name: "Restore" })).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "earliest restore point",
+    );
   });
 
   it("keeps the recovery dialog in place when recovery fails", async () => {

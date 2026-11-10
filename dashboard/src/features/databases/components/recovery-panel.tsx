@@ -28,6 +28,10 @@ import {
   type BackupItem,
   type ExportItem,
 } from "@/features/databases/hooks/use-recovery";
+import {
+  restoreBounds,
+  restoreTarget,
+} from "@/features/databases/lib/restore-time";
 
 /**
  * The database detail's Recovery section (Render's Recovery tab): the PITR
@@ -52,6 +56,11 @@ export function RecoveryPanel({ id }: { id: string }) {
   const [restoreOpen, setRestoreOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [targetTime, setTargetTime] = useState("");
+  // Sampled when the dialog opens: the picker's upper bound is that moment.
+  const [openedAtMs, setOpenedAtMs] = useState(0);
+  const bounds = restoreBounds(info.earliestRecoveryTime, openedAtMs);
+  const target = restoreTarget(targetTime, bounds);
+  const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   const recoveryWindowEstablished = Boolean(
     info.earliestRecoveryTime && info.latestRecoveryTime,
   );
@@ -59,11 +68,12 @@ export function RecoveryPanel({ id }: { id: string }) {
 
   async function handleRestore() {
     if (!canRestore) return;
-    // datetime-local yields "YYYY-MM-DDTHH:mm"; send RFC3339 (append seconds+Z).
-    const iso = targetTime ? `${targetTime}:00Z` : undefined;
+    // datetime-local yields the viewer's wall time; send the instant it
+    // denotes, not the same digits labelled UTC (w21/020).
+    if (!target.ok) return;
     const recoveredDatabaseId = await recover({
       name: newName.trim(),
-      targetTime: iso,
+      targetTime: target.iso,
     });
     if (recoveredDatabaseId) {
       setRestoreOpen(false);
@@ -122,7 +132,10 @@ export function RecoveryPanel({ id }: { id: string }) {
 
             <div className="flex flex-wrap gap-2">
               <Button
-                onClick={() => setRestoreOpen(true)}
+                onClick={() => {
+                  setOpenedAtMs(Date.now());
+                  setRestoreOpen(true);
+                }}
                 disabled={!canRestore}
                 title={
                   canRestore
@@ -200,11 +213,24 @@ export function RecoveryPanel({ id }: { id: string }) {
                 id="restore-time"
                 type="datetime-local"
                 value={targetTime}
+                min={bounds.min}
+                max={bounds.max}
                 onChange={(e) => setTargetTime(e.target.value)}
+                aria-invalid={!target.ok}
+                aria-describedby="restore-time-hint"
               />
-              <p className="text-xs text-muted-foreground">
-                {t("databases.recoveryRestoreTimeHint")}
+              <p
+                id="restore-time-hint"
+                className="text-xs text-muted-foreground"
+              >
+                {t("databases.recoveryRestoreTimeHint")}{" "}
+                {t("databases.recoveryRestoreTimeZone", { zone: timeZone })}
               </p>
+              {!target.ok ? (
+                <p role="alert" className="text-xs text-destructive">
+                  {t("databases.recoveryRestoreTimeOutOfWindow")}
+                </p>
+              ) : null}
             </div>
           </div>
           <DialogFooter>
@@ -213,7 +239,7 @@ export function RecoveryPanel({ id }: { id: string }) {
             </Button>
             <Button
               onClick={() => void handleRestore()}
-              disabled={!newName.trim() || recovering}
+              disabled={!newName.trim() || recovering || !target.ok}
             >
               {recovering ? <Loader2 className="animate-spin" /> : null}
               {t("databases.recoveryRestoreConfirm")}
