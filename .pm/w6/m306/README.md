@@ -1,19 +1,19 @@
 # w6 · m306 — Builds of different services start together, and a held build is visible
 
-**Worker:** worker6 **Goal:** a workspace's builds are limited only per service, as on Render, and a release held before its build Job exists is measured and alerted on. **Status:** todo
+**Worker:** worker6 **Goal:** a workspace's builds are limited only per service, as on Render, and a release held before its build Job exists is measured and alerted on. **Status:** in progress (t001–t005 and t008 done; t006 waits for the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Record how long a release is held before its build Job exists](t001.md) | 1h | — |
-| t002 | [The census and `BuildQueuedTooLong` see held releases](t002.md) | 45m | t001 |
-| t003 | [Retire the per-workspace build cap](t003.md) | 20m | t002 |
-| t004 | [Fair order at the cluster ceiling](t004.md) | 1.5h | t001, t003 |
-| t005 | [Wake held releases when a build ends](t005.md) | 1h | t004 |
+| t001 | [Record how long a release is held before its build Job exists](done/t001.md) — **DONE** | 1h | — |
+| t002 | [The census and `BuildQueuedTooLong` see held releases](done/t002.md) — **DONE** | 45m | t001 |
+| t003 | [Retire the per-workspace build cap](done/t003.md) — **DONE** | 20m | t002 |
+| t004 | [Fair order at the cluster ceiling](done/t004.md) — **DONE** | 1.5h | t001, t003 |
+| t005 | [Wake held releases when a build ends](done/t005.md) — **DONE** | 1h | t004 |
 | t006 | [Verify on production and close the ADR018 divergence](t006.md) | 45m | t005 |
 | t007 | [Render parity](t007.md) | 30m | t006 |
-| t008 | [Simplify](t008.md) | 15m | t007 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
 | t009 | [Test coverage](t009.md) | 30m | t008 |
 | t010 | [Closeout](t010.md) | 10m | t009 |
 

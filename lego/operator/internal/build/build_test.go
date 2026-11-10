@@ -1079,9 +1079,9 @@ func TestObservingAppBuild(t *testing.T) {
 	}
 }
 
-// TestActiveWorkspaceBuilds pins w7/m9 per-workspace build counting: only
-// active (not complete/failed) Jobs with the workspace label are counted.
-func TestActiveWorkspaceBuilds(t *testing.T) {
+// TestActiveBuildsByWorkspace pins w7/m9 per-workspace build counting: only
+// active (not complete/failed) Jobs count, each under its workspace label.
+func TestActiveBuildsByWorkspace(t *testing.T) {
 	activeA := BuildJob(opts(), opts().ImageRef())
 	activeA.Name = "bld-a-gen-1"
 	activeA.Labels["app.bex.co/workspace"] = "tea-x"
@@ -1099,21 +1099,13 @@ func TestActiveWorkspaceBuilds(t *testing.T) {
 	otherWS.Labels["app.bex.co/workspace"] = "tea-y"
 
 	cl := fakeClient(activeA, activeB, doneC, otherWS)
-	ctx := context.Background()
-
-	n, err := ActiveWorkspaceBuilds(ctx, cl, "default", "tea-x")
+	total, byWorkspace, err := ActiveBuildsByWorkspace(context.Background(), cl, "default")
 	if err != nil {
-		t.Fatalf("ActiveWorkspaceBuilds: %v", err)
+		t.Fatalf("ActiveBuildsByWorkspace: %v", err)
 	}
-	// 2 active for tea-x (done and other-workspace excluded).
-	if n != 2 {
-		t.Errorf("ActiveWorkspaceBuilds(tea-x) = %d, want 2", n)
-	}
-
-	// Empty workspace string is a no-op (returns 0, not an error).
-	n, err = ActiveWorkspaceBuilds(ctx, cl, "default", "")
-	if err != nil || n != 0 {
-		t.Errorf("empty workspace: got (%d, %v), want (0, nil)", n, err)
+	// 2 active for tea-x (the finished one excluded), 1 for tea-y.
+	if total != 3 || byWorkspace["tea-x"] != 2 || byWorkspace["tea-y"] != 1 {
+		t.Errorf("ActiveBuildsByWorkspace = %d, %v; want 3, tea-x 2, tea-y 1", total, byWorkspace)
 	}
 }
 

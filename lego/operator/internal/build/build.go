@@ -1697,24 +1697,28 @@ func JobName(name, revision string) string {
 	return appv1alpha1.BuildJobName(name, revision)
 }
 
-// ActiveWorkspaceBuilds counts active (not Complete, not Failed) build Jobs in
-// namespace that carry the given workspace label — used by the operator to
-// enforce the per-workspace concurrent-build cap (w7/m9). Returns 0 for an
-// empty workspace string (caller should skip the cap check in that case).
-func ActiveWorkspaceBuilds(ctx context.Context, cl client.Client, namespace, workspace string) (int, error) {
-	if workspace == "" {
-		return 0, nil
+// ActiveBuildsByWorkspace is the one definition of "how many builds are in
+// flight": unfinished Jobs plus non-terminal kpack Images, across the whole
+// build namespace — the count the cluster-wide ceiling BEX_MAX_ACTIVE_BUILDS
+// enforces (docs/ADR060 D6) — and the same builds per workspace label, which
+// the per-workspace cap and the ceiling's fair order read.
+func ActiveBuildsByWorkspace(ctx context.Context, cl client.Client, namespace string) (int, map[string]int, error) {
+	sel := workspaceSelector("")
+	jobs, err := listBuildJobs(ctx, cl, namespace, sel)
+	if err != nil {
+		return 0, nil, err
 	}
-	return countActiveBuilds(ctx, cl, namespace, workspaceSelector(workspace))
-}
-
-// ActiveBuilds counts every active build in namespace regardless of workspace —
-// the cluster-wide ceiling BEX_MAX_ACTIVE_BUILDS enforces (docs/ADR060 D6).
-// After D1 made observation non-blocking, admission is the build plane's only
-// concurrency control, so a per-workspace cap alone bounds each tenant's fan-out
-// but not the estate's: N workspaces at their cap still saturate shared capacity.
-func ActiveBuilds(ctx context.Context, cl client.Client, namespace string) (int, error) {
-	return countActiveBuilds(ctx, cl, namespace, workspaceSelector(""))
+	active, byWorkspace, err := activeKpackImages(ctx, cl, namespace, sel)
+	if err != nil {
+		return 0, nil, err
+	}
+	for i := range jobs {
+		if !execution.JobFinished(&jobs[i]) {
+			active++
+			byWorkspace[jobs[i].Labels[execution.LabelWorkspace]]++
+		}
+	}
+	return active, byWorkspace, nil
 }
 
 // ObservingAppBuild reports whether a build pass only observes a build this
@@ -1785,28 +1789,6 @@ func workspaceSelector(workspace string) client.MatchingLabels {
 		sel[execution.LabelWorkspace] = workspace
 	}
 	return sel
-}
-
-// countActiveBuilds is the one definition of "how many builds are in flight":
-// unfinished Jobs plus non-terminal kpack Images matching sel. Every cap, gauge
-// and trim counts through it, so a scope can never mean two different things to
-// the gate that admits a build and the correction that sheds it.
-func countActiveBuilds(ctx context.Context, cl client.Client, namespace string, sel client.MatchingLabels) (int, error) {
-	jobs, err := listBuildJobs(ctx, cl, namespace, sel)
-	if err != nil {
-		return 0, err
-	}
-	active := 0
-	for i := range jobs {
-		if !execution.JobFinished(&jobs[i]) {
-			active++
-		}
-	}
-	kpackActive, err := activeKpackImages(ctx, cl, namespace, sel)
-	if err != nil {
-		return 0, err
-	}
-	return active + kpackActive, nil
 }
 
 // listBuildJobs returns the build Jobs in namespace matching sel.

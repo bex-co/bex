@@ -109,28 +109,24 @@ func TestCountBuildsIdleFleetIsZero(t *testing.T) {
 	}
 }
 
-// TestActiveBuildsIsClusterWide: the cluster-wide ceiling exists precisely
+// TestActiveBuildsByWorkspaceIsClusterWide: the cluster-wide ceiling exists precisely
 // because N workspaces each under their own cap still saturate shared capacity,
 // so this count must NOT be workspace-scoped.
-func TestActiveBuildsIsClusterWide(t *testing.T) {
+func TestActiveBuildsByWorkspaceIsClusterWide(t *testing.T) {
 	cl := fakeClient(
 		censusJob("bld-a", "tea-a", time.Minute, false),
 		censusJob("bld-b", "tea-b", time.Minute, false),
 		censusJob("bld-c", "tea-c", time.Minute, false),
 	)
-	total, err := ActiveBuilds(context.Background(), cl, censusNS)
+	total, byWorkspace, err := ActiveBuildsByWorkspace(context.Background(), cl, censusNS)
 	if err != nil {
-		t.Fatalf("ActiveBuilds: %v", err)
+		t.Fatalf("ActiveBuildsByWorkspace: %v", err)
 	}
 	if total != 3 {
-		t.Errorf("ActiveBuilds = %d, want 3", total)
+		t.Errorf("ActiveBuildsByWorkspace total = %d, want 3", total)
 	}
-	perWorkspace, err := ActiveWorkspaceBuilds(context.Background(), cl, censusNS, "tea-a")
-	if err != nil {
-		t.Fatalf("ActiveWorkspaceBuilds: %v", err)
-	}
-	if perWorkspace != 1 {
-		t.Errorf("ActiveWorkspaceBuilds(tea-a) = %d, want 1 — the per-workspace cap must stay narrow", perWorkspace)
+	if byWorkspace["tea-a"] != 1 || byWorkspace["tea-b"] != 1 || byWorkspace["tea-c"] != 1 {
+		t.Errorf("by workspace = %v, want one build in each", byWorkspace)
 	}
 }
 
@@ -151,11 +147,11 @@ func TestTrimOvershootDeletesTheNewest(t *testing.T) {
 	if len(deleted) != 1 || deleted[0] != "bld-newest" {
 		t.Fatalf("deleted = %v, want [bld-newest]", deleted)
 	}
-	left, err := ActiveWorkspaceBuilds(context.Background(), cl, censusNS, "tea-a")
+	_, byWorkspace, err := ActiveBuildsByWorkspace(context.Background(), cl, censusNS)
 	if err != nil {
-		t.Fatalf("ActiveWorkspaceBuilds: %v", err)
+		t.Fatalf("ActiveBuildsByWorkspace: %v", err)
 	}
-	if left != 2 {
+	if left := byWorkspace["tea-a"]; left != 2 {
 		t.Errorf("active after trim = %d, want 2 (back at the cap)", left)
 	}
 	var survivor batchv1.Job

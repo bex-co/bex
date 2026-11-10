@@ -21,6 +21,7 @@ import (
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Build-plane SLIs (ADR060 §D5, the subset w2/m72 needs). The operator emitted
@@ -109,6 +110,23 @@ var (
 		Help: "Age of the longest-currently-queued build, in seconds (0 when nothing is queued).",
 	})
 
+	// The held half of the same wait (w6/m306, docs/ADR060 §D5): a release held
+	// before its build Job exists. The gauges are SET from a full recount of App
+	// status (countHeldBuilds), for the same reason as the three above.
+	buildHoldSeconds = prometheus.NewHistogramVec(prometheus.HistogramOpts{
+		Name:    "bex_build_hold_seconds",
+		Help:    "Seconds a release's build was held before its build Job existed, by the hold's last cause: admission (the cluster ceiling was full) or datastore (a linked datastore was still being created). With bex_build_queue_seconds it is the whole wait a tenant sees as a queued deploy.",
+		Buckets: []float64{5, 15, 30, 60, 120, 300, 600, 1200, 1800},
+	}, []string{"cause"})
+	buildsHeld = prometheus.NewGaugeVec(prometheus.GaugeOpts{
+		Name: "bex_builds_held",
+		Help: "Releases whose build is held before dispatch, by cause (admission, datastore). No build Job exists for them yet, so bex_builds_queued does not count them.",
+	}, []string{"cause"})
+	buildHoldOldestSeconds = prometheus.NewGauge(prometheus.GaugeOpts{
+		Name: "bex_build_hold_oldest_seconds",
+		Help: "Age of the longest-currently-held release build, in seconds (0 when nothing is held).",
+	})
+
 	// The push phase is the one part of a build the platform owns end to end
 	// (docs/ADR060 D4): skopeo, the platform's own credential, the platform's own
 	// registry. Its duration and error rate are therefore platform signals even
@@ -172,6 +190,7 @@ func init() {
 	ctrlmetrics.Registry.MustRegister(
 		buildOutcomesTotal, buildInfraFailuresTotal, buildRunSeconds,
 		buildQueueSeconds, buildsActive, buildsQueued, buildQueueOldestSeconds,
+		buildHoldSeconds, buildsHeld, buildHoldOldestSeconds,
 		buildPushSeconds, buildPushErrorsTotal, buildRetriesTotal,
 		buildCacheEnabled, buildCacheWithdrawalsTotal,
 	)
@@ -192,6 +211,11 @@ func recordBuildRunSeconds(seconds float64) {
 	if seconds > 0 {
 		buildRunSeconds.Observe(seconds)
 	}
+}
+
+// recordBuildHoldSeconds records a release's whole hold once its build exists.
+func recordBuildHoldSeconds(cause string, seconds float64) {
+	buildHoldSeconds.WithLabelValues(cause).Observe(max(seconds, 0))
 }
 
 // recordBuildInfraFailure counts a platform-owned build failure for one
@@ -259,4 +283,14 @@ func publishBuildCensus(c build.Census) {
 	buildsActive.Set(float64(c.Active))
 	buildsQueued.Set(float64(c.Queued))
 	buildQueueOldestSeconds.Set(c.OldestQueued.Seconds())
+}
+
+// publishHoldCensus republishes the held-release gauges from a full recount.
+// Both causes are always set, so a cause that emptied reads 0 rather than its
+// last value.
+func publishHoldCensus(c holdCensus) {
+	for _, cause := range []string{appv1alpha1.BuildHoldAdmission, appv1alpha1.BuildHoldDatastore} {
+		buildsHeld.WithLabelValues(cause).Set(float64(c.held[cause]))
+	}
+	buildHoldOldestSeconds.Set(c.oldest.Seconds())
 }

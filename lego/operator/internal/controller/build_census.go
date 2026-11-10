@@ -46,6 +46,10 @@ type BuildCensusCollector struct {
 	// run in each App's own namespace, which this collector cannot enumerate from
 	// one place — it then stays off rather than publishing a partial census.
 	Namespace string
+	// Apps reads App status for the releases held before dispatch
+	// (status.buildHold, w6/m306): they have no build Job, so the build-plane
+	// listing above cannot see them. Nil leaves the held gauges unpublished.
+	Apps client.Reader
 	// Interval overrides defaultBuildCensusInterval (tests).
 	Interval time.Duration
 }
@@ -88,4 +92,37 @@ func (c *BuildCensusCollector) collect(ctx context.Context) {
 		return
 	}
 	publishBuildCensus(census)
+	if c.Apps == nil {
+		return
+	}
+	held, err := countHeldBuilds(ctx, c.Apps, time.Now())
+	if err != nil {
+		logf.FromContext(ctx).Error(err, "held-build census failed; leaving the previous gauge values in place")
+		return
+	}
+	publishHoldCensus(held)
+}
+
+// holdCensus is the held-release half of the admission picture.
+type holdCensus struct {
+	held   map[string]int // by cause
+	oldest time.Duration
+}
+
+// countHeldBuilds counts the releases whose build waits before dispatch
+// (heldBuild), by cause, and the age of the oldest.
+func countHeldBuilds(ctx context.Context, apps client.Reader, now time.Time) (holdCensus, error) {
+	held, err := heldBuilds(ctx, apps, "")
+	if err != nil {
+		return holdCensus{}, err
+	}
+	census := holdCensus{held: map[string]int{}}
+	for _, app := range held {
+		hold := app.Status.BuildHold
+		census.held[hold.Cause]++
+		if waited := now.Sub(hold.Since.Time); waited > census.oldest {
+			census.oldest = waited
+		}
+	}
+	return census, nil
 }

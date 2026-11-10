@@ -61,6 +61,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	crsource "sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
@@ -447,6 +448,10 @@ type AppReconciler struct {
 	// admission is the only concurrency control left and has to be honest.
 	// 0 = unlimited (the default; byte-identical to before).
 	MaxActiveBuilds int
+	// buildSlotFreed carries wakes for releases held by the cluster ceiling
+	// when a build ends (wakeHeldBuilds). Made by SetupWithManager; nil in
+	// tests that drive Reconcile directly, which then wake on requeue only.
+	buildSlotFreed chan event.GenericEvent
 	// MaxConcurrentReconciles controls how many App reconcile loops may run at
 	// once. Source builds wait synchronously for their Build Jobs, so the
 	// controller-runtime default of one serializes otherwise independent Apps.
@@ -792,6 +797,8 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	if app.Status.ObservedGeneration != app.Generation {
 		recordBuildOutcome(buildOutcomeCanceled)
 	}
+	// A canceled release no longer waits for a build.
+	app.Status.BuildHold = nil
 	poll := r.observeCanceledPreDeploy(ctx, app)
 	// bex-api stops the canceled release's build once, best effort, after its
 	// stamp lands. A build a pass dispatched after that delete, or one whose
@@ -806,6 +813,7 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 			poll = soonerRequeue(poll, childHealthRequeue)
 		} else {
 			r.stoppedCanceledBuilds.Store(app.UID, generation)
+			r.wakeHeldBuilds(ctx, r.buildNamespace(app.Namespace))
 		}
 	}
 	// Only a release that served can be reverted to; otherwise there is simply
@@ -1115,16 +1123,14 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 			return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, fmt.Errorf("counting app builds: %w", err)))
 		}
 		if !observing {
-			for _, cap := range caps {
-				active, err := cap.count(ctx, buildClient, buildNs)
-				if err != nil {
-					return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
-				}
-				if active >= cap.limit {
-					r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
-						fmt.Sprintf("%s has %d/%d concurrent builds active; waiting for a slot", cap.noun, active, cap.limit))
-					return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
-				}
+			msg, err := r.admitBuild(ctx, app, caps, buildClient, buildNs)
+			if err != nil {
+				return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
+			}
+			if msg != "" {
+				r.setPhaseWith(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued, msg,
+					holdBuild(app, appv1alpha1.BuildHoldAdmission, time.Now()))
+				return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
 			}
 		}
 	}
@@ -1143,7 +1149,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		return halt(r.fail(ctx, app, appv1alpha1.ReasonBuildFailed, err))
 	}
 	if wait != "" {
-		r.setBuildingPhase(ctx, app, reasonBuildQueued, wait)
+		r.setBuildingPhase(ctx, app, reasonBuildQueued, wait, holdBuild(app, appv1alpha1.BuildHoldDatastore, time.Now()))
 		return halt(ctrl.Result{RequeueAfter: buildDatastoreWaitRequeue}, nil)
 	}
 	buildRegistryPullSecret, err := r.prepareBuildRegistrySecret(ctx, app, buildNs, builder)
@@ -1218,11 +1224,15 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 			// is a capacity nuisance, not a reason to fail the tenant's deploy.
 			logf.FromContext(ctx).Error(err, "re-count after build create failed; leaving the overshoot in place", "app", app.Name)
 		} else if shed {
-			r.setPhase(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
-				"a concurrent dispatch took the last build slot; waiting for a slot")
+			r.setPhaseWith(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
+				"a concurrent dispatch took the last build slot; waiting for a slot",
+				holdBuild(app, appv1alpha1.BuildHoldAdmission, time.Now()))
 			return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
 		}
 	}
+	// The build exists now: the hold before it is over (status.buildHold). Every
+	// branch below writes status, the waiting ones told explicitly.
+	holdEnded := endBuildHold(app, time.Now())
 	r.endBuildDatastoreReach(ctx, app, buildNs, obs.Phase)
 	switch obs.Phase {
 	case build.PhaseSucceeded:
@@ -1254,6 +1264,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 			recordBuildInfraFailure(app.Labels[labelWorkspace])
 		}
 		r.meterBuildSignals(ctx, app, buildNs)
+		r.wakeHeldBuilds(ctx, buildNs)
 		// The Job/pod identity and Kubernetes' own verdict stay in the operator
 		// log, where they are useful; the tenant-facing message carries the
 		// failing step's own captured output instead (w6/m123 — the raw Job
@@ -1269,10 +1280,10 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		// (a build that waits for a node must not spend that wait from its own
 		// budget; the 2026-08-11 misattribution incident, ADR034 §3).
 		r.setBuildingPhase(ctx, app, reasonBuildQueued,
-			"waiting for build capacity: "+obs.Message)
+			"waiting for build capacity: "+obs.Message, holdEnded)
 		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	default: // build.PhaseBuilding — a pod is placed and compiling
-		r.setBuildingPhase(ctx, app, reasonBuilding, "Building image from "+app.Spec.Repo)
+		r.setBuildingPhase(ctx, app, reasonBuilding, "Building image from "+app.Spec.Repo, holdEnded)
 		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	}
 }
@@ -1306,6 +1317,7 @@ func (r *AppReconciler) storeBuiltArtifact(ctx context.Context, app *appv1alpha1
 		recordBuildRunSeconds(obs.RunSeconds)
 		r.meterBuildSignals(ctx, app, buildNs)
 		r.consumeClearCacheAnnotation(ctx, app)
+		r.wakeHeldBuilds(ctx, buildNs)
 	}
 	return image, ctrl.Result{}, false, nil
 }
@@ -1476,8 +1488,8 @@ func (r *AppReconciler) buildCacheAllowed() bool {
 	return allowed
 }
 
-// buildCap is one admission scope: how many concurrent builds it allows, how to
-// count what it covers, and how to name it to the tenant. Returning the two caps
+// buildCap is one admission scope: which builds it covers, how many may run at
+// once, and how to name it to the tenant. Returning the two caps
 // as a list rather than open-coding each is what keeps the gate below and
 // shedBuildOvershoot from ever disagreeing about which caps are in force — a
 // disagreement between them would be a correction that sheds a build the gate
@@ -1489,19 +1501,40 @@ type buildCap struct {
 	noun      string
 }
 
-func (c buildCap) count(ctx context.Context, cl client.Client, buildNs string) (int, error) {
-	if c.workspace == "" {
-		active, err := build.ActiveBuilds(ctx, cl, buildNs)
-		if err != nil {
-			return 0, fmt.Errorf("counting active builds: %w", err)
-		}
-		return active, nil
-	}
-	active, err := build.ActiveWorkspaceBuilds(ctx, cl, buildNs, c.workspace)
+// clusterFullMessage is what a release held by the cluster ceiling reads. It
+// carries no counts: a count would change with every slot that frees and turn
+// each turnover into a status write per held release.
+const clusterFullMessage = "the cluster's build capacity is full; waiting for a slot"
+
+// admitBuild applies the caps to a new dispatch and returns why the release
+// must wait, or "" to admit it. One build-plane listing answers every cap.
+// Below the cluster ceiling a free slot still goes to whichever release ranks
+// first in the fair order (fairOrderAhead), not to whichever held App's
+// requeue happens to land first.
+func (r *AppReconciler) admitBuild(ctx context.Context, app *appv1alpha1.App, caps []buildCap, cl client.Client, buildNs string) (string, error) {
+	active, byWorkspace, err := build.ActiveBuildsByWorkspace(ctx, cl, buildNs)
 	if err != nil {
-		return 0, fmt.Errorf("counting workspace builds: %w", err)
+		return "", fmt.Errorf("counting active builds: %w", err)
 	}
-	return active, nil
+	for _, c := range caps {
+		if c.workspace != "" {
+			if n := byWorkspace[c.workspace]; n >= c.limit {
+				return fmt.Sprintf("%s has %d/%d concurrent builds active; waiting for a slot", c.noun, n, c.limit), nil
+			}
+			continue
+		}
+		if active >= c.limit {
+			return clusterFullMessage, nil
+		}
+		ahead, err := r.fairOrderAhead(ctx, app, byWorkspace, time.Now())
+		if err != nil {
+			return "", fmt.Errorf("ranking held builds: %w", err)
+		}
+		if ahead >= c.limit-active {
+			return clusterFullMessage, nil
+		}
+	}
+	return "", nil
 }
 
 // buildCaps lists the admission caps in force for this App, narrowest first. The
@@ -6513,8 +6546,11 @@ func (r *AppReconciler) setPhaseWith(ctx context.Context, app *appv1alpha1.App, 
 // for hours on top of a live release; without this the Serving condition stayed
 // whatever the last rollout left, and an outage underneath the build (the live
 // pod evicted, its replacement never Ready) produced no server_failed.
-func (r *AppReconciler) setBuildingPhase(ctx context.Context, app *appv1alpha1.App, reason, msg string) {
-	r.setPhaseWith(ctx, app, appv1alpha1.PhaseBuilding, reason, msg, r.refreshServingWhileBuilding(ctx, app))
+// extraChanged makes it write even when phase and Ready are unchanged, for a
+// caller that changed other status.
+func (r *AppReconciler) setBuildingPhase(ctx context.Context, app *appv1alpha1.App, reason, msg string, extraChanged bool) {
+	serving := r.refreshServingWhileBuilding(ctx, app)
+	r.setPhaseWith(ctx, app, appv1alpha1.PhaseBuilding, reason, msg, serving || extraChanged)
 }
 
 // writeAppStatus writes app's status unconditionally, keeping a viewed pass's
@@ -6629,6 +6665,8 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 	if apierrors.IsConflict(err) {
 		return ctrl.Result{}, err
 	}
+	// A failed release no longer waits for a build.
+	app.Status.BuildHold = nil
 	// A build failure additionally gets appv1alpha1.ConditionBuild, the durable
 	// record attributed to the RELEASE generation that actually built rather than
 	// to metadata.generation (w6/m100 — see that constant for why Ready cannot
@@ -7374,11 +7412,16 @@ func (r *AppReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if err := mgr.Add(&BuildCensusCollector{
 		Client:    r.BuildClient,
 		Namespace: r.BuildNamespace,
+		Apps:      mgr.GetClient(),
 	}); err != nil {
 		return err
 	}
 	workers := max(r.MaxConcurrentReconciles, 1)
+	r.buildSlotFreed = make(chan event.GenericEvent, buildSlotWakeBuffer)
 	return ctrl.NewControllerManagedBy(mgr).
+		// A build ending frees a slot for the releases the cluster ceiling holds
+		// (wakeHeldBuilds, docs/ADR060 §D6).
+		WatchesRawSource(crsource.Channel(r.buildSlotFreed, &handler.EnqueueRequestForObject{})).
 		For(&appv1alpha1.App{}, crbuilder.WithPredicates(generationOrDeletionPredicate{})).
 		// Deployment readiness and rollout revisions live entirely in status, so
 		// child resourceVersion updates must not inherit the App's generation-only

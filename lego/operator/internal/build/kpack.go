@@ -481,16 +481,18 @@ func buildJobLabels(o Options) map[string]string {
 
 // activeKpackImages counts the non-terminal kpack Images matching sel — the
 // kpack half of every active-build counter (one workspace's or the whole build
-// namespace's; the caller supplies the selector).
-func activeKpackImages(ctx context.Context, cl client.Client, namespace string, sel client.MatchingLabels) (int, error) {
+// namespace's; the caller supplies the selector) — in total and per workspace
+// label.
+func activeKpackImages(ctx context.Context, cl client.Client, namespace string, sel client.MatchingLabels) (int, map[string]int, error) {
 	images, err := listKpackImages(ctx, cl, namespace, sel)
-	active := 0
+	active, byWorkspace := 0, map[string]int{}
 	for i := range images {
 		if !kpackImageTerminal(&images[i]) {
 			active++
+			byWorkspace[images[i].GetLabels()[execution.LabelWorkspace]]++
 		}
 	}
-	return active, err
+	return active, byWorkspace, err
 }
 
 // listKpackImages lists the kpack Images matching sel. A cluster with no kpack

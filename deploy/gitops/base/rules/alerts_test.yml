@@ -866,6 +866,39 @@ tests:
               summary: "A build has been queued 12m 0s waiting for capacity"
               description: "A build Job's pod has not been placed on a node. It will be failed by bex-api's 18m deploy gate if this continues, so act now: check the build pools (bex-tenant-lg warm, bex-tenant-burst elastic) for scale-from-zero failures, cluster-autoscaler events, and whether a taint/toleration or capacity-hint change made the 7Gi build request unschedulable. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5/D8."
 
+  # w6/m306: a held release (no build Job yet) alerts on its own series.
+  - name: a short hold stays silent
+    interval: 1m
+    input_series:
+      - series: "bex_build_hold_oldest_seconds"
+        values: "0+60x20"
+    alert_rule_test:
+      - eval_time: 7m
+        alertname: BuildHeldTooLong
+        exp_alerts: []
+
+  - name: a release held before dispatch pages like a queued build
+    interval: 1m
+    input_series:
+      - series: "bex_build_hold_oldest_seconds"
+        values: "0+60x20"
+      # Nothing has a Job, so the node-wait alert stays silent: only the hold
+      # series can see this wait.
+      - series: "bex_build_queue_oldest_seconds"
+        values: "0x20"
+    alert_rule_test:
+      - eval_time: 12m
+        alertname: BuildHeldTooLong
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "A release's build has been held 12m 0s before dispatch"
+              description: "A deploy is sitting queued with no build Job: the cluster build ceiling (BEX_MAX_ACTIVE_BUILDS) is full, or a linked datastore is still being created. bex_builds_held{cause} says which. For admission, the ceiling is sized to the build pools (ADR060 D8): raise both together, or look for builds that never finish. For datastore, check the linked Postgres or Key Value's provisioning. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5/D6."
+      - eval_time: 12m
+        alertname: BuildQueuedTooLong
+        exp_alerts: []
+
   - name: warm-node queue times never trip the chronic-queueing alert
     interval: 1m
     input_series:

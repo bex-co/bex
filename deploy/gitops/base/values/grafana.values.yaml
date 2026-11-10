@@ -5134,8 +5134,8 @@ dashboards:
             {
              "id": 1,
              "type": "timeseries",
-             "title": "Builds active / queued",
-             "description": "Live admission picture from a full recount (never edge-driven): active is the quantity BEX_MAX_ACTIVE_BUILDS caps; queued builds are waiting for a node, doing no work.",
+             "title": "Builds active / queued / held",
+             "description": "Live admission picture from a full recount (never edge-driven): active is the quantity BEX_MAX_ACTIVE_BUILDS caps; queued builds are waiting for a node, doing no work; held releases have no build Job yet, waiting for the ceiling (admission) or a linked datastore (datastore). A tenant sees queued and held alike as a queued deploy.",
              "gridPos": { "h": 9, "w": 12, "x": 0, "y": 0 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {
@@ -5152,14 +5152,19 @@ dashboards:
                  "refId": "B",
                  "expr": "max(bex_builds_queued)",
                  "legendFormat": "queued"
+                },
+                {
+                 "refId": "C",
+                 "expr": "max by (cause) (bex_builds_held)",
+                 "legendFormat": "held ({{cause}})"
                 }
               ]
             },
             {
              "id": 2,
              "type": "timeseries",
-             "title": "Oldest queued build age",
-             "description": "Age of the longest-currently-queued build. BuildQueuedTooLong fires at >480s (red line) — sized so it pages ~8m before bex-api's 18m deploy gate fails the deploy.",
+             "title": "Oldest queued / held build age",
+             "description": "Age of the longest-currently-queued build (BuildQueuedTooLong) and of the longest-held release, which has no build Job yet (BuildHeldTooLong). Both fire at >480s (red line), the threshold sized so BuildQueuedTooLong pages ~8m before bex-api's 18m deploy gate fails the deploy.",
              "gridPos": { "h": 9, "w": 12, "x": 12, "y": 0 },
              "datasource": { "type": "prometheus", "uid": "prometheus" },
              "fieldConfig": {
@@ -5182,6 +5187,11 @@ dashboards:
                  "refId": "A",
                  "expr": "max(bex_build_queue_oldest_seconds)",
                  "legendFormat": "oldest queued"
+                },
+                {
+                 "refId": "B",
+                 "expr": "max(bex_build_hold_oldest_seconds)",
+                 "legendFormat": "oldest held"
                 }
               ]
             },

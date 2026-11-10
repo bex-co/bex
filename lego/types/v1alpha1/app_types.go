@@ -1530,6 +1530,30 @@ type BuildRunStatus struct {
 	FinishedAt string `json:"finishedAt,omitempty"`
 }
 
+// Causes of a build hold (BuildHoldStatus.Cause).
+const (
+	// BuildHoldAdmission: the build admission ceiling is full.
+	BuildHoldAdmission = "admission"
+	// BuildHoldDatastore: a linked datastore is still being created.
+	BuildHoldDatastore = "datastore"
+)
+
+// BuildHoldStatus records a release whose source build has not been dispatched
+// yet (w6/m306, docs/ADR060 §D5). A tenant sees the hold as a deploy sitting
+// `queued`, but no build Job exists, so nothing in the build plane can measure
+// it: the operator keeps the start here, where a manager restart cannot lose it.
+type BuildHoldStatus struct {
+	// Generation is the release generation that is held.
+	Generation int64 `json:"generation"`
+
+	// Since is when that generation first entered the hold.
+	Since metav1.Time `json:"since"`
+
+	// Cause is the latest reason for the hold: admission or datastore.
+	// +kubebuilder:validation:Enum=admission;datastore
+	Cause string `json:"cause"`
+}
+
 // ImageDigestStatus is the digest of the image a serving release's app
 // container runs (w8/m122): Render's deploy image.sha, "the SHA that the image
 // reference was resolved to". It is the digest the reference itself pins or,
@@ -1714,6 +1738,11 @@ type AppStatus struct {
 	// the Job's timestamps were unavailable.
 	// +optional
 	BuildRun *BuildRunStatus `json:"buildRun,omitempty"`
+
+	// BuildHold is the current release's build while it waits to be
+	// dispatched; nil once its build Job exists or when nothing is held.
+	// +optional
+	BuildHold *BuildHoldStatus `json:"buildHold,omitempty"`
 
 	// Autoscaling is the latest autoscaler-driven replica transition. Manual
 	// Scale changes never populate it.

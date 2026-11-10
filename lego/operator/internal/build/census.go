@@ -94,7 +94,7 @@ func CountBuilds(ctx context.Context, cl client.Client, namespace string, now ti
 	// the same capacity) but never toward Queued — their pods carry kpack's own
 	// labels, and inventing a queue state for them would report a wait bex cannot
 	// see.
-	kpackActive, err := activeKpackImages(ctx, cl, namespace, sel)
+	kpackActive, _, err := activeKpackImages(ctx, cl, namespace, sel)
 	if err != nil {
 		return Census{}, err
 	}
@@ -133,7 +133,7 @@ func TrimOvershoot(ctx context.Context, cl client.Client, namespace, workspace s
 	}
 	// kpack Images hold the same capacity and so count toward the limit, even
 	// though only Jobs can be shed below.
-	kpackActive, err := activeKpackImages(ctx, cl, namespace, sel)
+	kpackActive, _, err := activeKpackImages(ctx, cl, namespace, sel)
 	if err != nil {
 		return nil, err
 	}

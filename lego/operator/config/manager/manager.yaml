@@ -172,11 +172,12 @@ spec:
           # the coupling by raising this to track build capacity.
           - name: BEX_APP_RECONCILE_WORKERS
             value: "2"
-          # Per-workspace concurrent-build cap: one tenant may hold at most half
-          # the cluster's build slots, so a single busy workspace cannot starve
-          # every other one. 0 = unlimited.
+          # Per-workspace concurrent-build cap, retired (0 = unlimited; w6/m306,
+          # docs/ADR060 D6). Render limits only one build per service, so a
+          # workspace's services build in parallel. Fairness between workspaces
+          # is the cluster ceiling's fair order below, not a fixed share.
           - name: BEX_MAX_CONCURRENT_BUILDS
-            value: "2"
+            value: "0"
           # Cluster-wide active-build ceiling (docs/ADR060 D6). Set to the build
           # pools' PHYSICAL concurrency target from D8 — 2 warm slots on
           # bex-tenant-lg (cx43) + 2 elastic slots on bex-tenant-burst (cx33) — so

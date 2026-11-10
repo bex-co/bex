@@ -699,6 +699,20 @@ groups:
           summary: "A build has been queued {{ $value | humanizeDuration }} waiting for capacity"
           description: "A build Job's pod has not been placed on a node. It will be failed by bex-api's 18m deploy gate if this continues, so act now: check the build pools (bex-tenant-lg warm, bex-tenant-burst elastic) for scale-from-zero failures, cluster-autoscaler events, and whether a taint/toleration or capacity-hint change made the 7Gi build request unschedulable. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5/D8."
 
+      # The held half of the same wait (w6/m306, ADR060 D5). A release the
+      # cluster ceiling holds, or one waiting on a datastore that is still
+      # being created, has no build Job yet, so bex_build_queue_oldest_seconds
+      # cannot see it; the tenant sees the same deploy sitting queued. Same
+      # threshold and window as BuildQueuedTooLong: a hold is as long a wait.
+      - alert: BuildHeldTooLong
+        expr: bex_build_hold_oldest_seconds > 480
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "A release's build has been held {{ $value | humanizeDuration }} before dispatch"
+          description: "A deploy is sitting queued with no build Job: the cluster build ceiling (BEX_MAX_ACTIVE_BUILDS) is full, or a linked datastore is still being created. bex_builds_held{cause} says which. For admission, the ceiling is sized to the build pools (ADR060 D8): raise both together, or look for builds that never finish. For datastore, check the linked Postgres or Key Value's provisioning. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5/D6."
+
       # The distribution alert. Individually-tolerable waits that have
       # become the NORM are a capacity decision the fleet should make
       # deliberately, not a page — hence warning, a long window, and a

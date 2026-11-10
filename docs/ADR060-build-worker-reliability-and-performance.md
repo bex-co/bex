@@ -264,6 +264,7 @@ The "required operational signals" ADR034 listed become real Prometheus series o
 | `bex_builds_total{outcome}` | D2's classes: `succeeded/user_failed/infra_failed/canceled/timeout` |
 | `bex_build_retries_total{reason}` | automatic retries by cause (`disruption`, `transient`) |
 | `bex_builds_active` / `bex_builds_queued{}` | live gauge of the admission picture |
+| `bex_build_hold_seconds{cause}` / `bex_builds_held{cause}` / `bex_build_hold_oldest_seconds` | releases held before their build Job exists (w6/m306, below) |
 | `bex_build_push_seconds` / `..._errors_total` | registry health as seen by builds (D4's tripwire) |
 
 Rules that follow from them:
@@ -275,9 +276,9 @@ Rules that follow from them:
 
 **Queue time starts at the trigger (amended 2026-11-10).** As shipped, `bex_build_queue_seconds` starts at Job creation (`build_metrics.go`), and the census behind `bex_builds_queued` and `bex_build_queue_oldest_seconds` lists only Jobs that exist (`build_census.go`). A release held before its Job exists is in neither: held by an admission cap (D6), or by a linked datastore that is still provisioning (§ Addendum w8/m129). So `BuildQueuedTooLong` cannot see either hold, although the customer sees both as a deploy sitting `queued`. Both are candidate causes of the 20–35-minute `queued` waits of a four-service Blueprint in w21/012, which are still undiagnosed. From the customer's side, the queue runs from the deploy's `queued` to its `build_in_progress`. The platform measures that span:
 
-- a new histogram covers the release's first `BuildQueued` (its adoption) to Job creation, labelled by the bounded wait cause (`admission`, `datastore`);
-- the census counts held releases next to unplaced Jobs, and `bex_build_queue_oldest_seconds` reports the oldest of either, so `BuildQueuedTooLong` fires on an admission or datastore stall too;
-- the target is p95 of the whole span (hold + node wait) within one cold scale-up of a build node. The first month of the new series sets the number; until then the existing 480 s acute alert stands.
+- `status.buildHold` records when the release first entered the hold and why (`admission` or `datastore`), so a manager restart cannot lose it. `bex_build_hold_seconds{cause}` observes the span from there to Job creation, once (w6/m306);
+- the census counts held releases as `bex_builds_held{cause}` and their oldest age as `bex_build_hold_oldest_seconds`, beside the unplaced Jobs. `BuildHeldTooLong` fires on that age with `BuildQueuedTooLong`'s threshold and window. The two series stay separate because they have different responses: a full ceiling or a slow datastore, against a build node that never came;
+- the target is p95 of the whole span (hold + node wait) within one cold scale-up of a build node. The first month of the new series sets the number; until then the 480 s acute alerts stand.
 
 ### D6 — Admission: one build per service is the only limit a customer sees (amended 2026-11-10)
 

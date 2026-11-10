@@ -150,7 +150,7 @@ var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 		Expect(getApp("ceiling-b", "tea-bbb").Status.Phase).To(Equal(appv1alpha1.PhaseBuilding))
 		cond := readyCondition("ceiling-b", "tea-bbb")
 		Expect(cond.Reason).To(Equal(reasonBuildQueued))
-		Expect(cond.Message).To(ContainSubstring("cluster has 1/1"),
+		Expect(cond.Message).To(Equal(clusterFullMessage),
 			"the tenant-visible message must say the CLUSTER is full, not their workspace")
 	})
 
@@ -187,7 +187,7 @@ var _ = Describe("Cluster-wide build admission ceiling (ADR060 D6)", func() {
 		cond := readyCondition("selfgate-a", "tea-aaa")
 		Expect(cond.Message).NotTo(ContainSubstring("concurrent builds active"),
 			"the cap must not report an App as queued behind its own running build")
-		Expect(cond.Message).NotTo(ContainSubstring("cluster has"),
+		Expect(cond.Message).NotTo(Equal(clusterFullMessage),
 			"the cluster-wide ceiling must not gate an App's own in-flight build either")
 	})
 })

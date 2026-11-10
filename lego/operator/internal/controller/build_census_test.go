@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -229,19 +230,36 @@ func TestBuildCensusGaugesRiseAndReturnToZero(t *testing.T) {
 // merely that a local variable moved.
 func histogramSampleCount(t *testing.T, name string) uint64 {
 	t.Helper()
-	families, err := ctrlmetrics.Registry.Gather()
+	count, err := histogramSamples(name, "", "")
 	if err != nil {
 		t.Fatal(err)
+	}
+	return count
+}
+
+// histogramSamples is histogramSampleCount for one labelled series (label ""
+// takes the first), returning an error instead of failing a *testing.T so the
+// Ginkgo suites can call it too.
+func histogramSamples(name, label, value string) (uint64, error) {
+	families, err := ctrlmetrics.Registry.Gather()
+	if err != nil {
+		return 0, err
 	}
 	for _, f := range families {
 		if f.GetName() != name {
 			continue
 		}
-		if len(f.GetMetric()) == 0 {
-			return 0
+		for _, m := range f.GetMetric() {
+			if label == "" {
+				return m.GetHistogram().GetSampleCount(), nil
+			}
+			for _, l := range m.GetLabel() {
+				if l.GetName() == label && l.GetValue() == value {
+					return m.GetHistogram().GetSampleCount(), nil
+				}
+			}
 		}
-		return f.GetMetric()[0].GetHistogram().GetSampleCount()
+		return 0, nil
 	}
-	t.Fatalf("%s is not registered on the manager's metrics registry", name)
-	return 0
+	return 0, fmt.Errorf("%s is not registered on the manager's metrics registry", name)
 }

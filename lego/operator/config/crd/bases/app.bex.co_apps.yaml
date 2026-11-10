@@ -1084,6 +1084,31 @@ spec:
                   generation here (w5/m134).
                 format: int64
                 type: integer
+              buildHold:
+                description: |-
+                  BuildHold is the current release's build while it waits to be
+                  dispatched; nil once its build Job exists or when nothing is held.
+                properties:
+                  cause:
+                    description: 'Cause is the latest reason for the hold: admission
+                      or datastore.'
+                    enum:
+                    - admission
+                    - datastore
+                    type: string
+                  generation:
+                    description: Generation is the release generation that is held.
+                    format: int64
+                    type: integer
+                  since:
+                    description: Since is when that generation first entered the hold.
+                    format: date-time
+                    type: string
+                required:
+                - cause
+                - generation
+                - since
+                type: object
               buildRun:
                 description: |-
                   BuildRun is the execution window of the most recent terminal source
