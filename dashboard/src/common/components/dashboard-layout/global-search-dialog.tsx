@@ -457,7 +457,11 @@ function SearchResultLabel({
       <span className="truncate">
         {name}
         {aka ? (
-          <span className="ml-2 text-xs text-muted-foreground">{aka}</span>
+          <>
+            {/* A real space: a margin alone glues the two names in the
+                accessible name (w21/018). */}{" "}
+            <span className="ml-1 text-xs text-muted-foreground">{aka}</span>
+          </>
         ) : null}
       </span>
       <span className="shrink-0 text-xs text-muted-foreground">{kind}</span>

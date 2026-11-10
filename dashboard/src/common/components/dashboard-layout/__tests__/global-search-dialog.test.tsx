@@ -90,6 +90,23 @@ describe("GlobalSearchDialog", () => {
     expect(document.querySelector(".lucide-globe-2")).toBeNull();
   });
 
+  // w21/018: a renamed service's original name sits beside the current one with
+  // real whitespace, so the option's accessible name does not glue them.
+  it("separates a renamed service's names in its accessible name", () => {
+    lists.services.rows = [
+      {
+        id: "srv-r",
+        name: "eden-dash-v3",
+        immutableName: "block-eden-mono",
+        type: "web_service",
+      },
+    ];
+    render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+    expect(
+      screen.getByRole("option", { name: /eden-dash-v3 block-eden-mono/ }),
+    ).toBeInTheDocument();
+  });
+
   // w4/229: with cached, unrelated services and a Blueprint list still on its
   // first read, "discourse" declared "No matching pages or resources." until
   // the Blueprint arrived.
