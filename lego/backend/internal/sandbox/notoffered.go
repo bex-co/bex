@@ -19,9 +19,20 @@ package sandbox
 import "github.com/bex-co/bex/lego/backend/internal/core"
 
 const (
-	imagesNotOffered    = "bex does not support Render's imported sandbox images (sandbox-groups images import|get, sandboxes create --image): every sandbox starts from its base image"
-	snapshotsNotOffered = "bex does not support Render's sandbox snapshots (sandboxes snapshots create|list|get|delete, sandboxes create --from)"
+	imagesNotOffered      = "bex does not support Render's imported sandbox images (sandbox-groups images import|get, sandboxes create --image): every sandbox starts from its base image"
+	snapshotsNotOffered   = "bex does not support Render's sandbox snapshots (sandboxes snapshots create|list|get|delete, sandboxes create --from)"
+	groupOpNotOffered     = "bex does not support deleting a sandbox group or changing the workspace's default group (sandbox-groups delete, sandbox-groups default set)"
+	credentialsNotOffered = "bex does not support Render's brokered sandbox credentials (sandbox-groups credentials), an early-access feature"
 )
+
+// CodeSandboxGroupOperationUnsupported names the group operations CLI v2.36
+// added that bex's served groups (w22/m311) do not answer yet: delete and the
+// workspace default (w3/m303).
+const CodeSandboxGroupOperationUnsupported = "SANDBOX_GROUP_OPERATION_UNSUPPORTED"
+
+// CodeSandboxCredentialsUnsupported names Render's early-access brokered
+// sandbox credentials (CLI v2.36 `sandbox-groups credentials`, w3/m303).
+const CodeSandboxCredentialsUnsupported = "SANDBOX_CREDENTIALS_UNSUPPORTED"
 
 // NotOfferedRoutes are the Render sandbox image, snapshot and group-management
 // operations the pinned Render CLI calls (`sandbox-groups images import|get`,
@@ -37,15 +48,15 @@ var NotOfferedRoutes = map[string]core.NotOffered{
 	// CLI v2.36's `sandbox-groups delete`, `default set` and `credentials`
 	// (w3/m303), absent from the public OpenAPI and not served by the group
 	// routes w22/m311 added.
-	"DELETE /v1/sandbox-groups/{sandboxGroupId}":                                  {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
-	"POST /v1/sandbox-groups/{sandboxGroupId}/set-default":                        {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials":                         {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
-	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials":                        {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":          {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
-	"PATCH /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":        {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
-	"DELETE /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":       {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/versions": {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
-	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/restore": {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"DELETE /v1/sandbox-groups/{sandboxGroupId}":                                  {Code: CodeSandboxGroupOperationUnsupported, Message: groupOpNotOffered},
+	"POST /v1/sandbox-groups/{sandboxGroupId}/set-default":                        {Code: CodeSandboxGroupOperationUnsupported, Message: groupOpNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials":                         {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
+	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials":                        {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":          {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
+	"PATCH /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":        {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
+	"DELETE /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":       {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/versions": {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
+	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/restore": {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/builds":                              {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
 	"POST /v1/sandbox-groups/{sandboxGroupId}/builds":                             {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}":                    {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},

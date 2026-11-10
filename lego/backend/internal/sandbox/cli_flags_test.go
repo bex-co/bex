@@ -460,14 +460,14 @@ func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
 		{http.MethodPost, "/v1/sandboxes/sbx-1/snapshots", codeSandboxSnapshotsUnsupported, "snapshots"},
 		{http.MethodDelete, "/v1/sandbox-groups/sbg-1/snapshots/snp-1", codeSandboxSnapshotsUnsupported, "snapshots"},
 		// CLI v2.36's sandbox-groups delete, default set and credentials (w3/m303).
-		{http.MethodDelete, "/v1/sandbox-groups/sbg-1", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodPost, "/v1/sandbox-groups/sbg-1/set-default", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodPatch, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodDelete, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials/sbc-1/versions", CodeSandboxGroupsUnsupported, "sandbox groups"},
-		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials/sbc-1/restore", CodeSandboxGroupsUnsupported, "sandbox groups"},
+		{http.MethodDelete, "/v1/sandbox-groups/sbg-1", CodeSandboxGroupOperationUnsupported, "sandbox-groups delete"},
+		{http.MethodPost, "/v1/sandbox-groups/sbg-1/set-default", CodeSandboxGroupOperationUnsupported, "default set"},
+		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
+		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
+		{http.MethodPatch, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
+		{http.MethodDelete, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
+		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials/sbc-1/versions", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
+		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials/sbc-1/restore", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
 	} {
 		_, pattern := mux.Handler(httptest.NewRequest(tc.method, tc.path, nil))
 		refusal, ok := NotOfferedRoutes[pattern]
