@@ -15,6 +15,7 @@ import { Switch } from "@/common/components/ui/switch";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { disabledReasonText } from "@/features/webhooks/lib/disabled-reason";
 import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-event-picker-field";
 import { useDeleteWebhook } from "@/features/webhooks/hooks/use-delete-webhook";
 import { useSetWebhookEnabled } from "@/features/webhooks/hooks/use-set-webhook-enabled";
@@ -96,6 +97,7 @@ export function WebhookSettingsCard({
   endpoint: WebhookEndpointView;
 }) {
   const { t } = useTranslations();
+  const disabledReason = disabledReasonText(endpoint.disabledReason, t);
   const navigate = useNavigate();
   const {
     eventTypes,
@@ -207,10 +209,8 @@ export function WebhookSettingsCard({
               <p className="text-muted-foreground text-sm">
                 {t("webhooks.settingsStatusHelp")}
               </p>
-              {!endpoint.enabled && endpoint.disabledReason ? (
-                <p className="text-destructive text-sm">
-                  {endpoint.disabledReason}
-                </p>
+              {!endpoint.enabled && disabledReason ? (
+                <p className="text-destructive text-sm">{disabledReason}</p>
               ) : null}
             </div>
             <Switch

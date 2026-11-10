@@ -49,6 +49,39 @@ describe("WebhookDetailHeader", () => {
     expect(screen.getByText("Created on July 16, 2026")).toBeInTheDocument();
   });
 
+  // w21/022: the link's accessible name carries the visible state.
+  it("names the status link with the state and translates a known reason", () => {
+    render(
+      <WebhookDetailHeader
+        endpoint={endpoint({
+          enabled: false,
+          disabledReason:
+            "disabled automatically after repeated delivery failures",
+        })}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "Status: Disabled" });
+    expect(link.querySelector("[data-slot=badge]")).toHaveAttribute(
+      "title",
+      "Disabled automatically after repeated delivery failures.",
+    );
+  });
+
+  it("shows no reason for a manual disable", () => {
+    render(
+      <WebhookDetailHeader
+        endpoint={endpoint({
+          enabled: false,
+          disabledReason: "disabled manually",
+        })}
+      />,
+    );
+    const link = screen.getByRole("link", { name: "Status: Disabled" });
+    expect(link.querySelector("[data-slot=badge]")).not.toHaveAttribute(
+      "title",
+    );
+  });
+
   it("omits the provenance line entirely without a created date", () => {
     render(<WebhookDetailHeader endpoint={endpoint({ createdAt: null })} />);
     expect(screen.queryByText(/^Created/)).not.toBeInTheDocument();
@@ -56,10 +89,9 @@ describe("WebhookDetailHeader", () => {
 
   it("links the destination and settings status and uses human event labels", () => {
     render(<WebhookDetailHeader endpoint={endpoint()} />);
-    expect(screen.getByRole("link", { name: "Status" })).toHaveAttribute(
-      "href",
-      "/webhook/$webhookId/settings",
-    );
+    expect(
+      screen.getByRole("link", { name: "Status: Enabled" }),
+    ).toHaveAttribute("href", "/webhook/$webhookId/settings");
     expect(screen.getByRole("link", { name: endpoint().url })).toHaveAttribute(
       "href",
       endpoint().url,

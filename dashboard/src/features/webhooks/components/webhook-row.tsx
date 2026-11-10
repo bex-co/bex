@@ -6,6 +6,7 @@ import { Badge } from "@/common/components/ui/badge";
 import { Switch } from "@/common/components/ui/switch";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookEventChips } from "@/features/webhooks/components/webhook-event-chips";
+import { disabledReasonText } from "@/features/webhooks/lib/disabled-reason";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 import { RelativeAge } from "@/common/components/relative-time";
 import { LocalDateTime } from "@/common/components/local-time";
@@ -32,6 +33,7 @@ export function WebhookRow({
   canManage,
 }: WebhookRowProps) {
   const { t } = useTranslations();
+  const disabledReason = disabledReasonText(entry.disabledReason, t);
   const latestKey =
     entry.latestStatus === "delivered"
       ? "webhooks.latestDelivered"
@@ -104,12 +106,12 @@ export function WebhookRow({
                 : t("webhooks.disabledBadge")}
             </Badge>
           )}
-          {!entry.enabled && entry.disabledReason ? (
+          {!entry.enabled && disabledReason ? (
             <span
               className="text-muted-foreground max-w-[10rem] truncate text-xs"
-              title={entry.disabledReason}
+              title={disabledReason}
             >
-              {entry.disabledReason}
+              {disabledReason}
             </span>
           ) : null}
         </div>

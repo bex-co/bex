@@ -888,6 +888,11 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "常规",
     description: "Settings tab first section heading",
   },
+  "webhooks.disabledReasonAuto": {
+    message: "因多次投递失败已自动禁用。",
+    description:
+      "Reason shown beside a webhook the platform disabled after repeated delivery failures",
+  },
   "webhooks.settingsStatus": {
     message: "状态",
     description: "Settings status-toggle label",

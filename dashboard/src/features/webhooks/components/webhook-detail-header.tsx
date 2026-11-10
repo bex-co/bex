@@ -6,6 +6,7 @@ import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useLocalDate } from "@/common/hooks/use-local-date";
 import { WebhookEventChips } from "@/features/webhooks/components/webhook-event-chips";
+import { disabledReasonText } from "@/features/webhooks/lib/disabled-reason";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 /**
@@ -45,11 +46,20 @@ export function WebhookDetailHeader({
             <Link
               to="/webhook/$webhookId/settings"
               params={{ webhookId: endpoint.id }}
-              aria-label={t("webhooks.settingsStatus")}
+              aria-label={`${t("webhooks.settingsStatus")}: ${
+                endpoint.enabled
+                  ? t("webhooks.enabledBadge")
+                  : t("webhooks.disabledBadge")
+              }`}
             >
               <Badge
                 variant={endpoint.enabled ? "success" : "secondary"}
-                title={endpoint.enabled ? undefined : endpoint.disabledReason}
+                title={
+                  endpoint.enabled
+                    ? undefined
+                    : (disabledReasonText(endpoint.disabledReason, t) ??
+                      undefined)
+                }
               >
                 {endpoint.enabled
                   ? t("webhooks.enabledBadge")

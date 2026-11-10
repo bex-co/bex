@@ -903,6 +903,11 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "General",
     description: "Settings tab first section heading",
   },
+  "webhooks.disabledReasonAuto": {
+    message: "Disabled automatically after repeated delivery failures.",
+    description:
+      "Reason shown beside a webhook the platform disabled after repeated delivery failures",
+  },
   "webhooks.settingsStatus": {
     message: "Status",
     description: "Settings status-toggle label",
