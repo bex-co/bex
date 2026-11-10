@@ -132,12 +132,12 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.deleteConfirmBody": {
     message:
-      "Its environment groups stay in the project — they just lose this environment label. This action cannot be undone.",
+      "Its environment groups are kept but become unassigned: they no longer belong to this environment or project, and stay under Environment Groups. This action cannot be undone.",
     description: "Delete-environment confirmation dialog body",
   },
   "environments.deleteConfirmBodyResources": {
     message:
-      "Deleting this environment deletes all of its services, databases, and key value stores: {resources}. Its environment groups stay in the project — they just lose this environment label. This action cannot be undone.",
+      "Deleting this environment deletes all of its services, databases, and key value stores: {resources}. Its environment groups are kept but become unassigned: they no longer belong to this environment or project, and stay under Environment Groups. This action cannot be undone.",
     description:
       "Delete-environment confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
   },

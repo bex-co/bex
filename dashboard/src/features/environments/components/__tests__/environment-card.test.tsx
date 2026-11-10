@@ -562,6 +562,13 @@ describe("EnvironmentCard", () => {
     expect(
       within(dialog).getByText('Delete environment "staging"?'),
     ).toBeInTheDocument();
+    // w21/037: a detached group becomes unassigned; it does not stay in the project.
+    expect(
+      within(dialog).getByText(
+        /Its environment groups are kept but become unassigned/,
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog).queryByText(/stay in the project/)).toBeNull();
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     expect(remove).toHaveBeenCalledWith("env-1", "staging");
@@ -593,7 +600,7 @@ describe("EnvironmentCard", () => {
     const dialog = await screen.findByRole("alertdialog");
     expect(
       within(dialog).getByText(
-        /deletes all of its services, databases, and key value stores: orders-db, sessions-kv\. Its environment groups stay/,
+        /deletes all of its services, databases, and key value stores: orders-db, sessions-kv\. Its environment groups are kept but become unassigned/,
       ),
     ).toBeInTheDocument();
     expect(

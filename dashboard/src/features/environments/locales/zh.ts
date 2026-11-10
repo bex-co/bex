@@ -123,12 +123,13 @@ const zhEnvironments: Record<string, TranslationEntry> = {
     description: "Delete-environment confirmation dialog title",
   },
   "environments.deleteConfirmBody": {
-    message: "其环境组仍保留在项目中，仅会移除此环境标签。此操作无法撤销。",
+    message:
+      "其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境变量组”中找到。此操作无法撤销。",
     description: "Delete-environment confirmation dialog body",
   },
   "environments.deleteConfirmBodyResources": {
     message:
-      "删除此环境会同时删除其所有服务、数据库和键值存储：{resources}。其环境组仍保留在项目中，仅会移除此环境标签。此操作无法撤销。",
+      "删除此环境会同时删除其所有服务、数据库和键值存储：{resources}。其环境组会保留但变为未分配：不再属于此环境或项目，仍可在“环境变量组”中找到。此操作无法撤销。",
     description:
       "Delete-environment confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
   },
