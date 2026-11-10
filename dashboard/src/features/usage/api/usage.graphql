@@ -36,6 +36,13 @@ query Usage($period: String, $ownerId: String) {
       used
       included
     }
+    # includedBandwidth: the month's outbound bandwidth in GB against the
+    # bandwidth the workspace plan includes (w6/m319); only the GB above it
+    # are charged.
+    includedBandwidth {
+      used
+      included
+    }
     # agentModel: the period's platform-route agent model spend (ADR091 D6),
     # billed at the model provider's cost + 30%, by model and token kind.
     agentModel {

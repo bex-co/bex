@@ -25,8 +25,8 @@ const NEAR_LIMIT_RATIO = 0.8;
 
 /**
  * One of Render's "Monthly included usage" allowances (Free instance hours,
- * included build minutes): what was used against what the month includes,
- * with a note near the allowance and once it is spent.
+ * included build minutes, included bandwidth): what was used against what the
+ * month includes, with a note near the allowance and once it is spent.
  */
 export function IncludedUsageCard({
   title,

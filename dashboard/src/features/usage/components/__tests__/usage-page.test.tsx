@@ -69,6 +69,7 @@ function summary(over: Partial<UsageSummary> = {}): UsageSummary {
     coverage: { state: "complete", through: "", degradedSources: [] },
     freeInstanceHours: { used: 0, included: 750 },
     buildMinutes: { used: 0, included: 500 },
+    includedBandwidth: { used: 0, included: 5 },
     agentModel: { monthToDateUsd: "0.00", models: [] },
     estimatedCost: { totalUsd: "0.00", resources: [] },
     billing: null,

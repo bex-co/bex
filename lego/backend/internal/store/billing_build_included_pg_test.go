@@ -24,7 +24,7 @@ import (
 // w6/m308: the billing emitter sends only build minutes above the plan's
 // included minutes, so it needs the month's earlier build minutes in a fixed
 // order, and the export record keeps what was actually sent.
-func TestPGStoreBuildSecondsBeforeAndBilledQuantity(t *testing.T) {
+func TestPGStoreUsageBeforeAndBilledQuantity(t *testing.T) {
 	s, ctx := newBillingTestStore(t)
 	ws, err := s.CreateTenant(ctx, "builds", "hobby")
 	if err != nil {
@@ -50,17 +50,20 @@ func TestPGStoreBuildSecondsBeforeAndBilledQuantity(t *testing.T) {
 	sameHourA := put(ws.ID, "srv-a", UsageKindBuildSeconds, month.Add(5*time.Hour), 40) // same hour, sorts first
 	sameHourB := put(ws.ID, "srv-b", UsageKindBuildSeconds, month.Add(5*time.Hour), 60)
 	put(ws.ID, "srv-a", UsageKindBuildSeconds, month.Add(9*time.Hour), 7) // later
+	// w6/m319: egress is summed on its own, in bytes.
+	put(ws.ID, "srv-a", UsageKindEgressBytes, month.Add(time.Hour), 3_000_000_000)
+	egressLater := put(ws.ID, "srv-b", UsageKindEgressBytes, month.Add(5*time.Hour), 4_000_000_000)
 
 	for _, tc := range []struct {
 		row  HourlyRow
 		want int64
-	}{{sameHourA, 100}, {sameHourB, 140}} {
-		got, err := s.BuildSecondsBefore(ctx, tc.row)
+	}{{sameHourA, 100}, {sameHourB, 140}, {egressLater, 3_000_000_000}} {
+		got, err := s.UsageBefore(ctx, tc.row)
 		if err != nil {
-			t.Fatalf("BuildSecondsBefore: %v", err)
+			t.Fatalf("UsageBefore: %v", err)
 		}
 		if got != tc.want {
-			t.Errorf("BuildSecondsBefore(%s) = %d, want %d: this month, this workspace, build minutes only, rows that sort before", tc.row.ServiceID, got, tc.want)
+			t.Errorf("UsageBefore(%s) = %d, want %d: this month, this workspace, this meter only, rows that sort before", tc.row.ServiceID, got, tc.want)
 		}
 	}
 
@@ -166,31 +169,46 @@ func TestPGStoreBuildSecondsByWorkspace(t *testing.T) {
 	put(cardless.ID, UsageKindBuildSeconds, month.Add(-time.Hour), 999)  // last month
 	put(cardless.ID, UsageKindInstanceSeconds, month.Add(time.Hour), 77) // another meter
 	put(excluded.ID, UsageKindBuildSeconds, month.Add(time.Hour), 5)
+	put(cardless.ID, UsageKindEgressBytes, month.Add(3*time.Hour), 6_000_000_000)
 
 	usage, err := s.BuildSecondsByWorkspace(ctx, month, month.Add(24*time.Hour))
 	if err != nil {
 		t.Fatalf("BuildSecondsByWorkspace: %v", err)
 	}
-	got := map[string]BuildMinutesUsage{}
+	got := map[string]MonthUsage{}
 	for _, u := range usage {
 		got[u.WorkspaceID] = u
 	}
-	if u := got[carded.ID]; u.Seconds != 600 || !u.CanPay {
+	if u := got[carded.ID]; u.Quantity != 600 || !u.CanPay {
 		t.Errorf("carded = %+v, want 600s, able to pay", u)
 	}
-	if u := got[cardless.ID]; u.Seconds != 150 || u.CanPay {
+	if u := got[cardless.ID]; u.Quantity != 150 || u.CanPay {
 		t.Errorf("cardless = %+v, want 150s this month, unable to pay", u)
 	}
 	if _, ok := got[excluded.ID]; ok {
 		t.Error("a workspace excluded from billing must not be listed")
 	}
 
-	won, err := s.ClaimBuildMinutesNotice(ctx, cardless.ID, month, "warned")
-	if err != nil || !won {
-		t.Fatalf("first claim won=%v err=%v", won, err)
+	// w6/m319: the bandwidth sweeper's read, by the same rule.
+	egress, err := s.EgressBytesByWorkspace(ctx, month, month.Add(24*time.Hour))
+	if err != nil {
+		t.Fatalf("EgressBytesByWorkspace: %v", err)
 	}
-	if won, err := s.ClaimBuildMinutesNotice(ctx, cardless.ID, month, "warned"); err != nil || won {
-		t.Errorf("second claim won=%v err=%v, want the notice claimed once", won, err)
+	if len(egress) != 1 || egress[0].WorkspaceID != cardless.ID || egress[0].Quantity != 6_000_000_000 || egress[0].CanPay {
+		t.Errorf("egress = %+v, want only cardless's 6 GB, unable to pay", egress)
+	}
+
+	for name, claim := range map[string]func() (bool, error){
+		"build minutes": func() (bool, error) { return s.ClaimBuildMinutesNotice(ctx, cardless.ID, month, "warned") },
+		"bandwidth":     func() (bool, error) { return s.ClaimBandwidthNotice(ctx, cardless.ID, month, "warned") },
+		"free hours":    func() (bool, error) { return s.ClaimFreeHoursNotice(ctx, cardless.ID, month, "warned") },
+	} {
+		if won, err := claim(); err != nil || !won {
+			t.Fatalf("%s: first claim won=%v err=%v", name, won, err)
+		}
+		if won, err := claim(); err != nil || won {
+			t.Errorf("%s: second claim won=%v err=%v, want the notice claimed once", name, won, err)
+		}
 	}
 }
 

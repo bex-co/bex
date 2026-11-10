@@ -92,6 +92,7 @@ describe("useUsage", () => {
       freeInstanceHours: { used: 0, included: 750 },
       // buildMinutes absent from the response ⇒ none used, no allowance.
       buildMinutes: { used: 0, included: 0 },
+      includedBandwidth: { used: 0, included: 0 },
       estimatedCost: {
         totalUsd: "4.92",
         resources: [

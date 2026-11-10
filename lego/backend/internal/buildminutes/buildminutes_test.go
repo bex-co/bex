@@ -18,6 +18,7 @@ package buildminutes
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -29,11 +30,11 @@ import (
 )
 
 type fakeStore struct {
-	usage  []store.BuildMinutesUsage
+	usage  []store.MonthUsage
 	claims map[string]bool // "<ws>/<stage>"
 }
 
-func (f *fakeStore) BuildSecondsByWorkspace(context.Context, time.Time, time.Time) ([]store.BuildMinutesUsage, error) {
+func (f *fakeStore) BuildSecondsByWorkspace(context.Context, time.Time, time.Time) ([]store.MonthUsage, error) {
 	return f.usage, nil
 }
 
@@ -116,11 +117,11 @@ func sweeper(st *fakeStore, apps *fakeApps, n *fakeNotifier) *Sweeper {
 
 func TestSweepStopsOnlyAWorkspaceOutOfMinutesThatCannotPay(t *testing.T) {
 	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
-	st := &fakeStore{usage: []store.BuildMinutesUsage{
-		{WorkspaceID: "tea-out", Seconds: 500 * 60},                // spent, no card
-		{WorkspaceID: "tea-card", Seconds: 600 * 60, CanPay: true}, // spent, buys more
-		{WorkspaceID: "tea-near", Seconds: 420 * 60},               // 84%
-		{WorkspaceID: "tea-none", Seconds: 9999 * 60},              // no plan applies
+	st := &fakeStore{usage: []store.MonthUsage{
+		{WorkspaceID: "tea-out", Quantity: 500 * 60},                // spent, no card
+		{WorkspaceID: "tea-card", Quantity: 600 * 60, CanPay: true}, // spent, buys more
+		{WorkspaceID: "tea-near", Quantity: 420 * 60},               // 84%
+		{WorkspaceID: "tea-none", Quantity: 9999 * 60},              // no plan applies
 	}}
 	apps := &fakeApps{now: now, items: []appv1alpha1.App{
 		app("web", "tea-out"), app("api", "tea-out"), app("paid", "tea-card"), app("near", "tea-near"), app("other", "tea-none"),
@@ -163,7 +164,7 @@ func TestSweepLiftsTheStopWhenTheWorkspaceCanPayOrTheMonthTurns(t *testing.T) {
 	old.Annotations = map[string]string{appv1alpha1.AnnotationBuildMinutesExhausted: "2026-10"}
 	apps := &fakeApps{now: now, items: []appv1alpha1.App{web, old}}
 	// tea-out added a card; tea-old has no build minutes this month.
-	st := &fakeStore{usage: []store.BuildMinutesUsage{{WorkspaceID: "tea-out", Seconds: 600 * 60, CanPay: true}}}
+	st := &fakeStore{usage: []store.MonthUsage{{WorkspaceID: "tea-out", Quantity: 600 * 60, CanPay: true}}}
 
 	if err := sweeper(st, apps, &fakeNotifier{}).SweepOnce(context.Background()); err != nil {
 		t.Fatal(err)
@@ -178,9 +179,9 @@ func TestSweepLiftsTheStopWhenTheWorkspaceCanPayOrTheMonthTurns(t *testing.T) {
 func TestSweepStopsAWorkspaceAtItsSpendLimit(t *testing.T) {
 	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
 	limit := int64(35) // $0.35: 100 minutes above Hobby's 500 at $0.0035
-	st := &fakeStore{usage: []store.BuildMinutesUsage{
-		{WorkspaceID: "tea-out", Seconds: 600 * 60, CanPay: true, SpendLimitCents: &limit},  // at the limit
-		{WorkspaceID: "tea-card", Seconds: 599 * 60, CanPay: true, SpendLimitCents: &limit}, // just under it
+	st := &fakeStore{usage: []store.MonthUsage{
+		{WorkspaceID: "tea-out", Quantity: 600 * 60, CanPay: true, SpendLimitCents: &limit},  // at the limit
+		{WorkspaceID: "tea-card", Quantity: 599 * 60, CanPay: true, SpendLimitCents: &limit}, // just under it
 	}}
 	apps := &fakeApps{now: now, items: []appv1alpha1.App{app("web", "tea-out"), app("paid", "tea-card")}}
 	n := &fakeNotifier{}
@@ -204,5 +205,28 @@ func TestSweepStopsAWorkspaceAtItsSpendLimit(t *testing.T) {
 		if s.ws == "tea-out" && s.stage != StageLimited {
 			t.Errorf("tea-out was also sent %q; a workspace stopped by its limit gets only the limit notice", s.stage)
 		}
+	}
+}
+
+// failingPlans fails every plan read.
+type failingPlans struct{}
+
+func (failingPlans) WorkspacePlanOf(context.Context, string) (string, bool, error) {
+	return "", false, errors.New("plan store unavailable")
+}
+
+func TestSweepKeepsTheMarkWhenThePlanCannotBeRead(t *testing.T) {
+	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	st := &fakeStore{usage: []store.MonthUsage{{WorkspaceID: "tea-out", Quantity: 600 * 60}}}
+	marked := app("web", "tea-out")
+	marked.Annotations = map[string]string{appv1alpha1.AnnotationBuildMinutesExhausted: appv1alpha1.BuildMinutesMonth(now)}
+	apps := &fakeApps{now: now, items: []appv1alpha1.App{marked}}
+	w := &Sweeper{Apps: apps, Store: st, Notifier: &fakeNotifier{}, Plans: failingPlans{}}
+
+	if err := w.SweepOnce(context.Background()); err == nil {
+		t.Error("a failed plan read must be reported")
+	}
+	if got := apps.mark("web"); got != appv1alpha1.BuildMinutesMonth(now) {
+		t.Errorf("mark = %q: a failed plan read lifted the stop of a workspace out of minutes", got)
 	}
 }

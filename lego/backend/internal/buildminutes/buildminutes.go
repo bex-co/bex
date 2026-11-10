@@ -50,7 +50,7 @@ const (
 
 // Store is the persistence the sweeper needs; *store.PGStore satisfies it.
 type Store interface {
-	BuildSecondsByWorkspace(ctx context.Context, monthStart, now time.Time) ([]store.BuildMinutesUsage, error)
+	BuildSecondsByWorkspace(ctx context.Context, monthStart, now time.Time) ([]store.MonthUsage, error)
 	ClaimBuildMinutesNotice(ctx context.Context, workspaceID string, month time.Time, stage string) (bool, error)
 }
 
@@ -104,23 +104,29 @@ func (w *Sweeper) SweepOnce(ctx context.Context) error {
 		return fmt.Errorf("build minutes: %w", err)
 	}
 	stopped := map[string]bool{}
+	// unread: workspaces whose plan could not be read this sweep. Their Apps
+	// keep the mark they have; lifting it on a failed read would let a
+	// workspace that is out of minutes build until the read recovers.
+	unread := map[string]bool{}
 	var errs []error
 	for _, u := range usage {
-		included, err := pricing.IncludedBuildSecondsFor(ctx, w.Plans, u.WorkspaceID)
+		allowances, err := pricing.IncludedForWorkspace(ctx, w.Plans, u.WorkspaceID)
 		if err != nil {
+			unread[u.WorkspaceID] = true
 			errs = append(errs, err)
 			continue
 		}
+		included := allowances[store.UsageKindBuildSeconds]
 		if included <= 0 {
 			continue // no plan applies: nothing to run out of
 		}
-		used, includedMin := float64(u.Seconds)/60, float64(included)/60
+		used, includedMin := float64(u.Quantity)/60, float64(included)/60
 		switch {
-		case u.Seconds >= included:
+		case u.Quantity >= included:
 			// Past its included minutes a workspace buys more, unless it has no
 			// payment method or has reached its spend limit (w6/m309).
 			limited := u.CanPay && u.SpendLimitCents != nil &&
-				pricing.Default.BuildCentsAbove(u.Seconds, included) >= *u.SpendLimitCents
+				pricing.Default.BuildCentsAbove(u.Quantity, included) >= *u.SpendLimitCents
 			stopped[u.WorkspaceID] = !u.CanPay || limited
 			// Earlier stages a later one supersedes are claimed silently: a
 			// workspace stopped by its limit is never told minutes are billed
@@ -136,7 +142,7 @@ func (w *Sweeper) SweepOnce(ctx context.Context) error {
 				}
 			}
 			errs = append(errs, w.notify(ctx, u, monthStart, send, used, includedMin))
-		case float64(u.Seconds) >= float64(included)*warnFraction:
+		case float64(u.Quantity) >= float64(included)*warnFraction:
 			errs = append(errs, w.notify(ctx, u, monthStart, StageWarned, used, includedMin))
 		}
 	}
@@ -150,11 +156,12 @@ func (w *Sweeper) SweepOnce(ctx context.Context) error {
 			break
 		}
 		a := &items[i]
-		if !a.DeletionTimestamp.IsZero() {
+		workspaceID := a.Labels[core.LabelTenant]
+		if !a.DeletionTimestamp.IsZero() || unread[workspaceID] {
 			continue
 		}
 		want := ""
-		if stopped[a.Labels[core.LabelTenant]] {
+		if stopped[workspaceID] {
 			want = month
 		}
 		if err := w.Apps.Mark(ctx, a, want); err != nil {
@@ -166,7 +173,7 @@ func (w *Sweeper) SweepOnce(ctx context.Context) error {
 
 // notify claims stage for the month and, only when this replica won the claim,
 // mails the owners.
-func (w *Sweeper) notify(ctx context.Context, u store.BuildMinutesUsage, monthStart time.Time, stage string, used, included float64) error {
+func (w *Sweeper) notify(ctx context.Context, u store.MonthUsage, monthStart time.Time, stage string, used, included float64) error {
 	won, err := w.Store.ClaimBuildMinutesNotice(ctx, u.WorkspaceID, monthStart, stage)
 	if err != nil || !won || w.Notifier == nil {
 		return err

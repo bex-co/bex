@@ -82,10 +82,36 @@ const zhUsage: Record<string, TranslationEntry> = {
       "包含的构建分钟已用尽。超出部分按分钟计费；如果没有付款方式，新的构建和部署前命令将停止，直到下月初。",
     description: "Notice once the included build minutes are spent (w6/m308)",
   },
+  "usage.bandwidthTitle": {
+    message: "出站流量",
+    description:
+      "Title of the included bandwidth card on the billing page (w6/m319)",
+  },
+  "usage.bandwidthDescription": {
+    message:
+      "服务向互联网发送的流量会消耗带宽。您的套餐每月包含一定额度；超出部分按 GB 计费。",
+    description: "Explains the plan's included outbound bandwidth (w6/m319)",
+  },
+  "usage.bandwidthUsed": {
+    message: "本月已使用 {used} / {included} GB 包含的流量",
+    description:
+      "Outbound bandwidth used against the plan's included bandwidth, in GB (w6/m319)",
+  },
+  "usage.bandwidthNear": {
+    message:
+      "包含的流量即将用尽。如果没有付款方式，用尽后工作区的服务将停止运行，直到下月初。",
+    description:
+      "Warning once bandwidth reaches 80 percent of the included bandwidth (w6/m319)",
+  },
+  "usage.bandwidthSpent": {
+    message:
+      "包含的流量已用尽。超出部分按 GB 计费；如果没有付款方式，工作区的服务将停止运行，直到下月初。",
+    description: "Notice once the included bandwidth is spent (w6/m319)",
+  },
   "usage.chargeIncluded": {
     message: "其中 {included} 为套餐包含",
     description:
-      "Part of a charge line's quantity that the plan's included build minutes covered (w6/m308)",
+      "Part of a charge line's quantity that the plan's included build minutes or bandwidth covered (w6/m308, w6/m319)",
   },
   "usage.pipelineTitle": {
     message: "构建流水线",

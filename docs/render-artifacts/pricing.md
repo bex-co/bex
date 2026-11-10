@@ -79,7 +79,7 @@ Render does not publish a separate Key Value storage price: persistence is a pla
 
 Source: render.com/docs/outbound-bandwidth and render.com/docs/new-workspace-plans
 
-$0.15 per GB outbound above the current plan's included allowance. Re-verified 2026-07-15 after Render's April 23, 2026 workspace-plan change; legacy workspaces remain in a migration period until August 1, 2026.
+$0.15 per GB outbound above the current plan's included allowance: Hobby 5 GB, Pro 25 GB, Scale 1 TB, Enterprise custom (read 2026-11-10). Without a payment method, Render spins down a workspace's services past the allowance until the next month. Re-verified 2026-07-15 after Render's April 23, 2026 workspace-plan change; legacy workspaces remain in a migration period until August 1, 2026.
 
 ---
 
@@ -95,5 +95,5 @@ $0.005 per build-minute above the plan's included build-minute allowance.
 
 - All prices in USD.
 - Render bills on a calendar-month cycle.
-- "Included allowances": bex's meters record raw quantities. Build minutes per plan (Hobby 500, Pro 1,000, Scale 5,000) are applied on top since 2026-11-10 (w6/m308, [ADR030 §13](../ADR030-pricing.md)); free bandwidth per plan is not tracked.
+- "Included allowances": bex's meters record raw quantities. Build minutes per plan (Hobby 500, Pro 1,000, Scale 5,000) are applied on top since 2026-11-10 (w6/m308, [ADR030 §13](../ADR030-pricing.md)), and so is included bandwidth per plan (Hobby 5 GB, Pro 25 GB, Scale 1 TB; w6/m319, [ADR030 §14](../ADR030-pricing.md)).
 - Snapshot taken 2026-07-13 from public Render docs; prices may change.

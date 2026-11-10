@@ -608,44 +608,56 @@ func (s *PGStore) FreeInstanceSecondsByWorkspace(ctx context.Context, monthStart
 	return out, rows.Err()
 }
 
-// BuildMinutesUsage is one workspace's month-to-date build minutes and whether
-// it can buy minutes beyond its plan's: a payment method, or comped (the
-// outbox read's selectPendingUsage applies the same rule).
-type BuildMinutesUsage struct {
+// MonthUsage is one workspace's month-to-date quantity of a metered kind and
+// whether it can buy more than its plan includes: a payment method, or comped
+// (the outbox read's selectPendingUsage applies the same rule).
+type MonthUsage struct {
 	WorkspaceID string
-	Seconds     int64
+	Quantity    int64
 	CanPay      bool
-	// SpendLimitCents is the workspace's monthly pipeline spend limit; nil
-	// when it has none (w6/m309).
+	// SpendLimitCents is the workspace's monthly pipeline spend limit, which
+	// only build minutes heed; nil when it has none (w6/m309).
 	SpendLimitCents *int64
 }
 
 // BuildSecondsByWorkspace sums each billable workspace's build_seconds in
-// [monthStart, now), with whether it can pay for more (w6/m308).
-// A workspace excluded from billing is never stopped and is left out.
-func (s *PGStore) BuildSecondsByWorkspace(ctx context.Context, monthStart, now time.Time) ([]BuildMinutesUsage, error) {
+// [monthStart, now) (w6/m308).
+func (s *PGStore) BuildSecondsByWorkspace(ctx context.Context, monthStart, now time.Time) ([]MonthUsage, error) {
+	return s.monthUsageByWorkspace(ctx, UsageKindBuildSeconds, monthStart, now)
+}
+
+// EgressBytesByWorkspace sums each billable workspace's egress_bytes in
+// [monthStart, now) (w6/m319).
+func (s *PGStore) EgressBytesByWorkspace(ctx context.Context, monthStart, now time.Time) ([]MonthUsage, error) {
+	return s.monthUsageByWorkspace(ctx, UsageKindEgressBytes, monthStart, now)
+}
+
+// monthUsageByWorkspace sums each billable workspace's kind in [monthStart,
+// now), with whether it can pay for more. A workspace excluded from billing is
+// never stopped and is left out.
+func (s *PGStore) monthUsageByWorkspace(ctx context.Context, kind string, monthStart, now time.Time) ([]MonthUsage, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT u.workspace_id, SUM(u.quantity)::bigint,
 		       (t.billing_comped OR m.payment_method_bound_at IS NOT NULL), t.pipeline_spend_limit_cents
 		FROM (
 			SELECT workspace_id, quantity FROM usage_hourly
-			WHERE kind = 'build_seconds' AND window_start >= $1 AND window_start < $2
+			WHERE kind = $3 AND window_start >= $1 AND window_start < $2
 			UNION ALL
 			SELECT workspace_id, quantity FROM usage_monthly
-			WHERE kind = 'build_seconds' AND month = ($1::timestamptz AT TIME ZONE 'UTC')::date
+			WHERE kind = $3 AND month = ($1::timestamptz AT TIME ZONE 'UTC')::date
 		) u
 		JOIN tenants t ON t.id = u.workspace_id
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
 		WHERE NOT t.billing_excluded
-		GROUP BY u.workspace_id, t.billing_comped, m.payment_method_bound_at, t.pipeline_spend_limit_cents`, monthStart, now)
+		GROUP BY u.workspace_id, t.billing_comped, m.payment_method_bound_at, t.pipeline_spend_limit_cents`, monthStart, now, kind)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []BuildMinutesUsage
+	var out []MonthUsage
 	for rows.Next() {
-		var u BuildMinutesUsage
-		if err := rows.Scan(&u.WorkspaceID, &u.Seconds, &u.CanPay, &u.SpendLimitCents); err != nil {
+		var u MonthUsage
+		if err := rows.Scan(&u.WorkspaceID, &u.Quantity, &u.CanPay, &u.SpendLimitCents); err != nil {
 			return nil, err
 		}
 		out = append(out, u)
@@ -677,24 +689,28 @@ func (s *PGStore) SetPipelineSpendLimit(ctx context.Context, workspaceID string,
 	return nil
 }
 
-// ClaimBuildMinutesNotice is ClaimFreeHoursNotice for build-minutes emails.
-func (s *PGStore) ClaimBuildMinutesNotice(ctx context.Context, workspaceID string, month time.Time, stage string) (bool, error) {
-	tag, err := s.Pool.Exec(ctx, `
-		INSERT INTO build_minutes_notices (workspace_id, month, stage)
-		VALUES ($1, $2::date, $3)
-		ON CONFLICT DO NOTHING`, workspaceID, month.UTC().Format("2006-01-02"), stage)
-	if err != nil {
-		return false, err
-	}
-	return tag.RowsAffected() == 1, nil
-}
-
 // ClaimFreeHoursNotice records that stage ('warned' or 'exhausted') has been
 // claimed for workspaceID's month and reports whether this caller won the
 // claim; exactly one replica sends each email each month.
 func (s *PGStore) ClaimFreeHoursNotice(ctx context.Context, workspaceID string, month time.Time, stage string) (bool, error) {
+	return s.claimMonthlyNotice(ctx, "free_hours_notices", workspaceID, month, stage)
+}
+
+// ClaimBuildMinutesNotice is ClaimFreeHoursNotice for build-minutes emails.
+func (s *PGStore) ClaimBuildMinutesNotice(ctx context.Context, workspaceID string, month time.Time, stage string) (bool, error) {
+	return s.claimMonthlyNotice(ctx, "build_minutes_notices", workspaceID, month, stage)
+}
+
+// ClaimBandwidthNotice is ClaimFreeHoursNotice for included-bandwidth emails.
+func (s *PGStore) ClaimBandwidthNotice(ctx context.Context, workspaceID string, month time.Time, stage string) (bool, error) {
+	return s.claimMonthlyNotice(ctx, "bandwidth_notices", workspaceID, month, stage)
+}
+
+// claimMonthlyNotice inserts (workspace, month, stage) into table, one of the
+// constant notice tables above, and reports whether this caller inserted it.
+func (s *PGStore) claimMonthlyNotice(ctx context.Context, table, workspaceID string, month time.Time, stage string) (bool, error) {
 	tag, err := s.Pool.Exec(ctx, `
-		INSERT INTO free_hours_notices (workspace_id, month, stage)
+		INSERT INTO `+table+` (workspace_id, month, stage)
 		VALUES ($1, $2::date, $3)
 		ON CONFLICT DO NOTHING`, workspaceID, month.UTC().Format("2006-01-02"), stage)
 	if err != nil {

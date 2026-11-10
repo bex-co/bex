@@ -506,6 +506,9 @@ func main() {
 	// Included build minutes (w6/m308): warn at 80%; out of them with no way
 	// to pay, builds stop until the month turns.
 	go srv.BuildMinutes.Run(ctx)
+	// Included outbound bandwidth (w6/m319): warn at 80%; out of it with no
+	// payment method, the workspace's services spin down until the month turns.
+	go srv.Bandwidth.Run(ctx)
 	// Crash-loop suspension (w2/m253): a service failing to start and become
 	// healthy for 24h is suspended (stuck_crashlooping) and its owners emailed.
 	go srv.CrashLoop.Run(ctx)

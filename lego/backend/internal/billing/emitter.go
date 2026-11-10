@@ -294,7 +294,7 @@ func (e *Emitter) emitOnce(ctx context.Context, fastOnly bool) {
 func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time.Time, customerReady map[string]bool) int {
 	attempts := make([]store.UsageExportAttempt, 0, len(rows))
 	events := make([]Event, 0, len(rows))
-	included := map[string]int64{}
+	allowances := newAllowanceBatch()
 	for _, r := range rows {
 		ready, seen := customerReady[r.WorkspaceID]
 		if !seen {
@@ -313,8 +313,8 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 		}
 		event := toEvent(r)
 		attempt := store.UsageExportAttempt{Row: r, TransactionID: event.TransactionID}
-		if r.Kind == store.UsageKindBuildSeconds && e.Plans != nil {
-			billed, ok := e.billedBuildSeconds(ctx, r, included)
+		if pricing.HasAllowance(r.Kind) && e.Plans != nil {
+			billed, ok := e.billedAboveAllowance(ctx, r, allowances)
 			if !ok {
 				continue // retried next cycle; never sent whole by mistake
 			}
@@ -385,52 +385,82 @@ func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time
 	return len(accepted) + len(rejected)
 }
 
-// buildSecondsBeforeReader is the store capability billedBuildSeconds needs;
+// usageBeforeReader is the store capability billedAboveAllowance needs;
 // *store.PGStore has it.
-type buildSecondsBeforeReader interface {
-	BuildSecondsBefore(ctx context.Context, row store.HourlyRow) (int64, error)
+type usageBeforeReader interface {
+	UsageBefore(ctx context.Context, row store.HourlyRow) (int64, error)
 }
 
-// allowanceUnreadable marks a workspace whose plan could not be read in this
-// batch, so its other rows skip the read instead of repeating it.
-const allowanceUnreadable = -1
+// allowanceBatch is what one export batch learns about allowances: each
+// workspace's (and whether it could be read), and for each workspace, meter
+// and month the earliest hour by which the allowance was used up.
+type allowanceBatch struct {
+	included map[string]pricing.Included
+	unread   map[string]bool
+	spentBy  map[allowanceMonth]time.Time
+}
 
-// billedBuildSeconds is the part of build row r that is owed: what lies above
-// the workspace plan's included seconds, given the month's build seconds that
-// sort before r. Both inputs are fixed once r is sealed, and a value an
-// earlier attempt sent is reused, so every replica and every retry sends the
-// same value. included caches each workspace's allowance for the batch. ok is
-// false when a read failed; the row then waits for the next cycle.
-func (e *Emitter) billedBuildSeconds(ctx context.Context, r store.HourlyRow, included map[string]int64) (int64, bool) {
+type allowanceMonth struct {
+	workspaceID, kind string
+	month             time.Time
+}
+
+func newAllowanceBatch() *allowanceBatch {
+	return &allowanceBatch{included: map[string]pricing.Included{}, unread: map[string]bool{}, spentBy: map[allowanceMonth]time.Time{}}
+}
+
+// billedAboveAllowance is the part of row r that is owed: what lies above the
+// workspace plan's monthly allowance of r's meter, given the month's usage of
+// that meter that sorts before r. Both inputs are fixed once r is sealed, and
+// a value an earlier attempt sent is reused, so every replica and every retry
+// sends the same value. ok is false when a read failed; the row then waits
+// for the next cycle.
+func (e *Emitter) billedAboveAllowance(ctx context.Context, r store.HourlyRow, batch *allowanceBatch) (int64, bool) {
 	if r.BilledQuantity != nil {
 		return *r.BilledQuantity, true
 	}
 	if r.Quantity == 0 {
 		return 0, true
 	}
-	reader, has := e.Store.(buildSecondsBeforeReader)
+	reader, has := e.Store.(usageBeforeReader)
 	if !has {
 		return r.Quantity, true
 	}
-	allowance, seen := included[r.WorkspaceID]
+	if batch.unread[r.WorkspaceID] {
+		return 0, false
+	}
+	included, seen := batch.included[r.WorkspaceID]
 	if !seen {
 		var err error
-		if allowance, err = pricing.IncludedBuildSecondsFor(ctx, e.Plans, r.WorkspaceID); err != nil {
-			log.Printf("billing: included build minutes for %s: %v; its build rows wait", r.WorkspaceID, err)
-			allowance = allowanceUnreadable
+		if included, err = pricing.IncludedForWorkspace(ctx, e.Plans, r.WorkspaceID); err != nil {
+			log.Printf("billing: included usage for %s: %v; its rows wait", r.WorkspaceID, err)
+			batch.unread[r.WorkspaceID] = true
+			return 0, false
 		}
-		included[r.WorkspaceID] = allowance
+		batch.included[r.WorkspaceID] = included
 	}
-	switch {
-	case allowance == allowanceUnreadable:
-		return 0, false
-	case allowance == 0:
+	allowance := included[r.Kind]
+	if allowance == 0 {
 		return r.Quantity, true
 	}
-	before, err := reader.BuildSecondsBefore(ctx, r)
+	// A row in a later hour than one that used the allowance up sorts after
+	// that row, so the allowance is spent before it and it owes its whole
+	// quantity: egress has a row per resource per hour, and this spares each
+	// a read. Rows in the same hour still read: the store orders resource and
+	// service ids by its own collation.
+	key := allowanceMonth{r.WorkspaceID, r.Kind, store.MonthStartUTC(r.WindowStart)}
+	if spent, ok := batch.spentBy[key]; ok && r.WindowStart.After(spent) {
+		return r.Quantity, true
+	}
+	before, err := reader.UsageBefore(ctx, r)
 	if err != nil {
-		log.Printf("billing: earlier build minutes for %s: %v; the row waits", r.WorkspaceID, err)
+		log.Printf("billing: earlier %s for %s: %v; the row waits", r.Kind, r.WorkspaceID, err)
 		return 0, false
+	}
+	if before+r.Quantity >= allowance {
+		if spent, ok := batch.spentBy[key]; !ok || r.WindowStart.Before(spent) {
+			batch.spentBy[key] = r.WindowStart
+		}
 	}
 	return owedAbove(before, r.Quantity, allowance), true
 }

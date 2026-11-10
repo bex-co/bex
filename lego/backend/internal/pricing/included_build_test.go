@@ -30,8 +30,8 @@ func TestIncludedBuildSecondsFollowsRendersPlans(t *testing.T) {
 	for plan, minutes := range map[string]int64{
 		store.PlanHobby: 500, store.PlanPro: 1000, store.PlanScale: 5000, store.PlanEnterprise: 5000, "": 0, "legacy": 0,
 	} {
-		if got := Default.IncludedBuildSeconds(plan); got != minutes*60 {
-			t.Errorf("IncludedBuildSeconds(%q) = %d, want %d", plan, got, minutes*60)
+		if got := Default.IncludedFor(plan)[store.UsageKindBuildSeconds]; got != minutes*60 {
+			t.Errorf("IncludedFor(%q) build_seconds = %d, want %d", plan, got, minutes*60)
 		}
 	}
 }
@@ -41,9 +41,9 @@ func buildRow(service string, minutes int64) store.UsageSummaryRow {
 }
 
 func TestEstimateIncludingPricesOnlyMinutesAboveTheAllowance(t *testing.T) {
-	hobby := Default.IncludedBuildSeconds(store.PlanHobby)
+	hobby := Default.IncludedFor(store.PlanHobby)[store.UsageKindBuildSeconds]
 
-	under := Default.EstimateIncluding([]store.UsageSummaryRow{buildRow("srv-a", 400)}, hobby)
+	under := Default.EstimateIncluding([]store.UsageSummaryRow{buildRow("srv-a", 400)}, Included{store.UsageKindBuildSeconds: hobby})
 	if under.TotalUSD != "0.00" || len(under.Meters) != 0 {
 		t.Errorf("400 of 500 included minutes = %+v, want nothing charged", under)
 	}
@@ -54,7 +54,7 @@ func TestEstimateIncludingPricesOnlyMinutesAboveTheAllowance(t *testing.T) {
 
 	// 600 minutes across two services: the allowance covers the first 500 in
 	// row order, and 100 minutes × $0.0035 are charged.
-	over := Default.EstimateIncluding([]store.UsageSummaryRow{buildRow("srv-a", 450), buildRow("srv-b", 150)}, hobby)
+	over := Default.EstimateIncluding([]store.UsageSummaryRow{buildRow("srv-a", 450), buildRow("srv-b", 150)}, Included{store.UsageKindBuildSeconds: hobby})
 	if over.TotalUSD != "0.35" {
 		t.Errorf("total = %s, want 0.35", over.TotalUSD)
 	}
@@ -64,7 +64,7 @@ func TestEstimateIncludingPricesOnlyMinutesAboveTheAllowance(t *testing.T) {
 	}
 
 	// No plan, no allowance: the plain estimate.
-	if got, want := Default.EstimateIncluding([]store.UsageSummaryRow{buildRow("srv-a", 600)}, 0), Default.Estimate([]store.UsageSummaryRow{buildRow("srv-a", 600)}); got.TotalUSD != want.TotalUSD || got.TotalUSD != "2.10" {
+	if got, want := Default.EstimateIncluding([]store.UsageSummaryRow{buildRow("srv-a", 600)}, nil), Default.Estimate([]store.UsageSummaryRow{buildRow("srv-a", 600)}); got.TotalUSD != want.TotalUSD || got.TotalUSD != "2.10" {
 		t.Errorf("no allowance = %s, want %s (600 × $0.0035)", got.TotalUSD, want.TotalUSD)
 	}
 }
@@ -95,5 +95,28 @@ func TestBuildCentsAbove(t *testing.T) {
 		if got := Default.BuildCentsAbove(tc.seconds, tc.included); got != tc.want {
 			t.Errorf("BuildCentsAbove(%d, %d) = %d, want %d", tc.seconds, tc.included, got, tc.want)
 		}
+	}
+}
+
+// w6/m319: Render's included bandwidth per plan, in the GB bandwidth is billed
+// in, and only the bytes above it are priced.
+func TestIncludedBandwidthFollowsRendersPlans(t *testing.T) {
+	for plan, gb := range map[string]int64{store.PlanHobby: 5, store.PlanPro: 25, store.PlanScale: 1000, store.PlanEnterprise: 1000, "": 0} {
+		if got := Default.IncludedFor(plan)[store.UsageKindEgressBytes]; got != gb<<30 {
+			t.Errorf("included egress for %q = %d, want %d GB", plan, got, gb)
+		}
+	}
+	egress := func(bytes int64) store.UsageSummaryRow {
+		return store.UsageSummaryRow{ServiceID: "srv-a", Kind: store.UsageKindEgressBytes, ResourceKind: store.ResourceKindService, Total: bytes}
+	}
+	hobby := Default.IncludedFor(store.PlanHobby)
+	if est := Default.EstimateIncluding([]store.UsageSummaryRow{egress(4 << 30)}, hobby); est.TotalUSD != "0.00" {
+		t.Errorf("4 GB on Hobby = %s, want nothing charged", est.TotalUSD)
+	}
+	// 7 GB: 2 GB above 5 GB, at $0.015/GB; the line reads in the same GB.
+	est := Default.EstimateIncluding([]store.UsageSummaryRow{egress(7 << 30)}, hobby)
+	line := est.Resources[0].Charges[0]
+	if est.TotalUSD != "0.03" || line.Quantity != "7.00" || line.Included != "5.00" || line.Unit != "GB" {
+		t.Errorf("7 GB on Hobby = %s / %+v, want $0.03 with 5 of 7 GB included", est.TotalUSD, line)
 	}
 }

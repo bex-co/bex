@@ -150,6 +150,15 @@ export interface BuildMinutes {
   included: number;
 }
 
+/**
+ * Outbound bandwidth this period, in GB, against the bandwidth the workspace
+ * plan includes (w6/m319); `included` is 0 where no plan applies.
+ */
+export interface IncludedBandwidth {
+  used: number;
+  included: number;
+}
+
 /** One model's share of the period's agent model spend (ADR091 D6). */
 export interface AgentModelBreakdown {
   model: string;
@@ -175,6 +184,7 @@ export interface UsageSummary {
   coverage: Coverage;
   freeInstanceHours: FreeInstanceHours;
   buildMinutes: BuildMinutes;
+  includedBandwidth: IncludedBandwidth;
   agentModel: AgentModelUsage | null;
   estimatedCost: EstimatedCost | null;
   billing: Billing | null;
@@ -226,6 +236,10 @@ export function useUsage(period?: string): UseUsageResult {
             buildMinutes: {
               used: raw.buildMinutes?.used ?? 0,
               included: raw.buildMinutes?.included ?? 0,
+            },
+            includedBandwidth: {
+              used: raw.includedBandwidth?.used ?? 0,
+              included: raw.includedBandwidth?.included ?? 0,
             },
             agentModel: raw.agentModel
               ? {

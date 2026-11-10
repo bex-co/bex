@@ -335,6 +335,13 @@ func Suspenders(suspended bool) []string {
 // App leaves the free plan.
 const AnnotFreeHoursSuspended = "app.bex.co/free-hours-suspended"
 
+// AnnotBandwidthSuspended marks an App suspended because its workspace, with
+// no payment method, used its plan's included outbound bandwidth (w6/m319,
+// docs/ADR030 §14); its value is the UTC month ("2006-01"). Such an App reports
+// the "billing" suspender, cannot be resumed by hand that month until a
+// payment method is added, and resumes when the month ends or one is.
+const AnnotBandwidthSuspended = "app.bex.co/bandwidth-suspended"
+
 // AnnotCrashLoopSuspended marks an App the platform suspended because it
 // failed to start and become healthy for a whole window (w2/m253, Render's
 // "stuck_crashlooping" suspender); its value is the RFC 3339 suspension time.
@@ -349,11 +356,11 @@ const AnnotCrashLoopSuspended = "app.bex.co/crashloop-suspended"
 const AnnotCrashLoopObserved = "app.bex.co/crashloop-observed"
 
 // SuspendersFor is Suspenders for an App the platform may have suspended
-// rather than its owner: for the spent Free instance-hours budget, or for a
+// rather than its owner: for a spent monthly allowance (billing), or for a
 // crash loop.
-func SuspendersFor(suspended, freeHours, crashLoop bool) []string {
+func SuspendersFor(suspended, billing, crashLoop bool) []string {
 	switch {
-	case suspended && freeHours:
+	case suspended && billing:
 		return []string{"billing"}
 	case suspended && crashLoop:
 		return []string{"stuck_crashlooping"}

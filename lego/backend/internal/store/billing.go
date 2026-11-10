@@ -336,21 +336,38 @@ func (s *PGStore) MarkUsageAttempted(ctx context.Context, attempts []UsageExport
 	return nil
 }
 
-// BuildSecondsBefore sums workspaceID's build_seconds in row's calendar month
-// (UTC) that sort before row by (window_start, resource_kind, service_id): the
-// minutes already counted against the plan's allowance when row is exported.
+// UsageBefore sums the workspace's usage of row's meter in row's calendar
+// month (UTC) that sorts before row by (window_start, resource_kind,
+// service_id): what was already counted against the plan's allowance of that
+// meter when row is exported (build_seconds, w6/m308; egress_bytes, w6/m319).
 // The order is fixed by the rows themselves, not by when they were exported,
 // so two replicas exporting the same row send the same quantity.
-func (s *PGStore) BuildSecondsBefore(ctx context.Context, row HourlyRow) (int64, error) {
+func (s *PGStore) UsageBefore(ctx context.Context, row HourlyRow) (int64, error) {
+	query, ok := usageBeforeQueries[row.Kind]
+	if !ok {
+		return 0, fmt.Errorf("usage before: %s has no allowance", row.Kind)
+	}
 	var total int64
-	err := s.Pool.QueryRow(ctx, `
-		SELECT COALESCE(sum(quantity), 0)::bigint
-		FROM usage_hourly
-		WHERE workspace_id = $1 AND kind = 'build_seconds' AND quantity > 0
-		  AND window_start >= $2
-		  AND (window_start, resource_kind, service_id) < ($3, $4, $5)`,
+	err := s.Pool.QueryRow(ctx, query,
 		row.WorkspaceID, MonthStartUTC(row.WindowStart), row.WindowStart.UTC(), row.ResourceKind, row.ServiceID).Scan(&total)
 	return total, err
+}
+
+// usageBeforeQueries is UsageBefore's statement per meter. The kind is a
+// literal, never a parameter: the partial indexes (0223, 0226) are filtered
+// on it, and a generic prepared plan cannot match a parameter to them.
+var usageBeforeQueries = map[string]string{
+	UsageKindBuildSeconds: usageBeforeQuery(UsageKindBuildSeconds),
+	UsageKindEgressBytes:  usageBeforeQuery(UsageKindEgressBytes),
+}
+
+func usageBeforeQuery(kind string) string {
+	return `
+		SELECT COALESCE(sum(quantity), 0)::bigint
+		FROM usage_hourly
+		WHERE workspace_id = $1 AND kind = '` + kind + `' AND quantity > 0
+		  AND window_start >= $2
+		  AND (window_start, resource_kind, service_id) < ($3, $4, $5)`
 }
 
 // RecordUsageExportResult atomically stamps accepted rows and moves permanent

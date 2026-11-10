@@ -19,6 +19,7 @@ package billing
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -28,21 +29,23 @@ import (
 // w6/m308 (docs/ADR030 §13): Stripe receives only the build minutes above the
 // plan's included pipeline minutes.
 
-// buildBeforeStore answers BuildSecondsBefore from the rows it was given, in
-// the store's (window, resource kind, service) order.
+// buildBeforeStore answers UsageBefore from the rows it was given, in the
+// store's (window, resource kind, service) order, per meter kind.
 type buildBeforeStore struct {
 	fakeEmitterStore
 	month []store.HourlyRow
 	err   error
+	reads int
 }
 
-func (b *buildBeforeStore) BuildSecondsBefore(_ context.Context, r store.HourlyRow) (int64, error) {
+func (b *buildBeforeStore) UsageBefore(_ context.Context, r store.HourlyRow) (int64, error) {
+	b.reads++
 	if b.err != nil {
 		return 0, b.err
 	}
 	var total int64
 	for _, m := range b.month {
-		if m.WorkspaceID == r.WorkspaceID && (m.WindowStart.Before(r.WindowStart) ||
+		if m.WorkspaceID == r.WorkspaceID && m.Kind == r.Kind && (m.WindowStart.Before(r.WindowStart) ||
 			(m.WindowStart.Equal(r.WindowStart) && m.ServiceID < r.ServiceID)) {
 			total += m.Quantity
 		}
@@ -175,5 +178,77 @@ func TestEmitterReusesAFrozenBuildQuantityAndSkipsZeroRows(t *testing.T) {
 	}
 	if st.stampedCount() != 2 {
 		t.Errorf("stamped %d rows, want both: a zero row needs no earlier-minutes read", st.stampedCount())
+	}
+}
+
+// w6/m319: bandwidth follows the same split, in bytes, beside build minutes.
+func TestEmitterSendsOnlyBandwidthAboveTheAllowance(t *testing.T) {
+	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	w := now.Add(-72 * time.Hour)
+	// Hobby includes 5 GB, in the 2^30-byte GB egress is billed in.
+	first := row("tea-a", "srv-1", store.UsageKindEgressBytes, "", "service", 4<<30, w)
+	second := row("tea-a", "srv-1", store.UsageKindEgressBytes, "", "service", 2<<30, w.Add(time.Hour))
+	build := row("tea-a", "srv-1", store.UsageKindBuildSeconds, "", "service", 600, w.Add(time.Hour))
+	st := &buildBeforeStore{month: []store.HourlyRow{first, second, build}}
+	st.queue = [][]store.HourlyRow{{first, second, build}}
+	ing := &fakeIngester{}
+	e := newEmitter(st, ing, now)
+	e.Plans = planReader{plan: "hobby"}
+
+	e.emitOnce(context.Background(), false)
+
+	billed := map[string]int64{}
+	for _, batch := range st.attempts {
+		for _, a := range batch {
+			if a.BilledQuantity != nil {
+				billed[a.Row.Kind+"@"+a.Row.WindowStart.Format(time.RFC3339)] = *a.BilledQuantity
+			}
+		}
+	}
+	at := func(r store.HourlyRow) string { return r.Kind + "@" + r.WindowStart.Format(time.RFC3339) }
+	if billed[at(first)] != 0 || billed[at(second)] != 1<<30 {
+		t.Errorf("egress billed = %v, want the first hour covered and 1 GB of the second", billed)
+	}
+	if billed[at(build)] != 0 {
+		t.Errorf("build billed %d; 600 s is inside Hobby's 500 minutes, whatever the egress", billed[at(build)])
+	}
+	for _, ev := range ing.allEvents() {
+		if name, value, skip := stripeMeterEvent(ev); !skip && name == "egress_gib" && ev.Timestamp.Equal(first.WindowStart) {
+			t.Errorf("a covered egress hour reached Stripe (%s)", value)
+		}
+	}
+}
+
+// Once a batch sees the allowance used up, rows of later hours owe their whole
+// quantity without a read; a row of the same hour still reads, and the result
+// is what reading every row would have sent.
+func TestEmitterSkipsReadsAfterTheAllowanceIsSpent(t *testing.T) {
+	now := time.Date(2026, 11, 20, 12, 0, 0, 0, time.UTC)
+	w := now.Add(-72 * time.Hour)
+	rows := []store.HourlyRow{
+		row("tea-a", "srv-1", store.UsageKindEgressBytes, "", "service", 6<<30, w),                // spends Hobby's 5 GB
+		row("tea-a", "srv-2", store.UsageKindEgressBytes, "", "service", 1<<30, w),                // same hour: reads
+		row("tea-a", "srv-1", store.UsageKindEgressBytes, "", "service", 2<<30, w.Add(time.Hour)), // later: whole
+		row("tea-a", "srv-2", store.UsageKindEgressBytes, "", "service", 3<<30, w.Add(2*time.Hour)),
+	}
+	st := &buildBeforeStore{month: rows}
+	st.queue = [][]store.HourlyRow{rows}
+	e := newEmitter(st, &fakeIngester{}, now)
+	e.Plans = planReader{plan: "hobby"}
+
+	e.emitOnce(context.Background(), false)
+
+	if st.reads != 2 {
+		t.Errorf("UsageBefore reads = %d, want 2: the spending hour's rows only", st.reads)
+	}
+	var billed []int64
+	for _, batch := range st.attempts {
+		for _, a := range batch {
+			billed = append(billed, *a.BilledQuantity)
+		}
+	}
+	want := []int64{1 << 30, 1 << 30, 2 << 30, 3 << 30}
+	if fmt.Sprint(billed) != fmt.Sprint(want) {
+		t.Errorf("billed = %v, want %v", billed, want)
 	}
 }

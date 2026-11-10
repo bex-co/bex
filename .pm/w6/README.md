@@ -57,7 +57,7 @@ Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenan
 
 ## Milestones
 
-- [ ] **m319** — [Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down](m319/README.md) (8 tasks) ← promoted from `w6/116` 2026-11-10
+- [ ] **m319** — [Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down](m319/README.md) (8 tasks) ← promoted from `w6/116` 2026-11-10 — t001–t007 done 2026-11-10; closeout waits for the production read after the deploy
 - [ ] **m306** — [Builds of different services start together, and a held build is visible](m306/README.md) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-10 proposal 1; ADR060 §D5/§D6
 - [ ] **m307** — [`build_seconds` counts what Render counts as pipeline minutes](m307/README.md) (9 tasks) ← proposal 2; ADR023
 - [ ] **m308** — [Each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted"](m308/README.md) (8 tasks) ← proposal 3; ADR030 §13; after m307

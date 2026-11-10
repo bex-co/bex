@@ -30,7 +30,7 @@ import (
 // included pipeline minutes with no way to buy more (w6/m308, docs/ADR030
 // §13); the operator then starts no build or pre-deploy run for them this
 // month. A worker operation with no caller identity and no audit row, like
-// FreeHoursWorker. The mark is an annotation only: it changes no spec, opens
+// BillingSuspensionWorker. The mark is an annotation only: it changes no spec, opens
 // no deploy and survives the control-plane projector, which writes spec and
 // labels.
 type BuildMinutesWorker struct{ Svc *Service }

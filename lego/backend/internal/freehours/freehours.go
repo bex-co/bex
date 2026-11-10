@@ -63,7 +63,7 @@ type Notifier interface {
 // services. Notices are claimed in the database before they are sent, so
 // concurrent bex-api replicas send each once; suspensions are idempotent.
 type Sweeper struct {
-	Apps     apps.FreeHoursWorker
+	Apps     apps.BillingSuspensionWorker
 	Store    Store
 	Notifier Notifier
 	// BudgetHours is the monthly allowance; non-positive means 750.

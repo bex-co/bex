@@ -105,3 +105,76 @@ func TestBuildMinutesAgreeAcrossSurfacesAndCutTheEstimate(t *testing.T) {
 		t.Errorf("MCP = %+v / %s, want REST's %+v / %s", viaMCP.BuildMinutes, viaMCP.EstimatedCost.TotalUSD, rest.BuildMinutes, rest.EstimatedCost.TotalUSD)
 	}
 }
+
+// w6/m319 (docs/ADR030 §14): every usage surface reports the month's outbound
+// bandwidth against the plan's included bandwidth, and the estimate charges
+// only the bytes above it.
+func TestIncludedBandwidthAgreesAcrossSurfacesAndCutsTheEstimate(t *testing.T) {
+	st := newMemUsageStore(store.App{ID: "srv-001", TenantID: "tea-001", Name: "myapp", Tier: "starter"})
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-001", ServiceID: "srv-001", Kind: store.UsageKindEgressBytes, ResourceKind: store.ResourceKindService,
+		WindowStart: time.Date(2026, 7, 10, 8, 0, 0, 0, time.UTC), Quantity: 4 << 30,
+	})
+	svc := svcWithTenant(st, "tea-001")
+	svc.Plans = core.WorkspacePlanFunc(func(context.Context, string) (string, error) { return store.PlanHobby, nil })
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "user:alice"})
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	w := httptest.NewRecorder()
+	mux.ServeHTTP(w, httptest.NewRequest("GET", "/v1/usage", nil).WithContext(ctx))
+	if w.Code != http.StatusOK {
+		t.Fatalf("REST: %d %s", w.Code, w.Body.String())
+	}
+	var rest usageResponse
+	if err := json.NewDecoder(w.Body).Decode(&rest); err != nil {
+		t.Fatal(err)
+	}
+	if rest.IncludedBandwidth.Used != 4 || rest.IncludedBandwidth.Included != 5 {
+		t.Errorf("REST includedBandwidth = %+v, want 4 GB used of 5 included", rest.IncludedBandwidth)
+	}
+	for _, r := range rest.EstimatedCost.Resources {
+		for _, c := range r.Charges {
+			if c.Kind == store.UsageKindEgressBytes && c.CostUSD != "0.00" {
+				t.Errorf("4 GB on Hobby priced %s, want nothing", c.CostUSD)
+			}
+		}
+	}
+
+	schema, err := buildTestSchema(svc)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gql := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `{ usage { includedBandwidth { used included } } }`})
+	if len(gql.Errors) > 0 {
+		t.Fatalf("GraphQL: %v", gql.Errors)
+	}
+	bw := gql.Data.(map[string]any)["usage"].(map[string]any)["includedBandwidth"].(map[string]any)
+	if bw["used"] != rest.IncludedBandwidth.Used || bw["included"] != rest.IncludedBandwidth.Included {
+		t.Errorf("GraphQL includedBandwidth = %v, want REST's %+v", bw, rest.IncludedBandwidth)
+	}
+
+	srv := mcp.NewServer(&mcp.Implementation{Name: "usage-test", Version: "0"}, nil)
+	svc.RegisterMCP(srv)
+	serverT, clientT := mcp.NewInMemoryTransports()
+	if _, err := srv.Connect(ctx, serverT, nil); err != nil {
+		t.Fatal(err)
+	}
+	cs, err := mcp.NewClient(&mcp.Implementation{Name: "usage-test-client", Version: "0"}, nil).Connect(ctx, clientT, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer cs.Close()
+	result, err := cs.CallTool(ctx, &mcp.CallToolParams{Name: "get_usage"})
+	if err != nil || result.IsError {
+		t.Fatalf("MCP get_usage: err=%v result=%+v", err, result)
+	}
+	raw, _ := json.Marshal(result.StructuredContent)
+	var viaMCP usageResponse
+	if err := json.Unmarshal(raw, &viaMCP); err != nil {
+		t.Fatal(err)
+	}
+	if viaMCP.IncludedBandwidth != rest.IncludedBandwidth {
+		t.Errorf("MCP includedBandwidth = %+v, want REST's %+v", viaMCP.IncludedBandwidth, rest.IncludedBandwidth)
+	}
+}

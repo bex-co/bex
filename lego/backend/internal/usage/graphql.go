@@ -213,8 +213,17 @@ var buildMinutesGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "BuildMinutes",
 	Description: "The period's build minutes against the build minutes the workspace plan includes (w6/m308); included is 0 where no plan applies.",
 	Fields: graphql.Fields{
-		"used":     gqlutil.FloatField(func(m BuildMinutes) any { return m.Used }),
-		"included": gqlutil.FloatField(func(m BuildMinutes) any { return m.Included }),
+		"used":     gqlutil.FloatField(func(m IncludedUsage) any { return m.Used }),
+		"included": gqlutil.FloatField(func(m IncludedUsage) any { return m.Included }),
+	},
+})
+
+var includedBandwidthGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "IncludedBandwidth",
+	Description: "The period's outbound bandwidth against the bandwidth the workspace plan includes, in GB as billed, 2^30 bytes (w6/m319); included is 0 where no plan applies.",
+	Fields: graphql.Fields{
+		"used":     gqlutil.FloatField(func(b IncludedUsage) any { return b.Used }),
+		"included": gqlutil.FloatField(func(b IncludedUsage) any { return b.Included }),
 	},
 })
 
@@ -253,6 +262,8 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"freeInstanceHours": gqlutil.Typed(graphql.NewNonNull(freeInstanceHoursGQLType), func(s Summary) any { return s.FreeInstanceHours }),
 		// buildMinutes is the monthly included build minutes (w6/m308).
 		"buildMinutes": gqlutil.Typed(graphql.NewNonNull(buildMinutesGQLType), func(s Summary) any { return s.BuildMinutes }),
+		// includedBandwidth is the monthly included outbound bandwidth (w6/m319).
+		"includedBandwidth": gqlutil.Typed(graphql.NewNonNull(includedBandwidthGQLType), func(s Summary) any { return s.IncludedBandwidth }),
 		// agentModel is the platform-route agent model spend (ADR091 D6).
 		"agentModel": gqlutil.Typed(graphql.NewNonNull(agentModelSummaryGQLType), func(s Summary) any { return s.AgentModel }),
 		// billing is the real Stripe cost/invoices (m48/m50); null ⇒ estimate-only.

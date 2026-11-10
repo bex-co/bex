@@ -85,7 +85,7 @@ func newSweeper(t *testing.T, now time.Time, st *fakeStore, objs ...client.Objec
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
 	base := &core.Base{Client: cl, Namespace: "default", Clock: func() time.Time { return now }}
 	n := &recordingNotifier{}
-	return &Sweeper{Apps: apps.FreeHoursWorker{Svc: &apps.Service{Base: base}}, Store: st, Notifier: n, BudgetHours: 10}, cl, n
+	return &Sweeper{Apps: apps.BillingSuspensionWorker{Svc: &apps.Service{Base: base}, Annotation: core.AnnotFreeHoursSuspended}, Store: st, Notifier: n, BudgetHours: 10}, cl, n
 }
 
 func get(t *testing.T, cl client.Client, ws, name string) *appv1alpha1.App {

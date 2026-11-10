@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -54,7 +55,7 @@ func TestAwaitMeteredUsageConvertsToMeterUnits(t *testing.T) {
 	summary := 3.0
 	c, stub := settleMeterClient(t, &summary)
 	totals := []store.ExportedUsageTotal{
-		{Kind: store.UsageKindEgressBytes, Quantity: 3 * bytesPerGiB, Recent: 3 * bytesPerGiB},
+		{Kind: store.UsageKindEgressBytes, Quantity: 3 * pricing.BytesPerGiB, Recent: 3 * pricing.BytesPerGiB},
 		{Kind: store.UsageKindInstanceSeconds, Tier: "free", ResourceKind: store.ResourceKindService, Quantity: 3600},
 	}
 	if err := c.AwaitMeteredUsage(context.Background(), settleContractFixture, totals); err != nil {
@@ -75,7 +76,7 @@ func TestAwaitMeteredUsageRefusesWithinCallerDeadline(t *testing.T) {
 	defer cancel()
 	start := time.Now()
 	err := c.AwaitMeteredUsage(ctx, settleContractFixture, []store.ExportedUsageTotal{
-		{Kind: store.UsageKindEgressBytes, Quantity: 3 * bytesPerGiB, Recent: 3 * bytesPerGiB},
+		{Kind: store.UsageKindEgressBytes, Quantity: 3 * pricing.BytesPerGiB, Recent: 3 * pricing.BytesPerGiB},
 	})
 	var coded *core.CodedError
 	if !errors.As(err, &coded) || coded.Code != core.CodeBillingSettling {
@@ -94,7 +95,7 @@ func TestAwaitMeteredUsageIgnoresOldShortfall(t *testing.T) {
 	c, _ := settleMeterClient(t, &summary)
 	c.settleWait = time.Minute
 	err := c.AwaitMeteredUsage(context.Background(), settleContractFixture, []store.ExportedUsageTotal{
-		{Kind: store.UsageKindEgressBytes, Quantity: 3 * bytesPerGiB, Recent: bytesPerGiB},
+		{Kind: store.UsageKindEgressBytes, Quantity: 3 * pricing.BytesPerGiB, Recent: pricing.BytesPerGiB},
 	})
 	if err != nil {
 		t.Fatalf("an old shortfall blocked the settle: %v", err)

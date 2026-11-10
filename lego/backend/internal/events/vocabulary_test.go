@@ -298,7 +298,7 @@ func targetedVerbsIn(t *testing.T, dir, pkg string) map[string]bool {
 			for _, decl := range file.Decls {
 				if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv != nil && fn.Body != nil {
 					// Verbs live on Service. Another receiver may reuse a verb's
-					// name (apps.FreeHoursWorker.Suspend/Resume); p.Files is a map,
+					// name (apps.BillingSuspensionWorker.Suspend/Resume); p.Files is a map,
 					// so letting the last-parsed one win made this test flaky.
 					if prev, dup := methods[fn.Name.Name]; dup && receiverName(prev) == "Service" {
 						continue

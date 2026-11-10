@@ -513,9 +513,11 @@ type AppView struct {
 	Builder   string `json:"builder,omitempty"`
 	Replicas  int32  `json:"replicas"`
 	Suspended bool   `json:"suspended"`
-	// FreeHoursSuspended: the suspension is the workspace's spent monthly Free
-	// instance hours (w8/m139), reported as the "billing" suspender.
-	FreeHoursSuspended bool `json:"-"`
+	// BillingSuspended: the suspension is a spent monthly allowance — the
+	// workspace's Free instance hours (w8/m139) or, without a payment method,
+	// its included outbound bandwidth (w6/m319) — reported as the "billing"
+	// suspender.
+	BillingSuspended bool `json:"-"`
 	// CrashLoopSuspended: the platform suspended the service after it failed
 	// to start and become healthy for a whole window (w2/m253).
 	CrashLoopSuspended bool `json:"-"`
@@ -1159,7 +1161,7 @@ func view(a *appv1alpha1.App) AppView {
 		Builder:              a.Spec.Builder,
 		Replicas:             a.Spec.Replicas,
 		Suspended:            a.Spec.Suspended,
-		FreeHoursSuspended:   a.Annotations[core.AnnotFreeHoursSuspended] != "",
+		BillingSuspended:     a.Annotations[core.AnnotFreeHoursSuspended] != "" || a.Annotations[core.AnnotBandwidthSuspended] != "",
 		CrashLoopSuspended:   a.Annotations[core.AnnotCrashLoopSuspended] != "",
 		Schedule:             a.Spec.Schedule,
 		Command:              cronCommand(a.Spec),
@@ -4314,7 +4316,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	// Upgrading a service the monthly Free instance hours suspended lets it run
 	// at once (w8/m139).
 	if core.PaidPlan(tier) {
-		if err := s.resumeFromFreeHours(ctx, a); err != nil {
+		if err := s.resumeFromBilling(ctx, a, core.AnnotFreeHoursSuspended); err != nil {
 			return AppView{}, err
 		}
 	}
@@ -5423,6 +5425,8 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		return AppView{}, err
 	} else if err := s.requireFreeHoursAvailable(a); err != nil {
 		return AppView{}, err
+	} else if err := s.requireBandwidthAvailable(ctx, a); err != nil {
+		return AppView{}, err
 	}
 	verb := core.AuditVerbResume
 	if suspended {
@@ -5434,6 +5438,7 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 			a.Spec.Suspended = suspended
 			if !suspended {
 				delete(a.Annotations, core.AnnotFreeHoursSuspended)
+				delete(a.Annotations, core.AnnotBandwidthSuspended)
 				delete(a.Annotations, core.AnnotCrashLoopSuspended)
 				delete(a.Annotations, core.AnnotCrashLoopObserved)
 			}

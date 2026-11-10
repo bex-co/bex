@@ -66,13 +66,16 @@ type usageResponse struct {
 	// BuildMinutes is the period's build minutes against the plan's included
 	// pipeline minutes (w6/m308, docs/ADR030 §13).
 	BuildMinutes usageIncluded `json:"buildMinutes"`
+	// IncludedBandwidth is the period's outbound bandwidth against the plan's
+	// included bandwidth, in GB as billed (w6/m319, docs/ADR030 §14).
+	IncludedBandwidth usageIncluded `json:"includedBandwidth"`
 	// AgentModel is the platform-route agent model spend by model and token
 	// kind (ADR091 D6), billed at the provider's cost + 30%.
 	AgentModel AgentModelSummary `json:"agentModel"`
 }
 
-// usageIncluded is a used-against-included pair: Free instance hours, or
-// build minutes.
+// usageIncluded is a used-against-included pair: Free instance hours, build
+// minutes, or bandwidth GB.
 type usageIncluded struct {
 	Used     float64 `json:"used"`
 	Included float64 `json:"included"`
@@ -135,6 +138,7 @@ func toUsageResponse(sum Summary) usageResponse {
 		Coverage:          coverage,
 		FreeInstanceHours: usageIncluded{Used: sum.FreeInstanceHours.Used, Included: sum.FreeInstanceHours.Included},
 		BuildMinutes:      usageIncluded{Used: sum.BuildMinutes.Used, Included: sum.BuildMinutes.Included},
+		IncludedBandwidth: usageIncluded{Used: sum.IncludedBandwidth.Used, Included: sum.IncludedBandwidth.Included},
 		AgentModel:        sum.AgentModel,
 	}
 }

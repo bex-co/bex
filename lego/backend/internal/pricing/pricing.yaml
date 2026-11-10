@@ -98,8 +98,21 @@ keyvalue:
 # Composed public outbound egress_bytes rate: $0.015/GiB
 # (Render's current $0.15/GB × 0.10 = 90% off; bex's transparent meter uses
 # binary GiB, preserving its existing byte basis).
+# includedGB: each workspace's outbound bandwidth a month, Render's figures
+# (render.com/docs/outbound-bandwidth, read 2026-11-10; docs/ADR030 §14) in the
+# GB (2^30 bytes) bandwidth is billed in. Enterprise takes Scale's until its
+# contract says otherwise.
 bandwidth:
   usdPerByte: 0.000000000013969838619232177734375   # $0.015 / 1,073,741,824 bytes
+  includedGB:
+    - plan: hobby
+      gb: 5
+    - plan: pro
+      gb: 25
+    - plan: scale
+      gb: 1000
+    - plan: enterprise
+      gb: 1000
 
 # build_seconds rate: $0.0035/min (Render $0.005/min × 0.70 = 30% off)
 # includedMinutes: each workspace's Starter-tier pipeline minutes a month, as on

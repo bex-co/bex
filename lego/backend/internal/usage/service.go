@@ -159,7 +159,10 @@ type Summary struct {
 	FreeInstanceHours FreeInstanceHours
 	// BuildMinutes is the period's build minutes against the plan's included
 	// pipeline minutes (docs/ADR030 §13): the estimate prices only those above.
-	BuildMinutes BuildMinutes
+	BuildMinutes IncludedUsage
+	// IncludedBandwidth is the period's outbound bandwidth against the plan's
+	// included bandwidth (w6/m319, docs/ADR030 §14), in GB as billed.
+	IncludedBandwidth IncludedUsage
 	// AgentModel is the period's platform-route agent model spend by model
 	// and token kind (ADR091 D6).
 	AgentModel AgentModelSummary
@@ -175,9 +178,10 @@ type FreeInstanceHours struct {
 	Included float64
 }
 
-// BuildMinutes is build minutes used against the plan's included pipeline
-// minutes. Included is zero where no plan applies.
-type BuildMinutes struct {
+// IncludedUsage is a meter's period usage against what the workspace plan
+// includes, in the meter's display unit: build minutes (w6/m308) or bandwidth
+// GB (w6/m319). Included is zero where no plan applies.
+type IncludedUsage struct {
 	Used     float64
 	Included float64
 }
@@ -245,12 +249,14 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	s.resolveServiceNames(ctx, tenantID, sum.Services)
 	sum.Period = now.Format(periodLayout)
 	sum.FreeInstanceHours = s.freeInstanceHours(rows)
-	includedBuild, err := pricing.IncludedBuildSecondsFor(ctx, s.Base, tenantID)
+	included, err := pricing.IncludedForWorkspace(ctx, s.Base, tenantID)
 	if err != nil {
 		return Summary{}, fmt.Errorf("usage: %w", err)
 	}
-	sum.BuildMinutes = buildMinutes(rows, includedBuild)
-	sum.EstimatedCost = pricing.Default.EstimateIncluding(rows, includedBuild)
+	// The same measures the buildminutes and bandwidth sweepers enforce.
+	sum.BuildMinutes = includedUsage(rows, store.UsageKindBuildSeconds, included, 60)
+	sum.IncludedBandwidth = includedUsage(rows, store.UsageKindEgressBytes, included, pricing.BytesPerGiB)
+	sum.EstimatedCost = pricing.Default.EstimateIncluding(rows, included)
 	sum.AgentModel = summariseAgentModel(rows, sum.EstimatedCost)
 	nameResourceEstimates(&sum.EstimatedCost, sum.Services)
 	// The Stripe projection (real cost, invoices, credit grants) is a billing
@@ -1648,16 +1654,16 @@ func (s *Service) meterDiskWindow(ctx context.Context, window time.Time) error {
 	return nil
 }
 
-// buildMinutes sums the period's build_seconds as minutes against included,
-// the same measure the buildminutes sweeper enforces.
-func buildMinutes(rows []store.UsageSummaryRow, includedSeconds int64) BuildMinutes {
-	var seconds int64
+// includedUsage sums the period's kind against what the plan includes, in
+// units of per meter units.
+func includedUsage(rows []store.UsageSummaryRow, kind string, included pricing.Included, per float64) IncludedUsage {
+	var total int64
 	for _, r := range rows {
-		if r.Kind == store.UsageKindBuildSeconds {
-			seconds += r.Total
+		if r.Kind == kind {
+			total += r.Total
 		}
 	}
-	return BuildMinutes{Used: float64(seconds) / 60, Included: float64(includedSeconds) / 60}
+	return IncludedUsage{Used: float64(total) / per, Included: float64(included[kind]) / per}
 }
 
 // freeInstanceHours sums the Free service instance-seconds in rows against the

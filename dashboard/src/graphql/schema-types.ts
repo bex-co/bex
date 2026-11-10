@@ -1554,6 +1554,13 @@ export type IpAllowListEntryInput = {
   description?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** The period's outbound bandwidth against the bandwidth the workspace plan includes, in GB as billed, 2^30 bytes (w6/m319); included is 0 where no plan applies. */
+export type IncludedBandwidth = {
+  __typename: 'IncludedBandwidth';
+  included: Maybe<Scalars['Float']['output']>;
+  used: Maybe<Scalars['Float']['output']>;
+};
+
 export type InstanceType = {
   __typename: 'InstanceType';
   available: Scalars['Boolean']['output'];
@@ -5170,6 +5177,7 @@ export type UsageSummary = {
   coverage: UsageCoverage;
   estimatedCost: Maybe<EstimatedCost>;
   freeInstanceHours: FreeInstanceHours;
+  includedBandwidth: IncludedBandwidth;
   period: Maybe<Scalars['String']['output']>;
   services: Maybe<Array<Maybe<ServiceUsage>>>;
   workspaceId: Maybe<Scalars['String']['output']>;

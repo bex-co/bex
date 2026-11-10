@@ -83,10 +83,36 @@ const enUsage: Record<string, TranslationEntry> = {
       "The included build minutes are spent. Further minutes are billed per minute; without a payment method, new builds and pre-deploy commands stop until the start of next month.",
     description: "Notice once the included build minutes are spent (w6/m308)",
   },
+  "usage.bandwidthTitle": {
+    message: "Outbound bandwidth",
+    description:
+      "Title of the included bandwidth card on the billing page (w6/m319)",
+  },
+  "usage.bandwidthDescription": {
+    message:
+      "Traffic your services send to the internet uses bandwidth. Your plan includes some every month; bandwidth beyond it is billed per GB.",
+    description: "Explains the plan's included outbound bandwidth (w6/m319)",
+  },
+  "usage.bandwidthUsed": {
+    message: "{used} of {included} GB included bandwidth used this month",
+    description:
+      "Outbound bandwidth used against the plan's included bandwidth, in GB (w6/m319)",
+  },
+  "usage.bandwidthNear": {
+    message:
+      "You are close to your included bandwidth. Without a payment method, your workspace's services spin down when it runs out, until the start of next month.",
+    description:
+      "Warning once bandwidth reaches 80 percent of the included bandwidth (w6/m319)",
+  },
+  "usage.bandwidthSpent": {
+    message:
+      "The included bandwidth is spent. Further bandwidth is billed per GB; without a payment method, your workspace's services are spun down until the start of next month.",
+    description: "Notice once the included bandwidth is spent (w6/m319)",
+  },
   "usage.chargeIncluded": {
     message: "{included} included",
     description:
-      "Part of a charge line's quantity that the plan's included build minutes covered (w6/m308)",
+      "Part of a charge line's quantity that the plan's included build minutes or bandwidth covered (w6/m308, w6/m319)",
   },
   "usage.pipelineTitle": {
     message: "Build Pipeline",

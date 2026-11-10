@@ -41,10 +41,7 @@ import (
 // priced (and their events valued) in coarser units — GiB and GB-hours. The
 // setup script (scripts/stripe-billing-setup.py) prices the matching meters
 // identically; the two MUST agree.
-const (
-	bytesPerGiB    = 1073741824
-	secondsPerHour = 3600
-)
+const secondsPerHour = 3600
 
 // workspaceMetadataKey tags each Stripe customer with its bex workspace id, so a
 // customer is looked up by `metadata['bex_workspace']:'tea-…'` — the Stripe
@@ -471,6 +468,10 @@ func safeStripeError(err error) (code, message string) {
 // meter (nothing is owed), so it is skipped. Kept in lockstep with
 // scripts/stripe-billing-setup.py.
 func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
+	// An hour a plan's allowance covered owes nothing (docs/ADR030 §13, §14).
+	if pricing.HasAllowance(e.EventType) && e.Properties["value"] == "0" {
+		return "", "", true
+	}
 	switch e.EventType {
 	case store.UsageKindInstanceSeconds:
 		tier := e.Properties["tier"]
@@ -493,7 +494,7 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 		}
 		return name, e.Properties["value"], false
 	case store.UsageKindEgressBytes:
-		return "egress_gib", scaleDown(e.Properties["value"], bytesPerGiB), false
+		return "egress_gib", scaleDown(e.Properties["value"], pricing.BytesPerGiB), false
 	case store.UsageKindStorageGBSeconds:
 		// A Free datastore's included storage is owed nothing (w4/427).
 		if e.Properties["tier"] == "free" {
@@ -505,10 +506,6 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 		// (provisioned vs used) and the rate both differ (ADR082 D8/D9).
 		return "disk_gb_hours", scaleDown(e.Properties["value"], secondsPerHour), false
 	case store.UsageKindBuildSeconds:
-		// An hour the plan's included minutes covered owes nothing (w6/m308).
-		if e.Properties["value"] == "0" {
-			return "", "", true
-		}
 		return "build_seconds", e.Properties["value"], false
 	case store.UsageKindSandboxComputeSeconds:
 		if _, ok := billableMeterNames[store.UsageKindSandboxComputeSeconds]; !ok {

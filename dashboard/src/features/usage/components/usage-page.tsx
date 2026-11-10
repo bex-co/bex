@@ -32,6 +32,7 @@ import { periodFor, periodLabel } from "@/features/usage/lib/period";
 import { useUsage } from "../hooks/use-usage";
 import { WorkspaceResourceCaps } from "./resource-caps";
 import { BuildMinutesCard } from "./build-minutes-card";
+import { IncludedBandwidthCard } from "./included-bandwidth-card";
 import { FreeHoursCard } from "./free-hours-card";
 import { PlanCard } from "./plan-card";
 import { PaymentMethodCard } from "./payment-method-card";
@@ -142,6 +143,9 @@ export function UsagePage() {
               <WorkspaceResourceCaps />
               <FreeHoursCard hours={summary?.freeInstanceHours ?? null} />
               <BuildMinutesCard minutes={summary?.buildMinutes ?? null} />
+              <IncludedBandwidthCard
+                bandwidth={summary?.includedBandwidth ?? null}
+              />
             </section>
             <section id="charges" className={SECTION_NAVIGATION_TARGET_CLASS}>
               <ChargesCard

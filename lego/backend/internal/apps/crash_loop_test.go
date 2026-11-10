@@ -44,7 +44,7 @@ func TestCrashLoopSuspensionReportsAndResumes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := strings.Join(core.SuspendersFor(v.Suspended, v.FreeHoursSuspended, v.CrashLoopSuspended), ","); got != "stuck_crashlooping" {
+	if got := strings.Join(core.SuspendersFor(v.Suspended, v.BillingSuspended, v.CrashLoopSuspended), ","); got != "stuck_crashlooping" {
 		t.Fatalf("suspenders = %q, want stuck_crashlooping", got)
 	}
 	if got := toRenderService(v).Suspenders; strings.Join(got, ",") != "stuck_crashlooping" {

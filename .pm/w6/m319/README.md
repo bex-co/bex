@@ -1,24 +1,24 @@
 # w6 · m319 — Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down
 
-**Worker:** worker6 **Goal:** outbound bandwidth is charged only above Render's per-plan allowance, and a workspace without a payment method that uses it up has its services suspended until the month turns, as on Render. **Status:** todo
+**Worker:** worker6 **Goal:** outbound bandwidth is charged only above Render's per-plan allowance, and a workspace without a payment method that uses it up has its services suspended until the month turns, as on Render. **Status:** in progress — t001–t007 done 2026-11-10; closeout t008 waits for the production read after the deploy
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Per-plan included bandwidth in the catalog and the estimate](t001.md) | 1h | — |
-| t002 | [Stripe receives only the bandwidth above the allowance](t002.md) | 1h | t001 |
-| t003 | [Past the allowance without a payment method, services spin down until the month turns](t003.md) | 2h | t001 |
-| t004 | [`includedBandwidth` on every usage surface, with warning emails](t004.md) | 1.5h | t001 |
-| t005 | [Render parity](t005.md) | 30m | t002, t003, t004 |
-| t006 | [Simplify](t006.md) | 15m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t006 |
+| t001 | [Per-plan included bandwidth in the catalog and the estimate](done/t001.md) — **DONE** | 1h | — |
+| t002 | [Stripe receives only the bandwidth above the allowance](done/t002.md) — **DONE** | 1h | t001 |
+| t003 | [Past the allowance without a payment method, services spin down until the month turns](done/t003.md) — **DONE** | 2h | t001 |
+| t004 | [`includedBandwidth` on every usage surface, with warning emails](done/t004.md) — **DONE** | 1.5h | t001 |
+| t005 | [Render parity](done/t005.md) — **DONE** | 30m | t002, t003, t004 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 30m | t006 |
 | t008 | [Closeout](t008.md) | 10m | t007 |
 
 ## Definition of done
 
 - A Hobby workspace's estimate and Stripe emission exclude its first 5 GB of outbound bandwidth a month (tests).
-- On dev-6, a card-less workspace past its allowance has its services suspended with the billing suspender, and binding a card resumes them.
+- A card-less workspace past its allowance has its services suspended with the billing suspender, and binding a card resumes them (amended 2026-11-10: verified by the sweeper, apps-service and real-Postgres store tests; dev-N runs without Stripe, so the sweeper is not wired there).
 - `includedBandwidth` reads the same on REST, GraphQL, MCP and the dashboard; ADR030 records the allowance.
 
 ## Source + Goal linkage

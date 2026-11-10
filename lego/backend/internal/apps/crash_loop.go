@@ -200,7 +200,7 @@ func (s *Service) observeCrashLoop(ctx context.Context, a *appv1alpha1.App, valu
 }
 
 // CrashLoopWorker exposes the crash-loop suspension to its sweeper, a worker
-// with no caller identity, like FreeHoursWorker.
+// with no caller identity, like BillingSuspensionWorker.
 type CrashLoopWorker struct{ Svc *Service }
 
 // Now is the service clock.

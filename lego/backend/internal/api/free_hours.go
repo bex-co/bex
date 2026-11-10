@@ -18,7 +18,9 @@ package api
 
 import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/bandwidth"
 	"github.com/bex-co/bex/lego/backend/internal/buildminutes"
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/freehours"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 )
@@ -31,7 +33,7 @@ func newFreeHours(appsSvc *apps.Service, d Deps, notificationsSvc *notifications
 		return nil
 	}
 	return &freehours.Sweeper{
-		Apps:        apps.FreeHoursWorker{Svc: appsSvc},
+		Apps:        apps.BillingSuspensionWorker{Svc: appsSvc, Annotation: core.AnnotFreeHoursSuspended},
 		Store:       accounting,
 		Notifier:    notifications.FreeHoursNotifier{Service: notificationsSvc},
 		BudgetHours: d.FreeInstanceHours,
@@ -51,6 +53,25 @@ func newBuildMinutes(appsSvc *apps.Service, d Deps, notificationsSvc *notificati
 		Apps:     apps.BuildMinutesWorker{Svc: appsSvc},
 		Store:    accounting,
 		Notifier: notifications.BuildMinutesNotifier{Service: notificationsSvc},
+		Plans:    appsSvc.Base,
+	}
+}
+
+// newBandwidth wires the monthly included-bandwidth sweeper (w6/m319): with
+// Stripe billing on, a workspace that has used its plan's outbound bandwidth
+// and has no payment method has its services spun down until the month turns.
+// It also needs the payment-method gate (BEX_REQUIRE_PAYMENT_METHOD): that
+// gate refuses the manual resume, and without it a resume and the next sweep
+// would undo each other.
+func newBandwidth(appsSvc *apps.Service, d Deps, notificationsSvc *notifications.Service) *bandwidth.Sweeper {
+	accounting, ok := d.Store.(bandwidth.Store)
+	if !ok || d.Billing == nil || appsSvc.Payment == nil {
+		return nil
+	}
+	return &bandwidth.Sweeper{
+		Apps:     apps.BillingSuspensionWorker{Svc: appsSvc, Annotation: core.AnnotBandwidthSuspended},
+		Store:    accounting,
+		Notifier: notifications.BandwidthNotifier{Service: notificationsSvc},
 		Plans:    appsSvc.Base,
 	}
 }
