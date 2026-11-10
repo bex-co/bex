@@ -446,6 +446,20 @@ install_pinned_cnpg() {
   [ "$rc" -eq 0 ] || { echo "error: installing the lock-pinned CNPG operator (release cnpg, namespace cnpg-system) failed" >&2; exit 1; }
 }
 
+# ensure_tenant_storage_class — the operator puts every tenant Postgres and Key
+# Value volume on `hcloud-volumes`, production's Hetzner class
+# (database_controller.go dbStorageClass, keyvalue_controller.go
+# kvStorageClass). The local cluster has only local-path, so a paid
+# datastore's PVC sat Pending for ever ("storageclass hcloud-volumes not
+# found"). This shared alias on the local-path provisioner lets them bind.
+# local-path cannot expand a volume: a Postgres storage grow is recorded but
+# its PVC keeps its size, and a Key Value grow is refused
+# (StorageClassNotExpandable). Production's class expands.
+ensure_tenant_storage_class() {
+  echo "==> tenant datastore StorageClass (shared alias: hcloud-volumes on local-path)"
+  kubectl apply -f "$TEMPLATES/hcloud-volumes-storageclass.yaml" >/dev/null
+}
+
 ensure_cnpg() {
   echo "==> CNPG operator (self-installing if absent)"
   if ! kubectl get crd clusters.postgresql.cnpg.io >/dev/null 2>&1; then
@@ -785,6 +799,7 @@ cmd_up() {
   kubectl apply -f deploy/gitops/base/tenant-namespace-clusterroles.yaml >/dev/null
 
   ensure_cnpg
+  ensure_tenant_storage_class
 
   echo "==> CNPG Clusters (kratos-db, hydra-db, bex-db)"
   local cluster
@@ -1001,6 +1016,11 @@ cmd_status() {
       ok "CNPG operator ready"
     else
       no "CNPG operator not ready (absent CRD, or the manager's :9443 webhook won't bind)"
+    fi
+    if kubectl get storageclass hcloud-volumes >/dev/null 2>&1; then
+      ok "tenant datastore StorageClass hcloud-volumes present"
+    else
+      no "no hcloud-volumes StorageClass — paid Postgres and Key Value PVCs stay Pending (run 'up')"
     fi
     if [ "${DEV_ENV_OBSERVABILITY:-1}" = "1" ]; then
       loki_ready="$(kubectl -n monitoring get statefulset loki -o jsonpath='{.status.readyReplicas}' 2>/dev/null)"

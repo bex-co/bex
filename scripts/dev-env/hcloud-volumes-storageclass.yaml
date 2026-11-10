@@ -1,0 +1,13 @@
+# dev-N's alias for production's Hetzner volume class, which the operator puts
+# every tenant Postgres and Key Value volume on (scripts/dev-env.sh
+# ensure_tenant_storage_class). local-path cannot expand volumes.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: hcloud-volumes
+  labels:
+    app.kubernetes.io/managed-by: bex-dev-env
+provisioner: rancher.io/local-path
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: false

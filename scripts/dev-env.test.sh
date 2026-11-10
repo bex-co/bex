@@ -492,6 +492,15 @@ rm -rf "$wh_tmp"
 echo "==> CNPG fallback installs production's lock-pinned chart (w2/m295 t003)"
 assert "dev-env sources the shared chart pins" "grep -q '^\. scripts/lib/helm-pinned.sh\$' scripts/dev-env.sh"
 assert "no version-label CNPG install remains" "! grep -qE 'cnpg/cloudnative-pg|--version 0\.26' scripts/dev-env.sh"
+# The operator puts tenant Postgres and Key Value volumes on production's
+# hcloud-volumes class; dev-N aliases it onto local-path, right after CNPG,
+# or every paid datastore PVC stays Pending.
+assert "up aliases hcloud-volumes right after ensuring CNPG" \
+  "sed -n '/^cmd_up()/,/^}/p' scripts/dev-env.sh | grep -A1 '^  ensure_cnpg\$' | grep -q '^  ensure_tenant_storage_class\$'"
+assert "the alias is the class the operator puts Postgres and Key Value volumes on" \
+  "sc=\$(yq '.metadata.name' scripts/dev-env/hcloud-volumes-storageclass.yaml) && grep -q \"dbStorageClass = \\\"\$sc\\\"\" lego/operator/internal/controller/database_controller.go && grep -q \"kvStorageClass = \\\"\$sc\\\"\" lego/operator/internal/controller/keyvalue_controller.go"
+assert "the alias provisions through local-path" \
+  "[ \"\$(yq '.provisioner' scripts/dev-env/hcloud-volumes-storageclass.yaml)\" = rancher.io/local-path ]"
 assert "ensure_cnpg installs through install_pinned_cnpg" \
   "awk '/^ensure_cnpg\\(\\)/,/^}\$/' scripts/dev-env.sh | grep -q '^    install_pinned_cnpg\$'"
 cn_tmp=$(mktemp -d)

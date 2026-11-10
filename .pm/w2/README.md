@@ -62,6 +62,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] **m307** — [Postgres: turn on connection pooling and grow storage from the dashboard, as on Render](m307/README.md) (9 tasks) ← `/pm-brainstorm for w2` 2026-11-10 item 3; Render parity included. REST/MCP already serve both writes; GraphQL and the dashboard do not, and ADR018:190 wrongly marks the pooler UI ✅ (w4/107 option a, never filed)
 - [ ] [079 — Pooled Postgres connection strings use port 5432; Render's use 6432](079.md) ← w2/m307 Render parity, 2026-11-10
 - [ ] [080 — Manual Postgres storage increases: Render requires 5 GB steps and waits 6 hours between them; bex's API checks neither](080.md) ← w2/m307 Render parity, 2026-11-10
+- [x] [081 — dev-N cannot provision a paid Postgres or Key Value: the operator's `hcloud-volumes` StorageClass does not exist locally](done/081.md) — **DONE 2026-11-10**: `dev-env.sh up` aliases it onto local-path ← w2/m307 dev-2 walk
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
 
