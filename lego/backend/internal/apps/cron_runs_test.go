@@ -604,3 +604,84 @@ func TestCronScheduleThatNeverFires(t *testing.T) {
 		t.Errorf("update to a never-firing schedule = %v, want SCHEDULE_NEVER_FIRES", err)
 	}
 }
+
+// w4/m300: the run a trigger answers is the run — readable, cancellable and
+// accounted for before the operator has reconciled it into status.runs.
+func TestAcknowledgedCronRunIsReadableCancellableAndNeverLost(t *testing.T) {
+	ctx := context.Background()
+	now := time.Date(2026, 11, 10, 7, 39, 0, 0, time.UTC)
+	svc, cl := newService(nil, cronApp("nightly"))
+	svc.Clock = func() time.Time { return now }
+
+	// P1: get-by-id and the list find it pending at once, with no startedAt.
+	a, err := svc.TriggerCronRun(ctx, "nightly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.GetCronRun(ctx, "nightly", a.ID)
+	if err != nil || got.Status != cronRunPending || got.StartedAt != "" {
+		t.Fatalf("get acknowledged run = %+v, %v; want pending without startedAt", got, err)
+	}
+	list, err := svc.ListCronRuns(ctx, "nightly", "", 0)
+	if err != nil || len(list) == 0 || list[0].ID != a.ID {
+		t.Fatalf("list = %+v, %v; want the acknowledged run first", list, err)
+	}
+
+	// P3: a second trigger cancels the first, which reads canceled, not 404.
+	now = now.Add(300 * time.Millisecond)
+	b, err := svc.TriggerCronRun(ctx, "nightly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := getApp(t, cl, "nightly")
+	if c := app.Spec.CancelRun; c == nil || c.Name != a.Name || !c.Unmaterialized {
+		t.Fatalf("replacement cancel intent = %+v, want the unmaterialized first run", c)
+	}
+	if got, err := svc.GetCronRun(ctx, "nightly", a.ID); err != nil || got.Status != cronRunCanceled || got.FinishedAt == "" {
+		t.Fatalf("replaced run = %+v, %v; want canceled", got, err)
+	}
+	if got, err := svc.GetCronRun(ctx, "nightly", b.ID); err != nil || got.Status != cronRunPending {
+		t.Fatalf("replacement = %+v, %v; want pending", got, err)
+	}
+
+	// P2: Render's DELETE /runs finds the acknowledged run and cancels it.
+	canceled, err := svc.CancelCurrentCronRun(ctx, "nightly")
+	if err != nil || canceled.ID != b.ID || canceled.Status != cronRunCanceled {
+		t.Fatalf("cancel current = %+v, %v; want %s canceled", canceled, err, b.ID)
+	}
+	app = getApp(t, cl, "nightly")
+	if c := app.Spec.CancelRun; c == nil || c.Name != b.Name || !c.Unmaterialized {
+		t.Fatalf("cancel intent = %+v", c)
+	}
+	if got, err := svc.GetCronRun(ctx, "nightly", b.ID); err != nil || got.Status != cronRunCanceled {
+		t.Fatalf("canceled run = %+v, %v", got, err)
+	}
+	if _, err := svc.CancelCronRun(ctx, "nightly", b.ID); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("cancel a canceled run = %v, want conflict", err)
+	}
+	if _, err := svc.GetCronRun(ctx, "nightly", ids.Derive(ids.CronRun, "other-run")); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("unknown run = %v, want not found", err)
+	}
+}
+
+// Once the operator has acknowledged a run long ago and history has moved
+// on, the stale runAt is not resurrected as pending; nor is a recorded
+// unmaterialized cancel re-synthesized after eviction.
+func TestCronRunsOfDoesNotResurrectSettledRequests(t *testing.T) {
+	now := time.Date(2026, 11, 10, 8, 0, 0, 0, time.UTC)
+	runAt := now.Add(-time.Hour).Format(time.RFC3339Nano)
+	a := cronApp("nightly")
+	a.Spec.RunAt = runAt
+	a.Status.ManualRunHandledAt = runAt
+	a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: "nightly-run-old", RequestedAt: now.Add(-time.Minute).Format(time.RFC3339Nano), Unmaterialized: true}
+	a.Status.CancelRunRecorded = "nightly-run-old@" + a.Spec.CancelRun.RequestedAt
+	if runs := cronRunsOf(a, now); len(runs) != len(a.Status.Runs) {
+		t.Fatalf("runs = %+v, want only the operator's history", runs)
+	}
+	// Just acknowledged, history not yet written: still pending.
+	a.Spec.RunAt = now.Add(-time.Second).Format(time.RFC3339Nano)
+	a.Status.ManualRunHandledAt = a.Spec.RunAt
+	if runs := cronRunsOf(a, now); len(runs) != len(a.Status.Runs)+1 || runs[0].Status != appv1alpha1.CronRunRunning {
+		t.Fatalf("runs = %+v, want the just-acknowledged run pending first", runs)
+	}
+}

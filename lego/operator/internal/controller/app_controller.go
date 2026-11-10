@@ -4997,6 +4997,11 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 	if app.Spec.CancelRun == nil || app.Spec.CancelRun.Name == "" {
 		return false, nil
 	}
+	// Record before acknowledging: a reader must never find the run neither
+	// pending nor canceled (w4/m300).
+	if err := r.recordUnmaterializedCancel(ctx, app); err != nil {
+		return false, err
+	}
 	if app.Spec.RunAt != "" && app.Spec.CancelRun.Name == manualRunJobName(app.Name, app.Spec.RunAt) {
 		if err := r.acknowledgeManualRun(ctx, app); err != nil {
 			return false, err
@@ -5016,6 +5021,38 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 		return false, err
 	}
 	return true, nil
+}
+
+// recordUnmaterializedCancel records, once, the Canceled outcome of a manual
+// run canceled or replaced before its Job existed (w4/m300). Render's single-
+// run guarantee cancels the active run before its replacement; a run that
+// never got a Job still has to read canceled rather than vanish. The run is
+// recorded only for a cancellation the backend marked Unmaterialized, only
+// while no Job and no history entry carries it, and only once per
+// cancellation (status.cancelRunRecorded), so an entry later evicted from the
+// bounded history is never added back.
+func (r *AppReconciler) recordUnmaterializedCancel(ctx context.Context, app *appv1alpha1.App) error {
+	cancel := app.Spec.CancelRun
+	token := cancel.Name + "@" + cancel.RequestedAt
+	if !cancel.Unmaterialized || app.Status.CancelRunRecorded == token {
+		return nil
+	}
+	if slices.ContainsFunc(app.Status.Runs, func(run appv1alpha1.CronRun) bool { return run.Name == cancel.Name }) {
+		return r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) { status.CancelRunRecorded = token })
+	}
+	job := &batchv1.Job{}
+	err := r.buildPlaneClient().Get(ctx, client.ObjectKey{Name: cancel.Name, Namespace: app.Namespace}, job)
+	if err == nil {
+		return nil // a Job exists: the ordinary cancellation path records it
+	}
+	if !apierrors.IsNotFound(err) {
+		return err
+	}
+	run := appv1alpha1.CronRun{Name: cancel.Name, Status: appv1alpha1.CronRunCanceled, FinishedAt: cancel.RequestedAt, OrderedAt: cancel.RequestedAt}
+	return r.patchAppStatus(ctx, app, func(status *appv1alpha1.AppStatus) {
+		status.Runs = append([]appv1alpha1.CronRun{run}, status.Runs...)
+		status.CancelRunRecorded = token
+	})
 }
 
 // manualCronRunActive reports whether spec.runAt names a one-off run that is

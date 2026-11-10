@@ -83,7 +83,7 @@ func (s *Service) ActionCapabilities(ctx context.Context, name string) ([]core.A
 				return billing()
 			})),
 			core.DecideAction(core.ActionCronCancelRun, operate, precond(func() string {
-				if _, ok := pendingCronRun(a); !ok { // CancelCurrentCronRun's scan
+				if _, ok := pendingCronRun(a, s.Now()); !ok { // CancelCurrentCronRun's scan
 					return core.PrecondNoActiveRun
 				}
 				return ""

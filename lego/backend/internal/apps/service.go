@@ -29,6 +29,7 @@ import (
 	"math/rand/v2"
 	"net"
 	"net/url"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -1162,7 +1163,7 @@ func view(a *appv1alpha1.App) AppView {
 		CrashLoopSuspended:   a.Annotations[core.AnnotCrashLoopSuspended] != "",
 		Schedule:             a.Spec.Schedule,
 		Command:              cronCommand(a.Spec),
-		Runs:                 cronRunViews(a.Status.Runs),
+		Runs:                 cronRunViews(cronRunsOf(a, time.Now())),
 		LastSuccessfulRunAt:  lastSuccessfulCronRunAt(a.Status.Runs),
 		Plan:                 plan,
 		Revision:             a.Status.ActiveRevision,
@@ -1317,6 +1318,56 @@ func sshSessionReady(v AppView) error {
 		return fmt.Errorf("%w: the service has no running instance yet; wait for the current deploy to go live", core.ErrConflict)
 	}
 	return nil
+}
+
+// cronRunAckWindow bounds how long an acknowledged manual run absent from
+// history is still taken to be on its way there: the operator writes the Job's
+// history entry in the reconcile that acknowledges it, and evicting the
+// current runAt's entry takes ten newer runs, far longer than this.
+const cronRunAckWindow = 2 * time.Minute
+
+// cronRunsOf is the run history every read serves (w4/m300): the operator's
+// status.runs, plus the run a trigger acknowledged that has not reached it yet
+// (pending, or canceled once spec.cancelRun names it), plus a run canceled or
+// replaced before its Job existed that the operator has not recorded yet.
+// Render's POST /cron-jobs/{id}/runs answers the run, so it must be readable,
+// cancellable and accounted for from that moment.
+func cronRunsOf(a *appv1alpha1.App, now time.Time) []appv1alpha1.CronRun {
+	runs := a.Status.Runs
+	known := func(name string) bool {
+		return slices.ContainsFunc(runs, func(run appv1alpha1.CronRun) bool { return run.Name == name })
+	}
+	var synthetic []appv1alpha1.CronRun
+	if c := a.Spec.CancelRun; c != nil && c.Unmaterialized && !known(c.Name) && recentRFC3339(c.RequestedAt, now) &&
+		a.Status.CancelRunRecorded != c.Name+"@"+c.RequestedAt {
+		synthetic = append(synthetic, appv1alpha1.CronRun{Name: c.Name, Status: appv1alpha1.CronRunCanceled, FinishedAt: c.RequestedAt})
+	}
+	if a.Spec.RunAt != "" {
+		name := appv1alpha1.ManualCronRunJobName(a.Name, a.Spec.RunAt)
+		pendingWindow := a.Status.ManualRunHandledAt != a.Spec.RunAt || recentRFC3339(a.Spec.RunAt, now)
+		if !known(name) && pendingWindow && !slices.ContainsFunc(synthetic, func(run appv1alpha1.CronRun) bool { return run.Name == name }) {
+			run := appv1alpha1.CronRun{Name: name, Status: appv1alpha1.CronRunRunning}
+			if c := a.Spec.CancelRun; c != nil && c.Name == name {
+				run.Status, run.FinishedAt = appv1alpha1.CronRunCanceled, c.RequestedAt
+			}
+			synthetic = append([]appv1alpha1.CronRun{run}, synthetic...)
+		}
+	}
+	if len(synthetic) == 0 {
+		return runs
+	}
+	return append(synthetic, runs...)
+}
+
+// unmaterializedRun reports a run the operator has not recorded yet: its
+// cancellation must say so, or a run whose Job never existed is lost.
+func unmaterializedRun(a *appv1alpha1.App, name string) bool {
+	return !slices.ContainsFunc(a.Status.Runs, func(run appv1alpha1.CronRun) bool { return run.Name == name })
+}
+
+func recentRFC3339(at string, now time.Time) bool {
+	t, err := time.Parse(time.RFC3339Nano, at)
+	return err == nil && now.Sub(t) < cronRunAckWindow
 }
 
 // cronRunViews projects the CR's status run history onto the neutral view shape.
@@ -4090,8 +4141,8 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 	runAt := now.Format(time.RFC3339Nano)
 	jobName := appv1alpha1.ManualCronRunJobName(a.Name, runAt)
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		if run, ok := pendingCronRun(a); ok {
-			a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: runAt}
+		if run, ok := pendingCronRun(a, now); ok {
+			a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: runAt, Unmaterialized: unmaterializedRun(a, run.Name)}
 		}
 		a.Spec.RunAt = runAt
 	})
@@ -4112,7 +4163,7 @@ func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit i
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return nil, core.ErrNotFound
 	}
-	runs := cronRunViews(a.Status.Runs)
+	runs := cronRunViews(cronRunsOf(a, s.Now()))
 	return core.Page(runs, cursor, core.PageLimitOrAbsent(limit), func(run CronRunView) string { return run.ID }), nil
 }
 
@@ -4127,7 +4178,7 @@ func (s *Service) GetCronRun(ctx context.Context, name, runID string) (CronRunVi
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, cronRunNotFound(runID)
 	}
-	return cronRunByID(a.Status.Runs, runID)
+	return cronRunByID(cronRunsOf(a, s.Now()), runID)
 }
 
 // CancelCronRun records cancellation intent for one pending run. Terminal runs
@@ -4143,7 +4194,7 @@ func (s *Service) CancelCronRun(ctx context.Context, name, runID string) (CronRu
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, cronRunNotFound(runID)
 	}
-	run, err := cronRunByID(a.Status.Runs, runID)
+	run, err := cronRunByID(cronRunsOf(a, s.Now()), runID)
 	if err != nil {
 		return CronRunView{}, err
 	}
@@ -4162,7 +4213,7 @@ func (s *Service) CancelCurrentCronRun(ctx context.Context, name string) (CronRu
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, core.ErrNotFound
 	}
-	if run, ok := pendingCronRun(a); ok {
+	if run, ok := pendingCronRun(a, s.Now()); ok {
 		return s.cancelCronRunFetched(ctx, a, run)
 	}
 	return CronRunView{}, fmt.Errorf("%w: cron job %q has no active run", core.ErrConflict, name)
@@ -4171,8 +4222,8 @@ func (s *Service) CancelCurrentCronRun(ctx context.Context, name string) (CronRu
 // pendingCronRun selects the sole pending run (the operator forbids
 // concurrency, so more than one is not a supported steady state) — the
 // predicate CancelCurrentCronRun and the capability projection share.
-func pendingCronRun(a *appv1alpha1.App) (CronRunView, bool) {
-	for _, raw := range a.Status.Runs {
+func pendingCronRun(a *appv1alpha1.App, now time.Time) (CronRunView, bool) {
+	for _, raw := range cronRunsOf(a, now) {
 		if run := cronRunView(raw); run.Status == cronRunPending {
 			return run, true
 		}
@@ -4190,7 +4241,7 @@ func (s *Service) cancelCronRunFetched(ctx context.Context, a *appv1alpha1.App, 
 	}
 	now := s.Now().UTC().Format(time.RFC3339Nano)
 	if _, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: now}
+		a.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: run.Name, RequestedAt: now, Unmaterialized: unmaterializedRun(a, run.Name)}
 	}); err != nil {
 		return CronRunView{}, err
 	}

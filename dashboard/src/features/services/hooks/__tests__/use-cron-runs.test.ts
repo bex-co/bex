@@ -75,6 +75,44 @@ describe("useCronRuns trigger (w5/m60)", () => {
     expect(result.current.triggerError).toBeNull();
   });
 
+  // w4/m300: the run Trigger Run answered is on screen at once — pending, so
+  // Cancel and the fast poll are live — even before a read carries it.
+  it("shows the triggered run pending before the history read includes it", async () => {
+    mockQuery([
+      {
+        id: "crr-old",
+        startedAt: "2026-11-10T07:36:37Z",
+        finishedAt: "2026-11-10T07:36:40Z",
+        status: "successful",
+      },
+    ]);
+    const runCronJob = vi.fn().mockResolvedValue({
+      data: {
+        runCronJob: {
+          id: "crr-new",
+          status: "pending",
+          startedAt: "",
+          finishedAt: "",
+        },
+      },
+    });
+    mockUseMutation.mockReturnValue([runCronJob]);
+
+    const { result } = renderHook(() => useCronRuns("nightly"));
+    await act(async () => {
+      await result.current.trigger();
+    });
+
+    expect(result.current.runs[0]).toEqual({
+      id: "crr-new",
+      startedAt: null,
+      finishedAt: null,
+      status: "pending",
+    });
+    expect(result.current.runs[1].id).toBe("crr-old");
+    expect(result.current.hasActiveRun).toBe(true);
+  });
+
   it("surfaces the backend's active-run rejection inline (not a toast) and returns false", async () => {
     mockQuery([]);
     const rejection = uncodedGraphQLError("a run is already active");

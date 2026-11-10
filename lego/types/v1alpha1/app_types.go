@@ -1422,6 +1422,13 @@ type CronRunCancellation struct {
 	// RequestedAt is when cancellation was accepted (RFC3339Nano).
 	// +required
 	RequestedAt string `json:"requestedAt"`
+
+	// Unmaterialized marks a cancellation of a manual run the backend saw
+	// acknowledged but not yet in run history: its Job may never exist, so
+	// the operator records the run Canceled itself rather than losing it
+	// (w4/m300).
+	// +optional
+	Unmaterialized bool `json:"unmaterialized,omitempty"`
 }
 
 // Cron run status vocabulary stored in App.status.runs. The backend maps these
@@ -1731,6 +1738,12 @@ type AppStatus struct {
 	// executing again. This acknowledges handling, not a terminal run outcome.
 	// +optional
 	ManualRunHandledAt string `json:"manualRunHandledAt,omitempty"`
+
+	// CancelRunRecorded is the spec.cancelRun (name@requestedAt) whose
+	// Unmaterialized run the operator has recorded Canceled in Runs, so a
+	// record evicted from bounded history is never added back (w4/m300).
+	// +optional
+	CancelRunRecorded string `json:"cancelRunRecorded,omitempty"`
 
 	// URL is the canonical serving URL (first effective host).
 	// +optional

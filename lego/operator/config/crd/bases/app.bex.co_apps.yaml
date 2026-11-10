@@ -237,6 +237,13 @@ spec:
                   requestedAt:
                     description: RequestedAt is when cancellation was accepted (RFC3339Nano).
                     type: string
+                  unmaterialized:
+                    description: |-
+                      Unmaterialized marks a cancellation of a manual run the backend saw
+                      acknowledged but not yet in run history: its Job may never exist, so
+                      the operator records the run Canceled itself rather than losing it
+                      (w4/m300).
+                    type: boolean
                 required:
                 - name
                 - requestedAt
@@ -1105,6 +1112,12 @@ spec:
                       work (RFC3339).
                     type: string
                 type: object
+              cancelRunRecorded:
+                description: |-
+                  CancelRunRecorded is the spec.cancelRun (name@requestedAt) whose
+                  Unmaterialized run the operator has recorded Canceled in Runs, so a
+                  record evicted from bounded history is never added back (w4/m300).
+                type: string
               conditions:
                 description: Conditions represent the current state (Ready / Progressing
                   / Degraded).

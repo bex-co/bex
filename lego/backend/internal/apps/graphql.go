@@ -628,10 +628,12 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 var cronRunGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "CronRun",
 	Fields: graphql.Fields{
-		"id":         gqlutil.StrField(func(r CronRunView) any { return r.ID }),
-		"name":       gqlutil.StrField(func(r CronRunView) any { return r.Name }),
-		"startedAt":  gqlutil.StrField(func(r CronRunView) any { return r.StartedAt }),
-		"finishedAt": gqlutil.StrField(func(r CronRunView) any { return r.FinishedAt }),
+		"id":   gqlutil.StrField(func(r CronRunView) any { return r.ID }),
+		"name": gqlutil.StrField(func(r CronRunView) any { return r.Name }),
+		// Render's startedAt/finishedAt are optional: a run that has not started
+		// answers null, never "" (w4/m300).
+		"startedAt":  gqlutil.OptionalStrField(func(r CronRunView) any { return r.StartedAt }),
+		"finishedAt": gqlutil.OptionalStrField(func(r CronRunView) any { return r.FinishedAt }),
 		"status":     gqlutil.StrField(func(r CronRunView) any { return r.Status }),
 	},
 })

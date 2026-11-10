@@ -480,3 +480,70 @@ func TestLegacyActiveManualJobAdoptionAllowsUnobservedPreemption(t *testing.T) {
 	}
 	assertCronRunCanceled(t, app.Status.Runs, job.Name)
 }
+
+// w4/m300 P2: a run canceled before its Job existed never executes and is
+// recorded Canceled, once.
+func TestUnmaterializedCancelRecordsTheRunWithoutExecutingIt(t *testing.T) {
+	app := cronAppAt(nil, nil)
+	name := manualRunJobName(app.Name, app.Spec.RunAt)
+	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: name, RequestedAt: "2026-11-10T07:39:43Z", Unmaterialized: true}
+	r, app, template := manualIntentFixtureForApp(t, app)
+	reconcileManualIntent(t, r, app, template)
+	reconcileManualIntent(t, r, app, template)
+	assertManualJobAbsent(t, r, app, app.Spec.RunAt)
+	var recorded []appv1alpha1.CronRun
+	for _, run := range app.Status.Runs {
+		if run.Name == name {
+			recorded = append(recorded, run)
+		}
+	}
+	if len(recorded) != 1 || recorded[0].Status != appv1alpha1.CronRunCanceled || recorded[0].FinishedAt != "2026-11-10T07:39:43Z" {
+		t.Fatalf("history = %+v, want the canceled run recorded once", app.Status.Runs)
+	}
+	if app.Status.ManualRunHandledAt != app.Spec.RunAt || app.Status.CancelRunRecorded != name+"@2026-11-10T07:39:43Z" {
+		t.Fatalf("status = handled %q recorded %q", app.Status.ManualRunHandledAt, app.Status.CancelRunRecorded)
+	}
+}
+
+// w4/m300 P3: a second trigger replaces a run that never got a Job. The first
+// reads Canceled, the replacement runs, and after eviction the first is not
+// added back.
+func TestReplacedUnmaterializedRunIsRecordedOnceAndReplacementRuns(t *testing.T) {
+	app := cronAppAt(nil, nil)
+	first := manualRunJobName(app.Name, app.Spec.RunAt)
+	app.Spec.RunAt = "2026-11-10T07:41:10.5Z"
+	app.Spec.CancelRun = &appv1alpha1.CronRunCancellation{Name: first, RequestedAt: app.Spec.RunAt, Unmaterialized: true}
+	r, app, template := manualIntentFixtureForApp(t, app)
+	reconcileManualIntent(t, r, app, template)
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); err != nil {
+		t.Fatalf("replacement did not run: %v", err)
+	}
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: first}, &batchv1.Job{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("replaced run got a Job: %v", err)
+	}
+	if i := slicesIndex(app.Status.Runs, first); i < 0 || app.Status.Runs[i].Status != appv1alpha1.CronRunCanceled {
+		t.Fatalf("history = %+v, want the replaced run canceled", app.Status.Runs)
+	}
+	for i := range maxCronRuns + 1 {
+		started := metav1.NewTime(time.Date(2026, time.November, 10, 8, i, 0, 0, time.UTC))
+		job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{Name: fmt.Sprintf("%s-later-%02d", app.Name, i), Namespace: app.Namespace, Labels: map[string]string{labelApp: app.Name}},
+			Status: batchv1.JobStatus{StartTime: &started, Conditions: []batchv1.JobCondition{{Type: batchv1.JobComplete, Status: corev1.ConditionTrue, LastTransitionTime: started}}}}
+		if err := r.Create(t.Context(), job); err != nil {
+			t.Fatal(err)
+		}
+	}
+	reconcileManualIntent(t, r, app, template)
+	reconcileManualIntent(t, r, app, template)
+	if slicesIndex(app.Status.Runs, first) >= 0 {
+		t.Fatalf("an evicted canceled run came back: %+v", app.Status.Runs)
+	}
+}
+
+func slicesIndex(runs []appv1alpha1.CronRun, name string) int {
+	for i, run := range runs {
+		if run.Name == name {
+			return i
+		}
+	}
+	return -1
+}

@@ -55,8 +55,10 @@ function toRuns(
     .filter((run): run is NonNullable<RawCronRun> => run != null && !!run.id)
     .map((run) => ({
       id: run.id ?? "",
-      startedAt: run.startedAt ?? null,
-      finishedAt: run.finishedAt ?? null,
+      // `||`, not `??`: an older server answered "" for a run that had not
+      // started, which must read as absent (w4/m300).
+      startedAt: run.startedAt || null,
+      finishedAt: run.finishedAt || null,
       status: run.status ?? "pending",
     }));
 }
@@ -135,13 +137,29 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
   );
 
   // Tagged with the service and the head boundary (w4/138, w4/230).
+  // The run Trigger Run answered, shown until a read carries it (w4/m300):
+  // POST answers the run, so it is on screen — pending, with Cancel and the
+  // fast poll — from that moment, not from the operator's next reconcile.
+  const [triggered, setTriggered] = useState<{
+    serviceId: string;
+    run: CronRunView;
+  } | null>(null);
   const {
-    rows: runs,
+    rows: joined,
     hasMore,
     next,
   } = useMemo(
     () => joinAppendedPages(firstPage, appendedState, serviceId, PAGE_SIZE),
     [appendedState, serviceId, firstPage],
+  );
+  const pinned =
+    triggered?.serviceId === serviceId &&
+    !joined.some((run) => run.id === triggered.run.id)
+      ? triggered.run
+      : null;
+  const runs = useMemo(
+    () => (pinned ? [pinned, ...joined] : joined),
+    [pinned, joined],
   );
 
   const hasActiveRun = runs.some((run) =>
@@ -199,7 +217,11 @@ export function useCronRuns(serviceId: string): UseCronRunsResult {
     setTriggering(true);
     setTriggerError(null);
     try {
-      await runCronJob({ variables: { id: serviceId } });
+      const result = await runCronJob({ variables: { id: serviceId } });
+      const run = toRuns(
+        result.data?.runCronJob ? [result.data.runCronJob] : [],
+      )[0];
+      if (run) setTriggered({ serviceId, run });
       // A fresh first-page read surfaces the new pending run at the top.
       await refetch();
       toast.success(t("services.cronTriggerSuccess"));

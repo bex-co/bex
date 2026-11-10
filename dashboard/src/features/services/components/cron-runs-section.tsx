@@ -254,9 +254,14 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
                                   names its own run (w4/213: every button was
                                   "Toggle run detail"). */}
                               <span className="sr-only">
-                                {t("services.cronRunDetailToggle", {
-                                  when: runToggleWhen(run, runs),
-                                })}
+                                {run.startedAt
+                                  ? t("services.cronRunDetailToggle", {
+                                      when: runToggleWhen(run, runs),
+                                    })
+                                  : t(
+                                      "services.cronRunDetailToggleNotStarted",
+                                      { n: runs.indexOf(run) + 1 },
+                                    )}
                               </span>
                             </button>
                           </TableCell>
@@ -342,15 +347,15 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
   );
 }
 
-/** What a run's detail toggle names it by: its absolute start time, with the
- *  run id when the time is missing or another listed run shares it. */
+/** What a started run's detail toggle names it by: its absolute start time,
+ *  with its row number when another listed run shares it. The run id is never
+ *  part of the name (w4/m300). */
 function runToggleWhen(run: CronRunView, runs: CronRunView[]): string {
   const when = absoluteTime(run.startedAt);
-  if (when === "—") return run.id;
   const shared = runs.some(
     (other) => other.id !== run.id && absoluteTime(other.startedAt) === when,
   );
-  return shared ? `${when} (${run.id})` : when;
+  return shared ? `${when} (#${runs.indexOf(run) + 1})` : when;
 }
 
 /** Absolute local timestamp, or an em dash when the run hasn't reached it yet. */

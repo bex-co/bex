@@ -1,18 +1,18 @@
 # w4 · m300 — A triggered cron run exists from the moment it is acknowledged: readable, cancellable, and canceled (not lost) when a second trigger replaces it, as on Render
 
-**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** todo
+**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** in progress — t001–t007 done (shipped); t008 runs the P1–P4 production replay once the release pins this build
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Make an acknowledged run request readable on every surface | 60m | — |
-| [t002](t002.md) | Cancel and replace a run request that has no Job yet | 90m | w4/m300/t001 |
-| [t003](t003.md) | Recent Runs shows a triggered run as pending at once | 40m | w4/m300/t001 |
-| [t004](t004.md) | Blast radius: every caller and alias of the cron run read model | 30m | w4/m300/t001, w4/m300/t002 |
-| [t005](t005.md) | Render parity | 15m | w4/m300/t003, w4/m300/t004 |
-| [t006](t006.md) | Simplify | 10m | w4/m300/t005 |
-| [t007](t007.md) | Test coverage | 40m | w4/m300/t005 |
+| [t001](done/t001.md) | Make an acknowledged run request readable on every surface — **DONE** | 60m | — |
+| [t002](done/t002.md) | Cancel and replace a run request that has no Job yet — **DONE** | 90m | w4/m300/t001 |
+| [t003](done/t003.md) | Recent Runs shows a triggered run as pending at once — **DONE** | 40m | w4/m300/t001 |
+| [t004](done/t004.md) | Blast radius: every caller and alias of the cron run read model — **DONE** | 30m | w4/m300/t001, w4/m300/t002 |
+| [t005](done/t005.md) | Render parity — **DONE** | 15m | w4/m300/t003, w4/m300/t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 10m | w4/m300/t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 40m | w4/m300/t005 |
 | [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007 |
 
 Eight tasks, 300m (5h). One finding, major. This milestone schedules the work only.
@@ -154,3 +154,28 @@ Live on production after the release pins this build. The fixture is a Starter c
 - **Expected outcome:** Render's own trigger-then-cancel sequence works on bex. No acknowledged run ID is ever unknown. The dashboard shows a triggered run while it is pending and lets the user cancel it.
 - **Why now:** P3 drops a user's run without a trace, and P2 runs a job its owner just canceled. Both happen at normal API speed, not under load.
 - **Render parity included:** this changes REST, GraphQL, MCP and dashboard behavior, so t005 checks every surface against the Render contract above.
+
+## Findings (2026-11-10, loopx w4)
+
+- **t001, read model** (`lego/backend/internal/apps/service.go` `cronRunsOf`): every read serves `status.runs` plus two derived entries.
+  - **The acknowledged run.** Pending while `spec.runAt`'s Job has no history entry, or canceled once `spec.cancelRun` names it. This holds while the operator has not acknowledged it, and for two minutes after it has, which covers the gap between acknowledgement and the history write in the same reconcile.
+  - **A run canceled or replaced before its Job existed** (`spec.cancelRun.unmaterialized`), until the operator records it.
+  - Get-by-id, both list aliases, GraphQL `cronJobRuns`/`cronJobRun`, the MCP tools, `Service.runs`, `DELETE …/runs`, `POST …/runs/{id}/cancel` and the `cron.cancelRun` capability all read through this.
+  - `LastSuccessfulRunAt` and the scheduled path are untouched.
+  - GraphQL `startedAt`/`finishedAt` answer `null` instead of `""`.
+- **t002, cancel and replace:**
+  - **Backend.** A cancellation of a run not yet in history carries `unmaterialized: true`, whether it comes from a cancel or a replacing trigger (CRD field on `spec.cancelRun`).
+  - **Operator.** `recordUnmaterializedCancel` (`app_controller.go`) runs before the acknowledgement. It records the run `Canceled` exactly once when neither a Job nor a history entry carries it, and `status.cancelRunRecorded` keeps an entry evicted from history from being added back.
+  - **Effect.** A run canceled before its Job exists never executes: the existing acknowledgement keeps `ensureManualRun` from creating it.
+- **t003, dashboard:**
+  - `useCronRuns` shows the run that `runCronJob` answered at the top until a read carries it, so it is pending at once, Cancel is offered and the 3 s poll runs.
+  - `toRuns` maps `""` to `null`.
+  - The row toggle's accessible name never contains the `crr-` id: a not-started run reads "Run details, not started yet (row N)" (en/zh), and a start-time tie adds the row number.
+- **t004, blast radius:** all entrypoints listed above go through `cronRunsOf`/`pendingCronRun(a, now)`. The `/services/{id}/runs` aliases share the handlers.
+- **t005, Render parity:** `POST` answers the run, `DELETE …/runs` cancels it (no 409 in the window), and a replacing trigger cancels the active run before its replacement (render.com/docs/cronjobs § single-run guarantee).
+- **t006, Simplify:** one derived-history function serves every read; the operator change is a single guarded recording step.
+- **t007, tests:**
+  - **Backend.** `TestAcknowledgedCronRunIsReadableCancellableAndNeverLost` covers P1, P2 and P3, plus the adjacent 404 and 409 cases. `TestCronRunsOfDoesNotResurrectSettledRequests` covers settled requests.
+  - **Operator.** `TestUnmaterializedCancelRecordsTheRunWithoutExecutingIt` and `TestReplacedUnmaterializedRunIsRecordedOnceAndReplacementRuns` cover cancellation, replacement and no resurrection after eleven later runs. Both fail with the recording disabled.
+  - **Dashboard.** The toggle-name test now asserts no `crr-`, and the hook test shows the triggered run pending before the read includes it.
+  - **Suites.** Operator `make test`, backend `go test ./...`, dashboard `yarn lint` (0 errors) and `vitest` (1241 passed) all pass.

@@ -3158,7 +3158,12 @@ const enServices: Record<string, TranslationEntry> = {
   "services.cronRunDetailToggle": {
     message: "Run details, started {when}",
     description:
-      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, or the run id (w4/213)",
+      "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, with the row number when another listed run shares it (w4/213, w4/m300)",
+  },
+  "services.cronRunDetailToggleNotStarted": {
+    message: "Run details, not started yet (row {n})",
+    description:
+      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number in Recent Runs, never its id (w4/m300)",
   },
   "services.cronRunDetailError": {
     message: "Couldn't load this run's detail.",
@@ -5178,12 +5183,12 @@ const enServices: Record<string, TranslationEntry> = {
   "services.envRevealOne": {
     message: "Reveal {name}",
     description:
-      "aria-label of the per-row Reveal button for one env var or secret file; starts with the visible text \"Reveal\" (w4/499)",
+      'aria-label of the per-row Reveal button for one env var or secret file; starts with the visible text "Reveal" (w4/499)',
   },
   "services.envHideOne": {
     message: "Hide {name}",
     description:
-      "aria-label of the per-row Hide button for one env var or secret file; starts with the visible text \"Hide\" (w4/499)",
+      'aria-label of the per-row Hide button for one env var or secret file; starts with the visible text "Hide" (w4/499)',
   },
   "services.envHide": {
     message: "Hide",

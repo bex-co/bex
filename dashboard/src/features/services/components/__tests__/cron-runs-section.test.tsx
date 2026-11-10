@@ -277,7 +277,9 @@ describe("CronRunsSection", () => {
 
   // w4/213: every row's toggle was named "Toggle run detail", so keyboard and
   // screen-reader users could not pick a run by name.
-  it("names each run's detail toggle by its own start, with the id for ties and missing times", () => {
+  // w4/m300: never by the run id — ties name the row number, and a run that
+  // has not started says so.
+  it("names each run's detail toggle by its own start, with the row for ties and a not-started run", () => {
     const at = (iso: string) => new Date(iso).toLocaleString();
     runs = [
       {
@@ -307,16 +309,17 @@ describe("CronRunsSection", () => {
     ];
     render(<CronRunsSection serviceId="nightly" />);
     const names = screen
-      .getAllByRole("button", { name: /Run details, started/ })
+      .getAllByRole("button", { name: /Run details/ })
       .map((button) => button.textContent ?? "");
     expect(names).toHaveLength(4);
     expect(new Set(names).size).toBe(4);
     expect(names[0]).toContain(
       `Run details, started ${at("2026-07-09T10:00:00Z")}`,
     );
-    expect(names[1]).toContain(`${at("2026-07-09T11:00:00Z")} (crr-b)`);
-    expect(names[2]).toContain(`${at("2026-07-09T11:00:00Z")} (crr-tie)`);
-    expect(names[3]).toContain("Run details, started crr-pending");
+    expect(names[1]).toContain(`${at("2026-07-09T11:00:00Z")} (#2)`);
+    expect(names[2]).toContain(`${at("2026-07-09T11:00:00Z")} (#3)`);
+    expect(names[3]).toContain("Run details, not started yet (row 4)");
+    for (const name of names) expect(name).not.toContain("crr-");
   });
 
   // w4/305: the first detail read showed one full-width h-16 block, so the

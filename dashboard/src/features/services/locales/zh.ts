@@ -3096,6 +3096,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Screen-reader name of a run's expand/collapse control, after its visible age; {when} is the absolute start time, or the run id (w4/213)",
   },
+  "services.cronRunDetailToggleNotStarted": {
+    message: "运行详情，尚未开始（第 {n} 行）",
+    description:
+      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number in Recent Runs, never its id (w4/m300)",
+  },
   "services.cronRunDetailError": {
     message: "无法加载该运行的详情。",
     description: "Shown when the single-run detail read fails (e.g. stale id)",
