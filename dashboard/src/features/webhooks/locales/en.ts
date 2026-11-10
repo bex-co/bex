@@ -616,6 +616,10 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Disk Deleted",
     description: "Event label — disk_deleted",
   },
+  "webhooks.event.disk_snapshot_restored": {
+    message: "Disk Snapshot Restored",
+    description: "Event label — disk_snapshot_restored",
+  },
   "webhooks.event.postgres_created": {
     message: "Postgres Created",
     description: "Event label — postgres_created",

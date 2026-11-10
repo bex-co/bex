@@ -603,6 +603,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "磁盘已删除",
     description: "Event label — disk_deleted",
   },
+  "webhooks.event.disk_snapshot_restored": {
+    message: "磁盘已从快照恢复",
+    description: "Event label — disk_snapshot_restored",
+  },
   "webhooks.event.postgres_created": {
     message: "Postgres 已创建",
     description: "Event label — postgres_created",
