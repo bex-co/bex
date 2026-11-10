@@ -11,6 +11,8 @@ export interface RevokeIconButtonProps {
   onConfirm: () => void;
   /** True while the revoke is in flight — disables the control and swaps the icon for a spinner. */
   pending: boolean;
+  /** Extra classes for the dialog content (e.g. a scroll cap for unbounded user text). */
+  contentClassName?: string;
 }
 
 /**
@@ -29,6 +31,7 @@ export function RevokeIconButton({
   confirmLabel,
   onConfirm,
   pending,
+  contentClassName,
 }: RevokeIconButtonProps) {
   return (
     <ConfirmDialog
@@ -43,6 +46,7 @@ export function RevokeIconButton({
       confirmLabel={confirmLabel}
       onConfirm={onConfirm}
       pending={pending}
+      contentClassName={contentClassName}
     />
   );
 }

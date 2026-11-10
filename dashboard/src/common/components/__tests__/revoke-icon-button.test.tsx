@@ -44,4 +44,25 @@ describe("RevokeIconButton", () => {
 
     expect(screen.getByRole("button", { name: "Revoke" })).toBeDisabled();
   });
+
+  it("passes a scroll cap to the confirm dialog content (w21/023)", async () => {
+    const user = userEvent.setup();
+    render(
+      <RevokeIconButton
+        label="Revoke"
+        confirmTitle="Revoke this?"
+        confirmBody="This can't be undone."
+        cancelLabel="Cancel"
+        confirmLabel="Revoke"
+        onConfirm={vi.fn()}
+        pending={false}
+        contentClassName="max-h-[85dvh] overflow-y-auto"
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Revoke" }));
+    expect(await screen.findByRole("alertdialog")).toHaveClass(
+      "max-h-[85dvh]",
+      "overflow-y-auto",
+    );
+  });
 });

@@ -249,7 +249,14 @@ func (s *Service) CreateAPIKey(ctx context.Context, ownerID, name string) (APIKe
 	if s.APIKeys == nil {
 		return APIKey{}, core.ErrAPIKeysUnavailable
 	}
-	if strings.TrimSpace(name) == "" {
+	// The one free-form label rule (no control characters, at most 100 code
+	// points), applied before any credential is minted so a refused name
+	// creates no OAuth client (w21/023).
+	name, err := core.TrimmedLabel(name)
+	if err != nil {
+		return APIKey{}, err
+	}
+	if name == "" {
 		return APIKey{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
 	createdBy := ""

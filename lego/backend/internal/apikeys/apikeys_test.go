@@ -608,6 +608,20 @@ func TestAPIKeyVerbs(t *testing.T) {
 	if _, err := svc.CreateAPIKey(ctx, "", "  "); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("blank name => ErrBadRequest, got %v", err)
 	}
+	// w21/023: the shared label rule — a control character or 101 code points is
+	// refused with a named 400 and mints nothing; exactly 100 still creates.
+	before := len(store.keys)
+	for _, bad := range []string{"a\nb", "a\x07b", strings.Repeat("x", 101)} {
+		if _, err := svc.CreateAPIKey(ctx, "", bad); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("name %q => ErrBadRequest, got %v", bad, err)
+		}
+	}
+	if len(store.keys) != before {
+		t.Errorf("a refused name minted a key: %d -> %d", before, len(store.keys))
+	}
+	if _, err := svc.CreateAPIKey(ctx, "", strings.Repeat("é", 100)); err != nil {
+		t.Errorf("a 100-code-point name must still create: %v", err)
+	}
 	// nil store => ErrAPIKeysUnavailable on every verb.
 	nostore := newService(nil)
 	if _, err := nostore.ListAPIKeys(ctx, ""); !errors.Is(err, core.ErrAPIKeysUnavailable) {
@@ -656,6 +670,12 @@ func TestRESTAPIKeyLifecycle(t *testing.T) {
 	}
 	if serveREST(svc, "POST", "/v1/api-keys", `{"name":"  "}`).Code != 400 {
 		t.Error("blank name => 400")
+	}
+	if serveREST(svc, "POST", "/v1/api-keys", `{"name":"a\u0007b"}`).Code != 400 {
+		t.Error("control-character name => 400")
+	}
+	if serveREST(svc, "POST", "/v1/api-keys", `{"name":"`+strings.Repeat("x", 101)+`"}`).Code != 400 {
+		t.Error("101-code-point name => 400")
 	}
 	// nil store => 503.
 	if serveREST(newService(nil), "GET", "/v1/api-keys", "").Code != 503 {

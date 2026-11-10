@@ -109,6 +109,7 @@ export function CreateApiKeyDialog({ onCreated }: CreateApiKeyDialogProps) {
               <Label htmlFor="api-key-name">{t("apiKeys.fieldName")}</Label>
               <Input
                 id="api-key-name"
+                maxLength={100}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder={t("apiKeys.fieldNamePlaceholder")}

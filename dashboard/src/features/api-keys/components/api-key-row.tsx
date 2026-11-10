@@ -56,6 +56,9 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
           cancelLabel={t("apiKeys.revokeCancel")}
           confirmLabel={t("apiKeys.revoke")}
           pending={revoking}
+          // A key named before the length rule can still be very long: keep
+          // Cancel and Revoke inside the viewport (w21/023).
+          contentClassName="max-h-[85dvh] overflow-y-auto [overflow-wrap:anywhere]"
           onConfirm={() => void onRevoke(entry.id, entry.name)}
         />
       </TableCell>
