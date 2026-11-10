@@ -23,18 +23,13 @@ import { Badge } from "@/common/components/ui/badge";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { formatDateISO } from "@/common/lib/format";
 import { periodLabel } from "@/features/usage/lib/period";
+import { money, usd } from "@/features/usage/lib/charges";
 import type { Billing, BillingCredits } from "../hooks/use-usage";
 
 /**
  * The two money cards that read straight off Stripe: remaining credit, and the
  * finalized invoice history.
  */
-
-/** Display-side USD math on the backend's normalized "12.34" strings. */
-function usd(amount: string): number {
-  const n = Number.parseFloat(amount);
-  return Number.isFinite(n) ? n : 0;
-}
 
 /**
  * Credit balance. Renders only when the workspace holds credit — the backend
@@ -47,7 +42,7 @@ function usd(amount: string): number {
  * anything?") belongs next to the balance, not next to the charges.
  */
 export function CreditBalanceCard({ billing }: { billing: Billing | null }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const credits: BillingCredits | null = billing?.credits ?? null;
   if (!credits) return null;
   const expiring = credits.grants.find((g) => g.expiresAt !== "");
@@ -67,20 +62,20 @@ export function CreditBalanceCard({ billing }: { billing: Billing | null }) {
           {t("usage.creditsTotalLabel")}
         </p>
         <p className="font-mono text-3xl font-semibold tabular-nums">
-          ${credits.availableUsd}
+          {money(usd(credits.availableUsd), i18n.language)}
         </p>
         {current != null && (
           <p className="mt-1 text-sm text-muted-foreground tabular-nums">
             {t("usage.creditsAppliedLine", {
-              applied: usd(current.creditsAppliedUsd).toFixed(2),
-              due: usd(current.amountDueUsd).toFixed(2),
+              applied: money(usd(current.creditsAppliedUsd), i18n.language),
+              due: money(usd(current.amountDueUsd), i18n.language),
             })}
           </p>
         )}
         {expiring && (
           <p className="mt-2 text-xs text-muted-foreground">
             {t("usage.creditsExpiryNote", {
-              amount: expiring.remainingUsd,
+              amount: money(usd(expiring.remainingUsd), i18n.language),
               date: formatDateISO(expiring.expiresAt) ?? expiring.expiresAt,
             })}
           </p>
@@ -106,7 +101,7 @@ function invoiceMonth(periodStart: string): string {
  * something is missing rather than not yet applicable.
  */
 export function InvoiceHistoryCard({ billing }: { billing: Billing | null }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const invoices = billing?.invoices ?? [];
   if (invoices.length === 0) return null;
   return (
@@ -149,7 +144,7 @@ export function InvoiceHistoryCard({ billing }: { billing: Billing | null }) {
                   {/* What Stripe collected, not the gross charge: `amountUsd`
                       is now pre-credit, and a credited invoice would otherwise
                       read as money the workspace never paid (w6/m98). */}
-                  ${usd(inv.amountDueUsd).toFixed(2)}
+                  {money(usd(inv.amountDueUsd), i18n.language)}
                 </td>
               </tr>
             ))}

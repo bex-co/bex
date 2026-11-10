@@ -57,7 +57,7 @@ describe("CreditBalanceCard", () => {
     expect(
       screen.getByText(/Credits applied −\$74\.78 → amount due \$0\.00/),
     ).toBeInTheDocument();
-    expect(screen.getByText("$1000.00")).toBeInTheDocument();
+    expect(screen.getByText("$1,000.00")).toBeInTheDocument();
   });
 
   it("shows what is still owed when credit only partly covers the period", () => {
@@ -87,6 +87,57 @@ describe("CreditBalanceCard", () => {
     );
 
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+// w21/024: every amount goes through the locale-aware money helper, so a value
+// of 1,000 or more is grouped and the messages carry no literal `$` of their own.
+describe("grouped money amounts", () => {
+  it("groups the balance, the applied/due line, the expiry note and an invoice", () => {
+    const big = creditedPeriod({
+      currentCost: {
+        amountUsd: "1234.50",
+        creditsAppliedUsd: "1234.50",
+        amountDueUsd: "1234.50",
+      },
+      credits: {
+        availableUsd: "1000551.64",
+        grants: [
+          {
+            name: "grant",
+            remainingUsd: "1234.50",
+            expiresAt: "2026-12-31T00:00:00Z",
+          },
+        ],
+      },
+      invoices: [
+        {
+          id: "in_big",
+          status: "paid",
+          amountUsd: "1234.50",
+          creditsAppliedUsd: "0.00",
+          amountDueUsd: "1234.50",
+          currency: "USD",
+          periodStart: "2026-07-01T00:00:00Z",
+          periodEnd: "2026-08-01T00:00:00Z",
+        },
+      ],
+    });
+    const { container } = render(
+      <>
+        <CreditBalanceCard billing={big} />
+        <InvoiceHistoryCard billing={big} />
+      </>,
+    );
+    expect(screen.getByText("$1,000,551.64")).toBeInTheDocument();
+    expect(
+      screen.getByText("Credits applied −$1,234.50 → amount due $1,234.50"),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/^\$1,234\.50 of it expires/)).toBeInTheDocument();
+    expect(container.textContent).not.toMatch(/\$\$/);
+    expect(
+      screen.getByText("$1,234.50", { selector: "td" }),
+    ).toBeInTheDocument();
   });
 });
 

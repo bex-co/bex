@@ -222,7 +222,7 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Subtitle of the remaining billing-credit card",
   },
   "usage.creditsExpiryNote": {
-    message: "其中 ${amount} 将于 {date} 过期",
+    message: "其中 {amount} 将于 {date} 过期",
     description:
       "Earliest-expiring grant note beside the credit balance; amount is a $ value, date is YYYY-MM-DD",
   },
@@ -589,7 +589,7 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Invoice-history card description",
   },
   "usage.creditsAppliedLine": {
-    message: "已抵扣 −${applied} → 应付 ${due}",
+    message: "已抵扣 −{applied} → 应付 {due}",
     description:
       "Credit applied to the current period and the remaining amount due",
   },

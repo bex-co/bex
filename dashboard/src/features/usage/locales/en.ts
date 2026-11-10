@@ -224,7 +224,7 @@ const enUsage: Record<string, TranslationEntry> = {
     description: "Subtitle of the remaining billing-credit card",
   },
   "usage.creditsExpiryNote": {
-    message: "${amount} of it expires {date}",
+    message: "{amount} of it expires {date}",
     description:
       "Earliest-expiring grant note beside the credit balance; amount is a $ value, date is YYYY-MM-DD",
   },
@@ -597,7 +597,7 @@ const enUsage: Record<string, TranslationEntry> = {
     description: "Invoice-history card description",
   },
   "usage.creditsAppliedLine": {
-    message: "Credits applied −${applied} → amount due ${due}",
+    message: "Credits applied −{applied} → amount due {due}",
     description:
       "Credit applied to the current period and the remaining amount due",
   },
