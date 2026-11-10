@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1010" viewBox="0 0 1440 1010" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#1f2328">
+<rect width="1440" height="1010" fill="#ffffff"/>
+<defs>
+<marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#57606a"/></marker>
+<marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#cf222e"/></marker>
+<style>
+.t{font-weight:600;font-size:14px} .s{fill:#57606a;font-size:12px}
+.lane{font-weight:700;font-size:12px;letter-spacing:.08em;fill:#57606a}
+.ln{stroke:#57606a;stroke-width:1.6;fill:none;marker-end:url(#a)}
+.dash{stroke-dasharray:6 4}
+.red{stroke:#cf222e;stroke-width:1.6;fill:none;stroke-dasharray:6 4;marker-end:url(#r)}
+.ok{fill:#dafbe1;stroke:#4ac26b} .pend{fill:#f0fff4;stroke:#4ac26b;stroke-dasharray:6 3} .plan{fill:#fff8c5;stroke:#d4a72c} .div{fill:#ffe8d1;stroke:#fb8f44}
+.na{fill:#f6f8fa;stroke:#8c959f} .bad{fill:#ffebe9;stroke:#ff8182} .plat{fill:#ddf4ff;stroke:#54aeff}
+rect.b{stroke-width:1.5;rx:8}
+</style></defs>
+<text x="20" y="34" font-size="20" font-weight="700">ADR104 — bex sandbox: how Render's contract is implemented</text>
+<text x="20" y="56" class="s">Render-shaped REST in bex-api → OpenSandbox on Kubernetes → gVisor pods under Cilium policy. State as of 2026-11-10; the tables in the ADR are authoritative (legend, bottom right).</text>
+<rect x="10" y="72" width="1420" height="86" fill="#f6fbff" rx="10"/>
+<text x="22" y="90" text-anchor="start" class="lane">1 · CLIENTS — all call bex-api on Render's /v1/sandboxes* paths</text>
+<rect class="b ok" x="30" y="92" width="250" height="56"/>
+<text class="t" x="40" y="112">Render CLI (bex launcher)</text>
+<text class="s" x="40" y="130">pinned v2.35.0; v2.36.0 is out (D10)</text>
+<rect class="b plan" x="300" y="92" width="250" height="56"/>
+<text class="t" x="310" y="112">Render SDKs 1.8.0 (Py + TS)</text>
+<text class="s" x="310" y="130">base_url → bex-api · walk: m284</text>
+<rect class="b ok" x="570" y="92" width="250" height="56"/>
+<text class="t" x="580" y="112">MCP · GraphQL</text>
+<text class="s" x="580" y="130">spawn_sandbox, sandbox_exec · same service</text>
+<rect class="b ok" x="840" y="92" width="250" height="56"/>
+<text class="t" x="850" y="112">Cloud agent sessions</text>
+<text class="s" x="850" y="130">ADR047 · always deny-all, own policy</text>
+<rect class="b na" x="1110" y="92" width="300" height="56"/>
+<text class="t" x="1120" y="112">Dashboard: N/A</text>
+<text class="s" x="1120" y="130">Render documents no sandbox UI</text>
+<path class="ln" d="M155,148 L155,186"/>
+<path class="ln" d="M425,148 L425,186"/>
+<path class="ln" d="M695,148 L695,186"/>
+<rect x="10" y="170" width="1420" height="248" fill="#f6f8fa" rx="10"/>
+<text x="22" y="188" text-anchor="start" class="lane">2 · CONTROL — bex-system · trusted</text>
+<rect class="b plat" x="30" y="190" width="880" height="214" fill="#eef7ff" stroke="#54aeff" stroke-width="1.5" rx="8"/>
+<text class="t" x="42" y="208">bex-api · sandbox gateway (lego/backend/internal/sandbox)</text>
+<rect class="b ok" x="45" y="218" width="200" height="70"/>
+<text class="t" x="55" y="238">REST /v1/sandboxes*</text>
+<text class="s" x="55" y="256">create · list · get · terminate</text>
+<text class="s" x="55" y="272">plans 1c-2g … 8c-16g</text>
+<rect class="b ok" x="260" y="218" width="210" height="70"/>
+<text class="t" x="270" y="238">Exec and files</text>
+<text class="s" x="270" y="256">HMAC connect token (≤60 s,</text>
+<text class="s" x="270" y="272">single use) → SSE; 256 MiB files</text>
+<rect class="b pend" x="485" y="218" width="200" height="70"/>
+<text class="t" x="495" y="238">🚧 Idle tracker</text>
+<text class="s" x="495" y="256">no exec/file for idleTimeout</text>
+<text class="s" x="495" y="272">(900 s) → suspend; wake on use</text>
+<rect class="b ok" x="700" y="218" width="195" height="70"/>
+<text class="t" x="710" y="238">Network policy</text>
+<text class="s" x="710" y="256">allow-all · deny-all ·</text>
+<text class="s" x="710" y="272">allow-list → writes CNP first</text>
+<rect class="b ok" x="45" y="300" width="200" height="92"/>
+<text class="t" x="55" y="320">Authz and timeouts</text>
+<text class="s" x="55" y="338">OpenFGA verb + owner check</text>
+<text class="s" x="55" y="354">runtime timeout 86400 s,</text>
+<text class="s" x="55" y="370">resumable 30 days</text>
+<rect class="b plan" x="260" y="300" width="210" height="92"/>
+<text class="t" x="270" y="320">🚧 Metering (D8)</text>
+<text class="s" x="270" y="338">today: allocated shape, running only</text>
+<text class="s" x="270" y="354">planned: used CPU + memory,</text>
+<text class="s" x="270" y="370">+ snapshot storage (Render model)</text>
+<rect class="b plan" x="485" y="300" width="410" height="92"/>
+<text class="t" x="495" y="320">🚧 Snapshots · groups · images</text>
+<text class="s" x="495" y="338">named 4xx today (SANDBOX_*_UNSUPPORTED)</text>
+<text class="s" x="495" y="354">m285: filesystem snapshots, restore, policy inheritance</text>
+<text class="s" x="495" y="370">new milestone: sandbox groups, 429, 10 per workspace</text>
+<rect class="b ok" x="930" y="190" width="480" height="214"/>
+<text class="t" x="940" y="210">ssh-gateway (isolated)</text>
+<text class="s" x="940" y="228">the only component holding pods/exec</text>
+<text class="s" x="940" y="244">bex-api authorizes, then reverse-proxies;</text>
+<text class="s" x="940" y="260">it never gains pods/exec itself</text>
+<text class="s" x="940" y="276">serves exec streams and file transfer</text>
+<text class="s" x="940" y="292">(path-bound tokens, 5 min deadline)</text>
+<path class="ln" d="M910,250 L930,250"/>
+<circle cx="882" cy="228" r="10" fill="#0969da"/><text x="882" y="232" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">1</text>
+<rect x="10" y="430" width="1420" height="160" fill="#f6fbff" rx="10"/>
+<text x="1418" y="448" text-anchor="end" class="lane">3 · LIFECYCLE SUBSTRATE — reachable only from bex-api (NetworkPolicy + per-workspace key)</text>
+<rect class="b plat" x="30" y="452" width="620" height="124" fill="#eef7ff" stroke="#54aeff" stroke-width="1.5" rx="8"/>
+<text class="t" x="42" y="470">opensandbox-system · trusted</text>
+<rect class="b plat" x="45" y="480" width="285" height="86"/>
+<text class="t" x="55" y="500">OpenSandbox server</text>
+<text class="s" x="55" y="518">multi-tenant mode: per-workspace key</text>
+<text class="s" x="55" y="534">create · pause · resume · delete</text>
+<text class="s" x="55" y="550">metadata bex stamps; callers cannot set</text>
+<rect class="b plat" x="345" y="480" width="290" height="86"/>
+<text class="t" x="355" y="500">OpenSandbox controller</text>
+<text class="s" x="355" y="518">BatchSandbox · SandboxSnapshot</text>
+<text class="s" x="355" y="534">Pool CRDs; maintains pods</text>
+<text class="s" x="355" y="550">k8s runtime on containerd-CRI</text>
+<path class="ln" d="M330,523 L345,523"/>
+<rect class="b div" x="670" y="452" width="370" height="124"/>
+<text class="t" x="680" y="472">⚠ opensandbox-snapshot (PSS privileged)</text>
+<text class="s" x="680" y="490">commit Job mounts containerd.sock</text>
+<text class="s" x="680" y="506">exports the ROOTFS to an OCI image</text>
+<text class="s" x="680" y="522">(why: &lt;ws&gt;-sandbox is PSS baseline,</text>
+<text class="s" x="680" y="538">no hostPath) · filesystem only</text>
+<rect class="b div" x="1060" y="452" width="350" height="124"/>
+<text class="t" x="1070" y="472">Zot · per-tenant repo</text>
+<text class="s" x="1070" y="490">suspended sandbox = image, pod gone</text>
+<text class="s" x="1070" y="506">resume: pod recreated from the image</text>
+<text class="s" x="1070" y="522">via per-workspace pull credential</text>
+<text class="s" x="1070" y="538">memory and processes do NOT survive (D5)</text>
+<path class="ln" d="M1040,514 L1060,514"/>
+<path class="ln dash" d="M650,514 L670,514"/>
+<path class="ln" d="M300,404 L185,480"/>
+<text class="s" x="205" y="440">lifecycle calls</text>
+<text class="s" x="560" y="448">pause</text>
+<rect x="10" y="600" width="860" height="196" fill="#fff5f5" rx="10"/>
+<text x="22" y="618" text-anchor="start" class="lane">4 · UNTRUSTED — &lt;ws&gt;-sandbox per tenant (PSS baseline)</text>
+<rect class="b ok" x="30" y="626" width="400" height="150"/>
+<text class="t" x="40" y="646">✅ Sandbox pod (running)</text>
+<text class="s" x="40" y="664">runtimeClassName gvisor (runsc, systrap)</text>
+<text class="s" x="40" y="680">tainted sandbox node pool, no KVM needed</text>
+<text class="s" x="40" y="696">label bex.co/egress = allow-all | …</text>
+<text class="s" x="40" y="712">exec = bash -c · limits via plan</text>
+<text class="s" x="40" y="728">⚠ Docker daemon inside: unverified (D6)</text>
+<rect class="b div" x="450" y="626" width="400" height="150"/>
+<text class="t" x="460" y="646">⚠ Suspended sandbox</text>
+<text class="s" x="460" y="664">pod deleted, image kept (≤ 30 days)</text>
+<text class="s" x="460" y="680">same id, plan, policy and timeouts</text>
+<text class="s" x="460" y="696">exec / upload / download resume it</text>
+<text class="s" x="460" y="712">⚠ memory + processes lost, /tmp empty (D5)</text>
+<text class="s" x="460" y="728">billing: storage only, planned (D8)</text>
+<path class="ln dash" d="M430,690 L450,690"/>
+<path class="ln dash" d="M600,576 L600,626"/>
+<text class="s" x="610" y="606">creates / recreates pods</text>
+<circle cx="1412" cy="612" r="10" fill="#0969da"/><text x="1412" y="616" text-anchor="middle" fill="#fff" font-size="12" font-weight="700">1</text>
+<rect x="890" y="600" width="540" height="196" fill="#f6f8fa" rx="10"/>
+<text x="902" y="618" text-anchor="start" class="lane">5 · CILIUM — egress policy</text>
+<rect class="b bad" x="905" y="626" width="510" height="36"/>
+<text class="t" x="915" y="646">Floor (every policy): node, kube-apiserver, metadata, private, other tenants</text>
+<rect class="b ok" x="905" y="670" width="250" height="52"/>
+<text class="t" x="915" y="690">allow-all CCNP (static, GitOps)</text>
+<text class="s" x="915" y="708">selects bex.co/egress=allow-all</text>
+<rect class="b ok" x="1165" y="670" width="250" height="52"/>
+<text class="t" x="1175" y="690">allow-list CNP (per sandbox)</text>
+<text class="s" x="1175" y="708">toFQDNs + SNI on 443, ≤ 100 rules</text>
+<rect class="b ok" x="905" y="730" width="250" height="56"/>
+<text class="t" x="915" y="750">deny-all</text>
+<text class="s" x="915" y="768">no allow at all, no DNS</text>
+<rect class="b ok" x="1165" y="730" width="250" height="56"/>
+<text class="t" x="1175" y="750">VAP bex-api-sandbox-egress</text>
+<text class="s" x="1175" y="768">confines what bex-api may write</text>
+<rect x="10" y="810" width="860" height="92" fill="#f6fbff" rx="10"/>
+<text x="22" y="828" text-anchor="start" class="lane">6 · WHAT A SANDBOX CAN REACH</text>
+<rect class="b ok" x="30" y="832" width="400" height="56"/>
+<text class="t" x="40" y="852">Public internet (policy decides)</text>
+<text class="s" x="40" y="870">allow-all: any port · allow-list: named hosts, HTTPS only</text>
+<rect class="b bad" x="450" y="832" width="400" height="56"/>
+<text class="t" x="460" y="852">Platform and other tenants</text>
+<text class="s" x="460" y="870">blocked under every policy, Cilium floor</text>
+<path class="ln" d="M380,776 L380,832"/>
+<path class="red" d="M650,776 L650,832"/>
+<rect x="890" y="810" width="540" height="160" fill="#ffffff" rx="10"/>
+<text x="902" y="828" text-anchor="start" class="lane">LEGEND</text>
+<rect class="b ok" x="905" y="834" width="150" height="30"/>
+<text class="t" x="915" y="854">✅ live-verified</text>
+<rect class="b pend" x="1065" y="834" width="150" height="30"/>
+<text class="t" x="1075" y="854">🚧 live check pending</text>
+<rect class="b div" x="1225" y="834" width="185" height="30"/>
+<text class="t" x="1235" y="854">⚠ diverges from Render</text>
+<rect class="b plan" x="905" y="872" width="150" height="30"/>
+<text class="t" x="915" y="892">🚧 scheduled</text>
+<rect class="b plat" x="1065" y="872" width="150" height="30"/>
+<text class="t" x="1075" y="892">platform component</text>
+<rect class="b bad" x="1225" y="872" width="185" height="30"/>
+<text class="t" x="1235" y="892">denied by design</text>
+<text class="s" x="905" y="928">1 · bex-api writes a per-sandbox CNP before the sandbox exists; static policies are GitOps.</text>
+<text class="s" x="905" y="964">Solid arrow: dependency/call. Dashed: lifecycle or storage flow. Red dashed: blocked.</text>
+<text class="s" x="20" y="995">Sources: ADR042, ADR018 § Sandbox create flags, ADR104 D2–D11. Next to build: groups, snapshots (m285), memory checkpoint (D5), Docker spike (D6).</text>
+</svg>
