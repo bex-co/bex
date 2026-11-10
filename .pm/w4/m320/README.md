@@ -67,6 +67,29 @@ Live `/qa-find-bugs w4` loop, round 35, 2026-11-10 18:10–19:16 UTC (`muse.env`
 
 Poller output is saved locally as `.playwright-mcp/qa-deploys-35-poll-a.txt` and `qa-deploys-35-poll-b.txt` (gitignored). The durable artifact is the probe above, which anyone can re-run.
 
+### Addendum, 2026-11-10 (round 36): git-built Docker services are affected too
+
+Live `/qa-find-bugs w4` loop, round 36, 19:25–19:40 UTC (same pin and workspace).
+
+**Fixture:** Free web service `qa-20261110-lg36` (`srv-dbpmvac5ngvc73e8u1j0`), built from `bex-co/bex`, `rootDir: examples/hello-go`, auto-deploy off. Deleted afterwards (GET 404, URL 404).
+
+- **Its first deploy went through HTTP discovery.** The deploy log read `==> Detected HTTP on port 10000; serving it`.
+  - The platform injects `PORT=10000`, which overrides the Dockerfile's `ENV PORT=3000`, as on Render. The app listened on 10000.
+  - That injected value doesn't exempt the service from discovery.
+- **Two rebuilds, each giving the new release a different body.** For each: `PUT …/env-vars/MESSAGE`, then `POST …/deploys` `{"clearCache":"clear"}`. A poller fetched `GET /qa-poll` about once a second.
+  1. `dep-dbpn2ilme2kc73f2ldh0`:
+     - `update_in_progress` at 19:33:43;
+     - `qa-lg36-v2` first answered at 19:34:00, alternated with `v1` until 19:34:05, and answered alone from 19:34:16;
+     - `live` at 19:34:42, **42 s after the candidate first answered**.
+  2. `dep-dbpn4pk5ngvc73e8u1t0`:
+     - `update_in_progress` at 19:38:29;
+     - `v3` first answered at 19:38:33, alternated with `v2` until 19:38:55, and answered alone from 19:39:07;
+     - `live` at 19:39:41, **68 s early**;
+     - its `Detected HTTP on port 10000` narration is stamped 19:39:41, the same second as `live`.
+- **Errors.** Run 1 saw three connect timeouts (19:33:46–19:33:57). They didn't recur in run 2 or in 40 steady-state requests, so no downtime is claimed.
+
+So every Docker deploy that produces a new digest re-enters discovery: every push to a git-built Docker service with no user-set `PORT`, and every image tag change. Poller output: `.playwright-mcp/qa-deploys-36-poll-a.txt` and `-b.txt` (local).
+
 ## Root cause
 
 - **The candidate becomes Ready during discovery.**
@@ -105,6 +128,7 @@ Live on production after the release pins this build, on an owned Free image web
   - every response is `nginx/1.27.5` until the poll that first reads the deploy `live`;
   - after that, every response is `nginx/1.26.3` within one poll interval plus Render's drain;
   - no alternation appears while the row is `update_in_progress`.
+  - The same holds on a git-built `examples/hello-go` service with no user-set `PORT`: across `PUT …/env-vars/MESSAGE` + `POST …/deploys {"clearCache":"clear"}`, the new body never answers before the row reads `live`.
 - **One instance per change.** `GET /v1/logs` for the deploy window shows exactly one new instance for that deploy, and the deploy log keeps its "Detected HTTP on port 80" narration.
 - **Cancel before promotion.** Trigger the next tag with the hook and cancel it with `POST …/deploys/{id}/cancel` before it is live. Then:
   - not one response names the candidate's version, before or after the cancel;
@@ -118,7 +142,6 @@ Live on production after the release pins this build, on an owned Free image web
 
 ## Unverified (carried into tasks)
 
-- **Git-built Docker web services with no port.** I didn't probe one this round. Whether a new commit's digest re-enters discovery, and whether image `ENV PORT` (as in `examples/hello-go`) exempts it through `Status.EnvPort`, was read from source only (t005).
 - **What exactly closes the row `live` 24 s after the switch.** Deployment status convergence, the operator requeue or the backend reconcile period. Not traced (t004).
 - **Network errors during the runs.** The poller saw a few curl errors in Run B and in a later uncontrolled run. My own machine lost connectivity in that window (the dashboard console logged `ERR_INTERNET_DISCONNECTED`), so no downtime is claimed. t006 re-checks for errors with a stable client.
 - **Multi-instance services.** Paid plans weren't exercised. The pin must hold for every replica (t005).
