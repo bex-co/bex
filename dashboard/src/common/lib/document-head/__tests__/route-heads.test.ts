@@ -148,6 +148,13 @@ const staticRouteCases: Array<
     "新建项目",
   ],
   [
+    "new Sandbox Group",
+    IndexRoute,
+    { search: { new: "sandbox-group" } },
+    "New Sandbox Group",
+    "新建沙箱组",
+  ],
+  [
     "new Postgres",
     IndexRoute,
     { search: { new: "database" } },

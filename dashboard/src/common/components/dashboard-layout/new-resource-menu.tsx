@@ -45,6 +45,11 @@ export function NewResourceMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
+          <Link to="/" search={{ new: "sandbox-group" }}>
+            {t("sandboxGroups.createTitle")}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
           <Link to="/webhooks/new">{t("webhooks.newTitle")}</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>

@@ -211,6 +211,23 @@ const createProject = vi.fn();
 vi.mock("@/features/projects/hooks/use-create-project", () => ({
   useCreateProject: () => ({ create: createProject, busy: false }),
 }));
+// The sandbox group dialog mounts with the page too; its hook is stubbed like
+// the other create hooks (the constants the dialog reads stay real).
+const createSandboxGroup = vi.fn();
+vi.mock(
+  "@/features/sandbox-groups/hooks/use-create-sandbox-group",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/sandbox-groups/hooks/use-create-sandbox-group")
+    >()),
+    useCreateSandboxGroup: () => ({
+      create: createSandboxGroup,
+      busy: false,
+      refusal: null,
+      clearRefusal: vi.fn(),
+    }),
+  }),
+);
 // The database dialog's Project/Environment selector reads environments over
 // Apollo when OPEN (the ?new=database cases below) — same stub
 // keyvalue.new.test.tsx uses.
@@ -343,6 +360,14 @@ beforeEach(() => {
   projectsState.loading = false;
   projectsState.error = undefined;
   createDatabase.mockResolvedValue("dpg-returned-id");
+  createSandboxGroup.mockResolvedValue({
+    __typename: "SandboxGroup",
+    id: "sbg-returned-id",
+    name: "ci",
+    region: "oregon",
+    isDefault: true,
+    concurrencyLimit: 1000,
+  });
   createProject.mockResolvedValue("prj-returned-id");
   run.mockReset();
 });
@@ -627,10 +652,86 @@ describe("URL-owned create dialogs (w1/m45)", () => {
     expect(await screen.findByText("New Project")).toBeInTheDocument();
   });
 
+  it("?new=sandbox-group opens the sandbox group create dialog (w22/m311)", async () => {
+    renderHomePage("/?new=sandbox-group");
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByText("New Sandbox Group")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Region")).toHaveValue(
+      "Oregon (US West)",
+    );
+  });
+
   it("plain / opens no dialog", () => {
     renderHomePage("/");
     expect(screen.queryByText("New Postgres")).not.toBeInTheDocument();
     expect(screen.queryByText("New Project")).not.toBeInTheDocument();
+    expect(screen.queryByText("New Sandbox Group")).not.toBeInTheDocument();
+  });
+
+  // w22/m311: Render's "+ New > Sandbox Group". The overview's own New menu
+  // lists it beside the other creates and opens the same URL-owned dialog.
+  it("lists Sandbox Group in the New menu and opens its dialog through the URL", async () => {
+    const user = userEvent.setup();
+    const { router } = renderHomePage("/");
+
+    await user.click(await screen.findByRole("button", { name: "New" }));
+    const items = (await screen.findAllByRole("menuitem")).map(
+      (item) => item.textContent,
+    );
+    expect(items).toEqual([
+      "New Service",
+      "New Database",
+      "New Key Value",
+      "New Project",
+      "New Sandbox Group",
+    ]);
+    await user.click(
+      screen.getByRole("menuitem", { name: "New Sandbox Group" }),
+    );
+
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByRole("heading", { name: "New Sandbox Group" }),
+    ).toBeInTheDocument();
+    expect(router.state.location.search).toEqual({ new: "sandbox-group" });
+  });
+
+  it("confirms a created sandbox group in place and closes back to a clean URL", async () => {
+    const user = userEvent.setup();
+    const { router } = renderHomePage("/?new=sandbox-group");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "ci");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create Sandbox Group" }),
+    );
+
+    expect(createSandboxGroup).toHaveBeenCalledWith("ci");
+    expect(
+      await within(dialog).findByText("sbg-returned-id"),
+    ).toBeInTheDocument();
+    // No list or detail page exists for a group, so it stays on the overview.
+    expect(router.state.location.pathname).toBe("/");
+
+    await user.click(within(dialog).getByRole("button", { name: "Done" }));
+    await waitFor(() => expect(router.state.location.search).toEqual({}));
+    expect(router.state.location.pathname).toBe("/");
+  });
+
+  it("keeps the sandbox group form and route in place when create fails", async () => {
+    createSandboxGroup.mockResolvedValueOnce(null);
+    const user = userEvent.setup();
+    const { router } = renderHomePage("/?new=sandbox-group");
+
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), "ci");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create Sandbox Group" }),
+    );
+
+    await waitFor(() => expect(createSandboxGroup).toHaveBeenCalled());
+    expect(router.state.location.search).toEqual({ new: "sandbox-group" });
+    expect(within(dialog).getByLabelText("Name")).toHaveValue("ci");
   });
 
   it("closes the Postgres search dialog before landing on the returned immutable id", async () => {

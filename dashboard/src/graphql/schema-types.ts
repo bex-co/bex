@@ -1795,6 +1795,7 @@ export type Mutation = {
   createRouterKey: Maybe<Scalars['Boolean']['output']>;
   createSSHKey: Maybe<SshKey>;
   createSandbox: Maybe<Sandbox>;
+  createSandboxGroup: Maybe<SandboxGroup>;
   createService: Maybe<Service>;
   createShellSession: Maybe<ShellSession>;
   createWebhookEndpoint: Maybe<WebhookEndpoint>;
@@ -1972,6 +1973,7 @@ export type Mutation = {
   updatePushNotificationSettings: Maybe<PushNotificationSettings>;
   updateRegistryCredential: Maybe<RegistryCredential>;
   updateRouterKey: Maybe<Scalars['Boolean']['output']>;
+  updateSandboxGroup: Maybe<SandboxGroup>;
   updateServicePlan: Maybe<Service>;
   updateWebhookEndpoint: Maybe<WebhookEndpoint>;
   verifyCustomDomain: Maybe<CustomDomain>;
@@ -2281,8 +2283,16 @@ export type MutationCreateSandboxArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   plan?: InputMaybe<Scalars['String']['input']>;
   region?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId?: InputMaybe<Scalars['String']['input']>;
   template?: InputMaybe<Scalars['String']['input']>;
   timeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type MutationCreateSandboxGroupArgs = {
+  name: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  region?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3404,6 +3414,13 @@ export type MutationUpdateRouterKeyArgs = {
 };
 
 
+export type MutationUpdateSandboxGroupArgs = {
+  concurrencyLimit: Scalars['Int']['input'];
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationUpdateServicePlanArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
@@ -3755,6 +3772,8 @@ export type Query = {
   sandbox: Maybe<Sandbox>;
   sandboxExecution: Maybe<SandboxExecution>;
   sandboxExecutions: Maybe<Array<Maybe<SandboxExecution>>>;
+  sandboxGroup: Maybe<SandboxGroup>;
+  sandboxGroups: Maybe<Array<Maybe<SandboxGroup>>>;
   sandboxes: Maybe<Array<Maybe<Sandbox>>>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
@@ -4452,9 +4471,23 @@ export type QuerySandboxExecutionsArgs = {
 };
 
 
+export type QuerySandboxGroupArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySandboxGroupsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QuerySandboxesArgs = {
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
@@ -4749,6 +4782,7 @@ export type Sandbox = {
   owner: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
   region: Maybe<Scalars['String']['output']>;
+  sandboxGroupId: Maybe<Scalars['String']['output']>;
   status: Scalars['String']['output'];
   timeoutSeconds: Maybe<Scalars['Int']['output']>;
   workspace: Maybe<Scalars['String']['output']>;
@@ -4765,6 +4799,19 @@ export type SandboxExecution = {
   stoppedAt: Maybe<Scalars['String']['output']>;
   type: Scalars['String']['output'];
   userId: Scalars['String']['output'];
+};
+
+export type SandboxGroup = {
+  __typename: 'SandboxGroup';
+  concurrencyLimit: Scalars['Int']['output'];
+  createdAt: Maybe<Scalars['String']['output']>;
+  environmentId: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  isDefault: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  ownerId: Scalars['String']['output'];
+  region: Scalars['String']['output'];
+  updatedAt: Maybe<Scalars['String']['output']>;
 };
 
 export type SandboxNetworkPolicy = {

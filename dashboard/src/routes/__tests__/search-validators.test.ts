@@ -85,6 +85,10 @@ describe.each([
     { tab: undefined, ...NO_DATASTORE_LOG_FILTERS, text: "404" },
   ],
   ["/", IndexRoute, { new: "bogus" }, { new: undefined }],
+  // The three create dialogs the overview owns in its URL (w1/m45, w22/m311).
+  ["/", IndexRoute, { new: "database" }, { new: "database" }],
+  ["/", IndexRoute, { new: "project" }, { new: "project" }],
+  ["/", IndexRoute, { new: "sandbox-group" }, { new: "sandbox-group" }],
   [
     "/workspace/settings",
     WorkspaceSettingsRoute,

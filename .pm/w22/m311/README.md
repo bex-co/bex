@@ -1,6 +1,6 @@
 # w22 · m311 — Sandbox groups, as on Render: a default group per workspace, a concurrency limit, and 429 at the limit
 
-**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** todo (t001–t006 done; t012 next)
+**Worker:** worker22 **Goal:** `sandbox-groups create|list` and `sandboxes create --group` work as on Render, with a default group per workspace and a 429 at the concurrency limit **Status:** todo (t001–t006 and t012 done; t007 needs the deploy)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Concurrency limit: 429 on create and on every resume, without racing — **DONE** | 1h | t003 |
 | t005 | GraphQL and MCP: groups and sandboxGroupId, answering the same as REST — **DONE** | 1h | t004 |
 | t006 | Resource and abuse bounds for compute (ADR104 D11); the egress alert moved to w22/002 — **DONE** | 1h30m | t004 |
-| t012 | Dashboard: "+ New > Sandbox Group", as on Render | 1h30m | t005 |
+| t012 | Dashboard: "+ New > Sandbox Group", as on Render — **DONE** | 1h30m | t005 |
 | t007 | Production walk with the unmodified CLI, and flip the ledger rows | 1h | t005, t006, t012 |
 | t008 | Render parity | 30m | t007 |
 | t009 | Simplify | 20m | t008 |

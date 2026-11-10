@@ -42,6 +42,7 @@ import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
 import { ResourceTable } from "@/features/projects/components/resource-table";
 import { NewProjectDialog } from "@/features/projects/components/new-project-dialog";
+import { NewSandboxGroupDialog } from "@/features/sandbox-groups/components/new-sandbox-group-dialog";
 import { ProjectCard } from "@/features/projects/components/project-card";
 import { NewProjectCard } from "@/features/projects/components/new-project-card";
 import {
@@ -54,6 +55,9 @@ import {
   useOverviewShape,
 } from "@/features/onboarding/hooks/use-overview-shape";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+
+/** The create dialogs the URL's `?new=` can open on the overview. */
+type CreateDialogKind = "database" | "project" | "sandbox-group";
 
 export const Route = createFileRoute("/")({
   staticData: { chrome: true },
@@ -104,16 +108,18 @@ export const Route = createFileRoute("/")({
         }),
     ]);
   },
-  // `?new=database|project` opens the matching create dialog (w1/m45) — the
-  // URL owns the dialog state (the `?plan=change` pattern,
-  // routes/workspace.settings.tsx) so Render's New-menu URLs (`/new/database`,
-  // `/d/new`, `/new/project`) can alias onto it. Optional key, same rationale
-  // as workspace.settings' validateSearch.
+  // `?new=database|project|sandbox-group` opens the matching create dialog
+  // (w1/m45, w22/m311) — the URL owns the dialog state (the `?plan=change`
+  // pattern, routes/workspace.settings.tsx) so Render's New-menu URLs
+  // (`/new/database`, `/d/new`, `/new/project`) can alias onto it. Optional
+  // key, same rationale as workspace.settings' validateSearch.
   validateSearch: (
     search: Record<string, unknown>,
-  ): { new?: "database" | "project" } => ({
+  ): { new?: CreateDialogKind } => ({
     new:
-      search.new === "database" || search.new === "project"
+      search.new === "database" ||
+      search.new === "project" ||
+      search.new === "sandbox-group"
         ? search.new
         : undefined,
   }),
@@ -123,6 +129,9 @@ export const Route = createFileRoute("/")({
     }
     if (match.search.new === "project") {
       return translatedTitleHead("projects.createTitle", match);
+    }
+    if (match.search.new === "sandbox-group") {
+      return translatedTitleHead("sandboxGroups.createTitle", match);
     }
     return translatedTitleHead("projects.overviewTitle", match);
   },
@@ -167,7 +176,8 @@ export function HomePage() {
   const routeNavigate = Route.useNavigate();
   const newDatabaseOpen = newParam === "database";
   const newProjectOpen = newParam === "project";
-  function setCreateDialog(kind: "database" | "project", open: boolean) {
+  const newSandboxGroupOpen = newParam === "sandbox-group";
+  function setCreateDialog(kind: CreateDialogKind, open: boolean) {
     void routeNavigate({
       search: open ? { new: kind } : {},
       replace: true,
@@ -176,6 +186,8 @@ export function HomePage() {
   const setNewDatabaseOpen = (open: boolean) =>
     setCreateDialog("database", open);
   const setNewProjectOpen = (open: boolean) => setCreateDialog("project", open);
+  const setNewSandboxGroupOpen = (open: boolean) =>
+    setCreateDialog("sandbox-group", open);
 
   const databaseStats = useMemo(
     () => computeDatabaseStats(databases),
@@ -279,6 +291,9 @@ export function HomePage() {
                 <DropdownMenuItem onSelect={() => setNewProjectOpen(true)}>
                   {t("projects.newProjectButton")}
                 </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setNewSandboxGroupOpen(true)}>
+                  {t("sandboxGroups.createTitle")}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -374,6 +389,10 @@ export function HomePage() {
             params: { projectId: id },
           });
         }}
+      />
+      <NewSandboxGroupDialog
+        open={newSandboxGroupOpen}
+        onOpenChange={setNewSandboxGroupOpen}
       />
     </DashboardLayout>
   );
