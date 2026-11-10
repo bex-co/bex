@@ -1,6 +1,6 @@
 # w3 · m276 — Web services' extra private listeners are discovered, and openPorts lists only ports that listen, as on Render
 
-**Worker:** worker3 **Goal:** every service's private-network listeners are reachable and reported the way Render's are: a web service's extra listeners too, and never a declared port nothing listens on **Status:** blocked — t001–t006 done; t007 Closeout waits on the production deploy and a live check
+**Worker:** worker3 **Goal:** every service's private-network listeners are reachable and reported the way Render's are: a web service's extra listeners too, and never a declared port nothing listens on **Status:** todo — t001–t006 done; live check then t007 Closeout pending (gate cleared 2026-11-10)
 
 ## Tasks (in order)
 
@@ -34,3 +34,10 @@
 - No user decision needed.
 
 - **2026-11-05 14:20Z attempt (loopx w3):** ran the live check in `bex-canary` with the QA account (`m273-priv` with python's http.server on an undeclared 9001, an nginx `m273-web`, and a curl `m273-probe` worker). `priv:9001` and `web:10000` did not answer, and `openPorts` showed only 10000. **Inconclusive:** production is still pinned to `c8bbc07cbeeb`, from before this code. Every deploy run since then was marked superseded (`check-supersession`, newer production manifests on main), so build and deploy were skipped. This is w6/m156's deploy-latency area. The three services were deleted (204) and the QA session logged out. Rerun once a deploy pins a commit at or after this one.
+
+## Unblocked (2026-11-10, /pmx w3)
+
+- **Source:** verified evidence (the release condition recorded on 2026-11-05), not a user decision.
+- **Gate cleared:** main's latest `chore(deploy): pin platform images to 4630a48a765e` (`043519226`, deploy.yml run 42777932436, success) contains `dd31fbdef` (this milestone), checked with `git merge-base --is-ancestor`. Moved `w3/blocked/m276/` → `w3/m276/`.
+- **Status:** pending live verification; the deploy alone does not close it.
+- **Next:** with the QA account, together with m273 t005: a web service listening on a second port is reachable on it from a sibling and lists it in `openPorts`; an image-declared port with no listener drops from `openPorts` after the first scan (recheck the `[80, 8080]` observation from m273's 2026-11-05 record). Then t007 Closeout.

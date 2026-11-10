@@ -1,6 +1,6 @@
 # w3 · m273 — Private services discover runtime ports and web services answer on private port 10000, as on Render
 
-**Worker:** worker3 **Goal:** an undeclared private-service listener is reachable on the private network, and every web service answers on private port 10000 **Status:** blocked — t001–t004, t006–t008, t010 done; t005 hosted acceptance waits on t010's production deploy
+**Worker:** worker3 **Goal:** an undeclared private-service listener is reachable on the private network, and every web service answers on private port 10000 **Status:** todo — t001–t004, t006–t008, t010 done; t005 live check pending (gate cleared 2026-11-10)
 
 ## Tasks (in order)
 
@@ -54,3 +54,10 @@
 
 - t010 shipped (PORT selects a private image service's primary; an undeclared listener on an unready first rollout becomes the primary). Its live rerun is part of t005.
 - **Gate:** a `chore(deploy): pin platform images to <sha>` commit on main at or after t010's commit. Then a worker runs t005 with the QA account (`scripts/qa-login.sh`): the t010 whoami case with and without `PORT`, an undeclared-port private service reached from a peer, and a web service at `:10000`; then t009 Closeout. Run it together with `blocked/m276`'s live check. No user decision needed.
+
+## Unblocked (2026-11-10, /pmx w3)
+
+- **Source:** verified evidence (the release condition recorded on 2026-11-08), not a user decision.
+- **Gate cleared:** main's latest `chore(deploy): pin platform images to 4630a48a765e` (`043519226`, deploy.yml run 42777932436, success) contains `c6bcb8741` (this milestone), `1aad33901` (t010) and `dd31fbdef` (m276), each checked with `git merge-base --is-ancestor`. Moved `w3/blocked/m273/` → `w3/m273/`.
+- **Status:** a deployed version is not proof the DoD passed; t005 is pending live verification.
+- **Next:** t005 with the QA account (`scripts/qa-login.sh`), together with m276's live check: the t010 whoami case with and without `PORT`, an undeclared-port private service reached from a peer, and a web service at `:10000`. Then t009 Closeout. Delete fixtures by id with 404 proofs.
