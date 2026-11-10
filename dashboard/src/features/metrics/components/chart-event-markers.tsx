@@ -185,10 +185,13 @@ function tooltipDotClass(kind: ChartEventKind): string {
 function markerLabel(
   marker: ChartEventMarker,
   t: (
-    key: ChartEventMarker["labelKey"],
+    key:
+      | ChartEventMarker["labelKey"]
+      | NonNullable<ChartEventMarker["typeLabelKey"]>,
     params?: Record<string, string>,
   ) => string,
 ): string {
+  if (marker.typeLabelKey) return t(marker.typeLabelKey);
   if (marker.fallbackLabel) return marker.fallbackLabel;
   return t(marker.labelKey, marker.labelParams);
 }

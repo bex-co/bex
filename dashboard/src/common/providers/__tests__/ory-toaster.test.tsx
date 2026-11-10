@@ -3,10 +3,14 @@ import { act, render, screen } from "@testing-library/react";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import OryToaster from "@/common/providers/ory-toaster";
+import i18n from "@/i18n/init";
 
-afterEach(() => {
+afterEach(async () => {
   act(() => {
     toast.dismiss();
+  });
+  await act(async () => {
+    await i18n.changeLanguage("en");
   });
 });
 
@@ -17,6 +21,26 @@ afterEach(() => {
 // sonner behavior the replay relies on (a store that keeps the toast, and an
 // in-place create by id).
 describe("OryToaster", () => {
+  it("names its landmark in the selected language (w21/017)", async () => {
+    const { container, unmount } = render(<OryToaster />);
+    expect(
+      container.ownerDocument.querySelector(
+        'section[aria-label^="Notifications"]',
+      ),
+    ).not.toBeNull();
+    unmount();
+    await act(async () => {
+      await i18n.changeLanguage("zh");
+    });
+    render(<OryToaster />);
+    expect(
+      document.querySelector('section[aria-label^="通知"]'),
+    ).not.toBeNull();
+    expect(
+      document.querySelector('section[aria-label^="Notifications"]'),
+    ).toBeNull();
+  });
+
   it("shows a toast raised before the Toaster mounted", async () => {
     toast.error("That resource doesn't exist or was deleted.", {
       id: "resource-not-found",

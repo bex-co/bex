@@ -1,4 +1,8 @@
 import type { ServiceEventView } from "@/features/events/hooks/use-service-events";
+import {
+  serviceEventHasExplicitLabel,
+  serviceEventLabelKey,
+} from "@/features/events/service-event-catalog";
 
 // Chart event markers (Render-parity): service events overlaid on every
 // metrics chart as a vertical dashed line + an icon badge in a strip above
@@ -40,6 +44,11 @@ export interface ChartEventMarker {
   labelKey: ChartEventLabelKey;
   /** Interpolation params for labelKey (e.g. the commit short id). */
   labelParams?: Record<string, string>;
+  /**
+   * The Events tab's translated label for a catalogued type the marker has no
+   * dedicated wording for (w21/017); wins over `fallbackLabel`.
+   */
+  typeLabelKey?: string;
   /** Humanized event type, shown when labelKey is the generic fallback. */
   fallbackLabel?: string;
   /** Deploy behind this event, when there is one — the badge links to it. */
@@ -95,7 +104,7 @@ function describeEvent(
   event: ServiceEventView,
 ): Pick<
   ChartEventMarker,
-  "kind" | "labelKey" | "labelParams" | "fallbackLabel"
+  "kind" | "labelKey" | "labelParams" | "fallbackLabel" | "typeLabelKey"
 > {
   const type = event.type ?? "";
   switch (type) {
@@ -155,6 +164,13 @@ function describeEvent(
     case "plan_changed":
       return { kind: "info", labelKey: "metrics.eventPlanChanged" };
     default:
+      if (type && serviceEventHasExplicitLabel(type)) {
+        return {
+          kind: "info",
+          labelKey: "metrics.eventsChanged",
+          typeLabelKey: serviceEventLabelKey(type),
+        };
+      }
       return {
         kind: "info",
         labelKey: "metrics.eventsChanged",

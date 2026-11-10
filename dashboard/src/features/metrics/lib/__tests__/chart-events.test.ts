@@ -115,6 +115,27 @@ describe("toChartEventMarkers", () => {
   });
 });
 
+describe("catalogued event types (w21/017)", () => {
+  it("names a catalogued type by its Events-tab label key", () => {
+    const [marker] = toChartEventMarkers(
+      [event({ type: "commit_ignored" })],
+      WINDOW_START,
+      WINDOW_END,
+    );
+    expect(marker.typeLabelKey).toBe("services.eventsTypeCommitIgnored");
+  });
+
+  it("keeps the dedicated wording of the explicit cases", () => {
+    const [marker] = toChartEventMarkers(
+      [event({ type: "server_restarted" })],
+      WINDOW_START,
+      WINDOW_END,
+    );
+    expect(marker.labelKey).toBe("metrics.eventServerRestarted");
+    expect(marker.typeLabelKey).toBeUndefined();
+  });
+});
+
 describe("clusterMarkers", () => {
   const T0 = Date.parse("2026-07-17T10:00:00Z");
   // A 0..600 mapping over one hour: 1 minute = 10 viewBox units.

@@ -30,7 +30,7 @@
 - [x] **014** — Skill version history shows the author as a raw user id → [`014.md`](done/014.md)
 - [x] **015** — The create forms (New Environment Group, New Service) accept duplicate environment keys and secret-file names and silently drop the earlier value, while the Edit editors refuse them → [`015.md`](done/015.md)
 - [x] **016** — A custom Logs range that ended in the past still shows today's application lines when Live is on; the live tail has a lower bound but no upper bound (regression of w6/m111 target A) → [`016.md`](done/016.md)
-- [ ] **017** — The Chinese UI keeps two English accessible names: the toast landmark `Notifications alt+T` on every page, and the Metrics chart markers that show the raw event type (`commit ignored`) → [`017.md`](017.md)
+- [x] **017** — The Chinese UI keeps two English accessible names: the toast landmark `Notifications alt+T` on every page, and the Metrics chart markers that show the raw event type (`commit ignored`) → [`017.md`](done/017.md)
 - [ ] **018** — In the ⌘K search, a renamed service's accessible name glues its current name to its original name (`eden-dash-v3block-eden-mono`) → [`018.md`](018.md)
 - [ ] **019** — Several UI texts fall below WCAG AA contrast (4.5:1): log instance ids in both themes, and the 404 chip, project health line, Partial data label and success badge in the light theme → [`019.md`](019.md)
 - [ ] **020** — Postgres Recovery: the restore dialog's "Point in time" is sent as UTC (`${targetTime}:00Z`) although the recovery window beside it is shown in the viewer's local time, and nothing bounds it to the window → [`020.md`](020.md)

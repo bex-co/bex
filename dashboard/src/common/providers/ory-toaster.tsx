@@ -28,7 +28,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
  * (w9/m60 t004).
  */
 export default function OryToaster() {
-  const { i18n: i18next } = useTranslations();
+  const { t, i18n: i18next } = useTranslations();
   const locale = i18next.language;
   const messages = (OryLocales as Record<string, Record<string, string>>)[
     locale
@@ -40,7 +40,8 @@ export default function OryToaster() {
       defaultLocale="en"
       messages={messages ?? OryLocales.en}
     >
-      <Toaster />
+      {/* sonner's landmark name defaults to English (w21/017). */}
+      <Toaster containerAriaLabel={t("common.navNotifications")} />
       <ReplayEarlyToasts />
     </IntlProvider>
   );
