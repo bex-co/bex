@@ -32,7 +32,7 @@ it("advances the unchanged session's visible age and accessible revoke label tog
   );
   const time = container.querySelector("time")!;
   const button = screen.getByRole("button", {
-    name: "Sign out Safari on iOS, Paris, last active 5m",
+    name: "Sign out Safari on iOS, Paris, signed in 5m",
   });
   expect(time).toHaveTextContent("5m");
   expect(time).toHaveAttribute("datetime", session.authenticatedAt);
@@ -45,7 +45,7 @@ it("advances the unchanged session's visible age and accessible revoke label tog
   expect(time).toHaveAttribute("datetime", session.authenticatedAt);
   expect(
     screen.getByRole("button", {
-      name: "Sign out Safari on iOS, Paris, last active 7m",
+      name: "Sign out Safari on iOS, Paris, signed in 7m",
     }),
   ).toBe(button);
   expect(button).toBeEnabled();
@@ -76,7 +76,7 @@ it("localizes the visible age and the revoke name together", async () => {
   expect(time).toHaveAttribute("datetime", session.authenticatedAt);
   expect(
     screen.getByRole("button", {
-      name: "退出登录 Safari on iOS，Paris，最近活动 5分钟",
+      name: "退出登录 Safari on iOS，Paris，登录于 5分钟",
     }),
   ).toBeInTheDocument();
 });

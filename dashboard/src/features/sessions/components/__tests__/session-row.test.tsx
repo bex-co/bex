@@ -39,7 +39,7 @@ describe("SessionRow clock", () => {
     container.innerHTML = renderToString(node);
     expect(container.querySelector("button")).toHaveAttribute(
       "aria-label",
-      `Sign out Chrome, US, last active ${authenticatedAt}`,
+      `Sign out Chrome, US, signed in ${authenticatedAt}`,
     );
     document.body.appendChild(container);
     vi.setSystemTime(new Date("2026-10-02T12:01:30Z"));
@@ -54,14 +54,14 @@ describe("SessionRow clock", () => {
     expect(container.querySelector("time")).toHaveTextContent("1m");
     expect(container.querySelector("button")).toHaveAttribute(
       "aria-label",
-      "Sign out Chrome, US, last active 1m",
+      "Sign out Chrome, US, signed in 1m",
     );
     expect(errors).not.toHaveBeenCalled();
     act(() => vi.advanceTimersByTime(60_000));
     expect(container.querySelector("time")).toHaveTextContent("2m");
     expect(container.querySelector("button")).toHaveAttribute(
       "aria-label",
-      "Sign out Chrome, US, last active 2m",
+      "Sign out Chrome, US, signed in 2m",
     );
     expect(recovered).toEqual([]);
     act(() => root.unmount());

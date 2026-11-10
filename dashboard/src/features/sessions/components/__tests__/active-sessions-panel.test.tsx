@@ -147,7 +147,7 @@ describe("ActiveSessionsPanel", () => {
 
     await user.click(
       screen.getByRole("button", {
-        name: "Sign out Safari on iOS, —, last active —",
+        name: "Sign out Safari on iOS, —, signed in —",
       }),
     );
     const dialog = await screen.findByRole("alertdialog");
@@ -158,7 +158,7 @@ describe("ActiveSessionsPanel", () => {
     expect(revoke).toHaveBeenCalledWith("session-other");
   });
 
-  it("names the row sign-out control after device, location, and last active (w4/084)", () => {
+  it("names the row sign-out control after device, location, and sign-in time (w4/084)", () => {
     sessionsState.sessions = [
       {
         id: "session-current",
@@ -184,12 +184,12 @@ describe("ActiveSessionsPanel", () => {
 
     expect(
       screen.getByRole("button", {
-        name: "Sign out curl/8.7.1, US, last active 18m",
+        name: "Sign out curl/8.7.1, US, signed in 18m",
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Sign out Unknown device, —, last active —",
+        name: "Sign out Unknown device, —, signed in —",
       }),
     ).toBeInTheDocument();
   });

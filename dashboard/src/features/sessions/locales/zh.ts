@@ -37,9 +37,10 @@ const zh: Record<string, TranslationEntry> = {
     message: "位置",
     description: "Active Sessions table column: location or IP",
   },
-  "activeSessions.colLastActive": {
-    message: "最近活动",
-    description: "Active Sessions table column: last authenticated",
+  "activeSessions.colSignedIn": {
+    message: "登录时间",
+    description:
+      "Active Sessions table column: when the session was authenticated (Kratos has no last-activity time)",
   },
   "activeSessions.current": {
     message: "当前设备",
@@ -70,7 +71,7 @@ const zh: Record<string, TranslationEntry> = {
     description: "Active Sessions row revoke confirmation button",
   },
   "activeSessions.revokeNamed": {
-    message: "退出登录 {device}，{location}，最近活动 {lastActive}",
+    message: "退出登录 {device}，{location}，登录于 {signedIn}",
     description:
       "Active Sessions row revoke button aria-label identifying the session",
   },

@@ -23,6 +23,7 @@ import {
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useActiveSessions } from "@/features/sessions/hooks/use-active-sessions";
+import { orderSessions } from "@/features/sessions/lib/order-sessions";
 import { SessionRow } from "@/features/sessions/components/session-row";
 
 /**
@@ -91,12 +92,12 @@ export function ActiveSessionsPanel() {
               <TableRow>
                 <TableHead>{t("activeSessions.colDevice")}</TableHead>
                 <TableHead>{t("activeSessions.colLocation")}</TableHead>
-                <TableHead>{t("activeSessions.colLastActive")}</TableHead>
+                <TableHead>{t("activeSessions.colSignedIn")}</TableHead>
                 <TableActionsHead />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sessions.map((session) => (
+              {orderSessions(sessions).map((session) => (
                 <SessionRow
                   key={session.id}
                   session={session}

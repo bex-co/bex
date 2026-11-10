@@ -38,9 +38,10 @@ const en: Record<string, TranslationEntry> = {
     message: "Location",
     description: "Active Sessions table column: location or IP",
   },
-  "activeSessions.colLastActive": {
-    message: "Last active",
-    description: "Active Sessions table column: last authenticated",
+  "activeSessions.colSignedIn": {
+    message: "Signed in",
+    description:
+      "Active Sessions table column: when the session was authenticated (Kratos has no last-activity time)",
   },
   "activeSessions.current": {
     message: "This device",
@@ -71,7 +72,7 @@ const en: Record<string, TranslationEntry> = {
     description: "Active Sessions row revoke confirmation button",
   },
   "activeSessions.revokeNamed": {
-    message: "Sign out {device}, {location}, last active {lastActive}",
+    message: "Sign out {device}, {location}, signed in {signedIn}",
     description:
       "Active Sessions row revoke button aria-label identifying the session",
   },

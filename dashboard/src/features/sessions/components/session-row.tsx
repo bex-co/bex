@@ -15,14 +15,14 @@ export interface SessionRowProps {
   revoking: boolean;
 }
 
-/** One Active Sessions row: device/location, last active, and revoke (never for the current session). */
+/** One Active Sessions row: device/location, sign-in time, and revoke (never for the current session). */
 export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
   const { t } = useTranslations();
   const now = useNow();
   const hydrated = useIsHydrated();
   const device = session.userAgent ?? t("activeSessions.unknownDevice");
   const location = session.location ?? session.ipAddress ?? "—";
-  const lastActive = hydrated
+  const signedIn = hydrated
     ? formatRelativeAge(session.authenticatedAt, t, now)
     : session.authenticatedAt &&
         !Number.isNaN(Date.parse(session.authenticatedAt))
@@ -52,7 +52,7 @@ export function SessionRow({ session, onRevoke, revoking }: SessionRowProps) {
             label={t("activeSessions.revokeNamed", {
               device,
               location,
-              lastActive,
+              signedIn,
             })}
             confirmTitle={t("activeSessions.revokeConfirmTitle")}
             confirmBody={t("activeSessions.revokeConfirmBody")}
