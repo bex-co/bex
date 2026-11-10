@@ -80,26 +80,7 @@ Introduce a durable **agent workspace**: the environment that outlives any singl
 
 ### D2 — State machine
 
-```mermaid
-stateDiagram-v2
-    state "Active (live pod)" as Active
-    state "Hibernated (encrypted snapshot in object storage)" as Hibernated
-    state "Deleted" as Deleted
-
-    [*] --> Active: create
-    Active --> Hibernated: idle exceeds graceTTL / reclaim pod, keep snapshot
-    Hibernated --> Active: connect / new turn / Resume — rehydrate (see Performance)
-    Hibernated --> Deleted: retention expiry (7d default) or explicit delete
-    Active --> Deleted: explicit cancel or delete
-    Deleted --> [*]
-
-    note right of Hibernated
-        Pin removes ONLY the Hibernated to Deleted edge.
-        Even a pinned workspace still hibernates when idle —
-        pin never removes pod-reclamation; there is no
-        "live pod forever" state.
-    end note
-```
+![State machine: create enters Active (live pod); idle beyond graceTTL moves Active to Hibernated (encrypted snapshot in object storage) and reclaims the pod; connect, a new turn or Resume rehydrates Hibernated back to Active; retention expiry (7d default) or explicit delete moves Hibernated to Deleted; explicit cancel or delete moves Active to Deleted. A note says pin removes only the Hibernated to Deleted edge, so even a pinned workspace hibernates when idle](assets/ADR059-agent-sandbox-hibernation.svg)
 
 - **Active → Hibernated**: `idle > graceTTL`, where `idle = now − max(last turn end, last connect/disconnect)` and **never counts down while connected**. Reclaims the pod, keeps the snapshot.
 - **Hibernated → Active**: on connect / new turn / `Resume` — rehydrate from the snapshot.

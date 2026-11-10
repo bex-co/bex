@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="950" viewBox="0 0 1000 950" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR051 — Agent session transcript core path: the Completer polls status and harvests the transcript through the ssh-gateway exec listener before teardown, appends the parts to control-plane Postgres, then tears the sandbox down; the dashboard mints an attach ticket and replays the stored transcript through the attach listener</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .g { font-size: 13px; font-weight: 700; fill: #475569; }
+      .gs { font-size: 12px; font-weight: 400; fill: #6b7280; }
+      .group { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .badge circle { fill: #1f2937; }
+      .badge text { font-size: 12px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="949" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Agent session transcript: core path</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">Persistence is decoupled from live attach: the Completer harvests the transcript before it tears the sandbox down.</text>
+
+  <!-- developer -->
+  <rect class="actor" x="215" y="100" width="150" height="44" rx="22"/>
+  <circle class="icon" cx="243" cy="116" r="5"/>
+  <path class="icon" d="M233,133 a10,8 0 0 1 20,0"/>
+  <text x="264" y="127" font-size="14" font-weight="600" fill="#111827">developer</text>
+
+  <!-- dashboard -->
+  <rect class="group" x="32" y="180" width="256" height="120" rx="12"/>
+  <text class="g" x="48" y="202">dashboard <tspan class="gs">(TanStack)</tspan></text>
+  <rect class="client" x="50" y="222" width="220" height="60" rx="10"/>
+  <text class="h" x="160" y="247">useChat</text>
+  <text class="s" x="160" y="267">resume: true</text>
+
+  <!-- bex-api process -->
+  <rect class="group" x="312" y="180" width="586" height="120" rx="12"/>
+  <text class="g" x="328" y="202">bex-api process</text>
+  <rect class="control" x="330" y="222" width="220" height="60" rx="10"/>
+  <text class="h" x="440" y="247">agent-session verbs</text>
+  <text class="s" x="440" y="267">create / attach-ticket</text>
+  <rect class="control" x="620" y="222" width="260" height="60" rx="10"/>
+  <text class="h" x="750" y="247">Completer</text>
+  <text class="s" x="750" y="267">background loop, 15s tick</text>
+
+  <!-- control-plane Postgres -->
+  <path class="control" d="M330,372 v90 a110,9 0 0 0 220,0 v-90"/>
+  <ellipse class="control" cx="440" cy="372" rx="110" ry="9"/>
+  <text class="h" x="440" y="406">control-plane Postgres</text>
+  <text class="s" x="440" y="426">agent_sessions +</text>
+  <text class="s" x="440" y="443">agent_session_transcripts</text>
+
+  <!-- isolated ssh-gateway -->
+  <rect class="group" x="32" y="510" width="866" height="138" rx="12"/>
+  <rect class="reconcile" x="50" y="528" width="220" height="64" rx="10"/>
+  <text class="h" x="160" y="555">attach listener :8083</text>
+  <text class="s" x="160" y="575">GET /stream replay + tee</text>
+  <rect class="reconcile" x="620" y="528" width="260" height="76" rx="10"/>
+  <text class="h" x="750" y="553">exec listener :8081</text>
+  <text class="s" x="750" y="573">pods/exec: reads status.json</text>
+  <text class="s" x="750" y="590">+ session.jsonl</text>
+  <text class="g" x="48" y="634">isolated ssh-gateway <tspan class="gs">— sole session ingress, sole pods/exec holder</tspan></text>
+
+  <!-- sandbox namespace -->
+  <rect class="group" x="312" y="690" width="586" height="160" rx="12"/>
+  <text class="g" x="330" y="712">&lt;ws&gt;-sandbox namespace</text>
+  <text class="gs" x="330" y="729">gVisor, default-deny</text>
+  <rect class="runtime" x="330" y="772" width="220" height="56" rx="10"/>
+  <text class="h" x="440" y="796">agent binary</text>
+  <text class="s" x="440" y="815">ACP server</text>
+  <rect class="runtime" x="620" y="744" width="260" height="70" rx="10"/>
+  <text class="h" x="750" y="768">session driver</text>
+  <text class="s" x="750" y="788">writes /var/log/bex-agent/session.jsonl</text>
+  <text class="s" x="750" y="805">serves :8787 /stream</text>
+
+  <!-- Edges: developer -->
+  <path class="flow" d="M240,144 L240,220"/>
+  <path class="flow" d="M365,122 L500,122 L500,220"/>
+  <text class="lbl" x="432" y="114" text-anchor="middle">POST create session</text>
+
+  <!-- Edges: create sandbox (passes under step 3) -->
+  <path class="flow" d="M550,268 L585,268 L585,760 L618,760"/>
+  <text class="lbl" x="575" y="672" text-anchor="end">create sandbox</text>
+  <path d="M585,410 L585,424" stroke="#ffffff" stroke-width="6"/>
+
+  <!-- Edges: bex-api to Postgres -->
+  <path class="flow" d="M440,282 L440,359"/>
+  <path class="flow" d="M640,282 L640,417 L552,417"/>
+
+  <!-- Edges: Completer to the gateway and the sandbox -->
+  <path class="flow" d="M735,282 L735,526"/>
+  <path class="flow" d="M775,282 L775,526"/>
+  <path class="flow" d="M880,252 L930,252 L930,779 L882,779"/>
+
+  <!-- Edges: exec listener to the driver -->
+  <path class="flow" d="M735,604 L735,742"/>
+  <text class="lbl" x="727" y="672" text-anchor="end">cat status.json</text>
+  <path class="flow" d="M775,604 L775,742"/>
+  <text class="lbl" x="783" y="672">tail session.jsonl</text>
+
+  <!-- Edges: driver to agent -->
+  <path class="flow" d="M620,800 L552,800"/>
+  <text class="lbl-in" x="586" y="792" text-anchor="middle">stdio ACP</text>
+
+  <!-- Edges: dashboard attach and replay -->
+  <path class="flow" d="M270,252 L328,252"/>
+  <path class="flow" d="M160,282 L160,526"/>
+  <path class="flow" d="M270,572 L400,572 L400,473"/>
+  <text class="lbl-in" x="337" y="546" text-anchor="middle">replay transcript</text>
+  <text class="lbl-in" x="337" y="561" text-anchor="middle">(terminal session)</text>
+
+  <!-- Step badges -->
+  <g class="badge">
+    <circle cx="735" cy="400" r="11"/><text x="735" y="404">1</text>
+    <circle cx="775" cy="400" r="11"/><text x="775" y="404">2</text>
+    <circle cx="614" cy="417" r="11"/><text x="614" y="421">3</text>
+    <circle cx="930" cy="520" r="11"/><text x="930" y="524">4</text>
+    <circle cx="299" cy="252" r="13"/><text x="299" y="256">5a</text>
+    <circle cx="160" cy="400" r="13"/><text x="160" y="404">5b</text>
+  </g>
+
+  <!-- Steps -->
+  <rect x="32" y="690" width="264" height="240" rx="12" fill="#ffffff" stroke="#e5e7eb"/>
+  <text class="g" x="48" y="714">Steps</text>
+  <g class="badge">
+    <circle cx="60" cy="738" r="11"/><text x="60" y="742">1</text>
+    <circle cx="60" cy="766" r="11"/><text x="60" y="770">2</text>
+    <circle cx="60" cy="810" r="11"/><text x="60" y="814">3</text>
+    <circle cx="60" cy="854" r="11"/><text x="60" y="858">4</text>
+    <circle cx="60" cy="882" r="13"/><text x="60" y="886">5a</text>
+    <circle cx="60" cy="910" r="13"/><text x="60" y="914">5b</text>
+  </g>
+  <g font-size="12" fill="#374151">
+    <text x="82" y="742">poll status via pods/exec</text>
+    <text x="82" y="770">harvest transcript via pods/exec</text>
+    <text x="82" y="786">(before teardown)</text>
+    <text x="82" y="814">append parts</text>
+    <text x="82" y="830">(seq-seeded, idempotent)</text>
+    <text x="82" y="858">teardown sandbox</text>
+    <text x="82" y="886">mint attach ticket</text>
+    <text x="82" y="914">GET /stream + HMAC ticket</text>
+  </g>
+</svg>

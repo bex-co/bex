@@ -45,52 +45,7 @@ Known substrate defect: **suspend is currently broken in production** — OpenSa
 
 ### Session architecture
 
-```mermaid
-flowchart TB
-  dev@{ shape: tri, label: "developer" }
-
-  subgraph clients["tenant clients"]
-    dash["dashboard (TanStack, useChat)"]
-    ide["IDE / editor (native ACP client)"]
-  end
-
-  stripe["Stripe"]
-  gh["GitHub"]
-
-  subgraph cluster["bex cluster"]
-    api["bex-api"]
-    fga["OpenFGA"]
-    cpdb[("control-plane Postgres: sessions, transcripts, usage_hourly, ticket nonces")]
-    oss["OpenSandbox server (create / hibernate / resume, rootfs snapshots)"]
-    subgraph gwz["isolated ssh-gateway — sole session ingress, sole holder of pods/exec"]
-      gw["agent-session proxy (authorized SSE)"]
-    end
-    subgraph sbns["&lt;ws&gt;-sandbox namespace — gVisor, default-deny (ingress: gateway only)"]
-      driver["session driver (AI SDK + acp-ai-provider)"]
-      agent["agent binary (ACP server, spawned child)"]
-      helper["Pod-bound Git smart-HTTP client (no token in sandbox)"]
-    end
-  end
-
-  dev --> dash
-  dev --> ide
-  dash -->|"POST /v1/agent-sessions"| api
-  dash -->|"SSE: AI SDK UI-message stream + HMAC ticket"| gw
-  ide -->|"authorized conversation stream + ticket"| gw
-  api -->|"authorize can_operate"| fga
-  api --> cpdb
-  api -->|"meter events"| stripe
-  api -->|"mint installation token, open draft PR"| gh
-  api -->|"create / hibernate / resume"| oss
-  oss --> sbns
-  gw -->|"nonce claim + transcript tee"| cpdb
-  gw -->|"proxy both streams"| driver
-  gw -->|"proxied token mint"| api
-  driver -->|"stdio (ACP JSON-RPC)"| agent
-  agent --> helper
-  helper -->|"token refresh"| gw
-  agent -->|"clone + push bex-agent/* branch"| gh
-```
+![Session architecture: the developer uses the dashboard (TanStack, useChat) or an IDE (native ACP client); the dashboard calls POST /v1/agent-sessions on bex-api and both clients stream through the isolated ssh-gateway, the sole session ingress and sole holder of pods/exec; bex-api authorizes can_operate with OpenFGA, writes control-plane Postgres, sends meter events to Stripe, mints GitHub installation tokens and opens draft PRs, and drives the OpenSandbox server, which manages the workspace's gVisor, default-deny sandbox namespace; the gateway claims nonces and tees transcripts into Postgres, proxies both streams to the session driver and proxies token mints to bex-api; the driver talks stdio ACP JSON-RPC to the agent binary, whose Pod-bound Git smart-HTTP client refreshes tokens through the gateway, and the agent clones and pushes bex-agent branches to GitHub](assets/ADR047-cloud-coding-agent-sessions-architecture.svg)
 
 ### D1 — Sandbox-per-session on the existing substrate
 
@@ -225,36 +180,7 @@ This ordering ships tenant value while the ACP network-transport draft and adopt
 
 The dashboard surface (formerly held note `.pm/w5/035.md`, materialized as `w1/m64`; deep-research pass 2026-08-02) is the Devin-shaped session UI: a sessions list + new-session composer, a session detail page with an activity timeline, a draft-PR/evidence card (_Superseded by [ADR090](ADR090-agent-owned-delivery.md) (2026-10-22): evidence removed; the PR card remains_), and a steering composer. Its architecture is chosen so the phase-1 (fire-and-forget) and phase-2 (live attach) products share **one rendering layer** and differ only in data source:
 
-```mermaid
-flowchart TB
-  dev@{ shape: tri, label: "developer" }
-
-  subgraph dash["dashboard (TanStack Start) — features/agent-sessions"]
-    routes["routes: /agents (list + composer), /agents/$id (detail)"]
-    render["UIMessage[] render layer (vendored AI Elements: Conversation / Reasoning / Task / Tool / PromptInput)"]
-    poll["phase-1 data source: Apollo hooks (create / steer / cancel mutations + agentSession poll: phase, PR)"]
-    chat["phase-2 data source: useChat + DefaultChatTransport (transcript replay, then live SSE)"]
-  end
-
-  api["bex-api (GraphQL agent-session verbs + HMAC ticket mint)"]
-  cpdb[("control-plane Postgres: agent_sessions, ticket nonces, phase-2 transcripts")]
-  gw["isolated ssh-gateway — phase-2 attach listener (verify ticket, claim nonce, reverse-proxy SSE, transcript tee)"]
-
-  subgraph sbns["&lt;ws&gt;-sandbox namespace"]
-    driver["session driver GET /stream (AI SDK UI-message SSE, data-acp parts)"]
-  end
-
-  dev --> routes
-  routes --> render
-  render --> poll
-  render --> chat
-  poll -->|"GraphQL over Kratos session cookie"| api
-  chat -->|"1: mint attach ticket (GraphQL)"| api
-  chat -->|"2: cross-origin SSE + HMAC ticket"| gw
-  api --> cpdb
-  gw -->|"nonce claim + transcript tee/replay"| cpdb
-  gw --> driver
-```
+![Dashboard session surface: the developer opens the /agents routes, which feed one UIMessage render layer (vendored AI Elements) backed by two data sources; the phase-1 Apollo hooks call bex-api over GraphQL with the Kratos session cookie; the phase-2 useChat transport first mints an attach ticket from bex-api over GraphQL, then opens a cross-origin SSE stream with the HMAC ticket to the isolated ssh-gateway, which proxies to the session driver's GET /stream in the workspace's sandbox namespace; bex-api and the gateway (nonce claim, transcript tee/replay) both use control-plane Postgres](assets/ADR047-cloud-coding-agent-sessions-dashboard.svg)
 
 - **Two data planes, one page.** Control-plane metadata (session list, `phase`, PR card, `failureReason`; the evidence entry is _superseded by [ADR090](ADR090-agent-owned-delivery.md) (2026-10-22)_) stays on the house GraphQL data layer — `dashboard/src/features/agent-sessions/` (NOT `sessions/` — that name is taken by Kratos login-session auth artifacts), flat routes `agents.tsx` + `agents.$agentSessionId.tsx`, typed hooks with `cache-first` + 30s poll tightened to ~5s while `phase` is non-terminal, mutations `no-cache` with typed domain errors and inline `AGENT_SESSION_*` mapping. The **conversation column** runs on `useChat` over the target-shape stream endpoint and nothing else: the stream's replay mode is the single history source for terminal and running sessions alike. _(Superseded 2026-08-02, before build: an earlier plan had the dashboard synthesize a `UIMessage[]` timeline from polled data plus localStorage-persisted prompts as a pre-gateway interim — discarded with the target-API-shape decision so the interim never ships; `w1/m64` builds directly on the `w3/m43` contract, with vendored AI Elements — hook-agnostic, React 19 + Tailwind 4, both already the dashboard's stack — rendering the parts either way.)_
 - **Transport.** `useChat` + a transport pointed at the same-origin stream path (`api.bex.co/v1/agent-sessions/{id}/stream` — no CORS, no second origin in dashboard config): ticket rides a header, never a URL; `prepareReconnectToStreamRequest` re-mints via the `attach-ticket` verb per reconnect (the 90s TTL makes per-connect mint mandatory); `dataPartSchemas` validate the driver's `data-acp` parts, rendered as collapsible Reasoning/Task/Tool/Terminal groups (the Devin "Worked/Thought for Xs" shape). Steering routes by state: live session ⇒ chat `POST` (`sendMessage`); idle ⇒ the redispatch verbs. Client disconnect ≠ cancel — Cancel stays an explicit verb. Degraded states are honest per the house 503 pattern: stream endpoint unconfigured/unavailable ⇒ the conversation column says so while the metadata views keep rendering.

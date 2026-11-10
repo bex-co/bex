@@ -24,41 +24,7 @@ The system accreted milestone by milestone: **w3/m9** deploy-notification email 
 
 ### The end-to-end shape
 
-```mermaid
-flowchart TB
-  member@{ shape: tri, label: "workspace member" }
-  dash["dashboard /notifications + service settings (policy authoring)"]
-
-  subgraph api["bex-api process"]
-    verbs["notification-settings / webhook / device-subscription verbs (REST + GraphQL + MCP)"]
-    rec["control-plane reconciler (closes deploys)"]
-    notif["notifications.Service (email fan-out: service policy x member prefs)"]
-    whw["webhooks.Worker (2-phase: dispatch + send)"]
-    pushw["PushWorker (policy eval, logical inbox + per-device deliveries)"]
-  end
-
-  cpdb[("control-plane Postgres: event feed (deploys + audit_events + service_event_facts) + notification_settings + webhook_* + push_* tables")]
-  smtp["shared SMTP relay"]
-  hook["customer webhook endpoint (external)"]
-  expo["Expo Push Service (external)"]
-  pushsvc["browser vendor push service (VAPID)"]
-  device@{ shape: tri, label: "member's phone" }
-  browser@{ shape: tri, label: "member's browser" }
-
-  member --> dash --> verbs
-  verbs --> cpdb
-  rec -->|"NotifyDeploy on deploy close"| notif
-  notif -->|"recipients + prefs"| cpdb
-  notif -->|"deploy emails"| smtp
-  whw -->|"tail event feed (watermark)"| cpdb
-  whw -->|"signed POST, 8 retries ~33h"| hook
-  whw -->|"failure-notice email"| smtp
-  pushw -->|"tail event feed (watermark)"| cpdb
-  pushw -->|"tickets + receipts"| expo
-  pushw -->|"RFC 8291 + VAPID"| pushsvc
-  expo -->|"APNs/FCM"| device
-  pushsvc --> browser
-```
+![Notifications: a workspace member authors policy in the dashboard through the bex-api notification-settings, webhook and device-subscription verbs, stored in control-plane Postgres; the control-plane reconciler calls notifications.Service with NotifyDeploy on deploy close, which reads recipients and prefs and sends deploy emails through the shared SMTP relay; webhooks.Worker tails the event feed by watermark, sends signed POSTs (8 retries over ~33h) to the customer webhook endpoint and failure-notice emails through SMTP; PushWorker tails the event feed, sends tickets and receipts to the Expo Push Service (APNs/FCM to the member's phone) and RFC 8291 + VAPID pushes to the browser vendor push service (the member's browser)](assets/ADR052-notifications.svg)
 
 ### D1 — One composed event feed; no emitter bus
 

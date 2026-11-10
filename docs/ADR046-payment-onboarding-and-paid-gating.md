@@ -89,44 +89,7 @@ A card detached or expired after binding leaves the marker stale-true. That is a
 
 ## Architecture
 
-```mermaid
-flowchart TB
-  user@{ shape: tri, label: "user" }
-
-  subgraph dash["dashboard"]
-    signup["/auth/sign-up — card-free registration"]
-    intercept["paid-intent interception — catches 402, opens BillingOnboardingView, polls readiness"]
-  end
-
-  kratos["Ory Kratos (identity)"]
-  stripe["Stripe — hosted Checkout, Customers + Subscriptions, meter events"]
-
-  subgraph api["bex-api (bex-system)"]
-    authgate["auth gate"]
-    feats["apps / postgres / keyvalue services — create + plan-change verbs"]
-    gate["PaymentGate (interface, impl. by internal/billing, wired at composition root)"]
-    billing["internal/billing — checkout-session verb + Stripe webhook handler"]
-    emitter["meter-event emitter (hourly background loop)"]
-  end
-
-  db[("control-plane Postgres — tenants, billing_provider_mappings (payment_method_bound_at), usage_hourly outbox")]
-
-  user --> signup
-  user --> intercept
-  signup --> kratos
-  dash -->|"authenticated REST/GraphQL"| authgate
-  authgate -->|"EnsureTenant — mints free workspace on first call"| db
-  authgate --> feats
-  authgate --> billing
-  feats -->|"non-free tier create / plan change"| gate
-  gate -->|"payment_method_bound_at set? else 402"| db
-  billing -->|"EnsureContract + Checkout session (mode=setup)"| stripe
-  user -->|"enters card on hosted Checkout"| stripe
-  stripe -->|"checkout.session.completed → POST /v1/webhooks/stripe"| billing
-  billing -->|"stamps payment_method_bound_at"| db
-  emitter -->|"meter events — only card-bound or comped workspaces"| stripe
-  emitter -->|"sealed usage rows + marker gate"| db
-```
+![Architecture: the user signs up card-free through the dashboard and Ory Kratos; the dashboard calls the bex-api auth gate, which mints the free workspace (EnsureTenant) and routes to the apps, postgres and keyvalue services and to internal/billing; a non-free create or plan change asks PaymentGate, which returns 402 unless payment_method_bound_at is set; billing opens a setup-mode Stripe Checkout, the checkout.session.completed webhook stamps the marker, and the hourly meter-event emitter sends meter events to Stripe only for card-bound or comped workspaces](assets/ADR046-payment-onboarding-and-paid-gating.svg)
 
 Registration touches only Kratos (no card); paid intent hits `PaymentGate`'s local marker check in the service layer; the marker is stamped exclusively by the `checkout.session.completed` webhook after a setup-mode Checkout; and the emitter consults the same marker before any meter event leaves for Stripe.
 

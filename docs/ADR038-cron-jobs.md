@@ -4,17 +4,7 @@ bex runs scheduled tasks the way Render does: a `cron_job` service builds like a
 
 ## The shape
 
-```mermaid
-graph LR
-  push[git push / image] --> op[operator]
-  op -->|"build (BuildKit, optional)"| img[(OCI image<br/>Zot)]
-  op -->|"spec.schedule → batch/v1 CronJob<br/>ConcurrencyPolicy: Forbid"| cj[CronJob]
-  cj -->|"on schedule"| job[(Job → Pod<br/>run to completion)]
-  op -->|"spec.runAt → one-off Job"| mjob[(manual Job)]
-  op -->|"spec.cancelRun → foreground delete"| cancel[cancel active Job]
-  job --> hist["status.runs[] (≤10, survives GC)"]
-  mjob --> hist
-```
+![Cron job shape: a git push or image reaches the operator, which optionally builds an OCI image into Zot with BuildKit, turns spec.schedule into a batch/v1 CronJob with ConcurrencyPolicy Forbid that runs a Job and Pod to completion on schedule, turns spec.runAt into a one-off manual Job, and turns spec.cancelRun into a foreground delete of the active Job; scheduled and manual Jobs both record into the status.runs history (at most 10, survives GC)](assets/ADR038-cron-jobs.svg)
 
 - **Build** follows the shared build plane — a repo-backed cron builds an image with BuildKit, an image-backed cron uses the configured image directly. There is nothing cron-specific about the build.
 - **Schedule** is a **5-field crontab** (`spec.schedule`, required for `cron_job`), evaluated by Kubernetes in **UTC** — matching Render's cron semantics exactly. bex-api **validates it with the same parser the Kubernetes CronJob controller uses** (`github.com/robfig/cron/v3`, `cron.ParseStandard`) on **both create and update** across all three surfaces (`validateTypeSpecificCreate` and `SetCronJob` share `validCronSchedule`), so "if bex accepts it, the CronJob accepts it." Before **w9/m91** the check only counted fields, so a malformed-but-5-field schedule like `99 99 * * *` passed bex-api and reached convergence, where the apiserver rejected the CronJob (minute/hour out of range) and flipped the App to `Failed` with no caller feedback — the QA-found bug this closed. The dashboard create and Settings forms range-check identically (`features/services/lib/cron.ts` `isValidCron`), show a live human-readable preview + "runs in UTC" note (`describeCron`), and pre-fill `*/5 * * * *` on the cron create deep link, matching Render's cron form.

@@ -16,26 +16,7 @@ The examples below use a placeholder App `my-app` (container port 3000); substit
 
 ## The whole deploy in one picture
 
-```mermaid
-sequenceDiagram
-  participant L as laptop
-  participant I as CP node<br/>(admin.conf via SSH)
-  participant A as app-cluster apiserver<br/>(App CR)
-  participant O as bex operator<br/>(pod, in-cluster)
-  participant N as app node<br/>(containerd + kubelet + traefik)
-
-  O->>A: (at startup) operator opens a long-lived WATCH —<br/>"notify me whenever an App changes"
-  L->>I: ⓪ scripts/fetch-app-kubeconfig.sh → KUBECONFIG
-  Note over L: ① docker build --platform linux/amd64<br/>-t my-app:#lt;sha#gt;
-  Note over L: ② smoke test — docker run + curl → 200
-  L->>N: ③ docker save | ssh 'ctr -n k8s.io images import -'
-  L->>A: ④ kubectl patch app … spec.image (generation++)
-  A-->>O: event pushed down the watch stream —<br/>App spec changed (a notification, not a call)
-  O->>A: reconcile — update owned Deployment's image
-  A->>N: kubelet: new pod (IfNotPresent → finds local image),<br/>then old pod terminates (RollingUpdate)
-  L->>A: ⑤ kubectl rollout status · get app (revision bump)
-  L->>N: ⑥ curl https://… → 200 + new-version content
-```
+![Sequence of the prebuilt-image deploy: at startup the bex operator opens a long-lived watch on the app-cluster apiserver; the laptop fetches the app-cluster kubeconfig from a CP node (step 0), builds and smoke-tests the image (steps 1–2), imports it onto the app node with docker save piped to ctr import (step 3) and patches the App's spec.image (step 4); the apiserver pushes the change down the watch, the operator reconciles the owned Deployment's image, the kubelet starts the new pod from the local image and terminates the old one, and the laptop checks rollout status (step 5) and curls the new version (step 6)](assets/ADR004-app-deployment.svg)
 
 ## Steps
 

@@ -50,47 +50,7 @@ New `infra/wasabi/backup-writer-policy.json` / `backup-reader-policy.json` templ
 
 ## Diagram
 
-```mermaid
-flowchart LR
-  subgraph custody["out-of-band operator custody (.env / GitHub Actions secrets)"]
-    agepriv["age private key"]
-    readcreds["per-store read-only S3 credentials"]
-  end
-
-  subgraph gitrepo["git (committed, public)"]
-    agepub["age public key"]
-  end
-
-  subgraph cluster["app cluster (Hetzner)"]
-    subgraph tierA["Tier A: bex-controlled upload pipelines"]
-      etcdcron["etcd-backup CronJob<br/>(nightly, exits when done)"]
-      baocron["openbao-backup CronJob<br/>(nightly, exits when done)"]
-      kvcron["kvbak CronJob<br/>(nightly, exits when done)"]
-    end
-    subgraph tierB["Tier B: Barman Cloud Plugin pipeline"]
-      barman["Barman Cloud Plugin<br/>(bex-db / tenant-postgres / auth-dbs)"]
-    end
-    writecreds["per-store write-only S3 Secrets<br/>(PutObject/DeleteObject/ListBucket only)"]
-  end
-
-  bucket[("bex-tfstate<br/>etcd-snapshots/ openbao-snapshots/<br/>keyvalue/ bex-db/ auth-dbs/")]
-
-  agepub -->|"age -r (encrypt)"| etcdcron
-  agepub -->|"age -r (encrypt)"| baocron
-  agepub -->|"age -r (encrypt)"| kvcron
-  etcdcron -->|"gzip, age-encrypt, upload"| writecreds
-  baocron -->|"gzip, age-encrypt, upload"| writecreds
-  kvcron -->|"gzip, age-encrypt, upload"| writecreds
-  barman -->|"SSE-S3 encryption: AES256"| writecreds
-  writecreds --> bucket
-
-  subgraph restore["disaster recovery, manual runbook, operator laptop"]
-    op@{ shape: tri, label: "human operator" }
-  end
-  op -->|"scripts/restore-*.sh"| readcreds
-  readcreds -->|"GetObject"| bucket
-  op -->|"age -d, Tier A only"| agepriv
-```
+![Diagram: the committed age public key encrypts the Tier A etcd-backup, openbao-backup, and kvbak CronJob uploads; Tier A and the Tier B Barman Cloud Plugin (SSE-S3) upload through per-store write-only S3 Secrets into the bex-tfstate bucket; for disaster recovery the human operator runs scripts/restore-*.sh with the out-of-band read-only S3 credentials (GetObject) and, for Tier A only, decrypts with the out-of-band age private key](assets/ADR050-encrypted-platform-backups.svg)
 
 The writer credential only ever moves data into the bucket; decrypting and reading anything back requires the operator's out-of-band private key (Tier A) and/or the separate reader credential, neither of which any in-cluster workload holds.
 

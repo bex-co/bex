@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="815" viewBox="0 0 1000 815" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR002 panorama — one self-managed app cluster: dev submits App CRs to the apiserver; the operator is an apiserver client; App pods depend on the operator, bex-zot and a worker node; both machines are provisioned by Cluster API</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .pod { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .machine { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="814" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Panorama</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">Every arrow is a dependency: A → B means A depends on B (it points to what A needs).</text>
+
+  <!-- dev, outside the cluster -->
+  <rect class="actor" x="100" y="100" width="160" height="44" rx="22"/>
+  <circle class="icon" cx="126" cy="116" r="5"/>
+  <path class="icon" d="M116,133 a10,8 0 0 1 20,0"/>
+  <text x="146" y="127" font-size="14" font-weight="600" fill="#111827">dev · kubectl</text>
+
+  <!-- App cluster -->
+  <rect x="40" y="176" width="920" height="580" rx="16" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="940" y="204" font-size="13" fill="#64748b" text-anchor="end"><tspan font-weight="700" fill="#475569" letter-spacing="0.6">APP CLUSTER</tspan> · substrate — bex + your Apps run here</text>
+
+  <!-- Row 1 -->
+  <rect class="pod" x="450" y="226" width="200" height="60" rx="10"/>
+  <text class="h" x="550" y="261">App pod</text>
+
+  <!-- Row 2 -->
+  <rect class="pod" x="60" y="366" width="240" height="60" rx="10"/>
+  <text class="h" x="180" y="401">apiserver · etcd · scheduler</text>
+
+  <rect class="pod" x="450" y="366" width="200" height="60" rx="10"/>
+  <text class="h" x="550" y="401">bex operator</text>
+
+  <rect class="pod" x="740" y="366" width="200" height="60" rx="10"/>
+  <text class="h" x="840" y="392">bex-zot</text>
+  <text class="s" x="840" y="411">zot-0</text>
+
+  <!-- Row 3: machines -->
+  <rect class="machine" x="60" y="516" width="590" height="60" rx="10"/>
+  <text class="h" x="355" y="542">control-plane node</text>
+  <text class="s" x="355" y="561">machine</text>
+
+  <rect class="machine" x="740" y="516" width="200" height="60" rx="10"/>
+  <text class="h" x="840" y="542">worker node</text>
+  <text class="s" x="840" y="561">machine</text>
+
+  <!-- Row 4 -->
+  <rect class="pod" x="380" y="666" width="240" height="60" rx="10"/>
+  <text class="h" x="500" y="701">Cluster API controllers</text>
+
+  <!-- Edges -->
+  <path class="flow" d="M180,144 L180,364"/>
+  <text class="lbl-in" x="192" y="300">submits App CR via</text>
+
+  <path class="flow" d="M450,396 L302,396"/>
+  <text class="lbl-in" x="376" y="355" text-anchor="middle">apiserver client ·</text>
+  <text class="lbl-in" x="376" y="369" text-anchor="middle">watch CRs, write</text>
+  <text class="lbl-in" x="376" y="383" text-anchor="middle">Deployment</text>
+
+  <path class="flow" d="M550,286 L550,364"/>
+  <text class="lbl-in" x="562" y="330">managed by</text>
+
+  <path class="flow" d="M650,240 L840,240 L840,364"/>
+  <text class="lbl-in" x="745" y="232" text-anchor="middle">image from</text>
+
+  <path class="flow" d="M650,272 L695,272 L695,546 L738,546"/>
+  <text class="lbl-in" x="703" y="474">runs on</text>
+
+  <path class="flow" d="M840,426 L840,514"/>
+  <text class="lbl-in" x="852" y="474">runs on</text>
+
+  <path class="flow" d="M180,426 L180,514"/>
+  <text class="lbl-in" x="192" y="474">runs on</text>
+
+  <path class="flow" d="M550,426 L550,514"/>
+  <text class="lbl-in" x="562" y="474">runs on</text>
+
+  <path class="flow" d="M500,576 L500,664"/>
+  <text class="lbl-in" x="512" y="626">provisioned by</text>
+
+  <path class="flow" d="M840,576 L840,696 L622,696"/>
+  <text class="lbl-in" x="731" y="688" text-anchor="middle">provisioned by</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="pod" x="40" y="776" width="14" height="14" rx="3"/>
+    <text x="62" y="787">Pod</text>
+    <rect class="machine" x="110" y="776" width="14" height="14" rx="3"/>
+    <text x="132" y="787">machine (k8s node)</text>
+  </g>
+</svg>

@@ -41,48 +41,7 @@ The only missing piece is a **non-browser trigger** for the tee.
 
 ### Core path
 
-```mermaid
-flowchart TB
-  dev@{ shape: tri, label: "developer" }
-
-  subgraph dash["dashboard (TanStack)"]
-    chat["useChat (resume: true)"]
-  end
-
-  subgraph api["bex-api process"]
-    verbs["agent-session verbs (create / attach-ticket)"]
-    comp["Completer (background loop, 15s tick)"]
-  end
-
-  cpdb[("control-plane Postgres: agent_sessions + agent_session_transcripts")]
-
-  subgraph gw["isolated ssh-gateway — sole session ingress, sole pods/exec holder"]
-    exec["exec listener :8081 (pods/exec: reads status.json + session.jsonl)"]
-    attach["attach listener :8083 (GET /stream replay + tee)"]
-  end
-
-  subgraph sb["&lt;ws&gt;-sandbox namespace — gVisor, default-deny"]
-    driver["session driver (writes /var/log/bex-agent/session.jsonl; serves :8787 /stream)"]
-    agent["agent binary (ACP server)"]
-  end
-
-  dev --> chat
-  dev -->|"POST create session"| verbs
-  verbs -->|"create sandbox"| driver
-  driver -->|"stdio ACP"| agent
-
-  comp -->|"1: poll status via pods/exec"| exec
-  exec -->|"cat status.json"| driver
-  comp -->|"2: harvest transcript via pods/exec (before teardown)"| exec
-  exec -->|"tail session.jsonl"| driver
-  comp -->|"3: append parts (seq-seeded, idempotent)"| cpdb
-  comp -->|"4: teardown sandbox"| driver
-
-  chat -->|"5a: mint attach ticket"| verbs
-  chat -->|"5b: GET /stream + HMAC ticket"| attach
-  attach -->|"replay transcript (terminal session)"| cpdb
-  verbs --> cpdb
-```
+![Core path: the developer creates a session through the agent-session verbs, which create the sandbox where the session driver runs the agent binary over stdio ACP; the Completer (1) polls status and (2) harvests the transcript through the ssh-gateway exec listener before teardown, (3) appends the parts to control-plane Postgres, and (4) tears the sandbox down; the dashboard (5a) mints an attach ticket and (5b) opens GET /stream on the attach listener, which replays the stored transcript from Postgres](assets/ADR051-agent-session-transcript.svg)
 
 ### Mechanism (log harvest over the proven exec boundary)
 

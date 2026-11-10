@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="510" viewBox="0 0 1000 510" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR034 — current synchronous build-to-deploy handoff: the bex operator creates the build Job and polls it every 3s; the build fetches source from Git and pushes the image to Zot; after Job Complete the operator pins the digest and updates the Deployment; the App Pod is managed by the Deployment and pulls the digest-pinned image from Zot</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .m { font-size: 12px; fill: #374151; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .ext { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="509" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="30" y="46" font-size="22" font-weight="700" fill="#111827">Current synchronous build-to-deploy handoff</text>
+  <text x="30" y="70" font-size="13" fill="#4b5563">An arrow A → B means A depends on or writes to B.</text>
+
+  <!-- Operator -->
+  <rect class="reconcile" x="380" y="96" width="240" height="60" rx="10"/>
+  <text class="h" x="500" y="121">bex operator</text>
+  <text class="s" x="500" y="141">long-running controller</text>
+
+  <!-- Build -->
+  <rect class="reconcile" x="40" y="226" width="280" height="112" rx="10"/>
+  <text class="h" x="180" y="252">build Job and Pod</text>
+  <text class="s" x="180" y="272">ephemeral, one per revision</text>
+  <text class="m" x="180" y="298">clone → source emptyDir → BuildKit</text>
+  <text class="m" x="180" y="316">→ OCI archive → Skopeo/Cosign</text>
+
+  <!-- Zot (cylinder) -->
+  <path class="reconcile" d="M400,250 v64 a100,9 0 0 0 200,0 v-64"/>
+  <ellipse class="reconcile" cx="500" cy="250" rx="100" ry="9"/>
+  <text class="h" x="500" y="292">Zot registry</text>
+
+  <!-- Deployment -->
+  <rect class="control" x="680" y="242" width="280" height="80" rx="10"/>
+  <text class="h" x="820" y="276">Deployment</text>
+  <text class="s" x="820" y="297">Kubernetes object, updated after build</text>
+
+  <!-- Git -->
+  <rect class="ext" x="40" y="420" width="280" height="60" rx="10"/>
+  <text class="h" x="180" y="445">Git repository</text>
+  <text class="s" x="180" y="465">external service</text>
+
+  <!-- App Pod -->
+  <rect class="runtime" x="680" y="420" width="280" height="60" rx="10"/>
+  <text class="h" x="820" y="445">App Pod</text>
+  <text class="s" x="820" y="465">long-running</text>
+
+  <!-- Edges -->
+  <path class="flow" d="M420,156 L252,224"/>
+  <text class="lbl" x="316" y="182" text-anchor="end">create; poll status every 3s</text>
+
+  <path class="flow" d="M580,156 L758,240"/>
+  <text class="lbl" x="684" y="184">after Job Complete: pin digest</text>
+  <text class="lbl" x="684" y="199">and update image</text>
+
+  <path class="flow" d="M320,284 L398,284"/>
+  <text class="lbl" x="359" y="275" text-anchor="middle">push image</text>
+
+  <path class="flow" d="M180,338 L180,418"/>
+  <text class="lbl" x="192" y="382">fetch source</text>
+
+  <path class="flow" d="M820,420 L820,324"/>
+  <text class="lbl" x="832" y="376">managed by</text>
+
+  <path class="flow" d="M710,420 L584,330"/>
+  <text class="lbl" x="648" y="400" text-anchor="end">pull digest-pinned image</text>
+</svg>

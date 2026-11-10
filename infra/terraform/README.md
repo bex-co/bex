@@ -6,14 +6,7 @@ Day-0 substrate on Hetzner for the disposable **bootstrap cluster** and the dura
 
 ## Where it sits in the bootstrap chain
 
-```mermaid
-flowchart TB
-  ci["CI runner (ephemeral · token is a CI secret)"] -->|"terraform apply · day-0"| infra["infra cluster (k3s) + network + firewall<br/><i>THIS module</i>"]
-  infra -->|"clusterctl init --infrastructure hetzner · phase 2"| caph["CAPH (in the infra cluster)<br/><i>infra/clusterapi/</i>"]
-  caph -->|"provisions"| machines["app cluster machines"]
-  machines --> op["bex operator (in app cluster)<br/><i>operator/</i>"]
-  op -->|"deploys"| apps["your Apps"]
-```
+![Bootstrap chain: an ephemeral CI runner runs terraform apply (day-0) to create the infra cluster (k3s), network and firewall — this module; clusterctl init installs CAPH there (phase 2); CAPH provisions the app cluster machines, which run the bex operator that deploys your Apps](../../docs/assets/infra-terraform-bootstrap-chain.svg)
 
 The only irreducible "bottom turtle" is the **remote-state bucket** + the CI runner itself. Everything above the first k3s is reconciled (CAPH, Argo, bex).
 

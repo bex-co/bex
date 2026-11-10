@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1160" viewBox="0 0 1000 1160" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR047 — Cloud coding-agent session architecture: tenant clients reach bex-api and the isolated ssh-gateway; bex-api authorizes with OpenFGA, records sessions in control-plane Postgres, meters to Stripe, mints GitHub tokens and drives the OpenSandbox server; the gateway proxies both streams to the session driver in the per-workspace gVisor sandbox namespace, whose agent pushes bex-agent branches to GitHub</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .grp { font-size: 13px; font-weight: 700; fill: #475569; letter-spacing: 0.6px; }
+      .gh { font-size: 13px; font-weight: 700; fill: #374151; }
+      .gs { font-size: 12px; fill: #6b7280; }
+      .outer { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .inner { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.3; stroke-dasharray: 5 4; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .ingress { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .ext { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="1159" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">ADR047 — Cloud coding-agent session architecture</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">One gVisor sandbox per session; the isolated ssh-gateway is the only session ingress and the only holder of pods/exec.</text>
+
+  <!-- Developer -->
+  <rect class="actor" x="240" y="96" width="140" height="40" rx="20"/>
+  <circle class="icon" cx="266" cy="110" r="5"/>
+  <path class="icon" d="M256,127 a10,8 0 0 1 20,0"/>
+  <text x="286" y="121" font-size="14" font-weight="600" fill="#111827">developer</text>
+
+  <!-- Tenant clients -->
+  <rect class="outer" x="40" y="150" width="540" height="120" rx="14"/>
+  <text class="grp" x="60" y="174">TENANT CLIENTS</text>
+
+  <rect class="client" x="60" y="190" width="220" height="62" rx="10"/>
+  <text class="h" x="170" y="216">IDE / editor</text>
+  <text class="s" x="170" y="237">native ACP client</text>
+
+  <rect class="client" x="320" y="190" width="240" height="62" rx="10"/>
+  <text class="h" x="440" y="216">dashboard</text>
+  <text class="s" x="440" y="237">TanStack, useChat</text>
+
+  <!-- External services -->
+  <rect class="ext" x="860" y="196" width="100" height="56" rx="10"/>
+  <text class="h" x="910" y="229">Stripe</text>
+
+  <rect class="ext" x="860" y="880" width="100" height="60" rx="10"/>
+  <text class="h" x="910" y="915">GitHub</text>
+
+  <!-- bex cluster -->
+  <rect class="outer" x="40" y="330" width="740" height="770" rx="16"/>
+  <text class="grp" x="760" y="354" text-anchor="end">BEX CLUSTER</text>
+
+  <!-- Isolated ssh-gateway -->
+  <rect class="inner" x="60" y="370" width="360" height="140" rx="12"/>
+  <text class="gh" x="76" y="392">isolated ssh-gateway</text>
+  <text class="gs" x="76" y="409">sole session ingress,</text>
+  <text class="gs" x="76" y="425">sole holder of pods/exec</text>
+
+  <rect class="ingress" x="80" y="440" width="320" height="56" rx="10"/>
+  <text class="h" x="240" y="464">agent-session proxy</text>
+  <text class="s" x="240" y="484">authorized SSE</text>
+
+  <!-- Control plane -->
+  <rect class="control" x="540" y="440" width="200" height="56" rx="10"/>
+  <text class="h" x="640" y="473">bex-api</text>
+
+  <path class="control" d="M340,575 v88 a100,9 0 0 0 200,0 v-88"/>
+  <ellipse class="control" cx="440" cy="575" rx="100" ry="9"/>
+  <text class="h" x="440" y="606">control-plane Postgres</text>
+  <text class="s" x="440" y="626">sessions, transcripts,</text>
+  <text class="s" x="440" y="642">usage_hourly, ticket nonces</text>
+
+  <rect class="control" x="600" y="580" width="140" height="50" rx="10"/>
+  <text class="h" x="670" y="610">OpenFGA</text>
+
+  <rect class="reconcile" x="560" y="710" width="200" height="86" rx="10"/>
+  <text class="h" x="660" y="737">OpenSandbox server</text>
+  <text class="s" x="660" y="757">create / hibernate / resume,</text>
+  <text class="s" x="660" y="774">rootfs snapshots</text>
+
+  <!-- <ws>-sandbox namespace -->
+  <rect class="inner" x="60" y="700" width="460" height="380" rx="12"/>
+  <text class="gh" x="504" y="722" text-anchor="end">&lt;ws&gt;-sandbox namespace</text>
+  <text class="gs" x="504" y="739" text-anchor="end">gVisor, default-deny</text>
+  <text class="gs" x="504" y="755" text-anchor="end">(ingress: gateway only)</text>
+
+  <rect class="runtime" x="112" y="770" width="180" height="60" rx="10"/>
+  <text class="h" x="202" y="795">session driver</text>
+  <text class="s" x="202" y="815">AI SDK + acp-ai-provider</text>
+
+  <rect class="runtime" x="112" y="880" width="180" height="60" rx="10"/>
+  <text class="h" x="202" y="905">agent binary</text>
+  <text class="s" x="202" y="925">ACP server, spawned child</text>
+
+  <rect class="runtime" x="76" y="990" width="216" height="64" rx="10"/>
+  <text class="h" x="184" y="1016">Git smart-HTTP client</text>
+  <text class="s" x="184" y="1036">Pod-bound · no token in sandbox</text>
+
+  <!-- Edges: developer to clients -->
+  <path class="flow" d="M285,136 L205,188"/>
+  <path class="flow" d="M335,136 L415,188"/>
+
+  <!-- Edges: clients into the cluster -->
+  <path class="flow" d="M250,252 L250,438"/>
+  <text class="lbl" x="240" y="288" text-anchor="end">authorized conversation</text>
+  <text class="lbl" x="240" y="303" text-anchor="end">stream + ticket</text>
+
+  <path class="flow" d="M370,252 L370,438"/>
+  <text class="lbl" x="382" y="288">SSE: AI SDK UI-message</text>
+  <text class="lbl" x="382" y="303">stream + HMAC ticket</text>
+
+  <path class="flow" d="M550,252 L550,438"/>
+  <text class="lbl m" x="562" y="292">POST /v1/agent-sessions</text>
+
+  <!-- Edges: gateway -->
+  <path class="flow" d="M400,468 L538,468"/>
+  <text class="lbl-in" x="480" y="446" text-anchor="middle">proxied</text>
+  <text class="lbl-in" x="480" y="460" text-anchor="middle">token mint</text>
+
+  <path class="flow" d="M380,496 L380,564"/>
+  <text class="lbl-in" x="392" y="530">nonce claim +</text>
+  <text class="lbl-in" x="392" y="545">transcript tee</text>
+
+  <path class="flow" d="M202,496 L202,768"/>
+  <text class="lbl-in" x="214" y="600">proxy both streams</text>
+
+  <!-- Edges: bex-api -->
+  <path class="flow" d="M550,496 L523,566"/>
+
+  <path class="flow" d="M670,496 L670,578"/>
+  <text class="lbl-in" x="682" y="532">authorize</text>
+  <text class="lbl-in m" x="682" y="547">can_operate</text>
+
+  <path class="flow" d="M735,440 L876,256"/>
+  <text class="lbl" x="830" y="338">meter events</text>
+
+  <path class="flow" d="M740,468 L910,468 L910,878"/>
+  <text class="lbl" x="898" y="640" text-anchor="end">mint installation</text>
+  <text class="lbl" x="898" y="655" text-anchor="end">token, open</text>
+  <text class="lbl" x="898" y="670" text-anchor="end">draft PR</text>
+
+  <path class="flow" d="M580,496 L580,708"/>
+  <text class="lbl-in" x="592" y="662">create / hibernate / resume</text>
+
+  <path class="flow" d="M560,752 L522,752"/>
+
+  <!-- Edges: inside the sandbox -->
+  <path class="flow" d="M202,830 L202,878"/>
+  <text class="lbl" x="214" y="858">stdio (ACP JSON-RPC)</text>
+
+  <path class="flow" d="M202,940 L202,988"/>
+
+  <path class="flow" d="M90,990 L90,498"/>
+  <text class="lbl-in" x="100" y="650">token refresh</text>
+
+  <path class="flow" d="M292,910 L858,910"/>
+  <text class="lbl" x="304" y="900">clone + push <tspan class="m">bex-agent/*</tspan> branch</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="client" x="40" y="1118" width="14" height="14" rx="3"/>
+    <text x="62" y="1129">clients</text>
+    <rect class="control" x="128" y="1118" width="14" height="14" rx="3"/>
+    <text x="150" y="1129">control plane</text>
+    <rect class="ingress" x="256" y="1118" width="14" height="14" rx="3"/>
+    <text x="278" y="1129">session ingress</text>
+    <rect class="reconcile" x="396" y="1118" width="14" height="14" rx="3"/>
+    <text x="418" y="1129">sandbox lifecycle</text>
+    <rect class="runtime" x="548" y="1118" width="14" height="14" rx="3"/>
+    <text x="570" y="1129">sandbox workload</text>
+    <rect class="ext" x="700" y="1118" width="14" height="14" rx="3"/>
+    <text x="722" y="1129">external service</text>
+  </g>
+</svg>

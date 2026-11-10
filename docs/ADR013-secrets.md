@@ -85,15 +85,7 @@ Local-CAPD quirks (mock cluster only, don't apply to prod):
 
 The consumer this substrate exists for: bex-api's Render-compatible **env-vars API** ([ADR006-bex-api.md](ADR006-bex-api.md#env-vars--tenant-secrets-render-env-vars-compatible)). A tenant (an API key, or a human session) sets a service's environment variables; the values live in OpenBao under that service's path; the operator materializes them into the running app.
 
-```mermaid
-flowchart LR
-  caller["API key / session"] -->|"legacy writes or PATCH /environment"| api["bex-api Core"]
-  api -->|"ordinary KV v2 write or optional revision CAS<br/>(source of truth)"| bao["OpenBao<br/>tenants/&lt;tenant&gt;/services/&lt;svc&gt;/env"]
-  api -->|"project"| sec["k8s Secret &lt;svc&gt;-env"]
-  api -->|"active spec ref or pending metadata + optional one roll"| cr["App CR"]
-  cr --> op["operator"]
-  op -->|"envFrom + rolling restart"| pod["app pods (new values)"]
-```
+![env-vars API: an API key or session makes legacy writes or PATCH /environment to bex-api Core, which writes the service's env path in OpenBao (ordinary KV v2 write or optional revision CAS, the source of truth), projects the service's k8s env Secret, and writes the App CR's active spec ref or pending metadata plus an optional one roll; the operator then rolls the app pods onto the new values with envFrom and a rolling restart](assets/ADR013-secrets.svg)
 
 - **Path layout.** One KV v2 mount `tenants/` (§4); a service's env map lives at `tenants/<tenant>/services/<service>/env`. Until w1/m2 grows real tenants, `<tenant>` is the single `default` (the same convention m4's authorization uses for the default workspace).
 - **Authentication.** bex-api logs in with the Kubernetes auth method as its own ServiceAccount (§5, role `bex-api`, policy `tenants-rw`), caches the returned client token until just before its lease expires, and re-authenticates on demand (including when a still-cached token is rejected). Off-cluster runs (local dev, `scripts/secrets-verify.sh`) point `BEX_OPENBAO_JWT_PATH` at a token minted with `kubectl create token bex-api`.

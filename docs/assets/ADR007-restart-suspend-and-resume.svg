@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="285" viewBox="0 0 980 285" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR007 — App phase transitions: a restartedAt change rolls Running to Running with no gap; suspended=true scales Running to Hibernated; suspended=false scales back to Running, readiness-gated</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; text-anchor: middle; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .idle { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="979" height="284" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Phase transitions</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">Restart, suspend and resume move an App between the Running and Hibernated phases.</text>
+
+  <!-- States -->
+  <rect class="runtime" x="140" y="170" width="200" height="70" rx="26"/>
+  <text class="h" x="240" y="210">Running</text>
+
+  <rect class="idle" x="640" y="170" width="200" height="70" rx="26"/>
+  <text class="h" x="740" y="210">Hibernated</text>
+
+  <!-- Running → Running -->
+  <path class="flow" d="M200,170 C196,112 284,112 280,166"/>
+  <text class="lbl" x="240" y="117"><tspan class="m">restartedAt</tspan> changed (rolling, no gap)</text>
+
+  <!-- Running → Hibernated -->
+  <path class="flow" d="M340,190 L638,190"/>
+  <text class="lbl" x="490" y="180"><tspan class="m">suspended=true</tspan> (scale to 0)</text>
+
+  <!-- Hibernated → Running -->
+  <path class="flow" d="M640,222 L342,222"/>
+  <text class="lbl" x="490" y="243"><tspan class="m">suspended=false</tspan> (scale back, readiness-gated)</text>
+</svg>

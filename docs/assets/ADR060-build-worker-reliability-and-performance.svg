@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="960" viewBox="0 0 980 960" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Build plane target architecture — the bex operator creates the build Job or kpack build and watches their conditions; builds shallow-clone the git repository and push images and cache to Zot; after the terminal Job condition the operator pins the digest on the tenant Deployment, whose App Pods pull the digest-pinned image; Prometheus scrapes the operator's build series</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .g { font-size: 12px; font-weight: 700; fill: #475569; letter-spacing: 0.5px; }
+      .gs { font-size: 12px; fill: #6b7280; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .group { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .group-red { fill: #f8fafc; stroke: #dc2626; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .external { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="979" height="959" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Build plane — target architecture</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">The operator creates the build Job and re-enters on its conditions instead of polling; retry and timeout policy lives in the Job spec (D2).</text>
+
+  <!-- Prometheus -->
+  <rect class="external" x="350" y="100" width="280" height="60" rx="10"/>
+  <text class="h" x="490" y="125">Prometheus</text>
+  <text class="s" x="490" y="145">existing platform stack</text>
+
+  <!-- bex-system -->
+  <rect class="group" x="40" y="200" width="900" height="120" rx="14"/>
+  <text class="g" x="56" y="222">BEX-SYSTEM</text>
+  <rect class="reconcile" x="60" y="232" width="860" height="76" rx="10"/>
+  <text class="h" x="490" y="256">bex operator — App controller</text>
+  <text class="s" x="490" y="277">D1 non-blocking state machine: admit (D6 caps) → create/adopt Job → return;</text>
+  <text class="s" x="490" y="294">advance on watched Job conditions; classify outcome (D2); emit bex_build_* SLIs (D5)</text>
+
+  <!-- Build namespace -->
+  <rect class="group-red" x="40" y="380" width="570" height="250" rx="14"/>
+  <text class="g" x="108" y="402">BEX_BUILD_NAMESPACE</text>
+  <text class="gs" x="108" y="419">dedicated build pools lg + burst (tainted, untrusted, D8)</text>
+
+  <rect class="reconcile" x="60" y="436" width="320" height="120" rx="10"/>
+  <text class="h" x="220" y="460">build Job bld-…-gen-N</text>
+  <text class="s" x="220" y="481">ephemeral, one per revision</text>
+  <text class="s" x="220" y="499">podFailurePolicy + reserved exit codes (D2)</text>
+  <text class="s" x="220" y="517">clone → BuildKit (cache import, OCI archive)</text>
+  <text class="s" x="220" y="535">→ Skopeo push --retry-times → Cosign (D4)</text>
+
+  <rect class="reconcile" x="410" y="436" width="180" height="80" rx="10"/>
+  <text class="h" x="500" y="460" font-size="14">kpack Image/Build pods</text>
+  <text class="s" x="500" y="481">buildpack path,</text>
+  <text class="s" x="500" y="498">ephemeral</text>
+
+  <!-- Tenant namespace -->
+  <rect class="group" x="640" y="380" width="300" height="250" rx="14"/>
+  <text class="g" x="656" y="402">TENANT NAMESPACE</text>
+
+  <rect class="runtime" x="660" y="432" width="260" height="80" rx="10"/>
+  <text class="h" x="790" y="456">Deployment</text>
+  <text class="s" x="790" y="477">Kubernetes object, updated</text>
+  <text class="s" x="790" y="494">after terminal build</text>
+
+  <rect class="runtime" x="660" y="560" width="260" height="56" rx="10"/>
+  <text class="h" x="790" y="583">App Pod</text>
+  <text class="s" x="790" y="602">long-running</text>
+
+  <!-- External git + registry -->
+  <rect class="external" x="60" y="760" width="240" height="60" rx="10"/>
+  <text class="h" x="180" y="785">git repository</text>
+  <text class="s" x="180" y="805">external service</text>
+
+  <rect class="group" x="360" y="740" width="580" height="170" rx="14"/>
+  <text class="g" x="376" y="762">BEX-REGISTRY</text>
+  <path class="reconcile" d="M400,800 v72 a250,10 0 0 0 500,0 v-72"/>
+  <ellipse class="reconcile" cx="650" cy="800" rx="250" ry="10"/>
+  <text class="h" x="650" y="834">Zot — single replica, accepted SPOF (D4)</text>
+  <text class="s" x="650" y="855">per-App image repo + '_cache' repo with own retention (D3)</text>
+  <text class="s" x="650" y="872">gcDelay ≥ build deadline, scrub enabled</text>
+
+  <!-- Edges: operator -->
+  <path class="flow" d="M490,160 L490,230"/>
+  <text class="lbl" x="502" y="184">scrape queue/run/outcome/push series</text>
+
+  <path class="flow" d="M90,308 L90,434"/>
+  <text class="lbl" x="102" y="350">create; watch conditions</text>
+  <text class="lbl" x="102" y="365">— no polling</text>
+
+  <path class="flow" d="M500,308 L500,434"/>
+
+  <path class="flow" d="M870,308 L870,430"/>
+  <text class="lbl" x="858" y="350" text-anchor="end">after terminal Job condition:</text>
+  <text class="lbl" x="858" y="365" text-anchor="end">pin digest, update image</text>
+
+  <!-- Edges: builds -->
+  <path class="flow" d="M150,556 L150,758"/>
+  <text class="lbl" x="162" y="704">shallow clone</text>
+
+  <path class="flow" d="M440,516 L440,690 L260,690 L260,758"/>
+
+  <path class="flow" d="M340,556 L340,650 L432,650 A8,8 0 0 1 448,650 L520,650 L520,788"/>
+  <text class="lbl" x="508" y="716" text-anchor="end">import build cache;</text>
+  <text class="lbl" x="508" y="731" text-anchor="end">push image + cache</text>
+
+  <path class="flow" d="M570,516 L570,788"/>
+  <text class="lbl" x="582" y="716">push image +</text>
+  <text class="lbl" x="582" y="731">CNB cache tag</text>
+
+  <!-- Edges: tenant -->
+  <path class="flow" d="M790,560 L790,514"/>
+  <text class="lbl-in" x="802" y="541">managed by</text>
+
+  <path class="flow" d="M790,616 L790,788"/>
+  <text class="lbl" x="778" y="664" text-anchor="end">pull digest-pinned image</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="reconcile" x="40" y="926" width="14" height="14" rx="3"/>
+    <text x="62" y="937">build and reconcile</text>
+    <rect class="runtime" x="200" y="926" width="14" height="14" rx="3"/>
+    <text x="222" y="937">tenant runtime</text>
+    <rect class="external" x="330" y="926" width="14" height="14" rx="3"/>
+    <text x="352" y="937">external or existing service</text>
+    <rect x="540" y="926" width="14" height="14" rx="3" fill="#f8fafc" stroke="#dc2626" stroke-width="1.4" stroke-dasharray="3 2"/>
+    <text x="562" y="937">untrusted build namespace</text>
+  </g>
+</svg>

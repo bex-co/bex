@@ -17,15 +17,7 @@ Since the w1/m19.1 pivot there is **one self-managed cluster** (see [ADR002-arch
 
 Everything an operator can do to the app cluster traces back to **one SSH private key**. There is no independently-scoped app-cluster credential: hold the key, and you can mint cluster-admin.
 
-```mermaid
-graph TD
-  key["bex (SSH private key)<br/>~/.ssh/bex + GitHub secret BEX_SSH_PRIVATE_KEY"]
-  key -->|"ssh :22 (CP node, IP via hcloud API)"| cp["control-plane node"]
-  cp -->|"/etc/kubernetes/admin.conf"| admin["app admin kubeconfig<br/>CN=kubernetes-admin, O=system:masters"]
-  admin -->|"kubectl :443 (apiserver LB) → CP :6443"| app["app cluster kube-API"]
-  app -->|"read CAPI secrets (bex-capi ns)"| capi["CAPI PKI secrets (in-cluster):<br/>bex-kubeconfig, bex-ca,<br/>bex-etcd, bex-proxy, bex-sa"]
-  capi -->|"bex-ca (CA key)"| mint["mint ANY new app cert<br/>(revocation-proof)"]
-```
+![Trust chain: the bex SSH private key opens ssh :22 to a control-plane node; its /etc/kubernetes/admin.conf is the app admin kubeconfig (CN=kubernetes-admin, O=system:masters); that reaches the app cluster kube-API through the apiserver LB; the API exposes the CAPI PKI secrets in bex-capi; and the bex-ca key can mint any new app certificate, revocation-proof](assets/ADR019-infra-credentials.svg)
 
 **Reading:** both workflows ([deploy.yml](../.github/workflows/deploy.yml), [app-cluster.yml](../.github/workflows/app-cluster.yml)) discover a control-plane node by its CAPH label via the hcloud API and SSH-fetch `/etc/kubernetes/admin.conf` (which already targets the kube-api LB). The CAPI PKI secrets now live **in the cluster's own etcd** (3-replica once the quota-raise revert lands, snapshotted nightly — they had no backup at all on the mgmt cluster). The chain has no branch: **`bex` is the root of trust.**
 

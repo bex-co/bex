@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="766" viewBox="0 0 800 766" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR003 request flow — a tenant calls the bex control plane (POST /apps, sync); it writes a Postgres row and projects an App CR into etcd; the CR is watched by the bex operator, which reconciles Deployment, Service and Ingress into a running HTTPS service</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .si { font-size: 12.5px; font-style: italic; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .external { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .badge circle { fill: #1f2937; }
+      .badge text { font-size: 12px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="799" height="765" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Request flow: a tenant hosts a new service</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">Only step 1 is a synchronous call; steps 2–5 are declarative and eventually consistent.</text>
+
+  <rect class="actor" x="150" y="100" width="260" height="44" rx="22"/>
+  <circle class="icon" cx="176" cy="116" r="5"/>
+  <path class="icon" d="M166,133 a10,8 0 0 1 20,0"/>
+  <text x="196" y="127" font-size="14" font-weight="600" fill="#111827">tenant · Web UI / API / CLI</text>
+
+  <rect class="control" x="120" y="224" width="320" height="70" rx="10"/>
+  <text class="h" x="280" y="253">bex control plane</text>
+  <text class="s" x="280" y="274">Go service · source of truth</text>
+
+  <path class="control" d="M560,232 v54 a90,8 0 0 0 180,0 v-54"/>
+  <ellipse class="control" cx="650" cy="232" rx="90" ry="8"/>
+  <text class="h" x="650" y="270">Postgres</text>
+
+  <rect class="control" x="120" y="374" width="320" height="60" rx="10"/>
+  <text class="h" x="280" y="400">App CR</text>
+  <text class="s" x="280" y="419">etcd</text>
+
+  <rect class="reconcile" x="120" y="514" width="320" height="70" rx="10"/>
+  <text class="h" x="280" y="543">bex operator</text>
+  <text class="s" x="280" y="564">mechanism · no DB</text>
+
+  <rect class="runtime" x="120" y="664" width="320" height="70" rx="10"/>
+  <text class="h" x="280" y="693">Deployment · Service · Ingress (+TLS)</text>
+  <text class="s" x="280" y="714">→ running service (https)</text>
+
+  <path class="flow" d="M280,144 L280,222"/>
+  <g class="badge"><circle cx="301" cy="183" r="9"/><text x="301" y="187">1</text></g>
+  <text class="lbl" x="316" y="187">POST /apps — sync call</text>
+
+  <path class="flow" d="M440,259 L558,259"/>
+  <g class="badge"><circle cx="472" cy="244" r="9"/><text x="472" y="248">2</text></g>
+  <text class="lbl" x="486" y="248">write row</text>
+
+  <path class="flow" d="M280,294 L280,372"/>
+  <g class="badge"><circle cx="301" cy="333" r="9"/><text x="301" y="337">3</text></g>
+  <text class="lbl" x="316" y="337">project → App CR</text>
+
+  <path class="flow" d="M280,434 L280,512"/>
+  <g class="badge"><circle cx="301" cy="473" r="9"/><text x="301" y="477">4</text></g>
+  <text class="lbl" x="316" y="477">watched by</text>
+
+  <path class="flow" d="M280,584 L280,662"/>
+  <g class="badge"><circle cx="301" cy="623" r="9"/><text x="301" y="627">5</text></g>
+  <text class="lbl" x="316" y="627">reconcile</text>
+</svg>

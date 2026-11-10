@@ -30,15 +30,7 @@ The operator is only the _executor_. Plans, per-tenant provisioning, connection-
 
 Render Postgres is standalone (created independently; multiple services connect to it; it outlives any one app). So model it as a standalone **`Database`** (control-plane row + CR), _not_ `App.spec.database`. The control plane projects it to a CNPG `Cluster` in the **tenant's namespace**, so it inherits that namespace's isolation for free — NetworkPolicy, ResourceQuota, RBAC, and namespace-scoped credential Secret.
 
-```mermaid
-flowchart LR
-  db["Database resource<br/>(control plane · plan/version/storage)"] --> cnpg["CNPG Cluster<br/>(tenant namespace)"]
-  cnpg --> svc["cluster-rw Service<br/>(ClusterIP, in-cluster)"]
-  cnpg --> sec["Secret<br/>(user + password)"]
-  svc --> appx["tenant App<br/>uses INTERNAL url"]
-  svc --> tcp["Postgres-aware SNI proxy<br/>TLS passthrough + response meter · :5432"]
-  tcp --> ext["external client<br/>uses EXTERNAL url · TLS, system roots"]
-```
+![Managed Postgres: the Database resource (control plane) projects a CNPG Cluster in the tenant namespace, which creates the cluster-rw ClusterIP Service and the user + password Secret; tenant Apps use the INTERNAL url through that Service, and external clients use the EXTERNAL url through the Postgres-aware SNI proxy on :5432 (TLS passthrough + response meter)](assets/ADR009-postgresql-management.svg)
 
 ### 3. Two URLs = two network paths (the core of the product)
 

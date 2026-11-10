@@ -6,14 +6,7 @@ The product API of the bex control plane (see [ADR003-control-plane.md](ADR003-c
 
 Render exposes a public **REST** API, drives its dashboard with **GraphQL**, and ships an official **MCP** server — all over one internal service layer. bex-api mirrors that shape:
 
-```mermaid
-flowchart LR
-  rest["REST adapter<br/>/v1/services/..."] --> core
-  gql["GraphQL adapter<br/>/graphql"] --> core
-  mcp["MCP adapter<br/>/mcp + stdio"] --> core
-  core["Core<br/>(one domain layer)"] --> cr["App CR spec patch"]
-  cr --> op["operator (mechanism)"]
-```
+![bex-api: the REST adapter (/v1/services/...), GraphQL adapter (/graphql) and MCP adapter (/mcp + stdio) all call one core domain layer, which writes an App CR spec patch that the operator (mechanism) converges](assets/ADR006-bex-api.svg)
 
 Each verb has exactly one implementation, in its feature package's `Service` (`lego/backend/internal/{apps,logs,metrics,apikeys,postgres,keyvalue,secrets}/service.go`, all embedding the shared kernel `internal/core/base.go`). Each feature ships its own thin adapter fragments — `rest.go`, `graphql.go`, `mcp.go` beside the service — that are pure presentation calling identical `Service` methods, composed by `internal/api/server.go`. So the surfaces cannot drift, and each new client is another thin adapter, not a second implementation.
 

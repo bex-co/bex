@@ -47,25 +47,7 @@ New platform database archives use `serverName: <cluster>-pg<major>` (for exampl
 
 The migration was deliberately staged: the plugin and ObjectStores landed first, then tenant Clusters and `bex-db` switched atomically to `barman-cloud.cloudnative-pg.io`. Fresh backup/PITR/restore drills passed for both paths on 2026-07-28, after which the native implementation and compatibility checks were removed. The three auth Clusters joined the same plugin path on 2026-07-31; all three completed fresh backups and a representative Kratos restore passed. Current manifests, validation, alerts, and runbook examples use only the plugin contract; the 2026-07-14 drill record below retains the former field names solely as historical evidence of what that drill exercised.
 
-```mermaid
-graph LR
-  subgraph cluster["app cluster (Hetzner)"]
-    etcd-cron["CronJob etcd-backup<br/>03:15 UTC"]
-    bao-cron["CronJob openbao-backup<br/>03:45 UTC"]
-    kv-cron["Paid KeyValue CronJobs<br/>03:20–03:39 UTC"]
-    cnpg-sched["ScheduledBackup bex-db-nightly<br/>04:00 UTC + continuous WAL"]
-    auth-sched["Auth DB ScheduledBackups<br/>04:15 / 04:30 / 04:45 UTC + continuous WAL"]
-  end
-  bucket[("bex-tfstate<br/>etcd-snapshots/<br/>openbao-snapshots/<br/>keyvalue/&lt;id&gt;/<br/>bex-db/<br/>auth-dbs/")]
-  etcd-cron --> bucket
-  bao-cron --> bucket
-  kv-cron --> bucket
-  cnpg-sched --> bucket
-  auth-sched --> bucket
-  op@{ shape: tri, label: "human operator" }
-  op -->|"scripts/restore-*.sh"| cluster
-  op -->|"fetch snapshot/backup"| bucket
-```
+![Architecture: in the Hetzner app cluster, the etcd-backup CronJob (03:15 UTC), openbao-backup CronJob (03:45 UTC), paid KeyValue CronJobs (03:20–03:39 UTC), ScheduledBackup bex-db-nightly (04:00 UTC plus continuous WAL) and the auth DB ScheduledBackups (04:15, 04:30 and 04:45 UTC plus continuous WAL) write to the bex-tfstate bucket under etcd-snapshots/, openbao-snapshots/, keyvalue/&lt;id&gt;/, bex-db/ and auth-dbs/; a human operator fetches a snapshot or backup and restores with scripts/restore-*.sh](assets/ADR031-platform-data-backup.svg)
 
 ## One-time setup per cluster
 

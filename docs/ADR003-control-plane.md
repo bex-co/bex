@@ -21,20 +21,7 @@ bex's Go layer splits into **two collaborating components** — keep them distin
 
 Users call the **control plane**, never the operator — the operator has no user-facing API; it's an internal k8s controller at the **tail** of the pipeline.
 
-```mermaid
-flowchart TB
-  tenant@{ shape: tri, label: "tenant · Web UI / API / CLI" }
-  cp["bex control plane<br/>Go service · source of truth"]
-  pg[("Postgres")]
-  cr["App CR · etcd"]
-  op["bex operator<br/>mechanism · no DB"]
-  run["Deployment · Service · Ingress (+TLS)<br/>→ running service (https)"]
-  tenant -->|"① POST /apps — sync call"| cp
-  cp -->|"② write row"| pg
-  cp -->|"③ project → App CR"| cr
-  cr -->|"④ watched by"| op
-  op -->|"⑤ reconcile"| run
-```
+![Request flow: (1) a tenant calls POST /apps on the bex control plane synchronously; (2) it writes a Postgres row and (3) projects an App CR into etcd; (4) the CR is watched by the bex operator, which (5) reconciles Deployment, Service and Ingress with TLS into a running HTTPS service](assets/ADR003-control-plane.svg)
 
 What the pipeline gets right — and the mistakes to avoid:
 

@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="990" viewBox="0 0 1000 990" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR052 — Notifications: a workspace member authors policy in the dashboard through bex-api verbs stored in control-plane Postgres; inside bex-api the reconciler triggers notifications.Service for deploy emails via the shared SMTP relay, webhooks.Worker tails the event feed and sends signed POSTs and failure-notice emails, and PushWorker tails the event feed and delivers through the Expo Push Service to the member's phone and through the browser vendor push service to the member's browser</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .a { font-size: 13px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .group { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .glabel { font-size: 13px; font-weight: 700; fill: #475569; letter-spacing: 0.6px; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .external { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="989" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="25" y="50" font-size="22" font-weight="700" fill="#111827">ADR052 — Notifications</text>
+  <text x="25" y="74" font-size="13" fill="#4b5563">One event feed, three delivery channels: email, webhooks, and native push.</text>
+
+  <!-- Member and dashboard -->
+  <rect class="actor" x="352" y="96" width="196" height="42" rx="21"/>
+  <circle class="icon" cx="376" cy="111" r="5"/>
+  <path class="icon" d="M366,128 a10,8 0 0 1 20,0"/>
+  <text x="397" y="122" font-size="14" font-weight="600" fill="#111827">workspace member</text>
+
+  <rect class="client" x="280" y="168" width="220" height="72" rx="10"/>
+  <text class="h" x="390" y="192">dashboard</text>
+  <text class="s" x="390" y="212">/notifications + service settings</text>
+  <text class="s" x="390" y="228">(policy authoring)</text>
+
+  <!-- Control-plane Postgres -->
+  <path class="control" d="M20,316 v512 a75,9 0 0 0 150,0 v-512"/>
+  <ellipse class="control" cx="95" cy="316" rx="75" ry="9"/>
+  <text class="h" x="95" y="470">control-plane</text>
+  <text class="h" x="95" y="489">Postgres</text>
+  <text class="s" x="95" y="516" font-weight="600">event feed:</text>
+  <text class="s" x="95" y="532">deploys + audit_events</text>
+  <text class="s" x="95" y="548">+ service_event_facts</text>
+  <text class="s" x="95" y="574">notification_settings</text>
+  <text class="s" x="95" y="590">webhook_* · push_*</text>
+  <text class="s" x="95" y="606">tables</text>
+
+  <!-- bex-api process -->
+  <rect class="group" x="268" y="268" width="244" height="588" rx="14"/>
+  <text class="glabel" x="284" y="291">BEX-API PROCESS</text>
+
+  <rect class="control" x="280" y="302" width="220" height="90" rx="10"/>
+  <text class="h" x="390" y="326">notification verbs</text>
+  <text class="s" x="390" y="346">notification-settings / webhook /</text>
+  <text class="s" x="390" y="362">device-subscription</text>
+  <text class="s" x="390" y="378">REST + GraphQL + MCP</text>
+
+  <rect class="control" x="280" y="422" width="220" height="56" rx="10"/>
+  <text class="h" x="390" y="446">control-plane reconciler</text>
+  <text class="s" x="390" y="466">closes deploys</text>
+
+  <rect class="control" x="280" y="530" width="220" height="70" rx="10"/>
+  <text class="h" x="390" y="554">notifications.Service</text>
+  <text class="s" x="390" y="574">email fan-out:</text>
+  <text class="s" x="390" y="590">service policy x member prefs</text>
+
+  <rect class="control" x="280" y="640" width="220" height="80" rx="10"/>
+  <text class="h" x="390" y="676">webhooks.Worker</text>
+  <text class="s" x="390" y="696">2-phase: dispatch + send</text>
+
+  <rect class="control" x="280" y="760" width="220" height="70" rx="10"/>
+  <text class="h" x="390" y="784">PushWorker</text>
+  <text class="s" x="390" y="804">policy eval, logical inbox +</text>
+  <text class="s" x="390" y="820">per-device deliveries</text>
+
+  <!-- Delivery services -->
+  <rect class="external" x="610" y="548" width="165" height="56" rx="10"/>
+  <text class="h" x="692.5" y="581">shared SMTP relay</text>
+
+  <rect class="external" x="610" y="678" width="165" height="66" rx="10"/>
+  <text class="h" x="692.5" y="699">customer webhook</text>
+  <text class="h" x="692.5" y="716">endpoint</text>
+  <text class="s" x="692.5" y="734">external</text>
+
+  <rect class="external" x="610" y="766" width="165" height="56" rx="10"/>
+  <text class="h" x="692.5" y="790">Expo Push Service</text>
+  <text class="s" x="692.5" y="810">external</text>
+
+  <rect class="external" x="610" y="860" width="165" height="70" rx="10"/>
+  <text class="h" x="692.5" y="884">browser vendor</text>
+  <text class="h" x="692.5" y="901">push service</text>
+  <text class="s" x="692.5" y="919">VAPID</text>
+
+  <!-- Member devices -->
+  <rect class="actor" x="850" y="772" width="130" height="44" rx="22"/>
+  <text class="a" x="915" y="799">member's phone</text>
+  <rect class="actor" x="850" y="873" width="130" height="44" rx="22"/>
+  <text class="a" x="915" y="900">member's browser</text>
+
+  <!-- Policy authoring -->
+  <path class="flow" d="M450,138 L450,166"/>
+  <path class="flow" d="M450,240 L450,300"/>
+  <path class="flow" d="M280,347 L172,347"/>
+
+  <!-- Email -->
+  <path class="flow" d="M390,478 L390,528"/>
+  <text class="lbl-in" x="400" y="499">NotifyDeploy</text>
+  <text class="lbl-in" x="400" y="513">on deploy close</text>
+  <path class="flow" d="M280,565 L172,565"/>
+  <text class="lbl" x="221" y="543" text-anchor="middle">recipients</text>
+  <text class="lbl" x="221" y="557" text-anchor="middle">+ prefs</text>
+  <path class="flow" d="M500,576 L608,576"/>
+  <text class="lbl" x="561" y="568" text-anchor="middle">deploy emails</text>
+
+  <!-- Webhooks -->
+  <path class="flow" d="M280,680 L172,680"/>
+  <text class="lbl" x="221" y="658" text-anchor="middle">tail event feed</text>
+  <text class="lbl" x="221" y="672" text-anchor="middle">(watermark)</text>
+  <path class="flow" d="M500,660 L692,660 L692,606"/>
+  <text class="lbl" x="580" y="652" text-anchor="middle">failure-notice email</text>
+  <path class="flow" d="M500,711 L608,711"/>
+  <text class="lbl" x="561" y="728" text-anchor="middle">signed POST,</text>
+  <text class="lbl" x="561" y="742" text-anchor="middle">8 retries ~33h</text>
+
+  <!-- Push -->
+  <path class="flow" d="M280,795 L172,795"/>
+  <text class="lbl" x="221" y="773" text-anchor="middle">tail event feed</text>
+  <text class="lbl" x="221" y="787" text-anchor="middle">(watermark)</text>
+  <path class="flow" d="M500,794 L608,794"/>
+  <text class="lbl" x="561" y="772" text-anchor="middle">tickets +</text>
+  <text class="lbl" x="561" y="786" text-anchor="middle">receipts</text>
+  <path class="flow" d="M500,818 L535,818 L535,895 L608,895"/>
+  <text class="lbl" x="527" y="874" text-anchor="end">RFC 8291 +</text>
+  <text class="lbl" x="527" y="888" text-anchor="end">VAPID</text>
+  <path class="flow" d="M775,794 L848,794"/>
+  <text class="lbl" x="811.5" y="786" text-anchor="middle">APNs/FCM</text>
+  <path class="flow" d="M775,895 L848,895"/>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="client" x="25" y="954" width="14" height="14" rx="3"/>
+    <text x="47" y="965">client</text>
+    <rect class="control" x="105" y="954" width="14" height="14" rx="3"/>
+    <text x="127" y="965">bex-api and control-plane data</text>
+    <rect class="external" x="330" y="954" width="14" height="14" rx="3"/>
+    <text x="352" y="965">delivery service</text>
+  </g>
+</svg>

@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="990" height="414" viewBox="0 0 990 414" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR010 metrics — REST and GraphQL call Core.Metrics; Core reads the ResourceMetricsRange source (Prometheus over cAdvisor), falls back to the ResourceMetrics source (metrics-server), reads App pods for limits and the fallback instance count, and reads the RequestMetrics source (Prometheus over Traefik)</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .fallback { stroke: #334155; stroke-width: 1.6; fill: none; stroke-dasharray: 6 5; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .ext { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="989" height="413" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="30" y="46" font-size="22" font-weight="700" fill="#111827">Metrics: the same one-Core-many-adapters shape</text>
+  <text x="30" y="70" font-size="13" fill="#4b5563">The dashed arrow is the metrics-server fallback when BEX_PROM_URL is unset.</text>
+
+  <!-- Adapters -->
+  <rect class="client" x="30" y="100" width="195" height="110" rx="10"/>
+  <text class="h" x="127" y="124">REST</text>
+  <text class="s" x="127" y="146">GET /v1/metrics/{cpu,memory,</text>
+  <text class="s" x="127" y="163">instance-count,http-requests,</text>
+  <text class="s" x="127" y="180">http-latency,bandwidth}</text>
+
+  <rect class="client" x="30" y="260" width="195" height="56" rx="10"/>
+  <text class="h" x="127" y="283">GraphQL</text>
+  <text class="s" x="127" y="303">metrics(...)</text>
+
+  <!-- Core -->
+  <rect class="control" x="285" y="208" width="160" height="68" rx="10"/>
+  <text class="h" x="365" y="247">Core.Metrics</text>
+
+  <!-- Sources -->
+  <rect class="control" x="535" y="100" width="205" height="56" rx="10"/>
+  <text class="h" x="637" y="123">ResourceMetricsRange</text>
+  <text class="s" x="637" y="143">source</text>
+
+  <rect class="control" x="535" y="176" width="205" height="56" rx="10"/>
+  <text class="h" x="637" y="199">ResourceMetrics</text>
+  <text class="s" x="637" y="219">source</text>
+
+  <rect class="runtime" x="535" y="252" width="205" height="56" rx="10"/>
+  <text class="h" x="637" y="275">App pods</text>
+  <text class="s" x="637" y="295">limits + fallback instance count</text>
+
+  <rect class="control" x="535" y="328" width="205" height="56" rx="10"/>
+  <text class="h" x="637" y="351">RequestMetrics</text>
+  <text class="s" x="637" y="371">source</text>
+
+  <!-- Backends -->
+  <rect class="ext" x="795" y="100" width="170" height="56" rx="10"/>
+  <text class="h" x="880" y="123">Prometheus</text>
+  <text class="s" x="880" y="143">← cAdvisor (kubelets)</text>
+
+  <rect class="ext" x="795" y="176" width="170" height="56" rx="10"/>
+  <text class="h" x="880" y="199">metrics-server</text>
+  <text class="s" x="880" y="219">metrics.k8s.io</text>
+
+  <rect class="ext" x="795" y="328" width="170" height="56" rx="10"/>
+  <text class="h" x="880" y="351">Prometheus</text>
+  <text class="s" x="880" y="371">← Traefik</text>
+
+  <!-- Edges: adapters to Core -->
+  <path class="flow" d="M225,155 L283,228"/>
+  <path class="flow" d="M225,288 L283,258"/>
+
+  <!-- Edges: Core to sources -->
+  <path class="flow" d="M445,218 L533,128"/>
+  <path class="fallback" d="M445,234 L533,204"/>
+  <text class="lbl" x="484" y="205" text-anchor="middle">fallback</text>
+  <path class="flow" d="M445,252 L533,280"/>
+  <path class="flow" d="M445,268 L533,356"/>
+
+  <!-- Edges: sources to backends -->
+  <path class="flow" d="M740,128 L793,128"/>
+  <path class="flow" d="M740,204 L793,204"/>
+  <path class="flow" d="M740,356 L793,356"/>
+</svg>

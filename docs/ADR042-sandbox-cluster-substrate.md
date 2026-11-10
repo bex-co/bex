@@ -130,40 +130,7 @@ The BatchSandbox snapshot path does **not** work on `scripts/mock-cluster.sh` (O
 
 ## Architecture
 
-```mermaid
-flowchart TB
-  agent["Agent (Claude Code)"]
-  cli["Render CLI — ea sandbox"]
-  mcp["bex MCP client"]
-
-  subgraph cluster["bex app cluster"]
-    subgraph bexsys["bex-system · trusted"]
-      api["📦 bex-api · sandbox gateway<br/>authz · quota · identity · idle tracker"]
-    end
-    subgraph ossys["opensandbox-system · trusted — only bex-api may reach"]
-      osserver["📦 OpenSandbox server<br/>lifecycle: create / pause / resume / delete / exec"]
-      ctrl["📦 OpenSandbox controller<br/>BatchSandbox / Pool / SandboxSnapshot CRDs"]
-      pool["warm Pool CR (pre-warmed capacity)"]
-    end
-    subgraph sandboxns["ws-sandbox (one per tenant) · UNTRUSTED"]
-      sbx["📦 sandbox pods<br/>agent code · gVisor RuntimeClass<br/>tainted node pool · Cilium DNS/FQDN default-deny"]
-    end
-    subgraph regns["bex-registry"]
-      zot[("📦 Zot — future snapshot store<br/>disabled in prod")]
-    end
-  end
-
-  agent --> api
-  cli --> api
-  mcp --> api
-  api -->|"per-workspace key + NetworkPolicy (only bex-api)"| osserver
-  osserver --> ctrl
-  sbx -->|"managed by"| ctrl
-  ctrl -->|"maintains"| pool
-  ctrl -->|"pause: commit rootfs (Job in opensandbox-snapshot, D5 resolved)"| zot
-  sbx -->|"resume: pull rootfs — v1 rootfs-only, no memory"| zot
-  sbx -.->|"✗ blocked — anti-lateral-movement"| osserver
-```
+![Sandbox substrate architecture: the agent, the Render CLI ea sandbox commands and the bex MCP client reach bex-api in bex-system, the only caller allowed to reach the OpenSandbox server (per-workspace key + NetworkPolicy); the server depends on the OpenSandbox controller, which maintains the warm Pool and commits paused rootfs to Zot through a Job in opensandbox-snapshot; untrusted sandbox pods in each ws-sandbox namespace are managed by the controller, pull their rootfs from Zot on resume, and are blocked from reaching the OpenSandbox server](assets/ADR042-sandbox-cluster-substrate.svg)
 
 **Every arrow is a dependency** (`A → B` means A depends on B), matching [ADR002-architecture.md](ADR002-architecture.md). The dashed `✗ blocked` edge is the load-bearing security constraint: untrusted sandbox pods cannot reach the OpenSandbox server, so the only path to the lifecycle API is through bex-api (the authz/quota gate).
 

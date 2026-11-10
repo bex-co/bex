@@ -269,35 +269,7 @@ Because Stripe currently labels Billing Credits public preview, production activ
 
 ## Architecture and trust flow
 
-```mermaid
-flowchart TB
-  requester@{ shape: tri, label: "credit requester" }
-  approver@{ shape: tri, label: "credit approver" }
-  billingMember@{ shape: tri, label: "workspace billing member" }
-
-  subgraph bexapi["bex-api process (long-running service)"]
-    operations["platform credit endpoints (HTTP handlers, not services)"]
-    reads["tenant credit reads (API handlers, not services)"]
-    executor["credit executor (long-running background worker)"]
-    webhook["Stripe webhook intake (HTTP handler, not a service)"]
-  end
-
-  authz["OpenFGA authorization service"]
-  store[("control-plane Postgres (credit intent, approval, outbox, audit)")]
-  stripe["Stripe Billing Credits API and authoritative ledger"]
-
-  requester -->|request promotional credit| operations
-  approver -->|approve or deny| operations
-  billingMember -->|read available credit| reads
-  operations -->|authorize platform role| authz
-  reads -->|authorize workspace billing role| authz
-  operations -->|persist immutable intent and approval| store
-  executor -->|lease approved operation| store
-  executor -->|create, void, or expire with idempotency key| stripe
-  reads -->|read balance summary and transactions| stripe
-  stripe -->|signature-verified credit events| webhook
-  webhook -->|append normalized provider facts| store
-```
+![Architecture: a credit requester requests promotional credit and a separate credit approver approves or denies it through the platform credit endpoints, which authorize the platform role with OpenFGA and persist immutable intent and approval in control-plane Postgres; a workspace billing member reads available credit through the tenant credit reads, which authorize the workspace billing role and read the balance summary and transactions from Stripe; only the background credit executor leases approved operations from Postgres and creates, voids or expires Stripe credit grants with an idempotency key; Stripe sends signature-verified credit events to the webhook intake, which appends normalized provider facts to Postgres](assets/ADR071-tenant-billing-credits.svg)
 
 The requester and separate approver create durable intent; only the background executor mutates Stripe, whose events reconcile the local audit ledger.
 

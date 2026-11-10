@@ -35,40 +35,7 @@ Eight decisions, ordered by leverage. D1–D2 are the reliability core, D3–D4 
 
 ### Target architecture
 
-```mermaid
-flowchart TB
-  git["git repository (external service)"]
-  prom["Prometheus (existing platform stack)"]
-
-  subgraph bexsystem["bex-system"]
-    operator["bex operator — App controller<br/>D1 non-blocking state machine: admit (D6 caps) → create/adopt Job → return;<br/>advance on watched Job conditions; classify outcome (D2); emit bex_build_* SLIs (D5)"]
-  end
-
-  subgraph buildns["BEX_BUILD_NAMESPACE — dedicated build pools lg + burst (tainted, untrusted, D8)"]
-    job["build Job bld-…-gen-N (ephemeral, one per revision)<br/>podFailurePolicy + reserved exit codes (D2)<br/>clone → BuildKit (cache import, OCI archive) → Skopeo push --retry-times → Cosign (D4)"]
-    kpack["kpack Image/Build pods (buildpack path, ephemeral)"]
-  end
-
-  subgraph reg["bex-registry"]
-    zot[("Zot — single replica, accepted SPOF (D4)<br/>per-App image repo + '_cache' repo with own retention (D3)<br/>gcDelay ≥ build deadline, scrub enabled")]
-  end
-
-  subgraph tenantns["tenant namespace"]
-    deploy["Deployment (Kubernetes object, updated after terminal build)"]
-    apppod["App Pod (long-running)"]
-  end
-
-  operator -->|"create; watch conditions — no polling"| job
-  operator --> kpack
-  operator -->|"after terminal Job condition: pin digest, update image"| deploy
-  job -->|"shallow clone"| git
-  job -->|"import build cache; push image + cache"| zot
-  kpack --> git
-  kpack -->|"push image + CNB cache tag"| zot
-  apppod -->|"managed by"| deploy
-  apppod -->|"pull digest-pinned image"| zot
-  prom -->|"scrape queue/run/outcome/push series"| operator
-```
+![Target build architecture: Prometheus scrapes the bex operator's build series; the operator creates the build Job and kpack builds in the untrusted BEX_BUILD_NAMESPACE and watches Job conditions instead of polling, then after the terminal condition pins the digest on the tenant Deployment; builds shallow-clone the git repository and push images and cache to the single-replica Zot registry, and App Pods, managed by the Deployment, pull the digest-pinned image](assets/ADR060-build-worker-reliability-and-performance.svg)
 
 The structural change versus ADR034's as-built diagram is the operator→Job edge: "create; poll status every 3s" becomes "create; watch conditions" — the reconcile returns immediately and re-enters on Job events, while retry/timeout policy moves into the Job spec itself (D2) and the cache round-trip is a new Job↔Zot edge (D3).
 

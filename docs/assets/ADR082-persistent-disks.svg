@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="990" viewBox="0 0 1000 990" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR082 — Persistent disks: bex-api disk verbs project spec.disk onto the App CR; the operator watches it and creates the Recreate Deployment, the per-disk PVC, the LUKS passphrase Secret, and the backup pod and restore Job; the hcloud CSI driver backs the PVC with a Hetzner Cloud Volume, and backup and restore move snapshots through Hetzner Object Storage</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .wire { stroke: #334155; stroke-width: 1.6; fill: none; }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .group { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .glabel { font-weight: 700; fill: #475569; letter-spacing: 0.6px; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .secret { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.6; }
+      .external { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="989" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="30" y="50" font-size="22" font-weight="700" fill="#111827">ADR082 — Persistent disks</text>
+  <text x="30" y="74" font-size="13" fill="#4b5563">Every box exists only because of spec.disk.</text>
+
+  <!-- bex-api -->
+  <rect class="control" x="60" y="96" width="310" height="76" rx="10"/>
+  <text class="h" x="215" y="121">bex-api disk verbs</text>
+  <text class="s" x="215" y="142">/v1/disks CRUD + snapshot restore;</text>
+  <text class="s" x="215" y="158">emits disk_gb_seconds on provisioned sizeGB</text>
+
+  <!-- App cluster -->
+  <rect class="group" x="25" y="206" width="950" height="604" rx="16"/>
+  <text class="glabel" x="955" y="230" font-size="13" text-anchor="end">APP CLUSTER (HETZNER, CAPH)</text>
+
+  <rect class="reconcile" x="420" y="240" width="220" height="60" rx="10"/>
+  <text class="h" x="530" y="265">bex-operator</text>
+  <text class="s" x="530" y="285">bex-system</text>
+
+  <!-- Workspace namespace -->
+  <rect x="40" y="350" width="920" height="330" rx="14" fill="#ffffff" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text class="glabel" x="530" y="375" font-size="12" text-anchor="middle">WORKSPACE NAMESPACE TEA-…</text>
+
+  <rect class="control" x="60" y="392" width="190" height="80" rx="10"/>
+  <text class="h" x="155" y="426">App CR</text>
+  <text class="s" x="155" y="446">k8s object, spec.disk</text>
+
+  <rect class="runtime" x="310" y="392" width="190" height="80" rx="10"/>
+  <text class="h" x="405" y="418">app Deployment</text>
+  <text class="s" x="405" y="438">Recreate, replicas ≤ 1,</text>
+  <text class="s" x="405" y="454">safe-to-evict: false</text>
+
+  <rect class="runtime" x="530" y="392" width="190" height="80" rx="10"/>
+  <text class="h" x="625" y="418">backup pod</text>
+  <text class="s" x="625" y="438">spawned nightly,</text>
+  <text class="s" x="625" y="454">exits when done</text>
+
+  <rect class="runtime" x="760" y="392" width="185" height="80" rx="10"/>
+  <text class="h" x="852.5" y="418">restore Job</text>
+  <text class="s" x="852.5" y="438">spawned on snapshot restore,</text>
+  <text class="s" x="852.5" y="454">wipes + extracts</text>
+
+  <rect class="secret" x="60" y="560" width="190" height="80" rx="10"/>
+  <text class="h" x="155" y="594">LUKS passphrase Secret</text>
+  <text class="s" x="155" y="614">k8s object, minted per disk</text>
+
+  <rect class="control" x="310" y="560" width="410" height="80" rx="10"/>
+  <text class="h" x="515" y="594">per-disk PVC</text>
+  <text class="s" x="515" y="614">k8s object, RWO, grow-only</text>
+
+  <!-- CSI driver -->
+  <rect class="reconcile" x="330" y="718" width="230" height="60" rx="10"/>
+  <text class="h" x="445" y="743">hcloud CSI driver</text>
+  <text class="s" x="445" y="763">kube-system</text>
+
+  <!-- Hetzner storage -->
+  <path class="external" d="M300,858 v54 a145,9 0 0 0 290,0 v-54"/>
+  <ellipse class="external" cx="445" cy="858" rx="145" ry="9"/>
+  <text class="h" x="445" y="891">Hetzner Cloud Volume</text>
+  <text class="s" x="445" y="910">10 GB–10 TB, €0.044/GB-mo</text>
+
+  <path class="external" d="M640,858 v54 a155,9 0 0 0 310,0 v-54"/>
+  <ellipse class="external" cx="795" cy="858" rx="155" ry="9"/>
+  <text class="h" x="795" y="891">Hetzner Object Storage</text>
+  <text class="s" x="795" y="910">age-encrypted snapshots, 7 dailies</text>
+
+  <!-- bex-api projects spec.disk -->
+  <path class="flow" d="M100,172 L100,390"/>
+  <text class="lbl-in" x="110" y="272">projects spec.disk</text>
+
+  <!-- Operator fan-out: watches the App CR, creates the rest -->
+  <path class="wire" d="M530,300 L530,330 M205,330 L855,330 M280,330 L280,535"/>
+  <circle cx="530" cy="330" r="3" fill="#334155"/>
+  <circle cx="280" cy="330" r="3" fill="#334155"/>
+  <circle cx="380" cy="330" r="3" fill="#334155"/>
+  <circle cx="680" cy="330" r="3" fill="#334155"/>
+  <path class="flow" d="M205,330 L205,390"/>
+  <text class="lbl" x="197" y="370" text-anchor="end">watches</text>
+  <path class="flow" d="M380,330 L380,390"/>
+  <path class="flow" d="M680,330 L680,390"/>
+  <path class="flow" d="M855,330 L855,390"/>
+  <path class="flow" d="M280,535 L220,535 L220,558"/>
+  <path class="flow" d="M280,535 L340,535 L340,558"/>
+
+  <!-- Inside the namespace -->
+  <path class="flow" d="M405,472 L405,558"/>
+  <text class="lbl" x="415" y="507">mounts at</text>
+  <text class="lbl" x="415" y="521">mountPath</text>
+
+  <path class="flow" d="M600,472 L600,558"/>
+  <text class="lbl" x="610" y="507">tar over PVC</text>
+  <text class="lbl" x="610" y="521">(same node)</text>
+
+  <path class="flow" d="M810,472 L810,615 L722,615"/>
+
+  <!-- Storage paths -->
+  <path class="flow" d="M445,640 L445,716"/>
+  <path class="flow" d="M330,748 L155,748 L155,642"/>
+  <path class="flow" d="M445,778 L445,847"/>
+  <text class="lbl" x="455" y="832">attach / detach / grow</text>
+
+  <path class="flow" d="M720,425 L740,425 L740,609 A6,6 0 0 1 740,621 L740,848"/>
+  <path class="flow" d="M900,472 L900,849"/>
+  <text class="lbl-in" x="890" y="766" text-anchor="end">reads snapshot</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="control" x="30" y="946" width="14" height="14" rx="3"/>
+    <text x="52" y="957">API and Kubernetes objects</text>
+    <rect class="reconcile" x="230" y="946" width="14" height="14" rx="3"/>
+    <text x="252" y="957">controllers</text>
+    <rect class="runtime" x="340" y="946" width="14" height="14" rx="3"/>
+    <text x="362" y="957">workloads</text>
+    <rect class="secret" x="442" y="946" width="14" height="14" rx="3"/>
+    <text x="464" y="957">secret</text>
+    <rect class="external" x="524" y="946" width="14" height="14" rx="3"/>
+    <text x="546" y="957">Hetzner storage</text>
+  </g>
+</svg>

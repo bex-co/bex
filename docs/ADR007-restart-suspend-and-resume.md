@@ -53,12 +53,7 @@ The same fields mean the same thing everywhere; only the mechanism differs — t
 
 ### Phase transitions
 
-```mermaid
-stateDiagram-v2
-    Running --> Running: restartedAt changed (rolling, no gap)
-    Running --> Hibernated: suspended=true (scale to 0)
-    Hibernated --> Running: suspended=false (scale back, readiness-gated)
-```
+![Phase transitions: a restartedAt change keeps Running (rolling, no gap); suspended=true moves Running to Hibernated (scale to 0); suspended=false moves Hibernated back to Running (scale back, readiness-gated)](assets/ADR007-restart-suspend-and-resume.svg)
 
 ### Maintenance-mode interaction (w1/m37)
 

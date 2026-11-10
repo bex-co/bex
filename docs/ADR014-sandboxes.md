@@ -39,24 +39,7 @@ The App architecture rule (product action → **App CR contract** → operator c
 
 Add a sandbox feature package in `lego/backend/internal/` that owns an **opensandbox client** (`BEX_OPENSANDBOX_URL`, the same endpoint the operator uses). bex-api becomes the **sandbox gateway**: control plane (create/pause/resume/kill), data-plane front (exec/connect proxy), auth (the existing bex-api credentials — API keys / OAuth2 or Kratos sessions, [ADR012-auth.md](ADR012-auth.md)), and activity observation, all in one place. No `Sandbox` CRD and no operator involvement — the operator keeps reconciling Apps only.
 
-```mermaid
-graph LR
-  agent["Claude Code / agent"]
-  e2b["E2B SDK / tooling"]
-  gw["bex-api · sandbox gateway<br/>auth · admission + quota · idle tracker · wake-on-connect"]
-
-  agent -->|"MCP: spawn_sandbox, sandbox_exec"| gw
-  e2b -->|"REST: /v1/sandboxes, /connect"| gw
-
-  gw -->|"control: create / pause / resume / kill"| sb
-  gw -->|"data: exec (execd)"| sb
-
-  subgraph os["opensandbox runtime (single host today)"]
-    sb["sandbox (agent's code)"]
-    store[("snapshot store + pre-warm pool")]
-    sb -->|"idle: pause → snapshot · connect: resume → restore (~80ms)"| store
-  end
-```
+![Sandbox gateway: Claude Code or another agent calls the bex-api sandbox gateway over MCP (spawn_sandbox, sandbox_exec) and E2B tooling calls it over REST (/v1/sandboxes, /connect); the gateway drives the opensandbox runtime directly, control (create, pause, resume, kill) and data (exec via execd), and an idle sandbox pauses to the snapshot store and is restored on connect in about 80 ms](assets/ADR014-sandboxes.svg)
 
 ### D2 — Control-plane E2B compatibility now; spawn from templates
 

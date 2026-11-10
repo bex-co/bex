@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="730" viewBox="0 0 1000 730" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR015 — OpenBao backup and restore: a nightly openbao-backup pod takes a Raft snapshot and ships it to Hetzner Object Storage; restore is an operator-run script</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .glabel { font-size: 13px; font-weight: 700; fill: #475569; letter-spacing: 0.6px; }
+      .gsub { font-size: 12px; fill: #6b7280; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .inert { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="729" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="46" font-size="22" font-weight="700" fill="#111827">OpenBao backup &amp; restore</text>
+  <text x="40" y="70" font-size="13" fill="#4b5563">A nightly Raft snapshot of the already-encrypted store is shipped off-cluster; restore is an operator-triggered script.</text>
+
+  <!-- App cluster -->
+  <rect x="30" y="96" width="630" height="380" rx="16" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text class="glabel" x="50" y="122">APP CLUSTER (HETZNER)</text>
+
+  <rect class="inert" x="60" y="140" width="240" height="80" rx="10"/>
+  <text class="h" x="180" y="176">Secret openbao-backup-s3</text>
+  <text class="s" x="180" y="196">inert, created once from .env</text>
+
+  <rect class="control" x="400" y="140" width="230" height="80" rx="10"/>
+  <text class="h" x="515" y="185">Argo CD</text>
+
+  <!-- ns secrets -->
+  <rect x="50" y="272" width="595" height="184" rx="12" fill="#ffffff" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="5 4"/>
+  <text x="70" y="296" font-size="13" font-weight="700" fill="#475569">ns secrets</text>
+
+  <path class="control" d="M70,330 v94 a100,9 0 0 0 200,0 v-94"/>
+  <ellipse class="control" cx="170" cy="330" rx="100" ry="9"/>
+  <text class="h" x="170" y="378">OpenBao</text>
+  <text class="s" x="170" y="398">Raft on PVC</text>
+
+  <rect class="reconcile" x="400" y="322" width="230" height="110" rx="10"/>
+  <text class="h" x="515" y="360">openbao-backup pod</text>
+  <text class="s" x="515" y="382">nightly 03:45 UTC,</text>
+  <text class="s" x="515" y="398">exits when done</text>
+
+  <!-- Off-cluster storage -->
+  <path class="inert" d="M760,330 v94 a105,9 0 0 0 210,0 v-94"/>
+  <ellipse class="inert" cx="865" cy="330" rx="105" ry="9"/>
+  <text class="h" x="865" y="378">Hetzner Object Storage</text>
+  <text class="s" x="865" y="398">external, openbao-snapshots/</text>
+
+  <!-- Disaster recovery -->
+  <rect x="30" y="536" width="940" height="134" rx="16" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text class="glabel" x="50" y="562">DISASTER RECOVERY</text>
+  <text class="gsub" x="50" y="580">operator-triggered restore script</text>
+
+  <rect class="actor" x="400" y="590" width="180" height="44" rx="22"/>
+  <circle class="icon" cx="428" cy="606" r="5"/>
+  <path class="icon" d="M418,623 a10,8 0 0 1 20,0"/>
+  <text x="448" y="617" font-size="14" font-weight="600" fill="#111827">human operator</text>
+
+  <!-- Edges: nightly backup -->
+  <path class="flow" d="M515,220 L515,320"/>
+  <text class="lbl" x="527" y="241">creates CronJob</text>
+  <text class="lbl" x="527" y="256">+ SA from git</text>
+
+  <path class="flow" d="M412,322 L292,222"/>
+  <text class="lbl-in" x="366" y="262">reads creds</text>
+
+  <path class="flow" d="M400,392 L272,392"/>
+  <text class="lbl" x="336" y="348" text-anchor="middle">k8s-auth login</text>
+  <text class="lbl" x="336" y="363" text-anchor="middle">(role bao-snapshot)</text>
+  <text class="lbl" x="336" y="378" text-anchor="middle">→ raft snapshot save</text>
+
+  <path class="flow" d="M630,377 L758,377"/>
+  <text class="lbl" x="710" y="355" text-anchor="middle">upload + prune,</text>
+  <text class="lbl" x="710" y="369" text-anchor="middle">keep 7</text>
+
+  <!-- Edges: disaster recovery -->
+  <path class="flow" d="M580,612 L865,612 L865,437"/>
+  <text class="lbl-in" x="720" y="603" text-anchor="middle">fetch snapshot</text>
+
+  <path class="flow" d="M490,590 L490,506 L170,506 L170,437"/>
+  <text class="lbl" x="330" y="498" text-anchor="middle">bao operator raft snapshot restore</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="control" x="40" y="692" width="14" height="14" rx="3"/>
+    <text x="62" y="703">long-running</text>
+    <rect class="reconcile" x="160" y="692" width="14" height="14" rx="3"/>
+    <text x="182" y="703">runs briefly, exits when done</text>
+    <rect class="inert" x="370" y="692" width="14" height="14" rx="3"/>
+    <text x="392" y="703">inert config or external storage</text>
+  </g>
+</svg>

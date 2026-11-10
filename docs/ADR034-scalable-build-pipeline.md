@@ -36,23 +36,7 @@ Each admitted source build runs as an isolated Kubernetes workload:
 
 #### Current synchronous build-to-deploy handoff
 
-```mermaid
-flowchart TD
-  %% A --> B means A depends on or writes to B.
-  git["Git repository (external service)"]
-  operator["bex operator (long-running controller)"]
-  build["build Job and Pod (ephemeral, one per revision)<br/>clone → source emptyDir → BuildKit → OCI archive → Skopeo/Cosign"]
-  zot[(Zot registry)]
-  deployment["Deployment (Kubernetes object, updated after build)"]
-  app["App Pod (long-running)"]
-
-  operator -->|"create; poll status every 3s"| build
-  build -->|"fetch source"| git
-  build -->|"push image"| zot
-  operator -->|"after Job Complete: pin digest and update image"| deployment
-  app -->|"managed by"| deployment
-  app -->|"pull digest-pinned image"| zot
-```
+![Build-to-deploy handoff, where an arrow means depends on or writes to: the bex operator creates the build Job and polls its status every 3s; the ephemeral build Job and Pod (clone, source emptyDir, BuildKit, OCI archive, Skopeo/Cosign) fetches source from the external Git repository and pushes the image to Zot; after Job Complete the operator pins the digest and updates the Deployment; the long-running App Pod is managed by the Deployment and pulls the digest-pinned image from Zot](assets/ADR034-scalable-build-pipeline.svg)
 
 Zot sends no deploy notification. The same App reconcile worker that created the build Job polls its status every three seconds; after `Job Complete`, it resolves the pushed digest and updates the Deployment image, and Kubernetes rolls out the new App Pods.
 

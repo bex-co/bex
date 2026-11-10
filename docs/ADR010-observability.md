@@ -8,19 +8,7 @@ Logs shipped first: highest operational value, and the simplest backend (pod log
 
 One `Core` logs read, three adapters — the [bex-api](ADR006-bex-api.md) invariant. The MCP `list_logs` tool is the agent surface; REST and GraphQL expose the same read to the public API and dashboard.
 
-```mermaid
-flowchart LR
-  rest["REST GET /v1/logs<br/>GET /v1/logs/subscribe"] --> core
-  gql["GraphQL logs(...)"] --> core
-  mcp["MCP list_logs"] --> core
-  core["Core.Logs / QueryLogs / FollowLogs"] --> hist["LogHistorySource<br/>(BEX_LOKI_URL)"]
-  core -.fallback.-> src["PodLogSource"]
-  core --> stream["PodLogStream (tail)"]
-  hist --> loki["Loki ← log-shipper DaemonSet"]
-  src --> pods["App pods (app.bex.co/app label)"]
-  stream --> pods
-  loki --> pods
-```
+![Logs flow: REST GET /v1/logs and /v1/logs/subscribe, GraphQL logs(...) and MCP list_logs all call Core.Logs / QueryLogs / FollowLogs; Core reads LogHistorySource (BEX_LOKI_URL), falls back to PodLogSource, and tails through PodLogStream; LogHistorySource reads Loki, fed by the log-shipper DaemonSet, and Loki, PodLogSource and PodLogStream all read the App pods selected by the app.bex.co/app label](assets/ADR010-observability-logs.svg)
 
 - **`Core.Logs(name, tail)`** — tail-N aggregation across replicas; the unfiltered convenience read. Returns `LogEntry{timestamp, message, labels}` (labels `service`/`instance`/`container`).
 - **`Core.QueryLogs(LogQuery)`** — adds Render's filters and paging; the read path all three adapters (REST, GraphQL, MCP `list_logs`) go through. A `dpg-…` resource dispatches to the Database-authorized Postgres path (w3/m28); a `red-…` resource dispatches to the KeyValue-authorized Valkey path (w3/m30). Both preserve the same public operation.
@@ -226,15 +214,7 @@ Postgres and Key Value already select by immutable id.
 
 The same one-Core-many-adapters shape as logs. `Core.Metrics(MetricQuery)` is the single read; REST (`internal/metrics/rest.go`) and GraphQL (`internal/metrics/graphql.go`) are the surfaces. Two backends, each an injected source so Core stays clientset-free (like `PodLogSource`):
 
-```mermaid
-flowchart LR
-  rest["REST GET /v1/metrics/{cpu,memory,instance-count,<br/>http-requests,http-latency,bandwidth}"] --> core
-  gql["GraphQL metrics(...)"] --> core
-  core["Core.Metrics"] --> rr["ResourceMetricsRange source"] --> promc["Prometheus ← cAdvisor (kubelets)"]
-  core -.fallback.-> rm["ResourceMetrics source"] --> ms["metrics-server (metrics.k8s.io)"]
-  core --> pods["App pods (limits + fallback instance count)"]
-  core --> qm["RequestMetrics source"] --> prom["Prometheus ← Traefik"]
-```
+![Metrics flow: REST GET /v1/metrics/{cpu,memory,instance-count,http-requests,http-latency,bandwidth} and GraphQL metrics(...) call Core.Metrics; Core reads the ResourceMetricsRange source (Prometheus over cAdvisor on the kubelets), falls back to the ResourceMetrics source (metrics-server, metrics.k8s.io), reads the App pods for limits and the fallback instance count, and reads the RequestMetrics source (Prometheus over Traefik)](assets/ADR010-observability-metrics.svg)
 
 - **Resource** — `cpu` / `memory` / `instance_count` come from **cAdvisor scraped by Prometheus** (`NewPrometheusResourceSource`, gated by `BEX_PROM_URL` like the request metrics): a `query_range` over `container_cpu_usage_seconds_total` (per-pod rate → cores) and `container_memory_working_set_bytes` (per-pod sum → bytes; also counted for `instance_count`), one stepped series per replica tagged `instance` + `resource`. The public `instance` label is the name-derived service-instance id (same as `serviceInstances` / logs), not the raw Kubernetes pod name — PromQL still matches by pod name internally. The cpu and memory sums first take `max by (pod, container)` so cAdvisor's **duplicate series for one container across a restart do not double-count**: while a container is OOM-killed and its replacement starts, cAdvisor briefly reports both instances (same pod + container, different cgroup id), and a bare `sum by (pod)` added them — a Guaranteed 512 MiB App momentarily read ~745 MiB (≈145% of its enforced limit) at every OOM restart, which looked like an enforcement gap when the limit was in fact applied (w4/050, prod-confirmed: single-instance peak 508.9 MiB vs the double-counted 743 MiB; the operator sets requests==limits per tier at Guaranteed QoS, so the pod is OOM-killed at its plan limit rather than exceeding it). `instance_count` needs no such guard — its inner `sum by (pod)` already collapses a pod to one series. Since kubelet metrics carry pod names but not pod labels, an App's pods are matched by the Deployment pod-name shape — anchored, so `web` never matches `web-api` pods. The selector (`egressquery.PodNameRegex`, shared with the usage meter) accepts **two** shapes, because Kubernetes generates only one of them reliably: the untruncated `<obj>-<rs-hash>-<5 random>`, and the single-segment `<obj>-<N alphanumerics>` that `generateName` leaves once the base `<obj>-<hash>-` passes 58 chars and the cut eats the separating hyphen. A truncated name is always exactly 63 chars, so `N` is pinned to `62-len(obj)` rather than left open — that exact length plus the hyphen-free character class is what keeps a sibling App's pods out. `<obj>` is the **Kubernetes object name** `core.CRName(tenant, name)`, never the workspace-scoped public service name (w6/m110). With `percentage=true`, every sample is divided by **its own instance's trustworthy limit at that same timestamp** and reported 0..100 — normalization precedes replica aggregation, so mixed-limit replicas (0.4 of 0.5 vs 0.5 of 1 CPU) read 80%/50% and MIN/MAX/AVG aggregate to 50%/80%/65% (w5/m90). The denominator is the limit history (`NewPrometheusResourceLimitSource`: `query_range` over kube-state-metrics' `kube_pod_container_resource_limits`, summed by pod, same Prometheus as the usage history — no new scrape config), joined per timestamp with step interpolation, so a rollout mid-window keeps the old limit for old samples. Samples with no trustworthy denominator — a deleted pod (never another pod's limit), a sample predating limit retention, a zero limit — are omitted, never zero-filled or borrowed; a limit-source failure rejects the read rather than half-joining. Without a limit source (a test/dev shape — production wires both together) the pods' current spec limits stand in. Every tiered App has one (see [ADR003-control-plane.md's tier catalog](ADR003-control-plane.md#tiers-plans--pod-resources--machine-provisioning)); this path only fires for a bare-CR App with no `spec.tier` set.
 - **Resource fallback** — without `BEX_PROM_URL`, `cpu` / `memory` come from **metrics-server** (`metrics.k8s.io/v1beta1`, via `NewResourceMetricsSource`): a point-in-time snapshot, so each series carries a **single current point** regardless of the requested range. `instance_count` then derives from the App's pods directly, needing **no** source at all. When Prometheus is configured but unreachable at query time, the error surfaces (no silent fallback — same contract as request metrics).

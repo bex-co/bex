@@ -29,19 +29,7 @@ Two services, not one, because the jobs are different:
 
 Each has a **public** listener (self-service / OAuth2 endpoints — exposed) and an **admin** listener (identity CRUD / client management / introspection — **cluster-internal only**, no ingress).
 
-```mermaid
-flowchart LR
-  agent@{ shape: tri, label: "agent / CI · client_credentials" }
-  user@{ shape: tri, label: "tenant" }
-  agent --> edge["Traefik<br/>oauth.bex.co · auth.bex.co"]
-  user --> edge
-  edge --> hydra["Hydra public :4444<br/>token + discovery"]
-  edge --> kratos["Kratos public :4433<br/>self-service"]
-  bexapi["bex-api (w4/m2)"] --> hydraadm["Hydra admin :4445<br/>clients + introspect<br/>(cluster-internal)"]
-  bexapi --> kratosadm["Kratos admin :4434<br/>identity CRUD<br/>(cluster-internal)"]
-  hydra & hydraadm --> hdb[("hydra-db<br/>CNPG")]
-  kratos & kratosadm --> kdb[("kratos-db<br/>CNPG")]
-```
+![Auth topology: agents and CI (client_credentials) and tenants reach the Hydra public :4444 and Kratos public :4433 listeners through Traefik at oauth.bex.co and auth.bex.co; bex-api uses the cluster-internal Hydra admin :4445 and Kratos admin :4434 listeners; both Hydra listeners use the hydra-db CNPG cluster and both Kratos listeners use kratos-db](assets/ADR012-auth.svg)
 
 ### 3. Two CNPG clusters, one database each
 

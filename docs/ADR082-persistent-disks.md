@@ -49,42 +49,7 @@ Most of the mechanism exists for managed datastores and is directly reusable:
 
 ### Architecture
 
-```mermaid
-flowchart TB
-  api["bex-api disk verbs (/v1/disks CRUD + snapshot restore; emits disk_gb_seconds on provisioned sizeGB)"]
-
-  subgraph cluster["app cluster (Hetzner, CAPH)"]
-    op["bex-operator (bex-system)"]
-    csi["hcloud CSI driver (kube-system)"]
-    subgraph ns["workspace namespace tea-…"]
-      appcr["App CR (k8s object, spec.disk)"]
-      deploy["app Deployment (Recreate, replicas ≤ 1, safe-to-evict: false)"]
-      pvc["per-disk PVC (k8s object, RWO, grow-only)"]
-      luks["LUKS passphrase Secret (k8s object, minted per disk)"]
-      backup["backup pod (spawned nightly, exits when done)"]
-      restore["restore Job (spawned on snapshot restore, wipes + extracts)"]
-    end
-  end
-
-  vol[("Hetzner Cloud Volume (10 GB–10 TB, €0.044/GB-mo)")]
-  obj[("Hetzner Object Storage (age-encrypted snapshots, 7 dailies)")]
-
-  api -->|"projects spec.disk"| appcr
-  op -->|watches| appcr
-  op --> deploy
-  op --> pvc
-  op --> luks
-  op --> backup
-  op --> restore
-  deploy -->|"mounts at mountPath"| pvc
-  pvc --> csi
-  csi --> luks
-  csi -->|"attach / detach / grow"| vol
-  backup -->|"tar over PVC (same node)"| pvc
-  backup --> obj
-  restore --> pvc
-  restore -->|reads snapshot| obj
-```
+![Persistent disks: bex-api disk verbs project spec.disk onto the App CR in the workspace namespace; the bex-operator watches it and creates the Recreate app Deployment, the per-disk PVC, the LUKS passphrase Secret, the nightly backup pod and the restore Job; the Deployment mounts the PVC at mountPath, the hcloud CSI driver backs the PVC with the LUKS Secret and attaches, detaches and grows a Hetzner Cloud Volume; the backup pod tars the PVC on the same node to Hetzner Object Storage, and the restore Job reads a snapshot from it back into the PVC](assets/ADR082-persistent-disks.svg)
 
 Every box exists only because of `spec.disk`: bex-api's disk verbs project the field onto the App CR and meter its provisioned GB (§ D9); the operator converges it into the `Recreate` Deployment and the LUKS-encrypted PVC that the hcloud CSI driver backs with a Hetzner Cloud Volume (§ D3), plus the ephemeral backup/restore workloads that stand in for the volume snapshots Hetzner doesn't offer (§ D5).
 

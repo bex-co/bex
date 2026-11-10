@@ -12,18 +12,7 @@ Render sells **managed Key Value** (Valkey/Redis-compatible) as a first-class da
 
 A key-value store is standalone (created independently; multiple services connect to it; it outlives any one app). So model it as a standalone **`KeyValue`** (CR), _not_ `App.spec.kv`. The operator projects it to a single-instance **Valkey `StatefulSet`** in the **tenant's namespace**, mirroring how `Database` projects to a CNPG `Cluster`.
 
-```mermaid
-flowchart LR
-  kv["KeyValue resource<br/>(control plane · plan/version/storage)"] --> sts["Valkey StatefulSet<br/>(tenant namespace · 1 replica)"]
-  sts --> svc["ClusterIP Service<br/>(stable VIP, in-cluster)"]
-  sts --> pvc["PVC<br/>(appendonly data)"]
-  sts -. "paid plans: coherent RDB" .-> backup["CronJob kvbak-&lt;id&gt;<br/>nightly gzip → object storage"]
-  sts --> auth["immutable auth Secret<br/>(password authority)"]
-  auth --> sec["immutable connection Secret<br/>(URI projection)"]
-  svc --> appx["tenant App<br/>uses INTERNAL url"]
-  svc --> tcp["Key Value SNI proxy<br/>TLS passthrough + response meter · :6379"]
-  tcp --> ext["external client<br/>uses EXTERNAL url · rediss://"]
-```
+![A KeyValue resource projects a single-replica Valkey StatefulSet in the tenant namespace; the StatefulSet has a PVC for appendonly data, a ClusterIP Service, an immutable auth Secret that projects the immutable connection Secret, and on paid plans a coherent-RDB kvbak CronJob that uploads a nightly gzip to object storage; tenant Apps use the internal URL through the Service, and external clients use the rediss:// URL through the Key Value SNI proxy on :6379](assets/ADR021-keyvalue-management.svg)
 
 ### 2. Two URLs = two network paths (the core of the product)
 

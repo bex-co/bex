@@ -6,30 +6,7 @@
 
 Only Argo CD and etcd are long-running; the backup itself is a pod that exists for a few seconds a night, the Secret is inert config it reads, and recovery is operator-triggered through `scripts/restore-etcd.sh` — nothing is deployed for it until a human runs the script:
 
-```mermaid
-graph LR
-  subgraph cluster["app cluster (Hetzner)"]
-    argo[Argo CD]
-    secret["Secret etcd-backup-s3<br/>(inert k8s object, created once from .env)"]
-    subgraph "control-plane node"
-      cron["etcd-backup pod<br/>(spawned nightly 03:15 UTC, exits when done)"]
-      etcd[("etcd<br/>(static pod)")]
-    end
-  end
-  argo -->|creates CronJob from git| cron
-  cron -->|etcdctl snapshot save| etcd
-  cron -->|reads creds| secret
-  cron -->|upload + prune, keep 7| bucket
-  bucket[("Hetzner Object Storage<br/>(external, etcd-snapshots/)")]
-
-  subgraph "disaster recovery — operator-triggered script, any docker host"
-    op@{ shape: tri, label: "human operator" }
-    tmp["throwaway etcd container"]
-  end
-  op -->|fetch snapshot into| tmp
-  tmp -->|reads| bucket
-  op -->|"kubectl apply extracted App CRs<br/>(after CAPI+Argo rebuild)"| cluster
-```
+![Architecture: in the Hetzner app cluster, Argo CD creates the etcd-backup CronJob from git; its nightly 03:15 UTC pod on the control-plane node runs etcdctl snapshot save against the etcd static pod, reads credentials from the inert Secret etcd-backup-s3, and uploads to external Hetzner Object Storage (etcd-snapshots/), pruning to keep 7; for disaster recovery a human operator fetches a snapshot into a throwaway etcd container on any docker host and kubectl-applies the extracted App CRs after the CAPI and Argo rebuild](assets/ADR011-etcd-backup-restore.svg)
 
 ## What runs
 

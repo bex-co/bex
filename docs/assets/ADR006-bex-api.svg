@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="360" viewBox="0 0 980 360" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR006 — bex-api: REST, GraphQL and MCP adapters all call one core domain layer, which writes an App CR spec patch that the operator converges</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; fill: #4b5563; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="979" height="359" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">bex-api — one core, three adapters</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">Every adapter calls the same domain layer; the core writes intent and the operator converges it.</text>
+
+  <!-- Adapters -->
+  <rect class="client" x="40" y="110" width="200" height="60" rx="10"/>
+  <text class="h" x="140" y="135">REST adapter</text>
+  <text class="m" x="140" y="155">/v1/services/...</text>
+
+  <rect class="client" x="40" y="190" width="200" height="60" rx="10"/>
+  <text class="h" x="140" y="215">GraphQL adapter</text>
+  <text class="m" x="140" y="235">/graphql</text>
+
+  <rect class="client" x="40" y="270" width="200" height="60" rx="10"/>
+  <text class="h" x="140" y="295">MCP adapter</text>
+  <text class="m" x="140" y="315">/mcp + stdio</text>
+
+  <!-- Core -->
+  <rect class="control" x="310" y="185" width="170" height="70" rx="10"/>
+  <text class="h" x="395" y="214">Core</text>
+  <text class="s" x="395" y="235">one domain layer</text>
+
+  <!-- App CR -->
+  <rect class="control" x="550" y="185" width="180" height="70" rx="10"/>
+  <text class="h" x="640" y="225">App CR spec patch</text>
+
+  <!-- Operator -->
+  <rect class="reconcile" x="800" y="185" width="140" height="70" rx="10"/>
+  <text class="h" x="870" y="214">operator</text>
+  <text class="s" x="870" y="235">mechanism</text>
+
+  <!-- Edges -->
+  <path class="flow" d="M240,140 L308,204"/>
+  <path class="flow" d="M240,220 L308,220"/>
+  <path class="flow" d="M240,300 L308,236"/>
+  <path class="flow" d="M480,220 L548,220"/>
+  <path class="flow" d="M730,220 L798,220"/>
+</svg>

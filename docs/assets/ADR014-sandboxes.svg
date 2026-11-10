@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="760" viewBox="0 0 960 760" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR014 — Sandbox gateway: agents over MCP and E2B tooling over REST reach the bex-api sandbox gateway, which drives the opensandbox runtime directly for control and exec</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .grp { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .gl { font-size: 13px; font-weight: 700; fill: #475569; letter-spacing: 0.6px; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="959" height="759" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">ADR014 — Sandbox gateway</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">bex-api calls opensandbox directly: no Sandbox CRD and no operator involvement.</text>
+
+  <!-- Callers -->
+  <rect class="client" x="150" y="104" width="260" height="60" rx="10"/>
+  <text class="h" x="280" y="139">Claude Code / agent</text>
+
+  <rect class="client" x="550" y="104" width="260" height="60" rx="10"/>
+  <text class="h" x="680" y="139">E2B SDK / tooling</text>
+
+  <!-- Gateway -->
+  <rect class="control" x="150" y="250" width="660" height="84" rx="10"/>
+  <text class="h" x="480" y="284">bex-api · sandbox gateway</text>
+  <text class="s" x="480" y="308">auth · admission + quota · idle tracker · wake-on-connect</text>
+
+  <!-- opensandbox runtime -->
+  <rect class="grp" x="120" y="410" width="720" height="320" rx="16"/>
+  <text class="gl" x="140" y="436">OPENSANDBOX RUNTIME (SINGLE HOST TODAY)</text>
+
+  <rect class="runtime" x="150" y="490" width="660" height="66" rx="10"/>
+  <text class="h" x="480" y="518">sandbox</text>
+  <text class="s" x="480" y="539">agent's code</text>
+
+  <path class="runtime" d="M340,640 v56 a140,9 0 0 0 280,0 v-56"/>
+  <ellipse class="runtime" cx="480" cy="640" rx="140" ry="9"/>
+  <text class="h" x="480" y="680">snapshot store + pre-warm pool</text>
+
+  <!-- Edges -->
+  <path class="flow" d="M280,164 L280,248"/>
+  <text class="lbl" x="292" y="211">MCP: spawn_sandbox, sandbox_exec</text>
+
+  <path class="flow" d="M680,164 L680,248"/>
+  <text class="lbl" x="692" y="211">REST: /v1/sandboxes, /connect</text>
+
+  <path class="flow" d="M540,334 L540,488"/>
+  <text class="lbl" x="528" y="378" text-anchor="end">control: create / pause / resume / kill</text>
+
+  <path class="flow" d="M700,334 L700,488"/>
+  <text class="lbl" x="712" y="378">data: exec (execd)</text>
+
+  <path class="flow" d="M480,556 L480,629"/>
+  <text class="lbl-in" x="492" y="588">idle: pause → snapshot</text>
+  <text class="lbl-in" x="492" y="603">connect: resume → restore (~80ms)</text>
+</svg>

@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="740" viewBox="0 0 1000 740" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR004 — the whole prebuilt-image deploy in one picture: the laptop fetches the kubeconfig, builds, smoke-tests and imports the image, then patches the App CR; the operator's watch sees the change and reconciles the Deployment, and the kubelet rolls the new pod</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <filter id="bg" x="-0.02" y="-0.08" width="1.04" height="1.16">
+      <feFlood flood-color="#ffffff"/>
+      <feComposite in="SourceGraphic" operator="over"/>
+    </filter>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .notify { stroke: #334155; stroke-width: 1.6; fill: none; stroke-dasharray: 6 5; marker-end: url(#arrow); }
+      .life { stroke: #94a3b8; stroke-width: 1.2; stroke-dasharray: 4 4; }
+      .lbl { font-size: 12px; fill: #475569; text-anchor: middle; filter: url(#bg); }
+      .note { fill: #f9fafb; stroke: #d1d5db; stroke-width: 1.2; }
+      .nt { font-size: 12px; fill: #374151; }
+      .badge circle { fill: #1f2937; }
+      .badge text { font-size: 12px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .ext { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="739" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="30" y="46" font-size="22" font-weight="700" fill="#111827">The whole deploy in one picture</text>
+  <text x="30" y="70" font-size="13" fill="#4b5563">Prebuilt-image path: the laptop builds and imports the image; the operator turns the App CR change into a rollout.</text>
+
+  <!-- Lifelines -->
+  <line class="life" x1="90" y1="152" x2="90" y2="716"/>
+  <line class="life" x1="260" y1="152" x2="260" y2="716"/>
+  <line class="life" x1="450" y1="152" x2="450" y2="716"/>
+  <line class="life" x1="670" y1="152" x2="670" y2="716"/>
+  <line class="life" x1="880" y1="152" x2="880" y2="716"/>
+
+  <!-- Participants -->
+  <rect class="client" x="30" y="96" width="120" height="56" rx="10"/>
+  <text class="h" x="90" y="129">laptop</text>
+
+  <rect class="ext" x="185" y="96" width="150" height="56" rx="10"/>
+  <text class="h" x="260" y="119">CP node</text>
+  <text class="s" x="260" y="139">admin.conf via SSH</text>
+
+  <rect class="control" x="358" y="96" width="184" height="56" rx="10"/>
+  <text class="h" x="450" y="119">app-cluster apiserver</text>
+  <text class="s" x="450" y="139">App CR</text>
+
+  <rect class="reconcile" x="595" y="96" width="150" height="56" rx="10"/>
+  <text class="h" x="670" y="119">bex operator</text>
+  <text class="s" x="670" y="139">pod, in-cluster</text>
+
+  <rect class="runtime" x="775" y="96" width="210" height="56" rx="10"/>
+  <text class="h" x="880" y="119">app node</text>
+  <text class="s" x="880" y="139">containerd + kubelet + traefik</text>
+
+  <!-- (startup) operator opens the watch -->
+  <path class="flow" d="M670,212 L452,212"/>
+  <text class="lbl" x="560" y="184">(at startup) operator opens a long-lived WATCH —</text>
+  <text class="lbl" x="560" y="199">“notify me whenever an App changes”</text>
+
+  <!-- 0 kubeconfig -->
+  <path class="flow" d="M90,264 L258,264"/>
+  <g class="badge"><circle cx="110" cy="264" r="10"/><text x="110" y="268">0</text></g>
+  <text class="lbl" x="178" y="238">scripts/fetch-app-kubeconfig.sh</text>
+  <text class="lbl" x="178" y="253">→ KUBECONFIG</text>
+
+  <!-- 1 build note -->
+  <rect class="note" x="30" y="284" width="270" height="44" rx="6"/>
+  <g class="badge"><circle cx="50" cy="306" r="10"/><text x="50" y="310">1</text></g>
+  <text class="nt" x="68" y="302">docker build --platform linux/amd64</text>
+  <text class="nt" x="68" y="318">-t my-app:&lt;sha&gt;</text>
+
+  <!-- 2 smoke test note -->
+  <rect class="note" x="30" y="338" width="270" height="32" rx="6"/>
+  <g class="badge"><circle cx="50" cy="354" r="10"/><text x="50" y="358">2</text></g>
+  <text class="nt" x="68" y="358">smoke test — docker run + curl → 200</text>
+
+  <!-- 3 import -->
+  <path class="flow" d="M90,412 L878,412"/>
+  <g class="badge"><circle cx="110" cy="412" r="10"/><text x="110" y="416">3</text></g>
+  <text class="lbl" x="560" y="402">docker save | ssh 'ctr -n k8s.io images import -'</text>
+
+  <!-- 4 patch -->
+  <path class="flow" d="M90,456 L448,456"/>
+  <g class="badge"><circle cx="110" cy="456" r="10"/><text x="110" y="460">4</text></g>
+  <text class="lbl" x="285" y="446">kubectl patch app … spec.image (generation++)</text>
+
+  <!-- watch event -->
+  <path class="notify" d="M450,514 L668,514"/>
+  <text class="lbl" x="560" y="486">event pushed down the watch stream —</text>
+  <text class="lbl" x="560" y="501">App spec changed (a notification, not a call)</text>
+
+  <!-- reconcile -->
+  <path class="flow" d="M670,558 L452,558"/>
+  <text class="lbl" x="560" y="548">reconcile — update owned Deployment's image</text>
+
+  <!-- kubelet rollout -->
+  <path class="flow" d="M450,614 L878,614"/>
+  <text class="lbl" x="665" y="586">kubelet: new pod (IfNotPresent → finds local image),</text>
+  <text class="lbl" x="665" y="601">then old pod terminates (RollingUpdate)</text>
+
+  <!-- 5 rollout status -->
+  <path class="flow" d="M90,658 L448,658"/>
+  <g class="badge"><circle cx="110" cy="658" r="10"/><text x="110" y="662">5</text></g>
+  <text class="lbl" x="285" y="648">kubectl rollout status · get app (revision bump)</text>
+
+  <!-- 6 curl -->
+  <path class="flow" d="M90,702 L878,702"/>
+  <g class="badge"><circle cx="110" cy="702" r="10"/><text x="110" y="706">6</text></g>
+  <text class="lbl" x="560" y="692">curl https://… → 200 + new-version content</text>
+</svg>

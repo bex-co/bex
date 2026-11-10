@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1040" viewBox="0 0 1000 1040" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR081 — Security review harness scan flow: the operator drives the bex security CLI, which registers the scan in the SQLite workbench and dispatches headless claude -p workers in an ephemeral per-scan workspace; workers read the target worktree and call the Z.ai endpoint, the parent submits one semantic draft, and finalize seals the canonical docs</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .dot { stroke: #334155; stroke-width: 1.6; fill: none; stroke-dasharray: 5 4; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .grp { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .gl { font-size: 13px; font-weight: 700; fill: #475569; letter-spacing: 0.6px; }
+      .gs { font-size: 12px; fill: #64748b; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .deny { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.6; }
+      .ext { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="1039" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="44" font-size="22" font-weight="700" fill="#111827">ADR081 — Security review harness: scan flow</text>
+  <text x="40" y="68" font-size="13" fill="#4b5563">An arrow to or from the per-scan workspace applies to every worker in it.</text>
+
+  <!-- Operator -->
+  <rect class="actor" x="220" y="86" width="140" height="44" rx="22"/>
+  <circle class="icon" cx="246" cy="102" r="5"/>
+  <path class="icon" d="M236,119 a10,8 0 0 1 20,0"/>
+  <text x="268" y="113" font-size="14" font-weight="600" fill="#111827">operator</text>
+
+  <!-- Harness -->
+  <rect class="grp" x="30" y="160" width="300" height="460" rx="16"/>
+  <text class="gl" x="50" y="184">BEX SECURITY CLI</text>
+  <text class="gs" x="50" y="201">orchestration only, no security logic</text>
+
+  <rect class="control" x="70" y="220" width="240" height="80" rx="10"/>
+  <text class="h" x="190" y="245">command tree</text>
+  <text class="s" x="190" y="265">scan / scans / findings / export</text>
+  <text class="s" x="190" y="282">exit 0·1·2·130·143</text>
+
+  <rect class="control" x="70" y="340" width="240" height="100" rx="10"/>
+  <text class="h" x="190" y="365">finalize</text>
+  <text class="s" x="190" y="385">validate, derive fingerprints,</text>
+  <text class="s" x="190" y="401">sha256-seal, project report.md</text>
+  <text class="s" x="190" y="417">+ SARIF (deterministic, no model)</text>
+
+  <rect class="control" x="70" y="480" width="240" height="112" rx="10"/>
+  <text class="h" x="190" y="505">dispatcher</text>
+  <text class="s" x="190" y="525">spawns N headless claude -p</text>
+  <text class="s" x="190" y="541">processes; worker count and</text>
+  <text class="s" x="190" y="557">packet assignment fixed here,</text>
+  <text class="s" x="190" y="573">not by the model</text>
+
+  <!-- State dir -->
+  <rect class="grp" x="560" y="160" width="400" height="340" rx="16"/>
+  <text class="gl" x="580" y="184">STATE DIR</text>
+  <text class="gs" x="580" y="201">outside any scanned worktree</text>
+
+  <path class="reconcile" d="M760,232 v238 a90,9 0 0 0 180,0 v-238"/>
+  <ellipse class="reconcile" cx="850" cy="232" rx="90" ry="9"/>
+  <text class="h" x="850" y="338">SQLite workbench</text>
+  <text class="s" x="850" y="358">scans, findings, occurrences,</text>
+  <text class="s" x="850" y="374">triage, comparisons</text>
+
+  <path class="reconcile" d="M576,380 v80 a84,8 0 0 0 168,0 v-80"/>
+  <ellipse class="reconcile" cx="660" cy="380" rx="84" ry="8"/>
+  <text class="h" x="660" y="413">per-scan dir</text>
+  <text class="s" x="660" y="433">scan-manifest / findings /</text>
+  <text class="s" x="660" y="449">coverage.json + exports/</text>
+
+  <!-- Credentials -->
+  <path class="deny" d="M350,530 v72 a100,8 0 0 0 200,0 v-72"/>
+  <ellipse class="deny" cx="450" cy="530" rx="100" ry="8"/>
+  <text class="h" x="450" y="561">persistent credential dir</text>
+  <text class="s" x="450" y="580">CLAUDE_CONFIG_DIR, 0700,</text>
+  <text class="s" x="450" y="596">reused across scans</text>
+
+  <!-- Per-scan workspace -->
+  <rect class="grp" x="30" y="680" width="930" height="170" rx="16"/>
+  <text class="gl" x="50" y="704">EPHEMERAL PER-SCAN WORKSPACE</text>
+  <text class="gs" x="50" y="721">one OS process per worker</text>
+
+  <rect class="runtime" x="50" y="740" width="205" height="90" rx="10"/>
+  <text class="h" x="152" y="767">baseline auditor</text>
+  <text class="s" x="152" y="787">independent, full repo,</text>
+  <text class="s" x="152" y="803">22-class checklist</text>
+
+  <rect class="runtime" x="278" y="740" width="205" height="90" rx="10"/>
+  <text class="h" x="380" y="767">investigators ×N</text>
+  <text class="s" x="380" y="787">packet-scoped,</text>
+  <text class="s" x="380" y="803">no shared intermediates</text>
+
+  <rect class="runtime" x="506" y="740" width="205" height="90" rx="10"/>
+  <text class="h" x="608" y="767">validators</text>
+  <text class="s" x="608" y="787">one per unique finding,</text>
+  <text class="s" x="608" y="803">11-part tuple</text>
+
+  <rect class="runtime" x="734" y="740" width="205" height="90" rx="10"/>
+  <text class="h" x="836" y="767">parent</text>
+  <text class="s" x="836" y="787">threat map, packets, merge,</text>
+  <text class="s" x="836" y="803">one semantic draft</text>
+
+  <!-- External -->
+  <path class="ext" d="M90,906 v56 a120,8 0 0 0 240,0 v-56"/>
+  <ellipse class="ext" cx="210" cy="906" rx="120" ry="8"/>
+  <text class="h" x="210" y="937">target worktree</text>
+  <text class="s" x="210" y="956">read-only, untrusted data</text>
+
+  <rect class="ext" x="400" y="898" width="240" height="66" rx="10"/>
+  <text class="h" x="520" y="925">Z.ai endpoint</text>
+  <text class="s" x="520" y="945">glm-5.2 / glm-5-turbo</text>
+
+  <rect class="ext" x="734" y="898" width="205" height="76" rx="10"/>
+  <text class="h" x="836" y="922">skill pack + schemas</text>
+  <text class="s" x="836" y="942">+ contract layer</text>
+  <text class="s" x="836" y="958">(adopted, Apache-2.0)</text>
+
+  <!-- Edges: operator and CLI -->
+  <path class="flow" d="M290,130 L290,218"/>
+  <text class="lbl" x="302" y="150">scan · triage (findings false-positive)</text>
+
+  <path class="flow" d="M70,280 L50,280 L50,536 L68,536"/>
+
+  <path class="flow" d="M310,260 L758,260"/>
+  <text class="lbl" x="445" y="234" text-anchor="middle">register scan, fetch FP</text>
+  <text class="lbl" x="445" y="249" text-anchor="middle">feedback (≤50 reasons)</text>
+
+  <!-- Edges: finalize -->
+  <path class="flow" d="M310,360 L758,318"/>
+  <path class="flow" d="M310,420 L574,420"/>
+  <text class="lbl" x="445" y="396" text-anchor="middle">sealed canonical docs</text>
+  <text class="lbl" x="445" y="411" text-anchor="middle">+ projections</text>
+
+  <!-- Edges: into the workspace -->
+  <path class="flow" d="M190,592 L190,678"/>
+  <text class="lbl" x="178" y="644" text-anchor="end">launch with pinned</text>
+  <text class="lbl" x="178" y="659" text-anchor="end">scan identity</text>
+
+  <path class="dot" d="M450,612 L450,678"/>
+
+  <!-- Edges: parent -->
+  <path class="flow" d="M845,738 L845,482"/>
+  <text class="lbl" x="833" y="586" text-anchor="end">one semantic draft</text>
+  <text class="lbl" x="833" y="601" text-anchor="end">(schema-gated, ≤2 retries)</text>
+
+  <path class="flow" d="M836,830 L836,896"/>
+  <text class="lbl" x="848" y="878">loads</text>
+
+  <!-- Edges: out of the workspace -->
+  <path class="flow" d="M210,850 L210,896"/>
+  <path class="flow" d="M520,850 L520,896"/>
+  <text class="lbl" x="532" y="878">inference</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="control" x="40" y="996" width="14" height="14" rx="3"/>
+    <text x="62" y="1007">harness</text>
+    <rect class="runtime" x="132" y="996" width="14" height="14" rx="3"/>
+    <text x="154" y="1007">workers</text>
+    <rect class="reconcile" x="226" y="996" width="14" height="14" rx="3"/>
+    <text x="248" y="1007">durable state</text>
+    <rect class="deny" x="350" y="996" width="14" height="14" rx="3"/>
+    <text x="372" y="1007">credentials</text>
+    <rect class="ext" x="462" y="996" width="14" height="14" rx="3"/>
+    <text x="484" y="1007">external or adopted</text>
+    <path d="M626,1003 L662,1003" stroke="#334155" stroke-width="1.6" stroke-dasharray="5 4"/>
+    <text x="670" y="1007">credential home every worker reuses</text>
+  </g>
+</svg>

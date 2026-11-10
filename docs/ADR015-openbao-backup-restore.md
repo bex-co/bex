@@ -6,28 +6,7 @@ Raft's `snapshot save` takes a point-in-time, internally-consistent copy of the 
 
 > Because the snapshot is already encrypted, [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md) applies only its credential-scoping half (§3) here, not its Tier A encryption step.
 
-```mermaid
-graph LR
-  subgraph cluster["app cluster (Hetzner)"]
-    argo[Argo CD]
-    secret["Secret openbao-backup-s3<br/>(inert, created once from .env)"]
-    subgraph "ns secrets"
-      cron["openbao-backup pod<br/>(nightly 03:45 UTC, exits when done)"]
-      bao[("OpenBao<br/>(Raft on PVC)")]
-    end
-  end
-  argo -->|creates CronJob + SA from git| cron
-  cron -->|"k8s-auth login (role bao-snapshot)<br/>→ raft snapshot save"| bao
-  cron -->|reads creds| secret
-  cron -->|upload + prune, keep 7| bucket
-  bucket[("Hetzner Object Storage<br/>(external, openbao-snapshots/)")]
-
-  subgraph "disaster recovery — operator-triggered restore script"
-    op@{ shape: tri, label: "human operator" }
-  end
-  op -->|"fetch snapshot"| bucket
-  op -->|"bao operator raft snapshot restore"| bao
-```
+![Architecture: in the Hetzner app cluster, Argo CD creates the openbao-backup CronJob and ServiceAccount from git; its nightly 03:45 UTC pod in the secrets namespace logs in with Kubernetes auth (role bao-snapshot), takes a Raft snapshot of OpenBao, reads credentials from the inert Secret openbao-backup-s3, and uploads to external Hetzner Object Storage (openbao-snapshots/), pruning to keep 7; for disaster recovery a human operator fetches a snapshot and runs bao operator raft snapshot restore](assets/ADR015-openbao-backup-restore.svg)
 
 ## What runs
 

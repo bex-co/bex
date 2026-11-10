@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="740" viewBox="0 0 1000 740" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR031 — platform data backups: five scheduled backup sources in the app cluster write to the bex-tfstate bucket under their own prefixes; a human operator restores with scripts</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; fill: #111827; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .glabel { font-size: 13px; font-weight: 700; fill: #475569; letter-spacing: 0.6px; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .inert { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="739" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="46" font-size="22" font-weight="700" fill="#111827">Platform data backups</text>
+  <text x="40" y="70" font-size="13" fill="#4b5563">Every scheduled backup writes to one bucket under its own prefix; restores are operator-run scripts.</text>
+
+  <!-- App cluster -->
+  <rect x="30" y="96" width="460" height="500" rx="16" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text class="glabel" x="50" y="122">APP CLUSTER (HETZNER)</text>
+
+  <rect class="reconcile" x="60" y="142" width="400" height="66" rx="10"/>
+  <text class="h" x="260" y="170">CronJob etcd-backup</text>
+  <text class="s" x="260" y="190">03:15 UTC</text>
+
+  <rect class="reconcile" x="60" y="228" width="400" height="66" rx="10"/>
+  <text class="h" x="260" y="256">CronJob openbao-backup</text>
+  <text class="s" x="260" y="276">03:45 UTC</text>
+
+  <rect class="reconcile" x="60" y="314" width="400" height="66" rx="10"/>
+  <text class="h" x="260" y="342">Paid KeyValue CronJobs</text>
+  <text class="s" x="260" y="362">03:20–03:39 UTC</text>
+
+  <rect class="control" x="60" y="400" width="400" height="66" rx="10"/>
+  <text class="h" x="260" y="428">ScheduledBackup bex-db-nightly</text>
+  <text class="s" x="260" y="448">04:00 UTC + continuous WAL</text>
+
+  <rect class="control" x="60" y="486" width="400" height="66" rx="10"/>
+  <text class="h" x="260" y="514">Auth DB ScheduledBackups</text>
+  <text class="s" x="260" y="534">04:15 / 04:30 / 04:45 UTC + continuous WAL</text>
+
+  <!-- Bucket -->
+  <path class="inert" d="M640,112 v448 a160,12 0 0 0 320,0 v-448"/>
+  <ellipse class="inert" cx="800" cy="112" rx="160" ry="12"/>
+  <text class="h" x="800" y="146">bex-tfstate</text>
+  <text class="m" x="672" y="180">etcd-snapshots/</text>
+  <text class="m" x="672" y="266">openbao-snapshots/</text>
+  <text class="m" x="672" y="352">keyvalue/&lt;id&gt;/</text>
+  <text class="m" x="672" y="438">bex-db/</text>
+  <text class="m" x="672" y="524">auth-dbs/</text>
+
+  <!-- Edges: backups -->
+  <path class="flow" d="M460,175 L638,175"/>
+  <path class="flow" d="M460,261 L638,261"/>
+  <path class="flow" d="M460,347 L638,347"/>
+  <path class="flow" d="M460,433 L638,433"/>
+  <path class="flow" d="M460,519 L638,519"/>
+
+  <!-- Operator -->
+  <rect class="actor" x="480" y="646" width="180" height="44" rx="22"/>
+  <circle class="icon" cx="508" cy="662" r="5"/>
+  <path class="icon" d="M498,679 a10,8 0 0 1 20,0"/>
+  <text x="528" y="673" font-size="14" font-weight="600" fill="#111827">human operator</text>
+
+  <path class="flow" d="M480,668 L260,668 L260,598"/>
+  <text class="lbl-m" x="370" y="659" text-anchor="middle">scripts/restore-*.sh</text>
+
+  <path class="flow" d="M660,668 L840,668 L840,574"/>
+  <text class="lbl" x="750" y="659" text-anchor="middle">fetch snapshot/backup</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="reconcile" x="40" y="708" width="14" height="14" rx="3"/>
+    <text x="62" y="719">nightly CronJob, exits when done</text>
+    <rect class="control" x="270" y="708" width="14" height="14" rx="3"/>
+    <text x="292" y="719">ScheduledBackup + continuous WAL</text>
+    <rect class="inert" x="520" y="708" width="14" height="14" rx="3"/>
+    <text x="542" y="719">off-cluster object storage</text>
+  </g>
+</svg>

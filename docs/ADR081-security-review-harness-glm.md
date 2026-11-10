@@ -125,46 +125,7 @@ This produces a narrow internal interface — prompt in; ACP events, terminal re
 
 ### Scan flow
 
-```mermaid
-flowchart LR
-  operator@{ shape: tri, label: "operator" }
-
-  subgraph harness["bex security CLI — orchestration only, no security logic"]
-    cli["command tree: scan / scans / findings / export (exit 0·1·2·130·143)"]
-    disp["dispatcher: spawns N headless claude -p processes; worker count and packet assignment fixed here, not by the model"]
-    seal["finalize: validate, derive fingerprints, sha256-seal, project report.md + SARIF (deterministic, no model)"]
-  end
-
-  creds[("persistent credential dir — CLAUDE_CONFIG_DIR, 0700, reused across scans")]
-
-  subgraph run["ephemeral per-scan workspace — one OS process per worker"]
-    parent["parent (threat map, packets, merge, one semantic draft)"]
-    auditor["baseline auditor (independent, full repo, 22-class checklist)"]
-    inv["investigators ×N (packet-scoped, no shared intermediates)"]
-    val["validators (one per unique finding, 11-part tuple)"]
-  end
-
-  skills["skill pack + schemas + contract layer (adopted, Apache-2.0)"]
-  zai["Z.ai endpoint (glm-5.2 / glm-5-turbo)"]
-  repo[("target worktree — read-only, untrusted data")]
-
-  subgraph state["state dir — outside any scanned worktree"]
-    workbench[("SQLite workbench: scans, findings, occurrences, triage, comparisons")]
-    scandir[("per-scan dir: scan-manifest / findings / coverage.json + exports/")]
-  end
-
-  operator -->|"scan · triage (findings false-positive)"| cli
-  cli -->|"register scan, fetch FP feedback (≤50 reasons)"| workbench
-  cli --> disp
-  disp -->|"launch with pinned scan identity"| parent & auditor & inv & val
-  creds -.-> parent & auditor & inv & val
-  parent -->|loads| skills
-  parent & auditor & inv & val --> repo
-  parent & auditor & inv & val -->|inference| zai
-  parent -->|"one semantic draft (schema-gated, ≤2 retries)"| workbench
-  seal --> workbench
-  seal -->|sealed canonical docs + projections| scandir
-```
+![Scan flow: the operator drives the bex security CLI command tree, which registers the scan and fetches false-positive feedback from the SQLite workbench; the dispatcher launches the parent, baseline auditor, investigators and validators with a pinned scan identity in an ephemeral per-scan workspace that reuses a persistent credential dir; every worker reads the read-only target worktree and calls the Z.ai endpoint; the parent loads the skill pack and submits one schema-gated semantic draft to the workbench; and finalize seals the canonical docs and projections into the per-scan dir](assets/ADR081-security-review-harness-glm.svg)
 
 1. The CLI normalizes the target, registers the scan in the workbench (minting the scan/target identity), fetches prior false-positive feedback, then hands the dispatcher an identity **pinned as injected values the model must not re-derive** — codex-security's anti-hallucination move ("The SDK has already registered this scan… never pass targetPath or create another scan", `dist/api.js:1435`).
 2. The dispatcher spawns the worker processes: one baseline auditor (independent, full-repo) ∥ parent threat-mapping ∥ N packet-scoped investigators — all offline, read-only, repository text as data never instructions, and no intermediate findings shared between investigators.

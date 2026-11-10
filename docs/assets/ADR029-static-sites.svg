@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="660" viewBox="0 0 980 660" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Static sites — a git push makes the operator build an OCI image in Zot, publish the output to the object store and point the host's Ingress at the static-server through Traefik; visitors reach the static-server, which reads the bucket with signed GETs and answers with the site's routes, headers and index.html</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .external { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="979" height="659" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Static sites — the shape</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">A repo is built, its output is published to an object-store origin, and one shared static-server serves every site behind Traefik.</text>
+
+  <!-- Build and publish -->
+  <rect class="actor" x="40" y="128" width="140" height="44" rx="22"/>
+  <text class="h" x="110" y="155" font-size="14">git push</text>
+
+  <rect class="reconcile" x="280" y="115" width="200" height="70" rx="10"/>
+  <text class="h" x="380" y="155">operator</text>
+
+  <path class="reconcile" d="M720,122 v56 a110,9 0 0 0 220,0 v-56"/>
+  <ellipse class="reconcile" cx="830" cy="122" rx="110" ry="9"/>
+  <text class="h" x="830" y="153">OCI image</text>
+  <text class="s" x="830" y="172">Zot</text>
+
+  <path class="external" d="M720,262 v56 a110,9 0 0 0 220,0 v-56"/>
+  <ellipse class="external" cx="830" cy="262" rx="110" ry="9"/>
+  <text class="h" x="830" y="293">object store</text>
+  <text class="s" x="830" y="312">bex-static/&lt;app&gt;/&lt;rev&gt;/</text>
+
+  <!-- Serve -->
+  <rect class="actor" x="40" y="408" width="140" height="44" rx="22"/>
+  <text class="h" x="110" y="435" font-size="14">visitor</text>
+
+  <rect class="runtime" x="280" y="400" width="200" height="60" rx="10"/>
+  <text class="h" x="380" y="435">Traefik</text>
+
+  <rect class="runtime" x="720" y="395" width="220" height="70" rx="10"/>
+  <text class="h" x="830" y="424">static-server</text>
+  <text class="s" x="830" y="445">one proxy for all static sites</text>
+
+  <rect class="actor" x="720" y="545" width="220" height="50" rx="10"/>
+  <text class="h" x="830" y="575">response</text>
+
+  <!-- Edges -->
+  <path class="flow" d="M180,150 L278,150"/>
+
+  <path class="flow" d="M480,150 L718,150"/>
+  <text class="lbl" x="600" y="140" text-anchor="middle">build (BuildKit, Dockerfile)</text>
+
+  <path class="flow" d="M450,185 L450,290 L718,290"/>
+  <text class="lbl" x="590" y="263" text-anchor="middle">publish Job: extract publishPath</text>
+  <text class="lbl" x="590" y="279" text-anchor="middle">→ aws s3 sync</text>
+
+  <path class="flow" d="M330,185 L330,398"/>
+  <text class="lbl" x="318" y="296" text-anchor="end">Ingress host → static-server Service</text>
+
+  <path class="flow" d="M180,430 L278,430"/>
+  <path class="flow" d="M480,430 L718,430"/>
+
+  <path class="flow" d="M830,395 L830,333"/>
+  <text class="lbl" x="818" y="368" text-anchor="end">signed GET, cache</text>
+
+  <path class="flow" d="M830,465 L830,543"/>
+  <text class="lbl" x="818" y="509" text-anchor="end">host → App: routes/headers, index.html, SPA fallback</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="reconcile" x="40" y="618" width="14" height="14" rx="3"/>
+    <text x="62" y="629">build and publish</text>
+    <rect class="runtime" x="190" y="618" width="14" height="14" rx="3"/>
+    <text x="212" y="629">serve</text>
+    <rect class="external" x="282" y="618" width="14" height="14" rx="3"/>
+    <text x="304" y="629">object storage (private bucket)</text>
+  </g>
+</svg>

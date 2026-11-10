@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="510" viewBox="0 0 960 510" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR059 D2 — agent workspace state machine: create enters Active; idle beyond graceTTL hibernates to an encrypted snapshot; connect, a new turn or Resume rehydrates; retention expiry or explicit delete moves Hibernated to Deleted; explicit cancel or delete moves Active to Deleted; pin removes only the Hibernated to Deleted edge</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .note { fill: #f9fafb; stroke: #d1d5db; stroke-width: 1.2; }
+      .nt { font-size: 12px; fill: #374151; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .deny { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.6; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="959" height="509" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="30" y="46" font-size="22" font-weight="700" fill="#111827">Agent workspace state machine</text>
+  <text x="30" y="70" font-size="13" fill="#4b5563">D2 — the states an agent workspace moves through, and what moves it.</text>
+
+  <g transform="translate(0,-40)">
+  <!-- States -->
+  <rect class="runtime" x="110" y="175" width="200" height="80" rx="16"/>
+  <text class="h" x="210" y="209">Active</text>
+  <text class="s" x="210" y="230">live pod</text>
+
+  <rect class="control" x="520" y="175" width="260" height="80" rx="16"/>
+  <text class="h" x="650" y="209">Hibernated</text>
+  <text class="s" x="650" y="230">encrypted snapshot in object storage</text>
+
+  <rect class="deny" x="110" y="410" width="200" height="60" rx="16"/>
+  <text class="h" x="210" y="445">Deleted</text>
+
+  <!-- Start and end -->
+  <circle cx="50" cy="215" r="9" fill="#1f2937"/>
+  <path class="flow" d="M59,215 L108,215"/>
+  <text class="lbl" x="84" y="204" text-anchor="middle">create</text>
+
+  <path class="flow" d="M210,470 L210,500"/>
+  <circle cx="210" cy="512" r="10" fill="#ffffff" stroke="#1f2937" stroke-width="1.6"/>
+  <circle cx="210" cy="512" r="6" fill="#1f2937"/>
+
+  <!-- Active <-> Hibernated -->
+  <path class="flow" d="M310,195 L518,195"/>
+  <text class="lbl" x="415" y="168" text-anchor="middle">idle exceeds graceTTL /</text>
+  <text class="lbl" x="415" y="183" text-anchor="middle">reclaim pod, keep snapshot</text>
+
+  <path class="flow" d="M520,235 L312,235"/>
+  <text class="lbl" x="415" y="256" text-anchor="middle">connect / new turn / Resume —</text>
+  <text class="lbl" x="415" y="271" text-anchor="middle">rehydrate (see Performance)</text>
+
+  <!-- To Deleted -->
+  <path class="flow" d="M210,255 L210,408"/>
+  <text class="lbl" x="222" y="336">explicit cancel or delete</text>
+
+  <path class="flow" d="M560,255 L560,440 L312,440"/>
+  <text class="lbl" x="436" y="415" text-anchor="middle">retention expiry (7d default)</text>
+  <text class="lbl" x="436" y="430" text-anchor="middle">or explicit delete</text>
+
+  <!-- Note on Hibernated -->
+  <path d="M690,255 L690,292" stroke="#94a3b8" stroke-width="1.2" stroke-dasharray="4 4" fill="none"/>
+  <rect class="note" x="606" y="292" width="334" height="94" rx="6"/>
+  <text class="nt" x="622" y="315">Pin removes <tspan font-weight="700">ONLY</tspan> the Hibernated → Deleted edge.</text>
+  <text class="nt" x="622" y="333">Even a pinned workspace still hibernates when idle —</text>
+  <text class="nt" x="622" y="351">pin never removes pod-reclamation; there is no</text>
+  <text class="nt" x="622" y="369">“live pod forever” state.</text>
+  </g>
+</svg>

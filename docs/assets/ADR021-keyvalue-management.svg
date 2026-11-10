@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="790" viewBox="0 0 980 790" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>Managed Key Value — a KeyValue resource projects a single-replica Valkey StatefulSet with its PVC, ClusterIP Service, immutable auth and connection Secrets and, on paid plans, a nightly backup CronJob; tenant Apps use the internal URL through the Service, external clients use the rediss URL through the Key Value SNI proxy</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .dotted { stroke: #334155; stroke-width: 1.6; fill: none; stroke-dasharray: 3 4; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .paid { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; stroke-dasharray: 6 4; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="979" height="789" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Managed Key Value — what a KeyValue projects</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">One standalone resource becomes a single-instance Valkey StatefulSet in the tenant's namespace. Two URLs mean two network paths.</text>
+
+  <!-- Row 1 -->
+  <rect class="control" x="370" y="104" width="240" height="66" rx="10"/>
+  <text class="h" x="490" y="131">KeyValue resource</text>
+  <text class="s" x="490" y="151">control plane · plan/version/storage</text>
+
+  <!-- Row 2 -->
+  <rect class="runtime" x="60" y="220" width="200" height="66" rx="10"/>
+  <text class="h" x="160" y="247">PVC</text>
+  <text class="s" x="160" y="267">appendonly data</text>
+
+  <rect class="runtime" x="370" y="220" width="240" height="66" rx="10"/>
+  <text class="h" x="490" y="247">Valkey StatefulSet</text>
+  <text class="s" x="490" y="267">tenant namespace · 1 replica</text>
+
+  <rect class="paid" x="720" y="220" width="220" height="66" rx="10"/>
+  <text class="h" x="830" y="247">CronJob kvbak-&lt;id&gt;</text>
+  <text class="s" x="830" y="267">nightly gzip → object storage</text>
+
+  <!-- Row 3 -->
+  <rect class="runtime" x="165" y="360" width="230" height="66" rx="10"/>
+  <text class="h" x="280" y="387">ClusterIP Service</text>
+  <text class="s" x="280" y="407">stable VIP, in-cluster</text>
+
+  <rect class="runtime" x="605" y="360" width="230" height="66" rx="10"/>
+  <text class="h" x="720" y="387">immutable auth Secret</text>
+  <text class="s" x="720" y="407">password authority</text>
+
+  <!-- Row 4 -->
+  <rect class="actor" x="40" y="500" width="200" height="66" rx="10"/>
+  <text class="h" x="140" y="527">tenant App</text>
+  <text class="s" x="140" y="547">uses INTERNAL url</text>
+
+  <rect class="reconcile" x="290" y="500" width="260" height="66" rx="10"/>
+  <text class="h" x="420" y="527">Key Value SNI proxy</text>
+  <text class="s" x="420" y="547">TLS passthrough + response meter · :6379</text>
+
+  <rect class="runtime" x="595" y="500" width="250" height="66" rx="10"/>
+  <text class="h" x="720" y="527">immutable connection Secret</text>
+  <text class="s" x="720" y="547">URI projection</text>
+
+  <!-- Row 5 -->
+  <rect class="actor" x="290" y="640" width="260" height="66" rx="10"/>
+  <text class="h" x="420" y="667">external client</text>
+  <text class="s" x="420" y="687">uses EXTERNAL url · rediss://</text>
+
+  <!-- Edges -->
+  <path class="flow" d="M490,170 L490,218"/>
+  <path class="flow" d="M370,253 L262,253"/>
+  <path class="dotted" d="M610,253 L718,253"/>
+  <text class="lbl" x="664" y="230" text-anchor="middle">paid plans:</text>
+  <text class="lbl" x="664" y="244" text-anchor="middle">coherent RDB</text>
+
+  <path class="flow" d="M450,286 L450,323 L280,323 L280,358"/>
+  <path class="flow" d="M530,286 L530,323 L720,323 L720,358"/>
+
+  <path class="flow" d="M250,426 L250,463 L140,463 L140,498"/>
+  <path class="flow" d="M310,426 L310,463 L420,463 L420,498"/>
+  <path class="flow" d="M720,426 L720,498"/>
+  <path class="flow" d="M420,566 L420,638"/>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="control" x="40" y="740" width="14" height="14" rx="3"/>
+    <text x="62" y="751">control plane</text>
+    <rect class="runtime" x="160" y="740" width="14" height="14" rx="3"/>
+    <text x="182" y="751">projected for the store</text>
+    <rect class="paid" x="342" y="740" width="14" height="14" rx="3"/>
+    <text x="364" y="751">paid plans only</text>
+    <rect class="reconcile" x="478" y="740" width="14" height="14" rx="3"/>
+    <text x="500" y="751">shared front door</text>
+    <rect class="actor" x="626" y="740" width="14" height="14" rx="3"/>
+    <text x="648" y="751">clients</text>
+  </g>
+</svg>

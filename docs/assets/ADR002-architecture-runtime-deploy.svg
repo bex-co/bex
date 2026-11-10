@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="680" height="456" viewBox="0 0 680 456" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR002 ③ product runtime — a user git push is a webhook to the bex operator, which builds CNB or Dockerfile images into Zot and runs a revision as a k8s Deployment and pods or an opensandbox sandbox; not GitOps</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .external { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="679" height="455" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <circle cx="53" cy="43" r="13" fill="#1f2937"/>
+  <text x="53" y="48" font-size="14" font-weight="700" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="76" y="50" font-size="20" font-weight="700" fill="#111827">product runtime · user app deploy</text>
+  <text x="40" y="76" font-size="13" fill="#4b5563">bex’s own control loop, not GitOps: a push is a runtime event the operator rolls out.</text>
+
+  <rect class="external" x="80" y="104" width="300" height="60" rx="10"/>
+  <text class="h" x="230" y="130">user git push</text>
+  <text class="s" x="230" y="149">runtime event</text>
+
+  <path class="flow" d="M230,164 L230,232"/>
+  <text class="lbl" x="242" y="202">webhook</text>
+
+  <rect class="reconcile" x="80" y="234" width="300" height="60" rx="10"/>
+  <text class="h" x="230" y="269">bex operator</text>
+
+  <path class="flow" d="M230,294 L230,362"/>
+  <text class="lbl" x="242" y="332">build CNB/Dockerfile → Zot → run a revision · NOT GitOps</text>
+
+  <rect class="runtime" x="80" y="364" width="300" height="60" rx="10"/>
+  <text class="h" x="230" y="390">k8s Deployment + pods</text>
+  <text class="s" x="230" y="409">or · opensandbox sandbox</text>
+</svg>

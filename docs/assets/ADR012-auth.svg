@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="620" viewBox="0 0 1000 620" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR012 — Ory auth: agents and tenants reach the Hydra and Kratos public listeners through Traefik; bex-api uses the cluster-internal admin listeners; each Ory service stores its state in its own CNPG database</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .external { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="619" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Ory auth: Kratos and Hydra</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">Public listeners are exposed through the Traefik edge; admin listeners are cluster-internal with no ingress.</text>
+
+  <!-- Actors -->
+  <rect class="actor" x="90" y="100" width="260" height="44" rx="22"/>
+  <rect class="icon" x="108" y="113" width="18" height="14" rx="3"/>
+  <circle cx="113.5" cy="120" r="1.6" fill="#475569"/>
+  <circle cx="120.5" cy="120" r="1.6" fill="#475569"/>
+  <path class="icon" d="M117,109 v4"/>
+  <text x="136" y="127" font-size="14" font-weight="600" fill="#111827">agent / CI · client_credentials</text>
+
+  <rect class="actor" x="400" y="100" width="130" height="44" rx="22"/>
+  <circle class="icon" cx="428" cy="116" r="5"/>
+  <path class="icon" d="M418,133 a10,8 0 0 1 20,0"/>
+  <text x="449" y="127" font-size="14" font-weight="600" fill="#111827">tenant</text>
+
+  <!-- Entry points -->
+  <rect class="external" x="90" y="190" width="230" height="66" rx="10"/>
+  <text class="h" x="205" y="218">Traefik</text>
+  <text class="s" x="205" y="238">oauth.bex.co · auth.bex.co</text>
+
+  <rect class="control" x="680" y="190" width="230" height="66" rx="10"/>
+  <text class="h" x="795" y="218">bex-api</text>
+  <text class="s" x="795" y="238">w4/m2</text>
+
+  <!-- Hydra row -->
+  <rect class="client" x="90" y="316" width="230" height="80" rx="10"/>
+  <text class="h" x="205" y="350">Hydra public :4444</text>
+  <text class="s" x="205" y="370">token + discovery</text>
+
+  <path class="runtime" d="M410,327 v58 a90,9 0 0 0 180,0 v-58"/>
+  <ellipse class="runtime" cx="500" cy="327" rx="90" ry="9"/>
+  <text class="h" x="500" y="360">hydra-db</text>
+  <text class="s" x="500" y="379">CNPG</text>
+
+  <rect class="reconcile" x="680" y="316" width="230" height="80" rx="10"/>
+  <text class="h" x="795" y="342">Hydra admin :4445</text>
+  <text class="s" x="795" y="362">clients + introspect</text>
+  <text class="s" x="795" y="379">(cluster-internal)</text>
+
+  <!-- Kratos row -->
+  <rect class="client" x="90" y="456" width="230" height="80" rx="10"/>
+  <text class="h" x="205" y="490">Kratos public :4433</text>
+  <text class="s" x="205" y="510">self-service</text>
+
+  <path class="runtime" d="M410,467 v58 a90,9 0 0 0 180,0 v-58"/>
+  <ellipse class="runtime" cx="500" cy="467" rx="90" ry="9"/>
+  <text class="h" x="500" y="500">kratos-db</text>
+  <text class="s" x="500" y="519">CNPG</text>
+
+  <rect class="reconcile" x="680" y="456" width="230" height="80" rx="10"/>
+  <text class="h" x="795" y="482">Kratos admin :4434</text>
+  <text class="s" x="795" y="502">identity CRUD</text>
+  <text class="s" x="795" y="519">(cluster-internal)</text>
+
+  <!-- Edges: actors to the edge -->
+  <path class="flow" d="M205,144 L205,188"/>
+  <path class="flow" d="M450,144 L302,188"/>
+
+  <!-- Edges: edge to public listeners -->
+  <path class="flow" d="M205,256 L205,314"/>
+  <path class="flow" d="M90,223 L55,223 L55,496 L88,496"/>
+
+  <!-- Edges: bex-api to admin listeners -->
+  <path class="flow" d="M795,256 L795,314"/>
+  <path class="flow" d="M910,223 L945,223 L945,496 L912,496"/>
+
+  <!-- Edges: listeners to their database -->
+  <path class="flow" d="M320,356 L408,356"/>
+  <path class="flow" d="M680,356 L592,356"/>
+  <path class="flow" d="M320,496 L408,496"/>
+  <path class="flow" d="M680,496 L592,496"/>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="client" x="40" y="570" width="14" height="14" rx="3"/>
+    <text x="62" y="581">public listener — exposed</text>
+    <rect class="reconcile" x="232" y="570" width="14" height="14" rx="3"/>
+    <text x="254" y="581">admin listener — cluster-internal, no ingress</text>
+    <rect class="runtime" x="530" y="570" width="14" height="14" rx="3"/>
+    <text x="552" y="581">CNPG database</text>
+  </g>
+</svg>

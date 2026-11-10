@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="960" viewBox="0 0 1000 960" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR047 — Dashboard session surface: the developer opens the agent routes, which share one UIMessage render layer fed by two data sources; phase 1 polls bex-api over GraphQL, phase 2 mints an attach ticket from bex-api and streams SSE through the isolated ssh-gateway to the session driver in the sandbox namespace; bex-api and the gateway both use control-plane Postgres</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .gh { font-size: 13px; font-weight: 700; fill: #374151; }
+      .gs { font-size: 12px; font-weight: 400; fill: #6b7280; }
+      .outer { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.4; stroke-dasharray: 7 5; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .ingress { fill: #fef2f2; stroke: #dc2626; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="999" height="959" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">ADR047 — Dashboard session surface</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">One render layer, two swappable data sources: phase 1 polls GraphQL, phase 2 streams the conversation through the gateway.</text>
+
+  <!-- Developer -->
+  <rect class="actor" x="430" y="96" width="140" height="40" rx="20"/>
+  <circle class="icon" cx="456" cy="110" r="5"/>
+  <path class="icon" d="M446,127 a10,8 0 0 1 20,0"/>
+  <text x="476" y="121" font-size="14" font-weight="600" fill="#111827">developer</text>
+
+  <!-- Dashboard -->
+  <rect class="outer" x="40" y="152" width="920" height="374" rx="14"/>
+  <text class="gh" x="60" y="176">dashboard (TanStack Start) <tspan class="gs">— </tspan><tspan class="gs m">features/agent-sessions</tspan></text>
+
+  <rect class="client" x="290" y="196" width="420" height="60" rx="10"/>
+  <text class="h" x="500" y="221">routes</text>
+  <text class="s m" x="500" y="241">/agents (list + composer), /agents/$id (detail)</text>
+
+  <rect class="client" x="160" y="296" width="680" height="66" rx="10"/>
+  <text class="h" x="500" y="323">UIMessage[] render layer</text>
+  <text class="s" x="500" y="344">vendored AI Elements: Conversation / Reasoning / Task / Tool / PromptInput</text>
+
+  <rect class="client" x="60" y="418" width="420" height="88" rx="10"/>
+  <text class="h" x="270" y="445">phase-1 data source</text>
+  <text class="s" x="270" y="466">Apollo hooks: create / steer / cancel mutations</text>
+  <text class="s" x="270" y="484">+ <tspan class="m">agentSession</tspan> poll: phase, PR</text>
+
+  <rect class="client" x="520" y="418" width="420" height="88" rx="10"/>
+  <text class="h" x="730" y="445">phase-2 data source</text>
+  <text class="s" x="730" y="466"><tspan class="m">useChat</tspan> + <tspan class="m">DefaultChatTransport</tspan></text>
+  <text class="s" x="730" y="484">transcript replay, then live SSE</text>
+
+  <!-- Control plane -->
+  <rect class="control" x="60" y="610" width="420" height="66" rx="10"/>
+  <text class="h" x="270" y="637">bex-api</text>
+  <text class="s" x="270" y="658">GraphQL agent-session verbs + HMAC ticket mint</text>
+
+  <path class="control" d="M60,790 v72 a210,10 0 0 0 420,0 v-72"/>
+  <ellipse class="control" cx="270" cy="790" rx="210" ry="10"/>
+  <text class="h" x="270" y="826">control-plane Postgres</text>
+  <text class="s" x="270" y="846">agent_sessions, ticket nonces, phase-2 transcripts</text>
+
+  <!-- Gateway -->
+  <rect class="ingress" x="520" y="610" width="420" height="90" rx="10"/>
+  <text class="h" x="730" y="636">isolated ssh-gateway</text>
+  <text class="s" x="730" y="657">phase-2 attach listener</text>
+  <text class="s" x="730" y="675">verify ticket, claim nonce, reverse-proxy SSE, transcript tee</text>
+
+  <!-- Sandbox namespace -->
+  <rect class="outer" x="520" y="750" width="420" height="140" rx="14"/>
+  <text class="gh" x="540" y="773">&lt;ws&gt;-sandbox namespace</text>
+
+  <rect class="runtime" x="545" y="788" width="370" height="84" rx="10"/>
+  <text class="h" x="730" y="813">session driver</text>
+  <text class="s m" x="730" y="834">GET /stream</text>
+  <text class="s" x="730" y="853">AI SDK UI-message SSE, <tspan class="m">data-acp</tspan> parts</text>
+
+  <!-- Edges: inside the dashboard -->
+  <path class="flow" d="M500,136 L500,194"/>
+  <path class="flow" d="M500,256 L500,294"/>
+  <path class="flow" d="M270,362 L270,416"/>
+  <path class="flow" d="M730,362 L730,416"/>
+
+  <!-- Edges: data sources to the backend -->
+  <path class="flow" d="M270,506 L270,608"/>
+  <text class="lbl" x="282" y="551">GraphQL over</text>
+  <text class="lbl" x="282" y="566">Kratos session cookie</text>
+
+  <path class="flow" d="M560,506 L442,608"/>
+  <text class="lbl" x="522" y="562">1: mint attach ticket</text>
+  <text class="lbl" x="522" y="577">(GraphQL)</text>
+
+  <path class="flow" d="M730,506 L730,608"/>
+  <text class="lbl" x="742" y="551">2: cross-origin SSE</text>
+  <text class="lbl" x="742" y="566">+ HMAC ticket</text>
+
+  <!-- Edges: persistence and the sandbox -->
+  <path class="flow" d="M270,676 L270,778"/>
+
+  <path class="flow" d="M540,700 L442,782"/>
+  <text class="lbl" x="476" y="719" text-anchor="end">nonce claim +</text>
+  <text class="lbl" x="476" y="734" text-anchor="end">transcript tee/replay</text>
+
+  <path class="flow" d="M730,700 L730,786"/>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="client" x="40" y="914" width="14" height="14" rx="3"/>
+    <text x="62" y="925">dashboard</text>
+    <rect class="control" x="146" y="914" width="14" height="14" rx="3"/>
+    <text x="168" y="925">control plane</text>
+    <rect class="ingress" x="274" y="914" width="14" height="14" rx="3"/>
+    <text x="296" y="925">session ingress</text>
+    <rect class="runtime" x="414" y="914" width="14" height="14" rx="3"/>
+    <text x="436" y="925">sandbox workload</text>
+  </g>
+</svg>

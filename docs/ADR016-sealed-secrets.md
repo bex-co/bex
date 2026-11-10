@@ -2,14 +2,7 @@
 
 **Why this exists:** bex's _tenant_ secrets already have a home — OpenBao ([ADR013-secrets.md](ADR013-secrets.md)). But bex's own _platform_ credentials (the Hetzner API token, the Argo repo deploy key, the GHCR pull secret, the etcd-/openbao-backup S3 keys) are static, bex-operated, and today applied **imperatively** from CI secrets (`kubectl create secret …` in the deploy workflows). That works, but it means the cluster's secret state is not fully described by git: re-creating the cluster requires re-running CI with the right GitHub Actions secrets, and there is no versioned, reviewable record of _which_ secrets exist. Sealed Secrets closes that gap — encrypt each credential with the cluster controller's public key into a **SealedSecret** manifest that is safe to commit, and let Argo reconcile it like any other resource.
 
-```mermaid
-graph LR
-  dev["operator (laptop/CI)"] -->|"scripts/seal-secret.sh<br/>(kubeseal + public key)"| ss["SealedSecret YAML<br/>(encrypted, committed to git)"]
-  ss -->|git| argo["Argo CD"]
-  argo -->|applies| ctrl["sealed-secrets controller<br/>(kube-system)"]
-  ctrl -->|"decrypts with private key<br/>(never leaves the cluster)"| secret["Secret<br/>(real, in-namespace)"]
-  secret --> consumer["consuming pod<br/>(operator / backup CronJob / …)"]
-```
+![Sealed Secrets flow: the operator seals a credential with scripts/seal-secret.sh (kubeseal and the public key) into a SealedSecret committed to git; Argo CD applies it; the sealed-secrets controller in kube-system decrypts it with a private key that never leaves the cluster into a real in-namespace Secret, which the consuming pod uses](assets/ADR016-sealed-secrets.svg)
 
 > The public-key-in-git / private-key-out-of-band shape below is reused for the backup-encryption keypair in [ADR050-encrypted-platform-backups.md](ADR050-encrypted-platform-backups.md) §1 — there the private key never even lives in-cluster (unlike the sealed-secrets controller), since it must survive total in-cluster loss.
 

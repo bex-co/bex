@@ -4,35 +4,7 @@ bex is the **deploy-from-git half** of bex.co (strategy 211.09): a Git repo beco
 
 ## Panorama
 
-```mermaid
-%% arrow  A --> B  means  "A depends on B"  (points to what it needs)
-flowchart TB
-  dev@{ shape: tri, label: "dev · kubectl" }
-  subgraph app["APP CLUSTER · substrate — bex + your Apps run here"]
-    api["📦 apiserver · etcd · scheduler"]
-    op["📦 bex operator"]
-    apppod["📦 App pod"]
-    zot["📦 bex-zot · zot-0"]
-    capi["📦 Cluster API controllers"]
-    cpnode["control-plane node · machine"]
-    wnode["worker node · machine"]
-  end
-  dev -->|"submits App CR via"| api
-  op -->|"apiserver client · watch CRs, write Deployment"| api
-  apppod -->|"managed by"| op
-  apppod -->|"image from"| zot
-  apppod -->|"runs on"| wnode
-  zot -->|"runs on"| wnode
-  api -->|"runs on"| cpnode
-  op -->|"runs on"| cpnode
-  wnode -->|"provisioned by"| capi
-  cpnode -->|"provisioned by"| capi
-
-  classDef pod fill:#dbeafe,stroke:#2563eb,color:#1e3a8a
-  classDef machine fill:#e5e7eb,stroke:#374151
-  class api,op,apppod,zot,capi pod
-  class cpnode,wnode machine
-```
+![Panorama: dev submits App CRs via the apiserver; inside the app cluster the bex operator is an apiserver client (watches CRs, writes Deployments); the App pod is managed by the operator, pulls its image from bex-zot and runs on a worker node; the apiserver and operator run on the control-plane node, bex-zot on the worker node; both machines are provisioned by Cluster API](assets/ADR002-architecture-panorama.svg)
 
 **Every arrow is a dependency: `A → B` means _A depends on B_** (it points to what A needs). **Blue 📦 = Pod · gray = machine (k8s node).**
 
@@ -91,28 +63,15 @@ These three run on **different lifecycles** — one-time provisioning, continuou
 
 **① day-0 · infra provisioning** — terraform / clusterctl, run **once from outside**, makes the cluster + machines exist:
 
-```mermaid
-flowchart TB
-  ci@{ shape: tri, label: "you / CI · from outside" }
-  ci -->|"terraform · clusterctl (run once)"| infra["day-0 · infra/ — clusters + machines exist"]
-```
+![Day-0: you or CI, from outside, run terraform and clusterctl once so infra/ makes the clusters and machines exist](assets/ADR002-architecture-day0-infra.svg)
 
 **② day-1+ · platform GitOps** — Argo CD **continuously reconciles** `deploy/gitops/` into the existing cluster; the **bex operator is itself one of the platform components installed here**:
 
-```mermaid
-flowchart TB
-  argo["Argo CD · in-cluster (continuous reconcile)"]
-  argo -->|"reconciles deploy/gitops/"| plat["platform infra: Zot · OpenSandbox · CAPI · bex operator"]
-```
+![Day-1+: Argo CD in the cluster continuously reconciles deploy/gitops/ into the platform infra: Zot, OpenSandbox, CAPI and the bex operator](assets/ADR002-architecture-day1-gitops.svg)
 
 **③ product runtime · user app deploy** — **bex's own control loop, not GitOps**; a user git push is a runtime event the operator builds and rolls out:
 
-```mermaid
-flowchart TB
-  push["user git push (runtime event)"]
-  push -->|"webhook"| op["bex operator"]
-  op -->|"build CNB/Dockerfile → Zot → run a revision · NOT GitOps"| rev["k8s Deployment+pods · or · opensandbox sandbox"]
-```
+![Product runtime: a user git push reaches the bex operator by webhook; the operator builds CNB or Dockerfile images into Zot and runs a revision as a k8s Deployment and pods or an opensandbox sandbox, not via GitOps](assets/ADR002-architecture-runtime-deploy.svg)
 
 ## Local CAPD mock → Hetzner CAPH (the portability bet)
 

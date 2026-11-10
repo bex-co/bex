@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="872" viewBox="0 0 720 872" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>infra/terraform in the bootstrap chain — a CI runner runs terraform apply (day-0) to create the infra cluster, network and firewall; clusterctl init installs CAPH there (phase 2); CAPH provisions the app cluster machines, which run the bex operator that deploys your Apps</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .si { font-size: 12.5px; font-style: italic; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .external { fill: #f3f4f6; stroke: #6b7280; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+      .badge circle { fill: #1f2937; }
+      .badge text { font-size: 12px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="719" height="871" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">Where it sits in the bootstrap chain</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">Everything above the first k3s is reconciled (CAPH, Argo, bex).</text>
+
+  <rect class="external" x="80" y="100" width="360" height="60" rx="10"/>
+  <text class="h" x="260" y="126">CI runner</text>
+  <text class="s" x="260" y="145">ephemeral · token is a CI secret</text>
+
+  <rect class="control" x="80" y="230" width="360" height="70" rx="10" stroke-width="2.6"/>
+  <text class="h" x="260" y="259">infra cluster (k3s) + network + firewall</text>
+  <text class="si" x="260" y="280" style="fill:#2563eb;font-weight:600">THIS module</text>
+
+  <rect class="reconcile" x="80" y="370" width="360" height="70" rx="10"/>
+  <text class="h" x="260" y="399">CAPH (in the infra cluster)</text>
+  <text class="si" x="260" y="420">infra/clusterapi/</text>
+
+  <rect class="runtime" x="80" y="510" width="360" height="60" rx="10"/>
+  <text class="h" x="260" y="545">app cluster machines</text>
+
+  <rect class="reconcile" x="80" y="640" width="360" height="70" rx="10"/>
+  <text class="h" x="260" y="669">bex operator (in app cluster)</text>
+  <text class="si" x="260" y="690">lego/operator/</text>
+
+  <rect class="runtime" x="80" y="780" width="360" height="60" rx="10"/>
+  <text class="h" x="260" y="815">your Apps</text>
+
+  <path class="flow" d="M260,160 L260,228"/>
+  <text class="lbl" x="272" y="198">terraform apply · day-0</text>
+
+  <path class="flow" d="M260,300 L260,368"/>
+  <text class="lbl" x="272" y="338">clusterctl init --infrastructure hetzner · phase 2</text>
+
+  <path class="flow" d="M260,440 L260,508"/>
+  <text class="lbl" x="272" y="478">provisions</text>
+
+  <path class="flow" d="M260,570 L260,638"/>
+
+  <path class="flow" d="M260,710 L260,778"/>
+  <text class="lbl" x="272" y="748">deploys</text>
+</svg>
