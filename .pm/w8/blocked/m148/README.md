@@ -1,6 +1,6 @@
 # w8 · m148 — Static-site builds keep working when GitHub release downloads fail
 
-**Worker:** worker8 **Goal:** a native static-site build no longer fetches Hugo from `github.com/gohugoio/hugo/releases` on each build. When a platform toolchain fetch does fail, the deploy says which download failed and how, not `digest mismatch sha256:…`. **Status:** in progress — t001–t006 done 2026-11-10 (Hugo from `ghcr.io/bex-co/bex-hugo`, platform fetch failures named); t007 (live static deploy DoD) after the deploy
+**Worker:** worker8 **Goal:** a native static-site build no longer fetches Hugo from `github.com/gohugoio/hugo/releases` on each build. When a platform toolchain fetch does fail, the deploy says which download failed and how, not `digest mismatch sha256:…`. **Status:** blocked — code shipped (`735c2474c`, `b05e83e1d`, Hugo pin in this batch); t001–t006 done; t007 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
 
 ## Tasks (in order)
 
@@ -67,3 +67,7 @@
 - **Expected outcome:** static deploys keep working through GitHub release-asset incidents, and any remaining platform fetch failure is self-explanatory.
 - **Why now:** it was observed live as a total static-build outage. The fix is local to the build image definition and error classification.
 - **Render parity included:** `failureReason` is served on REST, GraphQL, MCP and the dashboard deploy page.
+
+## Blocked — 2026-11-10
+
+Everything but t007 is done and shipped. t007 replays the Definition of done on production, which needs (1) the scheduled 19:00 UTC deploy (production deploys run at 19:00/00:00/05:00 UTC since `4630a48a7`) and (2) a signed-in run. `scripts/qa-login.sh` is rejected by Kratos (rc 1 on 2026-11-10, as on 2026-11-08), so the QA password must be fixed or the user must re-authorize their own CLI login with run-owned `bex-canary` fixtures, as they did for the 2026-11-08 sweep.

@@ -1,6 +1,6 @@
 # w8 · m151 — A sandbox exec runs as long as its command does
 
-**Worker:** worker8 **Goal:** `bex sandboxes exec` streams a command's output and exit code for as long as the command runs, bounded by the sandbox and the gateway session, not by a 210 s write deadline; an execution record never stays open after its stream is gone. **Status:** in progress — t001–t006 done 2026-11-10; t007 (live long exec) after the deploy
+**Worker:** worker8 **Goal:** `bex sandboxes exec` streams a command's output and exit code for as long as the command runs, bounded by the sandbox and the gateway session, not by a 210 s write deadline; an execution record never stays open after its stream is gone. **Status:** blocked — code shipped in this batch; t001–t006 done; t007 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
 
 ## Tasks (in order)
 
@@ -27,3 +27,7 @@
 - **Expected outcome:** a test suite, `npm install` or build in a sandbox finishes instead of dying at 3½ minutes with an HTTP/2 `INTERNAL_ERROR`.
 - **Why now:** w2/m278's wake-on-exec deadline (2026-11-07) cut every exec at 210 s, and v0.5.0 just shipped the command to customers.
 - **Render parity included:** the change is behind REST `POST /v1/sandboxes/{id}/execs` streaming and the execution history list.
+
+## Blocked — 2026-11-10
+
+Everything but t007 is done and shipped. t007 replays the Definition of done on production, which needs (1) the scheduled 19:00 UTC deploy (production deploys run at 19:00/00:00/05:00 UTC since `4630a48a7`) and (2) a signed-in run. `scripts/qa-login.sh` is rejected by Kratos (rc 1 on 2026-11-10, as on 2026-11-08), so the QA password must be fixed or the user must re-authorize their own CLI login with run-owned `bex-canary` fixtures, as they did for the 2026-11-08 sweep.

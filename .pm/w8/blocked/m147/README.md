@@ -1,6 +1,6 @@
 # w8 · m147 — `bex logs --tail` takes every filter Render's subscribe takes
 
-**Worker:** worker8 **Goal:** a live tail accepts the same `level`, `statusCode`, `method`, `host` and `path` filters as Render's `GET /v1/logs/subscribe`, and applies them the way bex's own history query does, instead of answering 400. **Status:** in progress — t001–t007 done 2026-11-10; t008 (live DoD) after the deploy
+**Worker:** worker8 **Goal:** a live tail accepts the same `level`, `statusCode`, `method`, `host` and `path` filters as Render's `GET /v1/logs/subscribe`, and applies them the way bex's own history query does, instead of answering 400. **Status:** blocked — code shipped `7977bdc09`; t001–t007 done; t008 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
 
 ## Tasks (in order)
 
@@ -70,3 +70,7 @@ The history query with the same filters (no `--tail`) returns the same set of li
 - **Expected outcome:** a customer debugging a live 500 can `bex logs --tail --status-code 500` or `--level error` and watch it happen, as on Render.
 - **Why now:** live tail is the first debugging tool, and the refusal is a hard 400 rather than a degraded result. Both producers it needs already exist (store poll, pod follow), so the change is contained to filter routing plus one parser port.
 - **Render parity included:** the change alters `GET /v1/logs/subscribe` and the dashboard live toggle.
+
+## Blocked — 2026-11-10
+
+Everything but t008 is done and shipped. t008 replays the Definition of done on production, which needs (1) the scheduled 19:00 UTC deploy (production deploys run at 19:00/00:00/05:00 UTC since `4630a48a7`) and (2) a signed-in run. `scripts/qa-login.sh` is rejected by Kratos (rc 1 on 2026-11-10, as on 2026-11-08), so the QA password must be fixed or the user must re-authorize their own CLI login with run-owned `bex-canary` fixtures, as they did for the 2026-11-08 sweep.

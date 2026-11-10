@@ -1,6 +1,6 @@
 # w8 · m150 — Blueprint create reads a public repo even while GitHub's API stumbles
 
-**Worker:** worker8 **Goal:** creating or syncing a Blueprint from a public GitHub repo succeeds through transient GitHub API failures: idempotent GitHub reads retry, and a public repo's ref and file are read over git transport and GitHub's raw CDN when the API still fails. **Status:** in progress — t001–t006 done 2026-11-10; t007 (live Blueprint create) after the deploy
+**Worker:** worker8 **Goal:** creating or syncing a Blueprint from a public GitHub repo succeeds through transient GitHub API failures: idempotent GitHub reads retry, and a public repo's ref and file are read over git transport and GitHub's raw CDN when the API still fails. **Status:** blocked — code shipped in this batch; t001–t006 done; t007 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
 
 ## Tasks (in order)
 
@@ -27,3 +27,7 @@
 - **Expected outcome:** a transient GitHub API error no longer blocks Blueprint creation from a public repo. Bex retries, or reads over the transports that kept working on 2026-11-08.
 - **Why now:** Blueprint creation was impossible for over 40 minutes on 2026-11-08 while git transport worked, and the customer could neither see nor fix the cause.
 - **Render parity included:** the change is behind REST/GraphQL/MCP Blueprint create, sync and validate and the dashboard's New Blueprint.
+
+## Blocked — 2026-11-10
+
+Everything but t007 is done and shipped. t007 replays the Definition of done on production, which needs (1) the scheduled 19:00 UTC deploy (production deploys run at 19:00/00:00/05:00 UTC since `4630a48a7`) and (2) a signed-in run. `scripts/qa-login.sh` is rejected by Kratos (rc 1 on 2026-11-10, as on 2026-11-08), so the QA password must be fixed or the user must re-authorize their own CLI login with run-owned `bex-canary` fixtures, as they did for the 2026-11-08 sweep.

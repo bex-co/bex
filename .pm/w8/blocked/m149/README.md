@@ -1,6 +1,6 @@
 # w8 · m149 — REST lists scope by `ownerId` the way Render's do
 
-**Worker:** worker8 **Goal:** every Render list route bex serves returns exactly the workspaces the request names. `ownerId` narrows to those workspaces, and an omitted `ownerId` spans every workspace the caller belongs to, as Render's lists and the pinned CLI's name resolvers expect. **Status:** in progress — t001–t006 done 2026-11-10; t007 (live CLI + REST DoD) after the deploy
+**Worker:** worker8 **Goal:** every Render list route bex serves returns exactly the workspaces the request names. `ownerId` narrows to those workspaces, and an omitted `ownerId` spans every workspace the caller belongs to, as Render's lists and the pinned CLI's name resolvers expect. **Status:** blocked — code shipped in this batch; t001–t006 done; t007 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
 
 ## Tasks (in order)
 
@@ -75,3 +75,7 @@ On production, for a caller who belongs to several workspaces (the active CLI wo
 - **Why now:** both failures are silent wrong answers rather than errors. F2 can also place a new database in the wrong workspace. The disks list is the only `ownerId` filter still ignored after w1/m88, and v0.5.0 was just released to customers.
 - **Render parity task:** included. The change touches REST lists, and GraphQL `disks` lacks `ownerId`. Check GraphQL/MCP list defaults against the REST change, and the dashboard's REST callers (it reads GraphQL).
 - **Dedupe:** w8/191 (done: overrides only, plus default paging), w4/475 (done: made `ownerId` optional on projects and chose the default workspace), w4/m172 (done: by-id verbs across workspaces, not lists), w1/m88/t003 (done: disks filters other than `ownerId`). `rg 'spans every workspace|ListAllAccessibleProjects|disks.*ownerId' .pm docs` finds no open item.
+
+## Blocked — 2026-11-10
+
+Everything but t007 is done and shipped. t007 replays the Definition of done on production, which needs (1) the scheduled 19:00 UTC deploy (production deploys run at 19:00/00:00/05:00 UTC since `4630a48a7`) and (2) a signed-in run. `scripts/qa-login.sh` is rejected by Kratos (rc 1 on 2026-11-10, as on 2026-11-08), so the QA password must be fixed or the user must re-authorize their own CLI login with run-owned `bex-canary` fixtures, as they did for the 2026-11-08 sweep.
