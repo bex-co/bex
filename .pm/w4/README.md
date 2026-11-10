@@ -358,6 +358,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **552** — [In the zh dashboard, a paused plan's reason is an English sentence from the API, shown as its tooltip and screen-reader text](552.md) (~25m; minor) ← live `/qa-find-bugs w4` loop round 29, 2026-11-10 UTC (pin `c12cd57facb1`). `PlanCardGrid` and `InstanceTypePicker` render the backend `unavailableReason` verbatim; it was the only untranslated text found on 15 zh pages.
 - [ ] **551** — [Deleting a Postgres credential in the dashboard takes one click on a trash icon, with no confirmation, and every connection using it fails at once](551.md) (~20m; major) ← live `/qa-find-bugs w4` loop round 24, 2026-11-10 UTC (pin `c12cd57facb1`). `access-control-panel.tsx:175` deletes straight from `onClick`; rotation itself held its promise.
 - [ ] **550** — [The webhook event picker lists `disk_snapshot_restored` raw under "Other" instead of as "Disk Snapshot Restored" in the Disk group](550.md) (~15m; minor) ← live `/qa-find-bugs w4` loop round 22, 2026-11-10 UTC (pin `c12cd57facb1`). `webhooks/event-catalog.ts:38` `GROUPS.disk` lacks it; a residual of w2/064, whose label landed only in the service Events catalog. Webhook delivery itself was clean.
 - [ ] **549** — [A project's resource table reads an environment group's Status, Runtime and Region as "Not available"](549.md) (~15m; minor) ← live `/qa-find-bugs w4` loop round 21, 2026-11-10 UTC (pin `c12cd57facb1`). `toEnvGroupRow` nulls feed `UnknownValue` (`resource-table.tsx:216,219,328`); same class as w4/481.
