@@ -57,6 +57,7 @@ Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenan
 
 ## Milestones
 
+- [ ] **m319** — [Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down](m319/README.md) (8 tasks) ← promoted from `w6/116` 2026-11-10
 - [ ] **m306** — [Builds of different services start together, and a held build is visible](m306/README.md) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-10 proposal 1; ADR060 §D5/§D6
 - [ ] **m307** — [`build_seconds` counts what Render counts as pipeline minutes](m307/README.md) (9 tasks) ← proposal 2; ADR023
 - [ ] **m308** — [Each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted"](m308/README.md) (8 tasks) ← proposal 3; ADR030 §13; after m307
@@ -234,7 +235,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **116** — [Each plan's included outbound bandwidth is not applied, and a card-less workspace past it keeps running](116.md) (> 1h — promote when worked) ← found shipping `w6/m308` 2026-11-10
+- [x] **116** — [Each plan's included outbound bandwidth is not applied, and a card-less workspace past it keeps running](m319/source-w6-116.md) — promoted to `m319` 2026-11-10 by `/loopx w6`
 - [x] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](done/115.md) (~15m) — done 2026-11-10 (ADR026 §8 + ADR018 corrected) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
 - [x] **110** — [tenant-view probe detects an activator-held wake and polls for `service_woken` (#134)](done/110.md) — done 2026-11-08 ← `/pm-brainstorm for w6` 2026-11-08 proposal 3
 - [x] **111** — [Main-only deployment branch policies on the five unrestricted production environments (#101)](done/111.md) — done 2026-11-08: drift script OK, #101 closes on run 42467710122 ← proposal 4; split from w3/blocked/m173 t005
