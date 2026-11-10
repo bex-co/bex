@@ -101,14 +101,27 @@ up() {
 
   if ! command -v promtool >/dev/null; then
     mkdir -p "$shim_dir"
-    # promtool reads the rule file it is given; mount its directory.
+    # promtool reads the rule file it is given; mount its directory. It runs
+    # as the caller: the image's own user cannot read a test's 0700 tempdir
+    # (w32/007).
     cat >"$shim_dir/promtool" <<EOF
 #!/bin/sh
 last=""; for a in "\$@"; do last=\$a; done
 dir=\$(dirname "\$last")
-exec docker run --rm -v "\$dir:\$dir" --entrypoint promtool $promtool_image "\$@"
+exec docker run --rm --user "\$(id -u):\$(id -g)" -v "\$dir:\$dir" --entrypoint promtool $promtool_image "\$@"
 EOF
     chmod +x "$shim_dir/promtool"
+    # Prove the shim reads a rule file the way the suite writes one.
+    local probe
+    probe="$(mktemp -d)"
+    chmod 700 "$probe"
+    printf 'groups:\n- name: probe\n  rules:\n  - record: probe:up\n    expr: up\n' >"$probe/rules.yml"
+    if ! "$shim_dir/promtool" check rules "$probe/rules.yml" >/dev/null 2>&1; then
+      rm -rf "$probe"
+      echo "backend-test-deps: the Docker promtool shim cannot read a rule file in a 0700 directory" >&2
+      exit 1
+    fi
+    rm -rf "$probe"
   fi
   echo "backend-test-deps: up; next: eval \"\$(bash scripts/backend-test-deps.sh env)\"" >&2
 }
