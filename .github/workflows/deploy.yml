@@ -18,39 +18,22 @@ name: deploy (bex via Argo)
 # imagePullSecret in bex-system / dashboard, so app-cluster nodes can pull the images.
 # ⚠ If this repo is private, give Argo CD repo credentials (else it can't read git).
 
+# Three scheduled runs a day, about 11:00, 16:00 and 21:00 San Francisco time
+# (19, 00, 05 UTC; an hour later during daylight time), plus on demand
+# (block-eden-mono w1/m25). A scheduled run deploys only when a commit touching
+# .github/deploy-paths landed after the production pin's producer; otherwise
+# every job after `changes` is skipped. workflow_dispatch always deploys main.
 on:
-  push:
-    branches: [main]
-    paths:
-      - "lego/**"
-      # The CLI (lego/cli/) ships as user-installed binaries via the
-      # bex-cli/v* tag train (cli-release.yml), not via the platform image —
-      # its commits must not trigger a production platform redeploy.
-      - "!lego/cli/**"
-      - "dashboard/**"
-      - "deploy/opensandbox/**"
-      - "deploy/gitops/**"
-      - ".github/workflows/deploy.yml"
-      # Main has one gate owner, including suite/script-only changes. The
-      # reusable suites run directly on PRs, never a second time on main.
-      - ".github/workflows/backend-test.yml"
-      - ".github/workflows/operator-test.yml"
-      - ".github/workflows/dashboard-test.yml"
-      - ".github/workflows/opensandbox-controller-test.yml"
-      - "scripts/install-syft.py"
-      - "scripts/test_install_syft.py"
-      - "scripts/stripe-billing-*.sh"
-      - "scripts/stripe_billing_*.py"
-      - "scripts/test_stripe_billing_*.py"
-      - "scripts/lib/stripe-billing.sh"
+  schedule:
+    - cron: "0 19,0,5 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: read
 
 # Digest write-back and the subsequent Argo rollout are one production
-# transaction. Queue main pushes so two runs cannot race their four image
-# digests or deploy an older commit after a newer one.
+# transaction. Queue runs (scheduled or dispatched) so two cannot race their
+# image digests or deploy an older commit after a newer one.
 concurrency:
   group: bex-production-deploy
   cancel-in-progress: false
@@ -66,19 +49,23 @@ env:
 jobs:
   # --- gates: all product + carried-controller tests pass before any image build ---
   test-backend:
-    if: github.ref == 'refs/heads/main'
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/backend-test.yml
 
   test-operator:
-    if: github.ref == 'refs/heads/main'
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/operator-test.yml
 
   test-dashboard:
-    if: github.ref == 'refs/heads/main'
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/dashboard-test.yml
 
   test-opensandbox-controller:
-    if: github.ref == 'refs/heads/main'
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
     uses: ./.github/workflows/opensandbox-controller-test.yml
 
   # --- secret scanning: gitleaks over the pushed commits (w7/002) ---
@@ -87,7 +74,8 @@ jobs:
   # Distinct from trivy CVE scanning (w7/m10 — image vulnerabilities) and
   # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
   secret-scan:
-    if: github.ref == 'refs/heads/main'
+    needs: changes
+    if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 90
     steps:
@@ -130,61 +118,50 @@ jobs:
           fi
           gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .
 
-  # --- supersession pre-check (w1/m59): if newer production MANIFESTS have
-  # already landed on main (this run was queued behind them), skip build + deploy
-  # BEFORE it wastes an image build — the jobs are then reported skipped (neutral),
-  # not failed. Optimization only: the write-back guard below stays the
-  # correctness gate (never pin stale images), so scripts/deploy-superseded.sh
-  # reporting "not superseded" on any error just lets the build proceed to be
-  # re-checked there. cancel-in-progress:false is untouched — a running build is
-  # never cancelled; only a not-yet-started one is skipped. ---
-  check-supersession:
+  # --- changes: the scheduled gate (block-eden-mono w1/m25) ---
+  # A scheduled run deploys only when a deployable commit (.github/deploy-paths)
+  # landed after the production pin's producer; the pin write-back itself does
+  # not count. git only, no API. A dispatch always deploys. The w1/m59
+  # write-back guard in the deploy job stays the correctness gate: it still
+  # refuses to pin images built from a tree older than production's inputs.
+  # The pre-build supersession skip this replaced existed for per-push runs
+  # queued behind newer pushes; with three runs a day there is no queue.
+  changes:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 15
     outputs:
-      superseded: ${{ steps.check.outputs.superseded }}
+      deploy: ${{ steps.check.outputs.deploy }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          # The walk from the pinned producer to main needs commits and trees,
+          # never file contents (as deploy-latency.yml).
+          fetch-depth: 0
           filter: blob:none
-          sparse-checkout-cone-mode: false
           sparse-checkout: |
-            /*
-            !/.pm/
+            scripts
+            .github
+          persist-credentials: false
       - id: check
+        env:
+          EVENT: ${{ github.event_name }}
         run: |
-          # 0 (never pin) and 4 (newer MANIFESTS) skip: on 4 a deploy-triggering
-          # commit landed after this one, so a newer run is queued and builds
-          # the newer tree; this one would only delay it. A run already past
-          # this check pins on 4 instead (w4/439).
-          # 3 (newer image SOURCE only) builds and pins, exactly as the
-          # write-back guard allows. Skipping on 3 re-created the w1/116
-          # starvation one step earlier: tests take ~30 min on the shared
-          # runners, any push in that window skipped the build, and under steady
-          # pushes no run deployed (06:05Z → 00:14Z on 2026-10-03/04). Runs are
-          # serialized with one pending slot, so this costs at most one extra
-          # build per burst.
-          #
-          # 4 skips only while the production pin is fresh. Once the last pin
-          # is 2 h old this run builds and pins anyway: under steady manifest
-          # commits and slow tests every queued run met a newer manifest and
-          # skipped too, and production kept the 00:51 pin past 13:00 UTC on
-          # 2026-11-06 (w9/m173). 0 (never pin) still always skips.
+          if [ "$EVENT" != schedule ]; then
+            echo "::notice::$EVENT deploys main unconditionally"
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           set +e
-          bash scripts/deploy-superseded.sh "$GITHUB_SHA"
+          python3 scripts/deploy_latency.py --changed
           rc=$?
-          if [ "$rc" -eq 4 ] && bash scripts/deploy-pin-stale.sh 7200; then
-            echo "::notice::newer manifests landed, but the production pin is stale; building this run anyway"
-            rc=3
-          fi
           set -e
-          if [ "$rc" -eq 0 ] || [ "$rc" -eq 4 ]; then
-            echo "superseded=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "superseded=false" >> "$GITHUB_OUTPUT"
-          fi
+          case "$rc" in
+            0) echo "deploy=true" >> "$GITHUB_OUTPUT" ;;
+            1) echo "::notice::no deployable change since the production pin; skipping"
+               echo "deploy=false" >> "$GITHUB_OUTPUT" ;;
+            *) echo "::error::could not tell whether main changed since the production pin"; exit 1 ;;
+          esac
 
   # --- build: secretless image build (ADR080 F2, w2/m89) ---
   # This job executes repo-controlled code (Dockerfiles, go builds, yarn
@@ -206,14 +183,14 @@ jobs:
     # Builds alongside the test suites (w6/m158 t004): only the deploy job,
     # which pins, waits for them, so their 10-30 min leave the critical path.
     # The secret scan still gates the build: these images are public.
-    needs: [secret-scan, check-supersession]
-    # A run superseded before its build starts is skipped here (neutral, no
-    # build). A run superseded DURING its build is caught by the write-back guard
-    # in the deploy job (it concludes neutral instead). w1/m59.
+    needs: [secret-scan, changes]
+    # A scheduled run with nothing to deploy is skipped here (no build). A run
+    # superseded DURING its build is caught by the write-back guard in the deploy
+    # job (it concludes neutral instead). w1/m59.
     #
     # Ref guard (scan finding #2): only the reviewed default branch may build
     # and publish the production images this run's deploy job will pin.
-    if: needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'
+    if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       operator_digest: ${{ steps.build_operator.outputs.digest }}
@@ -636,7 +613,7 @@ jobs:
   # modified branch into production credentials. Defense in depth alongside
   # GitHub-side protected environments + branch policies, which are the
   # authoritative control but live in repo settings, not YAML. (needs: build
-  # already skips this job when the run was superseded before building.)
+  # already skips this job when a scheduled run had nothing to deploy.)
   deploy:
     permissions:
       contents: write

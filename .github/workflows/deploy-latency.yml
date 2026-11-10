@@ -4,9 +4,14 @@ name: deploy latency
 # can end cancelled or superseded without failing, and ci-red-streak counts
 # only failures. Gaps of 15.7 h and 24.9 h with 16 and 29 deployable commits
 # waiting went unnoticed in one week (w6/m156; w6/087's ">12 h means reopen"
-# rule had no check). Hourly, this measures how long main's oldest deployable
-# commit has waited for a production pin and why, and keeps one issue open
-# while it is over the threshold. Like ci-red-streak it gates nothing.
+# rule had no check). Every three hours, this measures how long main's oldest
+# deployable commit has waited for a production pin and why, and keeps one
+# issue open while it is over the threshold. Like ci-red-streak it gates nothing.
+#
+# deploy.yml runs three times a day (block-eden-mono w1/m25), so a commit
+# landing just after the 21:00 San Francisco run waits ~14 h for the 11:00 one.
+# The 16 h threshold sits above that normal overnight gap plus one run; it trips
+# when a scheduled deploy failed or skipped a commit it should have deployed.
 
 on:
   workflow_dispatch:
@@ -14,9 +19,9 @@ on:
       threshold:
         description: "Hours a deployable commit may wait before reporting"
         required: false
-        default: "6"
+        default: "16"
   schedule:
-    - cron: "41 * * * *"
+    - cron: "41 */3 * * *"
 
 permissions:
   contents: read
@@ -30,7 +35,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
       GH_REPO: ${{ github.repository }}
-      THRESHOLD: ${{ inputs.threshold || '6' }}
+      THRESHOLD: ${{ inputs.threshold || '16' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

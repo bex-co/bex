@@ -206,7 +206,7 @@ assert "workflow-level packages write on an ungated job fails" 1 "$(printf 'perm
   "registry-publishing job must be gated to refs/heads/main"
 # GREEN: ANDed gates, either side, including a != comparison (deploy.yml build).
 assert "ANDed main gate passes" 0 "$(build_job "github.ref == 'refs/heads/main' && needs.plan.outputs.ok == 'true'")"
-assert "deploy build gate shape passes" 0 "$(build_job "needs.check-supersession.outputs.superseded != 'true' && github.ref == 'refs/heads/main'")"
+assert "deploy build gate shape passes" 0 "$(build_job "needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'")"
 # GREEN: an environment-gated publisher is a production job (checks 8/9).
 assert "environment-gated publisher passes" 0 "$(build_job "github.ref == 'refs/heads/main'" "    environment: production-deploy\n" "      - env:
           T: \${{ secrets.HCLOUD_TOKEN }}

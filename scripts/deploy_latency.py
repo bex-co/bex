@@ -14,7 +14,7 @@
 # limitations under the License.
 """How long has main's oldest deployable commit waited for production, and why?
 
-A deployable commit is one deploy.yml's push filter would deploy; it is
+A deployable commit is one that touches .github/deploy-paths; it is
 deployed once the latest `chore(deploy): pin platform images to <sha>` commit
 names a descendant of it. w6/087 recorded deploy starvation with a ">12 h
 means reopen" rule nobody checked, and gaps of 15.7 h and 24.9 h went by
@@ -31,9 +31,15 @@ deploy runs that carry the commit:
   superseded             the newest run succeeded but did not pin (superseded)
 
 Usage: deploy_latency.py [--json] [--repo DIR] [--threshold-hours H]
+       deploy_latency.py --changed [--repo DIR]
 
 Exit 0 when nothing has waited longer than H hours (default: no threshold),
 1 when the oldest deployable commit has, 2 when the inputs are unusable.
+
+--changed is deploy.yml's scheduled gate (block-eden-mono w1/m25): git only,
+no API. Exit 0 when a deployable commit is waiting or no pin is in reach
+(deploy), 1 when production already runs every deployable commit (skip), 2
+when git cannot answer.
 """
 
 from __future__ import annotations
@@ -64,22 +70,19 @@ class Wait:
     detail: str = ""
 
 
-def push_paths(deploy_yml: str) -> tuple[list[str], list[str]]:
-    """deploy.yml's on.push.paths, split into include and `!` exclude globs."""
-    lines = deploy_yml.splitlines()
-    try:
-        start = next(i for i, line in enumerate(lines) if re.match(r"^    paths:\s*$", line))
-    except StopIteration as exc:
-        raise ValueError("deploy.yml has no on.push.paths") from exc
+DEPLOY_PATHS = ".github/deploy-paths"
+
+
+def deploy_paths(text: str) -> tuple[list[str], list[str]]:
+    """.github/deploy-paths, split into include and `!` exclude globs."""
     include, exclude = [], []
-    for line in lines[start + 1 :]:
-        if re.match(r"^\s*#", line) or not line.strip():
+    for line in text.splitlines():
+        glob = line.strip()
+        if not glob or glob.startswith("#"):
             continue
-        item = re.match(r'^      - "([^"]+)"\s*$', line)
-        if not item:
-            break
-        glob = item.group(1)
         (exclude if glob.startswith("!") else include).append(glob.lstrip("!"))
+    if not include:
+        raise ValueError(f"{DEPLOY_PATHS} lists no deployable path")
     return include, exclude
 
 
@@ -159,23 +162,50 @@ def gh_json(*args: str):
             time.sleep(delay * (attempt + 1))
 
 
-def measure(repo: pathlib.Path, now: dt.datetime | None = None) -> Wait:
-    now = now or dt.datetime.now(dt.timezone.utc)
-    head = "origin/main"
-    pin_line = git(repo, "log", "-1", "--format=%H %s", "--grep=^chore(deploy): pin platform images to ", head)
+HEAD = "origin/main"
+
+
+def pending(repo: pathlib.Path) -> list[list[str]]:
+    """Deployable commits after the production pin's producer, oldest first,
+    as [sha, commit time, subject]. ValueError when no pin is in reach."""
+    pin_line = git(repo, "log", "-1", "--format=%H %s", "--grep=^chore(deploy): pin platform images to ", HEAD)
     match = PIN_SUBJECT.match(pin_line.split(" ", 1)[1]) if pin_line else None
     if not match:
         raise ValueError("no pin commit on origin/main")
     pinned = git(repo, "rev-parse", match.group(1))
-    include, exclude = push_paths((repo / ".github/workflows/deploy.yml").read_text())
-    # glob magic: `*` stops at `/`, as in GitHub's push filter.
+    include, exclude = deploy_paths((repo / DEPLOY_PATHS).read_text())
+    # glob magic: `*` stops at `/`, as in GitHub's path filters.
     pathspec = [f":(glob){g}" for g in include] + [f":(exclude,glob){g}" for g in exclude]
-    log = git(repo, "log", "--reverse", "--no-merges", "--format=%H%x09%ct%x09%s", f"{pinned}..{head}", "--", *pathspec)
-    pending = [line.split("\t", 2) for line in log.splitlines()]
-    pending = [entry for entry in pending if not PIN_SUBJECT.match(entry[2])]
-    if not pending:
+    log = git(repo, "log", "--reverse", "--no-merges", "--format=%H%x09%ct%x09%s", f"{pinned}..{HEAD}", "--", *pathspec)
+    entries = [line.split("\t", 2) for line in log.splitlines()]
+    # The pin write-back itself edits deploy/gitops; it is not new work.
+    return [entry for entry in entries if not PIN_SUBJECT.match(entry[2])]
+
+
+def changed(repo: pathlib.Path) -> int:
+    """deploy.yml's scheduled gate: 0 deploy, 1 skip, 2 unusable."""
+    try:
+        waiting = pending(repo)
+    except ValueError as exc:
+        print(f"deploy-latency: {exc}; deploying")
+        return 0
+    except (subprocess.CalledProcessError, OSError) as exc:
+        print(f"deploy-latency: unusable: {exc}", file=sys.stderr)
+        return 2
+    if not waiting:
+        print("deploy-latency: production runs every deployable commit; nothing to deploy")
+        return 1
+    print(f"deploy-latency: {len(waiting)} deployable commit(s) since the pin, oldest {waiting[0][0][:12]} — {waiting[0][2]}")
+    return 0
+
+
+def measure(repo: pathlib.Path, now: dt.datetime | None = None) -> Wait:
+    now = now or dt.datetime.now(dt.timezone.utc)
+    head = HEAD
+    waiting = pending(repo)
+    if not waiting:
         return Wait("deployed")
-    oldest, committed_at, subject = pending[0]
+    oldest, committed_at, subject = waiting[0]
     committed = dt.datetime.fromtimestamp(int(committed_at), dt.timezone.utc)
     carrier_shas = set(git(repo, "rev-list", "--ancestry-path", f"{oldest}..{head}").split()) | {oldest}
     # No --branch: that filter goes through a lagging search and can miss the
@@ -194,7 +224,10 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--repo", default=".")
     parser.add_argument("--threshold-hours", type=float, default=None)
+    parser.add_argument("--changed", action="store_true", help="exit 0 to deploy, 1 to skip (deploy.yml's scheduled gate)")
     args = parser.parse_args(argv)
+    if args.changed:
+        return changed(pathlib.Path(args.repo))
     try:
         wait = measure(pathlib.Path(args.repo))
     except (subprocess.CalledProcessError, ValueError, OSError) as exc:

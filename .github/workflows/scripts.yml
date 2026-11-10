@@ -123,8 +123,6 @@ jobs:
         run: bash scripts/ship-gates.test.sh
       - name: gh retry helper self-test
         run: bash scripts/gh-retry.test.sh
-      - name: Runner link probe self-test
-        run: bash scripts/runner-link-probe.test.sh
       - name: Tracking-issue helper self-test
         run: bash scripts/tracking-issue.test.sh
       - name: Repo artifact guard self-test
@@ -177,8 +175,6 @@ jobs:
         run: bash scripts/rename-verify.test.sh
       - name: Deploy supersession detection unit tests
         run: bash scripts/deploy-superseded.test.sh
-      - name: Deploy stale-pin override unit tests
-        run: bash scripts/deploy-pin-stale.test.sh
       - name: Packer plugin pin/verify unit tests
         run: bash scripts/packer-plugin-install.test.sh
       - name: HashiCorp rootless installer unit tests

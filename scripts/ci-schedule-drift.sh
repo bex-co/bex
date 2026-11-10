@@ -61,10 +61,11 @@ WINDOWS="
 ssh-edge-liveness.yml 12
 # w3/m174. Hourly; no history yet. Six missed hours must trip.
 alerting-heartbeat.yml 6
-# w6/m156. Hourly deploy latency watchdog; six missed hours must trip.
-deploy-latency.yml 6
-# w6/m160. Every 30 min runner-host link probe; six missed hours must trip.
-runner-link.yml 6
+# w6/m156. Every 3h since block-eden-mono w1/m25; three missed runs must trip.
+deploy-latency.yml 9
+# block-eden-mono w1/m25. Three runs a day, the longest gap 14h overnight
+# (21:00 to 11:00 San Francisco); one missed run on top of it must trip.
+deploy.yml 20
 # Daily. Worst measured 34h24m (infra); one skipped day (~48h) must still trip.
 infra.yml 40
 ci-red-streak.yml 40

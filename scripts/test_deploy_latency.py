@@ -90,12 +90,17 @@ class Classify(unittest.TestCase):
                          ("failed", 9, "build: sign images + attest SBOM"))
 
 
-class PushPaths(unittest.TestCase):
-    def test_the_real_deploy_filter(self):
-        include, exclude = dl.push_paths((HERE.parent / ".github/workflows/deploy.yml").read_text())
+class DeployPaths(unittest.TestCase):
+    def test_the_real_deploy_paths(self):
+        include, exclude = dl.deploy_paths((HERE.parent / dl.DEPLOY_PATHS).read_text())
         self.assertIn("lego/**", include)
         self.assertIn("dashboard/**", include)
+        self.assertIn(".github/workflows/deploy.yml", include)
         self.assertEqual(exclude, ["lego/cli/**"])
+
+    def test_an_empty_list_is_unusable(self):
+        with self.assertRaises(ValueError):
+            dl.deploy_paths("# only a comment\n\n!lego/cli/**\n")
 
 
 class Measure(unittest.TestCase):
@@ -107,9 +112,8 @@ class Measure(unittest.TestCase):
         self.sh("git", "init", "-q", "-b", "main")
         self.sh("git", "config", "user.email", "t@example.com")
         self.sh("git", "config", "user.name", "t")
-        (self.repo / ".github/workflows").mkdir(parents=True)
-        (self.repo / ".github/workflows/deploy.yml").write_text(
-            'on:\n  push:\n    branches: [main]\n    paths:\n      - "lego/**"\n      - "!lego/cli/**"\n  workflow_dispatch: {}\n')
+        (self.repo / ".github").mkdir(parents=True)
+        (self.repo / dl.DEPLOY_PATHS).write_text("# fixture\nlego/**\n!lego/cli/**\n")
         self.commit("lego/a.go", "feat: deployed")
         self.deployed = self.head()
         self.commit("deploy.pin", f"chore(deploy): pin platform images to {self.deployed[:12]} [skip ci]")
@@ -146,6 +150,36 @@ class Measure(unittest.TestCase):
         self.commit("docs/x.md", "docs: not deployable")
         with mock.patch.object(dl, "gh_json", side_effect=AssertionError("no API call needed")):
             self.assertEqual(dl.measure(self.repo, NOW).state, "deployed")
+
+    def test_changed_skips_when_production_runs_every_deployable_commit(self):
+        self.commit("lego/cli/x.go", "feat(cli): launcher only")
+        self.commit("docs/x.md", "docs: not deployable")
+        self.assertEqual(dl.main(["--changed", "--repo", str(self.repo)]), 1)
+
+    def test_changed_deploys_a_waiting_commit(self):
+        self.commit("lego/b.go", "fix: waits")
+        self.assertEqual(dl.main(["--changed", "--repo", str(self.repo)]), 0)
+
+    def test_changed_ignores_the_pin_write_back_itself(self):
+        # The write-back edits deployable manifests after the producer it names.
+        self.commit("deploy/gitops/base/bex.yaml", f"chore(deploy): pin platform images to {self.deployed[:12]} [skip ci]")
+        (self.repo / dl.DEPLOY_PATHS).write_text("lego/**\ndeploy/gitops/**\n")
+        self.assertEqual(dl.main(["--changed", "--repo", str(self.repo)]), 1)
+
+    def test_changed_deploys_without_a_pin_in_reach(self):
+        fresh = tempfile.TemporaryDirectory()
+        self.addCleanup(fresh.cleanup)
+        repo = pathlib.Path(fresh.name)
+        (repo / ".github").mkdir()
+        (repo / dl.DEPLOY_PATHS).write_text("lego/**\n")
+        subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
+        subprocess.run(["git", "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init"], cwd=repo, check=True)
+        subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=repo, check=True)
+        self.assertEqual(dl.main(["--changed", "--repo", str(repo)]), 0)
+
+    def test_changed_is_unusable_when_git_fails(self):
+        with mock.patch.object(dl, "git", side_effect=subprocess.CalledProcessError(128, ["git"])):
+            self.assertEqual(dl.main(["--changed", "--repo", str(self.repo)]), 2)
 
     def test_the_oldest_deployable_commit_and_its_cancelled_run(self):
         self.commit("lego/b.go", "fix: waits")

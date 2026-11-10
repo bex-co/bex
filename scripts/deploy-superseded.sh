@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 # Detect whether THIS deploy run has been superseded — i.e. whether a newer
 # deploy-triggering commit has landed on origin/main since <git-sha> (w1/m59).
-# The single source of truth shared by two consumers in
-# .github/workflows/deploy.yml:
-#   - the pre-build `check-supersession` job (skip a queued-behind-newer run
-#     before it wastes an image build), and
-#   - the write-back guard (never pin images built from stale production inputs).
+# Its consumer is the write-back guard in .github/workflows/deploy.yml (never
+# pin images built from stale production inputs). The pre-build
+# `check-supersession` skip that also used it went away when deploy.yml moved
+# from push to three scheduled runs a day (block-eden-mono w1/m25); the exit
+# codes below that mention "the pre-build check" describe that history.
 #
 # "Deploy-triggering" = any change under the production-input path filter,
 # EXCLUDING the five generated image-digest fields — a preceding run's [skip ci]
-# digest write-back is NOT a supersession. Match deploy.yml's push paths,
-# including its CLI exclusion: CLI-only commits schedule no replacement run.
+# digest write-back is NOT a supersession. Match .github/deploy-paths,
+# including its CLI exclusion: CLI-only commits are not deployable.
 #
 # Newer commits are split in two. MANIFESTS — what Argo CD syncs from main
 # (deploy/gitops, deploy/opensandbox, lego/operator/config) plus the workflow —
