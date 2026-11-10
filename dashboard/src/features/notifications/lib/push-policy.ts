@@ -60,13 +60,36 @@ function hasValidEvents(events: PushNotificationEvent[]): boolean {
 export const MIN_DEFERRAL_SECONDS = 30 * 60;
 export const MAX_DEFERRAL_SECONDS = 7 * 24 * 60 * 60;
 
+/**
+ * A zone that differs from the browser's canonical spelling only by case
+ * (`utc`, `america/los_angeles`) is sent in the canonical case: Intl accepts
+ * any case, but bex-api's tz database lookup on Linux is case-sensitive
+ * (w21/033). Any other spelling (`US/Pacific`, `EST5EDT`) is sent as typed,
+ * since the server accepts what its database holds and Intl may re-spell links.
+ */
+export function canonicalTimeZone(timeZone: string): string {
+  try {
+    const resolved = new Intl.DateTimeFormat("en", {
+      timeZone,
+    }).resolvedOptions().timeZone;
+    return resolved.toLowerCase() === timeZone.toLowerCase()
+      ? resolved
+      : timeZone;
+  } catch {
+    return timeZone;
+  }
+}
+
 export function validatePushSettings(
   settings: PushNotificationSettingsInput,
 ): string | null {
   if (
     settings.timeZone.length === 0 ||
     settings.timeZone.length > 64 ||
-    settings.timeZone === "Local"
+    settings.timeZone === "Local" ||
+    // An offset ("+05:00") is not an IANA zone: bex-api's tz database refuses
+    // it, while some browsers' Intl accepts it (w21/033).
+    /^[+-]/.test(settings.timeZone)
   ) {
     return "notifications.pushInvalidTimezone";
   }

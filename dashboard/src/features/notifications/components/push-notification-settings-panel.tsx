@@ -39,6 +39,7 @@ import {
 } from "@/features/notifications/hooks/use-push-notification-settings";
 import { useUpdatePushNotificationSettings } from "@/features/notifications/hooks/use-update-push-notification-settings";
 import {
+  canonicalTimeZone,
   droppedSelections,
   pushEvents,
   pushUrgencies,
@@ -205,7 +206,7 @@ function PushSettingsForm({
   async function save() {
     const candidate = {
       ...clonePushSettings(draft),
-      timeZone: draft.timeZone.trim(),
+      timeZone: canonicalTimeZone(draft.timeZone.trim()),
     };
     const invalid = validatePushSettings(candidate);
     if (invalid) {

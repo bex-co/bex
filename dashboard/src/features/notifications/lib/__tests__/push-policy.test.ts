@@ -6,6 +6,7 @@ import {
   type PushNotificationSettingsInput,
 } from "@/graphql/definitions";
 import {
+  canonicalTimeZone,
   droppedSelections,
   eventsBelowMinimum,
   publishedPushEvents,
@@ -70,6 +71,42 @@ describe("validatePushSettings", () => {
     expect(validatePushSettings(settings)).toBe(
       "notifications.pushInvalidRange",
     );
+  });
+
+  // w21/033: the server loads zones from its tz database, not the browser's Intl.
+  it("rejects offset-style zones the server cannot load", () => {
+    for (const zone of ["+05:00", "-08:00", "+0530"]) {
+      const settings = validSettings();
+      settings.timeZone = zone;
+      expect(validatePushSettings(settings)).toBe(
+        "notifications.pushInvalidTimezone",
+      );
+    }
+  });
+
+  it("still accepts every spelling the server's tz database loads", () => {
+    for (const zone of [
+      "UTC",
+      "US/Pacific",
+      "EST5EDT",
+      "Etc/GMT+5",
+      "Asia/Calcutta",
+      "America/Los_Angeles",
+    ]) {
+      const settings = validSettings();
+      settings.timeZone = zone;
+      expect(validatePushSettings(settings)).toBeNull();
+    }
+  });
+
+  it("canonicalizes a case-only slip and leaves other spellings as typed", () => {
+    expect(canonicalTimeZone("utc")).toBe("UTC");
+    expect(canonicalTimeZone("america/los_angeles")).toBe(
+      "America/Los_Angeles",
+    );
+    expect(canonicalTimeZone("US/Pacific")).toBe("US/Pacific");
+    expect(canonicalTimeZone("EST5EDT")).toBe("EST5EDT");
+    expect(canonicalTimeZone("Foo/Bar")).toBe("Foo/Bar");
   });
 
   it("preserves inheritance but rejects an override that changes nothing", () => {
