@@ -50,8 +50,8 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR029-static-sites.md](ADR029-static-sites.md) — `static_site` → object-store origin + static-server
 - [ADR038-cron-jobs.md](ADR038-cron-jobs.md) — `cron_job` → CronJob, runAt/cancelRun
 - [ADR041-service-addresses.md](ADR041-service-addresses.md) — internal `slug:port` + public `slug.domain`
-- [ADR034-scalable-build-pipeline.md](ADR034-scalable-build-pipeline.md) — BuildKit workers, concurrency
-- [ADR060-build-worker-reliability-and-performance.md](ADR060-build-worker-reliability-and-performance.md) — D1–D8 reliability/perf
+- [ADR034-scalable-build-pipeline.md](ADR034-scalable-build-pipeline.md) — ephemeral BuildKit/kpack builders, Starter-tier 2 CPU / 8 GB sizing; its per-workspace build cap is retired (2026-11-10, see ADR060 D6)
+- [ADR060-build-worker-reliability-and-performance.md](ADR060-build-worker-reliability-and-performance.md) — D1–D8 reliability/perf; D6 amended 2026-11-10 for Render parity: one build per service is the only customer-visible limit, the cluster ceiling admits fairly, and queue time is measured from the trigger (implementation pending)
 - [ADR009-postgresql-management.md](ADR009-postgresql-management.md) — `Database` CR → CNPG
 - [ADR021-keyvalue-management.md](ADR021-keyvalue-management.md) — `KeyValue` CR → Valkey
 - [ADR082-persistent-disks.md](ADR082-persistent-disks.md) — `spec.disk` → Hetzner volume PVC, $0.175/GB-mo, min 1 GB as on Render (Hetzner's 10 GB volume minimum absorbed, w8/215; reverses the stateless-first non-goal); arm its snapshots with [runbooks/disk-snapshot-setup.md](runbooks/disk-snapshot-setup.md)

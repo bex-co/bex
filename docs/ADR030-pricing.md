@@ -173,6 +173,18 @@ On 2026-10-01 Render added 3 GB and 50 GB Key Value plans and cut prices for the
 
 Existing `standard` subscriptions move at their next billing period (user decision D2). `pro_ultra` and `50g` share Pro Ultra's temporary pause (§11, user decision D3). All Key Value tiers bill through one cost-denominated Stripe dimension ([ADR040](ADR040-billing-metronome.md), D5).
 
+### 13. Each plan includes pipeline minutes, as on Render (decided 2026-11-10, implementation pending: `w6/m307`, `w6/m308`, spend limit `w6/m309`)
+
+Render's [build pipeline](https://render.com/docs/build-pipeline) gives each workspace Starter-tier pipeline minutes every month: Hobby 500, Pro 1,000, Scale 5,000. Every pipeline task counts: the build command, a Dockerfile image build, and the pre-deploy command. Past the allowance, Render buys more minutes automatically at $5 per 1,000 (the $0.005/min in §2). The exceptions are a workspace that has reached its pipeline spend limit or has no payment method. Render then stops pipeline tasks, builds included, for the rest of the month ("Build Minutes Exhausted"), until the limit is raised or a payment method is added. These figures were read through search results on 2026-11-10, because the page itself could not be fetched; re-read it before implementing.
+
+Today bex has no allowance. `estimatedCost` and the Stripe `build_seconds` meter price every build minute, including the ones Render includes ([render-artifacts/pricing.md](render-artifacts/pricing.md): "included allowances … are not tracked"). It also never stops a build for budget. That is the other half of [ADR060 §D6](ADR060-build-worker-reliability-and-performance.md): once the per-workspace build cap is gone, minutes are the only bound on usage, as on Render. bex follows Render:
+
+- **Allowance.** The same minutes per plan. Enterprise follows its contract, with Scale's 5,000 until a contract says otherwise. Platform-initiated rebuilds stay exempt (w1/m184).
+- **Accounting.** Month-to-date `build_seconds` ÷ 60, on Render's basis: pre-deploy time counts, and a wait for a build node does not ([ADR023 § `build_seconds` against Render's pipeline minutes](ADR023-usage-metering.md)). The estimate and the Stripe meter carry only the minutes above the allowance, at §2's $0.0035/min.
+- **Exhaustion.** A workspace that has spent its allowance and has no payment method gets new builds and pre-deploy runs refused at dispatch with Render's "Build Minutes Exhausted" until the next UTC month or until it adds a payment method. Builds already running finish, and running services are untouched. A workspace with a payment method always buys overage until the pipeline spend limit ships (a separate follow-up, [ADR018 § Gap backlog](ADR018-render-parity.md#gap-backlog)).
+- **Surfaces.** `buildMinutes {used, included}` next to `freeInstanceHours` (§10) on REST `GET /v1/usage`, GraphQL `usage` and MCP `get_usage`, and on the dashboard's "Monthly included usage" card. Billing owners get warnings at 80% and at exhaustion, as for free instance hours.
+- **Unverified.** Render's rounding of partial minutes, whether failed or canceled builds consume minutes, and its exact emails. bex counts whole seconds, rounds once per month, and counts every build that ran, failed ones included: the parity-sufficient reading of "all pipeline tasks consume pipeline minutes".
+
 ## Consequences
 
 - **Backend:** `internal/pricing` is an operator-independent package. `internal/usage.Service.monthToDateAt` calls `pricing.Default.Estimate` and attaches the result to `Summary.EstimatedCost`; `storage_gb_seconds` contributes at the embedded per-GB-second rate for Postgres and Key Value rows.

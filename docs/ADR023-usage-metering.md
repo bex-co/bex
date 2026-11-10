@@ -16,6 +16,17 @@ bex records month-to-date resource consumption per workspace and exposes it over
 
 The first three meters match Render's compute, bandwidth, and pipeline-minute dimensions. Storage adds the separately-priced Postgres dimension while remaining API-first. Render charges provisioned Postgres capacity; bex meters actual used PVC bytes, so the rate is comparable but the usage basis is deliberately more usage-sensitive. Render has no separate Key Value storage line; bex exposes the same storage meter for Valkey because it also owns a persistent volume.
 
+### `build_seconds` against Render's pipeline minutes (2026-11-10)
+
+Render counts every pipeline task against pipeline minutes: the build command, a Dockerfile image build, and the pre-deploy command ([build pipeline](https://render.com/docs/build-pipeline)). [ADR030 §13](ADR030-pricing.md) brings in Render's included minutes, which makes the meter's basis matter. It differs from Render's in four ways (read from `internal/usage/service.go` `queryBuildSeconds`):
+
+- **Pre-deploy runs meter nothing.** The query lists Jobs labelled `app.bex.co/build`, and pre-deploy Jobs do not carry the label.
+- **Failed and canceled builds meter nothing.** A Job is counted only once it has a `completionTime`, which Kubernetes sets on success alone.
+- **The wait for a build node is billed.** The duration starts at the Job's `startTime`, which the Job controller sets when it starts processing the Job, before its pod is scheduled. The node wait (`bex_build_queue_seconds`, ADR060 §D5) is the platform's time, not the tenant's.
+- **Buildpack builds meter nothing.** The `builder: buildpack` extension runs as a kpack Image and creates no Job.
+
+The decision follows Render: count pre-deploy and every build that ran, failed ones included, and start the clock when the build pod starts rather than when the Job is created. It lands with ADR030 §13's allowance, because both change what a customer pays for a build (`w6/m307`, then `w6/m308`).
+
 ### Complete outbound-bandwidth contract (w8/m15)
 
 `egress_bytes` is a composition, not a synonym for one edge metric. An App row sums every applicable App source; a public Database or Key Value row reads its metered public proxy. Private datastores have no public-egress source and persist a successful zero. The collector never returns a partial sum: required-source absence, health loss, or an ambiguous counter decrease leaves the hour absent and holds that meter's cursor for retry.

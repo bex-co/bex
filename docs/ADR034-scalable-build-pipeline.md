@@ -4,6 +4,8 @@
 
 > **Security closure (2026-07-19):** w2/m59 closed [ADR039 O-01/O-02](ADR039-operator-audit-and-platform-reuse.md): source clone, BuildKit, Skopeo push, and Cosign run as serial phases in `bex-build`; BuildKit keeps its process sandbox inside a Pod user namespace and never receives the output/signing credentials; service-account tokens, private/platform egress, and platform-node placement are denied. `scripts/verify-build-isolation.sh` passed the 38-control live matrix described in ADR022.
 
+> **Render-parity amendment (2026-11-10):** the per-workspace build cap below (`BEX_MAX_CONCURRENT_BUILDS`, baseline `2`) is retired. Render limits only one active build per service; different services build in parallel, and plans differ by pipeline minutes, not build slots. Admission and its fairness rule now live in [ADR060 §D6](ADR060-build-worker-reliability-and-performance.md#d6--admission-one-build-per-service-is-the-only-limit-a-customer-sees-amended-2026-11-10); the cluster-wide ceiling is platform protection sized to the build pools (ADR060 §D8). The synchronous reconcile described in §1–§2 and §5 was replaced by ADR060 §D1 (w2/m72).
+
 ## Context
 
 bex builds git-backed services inside the app cluster. Dockerfile and Render-native runtime builds use [BuildKit](https://github.com/moby/buildkit) Jobs confined by Kubernetes Pod user namespaces; the explicit `builder: buildpack` extension uses kpack. Each pipeline pushes an immutable generation image to Zot before the operator rolls out the workload. This matches Render's publicly documented use of [BuildKit for Dockerfile deploys](https://render.com/docs/docker) without assuming that Render's undisclosed native-runtime implementation has the same internal shape.
@@ -63,10 +65,11 @@ The baseline production configuration is two parallel builds:
 | Control | Setting | Baseline | Scope |
 | --- | --- | --- | --- |
 | App dispatch/observation | `BEX_APP_RECONCILE_WORKERS` | `2` | Maximum concurrent App reconcile loops in the active operator manager |
-| Tenant admission | `BEX_MAX_CONCURRENT_BUILDS` | `2` | Maximum active build Jobs for one labeled workspace; `0` means unlimited |
+| Tenant admission | `BEX_MAX_CONCURRENT_BUILDS` | `2` → **`0`** (retired 2026-11-10, ADR060 §D6) | Maximum active build Jobs for one labeled workspace; `0` means unlimited |
+| Platform ceiling | `BEX_MAX_ACTIVE_BUILDS` | `4` (added w7/m83) | Cluster-wide active builds, equal to the build pools' physical concurrency (ADR060 §D6/§D8) |
 | Physical capacity | schedulable node CPU/memory | One schedulable 7 GiB slot per admitted build | Cluster-wide scheduler and node-pool constraint |
 
-With the current synchronous reconciler, the practical global build concurrency is bounded by the App worker count. For a particular workspace it is also bounded by its workspace cap. In simplified form:
+_Historical (pre-ADR060 §D1):_ with the synchronous reconciler, the practical global build concurrency was bounded by the App worker count. For a particular workspace it was also bounded by its workspace cap. In simplified form:
 
 ```text
 running builds <= min(reconcile worker slots, workspace admission slots, schedulable Pod capacity)
@@ -103,7 +106,7 @@ The scaling sequence is:
 The pipeline keeps these invariants at every scale:
 
 - **Newest wins per App.** At most one nonterminal build for an App should survive a new revision.
-- **Per-workspace fairness.** A configured tenant limit queues excess builds as `BuildQueued` and retries admission instead of failing the deploy.
+- **Fairness across workspaces.** A build held by the shared ceiling waits as `BuildQueued` instead of failing the deploy, and a freed slot goes to the workspace with the fewest active builds (ADR060 §D6, amended 2026-11-10; formerly a fixed per-workspace limit).
 - **Bounded execution.** Build Jobs have a deadline and bounded retry behavior; completed Jobs are reaped after the log-collection window.
 - **Idempotent recovery.** Deterministic names let reconciliation adopt Jobs after operator restart.
 - **Immutable handoff.** Deploy and pre-deploy steps consume the image produced for that exact generation.
@@ -140,7 +143,7 @@ The build pipeline should be diagnosed from the narrowest blocked layer outward:
 | Observation | Bottleneck | Correct response |
 | --- | --- | --- |
 | Another App is not dispatched while all App workers are occupied by long builds | Reconcile-worker saturation | Raise the small baseline or complete the non-blocking reconcile change |
-| App reports `BuildQueued` and no Job exists | Workspace admission cap | Wait, cancel obsolete work, or deliberately change the tenant limit |
+| App reports `BuildQueued` and no Job exists | Cluster ceiling, or a linked datastore still provisioning (the condition message names which) | A sustained ceiling wait is a capacity decision (ADR060 §D8); a datastore wait ends when the datastore is available |
 | Build Job exists but Pod is `Pending` / `FailedScheduling` | Physical capacity or placement | Inspect requests, taints, pool maximum, and Cluster Autoscaler; add/resize machines if necessary |
 | Multiple build Pods are Running but all are slow | CPU, memory, disk, registry, or network contention | Measure node and registry saturation; add capacity or tune requests before adding more Pods |
 | Build completes but rollout does not advance | Reconcile, image push/resolution, pre-deploy, or health gate | Inspect App conditions and the later pipeline stage; builder capacity is no longer the cause |
@@ -154,7 +157,7 @@ Required operational signals are queue wait time, active/queued build count by w
 - **Only add machines.** Spare nodes do not help when one synchronous reconcile worker admits only one build.
 - **Use `BEX_APP_CB_WORKERS`.** There is no separate callback or builder-worker pool to configure. The actual controller-runtime setting is App reconcile concurrency, hence `BEX_APP_RECONCILE_WORKERS`.
 - **Run builds on platform nodes.** Build steps execute untrusted tenant code and must not share the platform trust boundary.
-- **Unlimited first-come-first-served builds.** One workspace could monopolize compute and cause an uncontrolled autoscaling/cost spike.
+- **Unlimited first-come-first-served builds.** One workspace could monopolize compute and cause an uncontrolled autoscaling/cost spike. (Still rejected after 2026-11-10: the per-workspace cap is gone, but the cluster ceiling bounds cost, fair order stops one workspace from taking every slot, and pipeline minutes bound usage — ADR060 §D6.)
 
 ## Consequences
 
