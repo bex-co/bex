@@ -63,7 +63,7 @@ describe("NewResourceMenu", () => {
       "New Blueprint Instance",
       "New Project",
       "New Sandbox Group",
-      "Create a new webhook",
+      "New Webhook",
     ]);
   });
 

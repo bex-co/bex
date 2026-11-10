@@ -783,6 +783,11 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Create a new webhook",
     description: "Create page heading (Render: 'Create a new Webhook')",
   },
+  "webhooks.newMenuLabel": {
+    message: "New Webhook",
+    description:
+      "+ New menu entry; worded like the other entries, unlike the create page heading",
+  },
   "webhooks.backToList": {
     message: "Back to webhooks",
     description: "Accessible label of the create/detail pages' back link",

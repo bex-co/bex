@@ -770,6 +770,11 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "创建新 Webhook",
     description: "Create page heading (Render: 'Create a new Webhook')",
   },
+  "webhooks.newMenuLabel": {
+    message: "新建 Webhook",
+    description:
+      "+ New menu entry; worded like the other entries, unlike the create page heading",
+  },
   "webhooks.backToList": {
     message: "返回 Webhook 列表",
     description: "Accessible label of the create/detail pages' back link",

@@ -50,7 +50,7 @@ export function NewResourceMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>
-          <Link to="/webhooks/new">{t("webhooks.newTitle")}</Link>
+          <Link to="/webhooks/new">{t("webhooks.newMenuLabel")}</Link>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
