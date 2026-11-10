@@ -53,6 +53,12 @@ const (
 	maxProxyBodyBytes     = 32 << 20
 	maxProxyResponseBytes = 64 << 20
 	proxyTimeout          = 60 * time.Second
+	// maxConcurrentProxies bounds proxied requests in flight on one server and
+	// maxSiteProxies those of one site (ADR103 F2): a loop through a service
+	// that drops the hop marker, or a site used as an open relay, holds one
+	// slot per request for up to proxyTimeout, and must not take the rest.
+	maxConcurrentProxies = 256
+	maxSiteProxies       = 32
 )
 
 // hopByHop are the headers a proxy must not forward (RFC 9110 §7.6.1).
@@ -64,6 +70,9 @@ var hopByHop = []string{
 // externalProxy fetches an external rewrite destination.
 type externalProxy struct {
 	client *http.Client
+	gate   *fetchGate
+	// maxResponse bounds the response streamed back (maxProxyResponseBytes).
+	maxResponse int64
 }
 
 // newExternalProxy builds the proxy over the platform's SSRF dialer; unsafe
@@ -83,12 +92,14 @@ func newExternalProxy(unsafe func(net.IP) bool) *externalProxy {
 		// A redirect is the destination's answer, not this server's to follow: it
 		// would be a second, unvalidated destination.
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
-	}}
+	}, gate: newFetchGate(maxConcurrentProxies, 0, maxSiteProxies), maxResponse: maxProxyResponseBytes}
 }
 
 // serveExternalRewrite proxies r to target and writes the answer, with the
 // site's custom headers applied to it as to any response. Errors answer 502
-// (an unreachable or refused destination) or 508 (a loop).
+// (an unreachable or refused destination), 508 (a loop), 413 (a body over
+// the budget) or 503 (the site's or the server's proxies all in flight), and
+// a response over its budget is aborted.
 func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, site Site, requestPath string, target *url.URL) {
 	if r.Header.Get(proxyHopHeader) != "" {
 		serveSiteError(w, site, requestPath, http.StatusLoopDetected, "rewrite loop")
@@ -100,6 +111,12 @@ func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, s
 		serveSiteError(w, site, requestPath, http.StatusLoopDetected, "rewrite loop")
 		return
 	}
+
+	if !h.external.gate.acquire(site.AppID) {
+		serveSiteBusy(w, site, requestPath)
+		return
+	}
+	defer h.external.gate.release(site.AppID)
 
 	ctx, cancel := context.WithTimeout(r.Context(), proxyTimeout)
 	defer cancel()
@@ -119,6 +136,7 @@ func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, s
 		out.Header[name] = append([]string(nil), values...)
 	}
 	stripHopByHop(out.Header)
+	out.Header.Del("X-Forwarded-Server") // the edge's pod name, not the visitor's (ADR103 F1)
 	out.Host = target.Host
 	out.Header.Set(proxyHopHeader, "1")
 	out.Header.Set("X-Forwarded-Host", r.Host)
@@ -148,7 +166,14 @@ func (h *Handler) serveExternalRewrite(w http.ResponseWriter, r *http.Request, s
 	if r.Method == http.MethodHead {
 		return
 	}
-	_, _ = io.Copy(w, io.LimitReader(resp.Body, maxProxyResponseBytes))
+	limit := h.external.maxResponse
+	if n, _ := io.Copy(w, io.LimitReader(resp.Body, limit)); n == limit {
+		// More than the budget: abort the response (ADR103 F3), so the visitor
+		// sees a broken transfer instead of a truncated body under a success.
+		if extra, _ := resp.Body.Read(make([]byte, 1)); extra > 0 {
+			panic(http.ErrAbortHandler)
+		}
+	}
 }
 
 // proxyURL joins the destination's own query with the visitor's.

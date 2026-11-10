@@ -21,6 +21,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -158,4 +159,115 @@ func TestExternalRewriteRefusesLoops(t *testing.T) {
 	if rr.Code != http.StatusLoopDetected {
 		t.Errorf("a proxied request = %d, want 508", rr.Code)
 	}
+}
+
+// ADR103 F1: the edge's own X-Forwarded-Server (a Traefik pod name) never
+// reaches a destination; the visitor's forwarding headers still do.
+func TestExternalRewriteDropsPlatformInternalHeaders(t *testing.T) {
+	seen := make(chan http.Header, 1)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen <- r.Header.Clone()
+	}))
+	defer upstream.Close()
+	h, _ := newTestHandler(t, externalSite(upstream.URL+"/*"), nil)
+	h.external = newExternalProxy(func(net.IP) bool { return false })
+
+	req := httptest.NewRequest(http.MethodGet, "https://site.onbex.co/api/x", nil)
+	req.Header.Set("X-Forwarded-Server", "traefik-7d9c5b8f6-abcde")
+	req.Header.Set("X-Forwarded-For", "203.0.113.7")
+	h.ServeHTTP(httptest.NewRecorder(), req)
+
+	var got http.Header
+	select {
+	case got = <-seen:
+	default:
+		t.Fatal("the request was not proxied")
+	}
+	if v := got.Get("X-Forwarded-Server"); v != "" {
+		t.Errorf("X-Forwarded-Server = %q reached the destination", v)
+	}
+	if v := got.Get("X-Forwarded-For"); v != "203.0.113.7" {
+		t.Errorf("X-Forwarded-For = %q, want the visitor's", v)
+	}
+}
+
+// ADR103 F2: one site's proxied requests in flight are bounded, and a site at
+// its bound leaves every other site's rewrites alone.
+func TestExternalRewriteBoundsOneSitesProxiesInFlight(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, "ok")
+	}))
+	defer upstream.Close()
+	busy := externalSite(upstream.URL + "/*")
+	busy.AppID = "busy"
+	h, _ := newTestHandler(t, busy, nil)
+	h.external = newExternalProxy(func(net.IP) bool { return false })
+	for range maxSiteProxies {
+		if !h.external.gate.acquire("busy") {
+			t.Fatal("could not fill the busy site's slots")
+		}
+	}
+
+	rr := httptest.NewRecorder()
+	h.serveExternalRewrite(rr, httptest.NewRequest(http.MethodGet, "https://busy.onbex.co/api/x", nil), busy, "/api/x", mustParseURL(t, upstream.URL+"/x"))
+	if rr.Code != http.StatusServiceUnavailable || rr.Header().Get("Retry-After") != "1" {
+		t.Fatalf("a site at its bound answered %d (Retry-After %q), want 503 with Retry-After 1", rr.Code, rr.Header().Get("Retry-After"))
+	}
+
+	// Another site is untouched, and its finished requests give their slots
+	// back: more of them in a row than its bound all succeed.
+	other := busy
+	other.AppID = "other"
+	for i := range maxSiteProxies + 1 {
+		rr = httptest.NewRecorder()
+		h.serveExternalRewrite(rr, httptest.NewRequest(http.MethodGet, "https://other.onbex.co/api/x", nil), other, "/api/x", mustParseURL(t, upstream.URL+"/x"))
+		if rr.Code != http.StatusOK || rr.Body.String() != "ok" {
+			t.Fatalf("another site's request %d answered %d %q, want its destination's 200", i, rr.Code, rr.Body.String())
+		}
+	}
+}
+
+// ADR103 F3: a destination answering more than the response budget aborts
+// the response rather than delivering a truncated body under its success
+// status; a body of exactly the budget is delivered whole.
+func TestExternalRewriteAbortsAnOversizedResponse(t *testing.T) {
+	var size atomic.Int32
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.WriteString(w, strings.Repeat("x", int(size.Load())))
+	}))
+	defer upstream.Close()
+	h, _ := newTestHandler(t, externalSite(upstream.URL+"/*"), nil)
+	h.external = newExternalProxy(func(net.IP) bool { return false })
+	h.external.maxResponse = 10
+
+	serve := func() (rr *httptest.ResponseRecorder, aborted bool) {
+		defer func() {
+			if v := recover(); v != nil {
+				if v != http.ErrAbortHandler {
+					panic(v)
+				}
+				aborted = true
+			}
+		}()
+		rr = httptest.NewRecorder()
+		h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://site.onbex.co/api/x", nil))
+		return rr, false
+	}
+	size.Store(10)
+	if rr, aborted := serve(); aborted || rr.Body.Len() != 10 {
+		t.Fatalf("a body of exactly the budget: aborted %v, %d bytes; want it delivered whole", aborted, rr.Body.Len())
+	}
+	size.Store(11)
+	if _, aborted := serve(); !aborted {
+		t.Fatal("a body over the budget was delivered truncated, want the response aborted")
+	}
+}
+
+func mustParseURL(t *testing.T, raw string) *url.URL {
+	t.Helper()
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u
 }
