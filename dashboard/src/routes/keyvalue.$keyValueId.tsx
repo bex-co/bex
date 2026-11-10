@@ -17,10 +17,10 @@ import {
   resourceNotFound,
   useNotFoundRedirect,
 } from "@/common/hooks/use-not-found-redirect";
+import { DetailTabNav } from "@/common/components/detail-tab-nav";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { KeyValueMetadataCard } from "@/features/keyvalue/components/key-value-metadata-card";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import { cn } from "@/common/lib/utils/utils.ts";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
@@ -138,50 +138,32 @@ export function KeyValueDetailPage() {
           )}
         </div>
 
-        <nav
-          data-skeleton-region={!keyValue ? "tabs" : undefined}
-          aria-label={t("keyvalue.detailNavLabel")}
-          className="flex gap-1 border-b px-4 sm:px-6"
-        >
-          <button
-            type="button"
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm",
-              !tab
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground",
-            )}
-            onClick={() => void navigate({ to: ".", search: {} })}
-          >
-            {t("keyvalue.overviewTab")}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm",
-              tab === "metrics"
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground",
-            )}
-            onClick={() =>
-              void navigate({ to: ".", search: { tab: "metrics" } })
-            }
-          >
-            {t("keyvalue.metricsTab")}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm",
-              tab === "logs"
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground",
-            )}
-            onClick={() => void navigate({ to: ".", search: { tab: "logs" } })}
-          >
-            {t("keyvalue.logsTab")}
-          </button>
-        </nav>
+        <DetailTabNav
+          skeletonRegion={!keyValue ? "tabs" : undefined}
+          label={t("keyvalue.detailNavLabel")}
+          tabs={[
+            {
+              id: "overview",
+              label: t("keyvalue.overviewTab"),
+              active: !tab,
+              onSelect: () => void navigate({ to: ".", search: {} }),
+            },
+            {
+              id: "metrics",
+              label: t("keyvalue.metricsTab"),
+              active: tab === "metrics",
+              onSelect: () =>
+                void navigate({ to: ".", search: { tab: "metrics" } }),
+            },
+            {
+              id: "logs",
+              label: t("keyvalue.logsTab"),
+              active: tab === "logs",
+              onSelect: () =>
+                void navigate({ to: ".", search: { tab: "logs" } }),
+            },
+          ]}
+        />
 
         <div
           data-skeleton-region={!keyValue ? "active-tab" : undefined}

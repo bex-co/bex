@@ -17,11 +17,11 @@ import {
   resourceNotFound,
   useNotFoundRedirect,
 } from "@/common/hooks/use-not-found-redirect";
+import { DetailTabNav } from "@/common/components/detail-tab-nav";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { DatabaseMetadataCard } from "@/features/databases/components/database-metadata-card";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { Skeleton } from "@/common/components/ui/skeleton";
-import { cn } from "@/common/lib/utils/utils.ts";
 import { useDatabase } from "@/features/databases/hooks/use-database";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { deriveStatus, sqlConsoleBlock } from "@/features/databases/lib/status";
@@ -186,36 +186,25 @@ function DatabaseDetailPage() {
           )}
         </div>
 
-        <nav
-          data-skeleton-region={!database ? "tabs" : undefined}
-          aria-label={t("databases.detailNavLabel")}
-          className="flex gap-1 border-b px-4 sm:px-6"
-        >
-          <button
-            type="button"
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm",
-              tab !== "logs"
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground",
-            )}
-            onClick={() => void navigate({ to: ".", search: {} })}
-          >
-            {t("databases.overviewTab")}
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "border-b-2 px-3 py-2 text-sm",
-              tab === "logs"
-                ? "border-foreground text-foreground"
-                : "border-transparent text-muted-foreground",
-            )}
-            onClick={() => void navigate({ to: ".", search: { tab: "logs" } })}
-          >
-            {t("databases.logsTab")}
-          </button>
-        </nav>
+        <DetailTabNav
+          skeletonRegion={!database ? "tabs" : undefined}
+          label={t("databases.detailNavLabel")}
+          tabs={[
+            {
+              id: "overview",
+              label: t("databases.overviewTab"),
+              active: tab !== "logs",
+              onSelect: () => void navigate({ to: ".", search: {} }),
+            },
+            {
+              id: "logs",
+              label: t("databases.logsTab"),
+              active: tab === "logs",
+              onSelect: () =>
+                void navigate({ to: ".", search: { tab: "logs" } }),
+            },
+          ]}
+        />
 
         <div
           data-skeleton-region={!database ? "active-tab" : undefined}
