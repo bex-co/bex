@@ -304,7 +304,7 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request, d 
 		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
 	}
 	owners := core.EnvironmentOwners(r.Context(), core.QueryList(q, "ownerId"), envIDs, s.EnvironmentWorkspace)
-	out, err := core.ListOwners(r.Context(), owners, s.ListKeyValues)
+	out, err := core.ListForCaller(r.Context(), s.Base, owners, s.ListKeyValues)
 	if err != nil {
 		core.WriteErr(w, err)
 		return

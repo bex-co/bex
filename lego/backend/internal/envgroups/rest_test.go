@@ -503,3 +503,22 @@ func TestRevealedEmptyGroupFileCarriesItsContent(t *testing.T) {
 		t.Fatalf("group detail => %d %s, want files with their contents", detail.Code, detail.Body.String())
 	}
 }
+
+// w8/m149: with no ownerId the list spans every workspace the caller belongs
+// to, as Render's does; without a membership lookup it keeps the default.
+func TestREST_EnvGroupListSpansTheCallersWorkspaces(t *testing.T) {
+	svc := filterTestService(t)
+	if got := envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups")); !slices.Equal(got, []string{"alpha", "bravo"}) {
+		t.Fatalf("no membership lookup: names = %v, want the default workspace's", got)
+	}
+	svc.MemberWorkspaceIDs = func(context.Context, core.Identity) ([]string, error) { return []string{"tea-a", "tea-b"}, nil }
+	for query, want := range map[string][]string{
+		"":                       {"alpha", "bravo", "charlie"},
+		"?ownerId=tea-b":         {"charlie"},
+		"?environmentId=env-one": {"alpha", "charlie"},
+	} {
+		if got := envGroupListNames(t, serveFilterREST(svc, "/v1/env-groups"+query)); !slices.Equal(got, want) {
+			t.Errorf("GET /v1/env-groups%s = %v, want %v", query, got, want)
+		}
+	}
+}

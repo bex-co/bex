@@ -1,17 +1,17 @@
 # w8 · m149 — REST lists scope by `ownerId` the way Render's do
 
-**Worker:** worker8 **Goal:** every Render list route bex serves returns exactly the workspaces the request names. `ownerId` narrows to those workspaces, and an omitted `ownerId` spans every workspace the caller belongs to, as Render's lists and the pinned CLI's name resolvers expect. **Status:** todo
+**Worker:** worker8 **Goal:** every Render list route bex serves returns exactly the workspaces the request names. `ownerId` narrows to those workspaces, and an omitted `ownerId` spans every workspace the caller belongs to, as Render's lists and the pinned CLI's name resolvers expect. **Status:** in progress — t001–t006 done 2026-11-10; t007 (live CLI + REST DoD) after the deploy
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | `GET /v1/disks` honors `ownerId` | 30m | — |
-| t002 | An unfiltered `GET /v1/projects` spans the caller's workspaces, so the CLI's `--project`/`--environment` name lookups resolve | 45m | — |
-| t003 | Every other unfiltered REST list spans the caller's workspaces; ADR006/ADR018 amended | 60m | t002 |
-| t004 | Render parity | 20m | t001, t003 |
-| t005 | Simplify | 15m | t004 |
-| t006 | Test coverage | 40m | t004 |
+| [t001](done/t001.md) | `GET /v1/disks` honors `ownerId` — **DONE** | 30m | — |
+| [t002](done/t002.md) | An unfiltered `GET /v1/projects` spans the caller's workspaces, so the CLI's `--project`/`--environment` name lookups resolve — **DONE** | 45m | — |
+| [t003](done/t003.md) | Every other unfiltered REST list spans the caller's workspaces; ADR006/ADR018 amended — **DONE** | 60m | t002 |
+| [t004](done/t004.md) | Render parity — **DONE** | 20m | t001, t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
 | t007 | Closeout (live CLI + REST DoD) | 20m | t006 |
 
 ## Definition of done

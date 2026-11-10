@@ -136,6 +136,36 @@ func ListOwners[T any](ctx context.Context, owners []string, list func(context.C
 	return out, nil
 }
 
+// ListForCaller is ListOwners over the workspaces a Render list answers for
+// (Base.ListOwnerIDs, w8/m149): the named owners, each of which must be
+// readable, or — when none are named — every workspace the caller belongs to.
+// A member workspace the caller cannot read is skipped rather than failing an
+// unfiltered list that used to answer from one workspace.
+func ListForCaller[T any](ctx context.Context, b *Base, owners []string, list func(context.Context, string) ([]T, error)) ([]T, error) {
+	if len(owners) > 0 {
+		return ListOwners(ctx, owners, list)
+	}
+	members, err := b.ListOwnerIDs(ctx, nil)
+	if err != nil || len(members) == 0 {
+		if err != nil {
+			return nil, err
+		}
+		return list(ctx, "")
+	}
+	var out []T
+	for _, owner := range members {
+		items, err := list(ctx, owner)
+		if errors.Is(err, ErrForbidden) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, items...)
+	}
+	return out, nil
+}
+
 // ParseTime parses one optional RFC3339 field value and returns a named bad
 // request for malformed input — QueryTime's string-argument core, for the
 // GraphQL/MCP adapters that receive strings rather than query values. A

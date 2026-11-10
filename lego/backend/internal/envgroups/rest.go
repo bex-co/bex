@@ -104,6 +104,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
+		// Omitted ownerId spans the caller's workspaces, as Render's list does
+		// (w8/m149); an environmentId filter then narrows within them.
+		if filter.OwnerIDs, err = s.ListOwnerIDs(r.Context(), filter.OwnerIDs); err != nil {
+			return nil, err
+		}
 		out, err := s.ListEnvGroupsFiltered(r.Context(), filter)
 		if err != nil {
 			return nil, err

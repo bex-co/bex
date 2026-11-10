@@ -118,16 +118,19 @@ func (s *Service) renderProjects(ctx context.Context, ps []ProjectView) ([]rende
 // milestone closes.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/projects", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		// ownerId is optional, as in Render's spec (w4/475): an empty value
-		// resolves to the caller's current workspace, as every sibling list does.
-		ownerID := r.URL.Query().Get("ownerId")
+		q := r.URL.Query()
+		// ownerId is optional, as in Render's spec (w4/475): omitted, the list
+		// spans every workspace the caller belongs to, as Render's does — the
+		// pinned CLI resolves --project/--environment names through it (w8/m149).
 		// Render's project shape carries no membership, so the page is filtered
 		// and rendered from bare rows without reading any (w5/155).
-		_, ps, err := s.listBare(r.Context(), ownerID)
+		ps, err := core.ListForCaller(r.Context(), s.Base, core.QueryList(q, "ownerId"), func(ctx context.Context, owner string) ([]ProjectView, error) {
+			_, ps, err := s.listBare(ctx, owner)
+			return ps, err
+		})
 		if err != nil {
 			return nil, err
 		}
-		q := r.URL.Query()
 		names := core.QueryNameList(r.URL, "name")
 		created, err := core.QueryTimeWindow(q, "createdBefore", "createdAfter")
 		if err != nil {

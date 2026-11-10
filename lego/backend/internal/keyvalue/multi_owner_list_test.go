@@ -17,6 +17,7 @@ limitations under the License.
 package keyvalue
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -70,7 +71,9 @@ func TestKeyValueListHonorsOwnerArrays(t *testing.T) {
 	}
 
 	want := []string{"red-aaaaaaaaaaaaaaaaaaaa", "red-bbbbbbbbbbbbbbbbbbbb"}
-	for _, query := range []string{"ownerId=tea-1&ownerId=tea-2", "ownerId=tea-1,tea-2", "ownerId=tea-2,tea-1&limit=5"} {
+	// w8/m149: no ownerId spans every workspace the caller belongs to.
+	svc.MemberWorkspaceIDs = func(context.Context, core.Identity) ([]string, error) { return []string{"tea-1", "tea-2"}, nil }
+	for _, query := range []string{"", "ownerId=tea-1&ownerId=tea-2", "ownerId=tea-1,tea-2", "ownerId=tea-2,tea-1&limit=5"} {
 		if code, got, body := list(query); code != http.StatusOK || !slices.Equal(got, want) {
 			t.Errorf("%s = %d %v: %s", query, code, got, body)
 		}

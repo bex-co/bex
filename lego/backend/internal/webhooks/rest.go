@@ -142,7 +142,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	listHandler := func(w http.ResponseWriter, r *http.Request) {
 		q := r.URL.Query()
 		cursor, limit := core.PageParams(q)
-		ownerIDs := append(core.QueryList(q, "ownerId"), core.QueryList(q, "ownerId[]")...)
+		ownerIDs, err := s.ListOwnerIDs(r.Context(), append(core.QueryList(q, "ownerId"), core.QueryList(q, "ownerId[]")...))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
 		views, err := s.ListPage(r.Context(), ownerIDs, cursor, limit)
 		if err != nil {
 			core.WriteErr(w, err)

@@ -145,7 +145,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		views, err := core.ListOwners(r.Context(), core.QueryList(q, "ownerId"), s.List)
+		views, err := core.ListForCaller(r.Context(), s.Base, core.QueryList(q, "ownerId"), s.List)
 		if err != nil {
 			return nil, err
 		}

@@ -17,6 +17,7 @@ limitations under the License.
 package postgres
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -77,5 +78,19 @@ func TestPostgresListHonorsOwnerArrays(t *testing.T) {
 	code, _, body := listPostgresIDs(t, svc, "ownerId=tea-1,tea-3")
 	if code != http.StatusForbidden || strings.Contains(body, "dpg-") {
 		t.Errorf("a forbidden owner in the mix = %d, want 403 with nothing disclosed: %s", code, body)
+	}
+}
+
+// w8/m149: with no ownerId the list spans every workspace the caller belongs
+// to, as Render's does.
+func TestPostgresListSpansTheCallersWorkspaces(t *testing.T) {
+	svc, _ := newService(tenantDatabase("dpg-1", "tea-1"), tenantDatabase("dpg-2", "tea-2"), tenantDatabase("dpg-3", "tea-3"))
+	svc.Authz = &fakeChecker{allow: true}
+	svc.Workspace = coretest.Members{"user-a": {"tea-1", "tea-2"}}
+	svc.MemberWorkspaceIDs = func(context.Context, core.Identity) ([]string, error) { return []string{"tea-1", "tea-2"}, nil }
+	for query, want := range map[string][]string{"": {"dpg-1", "dpg-2"}, "ownerId=tea-2": {"dpg-2"}} {
+		if code, got, body := listPostgresIDs(t, svc, query); code != http.StatusOK || !slices.Equal(got, want) {
+			t.Errorf("%q = %d %v, want %v: %s", query, code, got, want, body)
+		}
 	}
 }

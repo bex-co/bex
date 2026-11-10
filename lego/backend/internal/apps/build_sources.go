@@ -793,12 +793,14 @@ func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		after, limit := core.PageParams(q)
-		page, err := s.listBuildSourcesPage(r.Context(), q.Get("ownerId"), f, after, limit)
+		views, err := core.ListForCaller(r.Context(), s.Base, core.QueryList(q, "ownerId"), func(ctx context.Context, owner string) ([]BuildSourceView, error) {
+			return s.ListBuildSources(ctx, owner, f)
+		})
 		if err != nil {
 			return nil, err
 		}
-		return toBuildSourceList(page), nil
+		after, limit := core.PageParams(q)
+		return toBuildSourceList(core.StablePage(views, after, limit, true, func(v BuildSourceView) string { return v.ID })), nil
 	}))
 	mux.HandleFunc("GET /v1/build-sources/{buildSourceId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetBuildSource(r.Context(), r.PathValue("buildSourceId"))

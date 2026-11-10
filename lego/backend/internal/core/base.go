@@ -1107,6 +1107,29 @@ func (b *Base) WorkspaceOrDefault(ctx context.Context) string {
 	return DefaultTenant
 }
 
+// ListOwnerIDs is the workspaces a Render list answers for (w8/m149): the
+// owners the request named, or — when it named none — every workspace the
+// caller belongs to. Render's lists span all of the user's workspaces when
+// `ownerId` is omitted, and the pinned CLI's name resolvers depend on it
+// (`ListAllAccessibleProjects`, an unfiltered GET /projects). nil keeps the
+// single-workspace default for a caller with no membership of its own (an API
+// key's machine identity) and for the store-off mode. ListOwners still lists
+// each workspace through the caller's authorized per-workspace list.
+func (b *Base) ListOwnerIDs(ctx context.Context, owners []string) ([]string, error) {
+	if len(owners) > 0 || b.Workspace == nil || b.MemberWorkspaceIDs == nil {
+		return owners, nil
+	}
+	identity, identified := IdentityFrom(ctx)
+	if !identified {
+		return nil, nil
+	}
+	members, err := b.MemberWorkspaceIDs(ctx, identity)
+	if err != nil {
+		return nil, ErrAuthzUnavailable
+	}
+	return members, nil
+}
+
 // AuthorizeWorkspace gates a verb whose workspace argument is optional. An
 // omitted argument resolves the caller's selected/default workspace; resolution
 // failures are audited against the requested workspace and never fall back.

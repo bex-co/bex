@@ -80,12 +80,15 @@ type DiskView struct {
 	ServiceID string    `json:"serviceId"`
 	CreatedAt time.Time `json:"createdAt"`
 	UpdatedAt time.Time `json:"updatedAt"`
+	// tenantID is the disk's workspace: the list's ownerId filter reads it.
+	tenantID string
 }
 
 func diskView(d store.Disk) DiskView {
 	return DiskView{
 		ID: d.ID, Name: d.Name, MountPath: d.MountPath, SizeGB: d.SizeGB,
 		ServiceID: d.AppID, CreatedAt: d.CreatedAt, UpdatedAt: d.UpdatedAt,
+		tenantID: d.TenantID,
 	}
 }
 
@@ -165,6 +168,12 @@ func (s *Service) ListDisks(ctx context.Context, serviceID string) ([]DiskView, 
 		return nil, err
 	}
 	return diskViews(disks), nil
+}
+
+// workspaceDisks is one workspace's disks: the named one, or the caller's
+// own when ownerID is empty.
+func (s *Service) workspaceDisks(ctx context.Context, ownerID string) ([]DiskView, error) {
+	return s.ListDisks(core.WithWorkspace(ctx, ownerID), "")
 }
 
 func diskViews(disks []store.Disk) []DiskView {
@@ -405,10 +414,17 @@ func (s *Service) registerDiskRoutes(mux *http.ServeMux) {
 		// services can only ever narrow to what the caller may already read —
 		// never widen it, which is what a fall-back to a workspace-wide list
 		// would risk.
+		//
+		// Without a serviceId the list spans the named workspaces, each
+		// authorized by its own list (a workspace the caller is not in is a
+		// 403, as on /v1/services), or every workspace the caller belongs to,
+		// as Render's lists do (w8/m149 — it used to ignore ownerId and answer
+		// from the default workspace). With one, ownerId narrows the services'
+		// disks to the named workspaces below.
+		owners := core.QueryList(q, "ownerId")
 		var disks []DiskView
 		if len(serviceIDs) == 0 {
-			var err error
-			if disks, err = s.ListDisks(r.Context(), ""); err != nil {
+			if disks, err = core.ListForCaller(r.Context(), s.Base, owners, s.workspaceDisks); err != nil {
 				return nil, err
 			}
 		} else {
@@ -438,7 +454,8 @@ func (s *Service) registerDiskRoutes(mux *http.ServeMux) {
 			}
 		}
 		disks = core.Filter(disks, func(d DiskView) bool {
-			return (len(diskIDs) == 0 || slices.Contains(diskIDs, d.ID)) &&
+			return (len(owners) == 0 || slices.Contains(owners, d.tenantID)) &&
+				(len(diskIDs) == 0 || slices.Contains(diskIDs, d.ID)) &&
 				(len(names) == 0 || slices.Contains(names, d.Name)) &&
 				created.ContainsTime(d.CreatedAt) && updated.ContainsTime(d.UpdatedAt)
 		})

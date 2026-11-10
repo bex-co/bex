@@ -193,7 +193,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+base, core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		owners := core.EnvironmentOwners(r.Context(), core.QueryList(q, "ownerId"), environmentPublicIDs(q), s.EnvironmentWorkspace)
-		out, err := core.ListOwners(r.Context(), owners, s.ListPostgres)
+		out, err := core.ListForCaller(r.Context(), s.Base, owners, s.ListPostgres)
 		if err != nil {
 			return nil, err
 		}

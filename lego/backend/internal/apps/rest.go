@@ -843,7 +843,7 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 			environmentIDs[i] = ids.EnvironmentPublicID(environmentIDs[i])
 		}
 		owners := core.EnvironmentOwners(r.Context(), core.QueryList(q, "ownerId"), environmentIDs, s.EnvironmentWorkspace)
-		apps, err := core.ListOwners(r.Context(), owners, s.List)
+		apps, err := core.ListForCaller(r.Context(), s.Base, owners, s.List)
 		if err != nil {
 			return nil, err
 		}
@@ -1743,7 +1743,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("GET /v1/blueprints", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		views, err := s.ListBlueprints(r.Context(), q.Get("ownerId"))
+		views, err := core.ListForCaller(r.Context(), s.Base, core.QueryList(q, "ownerId"), s.ListBlueprints)
 		if err != nil {
 			return nil, err
 		}
@@ -1810,21 +1810,14 @@ const notificationOverrideTypeService = "service"
 // listOverrideApps is the notification-overrides list's source: the named
 // workspace, or — when none is named — every workspace the caller belongs to
 // (Render: "all notification overrides for all workspaces the user belongs
-// to"). Each workspace is listed through s.List, which authorizes it. Without
-// a workspace store the caller's one workspace is the answer.
+// to"; core.ListForCaller). Each workspace is listed through s.List, which
+// authorizes it.
 func (s *Service) listOverrideApps(ctx context.Context, ownerID string) ([]AppView, error) {
-	identity, identified := core.IdentityFrom(ctx)
-	if ownerID != "" || !identified || s.Workspace == nil || s.MemberWorkspaceIDs == nil {
-		return s.List(ctx, ownerID)
+	var named []string
+	if ownerID != "" {
+		named = []string{ownerID}
 	}
-	members, err := s.MemberWorkspaceIDs(ctx, identity)
-	if err != nil {
-		return nil, core.ErrAuthzUnavailable
-	}
-	if len(members) == 0 {
-		return s.List(ctx, "")
-	}
-	return core.ListOwners(ctx, members, s.List)
+	return core.ListForCaller(ctx, s.Base, named, s.List)
 }
 
 // registerNotificationOverrideRoutes mounts the per-service notification
