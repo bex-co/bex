@@ -49,6 +49,13 @@ type MeterStore interface {
 	ObserveSandboxMeter(context.Context, store.SandboxMeterObservation) error
 	TerminateMissingSandboxMeters(context.Context, string, []string, time.Time) error
 	RecordResourceDisplayNames(context.Context, string, []store.ResourceDisplayName) error
+	ClaimUnsizedSandboxStorage(ctx context.Context, now time.Time, limit int) ([]store.SandboxStorageObject, error)
+	SetSandboxStorageBytes(ctx context.Context, workspaceID, objectID string, startedAt time.Time, bytes int64) error
+	AccrueSandboxStorage(ctx context.Context, now time.Time, limit int) (int, error)
+	SandboxStorageStats(ctx context.Context, now time.Time) (store.SandboxStorageStats, error)
+	ListReapableSandboxStorage(context.Context, int) ([]store.SandboxStorageObject, error)
+	MarkSandboxStorageReaped(ctx context.Context, workspaceID, objectID string, startedAt time.Time) error
+	PruneSandboxStorage(ctx context.Context, now time.Time, limit int) (int64, error)
 }
 
 // Meter observes OpenSandbox's authoritative lifecycle state and advances the
@@ -59,7 +66,35 @@ type Meter struct {
 	Store    MeterStore
 	Interval time.Duration
 	Now      func() time.Time
+	// Sizer reads a retained image's stored size for the storage meter. Nil
+	// turns sizing off: suspended sandboxes are recorded but never sized, so
+	// nothing is billed for storage until it is configured (the feature is off,
+	// not wrong); StorageMetrics' unsized gauge says so.
+	Sizer SnapshotSizer
+	// Reaper deletes the images of sandboxes that are gone (terminated, or
+	// expired at pause + 30 days) from the registry, which keeps a repository's
+	// five newest tags forever (ADR104 D11). Nil leaves them: the meter has
+	// stopped charging for them either way, and the reap_pending gauge says how
+	// many wait.
+	Reaper ImageReaper
+	// StorageMetrics, when set, reports the storage meter's health.
+	StorageMetrics *StorageMetrics
 }
+
+const (
+	// Each poll round bounds its registry reads, deletes, accrual transactions
+	// and prunes; the rest wait for the next round.
+	storageSizeBatch   = 20
+	storageAccrueBatch = 500
+	storageReapBatch   = 20
+	storagePruneBatch  = 200
+
+	// storageRegistryBudget bounds the time one round may spend on registry
+	// calls, and storageRegistryFailures how many consecutive failures end it
+	// early: a hung registry must not hold up the next poll of every workspace.
+	storageRegistryBudget   = 20 * time.Second
+	storageRegistryFailures = 3
+)
 
 func (m *Meter) now() time.Time {
 	if m.Now != nil {
@@ -118,6 +153,32 @@ func requestFor(cpu, memory string) (reqCPU, reqMem string) {
 	return reqCPU, reqMem
 }
 
+// memoryMiBOf is an allocated memory quantity ("2Gi", "512Mi") in whole MiB,
+// rounded up; 0 for an unparseable or non-positive one, which the memory meter
+// skips instead of guessing.
+func memoryMiBOf(memory string) int64 {
+	q, err := resource.ParseQuantity(memory)
+	if err != nil || q.Value() <= 0 {
+		return 0
+	}
+	const mib = int64(1) << 20
+	return (q.Value() + mib - 1) / mib
+}
+
+// sandboxMemoryMiB is the memory the sandbox was created with: the stamped
+// value, else the size of its plan for a sandbox created before the stamp. A
+// sandbox with neither (a template-sized sandbox that predates the stamp) is 0,
+// not guessed.
+func sandboxMemoryMiB(raw osSandbox) int64 {
+	if n, err := strconv.ParseInt(raw.Metadata[metadataMemoryMiB], 10, 64); err == nil && n > 0 {
+		return n
+	}
+	if size, ok := planResources[Plan(raw.Metadata[metadataPlan])]; ok {
+		return memoryMiBOf(size.Memory)
+	}
+	return 0
+}
+
 func canonicalMeterPhase(state string) string {
 	// Unknown states already map to errored.
 	return string(mapOpenSandboxStatus(state))
@@ -142,8 +203,20 @@ func meterObservation(raw osSandbox, observedAt time.Time) (store.SandboxMeterOb
 		Phase:       canonicalMeterPhase(raw.Status.State),
 		Tier:        raw.Metadata[metadataPlan],
 		WeightMilli: weight,
+		MemoryMiB:   sandboxMemoryMiB(raw),
+		StorageRef:  storageRef(raw),
 		ObservedAt:  observedAt.UTC(),
 	}, true
+}
+
+// storageRef is where the registry holds a sandbox's suspend image, or "" for a
+// sandbox the storage meter leaves out: an agent-session sandbox's cost is its
+// session's (ADR047 D6), not a Render sandbox's storage line.
+func storageRef(raw osSandbox) string {
+	if !idleTracked(raw) {
+		return ""
+	}
+	return raw.ID
 }
 
 // Observe records one request-path phase sample. Metering failure is logged but
@@ -245,12 +318,105 @@ func (m *Meter) poll(ctx context.Context) {
 				continue
 			}
 			seen = append(seen, obs.SandboxID)
+			obs.Polled = true // the authoritative list, not a request-path sample
 			if err := m.Store.ObserveSandboxMeter(ctx, obs); err != nil {
 				log.Printf("sandbox meter: observe workspace=%s sandbox=%s: %v", obs.WorkspaceID, obs.SandboxID, err)
 			}
 		}
 		if err := m.Store.TerminateMissingSandboxMeters(ctx, key.WorkspaceID, seen, at); err != nil {
 			log.Printf("sandbox meter: close missing workspace=%s: %v", key.WorkspaceID, err)
+		}
+	}
+	m.settleStorage(ctx)
+}
+
+// settleStorage sizes the images the polls found retained, adds the seconds
+// every sized object has been retained, and reports the meter's health. It runs
+// after every poll round, so a registry outage delays a charge by the outage
+// and loses nothing: the object keeps its start, and accrual covers it from
+// there once it is sized.
+func (m *Meter) settleStorage(ctx context.Context) {
+	if m.Sizer != nil {
+		m.sizeImages(ctx)
+	}
+	m.reapImages(ctx)
+	if _, err := m.Store.AccrueSandboxStorage(ctx, m.now(), storageAccrueBatch); err != nil {
+		log.Printf("sandbox meter: accrue storage: %v", err)
+	}
+	if _, err := m.Store.PruneSandboxStorage(ctx, m.now(), storagePruneBatch); err != nil {
+		log.Printf("sandbox meter: prune storage: %v", err)
+	}
+	if stats, err := m.Store.SandboxStorageStats(ctx, m.now()); err != nil {
+		log.Printf("sandbox meter: storage stats: %v", err)
+	} else {
+		m.StorageMetrics.set(stats)
+	}
+}
+
+// sizeImages reads the size of the retained images the polls found. One failure
+// is retried on a later round, and the rotation in the claim keeps it from
+// holding the queue.
+func (m *Meter) sizeImages(ctx context.Context) {
+	ctx, cancel := context.WithTimeout(ctx, storageRegistryBudget)
+	defer cancel()
+	unsized, err := m.Store.ClaimUnsizedSandboxStorage(ctx, m.now(), storageSizeBatch)
+	if err != nil {
+		log.Printf("sandbox meter: claim unsized storage: %v", err)
+		return
+	}
+	failed, consecutive := 0, 0
+	var lastErr error
+	for _, o := range unsized {
+		if o.Ref == "" {
+			continue
+		}
+		bytes, err := m.Sizer.SnapshotBytes(ctx, o.WorkspaceID, o.Ref)
+		if err == nil {
+			err = m.Store.SetSandboxStorageBytes(ctx, o.WorkspaceID, o.ObjectID, o.StartedAt, bytes)
+		}
+		if err == nil {
+			consecutive = 0
+			continue
+		}
+		failed++
+		consecutive++
+		lastErr = err
+		m.StorageMetrics.sizeFailed()
+		if consecutive >= storageRegistryFailures {
+			break
+		}
+	}
+	if failed > 0 {
+		log.Printf("sandbox meter: %d of %d retained images not sized, retried on a later poll (last: %v)", failed, len(unsized), lastErr)
+	}
+}
+
+// reapImages deletes the registry images of sandboxes that are gone. One failure
+// does not stop the others, and the object stays queued for the next poll.
+func (m *Meter) reapImages(ctx context.Context) {
+	if m.Reaper == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, storageRegistryBudget)
+	defer cancel()
+	gone, err := m.Store.ListReapableSandboxStorage(ctx, storageReapBatch)
+	if err != nil {
+		log.Printf("sandbox meter: list images to reap: %v", err)
+		return
+	}
+	consecutive := 0
+	for _, o := range gone {
+		if err := m.Reaper.DeleteImages(ctx, o.WorkspaceID, o.Ref); err != nil {
+			m.StorageMetrics.reapFailed()
+			log.Printf("sandbox meter: reap image workspace=%s sandbox=%s: %v", o.WorkspaceID, o.ObjectID, err)
+			if consecutive++; consecutive >= storageRegistryFailures {
+				return
+			}
+			continue
+		}
+		consecutive = 0
+		if err := m.Store.MarkSandboxStorageReaped(ctx, o.WorkspaceID, o.ObjectID, o.StartedAt); err != nil {
+			log.Printf("sandbox meter: mark reaped workspace=%s sandbox=%s: %v", o.WorkspaceID, o.ObjectID, err)
 		}
 	}
 }

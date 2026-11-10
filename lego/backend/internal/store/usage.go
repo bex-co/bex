@@ -38,6 +38,17 @@ const (
 	// seconds. Memory is folded into the weight at the AgentCore reference
 	// ratio ($0.00945/GB-hour ÷ $0.0895/vCPU-hour); see ADR047 D6.
 	UsageKindSandboxComputeSeconds = "sandbox_compute_seconds"
+	// UsageKindSandboxMemoryGBSeconds is a sandbox's ALLOCATED memory in GiB
+	// multiplied by the seconds it ran: the memory half of Render's billing
+	// model, split out of the weighted meter above (w22/m313, ADR104 D8). It is
+	// recorded beside sandbox_compute_seconds and billed only once the used-CPU
+	// meter lets billing switch in one step (w22/m314); until then it is shown
+	// and never emitted.
+	UsageKindSandboxMemoryGBSeconds = "sandbox_memory_gb_seconds"
+	// UsageKindSandboxSnapshotGBSeconds is a suspended sandbox's retained image
+	// in decimal GB multiplied by the seconds it is retained: Render's snapshot
+	// storage (w22/m313, ADR023 § Sandbox snapshot storage).
+	UsageKindSandboxSnapshotGBSeconds = "sandbox_snapshot_gb_seconds"
 	// UsageKindDiskGBSeconds is a service disk's PROVISIONED capacity in GB
 	// multiplied by the seconds it was provisioned for — deliberately a
 	// different dimension from UsageKindStorageGBSeconds, which averages USED

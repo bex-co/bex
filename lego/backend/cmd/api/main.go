@@ -73,6 +73,7 @@ import (
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
@@ -424,7 +425,7 @@ func main() {
 	// port from this one value (single source of truth).
 	deps.AgentModelProxyURL = cfg.AgentModelProxyURL
 	deps.AgentEgressProxyURL = cfg.AgentEgressProxyURL
-	wireSandboxes(ctx, cfg, &deps, cl, st)
+	wireSandboxes(ctx, cfg, &deps, cl, st, metricRegistry)
 	wireAgentSessions(&deps, cfg)
 	wireDiskSnapshots(&deps, cfg)
 	srv := api.NewServer(base, deps)
@@ -958,9 +959,23 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		// ADR091 D3: until the Stripe catalog carries the agent model cost
 		// Price, hold that meter so neither Subscriptions nor the outbox
 		// reference a Price that does not exist; held rows ship once released.
-		var heldMeters []string
+		// A held meter is left off every Subscription (by its catalog name) and its
+		// usage kind kept pending in the outbox; the two names differ where a meter
+		// re-bases its kind.
+		type heldMeter struct{ catalog, kind string }
+		var held []heldMeter
 		if !cfg.StripeAgentModelMeter {
-			heldMeters = []string{store.UsageKindAgentModelCostMicroUSD}
+			held = append(held, heldMeter{store.UsageKindAgentModelCostMicroUSD, store.UsageKindAgentModelCostMicroUSD})
+		}
+		// The suspended-sandbox storage meter ships held until its Price exists on
+		// the Stripe account.
+		if !cfg.StripeSandboxStorageMeter {
+			held = append(held, heldMeter{pricing.SandboxSnapshotMeter, store.UsageKindSandboxSnapshotGBSeconds})
+		}
+		var heldMeters, holdKinds []string
+		for _, h := range held {
+			heldMeters = append(heldMeters, h.catalog)
+			holdKinds = append(holdKinds, h.kind)
 		}
 		thresholds := &billing.AgentModelThresholds{Store: st, Interval: cfg.StripeReconcileInterval, Metrics: billingMetrics}
 		stripeClient := billing.NewStripe(billing.StripeConfig{
@@ -1018,7 +1033,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		// hour closes, so it ships ~5 min after the hour instead of after the
 		// 48h seal — what lets a Stripe usage threshold charge promptly.
 		emitter.FastKinds = []string{store.UsageKindAgentModelCostMicroUSD}
-		emitter.HoldKinds = heldMeters
+		emitter.HoldKinds = holdKinds
 		// docs/ADR030 §13: each plan's included pipeline minutes are free, so
 		// only the build minutes above them reach Stripe.
 		emitter.Plans = base
@@ -1269,12 +1284,13 @@ func startOpsRoleServer(ctx context.Context, cfg *Config, h *opsrole.Handler, id
 // the sandbox verbs 503 and the feature is not registered (byte-identical). The
 // per-workspace tenant-key provider (m32 t006) and template registry are
 // wired as they land; for now a single default "base" template.
-func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.Client, st *store.PGStore) {
+func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.Client, st *store.PGStore, reg prometheus.Registerer) {
 	if cfg.OpenSandboxURL != "" {
 		deps.SandboxClient = sandbox.NewClient(cfg.OpenSandboxURL)
 		deps.SandboxMaxGroups = cfg.SandboxMaxGroupsPerWorkspace
 		deps.SandboxMaxGroupConcurrency = cfg.SandboxMaxGroupConcurrency
 		deps.SandboxMaxActive = cfg.SandboxMaxActivePerWorkspace
+		deps.SandboxMaxStorageBytes = int64(cfg.SandboxMaxStorageGBPerWorkspace) * store.BytesPerDecimalGB
 		// Both defaults are digest-pinned (w7/m85): a sandbox template names an
 		// image bex RUNS, so a floating tag let two creates months apart start
 		// different code with no record of the change. The tag is retained ahead
@@ -1345,7 +1361,26 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 		// (st nil), Keys stays nil and OpenSandbox must run single-tenant.
 		if st != nil {
 			deps.SandboxKeys = sandboxKeyProvider{st}
-			deps.SandboxMeter = &sandbox.Meter{Client: deps.SandboxClient, Store: st}
+			deps.SandboxStorage = st
+			deps.SandboxMeter = &sandbox.Meter{Client: deps.SandboxClient, Store: st, StorageMetrics: sandbox.NewStorageMetrics(reg)}
+			// A suspended sandbox pays for its retained image, sized from its manifest
+			// in the registry. Unset, nothing is sized and nothing billed.
+			if cfg.SandboxSnapshotRegistryURL != "" {
+				registry := sandbox.RegistryConfig{
+					BaseURL:   cfg.SandboxSnapshotRegistryURL,
+					Prefix:    cfg.SandboxSnapshotRepoPrefix,
+					Container: cfg.SandboxSnapshotContainer,
+					User:      cfg.SandboxSnapshotRegistryUser,
+					Password:  cfg.SandboxSnapshotRegistryPassword,
+				}
+				deps.SandboxMeter.Sizer = &sandbox.RegistrySizer{RegistryConfig: registry}
+				// Deleting a gone sandbox's images needs its own credential with the
+				// delete action; without one they stay (retention keeps five tags).
+				if cfg.SandboxSnapshotRegistryGCUser != "" {
+					registry.User, registry.Password = cfg.SandboxSnapshotRegistryGCUser, cfg.SandboxSnapshotRegistryGCPass
+					deps.SandboxMeter.Reaper = &sandbox.RegistryReaper{RegistryConfig: registry}
+				}
+			}
 			go deps.SandboxMeter.Run(ctx)
 			// Idle suspension (w2/m278): exec/file activity is recorded in the
 			// store; the sweeper itself starts once the Service exists.

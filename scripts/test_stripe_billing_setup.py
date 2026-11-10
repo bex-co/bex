@@ -37,7 +37,7 @@ class StripeBillingSetupTest(TestCase):
     def test_pricing_catalog_has_expected_paid_dimensions(self):
         dimensions = SETUP.parse_pricing()
         names = {name for name, _, _ in dimensions}
-        self.assertEqual(18, len(dimensions))
+        self.assertEqual(19, len(dimensions))
         self.assertIn("instance_seconds.service.starter", names)
         self.assertIn("instance_seconds.postgres.basic-1gb", names)
         for tier in ("1c-2g", "pro-4gb", "basic-4gb"):  # w2/m171 HA-eligible plans
@@ -49,6 +49,9 @@ class StripeBillingSetupTest(TestCase):
         self.assertIn("storage_gb_hours", names)
         self.assertIn("disk_gb_hours", names)
         self.assertIn("sandbox_compute_seconds", names)
+        self.assertIn("sandbox_snapshot_gb_hours", names)  # w22/m313
+        self.assertNotIn("sandbox_memory_gb_hours", names)  # shadow meter: no Stripe meter
+        self.assertNotIn("sandbox_memory_gb_seconds", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
 
     def test_agent_model_bills_through_one_cost_meter(self):
@@ -66,7 +69,7 @@ class StripeBillingSetupTest(TestCase):
 
     def test_workspace_plan_fees_are_not_usage_meters(self):
         names = {name for name, _, _ in SETUP.parse_pricing()}
-        self.assertEqual(18, len(names))
+        self.assertEqual(19, len(names))
         self.assertTrue(all("workspace" not in name for name in names))
         sheet = SETUP.PRICING.read_text()
         self.assertIn("usdPerMonth: 17.50", sheet)

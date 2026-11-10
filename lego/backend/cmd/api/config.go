@@ -172,13 +172,18 @@ type Config struct {
 	// StripeAgentModelMeter (BEX_STRIPE_AGENT_MODEL_METER=1) says the Stripe
 	// catalog carries the agent_model_cost_microusd Price (ADR091 D3). Unset,
 	// that meter is held: off every Subscription and pending in the outbox.
-	StripeAgentModelMeter   bool
-	StripeSealHours         int
-	StripeSealHoursSet      bool
-	StripeDunningEnabled    bool
-	StripeGracePeriod       time.Duration
-	StripeReconcileInterval time.Duration
-	StripeWebhookSecret     string
+	StripeAgentModelMeter bool
+	// StripeSandboxStorageMeter (BEX_STRIPE_SANDBOX_STORAGE_METER=1) says the
+	// Stripe catalog carries the sandbox_snapshot_gb_hours Price.
+	// Unset, that meter is held: off every Subscription and pending in the
+	// outbox, so storage rows are never billed against a Price that does not exist.
+	StripeSandboxStorageMeter bool
+	StripeSealHours           int
+	StripeSealHoursSet        bool
+	StripeDunningEnabled      bool
+	StripeGracePeriod         time.Duration
+	StripeReconcileInterval   time.Duration
+	StripeWebhookSecret       string
 
 	// Control plane (w1/m2), parsed only when BEX_CP_DB_URI is set outside
 	// stdio mode.
@@ -254,9 +259,25 @@ type Config struct {
 	// Sandbox groups (w22/m311): the group cap per workspace, the ceiling and
 	// default of a group's concurrency limit, and the workspace-wide cap on
 	// active sandboxes across groups. 0 disables each.
-	SandboxMaxGroupsPerWorkspace       int
-	SandboxMaxGroupConcurrency         int
-	SandboxMaxActivePerWorkspace       int
+	SandboxMaxGroupsPerWorkspace int
+	SandboxMaxGroupConcurrency   int
+	SandboxMaxActivePerWorkspace int
+	// The storage meter's registry reader (w22/m313, ADR023 § Sandbox snapshot
+	// storage): the in-cluster Zot that holds suspended sandboxes' images, a
+	// read-only credential scoped to the snapshot prefix, and the controller's
+	// repository layout. An empty URL turns sizing off.
+	SandboxSnapshotRegistryURL string
+	// SandboxMaxStorageGBPerWorkspace caps the image bytes a workspace's
+	// suspended sandboxes retain, in decimal GB (bex's own bound, ADR104 D11; 0
+	// disables). The GC credential, with the delete action on the snapshot
+	// prefix, turns on deleting a gone sandbox's images.
+	SandboxMaxStorageGBPerWorkspace    int
+	SandboxSnapshotRegistryGCUser      string
+	SandboxSnapshotRegistryGCPass      string
+	SandboxSnapshotRegistryUser        string
+	SandboxSnapshotRegistryPassword    string
+	SandboxSnapshotRepoPrefix          string
+	SandboxSnapshotContainer           string
 	MaxBlueprintGroupings              int
 	ImageCompatibilityWorkspaces       map[string]bool
 	PrivateImagePortsDisabled          bool
@@ -474,6 +495,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			cfg.StripeTaxCode = getenv("BEX_STRIPE_TAX_CODE")
 			cfg.StripeTaxBehavior = getenv("BEX_STRIPE_TAX_BEHAVIOR")
 			cfg.StripeAgentModelMeter = getenv("BEX_STRIPE_AGENT_MODEL_METER") == "1"
+			cfg.StripeSandboxStorageMeter = getenv("BEX_STRIPE_SANDBOX_STORAGE_METER") == "1"
 			cfg.StripeSealHours, cfg.StripeSealHoursSet = p.positiveInt("BEX_STRIPE_SEAL_HOURS", billing.DefaultSealHours)
 			// The livemode parameter mirrors billing.NewStripe's derivation; the
 			// gate deliberately ignores it (any mode is supported since w4/m81
@@ -573,6 +595,20 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg.SandboxMaxGroupsPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE", sandbox.RenderMaxSandboxGroups)
 	cfg.SandboxMaxGroupConcurrency = p.zeroableInt("BEX_SANDBOX_MAX_GROUP_CONCURRENCY", sandbox.RenderMaxGroupConcurrency)
 	cfg.SandboxMaxActivePerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE", 100)
+	cfg.SandboxSnapshotRegistryURL = strings.TrimRight(strings.TrimSpace(getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_URL")), "/")
+	if u := cfg.SandboxSnapshotRegistryURL; u != "" {
+		if parsed, err := url.Parse(u); err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+			p.warnf("BEX_SANDBOX_SNAPSHOT_REGISTRY_URL=%q is not an http(s) URL; sandbox storage is not metered", u)
+			cfg.SandboxSnapshotRegistryURL = ""
+		}
+	}
+	cfg.SandboxMaxStorageGBPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE", 500)
+	cfg.SandboxSnapshotRegistryGCUser = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_USER")
+	cfg.SandboxSnapshotRegistryGCPass = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_PASSWORD")
+	cfg.SandboxSnapshotRegistryUser = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_USER")
+	cfg.SandboxSnapshotRegistryPassword = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_PASSWORD")
+	cfg.SandboxSnapshotRepoPrefix = strings.Trim(p.str("BEX_SANDBOX_SNAPSHOT_REPO_PREFIX", sandbox.DefaultSnapshotRepoPrefix), "/")
+	cfg.SandboxSnapshotContainer = p.str("BEX_SANDBOX_SNAPSHOT_CONTAINER", sandbox.DefaultSnapshotContainer)
 	cfg.ImageCompatibilityWorkspaces = p.imageCompatibilityWorkspaces("BEX_IMAGE_COMPATIBILITY_WORKSPACES")
 	cfg.PrivateImagePortsDisabled = !p.onOff("BEX_PRIVATE_IMAGE_PORTS", true)
 	// Round-11 #3, ADR075 §2, codex-security geyRc8 F1 + round 18 quotas.

@@ -33,6 +33,46 @@ type fakeMeterStore struct {
 	missingWS    string
 	missingSeen  []string
 	labels       map[string]string // "<workspace>/<sandbox>" -> display name
+
+	unsized     []store.SandboxStorageObject
+	reapable    []store.SandboxStorageObject
+	reaped      []string
+	sized       []string
+	accrueCalls int
+	pruneCalls  int
+	stats       store.SandboxStorageStats
+}
+
+func (f *fakeMeterStore) ClaimUnsizedSandboxStorage(context.Context, time.Time, int) ([]store.SandboxStorageObject, error) {
+	return f.unsized, nil
+}
+
+func (f *fakeMeterStore) SetSandboxStorageBytes(_ context.Context, ws, id string, _ time.Time, bytes int64) error {
+	f.sized = append(f.sized, fmt.Sprintf("%s/%s=%d", ws, id, bytes))
+	return nil
+}
+
+func (f *fakeMeterStore) PruneSandboxStorage(context.Context, time.Time, int) (int64, error) {
+	f.pruneCalls++
+	return 0, nil
+}
+
+func (f *fakeMeterStore) AccrueSandboxStorage(context.Context, time.Time, int) (int, error) {
+	f.accrueCalls++
+	return 0, nil
+}
+
+func (f *fakeMeterStore) SandboxStorageStats(context.Context, time.Time) (store.SandboxStorageStats, error) {
+	return f.stats, nil
+}
+
+func (f *fakeMeterStore) ListReapableSandboxStorage(context.Context, int) ([]store.SandboxStorageObject, error) {
+	return f.reapable, nil
+}
+
+func (f *fakeMeterStore) MarkSandboxStorageReaped(_ context.Context, ws, id string, _ time.Time) error {
+	f.reaped = append(f.reaped, ws+"/"+id)
+	return nil
 }
 
 func (f *fakeMeterStore) RecordResourceDisplayNames(_ context.Context, ws string, records []store.ResourceDisplayName) error {
@@ -96,7 +136,7 @@ func TestMeterPollUsesTenantScopeAndAuthoritativePhase(t *testing.T) {
 		t.Fatalf("observations = %+v", fake.observations)
 	}
 	obs := fake.observations[0]
-	if obs.Phase != "running" || obs.WeightMilli != 553 || obs.Tier != "starter" || !obs.ObservedAt.Equal(at) {
+	if obs.Phase != "running" || obs.WeightMilli != 553 || obs.Tier != "starter" || !obs.ObservedAt.Equal(at) || !obs.Polled || obs.StorageRef != "os-1" {
 		t.Fatalf("observation = %+v", obs)
 	}
 	if fake.missingWS != "tea-a" || len(fake.missingSeen) != 1 || fake.missingSeen[0] != "os-1" {
@@ -117,6 +157,65 @@ func TestMeterObservationExcludesSuspendedPhaseAndLegacyUnknownShape(t *testing.
 	delete(base.Metadata, metadataComputeWeight)
 	if _, ok := meterObservation(base, time.Now()); ok {
 		t.Error("legacy sandbox with unknown shape must not be retroactively charged")
+	}
+}
+
+// w22/m313: the memory meter bills the memory a sandbox was created with: the
+// stamped value, else its plan's size, and never a guess for a sandbox with
+// neither (a template-sized one that predates the stamp).
+func TestSandboxMemoryMiB(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		meta map[string]string
+		want int64
+	}{
+		{"stamped", map[string]string{metadataMemoryMiB: "2048", metadataPlan: "starter"}, 2048},
+		{"stamp wins over the plan", map[string]string{metadataMemoryMiB: "4096", metadataPlan: "1c-2g"}, 4096},
+		{"no stamp: the plan's size", map[string]string{metadataPlan: "1c-2g"}, 2048},
+		{"deprecated plan alias", map[string]string{metadataPlan: "starter"}, 512},
+		{"garbage stamp falls back to the plan", map[string]string{metadataMemoryMiB: "lots", metadataPlan: "2c-4g"}, 4096},
+		{"neither: unknown, not guessed", map[string]string{}, 0},
+		{"unknown plan and no stamp", map[string]string{metadataPlan: "custom"}, 0},
+		{"non-positive stamp is ignored", map[string]string{metadataMemoryMiB: "0"}, 0},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := sandboxMemoryMiB(osSandbox{Metadata: tc.meta}); got != tc.want {
+				t.Errorf("sandboxMemoryMiB = %d, want %d", got, tc.want)
+			}
+		})
+	}
+	for memory, want := range map[string]int64{"2Gi": 2048, "512Mi": 512, "1G": 954, "bad": 0, "0": 0, "": 0} {
+		if got := memoryMiBOf(memory); got != want {
+			t.Errorf("memoryMiBOf(%q) = %d, want %d", memory, got, want)
+		}
+	}
+}
+
+// A request-path sample records a pause when it is only accepted, before its
+// image is committed, so it must never open the storage object (w22/m313).
+func TestRequestPathObservationIsNotPolled(t *testing.T) {
+	fake := &fakeMeterStore{}
+	m := &Meter{Store: fake, Now: func() time.Time { return time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC) }}
+	raw := osSandbox{ID: "os-1", Metadata: map[string]string{
+		metadataWorkspace: "tea-a", metadataPlan: "starter", metadataRegime: metadataSandboxRegime,
+		metadataComputeWeight: "553",
+	}}
+	raw.Status.State = string(StatusSuspended)
+	m.Observe(context.Background(), raw)
+	if len(fake.observations) != 1 || fake.observations[0].Polled || fake.observations[0].Phase != "suspended" {
+		t.Fatalf("observations = %+v, want one unpolled suspended sample", fake.observations)
+	}
+}
+
+func TestMeterObservationCarriesMemory(t *testing.T) {
+	raw := osSandbox{ID: "os-1", Metadata: map[string]string{
+		metadataWorkspace: "tea-a", metadataPlan: "1c-2g", metadataRegime: metadataSandboxRegime,
+		metadataComputeWeight: "1211", metadataMemoryMiB: "2048",
+	}}
+	raw.Status.State = "Running"
+	obs, ok := meterObservation(raw, time.Now())
+	if !ok || obs.MemoryMiB != 2048 || obs.WeightMilli != 1211 {
+		t.Fatalf("observation = %+v ok=%v", obs, ok)
 	}
 }
 

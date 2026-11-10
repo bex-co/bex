@@ -179,6 +179,9 @@ func (s *Service) beforeSuspend(ctx context.Context, key string, raw osSandbox) 
 	if !idleTracked(raw) || mapOpenSandboxStatus(raw.Status.State) != StatusRunning {
 		return nil
 	}
+	if err := s.checkStorageCap(ctx, raw); err != nil {
+		return err
+	}
 	now := s.Now()
 	if err := s.Client.PatchMetadata(ctx, key, raw.ID, map[string]string{metadataSuspendedAt: stampMetadataTime(now)}); err != nil {
 		return fmt.Errorf("stamp sandbox suspension: %w", err)

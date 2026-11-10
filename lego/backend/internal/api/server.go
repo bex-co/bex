@@ -402,6 +402,11 @@ type Deps struct {
 	SandboxMaxGroups           int
 	SandboxMaxGroupConcurrency int
 	SandboxMaxActive           int
+	// SandboxStorage reads a workspace's retained sandbox image bytes and
+	// SandboxMaxStorageBytes caps them (BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE,
+	// ADR104 D11; 0 = none): past it a suspend answers 429 SANDBOX_STORAGE_LIMIT.
+	SandboxStorage         sandbox.StorageUsage
+	SandboxMaxStorageBytes int64
 	// SandboxExec wires `render ea sandbox exec` (w3/m33) — bex-api authorizes and
 	// reverse-proxies the SSE from the isolated gateway; nil => the exec verb 503s.
 	SandboxExec *sandbox.ExecConfig
@@ -1279,6 +1284,8 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		MaxGroups:           d.SandboxMaxGroups,
 		MaxGroupConcurrency: d.SandboxMaxGroupConcurrency,
 		MaxActive:           d.SandboxMaxActive,
+		Storage:             d.SandboxStorage,
+		MaxStorageBytes:     d.SandboxMaxStorageBytes,
 	}
 }
 

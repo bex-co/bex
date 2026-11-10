@@ -584,6 +584,16 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Sandbox compute",
     description: "Charge line for metered sandbox compute",
   },
+  "usage.chargeSandboxMemory": {
+    message: "Sandbox memory (included in compute)",
+    description:
+      "Charge line for the allocated memory a sandbox ran with; recorded beside sandbox compute, which already includes it, so it is shown and not billed separately",
+  },
+  "usage.chargeSandboxSnapshotStorage": {
+    message: "Sandbox snapshot storage",
+    description:
+      "Charge line for the image a suspended sandbox retains, billed per GB-month",
+  },
   "usage.creditsTotalLabel": {
     message: "Total balance",
     description: "Label above the credit balance amount",

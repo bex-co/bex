@@ -67,6 +67,8 @@ const CHARGE_LABEL_KEYS: Record<string, string> = {
   build_seconds: "usage.chargeBuild",
   storage_gb_seconds: "usage.chargeStorage",
   sandbox_compute_seconds: "usage.chargeSandboxCompute",
+  sandbox_memory_gb_seconds: "usage.chargeSandboxMemory",
+  sandbox_snapshot_gb_seconds: "usage.chargeSandboxSnapshotStorage",
   disk_gb_seconds: "usage.chargeDisk",
   agent_model_cost_microusd: "usage.chargeAgentModelCost",
   agent_model_input_tokens: "usage.chargeAgentModelInputTokens",

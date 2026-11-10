@@ -40,7 +40,44 @@ type SandboxMeterObservation struct {
 	Phase       string
 	Tier        string
 	WeightMilli int64
-	ObservedAt  time.Time
+	// MemoryMiB is the sandbox's allocated memory, for the memory meter
+	// (UsageKindSandboxMemoryGBSeconds). 0 means unknown: a sandbox created
+	// before the shape was stamped is not memory-metered rather than guessed.
+	MemoryMiB int64
+	// StorageRef is where the registry holds this sandbox's suspend image: the
+	// substrate sandbox id, which differs from SandboxID (the tenant-facing one).
+	// Empty opts the sandbox out of the storage meter (agent-session sandboxes,
+	// whose cost is the session's, ADR047 D6).
+	StorageRef string
+	// Polled marks a sample from the authoritative tenant-scoped list. Only a
+	// polled `suspended` opens the sandbox's storage object: a request-path
+	// `suspended` is recorded when the pause is accepted, before its image commit
+	// has succeeded and while the registry holds no image to size.
+	Polled     bool
+	ObservedAt time.Time
+}
+
+// retainsImage reports whether a phase holds a suspend image the storage meter
+// charges for. `suspending` is neutral: the image is not committed yet (or, on
+// the way back, the sandbox has not resumed).
+func retainsImage(phase string) bool { return phase == "suspended" || phase == "suspending" }
+
+// syncSandboxStorage drives the storage object from a phase transition, inside
+// the cursor's transaction: a polled `suspended` opens it (idempotently), and
+// leaving suspended/suspending for anything else closes it.
+func syncSandboxStorage(ctx context.Context, tx pgx.Tx, obs SandboxMeterObservation, priorPhase string) error {
+	if obs.Polled && obs.Phase == "suspended" && obs.StorageRef != "" {
+		return startSandboxStorageTx(ctx, tx, obs.WorkspaceID, obs.SandboxID, StorageKindRootfs, obs.StorageRef, obs.ObservedAt)
+	}
+	if retainsImage(priorPhase) && !retainsImage(obs.Phase) {
+		if err := endSandboxStorageTx(ctx, tx, obs.WorkspaceID, obs.SandboxID, obs.ObservedAt); err != nil {
+			return err
+		}
+	}
+	if obs.Phase == "terminated" {
+		return queueSandboxImageReapTx(ctx, tx, obs.WorkspaceID, obs.SandboxID)
+	}
+	return nil
 }
 
 // ListSandboxTenantKeys lets the internal poller enumerate tenant-scoped
@@ -66,10 +103,27 @@ func (s *PGStore) ListSandboxTenantKeys(ctx context.Context) ([]SandboxTenantKey
 }
 
 type sandboxMeterState struct {
-	phase, tier string
-	weight      int64
-	observedAt  time.Time
-	remainder   int64
+	phase, tier     string
+	weight          int64
+	memoryMiB       int64
+	observedAt      time.Time
+	remainder       int64
+	memoryRemainder int64
+}
+
+// loadSandboxMeterState reads and row-locks one sandbox's cursor; found is
+// false for a sandbox the meter has not seen.
+func loadSandboxMeterState(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string) (st sandboxMeterState, found bool, err error) {
+	err = tx.QueryRow(ctx, `
+		SELECT phase, tier, weight_milli, memory_mib, observed_at, remainder_nanos, memory_remainder
+		FROM sandbox_meter_states
+		WHERE workspace_id = $1 AND sandbox_id = $2
+		FOR UPDATE`, workspaceID, sandboxID,
+	).Scan(&st.phase, &st.tier, &st.weight, &st.memoryMiB, &st.observedAt, &st.remainder, &st.memoryRemainder)
+	if err == pgx.ErrNoRows {
+		return st, false, nil
+	}
+	return st, err == nil, err
 }
 
 // ObserveSandboxMeter atomically advances one sandbox cursor and accrues the
@@ -78,7 +132,8 @@ type sandboxMeterState struct {
 // errored/terminated intervals are zero. Replaying or racing an older sample is
 // a no-op, which is the restart/retry no-double-count guarantee.
 func (s *PGStore) ObserveSandboxMeter(ctx context.Context, obs SandboxMeterObservation) error {
-	if obs.WorkspaceID == "" || obs.SandboxID == "" || obs.Phase == "" || obs.WeightMilli <= 0 || obs.WeightMilli > 1_000_000 || obs.ObservedAt.IsZero() {
+	if obs.WorkspaceID == "" || obs.SandboxID == "" || obs.Phase == "" || obs.WeightMilli <= 0 || obs.WeightMilli > 1_000_000 ||
+		obs.MemoryMiB < 0 || obs.MemoryMiB > 1_000_000 || obs.ObservedAt.IsZero() {
 		return fmt.Errorf("invalid sandbox meter observation")
 	}
 	tx, err := s.Pool.Begin(ctx)
@@ -93,45 +148,44 @@ func (s *PGStore) ObserveSandboxMeter(ctx context.Context, obs SandboxMeterObser
 		return err
 	}
 
-	var prior sandboxMeterState
-	err = tx.QueryRow(ctx, `
-		SELECT phase, tier, weight_milli, observed_at, remainder_nanos
-		FROM sandbox_meter_states
-		WHERE workspace_id = $1 AND sandbox_id = $2
-		FOR UPDATE`, obs.WorkspaceID, obs.SandboxID,
-	).Scan(&prior.phase, &prior.tier, &prior.weight, &prior.observedAt, &prior.remainder)
-	if err == pgx.ErrNoRows {
+	prior, found, err := loadSandboxMeterState(ctx, tx, obs.WorkspaceID, obs.SandboxID)
+	if err != nil {
+		return err
+	}
+	if !found {
 		_, err = tx.Exec(ctx, `
 			INSERT INTO sandbox_meter_states
-			    (workspace_id, sandbox_id, phase, tier, weight_milli, observed_at)
-			VALUES ($1, $2, $3, $4, $5, $6)`,
-			obs.WorkspaceID, obs.SandboxID, obs.Phase, obs.Tier, obs.WeightMilli, obs.ObservedAt.UTC())
+			    (workspace_id, sandbox_id, phase, tier, weight_milli, memory_mib, observed_at)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+			obs.WorkspaceID, obs.SandboxID, obs.Phase, obs.Tier, obs.WeightMilli, obs.MemoryMiB, obs.ObservedAt.UTC())
 		if err != nil {
 			return err
 		}
+		if err := syncSandboxStorage(ctx, tx, obs, ""); err != nil {
+			return err
+		}
 		return tx.Commit(ctx)
-	}
-	if err != nil {
-		return err
 	}
 	if !obs.ObservedAt.After(prior.observedAt) {
 		return tx.Commit(ctx)
 	}
 
-	remainder := prior.remainder
 	if prior.phase == "running" {
-		remainder, err = accrueSandboxInterval(ctx, tx, obs.WorkspaceID, obs.SandboxID,
-			prior.tier, prior.weight, prior.observedAt, obs.ObservedAt.UTC(), remainder)
-		if err != nil {
+		if err := accrueSandboxInterval(ctx, tx, obs.WorkspaceID, obs.SandboxID, &prior, obs.ObservedAt.UTC()); err != nil {
 			return err
 		}
 	}
 	_, err = tx.Exec(ctx, `
 		UPDATE sandbox_meter_states
-		SET phase = $3, tier = $4, weight_milli = $5, observed_at = $6, remainder_nanos = $7
+		SET phase = $3, tier = $4, weight_milli = $5, memory_mib = $6, observed_at = $7,
+		    remainder_nanos = $8, memory_remainder = $9
 		WHERE workspace_id = $1 AND sandbox_id = $2`,
-		obs.WorkspaceID, obs.SandboxID, obs.Phase, obs.Tier, obs.WeightMilli, obs.ObservedAt.UTC(), remainder)
+		obs.WorkspaceID, obs.SandboxID, obs.Phase, obs.Tier, obs.WeightMilli, obs.MemoryMiB, obs.ObservedAt.UTC(),
+		prior.remainder, prior.memoryRemainder)
 	if err != nil {
+		return err
+	}
+	if err := syncSandboxStorage(ctx, tx, obs, prior.phase); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
@@ -180,46 +234,58 @@ func (s *PGStore) terminateSandboxMeter(ctx context.Context, workspaceID, sandbo
 	if err := lockSandboxMeter(ctx, tx, workspaceID, sandboxID); err != nil {
 		return err
 	}
-	var prior sandboxMeterState
-	err = tx.QueryRow(ctx, `
-		SELECT phase, tier, weight_milli, observed_at, remainder_nanos
-		FROM sandbox_meter_states
-		WHERE workspace_id = $1 AND sandbox_id = $2
-		FOR UPDATE`, workspaceID, sandboxID,
-	).Scan(&prior.phase, &prior.tier, &prior.weight, &prior.observedAt, &prior.remainder)
-	if err == pgx.ErrNoRows || !observedAt.After(prior.observedAt) || prior.phase == "terminated" {
-		return tx.Commit(ctx)
-	}
+	prior, found, err := loadSandboxMeterState(ctx, tx, workspaceID, sandboxID)
 	if err != nil {
 		return err
 	}
-	remainder := prior.remainder
+	if !found || !observedAt.After(prior.observedAt) || prior.phase == "terminated" {
+		return tx.Commit(ctx)
+	}
 	if prior.phase == "running" {
-		remainder, err = accrueSandboxInterval(ctx, tx, workspaceID, sandboxID,
-			prior.tier, prior.weight, prior.observedAt, observedAt.UTC(), remainder)
-		if err != nil {
+		if err := accrueSandboxInterval(ctx, tx, workspaceID, sandboxID, &prior, observedAt.UTC()); err != nil {
 			return err
 		}
 	}
 	_, err = tx.Exec(ctx, `
 		UPDATE sandbox_meter_states
-		SET phase = 'terminated', observed_at = $3, remainder_nanos = $4
-		WHERE workspace_id = $1 AND sandbox_id = $2`, workspaceID, sandboxID, observedAt.UTC(), remainder)
+		SET phase = 'terminated', observed_at = $3, remainder_nanos = $4, memory_remainder = $5
+		WHERE workspace_id = $1 AND sandbox_id = $2`,
+		workspaceID, sandboxID, observedAt.UTC(), prior.remainder, prior.memoryRemainder)
 	if err != nil {
+		return err
+	}
+	// A sandbox that vanished (terminated, or expired at pause + 30 days) no
+	// longer retains its image, and what the registry still holds is queued for
+	// deletion.
+	if retainsImage(prior.phase) {
+		if err := endSandboxStorageTx(ctx, tx, workspaceID, sandboxID, observedAt); err != nil {
+			return err
+		}
+	}
+	if err := queueSandboxImageReapTx(ctx, tx, workspaceID, sandboxID); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
-// accrueSandboxInterval splits an interval at UTC hour boundaries. Quantity is
-// milli-vCPU-equivalent seconds; remainder carries sub-unit nanoseconds across
-// samples so a fast poll cadence cannot systematically round usage down.
+// The two running meters divide nanoseconds x per-second amount by these:
+// weighted milli-vCPU units are per second, memory is MiB per GiB-second.
+const (
+	sandboxWeightDivisor = int64(time.Second)
+	sandboxMemoryDivisor = 1024 * int64(time.Second)
+)
+
+// sandboxUsageChunk is one UTC hour's share of an interval.
 type sandboxUsageChunk struct {
 	window   time.Time
 	quantity int64
 }
 
-func sandboxIntervalChunks(weight int64, start, end time.Time, remainder int64) ([]sandboxUsageChunk, int64) {
+// sandboxIntervalChunks splits an interval at UTC hour boundaries into whole
+// units of (nanoseconds x perSecond) / divisor. The remainder carries the
+// sub-unit part across samples so a fast poll cadence cannot systematically
+// round usage down.
+func sandboxIntervalChunks(perSecond, divisor int64, start, end time.Time, remainder int64) ([]sandboxUsageChunk, int64) {
 	var chunks []sandboxUsageChunk
 	for cursor := start.UTC(); cursor.Before(end); {
 		window := cursor.Truncate(time.Hour)
@@ -227,9 +293,9 @@ func sandboxIntervalChunks(weight int64, start, end time.Time, remainder int64) 
 		if end.Before(segmentEnd) {
 			segmentEnd = end
 		}
-		numerator := segmentEnd.Sub(cursor).Nanoseconds()*weight + remainder
-		quantity := numerator / int64(time.Second)
-		remainder = numerator % int64(time.Second)
+		numerator := segmentEnd.Sub(cursor).Nanoseconds()*perSecond + remainder
+		quantity := numerator / divisor
+		remainder = numerator % divisor
 		if quantity > 0 {
 			chunks = append(chunks, sandboxUsageChunk{window: window, quantity: quantity})
 		}
@@ -238,8 +304,9 @@ func sandboxIntervalChunks(weight int64, start, end time.Time, remainder int64) 
 	return chunks, remainder
 }
 
-func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID, tier string, weight int64, start, end time.Time, remainder int64) (int64, error) {
-	chunks, remainder := sandboxIntervalChunks(weight, start, end, remainder)
+// addSandboxUsage adds each chunk to the sandbox's usage_hourly row of one kind
+// and returns the total added.
+func addSandboxUsage(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID, kind, tier string, chunks []sandboxUsageChunk) (int64, error) {
 	var total int64
 	for _, chunk := range chunks {
 		total += chunk.quantity
@@ -249,23 +316,44 @@ func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxI
 				VALUES ($1, $2, $3, $4, $5, $6, $7)
 				ON CONFLICT (resource_kind, service_id, kind, tier, window_start)
 				DO UPDATE SET quantity = usage_hourly.quantity + EXCLUDED.quantity`,
-			workspaceID, sandboxID, UsageKindSandboxComputeSeconds, tier,
-			ResourceKindSandbox, chunk.window, chunk.quantity)
+			workspaceID, sandboxID, kind, tier, ResourceKindSandbox, chunk.window, chunk.quantity)
 		if err != nil {
-			return remainder, err
+			return total, err
 		}
+	}
+	return total, nil
+}
+
+// accrueSandboxInterval adds the running interval prior.observedAt..end to the
+// weighted compute meter and, when the sandbox's memory is known, to the memory
+// meter, and advances prior's remainders. Both land in the caller's transaction
+// with the cursor update.
+func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string, prior *sandboxMeterState, end time.Time) error {
+	chunks, remainder := sandboxIntervalChunks(prior.weight, sandboxWeightDivisor, prior.observedAt, end, prior.remainder)
+	total, err := addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxComputeSeconds, prior.tier, chunks)
+	if err != nil {
+		return err
+	}
+	prior.remainder = remainder
+	if prior.memoryMiB > 0 {
+		memChunks, memRemainder := sandboxIntervalChunks(prior.memoryMiB, sandboxMemoryDivisor, prior.observedAt, end, prior.memoryRemainder)
+		if _, err := addSandboxUsage(ctx, tx, workspaceID, sandboxID, UsageKindSandboxMemoryGBSeconds, prior.tier, memChunks); err != nil {
+			return err
+		}
+		prior.memoryRemainder = memRemainder
 	}
 	// The session that owns this sandbox, if any, carries a running total for
 	// its outcome.cost (w9/m178); a sandbox no session adopted updates nothing.
+	// It stays on the weighted compute basis: the memory meter never enters it.
 	if total > 0 {
 		if _, err := tx.Exec(ctx, `
 			UPDATE agent_session_sandboxes
 			SET compute_milli_seconds = compute_milli_seconds + $3
 			WHERE workspace_id = $1 AND sandbox_id = $2`, workspaceID, sandboxID, total); err != nil {
-			return remainder, err
+			return err
 		}
 	}
-	return remainder, nil
+	return nil
 }
 
 // lockSandboxMeter serializes one sandbox's accruals with each other and with

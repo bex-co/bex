@@ -43,7 +43,7 @@ The rows below are the **contract**: what Render does and what bex must do. A ro
 | Execution history: `GET /sandboxes/{id}/execs` | Shipped (w32/m298), verified on production 2026-11-10 | ✅ |
 | Suspend keeps files, memory and running processes (runtime snapshot by default) | Files only: the rootfs is committed and the pod recreated, so memory and processes are lost and `/tmp` is empty (ADR042 D5) | ⚠️ D5 |
 | Create inputs `env`, `name`, `group` | `env` is served (w32/m297: 100 variables, 256 KB, write-only) and so is `name` (w5/m287). `group` is served by w22/m311: a sandbox is created in the named group or the workspace's default one, which is created on first use; the code is in, the production walk is w22/m311 t007 | ✅ `env`, `name`; 🚧 `group`, m311 t007 |
-| Billing: running sandboxes bill used CPU plus allocated memory; suspended bill snapshot storage only | Different model today; D8 decides to adopt Render's | 🚧 D8 |
+| Billing: running sandboxes bill used CPU plus allocated memory; suspended bill snapshot storage only | **Storage half shipped by w22/m313, held until its Stripe Price exists** (a suspended sandbox's retained image bills at $0.056 per GB-month, ADR023 § Sandbox snapshot storage, ADR030 §15); memory is recorded as a shadow meter; CPU billed on use is w22/m314, so a running sandbox still bills the weighted allocated-shape charge | 🚧 D8 (CPU) |
 
 ### D3 — Network policy
 
@@ -63,6 +63,8 @@ m285 is the vehicle. It is blocked behind w2/m278 (its production walk and the D
 **Security of the capture path.** Today's suspend path runs a commit Job in `opensandbox-snapshot`, a PSS-privileged namespace that mounts the node's `containerd.sock` (ADR042 D5), which is node-root equivalent. m285 lets a user trigger it on demand, so m285 t001 must fix, before t002 ships: that the Job spec contains nothing a caller chooses (image, mounts, arguments), a per-sandbox and per-workspace rate limit, a size and time bound on a capture, and that a failed capture cannot leave a privileged Pod behind. This makes a privileged path user-triggerable, so route it through the security review lineage.
 
 `runtime` is Render's default kind and bex cannot capture memory today. That is the same gap as D5 and is resolved with it: until a memory checkpoint exists, `--kind runtime` answers a named 400, and ADR018 carries it as a divergence awaiting sign-off (as m285 t001 already plans).
+
+**Billing hook for m285 (w22/m313).** A snapshot is billed storage (D8), and the meter already exists: `store.StartSandboxStorage(workspace, snapshotID, StorageKindSnapshot, "", at)` when the capture succeeds, `SetSandboxStorageBytes(workspace, snapshotID, startedAt, bytes)` once its size is known (m285 reads it from the registry; `RegistrySizer` in `internal/sandbox` does it for a manifest), and `EndSandboxStorage` when it is deleted or expires. All three are idempotent and safe to replay, and an unsized snapshot is never billed as zero silently ([ADR023 § Sandbox snapshot storage](ADR023-usage-metering.md#sandbox-snapshot-storage-w22m313-adr104-d8)). m285 must call them rather than add a second meter.
 
 ### D5 — The main substrate divergence: memory and processes
 
@@ -194,9 +196,9 @@ The article says APIs, defaults and limits might change before general availabil
 
 **Not settled.**
 
-- Whether Zot or OpenSandbox can report a snapshot's compressed byte size. Neither the sandbox package nor `deploy/opensandbox` has a size field, so this needs reading Zot's search API. Layers shared between a sandbox's successive commits will be counted more than once unless the API dedupes; charge the sum and say so.
+- **Settled (w22/m313 t001, 2026-11-10):** the byte source is the OCI manifest in Zot, `config.size + Σ layers[].size`, read by the highest `snap-gen<N>` tag; neither OpenSandbox's `SandboxSnapshot` status nor Zot's search extension (off in bex's config) reports a size. Billing sums each object's own manifest bytes, so layers shared across two sandboxes' images are counted in each, and a sandbox's older retained tags are bex's retention overhead, not billed. Measured and written down in [ADR023 § Sandbox snapshot storage](ADR023-usage-metering.md#sandbox-snapshot-storage-w22m313-adr104-d8).
 - Whether `resuming` time is billed. Render does not say. Keep it free.
-- Whether a running sandbox that still holds its old rootfs image keeps paying storage for it. The meter follows whatever D11's GC rule retains.
+- **Settled (w22/m313 t001):** a resumed, running sandbox pays compute and no storage; the object closes when the phase cursor leaves `suspended`. The old image stays in Zot until retention reaps it, which is bex's overhead under D11.
 - Whether Hobby workspaces pay for sandbox usage. `pricing.yaml` keeps Hobby plans free, ADR091 charges Hobby per use for agent models, and Render's pages do not say. Decide it in ADR030 when the meters land; D11's caps apply either way.
 - The Hobby timeout cap (D2).
 
@@ -229,13 +231,13 @@ Parity widens what a sandbox can do: `allow-all` egress by default, 30-day reten
 | 5 | SDK walk grades every method | w32/m284 (blocked on QA credentials) |
 | 6 | Memory/process preservation (D5) | user sign-off, then a follow-up |
 | 7 | Docker/Compose inside a sandbox (D6): spike on a gVisor node, then pick an option | w22/m312. Functional matrix and the Pod Security/admission read are measured on a local VM, not a bex node (D6 results); the isolation tests (t005) are not run and need a throwaway Cilium node, then user sign-off |
-| 8 | Billing (D8), in order: snapshot-storage meter and memory split (no dependency); gVisor CPU spike, then the used-CPU meter; `pricing.yaml` rates, usage surfaces and Stripe lines; amend ADR023 and ADR030 | **new tasks**; sign-off only if the spike fails |
+| 8 | Billing (D8), in order: snapshot-storage meter and memory split (no dependency); gVisor CPU spike, then the used-CPU meter; `pricing.yaml` rates, usage surfaces and Stripe lines; amend ADR023 and ADR030 | w22/m313 (storage meter, memory shadow meter, bounds, rate, surfaces and Stripe line: **code shipped, production unverified and the Stripe Price not yet created**), then w22/m314 (CPU); sign-off only if the spike fails |
 | 9 | Hobby timeout cap: confirm Render's current rule, then sign off or lift (D2) | **new task**, w2 |
 | 10 | Pin is Render CLI v2.35.0; v2.36.0 (2026-11-06) is out (D10) | bump task, w2 CLI train |
 | 11 | Amend ADR018's sandbox rows that file groups, images and snapshots as omissions or non-goals (§ _Render sandbox groups and snapshots_, and the `sandboxGroupId`, `buildId`/`buildName` and `snapshotId`/`snapshotName` rows of § Sandbox create flags) and the checklist's matching `[-]` rows (`sandboxes snapshots`, `--group`, `--image`, `sandbox-groups`), which this ADR contradicts (D1). Cite them by name: line numbers have drifted | same change that accepts this ADR |
 | 12 | `group` on create and list (D2). `env` (w32/m297) and `name` (w5/m287) are done | w22/m311 t003 shipped in code (REST, GraphQL and MCP); verified live in t007 |
 | 13 | Images/builds (`buildId`, `/sandbox-groups/{id}/builds`) refused today | follow-up, after the REST schema is confirmed |
-| 14 | Storage, compute and egress bounds (D11) | with gaps 2 and 3. **Compute: done in code** by w22/m311 t004 and t006 (the per-group and per-workspace 429, `BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE`). **Egress: open.** The operator's egress meter selects pods by `app.bex.co/app` and `bex.co/app-id`, which a `<ws>-sandbox` pod does not carry, so sandbox egress is not metered and no alert exists (ADR042 § Sandbox groups); the fix is an operator change to the meter's pod selector, then the alert, its promtool test and its Grafana panel. **Storage: open** (w22/m313 t004, w32/m285) |
+| 14 | Storage, compute and egress bounds (D11) | with gaps 2 and 3. **Compute: done in code** by w22/m311 t004 and t006 (the per-group and per-workspace 429, `BEX_SANDBOX_MAX_ACTIVE_PER_WORKSPACE`). **Egress: open.** The operator's egress meter selects pods by `app.bex.co/app` and `bex.co/app-id`, which a `<ws>-sandbox` pod does not carry, so sandbox egress is not metered and no alert exists (ADR042 § Sandbox groups); the fix is an operator change to the meter's pod selector, then the alert, its promtool test and its Grafana panel. **Storage: done in code** by w22/m313 t004 (the per-workspace cap `BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE` with 429 `SANDBOX_STORAGE_LIMIT`, deletion of a gone sandbox's images, the registry-growth gauge and four alerts; the delete credential and the production check are open); the per-group snapshot-count cap stays with w32/m285 |
 | 15 | Drift watch: re-diff Render's sandbox docs, limits and OpenAPI on every CLI pin bump and at least monthly during the beta, through ADR018's re-baseline rounds; freeze the SDK/OpenAPI shapes as contract fixtures like `lego/cli/testdata` | w2 |
 
 ## Out of scope

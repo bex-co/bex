@@ -141,6 +141,50 @@ func TestLoadConfigSandboxGroupLimits(t *testing.T) {
 	}
 }
 
+// TestLoadConfigSandboxSnapshotRegistry: the storage meter's registry reader is
+// off unless a well-formed http(s) URL is set, a trailing slash is dropped, the
+// controller's layout defaults to snapshots/sandbox, and a malformed URL turns
+// sizing off with a warning rather than aiming the meter at it (w22/m313).
+func TestLoadConfigSandboxSnapshotRegistry(t *testing.T) {
+	read := func(env map[string]string) (*Config, []string) {
+		t.Helper()
+		cfg, warnings, err := loadFor(t, env)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return cfg, warnings
+	}
+	if cfg, warnings := read(nil); cfg.SandboxSnapshotRegistryURL != "" || cfg.SandboxSnapshotRepoPrefix != "snapshots" ||
+		cfg.SandboxSnapshotContainer != "sandbox" || len(warnings) != 0 {
+		t.Errorf("defaults = %q %q %q (warnings %v), want off, snapshots, sandbox", cfg.SandboxSnapshotRegistryURL, cfg.SandboxSnapshotRepoPrefix, cfg.SandboxSnapshotContainer, warnings)
+	}
+	cfg, _ := read(map[string]string{
+		"BEX_SANDBOX_SNAPSHOT_REGISTRY_URL": " http://zot.bex-registry.svc:5000/ ", "BEX_SANDBOX_SNAPSHOT_REGISTRY_USER": "meter",
+		"BEX_SANDBOX_SNAPSHOT_REGISTRY_PASSWORD": "pw", "BEX_SANDBOX_SNAPSHOT_REPO_PREFIX": "/snaps/", "BEX_SANDBOX_SNAPSHOT_CONTAINER": "main",
+	})
+	if cfg.SandboxSnapshotRegistryURL != "http://zot.bex-registry.svc:5000" || cfg.SandboxSnapshotRegistryUser != "meter" ||
+		cfg.SandboxSnapshotRegistryPassword != "pw" || cfg.SandboxSnapshotRepoPrefix != "snaps" || cfg.SandboxSnapshotContainer != "main" {
+		t.Errorf("configured = %+v", cfg)
+	}
+	// The storage cap defaults to 500 GB, 0 disables it, a bad value keeps the default.
+	for env, want := range map[string]int{"": 500, "0": 0, "120": 120, "lots": 500} {
+		cfg, _ := read(map[string]string{"BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE": env})
+		if cfg.SandboxMaxStorageGBPerWorkspace != want {
+			t.Errorf("BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE=%q = %d, want %d", env, cfg.SandboxMaxStorageGBPerWorkspace, want)
+		}
+	}
+	gc, _ := read(map[string]string{"BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_USER": "reaper", "BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_PASSWORD": "gc-pw"})
+	if gc.SandboxSnapshotRegistryGCUser != "reaper" || gc.SandboxSnapshotRegistryGCPass != "gc-pw" {
+		t.Errorf("gc credential = %q/%q", gc.SandboxSnapshotRegistryGCUser, gc.SandboxSnapshotRegistryGCPass)
+	}
+	for _, bad := range []string{"zot.bex-registry.svc:5000", "ftp://zot:5000", "http://"} {
+		cfg, warnings := read(map[string]string{"BEX_SANDBOX_SNAPSHOT_REGISTRY_URL": bad})
+		if cfg.SandboxSnapshotRegistryURL != "" || !hasWarning(warnings, "BEX_SANDBOX_SNAPSHOT_REGISTRY_URL") {
+			t.Errorf("url %q = %q (warnings %v), want sizing off and a warning", bad, cfg.SandboxSnapshotRegistryURL, warnings)
+		}
+	}
+}
+
 // TestLoadConfigFatalKnobs pins the "fatal" policy: each previously
 // log.Fatalf'd parse is now a collected error, raised before any side effect.
 func TestLoadConfigFatalKnobs(t *testing.T) {

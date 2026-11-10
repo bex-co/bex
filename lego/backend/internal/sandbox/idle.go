@@ -495,6 +495,11 @@ func (w *IdleSuspender) suspendIfIdle(ctx context.Context, key store.SandboxTena
 	if idle <= 0 || now.Sub(*raw.Created) < idle {
 		return false
 	}
+	// A workspace at its storage cap stays at it: refuse before the claim so every
+	// idle sandbox does not write and release one on every sweep.
+	if err := s.checkStorageCap(ctx, raw); err != nil {
+		return false
+	}
 	claimed, err := s.Activity.ClaimSandboxIdleSuspend(ctx, key.WorkspaceID, raw.ID,
 		*raw.Created, now.Add(-idle), now, now.Add(-suspendClaimGrace))
 	if err != nil {

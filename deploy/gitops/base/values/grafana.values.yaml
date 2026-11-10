@@ -5110,6 +5110,71 @@ dashboards:
                  "legendFormat": "80% alert line"
                 }
               ]
+            },
+            {
+             "id": 25,
+             "type": "timeseries",
+             "title": "Sandbox storage meter: objects by state",
+             "description": "The suspended-sandbox storage meter (w22/m313, ADR023 § Sandbox snapshot storage). open is every retained image; unsized_open is retained but not yet sized from the registry, so it accrues nothing (SandboxStorageUnsized pages after 30m: the charge is delayed, never lost); unsized_closed is an image that closed without ever being sized, which is never billed (SandboxStorageUnsizedClosed warns on any increase); reap_pending is a terminated or expired sandbox's image still in the registry (SandboxStorageReapBacklog warns when it stays above zero for 6h: the delete credential is missing or the registry refuses it); accrual_backlog is seconds not yet added to usage.",
+             "gridPos": {
+               "h": 9,
+               "w": 12,
+               "x": 12,
+               "y": 107
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "short",
+                 "min": 0
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "max by (state) (bex_sandbox_storage_objects)",
+                 "legendFormat": "{{state}}"
+                }
+              ]
+            },
+            {
+             "id": 26,
+             "type": "timeseries",
+             "title": "Sandbox registry bytes retained by suspended sandboxes",
+             "description": "Compressed registry bytes held by suspended sandboxes' retained images: the registry growth the sandbox path causes (ADR104 D11). SandboxStorageGrowth warns when it is above 100 GB and grew by half in a week. The per-workspace cap (BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE) is bex-api's; bex_sandbox_concurrency_refusals_total{limit=\"storage\"} counts the suspends it refused.",
+             "gridPos": {
+               "h": 9,
+               "w": 12,
+               "x": 0,
+               "y": 116
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "bytes",
+                 "min": 0
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "max(bex_sandbox_storage_bytes)",
+                 "legendFormat": "retained"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum(rate(bex_sandbox_concurrency_refusals_total{limit=\"storage\"}[1h])) * 3600",
+                 "legendFormat": "suspends refused by the cap / h"
+                }
+              ]
             }
           ]
         }

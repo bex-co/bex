@@ -1,21 +1,21 @@
 # w22 · m313 — Sandbox storage and memory meters: a suspended sandbox pays snapshot storage, as on Render
 
-**Worker:** worker22 **Goal:** a suspended sandbox is billed for its retained image and nothing else, and memory is metered on its own, as the first half of Render's sandbox billing model **Status:** todo
+**Worker:** worker22 **Goal:** a suspended sandbox is billed for its retained image and nothing else, and memory is metered on its own, as the first half of Render's sandbox billing model **Status:** blocked (t001–t005 and t007–t010 done and shipped; t006's production check and t011's closeout wait for the deploy, a Zot read credential, the Stripe Price and a suspended sandbox)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design: where snapshot bytes come from, and the storage meter's event contract | 1h | — |
-| t002 | Memory meter: record sandbox_memory_gb_seconds beside the existing meter, not yet billed | 1h | t001 |
-| t003 | Storage meter: store, suspend-path hooks, and a registration API for snapshots | 1h30m | t001 |
-| t004 | Storage bounds and garbage collection (ADR104 D11) | 1h30m | t003 |
-| t005 | Rates, usage surfaces and Stripe line for storage; memory shown but unbilled | 1h30m | t002, t003 |
+| t001 | Design: where snapshot bytes come from, and the storage meter's event contract — **DONE** | 1h | — |
+| t002 | Memory meter: record sandbox_memory_gb_seconds beside the existing meter, not yet billed — **DONE** | 1h | t001 |
+| t003 | Storage meter: store, suspend-path hooks, and a registration API for snapshots — **DONE** | 1h30m | t001 |
+| t004 | Storage bounds and garbage collection (ADR104 D11) — **DONE** | 1h30m | t003 |
+| t005 | Rates, usage surfaces and Stripe line for storage; memory shown but unbilled — **DONE** | 1h30m | t002, t003 |
 | t006 | Production check: suspend, accrue, resume, compare with the registry | 1h | t005 |
-| t007 | Amend ADR023, ADR030 and the ledgers | 30m | t006 |
-| t008 | Render parity | 30m | t007 |
-| t009 | Simplify | 20m | t008 |
-| t010 | Test coverage | 40m | t008 |
+| t007 | Amend ADR023, ADR030 and the ledgers — **DONE** | 30m | t006 |
+| t008 | Render parity — **DONE** | 30m | t007 |
+| t009 | Simplify — **DONE** | 20m | t008 |
+| t010 | Test coverage — **DONE** | 40m | t008 |
 | t011 | Closeout | 10m | t009, t010 |
 
 ## Definition of done

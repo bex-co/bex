@@ -275,6 +275,11 @@ func TestStripeMeterEventMapping(t *testing.T) {
 		{"storage rounded to Stripe precision", Event{EventType: "storage_gb_seconds", Properties: map[string]string{"value": "1"}}, "storage_gb_hours", "0.000277777778", false},
 		{"build unchanged", Event{EventType: "build_seconds", Properties: map[string]string{"value": "120"}}, "build_seconds", "120", false},
 		{"sandbox weighted seconds unchanged", Event{EventType: "sandbox_compute_seconds", Properties: map[string]string{"value": "1990800"}}, "sandbox_compute_seconds", "1990800", false},
+		// w22/m313: a kind with no rate in pricing.yaml is skipped, never sent to
+		// Stripe under its own name (the default branch would), where no meter exists.
+		{"sandbox memory shadow meter skipped", Event{EventType: "sandbox_memory_gb_seconds", Properties: map[string]string{"resource_kind": "sandbox", "value": "7200"}}, "", "", true},
+		// A suspended sandbox's retained image bills on its own GB-hour meter.
+		{"sandbox snapshot storage re-based to GB-hours", Event{EventType: "sandbox_snapshot_gb_seconds", Properties: map[string]string{"resource_kind": "sandbox", "value": "864000"}}, "sandbox_snapshot_gb_hours", "240", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -54,6 +54,9 @@ const (
 	metadataRegion        = "bex.co/region"
 	metadataTimeout       = "bex.co/timeout-seconds"
 	metadataComputeWeight = "bex.co/compute-weight-milli"
+	// metadataMemoryMiB is the allocated memory the memory meter bills;
+	// a sandbox created before it was stamped falls back to its plan (memoryMiBOf).
+	metadataMemoryMiB     = "bex.co/memory-mib"
 	metadataTemplate      = "bex.co/template"
 	metadataRegime        = "app.bex.co/regime"
 	metadataSandboxRegime = "sandbox"
@@ -169,6 +172,13 @@ type Service struct {
 	// (bex's own bound, ADR104 D11; 0 = uncapped), past which a create or resume
 	// answers 429.
 	MaxActive int
+	// Storage reads a workspace's retained image bytes for the storage cap, and
+	// MaxStorageBytes is that cap (bex's own bound, ADR104 D11; 0 = uncapped):
+	// past it a suspend is refused with 429 SANDBOX_STORAGE_LIMIT, because it
+	// would commit one more image. The image's size is unknown until it exists,
+	// so a workspace can pass the cap by one image.
+	Storage         StorageUsage
+	MaxStorageBytes int64
 	// UserIDs shows an execution's caller as its Render usr- id.
 	UserIDs core.UserIDLookup
 	// ResumePoll and ActivityHeartbeat override the wake-on-exec poll interval
@@ -450,7 +460,7 @@ func ownerID(ctx context.Context) string {
 	return "subject-" + hex.EncodeToString(sum[:20])
 }
 
-func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan, region string, timeout int, policy *NetworkPolicy, weight int64) map[string]string {
+func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan, region string, timeout int, policy *NetworkPolicy, weight, memoryMiB int64) map[string]string {
 	metadata := map[string]string{
 		metadataOwner:         ownerID(ctx),
 		metadataWorkspace:     workspace,
@@ -460,6 +470,7 @@ func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan,
 		metadataTemplate:      template,
 		metadataRegime:        metadataSandboxRegime,
 		metadataComputeWeight: strconv.FormatInt(weight, 10),
+		metadataMemoryMiB:     strconv.FormatInt(memoryMiB, 10),
 	}
 	if region != "" {
 		metadata[metadataRegion] = region
@@ -942,7 +953,7 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	if len(entry) == 0 {
 		entry = []string{"sleep", "infinity"}
 	}
-	metadata := sandboxMetadata(ctx, workspace, template, plan, region, timeout, policy, weight)
+	metadata := sandboxMetadata(ctx, workspace, template, plan, region, timeout, policy, weight, memoryMiBOf(mem))
 	for k, v := range extraMetadata {
 		metadata[k] = v
 	}

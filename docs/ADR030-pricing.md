@@ -33,6 +33,7 @@ The price sheet therefore lives in the backend module only: `lego/backend/intern
 | Build minutes | $0.005/min | $0.0035/min | 30% off |
 | Postgres storage | $0.30/GB-month | $0.21/GB-month | 30% off |
 | Service disk | $0.25/GB-month | $0.175/GB-month | 30% off |
+| Sandbox snapshot storage | $0.08/GB-month | $0.056/GB-month | 30% off |
 | Bandwidth | $0.15/GB | $0.015/GiB | 90% off |
 
 **Agent model tokens (2026-10-30, [ADR091](ADR091-agent-model-pricing.md)).** Render has no model-token SKU, so the "Render × 0.70" rule cannot apply. Platform-route agent model usage is cost-plus instead: the provider's actual per-request cost × 1.30, metered as `agent_model_cost_microusd` and billed through one model-agnostic Stripe meter.
@@ -199,6 +200,14 @@ Until `w6/m319`, bex priced every egress byte from the first. bex now follows Re
 - **Spin-down.** With Stripe billing on, the `bandwidth` sweeper (every 5 minutes) suspends every service of a workspace that has spent its allowance and cannot pay (no payment method, not comped, not excluded). It uses the Free-hours suspension path (§10): `app.bex.co/bandwidth-suspended: <YYYY-MM>`, Render's `billing` suspender, and services their owner suspended are left alone. A manual resume that month is refused with `OUTBOUND_BANDWIDTH_EXHAUSTED` until a payment method is bound; then it succeeds, and the sweeper resumes the rest within five minutes. A new month resumes them all. Managed datastores keep running: Render's sentence names services. A workspace whose plan cannot be read keeps its state until the read recovers.
 - **Surfaces.** `includedBandwidth {used, included}` (GB) next to `buildMinutes` on REST `GET /v1/usage`, GraphQL `usage` and MCP `get_usage`, and an "Outbound bandwidth" card in the billing page's included usage. Billing owners get one email at 80% and one at exhaustion each month (`bandwidth_notices`), worded for whether the workspace can pay.
 - **Unverified.** Render's exact emails and how fast it spins services down. bex sweeps every five minutes, so a card-less workspace can overrun its allowance by up to five minutes of traffic, which is never billed.
+
+### 15. A suspended sandbox pays snapshot storage, not compute (decided 2026-11-10, [ADR104](ADR104-sandbox-render-parity.md) D8; storage shipped in `w22/m313`)
+
+Render bills a running sandbox for used CPU plus allocated memory and a suspended one for its snapshot storage only. Render's launch post and its comparison article (render.com/articles/render-sandboxes-vs-vercel-sandboxes, published 2026-11-06) give the model and the rate; `render.com/pricing` and `/docs/sandboxes` carry no sandbox prices, so re-read the article before changing a figure. bex adopts the model in two steps:
+
+- **Storage, now (`w22/m313`).** `sandbox_snapshot_gb_seconds` is decimal GB × seconds a suspended sandbox's retained image is kept, at **$0.056 per GB-month** (Render's $0.08 × 0.70, `pricing.yaml` `sandboxSnapshot`, 730-hour month), re-based to GB-hours for Stripe (`sandbox_snapshot_gb_hours`). A workspace whose only sandbox sat suspended for a month with a 10 GB image previews $0.56 and no compute. The bytes are the compressed OCI manifest size read from the registry, and what is double-counted is stated in [ADR023 § Sandbox snapshot storage](ADR023-usage-metering.md#sandbox-snapshot-storage-w22m313-adr104-d8). The meter ships **held**: its rows stay pending in the outbox and the Stripe catalog omits its Price until `scripts/stripe-billing-setup.py` has created it on the account and `BEX_STRIPE_SANDBOX_STORAGE_METER=1`, so nothing bills against a Price that does not exist. Agent-session sandboxes are not metered for storage (their cost is the session's, ADR047 D6).
+- **Memory, recorded, not billed (`w22/m313`).** `sandbox_memory_gb_seconds` (allocated GiB × running seconds) is recorded beside the weighted `sandbox_compute_seconds` charge, which already includes memory at the AgentCore reference ratio, and is shown on the usage surfaces at a rate of $0. Billing switches to memory plus used CPU in one step when the used-CPU meter lands (`w22/m314`); until then the compute charge is unchanged, and so is an agent session's `outcome.cost`.
+- **Hobby.** Whether Hobby workspaces pay for sandbox usage is still open ([ADR104](ADR104-sandbox-render-parity.md) D8): `pricing.yaml` keeps Hobby plans free, and Render's pages do not say.
 
 ## Consequences
 

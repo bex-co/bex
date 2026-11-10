@@ -72,7 +72,10 @@ type Sheet struct {
 	egressIncluded map[string]int64
 	storage        float64 // $/GB-second of USED datastore volume for storage_gb_seconds
 	disk           float64 // $/GB-second of PROVISIONED capacity for disk_gb_seconds
-	sandbox        float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
+	// sandboxSnapshot is $/GB-second of a suspended sandbox's retained image for
+	// sandbox_snapshot_gb_seconds.
+	sandboxSnapshot float64
+	sandbox         float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
 	// sandboxUSD is the same rate, exact, for pricing one session's compute
 	// (SandboxComputeMicroUSD).
 	sandboxUSD *big.Rat
@@ -116,6 +119,11 @@ func (s *Sheet) AgentModelMarkup() float64 {
 	}
 	return s.agentModelMarkup
 }
+
+// SandboxSnapshotMeter is the Stripe dimension a suspended sandbox's retained
+// image bills on: sandbox_snapshot_gb_seconds re-based to GB-hours, like
+// storage_gb_hours, at the sandboxSnapshot rate (w22/m313, ADR023).
+const SandboxSnapshotMeter = "sandbox_snapshot_gb_hours"
 
 // KeyValueCostMeter is the single Stripe dimension every paid Key Value tier
 // bills on: the tier's instance seconds rated at its pricing.yaml rate, in
@@ -201,6 +209,9 @@ func (s *Sheet) BillableMeterNames() []string {
 	}
 	if s.disk > 0 {
 		names = append(names, "disk_gb_hours")
+	}
+	if s.sandboxSnapshot > 0 {
+		names = append(names, SandboxSnapshotMeter)
 	}
 	// Always billable: agentModel.markup is validated to [1, 10] at load.
 	names = append(names, store.UsageKindAgentModelCostMicroUSD)
@@ -519,8 +530,10 @@ func unitFor(kind string) meterUnit {
 		return meterUnit{"GB", BytesPerGiB}
 	case store.UsageKindBuildSeconds:
 		return meterUnit{"min", 60}
-	case store.UsageKindStorageGBSeconds, store.UsageKindDiskGBSeconds:
+	case store.UsageKindStorageGBSeconds, store.UsageKindDiskGBSeconds, store.UsageKindSandboxSnapshotGBSeconds:
 		return meterUnit{"GB-mo", 2628000}
+	case store.UsageKindSandboxMemoryGBSeconds:
+		return meterUnit{"GiB-hr", 3600}
 	case store.UsageKindSandboxComputeSeconds:
 		return meterUnit{"vCPU-hr", 3600000}
 	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
@@ -600,6 +613,13 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 		if resourceKind == store.ResourceKindSandbox {
 			return s.sandbox
 		}
+	case store.UsageKindSandboxSnapshotGBSeconds:
+		// The memory kind (sandbox_memory_gb_seconds) has no case: it is shown at
+		// $0 until the used-CPU meter lets billing switch (w22/m314), because the
+		// weighted compute charge above already includes memory.
+		if resourceKind == store.ResourceKindSandbox {
+			return s.sandboxSnapshot
+		}
 	case store.UsageKindDiskGBSeconds:
 		// A service disk's flat per-GB rate: no tier dimension, because Render
 		// prices a disk by size alone regardless of the plan it hangs off.
@@ -667,6 +687,9 @@ type sheetFile struct {
 	Disk struct {
 		USDPerGBSecond float64 `json:"usdPerGBSecond"`
 	} `json:"disk"`
+	SandboxSnapshot struct {
+		USDPerGBSecond float64 `json:"usdPerGBSecond"`
+	} `json:"sandboxSnapshot"`
 	Workspace []struct {
 		Plan        string  `json:"plan"`
 		USDPerMonth float64 `json:"usdPerMonth"`
@@ -699,15 +722,16 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		return nil, fmt.Errorf("version field is required")
 	}
 	s := &Sheet{
-		compute:   make(map[string]float64, len(f.Compute)),
-		postgres:  make(map[string]float64, len(f.Postgres)),
-		keyvalue:  make(map[string]float64, len(f.KeyValue)),
-		bandwidth: f.Bandwidth.USDPerByte,
-		build:     f.Build.USDPerSecond,
-		storage:   f.Storage.USDPerGBSecond,
-		sandbox:   f.Sandbox.USDPerWeightedSecond,
-		disk:      f.Disk.USDPerGBSecond,
-		workspace: make(map[string]float64, len(f.Workspace)),
+		compute:         make(map[string]float64, len(f.Compute)),
+		postgres:        make(map[string]float64, len(f.Postgres)),
+		keyvalue:        make(map[string]float64, len(f.KeyValue)),
+		bandwidth:       f.Bandwidth.USDPerByte,
+		build:           f.Build.USDPerSecond,
+		storage:         f.Storage.USDPerGBSecond,
+		sandbox:         f.Sandbox.USDPerWeightedSecond,
+		disk:            f.Disk.USDPerGBSecond,
+		sandboxSnapshot: f.SandboxSnapshot.USDPerGBSecond,
+		workspace:       make(map[string]float64, len(f.Workspace)),
 
 		agentModelMarkup: f.AgentModel.Markup,
 	}

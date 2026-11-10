@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
@@ -97,6 +98,10 @@ func TestPlanSizesTheSandbox(t *testing.T) {
 			// larger plan accrues proportionally with no pricing entry of its own.
 			if got.Metadata[metadataComputeWeight] != tc.weightMil {
 				t.Errorf("compute weight = %s, want %s", got.Metadata[metadataComputeWeight], tc.weightMil)
+			}
+			// The memory meter (w22/m313) bills the same allocated memory, in MiB.
+			if want := strconv.FormatInt(memoryMiBOf(tc.mem), 10); got.Metadata[metadataMemoryMiB] != want {
+				t.Errorf("memory MiB = %s, want %s", got.Metadata[metadataMemoryMiB], want)
 			}
 			if sb.Plan != tc.plan || got.Metadata[metadataPlan] != string(tc.plan) {
 				t.Errorf("plan echo = %q / metadata %q, want %q", sb.Plan, got.Metadata[metadataPlan], tc.plan)

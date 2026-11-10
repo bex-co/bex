@@ -512,6 +512,19 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 			return "", "", true
 		}
 		return store.UsageKindSandboxComputeSeconds, e.Properties["value"], false
+	case store.UsageKindSandboxMemoryGBSeconds:
+		// A shadow meter (w22/m313): recorded and shown, never exported until the
+		// used-CPU meter lets billing switch from the weighted charge, whose price
+		// already includes memory (w22/m314). The default branch below would send
+		// it to Stripe under its own name, where no meter exists.
+		return "", "", true
+	case store.UsageKindSandboxSnapshotGBSeconds:
+		// A suspended sandbox's retained image, re-based to GB-hours like storage.
+		// An unpriced sheet has no meter, so nothing is owed.
+		if _, ok := billableMeterNames[pricing.SandboxSnapshotMeter]; !ok {
+			return "", "", true
+		}
+		return pricing.SandboxSnapshotMeter, scaleDown(e.Properties["value"], secondsPerHour), false
 	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
 		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
 		// Platform-route tokens are the per-model usage breakdown only

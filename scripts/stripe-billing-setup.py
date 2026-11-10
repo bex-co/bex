@@ -29,6 +29,12 @@
 #                      different rate, not used bytes (docs/ADR082 D8/D9)
 #   sandbox_compute_seconds → milli-vCPU-equivalent sec  event=sandbox_compute_seconds
 #                      value = weighted seconds, price = usdPerWeightedSecond×100
+#   sandbox_snapshot_gb_seconds → re-based to per-GB-hour  event=sandbox_snapshot_gb_hours
+#                      value = gb_seconds/3600, price = usdPerGBSecond×3600×100. A
+#                      suspended sandbox's retained image (w22/m313, docs/ADR023);
+#                      held by bex-api until BEX_STRIPE_SANDBOX_STORAGE_METER=1.
+#                      sandbox_memory_gb_seconds has NO Stripe meter: it is a shadow
+#                      meter until the used-CPU cutover (w22/m314).
 #   agent_model_cost_microusd → one model-agnostic meter  event=agent_model_cost_microusd
 #                      value = customer price in micro-USD (upstream cost × agentModel.markup,
 #                      half-up per request), price = 0.0001 cents/unit ($0.000001);
@@ -160,6 +166,9 @@ def parse_pricing(text=None):
                 dims.append(("storage_gb_hours", "bex storage (per GB-hour)", q12(rate * SECONDS_PER_HOUR * 100)))
             elif section == "disk":
                 dims.append(("disk_gb_hours", "bex service disk (per provisioned GB-hour)",
+                             q12(rate * SECONDS_PER_HOUR * 100)))
+            elif section == "sandboxSnapshot":
+                dims.append(("sandbox_snapshot_gb_hours", "bex sandbox snapshot storage (per GB-hour)",
                              q12(rate * SECONDS_PER_HOUR * 100)))
             elif section == "sandbox":
                 dims.append(("sandbox_compute_seconds", "bex sandbox compute (weighted second)", q12(rate * 100)))

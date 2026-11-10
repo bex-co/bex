@@ -576,6 +576,16 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "沙箱计算",
     description: "Charge line for metered sandbox compute",
   },
+  "usage.chargeSandboxMemory": {
+    message: "沙箱内存(已含在计算中)",
+    description:
+      "Charge line for the allocated memory a sandbox ran with; recorded beside sandbox compute, which already includes it, so it is shown and not billed separately",
+  },
+  "usage.chargeSandboxSnapshotStorage": {
+    message: "沙箱快照存储",
+    description:
+      "Charge line for the image a suspended sandbox retains, billed per GB-month",
+  },
   "usage.creditsTotalLabel": {
     message: "余额合计",
     description: "Label above the credit balance amount",

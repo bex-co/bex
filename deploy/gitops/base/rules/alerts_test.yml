@@ -1590,6 +1590,94 @@ tests:
         alertname: SandboxOldestOverBound
         exp_alerts: []
 
+  # w22/m313 — the suspended-sandbox storage meter.
+  - name: retained sandbox images that stay unsized warn, a brief gap does not
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_storage_objects{state="unsized_open",job="bex-api"}'
+        values: "2x40"
+      # A different state with the same count must not fire the unsized alert.
+      - series: 'bex_sandbox_storage_objects{state="open",job="bex-api"}'
+        values: "9x40"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: SandboxStorageUnsized
+        exp_alerts: []
+      - eval_time: 31m
+        alertname: SandboxStorageUnsized
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "2 suspended sandbox image(s) retained but not sized, so not billed"
+              description: "The storage meter could not read the registry size of a retained image for 30 minutes, or BEX_SANDBOX_SNAPSHOT_REGISTRY_URL is unset. The charge is delayed, not lost: accrual covers the whole retained interval once the image is sized. Check bex_sandbox_storage_size_failures_total, the read-only registry credential and bex-api's network path to bex-registry, and the controller's snapshot repository layout (BEX_SANDBOX_SNAPSHOT_REPO_PREFIX, BEX_SANDBOX_SNAPSHOT_CONTAINER). Runbook: docs/ADR023-usage-metering.md"
+
+  - name: an image that closed unsized warns once, a steady count does not
+    interval: 1h
+    input_series:
+      - series: 'bex_sandbox_storage_objects{state="unsized_closed",job="bex-api"}'
+        values: "4 4 4 4 4 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5 5"
+    alert_rule_test:
+      - eval_time: 4h
+        alertname: SandboxStorageUnsizedClosed
+        exp_alerts: []
+      - eval_time: 6h
+        alertname: SandboxStorageUnsizedClosed
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "A suspended sandbox's image closed without ever being sized: storage that was never billed"
+              description: "A sandbox resumed or ended while its retained image was still unsized, so its storage seconds will never be charged. SandboxStorageUnsized should have fired first; fix the registry read and the rest will be sized. Runbook: docs/ADR023-usage-metering.md"
+      - eval_time: 30h
+        alertname: SandboxStorageUnsizedClosed
+        exp_alerts: []
+
+  - name: images of gone sandboxes that are not reaped warn after six hours
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_storage_objects{state="reap_pending",job="bex-api"}'
+        values: "3x420"
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: SandboxStorageReapBacklog
+        exp_alerts: []
+      - eval_time: 361m
+        alertname: SandboxStorageReapBacklog
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "3 terminated or expired sandbox image(s) still in the registry"
+              description: "Images of gone sandboxes are not being deleted: BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_USER is unset, or the registry refuses the delete (bex_sandbox_storage_reap_failures_total). Zot retention keeps a repository's five newest tags forever, so these grow the registry until deleted. Runbook: docs/ADR104-sandbox-render-parity.md D11"
+
+  # Registry growth the sandbox path causes: 80 GB ramping over a week to 140 GB,
+  # so seven days before day 8 it held 88.6 GB and 1.5x that is under 140.
+  - name: sandbox registry bytes above 100 GB and up half in a week warn
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_storage_bytes{job="bex-api"}'
+        values: "80e9+5953000x10079 140000287000x1500"
+    alert_rule_test:
+      # Day 3: above 100 GB, but there is no sample seven days earlier to compare.
+      - eval_time: 72h
+        alertname: SandboxStorageGrowth
+        exp_alerts: []
+      - eval_time: 192h
+        alertname: SandboxStorageGrowth
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "Suspended sandboxes hold 130.4GiB of registry, up half in a week"
+              description: "The registry growth the sandbox path causes (ADR104 D11) is above 100 GB and grew by half over seven days. Check which workspaces hold it (bex_sandbox_storage_bytes is per fleet; SELECT workspace_id, sum(bytes) FROM sandbox_storage_objects WHERE ended_at IS NULL GROUP BY 1), the per-workspace cap BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE, and ZotRegistryFillingUp. Runbook: docs/ADR104-sandbox-render-parity.md D11"
+
+  - name: a large but flat sandbox registry stays silent
+    interval: 1m
+    input_series:
+      - series: 'bex_sandbox_storage_bytes{job="bex-api"}'
+        values: "200e9x12960"
+    alert_rule_test:
+      - eval_time: 216h
+        alertname: SandboxStorageGrowth
+        exp_alerts: []
+
   # w3/m84 — bex-api's own origin SLIs. Both rules are per-surface with a traffic
   # floor, so the interesting cases are "a busy surface really is broken" and
   # "a quiet surface's handful of errors must stay silent".

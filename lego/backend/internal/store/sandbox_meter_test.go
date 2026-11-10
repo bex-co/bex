@@ -23,7 +23,7 @@ import (
 
 func TestSandboxIntervalChunksSplitHoursAndCarryFractionalUnits(t *testing.T) {
 	hour := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
-	chunks, remainder := sandboxIntervalChunks(553,
+	chunks, remainder := sandboxIntervalChunks(553, sandboxWeightDivisor,
 		hour.Add(time.Hour-500*time.Millisecond),
 		hour.Add(time.Hour+500*time.Millisecond), 0)
 	if remainder != 0 || len(chunks) != 2 {
@@ -42,7 +42,7 @@ func TestSandboxIntervalChunksSplitHoursAndCarryFractionalUnits(t *testing.T) {
 
 func TestSandboxIntervalChunksDefaultShapeHalfHour(t *testing.T) {
 	start := time.Date(2026, 8, 1, 12, 15, 0, 0, time.UTC)
-	chunks, remainder := sandboxIntervalChunks(553, start, start.Add(30*time.Minute), 0)
+	chunks, remainder := sandboxIntervalChunks(553, sandboxWeightDivisor, start, start.Add(30*time.Minute), 0)
 	if remainder != 0 || len(chunks) != 1 || chunks[0].quantity != 553*30*60 {
 		t.Fatalf("chunks=%+v remainder=%d", chunks, remainder)
 	}

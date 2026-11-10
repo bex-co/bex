@@ -1367,6 +1367,49 @@ groups:
           summary: "Oldest live sandbox is {{ $value | humanizeDuration }} old (past the 24h lifetime bound)"
           description: "A sandbox has outlived the enforced timeoutSeconds maximum (86400). Lifetime enforcement and inventory reconcile should have stopped it; check OpenSandbox terminate health and bex_sandbox_teardown_failures_total. Runbook: docs/ADR014-sandboxes.md"
 
+      # w22/m313 — the suspended-sandbox storage meter (ADR023 § Sandbox snapshot
+      # storage). Its failures are silent by construction: an image that is not
+      # sized is not billed, so the signal is the meter's own gauges.
+      - alert: SandboxStorageUnsized
+        expr: |
+          max(bex_sandbox_storage_objects{state="unsized_open"}) > 0
+        for: 30m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} suspended sandbox image(s) retained but not sized, so not billed"
+          description: "The storage meter could not read the registry size of a retained image for 30 minutes, or BEX_SANDBOX_SNAPSHOT_REGISTRY_URL is unset. The charge is delayed, not lost: accrual covers the whole retained interval once the image is sized. Check bex_sandbox_storage_size_failures_total, the read-only registry credential and bex-api's network path to bex-registry, and the controller's snapshot repository layout (BEX_SANDBOX_SNAPSHOT_REPO_PREFIX, BEX_SANDBOX_SNAPSHOT_CONTAINER). Runbook: docs/ADR023-usage-metering.md"
+
+      - alert: SandboxStorageUnsizedClosed
+        expr: |
+          max(delta(bex_sandbox_storage_objects{state="unsized_closed"}[1d])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "A suspended sandbox's image closed without ever being sized: storage that was never billed"
+          description: "A sandbox resumed or ended while its retained image was still unsized, so its storage seconds will never be charged. SandboxStorageUnsized should have fired first; fix the registry read and the rest will be sized. Runbook: docs/ADR023-usage-metering.md"
+
+      - alert: SandboxStorageReapBacklog
+        expr: |
+          max(bex_sandbox_storage_objects{state="reap_pending"}) > 0
+        for: 6h
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value }} terminated or expired sandbox image(s) still in the registry"
+          description: "Images of gone sandboxes are not being deleted: BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_USER is unset, or the registry refuses the delete (bex_sandbox_storage_reap_failures_total). Zot retention keeps a repository's five newest tags forever, so these grow the registry until deleted. Runbook: docs/ADR104-sandbox-render-parity.md D11"
+
+      - alert: SandboxStorageGrowth
+        expr: |
+          max(bex_sandbox_storage_bytes) > 100e9
+          and max(bex_sandbox_storage_bytes) > 1.5 * max(bex_sandbox_storage_bytes offset 7d)
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "Suspended sandboxes hold {{ $value | humanize1024 }}B of registry, up half in a week"
+          description: "The registry growth the sandbox path causes (ADR104 D11) is above 100 GB and grew by half over seven days. Check which workspaces hold it (bex_sandbox_storage_bytes is per fleet; SELECT workspace_id, sum(bytes) FROM sandbox_storage_objects WHERE ended_at IS NULL GROUP BY 1), the per-workspace cap BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE, and ZotRegistryFillingUp. Runbook: docs/ADR104-sandbox-render-parity.md D11"
+
       - alert: BillingExportBacklog
         expr: |
           bex_billing_enabled == 1

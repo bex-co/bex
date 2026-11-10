@@ -451,6 +451,53 @@ describe("ChargesCard", () => {
     expect(screen.queryByText("disk_gb_seconds")).not.toBeInTheDocument();
   });
 
+  // w22/m313: a suspended sandbox pays retained-image storage and no compute, and
+  // the memory meter is shown beside compute at no charge.
+  it("labels sandbox snapshot storage and the unbilled memory line", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([
+          resource({
+            charges: [
+              {
+                kind: "sandbox_snapshot_gb_seconds",
+                tier: "",
+                unit: "GB-mo",
+                rateUsd: "0.056",
+                quantity: "10.00",
+                costUsd: "0.56",
+              },
+              {
+                kind: "sandbox_memory_gb_seconds",
+                tier: "",
+                unit: "GiB-hr",
+                rateUsd: "0",
+                quantity: "2.00",
+                costUsd: "0.00",
+              },
+            ],
+          }),
+        ])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    fireEvent.click(screen.getByRole("button", { name: /api/ }));
+    expect(screen.getByText("Sandbox snapshot storage")).toBeInTheDocument();
+    expect(
+      screen.getByText("Sandbox memory (included in compute)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("sandbox_snapshot_gb_seconds"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("sandbox_memory_gb_seconds"),
+    ).not.toBeInTheDocument();
+  });
+
   it("totals the estimate and projects month end when there is no invoice", () => {
     render(
       <ChargesCard

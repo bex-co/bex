@@ -115,6 +115,7 @@ func TestBillableMeterNamesArePinned(t *testing.T) {
 		"instance_seconds.service.starter",
 		"key_value_cost_microusd", // every Key Value tier, in micro-USD (w5/m266 D5)
 		"sandbox_compute_seconds",
+		"sandbox_snapshot_gb_hours", // a suspended sandbox's retained image (w22/m313)
 		"storage_gb_hours",
 	}
 	sort.Strings(want)
@@ -135,6 +136,60 @@ func TestEstimateSandboxComputeUsesWeightedSecondRate(t *testing.T) {
 	}})
 	if est.TotalUSD != "0.05" || len(est.Meters) != 1 || est.Meters[0].Kind != store.UsageKindSandboxComputeSeconds {
 		t.Fatalf("sandbox estimate = %+v, want one $0.05 meter", est)
+	}
+}
+
+// w22/m313 (ADR104 D8): a workspace whose only sandbox sat suspended for a
+// pricing month, holding a 10 GB image, owes storage and no compute: Render's
+// $0.08/GB-month at 30% off is $0.056, so $0.56.
+func TestEstimateSuspendedSandboxPaysSnapshotStorageOnly(t *testing.T) {
+	const tenGBFor730Hours = 10 * 730 * 3600
+	est := Default.Estimate([]store.UsageSummaryRow{{
+		ServiceID: "sbx-1", Kind: store.UsageKindSandboxSnapshotGBSeconds, ResourceKind: store.ResourceKindSandbox,
+		Total: tenGBFor730Hours,
+	}})
+	if est.TotalUSD != "0.56" || len(est.Meters) != 1 || est.Meters[0].Kind != store.UsageKindSandboxSnapshotGBSeconds {
+		t.Fatalf("suspended sandbox estimate = %+v, want one $0.56 storage meter and no compute", est)
+	}
+	if len(est.Resources) != 1 || len(est.Resources[0].Charges) != 1 {
+		t.Fatalf("resources = %+v", est.Resources)
+	}
+	if c := est.Resources[0].Charges[0]; c.Unit != "GB-mo" || c.Quantity != "10.00" || c.CostUSD != "0.56" {
+		t.Errorf("charge = %+v, want 10 GB-mo costing 0.56", c)
+	}
+	// The same workspace's storage is not charged to anything but a sandbox.
+	if other := Default.Estimate([]store.UsageSummaryRow{{
+		Kind: store.UsageKindSandboxSnapshotGBSeconds, ResourceKind: store.ResourceKindService, Total: tenGBFor730Hours,
+	}}); other.TotalUSD != "0.00" {
+		t.Errorf("a non-sandbox resource was priced for sandbox storage: %+v", other)
+	}
+}
+
+// The memory meter is shown and not billed (w22/m313): recording it beside the
+// weighted compute charge, which already includes memory, must not change the
+// estimate, and its line reads at a rate of 0.
+func TestMemoryShadowMeterIsShownAndNeverBilled(t *testing.T) {
+	compute := store.UsageSummaryRow{
+		ServiceID: "sbx-1", Kind: store.UsageKindSandboxComputeSeconds, ResourceKind: store.ResourceKindSandbox, Total: 1211 * 3600,
+	}
+	memory := store.UsageSummaryRow{
+		ServiceID: "sbx-1", Kind: store.UsageKindSandboxMemoryGBSeconds, ResourceKind: store.ResourceKindSandbox, Total: 2 * 3600,
+	}
+	without := Default.Estimate([]store.UsageSummaryRow{compute})
+	with := Default.Estimate([]store.UsageSummaryRow{compute, memory})
+	if with.TotalUSD != without.TotalUSD || len(with.Meters) != len(without.Meters) {
+		t.Fatalf("recording memory changed the bill: %+v vs %+v", with, without)
+	}
+	var line *ChargeLine
+	for _, r := range with.Resources {
+		for i, c := range r.Charges {
+			if c.Kind == store.UsageKindSandboxMemoryGBSeconds {
+				line = &r.Charges[i]
+			}
+		}
+	}
+	if line == nil || line.RateUSD != "0" || line.CostUSD != "0.00" || line.Unit != "GiB-hr" || line.Quantity != "2.00" {
+		t.Errorf("memory line = %+v, want 2 GiB-hr at a rate of 0 costing 0.00", line)
 	}
 }
 
@@ -616,6 +671,8 @@ func TestUnitLabelsCoverEveryMeterKind(t *testing.T) {
 		store.UsageKindBuildSeconds,
 		store.UsageKindStorageGBSeconds,
 		store.UsageKindSandboxComputeSeconds,
+		store.UsageKindSandboxMemoryGBSeconds,
+		store.UsageKindSandboxSnapshotGBSeconds,
 	} {
 		if u := unitFor(kind); u.label == "" || u.per <= 0 {
 			t.Errorf("unitFor(%q) = %+v, want a label and positive divisor", kind, u)

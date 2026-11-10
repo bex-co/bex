@@ -318,6 +318,20 @@ func seedMixedStore() *memUsageStore {
 		Kind:         store.UsageKindSandboxComputeSeconds, Tier: "starter",
 		WindowStart: window, Quantity: 1990800,
 	})
+	// w22/m313: the memory shadow meter beside compute, and a sandbox that only
+	// sat suspended, which pays retained-image storage and no compute.
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-mix", ServiceID: "os-1",
+		ResourceKind: store.ResourceKindSandbox,
+		Kind:         store.UsageKindSandboxMemoryGBSeconds, Tier: "starter",
+		WindowStart: window, Quantity: 1800,
+	})
+	_ = st.UpsertUsageHourly(context.Background(), store.HourlyRow{
+		WorkspaceID: "tea-mix", ServiceID: "os-2",
+		ResourceKind: store.ResourceKindSandbox,
+		Kind:         store.UsageKindSandboxSnapshotGBSeconds,
+		WindowStart:  window, Quantity: 36000,
+	})
 	return st
 }
 
@@ -354,8 +368,8 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	if err := json.NewDecoder(w.Body).Decode(&restResp); err != nil {
 		t.Fatalf("REST decode: %v", err)
 	}
-	if len(restResp.Services) != 4 {
-		t.Fatalf("REST: expected 4 resources (app+db+kv+sandbox), got %d", len(restResp.Services))
+	if len(restResp.Services) != 5 {
+		t.Fatalf("REST: expected 5 resources (app+db+kv+2 sandboxes), got %d", len(restResp.Services))
 	}
 	restKinds := map[string]string{}
 	for _, svcEntry := range restResp.Services {
@@ -372,6 +386,24 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 	}
 	if restKinds["os-1"] != store.ResourceKindSandbox {
 		t.Errorf("REST: os-1 resourceKind: want %q, got %q", store.ResourceKindSandbox, restKinds["os-1"])
+	}
+	// The three sandbox meters are listed (GraphQL and MCP are compared with this
+	// REST body below): compute with its memory shadow, and a suspended sandbox
+	// with storage only.
+	sandboxKinds := map[string][]string{}
+	for _, svcEntry := range restResp.Services {
+		if svcEntry.ResourceKind != store.ResourceKindSandbox {
+			continue
+		}
+		for _, row := range svcEntry.Rows {
+			sandboxKinds[svcEntry.ServiceID] = append(sandboxKinds[svcEntry.ServiceID], row.Kind)
+		}
+	}
+	if want := []string{store.UsageKindSandboxComputeSeconds, store.UsageKindSandboxMemoryGBSeconds}; !reflect.DeepEqual(sandboxKinds["os-1"], want) {
+		t.Errorf("REST: os-1 kinds = %v, want %v", sandboxKinds["os-1"], want)
+	}
+	if want := []string{store.UsageKindSandboxSnapshotGBSeconds}; !reflect.DeepEqual(sandboxKinds["os-2"], want) {
+		t.Errorf("REST: os-2 kinds = %v, want %v (a suspended sandbox pays storage and no compute)", sandboxKinds["os-2"], want)
 	}
 	restNames := map[string]string{}
 	for _, svcEntry := range restResp.Services {
@@ -404,8 +436,8 @@ func TestResourceKindSurfacesAcrossAdapters(t *testing.T) {
 		t.Fatalf("GraphQL coverage differs from REST: REST=%+v GraphQL=%+v", restResp.Coverage, gqlCoverage)
 	}
 	gqlServices := usageData["services"].([]any)
-	if len(gqlServices) != 4 {
-		t.Fatalf("GraphQL: expected 4 resources, got %d", len(gqlServices))
+	if len(gqlServices) != 5 {
+		t.Fatalf("GraphQL: expected 5 resources, got %d", len(gqlServices))
 	}
 	gqlEntries := make([]usageServiceEntry, 0, len(gqlServices))
 	for _, raw := range gqlServices {

@@ -23,6 +23,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // Create outcomes. A closed set, deliberately: these become series labels, so
@@ -104,7 +105,7 @@ func NewMetrics(reg prometheus.Registerer) *Metrics {
 		}, []string{"reason"}),
 		refusals: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Name: "bex_sandbox_concurrency_refusals_total",
-			Help: "Sandbox creates and resumes refused with 429 because a group (limit=group) or a workspace (limit=workspace) was at its concurrency limit, by bounded op (create, resume). A refusal is decided before any runtime call, so it is not a create failure.",
+			Help: "Sandbox creates, resumes and suspends refused with 429 because a group (limit=group) or a workspace (limit=workspace) was at its concurrency limit, or a workspace was at its storage cap (limit=storage), by bounded op (create, resume, suspend). A refusal is decided before any runtime call, so it is not a create failure.",
 		}, []string{"limit", "op"}),
 	}
 	reg.MustRegister(m.creates, m.createTime, m.terminates, m.live, m.oldestAge, m.teardownFailures, m.refusals)
@@ -208,4 +209,67 @@ func createOutcome(err error) string {
 func hasCode(err error, code string) bool {
 	var coded *core.CodedError
 	return errors.As(err, &coded) && coded.Code == code
+}
+
+// StorageMetrics reports the storage meter's health. A nil
+// *StorageMetrics is a working no-op.
+type StorageMetrics struct {
+	objects      *prometheus.GaugeVec
+	bytes        prometheus.Gauge
+	sizeFailures prometheus.Counter
+	reapFailures prometheus.Counter
+}
+
+// NewStorageMetrics registers the storage meter's series. The state label is a
+// closed set: open (retained now), unsized_open (retained, not sized yet, so not
+// accruing), unsized_closed (closed without ever being sized: never billed) and
+// accrual_backlog (seconds not yet added to usage) and reap_pending (images of
+// gone sandboxes the registry still holds).
+func NewStorageMetrics(reg prometheus.Registerer) *StorageMetrics {
+	m := &StorageMetrics{
+		objects: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Name: "bex_sandbox_storage_objects",
+			Help: "Sandbox storage objects (a suspended sandbox's retained image) by meter state: open, unsized_open, unsized_closed, accrual_backlog, reap_pending.",
+		}, []string{"state"}),
+		bytes: prometheus.NewGauge(prometheus.GaugeOpts{
+			Name: "bex_sandbox_storage_bytes",
+			Help: "Compressed registry bytes held by suspended sandboxes' retained images (the open, sized storage objects): the registry growth the sandbox path causes.",
+		}),
+		sizeFailures: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "bex_sandbox_storage_size_failures_total",
+			Help: "Failed reads of a retained sandbox image's size from the registry; each is retried on the next meter poll.",
+		}),
+		reapFailures: prometheus.NewCounter(prometheus.CounterOpts{
+			Name: "bex_sandbox_storage_reap_failures_total",
+			Help: "Failed deletions of a gone sandbox's images from the registry; each is retried on the next meter poll.",
+		}),
+	}
+	reg.MustRegister(m.objects, m.bytes, m.sizeFailures, m.reapFailures)
+	return m
+}
+
+func (m *StorageMetrics) set(s store.SandboxStorageStats) {
+	if m == nil {
+		return
+	}
+	m.objects.WithLabelValues("open").Set(float64(s.Open))
+	m.objects.WithLabelValues("unsized_open").Set(float64(s.UnsizedOpen))
+	m.objects.WithLabelValues("unsized_closed").Set(float64(s.UnsizedClosed))
+	m.objects.WithLabelValues("accrual_backlog").Set(float64(s.AccrualBacklog))
+	m.objects.WithLabelValues("reap_pending").Set(float64(s.ReapPending))
+	m.bytes.Set(float64(s.OpenBytes))
+}
+
+func (m *StorageMetrics) reapFailed() {
+	if m == nil {
+		return
+	}
+	m.reapFailures.Inc()
+}
+
+func (m *StorageMetrics) sizeFailed() {
+	if m == nil {
+		return
+	}
+	m.sizeFailures.Inc()
 }
