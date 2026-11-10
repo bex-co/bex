@@ -23,6 +23,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -284,6 +285,39 @@ func TestRecoveryInfoUnreadableBackupsAreAnErrorNotEmpty(t *testing.T) {
 
 	if _, err := svc.RecoveryInfo(context.Background(), "unreadable-db"); err == nil {
 		t.Fatal("a denied Backup list must return an error, not a false empty backup list")
+	}
+}
+
+// TestRecoverRefusesATargetOutsideTheRestoreWindow pins w21/029: a targetTime
+// before the earliest restore point or in the future answers a named 400 and
+// creates no Database; a target inside the window, or after the last base
+// backup but before now (WAL-based PITR), still recovers.
+func TestRecoverRefusesATargetOutsideTheRestoreWindow(t *testing.T) {
+	svc, cl := newServicePostgresResources()
+	seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{Plan: "basic-1gb", Version: "16"}, true)
+	seedBarmanRecoveryWindow(t, cl, "src-db", "2026-07-01T00:00:00Z", "2026-07-10T00:00:00Z")
+	ctx := context.Background()
+
+	for name, target := range map[string]string{
+		"before the window": "2026-06-30T23:59:59Z",
+		"in the future":     svc.Now().Add(48 * time.Hour).UTC().Format(time.RFC3339),
+	} {
+		_, err := svc.Recover(ctx, "src-db", RecoverRequest{Name: "r-" + strings.ReplaceAll(name, " ", "-"), TargetTime: target})
+		if !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("%s => %v, want a named ErrBadRequest", name, err)
+		}
+	}
+	var list appv1alpha1.DatabaseList
+	if err := cl.List(ctx, &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Items) != 1 {
+		t.Errorf("a refused target created a Database: %d databases", len(list.Items))
+	}
+
+	// After the last base backup but before now: valid (archived WAL).
+	if _, err := svc.Recover(ctx, "src-db", RecoverRequest{Name: "after-backup", TargetTime: "2026-07-12T00:00:00Z"}); err != nil {
+		t.Errorf("a target past the last base backup but before now must recover: %v", err)
 	}
 }
 

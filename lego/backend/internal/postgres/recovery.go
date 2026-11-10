@@ -252,7 +252,8 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	if err != nil {
 		return PostgresView{}, err
 	}
-	if _, err := core.ParseTime("targetTime", req.TargetTime); err != nil {
+	target, err := core.ParseTime("targetTime", req.TargetTime)
+	if err != nil {
 		return PostgresView{}, err
 	}
 	if !src.Status.BackupsEnabled {
@@ -267,6 +268,22 @@ func (s *Service) Recover(ctx context.Context, name string, req RecoverRequest) 
 	}
 	if !window.established() {
 		return PostgresView{}, fmt.Errorf("%w: %q has no restore point yet; recovery becomes available once its first backup completes", core.ErrBadRequest, name)
+	}
+	// A point-in-time target outside [earliest restore point, now] can never
+	// bootstrap, and the restore database it provisions is paid capacity (ADR009;
+	// w21/029). The upper bound is now, not the last base backup: PITR replays
+	// archived WAL past it.
+	if !target.IsZero() {
+		earliest, parseErr := time.Parse(time.RFC3339, window.earliest)
+		if parseErr == nil && target.Before(earliest) {
+			return PostgresView{}, core.NewBadRequestError("RECOVERY_TARGET_BEFORE_WINDOW",
+				"targetTime is before the earliest restore point ("+window.earliest+")",
+				map[string]any{"earliestRecoveryTime": window.earliest})
+		}
+		if target.After(s.Now()) {
+			return PostgresView{}, core.NewBadRequestError("RECOVERY_TARGET_IN_FUTURE",
+				"targetTime is in the future", nil)
+		}
 	}
 	plan := req.Plan
 	if plan == "" {
