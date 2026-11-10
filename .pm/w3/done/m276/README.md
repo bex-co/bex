@@ -1,6 +1,6 @@
 # w3 · m276 — Web services' extra private listeners are discovered, and openPorts lists only ports that listen, as on Render
 
-**Worker:** worker3 **Goal:** every service's private-network listeners are reachable and reported the way Render's are: a web service's extra listeners too, and never a declared port nothing listens on **Status:** blocked — t001–t006, t008 done; t007 Closeout waits on t008's production deploy and the live recheck
+**Worker:** worker3 **Goal:** every service's private-network listeners are reachable and reported the way Render's are: a web service's extra listeners too, and never a declared port nothing listens on **Status:** done 2026-11-10
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Simplify — **DONE** | 20m | t004 |
 | t006 | Test coverage — **DONE** | 40m | t004 |
 | t008 | Unfinished sweeps prove declared ports directly — **DONE** | 1h | t006 |
-| t007 | Closeout | 10m | t005, t006, t008 |
+| t007 | Closeout — **DONE** | 10m | t005, t006, t008 |
 
 ## Definition of done
 
@@ -56,3 +56,5 @@
 - **Gate:** the live DoD 2 recheck needs an operator built from t008's commit (`fix(operator): … (w3/m276 t008)`); dev-N shares the cluster's one operator.
 - **Release condition:** a `chore(deploy): pin platform images to <sha>` on main whose sha contains t008's commit (`git merge-base --is-ancestor`). Then, read-only, `GET /v1/services/srv-dbpdvqqj0hgs73eavog0` and `…/srv-dbpdvqa0mi5c73c5pifg` with the QA account: both must read `openPorts: [8080]` within two scan intervals (existing services self-heal on rescan). Record it, delete both fixtures with 404 proofs, run t007.
 - No user decision needed.
+
+- **Closed 2026-11-10** by `/loopx w3`: verified live after deploy `d76389d58` (image `c12cd57facb1`); evidence in `done/t007.md`.
