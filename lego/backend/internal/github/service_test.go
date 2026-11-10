@@ -19,6 +19,7 @@ package github
 import (
 	"context"
 	"errors"
+	"net/http"
 	"strings"
 	"sync"
 	"testing"
@@ -1171,7 +1172,11 @@ const (
 )
 
 func newBlueprintSourceService(fc *fakeClient) *Service {
-	return &Service{Base: &core.Base{Namespace: "default"}, GitHub: fc, Store: newFakeStore()}
+	// The public-repo fallback (w8/m150) never reaches the network in a test.
+	offline := &http.Client{Transport: publicGitRoundTripFunc(func(*http.Request) (*http.Response, error) {
+		return nil, errors.New("test: no network")
+	})}
+	return &Service{Base: &core.Base{Namespace: "default"}, GitHub: fc, Store: newFakeStore(), publicGitHTTPClient: offline}
 }
 
 // A branch advancing between resolution and fetch cannot change the manifest

@@ -120,7 +120,7 @@ func NewClient(cfg Config) (*Client, error) {
 		oauthBaseURL: defaultOAuthBaseURL,
 		clientID:     strings.TrimSpace(cfg.ClientID),
 		clientSecret: strings.TrimSpace(cfg.ClientSecret),
-		httpClient:   &http.Client{Timeout: 30 * time.Second},
+		httpClient:   &http.Client{Timeout: 30 * time.Second, Transport: retryTransport{base: http.DefaultTransport}},
 		now:          time.Now,
 	}, nil
 }

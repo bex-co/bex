@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -1524,6 +1525,14 @@ func (s *Service) resolveBlueprintCommit(ctx context.Context, workspaceID, repoU
 		return "", err
 	}
 	sha, err := s.GitHub.GetRepoCommitSHA(ctx, token, owner, repo, branch)
+	if err != nil && token == "" && githubUnreachable(err) {
+		// A public repo's branch also resolves over git transport, which kept
+		// working on 2026-11-08 while the API failed (w8/m150).
+		if info, ok, _ := s.resolvePublicGitCommit(ctx, repoURL, branch); ok && validCommitSHA(info.Hash) {
+			log.Printf("github: blueprint branch %s/%s@%s resolved over git transport after the API failed: %v", owner, repo, branch, err)
+			sha, err = info.Hash, nil
+		}
+	}
 	if err != nil {
 		return "", classifyBlueprintCommitLookup(err)
 	}
@@ -1544,10 +1553,74 @@ func (s *Service) fetchBlueprintFileAtCommit(ctx context.Context, workspaceID, r
 	// GitHub's contents endpoint accepts a commit as the ref parameter, so the
 	// bytes read here are exactly the resolved revision — never a moved tip.
 	fc, err := s.GitHub.GetFileContents(ctx, token, owner, repo, filePath, commitSHA)
+	if err != nil && token == "" && githubUnreachable(err) {
+		// A public repo's file also reads from GitHub's raw CDN at the same
+		// commit (w8/m150); its answer keeps the API's not-found contract.
+		contents, rawErr := s.readPublicRawFile(ctx, owner, repo, commitSHA, filePath)
+		if rawErr == nil || !githubUnreachable(rawErr) {
+			log.Printf("github: blueprint file %s/%s@%s read from the raw CDN after the API failed: %v", owner, repo, commitSHA, err)
+			return contents, rawErr
+		}
+	}
 	if err != nil {
 		return "", err
 	}
 	return fc.Contents, nil
+}
+
+// githubUnreachable reports whether a GitHub read failed for the platform's
+// sake — a 5xx, a timeout, a reset or another transport error — rather than
+// answering for the repository (a 4xx: missing, private, rate limited).
+func githubUnreachable(err error) bool {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		return apiErr.Status >= 500
+	}
+	return !errors.Is(err, errFileTooLarge) && !errors.Is(err, context.Canceled)
+}
+
+// rawContentBaseURL serves a public repo's files by commit.
+const rawContentBaseURL = "https://raw.githubusercontent.com"
+
+// readPublicRawFile reads one file of a public repo at a commit from GitHub's
+// raw CDN, through the anonymous SSRF-guarded client, with the blueprint size
+// limit. A 404 answers as the contents API's not-found does.
+func (s *Service) readPublicRawFile(ctx context.Context, owner, repo, commitSHA, filePath string) (string, error) {
+	client := anonymousPublicGitClient
+	if s.publicGitHTTPClient != nil {
+		client = s.publicGitHTTPClient
+	}
+	target := rawContentBaseURL + "/" + url.PathEscape(owner) + "/" + url.PathEscape(repo) + "/" + commitSHA + "/" + escapeRepoPath(filePath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("github: raw file: %w", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxBlueprintFileBytes+1))
+	switch {
+	case err != nil:
+		return "", fmt.Errorf("github: raw file: read response: %w", err)
+	case resp.StatusCode == http.StatusNotFound:
+		return "", fmt.Errorf("github: file %q not found at ref %q: %w", filePath, commitSHA, &APIError{Status: resp.StatusCode})
+	case resp.StatusCode != http.StatusOK:
+		return "", &APIError{Status: resp.StatusCode}
+	case len(body) > maxBlueprintFileBytes:
+		return "", fmt.Errorf("%w: file %q at ref %q", errFileTooLarge, filePath, commitSHA)
+	}
+	return string(body), nil
+}
+
+// escapeRepoPath escapes each segment of a repository path, keeping its slashes.
+func escapeRepoPath(p string) string {
+	segments := strings.Split(strings.TrimPrefix(p, "/"), "/")
+	for i, seg := range segments {
+		segments[i] = url.PathEscape(seg)
+	}
+	return strings.Join(segments, "/")
 }
 
 // mapGitHubErr turns a GitHub client error into a clean bex error: a 4xx (e.g. a
