@@ -96,6 +96,24 @@ func TestBuildFailureMessageQuotesTheFailingStep(t *testing.T) {
 // fault and an infra fault must keep producing different condition reasons and
 // different tenant-facing sentences — m123 improves the message without
 // collapsing the classification.
+// A toolchain bex supplies that failed to arrive (w8/m148) reads as the
+// platform's, with its own sentence, not "build failed in the docker build
+// step:" followed by a digest.
+func TestBuildFailureMessageNamesAPlatformFetch(t *testing.T) {
+	const fetch = "bex could not download its Hugo toolchain (HTTP 504 from github.com); this is a platform problem, not a problem with your code — trigger a new deploy to retry, and contact support if it keeps happening"
+	obs := build.Observation{
+		Phase: build.PhaseFailed, Fault: build.FaultInfra, FailedStep: "docker build",
+		Tail: "error: failed to solve: digest mismatch sha256:bef140a1", PlatformFetch: fetch,
+	}
+	view := viewForBuildFault(obs.Fault)
+	if got := buildFailureMessage(view, obs); got != fetch {
+		t.Errorf("message = %q, want the platform fetch sentence", got)
+	}
+	if view.reason != appv1alpha1.ReasonBuildFailedInfrastructure || view.outcome != buildOutcomeInfraFailed {
+		t.Errorf("view = %+v, want the infrastructure class", view)
+	}
+}
+
 func TestBuildFailureClassesStayDistinct(t *testing.T) {
 	tenant := viewForBuildFault(build.FaultTenant)
 	infra := viewForBuildFault(build.FaultInfra)

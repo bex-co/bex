@@ -1,0 +1,113 @@
+name: hugo image (build + verify)
+
+# Publishes ghcr.io/bex-co/bex-hugo from deploy/hugo/ (rationale in its
+# Dockerfile, w8/m148): the reviewed Hugo every native static build copies,
+# so a static build no longer downloads it from GitHub's release CDN.
+#
+# This workflow publishes; it never pins. Pinning the published digest in
+# lego/operator/internal/build/nativehugo.go is a reviewed commit under
+# docs/ADR060 D7, like every other build-toolchain pin
+# (lego/operator/internal/build/toolchain-freshness.json, id
+# `native-hugo-image`). It runs only when the recipe changes.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "deploy/hugo/**"
+      - ".github/workflows/hugo-image.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hugo-image
+  cancel-in-progress: false
+
+env:
+  HUGO_IMAGE: ghcr.io/bex-co/bex-hugo
+  HUGO_VERSION: "0.111.3"
+
+jobs:
+  build:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    # Ref guard: only reviewed main may publish a platform image.
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+          persist-credentials: false
+      # The image unpacks on the build platform, so only the version gate's
+      # amd64 leg needs emulation. The binfmt image is digest-pinned like every
+      # other image bex runs.
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          image: docker.io/tonistiigi/binfmt:qemu-v10.2.3@sha256:400a4873b838d1b89194d982c45e5fb3cda4593fbfd7e08a02e76b03b21166f0
+          platforms: amd64
+          cache-image: false
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Both architectures bex builds on: production is linux/amd64 and local
+      # CAPD clusters on Apple silicon are linux/arm64.
+      - id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy/hugo
+          file: deploy/hugo/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            HUGO_VERSION=${{ env.HUGO_VERSION }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ env.HUGO_VERSION }}
+          tags: |
+            ${{ env.HUGO_IMAGE }}:${{ github.sha }}
+
+      # Regression gate: the pushed digest's /hugo is the extended release on
+      # a Debian 12 base, per platform. Never pushed.
+      - name: verify hugo version on the pushed digest
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy/hugo
+          file: deploy/hugo/version-check.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: false
+          build-args: |
+            HUGO_IMAGE=${{ env.HUGO_IMAGE }}@${{ steps.build.outputs.digest }}
+            HUGO_VERSION=${{ env.HUGO_VERSION }}
+
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      - name: Install reviewed Syft with bounded transport retries
+        timeout-minutes: 15
+        run: python3 scripts/install-syft.py
+      - name: sign image + attest SBOM, then move the version tag
+        env:
+          REF: ${{ env.HUGO_IMAGE }}@${{ steps.build.outputs.digest }}
+        run: |
+          cosign sign --yes --oidc-provider=github-actions "$REF"
+          syft "$REF" -o spdx-json > "$RUNNER_TEMP/sbom.spdx.json"
+          cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate "$RUNNER_TEMP/sbom.spdx.json" "$REF"
+          # The version tag moves only after the regression gate and signature,
+          # so the freshness resolver never reports an unverified digest.
+          docker buildx imagetools create --tag "$HUGO_IMAGE:$HUGO_VERSION" "$REF"
+          echo "Published $REF — pin it per docs/ADR060 D7 (inventory id native-hugo-image)." >> "$GITHUB_STEP_SUMMARY"

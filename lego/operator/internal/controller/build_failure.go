@@ -79,6 +79,11 @@ func viewForBuildFault(f build.Fault) buildFaultView {
 // PodFailurePolicy rule indices) stays in the operator log; it must not enter
 // the string this returns.
 func buildFailureMessage(v buildFaultView, obs build.Observation) string {
+	// A toolchain bex supplies failed to arrive (w8/m148): name it, since a
+	// tenant reading "digest mismatch sha256:…" blames their own build.
+	if obs.PlatformFetch != "" {
+		return obs.PlatformFetch
+	}
 	switch obs.Fault {
 	case build.FaultInfra:
 		// A tenant cannot act on an infrastructure tail (it names registry

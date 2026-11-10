@@ -508,6 +508,10 @@ type Observation struct {
 	// failureTail) from the termination message captureFailureTail arranges.
 	// Empty when unavailable — the failure message must stand without it.
 	Tail string
+	// PlatformFetch is the failure reason's sentence when a native build's
+	// failed step was fetching a toolchain bex supplies (platformFetchFailure);
+	// empty otherwise.
+	PlatformFetch string
 	// Fault attributes a PhaseFailed build (docs/ADR060 D2). Empty for
 	// non-terminal phases.
 	Fault Fault
@@ -653,17 +657,25 @@ func EnsureBuild(ctx context.Context, o Options) (Observation, error) {
 			StartedAt: start, FinishedAt: finish, Created: created}, nil
 	case execution.JobHasCondition(cur, batchv1.JobFailed):
 		start, finish := jobRunWindow(cur)
-		step, tail := failureDetail(ctx, o, cur.Name)
+		step, tail, platformFetch := failureDetail(ctx, o, cur.Name)
+		fault := faultFromJob(execution.JobFailedReason(cur))
+		if platformFetch != "" {
+			// A toolchain bex supplies failed to arrive: the platform's
+			// failure whatever exit the build step chose (w8/m148), so the
+			// correlated-failure alert counts it.
+			fault = FaultInfra
+		}
 		return Observation{
-			Phase:      PhaseFailed,
-			Message:    execution.JobFailureMessage(cur, "unknown build failure"),
-			RunSeconds: windowSeconds(start, finish),
-			StartedAt:  start,
-			FinishedAt: finish,
-			FailedStep: step,
-			Tail:       tail,
-			Fault:      faultFromJob(execution.JobFailedReason(cur)),
-			Created:    created,
+			Phase:         PhaseFailed,
+			Message:       execution.JobFailureMessage(cur, "unknown build failure"),
+			RunSeconds:    windowSeconds(start, finish),
+			StartedAt:     start,
+			FinishedAt:    finish,
+			FailedStep:    step,
+			Tail:          tail,
+			PlatformFetch: platformFetch,
+			Fault:         fault,
+			Created:       created,
 		}, nil
 	}
 	if queued, reason := buildQueued(ctx, o, cur.Name); queued {
@@ -717,14 +729,16 @@ var buildStepNames = map[string]string{
 
 // failureDetail reads the failing phase and its captured output tail off the
 // failed build pod's container statuses — the FallbackToLogsOnError capture
-// captureFailureTail arranges, which nothing read before w6/m123. Best-effort
-// by design: a reaped pod (Job TTL, a gone node) or a List error yields
-// ("", ""), and the caller's message must stand without it. When backoff spent
-// a second attempt, the most recently finished failed container wins.
-func failureDetail(ctx context.Context, o Options, jobName string) (step, tail string) {
+// captureFailureTail arranges, which nothing read before w6/m123 — and, for a
+// native build's docker build step, whether it failed fetching a toolchain bex
+// supplies (platformFetchFailure). Best-effort by design: a reaped pod (Job
+// TTL, a gone node) or a List error yields ("", "", ""), and the caller's
+// message must stand without it. When backoff spent a second attempt, the most
+// recently finished failed container wins.
+func failureDetail(ctx context.Context, o Options, jobName string) (step, tail, platformFetch string) {
 	pods, err := listJobPods(ctx, o.Client, o.Namespace, jobName)
 	if err != nil {
-		return "", ""
+		return "", "", ""
 	}
 	var at time.Time
 	for i := range pods {
@@ -743,9 +757,13 @@ func failureDetail(ctx context.Context, o Options, jobName string) (step, tail s
 				step = s
 			}
 			tail = failureTail(buildkitFailureSummary(nativeCommandFailure(t.Message)))
+			platformFetch = ""
+			if o.Builder == BuilderNative && cs.Name == "buildkit" {
+				platformFetch, _ = platformFetchFailure(t.Message)
+			}
 		}
 	}
-	return step, tail
+	return step, tail, platformFetch
 }
 
 // buildkitProcessFailure is BuildKit's verdict on a failed RUN, which quotes

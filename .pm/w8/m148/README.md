@@ -1,6 +1,6 @@
 # w8 · m148 — Static-site builds keep working when GitHub release downloads fail
 
-**Worker:** worker8 **Goal:** a native static-site build no longer fetches Hugo from `github.com/gohugoio/hugo/releases` on each build. When a platform toolchain fetch does fail, the deploy says which download failed and how, not `digest mismatch sha256:…`. **Status:** todo
+**Worker:** worker8 **Goal:** a native static-site build no longer fetches Hugo from `github.com/gohugoio/hugo/releases` on each build. When a platform toolchain fetch does fail, the deploy says which download failed and how, not `digest mismatch sha256:…`. **Status:** in progress — t002 done, t003 recorded 2026-11-10; t001's image recipe and publish workflow shipped, pin pending its first publish
 
 ## Tasks (in order)
 
