@@ -53,7 +53,7 @@ Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenan
 3. **[m308](m308/README.md)** — each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted" (8 tasks); after m307.
 4. **[m309](m309/README.md)** — pipeline-minute spend limit (7 tasks); after m308.
 5. **[m310](m310/README.md)** — Performance pipeline tier (8 tasks); expected gate: the Hetzner dedicated-vCPU limit (`w2/blocked/m250`).
-6. **[115](115.md)** — ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository (~15m).
+6. **[115](done/115.md)** — **done** — ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository (~15m).
 
 ## Milestones
 
@@ -234,7 +234,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](115.md) (~15m) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
+- [x] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](done/115.md) (~15m) — done 2026-11-10 (ADR026 §8 + ADR018 corrected) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
 - [x] **110** — [tenant-view probe detects an activator-held wake and polls for `service_woken` (#134)](done/110.md) — done 2026-11-08 ← `/pm-brainstorm for w6` 2026-11-08 proposal 3
 - [x] **111** — [Main-only deployment branch policies on the five unrestricted production environments (#101)](done/111.md) — done 2026-11-08: drift script OK, #101 closes on run 42467710122 ← proposal 4; split from w3/blocked/m173 t005
 - [x] **112** — [cli-release-staleness.sh counts from the rewritten copy of an off-main release tag (#111)](done/112.md) — done 2026-11-08 (11 real unreleased commits; `/release cli` still owed)
