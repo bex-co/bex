@@ -9,6 +9,8 @@ on:
       - "docs/bex-cli.md"
       - "docs/cli-compatibility-checklist.md"
       - ".github/workflows/cli-test.yml"
+      - "lego/backend/internal/cliauth/**"
+      - "lego/backend/internal/api/**"
   pull_request:
     paths:
       - "lego/cli/**"
@@ -16,9 +18,18 @@ on:
       - "docs/bex-cli.md"
       - "docs/cli-compatibility-checklist.md"
       - ".github/workflows/cli-test.yml"
+      - "lego/backend/internal/cliauth/**"
+      - "lego/backend/internal/api/**"
 
 permissions:
   contents: read
+
+# One running + one pending run per branch, as the other push/PR checks: a PR
+# cancels its superseded run; main never cancels a running check, so main's
+# state is always reported.
+concurrency:
+  group: cli-test-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   cli:

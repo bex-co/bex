@@ -51,6 +51,7 @@ on:
       - "scripts/ssh-verify-openssh.sh"
       - "scripts/ssh-verify.test.sh"
       - ".github/workflows/gitops.yml"
+      - "scripts/ci-fetch-verified.sh"
   push:
     branches: [main]
     paths:
@@ -98,6 +99,7 @@ on:
       - "scripts/ssh-verify-openssh.sh"
       - "scripts/ssh-verify.test.sh"
       - ".github/workflows/gitops.yml"
+      - "scripts/ci-fetch-verified.sh"
 
 permissions:
   contents: read

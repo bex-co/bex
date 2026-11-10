@@ -13,6 +13,13 @@ on:
 permissions:
   contents: read
 
+# A PR's newer push cancels its superseded run. Inside deploy.yml's
+# workflow_call `github.workflow` names the caller, so the group uses a fixed
+# prefix and the caller's run id: deploy runs never cancel each other's gates.
+concurrency:
+  group: opensandbox-controller-test-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   controller:
     # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.

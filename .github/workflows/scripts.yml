@@ -12,7 +12,9 @@ on:
       - "deploy/hcloud-csi/**"
       - "infra/**"
       - "scripts/**"
-      - "docs/**"
+      # render-schema-drift.test.sh reads its fixture here; the ADR registry
+      # check that read all of docs/ moved to docs.yml.
+      - "docs/render-artifacts/**"
       - "AGENTS.md"
       - ".agents/skills/**"
       - ".claude/commands/**"
@@ -30,7 +32,9 @@ on:
       - "deploy/hcloud-csi/**"
       - "infra/**"
       - "scripts/**"
-      - "docs/**"
+      # render-schema-drift.test.sh reads its fixture here; the ADR registry
+      # check that read all of docs/ moved to docs.yml.
+      - "docs/render-artifacts/**"
       - "AGENTS.md"
       - ".agents/skills/**"
       - ".claude/commands/**"
@@ -148,10 +152,6 @@ jobs:
         run: |
           bash scripts/build-toolchain-freshness.sh validate
           bash scripts/build-toolchain-freshness.test.sh
-      - name: ADR registry integrity (no duplicate numbers, all indexed, no dangling refs)
-        run: bash scripts/adr-registry-validate.sh
-      - name: ADR registry guard self-test
-        run: bash scripts/adr-registry-validate.test.sh
       # The build-pool guards read across three trees (the CAPI overlay, the
       # gitops DaemonSets, and build.go's request constant), so they run here
       # where the triggers already cover all three — clusterapi-validate.yml's

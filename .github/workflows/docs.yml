@@ -1,21 +1,45 @@
 name: docs (prettier)
 
 # Keep Markdown consistently formatted. Markdown-only (`**/*.md`) so it never touches
-# the k8s/Helm YAML; .prettierignore excludes vendored/gitignored docs. Fix locally with:
+# the k8s/Helm YAML; .prettierignore excludes vendored/gitignored docs and .pm, and
+# the path filter mirrors it. It also owns the ADR registry check, which reads
+# every Markdown file. Fix formatting locally with:
 #   npx prettier@3.4.2 --write "**/*.md"
 on:
   pull_request:
     paths:
       - "**/*.md"
+      # .prettierignore's trees: a push touching only them checks nothing.
+      - "!.pm/**"
+      - "!external/**"
+      - "!deploy/gitops/charts/opensandbox-controller/**"
+      - "!lego/operator/internal/build/testdata/render-jekyll/**"
+      - "!lego/cli/internal/skills/pack/**"
+      - "!lego/cli/internal/skills/packgen/overrides/**"
+      - "!.claude/skills/security-audit/**"
+      - "!.agents/skills/security-audit/**"
       - ".prettierrc.json"
       - ".prettierignore"
+      - "scripts/adr-registry-validate.sh"
+      - "scripts/adr-registry-validate.test.sh"
       - ".github/workflows/docs.yml"
   push:
     branches: [main]
     paths:
       - "**/*.md"
+      # .prettierignore's trees: a push touching only them checks nothing.
+      - "!.pm/**"
+      - "!external/**"
+      - "!deploy/gitops/charts/opensandbox-controller/**"
+      - "!lego/operator/internal/build/testdata/render-jekyll/**"
+      - "!lego/cli/internal/skills/pack/**"
+      - "!lego/cli/internal/skills/packgen/overrides/**"
+      - "!.claude/skills/security-audit/**"
+      - "!.agents/skills/security-audit/**"
       - ".prettierrc.json"
       - ".prettierignore"
+      - "scripts/adr-registry-validate.sh"
+      - "scripts/adr-registry-validate.test.sh"
       - ".github/workflows/docs.yml"
 
 permissions:
@@ -35,9 +59,13 @@ jobs:
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 30
     steps:
-      # full-checkout: prettier checks every markdown file, .pm included (w6/m157)
+      # full-checkout: prettier and the ADR registry check read every markdown file (w6/m157)
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
       - run: npx --yes prettier@3.4.2 --check "**/*.md"
+      - name: ADR registry integrity (no duplicate numbers, all indexed, no dangling refs)
+        run: bash scripts/adr-registry-validate.sh
+      - name: ADR registry guard self-test
+        run: bash scripts/adr-registry-validate.test.sh

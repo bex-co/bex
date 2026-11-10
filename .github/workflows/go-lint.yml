@@ -29,6 +29,8 @@ on:
       - "lego/types/**"
       - "lego/cli/**"
       - ".github/workflows/go-lint.yml"
+      - "lego/go.work"
+      - "lego/go.work.sum"
   push:
     branches: [main]
     paths:
@@ -37,6 +39,8 @@ on:
       - "lego/types/**"
       - "lego/cli/**"
       - ".github/workflows/go-lint.yml"
+      - "lego/go.work"
+      - "lego/go.work.sum"
 
 permissions:
   contents: read

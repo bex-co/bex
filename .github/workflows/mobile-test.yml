@@ -18,6 +18,13 @@ on:
 permissions:
   contents: read
 
+# One running + one pending run per branch, as the other push/PR checks: a PR
+# cancels its superseded run; main never cancels a running check, so main's
+# state is always reported.
+concurrency:
+  group: mobile-test-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   mobile:
     # Public-repo safety (github-actions-validate.sh rule 7): fork PR heads never run this job.

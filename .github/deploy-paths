@@ -23,4 +23,6 @@ scripts/test_install_syft.py
 scripts/stripe-billing-*.sh
 scripts/stripe_billing_*.py
 scripts/test_stripe_billing_*.py
+scripts/stripe_orphan_audit.py
+scripts/test_stripe_orphan_audit.py
 scripts/lib/stripe-billing.sh

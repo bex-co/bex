@@ -19,11 +19,21 @@ on:
       - "scripts/stripe_billing_*.py"
       - "scripts/test_stripe_billing_*.py"
       - "scripts/lib/stripe-billing.sh"
+      - "scripts/stripe_orphan_audit.py"
+      - "scripts/test_stripe_orphan_audit.py"
+      - "scripts/ci-fetch-verified.sh"
       - ".github/workflows/backend-test.yml"
   workflow_call: {}
 
 permissions:
   contents: read
+
+# A PR's newer push cancels its superseded run. Inside deploy.yml's
+# workflow_call `github.workflow` names the caller, so the group uses a fixed
+# prefix and the caller's run id: deploy runs never cancel each other's gates.
+concurrency:
+  group: backend-test-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   backend:
