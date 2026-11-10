@@ -43,4 +43,23 @@ describe("NewProjectDialog", () => {
       screen.getByRole("button", { name: "Create Project" }),
     ).toBeDisabled();
   });
+
+  // w21/036: the server's label rule is checked before submit.
+  it("refuses a 101-character name inline and accepts 100 CJK characters", async () => {
+    const user = userEvent.setup();
+    render(<NewProjectDialog onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: /new project/i }));
+    const name = screen.getByLabelText("Name");
+    const submit = screen.getByRole("button", { name: "Create Project" });
+
+    await user.click(name);
+    await user.paste("a".repeat(101));
+    expect(submit).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("up to 100 characters");
+
+    await user.clear(name);
+    await user.paste("受".repeat(100));
+    expect(submit).toBeEnabled();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
 });

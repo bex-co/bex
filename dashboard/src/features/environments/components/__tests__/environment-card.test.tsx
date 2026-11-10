@@ -529,6 +529,28 @@ describe("EnvironmentCard", () => {
     expect(rename).toHaveBeenCalledWith("env-1", "production");
   });
 
+  it("refuses an over-long environment name inline and never renames (w21/036)", async () => {
+    const user = userEvent.setup();
+    renderCard();
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByRole("textbox", {
+      name: "Environment name",
+    });
+    await user.clear(input);
+    await user.click(input);
+    await user.paste("a".repeat(101));
+
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "up to 100 characters",
+    );
+    await user.type(input, "{Enter}");
+    expect(rename).not.toHaveBeenCalled();
+  });
+
   it("deletes behind a confirmation", async () => {
     const user = userEvent.setup();
     renderCard();

@@ -1,11 +1,16 @@
+import { isValidLabel } from "@/common/lib/utils/resource-label";
 import {
   isValidSecretFileName as isValidServiceSecretFileName,
   VALID_ENV_KEY,
 } from "@/features/services/lib/environment-draft";
 
-/** bex-api and Render both accept any non-empty group display name. */
+/**
+ * A group name is a free-form label: bex-api holds it to core.CheckLabel (no
+ * control characters, at most 100 code points) since w4/419, so the form checks
+ * the same rule instead of "any non-empty" (w21/036).
+ */
 export function isValidEnvGroupName(name: string): boolean {
-  return name.trim().length > 0;
+  return isValidLabel(name);
 }
 
 /** Matches Kubernetes/Render environment-variable key syntax. */

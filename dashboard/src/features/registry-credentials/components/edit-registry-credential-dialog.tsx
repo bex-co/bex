@@ -13,6 +13,11 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { LabelError } from "@/common/components/label-error";
+import {
+  isInvalidLabel,
+  isValidLabel,
+} from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useUpdateRegistryCredential } from "@/features/registry-credentials/hooks/use-update-registry-credential";
 import { useRegistryCredential } from "@/features/registry-credentials/hooks/use-registry-credential";
@@ -108,7 +113,7 @@ function EditForm({
   const [username, setUsername] = useState(seed.username);
   const [authToken, setAuthToken] = useState("");
 
-  const canSubmit = name.trim() && username.trim();
+  const canSubmit = isValidLabel(name) && username.trim();
 
   async function handleSubmit() {
     if (!canSubmit || busy) return;
@@ -175,9 +180,14 @@ function EditForm({
           <Input
             id="rc-edit-name"
             maxLength={100}
+            aria-invalid={isInvalidLabel(name)}
+            aria-describedby={
+              isInvalidLabel(name) ? "rc-edit-name-error" : undefined
+            }
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
+          <LabelError id="rc-edit-name-error" value={name} />
         </div>
       </div>
       <DialogFooter>

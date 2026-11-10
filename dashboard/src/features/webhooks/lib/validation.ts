@@ -1,3 +1,4 @@
+import { isInvalidLabel } from "@/common/lib/utils/resource-label";
 import type { WebhookFormField } from "@/features/webhooks/lib/errors";
 
 export type WebhookFormErrors = Partial<Record<WebhookFormField, string>>;
@@ -30,6 +31,8 @@ export function validateWebhookForm(
   input: WebhookValidationInput,
   messages: {
     nameRequired: string;
+    /** The server's label rule: no control characters, at most 100 code points. */
+    nameInvalid: string;
     nameDuplicate: string;
     urlRequired: string;
     urlHTTPS: string;
@@ -40,6 +43,8 @@ export function validateWebhookForm(
   const name = input.name.trim();
   if (!name) {
     errors.name = messages.nameRequired;
+  } else if (isInvalidLabel(input.name)) {
+    errors.name = messages.nameInvalid;
   } else {
     const normalized = name.toLocaleLowerCase();
     const current = input.currentName?.trim().toLocaleLowerCase();

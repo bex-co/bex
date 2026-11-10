@@ -56,6 +56,30 @@ describe("CreateRegistryCredentialDialog", () => {
     );
   });
 
+  it("refuses a 101-character name inline but allows leaving it blank (w21/036)", async () => {
+    const user = userEvent.setup();
+    render(<CreateRegistryCredentialDialog onCreated={vi.fn()} />);
+    await user.click(screen.getByRole("button", { name: "Add credential" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Registry host"), "ghcr.io");
+    await user.type(within(dialog).getByLabelText("Username"), "alice");
+    await user.type(
+      within(dialog).getByLabelText("Password or access token"),
+      "hunter2",
+    );
+    const add = within(dialog).getByRole("button", { name: "Add" });
+    expect(add).toBeEnabled(); // optional name left blank
+
+    const name = within(dialog).getByLabelText(/^Display name/);
+    name.removeAttribute("maxlength"); // the field caps typing; exercise the check
+    await user.click(name);
+    await user.paste("a".repeat(101));
+    expect(add).toBeDisabled();
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "up to 100 characters",
+    );
+  });
+
   it("keeps submit disabled until host/username/authToken are all filled", async () => {
     const user = userEvent.setup();
     render(<CreateRegistryCredentialDialog onCreated={vi.fn()} />);

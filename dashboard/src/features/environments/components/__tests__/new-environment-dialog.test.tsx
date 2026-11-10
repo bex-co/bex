@@ -43,3 +43,23 @@ describe("NewEnvironmentDialog contextual create outcome", () => {
     expect(screen.getByLabelText("Name")).toHaveValue("Production");
   });
 });
+
+// w21/036: the server's label rule is checked before submit.
+describe("NewEnvironmentDialog name rule", () => {
+  it("refuses a 101-character name inline and accepts 100", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvironmentDialog projectId="prj-owner" />);
+    await user.click(screen.getByRole("button", { name: "New Environment" }));
+    const name = screen.getByLabelText("Name");
+    const submit = screen.getByRole("button", { name: "Create Environment" });
+
+    await user.click(name);
+    await user.paste("a".repeat(101));
+    expect(submit).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("up to 100 characters");
+
+    await user.clear(name);
+    await user.paste("受".repeat(100));
+    expect(submit).toBeEnabled();
+  });
+});

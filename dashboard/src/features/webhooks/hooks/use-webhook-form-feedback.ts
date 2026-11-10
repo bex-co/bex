@@ -63,6 +63,7 @@ export function useWebhookFormFeedback({
   const validationMessages = useMemo(
     () => ({
       nameRequired: t("webhooks.validation.nameRequired"),
+      nameInvalid: t("common.labelInvalid"),
       nameDuplicate: t("webhooks.validation.nameDuplicate"),
       urlRequired: t("webhooks.validation.urlRequired"),
       urlHTTPS: t("webhooks.validation.urlHTTPS"),

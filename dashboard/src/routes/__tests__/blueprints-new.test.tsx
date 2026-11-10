@@ -424,6 +424,26 @@ describe("NewBlueprintPage", () => {
     expect(router.state.location.pathname).toBe("/blueprints/blp-new1");
   });
 
+  // w21/036: a typed Blueprint name is held to the server's label rule.
+  it("blocks Deploy for a 101-character name with an inline message", async () => {
+    reposState.repos = [repo()];
+    previewState.preview = validPreview();
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("acme/hello-go"));
+    expect(await screen.findByText(/parsed successfully/i)).toBeInTheDocument();
+    const deploy = screen.getByRole("button", { name: /deploy blueprint/i });
+    expect(deploy).toBeEnabled();
+
+    const name = document.getElementById("bp-name") as HTMLInputElement;
+    await user.clear(name);
+    await user.click(name);
+    await user.paste("a".repeat(101));
+    expect(deploy).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("up to 100 characters");
+  });
+
   // w4/m125 + w5/m125: a preview whose only problems are takeover conflicts
   // keeps Deploy reachable (the phrase arrives in the create's refusal), told
   // apart by code; any other problem blocks it.

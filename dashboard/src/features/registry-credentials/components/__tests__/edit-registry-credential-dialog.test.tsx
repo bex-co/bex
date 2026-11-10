@@ -73,6 +73,19 @@ describe("EditRegistryCredentialDialog", () => {
     expect(host).toBeDisabled();
   });
 
+  it("refuses an over-long or blank name inline (w21/036)", async () => {
+    const user = await openDialog();
+    const name = screen.getByDisplayValue("GHCR prod (detail)");
+    name.removeAttribute("maxlength");
+    const save = screen.getByRole("button", { name: "Save changes" });
+    await user.clear(name);
+    expect(save).toBeDisabled();
+    await user.click(name);
+    await user.paste("a".repeat(101));
+    expect(save).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("up to 100 characters");
+  });
+
   it("stops the name at 100 characters (w21/035)", async () => {
     await openDialog();
     expect(screen.getByDisplayValue("GHCR prod (detail)")).toHaveAttribute(

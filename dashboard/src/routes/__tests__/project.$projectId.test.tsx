@@ -335,4 +335,35 @@ describe("rename dialog accessibility", () => {
     warn.mockRestore();
     error.mockRestore();
   });
+
+  // w21/036: the rename field applies the server's label rule before submit.
+  it("refuses an over-long project name inline and never renames", async () => {
+    projectsState.projects = [
+      {
+        id: "prj-1",
+        name: "storefront",
+        ownerId: "tea-1",
+        serviceIds: [],
+        databaseIds: [],
+        keyValueIds: [],
+      },
+    ];
+    const user = userEvent.setup();
+    renderProjectPage();
+
+    await screen.findByRole("heading", { name: "storefront" });
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByRole("textbox", { name: "Project name" });
+    await user.clear(input);
+    await user.click(input);
+    await user.paste("a".repeat(101));
+
+    expect(within(dialog).getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "up to 100 characters",
+    );
+    await user.type(input, "{Enter}");
+    expect(rename).not.toHaveBeenCalled();
+  });
 });

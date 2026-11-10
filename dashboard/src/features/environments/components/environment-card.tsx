@@ -33,6 +33,11 @@ import {
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
+import { LabelError } from "@/common/components/label-error";
+import {
+  isInvalidLabel,
+  isValidLabel,
+} from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { UnreadResourcesNotice } from "@/features/environments/components/unread-resources-notice";
 import {
@@ -262,6 +267,7 @@ export function EnvironmentCard({
   }
 
   async function handleRename() {
+    if (isInvalidLabel(renameValue)) return;
     const trimmed = renameValue.trim();
     if (!trimmed || trimmed === environment.name) {
       setRenameOpen(false);
@@ -530,12 +536,22 @@ export function EnvironmentCard({
             </Label>
             <Input
               id={`environment-rename-name-${environment.id}`}
+              aria-invalid={isInvalidLabel(renameValue)}
+              aria-describedby={
+                isInvalidLabel(renameValue)
+                  ? `environment-rename-name-${environment.id}-error`
+                  : undefined
+              }
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               autoComplete="off"
               onKeyDown={(e) => {
                 if (e.key === "Enter") void handleRename();
               }}
+            />
+            <LabelError
+              id={`environment-rename-name-${environment.id}-error`}
+              value={renameValue}
             />
           </div>
           <DialogFooter>
@@ -548,7 +564,7 @@ export function EnvironmentCard({
             </Button>
             <Button
               onClick={() => void handleRename()}
-              disabled={renaming || renameValue.trim().length === 0}
+              disabled={renaming || !isValidLabel(renameValue)}
             >
               {renaming ? <Loader2 className="animate-spin" /> : null}
               {t("environments.renameSubmit")}

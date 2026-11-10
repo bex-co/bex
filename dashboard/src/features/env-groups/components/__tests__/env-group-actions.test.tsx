@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvGroupActions } from "@/features/env-groups/components/env-group-actions";
 import type { EnvGroupView } from "@/features/env-groups/types";
@@ -51,6 +51,29 @@ function renderActions(group: EnvGroupView) {
     />,
   );
 }
+
+// w21/036: the rename field applies the server's label rule before submit.
+describe("EnvGroupActions — Rename dialog (w21/036)", () => {
+  it("refuses a 101-character name inline and disables Save", async () => {
+    const user = userEvent.setup();
+    renderActions(WORKSPACE_GROUP);
+
+    await user.click(screen.getByRole("button", { name: /manage/i }));
+    await user.click(screen.getByRole("menuitem", { name: /rename/i }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText("Group name");
+    await user.clear(input);
+    await user.click(input);
+    await user.paste("a".repeat(101));
+
+    expect(
+      within(dialog).getByRole("button", { name: "Save name" }),
+    ).toBeDisabled();
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "up to 100 characters",
+    );
+  });
+});
 
 describe("EnvGroupActions — Move dialog (w6/m48)", () => {
   it("pre-selects Workspace (no Environment) for a workspace-scoped group", async () => {

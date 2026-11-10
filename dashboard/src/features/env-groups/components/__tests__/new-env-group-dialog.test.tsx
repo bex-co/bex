@@ -286,6 +286,22 @@ describe("NewEnvGroupDialog", () => {
     expect(submit).toBeEnabled();
   });
 
+  it("refuses a 101-character group name inline before submit (w21/036)", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} />);
+    const submit = screen.getByRole("button", {
+      name: "Create Environment Group",
+    });
+    await user.click(screen.getByLabelText("Group name"));
+    await user.paste("a".repeat(101));
+    expect(submit).toBeDisabled();
+    expect(screen.getByRole("alert")).toHaveTextContent("up to 100 characters");
+
+    await user.clear(screen.getByLabelText("Group name"));
+    await user.paste("受".repeat(100));
+    expect(submit).toBeEnabled();
+  });
+
   it("stays open and does not navigate when creation fails", async () => {
     createGroup.mockResolvedValue(null);
     const onCreated = vi.fn();

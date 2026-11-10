@@ -15,6 +15,8 @@ import { Input } from "@/common/components/ui/input";
 import { AutoTextarea } from "@/common/components/ui/auto-textarea";
 import { Label } from "@/common/components/ui/label";
 import { Textarea } from "@/common/components/ui/textarea";
+import { LabelError } from "@/common/components/label-error";
+import { isInvalidLabel } from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useEnvGroupMutations } from "@/features/env-groups/hooks/use-env-groups";
 import {
@@ -351,15 +353,21 @@ function NewEnvGroupForm({
             setInvalid(false);
           }}
           placeholder={t("envGroups.namePlaceholder")}
-          aria-invalid={invalid && !isValidEnvGroupName(name)}
+          aria-invalid={
+            (invalid && !isValidEnvGroupName(name)) || isInvalidLabel(name)
+          }
           aria-describedby={
-            invalid && !isValidEnvGroupName(name)
-              ? "env-group-name-invalid"
-              : undefined
+            isInvalidLabel(name)
+              ? "env-group-name-label-error"
+              : invalid && !isValidEnvGroupName(name)
+                ? "env-group-name-invalid"
+                : undefined
           }
           autoComplete="off"
         />
-        {invalid && !isValidEnvGroupName(name) ? (
+        {isInvalidLabel(name) ? (
+          <LabelError id="env-group-name-label-error" value={name} />
+        ) : invalid && !isValidEnvGroupName(name) ? (
           <p id="env-group-name-invalid" className="text-destructive text-sm">
             {t("envGroups.invalidName")}
           </p>

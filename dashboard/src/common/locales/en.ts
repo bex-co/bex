@@ -237,6 +237,12 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Webhooks",
     description: "Sidebar nav link to the outbound event webhooks page",
   },
+  "common.labelInvalid": {
+    message:
+      "Enter a name of up to 100 characters, without line breaks or control characters.",
+    description:
+      "Inline validation under a free-form name field (project, environment, group, webhook, credential, Blueprint)",
+  },
   "common.navNotifications": {
     message: "Notifications",
     description: "Sidebar nav link to the notification settings page",

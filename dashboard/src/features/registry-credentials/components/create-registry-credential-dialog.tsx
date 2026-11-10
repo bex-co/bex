@@ -13,6 +13,8 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { LabelError } from "@/common/components/label-error";
+import { isInvalidLabel } from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCreateRegistryCredential } from "@/features/registry-credentials/hooks/use-create-registry-credential";
 
@@ -40,7 +42,9 @@ export function CreateRegistryCredentialDialog({
   const [username, setUsername] = useState("");
   const [authToken, setAuthToken] = useState("");
 
-  const canSubmit = host.trim() && username.trim() && authToken.trim();
+  // The name is optional (it defaults to the host) but, when given, a label.
+  const canSubmit =
+    host.trim() && username.trim() && authToken.trim() && !isInvalidLabel(name);
 
   function reset() {
     setName("");
@@ -136,6 +140,10 @@ export function CreateRegistryCredentialDialog({
             </Label>
             <Input
               id="rc-name"
+              aria-invalid={isInvalidLabel(name)}
+              aria-describedby={
+                isInvalidLabel(name) ? "rc-name-error" : undefined
+              }
               maxLength={100}
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -143,6 +151,7 @@ export function CreateRegistryCredentialDialog({
                 host || t("registryCredentials.fieldHostPlaceholder")
               }
             />
+            <LabelError id="rc-name-error" value={name} />
           </div>
         </div>
         <DialogFooter>

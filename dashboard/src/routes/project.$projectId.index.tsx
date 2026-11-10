@@ -18,6 +18,11 @@ import { Input } from "@/common/components/ui/input.tsx";
 import { Label } from "@/common/components/ui/label";
 import { useServiceLifecycle } from "@/features/services/hooks/use-service-lifecycle";
 import { useGroupedResources } from "@/features/projects/hooks/use-grouped-resources";
+import { LabelError } from "@/common/components/label-error";
+import {
+  isInvalidLabel,
+  isValidLabel,
+} from "@/common/lib/utils/resource-label";
 import { useRenameProject } from "@/features/projects/hooks/use-rename-project";
 import { EnvironmentsPanel } from "@/features/environments/components/environments-panel";
 import { useProjectResourceCatalog } from "@/features/projects/hooks/use-project-resource-catalog";
@@ -128,6 +133,7 @@ export function ProjectPage() {
   }
 
   async function handleRename() {
+    if (isInvalidLabel(renameValue)) return;
     const trimmed = renameValue.trim();
     if (!project || !trimmed || trimmed === project.name) {
       setRenameOpen(false);
@@ -208,6 +214,12 @@ export function ProjectPage() {
             </Label>
             <Input
               id="project-rename-name"
+              aria-invalid={isInvalidLabel(renameValue)}
+              aria-describedby={
+                isInvalidLabel(renameValue)
+                  ? "project-rename-name-error"
+                  : undefined
+              }
               value={renameValue}
               onChange={(e) => setRenameValue(e.target.value)}
               autoComplete="off"
@@ -215,6 +227,7 @@ export function ProjectPage() {
                 if (e.key === "Enter") void handleRename();
               }}
             />
+            <LabelError id="project-rename-name-error" value={renameValue} />
           </div>
           <DialogFooter>
             <Button
@@ -226,7 +239,7 @@ export function ProjectPage() {
             </Button>
             <Button
               onClick={() => void handleRename()}
-              disabled={renaming || renameValue.trim().length === 0}
+              disabled={renaming || !isValidLabel(renameValue)}
             >
               {renaming ? <Loader2 className="animate-spin" /> : null}
               {t("projects.renameSubmit")}

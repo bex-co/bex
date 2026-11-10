@@ -12,6 +12,11 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { LabelError } from "@/common/components/label-error";
+import {
+  isInvalidLabel,
+  isValidLabel,
+} from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCreateProject } from "@/features/projects/hooks/use-create-project";
 
@@ -53,7 +58,7 @@ export function NewProjectDialog({
   const [environmentName, setEnvironmentName] = useState(DEFAULT_ENVIRONMENT);
 
   const canSubmit =
-    name.trim().length > 0 && environmentName.trim().length > 0 && !busy;
+    isValidLabel(name) && isValidLabel(environmentName) && !busy;
 
   async function handleOpenChange(next: boolean) {
     if (controlled) await onOpenChangeProp?.(next);
@@ -98,6 +103,10 @@ export function NewProjectDialog({
           <Label htmlFor="project-name">{t("projects.fieldName")}</Label>
           <Input
             id="project-name"
+            aria-invalid={isInvalidLabel(name)}
+            aria-describedby={
+              isInvalidLabel(name) ? "project-name-error" : undefined
+            }
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("projects.fieldNamePlaceholder")}
@@ -106,6 +115,7 @@ export function NewProjectDialog({
               if (e.key === "Enter") void handleSubmit();
             }}
           />
+          <LabelError id="project-name-error" value={name} />
         </div>
 
         <div className="space-y-2">
@@ -114,6 +124,12 @@ export function NewProjectDialog({
           </Label>
           <Input
             id="project-environment-name"
+            aria-invalid={isInvalidLabel(environmentName)}
+            aria-describedby={
+              isInvalidLabel(environmentName)
+                ? "project-environment-name-error"
+                : undefined
+            }
             value={environmentName}
             onChange={(e) => setEnvironmentName(e.target.value)}
             placeholder={DEFAULT_ENVIRONMENT}
@@ -121,6 +137,10 @@ export function NewProjectDialog({
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleSubmit();
             }}
+          />
+          <LabelError
+            id="project-environment-name-error"
+            value={environmentName}
           />
         </div>
 

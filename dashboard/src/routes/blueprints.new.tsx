@@ -10,6 +10,8 @@ import { Loader2, RefreshCw } from "lucide-react";
 import { requireAuth } from "@/common/lib/auth/auth";
 import { translatedTitleHead } from "@/common/lib/document-head";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
+import { LabelError } from "@/common/components/label-error";
+import { isInvalidLabel } from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   Card,
@@ -178,6 +180,8 @@ export function NewBlueprintPage() {
       (preview.validation?.valid !== true && !previewConflictOnly));
   const canSubmit =
     sourceValid &&
+    // A blank name falls back to the repo's; a typed one is a label (w21/036).
+    !isInvalidLabel(name) &&
     branch.trim() !== "" &&
     !busy &&
     !previewLoading &&
@@ -326,6 +330,10 @@ export function NewBlueprintPage() {
                     </Label>
                     <Input
                       id="bp-name"
+                      aria-invalid={isInvalidLabel(name)}
+                      aria-describedby={
+                        isInvalidLabel(name) ? "bp-name-error" : undefined
+                      }
                       value={name}
                       onChange={(e) => {
                         setName(e.target.value);
@@ -334,6 +342,7 @@ export function NewBlueprintPage() {
                       placeholder={t("blueprints.createNamePlaceholder")}
                       autoComplete="off"
                     />
+                    <LabelError id="bp-name-error" value={name} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="bp-branch">

@@ -236,6 +236,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "Webhooks",
     description: "Sidebar nav link to the outbound event webhooks page",
   },
+  "common.labelInvalid": {
+    message: "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
+    description:
+      "Inline validation under a free-form name field (project, environment, group, webhook, credential, Blueprint)",
+  },
   "common.navNotifications": {
     message: "通知",
     description: "Sidebar nav link to the notification settings page",

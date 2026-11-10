@@ -19,3 +19,12 @@ export function isValidLabel(value: string): boolean {
   const label = value.trim();
   return label !== "" && [...label].length <= MAX_LABEL_LENGTH;
 }
+
+/**
+ * Whether a name field holds text the label rule refuses (control characters,
+ * or more than 100 code points). Blank is not "invalid" here: each form already
+ * treats an empty name as simply not submittable (w21/036).
+ */
+export function isInvalidLabel(value: string): boolean {
+  return value.trim() !== "" && !isValidLabel(value);
+}

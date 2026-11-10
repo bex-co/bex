@@ -12,6 +12,11 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
+import { LabelError } from "@/common/components/label-error";
+import {
+  isInvalidLabel,
+  isValidLabel,
+} from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCreateEnvironment } from "@/features/environments/hooks/use-create-environment";
 
@@ -46,7 +51,7 @@ export function NewEnvironmentDialog({
   const open = controlled ? openProp : openState;
   const [name, setName] = useState("");
 
-  const canSubmit = name.trim().length > 0 && !busy;
+  const canSubmit = isValidLabel(name) && !busy;
 
   function handleOpenChange(next: boolean) {
     if (controlled) onOpenChangeProp?.(next);
@@ -86,6 +91,10 @@ export function NewEnvironmentDialog({
           </Label>
           <Input
             id="environment-name"
+            aria-invalid={isInvalidLabel(name)}
+            aria-describedby={
+              isInvalidLabel(name) ? "environment-name-error" : undefined
+            }
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("environments.fieldNamePlaceholder")}
@@ -94,6 +103,7 @@ export function NewEnvironmentDialog({
               if (e.key === "Enter") void handleSubmit();
             }}
           />
+          <LabelError id="environment-name-error" value={name} />
         </div>
 
         <DialogFooter>

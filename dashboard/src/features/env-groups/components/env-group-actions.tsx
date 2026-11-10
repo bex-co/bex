@@ -34,6 +34,8 @@ import {
 } from "@/common/components/ui/select";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
+import { LabelError } from "@/common/components/label-error";
+import { isInvalidLabel } from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ScopeSelect } from "@/features/env-groups/components/scope-select";
 import { WORKSPACE_SCOPE } from "@/features/env-groups/lib/scope";
@@ -366,8 +368,10 @@ function NameField({
         value={name}
         onChange={(event) => setName(event.target.value)}
         aria-invalid={!isValidEnvGroupName(name)}
+        aria-describedby={isInvalidLabel(name) ? `${id}-error` : undefined}
         autoComplete="off"
       />
+      <LabelError id={`${id}-error`} value={name} />
     </div>
   );
 }
