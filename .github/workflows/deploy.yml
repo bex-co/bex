@@ -18,15 +18,19 @@ name: deploy (bex via Argo)
 # imagePullSecret in bex-system / dashboard, so app-cluster nodes can pull the images.
 # ⚠ If this repo is private, give Argo CD repo credentials (else it can't read git).
 
-# Three scheduled runs a day, about 11:00, 16:00 and 21:00 San Francisco time
+# Three deploy windows a day, about 11:00, 16:00 and 21:00 San Francisco time
 # (19, 00, 05 UTC; an hour later during daylight time), plus on demand
 # (block-eden-mono w1/m25). A scheduled run deploys only when a commit touching
 # .github/deploy-paths landed after the production pin's producer; otherwise
-# every job after `changes` is skipped. workflow_dispatch deploys main, or
+# every job after `changes` is skipped. GitHub runs schedules best-effort and
+# drops many of this repository's (the hourly heartbeat fired 3 times in 18 h
+# on 2026-11-10, and the first 19:00 slot never ran), so each window fires off
+# the busy top of the hour and again an hour later; when both run, the second
+# finds nothing new and skips in seconds. workflow_dispatch deploys main, or
 # applies the same gate as a scheduled run when only_if_changed is set.
 on:
   schedule:
-    - cron: "0 19,0,5 * * *"
+    - cron: "23 19,20,0,1,5,6 * * *"
   workflow_dispatch:
     inputs:
       only_if_changed:
