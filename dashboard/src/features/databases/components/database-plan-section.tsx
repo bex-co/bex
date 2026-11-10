@@ -245,7 +245,10 @@ function StorageRow({
       : problem === "notGreater"
         ? t("databases.storageEditNotGreater", { current })
         : problem === "tooLarge"
-          ? t("databases.storageEditTooLarge", { name: plan?.name, max })
+          ? t("databases.storageEditTooLarge", {
+              name: plan?.name ?? "",
+              max: max ?? "",
+            })
           : undefined;
   const error = fieldError ?? serverError;
   // The smallest size it accepts, which also anchors the field's step.
