@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -380,7 +381,8 @@ func TestManagedServiceIDUsesResolvedAppNameForEveryMetricsLookup(t *testing.T) 
 		if req.App != managedAppName || req.AppID != managedAppID {
 			t.Errorf("request source identity = app %q id %q", req.App, req.AppID)
 		}
-		if req.Metric == MetricBandwidth && len(req.Routers) != 1 {
+		// One public host: its router plus the web entrypoint split (w1/069).
+		if req.Metric == MetricBandwidth && len(req.Routers) != 2 {
 			t.Errorf("bandwidth routers = %v, want the resolved App ingress router", req.Routers)
 		}
 	}
@@ -702,8 +704,10 @@ func TestBandwidthMetricResolvesExactIngressRouters(t *testing.T) {
 	want := []string{
 		"default-static-site-onbex-co@kubernetes",
 		"default-static-www-example-com@kubernetes",
+		"web-default-static-site-onbex-co@kubernetes",
+		"web-default-static-www-example-com@kubernetes",
 	}
-	if len(got.Routers) != len(want) || got.Routers[0] != want[0] || got.Routers[1] != want[1] {
+	if !slices.Equal(got.Routers, want) {
 		t.Fatalf("resolved routers: got %v, want %v", got.Routers, want)
 	}
 	if got.AppID != "srv-static" || got.Direct {
@@ -717,7 +721,7 @@ func TestMonthToDateBandwidthReportsRealCategoriesAndExpandedTotal(t *testing.T)
 	app.Spec.Host = "web.onbex.co"
 	svc := newService(nil, nil, app, ingressFor("web", "web", "web.onbex.co"))
 	svc.MonthToDateBandwidthSource = func(_ context.Context, appID string, routers []string, direct bool, _, _ time.Time) (BandwidthBytes, []string, error) {
-		if appID != "srv-web" || len(routers) != 1 || !direct {
+		if appID != "srv-web" || len(routers) != 2 || !direct {
 			t.Fatalf("source identity/applicability: id=%q routers=%v direct=%v", appID, routers, direct)
 		}
 		return BandwidthBytes{HTTP: 1 << 20, NAT: 2 << 20, WebSocket: 3 << 20}, []string{"direct"}, nil
@@ -1553,7 +1557,7 @@ func TestStaticSiteRequestMetricsSelectRouterSeries(t *testing.T) {
 			}
 			// The service must resolve routers for a static request read, not
 			// only for bandwidth — without them the query cannot be built.
-			if len(got.Routers) != 1 || got.Routers[0] != "default-site-site-onbex-co@kubernetes" {
+			if !slices.Equal(got.Routers, []string{"default-site-site-onbex-co@kubernetes", "web-default-site-site-onbex-co@kubernetes"}) {
 				t.Fatalf("routers = %v, want the App's own Ingress router", got.Routers)
 			}
 			if !got.RouterScoped {
@@ -1566,7 +1570,7 @@ func TestStaticSiteRequestMetricsSelectRouterSeries(t *testing.T) {
 			if strings.Contains(query, "traefik_service_") {
 				t.Errorf("query %q still selects the per-App Service a static site does not have", query)
 			}
-			if !strings.Contains(query, `router=~"^(default-site-site-onbex-co@kubernetes)$"`) {
+			if !strings.Contains(query, `router=~"^(default-site-site-onbex-co@kubernetes|web-default-site-site-onbex-co@kubernetes)$"`) {
 				t.Errorf("query %q is not anchored to this App's own routers", query)
 			}
 		})
@@ -1639,7 +1643,7 @@ func TestStaticSiteStatusCodeDiscoveryUsesRouterSeries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("metricsFilters: %v", err)
 	}
-	if !got.RouterScoped || len(got.Routers) != 1 {
+	if !got.RouterScoped || len(got.Routers) != 2 {
 		t.Fatalf("discovery request = %+v, want router-scoped with the App's router", got)
 	}
 	match := filterValuesMatch(got)

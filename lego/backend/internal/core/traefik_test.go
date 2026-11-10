@@ -19,6 +19,7 @@ package core
 import (
 	"context"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 
@@ -63,8 +64,10 @@ func TestTraefikRouterNamesUseIngressIdentityNotBackendService(t *testing.T) {
 	want := []string{
 		"default-tea-one-static-site-onbex-co@kubernetes",
 		"default-tea-one-static-www-example-com@kubernetes",
+		"web-default-tea-one-static-site-onbex-co@kubernetes",
+		"web-default-tea-one-static-www-example-com@kubernetes",
 	}
-	if len(names) != len(want) || names[0] != want[0] || names[1] != want[1] {
+	if !slices.Equal(names, want) {
 		t.Fatalf("router names: got %v, want %v", names, want)
 	}
 }
@@ -86,6 +89,8 @@ func TestTraefikRouterNamesIncludeTheWebsecureTLSSibling(t *testing.T) {
 	want := []string{
 		"default-tea-one-static-site-onbex-co@kubernetes",
 		"default-tea-one-static-www-example-com@kubernetes",
+		"web-default-tea-one-static-site-onbex-co@kubernetes",
+		"web-default-tea-one-static-www-example-com@kubernetes",
 		"websecure-default-tea-one-static-site-onbex-co@kubernetes",
 		"websecure-default-tea-one-static-www-example-com@kubernetes",
 	}
@@ -111,6 +116,8 @@ func TestTraefikRouterNamesSiblingOnlyForTLSCoveredHosts(t *testing.T) {
 	want := []string{
 		"default-web-plain-onbex-co@kubernetes",
 		"default-web-secure-onbex-co@kubernetes",
+		"web-default-web-plain-onbex-co@kubernetes",
+		"web-default-web-secure-onbex-co@kubernetes",
 		"websecure-default-web-secure-onbex-co@kubernetes",
 	}
 	if len(names) != len(want) {
@@ -120,6 +127,25 @@ func TestTraefikRouterNamesSiblingOnlyForTLSCoveredHosts(t *testing.T) {
 		if names[i] != want[i] {
 			t.Fatalf("router names: got %v, want %v", names, want)
 		}
+	}
+}
+
+// Both entrypoints carry http.middlewares (w8/m123), so Traefik v3.7.17's
+// applyModel splits each multi-entrypoint router into `web-<key>` and
+// `websecure-<key>`; the live kind matrix saw plain HTTP bytes only on
+// `web-default-ws-egress-fixture-ws-test@kubernetes` (block-eden-mono w1/069).
+func TestTraefikRouterNamesIncludeTheWebEntrypointRouter(t *testing.T) {
+	ingress := traefikTestIngress("ws-egress-fixture", "ws-egress-fixture", "ws.test")
+	names, err := TraefikRouterNamesForIngress(ingress)
+	if err != nil {
+		t.Fatalf("TraefikRouterNamesForIngress: %v", err)
+	}
+	re := regexp.MustCompile(TraefikRouterMatcher(names))
+	if !re.MatchString("web-default-ws-egress-fixture-ws-test@kubernetes") {
+		t.Fatalf("matcher for %v misses the web entrypoint router", names)
+	}
+	if !re.MatchString("default-ws-egress-fixture-ws-test@kubernetes") {
+		t.Fatalf("matcher for %v dropped the pre-split router name", names)
 	}
 }
 
@@ -134,6 +160,8 @@ func TestTraefikRouterNamesSiblingDerivesFromCollisionHashedKey(t *testing.T) {
 	want := []string{
 		"default-web-foo-bar-beb37b712c8473ef7afa@kubernetes",
 		"default-web-foo-bar-ef6c149f61f9c8903f31@kubernetes",
+		"web-default-web-foo-bar-beb37b712c8473ef7afa@kubernetes",
+		"web-default-web-foo-bar-ef6c149f61f9c8903f31@kubernetes",
 		"websecure-default-web-foo-bar-beb37b712c8473ef7afa@kubernetes",
 		"websecure-default-web-foo-bar-ef6c149f61f9c8903f31@kubernetes",
 	}
@@ -156,8 +184,10 @@ func TestTraefikRouterNamesPinNormalizedCollisionHashes(t *testing.T) {
 	want := []string{
 		"default-web-foo-bar-beb37b712c8473ef7afa@kubernetes",
 		"default-web-foo-bar-ef6c149f61f9c8903f31@kubernetes",
+		"web-default-web-foo-bar-beb37b712c8473ef7afa@kubernetes",
+		"web-default-web-foo-bar-ef6c149f61f9c8903f31@kubernetes",
 	}
-	if len(names) != len(want) || names[0] != want[0] || names[1] != want[1] {
+	if !slices.Equal(names, want) {
 		t.Fatalf("collision names: got %v, want pinned Traefik names %v", names, want)
 	}
 }

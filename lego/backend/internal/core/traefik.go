@@ -40,6 +40,16 @@ const traefikIngressClass = "traefik"
 // TLS-covered Ingress host (w1/m51/t001 ground truth, Traefik v3.7.5; unchanged through v3.7.17, w8/m145).
 const traefikTLSEntrypoint = "websecure"
 
+// traefikWebEntrypoint is the plain-HTTP entrypoint (`ports.web`). Since both
+// entrypoints carry `http.middlewares` (w8/m123, 2026-10-20), Traefik builds an
+// entrypoint model for each and splits every multi-entrypoint router into
+// `web-<key>` and `websecure-<key>` (pkg/server/aggregator.go applyModel,
+// v3.7.17); the bare `<key>` router stopped existing, so bytes on :80 (tenant
+// hosts' HTTPS redirects, w8/m118, and any non-redirected route) went
+// uncounted (block-eden-mono w1/069). The bare name stays in the set so
+// windows reaching back before that change still sum its series.
+const traefikWebEntrypoint = "web"
+
 // TraefikRouterNames resolves the exact metric-label identities Traefik 3.7.5
 // emits for an App's operator-owned Ingress. An App without public hosts
 // (AppSpec.HasPublicHosts) has no Ingress and no public HTTP egress, and
@@ -121,7 +131,8 @@ func TraefikRouterNamesForIngress(ingress *networkingv1.Ingress) ([]string, erro
 
 	// TLS-covered hosts get a second router: Traefik v3's Kubernetes Ingress
 	// provider (v3.7.17 on prod, chart 41.0.0) creates the base router
-	// `<ns>-<name>-<host>-<path>@kubernetes` on the non-TLS entrypoints and,
+	// `<ns>-<name>-<host>-<path>@kubernetes` on the non-TLS entrypoints (now
+	// `web-<same>`, see traefikWebEntrypoint) and,
 	// for every host in spec.tls, a TLS sibling named `websecure-<same>` on
 	// the HTTPS entrypoint — and that sibling is where essentially all real
 	// bytes flow (w1/m51; prod router-label inventory 2026-07-18 shows exactly
@@ -171,7 +182,7 @@ func TraefikRouterNamesForIngress(ingress *networkingv1.Ingress) ([]string, erro
 		}
 		// The sibling derives from the FINAL key (post collision-hash): Traefik
 		// prefixes the router it built, hash and all.
-		variants := []string{key + "@kubernetes"}
+		variants := []string{key + "@kubernetes", traefikWebEntrypoint + "-" + key + "@kubernetes"}
 		if candidate.tls {
 			variants = append(variants, traefikTLSEntrypoint+"-"+key+"@kubernetes")
 		}

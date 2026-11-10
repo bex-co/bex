@@ -490,9 +490,12 @@ fi
 dropped=$(metric_value http://127.0.0.1:19091/metrics "$DIRECT_METRIC" 'app_id="srv-live-dropped"')
 assert_equal dropped_delta "$dropped" "$dropped_before"
 
-http_before=$(metric_value http://127.0.0.1:19100/metrics traefik_router_responses_bytes_total 'router="default-ws-egress-fixture-ws-test@kubernetes"')
+# Plain HTTP lands on the web entrypoint's split router (`web-<key>`): both
+# entrypoints carry http.middlewares, so Traefik renames per entrypoint
+# (core.TraefikRouterNamesForIngress; block-eden-mono w1/069).
+http_before=$(metric_value http://127.0.0.1:19100/metrics traefik_router_responses_bytes_total 'router="web-default-ws-egress-fixture-ws-test@kubernetes"')
 curl -fsS -H 'Host: ws.test' 'http://127.0.0.1:18080/bytes?n=4096' >/dev/null
-http_after=$(metric_value http://127.0.0.1:19100/metrics traefik_router_responses_bytes_total 'router="default-ws-egress-fixture-ws-test@kubernetes"')
+http_after=$(metric_value http://127.0.0.1:19100/metrics traefik_router_responses_bytes_total 'router="web-default-ws-egress-fixture-ws-test@kubernetes"')
 http_delta=$(awk -v a="$http_after" -v b="$http_before" 'BEGIN { print a-b }')
 assert_equal http_router_delta "$http_delta" 4096
 "$CLIENT" ws-client 127.0.0.1:18080 ws.test 2048 4096
