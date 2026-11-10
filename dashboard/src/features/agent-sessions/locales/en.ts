@@ -1476,9 +1476,9 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Sessions sidebar — accessible name of the Mine/Everyone toggle",
   },
   "agentSessions.sidebarEmptyMine": {
-    message: "You haven't started a session yet",
+    message: "No sessions started by you. Older sessions are under Everyone.",
     description:
-      "Sessions sidebar — empty state under Mine when the viewer started none",
+      "Sessions sidebar — empty state under Mine. Sessions from before 2026-11-08 record no starter, so they appear only under Everyone",
   },
   "agentSessions.startedByPerson": {
     message: "Started by {name}",

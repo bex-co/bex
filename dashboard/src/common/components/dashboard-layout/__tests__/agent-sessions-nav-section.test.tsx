@@ -231,7 +231,9 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
 
     // Empty/failed list state renders, and the nav above it still works.
     expect(
-      await screen.findByText("You haven't started a session yet"),
+      await screen.findByText(
+        "No sessions started by you. Older sessions are under Everyone.",
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Projects" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();

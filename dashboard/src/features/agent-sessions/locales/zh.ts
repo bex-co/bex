@@ -1393,9 +1393,9 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
       "Sessions sidebar — accessible name of the Mine/Everyone toggle",
   },
   "agentSessions.sidebarEmptyMine": {
-    message: "你还没有启动会话",
+    message: "没有你启动的会话。较早的会话在“所有人”中。",
     description:
-      "Sessions sidebar — empty state under Mine when the viewer started none",
+      "Sessions sidebar — empty state under Mine. Sessions from before 2026-11-08 record no starter, so they appear only under Everyone",
   },
   "agentSessions.startedByPerson": {
     message: "由 {name} 启动",
