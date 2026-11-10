@@ -181,38 +181,9 @@ All product adapters are thin layers over the same Go core, so authorization, li
 
 ## How it works
 
-```mermaid
-flowchart TB
-  developer@{ shape: tri, label: "developer" }
-  agent@{ shape: tri, label: "coding agent" }
-  dashboard["dashboard (web service)"]
-  cli["bex CLI (local client process)"]
-
-  subgraph app_cluster["app cluster"]
-    api["bex-api"]
-    store[(control-plane Postgres)]
-    crds["App · Database · KeyValue (Kubernetes objects)"]
-    operator["bex operator"]
-    registry["Zot registry"]
-    runtime["tenant runtime (Kubernetes workloads and routes)"]
-    capi["Cluster API controllers"]
-    nodes["worker nodes (machines)"]
-  end
-
-  developer --> dashboard
-  developer --> cli
-  agent -->|MCP| api
-  dashboard -->|GraphQL| api
-  cli -->|REST| api
-  api --> store
-  api -->|projects desired state| crds
-  operator -->|watches and reconciles| crds
-  operator -->|builds and pushes images| registry
-  runtime -->|managed by| operator
-  runtime -->|pulls images| registry
-  runtime -->|runs on| nodes
-  nodes -->|provisioned by| capi
-```
+<p align="center">
+  <img src="docs/assets/architecture.svg" width="980" alt="bex architecture: a developer uses the dashboard (GraphQL) or the bex CLI (REST) and a coding agent uses MCP, all reaching bex-api in the app cluster; bex-api stores durable intent in control-plane Postgres and projects desired state into App, Database, and KeyValue Kubernetes objects; the bex operator watches and reconciles them and builds and pushes images to the Zot registry; the tenant runtime is managed by the operator, pulls images from Zot, and runs on worker nodes provisioned by Cluster API controllers">
+</p>
 
 Arrows point from a consumer to what it depends on. `bex-api` owns durable product intent; the database-free operator turns projected Kubernetes objects into workloads; Cluster API provisions the machines beneath them; and `operator → types ← backend` remains the one-way code dependency described in the [architecture panorama](docs/ADR002-architecture.md).
 

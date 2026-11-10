@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="980" height="930" viewBox="0 0 980 930" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>bex architecture — clients reach bex-api, which projects desired state into Kubernetes objects that the operator reconciles into tenant workloads on Cluster API machines</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; text-anchor: middle; }
+      .s { font-size: 12px; fill: #6b7280; text-anchor: middle; }
+      .flow { stroke: #334155; stroke-width: 1.6; fill: none; marker-end: url(#arrow); }
+      .lbl { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #ffffff; stroke-width: 5px; stroke-linejoin: round; }
+      .lbl-in { font-size: 12px; fill: #475569; paint-order: stroke; stroke: #f8fafc; stroke-width: 5px; stroke-linejoin: round; }
+      .actor { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.4; }
+      .client { fill: #f5f3ff; stroke: #7c3aed; stroke-width: 1.6; }
+      .control { fill: #eff6ff; stroke: #2563eb; stroke-width: 1.6; }
+      .reconcile { fill: #fffbeb; stroke: #d97706; stroke-width: 1.6; }
+      .runtime { fill: #ecfdf5; stroke: #059669; stroke-width: 1.6; }
+      .icon { fill: none; stroke: #475569; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+  </defs>
+
+  <rect x="0.5" y="0.5" width="979" height="929" rx="14" fill="#ffffff" stroke="#e5e7eb"/>
+
+  <text x="40" y="50" font-size="22" font-weight="700" fill="#111827">bex architecture</text>
+  <text x="40" y="74" font-size="13" fill="#4b5563">Arrows point from a consumer to what it depends on.</text>
+
+  <!-- People and agents -->
+  <rect class="actor" x="255" y="104" width="150" height="44" rx="22"/>
+  <circle class="icon" cx="283" cy="120" r="5"/>
+  <path class="icon" d="M273,137 a10,8 0 0 1 20,0"/>
+  <text x="304" y="131" font-size="14" font-weight="600" fill="#111827">developer</text>
+
+  <rect class="actor" x="725" y="104" width="170" height="44" rx="22"/>
+  <rect class="icon" x="745" y="117" width="18" height="14" rx="3"/>
+  <circle cx="750.5" cy="124" r="1.6" fill="#475569"/>
+  <circle cx="757.5" cy="124" r="1.6" fill="#475569"/>
+  <path class="icon" d="M754,113 v4"/>
+  <text x="774" y="131" font-size="14" font-weight="600" fill="#111827">coding agent</text>
+
+  <!-- Clients -->
+  <rect class="client" x="60" y="196" width="220" height="60" rx="10"/>
+  <text class="h" x="170" y="221">dashboard</text>
+  <text class="s" x="170" y="241">web service</text>
+
+  <rect class="client" x="380" y="196" width="220" height="60" rx="10"/>
+  <text class="h" x="490" y="221">bex CLI</text>
+  <text class="s" x="490" y="241">local client process</text>
+
+  <!-- App cluster -->
+  <rect x="40" y="306" width="900" height="560" rx="16" fill="#f8fafc" stroke="#94a3b8" stroke-width="1.4" stroke-dasharray="7 5"/>
+  <text x="60" y="332" font-size="13" font-weight="700" fill="#475569" letter-spacing="0.6">APP CLUSTER</text>
+
+  <!-- Row: control plane -->
+  <path class="control" d="M60,364 v50 a110,9 0 0 0 220,0 v-50"/>
+  <ellipse class="control" cx="170" cy="364" rx="110" ry="9"/>
+  <text class="h" x="170" y="393">control-plane Postgres</text>
+  <text class="s" x="170" y="412">durable product intent</text>
+
+  <rect class="control" x="380" y="356" width="220" height="70" rx="10"/>
+  <text class="h" x="490" y="385">bex-api</text>
+  <text class="s" x="490" y="406">REST · GraphQL · MCP</text>
+
+  <!-- Row: desired state -->
+  <rect class="control" x="380" y="496" width="220" height="70" rx="10"/>
+  <text class="h" x="490" y="525">App · Database · KeyValue</text>
+  <text class="s" x="490" y="546">Kubernetes objects</text>
+
+  <rect class="reconcile" x="700" y="496" width="220" height="70" rx="10"/>
+  <text class="h" x="810" y="525">bex operator</text>
+  <text class="s" x="810" y="546">database-free manager</text>
+
+  <!-- Row: workloads -->
+  <rect class="runtime" x="380" y="636" width="220" height="70" rx="10"/>
+  <text class="h" x="490" y="665">tenant runtime</text>
+  <text class="s" x="490" y="686">Kubernetes workloads and routes</text>
+
+  <rect class="reconcile" x="700" y="636" width="220" height="70" rx="10"/>
+  <text class="h" x="810" y="665">Zot registry</text>
+  <text class="s" x="810" y="686">tenant images</text>
+
+  <!-- Row: machines -->
+  <rect class="runtime" x="380" y="776" width="220" height="70" rx="10"/>
+  <text class="h" x="490" y="805">worker nodes</text>
+  <text class="s" x="490" y="826">machines</text>
+
+  <rect class="runtime" x="60" y="776" width="220" height="70" rx="10"/>
+  <text class="h" x="170" y="805">Cluster API controllers</text>
+  <text class="s" x="170" y="826">CAPD local · CAPH Hetzner</text>
+
+  <!-- Edges: people to clients -->
+  <path class="flow" d="M300,148 L212,194"/>
+  <path class="flow" d="M360,148 L448,194"/>
+
+  <!-- Edges: clients to bex-api -->
+  <path class="flow" d="M170,256 L428,354"/>
+  <text class="lbl" x="214" y="289" text-anchor="end">GraphQL</text>
+
+  <path class="flow" d="M490,256 L490,354"/>
+  <text class="lbl" x="500" y="286">REST</text>
+
+  <path class="flow" d="M810,148 L810,391 L602,391"/>
+  <text class="lbl" x="822" y="232">MCP</text>
+
+  <!-- Edges: control plane -->
+  <path class="flow" d="M380,391 L282,391"/>
+
+  <path class="flow" d="M490,426 L490,494"/>
+  <text class="lbl-in" x="502" y="465">projects desired state</text>
+
+  <path class="flow" d="M700,531 L602,531"/>
+  <text class="lbl-in" x="650" y="506" text-anchor="middle">watches and</text>
+  <text class="lbl-in" x="650" y="520" text-anchor="middle">reconciles</text>
+
+  <!-- Edges: build and runtime -->
+  <path class="flow" d="M810,566 L810,634"/>
+  <text class="lbl-in" x="822" y="597">builds and</text>
+  <text class="lbl-in" x="822" y="612">pushes images</text>
+
+  <path class="flow" d="M588,636 L713,568"/>
+  <text class="lbl-in" x="662" y="612">managed by</text>
+
+  <path class="flow" d="M600,671 L698,671"/>
+  <text class="lbl-in" x="650" y="662" text-anchor="middle">pulls images</text>
+
+  <path class="flow" d="M490,706 L490,774"/>
+  <text class="lbl-in" x="502" y="745">runs on</text>
+
+  <path class="flow" d="M380,811 L282,811"/>
+  <text class="lbl-in" x="331" y="802" text-anchor="middle">provisioned by</text>
+
+  <!-- Legend -->
+  <g font-size="12" fill="#4b5563">
+    <rect class="client" x="40" y="890" width="14" height="14" rx="3"/>
+    <text x="62" y="901">clients</text>
+    <rect class="control" x="130" y="890" width="14" height="14" rx="3"/>
+    <text x="152" y="901">control plane</text>
+    <rect class="reconcile" x="262" y="890" width="14" height="14" rx="3"/>
+    <text x="284" y="901">build and reconcile</text>
+    <rect class="runtime" x="422" y="890" width="14" height="14" rx="3"/>
+    <text x="444" y="901">tenant runtime and machines</text>
+  </g>
+</svg>
