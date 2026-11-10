@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  configure,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { GlobalSearch } from "../global-search";
 
 // w4/265: the mounted palette kept its last query after a result selection or
@@ -8,6 +14,10 @@ import { GlobalSearch } from "../global-search";
 // drive the real parent + lazy dialog + Radix/cmdk; the resource hooks are
 // mocked only as data sources.
 const navigate = vi.hoisted(() => vi.fn());
+// The dialog is a lazy chunk (a dynamic import plus Radix/cmdk mounting), so on
+// a loaded CI host the default 1s wait for it to appear was flaky; every wait
+// here is for that mount, never a negative-timing assertion.
+configure({ asyncUtilTimeout: 8000 });
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
 }));
