@@ -195,8 +195,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          SHELLCHECK_VERSION=0.10.0
-          SHELLCHECK_LINUX_ARM64_SHA256=324a7e89de8fa2aed0d0c28f3dab59cf84c6d74264022c00c22af665ed1a09bb
+          SHELLCHECK_VERSION=0.11.0
+          SHELLCHECK_LINUX_ARM64_SHA256=12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588
           archive="$RUNNER_TEMP/shellcheck.tar.xz"
           bash scripts/ci-fetch-verified.sh \
             "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz" \

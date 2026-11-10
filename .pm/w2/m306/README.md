@@ -1,6 +1,6 @@
 # w2 · m306 — CI on main reports only real reds after the move to GitHub-hosted runners
 
-**Worker:** worker2 **Goal:** a red workflow on main means a real defect again: `scripts (test)` is green, every step it skipped since 2026-11-08 runs, and the red-streak and schedule-drift trackers stop listing signals that are stale or mis-calibrated. **Status:** todo (t001 done)
+**Worker:** worker2 **Goal:** a red workflow on main means a real defect again: `scripts (test)` is green, every step it skipped since 2026-11-08 runs, and the red-streak and schedule-drift trackers stop listing signals that are stale or mis-calibrated. **Status:** todo (t001, t003–t007 done; t002 waits on two consecutive green `scripts (test)` push runs)
 
 ## Tasks (in order)
 
@@ -8,11 +8,11 @@
 | ---- | ----- | --- | ---------- |
 | t001 | `scripts (test)` is green: a reasoned SC2218 directive in `mock-cluster.test.sh`; `dev-env.test.sh`'s `assert()` evaluates without `pipefail` — **DONE** | 20m | — |
 | t002 | The steps CI has not reached since 2026-11-08 (mock-cluster, restore and disk-snapshot tests) pass on `ubuntu-24.04-arm` | 30m | t001 |
-| t003 | Local and CI run the same ShellCheck (0.11.0 in `scripts.yml` and the `github-actions-validate.sh` sha table) | 20m | t001 |
-| t004 | `ci-red-streak.sh` groups runs by workflow id, and a later success of any event ends a jobless parse-failure streak | 45m | — |
-| t005 | `ci-schedule-drift.sh` windows recalibrated from measured GitHub-hosted cron gaps; the deleted `runner-link.yml` dropped | 20m | — |
-| t006 | Simplify | 15m | t002, t003, t004, t005 |
-| t007 | Test coverage | 30m | t006 |
+| t003 | Local and CI run the same ShellCheck (0.11.0 in `scripts.yml` and the `github-actions-validate.sh` sha table) — **DONE** | 20m | t001 |
+| t004 | `ci-red-streak.sh` groups runs by workflow id, and a later success of any event ends a jobless parse-failure streak — **DONE** | 45m | — |
+| t005 | `ci-schedule-drift.sh` windows recalibrated from measured GitHub-hosted cron gaps; the deleted `runner-link.yml` dropped — **DONE** | 20m | — |
+| t006 | Simplify — **DONE** | 15m | t002, t003, t004, t005 |
+| t007 | Test coverage — **DONE** | 30m | t006 |
 | t008 | Closeout | 10m | t007 |
 
 ## Definition of done

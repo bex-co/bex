@@ -21,6 +21,17 @@
 # a cancelled run is not evidence of health, and treating it as success would
 # hide a streak that spans one.
 #
+# Runs are grouped by workflow id, not by name. A push GitHub could not parse
+# the workflow file for fails with no jobs and is named after the file path
+# (every bex workflow declares `name:`, so only those runs carry a
+# `.github/...` name). Grouped by name, those runs formed a workflow of their
+# own that no later run could ever clear: native-base-image.yml's 2026-10-30
+# parse failures stayed on issue #109 for weeks, while the workflow, by then
+# dispatch-only, passed every run. A later success of the workflow from any
+# event ends such parse failures. Real push/schedule failures are still ended
+# only by a push/schedule success: a manual dispatch passing does not show the
+# push path is healthy.
+#
 # Config:
 #   BEX_CI_STREAK_THRESHOLD  consecutive failures before reporting (default 3)
 #   BEX_CI_RUNS_JSON         read runs from this file instead of the GitHub API
@@ -66,7 +77,7 @@ else
     || unusable "could not list workflows"
   runs="$(for wf in $workflows; do
       gh_retry gh run list --workflow "$wf" --limit "$LIMIT" \
-        --json name,conclusion,status,event,headBranch,headSha,createdAt,url 2>/dev/null || exit 1
+        --json workflowDatabaseId,name,conclusion,status,event,headBranch,headSha,createdAt,url 2>/dev/null || exit 1
     done | jq -s 'add // []')" \
     || unusable "could not list workflow runs"
 fi
@@ -79,18 +90,30 @@ echo "$runs" | jq -e 'type == "array"' >/dev/null 2>&1 \
 # commit that turned a check red is the one that has to be looked at, and
 # finding it by hand is what made the gitops case take an afternoon.
 report="$(echo "$runs" | jq -r --argjson threshold "$THRESHOLD" '
+  def parse_failure: .name | startswith(".github/");
   [ .[]
     | select(.status == "completed")
     | select(.headBranch == "main")
-    | select(.event == "push" or .event == "schedule")
-    | select(.conclusion != "cancelled" and .conclusion != "skipped" and .conclusion != "neutral")
   ]
-  | group_by(.name)
-  | map({
-      name: .[0].name,
+  # Fixtures without an id fall back to grouping by name.
+  | group_by(.workflowDatabaseId // .name)
+  | map(
       # group_by does not preserve order; sort newest-first within each workflow.
-      runs: (. | sort_by(.createdAt) | reverse)
-    })
+      (sort_by(.createdAt) | reverse) as $all
+      # A fork pull request runs its own copy of the workflow file, so its
+      # success says nothing about whether main parses.
+      | ([ $all[] | select(.conclusion == "success" and .event != "pull_request") | .createdAt ] | first) as $healthy_at
+      | {
+          # Prefer the declared name over a parse failure file path.
+          name: (first($all[] | select(parse_failure | not) | .name) // $all[0].name),
+          runs: [ $all[]
+            | select(.event == "push" or .event == "schedule")
+            | select(.conclusion != "cancelled" and .conclusion != "skipped" and .conclusion != "neutral")
+            # null sorts below every string, so with no success nothing is dropped.
+            | select((parse_failure | not) or .createdAt > $healthy_at)
+          ]
+        }
+    )
   | map(
       . as $w
       # Index of the newest success == how many failures precede it. When there

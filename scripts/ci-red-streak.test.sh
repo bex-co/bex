@@ -97,6 +97,51 @@ check "per-workflow streaks" \
   "$(runs_json "$(mk red failure a 3)$(mk red failure b 2)$(mk red failure c 1)$(mk green success d 3)$(mk green success e 2)$(mk green success f 1)")" \
   1 "**red** — 3 consecutive failures"
 
+# mkid <workflow id> <name> <conclusion> <sha> <day> [event] — a run as the
+# real fetch lists it, with the workflow id the detector groups by.
+mkid() {
+  printf '{"workflowDatabaseId":%s,"name":"%s","conclusion":"%s","status":"completed","event":"%s","headBranch":"main","headSha":"%s","createdAt":"2026-09-%02dT00:00","url":"https://x/%s"},' \
+    "$1" "$2" "$3" "${6:-push}" "$4" "$5" "$4"
+}
+P=.github/workflows/nb.yml # how GitHub names a run it could not parse the workflow for
+
+# (k) native-base-image.yml, 2026-10-30: pushes that failed because the file
+# did not parse (named after the path, no jobs), then a workflow that is now
+# dispatch-only and passes. Grouped by name the path-named runs could never
+# clear; by id, the later dispatch success ends them.
+check "later dispatch success clears parse failures" \
+  "$(runs_json "$(mkid 7 nb success e 5 workflow_dispatch)$(mkid 7 $P failure d 4)$(mkid 7 $P failure c 3)$(mkid 7 $P failure b 2)$(mkid 7 $P failure a 1)")" \
+  0
+
+# (l) A dispatch success does not clear real push failures: it does not show
+# the push path is healthy.
+check "dispatch success keeps a real push streak" \
+  "$(runs_json "$(mkid 7 nb success e 5 workflow_dispatch)$(mkid 7 nb failure d 4)$(mkid 7 nb failure c 3)$(mkid 7 nb failure b 2)$(mkid 7 nb success a 1)")" \
+  1 "**nb** — 3 consecutive failures"
+
+# (m) Parse failures with no later success are a real red (the file is still
+# broken), reported under the workflow name when one is known.
+check "parse failures with no later success stay red" \
+  "$(runs_json "$(mkid 7 $P failure d 4)$(mkid 7 $P failure c 3)$(mkid 7 $P failure b 2)$(mkid 7 nb success a 1)")" \
+  1 "**nb** — 3 consecutive failures"
+
+# (n) Parse failures newer than the last success still count.
+check "parse failures after the last success count" \
+  "$(runs_json "$(mkid 7 $P failure e 5)$(mkid 7 $P failure d 4)$(mkid 7 $P failure c 3)$(mkid 7 nb success b 2 workflow_dispatch)")" \
+  1 "3 consecutive failures"
+
+# (n2) A pull request whose head branch is called main (a fork's main) runs
+# its own copy of the workflow file; its success does not clear main's parse
+# failures.
+check "fork pull_request success keeps parse failures" \
+  "$(runs_json "$(mkid 7 nb success e 5 pull_request)$(mkid 7 $P failure d 4)$(mkid 7 $P failure c 3)$(mkid 7 $P failure b 2)")" \
+  1 "3 consecutive failures"
+
+# (o) Two workflows that share a name stay separate by id.
+check "same name, different workflows" \
+  "$(runs_json "$(mkid 1 dup failure c 3)$(mkid 1 dup failure b 2)$(mkid 1 dup failure a 1)$(mkid 2 dup success f 3)")" \
+  1 "**dup** — 3 consecutive failures"
+
 # (h) The threshold is configurable, and raising it above a real streak silences it.
 file="$tmp/threshold.json"
 printf '%s' "$(runs_json "$(mk w failure a 3)$(mk w failure b 2)$(mk w failure c 1)")" >"$file"

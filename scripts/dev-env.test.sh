@@ -26,6 +26,19 @@ assert() { # desc  condition
   fi
 }
 
+# assert() itself: a true condition whose writer outlives `grep -q` (a
+# megabyte, matched on its first line) is ok, and a false one still FAILs.
+selfcheck="$( (fails=0
+  assert "large true" "seq 1 200000 | grep -q '^1\$'"
+  assert "large false" "seq 1 200000 | grep -q '^x\$'"
+  echo "fails=$fails") 2>&1)"
+case "$selfcheck" in
+  *"ok: large true"*"FAIL: large false"*"fails=1"*)
+    echo "    ok: assert() passes a true early-exit grep and fails a false one" ;;
+  *) echo "FAIL: assert() self-check:" >&2; printf '%s\n' "$selfcheck" | sed 's/^/    /' >&2
+    fails=$((fails + 1)) ;;
+esac
+
 devenv() { bash scripts/dev-env.sh "$@"; }
 value_of() { # N KEY
   devenv "$1" env | sed -n "s/^$2=//p"

@@ -113,6 +113,19 @@ check "exempt names itself when all is well" \
   0 "Not checked: self.yml."
 printf 'w.yml 12\n' >"$tmp/windows"
 
+# (k2) The repo's hosted-cron windows (w2/m306, measured 2026-11-10): the
+# worst gap GitHub left each workflow stays silent, and a stop of about a day
+# still trips. Reads each window from the script's own table.
+for spec in "alerting-heartbeat.yml 11" "deploy-latency.yml 11" "ssh-edge-liveness.yml 16"; do
+  wf="${spec% *}" worst="${spec#* }"
+  window="$(sed -n "s/^${wf//./\\.} \([0-9]*\)\$/\1/p" "$SCRIPT")"
+  [ -n "$window" ] || { echo "FAIL [$wf window]: not in the table" >&2; fails=$((fails + 1)); continue; }
+  printf 'w.yml %s\n' "$window" >"$tmp/windows"
+  check "$wf: worst measured gap (${worst}h) is silent" "$(runs "$(run 1)$(run $((1 + worst)))")" 0
+  check "$wf: a day-long stop trips" "$(runs "$(run 1)$(run 25)")" 1
+done
+printf 'w.yml 12\n' >"$tmp/windows"
+
 # (l) Unusable input is exit 2 — an operator problem, never a silent pass.
 unusable() { # unusable <label> <env assignment>...
   local label="$1" rc

@@ -699,8 +699,8 @@ if ! grep -Fq 'GITLEAKS_VERSION: 8.30.1' .github/workflows/deploy.yml \
   echo "FAIL: deploy must checksum-pin and execute the reviewed Gitleaks CLI scanner" >&2
   exit 1
 fi
-if ! grep -Fq 'SHELLCHECK_VERSION=0.10.0' .github/workflows/scripts.yml \
-  || ! grep -Fq 'SHELLCHECK_LINUX_ARM64_SHA256=324a7e89de8fa2aed0d0c28f3dab59cf84c6d74264022c00c22af665ed1a09bb' .github/workflows/scripts.yml \
+if ! grep -Fq 'SHELLCHECK_VERSION=0.11.0' .github/workflows/scripts.yml \
+  || ! grep -Fq 'SHELLCHECK_LINUX_ARM64_SHA256=12b331c1d2db6b9eb13cfca64306b1b157a86eb69db83023e261eaa7e7c14588' .github/workflows/scripts.yml \
   || ! grep -Fq 'shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz' .github/workflows/scripts.yml; then
   echo "FAIL: scripts workflow must checksum-pin its rootless ShellCheck install" >&2
   exit 1

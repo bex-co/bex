@@ -57,12 +57,19 @@ set -euo pipefail
 # excluding the 2026-08-30..09-09 cancellation outage, which is what a window
 # exists to catch. `-` exempts a workflow, with the reason on the line above.
 WINDOWS="
-# w7/055's handoff. Requested every 6h; measured gaps 4h25m-9h30m since 09-05.
-ssh-edge-liveness.yml 12
-# w3/m174. Hourly; no history yet. Six missed hours must trip.
-alerting-heartbeat.yml 6
-# w6/m156. Every 3h since block-eden-mono w1/m25; three missed runs must trip.
-deploy-latency.yml 9
+# GitHub creates far fewer scheduled runs than a cron asks for: the hourly
+# heartbeat gets 2-6 a day. Every run it does create starts at once and nearly
+# all pass, so these three windows sit above the gaps GitHub itself leaves.
+# Re-measured 2026-11-10 over each workflow's newest 100 scheduled verdicts;
+# a stop of about a day still trips each one.
+# w7/055's handoff. Requested every 6h; since 10-09 median 7h17m, p90 11h17m,
+# max 15h33m.
+ssh-edge-liveness.yml 18
+# w3/m174. Hourly; since 10-21 median 5h14m, p90 8h00m, max 10h48m.
+alerting-heartbeat.yml 12
+# w6/m156. Every 3h since block-eden-mono w1/m25; since 11-03 median 6h29m,
+# p90 8h35m, max 10h28m.
+deploy-latency.yml 12
 # block-eden-mono w1/m25. Three runs a day, the longest gap 14h overnight
 # (21:00 to 11:00 San Francisco); one missed run on top of it must trip.
 deploy.yml 20
@@ -161,8 +168,9 @@ runs_for() { # runs_for <workflow file> — its newest runs, newest first
     # keep the scheduled ones in the filter below. Measured 2026-10-07 over each
     # scheduled workflow's newest 100: infra's are the most mixed (81
     # scheduled, 18 pushes), the weekly workflows hold 12 runs or fewer in all,
-    # and the check needs about 10 scheduled verdicts at most
-    # (ssh-edge-liveness's 12h window plus the 48h lookback).
+    # and the check needs about 11 scheduled verdicts for ssh-edge-liveness
+    # (its 18h window plus the 48h lookback) and at most 60 for the hourly
+    # heartbeat.
     gh_retry gh run list --workflow "$1" --limit "$LIMIT" \
       --json conclusion,status,event,createdAt,url 2>/dev/null \
       || unusable "could not list runs of $1"
