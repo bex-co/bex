@@ -22,11 +22,17 @@ name: deploy (bex via Argo)
 # (19, 00, 05 UTC; an hour later during daylight time), plus on demand
 # (block-eden-mono w1/m25). A scheduled run deploys only when a commit touching
 # .github/deploy-paths landed after the production pin's producer; otherwise
-# every job after `changes` is skipped. workflow_dispatch always deploys main.
+# every job after `changes` is skipped. workflow_dispatch deploys main, or
+# applies the same gate as a scheduled run when only_if_changed is set.
 on:
   schedule:
     - cron: "0 19,0,5 * * *"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      only_if_changed:
+        description: "Deploy only if a deployable commit landed after the production pin (as a scheduled run)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -121,7 +127,8 @@ jobs:
   # --- changes: the scheduled gate (block-eden-mono w1/m25) ---
   # A scheduled run deploys only when a deployable commit (.github/deploy-paths)
   # landed after the production pin's producer; the pin write-back itself does
-  # not count. git only, no API. A dispatch always deploys. The w1/m59
+  # not count. git only, no API. A dispatch always deploys unless its
+  # only_if_changed input asks for the scheduled behavior. The w1/m59
   # write-back guard in the deploy job stays the correctness gate: it still
   # refuses to pin images built from a tree older than production's inputs.
   # The pre-build supersession skip this replaced existed for per-push runs
@@ -146,8 +153,9 @@ jobs:
       - id: check
         env:
           EVENT: ${{ github.event_name }}
+          ONLY_IF_CHANGED: ${{ inputs.only_if_changed || false }}
         run: |
-          if [ "$EVENT" != schedule ]; then
+          if [ "$EVENT" != schedule ] && [ "$ONLY_IF_CHANGED" != true ]; then
             echo "::notice::$EVENT deploys main unconditionally"
             echo "deploy=true" >> "$GITHUB_OUTPUT"
             exit 0
