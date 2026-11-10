@@ -42,6 +42,7 @@ import {
   isValidPostgresIdentifier,
 } from "@/features/databases/lib/identifiers";
 import { ProjectEnvironmentSelector } from "@/features/environments/components/project-environment-selector";
+import { planStorageFixed } from "@/features/databases/lib/storage";
 
 // PostgreSQL major versions bex offers. Keep in sync with the Database CRD's
 // authoritative enum (lego/types/v1alpha1/database_types.go, spec.version
@@ -131,7 +132,7 @@ export function CreateDatabaseDialog({
   const diskCeiling = selectedPlan?.maxStorageGB;
   // A plan whose floor is its ceiling (Free: 1 GB) has a fixed disk: show it,
   // never validate a range of one, and let the server apply it (w4/376).
-  const diskFixed = diskCeiling != null && diskFloor === diskCeiling;
+  const diskFixed = selectedPlan != null && planStorageFixed(selectedPlan);
   const diskEntered = !diskFixed && diskSizeGB.trim() !== "";
   const diskNum = Number(diskSizeGB);
   const diskValid =

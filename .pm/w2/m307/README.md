@@ -1,19 +1,19 @@
 # w2 · m307 — Postgres: turn on connection pooling and grow storage from the dashboard, as on Render
 
-**Worker:** worker2 **Goal:** a dashboard user can enable or disable PgBouncer connection pooling and grow a database's storage, as on Render. Both are GraphQL writes with the same semantics and errors as REST and MCP, and the parity ledger stops claiming a dashboard pooler that does not exist. **Status:** todo
+**Worker:** worker2 **Goal:** a dashboard user can enable or disable PgBouncer connection pooling and grow a database's storage, as on Render. Both are GraphQL writes with the same semantics and errors as REST and MCP, and the parity ledger stops claiming a dashboard pooler that does not exist. **Status:** todo (t001–t008 done; t009 waits on the dev-2 walk)
 
 ## Tasks (in order)
 
 | id   | title | est | depends_on |
 | ---- | ----- | --- | ---------- |
-| t001 | GraphQL `updateDatabaseConnectionPool` with REST/MCP's semantics and errors | 45m | — |
-| t002 | GraphQL `updateDatabaseDiskSize` sharing REST's grow-only guard | 45m | — |
-| t003 | Dashboard connection-pool toggle with Render's confirmation, replacing w4/107's "use the API" copy | 60m | t001 |
-| t004 | Dashboard storage edit (grow-only) with a converging state | 60m | t002 |
-| t005 | Amend ADR018 rows 177 and 190 | 15m | t003, t004 |
-| t006 | Render parity | 20m | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t007 |
+| t001 | GraphQL `updateDatabaseConnectionPool` with REST/MCP's semantics and errors — **DONE** | 45m | — |
+| t002 | GraphQL `updateDatabaseDiskSize` sharing REST's grow-only guard — **DONE** | 45m | — |
+| t003 | Dashboard connection-pool toggle with Render's confirmation, replacing w4/107's "use the API" copy — **DONE** | 60m | t001 |
+| t004 | Dashboard storage edit (grow-only) with a converging state — **DONE** | 60m | t002 |
+| t005 | Amend ADR018 rows 177 and 190 — **DONE** | 15m | t003, t004 |
+| t006 | Render parity — **DONE** | 20m | t005 |
+| t007 | Simplify — **DONE** | 15m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t007 |
 | t009 | Closeout | 10m | t008 |
 
 ## Definition of done

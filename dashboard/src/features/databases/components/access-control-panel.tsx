@@ -10,6 +10,8 @@ import {
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Badge } from "@/common/components/ui/badge";
+import { Switch } from "@/common/components/ui/switch";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { ConnectionField } from "@/common/components/connection-field";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
@@ -17,26 +19,37 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useAccessControl } from "@/features/databases/hooks/use-access-control";
 import { isReservedPostgresRole } from "@/features/databases/lib/identifiers";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
+import { useUpdateDatabaseConnectionPool } from "@/features/databases/hooks/use-update-database-connection-pool";
+import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import type { DatabaseDetailView } from "@/features/databases/types";
+
+export interface AccessControlPanelProps {
+  database: Pick<
+    DatabaseDetailView,
+    "id" | "name" | "plan" | "poolerEnabled" | "highAvailabilityEnabled"
+  >;
+  /** Called after a connection-pool toggle is accepted, to re-read the page. */
+  onChanged: () => void;
+}
 
 /**
  * The database detail's Access Control section: the external-endpoint IP
  * allowlist (editable CIDR list), Render's credentials (a new one becomes the
- * default; the default can't be deleted), and an on-demand reveal of the
- * pooled connection strings. Mirrors the services env-vars panel shape.
+ * default; the default can't be deleted), Render's Connection Pool toggle
+ * (w2/m307) and an on-demand reveal of the pooled connection strings. Mirrors
+ * the services env-vars panel shape.
  */
 export function AccessControlPanel({
-  id,
-  plan,
-}: {
-  id: string;
-  plan: string | null;
-}) {
+  database,
+  onChanged,
+}: AccessControlPanelProps) {
   const { t } = useTranslations();
-  const access = useAccessControl(id);
+  const access = useAccessControl(database.id);
   const { instanceTypes } = useDatabaseInstanceTypes();
-  const supportsPooling = instanceTypes.find(
-    (it) => it.id === plan,
-  )?.supportsConnectionPooling;
+  const planUnsupported =
+    instanceTypes.find((it) => it.id === database.plan)
+      ?.supportsConnectionPooling === false;
 
   return (
     <Card>
@@ -52,7 +65,12 @@ export function AccessControlPanel({
           access={access}
         />
         <CredentialsSection access={access} />
-        <PoolerSection access={access} supportsPooling={supportsPooling} />
+        <PoolerSection
+          database={database}
+          access={access}
+          planUnsupported={planUnsupported}
+          onChanged={onChanged}
+        />
       </CardContent>
     </Card>
   );
@@ -194,58 +212,137 @@ function CredentialsSection({ access }: { access: Access }) {
   );
 }
 
+// Render's Info > General > Connection Pool (w2/m307): a switch that asks
+// first, because either direction restarts the database (or fails over to the
+// standby when HA is on). Free plans can't pool, so enabling is refused there;
+// a pooler left on can always be turned off, as bex-api allows.
 function PoolerSection({
+  database,
   access,
-  supportsPooling,
-}: {
-  access: Access;
-  supportsPooling: boolean | undefined;
-}) {
+  planUnsupported,
+  onChanged,
+}: AccessControlPanelProps & { access: Access; planUnsupported: boolean }) {
+  const { id, name, poolerEnabled, highAvailabilityEnabled } = database;
   const { t } = useTranslations();
+  const capabilities = useCapabilities();
+  const operateReasonKey = capabilities.reasonKey("can_operate");
+  const operateReason = operateReasonKey ? t(operateReasonKey) : undefined;
+  const { updateConnectionPool, busy } = useUpdateDatabaseConnectionPool();
+  const [target, setTarget] = useState<boolean | null>(null);
+  const hasPooledStrings = Boolean(
+    access.pooled?.internal || access.pooled?.external,
+  );
+
+  async function handleToggle(enabled: boolean) {
+    if (await updateConnectionPool(id, name, enabled)) {
+      setTarget(null);
+      access.resetPooled();
+      onChanged();
+    }
+  }
+
   return (
     <section className="space-y-2">
-      <h4 className="text-sm font-medium">{t("databases.accessPooler")}</h4>
+      <div className="flex items-center justify-between gap-4">
+        <h4 className="text-sm font-medium">{t("databases.accessPooler")}</h4>
+        <PermissionTooltip reason={operateReason}>
+          <Switch
+            aria-label={t("databases.poolerToggleLabel")}
+            checked={poolerEnabled}
+            disabled={
+              operateReason != null ||
+              busy ||
+              (!poolerEnabled && planUnsupported)
+            }
+            onCheckedChange={setTarget}
+          />
+        </PermissionTooltip>
+      </div>
       <p className="text-xs text-muted-foreground">
         {t("databases.accessPoolerHint")}
       </p>
-      {access.pooled ? (
-        access.pooled.internal || access.pooled.external ? (
-          <div className="space-y-2">
+      {access.pooled && hasPooledStrings ? (
+        <div className="space-y-2">
+          <ConnectionField
+            label={t("databases.accessPoolerInternal")}
+            value={access.pooled.internal}
+            copiedText={t("databases.copied")}
+            copyErrorText={t("databases.copyError")}
+          />
+          {access.pooled.external ? (
             <ConnectionField
-              label={t("databases.accessPoolerInternal")}
-              value={access.pooled.internal}
+              label={t("databases.accessPoolerExternal")}
+              value={access.pooled.external}
               copiedText={t("databases.copied")}
               copyErrorText={t("databases.copyError")}
             />
-            {access.pooled.external ? (
-              <ConnectionField
-                label={t("databases.accessPoolerExternal")}
-                value={access.pooled.external}
-                copiedText={t("databases.copied")}
-                copyErrorText={t("databases.copyError")}
-              />
-            ) : null}
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            {t(
-              supportsPooling === false
-                ? "databases.accessPoolerPlanUnsupported"
-                : "databases.accessPoolerDisabled",
-            )}
-          </p>
-        )
+          ) : null}
+        </div>
+      ) : !poolerEnabled ? (
+        <p className="text-sm text-muted-foreground">
+          {t(
+            planUnsupported
+              ? "databases.accessPoolerPlanUnsupported"
+              : "databases.accessPoolerDisabled",
+          )}
+        </p>
       ) : (
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => void access.revealPooled()}
-          disabled={access.poolLoading}
-        >
-          {access.poolLoading ? <Loader2 className="animate-spin" /> : <Eye />}
-          {t("databases.accessPoolerReveal")}
-        </Button>
+        <>
+          {access.pooled ? (
+            // Enabled, but the operator hasn't published the pooler's hosts
+            // yet; Reveal stays so the strings can be read once it has.
+            <p className="text-sm text-muted-foreground">
+              {t("databases.accessPoolerStarting")}
+            </p>
+          ) : null}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void access.revealPooled()}
+            disabled={access.poolLoading}
+          >
+            {access.poolLoading ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Eye />
+            )}
+            {t("databases.accessPoolerReveal")}
+          </Button>
+        </>
       )}
+
+      <ConfirmDialog
+        open={target != null}
+        onOpenChange={(open) => {
+          if (!open && !busy) setTarget(null);
+        }}
+        title={t(
+          target
+            ? "databases.poolerEnableTitle"
+            : "databases.poolerDisableTitle",
+          { name },
+        )}
+        description={t(
+          target
+            ? highAvailabilityEnabled
+              ? "databases.poolerEnableBodyHA"
+              : "databases.poolerEnableBody"
+            : highAvailabilityEnabled
+              ? "databases.poolerDisableBodyHA"
+              : "databases.poolerDisableBody",
+        )}
+        confirmLabel={t(
+          target
+            ? "databases.poolerEnableConfirm"
+            : "databases.poolerDisableConfirm",
+        )}
+        destructive={!target}
+        pending={busy}
+        closeOnConfirm={false}
+        onConfirm={() => {
+          if (target != null) void handleToggle(target);
+        }}
+      />
     </section>
   );
 }

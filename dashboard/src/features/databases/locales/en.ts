@@ -981,18 +981,10 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Access panel button to fetch the pooled connection strings",
   },
   "databases.accessPoolerDisabled": {
-    // w4/107: the old copy told the reader to "enable a pooler" on a page with
-    // no pooler control — and there is none anywhere in the dashboard, because
-    // the pooler write lives on REST alone (w2/024 excluded it from GraphQL on
-    // parity grounds, which is sound on its own terms but left the dashboard,
-    // a GraphQL client, unable to carry out its own instruction). Until a
-    // pooler control exists, the honest copy names the surface that can
-    // actually do it — the same shape databases.recoveryDisabled uses for a
-    // feature this page cannot turn on.
     message:
-      'Connection pooling isn\'t enabled for this database, so there are no pooled connection strings. Turn it on through the API — PATCH /v1/postgres/{id} with {"pooler": true} — and the pooled strings appear here.',
+      "Turn on connection pooling above to get pooled connection strings.",
     description:
-      "Access panel shown when no pooler is provisioned; names the API that enables one, since the dashboard has no pooler control (w4/107)",
+      "Access panel shown when no pooler is enabled; points at the Connection Pool switch in the section heading (w2/m307)",
   },
   "databases.accessPoolerInternal": {
     message: "Internal pooled connection",
@@ -1010,6 +1002,75 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.accessPoolerError": {
     message: "Couldn't load the pooled connection strings.",
     description: "Toast when revealing pooled strings fails",
+  },
+  "databases.accessPoolerStarting": {
+    message:
+      "Connection pooling is starting. The pooled connection strings appear here once PgBouncer is ready.",
+    description:
+      "Access panel when pooling is on but the operator has not published the pooler hosts yet (w2/m307)",
+  },
+  "databases.poolerToggleLabel": {
+    message: "Connection pool",
+    description:
+      "Accessible label of the Connection Pool switch (Render's Info > Connection Pool, w2/m307)",
+  },
+  "databases.poolerEnableTitle": {
+    message: "Enable connection pooling for {name}?",
+    description:
+      "Connection-pool enable confirmation title; {name} is the database",
+  },
+  "databases.poolerDisableTitle": {
+    message: "Disable connection pooling for {name}?",
+    description:
+      "Connection-pool disable confirmation title; {name} is the database",
+  },
+  "databases.poolerEnableBody": {
+    message:
+      "Enabling connection pooling restarts the database, which causes a few minutes of downtime. The pooled connection strings appear in this section once PgBouncer is ready.",
+    description:
+      "Connection-pool enable confirmation body for a database without high availability (Render: enabling restarts the database)",
+  },
+  "databases.poolerEnableBodyHA": {
+    message:
+      "Enabling connection pooling fails over to the standby instead of restarting the database, so open connections drop briefly. The pooled connection strings appear in this section once PgBouncer is ready.",
+    description:
+      "Connection-pool enable confirmation body when high availability is on (Render: a failover instead of a restart)",
+  },
+  "databases.poolerDisableBody": {
+    message:
+      "Disabling connection pooling restarts the database, which causes a few minutes of downtime. The pooled connection strings stop working.",
+    description:
+      "Connection-pool disable confirmation body for a database without high availability",
+  },
+  "databases.poolerDisableBodyHA": {
+    message:
+      "Disabling connection pooling fails over to the standby instead of restarting the database, so open connections drop briefly. The pooled connection strings stop working.",
+    description:
+      "Connection-pool disable confirmation body when high availability is on",
+  },
+  "databases.poolerEnableConfirm": {
+    message: "Enable connection pool",
+    description: "Connection-pool enable confirmation button (Render's label)",
+  },
+  "databases.poolerDisableConfirm": {
+    message: "Disable connection pool",
+    description: "Connection-pool disable confirmation button",
+  },
+  "databases.poolerEnableSuccess": {
+    message: "Connection pooling is being enabled for {name}.",
+    description: "Toast after the connection-pool enable was accepted",
+  },
+  "databases.poolerDisableSuccess": {
+    message: "Connection pooling is being disabled for {name}.",
+    description: "Toast after the connection-pool disable was accepted",
+  },
+  "databases.poolerEnableError": {
+    message: "Couldn't enable connection pooling for {name}.",
+    description: "Fallback toast when enabling the connection pool fails",
+  },
+  "databases.poolerDisableError": {
+    message: "Couldn't disable connection pooling for {name}.",
+    description: "Fallback toast when disabling the connection pool fails",
   },
   // --- HA panel (w1/m22) ---
   "databases.haTitle": {
@@ -1299,6 +1360,72 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.planPickerError": {
     message: "Couldn't update the plan. Please try again.",
     description: "Toast when a plan update fails",
+  },
+  "databases.storageTitle": {
+    message: "Storage",
+    description:
+      "Plan section Storage row heading (Render's Plan page Storage section, w2/m307)",
+  },
+  "databases.storageSize": {
+    message: "{size} GB",
+    description: "Plan section Storage row: the allocated storage",
+  },
+  "databases.storageFixed": {
+    message:
+      "Free databases have fixed storage. Upgrade to a paid plan to add storage.",
+    description:
+      "Why the Storage Edit button is disabled on a free database (bex-api POSTGRES_STORAGE_PLAN_UNSUPPORTED)",
+  },
+  "databases.storageEdit": {
+    message: "Edit",
+    description:
+      "Plan section Storage row button that opens the storage dialog",
+  },
+  "databases.storageEditAria": {
+    message: "Edit storage",
+    description: "Accessible name of the Storage row's Edit button",
+  },
+  "databases.storageEditTitle": {
+    message: "Edit storage for {name}",
+    description: "Storage dialog title; {name} is the database",
+  },
+  "databases.storageEditBody": {
+    message:
+      "Enter any multiple of {step} GB greater than the current {current} GB. Storage can't be reduced once it grows.",
+    description:
+      "Storage dialog description (Render: storage only grows, in 5 GB steps)",
+  },
+  "databases.storageEditLabel": {
+    message: "Storage (GB)",
+    description: "Storage dialog size field label",
+  },
+  "databases.storageEditStep": {
+    message: "Enter a whole multiple of {step} GB.",
+    description: "Storage dialog validation: not a whole multiple of 5 GB",
+  },
+  "databases.storageEditNotGreater": {
+    message:
+      "Enter more than the current {current} GB. Storage can't be reduced.",
+    description:
+      "Storage dialog validation: the size is not above the current storage",
+  },
+  "databases.storageEditTooLarge": {
+    message: "{name} allows up to {max} GB of storage.",
+    description:
+      "Storage dialog validation: the size is above the plan's maximum; {name} is the plan",
+  },
+  "databases.storageEditSave": {
+    message: "Save",
+    description: "Storage dialog submit button",
+  },
+  "databases.storageEditSuccess": {
+    message: "Increasing storage to {size} GB…",
+    description: "Toast after a storage increase is accepted",
+  },
+  "databases.storageEditError": {
+    message: "Couldn't update storage. Please try again.",
+    description:
+      "Storage dialog fallback error when the server gives no reason",
   },
   // --- Name row (w9/m3; edit-in-place w5/m55) ---
   "databases.nameEdit": {

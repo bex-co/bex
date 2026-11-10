@@ -954,11 +954,9 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Access panel button to fetch the pooled connection strings",
   },
   "databases.accessPoolerDisabled": {
-    // See the en copy — w4/107.
-    message:
-      '该数据库未启用连接池，因此没有连接池字符串。请通过 API 开启 —— PATCH /v1/postgres/{id}，请求体 {"pooler": true} —— 之后连接池字符串会显示在这里。',
+    message: "在上方开启连接池，即可获取连接池连接字符串。",
     description:
-      "Access panel shown when no pooler is provisioned; names the API that enables one, since the dashboard has no pooler control (w4/107)",
+      "Access panel shown when no pooler is enabled; points at the Connection Pool switch in the section heading (w2/m307)",
   },
   "databases.accessPoolerInternal": {
     message: "内部连接池连接",
@@ -975,6 +973,74 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.accessPoolerError": {
     message: "无法加载连接池字符串。",
     description: "Toast when revealing pooled strings fails",
+  },
+  "databases.accessPoolerStarting": {
+    message: "连接池正在启动。PgBouncer 就绪后，连接池连接字符串会显示在这里。",
+    description:
+      "Access panel when pooling is on but the operator has not published the pooler hosts yet (w2/m307)",
+  },
+  "databases.poolerToggleLabel": {
+    message: "连接池",
+    description:
+      "Accessible label of the Connection Pool switch (Render's Info > Connection Pool, w2/m307)",
+  },
+  "databases.poolerEnableTitle": {
+    message: "为 {name} 启用连接池？",
+    description:
+      "Connection-pool enable confirmation title; {name} is the database",
+  },
+  "databases.poolerDisableTitle": {
+    message: "为 {name} 关闭连接池？",
+    description:
+      "Connection-pool disable confirmation title; {name} is the database",
+  },
+  "databases.poolerEnableBody": {
+    message:
+      "启用连接池会重启数据库，期间将有几分钟无法访问。PgBouncer 就绪后，连接池连接字符串会显示在本区域。",
+    description:
+      "Connection-pool enable confirmation body for a database without high availability (Render: enabling restarts the database)",
+  },
+  "databases.poolerEnableBodyHA": {
+    message:
+      "启用连接池会切换到备用实例，而不是重启数据库，现有连接会短暂中断。PgBouncer 就绪后，连接池连接字符串会显示在本区域。",
+    description:
+      "Connection-pool enable confirmation body when high availability is on (Render: a failover instead of a restart)",
+  },
+  "databases.poolerDisableBody": {
+    message:
+      "关闭连接池会重启数据库，期间将有几分钟无法访问。连接池连接字符串将失效。",
+    description:
+      "Connection-pool disable confirmation body for a database without high availability",
+  },
+  "databases.poolerDisableBodyHA": {
+    message:
+      "关闭连接池会切换到备用实例，而不是重启数据库，现有连接会短暂中断。连接池连接字符串将失效。",
+    description:
+      "Connection-pool disable confirmation body when high availability is on",
+  },
+  "databases.poolerEnableConfirm": {
+    message: "启用连接池",
+    description: "Connection-pool enable confirmation button (Render's label)",
+  },
+  "databases.poolerDisableConfirm": {
+    message: "关闭连接池",
+    description: "Connection-pool disable confirmation button",
+  },
+  "databases.poolerEnableSuccess": {
+    message: "正在为 {name} 启用连接池。",
+    description: "Toast after the connection-pool enable was accepted",
+  },
+  "databases.poolerDisableSuccess": {
+    message: "正在为 {name} 关闭连接池。",
+    description: "Toast after the connection-pool disable was accepted",
+  },
+  "databases.poolerEnableError": {
+    message: "无法为 {name} 启用连接池。",
+    description: "Fallback toast when enabling the connection pool fails",
+  },
+  "databases.poolerDisableError": {
+    message: "无法为 {name} 关闭连接池。",
+    description: "Fallback toast when disabling the connection pool fails",
   },
   // --- HA panel (w1/m22) ---
   "databases.haTitle": {
@@ -1254,6 +1320,70 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.planPickerError": {
     message: "无法更新规格，请重试。",
     description: "Toast when a plan update fails",
+  },
+  "databases.storageTitle": {
+    message: "存储",
+    description:
+      "Plan section Storage row heading (Render's Plan page Storage section, w2/m307)",
+  },
+  "databases.storageSize": {
+    message: "{size} GB",
+    description: "Plan section Storage row: the allocated storage",
+  },
+  "databases.storageFixed": {
+    message: "免费数据库的存储容量固定。升级到付费规格即可增加存储。",
+    description:
+      "Why the Storage Edit button is disabled on a free database (bex-api POSTGRES_STORAGE_PLAN_UNSUPPORTED)",
+  },
+  "databases.storageEdit": {
+    message: "编辑",
+    description:
+      "Plan section Storage row button that opens the storage dialog",
+  },
+  "databases.storageEditAria": {
+    message: "编辑存储",
+    description: "Accessible name of the Storage row's Edit button",
+  },
+  "databases.storageEditTitle": {
+    message: "编辑 {name} 的存储",
+    description: "Storage dialog title; {name} is the database",
+  },
+  "databases.storageEditBody": {
+    message:
+      "请输入大于当前 {current} GB 的 {step} GB 整数倍。存储扩容后无法缩减。",
+    description:
+      "Storage dialog description (Render: storage only grows, in 5 GB steps)",
+  },
+  "databases.storageEditLabel": {
+    message: "存储（GB）",
+    description: "Storage dialog size field label",
+  },
+  "databases.storageEditStep": {
+    message: "请输入 {step} GB 的整数倍。",
+    description: "Storage dialog validation: not a whole multiple of 5 GB",
+  },
+  "databases.storageEditNotGreater": {
+    message: "请输入大于当前 {current} GB 的值。存储无法缩减。",
+    description:
+      "Storage dialog validation: the size is not above the current storage",
+  },
+  "databases.storageEditTooLarge": {
+    message: "{name} 最多支持 {max} GB 存储。",
+    description:
+      "Storage dialog validation: the size is above the plan's maximum; {name} is the plan",
+  },
+  "databases.storageEditSave": {
+    message: "保存",
+    description: "Storage dialog submit button",
+  },
+  "databases.storageEditSuccess": {
+    message: "正在将存储扩容至 {size} GB…",
+    description: "Toast after a storage increase is accepted",
+  },
+  "databases.storageEditError": {
+    message: "无法更新存储，请重试。",
+    description:
+      "Storage dialog fallback error when the server gives no reason",
   },
   // --- Name row (w9/m3; edit-in-place w5/m55) ---
   "databases.nameEdit": {

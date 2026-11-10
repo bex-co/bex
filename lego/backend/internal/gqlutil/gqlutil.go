@@ -265,17 +265,28 @@ func ArgMutation[T any](out graphql.Output, argName string,
 // the caller asked only to preview — the response looks the same either way,
 // so nothing would surface it.
 //
-// `patch` lifts the single required argument — a String, or a Boolean for an
-// on/off setting — into the feature's patch struct; apply and preview are that
-// feature's verb and its dry-run, which share a signature and are therefore
-// swappable at the call site. Each feature's TestGraphQLDryRun* pins its own
-// wiring in both directions.
-func PatchMutation[V string | bool, P, T any](out graphql.Output, argName string, patch func(V) P,
+// `patch` lifts the single required argument — a String, a Boolean for an
+// on/off setting, or an Int for a size — into the feature's patch struct; apply
+// and preview are that feature's verb and its dry-run, which share a signature
+// and are therefore swappable at the call site. Each feature's
+// TestGraphQLDryRun* pins its own wiring in both directions.
+func PatchMutation[V string | bool | int, P, T any](out graphql.Output, argName string, patch func(V) P,
+	apply, preview func(ctx context.Context, id string, patch P) (T, error)) *graphql.Field {
+	return PatchMutationE(out, argName, func(v V) (P, error) { return patch(v), nil }, apply, preview)
+}
+
+// PatchMutationE is PatchMutation for an argument whose lift can refuse it
+// (an enum folded by the feature's own resolver), so the refusal carries the
+// feature's coded error rather than a schema-level enum error.
+func PatchMutationE[V string | bool | int, P, T any](out graphql.Output, argName string, patch func(V) (P, error),
 	apply, preview func(ctx context.Context, id string, patch P) (T, error)) *graphql.Field {
 	args := IDArg()
 	var argType graphql.Input = graphql.String
-	if _, isBool := any(*new(V)).(bool); isBool {
+	switch any(*new(V)).(type) {
+	case bool:
 		argType = graphql.Boolean
+	case int:
+		argType = graphql.Int
 	}
 	args[argName] = ReqArg(argType)
 	args["dryRun"] = Arg(graphql.Boolean)
@@ -290,11 +301,15 @@ func PatchMutation[V string | bool, P, T any](out graphql.Output, argName string
 		Args: args,
 		Resolve: func(p graphql.ResolveParams) (any, error) {
 			id, value := p.Args["id"].(string), p.Args[argName].(V)
+			lifted, err := patch(value)
+			if err != nil {
+				return nil, err
+			}
 			ctx := core.WithConfirm(p.Context, Str(p.Args, "confirm"))
 			if dryRun, _ := p.Args["dryRun"].(bool); dryRun {
-				return preview(ctx, id, patch(value))
+				return preview(ctx, id, lifted)
 			}
-			return apply(ctx, id, patch(value))
+			return apply(ctx, id, lifted)
 		},
 	}
 }

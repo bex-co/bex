@@ -604,6 +604,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.UpdatePostgres(p.Context, p.Args["id"].(string), PostgresPatch{EnableDiskAutoscaling: &enabled})
 			},
 		},
+		// updateDatabaseConnectionPool and updateDatabaseDiskSize are REST's
+		// PATCH connectionPool and diskSizeGB (w2/m307), which Render's
+		// dashboard sets from the database's Info and Plan pages. The same
+		// admission applies: free plans cannot pool and storage only grows.
+		"updateDatabaseConnectionPool": gqlutil.PatchMutationE(postgresGQLType, "connectionPool",
+			connectionPoolPatch, s.UpdatePostgres, s.UpdatePostgresDryRun),
+		"updateDatabaseDiskSize": gqlutil.PatchMutation(postgresGQLType, "diskSizeGB",
+			func(gb int) PostgresPatch { size := int32(gb); return PostgresPatch{DiskSizeGB: &size} },
+			s.UpdatePostgres, s.UpdatePostgresDryRun),
 		// updateDatabaseHighAvailability is REST's PATCH enableHighAvailability
 		// (w2/m171): the same admission — enabling needs a plan with at least
 		// 1 CPU (POSTGRES_HA_PLAN_UNSUPPORTED), disabling is always allowed —

@@ -878,6 +878,9 @@ const DB_INSTANCE_TYPES = [
     cpu: "100m",
     memory: "256Mi",
     storageGB: 1,
+    maxStorageGB: 1,
+    supportsDiskAutoscaling: false,
+    supportsConnectionPooling: false,
   },
   {
     __typename: "DatabaseInstanceType",
@@ -886,6 +889,9 @@ const DB_INSTANCE_TYPES = [
     cpu: "100m",
     memory: "256Mi",
     storageGB: 1,
+    maxStorageGB: 16384,
+    supportsDiskAutoscaling: true,
+    supportsConnectionPooling: true,
   },
   {
     __typename: "DatabaseInstanceType",
@@ -894,6 +900,9 @@ const DB_INSTANCE_TYPES = [
     cpu: "500m",
     memory: "1Gi",
     storageGB: 5,
+    maxStorageGB: 16384,
+    supportsDiskAutoscaling: true,
+    supportsConnectionPooling: true,
   },
   {
     __typename: "DatabaseInstanceType",
@@ -902,6 +911,9 @@ const DB_INSTANCE_TYPES = [
     cpu: "1",
     memory: "2Gi",
     storageGB: 10,
+    maxStorageGB: 16384,
+    supportsDiskAutoscaling: true,
+    supportsConnectionPooling: true,
   },
   {
     __typename: "DatabaseInstanceType",
@@ -910,6 +922,9 @@ const DB_INSTANCE_TYPES = [
     cpu: "1",
     memory: "4Gi",
     storageGB: 10,
+    maxStorageGB: 16384,
+    supportsDiskAutoscaling: true,
+    supportsConnectionPooling: true,
   },
   {
     __typename: "DatabaseInstanceType",
@@ -918,6 +933,9 @@ const DB_INSTANCE_TYPES = [
     cpu: "2",
     memory: "4Gi",
     storageGB: 10,
+    maxStorageGB: 16384,
+    supportsDiskAutoscaling: true,
+    supportsConnectionPooling: true,
   },
 ];
 
@@ -2331,6 +2349,20 @@ function resolveGraphQL({ operationName, variables = {} }) {
       if (!database) throw new Error("not found");
       database.diskAutoscalingEnabled = Boolean(variables.enabled);
       return { updateDatabaseDiskAutoscaling: database };
+    }
+    // The stub accepts any value; bex-api's plan and grow-only rules are not
+    // mirrored here.
+    case "UpdateDatabaseConnectionPool": {
+      const database = DATABASES.find((d) => d.id === variables.id);
+      if (!database) throw new Error("not found");
+      database.poolerEnabled = variables.connectionPool === "pgbouncer";
+      return { updateDatabaseConnectionPool: database };
+    }
+    case "UpdateDatabaseDiskSize": {
+      const database = DATABASES.find((d) => d.id === variables.id);
+      if (!database) throw new Error("not found");
+      database.diskSizeGB = variables.diskSizeGB;
+      return { updateDatabaseDiskSize: database };
     }
     // Advanced managed-Postgres surface (w1/m17) + observability (w2/m25) —
     // no bex-stub source for any of these (they read the operator's live

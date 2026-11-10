@@ -26,6 +26,15 @@ vi.mock("@/features/databases/hooks/use-access-control", () => ({
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({ instanceTypes: [] }),
 }));
+vi.mock(
+  "@/features/databases/hooks/use-update-database-connection-pool",
+  () => ({
+    useUpdateDatabaseConnectionPool: () => ({
+      updateConnectionPool: vi.fn(),
+      busy: false,
+    }),
+  }),
+);
 vi.mock("@/features/keyvalue/hooks/use-key-value-networking", () => ({
   useKeyValueNetworking: () => ({
     allowList: state.entries,
@@ -41,7 +50,18 @@ vi.mock("@/features/services/hooks/use-service-networking", () => ({
 const datastoreConsumers = [
   {
     name: "Postgres",
-    panel: () => <AccessControlPanel id="dpg-source" plan="free" />,
+    panel: () => (
+      <AccessControlPanel
+        database={{
+          id: "dpg-source",
+          name: "source",
+          plan: "free",
+          poolerEnabled: false,
+          highAvailabilityEnabled: false,
+        }}
+        onChanged={() => undefined}
+      />
+    ),
   },
   {
     name: "Key Value",

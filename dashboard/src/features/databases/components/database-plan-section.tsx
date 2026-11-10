@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { PlanCatalogUnavailable } from "@/common/components/plan-catalog-unavailable";
 import {
   Card,
@@ -8,6 +9,16 @@ import {
   CardTitle,
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
+import { Label } from "@/common/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/common/components/ui/dialog";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import {
@@ -19,8 +30,18 @@ import { PermissionTooltip } from "@/features/capabilities/components/permission
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-database-instance-types";
 import { useUpdateDatabasePlan } from "@/features/databases/hooks/use-update-database-plan";
+import { useUpdateDatabaseDiskSize } from "@/features/databases/hooks/use-update-database-disk-size";
+import {
+  STORAGE_STEP_GB,
+  databaseStorageGB,
+  planStorageFixed,
+  storageGrowProblem,
+} from "@/features/databases/lib/storage";
 import { highAvailabilityRequested } from "@/features/databases/lib/status";
-import type { DatabaseDetailView } from "@/features/databases/types";
+import type {
+  DatabaseDetailView,
+  DatabaseInstanceTypeView,
+} from "@/features/databases/types";
 
 export interface DatabasePlanSectionProps {
   database: DatabaseDetailView;
@@ -152,6 +173,13 @@ export function DatabasePlanSection({
             </Button>
           </PermissionTooltip>
         </div>
+
+        <StorageRow
+          database={database}
+          plan={instanceTypes.find((it) => it.id === database.plan)}
+          operateReason={operateReason}
+          onChanged={onChanged}
+        />
       </CardContent>
 
       <ConfirmDialog
@@ -176,5 +204,176 @@ export function DatabasePlanSection({
         onConfirm={() => void handleConfirm()}
       />
     </Card>
+  );
+}
+
+/**
+ * Render's Plan page Storage section (w2/m307): the allocated size and an Edit
+ * that grows it — any multiple of 5 GB above the current size, up to the
+ * plan's maximum. Storage never shrinks, and a free plan's is fixed, as
+ * bex-api's admission rules (and Render) have it.
+ */
+function StorageRow({
+  database,
+  plan,
+  operateReason,
+  onChanged,
+}: {
+  database: DatabaseDetailView;
+  /** The database's current plan, or undefined while the catalog loads. */
+  plan: DatabaseInstanceTypeView | undefined;
+  operateReason: string | undefined;
+  onChanged: () => void;
+}) {
+  const { t } = useTranslations();
+  const { updateDiskSize, busy } = useUpdateDatabaseDiskSize();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState("");
+  const [serverError, setServerError] = useState<string | null>(null);
+
+  const current = plan
+    ? databaseStorageGB(database, plan)
+    : (database.diskSizeGB ?? 0);
+  const max = plan?.maxStorageGB ?? null;
+  const fixed = plan != null && planStorageFixed(plan);
+  const problem =
+    value.trim() === "" ? null : storageGrowProblem(value, current, max);
+  const canSave = value.trim() !== "" && problem == null;
+  const fieldError =
+    problem === "step"
+      ? t("databases.storageEditStep", { step: STORAGE_STEP_GB })
+      : problem === "notGreater"
+        ? t("databases.storageEditNotGreater", { current })
+        : problem === "tooLarge"
+          ? t("databases.storageEditTooLarge", { name: plan?.name, max })
+          : undefined;
+  const error = fieldError ?? serverError;
+  // The smallest size it accepts, which also anchors the field's step.
+  const next = (Math.floor(current / STORAGE_STEP_GB) + 1) * STORAGE_STEP_GB;
+
+  function startEditing() {
+    setValue(max == null || next <= max ? String(next) : "");
+    setServerError(null);
+    setEditing(true);
+  }
+
+  async function save() {
+    if (!canSave) return;
+    const message = await updateDiskSize(database.id, Number(value));
+    if (message) {
+      setServerError(message);
+      return;
+    }
+    setEditing(false);
+    onChanged();
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-4 border-t pt-4">
+      <div className="min-w-0 space-y-1">
+        <p className="text-sm font-medium">{t("databases.storageTitle")}</p>
+        <p className="text-muted-foreground text-sm">
+          {current > 0 ? t("databases.storageSize", { size: current }) : "—"}
+        </p>
+        {fixed ? (
+          <p className="text-muted-foreground text-sm">
+            {t("databases.storageFixed")}
+          </p>
+        ) : null}
+      </div>
+      <PermissionTooltip reason={operateReason}>
+        <Button
+          variant="outline"
+          size="sm"
+          aria-label={t("databases.storageEditAria")}
+          // Until the catalog names the plan, a free database's fixed disk
+          // is unknown, so the edit waits for it.
+          disabled={operateReason != null || plan == null || fixed || busy}
+          onClick={startEditing}
+        >
+          {t("databases.storageEdit")}
+        </Button>
+      </PermissionTooltip>
+
+      <Dialog
+        open={editing}
+        onOpenChange={(open) => {
+          if (!busy) setEditing(open);
+        }}
+      >
+        <DialogContent>
+          {/* noValidate: the field's own messages explain a refusal, in the
+              user's language, instead of the browser's constraint bubble. */}
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save();
+            }}
+            className="space-y-4"
+          >
+            <DialogHeader>
+              <DialogTitle>
+                {t("databases.storageEditTitle", { name: database.name })}
+              </DialogTitle>
+              <DialogDescription>
+                {t("databases.storageEditBody", {
+                  step: STORAGE_STEP_GB,
+                  current,
+                })}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label htmlFor="database-storage-size">
+                {t("databases.storageEditLabel")}
+              </Label>
+              <Input
+                id="database-storage-size"
+                type="number"
+                inputMode="numeric"
+                min={next}
+                max={max ?? undefined}
+                step={STORAGE_STEP_GB}
+                value={value}
+                onChange={(e) => {
+                  setValue(e.target.value);
+                  setServerError(null);
+                }}
+                aria-invalid={error != null}
+                aria-describedby={
+                  error ? "database-storage-size-error" : undefined
+                }
+              />
+              {error ? (
+                <p
+                  id="database-storage-size-error"
+                  className="text-destructive text-sm"
+                  role="alert"
+                >
+                  {error}
+                </p>
+              ) : null}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() => setEditing(false)}
+              >
+                {t("common.cancel")}
+              </Button>
+              <Button
+                type="submit"
+                disabled={!canSave || busy}
+              >
+                {busy ? <Loader2 className="animate-spin" /> : null}
+                {t("databases.storageEditSave")}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

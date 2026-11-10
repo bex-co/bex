@@ -19,6 +19,7 @@ import type {
   DatabaseDetailView,
   DatabaseInstanceTypeView,
 } from "@/features/databases/types";
+import { databaseStorageGB } from "@/features/databases/lib/storage";
 
 /**
  * The longest read replica name: bex builds the replica's hostname label as
@@ -63,7 +64,7 @@ export function readReplicaAddBlock(
   if (database.readReplicas.length >= plan.maxReadReplicas) {
     return { kind: "limit", max: plan.maxReadReplicas };
   }
-  const current = database.diskSizeGB ?? plan.storageGB;
+  const current = databaseStorageGB(database, plan);
   if (current < plan.readReplicaMinStorageGB) {
     return { kind: "storage", min: plan.readReplicaMinStorageGB, current };
   }

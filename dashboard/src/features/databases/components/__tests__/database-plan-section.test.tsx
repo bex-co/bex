@@ -1,12 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DatabasePlanSection } from "@/features/databases/components/database-plan-section";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { uncodedGraphQLError } from "@/test/mocks/apollo";
+import { shape } from "@/test/card-shape";
+import { DatastorePlanPreview } from "@/common/components/datastore-plan-preview";
 import type { DatabaseDetailView } from "@/features/databases/types";
 
 const updatePlan = vi.fn();
+const mutate = vi.hoisted(() => vi.fn());
+
+// Only the storage edit writes through Apollo here; the plan change goes
+// through the mocked useUpdateDatabasePlan.
+vi.mock("@apollo/client/react", () => ({
+  useMutation: () => [mutate, { loading: false }],
+}));
 
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({
@@ -80,6 +90,7 @@ const DATABASE: DatabaseDetailView = {
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   updatePlan.mockReset().mockResolvedValue(true);
+  mutate.mockReset().mockResolvedValue({ data: {} });
 });
 
 describe("DatabasePlanSection", () => {
@@ -279,5 +290,158 @@ describe("DatabasePlanSection", () => {
     );
     render(<DatabasePlanSection database={DATABASE} onChanged={vi.fn()} />);
     expect(screen.getByRole("radio", { name: /Starter/ })).toBeDisabled();
+  });
+});
+
+// w2/m307: Render's Plan page Storage section — any multiple of 5 GB above the
+// current size, up to the plan's maximum; never smaller; fixed on Free.
+describe("DatabasePlanSection storage", () => {
+  const STARTER: DatabaseDetailView = {
+    ...DATABASE,
+    plan: "starter",
+    diskSizeGB: 10,
+  };
+
+  async function openStorage(database: DatabaseDetailView = STARTER) {
+    const onChanged = vi.fn();
+    const user = userEvent.setup();
+    render(<DatabasePlanSection database={database} onChanged={onChanged} />);
+    await user.click(screen.getByRole("button", { name: "Edit storage" }));
+    const dialog = await screen.findByRole("dialog");
+    const field = within(dialog).getByRole("spinbutton", {
+      name: "Storage (GB)",
+    });
+    const save = within(dialog).getByRole("button", { name: "Save" });
+    async function enter(value: string) {
+      await user.clear(field);
+      await user.type(field, value);
+    }
+    return { user, dialog, field, save, enter, onChanged };
+  }
+
+  it("shows the allocated size and grows it", async () => {
+    render(<DatabasePlanSection database={STARTER} onChanged={vi.fn()} />);
+    expect(screen.getByText("Storage")).toBeInTheDocument();
+    expect(screen.getByText("10 GB")).toBeInTheDocument();
+    cleanup();
+
+    const { user, dialog, field, save, enter, onChanged } = await openStorage();
+    expect(dialog).toHaveTextContent(
+      "Enter any multiple of 5 GB greater than the current 10 GB. Storage can't be reduced once it grows.",
+    );
+    // Prefilled with the smallest size it accepts.
+    expect(field).toHaveValue(15);
+    await enter("25");
+    expect(save).toBeEnabled();
+    await user.click(save);
+
+    expect(mutate).toHaveBeenCalledWith({
+      variables: { id: "dpg-shop", diskSizeGB: 25 },
+    });
+    expect(onChanged).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("rejects a size that is not a multiple of 5 GB", async () => {
+    const { dialog, save, enter } = await openStorage();
+    await enter("12");
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Enter a whole multiple of 5 GB.",
+    );
+    expect(save).toBeDisabled();
+    expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it.each(["10", "5"])(
+    "rejects %s GB, which is not above the current 10 GB",
+    async (value) => {
+      const { dialog, save, enter } = await openStorage();
+      await enter(value);
+      expect(within(dialog).getByRole("alert")).toHaveTextContent(
+        "Enter more than the current 10 GB. Storage can't be reduced.",
+      );
+      expect(save).toBeDisabled();
+    },
+  );
+
+  it("rejects a size above the plan's maximum", async () => {
+    const { dialog, save, enter } = await openStorage();
+    await enter("16390");
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Starter allows up to 16384 GB of storage.",
+    );
+    expect(save).toBeDisabled();
+  });
+
+  it("keeps a free database's storage fixed, and says why", () => {
+    render(<DatabasePlanSection database={DATABASE} onChanged={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Edit storage" })).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Free databases have fixed storage. Upgrade to a paid plan to add storage.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  // Until the catalog names the database's plan, whether its disk is fixed
+  // (Free) is unknown, so Edit waits rather than offering a refused write.
+  it("disables Edit while the database's plan is not in the catalog", () => {
+    render(
+      <DatabasePlanSection
+        database={{ ...STARTER, plan: "not-in-catalog" }}
+        onChanged={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Edit storage" })).toBeDisabled();
+  });
+
+  it("disables Edit for a member who cannot operate the database", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "VIEWER", canOperate: false }),
+    );
+    render(<DatabasePlanSection database={STARTER} onChanged={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Edit storage" })).toBeDisabled();
+  });
+
+  // The pending plan card ends in the same Storage row: its label, row and
+  // Edit slot match, and the size is a slot until the database is read.
+  it("is previewed by the pending plan card's Storage row", () => {
+    const storageRow = (card: Element) =>
+      card.querySelector('[data-slot="card-content"]')!.lastElementChild!;
+    const pending = storageRow(
+      render(<DatastorePlanPreview kind="postgres" />).container
+        .firstElementChild!,
+    );
+    const ready = storageRow(
+      render(<DatabasePlanSection database={STARTER} onChanged={vi.fn()} />)
+        .container.firstElementChild!,
+    );
+    expect(pending.className).toBe(ready.className);
+    const [pendingText, pendingEdit] = [...pending.children];
+    const [readyText, readyEdit] = [...ready.children];
+    expect(pendingText.className).toBe(readyText.className);
+    expect(shape(pendingText.firstElementChild!)).toBe(
+      shape(readyText.firstElementChild!),
+    );
+    expect(pendingText.children[1].className).toContain("h-5");
+    expect(pendingEdit.className).toBe(readyEdit.className);
+    expect(pendingEdit.textContent).toBe(readyEdit.textContent);
+    expect((pendingEdit as HTMLButtonElement).disabled).toBe(true);
+    expect(pending.textContent).not.toContain("GB");
+  });
+
+  it("shows the server's refusal in the dialog and keeps it open", async () => {
+    mutate.mockRejectedValueOnce(
+      uncodedGraphQLError(
+        "bad request: Postgres storage is grow-only: requested 15 GB is below the allocated 20 GB",
+      ),
+    );
+    const { user, dialog, save, onChanged } = await openStorage();
+    await user.click(save);
+    expect(within(dialog).getByRole("alert")).toHaveTextContent(
+      "Postgres storage is grow-only: requested 15 GB is below the allocated 20 GB",
+    );
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(onChanged).not.toHaveBeenCalled();
   });
 });

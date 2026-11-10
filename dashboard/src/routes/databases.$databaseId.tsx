@@ -325,12 +325,13 @@ function DatabaseDetailPage() {
                   </DeferredMount>
                 </section>
                 <section id="plan" className={SECTION_NAVIGATION_TARGET_CLASS}>
-                  {/* The ready plan card's bounds for a three-tier catalog
-                      (w4/m208): 441px stacked on mobile, 237px from sm. */}
+                  {/* The ready plan card's bounds (w4/m208) for the six-tier
+                      catalog plus the Storage row (w2/m307), measured: 764px
+                      stacked at a 390px phone, 416px from sm. */}
                   <DeferredMount
                     hashId="plan"
                     minHeight="var(--plan-reserve)"
-                    className="[--plan-reserve:441px] sm:[--plan-reserve:237px]"
+                    className="[--plan-reserve:764px] sm:[--plan-reserve:416px]"
                   >
                     <Suspense
                       fallback={<DatastorePlanPreview kind="postgres" />}
@@ -369,8 +370,8 @@ function DatabaseDetailPage() {
                   <DeferredMount hashId="access-control" minHeight={240}>
                     <Suspense fallback={<CardSkeleton rows={3} />}>
                       <AccessControlPanel
-                        id={database.id}
-                        plan={database.plan}
+                        database={database}
+                        onChanged={() => void refetch()}
                       />
                     </Suspense>
                   </DeferredMount>

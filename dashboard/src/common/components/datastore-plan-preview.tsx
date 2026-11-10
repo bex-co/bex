@@ -58,6 +58,8 @@ const PLAN_COPY = {
     cancel: "databases.planPickerCancel",
     save: "databases.planPickerSave",
     slots: POSTGRES_PLAN_SLOTS,
+    // The Storage row below the footer (Render's Plan page Storage, w2/m307).
+    storage: { title: "databases.storageTitle", edit: "databases.storageEdit" },
   },
   keyvalue: {
     title: "keyvalue.planTitle",
@@ -65,13 +67,15 @@ const PLAN_COPY = {
     cancel: "keyvalue.planPickerCancel",
     save: "keyvalue.planPickerSave",
     slots: KEY_VALUE_PLAN_SLOTS,
+    storage: null,
   },
 } as const;
 
 /**
  * A datastore plan card before its resource or code is ready: the ready
- * card's real title, description, tier slots and bordered footer, inert, so
- * every loading stage keeps the ready bounds (w4/m208).
+ * card's real title, description, tier slots and bordered footer — plus
+ * Postgres's Storage row, its size a slot — inert, so every loading stage
+ * keeps the ready bounds (w4/m208).
  */
 export function DatastorePlanPreview({
   kind,
@@ -94,6 +98,18 @@ export function DatastorePlanPreview({
           </Button>
           <Button disabled>{t(copy.save)}</Button>
         </div>
+        {copy.storage ? (
+          <div className="flex items-center justify-between gap-4 border-t pt-4">
+            <div className="min-w-0 space-y-1">
+              <p className="text-sm font-medium">{t(copy.storage.title)}</p>
+              {/* The size line: text-sm's 20px line box. */}
+              <Skeleton className="h-5 w-12" />
+            </div>
+            <Button variant="outline" size="sm" disabled>
+              {t(copy.storage.edit)}
+            </Button>
+          </div>
+        ) : null}
       </CardContent>
     </Card>
   );

@@ -358,6 +358,24 @@ mutation UpdateDatabaseDiskAutoscaling($id: String!, $enabled: Boolean!) {
   }
 }
 
+# REST's PATCH connectionPool (w2/m307): pgbouncer | none; free plans refused.
+mutation UpdateDatabaseConnectionPool($id: String!, $connectionPool: String!) {
+  updateDatabaseConnectionPool(id: $id, connectionPool: $connectionPool) {
+    id
+    status
+    poolerEnabled
+  }
+}
+
+# REST's PATCH diskSizeGB (w2/m307): grow-only; free plans have fixed storage.
+mutation UpdateDatabaseDiskSize($id: String!, $diskSizeGB: Int!) {
+  updateDatabaseDiskSize(id: $id, diskSizeGB: $diskSizeGB) {
+    id
+    status
+    diskSizeGB
+  }
+}
+
 mutation RenameDatabase($id: String!, $name: String!) {
   renameDatabase(id: $id, name: $name) {
     id

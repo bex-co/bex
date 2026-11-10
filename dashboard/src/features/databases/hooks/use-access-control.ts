@@ -30,8 +30,8 @@ export interface PooledStrings {
  * Reads + edits a database's access controls: the external-endpoint IP allowlist
  * and Render's credentials (w5/m265 — a new credential becomes the default and
  * its password is read through the connection info, never echoed), plus an
- * on-demand reveal of the pooled connection strings. Every mutation refetches
- * its list so the panel reflects the operator.
+ * on-demand reveal of the pooled connection strings (reset after a pool
+ * toggle). Every mutation refetches its list so the panel reflects the operator.
  */
 export function useAccessControl(id: string) {
   const { t } = useTranslations();
@@ -172,6 +172,10 @@ export function useAccessControl(id: string) {
       setPoolLoading(false);
     }
   }, [client, id, t]);
+  // A connection-pool toggle invalidates a revealed snapshot: disabling
+  // retires its strings and enabling mints new ones once the pooler is ready,
+  // so the next look is a fresh Reveal (w2/m307).
+  const resetPooled = useCallback(() => setPooled(null), []);
 
   return {
     allowList,
@@ -186,5 +190,6 @@ export function useAccessControl(id: string) {
     pooled,
     poolLoading,
     revealPooled,
+    resetPooled,
   };
 }

@@ -1960,7 +1960,9 @@ export type Mutation = {
   updateBlueprint: Maybe<Blueprint>;
   updateBuildSource: Maybe<BuildSource>;
   updateCronJob: Maybe<Service>;
+  updateDatabaseConnectionPool: Maybe<Database>;
   updateDatabaseDiskAutoscaling: Maybe<Database>;
+  updateDatabaseDiskSize: Maybe<Database>;
   updateDatabaseHighAvailability: Maybe<Database>;
   updateDatabasePlan: Maybe<Database>;
   updateDatabaseVersion: Maybe<Database>;
@@ -3319,8 +3321,24 @@ export type MutationUpdateCronJobArgs = {
 };
 
 
+export type MutationUpdateDatabaseConnectionPoolArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  connectionPool: Scalars['String']['input'];
+  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
+  id: Scalars['String']['input'];
+};
+
+
 export type MutationUpdateDatabaseDiskAutoscalingArgs = {
   enabled: Scalars['Boolean']['input'];
+  id: Scalars['String']['input'];
+};
+
+
+export type MutationUpdateDatabaseDiskSizeArgs = {
+  confirm?: InputMaybe<Scalars['String']['input']>;
+  diskSizeGB: Scalars['Int']['input'];
+  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
 };
 

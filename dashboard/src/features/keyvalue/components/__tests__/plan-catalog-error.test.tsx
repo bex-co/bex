@@ -29,6 +29,9 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({ ...catalog, retry }),
 }));
+vi.mock("@/features/databases/hooks/use-update-database-disk-size", () => ({
+  useUpdateDatabaseDiskSize: () => ({ updateDiskSize: vi.fn(), busy: false }),
+}));
 vi.mock("@/features/keyvalue/hooks/use-update-key-value-plan", () => ({
   useUpdateKeyValuePlan: () => ({ updatePlan, busy: false }),
 }));

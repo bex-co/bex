@@ -44,9 +44,22 @@ describe("datastore plan slot counts", () => {
 });
 
 describe("datastore plan preview", () => {
-  for (const [name, Skeleton, title, save, tiers] of [
-    ["Postgres", DatabaseOverviewSkeleton, "Instance type", "Save", 6],
-    ["Key Value", KeyValueOverviewSkeleton, "Instance type", "Save", 9],
+  // Postgres's card ends in Render's Storage row (w2/m307), its Edit inert too.
+  for (const [name, Skeleton, title, buttonLabels, tiers] of [
+    [
+      "Postgres",
+      DatabaseOverviewSkeleton,
+      "Instance type",
+      ["Cancel", "Save", "Edit"],
+      6,
+    ],
+    [
+      "Key Value",
+      KeyValueOverviewSkeleton,
+      "Instance type",
+      ["Cancel", "Save"],
+      9,
+    ],
   ] as const) {
     it(`${name} detail skeleton previews the ready plan card`, () => {
       const { container } = render(<Skeleton />);
@@ -66,7 +79,7 @@ describe("datastore plan preview", () => {
         expect(specsLine.className).toContain("h-5"); // 20px specs line
       }
       const buttons = within(region).getAllByRole("button", { hidden: true });
-      expect(buttons.map((b) => b.textContent)).toEqual(["Cancel", save]);
+      expect(buttons.map((b) => b.textContent)).toEqual(buttonLabels);
       expect(buttons.every((b) => (b as HTMLButtonElement).disabled)).toBe(
         true,
       );

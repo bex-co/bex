@@ -417,11 +417,7 @@ func resolvePooler(pooler *bool, connectionPool string) (*bool, error) {
 		v := connectionPool == ConnectionPoolPGBouncer
 		enumPooler = &v
 	default:
-		return nil, core.NewBadRequestError(
-			"POSTGRES_CONNECTION_POOL_UNKNOWN",
-			fmt.Sprintf("connectionPool must be one of %s|%s, got %q", ConnectionPoolPGBouncer, ConnectionPoolNone, connectionPool),
-			map[string]any{"connectionPool": connectionPool},
-		)
+		return nil, unknownConnectionPoolError(connectionPool)
 	}
 	if enumPooler == nil {
 		return pooler, nil
@@ -434,6 +430,27 @@ func resolvePooler(pooler *bool, connectionPool string) (*bool, error) {
 		)
 	}
 	return enumPooler, nil
+}
+
+func unknownConnectionPoolError(connectionPool string) error {
+	return core.NewBadRequestError(
+		"POSTGRES_CONNECTION_POOL_UNKNOWN",
+		fmt.Sprintf("connectionPool must be one of %s|%s, got %q", ConnectionPoolPGBouncer, ConnectionPoolNone, connectionPool),
+		map[string]any{"connectionPool": connectionPool},
+	)
+}
+
+// connectionPoolPatch is the patch for one explicit connectionPool value (the
+// GraphQL setter, w2/m307). Unlike REST's optional field, an empty value is
+// refused rather than read as "leave unchanged".
+func connectionPoolPatch(connectionPool string) (PostgresPatch, error) {
+	switch connectionPool {
+	case ConnectionPoolPGBouncer, ConnectionPoolNone:
+		pooler := connectionPool == ConnectionPoolPGBouncer
+		return PostgresPatch{Pooler: &pooler}, nil
+	default:
+		return PostgresPatch{}, unknownConnectionPoolError(connectionPool)
+	}
 }
 
 func (req CreatePostgresRequest) validatePhysicalIdentifiers() error {
