@@ -171,7 +171,7 @@ describe("ConnectionInfoPanel", () => {
   });
 
   it("offers no control once internal authentication is on", () => {
-    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth />);
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth isPublic={false} />);
     expect(
       screen.getByText("Internal connections require the password."),
     ).toBeInTheDocument();
