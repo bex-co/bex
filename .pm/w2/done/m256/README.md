@@ -129,3 +129,12 @@ Production is pinned to `af0b05c0abee` (t015); bex CLI v2.35 built from main; QA
 7. About 1 minute later, `approve` returned `success` and the service was recreated (`srv-dboj5t1p7t1c73bcn0cg`).
 
 The test resources were deleted afterwards (204). Every DoD point holds, so t014, t015 and t011 are done.
+
+## QA evidence before t015: t014 on production (2026-11-08, `/qa-find-bugs-cli` w8 sweep `bf43`)
+
+Recorded on an earlier pin than the closing walk above. Not a status change.
+
+- **Pin:** `2d453686f` (deployed 12:41Z), which contains t014 `49ffa1735`. Workspace `tea-daif693dqjvc73e7as3g`. The Render CLI v2.35.0 pin was used through a checkout `bex` build.
+- **Passed after the teardown window:** `create` (`examples/hello-node/render.yaml`, `create_new`) revived `exs-db136288mmqc73d4hpug` with `planned` / `create hello-node-2gzk`. `approve` → `success`. `bex services delete <child>` → 404. At 13:11:07Z `POST /v1/blueprints/{id}/syncs` returned 201 `planned` / `create hello-node-2gzk`, and a second `approve` recreated the service. A freshly deleted resource is planned as a create, as Render documents.
+- **Failed during the window:** for about 65–70 s after each deletion, the same plan request returned `500 internal error` (14 consecutive 500s, 13:12:19–13:13:22Z). Only the apply has the coded 409. Filed as [w8/242](../../../w8/done/242.md), with the Rndr-Ids. Closed 2026-11-10: t015 fixed it; the re-check on pin `1672bb379` planned from T+3 s.
+- All fixtures were deleted afterwards.
