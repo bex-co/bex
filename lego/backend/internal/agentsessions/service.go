@@ -62,6 +62,7 @@ type Store interface {
 	SetAgentSessionFailure(context.Context, string, string, string) (store.AgentSession, error)
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
+	ReplaceAgentSessionTags(context.Context, string, []string) (store.AgentSession, error)
 	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput, []string, []store.TurnSkill) (store.AgentSession, error)
 	// RecordAgentSessionResult stores the structured result submitted for the
 	// session's current turn (ADR094 D5); false when the turn takes none.
@@ -953,6 +954,9 @@ func normalizeLimit(limit, def, max int) (int, error) {
 	return limit, nil
 }
 
+// maxCreatedByFilter caps the createdBy list filter (Devin v3 user_ids).
+const maxCreatedByFilter = 20
+
 // storeQuery validates the wire filters and normalizes the page bounds into the
 // store's typed query. Nothing accepted is ignored: an unknown archived value
 // or phase is a named 400, never a silent full (or empty) list.
@@ -1002,6 +1006,12 @@ func (req *ListRequest) storeQuery() (store.AgentSessionListQuery, error) {
 		q.Phases = fromStates
 	}
 	q.Tag = strings.TrimSpace(req.Tag)
+	for _, subject := range req.CreatedBy {
+		if q.CreatedBy = core.AppendListValue(q.CreatedBy, subject); len(q.CreatedBy) > maxCreatedByFilter {
+			return store.AgentSessionListQuery{}, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
+				fmt.Sprintf("at most %d createdBy values", maxCreatedByFilter), nil)
+		}
+	}
 	if err := validateLineageFilters(q); err != nil {
 		return store.AgentSessionListQuery{}, err
 	}
@@ -1029,6 +1039,13 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]View, error) {
 	query, err := req.storeQuery()
 	if err != nil {
 		return nil, err
+	}
+	if req.Mine {
+		subject := core.SubjectFrom(ctx)
+		if subject == "" {
+			return nil, core.ErrForbidden
+		}
+		query.CreatedBy = core.AppendListValue(query.CreatedBy, subject)
 	}
 	workspaceID, ok := s.Tenant(ctx)
 	if !ok {
@@ -1086,6 +1103,34 @@ func (s *Service) setArchived(ctx context.Context, sessionID string, archived bo
 	record, err := s.Store.SetAgentSessionArchived(ctx, sessionID, archived)
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
+	}
+	return s.toView(record)
+}
+
+// ReplaceTags replaces a session's whole tag set (w7/m296), Devin v3's
+// PUT …/tags "Replace all tags on a session": the same tag rules as create,
+// and [] clears them. Like every other mutation verb it is refused on an
+// archived session (ADR065 D1).
+func (s *Service) ReplaceTags(ctx context.Context, sessionID string, tags []string) (View, error) {
+	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
+		return View{}, err
+	}
+	if !s.enabled() {
+		return View{}, core.ErrAgentSessionsUnavailable
+	}
+	if err := validateSessionID(sessionID); err != nil {
+		return View{}, err
+	}
+	tags, err := normalizeTags(tags)
+	if err != nil {
+		return View{}, err
+	}
+	record, err := s.Store.ReplaceAgentSessionTags(ctx, sessionID, tags)
+	if err != nil {
+		return View{}, mapStoreError(sessionID, err)
+	}
+	if record.ArchivedAt != nil {
+		return View{}, errArchived(record.Phase)
 	}
 	return s.toView(record)
 }
@@ -1929,7 +1974,7 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AutomationID: record.AutomationID,
+		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AutomationID: record.AutomationID, CreatedBy: record.CreatedBy,
 		ParentSessionID: record.ParentSessionID, RootSessionID: record.RootSessionID, Depth: record.Depth}
 	if record.MaxSpendMicroUSD != nil {
 		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)

@@ -1461,6 +1461,60 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Canceled",
     description: "Status group and badge of a child session that was canceled",
   },
+  "agentSessions.sidebarMine": {
+    message: "Mine",
+    description:
+      "Sessions sidebar — show only the sessions you started (Devin's default)",
+  },
+  "agentSessions.sidebarEveryone": {
+    message: "Everyone",
+    description: "Sessions sidebar — show every member's sessions",
+  },
+  "agentSessions.sidebarOwnerFilter": {
+    message: "Whose sessions",
+    description:
+      "Sessions sidebar — accessible name of the Mine/Everyone toggle",
+  },
+  "agentSessions.sidebarEmptyMine": {
+    message: "You haven't started a session yet",
+    description:
+      "Sessions sidebar — empty state under Mine when the viewer started none",
+  },
+  "agentSessions.startedByPerson": {
+    message: "Started by {name}",
+    description: "Session header and list rows — who started the session",
+  },
+  "agentSessions.startedForPerson": {
+    message: "for {name}",
+    description:
+      "Session header — after 'Started by automation X': the member the automation runs as",
+  },
+  "agentSessions.editTags": {
+    message: "Edit tags",
+    description: "Session header menu — open the tag editor",
+  },
+  "agentSessions.editTagsTitle": {
+    message: "Edit tags",
+    description: "Tag editor dialog title",
+  },
+  "agentSessions.editTagsDescription": {
+    message:
+      "Tags replace the session's current tags. Separate them with commas or spaces; leave empty to clear.",
+    description: "Tag editor dialog description",
+  },
+  "agentSessions.editTagsHint": {
+    message:
+      "Up to 20 tags: lowercase letters, digits, colon, underscore or hyphen.",
+    description: "Tag editor dialog — the tag rules",
+  },
+  "agentSessions.editTagsSave": {
+    message: "Save tags",
+    description: "Tag editor dialog — save button",
+  },
+  "agentSessions.editTagsSaved": {
+    message: "Tags saved",
+    description: "Toast after the tags were replaced",
+  },
 };
 
 export default enAgentSessions;

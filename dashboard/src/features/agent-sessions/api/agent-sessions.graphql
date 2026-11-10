@@ -18,6 +18,9 @@ fragment AgentSessionFields on AgentSession {
   maxSpendUSD
   # The automation (ADR101) that started the session, when one did.
   automationId
+  # Who started it (w7/m296): a member's identity id or an API key's client id.
+  # An automation's sessions carry its creator. Absent on older rows.
+  createdBy
   # The lineage (ADR102): the session that spawned this one, the top of its
   # tree, and the distance from that top. Absent/0 on a top-level session.
   parentSessionId
@@ -110,6 +113,7 @@ query AgentSessions(
   $phases: [String!]
   $repo: String
   $tag: String
+  $mine: Boolean
   $cursor: String
   $limit: Int
 ) {
@@ -119,6 +123,7 @@ query AgentSessions(
     phases: $phases
     repo: $repo
     tag: $tag
+    mine: $mine
     cursor: $cursor
     limit: $limit
   ) {
@@ -222,6 +227,13 @@ mutation CancelAgentSession($id: String!) {
 # viewable, transcript included.
 mutation ArchiveAgentSession($id: String!) {
   archiveAgentSession(id: $id) {
+    ...AgentSessionFields
+  }
+}
+
+# Replaces all of a session's tags (w7/m296, Devin's PUT …/tags); [] clears them.
+mutation SetAgentSessionTags($id: String!, $tags: [String!]!) {
+  setAgentSessionTags(id: $id, tags: $tags) {
     ...AgentSessionFields
   }
 }

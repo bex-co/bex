@@ -324,6 +324,8 @@ export type AgentSession = {
   canceledAt: Maybe<Scalars['String']['output']>;
   created: Maybe<Scalars['Boolean']['output']>;
   createdAt: Scalars['String']['output'];
+  /** Who started the session: a member's identity id, or an API key's client id. An automation's sessions carry the automation's creator and a child session its parent's creator. Absent on sessions from before it was recorded. */
+  createdBy: Maybe<Scalars['String']['output']>;
   deliveryMode: Maybe<Scalars['String']['output']>;
   deliveryNote: Maybe<Scalars['String']['output']>;
   /** Distance from the root of the session's tree; 0 for a top-level session. */
@@ -1882,6 +1884,8 @@ export type Mutation = {
   selectGitClaim: Maybe<GitConnection>;
   /** Create or rotate a workspace agent secret (admins only). The value is write-only. */
   setAgentSecret: AgentSecret;
+  /** Replaces all of a session's tags; [] clears them. Refused on an archived session. */
+  setAgentSessionTags: Maybe<AgentSession>;
   setAutoDeploy: Maybe<Service>;
   setAutoDeployTrigger: Maybe<Service>;
   setAutoscaling: Maybe<Autoscaling>;
@@ -2807,6 +2811,12 @@ export type MutationSetAgentSecretArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
   value: Scalars['String']['input'];
+};
+
+
+export type MutationSetAgentSessionTagsArgs = {
+  id: Scalars['String']['input'];
+  tags: Array<Scalars['String']['input']>;
 };
 
 
@@ -3865,8 +3875,10 @@ export type QueryAgentSessionsArgs = {
   automationId?: InputMaybe<Scalars['String']['input']>;
   createdAfter?: InputMaybe<Scalars['String']['input']>;
   createdBefore?: InputMaybe<Scalars['String']['input']>;
+  createdBy?: InputMaybe<Array<Scalars['String']['input']>>;
   cursor?: InputMaybe<Scalars['String']['input']>;
   limit?: InputMaybe<Scalars['Int']['input']>;
+  mine?: InputMaybe<Scalars['Boolean']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   parentSessionId?: InputMaybe<Scalars['String']['input']>;
   phases?: InputMaybe<Array<Scalars['String']['input']>>;

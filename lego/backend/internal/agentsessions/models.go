@@ -265,6 +265,12 @@ type View struct {
 	// AutomationID is the agent automation that started the session (ADR101
 	// D5); absent for a session started by a person or client.
 	AutomationID string `json:"automationId,omitempty"`
+	// CreatedBy is the subject that started the session (w7/m296, Devin's
+	// user_id): a member's identity id, or a machine API key's client id.
+	// An automation's sessions carry the automation creator and a child
+	// session its parent's creator: the person whose authority it runs with
+	// (ADR101 D4, ADR102 D9). Absent on rows from before it was recorded.
+	CreatedBy string `json:"createdBy,omitempty"`
 	// ParentSessionID, RootSessionID and Depth are the ADR102 lineage: the
 	// session that spawned this one (absent on a top-level session), the top
 	// of its tree and its distance from it.
@@ -407,10 +413,15 @@ type ListRequest struct {
 	// must be ids of their kind, or the list is a 400 AGENT_SESSION_FILTER_INVALID.
 	AutomationID    string
 	ParentSessionID string
-	CreatedBefore   time.Time
-	CreatedAfter    time.Time
-	Cursor          string
-	Limit           int
+	// Mine keeps the sessions the caller started (Devin's sidebar default);
+	// CreatedBy keeps the sessions any of these subjects started (Devin v3
+	// user_ids). Given together, the caller joins the set (w7/m296).
+	Mine          bool
+	CreatedBy     []string
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	Cursor        string
+	Limit         int
 }
 
 // TranscriptPart is one durable conversation part in the poll-shaped transcript

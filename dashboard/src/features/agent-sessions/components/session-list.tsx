@@ -21,6 +21,7 @@ import {
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { RelativeAge } from "@/common/components/relative-time";
 import type {
   AgentSessionArchivedFilter,
@@ -139,6 +140,13 @@ function MetaLine({
       ))}
     </span>
   );
+}
+
+/** Who started a session (w7/m296): the roster label, or the raw subject. */
+function SessionCreatorLabel({ subject }: { subject: string }) {
+  const { t } = useTranslations();
+  const name = useWorkspaceSubjectLabel(subject);
+  return <>{t("agentSessions.startedByPerson", { name })}</>;
 }
 
 export interface SessionListProps {
@@ -316,6 +324,9 @@ export function SessionList({
                   parts={[
                     t(agentSessionStatusPhraseKey(s)),
                     s.repo,
+                    s.createdBy && (
+                      <SessionCreatorLabel subject={s.createdBy} />
+                    ),
                     <RelativeAge value={s.createdAt} />,
                   ]}
                 />
@@ -383,6 +394,9 @@ export function SessionList({
                         <span className="capitalize">
                           {s.agentConfig.agent}
                         </span>
+                      ),
+                      s.createdBy && (
+                        <SessionCreatorLabel subject={s.createdBy} />
                       ),
                     ]}
                   />

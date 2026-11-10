@@ -1,18 +1,18 @@
 # w7 · m296 — Agent sessions record who started them: a "started by me" filter and editable tags (Devin parity)
 
-**Worker:** worker7 **Goal:** every agent session says who started it on every surface, the `/agents` list opens on the sessions you started, and a session's tags can be replaced after create, as in Devin. **Status:** todo
+**Worker:** worker7 **Goal:** every agent session says who started it on every surface, the `/agents` list opens on the sessions you started, and a session's tags can be replaced after create, as in Devin. **Status:** in progress (t001–t007 done; t008 closes after the live check)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | `createdBy` on the session read model (REST, GraphQL, MCP); backfill automation-started rows | 1h | — |
-| t002 | Creator filter on the session list: `mine` and repeatable `createdBy` on REST, GraphQL and MCP | 1h15m | t001 |
-| t003 | Replace a session's tags after create (Devin `PUT …/tags`) on REST, GraphQL and MCP; amend ADR094 D3 | 1h15m | — |
-| t004 | Dashboard `/agents`: "Started by me" default with an All toggle, creator on rows and header, tag editor | 1h30m | t002, t003 |
-| t005 | Render parity (Devin): creator, filter and tags agree across REST, GraphQL, MCP and the dashboard | 30m | t004 |
-| t006 | Simplify the code this milestone changed | 30m | t005 |
-| t007 | Test coverage for creator, creator filter and tag replacement | 45m | t005 |
+| t001 | `createdBy` on the session read model (REST, GraphQL, MCP); backfill automation-started rows — **DONE** | 1h | — |
+| t002 | Creator filter on the session list: `mine` and repeatable `createdBy` on REST, GraphQL and MCP — **DONE** | 1h15m | t001 |
+| t003 | Replace a session's tags after create (Devin `PUT …/tags`) on REST, GraphQL and MCP; amend ADR094 D3 — **DONE** | 1h15m | — |
+| t004 | Dashboard `/agents`: "Started by me" default with an All toggle, creator on rows and header, tag editor — **DONE** | 1h30m | t002, t003 |
+| t005 | Render parity (Devin): creator, filter and tags agree across REST, GraphQL, MCP and the dashboard — **DONE** | 30m | t004 |
+| t006 | Simplify the code this milestone changed — **DONE** | 30m | t005 |
+| t007 | Test coverage for creator, creator filter and tag replacement — **DONE** | 45m | t005 |
 | t008 | Closeout | 10m | t006, t007 |
 
 ## Definition of done
@@ -37,4 +37,17 @@
 - **Expected outcome:** in a workspace with several members, each member opens `/agents` on their own sessions and can re-tag them. API and MCP clients can list "my sessions" and see who started any session.
 - **Why now:** automations (ADR101) and child sessions (ADR102) both shipped this week and multiply the sessions in a shared workspace list. The column already exists, so exposing it is cheap now. It is also the base that Devin-style personal Memory and per-user budgets would build on.
 - **Render parity:** included (t005). This milestone changes REST, GraphQL, MCP and dashboard surfaces of agent sessions; the reference product is Devin (ADR047).
+- **Rows from before 0212:** the backfill (migration 0218) covers only sessions of automations still at `version = 1`. The scheduler bumps `updated_at` on every fire and a take-over can change an automation's creator, so `version = 1` is the one condition under which today's `created_by` is certainly the one the session ran as.
 - **Out of scope:** renaming a session's title (file separately once Devin's behavior is verified), Devin's session folders, bulk archive, and personal Memory.
+
+## Render parity (Devin) — t005, 2026-11-09
+
+| Behavior | Devin | REST | GraphQL | MCP | Dashboard |
+| --- | --- | --- | --- | --- | --- |
+| Who started a session | `user_id` on each session (v3) | `createdBy`, omitted when unknown | `createdBy: String` (`""` when unknown, as `automationId` already is) | `createdBy` in the session object | "Started by &lt;member&gt;" in the header and list rows; the raw subject for an API key or a removed member |
+| My sessions | Sidebar defaults to "non-archived sessions that you started" | `?mine=true` | `mine: Boolean` | `mine` | Rail opens on **Mine**; **Everyone** widens it and names each row's starter; the choice is remembered per browser |
+| Sessions by person | `user_ids` filter (v3) | `?createdBy=` (repeatable or comma-separated, ≤ 20) | `createdBy: [String!]` | `createdBy` array | — (Mine/Everyone only) |
+| Replace tags | `PUT …/sessions/{id}/tags`, "Replace all tags on a session" | `PUT /v1/agent-sessions/{id}/tags` `{"tags": [...]}`; a missing or null `tags` is a 400 | `setAgentSessionTags(id, tags!)` | `set_agent_session_tags` (also on `/mcp/cloud-agents`); null `tags` refused like REST | Header menu **Edit tags** dialog; tags shown in the header meta line |
+| Archived session | "can be viewed but not modified" | `409 AGENT_SESSION_ARCHIVED` | same | same | **Edit tags** disabled with the reason |
+
+Drift found and fixed in t005: MCP read `"tags": null` as a clear while REST refused it; MCP now refuses it too (`TestMCPSetTagsAndMine`). API-key sessions record the key's client id, which matches Devin's service-user attribution, so it is not filed as drift.

@@ -1378,6 +1378,58 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已取消",
     description: "Status group and badge of a child session that was canceled",
   },
+  "agentSessions.sidebarMine": {
+    message: "我的",
+    description:
+      "Sessions sidebar — show only the sessions you started (Devin's default)",
+  },
+  "agentSessions.sidebarEveryone": {
+    message: "所有人",
+    description: "Sessions sidebar — show every member's sessions",
+  },
+  "agentSessions.sidebarOwnerFilter": {
+    message: "会话范围",
+    description:
+      "Sessions sidebar — accessible name of the Mine/Everyone toggle",
+  },
+  "agentSessions.sidebarEmptyMine": {
+    message: "你还没有启动会话",
+    description:
+      "Sessions sidebar — empty state under Mine when the viewer started none",
+  },
+  "agentSessions.startedByPerson": {
+    message: "由 {name} 启动",
+    description: "Session header and list rows — who started the session",
+  },
+  "agentSessions.startedForPerson": {
+    message: "代表 {name}",
+    description:
+      "Session header — after 'Started by automation X': the member the automation runs as",
+  },
+  "agentSessions.editTags": {
+    message: "编辑标签",
+    description: "Session header menu — open the tag editor",
+  },
+  "agentSessions.editTagsTitle": {
+    message: "编辑标签",
+    description: "Tag editor dialog title",
+  },
+  "agentSessions.editTagsDescription": {
+    message: "新标签会替换会话当前的全部标签。用逗号或空格分隔；留空则清除。",
+    description: "Tag editor dialog description",
+  },
+  "agentSessions.editTagsHint": {
+    message: "最多 20 个标签：小写字母、数字、冒号、下划线或连字符。",
+    description: "Tag editor dialog — the tag rules",
+  },
+  "agentSessions.editTagsSave": {
+    message: "保存标签",
+    description: "Tag editor dialog — save button",
+  },
+  "agentSessions.editTagsSaved": {
+    message: "标签已保存",
+    description: "Toast after the tags were replaced",
+  },
 };
 
 export default zhAgentSessions;

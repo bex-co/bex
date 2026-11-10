@@ -15,6 +15,7 @@ import {
   CancelAgentSessionDocument,
   ArchiveAgentSessionDocument,
   UnarchiveAgentSessionDocument,
+  SetAgentSessionTagsDocument,
   DeleteAgentSessionDocument,
   AgentSessionDocument,
 } from "@/graphql/definitions";
@@ -95,6 +96,8 @@ export interface UseAgentSessionMutationsResult {
   unarchive: (id: string) => Promise<AgentSessionView>;
   /** Permanently deletes a finished session — row and transcript (D4). */
   deleteSession: (id: string) => Promise<void>;
+  /** Replaces all of a session's tags (w7/m296); [] clears them. */
+  setTags: (id: string, tags: string[]) => Promise<AgentSessionView>;
 }
 
 /**
@@ -107,25 +110,28 @@ export interface UseAgentSessionMutationsResult {
  */
 
 /**
- * Collapses the three `id → AgentSessionView` verbs (cancel/archive/
- * unarchive) onto one body: fire the mutation `no-cache`, unwrap the single
+ * Collapses the `id → AgentSessionView` verbs (cancel/archive/unarchive,
+ * and setTags with its extra variables) onto one body: fire the mutation `no-cache`, unwrap the single
  * result field, project it, and re-throw through `toAgentSessionError` — the
  * exact shape previously retyped per verb (the field-mutation-factory move,
  * c75a6811). The ticket verbs and delete keep their own bodies: their result
  * shapes differ.
  */
-function useByIdViewMutation<TData>(
-  document: TypedDocumentNode<TData, { id: string }>,
+function useByIdViewMutation<
+  TData,
+  TVars extends { id: string } = { id: string },
+>(
+  document: TypedDocumentNode<TData, TVars>,
   pick: (data: TData) => AgentSessionFieldsFragment | null | undefined,
   name: string,
   onSuccess: (session: AgentSessionFieldsFragment) => void,
-): (id: string) => Promise<AgentSessionView> {
+): (id: string, extra?: Omit<TVars, "id">) => Promise<AgentSessionView> {
   const [mutate] = useMutation(document);
   return useCallback(
-    async (id: string) => {
+    async (id: string, extra?: Omit<TVars, "id">) => {
       try {
         const res = await mutate({
-          variables: { id },
+          variables: { ...extra, id } as TVars,
           fetchPolicy: "no-cache",
         });
         const session = res.data == null ? null : pick(res.data);
@@ -333,6 +339,17 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     [deleteMutation, invalidateDeletedSession],
   );
 
+  const setTagsById = useByIdViewMutation(
+    SetAgentSessionTagsDocument,
+    (d) => d.setAgentSessionTags,
+    "setAgentSessionTags",
+    reconcileSession,
+  );
+  const setTags = useCallback(
+    (id: string, tags: string[]) => setTagsById(id, { tags }),
+    [setTagsById],
+  );
+
   return {
     create,
     steer,
@@ -342,5 +359,6 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     archive,
     unarchive,
     deleteSession,
+    setTags,
   };
 }

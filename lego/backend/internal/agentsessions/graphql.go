@@ -324,6 +324,7 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"tags":            &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
 		"secretNames":     &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
 		"automationId":    &graphql.Field{Type: graphql.String, Description: "The agent automation (aut-…) that started this session, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.AutomationID })},
+		"createdBy":       &graphql.Field{Type: graphql.String, Description: "Who started the session: a member's identity id, or an API key's client id. An automation's sessions carry the automation's creator and a child session its parent's creator. Absent on sessions from before it was recorded.", Resolve: gqlutil.Field(func(v View) any { return v.CreatedBy })},
 		"parentSessionId": &graphql.Field{Type: graphql.String, Description: "The agent session (ags-…) that spawned this one, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.ParentSessionID })},
 		"rootSessionId":   &graphql.Field{Type: graphql.String, Description: "The top of this session's tree, absent on a top-level session.", Resolve: gqlutil.Field(func(v View) any { return v.RootSessionID })},
 		"depth":           &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Description: "Distance from the root of the session's tree; 0 for a top-level session.", Resolve: gqlutil.Field(func(v View) any { return v.Depth })},
@@ -565,6 +566,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"repo":            gqlutil.Arg(graphql.String),
 				"automationId":    &graphql.ArgumentConfig{Type: graphql.String, Description: "Only the sessions this agent automation (aut-…) started."},
 				"parentSessionId": &graphql.ArgumentConfig{Type: graphql.String, Description: "Only the direct children of this session (ags-…)."},
+				"mine":            &graphql.ArgumentConfig{Type: graphql.Boolean, Description: "Only the sessions you started."},
+				"createdBy":       &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Only the sessions these subjects started (at most 20)."},
 				"createdBefore":   gqlutil.Arg(graphql.String),
 				"createdAfter":    gqlutil.Arg(graphql.String),
 				"cursor":          &graphql.ArgumentConfig{Type: graphql.String, Description: "The prior page's last session id; a shorter/empty page signals the end."},
@@ -592,6 +595,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					Repo:            gqlutil.Str(p.Args, "repo"),
 					AutomationID:    gqlutil.Str(p.Args, "automationId"),
 					ParentSessionID: gqlutil.Str(p.Args, "parentSessionId"),
+					Mine:            gqlutil.Bool(p.Args, "mine"),
+					CreatedBy:       gqlutil.StringList(p.Args["createdBy"]),
 					CreatedBefore:   before,
 					CreatedAfter:    after,
 					Cursor:          gqlutil.Str(p.Args, "cursor"),
@@ -801,7 +806,18 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return s.AttachTicket(p.Context, gqlutil.Str(p.Args, "id"), action)
 			},
 		},
-		"cancelAgentSession":    gqlutil.IDVerb(agentSessionGQLType, s.Cancel),
+		"cancelAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Cancel),
+		"setAgentSessionTags": &graphql.Field{
+			Type:        agentSessionGQLType,
+			Description: "Replaces all of a session's tags; [] clears them. Refused on an archived session.",
+			Args: graphql.FieldConfigArgument{
+				"id":   gqlutil.ReqArg(graphql.String),
+				"tags": gqlutil.ReqArg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ReplaceTags(p.Context, gqlutil.Str(p.Args, "id"), gqlutil.StringList(p.Args["tags"]))
+			},
+		},
 		"archiveAgentSession":   gqlutil.IDVerb(agentSessionGQLType, s.Archive),
 		"unarchiveAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Unarchive),
 		"deleteAgentAttachment": &graphql.Field{

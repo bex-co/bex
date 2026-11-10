@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -190,8 +191,8 @@ type AgentSession struct {
 	// NULL ⇒ the session is in the working set; set ⇒ it is archived (hidden from
 	// the default list, mutation verbs refused) but still viewable.
 	ArchivedAt *time.Time
-	// Title and Tags are the create-time display title and filter tags
-	// (ADR094 D3); read-only afterwards.
+	// Title and Tags are the display title and filter tags (ADR094 D3). The
+	// title is set at create; tags can be replaced afterwards (w7/m296).
 	Title string
 	Tags  []string
 	// MaxSpendMicroUSD is the per-session ceiling on the platform-route model
@@ -564,10 +565,12 @@ type AgentSessionListQuery struct {
 	AutomationID string
 	// ParentSessionID keeps only the direct children of this session (ADR102).
 	ParentSessionID string
-	CreatedBefore   time.Time
-	CreatedAfter    time.Time
-	Cursor          string
-	Limit           int
+	// CreatedBy keeps only the sessions these subjects started (w7/m296).
+	CreatedBy     []string
+	CreatedBefore time.Time
+	CreatedAfter  time.Time
+	Cursor        string
+	Limit         int
 }
 
 // ListAgentSessions returns one filtered page of a workspace's sessions,
@@ -580,6 +583,10 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	// A filter text cannot hold matches nothing, like any unknown value
 	// (w4/518): binding it would raise SQLSTATE 22021, a server fault.
 	if !textBindable(q.Tag) || !textBindable(q.Repo) || !textBindable(q.Cursor) || !textBindable(q.AutomationID) || !textBindable(q.ParentSessionID) {
+		return []AgentSession{}, nil
+	}
+	createdBy := slices.DeleteFunc(slices.Clone(q.CreatedBy), func(v string) bool { return !textBindable(v) })
+	if len(q.CreatedBy) > 0 && len(createdBy) == 0 {
 		return []AgentSession{}, nil
 	}
 	sql := `SELECT ` + agentSessionColumns + ` FROM agent_sessions WHERE workspace_id=$1`
@@ -609,6 +616,15 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	}
 	if q.ParentSessionID != "" {
 		sql += ` AND parent_session_id = ` + arg(q.ParentSessionID)
+	}
+	switch len(createdBy) {
+	case 0:
+	case 1:
+		// Equality, not ANY: the creator index then yields rows already in
+		// the keyset order, so the polled "mine" page stops at its LIMIT.
+		sql += ` AND created_by = ` + arg(createdBy[0])
+	default:
+		sql += ` AND created_by = ANY(` + arg(createdBy) + `)`
 	}
 	if !q.CreatedBefore.IsZero() {
 		sql += ` AND created_at < ` + arg(q.CreatedBefore)
@@ -651,6 +667,24 @@ func (s *PGStore) SetAgentSessionArchived(ctx context.Context, id string, archiv
 		    updated_at = now()
 		WHERE id=$1
 		RETURNING `+agentSessionColumns, id, archived))
+	if err != nil {
+		return AgentSession{}, classify("agent session", err)
+	}
+	return out, nil
+}
+
+// ReplaceAgentSessionTags replaces a session's whole tag set (w7/m296, Devin's
+// PUT …/tags). An archived session is returned unchanged: the caller sees
+// ArchivedAt set and refuses, the same rule as every other mutation verb
+// (ADR065 D1). The check and the write are one statement, so an archive that
+// lands concurrently can never be overwritten by a stale tag edit.
+func (s *PGStore) ReplaceAgentSessionTags(ctx context.Context, id string, tags []string) (AgentSession, error) {
+	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
+		UPDATE agent_sessions
+		SET tags = CASE WHEN archived_at IS NULL THEN $2 ELSE tags END,
+		    updated_at = CASE WHEN archived_at IS NULL THEN now() ELSE updated_at END
+		WHERE id=$1
+		RETURNING `+agentSessionColumns, id, nonNil(tags)))
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)
 	}

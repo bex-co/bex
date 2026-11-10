@@ -98,6 +98,7 @@ The toolset has nine tools. Each one has its own name, so `readOnlyHint`/`destru
 | `get_agent_session_transcript` | read | Unchanged; the escape hatch when `outcome.summary` is not enough. |
 | `get_agent_session_tool_output` | read | Unchanged. |
 | `cancel_agent_session` | destructive | Unchanged. |
+| `set_agent_session_tags` | write | Added by w7/m296 (2026-11-09): replaces all of a session's tags, Devin v3's `PUT …/tags`. |
 
 **Left off `/mcp/cloud-agents`:** `attach_agent_session` (a ticket for an SSE stream an MCP client cannot read), `resume_agent_session` (a message already re-dispatches), archive, unarchive, delete, and the admin-only environment tools. All of them remain on `/mcp`.
 
@@ -113,11 +114,13 @@ The input is the current `CreateRequest` (`ownerId` becomes `workspaceId`; `repo
 | `outputSchema` | D5. JSON Schema; makes the turn's result machine-readable. |
 | `outputRequired` | Default `true` when `outputSchema` is set. |
 | `title` | Display title. Defaults to the first line of `task`. |
-| `tags` | ≤ 20 tags, each `[a-z0-9:_-]{1,64}`, for filtering and cost attribution. Stored in a new `agent_sessions.tags text[]`. |
+| `tags` | ≤ 20 tags, each `[a-z0-9:_-]{1,64}`, for filtering and cost attribution. Stored in a new `agent_sessions.tags text[]`. Replaceable after create (w7/m296). |
 | `maxSpendUSD` | A per-session ceiling on the ADR091 customer price (D8). |
 | `branch` | Becomes **optional**. When omitted, the server picks `bex-agent/<ags-id>`. An LLM should not have to invent a branch name that passes the `bex-agent/` prefix rule. |
 
 Batch create (Devin's `devin_session_create` takes several prompts) is not added. MCP clients already issue parallel tool calls, and one session per call keeps idempotency and errors per session.
+
+**Amendment (w7/m296, 2026-11-09): tags are editable, the creator is visible.** Devin replaces a session's tags after create (v3 `PUT /v3/organizations/{org_id}/sessions/{devin_id}/tags`, "Replace all tags on a session"), so bex does too: REST `PUT /v1/agent-sessions/{id}/tags` with `{"tags": [...]}`, GraphQL `setAgentSessionTags(id, tags)` and MCP `set_agent_session_tags`, all with the create rules above. `[]` clears the tags; a missing `tags` key is a 400. Like every other mutation verb it is refused on an archived session (`409 AGENT_SESSION_ARCHIVED`, ADR065 D1). The title stays create-time. Every session read also carries `createdBy`, the subject that started it (ADR102 D9's column), and the list takes `mine` (the caller's own sessions, Devin's sidebar default) and a repeatable `createdBy` (Devin v3 `user_ids`, at most 20); `set_agent_session_tags` is in the `cloud-agents` toolset.
 
 ### D4 — Idempotent create
 

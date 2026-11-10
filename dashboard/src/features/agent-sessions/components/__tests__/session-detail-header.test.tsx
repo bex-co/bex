@@ -30,13 +30,20 @@ vi.mock("@tanstack/react-router", () => ({
 const archiveMock = vi.fn().mockResolvedValue(undefined);
 const unarchiveMock = vi.fn().mockResolvedValue(undefined);
 const deleteMock = vi.fn().mockResolvedValue(undefined);
+const setTagsMock = vi.fn().mockResolvedValue(undefined);
 vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({
     cancel: vi.fn(),
     archive: archiveMock,
     unarchive: unarchiveMock,
     deleteSession: deleteMock,
+    setTags: setTagsMock,
   }),
+}));
+// Who started it (w7/m296) resolves through the workspace roster.
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) =>
+    subject === "kratos-alice" ? "alice@example.com" : subject,
 }));
 
 // "Started by automation" reads the automation's name on its own (ADR101 D9).
@@ -85,6 +92,101 @@ describe("SessionDetailHeader", () => {
     archiveMock.mockClear();
     unarchiveMock.mockClear();
     deleteMock.mockClear();
+    setTagsMock.mockReset();
+    setTagsMock.mockResolvedValue(undefined);
+  });
+
+  // w7/m296: every session says who started it, as Devin's sessions do.
+  it("names the member who started the session", () => {
+    render(
+      <SessionDetailHeader session={view({ createdBy: "kratos-alice" })} />,
+    );
+    expect(screen.getByTestId("started-by")).toHaveTextContent(
+      "Started by alice@example.com",
+    );
+  });
+
+  it("falls back to the raw subject when no member matches (an API key)", () => {
+    render(<SessionDetailHeader session={view({ createdBy: "client-ci" })} />);
+    expect(screen.getByTestId("started-by")).toHaveTextContent(
+      "Started by client-ci",
+    );
+  });
+
+  it("names the member an automation's session runs as", () => {
+    automationName.name = "nightly-deps";
+    render(
+      <SessionDetailHeader
+        session={view({ automationId: "aut-1", createdBy: "kratos-alice" })}
+      />,
+    );
+    expect(screen.getByTestId("started-by")).toHaveTextContent(
+      "Started by automation nightly-deps for alice@example.com",
+    );
+    automationName.name = null;
+  });
+
+  it("shows the session's tags and replaces them from Edit tags", async () => {
+    render(
+      <SessionDetailHeader
+        session={view({ id: "as-9", tags: ["bug", "ui"] })}
+      />,
+    );
+    expect(screen.getByTestId("session-tags")).toHaveTextContent("bug, ui");
+
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit tags" }),
+    );
+    const input = await screen.findByRole("textbox", { name: "Tags" });
+    expect(input).toHaveValue("bug, ui");
+    await userEvent.clear(input);
+    await userEvent.type(input, "triage, p1 backend");
+    await userEvent.click(screen.getByRole("button", { name: "Save tags" }));
+
+    await waitFor(() =>
+      expect(setTagsMock).toHaveBeenCalledWith("as-9", [
+        "triage",
+        "p1",
+        "backend",
+      ]),
+    );
+    expect(
+      screen.queryByRole("textbox", { name: "Tags" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the editor open with the server's reason when a tag is refused", async () => {
+    setTagsMock.mockRejectedValue(
+      new Error("each tag must match [a-z0-9:_-]{1,64}"),
+    );
+    render(<SessionDetailHeader session={view({ tags: [] })} />);
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit tags" }),
+    );
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Tags" }),
+      "Bad Tag",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save tags" }));
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    expect(screen.getByRole("textbox", { name: "Tags" })).toBeInTheDocument();
+  });
+
+  it("offers no Edit tags on an archived session", async () => {
+    render(
+      <SessionDetailHeader
+        session={view({ archivedAt: "2026-08-05T00:00:00Z", isArchived: true })}
+      />,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "More actions" }));
+    expect(
+      await screen.findByRole("menuitem", { name: "Unarchive" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("menuitem", { name: "Edit tags" }),
+    ).not.toBeInTheDocument();
   });
 
   it("links a session an automation started back to that automation", () => {

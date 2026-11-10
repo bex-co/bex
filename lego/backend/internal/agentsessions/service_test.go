@@ -587,6 +587,9 @@ func (f *fakeStore) ListAgentSessions(_ context.Context, workspace string, q sto
 		if q.Tag != "" && !slices.Contains(row.Tags, q.Tag) {
 			continue
 		}
+		if len(q.CreatedBy) > 0 && !slices.Contains(q.CreatedBy, row.CreatedBy) {
+			continue
+		}
 		out = append(out, row)
 	}
 	if q.Limit > 0 && len(out) > q.Limit {
@@ -609,6 +612,17 @@ func (f *fakeStore) SetAgentSessionArchived(_ context.Context, id string, archiv
 		row.ArchivedAt = nil
 	}
 	f.rows[id] = row
+	return row, nil
+}
+func (f *fakeStore) ReplaceAgentSessionTags(_ context.Context, id string, tags []string) (store.AgentSession, error) {
+	row, ok := f.rows[id]
+	if !ok {
+		return store.AgentSession{}, store.ErrNotFound
+	}
+	if row.ArchivedAt == nil {
+		row.Tags = slices.Clone(tags)
+		f.rows[id] = row
+	}
 	return row, nil
 }
 func (f *fakeStore) SetAgentSessionLifecycle(_ context.Context, id, sandboxID, phase, status string, canceled bool) (store.AgentSession, error) {

@@ -75,6 +75,9 @@
         "createdAt": {
           "type": "string"
         },
+        "createdBy": {
+          "type": "string"
+        },
         "deliveryMode": {
           "type": "string"
         },
@@ -380,6 +383,9 @@
         "createdAt": {
           "type": "string"
         },
+        "createdBy": {
+          "type": "string"
+        },
         "deliveryMode": {
           "type": "string"
         },
@@ -680,6 +686,9 @@
           ]
         },
         "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
           "type": "string"
         },
         "deliveryMode": {
@@ -1601,6 +1610,9 @@
           ]
         },
         "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
           "type": "string"
         },
         "deliveryMode": {
@@ -2723,6 +2735,9 @@
         "createdAt": {
           "type": "string"
         },
+        "createdBy": {
+          "type": "string"
+        },
         "deliveryMode": {
           "type": "string"
         },
@@ -3508,6 +3523,9 @@
                 ]
               },
               "createdAt": {
+                "type": "string"
+              },
+              "createdBy": {
                 "type": "string"
               },
               "deliveryMode": {
@@ -4489,11 +4507,25 @@
         "createdBefore": {
           "type": "string"
         },
+        "createdBy": {
+          "description": "only the sessions these subjects started (a session's createdBy); at most 20",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "cursor": {
           "type": "string"
         },
         "limit": {
           "type": "integer"
+        },
+        "mine": {
+          "description": "only the sessions you started",
+          "type": "boolean"
         },
         "ownerId": {
           "type": "string"
@@ -4587,6 +4619,9 @@
                 ]
               },
               "createdAt": {
+                "type": "string"
+              },
+              "createdBy": {
                 "type": "string"
               },
               "deliveryMode": {
@@ -5657,6 +5692,9 @@
         "createdAt": {
           "type": "string"
         },
+        "createdBy": {
+          "type": "string"
+        },
         "deliveryMode": {
           "type": "string"
         },
@@ -6118,6 +6156,9 @@
         "createdAt": {
           "type": "string"
         },
+        "createdBy": {
+          "type": "string"
+        },
         "deliveryMode": {
           "type": "string"
         },
@@ -6394,6 +6435,322 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
+    "description": "Replace all tags on a cloud coding-agent session (tags filter list_agent_sessions). Pass the complete new set; [] clears them. Refused on an archived session.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "tags": {
+          "description": "the session's new tags, replacing all current ones: at most 20, each [a-z0-9:_-]{1,64}; [] clears them",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "tags"
+      ],
+      "type": "object"
+    },
+    "name": "set_agent_session_tags",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "automationId": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "depth": {
+          "type": "integer"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "maxSpendUSD": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
+                "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "result": true,
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "parentSessionId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
     "description": "Alias of create_agent_session. Start a cloud coding-agent session on a repository; it does not return an attach ticket (call attach_agent_session for one).",
     "inputSchema": {
       "additionalProperties": false,
@@ -6607,6 +6964,9 @@
           ]
         },
         "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
           "type": "string"
         },
         "deliveryMode": {
@@ -7002,6 +7362,9 @@
           ]
         },
         "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
           "type": "string"
         },
         "deliveryMode": {
@@ -7579,6 +7942,9 @@
           ]
         },
         "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
           "type": "string"
         },
         "deliveryMode": {

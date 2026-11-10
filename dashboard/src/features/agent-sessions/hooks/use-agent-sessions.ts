@@ -44,6 +44,8 @@ export interface UseAgentSessionsOptions {
   repo?: string;
   /** Tag filter (w21/m258 `tag`); omitted ⇒ every session. */
   tag?: string;
+  /** Only the sessions the viewer started (w7/m296, Devin's sidebar default). */
+  mine?: boolean;
   /** Page size; omitted ⇒ the backend default (50, max 200). */
   limit?: number;
 }
@@ -86,6 +88,7 @@ export function useAgentSessions({
   phases,
   repo,
   tag,
+  mine,
   limit,
 }: UseAgentSessionsOptions = {}): UseAgentSessionsResult {
   const { currentWorkspaceId } = useWorkspace();
@@ -101,6 +104,7 @@ export function useAgentSessions({
         phases: phases?.length ? phases : null,
         repo: repo || null,
         tag: tag || null,
+        mine: mine || null,
         limit: effectiveLimit,
       },
       skip: !resolved,
@@ -127,6 +131,7 @@ export function useAgentSessions({
     phases ?? [],
     repo ?? "",
     tag ?? "",
+    mine ?? false,
     limit ?? 0,
   ]);
   const [loadingMore, setLoadingMore] = useState(false);

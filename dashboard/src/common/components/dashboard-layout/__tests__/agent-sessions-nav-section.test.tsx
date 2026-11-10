@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { afterEach, describe, it, expect, vi, beforeEach } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -12,6 +12,7 @@ import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { DashboardSidebar } from "../dashboard-sidebar";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
+import { memoryStorage } from "@/test/mocks/storage";
 
 vi.mock("@/config/use-growthbook", () => ({
   useAgentsFeatureEnabled: () => true,
@@ -24,11 +25,30 @@ const sessionsState: { sessions: AgentSessionView[]; loading: boolean } = {
 };
 /** Counts how many components mount a polling `useAgentSessions`. */
 let pollingMounts = 0;
+/** The rail's latest list options (w7/m296: whose sessions it asks for). */
+let lastOptions: { mine?: boolean } | undefined;
 vi.mock("@/features/agent-sessions/hooks/use-agent-sessions", () => ({
-  useAgentSessions: (opts?: { poll?: boolean }) => {
+  useAgentSessions: (opts?: { poll?: boolean; mine?: boolean }) => {
     if (opts?.poll !== false) pollingMounts += 1;
+    lastOptions = opts;
     return sessionsState;
   },
+}));
+// The Mine/Everyone choice is remembered per workspace (w7/m296).
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({
+    workspaces: [],
+    currentWorkspaceId: "tea-1",
+    currentWorkspace: null,
+    setCurrentWorkspaceId: () => undefined,
+    loading: false,
+    error: undefined,
+    refetch: () => Promise.resolve(),
+  }),
+}));
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) =>
+    subject === "kratos-carol" ? "carol@example.com" : subject,
 }));
 
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
@@ -66,6 +86,11 @@ beforeEach(() => {
   sessionsState.loading = false;
   sessionsState.sessions = [];
   pollingMounts = 0;
+  lastOptions = undefined;
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
 });
 
 // w5/m64: `/agents` used to render a SECOND `<aside>` inside the page body on
@@ -205,9 +230,42 @@ describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () =>
     renderAt("/agents");
 
     // Empty/failed list state renders, and the nav above it still works.
-    expect(await screen.findByText("No sessions yet")).toBeInTheDocument();
+    expect(
+      await screen.findByText("You haven't started a session yet"),
+    ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Projects" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
+  });
+
+  // w7/m296: Devin's sidebar lists "the non-archived sessions that you
+  // started" by default; Everyone widens it and names each row's starter.
+  it("lists only your sessions by default, and Everyone widens it", async () => {
+    vi.stubGlobal("localStorage", memoryStorage());
+    sessionsState.sessions = [
+      view({ id: "as-carol", createdBy: "kratos-carol" }),
+    ];
+    const { unmount } = renderAt("/agents");
+    await screen.findByText("Recent");
+    expect(lastOptions?.mine).toBe(true);
+    expect(screen.getByRole("button", { name: "Mine" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.queryByTestId("session-row-creator")).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Everyone" }));
+    expect(lastOptions?.mine).toBe(false);
+    expect(screen.getByTestId("session-row-creator")).toHaveTextContent(
+      "carol@example.com",
+    );
+
+    // The choice is remembered: a fresh mount starts on Everyone.
+    unmount();
+    renderAt("/agents");
+    await screen.findByText("Recent");
+    expect(lastOptions?.mine).toBe(false);
+    await userEvent.click(screen.getByRole("button", { name: "Mine" }));
+    expect(lastOptions?.mine).toBe(true);
   });
 
   it("owns exactly one polling useAgentSessions on the rail", async () => {

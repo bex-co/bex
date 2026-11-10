@@ -148,6 +148,12 @@ export interface AgentSessionView {
   maxSpendUSD: string | null;
   /** The agent automation (aut-…) that started the session, ADR101. */
   automationId: string | null;
+  /**
+   * Who started the session (w7/m296): a member's identity subject or an API
+   * key's client id. An automation's sessions carry its creator. Null on rows
+   * from before it was recorded.
+   */
+  createdBy: string | null;
   /** The session (ags-…) that spawned this one (ADR102); null on a top-level session. */
   parentSessionId: string | null;
   /** The top of this session's tree (ADR102); null on a top-level session. */

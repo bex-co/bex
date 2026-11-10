@@ -56,6 +56,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
+		mine := false
+		if raw := q.Get("mine"); raw != "" {
+			if mine, err = strconv.ParseBool(raw); err != nil {
+				core.WriteErr(w, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
+					"mine must be true or false", map[string]any{"mine": raw}))
+				return
+			}
+		}
 		views, err := s.List(r.Context(), ListRequest{
 			OwnerID:         q.Get("ownerId"),
 			Archived:        q.Get("archived"),
@@ -65,6 +73,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Repo:            q.Get("repo"),
 			AutomationID:    q.Get("automationId"),
 			ParentSessionID: q.Get("parentSessionId"),
+			Mine:            mine,
+			CreatedBy:       core.QueryList(q, "createdBy"),
 			CreatedBefore:   window.Before,
 			CreatedAfter:    window.After,
 			Cursor:          q.Get("cursor"),
@@ -131,6 +141,24 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/agent-sessions/{id}/model-cost", core.HandleByID(s.ModelCost))
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
 		view, err := s.Cancel(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, view)
+	})
+	mux.HandleFunc("PUT /v1/agent-sessions/{id}/tags", func(w http.ResponseWriter, r *http.Request) {
+		var req replaceTagsRequest
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if req.Tags == nil {
+			core.WriteErr(w, errTagsRequired())
+			return
+		}
+		view, err := s.ReplaceTags(r.Context(), r.PathValue("id"), *req.Tags)
 		if err != nil {
 			core.WriteErr(w, err)
 			return

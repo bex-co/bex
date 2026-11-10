@@ -29,6 +29,7 @@ var CloudAgentsTools = []string{
 	"get_agent_session_transcript",
 	"get_agent_session_tool_output",
 	"cancel_agent_session",
+	"set_agent_session_tags",
 	"upload_agent_attachment",
 	"get_agent_attachment",
 	"list_agent_session_attachments",
@@ -66,6 +67,8 @@ type listArgs struct {
 	Repo            string   `json:"repo,omitempty"`
 	AutomationID    string   `json:"automationId,omitempty" jsonschema:"only the sessions this agent automation (aut-…) started"`
 	ParentSessionID string   `json:"parentSessionId,omitempty" jsonschema:"only the direct children of this session (ags-…); read the whole tree with get_agent_session_tree"`
+	Mine            bool     `json:"mine,omitempty" jsonschema:"only the sessions you started"`
+	CreatedBy       []string `json:"createdBy,omitempty" jsonschema:"only the sessions these subjects started (a session's createdBy); at most 20"`
 	CreatedBefore   string   `json:"createdBefore,omitempty"`
 	CreatedAfter    string   `json:"createdAfter,omitempty"`
 	Cursor          string   `json:"cursor,omitempty"`
@@ -100,6 +103,11 @@ func (a *updateEnvironmentArgs) UnmarshalJSON(data []byte) error {
 
 type idArgs struct {
 	ID string `json:"id"`
+}
+
+type setTagsArgs struct {
+	ID   string   `json:"id"`
+	Tags []string `json:"tags" jsonschema:"the session's new tags, replacing all current ones: at most 20, each [a-z0-9:_-]{1,64}; [] clears them"`
 }
 
 type transcriptArgs struct {
@@ -223,7 +231,8 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			}
 			out, err := s.List(ctx, ListRequest{
 				OwnerID: in.OwnerID, Archived: in.Archived, Phases: in.Phases, States: in.States, Tag: in.Tag,
-				Repo: in.Repo, AutomationID: in.AutomationID, ParentSessionID: in.ParentSessionID, CreatedBefore: before, CreatedAfter: after,
+				Repo: in.Repo, AutomationID: in.AutomationID, ParentSessionID: in.ParentSessionID, Mine: in.Mine, CreatedBy: in.CreatedBy,
+				CreatedBefore: before, CreatedAfter: after,
 				Cursor: in.Cursor, Limit: in.Limit,
 			})
 			return nil, listResult{AgentSessions: out}, err
@@ -270,6 +279,14 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_tool_output", Description: "Read the complete output of one tool call in a cloud coding-agent session. A transcript tool part flagged fullOutput: true stores only the head and tail of a long output inline (around a [bex: N chars clipped] marker); this returns the full text by field (output, errorText, terminal:<terminalId>), each capped at 1 MiB. Pass the session id, the part's turn and its toolCallId. Not found when no full copy was kept."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in toolOutputArgs) (*mcp.CallToolResult, ToolOutput, error) {
 			out, err := s.ToolOutput(ctx, in.ID, in.Turn, in.ToolCallID)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_session_tags", Description: "Replace all tags on a cloud coding-agent session (tags filter list_agent_sessions). Pass the complete new set; [] clears them. Refused on an archived session."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in setTagsArgs) (*mcp.CallToolResult, View, error) {
+			if in.Tags == nil {
+				return nil, View{}, errTagsRequired() // null is not [] here, as on REST
+			}
+			out, err := s.ReplaceTags(ctx, in.ID, in.Tags)
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "archive_agent_session", Description: "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn."},

@@ -12,6 +12,7 @@ import {
   Loader2,
   KeyRound,
   MoreHorizontal,
+  Tag,
   Terminal,
   Trash2,
 } from "lucide-react";
@@ -35,6 +36,7 @@ import {
   TooltipTrigger,
 } from "@/common/components/ui/tooltip";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { useAgentAutomation } from "@/features/agent-automations/hooks/use-agent-automation";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
 import { RequiresSshKey } from "@/features/ssh-keys/components/requires-ssh-key";
@@ -50,6 +52,7 @@ import type {
   AgentSessionView,
 } from "@/features/agent-sessions/types";
 import { AgentSessionPhaseChip } from "@/features/agent-sessions/components/session-list";
+import { EditTagsDialog } from "@/features/agent-sessions/components/edit-tags-dialog";
 
 /** Compact `h/m/s` elapsed label ("1h 4m", "12m 8s", "3s"). */
 function formatDurationShort(ms: number): string {
@@ -103,6 +106,10 @@ export function SessionDetailHeader({
   const [canceling, setCanceling] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [tagsOpen, setTagsOpen] = useState(false);
+  // Who started it (w7/m296): the roster label, or the raw subject for an API
+  // key or a removed member. "" skips the roster read.
+  const startedBy = useWorkspaceSubjectLabel(session.createdBy ?? "");
 
   // Archive is list-state (ADR065 D1) — allowed in any phase; delete is the
   // destructive verb, offered only once no sandbox work is possible
@@ -210,7 +217,23 @@ export function SessionDetailHeader({
           <span>{t("agentSessions.metaTurns", { count: session.turns })}</span>
           <SessionModelCost session={session} />
           {session.automationId ? (
-            <StartedByAutomation automationId={session.automationId} />
+            <StartedByAutomation
+              automationId={session.automationId}
+              runsAs={session.createdBy ? startedBy : null}
+            />
+          ) : session.createdBy ? (
+            <span data-testid="started-by">
+              {t("agentSessions.startedByPerson", { name: startedBy })}
+            </span>
+          ) : null}
+          {session.tags.length > 0 ? (
+            <span
+              className="inline-flex items-center gap-1"
+              data-testid="session-tags"
+            >
+              <Tag className="size-3" />
+              {session.tags.join(", ")}
+            </span>
           ) : null}
           {session.secretNames.length > 0 ? (
             <span
@@ -269,6 +292,13 @@ export function SessionDetailHeader({
               </a>
             </DropdownMenuItem>
           ) : null}
+          {/* An archived session can be viewed, not modified (ADR065 D1). */}
+          {session.isArchived ? null : (
+            <DropdownMenuItem onClick={() => setTagsOpen(true)}>
+              <Tag className="size-4" />
+              {t("agentSessions.editTags")}
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem
             disabled={archiveBusyId === session.id}
             onClick={() => void toggleArchive(session)}
@@ -296,6 +326,14 @@ export function SessionDetailHeader({
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {tagsOpen ? (
+        <EditTagsDialog
+          sessionId={session.id}
+          tags={session.tags}
+          onOpenChange={setTagsOpen}
+        />
+      ) : null}
 
       <ConfirmDialog
         open={deleteOpen}
@@ -480,7 +518,14 @@ function CancelButton({
  * the automation whose schedule fired it. The name is read on its own, so a
  * viewer who cannot read automations still sees the link, labelled by its id.
  */
-function StartedByAutomation({ automationId }: { automationId: string }) {
+function StartedByAutomation({
+  automationId,
+  runsAs,
+}: {
+  automationId: string;
+  /** The member the automation ran as (w7/m296); null on older sessions. */
+  runsAs: string | null;
+}) {
   const { t } = useTranslations();
   const { automation } = useAgentAutomation(automationId);
   return (
@@ -493,6 +538,9 @@ function StartedByAutomation({ automationId }: { automationId: string }) {
       >
         {automation?.name ?? automationId}
       </Link>
+      {runsAs
+        ? ` ${t("agentSessions.startedForPerson", { name: runsAs })}`
+        : null}
     </span>
   );
 }

@@ -21,6 +21,7 @@ import {
   SidebarMenuSub,
 } from "@/common/components/ui/sidebar.tsx";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import {
   agentSessionStatusPhraseKey,
@@ -31,6 +32,8 @@ import {
   type SessionNode,
 } from "@/features/agent-sessions/lib/lineage";
 import { parseAgentSessionArchivedFilter } from "@/features/agent-sessions/types";
+import { createWorkspaceLocalStore } from "@/features/onboarding/lib/workspace-local-store";
+import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 /** Substring match for prose titles — avoids the mention picker's subsequence fallback. */
 function sessionSearchMatch(query: string, candidate: string): boolean {
@@ -38,6 +41,23 @@ function sessionSearchMatch(query: string, candidate: string): boolean {
   if (q === "") return true;
   return candidate.toLowerCase().includes(q);
 }
+
+/**
+ * Whose sessions the rail lists (w7/m296). Devin's sidebar defaults to "the
+ * non-archived sessions that you started"; Everyone widens it to every
+ * member's. Remembered per workspace; SSR and hydration render "mine".
+ */
+type OwnerFilter = "mine" | "all";
+const ownerFilterStore = createWorkspaceLocalStore<OwnerFilter>(
+  "bex.agentSessions.sidebarOwner",
+  "mine",
+  (raw) => (raw === "all" ? "all" : "mine"),
+);
+
+const OWNER_FILTERS = [
+  { value: "mine", labelKey: "agentSessions.sidebarMine" },
+  { value: "all", labelKey: "agentSessions.sidebarEveryone" },
+] as const;
 
 const HISTORY_FILTERS = [
   {
@@ -80,8 +100,11 @@ export function AgentSessionsNavSection() {
         (state.location.search as Record<string, unknown>).archived,
       ),
   });
+  const { currentWorkspaceId } = useWorkspace();
+  const ownerFilter = ownerFilterStore.useValue(currentWorkspaceId);
   const { sessions, loading } = useAgentSessions({
     limit: 20,
+    mine: ownerFilter === "mine",
   });
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -126,6 +149,25 @@ export function AgentSessionsNavSection() {
           {t("agentSessions.recentSessions")}
         </SidebarGroupLabel>
         <div className="flex shrink-0 items-center gap-0.5">
+          <div
+            role="group"
+            aria-label={t("agentSessions.sidebarOwnerFilter")}
+            className="bg-sidebar-accent/50 flex h-6 items-center rounded-md p-0.5"
+          >
+            {OWNER_FILTERS.map(({ value, labelKey }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={ownerFilter === value}
+                onClick={() =>
+                  ownerFilterStore.write(currentWorkspaceId, value)
+                }
+                className="text-sidebar-foreground/70 aria-pressed:bg-sidebar aria-pressed:text-sidebar-foreground flex h-5 cursor-pointer items-center rounded px-1.5 text-xs aria-pressed:shadow-xs"
+              >
+                {t(labelKey)}
+              </button>
+            ))}
+          </div>
           <button
             type="button"
             aria-label={t("agentSessions.sidebarSearch")}
@@ -163,7 +205,11 @@ export function AgentSessionsNavSection() {
           </div>
         ) : sessions.length === 0 ? (
           <p className="text-muted-foreground px-2 py-3 text-sm">
-            {t("agentSessions.sidebarEmpty")}
+            {t(
+              ownerFilter === "mine"
+                ? "agentSessions.sidebarEmptyMine"
+                : "agentSessions.sidebarEmpty",
+            )}
           </p>
         ) : filtered.length === 0 ? (
           <p className="text-muted-foreground px-2 py-3 text-sm">
@@ -176,6 +222,7 @@ export function AgentSessionsNavSection() {
                 key={node.session.id}
                 node={node}
                 activeId={agentSessionId}
+                showCreator={ownerFilter === "all"}
               />
             ))}
           </SidebarMenu>
@@ -194,9 +241,12 @@ export function AgentSessionsNavSection() {
 function SessionRow({
   node,
   activeId,
+  showCreator,
 }: {
   node: SessionNode;
   activeId: string | undefined;
+  /** Under Everyone, name who started the row; under Mine it is the viewer. */
+  showCreator: boolean;
 }) {
   const { t } = useTranslations();
   const { session } = node;
@@ -224,6 +274,9 @@ function SessionRow({
             <span className="truncate">
               {t(agentSessionStatusPhraseKey(session))}
             </span>
+            {showCreator && session.createdBy ? (
+              <SessionCreator subject={session.createdBy} />
+            ) : null}
             {hasPr && !hasPrLink ? (
               <span className="inline-flex shrink-0 items-center gap-0.5">
                 <GitPullRequest className="size-3" aria-hidden />#
@@ -277,10 +330,21 @@ function SessionRow({
               key={child.session.id}
               node={child}
               activeId={activeId}
+              showCreator={showCreator}
             />
           ))}
         </SidebarMenuSub>
       ) : null}
     </SidebarMenuItem>
+  );
+}
+
+/** "· alice@example.com": the starter's roster label, or the raw subject. */
+function SessionCreator({ subject }: { subject: string }) {
+  const label = useWorkspaceSubjectLabel(subject);
+  return (
+    <span className="min-w-0 truncate" data-testid="session-row-creator">
+      · {label}
+    </span>
   );
 }

@@ -35,15 +35,15 @@ func QueryList(q url.Values, key string) []string {
 	var out []string
 	for _, raw := range q[key] {
 		for value := range strings.SplitSeq(raw, ",") {
-			out = appendListValue(out, value)
+			out = AppendListValue(out, value)
 		}
 	}
 	return out
 }
 
-// appendListValue is the list filters' shared normalization: trimmed, non-empty,
+// AppendListValue is the list filters' shared normalization: trimmed, non-empty,
 // first occurrence wins.
-func appendListValue(out []string, value string) []string {
+func AppendListValue(out []string, value string) []string {
 	value = strings.TrimSpace(value)
 	if value == "" || slices.Contains(out, value) {
 		return out
@@ -75,7 +75,7 @@ func QueryNameList(u *url.URL, key string) []string {
 			if err != nil {
 				value = element
 			}
-			out = appendListValue(out, value)
+			out = AppendListValue(out, value)
 		}
 	}
 	return out

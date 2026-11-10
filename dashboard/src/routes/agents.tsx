@@ -61,6 +61,7 @@ export const Route = createFileRoute("/agents")({
             phases: deps.phase ? [deps.phase] : null,
             repo: null,
             tag: deps.tag ?? null,
+            mine: null,
             limit: AGENT_SESSION_PAGE_SIZE,
           },
           fetchPolicy: titleLoaderFetchPolicy(cause),

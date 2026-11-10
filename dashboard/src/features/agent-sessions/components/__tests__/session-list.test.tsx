@@ -55,6 +55,11 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   }),
 }));
 
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) =>
+    subject === "kratos-carol" ? "carol@example.com" : subject,
+}));
+
 /** `task` is a convenience override for the nested `agentConfig.task`. */
 function view(
   over: Partial<AgentSessionView> & { task?: string } = {},
@@ -105,6 +110,17 @@ describe("SessionList", () => {
     expect(
       screen.getByRole("link", { name: "Show sessions tagged login" }),
     ).not.toHaveAttribute("aria-current");
+  });
+
+  // w7/m296: each row says who started the session.
+  it("names who started each session in the row's meta line", () => {
+    render(
+      <SessionList
+        sessions={[view({ createdBy: "kratos-carol" })]}
+        loading={false}
+      />,
+    );
+    expect(metaText()).toContain("Started by carol@example.com");
   });
 
   it("renders a quiet empty line (not the dashed Bot card or table)", () => {
