@@ -1,6 +1,6 @@
 # w32 · m298 — Sandbox execution history (`/sandboxes/{id}/execs`), as on Render
 
-**Worker:** worker32 **Goal:** every run and file transfer in a sandbox is recorded and listed on Render's `/sandboxes/{id}/execs` paths with Render's fields **Status:** in progress (t001–t004, t006–t008 done; t005, the production isolation-matrix run, follows the deploy)
+**Worker:** worker32 **Goal:** every run and file transfer in a sandbox is recorded and listed on Render's `/sandboxes/{id}/execs` paths with Render's fields **Status:** done (verified on production, isolation matrix 42741929387, 2026-11-10)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Record completion: exit code and stop time — **DONE** | 60m | t001 |
 | t003 | Serve list and get on REST, GraphQL and MCP — **DONE** | 60m | t001 |
 | t004 | Retention as on Render — **DONE** | 30m | t002 |
-| t005 | Production check and ledger update | 40m | t003, t004 |
+| t005 | Production check and ledger update — **DONE** | 40m | t003, t004 |
 | t006 | Render parity — **DONE** | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -40,3 +40,8 @@
 - **t008:** `executions_test.go` (mint → stream → exit code → REST list/get; foreign 404; buffered sync; store-outage tolerance; file transfer; sniffer chunking and bounds; rune-safe truncation) and `sandbox_executions_pg_test.go` (ordering, paging, single stop, workspace isolation, prune).
 - **Also:** removed m297's redundant create-body cap; bex-api's `BEX_MAX_BODY_BYTES` already bounds every body at 2 MiB.
 - **t007 Simplify:** applied: keyset paging through the store's `pageKeyset` (so an unbindable cursor is an empty page); a bounded record write in front of mint and stream; a 30-day retention cap on every record, so a long-lived sandbox's history cannot grow without end; history authorization without `Get`'s rules and names reads; one `decodeExitCode` shared by the sniffer and the buffered reader; the byte-based sniffer; `ConnectOperationStream` reused; GraphQL reading views directly; deduplicated user lookups. Kept: the synchronous stop at stream end (one keyed UPDATE, so a listing right after a stream sees it stopped).
+
+## Closed — 2026-11-10
+
+Production isolation matrix [42741929387](https://github.com/bex-co/bex/actions/runs/42741929387) passed on deploy `2ca11c439`, which carries this milestone; the whole matrix is green.
+- `PASS: execution history lists the exec and the upload with Render's fields, and only to the sandbox's readers`

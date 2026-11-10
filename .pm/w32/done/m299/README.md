@@ -1,6 +1,6 @@
 # w32 · m299 — Remaining Render SDK gaps: relative remote paths and mint during resume
 
-**Worker:** worker32 **Goal:** the two residuals the m284 static review found are fixed, so the SDK walk can grade every method green **Status:** in progress (t001–t007 done; t008 closes after the production isolation-matrix run)
+**Worker:** worker32 **Goal:** the two residuals the m284 static review found are fixed, so the SDK walk can grade every method green **Status:** done (verified on production, isolation matrix 42741929387, 2026-11-10)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE** | 20m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 30m | t005 |
-| t008 | Closeout | 10m | t006, t007 |
+| t008 | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
@@ -43,3 +43,9 @@
 - **t006 Simplify:** applied the shared keep-alive and error event, `core.ErrorReply` (which keeps the timeout reply), relative depth counting, the unset-`HOME` refusal, context keys read once per wait, and trimmed comments.
 - **t007:** `resume_connect_test.go` covers the immediate mint on both routes, the early-open stream that fails as an event, the unchanged running-sandbox refusal, and keep-alive pacing. `shell_test.go` runs the real scripts with a symlinked `$HOME`, `.` and nested parents, a symlink under home and a missing parent. `ticket_test.go` covers the relative accept and refuse table.
 - **t008 next:** the production isolation matrix now checks a relative upload read back through `$HOME`, and a mint against an idle-suspended sandbox E that must answer in under 5 s and whose exec must then complete.
+
+## Closed — 2026-11-10
+
+Production isolation matrix [42741929387](https://github.com/bex-co/bex/actions/runs/42741929387) passed on deploy `2ca11c439`, which carries this milestone; the whole matrix is green.
+- `PASS: a relative remote path resolves under the sandbox user's home`
+- `PASS: a mint against a suspended sandbox answers in 0.687345s and its exec completes after the resume`
