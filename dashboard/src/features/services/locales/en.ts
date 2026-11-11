@@ -2682,6 +2682,46 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Remove ignored path",
     description: "Build & Deploy: remove-row label for an ignored path",
   },
+  "services.buildPathTooLong": {
+    message: "At most 512 bytes",
+    description:
+      "Inline error under a Root Directory, Dockerfile Path, Docker Build Context or Build Filter pattern over the server's 512-byte limit; a Chinese character is 3 bytes (w21/045)",
+  },
+  "services.buildPathControlChar": {
+    message: "Must not contain a control character or a tab",
+    description:
+      "Inline error under a build path or Build Filter pattern with a control character (w21/045)",
+  },
+  "services.buildPathBackslash": {
+    message: "Use / as the path separator, not \\",
+    description:
+      "Inline error under a build path or Build Filter pattern with a backslash (w21/045)",
+  },
+  "services.buildPathAbsolute": {
+    message: "Must be relative to the repository, not start with /",
+    description:
+      "Inline error under a build path or Build Filter pattern that starts with / (w21/045)",
+  },
+  "services.buildPathDotDot": {
+    message: "Must stay inside the repository: no .. segment",
+    description:
+      "Inline error under a build path or Build Filter pattern with a .. segment (w21/045)",
+  },
+  "services.buildPathEmptySegment": {
+    message: "Must not have an empty segment: no // and no trailing /",
+    description:
+      "Inline error under a Dockerfile Path or Docker Build Context with an empty path segment; the Root Directory normalizes these away (w21/045)",
+  },
+  "services.buildFilterUnclosedClass": {
+    message: "A [ is never closed by a ]",
+    description:
+      "Inline error under a Build Filter glob with an unclosed character class (w21/045)",
+  },
+  "services.healthCheckPathSlash": {
+    message: "Must start with /, or be empty for a port-only check",
+    description:
+      "Inline error under a Health Check Path that does not start with / (w21/045)",
+  },
   "services.buildFilterSave": {
     message: "Save Build Filters",
     description: "Build & Deploy: save button for the build-filters editor",

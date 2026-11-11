@@ -57,4 +57,27 @@ describe("HealthCheckPathRow", () => {
       screen.getByRole("textbox", { name: "Health Check Path" }),
     ).toHaveValue("");
   });
+
+  // w21/045: the server refuses a non-empty path with no leading /, so the row
+  // marks it and holds Save instead of toasting after the round trip.
+  it("marks a path with no leading / and holds Save", async () => {
+    const user = userEvent.setup();
+    render(<HealthCheckPathRow serviceId="web" healthCheckPath="/healthz" />);
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit Health Check Path" }),
+    );
+    const input = screen.getByRole("textbox", { name: "Health Check Path" });
+    await user.clear(input);
+    await user.type(input, "healthz");
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAccessibleDescription(
+      "Must start with /, or be empty for a port-only check",
+    );
+    expect(
+      screen.getByRole("button", { name: /save changes/i }),
+    ).toBeDisabled();
+    expect(setHealthCheckPath).not.toHaveBeenCalled();
+  });
 });

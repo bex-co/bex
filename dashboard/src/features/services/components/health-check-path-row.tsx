@@ -1,6 +1,7 @@
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useHealthCheckPath } from "@/features/services/hooks/use-health-check-path";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
+import { healthCheckPathError } from "@/features/services/lib/build-settings-validation";
 
 export interface HealthCheckPathRowProps {
   serviceId: string;
@@ -40,6 +41,11 @@ export function HealthCheckPathRow({
       // Empty is passed through, not coerced: it clears the path and selects
       // the TCP check.
       normalize={(draft) => draft}
+      // The server trims and refuses a path with no leading / (w21/045).
+      validate={(draft) => {
+        const reason = healthCheckPathError(draft);
+        return reason ? t(reason) : null;
+      }}
       onSave={(value) => setHealthCheckPath(serviceId, value)}
     />
   );

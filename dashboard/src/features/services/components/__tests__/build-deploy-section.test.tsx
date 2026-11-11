@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -1218,5 +1218,134 @@ describe("BuildFilterEditor — saved filter refresh (w4/274)", () => {
     view.rerender(section({ paths: ["site/**"], ignoredPaths: [] }));
     expect(included()).toEqual(["site/**"]);
     expect(save()).toBeDisabled();
+  });
+});
+
+// w21/045: a build setting the server would refuse is marked in its row, with
+// Save held and no "the service rebuilds and redeploys" confirmation, instead of
+// a toast naming the wire field after the round trip.
+describe("build setting row validation (w21/045)", () => {
+  const section = (
+    props: Partial<Parameters<typeof BuildDeploySection>[0]>,
+  ) => (
+    <BuildDeploySection
+      serviceId="app"
+      rootDir="backend"
+      runtime="docker"
+      startCommand={null}
+      dockerfilePath="Dockerfile"
+      dockerContext="."
+      autoDeploy={false}
+      preDeployCommand={null}
+      showPreDeployCommand={false}
+      showStartCommand
+      {...props}
+    />
+  );
+
+  async function editRow(
+    user: ReturnType<typeof userEvent.setup>,
+    label: string,
+    value: string,
+  ) {
+    await user.click(screen.getByRole("button", { name: `Edit ${label}` }));
+    const input = screen.getByRole("textbox", { name: label });
+    await user.clear(input);
+    await user.type(input, value);
+    return input;
+  }
+
+  it.each([
+    [
+      "Root Directory",
+      "../x",
+      "Must stay inside the repository: no .. segment",
+    ],
+    [
+      "Dockerfile Path",
+      "../Dockerfile",
+      "Must stay inside the repository: no .. segment",
+    ],
+    [
+      "Docker Build Context Directory",
+      "../ctx",
+      "Must stay inside the repository: no .. segment",
+    ],
+    ["Root Directory", "src\\app", "Use / as the path separator, not \\"],
+    [
+      "Dockerfile Path",
+      "/Dockerfile",
+      "Must be relative to the repository, not start with /",
+    ],
+    [
+      "Dockerfile Path",
+      "docker//Dockerfile",
+      "Must not have an empty segment: no // and no trailing /",
+    ],
+  ])("marks %s %j and holds Save", async (label, value, message) => {
+    const user = userEvent.setup();
+    render(section({}));
+    const input = await editRow(user, label, value);
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAccessibleDescription(message);
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    // The rebuild confirmation never opens for a value that can never build.
+    await user.type(input, "{Enter}");
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(setRootDir).not.toHaveBeenCalled();
+    expect(setDockerfilePath).not.toHaveBeenCalled();
+    expect(setDockerContext).not.toHaveBeenCalled();
+  });
+
+  it("marks a 513-byte directory with its own reason", async () => {
+    const user = userEvent.setup();
+    render(section({}));
+    const input = screen.getByRole("button", { name: "Edit Root Directory" });
+    await user.click(input);
+    fireEvent.change(screen.getByRole("textbox", { name: "Root Directory" }), {
+      target: { value: "a".repeat(513) },
+    });
+    expect(
+      screen.getByRole("textbox", { name: "Root Directory" }),
+    ).toHaveAccessibleDescription("At most 512 bytes");
+  });
+
+  it.each(["./", "server/", "a//b"])(
+    "still saves the Root Directory spelling %j, which the server normalizes",
+    async (value) => {
+      const user = userEvent.setup();
+      render(section({}));
+      await editRow(user, "Root Directory", value);
+      expect(
+        screen.getByRole("textbox", { name: "Root Directory" }),
+      ).not.toHaveAttribute("aria-invalid");
+      await confirmSave(user);
+      expect(setRootDir).toHaveBeenCalledWith("app", value);
+    },
+  );
+
+  it("marks an unclosed [ in a Build Filter pattern and holds its Save", async () => {
+    const user = userEvent.setup();
+    render(section({}));
+    await user.click(screen.getByRole("button", { name: "Add included path" }));
+    const input = screen.getByPlaceholderText("e.g. src/**");
+    // user-event reads a lone [ as a key descriptor; [[ types the character.
+    await user.type(input, "[[");
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAccessibleDescription("A [ is never closed by a ]");
+    expect(
+      screen.getByRole("button", { name: "Save Build Filters" }),
+    ).toBeDisabled();
+    expect(setBuildFilter).not.toHaveBeenCalled();
+
+    await user.clear(input);
+    await user.type(input, "src/**");
+    expect(input).not.toHaveAttribute("aria-invalid");
+    await user.click(
+      screen.getByRole("button", { name: "Save Build Filters" }),
+    );
+    expect(setBuildFilter).toHaveBeenCalledWith("app", ["src/**"], []);
   });
 });

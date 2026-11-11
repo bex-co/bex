@@ -169,8 +169,8 @@ func (s *Service) checkRootDir(ctx context.Context, a *appv1alpha1.App, name, ro
 	if err := requireRepoBacked(a, name, "root directory only applies to build-from-git"); err != nil {
 		return err
 	}
-	if !store.ValidRootDir(rootDir) {
-		return fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
+	if problem := store.RootDirProblem(rootDir); problem != "" {
+		return fmt.Errorf("%w: rootDirectory %s", core.ErrBadRequest, problem)
 	}
 	return nil
 }
@@ -180,8 +180,8 @@ func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, n
 		return "", err
 	}
 	dockerfilePath = strings.TrimSpace(dockerfilePath)
-	if dockerfilePath != "" && !store.ValidRootDir(dockerfilePath) {
-		return "", fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	if problem := store.RootDirProblem(dockerfilePath); problem != "" {
+		return "", fmt.Errorf("%w: dockerfilePath %s", core.ErrBadRequest, problem)
 	}
 	return dockerfilePath, nil
 }

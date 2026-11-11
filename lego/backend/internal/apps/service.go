@@ -3370,11 +3370,11 @@ func validateCreateSource(req CreateRequest) error {
 			return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
 	}
-	if req.RootDir != "" && !store.ValidRootDir(req.RootDir) {
-		return fmt.Errorf("%w: rootDirectory must be a relative path with no '..' components", core.ErrBadRequest)
+	if problem := store.RootDirProblem(req.RootDir); problem != "" {
+		return fmt.Errorf("%w: rootDirectory %s", core.ErrBadRequest, problem)
 	}
-	if req.DockerfilePath != "" && !store.ValidRootDir(req.DockerfilePath) {
-		return fmt.Errorf("%w: dockerfilePath must be a relative path with no '..' components", core.ErrBadRequest)
+	if problem := store.RootDirProblem(req.DockerfilePath); problem != "" {
+		return fmt.Errorf("%w: dockerfilePath %s", core.ErrBadRequest, problem)
 	}
 	return checkDockerContextPath(req.DockerContext)
 }

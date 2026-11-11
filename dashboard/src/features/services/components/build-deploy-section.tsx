@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
+import type { en } from "@/i18n";
 import {
   Card,
   CardHeader,
@@ -14,6 +15,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { DeployCard } from "@/features/services/components/deploy-card";
+import {
+  buildFilterPatternError,
+  relativePathError,
+  rootDirError,
+} from "@/features/services/lib/build-settings-validation";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
@@ -173,6 +179,13 @@ export function BuildDeploySection({
     [t],
   );
 
+  // Mark a draft the server would refuse in its row, before Save and before the
+  // rebuild confirmation (w21/045).
+  const pathValidate =
+    (check: (draft: string) => keyof typeof en | null) => (draft: string) => {
+      const reason = check(draft);
+      return reason ? t(reason) : null;
+    };
   const dockerCommand = isDockerBuild({ runtime, builder });
   const dockerfileBuild = showDockerfilePath && dockerCommand;
 
@@ -213,6 +226,7 @@ export function BuildDeploySection({
             optional
             mono
             busy={busy}
+            validate={pathValidate(rootDirError)}
             confirm={{
               title: (value) =>
                 t("services.buildDeployConfirmTitle", { value }),
@@ -265,6 +279,7 @@ export function BuildDeploySection({
               optional
               mono
               busy={dockerfilePathBusy}
+              validate={pathValidate(relativePathError)}
               confirm={{
                 title: (value) =>
                   t("services.dockerfilePathConfirmTitle", { value }),
@@ -289,6 +304,7 @@ export function BuildDeploySection({
               optional
               mono
               busy={dockerContextBusy}
+              validate={pathValidate(relativePathError)}
               confirm={{
                 title: (value) =>
                   t("services.dockerContextConfirmTitle", { value }),
@@ -371,6 +387,14 @@ function BuildFilterEditor({
     if (draftJson === baselineJson) setDraft(current);
   }
   const dirty = draftJson !== currentJson;
+  // A pattern the server would refuse holds Save, and is marked in its row.
+  const patternError = (value: string) => {
+    const reason = buildFilterPatternError(value);
+    return reason ? t(reason) : null;
+  };
+  const invalid = [...draft.paths, ...draft.ignoredPaths].some(
+    (value) => buildFilterPatternError(value) !== null,
+  );
 
   async function handleSave() {
     const clean = (xs: string[]) => xs.map((x) => x.trim()).filter(Boolean);
@@ -406,6 +430,7 @@ function BuildFilterEditor({
         removeLabel={t("services.buildFilterRemoveIncluded")}
         values={draft.paths}
         onChange={(paths) => setDraft((d) => ({ ...d, paths }))}
+        validate={patternError}
         disabled={!canOperate}
       />
       <PathList
@@ -416,6 +441,7 @@ function BuildFilterEditor({
         removeLabel={t("services.buildFilterRemoveIgnored")}
         values={draft.ignoredPaths}
         onChange={(ignoredPaths) => setDraft((d) => ({ ...d, ignoredPaths }))}
+        validate={patternError}
         disabled={!canOperate}
       />
       <div className="flex justify-end gap-2">
@@ -429,7 +455,7 @@ function BuildFilterEditor({
           </Button>
         )}
         <Button
-          disabled={busy || !dirty || !canOperate}
+          disabled={busy || !dirty || !canOperate || invalid}
           onClick={() => void handleSave()}
         >
           {busy && <Loader2 className="animate-spin" />}
@@ -454,6 +480,7 @@ export function PathList({
   removeLabel,
   values,
   onChange,
+  validate,
   disabled = false,
 }: {
   title: string;
@@ -463,34 +490,51 @@ export function PathList({
   removeLabel: string;
   values: string[];
   onChange: (values: string[]) => void;
+  /** An error to mark a row with (null ⇒ valid); the parent holds its own Save. */
+  validate?: (value: string) => string | null;
   disabled?: boolean;
 }) {
+  const idPrefix = useId();
   return (
     <div className="space-y-2">
       <div className="text-sm font-medium">{title}</div>
       <div className="text-xs text-muted-foreground">{hint}</div>
-      {values.map((value, i) => (
-        <div key={i} className="flex items-center gap-2">
-          <Input
-            value={value}
-            onChange={(e) =>
-              onChange(values.map((v, j) => (j === i ? e.target.value : v)))
-            }
-            placeholder={placeholder}
-            className="font-mono text-sm"
-            disabled={disabled}
-          />
-          <Button
-            size="icon"
-            variant="ghost"
-            aria-label={removeLabel}
-            disabled={disabled}
-            onClick={() => onChange(values.filter((_, j) => j !== i))}
-          >
-            <Trash2 />
-          </Button>
-        </div>
-      ))}
+      {values.map((value, i) => {
+        const error = validate?.(value) ?? null;
+        const errorId = `${idPrefix}-${i}-error`;
+        return (
+          <div key={i} className="space-y-1">
+            <div className="flex items-center gap-2">
+              <Input
+                value={value}
+                onChange={(e) =>
+                  onChange(values.map((v, j) => (j === i ? e.target.value : v)))
+                }
+                placeholder={placeholder}
+                className="font-mono text-sm"
+                aria-label={title}
+                aria-invalid={error !== null || undefined}
+                aria-describedby={error !== null ? errorId : undefined}
+                disabled={disabled}
+              />
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label={removeLabel}
+                disabled={disabled}
+                onClick={() => onChange(values.filter((_, j) => j !== i))}
+              >
+                <Trash2 />
+              </Button>
+            </div>
+            {error !== null && (
+              <p id={errorId} role="alert" className="text-destructive text-xs">
+                {error}
+              </p>
+            )}
+          </div>
+        );
+      })}
       <Button
         variant="outline"
         size="sm"

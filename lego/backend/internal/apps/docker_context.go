@@ -114,10 +114,11 @@ func repoRootRelative(p string) string {
 }
 
 // checkDockerContextPath is create's and update's one rule for the wire value:
-// a relative path with no ".." component.
+// a relative path inside the repository (store.RootDirProblem), named by the
+// rule it broke.
 func checkDockerContextPath(wire string) error {
-	if wire != "" && !store.ValidRootDir(wire) {
-		return fmt.Errorf("%w: dockerContext must be a relative path with no '..' components", core.ErrBadRequest)
+	if problem := store.RootDirProblem(wire); problem != "" {
+		return fmt.Errorf("%w: dockerContext %s", core.ErrBadRequest, problem)
 	}
 	return nil
 }

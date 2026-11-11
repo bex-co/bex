@@ -172,7 +172,7 @@ func TestRESTPatchDockerContext(t *testing.T) {
 	}
 
 	for _, tc := range []struct{ name, body, want string }{
-		{"web", `{"serviceDetails":{"envSpecificDetails":{"dockerContext":"../x"}}}`, "no '..'"},
+		{"web", `{"serviceDetails":{"envSpecificDetails":{"dockerContext":"../x"}}}`, "must not contain a '..' component"},
 		{"native", `{"serviceDetails":{"envSpecificDetails":{"dockerContext":"ctx"}}}`, "docker context"},
 		{"image", `{"serviceDetails":{"envSpecificDetails":{"dockerContext":"ctx"}}}`, "docker context"},
 	} {
@@ -296,7 +296,7 @@ func TestGraphQLDockerContextMatchesREST(t *testing.T) {
 	}
 
 	// A context escaping the repository is refused with REST's message.
-	const refusal = "dockerContext must be a relative path with no '..' components"
+	const refusal = "dockerContext must not contain a '..' component"
 	svc, _ := newService(nil)
 	rec := serveRESTStrict(t, svc, http.MethodPost, "/v1/services", `{"type":"web_service","name":"rest","repo":"https://github.com/x/web","serviceDetails":{"runtime":"docker","envSpecificDetails":{"dockerContext":"../../etc"}}}`)
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), refusal) {

@@ -688,22 +688,34 @@ func ValidGitRef(v string) bool { return refRE.MatchString(v) }
 // with no traversal ("..") or absolute components and no control characters, ≤512
 // bytes. Empty (the default — build the repo root) is valid. Exported so bex-api's
 // SetRootDir and create enforce one rule (w6/m6 t003).
-func ValidRootDir(v string) bool {
-	if v == "" {
-		return true
-	}
-	if len(v) > 512 { // bound pathological input (symmetric with ValidRepo's cap)
-		return false
-	}
-	if strings.ContainsAny(v, "\x00\r\n\t") || strings.Contains(v, "\\") || strings.HasPrefix(v, "/") {
-		return false
+func ValidRootDir(v string) bool { return RootDirProblem(v) == "" }
+
+// RootDirProblem names why v is not a valid root directory (ValidRootDir's one
+// rule), or returns "" when it is, so a refusal can say which rule failed rather
+// than blame ".." for a path that is merely long (w21/045). The dashboard's
+// build-settings-validation mirrors it; both pin the same vectors.
+func RootDirProblem(v string) string {
+	switch {
+	case v == "":
+		return ""
+	case len(v) > 512: // bound pathological input (symmetric with ValidRepo's cap)
+		return "must be at most 512 bytes"
+	case strings.ContainsAny(v, "\x00\r\n\t"):
+		return "must not contain a control character"
+	case strings.Contains(v, "\\"):
+		return "must use / as the path separator, not a backslash"
+	case strings.HasPrefix(v, "/"):
+		return "must be relative to the repository, not start with /"
 	}
 	for _, part := range strings.Split(v, "/") {
-		if part == ".." || part == "" {
-			return false
+		switch part {
+		case "..":
+			return "must not contain a '..' component"
+		case "":
+			return "must not contain an empty path segment (// or a trailing /)"
 		}
 	}
-	return true
+	return ""
 }
 
 // NormalizeRootDir maps the spellings of one directory to a single stored form

@@ -213,10 +213,10 @@ func TestMCPCreateDockerArgsRefusals(t *testing.T) {
 	}{
 		{"web dockerContext escapes the repo", "create_web_service", map[string]any{
 			"name": "web", "repo": "https://github.com/x/web", "runtime": "docker", "dockerContext": "../outside",
-		}, "dockerContext must be a relative path"},
+		}, "dockerContext must not contain a '..' component"},
 		{"cron dockerContext escapes the repo", "create_cron_job", map[string]any{
 			"name": "job", "schedule": "0 0 * * *", "repo": "https://github.com/x/job", "runtime": "docker", "dockerContext": "/abs",
-		}, "dockerContext must be a relative path"},
+		}, "dockerContext must be relative to the repository"},
 		{"web dockerCommand with startCommand", "create_web_service", map[string]any{
 			"name": "web", "repo": "https://github.com/x/web", "runtime": "docker", "dockerCommand": "bin/a", "startCommand": "bin/b",
 		}, "cannot set both dockerCommand and startCommand"},

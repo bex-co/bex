@@ -2622,6 +2622,46 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "移除忽略路径",
     description: "Build & Deploy: remove-row label for an ignored path",
   },
+  "services.buildPathTooLong": {
+    message: "最多 512 字节",
+    description:
+      "Inline error under a Root Directory, Dockerfile Path, Docker Build Context or Build Filter pattern over the server's 512-byte limit; a Chinese character is 3 bytes (w21/045)",
+  },
+  "services.buildPathControlChar": {
+    message: "不能包含控制字符或制表符",
+    description:
+      "Inline error under a build path or Build Filter pattern with a control character (w21/045)",
+  },
+  "services.buildPathBackslash": {
+    message: "路径分隔符请用 /，不要用 \\",
+    description:
+      "Inline error under a build path or Build Filter pattern with a backslash (w21/045)",
+  },
+  "services.buildPathAbsolute": {
+    message: "必须是相对仓库的路径，不能以 / 开头",
+    description:
+      "Inline error under a build path or Build Filter pattern that starts with / (w21/045)",
+  },
+  "services.buildPathDotDot": {
+    message: "必须留在仓库内：不能包含 .. 段",
+    description:
+      "Inline error under a build path or Build Filter pattern with a .. segment (w21/045)",
+  },
+  "services.buildPathEmptySegment": {
+    message: "不能有空的路径段：不能出现 //，也不能以 / 结尾",
+    description:
+      "Inline error under a Dockerfile Path or Docker Build Context with an empty path segment; the Root Directory normalizes these away (w21/045)",
+  },
+  "services.buildFilterUnclosedClass": {
+    message: "[ 没有对应的 ]",
+    description:
+      "Inline error under a Build Filter glob with an unclosed character class (w21/045)",
+  },
+  "services.healthCheckPathSlash": {
+    message: "必须以 / 开头；留空则只检查端口",
+    description:
+      "Inline error under a Health Check Path that does not start with / (w21/045)",
+  },
   "services.buildFilterSave": {
     message: "保存构建过滤器",
     description: "Build & Deploy: save button for the build-filters editor",
