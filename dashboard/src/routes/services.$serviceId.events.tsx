@@ -20,6 +20,8 @@ import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useProjects } from "@/features/projects/hooks/use-projects";
+import { useEnvironments } from "@/features/environments/hooks/use-environments";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
 import { isCron } from "@/features/services/lib/service-type";
 import { useServiceBase } from "@/features/services/lib/service-base";
@@ -426,8 +428,6 @@ function EventSummary({
   const projectChanged = type === "service_moved" && projectFrom !== projectTo;
   const environmentChanged =
     type === "service_moved" && environmentFrom !== environmentTo;
-  const placementLabel = (id: string | null) =>
-    id ?? t("services.eventsPlacementNone");
   const isDeploy = type === "deploy_started" || type === "deploy_ended";
   const exactTimestamp = useLocalDateTime(timestamp);
   // Compute deploy duration (w1/m47): startedAt → finishedAt
@@ -564,24 +564,12 @@ function EventSummary({
           </p>
         ) : null}
         {projectChanged || environmentChanged ? (
-          <div className="text-muted-foreground mt-2 space-y-1 font-mono text-xs">
-            {projectChanged ? (
-              <p>
-                {t("services.eventsProjectChange", {
-                  from: placementLabel(projectFrom),
-                  to: placementLabel(projectTo),
-                })}
-              </p>
-            ) : null}
-            {environmentChanged ? (
-              <p>
-                {t("services.eventsEnvironmentChange", {
-                  from: placementLabel(environmentFrom),
-                  to: placementLabel(environmentTo),
-                })}
-              </p>
-            ) : null}
-          </div>
+          <PlacementChange
+            projectFrom={projectFrom}
+            projectTo={projectTo}
+            environmentFrom={environmentFrom}
+            environmentTo={environmentTo}
+          />
         ) : null}
         {type === "branch_deleted" && branchFrom ? (
           <p className="text-muted-foreground mt-2 text-xs">
@@ -605,6 +593,67 @@ function EventSummary({
           </p>
         ) : null}
       </div>
+    </div>
+  );
+}
+
+/**
+ * A service_moved event's placement pair by name, as the project page and the
+ * breadcrumbs name it (w4/561). The event carries ids, the stable contract on
+ * every API; a side that no longer exists, or one still loading, reads as its
+ * id so the row never goes blank. Mounted only on a move event, so other rows
+ * read no lists.
+ */
+function PlacementChange({
+  projectFrom,
+  projectTo,
+  environmentFrom,
+  environmentTo,
+}: {
+  projectFrom: string | null;
+  projectTo: string | null;
+  environmentFrom: string | null;
+  environmentTo: string | null;
+}) {
+  const { t } = useTranslations();
+  const projectChanged = projectFrom !== projectTo;
+  const environmentChanged = environmentFrom !== environmentTo;
+  const { projects } = useProjects({ poll: false });
+  // Each side's environment is in its own project's list.
+  const { environments: fromEnvironments } = useEnvironments(
+    environmentChanged ? projectFrom : null,
+    { poll: false },
+  );
+  const { environments: toEnvironments } = useEnvironments(
+    environmentChanged && projectTo !== projectFrom ? projectTo : null,
+    { poll: false },
+  );
+  const label = (
+    id: string | null,
+    named: readonly { id: string; name: string }[],
+  ) =>
+    id
+      ? (named.find((item) => item.id === id)?.name ?? id)
+      : t("services.eventsPlacementNone");
+  const environments = [...fromEnvironments, ...toEnvironments];
+  return (
+    <div className="text-muted-foreground mt-2 space-y-1 text-xs">
+      {projectChanged ? (
+        <p>
+          {t("services.eventsProjectChange", {
+            from: label(projectFrom, projects),
+            to: label(projectTo, projects),
+          })}
+        </p>
+      ) : null}
+      {environmentChanged ? (
+        <p>
+          {t("services.eventsEnvironmentChange", {
+            from: label(environmentFrom, environments),
+            to: label(environmentTo, environments),
+          })}
+        </p>
+      ) : null}
     </div>
   );
 }

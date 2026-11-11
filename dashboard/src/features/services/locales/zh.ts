@@ -4659,12 +4659,12 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsProjectChange": {
     message: "项目 {from} → {to}",
     description:
-      "service_moved detail line: previous and new project id, or the placement-none placeholder",
+      "service_moved detail line: previous and new project name (its id once it no longer exists), or the placement-none placeholder (w4/561)",
   },
   "services.eventsEnvironmentChange": {
     message: "环境 {from} → {to}",
     description:
-      "service_moved detail line: previous and new environment id, or the placement-none placeholder",
+      "service_moved detail line: previous and new environment name (its id once it no longer exists), or the placement-none placeholder (w4/561)",
   },
   "services.eventsPlacementNone": {
     message: "无",

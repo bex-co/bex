@@ -4773,12 +4773,12 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsProjectChange": {
     message: "Project {from} → {to}",
     description:
-      "service_moved detail line: previous and new project id, or the placement-none placeholder",
+      "service_moved detail line: previous and new project name (its id once it no longer exists), or the placement-none placeholder (w4/561)",
   },
   "services.eventsEnvironmentChange": {
     message: "Environment {from} → {to}",
     description:
-      "service_moved detail line: previous and new environment id, or the placement-none placeholder",
+      "service_moved detail line: previous and new environment name (its id once it no longer exists), or the placement-none placeholder (w4/561)",
   },
   "services.eventsPlacementNone": {
     message: "none",

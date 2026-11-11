@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
@@ -24,6 +24,20 @@ const serverState: UseServerResult = {
 };
 vi.mock("@/features/services/hooks/use-server", () => ({
   useServer: () => serverState,
+}));
+
+// w4/561: a move event names its placements from these lists.
+const placementState: {
+  projects: { id: string; name: string }[];
+  environments: Record<string, { id: string; name: string }[]>;
+} = { projects: [], environments: {} };
+vi.mock("@/features/projects/hooks/use-projects", () => ({
+  useProjects: () => ({ projects: placementState.projects }),
+}));
+vi.mock("@/features/environments/hooks/use-environments", () => ({
+  useEnvironments: (projectId: string | null) => ({
+    environments: (projectId && placementState.environments[projectId]) || [],
+  }),
 }));
 
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
@@ -339,6 +353,11 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 });
 
 describe("ServiceEventsPage — service_moved placement details (w6/m134)", () => {
+  afterEach(() => {
+    placementState.projects = [];
+    placementState.environments = {};
+  });
+
   function movedEvent(details: Record<string, unknown>) {
     return {
       id: "evt-move-1",
@@ -371,6 +390,55 @@ describe("ServiceEventsPage — service_moved placement details (w6/m134)", () =
     expect(screen.getByText("Project prj-old → prj-new")).toBeInTheDocument();
     expect(
       screen.getByText("Environment env-old → env-new"),
+    ).toBeInTheDocument();
+  });
+
+  // w4/561: the detail names each placement as the project page does; a side
+  // that no longer exists reads as its id, so the row never goes blank.
+  it("names the placements, and keeps the id of one that is gone", async () => {
+    placementState.projects = [
+      { id: "prj-old", name: "storefront" },
+      { id: "prj-new", name: "checkout" },
+    ];
+    placementState.environments = {
+      "prj-old": [{ id: "env-old", name: "qa-alpha" }],
+      "prj-new": [{ id: "env-new", name: "qa-beta" }],
+    };
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          movedEvent({
+            projectFrom: "prj-old",
+            projectTo: "prj-new",
+            environmentFrom: "env-old",
+            environmentTo: "env-new",
+          }),
+          {
+            ...movedEvent({
+              projectFrom: "prj-new",
+              projectTo: "prj-new",
+              environmentFrom: "env-new",
+              environmentTo: "env-deleted",
+            }),
+            id: "evt-move-2",
+            cursor: "cursor-move-2",
+          },
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText("Project storefront → checkout"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Environment qa-alpha → qa-beta"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Environment qa-beta → env-deleted"),
     ).toBeInTheDocument();
   });
 
