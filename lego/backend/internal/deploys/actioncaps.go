@@ -64,10 +64,20 @@ func directStaticTarget(a *appv1alpha1.App, d store.Deploy) bool {
 // exposure was to a client binding an affordance straight to the capability
 // response, which is what that query is for.
 //
-// A selected runtime is compared by its release identity, since saved settings
-// intentionally differ after rollback. Without a selection, a newer requested
-// configuration generation or image can make the still-live target a useful
-// recovery even when the later release failed.
+// "Already what is running" is decided by release, never by how an image
+// reference is spelled (w8/261): a live deploy's ResolvedImage is the
+// digest-pinned reference the operator ran, while the App holds the caller's
+// spelling (a tag in spec.image, the string an image override sent).
+//
+//   - With a selected runtime, the selection names the release: the live deploy
+//     of that generation is the one running. Saved settings intentionally
+//     differ after a rollback, so they are not compared.
+//   - Without one, the live deploy is still a recovery when a newer release
+//     was asked for and is not live (a failed configuration-only release), or
+//     when the saved image has moved off the one this deploy was created from
+//     (a failed release left spec.image drifted).
+//   - A row from before deploys recorded their release (generation 0) cannot
+//     be judged that way and keeps the comparison of references it always had.
 func RollbackActionable(a *appv1alpha1.App, d store.Deploy) bool {
 	if !RollbackEligible(a, d) {
 		return false
@@ -76,15 +86,20 @@ func RollbackActionable(a *appv1alpha1.App, d store.Deploy) bool {
 		return true
 	}
 	if selected := a.ActiveReleaseConfig(); selected != nil {
-		return d.Generation != selected.Generation || d.ResolvedImage != selected.Image
+		return d.Generation != selected.Generation
 	}
 	if directStaticTarget(a, d) {
 		return d.Commit != a.Spec.BuildCommit
 	}
-	// A failed configuration-only release can leave the same image selected but
-	// different saved settings. The previous live generation is a valid recovery.
-	requested, _ := strconv.ParseInt(a.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64)
-	return d.ResolvedImage != a.Spec.Image || (d.Generation > 0 && requested > d.Generation)
+	if d.Generation <= 0 {
+		return d.ResolvedImage != a.Spec.Image
+	}
+	if requested, _ := strconv.ParseInt(a.Annotations[appv1alpha1.AnnotationReleaseGeneration], 10, 64); requested > d.Generation {
+		return true
+	}
+	// d.Image is the saved image the deploy was created from; a repository
+	// build is created from an empty one and keeps it.
+	return a.Spec.Image != d.Image && a.Spec.Image != d.ResolvedImage
 }
 
 // restorableRollbackTarget is RollbackActionable plus the static-site refusal the

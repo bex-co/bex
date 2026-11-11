@@ -1177,7 +1177,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	// failed deploy never deactivates it), so after a failed rollout the spec
 	// can drift off the still-live last-good deploy — rolling back to it then
 	// restores it and is a legitimate recovery
-	// (TestRollbackRestoresPreviousLiveImage), which the comparison preserves.
+	// (TestRollbackRestoresPreviousLiveImage), which RollbackActionable keeps.
 	// Shared with the capability projection (RollbackActionable) so the answer
 	// deployActions gives and the answer this verb gives cannot drift (w4/110).
 	if !RollbackActionable(a, target) {
