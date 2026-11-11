@@ -59,15 +59,24 @@ func TestPlannedBlueprintSyncsPG(t *testing.T) {
 	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
 	repo := "https://github.com/acme/plans-" + stamp
 
-	b, revived, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Stack", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true})
-	if revived != nil {
-		t.Error("a first create reported a revived row")
-	}
+	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Stack", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true})
 	if err != nil || b.Status != store.BlueprintStatusCreated || b.ExistingResources != store.BlueprintExistingAdopt {
 		t.Fatalf("create = %+v err=%v", b, err)
 	}
-	if _, _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Again", Repo: repo, Branch: "main", Path: "render.yaml"}); !errors.Is(err, store.ErrConflict) {
-		t.Fatalf("second live Blueprint on the same repo+branch: err = %v, want ErrConflict", err)
+	// Render: "You can create multiple Blueprints from a single YAML file"
+	// (w8/m153). The second is its own row, not a conflict with the first.
+	again, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Again", Repo: repo, Branch: "main", Path: "render.yaml"})
+	if err != nil || again.ID == b.ID || again.Status != store.BlueprintStatusCreated {
+		t.Fatalf("a second Blueprint from the same repo, branch and file = %+v err=%v, want a new created row beside %s", again, err, b.ID)
+	}
+	if err := st.UndoPlannedBlueprintCreate(ctx, again); err != nil {
+		t.Fatalf("undo the second create: %v", err)
+	}
+	if _, err := st.GetBlueprint(ctx, again.ID, ws.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("an undone create is still readable: err = %v", err)
+	}
+	if _, err := st.GetBlueprint(ctx, b.ID, ws.ID); err != nil {
+		t.Fatalf("undoing the second create touched the first: %v", err)
 	}
 	if taken, err := st.BlueprintNameTaken(ctx, ws.ID, "stack", ""); err != nil || taken {
 		t.Fatalf("a created (unapproved) Blueprint's name counted as taken: %v %v", taken, err)
@@ -103,8 +112,9 @@ func TestPlannedBlueprintSyncsPG(t *testing.T) {
 	}
 }
 
-// A reconnected Blueprint's waiting plan is superseded, and a busy admission
-// of an already-applied plan answers busy, not not-found (w2/m256 review).
+// A deleted Blueprint is not brought back: a create after it is a new
+// Blueprint with a new id (w8/m153; the row used to be revived, w4/120), and
+// the deleted one's waiting plan answers busy, not not-found (w2/m256 review).
 func TestPlannedBlueprintSupersedeAndBusyPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -127,7 +137,7 @@ func TestPlannedBlueprintSupersedeAndBusyPG(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
 	repo := "https://github.com/acme/supersede-" + stamp
-	b, _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,42 +152,46 @@ func TestPlannedBlueprintSupersedeAndBusyPG(t *testing.T) {
 	if err := st.DisconnectBlueprint(ctx, b.ID, ws.ID); err != nil {
 		t.Fatal(err)
 	}
-	again, revived, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	again, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
 	if err != nil {
-		t.Fatalf("reconnect: %v", err)
+		t.Fatalf("create after the delete: %v", err)
 	}
-	if revived == nil || again.ID != b.ID {
-		t.Fatalf("reconnect = %s prior=%+v, want the disconnected row %s revived (w4/120)", again.ID, revived, b.ID)
+	if again.ID == b.ID {
+		t.Fatalf("a create after a delete reused the deleted row %s", b.ID)
 	}
-	stale, err := st.BlueprintPlannedSync(ctx, b.ID, old.ID)
-	if err != nil || stale.State != store.BlueprintSyncStateError {
-		t.Fatalf("the earlier connection's plan = %+v err=%v, want superseded (error)", stale, err)
+	var status string
+	if err := pool.QueryRow(ctx, `SELECT status FROM blueprints WHERE id = $1`, b.ID).Scan(&status); err != nil || status != "disconnected" {
+		t.Fatalf("the deleted Blueprint's row = %q err=%v, want it left disconnected", status, err)
 	}
 	_, _, err = st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{ID: old.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()})
 	if !errors.Is(err, store.ErrBlueprintSyncBusy) {
-		t.Fatalf("admitting a superseded plan: err = %v, want ErrBlueprintSyncBusy", err)
+		t.Fatalf("admitting the deleted Blueprint's plan: err = %v, want ErrBlueprintSyncBusy", err)
+	}
+	// The plan belongs to the Blueprint it was made for, never to a later one
+	// on the same source.
+	if _, _, err := st.AdmitBlueprintSyncRun(ctx, again.ID, ws.ID, store.BlueprintSync{ID: old.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()}); err == nil {
+		t.Fatal("the new Blueprint admitted the deleted Blueprint's plan")
 	}
 
-	// The revived connection's planned sync carries the reconnection note
-	// (w2/m256 t013), and approving it keeps the note on the run.
-	const note = "re-established a previously disconnected connection"
+	// A planned sync's note survives an approval that brings none (w2/m256 t013).
+	const note = "a note recorded with the plan"
 	fresh, err := st.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
-		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commit, State: store.BlueprintSyncStateCreated, StartedAt: time.Now().UTC(), Note: note},
+		BlueprintSync: store.BlueprintSync{BlueprintID: again.ID, CommitID: commit, State: store.BlueprintSyncStateCreated, StartedAt: time.Now().UTC(), Note: note},
 		Path:          "render.yaml",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, run, err := st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{ID: fresh.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()}); err != nil || run.Note != note {
+	if _, run, err := st.AdmitBlueprintSyncRun(ctx, again.ID, ws.ID, store.BlueprintSync{ID: fresh.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()}); err != nil || run.Note != note {
 		t.Fatalf("approved run note = %q, err=%v; want the planned sync's note kept", run.Note, err)
 	}
 }
 
 // TestCreateNewBlueprintSuffixPG pins w2/m261's storage: a create_new
-// Blueprint gets one Render-shaped suffix at create, every read that feeds a
-// plan or a sync returns it (an empty suffix there would compile the
-// unsuffixed names and touch another Blueprint's resources), and the legacy
-// connect path — which always adopts — clears it.
+// Blueprint gets one Render-shaped suffix at create, and every read that feeds
+// a plan or a sync returns it (an empty suffix there would compile the
+// unsuffixed names and touch another Blueprint's resources). A one-step create
+// of the same source is a separate Blueprint and leaves it alone (w8/m153).
 func TestCreateNewBlueprintSuffixPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -201,7 +215,7 @@ func TestCreateNewBlueprintSuffixPG(t *testing.T) {
 	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
 	repo := "https://github.com/acme/suffix-" + stamp
 
-	b, _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Copy", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true,
+	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Copy", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true,
 		ExistingResources: store.BlueprintExistingCreateNew})
 	if err != nil {
 		t.Fatal(err)
@@ -221,11 +235,6 @@ func TestCreateNewBlueprintSuffixPG(t *testing.T) {
 		t.Fatal(err)
 	}
 	check("GetBlueprint", got)
-	byRepo, err := st.GetBlueprintByRepo(ctx, ws.ID, repo, "main")
-	if err != nil {
-		t.Fatal(err)
-	}
-	check("GetBlueprintByRepo", byRepo)
 	listed, err := st.ListBlueprints(ctx, ws.ID)
 	if err != nil || len(listed) != 1 {
 		t.Fatalf("ListBlueprints = %+v err=%v", listed, err)
@@ -246,20 +255,27 @@ func TestCreateNewBlueprintSuffixPG(t *testing.T) {
 	}
 	check("ListAutoSyncBlueprints", auto[0])
 
-	// The legacy connect replaces the connection and always adopts.
-	replaced, _, _, err := st.AdmitBlueprintCreate(ctx, store.Blueprint{TenantID: ws.ID, Name: "Copy", Repo: repo, Branch: "main", Path: "render.yaml"},
-		store.BlueprintSync{CommitID: "0123456789abcdef0123456789abcdef01234567", State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()})
+	// A one-step create of the same source, in the default adopt mode, is its
+	// own Blueprint: the create_new one keeps its id, mode and suffix.
+	second, _, err := st.AdmitBlueprintCreate(ctx, store.Blueprint{TenantID: ws.ID, Name: "Copy", Repo: repo, Branch: "main", Path: "render.yaml"},
+		store.BlueprintSync{CommitID: "0123456789abcdef0123456789abcdef01234567", State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()}, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if replaced.ResourceSuffix != "" || replaced.ExistingResources != store.BlueprintExistingAdopt {
-		t.Fatalf("legacy connect kept mode %q suffix %q, want adopt and no suffix", replaced.ExistingResources, replaced.ResourceSuffix)
+	if second.ID == b.ID || second.ResourceSuffix != "" || second.ExistingResources != store.BlueprintExistingAdopt {
+		t.Fatalf("one-step create = %s mode %q suffix %q, want a new adopt Blueprint with no suffix", second.ID, second.ExistingResources, second.ResourceSuffix)
 	}
+	got, err = st.GetBlueprint(ctx, b.ID, ws.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("GetBlueprint after a second create of the source", got)
 }
 
 // TestBlueprintPlanConnectionAndNoChangesPG pins w2/m256 t014's storage: a
-// revived Blueprint's newest plan is its own connection's (the earlier
-// connection's applied plan does not answer), and a no_changes plan
+// Blueprint created after another on the same source was deleted has no plan
+// of its own yet (the deleted one's applied plan does not answer), and a
+// no_changes plan
 // supersedes a waiting plan and takes a created Blueprint to in_sync — while
 // a Blueprint in any other status keeps it.
 func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
@@ -297,7 +313,7 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 		return p
 	}
 
-	b, _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -330,12 +346,13 @@ func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
 	if err := st.DisconnectBlueprint(ctx, b.ID, ws.ID); err != nil {
 		t.Fatal(err)
 	}
-	revived, wasRevived, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
-	if err != nil || wasRevived == nil || revived.ID != b.ID {
-		t.Fatalf("reconnect = %+v prior=%+v err=%v", revived, wasRevived, err)
+	deleted := b
+	b, err = st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	if err != nil || b.ID == deleted.ID {
+		t.Fatalf("create after the delete = %+v err=%v, want a new Blueprint, not %s", b, err, deleted.ID)
 	}
 	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); !errors.Is(err, store.ErrNotFound) {
-		t.Fatalf("latest plan of the new connection = %+v err=%v, want ErrNotFound (the earlier connection's do not count)", latest, err)
+		t.Fatalf("latest plan of the new Blueprint = %+v err=%v, want ErrNotFound (the deleted Blueprint's do not count)", latest, err)
 	}
 	const manifest = "services: []\n"
 	settled, err = st.SettleNoChangesPlan(ctx, b.ID, ws.ID, manifest)

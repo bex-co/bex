@@ -37,6 +37,7 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
+import { BlueprintResourceSuffix } from "@/features/blueprints/components/blueprint-resource-suffix";
 import { useBlueprints } from "@/features/blueprints/hooks/use-blueprints";
 import { RelativeAge } from "@/common/components/relative-time";
 
@@ -170,6 +171,10 @@ function BlueprintsListPage() {
                           >
                             {bp.name}
                           </Link>
+                          <BlueprintResourceSuffix
+                            suffix={bp.resourceSuffix}
+                            className="ml-2"
+                          />
                         </TableCell>
                         <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
                           {bp.repo}

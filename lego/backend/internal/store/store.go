@@ -1019,7 +1019,10 @@ const FirstDeployGeneration int64 = 1
 // as a real conflict rather than loop forever.
 const maxSlugMintAttempts = 5
 
-const slugSuffixAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+const (
+	slugSuffixAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+	slugSuffixLength   = 4
+)
 
 // randomSlugSuffix mints a 4-char base36 suffix ("-xxxx" once joined), the
 // same shape Render's own onrender.com suffix uses
@@ -1027,7 +1030,7 @@ const slugSuffixAlphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
 // slug is a hostname fragment, so it is minted here rather than through
 // internal/id (docs/ADR020-identifiers.md scopes that package to id columns).
 func randomSlugSuffix() string {
-	b := make([]byte, 4)
+	b := make([]byte, slugSuffixLength)
 	for i := range b {
 		b[i] = slugSuffixAlphabet[mathrand.IntN(len(slugSuffixAlphabet))]
 	}

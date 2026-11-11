@@ -1,19 +1,19 @@
 # w8 · m153 — A workspace can create more than one Blueprint from the same `render.yaml`, as on Render
 
-**Worker:** worker8 **Goal:** a second `bex ea blueprints create` for a repo, branch and file that a Blueprint in the workspace already tracks creates a second, independent Blueprint (its own id, sync history and resources), instead of answering `409 BLUEPRINT_CONNECTION_CONFLICT`. **Status:** todo
+**Worker:** worker8 **Goal:** a second `bex ea blueprints create` for a repo, branch and file that a Blueprint in the workspace already tracks creates a second, independent Blueprint (its own id, sync history and resources), instead of answering `409 BLUEPRINT_CONNECTION_CONFLICT`. **Status:** in progress (t001–t004 and t006–t008 done, code shipped; t005's browser check and t009, the production replay, wait for the next platform deploy)
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on       |
 | ---- | ---------------------------------------------------------------------- | --- | ---------------- |
-| t001 | Amend ADR049: Blueprint identity is its id, not repo+branch            | 30m | —                |
-| t002 | Storage: drop `UNIQUE (tenant_id, repo, branch)` and its three upserts | 60m | t001             |
-| t003 | Create: a second Blueprint from the same source is a new Blueprint     | 60m | t002             |
-| t004 | Push and sync: every Blueprint tracking a repo+branch gets the push    | 45m | t002             |
-| t005 | Dashboard: create and list more than one Blueprint per repo            | 30m | t003             |
-| t006 | Render parity                                                          | 20m | t003, t004, t005 |
-| t007 | Simplify                                                               | 15m | t006             |
-| t008 | Test coverage                                                          | 45m | t006             |
+| t001 | Amend ADR049: Blueprint identity is its id, not repo+branch — **DONE** | 30m | —                |
+| t002 | Storage: drop `UNIQUE (tenant_id, repo, branch)` and its three upserts — **DONE** | 60m | t001             |
+| t003 | Create: a second Blueprint from the same source is a new Blueprint — **DONE** | 60m | t002             |
+| t004 | Push and sync: every Blueprint tracking a repo+branch gets the push — **DONE** | 45m | t002             |
+| t005 | Dashboard: create and list more than one Blueprint per repo (implemented and tested; browser check open) | 30m | t003             |
+| t006 | Render parity — **DONE**                                               | 20m | t003, t004, t005 |
+| t007 | Simplify — **DONE**                                                    | 15m | t006             |
+| t008 | Test coverage — **DONE**                                               | 45m | t006             |
 | t009 | Closeout (live replay on production)                                   | 20m | t008             |
 
 ## Definition of done
@@ -66,6 +66,21 @@
 - **Unverified:** Render's behavior was read from its documentation, not exercised on a Render account; what Render does when a second Blueprint is created in adopt mode against resources the first one manages is undocumented beyond "Do not manage a particular resource with more than one Blueprint". Push fan-out (DoD 3) was not exercised (no push access to the fixture repo; use an owned test repo).
 - **Dedupe:** `.pm` has no item for multiple Blueprints per file. w4/m125 (done) introduced the refusal; w2/m261 (done) shipped `create_new` suffixes; w2/m256 t007 (production grading of `ea blueprints`) is still open elsewhere and does not cover this.
 - **Cleanup:** both Blueprints of this sweep were deleted (204) and the list is empty; no service was created from them.
+
+## Decisions (t001, 2026-11-11 UTC), recorded in ADR049 § "A Blueprint is its id" and the ADR018 Blueprint row
+
+Render's page was read again on 2026-11-11 (render.com/docs/infrastructure-as-code): "You can create multiple Blueprints from a single YAML file. Each Blueprint creates and manages a completely independent set of resources."; "The Blueprint creation flow displays a notice if your new Blueprint matches existing resources in your workspace"; "Render appends a suffix to the name of each new resource to prevent collisions with your existing resources"; and "Do not manage a particular resource with more than one Blueprint." The page does not say what an adopt-mode create does to a resource another Blueprint manages, and it does not cover deleting a Blueprint.
+
+1. **Identity is the id.** Migration `0229_blueprints_per_source` drops `UNIQUE (tenant_id, repo, branch)` and keeps a plain index.
+2. **Every create is a new Blueprint**, on Render's create and on bex's one-step create. `BLUEPRINT_CONNECTION_CONFLICT` and the connection takeover phrase are retired.
+3. **A deleted Blueprint is not revived** (the related observation in the finding). The row stays disconnected; the new Blueprint has a new id and its own history. The reconnection note is no longer written.
+4. **Adopt on a second create (Definition of done 4):** the create succeeds as a new Blueprint. It never moves a resource another live Blueprint manages: Render's create plans a `failed` sync whose notice names the resource and its manager, and a failed plan cannot be approved; the one-step create answers `BLUEPRINT_RESOURCE_CONFLICT` and proceeds only with that code's takeover phrase.
+5. **The retry after a failed apply is kept**, on the one-step create only, and is told apart by state: the newest live row for the same repo, branch, file and mode that is applying or failed, has no successful run and was never planned is continued (same id, suffix, name and auto-sync setting; only the manifest is written); anything else is a new Blueprint. The check and the write hold the row. A second create while the first is applying answers `BLUEPRINT_SYNC_BUSY`. A refused takeover is now answered before admission, so it leaves no Blueprint behind.
+6. **The one-step create takes `existingResources` and `resourceSuffix`**; `adopt` stays its default. The preview reports `matchedResources` and reviews in the mode it is given; the dashboard uses `create_new` when there are matches, which is Render's creation flow.
+7. **Deploy-time registration** refreshes the oldest live unsuffixed Blueprint of the source, under a per-source lock.
+8. **Push fan-out (t004)** needed no new mechanism: the webhook queues one intent per `(delivery, blueprint)` and the worker syncs each under its own claim (w8/m38). `GetBlueprintByRepo` had six callers, all removed: `blueprintConnectionConflict` (`apps/blueprint.go`), the planned create's two checks (`apps/blueprint_onboarding.go`), `previewOwnershipConflicts` (`apps/blueprint_ownership.go`, now given the Blueprint's id), `triggerBlueprintSync` (test-only since w8/m38, deleted), and the store method with its interface entry.
+
+**Follow-ups filed:** w8/250 (the one-step create does not enforce unique Blueprint names) and w8/251 (a failed adopt plan's notice suggests a `confirm` phrase Render's create and approve cannot carry).
 
 ## Source + Goal linkage
 

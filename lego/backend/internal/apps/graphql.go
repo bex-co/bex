@@ -1001,19 +1001,22 @@ var blueprintSyncGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Blueprint",
 	Fields: graphql.Fields{
-		"id":        gqlutil.StrField(func(b BlueprintView) any { return b.ID }),
-		"name":      gqlutil.StrField(func(b BlueprintView) any { return b.Name }),
-		"ownerId":   gqlutil.StrField(func(b BlueprintView) any { return b.OwnerID }),
-		"repo":      gqlutil.StrField(func(b BlueprintView) any { return b.Repo }),
-		"branch":    gqlutil.StrField(func(b BlueprintView) any { return b.Branch }),
-		"path":      gqlutil.StrField(func(b BlueprintView) any { return b.Path }),
-		"autoSync":  gqlutil.BoolField(func(b BlueprintView) any { return b.AutoSync }),
-		"manifest":  gqlutil.StrField(func(b BlueprintView) any { return b.Manifest }),
-		"status":    gqlutil.StrField(func(b BlueprintView) any { return b.Status }),
-		"lastSync":  gqlutil.StrField(func(b BlueprintView) any { return b.LastSync }),
-		"resources": gqlutil.Typed(graphql.NewList(blueprintResourceGQLType), func(b BlueprintView) any { return b.Resources }),
-		"createdAt": gqlutil.TimeField(func(b BlueprintView) any { return b.CreatedAt }),
-		"updatedAt": gqlutil.TimeField(func(b BlueprintView) any { return b.UpdatedAt }),
+		"id":       gqlutil.StrField(func(b BlueprintView) any { return b.ID }),
+		"name":     gqlutil.StrField(func(b BlueprintView) any { return b.Name }),
+		"ownerId":  gqlutil.StrField(func(b BlueprintView) any { return b.OwnerID }),
+		"repo":     gqlutil.StrField(func(b BlueprintView) any { return b.Repo }),
+		"branch":   gqlutil.StrField(func(b BlueprintView) any { return b.Branch }),
+		"path":     gqlutil.StrField(func(b BlueprintView) any { return b.Path }),
+		"autoSync": gqlutil.BoolField(func(b BlueprintView) any { return b.AutoSync }),
+		"manifest": gqlutil.StrField(func(b BlueprintView) any { return b.Manifest }),
+		"status":   gqlutil.StrField(func(b BlueprintView) any { return b.Status }),
+		"lastSync": gqlutil.StrField(func(b BlueprintView) any { return b.LastSync }),
+		// resourceSuffix tells apart several Blueprints made from one file
+		// (w8/m153): a create_new Blueprint's resources carry it.
+		"resourceSuffix": gqlutil.StrField(func(b BlueprintView) any { return b.ResourceSuffix }),
+		"resources":      gqlutil.Typed(graphql.NewList(blueprintResourceGQLType), func(b BlueprintView) any { return b.Resources }),
+		"createdAt":      gqlutil.TimeField(func(b BlueprintView) any { return b.CreatedAt }),
+		"updatedAt":      gqlutil.TimeField(func(b BlueprintView) any { return b.UpdatedAt }),
 	},
 })
 
@@ -1138,6 +1141,15 @@ var generatedBlueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// blueprintResourceRefGQLType names one resource a Blueprint file declares.
+var blueprintResourceRefGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BlueprintResourceRef",
+	Fields: graphql.Fields{
+		"kind": gqlutil.ReqStrField(func(r BlueprintResourceRef) any { return string(r.Kind) }),
+		"name": gqlutil.ReqStrField(func(r BlueprintResourceRef) any { return r.Name }),
+	},
+})
+
 // blueprintPreviewGQLType is the GraphQL shape for a BlueprintPreview — the
 // pre-create fetch + dry-run behind the dashboard's Review step.
 var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
@@ -1155,6 +1167,15 @@ var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// (w2/m97); `error` stays a human sentence for API clients.
 		"reason":    gqlutil.StrField(func(p BlueprintPreview) any { return string(p.Reason) }),
 		"retryable": gqlutil.BoolField(func(p BlueprintPreview) any { return RetryableBlueprintFetch(p.Reason) }),
+		// The mode a not-yet-created Blueprint was reviewed in, the suffix a
+		// create_new review used, and the declared resources whose names
+		// already exist in the workspace (w8/m153). A create passes the first
+		// two back.
+		"existingResources": gqlutil.StrField(func(p BlueprintPreview) any { return p.ExistingResources }),
+		"resourceSuffix":    gqlutil.StrField(func(p BlueprintPreview) any { return p.ResourceSuffix }),
+		"matchedResources": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(blueprintResourceRefGQLType)), Resolve: gqlutil.Field(func(p BlueprintPreview) any {
+			return p.MatchedResources
+		})},
 		"validation": &graphql.Field{Type: blueprintValidationGQLType, Resolve: gqlutil.Field(func(p BlueprintPreview) any {
 			if p.Validation == nil {
 				return nil
@@ -1387,14 +1408,18 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"branch":  gqlutil.Arg(graphql.String),
 				"path":    gqlutil.Arg(graphql.String),
 				"ownerId": gqlutil.Arg(graphql.String),
-				// blueprintId previews on behalf of an existing blueprint, so
-				// its own repo+branch is not a connection conflict (w4/m125).
+				// blueprintId previews on behalf of an existing blueprint, in
+				// its own mode, so its own resources never conflict with it.
 				"blueprintId": gqlutil.Arg(graphql.String),
+				// existingResources reviews a not-yet-created Blueprint as
+				// adopt (the default) or create_new (w8/m153).
+				"existingResources": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.PreviewBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"),
+				return s.previewBlueprintWith(p.Context, gqlutil.Str(p.Args, "ownerId"),
 					p.Args["repo"].(string), gqlutil.Str(p.Args, "branch"), gqlutil.Str(p.Args, "path"),
-					gqlutil.Str(p.Args, "blueprintId"))
+					blueprintPreviewOptions{ForBlueprintID: gqlutil.Str(p.Args, "blueprintId"),
+						ExistingResources: gqlutil.Str(p.Args, "existingResources")})
 			},
 		},
 		// blueprintSyncs: sync run history for a blueprint (w2/m62).
@@ -1960,6 +1985,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"ownerId":      gqlutil.Arg(graphql.String),
 				"envVarValues": gqlutil.Arg(graphql.NewList(blueprintEnvVarValueInputType)),
 				"confirm":      gqlutil.Arg(graphql.String),
+				// Render's existingResources (adopt, the default here, or
+				// create_new) and the create_new suffix the preview reviewed
+				// (w8/m153).
+				"existingResources": gqlutil.Arg(graphql.String),
+				"resourceSuffix":    gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				values, err := blueprintEnvVarValues(p.Args["envVarValues"])
@@ -1967,12 +1997,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					return nil, err
 				}
 				return s.CreateBlueprint(p.Context, gqlutil.Str(p.Args, "ownerId"), CreateBlueprintRequest{
-					Repo:         p.Args["repo"].(string),
-					Branch:       gqlutil.Str(p.Args, "branch"),
-					Path:         gqlutil.Str(p.Args, "path"),
-					Name:         gqlutil.Str(p.Args, "name"),
-					EnvVarValues: values,
-					Confirm:      gqlutil.Str(p.Args, "confirm"),
+					Repo:              p.Args["repo"].(string),
+					Branch:            gqlutil.Str(p.Args, "branch"),
+					Path:              gqlutil.Str(p.Args, "path"),
+					Name:              gqlutil.Str(p.Args, "name"),
+					EnvVarValues:      values,
+					Confirm:           gqlutil.Str(p.Args, "confirm"),
+					ExistingResources: gqlutil.Str(p.Args, "existingResources"),
+					ResourceSuffix:    gqlutil.Str(p.Args, "resourceSuffix"),
 				})
 			},
 		},

@@ -40,42 +40,33 @@ import (
 
 // --- fakeBlueprintStore: blueprintPlanStore (w2/m256) ---
 
-func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.Blueprint) (store.Blueprint, *store.Blueprint, error) {
+// CreatePlannedBlueprint mirrors the store (w8/m153): always a new row.
+func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.Blueprint) (store.Blueprint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var prior *store.Blueprint
-	for _, existing := range f.blueprints {
-		if existing.TenantID == b.TenantID && existing.Repo == b.Repo && existing.Branch == b.Branch {
-			if existing.Status != "disconnected" {
-				return store.Blueprint{}, nil, fmt.Errorf("blueprint: %w", store.ErrConflict)
-			}
-			// The PG store revives the disconnected row under its id.
-			b.ID, prior = existing.ID, &existing
-			if f.connectionStart == nil {
-				f.connectionStart = map[string]int{}
-			}
-			f.connectionStart[b.ID] = len(f.insertedSyncs)
-		}
-	}
 	if b.ID == "" {
-		b.ID = fmt.Sprintf("blp-fake%016d", len(f.blueprints))
+		f.plannedCreates++
+		b.ID = fmt.Sprintf("blp-fake%016d", f.plannedCreates)
+	}
+	if b.ExistingResources == "" {
+		b.ExistingResources = store.BlueprintExistingAdopt
+	}
+	if b.CreatedAt.IsZero() {
+		b.CreatedAt = time.Now().UTC()
 	}
 	b.Status, b.ExecutionGeneration = store.BlueprintStatusCreated, 1
 	if b.ExistingResources == store.BlueprintExistingCreateNew && b.ResourceSuffix == "" {
-		b.ResourceSuffix = "t3st" // the PG store mints a random one
+		// The PG store mints a random one; distinct per create here too.
+		b.ResourceSuffix = fmt.Sprintf("t%03d", f.plannedCreates%1000)
 	}
 	f.blueprints[b.ID] = b
-	return b, prior, nil
+	return b, nil
 }
 
-func (f *fakeBlueprintStore) UndoPlannedBlueprintCreate(_ context.Context, created store.Blueprint, prior *store.Blueprint) error {
+func (f *fakeBlueprintStore) UndoPlannedBlueprintCreate(_ context.Context, created store.Blueprint) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if prior == nil {
-		delete(f.blueprints, created.ID)
-		return nil
-	}
-	f.blueprints[created.ID] = *prior
+	delete(f.blueprints, created.ID)
 	return nil
 }
 
@@ -110,7 +101,7 @@ func (f *fakeBlueprintStore) InsertPlannedBlueprintSync(_ context.Context, p sto
 func (f *fakeBlueprintStore) LatestBlueprintPlan(_ context.Context, blueprintID string) (store.PlannedBlueprintSync, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for i := len(f.insertedSyncs) - 1; i >= f.connectionStart[blueprintID]; i-- {
+	for i := len(f.insertedSyncs) - 1; i >= 0; i-- {
 		id := f.insertedSyncs[i].ID
 		p, planned := f.planned[id]
 		run := f.syncs[id]
@@ -558,10 +549,10 @@ func TestBlueprintPlannedSyncIsReadableUntilApproved(t *testing.T) {
 	}
 }
 
-// w2/m256 t013 (regression of w4/120): re-creating a disconnected Blueprint
-// through Render's create revives its row and history, and the new planned
-// sync says where this connection's history begins, as the legacy create does.
-func TestPlannedCreateMarksARevivedConnection(t *testing.T) {
+// w8/m153 (was w2/m256 t013 and w4/120): a Blueprint created after another on
+// the same source was deleted is a new Blueprint with its own id. The deleted
+// row is not revived, so the new one has no inherited history to mark off.
+func TestPlannedCreateAfterADeleteIsANewBlueprint(t *testing.T) {
 	svc, st, ctx := newOnboardingService(t, onboardingManifest)
 	req := RenderCreateBlueprintRequest{Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}}
 	first, err := svc.CreatePlannedBlueprint(ctx, req)
@@ -571,20 +562,21 @@ func TestPlannedCreateMarksARevivedConnection(t *testing.T) {
 	if first.Sync == nil {
 		t.Fatal("a first create planned no sync")
 	}
-	if note := st.syncs[ids.BlueprintSyncStorageID(first.Sync.ID)].Note; note != "" {
-		t.Fatalf("a first create's planned sync note = %q, want none", note)
-	}
-	if err := st.DisconnectBlueprint(ctx, ids.BlueprintStorageID(first.Blueprint.ID), "tea-a"); err != nil {
+	firstID := ids.BlueprintStorageID(first.Blueprint.ID)
+	if err := st.DisconnectBlueprint(ctx, firstID, "tea-a"); err != nil {
 		t.Fatal(err)
 	}
 	again, err := svc.CreatePlannedBlueprint(ctx, req)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again.Blueprint.ID != first.Blueprint.ID || again.Sync == nil {
-		t.Fatalf("re-create = %+v, want the revived row %s with a planned sync", again, first.Blueprint.ID)
+	if again.Blueprint.ID == first.Blueprint.ID || again.Sync == nil {
+		t.Fatalf("create after a delete = %+v, want a new Blueprint (not %s) with a planned sync", again, first.Blueprint.ID)
 	}
-	if note := st.syncs[ids.BlueprintSyncStorageID(again.Sync.ID)].Note; note != reconnectionNote("https://github.com/a/app", DefaultBlueprintBranch) {
-		t.Errorf("revived planned sync note = %q, want the reconnection note", note)
+	if note := st.syncs[ids.BlueprintSyncStorageID(again.Sync.ID)].Note; note != "" {
+		t.Errorf("the new Blueprint's planned sync note = %q, want none", note)
+	}
+	if got := st.blueprints[firstID].Status; got != "disconnected" {
+		t.Errorf("the deleted Blueprint's row status = %q, want it left disconnected", got)
 	}
 }

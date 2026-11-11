@@ -69,6 +69,7 @@ describe("useBlueprint", () => {
     expect(result.current.blueprint).toEqual({
       ...blueprint,
       // Fields the row left null/absent are normalized to view defaults.
+      resourceSuffix: "",
       path: "",
       autoSync: false,
       lastSync: null,

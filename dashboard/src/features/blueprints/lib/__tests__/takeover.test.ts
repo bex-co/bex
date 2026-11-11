@@ -23,25 +23,24 @@ const t = translator(en) as never;
 const tZh = translator(zh) as never;
 
 describe("Blueprint takeover classification (w4/189)", () => {
-  it("names the Blueprint a connection takeover replaces, from extensions", () => {
-    const err = codedGraphQLError("BLUEPRINT_CONNECTION_CONFLICT", {
-      blueprintId: "blp-db136288mmqc73d4hpug",
-      blueprintName: "bex",
-      repo: "https://github.com/bex-co/bex",
-      branch: "main",
-      path: "render.yaml",
+  it("names the resource a takeover transfers, from extensions", () => {
+    const err = codedGraphQLError("BLUEPRINT_RESOURCE_CONFLICT", {
+      resource: "docs",
+      kind: "service",
+      owningBlueprintId: "blp-db136288mmqc73d4hpug",
       confirm: PHRASE,
     });
     const takeover = blueprintTakeoverFromError(err);
-    expect(takeover).toMatchObject({
-      kind: "connection",
+    expect(takeover).toEqual({
       phrase: PHRASE,
-      blueprintName: "bex",
+      resource: "docs",
+      resourceKind: "service",
+      owningBlueprintId: "blp-db136288mmqc73d4hpug",
     });
     const copy = takeoverCopy(takeover!, t);
-    expect(copy.title).toBe("Replace Blueprint “bex”?");
-    expect(copy.description).toContain(
-      "render.yaml on https://github.com/bex-co/bex@main",
+    expect(copy.title).toBe("Take over “docs”?");
+    expect(copy.description).toBe(
+      "Service “docs” is managed by Blueprint blp-db136288mmqc73d4hpug. Continuing transfers it to this Blueprint. Type the command below to continue.",
     );
     expect(copy.title).not.toMatch(/protected/i);
     expect(blueprintConfirmationFromError(err)).toEqual({
@@ -49,20 +48,6 @@ describe("Blueprint takeover classification (w4/189)", () => {
       confirmation: PHRASE,
       takeover,
     });
-  });
-
-  it("names the resource a resource takeover transfers", () => {
-    const err = codedGraphQLError("BLUEPRINT_RESOURCE_CONFLICT", {
-      resource: "docs",
-      kind: "service",
-      owningBlueprintId: "blp-db136288mmqc73d4hpug",
-      confirm: PHRASE,
-    });
-    const copy = takeoverCopy(blueprintTakeoverFromError(err)!, t);
-    expect(copy.title).toBe("Take over “docs”?");
-    expect(copy.description).toBe(
-      "Service “docs” is managed by Blueprint blp-db136288mmqc73d4hpug. Continuing transfers it to this Blueprint. Type the command below to continue.",
-    );
   });
 
   // w5/m125: an unnamed owner arrives as server English ("another blueprint")

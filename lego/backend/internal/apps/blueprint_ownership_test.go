@@ -163,7 +163,7 @@ func TestBlueprintOwnershipWebhookNeverTakesOver(t *testing.T) {
 
 	// A push-triggered auto-sync of A (no confirm) must record an error run,
 	// not silently take the resource back.
-	svc.triggerBlueprintSync(core.WithWorkspace(ctx, "tea-a"), "tea-a", "https://github.com/acme/a", "main")
+	pushTriggeredSync(core.WithWorkspace(ctx, "tea-a"), svc, "tea-a", a.ID)
 	if owner := appOwner(t, svc, "web"); owner != b.ID {
 		t.Fatalf("webhook sync must not take over, owner = %q", owner)
 	}

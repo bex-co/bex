@@ -198,16 +198,6 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "重试",
     description: "Review section retry button after a failed manifest fetch",
   },
-  "blueprints.takeoverConnectionTitle": {
-    message: "替换 Blueprint “{name}”？",
-    description:
-      "Takeover dialog title when another Blueprint already tracks this repo and branch (BLUEPRINT_CONNECTION_CONFLICT)",
-  },
-  "blueprints.takeoverConnectionBody": {
-    message:
-      "“{name}” 已在跟踪 {repo}@{branch} 上的 {path}。部署会将它改为指向此文件，并接管它管理的资源。请输入下方命令以继续。",
-    description: "Takeover dialog body for a Blueprint connection conflict",
-  },
   "blueprints.takeoverResourceTitle": {
     message: "接管 “{name}”？",
     description:
@@ -226,14 +216,30 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.previewConflictBody": {
     message:
-      "另一个 Blueprint 已在管理此仓库和分支或其中的部分资源。部署将替换它；下一步会确认具体接管的内容。",
+      "其中部分资源已由另一个 Blueprint 管理。部署会把它们转移到此 Blueprint；下一步会确认具体接管的内容。",
     description:
       "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
   },
   "blueprints.previewConflict": {
     message: "已被占用 — 部署将接管",
     description:
-      "Alert title on /blueprints/new when the only preview problem is a blueprint ownership or connection conflict an explicit takeover confirmation resolves (w4/m125)",
+      "Alert title on /blueprints/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
+  },
+  "blueprints.previewMatchTitle": {
+    message: "工作区中已有同名资源",
+    description:
+      "Notice title on /blueprints/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
+  },
+  "blueprints.previewMatchBody": {
+    message:
+      "此蓝图中的部分资源与工作区中已有的资源同名。部署时会新建资源，并在每个名称后加上后缀“-{suffix}”，已有的资源不会改动。",
+    description:
+      "Notice body on /blueprints/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
+  },
+  "blueprints.previewMatchListLabel": {
+    message: "工作区中已有：",
+    description:
+      "Notice on /blueprints/new — label above the list of existing resources the Blueprint file matches",
   },
   "blueprints.previewInvalid": {
     message: "蓝图文件存在错误",
@@ -517,6 +523,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   "blueprints.statusUnknown": {
     message: "{status}",
     description: "Blueprint status badge fallback — raw status value",
+  },
+  "blueprints.resourceSuffixLabel": {
+    message: "资源名称后缀",
+    description:
+      "Tooltip and screen-reader label of the suffix shown beside a Blueprint's name in the list and on its detail page (w8/m153)",
   },
   // --- Detail page ---
   "blueprints.detailTitle": {

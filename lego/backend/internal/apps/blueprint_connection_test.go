@@ -21,21 +21,29 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// blueprint_connection_test.go is w4/m125: creating a second Blueprint for a
-// repo+branch another blueprint already tracks used to run the admission
-// upsert's conflict arm and report a successful create — returning the FIRST
-// blueprint's id carrying the second one's name, path and manifest. Live, that
-// destroyed a blueprint, orphaned its running stack, and left the orphan
-// holding the claim of a blueprint whose resources[] disclaimed it.
+// blueprint_connection_test.go covers what a create does when the workspace
+// already has a Blueprint for the same repo and branch.
+//
+// w4/m125 made that a refusal: the storage key was UNIQUE (tenant, repo,
+// branch), so a second create used to run the admission upsert's conflict arm
+// and return the FIRST blueprint's id carrying the second one's name, path and
+// manifest. w8/m153 removes the key instead. Render: "You can create multiple
+// Blueprints from a single YAML file. Each Blueprint creates and manages a
+// completely independent set of resources." A create is a new Blueprint with
+// its own id; what stays guarded is the resource (one manager each), and
+// w4/m125's other halves — claims released when a sync drops a resource, the
+// managing Blueprint readable, a failed lookup failing closed — are unchanged.
 
 const (
 	m125SiteManifest = `services:
@@ -100,44 +108,49 @@ func connectA(t *testing.T, svc *Service) BlueprintView {
 	return a
 }
 
-func TestM125_SecondConnectIsRefusedAndChangesNothing(t *testing.T) {
+// A second create on a tracked repo and branch, for another file, is a second
+// Blueprint. The first is untouched: this is w4/m125's live bug ("A must still
+// be A") kept as an assertion, now without a refusal.
+func TestM153_SecondBlueprintOnATrackedSourceIsANewBlueprint(t *testing.T) {
 	svc, fs := connectionService(t)
 	ctx := ownershipCtx()
 	a := connectA(t, svc)
 
-	_, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
+	b, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
 		Repo: repoBex, Branch: "main", Path: pathCron, Name: "bpB",
 	})
-	var coded *core.CodedError
-	if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_CONNECTION_CONFLICT" {
-		t.Fatalf("second connect = %v, want BLUEPRINT_CONNECTION_CONFLICT", err)
+	if err != nil {
+		t.Fatalf("second Blueprint on a tracked repo and branch: %v", err)
 	}
-	// The refusal has to name the blueprint being protected and the phrase, or
-	// the caller has no way to proceed deliberately.
-	if coded.Params["blueprintId"] != a.ID || coded.Params["confirm"] != BlueprintTakeoverConfirmation(a.ID) {
-		t.Fatalf("conflict params = %+v, want blueprintId=%s and its takeover phrase", coded.Params, a.ID)
+	if b.ID == a.ID || b.Path != pathCron || b.Name != "bpB" {
+		t.Fatalf("second Blueprint = %+v, want a new id beside %s, at the cron path", b, a.ID)
 	}
-	// It says how to repoint the blueprint without naming one surface's verb:
-	// REST, GraphQL and MCP all answer it (w2/m256 t014).
-	if !strings.Contains(err.Error(), "edit the path of that Blueprint") || strings.Contains(err.Error(), "updateBlueprint") {
-		t.Errorf("the refusal should say how to repoint a blueprint, in no one surface's words: %v", err)
-	}
-
-	// The live bug in one assertion: A must still be A.
 	stored := fs.blueprints[a.ID]
 	if stored.Name != "bpA" || stored.Path != pathSite || stored.Manifest != m125SiteManifest {
-		t.Fatalf("A was mutated by a refused create: %+v", stored)
+		t.Fatalf("A was changed by the second create: %+v", stored)
 	}
 	list, err := svc.ListBlueprints(ctx, connOwner)
 	if err != nil {
 		t.Fatalf("list: %v", err)
 	}
-	if len(list) != 1 || list[0].ID != a.ID || list[0].Path != pathSite {
-		t.Fatalf("list after refusal = %+v, want only A at its own path", list)
+	paths := map[string]string{}
+	for _, v := range list {
+		paths[v.ID] = v.Path
+	}
+	if len(list) != 2 || paths[a.ID] != pathSite || paths[b.ID] != pathCron {
+		t.Fatalf("list = %+v, want A and B, each at its own path", list)
+	}
+	for id, want := range map[string]string{a.ID: "static-site", b.ID: "cron-demo"} {
+		if owner, _ := fs.GetBlueprintResourceOwner(ctx, "tea-a", store.BlueprintClaimService, want); owner != id {
+			t.Errorf("%s is managed by %q, want %s", want, owner, id)
+		}
 	}
 }
 
-func TestM125_ConfirmedTakeoverProceedsAndSaysSo(t *testing.T) {
+// No create is answered with a connection conflict or acts on a connection
+// takeover phrase any more: a phrase naming A, which used to replace A, now
+// creates B and leaves A alone, with nothing to record on the run.
+func TestM153_AConnectionTakeoverPhraseReplacesNothing(t *testing.T) {
 	svc, fs := connectionService(t)
 	ctx := ownershipCtx()
 	a := connectA(t, svc)
@@ -147,90 +160,273 @@ func TestM125_ConfirmedTakeoverProceedsAndSaysSo(t *testing.T) {
 		Confirm: BlueprintTakeoverConfirmation(a.ID),
 	})
 	if err != nil {
-		t.Fatalf("confirmed takeover: %v", err)
+		t.Fatalf("create carrying A's phrase: %v", err)
 	}
-	if b.Path != pathCron || b.Name != "bpB" {
-		t.Fatalf("takeover result = %+v, want bpB at the cron path", b)
+	if b.ID == a.ID {
+		t.Fatalf("the create reused A's row %s", a.ID)
 	}
-	// The row is reused, so sync history is the only place the replacement can
-	// be recorded — and it must be, or a blueprint disappears with no trace.
-	var note string
+	if got := fs.blueprints[a.ID]; got.Path != pathSite || got.Name != "bpA" || got.Status == "disconnected" {
+		t.Fatalf("A after the create = %+v, want it live and unchanged", got)
+	}
 	for _, run := range fs.insertedSyncs {
 		if run.Note != "" {
-			note = run.Note
+			t.Fatalf("a create recorded the note %q; nothing was replaced", run.Note)
 		}
 	}
-	if !strings.Contains(note, a.ID) || !strings.Contains(note, pathSite) {
-		t.Fatalf("sync note = %q, want it to name the replaced blueprint and its path", note)
-	}
 }
 
-func TestM125_ReconnectingTheSamePathNeedsNoConfirmation(t *testing.T) {
-	svc, _ := connectionService(t)
+// The same file again. Render: "Do not manage a particular resource with more
+// than one Blueprint." So in adopt mode the second Blueprint is refused the
+// resource A manages, with the resource takeover phrase and never a silent
+// move; in create_new mode it gets its own suffixed resource. Either way A
+// keeps its id.
+func TestM153_SameFileAgainNeverMovesAManagedResourceSilently(t *testing.T) {
+	svc, fs := connectionService(t)
 	ctx := ownershipCtx()
 	a := connectA(t, svc)
-
-	// Same repo, same branch, same manifest: a re-connect, not a replacement.
-	// This is also the retry path after a create whose apply failed — refusing
-	// it would deadlock, since one Confirm cannot carry two phrases.
-	again, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
-		Repo: repoBex, Branch: "main", Path: pathSite, Name: "bpA",
-	})
-	if err != nil {
-		t.Fatalf("re-connecting the same path: %v", err)
+	owner := func(name string) string {
+		t.Helper()
+		o, _ := fs.GetBlueprintResourceOwner(ctx, "tea-a", store.BlueprintClaimService, name)
+		return o
 	}
-	if again.ID != a.ID {
-		t.Fatalf("re-connect id = %s, want the same row %s", again.ID, a.ID)
+
+	_, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathSite, Name: "bpA2"})
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != "BLUEPRINT_RESOURCE_CONFLICT" {
+		t.Fatalf("adopt-mode second create of A's file = %v, want BLUEPRINT_RESOURCE_CONFLICT", err)
+	}
+	if strings.Contains(err.Error(), "BLUEPRINT_CONNECTION_CONFLICT") || owner("static-site") != a.ID {
+		t.Fatalf("after the refusal static-site is managed by %q (want %s); err = %v", owner("static-site"), a.ID, err)
+	}
+	phrase, _ := coded.Params["confirm"].(string)
+	if phrase != BlueprintTakeoverConfirmation(a.ID) {
+		t.Fatalf("refusal phrase = %q, want the takeover of %s", phrase, a.ID)
+	}
+
+	// The refusal comes before anything is recorded: no second Blueprint is
+	// left in error for every push to re-run into the same conflict.
+	if n := len(fs.blueprints); n != 1 {
+		t.Fatalf("%d Blueprint rows after a refused create, want only A", n)
+	}
+	// Confirming creates the second Blueprint and only then moves the resource.
+	confirmed, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathSite, Name: "bpA2", Confirm: phrase})
+	if err != nil {
+		t.Fatalf("confirmed takeover: %v", err)
+	}
+	if confirmed.ID == a.ID || owner("static-site") != confirmed.ID {
+		t.Fatalf("confirmed create = %s owning static-site = %q, want a second Blueprint that now manages it", confirmed.ID, owner("static-site"))
+	}
+	if n := len(fs.blueprints); n != 2 {
+		t.Fatalf("%d Blueprint rows after a refused create and a confirmed one, want 2 (A and the second)", n)
+	}
+
+	// create_new: an independent, suffixed copy; nobody's resource moves.
+	copyBP, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathSite, Name: "bpCopy",
+		ExistingResources: store.BlueprintExistingCreateNew, ResourceSuffix: "c0py"})
+	if err != nil {
+		t.Fatalf("create_new copy: %v", err)
+	}
+	if copyBP.ID == a.ID || copyBP.ID == confirmed.ID || copyBP.ResourceSuffix != "c0py" {
+		t.Fatalf("copy = %+v, want a third Blueprint carrying suffix c0py", copyBP)
+	}
+	if owner("static-site-c0py") != copyBP.ID || owner("static-site") != confirmed.ID {
+		t.Fatalf("owners: static-site-c0py=%q static-site=%q, want the copy and the second Blueprint", owner("static-site-c0py"), owner("static-site"))
+	}
+	if _, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathCron, Name: "bad",
+		ExistingResources: "replace"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("unknown existingResources = %v, want a 400", err)
+	}
+	if _, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathCron, Name: "bad",
+		ResourceSuffix: "c0py"}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("a suffix without create_new = %v, want a 400", err)
 	}
 }
 
-func TestM125_ConnectingOverADisconnectedRowNeedsNoConfirmation(t *testing.T) {
+// failingAppWrites fails every real App create while failing is set, the way
+// an API server that goes away mid-apply does. Dry runs (the validation's)
+// still answer.
+type failingAppWrites struct {
+	client.Client
+	failing *atomic.Bool
+}
+
+func (c failingAppWrites) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	if _, isApp := obj.(*appv1alpha1.App); isApp && c.failing.Load() {
+		options := &client.CreateOptions{}
+		options.ApplyOptions(opts)
+		if len(options.DryRun) == 0 {
+			return errors.New("apiserver unavailable")
+		}
+	}
+	return c.Client.Create(ctx, obj, opts...)
+}
+
+// A create whose apply failed left its row; repeating the create continues on
+// that Blueprint, with its suffix and its settings, instead of adding a second
+// half-made one. The review agrees with what the create will do. Once the
+// Blueprint has synced, the same create is a new Blueprint.
+func TestM153_ARepeatedCreateRetriesAFailedOne(t *testing.T) {
+	svc, fs := connectionService(t)
+	ctx := ownershipCtx()
+	failing := &atomic.Bool{}
+	svc.Client = failingAppWrites{Client: svc.Client, failing: failing}
+	req := CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathSite, Name: "retry-me",
+		ExistingResources: store.BlueprintExistingCreateNew, ResourceSuffix: "f1rs"}
+
+	failing.Store(true)
+	if _, err := svc.CreateBlueprint(ctx, connOwner, req); err == nil {
+		t.Fatal("the first attempt should fail while the API server refuses writes")
+	}
+	if len(fs.blueprints) != 1 {
+		t.Fatalf("the failed create left %d rows, want its own Blueprint", len(fs.blueprints))
+	}
+	var failed store.Blueprint
+	for _, b := range fs.blueprints {
+		failed = b
+	}
+	if failed.Status != store.BlueprintStatusError || failed.ResourceSuffix != "f1rs" {
+		t.Fatalf("the failed create left %+v, want it in error with suffix f1rs", failed)
+	}
+
+	// The review of the same create is made as that Blueprint: its suffix,
+	// whatever a fresh review would have minted.
+	failing.Store(false)
+	p, err := svc.previewBlueprintWith(ctx, connOwner, repoBex, "main", pathSite, blueprintPreviewOptions{ExistingResources: store.BlueprintExistingCreateNew})
+	if err != nil || p.ResourceSuffix != "f1rs" || p.Validation == nil || !p.Validation.Valid {
+		t.Fatalf("preview before the retry = suffix %q validation %+v err %v, want the failed Blueprint's f1rs and a valid review", p.ResourceSuffix, p.Validation, err)
+	}
+	// A suffix that is not the retried Blueprint's is refused, not replaced.
+	other := req
+	other.ResourceSuffix = "0th3"
+	if _, err := svc.CreateBlueprint(ctx, connOwner, other); !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("retry with another suffix = %v, want a conflict naming the Blueprint's own", err)
+	}
+
+	// The user renamed the failed Blueprint in the meantime; the retry keeps it.
+	renamed := "renamed-since"
+	if _, err := svc.UpdateBlueprint(ctx, failed.ID, connOwner, UpdateBlueprintRequest{Name: &renamed}); err != nil {
+		t.Fatalf("rename the failed Blueprint: %v", err)
+	}
+	retried, err := svc.CreateBlueprint(ctx, connOwner, req)
+	if err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	if retried.ID != failed.ID || retried.ResourceSuffix != "f1rs" || retried.Name != renamed || len(fs.blueprints) != 1 {
+		t.Fatalf("retry = %+v with %d rows, want the failed Blueprint %s continued under its suffix and name", retried, len(fs.blueprints), failed.ID)
+	}
+	if owner, _ := fs.GetBlueprintResourceOwner(ctx, "tea-a", store.BlueprintClaimService, "static-site-f1rs"); owner != failed.ID {
+		t.Fatalf("static-site-f1rs is managed by %q, want the retried Blueprint", owner)
+	}
+
+	// It has synced now: the same create is a second copy with its own suffix.
+	again, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathSite, Name: "copy",
+		ExistingResources: store.BlueprintExistingCreateNew})
+	if err != nil {
+		t.Fatalf("a create_new copy after the Blueprint synced: %v", err)
+	}
+	if again.ID == failed.ID || again.ResourceSuffix == "" || again.ResourceSuffix == "f1rs" {
+		t.Fatalf("copy = %+v, want a new Blueprint with its own minted suffix", again)
+	}
+}
+
+// A Blueprint created after another on the same repo and branch was deleted is
+// new. The deleted row is not revived (it used to be, w8/m37 and w4/120), so
+// it keeps its own file and stays disconnected, and the new Blueprint starts
+// with no inherited history to mark off.
+func TestM153_CreateAfterADeleteIsANewBlueprint(t *testing.T) {
 	svc, fs := connectionService(t)
 	ctx := ownershipCtx()
 	a := connectA(t, svc)
 	if err := svc.DisconnectBlueprint(ctx, a.ID, connOwner); err != nil {
 		t.Fatalf("disconnect: %v", err)
 	}
+	before := len(fs.insertedSyncs)
 
-	// w8/m37's "a disconnected row is deliberately re-established under a fresh
-	// generation" is unchanged: there is no live blueprint to protect.
-	if _, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
-		Repo: repoBex, Branch: "main", Path: pathCron, Name: "bpB",
-	}); err != nil {
-		t.Fatalf("create over a disconnected row: %v", err)
+	b, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
+		Repo: repoBex, Branch: "main", Path: pathSite, Name: "bpA-again",
+	})
+	if err != nil {
+		t.Fatalf("create after a delete: %v", err)
 	}
-	if got := fs.blueprints[a.ID].Path; got != pathCron {
-		t.Fatalf("re-established path = %q, want %q", got, pathCron)
+	if b.ID == a.ID {
+		t.Fatalf("create after a delete reused the deleted row %s", a.ID)
+	}
+	if got := fs.blueprints[a.ID]; got.Status != "disconnected" || got.Name != "bpA" {
+		t.Fatalf("the deleted row = %+v, want it left disconnected and unchanged", got)
+	}
+	for _, run := range fs.insertedSyncs[before:] {
+		if run.BlueprintID != b.ID || run.Note != "" {
+			t.Fatalf("run after the create = %+v, want the new Blueprint's own run with no note", run)
+		}
 	}
 }
 
-func TestM125_PreviewReportsTheConflictButNotAgainstItself(t *testing.T) {
+// The review step no longer reports a connection conflict. For a Blueprint not
+// yet created it reports which declared resources already exist, and reviews
+// in create_new mode (a separate, suffixed set) when asked to.
+func TestM153_PreviewReportsMatchesNotAConnectionConflict(t *testing.T) {
 	svc, _ := connectionService(t)
 	ctx := ownershipCtx()
 	a := connectA(t, svc)
 
-	// `/blueprints/new`: a different manifest on an occupied repo+branch.
+	// `/blueprints/new`: another file on a tracked repo and branch.
 	p, err := svc.PreviewBlueprint(ctx, connOwner, repoBex, "main", pathCron, "")
 	if err != nil {
 		t.Fatalf("preview: %v", err)
 	}
-	if p.Validation == nil || p.Validation.Valid {
-		t.Fatalf("preview must not report valid: %+v", p.Validation)
-	}
-	var found bool
-	for _, e := range p.Validation.Errors {
-		if e.Code == "BLUEPRINT_CONNECTION_CONFLICT" && strings.Contains(e.Error, a.ID) {
-			found = true
-		}
-	}
-	if !found {
-		t.Fatalf("preview errors = %+v, want a BLUEPRINT_CONNECTION_CONFLICT naming %s", p.Validation.Errors, a.ID)
+	if p.Validation == nil || !p.Validation.Valid || len(p.MatchedResources) != 0 || p.ExistingResources != store.BlueprintExistingAdopt {
+		t.Fatalf("preview of a new file = validation %+v matched %+v mode %q, want valid, no matches, adopt", p.Validation, p.MatchedResources, p.ExistingResources)
 	}
 
-	// The detail page's pre-sync preview passes its own id and must stay clean.
+	// The same file A was made from: its resource exists and A manages it.
+	p, err = svc.PreviewBlueprint(ctx, connOwner, repoBex, "main", pathSite, "")
+	if err != nil {
+		t.Fatalf("preview of A's file: %v", err)
+	}
+	if len(p.MatchedResources) != 1 || p.MatchedResources[0] != (BlueprintResourceRef{Kind: "service", Name: "static-site"}) {
+		t.Fatalf("matched = %+v, want the service static-site", p.MatchedResources)
+	}
+	if p.Validation == nil || p.Validation.Valid {
+		t.Fatalf("adopt-mode review of A's file must report the resource conflict: %+v", p.Validation)
+	}
+	for _, e := range p.Validation.Errors {
+		if e.Code != "BLUEPRINT_RESOURCE_CONFLICT" {
+			t.Fatalf("adopt-mode review errors = %+v, want only BLUEPRINT_RESOURCE_CONFLICT", p.Validation.Errors)
+		}
+	}
+
+	// Render's creation flow for that case: a separate, suffixed set.
+	p, err = svc.previewBlueprintWith(ctx, connOwner, repoBex, "main", pathSite, blueprintPreviewOptions{ExistingResources: store.BlueprintExistingCreateNew})
+	if err != nil {
+		t.Fatalf("create_new preview: %v", err)
+	}
+	if p.Validation == nil || !p.Validation.Valid || p.ExistingResources != store.BlueprintExistingCreateNew ||
+		!store.ValidBlueprintResourceSuffix(p.ResourceSuffix) || len(p.MatchedResources) != 1 {
+		t.Fatalf("create_new preview = validation %+v mode %q suffix %q matched %+v", p.Validation, p.ExistingResources, p.ResourceSuffix, p.MatchedResources)
+	}
+	var planned []string
+	for _, action := range p.Validation.Plan.Actions {
+		planned = append(planned, string(action.Operation)+" "+action.Name)
+	}
+	if want := "create static-site-" + p.ResourceSuffix; len(planned) != 1 || planned[0] != want {
+		t.Fatalf("create_new plan = %v, want [%s]", planned, want)
+	}
+	// The reviewed suffix is what the create makes.
+	created, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{Repo: repoBex, Branch: "main", Path: pathSite, Name: "copy",
+		ExistingResources: p.ExistingResources, ResourceSuffix: p.ResourceSuffix})
+	if err != nil || created.ResourceSuffix != p.ResourceSuffix || created.ID == a.ID {
+		t.Fatalf("create with the reviewed suffix = %+v err=%v", created, err)
+	}
+
+	// The detail page's pre-sync preview passes its own id: it stays clean,
+	// reports no create-time fields, and refuses a mode.
 	p, err = svc.PreviewBlueprint(ctx, connOwner, repoBex, "main", pathSite, a.ID)
-	if err != nil || p.Validation == nil || !p.Validation.Valid {
-		t.Fatalf("self preview must stay valid: %+v err=%v", p.Validation, err)
+	if err != nil || p.Validation == nil || !p.Validation.Valid || p.ExistingResources != "" || len(p.MatchedResources) != 0 {
+		t.Fatalf("self preview = %+v err=%v, want valid with no create-time fields", p, err)
+	}
+	if _, err := svc.previewBlueprintWith(ctx, connOwner, repoBex, "main", pathSite,
+		blueprintPreviewOptions{ForBlueprintID: a.ID, ExistingResources: store.BlueprintExistingCreateNew}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("a mode on an existing Blueprint's preview = %v, want a 400", err)
 	}
 }
 
@@ -247,12 +443,10 @@ func TestM125_ClaimsEqualResourcesAfterASyncDropsOne(t *testing.T) {
 		t.Fatalf("static-site owner after create = %q, want %s", owner, a.ID)
 	}
 
-	// Replace the manifest with one declaring a different service.
-	if _, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
-		Repo: repoBex, Branch: "main", Path: pathCron, Name: "bpB",
-		Confirm: BlueprintTakeoverConfirmation(a.ID),
-	}); err != nil {
-		t.Fatalf("takeover: %v", err)
+	// Sync A with a manifest declaring a different service. (Until w8/m153
+	// this test replaced A through a confirmed second create on its row.)
+	if _, err := svc.SyncBlueprint(ctx, a.ID, connOwner, m125CronManifest, "", nil); err != nil {
+		t.Fatalf("sync with the replaced manifest: %v", err)
 	}
 
 	if owner, _ := fs.GetBlueprintResourceOwner(ctx, "tea-a", store.BlueprintClaimService, "static-site"); owner != "" {
@@ -339,13 +533,13 @@ func TestM125_ManagingBlueprintIsReadable(t *testing.T) {
 }
 
 // TestM125_ConnectionLookupFailureFailsClosed: an unreadable blueprint table
-// must not read as "nothing is connected", which is exactly the overwrite the
-// guard exists to stop.
+// must not read as "this is a new Blueprint" — the lookup now decides whether
+// a create retries a failed one, and guessing would leave a duplicate.
 func TestM125_ConnectionLookupFailureFailsClosed(t *testing.T) {
 	svc, fs := connectionService(t)
 	ctx := ownershipCtx()
 	connectA(t, svc)
-	fs.getByRepoErr = errors.New("control plane unavailable")
+	fs.createRetryErr = errors.New("control plane unavailable")
 
 	if _, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
 		Repo: repoBex, Branch: "main", Path: pathCron, Name: "bpB",
@@ -456,50 +650,6 @@ func TestM118_AResolvableReferenceStillValidates(t *testing.T) {
 	}
 	if !v.Valid {
 		t.Fatalf("a database that exists in the workspace must validate: %+v", v.Errors)
-	}
-}
-
-// TestM120_ReconnectingSaysSoInSyncHistory is w4/120's second half. Reviving a
-// disconnected row is deliberate (w8/m37), and it keeps the row's id AND its
-// whole sync history — so the entries a reader sees under the new blueprint's
-// name partly belong to the connection before it. The boundary is now recorded
-// where those entries are read.
-func TestM120_ReconnectingSaysSoInSyncHistory(t *testing.T) {
-	svc, fs := connectionService(t)
-	ctx := ownershipCtx()
-	a := connectA(t, svc)
-	if err := svc.DisconnectBlueprint(ctx, a.ID, connOwner); err != nil {
-		t.Fatalf("disconnect: %v", err)
-	}
-
-	again, err := svc.CreateBlueprint(ctx, connOwner, CreateBlueprintRequest{
-		Repo: repoBex, Branch: "main", Path: pathSite, Name: "bpA-again",
-	})
-	if err != nil {
-		t.Fatalf("reconnect: %v", err)
-	}
-	if again.ID != a.ID {
-		t.Fatalf("reconnect id = %s, want the revived row %s", again.ID, a.ID)
-	}
-
-	var note string
-	for _, run := range fs.insertedSyncs {
-		if run.Note != "" {
-			note = run.Note
-		}
-	}
-	if !strings.Contains(note, "re-established") || !strings.Contains(note, repoBex) {
-		t.Fatalf("sync note = %q, want it to record the reconnection and name the source", note)
-	}
-
-	// A first connection says nothing — the note marks a boundary, and there
-	// is none to mark.
-	svc2, fs2 := connectionService(t)
-	connectA(t, svc2)
-	for _, run := range fs2.insertedSyncs {
-		if run.Note != "" {
-			t.Fatalf("a first connection recorded %q, want no note", run.Note)
-		}
 	}
 }
 

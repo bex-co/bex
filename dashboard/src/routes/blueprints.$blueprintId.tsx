@@ -34,6 +34,7 @@ import { usePlannedSync } from "@/features/blueprints/hooks/use-planned-sync";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
+import { BlueprintResourceSuffix } from "@/features/blueprints/components/blueprint-resource-suffix";
 import { blueprintResourceHref } from "@/features/blueprints/lib/resource-href";
 import { canonicalBlueprintLinkId } from "@/features/blueprints/lib/link-id";
 import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
@@ -228,13 +229,14 @@ export function BlueprintDetailPage() {
     confirming && blueprint ? blueprint.repo : "",
     confirming && blueprint ? blueprint.branch : "",
     confirming ? (blueprint?.path ?? "") : "",
-    // On behalf of this blueprint: previewing its own repo+branch must not
-    // report the connection conflict a create would get (w4/m125).
+    // On behalf of this blueprint: the sync is planned against its own
+    // resources, which a create's preview would report as already existing
+    // (w8/m153).
     blueprint?.id,
   );
   const [disconnecting, setDisconnecting] = useState(false);
   // The server's refusal awaiting its phrase (a protected environment, or a
-  // Blueprint takeover that names what it replaces), with the pin its retry
+  // takeover of a resource another Blueprint manages), with the pin its retry
   // resends. Closing the sync dialog drops the reviewed pin, and the phrase
   // only arrives after that close, so the retry carries its own (w8/m41).
   const [pendingConfirmation, setPendingConfirmation] = useState<
@@ -328,6 +330,7 @@ export function BlueprintDetailPage() {
         {blueprint ? (
           <div className="flex items-center gap-2">
             <h1 className="truncate text-xl font-semibold">{blueprint.name}</h1>
+            <BlueprintResourceSuffix suffix={blueprint.resourceSuffix} />
             <BlueprintStatusBadge status={blueprint.status} />
           </div>
         ) : (

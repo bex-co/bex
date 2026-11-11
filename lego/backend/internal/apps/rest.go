@@ -1583,17 +1583,23 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			OwnerID      string            `json:"ownerId"`
 			EnvVarValues map[string]string `json:"envVarValues"`
 			Confirm      string            `json:"confirm"`
+			// Render's existingResources (adopt, the default, or create_new)
+			// and the create_new suffix a preview reviewed (w8/m153).
+			ExistingResources string `json:"existingResources"`
+			ResourceSuffix    string `json:"resourceSuffix"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
 			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
 		return s.CreateBlueprint(r.Context(), body.OwnerID, CreateBlueprintRequest{
-			Repo:         body.Repo,
-			Branch:       body.Branch,
-			Path:         body.Path,
-			Name:         body.Name,
-			EnvVarValues: body.EnvVarValues,
-			Confirm:      body.Confirm,
+			Repo:              body.Repo,
+			Branch:            body.Branch,
+			Path:              body.Path,
+			Name:              body.Name,
+			EnvVarValues:      body.EnvVarValues,
+			Confirm:           body.Confirm,
+			ExistingResources: body.ExistingResources,
+			ResourceSuffix:    body.ResourceSuffix,
 		})
 	})
 	mux.HandleFunc("POST /v1/blueprints", func(w http.ResponseWriter, r *http.Request) {
@@ -1731,15 +1737,18 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			Branch  string `json:"branch"`
 			Path    string `json:"path"`
 			OwnerID string `json:"ownerId"`
-			// blueprintId previews on behalf of an existing blueprint, so its
-			// own repo+branch is not reported as a connection conflict
-			// (w4/m125). Omitted by a pre-create preview.
+			// blueprintId previews on behalf of an existing blueprint, in its
+			// own mode. Omitted by a pre-create preview.
 			BlueprintID string `json:"blueprintId"`
+			// existingResources reviews a not-yet-created Blueprint as adopt
+			// (the default) or create_new (w8/m153).
+			ExistingResources string `json:"existingResources"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
 			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
 		}
-		return s.PreviewBlueprint(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path, body.BlueprintID)
+		return s.previewBlueprintWith(r.Context(), body.OwnerID, body.Repo, body.Branch, body.Path,
+			blueprintPreviewOptions{ForBlueprintID: body.BlueprintID, ExistingResources: body.ExistingResources})
 	}))
 	mux.HandleFunc("GET /v1/blueprints", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()

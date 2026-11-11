@@ -18,7 +18,10 @@ package store
 
 import (
 	"context"
+	"errors"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -68,9 +71,9 @@ type BlueprintSync struct {
 	CreatedAt    time.Time  `json:"createdAt"`
 	ErrorMessage *string    `json:"errorMessage"`
 	// Note annotates what the run did when its state cannot say it — today,
-	// that a confirmed takeover replaced a named blueprint on the same
-	// (tenant, repo, branch) row (w4/m125, migration 0131). Empty means
-	// nothing to report, the same convention deploys.stall_reason uses.
+	// the resources a sync detached from the Blueprint (migration 0131).
+	// Empty means nothing to report, the same convention
+	// deploys.stall_reason uses.
 	Note string `json:"note,omitempty"`
 	// ExecutionGeneration records which admission a run belongs to (w8/m37,
 	// migration 0111) so recovery and completion never settle a run against a
@@ -103,18 +106,26 @@ const (
 	BlueprintStatusError   = "error"
 )
 
-// UpsertBlueprint creates a blueprint or refreshes its manifest when
-// (tenant_id, repo, branch) already exists. The id field is ignored on
-// conflict — the existing row's id is preserved. Returns the current row.
+// UpsertBlueprint registers the Blueprint that a direct deploy of a repo's
+// manifest stands for, or refreshes that Blueprint's manifest. Returns the
+// current row.
 //
-// The conflict arm writes the manifest ONLY (w8/m37 t005): deploy-time
+// A deploy applies the manifest's own names, so the Blueprint it stands for is
+// the one that manages unsuffixed resources: the oldest live row for
+// (tenant_id, repo, branch) with no create_new suffix. Since a workspace may
+// hold several Blueprints for one source (w8/m153, migration 0229) the choice
+// is made here, under a per-source lock, instead of by a unique key.
+//
+// The refresh writes the manifest ONLY (w8/m37 t005): deploy-time
 // auto-registration must never clobber current name/path/autoSync settings or
 // lifecycle status with deploy-request defaults — a direct deploy racing an
 // admitted sync (or a mid-run settings change) keeps the row's settings.
-// It also refuses disconnected rows (re-establishment is confined to explicit
-// creation through AdmitBlueprintCreate, which bumps the execution
-// generation). Generation and active-run ownership are never written here —
-// an auto-register racing a live sync must not fence its own admission.
+// Generation and active-run ownership are never written here — an
+// auto-register racing a live sync must not fence its own admission.
+//
+// A source whose unsuffixed Blueprint was deleted is not registered again: the
+// deletion was explicit, and only an explicit create connects the repo again.
+// That case answers ErrNotFound, as it did when the deleted row held the key.
 func (s *PGStore) UpsertBlueprint(ctx context.Context, b Blueprint) (Blueprint, error) {
 	if b.ID == "" {
 		b.ID = ids.New(ids.Blueprint)
@@ -123,23 +134,48 @@ func (s *PGStore) UpsertBlueprint(ctx context.Context, b Blueprint) (Blueprint, 
 		b.Path = "render.yaml"
 	}
 	var out Blueprint
-	err := s.Pool.QueryRow(ctx, `
-		INSERT INTO blueprints (id, tenant_id, name, repo, branch, path, auto_sync, manifest, status)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-		ON CONFLICT (tenant_id, repo, branch)
-		DO UPDATE SET
-			manifest   = EXCLUDED.manifest,
-			updated_at = now()
-		WHERE blueprints.status != 'disconnected'
-		RETURNING id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		          last_sync_at, created_at, updated_at, existing_resources, resource_suffix`,
-		b.ID, b.TenantID, b.Name, b.Repo, b.Branch, b.Path, b.AutoSync, b.Manifest, b.Status,
-	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
-		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt, &out.ExistingResources, &out.ResourceSuffix)
+	var active string
+	scan := func(row pgx.Row) error { return row.Scan(scanBlueprint(&out, &active)...) }
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		if err := lockBlueprintSource(ctx, tx, b.TenantID, b.Repo, b.Branch); err != nil {
+			return err
+		}
+		err := scan(tx.QueryRow(ctx, `
+			UPDATE blueprints SET manifest = $4, updated_at = now()
+			WHERE id = (
+				SELECT id FROM blueprints
+				WHERE tenant_id = $1 AND repo = $2 AND branch = $3
+				  AND status != 'disconnected' AND resource_suffix = ''
+				ORDER BY created_at, id LIMIT 1)
+			RETURNING `+blueprintColumns, b.TenantID, b.Repo, b.Branch, b.Manifest))
+		if !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		return scan(tx.QueryRow(ctx, `
+			INSERT INTO blueprints (id, tenant_id, name, repo, branch, path, auto_sync, manifest, status)
+			SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+			WHERE NOT EXISTS (
+				SELECT 1 FROM blueprints
+				WHERE tenant_id = $2 AND repo = $4 AND branch = $5
+				  AND status = 'disconnected' AND resource_suffix = '')
+			RETURNING `+blueprintColumns,
+			b.ID, b.TenantID, b.Name, b.Repo, b.Branch, b.Path, b.AutoSync, b.Manifest, b.Status))
+	})
 	if err != nil {
 		return Blueprint{}, classify("blueprint", err)
 	}
+	out.ActiveRunID = active
 	return out, nil
+}
+
+// lockBlueprintSource serializes, for the rest of tx, the writers that decide
+// by source whether a Blueprint row is reused or a new one is inserted. The
+// unique key on (tenant_id, repo, branch) used to arbitrate that; since 0229
+// two racing writers would otherwise each insert.
+func lockBlueprintSource(ctx context.Context, tx pgx.Tx, tenantID, repo, branch string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+		"blueprint-source|"+tenantID+"|"+repo+"|"+branch)
+	return err
 }
 
 // GetBlueprint fetches an active blueprint by id, scoped to tenantID (returns
@@ -180,23 +216,41 @@ func (s *PGStore) BlueprintWorkspace(ctx context.Context, id string) (string, er
 	return tenantID, nil
 }
 
-// GetBlueprintByRepo fetches the active blueprint for a tenant+repo+branch, used
-// by the push-webhook auto-sync path. Returns ErrNotFound when unregistered —
-// or when the row is disconnected, so webhooks cannot resurrect one (w8/m37).
-func (s *PGStore) GetBlueprintByRepo(ctx context.Context, tenantID, repo, branch string) (Blueprint, error) {
+// blueprintCreateRetryMatch selects the Blueprint a repeated one-step create
+// retries instead of adding another: the newest live row for the same file, in
+// the same existingResources mode, that no sync has ever brought in sync.
+// $1..$5 are tenant_id, repo, branch, path and mode.
+//
+// last_sync_at cannot answer that (a failed run stamps it too), so the test is
+// the absence of a successful run on a row that is applying or failed. A
+// `created` row is a planned create waiting for approval, not a failed one,
+// and `in_sync` (or the pre-m62 `active`) has been in sync even when no run
+// says so, as after a plan that found nothing to change. A Blueprint that has
+// ever been planned came from Render's create, which undoes its own failures;
+// its failed first sync is retried by planning again, never by a one-step
+// create taking the row over.
+const blueprintCreateRetryMatch = `FROM blueprints
+	WHERE tenant_id = $1 AND repo = $2 AND branch = $3 AND path = $4
+	  AND existing_resources = $5 AND status IN ('syncing', 'error', 'paused')
+	  AND NOT EXISTS (SELECT 1 FROM blueprint_syncs r
+		WHERE r.blueprint_id = blueprints.id AND (r.state = 'success' OR r.plan_path IS NOT NULL))
+	ORDER BY created_at DESC, id DESC LIMIT 1`
+
+// BlueprintCreateRetry returns the Blueprint a one-step create of this source
+// and mode (adopt or create_new) would retry (blueprintCreateRetryMatch), or
+// ErrNotFound when the create is a new Blueprint. The caller compiles with the
+// returned row's resource suffix and names its id to AdmitBlueprintCreate,
+// which re-checks the choice under the source lock.
+func (s *PGStore) BlueprintCreateRetry(ctx context.Context, tenantID, repo, branch, path, mode string) (Blueprint, error) {
 	var out Blueprint
-	err := s.Pool.QueryRow(ctx,
-		`SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		        last_sync_at, created_at, updated_at, existing_resources, resource_suffix
-		 FROM blueprints WHERE tenant_id = $1 AND repo = $2 AND branch = $3
-		   AND status != 'disconnected'
-		 LIMIT 1`,
-		tenantID, repo, branch,
-	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
-		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt, &out.ExistingResources, &out.ResourceSuffix)
+	var active string
+	err := s.Pool.QueryRow(ctx, `SELECT `+blueprintColumns+` `+blueprintCreateRetryMatch,
+		tenantID, repo, branch, path, mode,
+	).Scan(scanBlueprint(&out, &active)...)
 	if err != nil {
 		return Blueprint{}, classify("blueprint", err)
 	}
+	out.ActiveRunID = active
 	return out, nil
 }
 

@@ -158,8 +158,10 @@ func TestRecreatedBlueprintPlansADeletedServiceAsCreate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if again.Blueprint.ID != first.Blueprint.ID {
-		t.Fatalf("re-create = %s, want the revived row %s", again.Blueprint.ID, first.Blueprint.ID)
+	// A new Blueprint with its own id: the deleted one's row is not revived
+	// (w8/m153).
+	if again.Blueprint.ID == first.Blueprint.ID {
+		t.Fatalf("re-create reused the deleted Blueprint's row %s", first.Blueprint.ID)
 	}
 	if again.PlanningOutcome != PlanningPlanned || plannedActions(again) != "create service api" {
 		t.Fatalf("re-create plan = %s %q, want planned with create service api", again.PlanningOutcome, plannedActions(again))
@@ -292,11 +294,11 @@ func TestNoChangesPlanSupersedesAWaitingPlan(t *testing.T) {
 	}
 }
 
-// w2/m256 t014: a create whose plan cannot be made is all-or-nothing. The
-// revived row goes back to disconnected with its earlier name, so it is not
-// left created-but-unplanned, and retrying the create is not refused as a
-// connection conflict with itself.
-func TestRecreateWhosePlanFailsLeavesNoRevivedRow(t *testing.T) {
+// w2/m256 t014: a create whose plan cannot be made is all-or-nothing, also
+// when it follows a deleted Blueprint on the same source: the deleted row is
+// left as it was, the failed create leaves no row of its own, and the retry is
+// a new Blueprint (w8/m153; the deleted row used to be revived and restored).
+func TestCreateAfterADeleteWhosePlanFailsLeavesOnlyTheDeletedRow(t *testing.T) {
 	svc, st, ctx := newOnboardingService(t, recreateManifest)
 	failing := &atomic.Bool{}
 	svc.Client = failingAppLists{Client: svc.Client, failing: failing}
@@ -316,8 +318,9 @@ func TestRecreateWhosePlanFailsLeavesNoRevivedRow(t *testing.T) {
 	if _, err := svc.CreatePlannedBlueprint(ctx, req); !errors.Is(err, errAppListDown) {
 		t.Fatalf("re-create while the workspace is unreadable: err = %v, want %v", err, errAppListDown)
 	}
-	if got := st.blueprints[id]; got.Status != "disconnected" || got.Name != before.Name {
-		t.Fatalf("after the failed re-create the row is %q %q, want it back to disconnected %q", got.Status, got.Name, before.Name)
+	if got := st.blueprints[id]; got.Status != "disconnected" || got.Name != before.Name || len(st.blueprints) != 1 {
+		t.Fatalf("after the failed re-create: %d rows, the deleted one %q %q; want only it, still disconnected %q",
+			len(st.blueprints), got.Status, got.Name, before.Name)
 	}
 
 	failing.Store(false)
@@ -325,8 +328,11 @@ func TestRecreateWhosePlanFailsLeavesNoRevivedRow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("retrying the re-create: %v", err)
 	}
-	if again.Blueprint.ID != first.Blueprint.ID || again.PlanningOutcome != PlanningPlanned || again.Blueprint.Name != "qa-bp-2" {
-		t.Fatalf("retry = %s %s %q, want the revived row planned as qa-bp-2", again.Blueprint.ID, again.PlanningOutcome, again.Blueprint.Name)
+	if again.Blueprint.ID == first.Blueprint.ID || again.PlanningOutcome != PlanningPlanned || again.Blueprint.Name != "qa-bp-2" {
+		t.Fatalf("retry = %s %s %q, want a new Blueprint planned as qa-bp-2", again.Blueprint.ID, again.PlanningOutcome, again.Blueprint.Name)
+	}
+	if got := st.blueprints[id]; got.Status != "disconnected" || got.Name != before.Name {
+		t.Fatalf("the retry changed the deleted row: %q %q", got.Status, got.Name)
 	}
 }
 

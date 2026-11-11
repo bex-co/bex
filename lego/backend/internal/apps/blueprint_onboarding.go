@@ -55,8 +55,8 @@ const (
 // blueprintPlanStore is the persistence onboarding needs; *store.PGStore
 // satisfies it.
 type blueprintPlanStore interface {
-	CreatePlannedBlueprint(ctx context.Context, b store.Blueprint) (created store.Blueprint, prior *store.Blueprint, err error)
-	UndoPlannedBlueprintCreate(ctx context.Context, created store.Blueprint, prior *store.Blueprint) error
+	CreatePlannedBlueprint(ctx context.Context, b store.Blueprint) (store.Blueprint, error)
+	UndoPlannedBlueprintCreate(ctx context.Context, created store.Blueprint) error
 	BlueprintNameTaken(ctx context.Context, tenantID, name, exceptID string) (bool, error)
 	InsertPlannedBlueprintSync(ctx context.Context, p store.PlannedBlueprintSync) (store.PlannedBlueprintSync, error)
 	LatestBlueprintPlan(ctx context.Context, blueprintID string) (store.PlannedBlueprintSync, error)
@@ -172,12 +172,11 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 		return BlueprintPlanResult{}, fmt.Errorf("%w: source.repo is required", core.ErrBadRequest)
 	}
 	mode := store.BlueprintExistingAdopt
-	if req.ExistingResources != nil {
-		switch *req.ExistingResources {
-		case store.BlueprintExistingAdopt, store.BlueprintExistingCreateNew:
-			mode = *req.ExistingResources
-		default:
-			return BlueprintPlanResult{}, fmt.Errorf("%w: existingResources must be adopt or create_new", core.ErrBadRequest)
+	if sent := req.ExistingResources; sent != nil {
+		// A field that is sent must name a mode: "" is not one here.
+		var err error
+		if mode, err = blueprintExistingResourcesMode(*sent); err != nil || *sent == "" {
+			return BlueprintPlanResult{}, errBlueprintExistingResourcesMode
 		}
 	}
 	if s.GitFetcher == nil {
@@ -215,41 +214,29 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	if err != nil {
 		return BlueprintPlanResult{}, blueprintCreateFetchError(err, path, branch)
 	}
-	if existing, err := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, req.Source.Repo, branch); err == nil {
-		return BlueprintPlanResult{}, errBlueprintAlreadyConnected(existing)
-	} else if !errors.Is(err, store.ErrNotFound) {
-		return BlueprintPlanResult{}, err
-	}
 	autoSync := true
 	if req.AutoSync != nil {
 		autoSync = *req.AutoSync
 	}
-	b, prior, err := plans.CreatePlannedBlueprint(ctx, store.Blueprint{
+	// Always a new Blueprint with its own id (w8/m153; Render: "You can create
+	// multiple Blueprints from a single YAML file. Each Blueprint creates and
+	// manages a completely independent set of resources."). Whether its
+	// resources are its own is the plan's and the approval's question, which
+	// the resource claims answer; the source says nothing about it.
+	b, err := plans.CreatePlannedBlueprint(ctx, store.Blueprint{
 		TenantID: tenantID, Name: req.Name, Repo: req.Source.Repo, Branch: branch, Path: discoveredPath,
 		AutoSync: autoSync, ExistingResources: mode,
 	})
 	if err != nil {
-		if errors.Is(err, store.ErrConflict) {
-			if existing, getErr := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, req.Source.Repo, branch); getErr == nil {
-				return BlueprintPlanResult{}, errBlueprintAlreadyConnected(existing)
-			}
-		}
 		return BlueprintPlanResult{}, err
 	}
-	// A revived row keeps its sync history: its planned sync marks where this
-	// connection's history begins, as the legacy create's run does (w4/120).
-	note := ""
-	if prior != nil {
-		note = reconnectionNote(req.Source.Repo, branch)
-	}
 	created := b
-	result, err := s.planBlueprintSync(ctx, plans, &b, contents, commitSHA, note)
+	result, err := s.planBlueprintSync(ctx, plans, &b, contents, commitSHA)
 	if err != nil {
 		// The create is all-or-nothing: a plan that could not be made (not
 		// one that found problems in the file, which is recorded) leaves no
-		// new or revived row behind, so retrying the create is not refused
-		// as a conflict with itself (w2/m256 t014).
-		if undoErr := plans.UndoPlannedBlueprintCreate(context.WithoutCancel(ctx), created, prior); undoErr != nil {
+		// row behind (w2/m256 t014).
+		if undoErr := plans.UndoPlannedBlueprintCreate(context.WithoutCancel(ctx), created); undoErr != nil {
 			return BlueprintPlanResult{}, errors.Join(err, fmt.Errorf("undo the Blueprint create: %w", undoErr))
 		}
 		return BlueprintPlanResult{}, err
@@ -288,9 +275,9 @@ func (s *Service) PlanBlueprint(ctx context.Context, bpID, ownerID string) (Blue
 	contents, commitSHA, _, fetchErr := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, b.Repo, b.Branch, b.Path)
 	if fetchErr != nil {
 		_, message := classifyBlueprintFetchError(fetchErr, b.Path, b.Branch)
-		return s.recordFailedPlan(ctx, plans, b, commitSHA, "", []BlueprintNotice{{Severity: "error", Message: message}})
+		return s.recordFailedPlan(ctx, plans, b, commitSHA, []BlueprintNotice{{Severity: "error", Message: message}})
 	}
-	return s.planBlueprintSync(ctx, plans, &b, contents, commitSHA, "")
+	return s.planBlueprintSync(ctx, plans, &b, contents, commitSHA)
 }
 
 // planBlueprintSync validates manifest against the resources the workspace has
@@ -300,8 +287,7 @@ func (s *Service) PlanBlueprint(ctx context.Context, bpID, ownerID string) (Blue
 // no resource would change, nothing to approve: a waiting plan is superseded
 // and a `created` Blueprint is in sync (*b is updated to match), so a manual
 // sync or auto-sync can run it from then on (w2/m256 t014).
-// note is recorded on the sync row it writes ("" for none).
-func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStore, b *store.Blueprint, manifest, commitSHA, note string) (BlueprintPlanResult, error) {
+func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStore, b *store.Blueprint, manifest, commitSHA string) (BlueprintPlanResult, error) {
 	validation, err := s.blueprintValidationFor(ctx, b.Repo, b.Branch, manifest, b.ID)
 	if err != nil {
 		return BlueprintPlanResult{}, err
@@ -311,7 +297,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 		for _, e := range validation.Errors {
 			notices = append(notices, BlueprintNotice{Severity: "error", Message: e.Error, Path: e.Path, Line: e.Line, Column: e.Column})
 		}
-		return s.recordFailedPlan(ctx, plans, *b, commitSHA, note, notices)
+		return s.recordFailedPlan(ctx, plans, *b, commitSHA, notices)
 	}
 	// Only a plan against the workspace's current resources can say what
 	// would change; a structural plan (state unreadable) cannot.
@@ -351,7 +337,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	}
 	now := s.Now().UTC()
 	planned, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
-		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateCreated, StartedAt: now, Note: note},
+		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateCreated, StartedAt: now},
 		Path:          b.Path, RequiredManualEnvVars: rawRequired, PlanActions: rawActions,
 	})
 	if err != nil {
@@ -361,7 +347,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 }
 
 // recordFailedPlan persists a planning failure as an error sync.
-func (s *Service) recordFailedPlan(ctx context.Context, plans blueprintPlanStore, b store.Blueprint, commitSHA, note string, notices []BlueprintNotice) (BlueprintPlanResult, error) {
+func (s *Service) recordFailedPlan(ctx context.Context, plans blueprintPlanStore, b store.Blueprint, commitSHA string, notices []BlueprintNotice) (BlueprintPlanResult, error) {
 	messages := make([]string, 0, len(notices))
 	for _, n := range notices {
 		messages = append(messages, n.Message)
@@ -370,7 +356,7 @@ func (s *Service) recordFailedPlan(ctx context.Context, plans blueprintPlanStore
 	now := s.Now().UTC()
 	failed, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
 		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateError,
-			StartedAt: now, CompletedAt: &now, ErrorMessage: &summary, Note: note},
+			StartedAt: now, CompletedAt: &now, ErrorMessage: &summary},
 		Path: b.Path,
 	})
 	if err != nil {

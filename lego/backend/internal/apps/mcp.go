@@ -447,9 +447,10 @@ type previewBlueprintArgs struct {
 	Repo   string `json:"repo" jsonschema:"Git repo URL (https://github.com/org/repo)"`
 	Branch string `json:"branch,omitempty" jsonschema:"branch holding render.yaml (default: the repository's default branch)"`
 	Path   string `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
-	// blueprintId previews on behalf of an existing blueprint, so its own
-	// repo+branch is not reported as a connection conflict (w4/m125).
+	// blueprintId previews on behalf of an existing blueprint, in its own mode.
 	BlueprintID string `json:"blueprintId,omitempty" jsonschema:"preview on behalf of this existing blueprint (exs-…, or the legacy blp-…); omit when previewing before a create"`
+	// existingResources is the mode a not-yet-created Blueprint is reviewed in (w8/m153).
+	ExistingResources string `json:"existingResources,omitempty" jsonschema:"review a not-yet-created Blueprint as adopt (the default: manage the resources the file names) or create_new (a separate set whose names carry a suffix; the review shows one as resourceSuffix, and create_blueprint assigns its own)"`
 }
 
 // generateBlueprintArgs is generate_blueprint's input (w8/m22 + w4/040).
@@ -1037,9 +1038,10 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "preview_blueprint",
-		Description: "Fetch a repo's render.yaml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Empty path discovers render.yaml first, then the legacy bex.yml alias (with a warning); both files require an explicit path. Returns {found, manifest?, commitId?, warning?, error?, validation?: {valid, errors, plan, estimatedPricing?}}; estimatedPricing is the always-on monthly cost projection on bex's price sheet. A missing file reports found=false with the fetch error instead of failing. bex extension.",
+		Description: "Fetch a repo's render.yaml and dry-run validate it WITHOUT creating anything — the pre-flight for create_blueprint. Empty path discovers render.yaml first, then the legacy bex.yml alias (with a warning); both files require an explicit path. Returns {found, manifest?, commitId?, warning?, error?, existingResources?, resourceSuffix?, matchedResources?: [{kind, name}], validation?: {valid, errors, plan, estimatedPricing?}}; matchedResources are the declared resources whose names already exist in the workspace: adopt (the default) would manage those, and existingResources create_new reviews a separate set under an example resourceSuffix instead (create_blueprint assigns the real one); estimatedPricing is the always-on monthly cost projection on bex's price sheet. A missing file reports found=false with the fetch error instead of failing. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in previewBlueprintArgs) (*mcp.CallToolResult, BlueprintPreview, error) {
-		p, err := s.PreviewBlueprint(ctx, core.NamedWorkspace(ctx), in.Repo, in.Branch, in.Path, in.BlueprintID)
+		p, err := s.previewBlueprintWith(ctx, core.NamedWorkspace(ctx), in.Repo, in.Branch, in.Path,
+			blueprintPreviewOptions{ForBlueprintID: in.BlueprintID, ExistingResources: in.ExistingResources})
 		return nil, p, err
 	})
 

@@ -22,6 +22,17 @@ export type BlueprintCreateActionResult =
   | BlueprintConfirmationRequired
   | { status: "error" };
 
+/**
+ * Render's existingResources "create_new" (w8/m153): the Blueprint gets its
+ * own set of resources, each name carrying the suffix the preview reviewed, and
+ * the workspace's existing resources are left as they are.
+ */
+interface BlueprintCreateAsNew {
+  existingResources: "create_new";
+  /** null lets bex-api choose the suffix. */
+  resourceSuffix: string | null;
+}
+
 export interface UseCreateBlueprintResult {
   create: (
     repo: string,
@@ -30,6 +41,8 @@ export interface UseCreateBlueprintResult {
     name: string,
     confirmation?: string,
     envVarValues?: BlueprintEnvVarValueInput[],
+    /** Omitted: the Blueprint manages the names its file gives. */
+    asNew?: BlueprintCreateAsNew,
   ) => Promise<BlueprintCreateActionResult>;
   busy: boolean;
 }
@@ -49,6 +62,7 @@ export function useCreateBlueprint(): UseCreateBlueprintResult {
       name: string,
       confirmation?: string,
       envVarValues?: BlueprintEnvVarValueInput[],
+      asNew?: BlueprintCreateAsNew,
     ): Promise<BlueprintCreateActionResult> => {
       setBusy(true);
       try {
@@ -62,6 +76,8 @@ export function useCreateBlueprint(): UseCreateBlueprintResult {
               confirm: confirmation,
               ownerId: currentWorkspaceId,
               envVarValues: envVarValues?.length ? envVarValues : undefined,
+              existingResources: asNew?.existingResources,
+              resourceSuffix: asNew?.resourceSuffix ?? undefined,
             },
           }),
         );

@@ -86,13 +86,13 @@ type fakeBlueprintStore struct {
 	// the store-outage cases (w8/m36 t004, w8/m37 t002 admission/completion).
 	insertSyncErr error
 	updateSyncErr error
-	// getByRepoErr makes the repo+branch lookup fail, for the w4/m125 test that
-	// an unreadable blueprint table refuses the create instead of reading as
-	// "nothing is connected".
-	getByRepoErr error
-	// connectionStart is, per revived Blueprint, the insertedSyncs index its
-	// current connection's history starts at (the PG store resets created_at).
-	connectionStart map[string]int
+	// plannedCreates counts CreatePlannedBlueprint calls, for ids and suffixes
+	// that stay distinct after an undone create.
+	plannedCreates int
+	// createRetryErr makes the create-retry lookup fail, for the test that an
+	// unreadable blueprint table refuses the create instead of reading as "a
+	// new Blueprint" (w4/m125's fail-closed rule, kept by w8/m153).
+	createRetryErr error
 }
 
 func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {
@@ -107,26 +107,53 @@ func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {
 	return f
 }
 
+// pushTriggeredSync syncs one Blueprint the way a push does: no caller
+// identity, the acting tenant taken from the Blueprint's own row (w1/m69), as
+// BlueprintAutoSyncWorker.process builds it. A Blueprint is named by its id:
+// several may track one repo and branch (w8/m153).
+func pushTriggeredSync(ctx context.Context, s *Service, tenantID, blueprintID string) {
+	b, err := s.Blueprints.GetBlueprint(ctx, blueprintID, tenantID)
+	if err != nil || !b.AutoSync {
+		return
+	}
+	ctx = core.WithBlueprintSync(core.WithActingTenant(ctx, b.TenantID))
+	_, _ = s.runSync(ctx, b, "", "", nil, nil)
+}
+
 // fakeBusy is the fake's lost-execution signal, errors.Is-compatible with the
 // store sentinel the service maps to BLUEPRINT_SYNC_BUSY.
 func fakeBusy() error { return store.ErrBlueprintSyncBusy }
 
-// The fake mirrors the store's conflict contract (w8/m37 t005): an existing
-// row refreshes its manifest only — settings and status survive.
+// The fake mirrors the store's registration contract (w8/m37 t005, w8/m153):
+// the oldest live Blueprint of the source that manages unsuffixed resources
+// refreshes its manifest only — settings and status survive — and a source
+// whose unsuffixed Blueprint was deleted is not registered again.
 func (f *fakeBlueprintStore) UpsertBlueprint(_ context.Context, b store.Blueprint) (store.Blueprint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for id, existing := range f.blueprints {
-		if existing.TenantID == b.TenantID && existing.Repo == b.Repo && existing.Branch == b.Branch {
-			// Mirrors the store: the conflict arm refuses disconnected rows
-			// (no revival, no insert — the unique key still collides).
-			if existing.Status == "disconnected" {
-				return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
-			}
-			existing.Manifest = b.Manifest
-			f.blueprints[id] = existing
-			return existing, nil
+	var target *store.Blueprint
+	deleted := false
+	for _, existing := range f.blueprints {
+		if existing.TenantID != b.TenantID || existing.Repo != b.Repo || existing.Branch != b.Branch || existing.ResourceSuffix != "" {
+			continue
 		}
+		if existing.Status == "disconnected" {
+			deleted = true
+			continue
+		}
+		if target == nil || existing.CreatedAt.Before(target.CreatedAt) ||
+			(existing.CreatedAt.Equal(target.CreatedAt) && existing.ID < target.ID) {
+			e := existing
+			target = &e
+		}
+	}
+	if target != nil {
+		target.Manifest = b.Manifest
+		f.blueprints[target.ID] = *target
+		return *target, nil
+	}
+	if deleted {
+		return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
 	}
 	if b.ID == "" {
 		b.ID = fmt.Sprintf("blp-fake-%d", len(f.blueprints))
@@ -155,18 +182,54 @@ func (f *fakeBlueprintStore) BlueprintWorkspace(_ context.Context, id string) (s
 	return b.TenantID, nil
 }
 
-func (f *fakeBlueprintStore) GetBlueprintByRepo(_ context.Context, tenantID, repo, branch string) (store.Blueprint, error) {
+func (f *fakeBlueprintStore) BlueprintCreateRetry(_ context.Context, tenantID, repo, branch, path, mode string) (store.Blueprint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	if f.getByRepoErr != nil {
-		return store.Blueprint{}, f.getByRepoErr
+	if f.createRetryErr != nil {
+		return store.Blueprint{}, f.createRetryErr
 	}
-	for _, b := range f.blueprints {
-		if b.TenantID == tenantID && b.Repo == repo && b.Branch == branch && b.Status != "disconnected" {
-			return b, nil
-		}
+	if b, ok := f.createRetryLocked(tenantID, repo, branch, path, mode); ok {
+		return b, nil
 	}
 	return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
+}
+
+// createRetryLocked mirrors the store's blueprintCreateRetryWhere: the newest
+// live Blueprint of this file and mode that is applying or failed and that no
+// run has brought in sync.
+func (f *fakeBlueprintStore) createRetryLocked(tenantID, repo, branch, path, mode string) (store.Blueprint, bool) {
+	if mode == "" {
+		mode = store.BlueprintExistingAdopt
+	}
+	var best store.Blueprint
+	found := false
+	for _, b := range f.blueprints {
+		existing := b.ExistingResources
+		if existing == "" {
+			existing = store.BlueprintExistingAdopt
+		}
+		if b.TenantID != tenantID || b.Repo != repo || b.Branch != branch || b.Path != path || existing != mode {
+			continue
+		}
+		switch b.Status {
+		case store.BlueprintStatusSyncing, store.BlueprintStatusError, store.BlueprintStatusPaused:
+		default:
+			continue
+		}
+		// A successful run, or any planned one (Render's create), rules it out.
+		settled := false
+		for id, run := range f.syncs {
+			_, planned := f.planned[id]
+			settled = settled || (run.BlueprintID == b.ID && (run.State == store.BlueprintSyncStateSuccess || planned))
+		}
+		if settled {
+			continue
+		}
+		if !found || b.CreatedAt.After(best.CreatedAt) || (b.CreatedAt.Equal(best.CreatedAt) && b.ID > best.ID) {
+			best, found = b, true
+		}
+	}
+	return best, found
 }
 
 func (f *fakeBlueprintStore) ListBlueprints(_ context.Context, tenantID string) ([]store.Blueprint, error) {
@@ -539,53 +602,51 @@ func (f *fakeBlueprintStore) SetBlueprintSyncNote(_ context.Context, runID, note
 	return nil
 }
 
-func (f *fakeBlueprintStore) AdmitBlueprintCreate(_ context.Context, b store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, bool, error) {
+// AdmitBlueprintCreate mirrors the store (w8/m153): a new row, or the retry of
+// the row BlueprintCreateRetry named; anything else is busy.
+func (f *fakeBlueprintStore) AdmitBlueprintCreate(_ context.Context, b store.Blueprint, run store.BlueprintSync, retryOf string) (store.Blueprint, store.BlueprintSync, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.insertSyncErr != nil {
-		return store.Blueprint{}, store.BlueprintSync{}, false, f.insertSyncErr
+		return store.Blueprint{}, store.BlueprintSync{}, f.insertSyncErr
 	}
 	if run.ID == "" {
 		run.ID = fmt.Sprintf("bsr-fake-%d", len(f.insertedSyncs))
 	}
-	for id, existing := range f.blueprints {
-		if existing.TenantID == b.TenantID && existing.Repo == b.Repo && existing.Branch == b.Branch {
-			if existing.ActiveRunID != "" {
-				return store.Blueprint{}, store.BlueprintSync{}, false, fakeBusy()
-			}
-			// w4/120: reviving a disconnected row is a NEW connection, so it
-			// gets a new created_at; re-applying a live row keeps its own.
-			revived := existing.Status == "disconnected"
-			if revived {
-				existing.CreatedAt = time.Now().UTC()
-			}
-			existing.Name = b.Name
-			existing.Path = b.Path
-			existing.AutoSync = b.AutoSync
-			existing.Manifest = b.Manifest
-			existing.Status = store.BlueprintStatusSyncing
-			existing.ExecutionGeneration++
-			existing.ActiveRunID = run.ID
-			f.blueprints[id] = existing
-			run.BlueprintID = existing.ID
-			run.ExecutionGeneration = existing.ExecutionGeneration
-			f.syncs[run.ID] = run
-			f.insertedSyncs = append(f.insertedSyncs, run)
-			return existing, run, revived, nil
+	if b.ExistingResources == "" {
+		b.ExistingResources = store.BlueprintExistingAdopt
+	}
+	target, _ := f.createRetryLocked(b.TenantID, b.Repo, b.Branch, b.Path, b.ExistingResources)
+	if target.ID != retryOf {
+		return store.Blueprint{}, store.BlueprintSync{}, fakeBusy()
+	}
+	if retryOf != "" {
+		if target.ActiveRunID != "" {
+			return store.Blueprint{}, store.BlueprintSync{}, fakeBusy()
 		}
+		// A retry writes what a sync writes; name and auto-sync are the row's.
+		target.Manifest = b.Manifest
+		target.Status = store.BlueprintStatusSyncing
+		target.ExecutionGeneration++
+		target.ActiveRunID = run.ID
+		b = target
+	} else {
+		if b.ID == "" {
+			b.ID = fmt.Sprintf("blp-fake-%d", len(f.blueprints))
+		}
+		if b.CreatedAt.IsZero() {
+			b.CreatedAt = time.Now().UTC()
+		}
+		b.Status = store.BlueprintStatusSyncing
+		b.ExecutionGeneration = 1
+		b.ActiveRunID = run.ID
 	}
-	if b.ID == "" {
-		b.ID = fmt.Sprintf("blp-fake-%d", len(f.blueprints))
-	}
-	b.Status = store.BlueprintStatusSyncing
-	b.ExecutionGeneration = 1
-	b.ActiveRunID = run.ID
 	f.blueprints[b.ID] = b
 	run.BlueprintID = b.ID
-	run.ExecutionGeneration = 1
+	run.ExecutionGeneration = b.ExecutionGeneration
 	f.syncs[run.ID] = run
 	f.insertedSyncs = append(f.insertedSyncs, run)
-	return b, run, false, nil
+	return b, run, nil
 }
 
 func (f *fakeBlueprintStore) StageBlueprintManifest(_ context.Context, id, tenantID string, generation int64, runID, manifest string) (store.Blueprint, error) {
@@ -2472,9 +2533,10 @@ func TestBlueprintDisconnectedReadsAsAbsent(t *testing.T) {
 	}
 }
 
-// TestBlueprintRecreationFencesOldExecution pins t001/t003: explicit creation
-// over a disconnected source deliberately re-establishes the row under a fresh
-// generation, and the older generation can never complete or apply again.
+// TestBlueprintRecreationFencesOldExecution pins w8/m37 t001/t003 under
+// w8/m153's identity rule: a create after a disconnect is a new Blueprint with
+// its own id and generation, the disconnected row is never re-established, and
+// nothing admitted before the disconnect can complete or apply again.
 func TestBlueprintRecreationFencesOldExecution(t *testing.T) {
 	ws := fakeWorkspace{"user-a": "tea-a"}
 	fs := newFakeBlueprintStore()
@@ -2496,27 +2558,37 @@ func TestBlueprintRecreationFencesOldExecution(t *testing.T) {
 	}
 	second, err := svc.CreateBlueprint(ctx, "tea-a", create)
 	if err != nil {
-		t.Fatalf("re-create over disconnected source: %v", err)
+		t.Fatalf("create after the disconnect: %v", err)
 	}
-	if second.ID != first.ID {
-		t.Fatalf("re-create id = %q, want the same row %q re-established", second.ID, first.ID)
+	if second.ID == first.ID {
+		t.Fatalf("create after the disconnect reused the disconnected row %q", first.ID)
 	}
-	gen := fs.blueprints[first.ID].ExecutionGeneration
-	if gen < 3 {
-		t.Fatalf("execution generation = %d, want ≥3 (create, disconnect, re-create)", gen)
+	if stored := fs.blueprints[first.ID]; stored.Status != "disconnected" {
+		t.Fatalf("the disconnected row reads %q after the new create, want it left disconnected", stored.Status)
 	}
-	// The pre-disconnect generation cannot complete anything anymore.
+	// The pre-disconnect run cannot complete anything anymore, under its own
+	// generation or any other: its Blueprint is gone for good.
 	completedAt := time.Now().UTC()
-	if _, err := fs.CompleteBlueprintSync(ctx, first.ID, "tea-a", fs.insertedSyncs[0].ID, 1, store.BlueprintSyncStateSuccess, completedAt, nil); !errors.Is(err, store.ErrBlueprintSyncBusy) {
-		t.Fatalf("stale-generation completion = %v, want busy", err)
+	firstRun := fs.insertedSyncs[0]
+	for _, generation := range []int64{firstRun.ExecutionGeneration, fs.blueprints[first.ID].ExecutionGeneration} {
+		if _, err := fs.CompleteBlueprintSync(ctx, first.ID, "tea-a", firstRun.ID, generation, store.BlueprintSyncStateSuccess, completedAt, nil); !errors.Is(err, store.ErrBlueprintSyncBusy) {
+			t.Fatalf("completion on the disconnected Blueprint at generation %d = %v, want busy", generation, err)
+		}
+	}
+	// Nor can it complete against the new Blueprint, which never admitted it.
+	if _, err := fs.CompleteBlueprintSync(ctx, second.ID, "tea-a", firstRun.ID, firstRun.ExecutionGeneration, store.BlueprintSyncStateSuccess, completedAt, nil); !errors.Is(err, store.ErrBlueprintSyncBusy) {
+		t.Fatalf("the old run completing against the new Blueprint = %v, want busy", err)
 	}
 	// A terminal run cannot be resurrected by completing it again.
 	lastRun := fs.insertedSyncs[len(fs.insertedSyncs)-1]
-	if _, err := fs.CompleteBlueprintSync(ctx, first.ID, "tea-a", lastRun.ID, lastRun.ExecutionGeneration, store.BlueprintSyncStateSuccess, completedAt, nil); !errors.Is(err, store.ErrBlueprintSyncBusy) {
+	if lastRun.BlueprintID != second.ID {
+		t.Fatalf("the new create's run belongs to %q, want the new Blueprint %q", lastRun.BlueprintID, second.ID)
+	}
+	if _, err := fs.CompleteBlueprintSync(ctx, second.ID, "tea-a", lastRun.ID, lastRun.ExecutionGeneration, store.BlueprintSyncStateSuccess, completedAt, nil); !errors.Is(err, store.ErrBlueprintSyncBusy) {
 		t.Fatalf("second completion of a terminal run = %v, want busy", err)
 	}
-	if stored := fs.blueprints[first.ID]; stored.Status == "disconnected" {
-		t.Fatalf("re-created blueprint reads disconnected")
+	if stored := fs.blueprints[second.ID]; stored.Status == "disconnected" {
+		t.Fatalf("the new blueprint reads disconnected")
 	}
 }
 
@@ -3715,13 +3787,13 @@ func TestBlueprintAutoSyncPreservesTenantContext(t *testing.T) {
 	}
 
 	// CR half (w1/m69): the raw webhook ctx still resolves NO tenant — that is
-	// precisely the gap — so triggerBlueprintSync binds the acting tenant from
-	// the blueprint row before the apply runs (core.WithActingTenant; unit-
+	// precisely the gap — so the push-triggered sync binds the acting tenant
+	// from the blueprint row before the apply runs (core.WithActingTenant; unit-
 	// tested in core's workspace tests). The proof here is the created CRs:
 	// they must be tenant-attributed, not the pre-fix unlabeled shared-ns
 	// workload.
 
-	svc.triggerBlueprintSync(bgCtx, tenantID, "https://github.com/a/app", "main")
+	pushTriggeredSync(bgCtx, svc, tenantID, "blp-1")
 
 	for _, name := range []string{"web", "api", "worker"} {
 		var a appv1alpha1.App

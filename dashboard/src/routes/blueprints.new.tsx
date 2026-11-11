@@ -43,6 +43,7 @@ import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-p
 import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
 import { BlueprintErrorList } from "@/features/blueprints/components/blueprint-error-list";
 import { BlueprintConfirmationDialog } from "@/features/blueprints/components/blueprint-confirmation-dialog";
+import { blueprintKindLabel } from "@/features/blueprints/lib/kind-labels";
 import {
   isTakeoverOnlyConflict,
   type BlueprintConfirmationRequired,
@@ -98,7 +99,7 @@ export function NewBlueprintPage() {
     linked && linkSearch.path ? linkSearch.path : "render.yaml",
   );
   // The server's refusal awaiting its phrase: a protected environment, or a
-  // Blueprint takeover that names what it replaces.
+  // takeover of a resource another Blueprint manages.
   const [pendingConfirmation, setPendingConfirmation] =
     useState<BlueprintConfirmationRequired | null>(null);
   // sync:false prompt values, keyed by env var name. Secrets: kept only in
@@ -118,6 +119,7 @@ export function NewBlueprintPage() {
     loading: previewLoading,
     error: previewError,
     refetch: refetchPreview,
+    matchesExisting,
   } = useBlueprintPreview(sourceRepo, branch.trim(), path.trim());
 
   // Auto-fill name + branch from the selected source while the user hasn't
@@ -168,6 +170,11 @@ export function NewBlueprintPage() {
   );
 
   const sourceValid = sourceRepo !== "";
+  // Render's creation flow (w8/m153): a file whose resources already exist in
+  // the workspace was reviewed as a separate set under a name suffix. Deploy
+  // creates what was reviewed, so it sends that mode and that suffix.
+  const reviewedAsNew =
+    preview?.existingResources === "create_new" ? preview : null;
   // Render parity: Deploy stays disabled until the file fetches + parses. A
   // transport-level preview failure does not block — the backend re-validates
   // on create anyway.
@@ -198,6 +205,15 @@ export function NewBlueprintPage() {
       name.trim(),
       confirmation,
       suppliedValues,
+      // When the suffixed review could not be loaded, the create still makes
+      // a separate set, under a suffix bex-api chooses: it must never manage
+      // the existing resources the first review found.
+      reviewedAsNew || matchesExisting
+        ? {
+            existingResources: "create_new",
+            resourceSuffix: reviewedAsNew?.resourceSuffix ?? null,
+          }
+        : undefined,
     );
     if (result.status === "confirmation_required") {
       setPendingConfirmation(result);
@@ -284,6 +300,37 @@ export function NewBlueprintPage() {
         };
     }
   })();
+
+  const matchNotice = reviewedAsNew ? (
+    <Alert role="status">
+      <AlertTitle>{t("blueprints.previewMatchTitle")}</AlertTitle>
+      <AlertDescription>
+        <p>
+          {t("blueprints.previewMatchBody", {
+            suffix: reviewedAsNew.resourceSuffix ?? "",
+          })}
+        </p>
+        {reviewedAsNew.matchedResources.length > 0 ? (
+          <>
+            <p className="mt-2">{t("blueprints.previewMatchListLabel")}</p>
+            <ul className="space-y-1">
+              {reviewedAsNew.matchedResources.map((resource) => {
+                const kind = blueprintKindLabel(resource.kind);
+                return (
+                  <li key={`${resource.kind}:${resource.name}`}>
+                    <span className="font-medium">{resource.name}</span>
+                    {kind ? (
+                      <span className="ml-2 text-xs">{t(kind)}</span>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        ) : null}
+      </AlertDescription>
+    </Alert>
+  ) : null;
 
   return (
     <DashboardLayout>
@@ -432,29 +479,33 @@ export function NewBlueprintPage() {
                     </Alert>
                   ) : preview && !preview.found ? null : preview &&
                     preview.validation?.valid !== true ? (
-                    <Alert variant="destructive">
-                      <AlertTitle>
-                        {t(
-                          previewConflictOnly
-                            ? "blueprints.previewConflict"
-                            : "blueprints.previewInvalid",
-                        )}
-                      </AlertTitle>
-                      <AlertDescription>
-                        {previewConflictOnly ? (
-                          // The raw refusal names API verbs (updateBlueprint,
-                          // confirm=…) no dashboard user can act on (w4/189).
-                          t("blueprints.previewConflictBody")
-                        ) : (
-                          <BlueprintErrorList
-                            errors={validationErrors}
-                            details={preview.validation?.errorDetails ?? []}
-                          />
-                        )}
-                      </AlertDescription>
-                    </Alert>
+                    <>
+                      {matchNotice}
+                      <Alert variant="destructive">
+                        <AlertTitle>
+                          {t(
+                            previewConflictOnly
+                              ? "blueprints.previewConflict"
+                              : "blueprints.previewInvalid",
+                          )}
+                        </AlertTitle>
+                        <AlertDescription>
+                          {previewConflictOnly ? (
+                            // The raw refusal names API verbs (confirm=…) no
+                            // dashboard user can act on (w4/189).
+                            t("blueprints.previewConflictBody")
+                          ) : (
+                            <BlueprintErrorList
+                              errors={validationErrors}
+                              details={preview.validation?.errorDetails ?? []}
+                            />
+                          )}
+                        </AlertDescription>
+                      </Alert>
+                    </>
                   ) : preview ? (
                     <>
+                      {matchNotice}
                       <BlueprintPlanSummary
                         plan={plan}
                         pricing={preview.validation?.estimatedPricing}

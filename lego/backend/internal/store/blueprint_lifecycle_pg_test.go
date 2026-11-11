@@ -132,8 +132,8 @@ func TestPGDisconnectedReadsAsAbsent(t *testing.T) {
 	if _, err := st.GetBlueprint(ctx, bp.ID, tenant.ID); !errors.Is(err, ErrNotFound) {
 		t.Errorf("get disconnected = %v, want not-found", err)
 	}
-	if _, err := st.GetBlueprintByRepo(ctx, tenant.ID, bp.Repo, bp.Branch); !errors.Is(err, ErrNotFound) {
-		t.Errorf("get-by-repo disconnected = %v, want not-found", err)
+	if _, err := st.BlueprintCreateRetry(ctx, tenant.ID, bp.Repo, bp.Branch, bp.Path, BlueprintExistingAdopt); !errors.Is(err, ErrNotFound) {
+		t.Errorf("create-retry lookup of a disconnected row = %v, want not-found", err)
 	}
 	inSync := BlueprintStatusInSync
 	if _, err := st.UpdateBlueprint(ctx, bp.ID, tenant.ID, nil, nil, nil, nil, &inSync, nil); !errors.Is(err, ErrNotFound) {
@@ -397,10 +397,10 @@ func TestPGCompleteProjection(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			// AdmitBlueprintCreate carries the requested automation flag.
-			bp, run, _, err := st.AdmitBlueprintCreate(ctx, Blueprint{
+			bp, run, err := st.AdmitBlueprintCreate(ctx, Blueprint{
 				TenantID: tenant.ID, Name: tc.name, Repo: "example/" + tc.name, Branch: "main",
 				Manifest: "services: []", AutoSync: tc.autoSync,
-			}, BlueprintSync{State: BlueprintSyncStateRunning, StartedAt: now})
+			}, BlueprintSync{State: BlueprintSyncStateRunning, StartedAt: now}, "")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -564,62 +564,296 @@ func TestPGAssertBlueprintExecution(t *testing.T) {
 	}
 }
 
-// TestPGCreatedAtIsTheConnectionsOwn is w4/120: disconnect is a soft-detach and
-// createBlueprint on the same repo+branch revives the row — deliberate since
-// w8/m37 — but `created_at` was simply absent from the upsert's DO UPDATE SET,
-// so a connection made seconds ago reported the age of whoever connected that
-// repo first. Live, a blueprint created in the same minute read `createdAt`
-// two days earlier, and the dashboard rendered it as "Created 1d".
-func TestPGCreatedAtIsTheConnectionsOwn(t *testing.T) {
+// TestPGCreateIsANewBlueprintExceptARetry is w8/m153's storage rule. Render:
+// "You can create multiple Blueprints from a single YAML file. Each Blueprint
+// creates and manages a completely independent set of resources." So a
+// one-step create of a source another Blueprint tracks is a new row with a new
+// id, and a deleted Blueprint's row is never brought back (it used to be
+// revived under its old id, w8/m37 and w4/120). The one reuse is a retry: a
+// create whose apply failed leaves its row, and repeating the create continues
+// on it instead of leaving a second half-made Blueprint.
+func TestPGCreateIsANewBlueprintExceptARetry(t *testing.T) {
 	st := openLifecyclePG(t)
-	tenant := lifecycleTenant(t, st, "createdat")
+	tenant := lifecycleTenant(t, st, "persource")
 	ctx := context.Background()
 	now := time.Now().UTC()
+	const repo, branch, path = "example/persource", "main", "render.yaml"
 
-	admit := func(name string) (Blueprint, bool) {
+	admit := func(name, mode, suffix, retryOf string) (Blueprint, BlueprintSync, error) {
 		t.Helper()
-		bp, run, revived, err := st.AdmitBlueprintCreate(ctx, Blueprint{
-			TenantID: tenant.ID, Name: name, Repo: "example/createdat", Branch: "main",
-			Path: "render.yaml", Manifest: "services: []", AutoSync: true,
-		}, BlueprintSync{State: BlueprintSyncStateRunning, StartedAt: now})
+		return st.AdmitBlueprintCreate(ctx, Blueprint{
+			TenantID: tenant.ID, Name: name, Repo: repo, Branch: branch, Path: path,
+			Manifest: "services: []", AutoSync: true, ExistingResources: mode, ResourceSuffix: suffix,
+		}, BlueprintSync{State: BlueprintSyncStateRunning, StartedAt: now}, retryOf)
+	}
+	settle := func(bp Blueprint, run BlueprintSync, state string) {
+		t.Helper()
+		if _, err := st.CompleteBlueprintSync(ctx, bp.ID, tenant.ID, run.ID, run.ExecutionGeneration, state, time.Now().UTC(), nil); err != nil {
+			t.Fatalf("settle %s as %s: %v", bp.Name, state, err)
+		}
+	}
+	retryTarget := func(mode string) string {
+		t.Helper()
+		b, err := st.BlueprintCreateRetry(ctx, tenant.ID, repo, branch, path, mode)
+		if errors.Is(err, ErrNotFound) {
+			return ""
+		}
 		if err != nil {
-			t.Fatalf("admit %s: %v", name, err)
+			t.Fatalf("create-retry lookup: %v", err)
 		}
-		// Release the claim so the next admission is not the busy case.
-		if _, err := st.CompleteBlueprintSync(ctx, bp.ID, tenant.ID, run.ID, run.ExecutionGeneration,
-			BlueprintSyncStateSuccess, time.Now().UTC(), nil); err != nil {
-			t.Fatalf("complete %s: %v", name, err)
-		}
-		return bp, revived
+		return b.ID
 	}
 
-	first, revived := admit("first")
-	if revived {
-		t.Fatal("a brand-new connection is not a revive")
+	first, firstRun, err := admit("first", "", "", "")
+	if err != nil {
+		t.Fatalf("first create: %v", err)
+	}
+	if first.ExistingResources != BlueprintExistingAdopt || first.ResourceSuffix != "" || first.ExecutionGeneration != 1 {
+		t.Fatalf("first = mode %q suffix %q generation %d, want adopt, no suffix, generation 1", first.ExistingResources, first.ResourceSuffix, first.ExecutionGeneration)
 	}
 
-	// Re-applying a LIVE row is not a new connection: it keeps its created_at.
-	reapplied, revived := admit("reapplied")
-	if revived {
-		t.Fatal("re-applying a live row is not a revive")
+	// While the first create applies, a second create of the same source is
+	// the same request sent twice: busy, whether or not it names the row.
+	if retryTarget(BlueprintExistingAdopt) != first.ID {
+		t.Fatalf("a create still applying is not the retry target")
 	}
-	if !reapplied.CreatedAt.Equal(first.CreatedAt) {
-		t.Fatalf("re-apply created_at = %v, want the row's own %v", reapplied.CreatedAt, first.CreatedAt)
+	if _, _, err := admit("double", "", "", ""); !errors.Is(err, ErrBlueprintSyncBusy) {
+		t.Fatalf("second create during the first's apply = %v, want ErrBlueprintSyncBusy", err)
+	}
+	if _, _, err := admit("double", "", "", first.ID); !errors.Is(err, ErrBlueprintSyncBusy) {
+		t.Fatalf("retry of a row still applying = %v, want ErrBlueprintSyncBusy", err)
 	}
 
-	// Disconnect, then connect again: a NEW connection on an old row.
+	// The apply fails: repeating the create continues on the same Blueprint.
+	settle(first, firstRun, BlueprintSyncStateError)
+	if got := retryTarget(BlueprintExistingAdopt); got != first.ID {
+		t.Fatalf("retry target after a failed create = %q, want %s", got, first.ID)
+	}
+	retried, retriedRun, err := admit("first again", "", "", first.ID)
+	if err != nil {
+		t.Fatalf("retry: %v", err)
+	}
+	// A retry writes what a sync writes: the row keeps its own name, which
+	// may have been changed since the failed attempt.
+	if retried.ID != first.ID || retried.ExecutionGeneration != first.ExecutionGeneration+1 || retried.Name != "first" ||
+		!retried.AutoSync || !retried.CreatedAt.Equal(first.CreatedAt) {
+		t.Fatalf("retry = id %s generation %d name %q autoSync %v created %v, want %s, a bumped generation and the row's own name, setting and created_at",
+			retried.ID, retried.ExecutionGeneration, retried.Name, retried.AutoSync, retried.CreatedAt, first.ID)
+	}
+	// A caller that did not look (or looked before the failure) is told to
+	// retry rather than given a second Blueprint beside the failed one.
+	settle(retried, retriedRun, BlueprintSyncStateError)
+	if _, _, err := admit("blind", "", "", ""); !errors.Is(err, ErrBlueprintSyncBusy) {
+		t.Fatalf("a create that ignores the retry target = %v, want ErrBlueprintSyncBusy", err)
+	}
+
+	// Once a sync has succeeded the Blueprint is established, and the same
+	// create is a second, independent Blueprint.
+	established, establishedRun, err := admit("first", "", "", first.ID)
+	if err != nil {
+		t.Fatalf("third attempt: %v", err)
+	}
+	settle(established, establishedRun, BlueprintSyncStateSuccess)
+	if got := retryTarget(BlueprintExistingAdopt); got != "" {
+		t.Fatalf("retry target after a successful sync = %q, want none", got)
+	}
+	if _, _, err := admit("stale", "", "", first.ID); !errors.Is(err, ErrBlueprintSyncBusy) {
+		t.Fatalf("retry naming a Blueprint that has synced = %v, want ErrBlueprintSyncBusy", err)
+	}
+	second, secondRun, err := admit("second", "", "", "")
+	if err != nil {
+		t.Fatalf("second Blueprint from the same source: %v", err)
+	}
+	if second.ID == first.ID || second.ExecutionGeneration != 1 {
+		t.Fatalf("second = id %s generation %d, want a new row at generation 1", second.ID, second.ExecutionGeneration)
+	}
+	settle(second, secondRun, BlueprintSyncStateSuccess)
+
+	// A create_new copy carries its own suffix and never retries an adopt row.
+	copyBP, copyRun, err := admit("copy", BlueprintExistingCreateNew, "ab12", "")
+	if err != nil {
+		t.Fatalf("create_new copy: %v", err)
+	}
+	if copyBP.ExistingResources != BlueprintExistingCreateNew || copyBP.ResourceSuffix != "ab12" {
+		t.Fatalf("copy = mode %q suffix %q, want create_new ab12", copyBP.ExistingResources, copyBP.ResourceSuffix)
+	}
+	settle(copyBP, copyRun, BlueprintSyncStateError)
+	if got := retryTarget(BlueprintExistingCreateNew); got != copyBP.ID {
+		t.Fatalf("create_new retry target = %q, want %s", got, copyBP.ID)
+	}
+	if got := retryTarget(BlueprintExistingAdopt); got != "" {
+		t.Fatalf("an adopt create would retry the create_new copy %q", got)
+	}
+	again, _, err := admit("copy", BlueprintExistingCreateNew, "zz99", copyBP.ID)
+	if err != nil {
+		t.Fatalf("create_new retry: %v", err)
+	}
+	if again.ID != copyBP.ID || again.ResourceSuffix != "ab12" {
+		t.Fatalf("create_new retry = id %s suffix %q, want %s keeping its suffix ab12", again.ID, again.ResourceSuffix, copyBP.ID)
+	}
+
+	// Deleting a Blueprint leaves its row disconnected; a later create is new.
 	if err := st.DisconnectBlueprint(ctx, first.ID, tenant.ID); err != nil {
 		t.Fatalf("disconnect: %v", err)
 	}
-	time.Sleep(10 * time.Millisecond)
-	revivedBP, revived := admit("revived")
-	if !revived {
-		t.Fatal("connecting over a disconnected row must report a revive")
+	// A retry that names the deleted row cannot bring it back.
+	if _, _, err := admit("zombie", "", "", first.ID); !errors.Is(err, ErrBlueprintSyncBusy) {
+		t.Fatalf("retry naming a deleted Blueprint = %v, want ErrBlueprintSyncBusy", err)
 	}
-	if revivedBP.ID != first.ID {
-		t.Fatalf("revive id = %s, want the same row %s — reviving is deliberate (w8/m37)", revivedBP.ID, first.ID)
+	third, _, err := admit("third", "", "", "")
+	if err != nil {
+		t.Fatalf("create after a delete: %v", err)
 	}
-	if !revivedBP.CreatedAt.After(first.CreatedAt) {
-		t.Fatalf("revived created_at = %v, want later than the previous connection's %v", revivedBP.CreatedAt, first.CreatedAt)
+	if third.ID == first.ID {
+		t.Fatalf("a create after a delete reused the deleted row %s", first.ID)
+	}
+	var status string
+	if err := st.Pool.QueryRow(ctx, `SELECT status FROM blueprints WHERE id = $1`, first.ID).Scan(&status); err != nil || status != "disconnected" {
+		t.Fatalf("deleted row status = %q err=%v, want disconnected", status, err)
+	}
+	listed, err := st.ListBlueprints(ctx, tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	live := map[string]bool{}
+	for _, b := range listed {
+		live[b.ID] = true
+	}
+	if len(live) != 3 || !live[second.ID] || !live[copyBP.ID] || !live[third.ID] {
+		t.Fatalf("live Blueprints for one source = %v, want the second, the copy and the third", live)
+	}
+}
+
+// A Blueprint that has ever been planned came from Render's create. Its failed
+// first sync is retried by planning again; a one-step create of the same file
+// must not take its row over.
+func TestPGPlannedBlueprintIsNeverACreateRetryTarget(t *testing.T) {
+	st := openLifecyclePG(t)
+	tenant := lifecycleTenant(t, st, "plannedretry")
+	ctx := context.Background()
+	now := time.Now().UTC()
+	const repo, commit = "example/plannedretry", "0123456789abcdef0123456789abcdef01234567"
+	planned, err := st.CreatePlannedBlueprint(ctx, Blueprint{TenantID: tenant.ID, Name: "planned", Repo: repo, Branch: "main", Path: "render.yaml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	plan, err := st.InsertPlannedBlueprintSync(ctx, PlannedBlueprintSync{
+		BlueprintSync: BlueprintSync{BlueprintID: planned.ID, CommitID: commit, State: BlueprintSyncStateCreated, StartedAt: now},
+		Path:          "render.yaml",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	admitted, run, err := st.AdmitBlueprintSyncRun(ctx, planned.ID, tenant.ID, BlueprintSync{ID: plan.ID, CommitID: commit, State: BlueprintSyncStateRunning, StartedAt: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	failed, err := st.CompleteBlueprintSync(ctx, admitted.ID, tenant.ID, run.ID, run.ExecutionGeneration, BlueprintSyncStateError, time.Now().UTC(), nil)
+	if err != nil || failed.Status != BlueprintStatusPaused && failed.Status != BlueprintStatusError {
+		t.Fatalf("the approved plan's failed sync left %+v (err %v), want the Blueprint failed", failed, err)
+	}
+	if got, err := st.BlueprintCreateRetry(ctx, tenant.ID, repo, "main", "render.yaml", BlueprintExistingAdopt); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("create-retry lookup = %s (err %v), want ErrNotFound for a planned Blueprint", got.ID, err)
+	}
+	created, _, err := st.AdmitBlueprintCreate(ctx, Blueprint{TenantID: tenant.ID, Name: "one-step", Repo: repo, Branch: "main", Path: "render.yaml",
+		Manifest: "services: []", AutoSync: true}, BlueprintSync{State: BlueprintSyncStateRunning, StartedAt: now}, "")
+	if err != nil || created.ID == planned.ID {
+		t.Fatalf("one-step create beside the failed planned Blueprint = %s (err %v), want a new Blueprint", created.ID, err)
+	}
+	var name string
+	if err := st.Pool.QueryRow(ctx, `SELECT name FROM blueprints WHERE id = $1`, planned.ID).Scan(&name); err != nil || name != "planned" {
+		t.Fatalf("the planned Blueprint's name = %q (err %v), want it untouched", name, err)
+	}
+}
+
+// TestPGDeployRegistrationPicksTheUnsuffixedBlueprint: a direct deploy applies
+// the manifest's own names, so with several Blueprints on one source it
+// refreshes the oldest live one that manages unsuffixed resources and leaves
+// create_new copies alone (w8/m153; the unique key used to make the choice).
+func TestPGDeployRegistrationPicksTheUnsuffixedBlueprint(t *testing.T) {
+	st := openLifecyclePG(t)
+	tenant := lifecycleTenant(t, st, "register")
+	ctx := context.Background()
+	const repo = "example/register"
+	register := func(manifest string) (Blueprint, error) {
+		return st.UpsertBlueprint(ctx, Blueprint{TenantID: tenant.ID, Name: "register", Repo: repo, Branch: "main",
+			AutoSync: true, Manifest: manifest, Status: BlueprintStatusInSync})
+	}
+	manifestOf := func(id string) string {
+		t.Helper()
+		var m string
+		if err := st.Pool.QueryRow(ctx, `SELECT manifest FROM blueprints WHERE id = $1`, id).Scan(&m); err != nil {
+			t.Fatal(err)
+		}
+		return m
+	}
+
+	copyBP, err := st.CreatePlannedBlueprint(ctx, Blueprint{TenantID: tenant.ID, Name: "copy", Repo: repo, Branch: "main", Path: "render.yaml",
+		ExistingResources: BlueprintExistingCreateNew})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Only a create_new copy exists: the deploy registers its own Blueprint.
+	first, err := register("v1")
+	if err != nil || first.ID == copyBP.ID || first.ResourceSuffix != "" {
+		t.Fatalf("first registration = %+v err=%v, want a new unsuffixed row beside the copy", first, err)
+	}
+	second, err := register("v2")
+	if err != nil || second.ID != first.ID || second.Manifest != "v2" {
+		t.Fatalf("second registration = %+v err=%v, want %s refreshed to v2", second, err, first.ID)
+	}
+	if got := manifestOf(copyBP.ID); got != "" {
+		t.Fatalf("the create_new copy's manifest = %q, want it untouched", got)
+	}
+	// Racing registrations of a new source insert one row, not one each.
+	const racers = 8
+	errs := make(chan error, racers)
+	for i := 0; i < racers; i++ {
+		go func() {
+			_, err := st.UpsertBlueprint(ctx, Blueprint{TenantID: tenant.ID, Name: "race", Repo: repo + "-race", Branch: "main",
+				AutoSync: true, Manifest: "race", Status: BlueprintStatusInSync})
+			errs <- err
+		}()
+	}
+	for i := 0; i < racers; i++ {
+		if err := <-errs; err != nil {
+			t.Fatalf("racing registration: %v", err)
+		}
+	}
+	var rows int
+	if err := st.Pool.QueryRow(ctx, `SELECT count(*) FROM blueprints WHERE tenant_id = $1 AND repo = $2`, tenant.ID, repo+"-race").Scan(&rows); err != nil || rows != 1 {
+		t.Fatalf("racing registrations left %d rows (err %v), want 1", rows, err)
+	}
+	// The deploy-registered Blueprint is deleted: a deploy does not bring a
+	// Blueprint for the source back.
+	if err := st.DisconnectBlueprint(ctx, first.ID, tenant.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := register("v3"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("registration after the delete = %v, want ErrNotFound", err)
+	}
+	if err := st.Pool.QueryRow(ctx, `SELECT count(*) FROM blueprints WHERE tenant_id = $1 AND repo = $2 AND status != 'disconnected'`, tenant.ID, repo).Scan(&rows); err != nil || rows != 1 {
+		t.Fatalf("live rows after the refused registration = %d (err %v), want only the copy", rows, err)
+	}
+}
+
+// TestPGBlueprintsPerSourceMigration: 0229 drops the one-per-source key.
+func TestPGBlueprintsPerSourceMigration(t *testing.T) {
+	st := openLifecyclePG(t)
+	ctx := context.Background()
+	var constraints, indexes int
+	if err := st.Pool.QueryRow(ctx, `SELECT count(*) FROM pg_constraint
+		WHERE conrelid = 'blueprints'::regclass AND contype = 'u'`).Scan(&constraints); err != nil {
+		t.Fatal(err)
+	}
+	if constraints != 0 {
+		t.Fatalf("blueprints still has %d unique constraint(s); 0229 removes the (tenant_id, repo, branch) key", constraints)
+	}
+	if err := st.Pool.QueryRow(ctx, `SELECT count(*) FROM pg_indexes
+		WHERE tablename = 'blueprints' AND indexname = 'blueprints_tenant_repo_branch'`).Scan(&indexes); err != nil {
+		t.Fatal(err)
+	}
+	if indexes != 1 {
+		t.Fatalf("the source lookup index is missing (found %d)", indexes)
 	}
 }

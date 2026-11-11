@@ -21,20 +21,22 @@ describe("ProtectedConfirmationDialog", () => {
   });
 
   // w4/189: a Blueprint takeover shares the typed-phrase contract but must say
-  // what it replaces, not that a protected environment was involved.
+  // what it transfers, not that a protected environment was involved.
   it("lets a takeover replace the title and body", () => {
     render(
       <ProtectedConfirmationDialog
         {...base}
         requiredConfirmation="takeover blueprint blp-1"
-        title="Replace Blueprint “bex”?"
-        description="“bex” already tracks render.yaml on bex-co/bex@main."
+        title="Take over “docs”?"
+        description="Service “docs” is managed by Blueprint blp-1."
       />,
     );
-    expect(screen.getByText("Replace Blueprint “bex”?")).toBeInTheDocument();
+    expect(screen.getByText("Take over “docs”?")).toBeInTheDocument();
     expect(
       screen.queryByText("Protected environment confirmation required"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText(/already tracks render.yaml/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/is managed by Blueprint blp-1/),
+    ).toBeInTheDocument();
   });
 });

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -11,6 +11,7 @@ import {
 import { NewBlueprintPage } from "../blueprints.new";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { BlueprintPreviewResult } from "@/features/blueprints/types";
+import i18n from "@/i18n/init";
 
 // --- git connection mock ---
 const connectionState: {
@@ -91,6 +92,14 @@ const previewState: {
 // query is then answered by `previewQuery`.
 const realPreview = { on: false };
 const previewQuery = vi.fn();
+// The hook holds two queries (w8/m153): the first review, and the second one a
+// file whose resources already exist gets, which alone names existingResources.
+const reviewCalls = (second: boolean) =>
+  previewQuery.mock.calls
+    .map(([, options]) => options)
+    .filter((options) => "existingResources" in options.variables === second);
+const firstReviewCalls = () => reviewCalls(false);
+const secondReviewCalls = () => reviewCalls(true);
 vi.mock(
   "@/features/blueprints/hooks/use-blueprint-preview",
   async (importOriginal) => {
@@ -148,6 +157,9 @@ function validPreview(): BlueprintPreviewResult {
     reason: null,
     retryable: false,
     error: null,
+    existingResources: "adopt",
+    resourceSuffix: null,
+    matchedResources: [],
     validation: {
       valid: true,
       errors: [],
@@ -163,6 +175,41 @@ function validPreview(): BlueprintPreviewResult {
         actions: null,
       },
       estimatedPricing: null,
+    },
+  };
+}
+
+/** What a preview that fetched no file carries for the w8/m153 fields. */
+const notReviewed = {
+  existingResources: null,
+  resourceSuffix: null,
+  matchedResources: [],
+};
+
+/**
+ * The review of a file whose resources already exist in the workspace
+ * (w8/m153): planned as a separate set, each name carrying the suffix.
+ */
+function matchedPreview(): BlueprintPreviewResult {
+  const preview = validPreview();
+  return {
+    ...preview,
+    existingResources: "create_new",
+    resourceSuffix: "ab12",
+    // Manifest kinds, as plan actions name them.
+    matchedResources: [
+      { kind: "service", name: "api" },
+      { kind: "postgres", name: "db" },
+      { kind: "key_value", name: "cache" },
+      { kind: "env_var_group", name: "shared" },
+    ],
+    validation: {
+      ...preview.validation!,
+      plan: {
+        ...preview.validation!.plan!,
+        services: ["api-ab12", "worker-ab12"],
+        databases: ["db-ab12"],
+      },
     },
   };
 }
@@ -311,6 +358,7 @@ describe("NewBlueprintPage", () => {
         reason,
         retryable,
         error: "github: unexpected status 404",
+        ...notReviewed,
         validation: null,
       };
       const user = userEvent.setup();
@@ -346,6 +394,7 @@ describe("NewBlueprintPage", () => {
       reason: "invalid_path",
       retryable: false,
       error: "Blueprint path must be a .yaml or .yml file",
+      ...notReviewed,
       validation: null,
     };
     const user = userEvent.setup();
@@ -381,6 +430,7 @@ describe("NewBlueprintPage", () => {
       reason: null,
       retryable: false,
       error: "anything",
+      ...notReviewed,
       validation: null,
     };
     const user = userEvent.setup();
@@ -407,11 +457,16 @@ describe("NewBlueprintPage", () => {
     expect(screen.getByText("api")).toBeInTheDocument();
     expect(screen.getByText("worker")).toBeInTheDocument();
     expect(screen.getByText("db")).toBeInTheDocument();
+    // Nothing in the workspace has these names: no notice (w8/m153)…
+    expect(
+      screen.queryByText("Matches existing resources"),
+    ).not.toBeInTheDocument();
 
     const deploy = screen.getByRole("button", { name: /deploy blueprint/i });
     expect(deploy).toBeEnabled();
     await user.click(deploy);
 
+    // …and the create names neither existingResources nor a suffix.
     expect(create).toHaveBeenCalledWith(
       "https://github.com/acme/hello-go.git",
       "main",
@@ -419,6 +474,7 @@ describe("NewBlueprintPage", () => {
       "hello-go",
       undefined,
       [],
+      undefined,
     );
     expect(await screen.findByText("blueprint detail")).toBeInTheDocument();
     expect(router.state.location.pathname).toBe("/blueprints/blp-new1");
@@ -444,9 +500,9 @@ describe("NewBlueprintPage", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("up to 100 characters");
   });
 
-  // w4/m125 + w5/m125: a preview whose only problems are takeover conflicts
-  // keeps Deploy reachable (the phrase arrives in the create's refusal), told
-  // apart by code; any other problem blocks it.
+  // w4/m125 + w5/m125: a preview whose only problems are resources another
+  // Blueprint manages keeps Deploy reachable (the phrase arrives in the
+  // create's refusal), told apart by code; any other problem blocks it.
   it.each([
     {
       name: "a takeover conflict keeps Deploy enabled",
@@ -487,6 +543,104 @@ describe("NewBlueprintPage", () => {
     else expect(deploy).toBeDisabled();
   });
 
+  // w8/m153, Render's creation flow: a file whose resources already exist in
+  // the workspace is created as a separate set, with no takeover dialog.
+  describe("a Blueprint that matches existing resources (w8/m153)", () => {
+    it("says so, lists them, and deploys a separate set under the reviewed suffix", async () => {
+      reposState.repos = [repo()];
+      previewState.preview = matchedPreview();
+      const user = userEvent.setup();
+      const router = renderPage();
+
+      await user.click(await screen.findByText("acme/hello-go"));
+
+      const notice = await screen.findByRole("status");
+      expect(notice).toHaveTextContent("Matches existing resources");
+      expect(notice).toHaveTextContent(
+        "This Blueprint matches resources that already exist in your workspace. New resources will be created with the suffix “-ab12” added to each name. The existing resources are not changed.",
+      );
+      // The existing resources, each with its kind.
+      const items = within(notice).getAllByRole("listitem");
+      expect(items.map((item) => item.textContent)).toEqual([
+        "apiService",
+        "dbPostgres",
+        "cacheKey Value",
+        "sharedEnvironment group",
+      ]);
+      // The plan under it is the suffixed one.
+      expect(screen.getByText("api-ab12")).toBeInTheDocument();
+      expect(screen.getByText("db-ab12")).toBeInTheDocument();
+
+      const deploy = screen.getByRole("button", { name: /deploy blueprint/i });
+      expect(deploy).toBeEnabled();
+      await user.click(deploy);
+
+      expect(create).toHaveBeenCalledWith(
+        "https://github.com/acme/hello-go.git",
+        "main",
+        "render.yaml",
+        "hello-go",
+        undefined,
+        [],
+        { existingResources: "create_new", resourceSuffix: "ab12" },
+      );
+      // Created outright: no confirmation stands between Deploy and the page.
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(await screen.findByText("blueprint detail")).toBeInTheDocument();
+      expect(router.state.location.pathname).toBe("/blueprints/blp-new1");
+    });
+
+    it("keeps the notice above the errors of a suffixed file that does not validate", async () => {
+      reposState.repos = [repo()];
+      const preview = matchedPreview();
+      const error = "services[0].name: api-ab12 is too long";
+      preview.validation = {
+        ...preview.validation!,
+        valid: false,
+        errors: [error],
+        errorDetails: [{ code: "", error, line: 0, column: 0, path: "" }],
+      };
+      previewState.preview = preview;
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(await screen.findByText("acme/hello-go"));
+
+      expect(await screen.findByRole("status")).toHaveTextContent("“-ab12”");
+      expect(screen.getByText("Blueprint file has errors")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /deploy blueprint/i }),
+      ).toBeDisabled();
+    });
+
+    it("reads in zh without English sentences", async () => {
+      reposState.repos = [repo()];
+      previewState.preview = matchedPreview();
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(await screen.findByText("acme/hello-go"));
+      const notice = await screen.findByRole("status");
+
+      try {
+        await act(() => i18n.changeLanguage("zh"));
+        expect(notice).toHaveTextContent("工作区中已有同名资源");
+        expect(notice).toHaveTextContent(
+          "此蓝图中的部分资源与工作区中已有的资源同名。部署时会新建资源，并在每个名称后加上后缀“-ab12”，已有的资源不会改动。",
+        );
+        expect(
+          within(notice)
+            .getAllByRole("listitem")
+            .map((item) => item.textContent),
+        ).toEqual(["api服务", "dbPostgres", "cacheKey Value", "shared环境组"]);
+        expect(notice.textContent).not.toMatch(
+          /matches|existing|suffix|workspace/i,
+        );
+      } finally {
+        await act(() => i18n.changeLanguage("en"));
+      }
+    });
+  });
+
   it("prompts for sync:false values and sends them as envVarValues", async () => {
     reposState.repos = [repo()];
     const preview = validPreview();
@@ -514,6 +668,7 @@ describe("NewBlueprintPage", () => {
       "hello-go",
       undefined,
       [{ key: "SMTP_PASSWORD", value: "s3cret" }],
+      undefined,
     );
   });
 
@@ -607,6 +762,7 @@ describe("NewBlueprintPage", () => {
       "public-app",
       undefined,
       [],
+      undefined,
     );
   });
 
@@ -636,6 +792,7 @@ describe("NewBlueprintPage", () => {
       "public-app",
       undefined,
       [],
+      undefined,
     );
   });
 
@@ -671,6 +828,7 @@ describe("NewBlueprintPage", () => {
       "public-app",
       undefined,
       [],
+      undefined,
     );
   });
 
@@ -734,11 +892,158 @@ describe("NewBlueprintPage first preview (w4/282)", () => {
       refetch: vi.fn(),
     });
     await waitFor(() =>
-      expect(previewQuery.mock.calls.at(-1)?.[1]).toMatchObject({
-        skip: false,
-      }),
+      expect(firstReviewCalls().at(-1)).toMatchObject({ skip: false }),
     );
     expect(deploy()).toBeDisabled();
+  });
+});
+
+// w8/m153, through the real preview hook: the first review reports that the
+// file's resources already exist, and the page then asks for, waits for, and
+// deploys the second review, the one planned under a name suffix.
+describe("NewBlueprintPage second review (w8/m153)", () => {
+  const review = (overrides: Record<string, unknown>) => ({
+    blueprintPreview: {
+      found: true,
+      branch: "main",
+      commitId: "abc1234",
+      error: null,
+      reason: null,
+      retryable: false,
+      existingResources: "adopt",
+      resourceSuffix: null,
+      matchedResources: [{ kind: "service", name: "api" }],
+      validation: {
+        valid: true,
+        errors: [],
+        errorDetails: [],
+        plan: {
+          mode: null,
+          services: ["api"],
+          databases: [],
+          keyValue: [],
+          envGroups: [],
+          syncFalseVars: null,
+          totalActions: 1,
+          actions: null,
+        },
+        estimatedPricing: null,
+      },
+      ...overrides,
+    },
+  });
+  const idle = {
+    data: undefined as unknown,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+  };
+
+  it("requests it with create_new, waits for it, then shows and deploys it", async () => {
+    realPreview.on = true;
+    reposState.repos = [repo()];
+    let second = { ...idle, loading: true };
+    previewQuery.mockImplementation((_document, options) =>
+      options.skip
+        ? idle
+        : options.variables.existingResources === "create_new"
+          ? second
+          : { ...idle, data: review({}) },
+    );
+    const user = userEvent.setup();
+    renderPage();
+    const deploy = () =>
+      screen.getByRole("button", { name: /deploy blueprint/i });
+
+    await user.click(await screen.findByText("acme/hello-go"));
+    await waitFor(() =>
+      expect(secondReviewCalls().at(-1)).toMatchObject({
+        skip: false,
+        variables: {
+          repo: "https://github.com/acme/hello-go.git",
+          branch: "main",
+          existingResources: "create_new",
+        },
+      }),
+    );
+    // The first review is on hand, and it is not what the page shows: its
+    // plan is the one that would change the existing resources.
+    expect(screen.getByText(/fetching render\.yaml/i)).toBeInTheDocument();
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByText(/parsed successfully/i)).not.toBeInTheDocument();
+    expect(deploy()).toBeDisabled();
+
+    const firstReview = review({}).blueprintPreview;
+    second = {
+      ...idle,
+      data: review({
+        existingResources: "create_new",
+        resourceSuffix: "ab12",
+        validation: {
+          ...firstReview.validation,
+          plan: { ...firstReview.validation.plan, services: ["api-ab12"] },
+        },
+      }),
+    };
+    // Any re-render picks the answer up; the name is not a preview input.
+    await user.type(screen.getByLabelText("Blueprint Name"), "2");
+
+    expect(await screen.findByRole("status")).toHaveTextContent("“-ab12”");
+    expect(screen.getByText("api-ab12")).toBeInTheDocument();
+    // The second review lists the same match, and asks for no third review.
+    expect(firstReviewCalls().length).toBe(secondReviewCalls().length);
+    expect(
+      secondReviewCalls().every(
+        (options) => options.variables.existingResources === "create_new",
+      ),
+    ).toBe(true);
+
+    await user.click(deploy());
+    expect(create).toHaveBeenCalledWith(
+      "https://github.com/acme/hello-go.git",
+      "main",
+      "render.yaml",
+      "hello-go2",
+      undefined,
+      [],
+      { existingResources: "create_new", resourceSuffix: "ab12" },
+    );
+  });
+
+  // The first review found matches and the second could not be loaded. Deploy
+  // stays available, as after any preview transport failure, and must still
+  // make a separate set: a plain create would manage the existing resources
+  // the page never got to warn about.
+  it("still creates a separate set when the second review cannot be loaded", async () => {
+    realPreview.on = true;
+    reposState.repos = [repo()];
+    previewQuery.mockImplementation((_document, options) =>
+      options.skip
+        ? idle
+        : options.variables.existingResources === "create_new"
+          ? { ...idle, error: new Error("network down") }
+          : { ...idle, data: review({}) },
+    );
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByText("acme/hello-go"));
+    await waitFor(() => expect(secondReviewCalls().length).toBeGreaterThan(0));
+    const deploy = screen.getByRole("button", { name: /deploy blueprint/i });
+    await waitFor(() => expect(deploy).toBeEnabled());
+    // Nothing was reviewed as a copy, so no suffix is shown or sent.
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+
+    await user.click(deploy);
+    expect(create).toHaveBeenCalledWith(
+      "https://github.com/acme/hello-go.git",
+      "main",
+      "render.yaml",
+      "hello-go",
+      undefined,
+      [],
+      { existingResources: "create_new", resourceSuffix: null },
+    );
   });
 });
 

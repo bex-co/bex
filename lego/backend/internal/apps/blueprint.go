@@ -49,7 +49,10 @@ type BlueprintStore interface {
 	// BlueprintWorkspace resolves the workspace owning a live Blueprint id —
 	// routing only; the caller authorizes against it (w4/m169).
 	BlueprintWorkspace(ctx context.Context, id string) (string, error)
-	GetBlueprintByRepo(ctx context.Context, tenantID, repo, branch string) (store.Blueprint, error)
+	// BlueprintCreateRetry returns the Blueprint a one-step create of this
+	// file and mode would retry — a live one no sync has brought in sync — or
+	// store.ErrNotFound when the create is a new Blueprint (w8/m153).
+	BlueprintCreateRetry(ctx context.Context, tenantID, repo, branch, path, mode string) (store.Blueprint, error)
 	// ListAutoSyncBlueprints returns auto-sync-enabled, non-disconnected
 	// Blueprints on branch (w8/m38). tenantScope "" = all workspaces;
 	// otherwise confine to that installation-bound workspace. Repo URL
@@ -76,13 +79,13 @@ type BlueprintStore interface {
 	// (disconnected between lookup and admission, or a lost admission race)
 	// report store.ErrBlueprintSyncBusy.
 	AdmitBlueprintSyncRun(ctx context.Context, blueprintID, tenantID string, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error)
-	// AdmitBlueprintCreate atomically upserts the row for explicit creation and
-	// claims its initial sync, reviving disconnected rows under a fresh
-	// generation (w8/m37 t001). A conflicting live claim reports
-	// store.ErrBlueprintSyncBusy.
-	// The bool reports that a DISCONNECTED row was revived — a new connection
-	// on an old row, which keeps its id and its sync history (w4/120).
-	AdmitBlueprintCreate(ctx context.Context, b store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, bool, error)
+	// AdmitBlueprintCreate atomically records an explicit one-step create and
+	// claims its initial sync (w8/m37 t001). It inserts a new Blueprint, or,
+	// when retryOf names BlueprintCreateRetry's answer, continues on that row
+	// under a bumped generation (w8/m153). store.ErrBlueprintSyncBusy reports
+	// a create of the same file already applying, or a retry target that
+	// changed since the caller looked.
+	AdmitBlueprintCreate(ctx context.Context, b store.Blueprint, run store.BlueprintSync, retryOf string) (store.Blueprint, store.BlueprintSync, error)
 	// SetBlueprintSyncNote annotates an already-admitted run (w4/120).
 	SetBlueprintSyncNote(ctx context.Context, runID, note string) error
 	// StageBlueprintManifest stores the admitted sync's preflighted manifest,
@@ -206,72 +209,6 @@ func matchReviewedBlueprintSource(b store.Blueprint, reviewed *ReviewedBlueprint
 			})
 	}
 	return nil
-}
-
-// errBlueprintAlreadyConnected is the documented 409 when a create names a
-// (repo, branch) a live blueprint in this workspace already tracks (w4/m125).
-//
-// The storage key is UNIQUE (tenant_id, repo, branch) and w8/m21 settled branch
-// as the read-only identity key with name and path editable, so one blueprint
-// per repo+branch is the design — this error is the design saying so. Before
-// it, the second create ran the upsert's conflict arm and returned the FIRST
-// blueprint's id carrying the second one's name, path and manifest: a
-// successful-looking create that destroyed a blueprint and orphaned its stack.
-//
-// Deliberately the same shape as BLUEPRINT_RESOURCE_CONFLICT one level down —
-// coded conflict, the owning id, and BlueprintTakeoverConfirmation as the
-// phrase — because it is the same guarantee applied to the row rather than to
-// the resources: bex refuses instead of clobbering (ADR018 Blueprint row). The
-// message points at editing the existing blueprint's path, because repointing
-// it is what a caller attempting a second connect usually wants. It names no
-// one surface's verb: REST (PATCH /v1/blueprints/{id}), GraphQL
-// (updateBlueprint), MCP (update_blueprint) and the dashboard all answer it
-// (w2/m256 t014).
-func errBlueprintAlreadyConnected(existing store.Blueprint) error {
-	phrase := BlueprintTakeoverConfirmation(existing.ID)
-	public := ids.BlueprintPublicID(existing.ID)
-	return core.NewConflictError("BLUEPRINT_CONNECTION_CONFLICT",
-		fmt.Sprintf("blueprint %s (%q) already tracks %s@%s from %q; edit the path of that Blueprint to point it at another file, or retry with confirm=%q to replace it",
-			public, existing.Name, existing.Repo, existing.Branch, existing.Path, phrase),
-		map[string]any{
-			"blueprintId":   public,
-			"blueprintName": existing.Name,
-			"repo":          existing.Repo,
-			"branch":        existing.Branch,
-			"path":          existing.Path,
-			"confirm":       phrase,
-		})
-}
-
-// blueprintConnectionConflict returns the live blueprint that a create for
-// (repo, branch, path) would REPLACE, or a zero Blueprint when there is none.
-//
-// Two cases are deliberately not conflicts:
-//
-//   - A disconnected row. GetBlueprintByRepo filters it out, and re-establishing
-//     one under a fresh generation is deliberate (w8/m37 t001).
-//   - A row already pointing at this exact path. That create re-connects the
-//     same manifest rather than repointing the blueprint at a different one;
-//     it may update the name, which `updateBlueprint` lets anyone do anyway
-//     since w8/m21 made branch — not name — the identity key. This is also the
-//     path a retry takes after a create whose apply failed, and refusing it
-//     would deadlock: the failed attempt leaves the row behind, so the retry
-//     would need a second confirmation that the first call had no way to carry
-//     alongside a resource-takeover phrase.
-func (s *Service) blueprintConnectionConflict(ctx context.Context, tenantID, repo, branch, path string) (store.Blueprint, error) {
-	existing, err := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, repo, branch)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return store.Blueprint{}, nil
-		}
-		// Fail closed. An unreadable blueprint table must not be read as
-		// "nothing is connected", which is exactly the overwrite this guards.
-		return store.Blueprint{}, err
-	}
-	if existing.Path == path {
-		return store.Blueprint{}, nil
-	}
-	return existing, nil
 }
 
 // errBlueprintExecutionLost is the busy conflict for a mid-apply assert that
@@ -514,6 +451,11 @@ type BlueprintView struct {
 	Resources []BlueprintResource `json:"resources,omitempty"`
 	CreatedAt time.Time           `json:"createdAt"`
 	UpdatedAt time.Time           `json:"updatedAt"`
+	// ResourceSuffix is the suffix a create_new Blueprint appends to its
+	// resources' names, empty for one that manages the names its file gives.
+	// It tells apart several Blueprints made from one file (w8/m153). GraphQL
+	// only: Render's blueprint object has no such field.
+	ResourceSuffix string `json:"-"`
 }
 
 // BlueprintResource is one managed resource returned on by-id reads.
@@ -532,9 +474,9 @@ type BlueprintSyncView struct {
 	StartedAt    string  `json:"startedAt"`
 	CompletedAt  *string `json:"completedAt,omitempty"`
 	ErrorMessage *string `json:"errorMessage,omitempty"`
-	// Note says what the run did when its state cannot: today, that a
-	// confirmed takeover replaced a named blueprint on this repo+branch
-	// (w4/m125). Absent when there is nothing to report.
+	// Note says what the run did when its state cannot: today, the resources
+	// a sync detached from the Blueprint. Absent when there is nothing to
+	// report.
 	Note string `json:"note,omitempty"`
 }
 
@@ -601,6 +543,16 @@ type BlueprintPreview struct {
 	// picks its own copy instead of parsing prose. Empty on success.
 	Reason     BlueprintPreviewReason `json:"reason,omitempty"`
 	Validation *BlueprintValidation   `json:"validation,omitempty"`
+	// ExistingResources is the mode the file was reviewed in (adopt or
+	// create_new) and ResourceSuffix the suffix a create_new review used; a
+	// create passes both back so it makes exactly what was reviewed.
+	// MatchedResources are the resources the file declares whose names
+	// already exist in the workspace — when Render's creation flow shows its
+	// notice and suffixes the new Blueprint's resources (w8/m153). All three
+	// are set only for a not-yet-created Blueprint.
+	ExistingResources string                 `json:"existingResources,omitempty"`
+	ResourceSuffix    string                 `json:"resourceSuffix,omitempty"`
+	MatchedResources  []BlueprintResourceRef `json:"matchedResources,omitempty"`
 }
 
 // BlueprintPreviewReason is the closed set of reasons a Blueprint fetch failed.
@@ -648,6 +600,45 @@ type CreateBlueprintRequest struct {
 	Name         string            // defaults to repo basename
 	EnvVarValues map[string]string // values for sync:false env vars
 	Confirm      string
+	// ExistingResources is Render's existingResources for this one-step
+	// create: "" or adopt manages the resources the file names, create_new a
+	// separate set whose names carry this Blueprint's suffix (w8/m153).
+	ExistingResources string
+	// ResourceSuffix is the create_new suffix the caller reviewed in the
+	// preview, so the create makes the names the review showed. Empty mints
+	// one. It only names resources, so a caller-chosen value grants nothing.
+	ResourceSuffix string
+}
+
+// blueprintPreviewOptions are the optional inputs of previewBlueprintWith.
+type blueprintPreviewOptions struct {
+	// ForBlueprintID previews on behalf of an existing Blueprint (its pre-sync
+	// dialog), with that Blueprint's own mode and suffix.
+	ForBlueprintID string
+	// ExistingResources is the mode a not-yet-created Blueprint is reviewed
+	// in: adopt (the default) or create_new (w8/m153).
+	ExistingResources string
+}
+
+// BlueprintResourceRef names one resource a Blueprint file declares, by the
+// kind its plan actions use.
+type BlueprintResourceRef struct {
+	Kind BlueprintResourceKind `json:"kind"`
+	Name string                `json:"name"`
+}
+
+var errBlueprintExistingResourcesMode = fmt.Errorf("%w: existingResources must be adopt or create_new", core.ErrBadRequest)
+
+// blueprintExistingResourcesMode reads Render's existingResources: empty or
+// adopt, or create_new.
+func blueprintExistingResourcesMode(v string) (string, error) {
+	switch v {
+	case "", store.BlueprintExistingAdopt:
+		return store.BlueprintExistingAdopt, nil
+	case store.BlueprintExistingCreateNew:
+		return store.BlueprintExistingCreateNew, nil
+	}
+	return "", errBlueprintExistingResourcesMode
 }
 
 // UpdateBlueprintRequest is the partial-update input to UpdateBlueprint.
@@ -717,12 +708,6 @@ func withCurrentTier(req CreateRequest, existing *appv1alpha1.App) CreateRequest
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.
 func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexYAML, blueprintID string) (BlueprintValidation, error) {
-	// One memo for the whole validation: it writes nothing, so every check of
-	// the platform's host claims (domains, maintenance URIs) reads one index.
-	ctx = withRequestMemo(ctx)
-	if repo == "" {
-		ctx = context.WithValue(ctx, unresolvedRepoKey{}, true)
-	}
 	var suffix string
 	if blueprintID != "" {
 		if s.Blueprints == nil {
@@ -734,13 +719,28 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		}
 		suffix = b.ResourceSuffix
 	}
+	return s.blueprintValidationWithSuffix(ctx, repo, branch, bexYAML, blueprintID, suffix, nil)
+}
+
+// blueprintValidationWithSuffix validates bexYAML as the Blueprint blueprintID
+// ("" for one not yet created) that manages its resources under suffix. snap
+// is the caller's workspace snapshot to read through, nil to take a new one.
+func (s *Service) blueprintValidationWithSuffix(ctx context.Context, repo, branch, bexYAML, blueprintID, suffix string, snap *workspaceSnapshot) (BlueprintValidation, error) {
+	// One memo for the whole validation: it writes nothing, so every check of
+	// the platform's host claims (domains, maintenance URIs) reads one index.
+	ctx = withRequestMemo(ctx)
+	if repo == "" {
+		ctx = context.WithValue(ctx, unresolvedRepoKey{}, true)
+	}
 	source, ir, problems := compileBlueprintIRFor(bexYAML, suffix)
 	if len(problems) > 0 {
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
 	}
 	st, err := parseCompiledStack(blueprintParseOverrides{repo: repo, branch: branch, containing: true}, source, ir)
 	// The validation writes nothing, so its checks share one workspace snapshot.
-	snap := s.newWorkspaceSnapshot(ctx)
+	if snap == nil {
+		snap = s.newWorkspaceSnapshot(ctx)
+	}
 	var refused blueprintResourceErrors
 	if errors.As(err, &refused) {
 		// Some declarations were refused; the services that parsed still get
@@ -797,7 +797,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		// Ownership conflicts surface in the preview/validation result (the
 		// dashboard's create review + pre-sync dialog) so nobody discovers
 		// them at apply time; the apply-path preflight still enforces.
-		if entries := s.previewOwnershipConflicts(ctx, repo, branch, st, snap); len(entries) > 0 {
+		if entries := s.previewOwnershipConflicts(ctx, blueprintID, st, snap); len(entries) > 0 {
 			return BlueprintValidation{Errors: entries}, nil
 		}
 	}
@@ -1084,13 +1084,23 @@ func blueprintDisplayPath(pointer string) string {
 // "Review Blueprint configurations" step. Repository contents are private
 // source material, so preview requires the sensitive-read role.
 // forBlueprintID names the blueprint this preview is on behalf of — the detail
-// page's pre-sync dialog passes its own id, `/blueprints/new` passes "". It is
-// what lets the same query report a connection conflict for a create while an
-// existing blueprint previewing its own repo+branch does not conflict with
-// itself (w4/m125), exactly as previewOwnershipConflicts already resolves self
-// for resources.
+// page's pre-sync dialog passes its own id, `/blueprints/new` passes "".
 func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, filePath, forBlueprintID string) (BlueprintPreview, error) {
-	ctx, forBlueprintID, err := s.blueprintRequestScope(ctx, core.RelCanViewSensitive, forBlueprintID, ownerID)
+	return s.previewBlueprintWith(ctx, ownerID, repo, branch, filePath, blueprintPreviewOptions{ForBlueprintID: forBlueprintID})
+}
+
+// previewBlueprintWith is PreviewBlueprint with its optional inputs.
+//
+// For a Blueprint that does not exist yet it also reports which of the file's
+// resources already exist in the workspace (w8/m153). Render's creation flow
+// "displays a notice if your new Blueprint matches existing resources in your
+// workspace" and "appends a suffix to the name of each new resource to prevent
+// collisions": a caller that sees matches reviews again with
+// existingResources create_new, which validates and plans under a suffix
+// minted here and returns it for the create to pass back. The default stays
+// adopt, the review of managing the resources the file names.
+func (s *Service) previewBlueprintWith(ctx context.Context, ownerID, repo, branch, filePath string, opts blueprintPreviewOptions) (BlueprintPreview, error) {
+	ctx, forBlueprintID, err := s.blueprintRequestScope(ctx, core.RelCanViewSensitive, opts.ForBlueprintID, ownerID)
 	if err != nil {
 		return BlueprintPreview{}, err
 	}
@@ -1102,6 +1112,13 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 	}
 	if s.GitFetcher == nil {
 		return BlueprintPreview{}, ErrBlueprintFetchUnavailable
+	}
+	if opts.ExistingResources != "" && forBlueprintID != "" {
+		return BlueprintPreview{}, fmt.Errorf("%w: existingResources is fixed when a Blueprint is created; it cannot be set for an existing Blueprint", core.ErrBadRequest)
+	}
+	mode, err := blueprintExistingResourcesMode(opts.ExistingResources)
+	if err != nil {
+		return BlueprintPreview{}, err
 	}
 	tenantID := s.resolveTenantID(ctx)
 	branch, err = s.blueprintBranch(ctx, tenantID, repo, branch)
@@ -1116,22 +1133,106 @@ func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, f
 		reason, message := classifyBlueprintFetchError(err, filePath, branch)
 		return BlueprintPreview{Branch: branch, Reason: reason, Error: message}, nil
 	}
-	validation, err := s.blueprintValidationFor(ctx, repo, branch, contents, forBlueprintID)
+	preview := BlueprintPreview{Found: true, Branch: branch, Manifest: contents, CommitID: commitSHA}
+	var validation BlueprintValidation
+	if forBlueprintID != "" {
+		validation, err = s.blueprintValidationFor(ctx, repo, branch, contents, forBlueprintID)
+	} else {
+		// One workspace snapshot serves the match list and the validation.
+		snap := s.newWorkspaceSnapshot(ctx)
+		preview.MatchedResources = s.blueprintMatchedResources(ctx, contents, snap)
+		preview.ExistingResources = mode
+		// Review what the create would do. A create that would continue a
+		// failed one (BlueprintCreateRetry) is reviewed as that Blueprint,
+		// with its suffix and with its own resources not in conflict with it.
+		selfID := ""
+		if s.Blueprints != nil {
+			switch retry, lookupErr := s.Blueprints.BlueprintCreateRetry(ctx, tenantID, repo, branch, discoveredPath, mode); {
+			case lookupErr == nil:
+				selfID, preview.ResourceSuffix = retry.ID, retry.ResourceSuffix
+			case !errors.Is(lookupErr, store.ErrNotFound):
+				return BlueprintPreview{}, lookupErr
+			}
+		}
+		if selfID == "" && mode == store.BlueprintExistingCreateNew {
+			preview.ResourceSuffix = store.NewBlueprintResourceSuffix()
+		}
+		validation, err = s.blueprintValidationWithSuffix(ctx, repo, branch, contents, selfID, preview.ResourceSuffix, snap)
+	}
 	if err != nil {
 		return BlueprintPreview{}, err
 	}
-	if entry := s.previewConnectionConflict(ctx, tenantID, repo, branch, discoveredPath, forBlueprintID); entry != nil {
-		// A create onto an occupied repo+branch is refused at apply time, so
-		// saying it here is the difference between a review step that warns
-		// and one that lets the user discover it by pressing Deploy.
-		validation.Valid = false
-		validation.Errors = append(validation.Errors, *entry)
-	}
-	preview := BlueprintPreview{Found: true, Branch: branch, Manifest: contents, CommitID: commitSHA, Validation: &validation}
+	preview.Validation = &validation
 	if filePath == "" && discoveredPath == LegacyBlueprintFilename {
 		preview.Warning = "bex.yml is a deprecated filename-only alias; rename it to render.yaml"
 	}
 	return preview, nil
+}
+
+// blueprintMatchedResources lists the services, datastores and environment
+// groups manifest declares whose names already exist in the caller's
+// workspace, in the file's order, read through snap. A manifest that does not
+// compile, or a workspace that cannot be read, matches nothing: the validation
+// that follows reports the first, and the create's own checks do not depend on
+// this list.
+func (s *Service) blueprintMatchedResources(ctx context.Context, manifest string, snap *workspaceSnapshot) []BlueprintResourceRef {
+	if s.Client == nil {
+		return nil
+	}
+	source, ir, problems := compileBlueprintIRFor(manifest, "")
+	if len(problems) > 0 {
+		return nil
+	}
+	// A partly refused file still names the resources that parsed.
+	st, _ := parseCompiledStack(blueprintParseOverrides{containing: true}, source, ir)
+	tenantID, scoped := s.Tenant(ctx)
+	var matched []BlueprintResourceRef
+	if len(st.services) > 0 {
+		services, err := snap.services(ctx)
+		if err != nil {
+			return nil
+		}
+		for _, svc := range st.services {
+			if services[svc.req.Name] != nil {
+				matched = append(matched, BlueprintResourceRef{Kind: BlueprintResourceService, Name: svc.req.Name})
+			}
+		}
+	}
+	if len(st.databases) > 0 {
+		databases, err := snap.databases(ctx)
+		if err != nil {
+			return nil
+		}
+		for _, db := range st.databases {
+			// Any database of that name is a match, a duplicated one included.
+			if found, unique := uniqueDatabaseByDisplayName(databases.Items, scoped, tenantID, db.name); found != nil || !unique {
+				matched = append(matched, BlueprintResourceRef{Kind: BlueprintResourcePostgres, Name: db.name})
+			}
+		}
+	}
+	if len(st.keyValues) > 0 {
+		keyValues, err := snap.keyValues(ctx)
+		if err != nil {
+			return nil
+		}
+		for _, kv := range st.keyValues {
+			if found, unique := uniqueKeyValueByDisplayName(keyValues.Items, scoped, tenantID, kv.name); found != nil || !unique {
+				matched = append(matched, BlueprintResourceRef{Kind: BlueprintResourceKeyValue, Name: kv.name})
+			}
+		}
+	}
+	if len(st.envGroups) > 0 && s.EnvGroups != nil {
+		groups, err := s.EnvGroups.GroupIDsByName(ctx)
+		if err != nil {
+			return nil
+		}
+		for _, group := range st.envGroups {
+			if _, ok := groups[group.name]; ok {
+				matched = append(matched, BlueprintResourceRef{Kind: BlueprintResourceEnvVarGroup, Name: group.name})
+			}
+		}
+	}
+	return matched
 }
 
 // CreateBlueprint creates a new Git-connected Blueprint instance by fetching
@@ -1155,7 +1256,13 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if s.GitFetcher == nil {
 		return BlueprintView{}, ErrBlueprintFetchUnavailable
 	}
-	var err error
+	mode, err := blueprintExistingResourcesMode(req.ExistingResources)
+	if err != nil {
+		return BlueprintView{}, err
+	}
+	if req.ResourceSuffix != "" && (mode != store.BlueprintExistingCreateNew || !store.ValidBlueprintResourceSuffix(req.ResourceSuffix)) {
+		return BlueprintView{}, fmt.Errorf("%w: resourceSuffix is four lowercase letters or digits and applies only to existingResources create_new", core.ErrBadRequest)
+	}
 	if req.Branch, err = s.blueprintBranch(ctx, tenantID, req.Repo, req.Branch); err != nil {
 		return BlueprintView{}, err
 	}
@@ -1165,27 +1272,34 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	}
 	req.Path = discoveredPath
 
-	// w4/m125: refuse before any workload side effect. The admission below is
-	// an upsert whose conflict arm overwrites name, path and manifest, so
-	// without this check a second connect to the same repo+branch reported a
-	// successful create while destroying the blueprint that was there and
-	// orphaning its stack. Confirmed replacement proceeds and says so on the
-	// run. The fetch above is read-only, which is why the check sits after it:
-	// the path a create actually lands on is the DISCOVERED one, and comparing
-	// the requested path would refuse a plain `render.yaml` re-connect.
-	existing, err := s.blueprintConnectionConflict(ctx, tenantID, req.Repo, req.Branch, req.Path)
-	if err != nil {
-		return BlueprintView{}, err
-	}
-	var takeoverNote string
-	if existing.ID != "" {
-		if takeoverExpectedOwner(req.Confirm) != existing.ID {
-			return BlueprintView{}, errBlueprintAlreadyConnected(existing)
+	// A create is a new Blueprint, whatever else tracks this file (w8/m153;
+	// Render: "You can create multiple Blueprints from a single YAML file").
+	// The one reuse is a retry: a create whose apply failed left its row, and
+	// repeating it continues there, with that row's suffix, instead of
+	// leaving a second half-made Blueprint beside the first. The fetch above
+	// is read-only, which is why the lookup sits after it: the path a create
+	// lands on is the DISCOVERED one.
+	retryOf, suffix := "", ""
+	switch retry, err := s.Blueprints.BlueprintCreateRetry(ctx, tenantID, req.Repo, req.Branch, req.Path, mode); {
+	case err == nil:
+		// The names a caller reviewed are the ones it gets: a suffix that is
+		// not the retried Blueprint's would silently be replaced by it.
+		if req.ResourceSuffix != "" && req.ResourceSuffix != retry.ResourceSuffix {
+			return BlueprintView{}, fmt.Errorf("%w: this create continues Blueprint %s, whose resources use the suffix %q, not %q; preview again and retry",
+				core.ErrConflict, ids.BlueprintPublicID(retry.ID), retry.ResourceSuffix, req.ResourceSuffix)
 		}
-		takeoverNote = fmt.Sprintf("replaced blueprint %s (%q), which tracked %s@%s from %q", ids.BlueprintPublicID(existing.ID), existing.Name, existing.Repo, existing.Branch, existing.Path)
+		retryOf, suffix = retry.ID, retry.ResourceSuffix
+	case !errors.Is(err, store.ErrNotFound):
+		// Fail closed. An unreadable blueprint table must not be read as "a
+		// new Blueprint", which would leave a duplicate beside a failed one.
+		return BlueprintView{}, err
+	case mode == store.BlueprintExistingCreateNew:
+		if suffix = req.ResourceSuffix; suffix == "" {
+			suffix = store.NewBlueprintResourceSuffix()
+		}
 	}
 
-	prepareReq := DeployRequest{Repo: req.Repo, Branch: req.Branch, ContainingSource: true, Manifest: contents, EnvVarValues: req.EnvVarValues}
+	prepareReq := DeployRequest{Repo: req.Repo, Branch: req.Branch, ContainingSource: true, Manifest: contents, EnvVarValues: req.EnvVarValues, resourceSuffix: suffix}
 	parsed, ir, parseErr := compileStack(prepareReq)
 	if parseErr != nil {
 		return BlueprintView{}, parseErr
@@ -1207,45 +1321,37 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if err := s.validateBlueprintServices(withRequestMemo(ctx), checked, preflight); err != nil {
 		return BlueprintView{}, err
 	}
+	// One manager per resource, asked before anything is recorded: the apply
+	// asks again under the claim it then holds.
+	if err := s.refuseUnconfirmedTakeover(ctx, retryOf, req.Confirm, checked, preflight); err != nil {
+		return BlueprintView{}, err
+	}
 
 	// Admission claims the initial apply and records its run atomically (w8/m37
-	// t002): a failed admission blocks every workload side effect, a competing
-	// live claim loses with the documented busy conflict, and a disconnected
-	// row is deliberately re-established under a fresh generation.
+	// t002): a failed admission blocks every workload side effect, and a
+	// create of the same file that is already applying loses with the
+	// documented busy conflict.
 	now := s.Now().UTC()
-	b, run, revived, err := s.Blueprints.AdmitBlueprintCreate(ctx, store.Blueprint{
-		TenantID: tenantID,
-		Name:     req.Name,
-		Repo:     req.Repo,
-		Branch:   req.Branch,
-		Path:     req.Path,
-		AutoSync: true,
-		Manifest: contents,
+	b, run, err := s.Blueprints.AdmitBlueprintCreate(ctx, store.Blueprint{
+		TenantID:          tenantID,
+		Name:              req.Name,
+		Repo:              req.Repo,
+		Branch:            req.Branch,
+		Path:              req.Path,
+		AutoSync:          true,
+		Manifest:          contents,
+		ExistingResources: mode,
+		ResourceSuffix:    suffix,
 	}, store.BlueprintSync{
 		CommitID:  commitSHA,
 		State:     store.BlueprintSyncStateRunning,
 		StartedAt: now,
-		Note:      takeoverNote,
-	})
+	}, retryOf)
 	if err != nil {
 		if isBlueprintBusy(err) {
-			return BlueprintView{}, errBlueprintSyncBusy("another sync is already running for this blueprint; retry after it settles")
+			return BlueprintView{}, errBlueprintSyncBusy("a create of this Blueprint file is already running in this workspace; retry after it settles")
 		}
 		return BlueprintView{}, err
-	}
-
-	// w4/120: a revived row keeps its id and its whole sync history, so the
-	// history a reader sees under this blueprint's new name is partly someone
-	// else's. Saying so on the admitting run puts the boundary exactly where
-	// the inherited entries are read, rather than leaving them to read as this
-	// connection's own.
-	if revived && takeoverNote == "" {
-		takeoverNote = reconnectionNote(req.Repo, req.Branch)
-		if err := s.Blueprints.SetBlueprintSyncNote(ctx, run.ID, takeoverNote); err != nil {
-			// The connection is real either way; an unrecorded note is worth a
-			// line in the log, not a failed create.
-			log.Printf("blueprint %s: recording the reconnection note: %v", b.ID, err)
-		}
 	}
 
 	prepareReq.Confirm = req.Confirm
@@ -1682,25 +1788,6 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		}
 	}
 	return SyncBlueprintResult{Blueprint: toBlueprintView(b), Stack: stack, DetachedResources: baseline}, nil
-}
-
-// triggerBlueprintSync is called by the push-webhook auto-sync path
-// (webhook.go). Errors are intentionally dropped (webhook already responded).
-func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, branch string) {
-	if s.Blueprints == nil {
-		return
-	}
-	b, err := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, repo, branch)
-	if err != nil || !b.AutoSync {
-		return
-	}
-	// w1/m69: bind the sync to the blueprint row's tenant. ctx arrives carrying
-	// only WithWorkspace(tenantID) — workspace-NAMED but identity-less — which
-	// resolveWorkspace treats as no tenant at all, so the apply pipeline used to
-	// run with Tenant(ctx)=="". The acting tenant is derived from this store
-	// row, never from the push payload.
-	ctx = core.WithBlueprintSync(core.WithActingTenant(ctx, b.TenantID))
-	_, _ = s.runSync(ctx, b, "", "", nil, nil)
 }
 
 // ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.
@@ -2298,17 +2385,18 @@ func toBlueprintView(b store.Blueprint) BlueprintView {
 		status = store.BlueprintStatusCreated
 	}
 	v := BlueprintView{
-		ID:        ids.BlueprintPublicID(b.ID),
-		Name:      b.Name,
-		OwnerID:   b.TenantID,
-		Repo:      b.Repo,
-		Branch:    b.Branch,
-		Path:      b.Path,
-		AutoSync:  b.AutoSync,
-		Manifest:  b.Manifest,
-		Status:    status,
-		CreatedAt: b.CreatedAt,
-		UpdatedAt: b.UpdatedAt,
+		ID:             ids.BlueprintPublicID(b.ID),
+		Name:           b.Name,
+		OwnerID:        b.TenantID,
+		Repo:           b.Repo,
+		Branch:         b.Branch,
+		Path:           b.Path,
+		AutoSync:       b.AutoSync,
+		Manifest:       b.Manifest,
+		Status:         status,
+		ResourceSuffix: b.ResourceSuffix,
+		CreatedAt:      b.CreatedAt,
+		UpdatedAt:      b.UpdatedAt,
 	}
 	if b.LastSyncAt != nil {
 		s := b.LastSyncAt.UTC().Format(time.RFC3339)
@@ -2341,12 +2429,6 @@ func errMsgPtr(err error) *string {
 	}
 	msg := err.Error()
 	return &msg
-}
-
-// reconnectionNote marks the run a revived Blueprint row starts its new
-// connection with: the history below it belongs to the earlier one (w4/120).
-func reconnectionNote(repo, branch string) string {
-	return "re-established a previously disconnected connection to " + repo + "@" + branch + "; earlier sync history below belongs to that connection"
 }
 
 // blueprintBranch is the branch a Blueprint preview or create reads: the one

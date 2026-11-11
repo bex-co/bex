@@ -12,7 +12,6 @@ const resourceTakeover: BlueprintConfirmationRequired = {
   status: "confirmation_required",
   confirmation: PHRASE,
   takeover: {
-    kind: "resource",
     phrase: PHRASE,
     resource: "docs",
     resourceKind: "key_value",

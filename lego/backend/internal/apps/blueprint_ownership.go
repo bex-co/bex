@@ -185,10 +185,20 @@ func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployReq
 	if req.BlueprintID == "" {
 		return nil
 	}
+	return s.refuseUnconfirmedTakeover(ctx, req.BlueprintID, req.Confirm, st, snap)
+}
+
+// refuseUnconfirmedTakeover is preflightBlueprintOwnership's rule for the
+// Blueprint selfID, "" for one that does not exist yet (every owner is then
+// another Blueprint). A one-step create asks it before admission, so a create
+// that would take another Blueprint's resource is refused with nothing
+// recorded, not left behind as a Blueprint in error that every push re-runs
+// into the same refusal (w8/m153).
+func (s *Service) refuseUnconfirmedTakeover(ctx context.Context, selfID, confirm string, st parsedStack, snap *workspaceSnapshot) error {
 	if _, ok := s.Tenant(ctx); !ok {
 		return nil
 	}
-	conflicts, err := s.blueprintOwnershipConflicts(ctx, req.BlueprintID, st, snap)
+	conflicts, err := s.blueprintOwnershipConflicts(ctx, selfID, st, snap)
 	if err != nil {
 		return fmt.Errorf("checking Blueprint resource ownership: %w", err)
 	}
@@ -196,7 +206,7 @@ func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployReq
 		return nil
 	}
 	first := conflicts[0]
-	if takeoverExpectedOwner(req.Confirm) == first.owner {
+	if takeoverExpectedOwner(confirm) == first.owner {
 		// Explicit takeover of first.owner's resources: proceed — but only
 		// for THAT owner. A stack conflicting with two different blueprints
 		// resolves one owner per confirmation.
@@ -565,19 +575,14 @@ func (s *Service) clearBlueprintOwnership(ctx context.Context, tenantID, bluepri
 }
 
 // previewOwnershipConflicts reports cross-blueprint conflicts as validation
-// entries for the preview surfaces. Self-identity resolves through the
-// existing blueprint row for repo+branch, so an existing blueprint's own
-// pre-sync preview never conflicts with itself; a not-yet-created blueprint
-// conflicts with any owner. Scan failures are swallowed (the apply-path
-// preflight is the enforcement point).
-func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch string, st parsedStack, snap *workspaceSnapshot) []BlueprintValidationError {
-	tenantID, ok := s.Tenant(ctx)
-	if !ok {
+// entries for the preview surfaces. selfID is the Blueprint the preview is
+// made for, whose own resources never conflict with it; "" is a Blueprint not
+// yet created, which conflicts with any owner. The caller names it: several
+// Blueprints may track one repo and branch. Scan failures are swallowed (the
+// apply-path preflight is the enforcement point).
+func (s *Service) previewOwnershipConflicts(ctx context.Context, selfID string, st parsedStack, snap *workspaceSnapshot) []BlueprintValidationError {
+	if _, ok := s.Tenant(ctx); !ok {
 		return nil
-	}
-	selfID := ""
-	if b, err := s.Blueprints.GetBlueprintByRepo(ctx, tenantID, repo, branch); err == nil {
-		selfID = b.ID
 	}
 	conflicts, err := s.blueprintOwnershipConflicts(ctx, selfID, st, snap)
 	if err != nil {
@@ -591,28 +596,6 @@ func (s *Service) previewOwnershipConflicts(ctx context.Context, repo, branch st
 		})
 	}
 	return entries
-}
-
-// previewConnectionConflict reports, as a validation entry, that a live
-// blueprint already tracks this repo+branch — the row-level twin of
-// previewOwnershipConflicts (w4/m125). forBlueprintID is the previewing
-// blueprint's own id; the pre-sync dialog passes it and never conflicts with
-// itself, while `/blueprints/new` passes "" and sees the conflict before it
-// presses Deploy. A store failure is swallowed the same way the resource
-// preview swallows a scan failure: CreateBlueprint's own check is the
-// enforcement point and fails closed there.
-func (s *Service) previewConnectionConflict(ctx context.Context, tenantID, repo, branch, path, forBlueprintID string) *BlueprintValidationError {
-	if s.Blueprints == nil || tenantID == "" {
-		return nil
-	}
-	existing, err := s.blueprintConnectionConflict(ctx, tenantID, repo, branch, path)
-	if err != nil || existing.ID == "" || existing.ID == forBlueprintID {
-		return nil
-	}
-	return &BlueprintValidationError{
-		Code:  "BLUEPRINT_CONNECTION_CONFLICT",
-		Error: errBlueprintAlreadyConnected(existing).Error(),
-	}
 }
 
 // validateWorkspaceReferences runs the workspace-resolvable reference checks at

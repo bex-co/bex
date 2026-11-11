@@ -736,6 +736,7 @@ export type Blueprint = {
   ownerId: Maybe<Scalars['String']['output']>;
   path: Maybe<Scalars['String']['output']>;
   repo: Maybe<Scalars['String']['output']>;
+  resourceSuffix: Maybe<Scalars['String']['output']>;
   resources: Maybe<Array<Maybe<BlueprintResource>>>;
   status: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
@@ -828,9 +829,12 @@ export type BlueprintPreview = {
   branch: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
   error: Maybe<Scalars['String']['output']>;
+  existingResources: Maybe<Scalars['String']['output']>;
   found: Maybe<Scalars['Boolean']['output']>;
   manifest: Maybe<Scalars['String']['output']>;
+  matchedResources: Maybe<Array<BlueprintResourceRef>>;
   reason: Maybe<Scalars['String']['output']>;
+  resourceSuffix: Maybe<Scalars['String']['output']>;
   retryable: Maybe<Scalars['Boolean']['output']>;
   validation: Maybe<BlueprintValidation>;
   warning: Maybe<Scalars['String']['output']>;
@@ -853,6 +857,12 @@ export type BlueprintResource = {
   id: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   type: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintResourceRef = {
+  __typename: 'BlueprintResourceRef';
+  kind: Scalars['String']['output'];
+  name: Scalars['String']['output'];
 };
 
 export type BlueprintSync = {
@@ -2151,10 +2161,12 @@ export type MutationCreateBlueprintArgs = {
   branch?: InputMaybe<Scalars['String']['input']>;
   confirm?: InputMaybe<Scalars['String']['input']>;
   envVarValues?: InputMaybe<Array<InputMaybe<BlueprintEnvVarValueInput>>>;
+  existingResources?: InputMaybe<Scalars['String']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];
+  resourceSuffix?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4016,6 +4028,7 @@ export type QueryBlueprintPlannedSyncArgs = {
 export type QueryBlueprintPreviewArgs = {
   blueprintId?: InputMaybe<Scalars['String']['input']>;
   branch?: InputMaybe<Scalars['String']['input']>;
+  existingResources?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];

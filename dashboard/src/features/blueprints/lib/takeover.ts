@@ -4,16 +4,14 @@ import { blueprintKindLabel } from "@/features/blueprints/lib/kind-labels";
 import { protectedRefusalFromError } from "@/features/services/lib/protected-confirmation";
 import type { BlueprintValidationError } from "@/features/blueprints/types";
 
-/** bex-api's code for a repo+branch a live Blueprint already tracks (w4/m125). */
-const BLUEPRINT_CONNECTION_CONFLICT = "BLUEPRINT_CONNECTION_CONFLICT";
 /** bex-api's code for a resource another Blueprint manages (w8/m23). */
 const BLUEPRINT_RESOURCE_CONFLICT = "BLUEPRINT_RESOURCE_CONFLICT";
 
 /**
  * True when every validation problem is one an explicit takeover confirmation
- * resolves — a resource already owned by another blueprint (w8/m23), or a
- * repo+branch a live blueprint already tracks (w4/m125) — read from each
- * problem's code, never its wording (w5/m125).
+ * resolves: a resource another Blueprint manages (w8/m23), read from each
+ * problem's code, never its wording (w5/m125). A repo and branch another
+ * Blueprint tracks is no longer a problem at all (w8/m153).
  *
  * It is what keeps Deploy reachable in that case. Blocking Deploy on any
  * invalid preview is right for a manifest that does not parse — there is
@@ -26,36 +24,23 @@ export function isTakeoverOnlyConflict(
 ): boolean {
   return (
     details.length > 0 &&
-    details.every(
-      ({ code }) =>
-        code === BLUEPRINT_CONNECTION_CONFLICT ||
-        code === BLUEPRINT_RESOURCE_CONFLICT,
-    )
+    details.every(({ code }) => code === BLUEPRINT_RESOURCE_CONFLICT)
   );
 }
 
 /**
- * A Blueprint takeover bex-api refused until confirmed, classified from the
- * error's extensions.code — never its message — so the dialog can name what is
- * being replaced instead of borrowing the protected-environment copy (w4/189).
- * The phrase is still the server's, verbatim: it is the authorization.
+ * A takeover of a resource another Blueprint manages, which bex-api refused
+ * until confirmed. It is classified from the error's extensions.code — never
+ * its message — so the dialog can name what is being transferred instead of
+ * borrowing the protected-environment copy (w4/189). The phrase is still the
+ * server's, verbatim: it is the authorization.
  */
-export type BlueprintTakeover =
-  | {
-      kind: "connection";
-      phrase: string;
-      blueprintName: string;
-      repo: string;
-      branch: string;
-      path: string;
-    }
-  | {
-      kind: "resource";
-      phrase: string;
-      resource: string;
-      resourceKind: string;
-      owningBlueprintId: string;
-    };
+export interface BlueprintTakeover {
+  phrase: string;
+  resource: string;
+  resourceKind: string;
+  owningBlueprintId: string;
+}
 
 export function blueprintTakeoverFromError(
   err: unknown,
@@ -64,28 +49,15 @@ export function blueprintTakeoverFromError(
   for (const item of err.errors) {
     const ext = item.extensions ?? {};
     const phrase = typeof ext["confirm"] === "string" ? ext["confirm"] : "";
-    if (!phrase) continue;
+    if (!phrase || ext["code"] !== BLUEPRINT_RESOURCE_CONFLICT) continue;
     const text = (key: string) =>
       typeof ext[key] === "string" ? (ext[key] as string) : "";
-    if (ext["code"] === BLUEPRINT_CONNECTION_CONFLICT) {
-      return {
-        kind: "connection",
-        phrase,
-        blueprintName: text("blueprintName") || text("blueprintId"),
-        repo: text("repo"),
-        branch: text("branch"),
-        path: text("path"),
-      };
-    }
-    if (ext["code"] === BLUEPRINT_RESOURCE_CONFLICT) {
-      return {
-        kind: "resource",
-        phrase,
-        resource: text("resource"),
-        resourceKind: text("kind"),
-        owningBlueprintId: text("owningBlueprintId"),
-      };
-    }
+    return {
+      phrase,
+      resource: text("resource"),
+      resourceKind: text("kind"),
+      owningBlueprintId: text("owningBlueprintId"),
+    };
   }
   return null;
 }
@@ -127,19 +99,6 @@ export function takeoverCopy(
   takeover: BlueprintTakeover,
   t: ReturnType<typeof useTranslations>["t"],
 ): { title: string; description: string } {
-  if (takeover.kind === "connection") {
-    return {
-      title: t("blueprints.takeoverConnectionTitle", {
-        name: takeover.blueprintName,
-      }),
-      description: t("blueprints.takeoverConnectionBody", {
-        name: takeover.blueprintName,
-        path: takeover.path,
-        repo: takeover.repo,
-        branch: takeover.branch,
-      }),
-    };
-  }
   const kindLabel = blueprintKindLabel(takeover.resourceKind);
   const kind = kindLabel ? t(kindLabel) : takeover.resourceKind;
   return {

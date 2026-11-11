@@ -28,6 +28,7 @@ import { nonNull } from "@/common/lib/non-null";
 interface BlueprintRowLike {
   id: string | null;
   name: string | null;
+  resourceSuffix?: string | null;
   repo?: string | null;
   branch?: string | null;
   path?: string | null;
@@ -71,6 +72,7 @@ export function toBlueprintView(row: BlueprintRowLike): BlueprintView {
   return {
     id: row.id ?? "",
     name: row.name ?? "",
+    resourceSuffix: row.resourceSuffix ?? "",
     repo: row.repo ?? "",
     branch: row.branch ?? "",
     path: row.path ?? "",
@@ -197,6 +199,12 @@ export function toBlueprintPreviewResult(
     error: preview.error,
     reason: (preview.reason || null) as BlueprintPreviewReason | null,
     retryable: preview.retryable ?? false,
+    existingResources: (preview.existingResources ||
+      null) as BlueprintPreviewResult["existingResources"],
+    resourceSuffix: preview.resourceSuffix || null,
+    matchedResources: (preview.matchedResources ?? []).map(
+      ({ kind, name }) => ({ kind, name }),
+    ),
     validation: preview.validation
       ? toPreviewValidation(preview.validation)
       : null,

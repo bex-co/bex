@@ -26,14 +26,14 @@ func manifestNaming(name string) string {
 	return strings.Replace(recreateManifest, "name: api", "name: "+name, 1)
 }
 
-// w2/074: the reconnection note marks a boundary. A Blueprint connected,
-// synced, disconnected and reconnected twice — once through Render's planned
-// create, once through bex's legacy create — has exactly two notes in its
-// history, each on the first sync of the connection it starts.
-func TestReconnectedTwiceRecordsTwoBoundaryNotesPG(t *testing.T) {
-	svc, _, _, ctx, wsID := newRecreatePGService(t)
+// w8/m153 (was w2/074's reconnection boundary): a source connected, synced,
+// deleted and connected again twice — once through Render's planned create,
+// once through bex's one-step create — is three Blueprints, not one row
+// revived twice. Each has its own id and only its own syncs in its history, so
+// there is no boundary to mark and no run carries a reconnection note.
+func TestConnectedThreeTimesIsThreeBlueprintsPG(t *testing.T) {
+	svc, _, pool, ctx, wsID := newRecreatePGService(t)
 	repo := "https://github.com/acme/reconnect-" + wsID
-	var firsts []string // the first sync id of each connection, oldest first
 
 	connect := func(name string, legacy bool) string {
 		t.Helper()
@@ -42,7 +42,7 @@ func TestReconnectedTwiceRecordsTwoBoundaryNotesPG(t *testing.T) {
 		if legacy {
 			v, err := svc.CreateBlueprint(ctx, wsID, CreateBlueprintRequest{Repo: repo, Branch: "main", Name: "bp-" + name})
 			if err != nil {
-				t.Fatalf("legacy create %s: %v", name, err)
+				t.Fatalf("one-step create %s: %v", name, err)
 			}
 			bpID = v.ID
 		} else {
@@ -55,43 +55,44 @@ func TestReconnectedTwiceRecordsTwoBoundaryNotesPG(t *testing.T) {
 				t.Fatalf("approve %s: %v", name, err)
 			}
 		}
-		history, err := svc.ListBlueprintSyncs(ctx, bpID, wsID, "", 100)
-		if err != nil || len(history) == 0 {
-			t.Fatalf("history after connecting %s = %v, %v", name, history, err)
-		}
-		firsts = append(firsts, history[0].ID)
-		// Later syncs of the same connection.
+		// Later syncs of the same Blueprint.
 		for range 2 {
 			if _, err := svc.SyncBlueprint(ctx, bpID, wsID, "", "", nil); err != nil {
 				t.Fatalf("sync %s: %v", name, err)
 			}
 		}
+		history, err := svc.ListBlueprintSyncs(ctx, bpID, wsID, "", 100)
+		if err != nil || len(history) != 3 {
+			t.Fatalf("history of %s = %d runs (%v), want its own three: the first sync and two more", name, len(history), err)
+		}
+		for _, run := range history {
+			if run.Note != "" {
+				t.Fatalf("%s: run %s carries the note %q; a new Blueprint has no earlier connection to mark off", name, run.ID, run.Note)
+			}
+		}
 		return bpID
 	}
 
+	seen := map[string]bool{}
 	bp := connect("api1", false)
+	seen[bp] = true
 	for i, legacy := range []bool{false, true} {
 		if err := svc.DisconnectBlueprint(ctx, bp, wsID); err != nil {
 			t.Fatal(err)
 		}
-		if again := connect([]string{"api2", "api3"}[i], legacy); again != bp {
-			t.Fatalf("reconnect %d = %s, want the revived row %s", i+1, again, bp)
+		bp = connect([]string{"api2", "api3"}[i], legacy)
+		if seen[bp] {
+			t.Fatalf("connection %d reused the Blueprint id %s of a deleted one", i+2, bp)
 		}
+		seen[bp] = true
 	}
 
-	history, err := svc.ListBlueprintSyncs(ctx, bp, wsID, "", 100)
-	if err != nil {
+	var rows, live int
+	if err := pool.QueryRow(ctx, `SELECT count(*), count(*) FILTER (WHERE status != 'disconnected')
+		FROM blueprints WHERE tenant_id = $1 AND repo = $2`, wsID, repo).Scan(&rows, &live); err != nil {
 		t.Fatal(err)
 	}
-	var noted []string
-	for _, run := range history {
-		t.Logf("%s %s note=%q", run.ID, run.State, run.Note)
-		if strings.Contains(run.Note, "re-established a previously disconnected connection") {
-			noted = append(noted, run.ID)
-		}
-	}
-	// Newest first: the second reconnection's boundary, then the first's.
-	if want := []string{firsts[2], firsts[1]}; strings.Join(noted, ",") != strings.Join(want, ",") {
-		t.Fatalf("reconnection notes on %v, want exactly the two boundaries %v", noted, want)
+	if rows != 3 || live != 1 {
+		t.Fatalf("rows for the source = %d (%d live), want three with only the last one live", rows, live)
 	}
 }

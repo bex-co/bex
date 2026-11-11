@@ -7,6 +7,12 @@ export interface BlueprintResource {
 export interface BlueprintView {
   id: string;
   name: string;
+  /**
+   * The suffix this Blueprint adds to each resource name ("ab12"), which tells
+   * apart several Blueprints made from one file (w8/m153). "" for a Blueprint
+   * that manages the names its file gives.
+   */
+  resourceSuffix: string;
   repo: string;
   branch: string;
   path: string;
@@ -123,6 +129,16 @@ export type BlueprintPreviewReason =
   | "ambiguous_filename"
   | "unavailable";
 
+/**
+ * A resource a Blueprint file declares whose name already exists in the
+ * workspace (w8/m153). `kind` is the manifest kind, as plan actions name it:
+ * service, postgres, key_value or env_var_group.
+ */
+export interface BlueprintMatchedResource {
+  kind: string;
+  name: string;
+}
+
 export interface BlueprintPreviewResult {
   found: boolean | null;
   /** The branch reviewed: the repository's default when none was given. */
@@ -133,6 +149,16 @@ export interface BlueprintPreviewResult {
   reason: BlueprintPreviewReason | null;
   /** Whether retrying the same request could plausibly succeed unchanged. */
   retryable: boolean;
+  /**
+   * How a Blueprint not yet created was reviewed (w8/m153): "adopt" manages
+   * the names its file gives, "create_new" a separate set whose names carry
+   * resourceSuffix. null for an existing Blueprint's preview.
+   */
+  existingResources: "adopt" | "create_new" | null;
+  /** The suffix a create_new review planned under ("ab12"); null otherwise. */
+  resourceSuffix: string | null;
+  /** Declared resources whose names already exist in the workspace. */
+  matchedResources: BlueprintMatchedResource[];
   validation: BlueprintPreviewValidation | null;
 }
 

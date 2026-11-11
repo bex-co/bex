@@ -138,6 +138,7 @@ function bp(overrides: Partial<BlueprintView> = {}): BlueprintView {
   return {
     id: "exs-abc123",
     name: "hello-go",
+    resourceSuffix: "",
     repo: "https://github.com/example/hello-go",
     branch: "main",
     path: "bex.yml",
@@ -163,6 +164,10 @@ function validPreview(
     error: null,
     reason: null,
     retryable: false,
+    // A preview on behalf of an existing Blueprint carries none of these.
+    existingResources: null,
+    resourceSuffix: null,
+    matchedResources: [],
     validation: {
       valid: true,
       errors: [],
@@ -289,6 +294,31 @@ describe("BlueprintsPage (list)", () => {
     expect(screen.getByText("Active")).toBeInTheDocument();
   });
 
+  // w8/m153: several Blueprints can be made from one file, so name, repo and
+  // branch can all be equal; the suffix each adds to its resource names is
+  // what tells them apart.
+  it("tells apart Blueprints made from one file by their resource suffix", async () => {
+    blueprintsState.blueprints = [
+      bp({ id: "exs-first" }),
+      bp({ id: "exs-second", resourceSuffix: "ab12" }),
+    ];
+
+    renderBlueprintsPage();
+
+    const [first, second] = (await screen.findAllByRole("row")).slice(1);
+    const suffix = within(second).getByText("-ab12");
+    expect(suffix).toHaveAttribute("title", "Resource name suffix");
+    expect(suffix).toHaveTextContent("Resource name suffix -ab12");
+    // The name stays the link, and a Blueprint without a suffix shows none.
+    expect(within(second).getByRole("link")).toHaveTextContent(/^hello-go$/);
+    expect(within(first).getAllByRole("cell")[0]).toHaveTextContent(
+      /^hello-go$/,
+    );
+    expect(
+      within(first).queryByTitle("Resource name suffix"),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows empty state with auto-registration copy when there are no blueprints", async () => {
     renderBlueprintsPage();
 
@@ -354,10 +384,23 @@ describe("BlueprintDetailPage", () => {
     renderDetailPage();
 
     expect(await screen.findAllByText("hello-go")).toHaveLength(2);
+    expect(screen.queryByTitle("Resource name suffix")).not.toBeInTheDocument();
     expect(screen.getByText(/services:.*name: api/s)).toBeInTheDocument();
     expect(
       screen.getByText("https://github.com/example/hello-go"),
     ).toBeInTheDocument();
+  });
+
+  // w8/m153: the header names the suffix beside the name, outside the heading.
+  it("shows the resource suffix of a Blueprint created as a separate set", async () => {
+    blueprintDetailState.blueprint = bp({ resourceSuffix: "ab12" });
+    renderDetailPage();
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    expect(heading).toHaveTextContent(/^hello-go$/);
+    const suffix = screen.getByTitle("Resource name suffix");
+    expect(suffix).toHaveTextContent("-ab12");
+    expect(heading.parentElement).toContainElement(suffix);
   });
 
   // w6/043: the syncs query is independent of the route's blocking title

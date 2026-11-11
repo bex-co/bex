@@ -106,7 +106,7 @@ func (f *blueprintFixtureStore) UpsertBlueprint(_ context.Context, b store.Bluep
 	return b, nil
 }
 
-func (f *blueprintFixtureStore) GetBlueprintByRepo(context.Context, string, string, string) (store.Blueprint, error) {
+func (f *blueprintFixtureStore) BlueprintCreateRetry(context.Context, string, string, string, string, string) (store.Blueprint, error) {
 	return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
 }
 
@@ -156,8 +156,8 @@ func (f *blueprintFixtureStore) AdmitBlueprintAutoSyncRun(context.Context, store
 	return store.Blueprint{}, store.BlueprintSync{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
 }
 
-func (f *blueprintFixtureStore) AdmitBlueprintCreate(context.Context, store.Blueprint, store.BlueprintSync) (store.Blueprint, store.BlueprintSync, bool, error) {
-	return store.Blueprint{}, store.BlueprintSync{}, false, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
+func (f *blueprintFixtureStore) AdmitBlueprintCreate(context.Context, store.Blueprint, store.BlueprintSync, string) (store.Blueprint, store.BlueprintSync, error) {
+	return store.Blueprint{}, store.BlueprintSync{}, fmt.Errorf("blueprintFixtureStore: %w", store.ErrNotFound)
 }
 
 func (f *blueprintFixtureStore) SetBlueprintSyncNote(context.Context, string, string) error {

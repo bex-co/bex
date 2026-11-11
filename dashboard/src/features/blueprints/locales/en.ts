@@ -203,16 +203,6 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Retry",
     description: "Review section retry button after a failed manifest fetch",
   },
-  "blueprints.takeoverConnectionTitle": {
-    message: "Replace Blueprint “{name}”?",
-    description:
-      "Takeover dialog title when another Blueprint already tracks this repo and branch (BLUEPRINT_CONNECTION_CONFLICT)",
-  },
-  "blueprints.takeoverConnectionBody": {
-    message:
-      "“{name}” already tracks {path} on {repo}@{branch}. Deploying repoints it to this file and takes over the resources it manages. Type the command below to continue.",
-    description: "Takeover dialog body for a Blueprint connection conflict",
-  },
   "blueprints.takeoverResourceTitle": {
     message: "Take over “{name}”?",
     description:
@@ -231,14 +221,30 @@ const enBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.previewConflictBody": {
     message:
-      "Another Blueprint already manages this repo and branch or some of its resources. Deploying replaces it; you'll confirm exactly what is taken over on the next step.",
+      "Another Blueprint already manages some of these resources. Deploying transfers them to this Blueprint; you'll confirm exactly what is taken over on the next step.",
     description:
       "Preview alert body on /blueprints/new when the only problem is a takeover conflict (replaces the raw API message)",
   },
   "blueprints.previewConflict": {
-    message: "Already connected — deploying will take it over",
+    message: "Already managed — deploying will take it over",
     description:
-      "Alert title on /blueprints/new when the only preview problem is a blueprint ownership or connection conflict an explicit takeover confirmation resolves (w4/m125)",
+      "Alert title on /blueprints/new when the only preview problem is a resource another Blueprint manages, which an explicit takeover confirmation resolves (w4/m125)",
+  },
+  "blueprints.previewMatchTitle": {
+    message: "Matches existing resources",
+    description:
+      "Notice title on /blueprints/new when the Blueprint file names resources that already exist in the workspace (w8/m153, Render parity)",
+  },
+  "blueprints.previewMatchBody": {
+    message:
+      "This Blueprint matches resources that already exist in your workspace. New resources will be created with the suffix “-{suffix}” added to each name. The existing resources are not changed.",
+    description:
+      "Notice body on /blueprints/new for matched resources; {suffix} is the four-character resource name suffix, shown after a hyphen as it appears in a name",
+  },
+  "blueprints.previewMatchListLabel": {
+    message: "Already in your workspace:",
+    description:
+      "Notice on /blueprints/new — label above the list of existing resources the Blueprint file matches",
   },
   "blueprints.previewInvalid": {
     message: "Blueprint file has errors",
@@ -535,6 +541,11 @@ const enBlueprints: Record<string, TranslationEntry> = {
   "blueprints.statusUnknown": {
     message: "{status}",
     description: "Blueprint status badge fallback — raw status value",
+  },
+  "blueprints.resourceSuffixLabel": {
+    message: "Resource name suffix",
+    description:
+      "Tooltip and screen-reader label of the suffix shown beside a Blueprint's name in the list and on its detail page (w8/m153)",
   },
   // --- Detail page ---
   "blueprints.detailTitle": {
