@@ -304,9 +304,7 @@ export function DatastoreLogViewer({
           loadingOlder={history.loadingOlder}
           onLoadOlder={history.loadOlder}
         />
-        {live ? (
-          <StreamStatus live liveSupported status={stream.status} />
-        ) : null}
+        {live ? <StreamStatus live status={stream.status} /> : null}
       </div>
     );
   }

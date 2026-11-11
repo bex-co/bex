@@ -2,6 +2,7 @@ import { parseSearchOperators } from "@/features/logs/lib/log-search-operators";
 import {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -199,6 +200,7 @@ export function LogViewer({
   const windowClosed = customEndMs !== null && customEndMs <= appliedNow;
   const filtersLiveSupported = !liveTailUnsupported(queryFilters);
   const liveSupported = filtersLiveSupported && !windowClosed;
+  const liveOffReasonId = useId();
   const liveOffReason = filtersLiveSupported
     ? t("logs.liveWindowClosed")
     : t("logs.liveUnsupported");
@@ -361,12 +363,9 @@ export function LogViewer({
           loadingOlder={history.loadingOlder}
           onLoadOlder={history.loadOlder}
         />
-        <StreamStatus
-          live={live && liveSupported}
-          liveSupported={liveSupported}
-          unsupportedReason={liveOffReason}
-          status={stream.status}
-        />
+        {liveSupported ? (
+          <StreamStatus live={live} status={stream.status} />
+        ) : null}
       </div>
     );
   }
@@ -382,12 +381,25 @@ export function LogViewer({
           setState((previous) => ({ ...previous, live: next }))
         }
         liveSupported={liveSupported}
-        unsupportedReason={liveOffReason}
+        unsupportedReasonId={liveSupported ? undefined : liveOffReasonId}
         range={range}
         onRangeChange={onRangeChange}
       />
-      <p className="text-xs text-muted-foreground">
-        {t("logs.rangeHistoryNote")}
+      {/* With the tail off, the note says why, in every state — the switch it
+          describes is disabled, so this is its only reachable reason, and
+          "live mode appends new lines" would be untrue (w4/556). */}
+      <p
+        id={liveSupported ? undefined : liveOffReasonId}
+        className="flex items-center gap-1.5 text-xs text-muted-foreground"
+      >
+        {liveSupported ? (
+          t("logs.rangeHistoryNote")
+        ) : (
+          <>
+            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+            {liveOffReason}
+          </>
+        )}
       </p>
       {body}
     </div>
@@ -453,29 +465,20 @@ function commitDraft(
   return { ...state, committed: { ...state.committed, [field]: value } };
 }
 
-// The footer under the log list: a live pulse while streaming, a paused note
-// when the tail is off, and a note when the active filters can't be live-tailed.
+// The footer under the log list: a live pulse while streaming, and a paused
+// note when the tail is switched off. Why a tail can't run at all is said
+// under the filter bar instead, beside the switch it disables.
 export function StreamStatus({
   live,
-  liveSupported,
-  unsupportedReason,
   status,
 }: {
   live: boolean;
-  liveSupported: boolean;
-  /** Why the tail is off; defaults to the filter explanation. */
-  unsupportedReason?: string;
   status: LiveStatus;
 }) {
   const { t } = useTranslations();
   return (
     <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      {!liveSupported ? (
-        <>
-          <AlertCircle className="h-3.5 w-3.5" />
-          {unsupportedReason ?? t("logs.liveUnsupported")}
-        </>
-      ) : live && status === "open" ? (
+      {live && status === "open" ? (
         <>
           <span className="relative flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500 opacity-75" />

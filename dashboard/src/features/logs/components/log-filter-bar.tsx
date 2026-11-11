@@ -125,8 +125,12 @@ interface LogFilterBarProps {
    * so the toggle is disabled with a hint (docs/ADR010-observability.md).
    */
   liveSupported: boolean;
-  /** Why the toggle is disabled; defaults to the filter explanation. */
-  unsupportedReason?: string;
+  /**
+   * While the toggle is disabled, the id of the visible text saying why: the
+   * switch's description, as a hover title can't be reached by keyboard or
+   * screen reader (w4/556).
+   */
+  unsupportedReasonId?: string;
   range?: RangeSelection;
   onRangeChange?: (range: RangeSelection) => void;
 }
@@ -138,7 +142,7 @@ export function LogFilterBar({
   live,
   onLiveChange,
   liveSupported,
-  unsupportedReason,
+  unsupportedReasonId,
   range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
 }: LogFilterBarProps) {
@@ -278,11 +282,7 @@ export function LogFilterBar({
         checked={live && liveSupported}
         disabled={!liveSupported}
         onCheckedChange={onLiveChange}
-        title={
-          liveSupported
-            ? undefined
-            : (unsupportedReason ?? t("logs.liveUnsupported"))
-        }
+        describedBy={unsupportedReasonId}
       />
 
       {active.length > 0 ? (
@@ -367,13 +367,14 @@ export function LiveToggle({
   checked,
   disabled,
   onCheckedChange,
-  title,
+  describedBy,
 }: {
   id: string;
   checked: boolean;
   disabled?: boolean;
   onCheckedChange: (checked: boolean) => void;
-  title?: string;
+  /** The id of visible text describing the switch, e.g. why it is off. */
+  describedBy?: string;
 }) {
   const { t } = useTranslations();
   return (
@@ -383,8 +384,9 @@ export function LiveToggle({
         checked={checked}
         disabled={disabled}
         onCheckedChange={onCheckedChange}
+        aria-describedby={describedBy}
       />
-      <Label htmlFor={id} className="cursor-pointer text-sm" title={title}>
+      <Label htmlFor={id} className="cursor-pointer text-sm">
         {t("logs.live")}
       </Label>
     </div>

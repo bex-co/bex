@@ -948,6 +948,26 @@ describe("LogViewer search committed while paused (w4/306)", () => {
     expect(screen.getByRole("switch", { name: /live/i })).toBeDisabled();
   });
 
+  // w4/556: a disabled switch can't be focused, so its reason is visible text
+  // and its description, in the empty state too, and the note stops
+  // promising that live mode appends lines.
+  it("says why a closed window has no live tail, beside the switch", () => {
+    const custom = {
+      id: "custom" as const,
+      startTime: "2026-11-01T07:00:00.000Z",
+      endTime: new Date(Date.now() - 3_600_000).toISOString(),
+      resolutionSeconds: 30,
+    };
+    render(<LogViewer resource="web" range={custom} />);
+    const reason =
+      "Live tail is off — this custom range has already ended, so no new lines can arrive in it.";
+    expect(screen.getByText(reason)).toBeVisible();
+    expect(
+      screen.getByRole("switch", { name: /live/i }),
+    ).toHaveAccessibleDescription(reason);
+    expect(screen.queryByText(/Live mode appends new lines/)).toBeNull();
+  });
+
   it("keeps tailing a custom window that ends in the future (w21/016)", () => {
     const custom = {
       id: "custom" as const,
