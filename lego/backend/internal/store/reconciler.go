@@ -524,6 +524,11 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 		}
 	}
 	r.recordCanceledPreDeploy(ctx, d.ID, cur)
+	// Before the sampled availability below, which leaves the failure to these
+	// when a process exit explains it.
+	if err := r.Store.InsertServiceEventFacts(ctx, instanceExitFacts(d.ID, cur)); err != nil {
+		log.Printf("controlplane: record instance exits for %s: %v", d.ID, err)
+	}
 	obs := r.guardServiceObservation(ctx, observedServiceStateFor(d.ID, cur, len(open) > 0))
 	if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
 		log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
@@ -1469,6 +1474,45 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 		}, true
 	}
 	return ServiceEventFact{}, false
+}
+
+// instanceExitFacts turns the exits the operator recorded for the serving
+// release's instances (status.instanceExits) into server_failed facts, one per
+// exit, with what Render's "Server Failed" event carries: the instance and
+// why it failed (w8/m158). The key is the instance and its restart count, so
+// every resync replays the same facts without adding any. The status holds
+// only exits of a release that is serving; a rollout that fails reports
+// through its deploy.
+//
+// An exit of an instance that had already stopped being ready is not an
+// event: it did not take the service down. That is the platform restarting an
+// instance that kept failing its health check, whose outage reads unhealthy,
+// and every exit of a crash loop after its first.
+func instanceExitFacts(appID string, app *appv1alpha1.App) []ServiceEventFact {
+	facts := make([]ServiceEventFact, 0, len(app.Status.InstanceExits))
+	for _, e := range app.Status.InstanceExits {
+		if e.AfterUnready {
+			continue
+		}
+		fact := ServiceEventFact{
+			SourceKey:  fmt.Sprintf("exit:%s:%s:%d", appID, e.Instance, e.RestartCount),
+			AppID:      appID,
+			Type:       EventFactServerFailed,
+			At:         e.FinishedAt.Time,
+			InstanceID: e.Instance,
+		}
+		switch {
+		case e.OOMKilled:
+			fact.ReasonCode = EventReasonOOMKilled
+		case e.ExitCode != 0:
+			code := e.ExitCode
+			fact.ReasonCode, fact.ExitCode = EventReasonNonZeroExit, &code
+		default:
+			fact.ReasonCode = EventReasonEarlyExit
+		}
+		facts = append(facts, fact)
+	}
+	return facts
 }
 
 // servedReleasePullFailure is the image_pull_failed fact for a release that

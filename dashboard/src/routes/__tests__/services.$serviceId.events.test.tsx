@@ -280,6 +280,46 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
+  // w8/m158: a running service's process that crashed or was killed for
+  // memory is an Instance Failed event with that cause and the instance, not
+  // a failed health check and not a cron run's wording.
+  it("words a service's crash and memory kill as the instance's", async () => {
+    const failed = (id: string, details: Record<string, unknown>) => ({
+      ...deployEvent({ details: {} }),
+      id,
+      type: "server_failed",
+      details: { instanceId: "web-7d9f5c-abcde", ...details },
+    });
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          failed("evt-crash", { reasonCode: "non_zero_exit", exitCode: 3 }),
+          failed("evt-oom", { reasonCode: "oom_killed", memoryLimit: "512Mi" }),
+          failed("evt-exit0", { reasonCode: "early_exit" }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+    renderEvents("app");
+
+    expect(
+      await screen.findByText(
+        /The instance's process exited with status 3 and was restarted\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /The instance ran out of memory \(512 MB limit\) and was restarted\./,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/The instance's process exited and was restarted\./),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/The run exited/)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/Instance web-7d9f5c-abcde/)).toHaveLength(3);
+  });
+
   // w8/m156: the registry keeps a bounded history of builds. A previous
   // deploy whose build is gone cannot be rolled back to, so its row offers no
   // Rollback; one whose build is stored keeps it.

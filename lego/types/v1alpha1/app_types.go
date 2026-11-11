@@ -1585,6 +1585,40 @@ type BuildHoldStatus struct {
 	Cause string `json:"cause"`
 }
 
+// MaxInstanceExits bounds AppStatus.InstanceExits.
+const MaxInstanceExits = 10
+
+// InstanceExit is one exit of a serving instance's app container. Instance
+// and RestartCount together identify it.
+type InstanceExit struct {
+	// Instance is the pod whose app container exited.
+	Instance string `json:"instance"`
+
+	// RestartCount is the container's restart count once it had restarted
+	// after this exit.
+	RestartCount int32 `json:"restartCount"`
+
+	// ExitCode is the status the process exited with; 0 is a process that
+	// ended on its own, which a service never should.
+	ExitCode int32 `json:"exitCode"`
+
+	// OOMKilled is true when the kernel killed the container for exceeding
+	// its memory limit.
+	// +optional
+	OOMKilled bool `json:"oomKilled,omitempty"`
+
+	// AfterUnready is true when the instance had already stopped being ready
+	// before its process exited. The exit is then not what took the instance
+	// down: the platform restarts an instance that keeps failing its health
+	// check, and a crash loop's later exits follow its first. bex-api records
+	// no Instance Failed event for such an exit; the outage has its own.
+	// +optional
+	AfterUnready bool `json:"afterUnready,omitempty"`
+
+	// FinishedAt is when the container exited.
+	FinishedAt metav1.Time `json:"finishedAt"`
+}
+
 // StoredImagesStatus is one reading of an App's repository in the in-cluster
 // registry.
 type StoredImagesStatus struct {
@@ -1871,6 +1905,18 @@ type AppStatus struct {
 	// gets a fresh live tag of its own.
 	// +optional
 	ProtectedImageTag string `json:"protectedImageTag,omitempty"`
+
+	// InstanceExits are the most recent exits of the serving release's app
+	// container, newest first (w8/m158). A process that crashes or is killed
+	// for memory restarts in place within seconds, often before anything
+	// samples the service as down, so the operator records the exit itself
+	// and bex-api turns each into one Instance Failed event with its cause.
+	// A release whose rollout is failing reports through RolloutFailure
+	// instead.
+	// +optional
+	// +listType=atomic
+	// +kubebuilder:validation:MaxItems=10
+	InstanceExits []InstanceExit `json:"instanceExits,omitempty"`
 
 	// StoredImages is what the in-cluster registry still holds for this App's
 	// own repository, as the operator last read it (w8/m156). The registry

@@ -3492,6 +3492,7 @@ func (r *AppReconciler) settleReady(ctx context.Context, app *appv1alpha1.App, d
 	}
 	r.recordImageDigest(ctx, app, dep)
 	r.protectServingImage(ctx, app)
+	r.recordInstanceExits(ctx, app, dep)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reason,
 		Message: message, ObservedGeneration: app.Generation,
@@ -3749,6 +3750,13 @@ func stampNotReadyCondition(app *appv1alpha1.App, reason, message string) {
 // ever served (ActiveRevision empty), or the prior-release Running/Hibernated
 // shape when an earlier release is still the truth.
 func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32, port int, notReadyMessage string) (ctrl.Result, error) {
+	// The served release's own pods going unready is not a rollout: a process
+	// that crashed is restarting. Its exit is recorded here as well as on the
+	// pass that finds it Ready again, so one that never recovers is not lost
+	// (w8/m158). Every return below writes status.
+	if rev := dep.Spec.Template.Labels[labelRevision]; rev != "" && rev == app.Status.ActiveRevision {
+		r.recordInstanceExits(ctx, app, dep)
+	}
 	if rolloutDeadline(app, dep) != nil {
 		return r.settleFailedRollout(ctx, app, dep, port)
 	}

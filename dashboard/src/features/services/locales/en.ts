@@ -4783,6 +4783,29 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Cron run failure reason: the container was OOM-killed (w4/m114)",
   },
+  "services.eventsReason.instance.non_zero_exit": {
+    message:
+      "The instance's process exited with status {exitCode} and was restarted.",
+    description:
+      "Instance failed reason for a running service: its process crashed (w8/m158)",
+  },
+  "services.eventsReason.instance.oom_killed": {
+    message:
+      "The instance ran out of memory ({memory} limit) and was restarted.",
+    description:
+      "Instance failed reason for a running service: killed at its plan's memory limit (w8/m158)",
+  },
+  "services.eventsReason.instance.oom_killed_no_limit": {
+    message: "The instance ran out of memory and was restarted.",
+    description:
+      "Instance failed reason for a running service: killed for memory, limit unknown (w8/m158)",
+  },
+  "services.eventsReason.instance.early_exit": {
+    message:
+      "The instance's process exited and was restarted. A service is expected to keep running.",
+    description:
+      "Instance failed reason for a running service: its process ended with status 0 (w8/m158)",
+  },
   "services.eventsReason.evicted": {
     message: "The run was evicted from its node before it finished.",
     description: "Cron run failure reason: the run's pod was evicted (w4/m114)",

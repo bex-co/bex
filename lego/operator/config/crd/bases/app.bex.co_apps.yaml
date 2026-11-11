@@ -1372,6 +1372,61 @@ spec:
                   InitialDeployHookCompleted records that spec.initialDeployHook ran to
                   success, so no later release selects it again. Set only by the operator.
                 type: boolean
+              instanceExits:
+                description: |-
+                  InstanceExits are the most recent exits of the serving release's app
+                  container, newest first (w8/m158). A process that crashes or is killed
+                  for memory restarts in place within seconds, often before anything
+                  samples the service as down, so the operator records the exit itself
+                  and bex-api turns each into one Instance Failed event with its cause.
+                  A release whose rollout is failing reports through RolloutFailure
+                  instead.
+                items:
+                  description: |-
+                    InstanceExit is one exit of a serving instance's app container. Instance
+                    and RestartCount together identify it.
+                  properties:
+                    afterUnready:
+                      description: |-
+                        AfterUnready is true when the instance had already stopped being ready
+                        before its process exited. The exit is then not what took the instance
+                        down: the platform restarts an instance that keeps failing its health
+                        check, and a crash loop's later exits follow its first. bex-api records
+                        no Instance Failed event for such an exit; the outage has its own.
+                      type: boolean
+                    exitCode:
+                      description: |-
+                        ExitCode is the status the process exited with; 0 is a process that
+                        ended on its own, which a service never should.
+                      format: int32
+                      type: integer
+                    finishedAt:
+                      description: FinishedAt is when the container exited.
+                      format: date-time
+                      type: string
+                    instance:
+                      description: Instance is the pod whose app container exited.
+                      type: string
+                    oomKilled:
+                      description: |-
+                        OOMKilled is true when the kernel killed the container for exceeding
+                        its memory limit.
+                      type: boolean
+                    restartCount:
+                      description: |-
+                        RestartCount is the container's restart count once it had restarted
+                        after this exit.
+                      format: int32
+                      type: integer
+                  required:
+                  - exitCode
+                  - finishedAt
+                  - instance
+                  - restartCount
+                  type: object
+                maxItems: 10
+                type: array
+                x-kubernetes-list-type: atomic
               manualRunHandledAt:
                 description: |-
                   ManualRunHandledAt is the exact spec.runAt token whose Job has been

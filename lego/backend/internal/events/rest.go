@@ -183,13 +183,17 @@ const unhealthyMessage = "The instance failed its health check"
 // toFailureReason maps a failure's closed reason code onto Render's
 // failureReason object, the one Render's cron run, job and server_failed
 // events share; nil when the cause was not observed. timed_out is a cron
-// run's deadline, the only failure that records it.
+// run's deadline, the only failure that records it. early_exit is a running
+// service's process that ended on its own with status 0 (w8/m158).
 func toFailureReason(d Details) *FailureReason {
 	switch d.ReasonCode {
 	case store.EventReasonNonZeroExit:
 		return &FailureReason{NonZeroExit: d.ExitCode}
 	case store.EventReasonOOMKilled:
-		return &FailureReason{OOMKilled: &OOMKilledInfo{}}
+		return &FailureReason{OOMKilled: &OOMKilledInfo{MemoryLimit: d.MemoryLimit}}
+	case store.EventReasonEarlyExit:
+		early := true
+		return &FailureReason{EarlyExit: &early}
 	case store.EventReasonEvicted:
 		return &FailureReason{Evicted: true}
 	case store.EventReasonTimedOut:

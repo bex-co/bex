@@ -136,6 +136,7 @@ limitations under the License.
 package events
 
 import (
+	"cmp"
 	"context"
 	"errors"
 	"fmt"
@@ -148,6 +149,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/eventvocab"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/tiers"
 )
 
 // EventStore is the Service's seam to the control-plane store: one composed list
@@ -643,11 +645,24 @@ type FailureReason struct {
 	Unhealthy string `json:"unhealthy,omitempty"`
 }
 
-// OOMKilledInfo is Render's oomKilled object. bex does not record the limit
-// a container was killed at, so memoryLimit is present (Render requires it)
-// but empty, as on cron runs.
+// OOMKilledInfo is Render's oomKilled object. memoryLimit is the plan's
+// limit for a service's instance (Details.MemoryLimit). A cron run's fact
+// does not say which plan it ran on, so there it is present (Render requires
+// it) and empty.
 type OOMKilledInfo struct {
 	MemoryLimit string `json:"memoryLimit"`
+}
+
+// withMemoryLimit fills the memory limit of an instance that was killed for
+// memory from the service's plan (Details.MemoryLimit). An unknown plan
+// leaves it empty.
+func withMemoryLimit(ev *Event, tier string) {
+	if ev.Type != TypeServerFailed || ev.Details.ReasonCode != store.EventReasonOOMKilled {
+		return
+	}
+	if _, memory, _, ok := tiers.Compute.Resources(cmp.Or(tier, "free")); ok {
+		ev.Details.MemoryLimit = memory
+	}
 }
 
 // deployEndReason maps an ended deploy row onto Render's reason (w8/m146):
@@ -813,6 +828,10 @@ type Details struct {
 	// JobID is job_run_ended's job-… id, read back from its fact key.
 	JobID    string
 	ExitCode *int32
+	// MemoryLimit is the memory a service's instance was killed at: its plan's
+	// limit, on a server_failed whose ReasonCode is oom_killed (w8/m158). The
+	// fact does not record it; the read fills it from the service's plan.
+	MemoryLimit string
 	// postgres_cluster_leader_changed (w2/m171): the instance that became
 	// primary — Render's leaderId.
 	LeaderID string
@@ -1003,7 +1022,9 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	}
 	out := make([]Event, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, view(r, service))
+		ev := view(r, service)
+		withMemoryLimit(&ev, a.Spec.Tier)
+		out = append(out, ev)
 	}
 	s.resolveUserEmails(ctx, out)
 	s.resolveUserIDs(ctx, out)
@@ -1134,6 +1155,13 @@ func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
 		return Event{}, err
 	}
 	event := view(lookup.Event, lookup.ServiceID)
+	if event.Type == TypeServerFailed && event.Details.ReasonCode == store.EventReasonOOMKilled {
+		// Best effort: the limit is the plan's, and a service that is gone
+		// leaves it empty.
+		if a, err := s.GetApp(ctx, core.RelCanView, lookup.ServiceID); err == nil {
+			withMemoryLimit(&event, a.Spec.Tier)
+		}
+	}
 	page := []Event{event}
 	s.resolveUserEmails(ctx, page)
 	s.resolveUserIDs(ctx, page)

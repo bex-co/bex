@@ -98,6 +98,9 @@ query ServiceEvents(
       # beside reasonCode non_zero_exit / oom_killed.
       exitCode
       instanceId
+      # server_failed with reasonCode oom_killed (w8/m158): the plan's memory
+      # limit the instance was killed at ("512Mi").
+      memoryLimit
       # service_disk_usage_high / _recovered (w2/m255): Render's disk details.
       diskName
       mountPath

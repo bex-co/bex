@@ -123,6 +123,10 @@ const (
 	EventReasonOOMKilled   = "oom_killed"
 	EventReasonEvicted     = "evicted"
 	EventReasonTimedOut    = "timed_out"
+	// A running service's process that ended on its own with status 0: the
+	// earlyExit reason of Render's "Server Failed" event (w8/m158). A crash
+	// and a memory kill of a running service use non_zero_exit and oom_killed.
+	EventReasonEarlyExit = "early_exit"
 )
 
 var serviceEventReasonCodes = map[string]bool{
@@ -137,6 +141,7 @@ var serviceEventReasonCodes = map[string]bool{
 	EventReasonOOMKilled:        true,
 	EventReasonEvicted:          true,
 	EventReasonTimedOut:         true,
+	EventReasonEarlyExit:        true,
 }
 
 // ServiceEventFact is a closed, non-secret event record. SourceKey is a stable
@@ -427,6 +432,18 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 		obs.Availability = availability
 		facts := observedStateFacts(obs, previousPhase, previousAvailability, previousSuspended, previousChangedAt)
 		for _, fact := range facts {
+			// The process exiting is the outage's cause, and the exit already
+			// has its own server_failed with the cause on it (w8/m158). The
+			// sampled outage adds none; its server_available still follows.
+			if fact.Type == EventFactServerFailed && fact.ReasonCode == EventReasonReadinessFailed {
+				var exited bool
+				if err := tx.QueryRow(ctx, instanceExitSinceSQL, fact.AppID, fact.At.Add(-instanceExitOutageWindow)).Scan(&exited); err != nil {
+					return err
+				}
+				if exited {
+					continue
+				}
+			}
 			if _, err := tx.Exec(ctx, insertServiceEventFactSQL, fact.insertArgs()...); err != nil {
 				return err
 			}
@@ -592,6 +609,18 @@ func availabilityEdgeAt(transition, previousChangedAt, observed time.Time) time.
 	}
 	return transition
 }
+
+// instanceExitOutageWindow is how far back an instance's recorded exit counts
+// as the cause of an outage observed now. The outage is confirmed on a second
+// pass, up to a resync and a debounce after the process went down.
+const instanceExitOutageWindow = 3 * time.Minute
+
+// instanceExitSinceSQL reports whether app $1 has an exit-caused server_failed
+// at or after $2 (instanceExitFacts).
+const instanceExitSinceSQL = `SELECT EXISTS (
+	SELECT 1 FROM service_event_facts
+	WHERE app_id = $1 AND fact_type = 'server_failed'
+	  AND reason_code IN ('non_zero_exit', 'oom_killed', 'early_exit') AND at >= $2)`
 
 // failureFactType names an availability failure edge: an instance lost with
 // its node is Render's server_hardware_failure, anything else server_failed.

@@ -5117,6 +5117,7 @@ export type ServiceEventDetails = {
   instanceId: Maybe<Scalars['String']['output']>;
   leaderId: Maybe<Scalars['String']['output']>;
   maintenanceEnabled: Maybe<Scalars['Boolean']['output']>;
+  memoryLimit: Maybe<Scalars['String']['output']>;
   mountPath: Maybe<Scalars['String']['output']>;
   planFrom: Maybe<Scalars['String']['output']>;
   planTo: Maybe<Scalars['String']['output']>;

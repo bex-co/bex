@@ -37,6 +37,10 @@ import {
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
 import { useGoneBuilds } from "@/features/deploys/hooks/use-gone-builds";
+import {
+  eventReasonKey,
+  memoryLimitLabel,
+} from "@/features/services/lib/event-reason";
 import { DeployFailureReason } from "@/features/deploys/components/deploy-failure-reason";
 import { toDeployReasonTemplate } from "@/features/deploys/lib/deploy-reason";
 import {
@@ -443,6 +447,7 @@ function EventSummary({
   const startedAt = details?.startedAt || null;
   const finishedAt = details?.finishedAt || null;
   const reasonCode = details?.reasonCode || null;
+  const memoryLimit = details?.memoryLimit || null;
   const exitCode = details?.exitCode ?? null;
   const instanceId = details?.instanceId || null;
   // An autoscaling start/end's replica pair, or an instance-count change's
@@ -578,8 +583,9 @@ function EventSummary({
         ) : null}
         {reasonCode ? (
           <p className="text-muted-foreground mt-2 text-xs">
-            {t(`services.eventsReason.${reasonCode}`, {
+            {t(eventReasonKey(type, reasonCode, memoryLimit), {
               exitCode: exitCode ?? "",
+              memory: memoryLimit ? memoryLimitLabel(memoryLimit) : "",
             })}
             {instanceId
               ? ` · ${t("services.eventsInstanceReference", { id: instanceId })}`

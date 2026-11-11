@@ -59,6 +59,11 @@ func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeCronJobRunStarted, FactRunID: "crn-0123456789abcdefghij"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeCronJobRunEnded, FactRunID: "crn-0123456789abcdefghij", FactStatus: store.EventStatusFailed, ReasonCode: store.EventReasonEvicted}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeServerFailed, InstanceID: instance, ReasonCode: store.EventReasonReadinessFailed}},
+		// w8/m158: a running service's process that crashed, was killed for
+		// memory or ended on its own, each with the instance that failed.
+		{row: store.ServiceEventRow{Key: "exit:crash", Source: store.EventSourceFact, FactType: TypeServerFailed, InstanceID: instance, ReasonCode: store.EventReasonNonZeroExit, FactExitCode: &three}},
+		{row: store.ServiceEventRow{Key: "exit:oom", Source: store.EventSourceFact, FactType: TypeServerFailed, InstanceID: instance, ReasonCode: store.EventReasonOOMKilled}},
+		{row: store.ServiceEventRow{Key: "exit:early", Source: store.EventSourceFact, FactType: TypeServerFailed, InstanceID: instance, ReasonCode: store.EventReasonEarlyExit}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeServerAvailable, InstanceID: instance}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeImagePullFailed, Image: "docker.io/library/nginx:1", ReasonCode: store.EventReasonImagePullBackoff}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeCommitIgnored, CommitID: "abc123", CommitURL: "https://github.com/o/r/commit/abc123", ReasonCode: store.EventReasonSkipPhrase}},

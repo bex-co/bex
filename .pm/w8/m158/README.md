@@ -1,10 +1,62 @@
-# A web service whose process crashes or runs out of memory is reported as "The instance failed its health check", or not reported at all
+# w8 · m158 — A crash or an out-of-memory kill of a running service is recorded with its cause
+
+**Worker:** worker8 **Goal:** when the process of a running service exits or is killed for memory, the Events timeline records it once, with the exit status or the memory limit and the instance, even when the restart is quick, on REST, GraphQL, MCP and the dashboard. **Status:** in progress (t001–t007 done and shipped; t008, the live replay on production, waits for the deploy that carries it)
+
+## Tasks (in order)
+
+| id   | title                                                                                                    | est | depends_on |
+| ---- | -------------------------------------------------------------------------------------------------------- | --- | ---------- |
+| t001 | The operator records how a serving instance's app container exited — **DONE**                            | 60m | —          |
+| t002 | Each exit becomes one `server_failed` with its cause and instance — **DONE**                             | 60m | t001       |
+| t003 | REST, GraphQL and MCP carry the exit status, the memory limit, an early exit and the instance — **DONE** | 30m | t002       |
+| t004 | Dashboard words the three causes for a service — **DONE**                                                | 30m | t003       |
+| t005 | Render parity — **DONE**                                                                                 | 20m | t003, t004 |
+| t006 | Simplify — **DONE**                                                                                      | 15m | t005       |
+| t007 | Test coverage — **DONE**                                                                                 | 20m | t005       |
+| t008 | Closeout (live replay on production)                                                                     | 30m | t007       |
+
+## Definition of done
+
+1. A free web service that calls `process.exit(3)` once: within a minute `GET …/events?type=server_failed` holds one event with `reason.nonZeroExit: 3` and an `instanceID`, even though the service answered 200 again within 15 seconds.
+2. The same service killed for memory: `reason.oomKilled.memoryLimit` names the plan's limit. `process.exit(0)`: `reason.earlyExit: true`.
+3. A service whose health check path starts answering 500 keeps `reason.unhealthy`.
+4. The dashboard Events tab shows the three causes in words, in English and Chinese.
+5. A rollout failure still reports through `deploy_ended` and adds no `server_failed` for a service that never went down.
+6. A crash that also lasts long enough for the sampled outage adds no second `server_failed`; its `server_available` still follows.
+7. Fixtures deleted afterwards.
+
+## Design (decided 2026-11-11, w8 drain)
+
+- **The operator observes, the backend records.** The operator reads the app container's last termination from the pods of the release that is serving and keeps the newest few in `App.status.instanceExits` (instance, restart count, exit code, out-of-memory, finish time). It is the read `recordRolloutExit` already makes for a failing rollout. bex-api turns each into one fact keyed by instance and restart count, so a resync replays it without duplicates.
+- **One event per crash.** The backend's sampled outage (a service not Ready on two passes) keeps recording `server_available`, and keeps recording `server_failed` for a process that is running and not Ready. When an exit was recorded for the same service inside the outage, the outage adds no `server_failed` of its own.
+- **Paging.** The event is recorded either way. Alert emails are digested per recipient, so a crash loop does not send one mail per restart. Whether a single quick crash should page as Critical is ADR052's question and is left as it is.
+
+## Implementation notes (2026-11-11)
+
+- **What counts as the application exiting.** The app container's last termination on a pod of the serving release, once it has restarted, after that release's rollout settled. Not counted: a container stopped from outside with SIGKILL or SIGTERM (exit 137 or 143 without the out-of-memory reason); a pod of another release; a sidecar; a crash while the release was still rolling out (it came up after, and the previous release served until then); an exit first seen more than ten minutes after it happened, so the operator's first pass does not report days-old restarts as new.
+- **An exit that followed the outage.** When the instance had already stopped being ready more than three seconds before its process exited, the exit is recorded with `afterUnready` and bex-api writes no event for it. That is the platform restarting an instance that kept failing its health check, whose outage reads `unhealthy` (definition of done 3), and every exit of a crash loop after its first (one event per outage, not one per restart). The mark is decided the first time the exit is seen and kept.
+- **Where it is read.** On the pass that finds the release Ready again, and on the pass that finds the served release's pods unready, so a process that never recovers is recorded too.
+- **Status.** `App.status.instanceExits`, newest first in a total order, ten at most; unchanged passes rewrite nothing.
+- **Facts.** One `server_failed` per unmarked exit, keyed `exit:<service>:<instance>:<restart count>`, dated at the exit, with `reason_code` `non_zero_exit` (and the exit code), `oom_killed` or the new `early_exit` (migration 0235 admits it).
+- **One event per crash.** The sampled outage skips its own `server_failed` when an exit-caused one exists for the service in the three minutes before it; its `server_available` is still written.
+- **Memory limit.** The fact does not store it. The read fills `reason.oomKilled.memoryLimit` from the service's current plan ("512Mi" on Free), so an event from before a plan change shows the new limit.
+- **Found by review and fixed before commit.** A new release that crashed once while starting and then came up was reported as a failed instance (now only exits after the rollout settled count). A health-check restart of a process that exits cleanly on the signal was reported as the application exiting, and a crash loop wrote one event per restart (now marked `afterUnready`). The kept set could flip at the bound when exits tied on their second (now a total order).
+- **Not done.** The mobile app shows the raw reason code for the new causes (another workstream's screen). Whether Render groups a crash loop is unverified.
+
+## Source + Goal linkage
+
+- **Source:** inbox note `w8/263` (promoted 2026-11-11), `/qa-find-bugs-cli` w8 loop sweep `9dd8`. Its finding follows.
+- **Goal linkage:** Render parity ("An `Instance Failed` event occurs when your service's application exits unexpectedly… the event might include an exit code").
+- **Expected outcome:** a user whose instance is killed for memory is told so, not sent to look at a health endpoint.
+- **Why now:** major. The wrong cause is reported for the most common runtime failures.
+
+## Finding (2026-11-11 UTC, `/qa-find-bugs-cli` w8 loop sweep `9dd8`)
 
 Why: on Render the Events timeline is where a user learns that their app exited with status 1 or ran out of memory. On bex a crash that restarts within about half a minute leaves no event, and a longer one is recorded as a failed health check on a service that has no health check path. The exit status and the out-of-memory kill appear nowhere: not in the event, not in the dashboard, not in the logs. A user whose 512 MB instance is being killed for memory is sent to look at their health endpoint.
 
 **Severity:** major (wrong cause on the most common runtime failures; the restart itself works). **Attribution:** server (operator status and backend event facts). **Estimate:** milestone-sized, ~4h. **Source:** `/qa-find-bugs-cli` w8 loop sweep `9dd8`, 2026-11-11 UTC, released `bex v0.5.0` (Render CLI v2.35.0), `https://api.bex.co/v1/`, production pin `7ca0227aa477`, workspace `bex-canary`, QA human device login.
 
-## Evidence
+### Evidence
 
 One free native Node web service, no health check path, whose server exits or allocates memory on request:
 
@@ -35,7 +87,7 @@ Every recorded `server_failed`, whatever the cause, reads the same on `GET /v1/s
 - `bex logs -r <srv> --type app` shows the app's last line (`RSS 531MB`, `CRASH exit 3`, `EXIT0`) and then the next start's `LISTEN 10000`. No line says the process exited or was killed.
 - `bex services instances <srv>` shows the same instance id before and after: the container restarts in place.
 
-## Expected
+### Expected
 
 Render, [Troubleshooting deploys](https://render.com/docs/troubleshooting-deploys):
 
@@ -54,13 +106,13 @@ So on bex:
 - `unhealthy` only when a running process stopped passing its health check
 - each of them recorded even when the restart is quick, with the `instanceID` of the instance that failed
 
-## Root cause
+### Root cause
 
 1. **The cause is never observed.** `observedServiceStateFor` sets `obs.ReasonCode = EventReasonReadinessFailed` for every down service that is not a node loss (`lego/backend/internal/store/reconciler.go:2222`, `:2246`). `toFailureReason` turns that code into the fixed `unhealthyMessage` (`lego/backend/internal/events/rest.go:174-197`). The `non_zero_exit` and `oom_killed` codes exist, but only a cron run and a failed rollout fill them: the operator reads `LastTerminationState` in `recordRolloutExit` (`lego/operator/internal/controller/app_controller.go:3948-3978`, w8/m146) and stores it in `status.rolloutFailure`, which is written only while a rollout is failing. A running release has no equivalent.
 2. **`instanceID` is never set.** `ObservedServiceState.InstanceID` is copied into the fact (`lego/backend/internal/store/event_facts.go:602`) and nothing assigns it.
 3. **The event is a sampled outage, not a crash.** The backend looks at the App's Ready condition on a 30 s resync (`reconciler.go:83`) and records an outage only on the second unhealthy pass, 10 s after the first (`debounceUnhealthy`, `:376`; `unhealthyConfirmAfter`, `:328`). A crash whose restart is Ready again before that second pass is never seen. That is why the two exit-3 crashes and one of the two memory kills left nothing.
 
-## Fix
+### Fix
 
 1. Operator: when the app container of a serving pod restarts, record the termination in the App status: instance id, exit code, whether it was `OOMKilled`, the finish time and the pod's restart count. Use the read `recordRolloutExit` already does, for the active revision instead of a failing one.
 2. Backend: emit one `server_failed` per recorded termination, keyed by instance and restart count so a resync replays it idempotently, with `ReasonCode` `non_zero_exit` (and the exit code), `oom_killed`, or a new early-exit code for status 0. Keep `readiness_failed` for a process that is running and not Ready. The sampled outage path stays for that case and for `server_available`.
@@ -68,7 +120,7 @@ So on bex:
 4. Dashboard: word the three causes for a service ("exited with status 3", "ran out of memory (512 MB limit)", "exited"). The existing `non_zero_exit` and `oom_killed` strings say "The run …" and are for cron.
 5. Decide with ADR052 whether a single quick crash should page as Critical; the event must be recorded either way.
 
-## Acceptance
+### Acceptance
 
 - A free web service that calls `process.exit(3)` once: within a minute `GET …/events?type=server_failed` holds one event with `reason.nonZeroExit: 3` and an `instanceID`, even though the service answered 200 again within 15 s.
 - The same service killed for memory: `reason.oomKilled.memoryLimit` names the plan's limit. `process.exit(0)`: `reason.earlyExit: true`.
@@ -76,16 +128,16 @@ So on bex:
 - The dashboard Events tab shows the three causes in words, in en and zh.
 - A rollout failure still reports through `deploy_ended` (w8/m146) and does not add a `server_failed` for a service that never went down (w4/161, w4/533).
 
-## Unverified
+### Unverified
 
 - What Render writes to the log stream when a running process exits. bex writes nothing; the docs only describe the event.
 - Whether Render records one event per crash while a process is crash-looping, or groups them.
 - Why the first run's memory kill was missed while the second's was caught. The sampling in root cause 3 explains it, but the reconciler's passes are not visible from the tenant side.
 
-## Dedupe
+### Dedupe
 
 w3/m302 (blocked on its live check) renamed the keys and maps a failed health check to `unhealthy`; it records that fields bex does not store stay omitted. w8/m146 (done) added the exit code and memory kill to `deploy_ended`. w4/196, w4/200 and w4/207 (done) fixed when the sampled outage is stamped. w4/m114 (done) is the cron run's reason. w4/m327 (open) is how a live service failing its health check reads in the dashboard. None records why a running web service's process ended.
 
-## Cleanup
+### Cleanup
 
 The service was deleted after the reads; it answers 404.
