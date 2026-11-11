@@ -39,7 +39,18 @@ import {
  * instance flow. When the plan has no backups the panel renders a disabled
  * state rather than hiding — recovery is unavailable, not broken.
  */
-export function RecoveryPanel({ id }: { id: string }) {
+export function RecoveryPanel({
+  id,
+  databaseName,
+}: {
+  id: string;
+  /**
+   * The instance's primary database. A logical export dumps this database
+   * only, which the panel says now that a user can create more databases in
+   * the instance (w8/m155, w8/258).
+   */
+  databaseName?: string | null;
+}) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const {
@@ -175,6 +186,11 @@ export function RecoveryPanel({ id }: { id: string }) {
               items={info.backups}
               emptyText={t("databases.recoveryNoBackups")}
             />
+            {databaseName ? (
+              <p className="text-sm text-muted-foreground">
+                {t("databases.recoveryExportScope", { database: databaseName })}
+              </p>
+            ) : null}
             <ExportList
               title={t("databases.recoveryExports")}
               items={exports}

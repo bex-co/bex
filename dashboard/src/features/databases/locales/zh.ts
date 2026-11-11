@@ -712,6 +712,12 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "尚无备份。",
     description: "Recovery panel empty backup list",
   },
+  "databases.recoveryExportScope": {
+    message:
+      "导出只包含数据库 {database}。在此实例中创建的其他数据库不包含在内。",
+    description:
+      "Recovery panel note naming the one database a logical export contains (w8/258)",
+  },
   "databases.recoveryExports": {
     message: "导出",
     description: "Recovery panel export-list heading",

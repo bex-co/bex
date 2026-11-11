@@ -279,4 +279,17 @@ describe("RecoveryPanel logical exports", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByLabelText("New database name")).toHaveValue("recovered");
   });
+
+  // w8/258: a user can create more databases in an instance (w8/m155), and a
+  // logical export dumps the primary one only. The panel says which.
+  it("names the one database an export contains", () => {
+    const { rerender } = render(<RecoveryPanel id="db" databaseName="shop" />);
+    expect(
+      screen.getByText(
+        "An export contains the database shop only. Other databases created in this instance are not included.",
+      ),
+    ).toBeInTheDocument();
+    rerender(<RecoveryPanel id="db" />);
+    expect(screen.queryByText(/An export contains the database/)).toBeNull();
+  });
 });

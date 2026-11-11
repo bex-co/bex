@@ -348,7 +348,10 @@ function DatabaseDetailPage() {
                 >
                   <DeferredMount hashId="recovery" minHeight={240}>
                     <Suspense fallback={<CardSkeleton rows={3} />}>
-                      <RecoveryPanel id={database.id} />
+                      <RecoveryPanel
+                        id={database.id}
+                        databaseName={database.databaseName}
+                      />
                     </Suspense>
                   </DeferredMount>
                 </section>

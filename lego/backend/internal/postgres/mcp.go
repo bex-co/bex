@@ -287,7 +287,7 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_exports",
-		Description: "List logical pg_dump exports for a managed Postgres database. Available exports include a short-lived authenticated download URL.",
+		Description: "List logical pg_dump exports for a managed Postgres database. An export contains the instance's primary database (databaseName) only; other databases created in the instance are not included. Available exports include a short-lived authenticated download URL.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, exportsResult, error) {
 		list, err := s.ListExports(ctx, in.PostgresID)
 		if err != nil {
@@ -297,7 +297,7 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_postgres_export",
-		Description: "Trigger a logical pg_dump directory-format export of a managed Postgres database. The artifact is retained for seven days; only one export may run at once.",
+		Description: "Trigger a logical pg_dump directory-format export of a managed Postgres database. It contains the instance's primary database (databaseName) only; other databases created in the instance are not included. The artifact is retained for seven days; only one export may run at once.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, ExportView, error) {
 		v, err := s.CreateExport(ctx, in.PostgresID)
 		return nil, v, err

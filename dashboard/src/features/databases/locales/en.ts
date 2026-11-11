@@ -732,6 +732,12 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "No backups yet.",
     description: "Recovery panel empty backup list",
   },
+  "databases.recoveryExportScope": {
+    message:
+      "An export contains the database {database} only. Other databases created in this instance are not included.",
+    description:
+      "Recovery panel note naming the one database a logical export contains (w8/258)",
+  },
   "databases.recoveryExports": {
     message: "Exports",
     description: "Recovery panel export-list heading",
