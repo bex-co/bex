@@ -376,3 +376,54 @@ func TestSetPortOnWebImageServiceSelectsConfiguredMode(t *testing.T) {
 		t.Fatalf("reserved web image port: got %v, want bad request", err)
 	}
 }
+
+// w4/m323: the rollout stall reason tells an image-port service whose port is
+// set to "remove it to use the image's port", and port 0 now does that on every
+// surface (they all reach SetPort or the PATCH rule): the service returns to
+// its unconfigured image mode, as a create with no port stamps it. A service
+// whose image does not supply its ports still refuses 0.
+func TestClearingAnImagePortServicesPortReturnsItToTheImage(t *testing.T) {
+	for _, tc := range []struct {
+		typ, from, want string
+	}{
+		{appv1alpha1.TypePrivateService, appv1alpha1.PortModeImageConfiguredV1, appv1alpha1.PortModeImageV1},
+		{appv1alpha1.TypeWebService, appv1alpha1.PortModeWebImageConfiguredV1, appv1alpha1.PortModeWebImageV1},
+	} {
+		app := portApp("svc", tc.typ, 10000)
+		app.Spec.PortMode = tc.from
+		app.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-svc"}
+		st := &recordingStore{}
+		svc, cl := newService(st, app)
+		view, err := svc.SetPort(t.Context(), "svc", 0)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.from, err)
+		}
+		got := getApp(t, cl, "svc")
+		if got.Spec.PortMode != tc.want || got.Spec.RestartedAt == "" {
+			t.Fatalf("%s cleared: mode=%s restartedAt=%q, want %s and a new deploy", tc.from, got.Spec.PortMode, got.Spec.RestartedAt, tc.want)
+		}
+		if len(st.portCalls) != 1 || st.portCalls[0].mode != tc.want {
+			t.Fatalf("%s: durable port update = %+v, want %s", tc.from, st.portCalls, tc.want)
+		}
+		if view.ConfiguredPort != 0 || view.PortConfigured {
+			t.Fatalf("%s: after clearing configuredPort=%d portConfigured=%v, want none", tc.from, view.ConfiguredPort, view.PortConfigured)
+		}
+	}
+	// Clearing a port that is not set deploys nothing.
+	unset := portApp("unset", appv1alpha1.TypePrivateService, 10000)
+	unset.Spec.PortMode = appv1alpha1.PortModeImageV1
+	unset.Labels = map[string]string{store.LabelManagedBy: store.ManagedByValue, store.LabelAppID: "srv-unset"}
+	st := &recordingStore{}
+	svc, cl := newService(st, unset)
+	if view, err := svc.SetPort(t.Context(), "unset", 0); err != nil || view.PortConfigured {
+		t.Fatalf("clearing an unset port: view=%+v err=%v", view, err)
+	}
+	if got := getApp(t, cl, "unset"); got.Spec.RestartedAt != "" || len(st.portCalls) != 0 {
+		t.Fatalf("clearing an unset port deployed: restartedAt=%q store=%+v", got.Spec.RestartedAt, st.portCalls)
+	}
+	native := portApp("native", appv1alpha1.TypePrivateService, 10000)
+	svc, _ = newService(&recordingStore{}, native)
+	if _, err := svc.SetPort(t.Context(), "native", 0); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("clearing a native service's port: got %v, want bad request", err)
+	}
+}

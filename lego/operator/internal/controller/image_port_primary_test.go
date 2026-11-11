@@ -153,8 +153,10 @@ func TestImagePortStallHintNamesAConfiguredPrimary(t *testing.T) {
 			[]string{"selected from the image's declared TCP ports (80)"}, []string{"configured"}},
 		{"explicit port the image does not declare", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 80, 10000), 10000,
 			[]string{"port 10000, set by the service's configured port", "declares TCP ports (80)", "Settings"}, []string{"80, 10000", "Bind the server"}},
+		// w4/m323: the variable wins over any port setting, so the advice is
+		// to change or remove the variable, not the setting.
 		{"PORT env the image does not declare", web(appv1alpha1.PortModeWebImageV1, 9999, 80, 9999), 9999,
-			[]string{"set by the service's PORT environment variable", "(80)"}, []string{"80, 9999"}},
+			[]string{"set by the service's PORT environment variable", "(80)", "Change the PORT environment variable"}, []string{"80, 9999", "in Settings"}},
 		{"explicit port the image declares", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 80, 8080), 8080,
 			[]string{"set by the service's configured port", "(80)"}, []string{"8080)", "80, 8080"}},
 		{"explicit port and no other declared", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, 10000), 10000,

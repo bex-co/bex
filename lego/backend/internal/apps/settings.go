@@ -520,11 +520,11 @@ var servicePatchTable = []servicePatchOp{
 		present:  func(p ServicePatch) bool { return p.Port != nil },
 		relation: canCreate,
 		check: func(_ context.Context, _ *Service, probe *appv1alpha1.App, _ string, p ServicePatch) error {
-			if err := checkPort(probe, *p.Port); err != nil {
+			port, mode, err := portChange(probe, *p.Port)
+			if err != nil {
 				return err
 			}
-			probe.Spec.PortMode = configuredPortMode(probe.Spec)
-			probe.Spec.Port = *p.Port
+			probe.Spec.Port, probe.Spec.PortMode = port, mode
 			return nil
 		},
 		apply: func(ctx context.Context, s *Service, id string, p ServicePatch) (AppView, error) {

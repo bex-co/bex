@@ -577,7 +577,12 @@ type AppView struct {
 	// service's configured primary (App.ConfiguredImagePort), else Port. Port
 	// moves only at promotion (w4/m243 t007), so a save would otherwise read
 	// back the old port until the deploy is live (w4/433). GraphQL only.
-	ConfiguredPort int32  `json:"-"`
+	ConfiguredPort int32 `json:"-"`
+	// PortConfigured reports an image-port service whose port is set (a
+	// *-configured-v1 mode), which Settings can clear to use the image's port
+	// again (w4/m323). ConfiguredPort alone cannot say so: it falls back to
+	// the resolved port. GraphQL only.
+	PortConfigured bool   `json:"-"`
 	CreatedAt      string `json:"createdAt"`
 	UpdatedAt      string `json:"updatedAt,omitempty"`
 	// DashboardURL is the control-plane detail route, in Render's
@@ -1149,6 +1154,7 @@ func view(a *appv1alpha1.App) AppView {
 		InternalAddress:      a.InternalAddress(),
 		Port:                 addressablePort(a),
 		ConfiguredPort:       settingsPort(a),
+		PortConfigured:       configuredPortModeOf(a.Spec.PortMode),
 		OpenPorts:            serverPorts(a.OpenPorts()),
 		ImagePorts:           a.Spec.HasImagePorts(),
 		URLs:                 urls,
@@ -5043,10 +5049,14 @@ func (s *Service) SetPort(ctx context.Context, name string, port int32) (AppView
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := checkPort(a, port); err != nil {
+	port, mode, err := portChange(a, port)
+	if err != nil {
 		return AppView{}, err
 	}
-	mode := configuredPortMode(a.Spec)
+	// Clearing a port that is not set changes nothing, so it deploys nothing.
+	if mode == a.Spec.PortMode && port == appv1alpha1.DefaultPort && !configuredPortModeOf(mode) {
+		return s.view(a), nil
+	}
 	result, err := s.writeThroughStoreFetched(ctx, a, func(ctx context.Context, id string) error {
 		return s.Store.SetAppPort(ctx, id, port, mode)
 	}, func(a *appv1alpha1.App) {
@@ -5102,9 +5112,9 @@ func settingsPort(app *appv1alpha1.App) int32 {
 }
 
 // validateServicePort is the one port bounds check every surface shares, so a
-// create and an update can never disagree about what is acceptable. Unlike
-// create, an update has no "0 means default" case: an explicit zero here is a
-// caller asking for a port that cannot be bound, not an omission.
+// create and an update can never disagree about what is acceptable. An update's
+// 0 reaches it only for a service whose image does not supply its ports
+// (portChange), where it is a port that cannot be bound, not an omission.
 //
 // Ports below 1024 are accepted, as on Render: containerd 2.x's CRI default
 // sets net.ipv4.ip_unprivileged_port_start=0 inside every pod, so a process

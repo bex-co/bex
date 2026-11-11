@@ -91,27 +91,29 @@ export interface BuildShape {
    */
   showPort: boolean;
   /**
-   * A Git-built Docker private service publishes the TCP ports its image
-   * declares (w6/m148): its port is optional, blank by default, and only picks
-   * the primary when set. bex-api applies the same rule to a create with no
-   * port.
+   * A service whose image supplies its ports (a Docker build or a prebuilt
+   * image): its port is optional, blank by default, and only picks the primary
+   * when set. bex-api applies the same rule to a create with no port.
    */
   imagePorts: boolean;
 }
 
 /**
  * Whether a create with no port takes its ports from the image: bex-api stamps
- * an image-port mode for a Git Docker private service (w6/m148) and for a web
- * service built by Docker or deployed from a prebuilt image (w4/m243). A
- * private service on a prebuilt image keeps the configured port.
+ * an image-port mode for a web or private service built by Docker or deployed
+ * from a prebuilt image (w4/m243, w6/m148, w6/095). A native runtime keeps the
+ * configured port. The form must not send a port where none was chosen, or the
+ * service is pinned to the default the image never binds (w4/m323).
  */
 function imagePortShape(
   serviceType: NewServiceForm["serviceType"],
   isDockerBuild: boolean,
   isImageSource: boolean,
 ): boolean {
-  if (serviceType === "private_service") return isDockerBuild;
-  return serviceType === "web_service" && (isDockerBuild || isImageSource);
+  return (
+    (serviceType === "web_service" || serviceType === "private_service") &&
+    (isDockerBuild || isImageSource)
+  );
 }
 
 export function buildShape(form: NewServiceForm): BuildShape {

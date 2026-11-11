@@ -8,5 +8,6 @@ mutation SetPort($id: String!, $port: Int!) {
     id
     port
     configuredPort
+    portConfigured
   }
 }

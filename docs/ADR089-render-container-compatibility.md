@@ -243,6 +243,7 @@ These decisions split D3/D4 (ports and references) from D2 (capabilities). They 
    - Otherwise 3000, if the image declares it.
    - Otherwise the lowest declared TCP port.
    - With no declarations, 10000 (w8/168, previously 3000).
+   - **Clearing the port (w4/m323, 2026-11-11):** a port of 0 on `SetPort` and the service PATCH, and a blank Settings → Port, returns a service whose image supplies its ports (`image-*` or `web-image-*`) to the unconfigured mode, so the image chooses the primary again, as a create with no port does; it starts a deploy like any port change. This is the fix the rollout stall reason names for a configured port nothing listens on. Any other service still refuses 0. The dashboard's New Service form leaves the port blank, and sends none, for every Docker-built or prebuilt-image web or private service, which the backend has defaulted since w6/095; it had kept pre-filling 10000 for a prebuilt-image private service, which pinned it to a port the image never bound.
 
    Ports below 1024 are **not** excluded. containerd 2.x's CRI default sets `ip_unprivileged_port_start=0` inside every pod, and a `strict-v1` root process binds `:80` on production (measured 2026-10-19, [container-privileges.md](render-artifacts/container-privileges.md)). w6/m149/t006 removed the old 1024 floor from every surface.
 

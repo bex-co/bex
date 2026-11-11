@@ -1940,6 +1940,7 @@ export type Mutation = {
   setIdleTimeout: Maybe<Service>;
   setImage: Maybe<Service>;
   setKeyValueIpAllowList: Maybe<KeyValue>;
+  /** Change the store's eviction policy. The change restarts the store, which is unavailable for up to a minute. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. Accepted without a confirmation. */
   setKeyValueMaxmemoryPolicy: Maybe<KeyValue>;
   setKeyValuePersistenceMode: Maybe<KeyValue>;
   setKeyValuePublic: Maybe<KeyValue>;
@@ -4988,6 +4989,7 @@ export type Service = {
   phase: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;
   port: Maybe<Scalars['Int']['output']>;
+  portConfigured: Maybe<Scalars['Boolean']['output']>;
   preDeployCommand: Maybe<Scalars['String']['output']>;
   projectId: Maybe<Scalars['String']['output']>;
   publicRoutingNotice: Maybe<Scalars['String']['output']>;

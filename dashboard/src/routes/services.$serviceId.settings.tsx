@@ -354,6 +354,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                 // private service also lists the listeners it binds (w3/m273)
                 // and must keep the configured-port copy.
                 imagePorts={service?.imagePorts === true}
+                portConfigured={service?.portConfigured === true}
               />
             </CardContent>
           </Card>

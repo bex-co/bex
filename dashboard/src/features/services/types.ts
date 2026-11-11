@@ -255,6 +255,11 @@ export interface ServiceView {
    */
   imagePorts?: boolean;
   /**
+   * An image-port service whose port is set (bex-api's configured modes), so
+   * Settings can clear it (w4/m323). Optional: not every query selects it.
+   */
+  portConfigured?: boolean;
+  /**
    * Seconds Kubernetes waits after SIGTERM before SIGKILL (1-300; default 30).
    * Only web/private/background-worker services expose this setting.
    */
@@ -397,12 +402,7 @@ export type LifecycleAction = "suspend" | "resume" | "restart";
 
 /** A resolved service-type key (i18n label) + the badge variant it renders as. */
 export type ServiceTypeKey =
-  | "web"
-  | "private"
-  | "worker"
-  | "cron"
-  | "static"
-  | "unknown";
+  "web" | "private" | "worker" | "cron" | "static" | "unknown";
 
 /**
  * One env-var key on a sensitive-config list. Values are fetched individually
@@ -537,10 +537,7 @@ export type ServiceStatusKey =
   | "unknown";
 
 export type ServiceBadgeVariant =
-  | "default"
-  | "secondary"
-  | "outline"
-  | "destructive";
+  "default" | "secondary" | "outline" | "destructive";
 
 export interface ServiceStatus {
   key: ServiceStatusKey;

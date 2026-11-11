@@ -1376,9 +1376,9 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.settingsPortImageHint": {
     message:
-      "This service takes its ports from its image's EXPOSE instructions. Setting a port here selects the primary listener — the port bex routes to, health-checks and injects as $PORT — while the image's other declared TCP ports stay published. Saving starts a new deploy and restarts the instances.",
+      "This service takes its ports from its image's EXPOSE instructions. Setting a port here selects the primary listener — the port bex routes to, health-checks and injects as $PORT — while the image's other declared TCP ports stay published. Clear it to use the image's port again. Saving starts a new deploy and restarts the instances.",
     description:
-      "Settings tab: service port row hint for an image-port service (a Git Docker private service, or a Docker/image web service) whose ports come from its image's EXPOSE instructions (w6/m148, w4/m243)",
+      "Settings tab: service port row hint for an image-port service (a Docker-built or prebuilt-image web or private service) whose ports come from its image's EXPOSE instructions; a blank port returns it to the image's (w6/m148, w4/m243, w4/m323)",
   },
   "services.settingsPortEdit": {
     message: "Edit Port",
@@ -3531,13 +3531,13 @@ const enServices: Record<string, TranslationEntry> = {
   "services.createFieldPortFromImage": {
     message: "From the image",
     description:
-      "Create wizard: port placeholder for an image-port service (Git Docker private service, or a Docker/image web service), whose ports come from its image (w6/m148, w4/m243)",
+      "Create wizard: port placeholder for an image-port service (a Docker-built or prebuilt-image web or private service), whose ports come from its image (w6/m148, w4/m243, w4/m323)",
   },
   "services.createFieldPortImageHint": {
     message:
       "Optional. bex publishes every TCP port the image declares (EXPOSE); 3000 if declared, else the lowest declared, else 10000, becomes $PORT and the health-checked primary. Set a port to choose the primary yourself.",
     description:
-      "Create wizard: port hint for an image-port service (Git Docker private service, or a Docker/image web service) — blank takes the image's declared ports (w6/m148, w4/m243)",
+      "Create wizard: port hint for an image-port service (a Docker-built or prebuilt-image web or private service) — blank takes the image's declared ports (w6/m148, w4/m243, w4/m323)",
   },
   "services.createFieldPortHint": {
     message:

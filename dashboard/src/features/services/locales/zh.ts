@@ -1345,9 +1345,9 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.settingsPortImageHint": {
     message:
-      "该服务的端口来自其镜像的 EXPOSE 声明。在此设置端口即选择主监听端口——bex 路由、健康检查并以 $PORT 注入的端口——镜像声明的其他 TCP 端口仍保持发布。保存会触发一次新的部署并重启实例。",
+      "该服务的端口来自其镜像的 EXPOSE 声明。在此设置端口即选择主监听端口——bex 路由、健康检查并以 $PORT 注入的端口——镜像声明的其他 TCP 端口仍保持发布。清空即重新使用镜像的端口。保存会触发一次新的部署并重启实例。",
     description:
-      "Settings tab: service port row hint for an image-port service (a Git Docker private service, or a Docker/image web service) whose ports come from its image's EXPOSE instructions (w6/m148, w4/m243)",
+      "Settings tab: service port row hint for an image-port service (a Docker-built or prebuilt-image web or private service) whose ports come from its image's EXPOSE instructions; a blank port returns it to the image's (w6/m148, w4/m243, w4/m323)",
   },
   "services.settingsPortEdit": {
     message: "编辑端口",
@@ -3458,13 +3458,13 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.createFieldPortFromImage": {
     message: "从镜像读取",
     description:
-      "Create wizard: port placeholder for an image-port service (Git Docker private service, or a Docker/image web service), whose ports come from its image (w6/m148, w4/m243)",
+      "Create wizard: port placeholder for an image-port service (a Docker-built or prebuilt-image web or private service), whose ports come from its image (w6/m148, w4/m243, w4/m323)",
   },
   "services.createFieldPortImageHint": {
     message:
       "可选。bex 会发布镜像声明（EXPOSE）的每个 TCP 端口；若声明了 3000 则以它为主端口，否则取声明的最小端口，未声明时为 10000，作为 $PORT 并用于健康检查。填写端口即可自行指定主端口。",
     description:
-      "Create wizard: port hint for an image-port service (Git Docker private service, or a Docker/image web service) — blank takes the image's declared ports (w6/m148, w4/m243)",
+      "Create wizard: port hint for an image-port service (a Docker-built or prebuilt-image web or private service) — blank takes the image's declared ports (w6/m148, w4/m243, w4/m323)",
   },
   "services.createFieldPortHint": {
     message:

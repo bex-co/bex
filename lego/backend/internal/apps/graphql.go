@@ -336,6 +336,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"port": gqlutil.IntField(func(a AppView) any { return a.Port }),
 		// See AppView.ConfiguredPort.
 		"configuredPort": gqlutil.IntField(func(a AppView) any { return a.ConfiguredPort }),
+		"portConfigured": gqlutil.BoolField(func(a AppView) any { return a.PortConfigured }),
 		// openPorts is every TCP port the stable hostnames serve (Render's
 		// serviceDetails.openPorts): null for types without a network address,
 		// [] while an image-port service's discovery is pending (w6/m148).
@@ -1827,7 +1828,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// setPort changes the port the container listens on (w4/m121), unless
 		// the service sets its own PORT variable, which wins as on Render
 		// (w5/m149). Web and private services only; the verb refuses the types
-		// that have no listener.
+		// that have no listener. Port 0 returns a service whose image supplies
+		// its ports to the image's port (w4/m323).
 		"setPort": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{

@@ -132,10 +132,12 @@ describe("ServicePortRow", () => {
     );
     unmount();
 
+    // An image-port service names where its port comes from instead (w4/m323).
     render(<ServicePortRow serviceId="ch" port={null} imagePorts />);
-    expect(
-      screen.getByRole("spinbutton", { name: "Port" }),
-    ).not.toHaveAttribute("placeholder");
+    expect(screen.getByRole("spinbutton", { name: "Port" })).toHaveAttribute(
+      "placeholder",
+      "From the image",
+    );
   });
 
   it("keeps the configured-port hint for every other service", () => {
@@ -147,5 +149,44 @@ describe("ServicePortRow", () => {
     expect(
       screen.queryByText(/other declared TCP ports/),
     ).not.toBeInTheDocument();
+  });
+
+  // w4/m323: the rollout stall reason tells an image-port service with a
+  // configured port to "remove it to use the image's port"; clearing the field
+  // does that (bex-api reads 0 as the image's port).
+  it("clears an image-port service's configured port", async () => {
+    const user = userEvent.setup();
+    render(
+      <ServicePortRow
+        serviceId="pserv"
+        port={10000}
+        imagePorts
+        portConfigured
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Edit Port" }));
+    await user.clear(screen.getByRole("spinbutton", { name: "Port" }));
+    expect(screen.queryByRole("alert")).toBeNull();
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    expect(setPort).toHaveBeenCalledWith("pserv", 0);
+  });
+
+  it("keeps refusing a blank port where the image does not supply one, or nothing is configured", async () => {
+    const user = userEvent.setup();
+    const view = render(<ServicePortRow serviceId="web" port={10000} />);
+    await user.click(screen.getByRole("button", { name: "Edit Port" }));
+    await user.clear(screen.getByRole("spinbutton", { name: "Port" }));
+    expect(
+      screen.getByRole("button", { name: /save changes/i }),
+    ).toBeDisabled();
+    view.unmount();
+
+    render(<ServicePortRow serviceId="pserv" port={80} imagePorts />);
+    await user.click(screen.getByRole("button", { name: "Edit Port" }));
+    await user.clear(screen.getByRole("spinbutton", { name: "Port" }));
+    expect(
+      screen.getByRole("button", { name: /save changes/i }),
+    ).toBeDisabled();
+    expect(setPort).not.toHaveBeenCalled();
   });
 });

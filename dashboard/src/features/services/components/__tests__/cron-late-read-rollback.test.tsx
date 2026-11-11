@@ -186,6 +186,7 @@ const link = new ApolloLink(
               configuredPort: 0,
               openPorts: null,
               imagePorts: false,
+              portConfigured: false,
               healthCheckPath: "",
               maxShutdownDelaySeconds: null,
               preDeployCommand: "",

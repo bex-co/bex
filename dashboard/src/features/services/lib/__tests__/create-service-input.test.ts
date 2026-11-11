@@ -446,7 +446,9 @@ describe("isSubmittable", () => {
 
   // w4/m243 t010: a Docker-built or prebuilt-image web service takes its port
   // from the image too, as bex-api's create stamps it; a typed port is still
-  // sent (the configured variant).
+  // sent (the configured variant). w4/m323: so does a prebuilt-image private
+  // service, as bex-api has since w6/095; sending the pre-filled 10000 pinned
+  // it to a port whoami never binds, and its first deploy never went live.
   it.each([
     [
       "a Git Docker web service",
@@ -458,6 +460,14 @@ describe("isSubmittable", () => {
         serviceType: "web_service",
         tab: "image",
         image: "docker.io/traefik/whoami:latest",
+      },
+    ],
+    [
+      "an existing-image private service",
+      {
+        serviceType: "private_service",
+        tab: "image",
+        image: "docker.io/traefik/whoami:v1.10.1",
       },
     ],
   ] as const)(
@@ -481,10 +491,6 @@ describe("isSubmittable", () => {
   it.each([
     ["a native web service", { serviceType: "web_service" }],
     ["a native private service", { serviceType: "private_service" }],
-    [
-      "an existing-image private service",
-      { serviceType: "private_service", tab: "image", image: "nginx:1" },
-    ],
   ] as const)("still sends the pre-filled 10000 for %s", (_name, overrides) => {
     const draft = form({ ...overrides, port: null });
     expect(isSubmittable(draft)).toBe(true);

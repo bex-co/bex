@@ -5951,9 +5951,13 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares no other TCP port."+
 			" Bind the server to 0.0.0.0 on port %d, or change the service's port to the one it listens on.", port, source, port)
 	}
-	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares TCP ports (%s)."+
-		" Change the service's port in Settings to the one it listens on, or remove it to use the image's port.",
-		port, source, strings.Join(declared, ", "))
+	fix := " Change the service's port in Settings to the one it listens on, or remove it to use the image's port."
+	if app.Status.EnvPort > 0 {
+		// The variable wins over any port setting, so only changing it helps
+		// (w4/m323).
+		fix = " Change the PORT environment variable to the port it listens on, or remove it to use the image's port."
+	}
+	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares TCP ports (%s).", port, source, strings.Join(declared, ", ")) + fix
 }
 
 // nodeLossDisruptions are the DisruptionTarget reasons Kubernetes gives a pod

@@ -13,11 +13,17 @@ export interface ServicePortRowProps {
   /** Current spec.port; null while loading, or for a type that binds none. */
   port: number | null | undefined;
   /**
-   * A private service whose open ports come from its image (w6/m148): the
+   * A service whose open ports come from its image (w6/m148, w4/m243): the
    * port set here picks the primary listener rather than the only one, so the
-   * hint says the image's other declared TCP ports stay published.
+   * hint says the image's other declared TCP ports stay published, and a
+   * blank port returns it to the image's own (w4/m323).
    */
   imagePorts?: boolean;
+  /**
+   * An image-port service has its port set (bex-api's portConfigured), so a
+   * blank draft clears it. Without one the row is blank: the image chooses.
+   */
+  portConfigured?: boolean;
 }
 
 /**
@@ -33,10 +39,14 @@ export function ServicePortRow({
   serviceId,
   port,
   imagePorts = false,
+  portConfigured = false,
 }: ServicePortRowProps) {
   const { t } = useTranslations();
   const { setPort, busy } = usePort();
-  const current = port != null ? String(port) : "";
+  // An image-port service with no port set shows none: its image chooses the
+  // port, and a resolved port shown here would read as a setting (w4/m323).
+  const current =
+    (imagePorts && !portConfigured) || port == null ? "" : String(port);
 
   return (
     <EditableFieldRow
@@ -51,27 +61,36 @@ export function ServicePortRow({
       value={current}
       // An image-port service's primary comes from the image, so a blank
       // value must not suggest the configured-port default (w6/m148).
-      placeholder={imagePorts ? undefined : String(DEFAULT_SERVICE_PORT)}
+      placeholder={
+        imagePorts
+          ? t("services.createFieldPortFromImage")
+          : String(DEFAULT_SERVICE_PORT)
+      }
       editLabel={t("services.settingsPortEdit")}
       type="number"
       min={MIN_SERVICE_PORT}
       max={MAX_SERVICE_PORT}
       busy={busy}
       // Dirty-compare the parsed port, not the text: "03000" is port 3000, and
-      // saving it would roll an identical deploy (w4/278).
+      // saving it would roll an identical deploy (w4/278). An image-port
+      // service may clear its port to serve the image's port again, the fix
+      // the rollout stall reason names (w4/m323).
       dirty={(draft) => {
+        if (imagePorts && draft.trim() === "") return portConfigured;
         const parsed = parsePort(draft);
         return parsed !== null && parsed !== port;
       }}
       validate={(draft) =>
-        parsePort(draft) === null
-          ? t("services.portRangeError", {
+        (imagePorts && draft.trim() === "") || parsePort(draft) !== null
+          ? null
+          : t("services.portRangeError", {
               min: String(MIN_SERVICE_PORT),
               max: String(MAX_SERVICE_PORT),
             })
-          : null
       }
       onSave={async (value) => {
+        // bex-api reads port 0 as "use the image's port".
+        if (imagePorts && value.trim() === "") return setPort(serviceId, 0);
         const parsed = parsePort(value);
         // validate() already blocks Save on an unparseable draft; this is the
         // type narrowing, not a second gate.

@@ -282,6 +282,42 @@ func checkPort(a *appv1alpha1.App, port int32) error {
 	return validateServicePort(port)
 }
 
+// portChange resolves a requested port into the stored port and port mode.
+// A port of 0 clears the configured port of a service whose image supplies
+// its ports, so it serves the image's port again, as a create with no port
+// does: the fix the rollout stall reason names (w4/m323). Any other service
+// keeps refusing 0.
+func portChange(a *appv1alpha1.App, port int32) (int32, string, error) {
+	if port == 0 {
+		mode, ok := imagePortMode(a.Spec)
+		if !ok {
+			return 0, "", fmt.Errorf("%w: port must be 1-65535; only a service whose image supplies its ports can clear it to use the image's port", core.ErrBadRequest)
+		}
+		return appv1alpha1.DefaultPort, mode, nil
+	}
+	if err := checkPort(a, port); err != nil {
+		return 0, "", err
+	}
+	return port, configuredPortMode(a.Spec), nil
+}
+
+// configuredPortModeOf reports a mode whose port the owner set.
+func configuredPortModeOf(mode string) bool {
+	return mode == appv1alpha1.PortModeImageConfiguredV1 || mode == appv1alpha1.PortModeWebImageConfiguredV1
+}
+
+// imagePortMode is the unconfigured port mode of a service whose image
+// supplies its ports, whether or not a port is configured now.
+func imagePortMode(spec appv1alpha1.AppSpec) (string, bool) {
+	switch {
+	case spec.UsesImagePorts():
+		return appv1alpha1.PortModeImageV1, true
+	case spec.UsesWebImagePorts():
+		return appv1alpha1.PortModeWebImageV1, true
+	}
+	return "", false
+}
+
 // configuredPortMode is the port mode an explicit port selects, as create
 // chooses it: an image-port service keeps its image ports and honors the
 // configured primary. A web image service left in web-image-v1 ignored the

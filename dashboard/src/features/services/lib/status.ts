@@ -115,6 +115,8 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     configuredPort: "configuredPort" in s ? s.configuredPort || null : null,
     openPorts: "openPorts" in s ? toOpenPorts(s.openPorts) : null,
     imagePorts: "imagePorts" in s ? s.imagePorts === true : undefined,
+    portConfigured:
+      "portConfigured" in s ? s.portConfigured === true : undefined,
     maxShutdownDelaySeconds:
       "maxShutdownDelaySeconds" in s
         ? (s.maxShutdownDelaySeconds ?? null)

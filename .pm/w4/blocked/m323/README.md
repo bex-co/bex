@@ -1,18 +1,18 @@
 # w4 · m323 — A private service created in the dashboard from a prebuilt image is pinned to port 10000, so an image listening on its declared port never goes live, and the stall hint's "remove it" fix exists nowhere
 
-**Worker:** worker4 **Goal:** New Private Service → Existing Image takes its ports from the image, as the backend has since w6/095 and as the hint on the same form promises. Every remediation the rollout stall reason names can actually be done. **Status:** todo
+**Worker:** worker4 **Goal:** New Private Service → Existing Image takes its ports from the image, as the backend has since w6/095 and as the hint on the same form promises. Every remediation the rollout stall reason names can actually be done. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The create form treats a prebuilt-image private service as an image-port service: blank Port, no `port` sent | 30m | — |
-| [t002](t002.md) | Every remediation the rollout stall reason names is reachable: clearing the port of an image-port service returns it to the image's port | 45m | — |
-| [t003](t003.md) | Blast radius: the form shape's consumers, the stall-reason branches, and regression tests on the shapes that work today | 20m | t001, t002 |
+| [t001](done/t001.md) | The create form treats a prebuilt-image private service as an image-port service: blank Port, no `port` sent — **DONE** | 30m | — |
+| [t002](done/t002.md) | Every remediation the rollout stall reason names is reachable: clearing the port of an image-port service returns it to the image's port — **DONE** | 45m | — |
+| [t003](done/t003.md) | Blast radius: the form shape's consumers, the stall-reason branches, and regression tests on the shapes that work today — **DONE** | 20m | t001, t002 |
 | [t004](t004.md) | Live verification in `bex-canary` | 30m | t003 |
-| [t005](t005.md) | Render parity | 15m | t004 |
-| [t006](t006.md) | Simplify | 10m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t005 |
+| [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
 | [t008](t008.md) | Closeout | 10m | t006, t007 |
 
 Eight tasks, 190m (3h10m).
@@ -123,9 +123,9 @@ Signed in to `bex-canary` after the release pins this build, with owned fixtures
 
 - **Source:** the finding above (round 82 of the `/qa-find-bugs w4` loop, 2026-11-11). The durable evidence is the probe record; no screenshot was kept.
 - **Goal linkage:**
-  - [ADR089](../../../docs/ADR089-render-container-compatibility.md) § Port slice decisions and [ADR004](../../../docs/ADR004-app-deployment.md) (deploys and ports).
-  - [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first) and [ADR018](../../../docs/ADR018-render-parity.md).
-  - [ADR006](../../../docs/ADR006-bex-api.md): if t002 adds a clear path, REST, GraphQL and MCP move together.
+  - [ADR089](../../../../docs/ADR089-render-container-compatibility.md) § Port slice decisions and [ADR004](../../../../docs/ADR004-app-deployment.md) (deploys and ports).
+  - [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first) and [ADR018](../../../../docs/ADR018-render-parity.md).
+  - [ADR006](../../../../docs/ADR006-bex-api.md): if t002 adds a clear path, REST, GraphQL and MCP move together.
 - **Expected outcome:** the dashboard's default private-service-from-image path goes live on the image's port, as the API path already does. A stalled service can be fixed the way its stall reason says.
 - **Why now:** this is the default path through the form, and the form's own hint steers users into it. w6/095 made the dashboard the only create surface still on the old rule.
 - **Render parity included (t005):** the create form and Settings change, and t002 may add a REST, GraphQL and MCP verb.
