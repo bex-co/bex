@@ -929,6 +929,22 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "删除 {name}",
     description: "Accessible label to delete a database credential",
   },
+  "databases.accessCredentialDeleteTitle": {
+    message: "删除凭据 {name}？",
+    description:
+      "Title of the confirmation before deleting a database credential (w4/551)",
+  },
+  "databases.accessCredentialDeleteBody": {
+    message:
+      "所有使用 {name} 的连接都会立即失败，包括环境变量中保存其连接字符串的服务。此操作无法撤销。",
+    description:
+      "Body of the credential delete confirmation: retiring the login breaks its clients at once (w4/551)",
+  },
+  "databases.accessCredentialDeleteConfirm": {
+    message: "删除凭据",
+    description:
+      "Confirm button of the credential delete confirmation (w4/551)",
+  },
   "databases.accessCredentialDefaultLocked": {
     message: "默认凭据不能删除，请先新建一个默认凭据。",
     description: "Why the delete button is disabled on the default credential",

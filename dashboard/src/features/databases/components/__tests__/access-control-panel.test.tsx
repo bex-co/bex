@@ -36,6 +36,7 @@ vi.mock("@/features/databases/hooks/use-access-control", () => ({
     loading: false,
     savingAllowList: false,
     creatingCredential: false,
+    deletingCredential: false,
     saveAllowList: vi.fn(),
     createCredential,
     deleteCredential,
@@ -83,13 +84,11 @@ function renderPanel(overrides: PanelOverrides = {}) {
 // w5/m265: Render's Credentials section — a new credential becomes the
 // default, the default cannot be deleted, and no password is shown here.
 describe("AccessControlPanel credentials", () => {
-  it("marks the default and refuses to delete it, with the reason", async () => {
+  it("marks the default and refuses to delete it, with the reason", () => {
     credentials = [
       { username: "dpg_x_user", default: false },
       { username: "rotated", default: true },
     ];
-    deleteCredential.mockResolvedValue(undefined);
-    const user = userEvent.setup();
     renderPanel();
 
     const locked = screen.getByRole("button", { name: "Delete rotated" });
@@ -99,9 +98,66 @@ describe("AccessControlPanel credentials", () => {
       "The default credential can't be deleted. Add a new default credential first.",
     );
     expect(screen.getAllByText("Default")).toHaveLength(1);
+    expect(
+      screen.getByRole("button", { name: "Delete dpg_x_user" }),
+    ).toBeEnabled();
+  });
+
+  // w4/551: retiring a login breaks every client on it at once, so Delete
+  // asks first, naming it; Cancel sends nothing.
+  it("deletes a credential only once the confirmation is accepted", async () => {
+    credentials = [
+      { username: "dpg_x_user", default: false },
+      { username: "rotated", default: true },
+    ];
+    deleteCredential.mockResolvedValue(true);
+    const user = userEvent.setup();
+    renderPanel();
 
     await user.click(screen.getByRole("button", { name: "Delete dpg_x_user" }));
+    let dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Delete credential dpg_x_user?"),
+    ).toBeInTheDocument();
+    expect(dialog).toHaveTextContent(
+      "Every connection that uses dpg_x_user fails immediately",
+    );
+    expect(deleteCredential).not.toHaveBeenCalled();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(deleteCredential).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole("button", { name: "Delete dpg_x_user" }));
+    dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Delete credential" }),
+    );
     expect(deleteCredential).toHaveBeenCalledWith("dpg_x_user");
+    await vi.waitFor(() =>
+      expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  // A refused delete is toasted by the hook; the dialog stays, as the pooler's
+  // does, so the user can retry or cancel.
+  it("keeps the confirmation open when the delete fails", async () => {
+    credentials = [
+      { username: "dpg_x_user", default: false },
+      { username: "rotated", default: true },
+    ];
+    deleteCredential.mockResolvedValue(false);
+    const user = userEvent.setup();
+    renderPanel();
+
+    await user.click(screen.getByRole("button", { name: "Delete dpg_x_user" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Delete credential" }),
+    );
+    expect(deleteCredential).toHaveBeenCalledWith("dpg_x_user");
+    expect(screen.getByRole("alertdialog")).toHaveTextContent(
+      "Delete credential dpg_x_user?",
+    );
   });
 
   it("creates a new default credential and clears the input, showing no password", async () => {

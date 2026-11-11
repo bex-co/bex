@@ -952,6 +952,22 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Delete {name}",
     description: "Accessible label to delete a database credential",
   },
+  "databases.accessCredentialDeleteTitle": {
+    message: "Delete credential {name}?",
+    description:
+      "Title of the confirmation before deleting a database credential (w4/551)",
+  },
+  "databases.accessCredentialDeleteBody": {
+    message:
+      "Every connection that uses {name} fails immediately, including services whose environment variables hold its connection string. This can't be undone.",
+    description:
+      "Body of the credential delete confirmation: retiring the login breaks its clients at once (w4/551)",
+  },
+  "databases.accessCredentialDeleteConfirm": {
+    message: "Delete credential",
+    description:
+      "Confirm button of the credential delete confirmation (w4/551)",
+  },
   "databases.accessCredentialDefaultLocked": {
     message:
       "The default credential can't be deleted. Add a new default credential first.",

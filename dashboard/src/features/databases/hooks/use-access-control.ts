@@ -57,7 +57,9 @@ export function useAccessControl(id: string) {
   const [createCredentialMut, { loading: creatingCredential }] = useMutation(
     CreateDatabaseCredentialDocument,
   );
-  const [deleteCredentialMut] = useMutation(DeleteDatabaseCredentialDocument);
+  const [deleteCredentialMut, { loading: deletingCredential }] = useMutation(
+    DeleteDatabaseCredentialDocument,
+  );
 
   // Entries, not bare CIDRs: each carries the operator-facing description a
   // human gave it, which persists end to end (w4/m24).
@@ -129,14 +131,16 @@ export function useAccessControl(id: string) {
     [createCredentialMut, storeCredentials, id, t],
   );
 
+  /** True once the credential is gone; a failure is toasted. */
   const deleteCredential = useCallback(
-    async (name: string): Promise<void> => {
+    async (name: string): Promise<boolean> => {
       try {
         const res = await deleteCredentialMut({
           variables: { id, username: name },
         });
         storeCredentials(res.data?.deleteDatabaseCredential);
         toast.success(t("databases.accessCredentialDeleted", { name }));
+        return true;
       } catch (err) {
         toast.error(
           mutationErrorMessage(
@@ -144,6 +148,7 @@ export function useAccessControl(id: string) {
             t("databases.accessCredentialDeleteError", { name }),
           ),
         );
+        return false;
       }
     },
     [deleteCredentialMut, storeCredentials, id, t],
@@ -184,6 +189,7 @@ export function useAccessControl(id: string) {
     loading: allowListQuery.loading || credentialsQuery.loading,
     savingAllowList,
     creatingCredential,
+    deletingCredential,
     saveAllowList,
     createCredential,
     deleteCredential,

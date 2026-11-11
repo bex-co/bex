@@ -119,6 +119,11 @@ function CredentialsSection({ access }: { access: Access }) {
   const { t } = useTranslations();
   const reservedId = useId();
   const [name, setName] = useState("");
+  // Retiring a login breaks every client on it at once, so Delete asks first,
+  // as the page's other destructive controls do (w4/551). The name outlives
+  // the open flag so the dialog keeps it while it fades out.
+  const [doomed, setDoomed] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   // A reserved role wedged the database's reconcile (w4/m170); bex-api refuses
   // it too, but say so before the click.
@@ -128,6 +133,10 @@ function CredentialsSection({ access }: { access: Access }) {
     if (await access.createCredential(name.trim())) {
       setName("");
     }
+  }
+
+  async function deleteDoomed(username: string) {
+    if (await access.deleteCredential(username)) setConfirming(false);
   }
 
   return (
@@ -164,7 +173,10 @@ function CredentialsSection({ access }: { access: Access }) {
                   : undefined
               }
               disabled={c.default}
-              onClick={() => void access.deleteCredential(c.username)}
+              onClick={() => {
+                setDoomed(c.username);
+                setConfirming(true);
+              }}
             >
               <Trash2 />
             </Button>
@@ -200,6 +212,24 @@ function CredentialsSection({ access }: { access: Access }) {
           {t("databases.fieldPhysicalNameReserved", { name: name.trim() })}
         </p>
       ) : null}
+      <ConfirmDialog
+        open={confirming}
+        onOpenChange={(open) => {
+          if (!open && !access.deletingCredential) setConfirming(false);
+        }}
+        title={t("databases.accessCredentialDeleteTitle", {
+          name: doomed ?? "",
+        })}
+        description={t("databases.accessCredentialDeleteBody", {
+          name: doomed ?? "",
+        })}
+        confirmLabel={t("databases.accessCredentialDeleteConfirm")}
+        pending={access.deletingCredential}
+        closeOnConfirm={false}
+        onConfirm={() => {
+          if (doomed != null) void deleteDoomed(doomed);
+        }}
+      />
     </section>
   );
 }
