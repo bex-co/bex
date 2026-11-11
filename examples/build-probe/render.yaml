@@ -1,0 +1,32 @@
+# render.yaml — the build-concurrency probe (w6/m306). Four services whose
+# builds each take about seven minutes. Prefix the names when you apply it
+# (e.g. qa-<yyyymmdd>-), and delete the services afterwards.
+services:
+  - name: build-probe-1
+    type: web
+    runtime: docker
+    repo: https://github.com/bex-co/bex
+    rootDir: examples/build-probe
+    branch: main
+    plan: free
+  - name: build-probe-2
+    type: web
+    runtime: docker
+    repo: https://github.com/bex-co/bex
+    rootDir: examples/build-probe
+    branch: main
+    plan: free
+  - name: build-probe-3
+    type: web
+    runtime: docker
+    repo: https://github.com/bex-co/bex
+    rootDir: examples/build-probe
+    branch: main
+    plan: free
+  - name: build-probe-4
+    type: web
+    runtime: docker
+    repo: https://github.com/bex-co/bex
+    rootDir: examples/build-probe
+    branch: main
+    plan: free
