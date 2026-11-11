@@ -378,7 +378,16 @@ func TestDryRunThatPassesWritesNothing(t *testing.T) {
 			_, err := f.kv.CreateKeyValue(ctx, keyvalue.CreateKeyValueRequest{Name: "fresh", Plan: "free", DryRun: true})
 			return err
 		},
-		"Key Value plan change": func() error { _, err := f.kv.SetPlanDryRun(ctx, "red-parity", "free"); return err },
+		// Up, past a gate that asks nothing: a Key Value instance cannot move
+		// to a smaller plan (w8/249), and the fixture's gate refuses every
+		// paid one.
+		"Key Value plan change": func() error {
+			ungated := *f.kv.Base
+			ungated.Payment = nil
+			kv := &keyvalue.Service{Base: &ungated, Protection: f.kv.Protection}
+			_, err := kv.SetPlanDryRun(ctx, "red-parity", "standard")
+			return err
+		},
 		"Key Value update": func() error {
 			_, err := f.kv.UpdateKeyValueDryRun(ctx, "red-parity", keyvalue.KeyValuePatch{Name: strp("renamed")})
 			return err
