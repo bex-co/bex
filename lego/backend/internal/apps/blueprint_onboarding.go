@@ -293,8 +293,13 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	}
 	if !validation.Valid {
 		notices := make([]BlueprintNotice, 0, len(validation.Errors))
+		owners := map[string]string{}
 		for _, e := range validation.Errors {
-			notices = append(notices, BlueprintNotice{Severity: "error", Message: e.Error, Path: e.Path, Line: e.Line, Column: e.Column})
+			message := e.Error
+			if e.conflict != nil {
+				message = s.plannedOwnershipNotice(ctx, *e.conflict, owners)
+			}
+			notices = append(notices, BlueprintNotice{Severity: "error", Message: message, Path: e.Path, Line: e.Line, Column: e.Column})
 		}
 		return s.recordFailedPlan(ctx, plans, *b, commitSHA, notices)
 	}

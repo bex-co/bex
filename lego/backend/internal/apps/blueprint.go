@@ -487,6 +487,10 @@ type BlueprintValidationError struct {
 	Line   *int    `json:"line,omitempty"`
 	Column *int    `json:"column,omitempty"`
 	Path   *string `json:"path,omitempty"`
+	// conflict is the ownership conflict this entry reports, if it reports
+	// one. Error words it for a surface that takes `confirm`; a planned sync,
+	// which has none, words it again from this (w8/251).
+	conflict *blueprintOwnershipConflict
 }
 
 // BlueprintValidationPlan is structural when current state is unavailable,
@@ -1762,6 +1766,9 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	var envVarValues map[string]string
 	if reviewed != nil {
 		run.ID, envVarValues = reviewed.PlannedRunID, reviewed.EnvVarValues
+		if reviewed.PlannedRunID != "" {
+			ctx = withPlannedApply(ctx)
+		}
 	}
 	var admitted store.Blueprint
 	var err error

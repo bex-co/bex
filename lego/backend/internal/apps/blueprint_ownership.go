@@ -212,12 +212,33 @@ func (s *Service) refuseUnconfirmedTakeover(ctx context.Context, selfID, confirm
 		// resolves one owner per confirmation.
 		for _, c := range conflicts {
 			if c.owner != first.owner {
-				return blueprintOwnershipError(c)
+				return s.ownershipRefusal(ctx, c)
 			}
 		}
 		return nil
 	}
-	return blueprintOwnershipError(first)
+	return s.ownershipRefusal(ctx, first)
+}
+
+// plannedApplyKey marks a context as the apply of an approved planned sync.
+type plannedApplyKey struct{}
+
+// withPlannedApply marks ctx as applying a planned sync that was approved.
+// Render's approve carries no `confirm`, so an ownership refusal met there is
+// worded without the phrase (ownershipRefusal).
+func withPlannedApply(ctx context.Context) context.Context {
+	return context.WithValue(ctx, plannedApplyKey{}, true)
+}
+
+// ownershipRefusal refuses a resource another Blueprint manages, worded for
+// the surface the apply came from: with the takeover phrase where `confirm`
+// is accepted, and without it for an approved planned sync (w8/251).
+func (s *Service) ownershipRefusal(ctx context.Context, c blueprintOwnershipConflict) error {
+	if planned, _ := ctx.Value(plannedApplyKey{}).(bool); !planned {
+		return blueprintOwnershipError(c)
+	}
+	return core.NewConflictError("BLUEPRINT_RESOURCE_CONFLICT", s.plannedOwnershipNotice(ctx, c, map[string]string{}),
+		map[string]any{"resource": c.name, "kind": string(blueprintClaimResourceKind(c.kind)), "owningBlueprintId": ids.BlueprintPublicID(c.owner)})
 }
 
 // blueprintOwnershipError refuses a resource another blueprint manages, for
@@ -228,17 +249,8 @@ func blueprintOwnershipError(c blueprintOwnershipConflict) error {
 	phrase := BlueprintTakeoverConfirmation(c.owner)
 	public := ids.BlueprintPublicID(c.owner)
 	kind := blueprintClaimResourceKind(c.kind)
-	wording := string(kind)
-	switch kind {
-	case BlueprintResourcePostgres:
-		wording = "database"
-	case BlueprintResourceKeyValue:
-		wording = "key value"
-	case BlueprintResourceBuildSource:
-		wording = "build source"
-	}
 	return core.NewConflictError("BLUEPRINT_RESOURCE_CONFLICT",
-		fmt.Sprintf("%s %q is managed by blueprint %s; retry with confirm=%q to transfer ownership to this blueprint", wording, c.name, public, phrase),
+		fmt.Sprintf("%s %q is managed by blueprint %s; retry with confirm=%q to transfer ownership to this blueprint", blueprintOwnershipWording(kind), c.name, public, phrase),
 		map[string]any{"resource": c.name, "kind": string(kind), "owningBlueprintId": public, "confirm": phrase})
 }
 
@@ -279,7 +291,7 @@ func (s *Service) claimBlueprintResource(ctx context.Context, tenantID string, k
 		if owner == "" {
 			owner = "another blueprint"
 		}
-		return blueprintOwnershipError(blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
+		return s.ownershipRefusal(ctx, blueprintOwnershipConflict{kind: kind, name: name, owner: owner})
 	}
 	if err != nil {
 		return fmt.Errorf("claiming Blueprint ownership of %s %q: %w", kind, name, err)
@@ -591,11 +603,49 @@ func (s *Service) previewOwnershipConflicts(ctx context.Context, selfID string, 
 	entries := make([]BlueprintValidationError, 0, len(conflicts))
 	for _, c := range conflicts {
 		entries = append(entries, BlueprintValidationError{
-			Code:  "BLUEPRINT_RESOURCE_CONFLICT",
-			Error: blueprintOwnershipError(c).Error(),
+			Code:     "BLUEPRINT_RESOURCE_CONFLICT",
+			Error:    blueprintOwnershipError(c).Error(),
+			conflict: &c,
 		})
 	}
 	return entries
+}
+
+// plannedOwnershipNotice words an ownership conflict for a planned sync.
+// Render's create, plan and approve carry no `confirm`, and the pinned CLI has
+// no flag for one, so the phrase blueprintOwnershipError offers cannot be
+// sent from the surface that prints this (w8/251). Render: "Do not manage a
+// particular resource with more than one Blueprint". It says what can be done
+// instead: a copy in a new Blueprint, or a release by the Blueprint that
+// manages the resource. owners remembers each managing Blueprint's name, so
+// several conflicts with one Blueprint read it once.
+func (s *Service) plannedOwnershipNotice(ctx context.Context, c blueprintOwnershipConflict, owners map[string]string) string {
+	owner, known := owners[c.owner]
+	if !known {
+		owner = ids.BlueprintPublicID(c.owner)
+		if b, err := s.Blueprints.GetBlueprint(ctx, c.owner, s.resolveTenantID(ctx)); err == nil && b.Name != "" {
+			owner = fmt.Sprintf("%s (%q)", owner, b.Name)
+		}
+		owners[c.owner] = owner
+	}
+	wording := blueprintOwnershipWording(blueprintClaimResourceKind(c.kind))
+	return fmt.Sprintf("%s %q is managed by blueprint %s, and a resource has one managing Blueprint. For a separate copy, create a new Blueprint with existingResources \"create_new\". To manage this %s here, remove it from that Blueprint's file and sync that Blueprint first, which releases it.",
+		wording, c.name, owner, wording)
+}
+
+// blueprintOwnershipWording is the word a conflict's message uses for a
+// resource of kind.
+func blueprintOwnershipWording(kind BlueprintResourceKind) string {
+	switch kind {
+	case BlueprintResourcePostgres:
+		return "database"
+	case BlueprintResourceKeyValue:
+		return "key value"
+	case BlueprintResourceBuildSource:
+		return "build source"
+	default:
+		return string(kind)
+	}
 }
 
 // validateWorkspaceReferences runs the workspace-resolvable reference checks at
