@@ -74,13 +74,20 @@ vi.mock("@/features/services/hooks/use-trigger-deploy", () => ({
 
 import { ServiceEnvironmentEditor } from "../service-environment-editor";
 
-function renderEditor({ suspended = false } = {}) {
+function renderEditor({
+  suspended = false,
+  dockerBuild = false,
+}: { suspended?: boolean; dockerBuild?: boolean } = {}) {
   const root = createRootRoute();
   const route = createRoute({
     getParentRoute: () => root,
     path: "/",
     component: () => (
-      <ServiceEnvironmentEditor serviceId="web" suspended={suspended} />
+      <ServiceEnvironmentEditor
+        serviceId="web"
+        suspended={suspended}
+        dockerBuild={dockerBuild}
+      />
     ),
   });
   const router = createRouter({
@@ -1006,6 +1013,39 @@ describe("ServiceEnvironmentEditor", () => {
 // removed two — live, the stored draft showed ids ["new-env:0", "new-env:0"].
 // Restoration is exercised for real here (a genuine unmount/remount over
 // sessionStorage), because mocking it away is exactly what left this untested.
+// w8/253: a Docker build also gets each secret file in the root of its build
+// context, as on Render, where `COPY . .` then bakes it into the image. The
+// file dialog says so for a Docker service and names .dockerignore.
+describe("ServiceEnvironmentEditor secret file dialog for a Docker build (w8/253)", () => {
+  async function openNewFileDialog(dockerBuild: boolean) {
+    fileNames = [];
+    const user = userEvent.setup();
+    renderEditor({ dockerBuild });
+    await user.click(
+      await screen.findByRole("button", { name: "Add secret file" }),
+    );
+    await user.click(
+      (await screen.findAllByRole("button", { name: /contents/i })).at(-1)!,
+    );
+    return screen.findByRole("dialog");
+  }
+
+  it("names the build context and .dockerignore for a Docker service", async () => {
+    const dialog = await openNewFileDialog(true);
+    expect(dialog).toHaveTextContent(
+      "This file is mounted read-only at /etc/secrets after the next deploy. A Docker build also finds it in the root of its build context: list it in .dockerignore to keep it out of your image.",
+    );
+  });
+
+  it("keeps the /etc/secrets sentence alone for any other service", async () => {
+    const dialog = await openNewFileDialog(false);
+    expect(dialog).toHaveTextContent(
+      "This file is mounted read-only at /etc/secrets after the next deploy.",
+    );
+    expect(dialog).not.toHaveTextContent("build context");
+  });
+});
+
 describe("ServiceEnvironmentEditor restored-draft row identity (w4/139)", () => {
   beforeEach(() => {
     sessionStorage.clear();

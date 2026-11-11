@@ -18,6 +18,7 @@ export function SecretFileContentDialog({
   content,
   disabled = false,
   reveal,
+  description,
   onOpenChange,
   onSave,
 }: {
@@ -25,6 +26,8 @@ export function SecretFileContentDialog({
   name: string;
   content: string | null;
   disabled?: boolean;
+  /** Where the file is available; omitted, the /etc/secrets sentence. */
+  description?: string;
   reveal?: () => Promise<string>;
   onOpenChange: (open: boolean) => void;
   onSave: (content: string, changed: boolean) => void;
@@ -63,7 +66,7 @@ export function SecretFileContentDialog({
             {t("services.secretFileContentDialogTitle", { name })}
           </DialogTitle>
           <DialogDescription>
-            {t("services.secretFileContentDialogDescription")}
+            {description ?? t("services.secretFileContentDialogDescription")}
           </DialogDescription>
         </DialogHeader>
         {loading ? (

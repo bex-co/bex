@@ -5307,6 +5307,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "下次部署后，此文件将以只读方式挂载到 /etc/secrets。",
     description: "Secret-file content dialog explanation",
   },
+  "services.secretFileContentDialogDescriptionDocker": {
+    message:
+      "下次部署后，此文件将以只读方式挂载到 /etc/secrets。Docker 构建还会在构建上下文根目录中找到它：将其列入 .dockerignore 可避免写入镜像。",
+    description:
+      "Secret-file content dialog explanation for a Docker-runtime service: the build context also receives the file, as on Render (w8/253)",
+  },
   "services.secretFileLoadingContent": {
     message: "正在加载内容…",
     description: "Secret-file content reveal progress",

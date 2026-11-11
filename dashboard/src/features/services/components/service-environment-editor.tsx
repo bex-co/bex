@@ -119,10 +119,18 @@ const ENV_ERROR_COPY: Record<RefusalKind, { title: string; body: string }> = {
 export function ServiceEnvironmentEditor({
   serviceId,
   suspended = false,
+  dockerBuild = false,
 }: {
   serviceId: string;
   /** From the page's cached service read, so no second deploy-actions query. */
   suspended?: boolean;
+  /**
+   * The service builds from a Dockerfile (isDockerBuild). A Docker build also
+   * gets each secret file in the root of its build context, as on Render,
+   * where `COPY . .` bakes it into the image; the file dialog says so and
+   * names .dockerignore (w8/253).
+   */
+  dockerBuild?: boolean;
 }) {
   const env = useEnvVarKeys(serviceId);
   const files = useSecretFileNames(serviceId);
@@ -144,6 +152,15 @@ export function ServiceEnvironmentEditor({
       // A draft belongs to one service: another service starts a fresh editor.
       key={serviceId}
       resourceId={serviceId}
+      copy={
+        dockerBuild
+          ? {
+              secretFileDialogDescription: t(
+                "services.secretFileContentDialogDescriptionDocker",
+              ),
+            }
+          : undefined
+      }
       // A suspended service deploys nothing: the deploying save modes wait for
       // Resume, as Manual Deploy does (w4/m234).
       deployBlockedReason={
@@ -208,6 +225,8 @@ export interface EnvironmentEditorCopy {
   secretFilesDescription?: string;
   secretFilesEmptyTitle?: string;
   secretFilesEmptyBody?: string;
+  /** The secret-file dialog's sentence on where the file is available. */
+  secretFileDialogDescription?: string;
 }
 
 export interface EnvironmentEditorProps {
@@ -1042,6 +1061,7 @@ export function EnvironmentEditor({
         <SecretFileContentDialog
           open
           name={contentRow.name || t("services.secretFileUntitled")}
+          description={copy?.secretFileDialogDescription}
           content={contentRow.content}
           disabled={createDenied}
           reveal={

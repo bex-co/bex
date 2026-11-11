@@ -416,7 +416,7 @@ func nativeVersionResolver(o Options) corev1.Container {
 		Env:     env,
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: "native-build", MountPath: "/native"},
-			{Name: "source", MountPath: sourceMount, ReadOnly: true},
+			{Name: sourceVolume, MountPath: sourceMount, ReadOnly: true},
 		},
 		SecurityContext: &corev1.SecurityContext{
 			RunAsUser:                new(int64(65532)),

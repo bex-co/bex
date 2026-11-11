@@ -5437,6 +5437,12 @@ const enServices: Record<string, TranslationEntry> = {
       "This file is mounted read-only at /etc/secrets after the next deploy.",
     description: "Secret-file content dialog explanation",
   },
+  "services.secretFileContentDialogDescriptionDocker": {
+    message:
+      "This file is mounted read-only at /etc/secrets after the next deploy. A Docker build also finds it in the root of its build context: list it in .dockerignore to keep it out of your image.",
+    description:
+      "Secret-file content dialog explanation for a Docker-runtime service: the build context also receives the file, as on Render (w8/253)",
+  },
   "services.secretFileLoadingContent": {
     message: "Loading contents…",
     description: "Secret-file content reveal progress",

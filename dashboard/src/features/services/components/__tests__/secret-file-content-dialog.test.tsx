@@ -35,6 +35,21 @@ function heightClasses(el: Element) {
 }
 
 describe("SecretFileContentDialog", () => {
+  // w8/253: the caller says where the file is available when that is more
+  // than /etc/secrets (a Docker build's context); otherwise the default.
+  it("says where the file is available, in the caller's words when given", () => {
+    const view = renderDialog({ content: "x" });
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "This file is mounted read-only at /etc/secrets after the next deploy.",
+    );
+    view.unmount();
+
+    renderDialog({ content: "x", description: "Also in the build context." });
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Also in the build context.");
+    expect(dialog).not.toHaveTextContent("mounted read-only at /etc/secrets");
+  });
+
   it("reserves the ready editor's fixed region while the contents load", async () => {
     const read = deferred();
     renderDialog({ reveal: () => read.promise });

@@ -17,6 +17,7 @@ limitations under the License.
 package build
 
 import (
+	"cmp"
 	"fmt"
 	"regexp"
 	"strings"
@@ -48,11 +49,17 @@ const (
 	dockerBuildArgEnv      = "BEX_BUILD_ARG_"
 	dockerBuildArgKeysEnv  = "BEX_BUILD_ARG_KEYS"
 	dockerBuildFilesEnv    = "BEX_BUILD_FILES"
+	dockerBuildContextEnv  = "BEX_BUILD_CONTEXT"
 )
+
+// contextFilesContainer copies a Dockerfile build's secret files into the
+// root of its build context (dockerContextFilesStep).
+const contextFilesContainer = "context-files"
 
 // Build-pod volume names shared by the native and Dockerfile paths. They are
 // live Kubernetes names, so renaming one changes every build Job's spec.
 const (
+	sourceVolume      = "source"
 	runtimeEnvVolume  = "runtime-env"
 	secretFilesVolume = "native-files"
 	buildInputsVolume = "build-inputs"
@@ -140,5 +147,85 @@ if [ -n "${` + dockerBuildFilesEnv + `:-}" ]; then
     cp "` + dockerBuildFilesMount + `/$name" "` + dockerBuildInputsMount + `/files/$name"
   done
 fi
+`
+}
+
+// dockerContextDir is the directory BuildKit reads as the build context:
+// DockerContext when set, else RootDir, both repository-relative.
+func dockerContextDir(o Options) string {
+	return boundedSourceDir(cmp.Or(o.DockerContext, o.RootDir))
+}
+
+// copiesContextFiles reports whether the build is a Dockerfile build that
+// has secret files to put in its context.
+func copiesContextFiles(o Options) bool {
+	return o.Builder != BuilderNative && o.NativeFilesSecret != "" && len(o.NativeFiles) > 0
+}
+
+// dockerContextFilesStep puts each secret file in the root of the Docker
+// build context, where Render puts it as well as passing it as a build
+// secret: "Render also copies your secret files into the root of your Docker
+// build context" (render.com/docs/docker-secrets, read 2026-11-11; w8/253). A
+// Dockerfile that reads an uploaded .npmrc with `COPY .npmrc …` therefore
+// builds, and one that copies its whole context has the files in its image,
+// which is why Render tells authors to list them in .dockerignore. The build
+// secrets stay as they are: they are read from the private snapshot, not from
+// the context, so a name in .dockerignore still mounts.
+//
+// It is its own restricted container, between the clone and BuildKit: the
+// BuildKit container keeps its read-only source mount, and the clone, which
+// runs git over tenant input with the repository credential, never sees the
+// files.
+func dockerContextFilesStep(o Options, image string) corev1.Container {
+	return corev1.Container{
+		Name:    contextFilesContainer,
+		Image:   image,
+		Command: []string{"sh", "-eu", "-c", dockerContextFilesScript()},
+		Env: []corev1.EnvVar{
+			{Name: dockerBuildContextEnv, Value: execution.KubernetesLiteral(dockerContextDir(o))},
+			{Name: dockerBuildFilesEnv, Value: execution.KubernetesLiteral(strings.Join(o.NativeFiles, "\n"))},
+		},
+		VolumeMounts: []corev1.VolumeMount{
+			{Name: sourceVolume, MountPath: sourceMount},
+			{Name: secretFilesVolume, MountPath: dockerBuildFilesMount, ReadOnly: true},
+		},
+		SecurityContext: restrictedContainerSecurityContext(),
+		Resources:       sourceStepResources(),
+	}
+}
+
+// dockerContextFilesScript is the copy. The repository is tenant input, so
+// nothing in it may steer a write:
+//   - The step enters the context and writes relative to it, so no path is
+//     resolved a second time. The directory it entered must lie inside the
+//     source mount; a context that is a link out of the repository, or is no
+//     directory at all, is refused as the tenant's error.
+//   - A link or file of the secret's name is removed before the copy, so the
+//     copy never follows a link to its target.
+//   - A real directory of that name is the repository's own and is kept, the
+//     rule a native service's root follows (w8/m154).
+//
+// The file is 0644 like any file of a checkout: BuildKit reads the context
+// as another user.
+func dockerContextFilesScript() string {
+	return `cd "$` + dockerBuildContextEnv + `" || {
+  echo "the Docker build context is not a directory of the repository" >&2
+  exit ` + fmt.Sprint(ExitTenantError) + `
+}
+case "$(pwd -P)/" in
+  ` + sourceMount + `/*) ;;
+  *)
+    echo "the Docker build context is a link that leaves the repository" >&2
+    exit ` + fmt.Sprint(ExitTenantError) + `
+    ;;
+esac
+for name in $` + dockerBuildFilesEnv + `; do
+  if [ -d "./$name" ] && [ ! -L "./$name" ]; then
+    continue
+  fi
+  rm -f "./$name"
+  cp "` + dockerBuildFilesMount + `/$name" "./$name"
+  chmod 0644 "./$name"
+done
 `
 }

@@ -787,6 +787,7 @@ var buildStepNames = map[string]string{
 	cacheRestorePhase:      "build cache restore",
 	cachePurgePhase:        "build cache purge",
 	"prepare-native-build": "build preparation",
+	contextFilesContainer:  "secret file copy",
 	nativeResolveContainer: "runtime version selection",
 	"buildkit":             "docker build",
 	pushContainer:          "image push",
@@ -1161,15 +1162,12 @@ func BuildJob(o Options, image string) *batchv1.Job {
 	pushImage := cmp.Or(o.PushImage, defaultPushImage)
 	signImage := cmp.Or(o.SignImage, defaultSignImage)
 
-	contextDir := boundedSourceDir(o.RootDir)
 	// The Dockerfile keeps resolving against RootDir even when DockerContext
 	// moves the build context — Docker's own context-vs-dockerfile split, and
 	// Render's dockerContext semantics (repo-root-relative, independent of
 	// rootDir).
-	dockerfileDir := contextDir
-	if o.DockerContext != "" {
-		contextDir = boundedSourceDir(o.DockerContext)
-	}
+	dockerfileDir := boundedSourceDir(o.RootDir)
+	contextDir := dockerContextDir(o)
 	args := []string{
 		"build",
 		"--frontend", "dockerfile.v0",
@@ -1247,7 +1245,7 @@ fi
 	backoff := int32(2)
 	ttl := int32(3600) // reap the finished Job after an hour
 
-	volumes := []corev1.Volume{emptyDirVolume("source"), emptyDirVolume("output")}
+	volumes := []corev1.Volume{emptyDirVolume(sourceVolume), emptyDirVolume("output")}
 	if o.BuildCache {
 		volumes = append(volumes, boundedEmptyDirVolume(cacheOutVolume, cacheEmptyDirSizeLimit))
 		if !o.SkipCacheImport {
@@ -1285,7 +1283,7 @@ fi
 		Args:    args,
 		Env:     env,
 		VolumeMounts: []corev1.VolumeMount{
-			{Name: "source", MountPath: sourceMount, ReadOnly: true},
+			{Name: sourceVolume, MountPath: sourceMount, ReadOnly: true},
 			{Name: "output", MountPath: outputMount},
 		},
 		// These capabilities are confined to the Pod user namespace
@@ -1385,6 +1383,9 @@ fi
 		if o.NativeResolverImage != "" {
 			podSpec.InitContainers = append(podSpec.InitContainers, nativeVersionResolver(o))
 		}
+	}
+	if copiesContextFiles(o) {
+		podSpec.InitContainers = append(podSpec.InitContainers, dockerContextFilesStep(o, gitImage))
 	}
 	podSpec.InitContainers = append(podSpec.InitContainers, buildkit)
 	execution.HardenPod(&podSpec)
@@ -1533,6 +1534,25 @@ func skopeoDeleteArgs(o Options, ref string) []string {
 		args = append(args, "--authfile", dockerAuthFile)
 	}
 	return append(args, ref)
+}
+
+// sourceStepResources is the budget of a step that only reads and writes the
+// checkout: the clone, and the copy of a Dockerfile build's secret files into
+// its context. Shared so the copy asks for no more than the clone does, and
+// the pod's effective request stays the clone's.
+func sourceStepResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("50m"),
+			corev1.ResourceMemory:           resource.MustParse("64Mi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralRequest),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceCPU:              resource.MustParse("500m"),
+			corev1.ResourceMemory:           resource.MustParse("256Mi"),
+			corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralLimit),
+		},
+	}
 }
 
 // pushPhaseResources is the budget every credentialed skopeo phase runs under.
@@ -1720,24 +1740,13 @@ rm -rf .git
 if [ -d ` + outputMount + ` ]; then printf '%s' "$commit" > ` + revisionFile + `; fi`}, // the guard serves script tests run without the mount
 		Env: env,
 		VolumeMounts: []corev1.VolumeMount{
-			{Name: "source", MountPath: sourceMount},
+			{Name: sourceVolume, MountPath: sourceMount},
 			// Outside the build context, so the commit never lands in an image
 			// layer; BuildKit reads it to stamp the image (w5/m148).
 			{Name: "output", MountPath: outputMount},
 		},
 		SecurityContext: restrictedContainerSecurityContext(),
-		Resources: corev1.ResourceRequirements{
-			Requests: corev1.ResourceList{
-				corev1.ResourceCPU:              resource.MustParse("50m"),
-				corev1.ResourceMemory:           resource.MustParse("64Mi"),
-				corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralRequest),
-			},
-			Limits: corev1.ResourceList{
-				corev1.ResourceCPU:              resource.MustParse("500m"),
-				corev1.ResourceMemory:           resource.MustParse("256Mi"),
-				corev1.ResourceEphemeralStorage: resource.MustParse(buildEphemeralLimit),
-			},
-		},
+		Resources:       sourceStepResources(),
 	}
 }
 
