@@ -20,8 +20,12 @@ export function NewResourceMenu() {
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="sm" className="gap-1.5 px-2 sm:px-3">
           <Plus />
-          <span className="hidden sm:inline">{t("common.topbarNew")}</span>
-          <span className="sr-only sm:hidden">{t("common.topbarNew")}</span>
+          {/* One label, visually hidden below sm: the menu takes its name
+              from the trigger's text, hidden copies included, so two spans
+              named it "New New" (w4/545). */}
+          <span className="sr-only sm:not-sr-only">
+            {t("common.topbarNew")}
+          </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">

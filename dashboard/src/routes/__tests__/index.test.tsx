@@ -57,8 +57,9 @@ vi.mock("@/features/services/hooks/use-service-lifecycle", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } =
-    await import("@/test/mocks/resource-actions");
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
   return mockAllowedResourceActions();
 });
 
@@ -674,7 +675,11 @@ describe("URL-owned create dialogs (w1/m45)", () => {
     const user = userEvent.setup();
     const { router } = renderHomePage("/");
 
-    await user.click(await screen.findByRole("button", { name: "New" }));
+    // The overview's own menu, beside its heading — the top bar has another.
+    const heading = await screen.findByRole("heading", { level: 1 });
+    await user.click(
+      within(heading.parentElement!).getByRole("button", { name: "New" }),
+    );
     const items = (await screen.findAllByRole("menuitem")).map(
       (item) => item.textContent,
     );

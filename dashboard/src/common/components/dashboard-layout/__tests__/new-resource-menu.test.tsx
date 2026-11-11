@@ -47,6 +47,17 @@ function renderMenu() {
 }
 
 describe("NewResourceMenu", () => {
+  // w4/545: the trigger and the menu it labels are both named "New", never
+  // "New New" from a duplicate hidden copy of the label.
+  it("names the trigger and its menu New, once", async () => {
+    const user = userEvent.setup();
+    renderMenu();
+
+    const trigger = await screen.findByRole("button", { name: "New" });
+    await user.click(trigger);
+    expect(screen.getByRole("menu", { name: "New" })).toBeInTheDocument();
+  });
+
   it("lists every create entry, Sandbox Group included, under one heading", async () => {
     const user = userEvent.setup();
     renderMenu();
