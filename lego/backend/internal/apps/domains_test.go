@@ -2658,3 +2658,38 @@ func TestManagedDomainResolvesByIDOrName(t *testing.T) {
 		t.Fatalf("spec.hosts after delete by id = %v, want empty", got)
 	}
 }
+
+// w21/048: the dashboard's Add Custom Domain dialog pre-checks a name with the
+// same table (dashboard/src/features/services/lib/__tests__/
+// custom-domain-name.test.ts): it must send every name the server accepts that a
+// person really owns, and stop what the server refuses. Change one side and
+// change the other.
+func TestCustomDomainDialogVectors(t *testing.T) {
+	for raw, want := range map[string]string{
+		"www.example.com":              "www.example.com",
+		"QA-20261110.EXAMPLE.COM":      "qa-20261110.example.com",
+		"qa-20261110.example.xn--p1ai": "qa-20261110.example.xn--p1ai", // .рф
+		"xn--80ak6aa92e.com":           "xn--80ak6aa92e.com",
+		"qa-20261110.example.com.":     "qa-20261110.example.com", // one trailing dot is dropped
+		"  www.example.com  ":          "www.example.com",
+		"a.b.c.d.example.co.uk":        "a.b.c.d.example.co.uk",
+	} {
+		got, err := claimableHostname(raw)
+		if err != nil || got != want {
+			t.Errorf("claimableHostname(%q) = %q, %v; want %q", raw, got, err, want)
+		}
+	}
+	for _, raw := range []string{
+		"*.example.com", "*.qa-20261110.example.com", // wildcard: refused by design (ADR005)
+		"co.uk", // a public suffix: the server's rule, answered in the dialog
+		strings.Repeat("a", 64) + ".example.com",
+		"example.123", "qa-20261110.example.123",
+		"192.168.0.1", "localhost", "example",
+		"not a domain", "https://www.example.com", "www.example.com/path", "www.example.com:8080",
+		".example.com", "-bad.example.com", "bad-.example.com", "bücher.de", "example.com..",
+	} {
+		if got, err := claimableHostname(raw); err == nil {
+			t.Errorf("claimableHostname(%q) = %q; the dialog's table says refused", raw, got)
+		}
+	}
+}

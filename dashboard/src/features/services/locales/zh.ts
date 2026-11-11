@@ -1668,6 +1668,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "请输入有效的域名，例如 www.example.com。",
     description: "Add-domain validation message for a malformed hostname",
   },
+  "services.domainWildcard": {
+    message: "不支持通配符域名（*.example.com）。请逐个添加主机名。",
+    description:
+      "Add-domain validation message for a wildcard hostname, which bex-api refuses by design (w21/048)",
+  },
   "services.domainAddButton": {
     message: "添加域名",
     description: "Add-domain dialog submit button",

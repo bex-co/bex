@@ -63,11 +63,11 @@ import {
   type CustomDomainView,
 } from "@/features/services/types";
 import { dnsInstructionZone } from "@/features/services/lib/dns-instruction-host";
-
-// A hostname bex-api (and the operator's Ingress) will accept: optional wildcard
-// label, then dot-separated labels, ending in a 2+ char TLD. Reject bad input
-// client-side rather than round-tripping to a 400; the backend stays authoritative.
-const VALID_FQDN = /^(\*\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i;
+import {
+  domainNameError,
+  normalizedDomainName,
+  type DomainNameError,
+} from "@/features/services/lib/custom-domain-name";
 
 // The custom-domains table has four columns (Name, Verified, Certificate, Actions);
 // the DNS-instructions detail row spans all of them.
@@ -586,7 +586,7 @@ function AddDomainButton({
   const { t } = useTranslations();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [invalid, setInvalid] = useState(false);
+  const [invalid, setInvalid] = useState<DomainNameError | null>(null);
   // The just-added domain (+ auto-paired sibling, if any): on success the dialog
   // swaps the input for the DNS record(s) so the tenant sees exactly what to
   // create without hunting for the new row(s).
@@ -594,21 +594,22 @@ function AddDomainButton({
 
   function reset() {
     setName("");
-    setInvalid(false);
+    setInvalid(null);
     setAdded(null);
     clearAddError();
     setOpen(false);
   }
 
   async function submit() {
-    const trimmed = name.trim();
-    if (!VALID_FQDN.test(trimmed)) {
-      setInvalid(true);
+    const reason = domainNameError(name);
+    if (reason) {
+      setInvalid(reason);
       return;
     }
     // `disabled` (the hook's busy flag) gates the button while the write is in
-    // flight, so no separate saving state is needed.
-    const result = await addDomain(trimmed);
+    // flight, so no separate saving state is needed. The name goes as the
+    // server stores it: trimmed, without a trailing dot.
+    const result = await addDomain(normalizedDomainName(name));
     if (result) setAdded(result);
   }
 
@@ -670,13 +671,13 @@ function AddDomainButton({
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
-                  setInvalid(false);
+                  setInvalid(null);
                   clearAddError();
                 }}
                 placeholder={t("services.domainPlaceholder")}
-                aria-invalid={invalid || !!addError}
+                aria-invalid={invalid !== null || !!addError}
                 aria-describedby={
-                  invalid
+                  invalid !== null
                     ? "custom-domain-invalid"
                     : addError
                       ? "custom-domain-error"
@@ -693,7 +694,9 @@ function AddDomainButton({
                   role="alert"
                   className="text-destructive text-xs"
                 >
-                  {t("services.domainInvalid")}
+                  {invalid === "wildcard"
+                    ? t("services.domainWildcard")
+                    : t("services.domainInvalid")}
                 </p>
               ) : addError ? (
                 <p

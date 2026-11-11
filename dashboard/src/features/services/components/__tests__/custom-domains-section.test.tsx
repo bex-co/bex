@@ -257,6 +257,48 @@ describe("CustomDomainsSection", () => {
     expect(mockAddDomain).not.toHaveBeenCalled();
   });
 
+  // w21/048: the dialog's pre-check sends every name bex-api accepts that a
+  // person really owns, and names the wildcard reason instead of "invalid".
+  it.each([
+    ["qa-20261110.example.xn--p1ai", "qa-20261110.example.xn--p1ai"],
+    ["qa-20261110.example.com.", "qa-20261110.example.com"],
+    ["  www.example.com  ", "www.example.com"],
+  ])("sends %j as %j", async (typed, sent) => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Add Custom Domain" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Name"), typed);
+    await user.click(
+      within(dialog).getByRole("button", { name: "Add Domain" }),
+    );
+
+    expect(screen.queryByText(/Enter a valid domain/)).toBeNull();
+    expect(mockAddDomain).toHaveBeenCalledWith(sent);
+  });
+
+  it("marks a wildcard with its own reason and sends nothing", async () => {
+    mockUseCustomDomains.mockReturnValue(domainsResult([]));
+    const user = userEvent.setup();
+    render(<CustomDomainsSection serviceId="web" />);
+
+    await user.click(screen.getByRole("button", { name: "Add Custom Domain" }));
+    const dialog = await screen.findByRole("dialog");
+    const input = within(dialog).getByLabelText("Name");
+    await user.type(input, "*.example.com");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Add Domain" }),
+    );
+
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAccessibleDescription(
+      "Wildcard domains (*.example.com) are not supported. Add each hostname on its own.",
+    );
+    expect(mockAddDomain).not.toHaveBeenCalled();
+  });
+
   it("shows exactly one traffic record for an unverified domain — no TXT step", () => {
     mockUseCustomDomains.mockReturnValue(domainsResult([pendingDomain]));
     render(<CustomDomainsSection serviceId="web" />);

@@ -1700,6 +1700,12 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Enter a valid domain, e.g. www.example.com.",
     description: "Add-domain validation message for a malformed hostname",
   },
+  "services.domainWildcard": {
+    message:
+      "Wildcard domains (*.example.com) are not supported. Add each hostname on its own.",
+    description:
+      "Add-domain validation message for a wildcard hostname, which bex-api refuses by design (w21/048)",
+  },
   "services.domainAddButton": {
     message: "Add Domain",
     description: "Add-domain dialog submit button",
