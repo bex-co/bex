@@ -13,6 +13,7 @@
 
 ## Inbox
 
+- [ ] [013](013.md) — the CLI docs and ADR018 still list "Render" prose and the `pg create` wizard hint as branding residuals; w2/073 and w2/082 rewrote both
 - [ ] [012](012.md) — `BEX_WORKSPACE` set to a workspace name that starts with `tea-` is never resolved (sent as `ownerId`, "not allowed")
 - [ ] [011](011.md) — `bex agent … -o yaml` prints large integers as floats (`size: 2.097152e+06`) and changes 16-digit ones
 - [ ] [010](010.md) — `bex agent … --follow` exits 1 and prints no result when its last transcript read hits one transient error (429, 5xx)
