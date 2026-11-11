@@ -38,7 +38,9 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 	}))
 	t.Cleanup(upstream.Close)
 
-	svc := &Service{Base: &core.Base{}, Client: NewClient(upstream.URL), DefaultPlan: PlanStarter,
+	// DefaultPlan is the Render sandbox default (1c-2g): an agent session's
+	// sandbox must not take it (w8/247, asserted below).
+	svc := &Service{Base: &core.Base{}, Client: NewClient(upstream.URL), DefaultPlan: DefaultPlan,
 		Templates: map[string]Template{"agent": {Image: "bex/agent:1", Entrypoint: []string{"driver"}}}}
 	eg := &fakeSessionEgress{}
 	svc.SessionEgress = eg
@@ -58,6 +60,11 @@ func TestAgentSessionLifecyclePreservesReservedMetadata(t *testing.T) {
 		create.Metadata[metadataAgentSession] != "ags-session" || create.Metadata[agentsession.LabelRepository] != bindings[agentsession.LabelRepository] ||
 		create.Metadata[agentsession.LabelBranch] != bindings[agentsession.LabelBranch] {
 		t.Fatalf("reserved metadata = %#v", create.Metadata)
+	}
+	// An agent session's sandbox keeps its starter label whatever the Render
+	// sandbox default is (w8/247): its size and price are the agent template's.
+	if create.Metadata[metadataPlan] != string(PlanStarter) || created.Plan != PlanStarter {
+		t.Fatalf("agent-session sandbox plan = metadata %q / %q, want starter under a %s default", create.Metadata[metadataPlan], created.Plan, DefaultPlan)
 	}
 	// Regression guard (w3/m43, caught live on prod): OpenSandbox persists
 	// metadata as Kubernetes LABELS, so no value may contain a label-invalid

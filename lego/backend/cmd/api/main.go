@@ -89,10 +89,15 @@ import (
 )
 
 func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Template {
+	// A create without a plan keeps its template's size and is labelled with
+	// the default plan, so the base template is the default plan's size: a
+	// sandbox created with no flags is Render's 1c-2g in size, meter weight
+	// and name (w8/247).
+	baseCPU, baseMemory, _ := sandbox.PlanLimits(sandbox.DefaultPlan)
 	return map[string]sandbox.Template{
 		"base": {
 			Image: baseImage, Entrypoint: []string{"sleep", "infinity"},
-			CPU: "500m", Memory: "512Mi",
+			CPU: baseCPU, Memory: baseMemory,
 		},
 		"agent": {
 			Image: agentImage, Entrypoint: []string{"bex-agent-driver"},
@@ -1300,7 +1305,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 		// the digest it just pushed — this default is the floor for a deployment
 		// that omits it, not the production value.
 		deps.SandboxTemplates = sandboxTemplateRegistry(cfg.SandboxImage, cfg.AgentSessionImage)
-		deps.SandboxDefaultPlan = sandbox.PlanStarter
+		deps.SandboxDefaultPlan = sandbox.DefaultPlan
 		// The Render CLI's `ea sandbox create` sends no template (no such flag), so
 		// an empty template resolves to this registered default (w3/m32 t009).
 		deps.SandboxDefaultTemplate = "base"

@@ -19,6 +19,8 @@ package main
 import (
 	"net/http"
 	"testing"
+
+	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 )
 
 func TestConfiguredWebhookRequiresDurableReplayStore(t *testing.T) {
@@ -48,8 +50,16 @@ func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 	if agent.CPU != "2" || agent.Memory != "4Gi" {
 		t.Fatalf("agent resource limits = %s/%s, want 2/4Gi", agent.CPU, agent.Memory)
 	}
-	if base := templates["base"]; base.Image != "alpine:3" {
+	base := templates["base"]
+	if base.Image != "alpine:3" {
 		t.Fatalf("base template image = %q", base.Image)
+	}
+	// w8/247: a sandbox created with no plan runs the base template labelled
+	// with the default plan, so the base template is that plan's size:
+	// Render's 1c-2g, not the deprecated starter's 500m / 512Mi.
+	cpu, memory, _ := sandbox.PlanLimits(sandbox.DefaultPlan)
+	if sandbox.DefaultPlan != sandbox.Plan1C2G || base.CPU != cpu || base.Memory != memory || cpu != "1" || memory != "2Gi" {
+		t.Fatalf("base template = %s/%s under default plan %q, want 1/2Gi under 1c-2g", base.CPU, base.Memory, sandbox.DefaultPlan)
 	}
 }
 

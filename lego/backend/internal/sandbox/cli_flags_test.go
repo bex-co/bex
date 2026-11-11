@@ -124,6 +124,56 @@ func TestOmittedPlanKeepsTheTemplateSize(t *testing.T) {
 	}
 }
 
+// w8/247: a sandbox created with no plan is Render's default, 1c-2g, in name,
+// size and meter weight. bex answered the deprecated starter (0.5 CPU, 512 MiB),
+// a name the CLI's own help no longer lists. A named plan, the deprecated ones
+// included, is still what was asked for.
+func TestOmittedPlanIsRendersDefault(t *testing.T) {
+	if DefaultPlan != Plan1C2G {
+		t.Fatalf("DefaultPlan = %q, want Render's default 1c-2g", DefaultPlan)
+	}
+	cpu, memory, ok := PlanLimits(DefaultPlan)
+	if !ok || cpu != "1" || memory != "2Gi" {
+		t.Fatalf("the default plan's limits = %s / %s (known %v), want 1 CPU and 2Gi", cpu, memory, ok)
+	}
+	// Wired as cmd/api wires it: the default template is the default plan's
+	// size, and the default plan labels a create that names none.
+	svc, got := recordingUpstream(t)
+	svc.Templates["base"] = Template{Image: "alpine:3", Entrypoint: []string{"sleep", "infinity"}, CPU: cpu, Memory: memory}
+	svc.DefaultTemplate, svc.DefaultPlan = "base", DefaultPlan
+	sb, err := svc.Create(callerCtx(), CreateRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sb.Plan != Plan1C2G || got.Metadata[metadataPlan] != "1c-2g" {
+		t.Errorf("plan = %q / metadata %q, want 1c-2g", sb.Plan, got.Metadata[metadataPlan])
+	}
+	if got.ResourceLimits.CPU != "1" || got.ResourceLimits.Memory != "2Gi" {
+		t.Errorf("limits = %+v, want 1 CPU and 2Gi", got.ResourceLimits)
+	}
+	named, gotNamed := recordingUpstream(t)
+	named.Templates["base"] = svc.Templates["base"]
+	named.DefaultTemplate, named.DefaultPlan = "base", DefaultPlan
+	explicit, err := named.Create(callerCtx(), CreateRequest{Plan: Plan1C2G})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if gotNamed.Metadata[metadataComputeWeight] != got.Metadata[metadataComputeWeight] || gotNamed.Metadata[metadataMemoryMiB] != got.Metadata[metadataMemoryMiB] || explicit.Plan != sb.Plan {
+		t.Errorf("an omitted plan is metered as weight %s / %s MiB, an explicit 1c-2g as %s / %s MiB; want the same",
+			got.Metadata[metadataComputeWeight], got.Metadata[metadataMemoryMiB], gotNamed.Metadata[metadataComputeWeight], gotNamed.Metadata[metadataMemoryMiB])
+	}
+	starter, gotStarter := recordingUpstream(t)
+	starter.Templates["base"] = svc.Templates["base"]
+	starter.DefaultTemplate, starter.DefaultPlan = "base", DefaultPlan
+	old, err := starter.Create(callerCtx(), CreateRequest{Plan: PlanStarter})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if old.Plan != PlanStarter || gotStarter.ResourceLimits.CPU != "500m" || gotStarter.ResourceLimits.Memory != "512Mi" {
+		t.Errorf("--plan starter = %q with limits %+v, want it still accepted at its own size", old.Plan, gotStarter.ResourceLimits)
+	}
+}
+
 func TestUnknownPlanIsRefusedWithTheAcceptedNames(t *testing.T) {
 	_, err := refusingUpstream(t).Create(callerCtx(), CreateRequest{Template: "node", Plan: "16c-32g"})
 	wantCode(t, err, "SANDBOX_PLAN_INVALID")

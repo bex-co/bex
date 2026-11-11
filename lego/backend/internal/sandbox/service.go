@@ -1031,10 +1031,11 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	if !ok {
 		return Sandbox{}, fmt.Errorf("%w: unknown agent sandbox template %q", core.ErrBadRequest, template)
 	}
-	plan := s.DefaultPlan
-	if plan == "" {
-		plan = PlanStarter
-	}
+	// An agent session's sandbox is the agent template's own size, and its
+	// plan label stays starter whatever a Render sandbox defaults to: what an
+	// agent sandbox costs is ADR047's and ADR091's decision, not the sandbox
+	// product's default plan (w8/247).
+	plan := PlanStarter
 	bindings, err := agentsession.BindingLabels(sessionID, repository, branch)
 	if err != nil {
 		return Sandbox{}, fmt.Errorf("%w: invalid agent session binding: %v", core.ErrBadRequest, err)

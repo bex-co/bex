@@ -53,6 +53,11 @@ const (
 	PlanStarter  Plan = "starter"
 	PlanStandard Plan = "standard"
 	PlanPro      Plan = "pro"
+
+	// DefaultPlan is the plan of a sandbox created without one: Render's
+	// default, 1 CPU and 2 GB (ADR104 § Groups, plans and limits). bex used
+	// to default to the deprecated starter, half a CPU and 512 MB (w8/247).
+	DefaultPlan = Plan1C2G
 )
 
 // planSize is the CPU and memory limit a plan gives the sandbox container.
@@ -81,6 +86,12 @@ func planNames() []string {
 		string(Plan1C2G), string(Plan2C4G), string(Plan4C8G), string(Plan8C16G),
 		string(PlanStarter), string(PlanStandard), string(PlanPro),
 	}
+}
+
+// PlanLimits returns the CPU and memory limit of a known plan.
+func PlanLimits(p Plan) (cpu, memory string, ok bool) {
+	size, ok := planResources[p]
+	return size.CPU, size.Memory, ok
 }
 
 // ValidPlan reports whether p is a known Render sandbox plan.
