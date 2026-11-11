@@ -182,3 +182,27 @@ func TestObservedServiceStateCarriesReadyTransitionTime(t *testing.T) {
 		t.Fatalf("unhealthy observation transition = %v, want %v", obs.ReadyTransitionAt, transitioned)
 	}
 }
+
+// TestObservedAsleepIsTheOperatorsCurrentIdleParking pins w4/562's signal: a
+// Hibernated service is asleep only when the operator's current Ready reason
+// says it parked it for idleness — not for a suspension, and not by a
+// reason it wrote before the latest spec change (a Resume bumps the
+// generation, and the stale reason still reads Suspended's).
+func TestObservedAsleepIsTheOperatorsCurrentIdleParking(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		reason     string
+		generation int64
+		want       bool
+	}{
+		{"idle parking", appv1alpha1.ReasonAutoHibernated, 0, true},
+		{"suspension", appv1alpha1.ReasonSuspended, 0, false},
+		{"a reason from before the latest spec change", appv1alpha1.ReasonAutoHibernated, 1, false},
+	} {
+		cr := readyCR(appv1alpha1.PhaseHibernated, metav1.ConditionFalse, tc.reason, time.Time{})
+		cr.Generation = tc.generation
+		if got := observedServiceStateFor("srv-x", cr, false).Asleep; got != tc.want {
+			t.Errorf("%s: Asleep = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

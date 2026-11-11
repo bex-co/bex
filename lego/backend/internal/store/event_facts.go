@@ -314,7 +314,12 @@ type ObservedServiceState struct {
 	// Suspended is the App's spec.suspended at observation time — the ONLY
 	// signal that separates a user-driven suspension from free-tier idle
 	// auto-hibernation, since both observe the same Hibernated phase (w6/m47).
-	Suspended    bool
+	Suspended bool
+	// Asleep marks a Hibernated service the operator parked for idleness (its
+	// current Ready reason is AutoHibernated), not for a suspension: it stays
+	// down until a request wakes it. A Resume that leaves it asleep is
+	// recorded when the flag falls, not at a later request's wake (w4/562).
+	Asleep       bool
 	Availability string
 	// AvailabilityObserved distinguishes "do not advance this dimension" from
 	// the observed empty state used while a service is hibernated.
@@ -428,7 +433,7 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			inserted = append(inserted, fact)
 		}
 		checkpointPhase := checkpointServicePhase(previousPhase, obs.ServicePhase)
-		checkpointSuspended := checkpointServiceSuspended(previousPhase, obs.ServicePhase, previousSuspended, obs.Suspended)
+		checkpointSuspended := checkpointServiceSuspended(previousPhase, obs.ServicePhase, previousSuspended, obs.Suspended, obs.Asleep)
 		// IS DISTINCT FROM makes the steady state a no-op instead of a row
 		// write: the reconciler records an observation for EVERY app on every
 		// resync (30s) and every Kick (after each successful API write), and
@@ -550,13 +555,19 @@ func heldAvailability(previousPhase, previousAvailability string, obs ObservedSe
 // that down erased the reason, and the following Hibernated -> Running pass
 // read a user Resume as an idle wake (service_woken, no resume push). While
 // the phase is Hibernated the recorded reason may therefore rise (suspending
-// an already-sleeping App) but never fall; the wake edge consumes it.
-func checkpointServiceSuspended(previousPhase, observedPhase string, previousSuspended, observedSuspended bool) bool {
+// an already-sleeping App) but never fall; the wake edge consumes it. It
+// falls only once the operator has re-parked the resumed service for
+// idleness (asleep): that Resume is recorded then, and the service's next
+// wake is an idle one (w4/562).
+func checkpointServiceSuspended(previousPhase, observedPhase string, previousSuspended, observedSuspended, asleep bool) bool {
 	if checkpointServicePhase(previousPhase, observedPhase) != observedPhase {
 		return previousSuspended
 	}
 	hibernated := string(appv1alpha1.PhaseHibernated)
 	if observedPhase == hibernated {
+		if asleep && !observedSuspended {
+			return false
+		}
 		// Entering Hibernated keeps a reason recorded while still Running, so
 		// a Resume that cleared the flag first cannot turn the episode into an
 		// idle sleep (w4/527).
@@ -627,6 +638,18 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 	if previousSuspended && !obs.Suspended && previousPhase != hibernated && obs.ServicePhase != hibernated {
 		facts = append(facts, quickSuspendPair(makeFact("suspended", EventFactServiceSuspended), makeFact("resumed", EventFactServiceResumed), previousChangedAt)...)
 	}
+	// A sleeping Free service has no phase edge to report either action
+	// (w4/562): the owner's Suspend is recorded when the flag rises, and a
+	// Resume that leaves it asleep when the operator re-parks it for idleness.
+	// A Resume that wakes it is still the wake edge's to report, at Ready.
+	if previousPhase == hibernated && obs.ServicePhase == hibernated {
+		switch {
+		case !previousSuspended && obs.Suspended:
+			facts = append(facts, makeFact("suspended", EventFactServiceSuspended))
+		case previousSuspended && !obs.Suspended && obs.Asleep:
+			facts = append(facts, makeFact("resumed", EventFactServiceResumed))
+		}
+	}
 	if obs.ServicePhase != previousPhase {
 		switch obs.ServicePhase {
 		case string(appv1alpha1.PhaseHibernated):
@@ -637,9 +660,16 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 			// kicks sees the service still Running with spec.suspended set, and
 			// a Resume can clear the flag before any pass sees Hibernated
 			// (w4/527).
-			if obs.Suspended || previousSuspended {
+			switch {
+			case previousSuspended && !obs.Suspended && obs.Asleep:
+				// Suspended, and resumed before any pass saw it down, and the
+				// operator has already re-parked it for idleness: both
+				// actions happened, and no wake will report the resume
+				// (w4/562).
+				facts = append(facts, quickSuspendPair(makeFact("suspended", EventFactServiceSuspended), makeFact("resumed", EventFactServiceResumed), previousChangedAt)...)
+			case obs.Suspended || previousSuspended:
 				facts = append(facts, makeFact("suspended", EventFactServiceSuspended))
-			} else {
+			default:
 				facts = append(facts, makeFact("hibernated", EventFactServiceHibernated))
 			}
 		case string(appv1alpha1.PhaseRunning):

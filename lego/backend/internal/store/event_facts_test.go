@@ -161,16 +161,61 @@ func TestAutoHibernateFactsStayApartFromSuspend(t *testing.T) {
 		onlyFact(record(st, "srv-paid", 3*time.Minute, "Running", false), EventFactServiceResumed)
 	})
 
-	t.Run("suspending an already-sleeping service makes its wake a resume", func(t *testing.T) {
+	// w4/562: a sleeping Free service's Suspend and Resume are each recorded
+	// at the action, though its phase never moves; a Resume that leaves it
+	// asleep is not reported at a later request's wake, which is a wake.
+	asleep := func(st *memStore, app string, offset time.Duration, suspended bool) []ServiceEventFact {
+		t.Helper()
+		facts, err := st.RecordObservedServiceState(ctx, ObservedServiceState{
+			AppID: app, At: at.Add(offset), ServicePhase: "Hibernated", Suspended: suspended,
+			Asleep: true, AvailabilityObserved: true,
+		})
+		if err != nil {
+			t.Fatalf("record: %v", err)
+		}
+		return facts
+	}
+	t.Run("a sleeping service's suspend and resume are recorded when the owner acts", func(t *testing.T) {
 		st := newMemStore()
 		record(st, "srv-both", 0, "Running", false)
 		onlyFact(record(st, "srv-both", time.Minute, "Hibernated", false), EventFactServiceHibernated)
-		// Phase does not move, so there is no edge to report — but the reason
-		// it is down has changed, and the checkpoint must take that on board.
-		if facts := record(st, "srv-both", 2*time.Minute, "Hibernated", true); len(facts) != 0 {
-			t.Fatalf("suspending an already-hibernated service emitted %+v", facts)
+		onlyFact(record(st, "srv-both", 2*time.Minute, "Hibernated", true), EventFactServiceSuspended)
+		// The Resume clears the flag before the operator re-parks it: held.
+		if facts := record(st, "srv-both", 3*time.Minute, "Hibernated", false); len(facts) != 0 {
+			t.Fatalf("the flag fall before the operator re-parked it emitted %+v", facts)
 		}
-		onlyFact(record(st, "srv-both", 3*time.Minute, "Running", false), EventFactServiceResumed)
+		resumed := asleep(st, "srv-both", 4*time.Minute, false)
+		onlyFact(resumed, EventFactServiceResumed)
+		if !resumed[0].At.Equal(at.Add(4 * time.Minute)) {
+			t.Fatalf("resumed at %v, want the pass that saw it re-parked", resumed[0].At)
+		}
+		if facts := asleep(st, "srv-both", 5*time.Minute, false); len(facts) != 0 {
+			t.Fatalf("staying asleep emitted %+v", facts)
+		}
+		// Days later a request wakes it: a wake, not a second resume.
+		onlyFact(record(st, "srv-both", 72*time.Hour, "Running", false), EventFactServiceWoken)
+	})
+
+	t.Run("a quick undo the operator re-parks for idleness records both actions", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-undo", 0, "Running", false)
+		record(st, "srv-undo", time.Second, "Running", true)
+		facts := asleep(st, "srv-undo", time.Minute, false)
+		if len(facts) != 2 || facts[0].Type != EventFactServiceSuspended || facts[1].Type != EventFactServiceResumed {
+			t.Fatalf("facts = %+v, want service_suspended then service_resumed", facts)
+		}
+		onlyFact(record(st, "srv-undo", time.Hour, "Running", false), EventFactServiceWoken)
+	})
+
+	t.Run("a sleeping service the Resume wakes reports one resume, at the wake", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-wake", 0, "Running", false)
+		onlyFact(record(st, "srv-wake", time.Minute, "Hibernated", false), EventFactServiceHibernated)
+		onlyFact(record(st, "srv-wake", 2*time.Minute, "Hibernated", true), EventFactServiceSuspended)
+		if facts := record(st, "srv-wake", 3*time.Minute, "Hibernated", false); len(facts) != 0 {
+			t.Fatalf("the flag fall emitted %+v", facts)
+		}
+		onlyFact(record(st, "srv-wake", 4*time.Minute, "Running", false), EventFactServiceResumed)
 	})
 
 	// w4/508: a Resume clears spec.suspended before the phase leaves Hibernated.

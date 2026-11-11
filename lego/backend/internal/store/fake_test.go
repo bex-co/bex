@@ -1040,7 +1040,7 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	for _, fact := range facts {
 		m.eventFacts[fact.SourceKey] = fact
 	}
-	obs.Suspended = checkpointServiceSuspended(previous.ServicePhase, obs.ServicePhase, previous.Suspended, obs.Suspended)
+	obs.Suspended = checkpointServiceSuspended(previous.ServicePhase, obs.ServicePhase, previous.Suspended, obs.Suspended, obs.Asleep)
 	obs.ServicePhase = checkpointServicePhase(previous.ServicePhase, obs.ServicePhase)
 	changed := obs.ServicePhase != previous.ServicePhase || obs.Availability != previous.Availability || obs.Suspended != previous.Suspended
 	if changed && !obs.AvailabilitySuppressed {

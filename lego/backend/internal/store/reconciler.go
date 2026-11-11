@@ -2220,6 +2220,8 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 	}
 	if app.Status.Phase == appv1alpha1.PhaseHibernated {
 		obs.AvailabilityObserved = true
+		reason, current := readyReasonForGeneration(app)
+		obs.Asleep = current && reason == appv1alpha1.ReasonAutoHibernated
 		return obs
 	}
 	for i := range app.Status.Conditions {
