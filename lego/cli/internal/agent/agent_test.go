@@ -36,6 +36,7 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
+	"gopkg.in/yaml.v3"
 )
 
 // fakeAPI is bex-api's agent-session REST surface, in memory. A session's
@@ -55,6 +56,7 @@ type fakeAPI struct {
 	retryAfter string         // Retry-After sent with a createErrs or failTail answer
 	transcript map[string][]string
 	files      map[string][]attachmentFixture
+	raw        map[string]string // session id -> a GET answer served verbatim
 	// The end of a turn: once a GET has served a session as settled, tailRows
 	// join its transcript and the next transcript reads answer failTail.
 	settled  map[string]bool
@@ -88,6 +90,7 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 		t: t, script: map[string][]string{}, gets: map[string]int{}, owner: map[string]string{},
 		ssh: map[string]string{}, failGets: map[string]int{}, transcript: map[string][]string{},
 		files: map[string][]attachmentFixture{}, settled: map[string]bool{}, tailRows: map[string][]string{},
+		raw: map[string]string{},
 	}
 	f.storage = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
@@ -235,6 +238,12 @@ func (f *fakeAPI) get(w http.ResponseWriter, r *http.Request) {
 		f.failGets[id]--
 		f.mu.Unlock()
 		writeAPIError(w, http.StatusServiceUnavailable, "", "rolling")
+		return
+	}
+	if raw, ok := f.raw[id]; ok {
+		f.mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, raw)
 		return
 	}
 	states, ok := f.script[id]
@@ -924,6 +933,56 @@ func TestListCancelAndGet(t *testing.T) {
 	f.script["ags-g2"] = []string{stateFailed}
 	if _, _, code := run(t, f.deps(t).deps, "get", "ags-g2"); code != 0 {
 		t.Fatalf("get of a failed session exit %d", code)
+	}
+}
+
+// w32/011: -o yaml prints the numbers the API sent. An integer keeps its
+// digits whatever its size; -o json is the API's bytes, re-indented.
+func TestYAMLOutputKeepsIntegersExact(t *testing.T) {
+	f := newFakeAPI(t)
+	const answer = `{"id":"ags-n1","state":"succeeded","turns":3,"outcome":{"files":[{"name":"dump.sql","size":2097152}],` +
+		`"result":{"rows":1500000,"issueId":9007199254740993,"huge":123456789012345678901234567890,"count":999999,"delta":-42,` +
+		`"ratio":0.5,"thousand":1e3,"over":1e400,"version":"1500000","ok":true,"none":null}}}`
+	f.raw["ags-n1"] = answer
+	stdout, stderr, code := run(t, f.deps(t).deps, "get", "ags-n1", "-o", "yaml")
+	if code != 0 {
+		t.Fatalf("get -o yaml exit %d: %s", code, stderr)
+	}
+	for _, line := range []string{
+		"size: 2097152\n", "rows: 1500000\n", "issueId: 9007199254740993\n", "huge: 123456789012345678901234567890\n",
+		"count: 999999\n", "delta: -42\n", "turns: 3\n",
+		// Not integers: a float stays a float (its literal, past float64's
+		// range), and a string of digits a string.
+		"ratio: 0.5\n", "thousand: 1000\n", "over: 1e400\n", "version: \"1500000\"\n", "ok: true\n", "none: null\n",
+	} {
+		if !strings.Contains(stdout, line) {
+			t.Errorf("get -o yaml lacks %q:\n%s", line, stdout)
+		}
+	}
+	// What a script reading the YAML gets back: the float it used to get
+	// read as 9007199254740992.
+	var read struct {
+		Outcome struct {
+			Result struct {
+				IssueID int64 `yaml:"issueId"`
+			}
+		}
+	}
+	if err := yaml.Unmarshal([]byte(stdout), &read); err != nil || read.Outcome.Result.IssueID != 9007199254740993 {
+		t.Fatalf("the YAML reads issueId back as %d (%v):\n%s", read.Outcome.Result.IssueID, err, stdout)
+	}
+
+	stdout, stderr, code = run(t, f.deps(t).deps, "get", "ags-n1", "-o", "json")
+	var indented bytes.Buffer
+	_ = json.Indent(&indented, []byte(answer), "", "  ")
+	if code != 0 || stdout != indented.String()+"\n" {
+		t.Fatalf("get -o json exit %d (%s) changed the API's answer:\n%s", code, stderr, stdout)
+	}
+
+	f.files["ags-n1"] = []attachmentFixture{{att: attachment{ID: "att-big", Turn: 1, Direction: "output", Name: "dump.sql", Size: 123456789}}}
+	stdout, stderr, code = run(t, f.deps(t).deps, "files", "ags-n1", "-o", "yaml")
+	if code != 0 || !strings.Contains(stdout, "size: 123456789\n") {
+		t.Fatalf("files -o yaml exit %d: %q %s", code, stdout, stderr)
 	}
 }
 

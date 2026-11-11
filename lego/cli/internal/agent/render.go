@@ -52,11 +52,17 @@ func parseFormat(value string) (format, error) {
 // writeRaw prints an API answer (or a JSON array of them) as JSON or YAML.
 func writeRaw(w io.Writer, f format, raw []byte) error {
 	if f == formatYAML {
+		dec := json.NewDecoder(bytes.NewReader(raw))
+		dec.UseNumber()
 		var value any
-		if err := json.Unmarshal(raw, &value); err != nil {
+		if err := dec.Decode(&value); err != nil {
 			return err
 		}
-		out, err := yaml.Marshal(value)
+		// Decode stops after one value; the JSON branch refuses what follows.
+		if _, err := dec.Token(); err != io.EOF {
+			return fmt.Errorf("the API answer has data after its JSON value")
+		}
+		out, err := yaml.Marshal(yamlValue(value))
 		if err != nil {
 			return err
 		}
@@ -70,6 +76,34 @@ func writeRaw(w io.Writer, f format, raw []byte) error {
 	buf.WriteByte('\n')
 	_, err := w.Write(buf.Bytes())
 	return err
+}
+
+// yamlValue prepares a decoded API answer for yaml.Marshal. Decoded the usual
+// way every JSON number is a float64, which yaml.v3 prints in exponent form
+// from 1e6 up and which cannot hold every integer above 2^53: a 2 MiB file was
+// `size: 2.097152e+06`, and a 16-digit id came out as a different number
+// (w32/011). An integer is emitted with the API's own digits instead; a
+// number with a fraction or exponent stays a float.
+func yamlValue(v any) any {
+	switch v := v.(type) {
+	case map[string]any:
+		for key, item := range v {
+			v[key] = yamlValue(item)
+		}
+	case []any:
+		for i, item := range v {
+			v[i] = yamlValue(item)
+		}
+	case json.Number:
+		if strings.ContainsAny(v.String(), ".eE") {
+			if f, err := v.Float64(); err == nil {
+				return f
+			}
+			// Outside float64's range: keep the literal, like an integer.
+		}
+		return &yaml.Node{Kind: yaml.ScalarNode, Value: v.String()}
+	}
+	return v
 }
 
 // rawArray joins API answers into one JSON array.

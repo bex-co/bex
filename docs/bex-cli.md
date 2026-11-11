@@ -179,7 +179,7 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
   | `124` | `--timeout` elapsed while the session was still working      |
   | `130` | interrupted (Ctrl-C or SIGTERM)                              |
 
-- **Output.** `-o json` (or `yaml`) prints the API's own answer on stdout: the session view, a JSON array for several sessions or for `files`. While `--follow` streams, the transcript goes to stderr so stdout stays parseable.
+- **Output.** `-o json` (or `yaml`) prints the API's own answer on stdout: the session view, a JSON array for several sessions or for `files`. YAML keeps every integer digit for digit, whatever its size (a file's `size`, an id in the session's own `outcome.result`). While `--follow` streams, the transcript goes to stderr so stdout stays parseable.
 - **Idempotent create.** Each `run` sends one `Idempotency-Key` and repeats the create, with the same key, after a dropped connection, a 429 or a gateway 5xx. A retry can therefore never start a second session. Pass `--idempotency-key` to make re-running the whole command safe as well, for example keyed on the CI run id.
 
 ```bash
