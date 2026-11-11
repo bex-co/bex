@@ -230,7 +230,7 @@ func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alph
 	open, err := scanBoundPort(scanCtx, r.PortScanner, ip, port)
 	if err != nil {
 		logf.FromContext(ctx).Info("private primary port scan failed", "app", app.Name, "error", err.Error())
-		return " Port detection could not reach the instance, so a process listening on another port cannot be detected yet."
+		return fmt.Sprintf(" No open port was detected on the instance: the server must bind host 0.0.0.0 on the service's port (%d).", port)
 	}
 	found := listenerSet(open)
 	if len(found) == 0 || slices.Contains(found, network.PrimaryPort) {

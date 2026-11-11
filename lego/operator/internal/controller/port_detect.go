@@ -119,12 +119,13 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 	defer cancel()
 	open, err := scanBoundPort(scanCtx, r.PortScanner, ip)
 	if err != nil {
-		// A failed scan must not be silent (w4/393): the stall reason is the
-		// only place this failure class is visible from the product. A
-		// dropped-packet path reads exactly like "no listener found"
-		// without it.
+		// A scan that found nothing and one that failed read the same from
+		// outside: a closed port on a tenant pod drops the connect instead of
+		// refusing it, so "no listener" always arrives here as unreachable
+		// (w8/259). The product says what the user can act on, in Render's
+		// terms; the operator's log keeps the scan's own error (w4/393).
 		logf.FromContext(ctx).Info("port detection scan failed", "app", app.Name, "error", err.Error())
-		return " Port detection could not reach the instance, so a process listening on another port cannot be detected yet."
+		return noOpenPortMessage(port)
 	}
 	var others []int
 	for _, p := range open {
@@ -135,7 +136,7 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 	}
 	switch len(others) {
 	case 0:
-		return ""
+		return noOpenPortMessage(port)
 	case 1:
 		if app.Status.DetectedPort == int32(others[0]) {
 			return ""
@@ -157,6 +158,17 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 		return fmt.Sprintf(" The process is listening on ports %s, not on port %d; set the service's port (or its PORT variable) to the one that serves HTTP.",
 			strings.Join(list, ", "), port)
 	}
+}
+
+// noOpenPortMessage is the stall text for an instance with nothing listening
+// where the platform can reach it: no server, or one bound to 127.0.0.1.
+// Render calls it "Port scan timeout reached, no open ports detected. Bind
+// your service to at least one port. If you don't need to receive traffic on
+// any port, create a background worker instead", and its troubleshooting page
+// names the two fixes: bind host 0.0.0.0, and the port in PORT (w8/259).
+func noOpenPortMessage(port int) string {
+	return fmt.Sprintf(" No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT (%d)."+
+		" If the service does not need to receive traffic on any port, create a background worker instead.", port)
 }
 
 // commonHTTPPorts are probed first (w4/393): with dropped packets a full

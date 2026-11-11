@@ -188,7 +188,10 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 			return true, fmt.Sprintf("Port %d accepted a connection but has not answered HTTP yet; continuing to scan while the container starts", found.Unanswered)
 		}
 		if err != nil {
-			return true, "Port detection could not reach the instance; retrying the HTTP scan"
+			// A failed probe and one that found nothing read the same from
+			// outside (noOpenPortMessage, w8/259): the product says what the
+			// user can act on and the log keeps the probe's own error.
+			logf.FromContext(ctx).Info("HTTP port probe failed", "app", app.Name, "error", err.Error())
 		}
 		return true, "No port answers HTTP yet; continuing to scan while the container starts"
 	}

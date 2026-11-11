@@ -136,12 +136,29 @@ func TestExplicitPortClearsADetectedOne(t *testing.T) {
 	}
 }
 
-// w4/393: a failed scan names itself in the stall text instead of reading
-// like "no listener found".
-func TestDetectBoundPortSurfacesScanFailure(t *testing.T) {
-	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{err: portscan.ErrUnreachable}, nil)
-	if got := r.detectBoundPort(t.Context(), app, dep, 10000); !strings.Contains(got, "could not reach the instance") {
-		t.Fatalf("stall text = %q, want the scan failure named", got)
+// w8/259: an instance with nothing listening where the platform can reach it
+// (no server, or one bound to 127.0.0.1) is told so in Render's terms, whether
+// the scan came back empty or unreachable. On a tenant pod a closed port drops
+// the connect, so both are the same case; the stall text used to blame port
+// detection for the second.
+func TestDetectBoundPortNamesAnInstanceWithNoOpenPort(t *testing.T) {
+	for name, scanner := range map[string]*cannedScanner{
+		"the scan found nothing":   {},
+		"the scan was unreachable": {err: portscan.ErrUnreachable},
+	} {
+		r, app, dep := detectFixture(t, time.Minute, scanner, nil)
+		got := r.detectBoundPort(t.Context(), app, dep, 10000)
+		for _, want := range []string{"No open port was detected", "0.0.0.0", "PORT (10000)", "background worker"} {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s: stall text = %q, want %q in it", name, got, want)
+			}
+		}
+		if strings.Contains(got, "could not reach the instance") {
+			t.Errorf("%s: stall text still blames port detection: %q", name, got)
+		}
+		if app.Status.DetectedPort != 0 {
+			t.Errorf("%s: DetectedPort = %d, want none", name, app.Status.DetectedPort)
+		}
 	}
 }
 

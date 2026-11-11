@@ -6284,8 +6284,13 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 					" The liveness check has already restarted the container %d time(s), so the check is failing rather than merely slow.",
 					cs.RestartCount)
 			}
-			msg += " Check that the path returns a 2xx or 3xx status on the service's own port" +
-				" — an unset Health Check Path falls back to a TCP connect, which only asks whether the process is listening."
+			if probe.TCPSocket != nil {
+				// No path to check: the connect only asks whether anything
+				// listens on the port (w8/259).
+				msg += " No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on that port."
+			} else {
+				msg += " Check that the path returns a 2xx or 3xx status on the service's own port."
+			}
 			return reasonHealthCheckFailing, msg
 		}
 	}
