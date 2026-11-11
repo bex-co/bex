@@ -207,3 +207,26 @@ func TestLogoutRevokeFailureNamesBex(t *testing.T) {
 		t.Fatalf("logout output = %q", output)
 	}
 }
+
+// w8/255: `psql` without --command in a script answers a usage hint. Upstream
+// returns it as one error whose second line reads "Usage: render psql …"; the
+// launcher's rewrite did not treat "Usage: " as the start of a command.
+func TestPsqlWithoutACommandNamesBex(t *testing.T) {
+	api := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(api.Close)
+	for _, args := range [][]string{
+		{"psql", "dpg-runtime1", "-o", "json"},
+		{"psql", "dpg-runtime1", "-o", "text", "--", "-At", "-c", "select 1"},
+	} {
+		command := bexAgainst(t, api.URL, args...)
+		var stderr bytes.Buffer
+		command.Stderr = &stderr
+		if err := command.Run(); err == nil {
+			t.Fatalf("bex %s without --command must fail", strings.Join(args, " "))
+		}
+		want := `Usage: bex psql <postgresID> --command "SELECT ..." -o json`
+		if !strings.Contains(stderr.String(), want) || strings.Contains(stderr.String(), "render psql") {
+			t.Fatalf("bex %s: stderr = %q, want %q", strings.Join(args, " "), stderr.String(), want)
+		}
+	}
+}

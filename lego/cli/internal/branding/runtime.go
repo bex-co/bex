@@ -273,7 +273,9 @@ func refBoundary(s string, start int) bool {
 	case '`', '"', '\'', '\n':
 		return true
 	}
-	if strings.HasSuffix(s[:start], "| ") {
+	// "Usage: " is upstream's usage hint inside a returned error, where the
+	// command follows the label on its line (`render psql`'s, w8/255).
+	if strings.HasSuffix(s[:start], "| ") || strings.HasSuffix(s[:start], "Usage: ") {
 		return true
 	}
 	line := s[strings.LastIndexByte(s[:start], '\n')+1 : start]

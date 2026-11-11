@@ -41,7 +41,7 @@ func knownWords(words ...string) func(string) bool {
 }
 
 func TestRewriteCommandRefs(t *testing.T) {
-	known := knownWords("ea", "workspace", "services", "deploys", "login")
+	known := knownWords("ea", "workspace", "services", "deploys", "login", "psql")
 	for in, want := range map[string]string{
 		"render ea blueprints approve exs-1":                      "bex ea blueprints approve exs-1",
 		"  render services list":                                  "  bex services list",
@@ -53,6 +53,8 @@ func TestRewriteCommandRefs(t *testing.T) {
 		"Run `render login` to log back in.":                      "Run `bex login` to log back in.",
 		"line one\nrender deploys list":                           "line one\nbex deploys list",
 		"the `render` binary":                                     "the `bex` binary",
+		// upstream cmd/psql.go:96, one returned error with a usage line (w8/255)
+		"--command flag is required in non-interactive mode\nUsage: render psql <postgresID> --command \"SELECT ...\" -o json": "--command flag is required in non-interactive mode\nUsage: bex psql <postgresID> --command \"SELECT ...\" -o json",
 		// Not command references: left byte-exact.
 		"update \"render.yaml\" and push":         "update \"render.yaml\" and push",
 		"https://render.com/docs":                 "https://render.com/docs",
@@ -62,6 +64,9 @@ func TestRewriteCommandRefs(t *testing.T) {
 		"render-x":                                "render-x",
 		"\"render-x\"":                            "\"render-x\"",
 		"we render services nightly":              "we render services nightly",
+		"Usage: render the page":                  "Usage: render the page",
+		"Usage: render unknowncmd":                "Usage: render unknowncmd",
+		"usage: render psql":                      "usage: render psql",
 		"render unknowncmd":                       "render unknowncmd",
 		"render ea2":                              "render ea2",
 		"render deploys-x is live":                "render deploys-x is live",
