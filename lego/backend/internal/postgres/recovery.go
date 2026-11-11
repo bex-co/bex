@@ -526,6 +526,15 @@ func (s *Service) CreateExport(ctx context.Context, name string) (ExportView, er
 		return ExportView{}, err
 	}
 	if !d.Status.BackupsEnabled {
+		// A Free database has no backups by plan (Render: "Free Render
+		// Postgres databases don't support any form of backups"), which is the
+		// user's to act on and reads like the other Free limits. A paid one
+		// without a store is the platform's fault and keeps saying so (w8/277).
+		if !core.PaidPlan(d.Spec.Plan) {
+			return ExportView{}, core.NewBadRequestError("POSTGRES_EXPORT_PLAN_UNSUPPORTED",
+				"logical exports require a paid Postgres plan; Free databases have no backups",
+				map[string]any{"plan": "free"})
+		}
 		return ExportView{}, fmt.Errorf("%w: %q has no backup store; exports are unavailable", core.ErrBadRequest, name)
 	}
 	if d.Spec.Suspended {

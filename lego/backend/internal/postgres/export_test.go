@@ -26,6 +26,7 @@ import (
 	"net/url"
 	"os"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -107,6 +108,30 @@ func TestCreateLogicalExportWritesIntentAndRejectsOverlap(t *testing.T) {
 	}
 	if _, err := svc.CreateExport(context.Background(), "paid-db"); !errors.Is(err, core.ErrConflict) {
 		t.Fatalf("overlapping export = %v, want conflict", err)
+	}
+}
+
+// w8/277: a Free database has no backups by plan. Its export refusal names the
+// plan and carries a code, like the other Free limits; "has no backup store"
+// stays for a paid database whose store is missing, which is the platform's
+// fault.
+func TestCreateExportRefusalNamesThePlanOnAFreeDatabase(t *testing.T) {
+	svc, cl := newService()
+	seedDatabaseSpec(t, cl, "free-db", appv1alpha1.DatabaseSpec{Plan: "free"}, false)
+	seedDatabaseSpec(t, cl, "paid-no-store", appv1alpha1.DatabaseSpec{Plan: "basic-1gb"}, false)
+
+	_, err := svc.CreateExport(context.Background(), "free-db")
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != "POSTGRES_EXPORT_PLAN_UNSUPPORTED" {
+		t.Fatalf("export of a Free database = %v, want POSTGRES_EXPORT_PLAN_UNSUPPORTED", err)
+	}
+	if msg := err.Error(); !strings.Contains(msg, "paid Postgres plan") || strings.Contains(msg, "backup store") {
+		t.Errorf("message %q must name the plan and not the backup store", msg)
+	}
+
+	_, err = svc.CreateExport(context.Background(), "paid-no-store")
+	if !errors.Is(err, core.ErrBadRequest) || errors.As(err, &coded) && coded.Code == "POSTGRES_EXPORT_PLAN_UNSUPPORTED" || !strings.Contains(err.Error(), "has no backup store") {
+		t.Fatalf("export of a paid database with no store = %v, want the store sentence without the plan code", err)
 	}
 }
 
