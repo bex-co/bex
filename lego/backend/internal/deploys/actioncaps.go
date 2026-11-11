@@ -18,6 +18,7 @@ package deploys
 
 import (
 	"context"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -142,13 +143,53 @@ func BuildStored(a *appv1alpha1.App, d store.Deploy) bool {
 	return stored.HoldsImage(d.ResolvedImage)
 }
 
+// freeRollbackDepth is how far back a Free web service may roll. Render, Free
+// instances: "Rollbacks (only to the two most recent previous deploys)", and
+// "Upgrading your workspace plan does not remove limitations on Free
+// instances" (render.com/docs/free, w8/262).
+const freeRollbackDepth = 2
+
+// freeRollbackTargets is the set of deploy ids a Free web service may roll
+// back to: its freeRollbackDepth most recent deploys that went live and were
+// since replaced. limited is false for every other service, which has no
+// depth rule. The deploy that is still live is not a step back and is never
+// judged by depth (RollbackActionable decides whether it is a recovery).
+func (s *Service) freeRollbackTargets(ctx context.Context, a *appv1alpha1.App) (ids []string, limited bool, err error) {
+	if core.PaidPlan(a.Spec.Tier) || (a.Spec.Type != "" && a.Spec.Type != appv1alpha1.TypeWebService) {
+		return nil, false, nil
+	}
+	previous, err := s.Store.ListDeploys(ctx, appStoreID(a), store.DeployFilter{
+		Statuses: []string{store.DeployDeactivated}, Limit: freeRollbackDepth,
+	})
+	if err != nil {
+		return nil, true, err
+	}
+	ids = make([]string, len(previous))
+	for i, p := range previous {
+		ids[i] = p.ID
+	}
+	return ids, true, nil
+}
+
+// beyondFreeDepth reports whether d is a previous deploy a Free web service
+// can no longer roll back to. An unreadable history is not a refusal here:
+// the verb surfaces that error itself.
+func (s *Service) beyondFreeDepth(ctx context.Context, a *appv1alpha1.App, d store.Deploy) bool {
+	if d.Status != store.DeployDeactivated {
+		return false
+	}
+	ids, limited, err := s.freeRollbackTargets(ctx, a)
+	return err == nil && limited && !slices.Contains(ids, d.ID)
+}
+
 // restorableRollbackTarget is RollbackActionable plus the refusals the verb
 // makes before dispatch: a build the registry no longer holds (BuildStored),
-// and a static-site target whose publication was never recorded, which has
-// nothing retained to restore (w4/m197). Unreadable evidence is not a target
-// either; the verb surfaces that error itself.
+// a Free web service's deploy older than its two most recent previous ones
+// (beyondFreeDepth), and a static-site target whose publication was never
+// recorded, which has nothing retained to restore (w4/m197). Unreadable
+// evidence is not a target either; the verb surfaces that error itself.
 func (s *Service) restorableRollbackTarget(ctx context.Context, a *appv1alpha1.App, d store.Deploy) bool {
-	if !RollbackActionable(a, d) || !BuildStored(a, d) {
+	if !RollbackActionable(a, d) || !BuildStored(a, d) || s.beyondFreeDepth(ctx, a, d) {
 		return false
 	}
 	if a.Spec.Type != appv1alpha1.TypeStaticSite {

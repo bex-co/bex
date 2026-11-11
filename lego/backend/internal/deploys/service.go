@@ -124,10 +124,12 @@ type DeployView struct {
 	// BuildID is the build source build this deploy shipped (Render's
 	// deploy.buildId), "" for any other deploy.
 	BuildID string
-	// BuildGone reports that the registry no longer holds the build this
-	// deploy ran on, so it cannot be rolled back to (BuildStored, w8/m156).
-	// Set by List and Get, which have the service at hand; false wherever the
-	// registry's holdings are unknown.
+	// BuildGone reports that the build this deploy ran on is no longer kept,
+	// so it cannot be rolled back to: the registry does not hold it
+	// (BuildStored, w8/m156), or the service is a Free web service and the
+	// deploy is older than its two most recent previous ones (w8/262). Set by
+	// List and Get, which have the service at hand; false wherever that is
+	// unknown.
 	BuildGone      bool
 	CommitAuthorAt *time.Time
 	CreatedAt      time.Time
@@ -429,10 +431,15 @@ func (s *Service) listFetched(ctx context.Context, a *appv1alpha1.App, filter Li
 	if err != nil {
 		return nil, err
 	}
+	// A read that cannot learn the Free depth still answers: the rows keep
+	// their action and the verb decides.
+	freeIDs, limited, depthErr := s.freeRollbackTargets(ctx, a)
+	limited = limited && depthErr == nil
 	out := make([]DeployView, len(deploys))
 	for i, d := range deploys {
 		out[i] = view(d)
-		out[i].BuildGone = !BuildStored(a, d)
+		out[i].BuildGone = !BuildStored(a, d) ||
+			(limited && d.Status == store.DeployDeactivated && !slices.Contains(freeIDs, d.ID))
 	}
 	return out, nil
 }
@@ -471,7 +478,7 @@ func (s *Service) getFetched(ctx context.Context, a *appv1alpha1.App, deployID s
 		return DeployView{}, err
 	}
 	v := view(d)
-	v.BuildGone = !BuildStored(a, d)
+	v.BuildGone = !BuildStored(a, d) || s.beyondFreeDepth(ctx, a, d)
 	return v, nil
 }
 
@@ -1195,6 +1202,15 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	// later with the service already mid-rollout (w8/m156).
 	if !BuildStored(a, target) {
 		return DeployView{}, fmt.Errorf("%w: the build of deploy %q (%s) is no longer stored — only a service's recent builds are kept. Deploy its commit again instead", core.ErrConflict, deployID, store.PublicImageRef(target.ResolvedImage))
+	}
+	if target.Status == store.DeployDeactivated {
+		ids, limited, err := s.freeRollbackTargets(ctx, a)
+		if err != nil {
+			return DeployView{}, err
+		}
+		if limited && !slices.Contains(ids, deployID) {
+			return DeployView{}, fmt.Errorf("%w: a Free web service can roll back only to its two most recent previous deploys, and deploy %q is older. Upgrade the instance type to roll back further, or deploy its commit again", core.ErrConflict, deployID)
+		}
 	}
 	// A static site restores the target's retained publication, built or
 	// published straight from its repository (w4/m197): today's saved publish
