@@ -88,10 +88,9 @@ func AllowListFromSpec(list []appv1alpha1.IPAllowEntry) []IPAllowListEntry {
 }
 
 // UnrestrictedAllowList is the rule pair that admits every source of both
-// address families. It carries no descriptions: it is how REST's Postgres
-// create (w2/038) and Blueprint Postgres create (w8/157) save an omitted list,
-// and how every read spells a public datastore with no saved rules
-// (EffectiveAllowList).
+// address families. It carries no descriptions: it is how every Postgres
+// create (w2/038, w8/157, w4/553) saves an omitted list, and how every read
+// spells a public datastore with no saved rules (EffectiveAllowList).
 func UnrestrictedAllowList() []IPAllowListEntry {
 	return []IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}, {CIDRBlock: "::/0"}}
 }
@@ -161,6 +160,16 @@ func AllowListOrCIDRs(entries []IPAllowListEntry, cidrs []string) []IPAllowListE
 		return entries
 	}
 	return AllowListFromCIDRs(cidrs)
+}
+
+// ProvidedAllowListOrCIDRs is AllowListOrCIDRs for a create that must keep an
+// explicitly empty list (no rules) distinct from an omitted one (nil): the
+// flat form alone folds an empty argument into nil.
+func ProvidedAllowListOrCIDRs(entries []IPAllowListEntry, cidrs []string) []IPAllowListEntry {
+	if entries == nil && cidrs == nil {
+		return nil
+	}
+	return ProvidedAllowList(AllowListOrCIDRs(entries, cidrs))
 }
 
 // ResolveAllowListInputs resolves adapters that expose both the structured

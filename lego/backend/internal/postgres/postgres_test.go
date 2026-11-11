@@ -27,6 +27,7 @@ import (
 	"encoding/json"
 	"encoding/pem"
 	"fmt"
+	"maps"
 	"math/big"
 	"net/http"
 	"net/http/httptest"
@@ -419,7 +420,8 @@ func TestRESTPostgresPublicDefaultIsAdapterSpecific(t *testing.T) {
 		}
 	}
 
-	// Native callers retain their private-by-default contract.
+	// The Core verb itself takes what its adapter resolved: a zero request is
+	// private. Every adapter resolves omission first (CreateExposure, w4/553).
 	svc, _ := newService()
 	pg, err := svc.CreatePostgres(context.Background(), CreatePostgresRequest{Name: "shared-default"})
 	if err != nil {
@@ -593,14 +595,16 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 	})
 	mcpEntries := mcpView["ipAllowList"].([]any)
 
-	// GraphQL and MCP creates are private by default, so their saved rule is
-	// inactive and reads back as no access (w4/m315); every adapter persists
-	// it, description included (checked below).
-	if len(restView.IPAllowList) != 1 || restView.IPAllowList[0] != want || len(gqlEntries) != 0 || len(mcpEntries) != 0 {
+	// Every adapter publishes a create that omits `public`, as Render does
+	// (w2/038, w4/553), so each reads its saved rule back, description included.
+	wantEntry := map[string]any{"cidrBlock": want.CIDRBlock, "description": want.Description}
+	if len(restView.IPAllowList) != 1 || restView.IPAllowList[0] != want ||
+		len(gqlEntries) != 1 || !maps.Equal(gqlEntries[0].(map[string]any), wantEntry) ||
+		len(mcpEntries) != 1 || !maps.Equal(mcpEntries[0].(map[string]any), wantEntry) {
 		t.Fatalf("create allowlist readback: REST=%+v GraphQL=%v MCP=%v", restView.IPAllowList, gqlEntries, mcpEntries)
 	}
 
-	if !restView.Public || gqlView["public"] != false || mcpView["public"] != false {
+	if !restView.Public || gqlView["public"] != true || mcpView["public"] != true {
 		t.Fatalf("create publication defaults drifted: REST=%v GraphQL=%v MCP=%v", restView.Public, gqlView["public"], mcpView["public"])
 	}
 	for _, created := range []struct {
@@ -610,8 +614,8 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 		wantPublic bool
 	}{
 		{"REST", restClient, restView.ID, true},
-		{"GraphQL", gqlClient, gqlView["id"].(string), false},
-		{"MCP", mcpClient, mcpView["id"].(string), false},
+		{"GraphQL", gqlClient, gqlView["id"].(string), true},
+		{"MCP", mcpClient, mcpView["id"].(string), true},
 	} {
 		stored := getDatabase(t, created.client, created.id)
 		if stored.Spec.Public != created.wantPublic || !slices.Equal(core.AllowListFromSpec(stored.Spec.IPAllowList), []core.IPAllowListEntry{want}) {
@@ -619,17 +623,25 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 		}
 	}
 
+	// Omission resolves as REST's does: public, with both unrestricted rules
+	// saved; an explicitly empty list or public:false keeps it private.
 	on, off := true, false
 	for _, tc := range []struct {
-		name      string
-		public    *bool
-		withRules bool
+		name       string
+		public     *bool
+		withRules  bool
+		emptyArg   string // an explicitly empty list in this argument
+		wantPublic bool
+		wantRules  int
 	}{
-		{"omitted", nil, false},
-		{"private-empty", &off, false},
-		{"public-empty", &on, false},
-		{"private-rules", &off, true},
-		{"public-rules", &on, true},
+		{"omitted", nil, false, "", true, 2},
+		{"omitted-empty-list", nil, false, "ipAllowList", false, 0},
+		{"omitted-empty-entries", nil, false, "ipAllowListEntries", false, 0},
+		{"omitted-rules", nil, true, "", true, 1},
+		{"private-empty", &off, false, "", false, 0},
+		{"public-empty", &on, false, "", true, 2},
+		{"private-rules", &off, true, "", false, 1},
+		{"public-rules", &on, true, "", true, 1},
 	} {
 		t.Run("native/"+tc.name, func(t *testing.T) {
 			name := "native-" + tc.name
@@ -639,12 +651,15 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 				args["public"] = *tc.public
 				gqlArgs += fmt.Sprintf(", public:%v", *tc.public)
 			}
-			wantRules := 0
 			if tc.withRules {
 				args["ipAllowListEntries"] = []core.IPAllowListEntry{want}
 				gqlArgs += `, ipAllowListEntries:[{cidrBlock:"203.0.113.0/24", description:"office"}]`
-				wantRules = 1
 			}
+			if tc.emptyArg != "" {
+				args[tc.emptyArg] = []any{}
+				gqlArgs += ", " + tc.emptyArg + ":[]"
+			}
+			wantPublic, wantRules := tc.wantPublic, tc.wantRules
 			result := graphql.Do(graphql.Params{Schema: gqlSchema, Context: context.Background(),
 				RequestString: `mutation { createDatabase(` + gqlArgs + `) { id public } }`})
 			if len(result.Errors) != 0 {
@@ -652,7 +667,6 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 			}
 			gql := result.Data.(map[string]any)["createDatabase"].(map[string]any)
 			mcp := mcpCall("create_postgres", args)
-			wantPublic := tc.public != nil && *tc.public
 			for _, created := range []struct {
 				name   string
 				client client.Client
@@ -664,6 +678,9 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 				stored := getDatabase(t, created.client, created.view["id"].(string))
 				if created.view["public"] != wantPublic || stored.Spec.Public != wantPublic || len(stored.Spec.IPAllowList) != wantRules {
 					t.Fatalf("%s create: public=%v stored public=%v rules=%v, want public=%v rule count=%d", created.name, created.view["public"], stored.Spec.Public, stored.Spec.IPAllowList, wantPublic, wantRules)
+				}
+				if wantRules == 2 && !slices.Equal(core.AllowListFromSpec(stored.Spec.IPAllowList), core.UnrestrictedAllowList()) {
+					t.Fatalf("%s create saved %v, want 0.0.0.0/0 and ::/0", created.name, stored.Spec.IPAllowList)
 				}
 			}
 		})

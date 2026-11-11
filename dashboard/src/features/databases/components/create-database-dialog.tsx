@@ -101,7 +101,9 @@ export function CreateDatabaseDialog({
   const [planOverride, setPlanOverride] = useState<string | null>(null);
   const [version, setVersion] = useState<string>(VERSION_DEFAULT);
   const [diskSizeGB, setDiskSizeGB] = useState<string>("");
-  const [isPublic, setIsPublic] = useState(false);
+  // A new database accepts connections from any address until restricted, as
+  // on Render (w4/553); switching this off creates it private.
+  const [isPublic, setIsPublic] = useState(true);
   const [highAvailability, setHighAvailability] = useState(false);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [environmentId, setEnvironmentId] = useState<string | null>(null);
@@ -158,7 +160,7 @@ export function CreateDatabaseDialog({
     setPlanOverride(null);
     setVersion(VERSION_DEFAULT);
     setDiskSizeGB("");
-    setIsPublic(false);
+    setIsPublic(true);
     setHighAvailability(false);
     setProjectId(null);
     setEnvironmentId(null);
@@ -425,7 +427,11 @@ export function CreateDatabaseDialog({
             <div className="space-y-0.5 pr-4">
               <Label htmlFor="db-public">{t("databases.fieldPublic")}</Label>
               <p className="text-sm text-muted-foreground">
-                {t("databases.fieldPublicHint")}
+                {t(
+                  isPublic
+                    ? "databases.fieldPublicHint"
+                    : "databases.fieldPublicHintOff",
+                )}
               </p>
             </div>
             <Switch

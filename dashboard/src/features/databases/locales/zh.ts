@@ -230,8 +230,14 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Create-database form field label (external endpoint toggle)",
   },
   "databases.fieldPublicHint": {
-    message: "允许通过 TLS 从集群外部连接。",
-    description: "Create-database public toggle helper text",
+    message: "在“访问控制”中加以限制之前，持有效凭据即可从任意 IP 地址连接。",
+    description:
+      "Create-database public toggle helper text; the toggle starts on, as a Render database is reachable by default (w4/553)",
+  },
+  "databases.fieldPublicHintOff": {
+    message: "外部连接已被阻止，私有网络中的服务仍可连接。",
+    description:
+      "Create-database public toggle helper text once switched off: the database is created private (w4/553)",
   },
   "databases.fieldHighAvailability": {
     message: "高可用",

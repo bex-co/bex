@@ -70,8 +70,8 @@ type createPostgresArgs struct {
 	EnableDiskAutoscaling bool               `json:"enableDiskAutoscaling,omitempty" jsonschema:"automatically grow storage at 90 percent full; requires a paid plan"`
 	ReadReplicas          []ReadReplicaInput `json:"readReplicas,omitempty" jsonschema:"named read replicas; at most five, requiring at least 0.5 CPU and 10 GB storage"`
 	ConnectionPool        string             `json:"connectionPool,omitempty" jsonschema:"pgbouncer enables connection pooling on paid plans; none disables it"`
-	Public                bool               `json:"public,omitempty" jsonschema:"expose an external TLS endpoint; defaults to false on this create tool, independently of the allowlist"`
-	IPAllowList           []string           `json:"ipAllowList,omitempty" jsonschema:"CIDR restriction for the external endpoint when public:true; empty or omitted adds no resource-level IP restriction, and the create default remains private"`
+	Public                *bool              `json:"public,omitempty" jsonschema:"expose an external TLS endpoint; omitted, it is exposed as on Render unless the allowlist is explicitly empty; false keeps the database private"`
+	IPAllowList           []string           `json:"ipAllowList,omitempty" jsonschema:"CIDR restriction for the external endpoint; when the database is exposed and neither this nor ipAllowListEntries is sent, every address may connect (0.0.0.0/0 and ::/0) as on Render; an explicitly empty list with public omitted keeps it private"`
 	// IPAllowListEntries is the description-carrying form (w4/m24); when
 	// present it wins over ipAllowList.
 	IPAllowListEntries     []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"allowlist entries as {cidrBlock, description} objects; use instead of ipAllowList to keep per-entry descriptions"`
@@ -134,6 +134,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		if err != nil {
 			return nil, PostgresView{}, err
 		}
+		public, allowList := CreateExposure(in.Public, core.ProvidedAllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList))
 		v, err := s.CreatePostgres(ctx, CreatePostgresRequest{
 			OwnerID:                core.NamedWorkspace(ctx),
 			EnvironmentID:          in.EnvironmentID,
@@ -145,8 +146,8 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			Version:                version,
 			DiskSizeGB:             in.diskSizeGBValue(),
 			EnableDiskAutoscaling:  in.EnableDiskAutoscaling,
-			Public:                 in.Public,
-			IPAllowList:            core.AllowListOrCIDRs(in.IPAllowListEntries, in.IPAllowList),
+			Public:                 public,
+			IPAllowList:            allowList,
 			EnableHighAvailability: in.EnableHighAvailability,
 			ReadReplicas:           in.ReadReplicas,
 			ConnectionPool:         in.ConnectionPool,

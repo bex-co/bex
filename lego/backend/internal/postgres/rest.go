@@ -212,10 +212,9 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("POST "+base, func(w http.ResponseWriter, r *http.Request) {
 		// `public` is a bex extension absent from Render's create schema and
-		// therefore from the official CLI. Render Postgres is externally
-		// reachable by default, but the shared Core verb remains private by
-		// omission for GraphQL, MCP, Blueprints, and dashboard callers. The
-		// pointer preserves an explicit bex caller's `public:false` intent.
+		// therefore from the official CLI. The pointer preserves an explicit
+		// bex caller's `public:false` intent; omission resolves to Render's
+		// reachable-by-default (CreateExposure).
 		var wire struct {
 			CreatePostgresRequest
 			Public *bool `json:"public"`
@@ -224,16 +223,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		req := wire.CreatePostgresRequest
-		if wire.Public != nil {
-			req.Public = *wire.Public
-		} else {
-			req.Public = req.IPAllowList == nil || len(req.IPAllowList) > 0
-		}
-		if req.Public && req.IPAllowList == nil {
-			// Keep the existing dual-stack public default explicit for Render
-			// clients, which interpret an empty readback as externally blocked.
-			req.IPAllowList = core.UnrestrictedAllowList()
-		}
+		req.Public, req.IPAllowList = CreateExposure(wire.Public, req.IPAllowList)
 		req.DryRun = core.DryRunRequested(r, req.DryRun)
 		pg, err := s.CreatePostgres(r.Context(), req)
 		status := http.StatusCreated // Render: create => 201

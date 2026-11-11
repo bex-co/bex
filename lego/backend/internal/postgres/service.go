@@ -328,6 +328,25 @@ type CreatePostgresRequest struct {
 	DryRun bool `json:"dryRun,omitempty"`
 }
 
+// CreateExposure resolves a create's external access as Render does: a new
+// database accepts connections with valid credentials from any address until
+// restricted (w2/038, w4/553). public is nil when the caller omitted it. An
+// omitted flag publishes unless the caller sent an explicitly empty allowlist
+// (non-nil, no rules); a public create without a list saves both unrestricted
+// rules, because a Render client reads an empty list as externally blocked.
+// An explicit public:false stays private. REST, GraphQL and MCP all resolve
+// through here, dry runs included.
+func CreateExposure(public *bool, list []core.IPAllowListEntry) (bool, []core.IPAllowListEntry) {
+	resolved := list == nil || len(list) > 0
+	if public != nil {
+		resolved = *public
+	}
+	if resolved && list == nil {
+		list = core.UnrestrictedAllowList()
+	}
+	return resolved, list
+}
+
 // parameterOverridesRetiredError refuses the retired parameterOverrides field
 // on every create/update surface (w2/066, user decision D2=A — Render's
 // 2026-11-02 OpenAPI dropped it). Session defaults remain available through

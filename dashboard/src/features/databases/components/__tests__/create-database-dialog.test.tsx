@@ -178,11 +178,35 @@ describe("CreateDatabaseDialog", () => {
       plan: "free",
       version: "",
       diskSizeGB: 0,
-      public: false,
+      public: true,
       highAvailability: false,
       environmentId: undefined,
     });
     expect(onCreated).toHaveBeenCalledWith("shop-db");
+  });
+
+  // w4/553: as on Render, a new database is reachable from any address until
+  // restricted; switching Public access off creates it private.
+  it("creates a public database unless Public access is switched off", async () => {
+    const user = userEvent.setup();
+    render(<CreateDatabaseDialog onCreated={vi.fn()} />);
+
+    await user.click(screen.getByRole("button", { name: "New Database" }));
+    const dialog = await screen.findByRole("dialog");
+    const toggle = within(dialog).getByRole("switch", {
+      name: "Public access",
+    });
+    expect(toggle).toBeChecked();
+    expect(dialog).toHaveTextContent("from any IP address");
+    await user.click(toggle);
+    expect(dialog).toHaveTextContent("External connections are blocked.");
+    await user.type(within(dialog).getByLabelText("Name"), "private-db");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Create database" }),
+    );
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "private-db", public: false }),
+    );
   });
 
   // w2/m171: the ≥1-CPU plans offer high availability at create, as on

@@ -559,20 +559,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				replicas := readReplicaArgs(p.Args)
+				public, allowList := CreateExposure(gqlutil.BoolPtr(p.Args, "public"), core.ProvidedAllowListOrCIDRs(
+					gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"])))
 				return s.CreatePostgres(p.Context, CreatePostgresRequest{
-					Name:                  p.Args["name"].(string),
-					OwnerID:               gqlutil.Str(p.Args, "ownerId"),
-					EnvironmentID:         gqlutil.Str(p.Args, "environmentId"),
-					DatabaseName:          gqlutil.Str(p.Args, "databaseName"),
-					DatabaseUser:          gqlutil.Str(p.Args, "databaseUser"),
-					Plan:                  gqlutil.Str(p.Args, "plan"),
-					Region:                gqlutil.Str(p.Args, "region"),
-					Version:               gqlutil.Str(p.Args, "version"),
-					DiskSizeGB:            int32(gqlutil.Int(p.Args, "diskSizeGB")),
-					EnableDiskAutoscaling: gqlutil.Bool(p.Args, "enableDiskAutoscaling"),
-					Public:                gqlutil.Bool(p.Args, "public"),
-					IPAllowList: core.AllowListOrCIDRs(
-						gqlutil.AllowList(p.Args["ipAllowListEntries"]), gqlutil.StringList(p.Args["ipAllowList"])),
+					Name:                   p.Args["name"].(string),
+					OwnerID:                gqlutil.Str(p.Args, "ownerId"),
+					EnvironmentID:          gqlutil.Str(p.Args, "environmentId"),
+					DatabaseName:           gqlutil.Str(p.Args, "databaseName"),
+					DatabaseUser:           gqlutil.Str(p.Args, "databaseUser"),
+					Plan:                   gqlutil.Str(p.Args, "plan"),
+					Region:                 gqlutil.Str(p.Args, "region"),
+					Version:                gqlutil.Str(p.Args, "version"),
+					DiskSizeGB:             int32(gqlutil.Int(p.Args, "diskSizeGB")),
+					EnableDiskAutoscaling:  gqlutil.Bool(p.Args, "enableDiskAutoscaling"),
+					Public:                 public,
+					IPAllowList:            allowList,
 					EnableHighAvailability: gqlutil.Bool(p.Args, "enableHighAvailability"),
 					ReadReplicas:           replicas,
 					ConnectionPool:         gqlutil.Str(p.Args, "connectionPool"),

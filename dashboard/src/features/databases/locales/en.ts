@@ -234,8 +234,16 @@ const enDatabases: Record<string, TranslationEntry> = {
     description: "Create-database form field label (external endpoint toggle)",
   },
   "databases.fieldPublicHint": {
-    message: "Allow connections from outside the cluster over TLS.",
-    description: "Create-database public toggle helper text",
+    message:
+      "Accepts connections with valid credentials from any IP address until you restrict them under Access control.",
+    description:
+      "Create-database public toggle helper text; the toggle starts on, as a Render database is reachable by default (w4/553)",
+  },
+  "databases.fieldPublicHintOff": {
+    message:
+      "External connections are blocked. Services on the private network can still connect.",
+    description:
+      "Create-database public toggle helper text once switched off: the database is created private (w4/553)",
   },
   "databases.fieldHighAvailability": {
     message: "High availability",
