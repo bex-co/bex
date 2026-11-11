@@ -5,6 +5,7 @@ package bridge
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 )
@@ -50,19 +51,33 @@ const (
 // sets RENDER_CLI_CONFIG_PATH for an exact-file override. An explicit
 // RENDER_CLI_CONFIG_{PATH,DIR} is left untouched (w8/017).
 func Apply() error {
-	workspaceFromBex = !isSet(os.LookupEnv, renderWorkspace) && isSet(os.LookupEnv, bexWorkspace)
-	return apply(os.LookupEnv, os.Setenv, os.UserHomeDir)
+	var err error
+	filledFromBex, err = apply(os.LookupEnv, os.Setenv, os.UserHomeDir)
+	return err
+}
+
+var filledFromBex map[string]string
+
+// FilledFromBex names the upstream variables Apply filled from a Bex input in
+// this process, each with that input: RENDER_API_KEY → BEX_ACCESS_TOKEN when
+// only the latter was set. An upstream variable the user set themselves is
+// absent, so a message about it can keep upstream's name (w32/009).
+func FilledFromBex() map[string]string {
+	return maps.Clone(filledFromBex)
 }
 
 type lookupEnv func(string) (string, bool)
 type setEnv func(string, string) error
 type userHomeDir func() (string, error)
 
-func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
+// apply returns the upstream variables it filled from a Bex input, each
+// mapped to that input's name.
+func apply(lookup lookupEnv, set setEnv, home userHomeDir) (map[string]string, error) {
 	if err := applyConfigLocation(lookup, set, home); err != nil {
-		return err
+		return nil, err
 	}
 
+	filled := map[string]string{}
 	for _, mapping := range []struct{ upstream, bex string }{
 		{renderHost, bexHost},
 		{renderWorkspace, bexWorkspace},
@@ -74,14 +89,15 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
 		}
 		if value, exists := lookup(mapping.bex); exists && value != "" {
 			if err := set(mapping.upstream, value); err != nil {
-				return fmt.Errorf("set %s: %w", mapping.upstream, err)
+				return nil, fmt.Errorf("set %s: %w", mapping.upstream, err)
 			}
+			filled[mapping.upstream] = mapping.bex
 		}
 	}
 
 	if !isSet(lookup, renderHost) {
 		if err := set(renderHost, DefaultHost); err != nil {
-			return fmt.Errorf("set %s: %w", renderHost, err)
+			return nil, fmt.Errorf("set %s: %w", renderHost, err)
 		}
 	}
 
@@ -92,11 +108,11 @@ func apply(lookup lookupEnv, set setEnv, home userHomeDir) error {
 	if !isSet(lookup, renderDisableAnalytics) {
 		if value, exists := lookup(bexDisableAnalytics); exists && value != "" {
 			if err := set(renderDisableAnalytics, "1"); err != nil {
-				return fmt.Errorf("set %s: %w", renderDisableAnalytics, err)
+				return nil, fmt.Errorf("set %s: %w", renderDisableAnalytics, err)
 			}
 		}
 	}
-	return nil
+	return filled, nil
 }
 
 func applyConfigLocation(lookup lookupEnv, set setEnv, home userHomeDir) error {

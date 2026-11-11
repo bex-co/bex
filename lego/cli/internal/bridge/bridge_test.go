@@ -2,13 +2,14 @@ package bridge
 
 import (
 	"errors"
+	"maps"
 	"path/filepath"
 	"testing"
 )
 
 func TestApplyUsesBexDefaults(t *testing.T) {
 	env := map[string]string{}
-	err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil })
+	_, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil })
 	if err != nil {
 		t.Fatalf("apply: %v", err)
 	}
@@ -31,7 +32,7 @@ func TestApplyMapsBexOverrides(t *testing.T) {
 		bexOutput:     "json",
 		bexAccess:     "short-lived-access-token",
 	}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	for upstream, want := range map[string]string{
@@ -50,7 +51,7 @@ func TestApplyMapsBexOverrides(t *testing.T) {
 
 func TestApplyMapsBexConfigDirectoryToUpstreamDir(t *testing.T) {
 	env := map[string]string{bexConfigDir: "/tmp/bex-config"}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) {
 		t.Fatal("home lookup must not happen for BEX_CLI_CONFIG_DIR")
 		return "", nil
 	}); err != nil {
@@ -77,7 +78,7 @@ func TestApplyNeverOverridesExplicitRenderConfiguration(t *testing.T) {
 		bexOutput:        "json",
 		bexAccess:        "bex-access-token",
 	}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) {
 		t.Fatal("home lookup must not happen when Render config is explicit")
 		return "", nil
 	}); err != nil {
@@ -101,7 +102,7 @@ func TestApplyLeavesRenderConfigDirUnsetSoUpstreamHonorsIt(t *testing.T) {
 		renderConfigDir: "/tmp/rdir",
 		bexConfigDir:    "/tmp/bex-config",
 	}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) {
 		t.Fatal("home lookup must not happen when RENDER_CLI_CONFIG_DIR is set")
 		return "", nil
 	}); err != nil {
@@ -117,7 +118,7 @@ func TestApplyLeavesRenderConfigDirUnsetSoUpstreamHonorsIt(t *testing.T) {
 
 func TestApplyRenderConfigDirAloneDoesNotPinDefaultBexPath(t *testing.T) {
 	env := map[string]string{renderConfigDir: "/tmp/rdir"}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) {
 		t.Fatal("home lookup must not happen when RENDER_CLI_CONFIG_DIR is set")
 		return "", nil
 	}); err != nil {
@@ -130,7 +131,7 @@ func TestApplyRenderConfigDirAloneDoesNotPinDefaultBexPath(t *testing.T) {
 
 func TestApplyBlankRenderConfigDirIsUnset(t *testing.T) {
 	env := map[string]string{renderConfigDir: "", bexConfigDir: "/tmp/bex-config"}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) {
 		t.Fatal("home lookup must not happen for BEX_CLI_CONFIG_DIR")
 		return "", nil
 	}); err != nil {
@@ -150,7 +151,7 @@ func TestApplyTreatsBlankRenderVariablesAsUnset(t *testing.T) {
 		renderHost:       "",
 		bexHost:          "http://127.0.0.1:8090/v1/",
 	}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if got, want := env[renderConfigDir], "/home/alice/.bex"; got != want {
@@ -168,7 +169,7 @@ func TestApplySendsTelemetryToBexByDefault(t *testing.T) {
 	// Telemetry flows to bex-api (the bridge repoints the API base at Bex, so
 	// the imported sender already targets us) unless the user opts out.
 	env := map[string]string{bexHost: "http://127.0.0.1:8090/v1/"}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if got, exists := env[renderDisableAnalytics]; exists {
@@ -178,7 +179,7 @@ func TestApplySendsTelemetryToBexByDefault(t *testing.T) {
 
 func TestApplyMapsBexAnalyticsOptOut(t *testing.T) {
 	env := map[string]string{bexDisableAnalytics: "1"}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if got, want := env[renderDisableAnalytics], "1"; got != want {
@@ -191,7 +192,7 @@ func TestApplyKeepsExplicitAnalyticsSetting(t *testing.T) {
 	// to the imported CLI directly, so the launcher must not override it.
 	for _, explicit := range []string{"0", "1"} {
 		env := map[string]string{renderDisableAnalytics: explicit, bexDisableAnalytics: "1"}
-		if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+		if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
 		if got := env[renderDisableAnalytics]; got != explicit {
@@ -204,7 +205,7 @@ func TestApplyTreatsBlankAnalyticsOptOutAsUnset(t *testing.T) {
 	// A profile that exports BEX_CLI_DISABLE_ANALYTICS= (blank) has not opted
 	// out — blank counts as unset throughout, so telemetry still flows.
 	env := map[string]string{bexDisableAnalytics: "", doNotTrack: ""}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if got, exists := env[renderDisableAnalytics]; exists {
@@ -215,7 +216,7 @@ func TestApplyTreatsBlankAnalyticsOptOutAsUnset(t *testing.T) {
 func TestApplyLeavesAnalyticsAloneUnderDoNotTrack(t *testing.T) {
 	// DO_NOT_TRACK already denies consent upstream, so there is nothing to add.
 	env := map[string]string{doNotTrack: "1"}
-	if err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
+	if _, err := apply(lookupFrom(env), setInto(env), func() (string, error) { return "/home/alice", nil }); err != nil {
 		t.Fatalf("apply: %v", err)
 	}
 	if got, exists := env[renderDisableAnalytics]; exists {
@@ -223,8 +224,46 @@ func TestApplyLeavesAnalyticsAloneUnderDoNotTrack(t *testing.T) {
 	}
 }
 
+// w32/009: the launcher's run-time copy names the Bex variable only for an
+// upstream variable the bridge filled, so apply reports exactly those.
+func TestApplyReportsWhatItFilledFromBex(t *testing.T) {
+	home := func() (string, error) { return "/home/alice", nil }
+	for _, tc := range []struct {
+		name string
+		env  map[string]string
+		want map[string]string
+	}{
+		{"nothing set", map[string]string{}, map[string]string{}},
+		{
+			"bex inputs only",
+			map[string]string{bexAccess: "token", bexOutput: "json", bexWorkspace: "tea-demo", bexHost: "http://127.0.0.1:8090/v1/"},
+			map[string]string{renderAPIKey: bexAccess, renderOutput: bexOutput, renderWorkspace: bexWorkspace, renderHost: bexHost},
+		},
+		{
+			"the user's own upstream variable wins and is not reported",
+			map[string]string{bexAccess: "token", renderAPIKey: "rnd_user", bexOutput: "json", renderOutput: "yaml"},
+			map[string]string{},
+		},
+		{
+			"a blank upstream variable counts as unset, a blank bex input as absent",
+			map[string]string{bexAccess: "token", renderAPIKey: "", bexOutput: ""},
+			map[string]string{renderAPIKey: bexAccess},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			filled, err := apply(lookupFrom(tc.env), setInto(tc.env), home)
+			if err != nil {
+				t.Fatalf("apply: %v", err)
+			}
+			if !maps.Equal(filled, tc.want) {
+				t.Fatalf("filled = %v, want %v", filled, tc.want)
+			}
+		})
+	}
+}
+
 func TestApplyReportsHomeLookupFailure(t *testing.T) {
-	err := apply(lookupFrom(map[string]string{}), setInto(map[string]string{}), func() (string, error) {
+	_, err := apply(lookupFrom(map[string]string{}), setInto(map[string]string{}), func() (string, error) {
 		return "", errors.New("home unavailable")
 	})
 	if err == nil || err.Error() != "resolve home directory: home unavailable" {
@@ -233,7 +272,7 @@ func TestApplyReportsHomeLookupFailure(t *testing.T) {
 }
 
 func TestApplyReportsEnvironmentFailure(t *testing.T) {
-	err := apply(lookupFrom(map[string]string{}), func(string, string) error { return errors.New("read-only") }, func() (string, error) {
+	_, err := apply(lookupFrom(map[string]string{}), func(string, string) error { return errors.New("read-only") }, func() (string, error) {
 		return "/home/alice", nil
 	})
 	if err == nil || err.Error() != "set RENDER_CLI_CONFIG_DIR: read-only" {

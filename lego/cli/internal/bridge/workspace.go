@@ -37,7 +37,7 @@ type ownerLister func(ctx context.Context, name string) ([]*client.Owner, error)
 // explicit selection, completion or logout — the very commands that recover
 // from it.
 func ResolveWorkspaceName(use WorkspaceUse) error {
-	if !workspaceFromBex || use == WorkspaceUnused {
+	if filledFromBex[renderWorkspace] == "" || use == WorkspaceUnused {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), workspaceResolveTimeout)
@@ -65,10 +65,6 @@ const (
 	// inventory, identity, an explicit selection, completion, auth.
 	WorkspaceUnused
 )
-
-// workspaceFromBex records that Apply copied BEX_WORKSPACE into an unset
-// RENDER_WORKSPACE.
-var workspaceFromBex bool
 
 func resolveWorkspaceName(ctx context.Context, lookup lookupEnv, set setEnv, list ownerLister) error {
 	name, _ := lookup(renderWorkspace)

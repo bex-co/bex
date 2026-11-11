@@ -132,6 +132,7 @@ func Refresh(root *cobra.Command) {
 	brandTree(root)
 	overrideDocs(root)
 	brandRuntimeOutput(root)
+	brandPreRunOutput(root)
 }
 
 func brandTree(root *cobra.Command) {

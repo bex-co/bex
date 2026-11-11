@@ -46,7 +46,9 @@ import (
 // actually has, at a line start or after a backtick, quote or "| ". URLs
 // (render.com), file names (render.yaml) and RENDER_* variables never match.
 // "Render" as the product name changes only in the exact upstream phrases of
-// runtimeProse (w2/073, extending D4=A).
+// runtimeProse (w2/073, extending D4=A). A RENDER_* variable is renamed only
+// in the phrases of NameBexInputs, and only when the launcher filled it from
+// the Bex variable the user set (w32/009).
 const runtimeWrapped = "bex.co/runtime-output"
 
 // runtimeProse is upstream run-time copy that names Render as the product the
@@ -60,6 +62,74 @@ var runtimeProse = strings.NewReplacer(
 	"revoke your token in the Render dashboard:", "revoke your token in the Bex dashboard:",
 	"delete the API key from your Render Dashboard.", "delete the API key from your Bex dashboard.",
 )
+
+// Upstream run-time copy that names a variable the launcher filled from a Bex
+// input. Each replacer is nil unless that happened in this process.
+var (
+	// `logout` on stdout (cmd/logout.go).
+	apiKeyProse *strings.Replacer
+	// The output-format check, which upstream's root PersistentPreRunE prints
+	// to stderr itself, before any RunE (pkg/command/outputresolver.go).
+	outputProse *strings.Replacer
+)
+
+// NameBexInputs makes run-time copy about an environment variable name the
+// one the user set. Upstream names its own: a user who signed in with
+// BEX_ACCESS_TOKEN was told RENDER_API_KEY "is still set", a variable they
+// cannot find to unset (w32/009). filled holds the upstream variables the
+// launcher filled from a Bex input, each with that input's name
+// (bridge.FilledFromBex); a RENDER_* the user set themselves is absent from
+// it and keeps upstream's name. Exact phrases only, as in runtimeProse.
+func NameBexInputs(filled map[string]string) {
+	apiKeyProse = newInputProse(filled, "RENDER_API_KEY",
+		"via the RENDER_API_KEY environment variable.",
+		"Note: RENDER_API_KEY is still set in your environment.")
+	outputProse = newInputProse(filled, "RENDER_OUTPUT", "invalid RENDER_OUTPUT value:")
+}
+
+func newInputProse(filled map[string]string, upstream string, phrases ...string) *strings.Replacer {
+	bex := filled[upstream]
+	if bex == "" {
+		return nil
+	}
+	pairs := make([]string, 0, 2*len(phrases))
+	for _, phrase := range phrases {
+		pairs = append(pairs, phrase, strings.ReplaceAll(phrase, upstream, bex))
+	}
+	return strings.NewReplacer(pairs...)
+}
+
+// preRunWrapped marks a root whose PersistentPreRunE brandPreRunOutput wrapped.
+const preRunWrapped = "bex.co/pre-run-output"
+
+// brandPreRunOutput carries NameBexInputs to the one message upstream prints
+// outside every RunE. Upstream installs the root pre-run during Execute, so
+// Refresh calls this; stderr is wrapped for that call alone.
+func brandPreRunOutput(root *cobra.Command) {
+	run := root.PersistentPreRunE
+	if run == nil || !markOnce(root, preRunWrapped) {
+		return
+	}
+	root.PersistentPreRunE = func(c *cobra.Command, args []string) error {
+		if outputProse == nil {
+			return run(c, args)
+		}
+		stderr := c.ErrOrStderr()
+		c.SetErr(proseOutput{Writer: stderr, prose: outputProse})
+		defer c.SetErr(stderr)
+		return run(c, args)
+	}
+}
+
+// proseOutput rewrites the exact phrases of prose in each write.
+type proseOutput struct {
+	io.Writer
+	prose *strings.Replacer
+}
+
+func (w proseOutput) Write(p []byte) (int, error) {
+	return writeBranded(w.Writer, p, []byte(w.prose.Replace(string(p))))
+}
 
 // runtimeStdout maps a command path below the root to how its stdout is
 // rewritten. Extend it on a pin bump when a new command prints a next step
@@ -92,13 +162,9 @@ const (
 
 func brandRuntimeOutput(root *cobra.Command) {
 	walk(root, func(c *cobra.Command) {
-		if c.RunE == nil || c.Annotations[runtimeWrapped] != "" {
+		if c.RunE == nil || !markOnce(c, runtimeWrapped) {
 			return
 		}
-		if c.Annotations == nil {
-			c.Annotations = map[string]string{}
-		}
-		c.Annotations[runtimeWrapped] = "1"
 		mode := runtimeStdout[strings.TrimPrefix(c.CommandPath(), root.CommandPath()+" ")]
 		run := c.RunE
 		c.RunE = func(c *cobra.Command, args []string) error {
@@ -110,6 +176,19 @@ func brandRuntimeOutput(root *cobra.Command) {
 			return brandError(root, run(c, args))
 		}
 	})
+}
+
+// markOnce records key on c and reports whether this call was the first, so
+// a wrapper re-applied by Refresh wraps once.
+func markOnce(c *cobra.Command, key string) bool {
+	if c.Annotations[key] != "" {
+		return false
+	}
+	if c.Annotations == nil {
+		c.Annotations = map[string]string{}
+	}
+	c.Annotations[key] = "1"
+	return true
 }
 
 // brandError rewrites the command references in err's message. errors.Is
@@ -171,7 +250,13 @@ func keepTerminal(w *runtimeOutput, out io.Writer) io.Writer {
 // text document in a single write, and Println a whole line.
 func (w *runtimeOutput) Write(p []byte) (int, error) {
 	known := knownCommands(w.root)
-	rewrite := func(s string) string { return runtimeProse.Replace(RewriteCommandRefs(s, known)) }
+	rewrite := func(s string) string {
+		s = runtimeProse.Replace(RewriteCommandRefs(s, known))
+		if apiKeyProse != nil {
+			s = apiKeyProse.Replace(s)
+		}
+		return s
+	}
 	format := outputFormat(w.cmd)
 	mode := w.mode
 	if mode == wizardOutput {

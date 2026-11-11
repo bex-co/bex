@@ -282,6 +282,19 @@ At the current pin (**v2.36.0**, `4fd34231b637`) it yields the following.
 
 Tests: `internal/branding/runtime_test.go` (the reference rule, JSON/YAML/text next-step rewrites, error unwrapping) and `runtime_copy_test.go`. The latter drives the built binary against a stub API: `ea blueprints create` in text, JSON and YAML, `workspace current` with no workspace, and render-shaped data (`render-x`, `render.yaml`, `render.com`, `RENDER_*`) that must survive.
 
+**Run-time copy about a variable names the one the user set (w32/009).** When the upstream variable is unset, the launcher fills `RENDER_API_KEY` from `BEX_ACCESS_TOKEN` and `RENDER_OUTPUT` from `BEX_OUTPUT`. Upstream's messages then name its own variable, which is not in the user's environment. `bridge.FilledFromBex` records what the launcher filled in this process, and `branding.NameBexInputs` renames those variables in upstream's exact phrases:
+
+- **`logout` stdout** (`cmd/logout.go:34,73,79`): "via the RENDER_API_KEY environment variable." and both "Note: RENDER_API_KEY is still set in your environment." notes name `BEX_ACCESS_TOKEN`.
+- **The output-format check** (`pkg/command/outputresolver.go:107`): "invalid RENDER_OUTPUT value: …" names `BEX_OUTPUT`. Upstream prints it to stderr from the root `PersistentPreRunE`, before any `RunE`, so neither seam above reaches it. The launcher wraps that hook and rewrites stderr for that call only. It does not validate `BEX_OUTPUT` itself: as with upstream, `--help` still answers when the value is bad.
+
+A `RENDER_*` variable the user set keeps upstream's name, including when the Bex input is set beside it (the upstream variable is the one in force). These are the only upstream messages that name a variable the bridge fills. Check on every pin bump:
+
+```bash
+grep -rnE 'RENDER_(API_KEY|WORKSPACE|HOST|OUTPUT)' "$MOD" --include='*.go' | grep -v '_test.go'
+```
+
+Tests: `TestNameBexInputsRenamesOnlyFilledVariables` and `TestBrandPreRunOutputNamesBexOutput` (`internal/branding/runtime_test.go`), and `TestLogoutNamesTheVariableTheUserSet` and `TestBadOutputVariableIsNamedAsSet`, which drive the built binary.
+
 **`bex skills` installs bex's own skills (w8/m143).** The launcher replaces upstream's `skills` tree. Upstream clones `render-oss/skills`, whose skills drive the `render` CLI, `mcp.render.com` and `dashboard.render.com`. The bex tree installs a pack embedded in the binary, derived from that MIT-licensed repository at a pinned commit by `lego/cli/internal/skills/packgen` and regenerated with `lego/cli/hack/sync-skills.sh`. The pack's 20 `bex-*` skills operate bex (`bex` CLI, `https://api.bex.co/mcp`, `dashboard.bex.co`, `onbex.co`). They keep Render's docs as the behavior reference and drop Render Workflows and sandboxes. The subcommands and flags are Render's (`install`, `list`, `update`, `remove`; `--tool`, `--skill`, `--scope`, `--dry-run`, `--all`, `--force`). State is `bex-skills.yaml` in the bex config directory. Selections are always explicit `bex-*` names, so a user's genuine `render-*` skills and `~/.render/skills.yaml` are never touched. In a terminal with no `--output`, `install` prompts for scope, tools and skills, and `remove` prompts for the skills to remove, as Render's commands do; each flag skips its prompt (w8/214). `list` and `update` print text there, and none of the commands panics non-interactively. The previous "accepted branding residual" (w8/m29 t004) was withdrawn because its effect was functional, not copy.
 
 **Identity, storage and copy that branding deliberately leaves alone:**

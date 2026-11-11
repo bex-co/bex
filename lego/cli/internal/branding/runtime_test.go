@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"testing"
 
@@ -238,6 +239,84 @@ func TestRuntimeOutputRebrandsProductProse(t *testing.T) {
 		if _, err := w.Write([]byte(tc.in)); err != nil || out.String() != tc.out {
 			t.Errorf("Write(%q) = %q, %v; want %q", tc.in, out.String(), err, tc.out)
 		}
+	}
+}
+
+// w32/009: copy about a variable names the Bex input only when the launcher
+// filled the upstream variable from it, in upstream's exact phrases.
+func TestNameBexInputsRenamesOnlyFilledVariables(t *testing.T) {
+	t.Cleanup(func() { NameBexInputs(nil) })
+	root := &cobra.Command{Use: "bex"}
+	c := &cobra.Command{Use: "logout"}
+	const (
+		viaEnv   = "You are authenticated via the RENDER_API_KEY environment variable.\n"
+		stillSet = "OAuth credentials cleared. Note: RENDER_API_KEY is still set in your environment.\n"
+		data     = "RENDER_API_KEY=abc was printed by my app\n"
+	)
+	for _, tc := range []struct {
+		filled  map[string]string
+		in, out string
+	}{
+		{nil, viaEnv, viaEnv},
+		{map[string]string{"RENDER_OUTPUT": "BEX_OUTPUT"}, stillSet, stillSet},
+		{map[string]string{"RENDER_API_KEY": "BEX_ACCESS_TOKEN"}, viaEnv, "You are authenticated via the BEX_ACCESS_TOKEN environment variable.\n"},
+		{map[string]string{"RENDER_API_KEY": "BEX_ACCESS_TOKEN"}, stillSet, "OAuth credentials cleared. Note: BEX_ACCESS_TOKEN is still set in your environment.\n"},
+		{map[string]string{"RENDER_API_KEY": "BEX_ACCESS_TOKEN"}, data, data},
+	} {
+		NameBexInputs(tc.filled)
+		var out bytes.Buffer
+		w := &runtimeOutput{Writer: &out, cmd: c, root: root, mode: plainOutput}
+		if n, err := w.Write([]byte(tc.in)); err != nil || n != len(tc.in) || out.String() != tc.out {
+			t.Errorf("filled %v: Write(%q) = %q, %d, %v; want %q", tc.filled, tc.in, out.String(), n, err, tc.out)
+		}
+	}
+}
+
+// Upstream prints the RENDER_OUTPUT check itself from the root pre-run, so
+// stderr is rewritten for that call alone, and only for a filled variable.
+func TestBrandPreRunOutputNamesBexOutput(t *testing.T) {
+	t.Cleanup(func() { NameBexInputs(nil) })
+	sentinel := errors.New("invalid RENDER_OUTPUT value: bogus")
+	newRoot := func() (*cobra.Command, *cobra.Command) {
+		root := &cobra.Command{Use: "bex", PersistentPreRunE: func(c *cobra.Command, _ []string) error {
+			if w, ok := c.ErrOrStderr().(proseOutput); ok {
+				if _, twice := w.Writer.(proseOutput); twice {
+					t.Error("the pre-run was wrapped twice")
+				}
+			}
+			_, _ = fmt.Fprintln(c.ErrOrStderr(), sentinel)
+			return sentinel
+		}}
+		services := &cobra.Command{Use: "services"}
+		root.AddCommand(services)
+		brandPreRunOutput(root)
+		brandPreRunOutput(root)
+		return root, services
+	}
+	for _, tc := range []struct {
+		filled map[string]string
+		want   string
+	}{
+		{map[string]string{"RENDER_OUTPUT": "BEX_OUTPUT"}, "invalid BEX_OUTPUT value: bogus\n"},
+		{map[string]string{"RENDER_API_KEY": "BEX_ACCESS_TOKEN"}, "invalid RENDER_OUTPUT value: bogus\n"},
+		{nil, "invalid RENDER_OUTPUT value: bogus\n"},
+	} {
+		NameBexInputs(tc.filled)
+		root, services := newRoot()
+		var stderr bytes.Buffer
+		root.SetErr(&stderr)
+		if err := root.PersistentPreRunE(services, nil); !errors.Is(err, sentinel) || stderr.String() != tc.want {
+			t.Errorf("filled %v: stderr = %q, err = %v; want %q", tc.filled, stderr.String(), err, tc.want)
+		}
+		if _, wrapped := services.ErrOrStderr().(proseOutput); wrapped {
+			t.Errorf("filled %v: stderr wrapper must be removed after the pre-run", tc.filled)
+		}
+	}
+
+	bare := &cobra.Command{Use: "bex"}
+	brandPreRunOutput(bare)
+	if bare.PersistentPreRunE != nil {
+		t.Fatal("a root without a pre-run must not gain one")
 	}
 }
 

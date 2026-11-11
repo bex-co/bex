@@ -18,6 +18,7 @@ package main_test
 
 import (
 	"bytes"
+	"cmp"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -184,27 +185,122 @@ func TestBlueprintApproveNextStepNamesBex(t *testing.T) {
 	}
 }
 
+// logoutCommand is `bex logout` against api in a fresh home, which holds a
+// stored login when stored is set, with env added to a RENDER_*-free
+// environment.
+func logoutCommand(t *testing.T, apiURL string, stored bool, env ...string) *exec.Cmd {
+	t.Helper()
+	home := t.TempDir()
+	if stored {
+		if err := os.MkdirAll(filepath.Join(home, ".bex"), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		config := "version: 1\ndashboard_url: https://dashboard.bex.co\napi:\n  key: test-oauth-token\n  host: " + apiURL + "/v1/\n"
+		if err := os.WriteFile(filepath.Join(home, ".bex", "cli.yaml"), []byte(config), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	command := exec.Command(buildBex(), "logout")
+	command.Env = append(withoutRenderEnv(os.Environ()), "HOME="+home, "BEX_HOST="+apiURL+"/v1/", "BEX_NO_UPDATE_NOTIFIER=1")
+	command.Env = append(command.Env, env...)
+	return command
+}
+
 // A logout whose token revocation fails tells the user to revoke it in the Bex
 // dashboard (w2/082).
 func TestLogoutRevokeFailureNamesBex(t *testing.T) {
 	api := httptest.NewServer(http.NotFoundHandler()) // the revoke answers 404
 	t.Cleanup(api.Close)
-	home := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(home, ".bex"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	config := "version: 1\ndashboard_url: https://dashboard.bex.co\napi:\n  key: test-oauth-token\n  host: " + api.URL + "/v1/\n"
-	if err := os.WriteFile(filepath.Join(home, ".bex", "cli.yaml"), []byte(config), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	command := exec.Command(buildBex(), "logout")
-	command.Env = append(withoutRenderEnv(os.Environ()), "HOME="+home, "BEX_HOST="+api.URL+"/v1/", "BEX_NO_UPDATE_NOTIFIER=1")
-	output, err := command.CombinedOutput()
+	output, err := logoutCommand(t, api.URL, true).CombinedOutput()
 	if err != nil {
 		t.Fatalf("logout: %v\n%s", err, output)
 	}
 	if !strings.Contains(string(output), "revoke your token in the Bex dashboard: https://dashboard.bex.co/settings#cli-tokens") || strings.Contains(string(output), "Render dashboard") {
 		t.Fatalf("logout output = %q", output)
+	}
+}
+
+// w32/009: `logout` names the variable the user set. The launcher fills
+// RENDER_API_KEY from BEX_ACCESS_TOKEN, and upstream's copy named its own
+// variable, which a BEX_ACCESS_TOKEN user cannot find in their environment.
+// A RENDER_API_KEY the user did set keeps upstream's name.
+func TestLogoutNamesTheVariableTheUserSet(t *testing.T) {
+	const (
+		bexToken  = "BEX_ACCESS_TOKEN=test-access-token"
+		renderKey = "RENDER_API_KEY=rnd_user"
+	)
+	for _, tc := range []struct {
+		name   string
+		stored bool // a stored login, whose revoke answers revoke
+		revoke int
+		env    []string
+		want   string
+		absent string
+	}{
+		{name: "bex token, no stored login", env: []string{bexToken},
+			want:   "You are authenticated via the BEX_ACCESS_TOKEN environment variable.\n",
+			absent: "RENDER_API_KEY"},
+		{name: "the user's own upstream key", env: []string{renderKey},
+			want:   "You are authenticated via the RENDER_API_KEY environment variable.\n",
+			absent: "BEX_ACCESS_TOKEN"},
+		{name: "both set: upstream's key is the one in force", env: []string{bexToken, renderKey},
+			want:   "You are authenticated via the RENDER_API_KEY environment variable.\n",
+			absent: "BEX_ACCESS_TOKEN"},
+		{name: "bex token and a stored login, revoked", stored: true, revoke: http.StatusNoContent, env: []string{bexToken},
+			want:   "OAuth credentials cleared. Note: BEX_ACCESS_TOKEN is still set in your environment.\n",
+			absent: "RENDER_API_KEY"},
+		{name: "bex token and a stored login, revoke fails", stored: true, revoke: http.StatusNotFound, env: []string{bexToken},
+			want:   "settings#cli-tokens\nNote: BEX_ACCESS_TOKEN is still set in your environment.\n",
+			absent: "RENDER_API_KEY"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.WriteHeader(cmp.Or(tc.revoke, http.StatusNotFound))
+			}))
+			t.Cleanup(api.Close)
+			command := logoutCommand(t, api.URL, tc.stored, tc.env...)
+			var stdout, stderr bytes.Buffer
+			command.Stdout, command.Stderr = &stdout, &stderr
+			if err := command.Run(); err != nil {
+				t.Fatalf("logout: %v\nstderr: %s", err, stderr.String())
+			}
+			if !strings.Contains(stdout.String(), tc.want) || strings.Contains(stdout.String(), tc.absent) {
+				t.Fatalf("logout stdout = %q, want %q and no %s", stdout.String(), tc.want, tc.absent)
+			}
+		})
+	}
+}
+
+// w32/009: a bad BEX_OUTPUT is reported under its own name. Upstream prints
+// the message itself before any command runs, so it reaches neither the
+// returned-error nor the stdout rewrite. The launcher does not validate the
+// variable: like upstream, help still answers with a bad value.
+func TestBadOutputVariableIsNamedAsSet(t *testing.T) {
+	api := httptest.NewServer(http.NotFoundHandler())
+	t.Cleanup(api.Close)
+	for _, tc := range []struct {
+		env  string
+		args []string
+		want string
+	}{
+		{"BEX_OUTPUT=bogus", []string{"services"}, "invalid BEX_OUTPUT value: bogus\n"},
+		{"BEX_OUTPUT=bogus", []string{"agent", "list"}, "invalid BEX_OUTPUT value: bogus\n"},
+		{"RENDER_OUTPUT=bogus", []string{"services"}, "invalid RENDER_OUTPUT value: bogus\n"},
+	} {
+		command := bexAgainst(t, api.URL, tc.args...)
+		command.Env = append(command.Env, tc.env)
+		var stdout, stderr bytes.Buffer
+		command.Stdout, command.Stderr = &stdout, &stderr
+		_ = command.Run()
+		if code := command.ProcessState.ExitCode(); code != 1 || stderr.String() != tc.want || stdout.Len() != 0 {
+			t.Fatalf("%s bex %s: exit %d, stdout = %q, stderr = %q; want exit 1 and stderr %q",
+				tc.env, strings.Join(tc.args, " "), code, stdout.String(), stderr.String(), tc.want)
+		}
+	}
+	help := bexAgainst(t, api.URL, "services", "--help")
+	help.Env = append(help.Env, "BEX_OUTPUT=bogus")
+	if output, err := help.CombinedOutput(); err != nil || strings.Contains(string(output), "invalid") {
+		t.Fatalf("BEX_OUTPUT=bogus bex services --help: %v\n%s", err, output)
 	}
 }
 

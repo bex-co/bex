@@ -62,6 +62,7 @@ func main() {
 	// Branding mutates exported cobra metadata (Use/help/docs) after native
 	// commands attach so ungrouped Bex commands keep their help section.
 	branding.Apply(cmd.RootCmd, bexVersion)
+	branding.NameBexInputs(bridge.FilledFromBex())
 	// `bex <path>` is `bex edit <path>`; rewritten before cobra and the
 	// os.Args readers below. A path-shaped argument never names a command.
 	args, err := desktop.Shorthand(os.Args[1:])
