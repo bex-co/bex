@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m155** — [A Postgres user can create more databases in its instance, as on Render](m155/README.md) (7 tasks;200m) ← `/qa-find-bugs-cli` loop sweep 833c 2026-11-11: `bex psql <db> -c "create database x"` answers `ERROR: permission denied to create database` (the default user has no `CREATEDB`; `managedRoles` projects the owner and each credential as plain login roles), where Render documents "You can create additional databases in your Render Postgres instance … Run `CREATE DATABASE <name>`"; `CREATE USER` is refused too (Render's rule unverified, t001 decides)
+
 - [ ] **m154** — [A native-runtime service finds its secret files in its root directory, as on Render](m154/README.md) (7 tasks;225m) ← `/qa-find-bugs-cli` loop sweep 45ef 2026-11-11: a Node web service gets its four secret files byte-exact under `/etc/secrets` but not in its working directory (`ls: cannot access 'cfg.json'`); Render: "For non-Docker services, the file is also available in your service's root directory"; `secretFileMounts` mounts `/etc/secrets` only; major.
 
 - [ ] **m153** — [A workspace can create more than one Blueprint from the same `render.yaml`, as on Render](m153/README.md) (9 tasks;325m) ← `/qa-find-bugs-cli` loop sweep 947f 2026-11-11: a second `bex ea blueprints create` for an already-tracked repo+branch answers `409 BLUEPRINT_CONNECTION_CONFLICT` (`UNIQUE (tenant_id, repo, branch)`, ADR049 w4/m125), where Render documents "You can create multiple Blueprints from a single YAML file"; the message's `confirm` phrase cannot be sent from the CLI; major.
@@ -424,6 +426,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [Static byte-range acceptance and scoped rollout recheck](evidence/static-ranges-sweep317/README.md) — sweep317:62 text/binary/multipart/conditional/HEAD HTTP checks and three source controls pass; all three clients now refuse Free cron and accept the shared service/database name (six validations). Two sites/two deploys cleaned; no new issue.
 
 ## Inbox
+
+- [ ] **255** — [`bex psql` without `--command` answers with `Usage: render psql …`](255.md) (~20m) ← `/qa-find-bugs-cli` loop sweep 833c 2026-11-11: the launcher's run-time rewrite only matches `render <command>` at a line start or after a quote, backtick or `| `, so the hint after `Usage: ` keeps upstream's executable name; `docs/bex-cli.md` lists it as rewritten
 
 - [ ] **254** — [Every deploy gives the sandbox lifecycle server a new image digest and so restarts it, even when nothing in it changed](254.md) (~60m) ← found while working w8/248, 2026-11-11: six pins, six `opensandbox-server` digests with no change to its Dockerfile or lock; the uncached `apt-get update` build is not reproducible, and each new digest is one `Recreate` restart with no sandbox API.
 
