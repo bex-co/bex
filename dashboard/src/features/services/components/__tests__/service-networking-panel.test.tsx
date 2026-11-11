@@ -22,6 +22,13 @@ vi.mock("@/features/services/hooks/use-service-networking", () => ({
 
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
 
+const allowAll = [
+  { cidrBlock: "0.0.0.0/0", description: "" },
+  { cidrBlock: "::/0", description: "" },
+];
+const blocked =
+  "No rules: all inbound traffic to this service is blocked. Add 0.0.0.0/0 to allow all source IPs.";
+
 beforeEach(() => {
   mocks.saveAllowList.mockClear();
   mocks.plan = undefined;
@@ -29,8 +36,9 @@ beforeEach(() => {
 
 describe("ServiceNetworkingPanel", () => {
   // w8/m137: inbound IP rules need the Scale plan; a legacy rule stays visible
-  // and can only be cleared.
-  it.each(["hobby", "pro"])("is clear-only on the %s plan", async (plan) => {
+  // and can only be replaced by the allow-all rule. An empty list would block
+  // the service (w8/m157), which the plan refuses.
+  it.each(["hobby", "pro"])("is open-only on the %s plan", async (plan) => {
     mocks.plan = plan;
     const user = userEvent.setup();
     render(
@@ -42,9 +50,88 @@ describe("ServiceNetworkingPanel", () => {
       />,
     );
     expect(screen.getByText(/require the Scale plan/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add allowlist entry" })).toBeNull();
-    await user.click(screen.getByRole("button", { name: "Clear all rules" }));
-    expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", []);
+    expect(
+      screen.queryByRole("button", { name: "Add allowlist entry" }),
+    ).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Allow all traffic" }));
+    expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", allowAll);
+  });
+
+  it("shows an unrestricted service as open below the Scale plan, with nothing to press", () => {
+    mocks.plan = "hobby";
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={allowAll}
+      />,
+    );
+    expect(screen.getByText("Open to all source IPs")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Allow all traffic" }),
+    ).toBeNull();
+  });
+
+  it("lets a blocked service be opened below the Scale plan", async () => {
+    mocks.plan = "hobby";
+    const user = userEvent.setup();
+    render(
+      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+    );
+    expect(screen.getByText(blocked)).toBeVisible();
+    await user.click(screen.getByRole("button", { name: "Allow all traffic" }));
+    expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", allowAll);
+  });
+
+  // w8/m157: as on Render, a service nobody restricted has the allow-all rule
+  // and a service with no rule refuses every public request.
+  it("lists the allow-all rule of an unrestricted service", () => {
+    mocks.plan = "scale";
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={allowAll}
+      />,
+    );
+    expect(screen.getByDisplayValue("0.0.0.0/0")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("::/0")).toBeInTheDocument();
+    expect(screen.queryByText(blocked)).toBeNull();
+  });
+
+  it("claims nothing before the list has loaded", () => {
+    mocks.plan = "scale";
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={undefined}
+      />,
+    );
+    expect(screen.queryByText(blocked)).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save allowlist" })).toBeNull();
+  });
+
+  // A lone 0.0.0.0/0 saved before w8/m157 still refuses IPv6 sources, so it
+  // is a rule to replace, not the open state.
+  it("offers to replace a lone 0.0.0.0/0 below the Scale plan", async () => {
+    mocks.plan = "hobby";
+    const user = userEvent.setup();
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={[{ cidrBlock: "0.0.0.0/0", description: "" }]}
+      />,
+    );
+    expect(screen.queryByText("Open to all source IPs")).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Allow all traffic" }));
+    expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", allowAll);
+  });
+
+  it("says a service with no rule is blocked", () => {
+    mocks.plan = "scale";
+    render(
+      <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
+    );
+    expect(screen.getByText(blocked)).toBeVisible();
+    expect(screen.queryByText("Open to all source IPs")).toBeNull();
   });
 
   it("stays editable on the Scale plan", () => {
@@ -52,7 +139,9 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
     );
-    expect(screen.getByRole("button", { name: "Add allowlist entry" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add allowlist entry" }),
+    ).toBeInTheDocument();
   });
 
   it("renders and resubmits descriptions without dropping them", async () => {
@@ -76,7 +165,9 @@ describe("ServiceNetworkingPanel", () => {
       .at(-1);
     expect(descriptionInput).toBeDefined();
     await user.type(descriptionInput!, "vpn");
-    await user.click(screen.getByRole("button", { name: "Add allowlist entry" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add allowlist entry" }),
+    );
     await user.click(screen.getByRole("button", { name: "Save allowlist" }));
 
     expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", [
@@ -120,17 +211,21 @@ describe("ServiceNetworkingPanel", () => {
     );
     const input = screen.getByPlaceholderText("203.0.113.0/24");
     await user.type(input, "not-a-cidr");
-    await user.click(screen.getByRole("button", { name: "Add allowlist entry" }));
+    await user.click(
+      screen.getByRole("button", { name: "Add allowlist entry" }),
+    );
 
     expect(input).toHaveValue("not-a-cidr");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Enter a valid IPv4 or IPv6 CIDR block.",
     );
-    expect(screen.getByRole("button", { name: "Save allowlist" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save allowlist" }),
+    ).toBeDisabled();
     expect(mocks.saveAllowList).not.toHaveBeenCalled();
   });
 
-  it("clears the complete allowlist", async () => {
+  it("warns that removing the last rule blocks the service, before it is saved", async () => {
     const user = userEvent.setup();
     render(
       <ServiceNetworkingPanel
@@ -138,9 +233,12 @@ describe("ServiceNetworkingPanel", () => {
         currentAllowList={[{ cidrBlock: "203.0.113.0/24", description: null }]}
       />,
     );
+    expect(screen.queryByText(blocked)).toBeNull();
     await user.click(
       screen.getByRole("button", { name: "Remove 203.0.113.0/24" }),
     );
+    expect(screen.getByText(blocked)).toBeVisible();
+    expect(mocks.saveAllowList).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Save allowlist" }));
     expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", []);
   });
@@ -161,7 +259,9 @@ describe("ServiceNetworkingPanel", () => {
     expect(notice).toHaveTextContent("shop.example.com");
     expect(notice).toHaveTextContent("DNS only (grey cloud)");
     // A warning, not a refusal: the editor stays and can still save.
-    expect(screen.getByRole("button", { name: "Save allowlist" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Save allowlist" }),
+    ).toBeInTheDocument();
   });
 
   it("renders no Cloudflare notice without proxied domains", () => {

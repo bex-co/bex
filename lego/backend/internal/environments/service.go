@@ -699,7 +699,7 @@ func (s *Service) createWithACL(ctx context.Context, req CreateEnvironmentReques
 		return EnvironmentView{}, "", err
 	}
 	if req.IPAllowList != nil {
-		if err := s.RequireInboundIPRules(ctx, p.TenantID, req.IPAllowList, core.DefaultEnvironmentAllowList(), true); err != nil {
+		if err := s.RequireInboundIPRules(ctx, p.TenantID, req.IPAllowList, core.DefaultEnvironmentAllowList()); err != nil {
 			return EnvironmentView{}, "", err
 		}
 	}
@@ -857,7 +857,7 @@ func (s *Service) Update(ctx context.Context, id string, patch EnvironmentPatch)
 		return EnvironmentView{}, err
 	}
 	if patch.IPAllowList != nil {
-		if err := s.RequireInboundIPRules(ctx, e.TenantID, *patch.IPAllowList, e.IPAllowList, true); err != nil {
+		if err := s.RequireInboundIPRules(ctx, e.TenantID, *patch.IPAllowList, e.IPAllowList); err != nil {
 			return EnvironmentView{}, err
 		}
 	}
@@ -1507,7 +1507,7 @@ func (s *Service) SetACL(ctx context.Context, id, protectedStatus string, networ
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	if err := s.RequireInboundIPRules(ctx, e.TenantID, ipAllowList, e.IPAllowList, true); err != nil {
+	if err := s.RequireInboundIPRules(ctx, e.TenantID, ipAllowList, e.IPAllowList); err != nil {
 		return EnvironmentView{}, err
 	}
 	if err := s.RequireNetworkIsolation(ctx, e.TenantID, networkIsolationEnabled, e.NetworkIsolationEnabled); err != nil {

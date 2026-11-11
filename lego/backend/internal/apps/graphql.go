@@ -547,17 +547,30 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 			Type:    graphql.NewList(staticHeaderGQLType),
 			Resolve: gqlutil.Field(func(a AppView) any { return a.Headers }),
 		},
-		// ipAllowList is Render's inbound CIDR allowlist for web_service and
-		// static_site. Empty/nil means open to all source IPs (Render's default).
+		// ipAllowList is Render's inbound CIDR rule set for web_service and
+		// static_site (core.ServiceAllowList): an empty list is a blocked
+		// service, and one nobody restricted reads the allow-all pair.
 		// The dashboard's Networking section reads it and writes it via
 		// setServiceIpAllowList.
+		// Both are null for a type with no public endpoint: it has no list, and
+		// [] would read as blocked.
 		"ipAllowList": &graphql.Field{
-			Type:    graphql.NewList(graphql.String),
-			Resolve: gqlutil.Field(func(a AppView) any { return core.AllowListCIDRs(a.IPAllowList) }),
+			Type: graphql.NewList(graphql.String),
+			Resolve: gqlutil.Field(func(a AppView) any {
+				if a.IPAllowList == nil {
+					return nil
+				}
+				return core.AllowListCIDRs(a.IPAllowList)
+			}),
 		},
 		"ipAllowListEntries": &graphql.Field{
-			Type:    graphql.NewList(gqlutil.IPAllowEntryType),
-			Resolve: gqlutil.Field(func(a AppView) any { return a.IPAllowList }),
+			Type: graphql.NewList(gqlutil.IPAllowEntryType),
+			Resolve: gqlutil.Field(func(a AppView) any {
+				if a.IPAllowList == nil {
+					return nil
+				}
+				return a.IPAllowList
+			}),
 		},
 		// ipAllowListProxiedDomains (bex extension, w1/m171) names the
 		// Cloudflare-proxied custom domains on which the allowlist sees
@@ -1882,9 +1895,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// Render's exact renderSubdomainPolicy enum. "disabled" without a custom
 		// domain ⇒ core.ErrBadRequest (would silently kill the service).
 		"setSubdomainPolicy": gqlutil.ArgMutation(serviceGQLType, "policy", s.SetSubdomainPolicy),
-		// setServiceIpAllowList replaces the inbound allowlist for a web_service
+		// setServiceIpAllowList replaces the inbound rule set of a web_service
 		// or static_site. entries preserves descriptions; cidrs is the legacy
-		// compatibility input. Empty clears the list.
+		// compatibility input. An empty list blocks every public request, so a
+		// call that names neither argument is refused instead of being read as
+		// one (w8/m157).
 		"setServiceIpAllowList": &graphql.Field{
 			Type: serviceGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -1895,6 +1910,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				_, entriesSet := p.Args["entries"]
 				_, cidrsSet := p.Args["cidrs"]
+				if !entriesSet && !cidrsSet {
+					return nil, fmt.Errorf("%w: setServiceIpAllowList needs entries or cidrs; an empty list blocks all inbound traffic and the rule 0.0.0.0/0 allows all", core.ErrBadRequest)
+				}
 				entries, err := core.ResolveAllowListInputs(
 					gqlutil.AllowList(p.Args["entries"]), entriesSet,
 					gqlutil.StringList(p.Args["cidrs"]), cidrsSet,

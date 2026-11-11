@@ -27,6 +27,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -100,17 +101,35 @@ func TestSetIPAllowListRoundTripsThroughSpec(t *testing.T) {
 		t.Errorf("spec.ipAllowListEntries = %v, want %v", got, wantSpec)
 	}
 
-	// Clear it.
+	// An empty list blocks the service (w8/m157): saved as the deny-all
+	// placeholder, which is what the operator enforces, and read back as [].
 	v, err = svc.SetIPAllowList(context.Background(), "web", nil)
 	if err != nil {
-		t.Fatalf("SetIPAllowList(nil): %v", err)
+		t.Fatalf("SetIPAllowList(empty): %v", err)
 	}
-	if len(v.IPAllowList) != 0 {
-		t.Errorf("AppView.IPAllowList after clear = %v, want empty", v.IPAllowList)
+	if v.IPAllowList == nil || len(v.IPAllowList) != 0 {
+		t.Errorf("AppView.IPAllowList after an empty write = %#v, want []", v.IPAllowList)
+	}
+	app = getApp(t, cl, "web")
+	if app.Spec.IPAllowList != nil || !core.ServiceBlocksAll(app.Spec.IPAllowListEntries) {
+		t.Errorf("an empty write left legacy=%v structured=%v, want the deny-all placeholder", app.Spec.IPAllowList, app.Spec.IPAllowListEntries)
+	}
+	if got := app.Spec.EffectiveIPAllowListCIDRs(); len(got) != 1 || got[0] != core.DenyAllCIDR {
+		t.Errorf("enforced CIDRs = %v, want the deny-all range", got)
+	}
+
+	// Render's default rule opens it again and saves no rule, so no middleware
+	// refuses IPv6 sources.
+	v, err = svc.SetIPAllowList(context.Background(), "web", []core.IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "everywhere"}})
+	if err != nil {
+		t.Fatalf("SetIPAllowList(allow-all): %v", err)
+	}
+	if !slices.Equal(v.IPAllowList, core.UnrestrictedAllowList()) {
+		t.Errorf("AppView.IPAllowList after allow-all = %#v, want the allow-all pair", v.IPAllowList)
 	}
 	app = getApp(t, cl, "web")
 	if app.Spec.IPAllowList != nil || app.Spec.IPAllowListEntries != nil {
-		t.Errorf("clear left legacy=%v structured=%v", app.Spec.IPAllowList, app.Spec.IPAllowListEntries)
+		t.Errorf("allow-all left legacy=%v structured=%v, want no rule", app.Spec.IPAllowList, app.Spec.IPAllowListEntries)
 	}
 }
 
@@ -423,14 +442,22 @@ func TestMCPSetIPAllowListUpdatesSpec(t *testing.T) {
 		t.Errorf("spec.ipAllowListEntries = %v", spec)
 	}
 
-	// A present list REPLACES; an empty one clears. Both were the retired
-	// setter's contract and both must survive the fold.
-	cleared := call("update_service", map[string]any{"serviceId": "web", "ipAllowList": []map[string]any{}})
-	if list := mcpNestedAllowList(t, cleared); len(list) != 0 {
-		t.Errorf("update_service ipAllowList=[] = %#v", list)
+	// A present list REPLACES, and an empty one blocks the service (w8/m157):
+	// it reads [] and is saved as the deny-all placeholder.
+	blocked := call("update_service", map[string]any{"serviceId": "web", "ipAllowList": []map[string]any{}})
+	if list := mcpNestedAllowList(t, blocked); len(list) != 0 {
+		t.Errorf("update_service ipAllowList=[] = %#v, want []", list)
 	}
-	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; len(spec) != 0 {
-		t.Errorf("spec.ipAllowListEntries after clear = %v", spec)
+	if _, present := blocked["serviceDetails"].(map[string]any)["ipAllowList"]; !present {
+		t.Error("a blocked service's result dropped ipAllowList instead of reading []")
+	}
+	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; !core.ServiceBlocksAll(spec) {
+		t.Errorf("spec.ipAllowListEntries after an empty write = %v, want the deny-all placeholder", spec)
+	}
+	// An update that does not name the list leaves the service blocked.
+	call("update_service", map[string]any{"serviceId": "web", "healthCheckPath": "/healthz"})
+	if spec := getApp(t, cl, "web").Spec.IPAllowListEntries; !core.ServiceBlocksAll(spec) {
+		t.Errorf("an update without ipAllowList changed the blocked service: %v", spec)
 	}
 
 	// The plain-string form reaches the same field.
@@ -499,11 +526,15 @@ func TestBlueprintServicePreservesIPAllowListDescription(t *testing.T) {
 func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 	cases := []struct {
 		name  string
-		cidrs []string
+		cidrs []string // as stored
+		want  []string // as every surface reads it (core.ServiceAllowList)
 	}{
-		{name: "empty", cidrs: nil},
-		{name: "single", cidrs: []string{"203.0.113.0/24"}},
-		{name: "multi", cidrs: []string{"203.0.113.0/24", "10.0.0.0/8"}},
+		// A service nobody restricted reads the allow-all pair, and one saved
+		// empty reads [] (w8/m157).
+		{name: "untouched", cidrs: nil, want: []string{"0.0.0.0/0", "::/0"}},
+		{name: "blocked", cidrs: []string{core.DenyAllCIDR}, want: []string{}},
+		{name: "single", cidrs: []string{"203.0.113.0/24"}, want: []string{"203.0.113.0/24"}},
+		{name: "multi", cidrs: []string{"203.0.113.0/24", "10.0.0.0/8"}, want: []string{"203.0.113.0/24", "10.0.0.0/8"}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -531,12 +562,16 @@ func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 				t.Fatalf("decode REST body: %v", err)
 			}
 			restList := restBody.ServiceDetails.IPAllowList
-			if len(restList) != len(c.cidrs) {
-				t.Errorf("REST serviceDetails.ipAllowList len = %d, want %d", len(restList), len(c.cidrs))
+			// The key is present even when empty: [] is the blocked state.
+			if restList == nil {
+				t.Errorf("REST serviceDetails.ipAllowList is absent: %s", rec.Body)
+			}
+			if len(restList) != len(c.want) {
+				t.Errorf("REST serviceDetails.ipAllowList len = %d, want %d", len(restList), len(c.want))
 			}
 			for i, e := range restList {
-				if e.CidrBlock != c.cidrs[i] {
-					t.Errorf("REST serviceDetails.ipAllowList[%d].cidrBlock = %q, want %q", i, e.CidrBlock, c.cidrs[i])
+				if e.CidrBlock != c.want[i] {
+					t.Errorf("REST serviceDetails.ipAllowList[%d].cidrBlock = %q, want %q", i, e.CidrBlock, c.want[i])
 				}
 			}
 
@@ -553,12 +588,12 @@ func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 				t.Fatalf("gql: %v", res.Errors)
 			}
 			gqlList, _ := res.Data.(map[string]any)["service"].(map[string]any)["ipAllowList"].([]any)
-			if len(gqlList) != len(c.cidrs) {
-				t.Errorf("GraphQL ipAllowList len = %d, want %d", len(gqlList), len(c.cidrs))
+			if len(gqlList) != len(c.want) {
+				t.Errorf("GraphQL ipAllowList len = %d, want %d", len(gqlList), len(c.want))
 			}
 			for i, entry := range gqlList {
-				if entry != c.cidrs[i] {
-					t.Errorf("GraphQL ipAllowList[%d] = %v, want %q", i, entry, c.cidrs[i])
+				if entry != c.want[i] {
+					t.Errorf("GraphQL ipAllowList[%d] = %v, want %q", i, entry, c.want[i])
 				}
 			}
 
@@ -571,12 +606,12 @@ func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 			}
 			rendered := toRenderService(v)
 			mcpList, _ := rendered.ServiceDetails["ipAllowList"].([]core.IPAllowListEntry)
-			if len(mcpList) != len(c.cidrs) {
-				t.Errorf("MCP serviceDetails.ipAllowList len = %d, want %d", len(mcpList), len(c.cidrs))
+			if len(mcpList) != len(c.want) {
+				t.Errorf("MCP serviceDetails.ipAllowList len = %d, want %d", len(mcpList), len(c.want))
 			}
 			for i, e := range mcpList {
-				if e.CIDRBlock != c.cidrs[i] {
-					t.Errorf("MCP serviceDetails.ipAllowList[%d].cidrBlock = %q, want %q", i, e.CIDRBlock, c.cidrs[i])
+				if e.CIDRBlock != c.want[i] {
+					t.Errorf("MCP serviceDetails.ipAllowList[%d].cidrBlock = %q, want %q", i, e.CIDRBlock, c.want[i])
 				}
 			}
 		})

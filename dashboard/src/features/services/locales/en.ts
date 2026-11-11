@@ -5011,24 +5011,30 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.networkingScalePlanOnly": {
     message:
-      "Inbound IP rules for web services and static sites require the Scale plan or higher. Rules already set stay enforced and can be cleared.",
+      "Inbound IP rules for web services and static sites require the Scale plan or higher. Rules already set stay enforced and can be replaced by the allow-all rule.",
     description:
       "Hint replacing the editable IP rules below the Scale plan (w8/m137)",
   },
   "services.networkingClearAll": {
-    message: "Clear all rules",
+    message: "Allow all traffic",
     description:
-      "Button clearing every inbound IP rule below the Scale plan (w8/m137)",
+      "Button replacing every inbound IP rule with the allow-all rule below the Scale plan (w8/m137, w8/m157)",
   },
   "services.networkingHint": {
     message:
-      "Enter a CIDR block (e.g. 203.0.113.0/24) and press Add. Empty list opens the service to all source IPs.",
+      "Enter a CIDR block (e.g. 203.0.113.0/24) and press Add. With no rules, all inbound traffic is blocked; the rule 0.0.0.0/0 allows all source IPs.",
     description: "Hint below the CIDR list in the Networking card (w7/m32)",
   },
   "services.networkingOpen": {
     message: "Open to all source IPs",
     description:
-      "Placeholder shown when the allow list is empty (Render default, w7/m32)",
+      "Shown below the Scale plan when the service has only the allow-all rule (Render default, w7/m32, w8/m157)",
+  },
+  "services.networkingBlocked": {
+    message:
+      "No rules: all inbound traffic to this service is blocked. Add 0.0.0.0/0 to allow all source IPs.",
+    description:
+      "Warning shown when a service's inbound IP rule list is empty, saved or about to be saved (w8/m157)",
   },
   "services.networkingAdd": {
     message: "Add allowlist entry",

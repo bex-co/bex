@@ -474,7 +474,7 @@ func (s *Service) createWithEnvironments(ctx context.Context, workspaceID, name 
 				return ProjectView{}, "", fmt.Errorf("invalid request body at /environments/%d/networkIsolationEnabled: %w", i, err)
 			}
 			if e.IPAllowList != nil {
-				if err := s.RequireInboundIPRules(ctx, workspaceID, e.IPAllowList, core.DefaultEnvironmentAllowList(), true); err != nil {
+				if err := s.RequireInboundIPRules(ctx, workspaceID, e.IPAllowList, core.DefaultEnvironmentAllowList()); err != nil {
 					return ProjectView{}, "", fmt.Errorf("invalid request body at /environments/%d/ipAllowList: %w", i, err)
 				}
 			}

@@ -167,3 +167,76 @@ func TestResolveAllowListInputs(t *testing.T) {
 		t.Fatalf("explicit structured clear = %#v, %v", got, err)
 	}
 }
+
+// w8/m157: on a web service or a static site an explicitly empty rule set
+// blocks every source, as on Render, and an untouched service reads the
+// allow-all pair. The spec cannot hold "empty", so it is saved as the
+// deny-all placeholder.
+func TestServiceAllowListSaveAndRead(t *testing.T) {
+	office := []IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}}
+	for _, tc := range []struct {
+		name      string
+		written   []IPAllowListEntry
+		saved     []appv1alpha1.IPAllowEntry
+		readsBack []IPAllowListEntry
+	}{
+		{"an empty list blocks", []IPAllowListEntry{}, []appv1alpha1.IPAllowEntry{{CIDR: DenyAllCIDR}}, []IPAllowListEntry{}},
+		{"Render's default rule saves no rule", []IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "everywhere"}}, nil, UnrestrictedAllowList()},
+		{"the allow-all pair saves no rule", UnrestrictedAllowList(), nil, UnrestrictedAllowList()},
+		{"a rule is saved as written", office, []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24", Description: "office"}}, office},
+		{"a rule beside allow-all is saved as written",
+			[]IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}, {CIDRBlock: "203.0.113.0/24"}},
+			[]appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}, {CIDR: "203.0.113.0/24"}},
+			[]IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}, {CIDRBlock: "203.0.113.0/24"}}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			saved := ServiceAllowListToSpec(tc.written)
+			if !reflect.DeepEqual(saved, tc.saved) {
+				t.Fatalf("saved = %#v, want %#v", saved, tc.saved)
+			}
+			read := ServiceAllowList(true, saved)
+			if read == nil || !reflect.DeepEqual(read, tc.readsBack) {
+				t.Fatalf("read = %#v, want %#v", read, tc.readsBack)
+			}
+			// Writing back what was read keeps access as it is.
+			if again := ServiceAllowListToSpec(read); !reflect.DeepEqual(again, saved) {
+				t.Errorf("saving what was read = %#v, want %#v", again, saved)
+			}
+		})
+	}
+	// A type with no public endpoint has no rule and reads none.
+	if got := ServiceAllowList(false, nil); got != nil {
+		t.Errorf("a private service reads %#v, want no list", got)
+	}
+	// What the operator enforces for a blocked service is the placeholder, a
+	// range no source matches.
+	if !ServiceBlocksAll(ServiceAllowListToSpec(nil)) || ServiceBlocksAll(nil) {
+		t.Error("ServiceBlocksAll must hold for the saved empty list and not for an absent one")
+	}
+}
+
+// An adapter that was sent an empty list hands on an empty list, never nil:
+// nil is the omitted field, and on a service the two differ (w8/m157).
+func TestResolveAllowListInputsKeepsAnEmptyListApartFromAnOmittedOne(t *testing.T) {
+	if got, err := ResolveAllowListInputs(nil, false, nil, false); err != nil || got != nil {
+		t.Errorf("omitted = %#v, %v; want nil", got, err)
+	}
+	for name, got := range map[string][]IPAllowListEntry{
+		"entries": mustResolve(t, []IPAllowListEntry{}, true, nil, false),
+		"cidrs":   mustResolve(t, nil, false, []string{}, true),
+		"both":    mustResolve(t, []IPAllowListEntry{}, true, []string{}, true),
+	} {
+		if got == nil || len(got) != 0 {
+			t.Errorf("%s sent empty = %#v, want an empty non-nil list", name, got)
+		}
+	}
+}
+
+func mustResolve(t *testing.T, entries []IPAllowListEntry, entriesSet bool, cidrs []string, cidrsSet bool) []IPAllowListEntry {
+	t.Helper()
+	got, err := ResolveAllowListInputs(entries, entriesSet, cidrs, cidrsSet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return got
+}

@@ -27,6 +27,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -201,7 +202,8 @@ func TestUpdateServiceAppliesEveryFieldInOneCall(t *testing.T) {
 
 // TestUpdateServiceEmptyValuesStillClear pins the second half of the pointer
 // contract: absent leaves alone, but an explicitly empty value still clears,
-// which is how every retired setter cleared a field.
+// which is how every retired setter cleared a field. An empty ipAllowList is
+// applied too, and what it means is "block every source" (w8/m157).
 func TestUpdateServiceEmptyValuesStillClear(t *testing.T) {
 	svc, _ := populatedService(t)
 	call, cleanup := appsMCPClient(t, svc)
@@ -216,7 +218,7 @@ func TestUpdateServiceEmptyValuesStillClear(t *testing.T) {
 	})
 
 	spec := getApp(t, svc.Client, "web").Spec
-	if spec.BuildCommand != "" || spec.PreDeployCommand != "" || spec.HealthCheckPath != "" || len(spec.IPAllowListEntries) != 0 {
+	if spec.BuildCommand != "" || spec.PreDeployCommand != "" || spec.HealthCheckPath != "" || !core.ServiceBlocksAll(spec.IPAllowListEntries) {
 		t.Fatalf("empty arguments did not clear their fields: %#v", spec)
 	}
 	// …while a field that was not mentioned in the same call is untouched.

@@ -725,10 +725,12 @@ type AppView struct {
 	// Headers are a static_site's custom response-header rules (spec.headers,
 	// Render's /headers). Empty for every other type.
 	Headers []StaticHeaderView `json:"headers,omitempty"`
-	// IPAllowList is Render's inbound IP allowlist for web_service and
-	// static_site. Both CIDR and description persist; enforcement projects only
-	// CIDRs. Empty means open to all source IPs.
-	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+	// IPAllowList is Render's inbound IP rule set for web_service and
+	// static_site (core.ServiceAllowList). Both CIDR and description persist;
+	// enforcement projects only CIDRs. Empty means every public request is
+	// refused, and a service nobody restricted reads the allow-all pair. Nil
+	// (omitted) for a type with no public endpoint.
+	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitzero"`
 	// IPAllowListProxiedDomains is a bex extension (w1/m171): the custom
 	// domains proxied by Cloudflare while IPAllowList restricts traffic. On
 	// those hosts the allowlist matches Cloudflare's edge address, not the
@@ -1218,7 +1220,7 @@ func view(a *appv1alpha1.App) AppView {
 		PublishPath:       a.Spec.PublishPath,
 		Routes:            staticRouteViews(a.Spec.Routes),
 		Headers:           staticHeaderViews(a.Spec.Headers),
-		IPAllowList:       core.AllowListFromSpec(a.Spec.EffectiveIPAllowListEntries()),
+		IPAllowList:       serviceAllowList(a.Spec),
 		MaintenanceMode:   maintenanceModeView(a.Spec.MaintenanceMode),
 	}
 }
@@ -2176,7 +2178,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// when the store is off or the caller is unbound. Resolved BEFORE the
 	// existence probe, because it is what makes that probe workspace-correct.
 	tenantID, _ := s.Tenant(ctx)
-	if err := s.requireServiceInboundRules(ctx, tenantID, req.IPAllowList, nil); err != nil {
+	if err := s.requireServiceInboundRules(ctx, tenantID, desired, nil); err != nil {
 		return AppView{}, err
 	}
 	var carrier *appv1alpha1.App
@@ -3337,7 +3339,11 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		// own copy and got it wrong (w6/m46 t001).
 		Expose: appv1alpha1.TypePubliclyRoutable(svcType),
 	}
-	spec.SetIPAllowListEntries(core.AllowListToSpec(req.IPAllowList))
+	// An omitted list leaves the service open; an explicitly empty one blocks
+	// it (w8/m157).
+	if req.IPAllowList != nil && appv1alpha1.TypePubliclyRoutable(svcType) {
+		spec.SetIPAllowListEntries(core.ServiceAllowListToSpec(req.IPAllowList))
+	}
 	if err := applyOptionalCreateSpec(&spec, svcType, req); err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
@@ -5272,10 +5278,12 @@ func (s *Service) SetSubdomainPolicy(ctx context.Context, name, policy string) (
 	})
 }
 
-// SetIPAllowList replaces the App's inbound allowlist. CIDRs are validated;
+// SetIPAllowList replaces the App's inbound rule set. CIDRs are validated;
 // descriptions persist as metadata and never influence enforcement. An empty
-// slice clears both the structured and legacy fields (Render's default — open
-// to all source IPs). Only meaningful for web_service and static_site.
+// list blocks every public request, as on Render ("If you delete all rules,
+// Render blocks all inbound traffic"); the allow-all rule opens the service
+// again (core.ServiceAllowListToSpec, w8/m157). Only meaningful for
+// web_service and static_site.
 func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []core.IPAllowListEntry) (AppView, error) {
 	if err := core.ValidateAllowList(entries); err != nil {
 		return AppView{}, err
@@ -5284,14 +5292,12 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 	if err != nil {
 		return AppView{}, err
 	}
-	if err := checkIPAllowList(a, entries); err != nil {
-		return AppView{}, err
-	}
-	if err := s.requireServiceInboundRules(ctx, a.Labels[core.LabelTenant], entries, a); err != nil {
+	saved, err := s.stageIPAllowList(ctx, a, entries)
+	if err != nil {
 		return AppView{}, err
 	}
 	v, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.SetIPAllowListEntries(core.AllowListToSpec(entries))
+		a.Spec.SetIPAllowListEntries(saved)
 	})
 	if err != nil {
 		return AppView{}, err
@@ -5306,7 +5312,7 @@ func (s *Service) SetIPAllowList(ctx context.Context, name string, entries []cor
 // Cloudflare-proxied custom domains, but only while a's own allowlist
 // actually restricts traffic.
 func (s *Service) allowListProxiedDomains(ctx context.Context, a *appv1alpha1.App) []string {
-	if !core.AllowListRestricts(core.AllowListFromSpec(a.Spec.EffectiveIPAllowListEntries())) {
+	if !core.AllowListRestricts(serviceAllowList(a.Spec)) {
 		return nil
 	}
 	return s.ProxiedHosts.CloudflareProxied(ctx, core.AppCustomDomains(a))

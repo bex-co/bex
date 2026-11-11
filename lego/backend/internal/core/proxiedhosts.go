@@ -164,8 +164,8 @@ func uniqueHosts(hosts []string) []string {
 // non-empty and without a match-everything /0 prefix. An open list (Render's
 // seeded 0.0.0.0/0 environment default) admits a Cloudflare edge exactly as it
 // admits anyone, so there is nothing to warn about. An empty list is not
-// restricting either: on a service it means open, and on an environment it is
-// deny-all, which refuses Cloudflare and clients alike.
+// restricting in this sense either: it is deny-all, on a service and on an
+// environment alike, which refuses Cloudflare and clients alike.
 func AllowListRestricts(entries []IPAllowListEntry) bool {
 	if len(entries) == 0 {
 		return false

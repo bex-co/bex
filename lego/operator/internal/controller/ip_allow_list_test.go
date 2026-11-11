@@ -247,6 +247,39 @@ func TestLegacyFlatServiceIPAllowListStillProjects(t *testing.T) {
 	}
 }
 
+// TestBlockedServiceProjectsTheDenyAllRange is the operator's half of w8/m157.
+// bex-api saves an explicitly empty inbound list as the single range no
+// source matches (Render: "If you delete all rules, Render blocks all inbound
+// traffic"), because the spec cannot tell an empty list from an absent one.
+// The operator must enforce it like any stored rule: a middleware with that
+// range, chained on the Ingress. An absent list still means no middleware.
+func TestBlockedServiceProjectsTheDenyAllRange(t *testing.T) {
+	const denyAll = "255.255.255.255/32" // bex-api's core.DenyAllCIDR
+	scheme := newIPAllowListScheme()
+	app := appWithAllowList("blocked", nil, appv1alpha1.TypeWebService)
+	app.Spec.IPAllowListEntries = []appv1alpha1.IPAllowEntry{{CIDR: denyAll}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
+		WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes}
+
+	names, err := r.reconcileIPAllowListMiddleware(context.Background(), app)
+	if err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if len(names) != 1 || names[0] != "blocked-ip-allow" {
+		t.Fatalf("middleware names = %v, want [blocked-ip-allow]", names)
+	}
+	o := &unstructured.Unstructured{}
+	o.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+	if err := cl.Get(context.Background(), types.NamespacedName{Name: names[0], Namespace: "default"}, o); err != nil {
+		t.Fatalf("get middleware: %v", err)
+	}
+	ranges, _, _ := unstructured.NestedSlice(o.Object, "spec", "ipAllowList", "sourceRange")
+	if len(ranges) != 1 || ranges[0] != denyAll {
+		t.Fatalf("middleware ranges = %v, want [%s]", ranges, denyAll)
+	}
+}
+
 // TestNonIngressTypesGetNoIPAllowListMiddleware proves that background_worker
 // and cron_job (no public Ingress) never trigger the middleware reconcile —
 // the ipAllowList field on their spec is accepted by the CRD but ignored at

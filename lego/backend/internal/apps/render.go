@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -548,11 +549,12 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	// sibling top-level view (the identical nesting-level omission the w1/m86
 	// disk audit caught; w6/m106). The create/PATCH decode already reads this
 	// nested location (rest.go decodeIPAllowList), so emitting it here closes a
-	// read/write asymmetry. Gated to the two ingress types and omitted when
-	// empty (open to all source IPs, Render's default), like every optional
-	// field above.
-	if len(a.IPAllowList) > 0 && appv1alpha1.TypePubliclyRoutable(svcType) {
-		details["ipAllowList"] = cloneIPAllowEntries(a.IPAllowList)
+	// read/write asymmetry. Gated to the two ingress types, and always present
+	// on them: [] is a blocked service and an untouched one reads the allow-all
+	// pair (core.ServiceAllowList, w8/m157), so the key must not be dropped
+	// when empty.
+	if a.IPAllowList != nil && appv1alpha1.TypePubliclyRoutable(svcType) {
+		details["ipAllowList"] = slices.Clone(a.IPAllowList)
 	}
 	// ipAllowListProxiedDomains is a bex extension beside the field it warns
 	// about (w1/m171; Render has no counterpart): the custom domains on which

@@ -4,6 +4,8 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { isValidCIDR } from "@/common/lib/cidr";
 import {
+  ALLOW_ALL_ENTRIES,
+  isAllowAllRule,
   ipAllowListEntryKey,
   type IPAllowListEntryDraft,
 } from "@/common/lib/ip-allow-list";
@@ -50,6 +52,7 @@ export function IPAllowListEditor({
   saving,
   onSave,
   clearOnly,
+  emptyBlocks,
 }: {
   entries: IPAllowListEntryDraft[];
   labels: IPAllowListEditorLabels;
@@ -60,6 +63,14 @@ export function IPAllowListEditor({
    * stay listed and enforced; the only write offered is clearing them all.
    */
   clearOnly?: { hint: string; clearAll: string };
+  /**
+   * The list belongs to a service (w8/m157): with no rule every public
+   * request is refused, and the allow-all rule is what opens it. `labels.empty`
+   * is then the blocked sentence and is shown as a warning, the clear-only
+   * view shows `open` for a service nobody restricted, and its button writes
+   * the allow-all rule instead of an empty list.
+   */
+  emptyBlocks?: { open: string };
 }) {
   // Keep keys independent of editable values and positions so typing, moving
   // and removing rows preserve the surviving inputs' focus and caret.
@@ -122,12 +133,43 @@ export function IPAllowListEditor({
     setDraft(next);
   }
 
+  const empty = (
+    <span
+      className={
+        emptyBlocks
+          ? "text-sm text-destructive"
+          : "text-sm text-muted-foreground"
+      }
+    >
+      {labels.empty}
+    </span>
+  );
+
   if (clearOnly) {
+    const clear = (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        onClick={() => void onSave(emptyBlocks ? ALLOW_ALL_ENTRIES : [])}
+        disabled={saving}
+      >
+        {saving ? <Loader2 className="animate-spin" /> : <Trash2 />}
+        {clearOnly.clearAll}
+      </Button>
+    );
     return (
       <section className="space-y-2">
         <p className="text-xs text-muted-foreground">{clearOnly.hint}</p>
-        {entries.length === 0 ? (
-          <span className="text-sm text-muted-foreground">{labels.empty}</span>
+        {emptyBlocks && isAllowAllRule(entries) ? (
+          <span className="text-sm text-muted-foreground">
+            {emptyBlocks.open}
+          </span>
+        ) : entries.length === 0 ? (
+          <>
+            {empty}
+            {emptyBlocks ? clear : null}
+          </>
         ) : (
           <>
             <ul className="space-y-1 font-mono text-sm">
@@ -143,16 +185,7 @@ export function IPAllowListEditor({
                 </li>
               ))}
             </ul>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void onSave([])}
-              disabled={saving}
-            >
-              {saving ? <Loader2 className="animate-spin" /> : <Trash2 />}
-              {clearOnly.clearAll}
-            </Button>
+            {clear}
           </>
         )}
       </section>
@@ -163,7 +196,7 @@ export function IPAllowListEditor({
     <section className="space-y-2">
       <p className="text-xs text-muted-foreground">{labels.hint}</p>
       {draft.length === 0 ? (
-        <span className="text-sm text-muted-foreground">{labels.empty}</span>
+        empty
       ) : (
         <div className="space-y-2">
           {draft.map(({ id, entry }, index) => (

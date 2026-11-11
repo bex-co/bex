@@ -109,15 +109,49 @@ func errSubdomainPolicyNotApplicable(svcType string) error {
 	return fmt.Errorf("%w: renderSubdomainPolicy applies only to web services and static sites; a %s has no platform subdomain to toggle", core.ErrBadRequest, svcType)
 }
 
+// serviceAllowList is spec's inbound rule set as every read reports it
+// (core.ServiceAllowList).
+func serviceAllowList(spec appv1alpha1.AppSpec) []core.IPAllowListEntry {
+	return core.ServiceAllowList(spec.PubliclyRoutable(), spec.EffectiveIPAllowListEntries())
+}
+
 // requireServiceInboundRules refuses a restricting inbound IP rule set below the
-// Scale plan (w8/m137). current is the App the write changes, nil on create:
-// a legacy list stays enforced, may be cleared, and may be re-sent unchanged.
-func (s *Service) requireServiceInboundRules(ctx context.Context, tenantID string, entries []core.IPAllowListEntry, current *appv1alpha1.App) error {
-	var existing []core.IPAllowListEntry
-	if current != nil {
-		existing = core.AllowListFromSpec(current.Spec.EffectiveIPAllowListEntries())
+// Scale plan (w8/m137). next is the spec the write would save and current the
+// App it changes, nil on create: a legacy list stays enforced, may be opened
+// with the allow-all rule, and may be re-sent unchanged. An explicitly empty
+// list blocks every source, so it restricts (w8/m157). A type with no public
+// endpoint has no rule to gate.
+func (s *Service) requireServiceInboundRules(ctx context.Context, tenantID string, next appv1alpha1.AppSpec, current *appv1alpha1.App) error {
+	if !next.PubliclyRoutable() {
+		return nil
 	}
-	return s.RequireInboundIPRules(ctx, tenantID, entries, existing, false)
+	// A service being created starts from the allow-all rule, not from an
+	// empty list: an empty list compared with "nothing yet" would pass as
+	// unchanged.
+	existing := core.UnrestrictedAllowList()
+	if current != nil {
+		existing = serviceAllowList(current.Spec)
+	}
+	return s.RequireInboundIPRules(ctx, tenantID, serviceAllowList(next), existing)
+}
+
+// stageIPAllowList validates entries as a's new inbound rule set and returns
+// the rules to save (core.ServiceAllowListToSpec). On a type with no public
+// endpoint only a clear is accepted, and it saves nothing.
+func (s *Service) stageIPAllowList(ctx context.Context, a *appv1alpha1.App, entries []core.IPAllowListEntry) ([]appv1alpha1.IPAllowEntry, error) {
+	if err := checkIPAllowList(a, entries); err != nil {
+		return nil, err
+	}
+	var saved []appv1alpha1.IPAllowEntry
+	if a.Spec.PubliclyRoutable() {
+		saved = core.ServiceAllowListToSpec(entries)
+	}
+	next := a.Spec // SetIPAllowListEntries assigns fresh slices, so a's are untouched
+	next.SetIPAllowListEntries(saved)
+	if err := s.requireServiceInboundRules(ctx, a.Labels[core.LabelTenant], next, a); err != nil {
+		return nil, err
+	}
+	return saved, nil
 }
 
 func errIPAllowListNotApplicable(svcType string) error {

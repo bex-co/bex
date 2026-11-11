@@ -542,17 +542,9 @@ func effectiveImageOwnerID(ownerID, defaultOwnerID string, image *imageRef) (str
 // one description-preserving shape.
 type ipAllowEntry = core.IPAllowListEntry
 
-// cloneIPAllowEntries copies allowlist entries, preserving nil for empty so
-// omitempty stays wire-accurate.
-func cloneIPAllowEntries(entries []core.IPAllowListEntry) []core.IPAllowListEntry {
-	if len(entries) == 0 {
-		return nil
-	}
-	return slices.Clone(entries)
-}
-
 // decodeIPAllowList decodes a serviceDetails.ipAllowList RawMessage; provided
 // reports whether the field carried a value (absent/null leaves it unchanged).
+// A provided list is never nil: [] blocks the service (w8/m157).
 func decodeIPAllowList(ctx context.Context, raw json.RawMessage) (entries []core.IPAllowListEntry, provided bool, err error) {
 	if len(raw) == 0 || string(raw) == "null" {
 		return nil, false, nil
@@ -561,7 +553,7 @@ func decodeIPAllowList(ctx context.Context, raw json.RawMessage) (entries []core
 	if err := core.UnmarshalJSON(ctx, raw, &in); err != nil {
 		return nil, false, fmt.Errorf("%w: ipAllowList: %v", core.ErrBadRequest, err)
 	}
-	return cloneIPAllowEntries(in), true, nil
+	return core.ProvidedAllowList(in), true, nil
 }
 
 // preferTopLevel resolves a field sent both at the top level and nested under

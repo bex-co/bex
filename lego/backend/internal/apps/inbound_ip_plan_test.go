@@ -69,7 +69,7 @@ func TestServiceInboundIPRulesNeedScalePlan(t *testing.T) {
 	}
 }
 
-func TestServiceInboundIPRulesLegacyRuleStaysEnforcedAndClearable(t *testing.T) {
+func TestServiceInboundIPRulesLegacyRuleStaysEnforcedAndCanBeOpened(t *testing.T) {
 	svc, cl := newService(nil, tenantWebApp("web", "203.0.113.0/24"))
 	withWorkspacePlan(svc, "hobby")
 	ctx := context.Background()
@@ -85,11 +85,17 @@ func TestServiceInboundIPRulesLegacyRuleStaysEnforcedAndClearable(t *testing.T) 
 	if got := getApp(t, cl, "web").Spec.EffectiveIPAllowListEntries(); len(got) != 1 || got[0].CIDR != "203.0.113.0/24" {
 		t.Fatalf("the legacy rule stopped being enforced: %+v", got)
 	}
-	if _, err := svc.SetIPAllowList(ctx, "web", []core.IPAllowListEntry{}); err != nil {
-		t.Fatalf("clearing must be allowed: %v", err)
+	// An empty list does not clear: it blocks every source, the strongest
+	// restriction, so it needs the plan like any other (w8/m157).
+	if _, err := svc.SetIPAllowList(ctx, "web", []core.IPAllowListEntry{}); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("an empty list must be refused below Scale, got %v", err)
+	}
+	// The allow-all rule opens a legacy rule on any plan, and saves no rule.
+	if _, err := svc.SetIPAllowList(ctx, "web", core.UnrestrictedAllowList()); err != nil {
+		t.Fatalf("opening with the allow-all rule must be allowed: %v", err)
 	}
 	if len(getApp(t, cl, "web").Spec.EffectiveIPAllowListEntries()) != 0 {
-		t.Fatal("clear did not apply")
+		t.Fatal("the allow-all rule left a stored rule")
 	}
 }
 

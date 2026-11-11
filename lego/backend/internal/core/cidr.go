@@ -168,17 +168,19 @@ func AllowListOrCIDRs(entries []IPAllowListEntry, cidrs []string) []IPAllowListE
 // inputs are accepted; conflicting dual inputs are a bad request rather than
 // silently dropping descriptions or CIDRs.
 func ResolveAllowListInputs(entries []IPAllowListEntry, entriesSet bool, cidrs []string, cidrsSet bool) ([]IPAllowListEntry, error) {
-	if !entriesSet {
-		return AllowListFromCIDRs(cidrs), nil
-	}
-	if !cidrsSet {
-		return entries, nil
+	switch {
+	case !entriesSet && !cidrsSet:
+		return nil, nil
+	case !entriesSet:
+		return ProvidedAllowList(AllowListFromCIDRs(cidrs)), nil
+	case !cidrsSet:
+		return ProvidedAllowList(entries), nil
 	}
 	legacy := AllowListFromCIDRs(cidrs)
 	if !slices.Equal(entries, legacy) {
 		return nil, fmt.Errorf("%w: ipAllowList and ipAllowListEntries are set to conflicting values", ErrBadRequest)
 	}
-	return entries, nil
+	return ProvidedAllowList(entries), nil
 }
 
 // ResolveAllowListPatch is ResolveAllowListInputs in the shape a patch-shaped
@@ -215,6 +217,68 @@ func ResolveAllowListPatch(entries *[]IPAllowListEntry, cidrs *[]string) (*[]IPA
 // empty-means-deny-all): Traefik rejects an ipAllowList middleware with an
 // empty sourceRange, so deny-all must be a real range no source matches.
 const DenyAllCIDR = "255.255.255.255/32"
+
+// ServiceAllowListToSpec is how a web service's or static site's inbound rule
+// set is saved (w8/m157). Render: "If you delete all rules, Render blocks all
+// inbound traffic to the affected service(s)", and its default is the single
+// rule 0.0.0.0/0. A service's spec cannot tell an empty list from an absent
+// one, so the two states are saved as different rules:
+//
+//   - an empty set is saved as the DenyAllCIDR placeholder, the rule the
+//     environment layer projects for its own empty set. The operator already
+//     turns any stored rule into the service's middleware, so the block holds
+//     on a cluster whose operator predates this;
+//   - a set holding only the allow-all ranges saves no rule. No middleware
+//     exists then, so both address families are admitted; saved as written, a
+//     lone 0.0.0.0/0 would refuse every IPv6 source;
+//   - anything else is saved as written.
+//
+// Callers pass a set the request carried. An omitted field changes nothing and
+// never reaches here.
+func ServiceAllowListToSpec(entries []IPAllowListEntry) []appv1alpha1.IPAllowEntry {
+	switch {
+	case len(entries) == 0:
+		return []appv1alpha1.IPAllowEntry{{CIDR: DenyAllCIDR}}
+	case !RestrictsInbound(entries):
+		return nil
+	}
+	return AllowListToSpec(entries)
+}
+
+// ServiceAllowList is a service's inbound rule set as every read reports it:
+// REST, GraphQL, MCP and the Blueprint export (w8/m157).
+//
+//   - blocked (the DenyAllCIDR placeholder alone): [];
+//   - a publicly routable service with no saved rule: UnrestrictedAllowList,
+//     as a public datastore with no saved rules reads (EffectiveAllowList);
+//   - otherwise its saved rules, nil for a type with no public endpoint.
+//
+// Writing back what was read keeps access as it is.
+func ServiceAllowList(routable bool, list []appv1alpha1.IPAllowEntry) []IPAllowListEntry {
+	switch {
+	case ServiceBlocksAll(list):
+		return []IPAllowListEntry{}
+	case len(list) == 0 && routable:
+		return UnrestrictedAllowList()
+	}
+	return AllowListFromSpec(list)
+}
+
+// ServiceBlocksAll reports whether a service's saved rule set is the one an
+// explicitly empty list is saved as.
+func ServiceBlocksAll(list []appv1alpha1.IPAllowEntry) bool {
+	return len(list) == 1 && list[0].CIDR == DenyAllCIDR
+}
+
+// ProvidedAllowList marks a rule set a request carried: never nil, so an
+// explicitly empty list stays distinct from an omitted field (nil) on its way
+// to the service layer, where the two mean "block" and "leave as it is".
+func ProvidedAllowList(entries []IPAllowListEntry) []IPAllowListEntry {
+	if entries == nil {
+		return []IPAllowListEntry{}
+	}
+	return entries
+}
 
 // MaxAllowListEntries caps how many CIDR entries one ipAllowList write may carry
 // (round-5 finding 15). Every prefix is materialized into the cluster-wide

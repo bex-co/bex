@@ -154,12 +154,11 @@ func InboundIPRulesPlan(plan string) bool {
 }
 
 // RestrictsInbound reports whether entries restrict who may connect: anything
-// beyond the allow-all pair every environment starts with. An empty list
-// restricts only where emptiness means deny-all (an environment); on a service
-// an empty list is no rule at all.
-func RestrictsInbound(entries []IPAllowListEntry, emptyDeniesAll bool) bool {
+// beyond the allow-all pair. An empty list restricts most of all: it denies
+// every source, on an environment (w4/m28) and on a service (w8/m157) alike.
+func RestrictsInbound(entries []IPAllowListEntry) bool {
 	if len(entries) == 0 {
-		return emptyDeniesAll
+		return true
 	}
 	return slices.ContainsFunc(entries, func(e IPAllowListEntry) bool {
 		return e.CIDRBlock != "0.0.0.0/0" && e.CIDRBlock != "::/0"
@@ -170,8 +169,8 @@ func RestrictsInbound(entries []IPAllowListEntry, emptyDeniesAll bool) bool {
 // inbound traffic and differs from current. A rule that already exists keeps
 // being enforced and can always be cleared or re-sent unchanged, so a client
 // that round-trips a whole settings object never fails on a legacy rule.
-func (b *Base) RequireInboundIPRules(ctx context.Context, workspaceID string, next, current []IPAllowListEntry, emptyDeniesAll bool) error {
-	if !RestrictsInbound(next, emptyDeniesAll) || slices.Equal(next, current) {
+func (b *Base) RequireInboundIPRules(ctx context.Context, workspaceID string, next, current []IPAllowListEntry) error {
+	if !RestrictsInbound(next) || slices.Equal(next, current) {
 		return nil
 	}
 	plan, ok, err := b.WorkspacePlanOf(ctx, workspaceID)

@@ -111,7 +111,7 @@ type updateServiceArgs struct {
 	NotificationsToSend     *string                  `json:"notificationsToSend,omitempty" jsonschema:"service notification policy: default (inherit workspace/member preferences, failure-only), failure, all, or none"`
 	MaintenanceMode         *maintenanceModeArg      `json:"maintenanceMode,omitempty" jsonschema:"take a web service offline behind an interstitial page without suspending it — pods keep running, every host answers 503. web_service only"`
 	RenderSubdomainPolicy   *string                  `json:"renderSubdomainPolicy,omitempty" jsonschema:"enabled (the platform subdomain <slug>.<BEX_BASE_DOMAIN> serves this service) or disabled (platform host dropped; only custom domains serve it — requires at least one custom domain first)"`
-	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the inbound allowlist for a web service or static site with these {cidrBlock, description} entries; pass [] to clear it"`
+	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the inbound allowlist for a web service or static site with these {cidrBlock, description} entries; [] blocks every public request, and the single rule 0.0.0.0/0 allows all again"`
 	IPAllowListCidrs        *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	Autoscaling             *autoscalingArg          `json:"autoscaling,omitempty" jsonschema:"enable or update autoscaling: the operator holds the target utilization by moving replicas within [minInstances, maxInstances]. Use disable_autoscaling to turn it off"`
 	Confirm                 string                   `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
@@ -212,7 +212,7 @@ type createWebServiceArgs struct {
 	Port                    int32                   `json:"port,omitempty" jsonschema:"the port the app listens on (default 10000, as on Render; a Git-built Docker private_service created without one publishes every TCP port its image declares, and this field only picks the primary; ignored for a background_worker)"`
 	Replicas                int32                   `json:"replicas,omitempty" jsonschema:"desired running instances (default 1)"`
 	DryRun                  bool                    `json:"dryRun,omitempty" jsonschema:"if true, return the resolved spec preview without any writes — zero side effects (w2/m29)"`
-	IPAllowList             []string                `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks to restrict inbound HTTP to (e.g. '203.0.113.0/24'); empty = open to all source IPs (Render default). Only applies to web_service and static_site."`
+	IPAllowList             []string                `json:"ipAllowList,omitempty" jsonschema:"CIDR blocks to restrict inbound HTTP to (e.g. '203.0.113.0/24'); omit to leave the service open to all source IPs (Render default); [] blocks every public request. Only applies to web_service and static_site."`
 	IPAllowListEntries      []core.IPAllowListEntry `json:"ipAllowListEntries,omitempty" jsonschema:"description-preserving allowlist entries as {cidrBlock, description}; use instead of ipAllowList"`
 }
 

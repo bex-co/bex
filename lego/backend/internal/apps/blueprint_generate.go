@@ -443,7 +443,12 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 	if disk := serviceDiskView(a.Spec.Disk); disk != nil {
 		entry["disk"] = disk
 	}
-	if entries := a.Spec.EffectiveIPAllowListEntries(); len(entries) > 0 {
+	// A blocked service exports `ipAllowList: []`, which blocks again on
+	// apply; an open one exports no field, which keeps whatever rules a
+	// service has (w8/m157).
+	if entries := a.Spec.EffectiveIPAllowListEntries(); core.ServiceBlocksAll(entries) {
+		entry["ipAllowList"] = []map[string]any{}
+	} else if len(entries) > 0 {
 		entry["ipAllowList"] = allowListEntries(entries)
 	}
 	if a.Spec.SubdomainPolicy == appv1alpha1.SubdomainPolicyDisabled {

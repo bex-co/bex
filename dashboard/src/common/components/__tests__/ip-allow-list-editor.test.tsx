@@ -46,6 +46,47 @@ describe("IPAllowListEditor", () => {
     expect(onSave).toHaveBeenCalledWith([]);
   });
 
+  // w8/m157: where no rule means "block everything" (a service), the
+  // clear-only button writes the allow-all rule, never an empty list, and an
+  // unrestricted list is described rather than listed.
+  it("writes the allow-all rule from clearOnly when an empty list blocks", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => true);
+    const { rerender } = render(
+      <IPAllowListEditor
+        entries={[{ cidrBlock: "10.0.0.0/8", description: "corp" }]}
+        labels={labels}
+        saving={false}
+        onSave={onSave}
+        clearOnly={{ hint: "Needs Scale.", clearAll: "Allow all traffic" }}
+        emptyBlocks={{ open: "Open to everyone." }}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: "Allow all traffic" }));
+    expect(onSave).toHaveBeenCalledWith([
+      { cidrBlock: "0.0.0.0/0", description: "" },
+      { cidrBlock: "::/0", description: "" },
+    ]);
+
+    rerender(
+      <IPAllowListEditor
+        entries={[
+          { cidrBlock: "0.0.0.0/0", description: "" },
+          { cidrBlock: "::/0", description: "" },
+        ]}
+        labels={labels}
+        saving={false}
+        onSave={onSave}
+        clearOnly={{ hint: "Needs Scale.", clearAll: "Allow all traffic" }}
+        emptyBlocks={{ open: "Open to everyone." }}
+      />,
+    );
+    expect(screen.getByText("Open to everyone.")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Allow all traffic" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("names add-row and existing-row inputs (not by placeholder example) (m101/t010)", () => {
     render(
       <IPAllowListEditor

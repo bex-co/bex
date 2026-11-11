@@ -15,6 +15,16 @@
       "preDeployCommand": "echo QA_PREDEPLOY_MARKER"
     },
     "internalAddress": "qa-image-predeploy:10000",
+    "ipAllowList": [
+      {
+        "cidrBlock": "0.0.0.0/0",
+        "description": ""
+      },
+      {
+        "cidrBlock": "::/0",
+        "description": ""
+      }
+    ],
     "maintenanceMode": {
       "enabled": false,
       "uri": ""

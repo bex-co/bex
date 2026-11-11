@@ -213,9 +213,13 @@ describe.each(datastoreConsumers)(
   },
 );
 
-it("keeps the service empty-list meaning and unchanged-save guard", () => {
+// w8/m157: a service with no rule is blocked, as on Render, not open.
+it("reads a service with no rule as blocked and keeps the unchanged-save guard", () => {
   state.entries = [];
   render(serviceConsumer.panel());
-  expect(screen.getByText("Open to all source IPs")).toBeVisible();
+  expect(
+    screen.getByText(/all inbound traffic to this service is blocked/),
+  ).toBeVisible();
+  expect(screen.queryByText("Open to all source IPs")).toBeNull();
   expect(screen.getByRole("button", { name: /^Save/ })).toBeDisabled();
 });

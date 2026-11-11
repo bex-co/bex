@@ -4900,24 +4900,30 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.networkingScalePlanOnly": {
     message:
-      "Web 服务和静态站点的入站 IP 规则需要 Scale 或更高套餐。已设置的规则继续生效，可以清除。",
+      "Web 服务和静态站点的入站 IP 规则需要 Scale 或更高套餐。已设置的规则继续生效，可以替换为允许全部的规则。",
     description:
       "Hint replacing the editable IP rules below the Scale plan (w8/m137)",
   },
   "services.networkingClearAll": {
-    message: "清除所有规则",
+    message: "允许所有流量",
     description:
-      "Button clearing every inbound IP rule below the Scale plan (w8/m137)",
+      "Button replacing every inbound IP rule with the allow-all rule below the Scale plan (w8/m137, w8/m157)",
   },
   "services.networkingHint": {
     message:
-      "输入 CIDR（例如 203.0.113.0/24）并点击添加。列表为空时向所有源 IP 开放。",
+      "输入 CIDR（例如 203.0.113.0/24）并点击添加。没有任何规则时，所有入站流量都会被拦截；规则 0.0.0.0/0 允许所有源 IP。",
     description: "Hint below the CIDR list in the Networking card (w7/m32)",
   },
   "services.networkingOpen": {
     message: "向所有源 IP 开放",
     description:
-      "Placeholder shown when the allow list is empty (Render default, w7/m32)",
+      "Shown below the Scale plan when the service has only the allow-all rule (Render default, w7/m32, w8/m157)",
+  },
+  "services.networkingBlocked": {
+    message:
+      "没有规则：此服务的所有入站流量都会被拦截。添加 0.0.0.0/0 可允许所有源 IP。",
+    description:
+      "Warning shown when a service's inbound IP rule list is empty, saved or about to be saved (w8/m157)",
   },
   "services.networkingAdd": {
     message: "添加允许列表条目",

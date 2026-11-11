@@ -14,10 +14,13 @@ import { useWorkspace } from "@/features/workspaces/context";
 import { inboundIpRulesPlan } from "@/features/workspaces/types";
 
 /**
- * The service Settings Networking section: the inbound IP allowlist for
+ * The service Settings Networking section: the inbound IP rules for
  * `web_service` and `static_site` (w7/m32, Render's ipAllowList). Mirrors
  * the keyvalue Networking panel in shape. The list is read from the service
  * detail already fetched by `useServer`; the panel only writes via mutation.
+ *
+ * As on Render, a service nobody restricted has the allow-all rule, and a
+ * service with NO rule refuses every public request (w8/m157).
  */
 export function ServiceNetworkingPanel({
   serviceId,
@@ -47,6 +50,9 @@ export function ServiceNetworkingPanel({
   const { currentWorkspace } = useWorkspace();
   const belowScale = !inboundIpRulesPlan(currentWorkspace?.plan);
 
+  // Not loaded yet is not "no rules": an empty list means the service is
+  // blocked, so nothing is claimed until the list is known.
+  const known = currentAllowList != null;
   const normalized = (currentAllowList ?? [])
     .filter((entry): entry is NonNullable<typeof entry> => entry != null)
     .map((entry) => ({
@@ -63,40 +69,44 @@ export function ServiceNetworkingPanel({
       <CardContent className="space-y-2">
         <IPAllowListProxiedNotice domains={proxiedDomains} />
         {/* key remounts the editable draft whenever the server list changes */}
-        <IPAllowListEditor
-          key={ipAllowListEntryKey(normalized)}
-          entries={normalized}
-          saving={networking.saving}
-          clearOnly={
-            belowScale
-              ? {
-                  hint: t("services.networkingScalePlanOnly"),
-                  clearAll: t("services.networkingClearAll"),
-                }
-              : undefined
-          }
-          onSave={async (entries) => {
-            const ok = await networking.saveAllowList(serviceId, entries);
-            if (ok) onSaved?.();
-            return ok;
-          }}
-          labels={{
-            hint: t("services.networkingHint"),
-            empty: t("services.networkingOpen"),
-            descriptionPlaceholder: t("services.networkingEntryDescription"),
-            cidr: t("services.networkingCIDR"),
-            cidrRule: (number) => t("services.networkingCIDRRule", { number }),
-            description: t("services.networkingDescriptionLabel"),
-            descriptionRule: (number) =>
-              t("services.networkingDescriptionRule", { number }),
-            add: t("services.networkingAdd"),
-            save: t("services.networkingSave"),
-            invalid: t("services.networkingInvalid"),
-            remove: (cidr) => t("services.networkingRemove", { cidr }),
-            moveUp: (cidr) => t("services.networkingMoveUp", { cidr }),
-            moveDown: (cidr) => t("services.networkingMoveDown", { cidr }),
-          }}
-        />
+        {known ? (
+          <IPAllowListEditor
+            key={ipAllowListEntryKey(normalized)}
+            entries={normalized}
+            saving={networking.saving}
+            clearOnly={
+              belowScale
+                ? {
+                    hint: t("services.networkingScalePlanOnly"),
+                    clearAll: t("services.networkingClearAll"),
+                  }
+                : undefined
+            }
+            emptyBlocks={{ open: t("services.networkingOpen") }}
+            onSave={async (entries) => {
+              const ok = await networking.saveAllowList(serviceId, entries);
+              if (ok) onSaved?.();
+              return ok;
+            }}
+            labels={{
+              hint: t("services.networkingHint"),
+              empty: t("services.networkingBlocked"),
+              descriptionPlaceholder: t("services.networkingEntryDescription"),
+              cidr: t("services.networkingCIDR"),
+              cidrRule: (number) =>
+                t("services.networkingCIDRRule", { number }),
+              description: t("services.networkingDescriptionLabel"),
+              descriptionRule: (number) =>
+                t("services.networkingDescriptionRule", { number }),
+              add: t("services.networkingAdd"),
+              save: t("services.networkingSave"),
+              invalid: t("services.networkingInvalid"),
+              remove: (cidr) => t("services.networkingRemove", { cidr }),
+              moveUp: (cidr) => t("services.networkingMoveUp", { cidr }),
+              moveDown: (cidr) => t("services.networkingMoveDown", { cidr }),
+            }}
+          />
+        ) : null}
       </CardContent>
     </Card>
   );
