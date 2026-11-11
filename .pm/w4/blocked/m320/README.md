@@ -184,3 +184,10 @@ The release gate cleared at `6ee0197c7` (14:43 UTC): production is pinned to `f6
     - `GET /v1/logs?…&type=app&startTime=2026-11-11T16:54:50Z` shows two new instances for this one deploy, each starting nginx: `…-sjrmnnbtrru601glogre` (first line 16:55:12.8) and `…-48s95tq3f6gt9au147rg` (first line 16:55:47.9).
     - `GET …/instances` afterwards lists only `…-48s95tq3f6gt9au147rg` (created 16:55:45). The traffic switch at 16:55:58.7 matches that second instance becoming Ready.
 - **Not run this round:** Run B (cancel before promotion), the git-built case, the neighbours, and the hook `imgURL` path itself.
+- **Run B (QA loop round 122, 17:09–17:11 UTC) passes through the hook path.**
+  - **Fixture:** `qa-20261111-r122-ngx` (`srv-dbqa1snpvbns739s7ghg`), nginx `1.27-alpine`. Serving instance `…-q12q0dhvskrddhe094l4`, created 17:08:23. Deleted afterwards (DELETE 204, then GET 404).
+  - **Steps:** the deploy hook with `&imgURL=docker.io%2Flibrary%2Fnginx%3A1.26-alpine` → 200, `dep-dbqa2og3u30c73cf8sig`. The row went `created` 17:09:55 → `update_in_progress` 17:10:11.5. `POST …/deploys/dep-dbqa2og3u30c73cf8sig/cancel` at 17:10:17.8 → 200, then the row read `canceled` at 17:10:19.2.
+  - **Results:**
+    - All 91 Server-header polls from 17:09:50 to 17:11:20 answered `200 nginx/1.27.5`. The candidate version never answered.
+    - The candidate instance `…-3lf5tigv7uf7lgtu9c6u` (created 17:10:08; nginx started 17:10:10.7) showed in `GET …/instances` right after the cancel. By 17:11:30 the list was back to the serving instance alone.
+  - **Not run:** the dashboard Cancel → Proceed repeat.
