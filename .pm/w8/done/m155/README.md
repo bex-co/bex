@@ -1,18 +1,18 @@
 # w8 · m155 — A Postgres user can create more databases in its instance, as on Render
 
-**Worker:** worker8 **Goal:** the default user of a bex Postgres instance can run `CREATE DATABASE`, and connect to the new database through the instance's own URLs with the database name substituted, as Render documents; every credential that becomes the default keeps that ability. **Status:** in progress (t001, t004, t005, t006 done, code shipped; t002 and t003's cluster reads and t007, the production replay, wait for the next platform deploy)
+**Worker:** worker8 **Goal:** the default user of a bex Postgres instance can run `CREATE DATABASE`, and connect to the new database through the instance's own URLs with the database name substituted, as Render documents; every credential that becomes the default keeps that ability. **Status:** done (2026-11-11; all seven tasks done, Definition of done 1–6 verified on production)
 
 ## Tasks (in order)
 
 | id   | title                                                                         | est | depends_on |
 | ---- | ----------------------------------------------------------------------------- | --- | ---------- |
 | t001 | Decide the default user's role attributes, record them in ADR009 and ADR018 — **DONE** | 30m | —          |
-| t002 | The owner and every default credential can create databases (implemented and tested; cluster check open) | 45m | t001       |
-| t003 | Blast radius: existing and restored databases, retired users, exports, limits (unit tests and spike done; production reads open) | 40m | t002       |
+| t002 | The owner and every default credential can create databases — **DONE** | 45m | t001       |
+| t003 | Blast radius: existing and restored databases, retired users, exports, limits — **DONE** | 40m | t002       |
 | t004 | Render parity — **DONE**                                                      | 20m | t003       |
 | t005 | Simplify — **DONE**                                                           | 15m | t004       |
 | t006 | Test coverage — **DONE**                                                      | 30m | t004       |
-| t007 | Closeout (live replay on production)                                          | 20m | t006       |
+| t007 | Closeout (live replay on production) — **DONE**                               | 20m | t006       |
 
 ## Definition of done
 
@@ -87,3 +87,28 @@
 - **Tests (t006).** `database_createdb_test.go`: the owner, a default credential, an auxiliary user, a retired login and a retired owner; a restored database; and merging the attribute into a live `roles` entry settles in one pass and is withdrawn again. `make test` and `make lint` pass.
 - **Blast radius so far (t003).** Covered by test or spike: existing role converges without a restart; restored database; auxiliary and retired users. Filed: w8/258 (a logical export covers the primary database only; one `databaseName` on every surface; Insights unchecked). Open, on production: an existing database after the deploy, suspend and resume, a credential added afterwards.
 - **Fixture kept for the deploy.** `qa-w8m155-pre` (`dpg-dbq380i34ugc73cu1gig`, free, PostgreSQL 18, `bex-canary`), created before the fix is deployed: user attributes `f/f/f`, `CREATE DATABASE` refused, postmaster started `2026-11-11 09:24:26.125603+00`. After the deploy it must allow `CREATE DATABASE` with the same postmaster start time. Delete it at closeout.
+
+## Closeout (t007, 2026-11-11 UTC): Definition of done on production
+
+Platform pin `f609163ada8e` (deploy run 43038763852, pinned 14:43 UTC), code `3d349d495`, released `bex v0.5.0`, workspace `bex-canary`, QA human device login. `bex psql` ran through a containerized `psql` 17 client.
+
+1. **A fresh instance: pass.** `bex pg create --name qa-w8m155-new --plan free` (PostgreSQL 18), then `bex psql … -c "CREATE DATABASE second_db"` printed `CREATE DATABASE`, and the `pg_database` query printed one row.
+2. **The external URL with the new name: pass.** The instance's `externalConnectionString` with `/second_db` as its final component connected over TLS and answered `select current_database()` with `second_db`.
+3. **An existing database, with no restart: pass.** `qa-w8m155-pre` was created at 09:24 UTC, before the fix was deployed: `rolcreatedb = f`, `CREATE DATABASE` refused, postmaster started `2026-11-11 09:24:26.125603+00`. After the deploy the same instance had `rolcreatedb = t`, the same postmaster start time, its table and row, and `CREATE DATABASE second_db` succeeded.
+4. **A credential added afterwards: pass.** `POST /v1/postgres/<id>/credentials` (`qa_w8m155_second`) became the default user, held `rolcreatedb = t`, created `third_db` and read the first user's table.
+5. **Still not a superuser: pass.** `rolsuper = f`, `rolcreaterole = f` for the owner and every credential; `CREATE USER` answers `permission denied to create role`, as t001 decided (w8/257).
+6. **Fixtures deleted.** `GET /v1/postgres` lists none for the workspace.
+
+**Blast radius (t003), each a real read on production unless said otherwise:**
+
+| Shape | Result |
+| --- | --- |
+| Existing database after the deploy | gains `CREATEDB`, postmaster not restarted (DoD 3) |
+| Suspend, then resume | `second_db` and `third_db` still there, `rolcreatedb = t`, `CREATE DATABASE fourth_db` succeeds |
+| A default credential added later | `rolcanlogin = t`, `rolcreatedb = t` |
+| A deleted (retired) credential | `rolcanlogin = f`, `rolcreatedb = f` |
+| An auxiliary user (`POST …/users`) | `rolcanlogin = t`, `rolcreatedb = f` |
+| A paid instance (`0.1c-256mb`) | owner `rolcreatedb = t` |
+| A restored database | **not read live.** `TestARestoredDatabaseKeepsCreateDB` covers the projection, which is the same code. A live restore of a fresh `0.1c-256mb` instance was accepted (`POST …/recovery` → 200) and was still `creating` 15 minutes later, when the time box ended and both instances were deleted; that is filed as w8/268. |
+
+Differences from Render that remain are filed: w8/257 (`CREATE USER`) and w8/258 (what a second database is not covered by).
