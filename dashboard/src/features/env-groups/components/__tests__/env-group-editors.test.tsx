@@ -191,6 +191,33 @@ describe("EnvGroupEditors restored-draft row identity (w4/139)", () => {
   });
 });
 
+// w21/047: the group editor is the service editor's component, so the server's
+// value rules mark its rows too.
+describe("EnvGroupEditors value rules (w21/047)", () => {
+  it("marks a PORT the operator would ignore in its row and holds Save", async () => {
+    const user = userEvent.setup();
+    renderEditors();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("button", { name: "Add variable" }));
+    await user.click(
+      await screen.findByRole("menuitem", { name: "Add variable" }),
+    );
+    const keys = screen.getAllByRole("textbox", { name: "Key" });
+    await user.type(keys[keys.length - 1]!, "PORT");
+    const value = screen.getByRole("textbox", { name: "Value for PORT" });
+    await user.click(value);
+    await user.paste("abc");
+
+    expect(value).toHaveAttribute("aria-invalid", "true");
+    expect(value).toHaveAccessibleDescription(
+      /PORT must be a whole number from 1 to 65535/,
+    );
+    expect(
+      screen.getByRole("button", { name: "Save and deploy" }),
+    ).toBeDisabled();
+  });
+});
+
 // w4/m161: two tabs edit one group. B saves first; A's 30-second poll then
 // delivers B's revision. A's draft must keep the revision it was opened from,
 // so A's save is refused instead of silently overwriting B's value.

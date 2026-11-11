@@ -5123,6 +5123,24 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Enter a value for this new variable.",
     description: "Draft validation for a new variable without a value",
   },
+  "services.environmentValueNul": {
+    message:
+      "A value cannot contain a NUL byte, which a process environment cannot carry. Use a secret file for binary content.",
+    description:
+      "Draft validation under an environment variable value with a NUL byte (w21/047)",
+  },
+  "services.environmentValueTooLarge": {
+    message:
+      "A KEY=value entry can be at most 131,071 bytes: a process cannot start with more. Use a secret file for large payloads.",
+    description:
+      "Draft validation under an environment variable whose KEY=value entry is over the process limit; the server counts UTF-8 bytes, so a Chinese character is 3 (w21/047)",
+  },
+  "services.environmentPortInvalid": {
+    message:
+      "PORT must be a whole number from 1 to 65535, and not 18012, 18013, 18014 or 19099, which the platform reserves.",
+    description:
+      "Draft validation under a PORT environment variable the operator would ignore (w21/047)",
+  },
   "services.environmentLimit": {
     message:
       "Environment variables are limited to 500 and 512 KiB in total per service or group.",

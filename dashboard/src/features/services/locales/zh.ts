@@ -5012,6 +5012,24 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "请为此新变量输入值。",
     description: "Draft validation for a new variable without a value",
   },
+  "services.environmentValueNul": {
+    message:
+      "值不能包含 NUL 字节，进程环境无法携带它。二进制内容请使用密钥文件。",
+    description:
+      "Draft validation under an environment variable value with a NUL byte (w21/047)",
+  },
+  "services.environmentValueTooLarge": {
+    message:
+      "单个 KEY=value 条目最多 131,071 字节，超过后进程无法启动。大内容请使用密钥文件。",
+    description:
+      "Draft validation under an environment variable whose KEY=value entry is over the process limit; the server counts UTF-8 bytes, so a Chinese character is 3 (w21/047)",
+  },
+  "services.environmentPortInvalid": {
+    message:
+      "PORT 必须是 1 到 65535 之间的整数，且不能是平台保留的 18012、18013、18014 或 19099。",
+    description:
+      "Draft validation under a PORT environment variable the operator would ignore (w21/047)",
+  },
   "services.environmentLimit": {
     message: "每个服务或环境组最多 500 个环境变量，总大小不超过 512 KiB。",
     description:

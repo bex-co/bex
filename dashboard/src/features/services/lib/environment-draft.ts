@@ -91,7 +91,16 @@ export interface EnvironmentPatchInput {
 }
 
 export interface DraftValidation {
-  env: Record<string, "invalid" | "duplicate" | "value" | "limit">;
+  env: Record<
+    string,
+    | "invalid"
+    | "duplicate"
+    | "value"
+    | "limit"
+    | "nul"
+    | "tooLarge"
+    | "portInvalid"
+  >;
   files: Record<string, "invalid" | "duplicate" | "content" | "limit">;
 }
 
@@ -272,6 +281,61 @@ function flagOverLimit<R extends { id: string; deleted: boolean }>(
   }
 }
 
+/**
+ * A process cannot start with one KEY=value string, terminator included, over
+ * this many bytes (Linux MAX_ARG_STRLEN; core.MaxEnvEntryBytes, w4/422).
+ */
+export const MAX_ENV_ENTRY_BYTES = 131072;
+
+/**
+ * The ports the platform reserves, which the operator refuses as a service's
+ * PORT (`appv1alpha1.IsReservedImagePort`). The Go test
+ * `TestEnvValueRulesVectors` and this module's test pin the same list.
+ */
+export const RESERVED_PLATFORM_PORTS = [18012, 18013, 18014, 19099] as const;
+
+/**
+ * A PORT value the operator will serve on: an integer 1-65535 that is not
+ * reserved. Go's `strconv.Atoi` takes an optional sign and no surrounding
+ * space, so the check does too (core.ValidPortValue, w8/170).
+ */
+export function isValidPortValue(value: string): boolean {
+  if (!/^[+-]?\d+$/.test(value)) return false;
+  const port = Number.parseInt(value, 10);
+  return (
+    port >= 1 &&
+    port <= 65535 &&
+    !(RESERVED_PLATFORM_PORTS as readonly number[]).includes(port)
+  );
+}
+
+/**
+ * The value rules bex-api applies to an environment variable the save newly
+ * supplies (core.CheckEnvValue): no NUL byte, one KEY=value entry within the
+ * process limit, and a PORT the operator will serve on. In that order, as the
+ * server checks them. A row whose value the editor never revealed, or did not
+ * change, is not supplied by the save, so it is not checked (a legacy stored
+ * value stays replaceable and deletable).
+ */
+function valueRuleError(
+  row: EnvDraftRow,
+): "nul" | "tooLarge" | "portInvalid" | null {
+  const value = row.value;
+  if (value == null || (row.originalKey != null && !row.valueChanged)) {
+    return null;
+  }
+  const key = row.key.trim();
+  if (value.includes("\0")) return "nul";
+  if (
+    utf8.encode(key).length + 1 + utf8.encode(value).length + 1 >
+    MAX_ENV_ENTRY_BYTES
+  ) {
+    return "tooLarge";
+  }
+  if (key === "PORT" && !isValidPortValue(value)) return "portInvalid";
+  return null;
+}
+
 export function validateEnvironmentDraft(
   draft: EnvironmentDraft,
 ): DraftValidation {
@@ -287,6 +351,15 @@ export function validateEnvironmentDraft(
     isValidSecretFileName,
     "content",
   );
+  // A specific value rule beats the generic missing-value and limit marks, but
+  // never a bad or duplicate key, which is the row's first problem.
+  for (const row of draft.envVars) {
+    if (row.deleted || row.readOnly) continue;
+    const rule = valueRuleError(row);
+    if (rule && env[row.id] !== "invalid" && env[row.id] !== "duplicate") {
+      env[row.id] = rule;
+    }
+  }
   flagOverLimit(draft.envVars, ENV_LENS, env);
   flagOverLimit(draft.secretFiles, FILE_LENS, files);
   return { env, files };

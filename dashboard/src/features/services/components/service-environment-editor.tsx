@@ -1302,6 +1302,13 @@ function EnvDraftItem({
   onChange: (update: Partial<EnvDraftRow>) => void;
 }) {
   const { t } = useTranslations();
+  const valueErrorId = useId();
+  // The value rules (a NUL, an entry over the process limit, a PORT the
+  // operator will not serve on) mark the value, not the key (w21/047).
+  const valueRule =
+    error === "nul" || error === "tooLarge" || error === "portInvalid"
+      ? error
+      : undefined;
   if (row.deleted) {
     return (
       <StagedDeleteRow
@@ -1346,10 +1353,10 @@ function EnvDraftItem({
           // Key keeps the generic column name — its own value *is* the
           // variable identity; interpolating would be circular (m101/t013).
           aria-label={t("services.envColKey")}
-          aria-invalid={Boolean(error)}
+          aria-invalid={Boolean(error) && !valueRule}
           placeholder={t("services.envKeyPlaceholder")}
         />
-        {error ? (
+        {error && !valueRule ? (
           <p className="text-destructive text-xs" role="alert">
             {error === "duplicate"
               ? t("services.environmentDuplicateKey")
@@ -1361,29 +1368,51 @@ function EnvDraftItem({
           </p>
         ) : null}
       </div>
-      <AutoTextarea
-        value={row.value ?? ""}
-        disabled={disabled}
-        aria-describedby={disabled ? permissionDescriptionID : undefined}
-        onChange={(event) =>
-          onChange({
-            value: event.target.value,
-            valueChanged: true,
-            generateValue: false,
-          })
-        }
-        className="min-w-0 font-mono text-sm"
-        aria-label={
-          row.key.trim()
-            ? t("services.envValueFor", { name: row.key.trim() })
-            : t("services.envColValue")
-        }
-        placeholder={
-          row.originalKey && !row.valueChanged
-            ? t("services.environmentUnchangedMasked")
-            : t("services.envValuePlaceholder")
-        }
-      />
+      <div className="min-w-0 space-y-1">
+        <AutoTextarea
+          value={row.value ?? ""}
+          disabled={disabled}
+          aria-describedby={
+            valueRule
+              ? valueErrorId
+              : disabled
+                ? permissionDescriptionID
+                : undefined
+          }
+          aria-invalid={valueRule ? true : undefined}
+          onChange={(event) =>
+            onChange({
+              value: event.target.value,
+              valueChanged: true,
+              generateValue: false,
+            })
+          }
+          className="min-w-0 font-mono text-sm"
+          aria-label={
+            row.key.trim()
+              ? t("services.envValueFor", { name: row.key.trim() })
+              : t("services.envColValue")
+          }
+          placeholder={
+            row.originalKey && !row.valueChanged
+              ? t("services.environmentUnchangedMasked")
+              : t("services.envValuePlaceholder")
+          }
+        />
+        {valueRule ? (
+          <p
+            id={valueErrorId}
+            className="text-destructive text-xs"
+            role="alert"
+          >
+            {valueRule === "nul"
+              ? t("services.environmentValueNul")
+              : valueRule === "tooLarge"
+                ? t("services.environmentValueTooLarge")
+                : t("services.environmentPortInvalid")}
+          </p>
+        ) : null}
+      </div>
       <Button
         size="icon"
         variant="ghost"

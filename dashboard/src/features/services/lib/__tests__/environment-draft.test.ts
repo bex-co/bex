@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   MAX_ENVIRONMENT_ENTRIES,
   MAX_ENVIRONMENT_MAP_BYTES,
+  MAX_ENV_ENTRY_BYTES,
+  RESERVED_PLATFORM_PORTS,
+  isValidPortValue,
   createEnvironmentDraft,
   environmentDraftPatch,
   isDraftValid,
@@ -394,10 +397,22 @@ describe("environment draft", () => {
         "new:ONE_MORE": "limit",
       });
 
+      // Five entries under the per-entry limit that together pass the map's.
       const sized = createEnvironmentDraft([], []);
-      addVar(sized, "BIG", "x".repeat(MAX_ENVIRONMENT_MAP_BYTES));
-      expect(validateEnvironmentDraft(sized).env).toEqual({
-        "new:BIG": "limit",
+      for (let i = 0; i < 5; i++) addVar(sized, `BIG_${i}`, "x".repeat(110000));
+      expect(validateEnvironmentDraft(sized).env).toEqual(
+        Object.fromEntries(
+          Array.from({ length: 5 }, (_, i) => [`new:BIG_${i}`, "limit"]),
+        ),
+      );
+      expect(110000 * 5).toBeGreaterThan(MAX_ENVIRONMENT_MAP_BYTES);
+
+      // One entry over the process limit is that rule's, which is the more
+      // specific answer (w21/047).
+      const single = createEnvironmentDraft([], []);
+      addVar(single, "BIG", "x".repeat(MAX_ENVIRONMENT_MAP_BYTES));
+      expect(validateEnvironmentDraft(single).env).toEqual({
+        "new:BIG": "tooLarge",
       });
     });
 
@@ -483,5 +498,120 @@ describe("name length cap", () => {
     const atLimit = createEnvironmentDraft([], []);
     addFile(atLimit, "f".repeat(253), "x");
     expect(isDraftValid(validateEnvironmentDraft(atLimit))).toBe(true);
+  });
+});
+
+// w21/047: the value rules bex-api applies to a variable a save newly supplies
+// (core.CheckEnvValue), marked in the row before Save. core's
+// TestEnvValueRulesVectors pins the same numbers.
+describe("environment value rules (w21/047)", () => {
+  const rowError = (draft: EnvironmentDraft, key: string) =>
+    validateEnvironmentDraft(draft).env[`new:${key}`];
+
+  it.each([
+    ["8080", true],
+    ["1", true],
+    ["65535", true],
+    ["00080", true],
+    // strconv.Atoi takes a sign and no surrounding space.
+    ["+80", true],
+    ["abc", false],
+    ["", false],
+    ["0", false],
+    ["65536", false],
+    ["-1", false],
+    ["80 ", false],
+    [" 80", false],
+    ["8.0", false],
+    ["99999999999999999999", false],
+    ["18012", false],
+    ["18013", false],
+    ["18014", false],
+    ["19099", false],
+  ])("PORT=%j is %s", (value, ok) => {
+    expect(isValidPortValue(value)).toBe(ok);
+    const draft = createEnvironmentDraft([], []);
+    addVar(draft, "PORT", value);
+    expect(rowError(draft, "PORT")).toBe(ok ? undefined : "portInvalid");
+  });
+
+  it("pins the reserved ports against the Go list", () => {
+    expect([...RESERVED_PLATFORM_PORTS]).toEqual([18012, 18013, 18014, 19099]);
+  });
+
+  it("applies the PORT rule to the exact key only", () => {
+    const draft = createEnvironmentDraft([], []);
+    addVar(draft, "PORTAL", "abc");
+    addVar(draft, "port", "abc");
+    expect(rowError(draft, "PORTAL")).toBeUndefined();
+    expect(rowError(draft, "port")).toBeUndefined();
+  });
+
+  it("counts KEY=value plus its terminator in UTF-8 bytes, as the server does", () => {
+    // len(key)+1+len(value)+1 must not exceed 131072.
+    const atLimit = "a".repeat(MAX_ENV_ENTRY_BYTES - "QA_BIG".length - 2);
+    const draft = createEnvironmentDraft([], []);
+    addVar(draft, "QA_BIG", atLimit);
+    expect(rowError(draft, "QA_BIG")).toBeUndefined();
+    const over = createEnvironmentDraft([], []);
+    addVar(over, "QA_BIG", atLimit + "a");
+    expect(rowError(over, "QA_BIG")).toBe("tooLarge");
+    // 43,690 Chinese characters are 131,070 bytes, and the key, "=" and the
+    // terminator make 131,073: under 131,072 characters, over 131,072 bytes.
+    const chinese = createEnvironmentDraft([], []);
+    addVar(chinese, "K", "中".repeat(43690));
+    expect(rowError(chinese, "K")).toBe("tooLarge");
+    const fits = createEnvironmentDraft([], []);
+    addVar(fits, "K", "中".repeat(43689));
+    expect(rowError(fits, "K")).toBeUndefined();
+    // The 140000-character value of the live probe.
+    const big = createEnvironmentDraft([], []);
+    addVar(big, "QA_BIG", "a".repeat(140000));
+    expect(rowError(big, "QA_BIG")).toBe("tooLarge");
+  });
+
+  it("refuses a NUL byte, before the other value rules", () => {
+    const draft = createEnvironmentDraft([], []);
+    addVar(draft, "PORT", "8\u00000");
+    expect(rowError(draft, "PORT")).toBe("nul");
+    const big = createEnvironmentDraft([], []);
+    addVar(big, "K", "a".repeat(140000) + "\u0000");
+    expect(rowError(big, "K")).toBe("nul");
+  });
+
+  it("checks only a value the save newly supplies", () => {
+    const draft = createEnvironmentDraft(["PORT", "KEEP"], []);
+    // An opaque stored value, or one the user did not change, is not sent.
+    expect(validateEnvironmentDraft(draft).env).toEqual({});
+    Object.assign(draft.envVars[0], { value: "abc", valueChanged: false });
+    expect(validateEnvironmentDraft(draft).env).toEqual({});
+    // An edited value is.
+    Object.assign(draft.envVars[0], { valueChanged: true });
+    expect(validateEnvironmentDraft(draft).env[draft.envVars[0].id]).toBe(
+      "portInvalid",
+    );
+    // A deleted row sends nothing.
+    draft.envVars[0].deleted = true;
+    expect(validateEnvironmentDraft(draft).env).toEqual({});
+  });
+
+  it("keeps a bad or duplicate key as the row's first problem", () => {
+    const draft = createEnvironmentDraft([], []);
+    addVar(draft, "BAD KEY", "a".repeat(140000));
+    expect(validateEnvironmentDraft(draft).env["new:BAD KEY"]).toBe("invalid");
+    const dup = createEnvironmentDraft([], []);
+    addVar(dup, "PORT", "abc");
+    dup.envVars.push({ ...dup.envVars[0], id: "new:PORT-2" });
+    const env = validateEnvironmentDraft(dup).env;
+    expect(env["new:PORT"]).toBe("duplicate");
+    expect(env["new:PORT-2"]).toBe("duplicate");
+  });
+
+  it("holds Save for a marked value", () => {
+    const draft = createEnvironmentDraft([], []);
+    addVar(draft, "PORT", "abc");
+    expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(false);
+    draft.envVars[0].value = "8080";
+    expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(true);
   });
 });

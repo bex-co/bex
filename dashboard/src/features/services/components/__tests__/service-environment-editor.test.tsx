@@ -516,6 +516,44 @@ describe("ServiceEnvironmentEditor", () => {
     );
   });
 
+  // w21/047: the server's value rules mark the value's row before Save, instead
+  // of a toast after the round trip with the draft kept and the row unmarked.
+  it.each([
+    ["PORT=abc", "PORT", "abc", /PORT must be a whole number from 1 to 65535/],
+    ["PORT=18012", "PORT", "18012", /not 18012, 18013, 18014 or 19099/],
+    [
+      "a 140000-character value",
+      "QA_BIG",
+      "x".repeat(140000),
+      /at most 131,071 bytes/,
+    ],
+  ])(
+    "marks %s in its row and holds Save",
+    async (_label, name, value, message) => {
+      const user = userEvent.setup();
+      renderEditor();
+      await user.click(await screen.findByRole("button", { name: "Edit" }));
+      await user.click(screen.getByRole("button", { name: "Add variable" }));
+      await user.click(
+        await screen.findByRole("menuitem", { name: "Add variable" }),
+      );
+      const keys = screen.getAllByRole("textbox", { name: "Key" });
+      await user.type(keys[keys.length - 1], name);
+      const field = screen.getByRole("textbox", { name: `Value for ${name}` });
+      await user.click(field);
+      await user.paste(value);
+
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveAccessibleDescription(message);
+      // The mark is on the value, not the key.
+      expect(keys[keys.length - 1]).not.toHaveAttribute("aria-invalid", "true");
+      expect(
+        screen.getByRole("button", { name: "Save and deploy" }),
+      ).toBeDisabled();
+      expect(save).not.toHaveBeenCalled();
+    },
+  );
+
   // w2/m95 t002: the value field used to be a single-line <input>, which the
   // browser flattens a pasted line break out of before React ever sees it — a
   // pasted PEM key was saved changed, silently.
