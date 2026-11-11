@@ -70,7 +70,10 @@ func writeRaw(w io.Writer, f format, raw []byte) error {
 		return err
 	}
 	var buf bytes.Buffer
-	if err := json.Indent(&buf, raw, "", "  "); err != nil {
+	// json.Indent keeps the whitespace that ends its input, and bex-api ends
+	// every body with a newline: untrimmed, the output would end with a blank
+	// line.
+	if err := json.Indent(&buf, bytes.TrimRight(raw, " \t\r\n"), "", "  "); err != nil {
 		return err
 	}
 	buf.WriteByte('\n')

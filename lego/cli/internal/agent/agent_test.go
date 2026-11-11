@@ -936,6 +936,30 @@ func TestListCancelAndGet(t *testing.T) {
 	}
 }
 
+// w32/014: -o json ends with one newline. bex-api ends every body with a
+// newline of its own (as this fake does), which used to come out as a blank
+// last line.
+func TestJSONOutputEndsWithOneNewline(t *testing.T) {
+	f := newFakeAPI(t)
+	f.script["ags-j1"] = []string{stateSucceeded}
+	f.script["ags-j2"] = []string{stateSucceeded}
+	f.files["ags-j1"] = []attachmentFixture{{att: attachment{ID: "att-j1", Turn: 1, Direction: "output", Name: "out.txt", Size: 3}}}
+	for _, args := range [][]string{
+		{"get", "ags-j1"}, {"list"}, {"wait", "ags-j1"},
+		// Controls: several answers are joined into an array, which never
+		// ended with the API's newline.
+		{"wait", "ags-j1", "ags-j2"}, {"files", "ags-j1"},
+	} {
+		stdout, stderr, code := run(t, f.deps(t).deps, append(args, "-o", "json")...)
+		if code != 0 || !json.Valid([]byte(stdout)) {
+			t.Fatalf("%v -o json: exit %d, stderr %q, stdout %q", args, code, stderr, stdout)
+		}
+		if body := strings.TrimRight(stdout, "\n"); stdout != body+"\n" {
+			t.Errorf("%v -o json ends with %q, want one newline", args, stdout[len(body):])
+		}
+	}
+}
+
 // w32/011: -o yaml prints the numbers the API sent. An integer keeps its
 // digits whatever its size; -o json is the API's bytes, re-indented.
 func TestYAMLOutputKeepsIntegersExact(t *testing.T) {

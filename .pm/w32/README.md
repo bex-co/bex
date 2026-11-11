@@ -13,6 +13,7 @@
 
 ## Inbox
 
+- [x] [014](done/014.md) — `bex agent … -o json` ends with a blank line (the API's own trailing newline plus the CLI's) — DONE (the answer is trimmed before it is re-indented)
 - [x] [013](done/013.md) — the CLI docs and ADR018 still list "Render" prose and the `pg create` wizard hint as branding residuals; w2/073 and w2/082 rewrote both — DONE (docs, ADR018 and the pin-bump checklist now describe the product-name rule and the wizard rewrite)
 - [x] [012](done/012.md) — `BEX_WORKSPACE` set to a workspace name that starts with `tea-` is never resolved (sent as `ownerId`, "not allowed") — DONE (only a value with the id's whole shape is an id; `tea-house` is resolved as a name)
 - [x] [011](done/011.md) — `bex agent … -o yaml` prints large integers as floats (`size: 2.097152e+06`) and changes 16-digit ones — DONE (every integer prints with the API's own digits)
