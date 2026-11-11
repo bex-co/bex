@@ -3716,9 +3716,14 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 		// supersedes in that window otherwise closes this deploy's row
 		// canceled even though it served. A rollout that routes early takes no
 		// traffic until it is promoted, so before that it has not served
-		// (w4/m320).
+		// (w4/m320). bex-api can close the deploy row live on this very
+		// status, and a row's image digest is fixed when it closes, so the
+		// release's digest is recorded with it (w4/m320 t011, w8/m122), and
+		// its image is protected from retention as settleReady's is.
 		if rev := dep.Spec.Template.Labels[labelRevision]; rev != "" && rev == releaseRevision(app) && !routesEarly(app) {
 			app.Status.ActiveRevision = rev
+			r.recordImageDigest(ctx, app, dep)
+			r.protectServingImage(ctx, app)
 		}
 	}
 	stampNotReadyCondition(app, notReadyReason, notReadyMessage)

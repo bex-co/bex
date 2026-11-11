@@ -1,6 +1,6 @@
 # w4 · m320 — An image web service's deploy takes no traffic until it is the live release: HTTP port discovery doesn't put the candidate in front of users, an image change rolls once, and a canceled deploy never answered
 
-**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** blocked — t001–t005 and t007–t009 done (shipped); t006 live replay waits for the next production deploy, then t010 closes
+**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** blocked — t001–t005, t007–t009 and t011 done (shipped); t006 live replay waits for the next production deploy, then t010 closes
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
-| [t011](t011.md) | Regression of w8/m122: every image change on an image web service goes live without `image.sha`, because the row closes `live` before the operator records the digest | 40m | t004 |
+| [t011](done/t011.md) | Regression of w8/m122: every image change on an image web service goes live without `image.sha`, because the row closes `live` before the operator records the digest — **DONE** | 40m | t004 |
 | [t010](t010.md) | Closeout | 10m | t008, t009, t011 |
 
 Eleven tasks, 360m (6h). **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.

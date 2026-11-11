@@ -560,26 +560,46 @@ func TestWebImageChangeTakesNoTrafficUntilPromotion(t *testing.T) {
 }
 
 // A held web image release has not served, so the progress stamp leaves the
-// serving release active even when every pod of the new revision is Ready
-// (w4/m320, amending w4/405 for this case).
+// serving release active, with its image digest, even when every pod of the
+// new revision is Ready (w4/m320, amending w4/405 for this case). Once it is
+// promoted it is stamped active with its own digest, read off its pinned
+// reference, in the same write (w4/m320 t011).
 func TestRolloutProgressLeavesAHeldWebImageReleaseInactive(t *testing.T) {
-	app := webImageApp(2)
-	app.Namespace = "default"
-	app.Status.Phase, app.Status.ActiveRevision = appv1alpha1.PhaseDeploying, "rev-1"
-	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:a", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}}
-	app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}
-	dep := progressDeadlineDep(app.Name)
-	dep.Spec.Template.Labels[labelRevision] = "rev-2"
-	dep.Status.Conditions = nil
-	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: app.Name + "-0", Namespace: "default", Labels: map[string]string{labelApp: app.Name, labelRevision: "rev-2"}}}
-	pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
-	cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
-	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
-	if _, err := r.reportRolloutProgress(t.Context(), app, dep, 1, 80, "waiting"); err != nil {
-		t.Fatal(err)
-	}
-	if app.Status.ActiveRevision != "rev-1" {
-		t.Fatalf("ActiveRevision = %q, want rev-1 until promotion", app.Status.ActiveRevision)
+	for _, tc := range []struct {
+		name    string
+		serving *appv1alpha1.ImageNetworkStatus
+		active  string
+		digest  appv1alpha1.ImageDigestStatus
+	}{
+		{"held", &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@" + digestA, Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}},
+			"rev-1", appv1alpha1.ImageDigestStatus{Generation: 1, Digest: digestA}},
+		{"promoted", &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@" + digestB, Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}},
+			"rev-2", appv1alpha1.ImageDigestStatus{Generation: 2, Digest: digestB}},
+	} {
+		app := webImageApp(2)
+		app.Namespace = "default"
+		app.Status.Phase, app.Status.ActiveRevision, app.Status.Image = appv1alpha1.PhaseDeploying, "rev-1", "nginx@"+digestB
+		app.Status.ImageDigest = &appv1alpha1.ImageDigestStatus{Generation: 1, Digest: digestA}
+		app.Status.ServingNetwork = tc.serving
+		app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@" + digestB, Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}
+		dep := progressDeadlineDep(app.Name)
+		dep.Spec.Template.Labels[labelRevision] = "rev-2"
+		dep.Status.Conditions = nil
+		// Labelled to match the Deployment's selector, so the release's pod
+		// is Ready as far as the operator can see.
+		pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: app.Name + "-0", Namespace: "default", Labels: map[string]string{"app": app.Name, labelRevision: "rev-2"}}}
+		pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+		cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
+		r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+		if _, err := r.reportRolloutProgress(t.Context(), app, dep, 1, 80, "waiting"); err != nil {
+			t.Fatal(err)
+		}
+		if app.Status.ActiveRevision != tc.active {
+			t.Errorf("%s: ActiveRevision = %q, want %q", tc.name, app.Status.ActiveRevision, tc.active)
+		}
+		if got := app.Status.ImageDigest; got == nil || *got != tc.digest {
+			t.Errorf("%s: ImageDigest = %+v, want %+v", tc.name, got, tc.digest)
+		}
 	}
 }
 

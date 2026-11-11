@@ -132,27 +132,33 @@ func TestRefreshServingWhileBuildingWithoutALiveRevision(t *testing.T) {
 // the progress stamp records it as the active revision. A newer release that
 // supersedes before the Deployment status converges then closes the older
 // deploy's row live (it served), not canceled. A revision whose pods are not
-// all ready stamps nothing.
+// all ready stamps nothing. The same write records the release's image digest
+// (w4/m320 t011): bex-api fixes a row's image.sha when it closes it live, and
+// it can close it on this status.
 func TestRolloutProgressStampsActiveRevisionOncePodsServe(t *testing.T) {
 	ctx := context.Background()
 	for _, tc := range []struct {
-		name  string
-		ready bool
-		want  string
+		name   string
+		ready  bool
+		want   string
+		digest *appv1alpha1.ImageDigestStatus
 	}{
-		{"pods ready, deployment still converging", true, "rev-3"},
-		{"pods not ready", false, ""},
+		{"pods ready, deployment still converging", true, "rev-3", &appv1alpha1.ImageDigestStatus{Generation: 3, Digest: digestA}},
+		// The served release's record stays until this one serves.
+		{"pods not ready", false, "", &appv1alpha1.ImageDigestStatus{Generation: 2, Digest: digestB}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := &appv1alpha1.App{
 				ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 3},
 				Spec:       appv1alpha1.AppSpec{Image: "busybox:1.37"},
-				Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ReleaseGeneration: 3},
+				Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ReleaseGeneration: 3,
+					ImageDigest: &appv1alpha1.ImageDigestStatus{Generation: 2, Digest: digestB}},
 			}
 			dep := progressDeadlineDep("web")
 			dep.Spec.Template.Labels[labelRevision] = "rev-3"
 			dep.Status.Conditions = nil // no progress-deadline verdict
 			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-0", Namespace: "default", Labels: map[string]string{"app": "web", labelRevision: "rev-3"}}}
+			pod.Status.ContainerStatuses = []corev1.ContainerStatus{{Name: appContainerName, ImageID: "docker.io/library/busybox@" + digestA}}
 			if tc.ready {
 				pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
 			}
@@ -168,6 +174,9 @@ func TestRolloutProgressStampsActiveRevisionOncePodsServe(t *testing.T) {
 			}
 			if stored.Status.ActiveRevision != tc.want {
 				t.Fatalf("ActiveRevision = %q, want %q", stored.Status.ActiveRevision, tc.want)
+			}
+			if got := stored.Status.ImageDigest; (got == nil) != (tc.digest == nil) || (got != nil && *got != *tc.digest) {
+				t.Fatalf("ImageDigest = %+v, want %+v", got, tc.digest)
 			}
 		})
 	}

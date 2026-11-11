@@ -395,10 +395,12 @@ The cache is per instance and in memory, bounded at 48 MiB, with one object at m
 
 An image deploy reports Render's `image.sha`, "the SHA that the image reference was resolved to", on REST and MCP (`image.sha`), GraphQL (`Deploy.imageSha`) and the dashboard deploy header (short form, full value on hover, copy). Render's pinned CLI prints it after `SHA:` in its deploy list.
 
-**Source.** The operator records `status.imageDigest {generation, digest}` when a release first serves (`markRunning`, the shared web/private/worker path, `operator/internal/controller/image_digest.go`):
+**Source.** The operator records `status.imageDigest {generation, digest}` when a release first serves, from one of two sources (`operator/internal/controller/image_digest.go`):
 
 1. A digest-pinned `status.image` (`…@sha256:…`, every in-cluster build, or a service created by digest) is its own evidence; no pod is read.
 2. Otherwise the digest comes from the kubelet: `containerStatuses[app].imageID` of the earliest-created Ready, non-terminating pod of the release's own revision. A bare `sha256:…` imageID is a local image's config id, not a registry digest, and is ignored.
+
+**When.** It records the digest in the status write that first names the release in `activeRevision`. That is either `markRunning` (the shared web/private/worker path, once the Deployment converges) or the earlier `RolloutSettling` pass (w4/405), which fires once every pod of the release is Ready while the Deployment is still converging. bex-api can close the row live on that earlier write, so the digest has to be in it. Before w4/m320 t011 it was not, and every held image change went live without `image.sha`.
 
 Once a generation has a digest, it keeps it. A pod that later re-pulls a moved tag never rewrites what the release first ran. A record for another generation is dropped, never carried forward. bex-api stamps the row's `image_sha` beside `resolved_image` on the row's **live** close, and only from a record of that row's own generation. A failed, canceled or superseded deploy has no digest, and neither does a live deploy whose release recorded none. It is never shown with the previous release's digest. A rollback row takes the digest its own release records when it goes live, not one copied from its target.
 
@@ -413,7 +415,7 @@ Observed on containerd (kind v1.36.1, arm64, 2026-10-20): a pod running `docker.
 - A Git-backed deploy's built image has a digest too, but Render reports no `image` object for a Git-backed deploy. No surface reports it.
 - A cron job has no long-running pod at convergence, so it records a digest only for a digest-pinned image. A cron job on a tag reports none.
 - A static site has no runtime container and records nothing.
-- The pod read goes through the informer cache. If the cache has not yet seen the Ready pod when the Deployment reports the rollout complete, that release records no digest and its row stays without one. Nothing is backfilled after the live close.
+- The pod read goes through the informer cache. If the cache has not yet seen the Ready pod's image id when the release is first named active, that release records no digest and its row stays without one. Nothing is backfilled after the live close.
 - `image.registryCredential` is not reported.
 
 **Remaining tag-based runs.** Image-port web services now resolve and pin each release before rollout (w4/m243, corrected to the top-level digest by w8/208). Source-built private image-port services likewise pin their build reference. Other configured-port/tag paths still run the tag with `imagePullPolicy: Always`. A restart, scale-out or reschedule of the same release can therefore pull a moved tag and run bytes other than its recorded `image.sha`. Pinning each release to `ref@digest` would close that gap, but at a cost: digest resolution against tenant registries, with their credentials, before the rollout, instead of reading the kubelet afterwards. Render's docs are ambiguous about restarts, and its rollback re-pulls the tag. This is a separate product decision; it is not implemented.

@@ -114,6 +114,27 @@ func TestLiveDeploysRecordTheirOwnImageDigests(t *testing.T) {
 	}
 }
 
+// TestSettlingLiveCloseRecordsTheReleasesDigest (w4/m320 t011): the row can
+// close live on the operator's RolloutSettling pass that first names the
+// release active, before the Deployment converges. The operator records the
+// release's digest in that same status, so the row closes with it.
+func TestSettlingLiveCloseRecordsTheReleasesDigest(t *testing.T) {
+	ctx := context.Background()
+	st, appID, _, second, setStatus := imageDigestFixture(t, &appv1alpha1.ImageDigestStatus{Generation: 1, Digest: shaA})
+	setStatus(func(a *appv1alpha1.App) {
+		a.Status.Phase, a.Status.ActiveRevision = appv1alpha1.PhaseDeploying, fmt.Sprintf("rev-%d", second.Generation)
+		a.Status.Conditions = []metav1.Condition{{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+			Reason: "RolloutSettling", ObservedGeneration: a.Generation,
+		}}
+		a.Status.ImageDigest = &appv1alpha1.ImageDigestStatus{Generation: second.Generation, Digest: shaB}
+	})
+	second, _ = st.GetDeploy(ctx, appID, second.ID)
+	if second.Status != DeployLive || second.ImageSHA != shaB {
+		t.Fatalf("second deploy = %q sha %q, want live with %q", second.Status, second.ImageSHA, shaB)
+	}
+}
+
 // TestLiveCloseNeverTakesAnotherReleasesDigest: a release that goes live
 // while the operator's record is still the previous release's (or there is
 // none) stores no digest rather than the previous one.
