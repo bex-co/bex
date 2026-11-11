@@ -221,6 +221,10 @@ func TestRuntimeOutputRebrandsProductProse(t *testing.T) {
 		{nextStepOutput,
 			"Next:\n  Render will start applying your planned changes. Monitor progress at the provided dashboard URL, or check the affected services with `render services` and `render deploys` commands.\n",
 			"Next:\n  Bex will start applying your planned changes. Monitor progress at the provided dashboard URL, or check the affected services with `bex services` and `bex deploys` commands.\n"},
+		{plainOutput,
+			"Warning: something went wrong revoking your CLI token: boom. Your local credentials have been cleared, but you'll need to revoke your token in the Render dashboard: https://dashboard.bex.co/settings#cli-tokens\n",
+			"Warning: something went wrong revoking your CLI token: boom. Your local credentials have been cleared, but you'll need to revoke your token in the Bex dashboard: https://dashboard.bex.co/settings#cli-tokens\n"},
+		{plainOutput, "To revoke access, delete the API key from your Render Dashboard.\n", "To revoke access, delete the API key from your Bex dashboard.\n"},
 		// Data that merely mentions Render stays byte-exact.
 		{plainOutput, "Render-hosted app my-render-db\n", "Render-hosted app my-render-db\n"},
 	} {

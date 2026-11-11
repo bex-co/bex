@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -180,5 +181,29 @@ func TestBlueprintApproveNextStepNamesBex(t *testing.T) {
 	want := "Bex will start applying your planned changes. Monitor progress at the provided dashboard URL, or check the affected services with `bex services` and `bex deploys` commands."
 	if out.Meta.Next != want {
 		t.Fatalf("meta.next = %q, want %q", out.Meta.Next, want)
+	}
+}
+
+// A logout whose token revocation fails tells the user to revoke it in the Bex
+// dashboard (w2/082).
+func TestLogoutRevokeFailureNamesBex(t *testing.T) {
+	api := httptest.NewServer(http.NotFoundHandler()) // the revoke answers 404
+	t.Cleanup(api.Close)
+	home := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(home, ".bex"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	config := "version: 1\ndashboard_url: https://dashboard.bex.co\napi:\n  key: test-oauth-token\n  host: " + api.URL + "/v1/\n"
+	if err := os.WriteFile(filepath.Join(home, ".bex", "cli.yaml"), []byte(config), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	command := exec.Command(buildBex(), "logout")
+	command.Env = append(withoutRenderEnv(os.Environ()), "HOME="+home, "BEX_HOST="+api.URL+"/v1/", "BEX_NO_UPDATE_NOTIFIER=1")
+	output, err := command.CombinedOutput()
+	if err != nil {
+		t.Fatalf("logout: %v\n%s", err, output)
+	}
+	if !strings.Contains(string(output), "revoke your token in the Bex dashboard: https://dashboard.bex.co/settings#cli-tokens") || strings.Contains(string(output), "Render dashboard") {
+		t.Fatalf("logout output = %q", output)
 	}
 }

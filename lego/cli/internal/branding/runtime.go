@@ -56,6 +56,9 @@ const runtimeWrapped = "bex.co/runtime-output"
 var runtimeProse = strings.NewReplacer(
 	"Successfully logged out of Render.", "Successfully logged out of Bex.",
 	"Render will start applying your planned changes.", "Bex will start applying your planned changes.",
+	// `logout`'s revoke-failure warning and its environment-key notice (w2/082).
+	"revoke your token in the Render dashboard:", "revoke your token in the Bex dashboard:",
+	"delete the API key from your Render Dashboard.", "delete the API key from your Bex dashboard.",
 )
 
 // runtimeStdout maps a command path below the root to how its stdout is
