@@ -81,6 +81,7 @@ const canceled = (over: Partial<DeployView> = {}): DeployView => ({
   image: "",
   imageSha: "",
   rollbackOf: "",
+  buildAvailable: null,
   commitId: "",
   commitMessage: "",
   commitCreatedAt: null,

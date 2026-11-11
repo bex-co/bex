@@ -33,6 +33,7 @@ import {
   isCancelableDeployStatus,
 } from "@/features/deploys/lib/deploy-status";
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
+import { useGoneBuilds } from "@/features/deploys/hooks/use-gone-builds";
 import { DeployFailureReason } from "@/features/deploys/components/deploy-failure-reason";
 import {
   useServiceEvents,
@@ -103,6 +104,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
       endTime: new Date(end).toISOString(),
     };
   });
+  const goneBuilds = useGoneBuilds(serviceId);
   const { events, loading, loadingMore, hasMore, error, refetch, loadMore } =
     useServiceEvents(serviceId, {
       limit: 20,
@@ -289,11 +291,13 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                 // Cancel an in-progress deploy, or roll back a PREVIOUS
                 // (deactivated) one — never the current live deploy, which would
                 // be a no-op restart (w4/051). Mirrors the deploys list's guard
-                // so the events feed, list, and detail page all agree.
+                // so the events feed, list, and detail page all agree. A
+                // previous deploy whose build the registry no longer holds
+                // cannot be rolled back to, so it gets no action (w8/m156).
                 const hasAction =
                   !!deployId &&
                   (isCancelableDeployStatus(status) ||
-                    status === "deactivated");
+                    (status === "deactivated" && !goneBuilds.has(deployId)));
 
                 return (
                   <div

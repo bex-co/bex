@@ -60,6 +60,7 @@ function row(id: string, status: string): DeployRow {
     trigger: "api",
     image: "registry.example.com/web:1",
     rollbackOf: "",
+    buildAvailable: null,
     commitId: "",
     commitMessage: "",
     commitCreatedAt: null,

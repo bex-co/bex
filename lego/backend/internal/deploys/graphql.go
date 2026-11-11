@@ -42,6 +42,15 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"image":      gqlutil.StrField(func(d DeployView) any { return d.Image }),
 		"imageSha":   gqlutil.StrField(func(d DeployView) any { return d.ImageSHA }), // REST's image.sha, flat like commitId (w8/m122)
 		"rollbackOf": gqlutil.StrField(func(d DeployView) any { return d.RollbackOf }),
+		// buildAvailable is false when the registry no longer holds the build
+		// this deploy ran on (w8/m156; Render: "You can only roll back to a
+		// particular deploy if its build artifact is still available"). The
+		// dashboard offers Rollback only where it is not false. A bex
+		// extension: Render's deploy object has no such field.
+		"buildAvailable": &graphql.Field{
+			Type:    graphql.Boolean,
+			Resolve: gqlutil.Field(func(d DeployView) any { return !d.BuildGone }),
+		},
 		// The resolved commit this deploy ran (w9/001 + w2/m42) — flat fields,
 		// the fragment's existing style (REST nests them as Render's commit
 		// object). Empty/nil when unresolved; clients omit rather than fake.

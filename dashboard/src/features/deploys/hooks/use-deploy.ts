@@ -31,6 +31,11 @@ export interface DeployView {
    */
   imageSha: string;
   rollbackOf: string;
+  /**
+   * False when the registry no longer holds the build this deploy ran on, so
+   * it cannot be rolled back to (w8/m156). Null from an older server.
+   */
+  buildAvailable: boolean | null;
   /** The resolved commit this deploy ran (w9/001 + w2/m42); "" when unresolved. */
   commitId: string;
   commitMessage: string;
@@ -138,6 +143,7 @@ function toDeployView(
     image: d.image ?? "",
     imageSha: d.imageSha ?? "",
     rollbackOf: d.rollbackOf ?? "",
+    buildAvailable: d.buildAvailable ?? null,
     commitId: d.commitId ?? "",
     commitMessage: d.commitMessage ?? "",
     commitCreatedAt: d.commitCreatedAt ?? null,

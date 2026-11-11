@@ -217,8 +217,11 @@ export function DeploysListPage({
             });
             const commitUrl =
               repo && d.commitId ? repoCommitUrl(repo, d.commitId) : null;
+            // A previous deploy whose build the registry no longer holds
+            // cannot be rolled back to, so it gets no action (w8/m156).
             const hasListAction =
-              isCancelableDeployStatus(d.status) || d.status === "deactivated";
+              isCancelableDeployStatus(d.status) ||
+              (d.status === "deactivated" && d.buildAvailable !== false);
             return (
               <TableRow key={d.id}>
                 <TableCell className="min-w-0 align-top">
@@ -341,6 +344,7 @@ export function DeploysListPage({
                         commitId={d.commitId}
                         commitMessage={d.commitMessage}
                         trigger={d.trigger}
+                        buildAvailable={d.buildAvailable}
                       />
                     </div>
                   ) : null}

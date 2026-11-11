@@ -62,6 +62,12 @@ export interface DeployActionsProps {
    * and this component cannot see the service's history (w4/334).
    */
   trigger?: string | null;
+  /**
+   * False when the registry no longer holds the build this deploy ran on
+   * (w8/m156): it cannot be rolled back to, so Rollback is not offered.
+   * Absent or true leaves the row to its status.
+   */
+  buildAvailable?: boolean | null;
   onChanged?: () => void;
   /** A list shares its service-wide projection across all deploy rows. */
   projection?: ResourceActionsState;
@@ -81,6 +87,7 @@ export function DeployActions({
   commitId,
   commitMessage,
   trigger,
+  buildAvailable,
   onChanged,
   projection,
 }: DeployActionsProps) {
@@ -91,7 +98,8 @@ export function DeployActions({
   const ownProjection = useDeployActions(projection ? null : serviceId);
   const deployActions = projection ?? ownProjection;
   const statusCancel = isCancelableDeployStatus(status);
-  const statusRollback = isRollbackableDeployStatus(status);
+  const statusRollback =
+    isRollbackableDeployStatus(status) && buildAvailable !== false;
 
   // The selected row's own status outranks the service-wide summary: a
   // rollbackable row stays a target when the latest-20 scan found none

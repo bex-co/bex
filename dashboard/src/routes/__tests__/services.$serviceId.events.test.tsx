@@ -12,6 +12,7 @@ import {
 import { ServiceEventsPage } from "../services.$serviceId.events";
 import { formatDateTime } from "@/common/lib/format";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
+import { DeployBuildAvailabilityDocument } from "@/graphql/definitions";
 
 // The Events tab reads server(id) for the cron-runs section; a null service
 // (the common non-cron case) keeps that section out of the way.
@@ -251,6 +252,39 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     ).toBeInTheDocument();
     expect(screen.queryByText("Unknown")).not.toBeInTheDocument();
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
+  });
+
+  // w8/m156: the registry keeps a bounded history of builds. A previous
+  // deploy whose build is gone cannot be rolled back to, so its row offers no
+  // Rollback; one whose build is stored keeps it.
+  it("offers no Rollback on a previous deploy whose build is no longer stored", async () => {
+    const events = {
+      data: { serviceEvents: [deactivatedDeployEvent()] },
+      loading: false,
+      refetch: vi.fn(),
+    };
+    const availability = (buildAvailable: boolean) => (doc: unknown) =>
+      doc === DeployBuildAvailabilityDocument
+        ? {
+            data: { deploys: [{ id: "dep-live-001", buildAvailable }] },
+            loading: false,
+          }
+        : events;
+
+    mockUseQuery.mockImplementation(availability(false));
+    const gone = renderEvents("app");
+    expect(await screen.findByText(/dep-live-001/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /^Rollback to / }),
+    ).not.toBeInTheDocument();
+    gone.unmount();
+
+    mockUseQuery.mockImplementation(availability(true));
+    renderEvents("app");
+    expect(
+      await screen.findByRole("button", { name: /^Rollback to / }),
+    ).toBeInTheDocument();
+    mockUseQuery.mockReset();
   });
 
   it("navigates to the rollback deploy's own page once the mutation resolves its id", async () => {

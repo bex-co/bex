@@ -10,6 +10,7 @@ query Deploy($serviceId: String!, $deployId: String!) {
     image
     imageSha
     rollbackOf
+    buildAvailable
     commitId
     commitMessage
     commitCreatedAt

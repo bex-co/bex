@@ -123,7 +123,12 @@ type DeployView struct {
 	CommitMessage string
 	// BuildID is the build source build this deploy shipped (Render's
 	// deploy.buildId), "" for any other deploy.
-	BuildID        string
+	BuildID string
+	// BuildGone reports that the registry no longer holds the build this
+	// deploy ran on, so it cannot be rolled back to (BuildStored, w8/m156).
+	// Set by List and Get, which have the service at hand; false wherever the
+	// registry's holdings are unknown.
+	BuildGone      bool
 	CommitAuthorAt *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -427,6 +432,7 @@ func (s *Service) listFetched(ctx context.Context, a *appv1alpha1.App, filter Li
 	out := make([]DeployView, len(deploys))
 	for i, d := range deploys {
 		out[i] = view(d)
+		out[i].BuildGone = !BuildStored(a, d)
 	}
 	return out, nil
 }
@@ -464,7 +470,9 @@ func (s *Service) getFetched(ctx context.Context, a *appv1alpha1.App, deployID s
 		}
 		return DeployView{}, err
 	}
-	return view(d), nil
+	v := view(d)
+	v.BuildGone = !BuildStored(a, d)
+	return v, nil
 }
 
 // TriggerParams carries the optional body fields of Render's CreateDeploy
@@ -1182,6 +1190,11 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	// deployActions gives and the answer this verb gives cannot drift (w4/110).
 	if !RollbackActionable(a, target) {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already live — nothing to roll back to", core.ErrConflict, deployID)
+	}
+	// Refused here, before any row or patch: the pull would fail minutes
+	// later with the service already mid-rollout (w8/m156).
+	if !BuildStored(a, target) {
+		return DeployView{}, fmt.Errorf("%w: the build of deploy %q (%s) is no longer stored — only a service's recent builds are kept. Deploy its commit again instead", core.ErrConflict, deployID, store.PublicImageRef(target.ResolvedImage))
 	}
 	// A static site restores the target's retained publication, built or
 	// published straight from its repository (w4/m197): today's saved publish

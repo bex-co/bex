@@ -11,6 +11,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     image: "registry.example.com/web:1",
     imageSha: "",
     rollbackOf: "",
+    buildAvailable: null,
     commitId: "",
     commitMessage: "",
     commitCreatedAt: null,

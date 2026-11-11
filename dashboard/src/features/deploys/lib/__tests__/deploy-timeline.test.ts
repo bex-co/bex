@@ -11,6 +11,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     image: "",
     imageSha: "",
     rollbackOf: "",
+    buildAvailable: null,
     commitId: "",
     commitMessage: "",
     commitCreatedAt: null,

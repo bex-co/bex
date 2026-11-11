@@ -20,9 +20,11 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 	"strings"
 
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
@@ -117,6 +119,10 @@ func baseFor(registryHost, username string) (string, error) {
 	return CredentialedBase(registryHost)
 }
 
+// ErrManifestNotFound is ResolveDigest's answer for a tag the registry does
+// not hold (404), as opposed to a registry that could not be asked.
+var ErrManifestNotFound = errors.New("manifest not found")
+
 // ResolveDigest asks the registry which immutable manifest digest it currently
 // serves for repo:tag (HEAD /v2/<repo>/manifests/<tag> → Docker-Content-Digest).
 // username may be empty for an unauthenticated registry (the dev default).
@@ -147,6 +153,9 @@ func ResolveDigest(ctx context.Context, httpClient *http.Client, registryHost, r
 		return "", err
 	}
 	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode == http.StatusNotFound {
+		return "", fmt.Errorf("manifest HEAD %s/%s:%s: %w", registryHost, repo, tag, ErrManifestNotFound)
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return "", fmt.Errorf("manifest HEAD %s/%s:%s: status %d", registryHost, repo, tag, resp.StatusCode)
 	}
@@ -208,6 +217,50 @@ func (c *Creds) ResolveBuiltDigestFor(ctx context.Context, id identity.Identity,
 		return "", fmt.Errorf("read credential for digest resolution: %w", err)
 	}
 	return ResolveDigest(ctx, c.HTTPClient, c.Registry, id.Repo(), tag, id.ZotUsername(), password)
+}
+
+// maxStoredDigests bounds one reading of a repository (StoredDigestsFor), and
+// is the CRD's bound on status.storedImages.digests. Retention keeps fifteen
+// tags or so; a repository far past that is not read, and its previous
+// reading stands.
+const maxStoredDigests = 64
+
+// StoredDigestsFor reads which manifests id's repository still holds: the
+// digest behind each of its tags, sorted and deduplicated (w8/m156). The
+// registry keeps a bounded history, and what it kept is not derivable from
+// outside: the live- window and the pushed window are counted separately and
+// cache and signature tags share the second.
+//
+// The reading is all or nothing, because bex-api refuses a rollback to a
+// build that is not in it. Only a tag the registry answers 404 for is left
+// out: retention removed it between the listing and the lookup. Any other
+// failure fails the reading, so a registry that could not be asked never
+// reads as a build that is gone.
+func (c *Creds) StoredDigestsFor(ctx context.Context, id identity.Identity, appNS string) ([]string, error) {
+	password, err := c.readPasswordFor(ctx, id, appNS)
+	if err != nil {
+		return nil, fmt.Errorf("read credential for the repository listing: %w", err)
+	}
+	tags, err := ListTags(ctx, c.HTTPClient, c.Registry, id.Repo(), id.ZotUsername(), password)
+	if err != nil {
+		return nil, err
+	}
+	if len(tags) > maxStoredDigests {
+		return nil, fmt.Errorf("repository %s has %d tags, more than the %d a reading resolves", id.Repo(), len(tags), maxStoredDigests)
+	}
+	digests := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		digest, err := ResolveDigest(ctx, c.HTTPClient, c.Registry, id.Repo(), tag, id.ZotUsername(), password)
+		if errors.Is(err, ErrManifestNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		digests = append(digests, digest)
+	}
+	slices.Sort(digests)
+	return slices.Compact(digests), nil
 }
 
 // BasicAuthFromDockerConfig extracts the basic-auth pair a dockerconfigjson

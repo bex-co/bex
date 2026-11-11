@@ -191,6 +191,7 @@ describe("resource action projection freshness", () => {
       image: "",
       imageSha: "",
       rollbackOf: "",
+      buildAvailable: null,
       commitId: "",
       commitMessage: "",
       commitCreatedAt: null,

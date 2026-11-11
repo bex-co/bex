@@ -34,6 +34,7 @@ query Deploys(
     image
     imageSha
     rollbackOf
+    buildAvailable
     commitId
     commitMessage
     commitCreatedAt
@@ -45,5 +46,17 @@ query Deploys(
     failureReason
     cancelReason
     stallReason
+  }
+}
+
+# Which of a service's recent deploys ran on a build the registry no longer
+# holds (w8/m156). The Events feed has no per-deploy build state of its own,
+# so its rows read it from here and offer Rollback only where the build is
+# still stored. Newest 100; an older row is not in the map and is decided by
+# the server when the rollback is requested.
+query DeployBuildAvailability($serviceId: String!) {
+  deploys(serviceId: $serviceId, limit: 100) {
+    id
+    buildAvailable
   }
 }

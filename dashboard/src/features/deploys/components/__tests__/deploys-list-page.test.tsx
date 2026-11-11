@@ -71,6 +71,7 @@ function row(overrides: Partial<DeployRow> = {}): DeployRow {
     image: "registry.example.com/web:1",
     imageSha: "",
     rollbackOf: "",
+    buildAvailable: null,
     commitId: "abc1234def5678",
     commitMessage: "Ship searchable deploy history",
     commitCreatedAt: "2026-07-15T23:59:00Z",

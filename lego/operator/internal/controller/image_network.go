@@ -637,3 +637,26 @@ func imageRegistryHost(image string) string {
 	}
 	return "docker.io"
 }
+
+// platformPullFailure is the stall text for a pull failure of an image in the
+// platform's own registry: a build. own is false for any other image, whose
+// failure keeps naming the image and the registry's answer, since those are
+// the user's to fix.
+//
+// A build's failure used to print the kubelet's line verbatim, cluster-internal
+// registry host and containerd error included, and for a missing manifest it
+// never said the one thing that matters: retention removed the build, so no
+// retry will find it (w8/m156). The registry keeps a bounded history; a
+// release whose build fell out of it has to be built again.
+func (r *AppReconciler) platformPullFailure(image, kubelet string) (msg string, own bool) {
+	if _, _, ok := r.platformRepoReference(image); !ok {
+		return "", false
+	}
+	build, _, _ := strings.Cut(strings.TrimPrefix(image, r.Registry+"/"), "@")
+	lower := strings.ToLower(kubelet)
+	if strings.Contains(lower, "not found") || strings.Contains(lower, "manifest unknown") {
+		return fmt.Sprintf("%s: the build this release runs on (%s) is no longer stored, so its image cannot be pulled."+
+			" Only a service's recent builds are kept. Deploy the commit again to build it.", appv1alpha1.ImagePullStallWaiting, build), true
+	}
+	return fmt.Sprintf("%s: the platform could not pull this release's build (%s). The pull is retried.", appv1alpha1.ImagePullStallWaiting, build), true
+}

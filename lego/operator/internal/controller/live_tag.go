@@ -18,7 +18,10 @@ package controller
 
 import (
 	"context"
+	"fmt"
+	"slices"
 	"strconv"
+	"time"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -39,9 +42,13 @@ func (r *AppReconciler) protectServingImage(ctx context.Context, app *appv1alpha
 	}
 	tag := registry.LiveTagPrefix + strconv.FormatInt(d.Generation, 10)
 	if app.Status.ProtectedImageTag == tag {
+		r.refreshStoredImages(ctx, app, false)
 		return
 	}
 	if _, own := r.ownImageReference(app, app.Status.Image); !own {
+		// The service no longer runs a build of its own repository, so a
+		// reading of that repository describes nothing it serves.
+		app.Status.StoredImages = nil
 		return
 	}
 	log := logf.FromContext(ctx)
@@ -59,4 +66,53 @@ func (r *AppReconciler) protectServingImage(ctx context.Context, app *appv1alpha
 		return
 	}
 	app.Status.ProtectedImageTag = tag
+	r.refreshStoredImages(ctx, app, true)
+}
+
+// A settled App's repository is read again every storedImagesInterval:
+// retention runs in the registry on its own clock after later pushes, so a
+// reading ages. A reading that failed is tried again after storedImagesRetry,
+// and one reading may take storedImagesTimeout of a reconcile at most.
+const (
+	storedImagesInterval = 10 * time.Minute
+	storedImagesRetry    = 2 * time.Minute
+	storedImagesTimeout  = 20 * time.Second
+)
+
+// refreshStoredImages publishes which manifests the registry still holds for
+// the App's own repository (status.storedImages, w8/m156), so bex-api can
+// refuse a rollback to a build that is gone instead of accepting it and
+// failing at the pull. It reads when a release has just been tagged and when
+// the previous reading is due.
+//
+// bex-api refuses on what is published, so a reading is only published when
+// it is whole and plausible: the registry answered for every tag, and the
+// build that is serving right now is among them. Anything else keeps the
+// previous reading, which stays safe however old it gets, because it carries
+// the generation it was read at and says nothing about later builds.
+func (r *AppReconciler) refreshStoredImages(ctx context.Context, app *appv1alpha1.App, released bool) {
+	serving := app.Status.ImageDigest
+	if r.PerAppRegistry == nil || serving == nil {
+		return
+	}
+	key := app.Namespace + "/" + app.Name
+	if due, ok := r.storedImagesRead.Load(key); ok && !released && time.Now().Before(due.(time.Time)) {
+		return
+	}
+	readCtx, cancel := context.WithTimeout(ctx, storedImagesTimeout)
+	defer cancel()
+	digests, err := r.PerAppRegistry.StoredDigestsFor(readCtx, appIdentity(app), app.Namespace)
+	if err == nil && !slices.Contains(digests, serving.Digest) {
+		err = fmt.Errorf("the listing does not hold the serving build %s", serving.Digest)
+	}
+	if err != nil {
+		r.storedImagesRead.Store(key, time.Now().Add(storedImagesRetry))
+		logf.FromContext(ctx).Info("stored image listing failed; keeping the previous one", "error", err.Error())
+		return
+	}
+	r.storedImagesRead.Store(key, time.Now().Add(storedImagesInterval))
+	if s := app.Status.StoredImages; s != nil && s.Generation == serving.Generation && slices.Equal(s.Digests, digests) {
+		return
+	}
+	app.Status.StoredImages = &appv1alpha1.StoredImagesStatus{Generation: serving.Generation, Digests: digests}
 }

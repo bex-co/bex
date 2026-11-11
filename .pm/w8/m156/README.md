@@ -1,20 +1,20 @@
 # w8 · m156 — A running service's build stays in the registry, and a rollback is offered only where its build is stored
 
-**Worker:** worker8 **Goal:** the image a service is running, and the ten most recent builds it has run on, stay in the cluster registry whatever else is pushed, so failed deploys never cost a service its ability to start; a deploy whose build is gone is not offered as a rollback target and is refused at once with a sentence that says so. **Status:** in progress (t001 and t002 done and shipped: the retention fix; t003–t009 open)
+**Worker:** worker8 **Goal:** the image a service is running, and the ten most recent builds it has run on, stay in the cluster registry whatever else is pushed, so failed deploys never cost a service its ability to start; a deploy whose build is gone is not offered as a rollback target and is refused at once with a sentence that says so. **Status:** in progress (t001–t004 done and shipped: the retention fix, a rollback to a build that is gone is refused, and a missing build's pull failure says so; t005–t009 open)
 
 ## Tasks (in order)
 
-| id   | title                                                                         | est | depends_on |
-| ---- | ----------------------------------------------------------------------------- | --- | ---------- |
-| t001 | The registry's `live-` retention rule comes before the catch-all — **DONE**   | 30m | —          |
-| t002 | Prove the retention rules on a real Zot — **DONE**                            | 30m | t001       |
-| t003 | Rollback refuses a target whose build is no longer stored                     | 60m | t001       |
-| t004 | A missing build is reported in product terms, without the registry's host     | 30m | t003       |
-| t005 | A pull failure on the live release is reported when no deploy is open         | 45m | t004       |
-| t006 | Render parity                                                                 | 20m | t003, t005 |
-| t007 | Simplify                                                                      | 15m | t006       |
-| t008 | Test coverage                                                                 | 30m | t006       |
-| t009 | Closeout (live replay on production)                                          | 30m | t008       |
+| id   | title                                                                                | est | depends_on |
+| ---- | ------------------------------------------------------------------------------------ | --- | ---------- |
+| t001 | The registry's `live-` retention rule comes before the catch-all — **DONE**          | 30m | —          |
+| t002 | Prove the retention rules on a real Zot — **DONE**                                   | 30m | t001       |
+| t003 | Rollback refuses a target whose build is no longer stored — **DONE**                 | 60m | t001       |
+| t004 | A missing build is reported in product terms, without the registry's host — **DONE** | 30m | t003       |
+| t005 | A pull failure on the live release is reported when no deploy is open                | 45m | t004       |
+| t006 | Render parity                                                                        | 20m | t003, t005 |
+| t007 | Simplify                                                                             | 15m | t006       |
+| t008 | Test coverage                                                                        | 30m | t006       |
+| t009 | Closeout (live replay on production)                                                 | 30m | t008       |
 
 ## Definition of done
 

@@ -20,6 +20,7 @@ function row(partial: Partial<DeployRow> & { id: string }): DeployRow {
     image: "",
     imageSha: "",
     rollbackOf: "",
+    buildAvailable: null,
     commitId: "",
     commitMessage: "",
     commitCreatedAt: null,

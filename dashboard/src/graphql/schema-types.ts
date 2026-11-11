@@ -1292,6 +1292,7 @@ export type DatastoreMetricsQueryInput = {
 
 export type Deploy = {
   __typename: 'Deploy';
+  buildAvailable: Maybe<Scalars['Boolean']['output']>;
   buildId: Maybe<Scalars['String']['output']>;
   cancelReason: Maybe<Scalars['String']['output']>;
   commitCreatedAt: Maybe<Scalars['String']['output']>;

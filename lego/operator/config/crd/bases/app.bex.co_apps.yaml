@@ -1743,6 +1743,34 @@ spec:
                   scheme so already-published sites keep serving without a republish
                   (docs/ADR074). The static-server serves from this prefix when set.
                 type: string
+              storedImages:
+                description: |-
+                  StoredImages is what the in-cluster registry still holds for this App's
+                  own repository, as the operator last read it (w8/m156). The registry
+                  keeps a bounded history, so the build an old deploy ran on can be gone;
+                  bex-api refuses a rollback to a build that is not listed instead of
+                  accepting it and failing at the pull. Nil until the operator has read
+                  the repository, and for an App whose images are not built into the
+                  in-cluster registry: readers treat nil as unknown, never as empty.
+                properties:
+                  digests:
+                    description: |-
+                      Digests are the manifest digests ("sha256:…") the repository's tags
+                      point at, sorted. A deploy's build is stored when its digest is here.
+                    items:
+                      type: string
+                    maxItems: 64
+                    type: array
+                    x-kubernetes-list-type: set
+                  generation:
+                    description: |-
+                      Generation is the serving release's generation when the repository was
+                      read. A reading says nothing about a build made after it: only a deploy
+                      of this generation or an earlier one can be missing from Digests because
+                      retention removed it.
+                    format: int64
+                    type: integer
+                type: object
               undeployedChanges:
                 description: |-
                   UndeployedChanges reports saved configuration that differs from the serving

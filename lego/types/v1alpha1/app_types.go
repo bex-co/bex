@@ -17,6 +17,8 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"slices"
+	"strings"
 	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -1583,6 +1585,31 @@ type BuildHoldStatus struct {
 	Cause string `json:"cause"`
 }
 
+// StoredImagesStatus is one reading of an App's repository in the in-cluster
+// registry.
+type StoredImagesStatus struct {
+	// Generation is the serving release's generation when the repository was
+	// read. A reading says nothing about a build made after it: only a deploy
+	// of this generation or an earlier one can be missing from Digests because
+	// retention removed it.
+	// +optional
+	Generation int64 `json:"generation,omitempty"`
+
+	// Digests are the manifest digests ("sha256:…") the repository's tags
+	// point at, sorted. A deploy's build is stored when its digest is here.
+	// +optional
+	// +listType=set
+	// +kubebuilder:validation:MaxItems=64
+	Digests []string `json:"digests,omitempty"`
+}
+
+// HoldsImage reports whether image, a reference pinned by digest, is among the
+// stored manifests. An unpinned reference is never held: it names no build.
+func (s *StoredImagesStatus) HoldsImage(image string) bool {
+	_, digest, pinned := strings.Cut(image, "@")
+	return s != nil && pinned && slices.Contains(s.Digests, digest)
+}
+
 // ImageDigestStatus is the digest of the image a serving release's app
 // container runs (w8/m122): Render's deploy image.sha, "the SHA that the image
 // reference was resolved to". It is the digest the reference itself pins or,
@@ -1844,6 +1871,16 @@ type AppStatus struct {
 	// gets a fresh live tag of its own.
 	// +optional
 	ProtectedImageTag string `json:"protectedImageTag,omitempty"`
+
+	// StoredImages is what the in-cluster registry still holds for this App's
+	// own repository, as the operator last read it (w8/m156). The registry
+	// keeps a bounded history, so the build an old deploy ran on can be gone;
+	// bex-api refuses a rollback to a build that is not listed instead of
+	// accepting it and failing at the pull. Nil until the operator has read
+	// the repository, and for an App whose images are not built into the
+	// in-cluster registry: readers treat nil as unknown, never as empty.
+	// +optional
+	StoredImages *StoredImagesStatus `json:"storedImages,omitempty"`
 
 	// ArtifactFingerprint is the operator-computed, versioned identity of the
 	// source/build inputs that produced ArtifactImage (or selected a prebuilt

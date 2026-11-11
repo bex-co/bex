@@ -308,6 +308,9 @@ type AppReconciler struct {
 	// detection.
 	PortScanner portscan.Scanner
 	portScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
+	// storedImagesRead is when each App's repository is next due to be read
+	// (refreshStoredImages): "<ns>/<name>" -> time.Time.
+	storedImagesRead sync.Map
 	// privatePortScanned spaces a web or private service's listener scans the same way.
 	privatePortScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
 	// portCandidate remembers the lone port a scan found until a second scan agrees.
@@ -4017,6 +4020,9 @@ func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *ap
 				if cs.State.Waiting.Reason == reasonInvalidImageName {
 					return reasonInvalidImageName, fmt.Sprintf("image reference is invalid: %s: %s", cs.Image, cs.State.Waiting.Message)
 				}
+				if msg, own := r.platformPullFailure(cs.Image, cs.State.Waiting.Message); own {
+					return imagePullBackOff, msg
+				}
 				return imagePullBackOff, fmt.Sprintf("%s: %s: %s", appv1alpha1.ImagePullStallWaiting, cs.Image, cs.State.Waiting.Message)
 			}
 		}
@@ -6064,6 +6070,9 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 			case crashLoopBackOff:
 				return crashLoopBackOff, crashLoopMessage(cs, port)
 			case imagePullBackOff, "ErrImagePull":
+				if msg, own := r.platformPullFailure(cs.Image, w.Message); own {
+					return imagePullBackOff, msg
+				}
 				return imagePullBackOff, appv1alpha1.ImagePullStallWaiting + ": " + w.Message
 			case reasonInvalidImageName:
 				if cs.Name != appContainerName || p.DeletionTimestamp != nil || dep.Spec.Template.Labels[labelRevision] == "" ||

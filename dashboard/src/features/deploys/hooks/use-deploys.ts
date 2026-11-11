@@ -26,6 +26,8 @@ export interface DeployRow {
   /** Render's image.sha (w8/m122); "" while unknown and for a Git-backed deploy. */
   imageSha: string;
   rollbackOf: string;
+  /** False when the registry no longer holds this deploy's build (w8/m156). */
+  buildAvailable: boolean | null;
   commitId: string;
   commitMessage: string;
   commitCreatedAt: string | null;
@@ -59,6 +61,7 @@ function toRows(raw: DeploysQuery["deploys"] | undefined): DeployRow[] {
       image: d.image ?? "",
       imageSha: d.imageSha ?? "",
       rollbackOf: d.rollbackOf ?? "",
+      buildAvailable: d.buildAvailable ?? null,
       commitId: d.commitId ?? "",
       commitMessage: d.commitMessage ?? "",
       commitCreatedAt: d.commitCreatedAt ?? null,

@@ -96,6 +96,7 @@ function renderActions(
     commitId?: string | null;
     commitMessage?: string | null;
     trigger?: string | null;
+    buildAvailable?: boolean | null;
   },
 ) {
   const root = createRootRoute();
@@ -110,6 +111,7 @@ function renderActions(
         commitId={commit?.commitId}
         commitMessage={commit?.commitMessage}
         trigger={commit?.trigger}
+        buildAvailable={commit?.buildAvailable}
       />
     ),
   });
@@ -176,6 +178,26 @@ describe("DeployActions", () => {
     expect(cancelDeploy).toHaveBeenCalledWith({
       variables: { serviceId: "web", deployId: "dep-1" },
     });
+  });
+
+  // w8/m156: the registry keeps a bounded history of builds, and a deploy
+  // whose build is gone cannot be rolled back to.
+  it("offers no Rollback on a deactivated deploy whose build is no longer stored", async () => {
+    renderActions("deactivated", { buildAvailable: false });
+    // The row is not cancelable either, so nothing renders for it.
+    await vi.waitFor(() => {
+      expect(
+        screen.queryByRole("button", { name: /^Rollback to / }),
+      ).not.toBeInTheDocument();
+    });
+    expect(rollbackService).not.toHaveBeenCalled();
+  });
+
+  it("keeps Rollback when the build is stored or its state is unknown", async () => {
+    renderActions("deactivated", { buildAvailable: true });
+    expect(
+      await screen.findByRole("button", { name: /^Rollback to / }),
+    ).toBeInTheDocument();
   });
 
   it("rolls back a deactivated deploy and navigates to the new deploy", async () => {

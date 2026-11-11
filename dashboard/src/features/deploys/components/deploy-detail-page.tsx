@@ -127,6 +127,7 @@ export function DeployDetailPage({
               commitId={deploy.commitId}
               commitMessage={deploy.commitMessage}
               trigger={deploy.trigger}
+              buildAvailable={deploy.buildAvailable}
             />
           ) : undefined
         }

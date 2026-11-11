@@ -19,6 +19,7 @@ package deploys
 import (
 	"context"
 	"strconv"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -102,12 +103,52 @@ func RollbackActionable(a *appv1alpha1.App, d store.Deploy) bool {
 	return a.Spec.Image != d.Image && a.Spec.Image != d.ResolvedImage
 }
 
-// restorableRollbackTarget is RollbackActionable plus the static-site refusal the
-// verb makes before dispatch: a target whose publication was never recorded
-// has nothing retained to restore (w4/m197). Unreadable evidence is not a
-// target either; the verb surfaces that error itself.
+// BuildStored reports whether the build deploy d ran on can still be pulled
+// (w8/m156). Render: "You can only roll back to a particular deploy if its
+// build artifact is still available." The in-cluster registry keeps a bounded
+// history, and the operator publishes what it holds for the App's own
+// repository (status.storedImages); a build that is not listed is gone, and a
+// rollback to it used to be accepted and then fail at the pull minutes later.
+//
+// Everything the listing does not cover counts as stored, so nothing is
+// refused on a guess:
+//   - no listing yet;
+//   - a deploy made after the listing was read (its generation is newer), or
+//     with no generation to compare: a reading says nothing about later builds,
+//     so it stays safe however stale it is;
+//   - the build that is serving right now, whatever the listing says;
+//   - an image the registry was never asked to keep (an external image,
+//     another repository's build source);
+//   - a deploy with no image of its own, or one recorded by tag alone, which
+//     names no manifest to look for.
+func BuildStored(a *appv1alpha1.App, d store.Deploy) bool {
+	stored := a.Status.StoredImages
+	if stored == nil || !strings.Contains(d.ResolvedImage, "@") {
+		return true
+	}
+	if d.Generation <= 0 || d.Generation > stored.Generation {
+		return true
+	}
+	if serving := a.Status.ImageDigest; serving != nil && strings.HasSuffix(d.ResolvedImage, "@"+serving.Digest) {
+		return true
+	}
+	theirs, err := store.ImageRepository(d.ResolvedImage)
+	if err != nil {
+		return true
+	}
+	if own, err := store.ImageRepository(a.Status.Image); err != nil || own != theirs {
+		return true
+	}
+	return stored.HoldsImage(d.ResolvedImage)
+}
+
+// restorableRollbackTarget is RollbackActionable plus the refusals the verb
+// makes before dispatch: a build the registry no longer holds (BuildStored),
+// and a static-site target whose publication was never recorded, which has
+// nothing retained to restore (w4/m197). Unreadable evidence is not a target
+// either; the verb surfaces that error itself.
 func (s *Service) restorableRollbackTarget(ctx context.Context, a *appv1alpha1.App, d store.Deploy) bool {
-	if !RollbackActionable(a, d) {
+	if !RollbackActionable(a, d) || !BuildStored(a, d) {
 		return false
 	}
 	if a.Spec.Type != appv1alpha1.TypeStaticSite {
