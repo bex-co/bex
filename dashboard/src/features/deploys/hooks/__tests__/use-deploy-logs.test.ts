@@ -203,6 +203,76 @@ describe("useDeployLogs", () => {
     }
   });
 
+  // w21/m324: two deploys that overlap in time share every line inside either
+  // window, so the build and predeploy legs ask for their own deploy. The app
+  // leg is the service's output, and an unset deploy (a picked range) keeps the
+  // window alone.
+  it("scopes the build and predeploy legs to the deploy, not the app leg", () => {
+    stubByType({}, []);
+    renderHook(() =>
+      useDeployLogs(
+        "web",
+        "2026-07-14T00:00:00Z",
+        "2026-07-14T00:05:00Z",
+        true,
+        false,
+        undefined,
+        "dep-1",
+      ),
+    );
+    const sent = (type: string) =>
+      mockUseQuery.mock.calls
+        .map((c) => (c[1] as { variables: Record<string, unknown> }).variables)
+        .find((v) => v.type === type);
+    expect(sent("build")).toMatchObject({ deployId: "dep-1" });
+    expect(sent("predeploy")).toMatchObject({ deployId: "dep-1" });
+    expect(sent("app")).not.toHaveProperty("deployId");
+  });
+
+  it("carries the deploy into the older pages of a truncated build", async () => {
+    stubByType(
+      {
+        build: {
+          logs: [entry("2026-07-14T00:01:10Z", "==> step 9", "build")],
+          hasMore: true,
+          nextEndTime: "2026-07-14T00:01:10Z",
+        },
+      },
+      [],
+    );
+    mockClientQuery.mockResolvedValue({ data: { logs: logList([]) } });
+    const { result } = renderHook(() =>
+      useDeployLogs(
+        "web",
+        "2026-07-14T00:00:00Z",
+        "2026-07-14T00:05:00Z",
+        false,
+        false,
+        undefined,
+        "dep-1",
+      ),
+    );
+    await act(async () => {
+      result.current.loadOlder();
+    });
+    expect(mockClientQuery.mock.calls[0][0].variables).toMatchObject({
+      type: "build",
+      deployId: "dep-1",
+    });
+  });
+
+  it("sends no deployId when none is given (a picked range)", () => {
+    stubByType({}, []);
+    renderHook(() =>
+      useDeployLogs("web", "2026-07-14T00:00:00Z", undefined, true, false),
+    );
+    for (const call of mockUseQuery.mock.calls) {
+      expect(
+        (call[1] as { variables: Record<string, unknown> }).variables,
+      ).not.toHaveProperty("deployId");
+    }
+  });
+
   it("skips the predeploy leg when the deploy has no pre-deploy step", () => {
     const calls: Call[] = [];
     stubByType({}, calls);

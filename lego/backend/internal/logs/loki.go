@@ -477,12 +477,30 @@ func lokiSelectorFor(namespace string, q LogQuery) string {
 	}
 	add(lokiLabelFor(LabelLevel), storedLevels(q.Level))
 	add(lokiLabelFor(LabelInstance), q.Instance)
+	if m := excludeJobsMatcher(q.excludeJobs); m != "" {
+		matchers = append(matchers, m)
+	}
 	add(lokiLabelFor(LabelMethod), q.Method)
 	// statusCode is the one filter with a class shorthand (`4xx`), expanded here —
 	// at the filter that owns the vocabulary, not inside labelMatcher, which would
 	// silently rewrite a `path` or `host` value that happened to look like one.
 	add(lokiLabelFor(LabelStatusCode), statusClasses(q.StatusCode))
 	return "{" + strings.Join(matchers, ", ") + "}"
+}
+
+// excludeJobsMatcher drops the pods of the Jobs a Deploy-scoped read excludes:
+// each Job's name plus the controller's dash-free random suffix, mirroring
+// LogQuery.excludesPod (w21/m324). A negative matcher, so a pod it cannot name
+// is never hidden.
+func excludeJobsMatcher(jobs []string) string {
+	if len(jobs) == 0 {
+		return ""
+	}
+	alts := make([]string, 0, len(jobs))
+	for _, job := range jobs {
+		alts = append(alts, regexp.QuoteMeta(job))
+	}
+	return fmt.Sprintf("%s!~%q", lokiLabelFor(LabelInstance), "^("+strings.Join(alts, "|")+")-[^-]+$")
 }
 
 // lokiTypeMatcher selects the streams a query's `type` asks for. App logs are

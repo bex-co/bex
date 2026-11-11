@@ -97,6 +97,10 @@ func logFilterArgs() graphql.FieldConfigArgument {
 func (s *Service) GraphQLQuery() graphql.Fields {
 	logsArgs := logFilterArgs()
 	logsArgs["limit"] = gqlutil.Arg(graphql.Int)
+	// deployId (w21/m324, a Bex extension): scope a build or predeploy read to
+	// one deploy. The time window alone cannot: two deploys that overlap in time
+	// share every line inside it. Absent => the window alone, as before.
+	logsArgs["deployId"] = gqlutil.Arg(graphql.String)
 
 	valuesArgs := logFilterArgs()
 	valuesArgs["label"] = gqlutil.ReqArg(graphql.String)
@@ -110,6 +114,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
+				q.Deploy, _ = p.Args["deployId"].(string)
 				if n, ok := p.Args["limit"].(int); ok {
 					q.Limit = int64(n)
 				}

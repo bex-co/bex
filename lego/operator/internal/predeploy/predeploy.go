@@ -140,7 +140,7 @@ type Options struct {
 // never re-run. Two revisions must therefore never share a name — reuse would
 // skip the second one's migration entirely.
 func JobName(name, revision string) string {
-	return appv1alpha1.RevisionJobName("predeploy-", name, revision)
+	return appv1alpha1.PreDeployJobName(name, revision)
 }
 
 // Job constructs the pre-deploy Job for o (a pure function — no cluster access —

@@ -48,6 +48,14 @@ func BuildJobName(appName, revision string) string {
 	return RevisionJobName("bld-", appName, revision)
 }
 
+// PreDeployJobName is the pre-deploy Job's identity, the sibling of
+// BuildJobName: the operator creates it per release revision, and bex-api
+// derives it to tell one deploy's migration pods from another's in a log read
+// (w21/m324).
+func PreDeployJobName(appName, revision string) string {
+	return RevisionJobName("predeploy-", appName, revision)
+}
+
 // BuildRevision spells a generation as the revision the build plane names Jobs
 // by. It is the other half of BuildJobName's cross-boundary contract: the
 // operator derives it from the App's release generation, and bex-api must

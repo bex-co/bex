@@ -22,8 +22,12 @@ const logState: UseDeployLogsResult = {
   loadOlder: () => undefined,
 };
 
+const useDeployLogsMock = vi.hoisted(() => vi.fn());
 vi.mock("../../hooks/use-deploy-logs", () => ({
-  useDeployLogs: () => logState,
+  useDeployLogs: (...args: unknown[]) => {
+    useDeployLogsMock(...args);
+    return logState;
+  },
 }));
 
 // The panel embeds the virtualized LogLineList (w9/m83): give jsdom the layout
@@ -31,6 +35,7 @@ vi.mock("../../hooks/use-deploy-logs", () => ({
 setupVirtualGeometry();
 
 beforeEach(() => {
+  useDeployLogsMock.mockClear();
   logState.lines = [];
   logState.inLogBucket = ownType;
   logState.loading = false;
@@ -61,6 +66,24 @@ const PARTIAL =
   "Only part of this time range is loaded. Load older to search earlier lines.";
 
 describe("DeployLogPanel", () => {
+  // w21/m324: the deploy's own page scopes its build and pre-deploy lines to
+  // it; a picked range asks for the service's logs across deploys.
+  it("scopes the log read to its deploy, except under a picked range", () => {
+    const props = {
+      resource: "web",
+      deployId: "dep-1",
+      startTime: "2026-07-14T00:00:00Z",
+      endTime: "2026-07-14T00:05:00Z",
+      hasPreDeploy: false,
+      followBuild: false,
+    };
+    const { rerender } = render(<DeployLogPanel {...props} />);
+    // The seventh argument of useDeployLogs is the deploy id.
+    expect(useDeployLogsMock.mock.lastCall?.[6]).toBe("dep-1");
+    rerender(<DeployLogPanel {...props} range="1h" onRangeChange={vi.fn()} />);
+    expect(useDeployLogsMock.mock.lastCall?.[6]).toBeUndefined();
+  });
+
   it("states a capped build and loads older lines on request (w4/m136)", async () => {
     logState.lines = [line("==> step 9", "build")];
     logState.hasMore = true;

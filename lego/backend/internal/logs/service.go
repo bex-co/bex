@@ -290,12 +290,25 @@ type LogQuery struct {
 	StatusCode []string
 	Method     []string
 	Path       []string
+	// Deploy scopes a build or pre-deploy read to one deploy (w21/m324): the
+	// deploy page's log is the service's build stream cut by the deploy's time
+	// window, so two deploys that overlap in time would share lines. A GraphQL
+	// extension (Render's REST contract has no deploy filter); only the
+	// service's own deploys are consulted, so it cannot reach another tenant.
+	Deploy string
 
 	// appID and notBefore scope an App read to its own incarnation (w8/m124):
 	// a service recreated under a deleted one's name has a new id, and nothing
 	// it owns predates its App. Set by scopeToApp, never by a caller.
 	appID     string
 	notBefore time.Time
+
+	// excludeJobs are the Job names of the OTHER deploys' builds (or pre-deploy
+	// steps) a Deploy-scoped read drops; set by scopeToDeploy, never by a
+	// caller. Only lines positively attributed to another deploy are dropped, so
+	// a pod this cannot attribute (a kpack buildpack build) stays visible
+	// rather than the page going empty.
+	excludeJobs []string
 
 	levelFilter *regexp.Regexp // pod-line severity matcher (datastore, App tail), compiled once per query
 	// textMatchers are Search's compiled terms, built by normalized().
@@ -340,6 +353,11 @@ func (q LogQuery) validate() error {
 	}
 	if slices.Contains(q.Types, LogTypeBuild) && len(q.Types) > 1 {
 		return fmt.Errorf("%w: log type %q must be requested on its own", core.ErrBadRequest, LogTypeBuild)
+	}
+	// A deploy owns build and pre-deploy output; an app or request line belongs
+	// to the service, so a deploy filter on one would silently do nothing.
+	if q.Deploy != "" && !(len(q.Types) == 1 && (q.Types[0] == LogTypeBuild || q.Types[0] == LogTypePreDeploy)) {
+		return fmt.Errorf("%w: the deploy filter applies only to build and predeploy logs", core.ErrBadRequest)
 	}
 	return nil
 }
@@ -527,10 +545,56 @@ func (s *Service) ownPods(ctx context.Context, namespace string, q LogQuery) ([]
 }
 
 func (q LogQuery) keepPod(pod string) bool {
+	if q.excludesPod(pod) {
+		return false
+	}
 	if len(q.Instance) == 0 {
 		return true
 	}
 	return slices.Contains(q.Instance, pod)
+}
+
+// excludesPod reports whether pod belongs to a Job a Deploy-scoped read drops:
+// the Job's name plus the controller's one dash-free random suffix, so
+// `bld-x-gen-1` never takes `bld-x-gen-12`'s pod.
+func (q LogQuery) excludesPod(pod string) bool {
+	for _, job := range q.excludeJobs {
+		if rest, ok := strings.CutPrefix(pod, job+"-"); ok && rest != "" && !strings.Contains(rest, "-") {
+			return true
+		}
+	}
+	return false
+}
+
+// scopeToDeploy turns q.Deploy into the Jobs to drop: every other deploy's
+// build (or pre-deploy) Job, named from its release generation as the operator
+// names them. It fails open — no source, a failed read, or a deploy not among
+// the service's recent rows leaves the read as the window alone cut it — because
+// a missing scope costs a stray line while a wrong one would hide real output.
+func (s *Service) scopeToDeploy(ctx context.Context, resource, appName string, q *LogQuery) {
+	if q.Deploy == "" || s.DeployProgress == nil {
+		return
+	}
+	rows, err := s.DeployProgress(ctx, resource, time.Time{})
+	if err != nil {
+		return
+	}
+	target := slices.IndexFunc(rows, func(d DeployProgress) bool { return d.ID == q.Deploy })
+	if target < 0 {
+		return
+	}
+	jobName := appv1alpha1.BuildJobName
+	if slices.Contains(q.Types, LogTypePreDeploy) {
+		jobName = appv1alpha1.PreDeployJobName
+	}
+	seen := map[int64]bool{rows[target].Generation: true}
+	for _, d := range rows {
+		if d.Generation <= 0 || seen[d.Generation] {
+			continue
+		}
+		seen[d.Generation] = true
+		q.excludeJobs = append(q.excludeJobs, jobName(appName, appv1alpha1.BuildRevision(d.Generation)))
+	}
 }
 
 // capToLimit keeps q.Limit entries from the end the direction asks for: the
@@ -710,6 +774,7 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 		return nil, core.ErrLogsUnavailable
 	}
 	q = q.normalized()
+	s.scopeToDeploy(ctx, resource, app.Name, &q)
 	// Pre-deploy step logs (w1/m33): a distinct LIVE source (the migration Job's
 	// pod), read directly from the App's own namespace — the Job is co-located
 	// with the App (ADR043 D8), not in the build namespace — never the durable
@@ -876,7 +941,7 @@ func isDatastoreResource(resource string) bool {
 // filters are service concepts; refusing them is safer than silently dropping
 // them. resource names the datastore family in the refusal.
 func (q LogQuery) datastoreFilters(resource string) error {
-	if len(q.Types) > 0 || len(q.requestFilters()) > 0 {
+	if len(q.Types) > 0 || q.Deploy != "" || len(q.requestFilters()) > 0 {
 		family := "Key Value"
 		if isPostgresResource(resource) {
 			family = "Postgres"

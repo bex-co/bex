@@ -51,6 +51,10 @@ const LOG_TYPE_KEYS: Record<LogTypeChoice, string> = {
 
 export interface DeployLogPanelProps {
   resource: string;
+  /** The deploy whose page this is: its build and pre-deploy lines are scoped
+   *  to it, not just to its time window (w21/m324). A relative `range` widens
+   *  the view to the service's logs across deploys. */
+  deployId?: string;
   startTime: string | undefined;
   endTime: string | undefined;
   /** Whether this deploy has a pre-deploy step — skips the predeploy log leg when false. */
@@ -90,6 +94,7 @@ export interface DeployLogPanelProps {
  */
 export function DeployLogPanel({
   resource,
+  deployId,
   startTime,
   endTime,
   hasPreDeploy,
@@ -126,6 +131,8 @@ export function DeployLogPanel({
     hasPreDeploy,
     followBuild,
     createEventSource,
+    // A picked range asks for the service's logs across deploys.
+    range ? undefined : deployId,
   );
 
   const filtered = useMemo(() => {

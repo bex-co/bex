@@ -79,6 +79,8 @@ interface LogsWindow {
   startTime: string | undefined;
   endTime: string | undefined;
   limit: number;
+  /** Scopes a build or predeploy leg to one deploy (w21/m324). */
+  deployId?: string;
 }
 
 // One windowed logs() query for a single type — the shared shape build/
@@ -145,6 +147,13 @@ function useWindowPolling(endTime: string | undefined): boolean {
  * While the deploy is in-flight (!endTime), build lines are ALSO streamed live
  * from the build Job's pod stdout via SSE (w3/m14) and merged with the
  * historical query result so new lines appear in real time.
+ *
+ * `deployId` (w21/m324) scopes the build and predeploy legs to that deploy: the
+ * window alone cannot, because two deploys that overlap in time (a hook fired
+ * twice, two quick pushes) share every line inside it, so a superseded deploy's
+ * page printed the next deploy's build error. The application leg is the
+ * service's own output and stays windowed. Leave it unset for a wider range the
+ * user picked, which asks for the service's logs across deploys.
  */
 export function useDeployLogs(
   resource: string,
@@ -153,10 +162,15 @@ export function useDeployLogs(
   hasPreDeploy: boolean,
   followBuild: boolean,
   createEventSource?: EventSourceFactory,
+  deployId?: string,
 ): UseDeployLogsResult {
   const window = useMemo(
     () => ({ resource, startTime, endTime, limit: LOGS_LIMIT }),
     [resource, startTime, endTime],
+  );
+  const deployWindow = useMemo(
+    () => (deployId ? { ...window, deployId } : window),
+    [window, deployId],
   );
 
   // Skip every leg until the deploy's window (its `startTime`) is known — the
@@ -165,10 +179,10 @@ export function useDeployLogs(
   // `startTime` directly, so a ranged panel queries immediately.
   const hasWindow = startTime !== undefined;
   const poll = useWindowPolling(endTime);
-  const build = useTypedDeployLogs("build", window, poll, !hasWindow);
+  const build = useTypedDeployLogs("build", deployWindow, poll, !hasWindow);
   const predeploy = useTypedDeployLogs(
     "predeploy",
-    window,
+    deployWindow,
     poll,
     !hasPreDeploy || !hasWindow,
   );

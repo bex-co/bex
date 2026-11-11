@@ -138,6 +138,7 @@ export function DeployDetailPage({
       <DeployLogPanel
         key={deployId}
         resource={serviceId}
+        deployId={deployId}
         startTime={window ? window.start : deployStart}
         endTime={window ? window.end : deployEnd}
         hasPreDeploy={!!deploy?.preDeployStatus}

@@ -18,6 +18,11 @@
 # `textMode` (w4/m189, a Bex extension): `display` matches `text` against the
 # terminal-display message (ANSI styling and overwritten text excluded) rather
 # than the raw bytes; omitted keeps raw. Returned messages stay raw either way.
+#
+# `deployId` (w21/m324, a Bex extension): scope a `build` or `predeploy` read to
+# one deploy. The deploy page's window alone cannot — two deploys that overlap in
+# time share every line inside it — so the server drops the other deploys' platform
+# lines and build pods. Omitted keeps the window alone.
 query Logs(
   $resource: String!
   $type: String
@@ -32,6 +37,7 @@ query Logs(
   $startTime: String
   $endTime: String
   $limit: Int
+  $deployId: String
 ) {
   logs(
     resource: $resource
@@ -47,6 +53,7 @@ query Logs(
     startTime: $startTime
     endTime: $endTime
     limit: $limit
+    deployId: $deployId
   ) {
     hasMore
     nextStartTime

@@ -4396,6 +4396,7 @@ export type QueryLogLabelValuesArgs = {
 
 
 export type QueryLogsArgs = {
+  deployId?: InputMaybe<Scalars['String']['input']>;
   direction?: InputMaybe<Scalars['String']['input']>;
   endTime?: InputMaybe<Scalars['String']['input']>;
   host?: InputMaybe<Array<Scalars['String']['input']>>;

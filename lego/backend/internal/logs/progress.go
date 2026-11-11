@@ -53,8 +53,12 @@ const progressContainer = "platform"
 // composition root adapts store.Deploy, the way PodLogSource keeps the
 // clientset out).
 type DeployProgress struct {
-	ID               string
-	Status           string
+	ID     string
+	Status string
+	// Generation is the release generation the deploy ran as — the revision its
+	// build and pre-deploy Jobs are named by (appv1alpha1.BuildRevision), so a
+	// Deploy-scoped read can tell one deploy's pods from another's.
+	Generation       int64
 	Image            string // image-backed deploys; "" for repo builds
 	Commit           string // resolved commit sha; "" when unresolved
 	DetectedHTTPPort int32  // verified listener saved on this deploy, never borrowed from the current App
@@ -389,7 +393,7 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 		if !q.Since.IsZero() && !d.FinishedAt.IsZero() && d.FinishedAt.Before(q.Since) {
 			continue
 		}
-		if !q.keepPod(d.ID) {
+		if !q.keepPod(d.ID) || (q.Deploy != "" && d.ID != q.Deploy) {
 			continue
 		}
 		rowPC := pc
