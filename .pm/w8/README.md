@@ -431,6 +431,10 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **277** — [A logical export of a Free Postgres database is refused with "has no backup store", which does not name the Free plan](277.md) (~20m) ← `/qa-find-bugs-cli` loop sweep 05f7 2026-11-11: `POST /v1/postgres/<free>/export` answers 400 `"dpg-…" has no backup store; exports are unavailable` with no code, where the other Free limits answer `POSTGRES_…_PLAN_UNSUPPORTED` and name the plan; Render: "Free Render Postgres databases don't support any form of backups." (`recovery.go:528-530`).
+
+- [ ] **276** — [Twenty-two Postgres extensions on Render's supported list are refused with "permission denied" for the database user, and `pg_repack` is not installed](276.md) (~2h on top of ADR092's adoption; major) ← `/qa-find-bugs-cli` loop sweep 05f7 2026-11-11: on a free PostgreSQL 18 database the default user created the 21 trusted extensions, but `CREATE EXTENSION` for `earthdistance`, `dblink`, `moddatetime`, `bloom`, `pgstattuple`, `pg_buffercache`, `amcheck`, `pgaudit` and 14 more answered `permission denied … Must be superuser`; Render: "these extensions are available for all databases running PostgreSQL 13 or later". ADR092's owner allowlist is closed to the six extensions missing from the image and says only those six fail.
+
 - [ ] **275** — [A Node build keeps no `node_modules` between builds, and `NODE_MODULES_CACHE` is unset](275.md) (~3h, milestone-sized) ← w8/256, 2026-11-11: Render's switch for a cache bex does not have; minor.
 
 - [ ] **274** — [A native Python service has no virtualenv at Render's path, so `VENV_ROOT` is not set](274.md) (~2h) ← w8/256, 2026-11-11: the variable names a directory that does not exist on bex; minor.
