@@ -333,6 +333,16 @@ export function isSleeping(s: ServiceView): boolean {
 }
 
 /**
+ * True once any release of the service has gone live. The operator sets the
+ * active revision only when a release serves and never clears it, so an empty
+ * one means nothing has served yet: the first deploy failed or is still
+ * running (w4/547, w4/548).
+ */
+export function hasServed(s: Pick<ServiceView, "revision">): boolean {
+  return Boolean(s.revision);
+}
+
+/**
  * False while the service is parked at zero instances: suspended, or asleep
  * (phase Hibernated). A read of its current pods, such as the limit read, is
  * then empty without saying anything about the service (w5/m125).

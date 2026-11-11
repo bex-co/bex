@@ -29,7 +29,10 @@ import {
 } from "@/common/components/ui/tooltip";
 import { CopyButton } from "@/common/components/copy-button";
 import { RelativeAge, RelativeUntil } from "@/common/components/relative-time";
-import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  useTranslations,
+  type Translate,
+} from "@/common/hooks/use-translations";
 import { safeHttpHref } from "@/common/lib/external-url";
 import { cn } from "@/common/lib/utils/utils";
 import { AddSshKeyCta } from "@/features/ssh-keys/components/add-ssh-key-cta";
@@ -54,7 +57,9 @@ import {
   type OpenPortsDisplay,
 } from "@/features/services/lib/port";
 import {
+  hasServed,
   isSleeping,
+  runsInstances,
   isDeleting,
   undeployedChangesHintKey,
 } from "@/features/services/lib/status";
@@ -645,6 +650,20 @@ function ConnectCodeRow({
  * the object store, docs/ADR029-static-sites.md), so its line omits Instances
  * (w5/m48/t001 — Render shows no instance concept for static sites).
  */
+/**
+ * What runs now, as the instances API and Metrics count it: none before a
+ * first release goes live, and none while suspended or asleep, with the count
+ * it returns to (w4/547).
+ */
+function instancesFact(service: ServiceView, t: Translate): string {
+  if (service.replicas == null) return "—";
+  if (!hasServed(service)) return "0";
+  if (runsInstances(service)) return String(service.replicas);
+  const n = String(service.replicas);
+  if (service.suspended) return t("services.instancesSuspended", { n });
+  return isSleeping(service) ? t("services.instancesSleeping", { n }) : "0";
+}
+
 function HeaderFacts({ service }: { service: ServiceView }) {
   const { t } = useTranslations();
 
@@ -674,7 +693,7 @@ function HeaderFacts({ service }: { service: ServiceView }) {
       : [
           {
             label: t("services.colInstances"),
-            value: service.replicas != null ? String(service.replicas) : "—",
+            value: instancesFact(service, t),
           },
         ]),
     { label: t("services.colRevision"), value: service.revision || "—" },

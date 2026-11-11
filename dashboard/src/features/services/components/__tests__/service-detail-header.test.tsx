@@ -535,6 +535,34 @@ describe("ServiceDetailHeader", () => {
     expect(screen.getByText("r1")).toBeInTheDocument();
   });
 
+  // w4/547: the Instances fact counts what runs, as the instances API does:
+  // none while suspended or asleep, with the count it returns to, and none
+  // when no release has gone live (a failed first build).
+  it.each([
+    ["running", {}, "2"],
+    [
+      "suspended",
+      { suspended: true, phase: "Hibernated" },
+      "0 (2 when resumed)",
+    ],
+    ["sleeping", { phase: "Hibernated", plan: "free" }, "0 (2 when awake)"],
+    // A paid service never sleeps, so no wake is promised.
+    ["parked paid", { phase: "Hibernated" }, "0"],
+    ["never-live", { phase: "Failed", revision: "" }, "0"],
+    [
+      "never-live suspended",
+      { suspended: true, phase: "Hibernated", revision: "" },
+      "0",
+    ],
+  ] as const)(
+    "counts a %s service's running instances",
+    async (_, overrides, want) => {
+      renderHeader(svc({ replicas: 2, ...overrides }));
+      const term = await screen.findByText("Instances");
+      expect(term.nextElementSibling).toHaveTextContent(want);
+    },
+  );
+
   it("omits the Instances fact for a static site (no runtime instances, w5/m48)", async () => {
     renderHeader(svc({ type: "static_site" }));
 

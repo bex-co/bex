@@ -257,6 +257,16 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service detail header fact (globally-unique platform-host segment, Render's slug field)",
   },
+  "services.instancesSuspended": {
+    message: "0（恢复后 {n}）",
+    description:
+      "The header's Instances fact for a suspended service, which runs none; n is its configured count (w4/547)",
+  },
+  "services.instancesSleeping": {
+    message: "0（唤醒后 {n}）",
+    description:
+      "The header's Instances fact for a sleeping Free service, which runs none; n is its configured count (w4/547)",
+  },
   "services.colInstances": {
     message: "实例数",
     description: "Services table column header (replica count — bex-native)",
