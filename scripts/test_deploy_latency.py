@@ -166,6 +166,16 @@ class Measure(unittest.TestCase):
         (self.repo / dl.DEPLOY_PATHS).write_text("lego/**\ndeploy/gitops/**\n")
         self.assertEqual(dl.main(["--changed", "--repo", str(self.repo)]), 1)
 
+    def test_changed_waits_while_the_pin_is_younger_than_the_interval(self):
+        self.commit("lego/b.go", "fix: waits for the interval")
+        _, pinned_at = dl.pin(self.repo)
+        self.assertEqual(dl.changed(self.repo, 6, now=pinned_at + 5 * 3600), 1)
+        self.assertEqual(dl.changed(self.repo, 6, now=pinned_at + 6 * 3600), 0)
+
+    def test_an_old_pin_with_nothing_new_still_skips(self):
+        _, pinned_at = dl.pin(self.repo)
+        self.assertEqual(dl.changed(self.repo, 6, now=pinned_at + 48 * 3600), 1)
+
     def test_changed_deploys_without_a_pin_in_reach(self):
         fresh = tempfile.TemporaryDirectory()
         self.addCleanup(fresh.cleanup)

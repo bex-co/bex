@@ -8,10 +8,11 @@ name: deploy latency
 # deployable commit has waited for a production pin and why, and keeps one
 # issue open while it is over the threshold. Like ci-red-streak it gates nothing.
 #
-# deploy.yml runs three times a day (block-eden-mono w1/m25), so a commit
-# landing just after the 21:00 San Francisco run waits ~14 h for the 11:00 one.
-# The 16 h threshold sits above that normal overnight gap plus one run; it trips
-# when a scheduled deploy failed or skipped a commit it should have deployed.
+# deploy.yml deploys at most every 6 hours (block-eden-mono w1/m25): on the
+# next push after the pin turns 6 hours old, or on its best-effort hourly cron
+# once main goes quiet. The 16 h threshold covers 6 h plus a long cron gap
+# (6-10 h measured on 2026-11-10); it trips when a deploy failed or nothing
+# triggered one.
 
 on:
   workflow_dispatch:

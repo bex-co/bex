@@ -1,7 +1,7 @@
 # Deployable paths: a commit touching one of these (and not only a `!`
 # exclusion) is deployed by the next deploy.yml run (block-eden-mono w1/m25).
-# deploy.yml no longer runs on push; its scheduled runs deploy only when such a
-# commit landed after the production pin's producer, and scripts/deploy_latency.py
+# deploy.yml's gate deploys when such a commit landed after the production
+# pin's producer and that pin is at least 6 hours old; scripts/deploy_latency.py
 # measures how long one has waited. One git glob per line; `!` excludes.
 lego/**
 # The CLI (lego/cli/) ships as user-installed binaries via the bex-cli/v* tag

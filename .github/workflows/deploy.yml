@@ -18,23 +18,24 @@ name: deploy (bex via Argo)
 # imagePullSecret in bex-system / dashboard, so app-cluster nodes can pull the images.
 # ⚠ If this repo is private, give Argo CD repo credentials (else it can't read git).
 
-# Three deploy windows a day, about 11:00, 16:00 and 21:00 San Francisco time
-# (19, 00, 05 UTC; an hour later during daylight time), plus on demand
-# (block-eden-mono w1/m25). A scheduled run deploys only when a commit touching
-# .github/deploy-paths landed after the production pin's producer; otherwise
-# every job after `changes` is skipped. GitHub runs schedules best-effort and
-# drops many of this repository's (the hourly heartbeat fired 3 times in 18 h
-# on 2026-11-10, and the first 19:00 slot never ran), so each window fires off
-# the busy top of the hour and again an hour later; when both run, the second
-# finds nothing new and skips in seconds. workflow_dispatch deploys main, or
-# applies the same gate as a scheduled run when only_if_changed is set.
+# Deploy at most every 6 hours, whenever a deployable commit is waiting
+# (block-eden-mono w1/m25). Every push to main starts this workflow, and its
+# `changes` gate deploys only when a commit touching .github/deploy-paths
+# landed after the production pin's producer and that pin is at least 6 hours
+# old; otherwise every later job is skipped in seconds. Pushes are reliable
+# events; GitHub runs this repository's schedules best-effort (on 2026-11-10
+# hourly crons fired every 6-10 h, hours late), so the hourly cron is only the
+# backup that deploys the last change after main goes quiet. workflow_dispatch
+# deploys main, or with only_if_changed deploys only if something is waiting.
 on:
+  push:
+    branches: [main]
   schedule:
-    - cron: "23 19,20,0,1,5,6 * * *"
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       only_if_changed:
-        description: "Deploy only if a deployable commit landed after the production pin (as a scheduled run)"
+        description: "Deploy only if a deployable commit landed after the production pin"
         type: boolean
         default: false
 
@@ -128,15 +129,16 @@ jobs:
           fi
           gitleaks git --no-banner --redact --exit-code 1 --log-opts="$log_opts" .
 
-  # --- changes: the scheduled gate (block-eden-mono w1/m25) ---
-  # A scheduled run deploys only when a deployable commit (.github/deploy-paths)
-  # landed after the production pin's producer; the pin write-back itself does
-  # not count. git only, no API. A dispatch always deploys unless its
-  # only_if_changed input asks for the scheduled behavior. The w1/m59
-  # write-back guard in the deploy job stays the correctness gate: it still
-  # refuses to pin images built from a tree older than production's inputs.
-  # The pre-build supersession skip this replaced existed for per-push runs
-  # queued behind newer pushes; with three runs a day there is no queue.
+  # --- changes: the deploy gate (block-eden-mono w1/m25) ---
+  # A push or scheduled run deploys only when a deployable commit
+  # (.github/deploy-paths) landed after the production pin's producer and the
+  # pin is at least 6 hours old; the pin write-back itself does not count (and,
+  # being [skip ci], starts no run). git only, no API. A dispatch always
+  # deploys unless its only_if_changed input asks for the gate without the
+  # interval. Pushes during a deploy wait in the concurrency group with one
+  # pending run, which then finds a fresh pin and skips; the w1/m59 write-back
+  # guard in the deploy job stays the correctness gate against pinning images
+  # built from a tree older than production's inputs.
   changes:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04-arm
@@ -159,18 +161,23 @@ jobs:
           EVENT: ${{ github.event_name }}
           ONLY_IF_CHANGED: ${{ inputs.only_if_changed || false }}
         run: |
-          if [ "$EVENT" != schedule ] && [ "$ONLY_IF_CHANGED" != true ]; then
-            echo "::notice::$EVENT deploys main unconditionally"
-            echo "deploy=true" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
+          case "$EVENT" in
+            push | schedule) min_age=6 ;;
+            *)
+              if [ "$ONLY_IF_CHANGED" != true ]; then
+                echo "::notice::$EVENT deploys main unconditionally"
+                echo "deploy=true" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+              min_age=0 ;;
+          esac
           set +e
-          python3 scripts/deploy_latency.py --changed
+          python3 scripts/deploy_latency.py --changed --min-pin-age-hours "$min_age"
           rc=$?
           set -e
           case "$rc" in
             0) echo "deploy=true" >> "$GITHUB_OUTPUT" ;;
-            1) echo "::notice::no deployable change since the production pin; skipping"
+            1) echo "::notice::nothing to deploy yet (see the line above); skipping"
                echo "deploy=false" >> "$GITHUB_OUTPUT" ;;
             *) echo "::error::could not tell whether main changed since the production pin"; exit 1 ;;
           esac

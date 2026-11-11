@@ -70,9 +70,8 @@ alerting-heartbeat.yml 12
 # w6/m156. Every 3h since block-eden-mono w1/m25; since 11-03 median 6h29m,
 # p90 8h35m, max 10h28m.
 deploy-latency.yml 12
-# block-eden-mono w1/m25. Three windows a day, each fired twice an hour apart;
-# the longest gap is 13h overnight (22:23 to 11:23 San Francisco). A whole
-# missed window on top of it must trip.
+# block-eden-mono w1/m25. Hourly backup for push-triggered deploys; this repo's
+# hourly crons fired every 6-10 h on 2026-11-10, so 20 h of silence must trip.
 deploy.yml 20
 # Daily. Worst measured 34h24m (infra); one skipped day (~48h) must still trip.
 infra.yml 40

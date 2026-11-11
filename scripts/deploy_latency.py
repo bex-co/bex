@@ -36,10 +36,12 @@ Usage: deploy_latency.py [--json] [--repo DIR] [--threshold-hours H]
 Exit 0 when nothing has waited longer than H hours (default: no threshold),
 1 when the oldest deployable commit has, 2 when the inputs are unusable.
 
---changed is deploy.yml's scheduled gate (block-eden-mono w1/m25): git only,
-no API. Exit 0 when a deployable commit is waiting or no pin is in reach
-(deploy), 1 when production already runs every deployable commit (skip), 2
-when git cannot answer.
+--changed is deploy.yml's gate (block-eden-mono w1/m25): git only, no API.
+Exit 0 when a deployable commit is waiting or no pin is in reach (deploy), 1
+when production already runs every deployable commit (skip), 2 when git
+cannot answer. With --min-pin-age-hours H it also skips while the production
+pin is younger than H hours, so push-triggered runs deploy at most every H
+hours.
 """
 
 from __future__ import annotations
@@ -165,14 +167,21 @@ def gh_json(*args: str):
 HEAD = "origin/main"
 
 
+def pin(repo: pathlib.Path) -> tuple[str, int]:
+    """The production pin's producer commit and the pin commit's time (epoch
+    seconds). ValueError when no pin is in reach."""
+    pin_line = git(repo, "log", "-1", "--format=%ct %s", "--grep=^chore(deploy): pin platform images to ", HEAD)
+    pinned_at, _, subject = pin_line.partition(" ")
+    match = PIN_SUBJECT.match(subject) if pin_line else None
+    if not match:
+        raise ValueError("no pin commit on origin/main")
+    return git(repo, "rev-parse", match.group(1)), int(pinned_at)
+
+
 def pending(repo: pathlib.Path) -> list[list[str]]:
     """Deployable commits after the production pin's producer, oldest first,
     as [sha, commit time, subject]. ValueError when no pin is in reach."""
-    pin_line = git(repo, "log", "-1", "--format=%H %s", "--grep=^chore(deploy): pin platform images to ", HEAD)
-    match = PIN_SUBJECT.match(pin_line.split(" ", 1)[1]) if pin_line else None
-    if not match:
-        raise ValueError("no pin commit on origin/main")
-    pinned = git(repo, "rev-parse", match.group(1))
+    pinned, _ = pin(repo)
     include, exclude = deploy_paths((repo / DEPLOY_PATHS).read_text())
     # glob magic: `*` stops at `/`, as in GitHub's path filters.
     pathspec = [f":(glob){g}" for g in include] + [f":(exclude,glob){g}" for g in exclude]
@@ -182,10 +191,11 @@ def pending(repo: pathlib.Path) -> list[list[str]]:
     return [entry for entry in entries if not PIN_SUBJECT.match(entry[2])]
 
 
-def changed(repo: pathlib.Path) -> int:
-    """deploy.yml's scheduled gate: 0 deploy, 1 skip, 2 unusable."""
+def changed(repo: pathlib.Path, min_pin_age_hours: float = 0, now: float | None = None) -> int:
+    """deploy.yml's gate: 0 deploy, 1 skip, 2 unusable."""
     try:
         waiting = pending(repo)
+        _, pinned_at = pin(repo)
     except ValueError as exc:
         print(f"deploy-latency: {exc}; deploying")
         return 0
@@ -196,6 +206,10 @@ def changed(repo: pathlib.Path) -> int:
         print("deploy-latency: production runs every deployable commit; nothing to deploy")
         return 1
     print(f"deploy-latency: {len(waiting)} deployable commit(s) since the pin, oldest {waiting[0][0][:12]} — {waiting[0][2]}")
+    age_hours = ((time.time() if now is None else now) - pinned_at) / 3600
+    if age_hours < min_pin_age_hours:
+        print(f"deploy-latency: the production pin is {age_hours:.1f} h old, under {min_pin_age_hours:g} h; the next run deploys them")
+        return 1
     return 0
 
 
@@ -224,10 +238,11 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--repo", default=".")
     parser.add_argument("--threshold-hours", type=float, default=None)
-    parser.add_argument("--changed", action="store_true", help="exit 0 to deploy, 1 to skip (deploy.yml's scheduled gate)")
+    parser.add_argument("--changed", action="store_true", help="exit 0 to deploy, 1 to skip (deploy.yml's gate)")
+    parser.add_argument("--min-pin-age-hours", type=float, default=0, help="with --changed, also skip while the pin is younger")
     args = parser.parse_args(argv)
     if args.changed:
-        return changed(pathlib.Path(args.repo))
+        return changed(pathlib.Path(args.repo), args.min_pin_age_hours)
     try:
         wait = measure(pathlib.Path(args.repo))
     except (subprocess.CalledProcessError, ValueError, OSError) as exc:

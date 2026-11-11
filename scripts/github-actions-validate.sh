@@ -720,13 +720,14 @@ if grep -Fq 'hashicorp/setup-packer@' .github/workflows/snapshot.yml \
 fi
 
 # w1/m59: a superseded deploy run must be neutralized at the write-back (never
-# red, never a stale pin). block-eden-mono w1/m25: a scheduled run builds only
-# when the `changes` gate found a deployable commit after the production pin.
+# red, never a stale pin). block-eden-mono w1/m25: a push or scheduled run
+# builds only when the `changes` gate found a deployable commit after a
+# production pin at least 6 hours old.
 # Pin both so neither can silently drift.
 if ! grep -Eq '^  changes:' .github/workflows/deploy.yml \
-  || ! grep -Fq 'python3 scripts/deploy_latency.py --changed' .github/workflows/deploy.yml \
+  || ! grep -Fq 'python3 scripts/deploy_latency.py --changed --min-pin-age-hours "$min_age"' .github/workflows/deploy.yml \
+  || ! grep -Fq 'push | schedule) min_age=6 ;;' .github/workflows/deploy.yml \
   || ! grep -Fq "if: needs.changes.outputs.deploy == 'true' && github.ref == 'refs/heads/main'" .github/workflows/deploy.yml \
-  || grep -Eq '^  push:' .github/workflows/deploy.yml \
   || [ "$(grep -cF 'bash scripts/deploy-superseded.sh "$GITHUB_SHA"' .github/workflows/deploy.yml)" -lt 1 ]; then
   echo "FAIL: deploy.yml lost the w1/m25 scheduled change gate or the w1/m59 write-back guard (scripts/deploy-superseded.sh)" >&2
   exit 1
