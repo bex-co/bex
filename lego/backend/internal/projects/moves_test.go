@@ -133,3 +133,32 @@ func TestSetServices_FailedWriteRecordsNoMoveEvent(t *testing.T) {
 		t.Fatalf("failed write recorded %d move rows, want none: %+v", len(moves), moves)
 	}
 }
+
+// w4/m321: a project move records only its typed move rows, and a project
+// delete records one row once it has happened.
+func TestProjectMoveAndDeleteRecordOneRowEach(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	sink := &recordingSink{}
+	svc := newMoveService(st, sink, "web")
+	if _, err := svc.SetServices(ctxAs("user-a"), "prj-1", []string{"web"}); err != nil {
+		t.Fatal(err)
+	}
+	for _, ev := range sink.events {
+		if ev.Verb != core.AuditVerbProjectServiceMoved {
+			t.Errorf("a move recorded %+v besides its move rows", ev)
+		}
+	}
+	if len(sink.moveRows()) != 1 {
+		t.Fatalf("a move recorded %+v, want one move row", sink.events)
+	}
+	if _, err := svc.SetServices(ctxAs("user-a"), "prj-1", nil); err != nil {
+		t.Fatal(err)
+	}
+	sink.events = nil
+	if err := svc.DeleteIfEmpty(ctxAs("user-a"), "prj-1"); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.events) != 1 || sink.events[0].Verb != "projects.DeleteIfEmpty" || sink.events[0].Outcome != core.AuditAllowed {
+		t.Fatalf("a delete recorded %+v, want one projects.DeleteIfEmpty row", sink.events)
+	}
+}

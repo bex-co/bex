@@ -837,9 +837,10 @@ func (b *Base) AuthorizeOnTarget(ctx context.Context, relation, object, target s
 // authorizeAndAudit runs the OpenFGA check and records the outcome
 // (audit.go) — the one place Authorize, AuthorizeTarget and AuthorizeOn
 // funnel through, so a verb is recorded exactly once regardless of which
-// entry point it calls. A write relation always records (allowed or
-// denied); a read relation records only when denied (audit.go's
-// readRelations — an allowed read stays unrecorded, volume-prohibitive).
+// entry point it calls. A write relation records allowed or denied, except
+// for a verb in readVerbs, which changes nothing; a read relation records
+// only when denied (audit.go's readRelations — an allowed read stays
+// unrecorded, volume-prohibitive).
 // resolveErr is a refusal that happened BEFORE the check (the caller named a
 // workspace they are not a member of): it short-circuits the check but is
 // still audited, so a cross-workspace attempt leaves the same denial trail
@@ -852,11 +853,11 @@ func (b *Base) authorizeAndAudit(ctx context.Context, relation, object, target, 
 // suppressible (recordDenial=false): AuthorizeApp's name-collision fallback
 // loop caps how many rejected candidates it individually audits (w4/015), so
 // its beyond-the-cap checks run through here without a per-candidate row. An
-// ALLOWED write still always records — the write-audit invariant ("a write
-// relation always records, allowed or denied") is never suppressible by
-// recordDenial; the one allowed-write suppression is the caller's own
-// WithDeferredAllowedWriteAudit (a composite atomic verb deferring its
-// success events until the mutation lands — denials stay visible either way).
+// ALLOWED write still records — the write-audit invariant is never
+// suppressible by recordDenial. An allowed row is skipped only for a read verb
+// (readVerbs) or under the caller's own WithDeferredAllowedWriteAudit (a verb
+// that records its one row once the mutation lands, RecordAllowedWrite or a
+// typed recorder — denials stay visible either way).
 func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target, verb string, resolveErr error, recordDenial bool) error {
 	// OAuth capability first, even when membership already refused: a narrowed
 	// token must not reach OpenFGA, and the insufficient-scope code must not
@@ -882,7 +883,7 @@ func (b *Base) authorizeAndRecord(ctx context.Context, relation, object, target,
 	}
 	switch {
 	case err == nil:
-		if writeRelations[relation] && !defersAllowedWriteAudit(ctx) {
+		if writeRelations[relation] && !readVerbs[verb] && !defersAllowedWriteAudit(ctx) {
 			b.emit(ctx, verb, relation, object, target, nil)
 		}
 	case recordDenial && auditsDenial(relation):

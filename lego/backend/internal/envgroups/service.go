@@ -906,6 +906,7 @@ func (s *Service) GetEnvGroupVar(ctx context.Context, gid, key string) (EnvVarVi
 	if !ok {
 		return EnvVarView{}, core.ErrNotFound
 	}
+	s.recordValuesViewed(ctx, g)
 	return EnvVarView{Key: key, Value: v, ValueSet: true}, nil
 }
 
@@ -1597,6 +1598,12 @@ func (s *Service) findGroupByName(ctx context.Context, name string) (store.EnvGr
 		return store.EnvGroup{}, false, nil
 	}
 	return g, err == nil, err
+}
+
+// recordValuesViewed records Render's ViewEnvVarValuesEvent for a read that
+// returned g's values (w4/m321).
+func (s *Service) recordValuesViewed(ctx context.Context, g store.EnvGroup) {
+	s.RecordSecretsViewed(ctx, core.AuditVerbViewEnvVarValues, g.TenantID, core.EnvGroupTarget(g.ID), g.Name)
 }
 
 // --- authorization helpers -----------------------------------------------------

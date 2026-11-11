@@ -328,12 +328,30 @@ func dropInvalidSpecEnv(a *appv1alpha1.App, drop func(name string) bool) bool {
 // manifestEnv for why the latter live somewhere else and why omitting them was
 // a lie about the running process.
 func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView, error) {
-	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
+	vars, a, err := s.listEnvVars(ctx, service)
 	if err != nil {
 		return nil, err
 	}
+	s.recordValuesViewed(ctx, a)
+	return vars, nil
+}
+
+// listEnvVars is ListEnvVars without the view record, for reads that show no
+// one a value (ListEnvVarNames) or decide for themselves (listEnvVarsPage).
+func (s *Service) listEnvVars(ctx context.Context, service string) ([]EnvVarView, *appv1alpha1.App, error) {
+	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
+	if err != nil {
+		return nil, nil, err
+	}
 	merged, owned := mergeManifestEnv(env, a)
-	return envVarViews(merged, revision, owned), nil
+	return envVarViews(merged, revision, owned), a, nil
+}
+
+// recordValuesViewed records Render's ViewEnvVarValuesEvent for a read that
+// returns a's values (w4/m321). Not in readAuthorizedEnv, which the keys-only
+// EnvVarKeys shares: opening the Environment tab reveals nothing.
+func (s *Service) recordValuesViewed(ctx context.Context, a *appv1alpha1.App) {
+	s.RecordSecretsViewed(ctx, core.AuditVerbViewEnvVarValues, a.Labels[core.LabelTenant], core.ServiceTarget(core.AppPublicID(a)), core.AppPublicName(a))
 }
 
 // readAuthorizedEnv is the one sensitive-read boundary for the masked list,
@@ -397,11 +415,23 @@ func secretChanged() error {
 // variables. after is the prior page's item cursor (the env-var key). Paging
 // policy: see applyPageLimits.
 func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, limit int) ([]EnvVarView, error) {
-	vars, err := s.ListEnvVars(ctx, service)
+	vars, a, err := s.listEnvVarsPage(ctx, service, after, limit)
 	if err != nil {
 		return nil, err
 	}
-	return applyPageLimits(vars, after, limit, func(v EnvVarView) string { return v.Key })
+	s.recordValuesViewed(ctx, a)
+	return vars, nil
+}
+
+// listEnvVarsPage is ListEnvVarsPage without the view record, for GraphQL's
+// field, which records only when the query selects values.
+func (s *Service) listEnvVarsPage(ctx context.Context, service, after string, limit int) ([]EnvVarView, *appv1alpha1.App, error) {
+	vars, a, err := s.listEnvVars(ctx, service)
+	if err != nil {
+		return nil, nil, err
+	}
+	page, err := applyPageLimits(vars, after, limit, func(v EnvVarView) string { return v.Key })
+	return page, a, err
 }
 
 // applyPageLimits is the paging contract both sensitive list verbs share
@@ -444,6 +474,7 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 	if !ok {
 		return EnvVarView{}, core.NotFound("env var")
 	}
+	s.recordValuesViewed(ctx, a)
 	return EnvVarView{Key: key, Value: v, Revision: revision, ManagedBy: managedBy(owned, key)}, nil
 }
 
@@ -784,16 +815,27 @@ func (s *Service) EnvVarKeys(ctx context.Context, service string) ([]core.EnvVar
 
 // EnvVarValue reads one variable's value (the dashboard's "Show secret").
 func (s *Service) EnvVarValue(ctx context.Context, service, key string) (core.EnvVar, error) {
-	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
+	v, a, err := s.envVarValue(ctx, service, key)
 	if err != nil {
 		return core.EnvVar{}, err
+	}
+	s.recordValuesViewed(ctx, a)
+	return v, nil
+}
+
+// envVarValue is EnvVarValue without the view record, for a copy between
+// services (envCopier) that shows no one the value.
+func (s *Service) envVarValue(ctx context.Context, service, key string) (core.EnvVar, *appv1alpha1.App, error) {
+	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
+	if err != nil {
+		return core.EnvVar{}, nil, err
 	}
 	merged, owned := mergeManifestEnv(env, a)
 	value, ok := merged[key]
 	if !ok {
-		return core.EnvVar{}, core.NotFound("env var")
+		return core.EnvVar{}, nil, core.NotFound("env var")
 	}
-	return core.EnvVar{ID: key, Key: key, Value: value, Revision: revision, ManagedBy: managedBy(owned, key)}, nil
+	return core.EnvVar{ID: key, Key: key, Value: value, Revision: revision, ManagedBy: managedBy(owned, key)}, a, nil
 }
 
 // storeMap writes the whole map to the source of truth at path, an empty set
@@ -1180,7 +1222,7 @@ var (
 // sync:false name-only entries, so values must never leave this package for
 // that path.
 func (s *Service) ListEnvVarNames(ctx context.Context, service string) ([]string, error) {
-	vars, err := s.ListEnvVars(ctx, service)
+	vars, _, err := s.listEnvVars(ctx, service)
 	if err != nil {
 		return nil, err
 	}

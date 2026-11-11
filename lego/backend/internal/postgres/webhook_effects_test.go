@@ -348,3 +348,28 @@ func TestPostgresCreatedEffectCarriesMintedIDAndDisplayName(t *testing.T) {
 		t.Fatalf("created event = %+v", event)
 	}
 }
+
+// w4/m321: a successful connection-info read records one Render
+// ViewConnectionInfoEvent naming the database, on REST as on every surface
+// that calls the verb.
+func TestConnectionInfoRecordsOneViewConnectionInfoEvent(t *testing.T) {
+	svc, cl := newService()
+	seedDatabase(t, cl, "conn-db")
+	sink := &webhookAuditSink{}
+	svc.Audit = sink
+	if w := serveREST(svc, "GET", "/v1/postgres/conn-db/connection-info", ""); w.Code != 200 {
+		t.Fatalf("connection-info = %d %s", w.Code, w.Body.String())
+	}
+	views := 0
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbViewConnectionInfo {
+			views++
+			if ev.Target != core.DatabaseTarget("conn-db") || ev.Outcome != core.AuditAllowed {
+				t.Errorf("view event %+v", ev)
+			}
+		}
+	}
+	if views != 1 {
+		t.Fatalf("recorded %+v, want one ViewConnectionInfoEvent", sink.events)
+	}
+}

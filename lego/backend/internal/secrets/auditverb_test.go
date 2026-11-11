@@ -21,6 +21,8 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/graphql-go/graphql"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -233,5 +235,107 @@ func TestUnauthorizedCallerCannotProbeStoreConfiguration(t *testing.T) {
 	}
 	if errWith.Error() != errWithout.Error() {
 		t.Errorf("configured store = %v, unconfigured = %v; a denied caller can tell the two apart", errWith, errWithout)
+	}
+}
+
+// w4/m321: every read that returns env var values records one Render
+// ViewEnvVarValuesEvent naming the service; the keys-only list (the
+// Environment tab) records nothing, and a denied read records its denial, not
+// a view.
+func TestValueReadsRecordOneViewEnvVarValuesEvent(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		call  func(*Service, context.Context) error
+		views int
+	}{
+		{"list", func(s *Service, ctx context.Context) error { _, err := s.ListEnvVars(ctx, "web"); return err }, 1},
+		{"list page", func(s *Service, ctx context.Context) error {
+			_, err := s.ListEnvVarsPage(ctx, "web", "", 1)
+			return err
+		}, 1},
+		{"get", func(s *Service, ctx context.Context) error { _, err := s.GetEnvVar(ctx, "web", "K"); return err }, 1},
+		{"reveal", func(s *Service, ctx context.Context) error { _, err := s.EnvVarValue(ctx, "web", "K"); return err }, 1},
+		{"keys only", func(s *Service, ctx context.Context) error { _, err := s.EnvVarKeys(ctx, "web"); return err }, 0},
+		// The Blueprint generator's names-only read and a copy between
+		// services show no one a value.
+		{"names for a Blueprint", func(s *Service, ctx context.Context) error { _, err := s.ListEnvVarNames(ctx, "web"); return err }, 0},
+		{"copy", func(s *Service, ctx context.Context) error {
+			return envCopier{service: s}.CopyEnvVars(ctx, "web", []core.EnvVarCopy{{From: "web", FromKey: "K", ToKey: "K2"}})
+		}, 0},
+	} {
+		sink := &recordingAuditSink{}
+		svc := auditedService(true, sink)
+		if _, err := svc.SetEnvVar(auditCtx(), "web", "K", EnvVarWrite{Value: "v"}); err != nil {
+			t.Fatal(err)
+		}
+		sink.events = nil
+		if err := tc.call(svc, auditCtx()); err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		views := 0
+		for _, ev := range sink.events {
+			if ev.Verb == core.AuditVerbViewEnvVarValues {
+				views++
+				if ev.Target != core.ServiceTarget("web") || ev.Outcome != core.AuditAllowed || ev.Caller != "user-1" || ev.Resource != core.WorkspaceObject("tea-a") {
+					t.Errorf("%s: view event %+v", tc.name, ev)
+				}
+			}
+		}
+		// A copy's own write row is not a view.
+		if views != tc.views || (tc.name != "copy" && len(sink.events) != tc.views) {
+			t.Errorf("%s: recorded %+v, want %d view event(s) and nothing else", tc.name, sink.events, tc.views)
+		}
+	}
+
+	sink := &recordingAuditSink{}
+	svc := auditedService(false, sink)
+	if _, err := svc.ListEnvVars(auditCtx(), "web"); err == nil {
+		t.Fatal("a denied list succeeded")
+	}
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbViewEnvVarValues || ev.Outcome != core.AuditDenied {
+			t.Errorf("denied list recorded %+v, want its denial only", ev)
+		}
+	}
+	if len(sink.events) == 0 {
+		t.Error("a denied list recorded nothing")
+	}
+}
+
+// The dashboard's Environment tab lists keys through GraphQL envVars: only a
+// query that selects values records a view, however it selects them (w4/m321).
+func TestGraphQLEnvVarsRecordsAViewOnlyWhenValuesAreSelected(t *testing.T) {
+	for _, tc := range []struct {
+		query string
+		views int
+	}{
+		{`{ envVars(serviceId:"web") { envVar { key } cursor } }`, 0},
+		{`{ envVars(serviceId:"web") { envVar { key value } } }`, 1},
+		{`{ envVars(serviceId:"web") { ...row } } fragment row on EnvVarWithCursor { envVar { value } }`, 1},
+	} {
+		sink := &recordingAuditSink{}
+		svc := auditedService(true, sink)
+		if _, err := svc.SetEnvVar(auditCtx(), "web", "K", EnvVarWrite{Value: "v"}); err != nil {
+			t.Fatal(err)
+		}
+		schema, err := graphql.NewSchema(graphql.SchemaConfig{
+			Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sink.events = nil
+		if res := graphql.Do(graphql.Params{Schema: schema, Context: auditCtx(), RequestString: tc.query}); res.HasErrors() {
+			t.Fatalf("%s: %v", tc.query, res.Errors)
+		}
+		views := 0
+		for _, ev := range sink.events {
+			if ev.Verb == core.AuditVerbViewEnvVarValues {
+				views++
+			}
+		}
+		if views != tc.views {
+			t.Errorf("%s: %d view events, want %d", tc.query, views, tc.views)
+		}
 	}
 }

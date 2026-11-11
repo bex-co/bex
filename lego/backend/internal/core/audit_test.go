@@ -19,6 +19,11 @@ package core
 import (
 	"context"
 	"errors"
+	"go/ast"
+	"go/parser"
+	"go/token"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 )
@@ -378,5 +383,83 @@ func TestCanManageBillingIsAuditedWrite(t *testing.T) {
 	}
 	if readRelations[RelCanManageBilling] {
 		t.Error("RelCanManageBilling is in readRelations — billing management is a write, not a read")
+	}
+}
+
+// w4/m321: a verb gated by a write relation that changes nothing (an admin or
+// operator read) records its denials only, as a read relation does; a
+// mutation through the same relation still records its success.
+func TestReadVerbsGatedByAWriteRelationRecordDenialsOnly(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user-1", Method: "session"})
+	for verb, relation := range map[string]string{
+		"billing.Status":      RelCanManageBilling,
+		"audit.List":          RelCanManage,
+		"members.ListInvites": RelCanManage,
+		"agentsessions.Wait":  RelCanOperate,
+	} {
+		allowed := &fakeAuditSink{}
+		b := &Base{Authz: &fakeAllowChecker{}, Audit: allowed}
+		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true); err != nil {
+			t.Fatalf("%s allowed: %v", verb, err)
+		}
+		if allowed.len() != 0 {
+			t.Errorf("%s allowed recorded %+v, want nothing", verb, allowed.events)
+		}
+		denied := &fakeAuditSink{}
+		b = &Base{Authz: fakeDenyChecker{}, Audit: denied}
+		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true); err == nil {
+			t.Fatalf("%s: a denying checker allowed", verb)
+		}
+		if denied.len() != 1 || denied.events[0].Outcome != AuditDenied || denied.events[0].Verb != verb {
+			t.Errorf("%s denied recorded %+v, want one denied row", verb, denied.events)
+		}
+	}
+	for verb, relation := range map[string]string{"members.Invite": RelCanManage, "apps.Create": RelCanCreate, "apps.PlanBlueprint": RelCanCreate} {
+		sink := &fakeAuditSink{}
+		b := &Base{Authz: &fakeAllowChecker{}, Audit: sink}
+		if err := b.authorizeAndRecord(ctx, relation, DefaultWorkspace, "", verb, nil, true); err != nil {
+			t.Fatal(err)
+		}
+		if sink.len() != 1 || sink.events[0].Outcome != AuditAllowed {
+			t.Errorf("mutation %s recorded %+v, want its allowed row", verb, sink.events)
+		}
+	}
+}
+
+// readVerbs are callerVerb names: each must still name an exported method on
+// its feature package's *Service, or a rename silently starts recording the
+// read again.
+func TestReadVerbsNameServiceMethods(t *testing.T) {
+	methods := map[string]map[string]bool{}
+	for verb := range readVerbs {
+		pkg, method, ok := strings.Cut(verb, ".")
+		if !ok {
+			t.Errorf("read verb %q is not <pkg>.<Method>", verb)
+			continue
+		}
+		if methods[pkg] == nil {
+			methods[pkg] = map[string]bool{}
+			fset := token.NewFileSet()
+			pkgs, err := parser.ParseDir(fset, filepath.Join("..", pkg), nil, 0)
+			if err != nil {
+				t.Fatalf("parse %s: %v", pkg, err)
+			}
+			for _, p := range pkgs {
+				for _, file := range p.Files {
+					for _, decl := range file.Decls {
+						if fn, ok := decl.(*ast.FuncDecl); ok && fn.Recv != nil && len(fn.Recv.List) > 0 {
+							if star, ok := fn.Recv.List[0].Type.(*ast.StarExpr); ok {
+								if ident, ok := star.X.(*ast.Ident); ok && ident.Name == "Service" {
+									methods[pkg][fn.Name.Name] = true
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		if !methods[pkg][method] {
+			t.Errorf("read verb %q names no *Service method in %s", verb, pkg)
+		}
 	}
 }

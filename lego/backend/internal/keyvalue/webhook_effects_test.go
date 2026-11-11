@@ -252,3 +252,27 @@ func TestKeyValueSetPlanAuditVerbAndPlanPair(t *testing.T) {
 			noop, core.AuditVerbKeyValueUpdated)
 	}
 }
+
+// w4/m321: a successful connection-info read records one Render
+// ViewConnectionInfoEvent naming the store.
+func TestConnectionInfoRecordsOneViewConnectionInfoEvent(t *testing.T) {
+	svc, cl := newService()
+	seedKeyValue(t, cl, "red-conn")
+	sink := &webhookAuditSink{}
+	svc.Audit = sink
+	if w := serveREST(svc, "GET", "/v1/key-value/red-conn/connection-info", ""); w.Code != 200 {
+		t.Fatalf("connection-info = %d %s", w.Code, w.Body.String())
+	}
+	views := 0
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbViewConnectionInfo {
+			views++
+			if ev.Target != core.KeyValueTarget("red-conn") || ev.Outcome != core.AuditAllowed {
+				t.Errorf("view event %+v", ev)
+			}
+		}
+	}
+	if views != 1 {
+		t.Fatalf("recorded %+v, want one ViewConnectionInfoEvent", sink.events)
+	}
+}

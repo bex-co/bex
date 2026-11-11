@@ -46,11 +46,9 @@ type AuditStore interface {
 }
 
 // Service is the audit-log feature. Base carries the authz gate every verb
-// calls first (List's own AuthorizeOn(RelCanManage, ...) below is itself
-// audited — deliberately: viewing the audit trail is manage-tier, and a
-// write-relation authorize call is exactly what core.Base records regardless
-// of which verb triggers it. This is documented behavior, not a
-// read-verb-leaked-into-the-log bug (docs/ADR006-bex-api.md § Audit log)).
+// calls first. List's AuthorizeOn(RelCanManage, ...) records its denials only:
+// reading the trail changes nothing, and recording it wrote one row per page
+// (core.readVerbs, w4/m321).
 type Service struct {
 	*core.Base
 	Store AuditStore
@@ -155,9 +153,35 @@ var renderEvents = map[string]string{
 	"environments.Create":         "CreateEnvironmentEvent",
 	"environments.Delete":         "DeleteEnvironmentEvent",
 
+	// The verbs every surface actually calls, and the rest of Render's 1:1
+	// actions (w4/m321). A project or environment delete and a service move
+	// record one row each; env var writes other than a delete keep bex's
+	// names, since one patch can create, update and delete (ADR018).
+	"projects.CreateWithEnvironments":     "CreateProjectEvent",
+	"projects.DeleteIfEmpty":              "DeleteProjectEvent",
+	"environments.CreateWithACL":          "CreateEnvironmentEvent",
+	"environments.DeleteIfEmpty":          "DeleteEnvironmentEvent",
+	core.AuditVerbProjectServiceMoved:     "MoveEnvironmentResourceEvent",
+	core.AuditVerbEnvironmentServiceMoved: "MoveEnvironmentResourceEvent",
+	"webhooks.Create":                     "CreateWebhookEvent",
+	"webhooks.Update":                     "UpdateWebhookEvent",
+	"webhooks.Delete":                     "DeleteWebhookEvent",
+	"envgroups.DeleteEnvGroup":            "DeleteEnvGroupEvent",
+	core.AuditVerbAddDisk:                 "CreateServerDiskEvent",
+	core.AuditVerbDeleteDisk:              "DeleteServerDiskEvent",
+	core.AuditVerbRestoreDiskSnapshot:     "RestoreDiskSnapshotEvent",
+	"apps.ApproveBlueprint":               "ApplyBlueprintEvent",
+	"apps.SyncBlueprint":                  "ApplyBlueprintEvent",
+	"apps.CreateBuildSource":              "CreateBuildSourceEvent",
+	"apps.UpdateBuildSource":              "UpdateBuildSourceEvent",
+	"apps.DeleteBuildSource":              "DeleteBuildSourceEvent",
+	core.AuditVerbDeleteEnvVar:            "DeleteEnvVarsEvent",
+
 	core.AuditVerbMaintenanceModeEnabled:    "MaintenanceModeEnabledEvent",
 	core.AuditVerbMaintenanceModeURIUpdated: "MaintenanceModeURIUpdatedEvent",
 	core.AuditVerbUpdatePaymentMethod:       "UpdateWorkspacePaymentMethodEvent",
+	core.AuditVerbViewEnvVarValues:          "ViewEnvVarValuesEvent",
+	core.AuditVerbViewConnectionInfo:        "ViewConnectionInfoEvent",
 }
 
 func renderEvent(verb string) string {

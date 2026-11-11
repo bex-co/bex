@@ -160,3 +160,70 @@ func TestSetServices_MissingAppCRSkipsRecordingWithoutFailing(t *testing.T) {
 		t.Fatalf("CR-less member recorded %d move rows, want none: %+v", len(moves), moves)
 	}
 }
+
+// w4/m321: one action, one row. A move records its typed move row and no
+// authorization rows (one move had recorded four), a delete records one row
+// once it has happened, and a delete refused because the environment is not
+// empty records none.
+func TestOneMoveAndOneDeleteRecordOneRowEach(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, _ := newServiceWithClient(st, sampleApp("web"))
+	sink := &recordingSink{}
+	svc.Audit = sink
+	e, err := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sink.events = nil
+	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.events) != 1 || sink.events[0].Verb != core.AuditVerbEnvironmentServiceMoved {
+		t.Fatalf("a move recorded %+v, want its one move row", sink.events)
+	}
+
+	sink.events = nil
+	if err := svc.DeleteIfEmpty(ctxAs("user-a"), e.ID); err == nil {
+		t.Fatal("deleted an environment that still holds a service")
+	}
+	for _, ev := range sink.events {
+		if ev.Outcome == core.AuditAllowed {
+			t.Errorf("a refused delete recorded %+v", ev)
+		}
+	}
+
+	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, nil); err != nil {
+		t.Fatal(err)
+	}
+	sink.events = nil
+	if err := svc.DeleteIfEmpty(ctxAs("user-a"), e.ID); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.events) != 1 || sink.events[0].Verb != "environments.DeleteIfEmpty" || sink.events[0].Outcome != core.AuditAllowed {
+		t.Fatalf("a delete recorded %+v, want one environments.DeleteIfEmpty row", sink.events)
+	}
+}
+
+// w4/m321: an environment create records one row once the environment exists;
+// a create refused by validation records none.
+func TestEnvironmentCreateRecordsOneRowOnlyWhenItHappens(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, _ := newServiceWithClient(st)
+	sink := &recordingSink{}
+	svc.Audit = sink
+	if _, err := svc.CreateWithACL(ctxAs("user-a"), CreateEnvironmentRequest{ProjectID: "prj-1", Name: " "}); err == nil {
+		t.Fatal("a blank name was accepted")
+	}
+	if len(sink.events) != 0 {
+		t.Fatalf("a refused create recorded %+v", sink.events)
+	}
+	if _, err := svc.CreateWithACL(ctxAs("user-a"), CreateEnvironmentRequest{ProjectID: "prj-1", Name: "staging"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(sink.events) != 1 || sink.events[0].Verb != "environments.CreateWithACL" || sink.events[0].Outcome != core.AuditAllowed {
+		t.Fatalf("a create recorded %+v, want one environments.CreateWithACL row", sink.events)
+	}
+}

@@ -419,57 +419,69 @@ func (s *Service) Create(ctx context.Context, workspaceID, name string) (Project
 
 // CreateWithEnvironments creates the project and requested environments in one transaction.
 func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name string, environments []EnvironmentInput) (ProjectView, error) {
-	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanCreate, workspaceID)
+	// One CreateProjectEvent, once the project exists: the per-environment
+	// ACL checks and a create refused by validation, the quota or a name
+	// conflict add no allowed row (w4/m321).
+	v, workspaceID, err := s.createWithEnvironments(core.WithDeferredAllowedWriteAudit(ctx), workspaceID, name, environments)
 	if err != nil {
 		return ProjectView{}, err
 	}
+	s.RecordAllowedWrite(ctx, "projects.CreateWithEnvironments", core.RelCanCreate, workspaceID)
+	return v, nil
+}
+
+func (s *Service) createWithEnvironments(ctx context.Context, workspaceID, name string, environments []EnvironmentInput) (ProjectView, string, error) {
+	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanCreate, workspaceID)
+	if err != nil {
+		return ProjectView{}, "", err
+	}
 	if s.Store == nil {
-		return ProjectView{}, ErrProjectsUnavailable
+		return ProjectView{}, "", ErrProjectsUnavailable
 	}
 	name, err = core.TrimmedLabel(name)
 	if err != nil {
-		return ProjectView{}, err
+		return ProjectView{}, "", err
 	}
 	if name == "" {
-		return ProjectView{}, fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
+		return ProjectView{}, "", fmt.Errorf("%w: name: must not be blank", core.ErrBadRequest)
 	}
 	if len(environments) > 0 {
 		if err := s.RequireEnvironmentCapacity(ctx, workspaceID, len(environments)-1); err != nil {
-			return ProjectView{}, fmt.Errorf("invalid request body at /environments: %w", err)
+			return ProjectView{}, "", fmt.Errorf("invalid request body at /environments: %w", err)
 		}
 	}
 	for i := range environments {
 		e := &environments[i]
 		label, err := core.TrimmedLabel(e.Name)
 		if err != nil {
-			return ProjectView{}, fmt.Errorf("invalid request body at /environments/%d/name: %w", i, err)
+			return ProjectView{}, "", fmt.Errorf("invalid request body at /environments/%d/name: %w", i, err)
 		}
 		e.Name = label
 		if e.Name == "" {
-			return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/name", core.ErrBadRequest, i)
+			return ProjectView{}, "", fmt.Errorf("%w: invalid request body at /environments/%d/name", core.ErrBadRequest, i)
 		}
 		if e.ProtectedStatus != "" || e.NetworkIsolationEnabled || e.IPAllowList != nil {
 			if err := s.AuthorizeOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
-				return ProjectView{}, err
+				return ProjectView{}, "", err
 			}
 			if e.ProtectedStatus != "" && e.ProtectedStatus != core.ProtectedStatusProtected && e.ProtectedStatus != core.ProtectedStatusUnprotected {
-				return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/protectedStatus", core.ErrBadRequest, i)
+				return ProjectView{}, "", fmt.Errorf("%w: invalid request body at /environments/%d/protectedStatus", core.ErrBadRequest, i)
 			}
 			if err := core.ValidateAllowList(e.IPAllowList); err != nil {
-				return ProjectView{}, fmt.Errorf("%w: invalid request body at /environments/%d/ipAllowList", core.ErrBadRequest, i)
+				return ProjectView{}, "", fmt.Errorf("%w: invalid request body at /environments/%d/ipAllowList", core.ErrBadRequest, i)
 			}
 			if err := s.RequireNetworkIsolation(ctx, workspaceID, e.NetworkIsolationEnabled, false); err != nil {
-				return ProjectView{}, fmt.Errorf("invalid request body at /environments/%d/networkIsolationEnabled: %w", i, err)
+				return ProjectView{}, "", fmt.Errorf("invalid request body at /environments/%d/networkIsolationEnabled: %w", i, err)
 			}
 			if e.IPAllowList != nil {
 				if err := s.RequireInboundIPRules(ctx, workspaceID, e.IPAllowList, core.DefaultEnvironmentAllowList(), true); err != nil {
-					return ProjectView{}, fmt.Errorf("invalid request body at /environments/%d/ipAllowList: %w", i, err)
+					return ProjectView{}, "", fmt.Errorf("invalid request body at /environments/%d/ipAllowList: %w", i, err)
 				}
 			}
 		}
 	}
 	if _, ok := s.Store.(groupingQuotaStore); !ok && len(environments) > 0 {
-		return ProjectView{}, ErrProjectsUnavailable
+		return ProjectView{}, "", ErrProjectsUnavailable
 	}
 	// codex-security round 12, finding 5: direct creates share the Blueprint
 	// grouping quota. Enforced transactionally (count + insert in one tx) when
@@ -520,15 +532,15 @@ func (s *Service) CreateWithEnvironments(ctx context.Context, workspaceID, name 
 			return nil
 		})
 		if err != nil {
-			return ProjectView{}, conflictOrMapError(err, name)
+			return ProjectView{}, "", conflictOrMapError(err, name)
 		}
-		return toView(p), nil
+		return toView(p), workspaceID, nil
 	}
 	p, err := s.Store.CreateProject(ctx, workspaceID, name)
 	if err != nil {
-		return ProjectView{}, conflictOrMapError(err, name)
+		return ProjectView{}, "", conflictOrMapError(err, name)
 	}
-	return toView(p), nil
+	return toView(p), workspaceID, nil
 }
 
 // envConflictOrMapError names the attempted inline environment name on a
@@ -585,11 +597,16 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 // w6/m290), clears inherited environment rules, then removes the project. The
 // store cascade removes child environments; env groups are detached.
 func (s *Service) Delete(ctx context.Context, id string) error {
-	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
+	p, err := s.authorizedProject(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, id)
 	if err != nil {
 		return err
 	}
-	return s.deleteProject(ctx, p, true)
+	if err := s.deleteProject(ctx, p, true); err != nil {
+		return err
+	}
+	// One DeleteProjectEvent, for a delete that happened (w4/m321).
+	s.RecordAllowedWrite(ctx, "projects.Delete", core.RelCanCreate, p.TenantID)
+	return nil
 }
 
 func (s *Service) deleteProject(ctx context.Context, p store.Project, deleteServices bool) error {
@@ -605,7 +622,7 @@ func (s *Service) deleteProject(ctx context.Context, p store.Project, deleteServ
 	if s.Environments != nil {
 		// Preflights every child environment's administrator gate before the
 		// first write, so a refusal lands before any service is deleted.
-		if err := s.Environments.ClearMembersForProject(ctx, p.ID); err != nil {
+		if err := s.Environments.ClearMembersForProject(core.WithDeferredAllowedWriteAudit(ctx), p.ID); err != nil {
 			return err
 		}
 	}
@@ -656,7 +673,7 @@ func (s *Service) deleteProject(ctx context.Context, p store.Project, deleteServ
 // project must be empty, otherwise the caller gets a 409 and nothing changes.
 // Authorization is Delete's, ahead of the occupancy answer.
 func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
-	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
+	p, err := s.authorizedProject(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, id)
 	if err != nil {
 		return err
 	}
@@ -673,7 +690,12 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 				map[string]any{"id": p.ID})
 		}
 	}
-	return s.deleteProject(ctx, p, false)
+	if err := s.deleteProject(ctx, p, false); err != nil {
+		return err
+	}
+	// A refused delete (the project is not empty) records nothing (w4/m321).
+	s.RecordAllowedWrite(ctx, "projects.DeleteIfEmpty", core.RelCanCreate, p.TenantID)
+	return nil
 }
 
 // SetServices replaces the full list of services in a project.
@@ -684,6 +706,10 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 // too (w4/m32, w4/m187) — the store already NULLs apps.environment_id for it,
 // but only a k8s Patch can clear the CR spec fields that projection stamped.
 func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []string) (ProjectView, error) {
+	// The per-service move rows below are the action's record (Render's
+	// MoveEnvironmentResourceEvent); its authorizations and fan-out add none
+	// (w4/m321). Denials still record.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
 		return ProjectView{}, err

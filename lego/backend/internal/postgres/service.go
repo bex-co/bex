@@ -1137,6 +1137,7 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		}
 		info.ReadReplicaConnectionStrings = rcs
 	}
+	s.RecordSecretsViewed(ctx, core.AuditVerbViewConnectionInfo, d.Labels[core.LabelTenant], core.DatabaseTarget(d.Name), d.Spec.Name)
 	return info, nil
 }
 

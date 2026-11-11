@@ -225,6 +225,14 @@ const (
 	AuditVerbJobCreate = "jobs.Create"
 	AuditVerbJobCancel = "jobs.Cancel"
 
+	// AuditVerbViewEnvVarValues and AuditVerbViewConnectionInfo are the reads
+	// Render audits (w4/m321): ViewEnvVarValuesEvent "logs when environment
+	// variable values are viewed", and ViewConnectionInfoEvent "tracks access
+	// to database connection URLs and passwords for both Postgres and Key Value
+	// instances". RecordSecretsViewed writes them once per successful request.
+	AuditVerbViewEnvVarValues   = "secrets.ViewEnvVarValues"
+	AuditVerbViewConnectionInfo = "datastores.ViewConnectionInfo"
+
 	AuditVerbLinkService      = "envgroups.LinkService"
 	AuditVerbUnlinkService    = "envgroups.UnlinkService"
 	AuditVerbLinkEnvGroup     = "envgroups.LinkEnvGroup"
@@ -417,6 +425,10 @@ func DatabaseTarget(name string) string { return "database:" + name }
 // KeyValueTarget is ServiceTarget's sibling for a managed KeyValue
 // (AuthorizeKeyValue).
 func KeyValueTarget(name string) string { return "keyvalue:" + name }
+
+// EnvGroupTarget is ServiceTarget's sibling for an environment group, by its
+// evg- id.
+func EnvGroupTarget(id string) string { return "envGroup:" + id }
 
 // MemberTarget is the audit target of a verb acting on one workspace MEMBER
 // (role change, removal). The subject is the member's identity id — an opaque
@@ -835,6 +847,26 @@ func RecordInviteAccepted(ctx context.Context, sink AuditSink, at time.Time, wor
 	})
 }
 
+// RecordAllowedWrite writes the one allowed row of a verb whose authorizations
+// ran under WithDeferredAllowedWriteAudit, once its write has landed: a verb
+// that authorizes more than once, or whose write can still be refused after
+// authorization (a delete of an environment that is not empty), then records
+// one row per action and none for an action that did not happen (w4/m321).
+func (b *Base) RecordAllowedWrite(ctx context.Context, verb, relation, workspaceID string) {
+	b.emit(ctx, verb, relation, WorkspaceObject(workspaceID), "", nil)
+}
+
+// RecordSecretsViewed records one successful read that returned secret values
+// (AuditVerbViewEnvVarValues, AuditVerbViewConnectionInfo) of target, in the
+// workspace that owns it: one row per request, never one per value, and only
+// once the read has succeeded. A denied read is already its authorization's
+// row.
+func (b *Base) RecordSecretsViewed(ctx context.Context, verb, workspaceID, target, targetName string) {
+	ev := b.verbAuditEvent(ctx, verb, WorkspaceObject(workspaceID), target)
+	ev.TargetName = targetName
+	b.recordAudit(ctx, ev)
+}
+
 // RecordDatabaseEffect records one successful, sourceable managed-Postgres
 // effect for the outbound-webhook feed. Callers pair it with
 // WithDeferredAllowedWriteAudit so failed validation/writes never emit.
@@ -1061,7 +1093,8 @@ func (noopAuditSink) Record(context.Context, AuditEvent) error { return nil }
 var NoopAuditSink AuditSink = noopAuditSink{}
 
 // writeRelations are the Rel… constants that gate a mutation. These emit an
-// audit event on every call, allowed or denied.
+// audit event on every call, allowed or denied, except a readVerbs verb's or a
+// deferred verb's allowed call (WithDeferredAllowedWriteAudit).
 var writeRelations = map[string]bool{
 	RelCanOperate:       true,
 	RelCanCreate:        true,
@@ -1069,6 +1102,46 @@ var writeRelations = map[string]bool{
 	RelCanManageSSHKeys: true,
 	RelCanManage:        true,
 	RelCanManageBilling: true,
+}
+
+// readVerbs are the verbs a write relation gates that change nothing: admin
+// and operator reads (billing status, the audit log itself, invites, keys,
+// agent sessions). Like a read relation they record their denials only
+// (w4/m321): Render's audit log records actions, and in one workspace's day
+// these reads were 392 of 861 rows, every page of the log writing another.
+// Names are callerVerb's; TestReadVerbsNameServiceMethods keeps them real.
+// Verbs that also write (apps.PlanBlueprint persists its plan, a turn ticket
+// is a live credential) are not here.
+var readVerbs = map[string]bool{
+	"billing.Status":                     true,
+	"audit.List":                         true,
+	"members.ListInvites":                true,
+	"apikeys.ListAPIKeys":                true,
+	"sshkeys.List":                       true,
+	"workspaces.PipelineSettings":        true,
+	"workspaces.WorkspaceCreationPolicy": true,
+	"github.GetClaimSelection":           true,
+	"apps.NameAvailable":                 true,
+	"agentsessions.Capabilities":         true,
+	"agentsessions.List":                 true,
+	"agentsessions.Get":                  true,
+	"agentsessions.Wait":                 true,
+	"agentsessions.Transcript":           true,
+	"agentsessions.ToolOutput":           true,
+	"agentsessions.ModelCost":            true,
+	"agentsessions.Tree":                 true,
+	"agentsessions.ListAttachments":      true,
+	"agentsessions.GetAttachment":        true,
+	"agentsessions.AttachmentURL":        true,
+	"agentsessions.AttachmentInline":     true,
+	"agentsessions.AgentSkills":          true,
+	"agentsessions.AgentSkill":           true,
+	"agentsessions.AgentSkillVersions":   true,
+	"agentsessions.AgentSkillVersion":    true,
+	"agentsessions.AgentSecrets":         true,
+	"agentsessions.AgentAutomations":     true,
+	"agentsessions.AgentAutomation":      true,
+	"agentsessions.AgentAutomationRuns":  true,
 }
 
 // readRelations are the Rel… constants that gate a read. A successful read

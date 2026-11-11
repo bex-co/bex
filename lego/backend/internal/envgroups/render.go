@@ -126,7 +126,9 @@ type revealedEnvGroup struct {
 // the REST read shapes. It is a sensitive read: every group is authorized for
 // can_view_sensitive and re-asserted uncached, like the per-key reveals, and a
 // caller without it is refused the whole read rather than served a masked body.
-func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup) ([]revealedEnvGroup, error) {
+// A read (not a write's response) of a group's values records Render's
+// ViewEnvVarValuesEvent for it (w4/m321).
+func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup, read bool) ([]revealedEnvGroup, error) {
 	out := make([]revealedEnvGroup, 0, len(groups))
 	for _, group := range groups {
 		g, err := s.authorizeGroup(ctx, core.RelCanViewSensitive, group.ID)
@@ -174,6 +176,9 @@ func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup) ([]
 		for _, f := range group.SecretFiles {
 			revealed.SecretFiles = append(revealed.SecretFiles, SecretFileContent{Name: f.Name, Content: contents.files[f.Name]})
 		}
+		if read && len(revealed.EnvVars) > 0 {
+			s.recordValuesViewed(ctx, g)
+		}
 		out = append(out, revealed)
 	}
 	return out, nil
@@ -183,7 +188,7 @@ func (s *Service) revealGroups(ctx context.Context, groups []renderEnvGroup) ([]
 // already committed is answered masked, with the failure logged, when its values
 // cannot be revealed: a retry cannot repeat the write.
 func (s *Service) revealedOne(ctx context.Context, group renderEnvGroup, committed bool) (any, error) {
-	out, err := s.revealGroups(ctx, []renderEnvGroup{group})
+	out, err := s.revealGroups(ctx, []renderEnvGroup{group}, !committed)
 	if err != nil {
 		if committed {
 			log.Printf("envgroups: group %s: reveal values for the write response: %v", group.ID, err)

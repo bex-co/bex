@@ -26,9 +26,51 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/language/ast"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
+
+// Selects reports whether the query selects a field called name anywhere
+// beneath the field being resolved, through inline fragments and fragment
+// spreads. A resolver uses it to tell a request for values from one for keys
+// (w4/m321: only a read that returns env var values is audited).
+func Selects(p graphql.ResolveParams, name string) bool {
+	seen := map[string]bool{}
+	var walk func(set *ast.SelectionSet) bool
+	walk = func(set *ast.SelectionSet) bool {
+		if set == nil {
+			return false
+		}
+		for _, sel := range set.Selections {
+			switch s := sel.(type) {
+			case *ast.Field:
+				if s.Name != nil && s.Name.Value == name || walk(s.SelectionSet) {
+					return true
+				}
+			case *ast.InlineFragment:
+				if walk(s.SelectionSet) {
+					return true
+				}
+			case *ast.FragmentSpread:
+				if s.Name == nil || seen[s.Name.Value] {
+					continue
+				}
+				seen[s.Name.Value] = true
+				if def, ok := p.Info.Fragments[s.Name.Value].(*ast.FragmentDefinition); ok && walk(def.SelectionSet) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	for _, field := range p.Info.FieldASTs {
+		if walk(field.SelectionSet) {
+			return true
+		}
+	}
+	return false
+}
 
 // Field adapts a typed projection into a GraphQL resolver: it type-asserts the
 // source and applies f, resolving nil for a foreign source. One helper for every

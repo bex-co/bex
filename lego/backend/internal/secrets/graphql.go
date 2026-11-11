@@ -176,9 +176,14 @@ func (s *Service) graphQLQuery() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				vars, err := s.ListEnvVarsPage(p.Context, p.Args["serviceId"].(string), cursor, limit)
+				// The dashboard's Environment tab lists keys through this field
+				// too: only a query that selects values is a view (w4/m321).
+				vars, a, err := s.listEnvVarsPage(p.Context, p.Args["serviceId"].(string), cursor, limit)
 				if err != nil {
 					return nil, err
+				}
+				if gqlutil.Selects(p, "value") {
+					s.recordValuesViewed(p.Context, a)
 				}
 				return toEnvVarList(vars), nil
 			},

@@ -641,9 +641,25 @@ func (s *Service) Create(ctx context.Context, projectID, name string) (Environme
 // Create is. Validation happens before the row is written, so malformed
 // status/CIDR input cannot leave an orphan environment.
 func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentRequest) (EnvironmentView, error) {
-	ctx, err := s.scopeProject(ctx, req.ProjectID)
+	relation := core.RelCanCreate
+	if req.hasACL() {
+		relation = core.RelCanManage
+	}
+	// One CreateEnvironmentEvent, once the environment exists: a create
+	// refused by validation, the quota or a name conflict records only a
+	// denial, if any (w4/m321).
+	v, workspaceID, err := s.createWithACL(core.WithDeferredAllowedWriteAudit(ctx), req)
 	if err != nil {
 		return EnvironmentView{}, err
+	}
+	s.RecordAllowedWrite(ctx, "environments.CreateWithACL", relation, workspaceID)
+	return v, nil
+}
+
+func (s *Service) createWithACL(ctx context.Context, req CreateEnvironmentRequest) (EnvironmentView, string, error) {
+	ctx, err := s.scopeProject(ctx, req.ProjectID)
+	if err != nil {
+		return EnvironmentView{}, "", err
 	}
 	// round-5 finding 12: the protected-environment ACL (protectedStatus,
 	// networkIsolationEnabled, ipAllowList) is an admin-classified control
@@ -657,42 +673,42 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 		relation = core.RelCanManage
 	}
 	if err := s.Authorize(ctx, relation); err != nil {
-		return EnvironmentView{}, err
+		return EnvironmentView{}, "", err
 	}
 	name, err := validateEnvironmentName(req.Name)
 	if err != nil {
-		return EnvironmentView{}, err
+		return EnvironmentView{}, "", err
 	}
 	req.Name = name
 	if req.ProjectID == "" {
-		return EnvironmentView{}, fmt.Errorf("%w: projectId: is required", core.ErrBadRequest)
+		return EnvironmentView{}, "", fmt.Errorf("%w: projectId: is required", core.ErrBadRequest)
 	}
 	if req.ProtectedStatus == "" {
 		req.ProtectedStatus = ProtectedStatusUnprotected
 	}
 	if hasACL {
 		if err := validateACL(req.ProtectedStatus, req.IPAllowList); err != nil {
-			return EnvironmentView{}, err
+			return EnvironmentView{}, "", err
 		}
 	}
 	p, err := s.actingProject(ctx, relation, req.ProjectID)
 	if err != nil {
-		return EnvironmentView{}, err
+		return EnvironmentView{}, "", err
 	}
 	if err := s.RequireNetworkIsolation(ctx, p.TenantID, req.NetworkIsolationEnabled, false); err != nil {
-		return EnvironmentView{}, err
+		return EnvironmentView{}, "", err
 	}
 	if req.IPAllowList != nil {
 		if err := s.RequireInboundIPRules(ctx, p.TenantID, req.IPAllowList, core.DefaultEnvironmentAllowList(), true); err != nil {
-			return EnvironmentView{}, err
+			return EnvironmentView{}, "", err
 		}
 	}
 	e, err := s.create(ctx, p, req.Name)
 	if err != nil {
-		return EnvironmentView{}, err
+		return EnvironmentView{}, "", err
 	}
 	if !hasACL {
-		return newView(e), nil
+		return newView(e), p.TenantID, nil
 	}
 	// An ACL without a list keeps the seeded allow-all rules: applyACL turns a
 	// nil list into an explicit deny-all, which an isolation-only create never
@@ -701,7 +717,8 @@ func (s *Service) CreateWithACL(ctx context.Context, req CreateEnvironmentReques
 	if allowList == nil {
 		allowList = core.DefaultEnvironmentAllowList()
 	}
-	return s.applyACL(ctx, e, req.ProtectedStatus, req.NetworkIsolationEnabled, allowList)
+	v, err := s.applyACL(ctx, e, req.ProtectedStatus, req.NetworkIsolationEnabled, allowList)
+	return v, p.TenantID, err
 }
 
 // create is the post-authorization create body shared by Create and
@@ -974,18 +991,27 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return err
 	}
-	return s.deleteEnvironment(ctx, e, true)
+	if err := s.deleteEnvironment(ctx, e, true); err != nil {
+		return err
+	}
+	s.RecordAllowedWrite(ctx, "environments.Delete", core.RelCanCreate, e.TenantID)
+	return nil
 }
 
+// authorizedForDelete authorizes an environment delete twice (the workspace
+// relation, then the environment's own) with their allowed rows deferred, so
+// the delete records one row once it has happened (w4/m321). The returned
+// context does not defer: a cascade's own verbs record as usual.
 func (s *Service) authorizedForDelete(ctx context.Context, id string) (context.Context, store.Environment, error) {
 	ctx, err := s.scopeEnvironment(ctx, id)
 	if err != nil {
 		return ctx, store.Environment{}, err
 	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+	deferred := core.WithDeferredAllowedWriteAudit(ctx)
+	if err := s.Authorize(deferred, core.RelCanCreate); err != nil {
 		return ctx, store.Environment{}, err
 	}
-	e, err := s.requireEnvironment(ctx, core.RelCanCreate, id)
+	e, err := s.requireEnvironment(deferred, core.RelCanCreate, id)
 	return ctx, e, err
 }
 
@@ -1001,14 +1027,17 @@ func (s *Service) deleteEnvironment(ctx context.Context, e store.Environment, de
 		// The administrator gate is hoisted ahead of the first irreversible
 		// delete. Datastores go before the membership clear: a failed delete
 		// leaves them in the environment, so a retry still finds them.
-		if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
+		if err := s.authorizeACLBearingMutation(core.WithDeferredAllowedWriteAudit(ctx), e); err != nil {
 			return err
 		}
 		if err := s.deleteDatastores(ctx, e); err != nil {
 			return err
 		}
 	}
-	if err := s.clearEnvironmentMembers(ctx, e); err != nil {
+	// The membership clear is part of this delete, which records its own row
+	// once it lands; each datastore and service delete records its own event
+	// (w4/m321).
+	if err := s.clearEnvironmentMembers(core.WithDeferredAllowedWriteAudit(ctx), e); err != nil {
 		return err
 	}
 	// A failure leaves the environment row, so a retry finishes the teardown.
@@ -1059,7 +1088,11 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 	if EnvironmentOccupied(v) {
 		return NotEmptyError("environment", v.ID)
 	}
-	return s.deleteEnvironment(ctx, e, false)
+	if err := s.deleteEnvironment(ctx, e, false); err != nil {
+		return err
+	}
+	s.RecordAllowedWrite(ctx, "environments.DeleteIfEmpty", core.RelCanCreate, e.TenantID)
+	return nil
 }
 
 // aclBearing reports whether an environment carries protected-environment ACL
@@ -1170,6 +1203,11 @@ func (s *Service) SetServices(ctx context.Context, id string, serviceIDs []strin
 	if err != nil {
 		return EnvironmentView{}, err
 	}
+	// The per-service move rows below are the action's record (Render's
+	// MoveEnvironmentResourceEvent): its authorizations, and the per-service
+	// label and allow-list fan-out after the move, add none, where one move
+	// recorded four rows (w4/m321). Denials still record.
+	ctx = core.WithDeferredAllowedWriteAudit(ctx)
 	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
 		return EnvironmentView{}, err
 	}

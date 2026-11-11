@@ -36,12 +36,17 @@ import (
 // passthrough with no failing test — the same hole the events feed closed
 // with its own vocabulary guard (internal/events/vocabulary_test.go). Each
 // mapped verb must name a real method on its feature package's *Service,
-// except the synthetic maintenance verbs core emits by constant.
+// except the synthetic verbs core emits by constant (maintenance, payment
+// method, and the secret-view reads, w4/m321).
 func TestRenderEventVerbsExist(t *testing.T) {
 	synthetic := map[string]bool{
 		core.AuditVerbMaintenanceModeEnabled:    true,
 		core.AuditVerbMaintenanceModeURIUpdated: true,
 		core.AuditVerbUpdatePaymentMethod:       true,
+		core.AuditVerbViewEnvVarValues:          true,
+		core.AuditVerbViewConnectionInfo:        true,
+		core.AuditVerbProjectServiceMoved:       true,
+		core.AuditVerbEnvironmentServiceMoved:   true,
 	}
 	methodsByPkg := map[string]map[string]bool{}
 	for verb := range renderEvents {

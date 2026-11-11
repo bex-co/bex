@@ -1362,6 +1362,7 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		}
 		cliCommand = fmt.Sprintf("redis-cli --sni %s -u %s", externalHost, conn)
 	}
+	s.RecordSecretsViewed(ctx, core.AuditVerbViewConnectionInfo, kv.Labels[core.LabelTenant], core.KeyValueTarget(kv.Name), kv.Spec.Name)
 	return KeyValueConnectionInfo{
 		InternalConnectionString: internal,
 		ExternalConnectionString: external,

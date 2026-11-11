@@ -46,14 +46,14 @@ func NewEnvCopier(service *Service) EnvCopier {
 func (c envCopier) CopyEnvVars(ctx context.Context, to string, copies []core.EnvVarCopy) error {
 	missing := map[string]string{}
 	for _, want := range copies {
-		source, err := c.service.EnvVarValue(ctx, want.From, want.FromKey)
+		source, _, err := c.service.envVarValue(ctx, want.From, want.FromKey)
 		if want.Optional && errors.Is(err, core.ErrNotFound) {
 			continue
 		}
 		if err != nil {
 			return err
 		}
-		current, err := c.service.EnvVarValue(ctx, to, want.ToKey)
+		current, _, err := c.service.envVarValue(ctx, to, want.ToKey)
 		switch {
 		case errors.Is(err, core.ErrNotFound):
 			missing[want.ToKey] = source.Value

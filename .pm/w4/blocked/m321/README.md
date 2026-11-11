@@ -1,20 +1,20 @@
 # w4 · m321 — The workspace audit log records the dashboard's own billing and audit reads, but not the reads Render audits: env var values and datastore connection info
 
-**Worker:** worker4 **Goal:** the audit log answers "who did what" as Render's does. Viewing env var values and datastore connection info leaves a Render-named event. Admin pages that read billing status, invites or the audit log itself leave none. **Status:** todo
+**Worker:** worker4 **Goal:** the audit log answers "who did what" as Render's does. Viewing env var values and datastore connection info leaves a Render-named event. Admin pages that read billing status, invites or the audit log itself leave none. **Status:** blocked — t001–t004, t006–t008 and t010 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Decide audit recording per verb, not per relation: a successful read gated by an admin relation stays unrecorded | 45m | — |
-| [t002](t002.md) | Record Render's `ViewEnvVarValuesEvent` for every read that returns env var values | 60m | t001 |
-| [t003](t003.md) | Record Render's `ViewConnectionInfoEvent` for Postgres and Key Value connection info | 30m | t001 |
-| [t010](t010.md) | One Render-named event per user action wherever Render's enum has one, including `CreateProjectEvent` and `CreateEnvironmentEvent`, which the mapping names but never emits | 50m | t001 |
-| [t004](t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules and the event mapping | 20m | t002, t003, t010 |
+| [t001](done/t001.md) | Decide audit recording per verb, not per relation: a successful read gated by an admin relation stays unrecorded — **DONE** | 45m | — |
+| [t002](done/t002.md) | Record Render's `ViewEnvVarValuesEvent` for every read that returns env var values — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | Record Render's `ViewConnectionInfoEvent` for Postgres and Key Value connection info — **DONE** | 30m | t001 |
+| [t010](done/t010.md) | One Render-named event per user action wherever Render's enum has one, including `CreateProjectEvent` and `CreateEnvironmentEvent`, which the mapping names but never emits — **DONE** | 50m | t001 |
+| [t004](done/t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules and the event mapping — **DONE** | 20m | t002, t003, t010 |
 | [t005](t005.md) | Live verification in `bex-canary` | 30m | t004 |
-| [t006](t006.md) | Render parity | 20m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t006 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
 | [t009](t009.md) | Closeout | 10m | t007, t008 |
 
 Ten tasks, 310m (5h10m). t010 was added in round 58.
@@ -124,7 +124,7 @@ Signed in as the `bex-canary` admin on `dashboard.bex.co`, after the release pin
 ## Source + Goal linkage
 
 - **Source:** live `/qa-find-bugs w4` loop, round 57, 2026-11-11 (above). Render: [render.com/docs/audit-logs](https://render.com/docs/audit-logs) and the pinned OpenAPI enum.
-- **Goal linkage:** Render parity first ([ADR008](../../../docs/ADR008-vision.md#render-parity-first)), plus the audit/compliance promise of [ADR012](../../../docs/ADR012-auth.md). Audit logs are a paid Pro+ feature (w8/m138).
+- **Goal linkage:** Render parity first ([ADR008](../../../../docs/ADR008-vision.md#render-parity-first)), plus the audit/compliance promise of [ADR012](../../../../docs/ADR012-auth.md). Audit logs are a paid Pro+ feature (w8/m138).
 - **Expected outcome:**
   - An admin exporting the log for an audit sees who viewed which secret and which database password.
   - They no longer see hundreds of dashboard-generated billing reads.
