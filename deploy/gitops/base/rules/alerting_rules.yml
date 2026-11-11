@@ -1387,7 +1387,7 @@ groups:
           severity: warning
         annotations:
           summary: "A suspended sandbox's image closed without ever being sized: storage that was never billed"
-          description: "A sandbox resumed or ended while its retained image was still unsized, so its storage seconds will never be charged. SandboxStorageUnsized should have fired first; fix the registry read and the rest will be sized. Runbook: docs/ADR023-usage-metering.md"
+          description: "A sandbox resumed or ended after 30 minutes or more with its retained image still unsized, so its storage seconds will never be charged (a pause shorter than that is not counted: it may never have committed an image). SandboxStorageUnsized should have fired first; fix the registry read and the rest will be sized. Runbook: docs/ADR023-usage-metering.md"
 
       - alert: SandboxStorageReapBacklog
         expr: |

@@ -222,9 +222,9 @@ type StorageMetrics struct {
 
 // NewStorageMetrics registers the storage meter's series. The state label is a
 // closed set: open (retained now), unsized_open (retained, not sized yet, so not
-// accruing), unsized_closed (closed without ever being sized: never billed) and
-// accrual_backlog (seconds not yet added to usage) and reap_pending (images of
-// gone sandboxes the registry still holds).
+// accruing), unsized_closed (closed without ever being sized after 30 minutes
+// or more: never billed), accrual_backlog (seconds not yet added to usage) and
+// reap_pending (images of gone sandboxes the registry still holds).
 func NewStorageMetrics(reg prometheus.Registerer) *StorageMetrics {
 	m := &StorageMetrics{
 		objects: prometheus.NewGaugeVec(prometheus.GaugeOpts{

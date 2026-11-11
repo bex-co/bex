@@ -273,11 +273,6 @@ spec:
             # meter retries, and SandboxStorageUnsized says why.
             - name: BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET
               value: bex-registry/bex-sandbox-registry
-            # Deleting a terminated sandbox's images is the first registry write
-            # bex-api makes: turn it on ("on") only after sizing is verified on
-            # production (w22/m321 t005).
-            - name: BEX_SANDBOX_SNAPSHOT_REAP
-              value: "off"
             - name: BEX_STRIPE_COMP_COUPON_ID
               valueFrom:
                 secretKeyRef:

@@ -53,6 +53,14 @@ const (
 	// StorageRetention is how long a settled, closed object's row is kept after
 	// it ended, so a late replay or a reopen still finds it.
 	StorageRetention = 35 * 24 * time.Hour
+
+	// StorageUnsizedGrace is how long a retained image may stay unsized before
+	// closing without a size counts as a loss: a sandbox suspended and then
+	// deleted or resumed within minutes may never have committed an image, and
+	// its charge would be cents of a cent. It matches SandboxStorageUnsized's
+	// 30-minute window, so the closed count only holds what that alert already
+	// should have flagged.
+	StorageUnsizedGrace = 30 * time.Minute
 )
 
 // SandboxStorageObject is one retained object's durable cursor.
@@ -73,7 +81,7 @@ type SandboxStorageObject struct {
 type SandboxStorageStats struct {
 	Open           int64 // objects being retained now
 	UnsizedOpen    int64 // retained but not sized yet: not accruing
-	UnsizedClosed  int64 // closed without ever being sized: never billed
+	UnsizedClosed  int64 // closed without ever being sized after StorageUnsizedGrace: never billed
 	AccrualBacklog int64 // objects with seconds not yet added to usage_hourly
 	ReapPending    int64 // images of gone sandboxes the registry still holds
 	OpenBytes      int64 // stored bytes of the open, sized objects
@@ -210,13 +218,15 @@ func (s *PGStore) SandboxStorageStats(ctx context.Context, now time.Time) (Sandb
 		SELECT
 		  (SELECT count(*) FROM sandbox_storage_objects WHERE ended_at IS NULL),
 		  (SELECT count(*) FROM sandbox_storage_objects WHERE bytes IS NULL AND ended_at IS NULL),
-		  (SELECT count(*) FROM sandbox_storage_objects WHERE bytes IS NULL AND ended_at IS NOT NULL),
+		  (SELECT count(*) FROM sandbox_storage_objects
+		   WHERE bytes IS NULL AND ended_at IS NOT NULL
+		     AND ended_at >= started_at + make_interval(secs => $2)),
 		  (SELECT count(*) FROM sandbox_storage_objects
 		   WHERE bytes IS NOT NULL AND (ended_at IS NULL OR accrued_through < ended_at)
 		     AND accrued_through < COALESCE(ended_at, $1::timestamptz)),
 		  (SELECT count(*) FROM sandbox_storage_objects WHERE reap_pending),
 		  (SELECT COALESCE(sum(bytes), 0)::bigint FROM sandbox_storage_objects WHERE ended_at IS NULL)`,
-		now.UTC()).Scan(&st.Open, &st.UnsizedOpen, &st.UnsizedClosed, &st.AccrualBacklog, &st.ReapPending, &st.OpenBytes)
+		now.UTC(), StorageUnsizedGrace.Seconds()).Scan(&st.Open, &st.UnsizedOpen, &st.UnsizedClosed, &st.AccrualBacklog, &st.ReapPending, &st.OpenBytes)
 	return st, err
 }
 

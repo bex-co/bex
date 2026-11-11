@@ -209,9 +209,13 @@ func TestSandboxStorageMeterPG(t *testing.T) {
 	// stats name it.
 	observe("b", "suspended", true, t0)
 	observe("b", "running", true, t0.Add(time.Hour))
+	// A pause that ends within StorageUnsizedGrace may never have committed an
+	// image; it is not a loss worth an alert (production QA churns these daily).
+	observe("c", "suspended", true, t0)
+	observe("c", "running", true, t0.Add(10*time.Second))
 	st, err := s.SandboxStorageStats(ctx, end.Add(72*time.Hour))
 	if err != nil || st.UnsizedClosed != 1 || st.Open != 0 || st.AccrualBacklog != 0 {
-		t.Errorf("stats = %+v err=%v, want one unsized closed object and nothing open or pending", st, err)
+		t.Errorf("stats = %+v err=%v, want one unsized closed object (the hour-long one, not the 10 s one) and nothing open or pending", st, err)
 	}
 
 	// Snapshot objects (w32/m285) register through the same calls.

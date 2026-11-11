@@ -1366,15 +1366,14 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 				reaper := registry
 				// The operator-minted Secret wins over the plain variables, and is read
 				// again as it rotates. Deleting a gone sandbox's images needs its own
-				// credential with the delete action, and with the Secret it is a
-				// separate switch (BEX_SANDBOX_SNAPSHOT_REAP); without a credential they
-				// stay (Zot retention keeps five tags).
+				// credential with the delete action; without one they stay (Zot
+				// retention keeps five tags).
 				reap := cfg.SandboxSnapshotRegistryGCUser != ""
 				if cfg.SandboxSnapshotRegistrySecret != "" {
 					key, _ := parseSecretRef(cfg.SandboxSnapshotRegistrySecret) // validated in config
 					registry.Credentials = secretCredentials(cl, key, registrySecretReaderUserKey, registrySecretReaderPasswordKey, time.Now)
 					reaper.Credentials = secretCredentials(cl, key, registrySecretReaperUserKey, registrySecretReaperPasswordKey, time.Now)
-					reap = cfg.SandboxSnapshotReap
+					reap = true
 				} else {
 					reaper.User, reaper.Password = cfg.SandboxSnapshotRegistryGCUser, cfg.SandboxSnapshotRegistryGCPass
 				}

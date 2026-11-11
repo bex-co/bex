@@ -270,12 +270,9 @@ type Config struct {
 	// SandboxSnapshotRegistrySecret ("<namespace>/<name>") names the Secret the
 	// operator mints with the meter's two Zot users; bex-api reads it instead of
 	// the user and password variables, which stay as an override for a registry
-	// the operator does not manage. SandboxSnapshotReap turns on deleting a gone
-	// sandbox's images with the Secret's reaper user: a deliberate second step
-	// after sizing is verified, because it is the first registry write bex-api
-	// has made.
+	// the operator does not manage. With the Secret, a gone sandbox's images are
+	// deleted with its reaper user.
 	SandboxSnapshotRegistrySecret      string
-	SandboxSnapshotReap                bool
 	SandboxSnapshotRegistryGCUser      string
 	SandboxSnapshotRegistryGCPass      string
 	SandboxSnapshotRegistryUser        string
@@ -613,7 +610,6 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			cfg.SandboxSnapshotRegistrySecret = ""
 		}
 	}
-	cfg.SandboxSnapshotReap = p.onOff("BEX_SANDBOX_SNAPSHOT_REAP", false)
 	cfg.SandboxSnapshotRegistryGCUser = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_USER")
 	cfg.SandboxSnapshotRegistryGCPass = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_GC_PASSWORD")
 	cfg.SandboxSnapshotRegistryUser = getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_USER")
