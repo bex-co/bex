@@ -19,7 +19,7 @@
 ## Definition of done
 
 - Usage unit tests cover failed builds, pre-deploy runs, kpack builds and the pod-start clock.
-- On production after the deploy, one deliberately failing build and one service with a pre-deploy command each appear in their hour's `build_seconds` on `GET /v1/usage`, and a build's metered seconds exclude its node wait (compared with `bex_build_queue_seconds` for that build). (Amended 2026-11-10: the failing build and the excluded wait verified live, the wait against the deploys' own `createdAt`→`startedAt` since the ops Grafana is not reachable from the QA account; the pre-deploy run by `TestBuildSecondsCountsPreDeployRunsInTheAppsNamespace`, as a pre-deploy command needs a paid plan and QA rules forbid buying one.)
+- On production after the deploy, one deliberately failing build and one service with a pre-deploy command each appear in their hour's `build_seconds` on `GET /v1/usage`, and a build's metered seconds exclude its node wait (compared with `bex_build_queue_seconds` for that build). (Amended 2026-11-10: the failing build and the excluded wait verified live, the wait against the deploys' own `createdAt`→`startedAt` since the ops Grafana is not reachable from the QA account; the pre-deploy run first by `TestBuildSecondsCountsPreDeployRunsInTheAppsNamespace`, then live on 2026-11-11 with a Starter service under the user's approval of small charges: 41 s build + 94 s pre-deploy metered as 143 s on every surface, t006.)
 - ADR023 records the shipped basis.
 
 ## Source + Goal linkage
