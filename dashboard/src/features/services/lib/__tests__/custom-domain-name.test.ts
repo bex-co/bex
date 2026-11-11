@@ -15,6 +15,10 @@ describe("domainNameError", () => {
     "qa-20261110.example.com.",
     "  www.example.com  ",
     "a.b.c.d.example.co.uk",
+    // A wildcard: one leading *. label (w4/m326).
+    "*.example.com",
+    "*.qa-20261110.example.com",
+    " *.example.com ",
     // The server's other rules stay the server's: it answers these as readable
     // sentences in the dialog.
     "co.uk",
@@ -42,16 +46,13 @@ describe("domainNameError", () => {
     "example.com..",
     "example.xn--",
     "",
+    // Not a single leading *. label.
+    "foo.*.example.com",
+    "*.*.example.com",
+    "*",
   ])("refuses %j", (name) => {
     expect(domainNameError(name)).toBe("invalid");
   });
-
-  it.each(["*.example.com", "*.qa-20261110.example.com", " *.example.com "])(
-    "marks the wildcard %j with its own reason",
-    (name) => {
-      expect(domainNameError(name)).toBe("wildcard");
-    },
-  );
 });
 
 describe("normalizedDomainName", () => {

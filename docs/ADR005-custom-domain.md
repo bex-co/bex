@@ -78,7 +78,43 @@ Direct add mirrors Render's pairing via the public-suffix list:
 - after the sibling is explicitly added and its redirect cleared, both claims are independent and deleting either preserves the other;
 - the same idempotent rule applies to pending and verified claims in both add directions.
 
-Cross-App collision covers both halves because each sibling is a real globally unique row. Wildcard tenant domains remain rejected: literal uniqueness cannot safely arbitrate a wildcard against every concrete hostname beneath it.
+Cross-App collision covers both halves because each sibling is a real globally unique row. A wildcard has no sibling.
+
+### Wildcard domains (w4/m326, 2026-11-11)
+
+A service takes a wildcard custom domain as Render's does ([the captured flow](render-artifacts/wildcard-custom-domains.md)). This replaces the earlier refusal, which literal uniqueness could not arbitrate and which carried no sign-off.
+
+- **Shape.** One leading `*.` label over a claimable host (`*.example.com`, `*.eu.example.com`). bex routes and certifies the names one label below its base, as Kubernetes Ingress and TLS wildcards do; not the base itself.
+  - Anything else with a `*`, or a wildcard over a public suffix, is `CUSTOM_DOMAIN_INVALID`.
+  - A wildcard under the platform zones (`*.onbex.co`, `*.<slug>.onbex.co`, `*.bex.co`) is `CUSTOM_DOMAIN_RESERVED`.
+  - Without a delegation zone (`BEX_ACME_DELEGATION_ZONE`, below) every wildcard is `CUSTOM_DOMAIN_WILDCARD_UNAVAILABLE`, on add, create and Blueprint `domains:` alike.
+- **Records.**
+  - `dnsRecord`: CNAME `*` (zone-relative) to `<slug>.onbex.co`.
+  - `challengeRecord` (bex extension on REST, GraphQL and MCP; null for a concrete host): CNAME `_acme-challenge` to `<slug>.<delegation zone>`, the analogue of Render's `<slug>.verify.renderdns.com`.
+  - Render's third record, `_cf-custom-hostname`, validates ownership for its Cloudflare edge and has no bex counterpart.
+- **Verification** runs the shared promote path. It passes when a fresh random name below the base resolves to the service (a resolver's negative cache never answers for it) and `_acme-challenge.<base>`'s CNAME chain ends at the service's delegation target. Render's added requirement that the root domain also point at it comes from its Cloudflare edge and is not copied.
+- **A record that points at another service never verifies a host.** `PointsAtService`'s address branch exists for apex ALIAS and flattening. A host whose CNAME chain ends at another service's platform host points at that service, though it reaches the same edge addresses, and is refused. A DNS wildcard answers for every name below its base at any depth, so without this rule anyone could claim `login.eu.example.com` under someone's `*.example.com` record.
+- **Collisions.** Exact duplicates stay refused by the claim index and `UNIQUE(host)`. A wildcard also overlaps every name below its base at any depth, as its DNS record does:
+  - **Across workspaces either way is a hijack.** Another workspace's wildcard would capture a host routed elsewhere. A name under someone's wildcard already resolves to the edge.
+  - **Refusal.** Both are refused as `CUSTOM_DOMAIN_IN_USE` (`hostClaims.coveredElsewhere`), at add and again at promotion, so a claim added while the one it overlaps was still pending stays unverified.
+  - **One sweep tick shares one claim index,** kept current as claims promote. Two overlapping claims verifying in the same instant on two replicas remain a residual.
+  - **Within one workspace** a concrete host under the workspace's own wildcard is how one name is routed to another of its services, and is allowed.
+  - **Workspace identity** is the tenant id, not the namespace, since workspaces not yet moved share one (ADR043 D8).
+- **Routing.**
+  - **Own Ingress.** The operator puts an App's wildcards on a `<app>.wildcard` Ingress. The dot keeps that name from ever being another App's serving Ingress.
+  - **Lowest priority.** It pins `traefik.ingress.kubernetes.io/router.priority: 1`. Traefik otherwise ranks by rule length, and a wildcard's `HostRegexp` outranks a concrete `Host` under it. The platform-host fallback shares priority 1 but never overlaps: platform names are reserved.
+  - **Same middlewares** as the serving Ingress.
+  - **Host maps.** The activator and the static server look a host up by its own name first, then by `*.<parent>`.
+  - **Never a URL or probe host.** A wildcard is never one of the service's URLs, nor the Host its health probes send.
+- **Certificates.**
+  - **DNS-01.** HTTP-01 cannot issue a wildcard. The wildcard Ingress names `BEX_WILDCARD_CLUSTER_ISSUER`, a DNS-01 ClusterIssuer with `cnameStrategy: Follow` that writes the challenge TXT at `<slug>.<delegation zone>`. With no issuer configured the wildcard routes without a certificate request.
+  - **The delegation zone must host nothing else.** cert-manager follows whatever the tenant's CNAME says, so a tenant can steer where in the issuer's zone a TXT record is written.
+    - In `onbex.co` that is an outage for others. A TXT record at `<victim>.onbex.co` stops the `*.onbex.co` wildcard answering for that name, and the victim's platform host stops resolving.
+    - In a zone that serves nothing, a stray TXT record is inert.
+    - The zone therefore has its own Cloudflare token scoped to it alone. The onbex.co token ([ADR093](ADR093-onbex-wildcard-tls.md)) is not reused.
+  - **Provisioning that zone is the open gate.** The zone, its token, the `cert-manager` Secret, the ClusterIssuer, and `BEX_ACME_DELEGATION_ZONE` on bex-api with `BEX_WILDCARD_CLUSTER_ISSUER` on the operator are all pending (w4/m326).
+  - The wildcard's Secret is per host like every other, so a pending wildcard certificate never blocks another host's (w8/m118).
+- **CAA.** A domain with CAA records needs an `issuewild` entry for Let's Encrypt, as Render documents.
 
 ## Render compatibility
 
@@ -92,7 +128,7 @@ Render's documented workflow is the contract (rechecked 2026-10-19 against [the 
 Named divergences that survive, none of which adds a tenant setup step:
 
 - **Pair deletion cascade** (above): Render's public docs and delete reference do not specify whether deleting one pair member cascades the generated sibling (rechecked 2026-08-28), so bex's rule is a choice where Render is silent.
-- **Wildcards**: Render supports tenant wildcards behind extra `_acme-challenge` / `_cf-custom-hostname` machinery; bex still rejects them (§www ↔ apex pairing). Revisit only as its own decision — it must not complicate the ordinary flow.
+- **Wildcards** (w4/m326, §Wildcard domains): two records instead of Render's three (no `_cf-custom-hostname`), and no requirement that the root domain also point at bex.
 - **Invisible safety refusals**: reserved platform hosts and the bare-public-suffix refusal have no Render counterpart but only ever refuse a host that could never legitimately be served.
 - **Additive read fields**: `dnsRecord` (Render shows the record only in its dashboard), `certificateStatus`/`serverStatus` (the TLS/serving axes Render folds into its UI), and `certificateReason` remain safe supersets in ADR018's established class — omitted/unchanged for a strict Render client, and never a changed Render field.
 - **Apex `A` value**: Render prints one committed-stable load-balancer IP; bex prints the platform host's currently resolved edge addresses (§Projection and certificates).

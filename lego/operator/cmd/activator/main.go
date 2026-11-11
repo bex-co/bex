@@ -844,8 +844,18 @@ func (h *hostCache) refreshOnce(ctx context.Context) {
 func (h *hostCache) claims(host string) bool {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	_, ok := h.byHost[requestHost(host)]
+	_, ok := h.servingApp(requestHost(host))
 	return ok
+}
+
+// servingApp is the App serving host: the one that claims it, or else the
+// one whose wildcard custom domain covers it (w4/m326). Callers hold h.mu.
+func (h *hostCache) servingApp(host string) (*appv1alpha1.App, bool) {
+	if app, ok := h.byHost[host]; ok {
+		return app, true
+	}
+	app, ok := h.byHost[appv1alpha1.WildcardHostFor(host)]
+	return app, ok
 }
 
 // lookup returns the App that owns host (canonicalized), or ok=false. It never
@@ -858,7 +868,7 @@ func (h *hostCache) claims(host string) bool {
 func (h *hostCache) lookup(host string) (*appv1alpha1.App, bool) {
 	h.mu.RLock()
 	defer h.mu.RUnlock()
-	app, ok := h.byHost[requestHost(host)]
+	app, ok := h.servingApp(requestHost(host))
 	if !ok {
 		return nil, false
 	}

@@ -1399,3 +1399,31 @@ func TestDeletingAppAnswersAsUnknownHost(t *testing.T) {
 		})
 	}
 }
+
+// A wildcard custom domain serves every name one label below it, and a name
+// another App claims stays that App's (w4/m326).
+func TestHostCacheServesAWildcardBelowItsOwnHosts(t *testing.T) {
+	wild := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "wild", Namespace: "bex-system"},
+		Spec: appv1alpha1.AppSpec{Hosts: []string{"*.example.com"}}}
+	api := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "api", Namespace: "bex-system"},
+		Spec: appv1alpha1.AppSpec{Hosts: []string{"api.example.com"}}}
+	cache, _ := primedHostCache(t, wild, api)
+	for host, want := range map[string]string{
+		"tenant1.example.com":      "wild",
+		"Tenant2.Example.com:443":  "wild",
+		"api.example.com":          "api",
+		"example.com":              "",
+		"deep.tenant1.example.com": "",
+	} {
+		got := ""
+		if app, ok := cache.lookup(host); ok {
+			got = app.Name
+		}
+		if got != want {
+			t.Errorf("lookup(%q) = %q, want %q", host, got, want)
+		}
+		if cache.claims(host) != (want != "") {
+			t.Errorf("claims(%q) = %v", host, cache.claims(host))
+		}
+	}
+}

@@ -1740,6 +1740,7 @@ func (s *Service) previewBlueprintHosts(ctx context.Context, name string, desire
 		existing = true
 	} else if tenantID := s.resolveTenantID(ctx); tenantID != "" {
 		probe.Name = core.CRName(tenantID, name)
+		probe.Namespace = s.AppNamespace(tenantID)
 		probe.Labels = map[string]string{core.LabelTenant: tenantID}
 	}
 	return s.checkHostsClaimable(ctx, probe, true, existing)

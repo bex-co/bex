@@ -26,13 +26,12 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-// traefikRouterPriorityAnnotation pins a Traefik router's priority.
-const traefikRouterPriorityAnnotation = "traefik.ingress.kubernetes.io/router.priority"
-
 // The platform-host fallback route is a platform manifest (the operator may
 // not write Ingresses in bex-system): every platform host at the lowest
 // priority, to the activator. An App's own route never pins a priority, so
-// Traefik's rule-length default always ranks it above (w4/m235 t008).
+// Traefik's rule-length default always ranks it above (w4/m235 t008). A
+// wildcard custom domain's route is pinned as low (w4/m326), but it can never
+// cover a platform host: those are reserved.
 func TestPlatformHostFallbackRouteIsTheLowestPriorityCatchAll(t *testing.T) {
 	raw, err := os.ReadFile(filepath.Join("..", "..", "config", "activator", "platform-host-fallback-ingress.yaml"))
 	if err != nil {

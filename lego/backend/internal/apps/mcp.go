@@ -953,7 +953,7 @@ func (s *Service) registerCustomDomainTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "add_custom_domain",
-		Description: "Add a custom domain (adding an apex also adds www redirecting to it, and vice versa). The result is unverified and includes the exact traffic DNS record to create (dnsRecord: CNAME for a subdomain, ALIAS for an apex); once that record points at the service, verification completes automatically and the domain routes.",
+		Description: "Add a custom domain (adding an apex also adds www redirecting to it, and vice versa). The result is unverified and includes the exact traffic DNS record to create (dnsRecord: CNAME for a subdomain, ALIAS for an apex); once that record points at the service, verification completes automatically and the domain routes. A wildcard (*.example.com) serves every name one label below it; it needs both its CNAME at * and the _acme-challenge CNAME in challengeRecord, which its certificate is issued through.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in domainArgs) (*mcp.CallToolResult, renderCustomDomain, error) {
 		return customDomainResult(s.AddDomain(ctx, in.ServiceID, in.Name))
 	})

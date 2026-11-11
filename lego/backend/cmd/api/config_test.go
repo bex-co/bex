@@ -664,9 +664,27 @@ func TestLoadConfigReservedDomains(t *testing.T) {
 	if got := strings.Join(cfg.ReservedDomains, ","); got != "bex.acme.com,ops.acme.com" {
 		t.Fatalf("ReservedDomains = %q, want bex.acme.com,ops.acme.com", got)
 	}
-	for _, bad := range []string{"bad_zone", "https://bex.acme.com", "localhost"} {
+	for _, bad := range []string{"bad_zone", "https://bex.acme.com", "localhost", "*.acme.com"} {
 		if _, _, err := loadFor(t, map[string]string{"BEX_RESERVED_DOMAINS": bad}); err == nil || !strings.Contains(err.Error(), "BEX_RESERVED_DOMAINS") {
 			t.Errorf("BEX_RESERVED_DOMAINS=%q = %v, want a startup error naming it", bad, err)
+		}
+	}
+}
+
+// BEX_ACME_DELEGATION_ZONE (w4/m326) is one concrete zone, normalized like a
+// custom domain; a malformed one refuses to start. Unset leaves wildcard
+// custom domains refused.
+func TestLoadConfigACMEDelegationZone(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{"BEX_ACME_DELEGATION_ZONE": " ACME.Bexdns.example. "})
+	if err != nil || cfg.ACMEDelegationZone != "acme.bexdns.example" {
+		t.Fatalf("ACMEDelegationZone = %q, %v", cfg.ACMEDelegationZone, err)
+	}
+	if cfg, _, err := loadFor(t, map[string]string{}); err != nil || cfg.ACMEDelegationZone != "" {
+		t.Fatalf("unset ACMEDelegationZone = %q, %v", cfg.ACMEDelegationZone, err)
+	}
+	for _, bad := range []string{"bad_zone", "*.bexdns.example", "localhost"} {
+		if _, _, err := loadFor(t, map[string]string{"BEX_ACME_DELEGATION_ZONE": bad}); err == nil || !strings.Contains(err.Error(), "BEX_ACME_DELEGATION_ZONE") {
+			t.Errorf("BEX_ACME_DELEGATION_ZONE=%q = %v, want a startup error naming it", bad, err)
 		}
 	}
 }

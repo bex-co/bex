@@ -22,15 +22,14 @@ export function normalizedDomainName(raw: string): string {
 const DOMAIN_NAME =
   /^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+([a-z]{2,}|xn--[a-z0-9-]*[a-z0-9])$/i;
 
-export type DomainNameError = "invalid" | "wildcard";
+export type DomainNameError = "invalid";
 
 /**
  * Why the dialog refuses `raw` before sending it, or null to send it. A
- * wildcard name is its own reason: bex-api refuses it deliberately (ADR005), so
- * the person is told so instead of "enter a valid domain".
+ * wildcard is one leading `*.` label over a valid name, as on Render
+ * (w4/m326): `*.example.com`.
  */
 export function domainNameError(raw: string): DomainNameError | null {
-  const name = normalizedDomainName(raw);
-  if (name.startsWith("*.")) return "wildcard";
+  const name = normalizedDomainName(raw).replace(/^\*\./, "");
   return DOMAIN_NAME.test(name) ? null : "invalid";
 }

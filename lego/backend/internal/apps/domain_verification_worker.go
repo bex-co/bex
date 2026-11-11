@@ -69,6 +69,10 @@ func (w *DomainVerificationWorker) tick(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	// One index of the platform's host claims for the tick's promotion checks
+	// (w4/m326), kept current as claims promote, so two overlapping claims
+	// cannot both promote in one tick.
+	ctx = withHostClaimScope(ctx)
 	// Resolve each App CR once per tick: an auto-paired apex+www are two
 	// claims on one App, and the client is uncached.
 	appsByID := map[string]*appv1alpha1.App{}

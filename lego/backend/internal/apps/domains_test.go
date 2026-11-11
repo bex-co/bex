@@ -574,10 +574,13 @@ func TestAddDomainEmptyHostnameIsBadRequest(t *testing.T) {
 // round-5 finding 7: a wildcard custom domain and a concrete host beneath it are
 // compared literally by both the collision check and the store's UNIQUE(host)
 // constraint, so both would go live and the wildcard could hijack a concrete
-// host routed to another tenant. Reject wildcards at the write boundary.
-func TestAddDomainRejectsWildcard(t *testing.T) {
+// host routed to another tenant. Since w4/m326 a wildcard is accepted, with
+// that overlap refused (domains_wildcard_test.go); malformed ones still are.
+func TestAddDomainRejectsMalformedWildcards(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"))
-	for _, host := range []string{"*.example.com", "*.foo.example.com", "foo.*.example.com"} {
+	// A wildcard is one leading *. label over a claimable host (w4/m326):
+	// anything else, or one over a bare public suffix, stays invalid.
+	for _, host := range []string{"foo.*.example.com", "*.*.example.com", "**.example.com", "*", "*.", "*.com", "*.co.uk"} {
 		if _, err := svc.AddDomain(context.Background(), "web", host); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("wildcard %q => ErrBadRequest, got %v", host, err)
 		}
@@ -2590,7 +2593,7 @@ func TestCustomDomainRefusesPlatformHostsIPsAndBareNames(t *testing.T) {
 	for _, host := range []string{
 		"api.bex.co", "auth.bex.co", "bex.co", "dashboard.bex.co", "ssh.bex.co", // platform
 		"localhost", "127.0.0.1", "10.0.0.8", "::1", // not domains
-		"x.onbex.co", "onbex.co", "*.qa-l7.example.com", "qa_l7.example.com", // refused before
+		"x.onbex.co", "onbex.co", "*.*.qa-l7.example.com", "qa_l7.example.com", // refused before
 	} {
 		if _, err := svc.AddDomain(context.Background(), "web", host); !errors.Is(err, core.ErrBadRequest) {
 			t.Errorf("AddDomain(%q) = %v, want 400", host, err)
@@ -2673,6 +2676,8 @@ func TestCustomDomainDialogVectors(t *testing.T) {
 		"qa-20261110.example.com.":     "qa-20261110.example.com", // one trailing dot is dropped
 		"  www.example.com  ":          "www.example.com",
 		"a.b.c.d.example.co.uk":        "a.b.c.d.example.co.uk",
+		"*.example.com":                "*.example.com", // a wildcard (w4/m326)
+		"*.QA-20261110.Example.com":    "*.qa-20261110.example.com",
 	} {
 		got, err := claimableHostname(raw)
 		if err != nil || got != want {
@@ -2680,7 +2685,7 @@ func TestCustomDomainDialogVectors(t *testing.T) {
 		}
 	}
 	for _, raw := range []string{
-		"*.example.com", "*.qa-20261110.example.com", // wildcard: refused by design (ADR005)
+		"foo.*.example.com", "*.*.example.com", "*.co.uk", // not a single leading *. over a registered name
 		"co.uk", // a public suffix: the server's rule, answered in the dialog
 		strings.Repeat("a", 64) + ".example.com",
 		"example.123", "qa-20261110.example.123",

@@ -74,7 +74,7 @@ func TestCustomDomainRefusalsAreCodedOnEverySurface(t *testing.T) {
 		host, code string
 		status     int
 	}{
-		{"*.example.com", "CUSTOM_DOMAIN_INVALID", http.StatusBadRequest},
+		{"*.*.example.com", "CUSTOM_DOMAIN_INVALID", http.StatusBadRequest},
 		{"localhost", "CUSTOM_DOMAIN_INVALID", http.StatusBadRequest},
 		{"co.uk", "CUSTOM_DOMAIN_INVALID", http.StatusBadRequest},
 		{"github.io", "CUSTOM_DOMAIN_INVALID", http.StatusBadRequest},

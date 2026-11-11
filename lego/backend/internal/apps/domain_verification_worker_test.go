@@ -104,6 +104,20 @@ func TestTrafficPredicate(t *testing.T) {
 			want: false,
 		},
 		{
+			// Another workspace's wildcard record (*.example.com CNAME
+			// other.onbex.co) answers for every name below it, at any depth,
+			// with the shared edge addresses (w4/m326).
+			name: "a name under another service's wildcard record",
+			host: "login.eu.example.com",
+			resolver: fakeDomainResolver{cnames: map[string]string{
+				"login.eu.example.com": "other.onbex.co",
+			}, addrs: map[string][]string{
+				"login.eu.example.com": {"49.12.20.236"},
+				"web.onbex.co":         {"49.12.20.236"},
+			}},
+			want: false,
+		},
+		{
 			name: "Cloudflare-proxied record resolves to anycast, not the edge",
 			host: "example.com",
 			resolver: fakeDomainResolver{addrs: map[string][]string{
@@ -140,6 +154,27 @@ func TestTrafficPredicate(t *testing.T) {
 				t.Errorf("PointsAtService(%q, %q) = %v, want %v", tc.host, platform, got, tc.want)
 			}
 		})
+	}
+}
+
+// A wildcard's _acme-challenge delegation holds when its CNAME chain ends at
+// the service's own target (w4/m326).
+func TestDelegatesChallengeFollowsTheChain(t *testing.T) {
+	const name, target = "_acme-challenge.example.com", "web.acme.bexdns.example"
+	for _, tc := range []struct {
+		label    string
+		resolver fakeDomainResolver
+		want     bool
+	}{
+		{"delegated", fakeDomainResolver{cnames: map[string]string{name: target + "."}}, true},
+		{"delegated to another service", fakeDomainResolver{cnames: map[string]string{name: "other.acme.bexdns.example"}}, false},
+		{"not delegated", fakeDomainResolver{}, false},
+		{"resolver error", fakeDomainResolver{err: errors.New("SERVFAIL")}, false},
+	} {
+		checker := systemDomainTrafficChecker{resolver: tc.resolver}
+		if got := checker.DelegatesChallenge(context.Background(), name, target); got != tc.want {
+			t.Errorf("%s: DelegatesChallenge = %v, want %v", tc.label, got, tc.want)
+		}
 	}
 }
 

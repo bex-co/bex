@@ -1668,11 +1668,6 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "请输入有效的域名，例如 www.example.com。",
     description: "Add-domain validation message for a malformed hostname",
   },
-  "services.domainWildcard": {
-    message: "不支持通配符域名（*.example.com）。请逐个添加主机名。",
-    description:
-      "Add-domain validation message for a wildcard hostname, which bex-api refuses by design (w21/048)",
-  },
   "services.domainAddButton": {
     message: "添加域名",
     description: "Add-domain dialog submit button",
@@ -1721,6 +1716,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message:
       "请在 {zone} 区域于你的 DNS 服务商处创建此记录。主机名相对于该区域。记录生效后，验证与 TLS 证书会自动完成。",
     description: "子域名 DNS 记录上方的说明——点名 Host 相对的区域（w4/092）",
+  },
+  "services.domainDnsWildcardChallenge": {
+    message: "通配符域名还需要这条记录，bex 才能为该域名签发并续期 TLS 证书。",
+    description:
+      "Above a wildcard custom domain's second DNS record, its _acme-challenge CNAME (w4/m326; Render's docs say it enables certificate issuance and renewal)",
   },
   "services.domainDnsApexFallback": {
     message:

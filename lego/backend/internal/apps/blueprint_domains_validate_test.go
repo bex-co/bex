@@ -47,7 +47,7 @@ func TestBlueprintValidateRefusesUnclaimableDomains(t *testing.T) {
 		"github.io":                              "it is a public suffix",
 		strings.Repeat("a", 64) + ".example.com": "each label must be at most 63 characters",
 		"qa.example.123":                         "the top-level domain cannot be numeric",
-		"'*.example.com'":                        "wildcard hostnames are not allowed",
+		"'*.*.example.com'":                      "a wildcard is a single leading *. label",
 		"taken.example.com":                      "this domain already exists on another site",
 	}
 	for host, want := range refused {

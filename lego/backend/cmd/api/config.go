@@ -76,6 +76,11 @@ type Config struct {
 	// domain at or under; unset reserves each platform host's registrable
 	// domain other than BEX_BASE_DOMAIN's (docs/ADR005-custom-domain.md).
 	ReservedDomains []string
+	// BEX_ACME_DELEGATION_ZONE is the DNS zone a wildcard custom domain's
+	// `_acme-challenge` CNAME points into (`<slug>.<zone>`), where cert-manager
+	// answers its DNS-01 challenge (w4/m326, docs/ADR005-custom-domain.md). It
+	// must host nothing else. Unset: wildcard custom domains are refused.
+	ACMEDelegationZone string
 	// BEX_PUBLIC_IMAGE_REGISTRIES ("true" unless "false") accepts images from
 	// any public registry, as on Render (w5/171). A cluster whose nodes do not
 	// all carry the containerd link-local deny yet pins it false.
@@ -352,6 +357,13 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		p.errorf("invalid BEX_RESERVED_DOMAINS: %v", err)
 	} else {
 		cfg.ReservedDomains = zones
+	}
+	if zone := getenv("BEX_ACME_DELEGATION_ZONE"); zone != "" {
+		if canonical, err := apps.ParseACMEDelegationZone(zone); err != nil {
+			p.errorf("invalid BEX_ACME_DELEGATION_ZONE: %v", err)
+		} else {
+			cfg.ACMEDelegationZone = canonical
+		}
 	}
 	cfg.PublicImageRegistries = getenv("BEX_PUBLIC_IMAGE_REGISTRIES") != "false"
 	cfg.RouterURL = getenv("BEX_ROUTER_URL")

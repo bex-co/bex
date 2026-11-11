@@ -860,7 +860,15 @@ var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// dnsRecord is the record the tenant must create (bex extension; the target is
 		// the app's platform host <app>.<base-domain>).
 		"dnsRecord": gqlutil.Typed(dnsRecordGQLType, func(d DomainView) any { return d.DNSRecord }),
-		"server":    gqlutil.Typed(serverGQLType, func(d DomainView) any { return d }),
+		// challengeRecord is a wildcard domain's `_acme-challenge` CNAME, its
+		// certificate's DNS-01 delegation (w4/m326); null for a concrete host.
+		"challengeRecord": &graphql.Field{Type: dnsRecordGQLType, Resolve: gqlutil.Field(func(d DomainView) any {
+			if d.ChallengeRecord == nil {
+				return nil
+			}
+			return *d.ChallengeRecord
+		})},
+		"server": gqlutil.Typed(serverGQLType, func(d DomainView) any { return d }),
 		// edgeAddresses is an apex domain's A-record fallback (ADR005): the
 		// platform host's current edge addresses, resolved at read time; empty
 		// for subdomains and whenever resolution fails (w4/378). Additive —

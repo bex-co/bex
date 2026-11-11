@@ -299,3 +299,23 @@ func TestStartFailsWhenTheFirstSnapshotCannotBeBuilt(t *testing.T) {
 		t.Fatal("Start succeeded without a snapshot")
 	}
 }
+
+// A wildcard custom domain serves every name one label below it, after the
+// names sites claim (w4/m326).
+func TestResolveFallsBackToAWildcard(t *testing.T) {
+	c := &CachedResolver{sites: map[string]Site{
+		"*.example.com":   {AppID: "wild"},
+		"api.example.com": {AppID: "api"},
+	}}
+	for host, want := range map[string]string{
+		"Tenant.example.com":   "wild",
+		"api.example.com":      "api",
+		"example.com":          "",
+		"a.tenant.example.com": "",
+	} {
+		site, ok := c.Resolve(host)
+		if ok != (want != "") || site.AppID != want {
+			t.Errorf("Resolve(%q) = %+v, %v; want %q", host, site, ok, want)
+		}
+	}
+}

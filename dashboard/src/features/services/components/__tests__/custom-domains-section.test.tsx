@@ -258,11 +258,12 @@ describe("CustomDomainsSection", () => {
   });
 
   // w21/048: the dialog's pre-check sends every name bex-api accepts that a
-  // person really owns, and names the wildcard reason instead of "invalid".
+  // person really owns, a wildcard included (w4/m326).
   it.each([
     ["qa-20261110.example.xn--p1ai", "qa-20261110.example.xn--p1ai"],
     ["qa-20261110.example.com.", "qa-20261110.example.com"],
     ["  www.example.com  ", "www.example.com"],
+    ["*.example.com", "*.example.com"],
   ])("sends %j as %j", async (typed, sent) => {
     mockUseCustomDomains.mockReturnValue(domainsResult([]));
     const user = userEvent.setup();
@@ -279,24 +280,38 @@ describe("CustomDomainsSection", () => {
     expect(mockAddDomain).toHaveBeenCalledWith(sent);
   });
 
-  it("marks a wildcard with its own reason and sends nothing", async () => {
-    mockUseCustomDomains.mockReturnValue(domainsResult([]));
-    const user = userEvent.setup();
+  // w4/m326: a wildcard needs Render's two records, the CNAME at * and the
+  // _acme-challenge delegation its certificate is issued through.
+  it("shows a wildcard's two records", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([
+        {
+          ...pendingDomain,
+          name: "*.example.com",
+          dnsRecord: { type: "CNAME", name: "*", value: "web.onbex.co" },
+          challengeRecord: {
+            type: "CNAME",
+            name: "_acme-challenge",
+            value: "web.verify.onbex.co",
+          },
+        },
+      ]),
+    );
     render(<CustomDomainsSection serviceId="web" />);
 
-    await user.click(screen.getByRole("button", { name: "Add Custom Domain" }));
-    const dialog = await screen.findByRole("dialog");
-    const input = within(dialog).getByLabelText("Name");
-    await user.type(input, "*.example.com");
-    await user.click(
-      within(dialog).getByRole("button", { name: "Add Domain" }),
-    );
-
-    expect(input).toHaveAttribute("aria-invalid", "true");
-    expect(input).toHaveAccessibleDescription(
-      "Wildcard domains (*.example.com) are not supported. Add each hostname on its own.",
-    );
-    expect(mockAddDomain).not.toHaveBeenCalled();
+    expect(screen.getAllByText("CNAME")).toHaveLength(2);
+    expect(screen.getByText("*")).toBeInTheDocument();
+    expect(screen.getByText("_acme-challenge")).toBeInTheDocument();
+    expect(screen.getByText("web.verify.onbex.co")).toBeInTheDocument();
+    expect(
+      screen.getByText(/A wildcard domain also needs this record/),
+    ).toBeInTheDocument();
+    // Each copy button names its record (w4/482).
+    expect(
+      screen.getByRole("button", {
+        name: "Copy CNAME host for *.example.com (_acme-challenge)",
+      }),
+    ).toBeDefined();
   });
 
   it("shows exactly one traffic record for an unverified domain — no TXT step", () => {

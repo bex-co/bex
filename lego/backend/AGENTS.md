@@ -90,6 +90,7 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_BASE_DOMAIN` | wildcard `onbex.co` for custom-domain DNS targets |
 | bex-api | `BEX_PUBLIC_IMAGE_REGISTRIES` | `false` keeps the fixed image-registry allowlist; anything else (default) accepts any public registry, as on Render. Only set `false` while nodes lack the containerd link-local deny (w5/171, ADR022) |
 | bex-api | `BEX_RESERVED_DOMAINS` | comma-separated zones no tenant may claim a custom domain at or under, replacing the default: each platform host's registrable domain other than `BEX_BASE_DOMAIN`'s. List zones covering every host the platform serves (docs/ADR005-custom-domain.md) |
+| bex-api | `BEX_ACME_DELEGATION_ZONE` | the DNS zone a wildcard custom domain's `_acme-challenge` CNAME points into (`<slug>.<zone>`), where cert-manager answers its DNS-01 challenge (w4/m326). It must host nothing else and have its own Cloudflare token (docs/ADR005-custom-domain.md § Wildcard domains). Unset (today) ⇒ wildcard custom domains are refused as `CUSTOM_DOMAIN_WILDCARD_UNAVAILABLE` |
 | bex-api | `BEX_PROM_URL` | Prometheus (Traefik/cAdvisor); unset → request 503, metrics fallback |
 | bex-api | `BEX_USAGE_RETENTION_MONTHS` `3`, `BEX_AUDIT_RETENTION_DAYS` `90` | usage hot window + audit purge intervals |
 | bex-api | `BEX_MAX_BLUEPRINT_GROUPINGS` `1000`, `…_ENV_GROUPS…` `100`, `…_GIT_CONNECTIONS…` `10`, `…_REGISTRY_CREDS…` `50` | per-workspace caps (coded `*_LIMIT` 409) |

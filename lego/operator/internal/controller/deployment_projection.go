@@ -427,7 +427,8 @@ const probeHostHeader = "Host"
 //
 // Custom-first, unlike EffectiveHosts' public-URL order. bex-api admits only
 // verified claims into spec.host/hosts, so a pending domain is never chosen; a
-// redirect source is skipped because the edge never forwards it to the app.
+// redirect source is skipped because the edge never forwards it to the app,
+// and so is a wildcard, which names no host a request could carry (w4/m326).
 // Types with no public route (private service, worker) keep the pod-IP Host.
 func healthProbeHost(app *appv1alpha1.App, baseDomain string) string {
 	hosts := effectiveHosts(app, baseDomain)
@@ -437,7 +438,7 @@ func healthProbeHost(app *appv1alpha1.App, baseDomain string) string {
 	redirects := effectiveHostRedirects(app, hosts)
 	custom := func(h string) bool {
 		_, redirect := redirects[h]
-		return h != "" && !redirect
+		return h != "" && !redirect && !appv1alpha1.IsWildcardHost(h)
 	}
 	if custom(app.Spec.Host) {
 		return app.Spec.Host

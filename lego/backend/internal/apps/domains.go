@@ -19,6 +19,7 @@ package apps
 import (
 	"cmp"
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"maps"
@@ -88,6 +89,27 @@ type systemDomainTrafficChecker struct {
 	resolver domainResolver // nil ⇒ net.DefaultResolver
 }
 
+// challengeDelegation is the check a DomainTrafficChecker adds for a wildcard
+// domain (w4/m326): its `_acme-challenge` name is a CNAME to the service's
+// delegation target, through which cert-manager answers the DNS-01 challenge
+// its certificate needs. A checker without it never verifies a wildcard.
+type challengeDelegation interface {
+	DelegatesChallenge(ctx context.Context, name, target string) bool
+}
+
+// DelegatesChallenge reports whether name's CNAME chain ends at target, which
+// the platform's wildcard record resolves directly.
+func (c systemDomainTrafficChecker) DelegatesChallenge(ctx context.Context, name, target string) bool {
+	resolver := c.resolver
+	if resolver == nil {
+		resolver = net.DefaultResolver
+	}
+	lookupCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	cname, err := resolver.LookupCNAME(lookupCtx, name)
+	return err == nil && target != "" && normalizeHostname(cname) == normalizeHostname(target)
+}
+
 func (c systemDomainTrafficChecker) PointsAtService(ctx context.Context, host, platformHost string) bool {
 	host, platformHost = normalizeHostname(host), normalizeHostname(platformHost)
 	if host == "" || platformHost == "" || host == platformHost {
@@ -111,6 +133,13 @@ func (c systemDomainTrafficChecker) PointsAtService(ctx context.Context, host, p
 		if cname != "" && cname != host {
 			if platformCNAME, err := resolver.LookupCNAME(lookupCtx, platformHost); err == nil && normalizeHostname(platformCNAME) == cname {
 				return true
+			}
+			// A CNAME to another service's platform host points at that
+			// service, though it reaches the same edge addresses. A name
+			// under someone's wildcard record resolves exactly so, at any
+			// depth, and must never verify for another service (w4/m326).
+			if _, platformZone, _ := strings.Cut(platformHost, "."); platformZone != "" && strings.HasSuffix(cname, "."+platformZone) {
+				return false
 			}
 		}
 	}
@@ -176,15 +205,87 @@ func (s *Service) domainTrafficChecker() DomainTrafficChecker {
 	return systemDomainTrafficChecker{}
 }
 
+// domainPointsAtService is verification's DNS check. A concrete host's
+// traffic record points at the service. A wildcard's covers a name below its
+// base, here a fresh one so no resolver's negative cache answers for it, and
+// its `_acme-challenge` delegation is in place, as Render requires both
+// records of a wildcard (w4/m326).
+func (s *Service) domainPointsAtService(ctx context.Context, app *appv1alpha1.App, host string) bool {
+	checker := s.domainTrafficChecker()
+	platformHost := s.platformHost(app)
+	base, wild := wildcardBase(host)
+	if !wild {
+		return checker.PointsAtService(ctx, host, platformHost)
+	}
+	delegation, ok := checker.(challengeDelegation)
+	target := s.challengeTarget(app)
+	return ok && target != "" &&
+		checker.PointsAtService(ctx, "bex-check-"+strings.ToLower(rand.Text()[:12])+"."+base, platformHost) &&
+		delegation.DelegatesChallenge(ctx, acmeChallengeLabel+"."+base, target)
+}
+
+// acmeChallengeLabel is the name ACME's DNS-01 challenge reads under a domain.
+const acmeChallengeLabel = "_acme-challenge"
+
+// challengeTarget is where a wildcard domain's `_acme-challenge` CNAME points:
+// `<slug>.<ACMEDelegationZone>`, where cert-manager writes the challenge's TXT
+// record (Render's `<slug>.verify.renderdns.com`). The zone hosts nothing
+// else: cert-manager follows whatever the tenant's CNAME says, so in a zone
+// that served anything, a tenant could make it write a record that shadows a
+// wildcard another service resolves through. Empty without a zone.
+func (s *Service) challengeTarget(app *appv1alpha1.App) string {
+	if s.ACMEDelegationZone == "" {
+		return ""
+	}
+	return app.Spec.PlatformSubdomain(app.Name) + "." + s.ACMEDelegationZone
+}
+
+// wildcardsAvailable refuses a wildcard host on a platform with no ACME
+// delegation zone, where its certificate could never be issued.
+func (s *Service) wildcardsAvailable(host string) error {
+	if appv1alpha1.IsWildcardHost(host) && s.ACMEDelegationZone == "" {
+		return core.NewBadRequestError("CUSTOM_DOMAIN_WILDCARD_UNAVAILABLE",
+			fmt.Sprintf("wildcard custom domains are not available on this platform yet: %q", host), map[string]any{"hostname": host})
+	}
+	return nil
+}
+
+// ParseACMEDelegationZone reads BEX_ACME_DELEGATION_ZONE, a single concrete
+// zone held to the custom-domain hostname rule.
+func ParseACMEDelegationZone(value string) (string, error) {
+	zone, err := canonicalHostname(value)
+	if err == nil && appv1alpha1.IsWildcardHost(zone) {
+		err = fmt.Errorf("%q is a wildcard, not a zone", value)
+	}
+	return zone, err
+}
+
+// challengeRecordFor is the second record a wildcard domain needs, its
+// `_acme-challenge` CNAME, named relative to the zone like dnsRecordFor's; nil
+// for a concrete host or without a delegation target.
+func (s *Service) challengeRecordFor(app *appv1alpha1.App, host string) *DNSRecordView {
+	base, wild := wildcardBase(host)
+	target := s.challengeTarget(app)
+	if !wild || target == "" {
+		return nil
+	}
+	record := dnsRecordFor(acmeChallengeLabel+"."+base, "subdomain", target)
+	return &record
+}
+
 // requireDomainTraffic is the storeless admission gate: with no Postgres to
 // hold a pending claim, the traffic record must already point at the service
 // before the host may enter the App spec (fail-closed).
 func (s *Service) requireDomainTraffic(ctx context.Context, app *appv1alpha1.App, host string) error {
 	platformHost := s.platformHost(app)
-	if s.domainTrafficChecker().PointsAtService(ctx, host, platformHost) {
+	if s.domainPointsAtService(ctx, app, host) {
 		return nil
 	}
 	record := dnsRecordFor(host, domainType(host), platformHost)
+	if challenge := s.challengeRecordFor(app, host); challenge != nil {
+		return fmt.Errorf("%w: domain is unverified; create %s %s with value %s and %s %s with value %s, and retry", core.ErrConflict,
+			record.Type, record.Name, record.Value, challenge.Type, challenge.Name, challenge.Value)
+	}
 	return fmt.Errorf("%w: domain is unverified; create %s %s with value %s and retry", core.ErrConflict, record.Type, record.Name, record.Value)
 }
 
@@ -217,6 +318,10 @@ type DomainView struct {
 	// DNSRecord is the record the tenant must create at their registrar to point
 	// this domain at the service (Render's post-add DNS instructions, w5/m10).
 	DNSRecord DNSRecordView
+	// ChallengeRecord is a wildcard domain's second record, the
+	// `_acme-challenge` CNAME its certificate is issued through (w4/m326); nil
+	// for a concrete host.
+	ChallengeRecord *DNSRecordView
 	// EdgeAddresses is an apex domain's A-record fallback: the platform host's
 	// currently resolved edge addresses, resolved at read time (ADR005). Nil
 	// for subdomains and whenever resolution fails — the setup guidance then
@@ -286,45 +391,51 @@ func normalizeHostname(raw string) string {
 // are always canonical and comparable. A host being claimed (create/update
 // spec.hosts, AddDomain) also goes through claimableHostname.
 //
-// Wildcard hosts ("*.example.com") are REJECTED here (round-5 finding 7). The
-// collision check and the store's UNIQUE(host) constraint both compare literal
-// hosts, so a wildcard and a concrete host beneath it (foo.example.com) look
-// non-colliding and BOTH become live public TLS Ingress rules — one tenant's
-// "*.example.com" would then hijack a concrete host routed to another tenant.
-// Render offers no tenant wildcard custom domain, so nothing legitimate needs
-// one; platform wildcard hosts (*.onbex.co) are provisioned by the operator via
-// BEX_BASE_DOMAIN, never through this tenant-facing boundary.
+// A wildcard is one leading "*." label over a valid host ("*.example.com"),
+// as Render's wildcard custom domain is (w4/m326): it serves every name one
+// label below its base. Any other "*" is refused. The hijack a literal
+// uniqueness check cannot see, one workspace's wildcard over another's
+// concrete host or the reverse, is refused by hostClaims.coveredElsewhere.
 func canonicalHostname(raw string) (string, error) {
 	host := normalizeHostname(raw)
-	if strings.HasPrefix(host, "*.") || strings.Contains(host, "*") {
-		return "", errInvalidHostname(raw, fmt.Sprintf("wildcard hostnames are not allowed: %q", raw))
+	base, _ := wildcardBase(host)
+	if strings.Contains(base, "*") {
+		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: a wildcard is a single leading *. label, as in *.example.com", raw))
 	}
-	if host == "" || len(validation.IsDNS1123Subdomain(host)) != 0 {
+	if base == "" || len(validation.IsDNS1123Subdomain(base)) != 0 {
 		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q", raw))
 	}
 	// A custom domain is a DNS name under a public suffix: an IP literal
 	// ("127.0.0.1" passes the DNS-1123 check) or a single label ("localhost")
 	// could never verify and only yields nonsense DNS instructions (w4/190).
-	if net.ParseIP(host) != nil || !strings.Contains(host, ".") {
+	if net.ParseIP(base) != nil || !strings.Contains(base, ".") {
 		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: use a fully qualified domain name", raw))
 	}
 	return host, nil
 }
 
+// wildcardBase returns the name a wildcard host serves the children of
+// ("example.com" for "*.example.com"), and false for a concrete host.
+func wildcardBase(host string) (string, bool) {
+	return strings.CutPrefix(host, appv1alpha1.WildcardHostPrefix)
+}
+
 // claimableHostname is canonicalHostname for a host being claimed, which must
 // also be registered under a public suffix: a bare suffix ("co.uk",
 // "github.io") has no zone its owner could prove or point at the platform
-// (w5/m121). It must also be a name DNS can hold (w4/353): no label over 63
-// octets (RFC 1035 §2.3.4; the DNS-1123 subdomain check caps only the total)
-// and an alphabetic top-level label (RFC 1123 §2.1). Lookups of an existing
-// claim stay on canonicalHostname, so one stored before these rules can still
-// be read and deleted.
+// (w5/m121), and neither has a wildcard over one ("*.co.uk"). It must also be
+// a name DNS can hold (w4/353): no label over 63 octets (RFC 1035 §2.3.4; the
+// DNS-1123 subdomain check caps only the total) and an alphabetic top-level
+// label (RFC 1123 §2.1). Lookups of an existing claim stay on
+// canonicalHostname, so one stored before these rules can still be read and
+// deleted.
 func claimableHostname(raw string) (string, error) {
 	host, err := canonicalHostname(raw)
 	if err != nil {
 		return "", err
 	}
-	labels := strings.Split(host, ".")
+	base, _ := wildcardBase(host)
+	labels := strings.Split(base, ".")
 	for _, label := range labels {
 		if len(label) > validation.DNS1123LabelMaxLength {
 			return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: each label must be at most %d characters", raw, validation.DNS1123LabelMaxLength))
@@ -333,7 +444,7 @@ func claimableHostname(raw string) (string, error) {
 	if strings.Trim(labels[len(labels)-1], "0123456789") == "" {
 		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: the top-level domain cannot be numeric", raw))
 	}
-	if registrableDomain(host) == "" {
+	if registrableDomain(base) == "" {
 		return "", errInvalidHostname(raw, fmt.Sprintf("invalid hostname %q: it is a public suffix; use a domain registered under it", raw))
 	}
 	return host, nil
@@ -499,8 +610,16 @@ func listUnstructured(ctx context.Context, cl client.Client, gvk schema.GroupVer
 // Challenges carry generated names but name their host in spec.dnsName, so the
 // match is on that field rather than on a derived object name.
 func acmeChallengeReason(ctx context.Context, cl client.Client, namespace, host string) string {
+	// A wildcard's Challenge names its base and is marked wildcard (w4/m326),
+	// so it is never confused with the base's own.
+	name, wildcard := wildcardBase(host)
+	if !wildcard {
+		name = host
+	}
 	for _, item := range listUnstructured(ctx, cl, acmeChallengeGVK, namespace) {
-		if dnsName, _, _ := unstructured.NestedString(item.Object, "spec", "dnsName"); !strings.EqualFold(dnsName, host) {
+		dnsName, _, _ := unstructured.NestedString(item.Object, "spec", "dnsName")
+		isWildcard, _, _ := unstructured.NestedBool(item.Object, "spec", "wildcard")
+		if !strings.EqualFold(dnsName, name) || isWildcard != wildcard {
 			continue
 		}
 		if reason, _, _ := unstructured.NestedString(item.Object, "status", "reason"); reason != "" {
@@ -594,6 +713,7 @@ func (s *Service) domainView(ctx context.Context, app *appv1alpha1.App, host, pl
 		ServerStatus:       sStatus,
 		RedirectForName:    app.Spec.HostRedirects[host],
 		DNSRecord:          dnsRecordFor(host, dtype, platformHost),
+		ChallengeRecord:    s.challengeRecordFor(app, host),
 		EdgeAddresses:      s.edgeAddressesFor(ctx, dtype, platformHost),
 	}
 	if !app.CreationTimestamp.IsZero() {
@@ -626,6 +746,7 @@ func (s *Service) domainClaimView(ctx context.Context, app *appv1alpha1.App, cla
 		view.CreatedAt = claim.CreatedAt.UTC().Format(time.RFC3339Nano)
 	}
 	view.DNSRecord = dnsRecordFor(claim.Host, view.DomainType, platformHost)
+	view.ChallengeRecord = s.challengeRecordFor(app, claim.Host)
 	view.EdgeAddresses = s.edgeAddressesFor(ctx, view.DomainType, platformHost)
 	if claim.ClaimState != "verified" {
 		return view
@@ -886,7 +1007,17 @@ func (s *Service) checkAndPromoteClaim(ctx context.Context, app *appv1alpha1.App
 	if claim.ClaimState == "verified" {
 		return claim, nil
 	}
-	if !s.domainTrafficChecker().PointsAtService(ctx, claim.Host, s.platformHost(app)) {
+	if !s.domainPointsAtService(ctx, app, claim.Host) {
+		_ = claims.RecordDomainVerificationAttempt(ctx, appID, claim.ID, s.Now())
+		return claim, nil
+	}
+	// A claim added while the claim it overlaps was still pending saw nothing
+	// to refuse. Whichever verifies second stays unverified, so another
+	// workspace's wildcard never captures a host, and a name under it never
+	// verifies on the wildcard's own record (w4/m326).
+	if covered, err := s.hostCoveredElsewhere(ctx, app, claim.Host); err != nil {
+		return claim, err
+	} else if covered {
 		_ = claims.RecordDomainVerificationAttempt(ctx, appID, claim.ID, s.Now())
 		return claim, nil
 	}
@@ -911,6 +1042,7 @@ func (s *Service) checkAndPromoteClaim(ctx context.Context, app *appv1alpha1.App
 	if err := s.projectDomainClaims(ctx, app, rows); err != nil {
 		return promoted, err
 	}
+	recordHostClaims(ctx, app)
 	if s.Kick != nil {
 		s.Kick()
 	}
@@ -1011,6 +1143,9 @@ func ParseReservedDomains(value string) ([]string, error) {
 		zone, err := canonicalHostname(entry)
 		if err != nil {
 			return nil, err
+		}
+		if appv1alpha1.IsWildcardHost(zone) {
+			return nil, fmt.Errorf("%q is a wildcard, not a zone", entry)
 		}
 		if !slices.Contains(zones, zone) {
 			zones = append(zones, zone)
@@ -1145,7 +1280,34 @@ func (s *Service) hostClaimedElsewhere(ctx context.Context, owner *appv1alpha1.A
 	if err != nil {
 		return false, err
 	}
-	return claims.claimedElsewhere(owner, host), nil
+	return claims.claimedElsewhere(owner, s.claimWorkspace(owner), host), nil
+}
+
+// hostCoveredElsewhere is hostClaims.coveredElsewhere over the platform's
+// stored hosts.
+func (s *Service) hostCoveredElsewhere(ctx context.Context, owner *appv1alpha1.App, host string) (bool, error) {
+	claims, err := s.hostClaimIndex(ctx)
+	if err != nil {
+		return false, err
+	}
+	return claims.coveredElsewhere(owner, s.claimWorkspace(owner), host), nil
+}
+
+// claimWorkspace is the workspace owner's hosts are claimed for: its tenant,
+// or for an App with none (storeless, hand-applied), the namespace it is or
+// will be written to.
+func (s *Service) claimWorkspace(owner *appv1alpha1.App) string {
+	return claimWorkspaceOf(owner.Labels, cmp.Or(owner.Namespace, s.Namespace))
+}
+
+// claimWorkspaceOf keys a workspace by its tenant id. A namespace alone does
+// not identify one: workspaces not yet moved to their own namespace share one
+// (ADR043 D8).
+func claimWorkspaceOf(labels map[string]string, namespace string) string {
+	if tenantID := labels[core.LabelTenant]; tenantID != "" {
+		return "tenant:" + tenantID
+	}
+	return "namespace:" + namespace
 }
 
 // hostClaimIndex is the platform's host claims, indexed once per request
@@ -1208,10 +1370,14 @@ func recordHostClaims(ctx context.Context, app *appv1alpha1.App) {
 }
 
 // hostClaims maps each host an App stores, normalized, to that App's
-// identity (appClaimIdentity), or to contestedClaim when several Apps store
-// it. A request's memo shares it read-only; an apply's host-claim scope also
-// updates it as the apply writes.
-type hostClaims map[string]string
+// identity (appClaimIdentity) and workspace, or to
+// contestedClaim when several Apps store it. A request's memo shares it
+// read-only; an apply's host-claim scope also updates it as the apply writes.
+type hostClaims map[string]hostClaim
+
+// hostClaim is who stores a host: an App's identity and its workspace
+// (claimWorkspaceOf).
+type hostClaim struct{ claimant, workspace string }
 
 // contestedClaim marks a host more than one App stores. It is never an App's
 // identity, so it is never an owner's.
@@ -1237,21 +1403,21 @@ func (c hostClaims) add(app *appv1alpha1.App) {
 	if claimedHostCount(app) == 0 {
 		return
 	}
-	claimant := appClaimIdentity(app)
-	c.addHost(app.Spec.Host, claimant)
+	claim := hostClaim{appClaimIdentity(app), claimWorkspaceOf(app.Labels, app.Namespace)}
+	c.addHost(app.Spec.Host, claim)
 	for _, host := range app.Spec.Hosts {
-		c.addHost(host, claimant)
+		c.addHost(host, claim)
 	}
 }
 
-func (c hostClaims) addHost(host, claimant string) {
+func (c hostClaims) addHost(host string, claim hostClaim) {
 	if host = normalizeHostname(host); host == "" {
 		return
 	}
-	if prior, ok := c[host]; ok && prior != claimant {
-		claimant = contestedClaim
+	if prior, ok := c[host]; ok && prior.claimant != claim.claimant {
+		claim = hostClaim{claimant: contestedClaim}
 	}
-	c[host] = claimant
+	c[host] = claim
 }
 
 // replace drops the hosts app stored and records the ones it stores now. A
@@ -1259,7 +1425,7 @@ func (c hostClaims) addHost(host, claimant string) {
 func (c hostClaims) replace(app *appv1alpha1.App) {
 	claimant := appClaimIdentity(app)
 	for host, holder := range c {
-		if holder == claimant {
+		if holder.claimant == claimant {
 			delete(c, host)
 		}
 	}
@@ -1267,20 +1433,55 @@ func (c hostClaims) replace(app *appv1alpha1.App) {
 }
 
 // claimedElsewhere reports whether an App other than owner stores host or its
-// www<->apex sibling. wwwSibling is its own inverse for any pair an App can
-// claim, so looking up the queried host's sibling finds an App storing a host
-// whose sibling is the query.
-func (c hostClaims) claimedElsewhere(owner *appv1alpha1.App, host string) bool {
+// www<->apex sibling, or another workspace's claim overlaps it through a
+// wildcard (coveredElsewhere). wwwSibling is its own inverse for any pair an
+// App can claim, so looking up the queried host's sibling finds an App storing
+// a host whose sibling is the query.
+func (c hostClaims) claimedElsewhere(owner *appv1alpha1.App, workspace, host string) bool {
 	ownerID := appClaimIdentity(owner)
 	storedElsewhere := func(h string) bool {
-		claimant, ok := c[h]
-		return ok && (ownerID == "" || claimant != ownerID)
+		claim, ok := c[h]
+		return ok && (ownerID == "" || claim.claimant != ownerID)
 	}
 	if storedElsewhere(host) {
 		return true
 	}
-	sibling := wwwSibling(host)
-	return sibling != "" && storedElsewhere(sibling)
+	if sibling := wwwSibling(host); sibling != "" && storedElsewhere(sibling) {
+		return true
+	}
+	return c.coveredElsewhere(owner, workspace, host)
+}
+
+// coveredElsewhere reports whether another workspace's claim and host would
+// share names (w4/m326). A wildcard record in DNS answers for every name below
+// its base, at any depth, so "*.example.com" overlaps "api.example.com" and
+// "login.eu.example.com" alike, though bex routes it only one label down.
+// Across workspaces that is a hijack either way. Another workspace's wildcard
+// would capture a concrete host routed to this one, and a name under this
+// workspace's wildcard already resolves to the edge, so it could verify for
+// anyone. Within owner's workspace a concrete host beside its own wildcard is
+// how a name is routed to another of its services, and is allowed.
+func (c hostClaims) coveredElsewhere(owner *appv1alpha1.App, workspace, host string) bool {
+	ownerID := appClaimIdentity(owner)
+	foreign := func(claim hostClaim) bool {
+		return claim.claimant != ownerID && (claim.claimant == contestedClaim || claim.workspace != workspace)
+	}
+	name := host
+	if base, ok := wildcardBase(host); ok {
+		for h, claim := range c {
+			if h != host && strings.HasSuffix(h, "."+base) && foreign(claim) {
+				return true
+			}
+		}
+		name = base
+	}
+	// Every wildcard above name, up to the top-level domain.
+	for _, parent, ok := strings.Cut(name, "."); ok && strings.Contains(parent, "."); _, parent, ok = strings.Cut(parent, ".") {
+		if claim, held := c[appv1alpha1.WildcardHostPrefix+parent]; held && foreign(claim) {
+			return true
+		}
+	}
+	return false
 }
 
 // appClaimIdentity returns an immutable identity whenever one exists. Public
@@ -1375,13 +1576,16 @@ func (s *Service) checkHostsClaimable(ctx context.Context, app *appv1alpha1.App,
 		if s.reservedHost(ownHost, h) {
 			return errReservedHostname(h)
 		}
+		if err := s.wildcardsAvailable(h); err != nil {
+			return err
+		}
 		if claims == nil {
 			var err error
 			if claims, err = s.hostClaimIndex(ctx); err != nil {
 				return err
 			}
 		}
-		if claims.claimedElsewhere(app, h) {
+		if claims.claimedElsewhere(app, s.claimWorkspace(app), h) {
 			// Names the caller's own host so a Blueprint refusal can be located
 			// at its domains entry (w8/055) — never the site that holds it.
 			return fmt.Errorf("%w: %q", errDomainInUse(), h)
@@ -1477,6 +1681,9 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	}
 	hostname, err = claimableHostname(hostname)
 	if err != nil {
+		return DomainView{}, false, err
+	}
+	if err := s.wildcardsAvailable(hostname); err != nil {
 		return DomainView{}, false, err
 	}
 	redirectForName = normalizeHostname(redirectForName)
@@ -1710,6 +1917,9 @@ type renderCustomDomain struct {
 	// record in the dashboard, not the API): the record the tenant must create to
 	// point this domain at the service. A safe superset, w5/m10.
 	DNSRecord renderDNSRecord `json:"dnsRecord"`
+	// ChallengeRecord is a wildcard domain's `_acme-challenge` CNAME (w4/m326),
+	// a bex extension like DNSRecord; absent for a concrete host.
+	ChallengeRecord *renderDNSRecord `json:"challengeRecord,omitempty"`
 	// Server is Render's owning-service object {id, name} (w4/389).
 	Server renderServer `json:"server"`
 }
@@ -1746,12 +1956,9 @@ func toRenderCustomDomain(d DomainView) renderCustomDomain {
 		ServerStatus:       d.ServerStatus,
 		RedirectForName:    d.RedirectForName,
 		CertificateReason:  d.CertificateReason,
-		DNSRecord: renderDNSRecord{
-			Type:  d.DNSRecord.Type,
-			Name:  d.DNSRecord.Name,
-			Value: d.DNSRecord.Value,
-		},
-		Server: renderServer{ID: d.ServiceID, Name: d.ServiceName},
+		DNSRecord:          renderDNSRecord(d.DNSRecord),
+		ChallengeRecord:    (*renderDNSRecord)(d.ChallengeRecord),
+		Server:             renderServer{ID: d.ServiceID, Name: d.ServiceName},
 	}
 }
 

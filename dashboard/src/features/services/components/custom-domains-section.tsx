@@ -371,6 +371,17 @@ function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
           {t("services.domainDnsUnavailable")}
         </p>
       )}
+      {domain.challengeRecord ? (
+        <>
+          <p className="text-muted-foreground text-sm">
+            {t("services.domainDnsWildcardChallenge")}
+          </p>
+          <DnsRecordFieldsRow
+            record={domain.challengeRecord}
+            subject={`${domain.name} (${domain.challengeRecord.name})`}
+          />
+        </>
+      ) : null}
       {domain.domainType === "apex" &&
       (domain.edgeAddresses ?? []).length > 0 ? (
         <>
@@ -694,9 +705,7 @@ function AddDomainButton({
                   role="alert"
                   className="text-destructive text-xs"
                 >
-                  {invalid === "wildcard"
-                    ? t("services.domainWildcard")
-                    : t("services.domainInvalid")}
+                  {t("services.domainInvalid")}
                 </p>
               ) : addError ? (
                 <p

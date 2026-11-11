@@ -1,23 +1,24 @@
 # w4 · m326 — A wildcard custom domain (`*.example.com`) is refused on every surface, though Render supports it; the refusal's own comment says Render does not, and the divergence has no sign-off
 
-**Worker:** worker4 **Goal:** a service accepts a wildcard custom domain as Render does: the same DNS instructions, verification, a certificate, and routing for every hostname under it. Concrete hosts keep winning over a wildcard, and no workspace can capture another's hostnames. **Status:** todo
+**Worker:** worker4 **Goal:** a service accepts a wildcard custom domain as Render does: the same DNS instructions, verification, a certificate, and routing for every hostname under it. Concrete hosts keep winning over a wildcard, and no workspace can capture another's hostnames. **Status:** blocked — t001–t005 and t007–t009 done (shipped); the dedicated ACME delegation zone and its token are the user's (t011), then t006 live replays and t010 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Capture Render's wildcard custom-domain flow and amend ADR005 and ADR018, replacing the unsigned divergence | 45m | — |
-| [t002](t002.md) | Backend: accept `*.<domain>` on add, with verification and Render's collision rules, on REST, GraphQL and MCP | 90m | t001 |
-| [t003](t003.md) | Operator: route every name under the wildcard and issue its certificate by DNS-01 through the delegated `_acme-challenge` record | 120m | t001 |
-| [t004](t004.md) | Dashboard: the Add Custom Domain dialog accepts a wildcard and shows both DNS records, en and zh | 45m | t002 |
-| [t005](t005.md) | Blast radius: reserved hosts, public suffixes, apex/www pairing, plan limits, and existing concrete domains | 30m | t002, t003 |
+| [t001](done/t001.md) | Capture Render's wildcard custom-domain flow and amend ADR005 and ADR018, replacing the unsigned divergence — **DONE** | 45m | — |
+| [t002](done/t002.md) | Backend: accept `*.<domain>` on add, with verification and Render's collision rules, on REST, GraphQL and MCP — **DONE** | 90m | t001 |
+| [t003](done/t003.md) | Operator: route every name under the wildcard and issue its certificate by DNS-01 through the delegated `_acme-challenge` record — **DONE** | 120m | t001 |
+| [t004](done/t004.md) | Dashboard: the Add Custom Domain dialog accepts a wildcard and shows both DNS records, en and zh — **DONE** | 45m | t002 |
+| [t005](done/t005.md) | Blast radius: reserved hosts, public suffixes, apex/www pairing, plan limits, and existing concrete domains — **DONE** | 30m | t002, t003 |
 | [t006](t006.md) | Live verification on a test zone bex controls | 30m | t004, t005 |
-| [t007](t007.md) | Render parity | 15m | t006 |
-| [t008](t008.md) | Simplify | 10m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t007](done/t007.md) | Render parity — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 10m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
+| [t011](t011.md) | Provision the ACME delegation zone and wire the wildcard DNS-01 issuer | 45m | t002, t003 |
+| [t010](t010.md) | Closeout | 10m | t008, t009, t011 |
 
-Ten tasks, 440m (7h20m).
+Eleven tasks, 485m (8h05m).
 
 **Major (a Render feature is missing).** Multi-tenant apps put each customer on `<customer>.example.com`, and on Render one wildcard domain serves them all. On bex every add is refused.
 

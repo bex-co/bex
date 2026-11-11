@@ -1065,6 +1065,7 @@ export type CustomDomain = {
   __typename: 'CustomDomain';
   certificateReason: Maybe<Scalars['String']['output']>;
   certificateStatus: Maybe<Scalars['String']['output']>;
+  challengeRecord: Maybe<DnsRecord>;
   createdAt: Maybe<Scalars['String']['output']>;
   dnsRecord: Maybe<DnsRecord>;
   domainType: Maybe<Scalars['String']['output']>;

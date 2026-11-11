@@ -1700,12 +1700,6 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Enter a valid domain, e.g. www.example.com.",
     description: "Add-domain validation message for a malformed hostname",
   },
-  "services.domainWildcard": {
-    message:
-      "Wildcard domains (*.example.com) are not supported. Add each hostname on its own.",
-    description:
-      "Add-domain validation message for a wildcard hostname, which bex-api refuses by design (w21/048)",
-  },
   "services.domainAddButton": {
     message: "Add Domain",
     description: "Add-domain dialog submit button",
@@ -1755,6 +1749,12 @@ const enServices: Record<string, TranslationEntry> = {
       "Create this record in the {zone} zone at your DNS provider. Host is relative to that zone. Verification and the TLS certificate happen automatically once it resolves.",
     description:
       "Guidance line above the DNS record for a subdomain — names the zone Host is relative to (w4/092)",
+  },
+  "services.domainDnsWildcardChallenge": {
+    message:
+      "A wildcard domain also needs this record. It lets bex issue and renew the domain's TLS certificate.",
+    description:
+      "Above a wildcard custom domain's second DNS record, its _acme-challenge CNAME (w4/m326; Render's docs say it enables certificate issuance and renewal)",
   },
   "services.domainDnsApexFallback": {
     message:

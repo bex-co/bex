@@ -114,6 +114,10 @@ type Service struct {
 	// ReservedDomains, from BEX_RESERVED_DOMAINS, replaces the default zones
 	// reserved around the platform hosts (reservedZones).
 	ReservedDomains []string
+	// ACMEDelegationZone, from BEX_ACME_DELEGATION_ZONE, is where a wildcard
+	// custom domain's `_acme-challenge` CNAME points (challengeTarget). Empty
+	// refuses wildcards: no certificate could be issued for one.
+	ACMEDelegationZone string
 	// MaxCustomDomainsPerService and MaxCustomDomainsPerWorkspace cap
 	// custom-domain cardinality (codex-security round 18;
 	// BEX_MAX_CUSTOM_DOMAINS_PER_SERVICE / BEX_MAX_CUSTOM_DOMAINS_PER_WORKSPACE,
@@ -1259,8 +1263,8 @@ func (s *Service) pendingPublicURL(a *appv1alpha1.App) string {
 	if !a.Spec.PubliclyRoutable() {
 		return ""
 	}
-	if hosts := a.Spec.EffectiveHosts(a.Name, s.BaseDomain); len(hosts) > 0 {
-		return "https://" + hosts[0]
+	if host := appv1alpha1.PublicURLHost(a.Spec.EffectiveHosts(a.Name, s.BaseDomain)); host != "" {
+		return "https://" + host
 	}
 	return ""
 }

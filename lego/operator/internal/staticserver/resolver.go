@@ -60,11 +60,16 @@ func NewCachedResolver(reader client.Reader, namespace, baseDomain string) *Cach
 
 // Resolve returns the Site serving host, or ok=false when none does. Hostnames
 // compare case-insensitively (RFC 9110 §4.2.3, w4/309), so the snapshot is
-// keyed lowercase and so is the lookup.
+// keyed lowercase and so is the lookup. A host no site claims is served by the
+// site whose wildcard custom domain covers it, if any (w4/m326).
 func (c *CachedResolver) Resolve(host string) (Site, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	s, ok := c.sites[strings.ToLower(host)]
+	host = strings.ToLower(host)
+	if s, ok := c.sites[host]; ok {
+		return s, true
+	}
+	s, ok := c.sites[appv1alpha1.WildcardHostFor(host)]
 	return s, ok
 }
 

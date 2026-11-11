@@ -104,7 +104,7 @@ func TestHostOwnershipExemptionUsesImmutableIdentity(t *testing.T) {
 	sameNameOtherTenant := appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{
 		Name: "web", Namespace: "tea-b", Labels: map[string]string{core.LabelAppID: "srv-other"},
 	}, Spec: appv1alpha1.AppSpec{Hosts: []string{"claimed.example.com"}}}
-	if !indexHostClaims([]appv1alpha1.App{sameNameOtherTenant}).claimedElsewhere(owner, "claimed.example.com") {
+	if !indexHostClaims([]appv1alpha1.App{sameNameOtherTenant}).claimedElsewhere(owner, "", "claimed.example.com") {
 		t.Fatal("same service name in another tenant was mistaken for the owning App")
 	}
 }
@@ -147,14 +147,14 @@ func TestHostClaimsIndexAHostAndItsSibling(t *testing.T) {
 		"api.mine.com":            false, // the owner's deep subdomain
 		"free.com":                false,
 	} {
-		if got := claims.claimedElsewhere(&owner, host); got != want {
+		if got := claims.claimedElsewhere(&owner, "", host); got != want {
 			t.Errorf("claimedElsewhere(owner, %q) = %v, want %v", host, got, want)
 		}
 	}
 
 	// An App with no identity yet: with no owner to exempt, its claim stands.
 	anonymous := appv1alpha1.App{Spec: appv1alpha1.AppSpec{Hosts: []string{"anon.com"}}}
-	if !indexHostClaims([]appv1alpha1.App{anonymous}).claimedElsewhere(nil, "anon.com") {
+	if !indexHostClaims([]appv1alpha1.App{anonymous}).claimedElsewhere(nil, "", "anon.com") {
 		t.Error("with no owner, an App with no identity still claims its host")
 	}
 }

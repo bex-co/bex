@@ -489,6 +489,12 @@ export interface CustomDomainView {
   /** The DNS record to create; null if the backend couldn't derive the target. */
   dnsRecord: DnsRecordView | null;
   /**
+   * A wildcard domain's second record, the `_acme-challenge` CNAME its TLS
+   * certificate is issued through (w4/m326); null for a concrete host.
+   * Optional here; the hook always sets it.
+   */
+  challengeRecord?: DnsRecordView | null;
+  /**
    * An apex domain's A-record fallback: the platform host's current edge
    * addresses, resolved by bex-api at read time (ADR005, w4/378). Empty for
    * subdomains and whenever resolution failed — the setup guidance then

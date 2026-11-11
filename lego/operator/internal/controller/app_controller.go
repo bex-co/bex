@@ -334,19 +334,23 @@ type AppReconciler struct {
 	// default "default"). Together with each App's own workspace namespace it
 	// defines the canonical set the reconciler will act on — see canonicalNamespace
 	// and the codex #4 guard in Reconcile.
-	AppsNamespace      string
-	Mode               string                  // ModeOpenSandbox | ModeKubernetes
-	Registry           string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
-	KpackRegistry      string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
-	CNBBuilder         string                  // e.g. paketobuildpacks/builder-jammy-base
-	BuildNamespace     string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
-	Runtime            *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
-	BaseDomain         string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
-	ClusterIssuer      string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
-	HTTPSRedirect      bool                    // redirect every tenant host's plain HTTP to HTTPS (httpsRedirectSpec); BEX_HTTPS_REDIRECT=false turns it off
-	ActivatorService   string                  // k8s Service name of the wake activator; empty => auto-sleep disabled
-	ActivatorNamespace string                  // namespace of the wake activator Service (default bex-system)
-	ActivatorPort      int                     // activator listen port (default 8888)
+	AppsNamespace  string
+	Mode           string                  // ModeOpenSandbox | ModeKubernetes
+	Registry       string                  // in-cluster registry, e.g. zot.bex-registry.svc:5000
+	KpackRegistry  string                  // optional kpack alias for Registry (e.g. zot.local:5000 for plain HTTP)
+	CNBBuilder     string                  // e.g. paketobuildpacks/builder-jammy-base
+	BuildNamespace string                  // namespace in-cluster build Jobs run in; empty => the App's namespace
+	Runtime        *bexruntime.OpenSandbox // OpenSandbox client (ModeOpenSandbox)
+	BaseDomain     string                  // optional: "<name>.<BaseDomain>" when Expose && Host=="" (e.g. bex.co)
+	ClusterIssuer  string                  // cert-manager ClusterIssuer for App Ingresses (letsencrypt-staging|-prod)
+	// WildcardClusterIssuer issues wildcard custom domains' certificates by
+	// DNS-01 through each domain's delegated _acme-challenge CNAME (w4/m326).
+	// Empty: a wildcard routes with no certificate of its own.
+	WildcardClusterIssuer string
+	HTTPSRedirect         bool   // redirect every tenant host's plain HTTP to HTTPS (httpsRedirectSpec); BEX_HTTPS_REDIRECT=false turns it off
+	ActivatorService      string // k8s Service name of the wake activator; empty => auto-sleep disabled
+	ActivatorNamespace    string // namespace of the wake activator Service (default bex-system)
+	ActivatorPort         int    // activator listen port (default 8888)
 	// ActivityReader observes a free web service's served traffic (Traefik
 	// requests and WebSocket egress) so an awake service is not put to sleep
 	// while it is being used (w1/m151). nil (no BEX_PROM_URL) => the
@@ -3416,8 +3420,8 @@ func (r *AppReconciler) runningRequeue(ctx context.Context, app *appv1alpha1.App
 func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, image string, hosts []string, reason, message string) (ctrl.Result, error) {
 	app.Status.Phase = appv1alpha1.PhaseHibernated
 	app.Status.Image = image
-	if len(hosts) > 0 {
-		app.Status.URL = "https://" + hosts[0]
+	if host := appv1alpha1.PublicURLHost(hosts); host != "" {
+		app.Status.URL = "https://" + host
 	}
 	app.Status.ObservedGeneration = app.Generation
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
@@ -3617,10 +3621,17 @@ func internalURL(app *appv1alpha1.App) string {
 // host is the canonical URL, the full list lands in URLs. hosts must be
 // non-empty; the no-host cases (internal URL, no URL at all) stay per-type.
 func setStatusURLs(app *appv1alpha1.App, hosts []string) {
-	app.Status.URL = "https://" + hosts[0]
+	// A wildcard custom domain names no single site, so it is no URL
+	// (w4/m326).
+	app.Status.URL = ""
+	if host := appv1alpha1.PublicURLHost(hosts); host != "" {
+		app.Status.URL = "https://" + host
+	}
 	app.Status.URLs = nil
 	for _, h := range hosts {
-		app.Status.URLs = append(app.Status.URLs, "https://"+h)
+		if !appv1alpha1.IsWildcardHost(h) {
+			app.Status.URLs = append(app.Status.URLs, "https://"+h)
+		}
 	}
 }
 
@@ -3633,6 +3644,7 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 	if err := r.deleteStaleChildren(ctx,
 		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
 		&networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}},
+		&networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: wildcardIngressName(app.Name), Namespace: app.Namespace}},
 	); err != nil {
 		return r.fail(ctx, app, "WorkerCleanupFailed", err)
 	}
@@ -4256,21 +4268,46 @@ func (r *AppReconciler) reconcileIngress(ctx context.Context, app *appv1alpha1.A
 	return nil
 }
 
-// applyAppIngress writes the App's serving Ingress for hosts, or deletes it
-// when there are none.
+// applyAppIngress writes the App's serving Ingress for its concrete hosts and
+// its wildcard Ingress for its wildcard custom domains (w4/m326), deleting
+// either when it has no host.
 func (r *AppReconciler) applyAppIngress(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32, middlewareNames []string, redirectSources map[string]bool) error {
-	if len(hosts) == 0 {
-		return r.deleteStaleChildren(ctx, &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}})
-	}
 	refs := make([]string, len(middlewareNames))
 	for i, name := range middlewareNames {
 		refs[i] = traefikMiddlewareRef(app.Namespace, name)
 	}
-	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+	served := func(wildcard bool) bool {
+		return slices.ContainsFunc(hosts, func(h string) bool { return appv1alpha1.IsWildcardHost(h) == wildcard && !redirectSources[h] })
+	}
+	if err := r.applyServingIngress(ctx, app, app.Name, hosts, svc, port, refs, redirectSources, served(false), false); err != nil {
+		return err
+	}
+	return r.applyServingIngress(ctx, app, wildcardIngressName(app.Name), hosts, svc, port, refs, redirectSources, served(true), true)
+}
+
+// applyServingIngress writes the Ingress named name routing hosts' concrete
+// hosts, or their wildcards, to svc, or deletes it when none is served. A
+// wildcard's Ingress takes the lowest router priority, so a concrete host
+// under it, Traefik's longer-ruled match otherwise, keeps its own route, and
+// its certificate comes from the DNS-01 issuer, since HTTP-01 cannot issue a
+// wildcard.
+func (r *AppReconciler) applyServingIngress(ctx context.Context, app *appv1alpha1.App, name string, hosts []string, svc string, port int32, refs []string, redirectSources map[string]bool, serve, wildcard bool) error {
+	ing := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+	if !serve {
+		return r.deleteStaleChildren(ctx, ing)
+	}
 	_, err := controllerutil.CreateOrUpdate(ctx, r.Client, ing, func() error {
 		r.applyIngressRouting(ing, refs)
+		if wildcard {
+			ing.Annotations[traefikRouterPriorityAnnotation] = wildcardRouterPriority
+			if r.WildcardClusterIssuer != "" {
+				ing.Annotations[certManagerClusterIssuerAnnotation] = r.WildcardClusterIssuer
+			} else {
+				delete(ing.Annotations, certManagerClusterIssuerAnnotation)
+			}
+		}
 		for i, host := range hosts {
-			if redirectSources[host] {
+			if redirectSources[host] || appv1alpha1.IsWildcardHost(host) != wildcard {
 				continue
 			}
 			appendIngressHostRoute(ing, app.Name, host, i, svc, port)
@@ -4281,6 +4318,22 @@ func (r *AppReconciler) applyAppIngress(ctx context.Context, app *appv1alpha1.Ap
 		return controllerutil.SetControllerReference(app, ing, r.Scheme)
 	})
 	return err
+}
+
+// traefikRouterPriorityAnnotation sets the priority of every router an
+// Ingress mints. wildcardRouterPriority is the lowest: Traefik otherwise ranks
+// a router by its rule's length, and a wildcard's HostRegexp outranks the
+// Host rule of a concrete name under it.
+const (
+	traefikRouterPriorityAnnotation = "traefik.ingress.kubernetes.io/router.priority"
+	wildcardRouterPriority          = "1"
+)
+
+// wildcardIngressName is the Ingress serving an App's wildcard custom
+// domains. Its dot keeps it from ever naming another App's serving Ingress:
+// an App's name has none, an Ingress's may.
+func wildcardIngressName(appName string) string {
+	return childIngressName(appName, ".wildcard")
 }
 
 // httpsRedirectSpec is the Traefik RedirectScheme every tenant host's Ingress
@@ -4333,7 +4386,12 @@ func hostRedirectResourceName(appName, source string) string {
 }
 
 func hostRedirectIngressName(appName string) string {
-	const suffix = "-host-redirects"
+	return childIngressName(appName, "-host-redirects")
+}
+
+// childIngressName is appName+suffix, shortened with a hash of appName when
+// that exceeds a DNS label.
+func childIngressName(appName, suffix string) string {
 	if len(appName)+len(suffix) <= 63 {
 		return appName + suffix
 	}
@@ -7373,12 +7431,30 @@ func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alph
 	return hosts, serving, nil
 }
 
-// ingressRoutes reports whether the App's Ingress already has exactly one rule
-// per host and sends every path to svc:port. With no hosts, a missing Ingress is
-// already right.
+// ingressRoutes reports whether the App's Ingresses already have exactly one
+// rule per host, concrete hosts on its serving Ingress and wildcards on its
+// wildcard Ingress (w4/m326), sending every path to svc:port. With no hosts of
+// a kind, a missing Ingress is already right.
 func (r *AppReconciler) ingressRoutes(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32) (bool, error) {
+	var concrete, wildcards []string
+	for _, h := range hosts {
+		if appv1alpha1.IsWildcardHost(h) {
+			wildcards = append(wildcards, h)
+		} else {
+			concrete = append(concrete, h)
+		}
+	}
+	routed, err := r.ingressHasRoutes(ctx, app.Namespace, app.Name, concrete, svc, port)
+	if err != nil || !routed {
+		return false, err
+	}
+	return r.ingressHasRoutes(ctx, app.Namespace, wildcardIngressName(app.Name), wildcards, svc, port)
+}
+
+// ingressHasRoutes is ingressRoutes for one Ingress.
+func (r *AppReconciler) ingressHasRoutes(ctx context.Context, namespace, name string, hosts []string, svc string, port int32) (bool, error) {
 	var ing networkingv1.Ingress
-	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &ing); err != nil {
+	if err := r.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &ing); err != nil {
 		if apierrors.IsNotFound(err) {
 			return len(hosts) == 0, nil
 		}
@@ -7987,13 +8063,15 @@ func (r *AppReconciler) tlsSecretNameSet(app *appv1alpha1.App) map[string]struct
 // while the live Certificate keeps recreating it. Each stage is observed absent
 // on a later pass before the next one starts.
 func (r *AppReconciler) quiesceTLSProducers(ctx context.Context, app *appv1alpha1.App) (bool, error) {
-	ingress := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
-	ingressDone, err := deleteAndWait(ctx, r.Client, ingress)
-	if err != nil {
-		return false, fmt.Errorf("delete TLS Ingress: %w", err)
-	}
-	if !ingressDone {
-		return false, nil
+	for _, name := range []string{app.Name, wildcardIngressName(app.Name)} {
+		ingress := &networkingv1.Ingress{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
+		ingressDone, err := deleteAndWait(ctx, r.Client, ingress)
+		if err != nil {
+			return false, fmt.Errorf("delete TLS Ingress: %w", err)
+		}
+		if !ingressDone {
+			return false, nil
+		}
 	}
 	if r.ClusterIssuer == "" {
 		return true, nil
