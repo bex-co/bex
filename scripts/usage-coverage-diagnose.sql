@@ -14,8 +14,9 @@
 --   * its expected hours run from max(hour(expected_from), month start) up to
 --     min(last closed hour, hour(expected_through)), exclusive;
 --   * its watermark (observed_through) stops at the first expected hour that has
---     NO health row or a non-healthy one; any non-healthy row in the period marks
---     the stream degraded even when it lies after an earlier gap.
+--     NO health row or an `unavailable` one (not metered); a `degraded` hour was
+--     metered and does not stop it (w4/496), but any non-healthy row in the
+--     period marks the stream degraded, even one after an earlier gap.
 --
 -- Every in-scope stream is reported, including one with zero health rows (an
 -- inner join or a WHERE on the health side would silently drop it), and an
@@ -68,6 +69,7 @@ WITH params AS (
          count(state) AS health_rows,
          min(hour) FILTER (WHERE state IS NULL) AS first_missing_health,
          min(hour) FILTER (WHERE state IS NOT NULL AND state <> 'healthy') AS first_unhealthy_in_range,
+         min(hour) FILTER (WHERE state = 'unavailable') AS first_unavailable_in_range,
          count(*) FILTER (WHERE has_usage) AS usage_hours,
          min(hour) FILTER (WHERE NOT has_usage) AS first_missing_usage
   FROM evidence
@@ -87,15 +89,16 @@ SELECT st.resource_kind, st.service_id, st.kind, st.source,
        coalesce(ps.health_rows, 0) AS health_rows,
        ps.first_missing_health,
        coalesce(d.first_unhealthy_any, ps.first_unhealthy_in_range) AS first_unhealthy,
-       least(ps.first_missing_health, ps.first_unhealthy_in_range, st.target) AS observed_through,
+       least(ps.first_missing_health, ps.first_unavailable_in_range, st.target) AS observed_through,
        CASE
          WHEN st.target <= st.first_hour THEN 'nothing expected yet'
          WHEN ps.first_missing_health IS NOT NULL
-              AND ps.first_missing_health <= coalesce(ps.first_unhealthy_in_range, 'infinity')
+              AND ps.first_missing_health <= coalesce(ps.first_unavailable_in_range, 'infinity')
            THEN 'behind: no health evidence at ' || to_char(ps.first_missing_health, 'YYYY-MM-DD"T"HH24"Z"')
-         WHEN ps.first_unhealthy_in_range IS NOT NULL
-           THEN 'behind: unhealthy at ' || to_char(ps.first_unhealthy_in_range, 'YYYY-MM-DD"T"HH24"Z"')
-         WHEN d.first_unhealthy_any IS NOT NULL THEN 'caught up, but degraded'
+         WHEN ps.first_unavailable_in_range IS NOT NULL
+           THEN 'behind: unavailable at ' || to_char(ps.first_unavailable_in_range, 'YYYY-MM-DD"T"HH24"Z"')
+         WHEN coalesce(d.first_unhealthy_any, ps.first_unhealthy_in_range) IS NOT NULL
+           THEN 'caught up, but degraded since ' || to_char(coalesce(d.first_unhealthy_any, ps.first_unhealthy_in_range), 'YYYY-MM-DD"T"HH24"Z"')
          ELSE 'complete'
        END AS verdict,
        coalesce(ps.usage_hours, 0) AS usage_hours,

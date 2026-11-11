@@ -907,7 +907,7 @@ describe("ChargesCard coverage caveat (w4/048)", () => {
 
     expect(screen.getByText("Partial data")).toBeInTheDocument();
     // The visible explanation (not a hover-only title, w4/495) discloses the date
-    // the estimate is complete through and the degraded meters, so the dollar
+    // the meters have recorded through and the degraded meters, so the dollar
     // figure isn't presented as authoritative.
     const detail = screen.getByText(/may undercount/);
     expect(detail).toHaveTextContent("2026-09-01");

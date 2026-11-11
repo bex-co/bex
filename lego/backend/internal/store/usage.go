@@ -393,13 +393,17 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 const maxDegradedSources = 7
 
 // evaluateStreamCoverage walks one stream's expected window range and reports
-// how far it is contiguously observed-healthy (observedThrough), how far it was
+// how far it is contiguously recorded (observedThrough), how far it was
 // expected to reach (target), and whether every window it does have is healthy.
 //
-// The watermark and the health scan are deliberately separate passes: the
-// watermark must stop at the first gap or degraded window, while degradation
-// *after* an earlier gap is still useful diagnostic evidence and must not be
-// lost just because the watermark already stopped short of it.
+// The watermark and the health scan are deliberately separate passes. The
+// watermark stops at the first window with no evidence or an unavailable read:
+// those hours were not metered and may still be retried. A degraded window was
+// metered — the reading was skipped or doubted, so it may undercount — and the
+// watermark passes over it; the health scan reports it, so the stream is
+// degraded and the coverage partial (w4/496: one degraded hour on November 1
+// read as "complete only through 2026-11-01" all month). Degradation after an
+// earlier gap is still useful diagnostic evidence and is not lost either.
 func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClosed time.Time) (observedThrough, target time.Time, healthy bool) {
 	expectedStart := stream.ExpectedFrom.UTC().Truncate(time.Hour)
 	if expectedStart.Before(monthStart) {
@@ -411,7 +415,7 @@ func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClose
 	}
 	observedThrough = expectedStart
 	for observedThrough.Before(target) {
-		if state, exists := stream.Windows[observedThrough]; !exists || state != UsageSourceHealthy {
+		if state, exists := stream.Windows[observedThrough]; !exists || (state != UsageSourceHealthy && state != UsageSourceDegraded) {
 			break
 		}
 		observedThrough = observedThrough.Add(time.Hour)
@@ -448,8 +452,10 @@ func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamO
 			coverage.Complete = false
 		}
 		// A stream with an open-ended expectation, or one still catching up, keeps
-		// dragging `through` back to what it has actually observed.
-		if stream.ExpectedThrough == nil || behind || !healthy {
+		// dragging `through` back to what it has actually observed. An ended
+		// stream metered to its end does not, degraded or not: its degradation
+		// already clears Complete (w4/496).
+		if stream.ExpectedThrough == nil || behind {
 			activeStreams++
 			if observedThrough.Before(coverage.Through) {
 				coverage.Through = observedThrough

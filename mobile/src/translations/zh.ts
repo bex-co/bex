@@ -76,7 +76,7 @@ export const zh = {
     },
     empty: "此期间没有记录到用量。",
     noEvidence: "暂无可用的用量总计。",
-    through: "用量已确认至 %{time}",
+    through: "已计量至 %{time}",
     degraded: "部分用量数据源存在延迟：%{sources}",
     refreshUnavailable: "刷新不可用。正在显示上次收到的总计。",
     loading: "正在加载本月至今用量…",

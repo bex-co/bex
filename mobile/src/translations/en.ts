@@ -77,7 +77,7 @@ export const en = {
     },
     empty: "Complete data reports no non-zero usage.",
     noEvidence: "Usage totals are not available yet.",
-    through: "Usage confirmed through %{time}",
+    through: "Metered through %{time}",
     degraded: "Some usage sources are delayed: %{sources}",
     refreshUnavailable:
       "Refresh is unavailable. Showing the last received totals.",

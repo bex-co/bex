@@ -447,9 +447,9 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Lead sentence of the partial-coverage caveat tooltip",
   },
   "usage.coveragePartialThrough": {
-    message: "仅统计至 {through}。",
+    message: "已计量至 {through}。",
     description:
-      "Partial-coverage caveat clause naming the date the estimate is complete through; {through} is a YYYY-MM-DD date",
+      "Partial-coverage caveat clause naming the date the meters have recorded through (a degraded hour counts as recorded, w4/496); {through} is a YYYY-MM-DD date",
   },
   "usage.coveragePartialSources": {
     message: "降级的计量来源：{sources}。",

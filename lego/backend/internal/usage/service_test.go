@@ -1794,11 +1794,12 @@ func TestAppMeterUnresolvableAppIsUnavailableNotZero(t *testing.T) {
 func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
 	parked := func(reason string, since time.Time) appv1alpha1.AppStatus {
-		return appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseHibernated, Conditions: []metav1.Condition{{
+		return appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseHibernated, ActiveRevision: "rev-1", Conditions: []metav1.Condition{{
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 			LastTransitionTime: metav1.NewTime(since),
 		}}}
 	}
+	serving := appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1"}
 	cases := []struct {
 		name   string
 		spec   appv1alpha1.AppSpec
@@ -1807,17 +1808,38 @@ func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 		want   string
 		quant  int64
 	}{{
-		name: "running web App reporting no pods is suspicious",
-		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
-		pods: 0, want: store.UsageSourceDegraded, quant: 0,
+		name:   "running web App reporting no pods is suspicious",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
+		status: serving,
+		pods:   0, want: store.UsageSourceDegraded, quant: 0,
 	}, {
-		name: "App scaled to zero has an honest zero",
-		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 0},
-		pods: 0, want: store.UsageSourceHealthy, quant: 0,
+		// w4/496: four Apps whose first build failed or first rollout never
+		// became ready were degraded every hour of November, pinning their
+		// workspaces' coverage to the month start.
+		name:   "App whose first release failed has an honest zero",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 1},
+		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseFailed},
+		pods:   0, want: store.UsageSourceHealthy, quant: 0,
 	}, {
-		name: "suspended App has an honest zero",
-		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 3, Suspended: true},
-		pods: 0, want: store.UsageSourceHealthy, quant: 0,
+		name:   "App whose first build was canceled has an honest zero",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 1},
+		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseCanceled},
+		pods:   0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
+		name:   "App in its first rollout runs pods, so a zero is suspicious",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 1},
+		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying},
+		pods:   0, want: store.UsageSourceDegraded, quant: 0,
+	}, {
+		name:   "App scaled to zero has an honest zero",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 0},
+		status: serving,
+		pods:   0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
+		name:   "suspended App has an honest zero",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 3, Suspended: true},
+		status: serving,
+		pods:   0, want: store.UsageSourceHealthy, quant: 0,
 	}, {
 		// w4/m139 t002: production marked every hour of every hibernated Free
 		// service degraded, pinning usage coverage to the month start.
@@ -1841,13 +1863,15 @@ func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 		status: parked("CrashLoopBackOff", window.Add(-3*time.Hour)),
 		pods:   0, want: store.UsageSourceDegraded, quant: 0,
 	}, {
-		name: "cron App has pods only during a run",
-		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
-		pods: 0, want: store.UsageSourceHealthy, quant: 0,
+		name:   "cron App has pods only during a run",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
+		status: serving,
+		pods:   0, want: store.UsageSourceHealthy, quant: 0,
 	}, {
-		name: "running App with pods stays healthy",
-		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
-		pods: 480, want: store.UsageSourceHealthy, quant: 7200, // 2 pods × 240 steps
+		name:   "running App with pods stays healthy",
+		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
+		status: serving,
+		pods:   480, want: store.UsageSourceHealthy, quant: 7200, // 2 pods × 240 steps
 	}}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -455,9 +455,9 @@ const enUsage: Record<string, TranslationEntry> = {
     description: "Lead sentence of the partial-coverage caveat tooltip",
   },
   "usage.coveragePartialThrough": {
-    message: "Complete only through {through}.",
+    message: "Metered through {through}.",
     description:
-      "Partial-coverage caveat clause naming the date the estimate is complete through; {through} is a YYYY-MM-DD date",
+      "Partial-coverage caveat clause naming the date the meters have recorded through (a degraded hour counts as recorded, w4/496); {through} is a YYYY-MM-DD date",
   },
   "usage.coveragePartialSources": {
     message: "Degraded metering sources: {sources}.",

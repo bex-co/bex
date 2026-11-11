@@ -94,7 +94,7 @@ func TestAggregateUsageCoverageEndedStreamDoesNotDragWatermark(t *testing.T) {
 	}
 }
 
-func TestAggregateUsageCoverageEndedDegradationConstrainsThrough(t *testing.T) {
+func TestAggregateUsageCoverageEndedDegradationIsReported(t *testing.T) {
 	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	endedAt := month.Add(2 * time.Hour)
 	ended := coverageStream(UsageSourceHTTP, month, map[time.Time]string{
@@ -102,8 +102,30 @@ func TestAggregateUsageCoverageEndedDegradationConstrainsThrough(t *testing.T) {
 	})
 	ended.ExpectedThrough = &endedAt
 	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended}, []string{"ended"}, month, month.Add(4*time.Hour), false)
-	if got.Complete || !got.Through.Equal(month.Add(time.Hour)) || !slices.Equal(got.DegradedSources, []string{UsageSourceHTTP}) {
-		t.Fatalf("ended degradation was hidden: %+v", got)
+	if got.Complete || !got.Through.Equal(month.Add(4*time.Hour)) || !slices.Equal(got.DegradedSources, []string{UsageSourceHTTP}) {
+		t.Fatalf("ended degradation was hidden, or dragged through: %+v", got)
+	}
+}
+
+// w4/496: a degraded hour was metered, so the watermark passes over it; only a
+// missing or unavailable hour stops it. The degradation itself is still
+// reported, and the coverage stays partial.
+func TestAggregateUsageCoverageDegradedHourDoesNotStopTheWatermark(t *testing.T) {
+	month := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	direct := coverageStream(UsageSourceDirect, month, map[time.Time]string{
+		month: UsageSourceDegraded, month.Add(time.Hour): UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
+	})
+	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"direct": direct}, []string{"direct"}, month, month.Add(3*time.Hour), false)
+	if got.Complete || !got.Through.Equal(month.Add(3*time.Hour)) || !slices.Equal(got.DegradedSources, []string{UsageSourceDirect}) {
+		t.Fatalf("a metered degraded hour pinned the watermark: %+v", got)
+	}
+
+	unavailable := coverageStream(UsageSourceDirect, month, map[time.Time]string{
+		month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceUnavailable, month.Add(2 * time.Hour): UsageSourceHealthy,
+	})
+	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"direct": unavailable}, []string{"direct"}, month, month.Add(3*time.Hour), false)
+	if got.Complete || !got.Through.Equal(month.Add(time.Hour)) {
+		t.Fatalf("an unmetered hour must still stop the watermark: %+v", got)
 	}
 }
 

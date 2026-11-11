@@ -193,7 +193,8 @@ const (
 )
 
 // Coverage describes the evidence behind current-month totals. Through is the
-// common end of every active source stream's contiguous hourly prefix. It is
+// common end of every active source stream's contiguous metered (healthy or
+// degraded) hourly prefix. It is
 // zero for unknown evidence and never inferred for historical periods.
 type Coverage struct {
 	State           string
@@ -1413,9 +1414,13 @@ func (s *Service) appPodIdentity(app store.App, cr *appv1alpha1.App) (name, name
 // for replicas, but it ran no pod. Production degraded every hour of every
 // hibernated Free service this way, pinning usage coverage to the month start
 // (w4/m139 t002). A park that began inside the window is not exempt: the App
-// ran before it, so a zero still means the read found nothing.
+// ran before it, so a zero still means the read found nothing. Nor does an App
+// whose first release ended Failed or Canceled without ever serving (no
+// ActiveRevision): production degraded every hour of four such Apps this way,
+// with no pods behind any of them (w4/496). A first rollout still in progress
+// does run pods, so it is not exempt.
 func expectsRunningPods(cr *appv1alpha1.App, windowStart time.Time) bool {
-	if cr == nil || cr.Spec.Suspended || cr.Spec.Type == appv1alpha1.TypeCronJob {
+	if cr == nil || cr.Spec.Suspended || cr.Spec.Type == appv1alpha1.TypeCronJob || neverServedTerminal(cr) {
 		return false
 	}
 	if ready := meta.FindStatusCondition(cr.Status.Conditions, appv1alpha1.ConditionReady); ready != nil &&
@@ -1425,6 +1430,13 @@ func expectsRunningPods(cr *appv1alpha1.App, windowStart time.Time) bool {
 		return false
 	}
 	return cr.Spec.Replicas > 0
+}
+
+// neverServedTerminal reports an App whose first release ended Failed or
+// Canceled before anything served.
+func neverServedTerminal(cr *appv1alpha1.App) bool {
+	return cr.Status.ActiveRevision == "" &&
+		(cr.Status.Phase == appv1alpha1.PhaseFailed || cr.Status.Phase == appv1alpha1.PhaseCanceled)
 }
 
 // degradeSourceHealth downgrades every healthy observation to "degraded",
