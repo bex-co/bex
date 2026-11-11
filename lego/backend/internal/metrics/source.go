@@ -459,24 +459,9 @@ func resourceLimitQuery(matchers, resource string) string {
 	return fmt.Sprintf(`sum by (pod) (kube_pod_container_resource_limits{%s,resource=%q})`, matchers, resource)
 }
 
-// traefikServiceLabel returns the exact Prometheus `service` label Traefik's
-// Kubernetes Ingress provider assigns to an App's backend:
-// "<namespace>-<app>-<port>@kubernetes" (docs/ADR010-observability.md,
-// ground-truthed 2026-07 against production; the identical regex is load-bearing
-// in the request-log pipeline, deploy/gitops/base/log-shipper.yaml's
-// `stage.regex` over the access log's ServiceName field). The operator names the
-// App's k8s Service after the App and routes its Ingress to app.ServicePort()
-// (app_controller.go), so this is a reconstruction of a known identity, not a
-// heuristic — codex-security round-19 #6: the prior unanchored `.*<app>.*`
-// substring selector dropped namespace entirely and could match another
-// tenant's Traefik service whose name happened to contain this App's name.
-func traefikServiceLabel(namespace, app string, port int32) string {
-	return fmt.Sprintf("%s-%s-%d@kubernetes", namespace, app, port)
-}
-
 // promQueryFor builds the PromQL range query for a request metric over Traefik's
-// counters. HTTP count/latency retain their exact service selector; bandwidth uses
-// exact router identities so shared backends remain attributable. Traefik's
+// counters, selected by the App's exact router identities (requestCounters), as
+// bandwidth is, so shared backends remain attributable. Traefik's
 // Prometheus counters carry no host or path labels (the router label is a name,
 // not a matched Host()/PathPrefix() value), so a host/path-filtered read is never
 // routed here — it goes to the Loki request-metrics source instead (w5/m58); this
@@ -492,10 +477,11 @@ func promQueryFor(req RequestMetricsRequest) string {
 		// usage metering — see docs/render-artifacts/metrics-page.md (w4/m108).
 		return egressquery.SumIncreases(bandwidthSpecs(req), stepSeconds(req.Resolution))
 	}
-	counters, selector, ok := requestCounters(req)
+	selector, ok := requestSelector(req)
 	if !ok {
 		return ""
 	}
+	counters := requestCounters
 	sel := []string{selector}
 	if c := codeMatcher(req.StatusCode); c != "" {
 		sel = append(sel, fmt.Sprintf(`code=~%q`, c))
@@ -517,53 +503,33 @@ func promQueryFor(req RequestMetricsRequest) string {
 	}
 }
 
-// traefikCounters names the Traefik counter pair a request read selects on.
-type traefikCounters struct{ requests, duration string }
+// requestCounters are Traefik's per-ROUTER counters, read under the App's own
+// Ingress routers. A request belongs to the App whose public route answered
+// it, whichever backend did: its own pods, the wake activator holding a Free
+// service's request after sleep and answering its first deploy, or the
+// maintenance page — a per-Service selector named only the first, so Response
+// Times missed an 11.8 s cold-start wake and the Status Code picker the
+// activator's 503s (w4/559). A static site has no Service of its own at all:
+// ADR029 points its Ingress at the shared static-server (w4/m113). The router
+// series carry `code`, `method` and `le` as the service series do (verified
+// 2026-09-18 against the production Prometheus's /api/v1/series), and the
+// request log attributes a line by the same Ingress.
+var requestCounters = struct{ requests, duration string }{
+	requests: "traefik_router_requests_total",
+	duration: "traefik_router_request_duration_seconds_bucket",
+}
 
-var (
-	// A compute service has its own Kubernetes Service, so Traefik's
-	// per-service counters are the tightest possible attribution.
-	serviceCounters = traefikCounters{
-		requests: "traefik_service_requests_total",
-		duration: "traefik_service_request_duration_seconds_bucket",
-	}
-	// A static site has none: ADR029 points every static host's Ingress at the
-	// SHARED static-server Service, so the per-service counters carry the
-	// platform Service's identity and a per-App selector over them matches
-	// nothing. Traefik's per-ROUTER counters carry the App's own Ingress router
-	// names, which is the attribution ADR018 row 84 already promises and the
-	// bandwidth read already uses. Both router series carry `code`, `method`
-	// and `le` exactly as the service series do (verified 2026-09-18 against
-	// the production Prometheus's /api/v1/series).
-	routerCounters = traefikCounters{
-		requests: "traefik_router_requests_total",
-		duration: "traefik_router_request_duration_seconds_bucket",
-	}
-)
-
-// requestCounters picks the counter pair and selector for this read, and
-// reports whether a query can be built at all.
-//
-// w4/m113: live on 2026-09-17 a static site that had just served ~25 requests
-// read "No data in range" on Total Requests and Response Times, and `[]` on
-// GraphQL/REST, while router-attributed bandwidth for the same service in the
-// same window showed five nonzero buckets — the selector was targeting a
-// Kubernetes Service static sites do not have.
-//
-// ok=false when a static site's routers could not be resolved. That MUST NOT
+// requestSelector is the App's router matcher, and whether a query can be
+// built at all. ok=false when the App has no resolved routers. That MUST NOT
 // degrade into a router-less match: an empty router matcher would select every
 // router in the cluster and serve one tenant another tenant's request counts.
-// An empty query yields an empty series, which is the same answer the caller
-// got before — wrong, but not a leak.
-func requestCounters(req RequestMetricsRequest) (traefikCounters, string, bool) {
-	if !req.RouterScoped {
-		return serviceCounters, fmt.Sprintf(`service=%q`, traefikServiceLabel(req.Namespace, req.App, req.Port)), true
-	}
+// An empty query yields an empty series.
+func requestSelector(req RequestMetricsRequest) (string, bool) {
 	matcher := egressquery.RouterMatcher(req.Routers)
 	if matcher == "" {
-		return traefikCounters{}, "", false
+		return "", false
 	}
-	return routerCounters, fmt.Sprintf(`router=~%q`, matcher), true
+	return fmt.Sprintf(`router=~%q`, matcher), true
 }
 
 // sumIncrease builds sum(increase(counter[window])) — the per-bucket count for
@@ -844,17 +810,14 @@ func NewPrometheusReplicationLagSource(base string, hc *http.Client) Replication
 
 // filterValuesMatch is the series selector label-value discovery runs over —
 // the request-count counter for this App, chosen by the same rule the chart's
-// own query uses. Empty when no bounded selector exists (a static site whose
-// routers could not be resolved), which the caller turns into "no values".
+// own query uses. Empty when no bounded selector exists (an App whose routers
+// could not be resolved), which the caller turns into "no values".
 func filterValuesMatch(req MetricsFilterValuesRequest) string {
-	counters, selector, ok := requestCounters(RequestMetricsRequest{
-		Namespace: req.Namespace, App: req.App, Port: req.Port,
-		Routers: req.Routers, RouterScoped: req.RouterScoped,
-	})
+	selector, ok := requestSelector(RequestMetricsRequest{Routers: req.Routers})
 	if !ok {
 		return ""
 	}
-	return fmt.Sprintf("%s{%s}", counters.requests, selector)
+	return fmt.Sprintf("%s{%s}", requestCounters.requests, selector)
 }
 
 // NewPrometheusFilterValuesSource returns the production MetricsFilterValuesSource,
@@ -866,12 +829,10 @@ func NewPrometheusFilterValuesSource(base string, hc *http.Client) MetricsFilter
 	base = strings.TrimRight(base, "/")
 	return func(ctx context.Context, req MetricsFilterValuesRequest) ([]string, error) {
 		// Discovery must read the SAME series the chart reads, or the dropdown
-		// and the graph disagree — which is exactly what a static site got: the
-		// per-service selector named a Service it does not have, so the Status
-		// Code filter offered nothing while the site served 200s, 301s and 404s
-		// (w4/m113). requestCounters owns the one rule both paths follow, and
-		// refuses an unbounded router match rather than leaking another
-		// tenant's codes.
+		// and the graph disagree — which is exactly what a static site got
+		// (w4/m113) and a compute service's activator-answered 503s (w4/559).
+		// requestSelector owns the one rule both paths follow, and refuses an
+		// unbounded router match rather than leaking another tenant's codes.
 		match := filterValuesMatch(req)
 		if match == "" {
 			return []string{}, nil

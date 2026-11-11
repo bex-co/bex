@@ -195,9 +195,11 @@ metrics:
     # "0.1,0.3,1.2,5.0": every request faster than 100 ms lands in the first
     # bucket, so histogram_quantile() interpolates inside (0, 0.1] and reads
     # exactly 0.1 x q (p50 50 ms, p95 95 ms) for any fast service. These bounds
-    # keep the resolution below 100 ms; the last finite bound stays above the
-    # longest proxied request the edge allows.
-    buckets: "0.005,0.01,0.025,0.05,0.1,0.25,0.5,1,2.5,5,10"
+    # keep the resolution below 100 ms. The bounds above 10 s are for a Free
+    # service's cold start: the wake activator holds its first request up to
+    # 90 s, and a quantile past the last bound reads as that bound, so an
+    # 11.8 s wake read 10 s (w4/559).
+    buckets: "0.005,0.01,0.025,0.05,0.1,0.25,0.5,1,2.5,5,10,15,30,60,90"
 # entrypoints web(:80) + websecure(:443) with NO forced web->websecure redirect,
 # so cert-manager HTTP-01 challenges on :80 succeed.
 extraObjects:

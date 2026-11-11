@@ -984,21 +984,21 @@ func TestParsePodMetrics(t *testing.T) {
 }
 
 func TestPromQueryFor(t *testing.T) {
-	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: 60 * time.Second, StatusCode: "5xx", GroupBy: "status"})
-	if want := `sum(increase(traefik_service_requests_total{service="default-web-80@kubernetes",code=~"5.."}[60s])) by (code)`; q != want {
+	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: 60 * time.Second, StatusCode: "5xx", GroupBy: "status"})
+	if want := `sum(increase(traefik_router_requests_total{router=~"^(default-web-web-onbex-co@kubernetes)$",code=~"5.."}[60s])) by (code)`; q != want {
 		t.Errorf("http_requests:\n got %q\nwant %q", q, want)
 	}
 	// Ungrouped http_requests: increase over the step (same step as query_range).
-	ungrouped := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: 45 * time.Second})
-	if want := `sum(increase(traefik_service_requests_total{service="default-web-80@kubernetes"}[45s]))`; ungrouped != want {
+	ungrouped := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: 45 * time.Second})
+	if want := `sum(increase(traefik_router_requests_total{router=~"^(default-web-web-onbex-co@kubernetes)$"}[45s]))`; ungrouped != want {
 		t.Errorf("http_requests ungrouped:\n got %q\nwant %q", ungrouped, want)
 	}
-	lat := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPLatency, Resolution: 60 * time.Second, Quantile: 0.9})
-	if want := `histogram_quantile(0.9, sum(rate(traefik_service_request_duration_seconds_bucket{service="default-web-80@kubernetes"}[60s])) by (le))`; lat != want {
+	lat := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPLatency, Resolution: 60 * time.Second, Quantile: 0.9})
+	if want := `histogram_quantile(0.9, sum(rate(traefik_router_request_duration_seconds_bucket{router=~"^(default-web-web-onbex-co@kubernetes)$"}[60s])) by (le))`; lat != want {
 		t.Errorf("latency:\n got %q\nwant %q", lat, want)
 	}
 	injected := promQueryFor(RequestMetricsRequest{
-		App: "web", Metric: MetricHTTPRequests, Resolution: time.Minute, StatusCode: `5xx"} or vector(1) #`,
+		App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: time.Minute, StatusCode: `5xx"} or vector(1) #`,
 	})
 	if strings.Contains(injected, "vector") || strings.Contains(injected, `code=~`) {
 		t.Errorf("defensive builder accepted invalid statusCode: %q", injected)
@@ -1028,10 +1028,10 @@ func TestPromQueryFor(t *testing.T) {
 func TestPromQueryBuildersEscapeQuoteInValue(t *testing.T) {
 	const payload = `web"} or vector(1) #`
 
-	// Request-metrics service selector: the exact composed identity inside service="...".
-	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: payload, Port: 80, Metric: MetricHTTPRequests, Resolution: time.Minute})
+	// Request-metrics router selector: the exact identities inside router=~"...".
+	q := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{payload}, Metric: MetricHTTPRequests, Resolution: time.Minute})
 	if !strings.Contains(q, `web\"`) || strings.Contains(q, `web"`) {
-		t.Fatalf("service selector did not escape the quote in App (breakout risk): %q", q)
+		t.Fatalf("router selector did not escape the quote (breakout risk): %q", q)
 	}
 
 	// Resource-metrics kubelet pod selector: <app>-... inside pod=~"...".
@@ -1096,7 +1096,8 @@ func TestPrometheusRequestSourceRoundTrip(t *testing.T) {
 	}))
 	defer ts.Close()
 	series, err := NewPrometheusRequestSource(ts.URL, ts.Client())(context.Background(), RequestMetricsRequest{
-		App: "web", Metric: MetricHTTPRequests, Start: time.Unix(1_000_000, 0), End: time.Unix(1_000_120, 0), Resolution: 60 * time.Second,
+		App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests,
+		Start: time.Unix(1_000_000, 0), End: time.Unix(1_000_120, 0), Resolution: 60 * time.Second,
 	})
 	if err != nil || gotQuery == "" || len(series) != 1 || series[0].Points[0].Value != 7 {
 		t.Fatalf("roundtrip: %v q=%q %+v", err, gotQuery, series)
@@ -1217,11 +1218,11 @@ func TestPrometheusFilterValuesRoundTrip(t *testing.T) {
 		_, _ = w.Write([]byte(`{"status":"success","data":["200","404","500"]}`))
 	}))
 	defer ts.Close()
-	values, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), MetricsFilterValuesRequest{Namespace: "default", App: "web", Port: 80, Label: "code"})
+	values, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), MetricsFilterValuesRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Label: "code"})
 	if err != nil || len(values) != 3 || values[0] != "200" {
 		t.Fatalf("filter values: %v %+v", err, values)
 	}
-	if !strings.Contains(gotMatch, `traefik_service_requests_total{service="default-web-80@kubernetes"}`) {
+	if !strings.Contains(gotMatch, `traefik_router_requests_total{router=~"^(default-web-web-onbex-co@kubernetes)$"}`) {
 		t.Errorf("unexpected match[]: %q", gotMatch)
 	}
 }
@@ -1229,22 +1230,19 @@ func TestPrometheusFilterValuesRoundTrip(t *testing.T) {
 // TestPromQueryForAndFilterValuesAreNamespaceScoped pins codex-security round-19
 // #6: the prior selectors were an unanchored `.*<app>.*` substring match with no
 // namespace, so an authorized tenant's request for its own legacy bare-name App
-// could aggregate or enumerate another tenant's Traefik service whose label
-// merely contained the same text (e.g. app "web" matching another tenant's
-// "web-api" service, or the same app name in a different namespace). The fixed
-// selector is the exact composed "<namespace>-<app>-<port>@kubernetes" identity,
-// so same-named Apps in different namespaces — or an app name that is a
-// substring of another service's name — never collide.
+// could aggregate or enumerate another tenant's Traefik series whose label
+// merely contained the same text. The selector is the App's exact,
+// namespace-qualified router identities, anchored, so same-named Apps in
+// different namespaces — or an app name that is a substring of another's —
+// never collide (w4/559 kept the property when it moved to routers).
 func TestPromQueryForAndFilterValuesAreNamespaceScoped(t *testing.T) {
-	q := promQueryFor(RequestMetricsRequest{Namespace: "tenant-a", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: time.Minute})
-	if strings.Contains(q, `service=~`) {
-		t.Errorf("service selector must be an exact match, not a substring regex: %q", q)
+	routers := []string{"tenant-a-web-web-onbex-co@kubernetes"}
+	q := promQueryFor(RequestMetricsRequest{Namespace: "tenant-a", App: "web", Routers: routers, Metric: MetricHTTPRequests, Resolution: time.Minute})
+	if !strings.Contains(q, `router=~"^(tenant-a-web-web-onbex-co@kubernetes)$"`) {
+		t.Errorf("selector is not the anchored namespace-qualified router identity: %q", q)
 	}
-	if !strings.Contains(q, `service="tenant-a-web-80@kubernetes"`) {
-		t.Errorf("service selector missing exact namespace-qualified identity: %q", q)
-	}
-	if strings.Contains(q, `"tenant-a-web-api`) || strings.Contains(q, `tenant-b-web`) {
-		t.Errorf("service selector must not be able to match a sibling service: %q", q)
+	if strings.Contains(q, "tenant-b") || strings.Contains(q, ".*") {
+		t.Errorf("selector could match a sibling: %q", q)
 	}
 
 	var gotMatch string
@@ -1253,11 +1251,15 @@ func TestPromQueryForAndFilterValuesAreNamespaceScoped(t *testing.T) {
 		_, _ = w.Write([]byte(`{"status":"success","data":[]}`))
 	}))
 	defer ts.Close()
-	if _, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), MetricsFilterValuesRequest{Namespace: "tenant-a", App: "web", Port: 80, Label: "code"}); err != nil {
+	if _, err := NewPrometheusFilterValuesSource(ts.URL, ts.Client())(context.Background(), MetricsFilterValuesRequest{Namespace: "tenant-a", App: "web", Routers: routers, Label: "code"}); err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(gotMatch, "service=~") || !strings.Contains(gotMatch, `service="tenant-a-web-80@kubernetes"`) {
-		t.Errorf("filter-values match[] is not the exact namespace-qualified identity: %q", gotMatch)
+	if !strings.Contains(gotMatch, `router=~"^(tenant-a-web-web-onbex-co@kubernetes)$"`) {
+		t.Errorf("filter-values match[] is not the anchored router identity: %q", gotMatch)
+	}
+	// No routers, no query: never an unbounded match.
+	if q := promQueryFor(RequestMetricsRequest{Namespace: "tenant-a", App: "web", Metric: MetricHTTPRequests, Resolution: time.Minute}); q != "" {
+		t.Errorf("a read without routers built %q", q)
 	}
 }
 
@@ -1560,9 +1562,6 @@ func TestStaticSiteRequestMetricsSelectRouterSeries(t *testing.T) {
 			if !slices.Equal(got.Routers, []string{"default-site-site-onbex-co@kubernetes", "web-default-site-site-onbex-co@kubernetes"}) {
 				t.Fatalf("routers = %v, want the App's own Ingress router", got.Routers)
 			}
-			if !got.RouterScoped {
-				t.Fatal("a static site's request read must be router-scoped — it has no per-App Service")
-			}
 			query := promQueryFor(got)
 			if !strings.Contains(query, "traefik_router_") {
 				t.Errorf("query %q does not select Traefik's per-router counters", query)
@@ -1577,30 +1576,52 @@ func TestStaticSiteRequestMetricsSelectRouterSeries(t *testing.T) {
 	}
 }
 
-// The compute path is untouched: same counters, same selector, byte-identical.
-func TestComputeRequestMetricsKeepTheServiceSelector(t *testing.T) {
-	var got RequestMetricsRequest
-	app := sampleApp("web")
-	app.Labels = map[string]string{core.LabelAppID: "srv-web"}
-	app.Spec.Host = "web.onbex.co"
-	svc := newService(nil, func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
-		got = r
-		return []MetricSeries{}, nil
-	}, app, ingressFor("web", "web", "web.onbex.co"))
+// w4/559: a compute service's request reads count every request its public
+// routes answered, the wake activator's included, so they select its own
+// Ingress routers, not the per-App Service the activator never is.
+func TestComputeRequestMetricsSelectRouterSeries(t *testing.T) {
+	for _, metric := range []string{MetricHTTPRequests, MetricHTTPLatency} {
+		t.Run(metric, func(t *testing.T) {
+			var got RequestMetricsRequest
+			app := sampleApp("web")
+			app.Labels = map[string]string{core.LabelAppID: "srv-web"}
+			app.Spec.Host = "web.onbex.co"
+			svc := newService(nil, func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+				got = r
+				return []MetricSeries{}, nil
+			}, app, ingressFor("web", "web", "web.onbex.co"))
 
-	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests}); err != nil {
-		t.Fatalf("http_requests: %v", err)
+			if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: metric, Quantile: 0.99}); err != nil {
+				t.Fatalf("%s: %v", metric, err)
+			}
+			if !slices.Equal(got.Routers, []string{"default-web-web-onbex-co@kubernetes", "web-default-web-web-onbex-co@kubernetes"}) {
+				t.Fatalf("request = %+v, want router-scoped with the App's own routers", got)
+			}
+			query := promQueryFor(got)
+			if !strings.Contains(query, "traefik_router_") || strings.Contains(query, "traefik_service_") {
+				t.Errorf("query %q must read the App's router series", query)
+			}
+		})
 	}
-	if got.RouterScoped {
-		t.Fatal("a compute service must keep the tighter per-service selector")
+}
+
+// w4/559: the Status Code picker lists what the chart counts — for a compute
+// service too, whose first-deploy 503s the wake activator answered.
+func TestComputeStatusCodeDiscoveryUsesRouterSeries(t *testing.T) {
+	var got MetricsFilterValuesRequest
+	app := sampleApp("web")
+	app.Spec.Host = "web.onbex.co"
+	svc := newService(nil, nil, app, ingressFor("web", "web", "web.onbex.co"))
+	svc.MetricsFilterValuesSource = func(_ context.Context, r MetricsFilterValuesRequest) ([]string, error) {
+		got = r
+		return []string{"200", "503"}, nil
 	}
-	// Resolving routers for a compute request read would be a pointless extra
-	// Ingress list on every Metrics page load.
-	if got.Routers != nil {
-		t.Errorf("routers = %v, want none resolved for a compute request read", got.Routers)
+	if _, err := svc.MetricsFilters(context.Background(), MetricsFiltersQuery{App: "web", OutputFilters: []string{filterFieldStatusCode}}); err != nil {
+		t.Fatalf("metricsFilters: %v", err)
 	}
-	if query := promQueryFor(got); !strings.Contains(query, `traefik_service_requests_total{service="default-web-10000@kubernetes"`) {
-		t.Errorf("compute query changed: %q", query)
+	match := filterValuesMatch(got)
+	if !strings.Contains(match, "traefik_router_requests_total") || strings.Contains(match, "traefik_service_") {
+		t.Errorf("discovery %+v selects %q, want the App's router series", got, match)
 	}
 }
 
@@ -1610,15 +1631,14 @@ func TestComputeRequestMetricsKeepTheServiceSelector(t *testing.T) {
 func TestStaticSiteWithoutRoutersBuildsNoQuery(t *testing.T) {
 	for _, metric := range []string{MetricHTTPRequests, MetricHTTPLatency} {
 		req := RequestMetricsRequest{
-			Namespace: "default", App: "site", Port: 80,
-			RouterScoped: true, Routers: nil, Metric: metric, Resolution: time.Minute,
+			Namespace: "default", App: "site", Routers: nil, Metric: metric, Resolution: time.Minute,
 		}
 		if q := promQueryFor(req); q != "" {
 			t.Fatalf("%s with no routers built %q, want no query at all", metric, q)
 		}
 	}
 	if m := filterValuesMatch(MetricsFilterValuesRequest{
-		Namespace: "default", App: "site", Port: 80, RouterScoped: true, Label: "code",
+		Namespace: "default", App: "site", Label: "code",
 	}); m != "" {
 		t.Fatalf("filter discovery with no routers built %q, want no selector", m)
 	}
@@ -1643,7 +1663,7 @@ func TestStaticSiteStatusCodeDiscoveryUsesRouterSeries(t *testing.T) {
 	if err != nil {
 		t.Fatalf("metricsFilters: %v", err)
 	}
-	if !got.RouterScoped || len(got.Routers) != 2 {
+	if len(got.Routers) != 2 {
 		t.Fatalf("discovery request = %+v, want router-scoped with the App's router", got)
 	}
 	match := filterValuesMatch(got)
@@ -1825,14 +1845,14 @@ func TestRateLookbackIsFlooredAboveTheScrapeInterval(t *testing.T) {
 		want string
 	}{{15 * time.Second, "[60s]"}, {60 * time.Second, "[60s]"}, {300 * time.Second, "[300s]"}} {
 		cpu := promResourceQueryFor(ResourceMetricsRangeRequest{Namespace: "default", App: "web", Metric: "cpu", Resolution: tc.res})
-		lat := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPLatency, Resolution: tc.res, Quantile: 0.9})
+		lat := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPLatency, Resolution: tc.res, Quantile: 0.9})
 		for name, q := range map[string]string{"cpu": cpu, "latency": lat} {
 			if !strings.Contains(q, tc.want) {
 				t.Errorf("%s at %s: query %q, want rate lookback %s", name, tc.res, q, tc.want)
 			}
 		}
 	}
-	count := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Port: 80, Metric: MetricHTTPRequests, Resolution: 15 * time.Second})
+	count := promQueryFor(RequestMetricsRequest{Namespace: "default", App: "web", Routers: []string{"default-web-web-onbex-co@kubernetes"}, Metric: MetricHTTPRequests, Resolution: 15 * time.Second})
 	if !strings.Contains(count, "[15s]") || strings.Contains(count, "[60s]") {
 		t.Errorf("request counts must keep the 15s bucket window: %q", count)
 	}
@@ -1856,7 +1876,9 @@ func TestImagePortRequestMetricsUseThePublishedPort(t *testing.T) {
 	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "nginx", Metric: MetricHTTPLatency}); err != nil {
 		t.Fatalf("http_latency: %v", err)
 	}
-	if query := promQueryFor(got); !strings.Contains(query, `service="default-nginx-8080@kubernetes"`) {
-		t.Errorf("image-port latency query = %q, want the published 8080", query)
+	// Since w4/559 the read selects the App's routers, which name no port,
+	// so the published port can no longer be read wrong there.
+	if query := promQueryFor(got); !strings.Contains(query, `router=~"^(default-nginx-nginx-onbex-co@kubernetes|web-default-nginx-nginx-onbex-co@kubernetes)$"`) {
+		t.Errorf("image-port latency query = %q, want the App's routers", query)
 	}
 }
