@@ -1,6 +1,6 @@
 # w2 · m316 — Pooled Postgres connection strings use port 6432, as on Render
 
-**Worker:** worker2 **Goal:** every pooled connection string bex hands out (connection info on REST/GraphQL/MCP, the operator's pooler Secret behind Blueprint `connectionPoolString`, the dashboard) names PgBouncer's port 6432, as Render's do. Internal and external connections on 6432 reach the pooler, and every URI already handed out on 5432 keeps working. **Status:** blocked — t001, t002, t004–t008 done; the internal half is shipped (`245a2eac9`, `3bc94d538`); t003 waits on the edge-LB cost decision below, then t009/t010
+**Worker:** worker2 **Goal:** every pooled connection string bex hands out (connection info on REST/GraphQL/MCP, the operator's pooler Secret behind Blueprint `connectionPoolString`, the dashboard) names PgBouncer's port 6432, as Render's do. Internal and external connections on 6432 reach the pooler, and every URI already handed out on 5432 keeps working. **Status:** done — closed by user decision 2026-11-10. The internal half shipped; external pooled URLs stay on 5432 as a signed-off difference (ADR018). t003 and t009 are superseded.
 
 ## Tasks (in order)
 
@@ -8,14 +8,14 @@
 | ---- | ----- | --- | ---------- |
 | t001 | The pooler Service serves 6432 beside CNPG's default 5432 — **DONE** | 40m | — |
 | t002 | Pooled URIs name 6432: backend connection info and the operator's pooler Secret — **DONE** | 40m | t001 |
-| t003 | The edge accepts external pooled connections on 6432 — **BLOCKED** (the edge LB is at its listener limit) | 30m | — |
+| t003 | The edge accepts external pooled connections on 6432 — **SUPERSEDED** (user decision 2026-11-10: external stays on 5432) | 30m | — |
 | t004 | dev-2 walk: internal pooled connections on 6432 and 5432; the Secret and connection info name 6432 — **DONE** | 30m | t001, t002 |
 | t005 | ADR009 and ADR018 record the port — **DONE** | 15m | t002, t003 |
 | t006 | Render parity — **DONE** | 20m | t004, t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t007 |
-| t009 | Production check after deploy: an external pooled connection on 6432 | 20m | t008 |
-| t010 | Closeout | 10m | t009 |
+| t009 | Production check after deploy: an external pooled connection on 6432 — **SUPERSEDED** (no external 6432) | 20m | t008 |
+| t010 | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
@@ -27,7 +27,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** promoted from [w2/079](../done/079.md) (w2/m307's Render parity task, 2026-11-10).
+- **Source:** promoted from [w2/079](../079.md) (w2/m307's Render parity task, 2026-11-10).
 - **Render:** "The pooled URLs are almost identical to your direct connection URLs, except they use PgBouncer's port 6432 instead of the standard PostgreSQL port 5432" ([connection pooling](https://render.com/docs/postgresql-connection-pooling)). This applies to both the internal and external pooled URLs.
 - **bex today:**
   - Both URI builders write `:5432`: `lego/backend/internal/postgres/service.go` connection info, and `lego/operator/internal/controller/database_controller.go` `reconcilePoolerConnectionSecret`.
@@ -64,3 +64,16 @@
   - A or B: set the LB type (or add the LB), re-add `hcloud_load_balancer_service.postgres_pooled` (listen 6432 → NodePort 31056), and restore the edge-validator entries. Switch the external pooled string to `appv1alpha1.PoolerPort`. Then run t009 on production: an external pooled connection on 6432 and on 5432, plus connection info.
   - C: record the divergence in ADR018 with your sign-off, drop t003, and run t009 for the internal half only.
 - **Unblock:** `/unblock w2`.
+
+## Decision — 2026-11-10 (user)
+
+- **Decision:** option C. External pooled URLs stay on `<db>-pool.<domain>:5432`, recorded in ADR018 as a signed-off difference ("把它作为已知差异记下来就好").
+  - No load-balancer upgrade (lb21 would add €14/month) and no second load balancer.
+  - The remaining work is withdrawn ("清理掉不用做的 milestone").
+- **Why:**
+  - bex marks the pooled endpoint by host and routes it by SNI, so every pooled URL bex hands out already connects.
+  - A 6432 edge listener would only change the number in that URL. It would still not reproduce Render's rule (same host, the port selects the pooler), so the spend buys nothing a user can use.
+- **What stands:**
+  - In-cluster, the pooler Service serves 5432 and 6432.
+  - The internal pooled string and the `<db>-pooler-app` Secret (Blueprint `connectionPoolString`) name 6432, as on Render. Verified on dev-2; ships with the next deploy; not separately checked on production.
+- **If reopened:** the trigger is the edge load balancer needing more listeners for another reason. Then 6432 can be added, with pg-sni-proxy routing by the PROXY header's destination port, so that `<db>.<domain>:6432` reaches the pooler as on Render.

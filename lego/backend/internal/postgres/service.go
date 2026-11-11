@@ -1112,8 +1112,8 @@ func (s *Service) PostgresConnectionInfo(ctx context.Context, name string) (Post
 		info.InternalConnectionPoolString = fmt.Sprintf(
 			"postgresql://%s:%s@%s:%d/%s", user, pass, d.Status.PoolerHost, appv1alpha1.PoolerPort, dbn)
 	}
-	// The external pooled string stays on 5432 until the edge serves 6432:
-	// its load balancer (lb11) has no free listener (w2/m316).
+	// The external pooled string stays on 5432, the port the edge serves: the
+	// pooler is reached by its -pool host (a signed-off difference, ADR018).
 	if d.Status.PoolerExternalHost != "" {
 		info.ExternalConnectionPoolString = fmt.Sprintf(
 			"postgresql://%s:%s@%s:5432/%s%s",

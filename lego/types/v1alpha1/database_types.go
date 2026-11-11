@@ -338,7 +338,7 @@ const (
 // PoolerPort is the port in-cluster pooled connection strings name: PgBouncer's
 // 6432, as Render's pooled URLs use (w2/m316). The pooler Service also keeps
 // serving 5432, so pooled URIs handed out before keep working. External pooled
-// strings stay on 5432 until the edge listens on 6432.
+// strings stay on 5432, reached by the -pool host (a signed-off difference).
 const PoolerPort = 6432
 
 // DefaultConnectionSecretName is the operator-owned Secret holding the
