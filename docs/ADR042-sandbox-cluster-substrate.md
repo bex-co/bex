@@ -200,6 +200,27 @@ The k8s BatchSandbox pause/resume commits the rootfs to an OCI image and recreat
 
 **Driven by idle suspension (w2/m278, 2026-11-07).** bex-api now pauses a sandbox after Render's `idleTimeoutSeconds` (default 900) with no exec or file transfer, and resumes it on the next one ([ADR014 D4](ADR014-sandboxes.md#d4--idle-hibernate--gateway-observed-autopause)). The lifecycle server's phases map onto Render's statuses: `Pausing` → `suspending`, `Paused` → `suspended`, `Resuming` → `resuming`. Pause and resume answer 202 and 409 for a phase that refuses them, and bex treats a 409 as another replica already moving the sandbox. This D5 semantic is therefore tenant-visible on Render's surface: an idle-suspended sandbox keeps its root filesystem but not its memory, processes or `/tmp`, where Render keeps all three. ADR018 § Sandbox create flags records that as a divergence awaiting sign-off; memory hibernation (CRIU) remains the watch item that would close it. The BatchSandbox controller deletes a sandbox at `spec.expireTime` even while it is paused. So bex-api renews the expiry through the server's `renew-expiration` route: to the pause + 30 days before a pause, and to the resume + timeout after a resume (w2/m278 t010, ADR014 D4).
 
+**Memory and process survival: feasibility (w2/m322 t001, 2026-11-11).** The user funded it (w2/m278 D1=A), because Render resumes an idle sandbox "with its files, memory, and running processes intact". The production substrate is `gvisor`/`runsc` under containerd 2.3.3 (`bex-sandbox-*` nodes).
+
+What exists:
+
+- `runsc checkpoint`/`restore` work from the runsc CLI ([gVisor checkpoint/restore](https://gvisor.dev/docs/user_guide/checkpoint_restore/)). Since [gvisor#15551](https://github.com/google/gvisor/pull/15551) (merged 2026-10-16, in release-20261019.0 and later), they can take a whole pod sandbox with `--no-root-container`.
+
+What does not:
+
+- Kubernetes drives runsc only through `containerd-shim-runsc-v1`, which answers the task Checkpoint RPC with `ErrNotImplemented`. containerd's CRI `CheckpointContainer` is unimplemented for runsc ([containerd#12280](https://github.com/containerd/containerd/issues/12280), open).
+- The kubelet's checkpoint API is CRIU-based and cannot take a gVisor sandbox.
+- Shim-level checkpoint/restore is [gvisor#14760](https://github.com/google/gvisor/pull/14760), open since 2026-09-15. An earlier attempt ([gvisor#13326](https://github.com/google/gvisor/pull/13326)) was closed unmerged.
+- A community patched shim exists ([runsc-task-restore](https://github.com/mayur-tolexo/runsc-task-restore), a POC tested on kind).
+
+Constraints on any route:
+
+- A checkpoint image can be read only by the exact gVisor build that wrote it, so every build that wrote a live checkpoint must stay installed.
+- Restore checks the target host's CPU features.
+- Open sockets reset on restore.
+
+**Conclusion:** no upstream route exists today. The only carriable route is a bex-maintained patched runsc shim on the sandbox node image. Whether to carry it, or wait for gvisor#14760 to merge, is a user decision recorded on w2/m322.
+
 ### D6 — Validate on real containerd-CRI, not the OrbStack mock
 
 The BatchSandbox snapshot path does **not** work on `scripts/mock-cluster.sh` (OrbStack/cri-dockerd), and that local cluster has neither Cilium nor runsc. Security validation therefore needs a real containerd-CRI+Cilium+gVisor node. The DoD loop is create → execute adversarial probes → stop/delete under gVisor; pause/resume is verified separately on the prod gVisor substrate (D5, resolved w3/m42) since the OrbStack mock lacks the containerd-CRI + runsc `--overlay2=none` prerequisites the snapshot commit needs.

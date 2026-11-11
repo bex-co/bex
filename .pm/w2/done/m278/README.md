@@ -65,7 +65,7 @@ t001–t008 and t010 are shipped (`be753e48d`, `9cb1c257a`). Two gates remain:
 
 ## Unblock — 2026-11-11 (`/unblock w2`)
 
-- **D1=A (user decision, 2026-11-11):** fund memory and process checkpointing, so that an idle-suspended sandbox keeps its memory and running processes as Render's does. It is a new milestone, [w2/m322](../../m322/README.md). m278 closes on what it shipped: filesystem-preserving suspension, after the production walk.
+- **D1=A (user decision, 2026-11-11):** fund memory and process checkpointing, so that an idle-suspended sandbox keeps its memory and running processes as Render's does. It is a new milestone, [w2/m322](../../blocked/m322/README.md). m278 closes on what it shipped: filesystem-preserving suspension, after the production walk.
   - **Render basis:** an idle sandbox "resumes when your agent sends its next command, with its files, memory, and running processes intact", using a runtime snapshot by default ([Render Sandboxes](https://render.com/sandboxes), [creating & configuring](https://render.com/docs/sandboxes-creating), [snapshots](https://render.com/docs/sandboxes-snapshots)).
 - **Gates checked (2026-11-11):**
   - **Deploy:** `9cb1c257a` is live; the production deploy is current through `0a59e9343`.
