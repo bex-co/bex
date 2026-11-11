@@ -9,14 +9,15 @@
 | [t001](t001.md) | Decide audit recording per verb, not per relation: a successful read gated by an admin relation stays unrecorded | 45m | — |
 | [t002](t002.md) | Record Render's `ViewEnvVarValuesEvent` for every read that returns env var values | 60m | t001 |
 | [t003](t003.md) | Record Render's `ViewConnectionInfoEvent` for Postgres and Key Value connection info | 30m | t001 |
-| [t004](t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules | 20m | t002, t003 |
+| [t010](t010.md) | One Render-named event per user action wherever Render's enum has one, including `CreateProjectEvent` and `CreateEnvironmentEvent`, which the mapping names but never emits | 50m | t001 |
+| [t004](t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules and the event mapping | 20m | t002, t003, t010 |
 | [t005](t005.md) | Live verification in `bex-canary` | 30m | t004 |
 | [t006](t006.md) | Render parity | 20m | t005 |
 | [t007](t007.md) | Simplify | 15m | t006 |
 | [t008](t008.md) | Test coverage | 30m | t006 |
 | [t009](t009.md) | Closeout | 10m | t007, t008 |
 
-Nine tasks, 260m (4h20m).
+Ten tasks, 310m (5h10m). t010 was added in round 58.
 
 **Major (compliance).** Revealing a secret or a database password leaves no trail. In the same log, 43% of the rows are the dashboard's own billing-status reads. Render's audit log records the first and not the second.
 
@@ -97,6 +98,15 @@ Both view events are in the pinned enum (`lego/backend/internal/api/openapi/rend
 - **The masked list shares the read boundary.** `EnvVarKeys` (`secrets/service.go:767`, keys only) also goes through `readAuthorizedEnv`. So the new event cannot go at that boundary, or it would record on every Environment tab load.
 - **ADR018's audit row (`docs/ADR018-render-parity.md:272`) states the relation rule.** "**Write**-tier verbs (`can_operate`/`can_create`/`can_manage_keys`/`can_manage`) are recorded allowed or denied; **read**-tier verbs … on **denial only**". It is silent on reads gated by a write-tier relation, and on Render's two view events.
 
+## Round 58 addendum (2026-11-11 00:52–01:05 UTC)
+
+I created project `qa-20261110-mv58` (`prj-dbprp3dhi5vc738givdg`, environments `qa-alpha` and `qa-beta`) with REST `POST /v1/projects`. I created `qa-20261110-mv58-svc` (`srv-dbprp5vbq3ic73c0a7mg`) in `qa-alpha`, then moved it to `qa-beta` with the project page's "Move selected resources to environment". Both were deleted afterwards (204, then 404).
+
+- The move worked on every surface: REST `environmentId` changed, there was one `service_moved` event, and both project-page environment views were right.
+- The audit log for that one move had **four** rows: `environments.SetServices` ×3 and `environments.MoveService`, all at 00:54:53. There was no `MoveEnvironmentResourceEvent`.
+- The project create logged `projects.CreateWithEnvironments`, not the mapped `CreateProjectEvent`. Over 2026-11-10/11, `CreateProjectEvent` has 0 rows against 8 project creates.
+- See t010 for the full count table.
+
 ## Definition of done
 
 Signed in as the `bex-canary` admin on `dashboard.bex.co`, after the release pins this build:
@@ -108,7 +118,8 @@ Signed in as the `bex-canary` admin on `dashboard.bex.co`, after the release pin
    - An env-group reveal names the group.
 3. **Viewing connection info leaves a row.** On an owned Free Key Value and a Free Postgres, run `GET …/connection-info` and click the dashboard's "Reveal connection info". The log lists `ViewConnectionInfoEvent` rows naming each datastore.
 4. **Export carries them.** Export as CSV for the window contains the new rows in the `event` column.
-5. **Denials stay recorded.** A denied read (for example a non-member's `GET …/env-vars`) still records as before; covered by a test, since it needs a second account live.
+5. **Render-named events, one per action** (round 58, t010). Create a `qa-` project with two environments over REST, move a service between them, then delete both. The log lists exactly one `CreateProjectEvent`, one `MoveEnvironmentResourceEvent` and one `DeleteProjectEvent`, with no `projects.CreateWithEnvironments` or `environments.SetServices` rows.
+6. **Denials stay recorded.** A denied read (for example a non-member's `GET …/env-vars`) still records as before; covered by a test, since it needs a second account live.
 
 ## Source + Goal linkage
 
