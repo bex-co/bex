@@ -431,6 +431,14 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **275** — [A Node build keeps no `node_modules` between builds, and `NODE_MODULES_CACHE` is unset](275.md) (~3h, milestone-sized) ← w8/256, 2026-11-11: Render's switch for a cache bex does not have; minor.
+
+- [ ] **274** — [A native Python service has no virtualenv at Render's path, so `VENV_ROOT` is not set](274.md) (~2h) ← w8/256, 2026-11-11: the variable names a directory that does not exist on bex; minor.
+
+- [ ] **273** — [A Rust service does not get Render's `ROCKET_PORT`, so a Rocket app listens on its own default port](273.md) (~60m) ← w8/256, 2026-11-11: it has to follow the serving port and yield to the service's own value, like `WEB_CONCURRENCY`; minor.
+
+- [ ] **272** — [An Elixir release cannot start with long node names in a bex pod, so `RELEASE_DISTRIBUTION=name` is not set](272.md) (~2h) ← w8/256, 2026-11-11: with a pod's hostname `elixir --name foo` dies with `nodistribution` (reproduced in a container); minor.
+
 - [ ] **271** — [After a canceled deploy, rolling back to the deploy that is still live is accepted and restarts the instance](271.md) (~45m) ← review of the w8/261 fix, 2026-11-11, read from code: the canceled request's generation stays above the live deploy, so the recovery arm accepts it; minor.
 
 - [ ] **270** — [A deploy waiting behind another one starts 50 to 60 seconds after that one finishes or is canceled; Render starts it at once](270.md) (~90m) ← `/qa-find-bugs-cli` loop sweep bcc7 2026-11-11: on a free Node service the waiting deploy's build started 58.9 s after the deploy ahead went live and 49.6 s after the deploy ahead was canceled, against 10 to 24 s for a deploy with nothing ahead; Render: "If you cancel an in-progress deploy while another deploy is waiting, Render immediately kicks off the waiting deploy." Nothing requeues the operator when the release ahead settles (`runningRequeue`, `app_controller.go:3383-3407`); static sites got a 1 s requeue for this in w4/m163.

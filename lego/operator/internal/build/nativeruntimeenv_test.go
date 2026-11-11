@@ -469,3 +469,68 @@ func TestNativeRubyImageBundlerDeployment(t *testing.T) {
 		})
 	}
 }
+
+// w8/256: the rest of Render's documented per-runtime defaults. Each is set
+// once, before the build RUN, on its own runtime only. Python's CI=true is
+// build-time only on Render, so it is an ARG: the build RUN sees it and the
+// image does not keep it.
+func TestNativeRuntimeDefaultsFromRendersTable(t *testing.T) {
+	for _, tc := range []struct {
+		runtime string
+		want    []string // whole Dockerfile lines
+		names   []string // must not appear for any other runtime
+	}{
+		{nativePythonRuntime, []string{"ENV PIPENV_YES=true", "ARG CI=true"}, []string{"PIPENV_YES", "ARG CI="}},
+		{"go", []string{
+			"ENV GO111MODULE=on GOPATH=/opt/render/project/go",
+			"ENV PATH=/opt/render/project/go/bin:$PATH",
+		}, []string{"GO111MODULE", "GOPATH"}},
+		{"rust", []string{
+			`RUN mkdir -p /opt/render/project && ln -s "$CARGO_HOME" /opt/render/project/.cargo && ln -s "$RUSTUP_HOME" /opt/render/project/.rustup`,
+			"ENV CARGO_HOME=/opt/render/project/.cargo RUSTUP_HOME=/opt/render/project/.rustup ROCKET_ENV=prod",
+		}, []string{"CARGO_HOME", "RUSTUP_HOME", "ROCKET_ENV"}},
+	} {
+		o := nativeOptions()
+		o.Runtime = tc.runtime
+		df := nativeDockerfile(o)
+		build := strings.Index(df, nativeBuildRun)
+		last := -1
+		for _, line := range tc.want {
+			at := strings.Index(df, "\n"+line+"\n")
+			if strings.Count(df, line+"\n") != 1 || at < 0 || at > build || at < last {
+				t.Errorf("%s: %q is not once, in order, before the build RUN:\n%s", tc.runtime, line, df)
+			}
+			last = at
+		}
+		for runtime := range nativeToolchains {
+			if runtime == tc.runtime {
+				continue
+			}
+			other := nativeOptions()
+			other.Runtime = runtime
+			for _, name := range tc.names {
+				if strings.Contains(nativeDockerfile(other), name) {
+					t.Errorf("%s gained %s", runtime, name)
+				}
+			}
+		}
+	}
+	// The links are made while the toolchain image's own homes are still in
+	// the environment: the ENV that renames them comes after.
+	rust := nativeOptions()
+	rust.Runtime = "rust"
+	if df := nativeDockerfile(rust); strings.Index(df, `ln -s "$CARGO_HOME"`) > strings.Index(df, "ENV CARGO_HOME=") {
+		t.Errorf("CARGO_HOME is renamed before it is linked:\n%s", df)
+	}
+	// The four Render defaults bex leaves out stay out until their follow-ups.
+	for runtime := range nativeToolchains {
+		o := nativeOptions()
+		o.Runtime = runtime
+		df := nativeDockerfile(o)
+		for _, name := range []string{"RELEASE_DISTRIBUTION", "ROCKET_PORT", "VENV_ROOT", "NODE_MODULES_CACHE"} {
+			if strings.Contains(df, name) {
+				t.Errorf("%s sets %s, which is not safe to default yet", runtime, name)
+			}
+		}
+	}
+}

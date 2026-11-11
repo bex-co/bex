@@ -76,6 +76,10 @@ const (
 	nativeElixirRuntime = "elixir"
 	// nativeRubyGems is Render's BUNDLE_PATH, beside the source tree.
 	nativeRubyGems = "/opt/render/project/.gems"
+	// Render's GOPATH, CARGO_HOME and RUSTUP_HOME (nativeBuildDefaults).
+	nativeGoPath     = "/opt/render/project/go"
+	nativeCargoHome  = "/opt/render/project/.cargo"
+	nativeRustupHome = "/opt/render/project/.rustup"
 )
 
 // nativeToolchains is the reviewed set of toolchain lines a native build may
@@ -405,13 +409,37 @@ func nativeSecretFileLinks(o Options) string {
 // as http. The ingress replaces the client's forwarding headers with its own,
 // and only it and the platform's namespaces reach a pod from outside its
 // workspace.
+//
+// Render's remaining documented per-runtime defaults (render.com/docs/
+// environment-variables, read 2026-11-11; w8/256):
+//   - Python: PIPENV_YES=true, and CI=true at build time only. CI is an ARG,
+//     which a build RUN sees and the image does not keep.
+//   - Go: GO111MODULE=on and GOPATH=/opt/render/project/go, with its bin
+//     first on PATH so a `go install`ed tool still resolves.
+//   - Rust: ROCKET_ENV=prod, and CARGO_HOME and RUSTUP_HOME at Render's
+//     paths. Those are links to where the toolchain image keeps them: the
+//     paths exist and hold the toolchain, and nothing is copied.
+//
+// Four are left out, each with its own follow-up: RELEASE_DISTRIBUTION=name
+// (an Elixir node cannot take a long name in a pod whose hostname has no
+// domain, and fails to start), ROCKET_PORT (must follow the service's port),
+// VENV_ROOT (no virtualenv exists at Render's path) and NODE_MODULES_CACHE
+// (would have to turn the dependency cache off when false).
 func nativeBuildDefaults(o Options) string {
 	switch nativeRuntime(o) {
 	case "elixir":
 		return "ENV MIX_ENV=prod\n"
+	case "go":
+		return "ENV GO111MODULE=on GOPATH=" + nativeGoPath + "\n" +
+			"ENV PATH=" + nativeGoPath + "/bin:$PATH\n"
+	case "rust":
+		return `RUN mkdir -p /opt/render/project && ln -s "$CARGO_HOME" ` + nativeCargoHome + ` && ln -s "$RUSTUP_HOME" ` + nativeRustupHome + "\n" +
+			"ENV CARGO_HOME=" + nativeCargoHome + " RUSTUP_HOME=" + nativeRustupHome + " ROCKET_ENV=prod\n"
 	case nativePythonRuntime:
 		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n" +
-			`ENV FORWARDED_ALLOW_IPS="*"` + "\n"
+			`ENV FORWARDED_ALLOW_IPS="*"` + "\n" +
+			"ENV PIPENV_YES=true\n" +
+			"ARG CI=true\n"
 	case nativeRubyRuntime:
 		// Render's Ruby defaults, build and runtime alike (w5/162): Rails
 		// serves its own assets and logs to stdout only when told to, so
