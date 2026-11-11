@@ -6,7 +6,10 @@ import {
   type BlueprintEnvVarValueInput,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  graphQLErrorExtensions,
+  mutationErrorMessage,
+} from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { BlueprintView } from "@/features/blueprints/types";
 import { toBlueprintView } from "@/features/blueprints/lib/views";
@@ -20,6 +23,11 @@ import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-r
 export type BlueprintCreateActionResult =
   | { status: "success"; blueprint: BlueprintView }
   | BlueprintConfirmationRequired
+  /**
+   * An approved Blueprint in the workspace already has `name` (w8/250). The
+   * form says so at the name field, so no toast is shown.
+   */
+  | { status: "name_taken"; name: string }
   | { status: "error" };
 
 /**
@@ -92,6 +100,15 @@ export function useCreateBlueprint(): UseCreateBlueprintResult {
         if (isPaymentOnboardingCancelled(err)) return { status: "error" };
         const confirmation = blueprintConfirmationFromError(err);
         if (confirmation) return confirmation;
+        const taken = graphQLErrorExtensions(err, "BLUEPRINT_NAME_TAKEN");
+        if (taken) {
+          // The server names the default it tried when the form sent none.
+          const refused = taken["name"];
+          return {
+            status: "name_taken",
+            name: typeof refused === "string" ? refused : name,
+          };
+        }
         toast.error(mutationErrorMessage(err, t("blueprints.createError")));
         return { status: "error" };
       } finally {

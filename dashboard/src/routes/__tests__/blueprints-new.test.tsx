@@ -159,6 +159,7 @@ function validPreview(): BlueprintPreviewResult {
     error: null,
     existingResources: "adopt",
     resourceSuffix: null,
+    suggestedName: null,
     matchedResources: [],
     validation: {
       valid: true,
@@ -183,6 +184,7 @@ function validPreview(): BlueprintPreviewResult {
 const notReviewed = {
   existingResources: null,
   resourceSuffix: null,
+  suggestedName: null,
   matchedResources: [],
 };
 
@@ -638,6 +640,96 @@ describe("NewBlueprintPage", () => {
       } finally {
         await act(() => i18n.changeLanguage("en"));
       }
+    });
+  });
+
+  // w8/250: Render keeps Blueprint names unique among approved Blueprints.
+  describe("a Blueprint name another Blueprint has (w8/250)", () => {
+    it("proposes the free name the review suggests and deploys under it", async () => {
+      reposState.repos = [repo()];
+      previewState.preview = {
+        ...matchedPreview(),
+        suggestedName: "hello-go-ab12",
+      };
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(await screen.findByText("acme/hello-go"));
+
+      const nameField = screen.getByLabelText("Blueprint Name");
+      await waitFor(() => expect(nameField).toHaveValue("hello-go-ab12"));
+      await user.click(
+        screen.getByRole("button", { name: /deploy blueprint/i }),
+      );
+      expect(create).toHaveBeenCalledWith(
+        "https://github.com/acme/hello-go.git",
+        "main",
+        "render.yaml",
+        "hello-go-ab12",
+        undefined,
+        [],
+        { existingResources: "create_new", resourceSuffix: "ab12" },
+      );
+    });
+
+    it("keeps a name the user typed over the proposal", async () => {
+      reposState.repos = [repo()];
+      previewState.preview = {
+        ...matchedPreview(),
+        suggestedName: "hello-go-ab12",
+      };
+      const user = userEvent.setup();
+      renderPage();
+
+      await user.click(await screen.findByText("acme/hello-go"));
+      const nameField = screen.getByLabelText("Blueprint Name");
+      await waitFor(() => expect(nameField).toHaveValue("hello-go-ab12"));
+      await user.tripleClick(nameField);
+      await user.keyboard("mine");
+      expect(nameField).toHaveValue("mine");
+
+      await user.click(
+        screen.getByRole("button", { name: /deploy blueprint/i }),
+      );
+      expect(create).toHaveBeenCalledWith(
+        "https://github.com/acme/hello-go.git",
+        "main",
+        "render.yaml",
+        "mine",
+        undefined,
+        [],
+        { existingResources: "create_new", resourceSuffix: "ab12" },
+      );
+    });
+
+    it("says so at the name field, and Deploy waits for another name", async () => {
+      reposState.repos = [repo()];
+      previewState.preview = validPreview();
+      create.mockResolvedValueOnce({
+        status: "name_taken",
+        name: "hello-go",
+      } as never);
+      const user = userEvent.setup();
+      const router = renderPage();
+
+      await user.click(await screen.findByText("acme/hello-go"));
+      const deploy = screen.getByRole("button", { name: /deploy blueprint/i });
+      await user.click(deploy);
+
+      const nameField = screen.getByLabelText("Blueprint Name");
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        "A Blueprint named hello-go already exists in this workspace. Choose another name.",
+      );
+      expect(nameField).toHaveAttribute("aria-invalid", "true");
+      expect(nameField).toHaveAttribute("aria-describedby", "bp-name-taken");
+      // The field is far above Deploy, so the refusal takes the focus there.
+      expect(nameField).toHaveFocus();
+      expect(deploy).toBeDisabled();
+      expect(router.state.location.pathname).not.toBe("/blueprints/blp-new1");
+
+      await user.type(nameField, "-2");
+      expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+      expect(deploy).toBeEnabled();
     });
   });
 

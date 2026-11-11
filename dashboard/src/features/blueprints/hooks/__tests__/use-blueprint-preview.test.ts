@@ -50,6 +50,41 @@ it("scopes an existing blueprint preview so its detached resources can be planne
   );
 });
 
+// w8/250: a form that proposes a name asks the review about that name, and
+// both reviews of a file that matches existing resources carry it.
+it("sends the name a form proposes, and no name when it proposes none", () => {
+  renderHook(() =>
+    useBlueprintPreview(
+      "https://github.com/a/app",
+      "main",
+      "render.yaml",
+      undefined,
+      "my-app",
+    ),
+  );
+  expect(query).toHaveBeenCalledWith(
+    BlueprintPreviewDocument,
+    expect.objectContaining({
+      variables: expect.objectContaining({ name: "my-app" }),
+    }),
+  );
+  expect(
+    query.mock.calls.every(
+      ([, options]) => (options as Options).variables.name === "my-app",
+    ),
+  ).toBe(true);
+
+  query.mockClear();
+  renderHook(() =>
+    useBlueprintPreview("https://github.com/a/app", "main", "render.yaml"),
+  );
+  expect(
+    query.mock.calls.some(
+      ([, options]) => "name" in (options as Options).variables,
+    ),
+  ).toBe(false);
+});
+
 it("keeps create previews unscoped to an existing blueprint", () => {
   renderHook(() =>
     useBlueprintPreview("https://github.com/a/app", "main", "render.yaml"),

@@ -553,6 +553,11 @@ type BlueprintPreview struct {
 	ExistingResources string                 `json:"existingResources,omitempty"`
 	ResourceSuffix    string                 `json:"resourceSuffix,omitempty"`
 	MatchedResources  []BlueprintResourceRef `json:"matchedResources,omitempty"`
+	// SuggestedName is set when an approved Blueprint already has the name
+	// the create would use (the repository's, or the one the caller named):
+	// a free name derived from it (defaultBlueprintName), for a form to
+	// propose instead (w8/250). "" when none is free.
+	SuggestedName string `json:"suggestedName,omitempty"`
 }
 
 // BlueprintPreviewReason is the closed set of reasons a Blueprint fetch failed.
@@ -618,6 +623,10 @@ type blueprintPreviewOptions struct {
 	// ExistingResources is the mode a not-yet-created Blueprint is reviewed
 	// in: adopt (the default) or create_new (w8/m153).
 	ExistingResources string
+	// Name is the name the caller's create would send, when that is not the
+	// repository's (a form that proposes its own default); SuggestedName is
+	// worked out against it (w8/250).
+	Name string
 }
 
 // BlueprintResourceRef names one resource a Blueprint file declares. Kind is
@@ -1157,6 +1166,19 @@ func (s *Service) previewBlueprintWith(ctx context.Context, ownerID, repo, branc
 		if selfID == "" && mode == store.BlueprintExistingCreateNew {
 			preview.ResourceSuffix = store.NewBlueprintResourceSuffix()
 		}
+		if selfID == "" {
+			base := strings.TrimSpace(opts.Name)
+			if base == "" {
+				base = repoName(repo)
+			}
+			name, err := s.defaultBlueprintName(ctx, tenantID, base, preview.ResourceSuffix)
+			if err != nil {
+				return BlueprintPreview{}, err
+			}
+			if name != base {
+				preview.SuggestedName = name
+			}
+		}
 		validation, err = s.blueprintValidationWithSuffix(ctx, repo, branch, contents, selfID, preview.ResourceSuffix, snap)
 	}
 	if err != nil {
@@ -1248,9 +1270,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	if s.Blueprints == nil {
 		return BlueprintView{}, ErrBlueprintsUnavailable
 	}
-	if req.Name == "" {
-		req.Name = repoName(req.Repo)
-	}
+	req.Name = strings.TrimSpace(req.Name)
 	tenantID := s.resolveTenantID(ctx)
 
 	if s.GitFetcher == nil {
@@ -1296,6 +1316,13 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	case mode == store.BlueprintExistingCreateNew:
 		if suffix = req.ResourceSuffix; suffix == "" {
 			suffix = store.NewBlueprintResourceSuffix()
+		}
+	}
+	// A retry keeps the name its Blueprint already has (admission writes a
+	// retried row's manifest only), so only a new Blueprint is named here.
+	if retryOf == "" {
+		if req.Name, err = s.newBlueprintName(ctx, tenantID, req.Name, req.Repo, suffix); err != nil {
+			return BlueprintView{}, err
 		}
 	}
 
@@ -1373,6 +1400,77 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	v := toBlueprintView(b)
 	v.Resources = s.resolveBlueprintResourcesFromIR(ctx, b, ir, snap)
 	return v, nil
+}
+
+// newBlueprintName is the name a one-step create gives a new Blueprint. Render
+// keeps names unique among approved Blueprints, which its own create and the
+// approval already enforce here; this create did not, so two copies of one
+// file both took the repository's name (w8/250). A name the caller sent is
+// refused when it is taken. A create that sends none gets the default, and is
+// refused only when no default is free.
+func (s *Service) newBlueprintName(ctx context.Context, tenantID, name, repo, suffix string) (string, error) {
+	if name == "" {
+		free, err := s.defaultBlueprintName(ctx, tenantID, repoName(repo), suffix)
+		if err != nil {
+			return "", err
+		}
+		if free == "" {
+			return "", errBlueprintNameTaken(repoName(repo))
+		}
+		return free, nil
+	}
+	taken, err := s.blueprintNameTaken(ctx, tenantID, name, "")
+	if err != nil {
+		return "", err
+	}
+	if taken {
+		return "", errBlueprintNameTaken(name)
+	}
+	return name, nil
+}
+
+// defaultBlueprintNameTries bounds the numbered names defaultBlueprintName
+// tries for a Blueprint that has no resource suffix.
+const defaultBlueprintNameTries = 20
+
+// defaultBlueprintName is the free name nearest base, the name a new
+// Blueprint would otherwise take (the repository's, for a create that names
+// none): base itself, or, when an approved Blueprint already has that, base
+// with the Blueprint's resource suffix, which is how copies of one file are
+// told apart (w8/m153). A Blueprint without a suffix (adopt) gets the first
+// free of `<base>-2`, `<base>-3`, …. "" when none is free.
+func (s *Service) defaultBlueprintName(ctx context.Context, tenantID, base, suffix string) (string, error) {
+	candidates := []string{base}
+	if suffix != "" {
+		candidates = append(candidates, base+"-"+suffix)
+	} else {
+		for n := 2; n <= defaultBlueprintNameTries; n++ {
+			candidates = append(candidates, fmt.Sprintf("%s-%d", base, n))
+		}
+	}
+	for _, candidate := range candidates {
+		taken, err := s.blueprintNameTaken(ctx, tenantID, candidate, "")
+		if err != nil {
+			return "", err
+		}
+		if !taken {
+			return candidate, nil
+		}
+	}
+	return "", nil
+}
+
+// blueprintNameTaken reports whether an approved Blueprint in the workspace,
+// other than exceptID, has name. Without a store there are no Blueprints.
+func (s *Service) blueprintNameTaken(ctx context.Context, tenantID, name, exceptID string) (bool, error) {
+	if s.Blueprints == nil {
+		return false, nil
+	}
+	plans, err := s.blueprintPlans()
+	if err != nil {
+		return false, err
+	}
+	return plans.BlueprintNameTaken(ctx, tenantID, name, exceptID)
 }
 
 // completeAdmittedSync commits the terminal state of an admitted run together
@@ -1828,8 +1926,12 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 		}
 		req.Branch = &trimmed
 	}
-	if req.Name != nil && *req.Name == "" {
-		return BlueprintView{}, fmt.Errorf("%w: name cannot be empty", core.ErrBadRequest)
+	if req.Name != nil {
+		trimmed := strings.TrimSpace(*req.Name)
+		if trimmed == "" {
+			return BlueprintView{}, fmt.Errorf("%w: name cannot be empty", core.ErrBadRequest)
+		}
+		req.Name = &trimmed
 	}
 	if req.Path != nil && *req.Path == "" {
 		return BlueprintView{}, fmt.Errorf("%w: path cannot be empty", core.ErrBadRequest)
@@ -1850,6 +1952,18 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 	b, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID)
 	if err != nil {
 		return BlueprintView{}, store.MapError(err)
+	}
+	// A rename follows the create's rule (w8/250). A Blueprint that awaits its
+	// first approval is checked when it is approved, and a rename that only
+	// changes the case of its own name takes no one's.
+	if req.Name != nil && !strings.EqualFold(*req.Name, b.Name) && b.Status != store.BlueprintStatusCreated {
+		taken, err := s.blueprintNameTaken(ctx, tenantID, *req.Name, b.ID)
+		if err != nil {
+			return BlueprintView{}, err
+		}
+		if taken {
+			return BlueprintView{}, errBlueprintNameTaken(*req.Name)
+		}
 	}
 	if req.Branch != nil && *req.Branch != b.Branch {
 		if s.GitFetcher == nil {
@@ -2038,9 +2152,14 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 	if branch == "" {
 		branch = appv1alpha1.DefaultBranch
 	}
+	// Used only when the upsert inserts: an existing row keeps its name.
+	name := repoName(req.Repo)
+	if free, err := s.defaultBlueprintName(ctx, tenantID, name, ""); err == nil && free != "" {
+		name = free
+	}
 	b, err := s.Blueprints.UpsertBlueprint(ctx, store.Blueprint{
 		TenantID: tenantID,
-		Name:     repoName(req.Repo),
+		Name:     name,
 		Repo:     req.Repo,
 		Branch:   branch,
 		Path:     CanonicalBlueprintFilename,

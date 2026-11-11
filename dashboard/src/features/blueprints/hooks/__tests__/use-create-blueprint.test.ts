@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act, renderHook } from "@testing-library/react";
+import { CombinedGraphQLErrors } from "@apollo/client/errors";
+import { toast } from "sonner";
 import { useCreateBlueprint } from "@/features/blueprints/hooks/use-create-blueprint";
 
 const mutate = vi.fn();
@@ -16,6 +18,7 @@ vi.mock("sonner", () => ({
 const REPO = "https://github.com/a/app";
 
 beforeEach(() => {
+  vi.mocked(toast.error).mockClear();
   mutate.mockReset();
   mutate.mockResolvedValue({
     data: { createBlueprint: { id: "exs-1", name: "app" } },
@@ -91,5 +94,31 @@ describe("useCreateBlueprint existingResources (w8/m153)", () => {
 
     expect(variables().existingResources).toBe("create_new");
     expect(variables().resourceSuffix).toBeUndefined();
+  });
+});
+
+// w8/250: the name rule is said at the name field, not in a toast.
+describe("useCreateBlueprint name refusal (w8/250)", () => {
+  const nameTaken = (name: string) =>
+    new CombinedGraphQLErrors({
+      errors: [
+        {
+          message: `a Blueprint named "${name}" already exists in this workspace`,
+          extensions: { code: "BLUEPRINT_NAME_TAKEN", name },
+        },
+      ],
+    });
+
+  it("answers name_taken with the refused name and shows no toast", async () => {
+    mutate.mockRejectedValue(nameTaken("app"));
+    const { result } = renderHook(() => useCreateBlueprint());
+
+    let outcome;
+    await act(async () => {
+      outcome = await result.current.create(REPO, "main", "render.yaml", "App");
+    });
+
+    expect(outcome).toEqual({ status: "name_taken", name: "app" });
+    expect(toast.error).not.toHaveBeenCalled();
   });
 });

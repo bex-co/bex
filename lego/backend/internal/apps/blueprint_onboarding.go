@@ -186,8 +186,7 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	if taken, err := plans.BlueprintNameTaken(ctx, tenantID, req.Name, ""); err != nil {
 		return BlueprintPlanResult{}, err
 	} else if taken {
-		return BlueprintPlanResult{}, core.NewConflictError("BLUEPRINT_NAME_TAKEN",
-			fmt.Sprintf("a Blueprint named %q already exists in this workspace", req.Name), map[string]any{"name": req.Name})
+		return BlueprintPlanResult{}, errBlueprintNameTaken(req.Name)
 	}
 	branch := ""
 	if req.Source.Branch != nil {
@@ -531,6 +530,13 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, su
 		ID: ids.BlueprintSyncPublicID(applied.ID), Commit: BlueprintCommitRef{ID: applied.CommitID}, CommitID: applied.CommitID, State: applied.State,
 		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)), StartedAt: &started, CompletedAt: applied.CompletedAt,
 	}, nil
+}
+
+// errBlueprintNameTaken refuses a create under a name another approved
+// Blueprint in the workspace has (Render: unique among approved Blueprints).
+func errBlueprintNameTaken(name string) error {
+	return core.NewConflictError("BLUEPRINT_NAME_TAKEN",
+		fmt.Sprintf("a Blueprint named %q already exists in this workspace", name), map[string]any{"name": name})
 }
 
 // errBlueprintNameTakenAtApproval refuses taking a Blueprint out of `created`

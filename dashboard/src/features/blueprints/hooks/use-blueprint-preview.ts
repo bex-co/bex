@@ -48,17 +48,28 @@ export function useBlueprintPreview(
    * resources that already exist in the workspace (w8/m153).
    */
   forBlueprintId?: string,
+  /**
+   * The name the form would create the Blueprint under while the user has not
+   * typed one. The review answers `suggestedName` when an approved Blueprint
+   * already has it (w8/250). Omitted: the repository's name.
+   */
+  defaultName = "",
 ): UseBlueprintPreviewResult {
   const { currentWorkspaceId } = useWorkspace();
 
-  const [debounced, setDebounced] = useState({ repo, branch, path });
+  const [debounced, setDebounced] = useState({
+    repo,
+    branch,
+    path,
+    defaultName,
+  });
   useEffect(() => {
     const handle = setTimeout(
-      () => setDebounced({ repo, branch, path }),
+      () => setDebounced({ repo, branch, path, defaultName }),
       DEBOUNCE_MS,
     );
     return () => clearTimeout(handle);
-  }, [repo, branch, path]);
+  }, [repo, branch, path, defaultName]);
 
   // An empty branch previews the repository's default branch, which the
   // result reports back (w4/532); only the repo is required.
@@ -69,6 +80,8 @@ export function useBlueprintPreview(
     path: debounced.path || null,
     ownerId: currentWorkspaceId,
     blueprintId: forBlueprintId ?? null,
+    // Only a form that proposes a name asks about it.
+    ...(debounced.defaultName ? { name: debounced.defaultName } : {}),
   };
   const first = useQuery(BlueprintPreviewDocument, {
     variables,
@@ -93,7 +106,8 @@ export function useBlueprintPreview(
   const settled =
     debounced.repo === repo &&
     debounced.branch === branch &&
-    debounced.path === path;
+    debounced.path === path &&
+    debounced.defaultName === defaultName;
 
   const { data, error, refetch } = reviewAsNew ? second : first;
   const preview = useMemo(

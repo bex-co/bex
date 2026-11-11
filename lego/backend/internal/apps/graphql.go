@@ -1173,6 +1173,9 @@ var blueprintPreviewGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// two back.
 		"existingResources": gqlutil.StrField(func(p BlueprintPreview) any { return p.ExistingResources }),
 		"resourceSuffix":    gqlutil.StrField(func(p BlueprintPreview) any { return p.ResourceSuffix }),
+		// Set when the name the create would use is taken: a free name
+		// derived from it (w8/250).
+		"suggestedName": gqlutil.StrField(func(p BlueprintPreview) any { return p.SuggestedName }),
 		"matchedResources": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(blueprintResourceRefGQLType)), Resolve: gqlutil.Field(func(p BlueprintPreview) any {
 			return p.MatchedResources
 		})},
@@ -1414,12 +1417,16 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				// existingResources reviews a not-yet-created Blueprint as
 				// adopt (the default) or create_new (w8/m153).
 				"existingResources": gqlutil.Arg(graphql.String),
+				// name is the name the create would send, when that is not
+				// the repository's; suggestedName is worked out against it
+				// (w8/250).
+				"name": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.previewBlueprintWith(p.Context, gqlutil.Str(p.Args, "ownerId"),
 					p.Args["repo"].(string), gqlutil.Str(p.Args, "branch"), gqlutil.Str(p.Args, "path"),
 					blueprintPreviewOptions{ForBlueprintID: gqlutil.Str(p.Args, "blueprintId"),
-						ExistingResources: gqlutil.Str(p.Args, "existingResources")})
+						ExistingResources: gqlutil.Str(p.Args, "existingResources"), Name: gqlutil.Str(p.Args, "name")})
 			},
 		},
 		// blueprintSyncs: sync run history for a blueprint (w2/m62).

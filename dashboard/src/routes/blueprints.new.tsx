@@ -83,6 +83,13 @@ export function NewBlueprintPage() {
   const [gitUrl, setGitUrl] = useState(linked?.repo ?? "");
   const [name, setName] = useState("");
   const [nameEdited, setNameEdited] = useState(false);
+  // A create refused because an approved Blueprint has the name (w8/250):
+  // the field's value then, and the name the server refused. The field says
+  // so until its value changes.
+  const [taken, setTaken] = useState<{ field: string; name: string } | null>(
+    null,
+  );
+  const nameInput = useRef<HTMLInputElement>(null);
   // As on Render, a link without /tree/<branch> deploys the default branch;
   // "main" is the first guess, corrected below once the branches load.
   const [branch, setBranch] = useState(
@@ -113,6 +120,14 @@ export function NewBlueprintPage() {
         ? gitUrl.trim()
         : "";
 
+  // The name the form proposes for the selected source.
+  const defaultName =
+    tab === "github"
+      ? selectedRepo
+        ? repoNameSlug(selectedRepo.fullName)
+        : ""
+      : gitUrlSlug(gitUrl) || "";
+
   const { branches } = useRepoBranches(sourceRepo || null);
   const {
     preview,
@@ -120,23 +135,35 @@ export function NewBlueprintPage() {
     error: previewError,
     refetch: refetchPreview,
     matchesExisting,
-  } = useBlueprintPreview(sourceRepo, branch.trim(), path.trim());
+  } = useBlueprintPreview(
+    sourceRepo,
+    branch.trim(),
+    path.trim(),
+    undefined,
+    defaultName,
+  );
 
-  // Auto-fill name + branch from the selected source while the user hasn't
-  // hand-edited the name (same pattern as services.new: the effect reacts to
-  // selection changes, so a synchronous set is the desired behavior).
+  // Auto-fill the branch from the selected repository (same pattern as
+  // services.new: the effect reacts to selection changes, so a synchronous
+  // set is the desired behavior).
   useEffect(() => {
     if (tab === "github" && selectedRepo) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setBranch((b) => b || selectedRepo.defaultBranch);
-      if (!nameEdited) {
-        setName(repoNameSlug(selectedRepo.fullName));
-      }
-    } else if (tab === "git" && gitUrl && !nameEdited) {
-      const slug = gitUrlSlug(gitUrl);
-      if (slug) setName(slug);
     }
-  }, [tab, selectedRepo, gitUrl, nameEdited]);
+  }, [tab, selectedRepo]);
+
+  // Auto-fill the name while the user hasn't typed one: the source's default,
+  // or the free name the review proposes when an approved Blueprint already
+  // has that default, as every further copy of one file finds (w8/250). A
+  // review still loading is the previous source's, so it proposes nothing.
+  const autoName = previewLoading
+    ? defaultName
+    : (preview?.suggestedName ?? defaultName);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (autoName && !nameEdited) setName(autoName);
+  }, [autoName, nameEdited]);
 
   // Corrects the "main" first guess once, when the branch list first loads.
   const guessPending = useRef(branchGuessed);
@@ -185,8 +212,11 @@ export function NewBlueprintPage() {
     preview != null &&
     (!preview.found ||
       (preview.validation?.valid !== true && !previewConflictOnly));
+  // Names are unique whatever their case, as bex-api compares them.
+  const nameTaken = taken !== null && name.trim().toLowerCase() === taken.field;
   const canSubmit =
     sourceValid &&
+    !nameTaken &&
     // A blank name falls back to the repo's; a typed one is a label (w21/036).
     !isInvalidLabel(name) &&
     branch.trim() !== "" &&
@@ -217,6 +247,13 @@ export function NewBlueprintPage() {
     );
     if (result.status === "confirmation_required") {
       setPendingConfirmation(result);
+      return;
+    }
+    if (result.status === "name_taken") {
+      setPendingConfirmation(null);
+      setTaken({ field: name.trim().toLowerCase(), name: result.name });
+      // The field is far above Deploy; without this the refusal is unseen.
+      nameInput.current?.focus();
       return;
     }
     if (result.status === "success") {
@@ -377,9 +414,14 @@ export function NewBlueprintPage() {
                     </Label>
                     <Input
                       id="bp-name"
-                      aria-invalid={isInvalidLabel(name)}
+                      ref={nameInput}
+                      aria-invalid={isInvalidLabel(name) || nameTaken}
                       aria-describedby={
-                        isInvalidLabel(name) ? "bp-name-error" : undefined
+                        isInvalidLabel(name)
+                          ? "bp-name-error"
+                          : nameTaken
+                            ? "bp-name-taken"
+                            : undefined
                       }
                       value={name}
                       onChange={(e) => {
@@ -390,6 +432,17 @@ export function NewBlueprintPage() {
                       autoComplete="off"
                     />
                     <LabelError id="bp-name-error" value={name} />
+                    {nameTaken ? (
+                      <p
+                        id="bp-name-taken"
+                        role="alert"
+                        className="text-xs text-destructive"
+                      >
+                        {t("blueprints.createNameTaken", {
+                          name: taken?.name ?? "",
+                        })}
+                      </p>
+                    ) : null}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="bp-branch">

@@ -157,6 +157,11 @@ export interface BlueprintPreviewResult {
   existingResources: "adopt" | "create_new" | null;
   /** The suffix a create_new review planned under ("ab12"); null otherwise. */
   resourceSuffix: string | null;
+  /**
+   * A free name to propose when an approved Blueprint already has the name
+   * the create would use (w8/250); null otherwise.
+   */
+  suggestedName: string | null;
   /** Declared resources whose names already exist in the workspace. */
   matchedResources: BlueprintMatchedResource[];
   validation: BlueprintPreviewValidation | null;

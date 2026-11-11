@@ -836,6 +836,7 @@ export type BlueprintPreview = {
   reason: Maybe<Scalars['String']['output']>;
   resourceSuffix: Maybe<Scalars['String']['output']>;
   retryable: Maybe<Scalars['Boolean']['output']>;
+  suggestedName: Maybe<Scalars['String']['output']>;
   validation: Maybe<BlueprintValidation>;
   warning: Maybe<Scalars['String']['output']>;
 };
@@ -4029,6 +4030,7 @@ export type QueryBlueprintPreviewArgs = {
   blueprintId?: InputMaybe<Scalars['String']['input']>;
   branch?: InputMaybe<Scalars['String']['input']>;
   existingResources?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];

@@ -86,6 +86,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "蓝图名称",
     description: "New Blueprint page — name input label",
   },
+  "blueprints.createNameTaken": {
+    message: "此工作区中已有名为 {name} 的蓝图。请换一个名称。",
+    description:
+      "New Blueprint page — shown under the name field when Deploy was refused because an approved Blueprint already has the name (w8/250)",
+  },
   "blueprints.createAction": {
     message: "部署蓝图",
     description: "New Blueprint dialog submit button label",

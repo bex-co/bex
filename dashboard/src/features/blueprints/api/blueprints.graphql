@@ -90,6 +90,9 @@ query BlueprintPreview(
   # resources under a new suffix (w8/m153). Omitted: "adopt". Never sent with
   # blueprintId, which bex-api refuses.
   $existingResources: String
+  # The name the form would create the Blueprint under, when that is its own
+  # default; suggestedName is worked out against it (w8/250).
+  $name: String
 ) {
   blueprintPreview(
     repo: $repo
@@ -98,6 +101,7 @@ query BlueprintPreview(
     ownerId: $ownerId
     blueprintId: $blueprintId
     existingResources: $existingResources
+    name: $name
   ) {
     found
     branch
@@ -108,6 +112,9 @@ query BlueprintPreview(
     # declared resources whose names already exist in the workspace.
     existingResources
     resourceSuffix
+    # Set when an approved Blueprint already has the name the create would
+    # use: a free name derived from it (w8/250).
+    suggestedName
     matchedResources {
       kind
       name

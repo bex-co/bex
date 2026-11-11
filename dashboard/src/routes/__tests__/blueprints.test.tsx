@@ -167,6 +167,7 @@ function validPreview(
     // A preview on behalf of an existing Blueprint carries none of these.
     existingResources: null,
     resourceSuffix: null,
+    suggestedName: null,
     matchedResources: [],
     validation: {
       valid: true,

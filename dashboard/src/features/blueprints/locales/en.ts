@@ -87,6 +87,12 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Blueprint Name",
     description: "New Blueprint page — name input label",
   },
+  "blueprints.createNameTaken": {
+    message:
+      "A Blueprint named {name} already exists in this workspace. Choose another name.",
+    description:
+      "New Blueprint page — shown under the name field when Deploy was refused because an approved Blueprint already has the name (w8/250)",
+  },
   "blueprints.createAction": {
     message: "Deploy Blueprint",
     description: "New Blueprint dialog submit button label",
