@@ -19,6 +19,7 @@ package registrycreds
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -99,6 +100,59 @@ func TestLegacyUncanonicalHostsStillMatchTheirImages(t *testing.T) {
 		id := c.ID
 		if _, ok, err := s.materializePullSecret(ctx, core.DefaultTenant, app, image, &id); err != nil || !ok {
 			t.Errorf("explicit %s → %s: ok %v err %v", c.Host, image, ok, err)
+		}
+	}
+}
+
+// w21/053: the dashboard's Add and Edit dialogs mark these fields with the same
+// table (dashboard/src/features/registry-credentials/lib/__tests__/
+// credential-fields.test.ts). Change one side and change the other.
+func TestCredentialDialogVectors(t *testing.T) {
+	for raw, want := range map[string]string{
+		"ghcr.io": "ghcr.io", "registry.example.com:5000": "registry.example.com:5000",
+		"localhost:5000": "localhost:5000", "localhost": "localhost",
+		"https://GHCR.IO/": "ghcr.io", "HTTP://ghcr.io///": "ghcr.io", "ghcr.io/": "ghcr.io", "  ghcr.io  ": "ghcr.io",
+		"index.docker.io": "docker.io", "registry-1.docker.io": "docker.io", "Registry.Hub.Docker.Com": "docker.io",
+		"a-b.c-d.example.org:65535": "a-b.c-d.example.org:65535",
+	} {
+		if got, err := canonicalRegistryHost(raw); err != nil || got != want {
+			t.Errorf("canonicalRegistryHost(%q) = %q, %v; want %q", raw, got, err, want)
+		}
+	}
+	for _, raw := range []string{
+		"ghcr.io/qa-owner/qa-image", "my registry.io", "https://ghcr.io/owner", "ghcr.io?x=1", "user@ghcr.io",
+		"ghcr.io:", "ghcr.io:123456", "ghcr.io:abc", "-ghcr.io", "ghcr-.io", "ghcr..io", ".ghcr.io", "bücher.de", "https://",
+	} {
+		if got, err := canonicalRegistryHost(raw); err == nil {
+			t.Errorf("canonicalRegistryHost(%q) = %q; the dialog's table says refused", raw, got)
+		}
+	}
+	// The byte limits count the canonical host and the trimmed username.
+	atLimit := strings.Repeat("a", 250) + ".io"
+	if err := validateCredentialFields(atLimit, strings.Repeat("u", 253), strings.Repeat("t", 64*1024)); err != nil {
+		t.Errorf("fields at the limit refused: %v", err)
+	}
+	for name, err := range map[string]error{
+		"host":     validateCredentialFields(atLimit+"x", "alice", "t"),
+		"username": validateCredentialFields("ghcr.io", strings.Repeat("u", 254), "t"),
+		"cjk":      validateCredentialFields("ghcr.io", strings.Repeat("中", 85), "t"), // 255 bytes
+		"secret":   validateCredentialFields("ghcr.io", "alice", strings.Repeat("t", 64*1024+1)),
+	} {
+		if err == nil {
+			t.Errorf("%s over the limit was accepted", name)
+		}
+	}
+	if err := validateCredentialFields("ghcr.io", strings.Repeat("中", 84), "t"); err != nil {
+		t.Errorf("84 CJK characters (252 bytes) refused: %v", err)
+	}
+	for _, username := range []string{"qa\tuser", "a\nb", "a\x00b", "a\x7fb", "a\u0085b"} {
+		if err := validateCredentialFields("ghcr.io", username, "t"); err == nil {
+			t.Errorf("username %q with a control character accepted", username)
+		}
+	}
+	for _, username := range []string{"alice", "alice@example.com", "中文用户", "a b"} {
+		if err := validateCredentialFields("ghcr.io", username, "t"); err != nil {
+			t.Errorf("username %q refused: %v", username, err)
 		}
 	}
 }

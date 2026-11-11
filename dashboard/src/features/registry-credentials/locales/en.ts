@@ -83,6 +83,30 @@ const enRegistryCredentials: Record<string, TranslationEntry> = {
     message: "Password or access token",
     description: "Create dialog secret field label",
   },
+  "registryCredentials.hostInvalid": {
+    message:
+      "Enter a registry host such as ghcr.io or registry.example.com:5000, without a path.",
+    description:
+      "Inline error under the Registry host when it is not a bare host[:port] (w21/053)",
+  },
+  "registryCredentials.hostTooLong": {
+    message: "At most 253 bytes",
+    description: "Inline error under an over-long Registry host (w21/053)",
+  },
+  "registryCredentials.usernameControl": {
+    message: "Must not contain control characters",
+    description:
+      "Inline error under a registry username with a control character (w21/053)",
+  },
+  "registryCredentials.usernameTooLong": {
+    message: "At most 253 bytes",
+    description: "Inline error under an over-long registry username (w21/053)",
+  },
+  "registryCredentials.authTokenTooLong": {
+    message: "At most 64 KiB",
+    description:
+      "Inline error under a registry password or token over the 64 KiB limit (w21/053)",
+  },
   "registryCredentials.fieldName": {
     message: "Display name",
     description: "Create dialog optional display-name field label",

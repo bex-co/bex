@@ -19,6 +19,11 @@ import {
   isValidLabel,
 } from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
+import { CredentialFieldError } from "@/features/registry-credentials/components/credential-field-error";
+import {
+  authTokenError,
+  usernameError,
+} from "@/features/registry-credentials/lib/credential-fields";
 import { useUpdateRegistryCredential } from "@/features/registry-credentials/hooks/use-update-registry-credential";
 import { useRegistryCredential } from "@/features/registry-credentials/hooks/use-registry-credential";
 import type { RegistryCredentialView } from "@/features/registry-credentials/types";
@@ -113,7 +118,12 @@ function EditForm({
   const [username, setUsername] = useState(seed.username);
   const [authToken, setAuthToken] = useState("");
 
-  const canSubmit = isValidLabel(name) && username.trim();
+  // The username and token the server refuses are marked in place and hold Save
+  // (w21/053); the host is immutable.
+  const usernameReason = usernameError(username);
+  const tokenReason = authTokenError(authToken);
+  const canSubmit =
+    isValidLabel(name) && username.trim() && !usernameReason && !tokenReason;
 
   async function handleSubmit() {
     if (!canSubmit || busy) return;
@@ -153,7 +163,15 @@ function EditForm({
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             autoComplete="off"
+            aria-invalid={usernameReason !== null}
+            aria-describedby={
+              usernameReason ? "rc-edit-username-error" : undefined
+            }
             className="font-mono text-sm"
+          />
+          <CredentialFieldError
+            id="rc-edit-username-error"
+            reason={usernameReason}
           />
         </div>
         <div className="space-y-2">
@@ -167,7 +185,15 @@ function EditForm({
             onChange={(e) => setAuthToken(e.target.value)}
             autoComplete="new-password"
             placeholder={t("registryCredentials.fieldAuthTokenKeep")}
+            aria-invalid={tokenReason !== null}
+            aria-describedby={
+              tokenReason ? "rc-edit-auth-token-error" : undefined
+            }
             className="font-mono text-sm"
+          />
+          <CredentialFieldError
+            id="rc-edit-auth-token-error"
+            reason={tokenReason}
           />
           <p className="text-muted-foreground text-xs">
             {t("registryCredentials.fieldAuthTokenKeepHint")}

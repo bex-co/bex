@@ -80,6 +80,30 @@ const zhRegistryCredentials: Record<string, TranslationEntry> = {
     message: "密码或访问令牌",
     description: "Create dialog secret field label",
   },
+  "registryCredentials.hostInvalid": {
+    message:
+      "请输入镜像仓库主机，例如 ghcr.io 或 registry.example.com:5000，不要带路径。",
+    description:
+      "Inline error under the Registry host when it is not a bare host[:port] (w21/053)",
+  },
+  "registryCredentials.hostTooLong": {
+    message: "最多 253 字节",
+    description: "Inline error under an over-long Registry host (w21/053)",
+  },
+  "registryCredentials.usernameControl": {
+    message: "不能包含控制字符",
+    description:
+      "Inline error under a registry username with a control character (w21/053)",
+  },
+  "registryCredentials.usernameTooLong": {
+    message: "最多 253 字节",
+    description: "Inline error under an over-long registry username (w21/053)",
+  },
+  "registryCredentials.authTokenTooLong": {
+    message: "最多 64 KiB",
+    description:
+      "Inline error under a registry password or token over the 64 KiB limit (w21/053)",
+  },
   "registryCredentials.fieldName": {
     message: "显示名称",
     description: "Create dialog optional display-name field label",

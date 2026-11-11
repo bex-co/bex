@@ -86,6 +86,34 @@ describe("EditRegistryCredentialDialog", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("up to 100 characters");
   });
 
+  // w21/053: the username and token the server refuses are marked in place and
+  // hold Save before any request (the host is immutable).
+  it("marks a username over 253 bytes or with a control character and holds Save", async () => {
+    const user = await openDialog();
+    const username = screen.getByDisplayValue("alice-detail");
+    const save = screen.getByRole("button", { name: "Save changes" });
+    await user.clear(username);
+    await user.click(username);
+    await user.paste("u".repeat(300));
+    expect(username).toHaveAttribute("aria-invalid", "true");
+    expect(username).toHaveAccessibleDescription("At most 253 bytes");
+    expect(save).toBeDisabled();
+
+    await user.clear(username);
+    await user.click(username);
+    await user.paste("qa\tuser");
+    expect(username).toHaveAccessibleDescription(
+      "Must not contain control characters",
+    );
+    expect(save).toBeDisabled();
+    expect(update).not.toHaveBeenCalled();
+
+    await user.clear(username);
+    await user.type(username, "alice");
+    expect(username).not.toHaveAttribute("aria-invalid", "true");
+    expect(save).toBeEnabled();
+  });
+
   it("stops the name at 100 characters (w21/035)", async () => {
     await openDialog();
     expect(screen.getByDisplayValue("GHCR prod (detail)")).toHaveAttribute(

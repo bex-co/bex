@@ -135,4 +135,75 @@ describe("CreateRegistryCredentialDialog", () => {
     dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByLabelText("Registry host")).toHaveValue("");
   });
+
+  // w21/053: what the server refuses in the host, username and token is marked
+  // in the field, in the person's language, and holds Add before any request.
+  describe("field rules (w21/053)", () => {
+    async function openFilled() {
+      const user = userEvent.setup();
+      render(<CreateRegistryCredentialDialog onCreated={vi.fn()} />);
+      await user.click(screen.getByRole("button", { name: "Add credential" }));
+      const dialog = await screen.findByRole("dialog");
+      const fill = async (label: string, value: string) => {
+        const input = within(dialog).getByLabelText(label);
+        await user.clear(input);
+        await user.click(input);
+        await user.paste(value);
+        return input;
+      };
+      await fill("Registry host", "ghcr.io");
+      await fill("Username", "alice");
+      await fill("Password or access token", "hunter2");
+      return {
+        dialog,
+        fill,
+        add: within(dialog).getByRole("button", { name: "Add" }),
+      };
+    }
+
+    it.each(["ghcr.io/qa-owner/qa-image", "my registry.io"])(
+      "marks the host %j and holds Add",
+      async (value) => {
+        const { fill, add } = await openFilled();
+        const host = await fill("Registry host", value);
+        expect(host).toHaveAttribute("aria-invalid", "true");
+        expect(host).toHaveAccessibleDescription(/without a path/);
+        expect(add).toBeDisabled();
+        expect(create).not.toHaveBeenCalled();
+      },
+    );
+
+    it("still accepts a pasted URL the server canonicalizes", async () => {
+      create.mockResolvedValue(true);
+      const user = userEvent.setup();
+      const { fill, add } = await openFilled();
+      const host = await fill("Registry host", "https://GHCR.IO/");
+      expect(host).not.toHaveAttribute("aria-invalid", "true");
+      await user.click(add);
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ host: "https://GHCR.IO/" }),
+      );
+    });
+
+    it("marks a 300-byte host, a username with a tab and a 300-byte username", async () => {
+      const { fill, add } = await openFilled();
+      const host = await fill("Registry host", `${"a".repeat(300)}.io`);
+      expect(host).toHaveAccessibleDescription("At most 253 bytes");
+      expect(add).toBeDisabled();
+      await fill("Registry host", "ghcr.io");
+
+      const username = await fill("Username", "qa\tuser");
+      expect(username).toHaveAttribute("aria-invalid", "true");
+      expect(username).toHaveAccessibleDescription(
+        "Must not contain control characters",
+      );
+      expect(add).toBeDisabled();
+
+      await fill("Username", "u".repeat(300));
+      expect(username).toHaveAccessibleDescription("At most 253 bytes");
+      expect(add).toBeDisabled();
+      await fill("Username", "alice");
+      expect(add).toBeEnabled();
+    });
+  });
 });

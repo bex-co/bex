@@ -17,6 +17,12 @@ import { LabelError } from "@/common/components/label-error";
 import { isInvalidLabel } from "@/common/lib/utils/resource-label";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useCreateRegistryCredential } from "@/features/registry-credentials/hooks/use-create-registry-credential";
+import { CredentialFieldError } from "@/features/registry-credentials/components/credential-field-error";
+import {
+  authTokenError,
+  registryHostError,
+  usernameError,
+} from "@/features/registry-credentials/lib/credential-fields";
 
 export interface CreateRegistryCredentialDialogProps {
   /** Called once a create succeeds (before the dialog is dismissed). */
@@ -42,9 +48,19 @@ export function CreateRegistryCredentialDialog({
   const [username, setUsername] = useState("");
   const [authToken, setAuthToken] = useState("");
 
+  // The fields the server refuses are marked in place and hold Add (w21/053).
+  const hostReason = registryHostError(host);
+  const usernameReason = usernameError(username);
+  const tokenReason = authTokenError(authToken);
   // The name is optional (it defaults to the host) but, when given, a label.
   const canSubmit =
-    host.trim() && username.trim() && authToken.trim() && !isInvalidLabel(name);
+    host.trim() &&
+    username.trim() &&
+    authToken.trim() &&
+    !isInvalidLabel(name) &&
+    !hostReason &&
+    !usernameReason &&
+    !tokenReason;
 
   function reset() {
     setName("");
@@ -100,8 +116,11 @@ export function CreateRegistryCredentialDialog({
               placeholder={t("registryCredentials.fieldHostPlaceholder")}
               autoComplete="off"
               autoFocus
+              aria-invalid={hostReason !== null}
+              aria-describedby={hostReason ? "rc-host-error" : undefined}
               className="font-mono text-sm"
             />
+            <CredentialFieldError id="rc-host-error" reason={hostReason} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="rc-username">
@@ -112,7 +131,15 @@ export function CreateRegistryCredentialDialog({
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="off"
+              aria-invalid={usernameReason !== null}
+              aria-describedby={
+                usernameReason ? "rc-username-error" : undefined
+              }
               className="font-mono text-sm"
+            />
+            <CredentialFieldError
+              id="rc-username-error"
+              reason={usernameReason}
             />
           </div>
           <div className="space-y-2">
@@ -125,10 +152,16 @@ export function CreateRegistryCredentialDialog({
               value={authToken}
               onChange={(e) => setAuthToken(e.target.value)}
               autoComplete="new-password"
+              aria-invalid={tokenReason !== null}
+              aria-describedby={tokenReason ? "rc-auth-token-error" : undefined}
               className="font-mono text-sm"
               onKeyDown={(e) => {
                 if (e.key === "Enter" && canSubmit) void handleSubmit();
               }}
+            />
+            <CredentialFieldError
+              id="rc-auth-token-error"
+              reason={tokenReason}
             />
           </div>
           <div className="space-y-2">
