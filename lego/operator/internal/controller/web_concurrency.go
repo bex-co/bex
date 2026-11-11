@@ -114,3 +114,35 @@ func withWebConcurrency(env []corev1.EnvVar, n int) []corev1.EnvVar {
 	v := corev1.EnvVar{Name: webConcurrencyEnvName, Value: strconv.Itoa(n)}
 	return append(env[:len(env)-1:len(env)-1], v, env[len(env)-1])
 }
+
+// ROCKET_PORT is the port Rocket binds. Render sets it to its default port on
+// every Rust service, at runtime only, so a Rocket app listens where the
+// platform routes with no configuration (w8/273). On bex the routed port can
+// be a configured or a detected one, and a fixed 10000 would move a Rocket app
+// off it, so the default follows the serving port: equal to Render's value
+// wherever the port is the default.
+const rocketPortEnvName = "ROCKET_PORT"
+
+// rocketPortDefault reports whether the app container gets ROCKET_PORT. Like
+// WEB_CONCURRENCY it must yield to every value the service configures, because
+// a container env entry beats every envFrom key.
+func (r *AppReconciler) rocketPortDefault(ctx context.Context, app *appv1alpha1.App) (bool, error) {
+	if app.Spec.Runtime != rustRuntime || !app.Spec.InternallyAddressable() {
+		return false, nil
+	}
+	_, set, err := r.configuredEnv(ctx, app, rocketPortEnvName)
+	return !set && err == nil, err
+}
+
+// rustRuntime is AppSpec.Runtime for a native Rust service.
+const rustRuntime = "rust"
+
+// withRocketPort adds the default just before PORT, which appEnv always
+// appends last and which carries the serving port ROCKET_PORT repeats.
+func withRocketPort(env []corev1.EnvVar, add bool) []corev1.EnvVar {
+	if !add || len(env) == 0 {
+		return env
+	}
+	port := env[len(env)-1]
+	return append(env[:len(env)-1:len(env)-1], corev1.EnvVar{Name: rocketPortEnvName, Value: port.Value}, port)
+}

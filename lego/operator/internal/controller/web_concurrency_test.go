@@ -65,6 +65,43 @@ func TestWithWebConcurrencyKeepsPortLast(t *testing.T) {
 	}
 }
 
+// w8/273: Render gives every Rust service ROCKET_PORT at runtime, so a Rocket
+// app listens where the platform routes. bex's value is the serving port,
+// placed just before PORT, and only where the service sets none of its own.
+func TestWithRocketPortRepeatsTheServingPortBeforePort(t *testing.T) {
+	env := withRocketPort([]corev1.EnvVar{{Name: "A", Value: "1"}, {Name: portEnvName, Value: "3000"}}, true)
+	if len(env) != 3 || env[1].Name != rocketPortEnvName || env[1].Value != "3000" || env[2].Name != portEnvName {
+		t.Fatalf("env = %+v, want A, ROCKET_PORT=3000, PORT", env)
+	}
+	if got := withRocketPort(env[:2:2], false); len(got) != 2 {
+		t.Fatalf("a service that is not eligible must keep its env, got %+v", got)
+	}
+}
+
+func TestRocketPortDefaultIsForNativeRustServicesThatSetNone(t *testing.T) {
+	r := &AppReconciler{}
+	for _, tc := range []struct {
+		name    string
+		runtime string
+		typ     string
+		env     []appv1alpha1.EnvVar
+		want    bool
+	}{
+		{"a Rust web service", "rust", appv1alpha1.TypeWebService, nil, true},
+		{"a Rust private service", "rust", appv1alpha1.TypePrivateService, nil, true},
+		{"a Rust worker has no port", "rust", appv1alpha1.TypeBackgroundWorker, nil, false},
+		{"another runtime", "node", appv1alpha1.TypeWebService, nil, false},
+		{"its own value wins", "rust", appv1alpha1.TypeWebService, []appv1alpha1.EnvVar{{Name: "ROCKET_PORT", Value: "8000"}}, false},
+		{"an explicit empty value is still its own", "rust", appv1alpha1.TypeWebService, []appv1alpha1.EnvVar{{Name: "ROCKET_PORT", Value: ""}}, false},
+	} {
+		app := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Runtime: tc.runtime, Type: tc.typ, Env: tc.env}}
+		got, err := r.rocketPortDefault(context.Background(), app)
+		if err != nil || got != tc.want {
+			t.Errorf("%s: default = %v (err %v), want %v", tc.name, got, err, tc.want)
+		}
+	}
+}
+
 var _ = Describe("WEB_CONCURRENCY default (w5/m147)", func() {
 	ctx := context.Background()
 	var r *AppReconciler

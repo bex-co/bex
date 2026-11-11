@@ -178,6 +178,9 @@ type deploymentParams struct {
 	// webConcurrency is the WEB_CONCURRENCY default, 0 for none
 	// (web_concurrency.go).
 	webConcurrency int
+	// rocketPort gives a native Rust service ROCKET_PORT, the serving port
+	// (rocketPortDefault).
+	rocketPort bool
 	// userNamespaces is BEX_RENDER_V1_USER_NAMESPACES (appHostUsers).
 	userNamespaces bool
 	// platform carries the Render default variables' inputs that do not come
@@ -278,11 +281,11 @@ func shellRunsStartCommand(app *appv1alpha1.App, image string, recorded launchMo
 }
 
 // appContainerEnv is the app container's env: the user's literals, Render's
-// platform set, the WEB_CONCURRENCY default, then PORT.
+// platform set, the WEB_CONCURRENCY and ROCKET_PORT defaults, then PORT.
 func appContainerEnv(app *appv1alpha1.App, p deploymentParams) []corev1.EnvVar {
 	in := p.platform
 	in.baseDomain = p.baseDomain
-	return withWebConcurrency(withPlatformEnv(appEnv(app, p.port), platformEnv(app, in)), p.webConcurrency)
+	return withRocketPort(withWebConcurrency(withPlatformEnv(appEnv(app, p.port), platformEnv(app, in)), p.webConcurrency), p.rocketPort)
 }
 
 // appContainer projects the App onto its single "app" container.

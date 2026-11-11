@@ -420,11 +420,13 @@ func nativeSecretFileLinks(o Options) string {
 //     paths. Those are links to where the toolchain image keeps them: the
 //     paths exist and hold the toolchain, and nothing is copied.
 //
-// Four are left out, each with its own follow-up: RELEASE_DISTRIBUTION=name
-// (an Elixir node cannot take a long name in a pod whose hostname has no
-// domain, and fails to start), ROCKET_PORT (must follow the service's port),
-// VENV_ROOT (no virtualenv exists at Render's path) and NODE_MODULES_CACHE
-// (would have to turn the dependency cache off when false).
+// ROCKET_PORT is not an image default: it has to follow the port the service
+// is routed on, so the operator sets it on the pod (rocketPortDefault,
+// w8/273). Three are left out, each with its own follow-up:
+// RELEASE_DISTRIBUTION=name (an Elixir node cannot take a long name in a pod
+// whose hostname has no domain, and fails to start), VENV_ROOT (no virtualenv
+// exists at Render's path) and NODE_MODULES_CACHE (would have to turn the
+// dependency cache off when false).
 func nativeBuildDefaults(o Options) string {
 	switch nativeRuntime(o) {
 	case "elixir":

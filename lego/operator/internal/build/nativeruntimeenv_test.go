@@ -522,7 +522,9 @@ func TestNativeRuntimeDefaultsFromRendersTable(t *testing.T) {
 	if df := nativeDockerfile(rust); strings.Index(df, `ln -s "$CARGO_HOME"`) > strings.Index(df, "ENV CARGO_HOME=") {
 		t.Errorf("CARGO_HOME is renamed before it is linked:\n%s", df)
 	}
-	// The four Render defaults bex leaves out stay out until their follow-ups.
+	// The three Render defaults bex leaves out stay out until their
+	// follow-ups, and ROCKET_PORT is the operator's to set on the pod, never
+	// an image default (w8/273).
 	for runtime := range nativeToolchains {
 		o := nativeOptions()
 		o.Runtime = runtime

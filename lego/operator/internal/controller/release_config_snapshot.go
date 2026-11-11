@@ -715,6 +715,9 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		if params.webConcurrency, err = r.webConcurrency(ctx, runtime); err != nil {
 			return err
 		}
+		if params.rocketPort, err = r.rocketPortDefault(ctx, runtime); err != nil {
+			return err
+		}
 		// Cached on app's status, which this pass persists; runtime is a view.
 		params.platform.gitCommit = r.imageCommit(ctx, app, params.image)
 		if r.edgeCaches(runtime) {
