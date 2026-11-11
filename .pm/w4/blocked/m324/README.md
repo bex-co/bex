@@ -9,13 +9,14 @@
 | [t001](done/t001.md) | A native build's log shows the build command and its output, not BuildKit's steps for bex's generated Dockerfile — **DONE** | 90m | — |
 | [t002](done/t002.md) | The failure reason and the `==> Build failed:` narration quote the command's output without BuildKit's elapsed-time prefixes (residual of w4/485) — **DONE** | 20m | — |
 | [t003](done/t003.md) | Blast radius: every native runtime and service type, the Docker and buildpack paths, live tail and stored logs — **DONE** | 20m | t001, t002 |
-| [t004](t004.md) | Live verification in `bex-canary` | 30m | t003 |
+| [t009](t009.md) | The live replay's failures: a failed build command's `failureReason` and `==> Build failed:` quote bex's toolchain steps as the "build environment", and push digests reach the log | 60m | t003 |
+| [t004](t004.md) | Live verification in `bex-canary` | 30m | t003, t009 |
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| [t008](t008.md) | Closeout | 10m | t006, t007, t009 |
 
-Eight tasks, 225m (3h45m).
+Nine tasks, 285m (4h45m).
 
 **Minor (parity and diagnosability, on every native build).**
 - The build log is where a user reads why a build failed or what it installed. On a native build it's mostly bex's own container recipe.
@@ -125,3 +126,23 @@ Signed in to `bex-canary` after the release pins this build, on an owned Free No
 - **Expected outcome:** on every native build, a user reads their own build command's output and a clear success or failure line, as on Render.
 - **Why now:** every Node, Python, Ruby, Go, Rust and Elixir build on bex prints this, and it's the first thing a user reads when a build fails.
 - **Render parity included (t005):** the log stream every surface reads (REST, GraphQL, MCP, the dashboard) changes.
+
+## Post-release probe (QA loop round 143, 2026-11-11)
+
+Pin `8330744bd643` (`9126d59d7`, 20:02 UTC) contains `a9c016955`. The probe ran on owned Free fixtures in `bex-canary`, deleted afterwards (DELETE 204, then GET 404):
+
+- `qa-20261111-r143-node` (`srv-dbqelpofss2c73f2078g`, `render-examples/express-hello-world`, runtime `node`);
+- `qa-20261111-r143-go` (`srv-dbqelq4o6rds73e87rd0`, `examples/hello-go`, runtime `docker`).
+
+Logs were read with paged `GET /v1/logs?…&type=build&direction=forward`.
+
+- **DoD 1 fails, on one clause.**
+  - Passing: `dep-dbqelpofss2c73f20790` (build command `npm install`) went live. Its 40-line log reads `==> Using Node 24 (default)`, `==> Running build command 'npm install'...`, then npm's own lines unprefixed (`added 80 packages, and audited 81 packages in 2s`), then `==> Build successful 🎉`.
+  - Failing: **20 lines contain `sha256:`**. They are the push phase's `Copying blob sha256:…` / `Copying config sha256:…` lines plus `Writing manifest to image destination`, all after the success line.
+- **DoD 2 fails.**
+  - Passing: for `dep-dbqenp8fss2c73f208gg` (`npm install && echo QA84 && exit 3`), the log shows `QA84` and `error: build command 'npm install && echo QA84 && exit 3' exited with code 3`.
+  - Failing, the reason: **`failureReason` (REST and `deploy_ended`) is "build failed in the build environment step:" followed by `#15`–`#18` of bex's own Dockerfile** (`/opt/bex/pnpm.tgz`, `mwader/static-ffmpeg…@sha256:…`). It has no `QA84`.
+  - Failing, the log: after the error line, the log prints `==> Building from …@039c347` and then the same transcript as `==> Build failed: …` / `==> #15 …` lines.
+- **DoD 3 passes.** `dep-dbqelq4o6rds73e87rdg` (Docker) kept BuildKit's `#1 [internal] load build definition from Dockerfile` lines and went live.
+- **Filed as t009.** It covers the failure-reason path (`failureDetail`, `lego/operator/internal/build/build.go:813-850`), the push digests and the narration order. t004 waits for it. w4/582 keeps the success line's position.
+
