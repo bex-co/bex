@@ -15,9 +15,10 @@
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
-| [t010](t010.md) | Closeout | 10m | t008, t009 |
+| [t011](t011.md) | Regression of w8/m122: every image change on an image web service goes live without `image.sha`, because the row closes `live` before the operator records the digest | 40m | t004 |
+| [t010](t010.md) | Closeout | 10m | t008, t009, t011 |
 
-Ten tasks, 320m (5h20m). **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
+Eleven tasks, 360m (6h). **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
 
 ## Finding
 
@@ -137,6 +138,7 @@ Live on production after the release pins this build, on an owned Free image web
   - Repeat once through the dashboard's Cancel → Proceed.
 - **Same-image redeploy control.** The row turns `live` within one poll of the instance switch seen in the logs; today the gap is 24 s.
 - **Unchanged neighbours.** A port-changing image deploy (w4/428), an env save and a restart still roll with no response error.
+- **Image digest (t011, added from loop round 133).** Each image change goes live with its own `image.sha`: an `imageUrl` deploy, a saved-image change plus a standard deploy, and a rollback to another digest. Today both read none, though the create and a same-image redeploy carry one. REST, GraphQL `imageSha` and the dashboard agree.
 - **Checks.** The operator suite (`make test`) and lint pass.
 - **Cleanup.** No fixture remains, and only that run's session is revoked.
 
