@@ -117,6 +117,9 @@ type waitResult struct {
 	sessions []session
 	raws     [][]byte
 	timedOut bool
+	// tailErr is why a follow could not read the end of the transcript of a
+	// session it did read as settled.
+	tailErr error
 }
 
 // wait polls ids until all settle (first: until one does). ctx carries the
@@ -218,13 +221,9 @@ func (a *api) follow(ctx context.Context, id string, fromTurn int, p *partPrinte
 			if ok {
 				last, lastRaw = s, raw
 				if settled(s) {
-					// One more pass: the turn's last parts may land with the
-					// state change.
-					if _, err := a.drain(ctx, id, &afterSeq, fromTurn, p); err != nil && ctx.Err() == nil {
-						return waitResult{}, err
-					}
+					tailErr := a.drainTail(ctx, id, &afterSeq, fromTurn, p)
 					p.flush()
-					return waitResult{sessions: []session{s}, raws: [][]byte{raw}}, nil
+					return waitResult{sessions: []session{s}, raws: [][]byte{raw}, tailErr: tailErr}, nil
 				}
 			}
 		}
@@ -233,6 +232,28 @@ func (a *api) follow(ctx context.Context, id string, fromTurn int, p *partPrinte
 		}
 		if n == 0 {
 			delay = nextPoll(delay)
+		}
+	}
+}
+
+// drainTail reads the transcript once more after the session settled: the
+// turn's last parts may land with the state change. The read is retried like
+// every other one in a follow. An error it still returns costs the end of the
+// transcript, never the result: the caller holds the settled session, which
+// is what --follow exits by (w32/010). A ctx that ended is not an error
+// either, for the same reason.
+func (a *api) drainTail(ctx context.Context, id string, afterSeq *int64, fromTurn int, p *partPrinter) error {
+	var poll poller
+	for {
+		_, err := a.drain(ctx, id, afterSeq, fromTurn, p)
+		if err == nil || ctx.Err() != nil {
+			return nil
+		}
+		if !poll.tolerate(ctx, err) {
+			return err
+		}
+		if poll.sleep(ctx, a, pollFirst) != nil {
+			return nil
 		}
 	}
 }

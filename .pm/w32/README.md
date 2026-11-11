@@ -16,7 +16,7 @@
 - [ ] [013](013.md) — the CLI docs and ADR018 still list "Render" prose and the `pg create` wizard hint as branding residuals; w2/073 and w2/082 rewrote both
 - [ ] [012](012.md) — `BEX_WORKSPACE` set to a workspace name that starts with `tea-` is never resolved (sent as `ownerId`, "not allowed")
 - [ ] [011](011.md) — `bex agent … -o yaml` prints large integers as floats (`size: 2.097152e+06`) and changes 16-digit ones
-- [ ] [010](010.md) — `bex agent … --follow` exits 1 and prints no result when its last transcript read hits one transient error (429, 5xx)
+- [x] [010](done/010.md) — `bex agent … --follow` exits 1 and prints no result when its last transcript read hits one transient error (429, 5xx) — DONE (that read is retried like the rest; if it still fails the command warns, prints the session and exits by its state)
 - [x] [009](done/009.md) — `bex logout` and a bad `BEX_OUTPUT` name `RENDER_*` variables the user never set (`RENDER_API_KEY`, `RENDER_OUTPUT`) — DONE (the messages name `BEX_ACCESS_TOKEN` / `BEX_OUTPUT` when the launcher filled the upstream variable; a variable the user set keeps its name)
 - [x] [008](done/008.md) — `bex ssh --help` and `bex ea blueprints --help` link Render's docs instead of Bex's — DONE (per-command links to the Bex pages; a test walks every help page)
 - [x] [006](done/006.md) — List makes one Cilium read per allow-list sandbox — DONE (concurrent reads; no RBAC widening)

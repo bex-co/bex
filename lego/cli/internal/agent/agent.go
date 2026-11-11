@@ -686,6 +686,7 @@ func logsCommand(d deps) *cobra.Command {
 				if err != nil {
 					return err
 				}
+				inv.warnTail(args[0], result)
 				return stateExit(result, waiting.timeout)
 			}
 			afterSeq := int64(-1)
@@ -784,8 +785,11 @@ func (inv *invocation) await(s session, fromTurn int, w waitFlags) error {
 			stream = inv.errOut
 		}
 		result, err = inv.api.follow(ctx, s.ID, fromTurn, newPartPrinter(stream, false, w.reasoning))
-		if err == nil && inv.format == formatText && len(result.sessions) > 0 {
-			_, _ = fmt.Fprintln(inv.out)
+		if err == nil {
+			inv.warnTail(s.ID, result)
+			if inv.format == formatText && len(result.sessions) > 0 {
+				_, _ = fmt.Fprintln(inv.out)
+			}
 		}
 	} else {
 		result, err = inv.api.wait(ctx, []string{s.ID}, false)
@@ -794,6 +798,14 @@ func (inv *invocation) await(s session, fromTurn int, w waitFlags) error {
 		return err
 	}
 	return inv.report(result, false, w.timeout)
+}
+
+// warnTail says on stderr that a follow could not read the end of id's
+// transcript.
+func (inv *invocation) warnTail(id string, result waitResult) {
+	if result.tailErr != nil {
+		_, _ = fmt.Fprintf(inv.errOut, "Warning: the end of the transcript may be missing: %v. `bex agent logs %s` prints the whole transcript.\n", result.tailErr, id)
+	}
 }
 
 // report prints a wait's sessions and returns the exit their states call for.

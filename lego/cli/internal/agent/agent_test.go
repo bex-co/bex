@@ -52,9 +52,14 @@ type fakeAPI struct {
 	ssh        map[string]string
 	failGets   map[string]int // transient 503s before the next GET succeeds
 	createErrs []int          // statuses the next creates answer before succeeding
-	retryAfter string         // Retry-After sent with a createErrs answer
+	retryAfter string         // Retry-After sent with a createErrs or failTail answer
 	transcript map[string][]string
 	files      map[string][]attachmentFixture
+	// The end of a turn: once a GET has served a session as settled, tailRows
+	// join its transcript and the next transcript reads answer failTail.
+	settled  map[string]bool
+	tailRows map[string][]string
+	failTail []int
 
 	creates      []capturedRequest
 	steers       []capturedRequest
@@ -82,7 +87,7 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 	f := &fakeAPI{
 		t: t, script: map[string][]string{}, gets: map[string]int{}, owner: map[string]string{},
 		ssh: map[string]string{}, failGets: map[string]int{}, transcript: map[string][]string{},
-		files: map[string][]attachmentFixture{},
+		files: map[string][]attachmentFixture{}, settled: map[string]bool{}, tailRows: map[string][]string{},
 	}
 	f.storage = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
@@ -204,14 +209,23 @@ func (f *fakeAPI) create(w http.ResponseWriter, r *http.Request) {
 		status, f.createErrs = f.createErrs[0], f.createErrs[1:]
 	}
 	f.mu.Unlock()
-	if status != 0 {
-		if f.retryAfter != "" {
-			w.Header().Set("Retry-After", f.retryAfter)
-		}
-		writeAPIError(w, status, "AGENT_SESSION_INPUT_INVALID", "refused")
+	if f.refuse(w, status, "AGENT_SESSION_INPUT_INVALID", "refused") {
 		return
 	}
 	writeJSON(w, http.StatusCreated, f.view("ags-new1", stateWorking))
+}
+
+// refuse answers a scripted failure status, with the fake's Retry-After, and
+// reports whether there was one.
+func (f *fakeAPI) refuse(w http.ResponseWriter, status int, code, msg string) bool {
+	if status == 0 {
+		return false
+	}
+	if f.retryAfter != "" {
+		w.Header().Set("Retry-After", f.retryAfter)
+	}
+	writeAPIError(w, status, code, msg)
+	return true
 }
 
 func (f *fakeAPI) get(w http.ResponseWriter, r *http.Request) {
@@ -231,6 +245,10 @@ func (f *fakeAPI) get(w http.ResponseWriter, r *http.Request) {
 	}
 	i := min(f.gets[id], len(states)-1)
 	f.gets[id]++
+	if states[i] != stateWorking && !f.settled[id] {
+		f.settled[id] = true
+		f.transcript[id] = append(f.transcript[id], f.tailRows[id]...)
+	}
 	f.mu.Unlock()
 	writeJSON(w, http.StatusOK, f.view(id, states[i]))
 }
@@ -248,11 +266,19 @@ func (f *fakeAPI) steer(w http.ResponseWriter, r *http.Request) {
 // transcriptPage serves the session's rows after afterSeq, one row per page
 // so paging is exercised.
 func (f *fakeAPI) transcriptPage(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
 	f.mu.Lock()
 	f.transcrGet++
 	f.transcrQuery = r.URL.RawQuery
-	rows := f.transcript[r.PathValue("id")]
+	rows := f.transcript[id]
+	var status int
+	if f.settled[id] && len(f.failTail) > 0 {
+		status, f.failTail = f.failTail[0], f.failTail[1:]
+	}
 	f.mu.Unlock()
+	if f.refuse(w, status, "", "rolling") {
+		return
+	}
 	after := int64(-1)
 	if raw := r.URL.Query().Get("afterSeq"); raw != "" {
 		_, _ = fmt.Sscan(raw, &after)
@@ -707,20 +733,112 @@ func TestFollowWaitsForCompleteCopiesAndExitsByState(t *testing.T) {
 	}
 }
 
-func TestRunFollowKeepsJSONStdoutClean(t *testing.T) {
+// tailWarning opens the one stderr line a follow prints when it could not
+// read the end of the transcript; tailOutage is enough failing reads for that.
+const tailWarning = "Warning: the end of the transcript may be missing: read transcript of agent session "
+
+var tailOutage = slices.Repeat([]int{http.StatusServiceUnavailable}, transientLimit+1)
+
+// w32/010: the transcript read that follows the settled session read is
+// retried like every other read of a follow. When it still fails, the end of
+// the transcript is lost with a warning, never the result: the command prints
+// the session and exits by its state.
+func TestFollowKeepsTheResultWhenTheLastTranscriptReadFails(t *testing.T) {
+	const (
+		head     = "── turn 1 ──\n> fix it\nWorking on it.\n"
+		complete = head + "Finished the edit.\n" // the tail arrived and replaced the partial row
+		partial  = head + "Finishing the ed\n"   // it did not: the held partial row is shown
+	)
+	for _, tc := range []struct {
+		name       string
+		failTail   []int
+		retryAfter string
+		stdout     string
+		unread     int // failTail answers the follow never asked for
+		warnings   int
+	}{
+		{name: "a 503 is retried", failTail: []int{http.StatusServiceUnavailable}, stdout: complete},
+		{name: "a 429 waits out its Retry-After", failTail: []int{http.StatusTooManyRequests}, retryAfter: "7", stdout: complete},
+		{name: "an outage costs the tail only", failTail: tailOutage, stdout: partial, warnings: 1},
+		{name: "a refusal is not retried", failTail: []int{http.StatusForbidden, http.StatusServiceUnavailable}, stdout: partial, unread: 1, warnings: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFakeAPI(t)
+			f.script["ags-t1"] = []string{stateWorking, stateFailed}
+			f.transcript["ags-t1"] = []string{
+				row(1, 1, 1, `{"type":"text","text":"Working on it."}`, false),
+				row(2, 2, 1, `{"type":"text","text":"Finishing the ed","state":"streaming"}`, true),
+			}
+			f.tailRows["ags-t1"] = []string{row(3, 2, 1, `{"type":"text","text":"Finished the edit."}`, false)}
+			f.failTail, f.retryAfter = tc.failTail, tc.retryAfter
+			stdout, stderr, code := run(t, f.deps(t).deps, "logs", "ags-t1", "--follow")
+			if code != exitFailed || stdout != tc.stdout {
+				t.Fatalf("exit %d, want %d by the session's state\nstdout %q\n  want %q\nstderr %q", code, exitFailed, stdout, tc.stdout, stderr)
+			}
+			if len(f.failTail) != tc.unread {
+				t.Fatalf("%d failing answers were left unread, want %d", len(f.failTail), tc.unread)
+			}
+			if got := strings.Count(stderr, tailWarning); got != tc.warnings {
+				t.Fatalf("warned %d times, want %d: %q", got, tc.warnings, stderr)
+			}
+			if tc.warnings > 0 && !strings.Contains(stderr, "`bex agent logs ags-t1` prints the whole transcript.") {
+				t.Fatalf("the warning does not say how to read the transcript: %q", stderr)
+			}
+			if tc.retryAfter != "" && f.slept[len(f.slept)-1] < 7*time.Second {
+				t.Fatalf("slept %v, want at least the 7s Retry-After before the retry", f.slept)
+			}
+		})
+	}
+}
+
+// --timeout and Ctrl-C end the retries; the session that settled is still the
+// result, as it is when the last read itself is cut short.
+func TestFollowReturnsTheSettledSessionWhenStoppedWhileRetryingTheLastRead(t *testing.T) {
 	f := newFakeAPI(t)
-	f.script["ags-new1"] = []string{stateWorking, stateSucceeded}
-	f.transcript["ags-new1"] = []string{row(1, 1, 1, `{"type":"text","text":"streamed"}`, false)}
-	stdout, stderr, code := run(t, f.deps(t).deps, "run", "--follow", "-o", "json", "task")
-	if code != 0 {
-		t.Fatalf("exit %d: %s", code, stderr)
+	f.script["ags-s1"] = []string{stateSucceeded}
+	f.failTail = []int{http.StatusServiceUnavailable}
+	a, _ := f.deps(t).api()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	a.sleep = func(ctx context.Context, _ time.Duration) error { cancel(); return ctx.Err() }
+	result, err := a.follow(ctx, "ags-s1", 1, newPartPrinter(io.Discard, false, false))
+	if err != nil || len(result.sessions) != 1 || result.sessions[0].State != stateSucceeded || result.tailErr != nil || result.timedOut {
+		t.Fatalf("follow = %+v, %v", result, err)
 	}
-	var final map[string]any
-	if err := json.Unmarshal([]byte(stdout), &final); err != nil || final["state"] != stateSucceeded {
-		t.Fatalf("stdout %q (%v)", stdout, err)
-	}
-	if !strings.Contains(stderr, "streamed") || !strings.Contains(stderr, "Started ags-new1") {
-		t.Fatalf("the stream did not go to stderr: %q", stderr)
+}
+
+// `run --follow -o json` keeps stdout to the session, also when the last
+// transcript read fails (w32/010: it used to print nothing and exit 1).
+func TestRunFollowKeepsJSONStdoutClean(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		failTail []int
+		warns    bool
+	}{
+		{name: "every read answers"},
+		{name: "the last transcript read is retried", failTail: []int{http.StatusBadGateway}},
+		{name: "the last transcript read is given up", failTail: tailOutage, warns: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFakeAPI(t)
+			f.script["ags-new1"] = []string{stateWorking, stateSucceeded}
+			f.transcript["ags-new1"] = []string{row(1, 1, 1, `{"type":"text","text":"streamed"}`, false)}
+			f.failTail = tc.failTail
+			stdout, stderr, code := run(t, f.deps(t).deps, "run", "--follow", "-o", "json", "task")
+			if code != 0 {
+				t.Fatalf("exit %d: %s", code, stderr)
+			}
+			var final map[string]any
+			if err := json.Unmarshal([]byte(stdout), &final); err != nil || final["state"] != stateSucceeded {
+				t.Fatalf("stdout %q (%v)", stdout, err)
+			}
+			if !strings.Contains(stderr, "streamed") || !strings.Contains(stderr, "Started ags-new1") {
+				t.Fatalf("the stream did not go to stderr: %q", stderr)
+			}
+			if warned := strings.Contains(stderr, tailWarning); warned != tc.warns {
+				t.Fatalf("warned = %t, want %t: %q", warned, tc.warns, stderr)
+			}
+		})
 	}
 }
 
