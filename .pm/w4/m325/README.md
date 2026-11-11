@@ -1,0 +1,116 @@
+# w4 · m325 — A request-log line is Traefik's raw JSON access record (`ServiceName`, `KubernetesIngressName`, `Duration` in nanoseconds, three copies of the request id) where Render shows a readable request summary; ADR018 records the divergence without the user's sign-off
+
+**Worker:** worker4 **Goal:** a request log line reads like Render's on every surface. It is a one-line summary of method, status, host and path, response time in milliseconds, and the request id, in Render's `key=value` shape. bex's ingress attribution fields stay internal. **Status:** todo
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| [t001](t001.md) | Capture Render's request-log line format and record the target in ADR018 and ADR010 | 20m | — |
+| [t002](t002.md) | Project `type=request` lines to the Render summary at read time, keeping the stored JSON for path, host and latency queries | 60m | t001 |
+| [t003](t003.md) | The Logs tab renders the summary, and the raw record stays reachable only if t001 says Render offers it | 30m | t002 |
+| [t004](t004.md) | Blast radius: every reader of the request line, `text` search semantics, live tail and the CLI | 30m | t002 |
+| [t005](t005.md) | Live verification in `bex-canary` | 20m | t003, t004 |
+| [t006](t006.md) | Render parity | 15m | t005 |
+| [t007](t007.md) | Simplify | 10m | t006 |
+| [t008](t008.md) | Test coverage | 30m | t006 |
+| [t009](t009.md) | Closeout | 10m | t007, t008 |
+
+Nine tasks, 225m (3h45m).
+
+**Minor (parity and readability), but on every request line of every web service and static site.** A user reading their traffic sees the edge's internal JSON with a nanosecond duration.
+
+## Finding
+
+Live `/qa-find-bugs w4` loop, round 89, 2026-11-11 08:54–09:00 UTC (`muse.env`, workspace `bex-canary`; production runs the code of `7ca0227aa477`).
+
+Fixture: Free web service `qa-20261111-lg89` (`srv-dbq2q382gues73d7nndg`, `docker.io/mendhak/http-https-echo:35`). Deleted afterwards (DELETE 204, then GET 404).
+
+### Probes
+
+- **Traffic.** `curl https://qa-20261111-lg89.onbex.co/qa89-live-{1,2,3}` → 200. `curl -H 'x-set-response-status-code: 503' …/qa89-err` → 503. `curl -H 'x-set-response-status-code: 404' …/qa89-nf` → 404.
+- **REST, from the signed-in page.** `GET /v1/logs?ownerId=tea-daif693dqjvc73e7as3g&resource=srv-dbq2q382gues73d7nndg&type=request&path=/qa89-err&startTime=<now-10m>&endTime=<now>&limit=5` returns one entry:
+  - labels `type=request`, `resource=srv-dbq2q382gues73d7nndg`, `method=GET`, `statusCode=503`, `requestID=ad8c2d92-90ac-42a8-8c03-c8b6f8776c79`;
+  - `message`:
+
+  ```json
+  {"DownstreamStatus":503,"Duration":8384760,"KubernetesIngressName":"tea-daif693dqjvc73e7as3g-qa-20261111-lg89","KubernetesIngressNamespace":"tea-daif693dqjvc73e7as3g","RequestHost":"qa-20261111-lg89.onbex.co","RequestMethod":"GET","RequestPath":"/qa89-err","ServiceName":"tea-daif693dqjvc73e7as3g-tea-daif693dqjvc73e7as3g-qa-20261111-lg89-8080@kubernetes","downstream_Rndr-Id":"ad8c2d92-90ac-42a8-8c03-c8b6f8776c79","level":"info","msg":"","origin_Rndr-Id":"ad8c2d92-90ac-42a8-8c03-c8b6f8776c79","request_Rndr-Id":"ad8c2d92-90ac-42a8-8c03-c8b6f8776c79","time":"2026-11-11T08:55:49Z"}
+  ```
+- **Dashboard.** `/services/srv-dbq2q382gues73d7nndg/logs?type=request` (Request logs, Live on) renders each line as `12:55:47 AM GET 200 {"DownstreamStatus":200,"Duration":9424492,"KubernetesIngressName":…}`: the method and status chips, then the whole record inline.
+
+### Root cause
+
+- **The line is stored and served verbatim.** Request lines are Traefik's JSON access log, shipped as is into the `type=request` store (ADR010 § Request logs, `docs/ADR010-observability.md:76`). The read path only trims line terminators: `canonicalHistoryMessage` at `lego/backend/internal/logs/loki.go:765-771`. REST, GraphQL, MCP, live tail and the dashboard therefore all render the raw record.
+- **The divergence is recorded, but never signed off.** ADR018's "Request / HTTP logs" row (`docs/ADR018-render-parity.md:247`) lists "the request-log message is the raw JSON access line, not a rendered summary" under Divergences, and ADR010:193 does the same. Neither records a user sign-off.
+  - w8/176 (done) noted exactly that: "That divergence also has no sign-off; filing it needs a captured Render request-log line to state the target format."
+  - Earlier passes (w4/068, w4/126, w4/198) left it as a product decision. The 2026-10-17 parity rule (AGENTS.md, ADR008) says not to park it.
+  - w5/m23 t004 ("method/status/path chips … JSON collapsed") is still `status: todo` inside the closed `w5/done/m23`. The chips shipped; the collapse did not.
+- **The stored JSON has to stay.** Several readers parse it:
+  - the path and host filters (`loki.go:555-566`, `| json request_path="RequestPath", request_host="RequestHost"`);
+  - the Loki-backed request metrics and latency (`lego/backend/internal/metrics/lokisource.go:160-164`, `latency_ns="Duration"`);
+  - the log shipper's attribution, which reads `ServiceName` and `KubernetesIngressName`.
+
+  So the fix is a read-time projection, not a change to the shipped line.
+
+### Fix (target behavior)
+
+- **t001 captures Render's line first.**
+  - What is known: Render's logging docs search example `/responseTimeMS=\d{3}\d+/` (cited in w8/176) shows the message is a `key=value` summary.
+  - Which fields: w5/099 trimmed bex to the fields Render documents (method, status code, host, path, response time) plus the request id.
+  - Record the captured line and its source in ADR018 and ADR010, replacing the divergence.
+- **t002 projects at read time.** For `type=request` lines only, `canonicalHistoryMessage` (or its caller) renders the stored JSON as the captured summary. The response time is in milliseconds, from `Duration` in nanoseconds; `requestID` comes from `Rndr-Id`.
+  - **Leave out** `ServiceName`, `KubernetesIngress*`, the duplicate `*_Rndr-Id` keys, `level`, `msg` and `time`.
+  - **Labels are unchanged.**
+  - **Fallback.** A line that doesn't parse as an access record is returned as stored, never dropped.
+  - **One change covers the readers:** REST, GraphQL, MCP `list_logs` and the live tail all read through this path.
+- **t003, the dashboard.** The Logs tab shows the summary text after the method and status chips. No raw JSON is rendered by default.
+- **Searching:** the `text` filter keeps matching the stored record today, so `text=responseTimeMS` would find nothing while `text=KubernetesIngressName` would match. t004 picks the semantics: match the projected summary, or document why it can't.
+
+### Blast radius
+
+- **Readers of the stored line:**
+  - `logs/loki.go` (history, the path and host filters, `text`);
+  - `metrics/lokisource.go` (request count, latency, discovery);
+  - the live-tail store poll (w4/m237);
+  - the CLI's `bex logs`, which prints the REST message.
+- **Producers:** `deploy/gitops/base/values/traefik.values.yaml` (access-log field allowlist, w5/076) and `deploy/gitops/base/log-shipper.yaml` (request pipeline). Neither should change.
+- **Static sites' request lines** go through the same path (static-server, w4/m113). t004 checks their summary too.
+
+### Unverified
+
+- Render's exact line, including its field order, quoting and `responseBytes`/`clientIP`/`userAgent`. t001 captures it.
+- How GraphQL `logs` shapes request entries. Its argument names differ from REST, and the round-89 GraphQL probe errored on my argument shape, not on the server.
+- The CLI's rendering of request lines.
+
+### Render
+
+- Render's request-log lines are `key=value` summaries; its own docs search them with `/responseTimeMS=\d{3}\d+/`.
+- Render doesn't expose its load balancer's internal record.
+
+### Dedupe
+
+- **w4/198 and w5/076 (done)** trimmed fields and kept the view unchanged.
+- **w5/099 (done)** trimmed the record to Render's documented fields.
+- **w8/176 (done)** explicitly left this divergence unfiled pending a capture.
+- **w5/m23 t004** is the stale partial attempt.
+- No open item covers it: `grep -rln "rendered summary" .pm` finds only done items.
+- **Not deploy lag:** `git log 7ca0227aa..origin/main -- lego/backend/internal/logs dashboard/src/features/logs` shows `684391bc9` (w21/044, deploy-page filtering), which doesn't change request-line text.
+
+## Definition of done
+
+Signed in to `bex-canary` after the release pins this build, on an owned Free web service from `docker.io/mendhak/http-https-echo:35` (deleted afterwards):
+
+1. **REST reads a Render-shaped summary.** After `curl -H 'x-set-response-status-code: 503' https://<svc>.onbex.co/qa-err`, `GET /v1/logs?…&type=request&path=/qa-err` returns a `message` in t001's recorded Render format. It carries method `GET`, status `503`, host, path `/qa-err`, response time in ms and the request id. It contains none of `KubernetesIngressName`, `ServiceName`, `Duration` or `_Rndr-Id`. The labels are unchanged.
+2. **The dashboard shows the summary.** Logs → Request logs (Live on and off) shows the same text for that line.
+3. **Filters and metrics still work.** `path=/qa-err`, `statusCode=503`, `host=<svc>.onbex.co` and the Metrics page's request count and latency for the window are unchanged.
+4. **Static sites too.** On an owned static site, a request line reads in the same format.
+
+## Source + Goal linkage
+
+- **Source:** the finding above (round 89 of the `/qa-find-bugs w4` loop, 2026-11-11). The durable evidence is the probe record; no screenshot was kept.
+- **Goal linkage:**
+  - [ADR010](../../../docs/ADR010-observability.md) (request logs) and [ADR018](../../../docs/ADR018-render-parity.md) (the "Request / HTTP logs" row).
+  - [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first): a divergence stands only with the user's sign-off.
+- **Expected outcome:** a user reads their own traffic as Render shows it, and bex's ingress internals stay out of tenant logs.
+- **Why now:** every request line on every web service and static site is affected. The divergence has carried no sign-off since w8/176 flagged it on 2026-10-22.
+- **Render parity included (t006):** REST, GraphQL, MCP and dashboard output changes.
