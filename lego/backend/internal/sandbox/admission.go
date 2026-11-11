@@ -151,7 +151,9 @@ func (s *Service) admit(ctx context.Context, key, workspace string, group, defau
 		}
 		listCtx, cancel := context.WithTimeout(ctx, admissionListTimeout)
 		defer cancel()
-		live, err := s.Client.List(listCtx, key)
+		// Sent once: the workspace's admission lock, its transaction and a
+		// pooled connection are held across this read.
+		live, err := s.Client.withoutReadRetry().List(listCtx, key)
 		if err != nil {
 			return fmt.Errorf("sandbox concurrency: list sandboxes: %w", err)
 		}

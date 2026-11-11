@@ -994,8 +994,7 @@ jobs:
         # A superseded run built images but deliberately pinned nothing, so this
         # digest can never appear in the cluster — waiting for it burns the full
         # 10-minute budget and then fails a run the supersession check already
-        # concluded NEUTRAL, and the rollout restart below needlessly bounces the
-        # prod control plane. Skip it exactly like the rollout steps do. (No
+        # concluded NEUTRAL. Skip it exactly like the rollout steps do. (No
         # always() here: unlike those, this step should still skip when an
         # earlier step failed, which is its current behavior.)
         if: ${{ env.SUPERSEDED != 'true' }}
@@ -1028,26 +1027,36 @@ jobs:
             kubectl -n argocd get applications
             exit 1
           fi
-          # Reset crash backoff and stale ProgressDeadlineExceeded conditions
-          # from a previously degraded release, then level-check availability.
-          kubectl -n opensandbox-system rollout restart \
-            deploy/opensandbox-controller-manager deploy/opensandbox-server
-          for deployment in opensandbox-controller-manager opensandbox-server; do
-            deadline=$((SECONDS + 600))
-            available=0
-            desired=1
+          # Level-check availability, and leave a Deployment that converged
+          # alone. The lifecycle server is one Recreate replica, so restarting
+          # it takes the sandbox API down; restarting it here on every deploy,
+          # after Argo had already rolled the new digest, did that a second
+          # time for nothing (w8/248). Only a Deployment that has not converged
+          # is restarted, once: that resets crash backoff and a stale
+          # ProgressDeadlineExceeded left by a degraded release.
+          opensandbox_converged() { # <deployment> <seconds>
+            local deadline=$((SECONDS + $2)) state generation observed desired total updated available
             while ((SECONDS < deadline)); do
-              state="$(kubectl -n opensandbox-system get deployment "$deployment" -o json 2>/dev/null \
-                | jq -r '[.metadata.generation, (.status.observedGeneration // 0), (.spec.replicas // 1), (.status.availableReplicas // 0)] | @tsv' \
+              state="$(kubectl -n opensandbox-system get deployment "$1" -o json 2>/dev/null \
+                | jq -r '[.metadata.generation, (.status.observedGeneration // 0), (.spec.replicas // 1), (.status.replicas // 0), (.status.updatedReplicas // 0), (.status.availableReplicas // 0)] | @tsv' \
                 || true)"
-              read -r generation observed desired available <<<"$state"
-              if [ -n "${generation:-}" ] && ((observed >= generation && available >= desired)); then
-                break
+              read -r generation observed desired total updated available <<<"$state"
+              # The same test as `kubectl rollout status`: the new pods exist,
+              # no old pod is left, and every new pod is available.
+              if [ -n "${generation:-}" ] \
+                && ((observed >= generation && updated >= desired && total <= updated && available >= updated)); then
+                return 0
               fi
               sleep 5
             done
-            if [ -z "${generation:-}" ] || ((observed < generation || available < desired)); then
-              echo "$deployment has ${available:-0}/${desired:-1} available replicas" >&2
+            echo "$1 did not converge in $2s: generation ${generation:-?} (observed ${observed:-?}), ${updated:-0} updated and ${available:-0} available of ${desired:-1}, ${total:-0} pods in all" >&2
+            return 1
+          }
+          for deployment in opensandbox-controller-manager opensandbox-server; do
+            opensandbox_converged "$deployment" 180 && continue
+            echo "restarting $deployment once" >&2
+            kubectl -n opensandbox-system rollout restart "deploy/$deployment"
+            if ! opensandbox_converged "$deployment" 300; then
               kubectl -n opensandbox-system get pods
               exit 1
             fi

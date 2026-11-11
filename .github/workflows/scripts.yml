@@ -131,6 +131,10 @@ jobs:
       # sandbox pool; proven with stubbed kubectl/docker, no cluster.
       - name: Sandbox Docker spike guard self-test
         run: bash scripts/sandbox-docker-spike.test.sh
+      # w8/248: a deploy restarts the one-replica sandbox lifecycle server only
+      # for a changed credential or a Deployment that did not converge.
+      - name: OpenSandbox server restart guards self-test
+        run: bash scripts/opensandbox-server-secret.test.sh
       - name: Tracking-issue helper self-test
         run: bash scripts/tracking-issue.test.sh
       - name: Repo artifact guard self-test

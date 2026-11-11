@@ -41,8 +41,20 @@ if kubectl -n "$target_namespace" get secret "$target_secret" \
     --patch='[{"op":"remove","path":"/data/api_key"}]' >/dev/null
 fi
 
+# The server reads the token once, in an init container, so new pods are needed
+# only when the Secret changed. Stamp the Secret's version on the pod template:
+# an unchanged stamp is a no-op and a changed one rolls the Deployment. The
+# server is one Recreate replica, so a restart on every deploy took the sandbox
+# API down each time for a credential that had not changed (w8/248). A stamp,
+# unlike comparing versions around the apply, still converges when an earlier
+# run changed the Secret and died before it restarted the server.
 if kubectl -n "$target_namespace" get deployment/opensandbox-server >/dev/null 2>&1; then
-  kubectl -n "$target_namespace" rollout restart deployment/opensandbox-server >/dev/null
+  secret_version="$(kubectl -n "$target_namespace" get secret "$target_secret" \
+    -o jsonpath='{.metadata.resourceVersion}')"
+  [[ "$secret_version" =~ ^[0-9]+$ ]] \
+    || { echo "could not read the version of $target_secret" >&2; exit 1; }
+  kubectl -n "$target_namespace" patch deployment/opensandbox-server --type=merge \
+    --patch "{\"spec\":{\"template\":{\"metadata\":{\"annotations\":{\"bex.co/cp-token-secret-version\":\"${secret_version}\"}}}}}" >/dev/null
 fi
 
 echo "installed $target_secret in namespace $target_namespace"

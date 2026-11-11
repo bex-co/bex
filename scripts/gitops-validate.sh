@@ -2447,6 +2447,17 @@ bash -n scripts/opensandbox-server-secret.sh \
   || { echo "FAIL: opensandbox-server-secret.sh is not valid shell" >&2; fail=1; }
 grep -qF '"path":"/data/api_key"' scripts/opensandbox-server-secret.sh \
   || { echo "FAIL: OpenSandbox Secret convergence no longer removes the legacy shared api_key" >&2; fail=1; }
+# w8/248: the lifecycle server is one Recreate replica, so a restart is a window
+# with no sandbox API. A deploy made three: the Secret mirror, Argo's digest
+# roll and the wait step. The two scripted ones now happen only when needed.
+grep -qF 'bex.co/cp-token-secret-version' scripts/opensandbox-server-secret.sh \
+  || { echo "FAIL: the OpenSandbox Secret mirror no longer stamps the Secret version on the server's pod template" >&2; fail=1; }
+if grep -q 'rollout restart' scripts/opensandbox-server-secret.sh; then
+  echo "FAIL: the OpenSandbox Secret mirror restarts the lifecycle server on every deploy again (w8/248)" >&2
+  fail=1
+fi
+grep -qF 'opensandbox_converged "$deployment" 180 && continue' .github/workflows/deploy.yml \
+  || { echo "FAIL: deploy workflow restarts the OpenSandbox control plane without first checking that it converged (w8/248)" >&2; fail=1; }
 bash -n scripts/verify-sandbox-isolation.sh \
   || { echo "FAIL: verify-sandbox-isolation.sh is not valid shell" >&2; fail=1; }
 for required_probe in \

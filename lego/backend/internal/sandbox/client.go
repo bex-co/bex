@@ -23,9 +23,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
+	"net"
 	"net/http"
 	"net/url"
+	"syscall"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // tenantKeyHeader is OpenSandbox's multi-tenant API-key header (OSEP-0014): the
@@ -56,12 +61,46 @@ var errPodReadyTimeout = errors.New("opensandbox pod-ready timeout")
 // external component, so this signature is the only signal bex-api gets.
 const podReadyTimeoutCode = "KUBERNETES::POD_READY_TIMEOUT"
 
+// CodeSandboxRuntimeUnavailable is the 503 a sandbox verb answers while the
+// OpenSandbox lifecycle server cannot be reached or is not answering (w8/248).
+// The server is one replica that is recreated on a rollout, so every restart
+// has a window with no server; until this code that window read as a bare
+// `500 internal error` on list, get and stop in every workspace. It differs
+// from core.ErrSandboxesUnavailable, which says the feature is not configured.
+const CodeSandboxRuntimeUnavailable = "SANDBOX_RUNTIME_UNAVAILABLE"
+
+// runtimeRetryAfterSeconds is the Retry-After a runtime-unavailable answer
+// carries: the lifecycle server is back within seconds of its pod starting.
+const runtimeRetryAfterSeconds = 5
+
+var errRuntimeUnavailable = core.NewUnavailableError(CodeSandboxRuntimeUnavailable,
+	"the sandbox runtime is not answering right now; retry in a few seconds",
+	map[string]any{"retryAfterSeconds": runtimeRetryAfterSeconds})
+
+// defaultReadRetryBackoff spaces the repeats of a read the lifecycle server
+// failed to answer. A read changes nothing, so repeating it is safe, and about
+// a second rides out an endpoint switch without holding the request for long.
+var defaultReadRetryBackoff = []time.Duration{300 * time.Millisecond, 900 * time.Millisecond}
+
+// readRetryBudget stops the repeats of a read whose failures are slow: a
+// connection that is dropped instead of refused fails only at runtimeDialTimeout,
+// and repeating that would hold a list for the sum of them.
+const readRetryBudget = 3 * time.Second
+
+// runtimeDialTimeout bounds connecting to the lifecycle server, an in-cluster
+// Service that connects in milliseconds when it is there. The default dialer's
+// 30s would hold a request that long when the dataplane drops the connection.
+const runtimeDialTimeout = 5 * time.Second
+
 // Client is bex-api's in-package OpenSandbox lifecycle client. It is separate
 // from the operator's runtime/opensandbox client (unimportable across the
 // operator→types←backend boundary) and adds per-workspace tenant-key scoping.
 type Client struct {
 	BaseURL string
 	HTTP    *http.Client
+	// readRetryBackoff is the waits between repeats of an unanswered GET; none
+	// means a GET is sent once.
+	readRetryBackoff []time.Duration
 }
 
 // NewClient builds a Client against an OpenSandbox server base URL.
@@ -77,10 +116,14 @@ type Client struct {
 // 300s pod-ready wait; list/stop/status still return in milliseconds, so this is
 // only a higher ceiling for the one synchronous create path.
 func NewClient(baseURL string) *Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.DialContext = (&net.Dialer{Timeout: runtimeDialTimeout, KeepAlive: 30 * time.Second}).DialContext
 	return &Client{
-		BaseURL: baseURL,
+		BaseURL:          baseURL,
+		readRetryBackoff: defaultReadRetryBackoff,
 		HTTP: &http.Client{
-			Timeout: 330 * time.Second,
+			Timeout:   330 * time.Second,
+			Transport: transport,
 			// The workspace tenant key is a capability for one OpenSandbox
 			// namespace. Never forward it through an upstream-controlled redirect.
 			CheckRedirect: func(*http.Request, []*http.Request) error {
@@ -126,22 +169,73 @@ type osResourceLimits struct {
 	Memory string `json:"memory"`
 }
 
+// withoutReadRetry is c with a read sent once, for a caller that holds
+// something other requests wait on while it reads.
+func (c *Client) withoutReadRetry() *Client {
+	once := *c
+	once.readRetryBackoff = nil
+	return &once
+}
+
 // do issues a JSON request to the OpenSandbox server, attaching the workspace's
 // tenant key when non-empty. Returns the raw body and HTTP status.
+//
+// A server that cannot be reached, or a status that says it could not serve
+// the request, answers errRuntimeUnavailable instead of the transport error or
+// the status, which would reach the caller as a bare 500 (w8/248). A read is
+// repeated first. The caller's own cancellation or deadline is returned as it
+// is.
 func (c *Client) do(ctx context.Context, method, path, tenantKey string, body any) ([]byte, int, error) {
-	var rdr io.Reader
+	var raw []byte
 	if body != nil {
-		raw, err := json.Marshal(body)
-		if err != nil {
+		var err error
+		if raw, err = json.Marshal(body); err != nil {
 			return nil, 0, err
 		}
+	}
+	var backoff []time.Duration
+	if method == http.MethodGet {
+		backoff = c.readRetryBackoff
+	}
+	start := time.Now()
+	for attempt := 0; ; attempt++ {
+		data, code, err := c.once(ctx, method, path, tenantKey, raw)
+		if ctx.Err() != nil {
+			return data, code, err
+		}
+		down := runtimeUnreachable(method, err) || (err == nil && runtimeNotAnswering(method, code, data))
+		if !down {
+			return data, code, err
+		}
+		if attempt >= len(backoff) || time.Since(start) > readRetryBudget {
+			// The coded answer is not logged where it is written, so the cause
+			// is logged here.
+			if err != nil {
+				log.Printf("sandbox runtime unreachable (%s %s): %v", method, path, err)
+			} else {
+				log.Printf("sandbox runtime not answering (%s %s): status %d: %s", method, path, code, truncate(data))
+			}
+			return nil, 0, errRuntimeUnavailable
+		}
+		select {
+		case <-ctx.Done():
+			return nil, 0, ctx.Err()
+		case <-time.After(backoff[attempt]):
+		}
+	}
+}
+
+// once is one attempt of do.
+func (c *Client) once(ctx context.Context, method, path, tenantKey string, raw []byte) ([]byte, int, error) {
+	var rdr io.Reader
+	if raw != nil {
 		rdr = bytes.NewReader(raw)
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.BaseURL+path, rdr)
 	if err != nil {
 		return nil, 0, err
 	}
-	if body != nil {
+	if raw != nil {
 		req.Header.Set("content-type", "application/json")
 	}
 	if tenantKey != "" {
@@ -157,6 +251,50 @@ func (c *Client) do(ctx context.Context, method, path, tenantKey string, body an
 		return nil, resp.StatusCode, err
 	}
 	return data, resp.StatusCode, nil
+}
+
+// runtimeUnreachable reports a transport failure that means no lifecycle
+// server took the request: the connection was never made (refused, no route,
+// no endpoint behind the Service, a dial that timed out). For a read it also
+// covers a connection that ended before an answer, which is what a pod being
+// replaced does to a request in flight; a write cut off that way may have been
+// applied, so it stays the error it is.
+func runtimeUnreachable(method string, err error) bool {
+	if err == nil {
+		return false
+	}
+	var op *net.OpError
+	if errors.As(err, &op) && op.Op == "dial" {
+		return true
+	}
+	return method == http.MethodGet &&
+		(errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) || errors.Is(err, syscall.ECONNRESET))
+}
+
+// runtimeNotAnswering reports a status that says the server could not serve
+// the request. On a read that is any 5xx, where the server has nothing of the
+// caller's to refuse. On a write it is 503 alone, the one status that says the
+// request was not taken: after a 502 or 504 the write may have been applied,
+// as after a connection that ended, so those stay the errors they are. A 5xx
+// the lifecycle server sent with its own error code is the server answering
+// (its pod-ready timeout is a 504), so it is never this.
+func runtimeNotAnswering(method string, code int, body []byte) bool {
+	if code < http.StatusInternalServerError || serverErrorCode(body) != "" {
+		return false
+	}
+	return method == http.MethodGet || code == http.StatusServiceUnavailable
+}
+
+// serverErrorCode is the `code` of an OpenSandbox error body
+// ("KUBERNETES::POD_READY_TIMEOUT"), "" for any other body.
+func serverErrorCode(body []byte) string {
+	var envelope struct {
+		Code string `json:"code"`
+	}
+	if json.Unmarshal(body, &envelope) != nil {
+		return ""
+	}
+	return envelope.Code
 }
 
 // Create starts a sandbox from a resolved template image and returns its id and
