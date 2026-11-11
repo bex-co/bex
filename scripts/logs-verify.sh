@@ -242,10 +242,12 @@ info "requested https://$HOST/$NONCE through the edge; waiting for the access li
 req=""
 for i in $(seq 1 30); do
   req="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=request&limit=100")"
-  echo "$req" | jq -e --arg n "$NONCE" '[.logs[] | select(.message | contains($n))] | length > 0' >/dev/null 2>&1 && break
+  # The nonce is the request path, a label since w4/m325 (the message is
+  # Render's summary); an older bex-api kept it in the raw access line.
+  echo "$req" | jq -e --arg n "$NONCE" '[.logs[] | select((.message | contains($n)) or any(.labels[]?; .name == "path" and (.value | contains($n))))] | length > 0' >/dev/null 2>&1 && break
   sleep 2
 done
-line="$(echo "$req" | jq -c --arg n "$NONCE" 'first(.logs[] | select(.message | contains($n)))' 2>/dev/null)"
+line="$(echo "$req" | jq -c --arg n "$NONCE" 'first(.logs[] | select((.message | contains($n)) or any(.labels[]?; .name == "path" and (.value | contains($n)))))' 2>/dev/null)"
 [ -n "$line" ] && [ "$line" != "null" ] \
   || fail "type=request returned no access line for /$NONCE after 60s (check Traefik access logs + the shipper)"
 
@@ -255,11 +257,11 @@ lbl() { echo "$line" | jq -r --arg k "$1" 'first(.labels[] | select(.name == $k)
 [ "$(lbl statusCode)" = "200" ] || fail "the access line's statusCode label is '$(lbl statusCode)', want 200"
 pass "REQUEST: type=request returns the access line for /$NONCE (method=GET, statusCode=200 — truthful)"
 
-# path is line-searchable (never a label — the cardinality budget), statusCode narrows.
+# path is line-searchable (never a stream label — the cardinality budget), statusCode narrows.
 n_path="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=request&path=/$NONCE&limit=100" | jq '.logs | length')"
 [ "${n_path:-0}" -gt 0 ] || fail "the path filter should find /$NONCE, got $n_path lines"
 n_5xx="$(curl -sf "${AUTH[@]}" "http://$API/v1/logs?resource=$SVC&type=request&statusCode=5xx&limit=100" \
-  | jq --arg n "$NONCE" '[.logs[] | select(.message | contains($n))] | length')"
+  | jq --arg n "$NONCE" '[.logs[] | select((.message | contains($n)) or any(.labels[]?; .name == "path" and (.value | contains($n))))] | length')"
 [ "${n_5xx:-1}" -eq 0 ] || fail "statusCode=5xx must exclude the 200 access line, got $n_5xx"
 pass "REQUEST FILTERS: path=/$NONCE finds it; statusCode=5xx excludes it (filters really narrow)"
 

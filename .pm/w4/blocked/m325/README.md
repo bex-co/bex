@@ -1,20 +1,20 @@
 # w4 · m325 — A request-log line is Traefik's raw JSON access record (`ServiceName`, `KubernetesIngressName`, `Duration` in nanoseconds, three copies of the request id) where Render shows a readable request summary; ADR018 records the divergence without the user's sign-off
 
-**Worker:** worker4 **Goal:** a request log line reads like Render's on every surface. It is a one-line summary of method, status, host and path, response time in milliseconds, and the request id, in Render's `key=value` shape. bex's ingress attribution fields stay internal. **Status:** todo
+**Worker:** worker4 **Goal:** a request log line reads like Render's on every surface. It is a one-line summary of method, status, host and path, response time in milliseconds, and the request id, in Render's `key=value` shape. bex's ingress attribution fields stay internal. **Status:** blocked — t001–t004, t006–t008 and t010 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Capture Render's request-log line format and record the target in ADR018 and ADR010 | 20m | — |
-| [t002](t002.md) | Project `type=request` lines to the Render summary at read time, keeping the stored JSON for path, host and latency queries | 60m | t001 |
-| [t003](t003.md) | The Logs tab renders the summary, and the raw record stays reachable only if t001 says Render offers it | 30m | t002 |
-| [t004](t004.md) | Blast radius: every reader of the request line, `text` search semantics, live tail and the CLI | 30m | t002 |
-| [t010](t010.md) | A request line's labels follow Render's — `host` and `path` where Render carries them, and a recorded answer for `requestID`, which Render's label enum omits | 30m | t001 |
+| [t001](done/t001.md) | Capture Render's request-log line format and record the target in ADR018 and ADR010 — **DONE** | 20m | — |
+| [t002](done/t002.md) | Project `type=request` lines to the Render summary at read time, keeping the stored JSON for path, host and latency queries — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | The Logs tab renders the summary, and the raw record stays reachable only if t001 says Render offers it — **DONE** | 30m | t002 |
+| [t004](done/t004.md) | Blast radius: every reader of the request line, `text` search semantics, live tail and the CLI — **DONE** | 30m | t002 |
+| [t010](done/t010.md) | A request line's labels follow Render's — `host` and `path` where Render carries them, and a recorded answer for `requestID`, which Render's label enum omits — **DONE** | 30m | t001 |
 | [t005](t005.md) | Live verification in `bex-canary` | 20m | t003, t004, t010 |
-| [t006](t006.md) | Render parity | 15m | t005 |
-| [t007](t007.md) | Simplify | 10m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t006 |
+| [t006](done/t006.md) | Render parity — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 10m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
 | [t009](t009.md) | Closeout | 10m | t007, t008 |
 
 Ten tasks, 255m (4h15m).

@@ -107,9 +107,13 @@ const (
 	LabelMethod     = "method"
 	LabelStatusCode = "statusCode"
 	// LabelRequestID is a request line's edge-minted Rndr-Id (w8/m125), read
-	// from the line, never a stream label: it is unique per request.
+	// from the line, never a stream label: it is unique per request. Only
+	// GraphQL shows it as a field; REST and MCP carry it in the message, as
+	// Render does (w4/m325).
 	LabelRequestID = "requestID"
 	LabelHost      = "host"
+	// LabelPath is a request line's path, read from the line like LabelHost.
+	LabelPath = "path"
 )
 
 // DiscoverableLabels is the label enum LogLabelValues accepts — Render's exact six
@@ -457,7 +461,7 @@ func (q LogQuery) requestFilters() []string {
 	for _, f := range []struct {
 		name   string
 		values []string
-	}{{LabelStatusCode, q.StatusCode}, {LabelMethod, q.Method}, {LabelHost, q.Host}, {"path", q.Path}} {
+	}{{LabelStatusCode, q.StatusCode}, {LabelMethod, q.Method}, {LabelHost, q.Host}, {LabelPath, q.Path}} {
 		if len(f.values) > 0 {
 			names = append(names, f.name)
 		}
@@ -471,7 +475,8 @@ func (q LogQuery) requestFilters() []string {
 // short-interval store poll for request logs (w4/m237). An App tail's
 // structured filters select producers the way the same labels narrow a
 // history query's streams (w8/m147): request filters select request lines and
-// `level` app lines (request lines have no level), so a type-less tail with
+// `level` app lines (a request line's level is read from its status, never a
+// stream label the level filter selects, w4/584), so a type-less tail with
 // only one kind follows that producer alone and one with both follows each
 // under its own filters. Refused: a filter the requested type cannot carry,
 // named, and a producerless type (e.g. type=predeploy). Refusing up front
@@ -1307,8 +1312,9 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 		go s.pollRequestLogs(ctx, q, target.namespace, ch)
 	}
 
-	// The level filter is the pod producer's: a request line carries no level,
-	// and reaches a tail beside one only when request filters selected it.
+	// The level filter is the pod producer's: a request line's level is read
+	// from its status, not filtered on (w4/584), and it reaches a tail beside
+	// one only when request filters selected it.
 	requestFilter := q
 	requestFilter.levelFilter = nil
 
@@ -1416,7 +1422,7 @@ func (c *requestCursor) admit(e LogEntry) bool {
 func (s *Service) pollRequestLogs(ctx context.Context, q LogQuery, namespace string, ch chan<- LogEntry) {
 	pq := q
 	pq.Types = []string{LogTypeRequest}
-	pq.Level, pq.levelFilter = nil, nil // the pod producer's filter: request lines carry no level
+	pq.Level, pq.levelFilter = nil, nil // the pod producer's filter: request lines are not level-filtered (w4/584)
 	pq.Direction = DirectionForward
 	pq.Limit = maxLogLimit
 	pq.End = time.Time{}

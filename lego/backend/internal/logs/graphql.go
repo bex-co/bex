@@ -42,6 +42,9 @@ var logGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"level":      gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelLevel] }),
 		"method":     gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelMethod] }),
 		"statusCode": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelStatusCode] }),
+		// A request line's host and path, as Render labels them (w4/m325).
+		"host": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelHost] }),
+		"path": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelPath] }),
 		// A request line's edge-minted Rndr-Id (w8/m125); empty for app lines.
 		"requestId": gqlutil.StrField(func(e LogEntry) any { return e.Labels[LabelRequestID] }),
 	},

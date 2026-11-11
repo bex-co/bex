@@ -84,6 +84,8 @@ const makeLines = (count: number): LogLine[] =>
     level: "",
     method: "",
     statusCode: "",
+    host: "",
+    path: "",
   }));
 const lines = makeLines(300);
 

@@ -18,6 +18,7 @@ import {
   useTheme,
 } from "@/common/theme";
 import { LogSession } from "./log-session";
+import { requestLead } from "./request-line";
 import type { LogFilters, LogLine, LogType } from "./types";
 import { useLogSession } from "./use-log-session";
 
@@ -63,6 +64,7 @@ export function LogViewer({
         {formatLogTime(item.timestamp)}
       </Text>
       <Text selectable style={[styles.message, { color: theme.foreground }]}>
+        {requestLead(item)}
         {item.message}
       </Text>
     </View>

@@ -292,7 +292,7 @@ func TestRESTLogsEnvelopeAndFilters(t *testing.T) {
 	if len(env.Logs) != 3 || env.Logs[0].Message != "GET / 200" || env.Logs[2].Message != "first boot ok" {
 		t.Fatalf("want 3 lines newest-first: %+v", env.Logs)
 	}
-	if env.Logs[0].ID == "" || env.Logs[0].Labels[0].Name != "type" || env.Logs[0].Labels[0].Value != LogTypeApp {
+	if last := env.Logs[0].Labels[len(env.Logs[0].Labels)-1]; env.Logs[0].ID == "" || last.Name != "type" || last.Value != LogTypeApp {
 		t.Errorf("render log id/type label wrong: %+v", env.Logs[0])
 	}
 	if env.NextStartTime == "" || env.NextEndTime == "" {
@@ -614,7 +614,7 @@ func TestRESTStructuredFiltersRefusedWithoutStore(t *testing.T) {
 // the store's request streams and comes back as Render log lines whose labels tell
 // the truth (type/method/statusCode), and `/v1/logs/values` discovers real values.
 func TestRESTRequestLogsAndDiscovery(t *testing.T) {
-	access := `{\"ServiceName\":\"default-web-80@kubernetes\",\"RequestMethod\":\"GET\",\"RequestPath\":\"/healthz\",\"DownstreamStatus\":200}`
+	access := `{\"ServiceName\":\"default-web-80@kubernetes\",\"RequestMethod\":\"GET\",\"RequestPath\":\"/healthz\",\"DownstreamStatus\":200,\"Duration\":3000000,\"request_Rndr-Id\":\"r-healthz\"}`
 	f := newFakeLoki(lokiResp(map[string]any{
 		"stream": `{"app":"web","type":"request","method":"GET","status":"200"}`,
 		"values": `[["1751673601000000000","` + access + `"]]`,
@@ -631,14 +631,14 @@ func TestRESTRequestLogsAndDiscovery(t *testing.T) {
 	if rec.Code != 200 || json.Unmarshal(rec.Body.Bytes(), &env) != nil || len(env.Logs) != 1 {
 		t.Fatalf("type=request => the access line, got %d %s", rec.Code, rec.Body.String())
 	}
-	if !strings.Contains(env.Logs[0].Message, "/healthz") {
-		t.Errorf("the access line itself must be returned: %q", env.Logs[0].Message)
+	if got := env.Logs[0].Message; got != `requestID="r-healthz" responseTimeMS=3` {
+		t.Errorf("the request line must read like Render's (w4/m325): %q", got)
 	}
 	labels := map[string]string{}
 	for _, l := range env.Logs[0].Labels {
 		labels[l.Name] = l.Value
 	}
-	if labels[LabelType] != LogTypeRequest || labels[LabelMethod] != "GET" || labels[LabelStatusCode] != "200" {
+	if labels[LabelType] != LogTypeRequest || labels[LabelMethod] != "GET" || labels[LabelStatusCode] != "200" || labels[LabelPath] != "/healthz" {
 		t.Errorf("request line labels must be truthful: %+v", labels)
 	}
 	// The filters reached the store as LogQL rather than being dropped on the floor.

@@ -1652,11 +1652,13 @@ export type KeyValueLogEntry = {
 
 export type LogEntry = {
   __typename: 'LogEntry';
+  host: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   instance: Maybe<Scalars['String']['output']>;
   level: Maybe<Scalars['String']['output']>;
   message: Maybe<Scalars['String']['output']>;
   method: Maybe<Scalars['String']['output']>;
+  path: Maybe<Scalars['String']['output']>;
   requestId: Maybe<Scalars['String']['output']>;
   statusCode: Maybe<Scalars['String']['output']>;
   timestamp: Maybe<Scalars['String']['output']>;

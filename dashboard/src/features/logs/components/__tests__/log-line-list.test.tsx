@@ -20,6 +20,8 @@ function line(over: Partial<LogLine> = {}): LogLine {
     level: "",
     method: "",
     statusCode: "",
+    host: "",
+    path: "",
     ...over,
     message,
     // Mirror ingest (makeLogLine): ANSI parsed once, so the list reads
@@ -59,24 +61,29 @@ async function settleVirtualScroll(): Promise<void> {
 describe("LogLineList request-line rendering (w5/008)", () => {
   setupVirtualGeometry();
 
-  it("shows method + status chips for a request line", () => {
-    render(
+  it("shows a request line as Render does: chips, host and path, then the summary (w4/m325)", () => {
+    const summary =
+      'clientIP="198.51.100.3" requestID="8ebfa3c3-8929-4885" responseTimeMS=8 responseBytes=311 userAgent="curl/8.7.1"';
+    const { container } = render(
       <LogLineList
         lines={[
           line({
             key: "r1",
             type: "request",
             method: "GET",
-            statusCode: "200",
-            message: '{"RequestPath":"/health"}',
+            statusCode: "503",
+            host: "qa.onbex.co",
+            path: "/qa-err",
+            message: summary,
           }),
         ]}
       />,
     );
     expect(screen.getByText("GET")).toBeInTheDocument();
-    expect(screen.getByText("200")).toBeInTheDocument();
-    // The message is still rendered (honest — no data hidden).
-    expect(screen.getByText('{"RequestPath":"/health"}')).toBeInTheDocument();
+    expect(screen.getByText("503")).toBeInTheDocument();
+    expect(container.textContent).toContain(
+      `GET503qa.onbex.co/qa-err ${summary}`,
+    );
   });
 
   it("does not render method/status chips for an app line", () => {

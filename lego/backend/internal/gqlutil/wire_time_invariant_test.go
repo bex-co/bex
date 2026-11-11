@@ -132,7 +132,7 @@ func TestNoTimeReachesAStringField(t *testing.T) {
 // a failure in itself — it is a field this test stopped covering, which is
 // worth one line of acknowledgement in a diff.
 const (
-	maxOpaqueResolvers   = 46 // +1 LogEntry.id (w4/m217): logID returns a string, never a time
+	maxOpaqueResolvers   = 48 // +1 LogEntry.id (w4/m217): logID returns a string, never a time; +2 LogEntry.host/path (w4/m325): label lookups, never a time
 	maxUnresolvedMembers = 4
 )
 

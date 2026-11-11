@@ -59,6 +59,8 @@ function line(message: string, type: string): LogLine {
     level: "",
     method: "",
     statusCode: "",
+    host: "",
+    path: "",
   };
 }
 
@@ -271,6 +273,8 @@ describe("DeployLogPanel", () => {
       level: "",
       method: "",
       statusCode: "",
+      host: "",
+      path: "",
     });
     logState.lines = [
       line("1", "==> Build queued", "build"),
@@ -353,6 +357,8 @@ describe("DeployLogPanel", () => {
       level: "",
       method: "",
       statusCode: "",
+      host: "",
+      path: "",
     });
     // A colorized build line: the needle straddles the escape, so matching the
     // wire bytes would drop this row from its own search.
@@ -403,6 +409,8 @@ describe("DeployLogPanel", () => {
         level: "",
         method: "",
         statusCode: "",
+        host: "",
+        path: "",
       },
       {
         key: "other",
@@ -415,6 +423,8 @@ describe("DeployLogPanel", () => {
         level: "",
         method: "",
         statusCode: "",
+        host: "",
+        path: "",
       },
     ];
 

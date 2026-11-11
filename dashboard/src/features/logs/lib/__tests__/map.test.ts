@@ -22,6 +22,8 @@ const gqlEntry = (over: Partial<Record<string, string | null>> = {}) => ({
   level: null,
   method: null,
   statusCode: null,
+  host: null,
+  path: null,
   ...over,
 });
 
@@ -85,18 +87,22 @@ describe("toLogLine / toLogLines", () => {
     expect(line.statusCode).toBe("");
   });
 
-  it("maps the request-line labels (type/method/statusCode)", () => {
+  it("maps the request-line labels (type/method/statusCode/host/path)", () => {
     const line = toLogLine(
       gqlEntry({
         type: "request",
         method: "GET",
         statusCode: "200",
+        host: "web.onbex.co",
+        path: "/health",
         level: null,
       }),
     );
     expect(line.type).toBe("request");
     expect(line.method).toBe("GET");
     expect(line.statusCode).toBe("200");
+    expect(line.host).toBe("web.onbex.co");
+    expect(line.path).toBe("/health");
   });
 
   it("drops null holes and undefined results", () => {
@@ -204,19 +210,23 @@ describe("fromRenderLog (SSE frame)", () => {
     expect(line.statusCode).toBe("");
   });
 
-  it("reads request-line method/statusCode from the labels array", () => {
+  it("reads request-line method/statusCode/host/path from the labels array", () => {
     const line = fromRenderLog({
-      message: '{"RequestMethod":"POST"}',
+      message: 'requestID="8ebfa3c3-8929-4885" responseTimeMS=8',
       timestamp: "2026-07-05T10:37:00.000Z",
       labels: [
         { name: "type", value: "request" },
         { name: "method", value: "POST" },
         { name: "statusCode", value: "503" },
+        { name: "host", value: "web.onbex.co" },
+        { name: "path", value: "/api/orders" },
       ],
     });
     expect(line.type).toBe("request");
     expect(line.method).toBe("POST");
     expect(line.statusCode).toBe("503");
+    expect(line.host).toBe("web.onbex.co");
+    expect(line.path).toBe("/api/orders");
   });
 });
 
@@ -231,6 +241,8 @@ describe("mergeLogLines", () => {
     level: "",
     method: "",
     statusCode: "",
+    host: "",
+    path: "",
     spans: null,
   });
 
@@ -491,6 +503,8 @@ describe("record identity within one millisecond (w4/m217)", () => {
         level: null,
         method: null,
         statusCode: null,
+        host: null,
+        path: null,
       },
       {
         __typename: "LogEntry",
@@ -502,6 +516,8 @@ describe("record identity within one millisecond (w4/m217)", () => {
         level: null,
         method: null,
         statusCode: null,
+        host: null,
+        path: null,
       },
     ]);
     expect(legacy[0].key).toBe(logLineKey(`${ms}100Z`, "p", "x"));

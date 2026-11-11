@@ -29,7 +29,7 @@ while [ $# -gt 0 ]; do
 done
 if [ -n "$wfmt" ]; then sleep "${STUB_HOLD:-0}"; printf 200; exit 0; fi
 case "$url" in
-  */v1/logs*) body='{"logs":[{"message":"GET /bexProbe/'"${STUB_NONCE_ANY:-x}"'"}]}' ;;
+  */v1/logs*) body='{"logs":[{"message":"requestID=\"r\" responseTimeMS=1","labels":[{"name":"path","value":"/bexProbe/'"${STUB_NONCE_ANY:-x}"'"}]}]}' ;;
   */v1/metrics/*) body='[{"values":[{"value":1}]}]' ;;
   */events*)
     n=$(($(cat "$STUB_STATE" 2>/dev/null || echo 0) + 1))

@@ -67,6 +67,8 @@ query Logs(
       level
       method
       statusCode
+      host
+      path
     }
   }
 }

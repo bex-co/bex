@@ -25,6 +25,8 @@ export interface LogLine {
   level: string; // app-line severity (info/warn/error/…), or ""
   method: string; // request HTTP method, or ""
   statusCode: string; // request HTTP status, or ""
+  host: string; // request host, or ""
+  path: string; // request path, or ""
 }
 
 // The type filter, matching Render's Logs dropdown (All / Application / Request).

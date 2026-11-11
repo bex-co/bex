@@ -51,6 +51,8 @@ function line(i: number): LogLine {
     level: "",
     method: "",
     statusCode: "",
+    host: "",
+    path: "",
   };
 }
 

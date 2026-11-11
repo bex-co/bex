@@ -898,7 +898,7 @@ func TestRequestStreamLabelsRenderTruthfully(t *testing.T) {
 		t.Errorf("request line must not claim a container: %+v", got)
 	}
 	// The REST projection reports the truthful type, not a hardcoded "app".
-	if rl := toRenderLog(entries[0]); rl.Labels[0].Name != LabelType || rl.Labels[0].Value != LogTypeRequest {
+	if rl := toRenderLog(entries[0]); rl.Labels[len(rl.Labels)-1].Name != LabelType || rl.Labels[len(rl.Labels)-1].Value != LogTypeRequest {
 		t.Errorf("REST log line type label wrong: %+v", rl.Labels)
 	}
 }

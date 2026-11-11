@@ -237,8 +237,9 @@ crit="$(cli_logs --type app --level critical --limit 100)"
 echo "PASS --level: error isolates the planted line; critical is an honest empty"
 
 # PATH — line-level filter parsed out of the access-log JSON; absent path empty.
+# A request line names its path and host as labels, as Render's do (w4/m325).
 p="$(cli_logs --path "$probe_path" --limit 100)"
-jq -e --arg p "$probe_path" 'length > 0 and all(.[]; .message | fromjson | .RequestPath == $p)' <<<"$p" >/dev/null \
+jq -e --arg p "$probe_path" "$JQ_LAB"' length > 0 and all(.[]; lab("path") == $p)' <<<"$p" >/dev/null \
   || fail "--path returned lines for other paths (or nothing)"
 [[ "$(cli_logs --path "/absent-$nonce" --limit 100 | jq 'length')" == "0" ]] \
   || fail "--path on an absent path should be an honest empty"
@@ -246,7 +247,7 @@ echo "PASS --path: matches only $probe_path; absent path empty"
 
 # HOST — the fixture's public host matches; a host nothing was served on is empty.
 h="$(cli_logs --host "$host" --path "$probe_path" --limit 100)"
-jq -e --arg h "$host" 'length > 0 and all(.[]; .message | fromjson | .RequestHost == $h)' <<<"$h" >/dev/null \
+jq -e --arg h "$host" "$JQ_LAB"' length > 0 and all(.[]; lab("host") == $h)' <<<"$h" >/dev/null \
   || fail "--host returned lines for other hosts (or nothing)"
 [[ "$(cli_logs --host "absent-$nonce.invalid" --limit 100 | jq 'length')" == "0" ]] \
   || fail "--host on an absent host should be an honest empty"
@@ -254,7 +255,7 @@ echo "PASS --host: matches only $host; absent host empty"
 
 # METHOD — the GET probes match; POST (never sent) is an honest empty.
 m="$(cli_logs --method GET --path "$probe_path" --limit 100)"
-jq -e "$JQ_LAB"' length > 0 and all(.[]; lab("method") == "GET" and (.message | fromjson | .RequestMethod == "GET"))' <<<"$m" >/dev/null \
+jq -e "$JQ_LAB"' length > 0 and all(.[]; lab("method") == "GET")' <<<"$m" >/dev/null \
   || fail "--method GET returned non-GET lines (or nothing)"
 [[ "$(cli_logs --method POST --path "$probe_path" --limit 100 | jq 'length')" == "0" ]] \
   || fail "--method POST should be an honest empty (no POST was sent)"
@@ -263,7 +264,7 @@ echo "PASS --method: GET matches; POST empty"
 # STATUS — exact code matches exactly (200 excludes the 404 probe and vice
 # versa), and Render's 4xx class shorthand matches it too.
 s404="$(cli_logs --status-code 404 --path "$probe_path" --limit 100)"
-jq -e "$JQ_LAB"' length > 0 and all(.[]; lab("statusCode") == "404" and (.message | fromjson | .DownstreamStatus == 404))' <<<"$s404" >/dev/null \
+jq -e "$JQ_LAB"' length > 0 and all(.[]; lab("statusCode") == "404" and lab("level") == "warning")' <<<"$s404" >/dev/null \
   || fail "--status-code 404 returned non-404 lines (or nothing)"
 [[ "$(cli_logs --status-code 200 --path "$probe_path" --limit 100 | jq 'length')" == "0" ]] \
   || fail "--status-code 200 should exclude the 404 probe line"
@@ -301,9 +302,8 @@ done
 for reader in CLI REST; do
   if [[ "$reader" == "CLI" ]]; then lines="$blocked_cli"; else lines="$blocked_rest"; fi
   jq -e --arg p "$blocked_path" --arg h "$host" "$JQ_LAB"' length == 2 and all(.[];
-    lab("type") == "request" and lab("statusCode") == "403" and
-    (.message | fromjson | .RequestPath == $p and .RequestHost == $h and
-      .RequestMethod == "GET" and .DownstreamStatus == 403 and .OriginStatus == 0))' <<<"$lines" >/dev/null \
+    lab("type") == "request" and lab("statusCode") == "403" and lab("path") == $p and
+    lab("host") == $h and lab("method") == "GET" and (.message | test("responseTimeMS=[0-9]+")))' <<<"$lines" >/dev/null \
     || fail "$reader did not expose both truthful edge-refusal lines within 120s"
 done
 [[ "$(jq -c '[.[].id] | sort' <<<"$blocked_cli")" == "$(jq -c '[.[].id] | sort' <<<"$blocked_rest")" ]] \
@@ -316,7 +316,7 @@ done
   || fail "--status-code 200 failed to exclude the edge 403s"
 [[ "$(cli_logs --type request --path "$blocked_path" --limit 100 | jq length)" == "2" ]] \
   || fail "--path did not return both refusals without a status filter"
-jq -e --arg p "$blocked_path" '[.[] | select((.message | fromjson | .RequestPath) == $p)] | length == 2' \
+jq -e --arg p "$blocked_path" "$JQ_LAB"' [.[] | select(lab("path") == $p)] | length == 2' \
   <<<"$(cli_logs --type request --limit 100)" >/dev/null || fail "unfiltered request history omitted refusals"
 api_json GET "/v1/logs/values?resource=$service_id&label=statusCode" | jq -e 'index("403") != null' >/dev/null \
   || fail "statusCode discovery omitted visible 403s"

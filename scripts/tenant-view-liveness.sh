@@ -179,10 +179,11 @@ while [ "$waited" -lt "$LOG_BUDGET" ]; do
       --data-urlencode "startTime=$WINDOW_START" \
       --data-urlencode "limit=100" 2>/dev/null; then
       if [ "$REQUIRE_NONCE" = "1" ]; then
-        # Match the nonce in the raw line rather than filtering by `path`: the
-        # access line is stored verbatim, so a substring match is exact here and
-        # cannot be satisfied by a different request.
-        jq -e --arg n "$NONCE" '[.logs[]? | select(.message | contains($n))] | length > 0' \
+        # Match the nonce in the line's `path` label (w4/m325: the message is
+        # Render's summary, which has no path) or, from a bex-api older than
+        # that, in the raw access line. The nonce is unique to this run, so
+        # neither match can be satisfied by a different request.
+        jq -e --arg n "$NONCE" '[.logs[]? | select((.message | contains($n)) or any(.labels[]?; .name == "path" and (.value | contains($n))))] | length > 0' \
           "$TMP_DIR/request.json" >/dev/null 2>&1 && request_hit=1
       else
         jq -e '(.logs | length) > 0' "$TMP_DIR/request.json" >/dev/null 2>&1 && request_hit=1

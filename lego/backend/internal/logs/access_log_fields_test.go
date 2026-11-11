@@ -37,15 +37,22 @@ import (
 const traefikValuesPath = "../../../../deploy/gitops/base/values/traefik.values.yaml"
 
 // tenantAccessLogFields is the reviewed allowlist, trimmed to Render's request
-// log (w5/099): the method, status code, host, path and response time Render
-// shows, plus the shipper's attribution fields. The request id travels as the
-// kept Rndr-Id header, and the line's own timestamp is the log timestamp.
-// Adding a field to the values file means adding it here, which is the review.
+// log (w5/099, w4/m325): the method, status code, host, path, response time and
+// response bytes Render shows, plus the shipper's attribution fields. The
+// request id, client and user agent travel as the kept headers below, and the
+// line's own timestamp is the log timestamp. Adding a field to the values file
+// means adding it here, which is the review.
 var tenantAccessLogFields = []string{
-	"DownstreamStatus", "Duration",
+	"DownstreamContentSize", "DownstreamStatus", "Duration",
 	"KubernetesIngressName", "KubernetesIngressNamespace",
 	"RequestHost", "RequestMethod", "RequestPath", "ServiceName",
 }
+
+// tenantAccessLogHeaders are the request headers the access log keeps, each
+// one a field of Render's request line (accessRecord): the edge-minted
+// Rndr-Id, the real client the edge names in True-Client-IP, and User-Agent.
+// Any other header can carry a credential.
+var tenantAccessLogHeaders = []string{"Rndr-Id", "True-Client-Ip", "User-Agent"}
 
 // platformAccessLogFields must never reach a tenant (w8/047): the process-wide
 // edge request counter, pod IPs, and the edge's internal routing name.
@@ -72,6 +79,19 @@ func TestAccessLogFieldsAreAReviewedAllowlist(t *testing.T) {
 			t.Errorf("platform-internal field %s is %q, want an explicit drop", name, fields.Names[name])
 		}
 	}
+	if fields.Headers.DefaultMode != "drop" {
+		t.Fatalf("accessLog.fields.headers.defaultMode = %q; Authorization and Cookie would reach tenants", fields.Headers.DefaultMode)
+	}
+	var headers []string
+	for name, mode := range fields.Headers.Names {
+		if mode == "keep" {
+			headers = append(headers, name)
+		}
+	}
+	slices.Sort(headers)
+	if !slices.Equal(headers, tenantAccessLogHeaders) {
+		t.Errorf("kept access-log headers\n got %v\nwant %v", headers, tenantAccessLogHeaders)
+	}
 }
 
 // TestAccessLogFieldsKeepEveryConsumedField scans the access log's readers:
@@ -83,8 +103,9 @@ func TestAccessLogFieldsKeepEveryConsumedField(t *testing.T) {
 		// stage.json expressions (`host = "RequestHost"`) and the line filter
 		// that keeps only access lines (`!= \"ServiceName\"`).
 		"../../../../deploy/gitops/base/log-shipper.yaml": regexp.MustCompile(`=\s*\\?"([A-Z][A-Za-z]+)\\?"`),
-		// LogQL json extractions (`request_path="RequestPath"`).
-		"loki.go":                  regexp.MustCompile(`[a-z_]+="([A-Z][A-Za-z]+)"`),
+		// LogQL json extractions (`request_path="RequestPath"`) and the
+		// request line's record (`json:"Duration"`).
+		"loki.go":                  regexp.MustCompile(`(?:[a-z_]+=|json:)"([A-Z][A-Za-z]+)"`),
 		"../metrics/lokisource.go": regexp.MustCompile(`[a-z_]+="([A-Z][A-Za-z]+)"`),
 	}
 	consumed := map[string]string{}
@@ -102,7 +123,7 @@ func TestAccessLogFieldsKeepEveryConsumedField(t *testing.T) {
 		}
 	}
 	// The readers known today; fewer means a scan path or pattern went stale.
-	for _, field := range []string{"ServiceName", "KubernetesIngressName", "RequestMethod", "DownstreamStatus", "RequestHost", "RequestPath", "Duration"} {
+	for _, field := range []string{"ServiceName", "KubernetesIngressName", "RequestMethod", "DownstreamStatus", "RequestHost", "RequestPath", "Duration", "DownstreamContentSize"} {
 		if _, ok := consumed[field]; !ok {
 			t.Errorf("the scan found no reader of %s; its scan path or pattern is stale", field)
 		}
@@ -117,6 +138,10 @@ func TestAccessLogFieldsKeepEveryConsumedField(t *testing.T) {
 type accessLogFields struct {
 	DefaultMode string            `yaml:"defaultMode"`
 	Names       map[string]string `yaml:"names"`
+	Headers     struct {
+		DefaultMode string            `yaml:"defaultMode"`
+		Names       map[string]string `yaml:"names"`
+	} `yaml:"headers"`
 }
 
 func traefikAccessLogFields(t *testing.T) accessLogFields {

@@ -710,14 +710,13 @@ func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 				continue
 			}
 			labels := entryLabels(st.Stream, q)
+			msg := canonicalHistoryMessage(pair[1], labels[LabelType])
 			if labels[LabelType] == LogTypeRequest {
-				if id := requestLineID(pair[1]); id != "" {
-					labels[LabelRequestID] = id
-				}
+				msg = requestLine(msg, labels)
 			}
 			out = append(out, LogEntry{
 				Timestamp: time.Unix(0, ns).UTC().Format(time.RFC3339Nano),
-				Message:   capLogMessage(canonicalHistoryMessage(pair[1], labels[LabelType])),
+				Message:   capLogMessage(msg),
 				Labels:    labels,
 			})
 		}
@@ -726,17 +725,91 @@ func parseLokiStreams(lr lokiRangeResponse, q LogQuery) ([]LogEntry, error) {
 	return q.capToLimit(out), nil
 }
 
-// requestLineID is the Rndr-Id the edge minted for a request line (w8/m125):
-// Traefik's access log keeps that one request header, as request_Rndr-Id.
-// "" for a line without it (one logged before the edge minted ids).
-func requestLineID(line string) string {
-	var v struct {
-		ID string `json:"request_Rndr-Id"`
+// accessRecord is what a request line shows of Traefik's JSON access record
+// (traefik.values.yaml's allowlist). The record itself stays stored as shipped:
+// the path and host filters and the request metrics parse it.
+type accessRecord struct {
+	Host      string `json:"RequestHost"`
+	Path      string `json:"RequestPath"`
+	Duration  *int64 `json:"Duration"` // nanoseconds
+	Bytes     *int64 `json:"DownstreamContentSize"`
+	ClientIP  string `json:"request_True-Client-Ip"` // Traefik logs a header by its canonical name
+	UserAgent string `json:"request_User-Agent"`
+	// The edge-minted Rndr-Id (w8/m125), as the request carried it and as
+	// the response returned it.
+	RequestID  string `json:"request_Rndr-Id"`
+	ResponseID string `json:"downstream_Rndr-Id"`
+}
+
+// requestLine renders a stored access record as Render's request-log line
+// (w4/m325, docs/render-artifacts/request-logs.md): the message is
+// `clientIP="…" requestID="…" responseTimeMS=N responseBytes=N userAgent="…"`,
+// and the method, status, host, path and level are labels. A field the record
+// lacks (a line shipped before the edge logged it) is left out, and the
+// response time is truncated to whole milliseconds. labels gains host, path, a
+// level from the status label's class, and requestID, which only GraphQL
+// shows: Render's label vocabulary has no requestID. A line that is not an
+// access record, or carries none of the message's fields, is returned as
+// stored.
+func requestLine(stored string, labels map[string]string) string {
+	var r accessRecord
+	if json.Unmarshal([]byte(stored), &r) != nil {
+		return stored
 	}
-	if json.Unmarshal([]byte(line), &v) != nil {
-		return ""
+	id := r.RequestID
+	if id == "" {
+		id = r.ResponseID
 	}
-	return v.ID
+	var b strings.Builder
+	field := func(key, value string) {
+		if b.Len() > 0 {
+			b.WriteByte(' ')
+		}
+		b.WriteString(key + "=" + value)
+	}
+	if r.ClientIP != "" {
+		field("clientIP", strconv.Quote(r.ClientIP))
+	}
+	if id != "" {
+		field("requestID", strconv.Quote(id))
+	}
+	if r.Duration != nil {
+		field("responseTimeMS", strconv.FormatInt(*r.Duration/int64(time.Millisecond), 10))
+	}
+	if r.Bytes != nil {
+		field("responseBytes", strconv.FormatInt(*r.Bytes, 10))
+	}
+	if r.UserAgent != "" {
+		field("userAgent", strconv.Quote(r.UserAgent))
+	}
+	if r.Host != "" {
+		labels[LabelHost] = r.Host
+	}
+	if r.Path != "" {
+		labels[LabelPath] = r.Path
+	}
+	if id != "" {
+		labels[LabelRequestID] = id
+	}
+	if status := labels[LabelStatusCode]; status != "" && labels[LabelLevel] == "" {
+		labels[LabelLevel] = statusLevel(status)
+	}
+	if b.Len() == 0 {
+		return stored
+	}
+	return b.String()
+}
+
+// statusLevel is the level Render gives a request line: error for a 5xx,
+// warning for a 4xx, info otherwise.
+func statusLevel(status string) string {
+	switch status[0] {
+	case '5':
+		return "error"
+	case '4':
+		return "warning"
+	}
+	return "info"
 }
 
 // canonicalHistoryMessage strips the single kubelet transport line terminator a

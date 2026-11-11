@@ -53,15 +53,18 @@ function lineKey(
 
 // makeLogLine is the single place a LogLine is built — both wire shapes converge
 // here so the key derivation, the once-computed formatted `time`, and the `app`
-// type fallback live in one spot. level/method/statusCode come from the entry's
-// labels (empty for an app line without them, populated for a request line).
+// type fallback live in one spot. level/method/statusCode/host/path come from
+// the entry's labels (empty for an app line without them, populated for a
+// request line).
 function makeLogLine(
   id: string | undefined,
   timestamp: string,
   instance: string,
   message: string,
   type: string,
-  labels: { level?: string; method?: string; statusCode?: string } = {},
+  labels: Partial<
+    Pick<LogLine, "level" | "method" | "statusCode" | "host" | "path">
+  > = {},
 ): LogLine {
   return {
     key: lineKey(id, timestamp, instance, message),
@@ -75,6 +78,8 @@ function makeLogLine(
     level: labels.level ?? "",
     method: labels.method ?? "",
     statusCode: labels.statusCode ?? "",
+    host: labels.host ?? "",
+    path: labels.path ?? "",
   };
 }
 
@@ -94,6 +99,8 @@ export function toLogLine(e: GraphQLLogEntry): LogLine {
       level: e.level ?? "",
       method: e.method ?? "",
       statusCode: e.statusCode ?? "",
+      host: e.host ?? "",
+      path: e.path ?? "",
     },
   );
 }
@@ -141,6 +148,8 @@ export function fromRenderLog(log: RenderLog): LogLine {
       level: label("level"),
       method: label("method"),
       statusCode: label("statusCode"),
+      host: label("host"),
+      path: label("path"),
     },
   );
 }

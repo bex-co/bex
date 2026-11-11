@@ -168,6 +168,8 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
         level: "",
         method: "",
         statusCode: "",
+        host: "",
+        path: "",
         spans: null,
       },
     ];
@@ -232,6 +234,8 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
         level: "",
         method: "",
         statusCode: "",
+        host: "",
+        path: "",
         spans: null,
       },
     ];
@@ -317,6 +321,8 @@ describe("LogViewer store-unavailable state (w5/008)", () => {
         level: "",
         method: "",
         statusCode: "",
+        host: "",
+        path: "",
         spans: null,
       },
     ];
@@ -442,6 +448,8 @@ describe("LogViewer URL-backed filter state (w7/m42)", () => {
         level: "",
         method: "",
         statusCode: "",
+        host: "",
+        path: "",
         spans: null,
       },
     ];
@@ -517,6 +525,8 @@ describe("LogViewer populated background failures", () => {
           level: "",
           method: "",
           statusCode: "",
+          host: "",
+          path: "",
           spans: null,
         },
       ];
@@ -550,6 +560,8 @@ describe("LogViewer combined live reader (w4/m192)", () => {
       level: "",
       method: "",
       statusCode: "",
+      host: "",
+      path: "",
       spans: null,
     };
   };

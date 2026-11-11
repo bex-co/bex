@@ -132,10 +132,12 @@ accessLog:
     # An allowlist (w5/076): the message a tenant reads is the raw JSON line
     # (ADR010), so a field reaches it only when named here, and a field a
     # Traefik upgrade adds stays dropped until it is reviewed and listed.
-    # Trimmed to Render's request log (w5/099): Render shows the method, status
-    # code, host, path, response time and request id, and nothing here is kept
-    # that neither Render shows nor the shipper or bex-api reads
-    # (access_log_fields_test.go checks both).
+    # Trimmed to Render's request log (w5/099, w4/m325): Render labels the
+    # method, status code, host and path, and its message carries the client IP,
+    # request id, response time, response bytes and user agent
+    # (docs/render-artifacts/request-logs.md). Nothing here is kept that neither
+    # Render shows nor the shipper or bex-api reads (access_log_fields_test.go
+    # checks both).
     defaultMode: drop
     names:
       # Platform internals stay dropped (w8/047): RequestCount is the
@@ -150,19 +152,27 @@ accessLog:
       ServiceName: keep
       KubernetesIngressName: keep
       KubernetesIngressNamespace: keep
-      # Render's request-log fields (the response time is Duration).
+      # Render's request-log fields (the response time is Duration, the
+      # response bytes DownstreamContentSize).
       RequestMethod: keep
       DownstreamStatus: keep
       RequestHost: keep
       RequestPath: keep
       Duration: keep
+      DownstreamContentSize: keep
     headers:
       defaultMode: drop
-      # The edge-minted request id (w8/m125): bex-api reads it as the request
-      # line's requestID. The client-identity plugin replaces any caller value
-      # before this log sees the request.
+      # The edge-minted request id (w8/m125) and the real client the
+      # client-identity plugin names in True-Client-IP (w8/m123): bex-api reads
+      # them as the request line's requestID and clientIP. The plugin replaces
+      # any caller value before this log sees the request. User-Agent is the
+      # line's userAgent, as on Render (w4/m325). Every other header, cookies
+      # and credentials included, stays dropped. Names are Go's canonical
+      # header spelling (True-Client-Ip), the form Traefik logs them under.
       names:
         Rndr-Id: keep
+        True-Client-Ip: keep
+        User-Agent: keep
     # Deploy-hook credentials use the `key` query parameter so they remain
     # copy/paste URLs without entering RequestPath. Drop every query parameter
     # before the raw access-log sink; request-log filtering never depends on it.

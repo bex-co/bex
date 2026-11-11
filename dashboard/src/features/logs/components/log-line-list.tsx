@@ -398,6 +398,7 @@ const LogRow = memo(function LogRow({
   onInstanceFilter?: (instance: string) => void;
   t: Translate;
 }) {
+  const isRequest = line.type === LOG_TYPE_REQUEST;
   return (
     <div
       data-index={index}
@@ -438,14 +439,14 @@ const LogRow = memo(function LogRow({
         )
       ) : null}
       {/* A request line leads with method/status chips from its labels
-          (w5/008) — the at-a-glance structure Render's request rows show,
-          instead of the raw Traefik JSON getting app-line treatment. */}
-      {line.type === LOG_TYPE_REQUEST && line.method ? (
+          (w5/008), then the host and path Render's request rows show before
+          the line's own summary (w4/m325). */}
+      {isRequest && line.method ? (
         <span className="shrink-0 rounded bg-muted px-1 font-semibold text-muted-foreground">
           {line.method}
         </span>
       ) : null}
-      {line.type === LOG_TYPE_REQUEST && line.statusCode ? (
+      {isRequest && line.statusCode ? (
         <span
           className={cn(
             "shrink-0 rounded px-1 font-semibold tabular-nums",
@@ -456,6 +457,11 @@ const LogRow = memo(function LogRow({
         </span>
       ) : null}
       <span className="min-w-0 flex-1 text-foreground">
+        {/* Inside the message cell, so a long host or path wraps with the
+            message rather than squeezing it (w5/m139). */}
+        {isRequest && (line.host || line.path)
+          ? `${line.host}${line.path} `
+          : null}
         <LogMessage spans={line.spans} text={line.message} />
       </span>
     </div>

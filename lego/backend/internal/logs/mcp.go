@@ -200,16 +200,35 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 }
 
-// mcpLogEntries drops Core's container label, which Render's closed label
-// vocabulary does not have and the REST line leaves off too (w3/053).
+// mcpLogEntries keeps only the labels the REST line carries (renderLabels):
+// Render's label vocabulary is closed, so Core's container and requestID stay
+// off MCP too (w3/053, w4/m325).
 func mcpLogEntries(entries []LogEntry) []LogEntry {
 	out := make([]LogEntry, len(entries))
 	for i, e := range entries {
 		out[i] = e
-		if _, ok := e.Labels["container"]; ok {
+		if hasCoreOnlyLabel(e.Labels) {
 			out[i].Labels = maps.Clone(e.Labels)
-			delete(out[i].Labels, "container")
+			maps.DeleteFunc(out[i].Labels, func(k, _ string) bool { return !renderLabelKeys[k] })
 		}
 	}
 	return out
+}
+
+// renderLabelKeys is the set of LogEntry label keys a REST line carries.
+var renderLabelKeys = func() map[string]bool {
+	keys := map[string]bool{}
+	for _, l := range renderLabels {
+		keys[l.key] = true
+	}
+	return keys
+}()
+
+func hasCoreOnlyLabel(labels map[string]string) bool {
+	for k := range labels {
+		if !renderLabelKeys[k] {
+			return true
+		}
+	}
+	return false
 }
