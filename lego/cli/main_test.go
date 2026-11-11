@@ -267,8 +267,13 @@ func TestBexBinaryDeviceLoginRefreshAndLogoutStayInBexConfig(t *testing.T) {
 
 	logout := exec.Command(binary, "logout")
 	logout.Env = environment
-	if output, err := logout.CombinedOutput(); err != nil {
+	output, err := logout.CombinedOutput()
+	if err != nil {
 		t.Fatalf("bex logout: %v\n%s", err, output)
+	}
+	// Run-time copy names Bex, as Render's own CLI names Render (w2/073).
+	if !strings.Contains(string(output), "Successfully logged out of Bex.\nRun `bex login` to log back in.") || strings.Contains(string(output), "Render") {
+		t.Errorf("bex logout output = %q", output)
 	}
 	if !revoked {
 		t.Error("bex logout did not revoke the stored Bex access token")

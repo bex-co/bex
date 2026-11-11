@@ -157,3 +157,28 @@ func envValue(env []string, key string) string {
 	}
 	return ""
 }
+
+// w2/073 (user decision D2=A, 2026-11-11): run-time copy that names Render as
+// the product reads Bex. Render's own CLI names Render; the bex CLI names Bex.
+func TestBlueprintApproveNextStepNamesBex(t *testing.T) {
+	api := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost && r.URL.Path == "/v1/blueprints/exs-d0k8jv3e4t2s73a1b2c0/approve" {
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"id":"exe-d0k8jv3e4t2s73a1b2c1","status":"pending","blueprintId":"exs-d0k8jv3e4t2s73a1b2c0"}`))
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	t.Cleanup(api.Close)
+	stdout, stderr := runAgainst(t, api.URL, "ea", "blueprints", "approve", "exs-d0k8jv3e4t2s73a1b2c0", "-o", "json")
+	var out struct {
+		Meta struct{ Next string }
+	}
+	if err := json.Unmarshal([]byte(stdout), &out); err != nil {
+		t.Fatalf("json output: %v\n%s\nstderr: %s", err, stdout, stderr)
+	}
+	want := "Bex will start applying your planned changes. Monitor progress at the provided dashboard URL, or check the affected services with `bex services` and `bex deploys` commands."
+	if out.Meta.Next != want {
+		t.Fatalf("meta.next = %q, want %q", out.Meta.Next, want)
+	}
+}

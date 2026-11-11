@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"testing"
 
 	"github.com/render-oss/cli/pkg/command"
@@ -201,5 +202,106 @@ func TestRuntimeOutputFollowsTheOutputFormat(t *testing.T) {
 		if !bytes.Contains(out.Bytes(), []byte("bex ea blueprints approve exs-1")) || bytes.Contains(out.Bytes(), []byte("render ea")) {
 			t.Errorf("%s: output = %q", format, out.String())
 		}
+	}
+}
+
+// w2/073 (user decision D2=A, 2026-11-11): run-time copy that names Render as
+// the product reads Bex, in its exact upstream phrases only.
+func TestRuntimeOutputRebrandsProductProse(t *testing.T) {
+	root := &cobra.Command{Use: "bex"}
+	root.AddCommand(&cobra.Command{Use: "services"}, &cobra.Command{Use: "deploys"})
+	text := command.TEXT
+	c := &cobra.Command{Use: "approve"}
+	c.SetContext(command.SetFormatInContext(context.Background(), &text))
+	for _, tc := range []struct {
+		mode    stdoutMode
+		in, out string
+	}{
+		{plainOutput, "Successfully logged out of Render.\n", "Successfully logged out of Bex.\n"},
+		{nextStepOutput,
+			"Next:\n  Render will start applying your planned changes. Monitor progress at the provided dashboard URL, or check the affected services with `render services` and `render deploys` commands.\n",
+			"Next:\n  Bex will start applying your planned changes. Monitor progress at the provided dashboard URL, or check the affected services with `bex services` and `bex deploys` commands.\n"},
+		// Data that merely mentions Render stays byte-exact.
+		{plainOutput, "Render-hosted app my-render-db\n", "Render-hosted app my-render-db\n"},
+	} {
+		var out bytes.Buffer
+		w := &runtimeOutput{Writer: &out, cmd: c, root: root, mode: tc.mode}
+		if _, err := w.Write([]byte(tc.in)); err != nil || out.String() != tc.out {
+			t.Errorf("Write(%q) = %q, %v; want %q", tc.in, out.String(), err, tc.out)
+		}
+	}
+}
+
+// The `postgres create` wizard's success screen ("Run `render pg get <name>`")
+// is rewritten while the TUI draws; --output json keeps its API data exact and
+// rewrites only meta.next.
+func TestWizardOutputRewritesTheInteractiveScreenOnly(t *testing.T) {
+	root := &cobra.Command{Use: "bex"}
+	root.AddCommand(&cobra.Command{Use: "pg"})
+	for _, tc := range []struct {
+		format  command.Output
+		in, out string
+	}{
+		{command.Interactive,
+			"\nSuccess!\n\nDatabase my-db (dpg-1) was created.\n\nRun `render pg get my-db` to check if it's ready yet.\n",
+			"\nSuccess!\n\nDatabase my-db (dpg-1) was created.\n\nRun `bex pg get my-db` to check if it's ready yet.\n"},
+		{command.JSON,
+			`{"name":"render pg note","meta":{"next":"render pg get my-db"}}`,
+			`{"name":"render pg note","meta":{"next":"bex pg get my-db"}}`},
+	} {
+		c := &cobra.Command{Use: "create"}
+		format := tc.format
+		c.SetContext(command.SetFormatInContext(context.Background(), &format))
+		var out bytes.Buffer
+		w := &runtimeOutput{Writer: &out, cmd: c, root: root, mode: wizardOutput}
+		if _, err := w.Write([]byte(tc.in)); err != nil || out.String() != tc.out {
+			t.Errorf("%s: Write = %q, %v; want %q", tc.format, out.String(), err, tc.out)
+		}
+	}
+}
+
+type fakeTerminal struct {
+	bytes.Buffer
+	fd uintptr
+}
+
+func (f *fakeTerminal) Close() error { return nil }
+func (f *fakeTerminal) Fd() uintptr  { return f.fd }
+
+// A TUI sizes its screen from a terminal stdout, so wrapping a terminal keeps
+// one: the wrapper still satisfies the term.File shape bubbletea checks, passes
+// Fd through, and rewrites what is written. A non-terminal stays a plain writer.
+func TestRuntimeOutputKeepsATerminalStdoutATerminal(t *testing.T) {
+	root := &cobra.Command{Use: "bex"}
+	pg := &cobra.Command{Use: "postgres", Aliases: []string{"pg"}}
+	var seen io.Writer
+	create := &cobra.Command{Use: "create", RunE: func(c *cobra.Command, _ []string) error {
+		seen = c.OutOrStdout()
+		_, err := io.WriteString(c.OutOrStdout(), "Run `render pg get my-db` to check if it's ready yet.\n")
+		return err
+	}}
+	pg.AddCommand(create)
+	root.AddCommand(pg)
+	brandRuntimeOutput(root)
+
+	tty := &fakeTerminal{fd: 7}
+	create.SetOut(tty)
+	if err := create.RunE(create, nil); err != nil {
+		t.Fatal(err)
+	}
+	term, ok := seen.(terminalFile)
+	if !ok || term.Fd() != 7 {
+		t.Fatalf("wrapped terminal stdout = %T, want a terminalFile passing Fd 7 through", seen)
+	}
+	if got := tty.String(); got != "Run `bex pg get my-db` to check if it's ready yet.\n" {
+		t.Fatalf("terminal output = %q", got)
+	}
+	var buf bytes.Buffer
+	create.SetOut(&buf)
+	if err := create.RunE(create, nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, isTerm := seen.(terminalFile); isTerm {
+		t.Fatalf("a non-terminal stdout became a terminalFile: %T", seen)
 	}
 }

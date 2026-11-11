@@ -44,9 +44,19 @@ import (
 //
 // Only command references change: `render` followed by a command the root
 // actually has, at a line start or after a backtick, quote or "| ". URLs
-// (render.com), file names (render.yaml), RENDER_* variables and "Render"
-// prose never match.
+// (render.com), file names (render.yaml) and RENDER_* variables never match.
+// "Render" as the product name changes only in the exact upstream phrases of
+// runtimeProse (w2/073, extending D4=A).
 const runtimeWrapped = "bex.co/runtime-output"
+
+// runtimeProse is upstream run-time copy that names Render as the product the
+// user is talking to. Render's own CLI names Render, so the bex CLI names Bex
+// (w2/073, user decision D2=A 2026-11-11). Exact phrases only, so API data
+// around them never matches.
+var runtimeProse = strings.NewReplacer(
+	"Successfully logged out of Render.", "Successfully logged out of Bex.",
+	"Render will start applying your planned changes.", "Bex will start applying your planned changes.",
+)
 
 // runtimeStdout maps a command path below the root to how its stdout is
 // rewritten. Extend it on a pin bump when a new command prints a next step
@@ -57,6 +67,8 @@ var runtimeStdout = map[string]stdoutMode{
 	"ea blueprints approve": nextStepOutput,
 	"ea blueprints update":  nextStepOutput,
 	"logout":                plainOutput,
+	// The interactive wizard's success screen ends "Run `render pg get <name>`".
+	"postgres create": wizardOutput,
 }
 
 type stdoutMode int
@@ -68,6 +80,11 @@ const (
 	// nextStepOutput rewrites only the next step: JSON/YAML meta.next, or the
 	// line after the text "Next:" title. API data around it stays byte-exact.
 	nextStepOutput
+	// wizardOutput is plainOutput while the interactive TUI draws and
+	// nextStepOutput for --output json/yaml/text. The frames carry API data too
+	// (workspace, project and environment names), which only a real
+	// `render <command>` reference or a runtimeProse phrase would change.
+	wizardOutput
 )
 
 func brandRuntimeOutput(root *cobra.Command) {
@@ -84,7 +101,7 @@ func brandRuntimeOutput(root *cobra.Command) {
 		c.RunE = func(c *cobra.Command, args []string) error {
 			if mode != 0 {
 				out := c.OutOrStdout()
-				c.SetOut(&runtimeOutput{Writer: out, cmd: c, root: root, mode: mode})
+				c.SetOut(keepTerminal(&runtimeOutput{Writer: out, cmd: c, root: root, mode: mode}, out))
 				defer c.SetOut(out)
 			}
 			return brandError(root, run(c, args))
@@ -121,16 +138,50 @@ type runtimeOutput struct {
 	mode stdoutMode
 }
 
+// terminalFile is the interface bubbletea (via charmbracelet/x/term) checks
+// its output against to size and drive a TUI.
+type terminalFile interface {
+	io.ReadWriteCloser
+	Fd() uintptr
+}
+
+// runtimeTerminal keeps a wrapped terminal stdout a terminal: the `postgres
+// create` wizard's bubbletea program writes its frames through the wrapper
+// but sizes the screen from the file it passes through.
+type runtimeTerminal struct {
+	*runtimeOutput
+	file terminalFile
+}
+
+func (t runtimeTerminal) Read(p []byte) (int, error) { return t.file.Read(p) }
+func (t runtimeTerminal) Close() error               { return t.file.Close() }
+func (t runtimeTerminal) Fd() uintptr                { return t.file.Fd() }
+
+func keepTerminal(w *runtimeOutput, out io.Writer) io.Writer {
+	if f, ok := out.(terminalFile); ok {
+		return runtimeTerminal{runtimeOutput: w, file: f}
+	}
+	return w
+}
+
 // Write rewrites one upstream write. PrintData emits a whole JSON, YAML or
 // text document in a single write, and Println a whole line.
 func (w *runtimeOutput) Write(p []byte) (int, error) {
 	known := knownCommands(w.root)
-	rewrite := func(s string) string { return RewriteCommandRefs(s, known) }
+	rewrite := func(s string) string { return runtimeProse.Replace(RewriteCommandRefs(s, known)) }
+	format := outputFormat(w.cmd)
+	mode := w.mode
+	if mode == wizardOutput {
+		mode = nextStepOutput
+		if format == command.Interactive {
+			mode = plainOutput
+		}
+	}
 	var branded []byte
-	if w.mode == plainOutput {
+	if mode == plainOutput {
 		branded = []byte(rewrite(string(p)))
 	} else {
-		switch outputFormat(w.cmd) {
+		switch format {
 		case command.JSON:
 			branded = rewriteJSONNext(p, rewrite)
 		case command.YAML:
