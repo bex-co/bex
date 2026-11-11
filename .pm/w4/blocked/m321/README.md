@@ -11,13 +11,14 @@
 | [t003](done/t003.md) | Record Render's `ViewConnectionInfoEvent` for Postgres and Key Value connection info — **DONE** | 30m | t001 |
 | [t010](done/t010.md) | One Render-named event per user action wherever Render's enum has one, including `CreateProjectEvent` and `CreateEnvironmentEvent`, which the mapping names but never emits — **DONE** | 50m | t001 |
 | [t004](done/t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules and the event mapping — **DONE** | 20m | t002, t003, t010 |
-| [t005](t005.md) | Live verification in `bex-canary` | 30m | t004 |
+| [t011](t011.md) | A service or project create, and a project delete, name what they created or deleted: their rows read only `{"relation":"can_create"}` | 35m | t004 |
+| [t005](t005.md) | Live verification in `bex-canary` | 30m | t004, t011 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008 |
+| [t009](t009.md) | Closeout | 10m | t007, t008, t011 |
 
-Ten tasks, 310m (5h10m). t010 was added in round 58.
+Eleven tasks, 345m (5h45m). t010 was added in round 58, t011 in round 144.
 
 **Major (compliance).** Revealing a secret or a database password leaves no trail. In the same log, 43% of the rows are the dashboard's own billing-status reads. Render's audit log records the first and not the second.
 
@@ -139,3 +140,26 @@ Signed in as the `bex-canary` admin on `dashboard.bex.co`, after the release pin
   - w2/blocked/070 covers Stripe-portal payment changes. w10/blocked/002 is a live Render capture.
   - `grep -rn "ViewEnvVarValues\|ViewConnectionInfo" .pm docs lego/backend` finds only the pinned spec. No open item.
   - **Not deploy lag:** `git log a0d5802594e9..origin/main -- lego/backend/internal/core/audit.go lego/backend/internal/audit` is empty.
+
+## Post-release probe (QA loop round 144, 2026-11-11)
+
+Pin `8330744bd643` (`9126d59d7`, 20:02 UTC) contains `0e5a309c0`. Signed in as the `bex-canary` admin; `t0` = 2026-11-11T22:38:11Z.
+
+Fixtures, all deleted afterwards (DELETE 204, then GET 404):
+
+- Free image web service `qa-20261111-r144-aud` (`srv-dbqet40fss2c73f208m0`, `QA_AUDIT_ONE`/`QA_AUDIT_TWO`);
+- Free Key Value `qa-20261111-r144-kv` (`red-dbqeta0fss2c73f208o0`);
+- REST project `qa-20261111-r144-proj` (`prj-dbqevcso6rds73e87te0`, environments Production and Staging).
+
+`GET …/audit-logs?startTime=<t0>` returned 12 rows.
+
+- **DoD 1 passes.** Billing, Workspace Settings `#team` and `#audit-logs` were each opened three times, and the audit-logs API was paged three times. They added no `billing.Status`, `members.ListInvites`, `audit.List` or `apps.PlanBlueprint` row. `CreateServerEvent` for the new service was recorded.
+- **DoD 2 passes (partly run).** Opening the Environment tab, then one dashboard Reveal (`QA_AUDIT_ONE`), then `GET …/env-vars`, gave exactly 2 `ViewEnvVarValuesEvent` rows. Their metadata is `{"service":"srv-dbqet40fss2c73f208m0","targetName":"qa-20261111-r144-aud"}`. Not run: Export → Download .env, and an env-group reveal.
+- **DoD 3 passes for Key Value.** `GET …/connection-info` plus the dashboard's "Reveal connection info" gave 2 `ViewConnectionInfoEvent` rows naming `red-dbqeta0fss2c73f208o0` / `qa-20261111-r144-kv`. Not run for Postgres: the workspace's one Free Postgres slot was held by another session's `qa-20261111-699a-pg` (`FREE_INSTANCE_LIMIT`).
+- **DoD 4 passes.** The dashboard's Export as CSV (2026-10-13 → 2026-11-11) contained every row above, with the new events in the `event` column. Its `actor` column holds the identity UUID while the dashboard shows the email; Render's export format was not captured.
+- **DoD 5 passes on counts.** Create with two environments, add the service to Production, move it to Staging, delete the service, then delete the empty project. That gave exactly 1 `CreateProjectEvent`, 2 `MoveEnvironmentResourceEvent` (two moves were made) and 1 `DeleteProjectEvent`. No `projects.CreateWithEnvironments` or `environments.SetServices` rows appeared.
+- **New, filed as t011.**
+  - `CreateServerEvent`, `CreateProjectEvent` and `DeleteProjectEvent` carry only `{"relation":"can_create"}`, so the row doesn't say what was created or deleted.
+  - By contrast, `CreateRedisEvent`, `DeleteRedisEvent` and `DeleteServerEvent` name their resource.
+  - The dashboard's Resource column shows `workspace:tea-daif693dqjvc73e7as3g` for the delete rows.
+
