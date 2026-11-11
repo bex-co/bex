@@ -549,6 +549,12 @@ const enKeyValue: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
+  "keyvalue.planPausedReason": {
+    message:
+      'Key Value plan "{name}" is temporarily unavailable; choose {largest} or a smaller plan.',
+    description:
+      "A paused Key Value plan's tooltip and screen-reader reason, composed in the dashboard's language; matches bex-api's English unavailableReason (w4/552)",
+  },
   "keyvalue.planPickerSave": {
     message: "Save",
     description: "Key Value plan-picker save button",

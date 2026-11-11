@@ -1565,6 +1565,12 @@ const enServices: Record<string, TranslationEntry> = {
       "The service resizes and rolls with no downtime — in-flight requests finish before old instances are replaced.",
     description: "Plan-change confirm dialog body",
   },
+  "services.instanceTypePausedReason": {
+    message:
+      '"{name}" is temporarily unavailable; choose {largest} or a smaller instance type.',
+    description:
+      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+  },
   "services.planPickerConfirmBodyCron": {
     message: "Runs that start after the change use the new instance type.",
     description:

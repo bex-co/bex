@@ -537,6 +537,12 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description:
       "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
+  "keyvalue.planPausedReason": {
+    message:
+      "Key Value 实例规格“{name}”暂不可用，请选择 {largest} 或更小的规格。",
+    description:
+      "A paused Key Value plan's tooltip and screen-reader reason, composed in the dashboard's language; matches bex-api's English unavailableReason (w4/552)",
+  },
   "keyvalue.planPickerSave": {
     message: "保存",
     description: "Key Value plan-picker save button",

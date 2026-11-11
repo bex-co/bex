@@ -1534,6 +1534,11 @@ const zhServices: Record<string, TranslationEntry> = {
       "服务将调整规格并无停机滚动更新——进行中的请求会先完成再替换旧实例。",
     description: "Plan-change confirm dialog body",
   },
+  "services.instanceTypePausedReason": {
+    message: "“{name}”暂不可用，请选择 {largest} 或更小的实例类型。",
+    description:
+      "A paused instance type's tooltip and screen-reader reason, composed in the dashboard's language from the tier and the largest still offered; matches bex-api's English unavailableReason (w4/552)",
+  },
   "services.planPickerConfirmBodyCron": {
     message: "更改之后开始的运行会使用新的实例类型。",
     description:

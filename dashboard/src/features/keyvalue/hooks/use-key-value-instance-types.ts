@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { useCatalogRetry } from "@/common/hooks/use-catalog-retry";
+import { useTranslations } from "@/common/hooks/use-translations";
+import { withPausedReasons } from "@/common/lib/paused-tier";
 import { KeyValueInstanceTypesDocument } from "@/graphql/definitions";
 import type { KeyValueInstanceTypeView } from "@/features/keyvalue/types";
 
@@ -26,23 +28,25 @@ export function useKeyValueInstanceTypes(): UseKeyValueInstanceTypesResult {
     KeyValueInstanceTypesDocument,
   );
   const { retry, retrying } = useCatalogRetry(refetch);
+  const { t } = useTranslations();
 
-  const instanceTypes = useMemo<KeyValueInstanceTypeView[]>(
-    () =>
-      (data?.keyValueInstanceTypes ?? [])
-        .filter((t): t is NonNullable<typeof t> => t?.id != null)
-        .map((t) => ({
-          id: t.id!,
-          name: t.name ?? t.id!,
-          cpu: t.cpu ?? "",
-          memory: t.memory ?? "",
-          storageGB: t.storageGB ?? 0,
-          monthlyUsd: t.monthlyUsd ?? "",
-          available: t.available,
-          unavailableReason: t.unavailableReason,
-        })),
-    [data],
-  );
+  const instanceTypes = useMemo<KeyValueInstanceTypeView[]>(() => {
+    const tiers = (data?.keyValueInstanceTypes ?? [])
+      .filter((it): it is NonNullable<typeof it> => it?.id != null)
+      .map((it) => ({
+        id: it.id!,
+        name: it.name ?? it.id!,
+        cpu: it.cpu ?? "",
+        memory: it.memory ?? "",
+        storageGB: it.storageGB ?? 0,
+        monthlyUsd: it.monthlyUsd ?? "",
+        available: it.available,
+        unavailableReason: it.unavailableReason,
+      }));
+    return withPausedReasons(tiers, (name, largest) =>
+      t("keyvalue.planPausedReason", { name, largest }),
+    );
+  }, [data, t]);
 
   return { instanceTypes, loading, error, retry, retrying };
 }

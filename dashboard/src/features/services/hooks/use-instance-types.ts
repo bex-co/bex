@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { useCatalogRetry } from "@/common/hooks/use-catalog-retry";
+import { useTranslations } from "@/common/hooks/use-translations";
+import { withPausedReasons } from "@/common/lib/paused-tier";
 import { InstanceTypesDocument } from "@/graphql/definitions";
 
 /** One catalog tier, as the picker and Settings row consume it. */
@@ -24,7 +26,11 @@ export interface InstanceTypeView {
    * refuses it with INSTANCE_TYPE_UNAVAILABLE.
    */
   available: boolean;
-  /** bex-api's customer-facing reason, "" when available. */
+  /**
+   * Why the tier can't be chosen, in the dashboard's language, "" when
+   * available. bex-api's own reason is English only, so it is used only when
+   * no tier is left to suggest (w4/552).
+   */
   unavailableReason: string;
 }
 
@@ -49,24 +55,26 @@ export interface UseInstanceTypesResult {
 export function useInstanceTypes(): UseInstanceTypesResult {
   const { data, loading, error, refetch } = useQuery(InstanceTypesDocument);
   const { retry, retrying } = useCatalogRetry(refetch);
+  const { t } = useTranslations();
 
-  const instanceTypes = useMemo<InstanceTypeView[]>(
-    () =>
-      (data?.instanceTypes ?? [])
-        .filter((t): t is NonNullable<typeof t> => t?.id != null)
-        .map((t) => ({
-          id: t.id!,
-          name: t.name ?? t.id!,
-          cpu: t.cpu ?? "",
-          memory: t.memory ?? "",
-          monthlyUsd: t.monthlyUsd ?? "",
-          usdPerMinute: t.usdPerMinute ?? "",
-          // An older bex-api without the field lists every tier as selectable.
-          available: t.available ?? true,
-          unavailableReason: t.unavailableReason ?? "",
-        })),
-    [data],
-  );
+  const instanceTypes = useMemo<InstanceTypeView[]>(() => {
+    const tiers = (data?.instanceTypes ?? [])
+      .filter((it): it is NonNullable<typeof it> => it?.id != null)
+      .map((it) => ({
+        id: it.id!,
+        name: it.name ?? it.id!,
+        cpu: it.cpu ?? "",
+        memory: it.memory ?? "",
+        monthlyUsd: it.monthlyUsd ?? "",
+        usdPerMinute: it.usdPerMinute ?? "",
+        // An older bex-api without the field lists every tier as selectable.
+        available: it.available ?? true,
+        unavailableReason: it.unavailableReason ?? "",
+      }));
+    return withPausedReasons(tiers, (name, largest) =>
+      t("services.instanceTypePausedReason", { name, largest }),
+    );
+  }, [data, t]);
 
   const byID = (id: string | null | undefined) =>
     id ? instanceTypes.find((t) => t.id === id) : undefined;
