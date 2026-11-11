@@ -5018,6 +5018,18 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Rollback confirm dialog body naming the commit being restored",
   },
+  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
+    message:
+      "The service will run this deploy's image and retained configuration. Saved settings stay unchanged and apply with the next standard deploy. Older deploys without retained configuration restore only the image.",
+    description:
+      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
+  },
+  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
+    message:
+      "The service will run this deploy's image (built from {commit}) and retained configuration. Saved settings stay unchanged and apply with the next standard deploy. Older deploys without retained configuration restore only the image.",
+    description:
+      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
+  },
   "services.eventsRollbackConfirmBodyStatic": {
     message:
       "The site will be published again from this deploy. Saved settings stay unchanged, and auto-deploy will be turned off.",

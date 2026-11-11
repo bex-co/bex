@@ -330,6 +330,9 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                           trigger={
                             details?.trigger?.firstBuild ? "create" : undefined
                           }
+                          autoDeployOn={
+                            service ? service.autoDeploy === true : undefined
+                          }
                           onChanged={() => void refetch()}
                         />
                       </div>

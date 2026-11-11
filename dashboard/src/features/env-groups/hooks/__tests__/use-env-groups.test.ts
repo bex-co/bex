@@ -344,7 +344,7 @@ describe("useEnvGroupMutations", () => {
       "Service linked",
       expect.objectContaining({
         description:
-          "The service's configuration changed. With auto-deploy on it deploys the change now; with it off it picks it up with its next deploy.",
+          "The service's configuration changed. A repo-backed service with auto-deploy off picks it up with its next deploy; any other service deploys it now.",
       }),
     );
   });
@@ -364,7 +364,7 @@ describe("useEnvGroupMutations", () => {
       "Service unlinked",
       expect.objectContaining({
         description:
-          "The service's configuration changed. With auto-deploy on it deploys the change now; with it off it picks it up with its next deploy.",
+          "The service's configuration changed. A repo-backed service with auto-deploy off picks it up with its next deploy; any other service deploys it now.",
       }),
     );
   });
@@ -578,7 +578,7 @@ describe("useEnvGroupVarMutations", () => {
       "Saved TOKEN",
       expect.objectContaining({
         description:
-          "Linked services with auto-deploy on are redeploying to apply the change.",
+          "Linked services are redeploying to apply the change, except a repo-backed service with auto-deploy off, which picks it up with its next deploy.",
       }),
     );
   });

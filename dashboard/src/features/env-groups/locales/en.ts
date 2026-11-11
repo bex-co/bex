@@ -369,7 +369,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.varDeleteConfirmBody": {
     message:
-      "Linked services with auto-deploy on redeploy without this variable. A repo-backed service with auto-deploy off keeps serving its current release and picks the change up on its next deploy.",
+      "Linked services redeploy without this variable, except a repo-backed service with auto-deploy off, which keeps serving its current release and picks the change up on its next deploy.",
     description: "Delete env-group variable warning",
   },
   "envGroups.filesTitle": {
@@ -391,7 +391,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.fileDeleteConfirmBody": {
     message:
-      "Linked services with auto-deploy on redeploy without this file. A repo-backed service with auto-deploy off keeps serving its current release and picks the change up on its next deploy.",
+      "Linked services redeploy without this file, except a repo-backed service with auto-deploy off, which keeps serving its current release and picks the change up on its next deploy.",
     description: "Delete env-group secret-file warning",
   },
   "envGroups.servicesTitle": {
@@ -400,7 +400,7 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.servicesDescription": {
     message:
-      "Linking or unlinking changes service configuration. Services with auto-deploy on deploy the change now; services with it off pick it up with their next deploy.",
+      "Linking or unlinking changes service configuration. A repo-backed service with auto-deploy off picks the change up with its next deploy; every other service deploys it now.",
     description: "Env-group linked-services card description",
   },
   "envGroups.selectService": {
@@ -476,12 +476,12 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   },
   "envGroups.rolloutNote": {
     message:
-      "Linked services with auto-deploy on are redeploying to apply the change.",
+      "Linked services are redeploying to apply the change, except a repo-backed service with auto-deploy off, which picks it up with its next deploy.",
     description: "Env-group write rollout toast detail",
   },
   "envGroups.linkChangeNote": {
     message:
-      "The service's configuration changed. With auto-deploy on it deploys the change now; with it off it picks it up with its next deploy.",
+      "The service's configuration changed. A repo-backed service with auto-deploy off picks it up with its next deploy; any other service deploys it now.",
     description: "Env-group link/unlink success toast detail",
   },
   "envGroups.createSuccess": {

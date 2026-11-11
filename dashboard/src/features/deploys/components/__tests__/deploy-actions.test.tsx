@@ -97,6 +97,7 @@ function renderActions(
     commitMessage?: string | null;
     trigger?: string | null;
     buildAvailable?: boolean | null;
+    autoDeployOn?: boolean;
   },
 ) {
   const root = createRootRoute();
@@ -112,6 +113,7 @@ function renderActions(
         commitMessage={commit?.commitMessage}
         trigger={commit?.trigger}
         buildAvailable={commit?.buildAvailable}
+        autoDeployOn={commit?.autoDeployOn}
       />
     ),
   });
@@ -431,6 +433,36 @@ describe("DeployActions", () => {
     );
     expect(dialog.textContent ?? "").not.toContain("built from");
   });
+
+  // w4/554: a rollback turns auto-deploy off only where it is on; an
+  // image-backed service's, or one already off, leaves the sentence out.
+  it.each([
+    [
+      null,
+      "The service will run this deploy's image and retained configuration.",
+    ],
+    ["039c3471ad2f6c9f2d8f5ab0c8d4e1f2a3b4c5d6", "(built from 039c347"],
+  ])(
+    "leaves auto-deploy out of the rollback when it is off (commit %s)",
+    async (commitId, body) => {
+      const user = userEvent.setup();
+      renderActions("deactivated", {
+        commitId,
+        commitMessage: commitId ? "Ship it" : null,
+        autoDeployOn: false,
+      });
+
+      await user.click(
+        await screen.findByRole("button", { name: /^Rollback to / }),
+      );
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent(body);
+      expect(dialog).toHaveTextContent(
+        "Older deploys without retained configuration restore only the image.",
+      );
+      expect(dialog).not.toHaveTextContent(/auto-deploy/i);
+    },
+  );
 
   // The cancel dialog is untouched by the commit threading: it says what
   // happens to the live version and to saved changes (w1/m152 t003, w4/334)

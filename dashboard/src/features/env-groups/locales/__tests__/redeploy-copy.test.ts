@@ -110,6 +110,8 @@ describe("env-group redeploy copy names the auto-deploy gate", () => {
 
 // Since w4/m239 a gated link is staged until the owner's next deploy, so
 // link copy states that rule instead of the old restart warning (w4/390).
+// The gate is only a repo-backed service's: an image-backed one deploys the
+// change now, though its auto-deploy reads off (w4/554).
 describe("env-group link copy states the staged-deploy rule", () => {
   describe.each(CATALOGS)("$name", ({ name, catalog }) => {
     it.each(LINK_KEYS)("%s states the next-deploy rule", (key) => {
@@ -117,8 +119,12 @@ describe("env-group link copy states the staged-deploy rule", () => {
       expect(message, `${name} is missing ${key}`).toBeTruthy();
       const states =
         name === "en"
-          ? /auto-deploy on/i.test(message!) && /next deploy/i.test(message!)
-          : /自动部署/.test(message!) && /下一次部署/.test(message!);
+          ? /repo-backed service with auto-deploy off/i.test(message!) &&
+            /next deploy/i.test(message!) &&
+            /deploys it now/i.test(message!)
+          : /基于代码仓库且已关闭自动部署/.test(message!) &&
+            /下一次部署/.test(message!) &&
+            /立即部署/.test(message!);
       expect(states, `${name} ${key} does not state the rule`).toBe(true);
       const stale = /restart/i.test(message!) || /重启/.test(message!);
       expect(stale, `${name} ${key} still warns of a restart`).toBe(false);

@@ -42,6 +42,9 @@ const deployState: {
   notFound: false,
 };
 
+vi.mock("@/features/services/hooks/use-server", () => ({
+  useServer: () => ({ service: undefined, loading: false, error: undefined }),
+}));
 vi.mock("../../hooks/use-deploy", () => ({
   useDeploy: () => deployState,
 }));

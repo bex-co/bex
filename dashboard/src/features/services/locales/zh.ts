@@ -4905,6 +4905,18 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Rollback confirm dialog body naming the commit being restored",
   },
+  "services.eventsRollbackConfirmBodyNoAutoDeploy": {
+    message:
+      "服务将使用此部署的镜像和保留的配置运行。已保存的设置保持不变，将在下次常规部署时应用。未保留配置的较旧部署只会恢复镜像。",
+    description:
+      "Rollback confirm dialog body when the service's auto-deploy is already off (always so for an image-backed service), so no auto-deploy sentence (w4/554)",
+  },
+  "services.eventsRollbackConfirmBodyCommitNoAutoDeploy": {
+    message:
+      "服务将使用此部署的镜像（基于 {commit} 构建）和保留的配置运行。已保存的设置保持不变，将在下次常规部署时应用。未保留配置的较旧部署只会恢复镜像。",
+    description:
+      "Rollback confirm dialog body naming the commit, when the service's auto-deploy is already off (w4/554)",
+  },
   "services.eventsRollbackConfirmBodyStatic": {
     message: "站点将按此部署重新发布。已保存的设置保持不变，自动部署将被关闭。",
     description:

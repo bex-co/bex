@@ -68,6 +68,12 @@ export interface DeployActionsProps {
    * Absent or true leaves the row to its status.
    */
   buildAvailable?: boolean | null;
+  /**
+   * The service's auto-deploy is on, so the rollback turns it off. False (an
+   * image-backed service, or one already off) leaves that sentence out of the
+   * confirmation (w4/554); absent keeps it.
+   */
+  autoDeployOn?: boolean;
   onChanged?: () => void;
   /** A list shares its service-wide projection across all deploy rows. */
   projection?: ResourceActionsState;
@@ -88,6 +94,7 @@ export function DeployActions({
   commitMessage,
   trigger,
   buildAvailable,
+  autoDeployOn = true,
   onChanged,
   projection,
 }: DeployActionsProps) {
@@ -267,9 +274,13 @@ export function DeployActions({
     ? commit
       ? t("services.eventsRollbackConfirmBodyStaticCommit", { commit })
       : t("services.eventsRollbackConfirmBodyStatic")
-    : commit
-      ? t("services.eventsRollbackConfirmBodyCommit", { commit })
-      : t("services.eventsRollbackConfirmBody");
+    : !autoDeployOn
+      ? commit
+        ? t("services.eventsRollbackConfirmBodyCommitNoAutoDeploy", { commit })
+        : t("services.eventsRollbackConfirmBodyNoAutoDeploy")
+      : commit
+        ? t("services.eventsRollbackConfirmBodyCommit", { commit })
+        : t("services.eventsRollbackConfirmBody");
   // Each row's controls name their deploy, so two rows are not two identical
   // "Rollback" buttons to a screen reader (w4/m141, as w4/084 did for revoke).
   const shortSha = (commitId ?? "").trim().slice(0, 7);

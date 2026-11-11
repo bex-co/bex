@@ -345,6 +345,9 @@ export function DeploysListPage({
                         commitMessage={d.commitMessage}
                         trigger={d.trigger}
                         buildAvailable={d.buildAvailable}
+                        autoDeployOn={
+                          service ? service.autoDeploy === true : undefined
+                        }
                       />
                     </div>
                   ) : null}
