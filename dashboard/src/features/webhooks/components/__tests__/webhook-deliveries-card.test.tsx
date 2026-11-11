@@ -168,6 +168,51 @@ describe("WebhookDeliveriesCard", () => {
     expect(screen.getByText(/Next automatic attempt:/)).toBeInTheDocument();
   });
 
+  // w21/046: a destination bex refuses to dial reads as that in the row, not as
+  // a generic "Transport error" that is only explained behind the click.
+  it("labels a blocked destination apart from a transport error", async () => {
+    const user = userEvent.setup();
+    const blocked: WebhookDeliveryView = {
+      ...deliveries[1],
+      id: "whd-blocked",
+      statusCode: 0,
+      transportError:
+        'Post "https://localhost:3000/hook": destination resolves to a blocked address',
+      responseBody: "",
+    };
+    const flaky: WebhookDeliveryView = {
+      ...deliveries[1],
+      id: "whd-flaky",
+      statusCode: 0,
+      transportError: "dial tcp 203.0.113.9:443: i/o timeout",
+      responseBody: "",
+    };
+    useWebhookDeliveries.mockImplementation(() => ({
+      deliveries: [blocked, flaky],
+      loading: false,
+      loadingMore: false,
+      error: undefined,
+      hasMore: false,
+      loadMore,
+      refresh,
+    }));
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+
+    expect(
+      screen.getByRole("button", { name: /Destination not allowed/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Transport error/ }),
+    ).toBeInTheDocument();
+    // The detail still carries the guard's own sentence.
+    await user.click(
+      screen.getByRole("button", { name: /Destination not allowed/ }),
+    );
+    expect(
+      screen.getByText(/destination resolves to a blocked address/),
+    ).toBeInTheDocument();
+  });
+
   // w2/m96/t004: the Service column used to be a bare truncated `srv-…`, which
   // reads as an opaque token. The recorded name is the label; the id stays on
   // screen (and selectable, so it is still copyable) as secondary text.

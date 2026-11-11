@@ -197,3 +197,32 @@ func TestSafeDialContextFuncMetadataGuard(t *testing.T) {
 		}
 	}
 }
+
+// TestWebhookDashboardVectors pins the literal-host table the dashboard's
+// webhook form mirrors (dashboard/src/features/webhooks/lib/__tests__/
+// unreachable-destination.test.ts), including the boundary addresses just
+// outside each range, and the sentence the dashboard recognizes in a delivery's
+// transport error to label it "Destination not allowed" (w21/046). Change one
+// side and change the other.
+func TestWebhookDashboardVectors(t *testing.T) {
+	for _, raw := range []string{
+		"127.255.255.254", "172.31.255.255", "100.64.0.1", "198.18.0.1", "224.0.0.1",
+		"255.255.255.255", "::", "ff02::1", "fd00::1", "::ffff:127.0.0.1", "::ffff:10.0.0.1",
+		"64:ff9b::7f00:1",
+	} {
+		if ip := net.ParseIP(raw); ip == nil || !netutil.UnsafeOriginIP(ip) {
+			t.Errorf("UnsafeOriginIP(%s) = false; the form flags it", raw)
+		}
+	}
+	for _, raw := range []string{
+		"8.8.8.8", "172.15.0.1", "172.32.0.1", "100.63.255.255", "11.0.0.1", "2606:4700::1111", "::ffff:8.8.8.8",
+	} {
+		if ip := net.ParseIP(raw); ip == nil || netutil.UnsafeOriginIP(ip) {
+			t.Errorf("UnsafeOriginIP(%s) = true; the form accepts it", raw)
+		}
+	}
+	_, err := netutil.SafeDialContext(time.Second)(context.Background(), "tcp", "127.0.0.1:80")
+	if err == nil || !strings.Contains(err.Error(), "destination resolves to a blocked address") {
+		t.Errorf("guard error = %v; the dashboard matches %q", err, "destination resolves to a blocked address")
+	}
+}

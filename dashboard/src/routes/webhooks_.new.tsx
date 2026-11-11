@@ -24,6 +24,8 @@ import { useWebhookFormFeedback } from "@/features/webhooks/hooks/use-webhook-fo
 import { hasFieldErrors } from "@/features/webhooks/lib/validation";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { WebhookUrlNotice } from "@/features/webhooks/components/webhook-url-notice";
+import { isUnreachableWebhookDestination } from "@/features/webhooks/lib/unreachable-destination";
 import { useWorkspace } from "@/features/workspaces/context";
 import { proFeaturesPlan } from "@/features/workspaces/types";
 import { translatedTitleHead } from "@/common/lib/document-head";
@@ -207,7 +209,7 @@ export function NewWebhookPage() {
                       autoComplete="off"
                       inputMode="url"
                       aria-invalid={!!errors.url}
-                      aria-describedby={`webhook-url-help${errors.url ? " webhook-url-error" : ""}`}
+                      aria-describedby={`webhook-url-help${errors.url ? " webhook-url-error" : ""}${!errors.url && isUnreachableWebhookDestination(url) ? " webhook-url-notice" : ""}`}
                     />
                     {errors.url ? (
                       <p
@@ -216,6 +218,8 @@ export function NewWebhookPage() {
                       >
                         {errors.url}
                       </p>
+                    ) : isUnreachableWebhookDestination(url) ? (
+                      <WebhookUrlNotice id="webhook-url-notice" />
                     ) : null}
                   </div>
                   <div

@@ -123,6 +123,32 @@ describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
     expect(screen.getByLabelText("Destination URL")).toHaveFocus();
   });
 
+  // w21/046: Render accepts any URL, so a destination bex can never deliver to
+  // (a loopback, private or cluster-internal address) is noted, not refused.
+  it("notes an unreachable destination beside the URL without blocking Create", async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole("button", { name: "Create webhook" });
+    const url = screen.getByLabelText("Destination URL");
+    const notice = /not reachable from the internet/;
+
+    await user.type(url, "https://example.com/hook");
+    expect(screen.queryByText(notice)).toBeNull();
+
+    await user.clear(url);
+    await user.type(url, "https://localhost:3000/hook");
+    expect(screen.getByText(notice)).toBeInTheDocument();
+    expect(url).not.toHaveAttribute("aria-invalid", "true");
+    expect(url).toHaveAccessibleDescription(
+      expect.stringContaining("not reachable from the internet"),
+    );
+
+    await user.type(screen.getByLabelText("Name"), "local-hook");
+    await user.click(screen.getByRole("checkbox", { name: "Deploy Ended" }));
+    await user.click(screen.getByRole("button", { name: "Create webhook" }));
+    expect(create).toHaveBeenCalledTimes(1);
+  });
+
   it("preflights duplicate names and anchors an authoritative server race to Name", async () => {
     existingNames = ["Existing Hook"];
     const user = userEvent.setup();

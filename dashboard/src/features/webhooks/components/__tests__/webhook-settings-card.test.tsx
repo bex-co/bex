@@ -144,6 +144,28 @@ describe("WebhookSettingsCard (w1/m49/t005)", () => {
     expect(patch.eventTypes).toHaveLength(2);
   });
 
+  // w21/046: an unreachable destination is noted beside the URL, and still saves.
+  it("notes an unreachable destination without blocking Save", async () => {
+    const user = userEvent.setup();
+    renderCard();
+    const url = await screen.findByLabelText("Destination URL");
+    const notice = /not reachable from the internet/;
+    expect(screen.queryByText(notice)).toBeNull();
+
+    await user.clear(url);
+    await user.type(url, "https://10.0.0.5/hook");
+    expect(screen.getByText(notice)).toBeInTheDocument();
+    expect(url).not.toHaveAttribute("aria-invalid", "true");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(update).toHaveBeenCalledWith("whk-1", {
+      url: "https://10.0.0.5/hook",
+    });
+
+    await user.clear(url);
+    await user.type(url, "https://example.com/hook");
+    expect(screen.queryByText(notice)).toBeNull();
+  });
+
   it("renaming sends the name; reverting an edit disables Save again", async () => {
     const user = userEvent.setup();
     renderCard();

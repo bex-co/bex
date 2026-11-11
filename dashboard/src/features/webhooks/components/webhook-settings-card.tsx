@@ -25,6 +25,8 @@ import { useWebhookFormFeedback } from "@/features/webhooks/hooks/use-webhook-fo
 import { hasFieldErrors } from "@/features/webhooks/lib/validation";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { WebhookUrlNotice } from "@/features/webhooks/components/webhook-url-notice";
+import { isUnreachableWebhookDestination } from "@/features/webhooks/lib/unreachable-destination";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
 
 const MASKED_SECRET = "••••••••••••••••••••••••••••••••";
@@ -273,7 +275,11 @@ export function WebhookSettingsCard({
               disabled={!canManage}
               aria-invalid={!!errors.url}
               aria-describedby={
-                errors.url ? "webhook-settings-url-error" : undefined
+                errors.url
+                  ? "webhook-settings-url-error"
+                  : isUnreachableWebhookDestination(url)
+                    ? "webhook-settings-url-notice"
+                    : undefined
               }
             />
             {errors.url ? (
@@ -283,6 +289,8 @@ export function WebhookSettingsCard({
               >
                 {errors.url}
               </p>
+            ) : isUnreachableWebhookDestination(url) ? (
+              <WebhookUrlNotice id="webhook-settings-url-notice" />
             ) : null}
           </div>
           <WebhookSecretField secret={endpoint.secret} />

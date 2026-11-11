@@ -872,6 +872,17 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "发送时间早于",
     description: "Activity delivery-history upper timestamp bound",
   },
+  "webhooks.destinationBlocked": {
+    message: "目标地址不被允许",
+    description:
+      "Delivery result label when bex refused to dial the destination: it resolves to a loopback, private, link-local or cluster-internal address (w21/046)",
+  },
+  "webhooks.destinationUnreachableNotice": {
+    message:
+      "该地址无法从互联网访问，发往它的每次投递都会失败。请使用公网 HTTPS 地址。",
+    description:
+      "Non-blocking notice under the webhook Destination URL when its host is a loopback, private, link-local or cluster-internal address (w21/046)",
+  },
   "webhooks.transportError": {
     message: "传输错误",
     description: "Delivery evidence label when no HTTP response was received",

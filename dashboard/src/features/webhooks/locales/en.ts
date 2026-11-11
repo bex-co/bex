@@ -887,6 +887,17 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Sent before",
     description: "Activity delivery-history upper timestamp bound",
   },
+  "webhooks.destinationBlocked": {
+    message: "Destination not allowed",
+    description:
+      "Delivery result label when bex refused to dial the destination: it resolves to a loopback, private, link-local or cluster-internal address (w21/046)",
+  },
+  "webhooks.destinationUnreachableNotice": {
+    message:
+      "This address is not reachable from the internet, so every delivery to it will fail. Use a public HTTPS address.",
+    description:
+      "Non-blocking notice under the webhook Destination URL when its host is a loopback, private, link-local or cluster-internal address (w21/046)",
+  },
   "webhooks.transportError": {
     message: "Transport error",
     description: "Delivery evidence label when no HTTP response was received",

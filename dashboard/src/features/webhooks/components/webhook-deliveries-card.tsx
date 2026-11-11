@@ -44,6 +44,7 @@ import { useResendWebhookDelivery } from "@/features/webhooks/hooks/use-resend-w
 import { eventLabelKey } from "@/features/webhooks/event-catalog";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { isBlockedDestinationError } from "@/features/webhooks/lib/unreachable-destination";
 import { useServices } from "@/features/services/hooks/use-services";
 import { serviceBaseForType } from "@/features/services/lib/service-base";
 import type { ServiceView } from "@/features/services/types";
@@ -390,7 +391,11 @@ function DeliveryRow({
   } else if (delivery.statusCode > 0) {
     resultSummary = t("webhooks.httpStatus", { status: delivery.statusCode });
   } else if (delivery.transportError) {
-    resultSummary = t("webhooks.transportError");
+    // A destination bex refuses to dial is not a flaky network: say so in the
+    // row instead of only behind the click (w21/046).
+    resultSummary = isBlockedDestinationError(delivery.transportError)
+      ? t("webhooks.destinationBlocked")
+      : t("webhooks.transportError");
   }
   const eventURL =
     delivery.eventId && ownerId
