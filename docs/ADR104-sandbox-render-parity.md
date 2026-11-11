@@ -51,6 +51,8 @@ Matches Render and is shipped by w32/m283: `allow-all` is the default, `deny-all
 
 One rule is easy to miss: **a restored sandbox inherits the source's policy, including allow-list rules, and the policy can be overridden at restore.** `allow-all` as the default applies to a plain create only. m285 must implement inheritance; m283 does not cover it. These rows are ✅: w32/m283 is done and enforcement was verified on production (2026-11-08; ADR018's `networkPolicy` row is ✅). The inheritance rule above is still open.
 
+A listed domain is reachable **by name** from ordinary programs (w8/m152, 2026-11-11). Until then the Alpine base image's resolver gave up on the cluster's search-list candidates, which the DNS filter refuses, so `wget https://<listed>` and `apk add` failed with `bad address` although the policy was correct. Sandbox Pods now ask a dotted name as an absolute name first (`ndots:1`); see [ADR042 § Sandbox network policies](ADR042-sandbox-cluster-substrate.md#sandbox-network-policies-w32m283). A sandbox created before the fix keeps the old resolver setting until it is recreated.
+
 ### D4 — Snapshots
 
 m285 is the vehicle. It is blocked behind w2/m278 (its production walk and the D5 decision), so gap 2 and the D5 sign-off sit on its critical path. The contract it must match:

@@ -24,6 +24,12 @@ spec:
     spec:
       automountServiceAccountToken: false
       restartPolicy: Never
+      # Same resolver setting as the hosted template (w8/m152): a dotted name
+      # is asked as an absolute name first.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       nodeSelector:
         node-role.kubernetes.io/control-plane: ""
       tolerations:

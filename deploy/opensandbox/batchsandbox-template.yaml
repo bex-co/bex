@@ -23,6 +23,16 @@ spec:
       nodeSelector:
         bex.co/pool: sandbox
       restartPolicy: Never
+      # A sandbox's DNS policy admits only the names it may reach, and Cilium
+      # answers every other query REFUSED. With the kubelet's default ndots:5 a
+      # program first asks `example.com.<ns>.svc.cluster.local`; musl (the
+      # Alpine base image) takes that refusal as the lookup's answer, so no
+      # listed name resolved (w8/m152). ndots:1 asks a dotted name as an
+      # absolute name first. Guarded by scripts/gitops-validate.sh.
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
       tolerations:
         - key: bex.co/sandbox
           operator: Equal

@@ -2133,6 +2133,16 @@ batchsandbox_shape="$(yq -N \
   deploy/opensandbox/batchsandbox-template.yaml | tr -d '\n')"
 [ "$batchsandbox_shape" = "sandbox:sandbox:gvisor:false:sandbox:bex.co/sandbox:true:NoSchedule" ] \
   || { echo "FAIL: BatchSandbox security shape is '$batchsandbox_shape'" >&2; fail=1; }
+# Both templates keep ndots:1; the hosted one says why (w8/m152).
+for batchsandbox_template in \
+  deploy/opensandbox/batchsandbox-template.yaml \
+  scripts/dev-env/agent/batchsandbox-template.local.yaml; do
+  batchsandbox_ndots="$(yq -N \
+    '[.spec.template.spec.dnsConfig.options[] | select(.name == "ndots") | .value] | join(",")' \
+    "$batchsandbox_template" | tr -d '\n')"
+  [ "$batchsandbox_ndots" = "1" ] \
+    || { echo "FAIL: $batchsandbox_template must set dnsConfig ndots to \"1\" (got '$batchsandbox_ndots')" >&2; fail=1; }
+done
 
 for required in \
   '[secure_runtime]' \
@@ -2478,6 +2488,8 @@ for required_probe in \
   'allow-all reaches a public non-HTTPS port' \
   'deny-all public HTTPS by IP' \
   'allow-list non-HTTPS port to the approved address' \
+  'approved FQDN through the libc resolver' \
+  'approved FQDN fetched by name over HTTPS' \
   'bex-api-session-egress' \
   'Hubble drops do not contain the unique denied DNS-exfiltration query' \
   'unix:///var/run/cilium/hubble.sock' \

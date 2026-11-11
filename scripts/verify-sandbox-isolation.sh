@@ -834,6 +834,13 @@ expect_denied "deny-all public non-HTTPS port" exec_b /tmp/m35-netprobe tcp 1.1.
 expect_denied "unapproved DNS name resolution" exec_d /tmp/m35-netprobe resolve www.github.com
 expect_denied "unique DNS-exfiltration query" exec_d /tmp/m35-netprobe resolve "${run_id}.attacker.test"
 expect_allowed "approved FQDN with TLS SNI" exec_d /tmp/m35-netprobe tls api.github.com 443 api.github.com
+# m35-netprobe resolves with Go's resolver, which walks past a refused search
+# candidate, so it cannot see the base image's libc failing to (the BatchSandbox
+# template's ndots:1, w8/m152). Any HTTP status proves the fetch: GitHub
+# rate-limits anonymous callers, and a 403 still came from the listed host.
+expect_allowed "approved FQDN through the libc resolver" exec_d getent hosts api.github.com
+expect_allowed "approved FQDN fetched by name over HTTPS" \
+  exec_d sh -c 'wget -S -T 15 -O /dev/null https://api.github.com/ 2>&1 | grep -q "HTTP/"'
 expect_denied "unapproved public FQDN" exec_d /tmp/m35-netprobe tls example.com 443 example.com
 approved_ip="$(exec_d /tmp/m35-netprobe resolve api.github.com | tail -1)"
 [ -n "$approved_ip" ] || fail "could not resolve api.github.com inside the allow-list sandbox"

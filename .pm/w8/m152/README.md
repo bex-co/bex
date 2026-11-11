@@ -1,12 +1,12 @@
 # w8 · m152 — An allow-list sandbox reaches its allowed hosts by name
 
-**Worker:** worker8 **Goal:** in a sandbox created with `--allow-egress-https <domain>`, ordinary programs (`wget`, `apk`, `curl`, `pip`, anything that resolves through libc) reach the listed domain over HTTPS, as on Render; unlisted names stay unreachable. **Status:** todo
+**Worker:** worker8 **Goal:** in a sandbox created with `--allow-egress-https <domain>`, ordinary programs (`wget`, `apk`, `curl`, `pip`, anything that resolves through libc) reach the listed domain over HTTPS, as on Render; unlisted names stay unreachable. **Status:** in progress (t001 done; t002–t007 implemented, live verification pending)
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------- | --- | ---------- |
-| t001 | Reproduce on a cluster and choose the mechanism                        | 40m | —          |
+| t001 | Reproduce on a cluster and choose the mechanism — **DONE**             | 40m | —          |
 | t002 | Make a listed name resolve through libc in an allow-list sandbox       | 45m | t001       |
 | t003 | Blast radius: agent-session and legacy-allowlist sandboxes, glibc image | 30m | t002       |
 | t004 | The isolation matrix probes the allow-list through the libc resolver   | 30m | t002       |
@@ -78,6 +78,42 @@
 - **Unverified:** the Cilium DNS proxy as the source of `REFUSED` (inferred from the policy and the answers, not from Hubble); behavior with a glibc image; wildcard rules (`*.example.com`) were not exercised; `apk` was not run (it fails at the same lookup).
 - **Dedupe:** no match in `.pm/` (open or done) for `bad address`, `ndots`, `musl`, `search domain` near sandboxes; w32/m283 (done 2026-11-08) shipped the feature; w8/244 (plan sizes) and w32/008 (help links) are different findings.
 - **Cleanup:** `sbx-dbpukcthi5vc738gj4vg` and the two control sandboxes were stopped (`terminated`) in the same sweep.
+
+## Mechanism chosen (t001, 2026-11-11 UTC): A — `ndots:1` in the BatchSandbox template
+
+Reproduced on production with the released `bex v0.5.0` and the QA human login, workspace `bex-canary`, in two sandboxes created in the same minute: `sbx-dbpvrnqk10fs73dvo62g` (allow-list `example.com`, `*.iana.org`) and `sbx-dbpvrp2k10fs73dvo63g` (allow-all). Both were terminated afterwards and the workspace's sandbox list is empty.
+
+- **Where `REFUSED` comes from (observed).** The same query to the same resolver (`10.96.0.10`) gets two answers that differ only by the sandbox's policy:
+
+  ```text
+  allow-list   nslookup -type=a example.com.svc.cluster.local.   → REFUSED     (also example.com.cluster.local.)
+  allow-all    nslookup -type=a example.com.svc.cluster.local.   → NXDOMAIN    (also example.com.cluster.local.)
+  ```
+
+  CoreDNS answers `NXDOMAIN`; the refusal is added by the allow-list sandbox's DNS rule. This host has no cluster credentials, so no Hubble flow was read; the isolation matrix already records Hubble evidence for a denied DNS query.
+
+- **A works on the real DNS path.** In the allow-list sandbox, as root, `/etc/resolv.conf` was rewritten from `options ndots:5` to `options ndots:1` (what the kubelet writes for the `dnsConfig` option). Before: `getent hosts example.com` rc 2, `wget: bad address 'example.com'`. After:
+
+  ```text
+  getent hosts example.com      → 2606:4700:10::6814:179a     wget https://example.com      → LISTED-OK
+  getent hosts www.iana.org     → resolves (CNAME followed)   wget https://www.iana.org/    → WILDCARD-OK
+  getent hosts iana.org         → rc 2                        wget https://iana.org/        → bad address   (apex of *.iana.org)
+  getent hosts api.github.com   → rc 2                        wget https://api.github.com   → bad address   (unlisted)
+  wget http://example.com       → download timed out                                                          (plain HTTP)
+  getent hosts kubernetes       → rc 2                                                                        (single label still uses the search list, refused)
+  ```
+
+- **`dnsConfig` reaches the Pod (read in code, to be confirmed by the live replay).** `opensandbox-server` 0.2.2 deep-merges the template under the runtime manifest (`services/k8s/template_manager.py` `_deep_merge`); the runtime Pod spec sets only `automountServiceAccountToken`, `initContainers`, `containers`, `volumes`, `runtimeClassName`, `imagePullSecrets` and a platform `nodeSelector` (`batchsandbox_provider.py:208-243`), so a template `dnsConfig` survives, like `tolerations` does today. The BatchSandbox CRD keeps unknown fields under `spec.template`, and `bex-sandbox-pods` admission does not look at DNS settings.
+- **Libc matrix (local, a resolver that answers `REFUSED` for every unlisted name; search list as in a sandbox):**
+
+  | Image (libc)                             | `ndots:5`                                    | `ndots:1`                     |
+  | ---------------------------------------- | -------------------------------------------- | ----------------------------- |
+  | `alpine:3` (musl), the base image        | every listed name fails                      | listed resolve, unlisted fail |
+  | `node:22-bookworm-slim` (glibc), agent base | listed and the gateway name resolve, unlisted fail | the same                |
+
+- **Rejected.** B (search-suffixed names in the DNS rule): three times the names, a looser `bex-api-sandbox-egress` grammar and a policy tied to the Pod's search list, for the same result. C (Cilium answers `NXDOMAIN`): a cluster-wide agent option set only by `app-cluster.yml`'s Helm install; it would change every FQDN policy's answer and needs a Cilium rollout on production. Neither is filed as a follow-up: A covers every resolver tested.
+- **Rollout.** Argo CD's `opensandbox-server` Application tracks `main` at `deploy/opensandbox`, so the template reaches production on push, not at the next image deploy. Sandboxes created before it keep `ndots:5` until they are recreated.
+- **Agent-template probe did not run.** A `template: agent` sandbox with an allow-list (`sbx-dbpvt12p92ls73cjis00`, then `sbx-dbpvtiip92ls73cjisag`) went `errored` within seconds without a session to drive it, so no exec was possible; both were terminated. The agent row above therefore comes from the agent image's base, not from a production agent Pod.
 
 ## Source + Goal linkage
 
