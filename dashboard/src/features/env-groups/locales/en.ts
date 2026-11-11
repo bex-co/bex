@@ -54,10 +54,6 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Generate",
     description: "Generate an initial environment variable value",
   },
-  "envGroups.removeVar": {
-    message: "Remove variable {index}",
-    description: "Remove an initial environment variable row",
-  },
   "envGroups.addInitialVar": {
     message: "Add Environment Variable",
     description: "Add an initial environment variable row",
@@ -90,10 +86,6 @@ const enEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.fileContentPlaceholder": {
     message: "File contents",
     description: "Initial secret file contents placeholder",
-  },
-  "envGroups.removeFile": {
-    message: "Remove secret file {index}",
-    description: "Remove an initial secret file row",
   },
   "envGroups.addInitialFile": {
     message: "Add Secret File",

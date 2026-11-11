@@ -53,10 +53,6 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "生成",
     description: "Generate an initial environment variable value",
   },
-  "envGroups.removeVar": {
-    message: "删除变量 {index}",
-    description: "Remove an initial environment variable row",
-  },
   "envGroups.addInitialVar": {
     message: "添加环境变量",
     description: "Add an initial environment variable row",
@@ -89,10 +85,6 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
   "envGroups.fileContentPlaceholder": {
     message: "文件内容",
     description: "Initial secret file contents placeholder",
-  },
-  "envGroups.removeFile": {
-    message: "删除密钥文件 {index}",
-    description: "Remove an initial secret file row",
   },
   "envGroups.addInitialFile": {
     message: "添加密钥文件",

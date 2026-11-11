@@ -402,6 +402,9 @@ function NewEnvGroupForm({
                   );
                   setInvalid(false);
                 }}
+                // Named by its row as Remove is (w4/544); the visible label
+                // stays the column's, and the name keeps its word.
+                aria-label={t("services.envRowKey", { n: String(index + 1) })}
                 aria-invalid={
                   (invalid && !isValidEnvVarKey(variable.key)) ||
                   duplicateKeys.has(variable.key.trim())
@@ -441,6 +444,9 @@ function NewEnvGroupForm({
                   );
                 }}
                 placeholder={t("envGroups.varValuePlaceholder")}
+                aria-label={t("services.envRowValue", {
+                  n: String(index + 1),
+                })}
               />
             </div>
             <Button
@@ -448,6 +454,9 @@ function NewEnvGroupForm({
               variant={variable.generateValue ? "secondary" : "outline"}
               className="self-end"
               aria-pressed={variable.generateValue}
+              aria-label={t("services.envRowGenerate", {
+                n: String(index + 1),
+              })}
               onClick={() =>
                 setEnvVars((current) =>
                   current.map((row) =>
@@ -466,7 +475,7 @@ function NewEnvGroupForm({
               variant="ghost"
               size="icon"
               className="self-end"
-              aria-label={t("envGroups.removeVar", { index: index + 1 })}
+              aria-label={t("services.envRowRemove", { n: index + 1 })}
               onClick={() =>
                 setEnvVars((current) =>
                   current.filter((row) => row.id !== variable.id),
@@ -518,6 +527,7 @@ function NewEnvGroupForm({
                   );
                   setInvalid(false);
                 }}
+                aria-label={t("services.fileRowName", { n: String(index + 1) })}
                 aria-invalid={
                   (invalid && !isValidSecretFileName(file.name)) ||
                   duplicateFiles.has(file.name.trim())
@@ -555,6 +565,9 @@ function NewEnvGroupForm({
                   );
                 }}
                 placeholder={t("envGroups.fileContentPlaceholder")}
+                aria-label={t("services.fileRowContent", {
+                  n: String(index + 1),
+                })}
               />
             </div>
             <Button
@@ -562,7 +575,7 @@ function NewEnvGroupForm({
               variant="ghost"
               size="icon"
               className="self-end"
-              aria-label={t("envGroups.removeFile", { index: index + 1 })}
+              aria-label={t("services.fileRowRemove", { n: index + 1 })}
               onClick={() =>
                 setSecretFiles((current) =>
                   current.filter((row) => row.id !== file.id),

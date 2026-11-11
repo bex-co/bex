@@ -884,11 +884,11 @@ describe("NewServicePage", () => {
       await user.click(screen.getByRole("option", { name: "Production" }));
       await user.click(screen.getByRole("button", { name: "Add Secret File" }));
       await user.type(
-        screen.getByRole("textbox", { name: "Secret file name" }),
+        screen.getByRole("textbox", { name: "File name for secret file 1" }),
         "credentials.json",
       );
       await user.type(
-        screen.getByRole("textbox", { name: "Secret file contents" }),
+        screen.getByRole("textbox", { name: "Secret file 1 contents" }),
         "secret-content",
       );
       await user.click(screen.getByRole("button", { name: /Deploy Service/i }));
@@ -1360,9 +1360,12 @@ describe("NewServicePage", () => {
       renderPage();
       await screen.findAllByRole("radiogroup");
       await user.click(screen.getByRole("button", { name: "Add Variable" }));
-      await user.type(screen.getAllByLabelText("Key")[0], "PORT");
+      await user.type(
+        screen.getAllByLabelText(/^Variable \d+ key$/)[0],
+        "PORT",
+      );
 
-      expect(screen.getAllByLabelText("Key")[0]).toHaveAttribute(
+      expect(screen.getAllByLabelText(/^Variable \d+ key$/)[0]).toHaveAttribute(
         "aria-invalid",
         "false",
       );
@@ -1672,8 +1675,8 @@ describe("NewServicePage", () => {
       expect(deploy).toBeEnabled();
 
       await user.click(screen.getByRole("button", { name: /Add variable/i }));
-      await user.type(screen.getByLabelText("Key"), "PORT");
-      const value = screen.getByLabelText("Value");
+      await user.type(screen.getByLabelText("Variable 1 key"), "PORT");
+      const value = screen.getByLabelText("Variable 1 value");
       await user.type(value, "abc");
       expect(value).toHaveAttribute("aria-invalid", "true");
       expect(value).toHaveAccessibleDescription(/PORT must be a whole number/);

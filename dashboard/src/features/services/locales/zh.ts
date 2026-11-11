@@ -3810,9 +3810,40 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "添加变量",
     description: "Button to add an env var row in the create wizard",
   },
-  "services.createFieldEnvVarsRemove": {
-    message: "删除",
-    description: "Button to remove an env var row in the create wizard",
+  "services.envRowKey": {
+    message: "变量 {n} 键名",
+    description:
+      "A create-flow variable row's key field (aria-label), named by its row as its Remove button is (w4/544)",
+  },
+  "services.envRowValue": {
+    message: "变量 {n} 值",
+    description:
+      "A create-flow variable row's value field (aria-label), named by its row (w4/544)",
+  },
+  "services.envRowGenerate": {
+    message: "为变量 {n} 生成值",
+    description:
+      "A create-flow variable row's Generate button (aria-label), named by its row (w4/544)",
+  },
+  "services.envRowRemove": {
+    message: "删除变量 {n}",
+    description:
+      "A create-flow variable row's Remove button (aria-label), named by its row (w4/544)",
+  },
+  "services.fileRowName": {
+    message: "密钥文件 {n} 的文件名",
+    description:
+      "A create-flow secret file row's name field (aria-label), named by its row (w4/544)",
+  },
+  "services.fileRowContent": {
+    message: "密钥文件 {n} 内容",
+    description:
+      "A create-flow secret file row's contents field (aria-label), named by its row (w4/544)",
+  },
+  "services.fileRowRemove": {
+    message: "删除密钥文件 {n}",
+    description:
+      "A create-flow secret file row's Remove button (aria-label), named by its row (w4/544)",
   },
   "services.createFieldEnvVarsKey": {
     message: "键名",
@@ -3847,18 +3878,6 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.createFieldSecretFilesAdd": {
     message: "添加机密文件",
     description: "Button to add a create-time secret file",
-  },
-  "services.createFieldSecretFilesRemove": {
-    message: "删除机密文件",
-    description: "Accessible label for removing a secret file row",
-  },
-  "services.createFieldSecretFilesName": {
-    message: "机密文件名",
-    description: "Accessible label for a secret file name",
-  },
-  "services.createFieldSecretFilesContent": {
-    message: "机密文件内容",
-    description: "Accessible label for secret file contents",
   },
   "services.createFieldSecretFilesNamePlaceholder": {
     message: "credentials.json",

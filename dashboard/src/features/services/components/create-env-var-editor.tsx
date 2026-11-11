@@ -73,7 +73,8 @@ export function CreateEnvVarEditor({
                     value={row.key}
                     onChange={(e) => patchRow(i, { key: e.target.value })}
                     placeholder={t("services.createFieldEnvVarsKeyPlaceholder")}
-                    aria-label={t("services.createFieldEnvVarsKey")}
+                    // Named by row so three rows don't read alike (w4/544).
+                    aria-label={t("services.envRowKey", { n: String(i + 1) })}
                     aria-invalid={keyInvalid}
                     aria-describedby={
                       keyInvalid ? `${baseId}-${i}-error` : undefined
@@ -86,7 +87,9 @@ export function CreateEnvVarEditor({
                     placeholder={t(
                       "services.createFieldEnvVarsValuePlaceholder",
                     )}
-                    aria-label={t("services.createFieldEnvVarsValue")}
+                    aria-label={t("services.envRowValue", {
+                      n: String(i + 1),
+                    })}
                     aria-invalid={valueRule ? true : undefined}
                     aria-describedby={
                       valueRule ? `${baseId}-${i}-value-error` : undefined
@@ -98,6 +101,9 @@ export function CreateEnvVarEditor({
                     variant="outline"
                     size="sm"
                     onClick={() => patchRow(i, { value: generateEnvValue() })}
+                    aria-label={t("services.envRowGenerate", {
+                      n: String(i + 1),
+                    })}
                   >
                     <Sparkles className="size-3.5" />
                     {t("services.envGenerate")}
@@ -107,7 +113,9 @@ export function CreateEnvVarEditor({
                     variant="ghost"
                     size="icon"
                     onClick={() => onChange(removeRow(rows, i))}
-                    aria-label={t("services.createFieldEnvVarsRemove")}
+                    aria-label={t("services.envRowRemove", {
+                      n: String(i + 1),
+                    })}
                   >
                     <Trash2 className="size-3.5" />
                   </Button>

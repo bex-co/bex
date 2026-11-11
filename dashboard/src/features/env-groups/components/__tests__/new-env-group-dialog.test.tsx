@@ -191,7 +191,9 @@ describe("NewEnvGroupDialog", () => {
       screen.getByRole("button", { name: "Add Environment Variable" }),
     );
     await user.type(screen.getByLabelText("Key"), "SESSION_SECRET");
-    await user.click(screen.getByRole("button", { name: "Generate" }));
+    await user.click(
+      screen.getByRole("button", { name: "Generate value for variable 1" }),
+    );
     expect(screen.getByLabelText("Value")).toBeDisabled();
     await user.click(
       screen.getByRole("button", { name: "Create Environment Group" }),
@@ -711,5 +713,35 @@ describe("NewEnvGroupDialog", () => {
     expect(
       screen.getByText(/No services live in this Environment/),
     ).toBeTruthy();
+  });
+  // w4/544: each row's controls are named by their row, as Remove is, so two
+  // variables don't read "Key, Value, Generate" twice; visible labels stay.
+  it("names each variable and secret file control by its row", async () => {
+    const user = userEvent.setup();
+    render(<NewEnvGroupDialog open onCreated={vi.fn()} services={[]} />);
+    const addVariable = screen.getByRole("button", {
+      name: "Add Environment Variable",
+    });
+    await user.click(addVariable);
+    await user.click(addVariable);
+    await user.click(screen.getByRole("button", { name: "Add Secret File" }));
+    expect(screen.getByRole("textbox", { name: "Variable 2 key" })).toBe(
+      screen.getAllByLabelText("Key")[1],
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Variable 2 value" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Generate value for variable 2" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove variable 2" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "File name for secret file 1" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("textbox", { name: "Secret file 1 contents" }),
+    ).toBeInTheDocument();
   });
 });

@@ -61,7 +61,8 @@ export function CreateSecretFileEditor({
                   placeholder={t(
                     "services.createFieldSecretFilesNamePlaceholder",
                   )}
-                  aria-label={t("services.createFieldSecretFilesName")}
+                  // Named by row so two files don't read alike (w4/544).
+                  aria-label={t("services.fileRowName", { n: String(i + 1) })}
                   aria-invalid={invalid}
                   aria-describedby={
                     invalid ? `${baseId}-${i}-error` : undefined
@@ -74,7 +75,9 @@ export function CreateSecretFileEditor({
                   placeholder={t(
                     "services.createFieldSecretFilesContentPlaceholder",
                   )}
-                  aria-label={t("services.createFieldSecretFilesContent")}
+                  aria-label={t("services.fileRowContent", {
+                    n: String(i + 1),
+                  })}
                   className="min-h-20 font-mono text-sm"
                 />
               </div>
@@ -83,7 +86,7 @@ export function CreateSecretFileEditor({
                 variant="ghost"
                 size="icon"
                 onClick={() => onChange(removeRow(rows, i))}
-                aria-label={t("services.createFieldSecretFilesRemove")}
+                aria-label={t("services.fileRowRemove", { n: String(i + 1) })}
               >
                 <Trash2 className="size-3.5" />
               </Button>
