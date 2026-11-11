@@ -1482,19 +1482,18 @@ func blueprintServicePlanLocation(location []string) bool {
 	return blueprintServiceFieldLocation(location, "plan")
 }
 
-// blueprintServiceFieldLocation reports whether location is services/<n>/field.
+// blueprintServiceFieldLocation reports whether location is a service's own
+// field: it ends in services/<n>/field, at the root or under a project
+// environment. A deeper field of the same name (a route's type, a
+// fromService's type) is not the service's and keeps its own schema message
+// (w8/252).
 func blueprintServiceFieldLocation(location []string, field string) bool {
-	if len(location) < 3 || location[len(location)-1] != field {
+	n := len(location)
+	if n < 3 || location[n-1] != field || location[n-3] != "services" {
 		return false
 	}
-	for i, token := range location[:len(location)-1] {
-		if token == "services" && i+1 < len(location)-1 {
-			if _, err := strconv.Atoi(location[i+1]); err == nil {
-				return true
-			}
-		}
-	}
-	return false
+	_, err := strconv.Atoi(location[n-2])
+	return err == nil
 }
 
 func blueprintSchemaGotValue(errorKind jsonschema.ErrorKind) (string, bool) {
