@@ -238,10 +238,18 @@ Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias).
 **Run-time command references name `bex` (user decision 2026-11-07, w2/m263 D4=A).** Upstream output that tells the user to run `render <command>` says `bex <command>` instead. This covers text output, the JSON/YAML `meta.next` field agents follow, and backtick or quoted forms such as ``Use `render workspace set` ``. The rule covers the whole class. It is implemented in `internal/branding/runtime.go` as wrappers around the upstream `RunE`, like `brandLoginOutput`. No upstream `RunE` body is rewritten:
 
 - **Returned errors, every command.** Upstream returns most hints as errors, which cobra prints to stderr. The wrapper rewrites the message, and `errors.Is`/`errors.As` still reach the original, so exit codes and `ErrLogin` handling are unchanged. This covers the resource-not-found, auth and workspace hints below, the `psql` usage line, and the stale manual env var file refusal.
-- **Stdout, for the commands listed in `runtimeStdout`:** `ea blueprints create|plan|approve|update` and `logout`. For the blueprint commands only the next step changes: JSON and YAML `meta.next`, or the line after the text `Next:` title. Blueprint names, repos, paths, notices and the rest of the API data stay byte-exact. `logout` prints only upstream copy, so every reference in it is rewritten. Stdout is not wrapped for every command, for two reasons. A wrapped writer hides the terminal from upstream's `*os.File` checks (table width, color, `ssh`'s TTY). And `logs`, `sandboxes exec` and `ssh` stream user data through stdout, which must never be edited.
+- **Stdout, for the commands listed in `runtimeStdout`:** `ea blueprints create|plan|approve|update`, `logout` and `postgres create`. For the blueprint commands only the next step changes: JSON and YAML `meta.next`, or the line after the text `Next:` title. Blueprint names, repos, paths, notices and the rest of the API data stay byte-exact. `logout` prints only upstream copy, so every reference in it is rewritten. `postgres create` is rewritten like `logout` while its interactive wizard draws, so the success screen says "Run `bex pg get <name>`"; with `--output json|yaml|text` only the next step changes, as for the blueprint commands. The wizard's wrapper passes the terminal through, so bubbletea still sizes the screen from it (w2/073). Stdout is not wrapped for every command, for two reasons. A wrapped writer hides the terminal from upstream's `*os.File` checks (table width, color, `ssh`'s TTY). And `logs`, `sandboxes exec` and `ssh` stream user data through stdout, which must never be edited.
 - **cobra `Deprecated` notices**, rewritten as command metadata with the help overlay. cobra prints a notice before the launcher's initializer runs, so this reaches only commands that exist when `branding.Apply` runs. The late-added deprecated aliases (`sandbox-groups builds`, the `workflows` shortcuts) keep upstream's notice. Both belong to commands bex does not serve (see below).
 
-A reference is `render`, a space, and a command the root actually has (`ea`, `workspace`, `services`, …). It must sit at the start of a line (after indentation), right after a backtick, a quote or `| `, or be a bare `` `render` ``. URLs (`render.com`), file names (`render.yaml`), `RENDER_*` variables, data such as a service named `render-x`, and "Render" prose (for example "Render will start applying your planned changes") never match.
+A reference is `render`, a space, and a command the root actually has (`ea`, `workspace`, `services`, …). It must sit at the start of a line (after indentation), right after a backtick, a quote or `| `, or be a bare `` `render` ``. URLs (`render.com`), file names (`render.yaml`), `RENDER_*` variables, data such as a service named `render-x`, and the product name in a sentence (for example "Render will start applying your planned changes") never match this rule. Product-name prose and variable names change only under the two exact-phrase rules below.
+
+**Product-name prose reads Bex, in exact phrases only (user decision D2=A 2026-11-11, w2/073, w2/082).** Render's own CLI names Render, so the bex CLI names Bex. `runtimeProse` (`internal/branding/runtime.go`) is a table of whole upstream phrases, applied to the stdout of the `runtimeStdout` commands together with the command-reference rule:
+
+- "Successfully logged out of Render." (`cmd/logout.go:83`)
+- "delete the API key from your Render Dashboard." (`cmd/logout.go:36`) and "revoke your token in the Render dashboard:" (`cmd/logout.go:71`)
+- "Render will start applying your planned changes." (`pkg/blueprint/output.go:149`)
+
+Nothing else that mentions Render changes: a service named `Render-x`, a repo URL and any other API data stay byte-exact.
 
 Regenerate the inventory on every pin bump (step 4 of the re-diff) and check that each hit reaches one of the three seams:
 
@@ -271,16 +279,16 @@ At the current pin (**v2.36.0**, `4fd34231b637`) it yields the following.
 
 - `cmd/psql.go:96` — `Usage: render psql <postgresID> --command "SELECT ..." -o json` (a returned error, rewritten)
 - `cmd/kvcreate.go:51` — the `--workspace` flag help citing `'render workspace set'` (help overlay, rewritten)
-- `pkg/tui/views/pgcreate.go:797` — "Run `render pg get <id>` to check if it's ready yet." **Residual:** the interactive `pg create` wizard draws this in its bubbletea view, which writes to the terminal directly and has no Cobra writer to wrap.
+- `pkg/tui/views/pgcreate.go:797` — "Run `render pg get <id>` to check if it's ready yet.", on the interactive `pg create` wizard's success screen (`postgres create` stdout, rewritten while the wizard draws)
 
 **`ea blueprints` next steps (v2.35.0)** (stdout `meta.next` and text `Next:`, rewritten):
 
 - `pkg/blueprint/output.go:120,127` — "render ea blueprints approve \<id>" after a plan, "fix the errors above, then run \"render ea blueprints plan \<id>\"" after a failed plan
 - `pkg/blueprint/output.go:60,110` — the no-changes hints citing `render ea blueprints plan` / `approve`
-- `pkg/blueprint/output.go:149` — after approve: "Render will start applying your planned changes … `render services` and `render deploys` commands". The command references change; the leading "Render will start applying" is prose and stays.
+- `pkg/blueprint/output.go:149` — after approve: "Render will start applying your planned changes … `render services` and `render deploys` commands". The command references change, and the leading sentence reads "Bex will start applying" (product-name prose, above).
 - `pkg/blueprint/manualenvvars.go:71` — the stale manual env var file refusal citing `render ea blueprints approve` (a returned error)
 
-Tests: `internal/branding/runtime_test.go` (the reference rule, JSON/YAML/text next-step rewrites, error unwrapping) and `runtime_copy_test.go`. The latter drives the built binary against a stub API: `ea blueprints create` in text, JSON and YAML, `workspace current` with no workspace, and render-shaped data (`render-x`, `render.yaml`, `render.com`, `RENDER_*`) that must survive.
+Tests: `internal/branding/runtime_test.go` (the reference rule, JSON/YAML/text next-step rewrites, error unwrapping, the product-name phrases, the wizard screen) and `runtime_copy_test.go`. The latter drives the built binary against a stub API: `ea blueprints create` in text, JSON and YAML, `workspace current` with no workspace, and render-shaped data (`render-x`, `render.yaml`, `render.com`, `RENDER_*`) that must survive.
 
 **Run-time copy about a variable names the one the user set (w32/009).** When the upstream variable is unset, the launcher fills `RENDER_API_KEY` from `BEX_ACCESS_TOKEN` and `RENDER_OUTPUT` from `BEX_OUTPUT`. Upstream's messages then name its own variable, which is not in the user's environment. `bridge.FilledFromBex` records what the launcher filled in this process, and `branding.NameBexInputs` renames those variables in upstream's exact phrases:
 
@@ -300,7 +308,6 @@ Tests: `TestNameBexInputsRenamesOnlyFilledVariables` and `TestBrandPreRunOutputN
 **Identity, storage and copy that branding deliberately leaves alone:**
 
 - automatic login TUI inside other interactive commands (`views.LoginView`) saying “Render Dashboard”; explicit `bex login` rewrites only its fixed prompt prefix through Cobra stdout, preserving the device code and verification URL byte-for-byte
-- "Render" prose in run-time output ("Successfully logged out of Render.", "Render will start applying …"): the run-time rule covers command references only
 - User-Agent `render-cli/<upstream version>` (`cfg.Version` stays the pinned upstream release for the compatibility ledger)
 - hard-coded OAuth public client id (Hydra bootstrap contract)
 - one-time analytics notice copy (Render-branded disclosure + `render.com/docs` link + an invitation to re-enable Render telemetry — do not follow; see CLI usage telemetry above)
