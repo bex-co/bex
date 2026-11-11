@@ -176,10 +176,20 @@ func releaseRequestedOrRolling(app *appv1alpha1.App, pending int64) bool {
 }
 
 // requestedReleaseFailed reports whether the pending release already ended in
-// a failure — its rollout verdict, its pre-deploy step, or a failed step the
-// prior release serves through — so it carries nothing live (w4/m184).
+// a failure — its rollout verdict, its pre-deploy step, its build verdict, or a
+// failed step the prior release serves through — so it carries nothing live
+// (w4/m184).
 func requestedReleaseFailed(app *appv1alpha1.App, pending int64) bool {
 	if app.Status.Phase == appv1alpha1.PhaseFailed {
+		return true
+	}
+	// A build that failed over a PARKED release leaves no PriorReleaseServing
+	// Ready: settlePriorRelease writes AutoHibernated or Suspended there, the
+	// same reasons a plain sleeping service carries, so only the durable build
+	// verdict tells the two apart (w21/041). The verdict is stamped with the
+	// release generation that built, so an earlier release's failure never
+	// condemns the deploy that follows it.
+	if releaseGeneration(app) == pending && terminalBuildFailureRecorded(app) {
 		return true
 	}
 	if c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout); c != nil &&

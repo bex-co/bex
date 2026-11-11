@@ -474,6 +474,17 @@ func TestASelectedConfigsAutoscalerWritesThePassApp(t *testing.T) {
 // w4/m184: "saved changes aren't live — deploy to apply them" showed for the
 // whole of the very deploy applying them. UndeployedChangesApplying says so
 // only for a rolling release that runs the saved configuration.
+// parkedBuildFailure records what a failed build leaves over a parked prior
+// release: the service's sleeping or suspended Ready beside the build verdict
+// of release generation gen (settlePriorRelease + fail).
+func parkedBuildFailure(a *appv1alpha1.App, parkedReason, buildReason string, gen int64) {
+	a.Status.Phase = appv1alpha1.PhaseHibernated
+	a.Status.Conditions = append(a.Status.Conditions,
+		metav1.Condition{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: parkedReason, ObservedGeneration: 3,
+			Message: "the latest build failed; the previously deployed release stays parked"},
+		metav1.Condition{Type: appv1alpha1.ConditionBuild, Status: metav1.ConditionFalse, Reason: buildReason, ObservedGeneration: gen})
+}
+
 func TestInFlightReleaseCarriesSavedConfiguration(t *testing.T) {
 	ctx := context.Background()
 	check := func(t *testing.T, r *AppReconciler, app *appv1alpha1.App, want bool) {
@@ -529,6 +540,15 @@ func TestInFlightReleaseCarriesSavedConfiguration(t *testing.T) {
 				a.Status.Phase = appv1alpha1.PhaseRunning
 				a.Status.PreDeploy = &appv1alpha1.PreDeployStatus{Status: appv1alpha1.PreDeployFailed, Generation: 3}
 			},
+			// w21/041: over a parked release the failure is written as the
+			// service's sleeping (or suspended) Ready, so only the build verdict
+			// says the release failed.
+			"build failed over a sleeping service": func(a *appv1alpha1.App) {
+				parkedBuildFailure(a, reasonAutoHibernated, appv1alpha1.ReasonBuildFailedUserError, 3)
+			},
+			"build failed over a suspended service": func(a *appv1alpha1.App) {
+				parkedBuildFailure(a, reasonSuspended, appv1alpha1.ReasonBuildFailed, 3)
+			},
 		} {
 			r, app := ordinary(t)
 			fail(app)
@@ -536,6 +556,21 @@ func TestInFlightReleaseCarriesSavedConfiguration(t *testing.T) {
 				t.Errorf("%s: carries saved = %v, %v; want false", name, got, err)
 			}
 		}
+	})
+	// w21/041: the controls on a parked service. A requested deploy that is
+	// still building, or that follows an earlier release's failed build, goes
+	// live with the saved settings, so the notice must keep saying so.
+	t.Run("a deploy building on a sleeping service still carries the saved settings", func(t *testing.T) {
+		r, app := ordinary(t)
+		app.Status.Phase = appv1alpha1.PhaseHibernated
+		app.Status.Conditions = append(app.Status.Conditions, metav1.Condition{
+			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonAutoHibernated, ObservedGeneration: 3})
+		check(t, r, app, true)
+	})
+	t.Run("an earlier release's failed build does not condemn the next deploy", func(t *testing.T) {
+		r, app := ordinary(t)
+		parkedBuildFailure(app, reasonAutoHibernated, appv1alpha1.ReasonBuildFailedUserError, 2)
+		check(t, r, app, true)
 	})
 	t.Run("a canceled release carries nothing", func(t *testing.T) {
 		r, app := ordinary(t)
