@@ -1165,14 +1165,43 @@ describe("deploy link prefill", () => {
     );
   });
 
-  it("falls back to the default branch when the link names none", async () => {
-    branchesState.branches = ["develop", "master"];
-    renderPage("/blueprints/new?repo=https://github.com/acme/hello-go");
+  // w4/560: as on Render, a link naming no branch deploys the repository's
+  // default, which the review resolves — never a guess. A public repository
+  // outside the GitHub App lists no branches at all.
+  it.each([
+    [[], "master"],
+    [["develop", "master"], "develop"],
+  ])(
+    "deploys the default branch the review resolves when the link names none (branches %j)",
+    async (branches, resolved) => {
+      branchesState.branches = branches;
+      previewState.preview = { ...validPreview(), branch: resolved };
+      renderPage("/blueprints/new?repo=https://github.com/acme/hello-go");
+      await waitFor(() =>
+        expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue(
+          resolved,
+        ),
+      );
+    },
+  );
+
+  // The link's resolved default belongs to the link's repository: switching to
+  // the GitHub tab and picking another starts from that one's default.
+  it("does not carry the link's default branch into the GitHub tab", async () => {
+    reposState.repos = [repo()];
+    previewState.preview = { ...validPreview(), branch: "master" };
+    const user = userEvent.setup();
+    renderPage("/blueprints/new?repo=https://github.com/acme/other-app");
     await waitFor(() =>
       expect(screen.getByRole("combobox", { name: /branch/i })).toHaveValue(
         "master",
       ),
     );
+    await user.click(screen.getByRole("tab", { name: /github/i }));
+    await user.click(await screen.findByText("acme/hello-go"));
+    expect(
+      await screen.findByRole("combobox", { name: /branch/i }),
+    ).toHaveValue("main");
   });
 
   it("ignores a repo that is not a clone URL", async () => {

@@ -90,12 +90,13 @@ export function NewBlueprintPage() {
     null,
   );
   const nameInput = useRef<HTMLInputElement>(null);
-  // As on Render, a link without /tree/<branch> deploys the default branch;
-  // "main" is the first guess, corrected below once the branches load.
+  // As on Render, a link without /tree/<branch> deploys the default branch:
+  // Branch starts empty, the preview resolves the repository's default, and
+  // the effect below fills it in (w4/532, w4/560). A guess would be wrong for
+  // every repository whose default isn't the guess.
   const [branch, setBranch] = useState(
-    linked ? (linked.branch ?? linkSearch.branch ?? "main") : "",
+    linked ? (linked.branch ?? linkSearch.branch ?? "") : "",
   );
-  const branchGuessed = linked != null && !linked.branch && !linkSearch.branch;
   // A Public Git Branch left behind by a tab switch, bound to its URL: the same
   // URL restores it, any other starts blank (w4/331, as w4/240 for services).
   const [gitBranchDraft, setGitBranchDraft] = useState<{
@@ -165,23 +166,18 @@ export function NewBlueprintPage() {
     if (autoName && !nameEdited) setName(autoName);
   }, [autoName, nameEdited]);
 
-  // Corrects the "main" first guess once, when the branch list first loads.
-  const guessPending = useRef(branchGuessed);
-  useEffect(() => {
-    if (!guessPending.current || branches.length === 0) return;
-    guessPending.current = false;
-    if (!branches.includes(branch)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setBranch(branches.includes("master") ? "master" : branches[0]);
-    }
-  }, [branches, branch]);
-
   // A Public Git URL with no branch typed previews the repository's default
   // branch; show it in the field once the preview names it (w4/532). Once
   // per repository, so clearing the field to type another branch sticks.
+  // Only on the Public Git tab, for its own settled preview: a tab switch
+  // empties the source while the previous URL's preview is still the one in
+  // hand, and that preview's branch must not land on the GitHub tab.
   const defaultBranchFilledFor = useRef("");
   useEffect(() => {
     if (
+      tab === "git" &&
+      sourceRepo !== "" &&
+      !previewLoading &&
       branch === "" &&
       preview?.branch &&
       defaultBranchFilledFor.current !== sourceRepo
@@ -189,7 +185,7 @@ export function NewBlueprintPage() {
       defaultBranchFilledFor.current = sourceRepo;
       setBranch(preview.branch);
     }
-  }, [branch, preview?.branch, sourceRepo]);
+  }, [tab, sourceRepo, previewLoading, branch, preview?.branch]);
 
   const branchOptions = useMemo(
     () => branches.map((b) => ({ value: b, label: b })),
