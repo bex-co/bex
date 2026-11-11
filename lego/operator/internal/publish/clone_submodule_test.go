@@ -73,8 +73,16 @@ func directPublish(t *testing.T, url func(root string) string) (out, msg string,
 
 	o := testOptions()
 	o.Image, o.Repo, o.Ref, o.PublishPath = "", "file://"+parent, "main", "site"
+	return runClone(t, root, o)
+}
+
+// runClone runs the direct publish's real clone script for o under root and
+// returns the staged tree, the termination message and the exit status.
+func runClone(t *testing.T, root string, o Options) (out, msg string, code int) {
+	t.Helper()
 	clone := cloneContainer(o)
-	work, out := filepath.Join(root, "work"), filepath.Join(root, "out")
+	work := filepath.Join(root, "work")
+	out = filepath.Join(root, "out")
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -117,5 +125,44 @@ func TestDirectPublishFailsOnAnUnreachableSubmodule(t *testing.T) {
 	entries, _ := os.ReadDir(out)
 	if code == 0 || !strings.Contains(msg, `could not fetch the submodule "site/theme"`) || len(entries) != 0 {
 		t.Fatalf("exit %d, message %q, staged %v; want a named failure and nothing staged", code, msg, entries)
+	}
+}
+
+// w4/565: a site published from the repository root stages its files, never
+// the repository's .git directory, which the static server would serve.
+func TestDirectPublishOfTheRepositoryRootLeavesGitMetadataOut(t *testing.T) {
+	root := t.TempDir()
+	repo := filepath.Join(root, "repo")
+	if err := os.MkdirAll(filepath.Join(repo, "docs"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for name, body := range map[string]string{"README": "Hello World!\n", ".gitignore": "x\n", "docs/index.html": "docs\n"} {
+		if err := os.WriteFile(filepath.Join(repo, name), []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	fixtureGit(t, repo, "init", "-q", "-b", "master")
+	fixtureGit(t, repo, "add", ".")
+	fixtureGit(t, repo, "commit", "-q", "-m", "root")
+
+	for _, publishPath := range []string{"", "."} {
+		o := testOptions()
+		o.Image, o.Repo, o.Ref, o.PublishPath = "", "file://"+repo, "master", publishPath
+		run := filepath.Join(root, "run"+publishPath)
+		if err := os.MkdirAll(run, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		out, msg, code := runClone(t, run, o)
+		if code != 0 {
+			t.Fatalf("publish path %q: exit %d (%q)", publishPath, code, msg)
+		}
+		if _, err := os.Stat(filepath.Join(out, ".git")); !os.IsNotExist(err) {
+			t.Errorf("publish path %q staged the repository's .git for upload: %v", publishPath, err)
+		}
+		for _, name := range []string{"README", ".gitignore", "docs/index.html"} {
+			if _, err := os.Stat(filepath.Join(out, name)); err != nil {
+				t.Errorf("publish path %q did not stage %s: %v", publishPath, name, err)
+			}
+		}
 	}
 }

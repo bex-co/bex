@@ -565,15 +565,6 @@ cp -a "$PUBLISH_PATH"/. ` + outMount + `/`},
 // default policy and fall back to the Job-level reason.
 const extractTerminationPolicy = corev1.TerminationMessageFallbackToLogsOnError
 
-// cloneContainer stages the site straight from the repository — the direct,
-// no-Dockerfile publish path (w9/010): shallow-fetch Repo@Ref, then copy
-// RootDir/PublishPath's contents into the shared emptyDir. All values arrive
-// via env, never interpolated into the script, so a hostile spec can't inject
-// shell. init+fetch (not clone --branch) so Ref may be a branch OR a commit
-// sha; an unset Ref fetches the remote's default branch (HEAD). A private
-// repo authenticates through the same CloneSecret token contract as the build
-// plane (x-access-token basic auth), supplied to git via an inline credential
-// helper so the token never lands in argv or on disk.
 // directSubmodules brings in the submodules the published directory may hold
 // (w8/m89), each failure in this operator's own words.
 var directSubmodules = execution.GitSubmoduleUpdate(
@@ -583,6 +574,17 @@ var directSubmodules = execution.GitSubmoduleUpdate(
 	func(message string) string { return `fail 1 "` + message + `"` },
 )
 
+// cloneContainer stages the site straight from the repository — the direct,
+// no-Dockerfile publish path (w9/010): shallow-fetch Repo@Ref, then copy
+// RootDir/PublishPath's contents into the shared emptyDir. All values arrive
+// via env, never interpolated into the script, so a hostile spec can't inject
+// shell. init+fetch (not clone --branch) so Ref may be a branch OR a commit
+// sha; an unset Ref fetches the remote's default branch (HEAD). A private
+// repo authenticates through the same CloneSecret token contract as the build
+// plane (x-access-token basic auth), supplied to git via an inline credential
+// helper so the token never lands in argv or on disk. Git metadata is never
+// published (w4/565): a publish path of "." stages the repository root, whose
+// .git would otherwise be served as site files.
 func cloneContainer(o Options) corev1.Container {
 	img := o.GitImage
 	if img == "" {
@@ -610,6 +612,7 @@ set -- ` + execution.GitHTTPSTransport + ` -c ` + execution.GitHubCredentialHelp
 git "$@" fetch -q --depth 1 origin -- "$REF" || fail $? "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
 git checkout -q FETCH_HEAD || fail $? "fetched \"$REF\" but could not check it out"
 ` + directSubmodules + `cd "/work/$SRC_DIR" || fail ` + fmt.Sprint(userSourceExit) + ` "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
+find . -name .git -prune -exec rm -rf -- {} + || fail $? "could not leave the repository's git metadata out of the upload"
 cp -a . ` + outMount + `/ || fail $? "the publish directory \"$SRC_DIR\" exists but its contents could not be staged for upload"`
 	env := []corev1.EnvVar{
 		{Name: "REPO", Value: o.Repo},

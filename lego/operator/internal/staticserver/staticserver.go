@@ -249,14 +249,7 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		// A site's objects are read with GET and HEAD; any other method is
-		// served only by an external rewrite, Render's way to reach an API from
-		// a static site (w8/184).
-		if h.serveExternalRewriteForMethod(w, r) {
-			return
-		}
-		w.Header().Set("Allow", "GET, HEAD")
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		h.serveOtherMethod(w, r)
 		return
 	}
 
@@ -273,6 +266,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestPath := normalizePath(r.URL.Path)
 	if site.Unavailable {
 		serveSiteUnavailable(w, site, requestPath)
+		return
+	}
+	// Git metadata is never part of a site (w4/565). Sites published before
+	// the publish step dropped .git still hold it.
+	if hasGitSegment(requestPath) {
+		h.serveNotFound(w, r, site, requestPath)
 		return
 	}
 
@@ -395,6 +394,17 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	h.serveNotFound(w, r, site, requestPath)
+}
+
+// serveOtherMethod answers a method other than GET and HEAD. A site's objects
+// are read with those two; any other method is served only by an external
+// rewrite, Render's way to reach an API from a static site (w8/184).
+func (h *Handler) serveOtherMethod(w http.ResponseWriter, r *http.Request) {
+	if h.serveExternalRewriteForMethod(w, r) {
+		return
+	}
+	w.Header().Set("Allow", "GET, HEAD")
+	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 }
 
 // redirectToDirectory answers a directory requested without its trailing slash
@@ -647,6 +657,10 @@ func (h *Handler) spaFallback(ctx context.Context, site Site, reqPath string) (O
 // and admitted through the fetch gate, so a burst can neither stampede the origin
 // nor buffer unbounded memory (finding 12).
 func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, error) {
+	if hasGitSegment(reqPath) {
+		// No rewrite destination reaches git metadata either.
+		return Object{}, ErrNotFound
+	}
 	key, ck := site.keyFor(reqPath), site.cacheKey(reqPath)
 	if obj, ok := h.cache.get(ck); ok {
 		return obj, negativeErr(obj)
@@ -1023,6 +1037,17 @@ func normalizePath(p string) string {
 		c += "/"
 	}
 	return c
+}
+
+// hasGitSegment reports whether a site-relative path names git metadata: a
+// ".git" directory or submodule gitfile at any depth.
+func hasGitSegment(p string) bool {
+	for seg := range strings.SplitSeq(p, "/") {
+		if seg == ".git" {
+			return true
+		}
+	}
+	return false
 }
 
 // hostOnly strips a port from a Host header value.
