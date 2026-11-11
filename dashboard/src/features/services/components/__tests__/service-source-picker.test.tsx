@@ -247,3 +247,69 @@ describe("ServiceSourcePicker first connections read (w4/434)", () => {
     expect(document.querySelector('[data-preview="git-connect"]')).toBeNull();
   });
 });
+
+// w21/052: the Public Git URL field is marked and announced like the image
+// reference field, so a screen-reader user who pastes `github.com/owner/repo`
+// (no scheme) hears that it is invalid and why.
+describe("ServiceSourcePicker Public Git URL (w21/052)", () => {
+  function GitUrlPicker() {
+    const [gitUrl, setGitUrl] = useState("");
+    return (
+      <ServiceSourcePicker
+        tab="git"
+        onTabChange={() => {}}
+        selectedRepo={null}
+        onSelectRepo={() => {}}
+        gitUrl={gitUrl}
+        onGitUrlChange={setGitUrl}
+      />
+    );
+  }
+
+  const renderPicker = () =>
+    render(
+      <ApolloProvider client={gatedClient().client}>
+        <GitUrlPicker />
+      </ApolloProvider>,
+    );
+
+  it.each(["github.com/bex-co/bex", "http://github.com/bex-co/bex"])(
+    "marks %s invalid and describes it with an alert",
+    async (typed) => {
+      const user = userEvent.setup();
+      renderPicker();
+      const input = await screen.findByRole("textbox", {
+        name: "Repository URL",
+      });
+      await user.type(input, typed);
+
+      expect(input).toHaveAttribute("aria-invalid", "true");
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(/Enter an https:\/\/ URL/);
+      expect(input).toHaveAttribute("aria-describedby", alert.id);
+      expect(alert.id).not.toBe("");
+      expect(input).toHaveAccessibleDescription(/Enter an https:\/\/ URL/);
+    },
+  );
+
+  it.each([
+    "https://github.com/bex-co/bex",
+    "https://github.com/bex-co/bex.git",
+    "https://github.com/bex-co/bex/",
+    "git@github.com:bex-co/bex.git",
+  ])("clears the marks for %s", async (typed) => {
+    const user = userEvent.setup();
+    renderPicker();
+    const input = await screen.findByRole("textbox", {
+      name: "Repository URL",
+    });
+    await user.type(input, "github.com/bex-co/bex");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    await user.clear(input);
+    await user.type(input, typed);
+
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    expect(input).not.toHaveAttribute("aria-describedby");
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});

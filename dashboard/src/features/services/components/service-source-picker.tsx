@@ -101,6 +101,8 @@ export function ServiceSourcePicker({
   const gitHubDisconnected =
     !connectionLoading && connection?.connected !== true;
   const imageProblem = image ? dockerImageProblem(image.value) : null;
+  // The Git URL is marked and announced like the image reference (w21/052).
+  const gitUrlInvalid = gitUrl !== "" && !isValidGitUrl(gitUrl);
 
   // When connected, GitCredentialsMenu owns the focus refetch. When disconnected
   // the menu isn't mounted, so the picker refreshes here to catch a connection
@@ -304,9 +306,17 @@ export function ServiceSourcePicker({
               onChange={(e) => onGitUrlChange(e.target.value)}
               placeholder={t("services.createPublicUrlPlaceholder")}
               autoComplete="off"
+              aria-invalid={gitUrlInvalid}
+              aria-describedby={
+                gitUrlInvalid ? `${idPrefix}-git-url-error` : undefined
+              }
             />
-            {gitUrl && !isValidGitUrl(gitUrl) ? (
-              <p className="text-sm text-destructive">
+            {gitUrlInvalid ? (
+              <p
+                id={`${idPrefix}-git-url-error`}
+                role="alert"
+                className="text-sm text-destructive"
+              >
                 {t("services.createPublicUrlError")}
               </p>
             ) : null}
