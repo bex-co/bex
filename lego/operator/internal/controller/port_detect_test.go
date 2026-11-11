@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -168,5 +169,49 @@ func TestDetectBoundPortWithoutAPersistedDefault(t *testing.T) {
 	r.detectBoundPort(t.Context(), app, dep, 10000)
 	if app.Status.DetectedPort != 3000 || app.ServingPort() != 3000 {
 		t.Fatalf("detected=%d serving=%d", app.Status.DetectedPort, app.ServingPort())
+	}
+}
+
+// w8/267: a detected port decides where the platform routes, never what PORT
+// the process is given. Render leaves PORT at its default; bex handed the
+// detected port back as PORT, so the instance was restarted with a different
+// environment than the one it was found in, and an app with a public listener
+// on 8080 and an internal one on $PORT then bound 8080 twice and crash-looped.
+func TestADetectedPortRoutesButIsNotGivenBackAsPort(t *testing.T) {
+	portOf := func(app *appv1alpha1.App, serving int) string {
+		env := appEnv(app, serving)
+		last := env[len(env)-1]
+		if last.Name != portEnvName {
+			t.Fatalf("PORT is not last: %+v", env)
+		}
+		return last.Value
+	}
+	detected := &appv1alpha1.App{Status: appv1alpha1.AppStatus{DetectedPort: 8080}}
+	if got := portOf(detected, 8080); got != "10000" {
+		t.Errorf("PORT for a detected port = %s, want the default 10000", got)
+	}
+	if hint := crashHintPort(detected, 8080); hint != 0 {
+		t.Errorf("crash hint port = %d, want none: the process is not expected on $PORT", hint)
+	}
+	if msg := crashLoopMessage(corev1.ContainerStatus{}, crashHintPort(detected, 8080)); strings.Contains(msg, "$PORT") {
+		t.Errorf("the crash message still says the process must listen on $PORT: %q", msg)
+	}
+
+	// A port the service names is both routed and handed to the process.
+	for name, tc := range map[string]struct {
+		app     *appv1alpha1.App
+		serving int
+	}{
+		"an explicit port":          {&appv1alpha1.App{Spec: appv1alpha1.AppSpec{Port: 3000}}, 3000},
+		"the service's own PORT":    {&appv1alpha1.App{Status: appv1alpha1.AppStatus{EnvPort: 4000}}, 4000},
+		"the default, undetected":   {&appv1alpha1.App{}, 10000},
+		"a stale detection, unused": {&appv1alpha1.App{Spec: appv1alpha1.AppSpec{Port: 3000}, Status: appv1alpha1.AppStatus{DetectedPort: 8080}}, 3000},
+	} {
+		if got := portOf(tc.app, tc.serving); got != strconv.Itoa(tc.serving) {
+			t.Errorf("%s: PORT = %s, want %d", name, got, tc.serving)
+		}
+		if hint := crashHintPort(tc.app, tc.serving); hint != tc.serving {
+			t.Errorf("%s: crash hint port = %d, want %d", name, hint, tc.serving)
+		}
 	}
 }

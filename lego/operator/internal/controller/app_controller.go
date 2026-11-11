@@ -3706,7 +3706,7 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	if reason, msg := r.permanentRolloutPullFailure(ctx, dep, time.Now()); msg != "" {
 		return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
 	}
-	if reason, msg := r.permanentRolloutCrash(ctx, dep, port); msg != "" {
+	if reason, msg := r.permanentRolloutCrash(ctx, dep, crashHintPort(app, port)); msg != "" {
 		return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
 	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
@@ -5691,7 +5691,9 @@ const portEnvName = "PORT"
 // config) first, then PORT last. port is the serving port, which already is
 // the service's own PORT when it set one (envPort, w5/m149), so the container
 // entry restates the user's value rather than overriding it, and the port the
-// process reads always equals the port the platform routes to. Secret-backed
+// process reads equals the port the platform routes to. The one exception is
+// a port found by detection: PORT stays the default, as on Render, and only
+// the routing follows the port the process listens on (processPort, w8/267). Secret-backed
 // variables arrive separately through envFrom (envFromSources); a container-level
 // Env entry overrides an envFrom key of the same name, so PORT wins over both.
 // A ValueFrom.SecretKeyRef entry (a bex.yml fromDatabase reference, w1/m24)
@@ -5715,7 +5717,7 @@ func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 		}
 		env = append(env, ev)
 	}
-	env = append(env, corev1.EnvVar{Name: portEnvName, Value: strconv.Itoa(port)})
+	env = append(env, corev1.EnvVar{Name: portEnvName, Value: strconv.Itoa(processPort(app, port))})
 	return env
 }
 
@@ -5912,7 +5914,7 @@ func tenantSecCtx() *corev1.SecurityContext {
 // service whose TCP check never connects, the ports bex expected the process to
 // listen on (w6/m148) — Render's "no open ports detected", in bex's terms.
 func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (string, string) {
-	reason, msg := r.stuckPodMessage(ctx, dep, port)
+	reason, msg := r.stuckPodMessage(ctx, dep, crashHintPort(app, port))
 	if reason == reasonHealthCheckFailing {
 		msg += imagePortStallHint(app, port)
 		if network := app.Status.ImageNetwork; network != nil && network.HTTPSelection == appv1alpha1.HTTPSelectionFallback {

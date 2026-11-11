@@ -137,12 +137,12 @@ func (r *AppReconciler) rocketPortDefault(ctx context.Context, app *appv1alpha1.
 // rustRuntime is AppSpec.Runtime for a native Rust service.
 const rustRuntime = "rust"
 
-// withRocketPort adds the default just before PORT, which appEnv always
-// appends last and which carries the serving port ROCKET_PORT repeats.
-func withRocketPort(env []corev1.EnvVar, add bool) []corev1.EnvVar {
+// withRocketPort adds the default, the serving port, just before PORT, which
+// appEnv always appends last.
+func withRocketPort(env []corev1.EnvVar, port int, add bool) []corev1.EnvVar {
 	if !add || len(env) == 0 {
 		return env
 	}
-	port := env[len(env)-1]
-	return append(env[:len(env)-1:len(env)-1], corev1.EnvVar{Name: rocketPortEnvName, Value: port.Value}, port)
+	v := corev1.EnvVar{Name: rocketPortEnvName, Value: strconv.Itoa(port)}
+	return append(env[:len(env)-1:len(env)-1], v, env[len(env)-1])
 }

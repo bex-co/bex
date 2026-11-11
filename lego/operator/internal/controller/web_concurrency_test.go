@@ -69,11 +69,11 @@ func TestWithWebConcurrencyKeepsPortLast(t *testing.T) {
 // app listens where the platform routes. bex's value is the serving port,
 // placed just before PORT, and only where the service sets none of its own.
 func TestWithRocketPortRepeatsTheServingPortBeforePort(t *testing.T) {
-	env := withRocketPort([]corev1.EnvVar{{Name: "A", Value: "1"}, {Name: portEnvName, Value: "3000"}}, true)
+	env := withRocketPort([]corev1.EnvVar{{Name: "A", Value: "1"}, {Name: portEnvName, Value: "3000"}}, 3000, true)
 	if len(env) != 3 || env[1].Name != rocketPortEnvName || env[1].Value != "3000" || env[2].Name != portEnvName {
 		t.Fatalf("env = %+v, want A, ROCKET_PORT=3000, PORT", env)
 	}
-	if got := withRocketPort(env[:2:2], false); len(got) != 2 {
+	if got := withRocketPort(env[:2:2], 3000, false); len(got) != 2 {
 		t.Fatalf("a service that is not eligible must keep its env, got %+v", got)
 	}
 }

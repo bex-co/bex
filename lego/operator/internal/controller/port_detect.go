@@ -84,6 +84,36 @@ func detectedServingPort(app *appv1alpha1.App, port int) int {
 	return port
 }
 
+// servingPortDetected reports whether port, the serving port, was found by
+// port detection rather than named by the service (detectedServingPort).
+func servingPortDetected(app *appv1alpha1.App, port int) bool {
+	return !explicitServingPort(app) && app.Status.DetectedPort > 0 && int(app.Status.DetectedPort) == port
+}
+
+// processPort is the PORT the process is given. It is the serving port, the
+// one the platform routes to and probes, except when that port was detected:
+// Render leaves PORT at its default and routes to the port it found, and so
+// does bex (w8/267). Handing the detected port back as PORT restarted the
+// process with a different environment than the one it was found in, and an
+// app with a public listener on one port and an internal one on $PORT then
+// bound the same port twice and never went live.
+func processPort(app *appv1alpha1.App, port int) int {
+	if servingPortDetected(app, port) {
+		return appv1alpha1.DefaultPort
+	}
+	return port
+}
+
+// crashHintPort is the port a crash diagnosis may name as $PORT: none when the
+// serving port was detected, because the process is then not expected to
+// listen on $PORT at all.
+func crashHintPort(app *appv1alpha1.App, port int) int {
+	if servingPortDetected(app, port) {
+		return 0
+	}
+	return port
+}
+
 // dueUnreadyScan returns the App's scan key and its rollout's Running but
 // unready pod IP when a scan is due (at most one per portDetectInterval per
 // App, shared by both detectors), recording the scan; ip is "" otherwise.

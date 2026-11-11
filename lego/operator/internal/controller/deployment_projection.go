@@ -285,7 +285,7 @@ func shellRunsStartCommand(app *appv1alpha1.App, image string, recorded launchMo
 func appContainerEnv(app *appv1alpha1.App, p deploymentParams) []corev1.EnvVar {
 	in := p.platform
 	in.baseDomain = p.baseDomain
-	return withRocketPort(withWebConcurrency(withPlatformEnv(appEnv(app, p.port), platformEnv(app, in)), p.webConcurrency), p.rocketPort)
+	return withRocketPort(withWebConcurrency(withPlatformEnv(appEnv(app, p.port), platformEnv(app, in)), p.webConcurrency), p.port, p.rocketPort)
 }
 
 // appContainer projects the App onto its single "app" container.
