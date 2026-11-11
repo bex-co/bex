@@ -10,13 +10,14 @@
 | [t002](t002.md) | Project `type=request` lines to the Render summary at read time, keeping the stored JSON for path, host and latency queries | 60m | t001 |
 | [t003](t003.md) | The Logs tab renders the summary, and the raw record stays reachable only if t001 says Render offers it | 30m | t002 |
 | [t004](t004.md) | Blast radius: every reader of the request line, `text` search semantics, live tail and the CLI | 30m | t002 |
-| [t005](t005.md) | Live verification in `bex-canary` | 20m | t003, t004 |
+| [t010](t010.md) | A request line's labels follow Render's — `host` and `path` where Render carries them, and a recorded answer for `requestID`, which Render's label enum omits | 30m | t001 |
+| [t005](t005.md) | Live verification in `bex-canary` | 20m | t003, t004, t010 |
 | [t006](t006.md) | Render parity | 15m | t005 |
 | [t007](t007.md) | Simplify | 10m | t006 |
 | [t008](t008.md) | Test coverage | 30m | t006 |
 | [t009](t009.md) | Closeout | 10m | t007, t008 |
 
-Nine tasks, 225m (3h45m).
+Ten tasks, 255m (4h15m).
 
 **Minor (parity and readability), but on every request line of every web service and static site.** A user reading their traffic sees the edge's internal JSON with a nanosecond duration.
 
@@ -60,7 +61,7 @@ Fixture: Free web service `qa-20261111-lg89` (`srv-dbq2q382gues73d7nndg`, `docke
   - Record the captured line and its source in ADR018 and ADR010, replacing the divergence.
 - **t002 projects at read time.** For `type=request` lines only, `canonicalHistoryMessage` (or its caller) renders the stored JSON as the captured summary. The response time is in milliseconds, from `Duration` in nanoseconds; `requestID` comes from `Rndr-Id`.
   - **Leave out** `ServiceName`, `KubernetesIngress*`, the duplicate `*_Rndr-Id` keys, `level`, `msg` and `time`.
-  - **Labels are unchanged.**
+  - **t002 leaves the labels unchanged.** t010 settles which labels a request line carries.
   - **Fallback.** A line that doesn't parse as an access record is returned as stored, never dropped.
   - **One change covers the readers:** REST, GraphQL, MCP `list_logs` and the live tail all read through this path.
 - **t003, the dashboard.** The Logs tab shows the summary text after the method and status chips. No raw JSON is rendered by default.
@@ -104,6 +105,7 @@ Signed in to `bex-canary` after the release pins this build, on an owned Free we
 2. **The dashboard shows the summary.** Logs → Request logs (Live on and off) shows the same text for that line.
 3. **Filters and metrics still work.** `path=/qa-err`, `statusCode=503`, `host=<svc>.onbex.co` and the Metrics page's request count and latency for the window are unchanged.
 4. **Static sites too.** On an owned static site, a request line reads in the same format.
+5. **Labels follow Render (t010, added from loop round 130).** The same `GET /v1/logs?…&type=request&path=/qa-err` returns exactly the request-line label names t010 records from Render, and GraphQL and MCP agree. Today it returns `type`, `resource`, `method`, `statusCode` and `requestID`: no `host` or `path`, though Render's pinned `logLabel.name` enum lists both and omits `requestID`. `requestID`'s status is recorded in ADR010 and ADR018.
 
 ## Source + Goal linkage
 
