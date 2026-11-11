@@ -1,0 +1,81 @@
+diff --git a/pkg/service/create.go b/pkg/service/create.go
+index 3759eca..3cb8dc0 100644
+--- a/pkg/service/create.go
++++ b/pkg/service/create.go
+@@ -1,6 +1,7 @@
+ package service
+ 
+ import (
++	"errors"
+ 	"fmt"
+ 
+ 	"github.com/render-oss/cli/pkg/client"
+@@ -293,12 +294,20 @@ func buildRuntimeEnvSpecificDetails(
+ 	registryCredentialID *string,
+ ) (*client.EnvSpecificDetailsPOST, error) {
+ 	if runtime != nil && *runtime == client.ServiceRuntimeDocker {
+-		if registryCredentialID == nil {
++		// A Docker service has no build command to customize, and the update
++		// path already refuses the flag; dropping it silently here hid that.
++		if buildCommand != nil {
++			return nil, errors.New("--build-command is only supported for native runtimes")
++		}
++		if startCommand == nil && registryCredentialID == nil {
+ 			return nil, nil
+ 		}
+ 
++		// --start-command is the service's Docker Command: the command that
++		// replaces the image's CMD, as --cron-command already is for a cron job.
+ 		envSpecificDetails := &client.EnvSpecificDetailsPOST{}
+ 		if err := envSpecificDetails.FromDockerDetailsPOST(client.DockerDetailsPOST{
++			DockerCommand:        startCommand,
+ 			RegistryCredentialId: registryCredentialID,
+ 		}); err != nil {
+ 			return nil, err
+diff --git a/pkg/service/create_test.go b/pkg/service/create_test.go
+index 4d01667..37e0669 100644
+--- a/pkg/service/create_test.go
++++ b/pkg/service/create_test.go
+@@ -215,6 +215,42 @@ func TestBuildCreateRequest(t *testing.T) {
+ 		require.Equal(t, "rgc-123", pointers.ValueOrDefault(dockerDetails.RegistryCredentialId, ""))
+ 	})
+ 
++	t.Run("web service with docker runtime sends start-command as the docker command", func(t *testing.T) {
++		input := servicetypes.ServiceCreateInput{
++			Name:         "my-service",
++			Type:         svcType(servicetypes.ServiceTypeWebService),
++			Repo:         pointers.From("https://github.com/org/repo"),
++			Runtime:      svcRuntime(servicetypes.ServiceRuntimeDocker),
++			StartCommand: pointers.From("node main.js"),
++		}
++
++		body, err := BuildCreateRequest(input, "tea-abc123")
++		require.NoError(t, err)
++		require.NotNil(t, body.ServiceDetails)
++
++		details, err := body.ServiceDetails.AsWebServiceDetailsPOST()
++		require.NoError(t, err)
++		require.NotNil(t, details.EnvSpecificDetails)
++
++		dockerDetails, err := details.EnvSpecificDetails.AsDockerDetailsPOST()
++		require.NoError(t, err)
++		require.Equal(t, "node main.js", pointers.ValueOrDefault(dockerDetails.DockerCommand, ""))
++		require.Nil(t, dockerDetails.RegistryCredentialId)
++	})
++
++	t.Run("web service with docker runtime refuses build-command", func(t *testing.T) {
++		input := servicetypes.ServiceCreateInput{
++			Name:         "my-service",
++			Type:         svcType(servicetypes.ServiceTypeWebService),
++			Repo:         pointers.From("https://github.com/org/repo"),
++			Runtime:      svcRuntime(servicetypes.ServiceRuntimeDocker),
++			BuildCommand: pointers.From("npm ci"),
++		}
++
++		_, err := BuildCreateRequest(input, "tea-abc123")
++		require.ErrorContains(t, err, "--build-command is only supported for native runtimes")
++	})
++
+ 	t.Run("cron job maps cron-command to native env specific start command", func(t *testing.T) {
+ 		input := servicetypes.ServiceCreateInput{
+ 			Name:         "my-cron",
