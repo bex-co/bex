@@ -3654,7 +3654,7 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 			if claimErr != nil {
 				return AppView{}, claimErr
 			}
-			declarations := domainDeclarations(final.Spec.Host, final.Spec.Hosts, final.Spec.HostRedirects)
+			declarations := s.claimDeclarations(final)
 			if sameDomainDeclarations(rows, declarations) {
 				applyVerifiedDomainClaims(&final.Spec, rows)
 				domainsChanged = false
@@ -3803,7 +3803,7 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		}
 		if appID := managedAppID(existing); appID != "" && s.Store != nil {
 			if claims, _, ok := s.managedDomainClaims(existing); ok {
-				declarations := domainDeclarations(final.Spec.Host, final.Spec.Hosts, final.Spec.HostRedirects)
+				declarations := s.claimDeclarations(final)
 				rows, err := claims.ReplaceDomainClaims(ctx, appID, declarations)
 				if errors.Is(err, store.ErrConflict) {
 					return AppView{}, errDomainInUse()

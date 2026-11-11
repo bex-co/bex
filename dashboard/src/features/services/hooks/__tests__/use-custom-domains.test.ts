@@ -28,6 +28,18 @@ describe("classifyAddError", () => {
     ).toEqual({ key: "services.domainAddReserved" });
   });
 
+  // w4/558: a service's own <slug>.onbex.co can never be its custom domain.
+  it("names a service's own platform subdomain", () => {
+    expect(
+      classifyAddError(
+        coded(
+          "CUSTOM_DOMAIN_OWN_PLATFORM_HOST",
+          '"web.onbex.co" is already this service\'s platform subdomain',
+        ),
+      ),
+    ).toEqual({ key: "services.domainAddOwnPlatformHost" });
+  });
+
   it("decides by the code, not the wording", () => {
     // The old sentinel text with no code is just another refusal now.
     expect(

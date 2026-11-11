@@ -461,6 +461,12 @@ func errReservedHostname(host string) error {
 	return core.NewBadRequestError("CUSTOM_DOMAIN_RESERVED", fmt.Sprintf("%q is a reserved platform hostname", host), map[string]any{"hostname": host})
 }
 
+// errOwnPlatformHost refuses a service's own platform subdomain as its custom
+// domain (w4/558).
+func errOwnPlatformHost(host string) error {
+	return core.NewBadRequestError("CUSTOM_DOMAIN_OWN_PLATFORM_HOST", fmt.Sprintf("%q is already this service's platform subdomain", host), map[string]any{"hostname": host})
+}
+
 // wwwSibling returns the www<->apex pairing partner Render auto-adds when a
 // tenant registers host (docs/render-artifacts/custom-domain-pairing.md, w6/m23
 // t001): an apex's sibling is "www."+apex; "www."+apex's sibling is the apex;
@@ -770,6 +776,16 @@ func (s *Service) managedDomainClaims(app *appv1alpha1.App) (domainClaimStore, s
 	appID := managedAppID(app)
 	claims, ok := s.Store.(domainClaimStore)
 	return claims, appID, ok && appID != ""
+}
+
+// claimDeclarations is app's declared domains as managed claims, less its own
+// platform subdomain: a create or Blueprint may re-state that host in hosts,
+// but as a claim it could never verify and its DNS row would ask for a CNAME
+// to itself (w4/558). It already serves without one.
+func (s *Service) claimDeclarations(app *appv1alpha1.App) []store.DomainDeclaration {
+	declarations := domainDeclarations(app.Spec.Host, app.Spec.Hosts, app.Spec.HostRedirects)
+	own := s.ownPlatformHost(app)
+	return slices.DeleteFunc(declarations, func(d store.DomainDeclaration) bool { return d.Host == own })
 }
 
 func domainDeclarations(primary string, hosts []string, redirects map[string]string) []store.DomainDeclaration {
@@ -1686,6 +1702,14 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	if err := s.wildcardsAvailable(hostname); err != nil {
 		return DomainView{}, false, err
 	}
+	// The service's own <slug>.<base> already serves it. As a custom domain it
+	// could never verify, and its DNS row would ask for a CNAME to itself in a
+	// zone the customer doesn't control (w4/558). A create or Blueprint that
+	// re-states it in hosts keeps its exemption (ensureHostsClaimable).
+	own := s.ownPlatformHost(app)
+	if own != "" && hostname == own {
+		return DomainView{}, false, errOwnPlatformHost(hostname)
+	}
 	redirectForName = normalizeHostname(redirectForName)
 	if claims, appID, managed := s.managedDomainClaims(app); managed {
 		existing, getErr := claims.GetDomainClaim(ctx, appID, hostname)
@@ -1704,7 +1728,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 			if err := s.checkCustomDomainQuota(ctx, app, len(rows)); err != nil {
 				return DomainView{}, false, err
 			}
-			if s.reservedHost(s.ownPlatformHost(app), hostname) {
+			if s.reservedHost(own, hostname) {
 				return DomainView{}, false, errReservedHostname(hostname)
 			}
 			if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {
@@ -1745,7 +1769,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 		if err := s.checkCustomDomainQuota(ctx, app, claimedHostCount(app)); err != nil {
 			return DomainView{}, false, err
 		}
-		if s.reservedHost(s.ownPlatformHost(app), hostname) {
+		if s.reservedHost(own, hostname) {
 			return DomainView{}, false, errReservedHostname(hostname)
 		}
 		if claimed, err := s.hostClaimedElsewhere(ctx, app, hostname); err != nil {

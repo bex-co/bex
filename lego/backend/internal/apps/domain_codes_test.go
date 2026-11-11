@@ -35,7 +35,7 @@ import (
 func TestCustomDomainRefusalsAreCodedOnEverySurface(t *testing.T) {
 	holder := sampleApp("holder")
 	holder.Spec.Hosts = []string{"taken.example.com"}
-	svc, _ := newBaseDomainService("", "www.foo.com", sampleApp("web"), holder)
+	svc, _ := newBaseDomainService("onbex.co", "www.foo.com", sampleApp("web"), holder)
 	ctx := context.Background()
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
@@ -80,6 +80,7 @@ func TestCustomDomainRefusalsAreCodedOnEverySurface(t *testing.T) {
 		{"github.io", "CUSTOM_DOMAIN_INVALID", http.StatusBadRequest},
 		{"api.foo.com", "CUSTOM_DOMAIN_RESERVED", http.StatusBadRequest},
 		{"taken.example.com", "CUSTOM_DOMAIN_IN_USE", http.StatusConflict},
+		{"web.onbex.co", "CUSTOM_DOMAIN_OWN_PLATFORM_HOST", http.StatusBadRequest}, // w4/558
 	} {
 		for name, add := range surfaces {
 			status, code := add(tc.host)

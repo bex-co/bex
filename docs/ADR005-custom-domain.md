@@ -80,6 +80,8 @@ Direct add mirrors Render's pairing via the public-suffix list:
 
 Cross-App collision covers both halves because each sibling is a real globally unique row. A wildcard has no sibling.
 
+**A service's own platform subdomain is not a custom domain (w4/558).** It already serves without a claim, and as one it could never verify: its DNS row would ask for a CNAME to itself in the platform zone. Adding it is `CUSTOM_DOMAIN_OWN_PLATFORM_HOST` on REST, GraphQL, MCP and the dashboard. A create or Blueprint that re-states it in `hosts` stays idempotent (`ensureHostsClaimable` exempts it) and records no claim for it (`claimDeclarations`).
+
 ### Wildcard domains (w4/m326, 2026-11-11)
 
 A service takes a wildcard custom domain as Render's does ([the captured flow](render-artifacts/wildcard-custom-domains.md)). This replaces the earlier refusal, which literal uniqueness could not arbitrate and which carried no sign-off.

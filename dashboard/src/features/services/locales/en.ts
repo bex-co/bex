@@ -1760,6 +1760,12 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Toast when a custom-domain add is rejected because the host is a platform-owned name (400)",
   },
+  "services.domainAddOwnPlatformHost": {
+    message:
+      "{name} is already this service's platform subdomain, so it can't be added as a custom domain",
+    description:
+      "Toast when a custom-domain add names the service's own platform subdomain (400 CUSTOM_DOMAIN_OWN_PLATFORM_HOST, w4/558)",
+  },
   "services.domainDeleteSuccess": {
     message: "Removed {name}",
     description: "Toast on a successful custom-domain delete",

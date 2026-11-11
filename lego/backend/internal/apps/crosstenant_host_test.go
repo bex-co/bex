@@ -187,10 +187,13 @@ func TestReservedHostExemptsSlugNotAppName(t *testing.T) {
 		t.Fatalf("the refused claim still wrote the victim host into spec.hosts: %v", hosts)
 	}
 
-	// The App may still add its OWN real platform host (the exemption still works
-	// for the correct, slug-derived name) — no false positive.
-	if _, err := svc.AddDomain(ctx, "victim-slug", "attacker-9f3c.onbex.co"); err != nil {
-		t.Fatalf("AddDomain of the App's own slug host was refused: %v", err)
+	// The exemption still works for the correct, slug-derived name — no false
+	// positive. (AddDomain refuses that host as already the App's own, w4/558;
+	// the exemption serves a create or Blueprint re-stating it.)
+	app := getApp(t, cl, "victim-slug")
+	app.Spec.Hosts = []string{"attacker-9f3c.onbex.co"}
+	if err := svc.ensureHostsClaimable(ctx, app); err != nil {
+		t.Fatalf("re-stating the App's own slug host was refused: %v", err)
 	}
 }
 

@@ -674,9 +674,9 @@ func TestAddDomainStoreConflictMapsToConflict(t *testing.T) {
 }
 
 // TestAddDomainReservedPlatformHosts: with BaseDomain set, the apex and any
-// foreign `<x>.<base>` platform host are refused (core.ErrBadRequest), while the
-// App's own `<app>.<base>` auto host is allowed (Render lets a service keep its
-// own platform subdomain).
+// foreign `<x>.<base>` platform host are refused (core.ErrBadRequest). The
+// App's own `<app>.<base>` auto host already serves it, so it is refused as a
+// custom domain too, with its own code: it could never verify (w4/558).
 func TestAddDomainReservedPlatformHosts(t *testing.T) {
 	svc, cl := newBaseDomainService("onbex.co", "", sampleApp("web"))
 	for _, host := range []string{"onbex.co", "other.onbex.co", "api.onbex.co"} {
@@ -684,12 +684,18 @@ func TestAddDomainReservedPlatformHosts(t *testing.T) {
 			t.Errorf("reserved host %q => ErrBadRequest, got %v", host, err)
 		}
 	}
-	// The App's own auto host is not reserved.
-	if _, err := svc.AddDomain(context.Background(), "web", "web.onbex.co"); err != nil {
-		t.Errorf("own auto host web.onbex.co must be allowed, got %v", err)
+	var coded *core.CodedError
+	if _, err := svc.AddDomain(context.Background(), "web", "web.onbex.co"); !errors.As(err, &coded) || coded.Code != "CUSTOM_DOMAIN_OWN_PLATFORM_HOST" {
+		t.Errorf("own auto host web.onbex.co => %v, want CUSTOM_DOMAIN_OWN_PLATFORM_HOST", err)
 	}
-	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 1 || got[0] != "web.onbex.co" {
-		t.Errorf("own auto host should append, got %v", got)
+	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
+		t.Errorf("the refused own host was written: %v", got)
+	}
+	// A create or Blueprint re-stating it in hosts stays idempotent.
+	app := getApp(t, cl, "web")
+	app.Spec.Hosts = []string{"web.onbex.co"}
+	if err := svc.ensureHostsClaimable(context.Background(), app); err != nil {
+		t.Errorf("re-stating the own auto host in hosts was refused: %v", err)
 	}
 }
 
@@ -2696,5 +2702,18 @@ func TestCustomDomainDialogVectors(t *testing.T) {
 		if got, err := claimableHostname(raw); err == nil {
 			t.Errorf("claimableHostname(%q) = %q; the dialog's table says refused", raw, got)
 		}
+	}
+}
+
+// TestClaimDeclarationsDropTheOwnPlatformHost pins w4/558's create/Blueprint
+// half: a re-stated own platform subdomain never becomes a managed claim that
+// could not verify, while the custom domains beside it still do.
+func TestClaimDeclarationsDropTheOwnPlatformHost(t *testing.T) {
+	svc, _ := newBaseDomainService("onbex.co", "", sampleApp("web"))
+	app := sampleApp("web")
+	app.Spec.Hosts = []string{"web.onbex.co", "www.example.com"}
+	got := svc.claimDeclarations(app)
+	if len(got) != 1 || got[0].Host != "www.example.com" {
+		t.Fatalf("claimDeclarations = %+v, want only www.example.com", got)
 	}
 }

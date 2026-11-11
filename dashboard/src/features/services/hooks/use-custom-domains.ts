@@ -85,7 +85,8 @@ function mapRaw(raw: RawDomain): CustomDomainView | null {
 // refusals with their own localized line are keyed on bex-api's codes (w5/m118),
 // never its English: a host another service serves (409 CUSTOM_DOMAIN_IN_USE,
 // Render's "already exists on another site") and a reserved platform host (400
-// CUSTOM_DOMAIN_RESERVED). Every other refusal falls through to the server's own
+// CUSTOM_DOMAIN_RESERVED), and the service's own platform subdomain (400
+// CUSTOM_DOMAIN_OWN_PLATFORM_HOST, w4/558). Every other refusal falls through to the server's own
 // reason (shared `refusalReason`), e.g. "wildcard hostnames are not allowed",
 // so a rejection the UI doesn't special-case is still explained instead of
 // collapsing to "Couldn't add {name}". `key` resolves through t(), `detail` is
@@ -98,6 +99,8 @@ export function classifyAddError(error: unknown): {
     return { key: "services.domainAddConflict" };
   if (hasGraphQLErrorCode(error, "CUSTOM_DOMAIN_RESERVED"))
     return { key: "services.domainAddReserved" };
+  if (hasGraphQLErrorCode(error, "CUSTOM_DOMAIN_OWN_PLATFORM_HOST"))
+    return { key: "services.domainAddOwnPlatformHost" };
   const detail = refusalReason(error);
   return detail ? { detail } : {};
 }

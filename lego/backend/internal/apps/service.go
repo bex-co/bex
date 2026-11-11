@@ -2381,7 +2381,7 @@ func (s *Service) planNewApp(ctx context.Context, req CreateRequest, a *appv1alp
 		return err
 	}
 	if managed {
-		declarations := domainDeclarations(a.Spec.Host, a.Spec.Hosts, a.Spec.HostRedirects)
+		declarations := s.claimDeclarations(a)
 		hosts := make([]string, 0, len(declarations))
 		for _, declaration := range declarations {
 			hosts = append(hosts, declaration.Host)
@@ -2865,7 +2865,7 @@ func (s *Service) materializeNewAppLocked(ctx context.Context, req CreateRequest
 	}
 	if createdRowID != "" {
 		if claims, _, ok := s.managedDomainClaims(a); ok {
-			declarations := domainDeclarations(a.Spec.Host, a.Spec.Hosts, a.Spec.HostRedirects)
+			declarations := s.claimDeclarations(a)
 			rows, err := claims.ReplaceDomainClaims(ctx, createdRowID, declarations)
 			if err != nil {
 				return AppView{}, rollbackStoreRow(errClaimServiceDomains(err))

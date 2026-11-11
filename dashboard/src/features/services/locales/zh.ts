@@ -1726,6 +1726,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Toast when a custom-domain add is rejected because the host is a platform-owned name (400)",
   },
+  "services.domainAddOwnPlatformHost": {
+    message: "{name} 已是该服务自己的平台子域名，不能作为自定义域名添加",
+    description:
+      "Toast when a custom-domain add names the service's own platform subdomain (400 CUSTOM_DOMAIN_OWN_PLATFORM_HOST, w4/558)",
+  },
   "services.domainDeleteSuccess": {
     message: "已移除 {name}",
     description: "Toast on a successful custom-domain delete",
