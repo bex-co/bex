@@ -516,6 +516,13 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 	for _, deploy := range open {
 		r.recordDeploy(ctx, d, deploy, cur)
 	}
+	if len(open) == 0 {
+		if fact, ok := servedReleasePullFailure(d.ID, cur); ok {
+			if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+				log.Printf("controlplane: record image-pull failure of the served release %s: %v", d.ID, err)
+			}
+		}
+	}
 	r.recordCanceledPreDeploy(ctx, d.ID, cur)
 	obs := r.guardServiceObservation(ctx, observedServiceStateFor(d.ID, cur, len(open) > 0))
 	if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
@@ -1462,6 +1469,40 @@ func observedImagePullFailure(open Deploy, app *appv1alpha1.App) (ServiceEventFa
 		}, true
 	}
 	return ServiceEventFact{}, false
+}
+
+// servedReleasePullFailure is the image_pull_failed fact for a release that
+// served and can no longer pull its image, with no deploy open (w8/m156 t005).
+// A wake, a restart or a reschedule of the live release opens no deploy row,
+// so observedImagePullFailure, which reads through one, never saw it: the
+// timeline showed nothing and no alert went out while the service could not
+// start.
+//
+// The operator records the verdict as the Rollout condition of the release
+// that failed. It is the served release's own when that generation is the one
+// whose image is recorded as serving; a newer release that failed over it
+// carries a later generation, and its deploy row has already recorded its own
+// fact. The key holds the condition's transition time: one event per time the
+// release stops being able to pull, however many passes see it.
+func servedReleasePullFailure(appID string, app *appv1alpha1.App) (ServiceEventFact, bool) {
+	serving := app.Status.ImageDigest
+	c := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
+	if serving == nil || serving.Generation <= 0 || c == nil || c.Status != metav1.ConditionFalse ||
+		!imagePullFailure(c.Reason) || c.ObservedGeneration != serving.Generation {
+		return ServiceEventFact{}, false
+	}
+	at := c.LastTransitionTime.Time
+	if at.IsZero() {
+		return ServiceEventFact{}, false
+	}
+	return ServiceEventFact{
+		SourceKey:  fmt.Sprintf("release:%s:%d:image_pull_failed:%d", appID, serving.Generation, at.Unix()),
+		AppID:      appID,
+		Type:       EventFactImagePullFailed,
+		At:         at,
+		Image:      app.Status.Image,
+		ReasonCode: EventReasonImagePullBackoff,
+	}, true
 }
 
 // imagePullFailure reports a Ready or Rollout reason that Render reports as
