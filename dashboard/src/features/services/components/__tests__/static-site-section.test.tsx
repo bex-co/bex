@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RoutesEditor,
@@ -300,5 +300,84 @@ describe("edge-rule tables keep readable fields on narrow screens", () => {
       "table-container",
     );
     expect(table!.parentElement).toHaveClass("overflow-x-auto");
+  });
+});
+
+// w21/043: the length and `:name` rules bex-api applies to a rule are marked in
+// the row too, so Save is held with no request, and the byte budget is the
+// server's (a Chinese character is three bytes).
+describe("edge-rule length and placeholder rows (w21/043)", () => {
+  async function addedRow() {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => ({ ok: true }));
+    render(<RoutesEditor routes={[]} onSave={onSave} busy={false} />);
+    await user.click(screen.getByRole("button", { name: /Add rule/ }));
+    return {
+      user,
+      onSave,
+      source: screen.getByRole("textbox", { name: "Source" }),
+      destination: screen.getByRole("textbox", { name: "Destination" }),
+    };
+  }
+
+  it("marks a repeated :name in the source", async () => {
+    const { user, onSave, source, destination } = await addedRow();
+    await user.type(source, "/a/:x/:x");
+    await user.type(destination, "/b/:x");
+    expect(source).toHaveAttribute("aria-invalid", "true");
+    expect(source).toHaveAccessibleDescription(
+      "Each :name can appear only once in the source",
+    );
+    expect(screen.getByRole("button", { name: "Save routes" })).toBeDisabled();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("marks a destination :name the source does not declare", async () => {
+    const { user, source, destination } = await addedRow();
+    await user.type(source, "/blog/:slug");
+    await user.type(destination, "/posts/:slg");
+    expect(destination).toHaveAttribute("aria-invalid", "true");
+    expect(destination).toHaveAccessibleDescription(
+      "Uses a :name the source does not declare",
+    );
+    expect(source).not.toHaveAttribute("aria-invalid");
+    expect(screen.getByRole("button", { name: "Save routes" })).toBeDisabled();
+  });
+
+  it("marks a source over 2048 bytes though it is under 2048 characters", async () => {
+    const { source, destination, user } = await addedRow();
+    fireEvent.change(source, { target: { value: `/${"中".repeat(700)}` } });
+    await user.type(destination, "/index.html");
+    expect(source).toHaveAttribute("aria-invalid", "true");
+    expect(source).toHaveAccessibleDescription("At most 2048 bytes");
+    expect(screen.getByRole("button", { name: "Save routes" })).toBeDisabled();
+  });
+
+  it("saves rules at the budget and with declared placeholders", async () => {
+    const { user, onSave, source, destination } = await addedRow();
+    fireEvent.change(source, { target: { value: `/${"a".repeat(2047)}` } });
+    await user.type(destination, "/index.html");
+    expect(source).not.toHaveAttribute("aria-invalid");
+    await user.click(screen.getByRole("button", { name: "Save routes" }));
+    expect(onSave).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks a headers path over 2048 bytes in the same words", async () => {
+    const user = userEvent.setup();
+    render(
+      <HeadersEditor
+        headers={[]}
+        onSave={vi.fn(async () => ({ ok: true }))}
+        busy={false}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /Add header/ }));
+    const path = screen.getByRole("textbox", { name: "Path" });
+    fireEvent.change(path, { target: { value: `/${"中".repeat(700)}` } });
+    await user.type(screen.getByRole("textbox", { name: "Name" }), "X-Long");
+    await user.type(screen.getByRole("textbox", { name: "Value" }), "1");
+    expect(path).toHaveAttribute("aria-invalid", "true");
+    expect(path).toHaveAccessibleDescription("At most 2048 bytes");
+    expect(screen.getByRole("button", { name: "Save headers" })).toBeDisabled();
   });
 });

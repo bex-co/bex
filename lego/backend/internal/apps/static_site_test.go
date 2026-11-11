@@ -361,6 +361,33 @@ func TestValidateRoutesNamedPlaceholders(t *testing.T) {
 	}
 }
 
+// w21/043: a rule path's budget is bytes, as len() counts it, and the message
+// says so: 701 Chinese characters are 2101 bytes. The dashboard row counts the
+// same way, so the two agree on which rules fit.
+func TestStaticRulePathBudgetIsBytes(t *testing.T) {
+	atBudget := "/" + strings.Repeat("a", maxStaticPathLen-1)
+	chinese := "/" + strings.Repeat("中", 700)
+	if len([]rune(chinese)) != 701 || len(chinese) <= maxStaticPathLen {
+		t.Fatalf("fixture: %d characters, %d bytes", len([]rune(chinese)), len(chinese))
+	}
+	if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: atBudget, Destination: atBudget}}); err != nil {
+		t.Fatalf("a rule at the budget refused: %v", err)
+	}
+	if err := validateHeaders([]StaticHeaderView{{Path: atBudget, Name: "X-A", Value: "1"}}); err != nil {
+		t.Fatalf("a header path at the budget refused: %v", err)
+	}
+	for name, err := range map[string]error{
+		"source":      validateRoutes([]StaticRouteView{{Type: "redirect", Source: chinese, Destination: "/x"}}),
+		"destination": validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/x", Destination: chinese}}),
+		"external":    validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/x", Destination: "https://example.org" + chinese}}),
+		"header path": validateHeaders([]StaticHeaderView{{Path: chinese, Name: "X-A", Value: "1"}}),
+	} {
+		if !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "must not exceed 2048 bytes") {
+			t.Errorf("%s over the byte budget => %v, want a 400 saying 2048 bytes", name, err)
+		}
+	}
+}
+
 func TestValidateRoutesExternalRedirect(t *testing.T) {
 	for _, dest := range []string{"https://cdn.example.com/maps/*", "http://example.org", "https://example.org:8443/new?x=1", "HTTPS://Example.org/x"} {
 		if err := validateRoutes([]StaticRouteView{{Type: "redirect", Source: "/a/*", Destination: dest}}); err != nil {

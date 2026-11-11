@@ -5651,7 +5651,7 @@ func validateExternalRedirect(i int, dest string) error {
 		return fmt.Errorf("%w: routes[%d].destination %s", core.ErrBadRequest, i, why)
 	}
 	if len(dest) > maxStaticPathLen {
-		return bad(fmt.Sprintf("must not exceed %d characters", maxStaticPathLen))
+		return bad(fmt.Sprintf("must not exceed %d bytes", maxStaticPathLen))
 	}
 	if strings.ContainsAny(dest, "\\") || strings.IndexFunc(dest, func(r rune) bool { return r < 0x20 || r == 0x7f }) >= 0 {
 		return bad("must be a valid URL without backslashes or control characters")
@@ -5783,7 +5783,7 @@ func validateRoutes(routes []StaticRouteView) error {
 		if source := strings.TrimSpace(r.Source); !strings.HasPrefix(source, "/") {
 			return fmt.Errorf("%w: routes[%d].source must be a path starting with /", core.ErrBadRequest, i)
 		} else if len(source) > maxStaticPathLen {
-			return fmt.Errorf("%w: routes[%d].source must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
+			return fmt.Errorf("%w: routes[%d].source must not exceed %d bytes", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		dest := strings.TrimSpace(r.Destination)
 		if err := validateRoutePlaceholders(i, strings.TrimSpace(r.Source), dest); err != nil {
@@ -5810,7 +5810,7 @@ func validateRoutes(routes []StaticRouteView) error {
 			return fmt.Errorf("%w: routes[%d].destination must be a path starting with /", core.ErrBadRequest, i)
 		}
 		if len(dest) > maxStaticPathLen {
-			return fmt.Errorf("%w: routes[%d].destination must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
+			return fmt.Errorf("%w: routes[%d].destination must not exceed %d bytes", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		// round-5 finding 11: a leading "/" is not enough. "//host" (protocol-
 		// relative) and "/\host" (browsers normalize backslash to slash) are
@@ -5860,7 +5860,7 @@ func validateHeaders(headers []StaticHeaderView) error {
 			return fmt.Errorf("%w: headers[%d].path must be a path starting with /", core.ErrBadRequest, i)
 		}
 		if len(strings.TrimSpace(h.Path)) > maxStaticPathLen {
-			return fmt.Errorf("%w: headers[%d].path must not exceed %d characters", core.ErrBadRequest, i, maxStaticPathLen)
+			return fmt.Errorf("%w: headers[%d].path must not exceed %d bytes", core.ErrBadRequest, i, maxStaticPathLen)
 		}
 		if name := strings.TrimSpace(h.Name); name == "" {
 			return fmt.Errorf("%w: headers[%d].name is required", core.ErrBadRequest, i)
@@ -5874,7 +5874,7 @@ func validateHeaders(headers []StaticHeaderView) error {
 			return fmt.Errorf("%w: headers[%d].name %q is set by the server and cannot be overridden (it frames the response body or the connection)", core.ErrBadRequest, i, h.Name)
 		}
 		if len(h.Value) > maxStaticHeaderValueLen {
-			return fmt.Errorf("%w: headers[%d].value must not exceed %d characters", core.ErrBadRequest, i, maxStaticHeaderValueLen)
+			return fmt.Errorf("%w: headers[%d].value must not exceed %d bytes", core.ErrBadRequest, i, maxStaticHeaderValueLen)
 		}
 		if !httpguts.ValidHeaderFieldValue(h.Value) {
 			return fmt.Errorf("%w: headers[%d].value contains an invalid character", core.ErrBadRequest, i)

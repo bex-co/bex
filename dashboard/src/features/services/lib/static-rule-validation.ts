@@ -60,25 +60,103 @@ function externalRedirectError(value: string): keyof typeof en | undefined {
   return undefined;
 }
 
+// bex-api counts a rule path in UTF-8 bytes (Go `len`), not in characters, so
+// the row counts the same way: a source of 701 Chinese characters is 2101 bytes
+// and over the 2048 budget (w21/043).
+const utf8 = new TextEncoder();
+const MAX_STATIC_PATH_BYTES = 2048;
+
+function overPathBudget(trimmed: string): boolean {
+  return utf8.encode(trimmed).length > MAX_STATIC_PATH_BYTES;
+}
+
+// The operator static-server's `:name` grammar (a whole path segment,
+// [A-Za-z_][A-Za-z0-9_]*) and bex-api's routePlaceholderName pin the same
+// vectors; this is the third copy, pinned by the dashboard test.
+const PLACEHOLDER_SEGMENT = /^:([A-Za-z_][A-Za-z0-9_]*)$/;
+const PLACEHOLDER_TOKEN = /:([A-Za-z0-9_]*)/g;
+
+/** The `:name` segments a source declares, in order. */
+function declaredPlaceholders(source: string): string[] {
+  const names: string[] = [];
+  for (const segment of source.split("/")) {
+    const name = PLACEHOLDER_SEGMENT.exec(segment)?.[1];
+    if (name) names.push(name);
+  }
+  return names;
+}
+
+// The destination's path, as bex-api's validateRoutePlaceholders reads it:
+// the part before a query or fragment, percent-decoded once when every escape
+// is well formed (Go's URL.Path), raw otherwise.
+function destinationPath(destination: string): string {
+  const afterHost = /^https?:\/\//i.test(destination)
+    ? destination.slice(destination.indexOf("//") + 2).replace(/^[^/?#]*/, "")
+    : destination;
+  const path = afterHost.split(/[?#]/, 1)[0];
+  if (/%(?![0-9a-f]{2})/i.test(path)) return path;
+  return path.replace(/%([0-9a-f]{2})/gi, (_, byte: string) =>
+    String.fromCharCode(Number.parseInt(byte, 16)),
+  );
+}
+
+/** A destination `:name` (other than `:splat`) the source never declared. */
+function undeclaredPlaceholder(
+  destination: string,
+  declared: string[],
+): boolean {
+  for (const [, name] of destinationPath(destination).matchAll(
+    PLACEHOLDER_TOKEN,
+  )) {
+    if (
+      /^[A-Za-z_]/.test(name) &&
+      name !== "splat" &&
+      !declared.includes(name)
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function routeErrors(
   route: StaticRouteView,
 ): RuleFieldErrors<StaticRouteView> {
   const errors: RuleFieldErrors<StaticRouteView> = {};
+  const trimmedSource = route.source.trim();
+  const declared = declaredPlaceholders(trimmedSource);
   const source = pathError(route.source);
-  if (source) errors.source = source;
+  if (source) {
+    errors.source = source;
+  } else if (overPathBudget(trimmedSource)) {
+    errors.source = "services.staticRulePathTooLong";
+  } else if (new Set(declared).size !== declared.length) {
+    errors.source = "services.staticRuleSourceRepeatsPlaceholder";
+  }
   const trimmedDestination = route.destination.trim();
   if (/^https?:\/\//i.test(trimmedDestination)) {
-    const external = externalRedirectError(trimmedDestination);
-    if (external) errors.destination = external;
+    if (overPathBudget(trimmedDestination)) {
+      errors.destination = "services.staticRulePathTooLong";
+    } else {
+      const external = externalRedirectError(trimmedDestination);
+      if (external) errors.destination = external;
+      else if (undeclaredPlaceholder(trimmedDestination, declared)) {
+        errors.destination = "services.staticRuleUndeclaredPlaceholder";
+      }
+    }
     return errors;
   }
   const destination = pathError(route.destination);
   if (destination) {
     errors.destination = destination;
-  } else if (unsafeDestination(route.destination.trim())) {
+  } else if (overPathBudget(trimmedDestination)) {
+    errors.destination = "services.staticRulePathTooLong";
+  } else if (unsafeDestination(trimmedDestination)) {
     // A network-path reference would leave the site (the open-redirect guard,
     // ADR029).
     errors.destination = "services.staticRuleLocalPath";
+  } else if (undeclaredPlaceholder(trimmedDestination, declared)) {
+    errors.destination = "services.staticRuleUndeclaredPlaceholder";
   }
   return errors;
 }
@@ -87,7 +165,6 @@ export function routeErrors(
 // (lego/backend/internal/apps/service.go) and the Go reserved list
 // (lego/types/v1alpha1/static_headers.go); the dashboard test pins the list so
 // the two cannot drift apart (w4/402).
-const MAX_STATIC_PATH_LEN = 2048;
 const MAX_STATIC_HEADER_NAME_LEN = 256;
 const MAX_STATIC_HEADER_VALUE_LEN = 4096;
 
@@ -126,7 +203,7 @@ export function headerErrors(
   const errors: RuleFieldErrors<StaticHeaderView> = {};
   const path = pathError(header.path);
   if (path) errors.path = path;
-  else if (header.path.trim().length > MAX_STATIC_PATH_LEN)
+  else if (overPathBudget(header.path.trim()))
     errors.path = "services.staticRulePathTooLong";
 
   const name = header.name.trim();
@@ -144,7 +221,9 @@ export function headerErrors(
     errors.name = "services.staticRuleHeaderNameReserved";
   }
 
-  if (header.value.length > MAX_STATIC_HEADER_VALUE_LEN) {
+  // Bytes, like the server: a value may hold code points up to U+00FF, and the
+  // ones from U+0080 are two bytes each.
+  if (utf8.encode(header.value).length > MAX_STATIC_HEADER_VALUE_LEN) {
     errors.value = "services.staticRuleHeaderValueTooLong";
   } else if (!validHeaderValue(header.value)) {
     errors.value = "services.staticRuleHeaderValueInvalid";

@@ -2941,9 +2941,19 @@ const zhServices: Record<string, TranslationEntry> = {
       "Prefix naming the 1-based rule row in a server refusal, replacing its zero-based wire index (w4/145)",
   },
   "services.staticRulePathTooLong": {
-    message: "最多 2048 个字符",
+    message: "最多 2048 字节",
     description:
-      "Inline error under an over-long static-site rule path (w4/402)",
+      "Inline error under an over-long static-site rule path; the server counts UTF-8 bytes, so a Chinese character is 3 (w4/402, w21/043)",
+  },
+  "services.staticRuleSourceRepeatsPlaceholder": {
+    message: "来源路径中同一个 :name 只能出现一次",
+    description:
+      "Inline error under a redirect/rewrite source that declares the same :name placeholder twice (w21/043)",
+  },
+  "services.staticRuleUndeclaredPlaceholder": {
+    message: "使用了来源路径中未声明的 :name",
+    description:
+      "Inline error under a redirect/rewrite destination whose :name placeholder (other than :splat) the source never declares (w21/043)",
   },
   "services.staticRuleHeaderNameTooLong": {
     message: "最多 256 个字符",
@@ -2960,7 +2970,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Inline error under a reserved header name such as Content-Length (w4/402)",
   },
   "services.staticRuleHeaderValueTooLong": {
-    message: "最多 4096 个字符",
+    message: "最多 4096 字节",
     description: "Inline error under an over-long header value (w4/402)",
   },
   "services.staticRuleHeaderValueInvalid": {

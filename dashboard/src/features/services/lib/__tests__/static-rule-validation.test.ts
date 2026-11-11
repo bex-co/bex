@@ -189,3 +189,96 @@ it.each([
     routeErrors({ type: "rewrite", source: "/old/*", destination }),
   ).toEqual({});
 });
+
+// w21/043: the rules bex-api applies to a route's length and `:name`
+// placeholders, checked in the row.
+describe("static-site route length and placeholders (w21/043)", () => {
+  const rule = (source: string, destination: string) =>
+    routeErrors({ type: "redirect", source, destination });
+
+  it("counts a rule path in UTF-8 bytes, as the server does", () => {
+    // 2048 bytes saves; one more does not.
+    expect(rule(`/${"a".repeat(2047)}`, "/index.html")).toEqual({});
+    expect(rule(`/${"a".repeat(2048)}`, "/index.html")).toEqual({
+      source: "services.staticRulePathTooLong",
+    });
+    expect(rule("/ok", `/${"b".repeat(2047)}`)).toEqual({});
+    expect(rule("/ok", `/${"b".repeat(2048)}`)).toEqual({
+      destination: "services.staticRulePathTooLong",
+    });
+    // 700 Chinese characters are 2100 bytes: 701 characters, over the budget.
+    const chinese = `/${"中".repeat(700)}`;
+    expect(chinese.length).toBe(701);
+    expect(rule(chinese, "/index.html")).toEqual({
+      source: "services.staticRulePathTooLong",
+    });
+    expect(headerErrors({ path: chinese, name: "X-Long", value: "1" })).toEqual(
+      { path: "services.staticRulePathTooLong" },
+    );
+    // 682 Chinese characters are 2046 bytes plus the slash: 2047 bytes, fine.
+    expect(
+      headerErrors({
+        path: `/${"中".repeat(682)}`,
+        name: "X-Long",
+        value: "1",
+      }),
+    ).toEqual({});
+  });
+
+  it("counts the length of an external destination too", () => {
+    expect(rule("/ok", `https://example.org/${"c".repeat(2048)}`)).toEqual({
+      destination: "services.staticRulePathTooLong",
+    });
+  });
+
+  it("counts a header value in bytes, as the server does", () => {
+    // U+00E9 is allowed in a value and is two bytes: 2049 of them are 4098.
+    expect(
+      headerErrors({ path: "/*", name: "X-Test", value: "é".repeat(2048) }),
+    ).toEqual({});
+    expect(
+      headerErrors({ path: "/*", name: "X-Test", value: "é".repeat(2049) }),
+    ).toEqual({ value: "services.staticRuleHeaderValueTooLong" });
+  });
+
+  it("marks a source that declares the same :name twice", () => {
+    expect(rule("/a/:x/:x", "/b/:x")).toEqual({
+      source: "services.staticRuleSourceRepeatsPlaceholder",
+    });
+    expect(rule("/a/:x/:y", "/b/:x/:y")).toEqual({});
+  });
+
+  it("marks a destination :name the source does not declare", () => {
+    expect(rule("/blog/:slug", "/posts/:slg")).toEqual({
+      destination: "services.staticRuleUndeclaredPlaceholder",
+    });
+    expect(rule("/blog/:slug", "/posts/:slug")).toEqual({});
+    // :splat is always available, and a destination with no placeholder is fine.
+    expect(rule("/files/*", "/dl/:splat")).toEqual({});
+    expect(rule("/old", "/new")).toEqual({});
+  });
+
+  it("reads a placeholder anywhere in the destination path, not its query", () => {
+    expect(rule("/blog/:slug", "/posts/x-:slg")).toEqual({
+      destination: "services.staticRuleUndeclaredPlaceholder",
+    });
+    // A query or fragment is data, not a path selector.
+    expect(rule("/blog/:slug", "/posts?q=:nobody#:also")).toEqual({});
+    // Not a placeholder: a lone colon and a leading digit.
+    expect(rule("/blog/:slug", "/v1/items:")).toEqual({});
+    expect(rule("/blog/:slug", "/a/:1x")).toEqual({});
+    // The percent-decoded path is what the server reads.
+    expect(rule("/blog/:slug", "/posts/%3Aslg")).toEqual({
+      destination: "services.staticRuleUndeclaredPlaceholder",
+    });
+  });
+
+  it("applies the placeholder rule to an external destination's path", () => {
+    expect(rule("/blog/:slug", "https://example.org/p/:slug")).toEqual({});
+    expect(rule("/blog/:slug", "https://example.org/p/:slg")).toEqual({
+      destination: "services.staticRuleUndeclaredPlaceholder",
+    });
+    // The host's port colon is not a placeholder.
+    expect(rule("/old", "https://example.org:8443/x")).toEqual({});
+  });
+});

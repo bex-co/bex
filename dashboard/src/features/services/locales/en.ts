@@ -3005,9 +3005,19 @@ const enServices: Record<string, TranslationEntry> = {
       "Prefix naming the 1-based rule row in a server refusal, replacing its zero-based wire index (w4/145)",
   },
   "services.staticRulePathTooLong": {
-    message: "At most 2048 characters",
+    message: "At most 2048 bytes",
     description:
-      "Inline error under an over-long static-site rule path (w4/402)",
+      "Inline error under an over-long static-site rule path; the server counts UTF-8 bytes, so a Chinese character is 3 (w4/402, w21/043)",
+  },
+  "services.staticRuleSourceRepeatsPlaceholder": {
+    message: "Each :name can appear only once in the source",
+    description:
+      "Inline error under a redirect/rewrite source that declares the same :name placeholder twice (w21/043)",
+  },
+  "services.staticRuleUndeclaredPlaceholder": {
+    message: "Uses a :name the source does not declare",
+    description:
+      "Inline error under a redirect/rewrite destination whose :name placeholder (other than :splat) the source never declares (w21/043)",
   },
   "services.staticRuleHeaderNameTooLong": {
     message: "At most 256 characters",
@@ -3024,7 +3034,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Inline error under a reserved header name such as Content-Length (w4/402)",
   },
   "services.staticRuleHeaderValueTooLong": {
-    message: "At most 4096 characters",
+    message: "At most 4096 bytes",
     description: "Inline error under an over-long header value (w4/402)",
   },
   "services.staticRuleHeaderValueInvalid": {
