@@ -311,11 +311,11 @@ const zhProjects: Record<string, TranslationEntry> = {
       "项目下的环境及其配置将被删除。其环境组将变为未分组状态，不会被删除。",
     description: "Delete-project confirmation dialog body",
   },
-  "projects.deleteConfirmBodyResources_other": {
+  "projects.deleteConfirmBodyResources": {
     message:
-      "删除此项目会同时删除其所有环境，以及其中的 {count} 个服务、数据库和键值存储。其环境组将变为未分组状态，不会被删除。此操作无法撤销。",
+      "删除此项目会同时删除其所有环境及其中的服务、数据库和键值存储：{resources}。其环境组将变为未分组状态，不会被删除。此操作无法撤销。",
     description:
-      "Delete-project confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
+      "Delete-project confirmation body naming every service, database and key value store it deletes, as the environment delete does (w4/m264, w6/m290, w4/542)",
   },
   "projects.deleteSuccess": {
     message: "项目「{name}」已删除。",

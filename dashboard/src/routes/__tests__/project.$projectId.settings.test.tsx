@@ -38,6 +38,22 @@ vi.mock("@/features/projects/hooks/use-delete-project", () => ({
   useDeleteProject: () => ({ remove, deleting: null }),
 }));
 
+const catalogState: {
+  services: { id: string; name: string }[];
+  databases: { id: string; name: string }[];
+  keyValues: { id: string; name: string }[];
+} = { services: [], databases: [], keyValues: [] };
+const listServices = vi.fn(() => ({ services: catalogState.services }));
+vi.mock("@/features/services/hooks/use-services", () => ({
+  useServices: () => listServices(),
+}));
+vi.mock("@/features/databases/hooks/use-databases", () => ({
+  useDatabases: () => ({ databases: catalogState.databases }),
+}));
+vi.mock("@/features/keyvalue/hooks/use-key-values", () => ({
+  useKeyValues: () => ({ keyValues: catalogState.keyValues }),
+}));
+
 function renderSettingsPage(projectId = "prj-1") {
   const rootRoute = createRootRoute();
   const projectRoute = createRoute({
@@ -75,6 +91,10 @@ beforeEach(() => {
   projectsState.error = undefined;
   rename.mockReset();
   remove.mockReset();
+  catalogState.services = [];
+  listServices.mockClear();
+  catalogState.databases = [];
+  catalogState.keyValues = [];
 });
 
 describe("ProjectSettingsPage", () => {
@@ -165,6 +185,37 @@ describe("ProjectSettingsPage", () => {
     );
 
     expect(remove).toHaveBeenCalledWith("prj-1", "storefront");
+  });
+
+  // w4/542: the confirmation names every service, database and key value
+  // store it deletes, across every environment, as the environment delete
+  // does; one whose list has not answered reads as its id, never a count.
+  it("names what the project delete removes", async () => {
+    projectsState.projects = [
+      {
+        id: "prj-1",
+        name: "storefront",
+        ownerId: "tea-1",
+        serviceIds: ["srv-1"],
+        databaseIds: ["dpg-1"],
+        keyValueIds: ["red-1"],
+      },
+    ];
+    catalogState.services = [{ id: "srv-1", name: "web" }];
+    catalogState.databases = [{ id: "dpg-1", name: "orders-db" }];
+    const user = userEvent.setup();
+
+    renderSettingsPage();
+
+    await screen.findByDisplayValue("storefront");
+    // The page reads the workspace's lists only once the dialog opens.
+    expect(listServices).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Delete Project" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "deletes all of its environments and their services, databases, and key value stores: web, orders-db, red-1.",
+    );
+    expect(dialog).toHaveTextContent("sudo delete project storefront");
   });
 });
 

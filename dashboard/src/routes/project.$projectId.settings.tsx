@@ -1,4 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  doomedResourceNames,
+  type DoomedResourceIds,
+} from "@/features/projects/lib/doomed-resources";
+import { useServices } from "@/features/services/hooks/use-services";
+import { useDatabases } from "@/features/databases/hooks/use-databases";
+import { useKeyValues } from "@/features/keyvalue/hooks/use-key-values";
 import {
   createFileRoute,
   getRouteApi,
@@ -202,11 +209,11 @@ export function ProjectSettingsPage() {
         onOpenChange={setDeleteOpen}
         title={t("projects.deleteConfirmTitle", { name: project?.name ?? "" })}
         description={
-          doomedResourceCount > 0
-            ? t("projects.deleteConfirmBodyResources", {
-                count: doomedResourceCount,
-              })
-            : t("projects.deleteConfirmBody")
+          project && doomedResourceCount > 0 ? (
+            <ProjectDoomedResources project={project} />
+          ) : (
+            t("projects.deleteConfirmBody")
+          )
         }
         phrase={
           doomedResourceCount > 0
@@ -225,4 +232,24 @@ export function ProjectSettingsPage() {
       />
     </div>
   );
+}
+
+/**
+ * The project delete's description, naming every service, database and key
+ * value store it removes, as the environment delete does (w4/542). It mounts
+ * only with the open dialog, so the page reads the workspace's lists only when
+ * someone is about to delete; until they answer, a resource reads as its id.
+ */
+function ProjectDoomedResources({ project }: { project: DoomedResourceIds }) {
+  const { t } = useTranslations();
+  const { services } = useServices({ poll: false });
+  const { databases } = useDatabases();
+  const { keyValues } = useKeyValues();
+  const names = useMemo(
+    () => doomedResourceNames(project, [services, databases, keyValues]),
+    [project, services, databases, keyValues],
+  );
+  return t("projects.deleteConfirmBodyResources", {
+    resources: names.join(", "),
+  });
 }
