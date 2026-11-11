@@ -1,6 +1,6 @@
 # w22 · m313 — Sandbox storage and memory meters: a suspended sandbox pays snapshot storage, as on Render
 
-**Worker:** worker22 **Goal:** a suspended sandbox is billed for its retained image and nothing else, and memory is metered on its own, as the first half of Render's sandbox billing model **Status:** blocked (t001–t005 and t007–t010 done and shipped; t006's production check and t011's closeout wait for the deploy, a Zot read credential, the Stripe Price and a suspended sandbox)
+**Worker:** worker22 **Goal:** a suspended sandbox is billed for its retained image and nothing else, and memory is metered on its own, as the first half of Render's sandbox billing model **Status:** blocked (t001–t005 and t007–t010 done and shipped; t006's production check and t011's closeout wait for the deploy, a Zot read credential and a suspended sandbox; the live Stripe Price exists since 2026-11-10 and its `BEX_STRIPE_SANDBOX_STORAGE_METER` hold is gone)
 
 ## Tasks (in order)
 

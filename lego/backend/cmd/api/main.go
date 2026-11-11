@@ -73,7 +73,6 @@ import (
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
-	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
@@ -964,23 +963,9 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		// ADR091 D3: until the Stripe catalog carries the agent model cost
 		// Price, hold that meter so neither Subscriptions nor the outbox
 		// reference a Price that does not exist; held rows ship once released.
-		// A held meter is left off every Subscription (by its catalog name) and its
-		// usage kind kept pending in the outbox; the two names differ where a meter
-		// re-bases its kind.
-		type heldMeter struct{ catalog, kind string }
-		var held []heldMeter
+		var heldMeters []string
 		if !cfg.StripeAgentModelMeter {
-			held = append(held, heldMeter{store.UsageKindAgentModelCostMicroUSD, store.UsageKindAgentModelCostMicroUSD})
-		}
-		// The suspended-sandbox storage meter ships held until its Price exists on
-		// the Stripe account.
-		if !cfg.StripeSandboxStorageMeter {
-			held = append(held, heldMeter{pricing.SandboxSnapshotMeter, store.UsageKindSandboxSnapshotGBSeconds})
-		}
-		var heldMeters, holdKinds []string
-		for _, h := range held {
-			heldMeters = append(heldMeters, h.catalog)
-			holdKinds = append(holdKinds, h.kind)
+			heldMeters = []string{store.UsageKindAgentModelCostMicroUSD}
 		}
 		thresholds := &billing.AgentModelThresholds{Store: st, Interval: cfg.StripeReconcileInterval, Metrics: billingMetrics}
 		stripeClient := billing.NewStripe(billing.StripeConfig{
@@ -1038,7 +1023,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		// hour closes, so it ships ~5 min after the hour instead of after the
 		// 48h seal — what lets a Stripe usage threshold charge promptly.
 		emitter.FastKinds = []string{store.UsageKindAgentModelCostMicroUSD}
-		emitter.HoldKinds = holdKinds
+		emitter.HoldKinds = heldMeters
 		// docs/ADR030 §13: each plan's included pipeline minutes are free, so
 		// only the build minutes above them reach Stripe.
 		emitter.Plans = base

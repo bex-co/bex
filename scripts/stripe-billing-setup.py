@@ -31,8 +31,7 @@
 #                      value = weighted seconds, price = usdPerWeightedSecond×100
 #   sandbox_snapshot_gb_seconds → re-based to per-GB-hour  event=sandbox_snapshot_gb_hours
 #                      value = gb_seconds/3600, price = usdPerGBSecond×3600×100. A
-#                      suspended sandbox's retained image (w22/m313, docs/ADR023);
-#                      held by bex-api until BEX_STRIPE_SANDBOX_STORAGE_METER=1.
+#                      suspended sandbox's retained image (w22/m313, docs/ADR023).
 #                      sandbox_memory_gb_seconds has NO Stripe meter: it is a shadow
 #                      meter until the used-CPU cutover (w22/m314).
 #   agent_model_cost_microusd → one model-agnostic meter  event=agent_model_cost_microusd

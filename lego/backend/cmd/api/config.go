@@ -172,18 +172,13 @@ type Config struct {
 	// StripeAgentModelMeter (BEX_STRIPE_AGENT_MODEL_METER=1) says the Stripe
 	// catalog carries the agent_model_cost_microusd Price (ADR091 D3). Unset,
 	// that meter is held: off every Subscription and pending in the outbox.
-	StripeAgentModelMeter bool
-	// StripeSandboxStorageMeter (BEX_STRIPE_SANDBOX_STORAGE_METER=1) says the
-	// Stripe catalog carries the sandbox_snapshot_gb_hours Price.
-	// Unset, that meter is held: off every Subscription and pending in the
-	// outbox, so storage rows are never billed against a Price that does not exist.
-	StripeSandboxStorageMeter bool
-	StripeSealHours           int
-	StripeSealHoursSet        bool
-	StripeDunningEnabled      bool
-	StripeGracePeriod         time.Duration
-	StripeReconcileInterval   time.Duration
-	StripeWebhookSecret       string
+	StripeAgentModelMeter   bool
+	StripeSealHours         int
+	StripeSealHoursSet      bool
+	StripeDunningEnabled    bool
+	StripeGracePeriod       time.Duration
+	StripeReconcileInterval time.Duration
+	StripeWebhookSecret     string
 
 	// Control plane (w1/m2), parsed only when BEX_CP_DB_URI is set outside
 	// stdio mode.
@@ -504,7 +499,6 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 			cfg.StripeTaxCode = getenv("BEX_STRIPE_TAX_CODE")
 			cfg.StripeTaxBehavior = getenv("BEX_STRIPE_TAX_BEHAVIOR")
 			cfg.StripeAgentModelMeter = getenv("BEX_STRIPE_AGENT_MODEL_METER") == "1"
-			cfg.StripeSandboxStorageMeter = getenv("BEX_STRIPE_SANDBOX_STORAGE_METER") == "1"
 			cfg.StripeSealHours, cfg.StripeSealHoursSet = p.positiveInt("BEX_STRIPE_SEAL_HOURS", billing.DefaultSealHours)
 			// The livemode parameter mirrors billing.NewStripe's derivation; the
 			// gate deliberately ignores it (any mode is supported since w4/m81
