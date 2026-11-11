@@ -3018,6 +3018,21 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Redirect",
     description: "Route type: redirect",
   },
+  "services.routeTypeAria": {
+    message: "Rule {n} type",
+    description:
+      "A route rule's type select (aria-label), named by its row as Remove rule {n} is (w4/541)",
+  },
+  "services.routeSourceAria": {
+    message: "Rule {n} source",
+    description:
+      "A route rule's source field (aria-label), named by its row (w4/541)",
+  },
+  "services.routeDestinationAria": {
+    message: "Rule {n} destination",
+    description:
+      "A route rule's destination field (aria-label), named by its row (w4/541)",
+  },
   "services.routeRemove": {
     message: "Remove rule {n}",
     description: "Remove a route rule (aria-label)",
@@ -3130,6 +3145,21 @@ const enServices: Record<string, TranslationEntry> = {
   "services.headerValue": {
     message: "Value",
     description: "Header value column",
+  },
+  "services.headerPathAria": {
+    message: "Header {n} path",
+    description:
+      "A header rule's path field (aria-label), named by its row as Remove header {n} is (w4/541)",
+  },
+  "services.headerNameAria": {
+    message: "Header {n} name",
+    description:
+      "A header rule's name field (aria-label), named by its row (w4/541)",
+  },
+  "services.headerValueAria": {
+    message: "Header {n} value",
+    description:
+      "A header rule's value field (aria-label), named by its row (w4/541)",
   },
   "services.headerRemove": {
     message: "Remove header {n}",

@@ -44,7 +44,7 @@ function headersEditor(
 
 function values() {
   return screen
-    .queryAllByRole("textbox", { name: "Value" })
+    .queryAllByRole("textbox", { name: /^Header \d+ value$/ })
     .map((el) => (el as HTMLInputElement).value);
 }
 
@@ -70,9 +70,9 @@ describe("an untouched edge-rule editor follows newer saved rules", () => {
     );
     rerender(<RoutesEditor routes={NEW_ROUTES} onSave={onSave} busy={false} />);
 
-    expect(screen.getByRole("textbox", { name: "Destination" })).toHaveValue(
-      "/qa-missing.yaml",
-    );
+    expect(
+      screen.getByRole("textbox", { name: /^Rule \d+ destination$/ }),
+    ).toHaveValue("/qa-missing.yaml");
     expect(screen.getByRole("button", { name: /save routes/i })).toBeDisabled();
     expect(cancel()).toBeNull();
   });
@@ -91,7 +91,9 @@ describe("a genuinely edited draft survives a refresh", () => {
   it("keeps the edit, its focus and its controls; Cancel adopts the latest saved rows", async () => {
     const user = userEvent.setup();
     const { rerender } = render(headersEditor(OLD_HEADERS));
-    const second = screen.getAllByRole("textbox", { name: "Value" })[1];
+    const second = screen.getAllByRole("textbox", {
+      name: /^Header \d+ value$/,
+    })[1];
     await user.clear(second);
     await user.type(second, "local-unsaved");
 
@@ -127,7 +129,9 @@ describe("a genuinely edited draft survives a refresh", () => {
       });
     });
     const { rerender } = render(headersEditor(OLD_HEADERS, onSave));
-    const second = screen.getAllByRole("textbox", { name: "Value" })[1];
+    const second = screen.getAllByRole("textbox", {
+      name: /^Header \d+ value$/,
+    })[1];
     await user.clear(second);
     await user.type(second, "submitted");
     await user.click(save());

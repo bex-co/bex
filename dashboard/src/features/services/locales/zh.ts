@@ -2953,6 +2953,21 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "重定向",
     description: "Route type: redirect",
   },
+  "services.routeTypeAria": {
+    message: "规则 {n} 类型",
+    description:
+      "A route rule's type select (aria-label), named by its row as Remove rule {n} is (w4/541)",
+  },
+  "services.routeSourceAria": {
+    message: "规则 {n} 源路径",
+    description:
+      "A route rule's source field (aria-label), named by its row (w4/541)",
+  },
+  "services.routeDestinationAria": {
+    message: "规则 {n} 目标路径",
+    description:
+      "A route rule's destination field (aria-label), named by its row (w4/541)",
+  },
   "services.routeRemove": {
     message: "删除规则 {n}",
     description: "Remove a route rule (aria-label)",
@@ -3064,6 +3079,21 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.headerValue": {
     message: "值",
     description: "Header value column",
+  },
+  "services.headerPathAria": {
+    message: "响应头 {n} 路径",
+    description:
+      "A header rule's path field (aria-label), named by its row as Remove header {n} is (w4/541)",
+  },
+  "services.headerNameAria": {
+    message: "响应头 {n} 名称",
+    description:
+      "A header rule's name field (aria-label), named by its row (w4/541)",
+  },
+  "services.headerValueAria": {
+    message: "响应头 {n} 值",
+    description:
+      "A header rule's value field (aria-label), named by its row (w4/541)",
   },
   "services.headerRemove": {
     message: "删除响应头 {n}",

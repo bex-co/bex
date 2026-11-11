@@ -270,12 +270,15 @@ export function RoutesEditor({
                     onValueChange={(v) => update(i, { type: v })}
                   >
                     {/* The <th>s label cells, not the controls inside them, so
-                        each control carries the column heading as its own
-                        accessible name; placeholders stay literal examples
-                        (path syntax / header literals, untranslated). */}
+                        each control carries its column and row as its own
+                        accessible name, as the Remove button does (w4/541);
+                        placeholders stay literal examples (path syntax /
+                        header literals, untranslated). */}
                     <SelectTrigger
                       size="sm"
-                      aria-label={t("services.routeType")}
+                      aria-label={t("services.routeTypeAria", {
+                        n: String(i + 1),
+                      })}
                     >
                       <SelectValue />
                     </SelectTrigger>
@@ -294,7 +297,7 @@ export function RoutesEditor({
                     id={`route-${i}-source`}
                     value={r.source}
                     onChange={(source) => update(i, { source })}
-                    label={t("services.routeSource")}
+                    label={t("services.routeSourceAria", { n: String(i + 1) })}
                     placeholder="/old/*"
                     error={
                       r.source || r.destination ? errors[i].source : undefined
@@ -306,7 +309,9 @@ export function RoutesEditor({
                     id={`route-${i}-destination`}
                     value={r.destination}
                     onChange={(destination) => update(i, { destination })}
-                    label={t("services.routeDestination")}
+                    label={t("services.routeDestinationAria", {
+                      n: String(i + 1),
+                    })}
                     placeholder="/index.html"
                     error={
                       r.source || r.destination
@@ -411,13 +416,13 @@ export function HeadersEditor({
             {draft.map((h, i) => (
               <TableRow key={i}>
                 <TableCell className="align-top">
-                  {/* Same pattern as RoutesEditor: the column heading doubles
-                      as each control's accessible name. */}
+                  {/* Same pattern as RoutesEditor: each control is named by its
+                      column and row. */}
                   <RuleInput
                     id={`header-${i}-path`}
                     value={h.path}
                     onChange={(path) => update(i, { path })}
-                    label={t("services.headerPath")}
+                    label={t("services.headerPathAria", { n: String(i + 1) })}
                     placeholder="/*"
                     error={errors[i].path}
                   />
@@ -427,7 +432,7 @@ export function HeadersEditor({
                     id={`header-${i}-name`}
                     value={h.name}
                     onChange={(name) => update(i, { name })}
-                    label={t("services.headerName")}
+                    label={t("services.headerNameAria", { n: String(i + 1) })}
                     placeholder="X-Frame-Options"
                     error={started(h) ? errors[i].name : undefined}
                   />
@@ -436,7 +441,9 @@ export function HeadersEditor({
                   <Input
                     value={h.value}
                     onChange={(e) => update(i, { value: e.target.value })}
-                    aria-label={t("services.headerValue")}
+                    aria-label={t("services.headerValueAria", {
+                      n: String(i + 1),
+                    })}
                     placeholder="DENY"
                     className="font-mono text-xs"
                   />

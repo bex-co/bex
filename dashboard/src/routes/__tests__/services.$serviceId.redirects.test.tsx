@@ -195,8 +195,11 @@ describe("post-save synchronization with the accepted rows (w4/136)", () => {
     // asserts that half with controlled props.)
     await waitFor(() =>
       expect(
-        (screen.getByRole("textbox", { name: "Source" }) as HTMLInputElement)
-          .value,
+        (
+          screen.getByRole("textbox", {
+            name: /^Rule \d+ source$/,
+          }) as HTMLInputElement
+        ).value,
       ).toBe("/qa-alias/*"),
     );
   });
@@ -224,12 +227,17 @@ describe("post-save synchronization with the accepted rows (w4/136)", () => {
 
     await waitFor(() =>
       expect(
-        (screen.getByRole("textbox", { name: "Path" }) as HTMLInputElement)
-          .value,
+        (
+          screen.getByRole("textbox", {
+            name: /^Header \d+ path$/,
+          }) as HTMLInputElement
+        ).value,
       ).toBe("/qa/*"),
     );
     // The value was never trimmed, in the editor or on the wire.
-    expect(screen.getByRole("textbox", { name: "Value" })).toHaveValue("DENY");
+    expect(
+      screen.getByRole("textbox", { name: /^Header \d+ value$/ }),
+    ).toHaveValue("DENY");
   });
 
   it("keeps the draft and stays dirty when the save is refused", async () => {
@@ -286,7 +294,7 @@ describe("post-save synchronization with the accepted rows (w4/136)", () => {
     await user.click(screen.getByRole("button", { name: "Save routes" }));
 
     // Rows stay editable while the request is in flight, so the user types on.
-    const inFlight = screen.getByRole("textbox", { name: "Source" });
+    const inFlight = screen.getByRole("textbox", { name: /^Rule \d+ source$/ });
     await user.clear(inFlight);
     await user.type(inFlight, "/second/*");
 
@@ -312,24 +320,28 @@ describe("static rule editors before hydration (w4/m219)", () => {
   it("keeps the redirect rules uneditable until hydration", async () => {
     const { hydrate, getByRole, getAllByRole } =
       await hydratedPage("redirects");
-    const source = () => getAllByRole("textbox", { name: "Source" })[0];
+    const source = () =>
+      getAllByRole("textbox", { name: /^Rule \d+ source$/ })[0];
     const add = () => getByRole("button", { name: "Add rule" });
     expect(source()).toBeDisabled();
     expect(add()).toBeDisabled();
-    expect(getByRole("combobox", { name: "Type" })).toBeDisabled();
+    expect(getByRole("combobox", { name: /^Rule \d+ type$/ })).toBeDisabled();
     expect(getByRole("button", { name: "Remove rule 1" })).toBeDisabled();
     await hydrate();
     expect(source()).toBeEnabled();
-    expect(getByRole("combobox", { name: "Type" })).toBeEnabled();
+    expect(getByRole("combobox", { name: /^Rule \d+ type$/ })).toBeEnabled();
     await userEvent.type(source(), "page");
     await userEvent.click(add());
     expect(source()).toHaveValue("/*page");
-    expect(getAllByRole("textbox", { name: "Source" })).toHaveLength(2);
+    expect(getAllByRole("textbox", { name: /^Rule \d+ source$/ })).toHaveLength(
+      2,
+    );
   });
 
   it("keeps the header rules uneditable until hydration", async () => {
     const { hydrate, getByRole, getAllByRole } = await hydratedPage("headers");
-    const value = () => getAllByRole("textbox", { name: "Value" })[0];
+    const value = () =>
+      getAllByRole("textbox", { name: /^Header \d+ value$/ })[0];
     const add = () => getByRole("button", { name: /Add/ });
     expect(value()).toBeDisabled();
     expect(add()).toBeDisabled();
@@ -339,6 +351,8 @@ describe("static rule editors before hydration (w4/m219)", () => {
     await userEvent.type(value(), "SAMEORIGIN");
     await userEvent.click(add());
     expect(value()).toHaveValue("SAMEORIGIN");
-    expect(getAllByRole("textbox", { name: "Value" })).toHaveLength(2);
+    expect(
+      getAllByRole("textbox", { name: /^Header \d+ value$/ }),
+    ).toHaveLength(2);
   });
 });

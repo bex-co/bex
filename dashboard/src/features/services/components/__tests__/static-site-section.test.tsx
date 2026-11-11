@@ -30,7 +30,9 @@ vi.mock("@tanstack/react-router", () => ({
 // label cells, not the inputs inside them, and a hardcoded English placeholder
 // must never double as the name.
 describe("RoutesEditor accessibility", () => {
-  it("names the row controls after the column headings, keeping placeholders as examples", () => {
+  // Each control is named by its column and row, as its Remove button is
+  // (w4/541): three rows must not all read "Source, Destination".
+  it("names the row controls by column and row, keeping placeholders as examples", () => {
     render(
       <RoutesEditor
         routes={[{ type: "redirect", source: "/old", destination: "/new" }]}
@@ -39,10 +41,14 @@ describe("RoutesEditor accessibility", () => {
       />,
     );
 
-    expect(screen.getByRole("combobox", { name: "Type" })).toBeInTheDocument();
-    const source = screen.getByRole("textbox", { name: "Source" });
+    expect(
+      screen.getByRole("combobox", { name: "Rule 1 type" }),
+    ).toBeInTheDocument();
+    const source = screen.getByRole("textbox", { name: "Rule 1 source" });
     expect(source).toHaveValue("/old");
-    const destination = screen.getByRole("textbox", { name: "Destination" });
+    const destination = screen.getByRole("textbox", {
+      name: "Rule 1 destination",
+    });
     expect(destination).toHaveValue("/new");
     // Placeholders stay literal path-syntax examples, not names.
     expect(source).toHaveAttribute("placeholder", "/old/*");
@@ -53,8 +59,32 @@ describe("RoutesEditor accessibility", () => {
   });
 });
 
+describe("edge-rule rows are told apart by name (w4/541)", () => {
+  it("names the second row's controls as row 2", () => {
+    render(
+      <RoutesEditor
+        routes={[
+          { type: "redirect", source: "/a", destination: "/b" },
+          { type: "rewrite", source: "/app/*", destination: "/index.html" },
+        ]}
+        onSave={vi.fn(async () => ({ ok: true }))}
+        busy={false}
+      />,
+    );
+    expect(screen.getByRole("textbox", { name: "Rule 2 source" })).toHaveValue(
+      "/app/*",
+    );
+    expect(
+      screen.getByRole("textbox", { name: "Rule 2 destination" }),
+    ).toHaveValue("/index.html");
+    expect(
+      screen.getByRole("combobox", { name: "Rule 2 type" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("HeadersEditor accessibility", () => {
-  it("names the row controls after the column headings, keeping placeholders as examples", () => {
+  it("names the row controls by column and row, keeping placeholders as examples", () => {
     render(
       <HeadersEditor
         headers={[{ path: "/*", name: "X-QA", value: "on" }]}
@@ -63,11 +93,11 @@ describe("HeadersEditor accessibility", () => {
       />,
     );
 
-    const path = screen.getByRole("textbox", { name: "Path" });
+    const path = screen.getByRole("textbox", { name: "Header 1 path" });
     expect(path).toHaveValue("/*");
-    const name = screen.getByRole("textbox", { name: "Name" });
+    const name = screen.getByRole("textbox", { name: "Header 1 name" });
     expect(name).toHaveValue("X-QA");
-    const value = screen.getByRole("textbox", { name: "Value" });
+    const value = screen.getByRole("textbox", { name: "Header 1 value" });
     expect(value).toHaveValue("on");
     // Placeholders stay literal header examples, not names.
     expect(name).toHaveAttribute("placeholder", "X-Frame-Options");
@@ -99,10 +129,12 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
       />,
     );
 
-    const source = screen.getByRole("textbox", { name: "Source" });
+    const source = screen.getByRole("textbox", { name: /^Rule \d+ source$/ });
     await user.clear(source);
     await user.type(source, " /qa-alias/* ");
-    const destination = screen.getByRole("textbox", { name: "Destination" });
+    const destination = screen.getByRole("textbox", {
+      name: /^Rule \d+ destination$/,
+    });
     await user.clear(destination);
     await user.type(destination, " /:splat ");
     expect(screen.getByRole("button", { name: "Save routes" })).toBeEnabled();
@@ -111,9 +143,9 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
     // The refetch the save awaited lands, so the props are canonical too.
     rerender(<RoutesEditor routes={canonical} onSave={onSave} busy={false} />);
 
-    expect(screen.getByRole("textbox", { name: "Source" })).toHaveValue(
-      "/qa-alias/*",
-    );
+    expect(
+      screen.getByRole("textbox", { name: /^Rule \d+ source$/ }),
+    ).toHaveValue("/qa-alias/*");
     expect(screen.getByRole("button", { name: "Save routes" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
   });
@@ -135,7 +167,7 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
       />,
     );
 
-    const path = screen.getByRole("textbox", { name: "Path" });
+    const path = screen.getByRole("textbox", { name: /^Header \d+ path$/ });
     await user.clear(path);
     await user.type(path, " /qa/* ");
     await user.click(screen.getByRole("button", { name: "Save headers" }));
@@ -143,8 +175,12 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
       <HeadersEditor headers={canonical} onSave={onSave} busy={false} />,
     );
 
-    expect(screen.getByRole("textbox", { name: "Path" })).toHaveValue("/qa/*");
-    expect(screen.getByRole("textbox", { name: "Value" })).toHaveValue(" on ");
+    expect(
+      screen.getByRole("textbox", { name: /^Header \d+ path$/ }),
+    ).toHaveValue("/qa/*");
+    expect(
+      screen.getByRole("textbox", { name: /^Header \d+ value$/ }),
+    ).toHaveValue(" on ");
     expect(screen.getByRole("button", { name: "Save headers" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
     // What was submitted carried the untrimmed value too.
@@ -172,10 +208,12 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
         screen.getByRole("button", { name: `Remove rule ${n}` }),
       ).toBeInTheDocument();
     }
-    const sources = screen.getAllByRole("textbox", { name: "Source" });
+    const sources = screen.getAllByRole("textbox", {
+      name: /^Rule \d+ source$/,
+    });
     await user.type(sources[sources.length - 1]!, "/c/*");
     const destinations = screen.getAllByRole("textbox", {
-      name: "Destination",
+      name: /^Rule \d+ destination$/,
     });
     await user.type(destinations[destinations.length - 1]!, "/3");
     await user.click(screen.getByRole("button", { name: "Save routes" }));
@@ -187,13 +225,15 @@ describe("edge-rule editors adopt the accepted rows (w4/136)", () => {
     ]);
 
     // A further edit, then Cancel, still restores the saved-props baseline.
-    const first = screen.getAllByRole("textbox", { name: "Source" })[0]!;
+    const first = screen.getAllByRole("textbox", {
+      name: /^Rule \d+ source$/,
+    })[0]!;
     await user.clear(first);
     await user.type(first, "/changed/*");
     await user.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.getAllByRole("textbox", { name: "Source" })[0]).toHaveValue(
-      "/a/*",
-    );
+    expect(
+      screen.getAllByRole("textbox", { name: /^Rule \d+ source$/ })[0],
+    ).toHaveValue("/a/*");
   });
 });
 
@@ -216,9 +256,11 @@ describe("edge-rule row validation (w4/145)", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /Add rule/ }));
-    const sources = screen.getAllByRole("textbox", { name: "Source" });
+    const sources = screen.getAllByRole("textbox", {
+      name: /^Rule \d+ source$/,
+    });
     const destinations = screen.getAllByRole("textbox", {
-      name: "Destination",
+      name: /^Rule \d+ destination$/,
     });
     await user.type(sources[1], "/old");
     await user.type(destinations[1], "landing");
@@ -246,9 +288,9 @@ describe("edge-rule row validation (w4/145)", () => {
     );
 
     await user.click(screen.getByRole("button", { name: /Add header/ }));
-    expect(screen.getByRole("textbox", { name: "Name" })).not.toHaveAttribute(
-      "aria-invalid",
-    );
+    expect(
+      screen.getByRole("textbox", { name: /^Header \d+ name$/ }),
+    ).not.toHaveAttribute("aria-invalid");
     expect(screen.getByRole("button", { name: "Save headers" })).toBeDisabled();
     expect(
       screen.getByText("Fill in or remove the empty row to save."),
@@ -266,7 +308,9 @@ it("blocks malformed URL destinations without saving and preserves a corrected e
       busy={false}
     />,
   );
-  const destination = screen.getByRole("textbox", { name: "Destination" });
+  const destination = screen.getByRole("textbox", {
+    name: /^Rule \d+ destination$/,
+  });
   await user.clear(destination);
   await user.type(destination, "/render.yaml?source=%zz");
   expect(screen.getByRole("button", { name: "Save routes" })).toBeDisabled();
@@ -294,7 +338,7 @@ describe("edge-rule tables keep readable fields on narrow screens", () => {
         onSave={vi.fn(async () => ({ ok: true }))}
         busy={false}
       />,
-      "Source",
+      /^Rule \d+ source$/,
     ],
     [
       "HeadersEditor",
@@ -304,7 +348,7 @@ describe("edge-rule tables keep readable fields on narrow screens", () => {
         onSave={vi.fn(async () => ({ ok: true }))}
         busy={false}
       />,
-      "Name",
+      /^Header \d+ name$/,
     ],
   ])("%s sets a minimum width inside a scrolling container", (_, ui, field) => {
     render(ui);
@@ -330,8 +374,10 @@ describe("edge-rule length and placeholder rows (w21/043)", () => {
     return {
       user,
       onSave,
-      source: screen.getByRole("textbox", { name: "Source" }),
-      destination: screen.getByRole("textbox", { name: "Destination" }),
+      source: screen.getByRole("textbox", { name: /^Rule \d+ source$/ }),
+      destination: screen.getByRole("textbox", {
+        name: /^Rule \d+ destination$/,
+      }),
     };
   }
 
@@ -387,10 +433,16 @@ describe("edge-rule length and placeholder rows (w21/043)", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: /Add header/ }));
-    const path = screen.getByRole("textbox", { name: "Path" });
+    const path = screen.getByRole("textbox", { name: /^Header \d+ path$/ });
     fireEvent.change(path, { target: { value: `/${"中".repeat(700)}` } });
-    await user.type(screen.getByRole("textbox", { name: "Name" }), "X-Long");
-    await user.type(screen.getByRole("textbox", { name: "Value" }), "1");
+    await user.type(
+      screen.getByRole("textbox", { name: /^Header \d+ name$/ }),
+      "X-Long",
+    );
+    await user.type(
+      screen.getByRole("textbox", { name: /^Header \d+ value$/ }),
+      "1",
+    );
     expect(path).toHaveAttribute("aria-invalid", "true");
     expect(path).toHaveAccessibleDescription("At most 2048 bytes");
     expect(screen.getByRole("button", { name: "Save headers" })).toBeDisabled();
