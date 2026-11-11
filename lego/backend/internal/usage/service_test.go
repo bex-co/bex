@@ -1868,6 +1868,32 @@ func TestInstanceSecondsZeroFromRunningAppIsDegraded(t *testing.T) {
 		status: serving,
 		pods:   0, want: store.UsageSourceHealthy, quant: 0,
 	}, {
+		// w4/m322: a run the selector could not see (every manual run did)
+		// metered zero as an idle hour; a recorded run in the window makes
+		// the zero a broken read.
+		name: "cron App that ran in the window reporting no pods is suspicious",
+		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
+		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1", Runs: []appv1alpha1.CronRun{{
+			Name: "tea-h-web-r1c18537e", StartedAt: window.Add(43 * time.Minute).Format(time.RFC3339), FinishedAt: window.Add(44 * time.Minute).Format(time.RFC3339),
+		}}},
+		pods: 0, want: store.UsageSourceDegraded, quant: 0,
+	}, {
+		name: "cron App with a run still in flight at the window end is suspicious",
+		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
+		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1", Runs: []appv1alpha1.CronRun{{
+			Name: "tea-h-web-29906350", StartedAt: window.Add(59 * time.Minute).Format(time.RFC3339),
+		}}},
+		pods: 0, want: store.UsageSourceDegraded, quant: 0,
+	}, {
+		name: "cron App whose only runs fell outside the window, or were too short to scrape, has an honest zero",
+		spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Replicas: 1},
+		status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1", Runs: []appv1alpha1.CronRun{{
+			Name: "tea-h-web-before", StartedAt: window.Add(-10 * time.Minute).Format(time.RFC3339), FinishedAt: window.Add(-5 * time.Minute).Format(time.RFC3339),
+		}, {
+			Name: "tea-h-web-short", StartedAt: window.Add(10 * time.Minute).Format(time.RFC3339), FinishedAt: window.Add(10*time.Minute + 12*time.Second).Format(time.RFC3339),
+		}}},
+		pods: 0, want: store.UsageSourceHealthy, quant: 0,
+	}, {
 		name:   "running App with pods stays healthy",
 		spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Replicas: 2},
 		status: serving,

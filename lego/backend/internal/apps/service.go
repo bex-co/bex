@@ -1347,7 +1347,9 @@ func cronRunsOf(a *appv1alpha1.App, now time.Time) []appv1alpha1.CronRun {
 	if a.Spec.RunAt != "" {
 		name := appv1alpha1.ManualCronRunJobName(a.Name, a.Spec.RunAt)
 		pendingWindow := a.Status.ManualRunHandledAt != a.Spec.RunAt || recentRFC3339(a.Spec.RunAt, now)
-		if !known(name) && pendingWindow && !slices.ContainsFunc(synthetic, func(run appv1alpha1.CronRun) bool { return run.Name == name }) {
+		// A run the previous release materialized under its own Job name (a
+		// trigger while a deploy rolled, w4/m322) is this run, not a second one.
+		if !known(name) && !known(appv1alpha1.LegacyManualCronRunJobName(a.Name, a.Spec.RunAt)) && pendingWindow && !slices.ContainsFunc(synthetic, func(run appv1alpha1.CronRun) bool { return run.Name == name }) {
 			run := appv1alpha1.CronRun{Name: name, Status: appv1alpha1.CronRunRunning}
 			if c := a.Spec.CancelRun; c != nil && c.Name == name {
 				run.Status, run.FinishedAt = appv1alpha1.CronRunCanceled, c.RequestedAt

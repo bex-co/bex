@@ -1,18 +1,18 @@
 # w4 · m322 — A cron job's manually triggered runs, and every run of a cron job named 28–30 characters, chart no CPU, memory or instances and meter no instance time
 
-**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** todo
+**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Select every run pod of a cron App in the shared cAdvisor matcher: manual-run Jobs and hashed long-name CronJob Jobs | 60m | — |
-| [t002](t002.md) | Blast radius: the three matcher callers, sibling-App isolation and regression tests on the shapes that work today | 30m | t001 |
-| [t003](t003.md) | A cron App that ran in a window but meters zero is a degraded read, not an honest zero | 30m | t001 |
+| [t001](done/t001.md) | Select every run pod of a cron App in the shared cAdvisor matcher: manual-run Jobs and hashed long-name CronJob Jobs — **DONE** | 60m | — |
+| [t002](done/t002.md) | Blast radius: the three matcher callers, sibling-App isolation and regression tests on the shapes that work today — **DONE** | 30m | t001 |
+| [t003](done/t003.md) | A cron App that ran in a window but meters zero is a degraded read, not an honest zero — **DONE** | 30m | t001 |
 | [t004](t004.md) | Live verification in `bex-canary` | 30m | t002, t003 |
-| [t005](t005.md) | Render parity | 15m | t004 |
-| [t006](t006.md) | Simplify | 10m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t005 |
+| [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
 | [t008](t008.md) | Closeout | 10m | t006, t007 |
 
 Eight tasks, 215m (3h35m).
@@ -130,9 +130,9 @@ Signed in to `bex-canary` after the release pins this build, with owned Starter 
 
 - **Source:** the finding above (round 81 of the `/qa-find-bugs w4` loop, 2026-11-11). The durable evidence is the probe record above; no screenshot was kept.
 - **Goal linkage:**
-  - [ADR038](../../../docs/ADR038-cron-jobs.md) (cron jobs) and [ADR010](../../../docs/ADR010-observability.md) (the metrics selector).
-  - ADR023/[ADR040](../../../docs/ADR040-billing-metronome.md) (usage metering and billing) and [ADR030](../../../docs/ADR030-pricing.md).
-  - [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first).
+  - [ADR038](../../../../docs/ADR038-cron-jobs.md) (cron jobs) and [ADR010](../../../../docs/ADR010-observability.md) (the metrics selector).
+  - ADR023/[ADR040](../../../../docs/ADR040-billing-metronome.md) (usage metering and billing) and [ADR030](../../../../docs/ADR030-pricing.md).
+  - [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first).
 - **Expected outcome:** a cron job's Metrics and usage describe the runs it actually executed. A manually triggered run, the normal way to test a cron job, is charted and billed like a scheduled one.
 - **Why now:**
   - A user debugging a cron job reaches for Trigger Run first, then sees "No data in range" for the run they just watched succeed.

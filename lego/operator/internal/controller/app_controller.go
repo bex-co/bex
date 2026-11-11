@@ -5065,7 +5065,7 @@ func (r *AppReconciler) cancelRequestedCronRun(ctx context.Context, app *appv1al
 	if err := r.recordUnmaterializedCancel(ctx, app); err != nil {
 		return false, err
 	}
-	if app.Spec.RunAt != "" && app.Spec.CancelRun.Name == manualRunJobName(app.Name, app.Spec.RunAt) {
+	if isManualRunJob(app.Name, app.Spec.RunAt, app.Spec.CancelRun.Name) {
 		if err := r.acknowledgeManualRun(ctx, app); err != nil {
 			return false, err
 		}
@@ -5130,15 +5130,17 @@ func (r *AppReconciler) manualCronRunActive(ctx context.Context, app *appv1alpha
 	if app.Spec.RunAt == "" || app.Spec.Suspended || manualRunSettled(app) {
 		return false, nil
 	}
-	job := &batchv1.Job{}
-	key := client.ObjectKey{Name: manualRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace}
-	if err := r.buildPlaneClient().Get(ctx, key, job); err != nil {
-		if apierrors.IsNotFound(err) {
-			return !manualRunHandled(app), nil
+	for _, name := range []string{manualRunJobName(app.Name, app.Spec.RunAt), appv1alpha1.LegacyManualCronRunJobName(app.Name, app.Spec.RunAt)} {
+		job := &batchv1.Job{}
+		err := r.buildPlaneClient().Get(ctx, client.ObjectKey{Name: name, Namespace: app.Namespace}, job)
+		if err == nil {
+			return !jobSettled(job), nil
 		}
-		return false, err
+		if !apierrors.IsNotFound(err) {
+			return false, err
+		}
 	}
-	return !jobSettled(job), nil
+	return !manualRunHandled(app), nil
 }
 
 // preemptOtherCronRuns catches runs missing from the backend's last history
@@ -5192,7 +5194,7 @@ func (r *AppReconciler) preemptOtherCronRuns(ctx context.Context, app *appv1alph
 // A superseding trigger may arrive before the previous manual Job reached run
 // history, so both owner kinds must participate in foreground preemption.
 func otherOwnedCronRun(app *appv1alpha1.App, cron *batchv1.CronJob, job *batchv1.Job) bool {
-	return job.Name != manualRunJobName(app.Name, app.Spec.RunAt) && ownedCronRun(app, cron, job)
+	return !isManualRunJob(app.Name, app.Spec.RunAt, job.Name) && ownedCronRun(app, cron, job)
 }
 
 func ownedCronRun(app *appv1alpha1.App, cron *batchv1.CronJob, job *batchv1.Job) bool {
@@ -5208,8 +5210,7 @@ func ownedCronRun(app *appv1alpha1.App, cron *batchv1.CronJob, job *batchv1.Job)
 		if runAt == "" {
 			runAt = app.Spec.RunAt // the current legacy manual Job has a known identity
 		}
-		return owner.Name == app.Name && owner.UID == app.UID &&
-			runAt != "" && job.Name == manualRunJobName(app.Name, runAt)
+		return owner.Name == app.Name && owner.UID == app.UID && isManualRunJob(app.Name, runAt, job.Name)
 	default:
 		return false
 	}
@@ -5252,12 +5253,11 @@ func manualRunSettled(app *appv1alpha1.App) bool {
 	if app.Spec.RunAt == "" {
 		return false
 	}
-	name := appv1alpha1.ManualCronRunJobName(app.Name, app.Spec.RunAt)
-	if app.Spec.CancelRun != nil && app.Spec.CancelRun.Name == name {
+	if app.Spec.CancelRun != nil && isManualRunJob(app.Name, app.Spec.RunAt, app.Spec.CancelRun.Name) {
 		return true
 	}
 	for _, run := range app.Status.Runs {
-		if run.Name != name {
+		if !isManualRunJob(app.Name, app.Spec.RunAt, run.Name) {
 			continue
 		}
 		switch run.Status {
@@ -5288,6 +5288,16 @@ func (r *AppReconciler) ensureManualRun(ctx context.Context, app *appv1alpha1.Ap
 		return r.acknowledgeManualRun(ctx, app)
 	}
 	if !apierrors.IsNotFound(err) {
+		return err
+	}
+	// The previous release named this run differently (w4/m322); a Job it
+	// created for the same runAt is this run, so it never runs twice.
+	legacy := &batchv1.Job{}
+	err = r.buildPlaneClient().Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: appv1alpha1.LegacyManualCronRunJobName(app.Name, app.Spec.RunAt)}, legacy)
+	if err == nil && metav1.IsControlledBy(legacy, app) {
+		return r.acknowledgeManualRun(ctx, app)
+	}
+	if err != nil && !apierrors.IsNotFound(err) {
 		return err
 	}
 	job.Labels = template.Labels
@@ -5552,6 +5562,14 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 // reconciling the same runAt twice never spawns a duplicate run.
 func manualRunJobName(appName, runAt string) string {
 	return appv1alpha1.ManualCronRunJobName(appName, runAt)
+}
+
+// isManualRunJob reports whether jobName is the manual run for runAt, under its
+// name or the name the previous release gave it (w4/m322): a run triggered,
+// started or canceled while a deploy rolled must be recognized as the same run
+// by every check that settles, pauses for, cancels or preempts it.
+func isManualRunJob(appName, runAt, jobName string) bool {
+	return runAt != "" && (jobName == manualRunJobName(appName, runAt) || jobName == appv1alpha1.LegacyManualCronRunJobName(appName, runAt))
 }
 
 // reconcileOpenSandbox runs the revision as an OpenSandbox sandbox (host runtime).

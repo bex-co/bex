@@ -36,7 +36,24 @@ func CronJobName(appName string) string {
 // CR boundary need the same identity: the backend returns the run id before the
 // operator has materialized the Job, and the operator must later create exactly
 // that Job. The public crr- id remains a backend concern derived from this name.
+//
+// It is the CronJob's own name plus one segment, `-r<8 hex>` (at most 62
+// characters, so never hashed), so a manual run's pods are named like a
+// scheduled run's (`<cronjob>-<minute>`): one segment after the CronJob name,
+// then the generated suffix, or the single segment the 63-character cut leaves.
+// The metrics and usage pod selector matches both (egressquery.PodNameRegex,
+// w4/m322). The former `<app>-run-<8 hex>` added two segments, and no run it
+// created was charted or metered.
 func ManualCronRunJobName(appName, runAt string) string {
+	sum := sha256.Sum256([]byte(runAt))
+	return fmt.Sprintf("%s-r%x", CronJobName(appName), sum[:4])
+}
+
+// LegacyManualCronRunJobName is ManualCronRunJobName before w4/m322. An
+// operator that meets a Job of this name for the current runAt (created by
+// the previous release while a deploy rolled) adopts it instead of starting
+// the run a second time.
+func LegacyManualCronRunJobName(appName, runAt string) string {
 	sum := sha256.Sum256([]byte(runAt))
 	return k8sname.Fit(fmt.Sprintf("%s-run-%x", appName, sum[:4]))
 }

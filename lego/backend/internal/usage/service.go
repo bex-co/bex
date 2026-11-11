@@ -1159,7 +1159,7 @@ func (s *Service) processAppMeterWindowResult(ctx context.Context, app store.App
 		// stayed silent for the life of this meter. Keep the row so the cursor
 		// still advances (a genuinely-down App must not stall the meter forever),
 		// but stop the health record from asserting the zero is sound.
-		if ok && quantity == 0 && resolved && expectsRunningPods(cr, window) {
+		if ok && quantity == 0 && resolved && expectsRunningPods(cr, window, end) {
 			health = degradeSourceHealth(health)
 		}
 	case store.UsageKindEgressBytes:
@@ -1421,9 +1421,15 @@ func (s *Service) appPodIdentity(app store.App, cr *appv1alpha1.App) (name, name
 // whose first release ended Failed or Canceled without ever serving (no
 // ActiveRevision): production degraded every hour of four such Apps this way,
 // with no pods behind any of them (w4/496). A first rollout still in progress
-// does run pods, so it is not exempt.
-func expectsRunningPods(cr *appv1alpha1.App, windowStart time.Time) bool {
-	if cr == nil || cr.Spec.Suspended || cr.Spec.Type == appv1alpha1.TypeCronJob || neverServedTerminal(cr) {
+// does run pods, so it is not exempt. A cron App expects pods only for a
+// window one of its recorded runs spent cronRunScrapeFloor or more in: a run
+// its selector cannot see, as manual runs were (w4/m322), then degrades
+// coverage instead of passing as an idle hour.
+func expectsRunningPods(cr *appv1alpha1.App, windowStart, windowEnd time.Time) bool {
+	if cr != nil && cr.Spec.Type == appv1alpha1.TypeCronJob {
+		return cronRanIn(cr, windowStart, windowEnd)
+	}
+	if cr == nil || cr.Spec.Suspended || neverServedTerminal(cr) {
 		return false
 	}
 	if ready := meta.FindStatusCondition(cr.Status.Conditions, appv1alpha1.ConditionReady); ready != nil &&
@@ -1433,6 +1439,38 @@ func expectsRunningPods(cr *appv1alpha1.App, windowStart time.Time) bool {
 		return false
 	}
 	return cr.Spec.Replicas > 0
+}
+
+// cronRunScrapeFloor is the least time a run must spend in a window before a
+// zero for that window is a broken read: two 15 s cAdvisor scrapes, so a run
+// too short to be sampled stays an honest zero.
+const cronRunScrapeFloor = 30 * time.Second
+
+// cronRanIn reports a recorded run of cr that spent cronRunScrapeFloor or more
+// inside [start, end). A run still in flight counts up to end.
+func cronRanIn(cr *appv1alpha1.App, start, end time.Time) bool {
+	for _, run := range cr.Status.Runs {
+		began, err := time.Parse(time.RFC3339, run.StartedAt)
+		if err != nil {
+			continue
+		}
+		finished := end
+		if run.FinishedAt != "" {
+			if finished, err = time.Parse(time.RFC3339, run.FinishedAt); err != nil {
+				continue
+			}
+		}
+		if finished.After(end) {
+			finished = end
+		}
+		if began.Before(start) {
+			began = start
+		}
+		if finished.Sub(began) >= cronRunScrapeFloor {
+			return true
+		}
+	}
+	return false
 }
 
 // neverServedTerminal reports an App whose first release ended Failed or

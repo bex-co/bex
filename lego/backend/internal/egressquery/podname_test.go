@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"regexp"
 	"testing"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // mustMatchPod compiles the selector the way Prometheus does — fully anchored,
@@ -146,5 +148,46 @@ func TestPodNameMatcherIsShared(t *testing.T) {
 	want := fmt.Sprintf(`namespace="tea-abc",pod=~%q,container!=""`, PodNameRegex("tea-abc-web"))
 	if got != want {
 		t.Errorf("PodNameMatcher:\n got %s\nwant %s", got, want)
+	}
+}
+
+// w4/m322: every run pod of a cron App is selected, scheduled or manual, at
+// every service name length, and no sibling App's pod is. The run pod names
+// are built from the same contract functions the operator names the Jobs with.
+func TestPodNameRegexSelectsEveryCronRunPod(t *testing.T) {
+	const tenant = "tea-daif693dqjvc73e7as3g-"
+	runAt := "2026-11-11T06:42:59.123456Z"
+	// generatePod is what the API server names a Job's pod: the generateName
+	// base "<job>-", cut to 58 characters, then five random ones.
+	generatePod := func(job string) string {
+		base := job + "-"
+		if len(base) > maxGeneratedNameLength {
+			base = base[:maxGeneratedNameLength]
+		}
+		return base + "wkvfv"
+	}
+	for _, service := range []string{"qa-20261111-cr81", "qa-20261111-cron-mid-25x", "qa-2026111-cronjob-name-22ch", "qa-20261111-cr81-longname-0030"} {
+		obj := tenant + service
+		scheduled := generatePod(appv1alpha1.CronJobName(obj) + "-29906350")
+		manual := generatePod(appv1alpha1.ManualCronRunJobName(obj, runAt))
+		for _, pod := range []string{scheduled, manual} {
+			if !mustMatchPod(t, obj, pod) {
+				t.Errorf("%s: run pod %q is not selected", service, pod)
+			}
+		}
+		// A sibling web service named "<service>-run" stays out, whatever its
+		// ReplicaSet hash looks like.
+		sibling := obj + "-run"
+		for _, pod := range []string{sibling + "-5f557c45-ll7x9", sibling + "-5f557c45fd-ll7x9", sibling + "-r1c18537e-wkvfv"} {
+			if mustMatchPod(t, obj, pod) {
+				t.Errorf("%s: sibling pod %q is selected", service, pod)
+			}
+		}
+	}
+	// The live shape (round 81, a kind cluster's Job of the same name): the
+	// long name's scheduled pod, cut to 63 characters.
+	long := tenant + "qa-20261111-cr81-longname-0030"
+	if !mustMatchPod(t, long, "tea-daif693dqjvc73e7as3g-qa-20261111-cr-5cb8a9072637-29906dsdzn") {
+		t.Error("the long-name scheduled run pod is not selected")
 	}
 }

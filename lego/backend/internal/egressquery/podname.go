@@ -16,7 +16,12 @@ limitations under the License.
 
 package egressquery
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/bex-co/bex/lego/types/k8sname"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
 
 // Kubernetes' generateName rules, copied from
 // k8s.io/apiserver/pkg/storage/names/generate.go (the version this repo pins):
@@ -68,19 +73,29 @@ const (
 // after the object.
 func PodNameRegex(objectName string) string {
 	escaped := RegexEscape(objectName)
-	twoSegment := fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{%d}`, escaped, podRandomSuffixLength)
+	named := fmt.Sprintf(`%s-[a-z0-9]+-[a-z0-9]{%d}`, escaped, podRandomSuffixLength)
+	// A cron App whose object name is past the CronJob limit runs its Jobs
+	// under the hashed CronJob name, scheduled (`<cronjob>-<minute>`) and
+	// manual (`<cronjob>-r<8 hex>`) alike, so its run pods are not prefixed by
+	// the object name (w4/m322). That name is always MaxCronJob long, so every
+	// run pod's generateName base is past the cut: the pod is the truncated
+	// single segment. The hashed name is unique to this object.
+	if len(objectName) > k8sname.MaxCronJob {
+		cronJob := appv1alpha1.CronJobName(objectName)
+		named += fmt.Sprintf(`|%s-[a-z0-9]{%d}`, RegexEscape(cronJob), maxPodNameLength-len(cronJob)-1)
+	}
 	if len(objectName) > maxGeneratedNameLength {
 		// The generateName base is already over the cut, so the truncation lands
 		// inside objectName itself and the pod name is not even prefixed by it —
 		// no anchored regex built from the full name can match. Emit the
 		// (unreachable) two-segment form rather than a wrong alternative.
-		return twoSegment
+		return named
 	}
 	// A truncated name is always exactly maxPodNameLength, so the tail is
 	// whatever the object name and its separating hyphen leave — necessarily
 	// positive here, since objectName fits within maxGeneratedNameLength.
 	truncated := maxPodNameLength - len(objectName) - 1
-	return fmt.Sprintf(`%s|%s-[a-z0-9]{%d}`, twoSegment, escaped, truncated)
+	return fmt.Sprintf(`%s|%s-[a-z0-9]{%d}`, named, escaped, truncated)
 }
 
 // PodNameMatcher returns the full `namespace=…,pod=~…,container!=""` matcher

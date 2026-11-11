@@ -547,3 +547,31 @@ func slicesIndex(runs []appv1alpha1.CronRun, name string) int {
 	}
 	return -1
 }
+
+// w4/m322: a manual run's Job was renamed. A Job the previous release created
+// for the current runAt, under the old name, is this run: the operator
+// acknowledges it instead of starting the run a second time.
+func TestManualRunAdoptsAJobNamedByThePreviousRelease(t *testing.T) {
+	r, app, template := manualIntentFixture(t)
+	legacy := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: appv1alpha1.LegacyManualCronRunJobName(app.Name, app.Spec.RunAt), Namespace: app.Namespace,
+		Labels:          map[string]string{labelApp: app.Name},
+		OwnerReferences: []metav1.OwnerReference{{APIVersion: appv1alpha1.SchemeGroupVersion.String(), Kind: "App", Name: app.Name, UID: app.UID, Controller: new(true)}},
+	}}
+	if err := r.Create(t.Context(), legacy); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.ensureManualRun(t.Context(), app, template); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: manualRunJobName(app.Name, app.Spec.RunAt)}, &batchv1.Job{}); !apierrors.IsNotFound(err) {
+		t.Fatalf("a second Job was created for a run the previous release started: %v", err)
+	}
+	var stored appv1alpha1.App
+	if err := r.Get(t.Context(), client.ObjectKeyFromObject(app), &stored); err != nil {
+		t.Fatal(err)
+	}
+	if stored.Status.ManualRunHandledAt != app.Spec.RunAt {
+		t.Fatal("the adopted run was not acknowledged")
+	}
+}
