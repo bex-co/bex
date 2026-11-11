@@ -1,6 +1,6 @@
 # w4 · m300 — A triggered cron run exists from the moment it is acknowledged: readable, cancellable, and canceled (not lost) when a second trigger replaces it, as on Render
 
-**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** blocked — t001–t007 done (shipped); t008 live replay waits for the 19:00 UTC production deploy
+**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** blocked — t001–t007 done (shipped); t009 todo (added 2026-11-11); t008 live replay waits for the 19:00 UTC production deploy
 
 ## Tasks (in order)
 
@@ -13,9 +13,10 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | w4/m300/t003, w4/m300/t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | w4/m300/t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | w4/m300/t005 |
-| [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007 |
+| [t009](t009.md) | A run canceled before it started is announced as "not started yet" in Recent Runs | 15m | w4/m300/t003 |
+| [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007, w4/m300/t009 |
 
-Eight tasks, 300m (5h). One finding, major. This milestone schedules the work only.
+Nine tasks, 315m (5h15m). One finding, major. t009 was added in round 81 of the `/qa-find-bugs w4` loop (2026-11-11). This milestone schedules the work only.
 
 ## Finding — a triggered run is invisible until the operator reconciles it
 
@@ -135,7 +136,7 @@ Live on production after the release pins this build. The fixture is a Starter c
   - A reads `canceled` (never 404), and B runs exactly once.
   - The list holds both.
   - Eleven runs later, A still reads `canceled`.
-- **P4 replay.** At 1440 and 390 px, the dashboard's Trigger Run shows a pending row for the returned ID within 1 s, with Cancel offered and the 3 s poll running. The row's accessible name never contains the `crr-` ID.
+- **P4 replay.** At 1440 and 390 px, the dashboard's Trigger Run shows a pending row for the returned ID within 1 s, with Cancel offered and the 3 s poll running. The row's accessible name never contains the `crr-` ID. A run canceled before it started (P2) is named "Run details, never started (row N)", not "not started yet" (t009).
 - **Adjacent classes unchanged.**
   - Another service's run ID and an unknown ID stay `404 CRON_RUN_NOT_FOUND`.
   - A suspended cron's trigger stays `409 CRON_SUSPENDED`.
@@ -181,3 +182,5 @@ Live on production after the release pins this build. The fixture is a Starter c
   - **Suites.** Operator `make test`, backend `go test ./...`, dashboard `yarn lint` (0 errors) and `vitest` (1241 passed) all pass.
 
 - **2026-11-10 — parked (loopx w4):** the code is shipped; only the live DoD replay remains. Production deploys moved to 19:00/00:00/05:00 UTC plus manual dispatch (`4630a48a7`, 2026-11-09), so this waits for the 2026-11-10 19:00 UTC deploy. Then replay the DoD and close. No user action.
+
+- **2026-11-11 — round 81 of the `/qa-find-bugs w4` loop:** production now runs `348bd77a5`, which contains `d4d105415`, so the deploy this milestone waited for has shipped. P1, P2 (`DELETE …/runs`) and P3 replays passed live; the probes are in [t009](t009.md). t009 was added for the canceled-before-start row's accessible name. t008's remaining replays (P2's two other cancel paths, "eleven runs later", P4 and the adjacent classes) still need running.
