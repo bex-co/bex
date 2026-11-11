@@ -166,7 +166,11 @@ func TestBuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 				c.VolumeMounts = slices.DeleteFunc(c.VolumeMounts, func(m corev1.VolumeMount) bool {
 					return m.MountPath == cacheInMount || m.MountPath == cacheOutMount
 				})
-				c.Command[scriptIndex(t, c)] = classifyPrelude + revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
+				script := revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
+				if tc.o.Builder == BuilderNative {
+					script = nativeLogDisplay + script + nativeBuildSucceeded
+				}
+				c.Command[scriptIndex(t, c)] = classifyPrelude + script
 				if j := slices.Index(c.Args, "--export-cache"); j >= 0 {
 					c.Args = slices.Delete(c.Args, j, j+2)
 				}

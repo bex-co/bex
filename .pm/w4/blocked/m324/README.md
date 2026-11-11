@@ -1,18 +1,18 @@
 # w4 · m324 — A native-runtime build log is BuildKit's transcript of bex's own Dockerfile: 132 of 187 lines are `#N` steps, layer digests and platform internals, and the build command's output arrives prefixed `#23 2.411`
 
-**Worker:** worker4 **Goal:** a Node, Python, Ruby, Go, Rust or Elixir build's log reads like Render's. It narrates the build command, shows that command's output as the command printed it, and says when the build succeeded or failed. bex's internal build recipe stays out of the tenant's log. Docker-runtime builds keep BuildKit's output, as on Render. **Status:** todo
+**Worker:** worker4 **Goal:** a Node, Python, Ruby, Go, Rust or Elixir build's log reads like Render's. It narrates the build command, shows that command's output as the command printed it, and says when the build succeeded or failed. bex's internal build recipe stays out of the tenant's log. Docker-runtime builds keep BuildKit's output, as on Render. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | A native build's log shows the build command and its output, not BuildKit's steps for bex's generated Dockerfile | 90m | — |
-| [t002](t002.md) | The failure reason and the `==> Build failed:` narration quote the command's output without BuildKit's elapsed-time prefixes (residual of w4/485) | 20m | — |
-| [t003](t003.md) | Blast radius: every native runtime and service type, the Docker and buildpack paths, live tail and stored logs | 20m | t001, t002 |
+| [t001](done/t001.md) | A native build's log shows the build command and its output, not BuildKit's steps for bex's generated Dockerfile — **DONE** | 90m | — |
+| [t002](done/t002.md) | The failure reason and the `==> Build failed:` narration quote the command's output without BuildKit's elapsed-time prefixes (residual of w4/485) — **DONE** | 20m | — |
+| [t003](done/t003.md) | Blast radius: every native runtime and service type, the Docker and buildpack paths, live tail and stored logs — **DONE** | 20m | t001, t002 |
 | [t004](t004.md) | Live verification in `bex-canary` | 30m | t003 |
-| [t005](t005.md) | Render parity | 15m | t004 |
-| [t006](t006.md) | Simplify | 10m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t005 |
+| [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
 | [t008](t008.md) | Closeout | 10m | t006, t007 |
 
 Eight tasks, 225m (3h45m).

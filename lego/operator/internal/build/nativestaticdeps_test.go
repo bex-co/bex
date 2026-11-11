@@ -406,7 +406,7 @@ func TestNativeStaticBuildRunsTheInstallStep(t *testing.T) {
 					t.Fatalf("build = %v, want the build script's own 127 on missing cross-env:\n%s", err, out)
 				}
 				// The tenant's failure summary names their command alone.
-				summary := nativeCommandFailure(string(out))
+				summary, _ := nativeCommandFailure(string(out))
 				if strings.Contains(summary, "install-deps || exit") || !strings.Contains(summary, "RUN build command '"+tc.command+"'") ||
 					!strings.Contains(summary, "build command '"+tc.command+"' exited with code 127") {
 					t.Fatalf("failure summary names bex's step or not the command:\n%s", summary)

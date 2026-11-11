@@ -298,6 +298,7 @@ func nativeEnvRevision(o Options) string {
 // as the RUN-embedded revision did.
 const (
 	nativeEnvSecretPath   = "/run/secrets/render-env"
+	nativeEnvRunMount     = "RUN --mount=type=secret,id=render-env,target=" + nativeEnvSecretPath
 	nativeEnvLoaderPath   = "/opt/bex/load-env"
 	nativeEnvLoaderEOF    = "BEX_LOAD_ENV"
 	nativeEnvLoaderPrefix = ". " + nativeEnvLoaderPath + "\n"
@@ -336,9 +337,9 @@ COPY . .
 COPY <<'%s' %s
 %s%s
 %sARG RENDER_GIT_COMMIT
-RUN --mount=type=secret,id=render-env,target=%s%s %s
+%s%s %s
 `, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
-		installLines, nativeEnvSecretPath, fileMounts.String(), run)
+		installLines, nativeEnvRunMount, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
 		// Job's extract initContainer (ADR029) and never runs as a workload.

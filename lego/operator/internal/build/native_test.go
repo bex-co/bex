@@ -718,7 +718,7 @@ func TestNativeCommandFailureNamesTheCommand(t *testing.T) {
 0.101 qa7-marker
 ------
 ERROR: failed to build: failed to solve: process "/bin/bash -c . /opt/bex/load-env\necho qa7-marker; exit 3" did not complete successfully: exit code: 3`
-	got := nativeCommandFailure(tail)
+	got, _ := nativeCommandFailure(tail)
 	if !strings.HasSuffix(got, "ERROR: failed to build: build command 'echo qa7-marker; exit 3' exited with code 3") ||
 		!strings.Contains(got, "0.101 qa7-marker") ||
 		!strings.HasPrefix(got, "#12 [stage-0 5/5] RUN build command 'echo qa7-marker; exit 3'\n") {
@@ -731,7 +731,7 @@ ERROR: failed to build: failed to solve: process "/bin/bash -c . /opt/bex/load-e
 	}
 	// With secret-file mounts, and BuildKit's "> [step] RUN …:" error header.
 	header := `> [stage-0 5/5] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env --mount=type=secret,id=bex-file-0,target=/etc/secrets/.npmrc,required=true ["/bin/bash","-c",". /opt/bex/load-env\nnpm ci"]:`
-	if got := nativeCommandFailure(header); got != "> [stage-0 5/5] RUN build command 'npm ci':" {
+	if got, _ := nativeCommandFailure(header); got != "> [stage-0 5/5] RUN build command 'npm ci':" {
 		t.Errorf("error header = %q", got)
 	}
 
@@ -749,7 +749,7 @@ error: failed to solve: process "/bin/bash -c . /opt/bex/load-env\necho \"done\"
 		"#12 ERROR: build command '" + exact + "' exited with code 3\n" +
 		" > [stage-0 5/5] RUN build command '" + printed + "':\n" +
 		"error: build command '" + exact + "' exited with code 3"
-	if got := nativeCommandFailure(captured); got != want {
+	if got, _ := nativeCommandFailure(captured); got != want {
 		t.Errorf("captured failure\n got %q\nwant %q", got, want)
 	}
 
@@ -759,7 +759,7 @@ error: failed to solve: process "/bin/bash -c . /opt/bex/load-env\necho \"done\"
 		`process "/bin/bash -c npm test" did not complete successfully: exit code: 1`,
 		"plain output",
 	} {
-		if got := nativeCommandFailure(keep); got != keep {
+		if got, _ := nativeCommandFailure(keep); got != keep {
 			t.Errorf("nativeCommandFailure(%q) = %q, want unchanged", keep, got)
 		}
 	}

@@ -1719,9 +1719,22 @@ func TestBuildkitFailureSummaryNamesTheCauseOnce(t *testing.T) {
 0.087 compiling
 ------
 error: build command 'echo compiling && exit 3' exited with code 3`
-	want := "0.087 compiling\nerror: build command 'echo compiling && exit 3' exited with code 3"
+	// The command's output without BuildKit's elapsed stamp (w4/m324).
+	want := "compiling\nerror: build command 'echo compiling && exit 3' exited with code 3"
 	if got := buildkitFailureSummary(in); got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+	// A Dockerfile's own RUN keeps BuildKit's text.
+	docker := `#9 [2/3] RUN make
+#9 0.087 compiling
+#9 ERROR: process "/bin/sh -c make" did not complete successfully: exit code: 2
+------
+ > [2/3] RUN make:
+0.087 compiling
+------
+error: failed to solve: process "/bin/sh -c make" did not complete successfully: exit code: 2`
+	if got, want := buildkitFailureSummary(docker), "0.087 compiling\nerror: failed to solve: process \"/bin/sh -c make\" did not complete successfully: exit code: 2"; got != want {
+		t.Errorf("Dockerfile RUN: got %q, want %q", got, want)
 	}
 	for _, keep := range []string{
 		"fatal: unable to access repo\nerror: git fetch failed",

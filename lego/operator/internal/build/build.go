@@ -145,14 +145,20 @@ const transientLogPattern = `dial tcp|connection refused|connection reset|networ
 // around the pipeline is load-bearing: the phases run under `sh -eu`, and
 // without it the brace group aborts the instant the command fails, so `echo $?`
 // never runs and the exit code is lost.
-var classifyPrelude = fmt.Sprintf(`bex_rc_file=/tmp/bex-rc; bex_log=/tmp/bex-phase.log
+//
+// A phase may redefine bex_display, which turns the stream into what its log
+// shows (nativeLogDisplay), and set bex_message so a failure's raw tail still
+// reaches the termination message when the log is no longer the raw stream.
+var classifyPrelude = fmt.Sprintf(`bex_rc_file=/tmp/bex-rc; bex_log=/tmp/bex-phase.log; bex_message=
+bex_display() { cat; }
 bex_run() {
   rm -f "$bex_rc_file" "$bex_log"
   set +e
-  { "$@" 2>&1; echo $? > "$bex_rc_file"; } | tee /dev/stderr | tail -c %d > "$bex_log"
+  { { "$@" 2>&1; echo $? > "$bex_rc_file"; } | tee /dev/stderr | tail -c %d > "$bex_log"; } 2>&1 | bex_display >&2
   bex_rc="$(cat "$bex_rc_file" 2>/dev/null || echo missing)"
   set -e
   [ "$bex_rc" = 0 ] && return 0
+  [ -z "$bex_message" ] || tail -c %d "$bex_log" 2>/dev/null > "$bex_message" || :
   if [ "$bex_rc" = missing ]; then
     echo "bex: phase exit status unavailable; treating as retryable" >&2
     exit %d
@@ -162,7 +168,77 @@ bex_run() {
   fi
   exit %d
 }
-`, classifyBufferBytes, ExitTransient, shellSingleQuote(transientLogPattern), ExitTransient, ExitTenantError)
+`, classifyBufferBytes, terminationMessageBytes, ExitTransient, shellSingleQuote(transientLogPattern), ExitTransient, ExitTenantError)
+
+// terminationMessageBytes is the most of a termination message file the
+// kubelet reads into the container status.
+const terminationMessageBytes = 4096
+
+// nativeLogDisplay is what a native build's tenant log shows of BuildKit's
+// plain transcript (w4/m324): Render's narration and the build command's own
+// output, as the command printed it. BuildKit's bookkeeping for the Dockerfile
+// bex generates (the toolchain and tool layers, the env loader, the secret
+// mount, `#N`, elapsed seconds and digests) stays out. A failure is always
+// named: the command's exit code, or BuildKit's error for a step around it.
+// What buildctl prints before BuildKit's first step (a daemon that never
+// started) passes through. Since the log is no longer the transcript, bex_run
+// writes the transcript's tail to the termination message, which the failure
+// reason and the platform-fetch classification read (failureDetail). The
+// command reaches the filter through BEX_BUILD_COMMAND, never the script text.
+var nativeLogDisplay = `bex_message=/dev/termination-log
+bex_display() {
+  awk '
+    /^#[0-9]+ / {
+      started = 1
+      n = substr($1, 2)
+      if (step == "" && index($0, "] ` + nativeEnvRunMount + `") > 0) {
+        step = n
+        if (ENVIRON["BEX_BUILD_COMMAND"] != "") {
+          printf "==> Running build command %c%s%c...\n", 39, ENVIRON["BEX_BUILD_COMMAND"], 39
+          fflush()
+        }
+        next
+      }
+      if ($2 != "ERROR:") {
+        if (n == step && $2 ~ /^[0-9]+\.[0-9]+$/) {
+          line = $0
+          sub(/^#[0-9]+ [0-9]+\.[0-9]+ ?/, "", line)
+          print line
+          fflush()
+        }
+        next
+      }
+      line = $0
+      sub(/^#[0-9]+ ERROR: /, "", line)
+      if (n != step) {
+        print "==> Preparing the build failed: " line
+      } else if (match(line, /exit code: [0-9]+/)) {
+        printf "error: build command %c%s%c exited with code %s\n", 39, ENVIRON["BEX_BUILD_COMMAND"], 39, substr(line, RSTART + 11, RLENGTH - 11)
+      } else {
+        print "error: " line
+      }
+      failed = n == step
+      fflush()
+      next
+    }
+    /^(error|ERROR): / {
+      if (!failed) {
+        print "==> " $0
+        fflush()
+      }
+      next
+    }
+    !started && NF {
+      print
+      fflush()
+    }
+  '
+}
+`
+
+// nativeBuildSucceeded closes a native build's log once BuildKit succeeded,
+// as Render's does.
+const nativeBuildSucceeded = "\necho '==> Build successful \U0001F389'"
 
 // classifyBufferBytes bounds the copy of phase output kept for classification.
 // The full stream still reaches the container log; only this tail is retained.
@@ -718,10 +794,17 @@ var buildStepNames = map[string]string{
 	cacheSavePhase:         "build cache save",
 }
 
+// A native build's buildkit phase is named for what failed in it: the tenant's
+// build command, or the toolchain bex prepares around it.
+const (
+	nativeBuildCommandStep     = "build command"
+	nativeBuildEnvironmentStep = "build environment"
+)
+
 // failureDetail reads the failing phase and its captured output tail off the
 // failed build pod's container statuses — the FallbackToLogsOnError capture
 // captureFailureTail arranges, which nothing read before w6/m123 — and, for a
-// native build's docker build step, whether it failed fetching a toolchain bex
+// native build's buildkit phase, whether it failed fetching a toolchain bex
 // supplies (platformFetchFailure). Best-effort by design: a reaped pod (Job
 // TTL, a gone node) or a List error yields ("", "", nil), and the caller's
 // message must stand without it. When backoff spent a second attempt, the most
@@ -747,9 +830,17 @@ func failureDetail(ctx context.Context, o Options, jobName string) (step, tail s
 			if s, ok := buildStepNames[cs.Name]; ok {
 				step = s
 			}
-			tail = failureTail(buildkitFailureSummary(nativeCommandFailure(t.Message)))
+			msg, named := nativeCommandFailure(t.Message)
+			tail = failureTail(buildkitFailureSummary(msg))
 			platformFetch = nil
 			if o.Builder == BuilderNative && cs.Name == "buildkit" {
+				// A native build has no Dockerfile of the tenant's: its
+				// BuildKit step runs their build command, or prepares bex's
+				// toolchain around it (w4/m324).
+				step = nativeBuildEnvironmentStep
+				if named {
+					step = nativeBuildCommandStep
+				}
 				platformFetch = platformFetchFailure(t.Message)
 			}
 		}
@@ -769,8 +860,7 @@ var buildkitProcessFailure = regexp.MustCompile(`(?:failed to solve: )?process (
 // same as. Group 1 is the command as printed. BuildKit's error summary ends
 // the header with a colon (` > [stage-0 5/5] RUN …:`) and its progress log
 // does not; group 2 keeps it.
-var buildkitNativeRunStep = regexp.MustCompile(`(?m)RUN --mount=type=secret,id=render-env,target=` +
-	regexp.QuoteMeta(nativeEnvSecretPath) + `(?: --mount=\S+)* \["/bin/bash","-c","` +
+var buildkitNativeRunStep = regexp.MustCompile(`(?m)` + regexp.QuoteMeta(nativeEnvRunMount) + `(?: --mount=\S+)* \["/bin/bash","-c","` +
 	regexp.QuoteMeta(strings.ReplaceAll(nativeEnvLoaderPrefix, "\n", `\n`)) +
 	`(?:` + regexp.QuoteMeta(strings.ReplaceAll(nativeStaticInstallStep, "\n", `\n`)) + `)?(.*)"\](:)?$`)
 
@@ -780,10 +870,10 @@ var buildkitNativeRunStep = regexp.MustCompile(`(?m)RUN --mount=type=secret,id=r
 // names their command, not bex's env loader or secret mounts (w8/052). The
 // verdict quotes the process with Go %q, so it names the command exactly; the
 // header names it as BuildKit printed it. Any other process (a Dockerfile
-// build's own RUN) is untouched.
-func nativeCommandFailure(msg string) string {
-	msg = buildkitNativeRunStep.ReplaceAllString(msg, "RUN build command '$1'$2")
-	return buildkitProcessFailure.ReplaceAllStringFunc(msg, func(match string) string {
+// build's own RUN) is untouched. named reports a verdict on the build command.
+func nativeCommandFailure(msg string) (rewritten string, named bool) {
+	msg = buildkitNativeRunStep.ReplaceAllString(msg, nativeCommandStep+"$1'$2")
+	rewritten = buildkitProcessFailure.ReplaceAllStringFunc(msg, func(match string) string {
 		parts := buildkitProcessFailure.FindStringSubmatch(match)
 		process, err := strconv.Unquote(parts[1])
 		if err != nil {
@@ -798,11 +888,21 @@ func nativeCommandFailure(msg string) string {
 			return match
 		}
 		command = strings.TrimPrefix(command, nativeStaticInstallStep)
+		named = true
 		return fmt.Sprintf("build command '%s' exited with code %s", command, parts[2])
 	})
+	return rewritten, named
 }
 
+// nativeCommandStep is how nativeCommandFailure renames the build command's
+// RUN step, ahead of the command it quotes.
+const nativeCommandStep = "RUN build command '"
+
 var buildkitErrorLine = regexp.MustCompile(`^#[0-9]+ ERROR:`)
+
+// buildkitElapsed is the elapsed-seconds stamp BuildKit puts before each line a
+// step printed, in its progress and in its failure summary (`2.413 QA84`).
+var buildkitElapsed = regexp.MustCompile(`^[0-9]+\.[0-9]+ ?`)
 
 // buildkitFailureSummary reduces a BuildKit plain-progress transcript of a
 // failed step to what a tenant needs, said once (w4/477): the failing
@@ -831,8 +931,18 @@ func buildkitFailureSummary(msg string) string {
 		return msg
 	}
 	body := lines[open+1 : closing]
+	command := false
 	if len(body) > 0 && strings.HasPrefix(strings.TrimSpace(body[0]), "> [") {
+		command = strings.Contains(body[0], "] "+nativeCommandStep)
 		body = body[1:]
+	}
+	// A native build command's output as it printed it: `QA84`, not
+	// `2.413 QA84` (w4/m324, a residual of w4/485). A Dockerfile's own step
+	// keeps BuildKit's text.
+	if command {
+		for i, l := range body {
+			body[i] = buildkitElapsed.ReplaceAllString(l, "")
+		}
 	}
 	out := append(append([]string{}, body...), lines[closing+1:]...)
 	return strings.TrimSpace(strings.Join(out, "\n"))
@@ -1107,6 +1217,10 @@ fi
 	if o.Builder != BuilderNative {
 		dockerLiterals = BuildLiterals(o.BuildEnv)
 		buildkitScript = dockerBuildInputsScript(o, dockerLiterals) + buildkitScript
+	} else {
+		// A native build's log reads like Render's: the command, its output,
+		// and the verdict (w4/m324). A Dockerfile build keeps BuildKit's output.
+		buildkitScript = nativeLogDisplay + buildkitScript + nativeBuildSucceeded
 	}
 
 	// Keep BuildKit's default OCI process sandbox enabled; the Pod user namespace
@@ -1122,6 +1236,8 @@ fi
 	}
 	if o.Builder != BuilderNative {
 		env = append(env, dockerBuildInputsEnv(o, dockerLiterals)...)
+	} else {
+		env = append(env, corev1.EnvVar{Name: "BEX_BUILD_COMMAND", Value: execution.KubernetesLiteral(o.BuildCommand)})
 	}
 
 	deadline := int64(BuildTimeout / time.Second)
