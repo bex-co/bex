@@ -366,6 +366,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **581** — [A static site serves `.webp`, `.woff`/`.woff2`/`.ttf`/`.otf`, `.map`, `.cjs`, `.yaml`/`.yml` and `.ogg` as `binary/octet-stream`, even where the server knows the right type](581.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 131, 2026-11-11
 - [ ] **580** — [Measure the cron run time that was never metered (manual runs, and every run of 28–30-character cron jobs), then decide whether to repair it](580.md) (~1h read-only + a decision; minor–major) ← w4/m322 t003 step 2, `/loopx w4` 2026-11-11.
 - [ ] **579** — [A service's `updatedAt` can read earlier than its `createdAt`: `hello-go` says it was updated 0.25 s before it was created, and `updatedBefore=<its createdAt>` lists it](579.md) (~20m; minor) ← live `/qa-find-bugs w4` loop round 129, 2026-11-11
 - [ ] **578** — [Revealing a secret file's contents leaves no audit row, while env var values now record Render's `ViewEnvVarValuesEvent`](578.md) (~30m; minor) ← w4/m321 t002 scope note, `/loopx w4` 2026-11-11. Render's enum has no secret-file view event; check what Render records first.
