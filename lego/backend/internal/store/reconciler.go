@@ -1537,6 +1537,21 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 	if _, _, ok := recordedRolloutFailure(app, open.Generation); ok {
 		return DeployUpdateFailed
 	}
+	// A static site publishes its build in update_in_progress, and a user-source
+	// failure there (a publish directory missing from the repository or from the
+	// built image) is recorded as the Build verdict (w4/493). Over a release that
+	// already served the operator keeps the phase Running, which would read as
+	// "not live yet" below and leave the row to the health gate, 18 minutes of
+	// "In Progress" that closes update_failed with a sentence about service logs
+	// (w21/049). Like a build-phase row's verdict in supersededDeployStatus, this
+	// one is the row's own: recordedBuildFailure attributes it to the row's
+	// release generation, and only a static site reports a build failure for a
+	// release whose rollout has begun.
+	if open.Status == DeployUpdateInProgress && app.Spec.Type == appv1alpha1.TypeStaticSite {
+		if _, ok := recordedBuildFailure(app, open.Generation); ok {
+			return DeployBuildFailed
+		}
+	}
 	if suspendEnded {
 		return DeployCanceled
 	}
