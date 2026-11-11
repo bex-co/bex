@@ -21,6 +21,10 @@ import {
   PlanTierSlots,
 } from "@/common/components/datastore-plan-preview";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import {
+  keyValueClearPhrase,
+  persistenceKeepsData,
+} from "@/features/keyvalue/lib/labels";
 
 export interface KeyValuePlanSectionProps {
   keyValue: KeyValueView;
@@ -42,11 +46,9 @@ export function KeyValuePlanSection({
   const { updatePlan, busy } = useUpdateKeyValuePlan();
   const { mode: persistenceMode } = useSetKeyValuePersistenceMode(keyValue.id);
   // A plan change restarts the only pod; with Persistence Off nothing is on
-  // disk to reload, so every key is lost (w4/m263). Anything but a known
-  // persisted mode asks for the typed phrase, the persistence card's gate.
+  // disk to reload, so every key is lost (w4/m263).
   const losesData =
-    !keyValue.suspended &&
-    !["journal-snapshot", "snapshot"].includes(persistenceMode);
+    !keyValue.suspended && !persistenceKeepsData(persistenceMode);
   const currentPlan = keyValue.plan ?? "free";
   const [selected, setSelected] = useState<string>(currentPlan);
   const [confirming, setConfirming] = useState(false);
@@ -147,7 +149,12 @@ export function KeyValuePlanSection({
         description={[
           t("keyvalue.planPickerConfirmBody"),
           losesData
-            ? t("keyvalue.planPickerConfirmDataLoss", { name: keyValue.name })
+            ? t(
+                persistenceMode === "off"
+                  ? "keyvalue.restartConfirmDataLoss"
+                  : "keyvalue.restartConfirmDataLossUnknown",
+                { name: keyValue.name },
+              )
             : "",
           selectedType?.monthlyUsd
             ? t("keyvalue.planPickerConfirmPrice", {
@@ -157,7 +164,7 @@ export function KeyValuePlanSection({
         ]
           .filter(Boolean)
           .join(" ")}
-        phrase={losesData ? `sudo clear key value ${keyValue.name}` : undefined}
+        phrase={losesData ? keyValueClearPhrase(keyValue.name) : undefined}
         cancelLabel={t("keyvalue.planPickerCancel")}
         confirmLabel={t("keyvalue.planPickerSave")}
         // Destructive only when the restart empties a Persistence Off store.

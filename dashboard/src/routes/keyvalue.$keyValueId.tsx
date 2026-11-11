@@ -251,6 +251,8 @@ export function KeyValueDetailPage() {
                 >
                   <KeyValueMaxmemoryPolicySection
                     id={keyValue.id}
+                    name={keyValue.name}
+                    suspended={keyValue.suspended}
                     onChanged={() => void refetch()}
                   />
                 </section>

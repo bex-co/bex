@@ -118,3 +118,17 @@ export function persistenceModeToUi(apiValue: string): string {
     ? hyphenated
     : apiValue;
 }
+
+/**
+ * Whether a restart keeps the store's keys: only a known persisted mode
+ * reloads them. Off reloads nothing, and an unknown or unread mode is treated
+ * as Off, so a restarting change asks for the typed phrase (w4/m263).
+ */
+export function persistenceKeepsData(mode: string): boolean {
+  return mode === "journal-snapshot" || mode === "snapshot";
+}
+
+/** The typed phrase every change that empties a store asks for. */
+export function keyValueClearPhrase(name: string): string {
+  return `sudo clear key value ${name}`;
+}

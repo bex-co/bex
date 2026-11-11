@@ -84,3 +84,34 @@ services:
 		})
 	}
 }
+
+// w4/m316: a maxmemoryPolicy change also replaces a running store's pod, and
+// with Persistence Off that deletes every key. Like a plan change (w4/m263),
+// and unlike the bex-only external-access restart above, Blueprints apply it
+// as Render does: the field is Render's, and refusing it would make a
+// Persistence Off store's policy unchangeable from its own Blueprint.
+func TestBlueprintAppliesAMaxmemoryChangeToARunningPersistenceOffKeyValue(t *testing.T) {
+	svc, cl := newService(nil)
+	ctx := context.Background()
+	manifest := func(policy string) string {
+		return "services:\n  - name: cache\n    type: redis\n    ipAllowList: []\n    plan: free\n    maxmemoryPolicy: " + policy + "\n"
+	}
+	res, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest("allkeys-lru")})
+	if err != nil {
+		t.Fatalf("first deploy: %v", err)
+	}
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(ctx, key(res.KeyValues[0].ID), &kv); err != nil {
+		t.Fatal(err)
+	}
+	kv.Spec.PersistenceMode = appv1alpha1.KeyValuePersistenceOff
+	if err := cl.Update(ctx, &kv); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest("noeviction")}); err != nil {
+		t.Fatalf("sync refused the policy change: %v", err)
+	}
+	if err := cl.Get(ctx, key(res.KeyValues[0].ID), &kv); err != nil || kv.Spec.MaxmemoryPolicy != "noeviction" {
+		t.Fatalf("policy after sync = %q (err %v), want noeviction", kv.Spec.MaxmemoryPolicy, err)
+	}
+}

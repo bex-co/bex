@@ -237,9 +237,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// maxmemoryPolicy field (w7/m45): the per-field verb pattern updateKeyValuePlan
 		// / setKeyValueIpAllowList already follow, routed through the shared
 		// UpdateKeyValue so all surfaces normalize + validate the policy identically.
-		"setKeyValueMaxmemoryPolicy": gqlutil.PatchMutation(keyValueGQLType, "maxmemoryPolicy",
+		"setKeyValueMaxmemoryPolicy": withDescription(gqlutil.PatchMutation(keyValueGQLType, "maxmemoryPolicy",
 			func(policy string) KeyValuePatch { return KeyValuePatch{MaxmemoryPolicy: &policy} },
-			s.UpdateKeyValue, s.UpdateKeyValueDryRun),
+			s.UpdateKeyValue, s.UpdateKeyValueDryRun), setKeyValueMaxmemoryPolicyDescription),
 		// setKeyValuePersistenceMode is the sibling of setKeyValueMaxmemoryPolicy
 		// (w6/m127): persistenceMode becomes updatable post-create through the same
 		// shared UpdateKeyValue, so a store created on `off` can reach durable
@@ -301,6 +301,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 // tells its users: the plan change is accepted as Render accepts it, with no
 // confirmation, and it restarts the store (w4/m263).
 const updateKeyValuePlanDescription = "Change the store's instance plan. The change restarts the store, which is unavailable for a minute or two, and it changes what the workspace is billed. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data."
+
+// setKeyValueMaxmemoryPolicyDescription is the same disclosure for the eviction
+// policy, a valkey-server flag whose change replaces the store's pod (w4/m316).
+const setKeyValueMaxmemoryPolicyDescription = "Change the store's eviction policy. The change restarts the store, which is unavailable for up to a minute. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. Accepted without a confirmation."
 
 func withDescription(f *graphql.Field, description string) *graphql.Field {
 	f.Description = description

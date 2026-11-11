@@ -42,9 +42,9 @@ Both were deleted afterwards. GET now returns 404, and the external endpoints fa
 
 **What a Render client concludes.**
 
-- The pinned Render CLI's text renderer prints an empty list as "IP allow-list: empty (external connections blocked)" ([ADR009](../../../docs/ADR009-postgresql-management.md) line 275, `render-oss/cli` `a764810a` `pkg/text/ipallowlist.go:17-20`).
+- The pinned Render CLI's text renderer prints an empty list as "IP allow-list: empty (external connections blocked)" ([ADR009](../../../../docs/ADR009-postgresql-management.md) line 275, `render-oss/cli` `a764810a` `pkg/text/ipallowlist.go:17-20`).
 - Render documents an empty list as external access disabled ([key-value#enabling-external-connections](https://render.com/docs/key-value#enabling-external-connections); a public Postgres's default is `0.0.0.0/0`, [postgresql-creating-connecting#restricting-external-access](https://render.com/docs/postgresql-creating-connecting#restricting-external-access)).
-- bex's own write contract agrees: an empty-list update disables external access (`SetIPAllowList`, `keyvalue/service.go:946-950`, `postgres/access.go:59-63`; [ADR021](../../../docs/ADR021-keyvalue-management.md) line 61).
+- bex's own write contract agrees: an empty-list update disables external access (`SetIPAllowList`, `keyvalue/service.go:946-950`, `postgres/access.go:59-63`; [ADR021](../../../../docs/ADR021-keyvalue-management.md) line 61).
 - So a client that reads the list and writes it back unchanged turns external access off.
 
 ## Root cause
@@ -58,7 +58,7 @@ The read side returns the saved rules without applying public intent.
   - It feeds MCP (`postgres/mcp.go:367-374`).
 - **The Blueprint export already does it right.** `datastoreAllowListEntries` (`lego/backend/internal/apps/blueprint_generate.go:922-933`, used at `:901` and `:909`) says: "Render has no separate public toggle, so export effective access … legacy public datastores with no rules need explicit unrestricted rules for both address families". It emits `0.0.0.0/0` + `::/0`. Today the export and the REST, GraphQL and MCP reads disagree about the same store.
 - **The public-with-no-rules state is created on purpose.**
-  - [ADR009](../../../docs/ADR009-postgresql-management.md) line 273: GraphQL `createDatabase`, MCP `create_postgres` and the dashboard keep `public:false` by default, but "their explicit `public:true` still permits an empty unrestricted resource list".
+  - [ADR009](../../../../docs/ADR009-postgresql-management.md) line 273: GraphQL `createDatabase`, MCP `create_postgres` and the dashboard keep `public:false` by default, but "their explicit `public:true` still permits an empty unrestricted resource list".
   - The dashboard sends `public` (`dashboard/src/features/keyvalue/hooks/use-create-key-value.ts:21,78`).
   - w2/038 (done) fixed only the REST Postgres create _omission_, by saving `0.0.0.0/0` + `::/0` (`postgres/rest.go:235`; `core/cidr.go:214-215` "Allow all (default)").
   - ADR009 line 271 left existing public stores with no rules as they were saved.
@@ -110,7 +110,7 @@ Live on production after the release pins this build, with owned `qa-` fixtures 
 ## Source + Goal linkage
 
 - **Source:** live `/qa-find-bugs w4` loop, round 17, 2026-11-10 (fixtures and probes above).
-- **Goal linkage:** [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first); [ADR021](../../../docs/ADR021-keyvalue-management.md) (Key Value), [ADR009](../../../docs/ADR009-postgresql-management.md) (Postgres), [ADR018](../../../docs/ADR018-render-parity.md) datastore access rows.
+- **Goal linkage:** [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first); [ADR021](../../../../docs/ADR021-keyvalue-management.md) (Key Value), [ADR009](../../../../docs/ADR009-postgresql-management.md) (Postgres), [ADR018](../../../../docs/ADR018-render-parity.md) datastore access rows.
 - **Expected outcome:** a Render client, the bex CLI, Terraform-style read-modify-write tooling and the dashboard all agree on whether a datastore is reachable from the internet. A no-op round trip can no longer cut access without warning.
 - **Why now:** the readback states network exposure wrongly in the security-relevant direction (blocked while open). The read-then-write hazard also turns a harmless sync into an outage for any client that relies on external access.
 - **Render parity included:** REST, GraphQL, MCP and the dashboard all change (t004).

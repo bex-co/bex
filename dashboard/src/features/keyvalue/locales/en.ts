@@ -566,11 +566,17 @@ const enKeyValue: Record<string, TranslationEntry> = {
       "The store restarts to apply the new instance type and is unavailable for a minute or two. Connections drop.",
     description: "Key Value plan-picker confirm dialog body",
   },
-  "keyvalue.planPickerConfirmDataLoss": {
+  "keyvalue.restartConfirmDataLoss": {
     message:
       "Persistence is Off, so the restart deletes every key in {name}. This cannot be undone.",
     description:
-      "Plan-change confirm: a Persistence Off store loses all data on the restart (w4/m263)",
+      "Restart confirm (plan or maxmemory change): a Persistence Off store loses all data on the restart (w4/m263, w4/m316)",
+  },
+  "keyvalue.restartConfirmDataLossUnknown": {
+    message:
+      "This store's persistence mode is unknown. If it is Off, the restart deletes every key in {name}. This cannot be undone.",
+    description:
+      "Restart confirm when the persistence mode could not be read: the typed phrase is still required",
   },
   "keyvalue.planPickerConfirmPrice": {
     message: "The new plan costs ${price}/month.",
@@ -592,7 +598,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.maxmemoryDescription": {
     message:
-      "Change how keys are evicted once the store reaches its memory limit. Saving restarts the store, so connections drop for up to a minute.",
+      "Change how keys are evicted once the store reaches its memory limit. Saving restarts the store, so connections drop for up to a minute. Data survives according to the persistence mode; a store with Persistence Off loses every key.",
     description: "Key Value detail eviction-policy card description",
   },
   "keyvalue.maxmemoryLabel": {
@@ -603,6 +609,25 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "Edit maxmemory policy",
     description:
       "Accessible label for the maxmemory-policy edit-in-place pencil",
+  },
+  "keyvalue.maxmemoryConfirmTitle": {
+    message: "Change the maxmemory policy to {policy}?",
+    description: "Maxmemory-policy change confirm dialog title (w4/m316)",
+  },
+  "keyvalue.maxmemoryConfirmBody": {
+    message:
+      "The store restarts to apply the new policy and is unavailable for up to a minute. Connections drop.",
+    description:
+      "Maxmemory-policy change confirm: the change restarts the store",
+  },
+  "keyvalue.maxmemoryConfirmAction": {
+    message: "Restart and change policy",
+    description: "Maxmemory-policy change confirm action on a persisted store",
+  },
+  "keyvalue.maxmemoryConfirmDataLossAction": {
+    message: "Delete data and change policy",
+    description:
+      "Maxmemory-policy change confirm action when the restart empties a Persistence Off store",
   },
   "keyvalue.maxmemorySuccess": {
     message: "Updating maxmemory policy to {policy}…",

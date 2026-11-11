@@ -188,6 +188,12 @@ describe("Key Value configuration refresh (w4/m226)", () => {
     await user.click(policy());
     await user.click(screen.getByRole("option", { name: /allkeys-lru/ }));
     await user.click(screen.getByRole("button", { name: "Save changes" }));
+    // The policy restarts the store, so Save confirms first (w4/m316).
+    await user.click(
+      within(screen.getByRole("alertdialog")).getByRole("button", {
+        name: "Restart and change policy",
+      }),
+    );
     await waitFor(() => expect(api.store.maxmemoryPolicy).toBe("allkeys-lru"));
     await act(async () => {
       api.release();

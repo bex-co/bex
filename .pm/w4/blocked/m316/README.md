@@ -1,26 +1,26 @@
 # w4 · m316 — Changing a Persistence Off Key Value's maxmemory policy says first that the restart deletes every key, and asks for the phrase, as the plan and persistence changes do
 
-**Worker:** worker4 **Goal:** a Key Value with Persistence Off never loses its keys to a maxmemory policy change without being warned. On an Off store, the dashboard asks for `sudo clear key value <name>` and says every key will be deleted. On a persisted store it names the restart. The API descriptions and the Blueprint path say the same thing. **Status:** todo
+**Worker:** worker4 **Goal:** a Key Value with Persistence Off never loses its keys to a maxmemory policy change without being warned. On an Off store, the dashboard asks for `sudo clear key value <name>` and says every key will be deleted. On a persisted store it names the restart. The API descriptions and the Blueprint path say the same thing. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Dashboard: Off-aware confirmation on the maxmemory save, and card copy that names the data loss | 40m | — |
-| [t002](t002.md) | API descriptions and the Blueprint path for a maxmemory change on a running Off store | 30m | — |
-| [t003](t003.md) | Writer audit: every write that restarts a running Off store warns or asks | 25m | t001, t002 |
+| [t001](done/t001.md) | Dashboard: Off-aware confirmation on the maxmemory save, and card copy that names the data loss — **DONE** | 40m | — |
+| [t002](done/t002.md) | API descriptions and the Blueprint path for a maxmemory change on a running Off store — **DONE** | 30m | — |
+| [t003](done/t003.md) | Writer audit: every write that restarts a running Off store warns or asks — **DONE** | 25m | t001, t002 |
 | [t004](t004.md) | Live verification on an owned Free Key Value | 25m | t003 |
-| [t005](t005.md) | Render parity | 20m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t005 |
+| [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
 | [t008](t008.md) | Closeout | 10m | t006, t007 |
 
 Eight tasks, 195m (3h15m). **Major:** the change deletes customer data without warning.
 
 This is a residual of two done milestones:
 
-- [w4/m263](../done/m263/README.md). Its expected outcome was that "the page's three restarting controls (Instance type, Maxmemory, Persistence) warn in the same way". It treated the Maxmemory card's "connections drop" copy as the precedent to follow, and called the plan change "the last silent restart".
-- [w4/m233](../done/m233/README.md). Its finding states that "A store with Persistence Off must never lose its data", meaning not without the typed confirmation.
+- [w4/m263](../../done/m263/README.md). Its expected outcome was that "the page's three restarting controls (Instance type, Maxmemory, Persistence) warn in the same way". It treated the Maxmemory card's "connections drop" copy as the precedent to follow, and called the plan change "the last silent restart".
+- [w4/m233](../../done/m233/README.md). Its finding states that "A store with Persistence Off must never lose its data", meaning not without the typed confirmation.
 
 ## Finding
 
@@ -110,7 +110,7 @@ Live on production after the release pins this build, on an owned Free Key Value
 ## Source + Goal linkage
 
 - **Source:** live `/qa-find-bugs w4` loop, round 23, 2026-11-10 (the probe above; fixture deleted).
-- **Goal linkage:** [ADR021](../../../docs/ADR021-keyvalue-management.md) (Key Value persistence and restarts), [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first), and truthful product state.
+- **Goal linkage:** [ADR021](../../../../docs/ADR021-keyvalue-management.md) (Key Value persistence and restarts), [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first), and truthful product state.
 - **Expected outcome:** no Persistence Off Key Value loses its keys from a settings change it wasn't warned about. The Instance type, Maxmemory and Persistence cards finally warn in the same way, as m263 intended.
 - **Why now:** it deletes customer data silently, on the setting a user tunes when a cache starts evicting. That is exactly when the store holds data they care about.
 - **Render parity included:** the dashboard, the GraphQL and MCP descriptions, and the Blueprint path all change (t005).

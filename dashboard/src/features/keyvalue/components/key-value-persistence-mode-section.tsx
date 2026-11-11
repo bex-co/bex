@@ -12,7 +12,10 @@ import {
   EditableFieldRow,
   EditableFieldRowPreview,
 } from "@/features/services/components/editable-field-row";
-import { PERSISTENCE_MODES } from "@/features/keyvalue/lib/labels";
+import {
+  keyValueClearPhrase,
+  PERSISTENCE_MODES,
+} from "@/features/keyvalue/lib/labels";
 import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
 import type { en } from "@/i18n";
 
@@ -128,7 +131,7 @@ export function KeyValuePersistenceModeSection({
         title={t("keyvalue.persistenceConfirmTitle")}
         description={t("keyvalue.persistenceConfirmDescription", { name })}
         confirmLabel={t("keyvalue.persistenceConfirmAction")}
-        phrase={`sudo clear key value ${name}`}
+        phrase={keyValueClearPhrase(name)}
         pending={saving}
         closeOnConfirm={false}
         onConfirm={() => void confirmSave()}
