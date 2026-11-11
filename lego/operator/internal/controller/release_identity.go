@@ -710,7 +710,23 @@ func sourceUpdatePending(app *appv1alpha1.App) bool {
 		return false
 	}
 	release, _ := stampedReleaseGeneration(app)
-	return release < pending
+	return release < pending && !firstReleaseReadsSavedSource(app, release)
+}
+
+// firstReleaseReadsSavedSource reports the first release of a service that has
+// been requested (the creation's own deploy stamped it) but whose source is not
+// fixed yet: it has served nothing and its build has not started. A Render-shaped
+// save made in that window is the very deploy the save was waiting for. Holding
+// it kept the App from ever dispatching its first release (no build, no phase,
+// the first deploy row left "created" until another deploy was requested,
+// w21/051), because a never-served service has no active release to keep
+// rendering. Once the build starts the release is pinned to its own source
+// (releaseInFlight), and a service that served or failed keeps the contract: a
+// save waits for the next deploy (w32/003 for the failed one). With no deploy
+// requested at all (release 0) Update Source still waits for one.
+func firstReleaseReadsSavedSource(app *appv1alpha1.App, release int64) bool {
+	return release > 0 && app.Status.Image == "" && app.Status.ActiveRevision == "" &&
+		!releaseSourceFixed(app) && app.Status.Phase != appv1alpha1.PhaseFailed
 }
 
 // requestedReleaseGeneration consumes the identity stamped by backend deploy

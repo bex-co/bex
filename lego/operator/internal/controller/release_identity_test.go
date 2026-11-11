@@ -238,6 +238,103 @@ func TestPendingSourceWaitsForADeployGeneration(t *testing.T) {
 	}
 }
 
+// w21/051: create then save is the standard IaC, CLI and agent sequence, and a
+// Render-shaped save (PATCH /v1/services/{id}) before the first build starts
+// stamps pending-source-generation one past the creation's own deploy stamp.
+// With no release served the pending-source hold kept the App from ever
+// dispatching it: no build, no phase, the first deploy row left "created". The
+// first release consumes a save made before its source is fixed (it is the
+// deploy that save was waiting for), and every later state keeps the contract.
+func TestFirstReleaseConsumesASaveMadeBeforeItsSourceIsFixed(t *testing.T) {
+	// Created (the first deploy stamps release generation 1), then saved at
+	// generation 2.
+	created := func() *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{
+				Generation: 2,
+				Annotations: map[string]string{
+					appv1alpha1.AnnotationPendingSourceGeneration: "2",
+					appv1alpha1.AnnotationReleaseGeneration:       "1",
+				},
+			},
+			Spec: appv1alpha1.AppSpec{Repo: "https://github.com/bex-co/bex", Branch: "main", HealthCheckPath: "/"},
+		}
+	}
+
+	t.Run("not yet adopted", func(t *testing.T) {
+		app := created()
+		if sourceUpdatePending(app) {
+			t.Fatal("a never-adopted first release held by the save it should consume")
+		}
+		decision := prepareAppReleaseDecision(app, nil)
+		if decision.sourcePending || !decision.releaseChanged || !decision.artifactChanged {
+			t.Fatalf("first release decision = %+v, want a release from the saved spec", decision)
+		}
+		if app.Status.ReleaseGeneration != 1 {
+			t.Fatalf("releaseGeneration = %d, want the creation's own deploy generation 1", app.Status.ReleaseGeneration)
+		}
+	})
+
+	t.Run("adopted, build not started", func(t *testing.T) {
+		app := created()
+		first := prepareAppReleaseDecision(app, nil)
+		app.Status.Phase = appv1alpha1.PhaseBuilding
+		app.Status.ArtifactFingerprint = first.desired.artifact
+		app.Status.ReleaseFingerprint = first.desired.release
+		if sourceUpdatePending(app) {
+			t.Fatal("the pass after adoption, before the Job exists, held the first release")
+		}
+		if decision := prepareAppReleaseDecision(app, nil); decision.sourcePending {
+			t.Fatalf("decision = %+v, want the first release to proceed", decision)
+		}
+	})
+
+	t.Run("build started keeps its own source", func(t *testing.T) {
+		app := created()
+		first := prepareAppReleaseDecision(app, nil)
+		app.Status.Phase = appv1alpha1.PhaseBuilding
+		app.Status.ArtifactFingerprint = first.desired.artifact
+		app.Status.ReleaseFingerprint = first.desired.release
+		app.Status.BuildRun = &appv1alpha1.BuildRunStatus{Generation: 1, StartedAt: "2026-11-11T00:00:00Z"}
+		// A later save is the pending slot, not this release's source.
+		app.Generation = 3
+		app.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] = "3"
+		app.Spec.Branch = "feature"
+		decision := prepareAppReleaseDecision(app, nil)
+		if !decision.pinned {
+			t.Fatalf("decision = %+v, want the release in flight pinned to its own source", decision)
+		}
+	})
+
+	t.Run("a failed first build keeps the hold (w32/003)", func(t *testing.T) {
+		app := created()
+		app.Status.ReleaseGeneration = 1
+		app.Status.Phase = appv1alpha1.PhaseFailed
+		app.Status.BuildRun = &appv1alpha1.BuildRunStatus{Generation: 1, StartedAt: "2026-11-11T00:00:00Z", FinishedAt: "2026-11-11T00:01:00Z"}
+		if !sourceUpdatePending(app) {
+			t.Fatal("a save after a failed first build must still wait for a deploy")
+		}
+	})
+
+	t.Run("a served release keeps the contract", func(t *testing.T) {
+		app := created()
+		app.Status.Image = "registry.example/acme/app@sha256:active"
+		app.Status.ReleaseGeneration = 1
+		app.Status.ActiveRevision = "rev-1"
+		if !sourceUpdatePending(app) {
+			t.Fatal("a save on a service that has served must wait for the next deploy")
+		}
+	})
+
+	t.Run("no deploy was ever requested", func(t *testing.T) {
+		app := created()
+		delete(app.Annotations, appv1alpha1.AnnotationReleaseGeneration)
+		if !sourceUpdatePending(app) {
+			t.Fatal("with no deploy verb run, Update Source must still wait for one")
+		}
+	})
+}
+
 func TestPendingSourceWithoutImageHaltsBeforeBuildOrStaticPublish(t *testing.T) {
 	app := &appv1alpha1.App{
 		Spec: appv1alpha1.AppSpec{Repo: "https://example.invalid/new.git"},
