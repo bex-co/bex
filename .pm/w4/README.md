@@ -366,6 +366,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **587** — [In Chinese, Account Settings still names the password toggle "Show password" (w4/521 closed without reaching this page) and labels the profile fields "E-Mail" / "Name"](587.md) (~40m; minor) ← live `/qa-find-bugs w4` loop round 142, 2026-11-11
 - [ ] **586** — [A Postgres's revealed connection info keeps the Password field masked while the psql command and both connection strings print the same password in clear](586.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 136, 2026-11-11
 - [ ] **585** — [Static sites have HTTP request logs on bex; Render has none — keep them with a recorded sign-off, or drop them](585.md) (~20m; minor) ← w4/m325 t004, `/loopx w4` 2026-11-11.
 - [ ] **584** — [A `level` filter never selects request lines, though a request line now carries Render's `level`](584.md) (~1h; minor) ← w4/m325 t007, `/loopx w4` 2026-11-11.
