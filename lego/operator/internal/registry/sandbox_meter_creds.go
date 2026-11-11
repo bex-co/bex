@@ -34,7 +34,9 @@ package registry
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -65,6 +67,29 @@ const (
 // zotReadDeleteActions is the reaper's grant: it reads a repository's tags and
 // deletes them, and never writes an image.
 var zotReadDeleteActions = []string{zotActionRead, zotActionDelete}
+
+// sandboxMeterGrants are the platform's two grants on a snapshot pattern.
+func sandboxMeterGrants() []zotGrant {
+	return []zotGrant{
+		{SandboxMeterReaderUser, zotReadOnlyActions},
+		{SandboxMeterReaperUser, zotReadDeleteActions},
+	}
+}
+
+// isSnapshotNamespaceGlob reports whether repo is a workspace's own snapshot
+// pattern ("snapshots/<ns>/**"), which Zot matches ahead of "snapshots/**".
+func isSnapshotNamespaceGlob(repo string) bool {
+	return repo != snapshotsRepoGlob && strings.HasPrefix(repo, "snapshots/") && strings.HasSuffix(repo, "/**")
+}
+
+// snapshotPlatformGrants is what a snapshot pattern carries besides its
+// namespace's own read-only user: the meter's two users, once they are minted.
+func (c *Creds) snapshotPlatformGrants(repo string) []zotGrant {
+	if c.SandboxMeterUsers && isSnapshotNamespaceGlob(repo) {
+		return sandboxMeterGrants()
+	}
+	return nil
+}
 
 // EnsureSandboxMeterCreds idempotently provisions the two users:
 //  1. the Secret SandboxMeterSecretName in the registry namespace, with a
@@ -100,10 +125,51 @@ func (c *Creds) EnsureSandboxMeterCreds(ctx context.Context) error {
 		}
 		wrote = wrote || wroteUser || wroteACL
 	}
-	if wrote {
+	// Zot applies only the longest matching pattern, so a workspace's own
+	// "snapshots/<ns>/**" shadows "snapshots/**": without these grants the meter
+	// can read, and the reaper delete, only where a workspace has no pattern of
+	// its own (production, 2026-11-11: 403 for every workspace that has one).
+	wroteNamespaces, err := c.grantMeterOnNamespacePatterns(ctx)
+	if err != nil {
+		return fmt.Errorf("zot config namespace patterns: %w", err)
+	}
+	if wrote || wroteNamespaces {
 		c.tryBounce(ctx)
 	}
 	return nil
+}
+
+// grantMeterOnNamespacePatterns adds the meter's two users to every existing
+// "snapshots/<ns>/**" pattern in one document hold, leaving the namespace's own
+// user and every other policy where they are.
+func (c *Creds) grantMeterOnNamespacePatterns(ctx context.Context) (bool, error) {
+	return c.mutateSecretKey(ctx, c.ConfigName, zotConfigKey, c.baseZotConfig,
+		func(current []byte) ([]byte, bool, error) {
+			data, err := decodeZotConfig(current)
+			if err != nil {
+				return nil, false, err
+			}
+			var patterns []string
+			for repo := range zotRepos(data) {
+				if isSnapshotNamespaceGlob(repo) {
+					patterns = append(patterns, repo)
+				}
+			}
+			changed := false
+			for _, repo := range patterns {
+				for _, g := range sandboxMeterGrants() {
+					if !zotRepoUserGrants(data, repo, g.user, g.actions) {
+						addZotRepoUser(data, repo, g.user, g.actions)
+						changed = true
+					}
+				}
+			}
+			if !changed {
+				return nil, false, nil
+			}
+			next, err := json.Marshal(data)
+			return next, err == nil, err
+		})
 }
 
 // ensureSandboxMeterSecret gets or creates the credentials Secret, filling any

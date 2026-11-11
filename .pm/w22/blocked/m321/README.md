@@ -1,6 +1,6 @@
 # w22 · m321 — The storage meter's registry credentials: the operator mints a read user and a delete user for bex-api
 
-**Worker:** worker22 **Goal:** bex-api can read a suspended sandbox's image size from Zot and delete a terminated sandbox's `snap-gen` tags, through two operator-managed Zot users scoped to `snapshots/**`, with no admin credential in bex-api **Status:** blocked (t001–t004, t006 and t007 done and shipped; deployed 2026-11-11, run 42982188589, and the users, their scopes and the size formula checked on production; t005's end-to-end check and t008's closeout wait for a real suspended sandbox and a real tag deletion)
+**Worker:** worker22 **Goal:** bex-api can read a suspended sandbox's image size from Zot and delete a terminated sandbox's `snap-gen` tags, through two operator-managed Zot users scoped to `snapshots/**`, with no admin credential in bex-api **Status:** blocked (t001–t004, t006 and t007 done and shipped; deployed 2026-11-11, run 42982188589; the first real reap showed both users locked out (403) of every per-workspace `snapshots/<ws>-sandbox/**` pattern, fixed in the operator and proven on a real Zot; t005's end-to-end check and t008's closeout wait for that fix to deploy, a real suspended sandbox and a real tag deletion)
 
 ## Tasks (in order)
 

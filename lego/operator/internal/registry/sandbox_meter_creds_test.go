@@ -165,3 +165,85 @@ func TestSandboxMeterCredsHealAMissingPasswordAndAMissingSecret(t *testing.T) {
 		}
 	}
 }
+
+// Zot applies only the longest matching pattern, so a workspace's own
+// "snapshots/<ns>/**" shadows "snapshots/**": production answered 403 to the
+// meter for every workspace that had one (2026-11-11). The minted users must be
+// on each of those patterns, beside the namespace's own, and nowhere else.
+func TestSandboxMeterCredsReachEveryNamespacePattern(t *testing.T) {
+	ctx := context.Background()
+	c := newTestCreds(t, &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{Name: "zot-htpasswd", Namespace: "bex-registry"},
+		Data:       map[string][]byte{htpasswdKey: []byte("bex-builder:$2a$10$somehash\n")},
+	}, zotConfigSecret([]byte(`{"http":{"accessControl":{"repositories":{
+		"snapshots/tea-a-sandbox/**":{"policies":[{"users":["snap-tea-a-sandbox"],"actions":["read"]}]},
+		"snapshots/tea-b-sandbox/**":{"policies":[{"users":["snap-tea-b-sandbox"],"actions":["read"]}]},
+		"tea-a/web":{"policies":[{"users":["app-tea-a-web"],"actions":["read","create","update","delete"]}]}
+	}}}}`)))
+	if err := c.EnsureSandboxMeterCreds(ctx); err != nil {
+		t.Fatal(err)
+	}
+	data := storedConfig(t, c)
+	for _, ns := range []string{"tea-a-sandbox", "tea-b-sandbox"} {
+		repo := SnapshotRepoGlob(ns)
+		if !zotRepoGrantsWith(data, repo, SnapshotZotUsername(ns), zotReadOnlyActions, sandboxMeterGrants()) {
+			t.Errorf("%s = %v, want the namespace's read user plus the meter's reader and reaper", repo, zotRepos(data)[repo])
+		}
+	}
+	if !zotRepoGrants(data, "tea-a/web", "app-tea-a-web", zotReadWriteActions) {
+		t.Error("an App repository must be left exactly as it was")
+	}
+
+	before := readSecret(t, c, testZotNS, "zot-config").ResourceVersion
+	if err := c.EnsureSandboxMeterCreds(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if after := readSecret(t, c, testZotNS, "zot-config").ResourceVersion; after != before {
+		t.Errorf("a second run rewrote zot-config (resourceVersion %s -> %s)", before, after)
+	}
+}
+
+// A namespace provisioned after the meter users exist gets them on its own
+// pattern at once, and the two writers agree on the result: neither strips what
+// the other adds, so repeated reconciles never rewrite Zot's config or bounce it.
+func TestSnapshotCredsGrantMeterUsersWhenEnabledAndNeverThrash(t *testing.T) {
+	ctx := context.Background()
+	c := meterTestCreds(t)
+	c.SandboxMeterUsers = true
+	const ns = "tea-c-sandbox"
+
+	if err := c.EnsureSnapshotCreds(ctx, ns); err != nil {
+		t.Fatal(err)
+	}
+	if !zotRepoGrantsWith(storedConfig(t, c), SnapshotRepoGlob(ns), SnapshotZotUsername(ns), zotReadOnlyActions, sandboxMeterGrants()) {
+		t.Fatal("a new namespace pattern must carry the meter's users")
+	}
+	if err := c.EnsureSandboxMeterCreds(ctx); err != nil {
+		t.Fatal(err)
+	}
+	settled := readSecret(t, c, testZotNS, "zot-config").ResourceVersion
+	for range 2 {
+		if err := c.EnsureSnapshotCreds(ctx, ns); err != nil {
+			t.Fatal(err)
+		}
+		if err := c.EnsureSandboxMeterCreds(ctx); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if after := readSecret(t, c, testZotNS, "zot-config").ResourceVersion; after != settled {
+		t.Errorf("the two writers fight: zot-config resourceVersion %s -> %s", settled, after)
+	}
+}
+
+// Until the meter users are minted the namespace pattern stays what it was: one
+// read-only policy for the namespace's own user.
+func TestSnapshotCredsCarryNoMeterUsersByDefault(t *testing.T) {
+	c := meterTestCreds(t)
+	const ns = "tea-d-sandbox"
+	if err := c.EnsureSnapshotCreds(context.Background(), ns); err != nil {
+		t.Fatal(err)
+	}
+	if !zotRepoGrants(storedConfig(t, c), SnapshotRepoGlob(ns), SnapshotZotUsername(ns), zotReadOnlyActions) {
+		t.Errorf("%s = %v, want exactly the namespace's read user", SnapshotRepoGlob(ns), zotRepos(storedConfig(t, c))[SnapshotRepoGlob(ns)])
+	}
+}

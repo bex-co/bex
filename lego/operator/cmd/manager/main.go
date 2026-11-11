@@ -492,6 +492,10 @@ func setupAppReconciler(
 			// it always-on lets a scoped App read a same-named legacy repo owned by
 			// another workspace.
 			DualReadEnabled: os.Getenv("BEX_REGISTRY_DUAL_READ") == "1",
+			// The storage meter's users (BEX_SANDBOX_METER_CREDS, below) are on every
+			// per-workspace snapshot pattern too, which Zot matches ahead of
+			// snapshots/**.
+			SandboxMeterUsers: os.Getenv("BEX_SANDBOX_METER_CREDS") == "1",
 		}
 	}
 	if cs != nil {

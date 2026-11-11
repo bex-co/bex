@@ -85,6 +85,12 @@ type Creds struct {
 	// so a migration already in flight keeps its grants; only new grants stop.
 	DualReadEnabled bool
 
+	// SandboxMeterUsers says the storage meter's reader and reaper are minted
+	// (EnsureSandboxMeterCreds), so every per-namespace snapshot pattern grants
+	// them too. Zot applies only the longest matching pattern, so a workspace's
+	// own "snapshots/<ns>/**" shadows "snapshots/**" and would lock them out.
+	SandboxMeterUsers bool
+
 	// Credential activation (w9/m43, verify.go). Zero values mean the package
 	// defaults; tests shrink them.
 	HTTPClient      *http.Client  // probe client; nil => shared 5s-timeout default
@@ -506,8 +512,9 @@ func (c *Creds) ensureZotConfigEntryReleasing(ctx context.Context, zotUser strin
 				// The platform builder repository is never tenant-owned: an App
 				// whose public name collides with it must not replace the shared
 				// read-only rule with tenant write permission.
-				if repo != platformBuilderRepository && !zotRepoGrants(data, repo, zotUser, actions) {
-					setZotRepoPolicy(data, repo, zotUser, actions)
+				extra := c.snapshotPlatformGrants(repo)
+				if repo != platformBuilderRepository && !zotRepoGrantsWith(data, repo, zotUser, actions, extra) {
+					setZotRepoPolicyWith(data, repo, zotUser, actions, extra)
 					changed = true
 				}
 			}

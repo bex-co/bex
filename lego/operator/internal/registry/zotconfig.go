@@ -162,31 +162,64 @@ func anySlice(values []string) []any {
 
 // -- repository ACLs ----------------------------------------------------------
 
+// zotGrant is one user's actions on a repository.
+type zotGrant struct {
+	user    string
+	actions []string
+}
+
 // zotRepoGrants reports whether repo's ACL grants user exactly actions and
 // nothing else. Exactness is the tenant-isolation property: an extra user on a
 // repository is a cross-tenant grant and an extra action is an unintended
 // privilege, so either must be repaired rather than accepted as converged.
 func zotRepoGrants(data map[string]any, repo, user string, actions []string) bool {
+	return zotRepoGrantsWith(data, repo, user, actions, nil)
+}
+
+// zotRepoGrantsWith is zotRepoGrants for a repository that also carries the
+// platform's own grants: its ACL is exactly user's policy plus each of extra.
+func zotRepoGrantsWith(data map[string]any, repo, user string, actions []string, extra []zotGrant) bool {
 	entry, _ := zotRepos(data)[repo].(map[string]any)
 	policies, _ := entry["policies"].([]any)
-	if len(policies) != 1 {
+	want := append([]zotGrant{{user, actions}}, extra...)
+	if len(policies) != len(want) {
 		return false
 	}
-	policy, _ := policies[0].(map[string]any)
-	users, _ := policy["users"].([]any)
-	granted, _ := policy["actions"].([]any)
-	return sameStrings(users, []string{user}) && sameStrings(granted, actions)
+	for _, w := range want {
+		found := false
+		for _, p := range policies {
+			policy, _ := p.(map[string]any)
+			users, _ := policy["users"].([]any)
+			granted, _ := policy["actions"].([]any)
+			if sameStrings(users, []string{w.user}) && sameStrings(granted, w.actions) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			return false
+		}
+	}
+	return true
 }
 
 // setZotRepoPolicy grants user exactly actions on repo, replacing whatever
 // policy that repository carried.
 func setZotRepoPolicy(data map[string]any, repo, user string, actions []string) {
-	zotReposFor(data)[repo] = map[string]any{
-		"policies": []any{map[string]any{
-			"users":   []any{user},
-			"actions": anySlice(actions),
-		}},
+	setZotRepoPolicyWith(data, repo, user, actions, nil)
+}
+
+// setZotRepoPolicyWith grants user exactly actions on repo, plus each of extra,
+// replacing whatever policies that repository carried.
+func setZotRepoPolicyWith(data map[string]any, repo, user string, actions []string, extra []zotGrant) {
+	policies := make([]any, 0, 1+len(extra))
+	for _, g := range append([]zotGrant{{user, actions}}, extra...) {
+		policies = append(policies, map[string]any{
+			"users":   []any{g.user},
+			"actions": anySlice(g.actions),
+		})
 	}
+	zotReposFor(data)[repo] = map[string]any{"policies": policies}
 }
 
 // zotHasRepo reports whether repo carries any ACL entry.
