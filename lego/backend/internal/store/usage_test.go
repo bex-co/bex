@@ -490,3 +490,80 @@ func TestMemStoreWorkspaceIsolation(t *testing.T) {
 		t.Errorf("workspace isolation: expected total 500 for tea-A, got %+v", rows)
 	}
 }
+
+// w4/496: an hour older than the catch-up window with no metered row will never
+// get one, so it is a skip like a degraded hour — the watermark passes it and
+// the source is reported degraded — while a hole the rollup can still fill
+// stops the watermark.
+func TestAggregateUsageCoverageSettledHoleIsASkip(t *testing.T) {
+	month := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	latest := month.Add(72 * time.Hour)
+	windows := map[time.Time]string{}
+	for h := month; h.Before(latest); h = h.Add(time.Hour) {
+		windows[h] = UsageSourceHealthy
+	}
+	delete(windows, month.Add(2*time.Hour)) // 70 h before latest: settled
+	settledHole := coverageStream(UsageSourceDisk, month, windows)
+	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"disk": settledHole}, []string{"disk"}, month, latest, false)
+	if got.Complete || !got.Through.Equal(latest) || !slices.Equal(got.DegradedSources, []string{UsageSourceDisk}) {
+		t.Fatalf("a settled hole: %+v, want through %v and disk degraded", got, latest)
+	}
+
+	recent := map[time.Time]string{}
+	for h, s := range windows {
+		recent[h] = s
+	}
+	recent[month.Add(2*time.Hour)] = UsageSourceHealthy
+	delete(recent, latest.Add(-5*time.Hour)) // inside the catch-up window
+	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"disk": coverageStream(UsageSourceDisk, month, recent)}, []string{"disk"}, month, latest, false)
+	if got.Complete || !got.Through.Equal(latest.Add(-5*time.Hour)) {
+		t.Fatalf("a hole the rollup can still fill must stop the watermark: %+v", got)
+	}
+
+	// A deleted App's last egress hour is never metered: once settled, its
+	// ended stream stops dragging the watermark.
+	ended := coverageStream(UsageSourceDirect, month, map[time.Time]string{month: UsageSourceHealthy})
+	endedAt := month.Add(2 * time.Hour)
+	ended.ExpectedThrough = &endedAt
+	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended}, []string{"ended"}, month, latest, false)
+	if !got.Through.Equal(latest) || !slices.Equal(got.DegradedSources, []string{UsageSourceDirect}) {
+		t.Fatalf("a deleted App's unmetered last hour: %+v", got)
+	}
+}
+
+// The boundary: a hole in the newest window some meter can still write (the
+// disk meter reaches one hour past the others) stops the watermark; the window
+// before it passes, as does an old unavailable read.
+func TestAggregateUsageCoverageSettledBoundary(t *testing.T) {
+	month := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	latest := month.Add(96 * time.Hour)
+	full := func() map[time.Time]string {
+		w := map[time.Time]string{}
+		for h := month; h.Before(latest); h = h.Add(time.Hour) {
+			w[h] = UsageSourceHealthy
+		}
+		return w
+	}
+	writable := latest.Add(-UsageCatchupWindow - time.Hour)
+	for name, tc := range map[string]struct {
+		hole    time.Time
+		state   string // "" removes the window
+		through time.Time
+	}{
+		"hole in the oldest still-writable window stops": {writable, "", writable},
+		"hole one hour older passes":                     {writable.Add(-time.Hour), "", latest},
+		"old unavailable read passes":                    {writable.Add(-time.Hour), UsageSourceUnavailable, latest},
+		"unavailable read still retryable stops":         {writable, UsageSourceUnavailable, writable},
+	} {
+		w := full()
+		if tc.state == "" {
+			delete(w, tc.hole)
+		} else {
+			w[tc.hole] = tc.state
+		}
+		got := aggregateUsageCoverage(map[string]*usageCoverageStream{"s": coverageStream(UsageSourceInstance, month, w)}, []string{"s"}, month, latest, false)
+		if got.Complete || !got.Through.Equal(tc.through) {
+			t.Errorf("%s: through %v (complete %v), want %v", name, got.Through, got.Complete, tc.through)
+		}
+	}
+}

@@ -392,18 +392,34 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 // names individually; the rest collapse into a trailing "other".
 const maxDegradedSources = 7
 
+// UsageCatchupWindow is how far back the usage rollup can still meter an hour
+// (its restart catch-up and deleted-resource pass). An hour older than this
+// with no metered row never gets one.
+const UsageCatchupWindow = 48 * time.Hour
+
+// usageSettledBefore is the start of the newest window no meter can still
+// write once latestClosed has closed. The disk meter's floor sits one hour
+// below the others' (catchUpDisksThrough counts back from the last closed
+// window, not the next one), so the boundary takes that hour too.
+func usageSettledBefore(latestClosed time.Time) time.Time {
+	return latestClosed.Add(-UsageCatchupWindow - time.Hour)
+}
+
 // evaluateStreamCoverage walks one stream's expected window range and reports
-// how far it is contiguously recorded (observedThrough), how far it was
-// expected to reach (target), and whether every window it does have is healthy.
+// how far it is contiguously accounted for (observedThrough), how far it was
+// expected to reach (target), and whether the stream is healthy: every window
+// it has is healthy and no settled hole was passed.
 //
 // The watermark and the health scan are deliberately separate passes. The
-// watermark stops at the first window with no evidence or an unavailable read:
-// those hours were not metered and may still be retried. A degraded window was
-// metered — the reading was skipped or doubted, so it may undercount — and the
-// watermark passes over it; the health scan reports it, so the stream is
-// degraded and the coverage partial (w4/496: one degraded hour on November 1
-// read as "complete only through 2026-11-01" all month). Degradation after an
-// earlier gap is still useful diagnostic evidence and is not lost either.
+// watermark stops at the first window that may still be metered but is not
+// yet: no evidence, or an unavailable read, inside UsageCatchupWindow. A
+// degraded window was metered — the reading was skipped or doubted, so it may
+// undercount — and the watermark passes over it. So does a window older than
+// UsageCatchupWindow with no metered row: it will never be metered (a deleted
+// App's last egress hours, a missed rollup), an undercount like a skip, and
+// the stream is reported degraded for it. Before w4/496 one degraded hour on
+// November 1 read "complete only through 2026-11-01" all month. Degradation
+// after an earlier gap is still useful diagnostic evidence and is not lost.
 func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClosed time.Time) (observedThrough, target time.Time, healthy bool) {
 	expectedStart := stream.ExpectedFrom.UTC().Truncate(time.Hour)
 	if expectedStart.Before(monthStart) {
@@ -413,14 +429,19 @@ func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClose
 	if stream.ExpectedThrough != nil && stream.ExpectedThrough.Before(target) {
 		target = stream.ExpectedThrough.UTC().Truncate(time.Hour)
 	}
+	settled := usageSettledBefore(latestClosed)
+	healthy = true
 	observedThrough = expectedStart
 	for observedThrough.Before(target) {
-		if state, exists := stream.Windows[observedThrough]; !exists || (state != UsageSourceHealthy && state != UsageSourceDegraded) {
-			break
+		state, exists := stream.Windows[observedThrough]
+		if !exists || (state != UsageSourceHealthy && state != UsageSourceDegraded) {
+			if !observedThrough.Before(settled) {
+				break
+			}
+			healthy = false // never metered: skipped for good
 		}
 		observedThrough = observedThrough.Add(time.Hour)
 	}
-	healthy = true
 	for _, state := range stream.Windows {
 		if state != UsageSourceHealthy {
 			healthy = false

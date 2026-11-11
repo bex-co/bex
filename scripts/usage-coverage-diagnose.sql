@@ -14,9 +14,10 @@
 --   * its expected hours run from max(hour(expected_from), month start) up to
 --     min(last closed hour, hour(expected_through)), exclusive;
 --   * its watermark (observed_through) stops at the first expected hour that has
---     NO health row or an `unavailable` one (not metered); a `degraded` hour was
---     metered and does not stop it (w4/496), but any non-healthy row in the
---     period marks the stream degraded, even one after an earlier gap.
+--     NO health row or an `unavailable` one (not metered) and is still inside the
+--     catch-up window (49 h, the disk meter's reach); a `degraded` hour was metered, and a hole older than
+--     the window will never be metered, so neither stops it (w4/496). Any
+--     non-healthy row, or settled hole, marks the stream degraded.
 --
 -- Every in-scope stream is reported, including one with zero health rows (an
 -- inner join or a WHERE on the health side would silently drop it), and an
@@ -39,7 +40,10 @@ SET LOCAL TIME ZONE 'UTC';
 WITH params AS (
   SELECT :'ws'::text AS ws,
          date_trunc('month', :'now'::timestamptz) AS month_start,
-         date_trunc('hour', :'now'::timestamptz) AS latest_closed
+         date_trunc('hour', :'now'::timestamptz) AS latest_closed,
+         -- store.usageSettledBefore: UsageCatchupWindow (48 h) plus the disk
+         -- meter's extra hour. Keep the two in step.
+         date_trunc('hour', :'now'::timestamptz) - interval '49 hours' AS settled
 ), streams AS (
   SELECT s.resource_kind, s.service_id, s.kind, s.source, s.expected_from, s.expected_through,
          greatest(date_trunc('hour', s.expected_from), p.month_start) AS first_hour,
@@ -67,9 +71,10 @@ WITH params AS (
   SELECT resource_kind, service_id, kind, source,
          count(*) AS expected_hours,
          count(state) AS health_rows,
-         min(hour) FILTER (WHERE state IS NULL) AS first_missing_health,
+         min(hour) FILTER (WHERE state IS NULL AND hour >= (SELECT settled FROM params)) AS first_missing_health,
          min(hour) FILTER (WHERE state IS NOT NULL AND state <> 'healthy') AS first_unhealthy_in_range,
-         min(hour) FILTER (WHERE state = 'unavailable') AS first_unavailable_in_range,
+         min(hour) FILTER (WHERE state = 'unavailable' AND hour >= (SELECT settled FROM params)) AS first_unavailable_in_range,
+         min(hour) FILTER (WHERE (state IS NULL OR state = 'unavailable') AND hour < (SELECT settled FROM params)) AS first_settled_skip,
          count(*) FILTER (WHERE has_usage) AS usage_hours,
          min(hour) FILTER (WHERE NOT has_usage) AS first_missing_usage
   FROM evidence
@@ -88,7 +93,7 @@ SELECT st.resource_kind, st.service_id, st.kind, st.source,
        coalesce(ps.expected_hours, 0) AS expected_hours,
        coalesce(ps.health_rows, 0) AS health_rows,
        ps.first_missing_health,
-       coalesce(d.first_unhealthy_any, ps.first_unhealthy_in_range) AS first_unhealthy,
+       least(d.first_unhealthy_any, ps.first_unhealthy_in_range, ps.first_settled_skip) AS first_unhealthy,
        least(ps.first_missing_health, ps.first_unavailable_in_range, st.target) AS observed_through,
        CASE
          WHEN st.target <= st.first_hour THEN 'nothing expected yet'
@@ -97,8 +102,8 @@ SELECT st.resource_kind, st.service_id, st.kind, st.source,
            THEN 'behind: no health evidence at ' || to_char(ps.first_missing_health, 'YYYY-MM-DD"T"HH24"Z"')
          WHEN ps.first_unavailable_in_range IS NOT NULL
            THEN 'behind: unavailable at ' || to_char(ps.first_unavailable_in_range, 'YYYY-MM-DD"T"HH24"Z"')
-         WHEN coalesce(d.first_unhealthy_any, ps.first_unhealthy_in_range) IS NOT NULL
-           THEN 'caught up, but degraded since ' || to_char(coalesce(d.first_unhealthy_any, ps.first_unhealthy_in_range), 'YYYY-MM-DD"T"HH24"Z"')
+         WHEN least(d.first_unhealthy_any, ps.first_unhealthy_in_range, ps.first_settled_skip) IS NOT NULL
+           THEN 'caught up, but degraded since ' || to_char(least(d.first_unhealthy_any, ps.first_unhealthy_in_range, ps.first_settled_skip), 'YYYY-MM-DD"T"HH24"Z"')
          ELSE 'complete'
        END AS verdict,
        coalesce(ps.usage_hours, 0) AS usage_hours,

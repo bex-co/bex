@@ -193,9 +193,10 @@ const (
 )
 
 // Coverage describes the evidence behind current-month totals. Through is the
-// common end of every active source stream's contiguous metered (healthy or
-// degraded) hourly prefix. It is
-// zero for unknown evidence and never inferred for historical periods.
+// common end of every active source stream's contiguous accounted-for hourly
+// prefix: metered (healthy or degraded), or settled beyond the catch-up window
+// without a row (store.UsageCatchupWindow). It is zero for unknown evidence and
+// never inferred for historical periods.
 type Coverage struct {
 	State           string
 	Through         time.Time
@@ -557,8 +558,10 @@ const CompactInterval = 24 * time.Hour
 const DefaultRetentionMonths = 3
 
 // catchupLimit caps how far back a restart can catch up (48 h covers
-// Prometheus's typical retention + a weekend outage).
-const catchupLimit = 48 * time.Hour
+// Prometheus's typical retention + a weekend outage). It lives in store, whose
+// coverage treats an hour older than it with no metered row as skipped for
+// good (w4/496).
+const catchupLimit = store.UsageCatchupWindow
 
 // CatchupWindow exports catchupLimit so the billing seal horizon can be clamped
 // to never fall inside the rollup's rewrite window (w7/m57): a usage_hourly row
