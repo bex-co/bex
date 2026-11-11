@@ -844,14 +844,13 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 			// network binds the last ready image and ports to its active revision.
 			// Restore the projection metadata too, including when its recorded
 			// pod template is unavailable. Keep ArtifactImage for a later deploy.
+			heldCandidate := webImageReleaseHeld(app)
 			serving := app.Status.ServingNetwork
 			// A port change that routed early and then failed has moved
 			// ServingNetwork to the candidate; the network it replaced is the
 			// served one (w4/428).
-			if prior := app.Status.PriorServingNetwork; prior != nil && serving != nil &&
-				serving.Revision != app.Status.ActiveRevision && prior.Revision == app.Status.ActiveRevision {
-				serving = prior
-				app.Status.ServingNetwork, app.Status.PriorServingNetwork = prior.DeepCopy(), nil
+			if restoreServedNetwork(app) {
+				serving = app.Status.ServingNetwork
 			}
 			// A rollout records its release active once every pod of it is
 			// Ready (w4/405), a pass before promoteImageNetwork moves the
@@ -864,6 +863,11 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 			}
 			if serving == nil || serving.Revision != app.Status.ActiveRevision || serving.Image == "" {
 				return r.fail(ctx, app, "ImageMetadataUnavailable", fmt.Errorf("served release has no matching image network metadata"))
+			}
+			if heldCandidate {
+				if err := r.pinServedThroughCancel(ctx, app, serving); err != nil {
+					return r.fail(ctx, app, "DeployFailed", err)
+				}
 			}
 			app.Status.ImageNetwork = serving.DeepCopy()
 			image, port = serving.Image, int(serving.PrimaryPort)
@@ -3311,20 +3315,20 @@ func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app
 func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, image string, hosts []string, directRoute bool, replicas int32, port int) (ctrl.Result, bool, error) {
 	// Readiness: requeue until this Deployment revision, rather than retained
 	// ready replicas from the previous ReplicaSet, has completed its rollout.
-	// A port change keeps the template this pass wrote: the cached re-read can
-	// predate it.
+	// A rollout that routes early keeps the template this pass wrote: the
+	// cached re-read can predate it.
 	var written *corev1.PodTemplateSpec
-	if portChangeInFlight(app) {
+	if routesEarly(app) {
 		written = dep.Spec.Template.DeepCopy()
 	}
 	_ = r.Get(ctx, client.ObjectKeyFromObject(dep), dep)
 	completeAutoscalingTransition(app, dep.Status.Replicas, dep.Status.ReadyReplicas, time.Now())
-	// A port change routes to its first ready pod of the written template
-	// while the old ones are held (w4/428), then completes as any rollout
-	// does. The public route stays on the replaced primary's alias until then
-	// (w4/430).
+	// A port change, or a held web image release (w4/m320), routes to its
+	// first ready pod of the written template while the old ones are held
+	// (w4/428), then completes as any rollout does. The public route stays on
+	// the replaced primary's alias until then (w4/430).
 	if written != nil {
-		if _, err := r.promotePortChangeEarly(ctx, app, dep, written, image, port); err != nil {
+		if _, err := r.promoteEarly(ctx, app, dep, written, image, port); err != nil {
 			res, err := r.fail(ctx, app, "ServiceFailed", err)
 			return res, true, err
 		}
@@ -3710,8 +3714,10 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 		// routes traffic to it — record it as the active revision now, not
 		// only when the Deployment status converges. A newer release that
 		// supersedes in that window otherwise closes this deploy's row
-		// canceled even though it served.
-		if rev := dep.Spec.Template.Labels[labelRevision]; rev != "" && rev == releaseRevision(app) {
+		// canceled even though it served. A rollout that routes early takes no
+		// traffic until it is promoted, so before that it has not served
+		// (w4/m320).
+		if rev := dep.Spec.Template.Labels[labelRevision]; rev != "" && rev == releaseRevision(app) && !routesEarly(app) {
 			app.Status.ActiveRevision = rev
 		}
 	}
@@ -3914,6 +3920,9 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 			return ctrl.Result{}, err
 		}
 		if restored {
+			if err := r.restoreServedRouting(ctx, app); err != nil {
+				return ctrl.Result{}, err
+			}
 			r.settlePriorRelease(ctx, app, failedRolloutSummary(msg), dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0)
 			// Come back for the failed-rollout hold (actHoldVerdict) to converge the
 			// served release's

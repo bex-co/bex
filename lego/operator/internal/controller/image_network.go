@@ -319,10 +319,14 @@ func privateServiceProjection(app *appv1alpha1.App, port int) (map[string]string
 		}
 		// A port change must not route to old replicas that lack the new
 		// listener, so the Services pin the serving revision until promotion.
-		// Every other rollout (a deploy, an env save, a restart) keeps the same
-		// ports, and a pin there strands the Services on pods the Deployment is
-		// draining: no ready endpoint until promotion (w4/m243 t012).
-		if changesImagePorts(app) || replacedImagePorts(app) {
+		// A web image change pins it too, so its candidate takes no request
+		// before promotion (w4/m320). Both hold the serving pods meanwhile. A
+		// release promoted early pins its own revision until the replaced pods
+		// are gone. Every other rollout (an env save, a restart, a same-image
+		// redeploy) holds nothing, and a pin there strands the Services on pods
+		// the Deployment is draining: no ready endpoint until promotion
+		// (w4/m243 t012).
+		if changesImagePorts(app) || replacedImagePorts(app) || promotedEarly(app) || webImageReleaseHeld(app) {
 			selector[labelRevision] = network.Revision
 		}
 		alias, aliased := aliasedPriorPrimary(app)
@@ -357,18 +361,67 @@ func changesImagePorts(app *appv1alpha1.App) bool {
 }
 
 // portChangeInFlight reports an image-port rollout whose candidate's ports
-// differ from the serving ones: the only rollout that routes early.
+// differ from the serving ones.
 func portChangeInFlight(app *appv1alpha1.App) bool {
 	return app.Spec.HasImagePorts() && changesImagePorts(app)
 }
 
+// routesEarly reports a rollout whose routing moves to its first ready pod
+// while its old pods are held: a port change (w4/428) or a held web image
+// release (w4/m320).
+func routesEarly(app *appv1alpha1.App) bool {
+	return portChangeInFlight(app) || webImageReleaseHeld(app)
+}
+
 // replacedImagePorts reports a port change routed early (w4/428) whose old
 // pods may still run: until the rollout completes they lack the new
-// listener, so the Services keep pinning the now-serving revision.
+// listener, so the Services keep pinning the now-serving revision and alias
+// the old primary to it.
 func replacedImagePorts(app *appv1alpha1.App) bool {
 	prior, serving := app.Status.PriorServingNetwork, app.Status.ServingNetwork
 	return prior != nil && serving != nil &&
 		(prior.PrimaryPort != serving.PrimaryPort || !slices.Equal(prior.Ports, serving.Ports))
+}
+
+// promotedEarly reports a rollout routed early whose replaced pods may still
+// run (PriorServingNetwork), while the release it promoted is still the
+// current one. A newer release that left the record behind (adopted before the
+// rollout completed) is not pinned by it.
+func promotedEarly(app *appv1alpha1.App) bool {
+	prior, serving, candidate := app.Status.PriorServingNetwork, app.Status.ServingNetwork, app.Status.ImageNetwork
+	return prior != nil && serving != nil && candidate != nil && candidate.Revision == serving.Revision
+}
+
+// restoreServedNetwork puts the served release's network back when a rollout
+// that routed early (promoteEarly) is canceled or fails before it served: the
+// network it replaced is the served one. It reports whether it moved, so the
+// caller can re-apply the Services, which still pin the new revision.
+func restoreServedNetwork(app *appv1alpha1.App) bool {
+	prior, serving := app.Status.PriorServingNetwork, app.Status.ServingNetwork
+	if prior == nil || serving == nil || serving.Revision == app.Status.ActiveRevision || prior.Revision != app.Status.ActiveRevision {
+		return false
+	}
+	app.Status.ServingNetwork, app.Status.PriorServingNetwork = prior.DeepCopy(), nil
+	return true
+}
+
+// restoreServedRouting is restoreServedNetwork for a failed rollout whose pod
+// template is already back on the served release: the Services move with it,
+// or they stay pinned to the failed release's pods as those drain.
+func (r *AppReconciler) restoreServedRouting(ctx context.Context, app *appv1alpha1.App) error {
+	if !restoreServedNetwork(app) {
+		return nil
+	}
+	return r.applyServingServices(ctx, app, int(app.Status.ServingNetwork.PrimaryPort))
+}
+
+// applyServingServices writes both stable serving Services, the CR-named one
+// the public route uses and the slug alias, from the App's current networks.
+func (r *AppReconciler) applyServingServices(ctx context.Context, app *appv1alpha1.App, port int) error {
+	if err := r.applyClusterIPService(ctx, app, app.Name, port); err != nil {
+		return err
+	}
+	return r.reconcileSlugService(ctx, app, port)
 }
 
 // aliasedPriorPrimary is the replaced primary port of a port change routed
@@ -413,10 +466,7 @@ func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha
 	// so a partial failure is retried until both hostnames have converged.
 	projected := app.DeepCopy()
 	projected.Status.ServingNetwork = candidate.DeepCopy()
-	if err := r.applyClusterIPService(ctx, projected, app.Name, port); err != nil {
-		return false, err
-	}
-	if err := r.reconcileSlugService(ctx, projected, port); err != nil {
+	if err := r.applyServingServices(ctx, projected, port); err != nil {
 		return false, err
 	}
 	moved = app.Status.ServingNetwork == nil || app.Status.ServingNetwork.PrimaryPort != candidate.PrimaryPort
@@ -424,13 +474,15 @@ func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha
 	return moved, nil
 }
 
-// promotePortChangeEarly moves a port-changing rollout's routing to its first
-// ready candidate pod, while portChangeHoldSeconds keeps the old pods
-// serving, so the stable Services always have a ready endpoint on the port
-// they publish (w4/428). It records the replaced network for the old pods'
-// pin and for a failed rollout's restore. moved is promoteImageNetwork's.
-// The caller checks portChangeInFlight first.
-func (r *AppReconciler) promotePortChangeEarly(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec, image string, port int) (moved bool, err error) {
+// promoteEarly moves a port-changing rollout's routing to its first ready
+// candidate pod, while portChangeHoldSeconds keeps the old pods serving, so
+// the stable Services always have a ready endpoint on the port they publish
+// (w4/428). A held web image release (webImageReleaseHeld, w4/m320) is
+// promoted the same way, from the pod of its final template. It records the
+// replaced network for the new pods' pin and for a canceled or failed
+// rollout's restore (restoreServedNetwork). moved is promoteImageNetwork's.
+// The caller checks routesEarly first.
+func (r *AppReconciler) promoteEarly(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec, image string, port int) (moved bool, err error) {
 	if !r.templatePodReady(ctx, dep, tmpl) {
 		return false, nil
 	}
@@ -444,6 +496,27 @@ func (r *AppReconciler) promotePortChangeEarly(ctx context.Context, app *appv1al
 		return false, err
 	}
 	return moved, nil
+}
+
+// pinServedThroughCancel keeps the Services pinned to the served release while
+// a canceled, held web image release is rolled back (w4/m320): that release
+// never took a request and its serving pods were held, so no candidate pod may
+// join an endpoint while the Deployment removes it. The pin (the served network
+// recorded as replaced) clears when the restored rollout completes. Only the
+// recorded template restores those pods' own revision; a projected one would
+// roll new pods the pin would exclude, so without it nothing is pinned.
+func (r *AppReconciler) pinServedThroughCancel(ctx context.Context, app *appv1alpha1.App, served *appv1alpha1.ImageNetworkStatus) error {
+	if app.Status.PriorServingNetwork != nil {
+		return nil
+	}
+	tmpl, err := r.servedPodTemplate(ctx, app)
+	if err != nil {
+		return err
+	}
+	if tmpl != nil && tmpl.Labels[labelRevision] == served.Revision {
+		app.Status.PriorServingNetwork = served.DeepCopy()
+	}
+	return nil
 }
 
 // templatePodReady reports a Ready, non-terminating pod of tmpl, the pod

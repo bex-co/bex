@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"encoding/json"
 	"io"
 	"maps"
 	"net/http"
@@ -268,19 +269,21 @@ func TestServedDigestOfTheSavedTagIsTheSavedImage(t *testing.T) {
 	}
 }
 
-// Through a same-port rollout the stable Services select every App pod, so
-// the new pod is an endpoint before the Deployment drains the old one; only a
-// port change pins the serving revision, so no request reaches a pod without
-// its listener (w4/m243 t012).
-func TestImagePortSelectorPinsARevisionOnlyForAPortChange(t *testing.T) {
+// Through a same-image, same-port rollout the stable Services select every
+// App pod, so the new pod is an endpoint before the Deployment drains the old
+// one. A port change and an unpromoted web image change pin the serving revision
+// (w4/428, w4/m320); a same-image redeploy, an env save or a restart does not,
+// since it holds no pods to pin to (w4/m243 t012).
+func TestImagePortSelectorPinsARevisionForAPortOrImageChange(t *testing.T) {
 	serving := &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:a", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}}
 	for _, tc := range []struct {
 		name      string
 		candidate *appv1alpha1.ImageNetworkStatus
 		pinned    bool
 	}{
-		{"a redeploy on the same ports", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:a", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}, false},
-		{"a new image on the same ports", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}, false},
+		{"a redeploy on the same ports", &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionRetained, Image: "whoami@sha256:a", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}, false},
+		{"a new image on the same ports, discovering", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}, true},
+		{"a new image on the same ports, detected", &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "whoami@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}, true},
 		{"a new primary", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:a", Revision: "rev-2", PrimaryPort: 9999, Ports: []int32{80, 9999}}, true},
 		{"a new port set", &appv1alpha1.ImageNetworkStatus{Image: "whoami@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80, 443}}, true},
 	} {
@@ -314,8 +317,8 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 		t.Fatalf("port change minReadySeconds = %d, want %d", held.Spec.MinReadySeconds, portChangeHoldSeconds)
 	}
 	same := app.DeepCopy()
-	same.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: "http", Image: "echo@sha256:b", Revision: "rev-2", PrimaryPort: 8080, Ports: []int32{8080}}
-	if got := project(same, deploymentParams{image: "echo@sha256:b", port: 8080}).Spec.MinReadySeconds; got != 0 {
+	same.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: "http", Image: "echo@sha256:a", Revision: "rev-2", PrimaryPort: 8080, Ports: []int32{8080}}
+	if got := project(same, deploymentParams{image: "echo@sha256:a", port: 8080}).Spec.MinReadySeconds; got != 0 {
 		t.Fatalf("same-port rollout minReadySeconds = %d, want 0", got)
 	}
 
@@ -324,7 +327,7 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	dep.Namespace, dep.UID = app.Namespace, "dep-uid"
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app.DeepCopy()).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	if moved, err := r.promotePortChangeEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090); err != nil || moved || app.Status.PriorServingNetwork != nil {
+	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090); err != nil || moved || app.Status.PriorServingNetwork != nil {
 		t.Fatalf("no ready pod: moved=%v err=%v prior=%v, want nothing moved", moved, err, app.Status.PriorServingNetwork)
 	}
 
@@ -332,7 +335,7 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	// network is kept.
 	cl = fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "final", dep.Spec.Template), app.DeepCopy())...).Build()
 	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	moved, err := r.promotePortChangeEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090)
+	moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090)
 	if err != nil || !moved || !reflect.DeepEqual(app.Status.ServingNetwork, candidate) || !reflect.DeepEqual(app.Status.PriorServingNetwork, serving) {
 		t.Fatalf("ready pod: moved=%v err=%v serving=%+v prior=%+v", moved, err, app.Status.ServingNetwork, app.Status.PriorServingNetwork)
 	}
@@ -409,7 +412,7 @@ func TestPortChangeRoutesOnlyToTheWrittenTemplate(t *testing.T) {
 
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "discovery", *replaced), app.DeepCopy())...).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	if moved, err := r.promotePortChangeEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 10000); err != nil || moved || app.Status.PriorServingNetwork != nil {
+	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 10000); err != nil || moved || app.Status.PriorServingNetwork != nil {
 		t.Fatalf("ready pod of a replaced template: moved=%v err=%v prior=%v, want nothing moved", moved, err, app.Status.PriorServingNetwork)
 	}
 	if !reflect.DeepEqual(app.Status.ServingNetwork, serving) {
@@ -450,4 +453,233 @@ func templateReplicaSetPod(dep *appsv1.Deployment, hash string, tmpl corev1.PodT
 		pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
 	}
 	return rs, pod
+}
+
+// w4/m320: a web image change takes no request before promotion, as in
+// Render's zero-downtime deploy. While its HTTP port is discovered, and through
+// the roll that swaps discovery's probe on / for the final one, the Services
+// pin the serving revision and the Deployment holds the serving pods. The pod
+// of the final template moves routing to the new revision in one step; the hold
+// then lifts so the old pods drain, and the pin follows the new revision until
+// they are gone. A configured PORT, a same-image redeploy and a private
+// service hold nothing.
+func TestWebImageChangeTakesNoTrafficUntilPromotion(t *testing.T) {
+	serving := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:a", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}, ConfiguredPort: new(int32(0))}
+	candidate := &appv1alpha1.ImageNetworkStatus{Image: "nginx@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}, ConfiguredPort: new(int32(0))}
+	app := webImageApp(2)
+	app.Namespace = "tea-a"
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.ServingNetwork, app.Status.ImageNetwork = serving.DeepCopy(), candidate.DeepCopy()
+
+	pinnedTo := func(a *appv1alpha1.App) string {
+		t.Helper()
+		selector, _, err := privateServiceProjection(a, 80)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return selector[labelRevision]
+	}
+	// Discovering: held and pinned to the serving release.
+	if got := project(app, deploymentParams{image: candidate.Image, port: 80}).Spec.MinReadySeconds; got != webImageHTTPSelectionHoldSeconds {
+		t.Fatalf("discovering minReadySeconds = %d, want %d", got, webImageHTTPSelectionHoldSeconds)
+	}
+	if got := pinnedTo(app); got != "rev-1" {
+		t.Fatalf("discovering selector pin = %q, want rev-1", got)
+	}
+	// Detected: the final template rolls once more, still held and pinned.
+	app.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionDetected
+	dep := project(app, deploymentParams{image: candidate.Image, port: 80})
+	dep.Namespace, dep.UID = app.Namespace, "dep-uid"
+	if dep.Spec.MinReadySeconds != webImageHTTPSelectionHoldSeconds || pinnedTo(app) != "rev-1" || !routesEarly(app) {
+		t.Fatalf("detected, unpromoted: minReadySeconds=%d pin=%q routesEarly=%v, want held, rev-1, true", dep.Spec.MinReadySeconds, pinnedTo(app), routesEarly(app))
+	}
+	// Discovery's Ready pod (probe on /) never moves routing.
+	discovery := dep.Spec.Template.DeepCopy()
+	discovery.Spec.Containers[0].ReadinessProbe = &corev1.Probe{ProbeHandler: healthCheckHandler("/", 80, "")}
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "discovery", *discovery), app.DeepCopy())...).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80); err != nil || moved || !reflect.DeepEqual(app.Status.ServingNetwork, serving) {
+		t.Fatalf("discovery pod Ready: moved=%v err=%v serving=%+v, want nothing moved", moved, err, app.Status.ServingNetwork)
+	}
+	// The final template's pod: routing moves to rev-2 and the Service written
+	// then already pins it.
+	cl = fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "final", dep.Spec.Template), app.DeepCopy())...).Build()
+	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if _, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80); err != nil {
+		t.Fatal(err)
+	}
+	if app.Status.ServingNetwork.Revision != "rev-2" || !reflect.DeepEqual(app.Status.PriorServingNetwork, serving) {
+		t.Fatalf("final pod Ready: serving=%+v prior=%+v, want rev-2 serving and rev-1 recorded", app.Status.ServingNetwork, app.Status.PriorServingNetwork)
+	}
+	var svc corev1.Service
+	if err := cl.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &svc); err != nil {
+		t.Fatal(err)
+	}
+	if svc.Spec.Selector[labelRevision] != "rev-2" {
+		t.Fatalf("selector written at promotion = %v, want pinned to rev-2", svc.Spec.Selector)
+	}
+	if got := project(app, deploymentParams{image: candidate.Image, port: 80}).Spec.MinReadySeconds; got != 0 || webImageReleaseHeld(app) {
+		t.Fatalf("after promotion minReadySeconds = %d held=%v, want 0 and released", got, webImageReleaseHeld(app))
+	}
+	done := app.DeepCopy()
+	done.Status.PriorServingNetwork = nil
+	if got := pinnedTo(done); got != "" {
+		t.Fatalf("after the rollout completes the selector pins %q, want no pin", got)
+	}
+
+	for name, mutate := range map[string]func(*appv1alpha1.App){
+		"a configured PORT":     func(a *appv1alpha1.App) { a.Status.EnvPort = 8080 },
+		"a configured port":     func(a *appv1alpha1.App) { a.Spec.PortMode = appv1alpha1.PortModeWebImageConfiguredV1 },
+		"a same-image redeploy": func(a *appv1alpha1.App) { a.Status.ImageNetwork.Image = serving.Image },
+		"a private service": func(a *appv1alpha1.App) {
+			a.Spec.Type, a.Spec.PortMode = appv1alpha1.TypePrivateService, appv1alpha1.PortModeImageV1
+		},
+		"a first deploy": func(a *appv1alpha1.App) { a.Status.ServingNetwork, a.Status.ActiveRevision = nil, "" },
+	} {
+		a := webImageApp(2)
+		a.Status.ActiveRevision = "rev-1"
+		a.Status.ServingNetwork = serving.DeepCopy()
+		a.Status.ImageNetwork = candidate.DeepCopy()
+		a.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionDetected
+		mutate(a)
+		if webImageReleaseHeld(a) {
+			t.Errorf("%s: held, want the ordinary rollout", name)
+		}
+	}
+	// A git-built Docker service with no PORT of its own discovers its port on
+	// every new digest too (the injected PORT=10000 is not the user's), so a
+	// rebuild is held like an image tag change (live round 36).
+	built := webImageApp(2)
+	built.Spec.Image, built.Spec.Repo = "", "https://github.com/bex-co/bex"
+	built.Status.ActiveRevision = "rev-1"
+	built.Status.ServingNetwork, built.Status.ImageNetwork = serving.DeepCopy(), candidate.DeepCopy()
+	built.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionDetected
+	if !webImageReleaseHeld(built) || pinnedTo(built) != "rev-1" {
+		t.Errorf("git-built rebuild: held=%v pin=%q, want held on rev-1", webImageReleaseHeld(built), pinnedTo(built))
+	}
+}
+
+// A held web image release has not served, so the progress stamp leaves the
+// serving release active even when every pod of the new revision is Ready
+// (w4/m320, amending w4/405 for this case).
+func TestRolloutProgressLeavesAHeldWebImageReleaseInactive(t *testing.T) {
+	app := webImageApp(2)
+	app.Namespace = "default"
+	app.Status.Phase, app.Status.ActiveRevision = appv1alpha1.PhaseDeploying, "rev-1"
+	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:a", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}}
+	app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}
+	dep := progressDeadlineDep(app.Name)
+	dep.Spec.Template.Labels[labelRevision] = "rev-2"
+	dep.Status.Conditions = nil
+	pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: app.Name + "-0", Namespace: "default", Labels: map[string]string{labelApp: app.Name, labelRevision: "rev-2"}}}
+	pod.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}
+	cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod).WithStatusSubresource(&appv1alpha1.App{}).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+	if _, err := r.reportRolloutProgress(t.Context(), app, dep, 1, 80, "waiting"); err != nil {
+		t.Fatal(err)
+	}
+	if app.Status.ActiveRevision != "rev-1" {
+		t.Fatalf("ActiveRevision = %q, want rev-1 until promotion", app.Status.ActiveRevision)
+	}
+}
+
+// A held web image release canceled before promotion is rolled back with the
+// Services still pinned to the served release, whose held pods restore from
+// its recorded template: no candidate pod joins an endpoint while it is
+// removed (w4/m320). Without that record (a projected rollback rolls new pods)
+// or once something is already recorded, nothing changes.
+func TestCanceledHeldWebImageReleaseKeepsTheServedPin(t *testing.T) {
+	served := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:a", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}}
+	record := func(revision string) *corev1.Secret {
+		raw, err := json.Marshal(corev1.PodTemplateSpec{ObjectMeta: metav1.ObjectMeta{Labels: map[string]string{labelRevision: revision}}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Namespace: "tea-a", Name: appv1alpha1.ReleaseRecordName("whoami", 1)},
+			Data: map[string][]byte{appv1alpha1.ReleaseRecordPodTemplateKey: raw}}
+	}
+	for _, tc := range []struct {
+		name    string
+		objects []client.Object
+		prior   *appv1alpha1.ImageNetworkStatus
+		want    *appv1alpha1.ImageNetworkStatus
+	}{
+		{"recorded served template", []client.Object{record("rev-1")}, nil, served},
+		{"no record", nil, nil, nil},
+		{"a record of another revision", []client.Object{record("rev-9")}, nil, nil},
+		{"already pinned", []client.Object{record("rev-1")}, &appv1alpha1.ImageNetworkStatus{Revision: "rev-0"}, &appv1alpha1.ImageNetworkStatus{Revision: "rev-0"}},
+	} {
+		app := webImageApp(2)
+		app.Namespace = "tea-a"
+		app.Status.ActiveRevision = "rev-1"
+		app.Status.ServingNetwork, app.Status.PriorServingNetwork = served.DeepCopy(), tc.prior
+		cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(tc.objects...).Build()
+		r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+		if err := r.pinServedThroughCancel(t.Context(), app, served); err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if !reflect.DeepEqual(app.Status.PriorServingNetwork, tc.want) {
+			t.Errorf("%s: prior = %+v, want %+v", tc.name, app.Status.PriorServingNetwork, tc.want)
+		}
+		// The restore projects the served network, pinned while it is recorded.
+		app.Status.ImageNetwork = served.DeepCopy()
+		selector, _, err := privateServiceProjection(app, 80)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if pinned := selector[labelRevision] == "rev-1"; pinned != (tc.want != nil) {
+			t.Errorf("%s: restore selector %v, pinned=%v", tc.name, selector, pinned)
+		}
+	}
+}
+
+// A rollout routed early that fails before it served (the second replica's
+// pull fails, or the deadline passes) has its template put back on the served
+// release; its Services must follow, or they keep pinning the failed pods as
+// those drain (w4/m320 review). A record left behind by an earlier rollout
+// does not pin a newer release that holds nothing.
+func TestServedRoutingFollowsAFailedEarlyRoutedRollout(t *testing.T) {
+	served := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:a", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}}
+	promoted := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}}
+	app := webImageApp(2)
+	app.Namespace = "tea-a"
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.ServingNetwork, app.Status.PriorServingNetwork, app.Status.ImageNetwork = promoted.DeepCopy(), served.DeepCopy(), promoted.DeepCopy()
+	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app.DeepCopy()).Build()
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if err := r.restoreServedRouting(t.Context(), app); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(app.Status.ServingNetwork, served) || app.Status.PriorServingNetwork != nil {
+		t.Fatalf("serving=%+v prior=%+v, want the served network back and no record", app.Status.ServingNetwork, app.Status.PriorServingNetwork)
+	}
+	var svc corev1.Service
+	if err := cl.Get(t.Context(), client.ObjectKey{Namespace: app.Namespace, Name: app.Name}, &svc); err != nil {
+		t.Fatal(err)
+	}
+	if svc.Spec.Selector[labelRevision] != "rev-1" {
+		t.Fatalf("restored selector = %v, want pinned to the served rev-1 (the failed image stays held)", svc.Spec.Selector)
+	}
+	// Once the release served (its pods all Ready, recorded active), nothing
+	// is restored.
+	served2 := app.DeepCopy()
+	served2.Status.ActiveRevision = "rev-2"
+	served2.Status.ServingNetwork, served2.Status.PriorServingNetwork = promoted.DeepCopy(), served.DeepCopy()
+	if restoreServedNetwork(served2) {
+		t.Fatal("a release that served was restored")
+	}
+
+	// A newer same-image release adopted before the early-routed one
+	// completed is not pinned by the record it left.
+	newer := webImageApp(3)
+	newer.Status.ServingNetwork, newer.Status.PriorServingNetwork = promoted.DeepCopy(), served.DeepCopy()
+	newer.Status.ImageNetwork = promoted.DeepCopy()
+	newer.Status.ImageNetwork.Revision = "rev-3"
+	selector, _, err := privateServiceProjection(newer, 80)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if pin, ok := selector[labelRevision]; ok {
+		t.Fatalf("a newer same-image release is pinned to %q by a leftover record", pin)
+	}
 }

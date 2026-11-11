@@ -41,9 +41,14 @@ const (
 	webImageHTTPSelectionHoldSeconds = int32((webHTTPDiscoveryWindow + time.Minute) / time.Second)
 )
 
+// discoversWebImagePort reports a web service whose image chooses its own
+// HTTP port: no configured port and no PORT of its own (w8/m141).
+func discoversWebImagePort(app *appv1alpha1.App) bool {
+	return app.Spec.UsesWebImagePorts() && !configuredPortMode(app.Spec.PortMode) && app.Status.EnvPort == 0
+}
+
 func webImageHTTPSelectionPending(app *appv1alpha1.App) bool {
-	return app.Spec.UsesWebImagePorts() && !configuredPortMode(app.Spec.PortMode) && app.Status.EnvPort == 0 &&
-		app.Status.ImageNetwork != nil && app.Status.ImageNetwork.HTTPSelection == ""
+	return discoversWebImagePort(app) && app.Status.ImageNetwork != nil && app.Status.ImageNetwork.HTTPSelection == ""
 }
 
 // webImageHTTPSelectionGuardsServing reports a pending HTTP selection while an
@@ -53,6 +58,21 @@ func webImageHTTPSelectionPending(app *appv1alpha1.App) bool {
 // ends, or the first deploy rolls twice (w2/078).
 func webImageHTTPSelectionGuardsServing(app *appv1alpha1.App) bool {
 	return webImageHTTPSelectionPending(app) && (app.Status.ActiveRevision != "" || app.Status.ServingNetwork != nil)
+}
+
+// webImageReleaseHeld reports a web image release that must not take traffic
+// yet: its HTTP port is still being discovered while an earlier release
+// serves, or it changes the serving release's image (so its port was
+// discovered for it, w8/m141) and has not been promoted. Render's zero-downtime
+// deploy keeps the original instance receiving all traffic until the new one
+// is healthy, then moves it all at once. Until promotion the Services pin the
+// serving revision and the Deployment holds the serving pods, so neither a
+// Ready candidate nor a second roll after discovery (the provisional probe on
+// / giving way to the final one) puts it in front of users early (w4/m320).
+func webImageReleaseHeld(app *appv1alpha1.App) bool {
+	serving, candidate := app.Status.ServingNetwork, app.Status.ImageNetwork
+	return serving != nil && candidate != nil && discoversWebImagePort(app) &&
+		(candidate.HTTPSelection == "" || candidate.Image != serving.Image)
 }
 
 // Keep an unconfigured listener decision across releases of the same image.

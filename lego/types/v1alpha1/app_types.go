@@ -1734,10 +1734,13 @@ type AppStatus struct {
 	// ServingNetwork retains the active release's ports while a candidate starts.
 	// +optional
 	ServingNetwork *ImageNetworkStatus `json:"servingNetwork,omitempty"`
-	// PriorServingNetwork is the network a port-changing rollout replaced when
-	// it moved routing to its first ready pod, before the rollout completed.
-	// It keeps the old pods' ports until they are gone, and is what a failed
-	// rollout restores (w4/428).
+	// PriorServingNetwork is the network a rollout replaced when it moved
+	// routing to its first ready pod before completing: a port change (w4/428)
+	// or a web image change (w4/m320). While it is set the Services pin the new
+	// revision, the old pods' ports stay aliased until they are gone, and a
+	// canceled or failed rollout restores it. A canceled web image release
+	// also records the served network here, to keep the served pin until its
+	// rollback completes.
 	// +optional
 	PriorServingNetwork *ImageNetworkStatus `json:"priorServingNetwork,omitempty"`
 	// Phase is the high-level lifecycle state.

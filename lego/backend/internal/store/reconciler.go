@@ -1580,6 +1580,13 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 		}
 	case appv1alpha1.PhaseDeploying:
 		if conditionCurrent {
+			// Render's deploy goes live when traffic moves to it. A settling
+			// rollout whose release the operator recorded active already
+			// holds the traffic: every pod of it is Ready, and only the
+			// Deployment's bookkeeping (the old pods' reap) lags (w4/m320).
+			if reason == appv1alpha1.ReasonRolloutSettling && releaseIsActive(open, app) {
+				return DeployLive
+			}
 			if timedOut {
 				return DeployUpdateFailed
 			}

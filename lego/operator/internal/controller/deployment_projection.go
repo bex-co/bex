@@ -624,7 +624,10 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	if app.Spec.HasImagePorts() && changesImagePorts(app) {
 		dep.Spec.MinReadySeconds = portChangeHoldSeconds
 	}
-	if app.Status.ServingNetwork != nil && webImageHTTPSelectionPending(app) {
+	// A web image release that may not take traffic yet keeps the serving pods
+	// until promotion moves routing to it, through discovery and the roll that
+	// follows it (w4/m320).
+	if webImageReleaseHeld(app) {
 		dep.Spec.MinReadySeconds = webImageHTTPSelectionHoldSeconds
 	}
 

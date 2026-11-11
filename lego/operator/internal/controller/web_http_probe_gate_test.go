@@ -86,23 +86,27 @@ func TestWebImagePendingHTTPSelectionHoldsTheServingPods(t *testing.T) {
 		name      string
 		serving   bool
 		selection string
+		image     string
 		ports     []int32
 		primary   int32
 		want      int32
 	}{
-		{"pending replacement with different ports", true, "", []int32{80, 3000}, 3000, 150},
-		{"pending replacement with the same ports", true, "", []int32{3000}, 3000, 150},
-		{"resolved port change", true, "http", []int32{80, 3000}, 80, portChangeHoldSeconds},
-		{"resolved unchanged port", true, "http", []int32{3000}, 3000, 0},
-		{"first release", false, "", []int32{4369, 15672}, 4369, 0},
-		{"legacy choice retained", true, "retained", []int32{3000}, 3000, 0},
+		{"pending replacement with different ports", true, "", "image@sha256:new", []int32{80, 3000}, 3000, 150},
+		{"pending replacement with the same ports", true, "", "image@sha256:new", []int32{3000}, 3000, 150},
+		// A new image stays held after its port is chosen, until promotion
+		// (w4/m320); only the same image's port change or redeploy holds less.
+		{"resolved new image", true, "http", "image@sha256:new", []int32{3000}, 3000, 150},
+		{"resolved port change, same image", true, "http", "image@sha256:old", []int32{80, 3000}, 80, portChangeHoldSeconds},
+		{"resolved unchanged port, same image", true, "http", "image@sha256:old", []int32{3000}, 3000, 0},
+		{"first release", false, "", "image@sha256:new", []int32{4369, 15672}, 4369, 0},
+		{"legacy choice retained", true, "retained", "image@sha256:old", []int32{3000}, 3000, 0},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			app := webImageApp(2)
 			if tc.serving {
 				app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{Image: "image@sha256:old", Revision: "rev-1", PrimaryPort: 3000, Ports: []int32{3000}}
 			}
-			app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "image@sha256:new", Revision: releaseRevision(app), PrimaryPort: tc.primary, Ports: tc.ports, HTTPSelection: tc.selection}
+			app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: tc.image, Revision: releaseRevision(app), PrimaryPort: tc.primary, Ports: tc.ports, HTTPSelection: tc.selection}
 			dep := project(app, deploymentParams{image: app.Status.ImageNetwork.Image, port: int(tc.primary), replicas: 1})
 			if dep.Spec.MinReadySeconds != tc.want {
 				t.Fatalf("minReadySeconds=%d, want%d", dep.Spec.MinReadySeconds, tc.want)

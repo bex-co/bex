@@ -1,20 +1,20 @@
 # w4 · m320 — An image web service's deploy takes no traffic until it is the live release: HTTP port discovery doesn't put the candidate in front of users, an image change rolls once, and a canceled deploy never answered
 
-**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** todo
+**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** blocked — t001–t005 and t007–t009 done (shipped); t006 live replay waits for the next production deploy, then t010 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Keep the Services on the serving release while HTTP discovery is pending, and move them at promotion | 60m | — |
-| [t002](t002.md) | One rollout per image change: no second ReplicaSet after discovery drains the serving release | 45m | t001 |
-| [t003](t003.md) | Cancel before promotion keeps the serving pods, and the canceled candidate never answered | 30m | t001, t002 |
-| [t004](t004.md) | A deploy whose release already holds all traffic reads `live` in the same pass | 40m | t001 |
-| [t005](t005.md) | Blast radius: every rollout kind through the Service selector and the discovery hold | 40m | t002, t003, t004 |
+| [t001](done/t001.md) | Keep the Services on the serving release while HTTP discovery is pending, and move them at promotion — **DONE** | 60m | — |
+| [t002](done/t002.md) | One rollout per image change: no second ReplicaSet after discovery drains the serving release — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | Cancel before promotion keeps the serving pods, and the canceled candidate never answered — **DONE** | 30m | t001, t002 |
+| [t004](done/t004.md) | A deploy whose release already holds all traffic reads `live` in the same pass — **DONE** | 40m | t001 |
+| [t005](done/t005.md) | Blast radius: every rollout kind through the Service selector and the discovery hold — **DONE** | 40m | t002, t003, t004 |
 | [t006](t006.md) | Live verification on an owned image web service | 30m | t005 |
-| [t007](t007.md) | Render parity | 20m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 30m | t007 |
+| [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
 | [t010](t010.md) | Closeout | 10m | t008, t009 |
 
 Ten tasks, 320m (5h20m). **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
@@ -63,7 +63,7 @@ Live `/qa-find-bugs w4` loop, round 35, 2026-11-10 18:10–19:16 UTC (`muse.env`
 
 - `POST …/deploys` `{}` with the saved image unchanged → `dep-dbpmq1c5ngvc73e8u1f0`.
 - One instance switch at 19:14:35 (`…5ejrbnnat4cdg93dvd8p`), with no alternation and no second ReplicaSet. Live at 19:14:59.
-- The deploy took 46 s, against 108 s for Run A. The 24 s between the switch and `live` is the gap [w4/405](../done/405.md) recorded and accepted (see t004).
+- The deploy took 46 s, against 108 s for Run A. The 24 s between the switch and `live` is the gap [w4/405](../../done/405.md) recorded and accepted (see t004).
 
 Poller output is saved locally as `.playwright-mcp/qa-deploys-35-poll-a.txt` and `qa-deploys-35-poll-b.txt` (gitignored). The durable artifact is the probe above, which anyone can re-run.
 
@@ -103,7 +103,7 @@ So every Docker deploy that produces a new digest re-enters discovery: every pus
 - **Detection rolls the release a second time.**
   - `selectWebImageHTTP` returns "reproject probes and routing on the chosen port first" (`web_image_http.go:164`).
   - The template drops the provisional probe, and `MinReadySeconds` returns to 0. That rolls a second ReplicaSet, which becomes available at once, so the Deployment drains the serving release while the deploy is still in progress.
-  - [w2/078](../../w2/done/078.md) removed this second roll only for a first deploy (comment at `deployment_projection.go:353-357`).
+  - [w2/078](../../../w2/done/078.md) removed this second roll only for a first deploy (comment at `deployment_projection.go:353-357`).
 - **Status lags traffic.** While the Service already routes only to the new revision, the operator reports `RolloutSettling` and keeps phase `Deploying` (`app_controller.go:3706-3715`). The backend counts `RolloutSettling` as serving for availability (`lego/backend/internal/store/reconciler.go:2210-2216`), but the row still waits to close `live`.
 - **Cancel puts the prior release back by re-projecting it.**
   - `settleCanceledRelease` (`app_controller.go:789`) restores the prior release's snapshot.
@@ -148,11 +148,11 @@ Live on production after the release pins this build, on an owned Free image web
 
 ## Dedupe
 
-- **[w8/m141](../../w8/done/m141/README.md)** (done) built HTTP discovery and the 150 s hold. Its DoD says "Pending discovery cannot promote a binary TCP listener or drain the prior release". The second roll now drains the prior release before promotion, so the drain half of that guarantee regressed. Its other DoD bullets aren't touched: lowest HTTP port, no-EXPOSE fallback, per-digest reuse, narration, and the RabbitMQ/nginx hosted checks. t005 keeps their tests. Where traffic goes during discovery was never specified.
-- **[w2/078](../../w2/done/078.md)** (done) removed the second ReplicaSet for a first deploy only.
-- **[w4/428](../done/428.md)** (done) pinned routing for port-changing rollouts. That pin is the precedent for t001.
-- **[w4/405](../done/405.md)** (done) stamps `activeRevision` early so a superseded row reads `live`. It accepted "serving before Live" as correct; t004 revisits that against Render's sequence.
-- **[w1/m152](../../w1/done/m152/README.md)** (done) made cancel restore the prior configuration. It didn't cover which pods serve.
+- **[w8/m141](../../../w8/done/m141/README.md)** (done) built HTTP discovery and the 150 s hold. Its DoD says "Pending discovery cannot promote a binary TCP listener or drain the prior release". The second roll now drains the prior release before promotion, so the drain half of that guarantee regressed. Its other DoD bullets aren't touched: lowest HTTP port, no-EXPOSE fallback, per-digest reuse, narration, and the RabbitMQ/nginx hosted checks. t005 keeps their tests. Where traffic goes during discovery was never specified.
+- **[w2/078](../../../w2/done/078.md)** (done) removed the second ReplicaSet for a first deploy only.
+- **[w4/428](../../done/428.md)** (done) pinned routing for port-changing rollouts. That pin is the precedent for t001.
+- **[w4/405](../../done/405.md)** (done) stamps `activeRevision` early so a superseded row reads `live`. It accepted "serving before Live" as correct; t004 revisits that against Render's sequence.
+- **[w1/m152](../../../w1/done/m152/README.md)** (done) made cancel restore the prior configuration. It didn't cover which pods serve.
 - `grep -rliE "second ReplicaSet|rolls twice|serv(es|ing) traffic before" .pm` finds no open item.
 - **Not deploy lag:** `git log c12cd57facb1..origin/main` on `web_image_http.go`, `deployment_projection.go` and `image_network.go` is empty.
 - No `.pm/DO_NOT_DO.md` entry applies.
@@ -161,8 +161,8 @@ Live on production after the release pins this build, on an owned Free image web
 
 - **Source:** live `/qa-find-bugs w4` loop, round 35, 2026-11-10 (the probes above; fixture deleted).
 - **Goal linkage:**
-  - [ADR004](../../../docs/ADR004-app-deployment.md) (deploys and rollouts);
-  - [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first) (Render's zero-downtime sequence);
+  - [ADR004](../../../../docs/ADR004-app-deployment.md) (deploys and rollouts);
+  - [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first) (Render's zero-downtime sequence);
   - truthful product state: the deploy list says which release users are getting.
 - **Expected outcome:** a CI pipeline that ships image tags through the deploy hook never exposes an unverified release early. Cancel means the change never reached users.
 - **Why now:** the deploy hook with `imgURL` is the documented CI path for image services, so every such deploy hits this. A bad build reaches users while the dashboard still calls it "In Progress". The second roll also doubles deploy time (108 s against 46 s).

@@ -447,6 +447,9 @@ func (r *AppReconciler) holdNewerRelease(ctx context.Context, app *appv1alpha1.A
 				plan.unrestorable()
 				continue
 			}
+			if err := r.restoreServedRouting(ctx, app); err != nil {
+				return true, ctrl.Result{}, err
+			}
 			if plan.act == actHoldParked {
 				return held(r.convergeServingRuntime(ctx, app, *plan))
 			}
