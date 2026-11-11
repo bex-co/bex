@@ -1,6 +1,6 @@
 # w2 · m278 — Idle sandboxes suspend and wake on exec, as on Render
 
-**Worker:** worker2 **Goal:** a sandbox with no activity for its idle timeout (Render's default 900 s; `--idle-timeout` 300–86400, 0 disables) suspends: it stops billing compute while keeping its filesystem and state, and the next exec or file call resumes it transparently. **Status:** todo — t001–t008, t010 done; next: t011 (the production walk, now unblocked), then t009
+**Worker:** worker2 **Goal:** a sandbox with no activity for its idle timeout (Render's default 900 s; `--idle-timeout` 300–86400, 0 disables) suspends: it stops billing compute while keeping its filesystem and state, and the next exec or file call resumes it transparently. **Status:** done — closed 2026-11-11: walked on production (t011); memory/process survival moves to w2/m322 (D1=A)
 
 ## Tasks (in order)
 
@@ -15,8 +15,8 @@
 | t007 | Simplify — **DONE**                                                                | 15m  | t006             |
 | t008 | Test coverage — **DONE**                                                           | 30m  | t006             |
 | t010 | A resume restarts the runtime timeout; a suspended sandbox stays resumable for 30 days — **DONE** | 1h | t005 |
-| t011 | Production walk: an idle sandbox suspends after its timeout and an exec resumes it with its files intact | 30m | t010 |
-| t009 | Closeout                                                                | 10m  | t007, t008, t010, t011 |
+| t011 | Production walk: an idle sandbox suspends after its timeout and an exec resumes it with its files intact — **DONE** | 30m | t010 |
+| t009 | Closeout — **DONE**                                                                | 10m  | t007, t008, t010, t011 |
 
 ## Definition of done
 
@@ -65,7 +65,7 @@ t001–t008 and t010 are shipped (`be753e48d`, `9cb1c257a`). Two gates remain:
 
 ## Unblock — 2026-11-11 (`/unblock w2`)
 
-- **D1=A (user decision, 2026-11-11):** fund memory and process checkpointing, so that an idle-suspended sandbox keeps its memory and running processes as Render's does. It is a new milestone, [w2/m322](../m322/README.md). m278 closes on what it shipped: filesystem-preserving suspension, after the production walk.
+- **D1=A (user decision, 2026-11-11):** fund memory and process checkpointing, so that an idle-suspended sandbox keeps its memory and running processes as Render's does. It is a new milestone, [w2/m322](../../m322/README.md). m278 closes on what it shipped: filesystem-preserving suspension, after the production walk.
   - **Render basis:** an idle sandbox "resumes when your agent sends its next command, with its files, memory, and running processes intact", using a runtime snapshot by default ([Render Sandboxes](https://render.com/sandboxes), [creating & configuring](https://render.com/docs/sandboxes-creating), [snapshots](https://render.com/docs/sandboxes-snapshots)).
 - **Gates checked (2026-11-11):**
   - **Deploy:** `9cb1c257a` is live; the production deploy is current through `0a59e9343`.
