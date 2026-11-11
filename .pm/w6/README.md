@@ -235,7 +235,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **117** — **BLOCKED (user: cost choice — keep `bex-tenant-burst` warm at min 1 or 2, or leave builds 3–4 to wait ~2 min for a scale-from-zero node; B, min 2, recommended)** — [A workspace's third and fourth builds wait about two minutes for a build node](blocked/117.md) (~30m) ← `w6/m306` production record 2026-11-11
+- [x] **117** — [A workspace's third and fourth builds wait about two minutes for a build node](done/117.md) — done 2026-11-11: user chose B; `bex-tenant-burst` kept warm at two nodes (min-size 2) ← `w6/m306` production record
 - [x] **116** — [Each plan's included outbound bandwidth is not applied, and a card-less workspace past it keeps running](done/m319/source-w6-116.md) — promoted to `m319` 2026-11-10 by `/loopx w6`
 - [x] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](done/115.md) (~15m) — done 2026-11-10 (ADR026 §8 + ADR018 corrected) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
 - [x] **110** — [tenant-view probe detects an activator-held wake and polls for `service_woken` (#134)](done/110.md) — done 2026-11-08 ← `/pm-brainstorm for w6` 2026-11-08 proposal 3

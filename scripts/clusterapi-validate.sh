@@ -253,8 +253,10 @@ if [ "$tenant_min" != "1" ] || [ "$tenant_max" != "8" ]; then
   echo "FAIL: bex-tenant-0 must retain serving rollout capacity (want min=1 max=8 per docs/ADR060, got min=$tenant_min max=$tenant_max)" >&2
   fail=1
 fi
-if [ "$burst_min" != "0" ] || [ "$burst_max" != "2" ]; then
-  echo "FAIL: bex-tenant-burst must preserve cold scale-out (want min=0 max=2, got min=$burst_min max=$burst_max)" >&2
+# Two warm builders (user decision 2026-11-11, w6/117): with bex-tenant-lg's
+# two slots, the four builds BEX_MAX_ACTIVE_BUILDS admits start at once.
+if [ "$burst_min" != "2" ] || [ "$burst_max" != "2" ]; then
+  echo "FAIL: bex-tenant-burst must keep two warm builders (want min=2 max=2 per docs/ADR060 §D8, got min=$burst_min max=$burst_max)" >&2
   fail=1
 fi
 if [ "$burst_type" != "cx33" ]; then

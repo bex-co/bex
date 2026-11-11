@@ -818,9 +818,14 @@ metadata:
   namespace: bex-capi
   annotations:
     # cx33 (Intel) capacity returned to fsn1 (docs/ADR053); this burst pool is
-    # rotated back to cx33. Keep it cold at zero and let Cluster Autoscaler add
-    # up to two builders, preserving the tenant pools' former aggregate 1→3 range.
-    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "0"
+    # rotated back to cx33. Kept warm at two builders (user decision 2026-11-11,
+    # w6/117): with bex-tenant-lg's two slots, four builds start at once, as
+    # BEX_MAX_ACTIVE_BUILDS admits them, instead of builds 3 and 4 waiting about
+    # two minutes for a scale-from-zero node (docs/ADR060 §D8). The autoscaler
+    # does not raise a pool to its min by itself (no
+    # --enforce-node-group-min-size), so the first rise to 2 was a one-off
+    # `kubectl scale`; from then on min-size keeps it there.
+    cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size: "2"
     cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size: "2"
     # cx33 = 4 vCPU / 8 GB. These hints are required for scale-from-zero.
     capacity.cluster-autoscaler.kubernetes.io/cpu: "4"
@@ -833,7 +838,7 @@ metadata:
 spec:
   clusterName: bex
   # replicas is deliberately unset: Cluster Autoscaler owns it and the CAPI
-  # defaulting webhook seeds a fresh deployment at the annotated minimum (0).
+  # defaulting webhook seeds a fresh deployment at the annotated minimum (2).
   selector:
     matchLabels: null
   template:
@@ -848,7 +853,7 @@ spec:
           kind: KubeadmConfigTemplate
           # bex-tenant-build = the tenant bootstrap + the build-only taint
           # (docs/ADR060 § dedicated build pool): only build pods land here,
-          # so nothing long-lived can pin this pool above min-size 0.
+          # so nothing long-lived can pin this pool above its min-size.
           name: bex-tenant-build
       clusterName: bex
       failureDomain: fsn1
