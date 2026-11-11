@@ -20,8 +20,10 @@ import {
 /**
  * The Key Value detail's Networking section: the external-endpoint IP
  * allowlist (editable CIDR list) — Render's Networking control, mirroring the
- * allowlist section of databases' AccessControlPanel. Saving rules enables
- * external access; saving an empty list disables it. Only a store's first
+ * allowlist section of databases' AccessControlPanel. The list is the store's
+ * effective access, so a public store with no saved rules lists 0.0.0.0/0 and
+ * ::/0 (w4/m315). Saving rules enables external access; saving an empty list
+ * disables it. Only a store's first
  * enable restarts it (w4/m233): the hint says so before Save, and when bex-api
  * refuses that save because the restart would empty a Persistence Off store,
  * the panel asks for the phrase the refusal names and saves once more with it.
@@ -59,8 +61,8 @@ export function KeyValueNetworkingPanel({ id }: { id: string }) {
   }
 
   // The page's Key Value read can settle before this card's own allowlist
-  // read. Until then the status line and empty copy are unknown, so keep the
-  // route preview rather than drawing a shorter card that regrows (w4/303).
+  // read. Until then the status line is unknown, so keep the route preview
+  // rather than drawing a shorter card that regrows (w4/303).
   if (networking.loading && networking.isPublic === undefined) {
     return <KeyValueNetworkingPreview />;
   }
@@ -84,21 +86,13 @@ export function KeyValueNetworkingPanel({ id }: { id: string }) {
           entries={networking.allowList}
           saving={networking.savingAllowList}
           onSave={requestSave}
-          allowUnchangedSave={
-            networking.isPublic != null &&
-            networking.isPublic !== Boolean(networking.allowList.length)
-          }
           labels={{
             hint: t(
               networking.externalAccessRestarts
                 ? "keyvalue.networkingHintRestart"
                 : "keyvalue.networkingHint",
             ),
-            empty: t(
-              networking.isPublic && networking.allowList.length === 0
-                ? "keyvalue.networkingPublicEmpty"
-                : "keyvalue.networkingEmpty",
-            ),
+            empty: t("keyvalue.networkingEmpty"),
             descriptionPlaceholder: t("keyvalue.networkingEntryDescription"),
             cidr: t("keyvalue.networkingCIDR"),
             cidrRule: (number) => t("keyvalue.networkingCIDRRule", { number }),

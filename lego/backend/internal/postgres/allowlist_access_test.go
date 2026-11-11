@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 
@@ -193,4 +195,118 @@ func TestRejectedAllowListPreservesAccess(t *testing.T) {
 			})
 		}
 	}
+}
+
+// w4/m315: every read reports the database's effective external access.
+// Render has no public toggle and its clients read [] as "external
+// connections blocked", so a public database with no saved rules reads the
+// unrestricted pair, a private one reads [] whatever it keeps, and writing
+// back what was read keeps access.
+func TestAllowListReadsReportEffectiveAccess(t *testing.T) {
+	all := []string{"0.0.0.0/0", "::/0"}
+	kept := []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.7/32", Description: "office"}}
+	for _, tc := range []struct {
+		name   string
+		public bool
+		saved  []appv1alpha1.IPAllowEntry
+		want   []string
+	}{
+		{"public, no rules", true, nil, all},
+		{"public, rules", true, kept, []string{"203.0.113.7/32"}},
+		{"private, no rules", false, nil, []string{}},
+		{"private, inactive rules", false, kept, []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resource := &appv1alpha1.Database{
+				ObjectMeta: metav1.ObjectMeta{Name: "dpg-access", Namespace: "default"},
+				Spec:       appv1alpha1.DatabaseSpec{Name: "networking", Plan: "free", Public: tc.public, IPAllowList: tc.saved},
+			}
+			svc, cl := newService(resource)
+			schema, err := pgGQLSchema(svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			call, cleanup := pgMCPClient(t, svc)
+			defer cleanup()
+
+			reads := map[string][]string{}
+			var got renderPostgres
+			decodeREST(t, serveREST(svc, "GET", "/v1/postgres/dpg-access", ""), &got)
+			reads["GET /v1/postgres/{id}"] = core.AllowListCIDRs(got.IPAllowList)
+			var list []postgresWithCursor
+			decodeREST(t, serveREST(svc, "GET", "/v1/postgres", ""), &list)
+			if len(list) != 1 {
+				t.Fatalf("list = %+v", list)
+			}
+			reads["GET /v1/postgres"] = core.AllowListCIDRs(list[0].Postgres.IPAllowList)
+			var cidrs map[string][]string
+			decodeREST(t, serveREST(svc, "GET", "/v1/postgres/dpg-access/ip-allow-list", ""), &cidrs)
+			reads["GET …/ip-allow-list"] = cidrs["cidrs"]
+			result := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{
+				database(id:"dpg-access") { public ipAllowListEntries { cidrBlock } }
+				databaseIpAllowList(id:"dpg-access")
+			}`})
+			if len(result.Errors) > 0 {
+				t.Fatal(result.Errors)
+			}
+			data := result.Data.(map[string]any)
+			gqlDB := data["database"].(map[string]any)
+			if gqlDB["public"] != tc.public {
+				t.Errorf("GraphQL public = %v, want %v", gqlDB["public"], tc.public)
+			}
+			reads["GraphQL database"] = cidrsOf(t, gqlDB["ipAllowListEntries"], "cidrBlock")
+			reads["GraphQL databaseIpAllowList"] = cidrsOf(t, data["databaseIpAllowList"], "")
+			mcpDB := call("get_postgres", map[string]any{"postgresId": "dpg-access"})
+			reads["MCP get_postgres"] = cidrsOf(t, mcpDB["ipAllowList"], "cidrBlock")
+			mcpList := call("get_postgres_ip_allow_list", map[string]any{"postgresId": "dpg-access"})
+			reads["MCP get_postgres_ip_allow_list cidrs"] = cidrsOf(t, mcpList["cidrs"], "")
+			reads["MCP get_postgres_ip_allow_list entries"] = cidrsOf(t, mcpList["entries"], "cidrBlock")
+			for surface, got := range reads {
+				if !reflect.DeepEqual(got, tc.want) {
+					t.Errorf("%s ipAllowList = %#v, want %#v", surface, got, tc.want)
+				}
+			}
+
+			// Writing back what was read keeps external access as it was.
+			payload, err := json.Marshal(map[string][]string{"cidrs": tc.want})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if w := serveREST(svc, "PUT", "/v1/postgres/dpg-access/ip-allow-list", string(payload)); w.Code != 200 {
+				t.Fatalf("PUT read-back list: %d %s", w.Code, w.Body.String())
+			}
+			stored := getDatabase(t, cl, "dpg-access")
+			if stored.Spec.Public != tc.public || !reflect.DeepEqual(core.AllowListCIDRs(core.AllowListFromSpec(stored.Spec.IPAllowList)), tc.want) {
+				t.Errorf("after writing back %v: public=%v rules=%v, want public=%v", tc.want, stored.Spec.Public, stored.Spec.IPAllowList, tc.public)
+			}
+		})
+	}
+}
+
+func decodeREST(t *testing.T, w *httptest.ResponseRecorder, into any) {
+	t.Helper()
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), into); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// cidrsOf reads a decoded JSON list of CIDR strings, or of objects carrying
+// one under field.
+func cidrsOf(t *testing.T, list any, field string) []string {
+	t.Helper()
+	items, ok := list.([]any)
+	if !ok {
+		t.Fatalf("allowlist %#v is not an array", list)
+	}
+	out := []string{}
+	for _, item := range items {
+		if field != "" {
+			item = item.(map[string]any)[field]
+		}
+		out = append(out, item.(string))
+	}
+	return out
 }

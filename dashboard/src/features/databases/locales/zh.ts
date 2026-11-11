@@ -843,11 +843,6 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "暂无 IP 规则。保存空列表将禁止外部连接。",
     description: "Empty datastore allowlist draft and the effect of saving it",
   },
-  "databases.accessAllowListPublicEmpty": {
-    message: "暂无 IP 规则，但外部访问仍已启用。保存此空列表可禁用外部访问。",
-    description:
-      "Existing public datastore with no rules; saving the empty list disables external access",
-  },
   "databases.accessAllowListAdd": {
     message: "添加",
     description: "Access panel button to add a CIDR to the draft allowlist",

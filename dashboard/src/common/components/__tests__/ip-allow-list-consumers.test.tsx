@@ -138,42 +138,61 @@ describe.each(consumers)("$name IP allowlist draft", ({ name, panel }) => {
 describe.each(datastoreConsumers)(
   "$name datastore external access",
   ({ panel }) => {
-    it("can disable a legacy public endpoint that already has no IP rules", async () => {
-      state.entries = [];
+    // w4/m315: bex-api reads a public store with no saved rules as the
+    // unrestricted pair, Render's own spelling of open access.
+    it("lists a public store's unrestricted access as rule rows, and clearing them disables it", async () => {
+      state.entries = [
+        { cidrBlock: "0.0.0.0/0", description: "" },
+        { cidrBlock: "::/0", description: "" },
+      ];
       const user = userEvent.setup();
-      const view = render(panel());
-
-      expect(screen.getByText(/External access remains enabled/)).toBeVisible();
+      render(panel());
+      expect(
+        screen.getByRole("textbox", { name: "CIDR block for rule 1" }),
+      ).toHaveValue("0.0.0.0/0");
+      expect(
+        screen.getByRole("textbox", { name: "CIDR block for rule 2" }),
+      ).toHaveValue("::/0");
+      expect(
+        screen.queryByText(/External connections are disabled/),
+      ).toBeNull();
+      expect(screen.queryByText(/No IP rules/)).toBeNull();
       const save = screen.getByRole("button", { name: "Save allowlist" });
-      expect(save).toBeEnabled();
+      expect(save).toBeDisabled();
+
+      await user.click(
+        screen.getByRole("button", { name: "Remove 0.0.0.0/0" }),
+      );
+      await user.click(screen.getByRole("button", { name: "Remove ::/0" }));
       await user.click(save);
       expect(state.save).toHaveBeenCalledWith([]);
-
-      // The server confirms that the same empty entries now mean private.
-      state.isPublic = false;
-      view.rerender(panel());
-      expect(
-        screen.getByText(/External connections are disabled/),
-      ).toBeVisible();
-      expect(screen.queryByText(/External access remains enabled/)).toBeNull();
-      expect(save).toBeDisabled();
     });
 
-    it("can enable an explicitly private endpoint with its existing IP rules", async () => {
+    it("reads a private store as disabled with no rules, and saving a rule enables it", async () => {
       state.isPublic = false;
+      state.entries = [];
       const user = userEvent.setup();
-      const view = render(panel());
+      render(panel());
       expect(
         screen.getByText(/External connections are disabled/),
       ).toBeVisible();
-      await user.click(screen.getByRole("button", { name: "Save allowlist" }));
-      expect(state.save).toHaveBeenCalledWith(state.entries);
-
-      state.isPublic = true;
-      view.rerender(panel());
       expect(
-        screen.getByRole("button", { name: "Save allowlist" }),
-      ).toBeDisabled();
+        screen.getByText(
+          "No IP rules. Save an empty list to block external connections.",
+        ),
+      ).toBeVisible();
+      const save = screen.getByRole("button", { name: "Save allowlist" });
+      expect(save).toBeDisabled();
+
+      await user.type(
+        screen.getByRole("textbox", { name: "New CIDR block" }),
+        "203.0.113.0/24",
+      );
+      await user.click(screen.getByRole("button", { name: "Add" }));
+      await user.click(save);
+      expect(state.save).toHaveBeenCalledWith([
+        { cidrBlock: "203.0.113.0/24", description: "" },
+      ]);
     });
 
     it("explains and submits external disable when the last rule is removed", async () => {

@@ -44,15 +44,16 @@ import (
 
 // --- IP allowlist ---
 
-// GetIPAllowList returns the external endpoint's rules. Public intent determines
-// whether an empty list is disabled or explicitly unrestricted. The internal
-// -rw path is never gated.
+// GetIPAllowList returns the external endpoint's effective rules: [] when
+// external access is off, the unrestricted pair for a public database with no
+// saved rules (core.EffectiveAllowList, w4/m315). The internal -rw path is
+// never gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
 	d, err := s.fetchDatabaseForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
-	return core.AllowListFromSpec(d.Spec.IPAllowList), nil
+	return core.EffectiveAllowList(d.Spec.Public, d.Spec.IPAllowList), nil
 }
 
 // SetIPAllowList replaces the external-endpoint allowlist — full replace, so

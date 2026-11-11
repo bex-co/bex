@@ -87,25 +87,46 @@ func AllowListFromSpec(list []appv1alpha1.IPAllowEntry) []IPAllowListEntry {
 	return out
 }
 
-// AllowListOrEmpty is the read-side guard for a field Render's schema marks
-// required: a nil slice (no restriction configured) must serialize as [], not
-// be dropped by encoding/json's omitempty — a strict generated client treats
-// a missing required property as a decode failure (w6/m109). Applied wherever
-// a response view builds ipAllowList.
-func AllowListOrEmpty(entries []IPAllowListEntry) []IPAllowListEntry {
-	if entries == nil {
+// UnrestrictedAllowList is the rule pair that admits every source of both
+// address families. It carries no descriptions: it is how REST's Postgres
+// create (w2/038) and Blueprint Postgres create (w8/157) save an omitted list,
+// and how every read spells a public datastore with no saved rules
+// (EffectiveAllowList).
+func UnrestrictedAllowList() []IPAllowListEntry {
+	return []IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}, {CIDRBlock: "::/0"}}
+}
+
+// EffectiveAllowList is a datastore's external access as every read reports
+// it: REST, GraphQL, MCP and the Blueprint export (w4/m315). Render has no
+// public toggle, and its clients read an empty list as "external connections
+// blocked", so the list alone has to say whether the store is reachable:
+//
+//   - private: [], whatever inactive rules it keeps;
+//   - public with no saved rules: UnrestrictedAllowList;
+//   - otherwise its saved rules.
+//
+// Never nil: Render's schema marks ipAllowList required, and a strict
+// generated client treats a missing or null one as a decode failure (w6/m109).
+// Writes are unchanged (a nonempty
+// list publishes, an empty one unpublishes), so writing back what was read
+// keeps access as it is.
+func EffectiveAllowList(public bool, list []appv1alpha1.IPAllowEntry) []IPAllowListEntry {
+	switch {
+	case !public:
 		return []IPAllowListEntry{}
+	case len(list) == 0:
+		return UnrestrictedAllowList()
 	}
-	return entries
+	return AllowListFromSpec(list)
 }
 
 // AllowListCIDRs projects entries down to their CIDR strings — the
 // product-neutral string-list shape GraphQL/MCP's legacy arguments and the
 // bex-native {"cidrs"} REST routes keep speaking.
 //
-// Empty in, EMPTY (never nil) out, for AllowListOrEmpty's reason one level
+// Empty in, EMPTY (never nil) out, for EffectiveAllowList's reason one level
 // down: this is a read-side projection, and its only REST consumers wrap it in
-// {"cidrs": …} — a nil would have made an unrestricted datastore answer
+// {"cidrs": …} — a nil would have made a private datastore answer
 // {"cidrs":null} where an array is declared (w4/m116/t006). The nested field is
 // past core.WriteJSON's nil-slice guard, so the normalization has to happen at
 // the one place both datastores' handlers share: here.

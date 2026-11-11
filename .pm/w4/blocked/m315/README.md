@@ -1,17 +1,17 @@
 # w4 · m315 — A public datastore with no IP rules reads back as public on every surface: REST, GraphQL, MCP and the dashboard return its effective unrestricted rules, not an empty list that Render clients read as blocked
 
-**Worker:** worker4 **Goal:** every read of a Key Value or Postgres allowlist reports the store's _effective_ external access. A public store with no saved rules reads `0.0.0.0/0` + `::/0`, the rule the Blueprint export already uses. A Render client therefore never sees "external connections blocked" for a store that accepts outside connections, and writing back what it read never cuts access. **Status:** todo
+**Worker:** worker4 **Goal:** every read of a Key Value or Postgres allowlist reports the store's _effective_ external access. A public store with no saved rules reads `0.0.0.0/0` + `::/0`, the rule the Blueprint export already uses. A Render client therefore never sees "external connections blocked" for a store that accepts outside connections, and writing back what it read never cuts access. **Status:** blocked — t001, t002, t004, t005 and t006 done (shipped); t003 live replay waits for the next production deploy, then t007 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | One effective-access projection for every datastore allowlist read (REST, GraphQL, MCP, Blueprint export) | 50m | — |
-| [t002](t002.md) | Dashboard Key Value Networking and Postgres Access control list the effective rules | 35m | t001 |
+| [t001](done/t001.md) | One effective-access projection for every datastore allowlist read (REST, GraphQL, MCP, Blueprint export) — **DONE** | 50m | — |
+| [t002](done/t002.md) | Dashboard Key Value Networking and Postgres Access control list the effective rules — **DONE** | 35m | t001 |
 | [t003](t003.md) | Live verification on owned public Free Key Value and Postgres stores | 25m | t002 |
-| [t004](t004.md) | Render parity | 20m | t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 30m | t004 |
+| [t004](done/t004.md) | Render parity — **DONE** | 20m | t003 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
 | [t007](t007.md) | Closeout | 10m | t005, t006 |
 
 Seven tasks, 185m (3h05m). Major: the readback states network exposure wrongly in the unsafe direction (it says blocked while the store is open), and a no-op read-then-write disables access.

@@ -697,12 +697,6 @@ const enKeyValue: Record<string, TranslationEntry> = {
     message: "No IP rules. Save an empty list to block external connections.",
     description: "Empty datastore allowlist draft and the effect of saving it",
   },
-  "keyvalue.networkingPublicEmpty": {
-    message:
-      "No IP rules. External access remains enabled; save this empty list to disable it.",
-    description:
-      "Existing public datastore with no rules; saving the empty list disables external access",
-  },
   "keyvalue.networkingAdd": {
     message: "Add",
     description: "Networking button to add a CIDR to the draft allowlist",

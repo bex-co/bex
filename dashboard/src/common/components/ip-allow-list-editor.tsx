@@ -49,15 +49,12 @@ export function IPAllowListEditor({
   labels,
   saving,
   onSave,
-  allowUnchangedSave = false,
   clearOnly,
 }: {
   entries: IPAllowListEntryDraft[];
   labels: IPAllowListEditorLabels;
   saving: boolean;
   onSave: (entries: IPAllowListEntryDraft[]) => Promise<boolean>;
-  /** Datastore writes can change external access even when entries match. */
-  allowUnchangedSave?: boolean;
   /**
    * The workspace plan cannot set inbound rules (below Scale). Existing rules
    * stay listed and enforced; the only write offered is clearing them all.
@@ -268,7 +265,7 @@ export function IPAllowListEditor({
           type="button"
           size="sm"
           onClick={() => void onSave(draftEntries)}
-          disabled={(!dirty && !allowUnchangedSave) || saving || draftInvalid}
+          disabled={!dirty || saving || draftInvalid}
         >
           {saving ? <Loader2 className="animate-spin" /> : null}
           {labels.save}

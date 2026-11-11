@@ -92,17 +92,9 @@ function AllowListSection({ access }: { access: Access }) {
         entries={access.allowList}
         saving={access.savingAllowList}
         onSave={access.saveAllowList}
-        allowUnchangedSave={
-          access.isPublic != null &&
-          access.isPublic !== Boolean(access.allowList.length)
-        }
         labels={{
           hint: t("databases.accessAllowListHint"),
-          empty: t(
-            access.isPublic && access.allowList.length === 0
-              ? "databases.accessAllowListPublicEmpty"
-              : "databases.accessAllowListEmpty",
-          ),
+          empty: t("databases.accessAllowListEmpty"),
           descriptionPlaceholder: t("databases.accessAllowListDescription"),
           cidr: t("databases.accessAllowListCIDR"),
           cidrRule: (number) =>

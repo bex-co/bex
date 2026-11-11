@@ -165,8 +165,8 @@ type PostgresView struct {
 	ExternalHost string `json:"externalHost,omitempty"`
 	Public       bool   `json:"public"`
 
-	// IPAllowList gates the external endpoint. Public distinguishes disabled
-	// access from explicitly unrestricted or legacy public/empty configurations.
+	// IPAllowList is the external endpoint's effective rules, [] when external
+	// access is off (core.EffectiveAllowList, w4/m315).
 	// Required in Render's postgres schema — always serialized, as [] when
 	// empty (w6/m109).
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
@@ -592,8 +592,8 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 			reason, reasonCode = freeExpiredReason(expiresAt), reasonCodeFreeExpired
 		}
 	}
-	// ipAllowList is required in Render's schema — an empty stored list
-	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
+	// ipAllowList is required in Render's schema, and reads as the database's
+	// effective external access (core.EffectiveAllowList, w4/m315).
 	return PostgresView{
 		ID:                        d.Name,
 		Name:                      d.Spec.Name,
@@ -618,7 +618,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		UpdatedAt:                 resourcemeta.UpdatedAt(d),
 		ExternalHost:              d.Status.ExternalHost,
 		Public:                    d.Spec.Public,
-		IPAllowList:               core.AllowListOrEmpty(core.AllowListFromSpec(d.Spec.IPAllowList)),
+		IPAllowList:               core.EffectiveAllowList(d.Spec.Public, d.Spec.IPAllowList),
 		PoolerEnabled:             d.Spec.Pooler,
 		ConnectionPool:            connectionPoolEnum(d.Spec.Pooler),
 		BackupsEnabled:            d.Status.BackupsEnabled,

@@ -363,15 +363,16 @@ type usersResult struct {
 func (s *Service) registerAccessMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_postgres_ip_allow_list",
-		Description: "Get the saved CIDR allowlist for a managed Postgres database's external endpoint. Clearing the list disables external connections unless an explicit public override is supplied. Use get_postgres to read public intent as well: legacy or explicitly public databases can still have an unrestricted empty list.",
+		Description: "Get the CIDR allowlist that governs a managed Postgres database's external endpoint. An empty list means external connections are blocked; a public database with no saved rules lists 0.0.0.0/0 and ::/0. Writing the list back unchanged keeps access as it is; clearing it disables external connections unless an explicit public override is supplied.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, allowListResult, error) {
 		list, err := s.GetIPAllowList(ctx, in.PostgresID)
 		if err != nil {
 			return nil, allowListResult{}, err
 		}
 		// Both fields are declared arrays: an empty allowlist must read as [],
-		// never null (w4/m116/t006). AllowListCIDRs already guarantees its half.
-		return nil, allowListResult{CIDRs: core.AllowListCIDRs(list), Entries: core.AllowListOrEmpty(list)}, nil
+		// never null (w4/m116/t006). GetIPAllowList and AllowListCIDRs never
+		// return nil.
+		return nil, allowListResult{CIDRs: core.AllowListCIDRs(list), Entries: list}, nil
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "update_postgres",

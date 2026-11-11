@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 
@@ -193,4 +195,120 @@ func TestRejectedAllowListPreservesAccess(t *testing.T) {
 			})
 		}
 	}
+}
+
+// w4/m315: every read reports the store's effective external access. Render
+// has no public toggle and its clients read [] as "external connections
+// blocked", so a public store with no saved rules reads the unrestricted pair,
+// a private store reads [] whatever it keeps, and writing back what was read
+// keeps access.
+func TestAllowListReadsReportEffectiveAccess(t *testing.T) {
+	all := []string{"0.0.0.0/0", "::/0"}
+	kept := []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.7/32", Description: "office"}}
+	for _, tc := range []struct {
+		name   string
+		public bool
+		saved  []appv1alpha1.IPAllowEntry
+		want   []string
+	}{
+		{"public, no rules", true, nil, all},
+		{"public, rules", true, kept, []string{"203.0.113.7/32"}},
+		{"private, no rules", false, nil, []string{}},
+		{"private, inactive rules", false, kept, []string{}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			resource := &appv1alpha1.KeyValue{
+				ObjectMeta: metav1.ObjectMeta{Name: "red-access", Namespace: "default"},
+				Spec:       appv1alpha1.KeyValueSpec{Name: "networking", Plan: "free", Public: tc.public, IPAllowList: tc.saved},
+			}
+			svc, cl := newService(resource)
+			schema, err := kvGQLSchema(svc)
+			if err != nil {
+				t.Fatal(err)
+			}
+			call, cleanup := kvMCPClient(t, svc)
+			defer cleanup()
+
+			reads := map[string][]string{}
+			for _, path := range []string{"/v1/key-value/red-access", "/v1/redis/red-access"} {
+				var got renderKeyValue
+				decodeREST(t, serveREST(svc, "GET", path, ""), &got)
+				reads["GET "+path] = core.AllowListCIDRs(got.IPAllowList)
+			}
+			var list []keyValueWithCursor
+			decodeREST(t, serveREST(svc, "GET", "/v1/key-value", ""), &list)
+			if len(list) != 1 {
+				t.Fatalf("list = %+v", list)
+			}
+			reads["GET /v1/key-value"] = core.AllowListCIDRs(list[0].KeyValue.IPAllowList)
+			var cidrs map[string][]string
+			decodeREST(t, serveREST(svc, "GET", "/v1/key-value/red-access/ip-allow-list", ""), &cidrs)
+			reads["GET …/ip-allow-list"] = cidrs["cidrs"]
+			result := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{
+				keyValue(id:"red-access") { public ipAllowListEntries { cidrBlock } }
+				keyValueIpAllowList(id:"red-access")
+			}`})
+			if len(result.Errors) > 0 {
+				t.Fatal(result.Errors)
+			}
+			data := result.Data.(map[string]any)
+			gqlKV := data["keyValue"].(map[string]any)
+			if gqlKV["public"] != tc.public {
+				t.Errorf("GraphQL public = %v, want %v", gqlKV["public"], tc.public)
+			}
+			reads["GraphQL keyValue"] = cidrsOf(t, gqlKV["ipAllowListEntries"], "cidrBlock")
+			reads["GraphQL keyValueIpAllowList"] = cidrsOf(t, data["keyValueIpAllowList"], "")
+			mcpKV := call("get_key_value", map[string]any{"keyValueId": "red-access"})
+			reads["MCP get_key_value"] = cidrsOf(t, mcpKV["ipAllowList"], "cidrBlock")
+			for surface, got := range reads {
+				if !reflect.DeepEqual(got, tc.want) {
+					t.Errorf("%s ipAllowList = %#v, want %#v", surface, got, tc.want)
+				}
+			}
+
+			// Writing back what was read keeps external access as it was.
+			payload, err := json.Marshal(map[string][]string{"cidrs": tc.want})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if w := serveREST(svc, "PUT", "/v1/key-value/red-access/ip-allow-list", string(payload)); w.Code != 200 {
+				t.Fatalf("PUT read-back list: %d %s", w.Code, w.Body.String())
+			}
+			var stored appv1alpha1.KeyValue
+			if err := cl.Get(context.Background(), client.ObjectKeyFromObject(resource), &stored); err != nil {
+				t.Fatal(err)
+			}
+			if stored.Spec.Public != tc.public || !reflect.DeepEqual(core.AllowListCIDRs(core.AllowListFromSpec(stored.Spec.IPAllowList)), tc.want) {
+				t.Errorf("after writing back %v: public=%v rules=%v, want public=%v", tc.want, stored.Spec.Public, stored.Spec.IPAllowList, tc.public)
+			}
+		})
+	}
+}
+
+func decodeREST(t *testing.T, w *httptest.ResponseRecorder, into any) {
+	t.Helper()
+	if w.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), into); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// cidrsOf reads a decoded JSON list of CIDR strings, or of objects carrying
+// one under field.
+func cidrsOf(t *testing.T, list any, field string) []string {
+	t.Helper()
+	items, ok := list.([]any)
+	if !ok {
+		t.Fatalf("allowlist %#v is not an array", list)
+	}
+	out := []string{}
+	for _, item := range items {
+		if field != "" {
+			item = item.(map[string]any)[field]
+		}
+		out = append(out, item.(string))
+	}
+	return out
 }

@@ -3265,7 +3265,7 @@ func parseDatabase(d bexDatabase) (parsedDatabase, error) {
 	// blocks external connections. Same dual-stack default as REST create
 	// (w8/157). A sync that omits the field preserves the saved list.
 	if d.IPAllowList == nil {
-		allow = []appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}, {CIDR: "::/0"}}
+		allow = core.AllowListToSpec(core.UnrestrictedAllowList())
 	}
 	for _, r := range d.ReadReplicas {
 		if r.Name == "" {

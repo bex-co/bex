@@ -338,23 +338,26 @@ func TestRESTPostgresPublicDefaultIsAdapterSpecific(t *testing.T) {
 	// This fragment-level matrix also pins the decoder's null-as-omission
 	// behavior. The composed Render API rejects null allowlists at its schema
 	// boundary before invoking this adapter.
+	// wantCIDRs is what the database reads back (its effective external
+	// access, w4/m315); storedCIDRs is what it saves.
+	all := []string{"0.0.0.0/0", "::/0"}
 	tests := []struct {
-		name, fields string
-		wantPublic   bool
-		wantCIDRs    []string
+		name, fields           string
+		wantPublic             bool
+		wantCIDRs, storedCIDRs []string
 	}{
-		{"omitted", "", true, []string{"0.0.0.0/0", "::/0"}},
-		{"null", `,"ipAllowList":null`, true, []string{"0.0.0.0/0", "::/0"}},
-		{"empty", `,"ipAllowList":[]`, false, nil},
-		{"restricted", `,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, true, []string{"192.0.2.0/24"}},
-		{"private", `,"public":false`, false, nil},
-		{"public", `,"public":true`, true, []string{"0.0.0.0/0", "::/0"}},
-		{"public-empty-override", `,"public":true,"ipAllowList":[]`, true, nil},
-		{"private-rules-override", `,"public":false,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, false, []string{"192.0.2.0/24"}},
-		{"private-null", `,"public":false,"ipAllowList":null`, false, nil},
-		{"public-null", `,"public":true,"ipAllowList":null`, true, []string{"0.0.0.0/0", "::/0"}},
-		{"private-empty", `,"public":false,"ipAllowList":[]`, false, nil},
-		{"public-rules", `,"public":true,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, true, []string{"192.0.2.0/24"}},
+		{"omitted", "", true, all, all},
+		{"null", `,"ipAllowList":null`, true, all, all},
+		{"empty", `,"ipAllowList":[]`, false, nil, nil},
+		{"restricted", `,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, true, []string{"192.0.2.0/24"}, []string{"192.0.2.0/24"}},
+		{"private", `,"public":false`, false, nil, nil},
+		{"public", `,"public":true`, true, all, all},
+		{"public-empty-override", `,"public":true,"ipAllowList":[]`, true, all, nil},
+		{"private-rules-override", `,"public":false,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, false, nil, []string{"192.0.2.0/24"}},
+		{"private-null", `,"public":false,"ipAllowList":null`, false, nil, nil},
+		{"public-null", `,"public":true,"ipAllowList":null`, true, all, all},
+		{"private-empty", `,"public":false,"ipAllowList":[]`, false, nil, nil},
+		{"public-rules", `,"public":true,"ipAllowList":[{"cidrBlock":"192.0.2.0/24"}]`, true, []string{"192.0.2.0/24"}, []string{"192.0.2.0/24"}},
 	}
 	for _, tt := range tests {
 		for _, preview := range []bool{false, true} {
@@ -395,8 +398,8 @@ func TestRESTPostgresPublicDefaultIsAdapterSpecific(t *testing.T) {
 					t.Fatalf("persisted %d databases", len(databases.Items))
 				}
 				db := databases.Items[0]
-				if db.Spec.Public != pg.Public || !reflect.DeepEqual(core.AllowListOrEmpty(core.AllowListFromSpec(db.Spec.IPAllowList)), pg.IPAllowList) {
-					t.Fatal("readback disagrees with persisted access intent")
+				if stored := core.AllowListCIDRs(core.AllowListFromSpec(db.Spec.IPAllowList)); db.Spec.Public != pg.Public || !slices.Equal(stored, tt.storedCIDRs) {
+					t.Fatalf("persisted public=%v rules=%v, want public=%v rules=%v", db.Spec.Public, stored, pg.Public, tt.storedCIDRs)
 				}
 				readback := serveREST(svc, http.MethodGet, "/v1/postgres/"+pg.ID, "")
 				if readback.Code != http.StatusOK {
@@ -580,7 +583,6 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 	}
 	gqlView := gqlResult.Data.(map[string]any)["createDatabase"].(map[string]any)
 	gqlEntries := gqlView["ipAllowListEntries"].([]any)
-	gqlEntry := gqlEntries[0].(map[string]any)
 
 	mcpService, mcpClient := newService()
 	mcpCall, cleanup := pgMCPClient(t, mcpService)
@@ -590,12 +592,12 @@ func TestCreatePostgresIPAllowListAdapterParity(t *testing.T) {
 		"ipAllowListEntries": []any{map[string]any{"cidrBlock": "203.0.113.0/24", "description": "office"}},
 	})
 	mcpEntries := mcpView["ipAllowList"].([]any)
-	mcpEntry := mcpEntries[0].(map[string]any)
 
-	if len(restView.IPAllowList) != 1 || restView.IPAllowList[0] != want ||
-		gqlEntry["cidrBlock"] != want.CIDRBlock || gqlEntry["description"] != want.Description ||
-		mcpEntry["cidrBlock"] != want.CIDRBlock || mcpEntry["description"] != want.Description {
-		t.Fatalf("create allowlist drift: REST=%+v GraphQL=%v MCP=%v", restView.IPAllowList, gqlEntry, mcpEntry)
+	// GraphQL and MCP creates are private by default, so their saved rule is
+	// inactive and reads back as no access (w4/m315); every adapter persists
+	// it, description included (checked below).
+	if len(restView.IPAllowList) != 1 || restView.IPAllowList[0] != want || len(gqlEntries) != 0 || len(mcpEntries) != 0 {
+		t.Fatalf("create allowlist readback: REST=%+v GraphQL=%v MCP=%v", restView.IPAllowList, gqlEntries, mcpEntries)
 	}
 
 	if !restView.Public || gqlView["public"] != false || mcpView["public"] != false {

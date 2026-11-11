@@ -106,8 +106,8 @@ type KeyValueView struct {
 	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
 	PersistenceMode string `json:"persistenceMode,omitempty"`
 
-	// IPAllowList gates the external endpoint. Public distinguishes disabled
-	// access from explicitly unrestricted or legacy public/empty configurations.
+	// IPAllowList is the external endpoint's effective rules, [] when external
+	// access is off (core.EffectiveAllowList, w4/m315).
 	// Required in Render's keyValue schema — always serialized, as [] when empty.
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList"`
 
@@ -308,8 +308,8 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	if status == "unavailable" {
 		reason, reasonCode = core.DatastoreStatusReason(kv.Status.Conditions, "Key Value", unavailableReasons)
 	}
-	// ipAllowList is required in Render's schema — an unrestricted instance
-	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
+	// ipAllowList is required in Render's schema, and reads as the store's
+	// effective external access (core.EffectiveAllowList, w4/m315).
 	return KeyValueView{
 		InternalAuth:           kv.Spec.InternalAuth,
 		ID:                     kv.Name,
@@ -322,7 +322,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		Suspended:              core.SuspendedEnum(kv.Spec.Suspended),
 		CreatedAt:              created,
 		UpdatedAt:              resourcemeta.UpdatedAt(kv),
-		IPAllowList:            core.AllowListOrEmpty(core.AllowListFromSpec(kv.Spec.IPAllowList)),
+		IPAllowList:            core.EffectiveAllowList(kv.Spec.Public, kv.Spec.IPAllowList),
 		MaxmemoryPolicy:        crdToRender(kv.Spec.MaxmemoryPolicy),
 		PersistenceMode:        crdToRender(kv.Spec.PersistenceMode),
 		ExternalHost:           kv.Status.ExternalHost,
@@ -933,15 +933,16 @@ func (s *Service) setEnvironmentID(ctx context.Context, kv *appv1alpha1.KeyValue
 	return s.Client.Patch(ctx, kv, patch)
 }
 
-// GetIPAllowList returns the external endpoint's rules. Public intent determines
-// whether an empty list is disabled or explicitly unrestricted. The internal
-// path is never gated.
+// GetIPAllowList returns the external endpoint's effective rules: [] when
+// external access is off, the unrestricted pair for a public store with no
+// saved rules (core.EffectiveAllowList, w4/m315). The internal path is never
+// gated.
 func (s *Service) GetIPAllowList(ctx context.Context, name string) ([]core.IPAllowListEntry, error) {
 	kv, err := s.fetchKeyValueForRead(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
-	return core.AllowListFromSpec(kv.Spec.IPAllowList), nil
+	return core.EffectiveAllowList(kv.Spec.Public, kv.Spec.IPAllowList), nil
 }
 
 // SetIPAllowList replaces the external-endpoint allowlist — full replace, so

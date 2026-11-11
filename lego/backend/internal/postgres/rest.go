@@ -232,7 +232,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if req.Public && req.IPAllowList == nil {
 			// Keep the existing dual-stack public default explicit for Render
 			// clients, which interpret an empty readback as externally blocked.
-			req.IPAllowList = []core.IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}, {CIDRBlock: "::/0"}}
+			req.IPAllowList = core.UnrestrictedAllowList()
 		}
 		req.DryRun = core.DryRunRequested(r, req.DryRun)
 		pg, err := s.CreatePostgres(r.Context(), req)

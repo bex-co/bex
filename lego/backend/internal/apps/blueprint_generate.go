@@ -920,16 +920,11 @@ func generateKeyValueEntry(kv *appv1alpha1.KeyValue) map[string]any {
 	return entry
 }
 
-// Render has no separate public toggle, so export effective access. Inactive
-// rules on private datastores cannot be retained, and legacy public datastores
-// with no rules need explicit unrestricted rules for both address families.
+// Render has no separate public toggle, so export effective access, as every
+// read reports it (core.EffectiveAllowList). Inactive rules on private
+// datastores cannot be retained.
 func datastoreAllowListEntries(public bool, entries []appv1alpha1.IPAllowEntry) []map[string]any {
-	if !public {
-		entries = nil
-	} else if len(entries) == 0 {
-		entries = []appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}, {CIDR: "::/0"}}
-	}
-	return allowListEntries(entries)
+	return allowListEntries(core.AllowListToSpec(core.EffectiveAllowList(public, entries)))
 }
 
 // allowListEntries spells allow-list rules as render.yaml's ipAllowList.
