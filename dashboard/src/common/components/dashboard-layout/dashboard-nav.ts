@@ -67,13 +67,14 @@ export const NAV_GROUPS: SidebarNavGroup[] = [
 
 /**
  * The destinations a workspace sees: Agents and Automations only behind the
- * agents flag, Router only behind the router flag. The sidebar and the ⌘K
- * palette both read this, so a destination added to NAV_GROUPS is searchable
- * without a second edit and never leaks past its gate (w21/031).
+ * agents flag, Router only where `useRouterNavAvailable` says the workspace is
+ * offered it (flag on and the companion service reachable). The sidebar and the
+ * ⌘K palette both read this, so a destination added to NAV_GROUPS is searchable
+ * without a second edit and never leaks past its gate (w21/031, w21/042).
  */
 export function visibleNavGroups(
   groups: SidebarNavGroup[],
-  flags: { agentsEnabled: boolean; routerEnabled: boolean },
+  flags: { agentsEnabled: boolean; routerAvailable: boolean },
 ): SidebarNavGroup[] {
   return groups
     .map((group) => ({
@@ -82,7 +83,7 @@ export function visibleNavGroups(
         (item) =>
           ((item.to !== "/agents" && item.to !== "/automations") ||
             flags.agentsEnabled) &&
-          (item.to !== "/router" || flags.routerEnabled),
+          (item.to !== "/router" || flags.routerAvailable),
       ),
     }))
     .filter((group) => group.items.length > 0);

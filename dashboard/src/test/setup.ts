@@ -66,6 +66,18 @@ vi.mock("@/features/capabilities/hooks/use-capabilities", () => ({
   })),
 }));
 
+// Whether the workspace is offered Router (w21/042) is the router flag AND the
+// companion service's answer, read through Apollo's useQuery — so every test
+// that renders the sidebar or the ⌘K palette would otherwise need an
+// ApolloProvider. Default to "not offered", the common case; tests of the
+// gating override per file, and the hook's own test unmocks it.
+vi.mock(
+  "@/common/components/dashboard-layout/use-router-nav-available",
+  () => ({
+    useRouterNavAvailable: vi.fn(() => false),
+  }),
+);
+
 import i18n from "@/i18n/init";
 import zhResources from "@/i18n/resources-zh";
 

@@ -1,6 +1,3 @@
-import { useQuery } from "@apollo/client/react";
-import { RouterAvailableDocument } from "@/graphql/definitions";
-import { useWorkspace } from "@/features/workspaces/context";
 import { lazy, Suspense, useCallback, useMemo } from "react";
 import { useParams, useRouterState } from "@tanstack/react-router";
 import {
@@ -8,14 +5,12 @@ import {
   SidebarContent,
   SidebarHeader,
 } from "@/common/components/ui/sidebar.tsx";
-import {
-  useAgentsFeatureEnabled,
-  useRouterFeatureEnabled,
-} from "@/config/use-growthbook";
+import { useAgentsFeatureEnabled } from "@/config/use-growthbook";
 import { isNavItemActive } from "./nav-active";
 import { SidebarBrand } from "./sidebar-brand";
-import { SidebarNavGroups, type SidebarNavGroup } from "./sidebar-nav-groups";
+import { SidebarNavGroups } from "./sidebar-nav-groups";
 import { NAV_GROUPS, visibleNavGroups } from "./dashboard-nav";
+import { useRouterNavAvailable } from "./use-router-nav-available";
 
 // Contextual rails are route-scoped; keep them out of the always-mounted chrome
 // chunk until the matching pathname/param is active (vercel bundle-dynamic /
@@ -36,11 +31,6 @@ export function DashboardSidebar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const { projectId, serviceId } = useParams({ strict: false });
   const agentsEnabled = useAgentsFeatureEnabled();
-  const routerEnabled = useRouterFeatureEnabled();
-  const navGroups = useMemo(
-    () => visibleNavGroups(NAV_GROUPS, { agentsEnabled, routerEnabled }),
-    [agentsEnabled, routerEnabled],
-  );
   const isItemActive = useCallback(
     (to: string) => isNavItemActive(pathname, to),
     [pathname],
@@ -67,11 +57,10 @@ export function DashboardSidebar() {
         <SidebarBrand />
       </SidebarHeader>
       <SidebarContent className="gap-0">
-        {routerEnabled ? (
-          <RouterNavGroups groups={navGroups} isItemActive={isItemActive} />
-        ) : (
-          <SidebarNavGroups groups={navGroups} isItemActive={isItemActive} />
-        )}
+        <TopLevelNavGroups
+          agentsEnabled={agentsEnabled}
+          isItemActive={isItemActive}
+        />
         {/* The contextual list slot (w5/m64). Unlike ProjectSidebar and
             ServiceSidebar above — which REPLACE the rail for a deep hierarchy
             and offer a back link — an agents-context section AUGMENTS the nav,
@@ -100,30 +89,21 @@ function SidebarShell() {
   );
 }
 
-/** Only targeted workspaces probe the optional companion service. */
-function RouterNavGroups({
-  groups,
+/**
+ * The top-level destinations. It sits below the project and service rails so
+ * only the rail that shows them asks whether the workspace is offered Router.
+ */
+function TopLevelNavGroups({
+  agentsEnabled,
   isItemActive,
 }: {
-  groups: SidebarNavGroup[];
+  agentsEnabled: boolean;
   isItemActive: (to: string) => boolean;
 }) {
-  const { currentWorkspaceId } = useWorkspace();
-  const { data } = useQuery(RouterAvailableDocument, {
-    variables: { ownerId: currentWorkspaceId ?? "" },
-  });
-  const available = data?.routerAvailable === true;
-  return (
-    <SidebarNavGroups
-      groups={
-        available
-          ? groups
-          : groups.map((group) => ({
-              ...group,
-              items: group.items.filter((item) => item.to !== "/router"),
-            }))
-      }
-      isItemActive={isItemActive}
-    />
+  const routerAvailable = useRouterNavAvailable();
+  const groups = useMemo(
+    () => visibleNavGroups(NAV_GROUPS, { agentsEnabled, routerAvailable }),
+    [agentsEnabled, routerAvailable],
   );
+  return <SidebarNavGroups groups={groups} isItemActive={isItemActive} />;
 }

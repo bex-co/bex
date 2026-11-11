@@ -19,11 +19,9 @@ import {
 } from "@/common/components/ui/command";
 import { DialogDescription, DialogTitle } from "@/common/components/ui/dialog";
 import { useTranslations } from "@/common/hooks/use-translations";
-import {
-  useAgentsFeatureEnabled,
-  useRouterFeatureEnabled,
-} from "@/config/use-growthbook";
+import { useAgentsFeatureEnabled } from "@/config/use-growthbook";
 import { NAV_GROUPS, visibleNavGroups } from "./dashboard-nav";
+import { useRouterNavAvailable } from "./use-router-nav-available";
 import { useBlueprints } from "@/features/blueprints/hooks/use-blueprints";
 import { useDatabases } from "@/features/databases/hooks/use-databases";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
@@ -148,8 +146,8 @@ function SearchResults({
   // feature gates (w21/031); the sidebar's one Settings entry becomes the
   // palette's two, Workspace and Account.
   const agentsEnabled = useAgentsFeatureEnabled();
-  const routerEnabled = useRouterFeatureEnabled();
-  const pages = visibleNavGroups(NAV_GROUPS, { agentsEnabled, routerEnabled })
+  const routerAvailable = useRouterNavAvailable();
+  const pages = visibleNavGroups(NAV_GROUPS, { agentsEnabled, routerAvailable })
     .flatMap((group) => group.items)
     .flatMap((item) => {
       const page = (

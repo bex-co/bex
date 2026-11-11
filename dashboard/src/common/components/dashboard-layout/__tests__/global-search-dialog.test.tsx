@@ -58,11 +58,15 @@ vi.mock("@/features/blueprints/hooks/use-blueprints", () => ({
   }),
 }));
 
-// The sidebar's feature gates, mutable per test (w21/031).
+// The sidebar's feature gates, mutable per test (w21/031). `router` is what
+// useRouterNavAvailable answers: the flag AND the companion-service probe
+// (w21/042), which has its own test.
 const flags = vi.hoisted(() => ({ agents: true, router: true }));
 vi.mock("@/config/use-growthbook", () => ({
   useAgentsFeatureEnabled: () => flags.agents,
-  useRouterFeatureEnabled: () => flags.router,
+}));
+vi.mock("../use-router-nav-available", () => ({
+  useRouterNavAvailable: () => flags.router,
 }));
 
 const SERVICES = [
@@ -111,7 +115,7 @@ describe("GlobalSearchDialog", () => {
       const names = optionNames();
       const expected = visibleNavGroups(NAV_GROUPS, {
         agentsEnabled: true,
-        routerEnabled: true,
+        routerAvailable: true,
       })
         .flatMap((group) => group.items)
         .map((item) => i18n.t(item.labelKey))
@@ -161,6 +165,30 @@ describe("GlobalSearchDialog", () => {
       render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
       const names = optionNames().join("|");
       expect(names).not.toMatch(/Agents|Automations|Router/);
+    });
+
+    // w21/042: Router is offered only where the sidebar offers it. With the
+    // gate closed (flag off, or the companion service absent) searching for it
+    // finds nothing; with it open the page is there.
+    it("finds Router only where the workspace is offered it", () => {
+      flags.router = false;
+      const { unmount } = render(
+        <GlobalSearchDialog open onOpenChange={vi.fn()} />,
+      );
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "router" },
+      });
+      expect(screen.queryByRole("option", { name: /Router/ })).toBeNull();
+      unmount();
+
+      flags.router = true;
+      render(<GlobalSearchDialog open onOpenChange={vi.fn()} />);
+      fireEvent.change(screen.getByRole("combobox"), {
+        target: { value: "router" },
+      });
+      expect(
+        screen.getByRole("option", { name: /Router/ }),
+      ).toBeInTheDocument();
     });
   });
 

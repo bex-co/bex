@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, within } from "@testing-library/react";
 import {
   RouterProvider,
@@ -9,6 +9,17 @@ import {
 } from "@tanstack/react-router";
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
 import { DashboardSidebar } from "../dashboard-sidebar";
+
+// Whether the workspace is offered Router (flag AND companion service). Its own
+// test covers the probe; here only the sidebar's reaction to it matters.
+const gates = vi.hoisted(() => ({ router: false }));
+vi.mock("../use-router-nav-available", () => ({
+  useRouterNavAvailable: () => gates.router,
+}));
+
+beforeEach(() => {
+  gates.router = false;
+});
 
 function renderAt(pathname: string, defaultOpen = true) {
   const rootRoute = createRootRoute();
@@ -80,5 +91,22 @@ describe("DashboardSidebar (w1/m45 — Render's nav grouping)", () => {
         "group-data-[collapsible=icon]:pointer-events-none",
       );
     }
+  });
+
+  // w21/042: Router shows in the rail exactly when the shared gate says so, the
+  // same answer the ⌘K palette reads.
+  it("lists Router only where the workspace is offered it", async () => {
+    renderAt("/");
+    await screen.findByText("Integrations");
+    expect(screen.queryByRole("link", { name: "Router" })).toBeNull();
+  });
+
+  it("lists Router when the workspace is offered it", async () => {
+    gates.router = true;
+    renderAt("/");
+    expect(await screen.findByRole("link", { name: "Router" })).toHaveAttribute(
+      "href",
+      "/router",
+    );
   });
 });
