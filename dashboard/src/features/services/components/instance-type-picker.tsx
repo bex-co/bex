@@ -18,6 +18,7 @@ import {
   type InstanceTypeView,
 } from "@/features/services/hooks/use-instance-types";
 import { useUpdatePlan } from "@/features/services/hooks/use-update-plan";
+import { isCronType } from "@/features/services/lib/service-type";
 import {
   formatInstanceCPU,
   formatInstanceMemory,
@@ -62,6 +63,8 @@ export function InstanceTypePicker({
   const [confirming, setConfirming] = useState(false);
   const noticeId = useId();
   const offered = offeredInstanceTypes(serviceType, instanceTypes);
+  // A cron job is billed per second only while a run executes (w4/546).
+  const runTimePricing = serviceType !== null && isCronType(serviceType);
   const free = offered.filter((it) => it.id === "free");
   const paid = offered.filter((it) => it.id !== "free");
   // One radio group spanning both sections, in their visual order; a paused
@@ -138,6 +141,7 @@ export function InstanceTypePicker({
                     selected={selected === it.id}
                     onSelect={() => setSelected(it.id)}
                     radio={radio(it.id)}
+                    runTimePricing={runTimePricing}
                   />
                 ))}
               </InstanceTypeGroup>
@@ -154,6 +158,7 @@ export function InstanceTypePicker({
                     selected={selected === it.id}
                     onSelect={() => setSelected(it.id)}
                     radio={radio(it.id)}
+                    runTimePricing={runTimePricing}
                   />
                 ))}
               </InstanceTypeGroup>
@@ -190,11 +195,20 @@ export function InstanceTypePicker({
             ? t("services.planPickerConfirmTitle", { name: selectedType.name })
             : ""
         }
-        description={
-          selectedType?.monthlyUsd
-            ? `${t("services.planPickerConfirmBody")} ${t("services.planPickerConfirmPrice", { price: selectedType.monthlyUsd })}`
-            : t("services.planPickerConfirmBody")
-        }
+        description={[
+          t("services.planPickerConfirmBody"),
+          runTimePricing
+            ? selectedType?.usdPerMinute &&
+              t("services.planPickerConfirmRunPrice", {
+                price: selectedType.usdPerMinute,
+              })
+            : selectedType?.monthlyUsd &&
+              t("services.planPickerConfirmPrice", {
+                price: selectedType.monthlyUsd,
+              }),
+        ]
+          .filter(Boolean)
+          .join(" ")}
         cancelLabel={t("services.planPickerCancel")}
         confirmLabel={t("services.planPickerSave")}
         // Changing plan is the primary action here, not a destructive one.
@@ -210,11 +224,14 @@ function InstanceTypeCard({
   selected,
   onSelect,
   radio,
+  runTimePricing,
 }: {
   instanceType: InstanceTypeView;
   selected: boolean;
   onSelect: () => void;
   radio: CardRadioProps;
+  /** A cron job's price is per minute of run time (w4/546). */
+  runTimePricing: boolean;
 }) {
   const { t } = useTranslations();
   // A paused tier (w2/m250) keeps its card — a service already on it still
@@ -252,9 +269,13 @@ function InstanceTypeCard({
                 </span>
               ) : null}
             </>
-          ) : instanceType.monthlyUsd ? (
+          ) : runTimePricing ? (
+            instanceType.usdPerMinute &&
+            t("common.pricePerRunMinute", { price: instanceType.usdPerMinute })
+          ) : (
+            instanceType.monthlyUsd &&
             t("common.pricePerMonth", { price: instanceType.monthlyUsd })
-          ) : undefined
+          )
         }
       />
     </button>

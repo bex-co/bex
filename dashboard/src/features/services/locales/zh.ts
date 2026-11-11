@@ -1524,6 +1524,16 @@ const zhServices: Record<string, TranslationEntry> = {
       "服务将调整规格并无停机滚动更新——进行中的请求会先完成再替换旧实例。",
     description: "Plan-change confirm dialog body",
   },
+  "services.planPickerConfirmRunPrice": {
+    message: "此实例类型每分钟运行时间费用为 ${price}，运行期间按秒计费。",
+    description:
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+  },
+  "services.createFieldPlanCronHint": {
+    message: "定时任务仅在运行期间按秒计费。",
+    description:
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+  },
   "services.planPickerConfirmPrice": {
     message: "此实例类型每月费用为 ${price}。",
     description:

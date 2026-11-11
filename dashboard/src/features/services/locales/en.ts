@@ -1555,6 +1555,17 @@ const enServices: Record<string, TranslationEntry> = {
       "The service resizes and rolls with no downtime — in-flight requests finish before old instances are replaced.",
     description: "Plan-change confirm dialog body",
   },
+  "services.planPickerConfirmRunPrice": {
+    message:
+      "This instance type costs ${price} per minute of run time, billed per second while a run executes.",
+    description:
+      "Plan-change confirm for a cron job: the new instance type's run-time rate (w4/546)",
+  },
+  "services.createFieldPlanCronHint": {
+    message: "A cron job is billed per second while a run executes.",
+    description:
+      "Under the create form's instance types for a cron job, which are priced per minute of run time (w4/546)",
+  },
   "services.planPickerConfirmPrice": {
     message: "This instance type costs ${price}/month.",
     description:

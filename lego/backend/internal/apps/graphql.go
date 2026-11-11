@@ -667,6 +667,10 @@ var instanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"monthlyUsd": gqlutil.StrField(func(t InstanceType) any {
 			return t.MonthlyUSD
 		}),
+		// A cron job's price: per minute of run time (w4/546).
+		"usdPerMinute": gqlutil.StrField(func(t InstanceType) any {
+			return t.USDPerMinute
+		}),
 		// A paused tier (w2/m250) stays listed so a service already on it
 		// still renders, but the picker must not offer it.
 		"available":         gqlutil.ReqBoolField(func(t InstanceType) any { return t.Available }),

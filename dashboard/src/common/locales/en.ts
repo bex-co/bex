@@ -86,6 +86,16 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Generic Cancel button — dismisses a dialog or an inline form without saving.",
   },
+  "common.pricePerRunMinute": {
+    message: "${price}/min of run time",
+    description:
+      "A cron job's USD price per minute of run time, on a Change Instance Type card (w4/546): it is billed per second only while a run executes; price is an API-supplied decimal without the currency symbol",
+  },
+  "common.pricePerMinute": {
+    message: "${price}/min",
+    description:
+      "A cron job's USD price per minute of run time on a create-form plan card, short to fit beside the plan name; the form's hint says it is billed only while a run executes (w4/546). price is an API-supplied decimal without the currency symbol",
+  },
   "common.pricePerMonth": {
     message: "${price}/month",
     description:

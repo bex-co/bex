@@ -13,6 +13,12 @@ export interface InstanceTypeView {
   /** Always-on 730-hour estimate from bex-api's canonical price sheet. */
   monthlyUsd: string;
   /**
+   * The rate per minute of run time, a cron job's price: it is billed per
+   * second only while a run executes (w4/546). "" from an older bex-api.
+   * Optional here; the hook always sets it.
+   */
+  usdPerMinute?: string;
+  /**
    * False for a temporarily paused tier (w2/m250): still listed so a service
    * already on it renders, but never offered as a new selection — bex-api
    * refuses it with INSTANCE_TYPE_UNAVAILABLE.
@@ -54,6 +60,7 @@ export function useInstanceTypes(): UseInstanceTypesResult {
           cpu: t.cpu ?? "",
           memory: t.memory ?? "",
           monthlyUsd: t.monthlyUsd ?? "",
+          usdPerMinute: t.usdPerMinute ?? "",
           // An older bex-api without the field lists every tier as selectable.
           available: t.available ?? true,
           unavailableReason: t.unavailableReason ?? "",

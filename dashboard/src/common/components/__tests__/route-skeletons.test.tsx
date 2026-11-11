@@ -468,6 +468,24 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
   );
 });
 
+// w4/546: a cron job's plan cards sit under the run-time billing hint, so the
+// pending form draws it too and the cards don't shift when the form loads.
+it("previews a cron job's plan billing hint", async () => {
+  const { container } = renderServiceCreateSkeleton(
+    "/services/new?type=cron_job",
+  );
+  const picker = await waitFor(() => {
+    const region = container.querySelector(
+      '[data-skeleton-region="plan-picker"]',
+    );
+    expect(region).not.toBeNull();
+    return region as HTMLElement;
+  });
+  expect(picker).toHaveTextContent(
+    "A cron job is billed per second while a run executes.",
+  );
+});
+
 describe("service plan pending groups (w4/m196)", () => {
   // The card grid is each group's last child: a label always precedes it and
   // an SMTP note may (w8/m127).

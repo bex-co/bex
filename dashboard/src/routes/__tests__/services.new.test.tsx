@@ -1047,6 +1047,34 @@ describe("NewServicePage", () => {
       ).toHaveAttribute("aria-checked", "true");
     });
 
+    // w4/546: a cron job is billed per second only while a run executes, so
+    // its plan cards price a minute of run time; a web service keeps its
+    // monthly price.
+    it("prices a cron job's plans per minute of run time", async () => {
+      instanceTypesState.instanceTypes = [
+        FREE,
+        { ...STARTER, usdPerMinute: "0.00011" },
+      ];
+      renderPage("/?type=cron_job");
+      expect(await screen.findByText("$0.00011/min")).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "A cron job is billed per second while a run executes.",
+        ),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("$4.90/month")).not.toBeInTheDocument();
+    });
+
+    it("keeps a web service's monthly plan price", async () => {
+      instanceTypesState.instanceTypes = [
+        FREE,
+        { ...STARTER, usdPerMinute: "0.00011" },
+      ];
+      renderPage("/?type=web_service");
+      expect(await screen.findByText("$4.90/month")).toBeInTheDocument();
+      expect(screen.queryByText(/\/min/)).not.toBeInTheDocument();
+    });
+
     it("preselects the type from ?type= (Render /cron/new deep link)", async () => {
       renderPage("/?type=cron_job");
       await screen.findAllByRole("radiogroup");

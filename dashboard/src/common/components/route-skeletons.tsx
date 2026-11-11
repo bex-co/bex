@@ -1636,6 +1636,7 @@ export function InviteRouteSkeleton({
 }
 
 export function ServiceCreatePageSkeleton() {
+  const { t } = useTranslations();
   const { type } = useSearch({ from: "/services/new" });
   const serviceType = type ?? DEFAULT_SERVICE_TYPE;
   const staticSite = serviceType === "static_site";
@@ -1696,6 +1697,11 @@ export function ServiceCreatePageSkeleton() {
             {!staticSite ? (
               <Region name="plan-picker" className="space-y-2">
                 <Skeleton className="h-4 w-28" />
+                {cron ? (
+                  <p className="text-muted-foreground text-xs">
+                    {t("services.createFieldPlanCronHint")}
+                  </p>
+                ) : null}
                 <PlanTierSlots
                   count={servicePlanSlotCount(serviceType)}
                   lastWraps

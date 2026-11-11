@@ -1583,6 +1583,7 @@ export type InstanceType = {
   monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   unavailableReason: Scalars['String']['output'];
+  usdPerMinute: Maybe<Scalars['String']['output']>;
 };
 
 export type Job = {

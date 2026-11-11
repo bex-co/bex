@@ -16,6 +16,8 @@ export interface PlanCardTier {
   cpu: string;
   memory: string;
   monthlyUsd?: string;
+  /** The rate per minute of run time, shown when the grid prices run time. */
+  usdPerMinute?: string;
   /**
    * False for a temporarily paused tier (w2/m250): the card stays in place,
    * disabled, so the grid's geometry never changes; omitted means available.
@@ -32,6 +34,11 @@ export interface PlanCardGridProps {
   disabled?: boolean;
   /** The group's accessible name — the visible plan label it sits under. */
   ariaLabel: string;
+  /**
+   * Price each tier per minute rather than per month: a cron job is billed
+   * per second only while a run executes (w4/546). The caller says so.
+   */
+  runTimePricing?: boolean;
 }
 
 /**
@@ -48,6 +55,7 @@ export function PlanCardGrid({
   onChange,
   disabled = false,
   ariaLabel,
+  runTimePricing = false,
 }: PlanCardGridProps) {
   const { t } = useTranslations();
   const radio = useCardRadioGroup(
@@ -66,6 +74,13 @@ export function PlanCardGrid({
       {instanceTypes.map((it) => {
         const selected = it.id === value;
         const unavailable = it.available === false;
+        // The short per-minute form: the price shares the card's top row
+        // with the name, and the form's hint says it is run time (w4/546).
+        const price = runTimePricing
+          ? it.usdPerMinute &&
+            t("common.pricePerMinute", { price: it.usdPerMinute })
+          : it.monthlyUsd &&
+            t("common.pricePerMonth", { price: it.monthlyUsd });
         return (
           <button
             key={it.id}
@@ -94,9 +109,9 @@ export function PlanCardGrid({
                     <span className="sr-only">{it.unavailableReason}</span>
                   ) : null}
                 </div>
-              ) : it.monthlyUsd ? (
+              ) : price ? (
                 <div className="shrink-0 text-sm font-semibold tabular-nums">
-                  {t("common.pricePerMonth", { price: it.monthlyUsd })}
+                  {price}
                 </div>
               ) : null}
             </div>

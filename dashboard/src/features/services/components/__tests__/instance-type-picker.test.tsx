@@ -236,6 +236,30 @@ describe("InstanceTypePicker", () => {
     ).toBeInTheDocument();
   });
 
+  // w4/546: a cron job is billed per second only while a run executes, so
+  // its cards and the confirmation price run time, never the always-on month.
+  it("prices a cron job's instance types per minute of run time", async () => {
+    instanceTypesState.instanceTypes = [
+      { ...STANDARD, usdPerMinute: "0.0004" },
+      { ...PRO, usdPerMinute: "0.0014" },
+    ];
+    const user = userEvent.setup();
+    renderPicker("standard", "cron_job");
+
+    expect(
+      await screen.findByText("$0.0004/min of run time"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/\/month/)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("radio", { name: /Pro\b/ }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(
+        /costs \$0\.0014 per minute of run time, billed per second while a run executes\./,
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("renders no price when the catalog omits one (w4/400)", async () => {
     instanceTypesState.instanceTypes = [{ ...PRO, monthlyUsd: "" }];
     renderPicker("standard");

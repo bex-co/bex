@@ -588,14 +588,8 @@ func formatDecimal(v float64, sig, minDecimals int) string {
 func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 	switch kind {
 	case store.UsageKindInstanceSeconds:
-		switch resourceKind {
-		case store.ResourceKindService:
-			return s.compute[tier]
-		case store.ResourceKindPostgres:
-			return s.postgres[tier]
-		case store.ResourceKindKeyValue:
-			return s.keyvalue[tier]
-		}
+		rate, _ := s.instanceRate(tier, resourceKind)
+		return rate
 	case store.UsageKindEgressBytes:
 		return s.bandwidth
 	case store.UsageKindBuildSeconds:

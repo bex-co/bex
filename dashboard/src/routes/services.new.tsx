@@ -563,6 +563,11 @@ export function NewServicePage() {
                   {shape.showPlan ? (
                     <div className="space-y-2">
                       <Label>{t("services.createFieldPlan")}</Label>
+                      {shape.isCronType ? (
+                        <p className="text-muted-foreground text-xs">
+                          {t("services.createFieldPlanCronHint")}
+                        </p>
+                      ) : null}
                       {instanceTypes.length === 0 && !catalog.loading ? (
                         <PlanCatalogUnavailable
                           onRetry={() => void catalog.retry()}
@@ -579,6 +584,7 @@ export function NewServicePage() {
                           value={form.plan}
                           ariaLabel={t("services.createFieldPlan")}
                           onChange={(planOverride) => set({ planOverride })}
+                          runTimePricing={shape.isCronType}
                         />
                       )}
                     </div>

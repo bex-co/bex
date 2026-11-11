@@ -30,8 +30,33 @@ const MonthSeconds = 2_628_000
 // catalog instance tier. listed is false for an unknown tier or resource kind;
 // a cataloged free tier returns "0.00", true.
 func (s *Sheet) InstanceMonthlyUSD(tier, resourceKind string) (usd string, listed bool) {
-	if s == nil {
+	rate, listed := s.instanceRate(tier, resourceKind)
+	if !listed {
 		return "", false
+	}
+	return FormatUSD(rate * MonthSeconds), true
+}
+
+// InstanceUSDPerMinute returns one catalog instance tier's rate per minute of
+// run time, to two significant digits ("0.00011"): the price of a cron job,
+// which is billed per second only while a run executes (w4/546, VariableCron),
+// where the monthly estimate would be the cost of running all month. listed
+// is false for an unknown tier or resource kind; a free tier returns "0".
+func (s *Sheet) InstanceUSDPerMinute(tier, resourceKind string) (usd string, listed bool) {
+	rate, listed := s.instanceRate(tier, resourceKind)
+	if !listed {
+		return "", false
+	}
+	if rate <= 0 {
+		return "0", true
+	}
+	return formatDecimal(rate*60, 2, 2), true
+}
+
+// instanceRate is a catalog tier's per-second rate for resourceKind.
+func (s *Sheet) instanceRate(tier, resourceKind string) (float64, bool) {
+	if s == nil {
+		return 0, false
 	}
 	var catalog map[string]float64
 	switch resourceKind {
@@ -42,13 +67,10 @@ func (s *Sheet) InstanceMonthlyUSD(tier, resourceKind string) (usd string, liste
 	case store.ResourceKindKeyValue:
 		catalog = s.keyvalue
 	default:
-		return "", false
+		return 0, false
 	}
 	rate, ok := catalog[tier]
-	if !ok {
-		return "", false
-	}
-	return FormatUSD(rate * MonthSeconds), true
+	return rate, ok
 }
 
 // Variable-cost reasons: resources whose real cost depends on runtime behavior

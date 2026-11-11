@@ -43,6 +43,26 @@ func TestInstanceMonthlyUSD(t *testing.T) {
 	}
 }
 
+// A cron job's price is per minute of run time (w4/546): Starter's per-second
+// rate × 60, to two significant digits.
+func TestInstanceUSDPerMinute(t *testing.T) {
+	for _, tt := range []struct {
+		tier, want string
+		listed     bool
+	}{
+		{"starter", "0.00011", true},
+		{"standard", "0.0004", true},
+		{"pro-max", "0.0036", true},
+		{"free", "0", true},
+		{"gold", "", false},
+	} {
+		got, listed := Default.InstanceUSDPerMinute(tt.tier, store.ResourceKindService)
+		if got != tt.want || listed != tt.listed {
+			t.Errorf("InstanceUSDPerMinute(%q) = (%q, %v), want (%q, %v)", tt.tier, got, listed, tt.want, tt.listed)
+		}
+	}
+}
+
 func TestMonthlyEstimateTierFamilies(t *testing.T) {
 	got := Default.MonthlyEstimate([]MonthlyResource{
 		{Name: "web", ResourceKind: store.ResourceKindService, Tier: "standard"},

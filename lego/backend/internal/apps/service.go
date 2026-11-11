@@ -1517,6 +1517,9 @@ type InstanceType struct {
 	CPU        string
 	Memory     string
 	MonthlyUSD string
+	// USDPerMinute is the rate per minute of run time, a cron job's price:
+	// it is billed per second only while a run executes (w4/546).
+	USDPerMinute string
 	// Available is false for a paused tier (w2/m250): listed so a service
 	// already on it still renders, but refused as a new selection.
 	Available bool
@@ -1537,10 +1540,11 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]InstanceType, error) {
 	for i, id := range ids {
 		t, _ := tiers.Compute.ByID(id)
 		monthlyUSD, _ := pricing.Default.InstanceMonthlyUSD(id, store.ResourceKindService)
+		perMinute, _ := pricing.Default.InstanceUSDPerMinute(id, store.ResourceKindService)
 		reason := pausedTierMessage(id)
 		out[i] = InstanceType{
 			ID: t.RenderPlan, Name: tierDisplayName(id), CPU: t.CPU,
-			Memory: t.Memory, MonthlyUSD: monthlyUSD,
+			Memory: t.Memory, MonthlyUSD: monthlyUSD, USDPerMinute: perMinute,
 			Available: reason == "", UnavailableReason: reason,
 		}
 	}
