@@ -540,8 +540,14 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planDescription": {
     message:
-      "Change the instance type. Changing it restarts the store, which is unavailable for a minute or two. Data survives according to the persistence mode; a store with Persistence Off loses every key.",
+      "Move to a larger instance type; a Key Value instance can't move to a smaller one. Changing it restarts the store, which is unavailable for a minute or two. Data survives according to the persistence mode; a store with Persistence Off loses every key.",
     description: "Key Value detail plan-picker card description",
+  },
+  "keyvalue.planDowngradeUnavailable": {
+    message:
+      "A Key Value instance can't move to a smaller instance type. Create a new instance on this one and move your data to it.",
+    description:
+      "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
   "keyvalue.planPickerSave": {
     message: "Save",

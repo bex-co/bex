@@ -4237,6 +4237,9 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 			if err := keyvalue.RefuseBlueprintExternalAccessRestart(existing, next.Public); err != nil {
 				return StackKeyValueView{}, err
 			}
+			if err := keyvalue.ErrPlanDowngrade(next.Plan, existing.Spec.Plan); err != nil {
+				return StackKeyValueView{}, err
+			}
 			ApplyBlueprintKeyValueSpec(&existing.Spec, kv.spec, kv.fields)
 		}
 		if groupingChanged {

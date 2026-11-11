@@ -528,8 +528,14 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planDescription": {
     message:
-      "更改实例规格。更改会重启存储，期间约一到两分钟不可用。数据是否保留取决于持久化模式；持久化为“关闭”的存储会丢失所有键。",
+      "可升级到更大的实例规格；Key Value 实例无法降到更小的规格。更改会重启存储，期间约一到两分钟不可用。数据是否保留取决于持久化模式；持久化为“关闭”的存储会丢失所有键。",
     description: "Key Value detail plan-picker card description",
+  },
+  "keyvalue.planDowngradeUnavailable": {
+    message:
+      "Key Value 实例无法降到更小的实例规格。请用该规格新建一个实例，再把数据迁移过去。",
+    description:
+      "Tooltip on a disabled plan card smaller than the store's current plan: Render does not downgrade a Key Value instance (w8/249)",
   },
   "keyvalue.planPickerSave": {
     message: "保存",

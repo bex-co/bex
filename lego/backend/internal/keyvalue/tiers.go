@@ -25,6 +25,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // KeyValueInstanceType is the display-shaped projection of one lego/types/tiers
@@ -73,6 +74,43 @@ func ErrPausedPlan(plan, current string) error {
 		return core.NewBadRequestError(InstanceTypeUnavailableCode, msg, map[string]any{"plan": plan, "field": "plan"})
 	}
 	return nil
+}
+
+// PlanDowngradeUnsupportedCode is the stable code for a plan change to a
+// smaller Key Value plan.
+const PlanDowngradeUnsupportedCode = "KEY_VALUE_PLAN_DOWNGRADE_UNSUPPORTED"
+
+// ErrPlanDowngrade refuses a change from current to a plan with less memory on
+// every surface (API and Blueprint), as Render does: "It is not currently
+// possible to downgrade a Key Value instance" (render.com/docs/key-value §
+// Changing compute plans, read 2026-11-11; w8/249). The smaller plan restarts
+// the store into less memory than its data may need. An empty plan is the
+// default one, an unknown plan is left to the caller's own validation, and
+// re-sending the current plan is no change.
+func ErrPlanDowngrade(plan, current string) error {
+	to, from := valkeyTierOrDefault(plan), valkeyTierOrDefault(current)
+	if to.ID == "" || from.ID == "" || to.ID == from.ID {
+		return nil
+	}
+	// The catalog validated both quantities at load.
+	toMemory, fromMemory := resource.MustParse(to.Memory), resource.MustParse(from.Memory)
+	if toMemory.Cmp(fromMemory) >= 0 {
+		return nil
+	}
+	return core.NewBadRequestError(PlanDowngradeUnsupportedCode,
+		fmt.Sprintf("a Key Value instance cannot move to a smaller plan (%s to %s); create a new instance on the smaller plan and move the data to it",
+			kvTierDisplayName(from.ID), kvTierDisplayName(to.ID)),
+		map[string]any{"plan": to.ID, "currentPlan": from.ID, "field": "plan"})
+}
+
+// valkeyTierOrDefault is the tier a spec.plan spelling names: the default tier
+// for "", the zero tier for an id the catalog does not have.
+func valkeyTierOrDefault(plan string) tiers.ValkeyTier {
+	if plan == "" {
+		return tiers.Valkey.Default()
+	}
+	t, _ := tiers.Valkey.ByID(tiers.Valkey.CanonicalID(plan))
+	return t
 }
 
 // InstanceTypes lists every plan in the shared Valkey catalog, in ladder order —

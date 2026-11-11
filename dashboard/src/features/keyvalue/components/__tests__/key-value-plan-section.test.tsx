@@ -89,6 +89,38 @@ describe("KeyValuePlanSection", () => {
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 
+  // w8/249: Render does not downgrade a Key Value instance, and bex-api
+  // refuses it. A smaller plan's card stays in place, disabled, with the reason.
+  it("disables every plan smaller than the current one", async () => {
+    const user = userEvent.setup();
+    render(
+      <KeyValuePlanSection
+        keyValue={{ ...KEY_VALUE, plan: "starter" }}
+        onChanged={vi.fn()}
+      />,
+    );
+
+    const free = screen.getByRole("radio", { name: /Free/ });
+    expect(free).toBeDisabled();
+    expect(free).toHaveTextContent("Unavailable");
+    expect(free).toHaveAttribute(
+      "title",
+      expect.stringContaining("can't move to a smaller instance type"),
+    );
+    const starter = screen.getByRole("radio", { name: /Starter/ });
+    expect(starter).toBeEnabled();
+    expect(starter).toHaveAttribute("aria-checked", "true");
+    await user.click(free);
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(updatePlan).not.toHaveBeenCalled();
+  });
+
+  it("leaves every plan selectable on the smallest plan", () => {
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
+    expect(screen.getByRole("radio", { name: /Free/ })).toBeEnabled();
+    expect(screen.getByRole("radio", { name: /Starter/ })).toBeEnabled();
+  });
+
   it("lets a contributor change plan through can_operate", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "CONTRIBUTOR", canCreate: false }),

@@ -284,6 +284,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 			if err := keyvalue.RefuseBlueprintExternalAccessRestart(live, probe.Public); err != nil {
 				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: BlueprintResourceKeyValue, name: resource.Name, err: err}}
 			}
+			if err := keyvalue.ErrPlanDowngrade(probe.Plan, live.Spec.Plan); err != nil {
+				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: BlueprintResourceKeyValue, name: resource.Name, err: err}}
+			}
 			action.Operation = BlueprintPlanUpdate
 			liveSpec := live.Spec
 			action.ChangedFields = blueprintPlanFieldChanges(maps.Keys(resource.Fields), func(name string) (bool, error) {

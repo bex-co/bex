@@ -980,6 +980,10 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 	if _, ok := tiers.Valkey.ByID(plan); !ok {
 		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.SelectableIDs(), "|"))
 	}
+	// Before the paused-plan refusal, whose advice is to choose a smaller plan.
+	if err := ErrPlanDowngrade(plan, kv.Spec.Plan); err != nil {
+		return KeyValueView{}, err
+	}
 	if err := ErrPausedPlan(plan, kv.Spec.Plan); err != nil {
 		return KeyValueView{}, err
 	}
@@ -1189,6 +1193,9 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 		return KeyValueView{}, err
 	}
 	if patch.Plan != nil {
+		if err := ErrPlanDowngrade(*patch.Plan, kv.Spec.Plan); err != nil {
+			return KeyValueView{}, err
+		}
 		if err := ErrPausedPlan(tiers.Valkey.CanonicalID(*patch.Plan), kv.Spec.Plan); err != nil {
 			return KeyValueView{}, err
 		}

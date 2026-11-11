@@ -47,11 +47,29 @@ export function KeyValuePlanSection({
   const losesData =
     !keyValue.suspended &&
     !["journal-snapshot", "snapshot"].includes(persistenceMode);
-  const [selected, setSelected] = useState<string>(keyValue.plan ?? "free");
+  const currentPlan = keyValue.plan ?? "free";
+  const [selected, setSelected] = useState<string>(currentPlan);
   const [confirming, setConfirming] = useState(false);
 
-  const selectedType = instanceTypes.find((it) => it.id === selected);
-  const canSave = selected !== keyValue.plan;
+  // Render: "It is not currently possible to downgrade a Key Value instance"
+  // (w8/249), and bex-api refuses the change. The catalog lists plans from
+  // the smallest to the largest, so every plan before the current one is
+  // smaller. Each such card stays in place, disabled, like a paused plan's.
+  const currentIndex = instanceTypes.findIndex((it) => it.id === currentPlan);
+  const planCards = instanceTypes.map((it, index) =>
+    index < currentIndex
+      ? {
+          ...it,
+          available: false,
+          unavailableReason: t("keyvalue.planDowngradeUnavailable"),
+        }
+      : it,
+  );
+  const selectedType = planCards.find((it) => it.id === selected);
+  // The current plan can rise under an unsaved pick (another tab, a Blueprint
+  // sync), which leaves the pick on a card that is now disabled.
+  const canSave =
+    selected !== keyValue.plan && selectedType?.available !== false;
 
   async function handleConfirm() {
     if (operateDenied) return;
@@ -87,7 +105,7 @@ export function KeyValuePlanSection({
           />
         ) : (
           <PlanCardGrid
-            instanceTypes={instanceTypes}
+            instanceTypes={planCards}
             value={selected}
             disabled={operateDenied}
             ariaLabel={t("keyvalue.planTitle")}
@@ -98,7 +116,7 @@ export function KeyValuePlanSection({
         <div className="flex justify-end gap-2 border-t pt-4">
           <Button
             variant="outline"
-            onClick={() => setSelected(keyValue.plan ?? "free")}
+            onClick={() => setSelected(currentPlan)}
             disabled={!canSave || busy || operateDenied}
           >
             {t("keyvalue.planPickerCancel")}
