@@ -1,19 +1,19 @@
 # w8 · m152 — An allow-list sandbox reaches its allowed hosts by name
 
-**Worker:** worker8 **Goal:** in a sandbox created with `--allow-egress-https <domain>`, ordinary programs (`wget`, `apk`, `curl`, `pip`, anything that resolves through libc) reach the listed domain over HTTPS, as on Render; unlisted names stay unreachable. **Status:** in progress (t001 done; t002–t007 implemented, live verification pending)
+**Worker:** worker8 **Goal:** in a sandbox created with `--allow-egress-https <domain>`, ordinary programs (`wget`, `apk`, `curl`, `pip`, anything that resolves through libc) reach the listed domain over HTTPS, as on Render; unlisted names stay unreachable. **Status:** done (2026-11-11; all eight tasks done, Definition of done 1–6 verified on production)
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------- | --- | ---------- |
 | t001 | Reproduce on a cluster and choose the mechanism — **DONE**             | 40m | —          |
-| t002 | Make a listed name resolve through libc in an allow-list sandbox       | 45m | t001       |
-| t003 | Blast radius: agent-session and legacy-allowlist sandboxes, glibc image | 30m | t002       |
-| t004 | The isolation matrix probes the allow-list through the libc resolver   | 30m | t002       |
-| t005 | Render parity                                                          | 15m | t003, t004 |
-| t006 | Simplify                                                               | 15m | t005       |
-| t007 | Test coverage                                                          | 30m | t005       |
-| t008 | Closeout (live replay on production)                                   | 20m | t007       |
+| t002 | Make a listed name resolve through libc in an allow-list sandbox — **DONE** | 45m | t001       |
+| t003 | Blast radius: agent-session and legacy-allowlist sandboxes, glibc image — **DONE** | 30m | t002       |
+| t004 | The isolation matrix probes the allow-list through the libc resolver — **DONE** | 30m | t002       |
+| t005 | Render parity — **DONE**                                               | 15m | t003, t004 |
+| t006 | Simplify — **DONE**                                                    | 15m | t005       |
+| t007 | Test coverage — **DONE**                                               | 30m | t005       |
+| t008 | Closeout (live replay on production) — **DONE**                        | 20m | t007       |
 
 ## Definition of done
 
@@ -114,6 +114,34 @@ Reproduced on production with the released `bex v0.5.0` and the QA human login, 
 - **Rejected.** B (search-suffixed names in the DNS rule): three times the names, a looser `bex-api-sandbox-egress` grammar and a policy tied to the Pod's search list, for the same result. C (Cilium answers `NXDOMAIN`): a cluster-wide agent option set only by `app-cluster.yml`'s Helm install; it would change every FQDN policy's answer and needs a Cilium rollout on production. Neither is filed as a follow-up: A covers every resolver tested.
 - **Rollout.** Argo CD's `opensandbox-server` Application tracks `main` at `deploy/opensandbox`, so the template reaches production on push, not at the next image deploy. Sandboxes created before it keep `ndots:5` until they are recreated.
 - **Agent-template probe did not run.** A `template: agent` sandbox with an allow-list (`sbx-dbpvt12p92ls73cjis00`, then `sbx-dbpvtiip92ls73cjisag`) went `errored` within seconds without a session to drive it, so no exec was possible; both were terminated. The agent row above therefore comes from the agent image's base, not from a production agent Pod.
+
+## Closeout (t008, 2026-11-11 UTC): Definition of done on production
+
+Shipped `348bd77a5` at 05:46 UTC. Argo CD's `opensandbox-server` Application tracks `main`, and the lifecycle server restarted with the new template at about 05:53 UTC; a sandbox created at 05:52:45 still had `ndots:5`, one created at 06:02:01 had `options ndots:1`. Released `bex v0.5.0`, QA human device login, workspace `bex-canary`.
+
+1. **Passes.** `sbx-dbq09mak10fs73dvo9e0` (`--allow-egress-https example.com --allow-egress-https '*.iana.org'`):
+
+   ```text
+   getent hosts example.com                     → 2606:4700:10::ac42:93f3  example.com
+   wget -q -T 8 https://example.com             → LISTED-OK
+   wget -q -T 8 https://api.github.com          → wget: bad address 'api.github.com'   UNLISTED-DENIED
+   wget -q -T 8 http://example.com              → wget: download timed out             HTTP-DENIED
+   wget -q -T 8 https://www.iana.org/           → WILDCARD-SUBDOMAIN-OK
+   wget -q -T 8 https://iana.org/               → wget: bad address 'iana.org'          WILDCARD-APEX-DENIED
+   wget -q -T 8 https://1.1.1.1/                → wget: download timed out             (a literal IP stays denied)
+   ```
+
+   `bex sandboxes list` reads the rules back as sent: `*.iana.org` and `example.com`, `https`.
+
+2. **Passes.** `sbx-dbq0a6ak10fs73dvoa5g` (`--allow-egress-https dl-cdn.alpinelinux.org`): `apk add --no-cache curl` → `OK: 13.1 MiB in 25 packages`, rc 0; the installed `curl https://example.com` → `Could not resolve host: example.com (DNS server refused query)`.
+3. **Passes.** Sandbox A (`--idle-timeout 300`) read `suspended` at 06:08:46; an exec resumed it: `options ndots:1`, `getent hosts example.com` resolves, `LISTED-OK-AFTER-RESUME`, `UNLISTED-DENIED-AFTER-RESUME`.
+4. **Passes.** `isolation-matrix.yml` run `42971611034` on `f72f8b4b7` is green: `PASS: approved FQDN through the libc resolver allowed`, `PASS: approved FQDN fetched by name over HTTPS allowed`, and every denial it already asserted (unapproved name, DNS-exfiltration query, wrong SNI, non-HTTPS port, private target, metadata). The first run after the fix, `42969818556`, had the same passes and then failed on an unrelated check that w22/m311 had added the day before and that had never run in CI: it listed the default sandbox group with a developer's token and required another member's sandbox in the answer. `f72f8b4b7` (`fix(ci)`) reads that list as the workspace admin; the run opened issue #137 and the green run closed it.
+5. **Passes, from a production session I did not start.** `bex-canary` has no model key, so I could not run a session there. Agent session `ags-dbq08e2p92ls73cjitp0` in workspace `bex` was started by an automation at 05:59:20 UTC, after the rollout. Its transcript (first 200 parts, read with the QA user's membership) shows the repository cloned through the gateway, model turns through the gateway's model proxy (model cost recorded), and 50 `go: downloading …` lines from the Go module registry; it contains no name-resolution error of any kind. The session ended `failed` with `ACP turn exceeded 1800000ms`, the 30-minute turn limit of a long routine, not a network fault. The matrix's own agent-phase probes (`setup-phase package registry`, `agent-phase package registry`, `agent-phase GitHub baseline`) pass on Pods from the new template.
+6. **Done.** Every sandbox this milestone created is terminated and `bex sandboxes list` in `bex-canary` is empty: `sbx-dbpvrnqk10fs73dvo62g`, `sbx-dbpvrp2k10fs73dvo63g`, `sbx-dbpvt12p92ls73cjis00`, `sbx-dbpvtiip92ls73cjisag`, `sbx-dbq02map92ls73cjit40`, `sbx-dbq03b2k10fs73dvo7l0`, `sbx-dbq041qp92ls73cjit8g`, `sbx-dbq04pip92ls73cjitb0`, `sbx-dbq05bik10fs73dvo7s0`, `sbx-dbq09mak10fs73dvo9e0`, `sbx-dbq0a6ak10fs73dvoa5g`.
+
+**Also confirmed:** two sandboxes created before the rollout kept `ndots:5` and still failed the lookup after a suspend and resume, as ADR042 says: a BatchSandbox keeps the template it was created from.
+
+**Seen on the way, filed by a teammate as w8/248:** while the lifecycle server restarted for this rollout (about 05:53 UTC), `bex sandboxes stop` and `GET /v1/sandboxes` answered `500 internal error`.
 
 ## Source + Goal linkage
 
