@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/cli/internal/bridge"
+	"github.com/bex-co/bex/lego/cli/internal/code"
 )
 
 var bexBinary string
@@ -996,6 +997,10 @@ func TestBexNestedHelp(t *testing.T) {
 		{"ea blueprints approve", []string{"~/.bex/state/manual-env-vars/", "BEX_CLI_CONFIG_DIR", "\"bex ea blueprints plan\""}, []string{"~/.render", "RENDER_CLI_CONFIG_DIR", "Render ", "render "}},
 		{"ea blueprints update", []string{"~/.bex/state/manual-env-vars/", "\"bex ea blueprints approve\""}, []string{"~/.render", "Render ", "render "}},
 		{"jobs create", []string{"bex jobs create srv-abc123", "--plan-id plan-srv-006"}, []string{"render.com/docs", "render jobs create", "services get"}},
+		// w32/008: the v2.35.0 help pages that linked render.com/docs name the
+		// Bex page on the same topic.
+		{"ssh", []string{"your Bex account", "https://bex.co/docs/platform/ssh#register-a-public-key"}, []string{"render.com/docs"}},
+		{"ea blueprints", []string{"https://bex.co/docs/platform/blueprints"}, []string{"render.com/docs"}},
 	}
 	for _, resource := range []string{"postgres", "pg", "keyvalues", "kv"} {
 		for _, action := range []string{"create", "get", "update", "delete", "suspend", "resume"} {
@@ -1026,6 +1031,54 @@ func TestBexNestedHelp(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+// helpSubcommand matches one row of a help page's command list.
+var helpSubcommand = regexp.MustCompile(`(?m)^  ([a-z][a-z0-9-]*) `)
+
+// helpTree returns every command path the built launcher lists in its help,
+// below the root, with each page's text. It reads the pages the way a user
+// does, so commands upstream registers during Execute are included. The
+// provider launchers are left out: they hand --help to Claude Code.
+func helpTree(t *testing.T) map[string]string {
+	t.Helper()
+	passThrough := map[string]bool{}
+	for _, p := range code.Catalog() {
+		passThrough[p.Name] = true
+	}
+	pages := map[string]string{}
+	var walk func(path string)
+	walk = func(path string) {
+		if passThrough[path] {
+			return
+		}
+		stdout, _ := runBex(t, append(strings.Fields(path), "--help")...)
+		pages[path] = stdout
+		_, list, _ := strings.Cut(stdout, "\nSUBCOMMANDS\n")
+		list, _, _ = strings.Cut(list, "\nFLAGS\n")
+		for _, m := range helpSubcommand.FindAllStringSubmatch(list, -1) {
+			walk(strings.TrimSpace(path + " " + m[1]))
+		}
+	}
+	walk("")
+	return pages
+}
+
+// A pin bump can bring a render.com/docs link into a command's help; v2.35.0
+// brought two and no test noticed (w32/008). A served command's link needs its
+// Bex page in branding.helpDocsLinks.
+func TestNoHelpLinksRenderDocs(t *testing.T) {
+	pages := helpTree(t)
+	for _, known := range []string{"ssh", "ea blueprints", "jobs create", "sandbox-groups images import"} {
+		if _, ok := pages[known]; !ok {
+			t.Fatalf("the help walk did not reach %q (%d pages): the help layout changed", known, len(pages))
+		}
+	}
+	for path, text := range pages {
+		if strings.Contains(text, "render.com/docs") {
+			t.Errorf("`bex %s --help` links render.com/docs:\n%s", path, text)
+		}
 	}
 }
 

@@ -42,6 +42,16 @@ const (
 	bexYAMLAlias    = "\x00BEX_YAML\x00"
 )
 
+// helpDocsLinks are the render.com/docs links in the help of commands bex
+// serves, each with the Bex page on the same topic, keyed by the command's
+// path below the root. Hostnames are never rewritten globally (a render.com
+// URL in data must survive), so a link changes for its own command only
+// (w32/008). TestNoHelpLinksRenderDocs fails when a pin bump adds one.
+var helpDocsLinks = map[string]struct{ render, bex string }{
+	"ssh":           {"https://render.com/docs/ssh#ssh-setup", DocsURL + "/platform/ssh#register-a-public-key"},
+	"ea blueprints": {"https://render.com/docs/infrastructure-as-code", DocsURL + "/platform/blueprints"},
+}
+
 // Apply mutates root in place: Use/examples/Short/Long read as Bex, help
 // chrome uses bexVersion, and `docs` opens DocsURL. Upstream setupCommands
 // adds more children during Execute (after this returns), so HelpFunc and
@@ -153,6 +163,9 @@ treated as unset.`
 		if c.Name() == "create" && c.Parent() != nil && c.Parent().Name() == "jobs" && c.Parent().Parent() == root {
 			c.Example = strings.ReplaceAll(c.Example,
 				"  # See https://render.com/docs/one-off-jobs for available job plans\n", "")
+		}
+		if link, ok := helpDocsLinks[strings.TrimPrefix(c.CommandPath(), root.CommandPath()+" ")]; ok {
+			c.Long = strings.ReplaceAll(c.Long, link.render, link.bex)
 		}
 		c.Flags().VisitAll(rewriteFlag)
 		c.PersistentFlags().VisitAll(rewriteFlag)
