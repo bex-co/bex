@@ -114,3 +114,20 @@ Live on production after the release pins this build, on an owned Free Key Value
 - **Expected outcome:** no Persistence Off Key Value loses its keys from a settings change it wasn't warned about. The Instance type, Maxmemory and Persistence cards finally warn in the same way, as m263 intended.
 - **Why now:** it deletes customer data silently, on the setting a user tunes when a cache starts evicting. That is exactly when the store holds data they care about.
 - **Render parity included:** the dashboard, the GraphQL and MCP descriptions, and the Blueprint path all change (t005).
+
+## Post-release probe (QA loop rounds 113 and 125, 2026-11-11)
+
+The release gate cleared at `6ee0197c7` (14:43 UTC): production is pinned to `f609163ada8e`, which contains `d69b838ac`. Two `/qa-find-bugs w4` rounds replayed the DoD on owned Free Key Value stores. This is a record for the live-replay task, not a replacement for it, and that task stays todo.
+
+- **Round 113** (`qa-20261111-r113-kv`, `red-dbq82p03u30c73cf8et0`): after Persistence → Off (phrase `sudo clear key value <name>`), Maxmemory Policy → noeviction → Save opened "Change the maxmemory policy to noeviction?", which reads "…Persistence is Off, so the restart deletes every key in qa-20261111-r113-kv. This cannot be undone." "Delete data and change policy" stays disabled until the phrase is typed. The zh dialog matches ("…重启会删除 qa-20261111-r113-kv 中的所有键，且无法撤销。"). Deleted afterwards.
+- **Round 125** (`qa-20261111-r125-kv`, `red-dbqan1npvbns739s7jbg`, created with this machine's IP allowlisted; deleted afterwards, DELETE 204 then GET 404). Commands used the External URL copied from the dashboard's Copy button. **Every probe passed:**
+  - **Persisted store gets the restart warning only.**
+    - With Journal + Snapshot, `SET qa:marker persisted-1`, then Maxmemory Policy → volatile-lru.
+    - The dialog reads "The store restarts to apply the new policy and is unavailable for up to a minute. Connections drop." It has no phrase field.
+    - "Restart and change policy" took the store `config_restart` (17:54:24) → `available` (17:54:44). `GET qa:marker` → `persisted-1`, and `CONFIG GET maxmemory-policy` → `volatile-lru`.
+  - **The Off store asks for the phrase.**
+    - After Persistence → Off (phrase; `DBSIZE` 0), `SET qa:marker off-1`, then Maxmemory Policy → allkeys-lfu.
+    - The phrase dialog opened as in round 113. Cancel sent no GraphQL mutation (request listener: none). `GET qa:marker` still returned `off-1`, and the policy stayed `volatile-lru`.
+  - **Confirming does what the dialog said.** Typing the phrase and pressing "Delete data and change policy" took the store `config_restart` (17:56:35) → `available` (17:56:58). REST reads `maxmemoryPolicy: allkeys_lfu`, `DBSIZE` → 0, `GET qa:marker` → empty, and `CONFIG GET maxmemory-policy` → `allkeys-lfu`.
+  - **REST still answers 200, as on Render.** `PATCH /v1/key-value/<id> {"maxmemoryPolicy":"noeviction"}` on the Off store → 200, `options.maxmemoryPolicy: noeviction`.
+- **Not run:** the MCP and GraphQL descriptions, the Blueprint path, and the CI checks.
