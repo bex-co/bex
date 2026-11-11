@@ -1019,6 +1019,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	deploysSvc := &deploys.Service{
 		Base:              base,
 		Store:             d.DeployStore,
+		Kick:              d.WorkspaceKick,
 		Commits:           gh.DeployCommitSource(),
 		BuildNamespace:    d.DeployBuildNamespace,
 		DeployHookBaseURL: d.DeployHookBaseURL,

@@ -3386,8 +3386,29 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 	return ctrl.Result{}, false, nil
 }
 
+// pendingReleaseRequeue is how soon the pass that settles a release comes back
+// when a newer one is waiting in the pending slot.
+const pendingReleaseRequeue = time.Second
+
+// owedReleaseRequeue brings the reconcile straight back when a deploy that
+// arrived while the current release was in flight is waiting in the pending
+// slot (ADR060 §D1a). The pass that settles a release writes status only,
+// which the App watch ignores, so nothing else schedules the adoption: the
+// waiting deploy started up to a minute later, at the next unrelated event
+// (w8/270; a static site already requeues, w4/m163). ok is false when nothing
+// is owed and the caller's own requeue stands.
+func owedReleaseRequeue(app *appv1alpha1.App) (res ctrl.Result, ok bool) {
+	if !pendingReleaseOwed(app) {
+		return ctrl.Result{}, false
+	}
+	return ctrl.Result{RequeueAfter: pendingReleaseRequeue}, true
+}
+
 // runningRequeue picks the steady-state requeue for a Running app.
 func (r *AppReconciler) runningRequeue(ctx context.Context, app *appv1alpha1.App, autoscaleRequeue bool) (ctrl.Result, error) {
+	if res, owed := owedReleaseRequeue(app); owed {
+		return res, nil
+	}
 	// Eligible free web services: stamp last-active on first Running reconcile and
 	// schedule a re-check after the TTL so the operator can auto-hibernate.
 	if r.ActivatorService != "" && autoSleepEligible(app) {
@@ -3683,6 +3704,9 @@ func (r *AppReconciler) reconcileWorkerStatus(ctx context.Context, app *appv1alp
 		"name", app.Name, "image", image, "replicas", replicas); err != nil {
 		return ctrl.Result{}, err
 	}
+	if res, owed := owedReleaseRequeue(app); owed {
+		return res, nil
+	}
 	return ctrl.Result{RequeueAfter: childHealthRequeue}, nil
 }
 
@@ -3933,7 +3957,8 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 		})
 		if !failedRolloutOverServed(app) {
 			r.settleFailureOverPriorRelease(ctx, app, failedRolloutSummary(msg))
-			return ctrl.Result{}, nil
+			res, _ := owedReleaseRequeue(app)
+			return res, nil
 		}
 		restored, err := r.restoreServedTemplate(ctx, app, dep)
 		if err != nil {
@@ -3958,7 +3983,9 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 	if err := updateStatusIfChanged(ctx, r.Client, app); err != nil {
 		return ctrl.Result{}, err
 	}
-	return ctrl.Result{}, nil
+	// A release that failed frees the slot as one that serves does.
+	res, _ := owedReleaseRequeue(app)
+	return res, nil
 }
 
 // recordRolloutExit records how the app container last ended in a pod of the
@@ -4730,10 +4757,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// A deploy that arrived while this release built sits in the pending slot.
 	// A published site has no pods whose events would bring the reconcile back,
 	// so requeue to start it (w4/m163).
-	var next ctrl.Result
-	if pendingReleaseOwed(app) {
-		next.RequeueAfter = time.Second
-	}
+	next, _ := owedReleaseRequeue(app)
 	// Skip the write when nothing changed, the same guard markRunning and
 	// hibernated already use — a re-published static site otherwise re-stamps a
 	// byte-identical status (and logs) on every event.

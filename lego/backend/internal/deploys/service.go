@@ -203,6 +203,11 @@ func imageSHA(d store.Deploy) string {
 type Service struct {
 	*core.Base
 	Store DeployStore
+	// Kick asks the store reconciler for an early pass (store.Reconciler.Kick).
+	// A deploy verb calls it after it opens or cancels a release, so the row's
+	// started time and status follow within a second instead of at the next
+	// 30-second resync (w8/270). nil leaves the rows to the resync.
+	Kick func()
 	// StartedNotifier is invoked asynchronously after a trigger opens its deploy
 	// row. nil keeps notifications disabled without changing trigger behavior.
 	StartedNotifier DeployStartedNotifier
@@ -307,7 +312,17 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 		d, err = open(patchedGeneration(previous, a.Generation))
 		return err
 	})
+	if err == nil {
+		s.kickReconciler()
+	}
 	return d, err
+}
+
+// kickReconciler is Service.Kick when one is wired.
+func (s *Service) kickReconciler() {
+	if s.Kick != nil {
+		s.Kick()
+	}
 }
 
 var _ AppLocker = (*store.PGStore)(nil)
@@ -1006,6 +1021,8 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if err != nil {
 		return DeployView{}, err
 	}
+	// Whatever the cancel ended, the row behind it is the next to move.
+	defer s.kickReconciler()
 	if err := core.NotFoundIfDeleting(a); err != nil {
 		return DeployView{}, err
 	}
