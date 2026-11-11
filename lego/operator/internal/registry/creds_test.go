@@ -499,7 +499,7 @@ func TestBaseZotConfigBuilderAdminPolicy(t *testing.T) {
 // config, so this is the one place a field rename or an omitempty change would
 // otherwise slip through to a running registry unnoticed.
 func TestBaseZotConfigIsByteStable(t *testing.T) {
-	const want = `{"distSpecVersion":"1.1.0","storage":{"rootDirectory":"/var/lib/registry","dedupe":true,"gc":true,"gcDelay":"3h","gcInterval":"3h","retention":{"dryRun":false,"policies":[{"repositories":["**"],"deleteUntagged":true,"keepTags":[{"patterns":[".*"],"mostRecentlyPushedCount":5},{"patterns":["^live-.*"],"mostRecentlyPushedCount":10}]}]}},"http":{"address":"0.0.0.0","port":"5000","compat":["docker2s2"],"readTimeout":"60s","writeTimeout":"60s","auth":{"htpasswd":{"path":"/secret/htpasswd"}},"accessControl":{"repositories":{"**":{"policies":[{"users":["bex-builder"],"actions":["read","create","update","delete"]}]},"bex-cnb-builder":{"policies":null,"defaultPolicy":["read"]}},"adminPolicy":{"users":["bex-builder"],"actions":["read","create","update","delete"]}}},"log":{"level":"info"},"extensions":{"scrub":{"enable":true,"interval":"24h"}}}`
+	const want = `{"distSpecVersion":"1.1.0","storage":{"rootDirectory":"/var/lib/registry","dedupe":true,"gc":true,"gcDelay":"3h","gcInterval":"3h","retention":{"dryRun":false,"policies":[{"repositories":["**"],"deleteUntagged":true,"keepTags":[{"patterns":["^live-.*"],"mostRecentlyPushedCount":10},{"patterns":[".*"],"mostRecentlyPushedCount":5}]}]}},"http":{"address":"0.0.0.0","port":"5000","compat":["docker2s2"],"readTimeout":"60s","writeTimeout":"60s","auth":{"htpasswd":{"path":"/secret/htpasswd"}},"accessControl":{"repositories":{"**":{"policies":[{"users":["bex-builder"],"actions":["read","create","update","delete"]}]},"bex-cnb-builder":{"policies":null,"defaultPolicy":["read"]}},"adminPolicy":{"users":["bex-builder"],"actions":["read","create","update","delete"]}}},"log":{"level":"info"},"extensions":{"scrub":{"enable":true,"interval":"24h"}}}`
 	if got := string((&Creds{}).baseZotConfig()); got != want {
 		t.Errorf("canonical zot config drifted.\n got: %s\nwant: %s", got, want)
 	}
@@ -589,9 +589,64 @@ func retentionCount(t *testing.T, data map[string]any) int {
 	if len(keepTags) == 0 {
 		t.Fatal("keepTags is empty")
 	}
-	kt, _ := keepTags[0].(map[string]any)
-	count, _ := kt["mostRecentlyPushedCount"].(float64)
-	return int(count)
+	// The catch-all rule: the live- rule precedes it and has its own count.
+	for _, entry := range keepTags {
+		kt, _ := entry.(map[string]any)
+		if patterns, _ := kt["patterns"].([]any); len(patterns) == 1 && patterns[0] == ".*" {
+			count, _ := kt["mostRecentlyPushedCount"].(float64)
+			return int(count)
+		}
+	}
+	t.Fatalf("keepTags has no catch-all rule: %v", keepTags)
+	return 0
+}
+
+// Zot gives a tag to the FIRST keepTags entry whose pattern matches, so the
+// live- rule only applies when it precedes the catch-all (w8/m156). Behind it,
+// a repository kept five tags of any kind and failed builds removed the image
+// a running service needed. A config rendered in the old order converges.
+func TestZotLiveTagRuleComesBeforeTheCatchAll(t *testing.T) {
+	c := &Creds{}
+	keepTags := func(data map[string]any) []any {
+		t.Helper()
+		policies, _ := data["storage"].(map[string]any)["retention"].(map[string]any)["policies"].([]any)
+		if len(policies) != 1 {
+			t.Fatalf("retention policies = %v, want one", policies)
+		}
+		tags, _ := policies[0].(map[string]any)["keepTags"].([]any)
+		return tags
+	}
+	pattern := func(entry any) string {
+		patterns, _ := entry.(map[string]any)["patterns"].([]any)
+		if len(patterns) != 1 {
+			return ""
+		}
+		s, _ := patterns[0].(string)
+		return s
+	}
+	data := mustDecode(t, c.baseZotConfig())
+	tags := keepTags(data)
+	if len(tags) != 2 || pattern(tags[0]) != "^"+LiveTagPrefix+".*" || pattern(tags[1]) != ".*" {
+		t.Fatalf("keepTags = %v, want the ^%s.* rule first and the catch-all second", tags, LiveTagPrefix)
+	}
+
+	// What production carried until this fix: both rules, catch-all first.
+	tags[0], tags[1] = tags[1], tags[0]
+	if !setZotStorage(data, c.canonicalStorage()) {
+		t.Fatal("a config with the catch-all rule first was left as it was")
+	}
+	if tags = keepTags(data); pattern(tags[0]) != "^"+LiveTagPrefix+".*" {
+		t.Fatalf("migrated keepTags = %v, want the live rule first", tags)
+	}
+	// As the next reconcile reads it back from the Secret: a decoded copy, not
+	// the canonical map the migration stored.
+	raw, err := json.Marshal(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if setZotStorage(mustDecode(t, raw), c.canonicalStorage()) {
+		t.Fatal("a converged config was rewritten")
+	}
 }
 
 // -- EnsureCreds / RevokeCreds against a cluster ------------------------------

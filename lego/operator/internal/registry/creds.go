@@ -98,6 +98,9 @@ type Creds struct {
 	mu         sync.Mutex
 	apps       map[string]activation
 	lastBounce time.Time
+	// storageActive is set once this process has seen that a zot restart
+	// loaded the canonical storage block (ensureStorageActive).
+	storageActive bool
 	// verified memoizes bcrypt comparisons by zot username (see hashVerified).
 	verified map[string][sha256.Size]byte
 }
@@ -174,6 +177,9 @@ func (c *Creds) EnsureCredsFor(ctx context.Context, id identity.Identity, appNS 
 	if err != nil {
 		return fmt.Errorf("zot config: %w", err)
 	}
+	// The config now carries the canonical storage block; make sure a zot
+	// restart has loaded it.
+	c.ensureStorageActive(ctx)
 	wroteDual := false
 	if c.DualReadEnabled && id.DualRead() {
 		// Only issued inside a supervised migration window (DualReadEnabled).

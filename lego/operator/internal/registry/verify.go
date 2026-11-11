@@ -230,23 +230,28 @@ func (c *Creds) probeFor(ctx context.Context, id identity.Identity, password str
 // log-only: the removed entry then stays live until the next bounce or zot
 // restart.
 func (c *Creds) tryBounce(ctx context.Context) {
-	cooldown := c.BounceCooldown
-	if cooldown == 0 {
-		cooldown = defaultBounceCooldown
-	}
-	now := time.Now()
-	c.mu.Lock()
-	allowed := now.Sub(c.lastBounce) >= cooldown
-	if allowed {
-		c.lastBounce = now
-	}
-	c.mu.Unlock()
-	if !allowed {
+	if !c.claimBounce(time.Now()) {
 		return
 	}
 	if err := c.bounceZot(ctx); err != nil {
 		logf.FromContext(ctx).Error(err, "best-effort zot bounce after credential revocation")
 	}
+}
+
+// claimBounce takes the one bounce the cooldown allows at now, reporting
+// whether the caller may restart zot.
+func (c *Creds) claimBounce(now time.Time) bool {
+	cooldown := c.BounceCooldown
+	if cooldown == 0 {
+		cooldown = defaultBounceCooldown
+	}
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if now.Sub(c.lastBounce) < cooldown {
+		return false
+	}
+	c.lastBounce = now
+	return true
 }
 
 // bounceZot deletes the registry pods (StatefulSet-managed, so they restart

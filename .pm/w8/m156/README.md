@@ -1,6 +1,43 @@
-# The registry keeps only a service's five newest image tags: five failed deploys take a healthy service down at its next start, and a rollback past the two previous builds fails on image pull
+# w8 · m156 — A running service's build stays in the registry, and a rollback is offered only where its build is stored
 
-Why: w1/m183 added a registry rule to keep the ten most recent images a service has run on, after a run of builds that never went live deleted the image beancount.io was running (2026-10-24). That rule never takes effect. The registry sorts every tag into the first rule that matches it, the catch-all rule comes first, and so `live-` tags compete with build tags for five slots. Each deploy pushes two tags. Two results follow. Only the two builds before the live one can be restored: a rollback to anything older answers 201, shows "in progress" for two minutes, and then fails with a containerd error naming an internal registry host. And the 2026-10-24 outage still happens. On 2026-11-11 five deploys that crashed at startup, each correctly kept off production, removed a healthy service's own image. At its next start the service went down, every rollback target was gone too, and it stayed down until a new build was deployed.
+**Worker:** worker8 **Goal:** the image a service is running, and the ten most recent builds it has run on, stay in the cluster registry whatever else is pushed, so failed deploys never cost a service its ability to start; a deploy whose build is gone is not offered as a rollback target and is refused at once with a sentence that says so. **Status:** in progress (t001 and t002 done and shipped: the retention fix; t003–t009 open)
+
+## Tasks (in order)
+
+| id   | title                                                                         | est | depends_on |
+| ---- | ----------------------------------------------------------------------------- | --- | ---------- |
+| t001 | The registry's `live-` retention rule comes before the catch-all — **DONE**   | 30m | —          |
+| t002 | Prove the retention rules on a real Zot — **DONE**                            | 30m | t001       |
+| t003 | Rollback refuses a target whose build is no longer stored                     | 60m | t001       |
+| t004 | A missing build is reported in product terms, without the registry's host     | 30m | t003       |
+| t005 | A pull failure on the live release is reported when no deploy is open         | 45m | t004       |
+| t006 | Render parity                                                                 | 20m | t003, t005 |
+| t007 | Simplify                                                                      | 15m | t006       |
+| t008 | Test coverage                                                                 | 30m | t006       |
+| t009 | Closeout (live replay on production)                                          | 30m | t008       |
+
+## Definition of done
+
+1. A real Zot with the rendered config keeps the ten newest `live-` manifests after more than ten promotions and six later pushes (`scripts/verify-zot-retention.py`).
+2. On production, a service with 14 live-in-turn builds, after a cleanup pass: a rollback to the ninth previous build goes live; a rollback to the eleventh answers 409 naming the missing build and adds no deploy row.
+3. A Free service with one live build and six later builds that failed at startup, left idle past a cleanup pass: the next request wakes it and it answers from the live build. `bex restart <srv>` on the same service brings up a new instance.
+4. The dashboard shows Rollback only on rows whose build is stored.
+5. No `failureReason` contains `zot.bex-registry.svc`.
+6. A pull failure on a live release with no deploy open writes `image_pull_failed`, and the service is not shown as `Running`.
+7. Fixtures deleted afterwards.
+
+## Running services (read before closing)
+
+The rule protects images once the registry runs it: the operator rewrites the config at its first reconcile after the deploy and restarts Zot once to load it (Zot reads its config only at start). An image the old rule already removed is not brought back. A service that is running such a build keeps running, but cannot start a new instance until it is deployed again. Finding those services needs a read of the cluster (each App's live image against the registry), which this worker does not have. It is reported to the user with this milestone.
+
+## Source + Goal linkage
+
+- **Source:** inbox note `w8/266` (promoted 2026-11-11), `/qa-find-bugs-cli` w8 loop sweeps `65de`, `428a` and `d230`. Its finding follows.
+- **Goal linkage:** Render parity ("Your service continues running its most recent successful deploy (if any), with zero downtime"; "You can only roll back to a particular deploy if its build artifact is still available") and platform reliability: a healthy service must not go down because other builds were pushed.
+- **Expected outcome:** failed deploys cannot evict the live image; rollback offers only targets that can work.
+- **Why now:** blocker. Any service with five builds pushed after its live one is one restart, reschedule or wake away from an outage that no rollback can end. Render parity is included: the rollback refusal reaches REST, GraphQL, MCP and the dashboard.
+
+## Finding (2026-11-11 UTC, `/qa-find-bugs-cli` w8 loop sweeps `65de`, `428a`, `d230`)
 
 **Severity:** blocker (a healthy service goes down at its next start and no rollback can restore it; rollback offers targets that cannot work). **Attribution:** infrastructure/runtime (registry retention config) and server (rollback guard). **Estimate:** milestone-sized, ~3h. **Source:** `/qa-find-bugs-cli` w8 loop sweeps `65de`, `428a` and `d230`, 2026-11-11 UTC, released `bex v0.5.0` (Render CLI v2.35.0), `https://api.bex.co/v1/`, production pin `f609163ada8e` at the rollbacks and the outage (`7ca0227aa477` when the first 14 builds were made), workspace `bex-canary`, QA human device login. The pinned CLI has no rollback command; the rollbacks are REST with the CLI's token.
 

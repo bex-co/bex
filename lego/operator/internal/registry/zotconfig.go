@@ -53,6 +53,15 @@ const (
 	// so a run of builds that never go live cannot evict the image a running
 	// service needs to reschedule (2026-10-24 beancount.io outage), and recent
 	// rollback targets survive with it.
+	//
+	// Its keepTags entry must come BEFORE the catch-all (zotKeepTags). Zot
+	// gives a tag to the first entry whose pattern matches and counts inside
+	// that entry's own group, so behind `.*` the live rule never saw a tag:
+	// a repository kept its five newest tags of any kind, and five builds
+	// that failed at startup removed the image the live release ran on
+	// (w8/m156, 2026-11-11: a Free service was down for 12 minutes at its
+	// next wake). scripts/verify-zot-retention.py runs both orders on a real
+	// Zot.
 	LiveTagPrefix      = "live-"
 	liveRetentionCount = 10
 
@@ -318,6 +327,19 @@ func setZotPlatformBuilderPolicy(data map[string]any) {
 	}
 }
 
+// zotKeepTags is a repository's retention: the newest liveRetentionCount
+// live- tags, then the newest retentionCount of every other tag. The order is
+// the rule (see LiveTagPrefix).
+func zotKeepTags(retentionCount int) []zotKeepTag {
+	return []zotKeepTag{{
+		Patterns:                []string{"^" + LiveTagPrefix + ".*"},
+		MostRecentlyPushedCount: liveRetentionCount,
+	}, {
+		Patterns:                []string{".*"},
+		MostRecentlyPushedCount: retentionCount,
+	}}
+}
+
 // setZotStorage replaces the operator-owned storage block, reporting whether
 // anything moved. Returning false keeps the caller from rewriting a converged
 // Secret, which Go's randomized map ordering would otherwise do on every pass.
@@ -439,13 +461,7 @@ func (c *Creds) buildBaseZotConfig() {
 				Policies: []zotRetentionPolicy{{
 					Repositories:   []string{"**"},
 					DeleteUntagged: true,
-					KeepTags: []zotKeepTag{{
-						Patterns:                []string{".*"},
-						MostRecentlyPushedCount: retentionCount,
-					}, {
-						Patterns:                []string{"^" + LiveTagPrefix + ".*"},
-						MostRecentlyPushedCount: liveRetentionCount,
-					}},
+					KeepTags:       zotKeepTags(retentionCount),
 				}},
 			},
 		},

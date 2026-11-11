@@ -523,6 +523,10 @@ check "the platform builder repository is read-only for authenticated users" \
   "$(jq -r --arg r "$(go_const platformBuilderRepository)" '.http.accessControl.repositories[$r].defaultPolicy | join(",")' <<<"$seed")" "read"
 check "the seed's GC delay is the operator's ZotGCDelay" "$(jq -r .storage.gcDelay <<<"$seed")" "$(go_const ZotGCDelay)"
 check "the seed names no retired bex-puller" "$(grep -c bex-puller <<<"$seed" || true)" "0"
+# Zot gives a tag to the first rule that matches it, so the live- rule only
+# applies before the catch-all (w8/m156).
+check "the seed keeps live- tags by their own rule, listed before the catch-all" \
+  "$(jq -c '[.storage.retention.policies[0].keepTags[] | .patterns[0] + "=" + (.mostRecentlyPushedCount|tostring)]' <<<"$seed")" '["^live-.*=10",".*=5"]'
 # 26. Credentials: a verifying dev password is kept; anything else re-mints a
 #     random one through registry-secrets.sh with .env ignored, never printed.
 regcalls="$tmp/regsecrets-calls"
