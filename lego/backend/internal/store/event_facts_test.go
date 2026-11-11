@@ -208,9 +208,27 @@ func TestAutoHibernateFactsStayApartFromSuspend(t *testing.T) {
 		if len(facts) != 2 || facts[0].Type != EventFactServiceSuspended || facts[1].Type != EventFactServiceResumed {
 			t.Fatalf("facts = %+v, want service_suspended then service_resumed", facts)
 		}
+		// w4/555: each carries its own moment — the suspension when it was
+		// first recorded, the resume when it was noticed — so the newest-first
+		// feed lists the resume on top.
+		if !facts[0].At.Equal(at.Add(time.Second)) || !facts[1].At.Equal(at.Add(5*time.Second)) {
+			t.Fatalf("suspended at %v, resumed at %v; want %v and %v", facts[0].At, facts[1].At, at.Add(time.Second), at.Add(5*time.Second))
+		}
 		// The episode is closed: a later idle sleep is an idle sleep.
 		onlyFact(record(st, "srv-quick", time.Hour, "Hibernated", false), EventFactServiceHibernated)
 		onlyFact(record(st, "srv-quick", 2*time.Hour, "Running", false), EventFactServiceWoken)
+	})
+
+	// w4/555: a suspension first recorded by the very pass that sees the
+	// Resume still lists below it, a microsecond earlier.
+	t.Run("a quick suspend pair never shares one timestamp", func(t *testing.T) {
+		pair := quickSuspendPair(
+			ServiceEventFact{Type: EventFactServiceSuspended, At: at},
+			ServiceEventFact{Type: EventFactServiceResumed, At: at},
+			at)
+		if !pair[0].At.Equal(at.Add(-time.Microsecond)) || !pair[1].At.Equal(at) {
+			t.Fatalf("pair = %+v", pair)
+		}
 	})
 
 	t.Run("an idle sleep stays an idle wake across repeated Hibernated passes", func(t *testing.T) {

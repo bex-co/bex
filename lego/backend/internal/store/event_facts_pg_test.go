@@ -602,3 +602,64 @@ func TestPGFirstUnhealthyObservationIsNoBaselineToRecoverFrom(t *testing.T) {
 		t.Fatalf("a service whose first observation was unhealthy recorded %v", got)
 	}
 }
+
+// TestPGQuickSuspendPairListsResumeOnTop is w4/555: a Suspend undone before
+// the service stopped is reported by the pass that sees the Resume, yet the
+// feed, newest first, must read service_resumed above service_suspended, each
+// at its own moment — the suspension when the checkpoint first recorded it.
+func TestPGQuickSuspendPairListsResumeOnTop(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	tenant, err := st.CreateWorkspace(ctx, "quick-suspend-"+stamp, PlanHobby, "alice-"+stamp)
+	if err != nil {
+		t.Fatalf("create workspace: %v", err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), tenant.ID) })
+	app, err := st.CreateApp(ctx, App{
+		TenantID: tenant.ID, Name: "quick-suspend-" + stamp, Image: "nginx:1.27-alpine",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+	})
+	if err != nil {
+		t.Fatalf("create app: %v", err)
+	}
+
+	base := time.Now().UTC().Truncate(time.Microsecond).Add(-time.Minute)
+	for _, pass := range []struct {
+		offset    time.Duration
+		suspended bool
+	}{{0, false}, {time.Second, true}, {16 * time.Second, false}} {
+		if _, err := st.RecordObservedServiceState(ctx, ObservedServiceState{
+			AppID: app.ID, At: base.Add(pass.offset), ServicePhase: string(appv1alpha1.PhaseRunning),
+			Suspended: pass.suspended, Availability: "healthy", AvailabilityObserved: true,
+		}); err != nil {
+			t.Fatalf("record observed state: %v", err)
+		}
+	}
+
+	rows, err := st.ListServiceEvents(ctx, app.ID, tenant.ID, ServiceEventFilter{
+		FactTypes: []string{string(EventFactServiceSuspended), string(EventFactServiceResumed)},
+	})
+	if err != nil {
+		t.Fatalf("list service events: %v", err)
+	}
+	if len(rows) != 2 || rows[0].FactType != string(EventFactServiceResumed) || rows[1].FactType != string(EventFactServiceSuspended) {
+		t.Fatalf("feed = %+v, want service_resumed above service_suspended", rows)
+	}
+	if !rows[0].At.Equal(base.Add(16*time.Second)) || !rows[1].At.Equal(base.Add(time.Second)) {
+		t.Fatalf("resumed at %v, suspended at %v; want %v and %v", rows[0].At, rows[1].At, base.Add(16*time.Second), base.Add(time.Second))
+	}
+}

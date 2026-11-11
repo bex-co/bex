@@ -591,6 +591,23 @@ func failureFactType(obs ObservedServiceState) ServiceEventFactType {
 	return EventFactServerFailed
 }
 
+// quickSuspendPair dates a Suspend undone before the service stopped (w4/555).
+// The pass that notices the Resume reports both, but the suspension happened
+// no later than the pass that first recorded it, the checkpoint's last change.
+// The resume keeps this pass's time and stays at least a microsecond, the
+// precision timestamptz keeps, after the suspension, so a feed ordered newest
+// first reads it on top. Source keys keep this pass's time, so a replay is
+// still a no-op.
+func quickSuspendPair(suspended, resumed ServiceEventFact, suspensionRecordedAt time.Time) []ServiceEventFact {
+	if !suspensionRecordedAt.IsZero() && suspensionRecordedAt.Before(suspended.At) {
+		suspended.At = suspensionRecordedAt
+	}
+	if latest := resumed.At.Add(-time.Microsecond); suspended.At.After(latest) {
+		suspended.At = latest
+	}
+	return []ServiceEventFact{suspended, resumed}
+}
+
 func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailability string, previousSuspended bool, previousChangedAt time.Time) []ServiceEventFact {
 	makeFact := func(suffix string, typ ServiceEventFactType) ServiceEventFact {
 		return ServiceEventFact{
@@ -608,7 +625,7 @@ func observedStateFacts(obs ObservedServiceState, previousPhase, previousAvailab
 	// Render records both actions however quickly they follow each other.
 	hibernated := string(appv1alpha1.PhaseHibernated)
 	if previousSuspended && !obs.Suspended && previousPhase != hibernated && obs.ServicePhase != hibernated {
-		facts = append(facts, makeFact("suspended", EventFactServiceSuspended), makeFact("resumed", EventFactServiceResumed))
+		facts = append(facts, quickSuspendPair(makeFact("suspended", EventFactServiceSuspended), makeFact("resumed", EventFactServiceResumed), previousChangedAt)...)
 	}
 	if obs.ServicePhase != previousPhase {
 		switch obs.ServicePhase {
