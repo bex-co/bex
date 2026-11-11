@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"slices"
 	"strings"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -56,12 +57,25 @@ func ReservedPostgresDatabaseName(name string) bool {
 // PostgreSQL refuses to create (public, none), which leave a role that
 // silently never exists.
 func ReservedPostgresRole(name string) bool {
-	switch name {
-	case "postgres", "streaming_replica", "public", "none":
+	if slices.Contains(ReservedPostgresRoleNames, name) {
 		return true
 	}
-	return strings.HasPrefix(name, "pg_") || strings.HasPrefix(name, "cnpg_")
+	for _, prefix := range ReservedPostgresRolePrefixes {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
+
+// ReservedPostgresRoleNames and ReservedPostgresRolePrefixes are
+// ReservedPostgresRole's rule, for a caller that applies it in SQL: Postgres
+// Insights leaves every such role's activity out, CNPG's metrics exporter
+// (cnpg_metrics_exporter) included (w4/557).
+var (
+	ReservedPostgresRoleNames    = []string{"postgres", "streaming_replica", "public", "none"}
+	ReservedPostgresRolePrefixes = []string{"pg_", "cnpg_"}
+)
 
 // DefaultPostgresDatabaseName is the stable legacy/default physical database
 // identity derived from the immutable Database metadata.name.

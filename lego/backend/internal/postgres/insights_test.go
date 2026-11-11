@@ -30,7 +30,31 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
+
+// TestInsightStatementsCarryTheirTag pins w4/557: the two activity reads leave
+// Insights' own tagged statements (runAuthorizedInsight tags each) and every
+// reserved role out, so a quiet database's panel never lists the panel itself
+// or CNPG's exporter.
+func TestInsightStatementsCarryTheirTag(t *testing.T) {
+	if got := tagInsight("\nSELECT 1"); got != "SELECT "+insightsTag+" 1" {
+		t.Errorf("tagInsight = %q", got)
+	}
+	for name, sql := range map[string]string{
+		"processes": sqlProcesses, "top queries": sqlTopQueries, "database size": sqlDatabaseSize,
+		"table sizes": sqlTableSizes, "table scans": sqlTableScans, "parameter overrides": sqlParameterOverrides,
+	} {
+		if !strings.HasPrefix(strings.TrimLeft(sql, " \t\n"), "SELECT ") {
+			t.Errorf("%s statement does not lead with SELECT, so tagInsight would mangle it", name)
+		}
+	}
+	for name, sql := range map[string]string{"processes": sqlProcesses, "top queries": sqlTopQueries} {
+		if !strings.Contains(sql, "NOT LIKE '%"+insightsTag+"%'") || !strings.Contains(sql, "starts_with(") {
+			t.Errorf("%s statement keeps bex's own or CNPG's statements:\n%s", name, sql)
+		}
+	}
+}
 
 // TestInsightInputGuards covers the paths that don't require a live DB: unknown
 // database — all resolved before any dial.
@@ -238,6 +262,33 @@ func TestProcessesHidePlatformActivityIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// w4/557: CNPG's exporter has its own cnpg_ login, and Insights' own
+	// statements run as the owner; neither is the customer's work.
+	const exporter = "cnpg_w4_557_exporter"
+	_, _ = admin.Exec(ctx, `DROP ROLE IF EXISTS `+exporter)
+	if _, err := admin.Exec(ctx, `CREATE ROLE `+exporter+` LOGIN PASSWORD 'pw'`); err != nil {
+		t.Fatalf("create exporter role: %v", err)
+	}
+	defer func() { _, _ = admin.Exec(ctx, `DROP ROLE IF EXISTS `+exporter) }()
+	exporterCfg := cfg.Copy()
+	exporterCfg.User = exporter
+	scraper, err := pgx.ConnectConfig(ctx, exporterCfg)
+	if err != nil {
+		t.Fatalf("exporter connect: %v", err)
+	}
+	defer scraper.Close(ctx)
+	if _, err := scraper.Exec(ctx, `SELECT 2`); err != nil {
+		t.Fatal(err)
+	}
+	insight, err := pgx.ConnectConfig(ctx, cfg)
+	if err != nil {
+		t.Fatalf("second app connect: %v", err)
+	}
+	defer insight.Close(ctx)
+	if _, err := insight.Exec(ctx, tagInsight(`SELECT 3`)); err != nil {
+		t.Fatal(err)
+	}
+
 	svc, _ := newService()
 	seedDatabaseAt(t, svc, "proc-platform", uri)
 	out, err := svc.Processes(ctx, "proc-platform")
@@ -246,15 +297,42 @@ func TestProcessesHidePlatformActivityIntegration(t *testing.T) {
 	}
 	var sawApp bool
 	for _, p := range out {
-		switch p.UserName {
-		case role:
+		switch {
+		case strings.Contains(p.Query, insightsTag):
+			t.Errorf("Insights' own statement leaked into Processes: %+v", p)
+		case p.UserName == role:
 			sawApp = true
-		case "", "postgres", "streaming_replica":
+		case p.UserName == "" || appv1alpha1.ReservedPostgresRole(p.UserName):
 			t.Errorf("platform activity leaked into Processes: %+v", p)
 		}
 	}
 	if !sawApp {
 		t.Errorf("the customer role's session is missing: %+v", out)
+	}
+}
+
+// TestReservedRoleSQLMatchesTheOperatorRuleIntegration pins w4/557: the SQL
+// predicate Insights filters on says exactly what ReservedPostgresRole says
+// (a LIKE 'pg_%' would also have hidden `pgxuser`).
+func TestReservedRoleSQLMatchesTheOperatorRuleIntegration(t *testing.T) {
+	uri := testDBURI(t)
+	ctx := context.Background()
+	conn, err := pgx.Connect(ctx, uri)
+	if err != nil {
+		t.Fatalf("connect: %v", err)
+	}
+	defer conn.Close(ctx)
+	for _, name := range []string{
+		"postgres", "streaming_replica", "cnpg_metrics_exporter", "cnpg_pooler_pgbouncer", "pg_monitor",
+		"pgxuser", "cnpgxuser", "app_user", "dpg_x_user",
+	} {
+		var got bool
+		if err := conn.QueryRow(ctx, "SELECT "+reservedRoleSQL("$1::text"), name).Scan(&got); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if want := appv1alpha1.ReservedPostgresRole(name); got != want {
+			t.Errorf("reservedRoleSQL(%q) = %v, ReservedPostgresRole = %v", name, got, want)
+		}
 	}
 }
 

@@ -314,15 +314,42 @@ type ParameterSpecView struct {
 	ObservedUnit      *string `json:"observedUnit"`
 }
 
-// platformRoles are the roles the platform itself connects as: CloudNativePG's
-// instance manager and metrics exporter (superuser `postgres`), streaming
-// replication, and the PgBouncer pooler's own login. w4/m115 projected the
-// owner into pg_monitor so their processes and statements stop reading
-// "Hidden", which also exposes these — constant exporter scrapes that otherwise
-// outrank the customer's own work (w21/026). Matched by role name.
-const platformRoles = `('postgres', 'streaming_replica', 'cnpg_pooler_pgbouncer')`
+// insightsTag marks every statement Insights runs as the owner
+// (runAuthorizedInsight), so Top queries and Active processes can leave bex's
+// own introspection out (w4/557). It goes after the leading SELECT, not before
+// it: PostgreSQL 18's pg_stat_statements drops a statement's leading comment
+// from the text it stores, and keeps one inside it. The stored text is the
+// first one seen for a query id, which ignores comments, so a database that
+// ran these statements untagged keeps those rows until its statistics reset.
+const insightsTag = "/* bex:insights */"
 
-const (
+// tagInsight places insightsTag after sql's leading SELECT; every Insights
+// statement is one.
+func tagInsight(sql string) string {
+	body := strings.TrimLeft(sql, " \t\n")
+	return "SELECT " + insightsTag + strings.TrimPrefix(body, "SELECT")
+}
+
+// reservedRoleSQL is v1alpha1.ReservedPostgresRole as a SQL predicate on col:
+// the roles the platform itself connects as — CloudNativePG's instance manager
+// (`postgres`), its metrics exporter (`cnpg_metrics_exporter`), streaming
+// replication and the PgBouncer pooler's login. w4/m115 projected the owner
+// into pg_monitor so their processes and statements stop reading "Hidden",
+// which also exposes these — constant exporter scrapes that otherwise outrank
+// the customer's own work (w21/026, w4/557).
+func reservedRoleSQL(col string) string {
+	quoted := make([]string, len(appv1alpha1.ReservedPostgresRoleNames))
+	for i, name := range appv1alpha1.ReservedPostgresRoleNames {
+		quoted[i] = "'" + name + "'"
+	}
+	clauses := []string{col + " IN (" + strings.Join(quoted, ", ") + ")"}
+	for _, prefix := range appv1alpha1.ReservedPostgresRolePrefixes {
+		clauses = append(clauses, "starts_with("+col+", '"+prefix+"')")
+	}
+	return "(" + strings.Join(clauses, " OR ") + ")"
+}
+
+var (
 	sqlProcesses = `
 SELECT pid::int,
        COALESCE(usename, '')             AS username,
@@ -335,7 +362,8 @@ SELECT pid::int,
 FROM pg_stat_activity
 WHERE pid <> pg_backend_pid()
   AND backend_type = 'client backend'
-  AND COALESCE(usename, '') NOT IN ` + platformRoles + `
+  AND NOT ` + reservedRoleSQL("COALESCE(usename, '')") + `
+  AND COALESCE(query, '') NOT LIKE '%` + insightsTag + `%'
 ORDER BY state, duration_sec DESC NULLS LAST`
 
 	sqlTopQueries = `
@@ -347,7 +375,8 @@ SELECT COALESCE(left(query, 500), '')   AS query,
        shared_blks_hit                  AS hit_blks,
        shared_blks_read                 AS read_blks
 FROM pg_stat_statements
-WHERE userid NOT IN (SELECT oid FROM pg_roles WHERE rolname IN ` + platformRoles + `)
+WHERE userid NOT IN (SELECT oid FROM pg_roles WHERE ` + reservedRoleSQL("rolname") + `)
+  AND COALESCE(query, '') NOT LIKE '%` + insightsTag + `%'
 ORDER BY total_exec_time DESC
 LIMIT 25`
 
@@ -436,7 +465,8 @@ func requireQueryable(db *appv1alpha1.Database) error {
 	return fmt.Errorf("%w: database is %s; run SQL once it is available", core.ErrUnavailable, state)
 }
 
-// runAuthorizedInsight runs sql on a database the caller already authorized.
+// runAuthorizedInsight runs sql on a database the caller already authorized,
+// tagged as Insights' own (insightsTag).
 // serverSettings dials without the session rails, which only the pg_settings
 // read wants (queryLimits.serverSettings).
 func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Database, sql string, serverSettings bool) (QueryResult, error) {
@@ -451,7 +481,7 @@ func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Data
 	if uri == "" {
 		return QueryResult{}, core.ErrNotFound
 	}
-	return runReadOnlyQuery(ctx, uri, sql, queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap,
+	return runReadOnlyQuery(ctx, uri, tagInsight(sql), queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap,
 		serverSettings: serverSettings})
 }
 
