@@ -191,3 +191,10 @@ The release gate cleared at `6ee0197c7` (14:43 UTC): production is pinned to `f6
     - All 91 Server-header polls from 17:09:50 to 17:11:20 answered `200 nginx/1.27.5`. The candidate version never answered.
     - The candidate instance `…-3lf5tigv7uf7lgtu9c6u` (created 17:10:08; nginx started 17:10:10.7) showed in `GET …/instances` right after the cancel. By 17:11:30 the list was back to the serving instance alone.
   - **Not run:** the dashboard Cancel → Proceed repeat.
+- **Git-built case (QA loop round 123, 17:22–17:29 UTC) fails the same way as Run A.**
+  - **Fixture:** `qa-20261111-r123-go` (`srv-dbqa8u03u30c73cf8tb0`), built from `bex-co/bex` `examples/hello-go` with no user-set `PORT`, `MESSAGE=r123-one`. Deleted afterwards (DELETE 204, then GET 404).
+  - **Steps:** `PUT …/env-vars/MESSAGE {"value":"r123-two"}`, then `POST …/deploys {"clearCache":"clear"}` at 17:25:58 → `dep-dbqaa9g3u30c73cf8tkg`. The row went `created` 17:26:08 → `build_in_progress` 17:26:11 → `update_in_progress` 17:27:12 → `live` (`finishedAt` 17:28:42.2).
+  - **Responses** (body poller every ~0.5 s): `r123-one` until 17:28:07, then `r123-two` on every poll from 17:28:08.0, with no alternation. The new body answered about **34 s** before the row read `live`.
+  - **Instances:**
+    - `GET /v1/logs?…&type=app` shows a new instance `…-rtvu0adlfj393lchkli9` logging "hello-go listening on 10000: "r123-two"" at 17:27:08.
+    - `GET …/instances` afterwards lists only `…-qtgrk9qi0a8fmhegt3a0`, created 17:27:41. That is two new instances for one deploy, as in Run A.
