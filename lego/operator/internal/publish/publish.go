@@ -28,6 +28,7 @@ package publish
 import (
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"path"
 	"slices"
@@ -238,6 +239,10 @@ type Observation struct {
 // is named per revision, so a retry reuses it after exact UID validation.
 func Ensure(ctx context.Context, o Options) (Observation, error) {
 	if err := validate(o); err != nil {
+		var escapes *escapeError
+		if errors.As(err, &escapes) {
+			return Observation{Phase: PhaseFailed, Message: escapes.userMessage(), UserError: true}, nil
+		}
 		return Observation{}, err
 	}
 
@@ -355,6 +360,28 @@ func stepFailureFallback(container string) string {
 	}
 }
 
+// escapeError is a publish directory that leaves the repository checkout. The
+// path is the tenant's own source, so Ensure reports it as a user error that
+// fails the build in plain words (w21/050), as a directory that does not exist
+// does (w4/493); Error keeps the internal wording for logs.
+type escapeError struct {
+	src, publishPath, rootDir string
+}
+
+func (e *escapeError) Error() string {
+	return fmt.Sprintf("publish: rootDir/publishPath %q escapes the repository checkout", e.src)
+}
+
+// userMessage names the value the person typed, never the joined path or the
+// internal field names. A publish directory is resolved from the Root Directory,
+// which is the usual reason a `..` leaves the repository.
+func (e *escapeError) userMessage() string {
+	if e.rootDir == "" {
+		return fmt.Sprintf("the publish directory %q is outside the repository", e.publishPath)
+	}
+	return fmt.Sprintf("the publish directory %q is outside the repository (it is resolved from the Root Directory %q)", e.publishPath, e.rootDir)
+}
+
 // validate holds Ensure's input rules (formerly Publish's prologue).
 func validate(o Options) error {
 	if o.Client == nil {
@@ -388,7 +415,7 @@ func validate(o Options) error {
 		// The clone container cds to /work/<rootDir>/<publishPath>; refuse a
 		// path that would escape the checkout.
 		if src := o.srcDir(); src == ".." || strings.HasPrefix(src, "../") || path.IsAbs(src) {
-			return fmt.Errorf("publish: rootDir/publishPath %q escapes the repository checkout", src)
+			return &escapeError{src: src, publishPath: o.PublishPath, rootDir: o.RootDir}
 		}
 	}
 	if !o.Store.Configured() {

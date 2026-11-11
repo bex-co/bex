@@ -2950,6 +2950,17 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Cancel",
     description: "Cancel an inline edit",
   },
+  "services.publishPathEscapes": {
+    message:
+      "This path leaves the repository. A publish directory is resolved from the Root Directory, so remove the .. segments.",
+    description:
+      "Inline error under a repo-backed static site's publish directory whose .. segments leave the checkout (w21/050)",
+  },
+  "services.publishPathControlChar": {
+    message: "Must not contain a control character or a line break",
+    description:
+      "Inline error under a static site's publish directory with a control character (w21/050)",
+  },
   "services.publishPathLabel": {
     message: "Publish directory",
     description: "Label for a static site's publishPath",

@@ -2886,6 +2886,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "取消",
     description: "Cancel an inline edit",
   },
+  "services.publishPathEscapes": {
+    message: "该路径超出了仓库范围。发布目录从根目录开始解析，请去掉 .. 段。",
+    description:
+      "Inline error under a repo-backed static site's publish directory whose .. segments leave the checkout (w21/050)",
+  },
+  "services.publishPathControlChar": {
+    message: "不能包含控制字符或换行",
+    description:
+      "Inline error under a static site's publish directory with a control character (w21/050)",
+  },
   "services.publishPathLabel": {
     message: "发布目录",
     description: "Label for a static site's publishPath",

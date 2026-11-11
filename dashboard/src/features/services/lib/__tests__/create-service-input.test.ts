@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   buildCreateServiceInput,
+  createFormErrors,
   isSubmittable,
   type NewServiceForm,
 } from "../create-service-input";
@@ -632,5 +633,119 @@ describe("command drafts on create (w8/m68)", () => {
       }),
     );
     expect(cron.schedule).toBe(SCHEDULE);
+  });
+});
+
+// w21/050: the create form marks, before Deploy Service, what the server
+// refuses and the Settings editors already mark (w21/045, w21/047), by the
+// fields each build shape owns.
+describe("createFormErrors", () => {
+  it("marks a Root Directory that leaves the repository, for a Git source only", () => {
+    expect(createFormErrors(form({ rootDir: "../x" })).rootDir).toBe(
+      "services.buildPathDotDot",
+    );
+    expect(isSubmittable(form({ rootDir: "../x" }))).toBe(false);
+    // The spellings the server normalizes still submit.
+    for (const rootDir of ["", "./", "server/", "a//b"]) {
+      expect(createFormErrors(form({ rootDir })).rootDir).toBeUndefined();
+      expect(isSubmittable(form({ rootDir }))).toBe(true);
+    }
+    // An image source has no repository root: the draft survives a tab switch
+    // but is never judged, as it never ships (w4/226).
+    expect(
+      createFormErrors(form({ tab: "image", image: "nginx", rootDir: "../x" }))
+        .rootDir,
+    ).toBeUndefined();
+  });
+
+  it("marks a Dockerfile Path only on a Docker build", () => {
+    const docker = form({ runtime: "docker", dockerfilePath: "../Dockerfile" });
+    expect(createFormErrors(docker).dockerfilePath).toBe(
+      "services.buildPathDotDot",
+    );
+    expect(isSubmittable(docker)).toBe(false);
+    expect(
+      createFormErrors(
+        form({ runtime: "node", dockerfilePath: "../Dockerfile" }),
+      ).dockerfilePath,
+    ).toBeUndefined();
+    expect(
+      isSubmittable(
+        form({ runtime: "docker", dockerfilePath: "docker/Dockerfile" }),
+      ),
+    ).toBe(true);
+  });
+
+  it("marks a static site's publish directory that leaves the checkout", () => {
+    const base = form({
+      serviceType: "static_site",
+      rootDir: "examples/hello-node",
+    });
+    expect(
+      createFormErrors({ ...base, publishPath: "../../../x" }).publishPath,
+    ).toBe("services.publishPathEscapes");
+    expect(isSubmittable({ ...base, publishPath: "../../../x" })).toBe(false);
+    // A path that stays inside the repository still saves (a separate decision).
+    for (const publishPath of ["dist", ".", "/etc", "../static-site"]) {
+      expect(
+        createFormErrors({ ...base, publishPath }).publishPath,
+      ).toBeUndefined();
+      expect(isSubmittable({ ...base, publishPath })).toBe(true);
+    }
+    // An image-backed static site extracts from its image.
+    expect(
+      createFormErrors(
+        form({
+          serviceType: "static_site",
+          tab: "image",
+          image: "nginx",
+          publishPath: "../x",
+        }),
+      ).publishPath,
+    ).toBeUndefined();
+  });
+
+  it("marks the environment values the server refuses and holds Submit", () => {
+    const row = (key: string, value: string) =>
+      form({ envVars: [{ key, value }] });
+    expect(createFormErrors(row("PORT", "abc")).envValues).toEqual({
+      0: "portInvalid",
+    });
+    expect(createFormErrors(row("PORT", "18012")).envValues).toEqual({
+      0: "portInvalid",
+    });
+    expect(
+      createFormErrors(row("QA_BIG", "x".repeat(140000))).envValues,
+    ).toEqual({
+      0: "tooLarge",
+    });
+    expect(createFormErrors(row("K", "a\u0000b")).envValues).toEqual({
+      0: "nul",
+    });
+    for (const invalid of [
+      row("PORT", "abc"),
+      row("QA_BIG", "x".repeat(140000)),
+    ]) {
+      expect(isSubmittable(invalid)).toBe(false);
+    }
+    expect(isSubmittable(row("PORT", "8080"))).toBe(true);
+    expect(isSubmittable(row("QA_BIG", "x".repeat(100000)))).toBe(true);
+    // The blank "add" placeholder is never judged.
+    expect(createFormErrors(row("", "x".repeat(140000))).envValues).toEqual({});
+  });
+
+  it("holds Submit for an invalid Build Filter pattern on a static build", () => {
+    const base = form({ serviceType: "static_site", publishPath: "dist" });
+    expect(
+      createFormErrors({ ...base, buildFilterPaths: ["["] }).buildFilter,
+    ).toBe(true);
+    expect(isSubmittable({ ...base, buildFilterPaths: ["["] })).toBe(false);
+    expect(
+      isSubmittable({
+        ...base,
+        buildFilterPaths: ["src/**"],
+        buildFilterIgnored: ["docs/**"],
+      }),
+    ).toBe(true);
   });
 });

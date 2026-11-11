@@ -310,21 +310,17 @@ export function isValidPortValue(value: string): boolean {
 }
 
 /**
- * The value rules bex-api applies to an environment variable the save newly
- * supplies (core.CheckEnvValue): no NUL byte, one KEY=value entry within the
- * process limit, and a PORT the operator will serve on. In that order, as the
- * server checks them. A row whose value the editor never revealed, or did not
- * change, is not supplied by the save, so it is not checked (a legacy stored
- * value stays replaceable and deletable).
+ * The value rules bex-api applies to an environment variable a save or a create
+ * newly supplies (core.CheckEnvValue): no NUL byte, one KEY=value entry within
+ * the process limit, and a PORT the operator will serve on, in that order, as
+ * the server checks them. The Edit editors and the create forms share it
+ * (w21/047, w21/050).
  */
-function valueRuleError(
-  row: EnvDraftRow,
+export function envValueRuleError(
+  rawKey: string,
+  value: string,
 ): "nul" | "tooLarge" | "portInvalid" | null {
-  const value = row.value;
-  if (value == null || (row.originalKey != null && !row.valueChanged)) {
-    return null;
-  }
-  const key = row.key.trim();
+  const key = rawKey.trim();
   if (value.includes("\0")) return "nul";
   if (
     utf8.encode(key).length + 1 + utf8.encode(value).length + 1 >
@@ -334,6 +330,21 @@ function valueRuleError(
   }
   if (key === "PORT" && !isValidPortValue(value)) return "portInvalid";
   return null;
+}
+
+/**
+ * The same rules for an Edit row. A row whose value the editor never revealed,
+ * or did not change, is not supplied by the save, so it is not checked (a legacy
+ * stored value stays replaceable and deletable).
+ */
+function valueRuleError(
+  row: EnvDraftRow,
+): "nul" | "tooLarge" | "portInvalid" | null {
+  const value = row.value;
+  if (value == null || (row.originalKey != null && !row.valueChanged)) {
+    return null;
+  }
+  return envValueRuleError(row.key, value);
 }
 
 export function validateEnvironmentDraft(

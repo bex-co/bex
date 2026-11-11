@@ -48,10 +48,12 @@ import {
   MIN_SERVICE_PORT,
 } from "@/features/services/lib/port";
 import { CreateEnvVarEditor } from "@/features/services/components/create-env-var-editor";
+import { buildFilterPatternError } from "@/features/services/lib/build-settings-validation";
 import { CreateSecretFileEditor } from "@/features/services/components/create-secret-file-editor";
 import {
   buildCreateServiceInput,
   buildShape,
+  createFormErrors,
   isSubmittable,
   portDraft,
   portIsValid,
@@ -104,6 +106,11 @@ export function NewServicePage() {
     catalog,
   } = useNewServiceForm(search);
   const shape = buildShape(form);
+  const fieldErrors = createFormErrors(form);
+  const patternError = (value: string) => {
+    const reason = buildFilterPatternError(value);
+    return reason ? t(reason) : null;
+  };
   const createCopy = serviceTypeCreateCopy(form.serviceType);
 
   const scheduleProblem =
@@ -291,6 +298,11 @@ export function NewServicePage() {
                           "services.createFieldRootDirPlaceholder",
                         )}
                         hint={t("services.createFieldRootDirHint")}
+                        error={
+                          fieldErrors.rootDir
+                            ? t(fieldErrors.rootDir)
+                            : undefined
+                        }
                       />
                       {shape.isBuildableGit ? (
                         <>
@@ -349,6 +361,11 @@ export function NewServicePage() {
                                 hint={t(
                                   "services.createFieldDockerfilePathHint",
                                 )}
+                                error={
+                                  fieldErrors.dockerfilePath
+                                    ? t(fieldErrors.dockerfilePath)
+                                    : undefined
+                                }
                               />
                               <RegistryCredentialSelect
                                 id="svc-registry-credential-docker"
@@ -460,6 +477,7 @@ export function NewServicePage() {
                           onChange={(buildFilterPaths) =>
                             set({ buildFilterPaths })
                           }
+                          validate={patternError}
                         />
                         <PathList
                           title={t("services.buildFilterIgnoredTitle")}
@@ -473,6 +491,7 @@ export function NewServicePage() {
                           onChange={(buildFilterIgnored) =>
                             set({ buildFilterIgnored })
                           }
+                          validate={patternError}
                         />
                       </div>
                     </>
@@ -491,6 +510,11 @@ export function NewServicePage() {
                         publishPathMissing
                           ? t("services.createFieldPublishPathRequired")
                           : t("services.createFieldPublishPathHint")
+                      }
+                      error={
+                        fieldErrors.publishPath
+                          ? t(fieldErrors.publishPath)
+                          : undefined
                       }
                     />
                   ) : null}

@@ -458,8 +458,44 @@ func TestPublishSourceValidation(t *testing.T) {
 	escape.RootDir = ".."
 	escape.PublishPath = "etc"
 	escape.Client = fake.NewClientBuilder().Build()
-	if _, err := Ensure(ctx, escape); err == nil || !strings.Contains(err.Error(), "escapes") {
-		t.Errorf("escaping path => %v, want the escape error", err)
+	// w21/050: a publish directory that leaves the checkout is the tenant's own
+	// source, so it fails the build in plain words naming what they typed, not
+	// the platform's "publish: rootDir/publishPath ... escapes" text.
+	obs, err := Ensure(ctx, escape)
+	if err != nil || obs.Phase != PhaseFailed || !obs.UserError {
+		t.Fatalf("escaping path => %+v, %v; want a failed user-source observation", obs, err)
+	}
+	for _, internal := range []string{"publish:", "rootDir/publishPath", "escapes"} {
+		if strings.Contains(obs.Message, internal) {
+			t.Errorf("message %q carries the internal %q", obs.Message, internal)
+		}
+	}
+	if want := `the publish directory "etc" is outside the repository (it is resolved from the Root Directory "..")`; obs.Message != want {
+		t.Errorf("message = %q, want %q", obs.Message, want)
+	}
+
+	// With no Root Directory the sentence names the typed value alone, and a
+	// publish directory that stays inside the checkout is not an escape.
+	typed := testOptions()
+	typed.Image = ""
+	typed.Repo = "https://github.com/x/y"
+	typed.PublishPath = "../../../x"
+	typed.Client = fake.NewClientBuilder().Build()
+	if obs, err := Ensure(ctx, typed); err != nil || !obs.UserError || obs.Message != `the publish directory "../../../x" is outside the repository` {
+		t.Errorf("typed escape => %+v, %v", obs, err)
+	}
+	inside := testOptions()
+	inside.Image = ""
+	inside.Repo = "https://github.com/x/y"
+	inside.RootDir = "examples/hello-node"
+	inside.PublishPath = "../static-site"
+	inside.Client = fake.NewClientBuilder().Build()
+	if err := validate(inside); err != nil {
+		t.Errorf("a path that stays inside the repository was refused: %v", err)
+	}
+	// The internal wording stays for logs.
+	if err := validate(escape); err == nil || !strings.Contains(err.Error(), "escapes the repository checkout") {
+		t.Errorf("validate(escape) = %v, want the escape error", err)
 	}
 }
 

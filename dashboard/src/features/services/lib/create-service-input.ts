@@ -2,9 +2,17 @@ import { isValidGitUrl } from "@/common/lib/utils/git-url";
 import { isValidDockerImageRef } from "@/common/lib/utils/docker-image";
 import { commandText } from "@/features/services/lib/command-text";
 import { isValidCron } from "@/features/services/lib/cron";
+import type { en } from "@/i18n";
+import {
+  buildFilterPatternError,
+  relativePathError,
+  rootDirError,
+} from "@/features/services/lib/build-settings-validation";
+import { publishDirectoryError } from "@/features/services/lib/publish-directory";
 import {
   VALID_ENV_KEY,
   duplicateNames,
+  envValueRuleError,
   isValidSecretFileName,
 } from "@/features/services/lib/environment-draft";
 import type { ServiceType } from "@/features/services/lib/create-context";
@@ -172,8 +180,54 @@ export function submittableSecretFiles(
   return rows.filter((file) => file.name !== "");
 }
 
+/**
+ * What the create form marks in a field before the server refuses it, by the
+ * rules the Settings editors mark too (w21/045, w21/047, w21/050): the build
+ * shapes decide which fields the form owns, as they decide which ship. A hidden
+ * field is never judged.
+ */
+export interface CreateFormErrors {
+  rootDir?: keyof typeof en;
+  dockerfilePath?: keyof typeof en;
+  publishPath?: keyof typeof en;
+  /** An invalid Build Filter pattern in either list holds Submit. */
+  buildFilter: boolean;
+  /** The row index of an environment variable whose value the server refuses. */
+  envValues: Record<number, "nul" | "tooLarge" | "portInvalid">;
+}
+
+export function createFormErrors(form: NewServiceForm): CreateFormErrors {
+  const shape = buildShape(form);
+  const errors: CreateFormErrors = { buildFilter: false, envValues: {} };
+  if (shape.isGitSource)
+    errors.rootDir = rootDirError(form.rootDir) ?? undefined;
+  if (shape.isDockerBuild) {
+    errors.dockerfilePath = relativePathError(form.dockerfilePath) ?? undefined;
+  }
+  if (shape.isStaticType) {
+    errors.publishPath =
+      publishDirectoryError(form.publishPath, {
+        rootDir: shape.isGitSource ? form.rootDir : "",
+        repoBacked: shape.isGitSource,
+      }) ?? undefined;
+  }
+  if (shape.isStaticBuild) {
+    errors.buildFilter = [
+      ...form.buildFilterPaths,
+      ...form.buildFilterIgnored,
+    ].some((pattern) => buildFilterPatternError(pattern) !== null);
+  }
+  form.envVars.forEach((row, index) => {
+    if (row.key === "") return; // the blank "add" placeholder never ships
+    const rule = envValueRuleError(row.key, row.value);
+    if (rule) errors.envValues[index] = rule;
+  });
+  return errors;
+}
+
 /** True when the form is complete enough to submit, per the same build shapes. */
 export function isSubmittable(form: NewServiceForm): boolean {
+  const fieldErrors = createFormErrors(form);
   const shape = buildShape(form);
   const sourceValid =
     (form.tab === "github" && form.selectedRepo != null) ||
@@ -188,6 +242,13 @@ export function isSubmittable(form: NewServiceForm): boolean {
   return (
     sourceValid &&
     nativeCommandsValid &&
+    // A value the server would refuse (a bad PORT, an entry over the process
+    // limit, a NUL) never leaves the browser either (w21/050).
+    Object.keys(fieldErrors.envValues).length === 0 &&
+    !fieldErrors.rootDir &&
+    !fieldErrors.dockerfilePath &&
+    !fieldErrors.publishPath &&
+    !fieldErrors.buildFilter &&
     submittableEnvVars(form.envVars).every((row) =>
       VALID_ENV_KEY.test(row.key),
     ) &&

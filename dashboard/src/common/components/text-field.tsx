@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 
@@ -32,6 +33,9 @@ export function TextField({
   autoComplete?: string;
   maxLength?: number;
 }) {
+  // The copy under the input names it to assistive technology, so a marked
+  // field reads its own reason (w21/050).
+  const noteId = useId();
   return (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
@@ -43,13 +47,16 @@ export function TextField({
         autoComplete={autoComplete}
         maxLength={maxLength}
         aria-invalid={invalid || Boolean(error)}
+        aria-describedby={error || hint ? noteId : undefined}
       />
       {error ? (
-        <p className="text-destructive text-sm" role="alert">
+        <p id={noteId} className="text-destructive text-sm" role="alert">
           {error}
         </p>
       ) : hint ? (
-        <p className="text-muted-foreground text-sm">{hint}</p>
+        <p id={noteId} className="text-muted-foreground text-sm">
+          {hint}
+        </p>
       ) : null}
     </div>
   );

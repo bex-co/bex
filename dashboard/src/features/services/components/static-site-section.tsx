@@ -32,6 +32,7 @@ import {
 } from "@/common/components/ui/select";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
+import { publishDirectoryError } from "@/features/services/lib/publish-directory";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { useStaticSiteMutations } from "@/features/services/hooks/use-static-site";
 import type { StaticRuleSaveResult } from "@/features/services/hooks/use-static-site";
@@ -128,6 +129,7 @@ export function StaticSiteSection({
         <PublishPathRow
           publishPath={service.publishPath}
           rootDir={service.rootDir}
+          repoBacked={Boolean(service.repo)}
           onSave={setPublishPath}
           busy={busy}
         />
@@ -162,11 +164,14 @@ export function StaticSiteSection({
 function PublishPathRow({
   publishPath,
   rootDir,
+  repoBacked,
   onSave,
   busy,
 }: {
   publishPath: string | null;
   rootDir?: string | null;
+  /** A repo-backed site resolves the path in the checkout, where `..` can leave it. */
+  repoBacked: boolean;
   onSave: (v: string) => Promise<boolean>;
   busy: boolean;
 }) {
@@ -186,6 +191,11 @@ function PublishPathRow({
       busy={busy}
       // A publish directory is required, so an empty value is never savable.
       dirty={(value) => value !== "" && value !== current}
+      // A path that can never publish is marked before Save (w21/050).
+      validate={(draft) => {
+        const reason = publishDirectoryError(draft, { rootDir, repoBacked });
+        return reason ? t(reason) : null;
+      }}
       onSave={onSave}
     />
   );

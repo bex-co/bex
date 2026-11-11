@@ -4,11 +4,26 @@ import userEvent from "@testing-library/user-event";
 import {
   RoutesEditor,
   HeadersEditor,
+  StaticSiteSection,
 } from "@/features/services/components/static-site-section";
 import type {
+  ServiceView,
   StaticHeaderView,
   StaticRouteView,
 } from "@/features/services/types";
+
+const setPublishPath = vi.fn(async () => true);
+vi.mock("@/features/services/hooks/use-static-site", () => ({
+  useStaticSiteMutations: () => ({ setPublishPath, busy: false }),
+}));
+vi.mock("@/features/services/lib/service-base", () => ({
+  useServiceBase: () => "/static",
+}));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ children, ...props }: React.ComponentProps<"a">) => (
+    <a {...props}>{children}</a>
+  ),
+}));
 
 // w6/059: every row control in the Redirects and Headers editors must carry a
 // real accessible name (the translated column-heading vocabulary) — the <th>s
@@ -379,5 +394,78 @@ describe("edge-rule length and placeholder rows (w21/043)", () => {
     expect(path).toHaveAttribute("aria-invalid", "true");
     expect(path).toHaveAccessibleDescription("At most 2048 bytes");
     expect(screen.getByRole("button", { name: "Save headers" })).toBeDisabled();
+  });
+});
+
+// w21/050: a repo-backed static site's publish directory is resolved from its
+// Root Directory, so a `..` that leaves the checkout can never publish. The row
+// marks it before Save instead of a deploy that fails with the platform's
+// internal "rootDir/publishPath ... escapes" text.
+describe("publish directory row (w21/050)", () => {
+  const service = (over: Partial<ServiceView>) =>
+    ({
+      id: "srv-1",
+      type: "static_site",
+      publishPath: "dist",
+      rootDir: "examples/hello-node",
+      repo: "https://github.com/bex-co/bex",
+      ...over,
+    }) as ServiceView;
+
+  async function editTo(
+    user: ReturnType<typeof userEvent.setup>,
+    value: string,
+  ) {
+    await user.click(
+      screen.getByRole("button", { name: "Edit publish directory" }),
+    );
+    const input = screen.getByRole("textbox", { name: "Publish directory" });
+    await user.clear(input);
+    await user.type(input, value);
+    return input;
+  }
+
+  it("marks a path that leaves the repository and holds Save", async () => {
+    const user = userEvent.setup();
+    render(
+      <StaticSiteSection
+        serviceId="srv-1"
+        service={service({})}
+        refetch={vi.fn(async () => [])}
+      />,
+    );
+    const input = await editTo(user, "../../../x");
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(input).toHaveAccessibleDescription(/leaves the repository/);
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(setPublishPath).not.toHaveBeenCalled();
+  });
+
+  it("still saves a directory inside the repository", async () => {
+    const user = userEvent.setup();
+    render(
+      <StaticSiteSection
+        serviceId="srv-1"
+        service={service({})}
+        refetch={vi.fn(async () => [])}
+      />,
+    );
+    const input = await editTo(user, "build/out");
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(setPublishPath).toHaveBeenCalledWith("build/out");
+  });
+
+  it("does not judge an image-backed site's path against a checkout", async () => {
+    const user = userEvent.setup();
+    render(
+      <StaticSiteSection
+        serviceId="srv-1"
+        service={service({ repo: null, rootDir: null })}
+        refetch={vi.fn(async () => [])}
+      />,
+    );
+    const input = await editTo(user, "../../../x");
+    expect(input).not.toHaveAttribute("aria-invalid", "true");
   });
 });

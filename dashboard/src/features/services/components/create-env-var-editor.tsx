@@ -7,6 +7,7 @@ import { AutoTextarea } from "@/common/components/ui/auto-textarea";
 import { Label } from "@/common/components/ui/label";
 import {
   duplicateNames,
+  envValueRuleError,
   VALID_ENV_KEY,
 } from "@/features/services/lib/environment-draft";
 import { generateEnvValue } from "@/features/services/lib/generate-env-value";
@@ -60,6 +61,11 @@ export function CreateEnvVarEditor({
               row.key !== "" && !VALID_ENV_KEY.test(row.key);
             const keyDuplicate = duplicates.has(row.key.trim());
             const keyInvalid = keySyntaxInvalid || keyDuplicate;
+            // The value rules bex-api refuses at create (a bad PORT, an entry
+            // over the process limit, a NUL) mark the value, as in the Edit
+            // editor (w21/050).
+            const valueRule =
+              row.key === "" ? null : envValueRuleError(row.key, row.value);
             return (
               <div key={i} className="space-y-1">
                 <div className="grid grid-cols-[1fr_1fr_auto_auto] gap-2">
@@ -81,6 +87,10 @@ export function CreateEnvVarEditor({
                       "services.createFieldEnvVarsValuePlaceholder",
                     )}
                     aria-label={t("services.createFieldEnvVarsValue")}
+                    aria-invalid={valueRule ? true : undefined}
+                    aria-describedby={
+                      valueRule ? `${baseId}-${i}-value-error` : undefined
+                    }
                     className="font-mono text-sm"
                   />
                   <Button
@@ -102,6 +112,19 @@ export function CreateEnvVarEditor({
                     <Trash2 className="size-3.5" />
                   </Button>
                 </div>
+                {valueRule && (
+                  <p
+                    id={`${baseId}-${i}-value-error`}
+                    role="alert"
+                    className="text-xs text-destructive"
+                  >
+                    {valueRule === "nul"
+                      ? t("services.environmentValueNul")
+                      : valueRule === "tooLarge"
+                        ? t("services.environmentValueTooLarge")
+                        : t("services.environmentPortInvalid")}
+                  </p>
+                )}
                 {keyInvalid && (
                   <p
                     id={`${baseId}-${i}-error`}

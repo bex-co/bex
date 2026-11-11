@@ -1630,6 +1630,59 @@ describe("NewServicePage", () => {
       ).toBeEnabled();
     });
 
+    // w21/050: what bex-api (or the operator, at deploy) refuses is marked in
+    // its field before Deploy Service, as the Settings editors mark it.
+    it("marks a publish directory that leaves the repository and holds Deploy", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("radio", { name: /Static Site/i }),
+      );
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      const field = screen.getByLabelText("Publish Directory");
+      await user.type(field, "../../../x");
+      expect(field).toHaveAttribute("aria-invalid", "true");
+      expect(field).toHaveAccessibleDescription(/leaves the repository/);
+      const deploy = screen.getByRole("button", { name: /Deploy Service/i });
+      expect(deploy).toBeDisabled();
+      await user.clear(field);
+      await user.type(field, "dist");
+      expect(field).not.toHaveAttribute("aria-invalid", "true");
+      expect(deploy).toBeEnabled();
+    });
+
+    it("marks a Root Directory with a .. segment and an unusable PORT, and holds Deploy", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("button", { name: /acme-corp\/web-frontend/ }),
+      );
+      const rootDir = screen.getByLabelText("Root Directory");
+      await user.type(rootDir, "../x");
+      expect(rootDir).toHaveAttribute("aria-invalid", "true");
+      expect(rootDir).toHaveAccessibleDescription(/no \.\. segment/);
+      const deploy = screen.getByRole("button", { name: /Deploy Service/i });
+      expect(deploy).toBeDisabled();
+      await user.clear(rootDir);
+      // The spellings the server normalizes still submit.
+      await user.type(rootDir, "server/");
+      expect(rootDir).not.toHaveAttribute("aria-invalid", "true");
+      expect(deploy).toBeEnabled();
+
+      await user.click(screen.getByRole("button", { name: /Add variable/i }));
+      await user.type(screen.getByLabelText("Key"), "PORT");
+      const value = screen.getByLabelText("Value");
+      await user.type(value, "abc");
+      expect(value).toHaveAttribute("aria-invalid", "true");
+      expect(value).toHaveAccessibleDescription(/PORT must be a whole number/);
+      expect(deploy).toBeDisabled();
+      await user.clear(value);
+      await user.type(value, "8080");
+      expect(deploy).toBeEnabled();
+    });
+
     it("submits type=web_service by default with no schedule, command, or publishPath", async () => {
       const user = userEvent.setup();
       renderPage();
