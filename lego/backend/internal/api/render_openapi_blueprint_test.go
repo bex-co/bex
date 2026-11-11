@@ -46,6 +46,15 @@ type blueprintFixtureStore struct {
 	syncs []store.BlueprintSync
 }
 
+func (f *blueprintFixtureStore) BlueprintNameTaken(_ context.Context, tenantID, name, exceptID string) (bool, error) {
+	for id, row := range f.rows {
+		if id != exceptID && row.TenantID == tenantID && strings.EqualFold(row.Name, name) {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 func (f *blueprintFixtureStore) GetBlueprint(_ context.Context, id, tenantID string) (store.Blueprint, error) {
 	b, ok := f.rows[id]
 	if !ok || b.TenantID != tenantID {

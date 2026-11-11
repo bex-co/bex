@@ -46,6 +46,10 @@ import (
 type BlueprintStore interface {
 	UpsertBlueprint(ctx context.Context, b store.Blueprint) (store.Blueprint, error)
 	GetBlueprint(ctx context.Context, id, tenantID string) (store.Blueprint, error)
+	// BlueprintNameTaken reports whether another live, approved Blueprint in
+	// the workspace has name, ignoring case; every create and a rename ask
+	// it (w8/250).
+	BlueprintNameTaken(ctx context.Context, tenantID, name, exceptID string) (bool, error)
 	// BlueprintWorkspace resolves the workspace owning a live Blueprint id —
 	// routing only; the caller authorizes against it (w4/m169).
 	BlueprintWorkspace(ctx context.Context, id string) (string, error)
@@ -1470,11 +1474,7 @@ func (s *Service) blueprintNameTaken(ctx context.Context, tenantID, name, except
 	if s.Blueprints == nil {
 		return false, nil
 	}
-	plans, err := s.blueprintPlans()
-	if err != nil {
-		return false, err
-	}
-	return plans.BlueprintNameTaken(ctx, tenantID, name, exceptID)
+	return s.Blueprints.BlueprintNameTaken(ctx, tenantID, name, exceptID)
 }
 
 // completeAdmittedSync commits the terminal state of an admitted run together
