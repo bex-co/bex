@@ -344,12 +344,36 @@ RUN --mount=type=secret,id=render-env,target=%s%s %s
 		// Job's extract initContainer (ADR029) and never runs as a workload.
 		return base
 	}
+	base += nativeSecretFileLinks(o)
 	// nativeEntrypoint replaces the toolchain image's ENTRYPOINT (w8/m61).
 	runtime := fmt.Sprintf("%sENV PORT=10000\n%s", nativeRuntimeDefaults(o), nativeEntrypoint(o))
 	if o.BuildOnly {
 		return base + runtime
 	}
 	return base + runtime + "CMD " + shellJSON(o.StartCommand) + "\n"
+}
+
+// nativeSecretFileLinks is the step that puts each secret file in the service
+// root as well as /etc/secrets, where Render has it: "For non-Docker services,
+// the file is also available in your service's root directory" (w8/m154). The
+// service root is the image's WORKDIR: the build context is the service's
+// rootDir.
+//
+// Each file is a link to its /etc/secrets path, made after the build command.
+// The image therefore carries names only, never a secret's bytes, and the
+// build command cannot copy them into its output; the link resolves in every
+// workload that runs this image with the files mounted (the service, its cron
+// runs and its pre-deploy command). A repository file of the same name gives
+// way to the secret file; a directory of that name is left alone, and the file
+// is then at /etc/secrets only. Names are in the Secret-key charset
+// (validNativeFileName), so they need no quoting. No files, no step.
+func nativeSecretFileLinks(o Options) string {
+	if len(o.NativeFiles) == 0 {
+		return ""
+	}
+	// set -e: a link that cannot be made fails the build, whichever name it is.
+	return fmt.Sprintf("RUN set -e; for name in %s; do [ -d \"./$name\" ] && [ ! -L \"./$name\" ] || ln -sfn \"%s/$name\" \"./$name\"; done\n",
+		strings.Join(o.NativeFiles, " "), nativeSecretFilesDir)
 }
 
 // nativeBuildDefaults is the environment Render gives a native runtime at

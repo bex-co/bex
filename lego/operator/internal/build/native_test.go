@@ -1237,3 +1237,135 @@ func TestBuildOnlyNativeBuildNeedsNoStartCommand(t *testing.T) {
 		t.Fatal("a build source's native build without a build command was accepted")
 	}
 }
+
+// nativeLinkStep returns the generated Dockerfile's secret-file link step, or
+// "" when there is none.
+func nativeLinkStep(dockerfile string) string {
+	for line := range strings.SplitSeq(dockerfile, "\n") {
+		if strings.HasPrefix(line, "RUN set -e; for name in ") {
+			return line
+		}
+	}
+	return ""
+}
+
+// w8/m154: Render has a native service's secret files in the service root as
+// well as /etc/secrets ("For non-Docker services, the file is also available
+// in your service's root directory"); bex had them at /etc/secrets only. Every
+// native runtime's image links each file from its working directory, after the
+// build command, by name only.
+func TestNativeSecretFilesLinkedInServiceRoot(t *testing.T) {
+	const want = `RUN set -e; for name in .env cfg.json; do [ -d "./$name" ] && [ ! -L "./$name" ] || ln -sfn "/etc/secrets/$name" "./$name"; done`
+	for _, runtime := range []string{"node", "python", "ruby", "go", "rust", "elixir"} {
+		o := nativeOptions()
+		o.Runtime = runtime
+		o.NativeFilesSecret, o.NativeFiles = "bld-web-native-files", []string{".env", "cfg.json"}
+		if err := validateNativeOptions(o); err != nil {
+			t.Fatalf("%s: %v", runtime, err)
+		}
+		dockerfile := nativeDockerfile(o)
+		if got := nativeLinkStep(dockerfile); got != want {
+			t.Fatalf("%s link step = %q, want %q", runtime, got, want)
+		}
+		// After the build command, so the command cannot copy a secret's bytes
+		// into its output through the link; before the runtime settings.
+		build := strings.Index(dockerfile, "RUN --mount=type=secret,id=render-env")
+		link := strings.Index(dockerfile, want)
+		port := strings.Index(dockerfile, "ENV PORT=10000")
+		if build < 0 || build >= link || link >= port {
+			t.Fatalf("%s: link step is not between the build command and the runtime settings:\n%s", runtime, dockerfile)
+		}
+		// Names only: the image never carries a secret file's contents.
+		for _, reject := range []string{"COPY /etc/secrets", "COPY --from=bex-file", "cp /etc/secrets"} {
+			if strings.Contains(dockerfile, reject) {
+				t.Fatalf("%s: the image must link, not copy, secret files (%q):\n%s", runtime, reject, dockerfile)
+			}
+		}
+	}
+
+	// A cron job or worker built without a baked start command gets them too.
+	buildOnly := nativeOptions()
+	buildOnly.BuildOnly, buildOnly.StartCommand = true, ""
+	buildOnly.NativeFilesSecret, buildOnly.NativeFiles = "bld-web-native-files", []string{".env", "cfg.json"}
+	if got := nativeLinkStep(nativeDockerfile(buildOnly)); got != want {
+		t.Fatalf("build-only link step = %q, want %q", got, want)
+	}
+
+	// No secret files: no step, the Dockerfile is what it was.
+	if got := nativeLinkStep(nativeDockerfile(nativeOptions())); got != "" {
+		t.Fatalf("a service without secret files got the step %q", got)
+	}
+	// A static site's image never runs, so it has no service root to link in.
+	static := nativeOptions()
+	static.StaticSite, static.StartCommand = true, ""
+	static.NativeFilesSecret, static.NativeFiles = "bld-web-native-files", []string{".env"}
+	if got := nativeLinkStep(nativeDockerfile(static)); got != "" {
+		t.Fatalf("a static site got the step %q", got)
+	}
+}
+
+// Execute the generated step in a service root: a missing path and an existing
+// repository file both become the link (the secret file wins), a directory of
+// that name is left alone, and names that start with a dot or a dash work.
+func TestNativeSecretFileLinkStepRuns(t *testing.T) {
+	o := nativeOptions()
+	o.NativeFilesSecret, o.NativeFiles = "bld-web-native-files", []string{"-dash.txt", ".env", "confdir", "existing.txt", "new.json", "relinked"}
+	if err := validateNativeOptions(o); err != nil {
+		t.Fatal(err)
+	}
+	step := nativeLinkStep(nativeDockerfile(o))
+	script, ok := strings.CutPrefix(step, "RUN ")
+	if !ok {
+		t.Fatalf("no link step in the Dockerfile")
+	}
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "existing.txt"), []byte("repo copy"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "confdir"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "confdir", "keep.txt"), []byte("in dir"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A link left by an earlier layer, pointing at a directory: replaced, not
+	// descended into.
+	if err := os.Symlink(filepath.Join(root, "confdir"), filepath.Join(root, "relinked")); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 { // running it again changes nothing
+		cmd := exec.Command("/bin/sh", "-c", script)
+		cmd.Dir = root
+		if out, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("link step failed: %v\n%s", err, out)
+		}
+	}
+	// A link that cannot be made fails the step, also when a later name works.
+	readOnly := filepath.Join(t.TempDir(), "ro")
+	if err := os.Mkdir(readOnly, 0o555); err != nil {
+		t.Fatal(err)
+	}
+	if os.Geteuid() != 0 { // root writes through the mode bits
+		cmd := exec.Command("/bin/sh", "-c", script)
+		cmd.Dir = readOnly
+		if out, err := cmd.CombinedOutput(); err == nil {
+			t.Fatalf("the step succeeded in a directory it cannot write:\n%s", out)
+		}
+	}
+	for _, name := range []string{"-dash.txt", ".env", "existing.txt", "new.json", "relinked"} {
+		target, err := os.Readlink(filepath.Join(root, name))
+		if err != nil || target != "/etc/secrets/"+name {
+			t.Errorf("%s -> %q (err %v), want a link to /etc/secrets/%s", name, target, err, name)
+		}
+	}
+	info, err := os.Lstat(filepath.Join(root, "confdir"))
+	if err != nil || !info.IsDir() {
+		t.Fatalf("confdir = %v (err %v), want the repository's directory left alone", info, err)
+	}
+	if kept, err := os.ReadFile(filepath.Join(root, "confdir", "keep.txt")); err != nil || string(kept) != "in dir" {
+		t.Fatalf("confdir/keep.txt = %q (err %v), want it untouched", kept, err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "confdir", "confdir")); err == nil {
+		t.Fatal("the step created a link inside the directory")
+	}
+}

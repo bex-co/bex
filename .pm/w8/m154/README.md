@@ -1,17 +1,17 @@
 # w8 · m154 — A native-runtime service finds its secret files in its root directory, as on Render
 
-**Worker:** worker8 **Goal:** a Node, Python, Ruby, Go, Rust or Elixir service (web, private, worker, cron, and its pre-deploy command) reads each secret file both at `/etc/secrets/<name>` and at `<service root>/<name>`, as Render documents; Docker and image services keep `/etc/secrets` only. **Status:** todo
+**Worker:** worker8 **Goal:** a Node, Python, Ruby, Go, Rust or Elixir service (web, private, worker, cron, and its pre-deploy command) reads each secret file both at `/etc/secrets/<name>` and at `<service root>/<name>`, as Render documents; Docker and image services keep `/etc/secrets` only. **Status:** in progress (t001, t004, t005, t006 done, code shipped; t002 and t003's cluster reads and t007, the production replay, wait for the next platform deploy)
 
 ## Tasks (in order)
 
 | id   | title                                                               | est | depends_on |
 | ---- | ------------------------------------------------------------------- | --- | ---------- |
-| t001 | Decide the mechanism and the collision rule, record them in ADR013  | 30m | —          |
-| t002 | Native services see each secret file in the service root at runtime | 60m | t001       |
-| t003 | Blast radius: cron, worker, pre-deploy, `rootDir`, env-group files  | 40m | t002       |
-| t004 | Render parity                                                       | 20m | t003       |
-| t005 | Simplify                                                            | 15m | t004       |
-| t006 | Test coverage                                                       | 40m | t004       |
+| t001 | Decide the mechanism and the collision rule, record them in ADR013 — **DONE** | 30m | —          |
+| t002 | Native services see each secret file in the service root at runtime (implemented and tested; cluster check open) | 60m | t001       |
+| t003 | Blast radius: cron, worker, pre-deploy, `rootDir`, env-group files (covered by the image; cluster check open) | 40m | t002       |
+| t004 | Render parity — **DONE**                                            | 20m | t003       |
+| t005 | Simplify — **DONE**                                                 | 15m | t004       |
+| t006 | Test coverage — **DONE**                                            | 40m | t004       |
 | t007 | Closeout (live replay on production)                                | 20m | t006       |
 
 ## Definition of done
@@ -70,6 +70,28 @@
 - **Also observed, not part of this milestone:** `ls -la /etc/secrets` shows the kubelet's `..data` and `..<timestamp>` entries beside the files; a loader that walks the directory sees them.
 - **Dedupe:** `rg -i "service's root directory|also available in your service|secret files.*root"` over `.pm` and `docs` finds no item. ADR018's secret-files row cites the same Render page for "runtime paths only" and does not mention the root-directory sentence. w4/m163 (done) covers build-time `/etc/secrets`.
 - **Cleanup:** the fixture service is deleted with the sweep.
+
+## Mechanism chosen (t001, 2026-11-11 UTC): a link in the native image, made after the build command
+
+Recorded in ADR013 § "Secret files in the service root, native runtimes" and the ADR018 secret-files row. Render's sentence was read again on 2026-11-11: "At runtime, the secret file is available at `/etc/secrets/<filename>`. For non-Docker services, the file is _also_ available in your service's root directory." The page says nothing about a build-time root copy for native services, a repository file of the same name, or permissions.
+
+- **What ships.** `nativeSecretFileLinks` (`lego/operator/internal/build/native.go`) adds one step to the generated native Dockerfile, after the build command: `ln -sfn /etc/secrets/<name> ./<name>` for each name the build already lists (`Options.NativeFiles`: linked groups' files, then the service's own). This is neither README option: A (per-file `subPath` mounts) and B (link at start) were both rejected.
+- **Why not A.** The pod template names Secrets, not their keys, so the operator would have to read each release's file names when it renders a Deployment, CronJob and pre-deploy Job; every native service with secret files would roll on the operator upgrade unless the change were gated per release; and a repository directory with a secret file's name would make the container fail to start (a file cannot be mounted over a directory).
+- **Why not B.** `native-init` is the entrypoint of Node services only (`nativeServingInit`); the other five runtimes start with no bex process in front of the command.
+- **Why the build-time link is safe to rely on.** Every deploy of a native service builds: `spec.restartedAt` is in the artifact identity (`release_identity.go`), and the names are in the Dockerfile, so the links always match the release's own files. A rollback runs the image and the files of the release it restores.
+- **Rules.** Service root = the image's working directory, which is the service's `rootDir` contents. Native runtimes only; a static site's image never runs and gets no links. The root copy is a read-only link. A repository file of the same name gives way to the secret file; a repository directory of that name is left alone. The link is made after the build command, so the image holds names only and a build cannot copy a secret into its output.
+- **Docker spike (t001's acceptance), `node:22-bookworm-slim`, WORKDIR `/opt/render/project/src`, the generated step, secrets mounted read-only at `/etc/secrets`:**
+
+  ```text
+  new.json      (no such path in the repo)      → reads the secret; sha256 equals /etc/secrets/new.json
+  existing.txt  (a repo file of that name)      → reads the secret (the secret file wins)
+  .env, -dash.txt                               → read the secret
+  confdir       (a repo directory of that name) → still the repo's directory, keep.txt intact
+  echo x > new.json                             → Read-only file system
+  without the mount                             → the links dangle; nothing fails at start
+  ```
+
+- **Follow-up filed:** w8/253, Render also copies secret files into a Docker build's context root; bex passes build secrets only (t003's Docker check).
 
 ## Source + Goal linkage
 

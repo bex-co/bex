@@ -425,6 +425,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **253** — [A Docker build does not find its secret files in the build-context root, as on Render](253.md) (~50m) ← found while working w8/m154 t003, 2026-11-11: Render "also copies your secret files into the root of your Docker build context"; bex passes build secrets only (`dockerinputs.go`); minor.
 - [ ] **252** — [A Blueprint route or `fromService` with an invalid `type` is told to use a service type](252.md) (~20m) ← `/qa-find-bugs-cli` loop sweep f940 2026-11-11: `routes[0].type: bogus` answers "value must be one of 'web', 'worker', 'pserv', 'cron', 'keyvalue', 'redis'"; `blueprintServiceFieldLocation` (`blueprint_compiler.go:1485`) matches any nested `type` under `services/<n>`; minor.
 - [ ] **251** — [A failed adopt plan tells the caller to send a `confirm` phrase that Render's create and approve cannot carry](251.md) (~40m) ← found while implementing w8/m153, 2026-11-11: the shared `blueprintOwnershipError` text ends "retry with confirm=…", which `POST /v1/blueprints`, plan and approve have no field for; minor.
 - [ ] **250** — [The one-step Blueprint create accepts a name another approved Blueprint already has](250.md) (~45m) ← found while implementing w8/m153, 2026-11-11: `BLUEPRINT_NAME_TAKEN` is checked on Render's create and at approval, not in `CreateBlueprint`; two dashboard copies of one file share the repository's name; minor.
