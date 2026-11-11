@@ -1335,7 +1335,9 @@ expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WO
 jq -e --arg x1 "$group_x1_id" --arg g "$group_limit_id" '
   ([.[].sandbox.id] == [$x1]) and all(.[]; .sandbox.sandboxGroupId == $g)' "$fixture_dir/list-group-limit.json" >/dev/null \
   || fail "the group filter did not return exactly the sandbox created in that group: $(head -c 600 "$fixture_dir/list-group-limit.json")"
-expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A&sandboxGroupId=$group_default_id" "$fixture_dir/list-group-default.json"
+# Read as the workspace admin: B is member-b's, and owner-a, an ordinary member,
+# lists only its own sandboxes (the owner boundary asserted above).
+expect_status 200 "$fixture_dir/admin-a.curl" GET "/v1/sandboxes?ownerId=$BEX_WORKSPACE_A&sandboxGroupId=$group_default_id" "$fixture_dir/list-group-default.json"
 jq -e --arg x1 "$group_x1_id" --arg g "$group_default_id" --arg a "$sandbox_a_id" --arg b "$sandbox_b_id" --arg d "$sandbox_d_id" --arg e "$sandbox_e_id" '
   ([.[].sandbox.id] as $ids
    | ($ids | index($a)) != null and ($ids | index($b)) != null and ($ids | index($d)) != null and ($ids | index($e)) != null
