@@ -1,18 +1,18 @@
 # w8 · m154 — A native-runtime service finds its secret files in its root directory, as on Render
 
-**Worker:** worker8 **Goal:** a Node, Python, Ruby, Go, Rust or Elixir service (web, private, worker, cron, and its pre-deploy command) reads each secret file both at `/etc/secrets/<name>` and at `<service root>/<name>`, as Render documents; Docker and image services keep `/etc/secrets` only. **Status:** in progress (t001, t004, t005, t006 done, code shipped; t002 and t003's cluster reads and t007, the production replay, wait for the next platform deploy)
+**Worker:** worker8 **Goal:** a Node, Python, Ruby, Go, Rust or Elixir service (web, private, worker, cron, and its pre-deploy command) reads each secret file both at `/etc/secrets/<name>` and at `<service root>/<name>`, as Render documents; Docker and image services keep `/etc/secrets` only. **Status:** done (2026-11-11; all seven tasks done, Definition of done 1–6 verified on production)
 
 ## Tasks (in order)
 
 | id   | title                                                               | est | depends_on |
 | ---- | ------------------------------------------------------------------- | --- | ---------- |
 | t001 | Decide the mechanism and the collision rule, record them in ADR013 — **DONE** | 30m | —          |
-| t002 | Native services see each secret file in the service root at runtime (implemented and tested; cluster check open) | 60m | t001       |
-| t003 | Blast radius: cron, worker, pre-deploy, `rootDir`, env-group files (covered by the image; cluster check open) | 40m | t002       |
+| t002 | Native services see each secret file in the service root at runtime — **DONE** | 60m | t001       |
+| t003 | Blast radius: cron, worker, pre-deploy, `rootDir`, env-group files — **DONE** | 40m | t002       |
 | t004 | Render parity — **DONE**                                            | 20m | t003       |
 | t005 | Simplify — **DONE**                                                 | 15m | t004       |
 | t006 | Test coverage — **DONE**                                            | 40m | t004       |
-| t007 | Closeout (live replay on production)                                | 20m | t006       |
+| t007 | Closeout (live replay on production) — **DONE**                     | 20m | t006       |
 
 ## Definition of done
 
@@ -100,3 +100,26 @@ Recorded in ADR013 § "Secret files in the service root, native runtimes" and th
 - **Expected outcome:** apps that load `./.env` or `./credentials.json` uploaded as a secret file work unchanged.
 - **Why now:** the CLI's `--secret-file` and the dashboard upload both present the feature as Render's; the missing copy fails silently at app start.
 - **Render parity included:** the change is observable runtime behavior behind REST/GraphQL/MCP/dashboard secret files.
+
+## Closeout (t007, 2026-11-11 UTC): Definition of done on production
+
+Platform pin `7ca0227aa477` (deploy run 42982188589, pinned 08:02 UTC), released `bex v0.5.0`, workspace `bex-canary`, QA human device login. Local files: `cfg.json` sha256 `85fbce62…d4f139`, `.env.qa` sha256 `eb2da435…ec2c5`. Each service's start command printed its working directory and the checksums; the lines below are from `bex logs`.
+
+| Shape | Working directory | Service root | `/etc/secrets` |
+| --- | --- | --- | --- |
+| Web service, Node, free (DoD 1) | `/opt/render/project/src` | `cfg.json`, `.env.qa`: both checksums match | match |
+| Web service with `rootDir: examples/hello-world` (DoD 2) | `/opt/render/project/src`, holding `index.js` | both match; `../../cfg.json` does not exist | match |
+| Background worker, starter | `/opt/render/project/src` | both match | match |
+| Private service, starter | `/opt/render/project/src` | both match | match |
+| Its pre-deploy command | `/opt/render/project/src` | both match | not printed |
+| Cron job, starter (triggered run) | `/opt/render/project/src` | both match | match |
+| Image service, `python:3.12-alpine` (DoD 5) | `/` | no such file | match |
+| Dockerfile service, `docker/welcome-to-docker` (DoD 5) | `/app` | no such file | match |
+
+- **DoD 3, a linked environment group's file: pass.** `grp.txt` from group `qa-w8m154-group` appeared in the web service's root with the checksum of `/etc/secrets/grp.txt`.
+- **DoD 4, change and delete: pass.** After `cfg.json` was replaced and `.env.qa` deleted, the next deploy showed the new checksum (`17f7a77e…4c4e81`) at both paths, and `.env.qa` at neither.
+- **t002, no restart on upgrade: pass.** `hello-go`, untouched (read only), still runs its deploy of 2026-11-08; the root copies are made when an image is built, so a service gets them on its next deploy.
+- **Pre-deploy on a free web service** is refused as on Render ("available only for paid web services, private services, and background workers"), so the pre-deploy read was made on the private service.
+- **DoD 6, fixtures deleted:** seven services and the environment group; `bex services list` shows no `qa-w8m154*` service.
+
+A Docker build does not get the files in its build-context root, as Render documents; that is w8/253.

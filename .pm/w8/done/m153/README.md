@@ -1,6 +1,6 @@
 # w8 · m153 — A workspace can create more than one Blueprint from the same `render.yaml`, as on Render
 
-**Worker:** worker8 **Goal:** a second `bex ea blueprints create` for a repo, branch and file that a Blueprint in the workspace already tracks creates a second, independent Blueprint (its own id, sync history and resources), instead of answering `409 BLUEPRINT_CONNECTION_CONFLICT`. **Status:** in progress (t001–t004 and t006–t008 done, code shipped; t005's browser check and t009, the production replay, wait for the next platform deploy)
+**Worker:** worker8 **Goal:** a second `bex ea blueprints create` for a repo, branch and file that a Blueprint in the workspace already tracks creates a second, independent Blueprint (its own id, sync history and resources), instead of answering `409 BLUEPRINT_CONNECTION_CONFLICT`. **Status:** done (2026-11-11; all nine tasks done, Definition of done verified on production)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Storage: drop `UNIQUE (tenant_id, repo, branch)` and its three upserts — **DONE** | 60m | t001             |
 | t003 | Create: a second Blueprint from the same source is a new Blueprint — **DONE** | 60m | t002             |
 | t004 | Push and sync: every Blueprint tracking a repo+branch gets the push — **DONE** | 45m | t002             |
-| t005 | Dashboard: create and list more than one Blueprint per repo (implemented and tested; browser check open) | 30m | t003             |
+| t005 | Dashboard: create and list more than one Blueprint per repo — **DONE** | 30m | t003             |
 | t006 | Render parity — **DONE**                                               | 20m | t003, t004, t005 |
 | t007 | Simplify — **DONE**                                                    | 15m | t006             |
 | t008 | Test coverage — **DONE**                                               | 45m | t006             |
-| t009 | Closeout (live replay on production)                                   | 20m | t008             |
+| t009 | Closeout (live replay on production) — **DONE**                        | 20m | t008             |
 
 ## Definition of done
 
@@ -89,3 +89,27 @@ Render's page was read again on 2026-11-11 (render.com/docs/infrastructure-as-co
 - **Expected outcome:** `ea blueprints create` behaves as on Render for a repeated source; the conflict code remains only where a resource would change owner.
 - **Why now:** `bex v0.5.0` ships `ea blueprints create` with `create_new` as its default, which promises exactly the behavior the server refuses.
 - **Render parity included:** the change is on REST/GraphQL/MCP create and the dashboard.
+
+## Closeout (t009, 2026-11-11 UTC): Definition of done on production
+
+Platform pin `7ca0227aa477` (deploy run 42982188589, pinned 08:02 UTC), released `bex v0.5.0`, workspace `bex-canary`, QA human device login.
+
+1. **Two Blueprints from one file: pass.**
+
+   ```text
+   bex ea blueprints create --repo https://github.com/render-examples/express-hello-world --name qa-w8m153-copy-a --auto-sync=false -o json
+     → exs-dbq2ll234ugc73cu18mg, planned: create service express-hello-world-ybnk     exit 0
+   bex ea blueprints create … --name qa-w8m153-copy-b …
+     → exs-dbq2ll82gues73d7nm4g, planned: create service express-hello-world-4zws     exit 0
+   bex ea blueprints approve <each> --confirm   → state success, twice
+   ```
+
+   Both services deployed and answered 200 at their `onbex.co` URLs. `GET /v1/blueprints` listed both Blueprints, and each Blueprint's detail listed only its own service.
+
+2. **Deleting one leaves the other: pass.** `DELETE /v1/blueprints/exs-…nm4g` answered 204. `copy-a` was still listed with its service and its one successful sync, and both services kept answering 200.
+3. **Each plans against its own resources: pass, with a limit.** `bex ea blueprints plan` on each answered `no_changes`. A push to the tracked branch was not made: the example repository is not ours to push to. `TestM153_APushReachesEveryBlueprintOnTheBranch` covers the push.
+4. **Adopt never takes a managed resource: pass.** A first `--existing-resources adopt` Blueprint planned and created the unsuffixed `express-hello-world`. A second adopt-mode create of the same file answered its own Blueprint with `planningOutcome: failed` and a notice naming the service and the Blueprint that manages it; approving it answered `409 BLUEPRINT_SYNC_PLANNING_FAILED`; the service stayed with the first Blueprint. The notice still ended with the `confirm` phrase on this pin; w8/251 has since reworded it.
+5. **No confirm phrase to create a second Blueprint: pass.** The CLI creates above (REST) and the dashboard create below (GraphQL) asked for none. MCP calls the same service methods, which `TestM153_NoCreateSurfaceAnswersAConnectionConflict` covers.
+6. **Fixtures deleted.** Five Blueprints and four services; `bex services list` shows no `express-hello-world*` service and `GET /v1/blueprints` is empty for the workspace.
+
+**Dashboard (t005), Chromium at 1440×900 and 390×844, signed in as the QA user:** on `/blueprints/new`, the Public Git URL of the same repository showed "Matches existing resources" with the suffix (`-9cvo`), the existing `express-hello-world` listed as a Service, and the plan `Create express-hello-world-9cvo`. No takeover dialog appeared, Deploy was enabled, and Deploy went straight to the new Blueprint's page (`exs-dbq2pgq34ugc73cu19ng`). The list showed each copy's name with its "Resource name suffix" (`-9cvo`, `-ybnk`). Neither page scrolled sideways at either width.
