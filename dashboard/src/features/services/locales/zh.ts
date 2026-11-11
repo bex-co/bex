@@ -1534,6 +1534,17 @@ const zhServices: Record<string, TranslationEntry> = {
       "服务将调整规格并无停机滚动更新——进行中的请求会先完成再替换旧实例。",
     description: "Plan-change confirm dialog body",
   },
+  "services.planPickerConfirmBodyCron": {
+    message: "更改之后开始的运行会使用新的实例类型。",
+    description:
+      "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
+  },
+  "services.planPickerConfirmBodyNeverLive": {
+    message:
+      "服务会以新的实例类型运行。目前还没有任何版本在运行——部署成功后才会上线。",
+    description:
+      "Plan-change confirm body for a service that has never gone live (w4/548)",
+  },
   "services.planPickerConfirmRunPrice": {
     message: "此实例类型每分钟运行时间费用为 ${price}，运行期间按秒计费。",
     description:
@@ -2311,6 +2322,18 @@ const zhServices: Record<string, TranslationEntry> = {
       "服务将重新构建并部署，范围限定为新目录——现有请求会先完成，旧实例才会被替换。",
     description: "Build & Deploy: root-directory change confirm dialog body",
   },
+  "services.buildDeployConfirmBodyStatic": {
+    message:
+      "这将从新目录重新构建。在新版本成功发布之前，站点会继续提供当前已发布的版本。",
+    description:
+      "Build & Deploy: a live static site's root-directory change confirm body (atomic publish, no instances; w4/548)",
+  },
+  "services.buildDeployConfirmBodyNeverLive": {
+    message:
+      "服务会从新目录构建并部署。目前还没有任何版本在运行——部署成功后才会上线。",
+    description:
+      "Build & Deploy: root-directory change confirm body for a service that has never gone live, so no current version keeps serving (w4/548)",
+  },
   "services.buildDeploySuccess": {
     message: "根目录已更新。",
     description: "Toast after setRootDir succeeds",
@@ -2462,6 +2485,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务将使用新命令重新部署。现有请求完成后才会替换旧实例。",
     description: "Build & Deploy: command-change confirmation body",
   },
+  "services.startCommandConfirmBodyNeverLive": {
+    message:
+      "服务会使用新的命令部署。目前还没有任何版本在运行——部署成功后才会上线。",
+    description:
+      "Deploy: command change confirm body for a service that has never gone live (w4/548)",
+  },
   "services.startCommandSuccess": {
     message: "启动命令已更新。",
     description: "Toast after setStartCommand succeeds",
@@ -2511,11 +2540,23 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "服务将使用新的构建命令重新部署。现有请求完成后才会替换旧实例。",
     description: "Build & Deploy: build-command change confirmation body",
   },
+  "services.buildCommandConfirmBodyNeverLive": {
+    message:
+      "服务会使用新的构建命令构建并部署。目前还没有任何版本在运行——部署成功后才会上线。",
+    description:
+      "Build & Deploy: build-command change confirm body for a service that has never gone live (w4/548)",
+  },
   "services.buildCommandConfirmBodyStatic": {
     message:
       "这将使用新的构建命令重新构建。在新版本成功发布之前，站点会继续提供当前已发布的版本。",
     description:
       "Build & Deploy: static-site build-command change confirmation body (atomic publish, no instances)",
+  },
+  "services.staticBuildConfirmBodyNeverLive": {
+    message:
+      "这会按新的设置开始构建。你的站点尚未发布——本次构建成功后才会上线。",
+    description:
+      "Build & Deploy: a static site's build-command or root-directory change confirm body when the site has never been published (w4/548)",
   },
   "services.buildCommandSuccess": {
     message: "构建命令已更新。",

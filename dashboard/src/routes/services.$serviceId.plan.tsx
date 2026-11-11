@@ -5,6 +5,7 @@ import { useCachedServiceType } from "@/features/services/hooks/use-cached-servi
 import { NonStaticRoute } from "@/features/services/components/non-static-route";
 import { useServer } from "@/features/services/hooks/use-server";
 import { ServicePlanSkeleton } from "@/common/components/route-skeletons";
+import { hasServed } from "@/features/services/lib/status";
 
 export const Route = createFileRoute("/services/$serviceId/plan")({
   head: serviceTabHead("services.navPlan", "/services/$serviceId"),
@@ -51,6 +52,7 @@ function ServicePlanPage() {
         serviceId={serviceId}
         currentPlan={service?.plan ?? null}
         serviceType={service?.type ?? null}
+        live={service == null || hasServed(service)}
       />
     </NonStaticRoute>
   );

@@ -75,6 +75,7 @@ export function DeployCard({
   freePlan = false,
   showCommand,
   autoDeploy,
+  live = true,
 }: {
   serviceId: string;
   commandKind: DeployCommandKind;
@@ -96,6 +97,8 @@ export function DeployCard({
   showCommand: boolean;
   /** The Auto-Deploy row of a repo-backed service. */
   autoDeploy?: ReactNode;
+  /** A release has gone live; false means nothing keeps serving (w4/548). */
+  live?: boolean;
 }) {
   const { t } = useTranslations();
   // Choosing what a service runs is can_create; a contributor is refused on
@@ -159,7 +162,11 @@ export function DeployCard({
             busy={commandBusy}
             confirm={{
               title: (value) => t(copy.confirmTitle, { value }),
-              body: t("services.startCommandConfirmBody"),
+              body: t(
+                live
+                  ? "services.startCommandConfirmBody"
+                  : "services.startCommandConfirmBodyNeverLive",
+              ),
               emptyValue: t("services.startCommandConfirmEmpty"),
             }}
             disabled={createDisabled}

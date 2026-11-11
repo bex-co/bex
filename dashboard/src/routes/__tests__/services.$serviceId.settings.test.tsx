@@ -993,6 +993,29 @@ describe("ServiceSettingsPage", () => {
     expect(await sectionHrefs()).not.toContain("#deploy-hook");
   });
 
+  // w4/548: an image service that has never gone live has no instances to
+  // replace when its command changes.
+  it("tells a never-live image service that nothing is serving yet", async () => {
+    const user = userEvent.setup();
+    serverState.service = svc({
+      repo: null,
+      revision: "",
+      startCommand: "./serve",
+    });
+    renderSettings();
+
+    await user.click(
+      await screen.findByRole("button", { name: "Edit Docker Command" }),
+    );
+    await user.type(screen.getByDisplayValue("./serve"), "2");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(
+      "Nothing is serving yet — it goes live when a deploy succeeds.",
+    );
+    expect(dialog).not.toHaveTextContent("old instances are replaced");
+  });
+
   it("offers Resume under the Suspend anchor for a suspended service", async () => {
     serverState.service = svc({ suspended: true });
     renderSettings();
@@ -1197,23 +1220,40 @@ describe("ServiceSettingsPage", () => {
 
   // w4/246: a static rebuild publishes a new revision prefix
   // atomically (ADR029) — the drain/replace-instances copy is native-only.
+  // w4/548: with no release live yet (no active revision), neither promises
+  // a version that keeps serving.
   it.each([
     [
       "static_site",
+      "r1",
       "Your site keeps serving its current published version until the new build publishes successfully.",
       "Existing requests will be drained",
     ],
     [
       "web_service",
+      "r1",
       "Existing requests will be drained before old instances are replaced.",
       "published version",
     ],
+    [
+      "static_site",
+      "",
+      "Your site isn't published yet — it goes live when this build succeeds.",
+      "keeps serving",
+    ],
+    [
+      "web_service",
+      "",
+      "Nothing is serving yet — it goes live when a deploy succeeds.",
+      "Existing requests will be drained",
+    ],
   ])(
-    "describes the %s build-command change accurately",
-    async (type, expected, absent) => {
+    "describes the %s build-command change accurately (revision %j)",
+    async (type, revision, expected, absent) => {
       const user = userEvent.setup();
       serverState.service = svc({
         type,
+        revision,
         repo: "https://github.com/acme/site",
         branch: "main",
         runtime: "node",

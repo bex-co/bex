@@ -1565,6 +1565,17 @@ const enServices: Record<string, TranslationEntry> = {
       "The service resizes and rolls with no downtime — in-flight requests finish before old instances are replaced.",
     description: "Plan-change confirm dialog body",
   },
+  "services.planPickerConfirmBodyCron": {
+    message: "Runs that start after the change use the new instance type.",
+    description:
+      "Plan-change confirm body for a cron job, which serves no requests: its next run takes the new size (w4/548)",
+  },
+  "services.planPickerConfirmBodyNeverLive": {
+    message:
+      "The service runs on the new instance type. Nothing is serving yet — it goes live when a deploy succeeds.",
+    description:
+      "Plan-change confirm body for a service that has never gone live (w4/548)",
+  },
   "services.planPickerConfirmRunPrice": {
     message:
       "This instance type costs ${price} per minute of run time, billed per second while a run executes.",
@@ -2358,6 +2369,18 @@ const enServices: Record<string, TranslationEntry> = {
       "The service rebuilds and redeploys, scoped to the new directory — in-flight requests finish before old instances are replaced.",
     description: "Build & Deploy: root-directory change confirm dialog body",
   },
+  "services.buildDeployConfirmBodyStatic": {
+    message:
+      "This starts a rebuild from the new directory. Your site keeps serving its current published version until the new build publishes successfully.",
+    description:
+      "Build & Deploy: a live static site's root-directory change confirm body (atomic publish, no instances; w4/548)",
+  },
+  "services.buildDeployConfirmBodyNeverLive": {
+    message:
+      "The service builds and deploys from the new directory. Nothing is serving yet — it goes live when a deploy succeeds.",
+    description:
+      "Build & Deploy: root-directory change confirm body for a service that has never gone live, so no current version keeps serving (w4/548)",
+  },
   "services.buildDeploySuccess": {
     message: "Root Directory updated.",
     description: "Toast after setRootDir succeeds",
@@ -2515,6 +2538,12 @@ const enServices: Record<string, TranslationEntry> = {
       "The service redeploys with the new command. In-flight requests finish before old instances are replaced.",
     description: "Build & Deploy: command-change confirmation body",
   },
+  "services.startCommandConfirmBodyNeverLive": {
+    message:
+      "The service deploys with the new command. Nothing is serving yet — it goes live when a deploy succeeds.",
+    description:
+      "Deploy: command change confirm body for a service that has never gone live (w4/548)",
+  },
   "services.startCommandSuccess": {
     message: "Start Command updated.",
     description: "Toast after setStartCommand succeeds",
@@ -2566,11 +2595,23 @@ const enServices: Record<string, TranslationEntry> = {
       "Service will redeploy with the new build command. Existing requests will be drained before old instances are replaced.",
     description: "Build & Deploy: build-command change confirmation body",
   },
+  "services.buildCommandConfirmBodyNeverLive": {
+    message:
+      "The service builds and deploys with the new build command. Nothing is serving yet — it goes live when a deploy succeeds.",
+    description:
+      "Build & Deploy: build-command change confirm body for a service that has never gone live (w4/548)",
+  },
   "services.buildCommandConfirmBodyStatic": {
     message:
       "This starts a rebuild with the new build command. Your site keeps serving its current published version until the new build publishes successfully.",
     description:
       "Build & Deploy: static-site build-command change confirmation body (atomic publish, no instances)",
+  },
+  "services.staticBuildConfirmBodyNeverLive": {
+    message:
+      "This starts a build with the change. Your site isn't published yet — it goes live when this build succeeds.",
+    description:
+      "Build & Deploy: a static site's build-command or root-directory change confirm body when the site has never been published (w4/548)",
   },
   "services.buildCommandSuccess": {
     message: "Build Command updated.",

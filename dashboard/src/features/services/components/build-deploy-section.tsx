@@ -11,7 +11,10 @@ import {
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
-import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  useTranslations,
+  type Translate,
+} from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { DeployCard } from "@/features/services/components/deploy-card";
@@ -33,6 +36,8 @@ import { commandText } from "@/features/services/lib/command-text";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 import { isDockerBuild } from "@/features/services/lib/service-type";
 import type { BuildFilterView } from "@/features/services/types";
+
+type TranslationKey = Parameters<Translate>[0];
 
 export interface BuildDeploySectionProps {
   serviceId: string;
@@ -94,6 +99,12 @@ export interface BuildDeploySectionProps {
    * the Deploy Hook stays a standalone card.
    */
   showDeployCard?: boolean;
+  /**
+   * A release has gone live (`hasServed`). False while the first deploy failed
+   * or is still running: a confirmation then promises no version that keeps
+   * serving (w4/548).
+   */
+  live?: boolean;
 }
 
 /**
@@ -149,6 +160,7 @@ export function BuildDeploySection({
   showBuildCommand = false,
   staticSite = false,
   showDeployCard = true,
+  live = true,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
   // Choosing what a service builds and runs (source, branch, root dir, commands,
@@ -166,6 +178,21 @@ export function BuildDeploySection({
   const { setDockerContext, busy: dockerContextBusy } = useDockerContext();
   const { setAutoDeployTrigger, busy: autoDeployBusy } = useAutoDeploy();
   const autoDeployHint = t(autoDeployHintKey(pushDeliveryMethod));
+  // A rebuild's confirmation. A static site publishes atomically, with no
+  // instances to replace; with nothing live yet, no version keeps serving
+  // (w4/548).
+  const rebuildBody = (
+    keys: Record<"live" | "liveStatic" | "neverLive", TranslationKey>,
+  ) =>
+    t(
+      staticSite
+        ? live
+          ? keys.liveStatic
+          : "services.staticBuildConfirmBodyNeverLive"
+        : live
+          ? keys.live
+          : keys.neverLive,
+    );
 
   // Render presents Auto-Deploy as a select, not a switch (w5/m53), with its
   // three autoDeployTrigger choices: On Commit, After CI Checks Pass (w1/m181)
@@ -230,7 +257,11 @@ export function BuildDeploySection({
             confirm={{
               title: (value) =>
                 t("services.buildDeployConfirmTitle", { value }),
-              body: t("services.buildDeployConfirmBody"),
+              body: rebuildBody({
+                live: "services.buildDeployConfirmBody",
+                liveStatic: "services.buildDeployConfirmBodyStatic",
+                neverLive: "services.buildDeployConfirmBodyNeverLive",
+              }),
               emptyValue: t("services.buildDeployConfirmRoot"),
             }}
             disabled={createDisabled}
@@ -256,11 +287,11 @@ export function BuildDeploySection({
               confirm={{
                 title: (value) =>
                   t("services.buildCommandConfirmTitle", { value }),
-                body: t(
-                  staticSite
-                    ? "services.buildCommandConfirmBodyStatic"
-                    : "services.buildCommandConfirmBody",
-                ),
+                body: rebuildBody({
+                  live: "services.buildCommandConfirmBody",
+                  liveStatic: "services.buildCommandConfirmBodyStatic",
+                  neverLive: "services.buildCommandConfirmBodyNeverLive",
+                }),
                 emptyValue: t("services.buildCommandConfirmEmpty"),
               }}
               disabled={createDisabled}
@@ -340,6 +371,7 @@ export function BuildDeploySection({
           freePlan={freePlan}
           showCommand={showStartCommand}
           autoDeploy={autoDeployRow}
+          live={live}
         />
       )}
     </>

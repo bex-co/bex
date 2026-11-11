@@ -51,7 +51,7 @@ import {
   type ServiceSettingsSectionId,
 } from "@/features/services/lib/settings-sections";
 import { settingsPort } from "@/features/services/lib/port";
-import { toServiceView } from "@/features/services/lib/status";
+import { hasServed, toServiceView } from "@/features/services/lib/status";
 import {
   ServiceSettingsSkeleton,
   SettingsSectionSkeleton,
@@ -212,6 +212,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             showPreDeployCommand
             freePlan={service.plan === "free"}
             showCommand
+            live={hasServed(service)}
           />
         );
       case "source":
@@ -272,6 +273,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             // Dockerfile build shows Dockerfile Path instead.
             showBuildCommand={!cron && !isDockerBuild(service)}
             staticSite={staticSite}
+            live={hasServed(service)}
           />
         );
       case "static-site":

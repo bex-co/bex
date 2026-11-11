@@ -57,6 +57,7 @@ const PRO: InstanceTypeView = {
 function renderPicker(
   currentPlan: string | null,
   serviceType: string | null = "web_service",
+  neverLive = false,
 ) {
   const rootRoute = createRootRoute();
   const pickerRoute = createRoute({
@@ -67,6 +68,7 @@ function renderPicker(
         serviceId="app"
         currentPlan={currentPlan}
         serviceType={serviceType}
+        live={!neverLive}
       />
     ),
   });
@@ -259,6 +261,50 @@ describe("InstanceTypePicker", () => {
       ),
     ).toBeInTheDocument();
   });
+
+  // w4/548: the resize confirmation promises a rolling replacement only when
+  // a release is live; a never-live service has nothing serving, and a cron
+  // job serves no requests at all.
+  it.each([
+    [
+      "a live service",
+      "web_service",
+      false,
+      "resizes and rolls with no downtime",
+    ],
+    [
+      "a never-live service",
+      "web_service",
+      true,
+      "Nothing is serving yet — it goes live when a deploy succeeds.",
+    ],
+    [
+      "a cron job",
+      "cron_job",
+      false,
+      "Runs that start after the change use the new instance type.",
+    ],
+    // A cron job serves nothing either way, so its own copy wins.
+    [
+      "a never-run cron job",
+      "cron_job",
+      true,
+      "Runs that start after the change use the new instance type.",
+    ],
+  ])(
+    "confirms a resize truthfully for %s",
+    async (_, type, neverLive, want) => {
+      const user = userEvent.setup();
+      renderPicker("standard", type, neverLive);
+      await user.click(await screen.findByRole("radio", { name: /Pro\b/ }));
+      await user.click(screen.getByRole("button", { name: "Save Changes" }));
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent(want);
+      if (neverLive) {
+        expect(dialog).not.toHaveTextContent("in-flight requests");
+      }
+    },
+  );
 
   it("renders no price when the catalog omits one (w4/400)", async () => {
     instanceTypesState.instanceTypes = [{ ...PRO, monthlyUsd: "" }];

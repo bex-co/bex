@@ -40,6 +40,8 @@ export interface InstanceTypePickerProps {
   currentPlan: string | null;
   /** The service's type — a paid-only type (background_worker, private_service, cron_job) is never offered Free. */
   serviceType: string | null;
+  /** A release has gone live; false means nothing keeps serving (w4/548). */
+  live?: boolean;
 }
 
 /**
@@ -54,6 +56,7 @@ export function InstanceTypePicker({
   serviceId,
   currentPlan,
   serviceType,
+  live = true,
 }: InstanceTypePickerProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
@@ -196,7 +199,14 @@ export function InstanceTypePicker({
             : ""
         }
         description={[
-          t("services.planPickerConfirmBody"),
+          // A cron job serves no requests; its next run takes the new size.
+          t(
+            runTimePricing
+              ? "services.planPickerConfirmBodyCron"
+              : live
+                ? "services.planPickerConfirmBody"
+                : "services.planPickerConfirmBodyNeverLive",
+          ),
           runTimePricing
             ? selectedType?.usdPerMinute &&
               t("services.planPickerConfirmRunPrice", {

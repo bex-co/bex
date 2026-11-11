@@ -92,6 +92,74 @@ async function confirmSave(user: ReturnType<typeof userEvent.setup>) {
 }
 
 describe("BuildDeploySection", () => {
+  // w4/548: a change's confirmation promises the current version keeps
+  // serving only when a release is live; with nothing live yet it says the
+  // change goes live with the next successful deploy or build.
+  const LIVE_COPY = {
+    root: "in-flight requests finish before old instances are replaced",
+    build:
+      "Existing requests will be drained before old instances are replaced.",
+    staticBuild: "Your site keeps serving its current published version",
+    start: "In-flight requests finish before old instances are replaced.",
+  };
+  const NEVER_LIVE =
+    "Nothing is serving yet — it goes live when a deploy succeeds.";
+  const NEVER_PUBLISHED =
+    "Your site isn't published yet — it goes live when this build succeeds.";
+  it.each([
+    ["Root Directory", false, false, LIVE_COPY.root],
+    ["Root Directory", false, true, NEVER_LIVE],
+    [
+      "Root Directory",
+      true,
+      false,
+      "Your site keeps serving its current published version",
+    ],
+    ["Root Directory", true, true, NEVER_PUBLISHED],
+    ["Build Command", false, false, LIVE_COPY.build],
+    ["Build Command", false, true, NEVER_LIVE],
+    ["Build Command", true, false, LIVE_COPY.staticBuild],
+    ["Build Command", true, true, NEVER_PUBLISHED],
+    ["Start Command", false, false, LIVE_COPY.start],
+    ["Start Command", false, true, NEVER_LIVE],
+  ] as const)(
+    "confirms a %s change (static %s, never live %s) truthfully",
+    async (field, staticSite, neverLive, want) => {
+      const user = userEvent.setup();
+      render(
+        <BuildDeploySection
+          serviceId="app"
+          rootDir="web"
+          buildCommand="make"
+          startCommand="./serve"
+          autoDeploy={false}
+          preDeployCommand={null}
+          showPreDeployCommand={false}
+          showBuildCommand
+          showStartCommand={!staticSite}
+          staticSite={staticSite}
+          live={!neverLive}
+        />,
+      );
+      await user.click(
+        screen.getByRole("button", {
+          name: new RegExp(`^Edit ${field}$`, "i"),
+        }),
+      );
+      const input = screen.getByDisplayValue(
+        {
+          "Root Directory": "web",
+          "Build Command": "make",
+          "Start Command": "./serve",
+        }[field],
+      );
+      await user.type(input, "2");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      const dialog = await screen.findByRole("alertdialog");
+      expect(dialog).toHaveTextContent(want);
+    },
+  );
+
   it.each([
     ["a Free service with no command", true, null, false],
     ["a Free service with a legacy command", true, "npm run migrate", true],
