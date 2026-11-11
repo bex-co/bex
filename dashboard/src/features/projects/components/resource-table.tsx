@@ -213,10 +213,14 @@ function ResourceTableRow({
       {projectMetadata ? (
         <>
           <TableCell className="hidden text-muted-foreground md:table-cell">
-            {row.runtime ?? <UnknownValue />}
+            {row.runtime ?? (
+              <UnknownValue notApplicable={row.kind === "envgroup"} />
+            )}
           </TableCell>
           <TableCell className="hidden text-muted-foreground lg:table-cell">
-            {row.region ?? <UnknownValue />}
+            {row.region ?? (
+              <UnknownValue notApplicable={row.kind === "envgroup"} />
+            )}
           </TableCell>
           <TableCell className="hidden tabular-nums text-muted-foreground sm:table-cell">
             <RelativeAge value={row.updatedAt} fallback={<UnknownValue />} />
@@ -325,7 +329,7 @@ function ResourceStatus({ row }: { row: ResourceRow }) {
     );
   if (row.kind === "keyvalue" && row.keyValue)
     return <KeyValueStatusBadge keyValue={row.keyValue} />;
-  return <UnknownValue />;
+  return <UnknownValue notApplicable={row.kind === "envgroup"} />;
 }
 
 function ResourceActions({
@@ -375,9 +379,24 @@ function ResourceActions({
   return null;
 }
 
-function UnknownValue() {
+/**
+ * A dash for a value the row lacks. An environment group has no status,
+ * runtime or region at all, so its dash says the column doesn't apply rather
+ * than that something failed to load (w4/549).
+ */
+function UnknownValue({ notApplicable = false }: { notApplicable?: boolean }) {
   const { t } = useTranslations();
-  return <span aria-label={t("projects.metadataUnavailable")}>—</span>;
+  return (
+    <span
+      aria-label={t(
+        notApplicable
+          ? "projects.metadataNotApplicable"
+          : "projects.metadataUnavailable",
+      )}
+    >
+      —
+    </span>
+  );
 }
 
 function ResourceSkeletonRow({

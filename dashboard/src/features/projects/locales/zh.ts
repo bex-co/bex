@@ -173,6 +173,11 @@ const zhProjects: Record<string, TranslationEntry> = {
     message: "环境变量组",
     description: "Type badge for an environment-group row",
   },
+  "projects.metadataNotApplicable": {
+    message: "不适用",
+    description:
+      "Accessible label for a status, runtime or region cell on an environment group row, which has none of them (w4/549)",
+  },
   "projects.metadataUnavailable": {
     message: "不可用",
     description:

@@ -182,6 +182,11 @@ const enProjects: Record<string, TranslationEntry> = {
     message: "Env Group",
     description: "Type badge for an environment-group row",
   },
+  "projects.metadataNotApplicable": {
+    message: "Not applicable",
+    description:
+      "Accessible label for a status, runtime or region cell on an environment group row, which has none of them (w4/549)",
+  },
   "projects.metadataUnavailable": {
     message: "Not available",
     description:

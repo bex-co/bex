@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ResourceTable } from "../resource-table";
 import type { ResourceRow } from "../../types";
@@ -109,6 +109,18 @@ describe("ResourceTable", () => {
     expect(
       screen.queryByText(formatRelativeAge(createdAt, translator("en"))),
     ).not.toBeInTheDocument();
+  });
+
+  // w4/549: an env group has no status, runtime or region, so its dashes say
+  // the columns don't apply; a datastore's missing region is still missing.
+  it("reads an env group's empty cells as not applicable", () => {
+    render(<ResourceTable rows={rows} projectMetadata {...commonProps} />);
+    const group = screen.getByRole("row", { name: /Shared config/ });
+    expect(within(group).getAllByLabelText("Not applicable")).toHaveLength(3);
+    expect(within(group).queryByLabelText("Not available")).toBeNull();
+    const database = screen.getByRole("row", { name: /Main DB/ });
+    // Its region and update time are genuinely missing.
+    expect(within(database).getAllByLabelText("Not available")).toHaveLength(2);
   });
 
   // w4/047: the Type column must name each service's SPECIFIC kind (matching
