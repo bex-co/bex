@@ -1,17 +1,17 @@
 # w8 · m155 — A Postgres user can create more databases in its instance, as on Render
 
-**Worker:** worker8 **Goal:** the default user of a bex Postgres instance can run `CREATE DATABASE`, and connect to the new database through the instance's own URLs with the database name substituted, as Render documents; every credential that becomes the default keeps that ability. **Status:** todo
+**Worker:** worker8 **Goal:** the default user of a bex Postgres instance can run `CREATE DATABASE`, and connect to the new database through the instance's own URLs with the database name substituted, as Render documents; every credential that becomes the default keeps that ability. **Status:** in progress (t001, t004, t005, t006 done, code shipped; t002 and t003's cluster reads and t007, the production replay, wait for the next platform deploy)
 
 ## Tasks (in order)
 
 | id   | title                                                                         | est | depends_on |
 | ---- | ----------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Decide the default user's role attributes, record them in ADR009 and ADR018   | 30m | —          |
-| t002 | The owner and every default credential can create databases                   | 45m | t001       |
-| t003 | Blast radius: existing and restored databases, retired users, exports, limits | 40m | t002       |
-| t004 | Render parity                                                                 | 20m | t003       |
-| t005 | Simplify                                                                      | 15m | t004       |
-| t006 | Test coverage                                                                 | 30m | t004       |
+| t001 | Decide the default user's role attributes, record them in ADR009 and ADR018 — **DONE** | 30m | —          |
+| t002 | The owner and every default credential can create databases (implemented and tested; cluster check open) | 45m | t001       |
+| t003 | Blast radius: existing and restored databases, retired users, exports, limits (unit tests and spike done; production reads open) | 40m | t002       |
+| t004 | Render parity — **DONE**                                                      | 20m | t003       |
+| t005 | Simplify — **DONE**                                                           | 15m | t004       |
+| t006 | Test coverage — **DONE**                                                      | 30m | t004       |
 | t007 | Closeout (live replay on production)                                          | 20m | t006       |
 
 ## Definition of done
@@ -78,3 +78,12 @@
   - Paid plans and a credential added through `POST /postgres/{id}/credentials` were not exercised; the cause is read from the projection code.
 - **Dedupe:** `rg -i "create database|createdb|multiple databases"` over `.pm` and `docs` finds no item or decision about a tenant creating databases. ADR009 does not mention it. `w4/m179` (done) recorded in passing that both roles have "no SUPERUSER, CREATEDB or CREATEROLE" while fixing user deletion, without comparing to Render.
 - **Cleanup:** the fixture database, its project and the sweep's other fixtures are deleted with the sweep.
+
+## Progress (2026-11-11 UTC)
+
+- **Decision (t001).** The owner and every default credential hold `CREATEDB`; an auxiliary user and a retired login hold nothing; no role holds `CREATEROLE` or `SUPERUSER`. ADR009 § "Additional databases: the default users hold `CREATEDB`" has the table and Render's sentences; ADR018 has the Postgres row. `CREATE USER` stays refused and is filed as w8/257, a decision: `CREATEROLE` is unsafe before PostgreSQL 16.
+- **Spike (t001).** kind + CloudNativePG 1.30.1, one instance, owner as a managed role: `CREATE DATABASE` refused before; `rolcreatedb` true within two seconds of adding `createdb: true` to the live role; the user then created `second_db` and connected to it; postmaster start time and pod unchanged; a session opened before the edit kept running while the attribute was withdrawn and granted again. The spike cluster is deleted.
+- **Code (t002).** `managedRoles` projects `createdb: true` for the owner (unless tombstoned) and for each `OwnerPrivileges` credential.
+- **Tests (t006).** `database_createdb_test.go`: the owner, a default credential, an auxiliary user, a retired login and a retired owner; a restored database; and merging the attribute into a live `roles` entry settles in one pass and is withdrawn again. `make test` and `make lint` pass.
+- **Blast radius so far (t003).** Covered by test or spike: existing role converges without a restart; restored database; auxiliary and retired users. Filed: w8/258 (a logical export covers the primary database only; one `databaseName` on every surface; Insights unchecked). Open, on production: an existing database after the deploy, suspend and resume, a credential added afterwards.
+- **Fixture kept for the deploy.** `qa-w8m155-pre` (`dpg-dbq380i34ugc73cu1gig`, free, PostgreSQL 18, `bex-canary`), created before the fix is deployed: user attributes `f/f/f`, `CREATE DATABASE` refused, postmaster started `2026-11-11 09:24:26.125603+00`. After the deploy it must allow `CREATE DATABASE` with the same postmaster start time. Delete it at closeout.

@@ -307,9 +307,10 @@ type DatabaseUser struct {
 	SecretName string `json:"secretName,omitempty"`
 
 	// OwnerPrivileges makes the role a member of the database owner role, so it
-	// can use every object the owner has created. Render credentials are
-	// interchangeable defaults; the native auxiliary users (POST …/users) keep
-	// this false and are granted nothing.
+	// can use every object the owner has created, and lets it create databases
+	// as the owner can. Render credentials are interchangeable defaults; the
+	// native auxiliary users (POST …/users) keep this false and are granted
+	// nothing.
 	// +optional
 	OwnerPrivileges bool `json:"ownerPrivileges,omitempty"`
 }

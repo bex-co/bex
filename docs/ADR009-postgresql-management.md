@@ -336,6 +336,27 @@ Two deliberate details. The owner role carries **no `passwordSecret`**: CNPG onl
 
 Honest degradation is the second half. `<insufficient privilege>` is never republished as query text: the API blanks the field and sets `masked: true` on the process/top-query object (REST, GraphQL and MCP all carry it), and the dashboard renders a "Hidden" cell plus one per-section explanation, keeping unmasked rows and every real statistic beside them visible. The dashboard also still treats the bare literal as masked, so an older bex-api cannot leak it either.
 
+### Additional databases: the default users hold `CREATEDB` (w8/m155)
+
+Render: "You can create additional databases in your Render Postgres instance", by running `CREATE DATABASE <name>` in a psql session, and "Use your instance's same internal and external URLs to connect, except substitute your new database's name as the final component" ([render.com/docs/postgresql-creating-connecting § Adding multiple databases to a single instance](https://render.com/docs/postgresql-creating-connecting), read 2026-11-11; no plan restriction is stated). On bex the statement answered `ERROR: permission denied to create database` on every plan: `managedRoles` projected no `createdb`, a managed role's omitted attribute is false, and CloudNativePG reverts a manual `ALTER ROLE`.
+
+**Decision: the operator projects `createdb: true` onto the database's default users.** The role attributes are:
+
+| Role | `LOGIN` | `CREATEDB` | `CREATEROLE` | `SUPERUSER` |
+| --- | --- | --- | --- | --- |
+| The owner (`bootstrap.initdb`'s user, the first default) | yes | yes | no | no |
+| A default credential (`POST /postgres/{id}/credentials`, `OwnerPrivileges`) | yes | yes | no | no |
+| An auxiliary user (`POST …/users`), "granted nothing" by design | yes | no | no | no |
+| A retired user, the tombstoned owner included | no | no | no | no |
+
+- A role attribute is not inherited through membership, so each default credential carries `createdb` itself; joining the owner would not give it.
+- A retired login is no longer a default user, so the attribute is withdrawn with its login. A database it created stays reachable: later defaults are members of every retired login.
+- The projection is declarative, so existing and restored databases gain the attribute at their next reconcile. A spike on kind with CloudNativePG 1.30.1 (2026-11-11) showed `rolcreatedb` change within two seconds of the `spec.managed.roles` edit, with the postmaster start time and the pod unchanged and a session opened before the edit still running; withdrawing it works the same way.
+- Tenant isolation is unaffected: each instance is its own CloudNativePG cluster, and `CREATEDB` grants nothing outside it. Storage metering, the free plan's storage limit, physical backups, point-in-time recovery, suspend and resume are cluster-wide and cover a second database.
+- With `CREATEDB` the owner can also rename its primary database (`ALTER DATABASE … RENAME` needs the attribute). bex's connection strings, exports and Insights name the primary database, so they fail until it is renamed back. This is self-inflicted and reversible, and Render's default user has the same power.
+
+**Not decided here.** Render's credentials page says "Users created directly with the `CREATE USER` command are _not_ managed by Render", which implies its default user can create roles; no page lists the user's attributes. bex still refuses `CREATE USER`. `CREATEROLE` is not safe to hand out on every version bex serves: before PostgreSQL 16 a role with it can grant itself `pg_execute_server_program` and run programs in the database pod. That decision is w8/257. What a second database is not covered by (a logical export dumps the primary database only, every surface shows one `databaseName`, and Insights' coverage is unchecked) is w8/258.
+
 ## HA · failover · read replicas (w1/m22)
 
 Shipped 2026-07-12. All three Render fields verified against the live API ([render-artifacts/postgres-ha.md](render-artifacts/postgres-ha.md)):

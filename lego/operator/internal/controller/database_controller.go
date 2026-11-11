@@ -379,6 +379,17 @@ const insightsMonitorRole = "pg_monitor"
 // login valid. ALTER ROLE ... NOLOGIN PASSWORD NULL never depends on the role's
 // objects, and keeping the role preserves the tenant's tables and grants.
 //
+// The owner and every credential with owner privileges (Render's default
+// users) may create databases, as Render documents: "Run `CREATE DATABASE
+// <name>` … Use your instance's same internal and external URLs to connect,
+// except substitute your new database's name as the final component"
+// (render.com/docs/postgresql-creating-connecting § Adding multiple databases
+// to a single instance, read 2026-11-11; w8/m155). A managed role's omitted
+// attribute is false, so without `createdb` each of them was NOCREATEDB, and
+// CNPG undid a manual ALTER ROLE. A role attribute is not inherited through
+// membership, hence each default credential carries it itself. A retired
+// login and an auxiliary user do not: neither is a default user.
+//
 // Note: CNPG revokes memberships not listed in inRoles, so the owner's role
 // memberships are bex-owned from here on (ADR009). Returns nil only when there
 // is nothing at all to project.
@@ -406,12 +417,14 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 			"name":     owner,
 			cnpgEnsure: cnpgPresent,
 			"login":    true,
+			"createdb": true,
 			"inRoles":  []any{insightsMonitorRole},
 		}
 		// A tombstoned owner is Render's "deleted" original user: retired like
 		// any other login, but kept, with everything it owns.
 		if slices.Contains(deletedUsers, owner) {
 			role["login"], role["disablePassword"] = false, true
+			delete(role, "createdb")
 		}
 		roles = append(roles, role)
 	}
@@ -437,9 +450,12 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 		if u.SecretName != "" {
 			role["passwordSecret"] = map[string]any{"name": u.SecretName}
 		}
-		if u.OwnerPrivileges && len(inherited) > 0 {
-			role["inRoles"] = slices.Clone(inherited)
-			inherited = append(inherited, u.Name)
+		if u.OwnerPrivileges {
+			role["createdb"] = true
+			if len(inherited) > 0 {
+				role["inRoles"] = slices.Clone(inherited)
+				inherited = append(inherited, u.Name)
+			}
 		}
 		roles = append(roles, role)
 	}
