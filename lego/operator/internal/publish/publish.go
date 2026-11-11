@@ -239,8 +239,7 @@ type Observation struct {
 // is named per revision, so a retry reuses it after exact UID validation.
 func Ensure(ctx context.Context, o Options) (Observation, error) {
 	if err := validate(o); err != nil {
-		var escapes *escapeError
-		if errors.As(err, &escapes) {
+		if escapes, ok := errors.AsType[*escapeError](err); ok {
 			return Observation{Phase: PhaseFailed, Message: escapes.userMessage(), UserError: true}, nil
 		}
 		return Observation{}, err
