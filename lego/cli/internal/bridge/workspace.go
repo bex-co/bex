@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"regexp"
 	"strings"
 	"time"
 
@@ -11,8 +12,12 @@ import (
 	"github.com/render-oss/cli/pkg/owner"
 )
 
-// workspaceIDPrefix is the bex workspace id kind (Render's team prefix).
-const workspaceIDPrefix = "tea-"
+// workspaceID is the shape of a bex workspace id: Render's team prefix and a
+// 20-character xid, as the server checks it before it reads a value as an id
+// rather than a name (lego/backend/internal/id). The prefix alone does not
+// make an id: a workspace named "tea-house" is resolved like any other name
+// (w32/012).
+var workspaceID = regexp.MustCompile(`^tea-[0-9a-v]{20}$`)
 
 // workspaceResolveTimeout bounds the one extra owners request a workspace
 // name costs, so a slow API cannot hold every command at startup.
@@ -68,7 +73,7 @@ const (
 
 func resolveWorkspaceName(ctx context.Context, lookup lookupEnv, set setEnv, list ownerLister) error {
 	name, _ := lookup(renderWorkspace)
-	if name == "" || strings.HasPrefix(name, workspaceIDPrefix) {
+	if name == "" || workspaceID.MatchString(name) {
 		return nil
 	}
 	owners, err := list(ctx, name)

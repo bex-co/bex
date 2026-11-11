@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -1332,6 +1333,16 @@ func TestStaleWorkspaceNameBlocksOnlyConsumers(t *testing.T) {
 	}
 	if code, stderr := run("known", "services", "-o", "json"); code != 0 {
 		t.Errorf("known services exited %d: %s", code, stderr)
+	}
+
+	// A name that only starts with the workspace id prefix is still a name:
+	// it used to be sent as ownerId and refused (w32/012).
+	_, _ = lookups(), owners() // forget what the runs above recorded
+	if code, stderr := run("tea-house", "blueprints", "validate", blueprint, "-o", "json"); code != 0 {
+		t.Errorf("BEX_WORKSPACE=tea-house blueprints validate exited %d: %s", code, stderr)
+	}
+	if looked, sent := drain(&nameLookups), owners(); !slices.Equal(looked, []string{"tea-house"}) || !slices.Equal(sent, []string{teamID}) {
+		t.Errorf("BEX_WORKSPACE=tea-house looked up %q and sent ownerId %q, want one lookup of the name and %s", looked, sent, teamID)
 	}
 }
 
