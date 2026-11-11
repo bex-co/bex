@@ -114,3 +114,24 @@ Live on production after the release pins this build, with owned `qa-` fixtures 
 - **Expected outcome:** a Render client, the bex CLI, Terraform-style read-modify-write tooling and the dashboard all agree on whether a datastore is reachable from the internet. A no-op round trip can no longer cut access without warning.
 - **Why now:** the readback states network exposure wrongly in the security-relevant direction (blocked while open). The read-then-write hazard also turns a harmless sync into an outage for any client that relies on external access.
 - **Render parity included:** REST, GraphQL, MCP and the dashboard all change (t004).
+
+## Post-release probe (QA loop round 124, 2026-11-11)
+
+The release gate cleared at `6ee0197c7` (14:43 UTC): production is pinned to `f609163ada8e`, which contains `529395606`. A `/qa-find-bugs w4` round replayed the Key Value half of the DoD once. This is a record for t003, not a replacement for it, and t003 stays todo.
+
+- **Fixture:** Free Key Value `qa-20261111-r124-kv` (`red-dbqag0npvbns739s7ie0`), created from the dashboard's New Key Value page with Public access switched on and no rules. Deleted afterwards (DELETE 204, then GET 404).
+- **Readback (passes).** Once `available` (17:38):
+  - `GET /v1/key-value/<id>` and `GET /v1/redis/<id>` → `public: true`, `ipAllowList: [{"cidrBlock":"0.0.0.0/0","description":""},{"cidrBlock":"::/0","description":""}]`;
+  - `GET /v1/key-value/<id>/ip-allow-list` → `{"cidrs":["0.0.0.0/0","::/0"]}`;
+  - GraphQL `keyValue(id:) { public ipAllowList }` → `{"ipAllowList":["0.0.0.0/0","::/0"],"public":true}`;
+  - the dashboard's Networking panel lists the same two rules (en).
+- **Access unchanged (passes).** `redis-cli --tls --sni <host> -h <host> -p 6379 PING` without credentials → `NOAUTH Authentication required.`
+- **Round trip (passes).**
+  - `PUT …/ip-allow-list {"cidrs":["0.0.0.0/0","::/0"]}` → 200. The readback is unchanged, and `PING` still answers `NOAUTH` 15 s later.
+  - `PUT …/ip-allow-list {"cidrs":[]}` → 200, then `public: false`, `ipAllowList: []`. Two `PING`s 15–20 s later failed with `SSL_connect failed: unexpected eof while reading`.
+- **Not run:**
+  - the Postgres half: the workspace's one Free Postgres is another session's, and a paid one would be a purchase;
+  - MCP;
+  - a private store and an explicit-rules store;
+  - the zh panel and the 1440/390 skeleton check;
+  - the pinned CLI.
