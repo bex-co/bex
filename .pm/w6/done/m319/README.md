@@ -28,4 +28,4 @@
 - **Expected outcome:** customers stop paying for traffic Render includes, and a card-less workspace has Render's bound.
 - **Why now:** the same shape `w6/m308` just built for build minutes; the code paths are fresh.
 - **Render parity task:** included (usage surfaces, suspension and billing are tenant-visible).
-- **Recommendation recorded, not a user decision:** the allowance uses Render's GB figures on bex's existing public egress meter (no private-link traffic exists in bex).
+- **User decision (2026-11-10, approved after the closeout report):** the allowance uses Render's GB figures in the 2^30-byte GB on bex's existing public egress meter (no private-link traffic exists in bex); datastores keep running past it; the sweeper runs only with the payment-method gate on. Recorded in ADR030 §14.
