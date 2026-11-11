@@ -492,6 +492,54 @@ describe("ServiceEnvironmentEditor", () => {
     expect(trigger).not.toHaveBeenCalled();
   });
 
+  // w4/543: a new blank row has not been gotten wrong yet, so its key rule is
+  // neutral help, with no alert, until the key is typed in or left; Save
+  // still waits. Two blank rows are not announced as duplicates either.
+  it("shows the key rule as neutral help until the field is touched", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    for (let i = 0; i < 2; i++) {
+      await user.click(screen.getByRole("button", { name: "Add variable" }));
+      await user.click(
+        await screen.findByRole("menuitem", { name: "Add variable" }),
+      );
+    }
+    const keys = screen.getAllByRole("textbox", { name: "Key" });
+    const key = keys[keys.length - 1];
+    const rule =
+      "Use up to 253 letters, digits, dots, dashes and underscores; not '.' or starting with '..'.";
+    expect(screen.getAllByText(rule).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(key).toHaveAttribute("aria-invalid", "false");
+    expect(
+      screen.getByRole("button", { name: "Save and deploy" }),
+    ).toBeDisabled();
+
+    // Left blank, it is wrong — and blank, not a duplicate of the other.
+    await user.click(key);
+    await user.tab();
+    expect(await screen.findByRole("alert")).toHaveTextContent(rule);
+    expect(key).toHaveAttribute("aria-invalid", "true");
+
+    await user.type(key, "bad key");
+    expect(await screen.findByRole("alert")).toHaveTextContent(rule);
+  });
+
+  // w4/543: a saved variable's key was never pristine — clearing it names
+  // the rule at once, so the disabled Save always has its reason in view.
+  it("flags a cleared saved key at once", async () => {
+    const user = userEvent.setup();
+    renderEditor();
+    await user.click(await screen.findByRole("button", { name: "Edit" }));
+    const [saved] = screen.getAllByRole("textbox", { name: "Key" });
+    await user.clear(saved);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Use up to 253 letters",
+    );
+    expect(saved).toHaveAttribute("aria-invalid", "true");
+  });
+
   // w5/m149: Render lets a service set PORT, so the editor saves it like any
   // other key.
   it("saves a PORT variable like any other key", async () => {

@@ -1323,6 +1323,10 @@ function EnvDraftItem({
 }) {
   const { t } = useTranslations();
   const valueErrorId = useId();
+  // A pristine new row's empty key is invalid but hasn't been gotten *wrong*
+  // yet: the rule renders as neutral helper text until the user types or
+  // leaves the field, as a secret file's name does (w6/057, w4/543).
+  const [touched, setTouched] = useState(false);
   // The value rules (a NUL, an entry over the process limit, a PORT the
   // operator will not serve on) mark the value, not the key (w21/047).
   const valueRule =
@@ -1361,6 +1365,11 @@ function EnvDraftItem({
       </div>
     );
   }
+  // A saved row whose key is cleared was gotten wrong at once.
+  const showKeyError =
+    Boolean(error) &&
+    !valueRule &&
+    (touched || row.key !== "" || !isNewDraftRow(row));
   return (
     <div className="grid min-w-0 gap-2 py-4 first:pt-0 last:pb-0 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-start">
       <div className="min-w-0 space-y-1">
@@ -1369,22 +1378,28 @@ function EnvDraftItem({
           disabled={disabled}
           aria-describedby={disabled ? permissionDescriptionID : undefined}
           onChange={(event) => onChange({ key: event.target.value })}
+          onBlur={() => setTouched(true)}
           className="min-w-0 font-mono text-sm"
           // Key keeps the generic column name — its own value *is* the
           // variable identity; interpolating would be circular (m101/t013).
           aria-label={t("services.envColKey")}
-          aria-invalid={Boolean(error) && !valueRule}
+          aria-invalid={showKeyError}
           placeholder={t("services.envKeyPlaceholder")}
         />
-        {error && !valueRule ? (
+        {showKeyError ? (
           <p className="text-destructive text-xs" role="alert">
-            {error === "duplicate"
+            {/* Two blank keys collide, but what's wrong is that they're blank. */}
+            {error === "duplicate" && row.key !== ""
               ? t("services.environmentDuplicateKey")
               : error === "value"
                 ? t("services.environmentValueRequired")
                 : error === "limit"
                   ? t("services.environmentLimit")
                   : t("services.envInvalidKey")}
+          </p>
+        ) : isNewDraftRow(row) && row.key === "" ? (
+          <p className="text-muted-foreground text-xs">
+            {t("services.envInvalidKey")}
           </p>
         ) : null}
       </div>
