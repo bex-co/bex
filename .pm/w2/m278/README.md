@@ -1,6 +1,6 @@
 # w2 · m278 — Idle sandboxes suspend and wake on exec, as on Render
 
-**Worker:** worker2 **Goal:** a sandbox with no activity for its idle timeout (Render's default 900 s; `--idle-timeout` 300–86400, 0 disables) suspends: it stops billing compute while keeping its filesystem and state, and the next exec or file call resumes it transparently. **Status:** todo — t001–t008, t010 done; t009 needs a production check of suspend → exec resume once deployed, and the user's sign-off on memory/process loss
+**Worker:** worker2 **Goal:** a sandbox with no activity for its idle timeout (Render's default 900 s; `--idle-timeout` 300–86400, 0 disables) suspends: it stops billing compute while keeping its filesystem and state, and the next exec or file call resumes it transparently. **Status:** todo — t001–t008, t010 done; next: t011 (the production walk, now unblocked), then t009
 
 ## Tasks (in order)
 
@@ -15,7 +15,8 @@
 | t007 | Simplify — **DONE**                                                                | 15m  | t006             |
 | t008 | Test coverage — **DONE**                                                           | 30m  | t006             |
 | t010 | A resume restarts the runtime timeout; a suspended sandbox stays resumable for 30 days — **DONE** | 1h | t005 |
-| t009 | Closeout                                                                | 10m  | t007, t008, t010 |
+| t011 | Production walk: an idle sandbox suspends after its timeout and an exec resumes it with its files intact | 30m | t010 |
+| t009 | Closeout                                                                | 10m  | t007, t008, t010, t011 |
 
 ## Definition of done
 
@@ -61,3 +62,15 @@ t001–t008 and t010 are shipped (`be753e48d`, `9cb1c257a`). Two gates remain:
 
 1. **User sign-off** on the one remaining divergence: memory, running processes and `/tmp` do not survive an idle suspension, while Render keeps them (ADR018 § Sandbox create flags; closing it needs `runsc checkpoint`/CRIU, the ADR042 D5 watch item; the workaround is `--idle-timeout 0`). Accept it as a recorded divergence, or fund memory checkpointing as a new milestone. Run `/unblock w2`.
 2. **Production deploy** of `9cb1c257a` (starved, w6/m156). Then walk it with the QA user: create a sandbox with `--idle-timeout 300`; after 5 min it reports `suspended`; `bex sandboxes exec` resumes it and runs the command; a file written before the suspension is still there.
+
+## Unblock — 2026-11-11 (`/unblock w2`)
+
+- **D1=A (user decision, 2026-11-11):** fund memory and process checkpointing, so that an idle-suspended sandbox keeps its memory and running processes as Render's does. It is a new milestone, [w2/m322](../m322/README.md). m278 closes on what it shipped: filesystem-preserving suspension, after the production walk.
+  - **Render basis:** an idle sandbox "resumes when your agent sends its next command, with its files, memory, and running processes intact", using a runtime snapshot by default ([Render Sandboxes](https://render.com/sandboxes), [creating & configuring](https://render.com/docs/sandboxes-creating), [snapshots](https://render.com/docs/sandboxes-snapshots)).
+- **Gates checked (2026-11-11):**
+  - **Deploy:** `9cb1c257a` is live; the production deploy is current through `0a59e9343`.
+  - **QA login:** `scripts/qa-login.sh` signs in on production again (rc 0), then logged out. The "no session established" recorded on w32/m284 no longer reproduces.
+- **Next (worker):**
+  1. t011, the production walk.
+  2. t009, closeout. At closeout, record in ADR018's sandbox idle row that memory/processes/`/tmp` do not yet survive suspension: a **temporary** difference until w2/m322 ships, not a signed-off one.
+- **Downstream:** w32/m285 waits on this decision (`--kind runtime`). Its board belongs to w32: run `/unblock w32`. With D1=A, runtime snapshots are planned (m322), not refused.

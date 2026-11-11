@@ -1,17 +1,17 @@
 # w2 · m295 — The local cluster survives a Docker restart; docker build and CNPG pins match production
 
-**Worker:** worker2 **Goal:** restarting Docker Desktop never leaves the shared local cluster silently dead. `mock-cluster.sh` recovers it, or names the one command that does. The operator build cannot hang on a locked keychain, and dev-env installs the same CNPG version as production. **Status:** blocked — t001 implemented (live Docker-restart check pending the user), t002–t005 done
+**Worker:** worker2 **Goal:** restarting Docker Desktop never leaves the shared local cluster silently dead. `mock-cluster.sh` recovers it, or names the one command that does. The operator build cannot hang on a locked keychain, and dev-env installs the same CNPG version as production. **Status:** done — closed 2026-11-11 by user decision D3=A (stub-tested recovery accepted; live Docker restart not run)
 
 ## Tasks (in order)
 
 | id   | title                                                                                     | est | depends_on |
 | ---- | ----------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | `mock-cluster.sh` detects a cluster broken by a Docker restart and recovers it or names the reprovision command | 1h | — |
+| t001 | `mock-cluster.sh` detects a cluster broken by a Docker restart and recovers it or names the reprovision command — **DONE** (stub-tested; accepted D3=A) | 1h | — |
 | t002 | The operator step's `docker build` runs with an isolated credential config that keeps the docker context — **DONE** | 30m | — |
 | t003 | dev-env's CNPG fallback installs 0.29.1 from `deploy/helm-artifacts.lock`, as production does — **DONE** | 20m | — |
 | t004 | Simplify — **DONE**                                                                                  | 15m | t001, t002, t003 |
 | t005 | Test coverage — **DONE**                                                                             | 30m | t004 |
-| t006 | Closeout                                                                                  | 10m | t005 |
+| t006 | Closeout — **DONE** | 10m | t005 |
 
 ## Definition of done
 
@@ -56,3 +56,9 @@ The DoD's live check, that a real Docker restart is recovered or diagnosed in on
 - (c) accept the stub-tested recovery as the acceptance.
 
 Run `/unblock w2`.
+
+## Unblock — 2026-11-11 (`/unblock w2`, user decision D3=A)
+
+- **Decision:** accept the stub-tested recovery as the acceptance for the live Docker-restart check, and close m295. This is internal dev tooling with no customer-visible behavior, so no Render reference applies.
+- **What was not done:** a real Docker Desktop restart, which the classifier denied on 2026-11-09. It is recorded here plainly.
+- **Watch:** the next natural Docker restart is the live test. The worker who meets it records the outcome on the board, and files a bug if `mock-cluster.sh` neither recovered the cluster nor named the reprovision command.
