@@ -4483,8 +4483,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "有限的公开镜像拉取失败原因",
   },
   "services.eventsReason.readiness_failed": {
-    message: "运行中的实例未能通过就绪检查。",
-    description: "有限的公开就绪失败原因",
+    message: "运行中的实例未通过健康检查。",
+    description: "有限的公开就绪失败原因；与设置页和 REST 一样称为健康检查（w4/m327）",
   },
   "services.eventsReason.root_directory": {
     message: "没有变更文件匹配服务的根目录。",

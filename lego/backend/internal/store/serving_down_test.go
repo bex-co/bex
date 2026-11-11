@@ -71,3 +71,23 @@ func TestObservedServiceStateBuildOverAServingReleaseIsNoOutage(t *testing.T) {
 		}
 	}
 }
+
+// A live release whose pods lose readiness keeps phase Running (w4/m327). With
+// no ready instance it is an outage, readiness_failed; with one still serving
+// it is not, as when the operator reported it as Deploying.
+func TestObservedServiceStateOfAServedReleaseOutage(t *testing.T) {
+	outage := func(serving metav1.ConditionStatus, reason string) *appv1alpha1.App {
+		cr := buildingOverOutage(serving, reason)
+		cr.Status.Phase = appv1alpha1.PhaseRunning
+		cr.Status.Conditions[0].Reason = appv1alpha1.ReasonHealthCheckFailing
+		return cr
+	}
+	down := observedServiceStateFor("srv-1", outage(metav1.ConditionFalse, appv1alpha1.ReasonServingRevisionUnavailable), false)
+	if !down.AvailabilityObserved || down.Availability != "unhealthy" || down.ReasonCode != EventReasonReadinessFailed {
+		t.Errorf("no ready instance: observation = %+v, want unhealthy/readiness_failed", down)
+	}
+	partial := observedServiceStateFor("srv-1", outage(metav1.ConditionTrue, appv1alpha1.ReasonReleaseServing), false)
+	if partial.Availability != "healthy" {
+		t.Errorf("an instance still serving: observation = %+v, want healthy", partial)
+	}
+}

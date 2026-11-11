@@ -264,7 +264,7 @@ func (r *AppReconciler) reportDeploymentStarting(ctx context.Context, app *appv1
 			res, err := r.reportWebHTTPSelection(ctx, app, dep, image, message, port)
 			return res, true, err
 		}
-		if rolloutPending(app, image) && rolloutDeadline(app, dep) == nil {
+		if rolloutPending(app, dep, image) && rolloutDeadline(app, dep) == nil {
 			r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling Deployment for "+image)
 		}
 	}

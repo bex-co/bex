@@ -4590,8 +4590,9 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Bounded public image-pull failure reason",
   },
   "services.eventsReason.readiness_failed": {
-    message: "A running instance stopped passing readiness checks.",
-    description: "Bounded public readiness failure reason",
+    message: "A running instance failed its health check.",
+    description:
+      "Bounded public readiness failure reason; names the health check, as Settings and REST do (w4/m327)",
   },
   "services.eventsReason.root_directory": {
     message: "No changed file matched the service's root directory.",

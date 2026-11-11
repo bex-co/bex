@@ -1,20 +1,20 @@
 # w4 · m327 — A live service whose instance fails its health check reads "Deploying" on every surface though no deploy runs, and its saved settings are announced as going live "when the current deploy finishes"
 
-**Worker:** worker4 **Goal:** a health-check outage of the release that is already live reads as that release's outage, not as a deploy. The service status agrees with the Deploys list, the saved-changes notice tells the user to deploy, and the Events reason names a health check. **Status:** todo
+**Worker:** worker4 **Goal:** a health-check outage of the release that is already live reads as that release's outage, not as a deploy. The service status agrees with the Deploys list, the saved-changes notice tells the user to deploy, and the Events reason names a health check. **Status:** blocked — t001–t005 and t007–t009 done (shipped); t006 live replay waits for the next production deploy, then t010 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Capture Render's service status during an instance failure and record the target in ADR004 § Health checks | 30m | — |
-| [t002](t002.md) | Operator: a served release whose pods go unready keeps phase Running when no newer release is requested or rolling | 60m | t001 |
-| [t003](t003.md) | Operator: `undeployedChangesApplying` is true only while a newer release is requested or rolling | 30m | t002 |
-| [t004](t004.md) | Blast radius: every reader of phase `Deploying` in the operator, backend and dashboard | 45m | t002, t003 |
-| [t005](t005.md) | Dashboard: the `readiness_failed` Events reason names a health check, en and zh | 10m | — |
+| [t001](done/t001.md) | Capture Render's service status during an instance failure and record the target in ADR004 § Health checks — **DONE** | 30m | — |
+| [t002](done/t002.md) | Operator: a served release whose pods go unready keeps phase Running when no newer release is requested or rolling — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | Operator: `undeployedChangesApplying` is true only while a newer release is requested or rolling — **DONE** | 30m | t002 |
+| [t004](done/t004.md) | Blast radius: every reader of phase `Deploying` in the operator, backend and dashboard — **DONE** | 45m | t002, t003 |
+| [t005](done/t005.md) | Dashboard: the `readiness_failed` Events reason names a health check, en and zh — **DONE** | 10m | — |
 | [t006](t006.md) | Live verification on an owned Free image web service | 30m | t004, t005 |
-| [t007](t007.md) | Render parity | 15m | t006 |
-| [t008](t008.md) | Simplify | 10m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007 |
+| [t007](done/t007.md) | Render parity — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 10m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007 |
 | [t010](t010.md) | Closeout | 10m | t008, t009 |
 
 Ten tasks, 285m (4h45m).

@@ -2936,11 +2936,23 @@ func (r *AppReconciler) deployRegistryGate(ctx context.Context, app *appv1alpha1
 // rolloutPending reports whether something is actually rolling out. A settled
 // Running app on a steady-state pass (childHealthRequeue, pod events) must not
 // flap Running→Deploying→Running, so the transitional phase is stamped only
-// when this is true.
-func rolloutPending(app *appv1alpha1.App, image string) bool {
+// when this is true. A spec write that leaves a Running App on its live
+// release (a scale, a domain, a setting that waits for a deploy) rolls no
+// release, during an outage of that release or not (w4/m327).
+func rolloutPending(app *appv1alpha1.App, dep *appsv1.Deployment, image string) bool {
+	if app.Status.Phase == appv1alpha1.PhaseRunning && app.Status.Image == image && runsActiveRelease(app, dep) {
+		return false
+	}
 	return app.Status.Phase != appv1alpha1.PhaseRunning ||
 		app.Status.ObservedGeneration != app.Generation ||
 		app.Status.Image != image
+}
+
+// runsActiveRelease reports a Deployment whose template is the active revision
+// and the App's release: the release that served, with no newer one to roll.
+func runsActiveRelease(app *appv1alpha1.App, dep *appsv1.Deployment) bool {
+	rev := dep.Spec.Template.Labels[labelRevision]
+	return rev == app.Status.ActiveRevision && rev == releaseRevision(app)
 }
 
 // workerSuspendedMessage is a suspended worker's Ready message, the same whether
@@ -3745,7 +3757,9 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	if reason, msg := r.permanentRolloutCrash(ctx, dep, crashHintPort(app, port)); msg != "" {
 		return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
 	}
-	app.Status.Phase = appv1alpha1.PhaseDeploying
+	if !servedReleaseOutage(app, dep) {
+		app.Status.Phase = appv1alpha1.PhaseDeploying
+	}
 	notReadyReason := reasonRolloutProgressing
 	if fullyReady := r.currentRevisionFullyReady(ctx, dep, replicas); fullyReady {
 		notReadyReason, notReadyMessage = reasonRolloutSettling, "current revision fully ready; Deployment status still converging"
@@ -3780,6 +3794,16 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 			"app", app.Name, "error", err.Error())
 	}
 	return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+}
+
+// servedReleaseOutage reports a live release whose pods lost readiness with no
+// newer release rolling: the Deployment runs the active revision, which is the
+// release, and the App was Running. That is the release's outage, not a deploy
+// (w4/m327), as Render reports an instance failing its health check: the phase
+// stays Running while Ready=False names the cause. Its start after a wake or a
+// resume left Hibernated, not Running, so it still reads Deploying (ADR004).
+func servedReleaseOutage(app *appv1alpha1.App, dep *appsv1.Deployment) bool {
+	return app.Status.Phase == appv1alpha1.PhaseRunning && runsActiveRelease(app, dep)
 }
 
 // reasonProgressDeadlineExceeded is Kubernetes' Progressing=False reason for a

@@ -163,12 +163,14 @@ func (r *AppReconciler) inFlightCarriesSavedConfiguration(ctx context.Context, a
 }
 
 // releaseRequestedOrRolling reports whether pending is a deploy that is on its
-// way: rolling (Deploying), or requested and not yet dispatched — still
-// queued behind the operator, or building (w4/529). The deploy stamps its
-// release generation at request time, so a stamp equal to pending is the
-// request itself; a Save only stamps no release.
+// way: rolling (Deploying a release other than the active one), or requested
+// and not yet dispatched — still queued behind the operator, or building
+// (w4/529). The deploy stamps its release generation at request time, so a
+// stamp equal to pending is the request itself; a Save only stamps no
+// release. The active release starting after a wake or a resume reads
+// Deploying too, but applies nothing new (w4/m327).
 func releaseRequestedOrRolling(app *appv1alpha1.App, pending int64) bool {
-	if app.Status.Phase == appv1alpha1.PhaseDeploying {
+	if app.Status.Phase == appv1alpha1.PhaseDeploying && releaseRevision(app) != app.Status.ActiveRevision {
 		return true
 	}
 	stamped, ok := stampedReleaseGeneration(app)

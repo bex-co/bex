@@ -35,7 +35,9 @@ import (
 )
 
 var _ = Describe("App live child health", func() {
-	It("leaves Running after a current-revision Pod crashes without an App spec edit", func() {
+	// A live release's crash is that release's outage, not a deploy (w4/m327):
+	// Ready names it, and the phase stays Running.
+	It("reports a current-revision Pod crash on Ready without an App spec edit", func() {
 		skipNameValidation := true
 		mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 			Scheme: k8sClient.Scheme(), Metrics: metricsserver.Options{BindAddress: "0"},
@@ -97,7 +99,7 @@ var _ = Describe("App live child health", func() {
 			current := &appv1alpha1.App{}
 			g.Expect(k8sClient.Get(ctx, nn, current)).To(Succeed())
 			g.Expect(current.Generation).To(Equal(generation), "child crash must not need an App spec edit")
-			g.Expect(current.Status.Phase).To(Equal(appv1alpha1.PhaseDeploying))
+			g.Expect(current.Status.Phase).To(Equal(appv1alpha1.PhaseRunning))
 			ready := meta.FindStatusCondition(current.Status.Conditions, "Ready")
 			g.Expect(ready).NotTo(BeNil())
 			g.Expect(ready.Status).To(Equal(metav1.ConditionFalse))

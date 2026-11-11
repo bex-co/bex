@@ -2236,9 +2236,11 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 			}
 		case metav1.ConditionFalse:
 			// A new revision's container failure is a deploy diagnosis, not an
-			// outage, when the operator has observed the active pods ready.
+			// outage, when the operator has observed the active pods ready. So
+			// is one unready instance of a live release while others serve: a
+			// served release's lost readiness keeps phase Running (w4/m327).
 			serving := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
-			if app.Status.Phase == appv1alpha1.PhaseDeploying && serving != nil &&
+			if (app.Status.Phase == appv1alpha1.PhaseDeploying || app.Status.Phase == appv1alpha1.PhaseRunning) && serving != nil &&
 				serving.ObservedGeneration == app.Generation && serving.Status == metav1.ConditionTrue {
 				obs.Availability = "healthy"
 				obs.AvailabilityObserved = true

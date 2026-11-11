@@ -49,10 +49,10 @@ var crashLoopReasons = map[string]bool{
 // False. The rule (docs/ADR096-crashloop-suspension.md § Rule):
 //
 //   - Ready is False with a start-failure reason (crashLoopReasons);
-//   - the phase is Running, Deploying or Failed. The operator reports a
-//     served release whose pods start crashing as Deploying with Ready
-//     CrashLoopBackOff (reportRolloutProgress handles every not-ready
-//     Deployment alike), so Deploying alone does not mean a rollout;
+//   - the phase is Running, Deploying or Failed. A served release whose pods
+//     start crashing reads Running with Ready CrashLoopBackOff since w4/m327
+//     (Deploying before, and still after a wake), so the phase alone does
+//     not decide;
 //   - the release those pods run has finished rolling out
 //     (crashLoopReleaseSettled): a newer release still rolling out is a
 //     deploy in progress, and a first release that never served is a failed
