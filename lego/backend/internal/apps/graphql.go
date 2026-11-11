@@ -1145,7 +1145,7 @@ var generatedBlueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 var blueprintResourceRefGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "BlueprintResourceRef",
 	Fields: graphql.Fields{
-		"kind": gqlutil.ReqStrField(func(r BlueprintResourceRef) any { return string(r.Kind) }),
+		"kind": gqlutil.ReqStrField(func(r BlueprintResourceRef) any { return r.Kind }),
 		"name": gqlutil.ReqStrField(func(r BlueprintResourceRef) any { return r.Name }),
 	},
 })

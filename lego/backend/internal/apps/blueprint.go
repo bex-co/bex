@@ -620,11 +620,11 @@ type blueprintPreviewOptions struct {
 	ExistingResources string
 }
 
-// BlueprintResourceRef names one resource a Blueprint file declares, by the
-// kind its plan actions use.
+// BlueprintResourceRef names one resource a Blueprint file declares. Kind is
+// a BlueprintResourceKind value, the name its plan actions use.
 type BlueprintResourceRef struct {
-	Kind BlueprintResourceKind `json:"kind"`
-	Name string                `json:"name"`
+	Kind string `json:"kind"`
+	Name string `json:"name"`
 }
 
 var errBlueprintExistingResourcesMode = fmt.Errorf("%w: existingResources must be adopt or create_new", core.ErrBadRequest)
@@ -1194,7 +1194,7 @@ func (s *Service) blueprintMatchedResources(ctx context.Context, manifest string
 		}
 		for _, svc := range st.services {
 			if services[svc.req.Name] != nil {
-				matched = append(matched, BlueprintResourceRef{Kind: BlueprintResourceService, Name: svc.req.Name})
+				matched = append(matched, BlueprintResourceRef{Kind: string(BlueprintResourceService), Name: svc.req.Name})
 			}
 		}
 	}
@@ -1206,7 +1206,7 @@ func (s *Service) blueprintMatchedResources(ctx context.Context, manifest string
 		for _, db := range st.databases {
 			// Any database of that name is a match, a duplicated one included.
 			if found, unique := uniqueDatabaseByDisplayName(databases.Items, scoped, tenantID, db.name); found != nil || !unique {
-				matched = append(matched, BlueprintResourceRef{Kind: BlueprintResourcePostgres, Name: db.name})
+				matched = append(matched, BlueprintResourceRef{Kind: string(BlueprintResourcePostgres), Name: db.name})
 			}
 		}
 	}
@@ -1217,7 +1217,7 @@ func (s *Service) blueprintMatchedResources(ctx context.Context, manifest string
 		}
 		for _, kv := range st.keyValues {
 			if found, unique := uniqueKeyValueByDisplayName(keyValues.Items, scoped, tenantID, kv.name); found != nil || !unique {
-				matched = append(matched, BlueprintResourceRef{Kind: BlueprintResourceKeyValue, Name: kv.name})
+				matched = append(matched, BlueprintResourceRef{Kind: string(BlueprintResourceKeyValue), Name: kv.name})
 			}
 		}
 	}
@@ -1228,7 +1228,7 @@ func (s *Service) blueprintMatchedResources(ctx context.Context, manifest string
 		}
 		for _, group := range st.envGroups {
 			if _, ok := groups[group.name]; ok {
-				matched = append(matched, BlueprintResourceRef{Kind: BlueprintResourceEnvVarGroup, Name: group.name})
+				matched = append(matched, BlueprintResourceRef{Kind: string(BlueprintResourceEnvVarGroup), Name: group.name})
 			}
 		}
 	}
