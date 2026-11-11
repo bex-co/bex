@@ -167,3 +167,20 @@ Live on production after the release pins this build, on an owned Free image web
 - **Expected outcome:** a CI pipeline that ships image tags through the deploy hook never exposes an unverified release early. Cancel means the change never reached users.
 - **Why now:** the deploy hook with `imgURL` is the documented CI path for image services, so every such deploy hits this. A bad build reaches users while the dashboard still calls it "In Progress". The second roll also doubles deploy time (108 s against 46 s).
 - **Render parity included:** the deploy states on REST, GraphQL, MCP and the dashboard change timing, and the cancel dialog's promise depends on it (t007).
+
+## Post-release probe (QA loop round 121, 2026-11-11)
+
+The release gate cleared at `6ee0197c7` (14:43 UTC): production is pinned to `f609163ada8e`, which contains `7dec58bb5`. A `/qa-find-bugs w4` round ran Run A once against it. This is a record for t006, not a replacement for it, and t006 stays todo.
+
+- **Fixture:** Free web service `qa-20261111-r121-ngx` (`srv-dbq9qsfpvbns739s7fmg`) from `docker.io/library/nginx:1.27-alpine`, no port. Live at 16:54:41. Deleted afterwards (DELETE 204, then GET 404).
+- **Run A.**
+  - **Method:** `POST /v1/services/srv-dbq9qsfpvbns739s7fmg/deploys {"imageUrl":"docker.io/library/nginx:1.26-alpine"}` (`dep-dbq9rng3u30c73cf8rmg`). It shares the image-override path with the hook's `imgURL` but is not the hook.
+  - **Polling:** a curl poller read the `Server` header every ~0.5 s, and the page polled the row every 1.2 s.
+  - **Row:** `created` 16:54:54.8 → `update_in_progress` 16:55:22.8 → `live` 16:56:24.0 (`finishedAt` 16:56:22.96).
+  - **Responses:** `200 nginx/1.27.5` until 16:55:58.7, then `200 nginx/1.26.3` on every poll. There was no alternation and no error.
+- **Against the DoD:**
+  - **"No early traffic" fails by about 24 s.** Every response was `nginx/1.26.3` from 16:55:58.7, while the row read `update_in_progress` until 16:56:24.0. The switch itself is now clean: one cut-over, no mixing, unlike round 35. But the deploy still reads live about 24 s after it holds all traffic. That is the same gap the same-image control bullet records ("today the gap is 24 s"), and t004's "reads `live` in the same pass" is not met live.
+  - **"One instance per change" fails.**
+    - `GET /v1/logs?…&type=app&startTime=2026-11-11T16:54:50Z` shows two new instances for this one deploy, each starting nginx: `…-sjrmnnbtrru601glogre` (first line 16:55:12.8) and `…-48s95tq3f6gt9au147rg` (first line 16:55:47.9).
+    - `GET …/instances` afterwards lists only `…-48s95tq3f6gt9au147rg` (created 16:55:45). The traffic switch at 16:55:58.7 matches that second instance becoming Ready.
+- **Not run this round:** Run B (cancel before promotion), the git-built case, the neighbours, and the hook `imgURL` path itself.
