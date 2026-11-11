@@ -48,7 +48,7 @@ Materialized from all five proposals of `/pm-brainstorm for w6` 2026-11-08 plus 
 
 Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenant build experience → Render parity), approved by the user's `/pmx … to w6`. Scheduled items for worker6, not a workstream specialty.
 
-1. **[m306](blocked/m306/README.md)** — **BLOCKED** (ops metrics for the production probe) — builds of different services start together, and a held build is visible (10 tasks).
+1. **[m306](done/m306/README.md)** — **done** — builds of different services start together, and a held build is visible (10 tasks).
 2. **[m307](done/m307/README.md)** — **done** — `build_seconds` counts what Render counts as pipeline minutes (9 tasks).
 3. **[m308](done/m308/README.md)** — **done** — each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted" (8 tasks); after m307.
 4. **[m309](done/m309/README.md)** — **done** — pipeline-minute spend limit (7 tasks); after m308.
@@ -58,7 +58,7 @@ Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenan
 ## Milestones
 
 - [x] **m319** — [Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down](done/m319/README.md) — **done 2026-11-10**: `includedBandwidth` identical on REST, GraphQL, MCP and the billing page on production (8 tasks) ← promoted from `w6/116` 2026-11-10
-- [ ] **m306** — **BLOCKED (ops: read `bex_builds_held{cause="admission"}` against `bex_builds_queued` during a four-build probe — production ran builds two at a time, which ADR060 §D8's two warm build slots explain but tenant state cannot confirm; t001–t005, t007–t009 done)** — [Builds of different services start together, and a held build is visible](blocked/m306/README.md) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-10 proposal 1; ADR060 §D5/§D6
+- [x] **m306** — [Builds of different services start together, and a held build is visible](done/m306/README.md) — **done 2026-11-11**: on production a workspace's builds 3–4 start while 1–2 run (`examples/build-probe`); the two-minute node wait is `w6/117` (10 tasks) ← `/pm-brainstorm for w6` 2026-11-10 proposal 1; ADR060 §D5/§D6
 - [x] **m307** — [`build_seconds` counts what Render counts as pipeline minutes](done/m307/README.md) — **done 2026-11-10**: a failing build's run metered and the queue wait excluded, identical on REST, GraphQL and MCP on production (9 tasks) ← proposal 2; ADR023
 - [x] **m308** — [Each plan includes pipeline minutes, and builds stop with "Build Minutes Exhausted"](done/m308/README.md) — **done 2026-11-10**: `buildMinutes` identical on REST, GraphQL, MCP and the billing page on production; the stop by envtest (8 tasks) ← proposal 3; ADR030 §13
 - [x] **m309** — [Pipeline-minute spend limit](done/m309/README.md) — **done 2026-11-10**: GraphQL and Workspace Settings → Build Pipeline read on production; the stop by sweeper tests (7 tasks) ← proposal 4
@@ -235,6 +235,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **117** — **BLOCKED (user: cost choice — keep `bex-tenant-burst` warm at min 1 or 2, or leave builds 3–4 to wait ~2 min for a scale-from-zero node; B, min 2, recommended)** — [A workspace's third and fourth builds wait about two minutes for a build node](blocked/117.md) (~30m) ← `w6/m306` production record 2026-11-11
 - [x] **116** — [Each plan's included outbound bandwidth is not applied, and a card-less workspace past it keeps running](done/m319/source-w6-116.md) — promoted to `m319` 2026-11-10 by `/loopx w6`
 - [x] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](done/115.md) (~15m) — done 2026-11-10 (ADR026 §8 + ADR018 corrected) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
 - [x] **110** — [tenant-view probe detects an activator-held wake and polls for `service_woken` (#134)](done/110.md) — done 2026-11-08 ← `/pm-brainstorm for w6` 2026-11-08 proposal 3

@@ -1,6 +1,6 @@
 # build-probe — do a workspace's builds start together?
 
-Acceptance fixture for [w6/m306](../../.pm/w6/blocked/m306/README.md) (docs/ADR060 §D6, §D8): Render limits builds only per service, so the four services in [`render.yaml`](render.yaml) should all build at once.
+Acceptance fixture for [w6/m306](../../.pm/w6/done/m306/README.md) (docs/ADR060 §D6, §D8): Render limits builds only per service, so the four services in [`render.yaml`](render.yaml) should all build at once.
 
 Each build sleeps for `PROBE_SECONDS` (420 by default) and does nothing else, so it holds a build slot without loading the build node. Seven minutes outlasts an elastic build node's scale-from-zero, which is what makes the result readable from the tenant side:
 
