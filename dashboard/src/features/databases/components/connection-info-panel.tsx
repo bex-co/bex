@@ -79,12 +79,23 @@ function RevealedInfo({ id, info }: { id: string; info: ConnectionInfoView }) {
   const { t } = useTranslations();
   const copiedText = t("databases.copied");
   const copyErrorText = t("databases.copyError");
+  // One toggle governs every place the password appears (w4/586): while it
+  // is hidden, the strings show it masked too. Copy always copies the full
+  // value.
+  const [shown, setShown] = useState(false);
+  const display = (value: string) =>
+    shown ? value : maskSecret(value, info.password);
   return (
     <div className="space-y-4">
-      <PasswordField value={info.password} />
+      <PasswordField
+        value={info.password}
+        shown={shown}
+        onToggle={() => setShown((s) => !s)}
+      />
       <ConnectionField
         label={t("databases.connInternal")}
         value={info.internalConnectionString}
+        displayValue={display(info.internalConnectionString)}
         copiedText={copiedText}
         copyErrorText={copyErrorText}
       />
@@ -92,6 +103,7 @@ function RevealedInfo({ id, info }: { id: string; info: ConnectionInfoView }) {
         <ConnectionField
           label={t("databases.connExternal")}
           value={info.externalConnectionString}
+          displayValue={display(info.externalConnectionString)}
           copiedText={copiedText}
           copyErrorText={copyErrorText}
         />
@@ -99,6 +111,7 @@ function RevealedInfo({ id, info }: { id: string; info: ConnectionInfoView }) {
       <ConnectionField
         label={t("databases.connPsql")}
         value={info.psqlCommand}
+        displayValue={display(info.psqlCommand)}
         copiedText={copiedText}
         copyErrorText={copyErrorText}
       />
@@ -147,10 +160,24 @@ function ServerCAField({ id, pem }: { id: string; pem: string }) {
   );
 }
 
-/** The password, masked by default with a show/hide toggle + copy. */
-function PasswordField({ value }: { value: string }) {
+/** Every occurrence of secret in value, masked; value unchanged without one. */
+function maskSecret(value: string, secret: string): string {
+  return secret ? value.split(secret).join(MASK) : value;
+}
+
+const MASK = "••••••••";
+
+/** The password, masked unless shown, with a show/hide toggle + copy. */
+function PasswordField({
+  value,
+  shown,
+  onToggle,
+}: {
+  value: string;
+  shown: boolean;
+  onToggle: () => void;
+}) {
   const { t } = useTranslations();
-  const [shown, setShown] = useState(false);
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between gap-2">
@@ -161,7 +188,7 @@ function PasswordField({ value }: { value: string }) {
           <Button
             variant="ghost"
             size="icon-sm"
-            onClick={() => setShown((s) => !s)}
+            onClick={onToggle}
             aria-label={
               shown
                 ? t("databases.connHidePassword")

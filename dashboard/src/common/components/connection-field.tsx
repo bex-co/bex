@@ -8,6 +8,8 @@ export interface ConnectionFieldProps {
   copyErrorText: string;
   /** Accessible name for the copy control. Defaults to "Copy {label}". */
   copyLabel?: string;
+  /** What the row shows, when it differs from what Copy copies (a masked secret). */
+  displayValue?: string;
 }
 
 /**
@@ -22,6 +24,7 @@ export function ConnectionField({
   copiedText,
   copyErrorText,
   copyLabel,
+  displayValue = value,
 }: ConnectionFieldProps) {
   const { t } = useTranslations();
   return (
@@ -36,7 +39,9 @@ export function ConnectionField({
         />
       </div>
       <div className="overflow-x-auto rounded-md border bg-muted px-3 py-2">
-        <code className="font-mono text-xs whitespace-pre">{value || "—"}</code>
+        <code className="font-mono text-xs whitespace-pre">
+          {displayValue || "—"}
+        </code>
       </div>
     </div>
   );

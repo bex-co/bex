@@ -79,7 +79,7 @@ describe("ConnectionInfoPanel", () => {
       screen.getByRole("button", { name: /Copy .*[Pp]assword/ }),
     ).toBeInTheDocument();
     expect(screen.queryByText("s3cretpw")).not.toBeInTheDocument();
-    expect(screen.getByText(/•+/)).toBeInTheDocument();
+    expect(screen.getAllByText(/•+/).length).toBeGreaterThan(0);
 
     await user.click(screen.getByRole("button", { name: "Show password" }));
     expect(screen.getByText("s3cretpw")).toBeInTheDocument();
@@ -90,6 +90,43 @@ describe("ConnectionInfoPanel", () => {
     expect(
       screen.queryByText("External connection string"),
     ).not.toBeInTheDocument();
+  });
+
+  // w4/586: one toggle governs the password everywhere it appears, and Copy
+  // always copies the full value.
+  it("masks the password inside the connection strings and psql command until shown", async () => {
+    state.info = {
+      password: "s3cretpw",
+      internalConnectionString: "postgresql://u:s3cretpw@db-rw.default:5432/db",
+      externalConnectionString:
+        "postgresql://u:s3cretpw@dpg-x.db.bex.co:5432/db",
+      psqlCommand: "PGPASSWORD=s3cretpw psql -h dpg-x.db.bex.co -U u db",
+      serverCaCertificate: "",
+      readReplicaConnectionStrings: [],
+    };
+    const user = userEvent.setup();
+    const { container } = render(<ConnectionInfoPanel id="db" />);
+    expect(container.textContent).not.toContain("s3cretpw");
+    expect(
+      screen.getByText("PGPASSWORD=•••••••• psql -h dpg-x.db.bex.co -U u db"),
+    ).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: /Copy .*External connection string/ }),
+    );
+    expect(await navigator.clipboard.readText()).toBe(
+      "postgresql://u:s3cretpw@dpg-x.db.bex.co:5432/db",
+    );
+
+    await user.click(screen.getByRole("button", { name: "Show password" }));
+    expect(
+      screen.getByText("PGPASSWORD=s3cretpw psql -h dpg-x.db.bex.co -U u db"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("postgresql://u:s3cretpw@db-rw.default:5432/db"),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Hide password" }));
+    expect(container.textContent).not.toContain("s3cretpw");
   });
 
   it("renders an error state when the reveal failed", () => {
@@ -176,8 +213,9 @@ describe("ConnectionInfoPanel", () => {
     };
     render(<ConnectionInfoPanel id="dpg-x" />);
     expect(screen.getByText("External connection string")).toBeInTheDocument();
+    // The password stays masked in the URL until Show password (w4/586).
     expect(
-      screen.getByText("postgresql://u:s3cretpw@dpg-x.db.bex.co:5432/db"),
+      screen.getByText("postgresql://u:••••••••@dpg-x.db.bex.co:5432/db"),
     ).toBeInTheDocument();
     expect(screen.queryByText("Server CA certificate")).toBeNull();
     expect(
