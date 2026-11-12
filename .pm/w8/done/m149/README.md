@@ -1,6 +1,6 @@
 # w8 · m149 — REST lists scope by `ownerId` the way Render's do
 
-**Worker:** worker8 **Goal:** every Render list route bex serves returns exactly the workspaces the request names. `ownerId` narrows to those workspaces, and an omitted `ownerId` spans every workspace the caller belongs to, as Render's lists and the pinned CLI's name resolvers expect. **Status:** blocked — code shipped in this batch; t001–t006 done; t007 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
+**Worker:** worker8 **Goal:** every Render list route bex serves returns exactly the workspaces the request names. `ownerId` narrows to those workspaces, and an omitted `ownerId` spans every workspace the caller belongs to, as Render's lists and the pinned CLI's name resolvers expect. **Status:** done (2026-11-12: t001–t006 shipped 2026-11-10; t007's production replay passed: disks honor `ownerId`, names resolve in the CLI's workspace, unfiltered lists are the union)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | t001, t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout (live CLI + REST DoD) | 20m | t006 |
+| t007 | Closeout — **DONE** (live CLI + REST DoD) | 20m | t006 |
 
 ## Definition of done
 

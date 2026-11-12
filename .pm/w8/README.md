@@ -39,7 +39,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m150** — [Blueprint create reads a public repo even while GitHub's API stumbles](done/m150/README.md) (7 tasks;200m) — **DONE 2026-11-12:** production replay on pin `3d66946c9e16`: `bex ea blueprints create` from the public `bex-co/bex` resolved `main` and planned one service; fixture deleted.
 
-- [ ] **m149** — [REST lists scope by `ownerId` the way Render's do](blocked/m149/README.md) (7 tasks;230m) — **BLOCKED (release gate + QA login: the 2026-11-10 19:00 UTC production deploy (deploys run at 19:00/00:00/05:00 UTC since `4630a48a7`) pins this code; the live DoD replay then needs a working QA login — `scripts/qa-login.sh` is rejected by Kratos (rc 1 on 2026-11-10, as on 2026-11-08), so the user either fixes the QA password in `.env`/`muse.env` or re-authorizes their own CLI login with run-owned `bex-canary` fixtures for the replay)** (code shipped in this batch; t001–t006 done; t007 is the live closeout)
+- [x] **m149** — [REST lists scope by `ownerId` the way Render's do](done/m149/README.md) (7 tasks;230m) — **DONE 2026-11-12:** production replay on pin `3d66946c9e16`: disks honor `ownerId` (foreign 403), `--environment` names resolve in the CLI's workspace and a shared name is refused as ambiguous, and nine unfiltered lists are the union of the caller's workspaces; fixtures deleted.
 
 - [x] **m148** — [Static-site builds keep working when GitHub release downloads fail](done/m148/README.md) (7 tasks;265m) — **DONE 2026-11-12:** production replay on pin `3d66946c9e16`: a free native static site built, went live and served its `index.html`; the outage path rests on t001–t006's tests; fixture deleted.
 
