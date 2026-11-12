@@ -357,13 +357,20 @@ func TestServiceCreateLinksABuildSource(t *testing.T) {
 	}
 }
 
-func (b *buildSourceStore) SetAppBuildSource(_ context.Context, id, carrierID, image string) error {
+// SetAppBuildSource reports a change unless id's last link was carrierID.
+func (b *buildSourceStore) SetAppBuildSource(_ context.Context, id, carrierID, image string) (bool, error) {
 	b.linkCalls++
 	if b.linkCalls == b.failLinkCall {
-		return errors.New("connection reset")
+		return false, errors.New("connection reset")
+	}
+	changed := true
+	for _, link := range b.linked {
+		if from, to, _ := strings.Cut(link, "→"); from == id {
+			changed = to != carrierID
+		}
 	}
 	b.linked = append(b.linked, id+"→"+carrierID)
-	return nil
+	return changed, nil
 }
 
 // DeleteApp forgets the row, so its name is free again, as in PGStore.

@@ -444,28 +444,30 @@ func (m *memStore) SetAppSuspended(_ context.Context, id string, suspended bool)
 	return nil
 }
 
-func (m *memStore) SetAppTier(_ context.Context, id string, tier string) error {
+func (m *memStore) SetAppTier(_ context.Context, id string, tier string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a, ok := m.apps[id]
 	if !ok {
-		return fmt.Errorf("app: %w", ErrNotFound)
+		return false, fmt.Errorf("app: %w", ErrNotFound)
 	}
+	changed := a.Tier != tier
 	a.Tier = tier
 	m.apps[id] = a
-	return nil
+	return changed, nil
 }
 
-func (m *memStore) SetAppReplicas(_ context.Context, id string, replicas int32) error {
+func (m *memStore) SetAppReplicas(_ context.Context, id string, replicas int32) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a, ok := m.apps[id]
 	if !ok {
-		return fmt.Errorf("app: %w", ErrNotFound)
+		return false, fmt.Errorf("app: %w", ErrNotFound)
 	}
+	changed := a.Replicas != replicas
 	a.Replicas = replicas
 	m.apps[id] = a
-	return nil
+	return changed, nil
 }
 
 func (m *memStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) error {
@@ -492,17 +494,20 @@ func (m *memStore) SetAppDisplayName(_ context.Context, id string, _ string) err
 	return nil
 }
 
-func (m *memStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
+func (m *memStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a, ok := m.apps[id]
 	if !ok {
-		return fmt.Errorf("app: %w", ErrNotFound)
+		return false, fmt.Errorf("app: %w", ErrNotFound)
 	}
+	changed := a.Repo != repo || a.Image != image || a.Branch != branch ||
+		(a.RegistryCredentialID == nil) != (registryCredentialID == nil) ||
+		(a.RegistryCredentialID != nil && *a.RegistryCredentialID != *registryCredentialID)
 	a.Repo, a.Image, a.Branch = repo, image, branch
 	a.RegistryCredentialID = registryCredentialID
 	m.apps[id] = a
-	return nil
+	return changed, nil
 }
 
 func (m *memStore) BackfillAppType(_ context.Context, id, serviceType string) (bool, error) {

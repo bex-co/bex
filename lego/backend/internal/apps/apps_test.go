@@ -876,15 +876,36 @@ func (r *recordingStore) SetAppSuspended(_ context.Context, id string, suspended
 	return nil
 }
 
-func (r *recordingStore) SetAppTier(_ context.Context, id string, tier string) error {
+// createdRow is the row CreateApp wrote for id, if it did.
+func (r *recordingStore) createdRow(id string) (store.App, bool) {
+	for i := len(r.appCreates) - 1; i >= 0; i-- {
+		if r.appCreates[i].ID == id {
+			return r.appCreates[i], true
+		}
+	}
+	return store.App{}, false
+}
+
+// SetAppTier reports a change, as PGStore does, unless the row is known to
+// hold tier already: from its last tier write, else its create.
+func (r *recordingStore) SetAppTier(_ context.Context, id string, tier string) (bool, error) {
 	if r.err != nil {
-		return r.err
+		return false, r.err
+	}
+	changed := true
+	if row, ok := r.createdRow(id); ok {
+		changed = row.Tier != tier
+	}
+	for _, call := range r.tierCalls {
+		if call.id == id {
+			changed = call.tier != tier
+		}
 	}
 	r.tierCalls = append(r.tierCalls, struct {
 		id   string
 		tier string
 	}{id, tier})
-	return nil
+	return changed, nil
 }
 
 func (r *recordingStore) SetAppPort(_ context.Context, id string, port int32, mode string) error {
@@ -907,15 +928,26 @@ func (r *recordingStore) SetAppContainerPolicy(_ context.Context, id, policy str
 	return nil
 }
 
-func (r *recordingStore) SetAppReplicas(_ context.Context, id string, replicas int32) error {
+// SetAppReplicas reports a change unless the row is known to hold replicas
+// already, as SetAppTier does.
+func (r *recordingStore) SetAppReplicas(_ context.Context, id string, replicas int32) (bool, error) {
 	if r.err != nil {
-		return r.err
+		return false, r.err
+	}
+	changed := true
+	if row, ok := r.createdRow(id); ok {
+		changed = row.Replicas != replicas
+	}
+	for _, call := range r.replicasCalls {
+		if call.id == id {
+			changed = call.replicas != replicas
+		}
 	}
 	r.replicasCalls = append(r.replicasCalls, struct {
 		id       string
 		replicas int32
 	}{id, replicas})
-	return nil
+	return changed, nil
 }
 
 func (r *recordingStore) SetAppIdleTTL(_ context.Context, id string, seconds int32) error {
@@ -945,12 +977,26 @@ func (r *recordingStore) SetAppDisplayName(_ context.Context, id string, display
 	return nil
 }
 
-func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) error {
+// SetAppSource reports a change unless the row is known to hold the source
+// already, as SetAppTier does (sourceWrites keeps no registry credential, so
+// after a first write a credential-only change reads as none).
+func (r *recordingStore) SetAppSource(_ context.Context, id, repo, image, branch string, registryCredentialID *string) (bool, error) {
 	r.sourceCalls++
-	if r.err == nil {
-		r.sourceWrites = append(r.sourceWrites, struct{ id, repo, image, branch string }{id, repo, image, branch})
+	if r.err != nil {
+		return false, r.err
 	}
-	return r.err
+	next := struct{ id, repo, image, branch string }{id, repo, image, branch}
+	changed := true
+	if row, ok := r.createdRow(id); ok {
+		changed = row.Repo != repo || row.Image != image || row.Branch != branch || !sameStringPtr(row.RegistryCredentialID, registryCredentialID)
+	}
+	for _, write := range r.sourceWrites {
+		if write.id == id {
+			changed = write != next
+		}
+	}
+	r.sourceWrites = append(r.sourceWrites, next)
+	return changed, nil
 }
 
 func (r *recordingStore) SetAppImage(_ context.Context, id string, image string) error {

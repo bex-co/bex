@@ -536,7 +536,7 @@ func TestReconcileProjectsExplicitRegistryCredential(t *testing.T) {
 	}
 
 	empty := ""
-	if err := store.SetAppSource(ctx, row.ID, "", "ghcr.io/acme/private:2", "main", &empty); err != nil {
+	if _, err := store.SetAppSource(ctx, row.ID, "", "ghcr.io/acme/private:2", "main", &empty); err != nil {
 		t.Fatal(err)
 	}
 	if err := rec.ReconcileOnce(ctx); err != nil {

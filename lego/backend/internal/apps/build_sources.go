@@ -612,7 +612,7 @@ func (s *Service) UpdateBuildSource(ctx context.Context, id string, req UpdateBu
 	}
 	if s.Store != nil {
 		if sourceChanged {
-			if err := s.Store.SetAppSource(ctx, id, next.repo, next.image, next.branch, clonePtr(next.registryCredentialID)); err != nil {
+			if _, err := s.Store.SetAppSource(ctx, id, next.repo, next.image, next.branch, clonePtr(next.registryCredentialID)); err != nil {
 				return BuildSourceView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
@@ -962,10 +962,10 @@ func linkStartCommand(svcType, startCommand, command string) string {
 // buildSourceLinker is the store's link write, absent without the control
 // plane.
 func (s *Service) buildSourceLinker() (interface {
-	SetAppBuildSource(ctx context.Context, id, carrierID, image string) error
+	SetAppBuildSource(ctx context.Context, id, carrierID, image string) (bool, error)
 }, bool) {
 	linker, ok := s.Store.(interface {
-		SetAppBuildSource(ctx context.Context, id, carrierID, image string) error
+		SetAppBuildSource(ctx context.Context, id, carrierID, image string) (bool, error)
 	})
 	return linker, ok
 }
@@ -1016,7 +1016,7 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 		return AppView{}, err
 	}
 	if id != "" {
-		if err := linker.SetAppBuildSource(ctx, id, buildSourceID, link.Image); err != nil {
+		if _, err := linker.SetAppBuildSource(ctx, id, buildSourceID, link.Image); err != nil {
 			return AppView{}, fmt.Errorf("update source of truth: %w", err)
 		}
 	}

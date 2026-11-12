@@ -166,7 +166,7 @@ func TestPGSelectAppBuildSourceImageWritesOnlyANewBuild(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SetAppBuildSource(ctx, web.ID, carrierID, "zot/a@sha256:1"); err != nil {
+	if _, err := s.SetAppBuildSource(ctx, web.ID, carrierID, "zot/a@sha256:1"); err != nil {
 		t.Fatal(err)
 	}
 	if changed, err := s.SelectAppBuildSourceImage(ctx, web.ID, carrierID, "zot/a@sha256:2"); err != nil || !changed {

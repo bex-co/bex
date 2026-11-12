@@ -1237,6 +1237,8 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 			}
 		}
 		// The first pass wrote this service, so it is re-applied to that App.
+		// The first pass recorded its setting changes, if any.
+		d.req.referencePass = true
 		if _, _, err := s.applyStackService(ctx, d.req, d.fields, map[string]*appv1alpha1.App{d.req.Name: d.app}); err != nil {
 			return err
 		}
@@ -3655,6 +3657,7 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 	// the Blueprint's declaration set to durable claims before deciding a repeat
 	// sync changed anything; otherwise every re-apply would spuriously require a
 	// protected-environment confirmation and open a deploy.
+	var domainClaims []store.Domain
 	if domainsChanged {
 		if claims, appID, ok := s.managedDomainClaims(existing); ok {
 			rows, claimErr := claims.ListDomainClaims(ctx, appID)
@@ -3667,6 +3670,7 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 				domainsChanged = false
 				specChanged = !reflect.DeepEqual(existing.Spec, final.Spec)
 			}
+			domainClaims = rows
 		}
 	}
 	if final.Spec.MaintenanceMode != nil {
@@ -3699,6 +3703,7 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 		initialHookChanged: initialHookChanged,
 		assignment:         assignment,
 		domainsChanged:     domainsChanged,
+		domainClaims:       domainClaims,
 	})
 }
 
@@ -3796,6 +3801,9 @@ type stackChanges struct {
 	initialHookChanged bool
 	assignment         core.EnvironmentAssignment
 	domainsChanged     bool
+	// domainClaims are a managed App's domain claims as the probe read them,
+	// the hosts a domain replacement changes from.
+	domainClaims []store.Domain
 }
 
 // patchChangedStackService stages and patches an existing service the stack
@@ -3808,23 +3816,8 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		if err := s.ensureHostsClaimable(ctx, final); err != nil {
 			return AppView{}, err
 		}
-		if appID := managedAppID(existing); appID != "" && s.Store != nil {
-			if claims, _, ok := s.managedDomainClaims(existing); ok {
-				declarations := s.claimDeclarations(final)
-				rows, err := claims.ReplaceDomainClaims(ctx, appID, declarations)
-				if errors.Is(err, store.ErrConflict) {
-					return AppView{}, errDomainInUse()
-				}
-				if err != nil {
-					return AppView{}, fmt.Errorf("claim Blueprint domains: %w", err)
-				}
-				applyVerifiedDomainClaims(&final.Spec, rows)
-			} else if err := s.Store.ReplaceDomains(ctx, appID, final.Spec.Host, final.Spec.Hosts); err != nil {
-				if errors.Is(err, store.ErrConflict) {
-					return AppView{}, errDomainInUse()
-				}
-				return AppView{}, fmt.Errorf("claim Blueprint domains: %w", err)
-			}
+		if err := s.replaceBlueprintDomains(ctx, existing, final, changes.domainClaims); err != nil {
+			return AppView{}, err
 		}
 	}
 	// A sync that turns checksPass on proves the gate can work, as the trigger
@@ -3846,13 +3839,14 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
 	}
 	deploySpecChanged := actualSpecChanged && !maintenanceOnly
-	// A Blueprint sync or deploy that moves the service to another plan is a
-	// plan change, as SetPlan's is (w9/091). A managed App's is recorded by
-	// persistBlueprintIntent once its row lands; a store-less App's, from the
-	// spec before, once the patch below does.
-	var storelessPlanFrom *appv1alpha1.AppSpec
-	if deploySpecChanged && existing.Spec.Tier != final.Spec.Tier && s.blueprintIntentRow(existing) == "" {
-		storelessPlanFrom = existing.Spec.DeepCopy()
+	// A Blueprint sync or deploy that changes the service's settings records
+	// each change as its own setter does (w9/091, w9/092): a managed App's
+	// row-owned settings once persistBlueprintIntent's rows change, everything
+	// else, from the spec before, once the patch below lands. The
+	// forward-reference pass only adds references.
+	var settingsBefore *appv1alpha1.AppSpec
+	if deploySpecChanged && !req.referencePass {
+		settingsBefore = existing.Spec.DeepCopy()
 	}
 	// A suspended service deploys nothing (w4/m234): a sync that changes it
 	// persists the intent and spec and writes the pending-source hold, like
@@ -3930,8 +3924,8 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	if s.Kick != nil {
 		s.Kick()
 	}
-	if storelessPlanFrom != nil {
-		s.recordStackPlanChange(ctx, existing, storelessPlanFrom, &final.Spec)
+	if settingsBefore != nil {
+		s.recordStackSettingChanges(ctx, existing, settingsBefore, &final.Spec)
 	}
 	if maintenanceChanged {
 		verbCtx, ref := stackServiceTarget(ctx, existing)
@@ -3947,13 +3941,21 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 // separately. A source change is marked pending first, as
 // SetSourceAndRegistryCredential does, so if the CR patch then fails a resync
 // that carries the new source onto the CR cannot roll it without a deploy.
+//
+// Each row is the setting's source of truth, so each change is recorded as
+// its setter records it when its row changes (w9/091, w9/092):
+// source_changed (and branch_changed), plan_changed, instance_count_changed,
+// disk_created or disk_updated. A write the row already held records nothing,
+// so an apply retried after a failed patch, before a resync copied the rows
+// onto the CR, does not record the change twice.
 func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App, want appv1alpha1.AppSpec) error {
 	id := s.blueprintIntentRow(a)
 	if id == "" {
 		return nil
 	}
 	cur := a.Spec
-	if want.BuildSource != nil && (cur.BuildSource == nil || cur.BuildSource.Name != want.BuildSource.Name) {
+	switch blueprintSourceChangeOf(&cur, &want) {
+	case blueprintSourceLinked:
 		linker, ok := s.buildSourceLinker()
 		if !ok {
 			return fmt.Errorf("%w: build sources need the control plane", core.ErrUnavailable)
@@ -3961,30 +3963,41 @@ func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App
 		if err := s.markSourcePending(ctx, a); err != nil {
 			return err
 		}
-		if err := linker.SetAppBuildSource(ctx, id, core.BuildSourceIDOfLink(a.Labels[core.LabelTenant], want.BuildSource), want.BuildSource.Image); err != nil {
+		changed, err := linker.SetAppBuildSource(ctx, id, core.BuildSourceIDOfLink(a.Labels[core.LabelTenant], want.BuildSource), want.BuildSource.Image)
+		if err != nil {
 			return err
 		}
-	} else if cur.Repo != want.Repo || cur.Image != want.Image || cur.Branch != want.Branch ||
-		!sameStringPtr(cur.RegistryCredentialID, want.RegistryCredentialID) {
+		if changed {
+			s.recordSourceChanged(ctx, a, "", "", "")
+		}
+	case blueprintSourceSet:
 		if err := s.markSourcePending(ctx, a); err != nil {
 			return err
 		}
-		if err := s.Store.SetAppSource(ctx, id, want.Repo, want.Image, want.Branch, clonePtr(want.RegistryCredentialID)); err != nil {
+		changed, err := s.Store.SetAppSource(ctx, id, want.Repo, want.Image, want.Branch, clonePtr(want.RegistryCredentialID))
+		if err != nil {
 			return err
+		}
+		if changed {
+			s.recordSourceChanged(ctx, a, cur.Branch, want.Branch, "")
 		}
 	}
 	if cur.Tier != want.Tier {
-		if err := s.Store.SetAppTier(ctx, id, want.Tier); err != nil {
+		changed, err := s.Store.SetAppTier(ctx, id, want.Tier)
+		if err != nil {
 			return err
 		}
-		// The row is the plan's source of truth: once it lands, a resync
-		// copies it onto the CR whatever fails next, and a retry then sees no
-		// change to record (w9/091).
-		s.recordStackPlanChange(ctx, a, &cur, &want)
+		if changed {
+			s.recordStackPlanChange(ctx, a, &cur, &want)
+		}
 	}
 	if cur.Replicas != want.Replicas {
-		if err := s.Store.SetAppReplicas(ctx, id, want.Replicas); err != nil {
+		changed, err := s.Store.SetAppReplicas(ctx, id, want.Replicas)
+		if err != nil {
 			return err
+		}
+		if changed {
+			s.RecordScaleEffect(ctx, a, cur.Replicas, want.Replicas)
 		}
 	}
 	if want.Disk != nil && !equalDiskFields(cur.Disk, want.Disk) {
@@ -4013,7 +4026,9 @@ func (s *Service) recordStackPlanChange(ctx context.Context, a *appv1alpha1.App,
 
 // persistBlueprintDisk creates or grows/remounts the App's one disk row. A
 // Blueprint never detaches a disk (omission preserves), and a shrink was
-// refused before any write.
+// refused before any write. The row's change is recorded as AddDisk and
+// UpdateDisk record theirs (w9/092); a row that already held the disk records
+// nothing.
 func (s *Service) persistBlueprintDisk(ctx context.Context, a *appv1alpha1.App, appID string, disk appv1alpha1.DiskSpec) error {
 	tenantID := a.Labels[core.LabelTenant]
 	rows, err := s.Store.ListDisks(ctx, tenantID, appID)
@@ -4021,11 +4036,22 @@ func (s *Service) persistBlueprintDisk(ctx context.Context, a *appv1alpha1.App, 
 		return err
 	}
 	if len(rows) == 0 {
-		_, err = s.Store.CreateDisk(ctx, tenantID, appID, disk.Name, disk.MountPath, disk.SizeGB)
+		created, err := s.Store.CreateDisk(ctx, tenantID, appID, disk.Name, disk.MountPath, disk.SizeGB)
+		if err != nil {
+			return err
+		}
+		s.RecordDiskChanged(ctx, a, core.AuditVerbAddDisk, created.ID, nil, &created.SizeGB)
+		return nil
+	}
+	before := rows[0]
+	updated, err := s.Store.UpdateDisk(ctx, before.ID, &disk.Name, &disk.MountPath, &disk.SizeGB)
+	if err != nil {
 		return err
 	}
-	_, err = s.Store.UpdateDisk(ctx, rows[0].ID, &disk.Name, &disk.MountPath, &disk.SizeGB)
-	return err
+	if updated.Name != before.Name || updated.MountPath != before.MountPath || updated.SizeGB != before.SizeGB {
+		s.RecordDiskChanged(ctx, a, core.AuditVerbUpdateDisk, updated.ID, &before.SizeGB, &updated.SizeGB)
+	}
+	return nil
 }
 
 func equalDiskFields(a, b *appv1alpha1.DiskSpec) bool {

@@ -378,10 +378,12 @@ type IntentStore interface {
 	UpdateDisk(ctx context.Context, id string, name, mountPath *string, sizeGB *int32) (store.Disk, error)
 	DeleteDisk(ctx context.Context, id string) error
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
-	SetAppTier(ctx context.Context, id string, tier string) error
+	// SetAppTier, SetAppReplicas and SetAppSource report whether the row changed:
+	// false when it already held the value (w9/092).
+	SetAppTier(ctx context.Context, id string, tier string) (bool, error)
 	SetAppPort(ctx context.Context, id string, port int32, mode string) error
 	SetAppContainerPolicy(ctx context.Context, id, policy string) error
-	SetAppReplicas(ctx context.Context, id string, replicas int32) error
+	SetAppReplicas(ctx context.Context, id string, replicas int32) (bool, error)
 	// SetAppIdleTTL updates the row's idle-TTL — the single write path for the
 	// idle-timeout verb on store-managed Apps, same row-first rationale as
 	// SetAppReplicas (the projector owns spec.idleTTLSeconds).
@@ -393,7 +395,7 @@ type IntentStore interface {
 	SetAppDisplayName(ctx context.Context, id string, displayName string) error
 	// SetAppSource updates the projector-owned repo/image/branch tuple in one
 	// row write so a source PATCH cannot be reverted on the next resync.
-	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
+	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) (bool, error)
 	// SetAppImage updates the projector-owned image field. Source redeploys use
 	// it to clear the exact-image override a prior rollback installed.
 	SetAppImage(ctx context.Context, id string, image string) error
@@ -864,8 +866,14 @@ func validatedMaintenanceModeSpec(enabled bool, rawURI string) (*appv1alpha1.Mai
 // could be cloned (w9/068). Enabling it still requires a paid web service.
 // imageBackedBranch reports the branch a service actually builds from: none
 // when it runs a prebuilt image, since a branch without a repo names nothing.
-func imageBackedAutoDeploy(a *appv1alpha1.App) bool {
-	return a.Spec.AutoDeploy && !prebuiltImageSource(a.Spec)
+func imageBackedAutoDeploy(spec appv1alpha1.AppSpec) bool {
+	return spec.AutoDeploy && !prebuiltImageSource(spec)
+}
+
+// renderAutoDeployTrigger is Render's autoDeployTrigger in force for spec, as
+// the service view reports it: off for a prebuilt image.
+func renderAutoDeployTrigger(spec appv1alpha1.AppSpec) string {
+	return core.RenderAutoDeployTrigger(imageBackedAutoDeploy(spec), spec.AutoDeployTrigger)
 }
 
 func imageBackedBranch(a *appv1alpha1.App) string {
@@ -1211,8 +1219,8 @@ func view(a *appv1alpha1.App) AppView {
 		LinkedEnvGroupIDs: linkedEnvGroupIDs(a),
 		// Like Branch: an image service stored with auto-deploy on (writable
 		// before w4/418) has no repository to watch, and create refuses it.
-		AutoDeploy:            imageBackedAutoDeploy(a),
-		AutoDeployTrigger:     core.RenderAutoDeployTrigger(imageBackedAutoDeploy(a), a.Spec.AutoDeployTrigger),
+		AutoDeploy:            imageBackedAutoDeploy(a.Spec),
+		AutoDeployTrigger:     renderAutoDeployTrigger(a.Spec),
 		NotifyOnFail:          notifyOnFail,
 		NotificationsToSend:   policy,
 		RenderSubdomainPolicy: subdomainPolicy,
@@ -1924,6 +1932,10 @@ type CreateRequest struct {
 	// storeEnvKeys are Blueprint-declared keys whose value lives in the env
 	// store (copies of a sibling's generated value), never on spec.Env.
 	storeEnvKeys []string
+	// referencePass marks the forward-reference pass's re-apply of a service
+	// the same Blueprint apply's first pass already wrote, and recorded: it
+	// only adds the references, so it records no setting change (w9/092).
+	referencePass bool
 	// implicitRepo marks a Git-backed Blueprint service whose repository is
 	// the enclosing one a read-only validation does not know
 	// (blueprintReadSpec); only that projection sets it.
@@ -4380,7 +4392,10 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	next.Tier = tier
 	edgeCacheTo := planEdgeCacheToggle(&a.Spec, &next)
 	result, err := s.writeThroughStoreFetched(ctx, a,
-		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
+		func(ctx context.Context, id string) error {
+			_, err := s.Store.SetAppTier(ctx, id, tier)
+			return err
+		},
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
 	if err != nil {
 		return AppView{}, err
@@ -4539,7 +4554,10 @@ func (s *Service) Scale(ctx context.Context, name string, replicas int32) (AppVi
 	}
 	fromReplicas := a.Spec.Replicas
 	result, err := s.writeThroughStoreFetched(ctx, a,
-		func(ctx context.Context, id string) error { return s.Store.SetAppReplicas(ctx, id, replicas) },
+		func(ctx context.Context, id string) error {
+			_, err := s.Store.SetAppReplicas(ctx, id, replicas)
+			return err
+		},
 		func(a *appv1alpha1.App) {
 			a.Spec.Replicas = replicas
 			// Explicit scaling supersedes a rollback's historical count even when
@@ -4805,7 +4823,7 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 	}
 	if s.Store != nil {
 		if id := managedAppID(a); id != "" {
-			if err := s.Store.SetAppSource(ctx, id, next.repo, next.image, next.branch, clonePtr(next.registryCredentialID)); err != nil {
+			if _, err := s.Store.SetAppSource(ctx, id, next.repo, next.image, next.branch, clonePtr(next.registryCredentialID)); err != nil {
 				return AppView{}, fmt.Errorf("update source of truth: %w", err)
 			}
 		}
@@ -4831,13 +4849,22 @@ func (s *Service) SetSourceAndRegistryCredential(ctx context.Context, name strin
 			log.Printf("apps: clear stale clone secret for %s after repo change: %v", a.Name, err)
 		}
 	}
-	if previousBranch != "" && previousBranch != next.branch {
-		s.recordBranchChangedFact(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
-	}
 	// The source really moved: past the no-op return above, past every
 	// validation, and the CR patch landed.
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSourceAndRegistryCredential)
+	s.recordSourceChanged(ctx, a, previousBranch, next.branch, updated.UpdatedAt)
 	return updated, nil
+}
+
+// recordSourceChanged records a service's source change: source_changed, and
+// the branch_changed fact, at updatedAt, when the change moved a tracked branch
+// from fromBranch to toBranch. SetSourceAndRegistryCredential and a Blueprint
+// apply (w9/092) record through it; a link to a build source, which tracks no
+// branch of its own, passes none.
+func (s *Service) recordSourceChanged(ctx context.Context, a *appv1alpha1.App, fromBranch, toBranch, updatedAt string) {
+	if fromBranch != "" && fromBranch != toBranch {
+		s.recordBranchChangedFact(ctx, a, fromBranch, toBranch, updatedAt)
+	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSourceAndRegistryCredential)
 }
 
 // markSourcePending stamps the generation a source change will land at, so the
@@ -5240,7 +5267,7 @@ func (s *Service) setAutoDeployFetched(ctx context.Context, a *appv1alpha1.App, 
 	if enabled && prebuiltImageSource(a.Spec) {
 		return AppView{}, errPrebuiltImageField("autoDeploy")
 	}
-	fromTrigger := core.RenderAutoDeployTrigger(imageBackedAutoDeploy(a), a.Spec.AutoDeployTrigger)
+	fromTrigger := renderAutoDeployTrigger(a.Spec)
 	trigger := a.Spec.AutoDeployTrigger
 	if checksPass != nil {
 		trigger = createAutoDeployTrigger(true, checksPass)
@@ -5260,15 +5287,23 @@ func (s *Service) setAutoDeployFetched(ctx context.Context, a *appv1alpha1.App, 
 	if err != nil {
 		return AppView{}, err
 	}
-	// An unchanged re-save changes nothing Render would announce.
-	switch {
-	case result.AutoDeployTrigger == fromTrigger:
-	case enabled:
-		s.RecordAutoDeployEnabled(ctx, a, result.AutoDeployTrigger)
-	default:
-		s.RecordAutoDeployDisabled(ctx, a, fromTrigger, core.AutoDeployReasonSettingChange)
-	}
+	s.recordAutoDeployChange(ctx, a, fromTrigger, result.AutoDeployTrigger)
 	return result, nil
+}
+
+// recordAutoDeployChange records a setting change that moved a's auto-deploy
+// trigger from one Render trigger to another: auto_deploy_enabled with the
+// trigger now in force, or auto_deploy_disabled with the one it turned off.
+// An unchanged trigger changes nothing Render would announce. SetAutoDeploy,
+// SetAutoDeployTrigger and a Blueprint apply (w9/092) all record through it.
+func (s *Service) recordAutoDeployChange(ctx context.Context, a *appv1alpha1.App, from, to string) {
+	switch {
+	case to == from:
+	case to != core.AutoDeployTriggerOff:
+		s.RecordAutoDeployEnabled(ctx, a, to)
+	default:
+		s.RecordAutoDeployDisabled(ctx, a, from, core.AutoDeployReasonSettingChange)
+	}
 }
 
 // SetNotifyOnFail changes an App's deploy-failure notification override
@@ -6297,10 +6332,25 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	if from == nil || !reflect.DeepEqual(*from, as) { // a save that changes nothing records no event
+	if autoscalingChanged(from, as) {
 		s.RecordAutoscalingChanged(ctx, a, from, &as)
 	}
 	return autoscalingView(a), nil
+}
+
+// autoscalingChanged reports whether turning autoscaling on with settings to
+// changes anything from the settings before: a save that changes nothing
+// records no event. SetAutoscaling and a Blueprint `scaling:` (w9/092) share
+// it.
+func autoscalingChanged(from *appv1alpha1.AutoscalingSpec, to appv1alpha1.AutoscalingSpec) bool {
+	return from == nil || !reflect.DeepEqual(*from, to)
+}
+
+// autoscalingOn reports whether settings as are running, not absent or kept
+// by a disable: what DeleteAutoscaling, and a Blueprint that turns
+// autoscaling off (w9/092), turn off.
+func autoscalingOn(as *appv1alpha1.AutoscalingSpec) bool {
+	return as != nil && as.Enabled
 }
 
 // DeleteAutoscaling disables autoscaling on a service (Render's DELETE
@@ -6313,7 +6363,7 @@ func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
 	if err != nil {
 		return err
 	}
-	if a.Spec.Autoscaling == nil || !a.Spec.Autoscaling.Enabled {
+	if !autoscalingOn(a.Spec.Autoscaling) {
 		return nil // already disabled — idempotent
 	}
 	from := a.Spec.Autoscaling.DeepCopy()

@@ -219,7 +219,12 @@ const (
 	AuditVerbSetHeaders                     = "apps.SetHeaders"
 	AuditVerbSetIdleTTL                     = "apps.SetIdleTTL"
 	AuditVerbSetDisplayName                 = "apps.SetDisplayName"
-	AuditVerbRegenerateDeployHook           = "deploys.RegenerateDeployHook"
+	// AuditVerbSetIPAllowList is the inbound-rules verb. apps.SetIPAllowList
+	// itself still records it at authorize time (it validates first); a
+	// Blueprint sync or deploy that changes the rules records it once its patch
+	// lands (w9/092).
+	AuditVerbSetIPAllowList       = "apps.SetIPAllowList"
+	AuditVerbRegenerateDeployHook = "deploys.RegenerateDeployHook"
 	// The environment write verbs (w4/m122). They share one authorize point
 	// (secrets.scope) and every one of them has a refusal or a no-op after it:
 	// a blueprint-owned key, a bad key name, the aggregate quota, an unknown
@@ -532,8 +537,9 @@ func (b *Base) RecordPlanChanged(ctx context.Context, app *appv1alpha1.App, from
 	b.recordAudits(ctx, ev, toggle)
 }
 
-// RecordScaleEffect records the typed from/to detail for a successful Scale.
-// Called after the write path confirms success, paired with
+// RecordScaleEffect records the typed from/to detail for a successful Scale,
+// or for a Blueprint sync or deploy that changed the instance count (w9/092).
+// Called after the write path confirms success; Scale pairs it with
 // WithDeferredAllowedWriteAudit on the AuthorizeApp call.
 func (b *Base) RecordScaleEffect(ctx context.Context, app *appv1alpha1.App, fromCount, toCount int32) {
 	resource, err := b.resourceWorkspace(ctx, app.Labels)
@@ -548,8 +554,9 @@ func (b *Base) RecordScaleEffect(ctx context.Context, app *appv1alpha1.App, from
 }
 
 // RecordAutoscalingChanged records the typed from/to detail for a successful
-// SetAutoscaling or DeleteAutoscaling: each side's bounds and targets. from is
-// nil when the service had no settings, and Enabled false when a disable kept
+// SetAutoscaling or DeleteAutoscaling, or a Blueprint sync's or deploy's
+// autoscaling change (w9/092): each side's bounds and targets. from is nil
+// when the service had no settings, and Enabled false when a disable kept
 // them; to is nil when autoscaling was disabled.
 // Called after the write path confirms success, paired with
 // WithDeferredAllowedWriteAudit on the AuthorizeApp call.
@@ -668,6 +675,7 @@ var appConfigVerbs = map[string]bool{
 	AuditVerbSetCacheProfile: true, AuditVerbPurgeCache: true, AuditVerbSetRuntime: true,
 	AuditVerbSetPublishPath: true, AuditVerbSetRoutes: true, AuditVerbSetHeaders: true,
 	AuditVerbSetIdleTTL: true, AuditVerbSetDisplayName: true,
+	AuditVerbSetIPAllowList:       true,
 	AuditVerbRegenerateDeployHook: true,
 	AuditVerbSetEnvVars:           true, AuditVerbSetEnvVar: true, AuditVerbDeleteEnvVar: true,
 	AuditVerbSeedEnvVars: true, AuditVerbPatchEnvironment: true,
@@ -701,6 +709,41 @@ func (b *Base) RecordAppConfigChanged(ctx context.Context, app *appv1alpha1.App,
 		return
 	}
 	b.recordAppConfig(ctx, app, verb, nil)
+}
+
+// RecordAppConfigChanges is RecordAppConfigChanged for several verbs on one
+// app, a Blueprint apply that changed several settings (w9/092): one
+// workspace resolution, and the rows land together or not at all.
+func (b *Base) RecordAppConfigChanges(ctx context.Context, app *appv1alpha1.App, verbs ...string) {
+	if len(verbs) == 0 {
+		return
+	}
+	for _, verb := range verbs {
+		if !appConfigVerbs[verb] {
+			log.Printf("audit: refusing to record %q as a service-configuration effect", verb)
+			return
+		}
+	}
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve service-configuration resource: %v", err)
+		return
+	}
+	target := canonicalAppTarget(app)
+	evs := make([]AuditEvent, 0, len(verbs))
+	for _, verb := range verbs {
+		evs = append(evs, b.verbAuditEvent(ctx, verb, resource, target))
+	}
+	b.recordAudits(ctx, evs...)
+}
+
+// WithResolvedWorkspace is ctx with its acting workspace resolved once, for a
+// run of recorders that would otherwise each resolve it (a Blueprint apply's
+// setting changes, w9/092). Use it only for those calls: a verb that names
+// another workspace on its context must resolve its own.
+func (b *Base) WithResolvedWorkspace(ctx context.Context) context.Context {
+	ctx, _, _ = b.resolveWorkspaceMemo(ctx)
+	return ctx
 }
 
 // recordAppConfig records verb on app's service, with detail filling the
@@ -753,8 +796,10 @@ func (b *Base) RecordEnvGroupLinkChanged(ctx context.Context, app *appv1alpha1.A
 // RecordDiskChanged records a disk verb that completed with Render's disk
 // details: the disk's id on every one (a snapshot restore's since w2/064, the
 // rest since w3/m317), the size it was created with or resized to (sizeGB /
-// toSizeGB) and a resize's size before it (fromSizeGB). Paired with
-// WithDeferredAllowedWriteAudit on the authorize call.
+// toSizeGB) and a resize's size before it (fromSizeGB). The disk verbs pair it
+// with WithDeferredAllowedWriteAudit on the authorize call; a Blueprint sync or
+// deploy that adds or changes a disk records AddDisk or UpdateDisk once its
+// row lands (w9/092).
 func (b *Base) RecordDiskChanged(ctx context.Context, app *appv1alpha1.App, verb, diskID string, fromGB, toGB *int32) {
 	switch verb {
 	case AuditVerbAddDisk, AuditVerbUpdateDisk, AuditVerbDeleteDisk, AuditVerbRestoreDiskSnapshot:

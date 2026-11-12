@@ -142,11 +142,15 @@ func TestBuildSourceCarrierRowsPG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := st.SetAppBuildSource(ctx, api.ID, carrier.ID, ""); err != nil {
-		t.Fatal(err)
+	if changed, err := st.SetAppBuildSource(ctx, api.ID, carrier.ID, ""); err != nil || !changed {
+		t.Fatalf("link = changed %t, err %v; want a change", changed, err)
 	}
 	if got, err := st.GetApp(ctx, api.ID); err != nil || got.BuildSourceID != carrier.ID || got.Image != "" || got.Repo != "" {
 		t.Fatalf("linked row = %+v err=%v, want the link and no source of its own", got, err)
+	}
+	// A repeat of the link writes nothing, and says so (w9/092).
+	if changed, err := st.SetAppBuildSource(ctx, api.ID, carrier.ID, ""); err != nil || changed {
+		t.Fatalf("repeated link = changed %t, err %v; want no change", changed, err)
 	}
 	// A deploy records the build it shipped, in its own insert; other
 	// deploys carry none.
@@ -174,7 +178,7 @@ func TestBuildSourceCarrierRowsPG(t *testing.T) {
 	if err := st.SetAppBuildSourceImage(ctx, api.ID, "bds-other", "zot/src@sha256:stale"); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("selecting a build of a source the row no longer links = %v, want not found", err)
 	}
-	if err := st.SetAppBuildSource(ctx, carrier.ID, carrier.ID, ""); !errors.Is(err, store.ErrNotFound) {
+	if _, err := st.SetAppBuildSource(ctx, carrier.ID, carrier.ID, ""); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("linking a carrier = %v, want not found", err)
 	}
 	if err := st.DeleteApp(ctx, carrier.ID); !errors.Is(err, store.ErrConflict) {

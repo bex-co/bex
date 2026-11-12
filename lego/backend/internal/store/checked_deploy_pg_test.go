@@ -320,7 +320,7 @@ func TestPGCheckedDeploySourceRevisionIgnoresUnrelatedSettings(t *testing.T) {
 	if err != nil || !matched || version != 1 {
 		t.Fatalf("rollback source revision: version=%d matched=%v err=%v", version, matched, err)
 	}
-	if err := st.SetAppReplicas(ctx, a.ID, 2); err != nil {
+	if _, err := st.SetAppReplicas(ctx, a.ID, 2); err != nil {
 		t.Fatal(err)
 	}
 	if err := st.SetAppDisplayName(ctx, a.ID, "renamed while dispatching"); err != nil {
@@ -342,7 +342,7 @@ func TestPGCheckedDeploySourceRevisionIgnoresUnrelatedSettings(t *testing.T) {
 		{repo: a.Repo, branch: "next"},
 		{repo: "https://github.com/acme/other", branch: "next"},
 	} {
-		if err := st.SetAppSource(ctx, a.ID, source.repo, "", source.branch, nil); err != nil {
+		if _, err := st.SetAppSource(ctx, a.ID, source.repo, "", source.branch, nil); err != nil {
 			t.Fatal(err)
 		}
 		nextVersion, matched, err := st.CheckedDeploySourceVersion(ctx, a.ID, source.repo, source.branch, "")

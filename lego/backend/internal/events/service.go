@@ -85,6 +85,12 @@ limitations under the License.
 //	maintenance_mode_uri_updated
 //	                            apps.SetMaintenanceModeURI      (w1/m37, matching Render's webhook/audit vocabulary)
 //
+// A Blueprint sync or deploy that changes an existing service's setting records
+// the verb that setting's own setter records, so it reads as that setter's type:
+// the plan since w9/091, and since w9/092 the instance count, autoscaling, disk,
+// source, custom domains, auto-deploy and the build and routing settings
+// (apps.SetRootDir … apps.SetHeaders, apps.SetIPAllowList).
+//
 // # Redaction (structural, not filtered)
 //
 // No arbitrary value can reach an event: an audit row carries a verb NAME, a

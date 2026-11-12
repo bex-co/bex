@@ -612,12 +612,14 @@ type Store interface {
 	SetAppSuspended(ctx context.Context, id string, suspended bool) error
 	// SetAppTier updates the row's tier — the single write path for plan
 	// changes on store-managed Apps, same row-first rationale as
-	// SetAppSuspended.
-	SetAppTier(ctx context.Context, id string, tier string) error
+	// SetAppSuspended. It reports whether the row changed: false when it
+	// already had the tier.
+	SetAppTier(ctx context.Context, id string, tier string) (bool, error)
 	// SetAppReplicas updates the row's replica count — the single write path
 	// for the manual-scale verb on store-managed Apps, same row-first
-	// rationale as SetAppSuspended (the projector owns spec.replicas).
-	SetAppReplicas(ctx context.Context, id string, replicas int32) error
+	// rationale as SetAppSuspended (the projector owns spec.replicas). It
+	// reports whether the row changed.
+	SetAppReplicas(ctx context.Context, id string, replicas int32) (bool, error)
 	// SetAppIdleTTL updates the row's idle-TTL — the single write path for the
 	// idle-timeout verb on store-managed Apps (the projector owns
 	// spec.idleTTLSeconds), same row-first rationale as SetAppReplicas.
@@ -630,8 +632,9 @@ type Store interface {
 	// alike, is its only reader).
 	SetAppDisplayName(ctx context.Context, id string, displayName string) error
 	// SetAppSource atomically updates the projector-owned source tuple and its
-	// context-sensitive registry credential binding.
-	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error
+	// context-sensitive registry credential binding. It reports whether the
+	// row changed.
+	SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) (bool, error)
 	// BackfillAppType records the service type of a row created before the type
 	// column existed (w6/m46 t001), read off the row's own live App CR. It is a
 	// one-way heal, never a rename: the type is immutable, so it only ever
@@ -1156,19 +1159,35 @@ const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,'
 // SetAppBuildSource links service id to build source carrierID, deploying
 // image (empty until the source has built): the source then provides the
 // service's source, so its own repo, image and branch are cleared in the same
-// write (apps_check admits a linked service with neither).
-func (s *PGStore) SetAppBuildSource(ctx context.Context, id, carrierID, image string) error {
-	tag, err := s.Pool.Exec(ctx, `
-		UPDATE apps SET build_source_id = $2, build_source_image = $3, repo = NULL, image = NULL, branch = '',
-		    registry_credential_id = NULL, updated_at = now()
-		WHERE id = $1 AND type <> '`+TypeBuildSource+`'`, id, carrierID, image)
+// write (apps_check admits a linked service with neither). It reports whether
+// the row changed: false when it already had this link (updateAppRow).
+func (s *PGStore) SetAppBuildSource(ctx context.Context, id, carrierID, image string) (bool, error) {
+	return s.updateAppRow(ctx, ` AND type <> '`+TypeBuildSource+`'`,
+		`build_source_id = $2, build_source_image = $3, repo = NULL, image = NULL, branch = '', registry_credential_id = NULL`,
+		`(a.build_source_id, a.build_source_image, a.repo, a.image, a.branch, a.registry_credential_id) IS DISTINCT FROM ($2, $3, NULL, NULL, '', NULL)`,
+		fmt.Errorf("app %s: %w", id, ErrNotFound), id, carrierID, image)
+}
+
+// updateAppRow writes set onto app id's row, among the rows where also
+// matches, only when changed holds for it, and reports whether it wrote. A row
+// that already holds the values is left as it was, updated_at included, so a
+// caller can tell a change from a repeat of one: a Blueprint apply retried
+// before the projector copied its first write onto the App records the change
+// once (w9/092). set and changed name the row as a; notFound is the error for
+// no matching row.
+func (s *PGStore) updateAppRow(ctx context.Context, where, set, changed string, notFound error, args ...any) (bool, error) {
+	var found, wrote bool
+	err := s.Pool.QueryRow(ctx, `
+		WITH target AS (SELECT id FROM apps WHERE id = $1`+where+` FOR UPDATE),
+		     updated AS (UPDATE apps a SET `+set+`, updated_at = now() FROM target t WHERE a.id = t.id AND (`+changed+`) RETURNING 1)
+		SELECT EXISTS (SELECT 1 FROM target), EXISTS (SELECT 1 FROM updated)`, args...).Scan(&found, &wrote)
 	if err != nil {
-		return classify("app", err)
+		return false, classify("app", err)
 	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("app %s: %w", id, ErrNotFound)
+	if !found {
+		return false, notFound
 	}
-	return nil
+	return wrote, nil
 }
 
 // SetAppBuildSourceImage selects the carrier build linked service id deploys
@@ -2064,18 +2083,10 @@ func (s *PGStore) SetAppSuspended(ctx context.Context, id string, suspended bool
 
 // SetAppTier updates the row's tier (the apps feature's plan-change verb
 // validates it against lego/types/tiers before calling this). The projector
-// carries it onto spec.tier the same way it carries suspended.
-func (s *PGStore) SetAppTier(ctx context.Context, id string, tier string) error {
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE apps SET tier = $2, updated_at = now() WHERE id = $1`,
-		id, tier)
-	if err != nil {
-		return classify("app", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("app: %w", ErrNotFound)
-	}
-	return nil
+// carries it onto spec.tier the same way it carries suspended. It reports
+// whether the row changed (updateAppRow).
+func (s *PGStore) SetAppTier(ctx context.Context, id string, tier string) (bool, error) {
+	return s.updateAppRow(ctx, "", `tier = $2`, `a.tier IS DISTINCT FROM $2`, fmt.Errorf("app: %w", ErrNotFound), id, tier)
 }
 
 // SetAppPort saves both the port and whether it overrides image discovery.
@@ -2109,18 +2120,10 @@ func (s *PGStore) SetAppContainerPolicy(ctx context.Context, id, policy string) 
 
 // SetAppReplicas updates the row's replica count (the apps feature's scale
 // verb validates the bound before calling this). The projector carries it
-// onto spec.replicas the same way it carries suspended/tier.
-func (s *PGStore) SetAppReplicas(ctx context.Context, id string, replicas int32) error {
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE apps SET replicas = $2, updated_at = now() WHERE id = $1`,
-		id, replicas)
-	if err != nil {
-		return classify("app", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("app: %w", ErrNotFound)
-	}
-	return nil
+// onto spec.replicas the same way it carries suspended/tier. It reports
+// whether the row changed (updateAppRow).
+func (s *PGStore) SetAppReplicas(ctx context.Context, id string, replicas int32) (bool, error) {
+	return s.updateAppRow(ctx, "", `replicas = $2`, `a.replicas IS DISTINCT FROM $2`, fmt.Errorf("app: %w", ErrNotFound), id, replicas)
 }
 
 // SetAppIdleTTL updates the row's idle-TTL seconds (the apps feature's
@@ -2289,22 +2292,18 @@ func serviceNameTaken(ctx context.Context, q queryRower, tenantID, selfID, name 
 
 // SetAppSource atomically updates repo/image/branch and the explicit registry
 // credential binding so the projector never observes mismatched source/auth.
-func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error {
-	tag, err := s.Pool.Exec(ctx,
-		`UPDATE apps SET repo = NULLIF($2, ''), image = NULLIF($3, ''), branch = $4, registry_credential_id = $5,
-		    -- A service given its own source no longer builds from a build
-		    -- source (w2/m254 t005).
-		    build_source_id = CASE WHEN NULLIF($2, '') IS NULL AND NULLIF($3, '') IS NULL THEN build_source_id END,
-		    build_source_image = CASE WHEN NULLIF($2, '') IS NULL AND NULLIF($3, '') IS NULL THEN build_source_image ELSE '' END,
-		    updated_at = now() WHERE id = $1`,
-		id, repo, image, branch, registryCredentialID)
-	if err != nil {
-		return classify("app", err)
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("app: %w", ErrNotFound)
-	}
-	return nil
+// It reports whether the row changed (updateAppRow).
+func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) (bool, error) {
+	// A service given its own source no longer builds from a build source
+	// (w2/m254 t005).
+	const noOwnSource = `NULLIF($2, '') IS NULL AND NULLIF($3, '') IS NULL`
+	const next = `NULLIF($2, ''), NULLIF($3, ''), $4, $5,
+		CASE WHEN ` + noOwnSource + ` THEN a.build_source_id END,
+		CASE WHEN ` + noOwnSource + ` THEN a.build_source_image ELSE '' END`
+	return s.updateAppRow(ctx, "",
+		`(repo, image, branch, registry_credential_id, build_source_id, build_source_image) = (`+next+`)`,
+		`(a.repo, a.image, a.branch, a.registry_credential_id, a.build_source_id, a.build_source_image) IS DISTINCT FROM (`+next+`)`,
+		fmt.Errorf("app: %w", ErrNotFound), id, repo, image, branch, registryCredentialID)
 }
 
 // BackfillAppType heals a pre-w6/m46 row that predates the type column. Only

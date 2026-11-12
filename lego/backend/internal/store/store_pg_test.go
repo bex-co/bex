@@ -708,7 +708,7 @@ func assertRegistryCredentials(ctx context.Context, t *testing.T, s *PGStore, te
 		t.Fatalf("get registry-bound app = %+v (err %v)", gotBound, err)
 	}
 	empty := ""
-	if err := s.SetAppSource(ctx, bound.ID, "", "docker.io/acme/private:2", "main", &empty); err != nil {
+	if _, err := s.SetAppSource(ctx, bound.ID, "", "docker.io/acme/private:2", "main", &empty); err != nil {
 		t.Fatalf("clear registry binding: %v", err)
 	}
 	gotBound, err = s.GetApp(ctx, bound.ID)
