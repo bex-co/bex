@@ -11,6 +11,8 @@
 - [x] **m278** — [Agent Automations: scheduled cloud-agent sessions (Devin parity)](done/m278/README.md) (12 tasks) ← from [ADR101](../../docs/ADR101-agent-automations.md)
 - [x] **m279** — [Agent child sessions: an agent can spawn and track child sessions (Devin parity)](done/m279/README.md) (11 tasks) ← from [ADR094](../../docs/ADR094-coding-agent-mcp.md) deferral; t002–t003 after w9/m179
 - [x] **m280** — [Skill version history: every save keeps a version you can read, diff and restore (Devin parity)](done/m280/README.md) (8 tasks) ← from [ADR099](../../docs/ADR099-agent-skills.md) follow-up
+- [ ] **m336** — [Billing and push workers: one bad row cannot stop the pass](m336/README.md) (7 tasks) ← re-homed from `w10/012` plus the 2026-11-11 audit of the `core.Poll` workers (`/pm-brainstorm for w21`)
+- [ ] **m337** — [Dashboard routes hydrate cleanly across server and browser environments](m337/README.md) (7 tasks) ← from `/pm-brainstorm for w21`, 2026-11-11: seven production-found #418 mismatches, each guarded only after the fact
 
 ## Inbox
 
@@ -73,3 +75,5 @@
 - [x] **057** — A failed native build's failure reason names the wrong step and quotes bex's own toolchain layers instead of the build command's failure: `build failed in the build environment step:` followed by `#16 extracting sha256:…` BuildKit lines, with no command output and no exit code (a gap in w4/m324 t002; the log itself reads right) → [`057.md`](done/057.md) — superseded by [w4/m324 t009](../w4/blocked/m324/t009.md)
 - [ ] **058** — Postgres Insights' Top queries on a quiet database still lists the panel's own read-only envelope — `begin read only` and `rollback`, one row per role Insights connected as — so w4/557's empty state never appears (a residual of w4/557 and w21/026) → [`058.md`](058.md)
 - [ ] **059** — A git-built Docker web service that listens on no port fails with "Set PORT to the HTTP listener", and never says Render's "no open port was detected … create a background worker instead", which w8/259 gave the native runtime only (the native control on the same pin passes) → [`059.md`](059.md)
+- [ ] **060** — Backend, types and cli have no Go formatting gate, and six backend files are already unformatted → [`060.md`](060.md)
+- [ ] **061** — `scripts/ship-gates.sh` fails the backend gate on a Mac whose Docker VM shares only `$HOME`, unless the caller sets `TMPDIR` by hand → [`061.md`](061.md)

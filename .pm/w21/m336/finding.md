@@ -16,3 +16,5 @@ Fix:
 2. Make one bad row unable to abort the tick: log it and continue.
 3. Add a regression test with a lifecycle row whose enforcement dependency is missing.
 4. Decide what the 11 workspaces should be (healthy, or properly enforced), and record the outcome here.
+
+**Re-homed 2026-11-11** to [w21/m336](README.md) by `/pm-brainstorm for w21`: the bare `ErrNoRows` is most likely the unconditional `SELECT livemode FROM billing_provider_mappings` in `CompleteBillingLifecycleWork` (`lego/backend/internal/store/billing_lifecycle.go:669`; a lifecycle row can exist without a mapping), and the push worker aborts its pass the same way (`lego/backend/internal/notifications/push_worker.go:215-220`). The origin of this note was `w10/012`.

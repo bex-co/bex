@@ -11,9 +11,7 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - `bash scripts/dev-env.sh 10 down` — tear it down (leaves the shared cluster and every other workstream's `dev-N` untouched)
 - `bash scripts/dev-env.sh 10 clean` — reclaim `logs/` and `bin/` (refuses while the environment is up)
 
-`up` prints the dashboard command to point at it once bex-api is running. One shared
-implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps only
-`ports.env` (a generated record of the derivation), this README, and `.gitignore`.
+`up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
 ## Milestones
 
@@ -39,7 +37,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 
 ## Inbox
 
-- [ ] **012** — Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`012.md`](012.md)
+- [ ] **012** — moved to **w21/m336** (2026-11-11): Billing lifecycle worker fails every tick with "no rows in result set" (11 workspaces stuck `enforcing`) → [`../w21/m336/`](../w21/m336/README.md)
 
 - [x] **008** — Sandbox pod-ready timeout misreported as capacity; informer-staleness root cause (incident 2026-10-29/30) → [`done/008.md`](done/008.md) — closed 2026-11-05 (message fixed by `b99972a25`, incident mitigated by `58112a7f0`; informer stays off)
 - [x] **011** — Billing charge tree shows raw `agent_session` / `agent_model_*` / `disk_gb_seconds` names, a capitalized model id and "Included" for unpriced lines → [`done/011.md`](done/011.md) — done 2026-11-05 (`ee2441fc6`, verified in production)
