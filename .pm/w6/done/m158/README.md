@@ -1,6 +1,6 @@
 # w6 · m158 — Platform build in minutes on the existing runners: native compile, cached and parallel image builds
 
-**Worker:** worker6 **Goal:** the `build` job of `deploy.yml` finishes in ≤ 30 min (from 60–187 min) on the existing self-hosted runners, so a green main reaches production in about an hour. **Status:** blocked (t001, t002, t004 done; t003 part 1 done; t005 waits for a normal host link)
+**Worker:** worker6 **Goal:** the `build` job of `deploy.yml` finishes in ≤ 30 min (from 60–187 min) on the existing self-hosted runners, so a green main reaches production in about an hour. **Status:** done — superseded 2026-11-12: bex CI moved to GitHub-hosted runners (user decision 2026-11-09, DO_NOT_DO #CI-RUNNERS), where `deploy.yml`'s `build` job takes 13.7 min
 
 ## Tasks (in order)
 
@@ -8,12 +8,12 @@
 | --- | --- | --- | --- |
 | t001 | [Cross-compile the Go/Node build stages from `$BUILDPLATFORM`](done/t001.md) — **DONE** | 45m | — |
 | t002 | [Registry layer cache and cache mounts for every platform image](done/t002.md) — **DONE** | 60m | t001 |
-| t003 | [Build the five images, and sign + SBOM them, in parallel](t003.md) | 90m | t002 |
+| t003 | [Build the five images, and sign + SBOM them, in parallel](done/t003.md) — **superseded** | 90m | t002 |
 | t004 | [Start the build with the tests; gate only the pin on them](done/t004.md) — **DONE** | 45m | t003 |
-| t005 | [Measure five main deploys against the baseline](t005.md) | 30m | t004 |
-| t006 | [Simplify](t006.md) | 15m | t005 |
-| t007 | [Test coverage](t007.md) | 30m | t006 |
-| t008 | [Closeout](t008.md) | 10m | t007 |
+| t005 | [Measure five main deploys against the baseline](done/t005.md) — **superseded** | 30m | t004 |
+| t006 | [Simplify](done/t006.md) — **superseded** | 15m | t005 |
+| t007 | [Test coverage](done/t007.md) — **superseded** | 30m | t006 |
+| t008 | [Closeout](done/t008.md) — **superseded** | 10m | t007 |
 
 ## Definition of done
 
@@ -59,3 +59,9 @@
 - **Gate (user / host network):** the runner host's link has delivered ~1 MB/s in total since at least 08:20Z (GitHub 65 KB/s, Cloudflare 157 KB/s at 09:10Z, re-measured). Every CI job is network-bound, so a deploy's timings measure the link, not t001–t004. **Release condition:** a `curl` of `https://speed.cloudflare.com/__down?bytes=30000000` from the host sustains ≥ 10 MB/s, or the user confirms the link is fixed. Re-measured 2026-11-07 ~07:00Z: 3.6 MB/s (Cloudflare 30 MB), 2.4 MB/s from proxy.golang.org — better, still below the release condition.
 - **Done:** t001, t002, t004; t003 part 1 (sign/SBOM/attest concurrently). Runner caches (Go modules, per-pool Docker Hub mirror) are live and cut what each job downloads.
 - **Worker next:** once the link is normal, take t005 on the first deploy run whose build ran (`python3 scripts/deploy_latency.py` and per-step job timings), compare with 61.6 / 136.0 / 186.9 min, then decide t003 part 2 (concurrent image builds) from where the time goes, then t006–t008.
+
+## Closed as superseded — 2026-11-12 (w6/119)
+
+- **Why:** the goal was a ≤ 30 min `build` job on the self-hosted runners. bex no longer runs on them. Since the user's 2026-11-09 decision (DO_NOT_DO #CI-RUNNERS), every bex job runs on a fresh GitHub-hosted VM.
+- **Evidence:** in deploy run 43038763852 (`f609163ad`, 2026-11-11), `build` ran 14:29:00 → 14:42:43 UTC (13.7 min) and the whole push-to-production 14:28:13 → 14:49:37 (21 min).
+- **Open tasks:** t003 part 2 and t005–t008 targeted the self-hosted host's link and caches, so they are closed with the milestone. The parts that shipped (t001, t002, t004, t003 part 1) stay as they are.

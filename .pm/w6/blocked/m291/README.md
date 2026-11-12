@@ -1,6 +1,6 @@
 # w6 · m291 — Build toolchain digests are fresh again and #105 closes
 
-**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** blocked (t001 done, PR #106 closed; pins gated on w8/m91 D3 custody and the runner link)
+**Worker:** worker6 **Goal:** every pinned build-toolchain image is at a reviewed current digest, apps still build on the new toolchain, and the freshness monitor's issue #105 closes. **Status:** blocked (t001 done, PR #106 closed; pins gated on w8/m91 D3 custody; the runner-link gate is gone since 2026-11-09)
 
 ## Tasks (in order)
 
@@ -89,3 +89,8 @@ These pins live in 8 files: `lego/operator/internal/build/native.go` (17), `nati
 - **Expected outcome:** customer builds use current, reviewed toolchain images and the monitor's review queue is empty.
 - **Why now:** the queue has grown for 17 days, partial refreshes (`93bc3ef2e`, `ee7e3eaa7`) left it open, and the only fix attempt (PR #106) is unmergeable.
 - **Render parity:** omitted — build toolchain pins only, no REST/GraphQL/MCP/UI change.
+
+## Re-triage — 2026-11-12 (w6/119)
+
+- **Gate 2, the runner host's link (#133), is gone.** bex CI runs on GitHub-hosted runners since the user's 2026-11-09 decision (DO_NOT_DO #CI-RUNNERS), so the native-common rebuild no longer waits on the Mac's link.
+- **Gate 1 stands.** `toolchain-freshness.json` and the native inputs are byte-pinned by w8/m91's D3 custody (`IMAGE_POLICY_FILES` in `.github/scripts/native-common-qualify.py`), so re-pinning them is w8's to accept.

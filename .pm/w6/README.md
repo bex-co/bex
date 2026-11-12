@@ -38,7 +38,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 Materialized from all five proposals of `/pm-brainstorm for w6` 2026-11-08 plus its ledger follow-up, approved by the user's `/pm them all to w6 and then /loopx w6`. Numbers shifted from the proposal: m288/m289 were taken by w2 the same day, and w3/057 had closed, so its follow-up is 113.
 
 1. **[m290](done/m290/README.md)** — **done** — deleting an environment or project handles its datastores and env groups as Render does (10 tasks).
-2. **[m291](blocked/m291/README.md)** — **BLOCKED** (w8 custody + runner link) — build toolchain digests are fresh again and #105 closes (7 tasks).
+2. **[m291](blocked/m291/README.md)** — **BLOCKED** (w8 custody; the runner-link gate is gone since 2026-11-09) — build toolchain digests are fresh again and #105 closes (7 tasks).
 3. **[110](done/110.md)** — **done** — tenant-view probe detects an activator-held wake (#134).
 4. **[111](done/111.md)** — **done** — main-only branch policies on five production environments (#101), split from w3/blocked/m173 t005.
 5. **[112](done/112.md)** — **done** — CLI staleness monitor counts from the rewritten release tag (#111).
@@ -59,11 +59,11 @@ Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenan
 
 Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the long-standing blockers and the two accepted limits, for Render parity), approved by the user's `/pm them all to w6`. Scheduled items for worker6, not a workstream specialty.
 
-1. **[m332](m332/README.md)** — Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it (8 tasks).
+1. **[m332](blocked/m332/README.md)** — **BLOCKED** (cx53 stock in eu-central, 2026-11-12) — Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it (8 tasks).
 2. **[m333](m333/README.md)** — deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed (8 tasks); absorbs `w4/575`.
 3. **[m334](m334/README.md)** — an unmetered usage hour pages before it can no longer be metered (6 tasks).
-4. **[118](118.md)** — ADR018 records that hosted bex requires a card for every workspace (~20m).
-5. **[119](119.md)** — re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners (~45m).
+4. **[118](done/118.md)** — **done** — ADR018 records that hosted bex requires a card for every workspace (~20m).
+5. **[119](done/119.md)** — **done** — re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners (~45m).
 
 **User action, not a board item:** raise the Hetzner project's dedicated-vCPU limit to at least 48 (Hetzner Console → Limits, or a support ticket). That releases `m310` (16), `w2/blocked/m250`'s Pro Ultra (32) and `114`'s four dedicated-size plans.
 
@@ -80,18 +80,18 @@ Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the
 - [x] **m309** — [Pipeline-minute spend limit](done/m309/README.md) — **done 2026-11-10**: GraphQL and Workspace Settings → Build Pipeline read on production; the stop by sweeper tests (7 tasks) ← proposal 4
 - [ ] **m310** — **BLOCKED (Hetzner/account owner: dedicated-vCPU limit ≥ 16 for a ccx43 Performance build node, the same gate as `w2/blocked/m250`; t001 done — Render record in the README)** — [Performance pipeline tier (16 CPU / 64 GB builds)](blocked/m310/README.md) (8 tasks) ← proposal 5
 - [x] **m290** — [Deleting an environment or project handles its Postgres, Key Value and env groups as Render does](done/m290/README.md) — **done 2026-11-08**: verified on production (REST 409; GraphQL env and project deletes remove Postgres and Key Value; env groups detached) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 1
-- [ ] **m291** — **BLOCKED (w8/user: `toolchain-freshness.json` and the native inputs are byte-pinned by w8/m91's D3 custody, the same gate as m163; plus a normal runner link for the native-common rebuild, #133. t001 is done and PR #106 is closed)** — [Build toolchain digests are fresh again and #105 closes](blocked/m291/README.md) (7 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 2
-- [ ] **m164** — **BLOCKED (user: make the GHCR package `bex-evidence` public in Package settings; t001–t003 done, evidence pinned at `ghcr.io/bex-co/bex-evidence@sha256:1203a4e7…`)** — [Native-common qualification evidence restored from the pre-purge bundle into object storage](blocked/m164/README.md) (7 tasks)
+- [ ] **m291** — **BLOCKED (w8/user: `toolchain-freshness.json` and the native inputs are byte-pinned by w8/m91's D3 custody, the same gate as m163 (the runner-link gate #133 is gone since the 2026-11-09 move to GitHub-hosted runners; re-triaged 2026-11-12). t001 is done and PR #106 is closed)** — [Build toolchain digests are fresh again and #105 closes](blocked/m291/README.md) (7 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 2
+- [ ] **m164** — **BLOCKED (user: make the GHCR package `bex-evidence` public in Package settings, or w8: accept requalifying `native-common-image.yml` for an authenticated pull now that CI is GitHub-hosted (re-triaged 2026-11-12); t001–t003 done, evidence pinned at `ghcr.io/bex-co/bex-evidence@sha256:1203a4e7…`)** — [Native-common qualification evidence restored from the pre-purge bundle into object storage](blocked/m164/README.md) (7 tasks)
 - [x] **m165** — [The bex-ci pool serves bex only; other repositories get their own runner pool](done/m165/README.md) — **done 2026-11-11**: in the 24 h after the switch all 99 placed beancount-cms-v2 jobs ran on other-ci, none on bex-ci (6 tasks) ← `/pm-brainstorm w6` 2026-11-07
 - [x] **m159** — [Ship gates catch dashboard red before it reaches main](done/m159/README.md) — **done 2026-11-06** (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 1
 - [x] **m160** — [Runner-host link probe: a slow internet link opens an issue by itself](done/m160/README.md) — **done 2026-11-06** (#131 opened and closed by dispatch) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 2
 - [x] **m161** — [One tracking-issue helper for every scheduled monitor](done/m161/README.md) — **done 2026-11-06** (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 3
 - [x] **m162** — [Sandbox isolation fixtures come from the real session-egress generator](done/m162/README.md) — **done 2026-11-06** (isolation-matrix 42314737232 green with the generated policy) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 4
-- [ ] **m163** — **BLOCKED (w8: native-base-image.yml is byte-pinned by w8/m91's D3 custody; re-pin or retire the legacy 0941 transition. t001 done; pg-operand + native-common use install-syft.py 1.55.0)** — [Native image workflows install Syft and Trivy with retries](blocked/m163/README.md) (7 tasks)
+- [ ] **m163** — **BLOCKED (w8: native-base-image.yml is byte-pinned by w8/m91's D3 custody; re-pin or retire the legacy 0941 transition; unchanged by the runner move, re-triaged 2026-11-12. t001 done; pg-operand + native-common use install-syft.py 1.55.0)** — [Native image workflows install Syft and Trivy with retries](blocked/m163/README.md) (7 tasks)
 - [x] **m151** — [`render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)](done/m151/README.md) (7 tasks) ← promoted from w6/086 (2026-10-21) — **done 2026-10-21**, live in every workspace
 - [x] **m152** — [A disk owner sees when nightly snapshots are not running](done/m152/README.md) (6 tasks) ← promoted from 094 (w6/089 finding, 2026-10-22)
 - [x] **m157** — [CI checkouts skip the `.pm` tree, so a short job never holds a runner for half an hour](done/m157/README.md) (7 tasks) — **done 2026-11-03**: 54 checkouts blobless + sparse (`1a31d5022`); production checkout 99 s vs 31 min, main `scripts` green at 113 s
-- [ ] **m158** — **BLOCKED (user: the runner host's internet link is degraded, ~1 MB/s total since 2026-11-06 08:20Z; t005 needs a normal link to measure. t001/t002/t004 and t003 part 1 done)** — [Platform build in minutes on the existing runners: native compile, cached and parallel image builds](blocked/m158/README.md) (8 tasks)
+- [x] **m158** — [Platform build in minutes on the existing runners: native compile, cached and parallel image builds](done/m158/README.md) — **closed as superseded 2026-11-12 (w6/119):** bex CI runs on GitHub-hosted runners since 2026-11-09, where the `build` job takes 13.7 min and a push reaches production in 21 min (run 43038763852); t001, t002, t004 and t003 part 1 shipped (8 tasks)
 - [x] **m156** — [Deploy latency watchdog: a green main never waits half a day to deploy](done/m156/README.md) (6 tasks) — **done 2026-11-06**: hourly watchdog opens/closes `deploy-latency` issues and names the slot holder's running job; write-back supersession already fixed by `8f322344f` (w4/439); remaining cause, run duration, is m158
 - [x] **m155** — [Image builds run on their own runner pool, so production deploys never wait behind them](done/m155/README.md) (8 tasks) ← user decision D4 2026-11-01 — **done 2026-11-02**: `bex-build` pool live (block-eden-mono `aa911b0693`, bex `87f9e7b6a`); a deploy job started in 3 s while the common native build ran on bex-build
 - [x] **m153** — [Production cluster access survives a control-plane roll](done/m153/README.md) (9 tasks) ← 2026-10-24 diagnosis (w5/174 roll broke every kubeconfig fetch) — **done 2026-10-29**: stable CP host key via the KCP bootstrap (`192c2c442`), wildcard pin; a full roll fetched with no pin edit (runs 40844324975, 40848838767)
@@ -253,7 +253,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 - [ ] **121** — [A service deleted before its first hourly rollup still loses its egress](121.md) (~1h) ← w6/m333 review
 - [ ] **120** — [The agent image and the platform builder ship the Go that `lego/go.work` requires](120.md) (~30m) ← w6/m331 t001
-- [ ] **119** — [Re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners](119.md) (~45m) ← proposal 5
+- [x] **119** — [Re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners](done/119.md) (~45m) ← proposal 5 — **done 2026-11-12**
 - [x] **118** — [ADR018 records that hosted bex requires a card for every workspace (ADR075 D7)](done/118.md) (~20m) ← proposal 4 — **done 2026-11-12**
 - [x] **117** — [A workspace's third and fourth builds wait about two minutes for a build node](done/117.md) — done 2026-11-11: user chose B; `bex-tenant-burst` kept warm at two nodes (min-size 2) ← `w6/m306` production record
 - [x] **116** — [Each plan's included outbound bandwidth is not applied, and a card-less workspace past it keeps running](done/m319/source-w6-116.md) — promoted to `m319` 2026-11-10 by `/loopx w6`

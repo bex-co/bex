@@ -33,3 +33,7 @@
 - **Gate (w8 / user):** `native-base-image.yml` is in `IMAGE_POLICY_FILES` and pinned byte-for-byte as `D3_LEGACY_0941["after"]` in `.github/scripts/native-common-qualify.py` (`test_d3_transition_pin_binds_the_actual_checked_out_publisher_policy`). Any edit — the Syft installer (rest of t002), the Trivy reuse (t003) — breaks that pin; re-pinning re-approves the legacy 0941 transition, which is w8's custody decision. The same pin already made w9/m173's timeout on its matrix job turn native-common red; `31c371e57` restored the pinned bytes and exempted the file from validator check 10.
 - **Release condition:** w8 decides to re-pin D3 (new `after` after the reviewed native-base change) or to retire the legacy 0941 transition. Then: install Syft 1.55.0 via `install-syft.py`, reuse one `setup-trivy` (`skip-setup-trivy`), drop `download-syft` from the validator inventory (t004), and remove native-base from check 10's exemption so its matrix job gets a timeout.
 - Related, outside this milestone: the second history rewrite removed `.pm` evidence directories that native-common qualification reads via `evidence_json`; w8 should confirm the candidate evidence it needs is still reachable.
+
+## Re-triage — 2026-11-12 (w6/119): unchanged
+
+The gate is that `native-base-image.yml` is byte-pinned by w8/m91's D3 custody (`IMAGE_POLICY_FILES` in `.github/scripts/native-common-qualify.py`). It does not depend on which runners bex uses, so the move to GitHub-hosted runners on 2026-11-09 leaves it in place.
