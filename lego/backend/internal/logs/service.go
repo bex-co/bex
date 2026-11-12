@@ -26,7 +26,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"maps"
 	"regexp"
 	"slices"
 	"sort"
@@ -1893,13 +1892,15 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 	if err := prog.emitReached(ctx, emit); err != nil {
 		return err
 	}
-	pod, containers, err := s.awaitBuildPod(ctx, q, prog, emit)
+	pod, err := s.awaitBuildPod(ctx, q, prog, emit)
 	if err != nil {
 		return err
 	}
-	// A phase already over when the tail attached ran before it; any other
-	// is followed once seen, ended or not.
-	before := terminatedContainers(pod)
+	// A phase that ended before the tail's lower bound ran before it; any
+	// other is followed once seen, ended or not, from that bound. A fast phase
+	// (the clone) can start and end between two polls after the tail opened,
+	// and its lines are the tail's (w8/m159 t008).
+	before := terminatedBefore(pod, q.Since)
 
 	ns := s.BuildNamespace
 	if ns == "" {
@@ -1917,11 +1918,27 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 			s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.Since, ch, &opened)
 		}()
 	}
-	started := make(map[string]bool, len(containers))
-	for _, container := range containers {
-		started[container] = true
-		startStream(container)
+	// Phases are attached in the pod's own order: those that ended (after
+	// the tail's bound) are read to their end before a running one starts, so
+	// a phase read late never prints after the one that followed it.
+	started := map[string]bool{}
+	attach := func(p corev1.Pod) {
+		ended, running := phasesToAttach(p, started, before)
+		for _, container := range append(slices.Clone(ended), running...) {
+			started[container] = true
+		}
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for _, container := range ended {
+				s.streamContainerLogs(ctx, ns, q.App, pod.Name, container, LogTypeBuild, q.Since, ch, &opened)
+			}
+			for _, container := range running {
+				startStream(container)
+			}
+		}()
 	}
+	attach(pod)
 	// The build's phases are sequential init containers, so the set running at
 	// subscribe time is not the set that will run: a subscriber connected while
 	// the clone streams would otherwise never see BuildKit's output at all
@@ -1930,7 +1947,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 	// can begin) or the pod turns terminal. The stream then ends the way it
 	// always has: when the attached streams finish.
 	allAttached := func(p *corev1.Pod) bool {
-		return len(started) >= len(p.Spec.InitContainers)+len(p.Spec.Containers)
+		return len(started)+len(before) >= len(p.Spec.InitContainers)+len(p.Spec.Containers)
 	}
 	if !allAttached(&pod) {
 		wg.Add(1)
@@ -1960,12 +1977,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 				if cur == nil {
 					return
 				}
-				for _, container := range append(runningContainers(*cur), slices.Collect(maps.Keys(terminatedContainers(*cur)))...) {
-					if !started[container] && !before[container] {
-						started[container] = true
-						startStream(container)
-					}
-				}
+				attach(*cur)
 				if allAttached(cur) ||
 					cur.Status.Phase == corev1.PodSucceeded || cur.Status.Phase == corev1.PodFailed {
 					return
@@ -2013,7 +2025,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 // belongs to Loki). Each wait tick also re-reads the deploy row
 // through prog (nil-safe) so phase transitions narrate live while the pod is
 // still silent.
-func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressFollower, emit func(LogEntry) error) (corev1.Pod, []string, error) {
+func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressFollower, emit func(LogEntry) error) (corev1.Pod, error) {
 	wait := s.BuildPodWaitInterval
 	if wait <= 0 {
 		wait = 2 * time.Second
@@ -2021,7 +2033,7 @@ func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressF
 	for {
 		pods, err := s.BuildPods(ctx, q.App, s.BuildNamespace)
 		if err != nil {
-			return corev1.Pod{}, nil, err
+			return corev1.Pod{}, err
 		}
 		var active []corev1.Pod
 		waiting := false
@@ -2029,11 +2041,19 @@ func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressF
 			if !q.keepPod(pods[i].Name) {
 				continue
 			}
+			// A build's steps are init containers, and Kubernetes reports a
+			// pod whose init containers run as Pending until its one regular
+			// container (the push) starts. So a pod is followed once any of
+			// its containers runs, whatever its phase; it used to wait for
+			// Running and attach only at the push, after the build's own
+			// output was over (w8/m159 t008).
 			switch pods[i].Status.Phase {
-			case corev1.PodRunning:
-				active = append(active, pods[i])
-			case corev1.PodPending:
-				waiting = true
+			case corev1.PodRunning, corev1.PodPending:
+				if running := runningContainers(pods[i]); len(running) > 0 {
+					active = append(active, pods[i])
+				} else {
+					waiting = true
+				}
 			}
 		}
 		if len(active) > 0 {
@@ -2043,41 +2063,60 @@ func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressF
 				}
 				return active[i].CreationTimestamp.Time.Before(active[j].CreationTimestamp.Time)
 			})
-			pod := active[len(active)-1]
-			if containers := runningContainers(pod); len(containers) > 0 {
-				return pod, containers, nil
-			}
-			// Running phase with no container up resolves within seconds —
-			// either a container starts or the phase turns terminal.
-			waiting = true
+			return active[len(active)-1], nil
 		}
 		if err := prog.emitReached(ctx, emit); err != nil {
-			return corev1.Pod{}, nil, err
+			return corev1.Pod{}, err
 		}
 		if !waiting && !prog.buildOpen() {
-			return corev1.Pod{}, nil, ErrBuildNotRunning
+			return corev1.Pod{}, ErrBuildNotRunning
 		}
 		select {
 		case <-ctx.Done():
-			return corev1.Pod{}, nil, ctx.Err()
+			return corev1.Pod{}, ctx.Err()
 		case <-time.After(wait):
 		}
 	}
 }
 
-// terminatedContainers names pod's containers that have finished. A build
-// tail that only attached running ones would miss a phase shorter than its
-// poll, such as the push and its "Build successful" line (w4/582).
-func terminatedContainers(pod corev1.Pod) map[string]bool {
+// terminatedBefore names pod's containers that finished before since; none
+// when since is zero (a tail with no lower bound reads every phase).
+func terminatedBefore(pod corev1.Pod, since time.Time) map[string]bool {
 	out := map[string]bool{}
+	if since.IsZero() {
+		return out
+	}
 	for _, statuses := range [][]corev1.ContainerStatus{pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses} {
 		for i := range statuses {
-			if statuses[i].State.Terminated != nil {
+			if t := statuses[i].State.Terminated; t != nil && t.FinishedAt.Time.Before(since) {
 				out[statuses[i].Name] = true
 			}
 		}
 	}
 	return out
+}
+
+// phasesToAttach is pod's containers a build tail has not attached or skipped
+// yet, in the pod's own order (init containers, then regular): the ones that
+// ended, then the ones running. A phase shorter than the tail's poll, such as
+// the push and its "Build successful" line (w4/582), is seen ended and still
+// read.
+func phasesToAttach(pod corev1.Pod, started, before map[string]bool) (ended, running []string) {
+	for _, statuses := range [][]corev1.ContainerStatus{pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses} {
+		for i := range statuses {
+			name := statuses[i].Name
+			if started[name] || before[name] {
+				continue
+			}
+			switch {
+			case statuses[i].State.Terminated != nil:
+				ended = append(ended, name)
+			case statuses[i].State.Running != nil:
+				running = append(running, name)
+			}
+		}
+	}
+	return ended, running
 }
 
 func runningContainers(pod corev1.Pod) []string {
