@@ -1,6 +1,6 @@
 # w6 · m334 — An unmetered usage hour pages before it can no longer be metered
 
-**Worker:** worker6 **Goal:** An hour the usage rollup has not metered pages an operator 24 h before the catch-up window closes on it, so the limit accepted in w4/496 is guarded rather than silent. **Status:** in progress — t001–t005 done (`bex_usage_oldest_unmetered_hour_timestamp_seconds` + `UsageHourNearlyUnmeterable`); t006 reads the series on production after the deploy
+**Worker:** worker6 **Goal:** An hour the usage rollup has not metered pages an operator 24 h before the catch-up window closes on it, so the limit accepted in w4/496 is guarded rather than silent. **Status:** done 2026-11-12: the gauge and alert are live on production, scraped, and page only on fillable hours (6 tasks)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | [Record the guard in ADR023](done/t003.md) — **DONE** | 15m | t002 |
 | t004 | [Simplify](done/t004.md) — **DONE** | 15m | t003 |
 | t005 | [Test coverage](done/t005.md) — **DONE** | 30m | t004 |
-| t006 | [Closeout](t006.md) | 10m | t005 |
+| t006 | [Closeout](done/t006.md) — **DONE** | 10m | t005 |
 
 ## Definition of done
 

@@ -61,7 +61,7 @@ Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the
 
 1. **[m332](blocked/m332/README.md)** — **BLOCKED** (cx53 stock in eu-central, 2026-11-12) — Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it (8 tasks).
 2. **[m333](m333/README.md)** — deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed (8 tasks); absorbs `w4/575`.
-3. **[m334](m334/README.md)** — an unmetered usage hour pages before it can no longer be metered (6 tasks).
+3. **[m334](done/m334/README.md)** — **done** — an unmetered usage hour pages before it can no longer be metered (6 tasks).
 4. **[118](done/118.md)** — **done** — ADR018 records that hosted bex requires a card for every workspace (~20m).
 5. **[119](done/119.md)** — **done** — re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners (~45m).
 
@@ -71,7 +71,7 @@ Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the
 
 - [ ] **m332** — **BLOCKED (Hetzner / account owner: cx53 stock in eu-central — `412 resource_unavailable` in fsn1, nbg1 and hel1 on 2026-11-12 — or the user revisiting the 2026-11-02 keep-cx53 decision (cpx62 is in stock in fsn1 at €152.99/month against €34.99); t001 done, t003 step 1 done: Render prices `2c-8g` $135, `2c-16g` $200, `8c-16g` $300, `12c-24g` $450)** — [Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it](blocked/m332/README.md) (8 tasks) ← `/pm-brainstorm` 2026-11-11 proposal 1; `w2/blocked/m250`, `w6/blocked/114`
 - [ ] **m333** — [Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed](m333/README.md) (8 tasks) ← proposal 2; absorbs `w4/575`
-- [ ] **m334** — [An unmetered usage hour pages before it can no longer be metered](m334/README.md) (6 tasks) ← proposal 3; the limit accepted in `w4/496`
+- [x] **m334** — [An unmetered usage hour pages before it can no longer be metered](done/m334/README.md) — **done 2026-11-12**: `bex_usage_oldest_unmetered_hour_timestamp_seconds` and `UsageHourNearlyUnmeterable` are live on production. The first deploy found the series dropped by the scrape keep-list and every hole unfillable (both fixed; w6/122 guards the keep-list) (6 tasks) ← proposal 3; the limit accepted in `w4/496`
 - [ ] **m331** — **BLOCKED (account owner: order one Hetzner EX44 in fsn1 (€59 a month, no setup fee) plus a Robot vSwitch, and create Robot webservice credentials (stored per ADR019); t001 done — gVisor is 1.65× runc on the build replay on today's node, and a cold build is mostly CPU, ADR105 § The probe re-run)** — [Agent sandboxes run on a Hetzner bare-metal node under Kata](blocked/m331/README.md) (14 tasks) ← ADR105, 2026-11-11
 - [x] **m319** — [Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down](done/m319/README.md) — **done 2026-11-10**: `includedBandwidth` identical on REST, GraphQL, MCP and the billing page on production (8 tasks) ← promoted from `w6/116` 2026-11-10
 - [x] **m306** — [Builds of different services start together, and a held build is visible](done/m306/README.md) — **done 2026-11-11**: on production a workspace's builds 3–4 start while 1–2 run (`examples/build-probe`); the two-minute node wait is `w6/117` (10 tasks) ← `/pm-brainstorm for w6` 2026-11-10 proposal 1; ADR060 §D5/§D6
@@ -253,7 +253,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 - [x] **122** — [A validator fails when an alert's backing series is dropped by its scrape job's keep-list](done/122.md) (~45m) ← w6/m334 production check — **done 2026-11-12**
 - [x] **121** — [A service deleted before its first hourly rollup still loses its egress](done/121.md) (~1h) ← w6/m333 review — **done 2026-11-12**
-- [ ] **120** — [The agent image and the platform builder ship the Go that `lego/go.work` requires](120.md) (~30m) ← w6/m331 t001
+- [x] **120** — [The agent image and the platform builder ship the Go that `lego/go.work` requires](done/120.md) (~30m) ← w6/m331 t001 — **done 2026-11-12**
 - [x] **119** — [Re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners](done/119.md) (~45m) ← proposal 5 — **done 2026-11-12**
 - [x] **118** — [ADR018 records that hosted bex requires a card for every workspace (ADR075 D7)](done/118.md) (~20m) ← proposal 4 — **done 2026-11-12**
 - [x] **117** — [A workspace's third and fourth builds wait about two minutes for a build node](done/117.md) — done 2026-11-11: user chose B; `bex-tenant-burst` kept warm at two nodes (min-size 2) ← `w6/m306` production record
