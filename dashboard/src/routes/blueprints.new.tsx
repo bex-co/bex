@@ -352,8 +352,12 @@ export function NewBlueprintPage() {
                 return (
                   <li key={`${resource.kind}:${resource.name}`}>
                     <span className="font-medium">{resource.name}</span>
+                    {/* A real space, so the item reads "db Postgres", not "dbPostgres". */}
                     {kind ? (
-                      <span className="ml-2 text-xs">{t(kind)}</span>
+                      <>
+                        {" "}
+                        <span className="ml-1 text-xs">{t(kind)}</span>
+                      </>
                     ) : null}
                   </li>
                 );

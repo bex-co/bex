@@ -179,9 +179,12 @@ export function BlueprintPlanSummary({
                 >
                   <span className="font-medium">{resource.name}</span>
                   {resource.resourceId && (
-                    <code className="ml-2 break-all text-xs">
-                      {resource.resourceId}
-                    </code>
+                    <>
+                      {" "}
+                      <code className="ml-1 break-all text-xs">
+                        {resource.resourceId}
+                      </code>
+                    </>
                   )}
                 </li>
               ))}

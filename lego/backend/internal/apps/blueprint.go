@@ -1235,7 +1235,7 @@ func (s *Service) blueprintMatchedResources(ctx context.Context, manifest string
 		}
 		for _, db := range st.databases {
 			// Any database of that name is a match, a duplicated one included.
-			if found, unique := uniqueDatabaseByDisplayName(databases.Items, scoped, tenantID, db.name); found != nil || !unique {
+			if found, duplicate := uniqueDatabaseByDisplayName(databases.Items, scoped, tenantID, db.name); found != nil || duplicate {
 				matched = append(matched, BlueprintResourceRef{Kind: string(BlueprintResourcePostgres), Name: db.name})
 			}
 		}
@@ -1246,7 +1246,7 @@ func (s *Service) blueprintMatchedResources(ctx context.Context, manifest string
 			return nil
 		}
 		for _, kv := range st.keyValues {
-			if found, unique := uniqueKeyValueByDisplayName(keyValues.Items, scoped, tenantID, kv.name); found != nil || !unique {
+			if found, duplicate := uniqueKeyValueByDisplayName(keyValues.Items, scoped, tenantID, kv.name); found != nil || duplicate {
 				matched = append(matched, BlueprintResourceRef{Kind: string(BlueprintResourceKeyValue), Name: kv.name})
 			}
 		}

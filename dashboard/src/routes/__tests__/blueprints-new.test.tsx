@@ -564,10 +564,10 @@ describe("NewBlueprintPage", () => {
       // The existing resources, each with its kind.
       const items = within(notice).getAllByRole("listitem");
       expect(items.map((item) => item.textContent)).toEqual([
-        "apiService",
-        "dbPostgres",
-        "cacheKey Value",
-        "sharedEnvironment group",
+        "api Service",
+        "db Postgres",
+        "cache Key Value",
+        "shared Environment group",
       ]);
       // The plan under it is the suffixed one.
       expect(screen.getByText("api-ab12")).toBeInTheDocument();
@@ -633,7 +633,12 @@ describe("NewBlueprintPage", () => {
           within(notice)
             .getAllByRole("listitem")
             .map((item) => item.textContent),
-        ).toEqual(["api服务", "dbPostgres", "cacheKey Value", "shared环境组"]);
+        ).toEqual([
+          "api 服务",
+          "db Postgres",
+          "cache Key Value",
+          "shared 环境组",
+        ]);
         expect(notice.textContent).not.toMatch(
           /matches|existing|suffix|workspace/i,
         );

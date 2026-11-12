@@ -1419,21 +1419,20 @@ func (s *Service) resolveUndeclaredKeyValues(ctx context.Context, needed map[str
 // to tenantID when scoped), or duplicate=true when a second item also matches
 // — each caller owns the error wording for its surface, and an ambiguous name
 // only errors when it is actually looked up.
-func uniqueDatabaseByDisplayName(items []appv1alpha1.Database, scoped bool, tenantID, name string) (*appv1alpha1.Database, bool) {
+func uniqueDatabaseByDisplayName(items []appv1alpha1.Database, scoped bool, tenantID, name string) (found *appv1alpha1.Database, duplicate bool) {
 	return uniqueMatching(items, func(candidate *appv1alpha1.Database) bool {
 		return (!scoped || candidate.Labels[core.LabelTenant] == tenantID) && candidate.Spec.Name == name
 	})
 }
 
 // uniqueKeyValueByDisplayName is uniqueDatabaseByDisplayName's KeyValue twin.
-func uniqueKeyValueByDisplayName(items []appv1alpha1.KeyValue, scoped bool, tenantID, name string) (*appv1alpha1.KeyValue, bool) {
+func uniqueKeyValueByDisplayName(items []appv1alpha1.KeyValue, scoped bool, tenantID, name string) (found *appv1alpha1.KeyValue, duplicate bool) {
 	return uniqueMatching(items, func(candidate *appv1alpha1.KeyValue) bool {
 		return (!scoped || candidate.Labels[core.LabelTenant] == tenantID) && candidate.Spec.Name == name
 	})
 }
 
-func uniqueMatching[T any](items []T, match func(*T) bool) (*T, bool) {
-	var found *T
+func uniqueMatching[T any](items []T, match func(*T) bool) (found *T, duplicate bool) {
 	for index := range items {
 		candidate := &items[index]
 		if !match(candidate) {

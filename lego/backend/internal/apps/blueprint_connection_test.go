@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -695,5 +696,49 @@ func TestBlueprintWithoutBranchUsesTheRepositoryDefault(t *testing.T) {
 	svc.GitHub = &fakeCloneTokens{} // no opinion: not a github.com repo, or GitHub off
 	if _, err := svc.PreviewBlueprint(ctx, connOwner, repoBex, "", pathCron, ""); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("no default to offer = %v, want a 400", err)
+	}
+}
+
+// w4/572: a declared database or Key Value is matched only when the workspace
+// has one (or several) of that kind and name. A first-time stack matches
+// nothing, so it is created under the file's names, not as a suffixed copy.
+func TestBlueprintMatchesOnlyExistingDatastores(t *testing.T) {
+	const manifest = `databases:
+  - name: db
+services:
+  - type: keyvalue
+    name: cache
+    ipAllowList: []
+`
+	database := func(id, name, tenant string) *appv1alpha1.Database {
+		return &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: id, Namespace: "default", Labels: map[string]string{core.LabelTenant: tenant}},
+			Spec: appv1alpha1.DatabaseSpec{Name: name}}
+	}
+	keyValue := func(id, name string) *appv1alpha1.KeyValue {
+		return &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: id, Namespace: "default", Labels: map[string]string{core.LabelTenant: connOwner}},
+			Spec: appv1alpha1.KeyValueSpec{Name: name}}
+	}
+	for name, tc := range map[string]struct {
+		objects []client.Object
+		want    []BlueprintResourceRef
+	}{
+		"a new stack": {nil, nil},
+		"another workspace's or another name's datastores": {[]client.Object{
+			database("dpg-other", "other", connOwner), keyValue("red-other", "other"),
+			database("dpg-theirs", "db", "tea-b"),
+		}, nil},
+		"one existing database": {[]client.Object{database("dpg-1", "db", connOwner)},
+			[]BlueprintResourceRef{{Kind: "postgres", Name: "db"}}},
+		"two same-named databases and a Key Value": {[]client.Object{database("dpg-1", "db", connOwner), database("dpg-2", "db", connOwner), keyValue("red-1", "cache")},
+			[]BlueprintResourceRef{{Kind: "postgres", Name: "db"}, {Kind: "key_value", Name: "cache"}}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			svc, _ := connectionService(t)
+			svc.Client = fakeClient(tc.objects...)
+			ctx := ownershipCtx()
+			if got := svc.blueprintMatchedResources(ctx, manifest, svc.newWorkspaceSnapshot(ctx)); !slices.Equal(got, tc.want) {
+				t.Fatalf("matched %+v, want %+v", got, tc.want)
+			}
+		})
 	}
 }
