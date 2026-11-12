@@ -176,3 +176,16 @@ w3/m302 (blocked on its live check) renamed the keys and maps a failed health ch
 ### Cleanup
 
 The service was deleted after the reads; it answers 404.
+
+## Post-release probe — QA loop round 197 (2026-11-12, pin `f018ce9455c8`), run beside the closeout
+
+- **Runs 3–5 agree with the closeout.** Each `/exit3` crash after the sampler had seen the service healthy gave one `server_failed` (`nonZeroExit: 3`, with a public `instanceID`) and one `server_available` within 10 s of the URL answering 200 again. So did the OOM and `/sick` controls.
+- **Not covered by t010, filed as [w4/608](../../../w4/608.md).** A crash in a new service's first pass interval (2 of 2 runs: `/exit3` 9 s, then 0 s, after the first 200) recorded `server_failed` and never `server_available`. `pairInstanceExit` (`lego/backend/internal/store/event_facts.go:300`) skips a checkpoint whose availability is `""`.
+- **Unreproduced, recorded only.** Run 2 (`/exit3` at 13:28:16 on a restart's new instance, 6 s before that deploy's `deploy_ended`, back at 200 at 13:28:59) recorded:
+  - `server_failed` `nonZeroExit: 3` at 13:28:17;
+  - `server_available` at 13:28:18;
+  - a second `server_failed` `unhealthy` at 13:28:24;
+  - `server_available` at 13:28:59.
+
+  Run 5's crash in the same kind of window paired correctly.
+
