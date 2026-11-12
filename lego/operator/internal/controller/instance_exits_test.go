@@ -187,3 +187,110 @@ func TestInstanceExitsMarkAnExitThatFollowedTheOutage(t *testing.T) {
 		}
 	}
 }
+
+// A first crash waits out a 10 s back-off with a restart count of 0, and the
+// exit used to be read only once the container ran again: after bex-api had
+// already recorded the outage it caused as a failed health check (w8/m158
+// t009). Read before the restart, the exit carries the count the next run
+// will have, so the restart itself adds nothing.
+func TestInstanceExitsReadAnExitBeforeTheRestart(t *testing.T) {
+	at := time.Date(2026, 11, 12, 7, 33, 48, 0, time.UTC)
+	settled := at.Add(-time.Hour)
+	pod := func(cs corev1.ContainerStatus) corev1.Pod {
+		cs.Name = appContainerName
+		return corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: "web-a", Labels: map[string]string{labelRevision: "rev-9"}},
+			Status:     corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{cs}},
+		}
+	}
+	crash := terminated(3, "Error", at)
+
+	crash.ContainerID = "containerd://first"
+	waiting := pod(corev1.ContainerStatus{
+		RestartCount:         0,
+		ContainerID:          "containerd://first",
+		State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+		LastTerminationState: corev1.ContainerState{Terminated: crash},
+	})
+	got := withInstanceExits(nil, []corev1.Pod{waiting}, "rev-9", settled, at.Add(2*time.Second))
+	if len(got) != 1 || got[0].RestartCount != 1 || got[0].ExitCode != 3 || !got[0].FinishedAt.Equal(&crash.FinishedAt) {
+		t.Fatalf("exits in back-off = %+v, want the exit under restart count 1", got)
+	}
+
+	running := pod(corev1.ContainerStatus{
+		RestartCount:         1,
+		ContainerID:          "containerd://second",
+		State:                corev1.ContainerState{Running: &corev1.ContainerStateRunning{StartedAt: metav1.NewTime(at.Add(10 * time.Second))}},
+		LastTerminationState: corev1.ContainerState{Terminated: crash},
+	})
+	again := withInstanceExits(got, []corev1.Pod{running}, "rev-9", settled, at.Add(15*time.Second))
+	if len(again) != 1 || &again[0] != &got[0] {
+		t.Errorf("the restart recorded the same exit again: %+v", again)
+	}
+
+	// A container that has just stopped, before any back-off: the same count.
+	stopped := pod(corev1.ContainerStatus{RestartCount: 0, ContainerID: "containerd://first", State: corev1.ContainerState{Terminated: crash}})
+	if got := withInstanceExits(nil, []corev1.Pod{stopped}, "rev-9", settled, at.Add(time.Second)); len(got) != 1 || got[0].RestartCount != 1 {
+		t.Errorf("exits of a just-stopped container = %+v, want the exit under restart count 1", got)
+	}
+	// A later crash of a container that has run since: one more.
+	second := terminated(3, "Error", at.Add(time.Minute))
+	second.ContainerID = "containerd://second"
+	if got := withInstanceExits(again, []corev1.Pod{pod(corev1.ContainerStatus{
+		RestartCount:         1,
+		ContainerID:          "containerd://second",
+		State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+		LastTerminationState: corev1.ContainerState{Terminated: second},
+	})}, "rev-9", settled, at.Add(time.Minute+time.Second)); len(got) != 2 || got[0].RestartCount != 2 {
+		t.Errorf("exits after a second crash = %+v, want the new exit under restart count 2 on top", got)
+	}
+
+	// A new container created but not yet started after the restart is already
+	// counted: its last termination keeps the count it has.
+	created := pod(corev1.ContainerStatus{
+		RestartCount:         1,
+		ContainerID:          "containerd://second",
+		State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{}},
+		LastTerminationState: corev1.ContainerState{Terminated: crash},
+	})
+	if got := withInstanceExits(nil, []corev1.Pod{created}, "rev-9", settled, at.Add(5*time.Second)); len(got) != 1 || got[0].RestartCount != 1 {
+		t.Errorf("exits of a created, not yet started container = %+v, want the exit under restart count 1", got)
+	}
+	// Recorded under one count, the same exit read under another is known by
+	// its finish time.
+	if got := withInstanceExits([]appv1alpha1.InstanceExit{{Instance: "web-a", RestartCount: 7, ExitCode: 3, FinishedAt: crash.FinishedAt}},
+		[]corev1.Pod{running}, "rev-9", settled, at.Add(15*time.Second)); len(got) != 1 {
+		t.Errorf("the same exit under another count was recorded again: %+v", got)
+	}
+
+	// A container waiting to start for the first time has no exit.
+	creating := pod(corev1.ContainerStatus{State: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "ContainerCreating"}}})
+	if got := withInstanceExits(nil, []corev1.Pod{creating}, "rev-9", settled, at); len(got) != 0 {
+		t.Errorf("exits of a container that never ran = %+v, want none", got)
+	}
+}
+
+// A pod the platform stops (a scale-in, a drain, a rollout) or evicts is not
+// restarted, so its container stays Terminated with its answer to SIGTERM.
+// That is not the application exiting (review of w8/m158 t009).
+func TestInstanceExitsLeaveOutAPodThePlatformStopped(t *testing.T) {
+	at := time.Date(2026, 11, 12, 8, 0, 0, 0, time.UTC)
+	settled := at.Add(-time.Hour)
+	stopped := func(name string) corev1.Pod {
+		return corev1.Pod{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Labels: map[string]string{labelRevision: "rev-9"}},
+			Status: corev1.PodStatus{ContainerStatuses: []corev1.ContainerStatus{{
+				Name: appContainerName, ContainerID: "containerd://x",
+				State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 0, Reason: "Completed", ContainerID: "containerd://x", FinishedAt: metav1.NewTime(at)}},
+			}}},
+		}
+	}
+	deleting := stopped("web-scaled-in")
+	deleting.DeletionTimestamp = &metav1.Time{Time: at.Add(-30 * time.Second)}
+	evicted := stopped("web-evicted")
+	evicted.Status.Phase = corev1.PodFailed
+	evicted.Status.Reason = "Evicted"
+	if got := withInstanceExits(nil, []corev1.Pod{deleting, evicted}, "rev-9", settled, at.Add(time.Second)); len(got) != 0 {
+		t.Errorf("exits = %+v, want none from pods the platform stopped", got)
+	}
+}

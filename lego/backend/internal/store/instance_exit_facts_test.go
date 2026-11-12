@@ -124,37 +124,89 @@ func TestPGAnInstanceExitIsTheOutagesOnlyServerFailed(t *testing.T) {
 	type step struct {
 		down  bool
 		exits []appv1alpha1.InstanceExit
+		// transition dates the outage by its Ready transition, as the
+		// operator writes it; without one the pass's own time dates it.
+		transition bool
 	}
+	tableBuilt := time.Now()
 	first := exit(1, 3, 0, false)
+	// A crash that restarted before the sampler confirmed an outage: no
+	// outage, no recovery of its own.
+	quick := exit(1, 3, -30*time.Second, false)
 	for _, tc := range []struct {
-		name       string
-		steps      []step
-		wantFailed []string // reason codes of the server_failed facts
+		name          string
+		steps         []step
+		wantFailed    []string // reason codes of the server_failed facts
+		wantAvailable int      // server_available facts; 0 reads as 1
 	}{
 		{"the process exited with status 3",
-			[]step{{true, []appv1alpha1.InstanceExit{first}}, {false, []appv1alpha1.InstanceExit{first}}},
-			[]string{EventReasonNonZeroExit}},
+			[]step{{true, []appv1alpha1.InstanceExit{first}, false}, {false, []appv1alpha1.InstanceExit{first}, false}},
+			[]string{EventReasonNonZeroExit}, 0},
 		{"a running process stopped passing its check",
-			[]step{{true, nil}, {false, nil}},
-			[]string{EventReasonReadinessFailed}},
+			[]step{{true, nil, false}, {false, nil, false}},
+			[]string{EventReasonReadinessFailed}, 0},
 		// The kubelet restarts an instance that keeps failing its check, and a
 		// process that handles the signal exits cleanly. The outage already
 		// has its event; the exit is not the cause.
 		{"a health-check restart of a process that exits cleanly",
-			[]step{{true, nil}, {true, []appv1alpha1.InstanceExit{exit(1, 0, time.Minute, true)}}, {false, []appv1alpha1.InstanceExit{exit(1, 0, time.Minute, true)}}},
-			[]string{EventReasonReadinessFailed}},
+			[]step{{true, nil, false}, {true, []appv1alpha1.InstanceExit{exit(1, 0, time.Minute, true)}, false}, {false, []appv1alpha1.InstanceExit{exit(1, 0, time.Minute, true)}, false}},
+			[]string{EventReasonReadinessFailed}, 0},
 		// A crash loop is one outage: its first exit is the event, and the
 		// later ones fall inside it.
 		{"a crash loop",
 			[]step{
-				{true, []appv1alpha1.InstanceExit{first}},
-				{true, []appv1alpha1.InstanceExit{exit(2, 3, time.Minute, true), first}},
-				{true, []appv1alpha1.InstanceExit{exit(3, 3, 2*time.Minute, true), exit(2, 3, time.Minute, true), first}},
-				{false, []appv1alpha1.InstanceExit{exit(3, 3, 2*time.Minute, true), exit(2, 3, time.Minute, true), first}},
+				{true, []appv1alpha1.InstanceExit{first}, false},
+				{true, []appv1alpha1.InstanceExit{exit(2, 3, time.Minute, true), first}, false},
+				{true, []appv1alpha1.InstanceExit{exit(3, 3, 2*time.Minute, true), exit(2, 3, time.Minute, true), first}, false},
+				{false, []appv1alpha1.InstanceExit{exit(3, 3, 2*time.Minute, true), exit(2, 3, time.Minute, true), first}, false},
 			},
-			[]string{EventReasonNonZeroExit}},
+			[]string{EventReasonNonZeroExit}, 0},
+		// The outage is confirmed before the exit reaches status (round 176,
+		// w8/m158 t009): the exit arriving second is that outage's cause, and
+		// the outage already has its event. One server_failed, not two.
+		{"the outage is recorded before the exit is read",
+			[]step{{true, nil, false}, {true, []appv1alpha1.InstanceExit{first}, false}, {false, []appv1alpha1.InstanceExit{first}, false}},
+			[]string{EventReasonReadinessFailed}, 0},
+		// A crash that recovered does not explain a later outage of a running
+		// process (round 176): the later outage has its own event, and each
+		// recovery pairs with a failure.
+		{"a health-check outage after a recovered crash",
+			[]step{
+				{true, []appv1alpha1.InstanceExit{first}, false},
+				{false, []appv1alpha1.InstanceExit{first}, false},
+				{true, []appv1alpha1.InstanceExit{first}, false},
+				{false, []appv1alpha1.InstanceExit{first}, false},
+			},
+			[]string{EventReasonNonZeroExit, EventReasonReadinessFailed}, 2},
+		// The outage starts half a minute after a quick crash that left no
+		// recovery: it is its own outage (review of t009).
+		{"an outage half a minute after a crash that recovered unseen",
+			[]step{
+				{false, []appv1alpha1.InstanceExit{quick}, false},
+				{true, []appv1alpha1.InstanceExit{quick}, true},
+				{false, []appv1alpha1.InstanceExit{quick}, false},
+			},
+			[]string{EventReasonNonZeroExit, EventReasonReadinessFailed}, 1},
+		// The exit dated a few seconds before the Ready transition it caused.
+		{"an exit just before its outage's Ready transition",
+			[]step{
+				{true, []appv1alpha1.InstanceExit{exit(1, 3, -3*time.Second, false)}, true},
+				{false, []appv1alpha1.InstanceExit{exit(1, 3, -3*time.Second, false)}, false},
+			},
+			[]string{EventReasonNonZeroExit}, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			// The table's exits are dated when it was built; move them to now,
+			// so a subtest's result does not depend on when it runs.
+			shift := time.Since(tableBuilt)
+			for i := range tc.steps {
+				exits := make([]appv1alpha1.InstanceExit, len(tc.steps[i].exits))
+				for j, e := range tc.steps[i].exits {
+					e.FinishedAt = metav1.NewTime(e.FinishedAt.Add(shift))
+					exits[j] = e
+				}
+				tc.steps[i].exits = exits
+			}
 			stamp := fmt.Sprintf("%d", time.Now().UnixNano())
 			tenant, err := st.CreateWorkspace(ctx, "exit-"+stamp, PlanHobby, "exit-owner-"+stamp)
 			if err != nil {
@@ -185,6 +237,9 @@ func TestPGAnInstanceExitIsTheOutagesOnlyServerFailed(t *testing.T) {
 				cr := healthy.DeepCopy()
 				if s.down {
 					cr = down.DeepCopy()
+					if s.transition {
+						cr.Status.Conditions[0].LastTransitionTime = metav1.NewTime(time.Now())
+					}
 				}
 				cr.Status.InstanceExits = s.exits
 				observe(cr, 3)
@@ -212,8 +267,9 @@ func TestPGAnInstanceExitIsTheOutagesOnlyServerFailed(t *testing.T) {
 			if fmt.Sprint(failed) != fmt.Sprint(tc.wantFailed) {
 				t.Errorf("server_failed reasons = %v, want %v", failed, tc.wantFailed)
 			}
-			if available != 1 {
-				t.Errorf("server_available facts = %d, want the recovery once", available)
+			want := max(tc.wantAvailable, 1)
+			if available != want {
+				t.Errorf("server_available facts = %d, want %d (one per recovery)", available, want)
 			}
 		})
 	}

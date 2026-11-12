@@ -237,6 +237,13 @@ func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEv
 			facts[i].At = time.Now().UTC()
 		}
 		fact := facts[i]
+		if fact.isInstanceExit() {
+			// An exit read after its outage was already recorded is that
+			// outage's cause, and the outage has its event (w8/m158 t009).
+			args := append(fact.insertArgs(), fact.At.Add(-instanceExitOutageLag), fact.At.Add(instanceExitOutageFallbackLead))
+			batch.Queue(insertInstanceExitFactSQL, args...)
+			continue
+		}
 		batch.Queue(insertServiceEventFactSQL, fact.insertArgs()...)
 	}
 	if batch.Len() == 0 {
@@ -436,8 +443,16 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			// has its own server_failed with the cause on it (w8/m158). The
 			// sampled outage adds none; its server_available still follows.
 			if fact.Type == EventFactServerFailed && fact.ReasonCode == EventReasonReadinessFailed {
+				// The outage starts at its Ready transition, which follows the
+				// process's exit within seconds; only an outage dated by the
+				// pass that saw it (no transition to trust) looks a minute back.
+				lead := instanceExitOutageFallbackLead
+				if !obs.ReadyTransitionAt.IsZero() && fact.At.Equal(obs.ReadyTransitionAt) {
+					lead = instanceExitOutageLead
+				}
 				var exited bool
-				if err := tx.QueryRow(ctx, instanceExitSinceSQL, fact.AppID, fact.At.Add(-instanceExitOutageWindow)).Scan(&exited); err != nil {
+				if err := tx.QueryRow(ctx, instanceExitExplainsOutageSQL, fact.AppID,
+					fact.At.Add(-lead), fact.At.Add(instanceExitOutageLag), fact.At).Scan(&exited); err != nil {
 					return err
 				}
 				if exited {
@@ -610,17 +625,70 @@ func availabilityEdgeAt(transition, previousChangedAt, observed time.Time) time.
 	return transition
 }
 
-// instanceExitOutageWindow is how far back an instance's recorded exit counts
-// as the cause of an outage observed now. The outage is confirmed on a second
-// pass, up to a resync and a debounce after the process went down.
-const instanceExitOutageWindow = 3 * time.Minute
+// An instance's exit and a sampled outage are one outage when the exit comes
+// at most instanceExitOutageLead before the outage's start (the operator
+// writes Ready=False on its pass after the process died) or at most
+// instanceExitOutageLag after it (the two clocks, to the second), and no
+// server_available lies between them (w8/m158 t009). An outage with no Ready
+// transition to date it is dated by the pass that confirmed it, up to a
+// resync and a debounce late, so it looks instanceExitOutageFallbackLead back;
+// so does an exit read after an outage was recorded, which cannot tell how
+// that outage was dated. Either fact may be recorded first; whichever comes
+// second adds no server_failed. An exit further away, or one whose outage has
+// already recovered, is not this outage's cause: a crash that restarted
+// before the sampler confirmed an outage leaves no server_available, and a
+// separate outage half a minute later is its own.
+const (
+	instanceExitOutageLead         = 15 * time.Second
+	instanceExitOutageFallbackLead = time.Minute
+	instanceExitOutageLag          = 5 * time.Second
+)
 
-// instanceExitSinceSQL reports whether app $1 has an exit-caused server_failed
-// at or after $2 (instanceExitFacts).
-const instanceExitSinceSQL = `SELECT EXISTS (
-	SELECT 1 FROM service_event_facts
-	WHERE app_id = $1 AND fact_type = 'server_failed'
-	  AND reason_code IN ('non_zero_exit', 'oom_killed', 'early_exit') AND at >= $2)`
+// isInstanceExit reports whether f is an exit-caused server_failed of a
+// running service (instanceExitFacts), not the sampled outage.
+func (f ServiceEventFact) isInstanceExit() bool {
+	if f.Type != EventFactServerFailed || f.InstanceID == "" {
+		return false
+	}
+	switch f.ReasonCode {
+	case EventReasonNonZeroExit, EventReasonOOMKilled, EventReasonEarlyExit:
+		return true
+	}
+	return false
+}
+
+// instanceExitExplainsOutageSQL reports whether app $1 has an exit-caused
+// server_failed between $2 and $3 with no server_available between it and
+// the outage starting at $4.
+const instanceExitExplainsOutageSQL = `SELECT EXISTS (
+	SELECT 1 FROM service_event_facts e
+	WHERE e.app_id = $1 AND e.fact_type = 'server_failed'
+	  AND e.reason_code IN ('non_zero_exit', 'oom_killed', 'early_exit')
+	  AND e.at >= $2 AND e.at <= $3
+	  AND NOT EXISTS (
+	      SELECT 1 FROM service_event_facts a
+	      WHERE a.app_id = $1 AND a.fact_type = 'server_available'
+	        AND a.at > LEAST(e.at, $4::timestamptz) AND a.at <= GREATEST(e.at, $4::timestamptz)))`
+
+// insertInstanceExitFactSQL is insertServiceEventFactSQL for an exit fact: it
+// inserts nothing when a sampled outage starting between $18 and $19, with no
+// server_available between it and the exit, already has its server_failed.
+const insertInstanceExitFactSQL = `
+INSERT INTO service_event_facts (
+    source_key, app_id, fact_type, at, deploy_id, image, reason_code,
+    instance_id, from_count, to_count, branch_from, branch_to, commit_id, commit_url, status,
+    exit_code, run_id
+)
+SELECT $1, $2, $3, $4::timestamptz, $5, $6, $7, $8, $9::integer, $10::integer, $11, $12, $13, $14, $15, $16::integer, $17
+WHERE NOT EXISTS (
+    SELECT 1 FROM service_event_facts o
+    WHERE o.app_id = $2 AND o.fact_type = 'server_failed' AND o.reason_code = 'readiness_failed'
+      AND o.at >= $18 AND o.at <= $19
+      AND NOT EXISTS (
+          SELECT 1 FROM service_event_facts a
+          WHERE a.app_id = $2 AND a.fact_type = 'server_available'
+            AND a.at > LEAST(o.at, $4::timestamptz) AND a.at <= GREATEST(o.at, $4::timestamptz)))
+ON CONFLICT (source_key) DO NOTHING`
 
 // failureFactType names an availability failure edge: an instance lost with
 // its node is Render's server_hardware_failure, anything else server_failed.

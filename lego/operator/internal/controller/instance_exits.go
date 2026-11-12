@@ -108,6 +108,35 @@ func unreadyBefore(pod *corev1.Pod, finished time.Time) bool {
 	return false
 }
 
+// lastExit is the app container's latest exit and the restart count it is
+// recorded under: the count of the run that follows it. A container that has
+// just stopped, or is waiting out its restart back-off, has not been
+// restarted yet, so its exit is the one the next run will carry, one more
+// than the count now; a container running again shows the exit that preceded
+// it as its last termination, under the count it has. Read before the
+// restart, an exit is in status on the same write that drops readiness: a
+// first crash waits a 10 s back-off with a restart count of 0, and read only
+// after it the exit reached bex-api after the outage it caused, which then got
+// an event of its own too (w8/m158 t009).
+//
+// A waiting container is the one that exited (its back-off) only when the
+// status still names the exited container; a new container created but not
+// yet started is already counted, and its last termination keeps the count
+// it has.
+func lastExit(cs corev1.ContainerStatus) (*corev1.ContainerStateTerminated, int32) {
+	switch {
+	case cs.State.Terminated != nil:
+		return cs.State.Terminated, cs.RestartCount + 1
+	case cs.State.Waiting != nil && cs.LastTerminationState.Terminated != nil:
+		t := cs.LastTerminationState.Terminated
+		if t.ContainerID != "" && t.ContainerID == cs.ContainerID {
+			return t, cs.RestartCount + 1
+		}
+		return t, cs.RestartCount
+	}
+	return cs.LastTerminationState.Terminated, cs.RestartCount
+}
+
 // withInstanceExits adds the exits the pods of revision show to recorded and
 // returns the newest appv1alpha1.MaxInstanceExits, newest first. An exit from
 // before since, the time the release's rollout settled, is a start-up crash
@@ -117,13 +146,20 @@ func withInstanceExits(recorded []appv1alpha1.InstanceExit, pods []corev1.Pod, r
 	var found []appv1alpha1.InstanceExit
 	for i := range pods {
 		pod := &pods[i]
-		if pod.Labels[labelRevision] != revision {
+		// A pod being deleted (a scale-in, a drain, a rollout) or one that has
+		// finished (an eviction) is stopped by the platform, and its process's
+		// answer to SIGTERM, often 0, is not the application exiting. The
+		// kubelet does not restart it, so its container stays Terminated.
+		if pod.Labels[labelRevision] != revision || !pod.DeletionTimestamp.IsZero() ||
+			pod.Status.Phase == corev1.PodFailed || pod.Status.Phase == corev1.PodSucceeded {
 			continue
 		}
 		for _, cs := range pod.Status.ContainerStatuses {
-			t := cs.LastTerminationState.Terminated
-			if cs.Name != appContainerName || t == nil || cs.RestartCount <= 0 ||
-				t.FinishedAt.Time.Before(since) || now.Sub(t.FinishedAt.Time) > instanceExitMaxAge {
+			if cs.Name != appContainerName {
+				continue
+			}
+			t, restarts := lastExit(cs)
+			if t == nil || restarts <= 0 || t.FinishedAt.Time.Before(since) || now.Sub(t.FinishedAt.Time) > instanceExitMaxAge {
 				continue
 			}
 			oom := t.Reason == "OOMKilled"
@@ -131,11 +167,13 @@ func withInstanceExits(recorded []appv1alpha1.InstanceExit, pods []corev1.Pod, r
 				continue
 			}
 			exit := appv1alpha1.InstanceExit{
-				Instance: pod.Name, RestartCount: cs.RestartCount, ExitCode: t.ExitCode, OOMKilled: oom, FinishedAt: t.FinishedAt,
+				Instance: pod.Name, RestartCount: restarts, ExitCode: t.ExitCode, OOMKilled: oom, FinishedAt: t.FinishedAt,
 				AfterUnready: unreadyBefore(pod, t.FinishedAt.Time),
 			}
+			// The same exit is never recorded under two counts: it is known by
+			// its instance and either its count or its finish time.
 			known := slices.ContainsFunc(recorded, func(e appv1alpha1.InstanceExit) bool {
-				return e.Instance == exit.Instance && e.RestartCount == exit.RestartCount
+				return e.Instance == exit.Instance && (e.RestartCount == exit.RestartCount || e.FinishedAt.Equal(&exit.FinishedAt))
 			})
 			if !known {
 				found = append(found, exit)
