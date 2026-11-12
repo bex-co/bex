@@ -422,6 +422,13 @@ func TestCoordinatorVerbsActOnlyOnDescendants(t *testing.T) {
 		t.Fatalf("wait on a working child = %+v / %v", got, err)
 	}
 
+	// Two children: the wait holds while one is still working.
+	got, err = wait(parent.ID, 1, done.SessionID, working.SessionID)
+	if err != nil || !got.TimedOut || !slices.Equal(got.Settled, []string{done.SessionID}) || len(got.Children) != 2 ||
+		got.Children[0].State != StateSucceeded || got.Children[1].State != StateWorking {
+		t.Fatalf("wait on a finished and a working child = %+v / %v", got, err)
+	}
+
 	// A message to a working child reaches Steer as the creator and relays its refusal.
 	if _, err := childOp(agentsession.SpawnOpMessage, parent.ID, working.SessionID); spawnCode(err) != codeTurnInFlight {
 		t.Fatalf("message to a working child = %v, want %s", err, codeTurnInFlight)
@@ -430,6 +437,12 @@ func TestCoordinatorVerbsActOnlyOnDescendants(t *testing.T) {
 	view, err := childOp(agentsession.SpawnOpCancel, parent.ID, working.SessionID)
 	if err != nil || (view.State != StateCanceled && view.State != StateWorking) || e.phase(t, working.SessionID) != PhaseCanceled && e.phase(t, working.SessionID) != PhaseCanceling {
 		t.Fatalf("cancel = %+v / %v (phase %s)", view, err, e.phase(t, working.SessionID))
+	}
+
+	// Once the working child is canceled, a wait on both returns at once.
+	e.setPhase(t, working.SessionID, PhaseCanceled)
+	if got, err := wait(parent.ID, 5, done.SessionID, working.SessionID); err != nil || got.TimedOut || !slices.Equal(got.Settled, []string{done.SessionID, working.SessionID}) {
+		t.Fatalf("wait once both ended = %+v / %v", got, err)
 	}
 
 	// Nothing outside the tree: an outsider, the parent itself, an unknown id.

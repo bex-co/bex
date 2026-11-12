@@ -249,12 +249,12 @@ func (s *Service) WaitChildSessions(ctx context.Context, envelope agentsession.S
 	if err != nil {
 		return agentsession.SpawnWaitResponse{}, childRefusal(parent.ID, "waited on", err)
 	}
-	out := agentsession.SpawnWaitResponse{Settled: result.Settled, TimedOut: result.TimedOut, Children: make([]agentsession.ChildView, 0, len(result.Sessions))}
+	out := agentsession.SpawnWaitResponse{Settled: result.Settled, TimedOut: result.TimedOut, Children: make([]agentsession.SpawnWaitChild, 0, len(result.Sessions))}
 	if out.Settled == nil {
 		out.Settled = []string{}
 	}
 	for _, session := range result.Sessions {
-		out.Children = append(out.Children, agentsession.ChildView{SessionID: session.ID, State: session.State})
+		out.Children = append(out.Children, agentsession.SpawnWaitChild{SessionID: session.ID, State: session.State})
 	}
 	return out, nil
 }

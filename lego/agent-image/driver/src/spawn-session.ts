@@ -361,7 +361,7 @@ function callSpawnRoute(
   );
 }
 
-// asChildView accepts the gateway's ChildView and nothing else: a refusal
+// asChildView accepts a gateway ChildView or wait child and nothing else: a refusal
 // dressed as a 200 is never passed to the agent as a child.
 function asChildView(payload: unknown): Record<string, unknown> | undefined {
   if (

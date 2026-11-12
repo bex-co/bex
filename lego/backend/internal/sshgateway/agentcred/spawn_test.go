@@ -80,7 +80,7 @@ func (s *recordingSpawns) WaitChildSessions(_ context.Context, envelope agentses
 	if s.refuse != nil {
 		return agentsession.SpawnWaitResponse{}, s.refuse
 	}
-	return agentsession.SpawnWaitResponse{Settled: envelope.Wait.ChildIDs, Children: []agentsession.ChildView{{SessionID: envelope.Wait.ChildIDs[0], State: "succeeded"}}}, nil
+	return agentsession.SpawnWaitResponse{Settled: envelope.Wait.ChildIDs, Children: []agentsession.SpawnWaitChild{{SessionID: envelope.Wait.ChildIDs[0], State: "succeeded"}}}, nil
 }
 
 func spawnHarness(t *testing.T) (*Broker, *recordingSpawns, *credentialAudit) {
@@ -293,6 +293,10 @@ func TestSpawnRouteCoordinatesDescendants(t *testing.T) {
 	reply = callSpawn(t, broker, http.MethodPost, base+"/wait", "10.0.0.1", `{"childIds":["`+childID+`"]}`, nil)
 	if reply.code != http.StatusOK || !strings.Contains(reply.raw, `"settled":["`+childID+`"]`) {
 		t.Fatalf("wait: status=%d body=%s", reply.code, reply.raw)
+	}
+	// A wait reads no lineage, so it must not answer a zero parent and depth.
+	if strings.Contains(reply.raw, "parentSessionId") || strings.Contains(reply.raw, `"depth"`) {
+		t.Fatalf("wait answers lineage it never read: %s", reply.raw)
 	}
 	if got := sink.envelopes[2]; got.Op != agentsession.SpawnOpWait || got.Wait == nil || got.Wait.TimeoutSeconds != 0 {
 		t.Fatalf("wait envelope = %+v (an omitted deadline is the wait verb's default)", got)

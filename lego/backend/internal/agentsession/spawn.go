@@ -351,13 +351,21 @@ type ChildView struct {
 	Outcome         json.RawMessage `json:"outcome,omitempty"`
 }
 
+// SpawnWaitChild is one named child in a wait's answer. It is not a
+// ChildView: a wait reads no lineage, and a zero parent and depth would read
+// as a top-level session.
+type SpawnWaitChild struct {
+	SessionID string `json:"sessionId"`
+	State     string `json:"state"`
+}
+
 // SpawnWaitResponse is what a wait returns: each named child's id and state,
 // which have settled, and whether the wait ended on its deadline. A child's
 // outcome is read with the child read, which keeps a wait on 20 children small.
 type SpawnWaitResponse struct {
-	Children []ChildView `json:"children"`
-	Settled  []string    `json:"settled"`
-	TimedOut bool        `json:"timedOut"`
+	Children []SpawnWaitChild `json:"children"`
+	Settled  []string         `json:"settled"`
+	TimedOut bool             `json:"timedOut"`
 }
 
 // SpawnSink creates, reads and coordinates a session's descendants for a

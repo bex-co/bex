@@ -319,6 +319,8 @@ const childView = {
   depth: 1,
   outcome: { state: "succeeded", summary: "done" },
 };
+// A wait answers each child's id and state only.
+const waitChild = { sessionId: childId, state: "succeeded" };
 
 test("the coordinator schemas are tight: ids, timeout and prompt, nothing else", () => {
   const wait = waitChildSessionsToolDefinition.inputSchema;
@@ -347,7 +349,7 @@ test("the coordinator schemas are tight: ids, timeout and prompt, nothing else",
 });
 
 test("wait_child_sessions is validated before any request and posts the ids and timeout to /wait", async (t) => {
-  const answer = { children: [childView], settled: [childId], timedOut: false };
+  const answer = { children: [waitChild], settled: [childId], timedOut: false };
   const gateway = await stubGateway({ status: 200, body: answer });
   t.after(gateway.close);
   const env = { BEX_SPAWN_ENDPOINT: gateway.endpoint } as NodeJS.ProcessEnv;
@@ -525,7 +527,7 @@ test("coordinator refusals reach the agent verbatim through the MCP server", asy
 });
 
 test("a successful coordinator call returns the gateway's answer as structured content", async (t) => {
-  const answer = { children: [childView], settled: [childId], timedOut: false };
+  const answer = { children: [waitChild], settled: [childId], timedOut: false };
   const gateway = await stubGateway({ status: 200, body: answer });
   t.after(gateway.close);
   const reply = await handleMessage(

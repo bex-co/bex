@@ -1,6 +1,6 @@
 # w9 · m346 — Coordinator tools: a parent session waits for, messages and cancels its children from inside its sandbox
 
-**Worker:** worker9 **Goal:** a running parent session coordinates the children it spawned without polling, as Devin's coordinator does: it waits until they finish, sends one a follow-up, and cancels one, and it can touch nothing outside its own tree. **Status:** in progress (t001–t003, t006, t007 done; live check pending)
+**Worker:** worker9 **Goal:** a running parent session coordinates the children it spawned without polling, as Devin's coordinator does: it waits until they finish, sends one a follow-up, and cancels one, and it can touch nothing outside its own tree. **Status:** done (2026-11-12)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | Gateway: a parent's Pod can wait on, message and cancel its own descendants — **DONE** | 90m | — |
 | [t002](done/t002.md) | Driver: `wait_child_sessions`, `message_child_session` and `cancel_child_session` tools, and the overlay line that says when to use them — **DONE** | 45m | t001 |
 | [t003](done/t003.md) | ADR102: record the coordinator tools and the wait bound — **DONE** | 20m | t002 |
-| [t004](t004.md) | Live check on production: a parent spawns two children, waits for both, messages one and cancels the other | 45m | t002 |
-| [t005](t005.md) | Render parity (Devin): coordinator tools match Devin's coordinator behavior and the session views agree on every surface | 20m | t003, t004 |
+| [t004](done/t004.md) | Live check on production: a parent spawns two children, waits for both, messages one and cancels the other — **DONE** | 45m | t002 |
+| [t005](done/t005.md) | Render parity (Devin): coordinator tools match Devin's coordinator behavior and the session views agree on every surface — **DONE** | 20m | t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 45m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
