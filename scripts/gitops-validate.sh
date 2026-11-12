@@ -1411,6 +1411,11 @@ fi
 # the top of the script; it fails closed on any parse gap.
 echo "==> every platform alert's backing series has a Grafana panel (ADR088 §6)"
 bash scripts/obs-coverage-check.sh || fail=1
+# w6/122: every bex_* series an alert reads must survive its scrape job's
+# metric_relabel keep-list, or the alert evaluates an absent series.
+echo "==> every bex_* series an alert reads is kept by its scrape job (w6/122)"
+bash scripts/obs-scrape-keep-check.sh || fail=1
+bash scripts/obs-scrape-keep-check.test.sh || fail=1
 
 echo "==> CLI analytics uses its restricted reader with encrypted, CA-unpinned TLS and bounded pooling"
 if ! yq -e '."grafana.ini".plugins.preinstall_disabled == true' \
