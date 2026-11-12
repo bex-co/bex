@@ -1201,6 +1201,11 @@ func (s *Service) datastoreLogLabelValues(ctx context.Context, label string, q L
 	return projectLogLabelValues(target.resource, values), nil
 }
 
+// tailOpenedAt is where a Render-transport tail with no startTime begins: the
+// moment it opens (w8/288). A variable so this package's tests, whose fixture
+// lines are dated in the past, can keep reading them.
+var tailOpenedAt = time.Now
+
 // FollowLogs streams a resource's new log lines to emit until ctx is cancelled
 // or emit errors. The tail always reads live pod logs (never the store —
 // real-time, zero ingest lag). It serves app logs from App pods and type=build
@@ -1224,6 +1229,15 @@ func (s *Service) FollowLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 // that calls emit, so a transport can write its keepalive without racing a log
 // frame.
 func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry) error, heartbeat func() error) error {
+	// Render's subscribe with no startTime streams what is generated from the
+	// moment it opens ("Stream new logs"): a zero Since followed each pod from
+	// offset 0 and replayed its whole log first (w8/288). One second back
+	// absorbs clock skew between bex-api and the node, whose kubelet bound is
+	// whole seconds anyway. A caller's startTime, endTime or Last-Event-ID
+	// resume keeps its own bound, and the dashboard's SSE tails keep theirs.
+	if opened := tailOpenedAt(); q.renderStream && q.Since.IsZero() && q.End.IsZero() && !opened.IsZero() {
+		q.Since = opened.Add(-time.Second)
+	}
 	if isDatastoreResource(q.App) {
 		return s.followDatastore(ctx, q, emit, heartbeat)
 	}
@@ -1573,7 +1587,8 @@ type tailTarget struct {
 // cancellation or an emit/heartbeat error.
 //
 // A pod is attached once per container life: a Succeeded cron run replays once
-// per subscription, not on every re-list. A container that restarted after its
+// per subscription (the part after the tail's lower bound; a WebSocket tail
+// with none begins when it opens, w8/288), not on every re-list. A container that restarted after its
 // follow ended is attached again — kubelet follows the current container, so
 // the new follow reads only the new life's log — which is what a crash-looping
 // service's tail used to get from the client reconnecting when its stream ended.

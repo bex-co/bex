@@ -160,8 +160,9 @@ func (s *Service) logsSubscribe(w http.ResponseWriter, r *http.Request) {
 	// the invisible reconnects too. Take the LATER of the two — the resume never
 	// re-reads below the caller's window, and a window never re-reads what the
 	// tail already delivered. With no startTime (a CLI/NDJSON client) the resume
-	// is the only bound, exactly as before; with a startTime and no resume (the
-	// first connect) the window is the bound.
+	// is the only bound, and on the WebSocket transport with neither the tail
+	// begins when it opens (followLogs, w8/288); with a startTime and no resume
+	// (the first connect) the window is the bound.
 	if resume, ok := resumeFrom(r.Header.Get("Last-Event-ID")); ok && resume.After(q.Since) {
 		q.Since = resume
 	}

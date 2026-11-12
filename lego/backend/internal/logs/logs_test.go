@@ -1784,6 +1784,53 @@ func TestSubscribeResumesFromLastEventID(t *testing.T) {
 	}
 }
 
+// w8/288: Render's subscribe (the WebSocket the CLI opens) with no startTime
+// streams what is generated from the moment it opens, as Render's "Stream new
+// logs" does; it used to follow the pod from offset 0 and replay its whole log
+// first. One second back absorbs clock skew. Not parallel: it pins the
+// package's tail clock, which TestMain leaves unbounded for the fixtures.
+func TestATailWithNoStartTimeBeginsWhenItOpens(t *testing.T) {
+	opened := time.Date(2026, 7, 5, 0, 0, 3, 0, time.UTC)
+	prev := tailOpenedAt
+	tailOpenedAt = func() time.Time { return opened }
+	t.Cleanup(func() { tailOpenedAt = prev })
+	var mu sync.Mutex
+	var since []time.Time
+	lines := map[string][]string{"web-1": {
+		"2026-07-05T00:00:01Z before the tail",
+		"2026-07-05T00:00:04Z after the tail",
+	}}
+	svc := newService(lines, sampleApp("web"), podFor("web", "web-1"))
+	record := recordingLogStream(lines, &since)
+	svc.PodLogsFollow = func(ctx context.Context, ns, pod, container string, from time.Time) (io.ReadCloser, error) {
+		mu.Lock()
+		defer mu.Unlock()
+		return record(ctx, ns, pod, container, from)
+	}
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	conn, _, err := websocket.DefaultDialer.Dial("ws"+strings.TrimPrefix(srv.URL, "http")+"/v1/logs/subscribe?resource=web&type=app", nil)
+	if err != nil {
+		t.Fatalf("WS dial: %v", err)
+	}
+	defer conn.Close()
+	_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
+	_, payload, err := conn.ReadMessage()
+	if err != nil {
+		t.Fatalf("read: %v", err)
+	}
+	var line renderLog
+	if err := json.Unmarshal(payload, &line); err != nil || line.Message != "after the tail" {
+		t.Fatalf("first frame %s (%v), want only what came after the tail opened", payload, err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(since) == 0 || !since[0].Equal(opened.Add(-time.Second)) {
+		t.Fatalf("follow opened with since=%v, want one second before the tail opened", since)
+	}
+}
+
 // TestSubscribeIgnoresUnparseableLastEventID: a client-invented cursor must
 // degrade to the unbounded read, never fail the subscription.
 func TestSubscribeIgnoresUnparseableLastEventID(t *testing.T) {
