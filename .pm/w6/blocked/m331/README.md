@@ -1,21 +1,21 @@
 # w6 · m331 — Agent sandboxes run on a Hetzner bare-metal node under Kata
 
-**Worker:** worker6 **Goal:** sandboxes run in microVMs on one Hetzner dedicated EX44, so a build inside a sandbox runs at close to native speed and the scheduled routines finish, with the gVisor cloud node as overflow. **Status:** blocked — t001 done (2026-11-12: gVisor 1.65× runc on the build replay on today's node, ADR105); t002 needs the user to pick a server, because EX44-1-LTD was out of stock on 2026-11-12; orderable were AX42-1 ($119/month + $59 setup), EX63-1 ($174 + $84) and AX102-1 ($304 + $149), see ADR105 § What can be ordered today; then order it and a vSwitch in fsn1
+**Worker:** worker6 **Goal:** sandboxes run in microVMs on one Hetzner dedicated AX42-1 (ordered 2026-11-12; the planned AX42-1 was out of stock), so a build inside a sandbox runs at close to native speed and the scheduled routines finish, with the gVisor cloud node as overflow. **Status:** blocked — t001 done; t002 in progress: the AX42-1 was ordered 2026-11-12 and Hetzner is provisioning it. Before Cluster API can manage it, the user needs to add Robot webservice credentials to `.env`.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Probe script and an idle gVisor baseline on today's node](done/t001.md) — **DONE** | 1h | — |
-| t002 | [Order one EX44 and a vSwitch coupled to the `bex` network](t002.md) | 2h | — |
+| t002 | [Order one AX42-1 and a vSwitch coupled to the `bex` network](t002.md) | 2h | — |
 | t003 | [Bare-metal machine template with the node image's pinned artifacts](t003.md) | 3h | t002 |
-| t004 | [The EX44 joins the cluster: CCM Robot support, vSwitch node IP, Cilium device and MTU, public-port firewall](t004.md) | 4h | t003 |
+| t004 | [The AX42-1 joins the cluster: CCM Robot support, vSwitch node IP, Cilium device and MTU, public-port firewall](t004.md) | 4h | t003 |
 | t005 | [Kata and runsc installed at bootstrap, behind a trial taint](t005.md) | 3h | t004 |
 | t006 | [Measure gVisor against each Kata backend and pick the VMM](t006.md) | 3h | t001, t005 |
 | t007 | [One `sandbox` RuntimeClass whose handler each node maps to its runtime](t007.md) | 3h | t006 |
 | t008 | [ADR042 sandbox controls and node exposure hold under Kata](t008.md) | 3h | t007 |
 | t009 | [Go or no-go, recorded in ADR105](t009.md) | 30m | t006, t008 |
-| t010 | [Sandboxes prefer the EX44 and overflow to the cloud node](t010.md) | 3h | t009 |
+| t010 | [Sandboxes prefer the AX42-1 and overflow to the cloud node](t010.md) | 3h | t009 |
 | t011 | [Production verification and ADR amendments](t011.md) | 1h | t010 |
 | t012 | [Simplify](t012.md) | 15m | t011 |
 | t013 | [Test coverage](t013.md) | 30m | t012 |
@@ -23,9 +23,9 @@
 
 ## Definition of done
 
-- A scheduled `rt-*` routine session in production runs on the EX44 under Kata, completes, and opens its draft PR. Its session id and wall time are recorded in ADR105 beside the gVisor baseline.
-- With the EX44 cordoned, a new agent session still starts on the gVisor cloud node, with no retry or code path in bex-api.
-- From the internet, only SSH answers on the EX44's public address.
+- A scheduled `rt-*` routine session in production runs on the AX42-1 under Kata, completes, and opens its draft PR. Its session id and wall time are recorded in ADR105 beside the gVisor baseline.
+- With the AX42-1 cordoned, a new agent session still starts on the gVisor cloud node, with no retry or code path in bex-api.
+- From the internet, only SSH answers on the AX42-1's public address.
 - ADR105 carries the measured comparison and the go or no-go verdict. On go, ADR042 D3, ADR053 and ADR002 § Network are amended.
 - On no-go, the node, its pool and its CCM and Cilium settings are removed, the server's and vSwitch's cancellation is requested, and the milestone closes with that verdict.
 
