@@ -3865,15 +3865,30 @@ func (s *Service) stackEnvironmentChange(ctx context.Context, req CreateRequest,
 	if err != nil {
 		return core.EnvironmentAssignment{}, false, err
 	}
-	desiredIsolation := ""
-	if assignment.NetworkIsolationEnabled {
-		desiredIsolation = assignment.ID
-	}
-	environmentChanged := existing.Labels[core.LabelEnvironment] != assignment.ID ||
-		existing.Labels[core.LabelProject] != assignment.ProjectID ||
-		existing.Labels[core.LabelNetworkIsolation] != desiredIsolation
-	return assignment, environmentChanged, nil
+	diff := diffPlacement(existing.Labels, assignment)
+	return assignment, diff.moved() || diff.isolation, nil
 }
+
+// placementDiff is how the placement a resource's labels hold differs from an
+// assignment: its environment, its project, and the network-isolation label a
+// service carries in an isolated environment. A Blueprint apply regroups a
+// resource on it, and its plan lists the same differences (w9/094).
+type placementDiff struct{ environment, project, isolation bool }
+
+func diffPlacement(labels map[string]string, assignment core.EnvironmentAssignment) placementDiff {
+	isolation := ""
+	if assignment.NetworkIsolationEnabled {
+		isolation = assignment.ID
+	}
+	return placementDiff{
+		environment: labels[core.LabelEnvironment] != assignment.ID,
+		project:     labels[core.LabelProject] != assignment.ProjectID,
+		isolation:   labels[core.LabelNetworkIsolation] != isolation,
+	}
+}
+
+// moved reports a move into another environment or project, or out of one.
+func (d placementDiff) moved() bool { return d.environment || d.project }
 
 // stackChanges is what updateStackService's change probes computed about an
 // existing service: which halves changed and the resolved environment
@@ -4355,7 +4370,7 @@ func (s *Service) applyDatabase(ctx context.Context, db parsedDatabase, assignme
 			return StackDatabaseView{}, fmt.Errorf("%w: database %q %v", core.ErrBadRequest, db.name, err)
 		}
 		groupingSpecified := db.grouping != "" || db.ungrouped
-		groupingChanged := groupingSpecified && (existing.Labels[core.LabelEnvironment] != assignment.ID || existing.Labels[core.LabelProject] != assignment.ProjectID)
+		groupingChanged := groupingSpecified && diffPlacement(existing.Labels, assignment).moved()
 		if !specChanged && !groupingChanged {
 			return stackDatabaseView(existing), nil
 		}
@@ -4417,7 +4432,7 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	if existing != nil {
 		specChanged := blueprintKeyValueSpecChanged(existing.Spec, kv.spec, kv.fields)
 		groupingSpecified := kv.grouping != "" || kv.ungrouped
-		groupingChanged := groupingSpecified && (existing.Labels[core.LabelEnvironment] != assignment.ID || existing.Labels[core.LabelProject] != assignment.ProjectID)
+		groupingChanged := groupingSpecified && diffPlacement(existing.Labels, assignment).moved()
 		if !specChanged && !groupingChanged {
 			return stackKeyValueView(existing), nil
 		}

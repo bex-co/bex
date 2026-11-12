@@ -24,6 +24,7 @@ import (
 	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -62,6 +63,15 @@ type workspaceSnapshot struct {
 	// services still being torn down: absent from every map above, but their
 	// App object still holds the name a re-create would write.
 	deletingServices map[string]bool
+	// groupingRows are the workspace's projects and environments, which the
+	// protected-placement check and the plan's moves both resolve the declared
+	// groupings against (w9/094).
+	groupingRows *workspaceGroupingRows
+}
+
+type workspaceGroupingRows struct {
+	projects     []store.Project
+	environments []store.Environment
 }
 
 func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
@@ -73,7 +83,39 @@ func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
 // workspace as it is now.
 func (snap *workspaceSnapshot) forget() {
 	snap.rawApps, snap.appList, snap.serviceMap, snap.databaseList, snap.keyValueList, snap.buildSourceMap = nil, nil, nil, nil, nil, nil
-	snap.deletingServices = nil
+	snap.deletingServices, snap.groupingRows = nil, nil
+}
+
+// groupings lists the workspace's projects and environments from the grouping
+// store, once: in one query when the store offers a workspace-wide listing,
+// rather than one per project.
+func (snap *workspaceSnapshot) groupings(ctx context.Context) (workspaceGroupingRows, error) {
+	if snap.groupingRows != nil {
+		return *snap.groupingRows, nil
+	}
+	groups := snap.s.BlueprintGroups
+	projects, err := groups.ListProjects(ctx, snap.tenantID)
+	if err != nil {
+		return workspaceGroupingRows{}, err
+	}
+	var environments []store.Environment
+	if all, ok := groups.(interface {
+		ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]store.Environment, error)
+	}); ok {
+		if environments, err = all.ListWorkspaceEnvironments(ctx, snap.tenantID); err != nil {
+			return workspaceGroupingRows{}, err
+		}
+	} else {
+		for _, project := range projects {
+			listed, err := groups.ListEnvironments(ctx, project.ID)
+			if err != nil {
+				return workspaceGroupingRows{}, err
+			}
+			environments = append(environments, listed...)
+		}
+	}
+	snap.groupingRows = &workspaceGroupingRows{projects: projects, environments: environments}
+	return *snap.groupingRows, nil
 }
 
 // apps lists the workspace's Apps the way its datastores are listed: by tenant

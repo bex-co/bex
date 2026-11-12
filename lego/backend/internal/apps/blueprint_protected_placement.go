@@ -42,7 +42,7 @@ func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st pa
 	if !scoped || s.BlueprintGroups == nil || core.BlueprintSync(ctx) {
 		return nil, false, nil
 	}
-	placements, err := s.blueprintEnvironmentPlacements(ctx, tenantID, st.groupings)
+	placements, err := s.blueprintEnvironmentPlacements(ctx, snap, st.groupings)
 	if err != nil || !placements.anyProtected() {
 		return nil, false, err
 	}
@@ -156,8 +156,9 @@ func placedIn(labels map[string]string) placementOf {
 }
 
 // blueprintPlacements is the workspace's environments as the protected
-// placement check needs them: protection by id, and each declared grouping's
-// target (its id, "" while the apply has yet to create it) and protection.
+// placement check and the plan need them: protection by id, and each declared
+// grouping's target (its environment and project ids, each "" while the apply
+// has yet to create it), protection and network isolation.
 type blueprintPlacements struct {
 	protected map[string]bool
 	targets   map[string]groupingTarget
@@ -165,7 +166,11 @@ type blueprintPlacements struct {
 
 type groupingTarget struct {
 	environmentID string
+	projectID     string
 	protected     bool
+	// isolated is the network isolation the apply leaves the environment
+	// with (parsedGrouping.desiredIsolation).
+	isolated bool
 }
 
 func (p blueprintPlacements) anyProtected() bool {
@@ -218,37 +223,58 @@ func (p blueprintPlacements) check(grouping string, ungrouped bool, current plac
 	return "", false
 }
 
-// blueprintEnvironmentPlacements reads every environment in tenantID and
-// resolves each grouping the manifest declares against them, as
-// applyBlueprintGroupingsWith will.
-func (s *Service) blueprintEnvironmentPlacements(ctx context.Context, tenantID string, groupings []parsedGrouping) (blueprintPlacements, error) {
+// moves names the placement paths applying a resource declared under grouping
+// (or in the ungrouped: list) changes, from the placement its labels hold:
+// "environment" when it lands in another environment or in none, "project"
+// when in another project or in none, and, for a service (isolation), its
+// "networkIsolation" when it stays in an environment whose isolation the
+// apply turns on or off (in another environment the move already says so). A
+// grouping the apply has yet to create is always a move; a resource declared
+// without a placement stays where it is. It is diffPlacement, the comparison
+// the apply makes, so a plan lists every change its approval applies (w9/094).
+func (p blueprintPlacements) moves(grouping string, ungrouped, isolation bool, labels map[string]string) []string {
+	var target groupingTarget
+	switch {
+	case grouping != "":
+		target = p.targets[grouping]
+	case !ungrouped:
+		return nil
+	}
+	diff := diffPlacement(labels, core.EnvironmentAssignment{ID: target.environmentID, ProjectID: target.projectID, NetworkIsolationEnabled: target.isolated})
+	if grouping != "" {
+		// No label can hold the id of a grouping the apply has yet to create.
+		diff.environment = diff.environment || target.environmentID == ""
+		diff.project = diff.project || target.projectID == ""
+	}
+	var paths []string
+	if diff.environment {
+		paths = append(paths, "environment")
+	}
+	if diff.project {
+		paths = append(paths, "project")
+	}
+	if isolation && diff.isolation && !diff.environment {
+		paths = append(paths, "networkIsolation")
+	}
+	return paths
+}
+
+// blueprintEnvironmentPlacements resolves each grouping the manifest declares
+// against the environments in snap's workspace, as applyBlueprintGroupingsWith
+// will.
+func (s *Service) blueprintEnvironmentPlacements(ctx context.Context, snap *workspaceSnapshot, groupings []parsedGrouping) (blueprintPlacements, error) {
 	out := blueprintPlacements{protected: map[string]bool{}, targets: map[string]groupingTarget{}}
-	projects, err := s.BlueprintGroups.ListProjects(ctx, tenantID)
+	rows, err := snap.groupings(ctx)
 	if err != nil {
 		return out, err
 	}
-	// One query for the whole workspace when the store offers it, rather than
-	// one per project.
-	var environments []store.Environment
-	if all, ok := s.BlueprintGroups.(interface {
-		ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]store.Environment, error)
-	}); ok {
-		if environments, err = all.ListWorkspaceEnvironments(ctx, tenantID); err != nil {
-			return out, err
-		}
-	} else {
-		for _, project := range projects {
-			listed, err := s.BlueprintGroups.ListEnvironments(ctx, project.ID)
-			if err != nil {
-				return out, err
-			}
-			environments = append(environments, listed...)
-		}
-	}
+	projects, environments := rows.projects, rows.environments
 	byName := make(map[string]map[string]store.Environment, len(projects))
 	projectName := make(map[string]string, len(projects))
+	projectID := make(map[string]string, len(projects))
 	for _, project := range projects {
 		projectName[project.ID] = project.Name
+		projectID[project.Name] = project.ID
 		byName[project.Name] = map[string]store.Environment{}
 	}
 	for _, e := range environments {
@@ -261,7 +287,7 @@ func (s *Service) blueprintEnvironmentPlacements(ctx context.Context, tenantID s
 	}
 	for _, g := range groupings {
 		e, exists := byName[g.projectName][g.environmentName]
-		target := groupingTarget{}
+		target := groupingTarget{projectID: projectID[g.projectName], isolated: g.desiredIsolation(e.NetworkIsolationEnabled)}
 		if exists {
 			target.environmentID = e.ID
 			target.protected = out.protected[e.ID]

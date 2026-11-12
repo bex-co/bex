@@ -36,6 +36,12 @@ import (
 // (staging, production) and blog (production) groupings the regroup tests
 // move it between, which every manifest declares.
 func groupedImageService(project, environment string) string {
+	return groupedResources(imageService, project, environment)
+}
+
+// groupedResources is groupedImageService for any resource lists. A grouping
+// the fixture lacks is declared as well, for the apply to create.
+func groupedResources(resources, project, environment string) string {
 	indent := func(s, prefix string) string {
 		lines := strings.SplitAfter(s, "\n")
 		for i, line := range lines {
@@ -45,22 +51,33 @@ func groupedImageService(project, environment string) string {
 		}
 		return strings.Join(lines, "")
 	}
-	var b strings.Builder
-	b.WriteString("projects:\n")
-	for _, p := range []struct {
+	type grouping struct {
 		name         string
 		environments []string
-	}{{"shop", []string{"staging", "production"}}, {"blog", []string{"production"}}} {
+	}
+	groupings := []grouping{{"shop", []string{"staging", "production"}}, {"blog", []string{"production"}}}
+	if project != "" {
+		i := slices.IndexFunc(groupings, func(g grouping) bool { return g.name == project })
+		if i < 0 {
+			groupings, i = append(groupings, grouping{name: project}), len(groupings)
+		}
+		if !slices.Contains(groupings[i].environments, environment) {
+			groupings[i].environments = append(groupings[i].environments, environment)
+		}
+	}
+	var b strings.Builder
+	b.WriteString("projects:\n")
+	for _, p := range groupings {
 		fmt.Fprintf(&b, "  - name: %s\n    environments:\n", p.name)
 		for _, e := range p.environments {
 			fmt.Fprintf(&b, "      - name: %s\n", e)
 			if p.name == project && e == environment {
-				b.WriteString(indent(imageService, "        "))
+				b.WriteString(indent(resources, "        "))
 			}
 		}
 	}
 	if project == "" {
-		b.WriteString("ungrouped:\n" + indent(imageService, "  "))
+		b.WriteString("ungrouped:\n" + indent(resources, "  "))
 	}
 	return b.String()
 }
@@ -271,9 +288,9 @@ func TestAutomaticBlueprintRegroupNamesNoCaller(t *testing.T) {
 	}
 }
 
-// The approver of a planned sync applies it, so the move it makes names the
-// approver; planning it records nothing. The change also moves the plan: the
-// current-state plan reads no grouping, so a move alone plans no change.
+// The approver of a planned sync applies it, so the move it makes, beside a
+// setting change, names the approver; planning it records nothing. The plan
+// lists both (w9/094).
 func TestBlueprintPlanApprovalRegroupNamesTheApprover(t *testing.T) {
 	svc := newBlueprintService(newFakeBlueprintStore(), fakeWorkspace{"user-a": "tea-a", "approver": "tea-a"})
 	st := &blueprintGroupingTestStore{recordingStore: &recordingStore{}}
@@ -295,8 +312,12 @@ func TestBlueprintPlanApprovalRegroupNamesTheApprover(t *testing.T) {
 	}
 
 	svc.GitFetcher = fakeBlueprintFetcher{contents: strings.Replace(groupedImageService("shop", "production"), "plan: starter", "plan: standard", 1)}
-	if plan, err := svc.PlanBlueprint(creator, bpID, "tea-a"); err != nil || plan.PlanningOutcome != PlanningPlanned {
+	plan, err := svc.PlanBlueprint(creator, bpID, "tea-a")
+	if err != nil || plan.PlanningOutcome != PlanningPlanned {
 		t.Fatalf("plan = %+v err=%v, want a planned change", plan, err)
+	}
+	if got := plannedUpdates(plan.Sync.Actions); got != "update service web: environment, plan" {
+		t.Fatalf("planned %q, want the move and the plan change", got)
 	}
 	if got := regroupRows(sink); len(got) != 0 {
 		t.Fatalf("creating and planning recorded %v, want nothing", got)

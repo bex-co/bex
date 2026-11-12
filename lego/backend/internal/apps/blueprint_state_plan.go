@@ -71,6 +71,8 @@ type blueprintActionResolver struct {
 	parsed       parsedStack
 	// service resolves a source switch's branch as the apply does (w8/m80).
 	service *Service
+	// snap reads the workspace's projects and environments for the moves.
+	snap *workspaceSnapshot
 }
 
 func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedStack, snap *workspaceSnapshot) (*blueprintActionResolver, error) {
@@ -80,6 +82,7 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		envGroups: map[string]string{},
 		parsed:    parsed,
 		service:   s,
+		snap:      snap,
 	}
 	if len(parsed.envGroups) > 0 {
 		groups, err := s.EnvGroups.GroupIDsByName(ctx)
@@ -244,12 +247,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		// plan does not read: like a group's write-only values, it is a
 		// possible update, named but never valued (w1/m175).
 		if len(svc.generatedCopies) > 0 {
-			action.Operation = BlueprintPlanUpdate
-			if !slices.ContainsFunc(action.ChangedFields, func(c BlueprintFieldChange) bool { return c.Path == "envVars" }) {
-				action.ChangedFields = append(action.ChangedFields, BlueprintFieldChange{Path: "envVars"})
-				sort.Slice(action.ChangedFields, func(i, j int) bool { return action.ChangedFields[i].Path < action.ChangedFields[j].Path })
-			}
+			addChangedFields(&action, "envVars")
 			action.Message = generatedCopyMessage(svc.generatedCopies)
+		}
+		if err := r.planMoves(ctx, &action, svc.grouping, svc.ungrouped, true, r.services[resource.Name].Labels); err != nil {
+			return BlueprintPlanAction{}, err
 		}
 		if action.Operation == BlueprintPlanUpdate {
 			return action, nil
@@ -265,12 +267,17 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if err != nil {
 			return BlueprintPlanAction{}, blueprintDatabaseResourceError(resource.Name, err)
 		}
+		live := r.databases[resource.Name]
 		if changed {
 			action.Operation = BlueprintPlanUpdate
-			live := r.databases[resource.Name]
 			action.ChangedFields = blueprintPlanFieldChanges(maps.Keys(resource.Fields), func(name string) (bool, error) {
 				return ApplyBlueprintDatabaseSpec(live.DeepCopy(), database.spec, oneField(database.fields, name), now)
 			})
+		}
+		if err := r.planMoves(ctx, &action, database.grouping, database.ungrouped, false, live.Labels); err != nil {
+			return BlueprintPlanAction{}, err
+		}
+		if action.Operation == BlueprintPlanUpdate {
 			return action, nil
 		}
 	case BlueprintResourceKeyValue:
@@ -278,9 +285,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if !ok {
 			return BlueprintPlanAction{}, fmt.Errorf("compiled key value is missing")
 		}
-		probe := r.keyValues[resource.Name].Spec
+		live := r.keyValues[resource.Name]
+		probe := live.Spec
 		if ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, keyValue.fields) {
-			live := r.keyValues[resource.Name]
 			if err := keyvalue.RefuseBlueprintExternalAccessRestart(live, probe.Public); err != nil {
 				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: BlueprintResourceKeyValue, name: resource.Name, err: err}}
 			}
@@ -293,6 +300,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 				probe := *liveSpec.DeepCopy()
 				return ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, oneField(keyValue.fields, name)), nil
 			})
+		}
+		if err := r.planMoves(ctx, &action, keyValue.grouping, keyValue.ungrouped, false, live.Labels); err != nil {
+			return BlueprintPlanAction{}, err
+		}
+		if action.Operation == BlueprintPlanUpdate {
 			return action, nil
 		}
 	case BlueprintResourceEnvVarGroup:
@@ -305,6 +317,42 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 	}
 	action.Operation = BlueprintPlanNoop
 	return action, nil
+}
+
+// planMoves adds to an existing resource's action the placement its apply
+// changes (blueprintPlacements.moves): a move into another project or
+// environment, or out of every one, and a service's network isolation, are an
+// update (w9/094), so a Blueprint whose syncs wait for approval offers them
+// and its approval applies them. Without the grouping store a resource
+// declared in a grouping is not compared: its apply is refused
+// (applyBlueprintGroupings).
+func (r *blueprintActionResolver) planMoves(ctx context.Context, action *BlueprintPlanAction, grouping string, ungrouped, isolation bool, labels map[string]string) error {
+	var placements blueprintPlacements
+	if grouping != "" {
+		if _, scoped := r.service.Tenant(ctx); r.service.BlueprintGroups == nil || !scoped {
+			return nil
+		}
+		var err error
+		if placements, err = r.service.blueprintEnvironmentPlacements(ctx, r.snap, r.parsed.groupings); err != nil {
+			return err
+		}
+	}
+	if moves := placements.moves(grouping, ungrouped, isolation, labels); len(moves) > 0 {
+		addChangedFields(action, moves...)
+	}
+	return nil
+}
+
+// addChangedFields makes action an update that lists paths, each once, in
+// path order.
+func addChangedFields(action *BlueprintPlanAction, paths ...string) {
+	action.Operation = BlueprintPlanUpdate
+	for _, path := range paths {
+		if !slices.ContainsFunc(action.ChangedFields, func(c BlueprintFieldChange) bool { return c.Path == path }) {
+			action.ChangedFields = append(action.ChangedFields, BlueprintFieldChange{Path: path})
+		}
+	}
+	sort.Slice(action.ChangedFields, func(i, j int) bool { return action.ChangedFields[i].Path < action.ChangedFields[j].Path })
 }
 
 func parsedBlueprintService(st parsedStack, name string) (parsedService, bool) {

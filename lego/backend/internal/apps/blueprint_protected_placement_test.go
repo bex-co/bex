@@ -108,17 +108,29 @@ func TestBlueprintEnvironmentPlacementsUseOneWorkspaceListing(t *testing.T) {
 		}}
 	groupings := []parsedGrouping{{projectName: "shop", environmentName: "production"}, {projectName: "blog", environmentName: "production"}, {projectName: "shop", environmentName: "new"}}
 	fallback := &Service{BlueprintGroups: base}
-	want, err := fallback.blueprintEnvironmentPlacements(context.Background(), "tea-a", groupings)
+	want, err := fallback.blueprintEnvironmentPlacements(context.Background(), &workspaceSnapshot{s: fallback, tenantID: "tea-a"}, groupings)
 	if err != nil {
 		t.Fatal(err)
 	}
 	wide := &workspaceEnvironmentsStore{blueprintGroupingTestStore: base}
-	got, err := (&Service{BlueprintGroups: wide}).blueprintEnvironmentPlacements(context.Background(), "tea-a", groupings)
+	wideService := &Service{BlueprintGroups: wide}
+	snap := &workspaceSnapshot{s: wideService, tenantID: "tea-a"}
+	got, err := wideService.blueprintEnvironmentPlacements(context.Background(), snap, groupings)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if wide.perProject != 0 {
 		t.Fatalf("per-project listings = %d, want 0", wide.perProject)
+	}
+	// w9/094: the snapshot lists the workspace's groupings once for the
+	// protected-placement check and the plan alike, until it forgets them.
+	base.projects = append(base.projects, store.Project{ID: "prj-c", TenantID: "tea-a", Name: "late"})
+	if again, err := wideService.blueprintEnvironmentPlacements(context.Background(), snap, groupings); err != nil || !reflect.DeepEqual(again, got) {
+		t.Fatalf("a second read = %+v err=%v, want the snapshot's %+v", again, err, got)
+	}
+	snap.forget()
+	if rows, err := snap.groupings(context.Background()); err != nil || len(rows.projects) != 3 {
+		t.Fatalf("after forget the snapshot lists %+v err=%v, want the late project too", rows, err)
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("placements = %+v, want %+v", got, want)

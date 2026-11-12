@@ -164,6 +164,14 @@ The plan is a current-state diff, not a declaration count. It identifies create,
 
 **A service update's `changedFields` name what moved, once each (w4/m229).** Each path is probed alone against the live service, as w4/m124 introduced. The probe is still judged beside every other field the file declares. Narrowing the file to one field made a declared `repo` look omitted. Every probe of an image-backed service then re-ran the inherited-repo switch (w8/m70), so the image-to-Git preview listed all twelve declared paths, including the unchanged name and Free plan. An omission that changes a service gets one path too: the path it omits. An image service taking the Blueprint's repo is listed as `repo`, and a cleared `buildFilter` as `buildFilter`. Neither is attributed to every declared field. The full apply is unchanged. Postgres and Key Value keep their per-field probes, and env groups keep their conservative declared-set update.
 
+**A move is a changed field (w9/094, 2026-11-12).** On Render a Blueprint applies every change its file declares, and its plan lists each one. An existing service, Postgres or Key Value that the file moves plans as `update`:
+
+- into another `projects[].environments[]` entry, the action lists `environment`, plus `project` when the project changes too;
+- out of every environment through `ungrouped:`, it lists both paths;
+- into an environment or project the sync will create, it lists the paths that change.
+
+A service that stays in an environment whose `networking.isolation` the file turns on or off lists `networkIsolation`, because the apply relabels it. The paths come from one comparison (`diffPlacement`), used by both the plan and the apply: the project, environment and network-isolation labels on the resource against the ones its declaration resolves to. So every move an approval applies is listed, and a resource declared at the top level, which a sync leaves where it is, lists none. Until w9/094 the planner compared settings only. A change that only moved a resource planned `no_changes`, so a Blueprint whose syncs wait for approval never offered it, while a sync without approval applied it. Approving the plan now applies the move, which records `service_moved` for a service (w9/093). The paths need no new field in REST's `rawPlan`, GraphQL's `changedFields` or MCP's plan, and the dashboard lists them like any other changed field.
+
 Dashboard, GraphQL, and MCP may wrap the result in their native envelope, but field paths, codes, semantics, and plan actions come from the same core result.
 
 ### D7 — Close adapter gaps; reject unavailable product features
