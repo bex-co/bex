@@ -1,21 +1,21 @@
 # w9 · m349 — Agent sessions survive a sandbox-node hiccup: transient exec failures retry, a lost container's reason is kept, and sandbox logs are shipped
 
-**Worker:** worker9 **Goal:** an agent session is failed only when its sandbox is really gone, and when it is, the failure says why (OOM, exit code). A brief node or network stall no longer turns into a terminal failure plus sandbox deletion, and the sandbox node stops overcommitting itself into stalls. **Status:** todo
+**Worker:** worker9 **Goal:** an agent session is failed only when its sandbox is really gone, and when it is, the failure says why (OOM, exit code). A brief node or network stall no longer turns into a terminal failure plus sandbox deletion, and the sandbox node stops overcommitting itself into stalls. **Status:** in progress (t001–t005, t009, t010 done; production check t007 after deploy; t006 waits on the user)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Gateway: an exec into a pod whose node is not Ready answers a distinct "target unavailable" code, not the generic start failure | 45m | — |
-| [t002](t002.md) | Completer: transient status-read failures retry for a configurable window (10 min), and only a really-gone sandbox fails the session | 90m | t001 |
-| [t003](t003.md) | A lost sandbox's failure records the container's terminated reason and exit code before the sandbox is deleted | 45m | t002 |
-| [t004](t004.md) | Ship ssh-gateway, opensandbox and agent-sandbox pod logs to Loki | 30m | — |
-| [t005](t005.md) | The agent turn bound is inactivity-based, under a hard ceiling no longer than the sandbox lifetime | 60m | — |
+| [t001](done/t001.md) | Gateway: an exec into a pod whose node is not Ready answers a distinct "target unavailable" code, not the generic start failure — **DONE** | 45m | — |
+| [t002](done/t002.md) | Completer: transient status-read failures retry for a configurable window (10 min), and only a really-gone sandbox fails the session — **DONE** | 90m | t001 |
+| [t003](done/t003.md) | A lost sandbox's failure records the container's terminated reason and exit code before the sandbox is deleted — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | Ship ssh-gateway, opensandbox and agent-sandbox pod logs to Loki — **DONE** | 30m | — |
+| [t005](done/t005.md) | The agent turn bound is inactivity-based, under a hard ceiling no longer than the sandbox lifetime — **DONE** | 60m | — |
 | [t006](t006.md) | Sandbox node capacity: kubelet reservations, a longer not-ready toleration for sandbox pods, and enough nodes for the T0/T1 concurrency | 45m | — |
 | [t007](t007.md) | Live check on production: a long session survives a simulated status-read outage, and an OOM-killed sandbox fails with its reason | 45m | t002, t003, t004 |
 | [t008](t008.md) | Render parity (Devin): a session's failure states and reasons read the same on REST, GraphQL, MCP and the dashboard | 20m | t007 |
-| [t009](t009.md) | Simplify | 15m | t008 |
-| [t010](t010.md) | Test coverage | 45m | t008, t009 |
+| [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008, t009 |
 | [t011](t011.md) | Closeout | 10m | t010 |
 
 ## Definition of done
