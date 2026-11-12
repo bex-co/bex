@@ -6909,10 +6909,14 @@ func setNotReadyCondition(ctx context.Context, r client.Client, obj client.Objec
 // next pass retries from current state. Recorded, it would close the release's
 // open deploy as failed, stand as a terminal build failure nothing retries, or
 // overwrite another pass's durable acknowledgement with a stale status (w5/095).
+// The status records err as the customer may read it (customerFailure): an API
+// server refusal of the operator's own write reads as a platform error with a
+// support reference, and the raw text stays in the operator log (w9/090).
 func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason string, err error) (ctrl.Result, error) {
 	if apierrors.IsConflict(err) {
 		return ctrl.Result{}, err
 	}
+	shown, _ := customerFailure(ctx, app, reason, err)
 	// A failed release no longer waits for a build.
 	app.Status.BuildHold = nil
 	// A build failure additionally gets appv1alpha1.ConditionBuild, the durable
@@ -6924,7 +6928,7 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 	if appv1alpha1.IsBuildFailureReason(reason) {
 		meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 			Type: appv1alpha1.ConditionBuild, Status: metav1.ConditionFalse, Reason: reason,
-			Message:            err.Error(),
+			Message:            shown,
 			ObservedGeneration: releaseGeneration(app),
 		})
 		// A failed build on top of a released image is a deploy fact, not a
@@ -6941,7 +6945,7 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 		}
 	}
 	app.Status.Phase = appv1alpha1.PhaseFailed
-	setNotReadyCondition(ctx, r.Client, app, &app.Status.Conditions, reason, err)
+	setNotReadyCondition(ctx, r.Client, app, &app.Status.Conditions, reason, errors.New(shown))
 	return ctrl.Result{}, err
 }
 
@@ -6955,9 +6959,10 @@ func (r *AppReconciler) failBeforeDispatch(ctx context.Context, app *appv1alpha1
 	if apierrors.IsConflict(err) || !releaseHasServed(app) {
 		return r.fail(ctx, app, reason, err)
 	}
+	shown, _ := customerFailure(ctx, app, reason, err)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reason,
-		Message: err.Error(), ObservedGeneration: releaseGeneration(app),
+		Message: shown, ObservedGeneration: releaseGeneration(app),
 	})
 	r.settleFailureOverPriorRelease(ctx, app, "the latest image could not be read")
 	return ctrl.Result{}, err
@@ -7116,7 +7121,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 			return r.failPreDeploy(ctx, app, failedPD(jobName, appv1alpha1.BuildMinutesExhaustedMessage))
 		}
 		if err != nil {
-			return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
+			return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(ctx, app, err)))
 		}
 	}
 
@@ -7132,7 +7137,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	// 0 exists to prevent.
 	if firstForGen || (recordedJob != "" && recordedJob != jobName) {
 		if err := predeploy.CancelSuperseded(ctx, app.Name, string(app.UID), ns, jobName, r.Client); err != nil {
-			return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
+			return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(ctx, app, err)))
 		}
 	}
 
@@ -7150,7 +7155,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 	}
 	pullSecrets := r.withLinkedSourcePullSecret(ctx, app, image, r.imagePullSecrets(app, image))
 	if err := r.reconcileExecutionNetworkPolicy(ctx, app); err != nil {
-		return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(err)))
+		return r.failPreDeploy(ctx, app, failedPD(jobName, preDeployNotStarted(ctx, app, err)))
 	}
 	job, err := predeploy.Ensure(ctx, predeploy.Options{
 		Name:             app.Name,
@@ -7260,7 +7265,12 @@ func (r *AppReconciler) failPreDeploy(ctx context.Context, app *appv1alpha1.App,
 // preDeployNotStarted is the pre-deploy verdict when bex could not run the
 // command at all (superseding an older run or its network policy failed): an
 // infrastructure fault, worded so it never reads as the command's own failure.
-func preDeployNotStarted(err error) string {
+// The verdict is the deploy's failure reason, so an API server refusal reads as
+// the platform-error sentence (customerFailure, w9/090).
+func preDeployNotStarted(ctx context.Context, app *appv1alpha1.App, err error) string {
+	if shown, masked := customerFailure(ctx, app, appv1alpha1.ReasonPreDeployFailed, err); masked {
+		return shown
+	}
 	return "the pre-deploy command could not be started: " + err.Error()
 }
 

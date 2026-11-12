@@ -584,6 +584,12 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason deploy_abandoned, w4/591)",
   },
+  "deploys.reason.platform_error": {
+    message:
+      "bex could not apply this release because of a platform error, not a problem with your code or settings. Contact support with reference {ref}",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason platform_error, w9/090): the platform refused one of bex's own changes; {ref} is the support reference, shown as-is",
+  },
   "deploys.reason.canceled_suspended": {
     message: "Canceled: the service was suspended",
     description:

@@ -560,6 +560,12 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A deploy failure or in-progress reason by its code (bex-api DeployReason deploy_abandoned, w4/591)",
   },
+  "deploys.reason.platform_error": {
+    message:
+      "由于平台错误，bex 无法应用此次发布；这不是你的代码或设置的问题。请联系支持团队并提供参考编号 {ref}",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason platform_error, w9/090): the platform refused one of bex's own changes; {ref} is the support reference, shown as-is",
+  },
   "deploys.reason.canceled_suspended": {
     message: "已取消：服务已暂停",
     description:

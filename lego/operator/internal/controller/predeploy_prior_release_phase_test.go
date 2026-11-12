@@ -179,7 +179,7 @@ func TestFirstReleasePreDeployFailureReportsFailed(t *testing.T) {
 // A step that could not start is an infrastructure fault, never worded as the
 // command's own exit.
 func TestPreDeployNotStartedIsNotACommandFailure(t *testing.T) {
-	msg := preDeployNotStarted(errTestNetworkPolicy)
+	msg := preDeployNotStarted(context.Background(), &appv1alpha1.App{}, errTestNetworkPolicy)
 	if msg != "the pre-deploy command could not be started: network policy write refused" {
 		t.Fatalf("message = %q", msg)
 	}

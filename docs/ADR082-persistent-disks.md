@@ -100,7 +100,7 @@ Behavior table (Render → bex):
 | CLI | no disk commands | nothing to do (checklist note only) |
 | Previews | preview services get a fresh empty disk | n/a — PR previews remain a bex non-goal (unchanged) |
 
-`mountPath` denylist (exact paths refused, subdirectories allowed — Render's list plus bex's secret mount): `/`, `/etc`, `/etc/secrets`, `/home`, `/home/render`, `/opt`, `/opt/render`, `/opt/render/project`, `/opt/render/project/src`. Keeping Render's `/opt/render/…` entries costs nothing and keeps imported `render.yaml` files behaving identically.
+`mountPath` denylist (exact paths refused, subdirectories allowed — Render's list plus bex's secret and health-probe mounts): `/`, `/etc`, `/etc/secrets`, `/home`, `/home/render`, `/opt`, `/opt/render`, `/opt/render/project`, `/opt/render/project/src`, `/bex-health`. A disk at `/bex-health` would duplicate the health-probe volume's mount, and the API server would refuse the Deployment as Invalid, which the customer reads only as a platform error (w9/090, [ADR004](ADR004-app-deployment.md#a-platform-refusal-reads-as-a-support-reference-w9090-2026-11-12)). Keeping Render's `/opt/render/…` entries costs nothing and keeps imported `render.yaml` files behaving identically.
 
 CRD validation (CEL, mirrored by bex-api 400s so REST/GraphQL/MCP agree):
 

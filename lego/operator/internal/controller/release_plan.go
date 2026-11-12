@@ -348,16 +348,22 @@ func (obs releaseObservation) facts(app *appv1alpha1.App) releaseFacts {
 // create (ReplicaFailure: the workspace quota, an admission webhook such as the
 // image-signature check after a key rotation), Ready names the cause, which
 // bex-api shows as the deploy's stall reason: the wait would otherwise read as
-// ordinary progress until the newer release rolls without it.
-func startingServedCondition(app *appv1alpha1.App, dep *appsv1.Deployment) metav1.Condition {
+// ordinary progress until the newer release rolls without it. A quota names
+// itself; any other API server refusal reads as a platform error with a support
+// reference, its raw text only in the operator log (w9/090).
+func startingServedCondition(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) metav1.Condition {
 	condition := metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reasonRolloutProgressing,
 		Message: "starting the previously deployed release before rolling the new one", ObservedGeneration: app.Generation,
 	}
 	if c := deploymentCondition(dep, appsv1.DeploymentReplicaFailure); c != nil && c.Status == corev1.ConditionTrue {
 		condition.Reason = appv1alpha1.ReasonServedReleaseCannotStart
-		condition.Message = fmt.Sprintf("the previously deployed release cannot create its pods: %s; the new release rolls anyway once it has been unavailable for %d minutes",
-			strings.TrimSuffix(c.Message, "."), int(servedWakeBudget.Minutes()))
+		cause := "cannot create its pods: " + strings.TrimSuffix(c.Message, ".")
+		if ref, masked := recordedRefusalReference(ctx, app, condition.Reason, c.Message); masked {
+			cause = "cannot create its pods because of a platform error, not a problem with your code or settings (contact support with reference " + ref + ")"
+		}
+		condition.Message = fmt.Sprintf("the previously deployed release %s; the new release rolls anyway once it has been unavailable for %d minutes",
+			cause, int(servedWakeBudget.Minutes()))
 	}
 	return condition
 }
@@ -461,7 +467,7 @@ func (r *AppReconciler) holdNewerRelease(ctx context.Context, app *appv1alpha1.A
 				return held(res, err)
 			}
 			app.Status.Phase = appv1alpha1.PhaseDeploying
-			meta.SetStatusCondition(&app.Status.Conditions, startingServedCondition(app, plan.prior.dep))
+			meta.SetStatusCondition(&app.Status.Conditions, startingServedCondition(ctx, app, plan.prior.dep))
 			r.updateStatusRetrying(ctx, app, "releaseHeld")
 			res.RequeueAfter = soonerRequeue(res.RequeueAfter, wakeReadyPoll)
 			return true, res, nil

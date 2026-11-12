@@ -150,6 +150,9 @@ func TestAddDiskRefusesReservedAndMalformedMountPaths(t *testing.T) {
 		{"trailing slash", "/var/data/", "root directory"},
 		{"build output", "/opt/render/project/src", "reserved"},
 		{"projected secrets", "/etc/secrets", "reserved"},
+		// w9/090: the health-probe volume's mount; a disk there makes the
+		// Deployment Invalid, which reaches the customer only as a platform error.
+		{"health probe", "/bex-health", "reserved"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, _, _ := newDiskService(diskEligibleApp("web"))

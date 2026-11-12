@@ -74,6 +74,12 @@ const (
 	DeployReasonBuildAbandoned          = "build_abandoned"
 	DeployReasonDeployAbandoned         = "deploy_abandoned"
 
+	// w9/090: the API server refused one of the operator's own writes (an
+	// admission policy, RBAC, a schema check). The customer reads this in
+	// place of the raw refusal, which names internal policies and the tenant
+	// namespace; {ref} finds the raw text in the operator log.
+	DeployReasonPlatformError = "platform_error"
+
 	// w4/591: a canceled deploy's cancelReason.
 	DeployReasonCanceledSuspended   = "canceled_suspended"
 	DeployReasonSupersededByNewer   = "superseded_by_newer_release"
@@ -134,6 +140,7 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonBuildNeverStarted:       "the build never started: {cause}",
 	DeployReasonBuildAbandoned:          "the build did not finish within the build window, and this service's App record could not be read to explain why",
 	DeployReasonDeployAbandoned:         "the deploy did not finish within its window, and this service's App record could not be read to explain why",
+	DeployReasonPlatformError:           "bex could not apply this release because of a platform error, not a problem with your code or settings. Contact support with reference {ref}",
 
 	DeployReasonCanceledSuspended:   "Canceled: the service was suspended",
 	DeployReasonSupersededByNewer:   "Superseded by a newer release",

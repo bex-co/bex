@@ -64,11 +64,15 @@ const (
 // diskReservedMountPaths are the exact paths a volume must not be mounted over,
 // because the platform populates them: mounting there shadows the build output,
 // the projected credentials, or the whole root filesystem. Render's own list,
-// plus bex's secret mount. Subdirectories of each remain legal.
+// plus bex's secret mount and its health-probe mount (the operator's
+// healthProbeMountPath): a disk there duplicates that volume mount, and the API
+// server refuses the Deployment as Invalid, which the customer would read only
+// as a platform error (w9/090). Subdirectories of each remain legal.
 var diskReservedMountPaths = []string{
 	"/etc", "/etc/secrets",
 	"/home", "/home/render",
 	"/opt", "/opt/render", "/opt/render/project", "/opt/render/project/src",
+	"/bex-health",
 }
 
 // DiskView is the disk as every surface presents it, in Render's field shape.

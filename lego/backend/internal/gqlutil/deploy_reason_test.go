@@ -67,7 +67,7 @@ func TestDeployReasonsRoundTrip(t *testing.T) {
 		{Name: "hint", Value: " No open port was detected on the instance."},
 		{Name: "host", Value: "ghcr.io"}, {Name: "image", Value: "ghcr.io/acme/web:v1"},
 		{Name: "kind", Value: "readiness"}, {Name: "minutes", Value: "10"}, {Name: "path", Value: "/healthz"},
-		{Name: "port", Value: "8080"}, {Name: "restarts", Value: "3"}, {Name: "status", Value: "403"},
+		{Name: "port", Value: "8080"}, {Name: "ref", Value: "g3-1a2b3c4d"}, {Name: "restarts", Value: "3"}, {Name: "status", Value: "403"},
 		{Name: "wait", Value: "3h0m0s"},
 	}
 	for code, tmpl := range appv1alpha1.DeployReasonTemplates() {
