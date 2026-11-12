@@ -17,10 +17,15 @@ limitations under the License.
 package apps
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // Render's spec declares routes and headers inside the static-site
@@ -65,6 +70,48 @@ func TestRESTCreateTakesAutoscalingFromServiceDetails(t *testing.T) {
 	a := getApp(t, cl, "app").Spec.Autoscaling
 	if a == nil || !a.Enabled || a.MinReplicas != 2 || a.MaxReplicas != 5 || a.TargetCPUPercent == nil || *a.TargetCPUPercent != 65 {
 		t.Fatalf("spec.autoscaling = %+v, want enabled 2..5 at 65%% CPU", a)
+	}
+}
+
+// w4/596: a read carries the policy where Render's schema puts it,
+// serviceDetails.autoscaling, equal to GET …/autoscaling's body; a service
+// without autoscaling and a cron job carry none.
+func TestRESTServiceReadCarriesServiceDetailsAutoscaling(t *testing.T) {
+	cron := sampleApp("nightly")
+	cron.Spec.Type, cron.Spec.Schedule = appv1alpha1.TypeCronJob, "0 * * * *"
+	svc, _ := newService(nil, paidWebApp("plain"), cron)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	h := validated(t, mux)
+	get := func(path string) map[string]any {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s => %d: %s", path, rec.Code, rec.Body)
+		}
+		var body map[string]any
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatal(err)
+		}
+		return body
+	}
+	details := func(path string) map[string]any {
+		t.Helper()
+		return get(path)["serviceDetails"].(map[string]any)
+	}
+
+	if _, present := details("/v1/services/plain")["autoscaling"]; present {
+		t.Fatal("a service without autoscaling carries serviceDetails.autoscaling")
+	}
+	if _, err := svc.SetAutoscaling(context.Background(), "plain", SetAutoscalingRequest{MinInstances: 1, MaxInstances: 2, TargetCPUPercent: int32p(60)}); err != nil {
+		t.Fatal(err)
+	}
+	if got, want := details("/v1/services/plain")["autoscaling"], get("/v1/services/plain/autoscaling"); !reflect.DeepEqual(got, want) {
+		t.Fatalf("serviceDetails.autoscaling = %v, want GET …/autoscaling's %v", got, want)
+	}
+	if _, present := details("/v1/services/nightly")["autoscaling"]; present {
+		t.Fatal("a cron job carries serviceDetails.autoscaling")
 	}
 }
 

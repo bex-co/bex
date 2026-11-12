@@ -210,9 +210,10 @@ type renderService struct {
 	// BuildSourceID is the Build Source the service builds and deploys from,
 	// if any (w2/m254 t005).
 	BuildSourceID string `json:"buildSourceId,omitempty"`
-	// Autoscaling mirrors Render's autoscaling sub-object (minInstances /
-	// maxInstances / targetCPUPercent / targetMemoryPercent); omitted when
-	// autoscaling is not configured.
+	// Autoscaling is bex's own dialect of the policy (minInstances /
+	// maxInstances / targetCPUPercent / targetMemoryPercent), kept beside
+	// Render's serviceDetails.autoscaling; omitted when autoscaling is not
+	// configured.
 	Autoscaling *renderAutoscaling `json:"autoscaling,omitempty"`
 	// AutoDeploy is Render's Auto-Deploy toggle: whether a signed git push
 	// redeploys this service (spec.autoDeploy). Render's public API represents
@@ -519,6 +520,12 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	}
 	if a.CacheProfile != "" {
 		details["cache"] = map[string]any{"profile": a.CacheProfile} // w5/m151
+	}
+	// Render's web, private and worker serviceDetails carry the policy in the
+	// PUT …/autoscaling shape (w4/596), mapped as GET …/autoscaling maps it so
+	// the two reads agree. Omitted when none is configured.
+	if a.Autoscaling != nil && autoscalingEligible(svcType) {
+		details["autoscaling"] = renderAutoscalingConfigFromView(*a.Autoscaling)
 	}
 	if svcType == renderWebService {
 		// Render's maintenanceMode is required on webServiceDetails (never
