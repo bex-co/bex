@@ -77,6 +77,7 @@ var _ = Describe("Application container policy admission", func() {
 		role := &rbacv1.ClusterRole{ObjectMeta: metav1.ObjectMeta{Name: "workload-admission-test"}, Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{"apps"}, Resources: []string{"deployments", "statefulsets"}, Verbs: []string{"get", "create", "update", "delete"}},
 			{APIGroups: []string{"batch"}, Resources: []string{"jobs", "cronjobs"}, Verbs: []string{"get", "create", "update", "delete"}},
+			{APIGroups: []string{"batch"}, Resources: []string{"cronjobs/status"}, Verbs: []string{"update", "patch"}},
 		}}
 		Expect(admin.Create(ctx, role)).To(Succeed())
 		Expect(admin.Create(ctx, &rbacv1.ClusterRoleBinding{
@@ -372,6 +373,27 @@ var _ = Describe("Application container policy admission", func() {
 				}
 				Expect(operator.Delete(ctx, workload, client.PropagationPolicy(metav1.DeletePropagationBackground))).To(Succeed(), scenario+" cleanup")
 			}
+		}
+
+		By("confining a CronJob's status writes to tenant namespaces (w4/592)")
+		for _, namespace := range []string{workspace, "workload-outside"} {
+			cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: "status-probe", Namespace: namespace}, Spec: batchv1.CronJobSpec{
+				Schedule: "* * * * *",
+				JobTemplate: batchv1.JobTemplateSpec{Spec: batchv1.JobSpec{Template: corev1.PodTemplateSpec{Spec: corev1.PodSpec{
+					RestartPolicy: corev1.RestartPolicyNever, Containers: []corev1.Container{{Name: "probe", Image: "busybox:latest"}},
+				}}}},
+			}}
+			Expect(admin.Create(ctx, cron)).To(Succeed())
+			resumed := metav1.Now()
+			cron.Status.LastScheduleTime = &resumed
+			err := operator.Status().Update(ctx, cron)
+			if namespace == workspace {
+				Expect(err).NotTo(HaveOccurred(), "a tenant CronJob's status")
+			} else {
+				Expect(apierrors.IsForbidden(err)).To(BeTrue(), "%v", err)
+				Expect(err.Error()).To(ContainSubstring("bex-operator-object-namespaces"))
+			}
+			Expect(admin.Delete(ctx, cron)).To(Succeed())
 		}
 
 		By("confining the dedicated serving-pool and build-only tolerations to their own workloads (w2/m250)")

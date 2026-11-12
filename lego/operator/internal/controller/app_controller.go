@@ -493,6 +493,7 @@ type AppReconciler struct {
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=cronjobs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=kpack.io,resources=images,verbs=get;list;watch;create;delete
 // +kubebuilder:rbac:groups=kpack.io,resources=builds,verbs=get;list;watch;delete
 // +kubebuilder:rbac:groups=kpack.io,resources=clusterbuilders,verbs=get;list;watch
@@ -5063,6 +5064,29 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	return res, nil
 }
 
+// annotationCronUserSuspended marks a CronJob paused by the owner's Suspend,
+// as opposed to the pause that delays a slot behind a manual run.
+const annotationCronUserSuspended = "app.bex.co/user-suspended"
+
+// skipSlotsMissedWhileSuspended keeps a resumed cron job from running a slot
+// that passed while the owner had it suspended (w4/592): with no starting
+// deadline, the CronJob controller starts the most recent missed slot after
+// its last schedule time as soon as suspend clears, so the resume moves that
+// time to now first. cj is the stored CronJob; the patch refreshes its
+// resourceVersion for the update that follows. The pause behind a manual run
+// or a pending cancel is no user suspension: its slot still runs when that run
+// ends, Render's delay. A resume during such a run moves the time all the same,
+// so only the slots after the resume wait for the run.
+func (r *AppReconciler) skipSlotsMissedWhileSuspended(ctx context.Context, cj *batchv1.CronJob) error {
+	if cj.Annotations[annotationCronUserSuspended] != "true" || cj.Spec.Suspend == nil || !*cj.Spec.Suspend {
+		return nil
+	}
+	before := cj.DeepCopy()
+	resumed := metav1.Now()
+	cj.Status.LastScheduleTime = &resumed
+	return r.buildPlaneClient().Status().Patch(ctx, cj, client.MergeFrom(before))
+}
+
 // convergeCronRuntime applies operational controls to an explicitly selected
 // template. During a pending build the caller supplies the existing CronJob's
 // template, including for manual runs, so new release configuration cannot leak
@@ -5093,6 +5117,14 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 
 	cj := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.CronJobName(app.Name), Namespace: app.Namespace}}
 	if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), cj, func() error {
+		if suspended {
+			metav1.SetMetaDataAnnotation(&cj.ObjectMeta, annotationCronUserSuspended, "true")
+		} else {
+			if err := r.skipSlotsMissedWhileSuspended(ctx, cj); err != nil {
+				return err
+			}
+			delete(cj.Annotations, annotationCronUserSuspended)
+		}
 		cj.Spec.Schedule = app.Spec.Schedule
 		// Render runs at most one cron execution at a time. Scheduled overlap is
 		// delayed; a manual trigger explicitly cancels the active Job before its

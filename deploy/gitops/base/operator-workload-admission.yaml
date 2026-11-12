@@ -381,6 +381,13 @@ spec:
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
         resources: ["persistentvolumeclaims"]
+      # A cron resume moves the CronJob's status.lastScheduleTime (w4/592).
+      # Outside a tenant namespace the same write could push a platform
+      # backup CronJob's last schedule into the future and silently stop it.
+      - apiGroups: ["batch"]
+        apiVersions: ["v1"]
+        operations: ["UPDATE"]
+        resources: ["cronjobs/status"]
       - apiGroups: ["cert-manager.io"]
         apiVersions: ["v1"]
         operations: ["CREATE", "UPDATE", "DELETE"]
