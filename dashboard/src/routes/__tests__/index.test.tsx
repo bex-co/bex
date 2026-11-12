@@ -657,9 +657,9 @@ describe("URL-owned create dialogs (w1/m45)", () => {
     renderHomePage("/?new=sandbox-group");
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText("New Sandbox Group")).toBeInTheDocument();
-    expect(within(dialog).getByLabelText("Region")).toHaveValue(
-      "Oregon (US West)",
-    );
+    // A name only: bex-api places the group in the platform's region (w32/016).
+    expect(within(dialog).getByLabelText("Name")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("Region")).not.toBeInTheDocument();
   });
 
   it("plain / opens no dialog", () => {
