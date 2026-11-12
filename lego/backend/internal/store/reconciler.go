@@ -2327,6 +2327,17 @@ func servingRevisionDown(app *appv1alpha1.App, serving *metav1.Condition) bool {
 		serving.Reason == appv1alpha1.ReasonServingRevisionUnavailable
 }
 
+// servingRevisionUp reports the operator's current-generation verdict that the
+// App's active revision has a ready pod while a release builds, rolls out or
+// runs.
+func servingRevisionUp(app *appv1alpha1.App, serving *metav1.Condition) bool {
+	switch app.Status.Phase {
+	case appv1alpha1.PhaseBuilding, appv1alpha1.PhaseDeploying, appv1alpha1.PhaseRunning:
+		return serving != nil && serving.ObservedGeneration == app.Generation && serving.Status == metav1.ConditionTrue
+	}
+	return false
+}
+
 func readyReasonForGeneration(app *appv1alpha1.App) (string, bool) {
 	for i := range app.Status.Conditions {
 		ready := &app.Status.Conditions[i]
@@ -2369,10 +2380,12 @@ func observedServiceStateFor(appID string, app *appv1alpha1.App, hasOpenDeploy b
 			// A new revision's container failure is a deploy diagnosis, not an
 			// outage, when the operator has observed the active pods ready. So
 			// is one unready instance of a live release while others serve: a
-			// served release's lost readiness keeps phase Running (w4/m327).
+			// served release's lost readiness keeps phase Running (w4/m327). So
+			// is a build over a release that still serves: the open-deploy
+			// guard below cannot cover it, because a cancel closes the row a
+			// pass before the operator leaves Building (w8/297).
 			serving := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionServing)
-			if (app.Status.Phase == appv1alpha1.PhaseDeploying || app.Status.Phase == appv1alpha1.PhaseRunning) && serving != nil &&
-				serving.ObservedGeneration == app.Generation && serving.Status == metav1.ConditionTrue {
+			if servingRevisionUp(app, serving) {
 				obs.Availability = "healthy"
 				obs.AvailabilityObserved = true
 				obs.ReadyTransitionAt = serving.LastTransitionTime.Time

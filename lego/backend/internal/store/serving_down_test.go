@@ -70,6 +70,34 @@ func TestObservedServiceStateBuildOverAServingReleaseIsNoOutage(t *testing.T) {
 			t.Errorf("%s: observation = %+v, want no outage", name, obs)
 		}
 	}
+	if obs := observedServiceStateFor("srv-1", cases["live revision still serving"], true); obs.Availability != "healthy" {
+		t.Errorf("live revision still serving: observation = %+v, want healthy", obs)
+	}
+}
+
+// w8/297: a cancel closes the deploy row at once, while the operator still
+// reports the canceled build (phase Building) until its next pass. A release
+// that still serves is healthy whether a deploy is open or not; one with no
+// ready pod is still the outage it was.
+func TestObservedServiceStateBuildWithNoOpenDeploy(t *testing.T) {
+	for _, reason := range []string{"Building", "BuildQueued"} {
+		cr := buildingOverOutage(metav1.ConditionTrue, appv1alpha1.ReasonPriorReleaseServing)
+		cr.Status.Conditions[0].Reason = reason
+		obs := observedServiceStateFor("srv-1", cr, false)
+		if !obs.AvailabilityObserved || obs.Availability != "healthy" || obs.ReasonCode != "" ||
+			!obs.ReadyTransitionAt.Equal(cr.Status.Conditions[1].LastTransitionTime.Time) {
+			t.Errorf("%s, live revision serving, no open deploy: observation = %+v, want healthy since Serving's transition", reason, obs)
+		}
+		if facts := observedStateFacts(obs, "Building", "healthy", false, time.Time{}); len(facts) != 0 {
+			t.Errorf("%s: the cancel's window wrote %+v, want nothing", reason, facts)
+		}
+	}
+	// A Serving verdict from an earlier generation proves nothing about now.
+	stale := buildingOverOutage(metav1.ConditionTrue, appv1alpha1.ReasonPriorReleaseServing)
+	stale.Status.Conditions[1].ObservedGeneration = 6
+	if obs := observedServiceStateFor("srv-1", stale, false); obs.Availability != "unhealthy" {
+		t.Errorf("stale Serving, no open deploy: observation = %+v, want unhealthy", obs)
+	}
 }
 
 // A live release whose pods lose readiness keeps phase Running (w4/m327). With
