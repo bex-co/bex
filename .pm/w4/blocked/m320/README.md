@@ -16,10 +16,10 @@
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
 | [t011](done/t011.md) | Regression of w8/m122: every image change on an image web service goes live without `image.sha`, because the row closes `live` before the operator records the digest — **DONE** | 40m | t004 |
-| [t012](t012.md) | A second image deploy in the settling window, after the first already holds all traffic, closes that first release `canceled`, puts the older release back for about a minute, and drops requests | 60m | t004 |
+| [t012](t012.md) | Regression of w4/405: a second deploy that arrives after an image release already holds all traffic, but before its row reads `live`, closes that release `canceled`. This includes a first deploy, which leaves the service with no live row. After an image change it also puts an older release back and drops requests | 75m | t004 |
 | [t010](t010.md) | Closeout | 10m | t008, t009, t011, t012 |
 
-Twelve tasks, 420m (7h); t012 added in round 156. **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
+Twelve tasks, 435m (7h15m); t012 added in round 156 and widened in round 157. **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
 
 ## Finding
 
@@ -144,6 +144,7 @@ Live on production after the release pins this build, on an owned Free image web
   - every poll answers `200`;
   - the version only moves forward;
   - the first deploy's row reads `live`, then `deactivated`, never `canceled`.
+  - The same on a first deploy (round 157): `POST …/deploys {}` the moment a new service first answers leaves the first row `live`, then `deactivated`. When the second deploy fails, the first stays `live` with a Rollback action.
 - **Checks.** The operator suite (`make test`) and lint pass.
 - **Cleanup.** No fixture remains, and only that run's session is revoked.
 
@@ -217,3 +218,11 @@ Pin `8330744bd643` contains `7dec58bb5`, but not t011's `f24e6e7f7`.
   - Once, the first row closed `live`, but every poll from 01:49:13 to 01:50:06 answered `503`.
   - Probes and timelines are in t012.
 - **Not run:** the DoD's no-early-traffic and one-instance bullets. They are left for t006.
+
+## Post-release probe addendum (QA loop round 157, 2026-11-12)
+
+- **t012 widened.** It is a regression of [w4/405](../../done/405.md) and is not limited to image changes.
+  - A busybox httpd service's **first** deploy, superseded by `POST …/deploys {}` in the second it first answered, closed `canceled` ~20 s later while still serving.
+  - When the superseding deploy crash-looped (exit 3), the service read `Failed` everywhere, with no live row and no Rollback action, while its first release answered `200` throughout.
+  - `releaseInFlight` never pins a prebuilt-image release, and the backend closes such a row `live` only when `activeRevision` names it.
+  - Probes are in t012's round 157 addendum. All three fixtures were deleted (GET 404).
