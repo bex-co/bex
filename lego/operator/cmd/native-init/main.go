@@ -14,9 +14,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-// Command native-init is the entrypoint of a native Node service image
-// (w8/m88): it runs the image's start command as its one child and forwards
-// every signal it receives to it.
+// Command native-init is the entrypoint of every native service image
+// (w8/m88, w8/290): it runs the image's start command as its one child and
+// forwards every signal it receives to it.
+//
+// Being PID 1 is the first reason. Linux delivers a signal from outside the
+// container to PID 1 only when it has a handler for it, so a start command
+// running as PID 1 with no SIGTERM handler, a shell running a script that
+// does not exec the app, or a handler-less app, never stopped on SIGTERM.
 //
 // What it adds over running the command as PID 1 is the end of a shutdown.
 // `npm start` runs its script under `sh -c`; on SIGTERM npm forwards the

@@ -39,36 +39,43 @@ func nativeInitOptions() Options {
 	return o
 }
 
-// A primary Node service whose build has the resolve phase starts under
-// native-init (w8/m88): the resolve phase stages it, BuildKit receives it as
-// a named context, and the image runs it by absolute path in front of the
-// unchanged CMD. Without the resolve phase, for a static site or for another
-// runtime, nothing about the launch changes.
-func TestNativeNodeServiceStartsUnderNativeInit(t *testing.T) {
-	o := nativeInitOptions()
-	tail := "\nCOPY --link --from=bex-init /native-init /\nENTRYPOINT [\"/native-init\"]\nCMD " + shellJSON(o.StartCommand) + "\n"
-	for _, line := range nativeToolchains[nativeNodeRuntime].lines {
-		df := resolvedDockerfile(t, o, map[string]string{"NODE_VERSION": line.line})
-		if !strings.HasSuffix(df, tail) || strings.Count(df, nativeInitPath) != 2 || strings.Index(df, nativeBuildRun) > strings.Index(df, tail) {
-			t.Fatalf("node %s: service must end with native-init in front of its exact CMD:\n%s", line.line, df)
+// Every native service whose build has the resolve phase starts under
+// native-init: the resolve phase stages it, BuildKit receives it as a named
+// context, and the image runs it by absolute path in front of the unchanged
+// CMD, on every line of every runtime. Without the resolve phase, or for a
+// static site, nothing about the launch changes.
+func TestNativeServiceStartsUnderNativeInit(t *testing.T) {
+	for runtime, toolchain := range nativeToolchains {
+		o := nativeInitOptions()
+		o.Runtime = runtime
+		tail := "\nCOPY --link --from=bex-init /native-init /\nENTRYPOINT [\"/native-init\"]\nCMD " + shellJSON(o.StartCommand) + "\n"
+		for _, line := range toolchain.lines {
+			t.Run(runtime+"/"+line.line, func(t *testing.T) {
+				env, files := nativeLineSignal(runtime, line.line)
+				df, choices := resolveFixture(t, o, env, files)
+				if choices[0].Line != line.line {
+					t.Fatalf("resolved line %s, want %s", choices[0].Line, line.line)
+				}
+				if !strings.HasSuffix(df, tail) || strings.Count(df, nativeInitPath) != 2 || strings.Index(df, nativeBuildRun) > strings.Index(df, tail) {
+					t.Errorf("service must end with native-init in front of its exact CMD:\n%s", df)
+				}
+			})
 		}
-	}
-	job := BuildJob(o, o.ImageRef()).Spec.Template.Spec
-	args := strings.Join(containerByName(job.InitContainers, "buildkit").Args, " ")
-	if !strings.Contains(args, "--local bex-init=/native/init --opt context:bex-init=local:bex-init") {
-		t.Errorf("buildctl args do not carry the bex-init context: %s", args)
-	}
-	resolver := containerByName(job.InitContainers, nativeResolveContainer)
-	if i := slices.IndexFunc(resolver.Env, func(e corev1.EnvVar) bool { return e.Name == NativeInitEnv }); i < 0 ||
-		resolver.Env[i].Value != "/native/init/native-init" {
-		t.Errorf("resolver env = %v, want %s=/native/init/native-init", resolver.Env, NativeInitEnv)
+		job := BuildJob(o, o.ImageRef()).Spec.Template.Spec
+		args := strings.Join(containerByName(job.InitContainers, "buildkit").Args, " ")
+		if !strings.Contains(args, "--local bex-init=/native/init --opt context:bex-init=local:bex-init") {
+			t.Errorf("%s: buildctl args do not carry the bex-init context: %s", runtime, args)
+		}
+		resolver := containerByName(job.InitContainers, nativeResolveContainer)
+		if i := slices.IndexFunc(resolver.Env, func(e corev1.EnvVar) bool { return e.Name == NativeInitEnv }); i < 0 ||
+			resolver.Env[i].Value != "/native/init/native-init" {
+			t.Errorf("%s: resolver env = %v, want %s=/native/init/native-init", runtime, resolver.Env, NativeInitEnv)
+		}
 	}
 
 	static := nativeInitOptions()
 	static.StaticSite, static.Runtime, static.StartCommand = true, "", ""
-	python := nativeInitOptions()
-	python.Runtime = nativePythonRuntime
-	for name, other := range map[string]Options{"no resolve phase": nativeOptions(), "static": static, "python": python} {
+	for name, other := range map[string]Options{"no resolve phase": nativeOptions(), "static": static} {
 		job := BuildJob(other, other.ImageRef()).Spec.Template.Spec
 		if df := nativeDockerfile(other); strings.Contains(df, "native-init") || strings.Contains(df, nativeInitPath) {
 			t.Errorf("%s: Dockerfile gained native-init:\n%s", name, df)
@@ -131,24 +138,8 @@ process.on("SIGTERM", () => { console.log("SIGTERM"); s.close(() => console.log(
 s.listen(process.env.PORT, () => console.log("listening"));
 `), 0o644))
 
-	must(t, StageNativeInit(compileNativeInit(t), filepath.Join(native, "init", nativeInitFile)))
-
-	out := t.TempDir()
-	runJobBuildctl(t, o, src, native, out)
-	// The Job pushes the OCI archive with skopeo; here skopeo converts it for
-	// the local daemon instead.
 	name := fmt.Sprintf("bex-native-init-it-%d", os.Getpid())
-	if log, err := exec.Command("docker", "run", "--rm", "-v", out+":/out", defaultPushImage, "copy",
-		"oci-archive:/out/image.tar", "docker-archive:/out/docker.tar:"+name+":latest").CombinedOutput(); err != nil {
-		t.Fatalf("convert: %v\n%s", err, log)
-	}
-	loaded, err := exec.Command("docker", "load", "-q", "-i", filepath.Join(out, "docker.tar")).CombinedOutput()
-	if err != nil {
-		t.Fatalf("load: %v\n%s", err, loaded)
-	}
-	image := strings.TrimSpace(string(loaded))
-	image = image[strings.LastIndexByte(image, ' ')+1:]
-	t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", image).Run() })
+	image := loadNativeInitImage(t, o, src, native, name)
 
 	if out, err := exec.Command("docker", "run", "--rm", "-e", "PATH=", image, "/bin/bash", "-c", `echo "started PATH=[$PATH]"`).CombinedOutput(); err != nil ||
 		!strings.Contains(string(out), "started PATH=[]") {
@@ -175,30 +166,129 @@ s.listen(process.env.PORT, () => console.log("listening"));
 	}
 }
 
+// loadNativeInitImage builds o's resolved native Dockerfile with native-init
+// staged, as the Job does, loads the image into the local daemon and returns
+// its ID.
+func loadNativeInitImage(t *testing.T, o Options, src, native, name string) string {
+	t.Helper()
+	must(t, StageNativeInit(compileNativeInit(t), filepath.Join(native, "init", nativeInitFile)))
+	out := t.TempDir()
+	runJobBuildctl(t, o, src, native, out)
+	// The Job pushes the OCI archive with skopeo; here skopeo converts it for
+	// the local daemon instead.
+	if log, err := exec.Command("docker", "run", "--rm", "-v", out+":/out", defaultPushImage, "copy",
+		"oci-archive:/out/image.tar", "docker-archive:/out/docker.tar:"+name+":latest").CombinedOutput(); err != nil {
+		t.Fatalf("convert: %v\n%s", err, log)
+	}
+	loaded, err := exec.Command("docker", "load", "-q", "-i", filepath.Join(out, "docker.tar")).CombinedOutput()
+	if err != nil {
+		t.Fatalf("load: %v\n%s", err, loaded)
+	}
+	image := strings.TrimSpace(string(loaded))
+	image = image[strings.LastIndexByte(image, ' ')+1:]
+	t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", image).Run() })
+	return image
+}
+
+// A Python service started by a script that runs the app without exec, or an
+// app with no SIGTERM handler, stops on SIGTERM well inside the grace period
+// (w8/290): native-init is PID 1, so neither bash nor the app is.
+func TestNativePythonServiceStopsOnSIGTERM(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to build and run the generated image")
+	}
+	o := nativeInitOptions()
+	o.Runtime = nativePythonRuntime
+	o.BuildCommand, o.StartCommand, o.BuildEnv = "python3 --version", "./start.sh", nil
+	bundle, dockerfile, src := writeResolveFixture(t, o, nil, nil)
+	native := filepath.Dir(dockerfile)
+	if _, err := ResolveNativeBuild(nativeRuntime(o), bundle, dockerfile, src); err != nil {
+		t.Fatal(err)
+	}
+	must(t, os.WriteFile(filepath.Join(src, "start.sh"), []byte("#!/bin/bash\necho \"script pid=$$\"\npython3 app.py\n"), 0o755))
+	must(t, os.WriteFile(filepath.Join(src, "app.py"), []byte(`import http.server, os, signal, sys
+if os.environ.get("QA_HANDLER") == "1":
+    signal.signal(signal.SIGTERM, lambda *_: (print("SIGTERM", flush=True), sys.exit(0)))
+srv = http.server.HTTPServer(("0.0.0.0", int(os.environ.get("PORT", "10000"))), http.server.SimpleHTTPRequestHandler)
+print("listening pid=%d" % os.getpid(), flush=True)
+srv.serve_forever()
+`), 0o644))
+	name := fmt.Sprintf("bex-native-init-py-it-%d", os.Getpid())
+	image := loadNativeInitImage(t, o, src, native, name)
+
+	for i, tc := range []struct {
+		name, handler string
+		command       []string
+	}{
+		{"script without exec, app with a handler", "1", nil},
+		{"app with no handler, launched directly", "0", []string{"/bin/bash", "-c", "python3 app.py"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			container := fmt.Sprintf("%s-%d", name, i)
+			took, logs := stopAfterListening(t, image, container, tc.handler, tc.command...)
+			status, err := exec.Command("docker", "inspect", "-f", "{{.State.ExitCode}}", container).Output()
+			if err != nil {
+				t.Fatal(err)
+			}
+			if took > 10*time.Second || strings.TrimSpace(string(status)) == "137" ||
+				(tc.handler == "1" && !strings.Contains(logs, "SIGTERM")) || strings.Contains(logs, "pid=1\n") {
+				t.Errorf("stop took %v (grace 20s), exit %s; the app must stop on SIGTERM, with native-init as PID 1:\n%s",
+					took, strings.TrimSpace(string(status)), logs)
+			}
+		})
+	}
+}
+
+// stopAfterListening runs image with QA_HANDLER=handler (and command in place
+// of its CMD, if given), waits for it to listen, stops the container with a
+// 20s grace period and returns how long the stop took and the container log.
+func stopAfterListening(t *testing.T, image, name, handler string, command ...string) (time.Duration, string) {
+	t.Helper()
+	read := runUntilListening(t, image, name, []string{"-e", "QA_HANDLER=" + handler}, command...)
+	start := time.Now()
+	if out, err := exec.Command("docker", "stop", "-t", "20", name).CombinedOutput(); err != nil {
+		t.Fatalf("stop: %v\n%s", err, out)
+	}
+	return time.Since(start), read()
+}
+
+// runUntilListening starts image as container name, with runFlags before the
+// image and command in place of its CMD, waits for it to log "listening" and
+// returns a reader of its log.
+func runUntilListening(t *testing.T, image, name string, runFlags []string, command ...string) func() string {
+	t.Helper()
+	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
+	args := append(append([]string{"run", "-d", "--name", name}, runFlags...), image)
+	if out, err := exec.Command("docker", append(args, command...)...).CombinedOutput(); err != nil {
+		t.Fatalf("run: %v\n%s", err, out)
+	}
+	read := func() string { out, _ := exec.Command("docker", "logs", name).CombinedOutput(); return string(out) }
+	waitForLog(t, read, "listening", 30*time.Second)
+	return read
+}
+
+// waitForLog polls read until it contains marker, failing after within.
+func waitForLog(t *testing.T, read func() string, marker string, within time.Duration) {
+	t.Helper()
+	for deadline := time.Now().Add(within); !strings.Contains(read(), marker); time.Sleep(250 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatalf("no %s within %v:\n%s", marker, within, read())
+		}
+	}
+}
+
 // stopMidRequest runs image (with command in place of its CMD, if given),
 // starts a request the app holds for 4s, stops the container with a 20s grace
 // period and returns that response and the container log.
 func stopMidRequest(t *testing.T, image, name string, command ...string) (response, logs string) {
 	t.Helper()
-	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
-	args := append([]string{"run", "-d", "--name", name, "-p", "127.0.0.1::10000", image}, command...)
-	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
-		t.Fatalf("run: %v\n%s", err, out)
-	}
+	read := runUntilListening(t, image, name, []string{"-p", "127.0.0.1::10000"}, command...)
 	port, err := exec.Command("docker", "port", name, "10000").Output()
 	if err != nil {
 		t.Fatal(err)
 	}
 	base := "http://" + strings.TrimSpace(strings.Split(string(port), "\n")[0])
-	read := func() string { out, _ := exec.Command("docker", "logs", name).CombinedOutput(); return string(out) }
-	waitFor := func(marker string, within time.Duration) {
-		for deadline := time.Now().Add(within); !strings.Contains(read(), marker); time.Sleep(250 * time.Millisecond) {
-			if time.Now().After(deadline) {
-				t.Fatalf("no %s within %v:\n%s", marker, within, read())
-			}
-		}
-	}
-	waitFor("listening", 30*time.Second)
 	held := make(chan string, 1)
 	go func() {
 		res, err := (&http.Client{Timeout: 30 * time.Second}).Get(base + "/hold")
@@ -210,7 +300,7 @@ func stopMidRequest(t *testing.T, image, name string, command ...string) (respon
 		_ = res.Body.Close()
 		held <- fmt.Sprintf("%d %s", res.StatusCode, body)
 	}()
-	waitFor("hold_begin", 10*time.Second)
+	waitForLog(t, read, "hold_begin", 10*time.Second)
 	if out, err := exec.Command("docker", "stop", "-t", "20", name).CombinedOutput(); err != nil {
 		t.Fatalf("stop: %v\n%s", err, out)
 	}

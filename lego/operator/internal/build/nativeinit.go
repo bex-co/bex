@@ -23,11 +23,14 @@ import (
 	"path/filepath"
 )
 
-// A primary Node service image starts its command under bex's native-init
-// (w8/m88), so an app behind `npm start` still gets SIGTERM and finishes its
-// in-flight work when npm exits first. The binary ships in bex's own image:
-// the resolve phase, which runs that image, stages it for BuildKit as a named
-// context, so the build pulls nothing for it.
+// A native service image starts its command under bex's native-init. Linux
+// delivers a signal from outside the container to PID 1 only when it has a
+// handler, so a start script whose shell runs the app without exec, or an app
+// with no SIGTERM handler, would never stop on Render's SIGTERM and run until
+// SIGKILL. native-init forwards it, then signals what the command left
+// running. The binary ships in bex's own image: the resolve phase, which runs
+// that image, stages it for BuildKit as a named context, so the build pulls
+// nothing for it.
 const (
 	// NativeInitBinary is native-init's path in the bex image.
 	NativeInitBinary = "/" + nativeInitFile
@@ -44,9 +47,10 @@ const (
 )
 
 // nativeServingInit reports whether o's image starts under native-init: a
-// Node service whose build has the resolve phase to stage it.
+// service, of any native runtime, whose build has the resolve phase to stage
+// it. The binary is static, so it runs on every toolchain base.
 func nativeServingInit(o Options) bool {
-	return !o.StaticSite && o.NativeResolverImage != "" && nativeRuntime(o) == nativeNodeRuntime
+	return !o.StaticSite && o.NativeResolverImage != ""
 }
 
 // nativeEntrypoint replaces the toolchain image's ENTRYPOINT, whose relative

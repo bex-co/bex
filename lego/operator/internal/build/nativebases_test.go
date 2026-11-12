@@ -98,17 +98,7 @@ func TestSuppliedResolverPreservesEveryReviewedPrimary(t *testing.T) {
 	for runtime, toolchain := range nativeToolchains {
 		for _, line := range toolchain.lines {
 			t.Run(runtime+"/"+line.line, func(t *testing.T) {
-				env, source := map[string]string{}, map[string]string{}
-				switch runtime {
-				case nativePythonRuntime:
-					env["PYTHON_VERSION"] = line.line
-				case nativeNodeRuntime:
-					env["NODE_VERSION"] = line.line
-				case nativeElixirRuntime:
-					env["ELIXIR_VERSION"] = line.line
-				case nativeRubyRuntime:
-					source[".ruby-version"] = line.line
-				}
+				env, source := nativeLineSignal(runtime, line.line)
 				nativeSuppliedBases = nil
 				beforeChoices, before := resolveExact(t, &fakeExact{}, runtime, env, source)
 				nativeSuppliedBases = catalog

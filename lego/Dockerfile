@@ -53,7 +53,7 @@ RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0
 # The no-redirect health probe a service's init container installs into its pod (w8/m133).
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/health-probe ./cmd/health-probe
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/native-resolve ./cmd/native-resolve
-# native-init ships inside every native Node tenant image (w8/m88): stripped
+# native-init ships inside every native tenant service image (w8/m88, w8/290): stripped
 # and path-free so each release adds one small, reproducible layer.
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/native-init ./cmd/native-init
 RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/disk-snapshot ./cmd/disk-snapshot

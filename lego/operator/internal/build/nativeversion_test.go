@@ -232,6 +232,23 @@ func resolvedDockerfileFrom(t *testing.T, o Options, env, files map[string]strin
 	return dockerfile
 }
 
+// nativeLineSignal selects line on runtime through Render's own version
+// signal: an env var, or Ruby's .ruby-version. Go and Rust offer one line.
+func nativeLineSignal(runtime, line string) (env, files map[string]string) {
+	env, files = map[string]string{}, map[string]string{}
+	switch runtime {
+	case nativePythonRuntime:
+		env["PYTHON_VERSION"] = line
+	case nativeNodeRuntime:
+		env["NODE_VERSION"] = line
+	case nativeElixirRuntime:
+		env["ELIXIR_VERSION"] = line
+	case nativeRubyRuntime:
+		files[".ruby-version"] = line
+	}
+	return env, files
+}
+
 // resolveFixture runs the resolve phase over o's generated Dockerfile, env and
 // files, returning the rewritten Dockerfile and the choices it made.
 func resolveFixture(t *testing.T, o Options, env, files map[string]string) (string, []NativeChoice) {

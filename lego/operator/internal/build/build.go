@@ -1172,7 +1172,7 @@ func boundedSourceDir(dir string) string {
 
 // buildctlRecipeArgs is where the build's Dockerfile and its inputs come
 // from: the preparer's generated recipe, env bundle, secret files and (for a
-// Node service) native-init for a native build; the repository's own
+// service) native-init for a native build; the repository's own
 // Dockerfile and build secrets otherwise.
 func buildctlRecipeArgs(o Options, dockerfileDir string) []string {
 	if o.Builder != BuilderNative {
