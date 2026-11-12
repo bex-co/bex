@@ -15,14 +15,34 @@ export function strandedGroupsForDestination(
   groups: ReadonlyArray<EnvGroupView>,
   serviceIds: ReadonlyArray<string>,
   destinationEnvironmentId: string | null,
+  comoving?: CoMovingGroups,
 ): EnvGroupView[] {
   const moving = new Set(serviceIds);
+  const groupIds = new Set(comoving?.groupIds);
+  const landed = new Set([
+    ...serviceIds,
+    ...(comoving?.destinationServiceIds ?? []),
+  ]);
+  // A group moving with the services is in scope after the move — but only
+  // if every service it links lands there too: bex-api refuses a group move
+  // that would leave one behind (ENV_GROUP_MOVE_INCOMPATIBLE_SERVICES), and
+  // the moving services would then stay linked across environments (w4/564).
+  const movesAlong = (group: EnvGroupView) =>
+    groupIds.has(group.id) && group.serviceLinks.every((id) => landed.has(id));
   return groups.filter(
     (group) =>
       group.environmentId !== null &&
       group.environmentId !== destinationEnvironmentId &&
+      !movesAlong(group) &&
       group.serviceLinks.some((serviceId) => moving.has(serviceId)),
   );
+}
+
+/** The groups that move to the destination in the same move (w4/564). */
+export interface CoMovingGroups {
+  groupIds: ReadonlyArray<string>;
+  /** Services already at the destination, which a moving group may link. */
+  destinationServiceIds: ReadonlyArray<string>;
 }
 
 /** One stranded group as the confirmation dialog lists it. */

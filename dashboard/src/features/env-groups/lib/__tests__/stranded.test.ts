@@ -31,6 +31,57 @@ describe("strandedGroupsForDestination (w4/m238)", () => {
     group("evg-unlinked", "evm-prod", []),
   ];
 
+  // w4/564: a group moving to the destination with its services is in scope
+  // after the move, so only the groups that stay behind are listed — unless
+  // the moving group also links a service that stays, which bex-api refuses.
+  it("leaves out a group that moves with every service it links", () => {
+    const comoving = (
+      groupIds: string[],
+      destinationServiceIds: string[] = [],
+    ) => ({
+      groupIds,
+      destinationServiceIds,
+    });
+    expect(
+      strandedGroupsForDestination(
+        groups,
+        ["srv-1"],
+        "evm-staging",
+        comoving(["evg-prod"]),
+      ),
+    ).toEqual([]);
+    const twoGroups = [
+      group("evg-a", "evm-prod", ["srv-1"]),
+      group("evg-b", "evm-prod", ["srv-1"]),
+    ];
+    expect(
+      strandedGroupsForDestination(
+        twoGroups,
+        ["srv-1"],
+        "evm-staging",
+        comoving(["evg-a"]),
+      ).map((g) => g.id),
+    ).toEqual(["evg-b"]);
+    const shared = [group("evg-shared", "evm-prod", ["srv-1", "srv-2"])];
+    expect(
+      strandedGroupsForDestination(
+        shared,
+        ["srv-1"],
+        "evm-staging",
+        comoving(["evg-shared"]),
+      ).map((g) => g.id),
+    ).toEqual(["evg-shared"]);
+    // …though not when that other service is already at the destination.
+    expect(
+      strandedGroupsForDestination(
+        shared,
+        ["srv-1"],
+        "evm-staging",
+        comoving(["evg-shared"], ["srv-2"]),
+      ),
+    ).toEqual([]);
+  });
+
   it("flags environment groups scoped anywhere but the destination", () => {
     expect(
       strandedGroupsForDestination(groups, ["srv-1"], "evm-staging").map(

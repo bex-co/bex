@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeAll, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { EnvironmentCard } from "@/features/environments/components/environment-card";
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
@@ -430,6 +430,74 @@ describe("EnvironmentCard", () => {
     expect(setServices).toHaveBeenCalled();
     expect(setDatabases).toHaveBeenCalled();
     expect(screen.getByText("Selected: 1")).toBeInTheDocument();
+  });
+
+  // w4/564: a group selected with its services moves with them — the guard
+  // is told so — and its write waits for theirs, since bex-api refuses a
+  // group whose linked services are still elsewhere.
+  it("moves a service with its group, the group after the service", async () => {
+    strandedFor.mockReset();
+    strandedFor.mockReturnValue([]);
+    let serviceSettled = false;
+    setServices.mockImplementation(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      serviceSettled = true;
+      return true;
+    });
+    let groupStartedAfterService: boolean | null = null;
+    setEnvGroups.mockImplementation(async () => {
+      groupStartedAfterService = serviceSettled;
+      return true;
+    });
+    const user = userEvent.setup();
+    const linked: EnvGroupView = {
+      id: "evg-shared",
+      name: "shared",
+      ownerId: "tea-1",
+      environmentId: env.id,
+      createdAt: null,
+      updatedAt: null,
+      revision: "1",
+      availability: null,
+      serviceLinks: ["srv-api"],
+      envVarKeys: [],
+      secretFileNames: [],
+    };
+    const source: EnvironmentView = {
+      ...env,
+      serviceIds: ["srv-api"],
+      envGroupIds: ["evg-shared"],
+    };
+    const production: EnvironmentView = {
+      ...env,
+      id: "env-2",
+      name: "production",
+    };
+    renderCard({
+      services: [apiService],
+      envGroups: [linked],
+      environment: source,
+      allEnvironments: [source, production],
+    });
+
+    await user.click(screen.getByRole("button", { name: "select all rows" }));
+    await user.click(
+      screen.getByRole("combobox", {
+        name: "Move selected resources to environment",
+      }),
+    );
+    await user.click(screen.getByRole("option", { name: "production" }));
+    await user.click(screen.getByRole("button", { name: "Move" }));
+
+    await waitFor(() => expect(setEnvGroups).toHaveBeenCalled());
+    expect(strandedFor).toHaveBeenCalledWith(["srv-api"], "env-2", {
+      groupIds: ["evg-shared"],
+      destinationServiceIds: [],
+    });
+    expect(groupStartedAfterService).toBe(true);
+    expect(
+      screen.queryByText("This move leaves linked groups behind"),
+    ).not.toBeInTheDocument();
   });
 
   // w4/m206: a two-group move timed out after moving one group. The next

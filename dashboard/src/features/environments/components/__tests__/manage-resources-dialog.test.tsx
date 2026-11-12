@@ -275,6 +275,48 @@ describe("ManageResourcesDialog", () => {
     );
   });
 
+  // w4/564: a group added on the Env Groups tab moves here with the service
+  // it links, so nothing is left behind and no confirmation opens.
+  it("moves a service and its group together without the stranded prompt", async () => {
+    groupsOverride.groups = [
+      {
+        id: "evg-production",
+        name: "production-secrets",
+        environmentId: "evm-prod",
+        serviceLinks: ["web"],
+        envVarKeys: [],
+        secretFileNames: [],
+      },
+    ];
+    scope.environments = [
+      {
+        id: "evm-prod",
+        name: "Production",
+        projectId: "prj-1",
+        serviceIds: ["web"],
+        databaseIds: [],
+        keyValueIds: [],
+        envGroupIds: ["evg-production"],
+        ipAllowListEntries: [],
+      },
+    ];
+    const user = userEvent.setup();
+    renderDialog();
+
+    await user.click(screen.getByRole("checkbox", { name: /web/ }));
+    await user.click(screen.getByRole("tab", { name: "Env Groups" }));
+    await user.click(
+      screen.getByRole("checkbox", { name: /production-secrets/ }),
+    );
+    await user.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(setEnvGroups).toHaveBeenCalled());
+    expect(
+      screen.queryByText("This move leaves linked groups behind"),
+    ).not.toBeInTheDocument();
+    expect(setServices).toHaveBeenCalledTimes(1);
+  });
+
   it("switches to the Databases tab and full-replaces database membership", async () => {
     const onOpenChange = vi.fn();
     const user = userEvent.setup();

@@ -289,7 +289,14 @@ export function EnvironmentCard({
         toast.error(t("environments.strandedScopeUnknown"));
         return;
       }
-      const stranded = guard.strandedFor(movingServiceIds, target.id);
+      // A group selected with its services moves with them (w4/564).
+      const movingGroupIds = selectedRows
+        .filter((row) => row.kind === "envgroup")
+        .map((row) => row.id);
+      const stranded = guard.strandedFor(movingServiceIds, target.id, {
+        groupIds: movingGroupIds,
+        destinationServiceIds: target.serviceIds,
+      });
       if (stranded.length > 0) {
         setStrandedPrompt({
           targetId: target.id,
@@ -323,25 +330,45 @@ export function EnvironmentCard({
       if (moving.length === 0) return [];
       return [
         {
+          kind,
           keys: moving.map(resourceSelectionKey),
-          run: set(
-            target.id,
-            target.name,
-            mergeIds(
-              current,
-              moving.map((row) => row.id),
+          run: () =>
+            set(
+              target.id,
+              target.name,
+              mergeIds(
+                current,
+                moving.map((row) => row.id),
+              ),
             ),
-          ),
         },
       ];
     });
 
-    const results = await Promise.all(
-      operations.map(async (operation) => ({
-        keys: operation.keys,
-        succeeded: await operation.run,
-      })),
+    // Groups move after the services: bex-api refuses a group whose linked
+    // services are still elsewhere (ENV_GROUP_MOVE_INCOMPATIBLE_SERVICES), so
+    // a service moving with its group must land first, and a group whose
+    // services did not move is not sent to be refused (w4/564).
+    const settle = (batch: typeof operations) =>
+      Promise.all(
+        batch.map(async (operation) => ({
+          keys: operation.keys,
+          succeeded: await operation.run(),
+        })),
+      );
+    const serviceResults = await settle(
+      operations.filter((op) => op.kind === "service"),
     );
+    const servicesMoved = serviceResults.every((result) => result.succeeded);
+    const results = [
+      ...serviceResults,
+      ...(await settle(
+        operations.filter(
+          (op) =>
+            op.kind !== "service" && (servicesMoved || op.kind !== "envgroup"),
+        ),
+      )),
+    ];
     const succeeded = new Set(
       results
         .filter((result) => result.succeeded)

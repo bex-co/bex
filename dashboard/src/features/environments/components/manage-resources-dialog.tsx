@@ -45,6 +45,7 @@ import { environmentNameIn } from "@/features/env-groups/lib/scope";
 import {
   strandedGroupsForDestination,
   strandedPromptItems,
+  type CoMovingGroups,
 } from "@/features/env-groups/lib/stranded";
 import {
   StrandedGroupsConfirmDialog,
@@ -199,12 +200,14 @@ function ManageResourcesForm({
   function strandedItemsFor(
     serviceIds: string[],
     destinationEnvironmentId: string | null,
+    comoving?: CoMovingGroups,
   ): StrandedGroupPromptItem[] {
     return strandedPromptItems(
       strandedGroupsForDestination(
         envGroups,
         serviceIds,
         destinationEnvironmentId,
+        comoving,
       ),
       (group) =>
         group.environmentId == null
@@ -225,9 +228,16 @@ function ManageResourcesForm({
       toast.error(t("environments.strandedScopeUnknown"));
       return Promise.resolve(false);
     }
+    // A group added on the Env groups tab moves here with them (w4/564).
+    const addedGroups = [...drafts.envgroups].filter(
+      (id) => !environment.envGroupIds.includes(id),
+    );
     const byId = new Map<string, StrandedGroupPromptItem>();
     for (const item of [
-      ...strandedItemsFor(added, environment.id),
+      ...strandedItemsFor(added, environment.id, {
+        groupIds: addedGroups,
+        destinationServiceIds: ids,
+      }),
       ...strandedItemsFor(removed, null),
     ]) {
       byId.set(item.id, item);

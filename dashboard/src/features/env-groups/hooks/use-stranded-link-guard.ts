@@ -2,7 +2,10 @@ import { useCallback } from "react";
 import { useEnvGroups } from "@/features/env-groups/hooks/use-env-groups";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
 import { environmentNameIn } from "@/features/env-groups/lib/scope";
-import { strandedGroupsForDestination } from "@/features/env-groups/lib/stranded";
+import {
+  strandedGroupsForDestination,
+  type CoMovingGroups,
+} from "@/features/env-groups/lib/stranded";
 import type { EnvGroupView } from "@/features/env-groups/types";
 
 /**
@@ -16,8 +19,17 @@ export function useStrandedLinkGuard() {
   const scope = useEnvGroupScopeIndex();
 
   const strandedFor = useCallback(
-    (serviceIds: ReadonlyArray<string>, destinationEnvironmentId: string | null) =>
-      strandedGroupsForDestination(groups, serviceIds, destinationEnvironmentId),
+    (
+      serviceIds: ReadonlyArray<string>,
+      destinationEnvironmentId: string | null,
+      comoving?: CoMovingGroups,
+    ) =>
+      strandedGroupsForDestination(
+        groups,
+        serviceIds,
+        destinationEnvironmentId,
+        comoving,
+      ),
     [groups],
   );
 
