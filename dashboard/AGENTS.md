@@ -203,6 +203,8 @@ yarn kill               # Kill process on port 5173
 
 `yarn typecheck && yarn lint && yarn test` must all pass before `deploy.yml` builds or pushes the dashboard image (its `build` job `needs:` the dashboard test job).
 
+Tests run in UTC whatever the machine's zone (`vitest.config.ts` pins `TZ`). A test that needs another zone, language, clock, cookie or storage state says so through `hydrateAcrossEnvironments` (`src/test/hydration.ts`), which server-renders in one environment and hydrates in another and reports React's recoverable errors (error #418). Every route test and every `*page*.test.tsx` is also probed by it automatically (`src/test/route-hydration-sweep.ts`, a setup file): after the test's assertions pass, its first render is server-rendered in UTC and hydrated in another zone and clock, and a mismatch fails the test with React's tree diff. A fixture that cannot be probed soundly is listed with its reason in that file's `EXEMPT` (w21/m337).
+
 ### Local development without a cluster (`local-bex`)
 
 Pointing a localhost dashboard at **prod** bex-api doesn't work: `api.bex.co`'s CORS

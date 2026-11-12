@@ -27,8 +27,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: "jsdom",
+    // One zone for every test, whatever the machine's: CI runs in UTC, and a
+    // test that only passes in the author's zone (w21/m337) fails there. The
+    // hydration probe switches zones itself (src/test/hydration.ts).
+    env: { TZ: "UTC" },
     testTimeout: 10000,
-    setupFiles: ["./src/test/setup.ts"],
+    // The sweep hydration-probes every page-level test's first render
+    // (src/test/route-hydration-sweep.ts, w21/m337).
+    setupFiles: ["./src/test/setup.ts", "./src/test/route-hydration-sweep.ts"],
     coverage: {
       provider: "v8",
       reporter: ["text-summary"],

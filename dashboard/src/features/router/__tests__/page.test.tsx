@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { RouterContent, RouterPageSkeleton } from "../page";
 import type { RouterOverview } from "../data";
 import { requireRouterFeature } from "@/common/lib/growthbook/require-router-feature";
+import { hydrateAcrossEnvironments } from "@/test/hydration";
 
 vi.mock("@/common/components/dashboard-layout", () => ({
   DashboardLayout: ({ children }: { children: ReactNode }) => children,
@@ -51,6 +52,15 @@ describe("Router", () => {
     expect(screen.getByText("4.81%")).toBeInTheDocument();
     expect(screen.getAllByRole("progressbar")).toHaveLength(3);
     expect(screen.getByText("test-only-key")).toBeInTheDocument();
+  });
+  it("shows no time until hydration, so a browser in another zone agrees with the server (w21/m337)", async () => {
+    const probe = await hydrateAcrossEnvironments(() => (
+      <RouterContent overview={overview} />
+    ));
+    // The server's zone is UTC: a formatted key creation time baked into its
+    // markup would read 12:00:00 AM and disagree with a viewer in Shanghai.
+    expect(probe.html).not.toContain("12:00:00 AM");
+    expect(probe.recovered).toHaveLength(0);
   });
   it("reserves the same major regions while pending and disables creation", () => {
     render(<RouterPageSkeleton />);

@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/common/components/ui/dialog";
+import { useIsHydrated } from "@/common/hooks/use-is-hydrated";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   useRouterOverview,
@@ -73,7 +74,12 @@ export function RouterContent({
     return () => clearInterval(timer);
   }, []);
   const pending = Boolean(loading && !overview);
-  const date = (value: string) => new Date(value).toLocaleString(i18n.language);
+  // The viewer's zone is unknown to the server, so a time is shown only after
+  // hydration: formatting it during the server pass bakes in the container's
+  // zone and the browser's hydration render then disagrees (w21/m337).
+  const hydrated = useIsHydrated();
+  const date = (value: string) =>
+    hydrated ? new Date(value).toLocaleString(i18n.language) : "—";
   const countdown = (resetsAt: string) => {
     const minutes = Math.max(
       0,
