@@ -523,6 +523,7 @@ func (w *IdleSuspender) suspendIfIdle(ctx context.Context, key store.SandboxTena
 		}
 		return false
 	}
+	s.afterSuspend(ctx, raw)
 	// A suspended sandbox holds no concurrency slot.
 	s.clearSlotLease(ctx, key.WorkspaceID, canonicalID(raw))
 	// Close the running interval now: compute stops accruing at the moment

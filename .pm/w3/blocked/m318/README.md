@@ -42,5 +42,6 @@
 
 - **Deployed:** pin `3d66946c9e16` contains `c2eee0472`.
 - **Terminate path passes on production:** a sandbox stopped with `bex sandboxes stop` answers `409 SANDBOX_ENDED … was terminated at <real time>` and lists under `--status terminated` (sweeps 865a, 42aa, `bex-canary`).
-- **Lifetime-expiry path fails the DoD for a sandbox younger than ten minutes:** `--timeout 60` sandbox `sbx-dbqnb0qibtfs738vkrb0` answered `404 SANDBOX_NOT_FOUND` from 08:16:02 to 08:24:56 UTC, then read `terminated` with `terminatedAt` 08:25:09, nine minutes after it ended. Cause and fix: [w32/017](../../../w32/017.md) (`EndAbsentSandboxes`' ten-minute guard and sweep-time stamp).
+- **Lifetime-expiry path fails the DoD for a sandbox younger than ten minutes:** `--timeout 60` sandbox `sbx-dbqnb0qibtfs738vkrb0` answered `404 SANDBOX_NOT_FOUND` from 08:16:02 to 08:24:56 UTC, then read `terminated` with `terminatedAt` 08:25:09, nine minutes after it ended. Cause and fix: [w32/017](../../../w32/done/017.md) (`EndAbsentSandboxes`' ten-minute guard and sweep-time stamp).
 - **t008 Closeout waits for w32/017**, because the first DoD bullet names "a lifetime expiry".
+- **2026-11-12 (`/loopx w32`):** w32/017 is fixed in code ([done/017](../../../w32/done/017.md)); t008's lifetime-expiry check can run once a deploy carries it.

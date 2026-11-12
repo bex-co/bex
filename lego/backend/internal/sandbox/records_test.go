@@ -19,6 +19,7 @@ package sandbox
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -52,6 +53,7 @@ func (f *fakeRecords) RecordSandbox(_ context.Context, r store.SandboxRecord) er
 	f.ended[r.SandboxID] = r
 	return nil
 }
+func (f *fakeRecords) SetSandboxExpiry(context.Context, string, string, *time.Time) error { return nil }
 func (f *fakeRecords) EndAbsentSandboxes(context.Context, string, []string, time.Time) error {
 	return nil
 }
@@ -193,6 +195,78 @@ func TestErroredSandboxRefusesConnectTokens(t *testing.T) {
 	code, body := f.do(t, http.MethodPost, "/v1/sandboxes/os-failed/runs/stream/token?ownerId="+f.ws, `{"command":"ls"}`)
 	if code != http.StatusConflict || errCode(body) != CodeSandboxEnded || !strings.Contains(body, "errored") {
 		t.Fatalf("mint on an errored sandbox = %d %s, want 409 %s", code, body, CodeSandboxEnded)
+	}
+}
+
+// w32/017: OpenSandbox deletes a sandbox at its lifetime deadline, before
+// bex's own reaper, and the sweeper is what records the end. A sandbox past
+// its deadline ends at that deadline as soon as it is absent, however young
+// its record; a young one not past its deadline is still a create the list
+// may not show yet, and stays live.
+func TestSweeperEndsAnExpiredSandboxAtItsDeadline(t *testing.T) {
+	f := recordsFixture(t)
+	code, body := f.do(t, http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"timeoutSeconds":60}`, f.ws))
+	var short Sandbox
+	if err := json.Unmarshal([]byte(body), &short); code != http.StatusCreated || err != nil || short.CreatedAt == nil {
+		t.Fatalf("create 60 s sandbox = %d %s", code, body)
+	}
+	fresh := f.mustCreate(t, "")
+	for _, sb := range []Sandbox{short, fresh} {
+		substrate := f.os.idOf(sb.ID)
+		f.os.mu.Lock()
+		delete(f.os.boxes, substrate)
+		f.os.mu.Unlock()
+	}
+	ctx := context.Background()
+	f.now = f.now.Add(90 * time.Second)
+	f.sweeper.Sweep(ctx)
+
+	deadline := short.CreatedAt.Add(60 * time.Second)
+	code, got, body := f.getSandbox(t, "id-a", short.ID)
+	if code != http.StatusOK || got.Status != StatusTerminated || got.TerminatedAt == nil || !got.TerminatedAt.Equal(deadline) {
+		t.Fatalf("GET 90 s after a 60 s create = %d %s, want 200 terminated at %s", code, body, deadline.Format(time.RFC3339Nano))
+	}
+	if code, body := f.do(t, http.MethodPost, "/v1/sandboxes/"+short.ID+"/runs/stream/token?ownerId="+f.ws, `{"command":"true"}`); code != http.StatusConflict ||
+		!strings.Contains(body, "was terminated at "+deadline.UTC().Format(time.RFC3339)) {
+		t.Fatalf("run mint = %d %s, want 409 naming the deadline", code, body)
+	}
+	if code, _, body := f.getSandbox(t, "id-a", fresh.ID); code != http.StatusNotFound {
+		t.Fatalf("GET of a young absent sandbox before its deadline = %d %s, want 404 (its create may not be listed yet)", code, body)
+	}
+}
+
+// The recorded deadline follows the sandbox's own: the end of the 30-day
+// suspended window once a pause is accepted, the resume plus timeoutSeconds
+// after a resume (w32/017, lifetimeDeadline).
+func TestSuspendAndResumeMoveTheRecordedDeadline(t *testing.T) {
+	f := recordsFixture(t)
+	code, body := f.do(t, http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"timeoutSeconds":600}`, f.ws))
+	var sb Sandbox
+	if err := json.Unmarshal([]byte(body), &sb); code != http.StatusCreated || err != nil {
+		t.Fatalf("create = %d %s", code, body)
+	}
+	expires := func() time.Time {
+		t.Helper()
+		var at *time.Time
+		if err := f.st.Pool.QueryRow(context.Background(), `SELECT expires_at FROM sandbox_records WHERE workspace_id = $1 AND sandbox_id = $2`, f.ws, sb.ID).Scan(&at); err != nil || at == nil {
+			t.Fatalf("expires_at = %v, %v", at, err)
+		}
+		return *at
+	}
+	if got, want := expires(), sb.CreatedAt.Add(600*time.Second); !got.Equal(want) {
+		t.Fatalf("deadline at create = %s, want %s", got, want)
+	}
+	f.now = f.now.Add(time.Minute)
+	f.suspend(t, sb)
+	if got, want := expires(), f.now.Add(suspendedRetention); !got.Equal(want) {
+		t.Fatalf("deadline once suspended = %s, want %s", got, want)
+	}
+	f.now = f.now.Add(time.Hour)
+	if code, body := f.do(t, http.MethodPost, "/v1/sandboxes/"+sb.ID+"/resume?ownerId="+f.ws, ""); code != http.StatusNoContent {
+		t.Fatalf("resume = %d %s", code, body)
+	}
+	if got, want := expires(), f.now.Add(600*time.Second); !got.Equal(want) {
+		t.Fatalf("deadline after resume = %s, want %s", got, want)
 	}
 }
 

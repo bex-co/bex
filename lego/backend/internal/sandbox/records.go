@@ -35,6 +35,7 @@ import (
 // off) keeps none, and an ended sandbox is not found, as before.
 type RecordStore interface {
 	RecordSandbox(ctx context.Context, r store.SandboxRecord) error
+	SetSandboxExpiry(ctx context.Context, workspaceID, sandboxID string, expiresAt *time.Time) error
 	EndAbsentSandboxes(ctx context.Context, workspaceID string, live []string, at time.Time) error
 	ExpireSandboxRecords(ctx context.Context, now time.Time) error
 	EndedSandbox(ctx context.Context, workspaceID, sandboxID string) (store.SandboxRecord, error)
@@ -73,21 +74,42 @@ func endedLive(raw osSandbox) bool {
 	return raw.Status.State != "" && (status == StatusTerminated || status == StatusErrored)
 }
 
-// recordLive writes a created sandbox's record. Best effort, like
-// recordEnded: a failed write only means the sandbox reads not-found once it
-// ends.
+// recordLive writes a created sandbox's record with its lifetime deadline,
+// createdAt + timeoutSeconds (none for a sandbox without a timeout). Best
+// effort, like recordEnded: a failed write only means the sandbox reads
+// not-found once it ends.
 func (s *Service) recordLive(ctx context.Context, ws string, box Sandbox) {
-	s.writeRecord(ctx, ws, box, nil)
+	var expiresAt *time.Time
+	if box.CreatedAt != nil && box.TimeoutSeconds > 0 {
+		at := box.CreatedAt.Add(time.Duration(box.TimeoutSeconds) * time.Second).UTC()
+		expiresAt = &at
+	}
+	s.writeRecord(ctx, ws, box, nil, expiresAt)
+}
+
+// recordExpiry moves a live sandbox's recorded lifetime deadline, as a suspend
+// or a resume moves its own (lifetimeDeadline), so the sweeper ends it at that
+// time once OpenSandbox deletes it (w32/017). Best effort, like the other
+// record writes: a sandbox whose deadline was not moved ends at the sweep.
+func (s *Service) recordExpiry(ctx context.Context, raw osSandbox, expiresAt *time.Time) {
+	if s.Records == nil {
+		return
+	}
+	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), recordWriteTimeout)
+	defer cancel()
+	if err := s.Records.SetSandboxExpiry(writeCtx, raw.Metadata[metadataWorkspace], canonicalID(raw), expiresAt); err != nil {
+		log.Printf("sandbox: record expiry of %s: %v", canonicalID(raw), err)
+	}
 }
 
 // recordEnded records a sandbox's end now. raw is the sandbox as last read;
 // its view is kept only for a sandbox created before records existed.
 func (s *Service) recordEnded(ctx context.Context, ws string, raw osSandbox) {
 	at := s.Now().UTC()
-	s.writeRecord(ctx, ws, s.sandboxView(raw, ws), &at)
+	s.writeRecord(ctx, ws, s.sandboxView(raw, ws), &at, nil)
 }
 
-func (s *Service) writeRecord(ctx context.Context, ws string, box Sandbox, endedAt *time.Time) {
+func (s *Service) writeRecord(ctx context.Context, ws string, box Sandbox, endedAt, expiresAt *time.Time) {
 	if s.Records == nil || box.ID == "" {
 		return
 	}
@@ -98,7 +120,7 @@ func (s *Service) writeRecord(ctx context.Context, ws string, box Sandbox, ended
 	}
 	writeCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), recordWriteTimeout)
 	defer cancel()
-	r := store.SandboxRecord{WorkspaceID: ws, SandboxID: box.ID, Owner: box.Owner, View: view, TerminatedAt: endedAt}
+	r := store.SandboxRecord{WorkspaceID: ws, SandboxID: box.ID, Owner: box.Owner, View: view, TerminatedAt: endedAt, ExpiresAt: expiresAt}
 	if err := s.Records.RecordSandbox(writeCtx, r); err != nil {
 		log.Printf("sandbox: write record of %s: %v", box.ID, err)
 	}

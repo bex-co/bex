@@ -119,3 +119,68 @@ func TestSandboxRecordsPG(t *testing.T) {
 		t.Fatalf("a record ended within 30 days expired: %v", err)
 	}
 }
+
+// w32/017: an absent record past its lifetime deadline ends at that deadline at
+// once, however young; a young one before its deadline, or with none, waits
+// out the ten-minute create guard; SetSandboxExpiry moves a live deadline and
+// leaves an ended record alone.
+func TestEndAbsentSandboxesEndsAnExpiredRecordAtItsDeadline(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-expiry").ID
+	stamp := time.Now().UnixNano()
+	expired, moved, noDeadline := fmt.Sprintf("sbx-x%d", stamp), fmt.Sprintf("sbx-m%d", stamp), fmt.Sprintf("sbx-n%d", stamp)
+	now := time.Now().UTC().Truncate(time.Second)
+	deadline := now.Add(-30 * time.Second)
+	future := now.Add(time.Hour)
+	for id, expires := range map[string]*time.Time{expired: &deadline, moved: &deadline, noDeadline: nil} {
+		if err := st.RecordSandbox(ctx, SandboxRecord{WorkspaceID: ws, SandboxID: id, Owner: "usr-1", View: []byte(`{}`), ExpiresAt: expires}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A resume moved this one's deadline past now; a resume of a sandbox with
+	// no timeout clears it.
+	if err := st.SetSandboxExpiry(ctx, ws, moved, &future); err != nil {
+		t.Fatal(err)
+	}
+	cleared := fmt.Sprintf("sbx-c%d", stamp)
+	if err := st.RecordSandbox(ctx, SandboxRecord{WorkspaceID: ws, SandboxID: cleared, Owner: "usr-1", View: []byte(`{}`), ExpiresAt: &deadline}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetSandboxExpiry(ctx, ws, cleared, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.EndAbsentSandboxes(ctx, ws, nil, now); err != nil {
+		t.Fatal(err)
+	}
+	got, err := st.EndedSandbox(ctx, ws, expired)
+	if err != nil || got.TerminatedAt == nil || !got.TerminatedAt.Equal(deadline) {
+		t.Fatalf("expired record = %+v (err %v), want ended at its deadline %s", got, err, deadline)
+	}
+	for _, id := range []string{moved, noDeadline, cleared} {
+		if _, err := st.EndedSandbox(ctx, ws, id); !errors.Is(err, ErrNotFound) {
+			t.Fatalf("young record %s ended before its deadline: %v", id, err)
+		}
+	}
+	// Past the guard, both end at the sweep: the one without a deadline, and the
+	// one OpenSandbox deleted before its deadline (never a future end).
+	if _, err := st.Pool.Exec(ctx, `UPDATE sandbox_records SET created_at = now() - interval '1 hour' WHERE workspace_id = $1`, ws); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.EndAbsentSandboxes(ctx, ws, nil, now); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{noDeadline, moved} {
+		if got, err := st.EndedSandbox(ctx, ws, id); err != nil || got.TerminatedAt == nil || !got.TerminatedAt.Equal(now) {
+			t.Fatalf("old absent record %s = %+v (err %v), want ended at the sweep %s", id, got, err, now)
+		}
+	}
+	// An ended record's deadline does not move.
+	if err := st.SetSandboxExpiry(ctx, ws, expired, &future); err != nil {
+		t.Fatal(err)
+	}
+	var expires *time.Time
+	if err := st.Pool.QueryRow(ctx, `SELECT expires_at FROM sandbox_records WHERE workspace_id = $1 AND sandbox_id = $2`, ws, expired).Scan(&expires); err != nil || expires == nil || !expires.Equal(deadline) {
+		t.Fatalf("ended record's deadline = %v (err %v), want unchanged %s", expires, err, deadline)
+	}
+}

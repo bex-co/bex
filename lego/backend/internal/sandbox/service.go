@@ -1647,6 +1647,7 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 	if idleTracked(raw) {
 		switch phase {
 		case StatusSuspended:
+			s.afterSuspend(ctx, raw)
 			// A suspended sandbox holds no slot.
 			s.clearSlotLease(ctx, ws, canonicalID(raw))
 		case StatusTerminated:

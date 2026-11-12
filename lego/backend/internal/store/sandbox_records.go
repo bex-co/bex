@@ -37,6 +37,9 @@ type SandboxRecord struct {
 	Owner        string
 	View         []byte
 	TerminatedAt *time.Time
+	// ExpiresAt is the live sandbox's lifetime deadline (nil: none known),
+	// written at create; SetSandboxExpiry moves it on suspend and resume.
+	ExpiresAt *time.Time
 }
 
 // RecordSandbox writes a sandbox's record: a live one at create, an ended one
@@ -47,24 +50,34 @@ type SandboxRecord struct {
 // becomes live again.
 func (s *PGStore) RecordSandbox(ctx context.Context, r SandboxRecord) error {
 	_, err := s.Pool.Exec(ctx, `
-		INSERT INTO sandbox_records (workspace_id, sandbox_id, owner, view, terminated_at) VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO sandbox_records (workspace_id, sandbox_id, owner, view, terminated_at, expires_at) VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (workspace_id, sandbox_id) DO UPDATE SET terminated_at = EXCLUDED.terminated_at
-		WHERE sandbox_records.terminated_at IS NULL`, r.WorkspaceID, r.SandboxID, r.Owner, r.View, r.TerminatedAt)
+		WHERE sandbox_records.terminated_at IS NULL`, r.WorkspaceID, r.SandboxID, r.Owner, r.View, r.TerminatedAt, r.ExpiresAt)
 	return classify("sandbox record", err)
 }
 
-// EndAbsentSandboxes ends, at at, the live records of one workspace's
-// sandboxes absent from a complete OpenSandbox list: ones OpenSandbox deleted
-// itself, at their expireTime. A record younger than ten minutes is kept, as
-// for names: its create may not have reached the list yet.
+// SetSandboxExpiry moves a live record's lifetime deadline (nil: none), as a
+// suspend or a resume moves the sandbox's own. An ended record is unchanged.
+func (s *PGStore) SetSandboxExpiry(ctx context.Context, workspaceID, sandboxID string, expiresAt *time.Time) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE sandbox_records SET expires_at = $3
+		WHERE workspace_id = $1 AND sandbox_id = $2 AND terminated_at IS NULL`, workspaceID, sandboxID, expiresAt)
+	return classify("sandbox record expiry", err)
+}
+
+// EndAbsentSandboxes ends the live records of one workspace's sandboxes absent
+// from a complete OpenSandbox list: ones OpenSandbox deleted itself, at their
+// expireTime. A record whose lifetime deadline has passed ended at that
+// deadline (w32/017). Any other is ended at at, but only once it is ten
+// minutes old, as for names: its create may not have reached the list yet.
 func (s *PGStore) EndAbsentSandboxes(ctx context.Context, workspaceID string, live []string, at time.Time) error {
 	if live == nil {
 		live = []string{}
 	}
 	_, err := s.Pool.Exec(ctx, `
-		UPDATE sandbox_records SET terminated_at = $3
+		UPDATE sandbox_records SET terminated_at = LEAST(expires_at, $3)
 		WHERE workspace_id = $1 AND terminated_at IS NULL AND NOT (sandbox_id = ANY($2::text[]))
-		  AND created_at < now() - interval '10 minutes'`, workspaceID, live, at)
+		  AND (expires_at <= $3 OR created_at < now() - interval '10 minutes')`, workspaceID, live, at)
 	return err
 }
 

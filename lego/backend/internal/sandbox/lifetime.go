@@ -200,6 +200,14 @@ func (s *Service) beforeSuspend(ctx context.Context, key string, raw osSandbox) 
 	return nil
 }
 
+// afterSuspend moves the record's deadline to the end of the suspended window
+// once OpenSandbox accepted the pause, never before: a refused or failed pause
+// leaves the sandbox running under its old deadline (w32/017).
+func (s *Service) afterSuspend(ctx context.Context, raw osSandbox) {
+	retained := s.Now().Add(suspendedRetention).UTC()
+	s.recordExpiry(ctx, raw, &retained)
+}
+
 // beforeResume stamps the resume of an ordinary suspended sandbox ahead of
 // the call, so the reconcile never reads a resumed sandbox's timeout from an
 // older start. A failed stamp refuses the resume.
@@ -221,11 +229,18 @@ func (s *Service) afterResume(ctx context.Context, key string, raw osSandbox) {
 	if !idleTracked(raw) || mapOpenSandboxStatus(raw.Status.State) != StatusSuspended {
 		return
 	}
-	timeout := openSandboxTimeout(timeoutFromMetadata(raw.Metadata[metadataTimeout]))
+	now, lifetime := s.Now(), timeoutFromMetadata(raw.Metadata[metadataTimeout])
+	var deadline *time.Time
+	if lifetime > 0 {
+		at := now.Add(time.Duration(lifetime) * time.Second).UTC()
+		deadline = &at
+	}
+	s.recordExpiry(ctx, raw, deadline)
+	timeout := openSandboxTimeout(lifetime)
 	if timeout == 0 {
 		return
 	}
-	at := s.Now().Add(time.Duration(timeout) * time.Second)
+	at := now.Add(time.Duration(timeout) * time.Second)
 	if err := s.Client.RenewExpiration(ctx, key, raw.ID, at); err != nil && !errors.Is(err, errOpenSandboxConflict) {
 		log.Printf("sandbox lifetime: renew expiry on resume sandbox=%s: %v", raw.ID, err)
 	}
