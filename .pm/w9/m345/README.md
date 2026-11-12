@@ -1,6 +1,6 @@
 # w9 · m345 — Render event types for features bex already has: `edge_cache_enabled`/`_disabled`/`_purged` and `pipeline_minutes_exhausted`
 
-**Worker:** worker9 **Goal:** the Events feed and outbound webhooks report edge-cache changes and builds refused for exhausted pipeline minutes with Render's event types, on every surface Render offers them. **Status:** in progress (t001–t007 done; production check pending)
+**Worker:** worker9 **Goal:** the Events feed and outbound webhooks report edge-cache changes and builds refused for exhausted pipeline minutes with Render's event types, on every surface Render offers them. **Status:** in progress (t001–t007 done and deployed at `f018ce945`; the production check waits on w9/087, because every web service created since w4/m243 is in image-ports mode and never runs the edge cache)
 
 ## Tasks (in order)
 
@@ -33,3 +33,9 @@ On production:
 - **Expected outcome:** Render webhook consumers that subscribe to these types receive them from bex unchanged.
 - **Why now:** both underlying features have shipped, and the recorded reasons for leaving the events out are now false.
 - **Parity:** included (t005), because the change touches REST, GraphQL, MCP, webhooks and the dashboard.
+
+## Production check (2026-11-12, in progress)
+
+- **Fixture:** `srv-dbqrqpg44das73c8s0cg` (`qa-20261112-m345-cache`, a Starter web service in `bex-canary` running `ealen/echo-server:0.9.2` with an explicit port 80) plus webhook `whk-dbqrr9nnb8qs73a4f1b0` subscribed to the three `edge_cache_*` types. Delete both at closeout.
+- **What happened:** `setCacheProfile` to `origin-controlled`, then `origin-controlled-all`, then `no-cache` each saved and started a deploy. The purge in between answered `bad request: edge caching is not enabled for this service`, and no `edge_cache_*` event was recorded.
+- **Why:** even with an explicit port, the service is in `web-image-v1` mode, so `ServesEdgeCache` is false. That is w9/087's bug, not m345's: m345 reports only caches that actually run. Re-run once 087 ships.
