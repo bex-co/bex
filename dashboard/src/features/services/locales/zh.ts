@@ -4572,7 +4572,27 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.eventsReplicaChange": {
     message: "实例数 {from} → {to}",
-    description: "自动伸缩副本数变化摘要",
+    description:
+      "Instance count from/to summary: an autoscaling start/end's replicas or an instance_count_changed event's counts",
+  },
+  "services.eventsAutoscalingChange": {
+    message: "自动伸缩 {from} → {to}",
+    description:
+      "autoscaling_config_changed detail line; from/to are services.eventsAutoscalingOff or services.eventsAutoscalingRange (w4/568)",
+  },
+  "services.eventsAutoscalingOff": {
+    message: "关闭",
+    description: "One side of an autoscaling change: autoscaling off (w4/568)",
+  },
+  "services.eventsAutoscalingRange": {
+    message: "{min}–{max} 个实例",
+    description:
+      "One side of an autoscaling change: its minimum–maximum instances (w4/568)",
+  },
+  "services.eventsPlanChange": {
+    message: "实例类型 {from} → {to}",
+    description:
+      "plan_changed detail line, by the instance types' names (w4/568)",
   },
   "services.eventsBranchChange": {
     message: "分支 {from} → {to}",
@@ -4669,7 +4689,7 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsPlacementNone": {
     message: "无",
     description:
-      "Placeholder for an absent placement side of a service_moved event (assigned from / removed to nothing)",
+      "Placeholder for an absent side of a service_moved event (assigned from / removed to nothing) or of a plan_changed event (no plan before)",
   },
   "services.eventsTypeEnvGroupLinked": {
     message: "已关联环境组",

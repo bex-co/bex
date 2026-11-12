@@ -40,6 +40,17 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
   }),
 }));
 
+const instanceTypeNames: Record<string, string> = {
+  starter: "Starter",
+  standard: "Standard",
+};
+vi.mock("@/features/services/hooks/use-instance-types", () => ({
+  useInstanceTypes: () => ({
+    byID: (id: string | null | undefined) =>
+      id && instanceTypeNames[id] ? { name: instanceTypeNames[id] } : undefined,
+  }),
+}));
+
 vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
   useWorkspaceSubjectLabel: (subject: string) => subject,
 }));
@@ -349,6 +360,81 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
 
     expect(rollbackService).toHaveBeenCalled();
     expect(router.state.location.pathname).toBe("/services/app/events");
+  });
+});
+
+// w4/568: an instance-count, autoscaling or plan change says what changed;
+// a legacy row without the values keeps its bare label.
+describe("ServiceEventsPage — configuration change values (w4/568)", () => {
+  it("shows each change's before and after", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          {
+            id: "evt-count",
+            type: "instance_count_changed",
+            timestamp: "2026-08-28T09:00:00Z",
+            cursor: "c-count",
+            details: { instanceCountFrom: 1, instanceCountTo: 2 },
+          },
+          {
+            id: "evt-auto-on",
+            type: "autoscaling_config_changed",
+            timestamp: "2026-08-28T08:00:00Z",
+            cursor: "c-auto-on",
+            details: { autoscalingMinTo: 1, autoscalingMaxTo: 2 },
+          },
+          {
+            id: "evt-auto-off",
+            type: "autoscaling_config_changed",
+            timestamp: "2026-08-28T07:00:00Z",
+            cursor: "c-auto-off",
+            details: { autoscalingMinFrom: 1, autoscalingMaxFrom: 2 },
+          },
+          {
+            id: "evt-plan",
+            type: "plan_changed",
+            timestamp: "2026-08-28T06:00:00Z",
+            cursor: "c-plan",
+            details: { planFrom: "starter", planTo: "standard" },
+          },
+          {
+            id: "evt-plan-first",
+            type: "plan_changed",
+            timestamp: "2026-08-28T05:00:00Z",
+            cursor: "c-plan-first",
+            details: { planFrom: "", planTo: "starter" },
+          },
+          {
+            id: "evt-auto-legacy",
+            type: "autoscaling_config_changed",
+            timestamp: "2026-08-28T04:00:00Z",
+            cursor: "c-auto-legacy",
+            details: {},
+          },
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(await screen.findByText("Instances 1 → 2")).toBeInTheDocument();
+    expect(
+      screen.getByText("Autoscaling Off → 1–2 instances"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Autoscaling 1–2 instances → Off"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Instance type Starter → Standard"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Instance type none → Starter"),
+    ).toBeInTheDocument();
+    // The legacy row adds no third "Autoscaling …" line, Off → Off included.
+    expect(screen.getAllByText(/^Autoscaling .+ → /)).toHaveLength(2);
   });
 });
 

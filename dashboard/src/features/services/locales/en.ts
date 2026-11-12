@@ -4681,7 +4681,27 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.eventsReplicaChange": {
     message: "Instances {from} → {to}",
-    description: "Autoscaling from/to replica summary",
+    description:
+      "Instance count from/to summary: an autoscaling start/end's replicas or an instance_count_changed event's counts",
+  },
+  "services.eventsAutoscalingChange": {
+    message: "Autoscaling {from} → {to}",
+    description:
+      "autoscaling_config_changed detail line; from/to are services.eventsAutoscalingOff or services.eventsAutoscalingRange (w4/568)",
+  },
+  "services.eventsAutoscalingOff": {
+    message: "Off",
+    description: "One side of an autoscaling change: autoscaling off (w4/568)",
+  },
+  "services.eventsAutoscalingRange": {
+    message: "{min}–{max} instances",
+    description:
+      "One side of an autoscaling change: its minimum–maximum instances (w4/568)",
+  },
+  "services.eventsPlanChange": {
+    message: "Instance type {from} → {to}",
+    description:
+      "plan_changed detail line, by the instance types' names (w4/568)",
   },
   "services.eventsBranchChange": {
     message: "Branch {from} → {to}",
@@ -4783,7 +4803,7 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsPlacementNone": {
     message: "none",
     description:
-      "Placeholder for an absent placement side of a service_moved event (assigned from / removed to nothing)",
+      "Placeholder for an absent side of a service_moved event (assigned from / removed to nothing) or of a plan_changed event (no plan before)",
   },
   "services.eventsTypeEnvGroupLinked": {
     message: "Environment group linked",

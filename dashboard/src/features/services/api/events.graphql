@@ -36,6 +36,15 @@ query ServiceEvents(
       cancelReason
       # w4/m112: why an OPEN deploy is not progressing; deploy_started only.
       stallReason
+      # The audit-sourced configuration changes' before/after (w3/m16, w4/568).
+      instanceCountFrom
+      instanceCountTo
+      autoscalingMinFrom
+      autoscalingMaxFrom
+      autoscalingMinTo
+      autoscalingMaxTo
+      planFrom
+      planTo
       # The two sentences by code, worded in the dashboard's language (w4/566).
       failureReasonTemplate {
         code

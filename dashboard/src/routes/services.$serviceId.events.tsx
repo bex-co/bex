@@ -20,6 +20,7 @@ import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useServer } from "@/features/services/hooks/use-server";
+import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
 import { CronRunsSection } from "@/features/services/components/cron-runs-section";
@@ -413,8 +414,11 @@ function EventSummary({
   const reasonCode = details?.reasonCode || null;
   const exitCode = details?.exitCode ?? null;
   const instanceId = details?.instanceId || null;
-  const fromCount = details?.fromCount ?? null;
-  const toCount = details?.toCount ?? null;
+  // An autoscaling start/end's replica pair, or an instance-count change's
+  // (w3/m16): the audit-sourced type carries its values in its own fields.
+  const fromCount = details?.fromCount ?? details?.instanceCountFrom ?? null;
+  const toCount = details?.toCount ?? details?.instanceCountTo ?? null;
+  const planTo = details?.planTo || null;
   const branchFrom = details?.branchFrom || null;
   const branchTo = details?.branchTo || null;
   const usagePercent = details?.usagePercent ?? null;
@@ -561,6 +565,12 @@ function EventSummary({
             })}
           </p>
         ) : null}
+        {type === "autoscaling_config_changed" && details ? (
+          <AutoscalingChange details={details} />
+        ) : null}
+        {type === "plan_changed" && planTo ? (
+          <PlanChange from={details?.planFrom || null} to={planTo} />
+        ) : null}
         {usagePercent != null && thresholdPercent != null ? (
           <p className="text-muted-foreground mt-2 text-xs">
             {t("services.eventsDiskUsage", {
@@ -671,5 +681,55 @@ function PlacementChange({
         </p>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * An autoscaling configuration change, each side Off or a range (w4/568). A
+ * row recorded before the values were keeps its bare title.
+ */
+function AutoscalingChange({
+  details,
+}: {
+  details: NonNullable<ServiceEventView["details"]>;
+}) {
+  const { t } = useTranslations();
+  const { autoscalingMinFrom, autoscalingMaxFrom } = details;
+  const { autoscalingMinTo, autoscalingMaxTo } = details;
+  if (
+    autoscalingMinFrom == null &&
+    autoscalingMaxFrom == null &&
+    autoscalingMinTo == null &&
+    autoscalingMaxTo == null
+  ) {
+    return null;
+  }
+  const side = (min?: number | null, max?: number | null) =>
+    min != null && max != null
+      ? t("services.eventsAutoscalingRange", { min, max })
+      : t("services.eventsAutoscalingOff");
+  return (
+    <p className="text-muted-foreground mt-2 text-xs">
+      {t("services.eventsAutoscalingChange", {
+        from: side(autoscalingMinFrom, autoscalingMaxFrom),
+        to: side(autoscalingMinTo, autoscalingMaxTo),
+      })}
+    </p>
+  );
+}
+
+/** A plan change by its instance types' names, as the plan picker names them (w4/568). */
+function PlanChange({ from, to }: { from: string | null; to: string }) {
+  const { t } = useTranslations();
+  const { byID } = useInstanceTypes();
+  return (
+    <p className="text-muted-foreground mt-2 text-xs">
+      {t("services.eventsPlanChange", {
+        from: from
+          ? (byID(from)?.name ?? from)
+          : t("services.eventsPlacementNone"),
+        to: byID(to)?.name ?? to,
+      })}
+    </p>
   );
 }
