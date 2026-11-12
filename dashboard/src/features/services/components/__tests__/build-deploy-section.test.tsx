@@ -1393,6 +1393,20 @@ describe("build setting row validation (w21/045)", () => {
     },
   );
 
+  it.each(["./", "backend/", "./backend/"])(
+    "still saves the Docker Build Context spelling %j, which the server normalizes (w8/292)",
+    async (value) => {
+      const user = userEvent.setup();
+      render(section({}));
+      await editRow(user, "Docker Build Context Directory", value);
+      expect(
+        screen.getByRole("textbox", { name: "Docker Build Context Directory" }),
+      ).not.toHaveAttribute("aria-invalid");
+      await confirmSave(user);
+      expect(setDockerContext).toHaveBeenCalledWith("app", value);
+    },
+  );
+
   it("marks an unclosed [ in a Build Filter pattern and holds its Save", async () => {
     const user = userEvent.setup();
     render(section({}));

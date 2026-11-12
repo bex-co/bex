@@ -50,7 +50,7 @@ describe("Root Directory (judged after the server's normalization)", () => {
   });
 });
 
-describe("Dockerfile Path and Docker Build Context (judged as typed)", () => {
+describe("Dockerfile Path (judged as typed)", () => {
   it.each(["", ".", "./Dockerfile", "docker/Dockerfile", "a b", "ctx"])(
     "accepts %j",
     (value) => {

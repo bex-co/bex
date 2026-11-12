@@ -335,7 +335,7 @@ export function BuildDeploySection({
               optional
               mono
               busy={dockerContextBusy}
-              validate={pathValidate(relativePathError)}
+              validate={pathValidate(rootDirError)}
               confirm={{
                 title: (value) =>
                   t("services.dockerContextConfirmTitle", { value }),

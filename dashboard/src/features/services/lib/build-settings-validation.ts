@@ -21,8 +21,8 @@ const CONTROL = /[\0\r\n\t]/;
 /**
  * A relative path inside the repository, exactly as ValidRootDir judges it:
  * empty is fine, and `./x` is (only `..` and an empty segment are not), so
- * `a//b` and a trailing `/` are refused here. The Dockerfile Path and the
- * Docker Build Context are judged as typed (after a trim).
+ * `a//b` and a trailing `/` are refused here. The Dockerfile Path is judged
+ * as typed (after a trim): it names a file, so a trailing `/` is an error.
  */
 export function relativePathError(raw: string): Reason | null {
   const value = raw.trim();
@@ -55,7 +55,10 @@ function normalizeRootDir(value: string): string {
   return kept.join("/");
 }
 
-/** The Root Directory: judged after the server's normalization. */
+/**
+ * The Root Directory and the Docker Build Context: judged after the server's
+ * normalization, so `./` and `backend/` name directories (w8/292).
+ */
 export function rootDirError(raw: string): Reason | null {
   return relativePathError(normalizeRootDir(raw.trim()));
 }

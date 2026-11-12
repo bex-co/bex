@@ -113,11 +113,15 @@ func repoRootRelative(p string) string {
 	return p
 }
 
-// checkDockerContextPath is create's and update's one rule for the wire value:
-// a relative path inside the repository (store.RootDirProblem), named by the
-// rule it broke.
+// checkDockerContextPath is create's, update's and the Blueprint's one rule
+// for the wire value: a relative path inside the repository
+// (store.RootDirProblem), named by the rule it broke. It is judged after the
+// spellings of one directory are mapped together, as a Root Directory is
+// (store.NormalizeRootDir): Render's templates write `dockerContext: ./`, and
+// `backend/` names `backend` (w8/292). The stored value is path.Join'd
+// (storedDockerContext), which maps them the same way.
 func checkDockerContextPath(wire string) error {
-	if problem := store.RootDirProblem(wire); problem != "" {
+	if problem := store.RootDirProblem(store.NormalizeRootDir(strings.TrimSpace(wire))); problem != "" {
 		return fmt.Errorf("%w: dockerContext %s", core.ErrBadRequest, problem)
 	}
 	return nil

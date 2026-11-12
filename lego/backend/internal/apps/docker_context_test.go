@@ -43,6 +43,10 @@ func TestDockerContextTranslation(t *testing.T) {
 		{"", "app", "app"}, // no rootDir: unchanged
 		{"", ".", ""},
 		{"a/b", "c/d", "a/b/c/d"},
+		// Render's spellings of the same directories (w8/292).
+		{"backend", "./", ""},
+		{"backend", "ctx/", "backend/ctx"},
+		{"backend", "a//b", "backend/a/b"},
 	} {
 		if got := storedDockerContext(tc.root, tc.wire); got != tc.stored {
 			t.Errorf("storedDockerContext(%q, %q) = %q, want %q", tc.root, tc.wire, got, tc.stored)
@@ -82,6 +86,8 @@ func TestCreateStoresRootDirRelativeDockerContext(t *testing.T) {
 		{"dot", ".", "", "."},
 		{"unset", "", "", "."},
 		{"nested", "ctx", "example-pserv/ctx", "ctx"},
+		{"slash", "./", "", "."},
+		{"trailing", "ctx/", "example-pserv/ctx", "ctx"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, cl := newService(nil)

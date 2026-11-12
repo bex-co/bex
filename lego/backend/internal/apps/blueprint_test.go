@@ -4122,6 +4122,65 @@ func TestValidateBlueprintDockerContext(t *testing.T) {
 	}
 }
 
+// Render's one-click templates write `dockerContext: ./` (RAG-chatbot-template,
+// web-research-agent-template). Every spelling of a directory validates and
+// stores as its Root Directory spelling would (w8/292), and a context that is
+// still refused is located at its own key, not at the service entry.
+func TestValidateBlueprintDockerContextSpellings(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	manifest := func(dockerContext string) string {
+		return `services:
+  - name: api
+    type: web
+    runtime: docker
+    repo: https://github.com/bex/mono
+    rootDir: apps/api
+    dockerfilePath: ./Dockerfile
+    dockerContext: ` + dockerContext + `
+`
+	}
+	// The Root Directory itself is the default, stored empty.
+	for dockerContext, stored := range map[string]string{
+		"./": "", ".": "", "backend/": "apps/api/backend",
+		"./backend/": "apps/api/backend", "a//b": "apps/api/a/b",
+	} {
+		v, err := svc.ValidateBlueprint(context.Background(), "", manifest(dockerContext), "")
+		if err != nil || !v.Valid {
+			t.Errorf("dockerContext %q must validate: %+v %v", dockerContext, v, err)
+			continue
+		}
+		source, ir, problems := CompileBlueprintIR(manifest(dockerContext))
+		if len(problems) > 0 {
+			t.Fatalf("compile %q: %+v", dockerContext, problems)
+		}
+		st, err := parseCompiledStack(blueprintParseOverrides{}, source, ir)
+		if err != nil {
+			t.Fatalf("parse %q: %v", dockerContext, err)
+		}
+		spec, err := specFromCreate(st.services[0].req)
+		if err != nil {
+			t.Fatalf("specFromCreate %q: %v", dockerContext, err)
+		}
+		if spec.DockerContext != stored {
+			t.Errorf("dockerContext %q stored %q, want %q", dockerContext, spec.DockerContext, stored)
+		}
+	}
+	for key, bad := range map[string]string{
+		"dockerContext":  manifest("../escape/"),
+		"dockerfilePath": strings.Replace(manifest("."), "dockerfilePath: ./Dockerfile", "dockerfilePath: ../Dockerfile", 1),
+	} {
+		v, err := svc.ValidateBlueprint(context.Background(), "", bad, "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		line := map[string]int{"dockerfilePath": 7, "dockerContext": 8}[key]
+		if v.Valid || len(v.Errors) == 0 || v.Errors[0].Line == nil || *v.Errors[0].Line != line ||
+			v.Errors[0].Path == nil || !strings.HasSuffix(*v.Errors[0].Path, "."+key) {
+			t.Errorf("a refused %s must be located at its own key (line %d), got %+v", key, line, v)
+		}
+	}
+}
+
 // TestValidateBlueprintRegistryCredential covers the w8/m19 t005 promotion:
 // render.yaml's by-name workspace registry-credential references — the
 // service-level registryCredential and image.creds forms — resolve to the
