@@ -1,6 +1,6 @@
 # w1 · m339 — Session lifecycle verbs, list filters and workspace agent configuration in `bex agent`
 
-**Worker:** worker1 **Goal:** every agent-session and workspace agent-configuration route bex-api already serves is reachable from `bex agent`, with secret values never on argv. **Status:** in progress (2026-11-12: every task done except t008's live child-session start, which waits for a free platform session slot in the QA workspace, and closeout)
+**Worker:** worker1 **Goal:** every agent-session and workspace agent-configuration route bex-api already serves is reachable from `bex agent`, with secret values never on argv. **Status:** done (2026-11-12; verified on production, see Live check)
 
 ## Tasks (in order)
 
@@ -13,11 +13,11 @@
 | t005 | `env`, `env set` and `models` — **DONE** | 60m | — |
 | t006 | Contract fixture additions and backend twin — **DONE** | 45m | t002, t003, t004, t005 |
 | t007 | Document the new verbs — **DONE** | 30m | t006 |
-| t008 | Live check on production with a locally built binary | 45m | t007 |
+| t008 | Live check on production with a locally built binary — **DONE** | 45m | t007 |
 | t009 | Render parity (Devin reference) — **DONE** | 15m | t008 |
 | t010 | Simplify — **DONE** | 15m | t009 |
 | t011 | Test coverage — **DONE** | 30m | t009 |
-| t012 | Closeout | 10m | t011 |
+| t012 | Closeout — **DONE** | 10m | t011 |
 
 ## Definition of done
 
@@ -29,7 +29,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** ADR106 D3 (filters, `--parent`, URLs), D4 and D8. Approved `/pm-brainstorm ADR106 for w1` item 2 via `/pmx`, 2026-11-11. Design: [ADR106](../../../docs/ADR106-cli-cloud-agents-automations.md).
+- **Source:** ADR106 D3 (filters, `--parent`, URLs), D4 and D8. Approved `/pm-brainstorm ADR106 for w1` item 2 via `/pmx`, 2026-11-11. Design: [ADR106](../../../../docs/ADR106-cli-cloud-agents-automations.md).
 - **Goal linkage:** ADR008 AI-native surfaces; Devin CLI parity (`/archive`, `devin list`, subagents) for the agent routes of ADR065, ADR094 w7/m296, ADR098, ADR099, ADR102.
 - **Expected outcome:** a workspace can be set up for Cloud Agents and its sessions managed without the dashboard; m340's chat slash commands reuse these verbs.
 - **Why now:** all of these routes are shipped and reachable only from the dashboard, GraphQL and MCP; m340 depends on the lifecycle verbs and URL references. Render parity is included with Devin as the reference product; REST/GraphQL/MCP are unchanged.
@@ -49,6 +49,6 @@ A locally built `bex`, signed in as the QA user through the isolated device logi
 | `tags` | `tags … qa qa:m339` set `['qa', 'qa:m339']`; `--clear` emptied them |
 | Filters | `list --mine --since 1h` returned the fixture. `list --parent <URL>` returned an empty list (no child). `list --automation rt-fix-logic-bugs --since 2d` resolved the name to its `aut-` id and returned only that automation's 2 sessions |
 | `archive`, `unarchive`, `delete` | `archive` of three ids archived all three, and `list --archived true` listed them. `unarchive` worked. `delete` without `--confirm` exited 2; with it, all three fixtures and m338's two fire sessions were deleted |
-| `run --parent` | **Pending.** The API received and enforced the parent link: `409 AGENT_SESSION_PARENT_NOT_ACTIVE` while the parent had settled, and `400 AGENT_SESSION_CHILD_SPEND_EXCEEDS_PARENT` for a child ceiling over the parent's remainder. Starting a child then failed on `409 AGENT_SESSION_TRUST_LIMIT`: the workspace's T0 tier runs 2 platform sessions, and the scheduled `rt-fix-logic-bugs` routine held the other slot. Retried at closeout |
+| `run --parent` | The API received and enforced the parent link: `409 AGENT_SESSION_PARENT_NOT_ACTIVE` once the parent had settled, and `400 AGENT_SESSION_CHILD_SPEND_EXCEEDS_PARENT` for a child ceiling above the parent's remainder. Retried at 12:27 UTC, when no other session ran: `run --parent https://dashboard.bex.co/agents/<parent>` started child `ags-dbqr1594…` under a running parent (`--max-spend 2` / `0.5`). `tree <child>` showed the parent with the child indented and marked, and `list --parent <parent>` returned exactly the child. Both succeeded; the settled tree showed both, and both were deleted |
 
 Found and fixed during the check: a session id with a space (`"ags-a ags-b"`, which zsh passes unsplit) passed the prefix-only id check and reached the API as a 403. Ids are now `ags-` plus the lowercase letters and digits of an xid, with a test.

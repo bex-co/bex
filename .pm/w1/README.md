@@ -16,7 +16,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [x] **m338** — **DONE 2026-11-12** — [`bex agent automations`: Agent Automations from the terminal and from repo files](done/m338/README.md) (12 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11
-- [ ] **m339** — code shipped and verified live; t008's child-session start waits for a free QA platform slot — [Session lifecycle verbs, list filters and workspace agent configuration in `bex agent`](m339/README.md) (12 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11
+- [x] **m339** — **DONE 2026-11-12** — [Session lifecycle verbs, list filters and workspace agent configuration in `bex agent`](done/m339/README.md) (12 tasks)
 - [x] **m340** — **DONE 2026-11-12** — [Live agent sessions in the terminal: SSE stream, `bex agent chat`, picker](done/m340/README.md) (12 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11
 - [x] **m341** — **DONE 2026-11-12** — [Handoff, pickup and ssh: move work between a laptop and a Cloud Agent](done/m341/README.md) (10 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11
 - [ ] **145** — **BLOCKED (your decision: allow SSH port forwarding into agent sandboxes, `ags-` loopback targets only, as Devin's `devin forward` does — or keep the ban and record the divergence)** — [Decide OD1: port forwarding into agent sandboxes (`bex agent forward`)](blocked/145.md)
