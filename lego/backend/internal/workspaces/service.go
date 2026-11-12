@@ -289,6 +289,9 @@ type IdentityAttrs struct {
 	EmailVerified bool
 	Name          string
 	MFAEnabled    bool
+	// GitHubUserID is the numeric GitHub user id of the member's GitHub
+	// sign-in, when the oidc credential was read and one is linked.
+	GitHubUserID string
 }
 
 // KeyOwnerReader resolves a machine caller's API key (Hydra client id) to the

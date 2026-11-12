@@ -30,10 +30,11 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **083** — **BLOCKED (your resource: a private test image plus a read-only registry credential for the live check; code shipped in 95f1e1f39)** — [A service linked to a private image build source cannot pull the image](blocked/083.md)
 - [ ] **079** — **BLOCKED (time/usage trigger: re-evaluate on 2026-12-05 or at 10 GB in `bex-agent-attachments`, whichever comes first; no user action needed)** — [ADR095 residuals: attachment storage metering and malware scanning](blocked/079.md)
 - [x] **m343** — [Automation run notifications: email per run outcome, and the auto-pause alert ADR101 promised](done/m343/README.md) (10 tasks) ← from `/pm-brainstorm more for w9` 2026-11-11, filed by `/pmx` 2026-11-12
-- [ ] **m344** — [PR feedback loop: comments, reviews and CI failures on the agent's draft PR steer its session](m344/README.md) (11 tasks) ← from `/pm-brainstorm more for w9` 2026-11-11, filed by `/pmx` 2026-11-12; live check needs the user to enable the new GitHub App events
+- [ ] **m344** — **BLOCKED (your action: on the production GitHub App, Settings → Subscribe to events → tick Issue comment and Pull request review, per ADR026 § PR feedback; implementation shipped)** — [PR feedback loop: comments, reviews and CI failures on the agent's draft PR steer its session](blocked/m344/README.md) (11 tasks; t001–t006, t008–t010 done)
 - [ ] **m345** — [Render event types for features bex already has: `edge_cache_*` and `pipeline_minutes_exhausted`](m345/README.md) (8 tasks) ← from `/pm-brainstorm more for w9` 2026-11-11, filed by `/pmx` 2026-11-12
 - [ ] **m346** — [Coordinator tools: a parent session waits for, messages and cancels its children from inside its sandbox](m346/README.md) (8 tasks) ← from `/pm-brainstorm more for w9` 2026-11-11, filed by `/pmx` 2026-11-12
 - [ ] **084** — [The mobile app drops the `agent_automation_paused` push](084.md) ← w9/m343 t003 follow-up
+- [ ] **085** — [A `/bex` comment on any pull request starts an agent session on it](085.md) ← w9/m344 follow-up (Devin `/devin`)
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
 - [x] **081** — [Approval mode for codex sessions (withdrawn)](done/081.md) — withdrawn 2026-11-07 with ADR100; removed by m179
 - [x] **082** — [Settings: the Team card skeleton is shorter than the ready card](done/082.md) ← w9 final skeleton check 2026-11-06

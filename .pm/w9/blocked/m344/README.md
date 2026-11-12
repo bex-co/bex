@@ -1,21 +1,21 @@
 # w9 · m344 — PR feedback loop: comments, reviews and CI failures on the agent's draft PR steer its session
 
-**Worker:** worker9 **Goal:** feedback on an agent's draft PR reaches the agent, as with Devin. A review or comment from someone with write access whose GitHub account is linked to a workspace member starts a new turn on the same branch; a failed CI run on the head starts one automatic fix attempt; the agent replies on the PR; bots, unauthorized commenters and loops are ignored. **Status:** todo
+**Worker:** worker9 **Goal:** feedback on an agent's draft PR reaches the agent, as with Devin. A review or comment from someone with write access whose GitHub account is linked to a workspace member starts a new turn on the same branch; a failed CI run on the head starts one automatic fix attempt; the agent replies on the PR; bots, unauthorized commenters and loops are ignored. **Status:** blocked — t001–t006 and t008–t010 done (shipped); t007's live check waits on the user enabling the Issue comment and Pull request review events on the production GitHub App (ADR026), then t011 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Amend ADR047/ADR090: who may steer a session from its PR, which events count, and the loop guards | 60m | — |
-| [t002](t002.md) | GitHub App: receive comment and review events, and probe that an installation accepted them | 30m | t001 |
-| [t003](t003.md) | Route a PR comment or review to its session's Steer, as quoted untrusted input | 90m | t002 |
-| [t004](t004.md) | A failed CI run on the session's head steers one automatic fix attempt | 60m | t003 |
-| [t005](t005.md) | The agent can reply on its PR through the gateway | 60m | t003 |
-| [t006](t006.md) | Dashboard: a turn says what steered it — a PR comment from @user or a CI failure | 45m | t003 |
+| [t001](done/t001.md) | Amend ADR047/ADR090: who may steer a session from its PR, which events count, and the loop guards — **DONE** | 60m | — |
+| [t002](done/t002.md) | GitHub App: receive comment and review events, and probe that an installation accepted them — **DONE** | 30m | t001 |
+| [t003](done/t003.md) | Route a PR comment or review to its session's Steer, as quoted untrusted input — **DONE** | 90m | t002 |
+| [t004](done/t004.md) | A failed CI run on the session's head steers one automatic fix attempt — **DONE** | 60m | t003 |
+| [t005](done/t005.md) | The agent can reply on its PR through the gateway — **DONE** | 60m | t003 |
+| [t006](done/t006.md) | Dashboard: a turn says what steered it — a PR comment from @user or a CI failure — **DONE** | 45m | t003 |
 | [t007](t007.md) | Live end-to-end on production: a PR comment steers the session, which pushes a fix and replies | 45m | t004, t005, t006 |
-| [t008](t008.md) | Render parity (Devin): the PR feedback loop matches Devin across webhook behavior, REST/GraphQL/MCP session views and the dashboard | 20m | t007 |
-| [t009](t009.md) | Simplify | 15m | t008 |
-| [t010](t010.md) | Test coverage | 45m | t008, t009 |
+| [t008](done/t008.md) | Render parity (Devin): the PR feedback loop matches Devin across webhook behavior, REST/GraphQL/MCP session views and the dashboard — **DONE** | 20m | t007 |
+| [t009](done/t009.md) | Simplify — **DONE** | 15m | t008 |
+| [t010](done/t010.md) | Test coverage — **DONE** | 45m | t008, t009 |
 | [t011](t011.md) | Closeout | 10m | t010 |
 
 ## Definition of done

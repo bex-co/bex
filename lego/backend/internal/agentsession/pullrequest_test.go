@@ -43,6 +43,26 @@ type fakeForge struct {
 	last      struct{ owner, repo, head, title, body string }
 	prs       map[string]*github.PullRequest
 	bodies    map[int]string
+	comments  []forgeComment
+}
+
+// forgeComment is one comment the comment verb posted.
+type forgeComment struct {
+	installation int64
+	owner, repo  string
+	number       int
+	body         string
+}
+
+func (f *fakeForge) CreateIssueComment(_ context.Context, installation int64, owner, repo string, number int, body string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	if f.err != nil {
+		return "", f.err
+	}
+	f.comments = append(f.comments, forgeComment{installation: installation, owner: owner, repo: repo, number: number, body: body})
+	return "https://github.com/" + owner + "/" + repo + "/pull/" + strconv.Itoa(number) + "#issuecomment-" + strconv.Itoa(900+len(f.comments)), nil
 }
 
 func (f *fakeForge) SyncDraftPullRequest(_ context.Context, _ int64, owner, repo, head, title, body string) (github.DraftPullRequestResult, error) {

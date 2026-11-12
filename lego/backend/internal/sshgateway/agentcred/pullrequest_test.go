@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -34,9 +35,18 @@ import (
 
 // prForge stands in for GitHub behind bex-api's real PullRequester.
 type prForge struct {
-	mu    sync.Mutex
-	calls int
-	heads []string
+	mu       sync.Mutex
+	calls    int
+	heads    []string
+	comments []int
+}
+
+func (f *prForge) CreateIssueComment(_ context.Context, _ int64, owner, repo string, number int, _ string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.calls++
+	f.comments = append(f.comments, number)
+	return "https://github.com/" + owner + "/" + repo + "/pull/" + strconv.Itoa(number) + "#issuecomment-1", nil
 }
 
 func (f *prForge) SyncDraftPullRequest(_ context.Context, _ int64, owner, repo, head, _, _ string) (github.DraftPullRequestResult, error) {

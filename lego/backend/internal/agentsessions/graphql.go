@@ -385,6 +385,19 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return gqlTime(*v.ArchivedAt)
 		})},
+		"turnOrigins": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(agentSessionTurnOriginGQLType)),
+			Description: "Which turns PR feedback started (a review, a comment or a failed CI run); only on a single-session read.",
+			Resolve:     gqlutil.Field(func(v View) any { return v.TurnOrigins })},
+	},
+})
+
+var agentSessionTurnOriginGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionTurnOrigin",
+	Fields: graphql.Fields{
+		"turn":   gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(v TurnOrigin) any { return v.Turn }),
+		"kind":   gqlutil.ReqStrField(func(v TurnOrigin) any { return v.Kind }),
+		"author": gqlutil.OptionalStrField(func(v TurnOrigin) any { return v.Author }),
+		"url":    gqlutil.OptionalStrField(func(v TurnOrigin) any { return v.URL }),
 	},
 })
 

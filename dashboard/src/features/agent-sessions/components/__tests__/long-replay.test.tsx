@@ -18,12 +18,18 @@ import {
   makeManualStream,
 } from "@/features/agent-sessions/lib/mock-stream";
 
-// The turn-skill pills read GraphQL (ADR099); these suites replay the stream
-// without an Apollo client and cover no skills.
+// The turn-skill pills (ADR099) and steer origins (w9/m344) read GraphQL;
+// these suites replay the stream without an Apollo client and cover neither.
 vi.mock(
   "@/features/agent-sessions/hooks/use-agent-session-turn-skills",
   () => ({
     useAgentSessionTurnSkills: () => [],
+  }),
+);
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-turn-origins",
+  () => ({
+    useAgentSessionTurnOrigins: () => [],
   }),
 );
 

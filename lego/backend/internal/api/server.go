@@ -260,6 +260,10 @@ type Server struct {
 	// The control-plane store implements it; nil (store-less operation) keeps the
 	// prior replayable behavior — there is nothing durable to claim with.
 	WebhookReplays apps.WebhookReplayGuard
+	// PRFeedback turns comments, reviews and failed CI on agent-session pull
+	// requests into steering turns (w9/m344, ADR047 D11); nil leaves those
+	// GitHub App events ignored.
+	PRFeedback *agentsessions.PRFeedback
 
 	// RateLimiter, when set, enforces per-caller token-bucket limits on the three
 	// auth-gated surfaces (REST, GraphQL, MCP). nil disables rate limiting. The
@@ -447,6 +451,9 @@ type Deps struct {
 	// AgentAutomationStore is the ADR101 agent automations table; nil =>
 	// automations unavailable.
 	AgentAutomationStore agentsessions.AutomationStore
+	// AgentFeedbackStore reads the PR feedback behind steering turns
+	// (w9/m344, ADR047 D11); nil leaves turnOrigins out.
+	AgentFeedbackStore agentsessions.FeedbackReader
 	// AgentRegistryHosts is the session-egress package-registry catalog,
 	// reported by the agent environment for display.
 	AgentRegistryHosts       []string
@@ -1134,6 +1141,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			AttachmentCopier: agentCopier,
 			Skills:           d.AgentSkillStore,
 			Automations:      d.AgentAutomationStore,
+			Feedback:         d.AgentFeedbackStore,
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
@@ -1446,6 +1454,9 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 		// assigning a nil *github.Service would trap a typed-nil in the interface.
 		if s.GitHub != nil {
 			wh.Installations = s.GitHub.InstallationResolver()
+		}
+		if s.PRFeedback != nil {
+			wh.PRFeedback = s.PRFeedback
 		}
 		mux.Handle("POST /v1/webhooks/git", webhookLimit(bodyLimit(wh)))
 	}

@@ -264,6 +264,9 @@ type Service struct {
 	// Automations is the ADR101 agent automations table. nil => every
 	// automation verb answers AGENT_AUTOMATIONS_UNAVAILABLE.
 	Automations AutomationStore
+	// Feedback reads the PR feedback that started steering turns (ADR047
+	// D11) for a session read's turnOrigins; nil leaves them out.
+	Feedback FeedbackReader
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -1337,6 +1340,7 @@ func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
 	// The summary and shared files cost reads, so only the single-session read
 	// pays them; list pages carry the outcome without them.
 	s.fillOutcome(ctx, record, view.Outcome)
+	view.TurnOrigins = s.turnOrigins(ctx, record.ID)
 	return view, nil
 }
 
@@ -1659,6 +1663,9 @@ func (s *Service) driverGrantPublicKey() string {
 	return key
 }
 
+// codeTurnInFlight refuses a steer while a turn is running.
+const codeTurnInFlight = "AGENT_SESSION_TURN_IN_FLIGHT"
+
 // Steer runs a follow-up prompt turn on an existing session (ADR047 D8 phase 1,
 // ADR047 D8 phase 1). In phase 1 a new prompt cannot ride the original sandbox — its
 // prompt env is fixed at creation and there is no live attach yet — so steering
@@ -1706,7 +1713,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	case PhaseCanceled, PhaseCanceling:
 		return View{}, core.NewConflictError("AGENT_SESSION_NOT_STEERABLE", "a canceled agent session cannot be steered", map[string]any{"phase": record.Phase})
 	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching:
-		return View{}, core.NewConflictError("AGENT_SESSION_TURN_IN_FLIGHT", "a turn is already running; wait for it to finish before steering", map[string]any{"phase": record.Phase})
+		return View{}, core.NewConflictError(codeTurnInFlight, "a turn is already running; wait for it to finish before steering", map[string]any{"phase": record.Phase})
 	}
 	if err := s.admitDispatch(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
@@ -1987,7 +1994,7 @@ func mapStoreError(id string, err error) error {
 		return core.NewConflictError("AGENT_SESSION_PROMPT_QUOTA", "agent session prompt history has reached its byte limit", map[string]any{"id": id, "maxBytes": store.MaxAgentSessionPromptBytes})
 	}
 	if errors.Is(err, store.ErrAgentSessionTurnState) {
-		return core.NewConflictError("AGENT_SESSION_TURN_IN_FLIGHT", "a turn is already running; wait for it to finish before steering", map[string]any{"id": id})
+		return core.NewConflictError(codeTurnInFlight, "a turn is already running; wait for it to finish before steering", map[string]any{"id": id})
 	}
 	if errors.Is(err, store.ErrNotFound) {
 		return core.NewNotFoundError("AGENT_SESSION_NOT_FOUND", "agent session not found", map[string]any{"id": id})

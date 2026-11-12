@@ -372,6 +372,8 @@ export type AgentSession = {
   tags: Maybe<Array<Scalars['String']['output']>>;
   ticket: Maybe<Scalars['String']['output']>;
   title: Maybe<Scalars['String']['output']>;
+  /** Which turns PR feedback started (a review, a comment or a failed CI run); only on a single-session read. */
+  turnOrigins: Maybe<Array<AgentSessionTurnOrigin>>;
   turns: Maybe<Scalars['Int']['output']>;
   updatedAt: Scalars['String']['output'];
   url: Maybe<Scalars['String']['output']>;
@@ -565,6 +567,14 @@ export type AgentSessionTurnModelCost = {
   outputTokens: Scalars['Float']['output'];
   requests: Scalars['Int']['output'];
   turn: Scalars['Int']['output'];
+};
+
+export type AgentSessionTurnOrigin = {
+  __typename: 'AgentSessionTurnOrigin';
+  author: Maybe<Scalars['String']['output']>;
+  kind: Scalars['String']['output'];
+  turn: Scalars['Int']['output'];
+  url: Maybe<Scalars['String']['output']>;
 };
 
 /** A workspace skill for cloud agents (ADR099): a SKILL.md every session of the workspace receives. body and content are on single reads only. */

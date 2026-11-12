@@ -616,6 +616,11 @@ type CheckRun struct {
 	Name       string `json:"name"`
 	Status     string `json:"status"`
 	Conclusion string `json:"conclusion"`
+	URL        string `json:"html_url"`
+	Output     struct {
+		Title   string `json:"title"`
+		Summary string `json:"summary"`
+	} `json:"output"`
 }
 
 // maxCheckRunPages bounds ListCheckRuns: 10 pages of 100 is far beyond any

@@ -23,6 +23,7 @@
 import type { AttachmentManifest } from "./attachments.js";
 import { skillsSection, type SkillManifest } from "./skills.js";
 import { toolName } from "./mcp-bex.js";
+import { replyOnPullRequestToolName } from "./reply-on-pr.js";
 import { shareFileToolName } from "./share-file.js";
 import { submitResultToolName } from "./submit-result.js";
 
@@ -107,6 +108,7 @@ The deliverable is a draft pull request from \`${branch}\` into ${baseRef}.
 3. Call \`${toolName}\` with a title and a body. The pull request covers the whole branch, so the title and body describe every commit since ${baseRef} (\`git log\` shows them), not only what changed in this turn. Write the body by filling in the repository's pull request template. Look for it in \`.github/pull_request_template.md\`, \`.github/PULL_REQUEST_TEMPLATE.md\`, \`.github/PULL_REQUEST_TEMPLATE/\`, then \`docs/\`, then the repository root. If there is none, write a short body with Summary, Changes and Testing sections. bex appends its own footer, so do not add one.
 4. Only say that a pull request exists once the tool has returned its URL, and include that URL in your final reply. If the tool returns an error, report the error as given; do not try to create the pull request another way.
 5. Leave the pull request as a draft. Marking it ready for review is the requester's decision.
+6. When a turn was started by pull request feedback, reply on the pull request with \`${replyOnPullRequestToolName}\` once your changes are pushed, saying what you changed.
 
 If the task needs no code changes (a question, an investigation, a review), end with a written report and make no commit.
 

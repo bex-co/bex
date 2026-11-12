@@ -283,6 +283,13 @@ func main() {
 			URL:    envOr("BEX_AGENT_PULL_REQUEST_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestPath),
 			Secret: []byte(secret),
 		}
+		// ADR047 D11: the agent replies on its own PR through the
+		// `pull-request/comment` tail of the same URL; bex-api fixes the
+		// repository and PR number from the durable session.
+		credentials.PullRequestComments = &agentsession.PullRequestCommentClient{
+			URL:    envOr("BEX_AGENT_PULL_REQUEST_COMMENT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestCommentPath),
+			Secret: []byte(secret),
+		}
 		// ADR095 D6: the agent shares output files through its Pod-bound share
 		// URL; bex-api stores them as the session's output attachments.
 		credentials.Files = &agentsession.ShareFileClient{

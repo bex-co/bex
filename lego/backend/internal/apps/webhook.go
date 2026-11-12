@@ -28,6 +28,7 @@ import (
 	"log"
 	"net/http"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -82,6 +83,17 @@ type GitWebhook struct {
 	// single-tenant operation) keeps the prior replayable behavior: there is
 	// nothing durable to claim with.
 	Replays WebhookReplayGuard
+	// PRFeedback receives the PR feedback that steers agent sessions
+	// (ADR047 D11): comments, reviews and completed check suites. Nil drops
+	// them.
+	PRFeedback PRFeedbackSink
+}
+
+// PRFeedbackSink queues feedback on agent-session pull requests from one
+// GitHub App delivery confined to workspaceIDs (implemented by
+// agentsessions.PRFeedback).
+type PRFeedbackSink interface {
+	HandlePRFeedback(ctx context.Context, event string, body []byte, workspaceIDs []string) (queued int, err error)
 }
 
 // WebhookReplayGuard is the durable replay ledger the mutating git-webhook
@@ -314,6 +326,37 @@ func (t *deliveryTrace) logIfSlow(ctx context.Context, key string) {
 		key, total.Round(time.Millisecond), ctx.Err(), strings.Join(t.steps, " "))
 }
 
+// forwardPRFeedback hands a GitHub App delivery to the PR feedback sink,
+// confined to the workspaces its installation is bound to. Anything else is
+// dropped: only the App's signed installation id says whose session it is.
+func (h *GitWebhook) forwardPRFeedback(ctx context.Context, event string, body []byte, key verifiedKey) (int, error) {
+	if h.PRFeedback == nil || key != keyGitHubApp {
+		return 0, nil
+	}
+	var ev struct {
+		Action       string `json:"action"`
+		Installation struct {
+			ID int64 `json:"id"`
+		} `json:"installation"`
+		CheckSuite struct {
+			Conclusion string `json:"conclusion"`
+		} `json:"check_suite"`
+	}
+	if json.Unmarshal(body, &ev) != nil || ev.Installation.ID == 0 {
+		return 0, nil
+	}
+	// Check suites arrive for every commit of every installed repository;
+	// only a failed one can steer, so the rest cost no workspace lookup.
+	if event == "check_suite" && (ev.Action != "completed" || (ev.CheckSuite.Conclusion != "failure" && ev.CheckSuite.Conclusion != "timed_out")) {
+		return 0, nil
+	}
+	scopes, proceed := h.scopesFor(ctx, key, ev.Installation.ID)
+	if !proceed || slices.Contains(scopes, "") {
+		return 0, nil
+	}
+	return h.PRFeedback.HandlePRFeedback(ctx, event, body, scopes)
+}
+
 func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !h.configured() {
 		core.WriteErrStatus(w, http.StatusServiceUnavailable, "git webhook not configured (BEX_WEBHOOK_SECRET / BEX_GITHUB_WEBHOOK_SECRET unset)")
@@ -348,7 +391,20 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveDelete(w, r, body, key)
 		return
 	}
+	if event == "issue_comment" || event == "pull_request_review" {
+		queued, err := h.forwardPRFeedback(r.Context(), event, body, key)
+		if err != nil {
+			log.Printf("webhook: %s feedback: %v", event, err)
+			core.WriteErrStatus(w, http.StatusBadGateway, "feedback could not be queued")
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, map[string]int{"queued": queued})
+		return
+	}
 	if event == "check_suite" {
+		if _, err := h.forwardPRFeedback(r.Context(), event, body, key); err != nil {
+			log.Printf("webhook: check_suite feedback: %v", err)
+		}
 		h.serveCheckSuite(w, r, body, key)
 		return
 	}

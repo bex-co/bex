@@ -6,9 +6,10 @@ const mutate = vi.fn();
 const evict = vi.fn();
 const gc = vi.fn();
 const writeQuery = vi.fn();
+const readQuery = vi.fn();
 
 vi.mock("@apollo/client/react", () => ({
-  useApolloClient: () => ({ cache: { evict, gc }, writeQuery }),
+  useApolloClient: () => ({ cache: { evict, gc }, writeQuery, readQuery }),
   useMutation: () => [mutate],
 }));
 
@@ -18,6 +19,7 @@ describe("useAgentSessionMutations list cache invalidation", () => {
     evict.mockReset();
     gc.mockReset();
     writeQuery.mockReset();
+    readQuery.mockReset();
   });
 
   it("writes a lifecycle result into detail cache and expires every list", async () => {
@@ -58,13 +60,42 @@ describe("useAgentSessionMutations list cache invalidation", () => {
     expect(writeQuery).toHaveBeenCalledWith(
       expect.objectContaining({
         variables: { id: "ags-1" },
-        data: { agentSession: session },
+        data: { agentSession: { ...session, turnOrigins: null } },
       }),
     );
     expect(evict).toHaveBeenCalledWith({
       id: "ROOT_QUERY",
       fieldName: "agentSessions",
     });
+  });
+
+  it("keeps the detail read's turn origins when a lifecycle result lands (w9/m344)", async () => {
+    const turnOrigins = [
+      {
+        __typename: "AgentSessionTurnOrigin",
+        turn: 2,
+        kind: "pr_comment",
+        author: "octocat",
+        url: "https://github.com/acme/widgets/pull/7#issuecomment-1",
+      },
+    ];
+    readQuery.mockReturnValue({ agentSession: { id: "ags-1", turnOrigins } });
+    const session = {
+      __typename: "AgentSession",
+      id: "ags-1",
+      phase: "canceled",
+    };
+    mutate.mockResolvedValue({ data: { cancelAgentSession: session } });
+    const { result } = renderHook(() => useAgentSessionMutations());
+
+    await act(() => result.current.cancel("ags-1"));
+
+    expect(writeQuery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variables: { id: "ags-1" },
+        data: { agentSession: { ...session, turnOrigins } },
+      }),
+    );
   });
 
   it("evicts every agentSessions query variant after a successful delete", async () => {

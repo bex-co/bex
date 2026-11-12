@@ -79,8 +79,11 @@ type kratosIdentity struct {
 		Verified bool   `json:"verified"`
 	} `json:"verifiable_addresses"`
 	Credentials map[string]struct {
-		Type   string `json:"type"`
-		Config struct {
+		Type string `json:"type"`
+		// Identifiers of an oidc credential are "<provider>:<subject>", one
+		// per linked provider (Kratos' OIDCUniqueID).
+		Identifiers []string `json:"identifiers"`
+		Config      struct {
 			Credentials []json.RawMessage `json:"credentials"`
 		} `json:"config"`
 	} `json:"credentials"`
@@ -193,5 +196,30 @@ func (id kratosIdentity) attrs() IdentityAttrs {
 	// (w4/020).
 	_, totp := id.Credentials["totp"]
 	webauthn := len(id.Credentials["webauthn"].Config.Credentials) > 0
-	return IdentityAttrs{Email: id.Traits.Email, EmailVerified: id.traitEmailVerified(), Name: id.Traits.Name, MFAEnabled: totp || webauthn}
+	attrs := IdentityAttrs{Email: id.Traits.Email, EmailVerified: id.traitEmailVerified(), Name: id.Traits.Name, MFAEnabled: totp || webauthn}
+	for _, identifier := range id.Credentials["oidc"].Identifiers {
+		if userID, ok := strings.CutPrefix(identifier, githubOIDCProvider+":"); ok && userID != "" {
+			attrs.GitHubUserID = userID
+		}
+	}
+	return attrs
+}
+
+// githubOIDCProvider is the Kratos provider id of "Sign in with GitHub"
+// (ADR012 §10, scripts/auth-secrets.sh); its subject is the GitHub user id.
+const githubOIDCProvider = "github"
+
+// GitHubUserIDs resolves which of subjects signed in with GitHub to their
+// numeric GitHub user ids (ADR047 D11 links a PR commenter to a member this
+// way). A subject without a GitHub sign-in is absent; a failed batch answers
+// core.ErrIdentityLookupFailed beside the ones that resolved.
+func (k *KratosIdentities) GitHubUserIDs(ctx context.Context, subjects []string) (map[string]string, error) {
+	found, err := k.lookupMany(ctx, subjects, "oidc")
+	out := make(map[string]string, len(found))
+	for subject, attrs := range found {
+		if attrs.GitHubUserID != "" {
+			out[subject] = attrs.GitHubUserID
+		}
+	}
+	return out, err
 }

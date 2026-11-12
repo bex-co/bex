@@ -21,6 +21,9 @@
 //     pull-request verb on the session's Pod-bound Git proxy path. Owner,
 //     repository, head and base are fixed server-side by that path, so the
 //     agent supplies only a title and a body.
+//   - reply_on_pull_request (repo sessions, ADR047 D11) forwards to the
+//     gateway's pull-request/comment verb on the same path: one comment on the
+//     session's own pull request, whose number is fixed server-side.
 //   - share_file (when the deployment stores attachments) posts a file to the
 //     session's Pod-bound share URL.
 //   - submit_result (when the turn carries an outputSchema, ADR094 D5)
@@ -58,6 +61,11 @@ import {
   shareFileToolDefinition,
   shareFileToolName,
 } from "./share-file.js";
+import {
+  replyOnPullRequest,
+  replyOnPullRequestToolDefinition,
+  replyOnPullRequestToolName,
+} from "./reply-on-pr.js";
 
 export const toolName = "open_or_update_draft_pr";
 export const maxTitleRunes = 256;
@@ -237,6 +245,9 @@ export function availableTools(
 ): Array<{ name: string }> {
   const tools: Array<{ name: string }> = [];
   if (env.BEX_PR_ENDPOINT) tools.push(toolDefinition);
+  if (env.BEX_PR_COMMENT_ENDPOINT) {
+    tools.push(replyOnPullRequestToolDefinition);
+  }
   if (env.BEX_SHARE_ENDPOINT) tools.push(shareFileToolDefinition);
   if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
     tools.push(submitResultToolDefinition);
@@ -251,6 +262,9 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
   const lines: string[] = [];
   if (env.BEX_PR_ENDPOINT) {
     lines.push(`Use ${toolName} after pushing the session branch to open or update its draft pull request.`);
+  }
+  if (env.BEX_PR_COMMENT_ENDPOINT) {
+    lines.push(`Use ${replyOnPullRequestToolName} to answer pull request feedback on the session's pull request.`);
   }
   if (env.BEX_SHARE_ENDPOINT) {
     lines.push(`Use ${shareFileToolName} to hand the user a file that should not be committed.`);
@@ -324,7 +338,9 @@ export async function handleMessage(
               ? await spawnSession(args, env)
               : name === getChildSessionToolName
                 ? await getChildSession(args, env)
-                : await openOrUpdateDraftPr(args, env);
+                : name === replyOnPullRequestToolName
+                  ? await replyOnPullRequest(args, env)
+                  : await openOrUpdateDraftPr(args, env);
       const structured = outcome.ok ? outcome.result : { error: outcome.error };
       return rpcResult(message.id, {
         content: [{ type: "text", text: JSON.stringify(structured) }],

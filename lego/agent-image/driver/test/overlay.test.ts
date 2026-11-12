@@ -65,6 +65,10 @@ test("the repo overlay names the branch, base, tool and authorization", () => {
   assert.match(text, /open_or_update_draft_pr/);
   assert.match(text, /Do not force-push/);
   assert.match(text, /Leave the pull request as a draft/);
+  assert.match(
+    text,
+    /started by pull request feedback, reply on the pull request with `reply_on_pull_request`/,
+  );
   assert.match(text, /once the tool has returned its URL/);
   assert.match(text, /no code changes .* written report and make no commit/);
   assert.match(text, /\.github\/pull_request_template\.md/);
@@ -103,7 +107,7 @@ test("a repo-less session gets the scratch overlay without Git delivery", () => 
   });
   assert.match(text, /No repository is attached/);
   assert.match(text, /The deliverable is your reply/);
-  assert.doesNotMatch(text, /open_or_update_draft_pr|git push/);
+  assert.doesNotMatch(text, /open_or_update_draft_pr|reply_on_pull_request|git push/);
 });
 
 test("only the full network tier explains the egress proxy, in both overlays", () => {
@@ -271,6 +275,11 @@ test("repo sessions register the bex stdio MCP server on session/new and session
         value: "http://gw:8082/git/bnM/c2lk/cmVwbw/YnJhbmNo/pull-request",
       },
       { name: "BEX_PR_RECORD_PATH", value: config.prRecordPath },
+      {
+        name: "BEX_PR_COMMENT_ENDPOINT",
+        value:
+          "http://gw:8082/git/bnM/c2lk/cmVwbw/YnJhbmNo/pull-request/comment",
+      },
     ]);
   }
   assert.deepEqual(

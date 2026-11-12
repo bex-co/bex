@@ -22,7 +22,9 @@ import { MarkdownRenderer } from "@/common/components/markdown-renderer";
 import { cn } from "@/common/lib/utils/utils";
 import { TurnAttachments } from "@/features/agent-sessions/components/turn-attachments";
 import { TurnSkills } from "@/features/agent-sessions/components/turn-skills";
+import { TurnOrigins } from "@/features/agent-sessions/components/turn-origins";
 import { useAgentSessionTurnSkills } from "@/features/agent-sessions/hooks/use-agent-session-turn-skills";
+import { useAgentSessionTurnOrigins } from "@/features/agent-sessions/hooks/use-agent-session-turn-origins";
 import { AgentAttachmentDocument } from "@/graphql/definitions";
 import {
   sharedFileIdFrom,
@@ -1062,22 +1064,28 @@ function DurableUserTurn({
 }) {
   const { t } = useTranslations();
   const skills = useAgentSessionTurnSkills(sessionId, turn);
+  const origins = useAgentSessionTurnOrigins(sessionId, turn);
   return (
-    <div className="my-2 flex w-full justify-end gap-2 pl-8">
-      <div className="max-w-[92%] sm:max-w-md">
-        <div className="border-border/70 bg-muted text-foreground rounded-xl rounded-br-md border px-3 py-1.5 shadow-xs dark:bg-muted/80">
-          <MarkdownRenderer content={text} />
+    <div className="my-2">
+      {/* Why PR feedback started this turn, over the whole row so the avatar
+          stays level with its bubble. */}
+      <TurnOrigins origins={origins} />
+      <div className="flex w-full justify-end gap-2 pl-8">
+        <div className="max-w-[92%] sm:max-w-md">
+          <div className="border-border/70 bg-muted text-foreground rounded-xl rounded-br-md border px-3 py-1.5 shadow-xs dark:bg-muted/80">
+            <MarkdownRenderer content={text} />
+          </div>
+          <TurnAttachments items={attachments} />
+          <TurnSkills skills={skills} />
+          {incomplete ? (
+            <p className="text-muted-foreground mt-1 text-right text-xs">
+              {t("agentSessions.conversationIncomplete")}
+              {reason ? `: ${reason}` : ""}
+            </p>
+          ) : null}
         </div>
-        <TurnAttachments items={attachments} />
-        <TurnSkills skills={skills} />
-        {incomplete ? (
-          <p className="text-muted-foreground mt-1 text-right text-xs">
-            {t("agentSessions.conversationIncomplete")}
-            {reason ? `: ${reason}` : ""}
-          </p>
-        ) : null}
+        <UserAvatar />
       </div>
-      <UserAvatar />
     </div>
   );
 }

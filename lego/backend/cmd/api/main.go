@@ -475,6 +475,12 @@ func main() {
 	// rejected below; store-less deployments must leave webhook secrets unset.
 	if st != nil {
 		srv.WebhookReplays = st
+		// PR feedback (w9/m344, ADR047 D11) needs the App to read who
+		// commented and Kratos to link their GitHub sign-in to a member.
+		if srv.AgentSessions != nil && ghClient != nil && kratosAdminURL != "" {
+			srv.PRFeedback = &agentsessions.PRFeedback{Sessions: srv.AgentSessions, Store: st, GitHub: ghClient,
+				Identities: workspaces.NewKratosIdentities(kratosAdminURL)}
+		}
 		srv.CLIRefreshes = st
 		// Replay claims are partitioned by the authenticated signing-secret epoch.
 		// Every replica leases the epochs it still accepts; only after all leases
@@ -837,6 +843,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentAttachmentStore = st // ADR095: attachment metadata
 	deps.AgentSkillStore = st      // ADR099: workspace skills
 	deps.AgentAutomationStore = st // ADR101: agent automations
+	deps.AgentFeedbackStore = st   // ADR047 D11: PR feedback turn origins
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
@@ -1101,13 +1108,22 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		// internal-only listener; owner/repo/base/head come from the durable
 		// session, never the request. Unwired without the GitHub App.
 		if ghClient != nil {
+			pullRequests := &agentsession.PullRequester{
+				GitHub: ghClient, Connections: st, Sessions: st, Audit: st,
+				DashboardURL: cfg.DashboardURL,
+			}
 			internalRoot.Handle(agentsession.InternalPullRequestPath, &agentsession.PullRequestHandler{
-				Secret: []byte(cfg.SandboxExecSecret),
-				PullRequests: &agentsession.PullRequester{
-					GitHub: ghClient, Connections: st, Sessions: st, Audit: st,
-					DashboardURL: cfg.DashboardURL,
-				},
-				Nonce: st,
+				Secret:       []byte(cfg.SandboxExecSecret),
+				PullRequests: pullRequests,
+				Nonce:        st,
+			})
+			// ADR047 D11: the agent's reply on its own PR. Same HMAC under a
+			// `pull-request-comment` MAC domain; the PR number comes from the
+			// durable session, never the request.
+			internalRoot.Handle(agentsession.InternalPullRequestCommentPath, &agentsession.PullRequestCommentHandler{
+				Secret:       []byte(cfg.SandboxExecSecret),
+				PullRequests: pullRequests,
+				Nonce:        st,
 			})
 		}
 		// w2/m168: native public-key SSH never passes the auth middleware, so the
@@ -1572,6 +1588,11 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 		// It runs only when a session create could succeed.
 		if srv.AgentSessions.AutomationsRunnable() {
 			go (&agentsessions.AutomationScheduler{Service: srv.AgentSessions}).Run(ctx)
+		}
+		// Queued PR feedback is delivered as soon as its session is idle; the
+		// lease keeps replicas from steering one session twice.
+		if srv.PRFeedback != nil {
+			go srv.PRFeedback.Run(ctx)
 		}
 	}
 	// Failure alert emails (w2/m252): a crashing service, a failed cron run, a

@@ -112,7 +112,7 @@ The controls that still bound a sandbox are unchanged: default-deny egress, the 
 ### D7 — Out of scope and follow-ups
 
 - Gateway-side non-fast-forward rejection, so a force-push is refused by the proxy and not only by the overlay.
-- A PR-comment steering loop (webhook → steer the session), with the AI footer also on comments the agent posts.
+- A PR-comment steering loop (webhook → steer the session), with the AI footer also on comments the agent posts. _Decided in [ADR047 D11](ADR047-cloud-coding-agent-sessions.md#d11--pr-feedback-steers-the-session-w9m344-2026-11-12) (w9/m344)._
 - A tenant per-session instruction field, with the D2 layer-4 wrapper (not yet implemented).
 - Requester `Co-authored-by` on agent commits.
 - Override-mode system prompts (`mode: "override"`).

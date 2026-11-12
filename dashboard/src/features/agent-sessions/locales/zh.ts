@@ -1317,6 +1317,36 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "本轮使用的技能",
     description: "Accessible label of a transcript turn's skill pills",
   },
+  "agentSessions.turnOrigins": {
+    message: "引导本轮的来源",
+    description:
+      "Accessible label of the lines above a transcript turn that PR feedback started (w9/m344)",
+  },
+  "agentSessions.turnOriginReview": {
+    message: "由 @{author} 的评审引导",
+    description:
+      "A turn started by a pull-request review; {author} is the reviewer's GitHub login. Links to the review",
+  },
+  "agentSessions.turnOriginReviewAnonymous": {
+    message: "由一次 PR 评审引导",
+    description:
+      "A turn started by a pull-request review whose author is unknown. Links to the review",
+  },
+  "agentSessions.turnOriginComment": {
+    message: "由 @{author} 的 PR 评论引导",
+    description:
+      "A turn started by a pull-request comment; {author} is the commenter's GitHub login. Links to the comment",
+  },
+  "agentSessions.turnOriginCommentAnonymous": {
+    message: "由一条 PR 评论引导",
+    description:
+      "A turn started by a pull-request comment whose author is unknown. Links to the comment",
+  },
+  "agentSessions.turnOriginCiFailure": {
+    message: "由一次失败的 CI 运行引导",
+    description:
+      "A turn started by a failed CI run on the pull request. Links to the failed checks",
+  },
   "agentSessions.lineage.childSessions": {
     message: "子会话",
     description:

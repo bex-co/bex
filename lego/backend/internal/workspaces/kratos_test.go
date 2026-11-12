@@ -299,3 +299,26 @@ func uuidsN(n int) []string {
 	}
 	return out
 }
+
+// GitHubUserIDs (ADR047 D11) reads each identity's oidc credential and keeps
+// the github provider's subject; a member who never signed in with GitHub, or
+// linked another provider only, is absent.
+func TestKratosIdentitiesGitHubUserIDs(t *testing.T) {
+	alice, bob, carol := "0b4a8c1e-6f1a-4c3e-9d2b-1a2b3c4d5e6f", "1b4a8c1e-6f1a-4c3e-9d2b-1a2b3c4d5e6f", "2b4a8c1e-6f1a-4c3e-9d2b-1a2b3c4d5e6f"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.URL.Query()["include_credential"]; !slices.Equal(got, []string{"oidc"}) {
+			t.Errorf("include_credential = %v, want oidc", got)
+		}
+		_, _ = w.Write([]byte(`[
+			{"id":"` + alice + `","traits":{"email":"a@example.com"},"credentials":{"oidc":{"type":"oidc","identifiers":["github:101"]}}},
+			{"id":"` + bob + `","traits":{"email":"b@example.com"},"credentials":{"oidc":{"type":"oidc","identifiers":["google:abc"]}}},
+			{"id":"` + carol + `","traits":{"email":"c@example.com"},"credentials":{"password":{"type":"password","identifiers":["c@example.com"]}}}
+		]`))
+	}))
+	defer srv.Close()
+	k := NewKratosIdentities(srv.URL)
+	got, err := k.GitHubUserIDs(context.Background(), []string{alice, bob, carol})
+	if err != nil || len(got) != 1 || got[alice] != "101" {
+		t.Fatalf("GitHubUserIDs = %v err=%v, want only alice → 101", got, err)
+	}
+}

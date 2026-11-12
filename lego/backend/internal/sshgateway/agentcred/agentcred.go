@@ -140,6 +140,9 @@ type Broker struct {
 	// PullRequests is the bex-api PR verb (ADR090) behind the fifth path
 	// segment `pull-request`. nil answers that route 503.
 	PullRequests PullRequestSyncer
+	// PullRequestComments is the bex-api comment verb (ADR047 D11) behind the
+	// path tail `pull-request/comment`. nil answers that route 503.
+	PullRequestComments PullRequestCommenter
 	// Files is the bex-api share verb (ADR095 D6) behind ShareFileProxyPath.
 	// nil ⇒ the route answers unavailable.
 	Files ShareFileForwarder
@@ -293,6 +296,10 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 	namespace, mintRequest, service, err := parseProxyPath(r.URL.Path)
 	if err == nil && service == agentsession.PullRequestProxySegment {
 		b.servePullRequest(w, r, namespace, mintRequest)
+		return
+	}
+	if err == nil && service == agentsession.PullRequestCommentProxySegment {
+		b.servePullRequestComment(w, r, namespace, mintRequest)
 		return
 	}
 	if err != nil || !validGitRequest(r, service) {
@@ -501,7 +508,7 @@ func parseProxyPath(path string) (string, agentsession.MintRequest, string, erro
 	switch parts[4] {
 	case "info/refs":
 		service = "info/refs"
-	case "git-upload-pack", "git-receive-pack", agentsession.PullRequestProxySegment:
+	case "git-upload-pack", "git-receive-pack", agentsession.PullRequestProxySegment, agentsession.PullRequestCommentProxySegment:
 		service = parts[4]
 	default:
 		return "", agentsession.MintRequest{}, "", agentsession.ErrInvalidRequest

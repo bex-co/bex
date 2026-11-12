@@ -28,6 +28,25 @@ vi.mock(
   }),
 );
 
+// Steer origins read the detail page's GraphQL session (w9/m344). One suite
+// below has PR feedback start turn 2 of "as-steered"; every other session and
+// turn has none.
+const STEERED_COMMENT_URL =
+  "https://github.com/acme/widgets/pull/7#issuecomment-22";
+const STEERED_RUN_URL = "https://github.com/acme/widgets/actions/runs/33";
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-turn-origins",
+  () => ({
+    useAgentSessionTurnOrigins: (sessionId: string, turn: number | null) =>
+      sessionId === "as-steered" && turn === 2
+        ? [
+            { kind: "pr_comment", author: "bob", url: STEERED_COMMENT_URL },
+            { kind: "ci_failure", author: null, url: STEERED_RUN_URL },
+          ]
+        : [],
+  }),
+);
+
 const mintTicket = async () => ({ ticket: "fixture-ticket" });
 
 describe("SessionConversationImpl", () => {
@@ -142,6 +161,61 @@ describe("SessionConversationImpl", () => {
         "Agent restarted — the original task was re-delivered.",
       ),
     ).not.toBeInTheDocument();
+  });
+
+  it("says above a PR-steered turn what steered it, and nothing above the task (w9/m344)", async () => {
+    const transcript = [
+      { type: "start", messageId: "asm-steered" },
+      {
+        type: "data-user-prompt",
+        data: { turn: 1, text: "fix the flaky test", complete: true },
+      },
+      { type: "text-start", id: "t1" },
+      { type: "text-delta", id: "t1", delta: "pushed a fix" },
+      { type: "text-end", id: "t1" },
+      {
+        type: "data-user-prompt",
+        data: { turn: 2, text: "address the PR feedback", complete: true },
+      },
+      { type: "text-start", id: "t2" },
+      { type: "text-delta", id: "t2", delta: "addressed" },
+      { type: "text-end", id: "t2" },
+      { type: "finish" },
+    ] as UIMessageChunk[];
+    const transport = createAgentSessionTransport({
+      sessionId: "as-steered",
+      mintTicket,
+      fetch: makeFixtureFetch(transcript, { terminal: true }),
+    });
+
+    render(
+      <SessionConversationImpl
+        sessionId="as-steered"
+        isTerminal
+        transport={transport}
+      />,
+    );
+
+    const steered = await screen.findByText("address the PR feedback");
+    // One annotation, for turn 2 only: the original task (turn 1) has none.
+    const [origins, ...others] = screen.getAllByRole("list", {
+      name: "What steered this turn",
+    });
+    expect(others).toHaveLength(0);
+    expect(
+      screen.getByText("fix the flaky test").compareDocumentPosition(origins) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      origins.compareDocumentPosition(steered) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      screen.getByRole("link", { name: "Steered by a PR comment from @bob" }),
+    ).toHaveAttribute("href", STEERED_COMMENT_URL);
+    expect(
+      screen.getByRole("link", { name: "Steered by a failed CI run" }),
+    ).toHaveAttribute("href", STEERED_RUN_URL);
   });
 
   it("replays a historical failure through the real SDK and renders later native continuity and answer", async () => {

@@ -158,10 +158,18 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
   // cannot resurrect stale membership later.
   const reconcileSession = useCallback(
     (session: AgentSessionFieldsFragment) => {
+      // The result carries the shared fragment, not the detail-only
+      // turnOrigins (w9/m344); keep the detail read's so the transcript's
+      // steer annotations survive a cancel or an archive.
+      const turnOrigins =
+        client.readQuery({
+          query: AgentSessionDocument,
+          variables: { id: session.id },
+        })?.agentSession?.turnOrigins ?? null;
       client.writeQuery({
         query: AgentSessionDocument,
         variables: { id: session.id },
-        data: { agentSession: session },
+        data: { agentSession: { ...session, turnOrigins } },
       });
       client.cache.evict({ id: "ROOT_QUERY", fieldName: "agentSessions" });
       client.cache.gc();

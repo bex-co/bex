@@ -278,6 +278,35 @@
         "title": {
           "type": "string"
         },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "turns": {
           "type": "integer"
         },
@@ -586,6 +615,35 @@
         "title": {
           "type": "string"
         },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "turns": {
           "type": "integer"
         },
@@ -890,6 +948,35 @@
         },
         "title": {
           "type": "string"
+        },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "turns": {
           "type": "integer"
@@ -1845,6 +1932,35 @@
         },
         "title": {
           "type": "string"
+        },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "turns": {
           "type": "integer"
@@ -2983,6 +3099,35 @@
         "title": {
           "type": "string"
         },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "turns": {
           "type": "integer"
         },
@@ -3772,6 +3917,35 @@
               },
               "title": {
                 "type": "string"
+              },
+              "turnOrigins": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "author": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "description": "pr_comment, pr_review or ci_failure",
+                      "type": "string"
+                    },
+                    "turn": {
+                      "type": "integer"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "turn",
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
               },
               "turns": {
                 "type": "integer"
@@ -4883,6 +5057,35 @@
               "title": {
                 "type": "string"
               },
+              "turnOrigins": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "author": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "description": "pr_comment, pr_review or ci_failure",
+                      "type": "string"
+                    },
+                    "turn": {
+                      "type": "integer"
+                    },
+                    "url": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "turn",
+                    "kind"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
               "turns": {
                 "type": "integer"
               },
@@ -5982,6 +6185,35 @@
         "title": {
           "type": "string"
         },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "turns": {
           "type": "integer"
         },
@@ -6446,6 +6678,35 @@
         "title": {
           "type": "string"
         },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "turns": {
           "type": "integer"
         },
@@ -6804,6 +7065,35 @@
         },
         "title": {
           "type": "string"
+        },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "turns": {
           "type": "integer"
@@ -7256,6 +7546,35 @@
         "title": {
           "type": "string"
         },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "turns": {
           "type": "integer"
         },
@@ -7653,6 +7972,35 @@
         },
         "title": {
           "type": "string"
+        },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "turns": {
           "type": "integer"
@@ -8247,6 +8595,35 @@
         },
         "title": {
           "type": "string"
+        },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "turns": {
           "type": "integer"

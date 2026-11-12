@@ -146,6 +146,10 @@ spec:
             # of its Git proxy URL) on the same host control-plane listener.
             - name: BEX_AGENT_PULL_REQUEST_API_URL
               value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-pull-requests
+            # ADR047 D11: the agent's reply on its own PR (the
+            # `pull-request/comment` tail of the same URL).
+            - name: BEX_AGENT_PULL_REQUEST_COMMENT_API_URL
+              value: http://__AGENT_HOST_API_HOST__:__AGENT_HOST_API_PORT__/v1/agent-session-pull-request-comments
             - name: BEX_AGENT_MODEL_PROXY_ADDR
               value: ":8084"
             - name: BEX_AGENT_MODEL_CREDENTIAL_API_URL

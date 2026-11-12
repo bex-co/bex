@@ -322,6 +322,9 @@ type View struct {
 	// Outcome is the compact result an LLM reads instead of the transcript
 	// (ADR094 D7). Summary is filled only by the single-session read.
 	Outcome *Outcome `json:"outcome,omitempty"`
+	// TurnOrigins say which turns PR feedback started (ADR047 D11): a review,
+	// a comment or a failed CI run. Only a single-session read carries them.
+	TurnOrigins []TurnOrigin `json:"turnOrigins,omitempty"`
 }
 
 // Outcome is the compact account of where a session stands (ADR094 D7): its

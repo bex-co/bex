@@ -192,9 +192,11 @@ type PullRequestResponse struct {
 	HeadSHA string `json:"headSha"`
 }
 
-// PullRequestGitHub opens or updates the draft PR (*github.Client).
+// PullRequestGitHub opens or updates the draft PR and comments on it
+// (*github.Client).
 type PullRequestGitHub interface {
 	SyncDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string) (github.DraftPullRequestResult, error)
+	CreateIssueComment(ctx context.Context, installationID int64, owner, repo string, number int, body string) (string, error)
 }
 
 // PullRequestSessionStore reads the durable session and records the PR on it
@@ -243,36 +245,14 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 	if invalid := req.PullRequestContent.Validate(); invalid != nil {
 		return PullRequestResponse{}, invalid
 	}
-	session, err := p.Sessions.GetAgentSession(ctx, req.SessionID)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return PullRequestResponse{}, NewPullRequestError(PullRequestForbidden, "session not found")
-		}
-		return PullRequestResponse{}, NewPullRequestError(PullRequestUnavailable, "session lookup failed")
+	target, refusal := p.sessionTarget(ctx, req.MintRequest, NewPullRequestError)
+	auditRepository = target.repository
+	if refusal != nil {
+		return PullRequestResponse{}, refusal
 	}
-	// The same live-generation + phase gate as the Git and model mints: a
-	// retained, stale, or cross sandbox cannot open a PR after its turn ended.
-	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
-		return PullRequestResponse{}, NewPullRequestError(PullRequestForbidden, "this sandbox is not the session's live sandbox")
-	}
-	// The durable record is the authority; the Pod-label digests the gateway
-	// checked must name the very same repository and branch.
-	repository, normErr := NormalizeRepository(session.Repo)
-	requested, reqErr := NormalizeRepository(req.Repository)
-	if normErr != nil || reqErr != nil || repository != requested || session.Branch != req.Branch || ValidateBranch(session.Branch) != nil {
-		return PullRequestResponse{}, NewPullRequestError(PullRequestForbidden, "the pull request must be for the session's own repository and branch")
-	}
-	auditRepository = repository
-	owner, name, _ := strings.Cut(repository, "/")
-	connection, err := p.Connections.GetGitConnectionByOwner(ctx, session.WorkspaceID, owner)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			return PullRequestResponse{}, NewPullRequestError(PullRequestForbidden, "the workspace has no GitHub App installation for this repository's account")
-		}
-		return PullRequestResponse{}, NewPullRequestError(PullRequestUnavailable, "GitHub connection lookup failed")
-	}
+	session := target.session
 	body := PullRequestBodyWithFooter(req.Body, sessionProfile(session), p.sessionURL(session.ID), session.ID)
-	result, err := p.GitHub.SyncDraftPullRequest(ctx, connection.InstallationID, owner, name, session.Branch, strings.TrimSpace(req.Title), body)
+	result, err := p.GitHub.SyncDraftPullRequest(ctx, target.installationID, target.owner, target.name, session.Branch, strings.TrimSpace(req.Title), body)
 	switch {
 	case errors.Is(err, github.ErrHeadBranchNotFound):
 		refusal := NewPullRequestError(PullRequestBranchNotPushed, "the session branch "+session.Branch+" does not exist on GitHub yet")
@@ -289,6 +269,52 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 		log.Printf("agent-session pull request: record on session failed (session=%s pr=%s): %v", session.ID, result.HTMLURL, recErr)
 	}
 	return PullRequestResponse{URL: result.HTMLURL, Number: result.Number, Created: result.Created, HeadSHA: result.HeadSHA}, nil
+}
+
+// pullRequestTarget is what both PR-side verbs act on, all of it read from the
+// durable session record.
+type pullRequestTarget struct {
+	session                 store.AgentSession
+	repository, owner, name string
+	installationID          int64
+}
+
+// sessionTarget re-runs the live-sandbox check on the gateway-verified
+// identity and resolves the session's repository and GitHub App installation.
+// refuse builds the calling verb's typed refusal. repository is set once it is
+// verified, so the caller's audit names it even when a later step refuses.
+func (p *PullRequester) sessionTarget(ctx context.Context, req MintRequest, refuse func(code, message string) *PullRequestError) (pullRequestTarget, *PullRequestError) {
+	session, err := p.Sessions.GetAgentSession(ctx, req.SessionID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return pullRequestTarget{}, refuse(PullRequestForbidden, "session not found")
+		}
+		return pullRequestTarget{}, refuse(PullRequestUnavailable, "session lookup failed")
+	}
+	// The same live-generation + phase gate as the Git and model mints: a
+	// retained, stale, or cross sandbox cannot act on the PR after its turn
+	// ended.
+	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+		return pullRequestTarget{}, refuse(PullRequestForbidden, "this sandbox is not the session's live sandbox")
+	}
+	// The durable record is the authority; the Pod-label digests the gateway
+	// checked must name the very same repository and branch.
+	repository, normErr := NormalizeRepository(session.Repo)
+	requested, reqErr := NormalizeRepository(req.Repository)
+	if normErr != nil || reqErr != nil || repository != requested || session.Branch != req.Branch || ValidateBranch(session.Branch) != nil {
+		return pullRequestTarget{}, refuse(PullRequestForbidden, "the pull request must be for the session's own repository and branch")
+	}
+	owner, name, _ := strings.Cut(repository, "/")
+	target := pullRequestTarget{session: session, repository: repository, owner: owner, name: name}
+	connection, err := p.Connections.GetGitConnectionByOwner(ctx, session.WorkspaceID, owner)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			return target, refuse(PullRequestForbidden, "the workspace has no GitHub App installation for this repository's account")
+		}
+		return target, refuse(PullRequestUnavailable, "GitHub connection lookup failed")
+	}
+	target.installationID = connection.InstallationID
+	return target, nil
 }
 
 func (p *PullRequester) sessionURL(sessionID string) string {
@@ -314,13 +340,23 @@ func sessionProfile(session store.AgentSession) string {
 	return "agent"
 }
 
-// footerAttribution opens the footer's attribution line.
-const footerAttribution = "🤖 Opened by a bex agent session"
+// footerAttribution opens the PR footer's attribution line;
+// commentFooterAttribution opens a PR comment's.
+const (
+	footerAttribution        = "🤖 Opened by a bex agent session"
+	commentFooterAttribution = "🤖 Written by a bex agent session"
+)
 
 // PullRequestBodyWithFooter drops every footer already in body (the agent may
 // have copied the PR's current description, even edited below it) and appends
 // exactly one fresh footer. sessionURL empty falls back to the session id.
 func PullRequestBodyWithFooter(body, profile, sessionURL, sessionID string) string {
+	return withAgentFooter(body, footerAttribution, profile, sessionURL, sessionID)
+}
+
+// withAgentFooter is PullRequestBodyWithFooter with the attribution line
+// chosen by the verb.
+func withAgentFooter(body, attribution, profile, sessionURL, sessionID string) string {
 	for {
 		i := strings.Index(body, PullRequestFooterMarker)
 		if i < 0 {
@@ -333,7 +369,7 @@ func PullRequestBodyWithFooter(body, profile, sessionURL, sessionID string) stri
 	if sessionURL != "" {
 		link = "[view session](" + sessionURL + ")"
 	}
-	footer := PullRequestFooterMarker + "\n---\n" + footerAttribution + " (" + profile + ") · " + link
+	footer := PullRequestFooterMarker + "\n---\n" + attribution + " (" + profile + ") · " + link
 	if strings.TrimSpace(body) == "" {
 		return footer
 	}
@@ -347,7 +383,9 @@ func dropFooterLines(rest string) string {
 	lines := strings.Split(rest, "\n")
 	expect := []func(string) bool{
 		func(line string) bool { return line == "---" },
-		func(line string) bool { return strings.HasPrefix(line, footerAttribution) },
+		func(line string) bool {
+			return strings.HasPrefix(line, footerAttribution) || strings.HasPrefix(line, commentFooterAttribution)
+		},
 	}
 	i := 0
 	for ; i < len(lines); i++ {
@@ -418,27 +456,36 @@ func (c *PullRequestClient) Sync(ctx context.Context, req PullRequestRequest) (P
 	if err != nil {
 		return PullRequestResponse{}, NewPullRequestError(PullRequestUnavailable, "the pull-request service is unreachable")
 	}
+	var out PullRequestResponse
+	if err := readPullRequestReply(resp, NewPullRequestError, &out, func() bool { return out.URL != "" && out.Number > 0 }); err != nil {
+		return PullRequestResponse{}, err
+	}
+	return out, nil
+}
+
+// readPullRequestReply decodes a PR-side verb's answer into out, which valid
+// then checks, or its typed refusal. refuse is the verb's constructor: status
+// and hint are re-derived from the code, so the gateway only ever relays its
+// own vocabulary, whatever bytes came back. It closes the body.
+func readPullRequestReply(resp *http.Response, refuse func(code, message string) *PullRequestError, out any, valid func() bool) *PullRequestError {
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
 	if resp.StatusCode == http.StatusOK {
-		var out PullRequestResponse
-		if err := json.Unmarshal(raw, &out); err != nil || out.URL == "" || out.Number <= 0 {
-			return PullRequestResponse{}, NewPullRequestError(PullRequestUpstreamError, "the pull-request service returned an invalid response")
+		if err := json.Unmarshal(raw, out); err != nil || !valid() {
+			return refuse(PullRequestUpstreamError, "the pull-request service returned an invalid response")
 		}
-		return out, nil
+		return nil
 	}
 	var envelope struct {
 		Error *PullRequestError `json:"error"`
 	}
 	if json.Unmarshal(raw, &envelope) == nil && envelope.Error != nil && envelope.Error.Code != "" {
-		// Re-derive status and hint from the code so the gateway only ever
-		// relays its own vocabulary, whatever bytes came back.
-		return PullRequestResponse{}, NewPullRequestError(envelope.Error.Code, envelope.Error.Message)
+		return refuse(envelope.Error.Code, envelope.Error.Message)
 	}
 	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return PullRequestResponse{}, NewPullRequestError(PullRequestForbidden, "the pull request request was not authorized")
+		return refuse(PullRequestForbidden, "the pull request request was not authorized")
 	}
-	return PullRequestResponse{}, NewPullRequestError(PullRequestUpstreamError, fmt.Sprintf("the pull-request service returned status %d", resp.StatusCode))
+	return refuse(PullRequestUpstreamError, fmt.Sprintf("the pull-request service returned status %d", resp.StatusCode))
 }
 
 func (c *PullRequestClient) now() time.Time {

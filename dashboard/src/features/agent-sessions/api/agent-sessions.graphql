@@ -134,6 +134,15 @@ query AgentSessions(
 query AgentSession($id: String!) {
   agentSession(id: $id) {
     ...AgentSessionFields
+    # What started each steering turn PR feedback delivered (w9/m344): a PR
+    # comment, a review or a failed CI run. Filled on this single read only,
+    # so it stays off the list fragment.
+    turnOrigins {
+      turn
+      kind
+      author
+      url
+    }
   }
 }
 
