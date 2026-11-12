@@ -4390,6 +4390,10 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "维护模式",
     description: "维护模式事件筛选组",
   },
+  "services.eventsFilterGroup.edgeCache": {
+    message: "边缘缓存",
+    description: "边缘缓存事件筛选组",
+  },
   "services.eventsFilterGroup.configuration": {
     message: "配置",
     description: "bex 配置事件筛选组",
@@ -4446,6 +4450,23 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.eventsTypeDeployFinished": {
     message: "部署已完成",
     description: "Service activity type: deploy finished",
+  },
+  "services.eventsTypePipelineMinutesExhausted": {
+    message: "流水线分钟数已用尽",
+    description:
+      "Service activity type: a build refused because the workspace used its pipeline minutes",
+  },
+  "services.eventsTypeEdgeCacheEnabled": {
+    message: "边缘缓存已启用",
+    description: "Service activity type: edge caching turned on",
+  },
+  "services.eventsTypeEdgeCacheDisabled": {
+    message: "边缘缓存已停用",
+    description: "Service activity type: edge caching turned off",
+  },
+  "services.eventsTypeEdgeCachePurged": {
+    message: "边缘缓存已清除",
+    description: "Service activity type: edge cache purged",
   },
   "services.eventsTypeImagePullFailed": {
     message: "镜像拉取失败",

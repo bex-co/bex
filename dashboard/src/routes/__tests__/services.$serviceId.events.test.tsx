@@ -128,6 +128,22 @@ function deactivatedDeployEvent() {
   });
 }
 
+// row is one feed event of type at the given hour of a fixed day.
+function row(
+  id: string,
+  type: string,
+  hour: number,
+  details: Record<string, unknown>,
+) {
+  return {
+    id,
+    type,
+    timestamp: `2026-08-28T${String(hour).padStart(2, "0")}:00:00Z`,
+    cursor: `c-${id}`,
+    details,
+  };
+}
+
 // The route's component reads serviceId via Route.useParams(), so it needs a
 // real router context — rebuild it rooted at the events path (mirrors
 // services.$serviceId.settings.test.tsx's pattern). The deploys/$deployId
@@ -623,18 +639,6 @@ describe("ServiceEventsPage — env-group link titles (w4/563)", () => {
 // rows recorded before either keep their bare titles.
 describe("ServiceEventsPage — rename and custom-domain details (w4/m337)", () => {
   it("names the service's names and the domain, in en and zh", async () => {
-    const row = (
-      id: string,
-      type: string,
-      hour: number,
-      details: Record<string, string>,
-    ) => ({
-      id,
-      type,
-      timestamp: `2026-08-28T${String(hour).padStart(2, "0")}:00:00Z`,
-      cursor: `c-${id}`,
-      details,
-    });
     mockUseQuery.mockReturnValue({
       data: {
         serviceEvents: [
@@ -686,6 +690,63 @@ describe("ServiceEventsPage — rename and custom-domain details (w4/m337)", () 
         "已移除自定义域名 app.example.com",
       ]) {
         expect(screen.getByText(title)).toBeInTheDocument();
+      }
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
+  });
+});
+
+describe("ServiceEventsPage — edge cache and pipeline minutes (w9/m345)", () => {
+  it("names each edge-cache change and the refused build, with who did it, in en and zh", async () => {
+    const cache = {
+      edgeCacheTrigger: { user: { id: "usr-cache", email: "" } },
+    };
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          row("evt-on", "edge_cache_enabled", 9, cache),
+          row("evt-purge", "edge_cache_purged", 8, cache),
+          row("evt-off", "edge_cache_disabled", 7, cache),
+          row("evt-minutes", "pipeline_minutes_exhausted", 6, {
+            deployId: "dep-refused",
+            trigger: { manual: true, user: { id: "usr-dev", email: "" } },
+          }),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    for (const title of [
+      "Edge cache enabled",
+      "Edge cache purged",
+      "Edge cache disabled",
+      "Pipeline minutes exhausted",
+    ]) {
+      expect(await screen.findByText(title)).toBeInTheDocument();
+    }
+    expect(screen.getAllByText("by usr-cache")).toHaveLength(3);
+    expect(screen.getByText("by usr-dev")).toBeInTheDocument();
+    // The refused build links to its deploy, as the deploy rows do.
+    const refused = screen
+      .getByText("Pipeline minutes exhausted")
+      .closest("a") as HTMLAnchorElement;
+    expect(refused.getAttribute("href")).toBe(
+      "/services/app/deploys/dep-refused",
+    );
+
+    await act(() => i18n.changeLanguage("zh"));
+    try {
+      for (const title of [
+        "边缘缓存已启用",
+        "边缘缓存已清除",
+        "边缘缓存已停用",
+        "流水线分钟数已用尽",
+      ]) {
+        expect(await screen.findByText(title)).toBeInTheDocument();
       }
     } finally {
       await act(() => i18n.changeLanguage("en"));

@@ -4490,6 +4490,10 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Maintenance Mode",
     description: "Maintenance-mode event filter group",
   },
+  "services.eventsFilterGroup.edgeCache": {
+    message: "Edge Cache",
+    description: "Edge-cache event filter group",
+  },
   "services.eventsFilterGroup.configuration": {
     message: "Configuration",
     description: "bex configuration event filter group",
@@ -4553,6 +4557,23 @@ const enServices: Record<string, TranslationEntry> = {
   "services.eventsTypeDeployFinished": {
     message: "Deploy ended",
     description: "Service activity type: deploy finished",
+  },
+  "services.eventsTypePipelineMinutesExhausted": {
+    message: "Pipeline minutes exhausted",
+    description:
+      "Service activity type: a build refused because the workspace used its pipeline minutes",
+  },
+  "services.eventsTypeEdgeCacheEnabled": {
+    message: "Edge cache enabled",
+    description: "Service activity type: edge caching turned on",
+  },
+  "services.eventsTypeEdgeCacheDisabled": {
+    message: "Edge cache disabled",
+    description: "Service activity type: edge caching turned off",
+  },
+  "services.eventsTypeEdgeCachePurged": {
+    message: "Edge cache purged",
+    description: "Service activity type: edge cache purged",
   },
   "services.eventsTypeImagePullFailed": {
     message: "Image pull failed",

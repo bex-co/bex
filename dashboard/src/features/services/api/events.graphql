@@ -136,6 +136,15 @@ query ServiceEvents(
           email
         }
       }
+      # edge_cache_enabled / _disabled / _purged (w9/m345): who changed the
+      # cache. pipeline_minutes_exhausted names its refused deploy in deployId
+      # and that deploy's trigger in trigger.
+      edgeCacheTrigger {
+        user {
+          id
+          email
+        }
+      }
     }
   }
 }

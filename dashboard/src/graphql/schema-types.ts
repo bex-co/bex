@@ -1400,6 +1400,13 @@ export type DiskSnapshotHealth = {
   state: Maybe<Scalars['String']['output']>;
 };
 
+export type EdgeCacheTrigger = {
+  __typename: 'EdgeCacheTrigger';
+  manual: Maybe<Scalars['Boolean']['output']>;
+  system: Maybe<Scalars['Boolean']['output']>;
+  user: Maybe<EventUser>;
+};
+
 export type EnvGroup = {
   __typename: 'EnvGroup';
   availability: Maybe<Scalars['String']['output']>;
@@ -5125,6 +5132,7 @@ export type ServiceEventDetails = {
   displayNameFrom: Maybe<Scalars['String']['output']>;
   displayNameTo: Maybe<Scalars['String']['output']>;
   domain: Maybe<Scalars['String']['output']>;
+  edgeCacheTrigger: Maybe<EdgeCacheTrigger>;
   envGroupId: Maybe<Scalars['String']['output']>;
   envGroupName: Maybe<Scalars['String']['output']>;
   environmentFrom: Maybe<Scalars['String']['output']>;

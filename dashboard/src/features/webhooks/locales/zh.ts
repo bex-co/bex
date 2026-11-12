@@ -547,6 +547,25 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "镜像拉取失败",
     description: "Event label — image_pull_failed",
   },
+  "webhooks.event.pipeline_minutes_exhausted": {
+    message: "流水线分钟数已用尽",
+    description: "Event label — pipeline_minutes_exhausted",
+  },
+  "webhooks.event.edge_cache_enabled": {
+    message: "边缘缓存已启用",
+    description:
+      "Event label — edge_cache_enabled (API-only on Render; shown on subscriptions and deliveries, not in the picker)",
+  },
+  "webhooks.event.edge_cache_disabled": {
+    message: "边缘缓存已停用",
+    description:
+      "Event label — edge_cache_disabled (API-only on Render; shown on subscriptions and deliveries, not in the picker)",
+  },
+  "webhooks.event.edge_cache_purged": {
+    message: "边缘缓存已清除",
+    description:
+      "Event label — edge_cache_purged (API-only on Render; shown on subscriptions and deliveries, not in the picker)",
+  },
   "webhooks.event.commit_ignored": {
     message: "提交已忽略",
     description: "Event label — commit_ignored",

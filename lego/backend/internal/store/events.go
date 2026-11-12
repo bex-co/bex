@@ -83,7 +83,8 @@ type ServiceEventRow struct {
 	// Phase is EventPhaseStarted/EventPhaseEnded for a deploy row; empty for audit.
 	Phase string
 
-	// Deploy rows only.
+	// Deploy rows only, except that a pipeline_minutes_exhausted fact carries
+	// its refused deploy's Trigger, Caller and ClearCache (w9/m345).
 	DeployID string
 	Trigger  string // "create" (the app's first deploy) | "api"; the started phase only
 	Status   string // the deploy's terminal status; the ended phase only
@@ -218,6 +219,36 @@ const (
 	AutoDeployFilterChanged AutoDeployFilter = 4
 )
 
+// EdgeCacheFilter is AutoDeployFilter's twin for apps.SetCacheProfile rows
+// (w9/m345): which of edge_cache_enabled (edge_cache_enabled_to = true) and
+// edge_cache_disabled (false) a type filter keeps, OR-ed. The zero value keeps
+// both. A row whose save left caching on or off (NULL) is never an event, so
+// the query drops it whatever the filter.
+type EdgeCacheFilter int16
+
+const (
+	// EdgeCacheFilterNone keeps both edge-cache types.
+	EdgeCacheFilterNone     EdgeCacheFilter = 0
+	EdgeCacheFilterEnabled  EdgeCacheFilter = 1
+	EdgeCacheFilterDisabled EdgeCacheFilter = 2
+)
+
+// ToggleEvent is the event type of an audit row whose verb records which way
+// it turned a setting (auto_deploy_enabled, edge_cache_enabled_to): on, off,
+// or none (false) for a row that records neither. The events feed and the
+// webhook dispatcher share it so the two cannot read a toggle differently.
+func ToggleEvent[T ~string](to *bool, on, off T) (T, bool) {
+	switch {
+	case to == nil:
+		var none T
+		return none, false
+	case *to:
+		return on, true
+	default:
+		return off, true
+	}
+}
+
 // ServiceEventFilter narrows ListServiceEvents.
 //
 // Verbs and Phases are how the caller's event-TYPE filter is pushed down into
@@ -249,9 +280,17 @@ type ServiceEventFilter struct {
 	// applied to SetAutoDeploy rows only. AutoDeployFilterNone (zero value) means
 	// no additional constraint on auto_deploy_enabled.
 	AutoDeploy AutoDeployFilter
+	// EdgeCache narrows apps.SetCacheProfile rows to the edge-cache types asked
+	// for, in SQL like AutoDeploy; zero keeps both.
+	EdgeCache EdgeCacheFilter
 	// Limit caps the page (<1 or >core.MaxPageLimit clamps to core.DefaultPageLimit).
 	Limit int
 }
+
+// isPipelineMinutesFact is true for the fact row f of a pipeline_minutes_exhausted
+// event, the one fact that carries its refused deploy's trigger, opener and
+// clear-cache flag (w9/m345).
+const isPipelineMinutesFact = `f.fact_type = '` + string(EventFactPipelineMinutesExhausted) + `'`
 
 // serviceEventsQuery is the composed view: two projections of `deploys`, one of
 // `audit_events`, and one of `service_event_facts`, ordered by the feed's total
@@ -431,20 +470,27 @@ WITH feed AS (
            OR ($10 & 1 <> 0 AND a.auto_deploy_enabled = true)
            OR ($10 & 2 <> 0 AND a.auto_deploy_enabled = false)
            OR ($10 & 4 <> 0 AND a.auto_deploy_enabled IS NULL))
+      AND (a.verb <> '` + core.AuditVerbSetCacheProfile + `'
+           OR ($12::smallint IS NULL AND a.edge_cache_enabled_to IS NOT NULL)
+           OR ($12 & 1 <> 0 AND a.edge_cache_enabled_to = true)
+           OR ($12 & 2 <> 0 AND a.edge_cache_enabled_to = false))
   UNION ALL
     SELECT 'fact:' || f.source_key,
            f.at,
            '` + EventSourceFact + `'::text,
            ''::text,
            f.deploy_id,
-           ''::text,
+           -- pipeline_minutes_exhausted carries its refused deploy's trigger
+           -- (Render's details.trigger, w9/m345): the trigger, opener and
+           -- clear-cache flag; every other fact carries none.
+           CASE WHEN ` + isPipelineMinutesFact + ` THEN COALESCE(dc.trigger, '') ELSE '' END,
            ''::text,
            ''::text,
            ''::text,
            COALESCE(dc.cancel_reason, ''),
            ''::text, -- stall_reason: a fact is a point observation
            ''::text,
-           ''::text,
+           CASE WHEN ` + isPipelineMinutesFact + ` THEN COALESCE(dc.triggered_by, '') ELSE '' END,
            NULL::text,
            NULL::text,
            NULL::integer,
@@ -479,7 +525,7 @@ WITH feed AS (
            f.status,
            f.exit_code,
            f.run_id,
-           false,
+           ` + isPipelineMinutesFact + ` AND COALESCE(dc.clear_cache, false),
            NULL::text
     FROM service_event_facts f
     LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
@@ -510,7 +556,7 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 	rows, err := s.Pool.Query(ctx, serviceEventsQuery,
 		appID, ownerWorkspace, f.Verbs, f.Phases,
 		nullTime(f.Since), nullTime(f.Until), nullTime(f.AfterAt), f.AfterKey,
-		limit, nullAutoDeployFilter(f.AutoDeploy), f.FactTypes)
+		limit, nullFilterBits(f.AutoDeploy), f.FactTypes, nullFilterBits(f.EdgeCache))
 	if err != nil {
 		return nil, fmt.Errorf("list service events: %w", err)
 	}
@@ -562,6 +608,8 @@ type AuditChanges struct {
 	DisplayNameFrom *string
 	DisplayNameTo   *string
 	Domain          *string
+	// What an edge-cache profile save turned caching to (w9/m345).
+	EdgeCacheEnabledTo *bool
 }
 
 // auditChangesColumns are AuditChanges' columns of audit_events aliased a, in
@@ -569,13 +617,13 @@ type AuditChanges struct {
 const auditChangesColumns = `a.maintenance_mode_to, a.disk_size_from_gb, a.maintenance_uri_from, a.maintenance_uri_to,
        a.auto_deploy_reason, a.auto_deploy_trigger, a.env_group_id, a.env_group_name,
        a.autoscaling_cpu_from, a.autoscaling_cpu_to, a.autoscaling_memory_from, a.autoscaling_memory_to,
-       a.display_name_from, a.display_name_to, a.domain, a.autoscaling_enabled_from`
+       a.display_name_from, a.display_name_to, a.domain, a.autoscaling_enabled_from, a.edge_cache_enabled_to`
 
 func (c *AuditChanges) scanDestinations() []any {
 	return []any{&c.MaintenanceModeTo, &c.DiskSizeFromGB, &c.MaintenanceURIFrom, &c.MaintenanceURITo,
 		&c.AutoDeployReason, &c.AutoDeployTrigger, &c.EnvGroupID, &c.EnvGroupName,
 		&c.AutoscalingCPUFrom, &c.AutoscalingCPUTo, &c.AutoscalingMemoryFrom, &c.AutoscalingMemoryTo,
-		&c.DisplayNameFrom, &c.DisplayNameTo, &c.Domain, &c.AutoscalingEnabledFrom}
+		&c.DisplayNameFrom, &c.DisplayNameTo, &c.Domain, &c.AutoscalingEnabledFrom, &c.EdgeCacheEnabledTo}
 }
 
 // auditRowID is an audit row's id from its feed key ("<audit row id>:").
@@ -588,6 +636,7 @@ var auditChangeVerbs = map[string]bool{
 	core.AuditVerbLinkService: true, core.AuditVerbUnlinkService: true, core.AuditVerbLinkEnvGroup: true,
 	core.AuditVerbSetAutoscaling: true, core.AuditVerbDeleteAutoscaling: true,
 	core.AuditVerbSetDisplayName: true, core.AuditVerbAddDomain: true, core.AuditVerbDeleteDomain: true, core.AuditVerbVerifyDomain: true,
+	core.AuditVerbSetCacheProfile: true,
 }
 
 // attachAuditChanges fills AuditChanges on a page's audit rows from
@@ -694,6 +743,7 @@ SELECT h.event_key AS key,
        END AS deploy_id,
        CASE
            WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.trigger
+           WHEN h.source = '` + EventSourceFact + `' AND ` + isPipelineMinutesFact + ` THEN COALESCE(fd.trigger, '')
            ELSE ''
        END AS trigger,
        CASE
@@ -725,6 +775,7 @@ SELECT h.event_key AS key,
        CASE
            WHEN h.source = '` + EventSourceAudit + `' THEN a.caller
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.triggered_by
+           WHEN h.source = '` + EventSourceFact + `' AND ` + isPipelineMinutesFact + ` THEN COALESCE(fd.triggered_by, '')
            ELSE ''
        END AS caller,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_from END AS plan_from,
@@ -773,7 +824,11 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.status, '') ELSE '' END AS fact_status,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN f.exit_code END AS fact_exit_code,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.run_id, '') ELSE '' END AS fact_run_id,
-       CASE WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.clear_cache ELSE false END AS clear_cache,
+       CASE
+           WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.clear_cache
+           WHEN h.source = '` + EventSourceFact + `' AND ` + isPipelineMinutesFact + ` THEN COALESCE(fd.clear_cache, false)
+           ELSE false
+       END AS clear_cache,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.disk_id END AS disk_id,
        COALESCE(h.app_id, h.service_id),
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(df.leader_id, '') ELSE '' END AS leader_id,
@@ -842,10 +897,10 @@ func (s *PGStore) ServiceEventWorkspaces(ctx context.Context, eventID string) ([
 	return workspaces, nil
 }
 
-// nullAutoDeployFilter maps AutoDeployFilterNone to SQL NULL so the $10
-// predicate in serviceEventsQuery is a no-op when no discrimination is needed.
-func nullAutoDeployFilter(f AutoDeployFilter) *int16 {
-	if f == AutoDeployFilterNone {
+// nullFilterBits maps a zero AutoDeployFilter or EdgeCacheFilter to SQL NULL,
+// so its predicate in serviceEventsQuery ($10, $12) imposes no discrimination.
+func nullFilterBits[F AutoDeployFilter | EdgeCacheFilter](f F) *int16 {
+	if f == 0 {
 		return nil
 	}
 	v := int16(f)

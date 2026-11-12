@@ -4,7 +4,7 @@ export interface ServiceEventGroup {
 }
 
 // Render-shaped presentation order for every service-event type bex can emit.
-// The first four groups mirror Render's Events filter; bex-only configuration
+// The first five groups mirror Render's Events filter; bex-only configuration
 // facts remain available under Configuration instead of becoming unfilterable.
 //
 // This catalog governs GROUPING AND LABELS ONLY, never visibility (w6/m122). The
@@ -19,8 +19,8 @@ export interface ServiceEventGroup {
 // apps.RestoreDiskSnapshot — accepted user intent against the service's own
 // settings, exactly like every other member of this group — and the 2026-07-18
 // Render filter capture (docs/render-artifacts/service-events.md) has no disk
-// group to mirror, so inventing a sixth group would diverge from the rule that
-// the first four groups track Render and Configuration holds the rest.
+// group to mirror, so inventing a disk group would diverge from the rule that
+// the first five groups track Render and Configuration holds the rest.
 export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
   {
     key: "deploy",
@@ -32,6 +32,7 @@ export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
       "pre_deploy_started",
       "pre_deploy_ended",
       "image_pull_failed",
+      "pipeline_minutes_exhausted",
       "cron_job_run_started",
       "cron_job_run_ended",
       "job_started",
@@ -72,6 +73,11 @@ export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
   {
     key: "maintenanceMode",
     types: ["maintenance_mode_enabled", "maintenance_mode_uri_updated"],
+  },
+  // Render's Events filter has an Edge Cache group of its own (w9/m345).
+  {
+    key: "edgeCache",
+    types: ["edge_cache_enabled", "edge_cache_disabled", "edge_cache_purged"],
   },
   {
     key: "configuration",
@@ -125,6 +131,7 @@ const LABEL_KEYS: Record<string, string> = {
   pre_deploy_started: "services.eventsTypePreDeployStarted",
   pre_deploy_ended: "services.eventsTypePreDeployEnded",
   image_pull_failed: "services.eventsTypeImagePullFailed",
+  pipeline_minutes_exhausted: "services.eventsTypePipelineMinutesExhausted",
   cron_job_run_started: "services.eventsTypeCronRunStarted",
   cron_job_run_ended: "services.eventsTypeCronRunFinished",
   job_started: "services.eventsTypeJobStarted",
@@ -152,6 +159,9 @@ const LABEL_KEYS: Record<string, string> = {
   plan_changed: "services.eventsTypePlanChanged",
   maintenance_mode_enabled: "services.eventsTypeMaintenanceModeChanged",
   maintenance_mode_uri_updated: "services.eventsTypeMaintenanceModeUriUpdated",
+  edge_cache_enabled: "services.eventsTypeEdgeCacheEnabled",
+  edge_cache_disabled: "services.eventsTypeEdgeCacheDisabled",
+  edge_cache_purged: "services.eventsTypeEdgeCachePurged",
   env_vars_changed: "services.eventsTypeEnvVarsChanged",
   service_environment_changed: "services.eventsTypeEnvironmentChanged",
   // A project/environment reassignment (w6/m134) — NOT the env-var fact the

@@ -603,14 +603,15 @@ func project(r store.WebhookEventRow) (string, payloadData, bool) {
 		data.Status = store.RenderDeployStatus(r.Status)
 		return TypeDeployEnded, data, true
 	case store.EventSourceAudit:
-		if r.Verb == autoDeployVerb {
-			if r.AutoDeployEnabled == nil {
-				return "", payloadData{}, false
-			}
-			if *r.AutoDeployEnabled {
-				return TypeAutoDeployEnabled, data, true
-			}
-			return TypeAutoDeployDisabled, data, true
+		switch r.Verb {
+		case autoDeployVerb:
+			t, ok := store.ToggleEvent(r.AutoDeployEnabled, TypeAutoDeployEnabled, TypeAutoDeployDisabled)
+			return t, data, ok
+		case cacheProfileVerb:
+			// A profile save that left caching on or off records no toggle and
+			// is no event (w9/m345); the feed query already leaves it out.
+			t, ok := store.ToggleEvent(r.EdgeCacheEnabledTo, TypeEdgeCacheEnabled, TypeEdgeCacheDisabled)
+			return t, data, ok
 		}
 		t, ok := verbEvents[r.Verb]
 		return t, data, ok

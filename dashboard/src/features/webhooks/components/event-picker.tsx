@@ -80,10 +80,11 @@ export function EventPicker({
     onChange(nextSet);
   }
 
-  const allState = triState(
-    eventTypes.filter((e) => value.has(e)).length,
-    eventTypes.length,
-  );
+  // Counted over the types this picker can tick: a subscription may also name
+  // types it does not offer (Render's API-only edge-cache types, w9/m345),
+  // which saving keeps but the count must not claim.
+  const selectedCount = eventTypes.filter((e) => value.has(e)).length;
+  const allState = triState(selectedCount, eventTypes.length);
 
   function toggleCollapsed(groupKey: string) {
     setCollapsed((prev) => {
@@ -97,7 +98,7 @@ export function EventPicker({
   return (
     <div className="space-y-2">
       <p className="text-muted-foreground text-sm" data-testid="event-count">
-        {t("webhooks.selectedCount", { count: value.size })}
+        {t("webhooks.selectedCount", { count: selectedCount })}
       </p>
       <div className="rounded-md border">
         <div className="space-y-2 border-b p-2">

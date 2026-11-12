@@ -17,12 +17,14 @@ limitations under the License.
 package apps
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -103,5 +105,93 @@ func TestRESTPurgeCacheStampsACachingServiceAndRefusesOneThatDoesNotCache(t *tes
 	}
 	if rec := restDo(t, mux, http.MethodPost, "/v1/services/plain/cache/purge", ""); rec.Code != http.StatusBadRequest {
 		t.Fatalf("purge of a service that does not cache => %d, want 400", rec.Code)
+	}
+}
+
+// cacheToggle names a recorded edge_cache_enabled_to: kept (no toggle), on or off.
+func cacheToggle(to *bool) string {
+	switch {
+	case to == nil:
+		return "kept"
+	case *to:
+		return "on"
+	default:
+		return "off"
+	}
+}
+
+// saveCacheProfile saves profile on web and returns the one SetCacheProfile
+// row's toggle.
+func saveCacheProfile(t *testing.T, svc *Service, sink *captureAuditSink, profile string) string {
+	t.Helper()
+	sink.events = nil
+	if _, err := svc.SetCacheProfile(context.Background(), "web", profile); err != nil {
+		t.Fatalf("SetCacheProfile(%s): %v", profile, err)
+	}
+	if n := sink.countVerb(core.AuditVerbSetCacheProfile); n != 1 {
+		t.Fatalf("SetCacheProfile(%s) recorded %d rows, want 1", profile, n)
+	}
+	return cacheToggle(sink.events[0].EdgeCacheEnabledTo)
+}
+
+// w9/m345: each profile save records which way it turned the edge cache, the
+// fact Render's edge_cache_enabled / edge_cache_disabled name. A save that keeps
+// caching on, or off, records no toggle (Render has no event for it), and a
+// purge records its own verb.
+func TestCacheProfileSavesRecordWhetherCachingTurnedOnOrOff(t *testing.T) {
+	svc, _ := newService(nil, cacheApp("web", "standard", ""))
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	for _, step := range []struct{ profile, want string }{
+		{appv1alpha1.CacheProfileNone, "kept"}, // off -> off
+		{appv1alpha1.CacheProfileStatic, "on"}, // off -> on
+		{appv1alpha1.CacheProfileAll, "kept"},  // on -> on
+		{appv1alpha1.CacheProfileNone, "off"},  // on -> off
+		{appv1alpha1.CacheProfileAll, "on"},    // off -> on
+	} {
+		if got := saveCacheProfile(t, svc, sink, step.profile); got != step.want {
+			t.Fatalf("save of %s recorded caching %s, want %s", step.profile, got, step.want)
+		}
+	}
+
+	sink.events = nil
+	if _, err := svc.PurgeCache(context.Background(), "web"); err != nil {
+		t.Fatal(err)
+	}
+	if n := sink.countVerb(core.AuditVerbPurgeCache); n != 1 {
+		t.Fatalf("purge recorded %d rows, want 1", n)
+	}
+}
+
+// A web service on its image's port gets no edge-cache sidecar from the
+// operator (AppSpec.ServesEdgeCache), so a profile save on it turns no cache
+// on, and there is no cache to purge.
+func TestImagePortsServiceSavesNoCacheToggle(t *testing.T) {
+	app := cacheApp("web", "standard", appv1alpha1.TypeWebService)
+	app.Spec.PortMode = appv1alpha1.PortModeWebImageV1
+	svc, _ := newService(nil, app)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	if got := saveCacheProfile(t, svc, sink, appv1alpha1.CacheProfileStatic); got != "kept" {
+		t.Fatalf("a profile save on an image-ports service recorded caching %s, want kept", got)
+	}
+	if _, err := svc.PurgeCache(context.Background(), "web"); err == nil {
+		t.Fatal("purging a service the operator runs no cache for must be refused")
+	}
+}
+
+// A refused save records nothing for the feed: the verb authorizes under
+// deferred audit, so only a save that landed is an event.
+func TestRefusedCacheProfileSaveRecordsNoEvent(t *testing.T) {
+	svc, _ := newService(nil, cacheApp("web", "free", ""))
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	if _, err := svc.SetCacheProfile(context.Background(), "web", appv1alpha1.CacheProfileStatic); err == nil {
+		t.Fatal("caching on a free web service must be refused")
+	}
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbSetCacheProfile && ev.Outcome == core.AuditAllowed {
+			t.Fatalf("a refused save recorded an allowed row: %+v", ev)
+		}
 	}
 }

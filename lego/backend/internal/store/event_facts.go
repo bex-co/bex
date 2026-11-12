@@ -64,6 +64,12 @@ const (
 	EventFactJobRunEnded      ServiceEventFactType = "job_run_ended"
 	EventFactCronRunStarted   ServiceEventFactType = "cron_job_run_started"
 	EventFactCronRunEnded     ServiceEventFactType = "cron_job_run_ended"
+	// EventFactPipelineMinutesExhausted is a deploy whose build the operator
+	// refused because the workspace has used its plan's pipeline minutes and
+	// cannot buy more (w9/m345): Render's pipeline_minutes_exhausted, one per
+	// refused deploy, recorded by the reconciler from the same Build condition
+	// that closes the deploy build_failed.
+	EventFactPipelineMinutesExhausted ServiceEventFactType = "pipeline_minutes_exhausted"
 )
 
 var serviceEventFactTypes = map[ServiceEventFactType]bool{
@@ -89,6 +95,7 @@ var serviceEventFactTypes = map[ServiceEventFactType]bool{
 	EventFactCronRunEnded:              true,
 	EventFactServiceDiskUsageHigh:      true,
 	EventFactServiceDiskUsageRecovered: true,
+	EventFactPipelineMinutesExhausted:  true,
 }
 
 // Closed lifecycle-step outcomes for a *_ended fact's Status column — the same

@@ -11,6 +11,7 @@ export function eventIconClass(
     status === "update_failed" ||
     factStatus === "failed" ||
     type === "image_pull_failed" ||
+    type === "pipeline_minutes_exhausted" ||
     type === "server_failed" ||
     type === "server_hardware_failure" ||
     type === "service_disk_usage_high"

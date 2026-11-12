@@ -43,6 +43,12 @@ limitations under the License.
 //	plan_changed                apps.SetPlan      (details.from/to = plan name strings)
 //	instance_count_changed      apps.Scale        (details.from/to = instance counts)
 //	autoscaling_config_changed  apps.SetAutoscaling / apps.DeleteAutoscaling (details.previous/current min+max)
+//	edge_cache_enabled          apps.SetCacheProfile turning caching on  (details.trigger {manual, user, system}, w9/m345)
+//	edge_cache_disabled         apps.SetCacheProfile turning caching off (same trigger; a save that keeps caching on is no event)
+//	edge_cache_purged           apps.PurgeCache                          (same trigger)
+//	pipeline_minutes_exhausted  a deploy whose build the operator refused for exhausted pipeline
+//	                            minutes, a typed fact beside its deploy_ended (details.buildId +
+//	                            the deploy's trigger, w9/m345)
 //
 // and these bex-named types, for writes Render's vocabulary has no name for:
 //
@@ -122,9 +128,8 @@ limitations under the License.
 //
 // # Omissions (honest, not faked)
 //
-//   - provider hardware/maintenance, billing, workflow, preview-environment,
-//     persistent-disk, and mutable edge-cache events have no accepted bex
-//     mechanism or durable source.
+//   - provider hardware/maintenance, billing, workflow, and preview-environment
+//     events have no accepted bex mechanism or durable source.
 //     (maintenance_* now has a source — see the maintenance-mode types above —
 //     but only for the tenant-facing toggle this feed's apps.SetMaintenanceMode
 //     records; Render's platform-scheduled infra-maintenance concept, if its
@@ -250,6 +255,17 @@ const (
 	// The primary moved (w2/m171), observed like its siblings; details carry
 	// the new primary as leaderId.
 	TypePostgresClusterLeaderChanged = eventvocab.TypePostgresClusterLeaderChanged
+	// Edge caching (w9/m345): apps.SetCacheProfile turning the cache on or
+	// off, and apps.PurgeCache. details.trigger is Render's {manual, user,
+	// system}.
+	TypeEdgeCacheEnabled  = "edge_cache_enabled"
+	TypeEdgeCacheDisabled = "edge_cache_disabled"
+	TypeEdgeCachePurged   = "edge_cache_purged"
+	// A build the operator refused because the workspace is out of pipeline
+	// minutes (w9/m345), an observed fact beside the deploy's deploy_ended;
+	// details carry Render's buildId (the deploy, bex's build) and the
+	// deploy's trigger.
+	TypePipelineMinutesExhausted = "pipeline_minutes_exhausted"
 )
 
 // bex-named types — real writes Render's vocabulary has no name for. Named in
@@ -463,6 +479,11 @@ var eventTypes = map[string]string{
 	"jobs.Cancel":                           TypeJobCanceled,
 	core.AuditVerbMaintenanceModeEnabled:    TypeMaintenanceModeEnabled,
 	core.AuditVerbMaintenanceModeURIUpdated: TypeMaintenanceModeURIUpdated,
+	// w9/m345: a profile save is edge_cache_enabled here, and view reads its
+	// edge_cache_enabled_to to tell enabled from disabled. A save that left
+	// caching as it was records NULL and the store never returns it.
+	core.AuditVerbSetCacheProfile: TypeEdgeCacheEnabled,
+	core.AuditVerbPurgeCache:      TypeEdgeCachePurged,
 }
 
 // indexedAuditEventTypes are webhook-visible datastore effects that have no
@@ -505,64 +526,72 @@ var (
 		TypeCronJobRunEnded,
 		TypeServiceDiskUsageHigh,
 		TypeServiceDiskUsageRecovered,
+		TypePipelineMinutesExhausted,
 	}
 )
 
 // pushDown translates a caller's event-TYPE filter into the sets the store
 // query takes: the audit verbs that produce those types, the deploy phases that
-// do, and (for auto-deploy types) an AutoDeployFilter that discriminates the
-// three sub-types in SQL before the LIMIT. It is what keeps the type filter IN
-// SQL — filtering the result in Go after the store's LIMIT would return short
-// (sometimes empty) pages, which a cursor client reads as the end of the feed
-// and stops on.
+// do, the fact types, and (for the auto-deploy and edge-cache types) the
+// AutoDeploy/EdgeCache bits that discriminate one verb's sub-types in SQL
+// before the LIMIT. It is what keeps the type filter IN SQL — filtering the
+// result in Go after the store's LIMIT would return short (sometimes empty)
+// pages, which a cursor client reads as the end of the feed and stops on.
 //
 // Several types are the UNION of each type's sets (Render's type filter takes a
 // comma-separated list — w1/m165). No types asks for everything. An unknown type
 // contributes nothing, so a filter of only unknown types is an empty feed — not,
 // as a Go-side filter would give, a page of zero items that a client cannot
 // distinguish from the end.
-func pushDown(types []string) (verbs, phases, factTypes []string, autoDeploy store.AutoDeployFilter) {
+func pushDown(types []string) store.ServiceEventFilter {
 	if len(types) == 0 {
-		return allVerbs, allPhases, allFactTypes, store.AutoDeployFilterNone
+		return store.ServiceEventFilter{Verbs: allVerbs, Phases: allPhases, FactTypes: allFactTypes}
 	}
+	var f store.ServiceEventFilter
 	for _, t := range types {
-		v, p, f, ad := pushDownOne(t)
-		verbs = appendMissing(verbs, v...)
-		phases = appendMissing(phases, p...)
-		factTypes = appendMissing(factTypes, f...)
-		autoDeploy |= ad
+		one := pushDownOne(t)
+		f.Verbs = appendMissing(f.Verbs, one.Verbs...)
+		f.Phases = appendMissing(f.Phases, one.Phases...)
+		f.FactTypes = appendMissing(f.FactTypes, one.FactTypes...)
+		f.AutoDeploy |= one.AutoDeploy
+		f.EdgeCache |= one.EdgeCache
 	}
-	return verbs, phases, factTypes, autoDeploy
+	return f
 }
 
 // pushDownOne is pushDown for exactly one (non-empty) type.
-func pushDownOne(eventType string) (verbs, phases, factTypes []string, autoDeploy store.AutoDeployFilter) {
+func pushDownOne(eventType string) store.ServiceEventFilter {
 	switch eventType {
 	case TypeDeployStarted:
-		return nil, []string{store.EventPhaseStarted}, nil, store.AutoDeployFilterNone
+		return store.ServiceEventFilter{Phases: []string{store.EventPhaseStarted}}
 	case TypeDeployEnded:
-		return nil, []string{store.EventPhaseEnded}, nil, store.AutoDeployFilterNone
+		return store.ServiceEventFilter{Phases: []string{store.EventPhaseEnded}}
 	case TypeAutoDeployEnabled:
-		return []string{core.AuditVerbSetAutoDeploy}, nil, nil, store.AutoDeployFilterEnabled
+		return store.ServiceEventFilter{Verbs: []string{core.AuditVerbSetAutoDeploy}, AutoDeploy: store.AutoDeployFilterEnabled}
 	case TypeAutoDeployDisabled:
-		return []string{core.AuditVerbSetAutoDeploy}, nil, nil, store.AutoDeployFilterDisabled
+		return store.ServiceEventFilter{Verbs: []string{core.AuditVerbSetAutoDeploy}, AutoDeploy: store.AutoDeployFilterDisabled}
 	case TypeAutoDeployChanged:
-		return []string{core.AuditVerbSetAutoDeploy}, nil, nil, store.AutoDeployFilterChanged
+		return store.ServiceEventFilter{Verbs: []string{core.AuditVerbSetAutoDeploy}, AutoDeploy: store.AutoDeployFilterChanged}
+	case TypeEdgeCacheEnabled:
+		return store.ServiceEventFilter{Verbs: []string{core.AuditVerbSetCacheProfile}, EdgeCache: store.EdgeCacheFilterEnabled}
+	case TypeEdgeCacheDisabled:
+		return store.ServiceEventFilter{Verbs: []string{core.AuditVerbSetCacheProfile}, EdgeCache: store.EdgeCacheFilterDisabled}
 	case TypeImagePullFailed, TypeServiceSuspended, TypeServiceResumed,
 		TypeServiceHibernated, TypeServiceWoken,
 		TypeServerFailed, TypeServerHardwareFailure, TypeServerAvailable, TypeBranchChanged, TypeBranchDeleted,
 		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded,
 		TypeBuildStarted, TypeBuildEnded, TypePreDeployStarted, TypePreDeployEnded,
 		TypeJobRunEnded, TypeCronJobRunStarted, TypeCronJobRunEnded,
-		TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered:
-		return nil, nil, []string{eventType}, store.AutoDeployFilterNone
+		TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered, TypePipelineMinutesExhausted:
+		return store.ServiceEventFilter{FactTypes: []string{eventType}}
 	}
+	var f store.ServiceEventFilter
 	for _, verb := range allVerbs {
 		if eventTypes[verb] == eventType {
-			verbs = append(verbs, verb)
+			f.Verbs = append(f.Verbs, verb)
 		}
 	}
-	return verbs, nil, nil, store.AutoDeployFilterNone
+	return f
 }
 
 // appendMissing appends each value not already in dst, keeping first-seen order.
@@ -615,6 +644,14 @@ type Trigger struct {
 	// deploy, which is this object's documented behavior for a cause Render's
 	// vocabulary cannot name.
 	DeployHook bool
+}
+
+// EdgeCacheTrigger is Render's trigger object on edge_cache_enabled,
+// edge_cache_disabled and edge_cache_purged (w9/m345), {manual, user, system}.
+// Every bex edge-cache change is a caller's API or dashboard write, so the
+// adapters render it manual and never system; User is the caller.
+type EdgeCacheTrigger struct {
+	User *UserRef
 }
 
 // EndReason is Render's buildDeployEndReason on deploy_ended and build_ended
@@ -862,6 +899,24 @@ type Details struct {
 	DisplayNameFrom string
 	DisplayNameTo   string
 	Domain          string
+	// edge_cache_enabled / _disabled / _purged (w9/m345): Render's trigger.
+	// pipeline_minutes_exhausted carries its refused deploy's trigger in
+	// Trigger, and DeployID is Render's buildId there (bex's build is its
+	// deploy's own, as on deploy_ended's reason).
+	EdgeCacheTrigger *EdgeCacheTrigger
+}
+
+// userRefs are the {id, email} user objects an event's details name — the
+// ones resolveUserEmails and resolveUserIDs fill.
+func (d *Details) userRefs() []*UserRef {
+	refs := []*UserRef{d.SuspendedByUser, d.ResumedByUser}
+	if d.Trigger != nil {
+		refs = append(refs, d.Trigger.User)
+	}
+	if d.EdgeCacheTrigger != nil {
+		refs = append(refs, d.EdgeCacheTrigger.User)
+	}
+	return refs
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -1005,18 +1060,9 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	if appID == "" {
 		return []Event{}, nil
 	}
-	verbs, phases, factTypes, autoDeploy := pushDown(filter.Types)
-	rows, err := s.Store.ListServiceEvents(ctx, appID, a.Labels[core.LabelTenant], store.ServiceEventFilter{
-		Since:      since,
-		Until:      until,
-		AfterAt:    after.At,
-		AfterKey:   after.Key,
-		Verbs:      verbs,
-		Phases:     phases,
-		FactTypes:  factTypes,
-		AutoDeploy: autoDeploy,
-		Limit:      filter.Limit,
-	})
+	f := pushDown(filter.Types)
+	f.Since, f.Until, f.AfterAt, f.AfterKey, f.Limit = since, until, after.At, after.Key, filter.Limit
+	rows, err := s.Store.ListServiceEvents(ctx, appID, a.Labels[core.LabelTenant], f)
 	if err != nil {
 		return nil, err
 	}
@@ -1039,16 +1085,11 @@ func (s *Service) resolveUserEmails(ctx context.Context, events []Event) {
 		return
 	}
 	subjects := map[string]struct{}{}
-	collect := func(u *UserRef) {
-		if u != nil && u.ID != "" {
-			subjects[u.ID] = struct{}{}
-		}
-	}
 	for i := range events {
-		collect(events[i].Details.SuspendedByUser)
-		collect(events[i].Details.ResumedByUser)
-		if events[i].Details.Trigger != nil {
-			collect(events[i].Details.Trigger.User)
+		for _, u := range events[i].Details.userRefs() {
+			if u != nil && u.ID != "" {
+				subjects[u.ID] = struct{}{}
+			}
 		}
 	}
 	if len(subjects) == 0 {
@@ -1062,16 +1103,11 @@ func (s *Service) resolveUserEmails(ctx context.Context, events []Event) {
 	if err != nil {
 		return
 	}
-	apply := func(u *UserRef) {
-		if u != nil {
-			u.Email = emails[u.ID]
-		}
-	}
 	for i := range events {
-		apply(events[i].Details.SuspendedByUser)
-		apply(events[i].Details.ResumedByUser)
-		if events[i].Details.Trigger != nil {
-			apply(events[i].Details.Trigger.User)
+		for _, u := range events[i].Details.userRefs() {
+			if u != nil {
+				u.Email = emails[u.ID]
+			}
 		}
 	}
 }
@@ -1089,16 +1125,9 @@ func (s *Service) resolveUserIDs(ctx context.Context, events []Event) {
 			subjects = append(subjects, subject)
 		}
 	}
-	refs := func(e *Event) []*UserRef {
-		out := []*UserRef{e.Details.SuspendedByUser, e.Details.ResumedByUser}
-		if e.Details.Trigger != nil {
-			out = append(out, e.Details.Trigger.User)
-		}
-		return out
-	}
 	for i := range events {
 		collect(events[i].Details.TriggeredByUser)
-		for _, u := range refs(&events[i]) {
+		for _, u := range events[i].Details.userRefs() {
 			if u != nil {
 				collect(u.ID)
 			}
@@ -1112,7 +1141,7 @@ func (s *Service) resolveUserIDs(ctx context.Context, events []Event) {
 		if id, ok := public[events[i].Details.TriggeredByUser]; ok {
 			events[i].Details.TriggeredByUser = id
 		}
-		for _, u := range refs(&events[i]) {
+		for _, u := range events[i].Details.userRefs() {
 			if u == nil {
 				continue
 			}
@@ -1229,25 +1258,7 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.TriggeredByUser = r.Caller
 		if r.Phase == store.EventPhaseStarted {
 			ev.Type = TypeDeployStarted
-			ev.Details.Trigger = &Trigger{
-				FirstBuild: r.Trigger == store.TriggerCreate,
-				// Render's envUpdated says an environment change caused this
-				// rollout: an env var, secret file, or env-group write (w6/m51).
-				// A settings save rolls as settings_change and reads false
-				// (w8/m135). Manual stays false: nobody clicked Deploy.
-				EnvUpdated: r.Trigger == store.TriggerConfigChange,
-				// Only a dashboard Manual Deploy is manual (w4/413): an
-				// API-key POST .../deploys is "api" with manual false, as
-				// Render's own record reads.
-				Manual:           r.Trigger == store.TriggerManual,
-				ClearCache:       r.ClearCache,
-				DeployHook:       r.Trigger == store.TriggerDeployHook,
-				Rollback:         r.Trigger == store.TriggerRollback,
-				DeployedByRender: r.Trigger == store.TriggerDeployedByRender,
-			}
-			if r.Caller != "" {
-				ev.Details.Trigger.User = &UserRef{ID: r.Caller}
-			}
+			ev.Details.Trigger = deployTrigger(r)
 			// w4/m112: while this deploy is still open, say why it is not
 			// progressing — the same column the deploy detail page reads, so
 			// the two surfaces cannot disagree. The store clears it as the row
@@ -1352,14 +1363,20 @@ func view(r store.ServiceEventRow, service string) Event {
 		case TypeKeyValueConfigRestart:
 			ev.Details.MaxmemoryPolicy = r.MaxmemoryPolicy
 			ev.Details.PersistenceMode = r.PersistenceMode
+		case TypeEdgeCacheEnabled, TypeEdgeCachePurged:
+			// A profile save names the way it turned the cache (w9/m345);
+			// one that left it as it was is no event, and Get answers 404.
+			if r.Verb == core.AuditVerbSetCacheProfile {
+				ev.Type, _ = store.ToggleEvent(r.EdgeCacheEnabledTo, TypeEdgeCacheEnabled, TypeEdgeCacheDisabled)
+			}
+			ev.Details.EdgeCacheTrigger = &EdgeCacheTrigger{}
+			if r.Caller != "" {
+				ev.Details.EdgeCacheTrigger.User = &UserRef{ID: r.Caller}
+			}
 		case TypeAutoDeployChanged:
 			// Discriminate: new rows carry the boolean; legacy rows keep the bex name.
-			if r.AutoDeployEnabled != nil {
-				if *r.AutoDeployEnabled {
-					ev.Type = TypeAutoDeployEnabled
-				} else {
-					ev.Type = TypeAutoDeployDisabled
-				}
+			if t, ok := store.ToggleEvent(r.AutoDeployEnabled, TypeAutoDeployEnabled, TypeAutoDeployDisabled); ok {
+				ev.Type = t
 			}
 			ev.Details.AutoDeployTrigger, ev.Details.AutoDeployReason = r.AutoDeployTrigger, r.AutoDeployReason
 		}
@@ -1401,7 +1418,37 @@ func view(r store.ServiceEventRow, service string) Event {
 			// superseding build or deploy, so it is the empty reason a plain
 			// success or failure carries on deploy_ended.
 			ev.Details.EndReason = &EndReason{}
+		case TypePipelineMinutesExhausted:
+			// The trigger of the deploy whose build was refused (w9/m345);
+			// the store joins that deploy's row.
+			ev.Details.Trigger = deployTrigger(r)
 		}
 	}
 	return ev
+}
+
+// deployTrigger is Render's deploy trigger object for a deploy row's trigger,
+// opener and clear-cache flag: deploy_started's, and the refused deploy's on
+// pipeline_minutes_exhausted.
+func deployTrigger(r store.ServiceEventRow) *Trigger {
+	t := &Trigger{
+		FirstBuild: r.Trigger == store.TriggerCreate,
+		// Render's envUpdated says an environment change caused this
+		// rollout: an env var, secret file, or env-group write (w6/m51).
+		// A settings save rolls as settings_change and reads false
+		// (w8/m135). Manual stays false: nobody clicked Deploy.
+		EnvUpdated: r.Trigger == store.TriggerConfigChange,
+		// Only a dashboard Manual Deploy is manual (w4/413): an
+		// API-key POST .../deploys is "api" with manual false, as
+		// Render's own record reads.
+		Manual:           r.Trigger == store.TriggerManual,
+		ClearCache:       r.ClearCache,
+		DeployHook:       r.Trigger == store.TriggerDeployHook,
+		Rollback:         r.Trigger == store.TriggerRollback,
+		DeployedByRender: r.Trigger == store.TriggerDeployedByRender,
+	}
+	if r.Caller != "" {
+		t.User = &UserRef{ID: r.Caller}
+	}
+	return t
 }

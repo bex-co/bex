@@ -315,6 +315,7 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
                       details?.suspendedByUser?.id ||
                       details?.resumedByUser?.id ||
                       details?.trigger?.user?.id ||
+                      details?.edgeCacheTrigger?.user?.id ||
                       (details?.actor && details.actor !== "user"
                         ? details.actor
                         : "") ||

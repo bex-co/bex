@@ -42,11 +42,11 @@ const (
 	edgeCacheMaxBytes = 48 << 20
 )
 
-// edgeCaches reports whether the App gets the edge cache: a paid web service
-// with a caching profile, on an operator that knows its own image. Render
-// offers no edge caching on free web services.
+// edgeCaches reports whether the App gets the edge cache: the spec serves one
+// (AppSpec.ServesEdgeCache, which bex-api's edge-cache events read too), on an
+// operator that knows its own image.
 func (r *AppReconciler) edgeCaches(app *appv1alpha1.App) bool {
-	return app.Spec.EdgeCaching() && !isFreeApp(app) && !app.Spec.HasImagePorts() && r.BackupHelperImage != ""
+	return app.Spec.ServesEdgeCache() && r.BackupHelperImage != ""
 }
 
 // edgeCacheContainer is the sidecar. drain is the app's preStop sleep: the

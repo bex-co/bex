@@ -1036,6 +1036,16 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			startedAt = failedPreDeployStart(cur, open)
 		}
 	}
+	// w9/m345: a build refused for exhausted pipeline minutes is Render's
+	// pipeline_minutes_exhausted, beside the deploy_ended this close records.
+	// Written before the close, so a failed write leaves the row open and the
+	// next pass retries both, instead of closing a refusal no event names.
+	if fact, ok := pipelineMinutesExhaustedFact(open, cur, status); ok {
+		if _, err := r.Store.InsertServiceEventFact(ctx, fact); err != nil {
+			log.Printf("controlplane: record pipeline minutes exhausted %s: %v", open.ID, err)
+			return
+		}
+	}
 	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, ran, failureReason, failureCode, cancelReason, startedAt, deployCloseEnd(cur, open, status))
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
@@ -1984,17 +1994,51 @@ func timedOutDeployStatus(open Deploy) string {
 	}
 }
 
-// recordedBuildFailure reads the operator's durable build verdict
-// (status.conditions[Build], w6/m100) for one deploy row's release generation,
-// returning the build error message it carries. See supersededDeployStatus for
-// why that verdict outranks the generation comparison there.
+// recordedBuildFailure reads the operator's durable build verdict for one
+// deploy row's release generation, returning the build error message it
+// carries. See supersededDeployStatus for why that verdict outranks the
+// generation comparison there.
 func recordedBuildFailure(app *appv1alpha1.App, generation int64) (string, bool) {
+	if v := releaseBuildVerdict(app, generation); v != nil {
+		return v.Message, true
+	}
+	return "", false
+}
+
+// releaseBuildVerdict is the operator's durable build failure verdict
+// (status.conditions[Build], w6/m100) attributed to one deploy row's release
+// generation, or nil when that release has none.
+func releaseBuildVerdict(app *appv1alpha1.App, generation int64) *metav1.Condition {
 	cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionBuild)
 	if generation == 0 || cond == nil || cond.ObservedGeneration != generation ||
 		!appv1alpha1.IsBuildFailureReason(cond.Reason) {
-		return "", false
+		return nil
 	}
-	return cond.Message, true
+	return cond
+}
+
+// pipelineMinutesExhaustedFact is the pipeline_minutes_exhausted fact of a
+// deploy closing build_failed because the operator refused its build: the
+// workspace had used its plan's pipeline minutes and could buy no more
+// (ReasonBuildMinutesExhausted on the Build verdict of the row's own release).
+// At is left to the insert's now: the operator keeps the Build condition False
+// across failures, so its LastTransitionTime is the App's first build failure,
+// not this refusal. The first pass that sees the refusal dates it, before the
+// close that follows. Keyed by the deploy, so one refused deploy is one event.
+func pipelineMinutesExhaustedFact(open Deploy, app *appv1alpha1.App, status string) (ServiceEventFact, bool) {
+	if status != DeployBuildFailed || !CanTransitionDeploy(open.Status, status) {
+		return ServiceEventFact{}, false
+	}
+	if v := releaseBuildVerdict(app, open.Generation); v == nil || v.Reason != appv1alpha1.ReasonBuildMinutesExhausted {
+		return ServiceEventFact{}, false
+	}
+	return ServiceEventFact{
+		SourceKey: "deploy:" + open.ID + ":" + string(EventFactPipelineMinutesExhausted),
+		AppID:     open.AppID,
+		Type:      EventFactPipelineMinutesExhausted,
+		DeployID:  open.ID,
+		Image:     open.Image,
+	}, true
 }
 
 // recordedBuildRun reads the operator's recorded build execution window

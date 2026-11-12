@@ -97,8 +97,14 @@ type renderDetails struct {
 	// there is deprecated and not emitted (w3/m302).
 	Status string `json:"status,omitempty"`
 	// BuildStatus is build_ended's succeeded|failed|canceled (w7/m66).
-	BuildStatus string         `json:"buildStatus,omitempty"`
-	Trigger     *renderTrigger `json:"trigger,omitempty"`
+	BuildStatus string `json:"buildStatus,omitempty"`
+	// BuildID is pipeline_minutes_exhausted's buildId (w9/m345): the refused
+	// deploy, bex's build being its deploy's own.
+	BuildID string `json:"buildId,omitempty"`
+	// Trigger is a deploy's *renderTrigger (deploy_started,
+	// pipeline_minutes_exhausted) or an edge-cache event's
+	// *renderEdgeCacheTrigger: Render's two trigger objects share the key.
+	Trigger any `json:"trigger,omitempty"`
 	// Deploy enrichment for dashboard (w1/m47)
 	Image         string `json:"image,omitempty"`
 	CommitID      string `json:"commitId,omitempty"`
@@ -283,6 +289,15 @@ type renderTrigger struct {
 	User *renderUser `json:"user,omitempty"`
 }
 
+// renderEdgeCacheTrigger is Render's trigger on edge_cache_enabled,
+// edge_cache_disabled and edge_cache_purged (w9/m345): manual and system are
+// required, user names the person who changed the cache.
+type renderEdgeCacheTrigger struct {
+	Manual bool        `json:"manual"`
+	User   *renderUser `json:"user,omitempty"`
+	System bool        `json:"system"`
+}
+
 // renderCronRunStatus maps the stored lifecycle word onto Render's cronJobRun
 // status enum (pending|successful|unsuccessful|canceled), the vocabulary the
 // same run carries on GET /v1/cron-jobs/{id}/runs (w4/507). job_run_ended's
@@ -330,6 +345,10 @@ func toRenderEvent(e Event) renderEvent {
 			DeployHook:       t.DeployHook,
 			User:             toRenderUser(t.User),
 		}
+	}
+	if t := e.Details.EdgeCacheTrigger; t != nil {
+		// Every bex change is a caller's write: manual, never system.
+		d.Trigger = &renderEdgeCacheTrigger{Manual: true, User: toRenderUser(t.User)}
 	}
 	switch e.Type {
 	case TypePlanChanged:
@@ -394,6 +413,8 @@ func toRenderEvent(e Event) renderEvent {
 		if e.Details.EndReason != nil {
 			d.Reason = e.Details.EndReason
 		}
+	case TypePipelineMinutesExhausted:
+		d.BuildID = e.Details.DeployID
 	case TypePostgresClusterLeaderChanged:
 		d.LeaderID = e.Details.LeaderID
 	case TypeDiskSnapshotRestored, TypeDiskDeleted:

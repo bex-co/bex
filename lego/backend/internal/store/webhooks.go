@@ -757,7 +757,11 @@ type WebhookEventRow struct {
 	// AutoDeployEnabled discriminates apps.SetAutoDeploy into Render's enabled
 	// and disabled event types. nil on every other row (and on legacy audit rows).
 	AutoDeployEnabled *bool
-	FactType          string // fact rows: closed service_event_facts.fact_type
+	// EdgeCacheEnabledTo discriminates apps.SetCacheProfile into
+	// edge_cache_enabled and edge_cache_disabled (w9/m345); nil on every other
+	// row and on a save that left caching as it was, which is no event.
+	EdgeCacheEnabledTo *bool
+	FactType           string // fact rows: closed service_event_facts.fact_type
 	// AppID is the app's internal control-plane id, as opposed to ServiceID's
 	// public composite. Empty on the datastore audit arm, which has no app.
 	AppID string
@@ -806,6 +810,7 @@ WITH feed AS (
            ''::text                            AS verb,
            ''::text                            AS fact_type,
 	       NULL::boolean                       AS auto_deploy_enabled,
+	       NULL::boolean                       AS edge_cache_enabled_to,
            a.id                                AS app_id,
            0::int                              AS agent_turn
     FROM deploys d
@@ -824,6 +829,7 @@ WITH feed AS (
            d.status,
            ''::text,
            ''::text,
+	       NULL::boolean,
 	       NULL::boolean,
            a.id,
            0::int
@@ -844,12 +850,15 @@ WITH feed AS (
            e.verb,
            ''::text,
 	       e.auto_deploy_enabled,
+	       e.edge_cache_enabled_to,
            a.id,
            0::int
     FROM audit_events e
     JOIN service_event_index i ON i.source = 'audit' AND i.source_row_id = e.id
     JOIN apps a ON a.id = i.app_id AND a.tenant_id = i.workspace_id
     WHERE e.outcome = 'allowed' AND e.verb = ANY($4) AND a.tenant_id = ANY($5)
+      -- A profile save that left caching as it was is no event (w9/m345).
+      AND (e.verb <> '` + core.AuditVerbSetCacheProfile + `' OR e.edge_cache_enabled_to IS NOT NULL)
   UNION ALL
     SELECT e.at,
            e.id || ':',
@@ -863,6 +872,7 @@ WITH feed AS (
            ''::text,
 		   e.verb,
 		   ''::text,
+		   NULL::boolean,
 		   NULL::boolean,
 		   ''::text,
            0::int
@@ -885,6 +895,7 @@ WITH feed AS (
            ''::text,
            f.fact_type,
 	       NULL::boolean,
+	       NULL::boolean,
            a.id,
            0::int
     FROM service_event_facts f
@@ -904,6 +915,7 @@ WITH feed AS (
            ''::text,
            f.fact_type,
 	       NULL::boolean,
+	       NULL::boolean,
            ''::text,
            0::int
     FROM datastore_event_facts f
@@ -922,12 +934,13 @@ WITH feed AS (
            ''::text,
            ''::text,
            NULL::boolean,
+           NULL::boolean,
            ''::text,
            e.turn
     FROM agent_session_turn_events e
     WHERE e.workspace_id = ANY($5)
 )
-SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, auto_deploy_enabled, app_id, agent_turn
+SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, auto_deploy_enabled, edge_cache_enabled_to, app_id, agent_turn
 FROM feed
 WHERE (cursor_at, key) > ($1, $2) AND cursor_at <= $3
 ORDER BY cursor_at, key
@@ -947,7 +960,7 @@ func (s *PGStore) ListWebhookEvents(ctx context.Context, afterAt time.Time, afte
 	var out []WebhookEventRow
 	for rows.Next() {
 		var r WebhookEventRow
-		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType, &r.AutoDeployEnabled, &r.AppID, &r.Turn); err != nil {
+		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType, &r.AutoDeployEnabled, &r.EdgeCacheEnabledTo, &r.AppID, &r.Turn); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

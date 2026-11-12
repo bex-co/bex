@@ -1,18 +1,18 @@
 # w9 · m345 — Render event types for features bex already has: `edge_cache_enabled`/`_disabled`/`_purged` and `pipeline_minutes_exhausted`
 
-**Worker:** worker9 **Goal:** the Events feed and outbound webhooks report edge-cache changes and builds refused for exhausted pipeline minutes with Render's event types, on every surface Render offers them. **Status:** todo
+**Worker:** worker9 **Goal:** the Events feed and outbound webhooks report edge-cache changes and builds refused for exhausted pipeline minutes with Render's event types, on every surface Render offers them. **Status:** in progress (t001–t007 done; production check pending)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Edge-cache changes and purges record `edge_cache_enabled`, `edge_cache_disabled` and `edge_cache_purged` | 60m | — |
-| [t002](t002.md) | A build refused for exhausted pipeline minutes records `pipeline_minutes_exhausted` | 60m | — |
-| [t003](t003.md) | Webhooks: the four types are subscribable; the dashboard picker and Events tab follow Render's sets | 60m | t001, t002 |
-| [t004](t004.md) | Docs: correct the omission reasons and the ADR018 webhooks row | 30m | t003 |
-| [t005](t005.md) | Render parity: the four events match Render on REST, GraphQL, MCP, webhooks and the dashboard | 20m | t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 45m | t005, t006 |
+| [t001](done/t001.md) | Edge-cache changes and purges record `edge_cache_enabled`, `edge_cache_disabled` and `edge_cache_purged` — **DONE** | 60m | — |
+| [t002](done/t002.md) | A build refused for exhausted pipeline minutes records `pipeline_minutes_exhausted` — **DONE** | 60m | — |
+| [t003](done/t003.md) | Webhooks: the four types are subscribable; the dashboard picker and Events tab follow Render's sets — **DONE** | 60m | t001, t002 |
+| [t004](done/t004.md) | Docs: correct the omission reasons and the ADR018 webhooks row — **DONE** | 30m | t003 |
+| [t005](done/t005.md) | Render parity: the four events match Render on REST, GraphQL, MCP, webhooks and the dashboard — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 45m | t005, t006 |
 | [t008](t008.md) | Closeout | 10m | t007 |
 
 ## Definition of done

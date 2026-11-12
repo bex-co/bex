@@ -161,6 +161,11 @@ type AuditEvent struct {
 	DisplayNameFrom string
 	DisplayNameTo   string
 	Domain          string
+	// EdgeCacheEnabledTo is what an edge-cache profile save turned caching TO
+	// (w9/m345): true for Render's edge_cache_enabled, false for
+	// edge_cache_disabled. Nil when the save left caching on or off, which
+	// Render has no event for, and for every other verb.
+	EdgeCacheEnabledTo *bool
 }
 
 type deferAllowedWriteAuditKey struct{}
@@ -690,6 +695,16 @@ func (b *Base) recordAppConfig(ctx context.Context, app *appv1alpha1.App, verb s
 func (b *Base) RecordDisplayNameChanged(ctx context.Context, app *appv1alpha1.App, from, to string) {
 	b.recordAppConfig(ctx, app, AuditVerbSetDisplayName, func(ev *AuditEvent) {
 		ev.DisplayNameFrom, ev.DisplayNameTo = from, to
+	})
+}
+
+// RecordCacheProfileChanged is RecordAppConfigChanged for an edge-cache profile
+// save (w9/m345). enabledTo is what the save turned caching to, nil when it
+// left caching on or off: such a row stays in the workspace audit log without
+// becoming an event.
+func (b *Base) RecordCacheProfileChanged(ctx context.Context, app *appv1alpha1.App, enabledTo *bool) {
+	b.recordAppConfig(ctx, app, AuditVerbSetCacheProfile, func(ev *AuditEvent) {
+		ev.EdgeCacheEnabledTo = enabledTo
 	})
 }
 

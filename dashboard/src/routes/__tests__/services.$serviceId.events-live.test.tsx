@@ -117,6 +117,7 @@ function event(id: string, type: string, offset: number, status = "") {
       planFrom: null,
       planTo: null,
       trigger: null,
+      edgeCacheTrigger: null,
     },
   };
 }

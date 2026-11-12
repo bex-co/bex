@@ -173,6 +173,9 @@
     "disk_deleted",
     "disk_snapshot_restored",
     "disk_updated",
+    "edge_cache_disabled",
+    "edge_cache_enabled",
+    "edge_cache_purged",
     "image_pull_failed",
     "instance_count_changed",
     "job_run_ended",
@@ -181,6 +184,7 @@
     "key_value_unhealthy",
     "maintenance_mode_enabled",
     "maintenance_mode_uri_updated",
+    "pipeline_minutes_exhausted",
     "plan_changed",
     "postgres_available",
     "postgres_backup_completed",
@@ -235,9 +239,6 @@
     "instance_type_changed": "plan_changed"
   },
   "antiGoalUnsupported": [
-    "edge_cache_disabled",
-    "edge_cache_enabled",
-    "edge_cache_purged",
     "maintenance_ended",
     "maintenance_started",
     "zero_downtime_redeploy_ended",
@@ -246,7 +247,6 @@
   "sourceBoundUnsupported": [
     "artifact_fetch_failed",
     "artifact_source_changed",
-    "pipeline_minutes_exhausted",
     "postgres_connection_pool_changed",
     "postgres_read_replica_stale"
   ]

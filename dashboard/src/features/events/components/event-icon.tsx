@@ -2,12 +2,14 @@ import {
   Ban,
   CheckCircle2,
   CircleDot,
+  Eraser,
   FolderInput,
   Globe,
   GitBranch,
   HardDrive,
   Hammer,
   History,
+  Hourglass,
   Moon,
   PauseCircle,
   PlayCircle,
@@ -18,6 +20,8 @@ import {
   Terminal,
   Unplug,
   XCircle,
+  Zap,
+  ZapOff,
   type LucideIcon,
 } from "lucide-react";
 
@@ -32,6 +36,8 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   pre_deploy_started: Terminal,
   branch_deleted: GitBranch,
   image_pull_failed: XCircle,
+  // A build the workspace's pipeline minutes did not cover (w9/m345).
+  pipeline_minutes_exhausted: Hourglass,
   server_failed: XCircle,
   server_hardware_failure: XCircle,
   suspender_added: PauseCircle,
@@ -55,6 +61,9 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   autoscaling_config_changed: Scale,
   autoscaling_started: Scale,
   autoscaling_ended: Scale,
+  edge_cache_enabled: Zap,
+  edge_cache_disabled: ZapOff,
+  edge_cache_purged: Eraser,
 };
 
 export function EventIcon({

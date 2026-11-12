@@ -37,6 +37,8 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **084** — [The mobile app drops the `agent_automation_paused` push](done/084.md) ← w9/m343 t003 follow-up — **DONE** 2026-11-12
 - [x] **085** — [A `/bex` comment on any pull request starts an agent session on it](done/085.md) ← w9/m344 follow-up (Devin `/devin`) — promoted to m348 2026-11-12
 - [ ] **086** — [An automation link opens in the browser's current workspace, not the automation's](086.md) ← w9/084 review follow-up
+- [ ] **087** — [Edge caching never runs for a web service with image ports](087.md) ← w9/m345 t005 follow-up
+- [ ] **088** — [A plan change that turns edge caching on or off records no event](088.md) ← w9/m345 t005 follow-up
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
 - [x] **081** — [Approval mode for codex sessions (withdrawn)](done/081.md) — withdrawn 2026-11-07 with ADR100; removed by m179
 - [x] **082** — [Settings: the Team card skeleton is shorter than the ready card](done/082.md) ← w9 final skeleton check 2026-11-06

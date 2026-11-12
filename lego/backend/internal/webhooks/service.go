@@ -38,8 +38,9 @@ limitations under the License.
 //
 // Render's webhook event names (verified live, render.com/docs/webhooks
 // 2026-07-18), scoped to transitions bex can record truthfully: deploy rows,
-// audited API intent, and typed observed/Git facts. Unsupported provider,
-// billing, workflow, preview, disk, and edge-cache events are omitted, not faked.
+// audited API intent, and typed observed/Git facts. Unsupported provider
+// maintenance, artifact, zero-downtime-redeploy, workflow and preview events
+// have no durable bex source, so they are omitted, not faked.
 //
 // # Delivery semantics (w3/m11/t003, matching Render's documented behavior)
 //
@@ -168,6 +169,15 @@ const (
 	TypeCommitIgnored         = "commit_ignored"
 	TypeAutoscalingStarted    = "autoscaling_started"
 	TypeAutoscalingEnded      = "autoscaling_ended"
+	// Edge caching (w9/m345): apps.SetCacheProfile turning the cache on or off,
+	// and apps.PurgeCache. Render's dashboard picker leaves the three out; its
+	// API, and bex's, accept them.
+	TypeEdgeCacheEnabled  = "edge_cache_enabled"
+	TypeEdgeCacheDisabled = "edge_cache_disabled"
+	TypeEdgeCachePurged   = "edge_cache_purged"
+	// A deploy whose build the operator refused because the workspace is out
+	// of pipeline minutes (w9/m345).
+	TypePipelineMinutesExhausted = "pipeline_minutes_exhausted"
 	// Cloud coding-agent turn outcomes (ADR094 D9; w21/m260) — bex extensions
 	// with no Render twin. A session's turn ending succeeded or failed pushes
 	// {id, state, outcome} so an orchestrator need not poll. TypeAgentSession-
@@ -208,6 +218,7 @@ var verbEvents = func() map[string]string {
 	types[core.AuditVerbSetPlan] = TypePlanChanged
 	types[core.AuditVerbProjectServiceMoved] = TypeServiceMoved
 	types[core.AuditVerbEnvironmentServiceMoved] = TypeServiceMoved
+	types[core.AuditVerbPurgeCache] = TypeEdgeCachePurged
 	return types
 }()
 
@@ -227,29 +238,36 @@ func AcceptedEventTypes() []string {
 	return append(slices.Clone(EventTypes), slices.Sorted(maps.Keys(legacyEventTypeAliases))...)
 }
 
-const autoDeployVerb = core.AuditVerbSetAutoDeploy
+// autoDeployVerb and cacheProfileVerb each produce two event types, told
+// apart by the toggle their audit rows record (project), so neither is in
+// verbEvents.
+const (
+	autoDeployVerb   = core.AuditVerbSetAutoDeploy
+	cacheProfileVerb = core.AuditVerbSetCacheProfile
+)
 
 var factEvents = map[string]string{
-	string(store.EventFactImagePullFailed):       TypeImagePullFailed,
-	string(store.EventFactServiceSuspended):      TypeServiceSuspended,
-	string(store.EventFactServiceResumed):        TypeServiceResumed,
-	string(store.EventFactServiceHibernated):     TypeServiceHibernated,
-	string(store.EventFactServiceWoken):          TypeServiceWoken,
-	string(store.EventFactServerFailed):          TypeServerFailed,
-	string(store.EventFactServerHardwareFailure): TypeServerHardwareFailure,
-	string(store.EventFactServerAvailable):       TypeServerAvailable,
-	string(store.EventFactBranchChanged):         TypeBranchChanged,
-	string(store.EventFactCommitIgnored):         TypeCommitIgnored,
-	string(store.EventFactAutoscalingStarted):    TypeAutoscalingStarted,
-	string(store.EventFactAutoscalingEnded):      TypeAutoscalingEnded,
-	string(store.EventFactBranchDeleted):         TypeBranchDeleted,
-	string(store.EventFactBuildStarted):          TypeBuildStarted,
-	string(store.EventFactBuildEnded):            TypeBuildEnded,
-	string(store.EventFactPreDeployStarted):      TypePreDeployStarted,
-	string(store.EventFactPreDeployEnded):        TypePreDeployEnded,
-	string(store.EventFactJobRunEnded):           TypeJobRunEnded,
-	string(store.EventFactCronRunStarted):        TypeCronJobRunStarted,
-	string(store.EventFactCronRunEnded):          TypeCronJobRunEnded,
+	string(store.EventFactImagePullFailed):          TypeImagePullFailed,
+	string(store.EventFactServiceSuspended):         TypeServiceSuspended,
+	string(store.EventFactServiceResumed):           TypeServiceResumed,
+	string(store.EventFactServiceHibernated):        TypeServiceHibernated,
+	string(store.EventFactServiceWoken):             TypeServiceWoken,
+	string(store.EventFactServerFailed):             TypeServerFailed,
+	string(store.EventFactServerHardwareFailure):    TypeServerHardwareFailure,
+	string(store.EventFactServerAvailable):          TypeServerAvailable,
+	string(store.EventFactBranchChanged):            TypeBranchChanged,
+	string(store.EventFactCommitIgnored):            TypeCommitIgnored,
+	string(store.EventFactAutoscalingStarted):       TypeAutoscalingStarted,
+	string(store.EventFactAutoscalingEnded):         TypeAutoscalingEnded,
+	string(store.EventFactBranchDeleted):            TypeBranchDeleted,
+	string(store.EventFactBuildStarted):             TypeBuildStarted,
+	string(store.EventFactBuildEnded):               TypeBuildEnded,
+	string(store.EventFactPreDeployStarted):         TypePreDeployStarted,
+	string(store.EventFactPreDeployEnded):           TypePreDeployEnded,
+	string(store.EventFactJobRunEnded):              TypeJobRunEnded,
+	string(store.EventFactCronRunStarted):           TypeCronJobRunStarted,
+	string(store.EventFactCronRunEnded):             TypeCronJobRunEnded,
+	string(store.EventFactPipelineMinutesExhausted): TypePipelineMinutesExhausted,
 
 	// Managed-datastore facts (w3/m82). They live in datastore_event_facts
 	// rather than service_event_facts, but the composed feed the dispatcher
@@ -277,17 +295,21 @@ var factEvents = map[string]string{
 // computed once.
 var auditVerbs = func() []string {
 	verbs := slices.Collect(maps.Keys(verbEvents))
-	verbs = append(verbs, autoDeployVerb)
+	verbs = append(verbs, autoDeployVerb, cacheProfileVerb)
 	slices.Sort(verbs)
 	return verbs
 }()
 
 // EventTypes is the full subscribable vocabulary, sorted — what Create
-// validates against and what the dashboard's event-type picker lists.
+// validates against and what webhookEventTypes serves. The dashboard's picker
+// lists it minus the edge-cache types, which Render's picker leaves to its API
+// (w9/m345).
 var EventTypes = func() []string {
 	set := map[string]bool{TypeDeployStarted: true, TypeDeployEnded: true}
 	set[TypeAutoDeployEnabled] = true
 	set[TypeAutoDeployDisabled] = true
+	set[TypeEdgeCacheEnabled] = true
+	set[TypeEdgeCacheDisabled] = true
 	for _, t := range verbEvents {
 		set[t] = true
 	}

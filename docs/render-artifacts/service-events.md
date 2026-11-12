@@ -17,7 +17,7 @@ The fix leaves the REST default compatible and makes dashboard intent explicit:
 
 ## Supplied dashboard-label matrix
 
-The result supports **19 of the 31 supplied labels** truthfully: 10 existing sources plus 9 new durable facts.
+The result supports **19 of the 31 supplied labels** truthfully: 10 existing sources plus 9 new durable facts. w9/m345 adds four more (Pipeline Minutes Exhausted and the three Edge Cache labels), for 23.
 
 | Group | Supplied label | bex wire type | Disposition and source |
 | --- | --- | --- | --- |
@@ -26,7 +26,7 @@ The result supports **19 of the 31 supplied labels** truthfully: 10 existing sou
 | Deploy | Image Pull Failed | `image_pull_failed` | Added: current-release `ImagePullBackOff` observation with bounded reason, deploy id, and image; emitted immediately while deploy retry/timeout policy remains unchanged |
 | Deploy | Initial Deploy Hook Started | — | Omitted: Render preview-initialization mechanism; preview environments are a rejected product anti-goal |
 | Deploy | Initial Deploy Hook Ended | — | Omitted: same preview-only source boundary |
-| Deploy | Pipeline Minutes Exhausted | — | Omitted: bex has no pipeline-minute billing or enforcement source |
+| Deploy | Pipeline Minutes Exhausted | `pipeline_minutes_exhausted` | Added (w9/m345): a deploy whose build the operator refused because the workspace used its plan's pipeline minutes (w6/m308), one fact per refused deploy beside its failed `deploy_ended`; details `buildId` (the deploy) and the deploy's `trigger` |
 | Service Status | Resumed | `suspender_removed` | Existing: accepted user resume intent with actor |
 | Service Status | Suspended | `suspender_added` | Existing: accepted user suspend intent with actor |
 | Service Status | Instance Failed | `server_failed` | Added: previously healthy service gets a concrete readiness/container failure, including a failed new rollout instance; bounded reason only |
@@ -49,9 +49,9 @@ The result supports **19 of the 31 supplied labels** truthfully: 10 existing sou
 | Maintenance | Maintenance Deploy Finished | — | Omitted: same provider-maintenance source boundary |
 | Maintenance Mode | Config Changed | `maintenance_mode_enabled` | Existing: typed accepted maintenance-mode toggle; details carry Render's `enabled` (w3/m317) |
 | Maintenance Mode | URI Updated | `maintenance_mode_uri_updated` | Existing: accepted URI update; since w3/m317 details carry Render's required `fromURI`/`toURI` (the service's own `maintenanceMode.uri`, readable on the service) |
-| Edge Cache | Enabled | — | Omitted: bex has no mutable edge-cache mode |
-| Edge Cache | Disabled | — | Omitted: bex has no mutable edge-cache mode |
-| Edge Cache | Purged | — | Omitted: static revisions are immutable; cache purge is a rejected anti-goal |
+| Edge Cache | Enabled | `edge_cache_enabled` | Added (w9/m345): an `apps.SetCacheProfile` save that turned caching on (edge caching, w5/m151); details `trigger` `{manual, user, system}` |
+| Edge Cache | Disabled | `edge_cache_disabled` | Added (w9/m345): a save that turned caching off; a save that keeps caching on records no event |
+| Edge Cache | Purged | `edge_cache_purged` | Added (w9/m345): `apps.PurgeCache` on a caching web service |
 
 ## One durable fact path
 
@@ -94,9 +94,17 @@ Image-backed services (no build phase) emit no `build_*`; services with no pre-d
 
 An instance lost together with its node records Render's `server_hardware_failure` instead of `server_failed`. That covers a node that went NotReady or disappeared, or a pod the taint manager or pod GC disrupted for its node. The operator sets `Ready=False` with reason `NodeLost`, and the store maps that edge to the new fact; `server_available` still closes it. Drains (`EvictionByEvictionAPI`), preemption and kubelet terminations (node-pressure eviction, graceful shutdown) are not reported this way, and neither is a terminal pod left over from an earlier loss. A container crash or OOM on a healthy node stays `server_failed`. Push notifications file it under the `server_failed` category. By user decision this reverses w2/m70, which had listed the type as a provider-hardware anti-goal: it classifies an outage bex already records and is not a maintenance product.
 
+### Edge cache and pipeline minutes (w9/m345)
+
+Both features shipped before their events: edge caching in w5/m151 and pipeline minutes in w6/m308. The events now follow Render's names and details:
+
+- `edge_cache_enabled` / `edge_cache_disabled`: an `apps.SetCacheProfile` audit row records whether the save turned caching on or off, as the operator runs it (`AppSpec.ServesEdgeCache`: a paid web service on a configured port) (`audit_events.edge_cache_enabled_to`, migration 0238), and the feed reads it as `auto_deploy_enabled` reads its boolean, discriminated in SQL before the page's limit. A save that keeps caching on (`origin-controlled` ⇄ `origin-controlled-all`) records no toggle: it stays in the workspace audit log and is no event, because Render has none for it. `edge_cache_purged` is `apps.PurgeCache`. `details.trigger` is Render's `{manual, user, system}`, `manual: true` with the caller as `user`, because every bex change is a caller's API or dashboard write.
+- `pipeline_minutes_exhausted`: when the operator refuses a build with `BuildMinutesExhausted`, the reconciler that closes the deploy `build_failed` first records one fact for that deploy, dated when it first observes the refusal (the Build condition's own transition time is the App's first build failure, so it cannot date a later refusal). It sits beside the deploy's `deploy_started` and failed `deploy_ended` (reason `buildFailed`), in place of the `build_started`/`build_ended` pair a build that never started does not have. `details.buildId` is the deploy (bex's build is its deploy's own, as on `deploy_ended`'s reason), and `details.trigger` that deploy's trigger.
+- Render's list-events `type` filter enum has `pipeline_minutes_exhausted` but not the edge-cache trio, which only its event object and webhook enums name. bex lists all four in an unfiltered feed and by `evt-` id; REST's type gate refuses `?type=edge_cache_*` as Render's would, and GraphQL and MCP filter by them.
+
 ### Still non-goals (honest, not faked)
 
-No durable bex source exists for these, so they are omitted rather than invented: `artifact_*`, provider `maintenance_started`/`maintenance_ended`, `pipeline_minutes_exhausted` (no pipeline-minute billing), `zero_downtime_redeploy_*`, `initial_deploy_hook_started`/`_ended` (preview-only), and every preview-environment/workflow event (rejected product anti-goals). The tenant-facing `maintenance_mode_*` toggle remains the one maintenance concept bex does record.
+No durable bex source exists for these, so they are omitted rather than invented: `artifact_*`, provider `maintenance_started`/`maintenance_ended`, `zero_downtime_redeploy_*`, `initial_deploy_hook_started`/`_ended` (preview-only), and every preview-environment/workflow event (rejected product anti-goals). The tenant-facing `maintenance_mode_*` toggle remains the one maintenance concept bex does record.
 
 ## Verification
 

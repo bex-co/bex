@@ -68,7 +68,10 @@ func checkCacheProfile(a *appv1alpha1.App, profile string) (string, error) {
 	return profile, nil
 }
 
-// SetCacheProfile changes a web service's edge caching profile.
+// SetCacheProfile changes a web service's edge caching profile. A save that
+// turns caching on or off is Render's edge_cache_enabled or
+// edge_cache_disabled (w9/m345); one that keeps it on (static <-> all) is
+// audited with no event, as Render records none.
 func (s *Service) SetCacheProfile(ctx context.Context, name, profile string) (AppView, error) {
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
@@ -78,9 +81,19 @@ func (s *Service) SetCacheProfile(ctx context.Context, name, profile string) (Ap
 	if err != nil {
 		return AppView{}, err
 	}
-	return s.recordedPatch(ctx, core.AuditVerbSetCacheProfile, a, func(a *appv1alpha1.App) {
+	before := a.Spec.ServesEdgeCache()
+	view, err := s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.CacheProfile = profile
 	})
+	if err != nil {
+		return AppView{}, err
+	}
+	var enabledTo *bool
+	if after := a.Spec.ServesEdgeCache(); after != before {
+		enabledTo = &after
+	}
+	s.RecordCacheProfileChanged(ctx, a, enabledTo)
+	return view, nil
 }
 
 // PurgeCache empties a caching web service's edge cache, as Render's
@@ -92,7 +105,7 @@ func (s *Service) PurgeCache(ctx context.Context, name string) (AppView, error) 
 	if err != nil {
 		return AppView{}, err
 	}
-	if !a.Spec.EdgeCaching() || freeTier(a.Spec.Tier) {
+	if !a.Spec.ServesEdgeCache() {
 		return AppView{}, fmt.Errorf("%w: edge caching is not enabled for this service", core.ErrBadRequest)
 	}
 	stamp := time.Now().UTC().Format(time.RFC3339Nano)

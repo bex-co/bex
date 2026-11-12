@@ -28,6 +28,10 @@ describe("EventIcon", () => {
     ["autoscaling_config_changed", "scale"],
     ["autoscaling_started", "scale"],
     ["autoscaling_ended", "scale"],
+    ["pipeline_minutes_exhausted", "hourglass"],
+    ["edge_cache_enabled", "zap"],
+    ["edge_cache_disabled", "zap-off"],
+    ["edge_cache_purged", "eraser"],
     ["unknown_event", "circle-dot"],
     ["constructor", "circle-dot"],
   ])("shows %s independently of unrelated outcome fields", (type, icon) => {

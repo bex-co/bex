@@ -15,6 +15,7 @@ const GROUPS: Record<string, string[]> = {
     "deploy_started",
     "deploy_ended",
     "image_pull_failed",
+    "pipeline_minutes_exhausted",
     "pre_deploy_started",
     "pre_deploy_ended",
     "commit_ignored",
@@ -92,13 +93,30 @@ const SINGLES = new Set<string>([
   "service_moved",
 ]);
 
+/**
+ * Types the API accepts that Render's dashboard picker leaves out
+ * (docs/render-artifacts/webhooks-api.md, w9/m345). They keep their labels, so
+ * a subscription made through the API reads by name on the webhook's pages,
+ * but the picker never offers them.
+ */
+const API_ONLY = new Set<string>([
+  "edge_cache_enabled",
+  "edge_cache_disabled",
+  "edge_cache_purged",
+]);
+
+/** The picker's vocabulary: the served types minus the API-only ones. */
+export function pickerEventTypes(served: string[]): string[] {
+  return served.filter((type) => !API_ONLY.has(type));
+}
+
 const EVENT_GROUP: ReadonlyMap<string, string> = new Map(
   Object.entries(GROUPS).flatMap(([group, events]) =>
     events.map((eventType): [string, string] => [eventType, group]),
   ),
 );
 
-const KNOWN = new Set([...EVENT_GROUP.keys(), ...SINGLES]);
+const KNOWN = new Set([...EVENT_GROUP.keys(), ...SINGLES, ...API_ONLY]);
 
 /** Human-label translation key for a known event; unknown future keys remain raw. */
 export function eventLabelKey(type: string): string | null {

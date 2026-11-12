@@ -52,6 +52,18 @@ func (s AppSpec) EdgeCaching() bool {
 		(s.CacheProfile == CacheProfileStatic || s.CacheProfile == CacheProfileAll)
 }
 
+// ServesEdgeCache reports whether the App's edge cache actually runs: a
+// caching profile (EdgeCaching) on a paid web service whose port is
+// configured, since the edge-cache sidecar fronts that one port. A free web
+// service never caches, as Render offers no edge caching on free web
+// services; an empty tier is the free tier. The operator starts the sidecar on
+// exactly this (plus knowing its own image), and bex-api reads it on both
+// sides of a profile save, so edge_cache_enabled / edge_cache_disabled never
+// name a cache the operator does not run (w9/m345).
+func (s AppSpec) ServesEdgeCache() bool {
+	return s.EdgeCaching() && s.Tier != "" && s.Tier != "free" && !s.HasImagePorts()
+}
+
 // AnnotationSavedConfigRevision is an opaque notification for an effective
 // service-local Save-only write. It contains no configuration or value digest,
 // changes no release identity, and wakes only configuration-status comparison.

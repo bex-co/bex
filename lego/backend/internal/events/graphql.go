@@ -65,6 +65,23 @@ var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// edgeCacheTriggerGQLType is Render's trigger on the edge-cache events
+// (w9/m345), distinct from DeployTrigger as on Render.
+var edgeCacheTriggerGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "EdgeCacheTrigger",
+	Fields: graphql.Fields{
+		// Every bex change is a caller's write: manual, never system.
+		"manual": gqlutil.BoolField(func(EdgeCacheTrigger) any { return true }),
+		"system": gqlutil.BoolField(func(EdgeCacheTrigger) any { return false }),
+		"user": &graphql.Field{Type: userRefGQLType, Resolve: gqlutil.Field(func(t EdgeCacheTrigger) any {
+			if t.User == nil {
+				return nil
+			}
+			return *t.User
+		})},
+	},
+})
+
 // endReasonIDGQLType, failureReasonGQLType and endReasonGQLType are Render's
 // buildDeployEndReason on deploy_ended / build_ended (w8/m146).
 var endReasonIDGQLType = graphql.NewObject(graphql.ObjectConfig{
@@ -220,6 +237,14 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return nil
 			}
 			return *d.Trigger
+		})},
+		// edge_cache_enabled / _disabled / _purged (w9/m345): Render's
+		// {manual, user, system} trigger.
+		"edgeCacheTrigger": &graphql.Field{Type: edgeCacheTriggerGQLType, Resolve: gqlutil.Field(func(d Details) any {
+			if d.EdgeCacheTrigger == nil {
+				return nil
+			}
+			return *d.EdgeCacheTrigger
 		})},
 		// plan_changed from/to plan name strings.
 		"planFrom": gqlutil.StrField(func(d Details) any { return d.PlanFrom }),

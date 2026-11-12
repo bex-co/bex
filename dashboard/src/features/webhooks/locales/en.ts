@@ -560,6 +560,25 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Image Pull Failed",
     description: "Event label — image_pull_failed",
   },
+  "webhooks.event.pipeline_minutes_exhausted": {
+    message: "Pipeline Minutes Exhausted",
+    description: "Event label — pipeline_minutes_exhausted",
+  },
+  "webhooks.event.edge_cache_enabled": {
+    message: "Edge Cache Enabled",
+    description:
+      "Event label — edge_cache_enabled (API-only on Render; shown on subscriptions and deliveries, not in the picker)",
+  },
+  "webhooks.event.edge_cache_disabled": {
+    message: "Edge Cache Disabled",
+    description:
+      "Event label — edge_cache_disabled (API-only on Render; shown on subscriptions and deliveries, not in the picker)",
+  },
+  "webhooks.event.edge_cache_purged": {
+    message: "Edge Cache Purged",
+    description:
+      "Event label — edge_cache_purged (API-only on Render; shown on subscriptions and deliveries, not in the picker)",
+  },
   "webhooks.event.commit_ignored": {
     message: "Commit Ignored",
     description: "Event label — commit_ignored",

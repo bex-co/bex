@@ -25,11 +25,12 @@ import (
 )
 
 // restEmittedTypes is every type the REST event shape can carry: both deploy
-// phases, every audit verb's type (plus the auto-deploy sub-types view derives
-// from apps.SetAutoDeploy), every service fact, and the datastore types
+// phases, every audit verb's type (plus the auto-deploy and edge-cache
+// sub-types view derives from apps.SetAutoDeploy and apps.SetCacheProfile),
+// every service fact, and the datastore types
 // GET /events/{id} resolves.
 func restEmittedTypes() []string {
-	types := []string{TypeDeployStarted, TypeDeployEnded, TypeAutoDeployEnabled, TypeAutoDeployDisabled}
+	types := []string{TypeDeployStarted, TypeDeployEnded, TypeAutoDeployEnabled, TypeAutoDeployDisabled, TypeEdgeCacheDisabled}
 	types = append(types, slices.Collect(maps.Values(eventTypes))...)
 	types = append(types, slices.Collect(maps.Values(indexedAuditEventTypes))...)
 	types = append(types, allFactTypes...)
@@ -52,6 +53,10 @@ func restEmittedTypes() []string {
 func TestRESTEventTypesAreRenderOrDeclaredExtensions(t *testing.T) {
 	const config = "bex-named configuration write; Render records settings edits without a typed event"
 	const datastore = "datastore lifecycle in Render's webhook vocabulary; the service-event enum has no datastore member (reachable only by evt- id)"
+	// Render's event object (GET /events/{eventId}) and webhook enum name these,
+	// its list-events type filter does not: the feed lists them unfiltered and
+	// by evt- id, and REST's type gate refuses them as Render's does (w9/m345).
+	const objectOnly = "in Render's event-object and webhook type enums but not its list-events type filter"
 	extensions := map[string]string{
 		TypeEnvVarsChanged:                        "env-var write; Render rolls it as a deploy and has no env event",
 		TypeServiceEnvironmentChanged:             "environment (env vars + secret files) save; same as env_vars_changed",
@@ -108,6 +113,9 @@ func TestRESTEventTypesAreRenderOrDeclaredExtensions(t *testing.T) {
 		TypePostgresDiskAutoscalingEnabledChanged: datastore,
 		TypeKeyValueConfigRestart:                 datastore,
 		TypePostgresClusterLeaderChanged:          datastore,
+		TypeEdgeCacheEnabled:                      objectOnly,
+		TypeEdgeCacheDisabled:                     objectOnly,
+		TypeEdgeCachePurged:                       objectOnly,
 	}
 
 	raw, err := os.ReadFile("../api/openapi/render-public-api-1.json")
