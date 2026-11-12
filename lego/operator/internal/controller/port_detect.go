@@ -197,9 +197,12 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 // any port, create a background worker instead", and its troubleshooting page
 // names the two fixes: bind host 0.0.0.0, and the port in PORT (w8/259).
 func noOpenPortMessage(port int) string {
-	return fmt.Sprintf(" No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT (%d)."+
-		" If the service does not need to receive traffic on any port, create a background worker instead.", port)
+	return fmt.Sprintf(" No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT (%d).", port) + backgroundWorkerHint
 }
+
+// backgroundWorkerHint is Render's alternative for a service that listens on no
+// port: it does not belong in a web or private service (w21/059).
+const backgroundWorkerHint = " If the service does not need to receive traffic on any port, create a background worker instead."
 
 // commonHTTPPorts are probed first (w4/393): with dropped packets a full
 // 65k sweep cannot finish inside portDetectTimeout, but a verdict on the

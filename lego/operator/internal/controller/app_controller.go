@@ -6044,14 +6044,24 @@ func tenantSecCtx() *corev1.SecurityContext {
 func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (string, string) {
 	reason, msg := r.stuckPodMessage(ctx, dep, crashHintPort(app, port))
 	if reason == reasonHealthCheckFailing {
-		msg += imagePortStallHint(app, port)
-		if network := app.Status.ImageNetwork; network != nil && network.HTTPSelection == appv1alpha1.HTTPSelectionFallback {
-			msg += " No port answered HTTP during startup discovery; set PORT to the HTTP listener."
-		}
+		msg += imageStallNote(app, port)
 		msg += r.detectBoundPort(ctx, app, dep, port)
 		msg += r.detectPrivatePrimary(ctx, app, dep, port)
 	}
 	return reason, msg
+}
+
+// imageStallNote is imagePortStallHint plus, for a web service whose startup
+// discovery found no HTTP listener, that fact. It says no more: the discovery
+// does not record whether another, non-HTTP port was open, so advice to "set
+// PORT to the HTTP listener" would mislead a process that listens nowhere
+// (w21/059); the hint's own advice covers both.
+func imageStallNote(app *appv1alpha1.App, port int) string {
+	note := imagePortStallHint(app, port)
+	if network := app.Status.ImageNetwork; network != nil && network.HTTPSelection == appv1alpha1.HTTPSelectionFallback {
+		note += " No port answered HTTP during startup discovery."
+	}
+	return note
 }
 
 // imagePortStallHint names the primary bex selected from the image and the
@@ -6081,16 +6091,17 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 		}
 	}
 	if source == "" && network.NoDeclaredPorts {
-		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the default because the image declares no TCP ports. Set PORT to the HTTP listener, or bind the server to 0.0.0.0 on port %d.", port, port)
+		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the default because the image declares no TCP ports."+
+			" The server must bind host 0.0.0.0 on the port in PORT (%d).", port, port) + backgroundWorkerHint
 	}
 	if source == "" {
 		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the primary port selected from the image's declared TCP ports (%s)."+
 			" Bind the server to 0.0.0.0 on one of those ports, or set the service's port to the one it listens on.",
-			port, strings.Join(declared, ", "))
+			port, strings.Join(declared, ", ")) + backgroundWorkerHint
 	}
 	if len(declared) == 0 {
 		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares no other TCP port."+
-			" Bind the server to 0.0.0.0 on port %d, or change the service's port to the one it listens on.", port, source, port)
+			" Bind the server to 0.0.0.0 on port %d, or change the service's port to the one it listens on.", port, source, port) + backgroundWorkerHint
 	}
 	fix := " Change the service's port in Settings to the one it listens on, or remove it to use the image's port."
 	if app.Status.EnvPort > 0 {
@@ -6098,7 +6109,7 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 		// (w4/m323).
 		fix = " Change the PORT environment variable to the port it listens on, or remove it to use the image's port."
 	}
-	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares TCP ports (%s).", port, source, strings.Join(declared, ", ")) + fix
+	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares TCP ports (%s).", port, source, strings.Join(declared, ", ")) + fix + backgroundWorkerHint
 }
 
 // nodeLossDisruptions are the DisruptionTarget reasons Kubernetes gives a pod

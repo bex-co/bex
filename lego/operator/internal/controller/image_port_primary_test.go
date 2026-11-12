@@ -178,3 +178,63 @@ func TestImagePortStallHintNamesAConfiguredPrimary(t *testing.T) {
 		}
 	}
 }
+
+// w21/059: a web service whose TCP check never connects is told Render's two
+// points whatever its image declares: bind 0.0.0.0 on the port in PORT, and a
+// service that takes no traffic belongs in a background worker. An image that
+// declares no ports is not told to "set PORT to the HTTP listener" when nothing
+// listens at all.
+func TestImagePortStallHintOffersABackgroundWorker(t *testing.T) {
+	web := func(mode string, envPort int32, noDeclared bool, ports ...int32) *appv1alpha1.App {
+		return projectionApp(func(a *appv1alpha1.App) {
+			a.Spec.Type, a.Spec.PortMode = appv1alpha1.TypeWebService, mode
+			a.Status.EnvPort = envPort
+			a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "i", Revision: "r", PrimaryPort: 10000, Ports: ports, NoDeclaredPorts: noDeclared}
+		})
+	}
+	for _, tc := range []struct {
+		name string
+		app  *appv1alpha1.App
+		port int
+		want []string
+	}{
+		{"the image declares no ports", web(appv1alpha1.PortModeWebImageV1, 0, true, 10000), 10000,
+			[]string{"the default because the image declares no TCP ports", "bind host 0.0.0.0 on the port in PORT (10000)"}},
+		{"the image declares ports", web(appv1alpha1.PortModeWebImageV1, 0, false, 80, 8080), 80,
+			[]string{"selected from the image's declared TCP ports (80, 8080)", "0.0.0.0"}},
+		{"a configured port the image does not declare", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, false, 80, 10000), 10000,
+			[]string{"set by the service's configured port", "declares TCP ports (80)"}},
+		{"a configured port and no other declared", web(appv1alpha1.PortModeWebImageConfiguredV1, 0, false, 10000), 10000,
+			[]string{"declares no other TCP port", "0.0.0.0"}},
+		{"a PORT variable the image does not declare", web(appv1alpha1.PortModeWebImageV1, 9999, false, 80, 9999), 9999,
+			[]string{"set by the service's PORT environment variable", "Change the PORT environment variable"}},
+	} {
+		hint := imagePortStallHint(tc.app, tc.port)
+		for _, want := range append(tc.want, "create a background worker instead") {
+			if !strings.Contains(hint, want) {
+				t.Errorf("%s: hint %q lacks %q", tc.name, hint, want)
+			}
+		}
+		if strings.Contains(hint, "HTTP listener") {
+			t.Errorf("%s: hint %q sends a process that listens nowhere to the HTTP listener", tc.name, hint)
+		}
+	}
+
+	// The assembled text for a service whose discovery found no HTTP listener
+	// says so, and says no more than it knows.
+	fallback := web(appv1alpha1.PortModeWebImageV1, 0, true, 10000)
+	fallback.Status.ImageNetwork.HTTPSelection = appv1alpha1.HTTPSelectionFallback
+	note := imageStallNote(fallback, 10000)
+	if !strings.Contains(note, "No port answered HTTP during startup discovery.") || strings.Contains(note, "set PORT to the HTTP listener") {
+		t.Errorf("fallback note = %q", note)
+	}
+	if plain := imageStallNote(web(appv1alpha1.PortModeWebImageV1, 0, true, 10000), 10000); strings.Contains(plain, "startup discovery") {
+		t.Errorf("a service with no discovery verdict mentions it: %q", plain)
+	}
+	// An HTTP health check is about the path, not the listener: no hint at all.
+	checked := web(appv1alpha1.PortModeWebImageV1, 0, true, 10000)
+	checked.Spec.HealthCheckPath = "/healthz"
+	if got := imagePortStallHint(checked, 10000); got != "" {
+		t.Errorf("an HTTP health check got a listener hint: %q", got)
+	}
+}
