@@ -251,7 +251,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **123** — [A brand-new service's first minutes of egress are undercounted](123.md) (~1h) ← w6/m333 t005
+- [ ] **123** — **BLOCKED (user: keep ADR023's undercount-never-invent rule and accept the ≤ 15 s-per-new-series egress undercount, or authorize a proven-safe new-series counting rule; cause confirmed 2026-11-12)** — [A brand-new service's first minutes of egress are undercounted](blocked/123.md) (~1h) ← w6/m333 t005
 - [x] **122** — [A validator fails when an alert's backing series is dropped by its scrape job's keep-list](done/122.md) (~45m) ← w6/m334 production check — **done 2026-11-12**
 - [x] **121** — [A service deleted before its first hourly rollup still loses its egress](done/121.md) (~1h) ← w6/m333 review — **done 2026-11-12**
 - [x] **120** — [The agent image and the platform builder ship the Go that `lego/go.work` requires](done/120.md) (~30m) ← w6/m331 t001 — **done 2026-11-12**
