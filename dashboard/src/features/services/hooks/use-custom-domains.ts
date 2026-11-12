@@ -10,6 +10,7 @@ import {
 } from "@/graphql/definitions";
 import {
   hasGraphQLErrorCode,
+  isNotFoundError,
   mutationErrorMessage,
   refusalReason,
 } from "@/common/lib/graphql-error";
@@ -226,7 +227,13 @@ export function useCustomDomainMutations(
     async (name: string) => {
       setBusy(true);
       try {
-        await deleteCustomDomain({ variables: { id: serviceId, name } });
+        try {
+          await deleteCustomDomain({ variables: { id: serviceId, name } });
+        } catch (err) {
+          // Already removed, e.g. from another tab: the list catches up and
+          // the delete has done what was asked (w4/574).
+          if (!isNotFoundError(err)) throw err;
+        }
         await refetch();
         toast.success(t("services.domainDeleteSuccess", { name }));
         return true;

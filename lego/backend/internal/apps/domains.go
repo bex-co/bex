@@ -917,9 +917,13 @@ func filterDomains(domains []DomainView, verificationStatus, domainType string) 
 // domainHost resolves a custom-domain reference, Render's
 // {customDomainIdOrName}: a cdm- id names the claim with that id on this
 // service, anything else is a hostname (w4/389). An id with no claim here is
-// the same not-found as an unknown hostname.
+// the same not-found as an unknown hostname, and so is a malformed one: a
+// dotless cdm- reference can be no hostname (w4/574).
 func (s *Service) domainHost(ctx context.Context, app *appv1alpha1.App, ref string) (string, error) {
 	if kind, ok := id.KindOf(ref); !ok || kind != id.Domain {
+		if strings.HasPrefix(strings.ToLower(ref), id.Domain.Prefix()+"-") && !strings.Contains(ref, ".") {
+			return "", core.NotFound("custom domain")
+		}
 		return ref, nil
 	}
 	if claims, appID, ok := s.managedDomainClaims(app); ok {
@@ -1825,13 +1829,14 @@ func setHostRedirect(app *appv1alpha1.App, host, target string) {
 // sibling is removed with it. Deleting the generated redirecting sibling alone
 // preserves the canonical host unchanged. Explicitly re-adding the generated
 // sibling clears its redirect, making the two rows independent, so neither is
-// then cascaded. The rule is claim-state agnostic and idempotent. For
-// store-managed Apps the authoritative rows are deleted first (same row-first
-// rationale as the other intent verbs).
+// then cascaded. The rule is claim-state agnostic. A host the service does not
+// have is core.NotFound, as GET answers and Render's spec declares (w4/574).
+// For store-managed Apps the authoritative rows are deleted first (same
+// row-first rationale as the other intent verbs).
 func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (err error) {
 	// Deferred audit (w4/m122), same rule as its two siblings: a delete that
-	// removed nothing — an unknown host, the idempotent already-absent path —
-	// must leave no `custom_domain_removed` row behind.
+	// removed nothing — an unknown host — must leave no `custom_domain_removed`
+	// row behind.
 	app, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, appName)
 	if err != nil {
 		return err
@@ -1859,11 +1864,16 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (e
 	if claims, appID, managed := s.managedDomainClaims(app); managed {
 		// Asked before the remove, because RemoveDomain is idempotent and
 		// reports only an error — there is no other way to tell a real removal
-		// from a delete of something that was never there. The remove itself
-		// stays unconditional, so the cleanup semantics are untouched.
-		if _, getErr := claims.GetDomainClaim(ctx, appID, hostname); getErr == nil {
+		// from a delete of something that was never there. A host still in the
+		// spec (or its primary) without its claim is removed too, so the
+		// projection drops it.
+		_, getErr := claims.GetDomainClaim(ctx, appID, hostname)
+		switch {
+		case getErr == nil, errors.Is(getErr, store.ErrNotFound) && (slices.Contains(app.Spec.Hosts, hostname) || app.Spec.Host == hostname):
 			removedSomething = true
-		} else if !errors.Is(getErr, store.ErrNotFound) {
+		case errors.Is(getErr, store.ErrNotFound):
+			return core.NotFound("custom domain")
+		default:
 			return getErr
 		}
 		if err := s.Store.RemoveDomain(ctx, appID, hostname); err != nil {
@@ -1894,7 +1904,7 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (e
 		}
 	}
 	if len(updated) == len(app.Spec.Hosts) {
-		return nil // not present — idempotent, and no event
+		return core.NotFound("custom domain") // not present, and no event
 	}
 	removedSomething = true
 	if s.Store != nil {

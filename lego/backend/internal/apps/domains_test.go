@@ -376,8 +376,8 @@ func TestManagedDomainPairDeletionMatrix(t *testing.T) {
 					if err := svc.DeleteDomain(context.Background(), "web", deleted); err != nil {
 						t.Fatalf("DeleteDomain: %v", err)
 					}
-					if err := svc.DeleteDomain(context.Background(), "web", deleted); err != nil {
-						t.Fatalf("idempotent DeleteDomain retry: %v", err)
+					if err := svc.DeleteDomain(context.Background(), "web", deleted); !errors.Is(err, core.ErrNotFound) {
+						t.Fatalf("DeleteDomain retry = %v, want not found (w4/574)", err)
 					}
 
 					rows, err := claims.ListDomainClaims(context.Background(), "srv-1")
@@ -890,19 +890,37 @@ func TestDeleteDomainRemovesFromHosts(t *testing.T) {
 	}
 }
 
-func TestDeleteDomainIdempotent(t *testing.T) {
+// w4/574: deleting a host the service does not have is a 404, as GET answers
+// and Render's spec declares — by hostname, by id, or by a malformed id.
+func TestDeleteDomainOfAnAbsentHostIsNotFound(t *testing.T) {
 	svc, cl := newService(nil, appWithHosts("web", "www.example.com"))
 
-	// Remove existing host.
 	if err := svc.DeleteDomain(context.Background(), "web", "www.example.com"); err != nil {
 		t.Fatalf("first delete: %v", err)
 	}
-	// Removing again must be a silent no-op.
-	if err := svc.DeleteDomain(context.Background(), "web", "www.example.com"); err != nil {
-		t.Fatalf("second delete (no-op) should not error: %v", err)
+	for _, ref := range []string{"www.example.com", "never-existed.example.com", "cdm-doesnotexist000000000", id.New(id.Domain)} {
+		if err := svc.DeleteDomain(context.Background(), "web", ref); !errors.Is(err, core.ErrNotFound) {
+			t.Errorf("delete %q = %v, want not found", ref, err)
+		}
 	}
 	if got := getApp(t, cl, "web").Spec.Hosts; len(got) != 0 {
 		t.Errorf("spec.hosts should be empty, got %v", got)
+	}
+	// A host whose name starts like an id is still a hostname.
+	if err := svc.DeleteDomain(context.Background(), "web", "cdm-shop.example.com"); !errors.Is(err, core.ErrNotFound) {
+		t.Errorf("delete of an absent cdm- hostname = %v, want not found", err)
+	}
+}
+
+// Another service's domain is not this service's to delete: not found, and
+// the owner keeps it.
+func TestDeleteDomainOfAnotherServiceIsNotFound(t *testing.T) {
+	svc, cl := newService(nil, appWithHosts("web", "www.example.com"), appWithHosts("api", "api.example.com"))
+	if err := svc.DeleteDomain(context.Background(), "web", "api.example.com"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("delete of api's host through web = %v, want not found", err)
+	}
+	if got := getApp(t, cl, "api").Spec.Hosts; len(got) != 1 || got[0] != "api.example.com" {
+		t.Fatalf("api's hosts = %v, want its domain kept", got)
 	}
 }
 

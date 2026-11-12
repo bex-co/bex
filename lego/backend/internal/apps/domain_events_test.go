@@ -129,9 +129,9 @@ func TestDeleteRecordsOnlyARealRemoval(t *testing.T) {
 	svc, _, sink := auditedDomainService(t)
 	ctx := context.Background()
 
-	// Deleting a host that was never there is idempotent — and must be silent.
-	if err := svc.DeleteDomain(ctx, "web", "never-added.example.com"); err != nil {
-		t.Fatalf("idempotent delete: %v", err)
+	// Deleting a host that was never there is a 404 (w4/574) — and silent.
+	if err := svc.DeleteDomain(ctx, "web", "never-added.example.com"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("delete of an absent host = %v, want not found", err)
 	}
 	if n := sink.countVerb(core.AuditVerbDeleteDomain); n != 0 {
 		t.Errorf("deleting an absent host recorded %d events, want 0", n)
