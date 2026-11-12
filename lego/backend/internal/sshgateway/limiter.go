@@ -18,16 +18,64 @@ package sshgateway
 
 import "sync"
 
-// SessionLimiter enforces the gateway-wide global and per-identity session
-// caps. One instance is shared by every transport (native SSH, Browser Web
-// Shell, sandbox exec) so the caps bound the process, not each feature.
-type SessionLimiter struct {
-	maxSessions    int
+// subjectLimiter is the shared global + per-subject concurrent-slot counter
+// behind SessionLimiter and ChannelLimiter. Their acquire/release bodies were
+// byte-identical apart from the field names and the refusal-scope prefix; one
+// implementation keeps both caps in lockstep. prefix is prepended to the
+// refusal scope ("global"/"identity") so a session refusal stays "global"
+// while a channel refusal reads "channel_global".
+type subjectLimiter struct {
+	prefix         string
+	maxGlobal      int
 	maxPerIdentity int
 
 	mu          sync.Mutex
 	global      int
 	perIdentity map[string]int
+}
+
+func newSubjectLimiter(prefix string, maxGlobal, maxPerIdentity int) subjectLimiter {
+	return subjectLimiter{
+		prefix:         prefix,
+		maxGlobal:      maxGlobal,
+		maxPerIdentity: maxPerIdentity,
+		perIdentity:    map[string]int{},
+	}
+}
+
+// acquire reserves one slot for subject. On refusal the second return names the
+// exhausted scope, prefixed: "global"/"identity" or "channel_global"/
+// "channel_identity".
+func (l *subjectLimiter) acquire(subject string) (bool, string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.global >= l.maxGlobal {
+		return false, l.prefix + "global"
+	}
+	if l.perIdentity[subject] >= l.maxPerIdentity {
+		return false, l.prefix + "identity"
+	}
+	l.global++
+	l.perIdentity[subject]++
+	return true, ""
+}
+
+// release returns subject's slot acquired by a successful acquire.
+func (l *subjectLimiter) release(subject string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.global--
+	l.perIdentity[subject]--
+	if l.perIdentity[subject] == 0 {
+		delete(l.perIdentity, subject)
+	}
+}
+
+// SessionLimiter enforces the gateway-wide global and per-identity session
+// caps. One instance is shared by every transport (native SSH, Browser Web
+// Shell, sandbox exec) so the caps bound the process, not each feature.
+type SessionLimiter struct {
+	subjectLimiter
 }
 
 // NewSessionLimiter builds a limiter; non-positive values take the defaults
@@ -39,38 +87,18 @@ func NewSessionLimiter(maxSessions, maxPerIdentity int) *SessionLimiter {
 	if maxPerIdentity <= 0 {
 		maxPerIdentity = 5
 	}
-	return &SessionLimiter{
-		maxSessions:    maxSessions,
-		maxPerIdentity: maxPerIdentity,
-		perIdentity:    map[string]int{},
-	}
+	return &SessionLimiter{newSubjectLimiter("", maxSessions, maxPerIdentity)}
 }
 
 // Acquire reserves one session slot for subject. On refusal the second return
 // names the exhausted scope: "global" or "identity".
 func (l *SessionLimiter) Acquire(subject string) (bool, string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.global >= l.maxSessions {
-		return false, "global"
-	}
-	if l.perIdentity[subject] >= l.maxPerIdentity {
-		return false, "identity"
-	}
-	l.global++
-	l.perIdentity[subject]++
-	return true, ""
+	return l.acquire(subject)
 }
 
 // Release returns subject's slot acquired by a successful Acquire.
 func (l *SessionLimiter) Release(subject string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.global--
-	l.perIdentity[subject]--
-	if l.perIdentity[subject] == 0 {
-		delete(l.perIdentity, subject)
-	}
+	l.release(subject)
 }
 
 // ChannelLimiter bounds concurrent exec STREAMS (SSH session channels), not
@@ -83,12 +111,7 @@ func (l *SessionLimiter) Release(subject string) {
 // transports (webshell, sandboxsse, agentattach) are bounded by the session
 // limiter instead: their one exec IS their session slot.
 type ChannelLimiter struct {
-	maxGlobal      int
-	maxPerIdentity int
-
-	mu          sync.Mutex
-	global      int
-	perIdentity map[string]int
+	subjectLimiter
 }
 
 // NewChannelLimiter builds a channel limiter; non-positive values take the
@@ -101,39 +124,19 @@ func NewChannelLimiter(maxGlobal, maxPerIdentity int) *ChannelLimiter {
 	if maxPerIdentity <= 0 {
 		maxPerIdentity = 32
 	}
-	return &ChannelLimiter{
-		maxGlobal:      maxGlobal,
-		maxPerIdentity: maxPerIdentity,
-		perIdentity:    map[string]int{},
-	}
+	return &ChannelLimiter{newSubjectLimiter("channel_", maxGlobal, maxPerIdentity)}
 }
 
 // AcquireChannel reserves one exec-stream slot for subject. On refusal the
 // second return names the exhausted scope: "channel_global" or
 // "channel_identity".
 func (l *ChannelLimiter) AcquireChannel(subject string) (bool, string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	if l.global >= l.maxGlobal {
-		return false, "channel_global"
-	}
-	if l.perIdentity[subject] >= l.maxPerIdentity {
-		return false, "channel_identity"
-	}
-	l.global++
-	l.perIdentity[subject]++
-	return true, ""
+	return l.acquire(subject)
 }
 
 // ReleaseChannel returns subject's slot acquired by a successful AcquireChannel.
 func (l *ChannelLimiter) ReleaseChannel(subject string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	l.global--
-	l.perIdentity[subject]--
-	if l.perIdentity[subject] == 0 {
-		delete(l.perIdentity, subject)
-	}
+	l.release(subject)
 }
 
 // SourceLimiter bounds concurrent in-flight entries per SOURCE address. The
