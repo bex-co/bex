@@ -81,6 +81,7 @@ function event(id: string, type: string, offset: number, status = "") {
       reasonCode: "",
       exitCode: null as number | null,
       instanceId: "",
+      memoryLimit: "",
       diskName: null,
       mountPath: null,
       usagePercent: null,

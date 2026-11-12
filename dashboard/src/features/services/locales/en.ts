@@ -4800,7 +4800,7 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Instance failed reason for a running service: killed for memory, limit unknown (w8/m158)",
   },
-  "services.eventsReason.instance.early_exit": {
+  "services.eventsReason.early_exit": {
     message:
       "The instance's process exited and was restarted. A service is expected to keep running.",
     description:

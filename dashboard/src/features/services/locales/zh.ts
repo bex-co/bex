@@ -4687,7 +4687,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Instance failed reason for a running service: killed for memory, limit unknown (w8/m158)",
   },
-  "services.eventsReason.instance.early_exit": {
+  "services.eventsReason.early_exit": {
     message: "实例进程已退出并重新启动。服务应当持续运行。",
     description:
       "Instance failed reason for a running service: its process ended with status 0 (w8/m158)",

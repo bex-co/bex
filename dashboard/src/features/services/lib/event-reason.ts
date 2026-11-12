@@ -2,12 +2,13 @@
  * How a service event's `reasonCode` is worded (w8/m158).
  *
  * `non_zero_exit` and `oom_killed` were written for a cron run ("The run
- * exited with status 1."). A running service reports the same codes, and
- * `early_exit`, on `server_failed`: its process crashed, was killed for
- * memory, or ended on its own, and the instance was restarted. Those get
- * their own sentences.
+ * exited with status 1."). A running service reports the same two codes on
+ * `server_failed`: its process crashed or was killed for memory, and the
+ * instance was restarted. Those get their own sentences. `early_exit` (the
+ * process ended on its own) happens only to a running service, so its one
+ * sentence sits at the plain key every reason code must have.
  */
-const INSTANCE_EXIT_REASONS = ["non_zero_exit", "oom_killed", "early_exit"];
+const INSTANCE_EXIT_REASONS = ["non_zero_exit", "oom_killed"];
 
 /** The translation key for `reasonCode` on an event of `type`. */
 export function eventReasonKey(

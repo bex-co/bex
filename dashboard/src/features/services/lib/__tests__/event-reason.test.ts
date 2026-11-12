@@ -14,8 +14,9 @@ describe("eventReasonKey", () => {
     expect(eventReasonKey("server_failed", "non_zero_exit")).toBe(
       "services.eventsReason.instance.non_zero_exit",
     );
+    // Only a running service ends early, so that code has one sentence.
     expect(eventReasonKey("server_failed", "early_exit")).toBe(
-      "services.eventsReason.instance.early_exit",
+      "services.eventsReason.early_exit",
     );
     expect(eventReasonKey("cron_job_run_ended", "non_zero_exit")).toBe(
       "services.eventsReason.non_zero_exit",
