@@ -4368,10 +4368,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	if err != nil {
 		return AppView{}, err
 	}
-	fromPlan := ""
-	if ft, ok := tiers.Compute.ByID(a.Spec.Tier); ok {
-		fromPlan = ft.RenderPlan
-	}
+	fromTier := a.Spec.Tier
 	// Upgrading a service the monthly Free instance hours suspended lets it run
 	// at once (w8/m139).
 	if core.PaidPlan(tier) {
@@ -4379,27 +4376,46 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 			return AppView{}, err
 		}
 	}
-	// Edge caching needs a paid plan: the saved profile is kept, but a move to
-	// Free stops the cache and a move back starts it, Render's
-	// system-triggered edge_cache_disabled / _enabled (w9/088).
 	next := a.Spec
 	next.Tier = tier
-	var edgeCacheTo *bool
-	if cached := next.ServesEdgeCache(); cached != a.Spec.ServesEdgeCache() {
-		edgeCacheTo = &cached
-	}
+	edgeCacheTo := planEdgeCacheToggle(&a.Spec, &next)
 	result, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
 	if err != nil {
 		return AppView{}, err
 	}
-	// Same no-op guard as Scale: a plan change to the current plan emits no
-	// plan_changed audit row or webhook (the allowed-write audit is deferred here).
-	if fromPlan != plan {
-		s.RecordPlanChanged(ctx, a, fromPlan, plan, edgeCacheTo)
+	// Same no-op guard as Scale: a plan change to the current plan, by any of
+	// its spellings, emits no plan_changed audit row or webhook (the
+	// allowed-write audit is deferred here). The row names Render's plan
+	// spelling of each tier, as a Blueprint's plan change does (w9/091).
+	if tier != fromTier {
+		s.RecordPlanChanged(ctx, a, renderPlanName(fromTier), renderPlanName(tier), edgeCacheTo)
 	}
 	return result, nil
+}
+
+// renderPlanName is Render's `plan` spelling of a spec.tier, empty for an
+// untiered or unknown one: plan_changed's from/to.
+func renderPlanName(tier string) string {
+	if t, ok := tiers.Compute.ByID(tier); ok {
+		return t.RenderPlan
+	}
+	return ""
+}
+
+// planEdgeCacheToggle is what a plan change from spec before to spec after
+// turned the edge cache to, nil when it left the cache as it was. Edge caching
+// needs a paid plan: the saved profile is kept, but a move to Free stops the
+// cache and a move back starts it, Render's system-triggered
+// edge_cache_disabled / _enabled (w9/088). SetPlan and a Blueprint sync or
+// deploy that changes the plan (w9/091) both record it beside plan_changed.
+func planEdgeCacheToggle(before, after *appv1alpha1.AppSpec) *bool {
+	cached := after.ServesEdgeCache()
+	if cached == before.ServesEdgeCache() {
+		return nil
+	}
+	return &cached
 }
 
 // SetPlanDryRun is SetPlan stopped before its first write (w5/m116): a service

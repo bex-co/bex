@@ -285,7 +285,8 @@ const (
 	// enclosing SetServices verbs' own fan-out rows remain non-events.
 	AuditVerbProjectServiceMoved     = "projects.MoveService"
 	AuditVerbEnvironmentServiceMoved = "environments.MoveService"
-	// AuditVerbSetPlanEdgeCache is apps.SetPlan's edge-cache effect (w9/088).
+	// AuditVerbSetPlanEdgeCache is apps.SetPlan's edge-cache effect (w9/088),
+	// and that of a Blueprint sync or deploy that changes the plan (w9/091).
 	// Edge caching needs a paid plan, so a plan change to Free turns a saved
 	// caching profile off and a change back to a paid plan turns it on again.
 	// It is fixed vocabulary, recorded beside the plan change's own row only
@@ -505,12 +506,13 @@ func SplitTarget(target string) (kind, name string, ok bool) {
 	return kind, name, true
 }
 
-// RecordPlanChanged records the typed from/to detail for a successful SetPlan.
-// Called after the write path confirms success, paired with
-// WithDeferredAllowedWriteAudit on the AuthorizeApp call. edgeCacheTo is what
-// the change turned app's edge cache to, nil when it left the cache as it was
-// (w9/088): its AuditVerbSetPlanEdgeCache row lands with the plan row or not
-// at all.
+// RecordPlanChanged records the typed from/to detail for a successful SetPlan,
+// or for a Blueprint sync or deploy that changed a service's plan (w9/091),
+// with ctx's caller (none for an automatic sync). Called after the write path
+// confirms success; SetPlan pairs it with WithDeferredAllowedWriteAudit on the
+// AuthorizeApp call. edgeCacheTo is what the change turned app's edge cache
+// to, nil when it left the cache as it was (w9/088): its
+// AuditVerbSetPlanEdgeCache row lands with the plan row or not at all.
 func (b *Base) RecordPlanChanged(ctx context.Context, app *appv1alpha1.App, fromPlan, toPlan string, edgeCacheTo *bool) {
 	resource, err := b.resourceWorkspace(ctx, app.Labels)
 	if err != nil {

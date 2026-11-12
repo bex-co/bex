@@ -3846,6 +3846,14 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 		currentMaintenance = existing.Spec.MaintenanceMode.DeepCopy()
 	}
 	deploySpecChanged := actualSpecChanged && !maintenanceOnly
+	// A Blueprint sync or deploy that moves the service to another plan is a
+	// plan change, as SetPlan's is (w9/091). A managed App's is recorded by
+	// persistBlueprintIntent once its row lands; a store-less App's, from the
+	// spec before, once the patch below does.
+	var storelessPlanFrom *appv1alpha1.AppSpec
+	if deploySpecChanged && existing.Spec.Tier != final.Spec.Tier && s.blueprintIntentRow(existing) == "" {
+		storelessPlanFrom = existing.Spec.DeepCopy()
+	}
 	// A suspended service deploys nothing (w4/m234): a sync that changes it
 	// persists the intent and spec and writes the pending-source hold, like
 	// every other release-rolling writer since m234, instead of stamping a
@@ -3922,6 +3930,9 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	if s.Kick != nil {
 		s.Kick()
 	}
+	if storelessPlanFrom != nil {
+		s.recordStackPlanChange(ctx, existing, storelessPlanFrom, &final.Spec)
+	}
 	if maintenanceChanged {
 		verbCtx, ref := stackServiceTarget(ctx, existing)
 		return s.ConfigureMaintenanceMode(verbCtx, ref, maintenanceModeView(final.Spec.MaintenanceMode))
@@ -3937,8 +3948,8 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 // SetSourceAndRegistryCredential does, so if the CR patch then fails a resync
 // that carries the new source onto the CR cannot roll it without a deploy.
 func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App, want appv1alpha1.AppSpec) error {
-	id := managedAppID(a)
-	if s.Store == nil || id == "" {
+	id := s.blueprintIntentRow(a)
+	if id == "" {
 		return nil
 	}
 	cur := a.Spec
@@ -3966,6 +3977,10 @@ func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App
 		if err := s.Store.SetAppTier(ctx, id, want.Tier); err != nil {
 			return err
 		}
+		// The row is the plan's source of truth: once it lands, a resync
+		// copies it onto the CR whatever fails next, and a retry then sees no
+		// change to record (w9/091).
+		s.recordStackPlanChange(ctx, a, &cur, &want)
 	}
 	if cur.Replicas != want.Replicas {
 		if err := s.Store.SetAppReplicas(ctx, id, want.Replicas); err != nil {
@@ -3976,6 +3991,24 @@ func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App
 		return s.persistBlueprintDisk(ctx, a, id, *want.Disk)
 	}
 	return nil
+}
+
+// blueprintIntentRow is the managed App row persistBlueprintIntent writes a's
+// Blueprint intent to, empty for a store-less or unmanaged App.
+func (s *Service) blueprintIntentRow(a *appv1alpha1.App) string {
+	if s.Store == nil {
+		return ""
+	}
+	return managedAppID(a)
+}
+
+// recordStackPlanChange records a Blueprint sync's or deploy's move of a from
+// plan before to plan after (w9/091): plan_changed, with the edge-cache toggle
+// the move caused, by the apply's own actor, as its deploy row records it: the
+// member who deployed, ran a manual sync or approved a planned one, and none
+// for an automatic sync.
+func (s *Service) recordStackPlanChange(ctx context.Context, a *appv1alpha1.App, before, after *appv1alpha1.AppSpec) {
+	s.RecordPlanChanged(ctx, a, renderPlanName(before.Tier), renderPlanName(after.Tier), planEdgeCacheToggle(before, after))
 }
 
 // persistBlueprintDisk creates or grows/remounts the App's one disk row. A

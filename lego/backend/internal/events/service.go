@@ -40,7 +40,7 @@ limitations under the License.
 //	suspender_added             apps.Suspend      (details.actor = the caller)
 //	suspender_removed           apps.Resume       (details.actor = the caller)
 //	server_restarted            apps.Restart      (details.triggeredByUser = the caller)
-//	plan_changed                apps.SetPlan      (details.from/to = plan name strings)
+//	plan_changed                apps.SetPlan, or a Blueprint sync or deploy that changed the plan (details.from/to = plan name strings)
 //	instance_count_changed      apps.Scale        (details.from/to = instance counts)
 //	autoscaling_config_changed  apps.SetAutoscaling / apps.DeleteAutoscaling (details.previous/current min+max)
 //	edge_cache_enabled          apps.SetCacheProfile turning caching on  (details.trigger {manual, user, system}, w9/m345)

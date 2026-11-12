@@ -1225,6 +1225,38 @@ func TestScaleNoOpEmitsNoEvent(t *testing.T) {
 	}
 }
 
+// SetPlan compares tiers, as a Blueprint's plan change does (w9/091): another
+// spelling of the current plan (Render's exact-size id for starter) records no
+// plan_changed, and a real change names each side's Render plan, never the
+// spelling the caller sent.
+func TestSetPlanToAnotherSpellingOfThePlanRecordsNothing(t *testing.T) {
+	app := sampleApp("web")
+	app.Spec.Tier = "starter"
+	sink := &captureAuditSink{}
+	svc := &Service{Base: &core.Base{Client: fakeClient(app), Namespace: "default", Audit: sink}}
+	ctx := context.Background()
+	if _, err := svc.SetPlan(ctx, "web", "0.5c-512mb"); err != nil {
+		t.Fatalf("SetPlan(0.5c-512mb): %v", err)
+	}
+	if n := sink.countVerb(core.AuditVerbSetPlan); n != 0 {
+		t.Fatalf("a plan change to starter's own exact-size id recorded %d plan_changed rows, want 0", n)
+	}
+	for _, plan := range []string{"standard", "0.5c-512mb"} {
+		if _, err := svc.SetPlan(ctx, "web", plan); err != nil {
+			t.Fatalf("SetPlan(%s): %v", plan, err)
+		}
+	}
+	var got []string
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbSetPlan {
+			got = append(got, *ev.PlanFrom+"->"+*ev.PlanTo)
+		}
+	}
+	if want := []string{"starter->standard", "standard->starter"}; !slices.Equal(got, want) {
+		t.Fatalf("plan_changed rows = %v, want %v", got, want)
+	}
+}
+
 func TestScaleOutOfRangeIsBadRequestAndNoOp(t *testing.T) {
 	svc, cl := newService(nil, sampleApp("web"))
 
