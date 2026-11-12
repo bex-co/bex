@@ -1,6 +1,6 @@
 # w4 · m300 — A triggered cron run exists from the moment it is acknowledged: readable, cancellable, and canceled (not lost) when a second trigger replaces it, as on Render
 
-**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** blocked — t001–t007 done (shipped); t009 todo (added 2026-11-11); t008 live replay waits for the 19:00 UTC production deploy
+**Worker:** worker4 **Goal:** the run object that `POST /cron-jobs/{id}/runs` returns is the run. Every read finds it as `pending` at once, Render's cancel call cancels it, and a second trigger records it as canceled instead of dropping it. **Status:** blocked — t001–t007 done (shipped); t009 todo (added 2026-11-11); t010 (round 171: canceled runs still execute) is open; t008 closes after t009 and t010
 
 ## Tasks (in order)
 
@@ -14,9 +14,10 @@
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | w4/m300/t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | w4/m300/t005 |
 | [t009](t009.md) | A run canceled before it started is announced as "not started yet" in Recent Runs | 15m | w4/m300/t003 |
-| [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007, w4/m300/t009 |
+| [t010](t010.md) | A run canceled or replaced within a second of its trigger still executes (its pod prints after the row reads `canceled`), and a replaced run reads `finishedAt` before `startedAt` | 60m | w4/m300/t002 |
+| [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007, w4/m300/t009, w4/m300/t010 |
 
-Nine tasks, 315m (5h15m). One finding, major. t009 was added in round 81 of the `/qa-find-bugs w4` loop (2026-11-11). This milestone schedules the work only.
+Ten tasks, 375m (6h15m); t010 added in round 171. One finding, major. t009 was added in round 81 of the `/qa-find-bugs w4` loop (2026-11-11). This milestone schedules the work only.
 
 ## Finding — a triggered run is invisible until the operator reconciles it
 
@@ -184,3 +185,20 @@ Live on production after the release pins this build. The fixture is a Starter c
 - **2026-11-10 — parked (loopx w4):** the code is shipped; only the live DoD replay remains. Production deploys moved to 19:00/00:00/05:00 UTC plus manual dispatch (`4630a48a7`, 2026-11-09), so this waits for the 2026-11-10 19:00 UTC deploy. Then replay the DoD and close. No user action.
 
 - **2026-11-11 — round 81 of the `/qa-find-bugs w4` loop:** production now runs `348bd77a5`, which contains `d4d105415`, so the deploy this milestone waited for has shipped. P1, P2 (`DELETE …/runs`) and P3 replays passed live; the probes are in [t009](t009.md). t009 was added for the canceled-before-start row's accessible name. t008's remaining replays (P2's two other cancel paths, "eleven runs later", P4 and the adjacent classes) still need running.
+
+## Post-release probe (QA loop round 171, 2026-11-12): P1 passes; P2 and P3 fail (filed as t010)
+
+Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) carries t001–t007. The fixture and the full probe table are in t010.
+
+- **P1 passes.**
+  - `POST` → `200 {id, status: pending}`.
+  - 0.7 s later, `GET …/runs/X` → `200 pending` with no `startedAt`, `…/runs?limit=1` lists X first, and GraphQL `cronJobRun` agrees.
+  - X reached `successful`.
+- **P2 fails.**
+  - `DELETE …/runs` (204) right after the `POST`, and `POST …/runs/Y/cancel` (200) likewise, both leave the run `canceled`.
+  - But each run started, emitted `cron_job_run_started`, and printed its `cron-demo:` line about 1 s later.
+- **P3 fails in part.**
+  - Two back-to-back `POST`s: B ran once, A reads `canceled`, and the list holds both.
+  - But A's pod printed at 05:40:14, after A was recorded `canceled` at 05:40:11, and A reads `startedAt` 05:40:13 later than `finishedAt` 05:40:11.74.
+- **Not run:** P4 (dashboard Trigger Run at 1440 and 390 px) and the eleven-runs retention check.
+
