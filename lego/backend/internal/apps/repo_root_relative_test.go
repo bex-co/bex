@@ -33,7 +33,7 @@ func TestRepoRootRelativeReadsALeadingSlashAsTheRepositoryRoot(t *testing.T) {
 			t.Errorf("repoRootRelative(%q) = %q, want %q", in, got, want)
 		}
 	}
-	if err := checkDockerContextPath(repoRootRelative("/../escape")); err == nil {
+	if err := checkDockerContextPath("dockerContext", repoRootRelative("/../escape")); err == nil {
 		t.Error("a '..' component must still be refused after the leading slash goes")
 	}
 }

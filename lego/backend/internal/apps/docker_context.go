@@ -120,9 +120,16 @@ func repoRootRelative(p string) string {
 // (store.NormalizeRootDir): Render's templates write `dockerContext: ./`, and
 // `backend/` names `backend` (w8/292). The stored value is path.Join'd
 // (storedDockerContext), which maps them the same way.
-func checkDockerContextPath(wire string) error {
-	if problem := store.RootDirProblem(store.NormalizeRootDir(strings.TrimSpace(wire))); problem != "" {
-		return fmt.Errorf("%w: dockerContext %s", core.ErrBadRequest, problem)
+func checkDockerContextPath(field, wire string) error {
+	return checkRepoPath(field, store.NormalizeRootDir(strings.TrimSpace(wire)))
+}
+
+// checkRepoPath refuses a repository path the build cannot use (store.
+// RootDirProblem), naming field: a Dockerfile path, judged as typed, or a
+// normalized directory.
+func checkRepoPath(field, path string) error {
+	if problem := store.RootDirProblem(path); problem != "" {
+		return fmt.Errorf("%w: %s %s", core.ErrBadRequest, field, problem)
 	}
 	return nil
 }

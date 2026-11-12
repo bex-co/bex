@@ -3432,10 +3432,10 @@ func validateCreateSource(req CreateRequest) error {
 	if problem := store.RootDirProblem(req.RootDir); problem != "" {
 		return fmt.Errorf("%w: rootDirectory %s", core.ErrBadRequest, problem)
 	}
-	if problem := store.RootDirProblem(req.DockerfilePath); problem != "" {
-		return fmt.Errorf("%w: dockerfilePath %s", core.ErrBadRequest, problem)
+	if err := checkRepoPath("dockerfilePath", req.DockerfilePath); err != nil {
+		return err
 	}
-	return checkDockerContextPath(req.DockerContext)
+	return checkDockerContextPath("dockerContext", req.DockerContext)
 }
 
 // validateTypeSpecificCreate enforces the create fields tied to the service

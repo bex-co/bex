@@ -215,10 +215,7 @@ func (s *Service) checkDockerfilePath(ctx context.Context, a *appv1alpha1.App, n
 		return "", err
 	}
 	dockerfilePath = strings.TrimSpace(dockerfilePath)
-	if problem := store.RootDirProblem(dockerfilePath); problem != "" {
-		return "", fmt.Errorf("%w: dockerfilePath %s", core.ErrBadRequest, problem)
-	}
-	return dockerfilePath, nil
+	return dockerfilePath, checkRepoPath("dockerfilePath", dockerfilePath)
 }
 
 // checkDockerBuildSetting gates a change to a Dockerfile-build setting (the
@@ -253,7 +250,7 @@ func (s *Service) checkDockerContext(ctx context.Context, a *appv1alpha1.App, na
 		return "", err
 	}
 	dockerContext = strings.TrimSpace(dockerContext)
-	return dockerContext, checkDockerContextPath(dockerContext)
+	return dockerContext, checkDockerContextPath("dockerContext", dockerContext)
 }
 
 func checkBuildFilter(a *appv1alpha1.App, name string, filter *BuildFilterView) (*appv1alpha1.BuildFilterSpec, error) {

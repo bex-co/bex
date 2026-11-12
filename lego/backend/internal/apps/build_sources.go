@@ -653,18 +653,36 @@ type buildSettings struct {
 }
 
 // apply writes the settings onto a's spec, resolving a runtime to its builder
-// as create does.
+// and judging and storing the paths as create does: the Root Directory, the
+// Dockerfile path and the Docker context are relative paths inside the
+// repository, and the context is stored relative to the Root Directory,
+// rebased when only the Root Directory moves (w8/294).
 func (b buildSettings) apply(a *appv1alpha1.App) error {
-	set := func(dst *string, v *string) {
-		if v != nil {
-			*dst = *v
+	if b.buildCommand != nil {
+		a.Spec.BuildCommand = *b.buildCommand
+	}
+	if b.dockerfilePath != nil {
+		path := strings.TrimSpace(*b.dockerfilePath)
+		if err := checkRepoPath("git.dockerfilePath", path); err != nil {
+			return err
+		}
+		a.Spec.DockerfilePath = path
+	}
+	if b.dockerContext != nil {
+		if err := checkDockerContextPath("git.dockerContext", *b.dockerContext); err != nil {
+			return err
 		}
 	}
-	set(&a.Spec.BuildCommand, b.buildCommand)
-	set(&a.Spec.DockerfilePath, b.dockerfilePath)
-	set(&a.Spec.DockerContext, b.dockerContext)
 	if b.rootDir != nil {
-		a.Spec.RootDir = store.NormalizeRootDir(*b.rootDir)
+		rootDir := store.NormalizeRootDir(*b.rootDir)
+		if err := checkRepoPath("git.rootDir", rootDir); err != nil {
+			return err
+		}
+		a.Spec.DockerContext = rebaseDockerContext(a.Spec.RootDir, rootDir, a.Spec.DockerContext)
+		a.Spec.RootDir = rootDir
+	}
+	if b.dockerContext != nil {
+		a.Spec.DockerContext = storedDockerContext(a.Spec.RootDir, *b.dockerContext)
 	}
 	if b.buildFilter != nil {
 		filter, err := normalizeBuildFilter(b.buildFilter)

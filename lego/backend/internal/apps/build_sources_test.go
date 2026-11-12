@@ -506,3 +506,49 @@ func TestDeletingBuildSourceReadsAsGone(t *testing.T) {
 		t.Fatalf("list while deleting = %+v err=%v, want none", listed, err)
 	}
 }
+
+// w8/294: a build source's update judges its Root Directory, Dockerfile path
+// and Docker context as create does, stores the context relative to the Root
+// Directory, and rebases it when only the Root Directory moves.
+func TestBuildSourceUpdateJudgesAndStoresDockerPaths(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	created, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{OwnerID: "tea-a", Name: "Docker", Git: &BuildSourceGit{
+		RepoURL: "https://github.com/acme/mono", Branch: "main", Runtime: "docker", RootDir: "backend", DockerfilePath: "Dockerfile",
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for field, git := range map[string]BuildSourceGit{
+		"git.dockerContext":  {DockerContext: "../x"},
+		"git.dockerfilePath": {DockerfilePath: "../Dockerfile"},
+		"git.rootDir":        {RootDir: "../x"},
+	} {
+		if _, err := svc.UpdateBuildSource(ctx, created.ID, UpdateBuildSourceRequest{Git: &git}); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), field) {
+			t.Errorf("%s outside the repository: err = %v, want a bad request naming it", field, err)
+		}
+	}
+	spec := func() appv1alpha1.AppSpec {
+		t.Helper()
+		var apps appv1alpha1.AppList
+		if err := svc.Client.List(ctx, &apps); err != nil || len(apps.Items) != 1 {
+			t.Fatalf("carriers = %v, %v", apps.Items, err)
+		}
+		return apps.Items[0].Spec
+	}
+	for _, step := range []struct {
+		git                    BuildSourceGit
+		rootDir, dockerContext string
+	}{
+		{BuildSourceGit{DockerContext: "./"}, "backend", ""},
+		{BuildSourceGit{DockerContext: "ctx/"}, "backend", "backend/ctx"},
+		{BuildSourceGit{RootDir: "api"}, "api", "api/ctx"},
+		{BuildSourceGit{RootDir: "web", DockerContext: "docker"}, "web", "web/docker"},
+	} {
+		if _, err := svc.UpdateBuildSource(ctx, created.ID, UpdateBuildSourceRequest{Git: &step.git}); err != nil {
+			t.Fatalf("%+v: %v", step.git, err)
+		}
+		if got := spec(); got.RootDir != step.rootDir || got.DockerContext != step.dockerContext {
+			t.Errorf("after %+v: rootDir %q, dockerContext %q; want %q and %q", step.git, got.RootDir, got.DockerContext, step.rootDir, step.dockerContext)
+		}
+	}
+}
