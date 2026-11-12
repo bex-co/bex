@@ -65,3 +65,4 @@ Fixture `qa-20261112-r229-hc` (`srv-dbr24ia585js73afgis0`), created at 20:32:10 
 - A TCP-checked service (no Health Check Path) has the same preStop, so it should behave the same. It was not probed; t002 covers it.
 - Render's own measured restart time was not captured; its docs are the reference.
 - Whether Render waits `maxShutdownDelaySeconds` after SIGTERM on a health restart is not documented. bex keeps that SIGTERM-to-SIGKILL window either way.
+- **Corroboration (not a new probe):** [w4/m327](../blocked/m327/README.md)'s round 100 ran the same whoami experiment on 2026-11-11. Its flip at 11:41:42 came back as 200 at 11:43:59, 137 s later — the same liveness-plus-drain shape, recorded there without the timing analysis.

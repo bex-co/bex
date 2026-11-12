@@ -379,6 +379,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **616** — [Saving the Health Check Path, Max shutdown delay or Pre-Deploy Command in Settings starts a deploy with no warning: no confirm, and a toast that says only "… updated."](616.md) (~40m; minor) ← live `/qa-find-bugs w4` loop round 230, 2026-11-12 UTC (pin `33e1b1e6117c`).
 - [ ] **615** — [A web image service is restarted with `PORT` set to the port bex found it listening on (8080, or the image's `EXPOSE` 80), not Render's 10000; an image that also uses `$PORT` for an internal listener then crash-loops and never goes live](615.md) (~45m; minor) ← live `/qa-find-bugs w4` loop round 228, 2026-11-12 UTC (pin `33e1b1e6117c`).
 - [ ] **614** — [The Metrics page's Network filters cut off their own values: Percentile "p99" and "p90" both read "p9", Status Code "All" reads "A", and Group by "Status code" reads "Status"](614.md) (~15m; minor) ← live `/qa-find-bugs w4` loop round 227, 2026-11-12 UTC (pin `33e1b1e6117c`).
 - [ ] **613** — [A background worker's Metrics and Logs offer HTTP request views it can never have: a Network Metrics card with Total Requests and Response Times, and a "Request logs" type with request filters, each reading "No data in range" or "No logs match these filters"](613.md) (~45m; minor) ← live `/qa-find-bugs w4` loop round 227, 2026-11-12 UTC (pin `33e1b1e6117c`).
