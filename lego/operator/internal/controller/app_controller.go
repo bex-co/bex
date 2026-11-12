@@ -5701,6 +5701,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	// every caller of cronPodSpec gets it without a post-hoc patch at each site.
 	spec.ImagePullSecrets = r.imagePullSecrets(app, image)
 	spec.HostUsers = appHostUsers(app.Spec, r.userNamespacesFor(app))
+	withElixirNodeHostname(&spec, app)
 	execution.PlaceOnServingPool(&spec, tiers.Compute.ServingPool(app.Spec.Tier))
 	// Last, always — this PodSpec is built from nothing every pass. See
 	// server_defaults.go.

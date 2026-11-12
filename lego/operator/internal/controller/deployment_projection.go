@@ -697,6 +697,7 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	dep.Spec.Template.Spec.ImagePullSecrets = p.pullSecrets
 	dep.Spec.Template.Spec.AutomountServiceAccountToken = new(false)
 	dep.Spec.Template.Spec.HostUsers = appHostUsers(app.Spec, p.userNamespaces)
+	withElixirNodeHostname(&dep.Spec.Template.Spec, app)
 	// No legacy Docker-link variables (w4/m123). With Kubernetes' default
 	// (true), the kubelet injects a <NAME>_SERVICE_HOST / <NAME>_SERVICE_PORT /
 	// <NAME>_PORT_<n>_TCP_* set for EVERY Service in the pod's namespace — live,

@@ -463,7 +463,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **273** — [A Rust service does not get Render's `ROCKET_PORT`, so a Rocket app listens on its own default port](done/273.md) — **DONE (2026-11-12)**: passed on production (sweep 81af)
 
-- [ ] **272** — [An Elixir release cannot start with long node names in a bex pod, so `RELEASE_DISTRIBUTION=name` is not set](272.md) (~2h) ← w8/256, 2026-11-11: with a pod's hostname `elixir --name foo` dies with `nodistribution` (reproduced in a container); minor.
+- [x] **272** — [An Elixir release cannot start with long node names in a bex pod, so `RELEASE_DISTRIBUTION=name` is not set](done/272.md) (~2h) — **DONE 2026-11-12:** shipped; Elixir pods get a hostname with a domain (subdomain `nodes`, checked on a kind pod) and Elixir builds default `RELEASE_DISTRIBUTION=name`; the live check waits for the next deploy ← w8/256, 2026-11-11: with a pod's hostname `elixir --name foo` dies with `nodistribution` (reproduced in a container); minor.
 
 - [ ] **271** — [After a canceled deploy, rolling back to the deploy that is still live is accepted and restarts the instance](blocked/271.md) (~45m) — **BLOCKED (the user raises this host's inotify limits with `sudo sysctl -w fs.inotify.max_user_instances=512 fs.inotify.max_user_watches=524288` so the mock cluster can show the operator's behaviour after a cancel)** ← review of the w8/261 fix, 2026-11-11, read from code: the canceled request's generation stays above the live deploy, so the recovery arm accepts it; minor.
 

@@ -422,15 +422,16 @@ func nativeSecretFileLinks(o Options) string {
 //
 // ROCKET_PORT is not an image default: it has to follow the port the service
 // is routed on, so the operator sets it on the pod (rocketPortDefault,
-// w8/273). Three are left out, each with its own follow-up:
-// RELEASE_DISTRIBUTION=name (an Elixir node cannot take a long name in a pod
-// whose hostname has no domain, and fails to start), VENV_ROOT (no virtualenv
-// exists at Render's path) and NODE_MODULES_CACHE (would have to turn the
-// dependency cache off when false).
+// w8/273). Elixir gets RELEASE_DISTRIBUTION=name (w8/272): a release starts
+// its node with a long name, which needs a hostname with a domain, so the
+// operator gives an Elixir service's pods one (elixirNodeSubdomain). Two are
+// left out, each with its own follow-up: VENV_ROOT (no virtualenv exists at
+// Render's path) and NODE_MODULES_CACHE (would have to turn the dependency
+// cache off when false).
 func nativeBuildDefaults(o Options) string {
 	switch nativeRuntime(o) {
 	case "elixir":
-		return "ENV MIX_ENV=prod\n"
+		return "ENV MIX_ENV=prod\nENV RELEASE_DISTRIBUTION=name\n"
 	case "go":
 		return "ENV GO111MODULE=on GOPATH=" + nativeGoPath + "\n" +
 			"ENV PATH=" + nativeGoPath + "/bin:$PATH\n"
