@@ -454,7 +454,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **274** — [A native Python service has no virtualenv at Render's path, so `VENV_ROOT` is not set](274.md) (~2h) ← w8/256, 2026-11-11: the variable names a directory that does not exist on bex; minor.
 
-- [ ] **273** — [A Rust service does not get Render's `ROCKET_PORT`, so a Rocket app listens on its own default port](273.md) (~60m) ← w8/256, 2026-11-11: it has to follow the serving port and yield to the service's own value, like `WEB_CONCURRENCY`; minor.
+- [x] **273** — [A Rust service does not get Render's `ROCKET_PORT`, so a Rocket app listens on its own default port](done/273.md) — **DONE (2026-11-12)**: passed on production (sweep 81af)
 
 - [ ] **272** — [An Elixir release cannot start with long node names in a bex pod, so `RELEASE_DISTRIBUTION=name` is not set](272.md) (~2h) ← w8/256, 2026-11-11: with a pod's hostname `elixir --name foo` dies with `nodistribution` (reproduced in a container); minor.
 
@@ -488,7 +488,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **257** — [The default Postgres user cannot `CREATE USER`, which Render's credentials page implies it can](blocked/257.md) (~60m once unblocked) ← found while working w8/m155 t001, 2026-11-11: **BLOCKED (upstream [cloudnative-pg#11448](https://github.com/cloudnative-pg/cloudnative-pg/issues/11448), or a decision from the user)** — giving the default users `CREATEROLE` on PostgreSQL 16+ was built and withdrawn before commit: CloudNativePG's role sync revokes the `ADMIN` membership a role's creator gets, so the user could create a role and then never alter, drop or grant it (reproduced on PostgreSQL 16; the sync's code read at the pinned v1.30.1). Needs one of: the upstream fix and a pin move; the user's approval to carry a patched instance manager; or the user's sign-off that `CREATE USER` stays refused. PostgreSQL 13–15 need a sign-off under every option. ADR009 and ADR018 record it as an open divergence, not signed off.
 
-- [ ] **256** — [Eleven of Render's documented runtime defaults are unset or different on native Python, Go, Rust, Elixir and Node](256.md) (~60m) ← `/qa-find-bugs-cli` loop sweep 965c 2026-11-11: env dumps from one free service per runtime show no `CI`/`PIPENV_YES`/`VENV_ROOT` (Python), `GO111MODULE` (Go), `RELEASE_DISTRIBUTION` (Elixir), `ROCKET_ENV`/`ROCKET_PORT` (Rust) or `NODE_MODULES_CACHE` (Node), and base-image paths for `GOPATH`, `CARGO_HOME`, `RUSTUP_HOME`; `nativeBuildDefaults`/`nativeRuntimeDefaults` have no Go or Rust case
+- [x] **256** — [Eleven of Render's documented runtime defaults are unset or different on native Python, Go, Rust, Elixir and Node](done/256.md) — **DONE (2026-11-12)**: passed on production (sweep 81af)
 
 - [x] **255** — [`bex psql` without `--command` answers with `Usage: render psql …`](done/255.md) (~20m) ← `/qa-find-bugs-cli` loop sweep 833c 2026-11-11: the launcher's run-time rewrite only matches `render <command>` at a line start or after a quote, backtick or `| `, so the hint after `Usage: ` keeps upstream's executable name; `docs/bex-cli.md` lists it as rewritten — **DONE 2026-11-11** (fix `cc9be290b`; the built launcher prints `Usage: bex psql …` for both commands; it reaches users with the next CLI release).
 
