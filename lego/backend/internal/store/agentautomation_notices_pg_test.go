@@ -178,6 +178,10 @@ func TestPGAutomationRunNoticesConcurrentClaims(t *testing.T) {
 	var mu sync.Mutex
 	seen := map[time.Time]int{}
 	var wg sync.WaitGroup
+	// FOR UPDATE ... SKIP LOCKED answers an empty claim while another claimer
+	// holds the automation's row, so an empty claim is not "nothing left": a
+	// claimer keeps trying until every run is claimed or the deadline passes.
+	deadline := time.Now().Add(10 * time.Second)
 	for range 4 {
 		wg.Add(1)
 		go func() {
@@ -194,9 +198,13 @@ func TestPGAutomationRunNoticesConcurrentClaims(t *testing.T) {
 						seen[n.Run.FireAt]++
 					}
 				}
+				done := len(seen) >= runs
 				mu.Unlock()
-				if len(got) == 0 {
+				if done || time.Now().After(deadline) {
 					return
+				}
+				if len(got) == 0 {
+					time.Sleep(5 * time.Millisecond)
 				}
 			}
 		}()
