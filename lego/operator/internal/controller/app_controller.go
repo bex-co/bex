@@ -963,13 +963,15 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 	if decision.sourcePending && app.Status.Image == "" {
 		return "", ctrl.Result{}, true, nil
 	}
-	// A static site whose latest build failed still names that failed release
-	// generation. Dispatching the serving image would publish it again under the
-	// failed generation's revision and leave the site Deploying, which pins the
-	// release, so the deploy that follows never builds (w32/003). Keep the
-	// active revision serving and its routing converging until that deploy.
-	if decision.sourcePending && app.Spec.Type == appv1alpha1.TypeStaticSite && releaseRevision(app) != app.Status.ActiveRevision {
-		if held, res, err := r.holdPendingStaticArtifact(ctx, app, ctrl.Result{}); held {
+	// A save after a failed build leaves the release generation on the failed
+	// one. Dispatching the serving image under it would roll a new pod template
+	// with no deploy (w8/289), or republish a static site as Deploying, which
+	// pins the release so the next deploy never builds (w32/003). Hold the
+	// active release instead; a static site also holds while its build is
+	// pending.
+	if decision.sourcePending && releaseRevision(app) != app.Status.ActiveRevision &&
+		(app.Spec.Type == appv1alpha1.TypeStaticSite || terminalBuildFailureRecorded(app)) {
+		if held, res, err := r.holdPendingArtifact(ctx, app, ctrl.Result{}); held {
 			return "", res, true, err
 		}
 	}
@@ -7326,7 +7328,7 @@ func scalableRuntime(app *appv1alpha1.App) bool {
 // following the App and its pod template stays untouched.
 //
 // buildHalt is the result buildFromSource halted with, zero for a suspended
-// pass; its requeue is this pass's cadence. A pass that leaves the phase
+// or save pass; its requeue is this pass's cadence. A pass that leaves the phase
 // Building keeps it: that phase pins the release to its build (releaseInFlight), so
 // the hold neither parks over it nor records a failure in its place.
 //
