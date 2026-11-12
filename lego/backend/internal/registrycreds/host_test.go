@@ -122,6 +122,8 @@ func TestCredentialDialogVectors(t *testing.T) {
 	for _, raw := range []string{
 		"ghcr.io/qa-owner/qa-image", "my registry.io", "https://ghcr.io/owner", "ghcr.io?x=1", "user@ghcr.io",
 		"ghcr.io:", "ghcr.io:123456", "ghcr.io:abc", "-ghcr.io", "ghcr-.io", "ghcr..io", ".ghcr.io", "bücher.de", "https://",
+		// w4/577: a port is 1–65535 with no leading zero.
+		"registry.example.com:99999", "registry.example.com:65536", "registry.example.com:0", "registry.example.com:05000",
 	} {
 		if got, err := canonicalRegistryHost(raw); err == nil {
 			t.Errorf("canonicalRegistryHost(%q) = %q; the dialog's table says refused", raw, got)

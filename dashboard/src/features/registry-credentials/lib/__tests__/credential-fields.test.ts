@@ -39,6 +39,11 @@ describe("registryHostError", () => {
     "ghcr.io:",
     "ghcr.io:123456",
     "ghcr.io:abc",
+    // w4/577: a port is 1–65535 with no leading zero.
+    "registry.example.com:99999",
+    "registry.example.com:65536",
+    "registry.example.com:0",
+    "registry.example.com:05000",
     "-ghcr.io",
     "ghcr-.io",
     "ghcr..io",

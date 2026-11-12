@@ -34,8 +34,9 @@ var dockerHubAliases = map[string]bool{
 }
 
 // registryHostPattern is a bare registry host with an optional port: DNS
-// labels, or localhost.
-var registryHostPattern = regexp.MustCompile(`^(localhost|[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*)(:[0-9]{1,5})?$`)
+// labels, or localhost, and a port of 1–65535 with no leading zero, so a
+// mistyped one is refused, not saved for no pull to use (w4/577).
+var registryHostPattern = regexp.MustCompile(`^(localhost|[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*)(:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$`)
 
 // foldRegistryHost lowercases a bare host and folds Docker Hub's aliases, the
 // form every comparison uses.

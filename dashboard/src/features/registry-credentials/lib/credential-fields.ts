@@ -15,9 +15,10 @@ const utf8 = new TextEncoder();
 const MAX_FIELD_BYTES = 253;
 const MAX_SECRET_BYTES = 64 * 1024;
 
-// A bare registry host with an optional port: DNS labels, or localhost.
+// A bare registry host with an optional port of 1–65535 (w4/577): DNS
+// labels, or localhost.
 const REGISTRY_HOST =
-  /^(localhost|[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*)(:[0-9]{1,5})?$/;
+  /^(localhost|[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*)(:([1-9][0-9]{0,3}|[1-5][0-9]{4}|6[0-4][0-9]{3}|65[0-4][0-9]{2}|655[0-2][0-9]|6553[0-5]))?$/;
 
 // The other spellings of Docker Hub the server folds to docker.io.
 const DOCKER_HUB_ALIASES = new Set([
