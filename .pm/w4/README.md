@@ -369,6 +369,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **596** — [A service read carries no `serviceDetails.autoscaling`, where Render's schema puts the policy, so a Render client sees autoscaling as unset on a service that has it on](596.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 164, 2026-11-12
 - [ ] **595** — [Does Render's API refuse a GitHub folder or file page as a service's `repo`? bex accepts it and fails at checkout](blocked/595.md) (~20m after the answer; minor) ← w4/576 `/simplify` review, `/loopx w4` 2026-11-12. — **BLOCKED (user: Render's answer to `POST /v1/services` with a `/tree/` repo; checking it is a write on the reference account, which the read-only rule forbids — run it, or allow one probe)**
 - [ ] **594** — [A service's "Display name changed" event names neither the old nor the new name, and its custom-domain added/removed/verified rows name no domain: REST `details` is `{}`, and the audit rows carry only the service id](594.md) (~1h; minor; widened in round 160 to the custom-domain rows) ← live `/qa-find-bugs w4` loop round 155, 2026-11-12
 - [x] **593** — [Saving a cron job's Command says "The operator will apply the new schedule on its next reconcile pass", while the schedule is unchanged and a deploy starts at once](done/593.md) (~20m; minor) ← live `/qa-find-bugs w4` loop round 154, 2026-11-12 — **DONE 2026-11-11**
