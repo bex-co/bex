@@ -326,7 +326,9 @@ func TestServicePatchHoldsEveryReleaseField(t *testing.T) {
 		{"healthCheckPath", image(), ServicePatch{HealthCheckPath: str("/hz2")},
 			func(s appv1alpha1.AppSpec) bool { return s.HealthCheckPath == "/hz2" }},
 		{"maxShutdownDelaySeconds", image(), ServicePatch{MaxShutdownDelaySeconds: i32(40)},
-			func(s appv1alpha1.AppSpec) bool { return s.MaxShutdownDelaySeconds != nil && *s.MaxShutdownDelaySeconds == 40 }},
+			func(s appv1alpha1.AppSpec) bool {
+				return s.MaxShutdownDelaySeconds != nil && *s.MaxShutdownDelaySeconds == 40
+			}},
 		{"preDeployCommand", image(), ServicePatch{PreDeployCommand: str("echo x")},
 			func(s appv1alpha1.AppSpec) bool { return s.PreDeployCommand == "echo x" }},
 		{"dockerCommand on an image", image(), ServicePatch{StartCommand: str("node index.js")},

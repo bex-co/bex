@@ -290,4 +290,3 @@ func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, 
 	}
 	return "", false, nil
 }
-

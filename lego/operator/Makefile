@@ -109,14 +109,22 @@ verify-tenant-isolation:
 	bash $(CURDIR)/../../scripts/verify-tenant-isolation.sh
 
 .PHONY: lint
-lint: golangci-lint deadcode ## Run lint and reachability checks over all Go modules; fails if any does
+lint: golangci-lint deadcode ## Run lint, formatting and reachability checks over all Go modules; fails if any does
 	@rc=0; \
+	$(MAKE) --no-print-directory fmt-check || rc=1; \
 	"$(GOLANGCI_LINT)" run || rc=1; \
 	( cd ../backend && "$(GOLANGCI_LINT)" run ) || rc=1; \
 	( cd ../types && "$(GOLANGCI_LINT)" run ) || rc=1; \
 	( cd ../cli && "$(GOLANGCI_LINT)" run ) || rc=1; \
 	bash hack/deadcode.sh "$(DEADCODE)" || rc=1; \
 	exit $$rc
+
+# Only the operator's golangci-lint config enables the gofmt and goimports
+# formatters, so backend, types and cli drifted (w21/060); gofmt itself checks all four.
+.PHONY: fmt-check
+fmt-check: ## Fail if gofmt would change any file in the four Go modules
+	@bad=$$(gofmt -l . ../backend ../types ../cli); \
+	if [ -n "$$bad" ]; then echo "gofmt would change these files (run gofmt -w on them):" >&2; echo "$$bad" >&2; exit 1; fi
 
 .PHONY: lint-backend
 lint-backend: golangci-lint ## Run golangci-lint over the backend module only (enforces the id convention, docs/ADR020-identifiers.md)

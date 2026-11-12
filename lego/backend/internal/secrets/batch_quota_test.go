@@ -73,7 +73,7 @@ func TestPatchEnvironmentRefusesAPatchPastTheQuota(t *testing.T) {
 			message: "secret file limit of 500 exceeded",
 		},
 		{
-			name:    "env vars past 512 KiB",
+			name: "env vars past 512 KiB",
 			// Five values each under the per-entry exec limit (w4/422).
 			patch:   EnvironmentPatch{EnvVars: fiveLargeEnvVars()},
 			message: "total environment variable size limit of 524288 bytes exceeded",

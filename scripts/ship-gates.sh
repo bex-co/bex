@@ -81,6 +81,19 @@ bash scripts/repo-artifact-guard.sh "$base"
 # Captured, not piped into grep: under pipefail an early-exiting grep can
 # SIGPIPE git and make a large change look like no change. A bad base fails
 # the assignment, and set -e fails the gate closed.
+# The Go files this push changes must be gofmt-clean: only the operator's
+# golangci-lint config runs the formatters, so backend, types and cli files
+# drifted without any gate noticing (w21/060). Captured first, like the lists
+# below, so a failing git or gofmt fails the gate closed.
+go_changed=$(git diff --name-only --diff-filter=ACMR "$base"..HEAD -- 'lego/*.go')
+if [ -n "$go_changed" ]; then
+  unformatted=$(cd "$(git rev-parse --show-toplevel)" && xargs gofmt -l <<<"$go_changed")
+  if [ -n "$unformatted" ]; then
+    echo "ship-gates: gofmt would change these files; run gofmt -w on them and amend:" >&2
+    printf '%s\n' "$unformatted" >&2
+    exit 1
+  fi
+fi
 changed=$(git diff --name-only "$base"..HEAD -- lego/backend lego/types deploy/gitops/authz ':(exclude)*.md')
 if [ -n "$changed" ]; then
   echo "ship-gates: backend/types/authz changed — running the backend suite against real dependencies" >&2
