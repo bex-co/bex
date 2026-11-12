@@ -1,6 +1,6 @@
 # w8 · m159 — A deploy's build can be followed from the CLI: build logs combine with other types, and a build tail waits for the next build
 
-**Worker:** worker8 **Goal:** `bex logs --type app,build` and `--type request,build` answer like any other type list, `bex logs --tail --type build` stays open until the service's next build and streams it, and the interactive `bex deploys create` ("Trigger a service deploy and stream logs in real time") shows the build it started. **Status:** in progress (2026-11-12: t001–t006 done and shipped; t007, the replay on production, waits for the deploy that carries it. Narrowed: the type-less history default is unchanged, and only the Render CLI's WebSocket tail follows every build; see t003)
+**Worker:** worker8 **Goal:** `bex logs --type app,build` and `--type request,build` answer like any other type list, `bex logs --tail --type build` stays open until the service's next build and streams it, and the interactive `bex deploys create` ("Trigger a service deploy and stream logs in real time") shows the build it started. **Status:** in progress (2026-11-12: t001–t006 done and shipped; the production replay (sweep 1cee, pin `a5be11e4e517`) found a live build tail prints none of the build's own output, so t008 comes before t007's closeout. Narrowed: the type-less history default is unchanged, and only the Render CLI's WebSocket tail follows every build; see t003)
 
 ## Tasks (in order)
 
@@ -12,7 +12,8 @@
 | t004 | Render parity — **DONE**                                                                                      | 15m | t003       |
 | t005 | Simplify — **DONE**                                                                                           | 15m | t004       |
 | t006 | Test coverage — **DONE**                                                                                      | 30m | t004       |
-| t007 | Closeout (live replay on production)                                                               | 30m | t006       |
+| [t008](t008.md) | A live build tail prints none of the build's own output, only bex's narration and the upload lines, because it attaches to the build pod only once its init containers are over | 60m | t006 |
+| t007 | Closeout (live replay on production)                                                               | 30m | t008       |
 
 ## Definition of done
 
@@ -88,6 +89,17 @@ The same window read with `--type build` holds that deploy's eight build lines (
 - `LogQuery.validate` refuses `build` (and `predeploy`) beside any other type (`lego/backend/internal/logs/service.go:335-361`), because the store selector cannot express the union: `lokiTypeMatcher` (`lego/backend/internal/logs/loki.go:520-546`) selects app and request streams by `container`, and build streams by `type="build"`. w6/m131 (2026-08-28) judged the 400 "a deliberate, clearly-worded validation rule, not a user-facing defect" and removed the union branches; `TestBuildTypeIsNeverCombined` (`loki_test.go:179-197`) pins that. This predates the Render-parity rule of 2026-10-17, which overrides it.
 - A type-less read is app and request only (`lokiTypeMatcher`'s `len(q.Types) == 0` branch, "Build is deliberately NOT in this union"), although `LogQuery.wants` (`service.go:423-431`) says an empty list wants every type.
 - The live tail gives build its own path only when it is the sole type (`service.go:1188-1190`, `followBuildLogs`); every other tail is `followPods` over the app's pods plus the request poll, with no build producer. `followBuildLogs` answers a subscription with no running build with `ErrBuildNotRunning` (`service.go:74`), a terminal close `4000`, after replaying the latest deploy's synthesized progress lines (`progress.go`).
+
+## Post-release probe (`/qa-find-bugs-cli` sweep 1cee, 2026-11-12): DoD 2–4 half pass
+
+- **Pin:** `a5be11e4e517`, deployed 10:05 UTC; it carries `11b4f7186`. Released `bex v0.5.0`, free Node web service `qa-20261112-1cee-web` (`srv-dbqpg1pn6kgc7383720g`), 10:42–11:13 UTC.
+- **DoD 1 passes.** `--type request,build`, `app,build`, `app,request,build`: exit 0, with lines of every asked type in one time order (newest first, as single-type reads). REST `type=request&type=build` answers 200 with both types.
+- **DoD 2 half passes.** A `--type build` tail with no build stayed open 7 minutes with no `close 4000` and printed nothing old. Across the next deploy it printed only `==> Build queued`, `==> Building from …`, the three upload lines and `==> Your service is live`: 6 of the 16 build lines the window's history holds. Every line the build's own steps write (`==> Using Node …`, `==> Running build command …`, the `yarn` output) is missing. See t008.
+- **DoD 3 and 4 half pass** with the same six lines: the type-less tail interleaves them with the new instance's app lines, and the interactive `bex deploys create` shows them instead of "No logs to show".
+- **A failing build** (`… && exit 3`) shows none of its output or its exit line on the live tail. See t008.
+- **DoD 5:** GraphQL `logs` with no type returns app and request lines only. The dashboard itself was not opened (no browser in this sweep).
+- **DoD 6:** `predeploy` keeps its own rule; REST `type=predeploy&type=build` and `type=app&type=predeploy` answer `400 log type "predeploy" must be requested on its own`.
+- **Seen beside it, filed elsewhere:** the type-less tail opens with the instance's earlier app lines (w8/288). The `==> Build failed:` text quotes bex's toolchain steps (w4/m324 t009).
 
 ## Unverified
 
