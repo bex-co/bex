@@ -194,9 +194,11 @@ type EnvSeeder interface {
 // generateValue vars into its mutable env store: the value exists only after
 // the apply mints it, and as a secret it never rides spec.Env (w1/m175).
 // Reading a source is a sensitive reveal, authorized as one; a copy already
-// equal to its source writes nothing and rolls nothing.
+// equal to its source writes nothing and rolls nothing. CopiedEnvValues only
+// reads the sources.
 type EnvCopier interface {
 	CopyEnvVars(ctx context.Context, to string, copies []core.EnvVarCopy) error
+	CopiedEnvValues(ctx context.Context, copies []core.EnvVarCopy) (map[string]string, error)
 }
 
 // BlueprintGroupingStore is the narrow store seam used by Render's canonical
@@ -642,8 +644,8 @@ type parsedService struct {
 	env         serviceEnv
 	stateCopies []stateCopy
 	// generatedCopies are the envVarKey copies of a sibling's generateValue,
-	// written into this service's store after the apply mints the source
-	// (w1/m175).
+	// written into this service's store once the source is minted: with the
+	// first write of a service the apply creates, after it otherwise (w1/m175).
 	generatedCopies []generatedCopy
 	// registryCredentialName is the declared fromRegistryCreds name (service
 	// registryCredential or image.creds), resolved to a credential id by
@@ -1132,6 +1134,10 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		ref string
 	}
 	targets := make(map[string]appliedTarget, len(st.services))
+	firstEnv, err := s.createdServicesSeedEnv(ctx, st.services, appsByName)
+	if err != nil {
+		return nil, err
+	}
 	for _, svc := range st.services {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return nil, err
@@ -1153,6 +1159,8 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		}
 		svc.req.initialEnvGroups = svc.groupLinks
 		created := appsByName[svc.req.Name] == nil
+		svc.req.initialSeedEnv = firstEnv[svc.req.Name]
+		seededAtCreate := created && s.CreateSecrets != nil
 		v, app, err := s.applyStackService(ctx, svc.req, svc.fields, appsByName)
 		if err != nil {
 			return nil, err
@@ -1187,9 +1195,9 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 				}
 			}
 		}
-		// Seed sync:false/generateValue vars (seed-once) now that the service
-		// exists.
-		if len(svc.seedLiterals) > 0 || len(svc.seedGenerates) > 0 {
+		// Seed sync:false/generateValue vars (seed-once) into a service that
+		// already existed.
+		if !seededAtCreate && (len(svc.seedLiterals) > 0 || len(svc.seedGenerates) > 0) {
 			if err := requireDeployAuthority(ctx, s); err != nil {
 				return nil, err
 			}
@@ -1201,7 +1209,8 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 	}
 	// Every service now exists and every generateValue is minted, whatever
 	// order the file declared them in: copy each generated source value into
-	// its consumers (w1/m175).
+	// its consumers (w1/m175). A copy a created consumer took with its first
+	// write is not read again.
 	for _, svc := range st.services {
 		if len(svc.generatedCopies) == 0 {
 			continue
@@ -1211,7 +1220,13 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		}
 		copies := make([]core.EnvVarCopy, 0, len(svc.generatedCopies))
 		for _, c := range svc.generatedCopies {
+			if _, held := firstEnv[svc.req.Name][c.key]; held {
+				continue
+			}
 			copies = append(copies, core.EnvVarCopy{From: targets[c.source].ref, FromKey: c.sourceKey, ToKey: c.key, Optional: c.optional})
+		}
+		if len(copies) == 0 {
+			continue
 		}
 		to := targets[svc.req.Name]
 		if err := s.EnvCopier.CopyEnvVars(to.ctx, to.ref, copies); err != nil {
@@ -3741,6 +3756,73 @@ func (s *Service) createFromStack(ctx context.Context, req CreateRequest, desire
 		recordHostClaims(ctx, plan.app)
 	}
 	return v, plan.app, err
+}
+
+// createdServicesSeedEnv is the env-store content each service the apply
+// creates gets with its first write, as a direct create's env does (w8/296):
+// its sync:false literals, its freshly minted generateValue keys, and its
+// copies of a sibling's such values. A seed or a copy written after the first
+// write would open a second deploy that supersedes the first. A service that
+// exists is left to the seed-once pass, and a copy whose source value does not
+// exist yet (a key this apply adds to an existing sibling) to the copy pass.
+// Without the create seeder nothing is written at create.
+func (s *Service) createdServicesSeedEnv(ctx context.Context, services []parsedService, appsByName map[string]*appv1alpha1.App) (map[string]map[string]string, error) {
+	if s.CreateSecrets == nil {
+		return nil, nil
+	}
+	env := map[string]map[string]string{}
+	for _, svc := range services {
+		if appsByName[svc.req.Name] != nil || (len(svc.seedLiterals) == 0 && len(svc.seedGenerates) == 0) {
+			continue
+		}
+		own := maps.Clone(svc.seedLiterals)
+		if own == nil {
+			own = make(map[string]string, len(svc.seedGenerates))
+		}
+		for _, key := range svc.seedGenerates {
+			if _, set := own[key]; set {
+				continue
+			}
+			value, err := core.GenerateValue()
+			if err != nil {
+				return nil, fmt.Errorf("seeding env for %q: %w", svc.req.Name, err)
+			}
+			own[key] = value
+		}
+		env[svc.req.Name] = own
+	}
+	// A copy's source key is a generateValue or sync:false key, never another
+	// copy, so the order of this pass does not matter.
+	for _, svc := range services {
+		if appsByName[svc.req.Name] != nil {
+			continue
+		}
+		for _, c := range svc.generatedCopies {
+			value, ok := env[c.source][c.sourceKey]
+			if source := appsByName[c.source]; source != nil {
+				if err := requireDeployAuthority(ctx, s); err != nil {
+					return nil, err
+				}
+				// A value the existing sibling does not hold yet (a key this
+				// apply adds to it) is left to the copy pass, so every read
+				// here is optional.
+				sourceCtx, ref := stackServiceTarget(ctx, source)
+				values, err := s.EnvCopier.CopiedEnvValues(sourceCtx, []core.EnvVarCopy{{From: ref, FromKey: c.sourceKey, ToKey: c.key, Optional: true}})
+				if err != nil {
+					return nil, fmt.Errorf("copying generated values into %q: %w", svc.req.Name, err)
+				}
+				value, ok = values[c.key]
+			}
+			if !ok {
+				continue
+			}
+			if env[svc.req.Name] == nil {
+				env[svc.req.Name] = map[string]string{}
+			}
+			env[svc.req.Name][c.key] = value
+		}
+	}
+	return env, nil
 }
 
 // stackServiceRef names an App a stack apply wrote for the by-name verbs it

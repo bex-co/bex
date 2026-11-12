@@ -1929,6 +1929,9 @@ type CreateRequest struct {
 	blueprintBuildSource string
 	// Blueprint-only group names; never decoded from public create input.
 	initialEnvGroups []string
+	// initialSeedEnv is a new Blueprint service's env-store content, written
+	// with its first write (createdServicesSeedEnv).
+	initialSeedEnv map[string]string
 	// storeEnvKeys are Blueprint-declared keys whose value lives in the env
 	// store (copies of a sibling's generated value), never on spec.Env.
 	storeEnvKeys []string
@@ -2630,8 +2633,9 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 	// (applyCreateToSpec's `dst.Env = want.Env`). Seeding those into the mutable
 	// store would make two writers of the same key and revert a dashboard edit
 	// on the next sync — which is exactly what render.yaml's `sync: false` (and
-	// bex's existing EnvSeeder for it) exists to opt out of.
-	seed := createSeed{files: req.SecretFiles}
+	// bex's existing EnvSeeder for it) exists to opt out of. Only the
+	// store-owned values (initialSeedEnv) go there.
+	seed := createSeed{files: req.SecretFiles, env: req.initialSeedEnv}
 	if err := s.planNewApp(ctx, req, a, tenantID, seed); err != nil {
 		return stackAppPlan{}, err
 	}
@@ -3073,9 +3077,9 @@ func (s *Service) writeInitialApp(ctx context.Context, req CreateRequest, a *app
 	if rowID != "" || created {
 		err = captureOperational(err)
 	}
-	// Grouped Blueprints currently carry no create seeds. Keep this internal
-	// compensation safe if that changes: erase name-addressed seed paths while
-	// the durable identity still prevents a same-name replacement.
+	// The create's seeds were prepared with the first write: erase their
+	// name-addressed paths while the durable identity still prevents a
+	// same-name replacement.
 	if created && !seed.empty() && s.CreateSecrets != nil {
 		seedCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		err = errors.Join(err, s.CreateSecrets.AbortCreateSecrets(seedCtx, req.Name, a))

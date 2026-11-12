@@ -27,6 +27,7 @@ import (
 // values into its env store (w1/m175).
 type EnvCopier interface {
 	CopyEnvVars(ctx context.Context, to string, copies []core.EnvVarCopy) error
+	CopiedEnvValues(ctx context.Context, copies []core.EnvVarCopy) (map[string]string, error)
 }
 
 // envCopier is built from existing verbs, so it carries their authorization
@@ -43,24 +44,42 @@ func NewEnvCopier(service *Service) EnvCopier {
 	return envCopier{service: service}
 }
 
-func (c envCopier) CopyEnvVars(ctx context.Context, to string, copies []core.EnvVarCopy) error {
-	missing := map[string]string{}
+// CopiedEnvValues reads each copy's source value, keyed by the receiver's
+// key, and writes nothing. A missing optional source is left out.
+func (c envCopier) CopiedEnvValues(ctx context.Context, copies []core.EnvVarCopy) (map[string]string, error) {
+	values := make(map[string]string, len(copies))
 	for _, want := range copies {
 		source, _, err := c.service.envVarValue(ctx, want.From, want.FromKey)
 		if want.Optional && errors.Is(err, core.ErrNotFound) {
 			continue
 		}
 		if err != nil {
-			return err
+			return nil, err
+		}
+		values[want.ToKey] = source.Value
+	}
+	return values, nil
+}
+
+func (c envCopier) CopyEnvVars(ctx context.Context, to string, copies []core.EnvVarCopy) error {
+	values, err := c.CopiedEnvValues(ctx, copies)
+	if err != nil {
+		return err
+	}
+	missing := map[string]string{}
+	for _, want := range copies {
+		value, ok := values[want.ToKey]
+		if !ok {
+			continue
 		}
 		current, _, err := c.service.envVarValue(ctx, to, want.ToKey)
 		switch {
 		case errors.Is(err, core.ErrNotFound):
-			missing[want.ToKey] = source.Value
+			missing[want.ToKey] = value
 		case err != nil:
 			return err
-		case current.Value != source.Value:
-			if _, err := c.service.SetEnvVar(ctx, to, want.ToKey, EnvVarWrite{Value: source.Value}); err != nil {
+		case current.Value != value:
+			if _, err := c.service.SetEnvVar(ctx, to, want.ToKey, EnvVarWrite{Value: value}); err != nil {
 				return err
 			}
 		}

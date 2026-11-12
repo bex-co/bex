@@ -208,3 +208,107 @@ func TestBlueprintFiveFieldEndToEnd(t *testing.T) {
 		t.Errorf("sync:false overwrote a live edit: SEEDED = %q, want edited-in-dashboard", got.Value)
 	}
 }
+
+// countingSeeder records how often the seed-once path runs.
+type countingSeeder struct {
+	EnvSeeder
+	calls int
+}
+
+func (c *countingSeeder) SeedEnvVars(ctx context.Context, service string, literals map[string]string, generates []string) error {
+	c.calls++
+	return c.EnvSeeder.SeedEnvVars(ctx, service, literals, generates)
+}
+
+// w8/296: a service a Blueprint creates gets its generateValue and sync:false
+// values, and its copies of a created sibling's, with its first write, as a
+// direct create does, so no seed or copy opens a second deploy that
+// supersedes the first. A service that already exists is still seeded
+// seed-once, and a re-apply re-mints nothing.
+func TestBlueprintCreateSeedsWithTheFirstWrite(t *testing.T) {
+	cl := fakeClient()
+	base := &core.Base{Client: cl, Namespace: "default", Clock: func() time.Time { return time.Unix(1_000_000, 0).UTC() },
+		Workspace: coretest.Workspaces{core.DefaultTenant}}
+	kv := newMemKV()
+	sec := &secrets.Service{Base: base, Store: kv}
+	seeds := &countingSeeder{EnvSeeder: sec}
+	svc := &Service{Base: base, EnvSeeder: seeds, EnvCopier: secrets.NewEnvCopier(sec), CreateSecrets: secrets.NewCreateSecretsSeeder(sec)}
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "owner", Method: "session"})
+	// The consumer comes first: the copy does not depend on file order.
+	const manifest = `
+services:
+  - name: worker
+    type: worker
+    runtime: image
+    image: {url: worker:1}
+    envVars:
+      - {key: WEB_TOKEN, fromService: {name: web, type: web, envVarKey: TOKEN}}
+  - name: web
+    type: web
+    runtime: image
+    image: {url: web:1}
+    envVars:
+      - {key: PLAIN, value: hello}
+      - {key: TOKEN, generateValue: true}
+      - {key: SEEDED, value: once, sync: false}
+`
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if seeds.calls != 0 {
+		t.Errorf("a created service was seeded after its first write (%d calls); its seed would supersede the first deploy", seeds.calls)
+	}
+	token, err := sec.GetEnvVar(ctx, "web", "TOKEN")
+	if err != nil || len(token.Value) != 44 {
+		t.Fatalf("TOKEN = %+v err=%v, want a 44-char generated value", token, err)
+	}
+	if seeded, _ := sec.GetEnvVar(ctx, "web", "SEEDED"); seeded.Value != "once" {
+		t.Errorf("SEEDED = %q, want once", seeded.Value)
+	}
+	if copied, _ := sec.GetEnvVar(ctx, "worker", "WEB_TOKEN"); copied.Value != token.Value {
+		t.Errorf("worker WEB_TOKEN = %q, want web's TOKEN", copied.Value)
+	}
+	if plain := findEnv(t, getApp(t, cl, core.CRName(core.DefaultTenant, "web")).Spec.Env, "PLAIN"); plain.Value != "hello" {
+		t.Errorf("PLAIN = %q, want the manifest literal on spec.Env", plain.Value)
+	}
+	for _, name := range []string{"web", "worker"} {
+		app := getApp(t, cl, core.CRName(core.DefaultTenant, name))
+		if app.Spec.RestartedAt != "" || app.Spec.EnvFromSecret != app.Name+"-env" {
+			t.Errorf("%s: RestartedAt %q, EnvFromSecret %q; want its first deploy alone, with its env store attached", name, app.Spec.RestartedAt, app.Spec.EnvFromSecret)
+		}
+	}
+
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("re-DeployStack: %v", err)
+	}
+	if seeds.calls != 1 {
+		t.Errorf("seed calls after a re-apply = %d, want the existing service seeded once", seeds.calls)
+	}
+	if got, _ := sec.GetEnvVar(ctx, "web", "TOKEN"); got.Value != token.Value {
+		t.Errorf("TOKEN re-minted on re-apply: %q -> %q", token.Value, got.Value)
+	}
+	for _, name := range []string{"web", "worker"} {
+		if got := getApp(t, cl, core.CRName(core.DefaultTenant, name)).Spec.RestartedAt; got != "" {
+			t.Errorf("an idempotent re-apply rolled %s: RestartedAt %q", name, got)
+		}
+	}
+
+	// A consumer added later copies its existing sibling's value with its
+	// first write too.
+	const withAPI = manifest + `  - name: api
+    type: worker
+    runtime: image
+    image: {url: api:1}
+    envVars:
+      - {key: WEB_TOKEN, fromService: {name: web, type: web, envVarKey: TOKEN}}
+`
+	if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: withAPI}); err != nil {
+		t.Fatalf("DeployStack with api: %v", err)
+	}
+	if copied, _ := sec.GetEnvVar(ctx, "api", "WEB_TOKEN"); copied.Value != token.Value {
+		t.Errorf("api WEB_TOKEN = %q, want web's TOKEN", copied.Value)
+	}
+	if got := getApp(t, cl, core.CRName(core.DefaultTenant, "api")).Spec.RestartedAt; got != "" {
+		t.Errorf("api's copy rolled it after its first write: RestartedAt %q", got)
+	}
+}

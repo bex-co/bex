@@ -76,6 +76,13 @@ func (c loggingCopier) CopyEnvVars(_ context.Context, to string, copies []core.E
 	return c.err
 }
 
+func (c loggingCopier) CopiedEnvValues(_ context.Context, copies []core.EnvVarCopy) (map[string]string, error) {
+	for _, cp := range copies {
+		c.log.calls = append(c.log.calls, "read "+cp.From+"."+cp.FromKey)
+	}
+	return nil, c.err
+}
+
 func parsedStackService(t *testing.T, manifest, name string) parsedService {
 	t.Helper()
 	source, ir, problems := CompileBlueprintIR(manifest)
