@@ -43,6 +43,8 @@ func TestBuildTailParksWhileTheDeployIsQueuedWithNoPod(t *testing.T) {
 	svc := newService(map[string][]string{podName: {"2026-07-05T00:00:01Z #1 real build line"}}, app)
 	svc.BuildNamespace = "builds"
 	svc.BuildPodWaitInterval = 5 * time.Millisecond
+	// The row never leaves its build here; the close wait is not under test.
+	svc.BuildCloseWait = 20 * time.Millisecond
 	polls := 0
 	svc.DeployProgress = func(ctx context.Context, _ string, _ time.Time) ([]DeployProgress, error) {
 		polls++

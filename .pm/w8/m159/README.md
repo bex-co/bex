@@ -1,6 +1,6 @@
 # w8 · m159 — A deploy's build can be followed from the CLI: build logs combine with other types, and a build tail waits for the next build
 
-**Worker:** worker8 **Goal:** `bex logs --type app,build` and `--type request,build` answer like any other type list, `bex logs --tail --type build` stays open until the service's next build and streams it, and the interactive `bex deploys create` ("Trigger a service deploy and stream logs in real time") shows the build it started. **Status:** in progress (2026-11-12: t001–t006 and t008 shipped; the sweep-1cee probe on pin `a5be11e4e517` passed DoD 1, 5 and 6 and half of 2–4, which t008 fixes; t007, the full replay, waits for the deploy that carries t008. Narrowed: the type-less history default is unchanged, and only the Render CLI's WebSocket tail follows every build; see t003)
+**Worker:** worker8 **Goal:** `bex logs --type app,build` and `--type request,build` answer like any other type list, `bex logs --tail --type build` stays open until the service's next build and streams it, and the interactive `bex deploys create` ("Trigger a service deploy and stream logs in real time") shows the build it started. **Status:** in progress (2026-11-12: t001–t006, t008 and t009 shipped; the sweep-11ae probe on pin `9a5b95e96210` held DoD 2–4 apart from t009's order; t007, the full replay, waits for the deploy that carries t009. Narrowed: the type-less history default is unchanged, and only the Render CLI's WebSocket tail follows every build; see t003)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Simplify — **DONE**                                                                                           | 15m | t004       |
 | t006 | Test coverage — **DONE**                                                                                      | 30m | t004       |
 | [t008](done/t008.md) | A live build tail prints none of the build's own output, only bex's narration and the upload lines, because it attaches to the build pod only once its init containers are over — **DONE** | 60m | t006 |
-| [t009](t009.md) | A live build tail narrates in history's order: `==> Building from` before the build command, and the closing verdict before the stream ends | 45m | t008 |
+| [t009](done/t009.md) | A live build tail narrates in history's order: `==> Building from` before the build command, and the closing verdict before the stream ends — **DONE** | 45m | t008 |
 | t007 | Closeout (live replay on production) | 30m | t008, t009 |
 
 ## Definition of done

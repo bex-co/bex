@@ -307,6 +307,8 @@ func TestBuildTailReEmitsOnlyWhenTheWaitReasonChanges(t *testing.T) {
 	}, app, pending)
 	svc.BuildNamespace = "builds"
 	svc.BuildPodWaitInterval = 5 * time.Millisecond
+	// The row never leaves its build here; the close wait is not under test.
+	svc.BuildCloseWait = 20 * time.Millisecond
 	// Advance only after the tail has polled each reason three times. A timed
 	// writer can overwrite a transient reason before a loaded reader sees it;
 	// this synchronous source seam proves deduplication across actual polls.

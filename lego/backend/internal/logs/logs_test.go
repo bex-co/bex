@@ -965,6 +965,8 @@ func TestFollowBuildLogsNarratesWhileAwaitingPendingPod(t *testing.T) {
 	}, app, pending)
 	svc.BuildNamespace = "builds"
 	svc.BuildPodWaitInterval = 5 * time.Millisecond
+	// The row never leaves its build here; the close wait is not under test.
+	svc.BuildCloseWait = 20 * time.Millisecond
 	svc.DeployProgress = func(context.Context, string, time.Time) ([]DeployProgress, error) {
 		return []DeployProgress{inFlightDeploy()}, nil
 	}

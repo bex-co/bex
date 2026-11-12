@@ -223,6 +223,10 @@ type Service struct {
 	// for a Pending build pod to start (scheduling + image pull take minutes on
 	// a cold node). 0 = the 2s default; tests shrink it.
 	BuildPodWaitInterval time.Duration
+	// BuildCloseWait bounds how long a build tail stays open once the build's
+	// output has ended, for its deploy row to leave the build. 0 = the
+	// defaultBuildCloseWait; tests shrink it.
+	BuildCloseWait time.Duration
 	// TailRelistInterval is how often an app tail re-lists the App's pods to
 	// attach to new ones (w1/m146). 0 = DefaultTailRelistInterval; tests shrink
 	// it.
@@ -1878,9 +1882,10 @@ func withRevalidation(parent context.Context, interval time.Duration, check func
 // Platform progress lines (w1/m48): before and while waiting for the pod, the
 // tail speaks the deploy's own narration — queued/building lines at subscribe,
 // new phases as the wait loop observes them — so a subscriber never stares at
-// a silent stream while the build image pulls. After the pod's stream ends,
-// one final check emits the closing line if the deploy row already turned
-// terminal; otherwise it rides the history read's post-deploy grace poll.
+// a silent stream while the build image pulls. While the pod streams, the
+// narration is read on the same cadence, so `==> Building from` arrives when
+// the row records the build's start, not after the build (w8/m159 t009); after
+// the pod's streams end, the tail waits for the row's verdict (awaitClose).
 func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource string, pc progressContext, emit func(LogEntry) error) error {
 	return s.followBuild(ctx, q, resource, s.newProgressFollower(q, resource, pc), emit)
 }
@@ -1889,6 +1894,7 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 // tail that follows several builds narrates each platform line once
 // (followBuilds).
 func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, prog *progressFollower, emit func(LogEntry) error) error {
+	prog.beginBuild()
 	if err := prog.emitReached(ctx, emit); err != nil {
 		return err
 	}
@@ -1896,6 +1902,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 	if err != nil {
 		return err
 	}
+	prog.follow()
 	// A phase that ended before the tail's lower bound ran before it; any
 	// other is followed once seen, ended or not, from that bound. A fast phase
 	// (the clone) can start and end between two polls after the tail opened,
@@ -1953,10 +1960,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			wait := s.BuildPodWaitInterval
-			if wait <= 0 {
-				wait = 2 * time.Second
-			}
+			wait := s.buildPodWait()
 			for {
 				select {
 				case <-ctx.Done():
@@ -1987,18 +1991,22 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 	}
 	go func() { wg.Wait(); close(ch) }()
 
+	narrate := time.NewTicker(s.buildPodWait())
+	defer narrate.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-narrate.C:
+			if err := prog.emitStarted(ctx, emit); err != nil {
+				return err
+			}
 		case e, ok := <-ch:
 			if !ok {
 				if !opened.Load() {
 					return ErrBuildNotRunning
 				}
-				// The build's stdout is done — if the deploy row has already
-				// closed, speak the terminal line before ending the stream.
-				return prog.emitReached(ctx, emit)
+				return prog.awaitClose(ctx, emit)
 			}
 			if !q.keep(e) {
 				continue
@@ -2026,10 +2034,7 @@ func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, 
 // through prog (nil-safe) so phase transitions narrate live while the pod is
 // still silent.
 func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressFollower, emit func(LogEntry) error) (corev1.Pod, error) {
-	wait := s.BuildPodWaitInterval
-	if wait <= 0 {
-		wait = 2 * time.Second
-	}
+	wait := s.buildPodWait()
 	for {
 		pods, err := s.BuildPods(ctx, q.App, s.BuildNamespace)
 		if err != nil {
@@ -2077,6 +2082,32 @@ func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressF
 		case <-time.After(wait):
 		}
 	}
+}
+
+// defaultBuildPodWait is BuildPodWaitInterval's default.
+const defaultBuildPodWait = 2 * time.Second
+
+// buildPodWait is a build tail's poll cadence.
+func (s *Service) buildPodWait() time.Duration {
+	if s.BuildPodWaitInterval > 0 {
+		return s.BuildPodWaitInterval
+	}
+	return defaultBuildPodWait
+}
+
+// defaultBuildCloseWait is BuildCloseWait's default. The reconciler moves a
+// deploy row off its build only after it sees the build Job end: a failed
+// build's `==> Build failed` came 16 s after its last line in production
+// (w8/m159 t009), and a row that skipped `build_in_progress` moved on up to a
+// minute after the build (w8/287).
+const defaultBuildCloseWait = 2 * time.Minute
+
+// buildCloseWait bounds a build tail's wait for its row to close.
+func (s *Service) buildCloseWait() time.Duration {
+	if s.BuildCloseWait > 0 {
+		return s.BuildCloseWait
+	}
+	return defaultBuildCloseWait
 }
 
 // terminatedBefore names pod's containers that finished before since; none

@@ -417,15 +417,18 @@ func (s *Service) synthesizeProgress(ctx context.Context, q LogQuery, resource s
 }
 
 // progressFollower tracks which platform lines a live build tail has already
-// emitted, so subscribe-time catch-up, wait-loop transitions, and the
-// post-stream terminal check each emit a line exactly once.
+// emitted, so subscribe-time catch-up, wait-loop transitions, the reads while
+// the build streams and the close wait each emit a line exactly once.
 type progressFollower struct {
 	s        *Service
 	q        LogQuery
 	resource string
 	pc       progressContext
 	emitted  map[string]bool
-	status   string // the followed deploy row's status at the last read
+	row      DeployProgress // the deploy row read last: the newest, or the followed one
+	// followed is the deploy whose build pod the tail attached to; the reads
+	// while the build streams and the close wait read its row, not a newer one.
+	followed string
 }
 
 // buildOpen reports that the followed deploy has not finished building: its
@@ -436,7 +439,7 @@ func (f *progressFollower) buildOpen() bool {
 	if f == nil {
 		return false
 	}
-	switch f.status {
+	switch f.row.Status {
 	case deployStatusCreated, deployStatusQueued, deployStatusBuildInProgress:
 		return true
 	}
@@ -477,16 +480,108 @@ func (f *progressFollower) emitReached(ctx context.Context, emit func(LogEntry) 
 		return nil
 	}
 	rows, err := f.s.DeployProgress(ctx, f.resource, time.Time{})
-	if err != nil || len(rows) == 0 {
+	if err != nil || len(rows) == 0 || !f.q.keepPod(rows[0].ID) {
 		return nil
 	}
-	d := rows[0] // newest — the deploy this tail is following
-	if !f.q.keepPod(d.ID) {
+	f.row = rows[0]
+	f.refreshWait(ctx, f.row)
+	return f.emitRow(f.row, false, emit)
+}
+
+// beginBuild forgets the previous build's rows: one follower serves every
+// build of a tail that follows them all (followBuilds), and a row left over
+// from the last build would read as this one's.
+func (f *progressFollower) beginBuild() {
+	if f != nil {
+		f.row, f.followed = DeployProgress{}, ""
+	}
+}
+
+// follow pins the deploy whose build pod the tail attached to: the newest row
+// read so far.
+func (f *progressFollower) follow() {
+	if f != nil {
+		f.followed = f.row.ID
+	}
+}
+
+// emitStarted sends what the followed row has earned while its build output
+// is still arriving, so `==> Building from` comes when the row records the
+// build's start, not after the build (w8/m159 t009). It holds the row's
+// closing lines, which must not print before the build's last line, and stops
+// reading once the row has recorded its start: nothing else is due before the
+// row closes, which awaitClose reads.
+func (f *progressFollower) emitStarted(ctx context.Context, emit func(LogEntry) error) error {
+	if f == nil || f.followed == "" || !f.row.StartedAt.IsZero() {
 		return nil
 	}
-	f.status = d.Status
-	f.refreshWait(ctx, d)
+	if !f.readFollowed(ctx) {
+		return nil
+	}
+	return f.emitRow(f.row, true, emit)
+}
+
+// awaitClose keeps a build tail open once the build's output has ended, until
+// the followed row leaves its build, and sends the lines that earns: a failed
+// build's verdict, which the reconciler writes only after it sees the build
+// Job end. A row that moves on to its rollout has nothing more for a build
+// stream; a tail that follows every build (followBuilds) reads its closing
+// line on its next pass. With no followed row it reads the newest row once.
+func (f *progressFollower) awaitClose(ctx context.Context, emit func(LogEntry) error) error {
+	if f == nil {
+		return nil
+	}
+	if f.followed == "" {
+		return f.emitReached(ctx, emit)
+	}
+	deadline := time.Now().Add(f.s.buildCloseWait())
+	for {
+		if f.readFollowed(ctx) {
+			if err := f.emitRow(f.row, false, emit); err != nil {
+				return err
+			}
+			if !f.buildOpen() {
+				return nil
+			}
+		}
+		if !time.Now().Before(deadline) {
+			return nil
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(f.s.buildPodWait()):
+		}
+	}
+}
+
+// readFollowed re-reads the followed deploy's row into f.row. A newer deploy
+// does not displace it: its lines are not this build's.
+func (f *progressFollower) readFollowed(ctx context.Context) bool {
+	rows, err := f.s.DeployProgress(ctx, f.resource, time.Time{})
+	if err != nil {
+		return false
+	}
+	for _, d := range rows {
+		if d.ID == f.followed {
+			f.row = d
+			return true
+		}
+	}
+	return false
+}
+
+// emitRow sends the lines d has earned that this tail has not sent yet. With
+// holdClosing it keeps back the lines d earned by closing.
+func (f *progressFollower) emitRow(d DeployProgress, holdClosing bool, emit func(LogEntry) error) error {
+	closing := ""
+	if holdClosing && !d.FinishedAt.IsZero() {
+		closing = d.FinishedAt.UTC().Format(time.RFC3339Nano)
+	}
 	for _, e := range progressLines(d, f.pc) {
+		if e.Timestamp == closing {
+			continue
+		}
 		// logID is the adapters' stable line identity — reusing it here keeps
 		// the follower's dedupe in lockstep with what clients see.
 		key := logID(e)
