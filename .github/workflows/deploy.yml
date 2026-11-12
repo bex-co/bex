@@ -322,8 +322,52 @@ jobs:
             ${{ env.DASHBOARD_IMAGE }}:${{ github.sha }}
             ${{ env.DASHBOARD_IMAGE }}:latest
 
-      # --- 1c. build the pinned OpenSandbox lifecycle server image (w3/m35) ---
-      - id: build_opensandbox
+      # cosign: step 1c verifies a reused image's signature; step 1e signs.
+      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      # --- Trivy and its vulnerability DB, for step 1c and the scans in 1f ---
+      # Fetch the vulnerability DB once, before the scans, with a short
+      # per-attempt timeout that alternates GHCR and the GCR mirror. Trivy's
+      # own download shares one 5m --timeout across every repository, so a
+      # stalled GHCR transfer used it all and the mirror was never tried
+      # (run 41254794386). Each scan then reads the job-local DB as is.
+      - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+        with:
+          version: v0.70.0
+          cache: false
+      - name: CVE scan — download the vulnerability DB (retried)
+        env:
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
+        run: |
+          for attempt in 1 2 3; do
+            for repo in ${TRIVY_DB_REPOSITORY//,/ }; do
+              if trivy image --download-db-only --db-repository "$repo" --timeout 2m; then
+                echo "TRIVY_SKIP_DB_UPDATE=true" >> "$GITHUB_ENV"
+                exit 0
+              fi
+              echo "::warning::Trivy DB download from $repo failed (attempt $attempt)"
+            done
+            sleep 10
+          done
+          echo "::error::Trivy DB unavailable from every repository after 3 rounds"
+          exit 1
+
+      # --- 1c. the pinned OpenSandbox lifecycle server image (w3/m35) ---
+      # The server is one Recreate replica, so a new digest restarts it and the
+      # sandbox API answers 503 meanwhile. Its build is not reproducible, so
+      # building on every deploy restarted it on every deploy (w8/254). An image
+      # already published for the same build inputs and ISO week is reused while
+      # it still passes the CRITICAL CVE gate; scripts/opensandbox-server-image.sh
+      # holds the rule. The version below must match the build-arg.
+      - id: opensandbox_reuse
+        name: OpenSandbox server — reuse the image built from the same inputs
+        timeout-minutes: 10
+        env:
+          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
+          # Only an image this workflow signed on main is reused.
+          SIGNER: https://github.com/${{ github.repository }}/.github/workflows/deploy.yml@refs/heads/main
+        run: bash scripts/opensandbox-server-image.sh "$OPENSANDBOX_IMAGE" 0.2.2 linux/amd64 "$SIGNER" >> "$GITHUB_OUTPUT"
+      - id: build_opensandbox_fresh
+        if: steps.opensandbox_reuse.outputs.digest == ''
         timeout-minutes: 45
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
@@ -335,6 +379,26 @@ jobs:
           tags: |
             ${{ env.OPENSANDBOX_IMAGE }}:${{ github.sha }}
             ${{ env.OPENSANDBOX_IMAGE }}:0.2.2
+            ${{ env.OPENSANDBOX_IMAGE }}:${{ steps.opensandbox_reuse.outputs.tag }}
+      # Every later step reads the server digest from here, reused or built.
+      - id: build_opensandbox
+        name: OpenSandbox server — the digest this deploy pins
+        timeout-minutes: 5
+        env:
+          REUSED: ${{ steps.opensandbox_reuse.outputs.digest }}
+          BUILT: ${{ steps.build_opensandbox_fresh.outputs.digest }}
+        run: |
+          digest="${REUSED:-$BUILT}"
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]] \
+            || { echo "::error::no OpenSandbox server image digest (reused '$REUSED', built '$BUILT')"; exit 1; }
+          # A reused image still gets this commit's tag and the version tag, as
+          # a built one does. The pin is by digest, so a failed retag only warns.
+          if [ -n "$REUSED" ]; then
+            timeout 120 docker buildx imagetools create --tag "$OPENSANDBOX_IMAGE:$GITHUB_SHA" \
+              --tag "$OPENSANDBOX_IMAGE:0.2.2" "$OPENSANDBOX_IMAGE@$REUSED" \
+              || echo "::warning::could not tag the reused OpenSandbox server image for $GITHUB_SHA"
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
 
       # --- 1c'. build the patched OpenSandbox controller image ---
       # Upstream at a pinned commit plus the carried snapshot-job-namespace
@@ -382,7 +446,6 @@ jobs:
       # CNB tenant images (in-cluster BuildKit → internal Zot) are deferred: no OIDC
       # identity is available in the build Job, and admission-time verification is out
       # of scope for this task — see docs/security-review.md §supply-chain.
-      - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - name: Install reviewed Syft with bounded transport retries
         timeout-minutes: 15
         run: python3 scripts/install-syft.py
@@ -474,32 +537,7 @@ jobs:
           done
 
       # --- 1f. CVE scan: CRITICAL fails CI, HIGH warns (w7/m10 t001) ---
-      # Fetch the vulnerability DB once, before the ten scans, with a short
-      # per-attempt timeout that alternates GHCR and the GCR mirror. Trivy's
-      # own download shares one 5m --timeout across every repository, so a
-      # stalled GHCR transfer used it all and the mirror was never tried
-      # (run 41254794386). Each scan then reads the job-local DB as is.
-      - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
-        with:
-          version: v0.70.0
-          cache: false
-      - name: CVE scan — download the vulnerability DB (retried)
-        env:
-          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
-        run: |
-          for attempt in 1 2 3; do
-            for repo in ${TRIVY_DB_REPOSITORY//,/ }; do
-              if trivy image --download-db-only --db-repository "$repo" --timeout 2m; then
-                echo "TRIVY_SKIP_DB_UPDATE=true" >> "$GITHUB_ENV"
-                exit 0
-              fi
-              echo "::warning::Trivy DB download from $repo failed (attempt $attempt)"
-            done
-            sleep 10
-          done
-          echo "::error::Trivy DB unavailable from every repository after 3 rounds"
-          exit 1
-
+      # Trivy and its vulnerability DB are set up before step 1c, which scans too.
       # Trivy scans both built+pushed images for known CVEs. Two passes per image:
       # a non-blocking HIGH+CRITICAL report (always exits 0, shows the full picture)
       # and a blocking CRITICAL-only gate (exit-code 1 if any CRITICAL is found).

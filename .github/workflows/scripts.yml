@@ -135,6 +135,10 @@ jobs:
       # for a changed credential or a Deployment that did not converge.
       - name: OpenSandbox server restart guards self-test
         run: bash scripts/opensandbox-server-secret.test.sh
+      # w8/254: a deploy reuses the lifecycle server image built from the same
+      # inputs, so an unchanged server is not restarted; stubbed docker/trivy.
+      - name: OpenSandbox server image reuse self-test
+        run: bash scripts/opensandbox-server-image.test.sh
       - name: Tracking-issue helper self-test
         run: bash scripts/tracking-issue.test.sh
       - name: Repo artifact guard self-test
