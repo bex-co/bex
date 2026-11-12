@@ -969,7 +969,7 @@ def observe_cleanup(kube, proof, phase, image):
         app_watch, job_watch = watches
         require(len(app_watch.initial) == 1 and not app_watch.initial[0]["deleting"] and not app_watch.initial[0]["purgeComplete"], "cleanup observer must start before DELETE and before purge completion")
         require(app_watch.initial[0]["uid"] == proof["app_uid"] and not job_watch.initial, "cleanup observer initial App/purge lifetime changed")
-        pending = inventory()
+        inventory()  # Seed every known resource lifetime before DELETE.
         baseline = provider_volume(proof, token)
         require(baseline["state"] == "present", "cleanup provider baseline is unproved; exact bound volume must return HTTP200 with its matching numeric ID before readiness")
         capture_events()

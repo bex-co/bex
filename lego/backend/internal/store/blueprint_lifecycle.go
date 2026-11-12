@@ -414,28 +414,20 @@ func (s *PGStore) CompleteBlueprintSync(ctx context.Context, id, tenantID, runID
 			return ErrBlueprintSyncBusy
 		}
 		var autoSync bool
-		var status string
 		if err := tx.QueryRow(ctx, `
-			SELECT auto_sync, status FROM blueprints WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
-			id, tenantID).Scan(&autoSync, &status); err != nil {
+			SELECT auto_sync FROM blueprints WHERE id = $1 AND tenant_id = $2 FOR UPDATE`,
+			id, tenantID).Scan(&autoSync); err != nil {
 			return err
 		}
+		finalStatus := BlueprintStatusError
 		if state == BlueprintSyncStateSuccess {
 			if err := assertBlueprintExecution(ctx, tx, id, tenantID, generation, runID); err != nil {
 				return err
 			}
-		}
-		finalStatus := status
-		if state == BlueprintSyncStateSuccess {
 			finalStatus = BlueprintStatusInSync
-			if !autoSync {
-				finalStatus = BlueprintStatusPaused
-			}
-		} else {
-			finalStatus = BlueprintStatusError
-			if !autoSync {
-				finalStatus = BlueprintStatusPaused
-			}
+		}
+		if !autoSync {
+			finalStatus = BlueprintStatusPaused
 		}
 		tag, err = tx.Exec(ctx, `
 			UPDATE blueprints SET status = $3, last_sync_at = $4, active_run_id = NULL, updated_at = now()

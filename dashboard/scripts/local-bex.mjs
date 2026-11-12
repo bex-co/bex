@@ -1277,16 +1277,12 @@ function logEnvelope(page, limit, variables = {}) {
     nextStartTime = Number.isNaN(t)
       ? newest
       : new Date(t + 1).toISOString();
-  } else if (!oldest) {
-    nextStartTime = start;
-  } else {
-    nextStartTime = start;
   }
   return {
     __typename: "LogList",
     hasMore,
     nextStartTime,
-    nextEndTime: oldest ? nextEndTime : end,
+    nextEndTime,
     logs: page,
   };
 }

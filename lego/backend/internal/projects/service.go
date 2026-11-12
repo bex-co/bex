@@ -569,11 +569,11 @@ func conflictOrMapError(err error, name string) error {
 
 // Rename renames a project.
 func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, error) {
-	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
-	if err != nil {
+	if _, err := s.authorizedProject(ctx, core.RelCanCreate, id); err != nil {
 		return ProjectView{}, err
 	}
-	if name, err = core.TrimmedLabel(name); err != nil {
+	name, err := core.TrimmedLabel(name)
+	if err != nil {
 		return ProjectView{}, err
 	}
 	if name == "" {
@@ -585,7 +585,7 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	}
 	// Re-read so UpdatedAt reflects the store's now() stamp — the pre-rename
 	// row still carries the old timestamp (w4/m109).
-	p, err = s.Store.GetProject(ctx, id)
+	p, err := s.Store.GetProject(ctx, id)
 	if err != nil {
 		return ProjectView{}, store.MapError(err)
 	}
