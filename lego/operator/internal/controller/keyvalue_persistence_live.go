@@ -21,7 +21,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net"
 	"reflect"
 	"slices"
 	"strconv"
@@ -56,11 +55,7 @@ func (r *KeyValueReconciler) prepareKeyValuePersistence(ctx context.Context, kv 
 // prepareKeyValueJournalAtPod runs the handoff as kvPlatformUser: its CONFIG
 // SET is an @admin verb the tenant's default user cannot run.
 func prepareKeyValueJournalAtPod(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret) (bool, error) {
-	timeout, cancel := context.WithTimeout(ctx, 8*time.Second)
-	defer cancel()
-	c := platformValkeyClient(net.JoinHostPort(pod.Status.PodIP, "6379"), platform)
-	defer func() { _ = c.Close() }()
-	return prepareValkeyJournal(timeout, c)
+	return withPlatformValkey(ctx, pod, platform, prepareValkeyJournal)
 }
 
 // platformValkeyClient connects to a Key Value's Valkey as kvPlatformUser with
@@ -212,8 +207,7 @@ func prepareValkeyJournal(ctx context.Context, c *redis.Client) (bool, error) {
 }
 
 func persistenceSourcePodReady(pod *corev1.Pod, sts *appsv1.StatefulSet) bool {
-	if sts.Status.ObservedGeneration < sts.Generation || sts.Status.UpdateRevision == "" ||
-		pod.Labels[appsv1.StatefulSetRevisionLabel] != sts.Status.UpdateRevision {
+	if !podRunsStatefulSetRevision(pod, sts) {
 		return false
 	}
 	if !podReady(pod) || persistenceProcess(pod) == "" {
@@ -335,15 +329,33 @@ func legacyKeyValueWorkloadUnchanged(sts *appsv1.StatefulSet, kv *appv1alpha1.Ke
 // valkeyHasPlatformUser reports whether a Valkey container's args define
 // kvPlatformUser; false for every store started before it existed.
 func valkeyHasPlatformUser(containers []corev1.Container) bool {
-	for _, c := range containers {
-		if c.Name != keyValueContainerName {
-			continue
-		}
-		for i := 0; i+1 < len(c.Args); i++ {
-			if c.Args[i] == "--user" && c.Args[i+1] == kvPlatformUser {
-				return true
-			}
+	args := valkeyContainerArgs(containers)
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == "--user" && args[i+1] == kvPlatformUser {
+			return true
 		}
 	}
 	return false
+}
+
+// valkeyContainerArgs is the Valkey server container's args, nil without one.
+func valkeyContainerArgs(containers []corev1.Container) []string {
+	for _, c := range containers {
+		if c.Name == keyValueContainerName {
+			return c.Args
+		}
+	}
+	return nil
+}
+
+// valkeyArgValue is the value the Valkey container's args give flag, "" when
+// they do not set it.
+func valkeyArgValue(containers []corev1.Container, flag string) string {
+	args := valkeyContainerArgs(containers)
+	for i := 0; i+1 < len(args); i++ {
+		if args[i] == flag {
+			return args[i+1]
+		}
+	}
+	return ""
 }

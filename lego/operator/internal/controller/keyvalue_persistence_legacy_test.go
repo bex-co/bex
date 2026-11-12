@@ -144,8 +144,17 @@ func TestPersistenceUnchangedLegacyStoreDoesNotRoll(t *testing.T) {
 			if !reflect.DeepEqual(&sts.Spec.Template, before) {
 				t.Fatal("operator upgrade changed unchanged legacy pod template")
 			}
-			// A later real policy change installs the migration in that same rollout.
+			// A policy change alone restarts nothing (w4/m330), so it installs no
+			// handoff either.
 			kv.Spec.MaxmemoryPolicy = "noeviction"
+			intent.skipPersistenceInit = legacyKeyValueWorkloadUnchanged(sts, kv, intent)
+			applyKeyValueStatefulSet(sts, kv, intent)
+			if !reflect.DeepEqual(&sts.Spec.Template, before) {
+				t.Fatal("a maxmemory policy change rolled the unchanged legacy pod template")
+			}
+			// A later real workload change (a password rotation) installs the
+			// migration in that same rollout.
+			intent.credentialRevision = "rotated"
 			intent.skipPersistenceInit = legacyKeyValueWorkloadUnchanged(sts, kv, intent)
 			applyKeyValueStatefulSet(sts, kv, intent)
 			if len(sts.Spec.Template.Spec.InitContainers) != 1 || sts.Spec.Template.Annotations[keyValuePersistenceSourceAnnotation] != mode {

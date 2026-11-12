@@ -253,9 +253,10 @@ func kvStatus(kv *appv1alpha1.KeyValue) string {
 }
 
 // annotationRestartFreeGeneration names the generation a restart-free write
-// (a rename, or an external-access change with the TLS listener already
-// running) lands at, so the status does not read config_restart while the
-// operator catches up to a change that restarts nothing (w4/m233).
+// (a rename, an eviction-policy change, or an external-access change with the
+// TLS listener already running) lands at, so the status does not read
+// config_restart while the operator catches up to a change that restarts
+// nothing (w4/m233, w4/m330).
 const annotationRestartFreeGeneration = "app.bex.co/restart-free-generation"
 
 // restartFreePending reports a Ready store whose only unobserved generation is
@@ -270,9 +271,10 @@ func restartFreePending(kv *appv1alpha1.KeyValue) bool {
 
 // markRestartFree records, on the write itself, whether the generation it
 // lands at restarts nothing: only the name, the allow-list, the environment's
-// allow-list layer (the SNI proxy's, w4/451) or external access change, and
-// turning access on does not add the listener. A write that leaves the spec
-// alone bumps no generation, so it marks nothing.
+// allow-list layer (the SNI proxy's, w4/451), the eviction policy (applied at
+// runtime, w4/m330) or external access change, and turning access on does not
+// add the listener. A write that leaves the spec alone bumps no generation, so
+// it marks nothing.
 func markRestartFree(before, after *appv1alpha1.KeyValue) {
 	if apiequality.Semantic.DeepEqual(after.Spec, before.Spec) {
 		return
@@ -281,6 +283,7 @@ func markRestartFree(before, after *appv1alpha1.KeyValue) {
 	spec.Name, prior.Name = "", ""
 	spec.IPAllowList, prior.IPAllowList = nil, nil
 	spec.EnvironmentIPAllowList, prior.EnvironmentIPAllowList = nil, nil
+	spec.MaxmemoryPolicy, prior.MaxmemoryPolicy = "", ""
 	spec.Public, prior.Public = false, false
 	if !apiequality.Semantic.DeepEqual(spec, prior) || (after.Spec.Public && externalAccessRestarts(before)) {
 		delete(after.Annotations, annotationRestartFreeGeneration)
@@ -1268,10 +1271,11 @@ const lockedPatchAttempts = 3
 
 // recordUpdateEffects records what a successful PATCH actually changed — the
 // postgres.recordUpdateEffects mirror. A plan change is Render's plan_changed;
-// an eviction- or persistence-setting change is key_value_config_restart,
-// because the operator rebuilds the Valkey server args from those two fields
-// and the StatefulSet rolls its single pod to pick them up. A rename or
-// ip-allow-list write keeps the generic KeyValueUpdated row, which is also
+// a persistence-setting change is key_value_config_restart, because the
+// operator rebuilds the Valkey server args from it and the StatefulSet rolls
+// its single pod to pick it up. An eviction-policy change restarts nothing
+// (the operator applies it with CONFIG SET, w4/m330), so like a rename or an
+// ip-allow-list write it keeps the generic KeyValueUpdated row, which is also
 // what an idempotent PATCH records.
 func (s *Service) recordUpdateEffects(ctx context.Context, kv *appv1alpha1.KeyValue, before appv1alpha1.KeyValueSpec) {
 	recorded := false
@@ -1279,7 +1283,7 @@ func (s *Service) recordUpdateEffects(ctx context.Context, kv *appv1alpha1.KeyVa
 		s.RecordKeyValueEffect(ctx, kv, core.KeyValuePlanChanged)
 		recorded = true
 	}
-	if before.MaxmemoryPolicy != kv.Spec.MaxmemoryPolicy || before.PersistenceMode != kv.Spec.PersistenceMode {
+	if before.PersistenceMode != kv.Spec.PersistenceMode {
 		// Render-shaped (underscore) spellings, matching what every read surface
 		// reports for these fields.
 		s.RecordKeyValueConfigChanged(ctx, kv, crdToRender(kv.Spec.MaxmemoryPolicy), crdToRender(kv.Spec.PersistenceMode))

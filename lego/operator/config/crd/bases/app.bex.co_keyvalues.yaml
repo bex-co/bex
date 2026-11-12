@@ -293,6 +293,13 @@ spec:
                   ready auth-injecting internal proxy. Legacy stores retain credentialed
                   URLs until this cutover; Valkey and external TLS always require AUTH.
                 type: boolean
+              maxmemoryPolicy:
+                description: |-
+                  MaxmemoryPolicy is the eviction policy the running Valkey process was
+                  last confirmed to run ("" for the server default, no memory budget). It
+                  trails spec.maxmemoryPolicy until the operator applies a change, which
+                  it does with CONFIG SET, restarting nothing (w4/m330).
+                type: string
               observedGeneration:
                 description: ObservedGeneration is the .metadata.generation the controller
                   last reconciled.

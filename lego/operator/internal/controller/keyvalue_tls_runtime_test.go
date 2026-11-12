@@ -237,7 +237,7 @@ func TestKeyValueRuntimeTLSSwitchRestartsNothing(t *testing.T) {
 	if slices.Contains(f.calls, true) || f.kv.Status.TLSListener || f.kv.Status.ExternalHost != "cache-kv.kv.example.test" {
 		t.Fatalf("enable before the certificate: status %+v, switch calls %v", f.kv.Status, f.calls)
 	}
-	if f.result.RequeueAfter == 0 || f.result.RequeueAfter > kvTLSPendingRequeue {
+	if f.result.RequeueAfter == 0 || f.result.RequeueAfter > kvRuntimePendingRequeue {
 		t.Fatalf("a pending listener requeues after %v", f.result.RequeueAfter)
 	}
 	if err := f.certificateErr(); err != nil {

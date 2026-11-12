@@ -141,11 +141,12 @@ func TestKeyValuePlanEffectIsSuccessfulAndTyped(t *testing.T) {
 
 // TestKeyValueConfigChangeProjectsConfigRestart is w3/m82 t003. Advertising
 // key_value_config_restart is verify-first, and the mechanism verifies: the
-// operator derives the Valkey server flags from spec.maxmemoryPolicy and
-// spec.persistenceMode (valkeyArgs), those flags are the StatefulSet's
-// container args, and the reconcile is a CreateOrUpdate on that StatefulSet —
-// so either change rolls the single pod. This pins the API half: the change
-// records a verb carrying the configuration the instance restarted into.
+// operator derives the Valkey server flags from spec.persistenceMode
+// (valkeyArgs), those flags are the StatefulSet's container args, and the
+// reconcile is a CreateOrUpdate on that StatefulSet — so the change rolls the
+// single pod. This pins the API half: the change records a verb carrying the
+// configuration the instance restarted into. An eviction-policy change alone
+// restarts nothing since w4/m330, so it records the generic row.
 func TestKeyValueConfigChangeProjectsConfigRestart(t *testing.T) {
 	newStore := func() *appv1alpha1.KeyValue {
 		return &appv1alpha1.KeyValue{
@@ -162,7 +163,6 @@ func TestKeyValueConfigChangeProjectsConfigRestart(t *testing.T) {
 		patch                KeyValuePatch
 		wantPolicy, wantMode string
 	}{
-		{"eviction policy", KeyValuePatch{MaxmemoryPolicy: &policy}, "noeviction", "off"},
 		{"persistence mode", KeyValuePatch{PersistenceMode: &mode}, "allkeys_lru", "journal_snapshot"},
 		{"both at once", KeyValuePatch{MaxmemoryPolicy: &policy, PersistenceMode: &mode}, "noeviction", "journal_snapshot"},
 	}
@@ -200,6 +200,20 @@ func TestKeyValueConfigChangeProjectsConfigRestart(t *testing.T) {
 			}
 		})
 	}
+
+	t.Run("an eviction policy change alone is not a restart", func(t *testing.T) {
+		kv := newStore()
+		svc, _ := newService(kv)
+		sink := &webhookAuditSink{}
+		svc.Audit = sink
+
+		if _, err := svc.UpdateKeyValue(context.Background(), kv.Name, KeyValuePatch{MaxmemoryPolicy: &policy}); err != nil {
+			t.Fatalf("UpdateKeyValue: %v", err)
+		}
+		if len(sink.events) != 1 || sink.events[0].Verb != core.AuditVerbKeyValueUpdated {
+			t.Fatalf("policy change recorded %+v, want one generic %s", sink.events, core.AuditVerbKeyValueUpdated)
+		}
+	})
 
 	t.Run("idempotent set is not a restart", func(t *testing.T) {
 		kv := newStore()

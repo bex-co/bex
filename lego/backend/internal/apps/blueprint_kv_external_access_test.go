@@ -85,11 +85,9 @@ services:
 	}
 }
 
-// w4/m316: a maxmemoryPolicy change also replaces a running store's pod, and
-// with Persistence Off that deletes every key. Like a plan change (w4/m263),
-// and unlike the bex-only external-access restart above, Blueprints apply it
-// as Render does: the field is Render's, and refusing it would make a
-// Persistence Off store's policy unchangeable from its own Blueprint.
+// A maxmemoryPolicy change is Render's field, and Blueprints apply it as
+// Render does, with no refusal on a running Persistence Off store. Since
+// w4/m330 it restarts nothing, so nothing is lost either.
 func TestBlueprintAppliesAMaxmemoryChangeToARunningPersistenceOffKeyValue(t *testing.T) {
 	svc, cl := newService(nil)
 	ctx := context.Background()

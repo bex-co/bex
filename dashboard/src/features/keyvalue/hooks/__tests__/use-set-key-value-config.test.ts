@@ -27,9 +27,10 @@ beforeEach(() => {
   mutate = vi.fn();
 });
 
-// A maxmemory or persistence save restarts the store. The hooks hand the page
-// a callback so the detail header polls through that restart instead of
-// sitting on "Available" at the baseline cadence (w4/m137 t008).
+// A persistence save restarts the store, and a maxmemory save changes it in
+// place (w4/m330). The hooks hand the page a callback so the detail header
+// re-reads the store, polling through a restart instead of sitting on
+// "Available" at the baseline cadence (w4/m137 t008).
 describe.each([
   [
     "maxmemory policy",

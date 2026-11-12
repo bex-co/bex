@@ -77,7 +77,7 @@ const keyValueBackupWorkHeadroomGiB = 1
 // So the peak is 2S, at the compress step — the pipeline deletes as it goes, so
 // the three representations never coexist. S is bounded by the instance's
 // ALLOCATED storage rather than its memory: maxmemory is only applied when a
-// MaxmemoryPolicy is chosen (see keyvalue_controller.go), so memory is not a
+// MaxmemoryPolicy is chosen (see keyvalue_maxmemory_runtime.go), so memory is not a
 // reliable ceiling on the dataset, while the PVC always is.
 //
 // Revisit this if the pipeline ever stops deleting intermediates, or if a plan

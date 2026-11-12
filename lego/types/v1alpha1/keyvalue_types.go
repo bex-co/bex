@@ -293,6 +293,13 @@ type KeyValueStatus struct {
 	// +optional
 	TLSRuntimeSwitch bool `json:"tlsRuntimeSwitch,omitempty"`
 
+	// MaxmemoryPolicy is the eviction policy the running Valkey process was
+	// last confirmed to run ("" for the server default, no memory budget). It
+	// trails spec.maxmemoryPolicy until the operator applies a change, which
+	// it does with CONFIG SET, restarting nothing (w4/m330).
+	// +optional
+	MaxmemoryPolicy string `json:"maxmemoryPolicy,omitempty"`
+
 	// ObservedGeneration is the .metadata.generation the controller last reconciled.
 	// +optional
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`

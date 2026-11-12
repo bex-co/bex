@@ -71,7 +71,6 @@ export function useSetKeyValueMaxmemoryPolicy(
         }
         toast.success(t("keyvalue.maxmemorySuccess", { policy: next }));
         void policyQuery.refetch();
-        // Saving restarts the store: let the page watch it happen (w4/m137).
         onSaved?.();
         return true;
       } catch (err) {

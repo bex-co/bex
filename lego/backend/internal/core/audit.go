@@ -976,11 +976,12 @@ func (b *Base) RecordDatabaseDiskSizeChanged(ctx context.Context, d *appv1alpha1
 	b.recordAudit(ctx, ev)
 }
 
-// RecordKeyValueConfigChanged records a successful Key Value eviction- or
-// persistence-setting change — the write the operator converges by rewriting
-// the Valkey server args, which rolls the StatefulSet's single pod (Render's
-// key_value_config_restart). Both resulting values are recorded, not only the
-// changed one: the event states the configuration the instance restarted INTO.
+// RecordKeyValueConfigChanged records a successful Key Value persistence-
+// setting change — the write the operator converges by rewriting the Valkey
+// server args, which rolls the StatefulSet's single pod (Render's
+// key_value_config_restart). Both the persistence mode and the eviction policy
+// are recorded, not only the changed one: the event states the configuration
+// the instance restarted INTO.
 // Empty values (never configured, so the server default applies) stay nil.
 func (b *Base) RecordKeyValueConfigChanged(ctx context.Context, kv *appv1alpha1.KeyValue, maxmemoryPolicy, persistenceMode string) {
 	ev, ok := b.keyValueAuditEvent(ctx, kv, AuditVerbKeyValueConfigChanged)

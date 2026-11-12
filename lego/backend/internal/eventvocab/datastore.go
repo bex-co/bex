@@ -94,10 +94,12 @@ const (
 	TypePostgresDiskAutoscalingEnabledChanged = "postgres_disk_autoscaling_enabled_changed"
 	// TypeKeyValueConfigRestart is Render's "a config change restarted the
 	// instance". Verified against the mechanism before advertising: the operator
-	// folds spec.maxmemoryPolicy and spec.persistenceMode into the Valkey server
-	// flags (keyvalue_controller.go valkeyArgs), those flags are the
-	// StatefulSet's container Args, and the reconcile is a CreateOrUpdate on
-	// that StatefulSet — so changing either setting rolls the single pod.
+	// folds spec.persistenceMode into the Valkey server flags
+	// (keyvalue_controller.go valkeyArgs), those flags are the StatefulSet's
+	// container Args, and the reconcile is a CreateOrUpdate on that StatefulSet
+	// — so changing it rolls the single pod. An eviction-policy change is
+	// applied with CONFIG SET and restarts nothing (w4/m330), so it is no
+	// config restart.
 	TypeKeyValueConfigRestart = "key_value_config_restart"
 )
 

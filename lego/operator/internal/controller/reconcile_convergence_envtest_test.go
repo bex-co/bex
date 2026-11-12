@@ -28,6 +28,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -383,6 +384,43 @@ var _ = Describe("Reconcile convergence (w7/m84)", func() {
 			Expect(kv.Status.Conditions).To(ContainElement(HaveField("Reason", reasonSuspended)))
 			deleteOwner(ctx, kv, run)
 		}
+	})
+
+	// w4/m330: a real API server defaults the StatefulSet it stores; the held
+	// policy must still compare equal, or a policy change would roll the pod.
+	It("keeps a KeyValue's StatefulSet unchanged across a maxmemory policy change", func() {
+		const name = "converge-kv-policy"
+		rec := &writeRecorder{Client: k8sClient, recordStatus: true}
+		r := &KeyValueReconciler{Client: rec, Scheme: k8sClient.Scheme()}
+		nn := types.NamespacedName{Name: name, Namespace: namespace}
+		kv := &appv1alpha1.KeyValue{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec:       appv1alpha1.KeyValueSpec{Name: name, Plan: "standard", MaxmemoryPolicy: "allkeys-lru"},
+		}
+		Expect(k8sClient.Create(ctx, kv)).To(Succeed())
+		run := func() (ctrl.Result, error) {
+			return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+		}
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		Expect(divergence(ctx, rec, run, kv, "StatefulSet")).To(BeEmpty())
+		before := &appsv1.StatefulSet{}
+		Expect(k8sClient.Get(ctx, nn, before)).To(Succeed())
+
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		kv.Spec.MaxmemoryPolicy = "volatile-lru"
+		Expect(k8sClient.Update(ctx, kv)).To(Succeed())
+		for range 2 {
+			_, err := run()
+			Expect(err).NotTo(HaveOccurred())
+		}
+		after := &appsv1.StatefulSet{}
+		Expect(k8sClient.Get(ctx, nn, after)).To(Succeed())
+		Expect(after.Generation).To(Equal(before.Generation), "the policy change rolled the StatefulSet")
+		Expect(apiequality.Semantic.DeepEqual(after.Spec.Template, before.Spec.Template)).To(BeTrue())
+		Expect(valkeyArgsMaxmemoryPolicy(after.Spec.Template.Spec.Containers)).To(Equal("allkeys-lru"))
+
+		Expect(k8sClient.Get(ctx, nn, kv)).To(Succeed())
+		deleteOwner(ctx, kv, run)
 	})
 
 	It("writes nothing on a redundant Database reconcile", func() {

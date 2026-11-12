@@ -344,6 +344,9 @@ type KeyValueReconciler struct {
 	// switchTLS turns a running store's TLS listener on or off; nil is
 	// switchValkeyTLSAtPod. Tests substitute it.
 	switchTLS func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, on bool) (bool, error)
+	// setMaxmemory sets a running store's memory budget and eviction policy;
+	// nil is setValkeyMaxmemoryAtPod. Tests substitute it.
+	setMaxmemory func(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, maxmemory, policy string) error
 	// Backup is the non-secret object-store contract for paid-plan RDB
 	// snapshots. All fields are required; an incomplete contract is disabled.
 	Backup BackupStore
@@ -846,10 +849,9 @@ func (r *KeyValueReconciler) reconcileKeyValueWorkload(ctx context.Context, kv *
 	return err
 }
 
-// applyKeyValueStatefulSet writes the desired StatefulSet shape. It is a pure
-// function of (sts, kv, intent) so the workload shape is testable without a
-// client.
-func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
+// writeKeyValueStatefulSet writes the desired StatefulSet shape, the policy
+// included; applyKeyValueStatefulSet decides which policy.
+func writeKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
 	before := sts.Spec.Template.DeepCopy()
 	// Capture legacy authority before replacing the old flags; never change this
 	// fallback on subsequent edits (including edits while suspended). The PVC
@@ -1095,9 +1097,11 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	} else {
 		kv.Status.ExternalHost = ""
 	}
-	var tlsPending bool
+	var tlsPending, policyPending bool
 	kv.Status.TLSListener, tlsPending = r.reconcileKeyValueTLSListener(ctx, &kv, sts, platform, intent)
 	kv.Status.TLSRuntimeSwitch = intent.tlsRuntime
+	kv.Status.MaxmemoryPolicy, policyPending = r.reconcileKeyValueMaxmemory(ctx, &kv, sts, platform, intent)
+	runtimePending := tlsPending || policyPending
 
 	// Surface the connection coordinates (the password stays in the Secret).
 	kv.Status.Host = intent.internalHost
@@ -1111,18 +1115,19 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonPVCResizeFailed, err)
 	}
 	if result, done, err := r.applyKeyValueStorageState(ctx, &kv, storageState); done || err != nil {
-		return keyValueTLSRequeue(result, tlsPending), err
+		return keyValueRuntimeRequeue(result, runtimePending), err
 	}
 
 	result, err = r.updateKeyValueReadiness(ctx, &kv, sts, intent.replicas, intent.credentialRevision)
-	return keyValueTLSRequeue(result, tlsPending), err
+	return keyValueRuntimeRequeue(result, runtimePending), err
 }
 
-// keyValueTLSRequeue polls sooner while a runtime TLS switch is pending: no
-// watch fires when cert-manager writes the Secret or the kubelet projects it.
-func keyValueTLSRequeue(result ctrl.Result, pending bool) ctrl.Result {
-	if pending && (result.RequeueAfter == 0 || result.RequeueAfter > kvTLSPendingRequeue) {
-		result.RequeueAfter = kvTLSPendingRequeue
+// keyValueRuntimeRequeue polls sooner while a runtime TLS or maxmemory switch
+// is pending: no watch fires when cert-manager writes the Secret, the kubelet
+// projects it, or a refused CONFIG SET can be retried.
+func keyValueRuntimeRequeue(result ctrl.Result, pending bool) ctrl.Result {
+	if pending && (result.RequeueAfter == 0 || result.RequeueAfter > kvRuntimePendingRequeue) {
+		result.RequeueAfter = kvRuntimePendingRequeue
 	}
 	return result
 }

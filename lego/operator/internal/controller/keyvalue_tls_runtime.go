@@ -19,7 +19,6 @@ package controller
 import (
 	"cmp"
 	"context"
-	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -53,9 +52,10 @@ const (
 	kvTLSMountPath = "/tls"
 	kvTLSCertFile  = kvTLSMountPath + "/" + corev1.TLSCertKey
 	kvTLSKeyFile   = kvTLSMountPath + "/" + corev1.TLSPrivateKeyKey
-	// kvTLSPendingRequeue paces the wait for the Certificate's Secret and for
-	// the kubelet to project it into the running pod.
-	kvTLSPendingRequeue = 5 * time.Second
+	// kvRuntimePendingRequeue paces the wait for the Certificate's Secret and
+	// for the kubelet to project it into the running pod, and the retry of a
+	// refused runtime maxmemory change.
+	kvRuntimePendingRequeue = 5 * time.Second
 )
 
 // valkeyTLSConfig is the listener's configuration, in the order a runtime
@@ -163,11 +163,9 @@ func (r *KeyValueReconciler) reconcileKeyValueTLSListener(ctx context.Context, k
 // switchValkeyTLSAtPod runs switchValkeyTLS as kvPlatformUser: CONFIG SET is
 // an @admin verb the tenant's default user cannot run.
 func switchValkeyTLSAtPod(ctx context.Context, pod *corev1.Pod, platform *corev1.Secret, on bool) (bool, error) {
-	timeout, cancel := context.WithTimeout(ctx, 8*time.Second)
-	defer cancel()
-	c := platformValkeyClient(net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(kvPort)), platform)
-	defer func() { _ = c.Close() }()
-	return switchValkeyTLS(timeout, c, on)
+	return withPlatformValkey(ctx, pod, platform, func(ctx context.Context, c *redis.Client) (bool, error) {
+		return switchValkeyTLS(ctx, c, on)
+	})
 }
 
 // switchValkeyTLS turns the TLS listener on or off in the running process and

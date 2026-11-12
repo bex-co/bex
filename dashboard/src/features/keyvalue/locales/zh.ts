@@ -563,7 +563,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   "keyvalue.restartConfirmDataLoss": {
     message: "持久化为“关闭”，重启会删除 {name} 中的所有键，且无法撤销。",
     description:
-      "Restart confirm (plan or maxmemory change): a Persistence Off store loses all data on the restart (w4/m263, w4/m316)",
+      "Restart confirm (plan change): a Persistence Off store loses all data on the restart (w4/m263)",
   },
   "keyvalue.restartConfirmDataLossUnknown": {
     message:
@@ -591,7 +591,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.maxmemoryDescription": {
     message:
-      "更改存储达到内存上限后淘汰键的方式。保存会重启存储，连接会中断最多一分钟。数据是否保留取决于持久化模式；持久化为“关闭”的存储会丢失所有键。",
+      "更改存储达到内存上限后淘汰键的方式。新策略会直接应用到运行中的存储，无需重启。",
     description: "Key Value detail eviction-policy card description",
   },
   "keyvalue.maxmemoryLabel": {
@@ -602,24 +602,6 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "编辑内存淘汰策略",
     description:
       "Accessible label for the maxmemory-policy edit-in-place pencil",
-  },
-  "keyvalue.maxmemoryConfirmTitle": {
-    message: "将内存淘汰策略改为 {policy}？",
-    description: "Maxmemory-policy change confirm dialog title (w4/m316)",
-  },
-  "keyvalue.maxmemoryConfirmBody": {
-    message: "存储将重启以应用新策略，期间最多一分钟不可用，连接会中断。",
-    description:
-      "Maxmemory-policy change confirm: the change restarts the store",
-  },
-  "keyvalue.maxmemoryConfirmAction": {
-    message: "重启并更改策略",
-    description: "Maxmemory-policy change confirm action on a persisted store",
-  },
-  "keyvalue.maxmemoryConfirmDataLossAction": {
-    message: "删除数据并更改策略",
-    description:
-      "Maxmemory-policy change confirm action when the restart empties a Persistence Off store",
   },
   "keyvalue.maxmemorySuccess": {
     message: "正在将内存淘汰策略更新为 {policy}……",

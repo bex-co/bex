@@ -302,9 +302,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 // confirmation, and it restarts the store (w4/m263).
 const updateKeyValuePlanDescription = "Change the store's instance plan. The change restarts the store, which is unavailable for a minute or two, and it changes what the workspace is billed. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data."
 
-// setKeyValueMaxmemoryPolicyDescription is the same disclosure for the eviction
-// policy, a valkey-server flag whose change replaces the store's pod (w4/m316).
-const setKeyValueMaxmemoryPolicyDescription = "Change the store's eviction policy. The change restarts the store, which is unavailable for up to a minute. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. Accepted without a confirmation outside a protected environment; in one, pass the confirm phrase the refusal names."
+// setKeyValueMaxmemoryPolicyDescription says the eviction policy, unlike the
+// plan and the persistence mode, applies to the running store, as on Render
+// (w4/m330).
+const setKeyValueMaxmemoryPolicyDescription = "Change the store's eviction policy. It applies to the running store within seconds, without a restart, so no connection drops and no key is lost to a restart. Accepted without a confirmation outside a protected environment; in one, pass the confirm phrase the refusal names."
 
 // setKeyValuePersistenceModeDescription is the same disclosure for the
 // durability setting, Render's own words included: a switch to or from off

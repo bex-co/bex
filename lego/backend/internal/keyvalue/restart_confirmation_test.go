@@ -220,7 +220,8 @@ func TestARestartFreeChangeReadsAvailable(t *testing.T) {
 	}
 
 	// The write decides: allow-list and access changes with the listener
-	// running are marked; a first enable or a persistence change is not.
+	// running, and eviction policy changes, are marked; a first enable, a
+	// persistence change or a plan change is not.
 	for name, tc := range map[string]struct {
 		before *appv1alpha1.KeyValue
 		patch  KeyValuePatch
@@ -230,6 +231,9 @@ func TestARestartFreeChangeReadsAvailable(t *testing.T) {
 		"re-enable, listener kept": {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Status.TLSListener = true }), KeyValuePatch{IPAllowList: &[]core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}}, true},
 		"first enable":             {memoryOnlyStore(nil), KeyValuePatch{IPAllowList: &[]core.IPAllowListEntry{{CIDRBlock: "203.0.113.7/32"}}}, false},
 		"persistence change":       {memoryOnlyStore(func(kv *appv1alpha1.KeyValue) { kv.Status.TLSListener = true }), KeyValuePatch{PersistenceMode: new("journal_snapshot")}, false},
+		// w4/m330: the operator applies the policy with CONFIG SET.
+		"eviction policy change": {memoryOnlyStore(nil), KeyValuePatch{MaxmemoryPolicy: new("volatile_lru")}, true},
+		"policy and plan change": {memoryOnlyStore(nil), KeyValuePatch{MaxmemoryPolicy: new("volatile_lru"), Plan: new("starter")}, false},
 	} {
 		tc.before.Generation = 7
 		after := tc.before.DeepCopy()

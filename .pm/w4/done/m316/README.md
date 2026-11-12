@@ -1,6 +1,6 @@
 # w4 · m316 — Changing a Persistence Off Key Value's maxmemory policy says first that the restart deletes every key, and asks for the phrase, as the plan and persistence changes do
 
-**Worker:** worker4 **Goal:** a Key Value with Persistence Off never loses its keys to a maxmemory policy change without being warned. On an Off store, the dashboard asks for `sudo clear key value <name>` and says every key will be deleted. On a persisted store it names the restart. The API descriptions and the Blueprint path say the same thing. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
+**Worker:** worker4 **Goal:** a Key Value with Persistence Off never loses its keys to a maxmemory policy change without being warned. On an Off store, the dashboard asks for `sudo clear key value <name>` and says every key will be deleted. On a persisted store it names the restart. The API descriptions and the Blueprint path say the same thing. **Status:** done — superseded by w4/m330 on 2026-11-11 (t001–t003, t005–t007 shipped; t004 and t008 closed on m330, which removed the restart)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | Dashboard: Off-aware confirmation on the maxmemory save, and card copy that names the data loss — **DONE** | 40m | — |
 | [t002](done/t002.md) | API descriptions and the Blueprint path for a maxmemory change on a running Off store — **DONE** | 30m | — |
 | [t003](done/t003.md) | Writer audit: every write that restarts a running Off store warns or asks — **DONE** | 25m | t001, t002 |
-| [t004](t004.md) | Live verification on an owned Free Key Value | 25m | t003 |
+| [t004](done/t004.md) | Live verification on an owned Free Key Value — **DONE** (superseded by w4/m330) | 25m | t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| [t008](done/t008.md) | Closeout — **DONE** (superseded by w4/m330) | 10m | t006, t007 |
 
 Eight tasks, 195m (3h15m). **Major:** the change deletes customer data without warning.
 
