@@ -18,6 +18,7 @@ package controller
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
 	"io"
 	"maps"
@@ -121,6 +122,7 @@ var _ = Describe("Application container policy admission", func() {
 				admissionApplicationWorkloads(namespace, appv1alpha1.ContainerPolicyRenderV1),
 				admissionApplicationWorkloads(namespace, appv1alpha1.ContainerPolicyStrictV1),
 				admissionApplicationWorkloads(namespace, ""),
+				admissionEdgeCacheWorkloads(namespace),
 				admissionPlatformWorkloads(namespace),
 			)
 			for _, projected := range workloads {
@@ -335,6 +337,100 @@ var _ = Describe("Application container policy admission", func() {
 					pod.Containers[0].SecurityContext.SeccompProfile = nil
 					pod.InitContainers = []corev1.Container{{Name: "strict-init", Image: "busybox:latest", SecurityContext: tenantSecCtx()}}
 					Expect(operator.Create(ctx, inherited, client.DryRunAll)).To(Succeed(), scenario+" inherited seccomp")
+				}
+				// The edge-cache sidecar of a caching web service (w9/087) is bex's
+				// own proxy, not the tenant image: under every policy it adds no
+				// capability, never escalates and runs RuntimeDefault, and only the
+				// exact [app, edge-cache] Deployment keeps a widened policy for its
+				// app container.
+				widened := admissionPodTemplate(workload).Labels["app.bex.co/container-policy"]
+				_, deployment := workload.(*appsv1.Deployment)
+				if containers := admissionPodTemplate(workload).Spec.Containers; len(containers) == 2 && containers[1].Name == edgeCacheContainerName {
+					type sidecarMutation struct {
+						name   string
+						change func(client.Object, *corev1.PodTemplateSpec)
+					}
+					var mutations []sidecarMutation
+					for _, capability := range slices.Concat(appv1alpha1.ContainerPolicyCapabilities(appv1alpha1.ContainerPolicyRenderV1), []string{"NET_BIND_SERVICE"}) {
+						mutations = append(mutations, sidecarMutation{"sidecar-adds-" + capability, func(_ client.Object, p *corev1.PodTemplateSpec) {
+							p.Spec.Containers[1].SecurityContext.Capabilities.Add = []corev1.Capability{corev1.Capability(capability)}
+						}})
+					}
+					profile := "profiles/bex-render-v1.json"
+					mutations = append(mutations,
+						sidecarMutation{"sidecar-localhost-profile", func(_ client.Object, p *corev1.PodTemplateSpec) {
+							p.Spec.Containers[1].SecurityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost, LocalhostProfile: &profile}
+						}},
+						// A sidecar with no profile of its own inherits the pod's, and
+						// a pod-level Localhost profile is never its effective one.
+						sidecarMutation{"sidecar-inherits-pod-localhost", func(_ client.Object, p *corev1.PodTemplateSpec) {
+							p.Spec.SecurityContext = &corev1.PodSecurityContext{SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeLocalhost, LocalhostProfile: &profile}}
+							p.Spec.Containers[1].SecurityContext.SeccompProfile = nil
+						}},
+						sidecarMutation{"sidecar-unconfined", func(_ client.Object, p *corev1.PodTemplateSpec) {
+							p.Spec.Containers[1].SecurityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeUnconfined}
+						}},
+						sidecarMutation{"sidecar-privilege-escalation", func(_ client.Object, p *corev1.PodTemplateSpec) {
+							p.Spec.Containers[1].SecurityContext.AllowPrivilegeEscalation = new(true)
+						}},
+					)
+					if widened != "" {
+						mutations = append(mutations,
+							sidecarMutation{"sidecar-missing-drop-all", func(_ client.Object, p *corev1.PodTemplateSpec) {
+								p.Spec.Containers[1].SecurityContext.Capabilities.Drop = nil
+							}},
+							sidecarMutation{"sidecar-missing-no-escalation", func(_ client.Object, p *corev1.PodTemplateSpec) {
+								p.Spec.Containers[1].SecurityContext.AllowPrivilegeEscalation = nil
+							}},
+							// Any other second container, a third one, or the sidecar
+							// first is not the projected pod: the app loses its policy.
+							sidecarMutation{"renamed-sidecar", func(_ client.Object, p *corev1.PodTemplateSpec) { p.Spec.Containers[1].Name = "cache" }},
+							sidecarMutation{"sidecar-first", func(_ client.Object, p *corev1.PodTemplateSpec) {
+								p.Spec.Containers[0], p.Spec.Containers[1] = p.Spec.Containers[1], p.Spec.Containers[0]
+							}},
+							sidecarMutation{"third-container", func(_ client.Object, p *corev1.PodTemplateSpec) {
+								extra := p.Spec.Containers[1].DeepCopy()
+								extra.Name, extra.Ports, extra.ReadinessProbe = "extra", nil, nil
+								p.Spec.Containers = append(p.Spec.Containers, *extra)
+							}},
+							// One process namespace would let the app's SETUID or
+							// DAC_OVERRIDE reach the sidecar through /proc.
+							sidecarMutation{"shared-process-namespace", func(_ client.Object, p *corev1.PodTemplateSpec) {
+								p.Spec.ShareProcessNamespace = new(true)
+							}},
+							sidecarMutation{"forged-app-uid", func(_ client.Object, p *corev1.PodTemplateSpec) {
+								p.Labels["app.bex.co/app-uid"] = "foreign-uid"
+							}},
+							sidecarMutation{"forged-owner-uid", func(o client.Object, _ *corev1.PodTemplateSpec) {
+								o.GetOwnerReferences()[0].UID = "foreign-uid"
+							}},
+							sidecarMutation{"forged-owner-name", func(o client.Object, _ *corev1.PodTemplateSpec) {
+								o.GetOwnerReferences()[0].Name = "foreign-app"
+							}},
+						)
+					}
+					for _, mutation := range mutations {
+						bad := workload.DeepCopyObject().(client.Object)
+						mutation.change(bad, admissionPodTemplate(bad))
+						label := scenario + "/" + mutation.name
+						expectDenied(operator.Create(ctx, admissionFreshWorkload(bad), client.DryRunAll), label+" create")
+						expectDenied(operator.Update(ctx, bad, client.DryRunAll), label+" update")
+					}
+				} else if widened != "" && !deployment {
+					// Only a Deployment may carry the sidecar: a widened CronJob,
+					// manual run or pre-deploy Job with a second container is not
+					// the tenant image alone, so its app loses the policy.
+					bad := workload.DeepCopyObject().(client.Object)
+					pod := admissionPodTemplate(bad)
+					cached := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{CacheProfile: appv1alpha1.CacheProfileStatic}}
+					pod.Spec.Containers = append(pod.Spec.Containers, edgeCacheContainer(cached, "ghcr.io/bex-co/bex:test", 8080, 0))
+					label := scenario + "/edge-cache-sidecar"
+					expectDenied(operator.Create(ctx, admissionFreshWorkload(bad), client.DryRunAll), label+" create")
+					if _, job := bad.(*batchv1.Job); job {
+						Expect(apierrors.IsInvalid(operator.Update(ctx, bad, client.DryRunAll))).To(BeTrue(), label+" immutable Job update")
+					} else {
+						expectDenied(operator.Update(ctx, bad, client.DryRunAll), label+" update")
+					}
 				}
 				if _, stateful := workload.(*appsv1.StatefulSet); stateful {
 					// Even a forged, internally consistent App profile cannot
@@ -578,6 +674,41 @@ func admissionTierWorkloads(namespace, policy, tier string) []client.Object {
 	Expect(r.List(ctx, &migrations)).To(Succeed())
 	Expect(migrations.Items).To(HaveLen(1))
 	return append(workloads, &migrations.Items[0])
+}
+
+// admissionEdgeCacheWorkloads is the real Deployment of a paid image-port web
+// service with a caching profile (w9/087), under every container policy: the
+// tenant image as app, then bex's edge-cache proxy, then the health-probe
+// installer before both.
+func admissionEdgeCacheWorkloads(namespace string) []client.Object {
+	policies := []string{appv1alpha1.ContainerPolicyImageV1, appv1alpha1.ContainerPolicyRenderV1, appv1alpha1.ContainerPolicyStrictV1, ""}
+	workloads := make([]client.Object, 0, len(policies))
+	for _, policy := range policies {
+		name := "cached-" + cmp.Or(policy, "legacy")
+		params := webParams()
+		app := &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace, UID: types.UID(name + "-uid"), Generation: 1},
+			Spec: appv1alpha1.AppSpec{
+				Type: appv1alpha1.TypeWebService, PortMode: appv1alpha1.PortModeWebImageV1, ContainerPolicy: policy,
+				Tier: "pro", CacheProfile: appv1alpha1.CacheProfileStatic, HealthCheckPath: "/healthz",
+			},
+			Status: appv1alpha1.AppStatus{ImageNetwork: &appv1alpha1.ImageNetworkStatus{
+				Image: params.image, Revision: "rev-1", HTTPSelection: appv1alpha1.HTTPSelectionDetected,
+				PrimaryPort: int32(params.port), Ports: []int32{int32(params.port)},
+			}},
+		}
+		cl := fake.NewClientBuilder().WithScheme(k8sClient.Scheme()).WithObjects(app).WithStatusSubresource(&appv1alpha1.App{}).Build()
+		r := &AppReconciler{Client: cl, BuildClient: cl, Scheme: cl.Scheme(), BackupHelperImage: "ghcr.io/bex-co/bex:test"}
+		dep := &appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: app.Name, Namespace: app.Namespace}}
+		Expect(r.applyServingDeployment(ctx, app, dep, params, nil)).To(Succeed())
+		pod := dep.Spec.Template.Spec
+		Expect(pod.Containers).To(HaveLen(2), name)
+		Expect([]string{pod.Containers[0].Name, pod.Containers[1].Name}).To(Equal([]string{appContainerName, edgeCacheContainerName}), name)
+		Expect(pod.InitContainers).To(HaveLen(1), name)
+		Expect(pod.Containers[0].SecurityContext.Capabilities.Add).To(HaveLen(len(appv1alpha1.ContainerPolicyCapabilities(policy))), name)
+		workloads = append(workloads, dep)
+	}
+	return workloads
 }
 
 func admissionPlatformWorkloads(namespace string) []client.Object {

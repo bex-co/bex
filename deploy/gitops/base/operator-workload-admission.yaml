@@ -140,6 +140,14 @@ spec:
     # the exact operator identity above remains the trusted policy issuer.
     # Scheduled Jobs inherit the already-validated CronJob template; manual
     # runs and co-located predeploy Jobs have their own controlling App owner.
+    # The pod is the tenant image alone, with one exception: a caching web
+    # service's Deployment (w5/m151, image ports since w9/087) runs bex's own
+    # edge-cache proxy after it, exactly [app, edge-cache] — the projection
+    # always appends the sidecar last. That sidecar is not the tenant image
+    # and gains nothing from the policy: the container rule below holds every
+    # container other than app/predeploy to the strict shape. The pod must not
+    # share one process namespace, or an app holding SETUID/DAC_OVERRIDE could
+    # reach the sidecar's memory and files through /proc.
     - name: imageCompatibilityWorkload
       expression: >-
         request.resource.resource in ['deployments', 'cronjobs', 'jobs'] &&
@@ -149,7 +157,10 @@ spec:
           o.?controller.orValue(false) && o.uid != '' &&
           o.uid == variables.podMetadata.?labels['app.bex.co/app-uid'].orValue('') &&
           o.name == variables.podMetadata.?labels['app.bex.co/app'].orValue('')) &&
-        variables.pod.containers.size() == 1 &&
+        (variables.pod.containers.size() == 1 ||
+          (request.resource.resource == 'deployments' && variables.pod.containers.size() == 2 &&
+           variables.pod.containers[1].name == 'edge-cache' &&
+           !variables.pod.?shareProcessNamespace.orValue(false))) &&
         (variables.pod.containers[0].name == 'app' ||
           (request.resource.resource == 'jobs' && variables.pod.containers[0].name == 'predeploy' &&
            variables.target.metadata.name.startsWith('predeploy-') &&
@@ -261,6 +272,10 @@ spec:
     # additionally require drop ALL, explicit no-escalation and effective
     # RuntimeDefault seccomp (render-v1 may instead run its own Localhost
     # profile, w6/m150); init containers never inherit either exception.
+    # Only the tenant image's own container (app, or the predeploy Job's
+    # predeploy) takes the policy's capabilities and Localhost profile: the
+    # edge-cache sidecar such a Deployment may carry keeps drop ALL and
+    # explicit no-escalation, adds nothing, and runs effective RuntimeDefault.
     - expression: >-
         request.operation == 'DELETE' ||
         variables.untrustedExecutionNamespace ||
@@ -269,13 +284,15 @@ spec:
            (variables.imageCompatibilityWorkload ?
              (c.?securityContext.?allowPrivilegeEscalation.orValue(true) == false &&
               c.?securityContext.?capabilities.?drop.orValue([]) == ['ALL'] &&
-              c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.containerPolicyCaps[variables.containerPolicy])) :
+              (c.name in ['app', 'predeploy'] ?
+                c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.containerPolicyCaps[variables.containerPolicy]) :
+                c.?securityContext.?capabilities.?add.orValue([]).size() == 0)) :
             variables.diskSnapshotVolumeWorkload ?
              c.?securityContext.?capabilities.?add.orValue([]).all(cap, cap in variables.diskSnapshotCaps) :
              c.?securityContext.?capabilities.?add.orValue([]).size() == 0) &&
            (c.?securityContext.?seccompProfile.?type.orValue(
               variables.pod.?securityContext.?seccompProfile.?type.orValue('')) == 'RuntimeDefault' ||
-            (variables.imageCompatibilityWorkload &&
+            (variables.imageCompatibilityWorkload && c.name in ['app', 'predeploy'] &&
              variables.containerPolicy in variables.containerPolicySeccomp &&
              c.?securityContext.?seccompProfile.?type.orValue('') == 'Localhost' &&
              c.?securityContext.?seccompProfile.?localhostProfile.orValue('') ==

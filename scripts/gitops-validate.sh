@@ -2723,6 +2723,11 @@ for required_operator_workload_guard in \
   "o.uid == variables.podMetadata.?labels['app.bex.co/app-uid'].orValue('')" \
   "o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'App'" \
   "variables.pod.containers.size() == 1" \
+  "(request.resource.resource == 'deployments' && variables.pod.containers.size() == 2 &&" \
+  "variables.pod.containers[1].name == 'edge-cache' &&" \
+  "!variables.pod.?shareProcessNamespace.orValue(false)))" \
+  "(c.name in ['app', 'predeploy'] ?" \
+  "(variables.imageCompatibilityWorkload && c.name in ['app', 'predeploy'] &&" \
   "c.?securityContext.?capabilities.?drop.orValue([]) == ['ALL']" \
   "['CHOWN', 'DAC_OVERRIDE', 'SETUID', 'SETGID']" \
   "['CHOWN', 'DAC_OVERRIDE', 'FOWNER', 'SETGID', 'SETUID', 'SYS_CHROOT']" \
