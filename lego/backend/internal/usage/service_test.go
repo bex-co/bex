@@ -78,6 +78,21 @@ type memUsageStore struct {
 	// CloseUsageSourceStreams call.
 	retired []store.RetiredUsageResource
 	closed  map[store.UsageResourceRef]time.Time
+	// idleClosed captures each CloseIdleUsageSourceStreams call.
+	idleClosed []idleStreamClose
+}
+
+type idleStreamClose struct {
+	kind, source string
+	active       []string
+	through      time.Time
+}
+
+func (m *memUsageStore) CloseIdleUsageSourceStreams(_ context.Context, kind, source string, active []string, through time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.idleClosed = append(m.idleClosed, idleStreamClose{kind, source, active, through})
+	return nil
 }
 
 func (m *memUsageStore) ListRetiredUsageResources(_ context.Context, since time.Time) ([]store.RetiredUsageResource, error) {

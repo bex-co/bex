@@ -60,6 +60,7 @@ type UsageStore interface {
 	ListRetiredUsageResources(ctx context.Context, since time.Time) ([]store.RetiredUsageResource, error)
 	PruneRetiredUsageResources(ctx context.Context, before time.Time) (int64, error)
 	CloseUsageSourceStreams(ctx context.Context, ref store.UsageResourceRef, through time.Time) error
+	CloseIdleUsageSourceStreams(ctx context.Context, kind, source string, active []string, through time.Time) error
 	UpsertUsageHourly(ctx context.Context, row store.HourlyRow) error
 	RecordUsageSourceHealth(ctx context.Context, records []store.UsageSourceRecord) error
 	ReconcileUsageSourceStreams(ctx context.Context, active []store.UsageResourceRef, through time.Time) error
@@ -1679,10 +1680,12 @@ func (s *Service) meterDiskWindow(ctx context.Context, window time.Time) error {
 	if err != nil {
 		return err
 	}
+	var metered []string
 	for _, row := range rows {
 		if row.GBSeconds <= 0 {
 			continue
 		}
+		metered = append(metered, row.AppID)
 		if err := s.Store.UpsertUsageHourly(ctx, store.HourlyRow{
 			WorkspaceID:  row.TenantID,
 			ResourceKind: store.ResourceKindService,
@@ -1704,7 +1707,9 @@ func (s *Service) meterDiskWindow(ctx context.Context, window time.Time) error {
 			return err
 		}
 	}
-	return nil
+	// A service with no disk in this window, its disk deleted while it lives,
+	// expects no more disk rows (w4/575).
+	return s.Store.CloseIdleUsageSourceStreams(ctx, store.UsageKindDiskGBSeconds, store.UsageSourceDisk, metered, window)
 }
 
 // includedUsage sums the period's kind against what the plan includes, in

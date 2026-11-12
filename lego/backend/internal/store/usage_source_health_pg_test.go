@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -133,5 +134,96 @@ func TestUsageSourceChecksAcceptEveryStoredSource(t *testing.T) {
 		if err := st.UpsertUsageHourly(ctx, row); err != nil {
 			t.Errorf("source %q: %v", source, err)
 		}
+	}
+}
+
+// w4/575: a disk deleted from a live service writes no more disk rows; closing
+// its idle stream at the first hour it was gone keeps the month's coverage
+// healthy once that hour is past the catch-up window, and a stream that is
+// still metered stays open.
+func TestCloseIdleUsageSourceStreamsKeepsCoverageHealthy(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	tenant, err := st.CreateTenant(ctx, "usage-idle-disk", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenant.ID) })
+
+	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
+	for _, service := range []string{"srv-gone", "srv-kept"} {
+		if err := st.UpsertUsageHourly(ctx, HourlyRow{
+			WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: service,
+			Kind: UsageKindDiskGBSeconds, WindowStart: month, Quantity: 3600,
+			SourceHealth: []UsageSourceObservation{{Source: UsageSourceDisk, State: UsageSourceHealthy, ExpectedFrom: month}},
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	gone := month.Add(time.Hour)
+	if err := st.CloseIdleUsageSourceStreams(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, []string{"srv-kept"}, gone); err != nil {
+		t.Fatal(err)
+	}
+	var through *time.Time
+	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = 'srv-gone' AND workspace_id = $1`, tenant.ID).Scan(&through); err != nil || through == nil || !through.Equal(gone) {
+		t.Fatalf("the deleted disk's stream ends %v (err %v), want %s", through, err, gone)
+	}
+	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = 'srv-kept' AND workspace_id = $1`, tenant.ID).Scan(&through); err != nil || through != nil {
+		t.Fatalf("the metered disk's stream ends %v (err %v), want it open", through, err)
+	}
+	// Only srv-gone's coverage is in question: drop the open stream, then read
+	// the month three days on.
+	if _, err := pool.Exec(ctx, `DELETE FROM usage_source_streams WHERE service_id = 'srv-kept' AND workspace_id = $1`, tenant.ID); err != nil {
+		t.Fatal(err)
+	}
+	coverage, err := st.CurrentUsageCoverage(ctx, tenant.ID, month.Add(72*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.Contains(coverage.DegradedSources, UsageSourceDisk) {
+		t.Fatalf("coverage %+v names disk degraded after its disk was deleted", coverage)
+	}
+
+	// A close found later (the meter's catch-up) still ends the stream an
+	// hour after its last row, not at the hour being metered.
+	if err := st.UpsertUsageHourly(ctx, HourlyRow{
+		WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: "srv-late",
+		Kind: UsageKindDiskGBSeconds, WindowStart: month, Quantity: 3600,
+		SourceHealth: []UsageSourceObservation{{Source: UsageSourceDisk, State: UsageSourceHealthy, ExpectedFrom: month}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.CloseIdleUsageSourceStreams(ctx, UsageKindDiskGBSeconds, UsageSourceDisk, nil, month.Add(10*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = 'srv-late' AND workspace_id = $1`, tenant.ID).Scan(&through); err != nil || through == nil || !through.Equal(gone) {
+		t.Fatalf("a late close ends the stream %v (err %v), want an hour after its last row, %s", through, err, gone)
+	}
+
+	// The disk is re-added five hours on: the stream expects rows from then,
+	// not across the hours it had none.
+	readded := month.Add(5 * time.Hour)
+	if err := st.UpsertUsageHourly(ctx, HourlyRow{
+		WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: "srv-late",
+		Kind: UsageKindDiskGBSeconds, WindowStart: readded, Quantity: 3600,
+		SourceHealth: []UsageSourceObservation{{Source: UsageSourceDisk, State: UsageSourceHealthy, ExpectedFrom: readded}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	var from time.Time
+	if err := pool.QueryRow(ctx, `SELECT expected_from, expected_through FROM usage_source_streams WHERE service_id = 'srv-late' AND workspace_id = $1`, tenant.ID).Scan(&from, &through); err != nil || !from.Equal(readded) || through != nil {
+		t.Fatalf("re-added disk stream = from %s through %v (err %v), want open from %s", from, through, err, readded)
 	}
 }

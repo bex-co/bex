@@ -226,9 +226,18 @@ func upsertUsageSourceObservation(ctx context.Context, exec usageSourceExecer, r
 		VALUES ($1, $2, $3, $4, $5, $6, NULL)
 		ON CONFLICT (resource_kind, service_id, kind, source) DO UPDATE
 		SET workspace_id = EXCLUDED.workspace_id,
-		    expected_from = LEAST(usage_source_streams.expected_from, EXCLUDED.expected_from),
+		    expected_from = CASE
+		        WHEN usage_source_streams.kind = $7
+		         AND usage_source_streams.expected_through IS NOT NULL
+		         AND usage_source_streams.expected_through < EXCLUDED.expected_from
+		        THEN EXCLUDED.expected_from
+		        ELSE LEAST(usage_source_streams.expected_from, EXCLUDED.expected_from)
+		    END,
 		    expected_through = NULL`,
-		record.WorkspaceID, rk, record.ServiceID, record.Kind, record.Source, expectedFrom); err != nil {
+		record.WorkspaceID, rk, record.ServiceID, record.Kind, record.Source, expectedFrom,
+		// A disk re-added after its stream closed expects rows from its new
+		// first window, not across the hours it had no disk (w4/575).
+		UsageKindDiskGBSeconds); err != nil {
 		return err
 	}
 	_, err := exec.Exec(ctx, `
@@ -306,6 +315,36 @@ func (s *PGStore) CloseUsageSourceStreams(ctx context.Context, ref UsageResource
 	_, err := s.Pool.Exec(ctx,
 		`UPDATE usage_source_streams SET expected_through = $3 WHERE resource_kind = $1 AND service_id = $2`,
 		NormalizeResourceKind(ref.ResourceKind), ref.ServiceID, through.UTC().Truncate(time.Hour))
+	return err
+}
+
+// CloseIdleUsageSourceStreams ends every open service stream of kind and
+// source whose service is not in active, an hour after its last observed
+// window before through (or at through, with none). A meter that writes no
+// row for a resource that no longer exists — a disk deleted from a live
+// service (w4/575) — would otherwise leave its stream expecting rows, which
+// reads as a degraded source once the catch-up window has passed. A later row
+// reopens the stream from that row's window.
+func (s *PGStore) CloseIdleUsageSourceStreams(ctx context.Context, kind, source string, active []string, through time.Time) error {
+	if active == nil {
+		active = []string{}
+	}
+	through = through.UTC().Truncate(time.Hour)
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE usage_source_streams AS stream
+		SET expected_through = GREATEST(stream.expected_from, COALESCE((
+			SELECT MAX(health.window_start) + interval '1 hour'
+			FROM usage_source_health AS health
+			WHERE health.resource_kind = stream.resource_kind
+			  AND health.service_id = stream.service_id
+			  AND health.kind = stream.kind
+			  AND health.source = stream.source
+			  AND health.window_start < $4
+		), $4))
+		WHERE stream.resource_kind = $1 AND stream.kind = $2 AND stream.source = $3
+		  AND stream.expected_through IS NULL AND stream.expected_from <= $4
+		  AND NOT (stream.service_id = ANY($5))`,
+		ResourceKindService, kind, source, through, active)
 	return err
 }
 

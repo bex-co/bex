@@ -18,6 +18,7 @@ package usage
 
 import (
 	"context"
+	"reflect"
 	"testing"
 	"time"
 
@@ -169,5 +170,34 @@ func TestDiskMeterWritesNothingWithoutDisks(t *testing.T) {
 
 	if len(st.rows) != 0 {
 		t.Fatalf("rows = %+v, want none for a workspace with no disks", st.rows)
+	}
+}
+
+// w4/575: a disk deleted from a live service writes no more rows, so each
+// window closes the disk streams of every service it did not meter; the
+// deleted disk's stream then ends at the first hour it was gone, not open
+// forever (a degraded `disk` source once the catch-up window passes).
+func TestDiskMeterClosesTheStreamOfADeletedDisk(t *testing.T) {
+	last, gone := hourWindow(-2), hourWindow(-1)
+	st := &memUsageStore{
+		rows:     map[usageKey]store.HourlyRow{},
+		latestBy: map[string]time.Time{},
+		diskRows: map[time.Time][]store.DiskUsageRow{
+			last: {{TenantID: "tea-1", AppID: "srv-1", GBSeconds: 100}, {TenantID: "tea-1", AppID: "srv-2", GBSeconds: 100}},
+			gone: {{TenantID: "tea-1", AppID: "srv-2", GBSeconds: 100}},
+		},
+	}
+	svc := diskMeterService(st, "")
+	svc.catchUpDisksThrough(context.Background(), last)
+	svc.catchUpDisksThrough(context.Background(), gone)
+
+	want := []idleStreamClose{
+		{store.UsageKindDiskGBSeconds, store.UsageSourceDisk, []string{"srv-1", "srv-2"}, last},
+		{store.UsageKindDiskGBSeconds, store.UsageSourceDisk, []string{"srv-2"}, gone},
+	}
+	// The first pass backfills from the catch-up floor; its empty windows
+	// close every stream, which is a no-op for streams already closed.
+	if got := st.idleClosed[len(st.idleClosed)-2:]; !reflect.DeepEqual(got, want) {
+		t.Fatalf("idle closes = %+v, want %+v", got, want)
 	}
 }
