@@ -57,12 +57,12 @@ func TestBlueprintServiceRegroupChecksTheEnvironmentItLeaves(t *testing.T) {
 		}}}
 	}
 
-	err := svc.applyEnvironmentChange(ctx, existing(), core.EnvironmentAssignment{ID: "env-qa", ProjectID: "prj-1"})
+	_, err := svc.applyEnvironmentChange(ctx, existing(), core.EnvironmentAssignment{ID: "env-qa", ProjectID: "prj-1"})
 	if !errors.Is(err, core.ErrForbidden) || st.appEnv["srv-1"] != "env-prod" {
 		t.Fatalf("regroup out of prod = %v (row now %q), want ErrForbidden and the row in prod", err, st.appEnv["srv-1"])
 	}
 	st.appEnv["srv-1"] = "env-qa"
-	if err := svc.applyEnvironmentChange(ctx, existing(), core.EnvironmentAssignment{ID: "env-prod", ProjectID: "prj-1"}); err != nil {
+	if _, err := svc.applyEnvironmentChange(ctx, existing(), core.EnvironmentAssignment{ID: "env-prod", ProjectID: "prj-1"}); err != nil {
 		t.Fatalf("regroup into prod: %v", err)
 	}
 	if st.appEnv["srv-1"] != "env-prod" || !slices.Equal(exits, []string{"env-prod", "env-qa"}) {
@@ -104,7 +104,7 @@ func TestBlueprintNoStoreRowRegroupChecksTheCRLabel(t *testing.T) {
 	svc := &Service{Base: &core.Base{}, ExitGuards: refuseProd(&exits)}
 	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Labels: map[string]string{core.LabelEnvironment: "env-prod"}}}
 
-	if err := svc.applyEnvironmentChange(context.Background(), app, core.EnvironmentAssignment{ID: "env-qa", ProjectID: "prj-1"}); !errors.Is(err, core.ErrForbidden) {
+	if _, err := svc.applyEnvironmentChange(context.Background(), app, core.EnvironmentAssignment{ID: "env-qa", ProjectID: "prj-1"}); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("regroup out of prod = %v, want ErrForbidden", err)
 	}
 	if !slices.Equal(exits, []string{"env-prod"}) {

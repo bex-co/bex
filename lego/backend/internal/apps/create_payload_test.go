@@ -38,6 +38,10 @@ type blueprintGroupingTestStore struct {
 	projects     []store.Project
 	environments []store.Environment
 	aclWrites    int
+	// placements are the app rows' project and environment ids as
+	// SetAppEnvironment last wrote them; a row it has not written holds the
+	// placement it was created with.
+	placements map[string][2]string
 }
 
 func (s *blueprintGroupingTestStore) ListProjects(_ context.Context, tenantID string) ([]store.Project, error) {
@@ -100,8 +104,26 @@ func (s *blueprintGroupingTestStore) CountWorkspaceGroupings(_ context.Context, 
 	return projects, environments, nil
 }
 
-func (*blueprintGroupingTestStore) SetAppEnvironment(context.Context, string, string, string, core.EnvironmentExitGuard) error {
-	return nil
+// SetAppEnvironment writes a placement the row does not hold and returns the
+// move, as the PG store does (w9/093).
+func (s *blueprintGroupingTestStore) SetAppEnvironment(_ context.Context, appID, projectID, environmentID string, _ core.EnvironmentExitGuard) (*core.ServiceMove, error) {
+	from, ok := s.placements[appID]
+	if !ok {
+		for _, row := range s.appCreates {
+			if row.ID == appID {
+				from = [2]string{row.ProjectID, row.EnvironmentID}
+			}
+		}
+	}
+	to := [2]string{projectID, environmentID}
+	if from == to {
+		return nil, nil
+	}
+	if s.placements == nil {
+		s.placements = map[string][2]string{}
+	}
+	s.placements[appID] = to
+	return placementMove(from[0], from[1], to[0], to[1]), nil
 }
 
 func (s *blueprintGroupingTestStore) ResolveForCreate(_ context.Context, environmentID, workspaceID string) (core.EnvironmentAssignment, error) {

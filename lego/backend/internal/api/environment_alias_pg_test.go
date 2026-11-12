@@ -60,7 +60,7 @@ func TestEnvironmentAliasesPreserveDurableMembershipPG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := st.SetAppEnvironment(ctx, appRow.ID, project.ID, legacy, nil); err != nil {
+	if _, err := st.SetAppEnvironment(ctx, appRow.ID, project.ID, legacy, nil); err != nil {
 		t.Fatal(err)
 	}
 	app, pg, kv := metadataResources(owner.ID)

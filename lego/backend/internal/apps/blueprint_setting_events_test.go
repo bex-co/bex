@@ -84,6 +84,8 @@ func serviceRows(sink *captureAuditSink) []string {
 			row += " " + ptr.Deref(ev.PlanFrom, "") + "->" + ptr.Deref(ev.PlanTo, "")
 		case core.AuditVerbMaintenanceModeEnabled:
 			row += fmt.Sprintf(" enabled=%t", ptr.Deref(ev.MaintenanceModeTo, false))
+		case core.AuditVerbEnvironmentServiceMoved, core.AuditVerbProjectServiceMoved:
+			row += " " + placementRow(ev.ProjectFrom, ev.EnvironmentFrom) + "->" + placementRow(ev.ProjectTo, ev.EnvironmentTo)
 		}
 		if ev.Outcome != core.AuditAllowed {
 			row += " " + string(ev.Outcome)
@@ -95,6 +97,15 @@ func serviceRows(sink *captureAuditSink) []string {
 		out = append(out, row+" by "+by)
 	}
 	return out
+}
+
+// placementRow spells one side of a move as project/environment, "none" for
+// no placement.
+func placementRow(project, environment *string) string {
+	if project == nil && environment == nil {
+		return "none"
+	}
+	return ptr.Deref(project, "") + "/" + ptr.Deref(environment, "")
 }
 
 // requireServiceTargets fails unless every row sink recorded but the apply's
@@ -306,7 +317,13 @@ var blueprintFieldsCoveredElsewhere = map[string]string{
 	"disk":               "TestManagedBlueprintDiskChangesRecordDiskEvents",
 	"buildSource":        "TestManagedBlueprintBuildSourceLinkRecordsOnlyTheSourceChange",
 	"registryCredential": "TestStackSettingChangesCountARegistryCredentialAsASourceChange",
+	blueprintGrouping:    "TestManagedBlueprintRegroupRecordsServiceMoved",
 }
+
+// blueprintGrouping stands for where a Blueprint declares a service: the
+// project and environment it is nested under (projects:, or the legacy
+// ungrouped: list), which no policy-table field names (w9/093).
+const blueprintGrouping = "projects/environments grouping"
 
 // Every Blueprint service field either records its setter's event, through a
 // case above or a test named here, or sits on the excused list with why; an
@@ -323,9 +340,9 @@ func TestEveryBlueprintFieldRecordsOrIsExcused(t *testing.T) {
 	for field := range blueprintFieldsCoveredElsewhere {
 		recorded[field] = true
 	}
-	// Every field the policy table names, and buildSource, which the apply
-	// reads beside it (a link, not a preserved value).
-	fields := []string{"buildSource"}
+	// Every field the policy table names, buildSource, which the apply reads
+	// beside it (a link, not a preserved value), and the service's grouping.
+	fields := []string{"buildSource", blueprintGrouping}
 	for _, policy := range BlueprintServiceFieldPolicies {
 		fields = append(fields, policy.Name)
 	}

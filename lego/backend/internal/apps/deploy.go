@@ -221,9 +221,11 @@ type BlueprintGroupingTxRunner interface {
 // record a service's project/environment assignment on its store row; a Store
 // without it makes an environment-changing apply ErrWorkspacesUnavailable.
 type EnvironmentAssigner interface {
-	// SetAppEnvironment assigns the row; authorizeExit vets the environment
-	// it leaves under the row lock (w4/m232).
-	SetAppEnvironment(ctx context.Context, appID, projectID, environmentID string, exit core.EnvironmentExitGuard) error
+	// SetAppEnvironment assigns the row; exit vets the environment it leaves
+	// under the row lock (w4/m232). It writes only a placement the row does
+	// not already hold, and returns the move it made, nil when it made none
+	// (w9/093).
+	SetAppEnvironment(ctx context.Context, appID, projectID, environmentID string, exit core.EnvironmentExitGuard) (*core.ServiceMove, error)
 }
 
 // StackResult is the set of resources one stack deploy created (or converged):
@@ -3880,8 +3882,12 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	if changes.initialHookChanged {
 		metav1.SetMetaDataAnnotation(&existing.ObjectMeta, initialDeployHookAnnotation, req.InitialDeployHook)
 	}
+	// A managed App's move is recorded as its row takes it; one with no row
+	// moves when the patch below lands.
+	var labelMove *core.ServiceMove
 	if changes.environmentChanged {
-		if err := s.applyEnvironmentChange(ctx, existing, changes.assignment); err != nil {
+		var err error
+		if labelMove, err = s.applyEnvironmentChange(ctx, existing, changes.assignment); err != nil {
 			return AppView{}, err
 		}
 	}
@@ -3923,6 +3929,9 @@ func (s *Service) patchChangedStackService(ctx context.Context, req CreateReques
 	recordHostClaims(ctx, existing)
 	if s.Kick != nil {
 		s.Kick()
+	}
+	if labelMove != nil {
+		s.RecordServiceMoved(ctx, core.AuditVerbEnvironmentServiceMoved, existing, *labelMove)
 	}
 	if settingsBefore != nil {
 		s.recordStackSettingChanges(ctx, existing, settingsBefore, &final.Spec)
@@ -4105,11 +4114,20 @@ func initialDeployHookState(req CreateRequest, existing *appv1alpha1.App, desire
 
 // applyEnvironmentChange applies the environment half of a Blueprint re-apply
 // onto the App's labels/spec and records the assignment on its store row.
-func (s *Service) applyEnvironmentChange(ctx context.Context, existing *appv1alpha1.App, assignment core.EnvironmentAssignment) error {
-	left := leftEnvironment(existing.Labels[core.LabelEnvironment], assignment.ID)
+//
+// A move to another project or environment is recorded as the REST move
+// records it (w9/093): service_moved, by the apply's own actor. A managed
+// App's is recorded once its row takes it, the placement a resync keeps even
+// if the patch then fails, so a retry that finds the row moved records
+// nothing. An App with no row is placed by its labels alone, so the move is
+// returned, for the caller to record once the patch lands. A change of network
+// isolation alone moves nothing.
+func (s *Service) applyEnvironmentChange(ctx context.Context, existing *appv1alpha1.App, assignment core.EnvironmentAssignment) (*core.ServiceMove, error) {
+	fromProject, fromEnvironment := existing.Labels[core.LabelProject], existing.Labels[core.LabelEnvironment]
+	left := leftEnvironment(fromEnvironment, assignment.ID)
 	exit, err := s.ExitGuards.Load(ctx, s.resolveTenantID(ctx))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if assignment.ID == "" {
 		delete(existing.Labels, core.LabelProject)
@@ -4127,17 +4145,43 @@ func (s *Service) applyEnvironmentChange(ctx context.Context, existing *appv1alp
 	if appID := managedAppID(existing); appID != "" {
 		environmentStore, ok := s.Store.(EnvironmentAssigner)
 		if !ok {
-			return core.ErrWorkspacesUnavailable
+			return nil, core.ErrWorkspacesUnavailable
 		}
 		// The store vets the environment the row leaves (w4/m232).
-		if err := environmentStore.SetAppEnvironment(ctx, appID, assignment.ProjectID, assignment.ID, exit); err != nil {
-			return fmt.Errorf("assigning Blueprint environment: %w", err)
+		move, err := environmentStore.SetAppEnvironment(ctx, appID, assignment.ProjectID, assignment.ID, exit)
+		if err != nil {
+			return nil, fmt.Errorf("assigning Blueprint environment: %w", err)
 		}
-		return nil
+		if move != nil {
+			s.RecordServiceMoved(ctx, core.AuditVerbEnvironmentServiceMoved, existing, *move)
+		}
+		return nil, nil
 	}
 	// No store row: the CR label (read before the regroup above) is the only
 	// placement there is.
-	return exit(left...)
+	if err := exit(left...); err != nil {
+		return nil, err
+	}
+	return placementMove(fromProject, fromEnvironment, existing.Labels[core.LabelProject], existing.Labels[core.LabelEnvironment]), nil
+}
+
+// placementMove is the move from one label placement to another, nil
+// when the project and environment are the same. An empty label is no
+// placement on that side.
+func placementMove(fromProject, fromEnvironment, toProject, toEnvironment string) *core.ServiceMove {
+	if fromProject == toProject && fromEnvironment == toEnvironment {
+		return nil
+	}
+	placement := func(label string) *string {
+		if label == "" {
+			return nil
+		}
+		return &label
+	}
+	return &core.ServiceMove{
+		ProjectFrom: placement(fromProject), ProjectTo: placement(toProject),
+		EnvironmentFrom: placement(fromEnvironment), EnvironmentTo: placement(toEnvironment),
+	}
 }
 
 // regroupPatchBase is the patch base for a Blueprint re-apply of an existing

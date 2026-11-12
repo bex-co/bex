@@ -149,8 +149,8 @@ func TestPGPlacementGuardRefusalRollsBackTheWrite(t *testing.T) {
 	inProd("SetProjectServices")
 
 	left = nil
-	if err := s.SetAppEnvironment(ctx, app.ID, proj.ID, staging.ID, refuse); !errors.Is(err, refused) || !slices.Equal(left, []string{prod.ID}) {
-		t.Fatalf("SetAppEnvironment = %v (exits %v), want the refusal of prod", err, left)
+	if move, err := s.SetAppEnvironment(ctx, app.ID, proj.ID, staging.ID, refuse); !errors.Is(err, refused) || move != nil || !slices.Equal(left, []string{prod.ID}) {
+		t.Fatalf("SetAppEnvironment = %+v, %v (exits %v), want the refusal of prod and no move", move, err, left)
 	}
 	inProd("SetAppEnvironment")
 
@@ -160,6 +160,79 @@ func TestPGPlacementGuardRefusalRollsBackTheWrite(t *testing.T) {
 	}
 	if env := place(); env == nil || *env != staging.ID {
 		t.Fatalf("admitted move left environment %v, want staging", env)
+	}
+}
+
+// TestPGSetAppEnvironmentReportsTheMoveItMade (w9/093): the Blueprint
+// regroup's row write moves a row only when its placement differs, and returns
+// the move with both sides, nil for a repeat, which leaves updated_at alone. A
+// Blueprint apply retried after a failed patch then records its move once.
+func TestPGSetAppEnvironmentReportsTheMoveItMade(t *testing.T) {
+	f := newGuardFixture(t)
+	ctx := context.Background()
+	other, err := f.s.CreateProject(ctx, f.ten.ID, "other-"+f.stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	otherProd, err := f.s.CreateEnvironment(ctx, other.ID, f.ten.ID, "production")
+	if err != nil {
+		t.Fatal(err)
+	}
+	app := f.app(t, "web")
+	updatedAt := func() time.Time {
+		t.Helper()
+		var at time.Time
+		if err := f.pool.QueryRow(ctx, `SELECT updated_at FROM apps WHERE id = $1`, app.ID).Scan(&at); err != nil {
+			t.Fatal(err)
+		}
+		return at
+	}
+	side := func(p *string) string {
+		if p == nil {
+			return "none"
+		}
+		return *p
+	}
+	var exits []string
+	exit := func(ids ...string) error {
+		exits = append(exits, ids...)
+		return nil
+	}
+	in := func(project, environment string) string { return project + "/" + environment }
+	for _, step := range []struct {
+		name, project, environment string
+		want                       string // "" = no move
+		exits                      []string
+	}{
+		{"assign", f.proj.ID, f.staging.ID, "none/none->" + in(f.proj.ID, f.staging.ID), nil},
+		{"keep", f.proj.ID, f.staging.ID, "", nil},
+		{"another environment", f.proj.ID, f.prod.ID, in(f.proj.ID, f.staging.ID) + "->" + in(f.proj.ID, f.prod.ID), []string{f.staging.ID}},
+		{"another project", other.ID, otherProd.ID, in(f.proj.ID, f.prod.ID) + "->" + in(other.ID, otherProd.ID), []string{f.prod.ID}},
+		{"ungrouped", "", "", in(other.ID, otherProd.ID) + "->none/none", []string{otherProd.ID}},
+		{"kept ungrouped", "", "", "", nil},
+	} {
+		exits = nil
+		before := updatedAt()
+		move, err := f.s.SetAppEnvironment(ctx, app.ID, step.project, step.environment, exit)
+		if err != nil {
+			t.Fatalf("%s: %v", step.name, err)
+		}
+		got := ""
+		if move != nil {
+			got = in(side(move.ProjectFrom), side(move.EnvironmentFrom)) + "->" + in(side(move.ProjectTo), side(move.EnvironmentTo))
+		}
+		if got != step.want || !slices.Equal(exits, step.exits) {
+			t.Fatalf("%s: move %q exits %v, want %q exits %v", step.name, got, exits, step.want, step.exits)
+		}
+		if project, environment := f.placement(t, app.ID); project != step.project || environment != step.environment {
+			t.Fatalf("%s: row placed in %q/%q, want %q/%q", step.name, project, environment, step.project, step.environment)
+		}
+		if moved := !updatedAt().Equal(before); moved != (move != nil) {
+			t.Fatalf("%s: updated_at moved %t, want %t", step.name, moved, move != nil)
+		}
+	}
+	if move, err := f.s.SetAppEnvironment(ctx, "srv-missing-"+f.stamp, f.proj.ID, f.prod.ID, nil); !errors.Is(err, ErrNotFound) || move != nil {
+		t.Fatalf("a missing row = %+v, %v; want not found", move, err)
 	}
 }
 

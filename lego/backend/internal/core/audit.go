@@ -912,6 +912,8 @@ func (b *Base) RecordServiceMoves(ctx context.Context, verb string, changes []Se
 // per service whose placement actually changed, after the authoritative store
 // write succeeds — paired with the funnels' diff so no-op and failed writes
 // record none, exactly like RecordPlanChanged's deferred-success discipline.
+// A Blueprint regroup of an existing service records it the same way, with
+// the move its row write reports (w9/093).
 func (b *Base) RecordServiceMoved(ctx context.Context, verb string, app *appv1alpha1.App, move ServiceMove) {
 	resource, err := b.resourceWorkspace(ctx, app.Labels)
 	if err != nil {

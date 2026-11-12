@@ -2325,29 +2325,42 @@ func (s *PGStore) BackfillAppType(ctx context.Context, id, serviceType string) (
 // owning Project. Empty ids clear both memberships (Blueprint ungrouped:).
 // exit, when set, vets the environment the row leaves, read under the row
 // lock so a concurrent move cannot hand it an unchecked source; a refusal
-// writes nothing (w4/m232).
-func (s *PGStore) SetAppEnvironment(ctx context.Context, id, projectID, environmentID string, exit core.EnvironmentExitGuard) error {
-	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		var current *string
-		err := tx.QueryRow(ctx, `SELECT environment_id FROM apps WHERE id = $1 FOR UPDATE`, id).Scan(&current)
+// writes nothing (w4/m232). It writes only when the row's placement differs,
+// and returns the move it made, nil when the row already held the placement
+// (w9/093): a Blueprint apply retried after a failed patch records its move
+// once.
+func (s *PGStore) SetAppEnvironment(ctx context.Context, id, projectID, environmentID string, exit core.EnvironmentExitGuard) (*core.ServiceMove, error) {
+	var move *core.ServiceMove
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		next := core.ServiceMove{ProjectTo: nullIfEmpty(projectID), EnvironmentTo: nullIfEmpty(environmentID)}
+		err := tx.QueryRow(ctx, `SELECT project_id, environment_id FROM apps WHERE id = $1 FOR UPDATE`, id).
+			Scan(&next.ProjectFrom, &next.EnvironmentFrom)
 		if errors.Is(err, pgx.ErrNoRows) {
 			return fmt.Errorf("app: %w", ErrNotFound)
 		}
 		if err != nil {
 			return classify("app", err)
 		}
-		if current != nil && *current != environmentID && exit != nil {
+		if equalStringPtrs(next.ProjectFrom, next.ProjectTo) && equalStringPtrs(next.EnvironmentFrom, next.EnvironmentTo) {
+			return nil
+		}
+		if current := next.EnvironmentFrom; current != nil && *current != environmentID && exit != nil {
 			if err := exit(*current); err != nil {
 				return err
 			}
 		}
 		if _, err := tx.Exec(ctx,
-			`UPDATE apps SET project_id = NULLIF($2, ''), environment_id = NULLIF($3, ''), updated_at = now() WHERE id = $1`,
-			id, projectID, environmentID); err != nil {
+			`UPDATE apps SET project_id = $2, environment_id = $3, updated_at = now() WHERE id = $1`,
+			id, next.ProjectTo, next.EnvironmentTo); err != nil {
 			return classify("app", err)
 		}
+		move = &next
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+	return move, nil
 }
 
 // SetAppImage updates the row's image (the deploys feature's Rollback verb,

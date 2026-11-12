@@ -89,7 +89,9 @@ limitations under the License.
 // the verb that setting's own setter records, so it reads as that setter's type:
 // the plan since w9/091, and since w9/092 the instance count, autoscaling, disk,
 // source, custom domains, auto-deploy and the build and routing settings
-// (apps.SetRootDir … apps.SetHeaders, apps.SetIPAllowList).
+// (apps.SetRootDir … apps.SetHeaders, apps.SetIPAllowList). Since w9/093 one
+// that moves the service into another project or environment records
+// environments.MoveService, read as service_moved.
 //
 // # Redaction (structural, not filtered)
 //

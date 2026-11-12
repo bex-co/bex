@@ -1256,15 +1256,19 @@ type movingEnvironmentStore struct {
 	appEnv map[string]string
 }
 
-func (s *movingEnvironmentStore) SetAppEnvironment(_ context.Context, appID, _ string, environmentID string, exit core.EnvironmentExitGuard) error {
+func (s *movingEnvironmentStore) SetAppEnvironment(_ context.Context, appID, _ string, environmentID string, exit core.EnvironmentExitGuard) (*core.ServiceMove, error) {
 	// Like the PG store: the environment the row leaves is vetted first.
-	if current := s.appEnv[appID]; current != "" && current != environmentID && exit != nil {
+	current := s.appEnv[appID]
+	if current == environmentID {
+		return nil, nil
+	}
+	if current != "" && exit != nil {
 		if err := exit(current); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	s.appEnv[appID] = environmentID
-	return nil
+	return placementMove("", current, "", environmentID), nil
 }
 
 func (s *movingEnvironmentStore) GetAppProtectedStatus(_ context.Context, id string) (string, error) {

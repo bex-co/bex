@@ -37,8 +37,10 @@ import (
 // for an automatic sync. A managed App's row-owned settings (source, plan,
 // instance count, disk, domains) are recorded when their rows change, in
 // persistBlueprintIntent and replaceBlueprintDomains; everything else, and a
-// store-less App's every setting, once the App's patch lands. A service the
-// Blueprint creates records none of these. Maintenance mode records through
+// store-less App's every setting, once the App's patch lands. A move to
+// another project or environment records service_moved the same way, from
+// applyEnvironmentChange (w9/093). A service the Blueprint creates records
+// none of these. Maintenance mode records through
 // ConfigureMaintenanceMode, and env-group links and env seeds through their
 // own verbs, so none of them is recorded here.
 

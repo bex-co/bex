@@ -69,9 +69,9 @@ func (s *environmentAssignStore) ResolveForCreate(_ context.Context, environment
 	return s.assignment, nil
 }
 
-func (s *environmentAssignStore) SetAppEnvironment(_ context.Context, appID, projectID, environmentID string, _ core.EnvironmentExitGuard) error {
+func (s *environmentAssignStore) SetAppEnvironment(_ context.Context, appID, projectID, environmentID string, _ core.EnvironmentExitGuard) (*core.ServiceMove, error) {
 	s.assignCalls = append(s.assignCalls, struct{ appID, projectID, environmentID string }{appID, projectID, environmentID})
-	return nil
+	return nil, nil
 }
 
 // TestApplyCreateMovesExistingServiceBetweenEnvironments covers the
