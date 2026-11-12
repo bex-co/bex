@@ -152,3 +152,19 @@ Pin `e7a56b07e0d7` carries the fix. The fixture was the round's Free Key Value `
   - zh;
   - skeleton geometry;
   - the private and explicit-rules controls.
+
+## Post-release probe (QA loop round 173, 2026-11-12): the Postgres half and the round trip
+
+Same pin. The fixture was Free Postgres `qa-20261112-r173-pg` (`dpg-dbqlfterbf4s73estvog`), created in the dashboard, where Public access defaults to on, with no rules. It was `available` at 06:10:18 and deleted afterwards (DELETE 204, then GET 404).
+
+- **Readback passes:**
+  - `GET /v1/postgres/<id>` → `ipAllowList: [{"cidrBlock":"0.0.0.0/0"},{"cidrBlock":"::/0"}]`;
+  - `GET …/ip-allow-list` → `{"cidrs":["0.0.0.0/0","::/0"]}`;
+  - GraphQL `database(id) { ipAllowList }` → `["0.0.0.0/0","::/0"]`.
+- **Dashboard:** Access control → IP allowlist lists both rules in en ("CIDR block for rule 1: 0.0.0.0/0") and zh ("规则 1 的 CIDR 网段: 0.0.0.0/0").
+- **Access unchanged:** `psql -w "host=dpg-dbqlfterbf4s73estvog.db.bex.co … sslmode=require"` → `fe_sendauth: no password supplied`.
+- **Round trip passes:**
+  - `PUT …/ip-allow-list {"cidrs":["0.0.0.0/0","::/0"]}` → 200. 20 s later the same psql still reached the server (`fe_sendauth`).
+  - `PUT …/ip-allow-list {"cidrs":[]}` → 200, after which `GET` read `[]` and `public: false`. 25 s later psql got `SSL error: unexpected eof while reading`: new external connections are refused.
+- **Also seen:** Recovery reads "Backups aren't enabled for this plan, so recovery isn't available…" (zh "当前套餐未启用备份，无法恢复。…"), `GET …/recovery` → `{"recoveryStatus":"NOT_AVAILABLE"}`, and `GET …/export` → `[]`.
+- **Not run:** the private and explicit-rules controls, and skeleton geometry.
