@@ -228,7 +228,7 @@ func TestNativeStaticBuildInstallsDependenciesFirst(t *testing.T) {
 		t.Fatalf("static Dockerfile lacks the install step before the authored command:\n%s", df)
 	}
 	o.StaticPublishPath = "_site"
-	if df := nativeDockerfile(o); !strings.Contains(df, run) {
+	if df := nativeDockerfile(o); !strings.Contains(df, shellJSON(nativeEnvLoaderPrefix+nativeStaticInstallStep+nativePublishCheckStep(o)+o.BuildCommand)) {
 		t.Fatalf("a site publishing _site lacks the install step:\n%s", df)
 	}
 	rootPublish := func(p string) Options { r := o; r.StaticPublishPath = p; return r }

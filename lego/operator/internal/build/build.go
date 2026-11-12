@@ -209,6 +209,9 @@ bex_display() {
         if (n == step && $2 ~ /^[0-9]+\.[0-9]+$/) {
           line = $0
           sub(/^#[0-9]+ [0-9]+\.[0-9]+ ?/, "", line)
+          if (index(line, "==> ` + nativePublishMissing + `") == 1) {
+            nopublish = 1
+          }
           print line
           fflush()
         }
@@ -216,10 +219,16 @@ bex_display() {
       }
       line = $0
       sub(/^#[0-9]+ ERROR: /, "", line)
-      if (n != step) {
+      code = ""
+      if (match(line, /exit code: [0-9]+/)) {
+        code = substr(line, RSTART + 11, RLENGTH - 11)
+      }
+      if (n == step && nopublish && code == "` + nativePublishCheckExit + `") {
+        # The publish check already said why (w8/291).
+      } else if (n != step) {
         print "==> Preparing the build failed: " line
-      } else if (match(line, /exit code: [0-9]+/)) {
-        printf "error: build command %c%s%c exited with code %s\n", 39, ENVIRON["BEX_BUILD_COMMAND"], 39, substr(line, RSTART + 11, RLENGTH - 11)
+      } else if (code != "") {
+        printf "error: build command %c%s%c exited with code %s\n", 39, ENVIRON["BEX_BUILD_COMMAND"], 39, code
       } else {
         print "error: " line
       }
@@ -843,6 +852,7 @@ var buildStepNames = map[string]string{
 const (
 	nativeBuildCommandStep     = "build command"
 	nativeBuildEnvironmentStep = "build environment"
+	nativePublishStep          = "publish directory"
 )
 
 // failureDetail reads the failing phase and its captured output tail off the
@@ -874,17 +884,14 @@ func failureDetail(ctx context.Context, o Options, jobName string) (step, tail s
 			if s, ok := buildStepNames[cs.Name]; ok {
 				step = s
 			}
-			msg, named := nativeCommandFailure(t.Message)
+			msg, failed := nativeCommandFailure(t.Message)
 			tail = failureTail(buildkitFailureSummary(msg))
 			platformFetch = nil
 			if o.Builder == BuilderNative && cs.Name == "buildkit" {
 				// A native build has no Dockerfile of the tenant's: its
 				// BuildKit step runs their build command, or prepares bex's
 				// toolchain around it (w4/m324).
-				step = nativeBuildEnvironmentStep
-				if named {
-					step = nativeBuildCommandStep
-				}
+				step = cmp.Or(failed, nativeBuildEnvironmentStep)
 				platformFetch = platformFetchFailure(t.Message)
 			}
 		}
@@ -905,8 +912,15 @@ var buildkitProcessFailure = regexp.MustCompile(`(?:failed to solve: )?process (
 // the header with a colon (` > [stage-0 5/5] RUN …:`) and its progress log
 // does not; group 2 keeps it.
 var buildkitNativeRunStep = regexp.MustCompile(`(?m)` + regexp.QuoteMeta(nativeEnvRunMount) + `(?: --mount=\S+)* \["/bin/bash","-c","` +
-	regexp.QuoteMeta(strings.ReplaceAll(nativeEnvLoaderPrefix, "\n", `\n`)) +
-	`(?:` + regexp.QuoteMeta(strings.ReplaceAll(nativeStaticInstallStep, "\n", `\n`)) + `)?(.*)"\](:)?$`)
+	printedQuote(nativeEnvLoaderPrefix) +
+	`(?:` + printedQuote(nativeStaticInstallStep) + `)?` +
+	`(?:` + regexp.QuoteMeta(nativePublishCheckVar+"=") + `.*?` + printedQuote("\n"+nativePublishCheck) + `)?(.*)"\](:)?$`)
+
+// printedQuote matches s as BuildKit prints it in a step header, where a
+// newline is the two characters \n.
+func printedQuote(s string) string {
+	return regexp.QuoteMeta(strings.ReplaceAll(s, "\n", `\n`))
+}
 
 // nativeCommandFailure rewrites BuildKit's verdict on a native build's RUN
 // into the tenant's own terms — "build command '<cmd>' exited with code N",
@@ -914,8 +928,10 @@ var buildkitNativeRunStep = regexp.MustCompile(`(?m)` + regexp.QuoteMeta(nativeE
 // names their command, not bex's env loader or secret mounts (w8/052). The
 // verdict quotes the process with Go %q, so it names the command exactly; the
 // header names it as BuildKit printed it. Any other process (a Dockerfile
-// build's own RUN) is untouched. named reports a verdict on the build command.
-func nativeCommandFailure(msg string) (rewritten string, named bool) {
+// build's own RUN) is untouched. step names the failing step: the build
+// command, or the publish directory a static site's command did not leave
+// (w8/291), whose message is then Render's sentence alone; "" for another.
+func nativeCommandFailure(msg string) (rewritten, step string) {
 	msg = buildkitNativeRunStep.ReplaceAllString(msg, nativeCommandStep+"$1'$2")
 	rewritten = buildkitProcessFailure.ReplaceAllStringFunc(msg, func(match string) string {
 		parts := buildkitProcessFailure.FindStringSubmatch(match)
@@ -932,11 +948,30 @@ func nativeCommandFailure(msg string) (rewritten string, named bool) {
 			return match
 		}
 		command = strings.TrimPrefix(command, nativeStaticInstallStep)
-		named = true
+		checked := false
+		if strings.HasPrefix(command, nativePublishCheckVar+"=") {
+			if _, rest, ok := strings.Cut(command, nativePublishCheck); ok {
+				command, checked = rest, true
+			}
+		}
+		if checked && parts[2] == nativePublishCheckExit && nativePublishMissingLine.MatchString(msg) {
+			step = nativePublishStep
+			return match
+		}
+		step = nativeBuildCommandStep
 		return fmt.Sprintf("build command '%s' exited with code %s", command, parts[2])
 	})
-	return rewritten, named
+	if step == nativePublishStep {
+		if missing := nativePublishMissingLine.FindStringSubmatch(msg); missing != nil {
+			return missing[1], step
+		}
+	}
+	return rewritten, step
 }
+
+// nativePublishMissingLine finds the publish check's line in a transcript;
+// group 1 is Render's sentence without the narration arrow.
+var nativePublishMissingLine = regexp.MustCompile(`(?m)==> (` + regexp.QuoteMeta(nativePublishMissing) + `.*` + regexp.QuoteMeta(nativePublishMissingEnd) + `)$`)
 
 // nativeCommandStep is how nativeCommandFailure renames the build command's
 // RUN step, ahead of the command it quotes.

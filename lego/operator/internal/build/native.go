@@ -332,17 +332,17 @@ while IFS= read -r record; do
   export "$key=${value%.}"
 done < ` + nativeEnvSecretPath + "\n"
 	installLines, installStep := nativeStaticInstall(o)
-	run := shellJSON(nativeEnvLoaderPrefix + installStep + o.BuildCommand)
+	run := shellJSON(nativeEnvLoaderPrefix + installStep + nativePublishCheckStep(o) + o.BuildCommand)
 	hugo := nativeStaticTools(o)
 	base := fmt.Sprintf(`# syntax=docker/dockerfile:1.7
 FROM %s
-%sWORKDIR /opt/render/project/src
+%sWORKDIR %s
 COPY . .
 COPY <<'%s' %s
 %s%s
 %sARG RENDER_GIT_COMMIT
 %s%s %s
-`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
+`, nativeToolchains[nativeRuntime(o)].defaultImage(), nativeNodeTools(o)+nativeMediaTools+hugo+nativeBuildDefaults(o), nativeWorkdir, nativeEnvLoaderEOF, nativeEnvLoaderPath, loader, nativeEnvLoaderEOF,
 		installLines, nativeEnvRunMount, fileMounts.String(), run)
 	if o.StaticSite {
 		// No PORT/CMD: the image only carries the built site for the publish
@@ -383,7 +383,12 @@ func nativeSecretFileLinks(o Options) string {
 
 // nativePythonVenv is where Render keeps a Python service's virtualenv
 // (VENV_ROOT, render.com/docs/environment-variables).
-const nativePythonVenv = "/opt/render/project/src/.venv"
+const nativePythonVenv = nativeWorkdir + "/.venv"
+
+// nativeWorkdir is a native image's working directory, Render's: it holds the
+// service's root directory, and the publish check looks from it as the
+// publish Job's extract does.
+const nativeWorkdir = "/opt/render/project/src"
 
 // nativeBuildDefaults is the environment Render gives a native runtime at
 // build and runtime alike, as image ENV before the build RUN: the env loader

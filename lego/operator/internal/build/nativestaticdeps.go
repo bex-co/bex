@@ -136,6 +136,38 @@ func nativeStaticInstall(o Options) (copyLines, runPrefix string) {
 		nativeStaticInstallStep
 }
 
+// A native static site's build step ends by checking the publish directory,
+// as Render's build does: a command that succeeded but left no such directory
+// fails the build with Render's sentence before anything is uploaded, so the
+// log never reports success first (w8/291). The path is checked from the
+// image's working directory, where the publish Job's extract looks for it. A
+// command that replaces the EXIT trap, or execs, skips the check, and extract
+// still fails the publish.
+const (
+	// nativePublishCheckExit is the build step's exit for that failure.
+	nativePublishCheckExit = "86"
+	// nativePublishCheckVar carries the path into the check.
+	nativePublishCheckVar = "bex_publish_dir"
+	// nativePublishMissing and nativePublishMissingEnd frame the sentence
+	// the check prints after the narration arrow.
+	nativePublishMissing    = "Publish directory "
+	nativePublishMissingEnd = " does not exist!"
+	// nativePublishCheck runs as the step's shell exits; the authored command
+	// follows it, so its own exit status is what the check sees.
+	nativePublishCheck = `bex_publish_check() { bex_status=$?; [ "$bex_status" -eq 0 ] || exit "$bex_status"; (cd ` + nativeWorkdir + ` && [ -d "$` + nativePublishCheckVar + `" ]) && exit 0; printf '==> ` + nativePublishMissing + `%s` + nativePublishMissingEnd + `\n' "$` + nativePublishCheckVar + `"; exit ` + nativePublishCheckExit + `; }
+trap bex_publish_check EXIT
+`
+)
+
+// nativePublishCheckStep is the check's prefix for o's build step: a static
+// site whose publish path is set and is not its root; "" otherwise.
+func nativePublishCheckStep(o Options) string {
+	if !o.StaticSite || strings.TrimSpace(o.StaticPublishPath) == "" || publishesRoot(o.StaticPublishPath) {
+		return ""
+	}
+	return nativePublishCheckVar + "=" + shellSingleQuote(o.StaticPublishPath) + "\n" + nativePublishCheck
+}
+
 // publishesRoot reports whether a static site's publish path is its service
 // root directory itself; an unset path says nothing.
 func publishesRoot(publishPath string) bool {
