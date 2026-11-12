@@ -13,7 +13,8 @@
 | t005 | Simplify — **DONE**                                                                                           | 15m | t004       |
 | t006 | Test coverage — **DONE**                                                                                      | 30m | t004       |
 | [t008](done/t008.md) | A live build tail prints none of the build's own output, only bex's narration and the upload lines, because it attaches to the build pod only once its init containers are over — **DONE** | 60m | t006 |
-| t007 | Closeout (live replay on production)                                                               | 30m | t008       |
+| [t009](t009.md) | A live build tail narrates in history's order: `==> Building from` before the build command, and the closing verdict before the stream ends | 45m | t008 |
+| t007 | Closeout (live replay on production) | 30m | t008, t009 |
 
 ## Definition of done
 
@@ -106,3 +107,15 @@ The same window read with `--type build` holds that deploy's eight build lines (
 - Render's answer to a type-less `GET /v1/logs` or subscription (no page states the default). The recommendation in t003 rests on the deploy page's **All logs** default and on the CLI's deploy stream, whose request has no type.
 - Whether Render's CLI deploy stream shows build lines (no Render account in this sweep).
 - The three "Unable to connect to logs" reconnects of the type-less tail: they may be the server's idle timeout on a tail with no lines; recheck once build lines flow (t002).
+
+## Post-release probe — QA loop round 195 (2026-11-12, pin `9a5b95e96210`, which carries t008's `d22cac15a`)
+
+The tail was read over SSE (`GET /v1/logs/subscribe?…&type=build`, `Accept: text/event-stream`), which runs the same `followBuild` as the CLI's WebSocket.
+
+- **t008's first acceptance line holds on this transport.** A tail opened right after `POST …/deploys` printed `==> Using Node 24 (default)`, `==> Running build command 'npm install && echo QA195-BUILD-MARK'...`, npm's output and `QA195-BUILD-MARK` before `==> Uploading build...`, the same lines the history holds.
+- **Its third line half holds.** A build command ending `&& exit 3` showed `QA195-FAIL-MARK` and `error: build command … exited with code 3` live. But the stream ended at 13:02:42.6, before the row closed at 13:02:58.9, so the tail never showed `==> Build failed`.
+- **New, filed as t009:** `==> Building from …` arrives after `==> Build successful` (or after the error line), though history stamps it before the build command. The narration follower is read only before the pod and after its streams end.
+- **Not filed, by design:**
+  - With no build running, the SSE form sends the stored narration, then `event: error` `"no running build is available to follow"`, then closes (`ErrBuildNotRunning`). A browser `EventSource` that ignores that event reconnects every ~3 s, and the resume (`Last-Event-ID` → `Since`, inclusive, w6/m93) re-sends the last line each time. The dashboard dedupes by line key (`dashboard/src/features/deploys/hooks/use-deploy-logs.ts:225-227`).
+  - A browser WebSocket from `dashboard.bex.co` is refused `403` at the handshake (an origin check). The CLI authenticates with a key.
+
