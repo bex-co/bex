@@ -256,6 +256,21 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section success line, with the plan's total resource count",
   },
+  "blueprints.previewValidEnvironments_other": {
+    message: "蓝图文件解析成功 — 将变更 {count} 个环境。",
+    description:
+      "Review section success line when only environments change (w9/095, plural)",
+  },
+  "blueprints.previewValidWithEnvironments_other": {
+    message: "蓝图文件解析成功 — 将变更 {count} 个资源和{environments}。",
+    description:
+      "Review section success line: changing resources (plural) and blueprints.previewEnvironmentCount (w9/095)",
+  },
+  "blueprints.previewEnvironmentCount_other": {
+    message: "{count} 个环境",
+    description:
+      "The changing environments inside blueprints.previewValidWithEnvironments (plural)",
+  },
   "blueprints.errorAtLineColumn": {
     message: "第 {line} 行，第 {column} 列",
     description: "Source location beside a Blueprint validation error (w4/151)",
@@ -317,6 +332,10 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   "blueprints.previewKindBuildSource": {
     message: "构建源",
     description: "Plan row resource kind",
+  },
+  "blueprints.previewKindEnvironment": {
+    message: "环境",
+    description: "Plan row resource kind: a projects[].environments[] entry",
   },
   "blueprints.previewServices": {
     message: "服务",

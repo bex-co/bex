@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -49,6 +50,12 @@ func (s *Service) blueprintActionPlan(ctx context.Context, ir BlueprintIR, st pa
 	if err != nil {
 		return BlueprintPlan{}, false, err
 	}
+	// The apply writes the environments before any resource placed in them.
+	environments, err := resolver.planEnvironments(ctx)
+	if err != nil {
+		return BlueprintPlan{}, false, err
+	}
+	plan.Actions = append(environments, plan.Actions...)
 	detached, err := s.blueprintDetachments(ctx, s.resolveTenantID(ctx), blueprintID, st, func() (*blueprintActionResolver, error) { return resolver, nil })
 	if err != nil {
 		return BlueprintPlan{}, false, err
@@ -341,6 +348,43 @@ func (r *blueprintActionResolver) planMoves(ctx context.Context, action *Bluepri
 		addChangedFields(action, moves...)
 	}
 	return nil
+}
+
+// planEnvironments lists each projects[].environments[] entry the apply writes
+// (applyBlueprintGroupingsWith): a create when its project has no environment
+// of that name yet, and an update listing the settings of its own
+// (permissions.protection, networking.isolation) the file changes. An
+// unchanged environment is not listed, so an unchanged file's plan stays as
+// it was. Until w9/095 the plan listed none, so a change to those settings
+// alone planned no_changes, and a Blueprint whose syncs wait for approval
+// never applied it. Without the grouping store nothing is listed: the apply
+// refuses a grouped file.
+func (r *blueprintActionResolver) planEnvironments(ctx context.Context) ([]BlueprintPlanAction, error) {
+	groupings := r.parsed.groupings
+	if len(groupings) == 0 {
+		return nil, nil
+	}
+	if _, scoped := r.service.Tenant(ctx); r.service.BlueprintGroups == nil || !scoped {
+		return nil, nil
+	}
+	placements, err := r.service.blueprintEnvironmentPlacements(ctx, r.snap, groupings)
+	if err != nil {
+		return nil, err
+	}
+	var actions []BlueprintPlanAction
+	for _, g := range groupings {
+		target := placements.targets[blueprintGroupingKey(g.projectName, g.environmentName)]
+		action := BlueprintPlanAction{Operation: BlueprintPlanCreate, Kind: BlueprintResourceEnvironment, Name: g.environmentName, SourcePath: g.pointer}
+		if target.environmentID != "" {
+			if len(target.changed) == 0 {
+				continue
+			}
+			action.ResourceID = ids.EnvironmentPublicID(target.environmentID)
+			addChangedFields(&action, target.changed...)
+		}
+		actions = append(actions, action)
+	}
+	return actions, nil
 }
 
 // addChangedFields makes action an update that lists paths, each once, in

@@ -26,18 +26,19 @@ import (
 )
 
 // plannedUpdates is the actions of a plan that change something, each with
-// the paths it lists: "update service web: environment, project".
+// the paths it lists: "update service web: environment, project", "create
+// environment qa".
 func plannedUpdates(actions []BlueprintPlanAction) string {
 	var parts []string
 	for _, a := range actions {
 		if a.Operation == BlueprintPlanNoop {
 			continue
 		}
-		paths := make([]string, 0, len(a.ChangedFields))
-		for _, c := range a.ChangedFields {
-			paths = append(paths, c.Path)
+		part := string(a.Operation) + " " + string(a.Kind) + " " + a.Name
+		if len(a.ChangedFields) > 0 {
+			part += ": " + strings.Join(fieldPaths(a.ChangedFields), ", ")
 		}
-		parts = append(parts, string(a.Operation)+" "+string(a.Kind)+" "+a.Name+": "+strings.Join(paths, ", "))
+		parts = append(parts, part)
 	}
 	return strings.Join(parts, "; ")
 }
@@ -118,9 +119,10 @@ func isolatingShopProduction(manifest string) string {
 // other changed fields: "environment", and "project" when the project changes
 // too. Approving that plan applies the move and records one service_moved, by
 // the approver; planning records nothing. Turning on the network isolation of
-// the service's environment plans "networkIsolation" and moves nothing. A
-// plan that keeps the placement, or declares the service at the top level
-// (which leaves it where it is), finds no changes.
+// the service's environment plans "networkIsolation" and moves nothing (the
+// environment lists its own "networking.isolation", w9/095). A plan that keeps
+// the placement, or declares the service at the top level (which leaves it
+// where it is), finds no changes.
 func TestApprovalModeBlueprintPlansAndAppliesAMoveAlone(t *testing.T) {
 	svc := newBlueprintService(newFakeBlueprintStore(), fakeWorkspace{"user-a": "tea-a", "approver": "tea-a"})
 	st := &blueprintGroupingTestStore{recordingStore: &recordingStore{}}
@@ -150,13 +152,13 @@ func TestApprovalModeBlueprintPlansAndAppliesAMoveAlone(t *testing.T) {
 	}{
 		{"another environment", "shop", "production", false, false, "update service web: environment"},
 		{"the same environment", "shop", "production", false, false, ""},
-		{"its environment turns network isolation on", "shop", "production", true, true, "update service web: networkIsolation"},
+		{"its environment turns network isolation on", "shop", "production", true, true, "update environment production: networking.isolation; update service web: networkIsolation"},
 		{"a file that omits the isolation keeps it", "shop", "production", false, true, ""},
 		{"another project", "blog", "production", false, false, "update service web: environment, project"},
 		{"out of every project", "", "", false, false, "update service web: environment, project"},
 		{"still ungrouped", "", "", false, false, ""},
 		{"back into an isolated environment", "shop", "production", false, true, "update service web: environment, project"},
-		{"a new environment the approval creates", "shop", "qa", false, false, "update service web: environment"},
+		{"a new environment the approval creates", "shop", "qa", false, false, "create environment qa; update service web: environment"},
 	} {
 		manifest := groupedImageService(step.project, step.environment)
 		if step.isolate {

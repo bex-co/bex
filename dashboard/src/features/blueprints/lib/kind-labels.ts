@@ -8,6 +8,7 @@ const KIND_LABEL: Record<string, keyof typeof en> = {
   key_value: "blueprints.previewKindKeyValue",
   env_var_group: "blueprints.previewKindEnvGroup",
   build_source: "blueprints.previewKindBuildSource",
+  environment: "blueprints.previewKindEnvironment",
 };
 
 /** The label key of a Blueprint resource kind, undefined for an unknown one. */

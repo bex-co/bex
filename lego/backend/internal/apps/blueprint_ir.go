@@ -37,6 +37,10 @@ const (
 	// BlueprintResourceBuildSource is a Render Build Source (ADR097 §
 	// Blueprints): a carrier that builds once for every service linked to it.
 	BlueprintResourceBuildSource BlueprintResourceKind = "build_source"
+	// BlueprintResourceEnvironment is a projects[].environments[] entry. It
+	// is no IR resource: the plan lists it from the parsed groupings, so an
+	// approval applies its own settings too (w9/095).
+	BlueprintResourceEnvironment BlueprintResourceKind = "environment"
 )
 
 // BlueprintField preserves the distinction the old typed decoder loses:

@@ -269,6 +269,40 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description:
       "Review section success line, with the plan's total resource count (plural)",
   },
+  "blueprints.previewValidEnvironments_one": {
+    message:
+      "Blueprint file parsed successfully — {count} environment will change.",
+    description:
+      "Review section success line when only environments change (w9/095, singular)",
+  },
+  "blueprints.previewValidEnvironments_other": {
+    message:
+      "Blueprint file parsed successfully — {count} environments will change.",
+    description:
+      "Review section success line when only environments change (w9/095, plural)",
+  },
+  "blueprints.previewValidWithEnvironments_one": {
+    message:
+      "Blueprint file parsed successfully — {count} resource and {environments} will change.",
+    description:
+      "Review section success line: changing resources (singular) and blueprints.previewEnvironmentCount (w9/095)",
+  },
+  "blueprints.previewValidWithEnvironments_other": {
+    message:
+      "Blueprint file parsed successfully — {count} resources and {environments} will change.",
+    description:
+      "Review section success line: changing resources (plural) and blueprints.previewEnvironmentCount (w9/095)",
+  },
+  "blueprints.previewEnvironmentCount_one": {
+    message: "{count} environment",
+    description:
+      "The changing environments inside blueprints.previewValidWithEnvironments (singular)",
+  },
+  "blueprints.previewEnvironmentCount_other": {
+    message: "{count} environments",
+    description:
+      "The changing environments inside blueprints.previewValidWithEnvironments (plural)",
+  },
   "blueprints.errorAtLineColumn": {
     message: "line {line}, column {column}",
     description: "Source location beside a Blueprint validation error (w4/151)",
@@ -332,6 +366,10 @@ const enBlueprints: Record<string, TranslationEntry> = {
   "blueprints.previewKindBuildSource": {
     message: "Build source",
     description: "Plan row resource kind",
+  },
+  "blueprints.previewKindEnvironment": {
+    message: "Environment",
+    description: "Plan row resource kind: a projects[].environments[] entry",
   },
   "blueprints.previewServices": {
     message: "Services",

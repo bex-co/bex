@@ -196,6 +196,61 @@ describe("BlueprintPlanSummary operations", () => {
     ]);
   });
 
+  // w9/095: an environment's own settings plan as a change of the environment,
+  // which the headline counts apart from the resources.
+  it("labels an environment and counts it apart from the resources", () => {
+    const environment = action("update", "production", {
+      kind: "environment",
+      resourceId: "evm-prod",
+      changedFields: [{ path: "permissions.protection" }],
+    });
+    const { unmount } = render(
+      <BlueprintPlanSummary
+        plan={{
+          ...plan,
+          totalActions: 2,
+          actions: [
+            environment,
+            action("noop", "web", { resourceId: "srv-web" }),
+          ],
+        }}
+        pricing={null}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Blueprint file parsed successfully — 1 environment will change.",
+      ),
+    ).toBeInTheDocument();
+    const rows = screen.getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "UpdateproductionEnvironmentChanges: permissions.protection",
+      "No changewebService",
+    ]);
+    unmount();
+
+    render(
+      <BlueprintPlanSummary
+        plan={{
+          ...plan,
+          totalActions: 4,
+          actions: [
+            environment,
+            action("create", "qa", { kind: "environment" }),
+            action("create", "worker"),
+            action("update", "api", { changedFields: [{ path: "plan" }] }),
+          ],
+        }}
+        pricing={null}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "Blueprint file parsed successfully — 2 resources and 2 environments will change.",
+      ),
+    ).toBeInTheDocument();
+  });
+
   it("falls back to name groups and totalActions when the plan has no actions", () => {
     render(
       <BlueprintPlanSummary

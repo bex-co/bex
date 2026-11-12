@@ -158,7 +158,8 @@ func placedIn(labels map[string]string) placementOf {
 // blueprintPlacements is the workspace's environments as the protected
 // placement check and the plan need them: protection by id, and each declared
 // grouping's target (its environment and project ids, each "" while the apply
-// has yet to create it), protection and network isolation.
+// has yet to create it), protection, network isolation and the settings of
+// its own the apply changes.
 type blueprintPlacements struct {
 	protected map[string]bool
 	targets   map[string]groupingTarget
@@ -171,6 +172,9 @@ type groupingTarget struct {
 	// isolated is the network isolation the apply leaves the environment
 	// with (parsedGrouping.desiredIsolation).
 	isolated bool
+	// changed are the render.yaml paths of the existing environment's own
+	// settings the apply changes (environmentControls.changed).
+	changed []string
 }
 
 func (p blueprintPlacements) anyProtected() bool {
@@ -291,6 +295,7 @@ func (s *Service) blueprintEnvironmentPlacements(ctx context.Context, snap *work
 		if exists {
 			target.environmentID = e.ID
 			target.protected = out.protected[e.ID]
+			target.changed = g.controls(e).changed(e)
 		}
 		if g.protectionSpecified && g.protectedStatus == core.ProtectedStatusProtected {
 			target.protected = true

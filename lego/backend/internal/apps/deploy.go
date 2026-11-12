@@ -607,6 +607,37 @@ func (g parsedGrouping) desiredIsolation(current bool) bool {
 	return current
 }
 
+// environmentControls are an environment's own settings a Blueprint declares:
+// its permissions.protection and networking.isolation.
+type environmentControls struct {
+	protectedStatus string
+	isolated        bool
+}
+
+// controls are the settings the apply leaves current with: each one the file
+// declares, and current's own where the file omits it (round-21 finding 1).
+func (g parsedGrouping) controls(current store.Environment) environmentControls {
+	c := environmentControls{protectedStatus: current.ProtectedStatus, isolated: g.desiredIsolation(current.NetworkIsolationEnabled)}
+	if g.protectionSpecified {
+		c.protectedStatus = g.protectedStatus
+	}
+	return c
+}
+
+// changed names, by their render.yaml paths, the settings c holds that
+// current does not. The apply writes the environment when any differs, and
+// the plan lists the same paths (w9/095).
+func (c environmentControls) changed(current store.Environment) []string {
+	var paths []string
+	if c.isolated != current.NetworkIsolationEnabled {
+		paths = append(paths, "networking.isolation")
+	}
+	if c.protectedStatus != current.ProtectedStatus {
+		paths = append(paths, "permissions.protection")
+	}
+	return paths
+}
+
 // parsedEnvGroup is a validated envVarGroups[] entry: literal vars keyed to their
 // value, plus the keys whose value the apply mints (generateValue). grouping is set
 // when the group is declared under a projects[].environments[] nesting and carries
@@ -1945,18 +1976,15 @@ func (s *Service) applyBlueprintGroupingsWith(ctx context.Context, groups Bluepr
 		// absence as unprotected/isolation-off let a Blueprint that never mentions
 		// protection silently downgrade an existing environment — and clearing the
 		// network-isolation label makes the operator delete the App's ingress and
-		// egress NetworkPolicy. desiredIsolation is the value actually persisted,
+		// egress NetworkPolicy. desired.isolated is the value actually persisted,
 		// so it (not the possibly-absent manifest declaration) drives the App's
-		// network-isolation label below.
-		desiredProtected := environment.ProtectedStatus
-		if grouping.protectionSpecified {
-			desiredProtected = grouping.protectedStatus
-		}
-		desiredIsolation := grouping.desiredIsolation(environment.NetworkIsolationEnabled)
-		if err := s.RequireNetworkIsolation(ctx, tenantID, desiredIsolation, environment.NetworkIsolationEnabled); err != nil {
+		// network-isolation label below. The plan compares the same controls,
+		// so it lists every change this applies (w9/095).
+		desired := grouping.controls(environment)
+		if err := s.RequireNetworkIsolation(ctx, tenantID, desired.isolated, environment.NetworkIsolationEnabled); err != nil {
 			return nil, nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
 		}
-		aclChanged := environment.ProtectedStatus != desiredProtected || environment.NetworkIsolationEnabled != desiredIsolation
+		aclChanged := len(desired.changed(environment)) > 0
 		// The protected-environment ACL is an admin-classified control
 		// (deploy/gitops/authz/model.fga: can_manage), enforced on the imperative
 		// path by environments.Service.SetACL against the environment's own
@@ -1980,11 +2008,11 @@ func (s *Service) applyBlueprintGroupingsWith(ctx context.Context, groups Bluepr
 		// The write is conditional (w8/m20 t003): an unchanged re-sync skips
 		// it entirely, so idempotent syncs stop churning rows.
 		if created || aclChanged {
-			if err := groups.SetEnvironmentACL(ctx, environment.ID, desiredProtected, desiredIsolation, environment.IPAllowList); err != nil {
+			if err := groups.SetEnvironmentACL(ctx, environment.ID, desired.protectedStatus, desired.isolated, environment.IPAllowList); err != nil {
 				return nil, nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
 			}
-			environment.ProtectedStatus = desiredProtected
-			environment.NetworkIsolationEnabled = desiredIsolation
+			environment.ProtectedStatus = desired.protectedStatus
+			environment.NetworkIsolationEnabled = desired.isolated
 			if !created {
 				audits = append(audits, groupingAuditEntry{action: "environment_controls_updated", project: grouping.projectName, environment: grouping.environmentName})
 			}
@@ -1993,7 +2021,7 @@ func (s *Service) applyBlueprintGroupingsWith(ctx context.Context, groups Bluepr
 			ID:                      environment.ID,
 			ProjectID:               project.ID,
 			WorkspaceID:             tenantID,
-			NetworkIsolationEnabled: desiredIsolation,
+			NetworkIsolationEnabled: desired.isolated,
 			IPAllowList:             environment.IPAllowList,
 		}
 	}

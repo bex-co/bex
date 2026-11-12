@@ -154,11 +154,11 @@ func (f regroupPG) moves(t *testing.T, serviceID string) []string {
 	return out
 }
 
-// moveCallers are the callers of the workspace's environments.MoveService
-// audit rows, oldest first.
-func (f regroupPG) moveCallers(t *testing.T) []string {
+// auditRows are the callers of the workspace's audit rows of verb, oldest
+// first.
+func (f regroupPG) auditRows(t *testing.T, verb string) []string {
 	t.Helper()
-	rows, err := f.pool.Query(f.ctx, `SELECT caller FROM audit_events WHERE workspace_id = $1 AND verb = $2 ORDER BY at`, f.owner, core.AuditVerbEnvironmentServiceMoved)
+	rows, err := f.pool.Query(f.ctx, `SELECT caller FROM audit_events WHERE workspace_id = $1 AND verb = $2 ORDER BY at`, f.owner, verb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,6 +175,41 @@ func (f regroupPG) moveCallers(t *testing.T) []string {
 		t.Fatal(err)
 	}
 	return callers
+}
+
+// post sends body to the composed server's REST path and decodes the answer,
+// which must have wantCode.
+func (f regroupPG) post(t *testing.T, path, body string, wantCode int) map[string]any {
+	t.Helper()
+	rec := do(t, f.handler, http.MethodPost, path, testToken, body)
+	if rec.Code != wantCode {
+		t.Fatalf("POST %s = %d %s, want %d", path, rec.Code, rec.Body.String(), wantCode)
+	}
+	var out map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+		t.Fatal(err)
+	}
+	return out
+}
+
+// plannedRawUpdates are the actions a planned sync's rawPlan lists that
+// change something, each as "operation kind name resourceId path…".
+func plannedRawUpdates(plan map[string]any) []string {
+	actions, _ := plan["sync"].(map[string]any)["rawPlan"].(map[string]any)["actions"].([]any)
+	var updates []string
+	for _, raw := range actions {
+		action := raw.(map[string]any)
+		if action["operation"] == "noop" {
+			continue
+		}
+		update := fmt.Sprintf("%v %v %v %v", action["operation"], action["kind"], action["name"], action["resourceId"])
+		fields, _ := action["changedFields"].([]any)
+		for _, field := range fields {
+			update += " " + field.(map[string]any)["path"].(string)
+		}
+		updates = append(updates, update)
+	}
+	return updates
 }
 
 // w9/093 on real Postgres: Blueprint deploys that move an existing service
@@ -224,7 +259,7 @@ func TestBlueprintRegroupListsServiceMovedInTheFeedPG(t *testing.T) {
 	if got := f.moves(t, serviceID); !slices.Equal(got, want) {
 		t.Fatalf("feed after the REST move = %v, want %v", got, want)
 	}
-	if callers := f.moveCallers(t); !slices.Equal(callers, []string{"client-1", "client-1", "client-1"}) {
+	if callers := f.auditRows(t, core.AuditVerbEnvironmentServiceMoved); !slices.Equal(callers, []string{"client-1", "client-1", "client-1"}) {
 		t.Fatalf("move rows name %v, want one per listed move by the member", callers)
 	}
 }
@@ -250,58 +285,33 @@ func TestApprovalModeBlueprintMovePlansAndAppliesPG(t *testing.T) {
 	f := newRegroupPG(t, "plan-move")
 	file := regroupManifest("shop", "staging")
 	f.srv.Apps.GitFetcher = movingBlueprintFile{contents: &file}
-	post := func(path, body string, wantCode int) map[string]any {
-		t.Helper()
-		rec := do(t, f.handler, http.MethodPost, path, testToken, body)
-		if rec.Code != wantCode {
-			t.Fatalf("POST %s = %d %s, want %d", path, rec.Code, rec.Body.String(), wantCode)
-		}
-		var out map[string]any
-		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
-			t.Fatal(err)
-		}
-		return out
-	}
 
-	created := post("/v1/blueprints", fmt.Sprintf(`{"name":"shop","ownerId":%q,"source":{"repo":"https://github.com/acme/shop","branch":"main","path":"render.yaml"}}`, f.owner), http.StatusCreated)
+	created := f.post(t, "/v1/blueprints", fmt.Sprintf(`{"name":"shop","ownerId":%q,"source":{"repo":"https://github.com/acme/shop","branch":"main","path":"render.yaml"}}`, f.owner), http.StatusCreated)
 	bpID, _ := created["blueprint"].(map[string]any)["id"].(string)
-	post("/v1/blueprints/"+bpID+"/approve", `{}`, http.StatusOK)
+	f.post(t, "/v1/blueprints/"+bpID+"/approve", `{}`, http.StatusOK)
 	serviceID := f.serviceID(t)
 
 	file = regroupManifest("shop", "production")
-	plan := post("/v1/blueprints/"+bpID+"/syncs", "", http.StatusCreated)
+	plan := f.post(t, "/v1/blueprints/"+bpID+"/syncs", "", http.StatusCreated)
 	if plan["planningOutcome"] != apps.PlanningPlanned {
 		t.Fatalf("plan = %v, want planned", plan)
 	}
-	actions, _ := plan["sync"].(map[string]any)["rawPlan"].(map[string]any)["actions"].([]any)
-	var updates []string
-	for _, raw := range actions {
-		action := raw.(map[string]any)
-		if action["operation"] == "noop" {
-			continue
-		}
-		update := fmt.Sprintf("%v %v %v", action["operation"], action["kind"], action["name"])
-		for _, field := range action["changedFields"].([]any) {
-			update += " " + field.(map[string]any)["path"].(string)
-		}
-		updates = append(updates, update)
-	}
-	if want := []string{"update service web environment"}; !slices.Equal(updates, want) {
+	if updates, want := plannedRawUpdates(plan), []string{"update service web " + serviceID + " environment"}; !slices.Equal(updates, want) {
 		t.Fatalf("planned %v, want %v", updates, want)
 	}
 	if got := f.moves(t, serviceID); len(got) != 0 {
 		t.Fatalf("planning listed %v, want no move", got)
 	}
 
-	post("/v1/blueprints/"+bpID+"/approve", `{}`, http.StatusOK)
+	f.post(t, "/v1/blueprints/"+bpID+"/approve", `{}`, http.StatusOK)
 	if got, want := f.moves(t, serviceID), []string{regroupMove(f.at(t, "shop", "staging"), f.at(t, "shop", "production"))}; !slices.Equal(got, want) {
 		t.Fatalf("feed after the approval = %v, want %v", got, want)
 	}
-	if callers := f.moveCallers(t); !slices.Equal(callers, []string{"client-1"}) {
+	if callers := f.auditRows(t, core.AuditVerbEnvironmentServiceMoved); !slices.Equal(callers, []string{"client-1"}) {
 		t.Fatalf("move rows name %v, want one by the approver", callers)
 	}
 
-	if again := post("/v1/blueprints/"+bpID+"/syncs", "", http.StatusOK); again["planningOutcome"] != apps.PlanningNoChanges || again["sync"] != nil {
+	if again := f.post(t, "/v1/blueprints/"+bpID+"/syncs", "", http.StatusOK); again["planningOutcome"] != apps.PlanningNoChanges || again["sync"] != nil {
 		t.Fatalf("re-plan of the applied file = %v, want no_changes", again)
 	}
 }

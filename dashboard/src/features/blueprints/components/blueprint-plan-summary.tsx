@@ -5,7 +5,10 @@ import {
   AlertTitle,
 } from "@/common/components/ui/alert";
 import { Badge } from "@/common/components/ui/badge";
-import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  type Translate,
+  useTranslations,
+} from "@/common/hooks/use-translations";
 import { EstimatedPricingPanel } from "./estimated-pricing-panel";
 import { blueprintKindLabel } from "@/features/blueprints/lib/kind-labels";
 import type { en } from "@/i18n";
@@ -94,6 +97,28 @@ function PlanActionRow({
   );
 }
 
+/** The summary's headline: how many resources, and environments, change. */
+function planHeadline(
+  t: Translate,
+  resources: number,
+  environments: number,
+): string {
+  if (environments === 0) {
+    return resources === 0
+      ? t("blueprints.previewNoChanges")
+      : t("blueprints.previewValid", { count: resources });
+  }
+  if (resources === 0) {
+    return t("blueprints.previewValidEnvironments", { count: environments });
+  }
+  return t("blueprints.previewValidWithEnvironments", {
+    count: resources,
+    environments: t("blueprints.previewEnvironmentCount", {
+      count: environments,
+    }),
+  });
+}
+
 /**
  * The parsed-plan summary shared by the create page's review step and the
  * detail page's pre-sync dialog (w8/m21): the per-resource plan, the count of
@@ -118,8 +143,16 @@ export function BlueprintPlanSummary({
   const detached = (actions ?? []).filter(
     (action) => action.operation === "detach",
   );
+  const changed = (actions ?? []).filter(
+    (action) => action.operation !== "noop",
+  );
+  // An environment the sync creates or whose settings it changes (w9/095) is
+  // counted apart from the resources.
+  const environments = changed.filter(
+    (action) => action.kind === "environment",
+  ).length;
   const changes = actions
-    ? actions.filter((action) => action.operation !== "noop").length
+    ? changed.length - environments
     : (plan?.totalActions ?? 0);
   const listed = OPERATION_ORDER.flatMap((operation) =>
     (actions ?? [])
@@ -130,9 +163,7 @@ export function BlueprintPlanSummary({
     <>
       <div className="space-y-3 rounded-md border p-4">
         <p className="text-sm font-medium">
-          {changes === 0
-            ? t("blueprints.previewNoChanges")
-            : t("blueprints.previewValid", { count: changes })}
+          {planHeadline(t, changes, environments)}
         </p>
         {actions ? (
           <ul className="space-y-2">
