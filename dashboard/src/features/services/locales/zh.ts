@@ -3524,6 +3524,11 @@ const zhServices: Record<string, TranslationEntry> = {
       "请输入 https:// URL，或 GitHub SSH URL（git@github.com:owner/repo.git）。",
     description: "Create-wizard Public Git URL tab validation message",
   },
+  "services.createPublicUrlFileError": {
+    message: "请使用仓库 URL，而不是文件页面。",
+    description:
+      "Create-wizard Public Git URL: a GitHub file (blob) page was pasted, which names no repository to build (w4/576)",
+  },
   "services.createImageLabel": {
     message: "Docker 镜像",
     description: "Create-wizard Existing Image tab input label",

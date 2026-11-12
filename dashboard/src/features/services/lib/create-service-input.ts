@@ -1,4 +1,4 @@
-import { isValidGitUrl } from "@/common/lib/utils/git-url";
+import { isValidGitUrl, parseGitHubPage } from "@/common/lib/utils/git-url";
 import { isValidDockerImageRef } from "@/common/lib/utils/docker-image";
 import { commandText } from "@/features/services/lib/command-text";
 import { isValidCron } from "@/features/services/lib/cron";
@@ -233,7 +233,9 @@ export function isSubmittable(form: NewServiceForm): boolean {
   const shape = buildShape(form);
   const sourceValid =
     (form.tab === "github" && form.selectedRepo != null) ||
-    (form.tab === "git" && isValidGitUrl(form.gitUrl)) ||
+    (form.tab === "git" &&
+      isValidGitUrl(form.gitUrl) &&
+      !parseGitHubPage(form.gitUrl)?.file) ||
     (shape.isImageSource && isValidDockerImageRef(form.image));
   const nativeCommandsValid =
     !shape.isNativeBuild ||

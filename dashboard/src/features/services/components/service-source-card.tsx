@@ -28,7 +28,7 @@ import {
 } from "@/common/components/ui/select";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { isValidGitUrl } from "@/common/lib/utils/git-url";
+import { isValidGitUrl, parseGitHubPage } from "@/common/lib/utils/git-url";
 import { isValidDockerImageRef } from "@/common/lib/utils/docker-image";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
@@ -203,7 +203,7 @@ function SourceEditDialog({
         ? isValidDockerImageRef(image)
         : tab === "github"
           ? selectedRepo !== null
-          : isValidGitUrl(gitUrl);
+          : isValidGitUrl(gitUrl) && !parseGitHubPage(gitUrl)?.file;
   // An image-backed service's repo arrives as "" (bex-api), not null, so
   // source kind is repo presence — as the tab and the card already decide it
   // (w4/275).
@@ -304,6 +304,10 @@ function SourceEditDialog({
             onSelectRepo={selectRepo}
             gitUrl={gitUrl}
             onGitUrlChange={setGitUrl}
+            // The page names its branch; a branch the user changed is kept.
+            onGitHubPage={(page) => {
+              if (branch === (currentBranch || "main")) setBranch(page.branch);
+            }}
             image={{
               value: image,
               onChange: setImageValue,

@@ -187,6 +187,12 @@ export function NewServicePage() {
                   onSelectRepo={(selectedRepo) => set({ selectedRepo })}
                   gitUrl={form.gitUrl}
                   onGitUrlChange={(gitUrl) => set({ gitUrl })}
+                  onGitHubPage={(page) =>
+                    set((current) => ({
+                      branch: current.branch || page.branch,
+                      rootDir: current.rootDir || page.rootDir,
+                    }))
+                  }
                   // A static site has no image source (ADR029): omitting the
                   // prop is what removes the Existing Image tab, same as the
                   // Blueprint caller.

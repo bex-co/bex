@@ -386,6 +386,36 @@ describe("NewServicePage", () => {
       ).toBeInTheDocument();
     });
 
+    // w4/576: a GitHub folder page splits into its repository, branch and
+    // folder; a file page is refused.
+    it("splits a pasted GitHub folder page into repository, branch and root directory", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await user.click(
+        await screen.findByRole("tab", { name: /Public Git URL/i }),
+      );
+      const url = screen.getByPlaceholderText(
+        "https://github.com/you/your-repo",
+      );
+      await user.click(url);
+      await user.paste(
+        "https://github.com/bex-co/bex/tree/main/examples/hello-go",
+      );
+      await user.tab();
+      expect(url).toHaveValue("https://github.com/bex-co/bex");
+      expect(screen.getByLabelText(/^Branch/)).toHaveValue("main");
+      expect(screen.getByLabelText(/^Root Directory/)).toHaveValue(
+        "examples/hello-go",
+      );
+      expect(screen.getByLabelText(/^Name/)).toHaveValue("bex");
+
+      await user.clear(url);
+      await user.paste("https://github.com/bex-co/bex/blob/main/README.md");
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Use the repository URL, not a file page",
+      );
+    });
+
     it("switches to Existing Image tab and shows the image input", async () => {
       const user = userEvent.setup();
       renderPage();

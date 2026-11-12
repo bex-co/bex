@@ -13,7 +13,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/common/components/ui/tabs";
-import { isValidGitUrl } from "@/common/lib/utils/git-url";
+import {
+  isValidGitUrl,
+  parseGitHubPage,
+  type GitHubPage,
+} from "@/common/lib/utils/git-url";
 import { dockerImageProblem } from "@/common/lib/utils/docker-image";
 import { cn } from "@/common/lib/utils/utils";
 import { useRepos, type RepoView } from "@/features/services/hooks/use-repos";
@@ -71,6 +75,7 @@ export function ServiceSourcePicker({
   onSelectRepo,
   gitUrl,
   onGitUrlChange,
+  onGitHubPage,
   image,
   buildSource,
   titleKey = "services.createSourceTitle",
@@ -82,6 +87,12 @@ export function ServiceSourcePicker({
   onSelectRepo: (repo: RepoView) => void;
   gitUrl: string;
   onGitUrlChange: (url: string) => void;
+  /**
+   * A pasted GitHub folder page leaves its repository in the field and hands
+   * its branch and folder here when the field loses focus, and a file page is
+   * refused (w4/576). Without it the field takes the URL as typed.
+   */
+  onGitHubPage?: (page: GitHubPage) => void;
   image?: ImageSourceOption;
   buildSource?: ReactNode;
   titleKey?: string;
@@ -102,7 +113,11 @@ export function ServiceSourcePicker({
     !connectionLoading && connection?.connected !== true;
   const imageProblem = image ? dockerImageProblem(image.value) : null;
   // The Git URL is marked and announced like the image reference (w21/052).
-  const gitUrlInvalid = gitUrl !== "" && !isValidGitUrl(gitUrl);
+  // A file page names no repository to build (w4/576).
+  const gitUrlFilePage =
+    onGitHubPage !== undefined && parseGitHubPage(gitUrl)?.file === true;
+  const gitUrlInvalid =
+    gitUrl !== "" && (!isValidGitUrl(gitUrl) || gitUrlFilePage);
 
   // When connected, GitCredentialsMenu owns the focus refetch. When disconnected
   // the menu isn't mounted, so the picker refreshes here to catch a connection
@@ -304,6 +319,12 @@ export function ServiceSourcePicker({
               id={`${idPrefix}-git-url`}
               value={gitUrl}
               onChange={(e) => onGitUrlChange(e.target.value)}
+              onBlur={() => {
+                const page = onGitHubPage && parseGitHubPage(gitUrl);
+                if (!page || page.file) return;
+                onGitUrlChange(page.repo);
+                onGitHubPage(page);
+              }}
               placeholder={t("services.createPublicUrlPlaceholder")}
               autoComplete="off"
               aria-invalid={gitUrlInvalid}
@@ -317,7 +338,11 @@ export function ServiceSourcePicker({
                 role="alert"
                 className="text-sm text-destructive"
               >
-                {t("services.createPublicUrlError")}
+                {t(
+                  gitUrlFilePage
+                    ? "services.createPublicUrlFileError"
+                    : "services.createPublicUrlError",
+                )}
               </p>
             ) : null}
           </div>

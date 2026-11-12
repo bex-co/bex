@@ -3599,6 +3599,11 @@ const enServices: Record<string, TranslationEntry> = {
       "Enter an https:// URL, or a GitHub SSH URL (git@github.com:owner/repo.git).",
     description: "Create-wizard Public Git URL tab validation message",
   },
+  "services.createPublicUrlFileError": {
+    message: "Use the repository URL, not a file page.",
+    description:
+      "Create-wizard Public Git URL: a GitHub file (blob) page was pasted, which names no repository to build (w4/576)",
+  },
   "services.createImageLabel": {
     message: "Docker Image",
     description: "Create-wizard Existing Image tab input label",
