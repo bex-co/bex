@@ -41,7 +41,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **087** — [Edge caching never runs for a web service with image ports](done/087.md) ← w9/m345 t005 follow-up — **DONE** 2026-11-12
 - [x] **088** — [A plan change that turns edge caching on or off records no event](done/088.md) ← w9/m345 t005 follow-up — **DONE** 2026-11-12
 - [x] **089** — [Agent sessions die mid-run: sandboxes are deleted minutes in, and a rollout fails running sessions](done/089.md) ← observed 2026-11-12 on the bex workspace's automations — promoted to m349 2026-11-12
-- [ ] **090** — [A deploy refused by the platform's admission policy shows the customer the raw Kubernetes error](090.md) ← observed 2026-11-12 during the w9/087 production check
+- [x] **090** — [A deploy refused by the platform's admission policy shows the customer the raw Kubernetes error](done/090.md) ← observed 2026-11-12 during the w9/087 production check — **DONE** 2026-11-12
 - [ ] **091** — [A Blueprint sync that changes a service's plan records no `plan_changed` or edge-cache toggle event](091.md) ← w9/088 review follow-up
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
 - [x] **081** — [Approval mode for codex sessions (withdrawn)](done/081.md) — withdrawn 2026-11-07 with ADR100; removed by m179
