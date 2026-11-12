@@ -116,3 +116,23 @@ Signed in to `bex-canary` after the release pins this build, on an owned Free we
 - **Expected outcome:** a user reads their own traffic as Render shows it, and bex's ingress internals stay out of tenant logs.
 - **Why now:** every request line on every web service and static site is affected. The divergence has carried no sign-off since w8/176 flagged it on 2026-10-22.
 - **Render parity included (t006):** REST, GraphQL, MCP and dashboard output changes.
+
+## Post-release probe (QA loop round 159, 2026-11-12)
+
+Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `6be581c67`. This is a partial run of the DoD, recorded for t005; t005 stays todo.
+
+- **Fixtures**, both deleted afterwards (DELETE 204, then GET 404):
+  - Free image service `qa-20261112-r159-rb` (`srv-dbqidc2140ds739rb7g0`, `traefik/whoami:v1.10.1`);
+  - Free Docker service `qa-20261112-r159-ctx` (`srv-dbqidcerbf4s73estt1g`, `examples/hello-node`).
+  - Not the DoD's `http-https-echo` image, so the 503 path wasn't sent.
+- **DoD 1 passes for 200 lines.** `curl …/qa159-req2`, then `GET /v1/logs?…&type=request` returned:
+  - `message` `clientIP="162.224.81.143" requestID="0bf6ae84-01ad-423e-8d6b-0633c1739026" responseTimeMS=3 responseBytes=613 userAgent="curl/8.7.1"`;
+  - labels `resource, method=GET, statusCode=200, host=qa-20261112-r159-rb.onbex.co, path=/qa159-req2, level=info, type=request`.
+  - That is the format and label order `docs/render-artifacts/request-logs.md` records. `text=KubernetesIngressName` → 0 lines, `text=responseTimeMS` → 1.
+- **DoD 2 passes.** Logs → Request logs, with Live off and with Live on, reads `06:42:20 PM GET 200 qa-20261112-r159-rb.onbex.co/qa159-req2 clientIP="…" requestID="…" responseTimeMS=3 responseBytes=613 userAgent="curl/8.7.1"`. A request sent while Live was on appeared within 12 s in the same shape.
+- **DoD 3, filters only:**
+  - `path=/qa159-req2` → 1;
+  - `statusCode=200` → 2;
+  - `host=qa-20261112-r159-rb.onbex.co` → 2;
+  - `host=nope.onbex.co` → 0.
+- **Not run:** a 503 line, the Metrics request count and latency (DoD 3), a static site (DoD 4), and GraphQL/MCP label agreement (DoD 5).
