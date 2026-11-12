@@ -1,6 +1,6 @@
 # Exact hcloud CSI v2.22.0 plus the reviewed logical ext4 sizing patch. The
 # original image supplies the same cryptsetup/e2fsprogs library closure.
-FROM --platform=$BUILDPLATFORM golang:1.26.10@sha256:672c944cfd07599b5f1bb179869270cdc94c6254e41db4d431259693cb286b82 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.11@sha256:957952ae74dc010608717144399a59a2c6e82ea03d63be1c7ff6577c5a135f93 AS builder
 WORKDIR /src
 ADD --checksum=sha256:5c3697eef3ca6a97b437930fca51ea9d440a43e33842f96d9ce20300bf4eeae6 https://github.com/hetznercloud/csi-driver/archive/2d814c4f36351a6f1652f80657cb3ddd18d51a0b.tar.gz /tmp/source.tar.gz
 RUN tar -xzf /tmp/source.tar.gz --strip-components=1 -C /src && rm /tmp/source.tar.gz

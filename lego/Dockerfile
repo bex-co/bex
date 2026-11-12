@@ -12,7 +12,7 @@
 # binary below is CGO_ENABLED=0 with GOARCH=${TARGETARCH}, so an ARM64 runner
 # no longer compiles amd64 under emulation (w6/m158). Go cross-builds are
 # byte-identical to native ones.
-FROM --platform=$BUILDPLATFORM golang:1.26.10@sha256:672c944cfd07599b5f1bb179869270cdc94c6254e41db4d431259693cb286b82 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.11@sha256:957952ae74dc010608717144399a59a2c6e82ea03d63be1c7ff6577c5a135f93 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
