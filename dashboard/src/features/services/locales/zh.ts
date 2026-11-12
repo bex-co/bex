@@ -4599,6 +4599,21 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "One side of an autoscaling change: its minimum–maximum instances (w4/568)",
   },
+  "services.eventsAutoscalingRangeCPU": {
+    message: "{min}–{max} 个实例，CPU {cpu}%",
+    description:
+      "One side of an autoscaling change: its instance range and CPU target (w4/m335)",
+  },
+  "services.eventsAutoscalingRangeMemory": {
+    message: "{min}–{max} 个实例，内存 {memory}%",
+    description:
+      "One side of an autoscaling change: its instance range and memory target (w4/m335)",
+  },
+  "services.eventsAutoscalingRangeCPUMemory": {
+    message: "{min}–{max} 个实例，CPU {cpu}%，内存 {memory}%",
+    description:
+      "One side of an autoscaling change: its instance range and both targets (w4/m335)",
+  },
   "services.eventsPlanChange": {
     message: "实例类型 {from} → {to}",
     description:

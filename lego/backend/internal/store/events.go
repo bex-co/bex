@@ -535,9 +535,10 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 	return out, s.attachDiskUsage(ctx, out)
 }
 
-// AuditChanges are the audit_events columns Render's maintenance-mode,
-// disk-resize and auto-deploy event members need beyond the feed's UNION. Nil
-// for every other verb and for rows recorded before they existed.
+// AuditChanges are the audit_events columns event details need beyond the
+// feed's UNION: Render's maintenance-mode, disk-resize, auto-deploy and
+// autoscaling-target members, and the env group a link names. Nil for every
+// other verb and for rows recorded before they existed.
 type AuditChanges struct {
 	MaintenanceModeTo  *bool
 	DiskSizeFromGB     *int32
@@ -548,16 +549,23 @@ type AuditChanges struct {
 	// The group an env-group link or unlink named (w4/563).
 	EnvGroupID   *string
 	EnvGroupName *string
+	// An autoscaling change's CPU and memory targets on each side (w4/m335).
+	AutoscalingCPUFrom    *int32
+	AutoscalingCPUTo      *int32
+	AutoscalingMemoryFrom *int32
+	AutoscalingMemoryTo   *int32
 }
 
 // auditChangesColumns are AuditChanges' columns of audit_events aliased a, in
 // scanDestinations' order.
 const auditChangesColumns = `a.maintenance_mode_to, a.disk_size_from_gb, a.maintenance_uri_from, a.maintenance_uri_to,
-       a.auto_deploy_reason, a.auto_deploy_trigger, a.env_group_id, a.env_group_name`
+       a.auto_deploy_reason, a.auto_deploy_trigger, a.env_group_id, a.env_group_name,
+       a.autoscaling_cpu_from, a.autoscaling_cpu_to, a.autoscaling_memory_from, a.autoscaling_memory_to`
 
 func (c *AuditChanges) scanDestinations() []any {
 	return []any{&c.MaintenanceModeTo, &c.DiskSizeFromGB, &c.MaintenanceURIFrom, &c.MaintenanceURITo,
-		&c.AutoDeployReason, &c.AutoDeployTrigger, &c.EnvGroupID, &c.EnvGroupName}
+		&c.AutoDeployReason, &c.AutoDeployTrigger, &c.EnvGroupID, &c.EnvGroupName,
+		&c.AutoscalingCPUFrom, &c.AutoscalingCPUTo, &c.AutoscalingMemoryFrom, &c.AutoscalingMemoryTo}
 }
 
 // auditRowID is an audit row's id from its feed key ("<audit row id>:").
@@ -568,11 +576,12 @@ var auditChangeVerbs = map[string]bool{
 	core.AuditVerbMaintenanceModeEnabled: true, core.AuditVerbMaintenanceModeURIUpdated: true,
 	core.AuditVerbUpdateDisk: true, core.AuditVerbSetAutoDeploy: true,
 	core.AuditVerbLinkService: true, core.AuditVerbUnlinkService: true, core.AuditVerbLinkEnvGroup: true,
+	core.AuditVerbSetAutoscaling: true, core.AuditVerbDeleteAutoscaling: true,
 }
 
-// attachAuditChanges fills the maintenance-mode, disk-resize and auto-deploy
-// facts on a page's audit rows from audit_events in one read (w3/m317), so the
-// feed's UNION projection stays as it is.
+// attachAuditChanges fills AuditChanges on a page's audit rows from
+// audit_events in one read (w3/m317), so the feed's UNION projection stays as
+// it is.
 func (s *PGStore) attachAuditChanges(ctx context.Context, rows []ServiceEventRow) error {
 	at := map[string][]int{}
 	for i, r := range rows {

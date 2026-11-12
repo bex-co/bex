@@ -42,7 +42,7 @@ import (
 func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 	route := rendertest.Load(t).Operation("retrieve-event")
 	at := time.Date(2026, 11, 10, 9, 0, 0, 0, time.UTC)
-	two, three := int32(2), int32(3)
+	two, three, sixty := int32(2), int32(3), int32(60)
 	disk := "dsk-0123456789abcdefghij"
 	instance := "srv-0123456789abcdefghij-abcde"
 	for _, tc := range []struct {
@@ -70,7 +70,11 @@ func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.Restart", Caller: "usr-1"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.SetPlan", PlanFrom: new("starter"), PlanTo: new("standard")}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.Scale", InstanceCountFrom: &two, InstanceCountTo: &three}},
-		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.SetAutoscaling", AutoscalingMinTo: &two, AutoscalingMaxTo: &three}, missing: []string{"fromConfig/criteria", "fromConfig/max", "fromConfig/min", "toConfig/criteria"}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.SetAutoscaling", AutoscalingMinTo: &two, AutoscalingMaxTo: &three, AuditChanges: store.AuditChanges{AutoscalingCPUTo: &sixty}}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.SetAutoscaling", AutoscalingMinFrom: &two, AutoscalingMaxFrom: &three, AutoscalingMinTo: &two, AutoscalingMaxTo: &three, AuditChanges: store.AuditChanges{AutoscalingMemoryFrom: &sixty, AutoscalingCPUTo: &sixty}}},
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.DeleteAutoscaling", AutoscalingMinFrom: &two, AutoscalingMaxFrom: &three, AuditChanges: store.AuditChanges{AutoscalingCPUFrom: &sixty}}},
+		// A row recorded before the targets were (w4/m335).
+		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.SetAutoscaling", AutoscalingMinTo: &two, AutoscalingMaxTo: &three}, missing: []string{"toConfig/criteria"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.SetAutoDeploy", AutoDeployEnabled: new(true), AuditChanges: store.AuditChanges{AutoDeployTrigger: new("checksPass")}}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.SetAutoDeploy", AutoDeployEnabled: new(false), AuditChanges: store.AuditChanges{AutoDeployTrigger: new("commit"), AutoDeployReason: new("rollback")}}},
 		{row: store.ServiceEventRow{Source: store.EventSourceAudit, Verb: "apps.SetMaintenanceMode", AuditChanges: store.AuditChanges{MaintenanceModeTo: new(false)}}},
@@ -142,6 +146,42 @@ func TestChangeEventDetailsCarryTheRecordedFacts(t *testing.T) {
 		}
 		if !maps.Equal(got, tc.want) {
 			t.Errorf("%s (%s) details = %s, want %v", event.Type, tc.row.Verb, body, tc.want)
+		}
+	}
+}
+
+// TestAutoscalingEventDetailsCarryTheTargets pins w4/m335: each side of
+// autoscaling_config_changed is Render's autoscaling config, its criteria the
+// recorded CPU and memory targets, so a change to a target alone shows on both
+// sides. A disable keeps the config turned off, as Render's does; a side with
+// no config reads as GET …/autoscaling does without autoscaling; and a row
+// recorded before the targets were carries no criteria.
+func TestAutoscalingEventDetailsCarryTheTargets(t *testing.T) {
+	one, three, sixty, seventy := int32(1), int32(3), int32(60), int32(70)
+	const off = `{"enabled":false,"min":0,"max":0,"criteria":{"cpu":{"enabled":false,"percentage":0},"memory":{"enabled":false,"percentage":0}}}`
+	for _, tc := range []struct {
+		name string
+		row  store.ServiceEventRow
+		want string
+	}{
+		{"a target change", store.ServiceEventRow{Verb: "apps.SetAutoscaling", AutoscalingMinFrom: &one, AutoscalingMaxFrom: &three, AutoscalingMinTo: &one, AutoscalingMaxTo: &three,
+			AuditChanges: store.AuditChanges{AutoscalingCPUFrom: &seventy, AutoscalingCPUTo: &sixty, AutoscalingMemoryTo: &seventy}},
+			`{"fromConfig":{"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":true,"percentage":70},"memory":{"enabled":false,"percentage":0}}},` +
+				`"toConfig":{"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":true,"percentage":60},"memory":{"enabled":true,"percentage":70}}}}`},
+		{"disabling", store.ServiceEventRow{Verb: "apps.DeleteAutoscaling", AutoscalingMinFrom: &one, AutoscalingMaxFrom: &three, AuditChanges: store.AuditChanges{AutoscalingMemoryFrom: &sixty}},
+			`{"fromConfig":{"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":false,"percentage":0},"memory":{"enabled":true,"percentage":60}}},` +
+				`"toConfig":{"enabled":false,"min":1,"max":3,"criteria":{"cpu":{"enabled":false,"percentage":0},"memory":{"enabled":true,"percentage":60}}}}`},
+		{"recorded before the targets", store.ServiceEventRow{Verb: "apps.SetAutoscaling", AutoscalingMinTo: &one, AutoscalingMaxTo: &three},
+			`{"fromConfig":` + off + `,"toConfig":{"enabled":true,"min":1,"max":3}}`},
+	} {
+		tc.row.Source, tc.row.Key = store.EventSourceAudit, "aud-1:"
+		event := toRenderEvent(view(tc.row, "srv-0123456789abcdefghij"))
+		body, err := json.Marshal(event.Details)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(body) != tc.want {
+			t.Errorf("%s: details %s\nwant %s", tc.name, body, tc.want)
 		}
 	}
 }

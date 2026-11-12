@@ -29,6 +29,7 @@ import (
 	"math/rand/v2"
 	"net"
 	"net/url"
+	"reflect"
 	"slices"
 	"sort"
 	"strconv"
@@ -6213,10 +6214,9 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	var fromMin, fromMax *int32
+	var from *appv1alpha1.AutoscalingSpec
 	if a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled {
-		fromMin = &a.Spec.Autoscaling.MinReplicas
-		fromMax = &a.Spec.Autoscaling.MaxReplicas
+		from = a.Spec.Autoscaling.DeepCopy()
 	}
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Autoscaling = &as
@@ -6224,8 +6224,9 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	minTo, maxTo := req.MinInstances, req.MaxInstances
-	s.RecordAutoscalingChanged(ctx, a, fromMin, fromMax, &minTo, &maxTo)
+	if from == nil || !reflect.DeepEqual(*from, as) { // a save that changes nothing records no event
+		s.RecordAutoscalingChanged(ctx, a, from, &as)
+	}
 	return autoscalingView(a), nil
 }
 
@@ -6240,15 +6241,14 @@ func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
 	if a.Spec.Autoscaling == nil || !a.Spec.Autoscaling.Enabled {
 		return nil // already disabled — idempotent
 	}
-	fromMin := a.Spec.Autoscaling.MinReplicas
-	fromMax := a.Spec.Autoscaling.MaxReplicas
+	from := a.Spec.Autoscaling.DeepCopy()
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Autoscaling = nil
 	})
 	if err != nil {
 		return err
 	}
-	s.RecordAutoscalingChanged(ctx, a, &fromMin, &fromMax, nil, nil)
+	s.RecordAutoscalingChanged(ctx, a, from, nil)
 	return nil
 }
 

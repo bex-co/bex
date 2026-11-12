@@ -772,6 +772,12 @@ type Details struct {
 	AutoscalingMaxFrom *int32
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
+	// and each side's CPU and memory targets (w4/m335); nil = no such target,
+	// or a row recorded before the targets were
+	AutoscalingCPUFrom    *int32
+	AutoscalingCPUTo      *int32
+	AutoscalingMemoryFrom *int32
+	AutoscalingMemoryTo   *int32
 	// service_moved (w6/m134): the before/after public prj-/evm- ids; nil = no
 	// placement on that side, so assign, move, and unassign share one shape.
 	ProjectFrom     *string
@@ -1266,6 +1272,8 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.AutoscalingMaxFrom = r.AutoscalingMaxFrom
 			ev.Details.AutoscalingMinTo = r.AutoscalingMinTo
 			ev.Details.AutoscalingMaxTo = r.AutoscalingMaxTo
+			ev.Details.AutoscalingCPUFrom, ev.Details.AutoscalingCPUTo = r.AutoscalingCPUFrom, r.AutoscalingCPUTo
+			ev.Details.AutoscalingMemoryFrom, ev.Details.AutoscalingMemoryTo = r.AutoscalingMemoryFrom, r.AutoscalingMemoryTo
 		case TypeServiceMoved:
 			ev.Details.ProjectFrom = r.ProjectFrom
 			ev.Details.ProjectTo = r.ProjectTo

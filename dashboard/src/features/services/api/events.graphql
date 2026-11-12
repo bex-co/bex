@@ -43,6 +43,10 @@ query ServiceEvents(
       autoscalingMaxFrom
       autoscalingMinTo
       autoscalingMaxTo
+      autoscalingCPUFrom
+      autoscalingCPUTo
+      autoscalingMemoryFrom
+      autoscalingMemoryTo
       planFrom
       planTo
       # The two sentences by code, worded in the dashboard's language (w4/566).

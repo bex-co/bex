@@ -36,7 +36,7 @@ The result supports **19 of the 31 supplied labels** truthfully: 10 existing sou
 | Service Status | Service Recovered | `server_available` | Added: unhealthy-to-healthy observed edge |
 | Scaling | Autoscaling Started | `autoscaling_started` | Added: typed App status transition, REST `fromInstances`/`toInstances` |
 | Scaling | Autoscaling Ended | `autoscaling_ended` | Added: target replica count becomes ready |
-| Scaling | Autoscaling Config Changed | `autoscaling_config_changed` | Existing: typed previous/current min/max |
+| Scaling | Autoscaling Config Changed | `autoscaling_config_changed` | Existing: typed previous/current min/max, and since w4/m335 the CPU and memory targets; REST `fromConfig`/`toConfig` in Render's autoscaling config shape with `criteria` |
 | Scaling | Instance Count Changed | `instance_count_changed` | Existing: manual typed from/to count |
 | Scaling | Branch Changed | `branch_changed` | Added bex extension: source edit with typed from/to branch; Render public enum has no equivalent `branch_changed` wire type |
 | Scaling | Commit Ignored | `commit_ignored` | Added: signed matching push rejected by skip phrase, root directory, or build filter |

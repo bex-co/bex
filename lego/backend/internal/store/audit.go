@@ -118,8 +118,9 @@ func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 		    project_from, project_to, environment_from, environment_to,
 		    high_availability_enabled, connection_pool_enabled, disk_size_gb, maxmemory_policy, persistence_mode,
 		    disk_id, disk_size_from_gb, maintenance_uri_from, maintenance_uri_to, auto_deploy_reason, auto_deploy_trigger,
-		    env_group_id, env_group_name)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45)
+		    env_group_id, env_group_name,
+		    autoscaling_cpu_from, autoscaling_cpu_to, autoscaling_memory_from, autoscaling_memory_to)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46, $47, $48, $49)
 		ON CONFLICT DO NOTHING`,
 		auditID(ev), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
@@ -132,7 +133,8 @@ func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 		ev.ProjectFrom, ev.ProjectTo, ev.EnvironmentFrom, ev.EnvironmentTo,
 		ev.HighAvailabilityEnabled, ev.ConnectionPoolEnabled, ev.DiskSizeGB, ev.MaxmemoryPolicy, ev.PersistenceMode,
 		nullIfEmpty(ev.DiskID), ev.DiskSizeFromGB, ev.MaintenanceURIFrom, ev.MaintenanceURITo, ev.AutoDeployReason, ev.AutoDeployTrigger,
-		nullIfEmpty(ev.EnvGroupID), nullIfEmpty(ev.EnvGroupName))
+		nullIfEmpty(ev.EnvGroupID), nullIfEmpty(ev.EnvGroupName),
+		ev.AutoscalingCPUFrom, ev.AutoscalingCPUTo, ev.AutoscalingMemoryFrom, ev.AutoscalingMemoryTo)
 	return err
 }
 

@@ -227,6 +227,12 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"autoscalingMaxFrom": gqlutil.IntField(func(d Details) any { return d.AutoscalingMaxFrom }),
 		"autoscalingMinTo":   gqlutil.IntField(func(d Details) any { return d.AutoscalingMinTo }),
 		"autoscalingMaxTo":   gqlutil.IntField(func(d Details) any { return d.AutoscalingMaxTo }),
+		// and each side's CPU and memory target percentages (w4/m335); null =
+		// no such target.
+		"autoscalingCPUFrom":    gqlutil.IntField(func(d Details) any { return d.AutoscalingCPUFrom }),
+		"autoscalingCPUTo":      gqlutil.IntField(func(d Details) any { return d.AutoscalingCPUTo }),
+		"autoscalingMemoryFrom": gqlutil.IntField(func(d Details) any { return d.AutoscalingMemoryFrom }),
+		"autoscalingMemoryTo":   gqlutil.IntField(func(d Details) any { return d.AutoscalingMemoryTo }),
 		// service_moved before/after placement (w6/m134): public prj-/evm- ids,
 		// null = no placement on that side.
 		"projectFrom":     gqlutil.StrField(func(d Details) any { return d.ProjectFrom }),

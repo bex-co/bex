@@ -160,6 +160,55 @@ func TestPGAuditChangeDetailsRoundTrip(t *testing.T) {
 	}
 }
 
+// TestPGAutoscalingTargetsRoundTrip pins w4/m335: an autoscaling change keeps
+// both sides' CPU and memory targets, and the feed and the by-id lookup read
+// them back.
+func TestPGAutoscalingTargetsRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	t.Cleanup(pool.Close)
+	tenant, err := st.CreateWorkspace(ctx, "autoscaling-targets-"+ids.New(ids.Workspace), PlanHobby, "fixture-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, tenant.ID)
+		_ = st.DeleteTenant(context.Background(), tenant.ID)
+	})
+	app, err := st.CreateApp(ctx, App{
+		TenantID: tenant.ID, Name: "autoscaled", Image: "nginx:1", Type: "web_service",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	one, three, sixty, seventy := int32(1), int32(3), int32(60), int32(70)
+	if err := st.Record(ctx, core.AuditEvent{
+		Caller: "fixture-owner", Verb: core.AuditVerbSetAutoscaling, Resource: core.WorkspaceObject(tenant.ID),
+		Target: core.ServiceTarget(app.ID), Outcome: core.AuditAllowed, At: time.Now().UTC(),
+		AutoscalingMinFrom: &one, AutoscalingMaxFrom: &three, AutoscalingMinTo: &one, AutoscalingMaxTo: &three,
+		AutoscalingCPUFrom: &seventy, AutoscalingCPUTo: &sixty, AutoscalingMemoryTo: &seventy,
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	page, err := st.ListServiceEvents(ctx, app.ID, tenant.ID, ServiceEventFilter{Verbs: []string{core.AuditVerbSetAutoscaling}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := AuditChanges{AutoscalingCPUFrom: &seventy, AutoscalingCPUTo: &sixty, AutoscalingMemoryTo: &seventy}
+	if len(page) != 1 || !reflect.DeepEqual(page[0].AuditChanges, want) {
+		t.Fatalf("feed rows = %+v, want one carrying CPU 70 → 60 and memory → 70", page)
+	}
+	lookup, err := st.GetServiceEvent(ctx, tenant.ID, ids.Derive(ids.Event, page[0].Key))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := lookup.Event.AuditChanges; !reflect.DeepEqual(got, want) {
+		t.Fatalf("by-id changes = %+v, want %+v", got, want)
+	}
+}
+
 // TestPGAuditRecordWithDerivedIDRecordsOnce pins w2/067: Stripe redelivers
 // checkout.session.completed, and a row carrying a derived id must land once
 // however often it is recorded.

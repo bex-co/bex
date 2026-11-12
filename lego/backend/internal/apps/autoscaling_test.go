@@ -22,10 +22,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -465,5 +467,75 @@ func TestCreateAutoscalingRefusesCronBlueprint(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), appv1alpha1.TypeCronJob) {
 		t.Errorf("error %q must name cron_job", err)
+	}
+}
+
+// w4/m335: an autoscaling event records both sides' CPU and memory targets,
+// so a change to a target alone reads as one, and a save that changes nothing
+// records no event.
+func TestAutoscalingEventsRecordTheTargets(t *testing.T) {
+	svc, _ := newService(nil, mkAutoscaledApp())
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	ctx := context.Background()
+	side := func(minimum, maximum, cpu, memory *int32) string {
+		show := func(p *int32) string {
+			if p == nil {
+				return "-"
+			}
+			return strconv.Itoa(int(*p))
+		}
+		return show(minimum) + "/" + show(maximum) + " cpu " + show(cpu) + " memory " + show(memory)
+	}
+	last := func(verb string) core.AuditEvent {
+		t.Helper()
+		if n := sink.countVerb(verb); n != 1 {
+			t.Fatalf("%d %s events, want 1", n, verb)
+		}
+		for _, ev := range sink.events {
+			if ev.Verb == verb {
+				return ev
+			}
+		}
+		panic("unreachable")
+	}
+
+	if _, err := svc.SetAutoscaling(ctx, "web", SetAutoscalingRequest{MinInstances: 1, MaxInstances: 5, TargetCPUPercent: int32p(80)}); err != nil {
+		t.Fatal(err)
+	}
+	if n := sink.countVerb(core.AuditVerbSetAutoscaling); n != 0 {
+		t.Fatalf("a save that changed nothing recorded %d events", n)
+	}
+
+	if _, err := svc.SetAutoscaling(ctx, "web", SetAutoscalingRequest{MinInstances: 1, MaxInstances: 5, TargetCPUPercent: int32p(60), TargetMemoryPercent: int32p(70)}); err != nil {
+		t.Fatal(err)
+	}
+	ev := last(core.AuditVerbSetAutoscaling)
+	if from, to := side(ev.AutoscalingMinFrom, ev.AutoscalingMaxFrom, ev.AutoscalingCPUFrom, ev.AutoscalingMemoryFrom),
+		side(ev.AutoscalingMinTo, ev.AutoscalingMaxTo, ev.AutoscalingCPUTo, ev.AutoscalingMemoryTo); from != "1/5 cpu 80 memory -" || to != "1/5 cpu 60 memory 70" {
+		t.Fatalf("a target change recorded %s → %s", from, to)
+	}
+
+	if err := svc.DeleteAutoscaling(ctx, "web"); err != nil {
+		t.Fatal(err)
+	}
+	ev = last(core.AuditVerbDeleteAutoscaling)
+	if from, to := side(ev.AutoscalingMinFrom, ev.AutoscalingMaxFrom, ev.AutoscalingCPUFrom, ev.AutoscalingMemoryFrom),
+		side(ev.AutoscalingMinTo, ev.AutoscalingMaxTo, ev.AutoscalingCPUTo, ev.AutoscalingMemoryTo); from != "1/5 cpu 60 memory 70" || to != "-/- cpu - memory -" {
+		t.Fatalf("disabling recorded %s → %s", from, to)
+	}
+}
+
+// A save that changes nothing still answers 404 on a service being deleted,
+// as every other write does (w8/023): skipping its event skips no check.
+func TestUnchangedAutoscalingSaveOnADeletingServiceIs404(t *testing.T) {
+	app := mkAutoscaledApp()
+	now := metav1.Now()
+	app.DeletionTimestamp = &now
+	app.Finalizers = []string{"app.bex.co/finalizer"}
+	svc, _ := newService(nil, app)
+	_, err := svc.SetAutoscaling(context.Background(), "web", SetAutoscalingRequest{MinInstances: 1, MaxInstances: 5, TargetCPUPercent: int32p(80)})
+	if !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("an unchanged save on a deleting service = %v, want ErrNotFound", err)
 	}
 }

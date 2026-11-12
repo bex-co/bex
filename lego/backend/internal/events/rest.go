@@ -203,12 +203,45 @@ func toFailureReason(d Details) *FailureReason {
 const imagePullFailedMessage = "The image could not be pulled"
 
 // autoscalingState is one side of autoscaling_config_changed: Render's
-// autoscaling config, less the CPU/memory criteria the event row does not
-// record.
+// autoscaling config, the body of its PUT …/autoscaling (w4/m335). Render's
+// disable keeps the config with enabled false, so a disable's toConfig is its
+// fromConfig turned off; a side with no config to show reads as bex's GET
+// …/autoscaling does without autoscaling: zero bounds and no criterion enabled.
+// Criteria is nil only on an enabled side recorded before the targets were, as
+// an enabled config always has one.
 type autoscalingState struct {
-	Enabled bool   `json:"enabled"`
-	Min     *int32 `json:"min,omitempty"`
-	Max     *int32 `json:"max,omitempty"`
+	Enabled  bool                 `json:"enabled"`
+	Min      int32                `json:"min"`
+	Max      int32                `json:"max"`
+	Criteria *autoscalingCriteria `json:"criteria,omitempty"`
+}
+
+type autoscalingCriteria struct {
+	CPU    autoscalingCriterion `json:"cpu"`
+	Memory autoscalingCriterion `json:"memory"`
+}
+
+type autoscalingCriterion struct {
+	Enabled    bool  `json:"enabled"`
+	Percentage int32 `json:"percentage"`
+}
+
+func autoscalingSide(minimum, maximum, cpu, memory *int32) *autoscalingState {
+	if minimum == nil || maximum == nil {
+		return &autoscalingState{Criteria: &autoscalingCriteria{}}
+	}
+	side := &autoscalingState{Enabled: true, Min: *minimum, Max: *maximum}
+	if cpu != nil || memory != nil {
+		side.Criteria = &autoscalingCriteria{CPU: autoscalingTarget(cpu), Memory: autoscalingTarget(memory)}
+	}
+	return side
+}
+
+func autoscalingTarget(percent *int32) autoscalingCriterion {
+	if percent == nil {
+		return autoscalingCriterion{}
+	}
+	return autoscalingCriterion{Enabled: true, Percentage: *percent}
 }
 
 // renderTrigger is deploy_started's trigger object — Render's six booleans
@@ -296,10 +329,13 @@ func toRenderEvent(e Event) renderEvent {
 		d.FromInstances = e.Details.InstanceCountFrom
 		d.ToInstances = e.Details.InstanceCountTo
 	case TypeAutoscalingConfigChanged:
-		d.FromConfig = &autoscalingState{Min: e.Details.AutoscalingMinFrom, Max: e.Details.AutoscalingMaxFrom}
-		d.FromConfig.Enabled = d.FromConfig.Min != nil || d.FromConfig.Max != nil
-		d.ToConfig = &autoscalingState{Min: e.Details.AutoscalingMinTo, Max: e.Details.AutoscalingMaxTo}
-		d.ToConfig.Enabled = d.ToConfig.Min != nil || d.ToConfig.Max != nil
+		d.FromConfig = autoscalingSide(e.Details.AutoscalingMinFrom, e.Details.AutoscalingMaxFrom, e.Details.AutoscalingCPUFrom, e.Details.AutoscalingMemoryFrom)
+		d.ToConfig = autoscalingSide(e.Details.AutoscalingMinTo, e.Details.AutoscalingMaxTo, e.Details.AutoscalingCPUTo, e.Details.AutoscalingMemoryTo)
+		if !d.ToConfig.Enabled && d.FromConfig.Enabled {
+			kept := *d.FromConfig
+			kept.Enabled = false
+			d.ToConfig = &kept
+		}
 	case TypeBranchChanged:
 		d.From = &e.Details.BranchFrom
 		d.To = &e.Details.BranchTo

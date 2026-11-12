@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -11,6 +11,7 @@ import {
 } from "@tanstack/react-router";
 import { ServiceEventsPage } from "../services.$serviceId.events";
 import { formatDateTime } from "@/common/lib/format";
+import i18n from "@/i18n/init";
 import type { UseServerResult } from "@/features/services/hooks/use-server";
 import { DeployBuildAvailabilityDocument } from "@/graphql/definitions";
 
@@ -435,6 +436,80 @@ describe("ServiceEventsPage — configuration change values (w4/568)", () => {
     ).toBeInTheDocument();
     // The legacy row adds no third "Autoscaling …" line, Off → Off included.
     expect(screen.getAllByText(/^Autoscaling .+ → /)).toHaveLength(2);
+  });
+
+  // w4/m335: a change to a target alone no longer reads "1–3 → 1–3".
+  it("names each side's CPU and memory targets, in en and zh", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          {
+            id: "evt-retarget",
+            type: "autoscaling_config_changed",
+            timestamp: "2026-08-28T08:00:00Z",
+            cursor: "c-retarget",
+            details: {
+              autoscalingMinFrom: 1,
+              autoscalingMaxFrom: 3,
+              autoscalingCPUFrom: 70,
+              autoscalingMinTo: 1,
+              autoscalingMaxTo: 3,
+              autoscalingCPUTo: 60,
+              autoscalingMemoryTo: 80,
+            },
+          },
+          {
+            id: "evt-memory-off",
+            type: "autoscaling_config_changed",
+            timestamp: "2026-08-28T07:00:00Z",
+            cursor: "c-memory-off",
+            details: {
+              autoscalingMinFrom: 2,
+              autoscalingMaxFrom: 4,
+              autoscalingMemoryFrom: 75,
+            },
+          },
+          {
+            id: "evt-before-targets",
+            type: "autoscaling_config_changed",
+            timestamp: "2026-08-28T06:00:00Z",
+            cursor: "c-before-targets",
+            details: { autoscalingMinTo: 1, autoscalingMaxTo: 2 },
+          },
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText(
+        "Autoscaling 1–3 instances, CPU 70% → 1–3 instances, CPU 60%, memory 80%",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Autoscaling 2–4 instances, memory 75% → Off"),
+    ).toBeInTheDocument();
+    // A row recorded before the targets were shows the range alone.
+    expect(
+      screen.getByText("Autoscaling Off → 1–2 instances"),
+    ).toBeInTheDocument();
+
+    await act(() => i18n.changeLanguage("zh"));
+    try {
+      expect(
+        await screen.findByText(
+          "自动伸缩 1–3 个实例，CPU 70% → 1–3 个实例，CPU 60%，内存 80%",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("自动伸缩 2–4 个实例，内存 75% → 关闭"),
+      ).toBeInTheDocument();
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
   });
 });
 

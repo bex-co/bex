@@ -685,8 +685,10 @@ function PlacementChange({
 }
 
 /**
- * An autoscaling configuration change, each side Off or a range (w4/568). A
- * row recorded before the values were keeps its bare title.
+ * An autoscaling configuration change, each side Off or a range with its CPU
+ * and memory targets (w4/568, w4/m335), so a change to a target alone reads as
+ * one. A row recorded before the values were keeps its bare title, and one
+ * recorded before the targets were shows the range alone.
  */
 function AutoscalingChange({
   details,
@@ -704,15 +706,46 @@ function AutoscalingChange({
   ) {
     return null;
   }
-  const side = (min?: number | null, max?: number | null) =>
-    min != null && max != null
-      ? t("services.eventsAutoscalingRange", { min, max })
-      : t("services.eventsAutoscalingOff");
+  const side = (
+    min?: number | null,
+    max?: number | null,
+    cpu?: number | null,
+    memory?: number | null,
+  ) => {
+    if (min == null || max == null) {
+      return t("services.eventsAutoscalingOff");
+    }
+    if (cpu != null && memory != null) {
+      return t("services.eventsAutoscalingRangeCPUMemory", {
+        min,
+        max,
+        cpu,
+        memory,
+      });
+    }
+    if (cpu != null) {
+      return t("services.eventsAutoscalingRangeCPU", { min, max, cpu });
+    }
+    if (memory != null) {
+      return t("services.eventsAutoscalingRangeMemory", { min, max, memory });
+    }
+    return t("services.eventsAutoscalingRange", { min, max });
+  };
   return (
     <p className="text-muted-foreground mt-2 text-xs">
       {t("services.eventsAutoscalingChange", {
-        from: side(autoscalingMinFrom, autoscalingMaxFrom),
-        to: side(autoscalingMinTo, autoscalingMaxTo),
+        from: side(
+          autoscalingMinFrom,
+          autoscalingMaxFrom,
+          details.autoscalingCPUFrom,
+          details.autoscalingMemoryFrom,
+        ),
+        to: side(
+          autoscalingMinTo,
+          autoscalingMaxTo,
+          details.autoscalingCPUTo,
+          details.autoscalingMemoryTo,
+        ),
       })}
     </p>
   );

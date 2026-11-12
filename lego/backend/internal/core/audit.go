@@ -74,7 +74,13 @@ type AuditEvent struct {
 	AutoscalingMaxFrom *int32
 	AutoscalingMinTo   *int32
 	AutoscalingMaxTo   *int32
-	AutoDeployEnabled  *bool
+	// The CPU and memory targets on each side of an autoscaling change
+	// (w4/m335); nil when that side was disabled or set no such target.
+	AutoscalingCPUFrom    *int32
+	AutoscalingCPUTo      *int32
+	AutoscalingMemoryFrom *int32
+	AutoscalingMemoryTo   *int32
+	AutoDeployEnabled     *bool
 	// Managed-datastore configuration values (w3/m82). Each is the value the
 	// corresponding field was set TO by a successful PATCH — the
 	// AutoDeployEnabled shape, not a from/to pair, because Render's datastore
@@ -498,25 +504,29 @@ func (b *Base) RecordScaleEffect(ctx context.Context, app *appv1alpha1.App, from
 }
 
 // RecordAutoscalingChanged records the typed from/to detail for a successful
-// SetAutoscaling or DeleteAutoscaling. fromMin/fromMax are nil when autoscaling
-// was previously disabled; toMin/toMax are nil when autoscaling was deleted.
+// SetAutoscaling or DeleteAutoscaling: each side's bounds and targets. from is
+// nil when autoscaling was previously disabled; to is nil when it was deleted.
 // Called after the write path confirms success, paired with
 // WithDeferredAllowedWriteAudit on the AuthorizeApp call.
-func (b *Base) RecordAutoscalingChanged(ctx context.Context, app *appv1alpha1.App, fromMin, fromMax, toMin, toMax *int32) {
+func (b *Base) RecordAutoscalingChanged(ctx context.Context, app *appv1alpha1.App, from, to *appv1alpha1.AutoscalingSpec) {
 	resource, err := b.resourceWorkspace(ctx, app.Labels)
 	if err != nil {
 		log.Printf("audit: resolve autoscaling resource: %v", err)
 		return
 	}
 	verb := AuditVerbSetAutoscaling
-	if toMin == nil {
+	if to == nil {
 		verb = AuditVerbDeleteAutoscaling
 	}
 	ev := b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app))
-	ev.AutoscalingMinFrom = fromMin
-	ev.AutoscalingMaxFrom = fromMax
-	ev.AutoscalingMinTo = toMin
-	ev.AutoscalingMaxTo = toMax
+	if from != nil {
+		ev.AutoscalingMinFrom, ev.AutoscalingMaxFrom = &from.MinReplicas, &from.MaxReplicas
+		ev.AutoscalingCPUFrom, ev.AutoscalingMemoryFrom = from.TargetCPUPercent, from.TargetMemoryPercent
+	}
+	if to != nil {
+		ev.AutoscalingMinTo, ev.AutoscalingMaxTo = &to.MinReplicas, &to.MaxReplicas
+		ev.AutoscalingCPUTo, ev.AutoscalingMemoryTo = to.TargetCPUPercent, to.TargetMemoryPercent
+	}
 	b.recordAudit(ctx, ev)
 }
 
