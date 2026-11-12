@@ -146,11 +146,14 @@ type Service struct {
 }
 
 // cachedPublicCommit is one (repo, ref) resolve outcome. ok=false is a
-// negative cache entry (404/403/422/outage) so private and missing look
-// identical and do not burn the anonymous quota on every deploy open.
+// negative cache entry (404/403/outage) so private and missing look identical
+// and do not burn the anonymous quota on every deploy open.
 type cachedPublicCommit struct {
 	info store.CommitInfo
 	ok   bool
+	// notFound is GitHub's "no such commit" for a public repository
+	// (noSuchCommit), cached only briefly (publicCommitNotFoundTTL).
+	notFound bool
 }
 
 const (
@@ -165,8 +168,12 @@ const (
 	// longer memo built a commit from before the latest push (w5/152). A miss,
 	// including a lookup the rate limit refused, leaves the build unpinned, on
 	// the branch, and may last longer.
-	publicCommitCacheTTL       = 10 * time.Second
-	publicCommitMissTTL        = 2 * time.Minute
+	publicCommitCacheTTL = 10 * time.Second
+	publicCommitMissTTL  = 2 * time.Minute
+	// publicCommitNotFoundTTL keeps a retried mistyped SHA from spending the
+	// anonymous quota, while a commit pushed just after the refusal resolves
+	// within half a minute (w8/280).
+	publicCommitNotFoundTTL    = 30 * time.Second
 	publicCommitResolveTimeout = 5 * time.Second
 )
 
@@ -1329,10 +1336,13 @@ func (s *Service) DeployCommitSource() commitSource { return commitSource{s} }
 // author time. Other public HTTPS hosts use anonymous smart-HTTP discovery
 // (w8/209), including when the GitHub App is disabled. Both public paths cache
 // successes briefly and collapse every failure to a miss; metadata lookup
-// never blocks a deploy or distinguishes a private repo from a missing one.
+// never distinguishes a private repo from a missing one.
 //
-// A non-nil error is an installation-path GitHub failure. Callers may treat it
-// like ok=false: provenance is never worth failing a deploy over.
+// store.ErrCommitNotFound is GitHub's answer that the repository has no such
+// commit (noSuchCommit), on either GitHub path; a deploy of a commit the
+// caller named is refused for it (w8/280). Any other non-nil error is an
+// installation-path GitHub failure, which callers treat like ok=false:
+// provenance is never worth failing a deploy over.
 func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error) {
 	if ref == "" {
 		return store.CommitInfo{}, false, nil
@@ -1360,15 +1370,27 @@ func (s *Service) resolveCommit(ctx context.Context, workspaceID, repoURL, ref s
 	}
 	c, err := s.GitHub.GetCommit(ctx, tok.Token, owner, repo, ref)
 	if err != nil {
-		// 404 = repo not in the grant; 422 = no such ref. Both mean "nothing to
-		// resolve", not a GitHub failure.
+		// 404 = repo not in the grant: nothing to resolve.
 		var apiErr *APIError
-		if errors.As(err, &apiErr) && (apiErr.Status == 404 || apiErr.Status == 422) {
+		if errors.As(err, &apiErr) && apiErr.Status == 404 {
 			return store.CommitInfo{}, false, nil
+		}
+		if noSuchCommit(err) {
+			return store.CommitInfo{}, false, store.ErrCommitNotFound
 		}
 		return store.CommitInfo{}, false, err
 	}
 	return store.CommitInfo{Hash: c.SHA, Message: c.Message, AuthorAt: c.AuthorAt}, true, nil
+}
+
+// noSuchCommit is GitHub's answer that a repository has no commit for a ref:
+// 422 "No commit found for SHA: <ref>", for a SHA and a branch name alike.
+// Its other 422s (a diff too large to generate, a validation failure) say
+// nothing about whether the commit exists.
+func noSuchCommit(err error) bool {
+	var apiErr *APIError
+	return errors.As(err, &apiErr) && apiErr.Status == http.StatusUnprocessableEntity &&
+		strings.Contains(apiErr.Body, "No commit found")
 }
 
 func (s *Service) publicCommitMemo() *core.TTLCache[cachedPublicCommit] {
@@ -1380,8 +1402,8 @@ func (s *Service) publicCommitMemo() *core.TTLCache[cachedPublicCommit] {
 
 // resolvePublicCommit is the no-installation path for Public Git URL services:
 // unauthenticated GitHub commit lookup, cached per (owner/repo, ref), bounded
-// by a short timeout. Every failure is ok=false — never an error a deploy
-// opener could treat as fatal, and never a fabricated partial commit.
+// by a short timeout. Every failure is ok=false, never a fabricated partial
+// commit, except GitHub's "no such commit" (store.ErrCommitNotFound).
 func (s *Service) resolvePublicCommit(ctx context.Context, repoURL, ref string) (store.CommitInfo, bool, error) {
 	owner, repo, ok := githubOwnerRepo(repoURL)
 	if !ok {
@@ -1389,7 +1411,7 @@ func (s *Service) resolvePublicCommit(ctx context.Context, repoURL, ref string) 
 	}
 	key := strings.ToLower(owner) + "/" + strings.ToLower(repo) + "@" + ref
 	if cached, hit := s.publicCommitMemo().Get(key); hit {
-		return cached.info, cached.ok, nil
+		return publicCommitAnswer(cached)
 	}
 	v, _, _ := s.publicCommitFlight.Do(key, func() (any, error) {
 		if cached, hit := s.publicCommitMemo().Get(key); hit {
@@ -1402,17 +1424,31 @@ func (s *Service) resolvePublicCommit(ctx context.Context, repoURL, ref string) 
 		ttl := publicCommitMissTTL
 		// Collapse every failure — including 404 vs 403 — into a miss so this
 		// path cannot distinguish private from missing (no existence oracle).
-		if err == nil && c.SHA != "" {
+		// GitHub says "no such commit" only for a repository it shows
+		// anonymously, so that answer reveals nothing a stranger cannot ask:
+		// it is kept apart (w8/280).
+		switch {
+		case err == nil && c.SHA != "":
 			entry = cachedPublicCommit{
 				info: store.CommitInfo{Hash: c.SHA, Message: c.Message, AuthorAt: c.AuthorAt},
 				ok:   true,
 			}
 			ttl = publicCommitCacheTTL
+		case noSuchCommit(err):
+			entry = cachedPublicCommit{notFound: true}
+			ttl = publicCommitNotFoundTTL
 		}
 		s.publicCommitMemo().Put(key, entry, time.Now().Add(ttl))
 		return entry, nil
 	})
 	entry, _ := v.(cachedPublicCommit)
+	return publicCommitAnswer(entry)
+}
+
+func publicCommitAnswer(entry cachedPublicCommit) (store.CommitInfo, bool, error) {
+	if entry.notFound {
+		return store.CommitInfo{}, false, store.ErrCommitNotFound
+	}
 	return entry.info, entry.ok, nil
 }
 

@@ -316,6 +316,12 @@ const (
 // onto Render's enum (w8/058). A guard test keeps it in step with the consts.
 var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerManual, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerSettingsChange, TriggerRestart, TriggerDeployedByRender}
 
+// ErrCommitNotFound is a commit lookup the repository's host answered with
+// "no such commit" (w8/280), as opposed to one that could not be made: the
+// host unreachable or rate-limited, a private repository, or a host that
+// cannot say.
+var ErrCommitNotFound = errors.New("commit not found in the repository")
+
 // CommitInfo is the git commit a build-from-git deploy runs — the resolved
 // SHA, message, and author timestamp (w9/001 + w2/m42). Zero value = unknown:
 // image-backed app, no GitHub connection to resolve through, resolution

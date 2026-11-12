@@ -84,8 +84,11 @@ type DeployStore interface {
 // github.Service's DeployCommitSource satisfies it (w9/001). nil on the
 // Service ⇒ deploy rows carry no commit metadata (omitted, not faked).
 // ok=false (nil err) means "nothing to resolve" (no connection, repo not in
-// the grant, unknown ref); commit metadata is provenance, so callers treat a
-// non-nil err the same way rather than failing the deploy.
+// the grant, a host that cannot say). store.ErrCommitNotFound is the host's
+// answer that the repository has no such commit, which refuses a deploy of a
+// commit the caller named (w8/280); commit metadata is otherwise provenance,
+// so callers treat any other non-nil err like ok=false rather than failing
+// the deploy.
 type CommitResolver interface {
 	ResolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error)
 }
@@ -791,6 +794,10 @@ func sameImageRepository(configured, requested string) error {
 	return nil
 }
 
+// commitNotFoundCode is the coded 404 for a deploy of a commit its
+// repository does not have (w8/280).
+const commitNotFoundCode = "commit_not_found"
+
 // triggerFetched is the one deploy-trigger implementation shared by the
 // authenticated Trigger verb and the secret-URL deploy hook. The caller owns
 // the authentication boundary and supplies an already-resolved App; everything
@@ -804,6 +811,18 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	}
 	if err := s.validateTrigger(service, a, p); err != nil {
 		return DeployView{}, err
+	}
+	// Resolve the triggering ref to its exact commit BEFORE anything is
+	// written (w9/001): best-effort provenance, so a GitHub hiccup never
+	// blocks a deploy. A commit the caller named that the repository answers
+	// it does not have is refused here instead of opening a deploy whose build
+	// fails at checkout (w8/280): Render's deploy hook answers 404, "The
+	// commit SHA specified in the ref query parameter was not found in the
+	// service's linked repository". A restart's commit is the running one.
+	commit, err := s.lookupCommit(ctx, a, p.CommitID)
+	if err != nil && p.CommitID != "" && !p.restart {
+		return DeployView{}, core.NewNotFoundError(commitNotFoundCode,
+			fmt.Sprintf("commit %q was not found in the service's linked repository", p.CommitID), map[string]any{"commitId": p.CommitID})
 	}
 	appID := appStoreID(a)
 	// A service linked to a build source ships the source's current build
@@ -837,10 +856,6 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		}
 		pullSecret = name
 	}
-	// Resolve the triggering ref to its exact commit BEFORE the CR patch that
-	// starts the rollout (w9/001) — best-effort provenance: the deploy row
-	// opens either way, so a GitHub hiccup can never block a deploy.
-	commit := s.resolveCommit(ctx, a, p.CommitID)
 	// A linked service builds nothing: its deploy reports the build's commit,
 	// as Render's does.
 	if build != nil && build.commit.Hash != "" {
@@ -970,7 +985,7 @@ func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, s
 	go s.StartedNotifier.NotifyDeployStarted(context.WithoutCancel(ctx), tenantID, service, a.Spec.NotificationsToSend)
 }
 
-// resolveCommit resolves the ref a trigger will build — the explicit
+// lookupCommit resolves the ref a trigger will build — the explicit
 // commitId, else the App's branch (the operator's own default-"main"
 // fallback, app_controller.go) — to its exact commit via the App's OWN
 // workspace's GitHub connection or anonymous public lookup. core.LabelTenant
@@ -978,10 +993,12 @@ func (s *Service) notifyDeployStarted(ctx context.Context, a *appv1alpha1.App, s
 // identity-less deploy hooks. Best-effort by design (w9/001): an image-backed
 // App, a missing resolver, or any resolution failure returns the zero
 // CommitInfo — the deploy row simply carries no commit metadata, mirroring
-// the "omitted, not faked" contract the views hold.
-func (s *Service) resolveCommit(ctx context.Context, a *appv1alpha1.App, ref string) store.CommitInfo {
+// the "omitted, not faked" contract the views hold. The one error is
+// store.ErrCommitNotFound, the host's answer that the repository has no such
+// commit (w8/280).
+func (s *Service) lookupCommit(ctx context.Context, a *appv1alpha1.App, ref string) (store.CommitInfo, error) {
 	if s.Commits == nil || a.Spec.Repo == "" {
-		return store.CommitInfo{}
+		return store.CommitInfo{}, nil
 	}
 	if ref == "" {
 		ref = a.Spec.Branch
@@ -998,10 +1015,13 @@ func (s *Service) resolveCommit(ctx context.Context, a *appv1alpha1.App, ref str
 		}
 	}
 	commit, ok, err := s.Commits.ResolveCommit(ctx, workspace, a.Spec.Repo, ref)
-	if err != nil || !ok {
-		return store.CommitInfo{}
+	if errors.Is(err, store.ErrCommitNotFound) {
+		return store.CommitInfo{}, err
 	}
-	return commit
+	if err != nil || !ok {
+		return store.CommitInfo{}, nil
+	}
+	return commit, nil
 }
 
 // Cancel kills a still-open deploy (Render's POST .../deploys/{id}/cancel,

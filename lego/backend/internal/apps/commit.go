@@ -31,9 +31,11 @@ import (
 // metadata.
 type CommitResolver interface {
 	// ResolveCommit returns the resolved commit, or ok=false (nil err) when
-	// there is nothing to resolve (no connection, repo not in the grant,
-	// unknown ref). Commit metadata is provenance, never load-bearing —
-	// callers treat a non-nil err like ok=false instead of failing the deploy.
+	// there is nothing to resolve (no connection, repo not in the grant, a
+	// host that cannot say), or store.ErrCommitNotFound when GitHub answers
+	// that the repository has no such ref (w8/280). Commit metadata is
+	// provenance, never load-bearing — callers treat a non-nil err like
+	// ok=false instead of failing the deploy.
 	ResolveCommit(ctx context.Context, workspaceID, repoURL, ref string) (store.CommitInfo, bool, error)
 }
 

@@ -392,10 +392,15 @@ func (s *Service) DeployHookHandler() http.Handler {
 // parameters, which the hook passes through as CommitID and ImageURL.
 var hookFieldNames = strings.NewReplacer("commitId", "ref", "imageUrl", "imgURL")
 
-// inHookVocabulary renames the trigger's field names in a bad-request message
-// to the hook parameters the caller actually sent (w8/141). The rule text and
+// inHookVocabulary renames the trigger's field names in a bad-request message,
+// and the parameter an unknown commit names, to the hook parameters the
+// caller actually sent (w8/141, w8/280). The rule text and
 // status are unchanged, and the authenticated surfaces keep their own names.
 func inHookVocabulary(err error) error {
+	var coded *core.CodedError
+	if errors.As(err, &coded) && coded.Code == commitNotFoundCode {
+		return core.NewNotFoundError(coded.Code, coded.Error(), map[string]any{"ref": coded.Params["commitId"]})
+	}
 	if !errors.Is(err, core.ErrBadRequest) {
 		return err
 	}

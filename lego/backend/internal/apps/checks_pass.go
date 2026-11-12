@@ -167,7 +167,8 @@ func (h *GitWebhook) awaitChecks(ctx context.Context, a *appv1alpha1.App, commit
 					branch = appv1alpha1.DefaultBranch
 				}
 				head, ok, err := h.Svc.Commits.ResolveCommit(ctx, h.Svc.AppWorkspace(ctx, live), source.Repo, branch)
-				if err != nil {
+				// A branch GitHub says does not exist is "unavailable" below.
+				if err != nil && !errors.Is(err, store.ErrCommitNotFound) {
 					return err
 				}
 				if !ok {
@@ -351,7 +352,8 @@ func (s *Service) dispatchCheckedCommit(ctx context.Context, a *appv1alpha1.App,
 			branch = appv1alpha1.DefaultBranch
 		}
 		head, ok, err := s.Commits.ResolveCommit(ctx, s.AppWorkspace(ctx, a), source.Repo, branch)
-		if err != nil {
+		// A branch GitHub says does not exist is "unavailable" below.
+		if err != nil && !errors.Is(err, store.ErrCommitNotFound) {
 			return false, err
 		}
 		if !ok {

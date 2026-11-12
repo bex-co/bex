@@ -1013,12 +1013,21 @@ func TestResolveCommit(t *testing.T) {
 		t.Errorf("GetCommit called with %v, want the minted token + the ref", cl.gotCommitRef)
 	}
 
-	// Unknown ref / repo out of the grant (GitHub 422/404) => (false, nil).
-	for _, status := range []int{404, 422} {
-		bad := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", commitErr: &APIError{Status: status}}, Store: st}
-		if _, ok, err := bad.resolveCommit(ctx, "default", "https://github.com/octo/app", "gone"); ok || err != nil {
-			t.Errorf("status %d: want (false, nil), got ok=%v err=%v", status, ok, err)
-		}
+	// A repo out of the grant (GitHub 404) => (false, nil): nothing to resolve.
+	bad := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", commitErr: &APIError{Status: 404}}, Store: st}
+	if _, ok, err := bad.resolveCommit(ctx, "default", "https://github.com/octo/app", "gone"); ok || err != nil {
+		t.Errorf("status 404: want (false, nil), got ok=%v err=%v", ok, err)
+	}
+	// No such ref in a repository GitHub shows => store.ErrCommitNotFound,
+	// which refuses a deploy of that commit (w8/280). GitHub's other 422s say
+	// nothing about the commit and stay failures.
+	unknown := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", commitErr: noCommitFound}, Store: st}
+	if _, ok, err := unknown.resolveCommit(ctx, "default", "https://github.com/octo/app", "0123456"); ok || !errors.Is(err, store.ErrCommitNotFound) {
+		t.Errorf("no commit found: want store.ErrCommitNotFound, got ok=%v err=%v", ok, err)
+	}
+	slow := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{token: "x", commitErr: diffTooLong}, Store: st}
+	if _, ok, err := slow.resolveCommit(ctx, "default", "https://github.com/octo/app", "0123456"); ok || err == nil || errors.Is(err, store.ErrCommitNotFound) {
+		t.Errorf("a 422 about the diff: want a plain failure, got ok=%v err=%v", ok, err)
 	}
 
 	// A real GitHub failure on the installation path surfaces as an error (the
@@ -1055,6 +1064,13 @@ func TestResolveCommit(t *testing.T) {
 // success stamps hash+message; private/unknown/provider-failure
 // each stay ok=false with no fabricated commit; results are cached per
 // (repo, ref).
+// GitHub's two 422s for GET /repos/{o}/{r}/commits/{ref}: the ref has no
+// commit, and a real commit whose diff it gave up on.
+var (
+	noCommitFound = &APIError{Status: 422, Body: `{"message":"No commit found for SHA: 0123456","status":"422"}`}
+	diffTooLong   = &APIError{Status: 422, Body: `{"message":"Sorry, this diff is taking too long to generate.","status":"422"}`}
+)
+
 func TestResolveCommitPublicFallback(t *testing.T) {
 	ctx := context.Background()
 	pub := Commit{SHA: "pubsha012345", Message: "chore: public tip"}
@@ -1108,6 +1124,30 @@ func TestResolveCommitPublicFallback(t *testing.T) {
 		})
 	})
 
+	// w8/280: GitHub answers 422 "No commit found" for a commit a public
+	// repository does not have; a private or missing repository is 404 and
+	// stays a plain miss, as does a 422 about something else. The answer is
+	// cached briefly, so a retried mistyped SHA does not spend the quota.
+	t.Run("a public repository without the commit", func(t *testing.T) {
+		cl := &fakeClient{commitErr: noCommitFound}
+		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
+		url := "https://github.com/render-examples/express-hello-world"
+		for range 2 {
+			if _, ok, err := svc.resolveCommit(ctx, "default", url, "0123456"); ok || !errors.Is(err, store.ErrCommitNotFound) {
+				t.Fatalf("no commit found = ok=%v err=%v, want store.ErrCommitNotFound", ok, err)
+			}
+		}
+		if cl.getCommitCalls != 1 {
+			t.Errorf("GetCommit ran %d times for a repeated unknown SHA, want 1 (cached)", cl.getCommitCalls)
+		}
+		for _, apiErr := range []*APIError{{Status: 404}, diffTooLong} {
+			miss := &Service{Base: &core.Base{Namespace: "default"}, GitHub: &fakeClient{commitErr: apiErr}, Store: newFakeStore()}
+			if _, ok, err := miss.resolveCommit(ctx, "default", url, "0123456"); ok || err != nil {
+				t.Errorf("%+v = ok=%v err=%v, want a plain miss", apiErr, ok, err)
+			}
+		}
+	})
+
 	t.Run("caches per repo ref", func(t *testing.T) {
 		cl := &fakeClient{commit: pub}
 		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
@@ -1133,12 +1173,14 @@ func TestResolveCommitPublicFallback(t *testing.T) {
 		}
 	})
 
+	// GitHub's 422 for a public repository is its answer that the ref does
+	// not exist there (w8/280), not a failure to look.
 	t.Run("unknown ref", func(t *testing.T) {
-		cl := &fakeClient{commitErr: &APIError{Status: 422}}
+		cl := &fakeClient{commitErr: noCommitFound}
 		svc := &Service{Base: &core.Base{Namespace: "default"}, GitHub: cl, Store: newFakeStore()}
 		c, ok, err := svc.resolveCommit(ctx, "default", "https://github.com/render-examples/express-hello-world", "no-such-branch")
-		if ok || err != nil || c.Hash != "" {
-			t.Fatalf("unknown ref = %+v,%v,%v, want (zero,false,nil)", c, ok, err)
+		if ok || !errors.Is(err, store.ErrCommitNotFound) || c.Hash != "" {
+			t.Fatalf("unknown ref = %+v,%v,%v, want (zero,false,store.ErrCommitNotFound)", c, ok, err)
 		}
 	})
 
