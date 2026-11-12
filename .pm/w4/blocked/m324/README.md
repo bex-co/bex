@@ -146,3 +146,7 @@ Logs were read with paged `GET /v1/logs?…&type=build&direction=forward`.
 - **DoD 3 passes.** `dep-dbqelq4o6rds73e87rdg` (Docker) kept BuildKit's `#1 [internal] load build definition from Dockerfile` lines and went live.
 - **Filed as t009.** It covers the failure-reason path (`failureDetail`, `lego/operator/internal/build/build.go:813-850`), the push digests and the narration order. t004 waits for it. w4/582 keeps the success line's position.
 
+## Post-release probe — QA loop round 190 (2026-11-12, pin `a5be11e4e517`)
+
+- t009's failure reproduces on a static site: `echo qa-break2; exit 3` gives `failureReason` "build failed in the build environment step:" followed by `#13`–`#17` of bex's toolchain (820 characters), with no command output and no exit code, while the log shows `error: build command 'echo qa-break2; exit 3' exited with code 3`.
+- The verdict is missing because the kubelet keeps only the first 12 KiB ÷ (the pod's container count) bytes of each termination message (Kubernetes v1.33.0 `status_manager.go:1038-1055`). bex writes the transcript's last 4 KiB, so BuildKit's verdict at its end is cut. The full trace and the fix direction are in [t009's addendum](t009.md).

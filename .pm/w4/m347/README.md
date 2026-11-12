@@ -99,3 +99,31 @@ Deploy rows (`GET /v1/services/{id}/deploys`) and the deploy page's log, in UTC:
 - **Seen, not filed:**
   - The Public Git URL tab runs no runtime detection: `use-new-service-form.ts:111-116` passes `repo: null` outside the GitHub tab, and `repoRuntimeDetection` answers `null` for `bex-co/bex`. The wizard kept Runtime Node with `npm install` / `npm start` for a Go folder. Render's behavior there is unverified.
   - A Go build logs `==> Using Node 24 (default)`, as Python builds did in earlier rounds.
+
+## Evidence — QA loop round 190 (2026-11-12, pin `a5be11e4e517`): an in-flight push failed while the registry was unreachable
+
+This answers part of t001's step 2 from the customer side. The platform side (which App's credential, whether a bounce) was not read.
+
+- **Fixture:** static site `qa-20261112-r190-st` (`srv-dbqq04a8vjhs73do9e9g`, `octocat/Spoon-Knife`), deleted afterwards (DELETE 204, then GET 404).
+- **Deploy:** its first build with a build command, `dep-dbqq251n6kgc73837380`, created 11:20:52. The build log shows no `==> Preparing registry credentials` line.
+- **Build log (UTC):**
+
+  | Time | Line |
+  | --- | --- |
+  | 11:21:53 | `==> Running build command …` |
+  | 11:22:22 | `==> Uploading build...` |
+  | 11:22:31 | `Failed, retrying in 1s ... (1/3). Error: writing blob: Put "http://zot.bex-registry.svc:5000/v2/<ws>/<ws>-qa-20261112-r190-st/blobs/uploads/…": EOF` |
+  | 11:22:33, 11:22:36 | `(2/3)`, `(3/3)`: `pinging container registry zot.bex-registry.svc:5000: Get "http://zot.bex-registry.svc:5000/v2/": dial tcp 10.106.213.240:5000: connect: connection refused` |
+  | 11:22:41 | `level=fatal msg="…connection refused"` |
+  | 11:22:56 | `==> Using Node 24 (default)`: the Job ran the whole build again, with no line saying why |
+  | 11:23:58 – 11:24:11 | `==> Uploading build...`, `==> Uploaded in 13s`, `==> Build successful 🎉` |
+  | 11:24:44 | `==> Your service is live 🎉` |
+
+- **What this shows:**
+  - The single zot replica stopped answering mid-upload. The upload hit EOF, then the Service's ClusterIP refused connections for at least 10 s, consistent with its pod being deleted. skopeo's three retries span 10 s, which is shorter than a pod restart, so the push failed. The build then succeeded only because the Job's backoff reran the whole build.
+  - The deploy took 3 m 14 s (the deploy page's Duration) instead of the ~1 m 20 s of this site's next build (11:26:52 → 11:28:15, `Uploaded in 9s`).
+- **Unverified:**
+  - That a credential-activation bounce (`recordRejection`) caused this outage, rather than another restart. Other sessions were creating services in the same minutes (`qa-20261112-1cee-web` was live in `bex-canary`).
+  - Whether pulls failed in the same window.
+- **For t002's guarantee:** a registry restart that any tenant's new service can trigger fails other tenants' in-flight pushes. Removing the bounce removes that failure class. Until then, the push's retry budget (3 attempts over 10 s) is shorter than a zot restart.
+- **Separate, not this milestone:** the raw skopeo records that name `zot.bex-registry.svc:5000` and `10.106.213.240` are w8/286 (`a177508f3`, on `main` after this pin). Deploys wait for the 6-hour pin age (`.github/workflows/deploy.yml:20-24`).
