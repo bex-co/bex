@@ -135,3 +135,20 @@ The release gate cleared at `6ee0197c7` (14:43 UTC): production is pinned to `f6
   - a private store and an explicit-rules store;
   - the zh panel and the 1440/390 skeleton check;
   - the pinned CLI.
+
+## Post-release probe (QA loop round 169, 2026-11-12): the Key Value half
+
+Pin `e7a56b07e0d7` carries the fix. The fixture was the round's Free Key Value `qa-20261112-r169-kv` (`red-dbqkjnmrbf4s73estuhg`), created in the dashboard with Public access on and no rules. Deleted afterwards (GET 404).
+
+- **Readback passes for Key Value:**
+  - `GET /v1/key-value/<id>` and `GET /v1/redis/<id>` → `public: true`, `ipAllowList: [{"cidrBlock":"0.0.0.0/0"},{"cidrBlock":"::/0"}]`;
+  - `GET …/ip-allow-list` → `{"cidrs":["0.0.0.0/0","::/0"]}`;
+  - GraphQL `keyValue { ipAllowList }` → `["0.0.0.0/0","::/0"]`;
+  - the dashboard Networking panel lists both rules (en).
+- **Access:** the copied External URL connected with TLS/SNI and its credentials. The unauthenticated `NOAUTH` check was not run.
+- **Not run:**
+  - the Postgres half;
+  - the round trip (`PUT` unchanged, then empty);
+  - zh;
+  - skeleton geometry;
+  - the private and explicit-rules controls.

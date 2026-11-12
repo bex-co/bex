@@ -38,3 +38,20 @@ Why: bex replaces the store's only pod to change its eviction policy, so connect
 - **Tests:** operator envtest: a policy change leaves the StatefulSet template hash unchanged and issues `CONFIG SET`. A restarted pod comes up with the latest policy.
 - **DoD (live):** on an owned Free Key Value with Persistence Off, write a marker, then change the policy in the dashboard. No restart happens (`uptime_in_seconds` keeps growing), `CONFIG GET maxmemory-policy` reads the new value, and the marker survives.
 - **Dedupe:** w4/m316 (warns about the restart; now in `blocked/` awaiting its live replay) and w4/191 (done: tenants may not `CONFIG SET`). No open item covers a runtime apply.
+
+## Post-release probe (QA loop round 169, 2026-11-12): t005's replay passes
+
+Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) carries the fix.
+
+- **Fixture:** Free Key Value `qa-20261112-r169-kv` (`red-dbqkjnmrbf4s73estuhg`), created in the dashboard with Persistence **Off** and Public access on. Deleted afterwards (DELETE 204, then GET 404).
+- **Method:** Reveal connection info → "Copy External Key Value URL", used from the clipboard without printing it (`redis-cli --tls --sni red-dbqkjnmrbf4s73estuhg.kv.bex.co -u "$(pbpaste)"`). The clipboard was overwritten afterwards.
+- **Before** (05:10:15):
+  - `SET qa169marker v1` → `OK`;
+  - `INFO server` → `run_id e73f3c43…`, `uptime_in_seconds 59`;
+  - `CONFIG GET maxmemory-policy` → `allkeys-lru`.
+- **Change:** Maxmemory Policy → Edit → `noeviction` → Save (05:10:36). No dialog opened, and the toast read "Updating maxmemory policy to noeviction…". The section's copy says "The new policy applies to the running store without a restart."
+- **After** (05:11:28):
+  - `GET qa169marker` → `v1`;
+  - the same `run_id e73f3c43…`, `uptime_in_seconds 135` (no restart);
+  - `CONFIG GET maxmemory-policy` → `noeviction`;
+  - REST `options.maxmemoryPolicy` → `noeviction`, and `status` stayed `available`.
