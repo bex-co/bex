@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -147,5 +148,41 @@ func TestGraphQLEnvArgs(t *testing.T) {
 		if _, err := envFromArgs(raw); err == nil || !strings.Contains(err.Error(), `"A"`) {
 			t.Errorf("%s: err = %v, want a refusal naming A", name, err)
 		}
+	}
+}
+
+// w32/019: a template's own environment (the base template's HOME, Render's
+// /home/render) reaches the sandbox under the caller's env, and a caller's
+// variable of the same name wins.
+func TestCreateMergesTheTemplateEnvUnderTheCallers(t *testing.T) {
+	var got createRequest
+	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+		if err := json.NewDecoder(r.Body).Decode(&got); err != nil {
+			t.Errorf("decode create body: %v", err)
+		}
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"os-1","status":{"state":"Running"}}`))
+	})
+	tmpl := svc.Templates["node"]
+	tmpl.Env = map[string]string{"HOME": "/home/render", "LANG": "C.UTF-8"}
+	svc.Templates["node"] = tmpl
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	for body, want := range map[string]map[string]string{
+		`{"template":"node"}`:                               {"HOME": "/home/render", "LANG": "C.UTF-8"},
+		`{"template":"node","env":{"HOME":"/srv","X":"1"}}`: {"HOME": "/srv", "LANG": "C.UTF-8", "X": "1"},
+	} {
+		got = createRequest{}
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(body)).WithContext(callerCtx()))
+		if rec.Code != http.StatusCreated {
+			t.Fatalf("create %s = %d: %s", body, rec.Code, rec.Body.String())
+		}
+		if !maps.Equal(got.Env, want) {
+			t.Errorf("create %s: OpenSandbox env = %v, want %v", body, got.Env, want)
+		}
+	}
+	if svc.Templates["node"].Env["X"] != "" {
+		t.Error("a caller's env leaked into the shared template")
 	}
 }

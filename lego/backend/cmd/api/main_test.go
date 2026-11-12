@@ -66,6 +66,10 @@ func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 	if out, err := exec.Command("/bin/sh", "-n", "-c", baseEntrypoint).CombinedOutput(); err != nil {
 		t.Fatalf("base entrypoint does not parse: %v: %s", err, out)
 	}
+	// w32/019: Render's home directory, which the entrypoint creates.
+	if base.Env["HOME"] != "/home/render" || !strings.Contains(baseEntrypoint, `mkdir -p -- "${HOME:-/root}"`) {
+		t.Fatalf("base template env = %v, entrypoint %q; want HOME=/home/render, created at start", base.Env, baseEntrypoint)
+	}
 	// w8/247: a sandbox created with no plan runs the base template labelled
 	// with the default plan, so the base template is that plan's size:
 	// Render's 1c-2g, not the deprecated starter's 500m / 512Mi.

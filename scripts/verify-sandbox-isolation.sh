@@ -613,9 +613,9 @@ pass "a relative remote path resolves under the sandbox user's home"
 sandbox_exec "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$sandbox_a_id" 'pwd; echo "$HOME"; cat m299-rel.txt
 arr=(a b); echo ${arr[1]}; echo {1..3}; [ -x /bin/bash ] && echo shebang-ok' "$fixture_dir/exec-shell.txt"
 { read -r exec_cwd; read -r exec_home; read -r exec_rel; read -r exec_bash; } <"$fixture_dir/exec-shell.txt" || true
-[ "$exec_cwd" != / ] && [ "$exec_cwd" = "$exec_home" ] && [ "$exec_rel" = m298 ] \
+[ "$exec_cwd" = /home/render ] && [ "$exec_cwd" = "$exec_home" ] && [ "$exec_rel" = m298 ] \
   || fail "a command does not start in the sandbox user's home: $(tr '\n' ' ' <"$fixture_dir/exec-shell.txt")"
-pass "a command starts in the sandbox user's home, where a relative upload is readable by its relative path"
+pass "a command starts in Render's home, /home/render, where a relative upload is readable by its relative path"
 [ "$exec_bash" = b ] && [ "$(sed -n '5,6p' "$fixture_dir/exec-shell.txt" | tr '\n' ' ')" = "1 2 3 shebang-ok " ] \
   || fail "a command is not interpreted by bash, or /bin/bash is missing: $(tr '\n' ' ' <"$fixture_dir/exec-shell.txt")"
 pass "a command is interpreted by bash, and /bin/bash exists for #!/bin/bash scripts"

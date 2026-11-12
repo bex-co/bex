@@ -89,10 +89,18 @@ import (
 
 // baseEntrypoint links /bin/bash to the official bash image's
 // /usr/local/bin/bash, so a script with a `#!/bin/bash` line runs as it would
-// on Render (w32/m348), then sleeps. An image that already has /bin/bash, or
-// has no /usr/local/bin/bash, is left alone.
+// on Render (w32/m348), creates the home directory (baseHome), then sleeps.
+// An image that already has /bin/bash, or has no /usr/local/bin/bash, is left
+// alone.
 const baseEntrypoint = `if [ ! -e /bin/bash ] && [ -x /usr/local/bin/bash ]; then ln -s /usr/local/bin/bash /bin/bash; fi
+mkdir -p -- "${HOME:-/root}"
 exec sleep infinity`
+
+// baseHome is a base sandbox's home directory, Render's: relative remote
+// paths "resolve under /home/render" (render.com/docs/sandboxes-sdk-python,
+// read 2026-11-12), and a command starts there (w32/019). The user stays
+// root: Render documents only the path.
+const baseHome = "/home/render"
 
 func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Template {
 	// A create without a plan keeps its template's size and is labelled with
@@ -103,6 +111,7 @@ func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Te
 	return map[string]sandbox.Template{
 		"base": {
 			Image: baseImage, Entrypoint: []string{"/bin/sh", "-c", baseEntrypoint},
+			Env: map[string]string{"HOME": baseHome},
 			CPU: baseCPU, Memory: baseMemory,
 		},
 		"agent": {

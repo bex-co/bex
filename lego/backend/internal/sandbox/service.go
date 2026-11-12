@@ -92,6 +92,9 @@ type Template struct {
 	Entrypoint []string
 	CPU        string
 	Memory     string
+	// Env is the template's own environment, under the caller's create env
+	// (a caller's variable of the same name wins).
+	Env map[string]string
 }
 
 // SessionEgress is the network-mechanism seam used by the agent-session
@@ -963,6 +966,11 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	metadata := sandboxMetadata(ctx, workspace, template, plan, timeout, policy, weight, memoryMiBOf(mem))
 	for k, v := range extraMetadata {
 		metadata[k] = v
+	}
+	if len(tmpl.Env) > 0 {
+		merged := maps.Clone(tmpl.Env)
+		maps.Copy(merged, env)
+		env = merged
 	}
 	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, openSandboxTimeout(timeout), env, metadata)
 	if err != nil {
