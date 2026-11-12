@@ -198,6 +198,10 @@ func (w *PushWorker) now() time.Time {
 
 // RunOnce projects first and sends second, so no provider call can occur until
 // logical notifications, device deliveries, and the feed cursor are committed.
+//
+// Send, receipts and sweep run even when a projection failed: the failing feed
+// page keeps its cursor, so nothing is lost, and what is sent was committed by
+// an earlier pass (w21/m336).
 func (w *PushWorker) RunOnce(ctx context.Context) error {
 	if w.Store == nil {
 		return errors.New("push worker store is required")
@@ -206,6 +210,7 @@ func (w *PushWorker) RunOnce(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("list active push destinations: %w", err)
 	}
+	var eventsErr, sessionsErr error
 	if len(destinations) > 0 {
 		// Built once per tick: both dispatchers evaluate the SAME recipients, and
 		// the build recompiles every subscriber's stored policy (and evidences the
@@ -213,22 +218,22 @@ func (w *PushWorker) RunOnce(ctx context.Context) error {
 		// double-counted the invalid-policy metric.
 		byTenant, tenants := w.buildPushRecipients(ctx, destinations)
 		if err := w.dispatch(ctx, byTenant, tenants); err != nil {
-			return fmt.Errorf("project push events: %w", err)
+			eventsErr = fmt.Errorf("project push events: %w", err)
 		}
 		if err := w.dispatchAgentSessions(ctx, byTenant, tenants); err != nil {
-			return fmt.Errorf("project agent-session push events: %w", err)
+			sessionsErr = fmt.Errorf("project agent-session push events: %w", err)
 		}
 	}
 	if w.Sender == nil && w.Receipts == nil {
 		w.Metrics.SetEnabled(false)
-		return nil
+		return errors.Join(eventsErr, sessionsErr)
 	}
 	w.Metrics.SetEnabled(true)
 	var sendErr error
 	if w.Sender != nil {
 		sendErr = w.send(ctx)
 	}
-	err = errors.Join(sendErr, w.checkReceipts(ctx), w.sweep(ctx))
+	err = errors.Join(eventsErr, sessionsErr, sendErr, w.checkReceipts(ctx), w.sweep(ctx))
 	if stats, statsErr := w.Store.PushDeliveryStats(ctx); statsErr == nil {
 		w.Metrics.SetQueue(stats)
 	}

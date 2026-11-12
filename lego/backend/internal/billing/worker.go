@@ -18,6 +18,7 @@ package billing
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -82,8 +83,8 @@ func (w *Worker) Run(ctx context.Context) {
 }
 
 // RunOnce is one tick: drain the lifecycle queue, drain the notification queue,
-// then purge expired events. The three phases share only the tick's clock and
-// lease; each is independent and returns its own errors.
+// then purge expired events. Each phase runs whatever the others returned, so a
+// failing row cannot starve the later phases (w21/m336).
 func (w *Worker) RunOnce(ctx context.Context) error {
 	if w == nil || w.Store == nil || w.Enforcer == nil {
 		return fmt.Errorf("billing worker dependencies unavailable")
@@ -93,26 +94,29 @@ func (w *Worker) RunOnce(ctx context.Context) error {
 	if lease <= 0 {
 		lease = defaultLease
 	}
-	if err := w.drainLifecycle(ctx, now, lease); err != nil {
-		return err
-	}
-	if err := w.drainNotifications(ctx, now, lease); err != nil {
-		return err
-	}
-	return w.purgeEvents(ctx, now)
+	return errors.Join(
+		w.drainLifecycle(ctx, now, lease),
+		w.drainNotifications(ctx, now, lease),
+		w.purgeEvents(ctx, now),
+	)
 }
 
 // drainLifecycle claims and settles up to drainBatch leased transitions. Each
 // claim is one round trip (SKIP LOCKED leases a single row), so the bound caps
 // how long one tick can hold the loop.
+//
+// A store error on one row is remembered and the loop moves on; the row keeps
+// its lease, so it is not claimed again this tick.
 func (w *Worker) drainLifecycle(ctx context.Context, now time.Time, lease time.Duration) error {
+	var rowErrs []error
 	for i := 0; i < drainBatch; i++ {
 		state, ok, err := w.Store.ClaimDueBillingLifecycle(ctx, now, lease)
 		if err != nil {
-			return err
+			rowErrs = append(rowErrs, err)
+			break
 		}
 		if !ok {
-			return nil
+			break
 		}
 		var actionErr error
 		completed := store.BillingEnforced
@@ -128,15 +132,15 @@ func (w *Worker) drainLifecycle(ctx context.Context, now time.Time, lease time.D
 		if actionErr != nil {
 			retry := now.Add(workerBackoff(state.AttemptCount))
 			if err := w.Store.FailBillingLifecycleWork(ctx, state.WorkspaceID, state.TransitionVersion, actionErr.Error(), now, retry); err != nil {
-				return err
+				rowErrs = append(rowErrs, fmt.Errorf("record failure of lifecycle work for %s: %w", state.WorkspaceID, err))
 			}
 			continue
 		}
 		if _, err := w.Store.CompleteBillingLifecycleWork(ctx, state.WorkspaceID, state.TransitionVersion, completed, now); err != nil {
-			return err
+			rowErrs = append(rowErrs, fmt.Errorf("complete lifecycle work for %s: %w", state.WorkspaceID, err))
 		}
 	}
-	return nil
+	return errors.Join(rowErrs...)
 }
 
 // drainNotifications delivers one claimed batch, rescheduling a failed delivery
@@ -149,21 +153,22 @@ func (w *Worker) drainNotifications(ctx context.Context, now time.Time, lease ti
 	if err != nil {
 		return err
 	}
+	var rowErrs []error
 	for _, n := range notifications {
 		if err := w.Notifier.NotifyBilling(ctx, n); err != nil {
 			if n.AttemptCount >= store.MaxBillingNotificationAttempts {
 				log.Printf("billing: notice %d for %s abandoned after %d attempts: %v", n.TransitionVersion, n.WorkspaceID, n.AttemptCount, err)
 			}
 			if ferr := w.Store.FailBillingNotification(ctx, n.WorkspaceID, n.TransitionVersion, err.Error(), now.Add(workerBackoff(n.AttemptCount))); ferr != nil {
-				return ferr
+				rowErrs = append(rowErrs, fmt.Errorf("record failure of billing notice %d for %s: %w", n.TransitionVersion, n.WorkspaceID, ferr))
 			}
 			continue
 		}
 		if err := w.Store.CompleteBillingNotification(ctx, n.WorkspaceID, n.TransitionVersion, now); err != nil {
-			return err
+			rowErrs = append(rowErrs, fmt.Errorf("complete billing notice %d for %s: %w", n.TransitionVersion, n.WorkspaceID, err))
 		}
 	}
-	return nil
+	return errors.Join(rowErrs...)
 }
 
 // purgeEvents drops Stripe events past the retention horizon, and agent-model

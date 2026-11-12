@@ -1003,3 +1003,109 @@ func TestPGStoreBillingNotificationRecordsReachedOwnersAndCapsAttempts(t *testin
 		t.Fatalf("an exhausted notice's next attempt is at infinity = %v (err %v), want it parked", parked, err)
 	}
 }
+
+// A lifecycle row can outlive its provider mapping; completing it must not
+// fail on the missing row (w21/m336).
+func TestPGStoreBillingCompletionWithoutProviderMapping(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "billing-unmapped", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC)
+	event := func(id, outcome string, at time.Time) StripeBillingEvent {
+		return StripeBillingEvent{
+			EventID: id, EventType: "billing.test", WorkspaceID: tenant.ID,
+			CustomerID: "cus_test_unmapped", SubscriptionID: "sub_test_unmapped", ObjectID: "in_test_unmapped",
+			Livemode: true, ProviderCreatedAt: at, ReceivedAt: at, Outcome: outcome, Reason: "unmapped_test",
+		}
+	}
+	dropMapping := func() {
+		t.Helper()
+		if _, err := s.Pool.Exec(ctx, `DELETE FROM billing_provider_mappings WHERE workspace_id=$1`, tenant.ID); err != nil {
+			t.Fatal(err)
+		}
+	}
+	count := func(query string, args ...any) int {
+		t.Helper()
+		var n int
+		if err := s.Pool.QueryRow(ctx, query, args...).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+
+	if _, _, _, err := s.RecordStripeBillingEvent(ctx, event("evt_unmapped_fail", BillingOutcomeFailure, base), time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	claim, ok, err := s.ClaimDueBillingLifecycle(ctx, base.Add(2*time.Hour), time.Minute)
+	if err != nil || !ok || claim.Status != BillingEnforcing {
+		t.Fatalf("enforcement claim = %+v ok=%v err=%v", claim, ok, err)
+	}
+	dropMapping()
+	enforced, err := s.CompleteBillingLifecycleWork(ctx, tenant.ID, claim.TransitionVersion, BillingEnforced, base.Add(2*time.Hour))
+	if err != nil {
+		t.Fatalf("completing an enforcing row with no provider mapping: %v", err)
+	}
+	if enforced.Status != BillingEnforced || enforced.AttemptCount != 0 || enforced.ClaimedUntil != nil {
+		t.Fatalf("completed row = %+v, want enforced with the attempt count and lease cleared", enforced)
+	}
+	if n := count(`SELECT count(*) FROM audit_events WHERE workspace_id=$1 AND verb=$2`, tenant.ID, core.AuditVerbBillingEnforced); n != 1 {
+		t.Fatalf("enforcement audit rows = %d, want 1", n)
+	}
+	if n := count(`SELECT count(*) FROM billing_notifications WHERE workspace_id=$1 AND status=$2 AND NOT livemode`, tenant.ID, BillingEnforced); n != 1 {
+		t.Fatalf("enforced notices without a mapping = %d, want 1 (the owners are still told, labeled test mode)", n)
+	}
+
+	// A payment re-creates the mapping; the recovering row loses it again.
+	if _, _, _, err := s.RecordStripeBillingEvent(ctx, event("evt_unmapped_paid", BillingOutcomeSuccess, base.Add(3*time.Hour)), time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	recovery, ok, err := s.ClaimDueBillingLifecycle(ctx, base.Add(3*time.Hour), time.Minute)
+	if err != nil || !ok || recovery.Status != BillingRecovering {
+		t.Fatalf("recovery claim = %+v ok=%v err=%v", recovery, ok, err)
+	}
+	dropMapping()
+	healthy, err := s.CompleteBillingLifecycleWork(ctx, tenant.ID, recovery.TransitionVersion, BillingHealthy, base.Add(3*time.Hour))
+	if err != nil {
+		t.Fatalf("completing a recovering row with no provider mapping: %v", err)
+	}
+	if healthy.Status != BillingHealthy {
+		t.Fatalf("recovered row = %+v, want healthy", healthy)
+	}
+	if n := count(`SELECT count(*) FROM audit_events WHERE workspace_id=$1 AND verb=$2`, tenant.ID, core.AuditVerbBillingRecovered); n != 1 {
+		t.Fatalf("recovery audit rows = %d, want 1", n)
+	}
+	if n := count(`SELECT count(*) FROM billing_notifications WHERE workspace_id=$1 AND status=$2 AND NOT livemode`, tenant.ID, BillingHealthy); n != 1 {
+		t.Fatalf("healthy notices without a mapping = %d, want 1", n)
+	}
+}
+
+// With a mapping the notice is unchanged: it carries the mapping's livemode.
+func TestPGStoreBillingCompletionNoticeCarriesMappingLivemode(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	tenant, err := s.CreateTenant(ctx, "billing-mapped", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	base := time.Date(2026, 11, 8, 0, 0, 0, 0, time.UTC)
+	if _, _, _, err := s.RecordStripeBillingEvent(ctx, StripeBillingEvent{
+		EventID: "evt_mapped_fail", EventType: "billing.test", WorkspaceID: tenant.ID,
+		CustomerID: "cus_test_mapped", SubscriptionID: "sub_test_mapped", ObjectID: "in_test_mapped",
+		Livemode: true, ProviderCreatedAt: base, ReceivedAt: base, Outcome: BillingOutcomeFailure, Reason: "mapped_test",
+	}, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	claim, ok, err := s.ClaimDueBillingLifecycle(ctx, base.Add(2*time.Hour), time.Minute)
+	if err != nil || !ok {
+		t.Fatalf("claim = %+v ok=%v err=%v", claim, ok, err)
+	}
+	if _, err := s.CompleteBillingLifecycleWork(ctx, tenant.ID, claim.TransitionVersion, BillingEnforced, base.Add(2*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	var livemode bool
+	if err := s.Pool.QueryRow(ctx, `SELECT livemode FROM billing_notifications WHERE workspace_id=$1 AND status=$2`,
+		tenant.ID, BillingEnforced).Scan(&livemode); err != nil || !livemode {
+		t.Fatalf("enforced notice livemode = %v (err %v), want the mapping's true", livemode, err)
+	}
+}

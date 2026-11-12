@@ -11,7 +11,7 @@
 - [x] **m278** — [Agent Automations: scheduled cloud-agent sessions (Devin parity)](done/m278/README.md) (12 tasks) ← from [ADR101](../../docs/ADR101-agent-automations.md)
 - [x] **m279** — [Agent child sessions: an agent can spawn and track child sessions (Devin parity)](done/m279/README.md) (11 tasks) ← from [ADR094](../../docs/ADR094-coding-agent-mcp.md) deferral; t002–t003 after w9/m179
 - [x] **m280** — [Skill version history: every save keeps a version you can read, diff and restore (Devin parity)](done/m280/README.md) (8 tasks) ← from [ADR099](../../docs/ADR099-agent-skills.md) follow-up
-- [ ] **m336** — [Billing and push workers: one bad row cannot stop the pass](m336/README.md) (7 tasks) ← re-homed from `w10/012` plus the 2026-11-11 audit of the `core.Poll` workers (`/pm-brainstorm for w21`)
+- [ ] **m336** — **BLOCKED (needs read access to the production cluster from the user, and the decision on the 11 `enforcing` workspaces before the deploy mails their owners; t001–t003, t005 and t006 are done and shipped)** — [Billing and push workers: one bad row cannot stop the pass](blocked/m336/README.md) (7 tasks) ← re-homed from `w10/012` plus the 2026-11-11 audit of the `core.Poll` workers
 - [ ] **m337** — [Dashboard routes hydrate cleanly across server and browser environments](m337/README.md) (7 tasks) ← from `/pm-brainstorm for w21`, 2026-11-11: seven production-found #418 mismatches, each guarded only after the fact
 
 ## Inbox

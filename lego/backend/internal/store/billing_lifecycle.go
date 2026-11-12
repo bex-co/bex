@@ -310,6 +310,21 @@ func normalizeBillingOverride(actor, reason string) (string, string, error) {
 
 // insertBillingNotification enqueues one status-change notification row; the
 // conflict guard keeps a transition version's notification single-shot.
+// billingProviderLivemode is the Stripe mode a workspace's billing notice is
+// labeled with. A lifecycle row can outlive the workspace's provider mapping (a
+// reclaimed card-less workspace loses it), and a missing mapping used to fail
+// the completion with a bare ErrNoRows after the enforcement had run, leaving
+// the row enforcing and aborting every tick (w21/m336). The notice goes to the
+// workspace's owners either way, so a missing mapping reads as test mode.
+func billingProviderLivemode(ctx context.Context, tx pgx.Tx, workspaceID string) (bool, error) {
+	var livemode bool
+	err := tx.QueryRow(ctx, `SELECT livemode FROM billing_provider_mappings WHERE workspace_id=$1`, workspaceID).Scan(&livemode)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, nil
+	}
+	return livemode, err
+}
+
 func insertBillingNotification(ctx context.Context, tx pgx.Tx, workspaceID string, version int64, status, reason string, deadline *time.Time, livemode bool, at time.Time) error {
 	_, err := tx.Exec(ctx, `INSERT INTO billing_notifications
 		(workspace_id, transition_version, status, reason, grace_deadline, livemode, next_attempt_at)
@@ -665,11 +680,11 @@ func (s *PGStore) CompleteBillingLifecycleWork(ctx context.Context, workspaceID 
 		if err != nil {
 			return err
 		}
-		var livemode bool
-		if err := tx.QueryRow(ctx, `SELECT livemode FROM billing_provider_mappings WHERE workspace_id=$1`, workspaceID).Scan(&livemode); err != nil {
-			return err
-		}
 		if notifyBillingStatus(current.Status, status) {
+			livemode, err := billingProviderLivemode(ctx, tx, workspaceID)
+			if err != nil {
+				return err
+			}
 			if err := insertBillingNotification(ctx, tx, workspaceID, version, status, reason, deadline, livemode, now); err != nil {
 				return err
 			}
@@ -971,9 +986,11 @@ func (s *PGStore) SetBillingException(ctx context.Context, workspaceID, exceptio
 			return err
 		}
 		state = st
-		var livemode bool
-		_ = tx.QueryRow(ctx, `SELECT livemode FROM billing_provider_mappings WHERE workspace_id=$1`, workspaceID).Scan(&livemode)
 		if out.next != BillingRecovering && out.stateChanged {
+			livemode, err := billingProviderLivemode(ctx, tx, workspaceID)
+			if err != nil {
+				return err
+			}
 			if err := insertBillingNotification(ctx, tx, workspaceID, out.version, out.next, out.reason, nil, livemode, at); err != nil {
 				return err
 			}

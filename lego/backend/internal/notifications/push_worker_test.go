@@ -65,6 +65,9 @@ type fakePushWorkerStore struct {
 	// delivery (tenant\x00subject → role; "" = membership revoked). Absent
 	// keys fall back to the destination rows' role, matching the live join.
 	members map[string]string
+
+	// listEventsErr makes the feed read fail.
+	listEventsErr error
 }
 
 func newFakePushWorkerStore() *fakePushWorkerStore {
@@ -112,6 +115,9 @@ func (f *fakePushWorkerStore) ListWebhookEvents(
 ) ([]store.WebhookEventRow, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	if f.listEventsErr != nil {
+		return nil, f.listEventsErr
+	}
 	tenantSet := map[string]bool{}
 	for _, tenant := range tenants {
 		tenantSet[tenant] = true
@@ -1308,4 +1314,56 @@ func TestPushWorkerTransportSelectionMatrix(t *testing.T) {
 			}
 		}
 	})
+}
+
+// A failed projection still lets queued deliveries be sent, and its feed
+// cursor stays put so nothing is skipped (w21/m336).
+func TestPushWorkerFailedProjectionStillSendsQueuedDeliveries(t *testing.T) {
+	now := time.Date(2026, time.August, 3, 12, 0, 10, 0, time.UTC)
+	eventAt := now.Add(-5 * time.Second)
+	queue := newFakePushWorkerStore()
+	queue.watermarkAt = eventAt.Add(-time.Second)
+	queue.serviceIDs["tea-one\x00api"] = "srv-c185th5c2rvvnhbfiltg"
+	queue.destinations = []store.ActivePushSubscription{{
+		TenantID: "tea-one", Subject: "alice", Role: "admin", DeviceID: "alice-ios",
+		Provider: "expo", Platform: "ios", Token: "device-token", CreatedAt: eventAt.Add(-time.Hour),
+	}}
+	queue.events = []store.WebhookEventRow{{
+		CursorAt: eventAt, Key: "fact:server-failed-one", At: eventAt,
+		TenantID: "tea-one", ServiceName: "api", Source: store.EventSourceFact,
+		FactType: string(store.EventFactServerFailed),
+	}}
+
+	// A pass with no sender only projects and commits: one delivery is queued.
+	queuer := &PushWorker{Store: queue, Clock: func() time.Time { return now }}
+	if err := queuer.RunOnce(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	queue.mu.Lock()
+	queued := len(queue.deliveries)
+	queue.mu.Unlock()
+	if queued != 1 {
+		t.Fatalf("queued deliveries = %d, want 1", queued)
+	}
+
+	// The feed now fails; a later event sits behind the failing read.
+	queue.mu.Lock()
+	queue.listEventsErr = errors.New("policy lookup failed")
+	cursorBefore := queue.watermarkAt
+	queue.mu.Unlock()
+	sender := &fakePushSender{}
+	worker := &PushWorker{Store: queue, Sender: sender, Clock: func() time.Time { return now.Add(time.Second) }}
+	err := worker.RunOnce(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "policy lookup failed") {
+		t.Fatalf("RunOnce error = %v, want the projection error returned", err)
+	}
+	if got := len(sender.snapshot()); got != 1 {
+		t.Fatalf("sends after a failed projection = %d, want the queued delivery sent", got)
+	}
+	queue.mu.Lock()
+	cursorAfter := queue.watermarkAt
+	queue.mu.Unlock()
+	if !cursorAfter.Equal(cursorBefore) {
+		t.Fatalf("feed cursor moved from %s to %s across a failed projection", cursorBefore, cursorAfter)
+	}
 }

@@ -19,6 +19,8 @@ package billing
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,6 +36,11 @@ type workerCapture struct {
 	notificationsFailed   int
 	purgeBefore           time.Time
 	writeOffPurgeBefore   time.Time
+	// completeFails is the workspace whose lifecycle completion errors;
+	// notificationCompleteFails makes every notice's completion error.
+	completeFails             string
+	notificationCompleteFails bool
+	completedWorkspaces       []string
 }
 
 func (s *workerCapture) ClaimDueBillingLifecycle(_ context.Context, _ time.Time, _ time.Duration) (store.BillingLifecycle, bool, error) {
@@ -44,8 +51,12 @@ func (s *workerCapture) ClaimDueBillingLifecycle(_ context.Context, _ time.Time,
 	s.states = s.states[1:]
 	return state, true, nil
 }
-func (s *workerCapture) CompleteBillingLifecycleWork(_ context.Context, _ string, _ int64, status string, _ time.Time) (store.BillingLifecycle, error) {
+func (s *workerCapture) CompleteBillingLifecycleWork(_ context.Context, workspaceID string, _ int64, status string, _ time.Time) (store.BillingLifecycle, error) {
+	if workspaceID == s.completeFails {
+		return store.BillingLifecycle{}, errors.New("no rows in result set")
+	}
 	s.completed = append(s.completed, status)
+	s.completedWorkspaces = append(s.completedWorkspaces, workspaceID)
 	return store.BillingLifecycle{Status: status}, nil
 }
 func (s *workerCapture) FailBillingLifecycleWork(_ context.Context, _ string, _ int64, _ string, _ time.Time, retry time.Time) error {
@@ -58,6 +69,9 @@ func (s *workerCapture) ClaimBillingNotifications(_ context.Context, _ time.Time
 	return out, nil
 }
 func (s *workerCapture) CompleteBillingNotification(_ context.Context, _ string, _ int64, _ time.Time) error {
+	if s.notificationCompleteFails {
+		return errors.New("store unavailable")
+	}
 	s.notificationsComplete++
 	return nil
 }
@@ -135,5 +149,59 @@ func TestWorkerRetriesIndependentlyAndCompletesRecoveryTarget(t *testing.T) {
 	}
 	if !stateStore.purgeBefore.Equal(now.Add(-90 * 24 * time.Hour)) {
 		t.Fatalf("purge before = %s", stateStore.purgeBefore)
+	}
+}
+
+// One failing lifecycle row must not stop the next row, the notice drain or
+// the purge, and its error names the workspace (w21/m336).
+func TestWorkerLifecycleRowFailureDoesNotStarveTheTick(t *testing.T) {
+	now := time.Date(2026, 11, 8, 2, 0, 0, 0, time.UTC)
+	stateStore := &workerCapture{
+		states: []store.BillingLifecycle{
+			{WorkspaceID: "tea-poison", Status: store.BillingEnforcing},
+			{WorkspaceID: "tea-next", Status: store.BillingEnforcing},
+		},
+		notifications: []store.BillingNotification{{WorkspaceID: "tea-notice", TransitionVersion: 1}},
+		completeFails: "tea-poison",
+	}
+	notifier := &notifierCapture{calls: 1} // the first-call failure is spent
+	w := &Worker{Store: stateStore, Enforcer: &enforcerCapture{}, Notifier: notifier, Clock: func() time.Time { return now }}
+	err := w.RunOnce(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "tea-poison") || !strings.Contains(err.Error(), "no rows in result set") {
+		t.Fatalf("RunOnce error = %v, want the poison row's error naming its workspace", err)
+	}
+	if !slices.Equal(stateStore.completedWorkspaces, []string{"tea-next"}) {
+		t.Fatalf("completed workspaces = %v, want the row after the poison one", stateStore.completedWorkspaces)
+	}
+	if stateStore.notificationsComplete != 1 {
+		t.Fatalf("notices completed = %d, want the notification drain to still run", stateStore.notificationsComplete)
+	}
+	if stateStore.purgeBefore.IsZero() {
+		t.Fatal("the event purge did not run after the lifecycle drain failed")
+	}
+}
+
+// A notice whose completion fails does not stop the notices after it or the
+// purge.
+func TestWorkerNotificationCompletionFailureDoesNotStarveThePurge(t *testing.T) {
+	now := time.Date(2026, 11, 8, 2, 0, 0, 0, time.UTC)
+	stateStore := &workerCapture{
+		notifications: []store.BillingNotification{
+			{WorkspaceID: "tea-first", TransitionVersion: 1},
+			{WorkspaceID: "tea-second", TransitionVersion: 2},
+		},
+		notificationCompleteFails: true,
+	}
+	notifier := &notifierCapture{calls: 1}
+	w := &Worker{Store: stateStore, Enforcer: &enforcerCapture{}, Notifier: notifier, Clock: func() time.Time { return now }}
+	err := w.RunOnce(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "tea-first") || !strings.Contains(err.Error(), "tea-second") {
+		t.Fatalf("RunOnce error = %v, want both notices' errors", err)
+	}
+	if delivered := notifier.calls - 1; delivered != 2 {
+		t.Fatalf("notices delivered = %d, want both attempted after the first completion failed", delivered)
+	}
+	if stateStore.purgeBefore.IsZero() {
+		t.Fatal("the event purge did not run after the notification drain failed")
 	}
 }
