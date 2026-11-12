@@ -34,6 +34,8 @@ export interface UseCronJobResult {
     id: string,
     schedule: string,
     command: string | null,
+    /** What the save changes, which the success toast names (w4/593). */
+    changed: "schedule" | "command",
   ) => Promise<boolean>;
   /** A native cron's Command save (w8/m69), refreshed like updateCronJob. */
   setStartCommand: (id: string, command: string) => Promise<boolean>;
@@ -149,13 +151,24 @@ export function useCronJob(): UseCronJobResult {
 
   // Changing the command changes what the job runs, which a protected
   // environment guards; rescheduling alone does not (w4/m126).
+  // The toast names what the save changes in product terms (w4/593): a
+  // command change rolls a deploy, a reschedule only moves the next run.
   const updateCronJob = useCallback(
-    (id: string, schedule: string, command: string | null) =>
+    (
+      id: string,
+      schedule: string,
+      command: string | null,
+      changed: "schedule" | "command",
+    ) =>
       save(
         id,
         (confirm) =>
           mutateCron({ variables: { id, schedule, command, confirm } }),
-        t("services.deployConverging"),
+        t(
+          changed === "command"
+            ? "services.cronCommandSaved"
+            : "services.cronScheduleSaved",
+        ),
       ),
     [mutateCron, save, t],
   );

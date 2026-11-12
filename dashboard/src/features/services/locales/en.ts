@@ -2193,11 +2193,15 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Cron job settings saved.",
     description: "Toast after updateCronJob succeeds",
   },
-  "services.deployConverging": {
-    message:
-      "The operator will apply the new schedule on its next reconcile pass.",
+  "services.cronScheduleSaved": {
+    message: "The next run follows the new schedule.",
     description:
-      "Toast description after a cron job schedule change (async convergence)",
+      "Toast description after saving a cron job's schedule alone: the next run follows it, nothing deploys (w4/593)",
+  },
+  "services.cronCommandSaved": {
+    message: "A deploy is applying the new command; runs after it use it.",
+    description:
+      "Toast description after saving a cron job's command: the save rolls a deploy that applies it (w4/593)",
   },
   "services.deployError": {
     message: "Couldn't save cron job settings. Please try again.",

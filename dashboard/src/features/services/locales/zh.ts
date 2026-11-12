@@ -2147,10 +2147,15 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "定时任务设置已保存。",
     description: "Toast after updateCronJob succeeds",
   },
-  "services.deployConverging": {
-    message: "操作器将在下一次协调时应用新计划。",
+  "services.cronScheduleSaved": {
+    message: "下一次运行将按新的计划执行。",
     description:
-      "Toast description after a cron job schedule change (async convergence)",
+      "Toast description after saving a cron job's schedule alone: the next run follows it, nothing deploys (w4/593)",
+  },
+  "services.cronCommandSaved": {
+    message: "正在部署新的命令，之后的运行将使用它。",
+    description:
+      "Toast description after saving a cron job's command: the save rolls a deploy that applies it (w4/593)",
   },
   "services.deployError": {
     message: "无法保存定时任务设置，请重试。",
@@ -4629,7 +4634,8 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.eventsReason.readiness_failed": {
     message: "运行中的实例未通过健康检查。",
-    description: "有限的公开就绪失败原因；与设置页和 REST 一样称为健康检查（w4/m327）",
+    description:
+      "有限的公开就绪失败原因；与设置页和 REST 一样称为健康检查（w4/m327）",
   },
   "services.eventsReason.root_directory": {
     message: "没有变更文件匹配服务的根目录。",

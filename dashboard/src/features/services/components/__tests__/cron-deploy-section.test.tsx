@@ -64,6 +64,7 @@ describe("CronDeploySection", () => {
       "nightly",
       "0 8 * * 1",
       "node old.js",
+      "schedule",
     );
   });
 
@@ -81,6 +82,7 @@ describe("CronDeploySection", () => {
       "nightly",
       "0 6 * * *",
       "node new.js",
+      "command",
     );
   });
 
@@ -242,7 +244,12 @@ describe("CronDeploySection command clearing (w4/137)", () => {
     await user.clear(screen.getByRole("textbox", { name: "Command" }));
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(updateCronJob).toHaveBeenCalledWith("nightly", "0 6 * * *", "");
+    expect(updateCronJob).toHaveBeenCalledWith(
+      "nightly",
+      "0 6 * * *",
+      "",
+      "command",
+    );
   });
 
   it("treats a whitespace-only command as a clear, like an empty one", async () => {
@@ -255,7 +262,12 @@ describe("CronDeploySection command clearing (w4/137)", () => {
     await user.type(input, "   ");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(updateCronJob).toHaveBeenCalledWith("nightly", "0 6 * * *", "");
+    expect(updateCronJob).toHaveBeenCalledWith(
+      "nightly",
+      "0 6 * * *",
+      "",
+      "command",
+    );
   });
 
   it('sends null — not "" — when rescheduling a commandless cron', async () => {
@@ -271,7 +283,12 @@ describe("CronDeploySection command clearing (w4/137)", () => {
     // null means keep. Sending "" here would turn every reschedule of a
     // commandless cron into an explicit command write, which selects a
     // different authorization path on the server.
-    expect(updateCronJob).toHaveBeenCalledWith("nightly", "0 8 * * 1", null);
+    expect(updateCronJob).toHaveBeenCalledWith(
+      "nightly",
+      "0 8 * * 1",
+      null,
+      "schedule",
+    );
   });
 
   it("still replays a stored command when rescheduling a command-bearing cron", async () => {
@@ -289,6 +306,7 @@ describe("CronDeploySection command clearing (w4/137)", () => {
       "nightly",
       "0 8 * * 1",
       "  node daily.js  ",
+      "schedule",
     );
   });
 
@@ -428,7 +446,12 @@ describe("CronDeploySection on a native-runtime cron (w8/m69)", () => {
     await user.type(schedInput, "0 8 * * 1");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
-    expect(updateCronJob).toHaveBeenCalledWith("nightly", "0 8 * * 1", null);
+    expect(updateCronJob).toHaveBeenCalledWith(
+      "nightly",
+      "0 8 * * 1",
+      null,
+      "schedule",
+    );
     expect(setStartCommand).not.toHaveBeenCalled();
   });
 
@@ -451,6 +474,7 @@ describe("CronDeploySection on a native-runtime cron (w8/m69)", () => {
       "nightly",
       "0 8 * * 1",
       "node override.js",
+      "schedule",
     );
   });
 });
@@ -479,6 +503,7 @@ describe("CronDeploySection on a container cron (w8/m69)", () => {
         "nightly",
         "0 6 * * *",
         "node job.js",
+        "command",
       );
       expect(setStartCommand).not.toHaveBeenCalled();
     },

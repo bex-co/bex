@@ -64,6 +64,7 @@ describe("useCronJob", () => {
         "nightly",
         "0 6 * * *",
         "node daily.js",
+        "command",
       );
     });
 
@@ -79,6 +80,29 @@ describe("useCronJob", () => {
     expect(toastError).not.toHaveBeenCalled();
   });
 
+  // w4/593: the toast names what the save changes, never bex internals.
+  it.each([
+    ["command", "A deploy is applying the new command; runs after it use it."],
+    ["schedule", "The next run follows the new schedule."],
+  ] as const)(
+    "describes a %s save in product terms",
+    async (changed, description) => {
+      mockUseMutation.mockReturnValue([vi.fn().mockResolvedValue({})]);
+      const { result } = renderHook(() => useCronJob());
+      await act(async () => {
+        await result.current.updateCronJob(
+          "nightly",
+          "0 6 * * *",
+          null,
+          changed,
+        );
+      });
+      const shown = JSON.stringify(toastSuccess.mock.calls);
+      expect(shown).toContain(description);
+      expect(shown).not.toMatch(/operator|reconcile/i);
+    },
+  );
+
   // w4/137: this used to assert the defect. `command || null` collapsed an
   // explicit clear into "keep the existing command", so emptying the field
   // saved successfully, preserved the old command, and toasted success — the
@@ -89,7 +113,7 @@ describe("useCronJob", () => {
 
     const { result } = renderHook(() => useCronJob());
     await act(async () => {
-      await result.current.updateCronJob("nightly", "0 6 * * *", "");
+      await result.current.updateCronJob("nightly", "0 6 * * *", "", "command");
     });
 
     expect(mutate).toHaveBeenCalledWith({
@@ -103,7 +127,12 @@ describe("useCronJob", () => {
 
     const { result } = renderHook(() => useCronJob());
     await act(async () => {
-      await result.current.updateCronJob("nightly", "0 6 * * *", null);
+      await result.current.updateCronJob(
+        "nightly",
+        "0 6 * * *",
+        null,
+        "command",
+      );
     });
 
     expect(mutate).toHaveBeenCalledWith({
@@ -118,7 +147,12 @@ describe("useCronJob", () => {
     const { result } = renderHook(() => useCronJob());
     let ok: boolean | undefined;
     await act(async () => {
-      ok = await result.current.updateCronJob("nightly", "0 6 * * *", "");
+      ok = await result.current.updateCronJob(
+        "nightly",
+        "0 6 * * *",
+        "",
+        "command",
+      );
     });
 
     expect(ok).toBe(false);
@@ -144,7 +178,7 @@ describe("useCronJob", () => {
 
     const { result } = renderHook(() => useCronJob());
     await act(async () => {
-      await result.current.updateCronJob("nightly", "0 0 * * 7", "");
+      await result.current.updateCronJob("nightly", "0 0 * * 7", "", "command");
     });
 
     expect(toastError).toHaveBeenCalledWith(
@@ -158,7 +192,7 @@ describe("useCronJob", () => {
 
     const { result } = renderHook(() => useCronJob());
     await act(async () => {
-      await result.current.updateCronJob("nightly", "0 6 * * *", "");
+      await result.current.updateCronJob("nightly", "0 6 * * *", "", "command");
     });
 
     expect(toastError).toHaveBeenCalledWith(
@@ -181,7 +215,12 @@ describe("useCronJob", () => {
 
     let pending!: Promise<boolean>;
     act(() => {
-      pending = result.current.updateCronJob("nightly", "0 6 * * *", "");
+      pending = result.current.updateCronJob(
+        "nightly",
+        "0 6 * * *",
+        "",
+        "command",
+      );
     });
     expect(result.current.busy).toBe(true);
 
@@ -214,7 +253,12 @@ describe("useCronJob protected retry preserves an explicit clear", () => {
     const { result } = renderHook(() => useCronJob());
     let ok: boolean | undefined;
     await act(async () => {
-      ok = await result.current.updateCronJob("nightly", "0 6 * * *", "");
+      ok = await result.current.updateCronJob(
+        "nightly",
+        "0 6 * * *",
+        "",
+        "command",
+      );
     });
 
     expect(ok).toBe(true);
@@ -245,7 +289,12 @@ describe("useCronJob protected retry preserves an explicit clear", () => {
     const { result } = renderHook(() => useCronJob());
     let ok: boolean | undefined;
     await act(async () => {
-      ok = await result.current.updateCronJob("nightly", "0 6 * * *", "");
+      ok = await result.current.updateCronJob(
+        "nightly",
+        "0 6 * * *",
+        "",
+        "command",
+      );
     });
 
     expect(ok).toBe(false);
@@ -292,7 +341,12 @@ describe("useCronJob setStartCommand (w8/m69)", () => {
     mockClientQuery.mockRejectedValueOnce(new Error("503"));
     const { result } = renderHook(() => useCronJob());
     await act(async () => {
-      await result.current.updateCronJob("nightly", "0 6 * * *", null);
+      await result.current.updateCronJob(
+        "nightly",
+        "0 6 * * *",
+        null,
+        "command",
+      );
     });
     expect(cron).toHaveBeenCalledTimes(1);
     expect(result.current.staleId).toBe("nightly");
@@ -314,7 +368,7 @@ describe("useCronJob setStartCommand (w8/m69)", () => {
     [
       "updateCronJob",
       (r: ReturnType<typeof useCronJob>) =>
-        r.updateCronJob("nightly", "0 6 * * *", "npm start"),
+        r.updateCronJob("nightly", "0 6 * * *", "npm start", "command"),
     ],
   ])("%s clears busy after a failed save", async (_name, run) => {
     const { cron, start } = mutations();

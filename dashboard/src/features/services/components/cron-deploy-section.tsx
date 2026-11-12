@@ -125,7 +125,12 @@ export function CronDeploySection({
           // stored text byte for byte: trimming it would rewrite a command
           // ending in an escaped space on every reschedule (w8/m68).
           onSave={(value) =>
-            updateCronJob(serviceId, value, hasCommand ? command : null)
+            updateCronJob(
+              serviceId,
+              value,
+              hasCommand ? command : null,
+              "schedule",
+            )
           }
         />
         <EditableFieldRow
@@ -159,7 +164,12 @@ export function CronDeploySection({
           onSave={(value) =>
             native
               ? setStartCommand(serviceId, value)
-              : updateCronJob(serviceId, (schedule ?? "").trim(), value)
+              : updateCronJob(
+                  serviceId,
+                  (schedule ?? "").trim(),
+                  value,
+                  "command",
+                )
           }
         />
       </CardContent>
