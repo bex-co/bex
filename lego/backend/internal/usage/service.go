@@ -60,6 +60,7 @@ type UsageStore interface {
 	ListRetiredUsageResources(ctx context.Context, since time.Time) ([]store.RetiredUsageResource, error)
 	PruneRetiredUsageResources(ctx context.Context, before time.Time) (int64, error)
 	CloseUsageSourceStreams(ctx context.Context, ref store.UsageResourceRef, through time.Time) error
+	CloseUsageSourceStreamsAtLastReading(ctx context.Context, ref store.UsageResourceRef) error
 	CloseIdleUsageSourceStreams(ctx context.Context, kind, source string, active []string, through time.Time) error
 	// The live egress meter keeps each App's resolved egress identity, which a
 	// deleted App's final hours are metered from (w6/m333).
@@ -68,6 +69,8 @@ type UsageStore interface {
 	RecordUsageSourceHealth(ctx context.Context, records []store.UsageSourceRecord) error
 	ReconcileUsageSourceStreams(ctx context.Context, active []store.UsageResourceRef, through time.Time) error
 	CurrentUsageCoverage(ctx context.Context, workspaceID string, now time.Time) (store.UsageCoverage, error)
+	// The oldest still-meterable unmetered hour per source, fleet-wide (w6/m334).
+	OldestUnmeteredUsageHours(ctx context.Context, now time.Time) (map[string]time.Time, error)
 	LatestUsageWindow(ctx context.Context, resourceKind, serviceID, kind string) (time.Time, error)
 	// The provisioned-disk meter reads control-plane rows rather than the
 	// cluster, so it needs its own window integration and its own cursor.
@@ -103,6 +106,8 @@ type Service struct {
 	// estimate-only, byte-identical to ADR030. A read failure degrades to
 	// estimate-only too (logged, never a 500).
 	Billing BillingReader
+	// Metrics publishes the rollup's unmetered-hour ages; nil publishes nothing.
+	Metrics *Metrics
 	// billingCache memoizes the Stripe reads BillingFor makes, keyed by
 	// (tenant, period), for a short TTL: /v1/usage is polled (dashboard every 60s)
 	// across three surfaces, but the billing figure only moves ~hourly, so this
@@ -596,7 +601,11 @@ func (s *Service) RunWithIntervals(ctx context.Context, rollup, compact time.Dur
 	rollupTicker := time.NewTicker(rollup)
 	defer rollupTicker.Stop()
 	rollupC := rollupTicker.C
+	// Published before the catch-up too, so a restart reports what the store
+	// holds instead of nothing until the catch-up ends.
+	s.publishUnmeteredHours(ctx)
 	s.catchUp(ctx)
+	s.publishUnmeteredHours(ctx)
 	compactTicker := time.NewTicker(compact)
 	defer compactTicker.Stop()
 	s.compact(ctx) // once at startup so restarts don't defer compaction a day
@@ -606,6 +615,7 @@ func (s *Service) RunWithIntervals(ctx context.Context, rollup, compact time.Dur
 			return
 		case t := <-rollupC:
 			s.rollup(ctx, t)
+			s.publishUnmeteredHours(ctx)
 		case <-compactTicker.C:
 			s.compact(ctx)
 		}
@@ -983,28 +993,42 @@ func (s *Service) meterRetiredThrough(ctx context.Context, live []store.App, las
 	}
 	var datastores []datastoreEntry
 	closeAt := make(map[store.UsageResourceRef]time.Time, len(retired))
+	var takenOver []store.UsageResourceRef
 	for _, r := range retired {
 		through := r.RetiredAt.UTC().Truncate(time.Hour)
 		if through.After(last) {
 			through = last
 		}
-		if r.ResourceKind != store.ResourceKindService {
+		ref := store.UsageResourceRef{ResourceKind: r.ResourceKind, ServiceID: r.ResourceID}
+		switch {
+		case r.ResourceKind != store.ResourceKindService:
 			datastores = append(datastores, datastoreEntry{
 				ID: r.ResourceID, Name: r.Name, Namespace: r.Namespace, Display: r.Display, Public: r.Public,
 				TenantID: r.WorkspaceID, Plan: r.Tier, Kind: r.ResourceKind, CreatedAt: r.CreatedAt, Through: through,
 			})
-		} else if !podIdentityReused(r, through, live, retired) {
+		case podIdentityReused(r, through, live, retired):
+			// Its last hours are billed under the App that took its name, so
+			// its own coverage ends with its last reading, not at its deletion:
+			// otherwise those hours read as unmetered holes no meter will fill.
+			takenOver = append(takenOver, ref)
+			continue
+		default:
 			app := store.App{ID: r.ResourceID, TenantID: r.WorkspaceID, Name: r.Name, Tier: r.Tier, CreatedAt: r.CreatedAt, Egress: r.Egress}
 			for _, kind := range retiredAppKinds(r) {
 				s.catchUpAppMeter(ctx, app, kind, floor, through)
 			}
 		}
-		closeAt[store.UsageResourceRef{ResourceKind: r.ResourceKind, ServiceID: r.ResourceID}] = through.Add(time.Hour)
+		closeAt[ref] = through.Add(time.Hour)
 	}
 	s.meterDatastoresThrough(ctx, datastores, last)
 	for ref, through := range closeAt {
 		if err := s.Store.CloseUsageSourceStreams(ctx, ref, through); err != nil {
 			log.Printf("usage: close %s %s coverage at its deletion: %v", ref.ResourceKind, ref.ServiceID, err)
+		}
+	}
+	for _, ref := range takenOver {
+		if err := s.Store.CloseUsageSourceStreamsAtLastReading(ctx, ref); err != nil {
+			log.Printf("usage: close %s %s coverage at its last reading: %v", ref.ResourceKind, ref.ServiceID, err)
 		}
 	}
 }

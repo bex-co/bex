@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"maps"
 	"os"
 	"slices"
 	"testing"
@@ -122,10 +123,7 @@ func TestUsageSourceChecksAcceptEveryStoredSource(t *testing.T) {
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenant.ID) })
 	window := time.Date(2026, 10, 27, 8, 0, 0, 0, time.UTC)
-	for _, source := range []string{
-		UsageSourceInstance, UsageSourceBuild, UsageSourceStorage, UsageSourceHTTP, UsageSourceWebSocket,
-		UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue, UsageSourceDisk,
-	} {
+	for _, source := range UsageStreamSources() {
 		row := HourlyRow{
 			WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: "srv-vocab-" + source,
 			Kind: UsageKindDiskGBSeconds, WindowStart: window, Quantity: 1,
@@ -225,5 +223,97 @@ func TestCloseIdleUsageSourceStreamsKeepsCoverageHealthy(t *testing.T) {
 	var from time.Time
 	if err := pool.QueryRow(ctx, `SELECT expected_from, expected_through FROM usage_source_streams WHERE service_id = 'srv-late' AND workspace_id = $1`, tenant.ID).Scan(&from, &through); err != nil || !from.Equal(readded) || through != nil {
 		t.Fatalf("re-added disk stream = from %s through %v (err %v), want open from %s", from, through, err, readded)
+	}
+}
+
+// w6/m334: the fleet-wide read reports, per source, the oldest hour inside the
+// catch-up window with no metered reading: a missing or unavailable hour
+// counts, a degraded one was metered, and an hour already past the window is
+// not reported (it can no longer be metered). Dated 2001 so streams other
+// tests left in the shared database are outside the window.
+func TestOldestUnmeteredUsageHoursPG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := NewPGStore(pool)
+	tenant, err := st.CreateTenant(ctx, "usage-unmetered", PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenant.ID) })
+
+	now := time.Date(2001, 1, 10, 12, 30, 0, 0, time.UTC)
+	settled := usageSettledBefore(now.Truncate(time.Hour))
+	record := func(service, source string, from, window time.Time, state string) {
+		t.Helper()
+		if err := st.RecordUsageSourceHealth(ctx, []UsageSourceRecord{{WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: service,
+			Kind: UsageKindEgressBytes, WindowStart: window, UsageSourceObservation: UsageSourceObservation{Source: source, State: state, ExpectedFrom: from}}}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// http: metered from the window's start, but 30 h ago is unavailable.
+	hole := now.Truncate(time.Hour).Add(-30 * time.Hour)
+	for w := settled; w.Before(now.Truncate(time.Hour)); w = w.Add(time.Hour) {
+		state := UsageSourceHealthy
+		if w.Equal(hole) {
+			state = UsageSourceUnavailable
+		}
+		record("srv-unmetered-a-"+tenant.ID, UsageSourceHTTP, settled, w, state)
+	}
+	// websocket: every hour metered, one of them degraded.
+	for w := settled; w.Before(now.Truncate(time.Hour)); w = w.Add(time.Hour) {
+		state := UsageSourceHealthy
+		if w.Equal(hole) {
+			state = UsageSourceDegraded
+		}
+		record("srv-unmetered-a-"+tenant.ID, UsageSourceWebSocket, settled, w, state)
+	}
+	// direct: a stream expected since before the window with its last reading
+	// 10 h ago, so its first unmetered in-window hour is 9 h ago.
+	last := now.Truncate(time.Hour).Add(-10 * time.Hour)
+	for w := settled.Add(-5 * time.Hour); !w.After(last); w = w.Add(time.Hour) {
+		record("srv-unmetered-b-"+tenant.ID, UsageSourceDirect, settled.Add(-5*time.Hour), w, UsageSourceHealthy)
+	}
+
+	got, err := st.OldestUnmeteredUsageHours(ctx, now)
+	if err != nil {
+		t.Fatalf("OldestUnmeteredUsageHours: %v", err)
+	}
+	want := map[string]time.Time{UsageSourceHTTP: hole, UsageSourceDirect: last.Add(time.Hour)}
+	if !maps.EqualFunc(got, want, time.Time.Equal) {
+		t.Fatalf("oldest unmetered hours = %v, want %v (websocket's degraded hour was metered)", got, want)
+	}
+
+	// A deleted App whose name a new App took over owes nothing past its own
+	// last reading: closing there ends direct's hole (w6/m334).
+	if err := st.CloseUsageSourceStreamsAtLastReading(ctx, UsageResourceRef{ResourceKind: ResourceKindService, ServiceID: "srv-unmetered-b-" + tenant.ID}); err != nil {
+		t.Fatalf("CloseUsageSourceStreamsAtLastReading: %v", err)
+	}
+	var through *time.Time
+	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = $1`, "srv-unmetered-b-"+tenant.ID).Scan(&through); err != nil || through == nil || !through.Equal(last.Add(time.Hour)) {
+		t.Fatalf("taken-over stream ends %v (%v), want an hour after its last reading %v", through, err, last)
+	}
+	if got, err = st.OldestUnmeteredUsageHours(ctx, now); err != nil || !got[UsageSourceDirect].IsZero() {
+		t.Fatalf("after the close, direct's oldest unmetered hour = %v (%v), want none", got[UsageSourceDirect], err)
+	}
+
+	// Once the hole is past the window it is skipped for good, not reported.
+	later := now.Add(20 * time.Hour)
+	got, err = st.OldestUnmeteredUsageHours(ctx, later)
+	if err != nil {
+		t.Fatalf("OldestUnmeteredUsageHours later: %v", err)
+	}
+	if h, ok := got[UsageSourceHTTP]; ok && !h.After(hole) {
+		t.Fatalf("http hole %v reported at %v, past the catch-up window", h, later)
 	}
 }

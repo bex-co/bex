@@ -1421,6 +1421,18 @@ groups:
           summary: "Stripe billing export backlog is older than 72h"
           description: "A sealed usage row has remained pending for >24h beyond the 48h seal horizon. Inspect without replay: scripts/stripe-billing-reconcile.sh issues. Runbook: docs/runbooks/stripe-billing-setup.md#5-operations-reconciliation-and-repair"
 
+      - alert: UsageHourNearlyUnmeterable
+        # The gauge is the hole's start, so its age grows from time() even
+        # when bex-api stops publishing (0 means no hole; replicas agree).
+        expr: |
+          (time() - 3600 - min by (source) (bex_usage_oldest_unmetered_hour_timestamp_seconds > 0)) > 86400
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.source }} usage has an hour unmetered for over 24h"
+          description: "The usage rollup has not metered an hour of the {{ $labels.source }} source for more than 24h. Once that hour is past the 48h catch-up window it is skipped for good: never billed, and Metered through passes it (w4/496). Restore the source (Prometheus, the meter behind it, or bex-api's rollup) within the next day; the next hourly pass meters the hour. Runbook: docs/ADR023-usage-metering.md (Degraded hours and the watermark)"
+
       - alert: BillingPermanentReject
         expr: |
           bex_billing_enabled == 1

@@ -368,6 +368,7 @@ func main() {
 		// does (deps.DeployBuildNamespace below).
 		usageSvc.BuildNamespace = cfg.BuildNamespace
 		usageSvc.FreeInstanceHours = cfg.FreeInstanceHours
+		usageSvc.Metrics = usage.NewMetrics(metricRegistry)
 		deps.Usage = usageSvc
 
 		stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin = wireStripeBilling(ctx, cfg, &deps, base, cl, st, appsNS, usageSvc, billingMetrics)

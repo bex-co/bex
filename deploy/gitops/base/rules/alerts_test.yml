@@ -30,6 +30,36 @@ tests:
         alertname: WebhookDeliveryAdmissionPressure
         exp_alerts: []
 
+  # w6/m334: an hour unmetered for 24h pages, a day before the 48h catch-up
+  # window would skip it for good. A younger hole and a metered source stay
+  # silent, and the alert clears once the hour is metered. The gauge is the
+  # hole's start time; promtool's clock starts at 0, so the series runs 31h.
+  - name: a usage hour unmetered for a day pages before it can no longer be metered
+    interval: 1m
+    input_series:
+      # Hole at t=1000s: unmetered 24h from ~25.3h on, metered at 30h.
+      - series: 'bex_usage_oldest_unmetered_hour_timestamp_seconds{job="bex-api",instance="prod-a",source="http"}'
+        values: "1000x1800 0x60"
+      # Hole at t=100000s: under 24h old throughout.
+      - series: 'bex_usage_oldest_unmetered_hour_timestamp_seconds{job="bex-api",instance="prod-a",source="direct"}'
+        values: "100000x1860"
+      - series: 'bex_usage_oldest_unmetered_hour_timestamp_seconds{job="bex-api",instance="prod-a",source="disk"}'
+        values: "0x1860"
+    alert_rule_test:
+      - eval_time: 25h
+        alertname: UsageHourNearlyUnmeterable
+        exp_alerts: []
+      - eval_time: 29h
+        alertname: UsageHourNearlyUnmeterable
+        exp_alerts:
+          - exp_labels: { severity: critical, source: http }
+            exp_annotations:
+              summary: "http usage has an hour unmetered for over 24h"
+              description: "The usage rollup has not metered an hour of the http source for more than 24h. Once that hour is past the 48h catch-up window it is skipped for good: never billed, and Metered through passes it (w4/496). Restore the source (Prometheus, the meter behind it, or bex-api's rollup) within the next day; the next hourly pass meters the hour. Runbook: docs/ADR023-usage-metering.md (Degraded hours and the watermark)"
+      - eval_time: 30h30m
+        alertname: UsageHourNearlyUnmeterable
+        exp_alerts: []
+
   - name: enabled billing exposes durable backlog reject and ambiguity
     interval: 1m
     input_series:

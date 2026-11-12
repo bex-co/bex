@@ -140,6 +140,15 @@ func TestRetiredAppSharingALiveAppsPodsIsNotMeteredTwice(t *testing.T) {
 			t.Fatalf("the deleted App was metered for the hour its name's new App already bills: %+v", row)
 		}
 	}
+	// Its coverage ends with its own last reading, not at its deletion hour,
+	// whose hours no meter will write for it (w6/m334).
+	ref := store.UsageResourceRef{ResourceKind: store.ResourceKindService, ServiceID: "srv-old"}
+	if through, closed := st.closed[ref]; closed {
+		t.Errorf("taken-over App's coverage closed at %v, which leaves its skipped hours expected", through)
+	}
+	if !slices.Contains(st.closedAtLast, ref) {
+		t.Errorf("taken-over App's coverage closes = %v, want it closed at its last reading", st.closedAtLast)
+	}
 	if podIdentityReused(gone, retiredHour, nil, []store.RetiredUsageResource{gone}) {
 		t.Fatal("a retired App reuses only its own identity")
 	}

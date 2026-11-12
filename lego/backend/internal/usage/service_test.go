@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
@@ -85,6 +86,23 @@ type memUsageStore struct {
 	egressIdentities      map[string]store.EgressIdentity
 	egressIdentityErr     error
 	egressIdentityRecords int
+	// oldestUnmetered is what OldestUnmeteredUsageHours answers; closedAtLast
+	// captures each CloseUsageSourceStreamsAtLastReading call.
+	oldestUnmetered map[string]time.Time
+	closedAtLast    []store.UsageResourceRef
+}
+
+func (m *memUsageStore) CloseUsageSourceStreamsAtLastReading(_ context.Context, ref store.UsageResourceRef) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.closedAtLast = append(m.closedAtLast, ref)
+	return nil
+}
+
+func (m *memUsageStore) OldestUnmeteredUsageHours(_ context.Context, _ time.Time) (map[string]time.Time, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return maps.Clone(m.oldestUnmetered), nil
 }
 
 func (m *memUsageStore) RecordAppEgressIdentity(_ context.Context, appID string, identity store.EgressIdentity) error {

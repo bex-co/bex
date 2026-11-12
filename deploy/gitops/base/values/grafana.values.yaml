@@ -6487,6 +6487,36 @@ dashboards:
                  "legendFormat": "websocket"
                 }
               ]
+            },
+            {
+             "id": 11,
+             "type": "timeseries",
+             "title": "Oldest unmetered usage hour",
+             "description": "Per coverage source, how long ago the oldest hour the rollup can still meter closed without a metered reading (w6/m334). An hour past the 48 h catch-up window is skipped for good. The red line is UsageHourNearlyUnmeterable's 24 h threshold, a day before that happens. No line means every hour inside the window is metered.",
+             "gridPos": { "h": 9, "w": 24, "x": 0, "y": 45 },
+             "datasource": { "type": "prometheus", "uid": "prometheus" },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 86400 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "time() - 3600 - min by (source) (bex_usage_oldest_unmetered_hour_timestamp_seconds > 0)",
+                 "legendFormat": "{{source}}"
+                }
+              ]
             }
           ]
         }

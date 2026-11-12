@@ -251,15 +251,18 @@ func upsertUsageSourceObservation(ctx context.Context, exec usageSourceExecer, r
 	return err
 }
 
+var usageStreamSources = [...]string{
+	UsageSourceInstance, UsageSourceBuild, UsageSourceStorage, UsageSourceHTTP,
+	UsageSourceWebSocket, UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue,
+	UsageSourceDisk,
+}
+
+// UsageStreamSources are the sources coverage streams are kept for: every
+// source but the response-only sandbox.
+func UsageStreamSources() []string { return slices.Clone(usageStreamSources[:]) }
+
 func validUsageSource(source string) bool {
-	switch source {
-	case UsageSourceInstance, UsageSourceBuild, UsageSourceStorage, UsageSourceHTTP,
-		UsageSourceWebSocket, UsageSourceDirect, UsageSourcePostgres, UsageSourceKeyValue,
-		UsageSourceDisk:
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(usageStreamSources[:], source)
 }
 
 func validUsageSourceState(state string) bool {
@@ -318,6 +321,29 @@ func (s *PGStore) CloseUsageSourceStreams(ctx context.Context, ref UsageResource
 	return err
 }
 
+// CloseUsageSourceStreamsAtLastReading ends each of one resource's coverage
+// streams an hour after its last metered (healthy or degraded) window, or at
+// its expected start with none. A deleted App whose pod identity a same-name
+// App took over owes nothing past its own last reading, because that App bills
+// those pods, so its streams must not keep expecting hours no meter will write
+// for it (w6/m334).
+func (s *PGStore) CloseUsageSourceStreamsAtLastReading(ctx context.Context, ref UsageResourceRef) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE usage_source_streams AS stream
+		SET expected_through = COALESCE((
+			SELECT max(health.window_start) + interval '1 hour'
+			FROM usage_source_health AS health
+			WHERE health.resource_kind = stream.resource_kind
+			  AND health.service_id = stream.service_id
+			  AND health.kind = stream.kind
+			  AND health.source = stream.source
+			  AND health.state IN ($3, $4)
+		), stream.expected_from)
+		WHERE stream.resource_kind = $1 AND stream.service_id = $2`,
+		NormalizeResourceKind(ref.ResourceKind), ref.ServiceID, UsageSourceHealthy, UsageSourceDegraded)
+	return err
+}
+
 // CloseIdleUsageSourceStreams ends every open service stream of kind and
 // source whose service is not in active, an hour after its last observed
 // window before through (or at through, with none). A meter that writes no
@@ -364,6 +390,26 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 	now = now.UTC()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	latestClosed := now.Truncate(time.Hour)
+	streamByKey, streamOrder, err := s.usageCoverageStreams(ctx, monthStart, latestClosed, workspaceID)
+	if err != nil {
+		return UsageCoverage{}, err
+	}
+	var sandboxTotals bool
+	if err := s.Pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM usage_hourly
+			WHERE workspace_id = $1 AND resource_kind = 'sandbox'
+			  AND window_start >= $2 AND window_start < $3
+		)`, workspaceID, monthStart, latestClosed).Scan(&sandboxTotals); err != nil {
+		return UsageCoverage{}, err
+	}
+	return aggregateUsageCoverage(streamByKey, streamOrder, monthStart, latestClosed, sandboxTotals), nil
+}
+
+// usageCoverageStreams loads the coverage streams expected anywhere in
+// [from, to) with their health windows in that range: one workspace's, or with
+// workspaceID empty every workspace's. Streams come back in key order.
+func (s *PGStore) usageCoverageStreams(ctx context.Context, from, to time.Time, workspaceID string) (map[string]*usageCoverageStream, []string, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT stream.resource_kind, stream.service_id, stream.kind, stream.source,
 		       stream.expected_from, stream.expected_through,
@@ -374,16 +420,16 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 		 AND health.service_id = stream.service_id
 		 AND health.kind = stream.kind
 		 AND health.source = stream.source
-		 AND health.window_start >= $2
-		 AND health.window_start < $3
-		WHERE stream.workspace_id = $1
-		  AND stream.expected_from < $3
-		  AND (stream.expected_through IS NULL OR stream.expected_through > $2)
+		 AND health.window_start >= $1
+		 AND health.window_start < $2
+		WHERE ($3 = '' OR stream.workspace_id = $3)
+		  AND stream.expected_from < $2
+		  AND (stream.expected_through IS NULL OR stream.expected_through > $1)
 		ORDER BY stream.resource_kind, stream.service_id, stream.kind, stream.source,
 		         health.window_start`,
-		workspaceID, monthStart, latestClosed)
+		from, to, workspaceID)
 	if err != nil {
-		return UsageCoverage{}, err
+		return nil, nil, err
 	}
 	defer rows.Close()
 	streamByKey := map[string]*usageCoverageStream{}
@@ -395,7 +441,7 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 		var state *string
 		if err := rows.Scan(&resourceKind, &serviceID, &kind, &source, &expectedFrom,
 			&expectedThrough, &window, &state); err != nil {
-			return UsageCoverage{}, err
+			return nil, nil, err
 		}
 		key := resourceKind + "\x00" + serviceID + "\x00" + kind + "\x00" + source
 		stream := streamByKey[key]
@@ -412,19 +458,36 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 			stream.Windows[window.UTC().Truncate(time.Hour)] = *state
 		}
 	}
-	if err := rows.Err(); err != nil {
-		return UsageCoverage{}, err
+	return streamByKey, streamOrder, rows.Err()
+}
+
+// OldestUnmeteredUsageHours returns, per source, the start of the oldest hour
+// in any workspace's coverage streams that is still inside the catch-up window
+// and has no metered reading: no health row, or an unavailable one. It is the
+// hour the coverage watermark stops at (evaluateStreamCoverage). Once it falls
+// past usageSettledBefore it can never be metered and is skipped for good
+// (w4/496), so its age is what an operator has to act on (w6/m334). A source
+// with no such hour is absent.
+func (s *PGStore) OldestUnmeteredUsageHours(ctx context.Context, now time.Time) (map[string]time.Time, error) {
+	latestClosed := now.UTC().Truncate(time.Hour)
+	settled := usageSettledBefore(latestClosed)
+	streams, order, err := s.usageCoverageStreams(ctx, settled, latestClosed, "")
+	if err != nil {
+		return nil, err
 	}
-	var sandboxTotals bool
-	if err := s.Pool.QueryRow(ctx, `
-		SELECT EXISTS (
-			SELECT 1 FROM usage_hourly
-			WHERE workspace_id = $1 AND resource_kind = 'sandbox'
-			  AND window_start >= $2 AND window_start < $3
-		)`, workspaceID, monthStart, latestClosed).Scan(&sandboxTotals); err != nil {
-		return UsageCoverage{}, err
+	oldest := map[string]time.Time{}
+	for _, key := range order {
+		stream := streams[key]
+		// From settled on, the watermark stops at the first unmetered hour.
+		hole, target, _ := evaluateStreamCoverage(stream, settled, latestClosed)
+		if !hole.Before(target) {
+			continue
+		}
+		if current, seen := oldest[stream.Source]; !seen || hole.Before(current) {
+			oldest[stream.Source] = hole
+		}
 	}
-	return aggregateUsageCoverage(streamByKey, streamOrder, monthStart, latestClosed, sandboxTotals), nil
+	return oldest, nil
 }
 
 // maxDegradedSources caps how many degraded source names a coverage answer
