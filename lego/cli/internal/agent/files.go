@@ -105,11 +105,7 @@ type savedFile struct {
 
 func (inv *invocation) printSaved(saved []savedFile, complete bool) error {
 	if inv.format != formatText {
-		encoded, err := json.Marshal(saved)
-		if err != nil {
-			return err
-		}
-		return writeRaw(inv.out, inv.format, encoded)
+		return writeValue(inv.out, inv.format, saved)
 	}
 	for _, s := range saved {
 		_, _ = fmt.Fprintf(inv.out, "%s  %s\n", s.ID, s.Path)

@@ -49,6 +49,8 @@ bex logout
 
 `bex agent run --repo acme/api --wait "…"` runs a Cloud Agent and exits by the outcome; see [`bex agent`](../../docs/bex-cli.md#cloud-agents-bex-agent).
 
+`bex agent automations apply -f .bex/automations/` keeps Agent Automations in files; see [`bex agent automations`](../../docs/bex-cli.md#agent-automations-bex-agent-automations).
+
 The login uses Bex's device-verification flow. It persists the upstream YAML schema under `~/.bex/cli.yaml` with mode `0600`; it does not touch `~/.render/cli.yaml` in normal use.
 
 Against the default Bex API, `bex services` and `bex deploys list` save `dashboard_url: https://dashboard.bex.co` into a config that has none yet (no login, or an environment credential), so their Dashboard action opens the Bex dashboard. A saved origin, a custom API host and the credential itself are never touched or persisted.

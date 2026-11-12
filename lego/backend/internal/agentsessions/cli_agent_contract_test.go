@@ -36,25 +36,12 @@ import (
 // key the fixture uses must still be a JSON field of the type that serves it.
 // Field names come from the struct tags, so omitempty fields count.
 func TestShapesMatchCLIAgentContract(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "cli", "testdata", "agent-cli-contract.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var golden map[string]any
-	if err := json.Unmarshal(raw, &golden); err != nil {
-		t.Fatal(err)
-	}
-	for section, typ := range map[string]reflect.Type{
+	golden := loadCLIFixture(t, "agent-cli-contract.json")
+	assertSections(t, golden, map[string]reflect.Type{
 		"session":        reflect.TypeFor[View](),
 		"attachment":     reflect.TypeFor[Attachment](),
 		"transcriptPage": reflect.TypeFor[TranscriptPage](),
-	} {
-		value, ok := golden[section]
-		if !ok {
-			t.Fatalf("the fixture lost its %q section", section)
-		}
-		assertFieldsExist(t, section, value, typ)
-	}
+	})
 
 	// The error envelope is written by core.WriteErr, not a struct.
 	rec := httptest.NewRecorder()
@@ -67,6 +54,61 @@ func TestShapesMatchCLIAgentContract(t *testing.T) {
 		if _, ok := envelope[key]; !ok {
 			t.Errorf("the REST error envelope no longer carries %q, which bex agent reads", key)
 		}
+	}
+}
+
+// TestShapesMatchCLIAutomationContract is the backend twin of the
+// `bex agent automations` fixture (lego/cli/testdata/
+// agent-automation-cli-contract.json, ADR106 D9): every key the CLI reads must
+// still be a JSON field of the type that serves it, and the run outcomes and
+// error codes it branches on must still be the ones the service emits.
+func TestShapesMatchCLIAutomationContract(t *testing.T) {
+	golden := loadCLIFixture(t, "agent-automation-cli-contract.json")
+	assertSections(t, golden, map[string]reflect.Type{
+		"automation":     reflect.TypeFor[AgentAutomation](),
+		"automationList": reflect.TypeFor[AgentAutomationList](),
+		"run":            reflect.TypeFor[AgentAutomationRun](),
+		"runList":        reflect.TypeFor[AgentAutomationRunList](),
+	})
+	outcomes := []any{store.AutomationRunClaimed, store.AutomationRunStarted, store.AutomationRunSkippedOverlap,
+		store.AutomationRunFailedCreate, store.AutomationRunDenied}
+	if !reflect.DeepEqual(golden["outcomes"], outcomes) {
+		t.Errorf("run outcomes %v, the CLI expects %v", outcomes, golden["outcomes"])
+	}
+	codes := golden["errorCodes"].(map[string]any)
+	for key, code := range map[string]string{
+		"conflict": CodeAutomationConflict, "notCreator": CodeAutomationNotCreator,
+	} {
+		if codes[key] != code {
+			t.Errorf("error code %s is %q, the CLI branches on %q", key, code, codes[key])
+		}
+	}
+}
+
+// loadCLIFixture reads a lego/cli/testdata fixture the CLI decodes by hand.
+func loadCLIFixture(t *testing.T, name string) map[string]any {
+	t.Helper()
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "cli", "testdata", name))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var golden map[string]any
+	if err := json.Unmarshal(raw, &golden); err != nil {
+		t.Fatal(err)
+	}
+	return golden
+}
+
+// assertSections checks each named fixture section against the type that
+// serves it.
+func assertSections(t *testing.T, golden map[string]any, sections map[string]reflect.Type) {
+	t.Helper()
+	for section, typ := range sections {
+		value, ok := golden[section]
+		if !ok {
+			t.Fatalf("the fixture lost its %q section", section)
+		}
+		assertFieldsExist(t, section, value, typ)
 	}
 }
 

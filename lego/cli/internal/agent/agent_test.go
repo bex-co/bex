@@ -316,40 +316,49 @@ type testDeps struct {
 
 func (f *fakeAPI) deps(t *testing.T) *testDeps {
 	td := &testDeps{}
-	td.deps = deps{
-		api: func() (*api, error) {
-			return &api{
-				server: f.srv.URL + "/v1/", http: f.srv.Client(), download: f.storage.Client(),
-				sleep: func(ctx context.Context, d time.Duration) error {
-					f.mu.Lock()
-					f.slept = append(f.slept, d)
-					f.mu.Unlock()
-					select {
-					case <-ctx.Done():
-						return ctx.Err()
-					case <-time.After(time.Millisecond):
-						return nil
-					}
-				},
-			}, nil
-		},
+	td.deps = stubDeps(func() (*api, error) {
+		return &api{
+			server: f.srv.URL + "/v1/", http: f.srv.Client(), download: f.storage.Client(),
+			sleep: func(ctx context.Context, d time.Duration) error {
+				f.mu.Lock()
+				f.slept = append(f.slept, d)
+				f.mu.Unlock()
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(time.Millisecond):
+					return nil
+				}
+			},
+		}, nil
+	})
+	td.openURL = func(u string) error { td.opened = append(td.opened, u); return nil }
+	td.openDesktop = func(_ context.Context, id, _ string, before func()) error {
+		td.desktops = append(td.desktops, id)
+		return nil
+	}
+	td.lookupEnv = func(name string) (string, bool) {
+		v, ok := map[string]string{"CI_STRIPE": "sk_test_from_env", "API_TOKEN": "tok-123"}[name]
+		return v, ok
+	}
+	return td
+}
+
+// stubDeps is a non-interactive process boundary in workspace tea-ws, on a
+// machine in Europe/Berlin, talking to newAPI.
+func stubDeps(newAPI func() (*api, error)) deps {
+	return deps{
+		api:         newAPI,
 		workspace:   func() (string, error) { return "tea-ws", nil },
 		stdin:       strings.NewReader(""),
 		interactive: func() bool { return false },
 		dashboard:   func() string { return "https://dashboard.bex.co" },
-		openURL:     func(u string) error { td.opened = append(td.opened, u); return nil },
+		openURL:     func(string) error { return nil },
 		canDesktop:  func() bool { return false },
-		openDesktop: func(_ context.Context, id, _ string, before func()) error {
-			td.desktops = append(td.desktops, id)
-			return nil
-		},
-		newKey: func() string { return "bex-cli-testkey" },
-		lookupEnv: func(name string) (string, bool) {
-			v, ok := map[string]string{"CI_STRIPE": "sk_test_from_env", "API_TOKEN": "tok-123"}[name]
-			return v, ok
-		},
+		newKey:      func() string { return "bex-cli-testkey" },
+		lookupEnv:   func(string) (string, bool) { return "", false },
+		localZone:   func() string { return "Europe/Berlin" },
 	}
-	return td
 }
 
 // run executes `bex agent args…` under a root that carries upstream's
@@ -358,6 +367,7 @@ func run(t *testing.T, d deps, args ...string) (string, string, int) {
 	t.Helper()
 	root := &cobra.Command{Use: "bex", SilenceErrors: true}
 	root.PersistentFlags().StringP("output", "o", "interactive", "")
+	root.PersistentFlags().Bool("confirm", false, "")
 	root.AddCommand(newCommand(d))
 	var stdout, stderr bytes.Buffer
 	root.SetOut(&stdout)

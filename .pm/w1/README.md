@@ -15,7 +15,7 @@ Develop against `.pm/w1/dev-1/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m338** — [`bex agent automations`: Agent Automations from the terminal and from repo files](m338/README.md) (12 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11
+- [x] **m338** — **DONE 2026-11-12** — [`bex agent automations`: Agent Automations from the terminal and from repo files](done/m338/README.md) (12 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11
 - [ ] **m339** — [Session lifecycle verbs, list filters and workspace agent configuration in `bex agent`](m339/README.md) (12 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11
 - [ ] **m340** — [Live agent sessions in the terminal: SSE stream, `bex agent chat`, picker](m340/README.md) (12 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11
 - [ ] **m341** — [Handoff, pickup and ssh: move work between a laptop and a Cloud Agent](m341/README.md) (10 tasks) ← [ADR106](../../docs/ADR106-cli-cloud-agents-automations.md), approved `/pm-brainstorm ADR106 for w1` via `/pmx`, 2026-11-11

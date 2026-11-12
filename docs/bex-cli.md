@@ -168,16 +168,17 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 - **Waiting.** `run` and `send` return as soon as the turn starts. `--wait` polls until it ends; `--follow` streams the transcript while it runs. `--timeout 30m` bounds either one. REST has no blocking wait (`wait_agent_sessions` is MCP-only), so the CLI polls the session with backoff (2 s rising to 15 s; `--follow` backs off the same way while the agent is quiet) and survives up to five consecutive transient failures (a 429, a gateway 5xx or a dropped connection), waiting at least as long as a `Retry-After` asks. Once the session has settled, `--follow` reads the transcript one last time with the same tolerance. If that read still fails, the command warns on stderr that the end of the transcript may be missing, then prints the session and exits by its state as usual: the result is already known (w32/010).
 - **Exit codes.** These apply to `run`/`send` with `--wait` or `--follow`, to `wait`, and to `logs --follow`. With several sessions, a failure wins over a cancel, which wins over needs-input. A plain `get` always exits 0.
 
-  | Code  | Meaning                                                      |
-  | ----- | ------------------------------------------------------------ |
-  | `0`   | the turn succeeded                                           |
-  | `1`   | the CLI or the API failed (network, auth, a refused request) |
-  | `2`   | usage error                                                  |
-  | `3`   | the turn failed; stderr names its `failureReasonCode`        |
-  | `4`   | the session was canceled                                     |
-  | `5`   | reserved for `needs_input`, which sessions never enter       |
-  | `124` | `--timeout` elapsed while the session was still working      |
-  | `130` | interrupted (Ctrl-C or SIGTERM)                              |
+  | Code  | Meaning                                                        |
+  | ----- | -------------------------------------------------------------- |
+  | `0`   | the turn succeeded                                             |
+  | `1`   | the CLI or the API failed (network, auth, a refused request)   |
+  | `2`   | usage error                                                    |
+  | `3`   | the turn failed; stderr names its `failureReasonCode`          |
+  | `4`   | the session was canceled                                       |
+  | `5`   | reserved for `needs_input`, which sessions never enter         |
+  | `6`   | `automations run` started no session (skipped, denied, failed) |
+  | `124` | `--timeout` elapsed while the session was still working        |
+  | `130` | interrupted (Ctrl-C or SIGTERM)                                |
 
 - **Output.** `-o json` (or `yaml`) prints the API's own answer on stdout: the session view, a JSON array for several sessions or for `files`. YAML keeps every integer digit for digit, whatever its size (a file's `size`, an id in the session's own `outcome.result`). While `--follow` streams, the transcript goes to stderr so stdout stays parseable.
 - **Idempotent create.** Each `run` sends one `Idempotency-Key` and repeats the create, with the same key, after a dropped connection, a 429 or a gateway 5xx. A retry can therefore never start a second session. Pass `--idempotency-key` to make re-running the whole command safe as well, for example keyed on the CI run id.
@@ -188,6 +189,56 @@ bex agent run --repo acme/api --attach test-output.txt --output-schema schema.js
   --max-spend 5 --timeout 45m --wait -o json \
   "Make the failing test in test-output.txt pass" > outcome.json
 bex agent files "$(jq -r .id outcome.json)" --download ./agent-files
+```
+
+### Agent Automations: `bex agent automations`
+
+`bex agent automations` (aliases `automation`, `aut`) manages [Agent Automations](ADR101-agent-automations.md): one schedule plus the session each fire starts, run as the member who created the automation. It is a thin client of `/v1/agent-automations` ([ADR106](ADR106-cli-cloud-agents-automations.md) D7): the API checks the schedule, the template, the creator and the spend; the CLI shapes requests and prints answers. `<automation>` is an `aut-` id or a name in the active workspace.
+
+| Command | What it does |
+| --- | --- |
+| `list [--mine]` | The workspace's automations with the schedule in words, next fire and status (`--limit`, `--cursor`). |
+| `get <automation>` | One automation: schedule, next and last fire, failures in a row, template summary, version. |
+| `create --name NAME <schedule> [template flags] <task…>` | Create one. `--disabled` creates it paused. |
+| `update <automation> [flags] [<task…>]` | Change only what the flags and a new task name; everything else keeps its stored value. The write carries the version it read, so a concurrent edit is refused (`AGENT_AUTOMATION_CONFLICT`: re-run to apply on top). |
+| `delete <automation>` | Delete it and its run history; its sessions stay. |
+| `pause` / `resume <automation>` | Stop or restart firing; `resume` re-validates the automation. |
+| `run <automation>` | Fire it once now (the schedule does not move). With `--wait`/`--follow`/`--timeout`, wait on the session and exit by its state; a run that started nothing exits **6**. |
+| `take-over <automation>` | A workspace admin becomes its creator; it then runs as them. |
+| `runs <automation>` | Run history: fire time, outcome, session, missed ticks, error. |
+| `apply -f FILE\|DIR\|-` | Create or update automations from definition files (below). |
+| `export (<automation>… \| --all)` | Print automations as definitions `apply` reads. |
+
+`delete`, `take-over` and an `apply` that writes ask on a terminal and need `--confirm` elsewhere.
+
+- **Schedule flags.** `create` takes exactly one of `--every hour --minute M`, `--every day --at HH:MM`, `--every week --at HH:MM --on mon,thu`, `--once TIME` or `--cron "M H DoM Mon DoW"`. `--timezone` is an IANA name and defaults to this machine's (`$TZ`, else the `/etc/localtime` link), printed on stderr; with no IANA name found the command asks for `--timezone`. `--ends TIME` stops firing (exclusive; a bare date `YYYY-MM-DD` includes that whole day) and `--no-end` removes it. `--once` and `--ends` take RFC 3339 or `YYYY-MM-DDTHH:MM` read in the time zone. On `update`, a new `--every`/`--once`/`--cron` keeps the time zone, the end and the stored fields the new frequency still uses (a day schedule switched to `--every week --on mon` keeps its `--at`), and drops the rest; other schedule flags change only their field.
+- **Template flags** are `run`'s: `--repo`, `--branch`, `--agent`, `--model`, `--title`, `--tag`, `--max-spend`, `--skill`, `--secret`, `--output-schema`, and the task as arguments or `-f FILE`. A template on the platform model needs `--max-spend` (`AGENT_AUTOMATION_SPEND_LIMIT_REQUIRED`). `--attach`, `--secret-from-env`, `--idempotency-key` and `--parent` belong to a single session and are refused with the reason.
+- **Definition files.** A definition is the REST create body, in YAML or JSON: `name`, `enabled`, `triggers`, `template`. A file may hold several YAML documents; a directory contributes its `*.yaml`, `*.yml` and `*.json`. Any other key (such as `id` or `version` pasted from `get -o yaml`) is refused before anything is sent; `export` prints the right shape.
+- **`apply`** matches each definition by name: a missing automation is created, a changed one updated (with the version it read), the rest left alone. It compares only the fields a file sets, because the API fills defaults such as the title; to clear a field, set it empty. It never deletes: an automation missing from the files stays. `--dry-run` prints the plan and each changed field without writing. An automation someone else created answers `AGENT_AUTOMATION_NOT_CREATOR`; a workspace admin can `take-over` it first. One failed definition does not stop the others, and the command exits 1 naming how many failed. An automation the platform paused (`pausedReason`) is not resumed by `enabled: true`; `apply` says to `resume` it.
+- **`export`** prints each automation's `name`, `enabled`, `triggers` and `template` as YAML documents (`-o json`: a JSON array), so `export | apply -f -` changes nothing.
+- **Output.** `-o json` (or `yaml`) prints the API's own answer; `apply -o json` prints the plan, with each written automation under `automation`.
+
+```yaml
+# .bex/automations/nightly-deps.yaml
+name: nightly-deps
+triggers:
+  - type: schedule
+    schedule:
+      { frequency: week, at: "03:00", weekdays: [mon], timezone: Europe/Berlin }
+template:
+  repo: acme/api
+  task: Update dependencies, run the tests, open a draft PR.
+  agentConfig: { agent: claude }
+  maxSpendUSD: 5
+  secretNames: [NPM_TOKEN]
+```
+
+```bash
+# Preview in a pull request, apply on main.
+bex agent automations apply -f .bex/automations/ --dry-run
+bex agent automations apply -f .bex/automations/ --confirm
+# Test one now; fail the job if it started nothing or the session failed.
+bex agent automations run nightly-deps --wait --timeout 45m -o json > session.json
 ```
 
 ### Self-update: `bex upgrade`

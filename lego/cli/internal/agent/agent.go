@@ -41,6 +41,7 @@ import (
 	"github.com/render-oss/cli/pkg/config"
 	"github.com/render-oss/cli/pkg/dashboard"
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 	"golang.org/x/term"
 
 	"github.com/bex-co/bex/lego/cli/internal/desktop"
@@ -57,6 +58,7 @@ const (
 	exitFailed     = 3 // the turn ended failed (see failureReasonCode)
 	exitCanceled   = 4 // the session was canceled
 	exitNeedsInput = 5 // the agent is waiting for a reply (`bex agent send`)
+	exitNotStarted = 6 // an automation run started no session
 	exitTimeout    = 124
 	// exitInterrupted is SIGINT or SIGTERM ending a wait, the shell's 128+2.
 	exitInterrupted = 130
@@ -77,6 +79,9 @@ type deps struct {
 	openDesktop func(ctx context.Context, id, sshAddress string, beforeExec func()) error
 	newKey      func() string
 	lookupEnv   func(string) (string, bool)
+	// localZone is this machine's IANA time zone, "" when unknown: an
+	// automation schedule defaults to it, as the dashboard's to the browser's.
+	localZone func() string
 }
 
 func osDeps() deps {
@@ -91,6 +96,7 @@ func osDeps() deps {
 		openDesktop: desktop.OpenSession,
 		newKey:      newIdempotencyKey,
 		lookupEnv:   os.LookupEnv,
+		localZone:   machineZone,
 	}
 }
 
@@ -115,6 +121,7 @@ func newCommand(d deps) *cobra.Command {
 			"  3    the turn failed (failureReasonCode says why)\n" +
 			"  4    the session was canceled\n" +
 			"  5    reserved: needs_input, which sessions never enter\n" +
+			"  6    an automation run started no session (automations run)\n" +
 			"  124  --timeout elapsed while the session was still working\n" +
 			"  130  interrupted (Ctrl-C or SIGTERM)\n\n" +
 			"Use -o json (or yaml) for the API's own answer on stdout; streamed\n" +
@@ -130,6 +137,7 @@ func newCommand(d deps) *cobra.Command {
 	for _, sub := range []*cobra.Command{
 		runCommand(d), sendCommand(d), waitCommand(d), getCommand(d), listCommand(d),
 		logsCommand(d), filesCommand(d), cancelCommand(d), openCommand(d),
+		automationsCommand(d),
 	} {
 		// Cobra reads SilenceUsage from the executed command and the root
 		// only, and a failed turn is not a usage mistake.
@@ -273,22 +281,19 @@ func (w waitFlags) context(ctx context.Context) (context.Context, context.Cancel
 // promptFlags read a task or message: the arguments, or --file (- is stdin).
 type promptFlags struct{ file string }
 
-func (p *promptFlags) bind(c *cobra.Command) {
-	c.Flags().StringVarP(&p.file, "file", "f", "", "read the prompt from this file (- for stdin)")
+func (p *promptFlags) bind(f *pflag.FlagSet) {
+	f.StringVarP(&p.file, "file", "f", "", "read the prompt from this file (- for stdin)")
 }
+
+// maxPromptBytes bounds a prompt read from a file or stdin.
+const maxPromptBytes = 1 << 20
 
 func (p promptFlags) read(d deps, args []string) (string, error) {
 	if p.file != "" {
 		if len(args) > 0 {
 			return "", usageError("give the prompt as arguments or with --file, not both")
 		}
-		var raw []byte
-		var err error
-		if p.file == "-" {
-			raw, err = io.ReadAll(io.LimitReader(d.stdin, 1<<20))
-		} else {
-			raw, err = os.ReadFile(p.file)
-		}
+		raw, err := readPathOrStdin(d, p.file, maxPromptBytes)
 		if err != nil {
 			return "", err
 		}
@@ -299,6 +304,28 @@ func (p promptFlags) read(d deps, args []string) (string, error) {
 		return "", usageError("the prompt is empty: pass it as arguments or with --file")
 	}
 	return prompt, nil
+}
+
+// readPathOrStdin reads path ("-": stdin), refusing more than limit bytes
+// rather than acting on a silently truncated copy.
+func readPathOrStdin(d deps, path string, limit int64) ([]byte, error) {
+	r := d.stdin
+	if path != "-" {
+		f, err := os.Open(path)
+		if err != nil {
+			return nil, err
+		}
+		defer func() { _ = f.Close() }()
+		r = f
+	}
+	raw, err := io.ReadAll(io.LimitReader(r, limit+1))
+	if err != nil {
+		return nil, err
+	}
+	if int64(len(raw)) > limit {
+		return nil, usageError("%s is larger than %d KiB", firstNonEmpty(strings.TrimPrefix(path, "-"), "stdin"), limit>>10)
+	}
+	return raw, nil
 }
 
 // readSchema loads --output-schema: a JSON object (ADR094 D5).
@@ -338,9 +365,9 @@ type secretFlags struct {
 	fromEnv []string
 }
 
-func (s *secretFlags) bind(c *cobra.Command) {
-	c.Flags().StringArrayVar(&s.names, "secret", nil, "workspace agent secret to expose to the agent as an env var; repeatable")
-	c.Flags().StringArrayVar(&s.fromEnv, "secret-from-env", nil, "NAME or NAME=VAR: send the local env var VAR (default NAME) as this session's inline secret NAME; repeatable")
+func (s *secretFlags) bind(f *pflag.FlagSet) {
+	f.StringArrayVar(&s.names, "secret", nil, "workspace agent secret to expose to the agent as an env var; repeatable")
+	f.StringArrayVar(&s.fromEnv, "secret-from-env", nil, "NAME or NAME=VAR: send the local env var VAR (default NAME) as this session's inline secret NAME; repeatable")
 }
 
 func (s *secretFlags) resolve(d deps) (sessionSecrets, error) {
@@ -372,12 +399,12 @@ type turnFlags struct {
 	secrets secretFlags
 }
 
-func (t *turnFlags) bind(c *cobra.Command) {
-	c.Flags().StringArrayVar(&t.attach, "attach", nil, "file to attach to this turn; repeatable")
-	c.Flags().StringArrayVar(&t.skills, "skill", nil, "NAME or NAME:ARGUMENTS: a workspace skill to use this turn; repeatable, up to 5")
-	c.Flags().StringVar(&t.schema, "output-schema", "", "JSON Schema file this turn's result must satisfy")
-	t.secrets.bind(c)
-	t.prompt.bind(c)
+func (t *turnFlags) bind(f *pflag.FlagSet) {
+	f.StringArrayVar(&t.attach, "attach", nil, "file to attach to this turn; repeatable")
+	f.StringArrayVar(&t.skills, "skill", nil, "NAME or NAME:ARGUMENTS: a workspace skill to use this turn; repeatable, up to 5")
+	f.StringVar(&t.schema, "output-schema", "", "JSON Schema file this turn's result must satisfy")
+	t.secrets.bind(f)
+	t.prompt.bind(f)
 }
 
 // turnInput is a turn's parsed flags; the files are uploaded once the API
@@ -403,21 +430,60 @@ func (t *turnFlags) resolve(d deps, args []string) (turnInput, error) {
 	if in.secrets, err = t.secrets.resolve(d); err != nil {
 		return turnInput{}, err
 	}
-	for _, spec := range t.skills {
-		name, arguments, _ := strings.Cut(spec, ":")
-		if name = strings.TrimSpace(name); name == "" {
-			return turnInput{}, usageError("--skill takes NAME or NAME:ARGUMENTS, not %q", spec)
-		}
-		in.skills = append(in.skills, skillInvocation{Name: name, Arguments: strings.TrimSpace(arguments)})
+	if in.skills, err = parseSkills(t.skills); err != nil {
+		return turnInput{}, err
 	}
 	return in, nil
+}
+
+// parseSkills reads --skill NAME or NAME:ARGUMENTS values.
+func parseSkills(specs []string) ([]skillInvocation, error) {
+	var out []skillInvocation
+	for _, spec := range specs {
+		name, arguments, _ := strings.Cut(spec, ":")
+		if name = strings.TrimSpace(name); name == "" {
+			return nil, usageError("--skill takes NAME or NAME:ARGUMENTS, not %q", spec)
+		}
+		out = append(out, skillInvocation{Name: name, Arguments: strings.TrimSpace(arguments)})
+	}
+	return out, nil
+}
+
+// sessionFlags are the session settings `run` and an automation's template
+// share, with the same names and help.
+type sessionFlags struct {
+	repo, branch, agent, model, title string
+	tags                              []string
+	spend                             float64
+}
+
+func (s *sessionFlags) bind(f *pflag.FlagSet) {
+	f.StringVar(&s.repo, "repo", "", "repository to work on (owner/name or URL); empty runs without one")
+	f.StringVar(&s.branch, "branch", "", "branch to start from (default: the repository's default branch)")
+	f.StringVar(&s.agent, "agent", defaultAgent, "agent to run (see the dashboard composer for the workspace's agents)")
+	f.StringVar(&s.model, "model", "", "model id (default: the workspace default)")
+	f.StringVar(&s.title, "title", "", "display title (default: the task's first line)")
+	f.StringArrayVar(&s.tags, "tag", nil, "label for filtering and cost attribution; repeatable")
+	f.Float64Var(&s.spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")
+}
+
+// maxSpend is --max-spend when it was given.
+func (s *sessionFlags) maxSpend(c *cobra.Command) (*float64, error) {
+	if !c.Flags().Changed("max-spend") {
+		return nil, nil
+	}
+	if s.spend <= 0 {
+		return nil, usageError("--max-spend must be more than 0 (USD)")
+	}
+	spend := s.spend
+	return &spend, nil
 }
 
 func runCommand(d deps) *cobra.Command {
 	var (
 		in      createRequest
+		sf      sessionFlags
 		turn    turnFlags
-		spend   float64
 		key     string
 		waiting waitFlags
 	)
@@ -441,11 +507,10 @@ func runCommand(d deps) *cobra.Command {
 				return err
 			}
 			in.AgentConfig.Task, in.OutputSchema, in.Skills, in.sessionSecrets = t.prompt, t.schema, t.skills, t.secrets
-			if c.Flags().Changed("max-spend") {
-				if spend <= 0 {
-					return usageError("--max-spend must be more than 0 (USD)")
-				}
-				in.MaxSpendUSD = &spend
+			in.Repo, in.Branch, in.Title, in.Tags = sf.repo, sf.branch, sf.title, sf.tags
+			in.AgentConfig.Agent, in.AgentConfig.Model = sf.agent, sf.model
+			if in.MaxSpendUSD, err = sf.maxSpend(c); err != nil {
+				return err
 			}
 			if key == "" {
 				key = d.newKey()
@@ -474,16 +539,9 @@ func runCommand(d deps) *cobra.Command {
 			return inv.await(created, 1, waiting)
 		},
 	}
-	f := c.Flags()
-	f.StringVar(&in.Repo, "repo", "", "repository to work on (owner/name or URL); empty runs without one")
-	f.StringVar(&in.Branch, "branch", "", "branch to start from (default: the repository's default branch)")
-	f.StringVar(&in.AgentConfig.Agent, "agent", defaultAgent, "agent to run (see the dashboard composer for the workspace's agents)")
-	f.StringVar(&in.AgentConfig.Model, "model", "", "model id (default: the workspace default)")
-	f.StringVar(&in.Title, "title", "", "display title (default: the task's first line)")
-	f.StringArrayVar(&in.Tags, "tag", nil, "label for filtering and cost attribution; repeatable")
-	f.Float64Var(&spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")
-	f.StringVar(&key, "idempotency-key", "", "reuse a key to make re-running this command safe (default: one per invocation)")
-	turn.bind(c)
+	sf.bind(c.Flags())
+	c.Flags().StringVar(&key, "idempotency-key", "", "reuse a key to make re-running this command safe (default: one per invocation)")
+	turn.bind(c.Flags())
 	waiting.bindTurn(c)
 	return c
 }
@@ -533,7 +591,7 @@ func sendCommand(d deps) *cobra.Command {
 			return inv.await(steered, steered.Turns, waiting)
 		},
 	}
-	turn.bind(c)
+	turn.bind(c.Flags())
 	waiting.bindTurn(c)
 	return c
 }

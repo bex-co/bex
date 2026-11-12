@@ -228,7 +228,12 @@ func (a *api) getJSON(ctx context.Context, query url.Values, path ...string) ([]
 
 // post sends r as a POST with payload, when not nil, as its JSON body.
 func (a *api) post(ctx context.Context, r request, payload any) ([]byte, error) {
-	r.method = http.MethodPost
+	return a.send(ctx, http.MethodPost, r, payload)
+}
+
+// send sends r with method and payload, when not nil, as its JSON body.
+func (a *api) send(ctx context.Context, method string, r request, payload any) ([]byte, error) {
+	r.method = method
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
 		if err != nil {

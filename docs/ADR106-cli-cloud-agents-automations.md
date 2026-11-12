@@ -1,6 +1,6 @@
 # ADR106 — bex CLI extension for Cloud Agents and their Automations
 
-**Status:** proposed (2026-11-11) · **Date:** 2026-11-11 · **Extends:** [bex-cli.md § Cloud Agents](bex-cli.md#cloud-agents-bex-agent) (the shipped `bex agent` group), [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions, attach stream), [ADR094](ADR094-coding-agent-mcp.md) (session contract), [ADR101](ADR101-agent-automations.md) (automations), [ADR054](ADR054-open-in-zed.md) (sandbox SSH), [ADR065](ADR065-agent-session-archive.md), [ADR098](ADR098-agent-session-secrets.md), [ADR099](ADR099-agent-skills.md), [ADR102](ADR102-agent-child-sessions.md) · **Parity:** Devin CLI and Devin Automations (no Render equivalent; see [Parity](#parity)).
+**Status:** proposed (2026-11-11), implementation in progress (2026-11-12: D7 `bex agent automations` shipped in w1/m338, verified on production) · **Date:** 2026-11-11 · **Extends:** [bex-cli.md § Cloud Agents](bex-cli.md#cloud-agents-bex-agent) (the shipped `bex agent` group), [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions, attach stream), [ADR094](ADR094-coding-agent-mcp.md) (session contract), [ADR101](ADR101-agent-automations.md) (automations), [ADR054](ADR054-open-in-zed.md) (sandbox SSH), [ADR065](ADR065-agent-session-archive.md), [ADR098](ADR098-agent-session-secrets.md), [ADR099](ADR099-agent-skills.md), [ADR102](ADR102-agent-child-sessions.md) · **Parity:** Devin CLI and Devin Automations (no Render equivalent; see [Parity](#parity)).
 
 ![ADR106 architecture: the bex launcher gains new command groups that are thin clients of existing bex-api routes, the gateway's SSE attach stream, the sandbox SSH listener, and the developer's own git remote](ADR106-cli-cloud-agents-automations.svg)
 
@@ -132,7 +132,7 @@ bex agent
 | Command | Route | Notes |
 | --- | --- | --- |
 | `archive <session>…` / `unarchive <session>…` | `POST …/archive`, `…/unarchive` | several ids per call; each result printed |
-| `delete <session>` | `DELETE /v1/agent-sessions/{id}` | confirms on a TTY; `--yes` otherwise required |
+| `delete <session>` | `DELETE /v1/agent-sessions/{id}` | confirms on a TTY; `--confirm` otherwise required |
 | `tags <session> [TAG…]` / `tags <session> --clear` | `PUT …/tags` | replaces all tags, as the API does; no read-modify-write `--add` (it would race) |
 | `tree <session>` | `GET …/tree` | indented tree of descendants with state, title and spend |
 | `cost <session>` | `GET …/model-cost` | per-turn and total model cost |
@@ -164,7 +164,7 @@ There is no `rename`. The title is fixed at create (ADR094 amendment w7/m296), a
    - Copy the index to a temporary `GIT_INDEX_FILE`, then run `git add -A` (or `-u` with `--tracked-only`) against it. `.gitignore` is honored.
    - Run `git write-tree` and `git commit-tree <tree> -p HEAD -m "bex handoff: <title>"`.
    - The worktree, the real index, the stash and `HEAD` are unchanged. A clean tree hands off `HEAD` itself.
-3. **Confirm.** Print the branch, the base commit, a diffstat and the untracked files that will be sent (the first 20). On a TTY, ask before pushing; without one, `--yes` is required. This is the moment Devin warns about with "Commit or stash anything you don't want sent".
+3. **Confirm.** Print the branch, the base commit, a diffstat and the untracked files that will be sent (the first 20). On a TTY, ask before pushing; without one, `--confirm` is required. This is the moment Devin warns about with "Commit or stash anything you don't want sent".
 4. **Push with the developer's own credential.** `git push <remote> <commit>:refs/heads/bex-agent/handoff-<8 hex>`. The developer is pushing to their own repository, which bex never does on their behalf.
 5. **Create.** `POST /v1/agent-sessions` with `repo`, `branch` = the handoff branch, the task and every `run` flag (`--model`, `--max-spend`, `--secret`, `--skill`, `--attach`, `--wait`, `--follow`, `--chat`).
    - `--notes FILE` is uploaded as an attachment (ADR095), so the agent finds `/attachments/<name>`.
@@ -238,7 +238,7 @@ Local skills for the developer's own coding agents stay with the shipped `bex sk
 | Output | `-o text` (default on a TTY), `json`, `yaml`; `BEX_OUTPUT` sets the default. JSON/YAML print the API's answer unchanged; YAML keeps integer digits |
 | Streams | transcript and progress on stderr whenever stdout carries `-o json | yaml` |
 | Secrets | never on argv: stdin, `--from-env`, or `--secret-from-env` (sessions only) |
-| Confirmation | `delete`, `automations delete`, `take-over` and `handoff`'s push ask on a TTY; `--yes` skips; without a TTY they need `--yes` or exit 2 |
+| Confirmation | `delete`, `automations delete`, `take-over`, a writing `apply` and `handoff`'s push ask on a TTY; upstream's global `--confirm` ("skip all confirmation prompts", the Render CLI's own flag) skips; without a TTY they need `--confirm` or exit 2 |
 | Waiting | `--wait`, `--follow` and `--timeout D` behave as in the shipped group (SSE first, polling with 2–15 s backoff as fallback, five transient failures tolerated, `Retry-After` honored) |
 | Telemetry | command path only, never arguments, names, prompts or values |
 
@@ -305,7 +305,7 @@ alias: bex agent attach
 ```
 bex agent archive   <session>…
 bex agent unarchive <session>…
-bex agent delete    <session> [--yes]
+bex agent delete    <session> [--confirm]
 bex agent tags      <session> (<tag>… | --clear)
 bex agent tree      <session>
 bex agent cost      <session>
@@ -319,13 +319,13 @@ bex agent forward <session> [<local>:]<remote>… [--bind 127.0.0.1]   († regi
 ```
 
 - `ssh` execs the system `ssh`, so `~/.ssh/config`, agents and keys apply. Exit status is ssh's own.
-- `forward` binds loopback by default. `--bind 0.0.0.0` needs `--yes` because it exposes the sandbox port to the local network. The command runs until interrupted (exit 130).
+- `forward` binds loopback by default. `--bind 0.0.0.0` needs `--confirm` because it exposes the sandbox port to the local network. The command runs until interrupted (exit 130).
 
 ### `bex agent handoff` and `bex agent pickup`
 
 ```
 bex agent handoff [--repo owner/repo] [--remote origin] [--tracked-only] [--notes FILE]
-                  [--yes] [--chat | --wait | --follow] [run flags…] [<task…> | -f FILE]
+                  [--confirm] [--chat | --wait | --follow] [run flags…] [<task…> | -f FILE]
 bex agent pickup  [<session>] [--remote origin] [--stash] [--wait [--timeout D]]
 ```
 
@@ -349,13 +349,13 @@ bex agent automations list    [--mine] [--limit N] [--cursor C]
 bex agent automations get     <automation>
 bex agent automations create  --name NAME <schedule flags> <template flags> [--disabled] (<task…> | -f FILE)
 bex agent automations update  <automation> [--name NAME] [<schedule flags>] [<template flags>] [<task…> | -f FILE]
-bex agent automations delete  <automation> [--yes]
+bex agent automations delete  <automation> [--confirm]
 bex agent automations pause   <automation>
 bex agent automations resume  <automation>
 bex agent automations run     <automation> [--wait | --follow] [--timeout D]
-bex agent automations take-over <automation> [--yes]
+bex agent automations take-over <automation> [--confirm]
 bex agent automations runs    <automation> [--limit N] [--cursor C]
-bex agent automations apply   -f FILE|DIR|- [--dry-run] [--yes]
+bex agent automations apply   -f FILE|DIR|- [--dry-run] [--confirm]
 bex agent automations export  (<automation>… | --all)
 aliases: bex agent automation …, bex agent aut …
 ```
@@ -407,7 +407,7 @@ bex agent automations create --name error-triage --cron "0 9 * * 1-5" --timezone
 
 # Keep automations in the repo; CI previews on PRs and applies on main.
 bex agent automations apply -f .bex/automations/ --dry-run
-bex agent automations apply -f .bex/automations/ --yes
+bex agent automations apply -f .bex/automations/ --confirm
 
 # Test an automation now and fail the job if the session fails or never started.
 bex agent automations run nightly-deps --wait --timeout 45m -o json > run.json
@@ -418,12 +418,12 @@ bex agent automations run nightly-deps --wait --timeout 45m -o json > run.json
 ```
 bex agent secrets list
 bex agent secrets set NAME [--from-env VAR]        # value from stdin unless --from-env
-bex agent secrets delete NAME [--yes]
+bex agent secrets delete NAME [--confirm]
 bex agent skills list
 bex agent skills get NAME [--version N]
 bex agent skills create -f SKILL.md
 bex agent skills update NAME -f SKILL.md
-bex agent skills delete NAME [--yes]
+bex agent skills delete NAME [--confirm]
 bex agent skills versions NAME
 bex agent env
 bex agent env set [--network-tier T] [--custom-host H]… [--default-model M]

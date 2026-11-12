@@ -49,18 +49,49 @@ func parseFormat(value string) (format, error) {
 	return "", usageError("--output must be json, yaml or text, not %q", value)
 }
 
+// minuteLayout is how text output shows a time.
+const minuteLayout = "2006-01-02 15:04"
+
+// decodeExact decodes one JSON value keeping every number's digits, and
+// refuses data after it.
+func decodeExact(raw []byte, v any) error {
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	dec.UseNumber()
+	if err := dec.Decode(v); err != nil {
+		return err
+	}
+	if _, err := dec.Token(); err != io.EOF {
+		return fmt.Errorf("the API answer has data after its JSON value")
+	}
+	return nil
+}
+
+// writeValue prints v, encoded as JSON, as writeRaw would print an answer.
+func writeValue(w io.Writer, f format, v any) error {
+	encoded, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return writeRaw(w, f, encoded)
+}
+
+// table is a two-column label/value block that skips empty values.
+type table struct{ *tabwriter.Writer }
+
+func newTable(w io.Writer) table { return table{tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)} }
+
+func (t table) row(label, value string) {
+	if value != "" {
+		_, _ = fmt.Fprintf(t, "%s\t%s\n", label, value)
+	}
+}
+
 // writeRaw prints an API answer (or a JSON array of them) as JSON or YAML.
 func writeRaw(w io.Writer, f format, raw []byte) error {
 	if f == formatYAML {
-		dec := json.NewDecoder(bytes.NewReader(raw))
-		dec.UseNumber()
 		var value any
-		if err := dec.Decode(&value); err != nil {
+		if err := decodeExact(raw, &value); err != nil {
 			return err
-		}
-		// Decode stops after one value; the JSON branch refuses what follows.
-		if _, err := dec.Token(); err != io.EOF {
-			return fmt.Errorf("the API answer has data after its JSON value")
 		}
 		out, err := yaml.Marshal(yamlValue(value))
 		if err != nil {
@@ -126,12 +157,8 @@ func writeSession(w io.Writer, s session) {
 		headline += " · " + s.AgentConfig.Agent
 	}
 	_, _ = fmt.Fprintln(w, headline)
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
-	row := func(label, value string) {
-		if value != "" {
-			_, _ = fmt.Fprintf(tw, "%s\t%s\n", label, value)
-		}
-	}
+	tw := newTable(w)
+	row := tw.row
 	row("Title", s.Title)
 	if s.Repo != "" {
 		row("Repo", strings.TrimSpace(s.Repo+" "+branchSuffix(s.Branch)))
@@ -185,7 +212,7 @@ func writeSessionList(w io.Writer, sessions []session) {
 	for _, s := range sessions {
 		created := ""
 		if !s.CreatedAt.IsZero() {
-			created = s.CreatedAt.Local().Format("2006-01-02 15:04")
+			created = s.CreatedAt.Local().Format(minuteLayout)
 		}
 		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n", s.ID, s.State, s.AgentConfig.Agent, s.Repo, clip(s.Title, 48), created)
 	}

@@ -22,7 +22,7 @@
 ## Definition of done
 
 1. Against production with a locally built `bex`: `list --mine/--created-by/--automation/--parent/--phase/--since/--until` filter as the API does; `run --parent <session>` starts a child session; a dashboard session URL works wherever `<session>` is accepted.
-2. `archive`, `unarchive`, `delete` (TTY confirm or `--yes`), `tags`, `tree` and `cost` work and print the API's answer with `-o json`.
+2. `archive`, `unarchive`, `delete` (TTY confirm or `--confirm`), `tags`, `tree` and `cost` work and print the API's answer with `-o json`.
 3. `secrets list/set/delete`, `skills list/get/create/update/delete/versions`, `env`, `env set` and `models` work; a test pins that no secret value or model key is accepted as a flag argument (stdin or `--from-env` only).
 4. The contract fixtures cover the new shapes and the backend twin test guards them.
 5. `docs/bex-cli.md` documents the new verbs.
