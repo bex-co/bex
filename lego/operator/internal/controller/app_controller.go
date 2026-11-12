@@ -163,8 +163,14 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 	// minute idle timer (w4/m185).
 	isolationChanged := e.ObjectNew != nil && e.ObjectOld != nil &&
 		e.ObjectNew.GetLabels()[labelNetworkIsolation] != e.ObjectOld.GetLabels()[labelNetworkIsolation]
+	// A cancel is a stamp, which bumps no generation either: the settle
+	// waited for a pod event or a requeue, 1.5-15 s on production, while the
+	// canceled release kept rolling toward traffic (w8/265).
+	cancelStamped := e.ObjectNew != nil && e.ObjectOld != nil &&
+		(e.ObjectNew.GetAnnotations()[appv1alpha1.AnnotationCanceledReleaseGeneration] != e.ObjectOld.GetAnnotations()[appv1alpha1.AnnotationCanceledReleaseGeneration] ||
+			e.ObjectNew.GetAnnotations()[appv1alpha1.AnnotationSurvivingReleaseGeneration] != e.ObjectOld.GetAnnotations()[appv1alpha1.AnnotationSurvivingReleaseGeneration])
 	return p.generationDeletionOrFinalizerPredicate.Update(e) ||
-		rotationRequested || scaledSelection || isolationChanged
+		rotationRequested || scaledSelection || isolationChanged || cancelStamped
 }
 
 // labelApp marks the workloads bex creates for an App.

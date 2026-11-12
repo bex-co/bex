@@ -63,6 +63,20 @@ func TestGenerationOrDeletionPredicate(t *testing.T) {
 		}
 	})
 
+	// w8/265: the cancel stamp starts the settle at once.
+	t.Run("admits a cancel stamp and a survivor change", func(t *testing.T) {
+		for _, key := range []string{appv1alpha1.AnnotationCanceledReleaseGeneration, appv1alpha1.AnnotationSurvivingReleaseGeneration} {
+			updated := old.DeepCopy()
+			updated.Annotations = map[string]string{key: "2"}
+			if !p.Update(event.UpdateEvent{ObjectOld: old, ObjectNew: updated}) {
+				t.Fatalf("%s stamp was filtered", key)
+			}
+			if p.Update(event.UpdateEvent{ObjectOld: updated, ObjectNew: updated.DeepCopy()}) {
+				t.Fatalf("an unchanged %s was admitted", key)
+			}
+		}
+	})
+
 	t.Run("filters unrelated annotation updates", func(t *testing.T) {
 		updated := old.DeepCopy()
 		updated.Annotations = map[string]string{"example.com/noise": "changed"}

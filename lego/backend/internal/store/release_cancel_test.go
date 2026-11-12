@@ -111,7 +111,7 @@ func TestSuspendCloseSurvivesAFailedBuildDelete(t *testing.T) {
 	if stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] != "7" || patches != 1 {
 		t.Fatalf("stamp = %q after %d patches, want 7 after one", stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration], patches)
 	}
-	if err := markReleaseCanceled(ctx, cl, &stored, 7, nil); err != nil || patches != 1 {
+	if err := markReleaseCanceled(ctx, cl, &stored, 7, nil, false); err != nil || patches != 1 {
 		t.Fatalf("restamp = %v after %d patches, want a no-op", err, patches)
 	}
 }
@@ -485,4 +485,96 @@ func TestCancelReleaseRetryLeavesANamesakeRecreatedMeanwhileAlone(t *testing.T) 
 	if _, stamped := canceledReleaseGeneration(&stored); stamped || attempts != 1 {
 		t.Fatalf("namesake stamped = %v after %d attempts, want it untouched after one", stamped, attempts)
 	}
+}
+
+// w8/265: a user's cancel of a release status.activeRevision names is too
+// late, and stamps nothing. The operator writes that status while a rollout
+// switches, so a write racing the stamp makes the patch lose its lock; the
+// retry re-reads and refuses. The suspend's own cancel (CancelRelease) is
+// unchanged.
+func TestUserCancelOfAServingReleaseStampsNothing(t *testing.T) {
+	ctx := context.Background()
+	app := func(active string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "tea-a", UID: "uid-web",
+				Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "7"}},
+			Spec:   appv1alpha1.AppSpec{Image: "registry.example/web:7"},
+			Status: appv1alpha1.AppStatus{ReleaseGeneration: 7, ActiveRevision: active},
+		}
+	}
+	stamp := func(cl client.Client) string {
+		t.Helper()
+		var stored appv1alpha1.App
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "tea-a", Name: "web"}, &stored); err != nil {
+			t.Fatal(err)
+		}
+		return stored.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]
+	}
+
+	t.Run("already serving", func(t *testing.T) {
+		cl := cancelTestClient(t, app("rev-7"), interceptor.Funcs{})
+		if err := CancelUnservedRelease(ctx, cl, app("rev-7"), 7, nil, "bex-build"); !errors.Is(err, ErrReleaseServes) {
+			t.Fatalf("cancel = %v, want ErrReleaseServes", err)
+		}
+		if got := stamp(cl); got != "" {
+			t.Fatalf("stamped %q", got)
+		}
+		// The operator records the revision as the rollout settles, so the
+		// reconciler the 409 kicks closes the row live.
+		settling := app("rev-7")
+		settling.Generation = 7
+		settling.Status.Phase = appv1alpha1.PhaseDeploying
+		settling.Status.Conditions = []metav1.Condition{{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse,
+			Reason: appv1alpha1.ReasonRolloutSettling, ObservedGeneration: 7}}
+		if got := observedDeployStatus(Deploy{Generation: 7, Status: DeployUpdateInProgress}, settling, false); got != DeployLive {
+			t.Fatalf("the refused row reads %q, want live", got)
+		}
+		if err := CancelRelease(ctx, cl, app("rev-7"), 7, nil, "bex-build"); err != nil || stamp(cl) != "7" {
+			t.Fatalf("the suspend's cancel = %v, stamp %q; want it stamped as before", err, stamp(cl))
+		}
+	})
+
+	t.Run("switches while the stamp is in flight", func(t *testing.T) {
+		raced := false
+		cl := cancelTestClient(t, app("rev-6"), interceptor.Funcs{
+			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
+				if !raced {
+					raced = true
+					var live appv1alpha1.App
+					if err := c.Get(ctx, client.ObjectKeyFromObject(obj), &live); err != nil {
+						return err
+					}
+					live.Status.ActiveRevision = "rev-7"
+					if err := c.Update(ctx, &live); err != nil {
+						return err
+					}
+				}
+				return c.Patch(ctx, obj, patch, opts...)
+			},
+		})
+		if err := CancelUnservedRelease(ctx, cl, app("rev-6"), 7, nil, "bex-build"); !errors.Is(err, ErrReleaseServes) {
+			t.Fatalf("cancel = %v, want ErrReleaseServes after the retry", err)
+		}
+		if got := stamp(cl); got != "" {
+			t.Fatalf("stamped %q", got)
+		}
+	})
+
+	// A retry of a cancel whose stamp landed but whose row write failed keeps
+	// its answer: the operator settles the stamped release canceled.
+	t.Run("its own stamp in place", func(t *testing.T) {
+		stamped := app("rev-7")
+		stamped.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration] = "7"
+		cl := cancelTestClient(t, stamped.DeepCopy(), interceptor.Funcs{})
+		if err := CancelUnservedRelease(ctx, cl, stamped, 7, nil, "bex-build"); err != nil {
+			t.Fatalf("retried cancel = %v, want it to stand", err)
+		}
+	})
+
+	t.Run("not serving yet", func(t *testing.T) {
+		cl := cancelTestClient(t, app("rev-6"), interceptor.Funcs{})
+		if err := CancelUnservedRelease(ctx, cl, app("rev-6"), 7, nil, "bex-build"); err != nil || stamp(cl) != "7" {
+			t.Fatalf("cancel = %v, stamp %q; want 7", err, stamp(cl))
+		}
+	})
 }

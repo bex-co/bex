@@ -68,7 +68,26 @@ var kpackImageGVK = appv1alpha1.KpackGroupVersion.WithKind("Image")
 // the one survivor's row records — the commit its build checks out if it has
 // not started (w5/138).
 func CancelRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64, survivor *Deploy, buildNamespace string) error {
-	if err := markReleaseCanceled(ctx, c, a, generation, survivor); err != nil {
+	return cancelRelease(ctx, c, a, generation, survivor, buildNamespace, false)
+}
+
+// ErrReleaseServes is a user's cancel of a release the App already serves
+// (w8/265): on Render a canceled deploy never served, so the deploy is live.
+var ErrReleaseServes = errors.New("the release already serves")
+
+// CancelUnservedRelease is CancelRelease for a user's cancel. It stamps
+// nothing for a release status.activeRevision names, and answers
+// ErrReleaseServes: the operator records a release there once it serves, and
+// a stamp read after the switch rolls a third instance back to the previous
+// release (w8/265). The decision is made on the same re-read, under the same
+// optimistic lock, as the stamp, so an operator status write racing it makes
+// the patch retry and decide again.
+func CancelUnservedRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64, survivor *Deploy, buildNamespace string) error {
+	return cancelRelease(ctx, c, a, generation, survivor, buildNamespace, true)
+}
+
+func cancelRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64, survivor *Deploy, buildNamespace string, unservedOnly bool) error {
+	if err := markReleaseCanceled(ctx, c, a, generation, survivor, unservedOnly); err != nil {
 		return err
 	}
 	if err := deleteReleaseBuild(ctx, c, a, generation, buildNamespace); err != nil {
@@ -93,12 +112,18 @@ func CancelRelease(ctx context.Context, c client.Client, a *appv1alpha1.App, gen
 // when a cancel arrives, so losing the optimistic lock is ordinary. Each lost
 // attempt re-reads and decides again; one that still loses after the bounded
 // retries is a conflict the caller can retry, not an internal error (w4/287).
-func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64, survivor *Deploy) error {
+func markReleaseCanceled(ctx context.Context, c client.Client, a *appv1alpha1.App, generation int64, survivor *Deploy, unservedOnly bool) error {
 	err := retry.RetryOnConflict(retry.DefaultBackoff, func() error {
 		if err := core.RereadApp(ctx, c, a); err != nil {
 			return err
 		}
 		marked, _ := canceledReleaseGeneration(a)
+		// A stamp already naming this release is this cancel's own, retried
+		// after its row write failed: the operator settles it canceled, so the
+		// answer must stay canceled too.
+		if unservedOnly && marked != generation && servesGeneration(a, generation) {
+			return ErrReleaseServes
+		}
 		kept, keeps := generationAnnotation(a, appv1alpha1.AnnotationSurvivingReleaseGeneration)
 		moves := generation > marked
 		if !moves && !(keeps && kept == generation) {

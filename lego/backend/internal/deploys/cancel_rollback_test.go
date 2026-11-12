@@ -87,6 +87,53 @@ func TestCancelRefusesAlreadyLiveDeploy(t *testing.T) {
 	}
 }
 
+// w8/265: a cancel that reaches a release after it took traffic is too late.
+// On Render a canceled deploy never served, so the deploy is live: the cancel
+// answers 409 and stamps nothing, and the operator rolls nothing back. A
+// release that does not serve yet is still canceled.
+func TestCancelOfAReleaseThatAlreadyServesIsLive(t *testing.T) {
+	for name, active := range map[string]string{"serves": "rev-2", "still rolling out": "rev-1"} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			ds := newFakeStore()
+			first, _ := ds.CreateDeploy(ctx, "srv-1", "create", "web:v1", 1, store.CommitInfo{}, "")
+			if won, err := ds.CloseDeploy(ctx, first.ID, store.DeployLive, "web:v1"); err != nil || !won {
+				t.Fatalf("close: won=%v err=%v", won, err)
+			}
+			second, _ := ds.CreateDeploy(ctx, "srv-1", "api", "web:v2", 2, store.CommitInfo{}, "")
+			app := sampleApp("web", "srv-1")
+			app.Generation = 2
+			app.Annotations = map[string]string{appv1alpha1.AnnotationReleaseGeneration: "2"}
+			app.Status.ReleaseGeneration = 2
+			app.Status.ActiveRevision = active
+			svc, cl := newService(ds, app)
+
+			_, err := svc.Cancel(ctx, "web", second.ID)
+			got := &appv1alpha1.App{}
+			if gerr := cl.Get(ctx, client.ObjectKeyFromObject(app), got); gerr != nil {
+				t.Fatal(gerr)
+			}
+			stamp := got.Annotations[appv1alpha1.AnnotationCanceledReleaseGeneration]
+			row, _ := ds.GetDeploy(ctx, "srv-1", second.ID)
+			if active == "rev-1" {
+				if err != nil || stamp != "2" || row.Status != store.DeployCanceled {
+					t.Fatalf("cancel before the switch = %v, stamp %q, row %s; want canceled", err, stamp, row.Status)
+				}
+				return
+			}
+			if !errors.Is(err, core.ErrConflict) || !strings.Contains(err.Error(), "is already live") {
+				t.Fatalf("cancel of a serving release = %v, want 409 already live", err)
+			}
+			if stamp != "" {
+				t.Fatalf("a refused cancel stamped release %s", stamp)
+			}
+			if row.FinishedAt != nil {
+				t.Fatalf("a refused cancel closed the row %s; the reconciler closes it live", row.Status)
+			}
+		})
+	}
+}
+
 func TestCancelUnknownDeployIsNotFound(t *testing.T) {
 	ds := newFakeStore()
 	svc, _ := newService(ds, sampleApp("web", "srv-1"))

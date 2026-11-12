@@ -1043,7 +1043,7 @@ func (s *Service) lookupCommit(ctx context.Context, a *appv1alpha1.App, ref stri
 }
 
 // Cancel kills a still-open deploy (Render's POST .../deploys/{id}/cancel,
-// w2/m10). store.CancelRelease ends its release — the canceled-release stamp
+// w2/m10). store.CancelUnservedRelease ends its release — the canceled-release stamp
 // the operator settles from, then a best-effort stop of a repo-backed build —
 // keyed by the deploy row's OWN stored Generation rather than the App's
 // current one: a later, unrelated spec write (a scale, an env change, another
@@ -1053,7 +1053,9 @@ func (s *Service) lookupCommit(ctx context.Context, a *appv1alpha1.App, ref stri
 // whichever of Cancel and a genuinely-converging rollout gets there first
 // wins, so a race can never leave the row half-canceled. A deploy that already
 // reached any terminal status is past the cancelable window: Render's 409,
-// never a silent no-op.
+// never a silent no-op. So is one whose release already serves
+// (store.ErrReleaseServes, w8/265): the deploy is live, and the reconciler
+// closes its row so.
 func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployView, error) {
 	a, err := s.AuthorizeApp(ctx, core.RelCanOperate, service)
 	if err != nil {
@@ -1106,7 +1108,12 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 		if err != nil {
 			return DeployView{}, err
 		}
-		if err := store.CancelRelease(ctx, s.Client, a, d.Generation, survivor, s.BuildNamespace); err != nil {
+		if err := store.CancelUnservedRelease(ctx, s.Client, a, d.Generation, survivor, s.BuildNamespace); err != nil {
+			// Too late: its release took traffic, so the deploy is live, and
+			// the reconciler kicked on return closes the row so (w8/265).
+			if errors.Is(err, store.ErrReleaseServes) {
+				return DeployView{}, fmt.Errorf("%w: deploy %q is already live", core.ErrConflict, deployID)
+			}
 			return DeployView{}, err
 		}
 	}

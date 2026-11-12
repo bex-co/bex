@@ -1,8 +1,29 @@
-# A deploy canceled around the moment its new instance turns ready is recorded `canceled` while its build serves production, and the live instance is replaced twice
+# w8 · m160 — A cancel that races the traffic switch: the canceled release never serves, or the deploy is live
 
-Why: cancel is what a user reaches for when they realise a deploy is wrong. Render's contract, and ADR018's Cancel row, is that the service stays on its last successful release and "no pod rolls". On bex a cancel sent in the last seconds before the new instance is ready, or just after it has started answering while the deploy still reads `update_in_progress`, is acknowledged with "successfully canceled". The canceled build then answers every request for about 20 s (95 s in one run), and the platform rolls back to the previous release on a fresh instance. A healthy service is restarted twice, and the history says the build that served was never live. A service that starts in a few seconds spends its whole rollout inside that window: four of four such cancels lost.
+**Worker:** worker8 **Goal:** a cancel has Render's two outcomes and no third: accepted, the canceled release never answers a request and the live instance is not replaced; too late, the deploy is live and the cancel answers 409 `already live`. **Status:** blocked (2026-11-12: t001, t002, t004 and t005 done and shipped (2026-11-12); t003, the one decider for the switch, needs a cluster; t006's envtest and t007's replay follow it)
 
-**Severity:** major (the verb reports success while the canceled code serves production; no request failed). **Attribution:** server (backend cancel guard, operator settle). **Estimate:** milestone-sized, ~4h. **Source:** `/qa-find-bugs-cli` w8 loop sweep `2ba7`, 2026-11-11 UTC, released `bex v0.5.0` (Render CLI v2.35.0), `https://api.bex.co/v1/`, workspace `bex-canary`, QA human device login. Production rolled from pin `7ca0227aa477` to `f609163ada8e` at 14:48:17–14:49:14 UTC, during this sweep. Cases 1–3 are on the new pin, which carries w4/m320; cases 4–5 are on the old one.
+## Tasks (in order)
+
+| id   | title                                                                                            | est | depends_on       |
+| ---- | ------------------------------------------------------------------------------------------------ | --- | ---------------- |
+| t001 | A cancel of a release `status.activeRevision` names answers 409 `already live` and stamps nothing — **DONE**| 45m | —                |
+| t002 | The operator wakes on the cancel stamp — **DONE**                                                 | 20m | —                |
+| t003 | One decider for the switch: a stamped release is never promoted, or one found serving is kept    | 2h  | t001, t002       |
+| t004 | Render parity — **DONE**                                                                          | 15m | t001, t002, t003 |
+| t005 | Simplify — **DONE**                                                                               | 15m | t004             |
+| t006 | Test coverage                                                                                    | 45m | t004             |
+| t007 | Closeout (live replay on production)                                                             | 45m | t006             |
+
+## Definition of done
+
+The note's Acceptance, on production (below): ten cancels at the first `update_in_progress` read of a free Node service that starts in under 5 s each end either `canceled` with the new build never answering and the same instance throughout, or 409 `already live` with the deploy `live`; a cancel right after the URL first answers the new build is 409 and adds no instance; no `server_failed`/`server_available`; the unchanged cases hold.
+
+## Source + Goal linkage
+
+- **Source:** promoted from inbox note w8/265 (A deploy canceled around the moment its new instance turns ready is recorded `canceled` while its build serves production, and the live instance is replaced twice), filed by `/qa-find-bugs-cli` w8 loop sweep `2ba7`, 2026-11-11 UTC; promoted by `/loopx w8` on 2026-11-12 because the fix spans the backend, the operator and a cluster check (~4h, more than one task).
+- **Goal linkage:** Render parity for Cancel deploy (ADR018 Cancel row; ADR008 § Render parity first). Render parity is a task because the Cancel row changes.
+- **Expected outcome:** the verb never reports success while the canceled build serves, and a healthy service is never restarted twice by a cancel.
+- **Why now:** major severity; four of four cancels of a fast-starting service lost the race on production.
 
 ## Evidence
 
