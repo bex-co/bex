@@ -1,6 +1,6 @@
-import { Configuration, OAuth2Api } from "@ory/client-fetch";
 import type { OAuth2ConsentSession } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
+import { hydraAdmin } from "@/common/server-fn/hydra-admin";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
 import { config } from "@/config/config";
 import {
@@ -33,12 +33,6 @@ export type ConnectedAgentView = {
   /** RFC 3339 of the most recent consent grant for this client, or null if Hydra didn't say. */
   grantedAt: string | null;
 };
-
-function hydraAdmin(): OAuth2Api | null {
-  const admin = process.env.HYDRA_ADMIN_URL?.replace(/\/$/, "");
-  if (!admin) return null;
-  return new OAuth2Api(new Configuration({ basePath: admin }));
-}
 
 async function subjectFor(request: Request): Promise<string | null> {
   const cookie = request.headers.get("cookie");
