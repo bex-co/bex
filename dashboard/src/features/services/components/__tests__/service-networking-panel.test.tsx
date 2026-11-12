@@ -107,15 +107,24 @@ describe("ServiceNetworkingPanel", () => {
     expect(screen.queryByRole("button", { name: "Save allowlist" })).toBeNull();
   });
 
-  // A lone 0.0.0.0/0 saved before w8/m157 still refuses IPv6 sources, so it
-  // is a rule to replace, not the open state.
-  it("offers to replace a lone 0.0.0.0/0 below the Scale plan", async () => {
+  // A lone 0.0.0.0/0, whatever its description, restricts nothing, as on
+  // Render (w8/284). A lone ::/0 admits no client a service can be reached
+  // from today, so it is a rule to replace, not the open state.
+  it("calls a lone 0.0.0.0/0 open and offers to replace a lone ::/0 below the Scale plan", async () => {
     mocks.plan = "hobby";
     const user = userEvent.setup();
-    render(
+    const { unmount } = render(
       <ServiceNetworkingPanel
         serviceId="srv-web"
         currentAllowList={[{ cidrBlock: "0.0.0.0/0", description: "" }]}
+      />,
+    );
+    expect(screen.getByText("Open to all source IPs")).toBeInTheDocument();
+    unmount();
+    render(
+      <ServiceNetworkingPanel
+        serviceId="srv-web"
+        currentAllowList={[{ cidrBlock: "::/0", description: "" }]}
       />,
     );
     expect(screen.queryByText("Open to all source IPs")).toBeNull();
