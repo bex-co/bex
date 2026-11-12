@@ -1,6 +1,6 @@
 # w8 · m158 — A crash or an out-of-memory kill of a running service is recorded with its cause
 
-**Worker:** worker8 **Goal:** when the process of a running service exits or is killed for memory, the Events timeline records it once, with the exit status or the memory limit and the instance, even when the restart is quick, on REST, GraphQL, MCP and the dashboard. **Status:** in progress (t001–t007 done and shipped; the round 176 live replay on pin `3d66946c9e16` passed DoD 2, 4, 5, 6 and 7 and failed DoD 1 and 3, so t009 fixes those before the t008 closeout)
+**Worker:** worker8 **Goal:** when the process of a running service exits or is killed for memory, the Events timeline records it once, with the exit status or the memory limit and the instance, even when the restart is quick, on REST, GraphQL, MCP and the dashboard. **Status:** in progress (t001–t007 and t009 done and shipped; the round 186 replay on pin `a5be11e4e517` passed t009's duplicate and swallowed-outage cases, but a crash that restarts before the sampler confirms an outage still records no `server_available`, so t010 closes that before the t008 closeout)
 
 ## Tasks (in order)
 
@@ -14,7 +14,8 @@
 | t006 | Simplify — **DONE**                                                                                      | 15m | t005       |
 | t007 | Test coverage — **DONE**                                                                                 | 20m | t005       |
 | [t009](done/t009.md) | One `server_failed` per outage, whatever arrives first: a 10 s crash records two, and a health-check outage within 3 minutes of a recovered crash records none and leaves an unpaired recovery — **DONE** | 60m | t007 |
-| t008 | Closeout (live replay on production)                                                                     | 30m | t009       |
+| [t010](t010.md) | A crash that restarts before the sampler confirms an outage records `server_failed` and never `server_available`, so the event stays open | 45m | t009 |
+| t008 | Closeout (live replay on production)                                                                     | 30m | t010       |
 
 ## Definition of done
 
@@ -64,6 +65,18 @@
   - A PATCH of the command to `node -e '…process.exit(1)'` recorded `commands_changed`. `POST …/deploys` closed `update_failed` at 07:47:10: "container exited shortly after start and is restarting repeatedly (last exit code 1) — check the service logs for the crash output…".
   - No `server_failed` appeared through 07:48:35, and the previous release kept answering 200.
 - **DoD 6 — passes.** The OOM outage (about 40 s) and the `exit(0)` outage (about 45 s) each added no second `server_failed`, and their `server_available` followed.
+
+## Post-release probe (QA loop round 186, 2026-11-12): t009 half passes
+
+- **Pin:** `a5be11e4e517`, deployed 10:11 UTC; it carries t009's `3dd698375`.
+- **Fixture:** Free web service `qa-20261112-r186-crash` (`srv-dbqp1mi8vjhs73do98a0`), the round 176 server, deleted afterwards (DELETE 204, then GET 404).
+- **t009 acceptance 1 — half passes.** Three `/exit3` runs, each on a fresh instance after `POST …/restart`, at 10:13:41, 10:17:14 and 10:20:44, each back at 200 within 11–21 s.
+  - Each recorded exactly **one** `server_failed` (`nonZeroExit: 3`, with `instanceID`), so round 176's duplicate is gone.
+  - None recorded a `server_available`. The Events tab shows three "Instance failed … exited with status 3" rows with no "Service recovered" after them. See t010.
+- **t009 acceptance 2 — passes.**
+  - `/oom` at 10:22:22 recorded `server_failed` `oomKilled` (`512Mi`) at 10:22:40 and `server_available` at 10:23:29.
+  - `/sick` at 10:24:32, 75 s after that recovery, recorded `server_failed` `unhealthy` at 10:24:53 and `server_available` at 10:27:35.
+  - The feed never shows two "Service recovered" rows in a row. Round 176's swallowed outage is fixed.
 
 ## Source + Goal linkage
 
