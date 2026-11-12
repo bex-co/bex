@@ -515,6 +515,29 @@ const zhAuth: Record<string, TranslationEntry> = {
     description:
       "Device success page: quiet link to the dashboard home for users staying in the browser",
   },
+  "auth.profileEmailLabel": {
+    message: "邮箱",
+    description:
+      "Account settings profile form: the email field label (the identity schema title stays as Kratos uses it)",
+  },
+  "auth.profileEmailPlaceholder": {
+    message: "输入你的邮箱",
+    description: "Account settings profile form: the email field placeholder",
+  },
+  "auth.profileNameLabel": {
+    message: "名称",
+    description:
+      "Account settings profile form: the name field label (the identity schema title stays as Kratos uses it)",
+  },
+  "auth.profileNamePlaceholder": {
+    message: "输入你的名称",
+    description: "Account settings profile form: the name field placeholder",
+  },
+  "auth.inputPlaceholder": {
+    message: "输入你的{placeholder}",
+    description:
+      "Auth forms: the placeholder of a field with no wording of its own, e.g. the password; {placeholder} is the field's label",
+  },
   "auth.showPassword": {
     message: "显示密码",
     description:

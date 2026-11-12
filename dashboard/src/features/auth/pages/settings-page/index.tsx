@@ -9,6 +9,7 @@ import {
   oryHideSettingsPageHeader,
 } from "@/common/lib/ory/config";
 import { OryToast } from "@/common/lib/ory/ory-toast";
+import { orySettingsFormOverrides } from "@/common/lib/ory/auth-form-overrides";
 import { DashboardLayout } from "@/common/components/dashboard-layout";
 import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
@@ -25,6 +26,7 @@ const settingsRoute = getRouteApi("/settings");
 
 const settingsComponents: OryFlowComponentOverrides = {
   ...oryHideSettingsPageHeader,
+  ...orySettingsFormOverrides,
   Message: { Toast: OryToast },
 };
 

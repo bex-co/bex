@@ -528,6 +528,29 @@ const enAuth: Record<string, TranslationEntry> = {
     description:
       "Device success page: quiet link to the dashboard home for users staying in the browser",
   },
+  "auth.profileEmailLabel": {
+    message: "Email",
+    description:
+      "Account settings profile form: the email field label (the identity schema title stays as Kratos uses it)",
+  },
+  "auth.profileEmailPlaceholder": {
+    message: "Enter your email",
+    description: "Account settings profile form: the email field placeholder",
+  },
+  "auth.profileNameLabel": {
+    message: "Name",
+    description:
+      "Account settings profile form: the name field label (the identity schema title stays as Kratos uses it)",
+  },
+  "auth.profileNamePlaceholder": {
+    message: "Enter your name",
+    description: "Account settings profile form: the name field placeholder",
+  },
+  "auth.inputPlaceholder": {
+    message: "Enter your {placeholder}",
+    description:
+      "Auth forms: the placeholder of a field with no wording of its own, e.g. the password; {placeholder} is the field's label",
+  },
   "auth.showPassword": {
     message: "Show password",
     description:

@@ -67,11 +67,36 @@ export const oryConfig: OryClientConfiguration = {
  * component renders), so this needs no extra SSR handling of its own.
  */
 export function useOryConfig(): OryClientConfiguration {
-  const { i18n } = useTranslations();
+  const { i18n, t } = useTranslations();
 
   return useMemo(
-    () => ({ ...oryConfig, intl: { locale: i18n.language } }),
-    [i18n.language],
+    () => ({
+      ...oryConfig,
+      intl: {
+        locale: i18n.language,
+        // The identity schema's trait titles ("E-Mail", "Name") stay as
+        // Kratos uses them in emails; the forms word them in the
+        // dashboard's language (w4/587).
+        customTranslations: {
+          [i18n.language]: {
+            "forms.label.traits.email": t("auth.profileEmailLabel"),
+            "forms.input.placeholder.traits.email": t(
+              "auth.profileEmailPlaceholder",
+            ),
+            "forms.label.traits.name": t("auth.profileNameLabel"),
+            "forms.input.placeholder.traits.name": t(
+              "auth.profileNamePlaceholder",
+            ),
+            // Every other field's placeholder, the password's among them:
+            // Ory's zh catalog says "输入您的 密码" beside the forms' 你.
+            "input.placeholder": t("auth.inputPlaceholder", {
+              placeholder: "{placeholder}",
+            }),
+          },
+        },
+      },
+    }),
+    [i18n.language, t],
   );
 }
 

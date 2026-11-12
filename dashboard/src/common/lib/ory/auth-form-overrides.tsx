@@ -257,6 +257,35 @@ function AuthFormRoot({
 }
 
 /**
+ * The Settings flow's inputs: its password field is the same localized,
+ * unique-id toggle as sign-in's (w4/587), while every other node keeps Ory's
+ * own input, without sign-in's email and required behaviour.
+ */
+function SettingsNodeInput(props: OryNodeInputProps) {
+  const { inputProps } = props;
+  if (inputProps.type === "password") {
+    return <UniqueIdPasswordInput {...props} />;
+  }
+  return (
+    <input
+      data-testid={`ory/form/node/input/${inputProps.name}`}
+      {...inputProps}
+      className={
+        inputProps.type === "hidden"
+          ? undefined
+          : // Ory's own Settings input caps its width the same way.
+            cn(textInputClassName, "max-w-[488px]")
+      }
+    />
+  );
+}
+
+// eslint-disable-next-line react-refresh/only-export-components -- Ory override map, not a component
+export const orySettingsFormOverrides: OryFlowComponentOverrides = {
+  Node: { Input: SettingsNodeInput },
+};
+
+/**
  * Auth-flow component overrides: hide the redundant card logo, fix the
  * duplicate password id, and restore empty-submit browser validation.
  *

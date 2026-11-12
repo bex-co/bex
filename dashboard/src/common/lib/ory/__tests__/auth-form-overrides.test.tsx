@@ -4,6 +4,7 @@ import type { OryNodeInputProps } from "@ory/elements-react";
 import {
   extractOtp,
   oryAuthFormOverrides,
+  orySettingsFormOverrides,
   OtpCodeInput,
   UniqueIdPasswordInput,
 } from "../auth-form-overrides";
@@ -333,5 +334,41 @@ describe("OtpCodeInput page-wide paste", () => {
     await Promise.resolve();
     expect(input.value).toBe("");
     expect(submits).toBe(0);
+  });
+});
+
+// w4/587: the Settings page's password field is the localized toggle too, and
+// its other inputs are plain Ory inputs without sign-in's email rules.
+describe("orySettingsFormOverrides", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("names the Settings password toggle in the dashboard's language", async () => {
+    await i18n.changeLanguage("zh");
+    const Input = orySettingsFormOverrides.Node!.Input!;
+    render(<Input {...passwordProps({ autoComplete: "new-password" })} />);
+    fireEvent.click(screen.getByRole("button", { name: "显示密码" }));
+    expect(
+      screen.getByRole("button", { name: "隐藏密码" }),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps a trait input as Ory typed it, not required", () => {
+    const Input = orySettingsFormOverrides.Node!.Input!;
+    render(
+      <Input
+        {...passwordProps({
+          id: "traits.name",
+          name: "traits.name",
+          type: "text",
+          placeholder: "Enter your name",
+        })}
+      />,
+    );
+    const input = screen.getByTestId("ory/form/node/input/traits.name");
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).not.toBeRequired();
+    expect(input).toHaveAttribute("placeholder", "Enter your name");
   });
 });
