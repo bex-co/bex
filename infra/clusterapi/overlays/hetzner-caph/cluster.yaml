@@ -807,7 +807,7 @@ spec:
         # docs/ADR053) — this repoint is what rolls the pool onto the new shape.
         name: bex-tenant-0-k134-cx33
       version: v1.34.9
-  rolloutAfter: "2026-11-02T06:48:19Z" # CVE-2026-98432: roll every machine onto the kernel-6.8.0-147 snapshot
+  rolloutAfter: "2026-11-12T07:52:52Z" # CVE-2026-98432: canary roll onto the kernel-6.8.0-149 snapshot (w1/144)
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
