@@ -12,13 +12,14 @@
 | [t010](done/t010.md) | One Render-named event per user action wherever Render's enum has one, including `CreateProjectEvent` and `CreateEnvironmentEvent`, which the mapping names but never emits — **DONE** | 50m | t001 |
 | [t004](done/t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules and the event mapping — **DONE** | 20m | t002, t003, t010 |
 | [t011](t011.md) | A service or project create, and a project delete, name what they created or deleted: their rows read only `{"relation":"can_create"}` | 35m | t004 |
-| [t005](t005.md) | Live verification in `bex-canary` | 30m | t004, t011 |
+| [t012](t012.md) | A refused service create records a `CreateServerEvent` with status `success`: the row is written at authorization, before the 409, and env-group create shares the shape | 30m | t011 |
+| [t005](t005.md) | Live verification in `bex-canary` | 30m | t004, t011, t012 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
-| [t009](t009.md) | Closeout | 10m | t007, t008, t011 |
+| [t009](t009.md) | Closeout | 10m | t007, t008, t011, t012 |
 
-Eleven tasks, 345m (5h45m). t010 was added in round 58, t011 in round 144.
+Twelve tasks, 375m (6h15m). t010 was added in round 58, t011 in round 144, t012 in round 155.
 
 **Major (compliance).** Revealing a secret or a database password leaves no trail. In the same log, 43% of the rows are the dashboard's own billing-status reads. Render's audit log records the first and not the second.
 
@@ -120,7 +121,8 @@ Signed in as the `bex-canary` admin on `dashboard.bex.co`, after the release pin
 3. **Viewing connection info leaves a row.** On an owned Free Key Value and a Free Postgres, run `GET …/connection-info` and click the dashboard's "Reveal connection info". The log lists `ViewConnectionInfoEvent` rows naming each datastore.
 4. **Export carries them.** Export as CSV for the window contains the new rows in the `event` column.
 5. **Render-named events, one per action** (round 58, t010). Create a `qa-` project with two environments over REST, move a service between them, then delete both. The log lists exactly one `CreateProjectEvent`, one `MoveEnvironmentResourceEvent` and one `DeleteProjectEvent`, with no `projects.CreateWithEnvironments` or `environments.SetServices` rows.
-6. **Denials stay recorded.** A denied read (for example a non-member's `GET …/env-vars`) still records as before; covered by a test, since it needs a second account live.
+6. **A refused create leaves no success row** (round 155, t012). Note `t0`, then `POST /v1/services` with the immutable name of an owned `qa-` service. It answers 409, and `…/audit-logs?startTime=<t0>` lists no `CreateServerEvent`.
+7. **Denials stay recorded.** A denied read (for example a non-member's `GET …/env-vars`) still records as before; covered by a test, since it needs a second account live.
 
 ## Source + Goal linkage
 
@@ -163,3 +165,15 @@ Fixtures, all deleted afterwards (DELETE 204, then GET 404):
   - By contrast, `CreateRedisEvent`, `DeleteRedisEvent` and `DeleteServerEvent` name their resource.
   - The dashboard's Resource column shows `workspace:tea-daif693dqjvc73e7as3g` for the delete rows.
 
+## Round 155 addendum (2026-11-12 01:27–01:38 UTC, pin `8330744bd643`)
+
+Fixtures, both deleted afterwards (GET 404):
+
+- Starter private service `qa-20261112-r155-pserv` (`srv-dbqhbs5jiris73e60t0g`, `docker.io/traefik/whoami:v1.10.1`), renamed to `qa-20261112-r155-pserv-renamed` at 01:31:39;
+- Starter background worker `qa-20261112-r155-worker` (`srv-dbqhcaiv3e1c73bps6h0`).
+
+**New, filed as t012.** A create refused with 409 still writes `CreateServerEvent` with status `success`.
+
+- The dashboard form, at 01:32:08, left `aud-dbqhe65jiris73e60t2g`.
+- `POST /v1/services` at 01:37:21 (body in t012) answered `409 CONFLICT "name \"qa-20261112-r155-pserv\" is already in use"`. `…/audit-logs?startTime=2026-11-12T01:37:21.449Z` then listed exactly one row: `CreateServerEvent`, `success`, `{"relation":"can_create"}`.
+- The 01:26–01:33 window holds three `CreateServerEvent` success rows for two services that exist.
