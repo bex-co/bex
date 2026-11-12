@@ -1,12 +1,12 @@
 # w6 · m331 — Agent sandboxes run on a Hetzner bare-metal node under Kata
 
-**Worker:** worker6 **Goal:** sandboxes run in microVMs on one Hetzner dedicated EX44, so a build inside a sandbox runs at close to native speed and the scheduled routines finish, with the gVisor cloud node as overflow. **Status:** todo — t001 can start now; t002 needs the account owner to order the server and the vSwitch and create Robot credentials
+**Worker:** worker6 **Goal:** sandboxes run in microVMs on one Hetzner dedicated EX44, so a build inside a sandbox runs at close to native speed and the scheduled routines finish, with the gVisor cloud node as overflow. **Status:** blocked — t001 done (2026-11-12: gVisor 1.65× runc on the build replay on today's node, ADR105); t002 needs the account owner to order one EX44 and a vSwitch in fsn1 and create Robot credentials
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Probe script and an idle gVisor baseline on today's node](t001.md) | 1h | — |
+| t001 | [Probe script and an idle gVisor baseline on today's node](done/t001.md) — **DONE** | 1h | — |
 | t002 | [Order one EX44 and a vSwitch coupled to the `bex` network](t002.md) | 2h | — |
 | t003 | [Bare-metal machine template with the node image's pinned artifacts](t003.md) | 3h | t002 |
 | t004 | [The EX44 joins the cluster: CCM Robot support, vSwitch node IP, Cilium device and MTU, public-port firewall](t004.md) | 4h | t003 |
@@ -31,7 +31,7 @@
 
 ## Source + Goal linkage
 
-- **Source:** [ADR105](../../../docs/ADR105-agent-sandbox-hetzner-bare-metal.md) (proposed 2026-11-11), written after all eight scheduled `rt-*` routines failed that day and a probe inside session `ags-dbqdl84o6rds73e87pj0` measured the gVisor cost. Revised the same day: the board now covers joining a dedicated server to a Cloud-network cluster, a runtime seam OpenSandbox can actually use, and a repeatable gate measure.
+- **Source:** [ADR105](../../../../docs/ADR105-agent-sandbox-hetzner-bare-metal.md) (proposed 2026-11-11), written after all eight scheduled `rt-*` routines failed that day and a probe inside session `ags-dbqdl84o6rds73e87pj0` measured the gVisor cost. Revised the same day: the board now covers joining a dedicated server to a Cloud-network cluster, a runtime seam OpenSandbox can actually use, and a repeatable gate measure.
 - **Goal linkage:** ADR008 pillar 5 (hosted agent sandboxes, re-opened 2026-07-27) and Render parity: Render runs each sandbox in its own Firecracker microVM. ADR042 D3 chose Kata first and fell back to gVisor only because the cloud nodes have no `/dev/kvm`.
 - **Expected outcome:** process start and small-file I/O inside a sandbox drop from tens of milliseconds to near native, routines complete well inside the turn bound, and compute billed per run falls.
 - **Why now:** the turn bound was raised from 30 minutes to 4 hours on 2026-11-11 as a stopgap. The slowness it hides is still there, and every agent session pays for it. `w22/blocked/m312` (Docker in a sandbox) also waits on the same node-pool choice.

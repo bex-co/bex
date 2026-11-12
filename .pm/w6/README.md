@@ -72,7 +72,7 @@ Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the
 - [ ] **m332** — [Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it](m332/README.md) (8 tasks) ← `/pm-brainstorm` 2026-11-11 proposal 1; `w2/blocked/m250`, `w6/blocked/114`
 - [ ] **m333** — [Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed](m333/README.md) (8 tasks) ← proposal 2; absorbs `w4/575`
 - [ ] **m334** — [An unmetered usage hour pages before it can no longer be metered](m334/README.md) (6 tasks) ← proposal 3; the limit accepted in `w4/496`
-- [ ] **m331** — [Agent sandboxes run on a Hetzner bare-metal node under Kata](m331/README.md) — t001 (idle gVisor baseline) can start now; t002 needs the account owner (order one EX44, €59 a month, plus a vSwitch coupled to the `bex` network, and Robot credentials); gated by a measured go or no-go at t009 (14 tasks) ← ADR105, 2026-11-11
+- [ ] **m331** — **BLOCKED (account owner: order one Hetzner EX44 in fsn1 (€59 a month, no setup fee) plus a Robot vSwitch, and create Robot webservice credentials (stored per ADR019); t001 done — gVisor is 1.65× runc on the build replay on today's node, and a cold build is mostly CPU, ADR105 § The probe re-run)** — [Agent sandboxes run on a Hetzner bare-metal node under Kata](blocked/m331/README.md) (14 tasks) ← ADR105, 2026-11-11
 - [x] **m319** — [Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down](done/m319/README.md) — **done 2026-11-10**: `includedBandwidth` identical on REST, GraphQL, MCP and the billing page on production (8 tasks) ← promoted from `w6/116` 2026-11-10
 - [x] **m306** — [Builds of different services start together, and a held build is visible](done/m306/README.md) — **done 2026-11-11**: on production a workspace's builds 3–4 start while 1–2 run (`examples/build-probe`); the two-minute node wait is `w6/117` (10 tasks) ← `/pm-brainstorm for w6` 2026-11-10 proposal 1; ADR060 §D5/§D6
 - [x] **m307** — [`build_seconds` counts what Render counts as pipeline minutes](done/m307/README.md) — **done 2026-11-10**: a failing build's run metered and the queue wait excluded, identical on REST, GraphQL and MCP on production (9 tasks) ← proposal 2; ADR023
@@ -251,6 +251,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **120** — [The agent image and the platform builder ship the Go that `lego/go.work` requires](120.md) (~30m) ← w6/m331 t001
 - [ ] **119** — [Re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners](119.md) (~45m) ← proposal 5
 - [ ] **118** — [ADR018 records that hosted bex requires a card for every workspace (ADR075 D7)](118.md) (~20m) ← proposal 4
 - [x] **117** — [A workspace's third and fourth builds wait about two minutes for a build node](done/117.md) — done 2026-11-11: user chose B; `bex-tenant-burst` kept warm at two nodes (min-size 2) ← `w6/m306` production record

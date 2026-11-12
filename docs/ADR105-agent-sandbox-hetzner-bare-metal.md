@@ -24,7 +24,41 @@ The probe measured gVisor as bex runs it, not gVisor's floor. Two other costs si
 - **A shared-vCPU node under load.** The sandbox pool is one `cx33` (`bex-sandbox-cx33`, shared vCPU), and the probe ran beside three builds. Steal time on the node was not read.
 - **`overlay2 = "none"`.** The sandbox nodes turn off runsc's memory-backed rootfs overlay so that tenant writes reach the host rw layer the pause commit Job reads ([ADR042](ADR042-sandbox-cluster-substrate.md) D5). Every file open and write therefore crosses the gofer. That is the price bex chose for correct pause and resume. Kata does not have to pay it: the container rootfs is the host overlay snapshot shared into the guest over virtio-fs, so writes land where the commit Job already reads them.
 
-Re-running the probe in an idle sandbox on today's node costs nothing and separates contention from the runtime. It runs before the gate (m331 t001).
+### The probe re-run on today's node (m331 t001, 2026-11-12)
+
+The probe was re-run with `scripts/sandbox-probe.sh` in two benchmark Pods on the production `cx33` sandbox node (`bex-sandbox-cgqq6-p8wcg`). Both used the agent image (`ghcr.io/bex-co/bex-agent-sandbox@sha256:2383…054f`) and the agent shape: 2 vCPU and 4 GiB limits, with requests at a quarter. One Pod ran under `runtimeClassName: gvisor`, with the pool's `overlay2 = "none"`. The other ran under runc, as the native floor on the same node at the same time.
+
+The node was not idle. Session `ags-dbqdl84o6rds73e87pj0`, the source of the original probe, was still running on it and used 1.2 to 1.4 cores. The node ran at 48 to 67% CPU, and steal time read 0.0% over 30 s from the runc Pod's `/proc/stat`. Steal cannot be read any other way: node-exporter does not run on the tainted sandbox node, and gVisor virtualises `/proc/stat`.
+
+The file probes use shell builtins on the rootfs (`/var/tmp`), not `/tmp`, which gVisor keeps in memory. Times are the median of three runs.
+
+| Probe | Original probe, inside the busy session | gVisor, own 2 vCPU | runc, same node |
+| --- | --- | --- | --- |
+| Start 300 processes | 19.9 s | 5.18 s (17 ms each) | 0.47 s (1.6 ms each) |
+| Read 3,000 files | 22.6 s | 1.30 s (0.43 ms each) | 0.15 s |
+| Create 2,000 files | 10.9 s | 0.82 s | 0.28 s |
+| Sequential write, 200 MB | 2.0 s | 0.38 s | 0.38 s |
+
+The replay ran once per runtime from cold Go, module and yarn caches. The Go half covers the four `lego/` workspace modules; the dashboard half is `yarn install` and `yarn typecheck`.
+
+| Replay step | gVisor | runc | gVisor ÷ runc |
+| --- | --- | --- | --- |
+| `go mod download`, network-bound | 189 s (436 s in an earlier attempt) | 137 s | — |
+| `go build`, four modules | 1,236 s | 767 s | 1.61 |
+| `go vet`, four modules | 706 s | 366 s | 1.93 |
+| `go test ./...` in `lego/types` | 44 s | 17 s | 2.6 |
+| dashboard `yarn install` | 75 s | 45 s | 1.65 |
+| dashboard `yarn typecheck` | 187 s | 166 s | 1.13 |
+| **Total without the download** | **2,248 s** | **1,361 s** | **1.65** |
+
+What this changes:
+
+- **Contention made most of the original numbers.** In a sandbox of its own, gVisor starts processes 4 times faster and reads files 17 times faster than the original probe recorded.
+- **gVisor's own cost is real but narrow.** On the same node it is 9 to 11 times runc for process start and file open, about 3 times for file create, and equal for sequential writes.
+- **A cold build is mostly CPU.** The replay is 1.65 times slower under gVisor than runc on the same node. Even under runc, the Go half takes 19 minutes on 2 vCPU of a `cx33`.
+  - So the runtime alone does not reach the step 3 gate of twice as fast. The gate compares Kata on the EX44 with gVisor on the `cx33`, so it can pass only with the EX44's faster cores. t006 separates the two with runc and runsc on the EX44.
+  - The vCPU count and cold caches cost as much as the runtime. That is why the larger-template and warm-cache alternatives below were re-weighed.
+- **Every session also downloads a Go toolchain.** The agent image ships Go 1.26.10, and `lego/go.work` requires 1.27.3 because `lego/cli/go.mod` does. So `go mod download` fetches go1.27.3 before the first build (w6/120).
 
 Render runs each sandbox in its own Firecracker microVM. bex chose Kata first and fell back to gVisor only because Hetzner Cloud nodes expose no `/dev/kvm` (ADR042 D3, verified on `cpx32` on 2026-07-28). ADR042 already says Kata "remains the choice if KVM-capable nodes (Hetzner dedicated/bare-metal) ever join". This ADR prices that step.
 
@@ -128,8 +162,8 @@ Three smaller items:
 - **gVisor with the KVM platform on bare metal.** Keeps the runtime and removes most of the system-call interception cost. It needs the same server and leaves the gofer file path in place, so it is worth one extra run at the step 3 gate, not a separate project.
 - **AX41 as the first node.** Same price and the same 13-slot memory ceiling, with every core alike, which makes benchmarks cleaner. Rejected because the CPU is two generations behind the AX42 and AX102, it has 12 threads to the EX44's 20, and the node is meant to carry real sessions.
 - **AX42 as the first node.** Same generation as the AX102 and ECC memory, so its numbers transfer to a larger AMD fleet. It costs €20 more a month plus €49 setup; choose it instead if ECC is required from day one.
-- **A larger agent template on the current pool (4 vCPU / 8 GiB).** Relieves CPU contention for no infrastructure work, and raises revenue per hour. It does not touch the per-syscall cost, and a 4 vCPU sandbox would fill a whole `cx33`.
-- **Build caches on tmpfs or baked into the image.** Cheap, helps cold builds, and is compatible with every option above. Do it regardless of this decision.
+- **A larger agent template on the current pool (4 vCPU / 8 GiB).** Relieves CPU contention for no infrastructure work, and raises revenue per hour. It does not touch the per-syscall cost, and a 4 vCPU sandbox would fill a whole `cx33`. The t001 replay shows a cold build is mostly CPU: 19 minutes for the Go half under runc on 2 vCPU. CPU is therefore at least as large a lever as the runtime. The EX44's 20 threads serve both, and t006 measures how much of its gain each one gives.
+- **Build caches on tmpfs or baked into the image.** Cheap, helps cold builds, and is compatible with every option above. Do it regardless of this decision. The t001 replay starts from cold caches, as every session does today, and its build and vet steps are most of its time.
 - **Choosing the runtime per sandbox in OpenSandbox.** This means patching the server to take a runtime class per create, or running a second OpenSandbox server with its own store for Kata. Either way, falling back needs bex-api to notice an unschedulable Pod, delete it and create it again under gVisor, which adds the wait to every overflowed session start. The by-id lookups would also have to learn which server holds a sandbox. Rejected for one handler name mapped per node, where overflow is ordinary scheduling.
 - **A per-workspace canary before every workspace.** Nothing in the create path knows the node, so a canary needs a mutating admission step or an OpenSandbox change. The trial taint, the replay and the controls check carry the risk instead, and restoring the taint is the rollback.
 - **Hetzner Cloud dedicated-vCPU (CCX) nodes.** Third-party reports say Hetzner Cloud offers no nested virtualisation on any line; not verified on a CCX instance. One `ls -l /dev/kvm` on a CCX node would settle it.
