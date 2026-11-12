@@ -22,10 +22,8 @@ vi.mock("@/features/services/hooks/use-service-networking", () => ({
 
 import { ServiceNetworkingPanel } from "@/features/services/components/service-networking-panel";
 
-const allowAll = [
-  { cidrBlock: "0.0.0.0/0", description: "" },
-  { cidrBlock: "::/0", description: "" },
-];
+// Render's default rule, what a service nobody restricted reads (w8/284).
+const allowAll = [{ cidrBlock: "0.0.0.0/0", description: "everywhere" }];
 const blocked =
   "No rules: all inbound traffic to this service is blocked. Add 0.0.0.0/0 to allow all source IPs.";
 
@@ -93,7 +91,7 @@ describe("ServiceNetworkingPanel", () => {
       />,
     );
     expect(screen.getByDisplayValue("0.0.0.0/0")).toBeInTheDocument();
-    expect(screen.getByDisplayValue("::/0")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("everywhere")).toBeInTheDocument();
     expect(screen.queryByText(blocked)).toBeNull();
   });
 

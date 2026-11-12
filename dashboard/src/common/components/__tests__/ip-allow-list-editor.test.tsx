@@ -63,17 +63,14 @@ describe("IPAllowListEditor", () => {
       />,
     );
     await user.click(screen.getByRole("button", { name: "Allow all traffic" }));
+    // Render's default rule (w8/284).
     expect(onSave).toHaveBeenCalledWith([
-      { cidrBlock: "0.0.0.0/0", description: "" },
-      { cidrBlock: "::/0", description: "" },
+      { cidrBlock: "0.0.0.0/0", description: "everywhere" },
     ]);
 
     rerender(
       <IPAllowListEditor
-        entries={[
-          { cidrBlock: "0.0.0.0/0", description: "" },
-          { cidrBlock: "::/0", description: "" },
-        ]}
+        entries={[{ cidrBlock: "0.0.0.0/0", description: "everywhere" }]}
         labels={labels}
         saving={false}
         onSave={onSave}
@@ -85,6 +82,24 @@ describe("IPAllowListEditor", () => {
     expect(
       screen.queryByRole("button", { name: "Allow all traffic" }),
     ).not.toBeInTheDocument();
+
+    // A service is reached over IPv4 only, so ::/0 alone is not open: it is
+    // listed, with the button that opens it (w8/284).
+    rerender(
+      <IPAllowListEditor
+        entries={[{ cidrBlock: "::/0", description: "" }]}
+        labels={labels}
+        saving={false}
+        onSave={onSave}
+        clearOnly={{ hint: "Needs Scale.", clearAll: "Allow all traffic" }}
+        emptyBlocks={{ open: "Open to everyone." }}
+      />,
+    );
+    expect(screen.queryByText("Open to everyone.")).not.toBeInTheDocument();
+    expect(screen.getByText("::/0")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Allow all traffic" }),
+    ).toBeInTheDocument();
   });
 
   it("names add-row and existing-row inputs (not by placeholder example) (m101/t010)", () => {

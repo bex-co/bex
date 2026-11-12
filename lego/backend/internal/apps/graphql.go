@@ -549,7 +549,7 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		},
 		// ipAllowList is Render's inbound CIDR rule set for web_service and
 		// static_site (core.ServiceAllowList): an empty list is a blocked
-		// service, and one nobody restricted reads the allow-all pair.
+		// service, and one nobody restricted reads Render's default rule.
 		// The dashboard's Networking section reads it and writes it via
 		// setServiceIpAllowList.
 		// Both are null for a type with no public endpoint: it has no list, and
@@ -759,7 +759,7 @@ func gqlCreateRequest(args map[string]any) (CreateRequest, error) {
 	}
 	_, entriesSet := args["ipAllowListEntries"]
 	_, cidrsSet := args["ipAllowList"]
-	allowList, err := core.ResolveAllowListInputs(
+	allowList, err := serviceAllowListInputs(
 		gqlutil.AllowList(args["ipAllowListEntries"]), entriesSet,
 		gqlutil.StringList(args["ipAllowList"]), cidrsSet,
 	)
@@ -1925,7 +1925,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if !entriesSet && !cidrsSet {
 					return nil, fmt.Errorf("%w: setServiceIpAllowList needs entries or cidrs; an empty list blocks all inbound traffic and the rule 0.0.0.0/0 allows all", core.ErrBadRequest)
 				}
-				entries, err := core.ResolveAllowListInputs(
+				entries, err := serviceAllowListInputs(
 					gqlutil.AllowList(p.Args["entries"]), entriesSet,
 					gqlutil.StringList(p.Args["cidrs"]), cidrsSet,
 				)

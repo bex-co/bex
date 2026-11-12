@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -128,11 +129,11 @@ func (s *Service) requireServiceInboundRules(ctx context.Context, tenantID strin
 	// A service being created starts from the allow-all rule, not from an
 	// empty list: an empty list compared with "nothing yet" would pass as
 	// unchanged.
-	existing := core.UnrestrictedAllowList()
+	existing := core.ServiceDefaultAllowList()
 	if current != nil {
 		existing = serviceAllowList(current.Spec)
 	}
-	return s.RequireInboundIPRules(ctx, tenantID, serviceAllowList(next), existing)
+	return s.RequireServiceInboundIPRules(ctx, tenantID, serviceAllowList(next), existing)
 }
 
 // stageIPAllowList validates entries as a's new inbound rule set and returns
@@ -556,4 +557,36 @@ func (s *Service) checkSourcePatch(ctx context.Context, a *appv1alpha1.App, patc
 		}
 	}
 	return next, true, nil
+}
+
+// serviceAllowListInputs is core.ResolveAllowListInputs for a service. The
+// flat CIDR form reads ["0.0.0.0/0"] for a service nobody restricted and
+// cannot carry descriptions, so writing back what it read is Render's default
+// rule (core.ServiceAllowListFromCIDRs), not a rule saved as written (w8/284).
+func serviceAllowListInputs(entries []core.IPAllowListEntry, entriesSet bool, cidrs []string, cidrsSet bool) ([]core.IPAllowListEntry, error) {
+	if cidrsSet {
+		flat := core.ProvidedAllowList(core.ServiceAllowListFromCIDRs(cidrs))
+		// Alone, or beside the entries it was read with.
+		if !entriesSet || slices.Equal(entries, flat) {
+			return flat, nil
+		}
+	}
+	return core.ResolveAllowListInputs(entries, entriesSet, cidrs, cidrsSet)
+}
+
+// serviceAllowListPatch is serviceAllowListInputs in update_service's pointer
+// shape, where nil means unchanged.
+func serviceAllowListPatch(entries *[]core.IPAllowListEntry, cidrs *[]string) (*[]core.IPAllowListEntry, error) {
+	if cidrs == nil {
+		return core.ResolveAllowListPatch(entries, cidrs)
+	}
+	var entryList []core.IPAllowListEntry
+	if entries != nil {
+		entryList = *entries
+	}
+	list, err := serviceAllowListInputs(entryList, entries != nil, *cidrs, true)
+	if err != nil {
+		return nil, err
+	}
+	return &list, nil
 }

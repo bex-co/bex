@@ -165,12 +165,30 @@ func RestrictsInbound(entries []IPAllowListEntry) bool {
 	})
 }
 
+// RestrictsServiceInbound is RestrictsInbound for a web service or static
+// site, whose only reachable family is IPv4 (no service host publishes an AAAA
+// record): a list that admits no IPv4 source, ::/0 alone, blocks every client
+// (w8/284).
+func RestrictsServiceInbound(entries []IPAllowListEntry) bool {
+	return RestrictsInbound(entries) || !slices.ContainsFunc(entries, func(e IPAllowListEntry) bool { return e.CIDRBlock == "0.0.0.0/0" })
+}
+
 // RequireInboundIPRules refuses next below the Scale plan when it restricts
 // inbound traffic and differs from current. A rule that already exists keeps
 // being enforced and can always be cleared or re-sent unchanged, so a client
 // that round-trips a whole settings object never fails on a legacy rule.
 func (b *Base) RequireInboundIPRules(ctx context.Context, workspaceID string, next, current []IPAllowListEntry) error {
-	if !RestrictsInbound(next) || slices.Equal(next, current) {
+	return b.requireInboundIPRules(ctx, workspaceID, RestrictsInbound(next) && !slices.Equal(next, current))
+}
+
+// RequireServiceInboundIPRules is RequireInboundIPRules for a web service or
+// static site, judged by RestrictsServiceInbound.
+func (b *Base) RequireServiceInboundIPRules(ctx context.Context, workspaceID string, next, current []IPAllowListEntry) error {
+	return b.requireInboundIPRules(ctx, workspaceID, RestrictsServiceInbound(next) && !slices.Equal(next, current))
+}
+
+func (b *Base) requireInboundIPRules(ctx context.Context, workspaceID string, restricts bool) error {
+	if !restricts {
 		return nil
 	}
 	plan, ok, err := b.WorkspacePlanOf(ctx, workspaceID)

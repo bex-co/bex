@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -70,7 +71,9 @@ func restOK(t *testing.T, mux http.Handler, method, path, body string) []byte {
 	return rec.Body.Bytes()
 }
 
-var allowAllCIDRs = []string{"0.0.0.0/0", "::/0"}
+// renderDefaultCIDRs is what a service nobody restricted reads: Render's
+// default rule, 0.0.0.0/0 "everywhere" (w8/284).
+var renderDefaultCIDRs = []string{"0.0.0.0/0"}
 
 func TestRESTEmptyIPAllowListBlocksAServiceAndAnOmittedOneChangesNothing(t *testing.T) {
 	office := sampleApp("web")
@@ -97,13 +100,13 @@ func TestRESTEmptyIPAllowListBlocksAServiceAndAnOmittedOneChangesNothing(t *test
 	}
 
 	// Render's default rule opens it. No rule is saved, so no middleware
-	// refuses IPv6 sources, and the read is the allow-all pair.
+	// refuses IPv6 sources, and it reads back as written (w8/284).
 	restOK(t, mux, "PATCH", "/v1/services/web", `{"serviceDetails":{"ipAllowList":[{"cidrBlock":"0.0.0.0/0","description":"everywhere"}]}}`)
 	if spec := getApp(t, cl, "web").Spec; len(spec.EffectiveIPAllowListEntries()) != 0 {
 		t.Fatalf("the allow-all rule saved %v, want no rule", spec.EffectiveIPAllowListEntries())
 	}
-	if got, present := read(); !present || !slices.Equal(got, allowAllCIDRs) {
-		t.Errorf("an open service reads ipAllowList %v (present %v), want %v", got, present, allowAllCIDRs)
+	if got, present := read(); !present || !slices.Equal(got, renderDefaultCIDRs) {
+		t.Errorf("an open service reads ipAllowList %v (present %v), want %v", got, present, renderDefaultCIDRs)
 	}
 }
 
@@ -113,10 +116,12 @@ func TestRESTCreateReadsTheThreeIPAllowListStates(t *testing.T) {
 		enforced      []string // what the operator is given
 		reads         []string
 	}{
-		{"omitted", `{}`, nil, allowAllCIDRs},
+		{"omitted", `{}`, nil, renderDefaultCIDRs},
 		{"empty", `{"ipAllowList":[]}`, []string{core.DenyAllCIDR}, []string{}},
-		{"allow-all", `{"ipAllowList":[{"cidrBlock":"0.0.0.0/0","description":"everywhere"}]}`, nil, allowAllCIDRs},
+		{"allow-all", `{"ipAllowList":[{"cidrBlock":"0.0.0.0/0","description":"everywhere"}]}`, nil, renderDefaultCIDRs},
 		{"a rule", `{"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}`, []string{"203.0.113.0/24"}, []string{"203.0.113.0/24"}},
+		// Any other list that restricts nothing is saved and read as written.
+		{"allow-all with its own description", `{"ipAllowList":[{"cidrBlock":"0.0.0.0/0","description":"office VPN fallback"}]}`, []string{"0.0.0.0/0"}, []string{"0.0.0.0/0"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			svc, cl := newService(nil)
@@ -170,6 +175,10 @@ func TestEmptyIPAllowListNeedsTheScalePlanOnCreate(t *testing.T) {
 	}{
 		{"hobby, omitted", "hobby", nil, false},
 		{"hobby, allow-all", "hobby", core.UnrestrictedAllowList(), false},
+		{"hobby, Render's default", "hobby", core.ServiceDefaultAllowList(), false},
+		// No client reaches a service over IPv6, so ::/0 alone blocks them all
+		// (w8/284).
+		{"hobby, ::/0 alone", "hobby", []core.IPAllowListEntry{{CIDRBlock: "::/0"}}, true},
 		{"hobby, empty", "hobby", []core.IPAllowListEntry{}, true},
 		{"scale, empty", "scale", []core.IPAllowListEntry{}, false},
 	} {
@@ -213,9 +222,10 @@ func TestGraphQLEmptyIPAllowListBlocksAService(t *testing.T) {
 		return list
 	}
 
-	// Untouched: the allow-all pair.
-	if got := entries(`{ service(id: "web") { ipAllowListEntries { cidrBlock } } }`, "service"); len(got) != 2 {
-		t.Errorf("an untouched service reads %v, want the allow-all pair", got)
+	// Untouched: Render's default rule (w8/284).
+	if got := entries(`{ service(id: "web") { ipAllowListEntries { cidrBlock description } } }`, "service"); len(got) != 1 ||
+		!reflect.DeepEqual(got[0], map[string]any{"cidrBlock": "0.0.0.0/0", "description": "everywhere"}) {
+		t.Errorf("an untouched service reads %v, want Render's default rule", got)
 	}
 	// A call that names neither list is refused: it is not an empty list, and
 	// it must neither block the service nor open it.
@@ -226,6 +236,19 @@ func TestGraphQLEmptyIPAllowListBlocksAService(t *testing.T) {
 	}
 	if len(getApp(t, cl, "web").Spec.EffectiveIPAllowListEntries()) != 0 {
 		t.Error("a call without a list changed the service")
+	}
+	// The flat form reads ["0.0.0.0/0"] and cannot carry a description, so
+	// writing it back, alone or beside the entries read, is Render's default
+	// rule: no rule is saved (w8/284).
+	getAppSpec := func() []appv1alpha1.IPAllowEntry { return getApp(t, cl, "web").Spec.EffectiveIPAllowListEntries() }
+	for _, args := range []string{`cidrs: ["0.0.0.0/0"]`, `cidrs: ["0.0.0.0/0"], entries: [{cidrBlock: "0.0.0.0/0", description: "everywhere"}]`} {
+		if _, err := svc.SetIPAllowList(context.Background(), "web", []core.IPAllowListEntry{{CIDRBlock: "203.0.113.0/24"}}); err != nil {
+			t.Fatal(err)
+		}
+		got := entries(`mutation { setServiceIpAllowList(id: "web", `+args+`) { ipAllowListEntries { cidrBlock description } } }`, "setServiceIpAllowList")
+		if len(got) != 1 || !reflect.DeepEqual(got[0], map[string]any{"cidrBlock": "0.0.0.0/0", "description": "everywhere"}) || len(getAppSpec()) != 0 {
+			t.Errorf("%s reads %v and saved %v, want Render's default and no rule", args, got, getAppSpec())
+		}
 	}
 	// Both spellings of an empty list block.
 	for _, arg := range []string{"entries: []", "cidrs: []"} {
@@ -303,5 +326,42 @@ func TestBlueprintEmptyIPAllowListBlocksAServiceAndExportsAsEmpty(t *testing.T) 
 	}
 	if strings.Contains(out.Manifest, core.DenyAllCIDR) {
 		t.Errorf("the export leaks the deny-all placeholder:\n%s", out.Manifest)
+	}
+}
+
+// w8/284: an exported service re-applies as no change. An untouched service
+// exports no ipAllowList; one whose rule restricts nothing but carries its own
+// description exports it as written.
+func TestBlueprintExportOfAnOpenServiceReappliesUnchanged(t *testing.T) {
+	for name, list := range map[string]string{
+		"untouched": "",
+		"an allow-all rule with its own description": "    ipAllowList:\n      - source: 0.0.0.0/0\n        description: office VPN fallback\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			svc, cl := newService(nil)
+			manifest := "services:\n  - type: web\n    name: web\n    runtime: image\n    image:\n      url: docker.io/library/nginx:1.27\n" + list
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+				t.Fatal(err)
+			}
+			before := getApp(t, cl, "web")
+			out, err := svc.GenerateBlueprint(ctx, GenerateBlueprintRequest{ServiceIDs: []string{"web"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if exported := strings.Contains(out.Manifest, "ipAllowList"); exported != (list != "") {
+				t.Fatalf("export carries ipAllowList = %v, want %v:\n%s", exported, list != "", out.Manifest)
+			}
+			if list != "" && !strings.Contains(out.Manifest, "office VPN fallback") {
+				t.Fatalf("the export dropped the rule's description:\n%s", out.Manifest)
+			}
+			if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: out.Manifest}); err != nil {
+				t.Fatalf("re-apply the export: %v", err)
+			}
+			after := getApp(t, cl, "web")
+			if !reflect.DeepEqual(after.Spec.EffectiveIPAllowListEntries(), before.Spec.EffectiveIPAllowListEntries()) {
+				t.Fatalf("re-applying the export changed the rules: %v, was %v", after.Spec.EffectiveIPAllowListEntries(), before.Spec.EffectiveIPAllowListEntries())
+			}
+		})
 	}
 }

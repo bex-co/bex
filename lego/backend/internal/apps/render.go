@@ -557,9 +557,9 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 	// disk audit caught; w6/m106). The create/PATCH decode already reads this
 	// nested location (rest.go decodeIPAllowList), so emitting it here closes a
 	// read/write asymmetry. Gated to the two ingress types, and always present
-	// on them: [] is a blocked service and an untouched one reads the allow-all
-	// pair (core.ServiceAllowList, w8/m157), so the key must not be dropped
-	// when empty.
+	// on them: [] is a blocked service and an untouched one reads Render's
+	// default rule (core.ServiceAllowList, w8/m157, w8/284), so the key must
+	// not be dropped when empty.
 	if a.IPAllowList != nil && appv1alpha1.TypePubliclyRoutable(svcType) {
 		details["ipAllowList"] = slices.Clone(a.IPAllowList)
 	}

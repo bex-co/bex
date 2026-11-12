@@ -169,9 +169,9 @@ func TestResolveAllowListInputs(t *testing.T) {
 }
 
 // w8/m157: on a web service or a static site an explicitly empty rule set
-// blocks every source, as on Render, and an untouched service reads the
-// allow-all pair. The spec cannot hold "empty", so it is saved as the
-// deny-all placeholder.
+// blocks every source, as on Render. The spec cannot hold "empty", so it is
+// saved as the deny-all placeholder. w8/284: an untouched service reads
+// Render's default rule, and any other list reads back as written.
 func TestServiceAllowListSaveAndRead(t *testing.T) {
 	office := []IPAllowListEntry{{CIDRBlock: "203.0.113.0/24", Description: "office"}}
 	for _, tc := range []struct {
@@ -181,8 +181,16 @@ func TestServiceAllowListSaveAndRead(t *testing.T) {
 		readsBack []IPAllowListEntry
 	}{
 		{"an empty list blocks", []IPAllowListEntry{}, []appv1alpha1.IPAllowEntry{{CIDR: DenyAllCIDR}}, []IPAllowListEntry{}},
-		{"Render's default rule saves no rule", []IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "everywhere"}}, nil, UnrestrictedAllowList()},
-		{"the allow-all pair saves no rule", UnrestrictedAllowList(), nil, UnrestrictedAllowList()},
+		{"Render's default rule saves no rule", []IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "everywhere"}}, nil, ServiceDefaultAllowList()},
+		{"the allow-all pair read before w8/284 saves no rule", UnrestrictedAllowList(), nil, ServiceDefaultAllowList()},
+		{"an allow-all rule with its own description is saved as written",
+			[]IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "office VPN fallback"}},
+			[]appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0", Description: "office VPN fallback"}},
+			[]IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "office VPN fallback"}}},
+		{"a bare 0.0.0.0/0 is saved as written",
+			[]IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}},
+			[]appv1alpha1.IPAllowEntry{{CIDR: "0.0.0.0/0"}},
+			[]IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}}},
 		{"a rule is saved as written", office, []appv1alpha1.IPAllowEntry{{CIDR: "203.0.113.0/24", Description: "office"}}, office},
 		{"a rule beside allow-all is saved as written",
 			[]IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}, {CIDRBlock: "203.0.113.0/24"}},
@@ -239,4 +247,31 @@ func mustResolve(t *testing.T, entries []IPAllowListEntry, entriesSet bool, cidr
 		t.Fatal(err)
 	}
 	return got
+}
+
+// w8/284: a service's flat ["0.0.0.0/0"] is Render's default rule, and a
+// service list that admits no IPv4 source restricts.
+func TestServiceAllowListInputsAndRestriction(t *testing.T) {
+	read := ServiceDefaultAllowList()
+	if got := ServiceAllowListFromCIDRs([]string{"0.0.0.0/0"}); !reflect.DeepEqual(got, read) {
+		t.Errorf("flat 0.0.0.0/0 = %v, want Render's default", got)
+	}
+	if got := ServiceAllowListFromCIDRs([]string{"203.0.113.0/24"}); !reflect.DeepEqual(got, []IPAllowListEntry{{CIDRBlock: "203.0.113.0/24"}}) {
+		t.Errorf("flat rule = %v, want it as written", got)
+	}
+	for _, tc := range []struct {
+		entries   []IPAllowListEntry
+		restricts bool
+	}{
+		{[]IPAllowListEntry{}, true},
+		{read, false},
+		{UnrestrictedAllowList(), false},
+		{[]IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "office VPN fallback"}}, false},
+		{[]IPAllowListEntry{{CIDRBlock: "::/0"}}, true},
+		{[]IPAllowListEntry{{CIDRBlock: "203.0.113.0/24"}}, true},
+	} {
+		if got := RestrictsServiceInbound(tc.entries); got != tc.restricts {
+			t.Errorf("RestrictsServiceInbound(%v) = %v, want %v", tc.entries, got, tc.restricts)
+		}
+	}
 }

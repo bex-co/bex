@@ -95,6 +95,24 @@ func UnrestrictedAllowList() []IPAllowListEntry {
 	return []IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}, {CIDRBlock: "::/0"}}
 }
 
+// ServiceDefaultAllowList is the rule a web service or static site nobody has
+// restricted reads: Render's default, one entry, 0.0.0.0/0 "everywhere"
+// (w8/284).
+func ServiceDefaultAllowList() []IPAllowListEntry {
+	return []IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "everywhere"}}
+}
+
+// ServiceAllowListFromCIDRs is a service's rule set written in the flat CIDR
+// form, which reads ["0.0.0.0/0"] for a service nobody restricted. That form
+// cannot carry descriptions, so writing back what it read is Render's default
+// rule, not a bare 0.0.0.0/0 saved as written (w8/284).
+func ServiceAllowListFromCIDRs(cidrs []string) []IPAllowListEntry {
+	if entries := AllowListFromCIDRs(cidrs); !slices.Equal(AllowListCIDRs(entries), AllowListCIDRs(ServiceDefaultAllowList())) {
+		return entries
+	}
+	return ServiceDefaultAllowList()
+}
+
 // EffectiveAllowList is a datastore's external access as every read reports
 // it: REST, GraphQL, MCP and the Blueprint export (w4/m315). Render has no
 // public toggle, and its clients read an empty list as "external connections
@@ -237,10 +255,12 @@ const DenyAllCIDR = "255.255.255.255/32"
 //     environment layer projects for its own empty set. The operator already
 //     turns any stored rule into the service's middleware, so the block holds
 //     on a cluster whose operator predates this;
-//   - a set holding only the allow-all ranges saves no rule. No middleware
-//     exists then, so both address families are admitted; saved as written, a
-//     lone 0.0.0.0/0 would refuse every IPv6 source;
-//   - anything else is saved as written.
+//   - the default a service reads (ServiceDefaultAllowList), or the
+//     two-range allow-all rule it read before w8/284, saves no rule, so a
+//     client that writes back what it read changes nothing;
+//   - anything else is saved as written, descriptions included, so it reads
+//     back as written, as on Render (w8/284). A lone 0.0.0.0/0 then admits
+//     IPv4 sources only; no service host is reachable over IPv6 today.
 //
 // Callers pass a set the request carried. An omitted field changes nothing and
 // never reaches here.
@@ -248,7 +268,7 @@ func ServiceAllowListToSpec(entries []IPAllowListEntry) []appv1alpha1.IPAllowEnt
 	switch {
 	case len(entries) == 0:
 		return []appv1alpha1.IPAllowEntry{{CIDR: DenyAllCIDR}}
-	case !RestrictsInbound(entries):
+	case slices.Equal(entries, ServiceDefaultAllowList()), slices.Equal(entries, UnrestrictedAllowList()):
 		return nil
 	}
 	return AllowListToSpec(entries)
@@ -258,8 +278,8 @@ func ServiceAllowListToSpec(entries []IPAllowListEntry) []appv1alpha1.IPAllowEnt
 // REST, GraphQL, MCP and the Blueprint export (w8/m157).
 //
 //   - blocked (the DenyAllCIDR placeholder alone): [];
-//   - a publicly routable service with no saved rule: UnrestrictedAllowList,
-//     as a public datastore with no saved rules reads (EffectiveAllowList);
+//   - a publicly routable service with no saved rule: Render's default,
+//     ServiceDefaultAllowList (w8/284);
 //   - otherwise its saved rules, nil for a type with no public endpoint.
 //
 // Writing back what was read keeps access as it is.
@@ -268,7 +288,7 @@ func ServiceAllowList(routable bool, list []appv1alpha1.IPAllowEntry) []IPAllowL
 	case ServiceBlocksAll(list):
 		return []IPAllowListEntry{}
 	case len(list) == 0 && routable:
-		return UnrestrictedAllowList()
+		return ServiceDefaultAllowList()
 	}
 	return AllowListFromSpec(list)
 }

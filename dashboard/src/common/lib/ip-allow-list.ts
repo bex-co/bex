@@ -10,24 +10,24 @@ export function ipAllowListEntryKey(entries: IPAllowListEntryDraft[]) {
 const ALLOW_ALL_CIDRS = ["0.0.0.0/0", "::/0"];
 
 /**
- * The allow-all rule a service reads when nobody restricted it, and the write
- * that opens one again (bex-api's `core.UnrestrictedAllowList`, w8/m157). An
- * EMPTY list is the opposite: it blocks every public request.
+ * The rule a service reads when nobody restricted it, and the write that opens
+ * one again: Render's default, `0.0.0.0/0` "everywhere" (bex-api's
+ * `core.ServiceDefaultAllowList`, w8/284). An EMPTY list is the opposite: it
+ * blocks every public request.
  */
-export const ALLOW_ALL_ENTRIES: IPAllowListEntryDraft[] = ALLOW_ALL_CIDRS.map(
-  (cidrBlock) => ({ cidrBlock, description: "" }),
-);
+export const ALLOW_ALL_ENTRIES: IPAllowListEntryDraft[] = [
+  { cidrBlock: "0.0.0.0/0", description: "everywhere" },
+];
 
 /**
- * Whether `entries` are exactly the allow-all rule, which is what a service
- * with no saved rule reads. A lone `0.0.0.0/0` saved before w8/m157 is not:
- * it still refuses IPv6 sources until the allow-all rule is written over it.
+ * Whether a service's `entries` restrict nothing: every rule an all-addresses
+ * range (`0.0.0.0/0` or `::/0`), whatever its description, and one of them
+ * `0.0.0.0/0`. A service is reached over IPv4 only, so `::/0` alone blocks
+ * every client. bex-api's `core.RestrictsServiceInbound` draws the same line.
  */
 export function isAllowAllRule(entries: IPAllowListEntryDraft[]) {
   return (
-    entries.length === ALLOW_ALL_CIDRS.length &&
-    ALLOW_ALL_CIDRS.every((cidr) =>
-      entries.some((entry) => entry.cidrBlock.trim() === cidr),
-    )
+    entries.some((entry) => entry.cidrBlock.trim() === "0.0.0.0/0") &&
+    entries.every((entry) => ALLOW_ALL_CIDRS.includes(entry.cidrBlock.trim()))
   );
 }

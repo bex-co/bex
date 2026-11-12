@@ -111,7 +111,7 @@ type updateServiceArgs struct {
 	NotificationsToSend     *string                  `json:"notificationsToSend,omitempty" jsonschema:"service notification policy: default (inherit workspace/member preferences, failure-only), failure, all, or none"`
 	MaintenanceMode         *maintenanceModeArg      `json:"maintenanceMode,omitempty" jsonschema:"take a web service offline behind an interstitial page without suspending it — pods keep running, every host answers 503. web_service only"`
 	RenderSubdomainPolicy   *string                  `json:"renderSubdomainPolicy,omitempty" jsonschema:"enabled (the platform subdomain <slug>.<BEX_BASE_DOMAIN> serves this service) or disabled (platform host dropped; only custom domains serve it — requires at least one custom domain first)"`
-	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the inbound allowlist for a web service or static site with these {cidrBlock, description} entries; [] blocks every public request, and the single rule 0.0.0.0/0 allows all again"`
+	IPAllowList             *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the inbound allowlist for a web service or static site with these {cidrBlock, description} entries; [] blocks every public request, and Render's default rule {cidrBlock: 0.0.0.0/0, description: everywhere} allows all again"`
 	IPAllowListCidrs        *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
 	Autoscaling             *autoscalingArg          `json:"autoscaling,omitempty" jsonschema:"enable or update autoscaling: the operator holds the target utilization by moving replicas within [minInstances, maxInstances]. Use disable_autoscaling to turn it off"`
 	Confirm                 string                   `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
@@ -242,7 +242,7 @@ func (a createWebServiceArgs) createRequest(ctx context.Context) (CreateRequest,
 	if err := a.dockerDetails().conflict(); err != nil {
 		return CreateRequest{}, err
 	}
-	allowList, err := core.ResolveAllowListInputs(a.IPAllowListEntries, a.IPAllowListEntries != nil, a.IPAllowList, a.IPAllowList != nil)
+	allowList, err := serviceAllowListInputs(a.IPAllowListEntries, a.IPAllowListEntries != nil, a.IPAllowList, a.IPAllowList != nil)
 	if err != nil {
 		return CreateRequest{}, err
 	}
@@ -543,7 +543,7 @@ func (a createStaticSiteArgs) createRequest(ctx context.Context) (CreateRequest,
 	if _, _, err := parseAutoDeploy(a.AutoDeploy, ""); err != nil {
 		return CreateRequest{}, err
 	}
-	allowList, err := core.ResolveAllowListInputs(a.IPAllowListEntries, a.IPAllowListEntries != nil, a.IPAllowList, a.IPAllowList != nil)
+	allowList, err := serviceAllowListInputs(a.IPAllowListEntries, a.IPAllowListEntries != nil, a.IPAllowList, a.IPAllowList != nil)
 	if err != nil {
 		return CreateRequest{}, err
 	}
@@ -826,7 +826,7 @@ func (s *Service) registerServiceTools(srv *mcp.Server) {
 // by parallel maintenance. A call with no settable field is a read-only no-op
 // that reflects current state, exactly as the REST handler does.
 func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (AppView, error) {
-	allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
+	allowList, err := serviceAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 	if err != nil {
 		return AppView{}, err
 	}

@@ -18,11 +18,7 @@
     "ipAllowList": [
       {
         "cidrBlock": "0.0.0.0/0",
-        "description": ""
-      },
-      {
-        "cidrBlock": "::/0",
-        "description": ""
+        "description": "everywhere"
       }
     ],
     "maintenanceMode": {

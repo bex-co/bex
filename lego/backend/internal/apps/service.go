@@ -733,7 +733,7 @@ type AppView struct {
 	// IPAllowList is Render's inbound IP rule set for web_service and
 	// static_site (core.ServiceAllowList). Both CIDR and description persist;
 	// enforcement projects only CIDRs. Empty means every public request is
-	// refused, and a service nobody restricted reads the allow-all pair. Nil
+	// refused, and a service nobody restricted reads Render's default rule. Nil
 	// (omitted) for a type with no public endpoint.
 	IPAllowList []core.IPAllowListEntry `json:"ipAllowList,omitzero"`
 	// IPAllowListProxiedDomains is a bex extension (w1/m171): the custom

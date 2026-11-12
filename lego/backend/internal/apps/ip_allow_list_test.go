@@ -118,14 +118,14 @@ func TestSetIPAllowListRoundTripsThroughSpec(t *testing.T) {
 		t.Errorf("enforced CIDRs = %v, want the deny-all range", got)
 	}
 
-	// Render's default rule opens it again and saves no rule, so no middleware
-	// refuses IPv6 sources.
+	// Render's default rule opens it again, saves no rule and reads back as
+	// written (w8/284).
 	v, err = svc.SetIPAllowList(context.Background(), "web", []core.IPAllowListEntry{{CIDRBlock: "0.0.0.0/0", Description: "everywhere"}})
 	if err != nil {
 		t.Fatalf("SetIPAllowList(allow-all): %v", err)
 	}
-	if !slices.Equal(v.IPAllowList, core.UnrestrictedAllowList()) {
-		t.Errorf("AppView.IPAllowList after allow-all = %#v, want the allow-all pair", v.IPAllowList)
+	if !slices.Equal(v.IPAllowList, core.ServiceDefaultAllowList()) {
+		t.Errorf("AppView.IPAllowList after allow-all = %#v, want Render's default rule", v.IPAllowList)
 	}
 	app = getApp(t, cl, "web")
 	if app.Spec.IPAllowList != nil || app.Spec.IPAllowListEntries != nil {
@@ -529,9 +529,9 @@ func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 		cidrs []string // as stored
 		want  []string // as every surface reads it (core.ServiceAllowList)
 	}{
-		// A service nobody restricted reads the allow-all pair, and one saved
-		// empty reads [] (w8/m157).
-		{name: "untouched", cidrs: nil, want: []string{"0.0.0.0/0", "::/0"}},
+		// A service nobody restricted reads Render's default rule (w8/284),
+		// and one saved empty reads [] (w8/m157).
+		{name: "untouched", cidrs: nil, want: []string{"0.0.0.0/0"}},
 		{name: "blocked", cidrs: []string{core.DenyAllCIDR}, want: []string{}},
 		{name: "single", cidrs: []string{"203.0.113.0/24"}, want: []string{"203.0.113.0/24"}},
 		{name: "multi", cidrs: []string{"203.0.113.0/24", "10.0.0.0/8"}, want: []string{"203.0.113.0/24", "10.0.0.0/8"}},
