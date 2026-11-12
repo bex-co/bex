@@ -216,10 +216,14 @@ func Touch(obj metav1.Object, now time.Time) {
 // still ignoring subresource: status entries — a status change is never an
 // update. An object with neither source returns empty instead of copying
 // creationTimestamp into a fake update time.
+//
+// It is never earlier than the object's creationTimestamp: a create stamps
+// bex-api's nanosecond clock before the write, and the API server keeps
+// creation to the whole second, so the two can cross (w4/579).
 func UpdatedAt(obj metav1.Object) string {
 	if raw := obj.GetAnnotations()[UpdatedAtAnnotation]; raw != "" {
 		if parsed, err := time.Parse(time.RFC3339Nano, raw); err == nil {
-			return parsed.UTC().Format(time.RFC3339Nano)
+			return notBeforeCreation(obj, parsed)
 		}
 	}
 	var latest time.Time
@@ -234,5 +238,13 @@ func UpdatedAt(obj metav1.Object) string {
 	if latest.IsZero() {
 		return ""
 	}
-	return latest.UTC().Format(time.RFC3339Nano)
+	return notBeforeCreation(obj, latest)
+}
+
+// notBeforeCreation formats t, or obj's creationTimestamp when t is earlier.
+func notBeforeCreation(obj metav1.Object, t time.Time) string {
+	if created := obj.GetCreationTimestamp().Time; t.Before(created) {
+		t = created
+	}
+	return t.UTC().Format(time.RFC3339Nano)
 }

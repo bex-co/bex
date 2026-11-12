@@ -114,6 +114,35 @@ func TestUpdatedAtIgnoresStatusSubresourceWrites(t *testing.T) {
 	}
 }
 
+// w4/579: a create stamps the annotation with bex-api's nanosecond clock
+// before the write, and the API server keeps creation to the whole second, so
+// a stamp can land before its own creationTimestamp. updatedAt is never
+// earlier than createdAt; a later write keeps its own time.
+func TestUpdatedAtIsNeverBeforeCreation(t *testing.T) {
+	created := metav1.NewTime(time.Date(2026, 11, 3, 8, 56, 38, 0, time.UTC))
+	for name, tc := range map[string]struct {
+		stamp time.Time
+		want  string
+	}{
+		"stamped 0.3s before its creation": {created.Add(-300 * time.Millisecond), "2026-11-03T08:56:38Z"},
+		"stamped after its creation":       {created.Add(745 * time.Millisecond), "2026-11-03T08:56:38.745Z"},
+	} {
+		obj := &metav1.PartialObjectMetadata{}
+		obj.SetCreationTimestamp(created)
+		Touch(obj, tc.stamp)
+		if got := UpdatedAt(obj); got != tc.want {
+			t.Errorf("%s: updatedAt = %q, want %q", name, got, tc.want)
+		}
+	}
+	legacy := &metav1.PartialObjectMetadata{}
+	legacy.SetCreationTimestamp(created)
+	early := metav1.NewTime(created.Add(-time.Second))
+	legacy.SetManagedFields([]metav1.ManagedFieldsEntry{{Manager: "bex-api", Time: &early}})
+	if got := UpdatedAt(legacy); got != "2026-11-03T08:56:38Z" {
+		t.Errorf("legacy managed-field time before creation = %q, want the creationTimestamp", got)
+	}
+}
+
 // Render's dashboard URL scheme (docs/render-artifacts/dashboard-routes.md):
 // type-aware service segments with the CLI's `web` fallback, `/d/` for
 // Postgres, `/r/` for Key Value.
