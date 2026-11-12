@@ -1,6 +1,6 @@
 # w9 · m343 — Automation run notifications: email per run outcome, and the auto-pause alert ADR101 promised
 
-**Worker:** worker9 **Goal:** a failing or paused agent automation reaches its creator. Each automation has an email setting (Always / On failure / On success / Never, default On failure) as in Devin, repeated failures back off on the 1st, 3rd and 9th, and a platform auto-pause always sends a push, an inbox entry and an email. **Status:** todo (t001–t005, t007–t009 done; t006 live check after the deploy)
+**Worker:** worker9 **Goal:** a failing or paused agent automation reaches its creator. Each automation has an email setting (Always / On failure / On success / Never, default On failure) as in Devin, repeated failures back off on the 1st, 3rd and 9th, and a platform auto-pause always sends a push, an inbox entry and an email. **Status:** done (2026-11-12)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | [t003](done/t003.md) | Auto-pause tells the creator: push, inbox entry and email, as ADR101 D7 promises — **DONE** | 45m | t002 |
 | [t004](done/t004.md) | Dashboard: the automation form and page show the email notification setting, en and zh — **DONE** | 60m | t001 |
 | [t005](done/t005.md) | `bex agent automations` carries the notification setting, on flags and in files — **DONE** | 30m | t001 |
-| [t006](t006.md) | Live check on production: a failing automation emails on the 1st and 3rd failure, and its auto-pause notifies | 45m | t003, t004, t005 |
+| [t006](done/t006.md) | Live check on production: a failing automation emails on the 1st and 3rd failure, and its auto-pause notifies — **DONE** | 45m | t003, t004, t005 |
 | [t007](done/t007.md) | Render parity (Devin): automation notifications match Devin across REST, GraphQL, MCP, CLI and dashboard — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
-| [t010](t010.md) | Closeout | 10m | t009 |
+| [t010](done/t010.md) | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
@@ -38,3 +38,12 @@ On production:
 - **Recommendations recorded (not user decisions):** the default `on_failure` follows Devin's scheduled-session default, and `never` follows Devin's scheduled-session option; existing automations take the default on migration. Under ADR008 parity-first these are implemented as the default; the user can change them.
 - **Overlap:** ADR106 D7 `bex agent automations` (w1/m338, done) is why t005 exists; outbound webhook events for runs stay out (ADR101:234 needs a naming decision).
 - **Parity:** included (t007), against Devin, because the change touches REST, GraphQL, MCP, the CLI and the dashboard.
+
+## Live check (2026-11-12, production a5be11e4e)
+
+- **Setup:** QA user (cookie session, workspace `tea-d98210cbbpdc73dcrkvg`), deploy run 43195174637 (dispatched). Fixture `qa-notify-check` (`aut-dbqp1dq8vjhs73do983g`): chat-only template, `maxSpendUSD` 0.1, a secret name no workspace secret has, so each fire refuses at session create without starting a session or spending anything. Deleted afterwards (reads `AGENT_AUTOMATION_NOT_FOUND`).
+- **Backfill:** the eight existing `rt-*` automations read `notifications.email: on_failure` on GraphQL right after the rollout.
+- **Create / read (PASS):** GraphQL create with `notifications: {email: on_failure}` read back `on_failure`; the dashboard detail row reads "Email notifications: On failure" and the edit select "On failure" at 1280 px and 390 px; the pending skeleton carries the same row.
+- **Backoff and pause (PASS):** three Run-now fires at 10:11:10, :11 and :13 UTC each settled `failed_create` ("no workspace agent secret has this name"), and the third auto-paused the automation `repeated_failures`. bex-api logged exactly `notifications: automation aut-dbqp1dq8vjhs73do983g run failed notice emailed to its creator` twice (the 1st and 3rd failure; the 2nd backed off) and `… pause repeated_failures notice emailed to its creator` once, at 10:11:14–15.
+- **Edit (PASS):** switching the dashboard select to Never and saving read back `never` on the detail page and on GraphQL.
+- **Not observable live:** the pause push and its inbox row. The QA account has no push device and its saved push policy lists only deploy, server and cron failures, so no push is due; `TestAutomationPausePushReachesOnlyTheCreator` covers it. REST, MCP and the CLI were not exercised live: the same core is covered by `TestAutomationNotificationsAcrossSurfaces` and the CLI contract fixture.
