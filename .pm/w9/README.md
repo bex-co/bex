@@ -46,7 +46,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **092** — [A Blueprint sync records no instance-count, autoscaling or disk change events](done/092.md) ← w9/091 follow-up — **DONE** 2026-11-12
 - [x] **093** — [A Blueprint that regroups a service into another project or environment records no `service_moved`](done/093.md) ← w9/092 follow-up — **DONE** 2026-11-12
 - [x] **094** — [In a Blueprint that waits for approval, a change that only moves a service never applies](done/094.md) ← w9/093 finding — **DONE** 2026-11-12
-- [ ] **095** — [A render.yaml change to an environment's own settings plans as no change](095.md) ← w9/094 finding
+- [x] **095** — [A render.yaml change to an environment's own settings plans as no change](done/095.md) ← w9/094 finding — **DONE** 2026-11-12
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
 - [x] **081** — [Approval mode for codex sessions (withdrawn)](done/081.md) — withdrawn 2026-11-07 with ADR100; removed by m179
 - [x] **082** — [Settings: the Team card skeleton is shorter than the ready card](done/082.md) ← w9 final skeleton check 2026-11-06
