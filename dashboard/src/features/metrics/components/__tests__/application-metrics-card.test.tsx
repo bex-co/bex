@@ -98,7 +98,10 @@ describe("ApplicationMetricsCard", () => {
 
   // The card's Limit / Manage-scaling header links (w5/m42) need a router
   // around the render — the service-detail-header test's harness pattern.
-  function renderCard(resource = "app", { runsInstances = true } = {}) {
+  function renderCard(
+    resource = "app",
+    { runsInstances = true, scalable = true } = {},
+  ) {
     const rootRoute = createRootRoute();
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -108,6 +111,7 @@ describe("ApplicationMetricsCard", () => {
           resource={resource}
           window={WINDOW}
           runsInstances={runsInstances}
+          scalable={scalable}
         />
       ),
     });
@@ -293,6 +297,18 @@ describe("ApplicationMetricsCard", () => {
     expect(
       await screen.findByRole("link", { name: "Manage scaling" }),
     ).toHaveAttribute("href", "/services/beancount-cms/scaling");
+  });
+
+  // w4/567: a cron job has no replica count and no Scaling page to link to.
+  it("offers no scaling link for a service that cannot scale", async () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    renderCard("nightly", { scalable: false });
+
+    expect(await screen.findByText("Total Instances")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Manage scaling" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the autoscale-target label alongside the limit in percentage mode (w3/m10)", async () => {
@@ -561,6 +577,7 @@ describe("ApplicationMetricsCard", () => {
             resource={res}
             window={WINDOW}
             runsInstances
+            scalable
           />
         </>
       );
@@ -669,7 +686,12 @@ describe("ApplicationMetricsCard usage header across instances (w4/258)", () => 
       getParentRoute: () => rootRoute,
       path: "/",
       component: () => (
-        <ApplicationMetricsCard resource="app" window={WINDOW} runsInstances />
+        <ApplicationMetricsCard
+          resource="app"
+          window={WINDOW}
+          runsInstances
+          scalable
+        />
       ),
     });
     const router = createRouter({

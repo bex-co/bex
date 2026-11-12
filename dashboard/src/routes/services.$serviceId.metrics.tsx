@@ -17,7 +17,10 @@ import { EventTimeline } from "@/features/events/components/event-timeline";
 import type { EventTimelineFilter } from "@/features/events/lib/timeline";
 import { useServiceEvents } from "@/features/events/hooks/use-service-events";
 import { useServer } from "@/features/services/hooks/use-server";
-import { isStaticSite } from "@/features/services/lib/service-type";
+import {
+  isStaticSite,
+  supportsScaling,
+} from "@/features/services/lib/service-type";
 import { runsInstances } from "@/features/services/lib/status";
 import { ServiceMetricsSkeleton } from "@/common/components/route-skeletons";
 
@@ -139,6 +142,7 @@ export function ServiceMetricsPage({
           window={window}
           markers={markers}
           runsInstances={runsInstances(service)}
+          scalable={supportsScaling(service)}
         />
       )}
       <NetworkMetricsCard

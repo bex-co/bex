@@ -40,6 +40,8 @@ interface ApplicationMetricsCardProps {
   markers?: ChartEventMarker[];
   /** The service runs instances now: not suspended or asleep. */
   runsInstances: boolean;
+  /** The service has a Scaling page, so Total Instances links to it. */
+  scalable: boolean;
 }
 
 /**
@@ -64,6 +66,7 @@ export function ApplicationMetricsCard({
   window,
   markers,
   runsInstances,
+  scalable,
 }: ApplicationMetricsCardProps) {
   const { t } = useTranslations();
   const [percentage, setPercentage] = useState(true); // Render defaults to Percentage
@@ -283,13 +286,15 @@ export function ApplicationMetricsCard({
           result={instances}
           headerExtra={
             <div className="flex items-baseline gap-2">
-              <Link
-                to="/services/$serviceId/scaling"
-                params={{ serviceId: resource }}
-                className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              >
-                {t("metrics.manageScaling")}
-              </Link>
+              {scalable ? (
+                <Link
+                  to="/services/$serviceId/scaling"
+                  params={{ serviceId: resource }}
+                  className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                >
+                  {t("metrics.manageScaling")}
+                </Link>
+              ) : null}
               <LatestValue
                 result={instances}
                 unit="count"
