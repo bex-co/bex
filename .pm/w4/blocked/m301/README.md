@@ -35,3 +35,15 @@ Eight tasks, about 3h15m.
 - **Dry-run (2026-11-10, read-only on the bex-db replica):** `registry_credentials` holds 0 rows in production, so 0 services in every workspace rely on a host match; migration 0219 changes nothing there. 7 apps carry an explicit clear (`''`) and keep it.
 
 - **2026-11-10 — parked (loopx w4):** the code is shipped; only the live DoD replay remains. Production deploys moved to 19:00/00:00/05:00 UTC plus manual dispatch (`4630a48a7`, 2026-11-09), so this waits for the 2026-11-10 19:00 UTC deploy. Then replay the DoD and close. No user action.
+
+## Post-release probe (QA loop round 170, 2026-11-12)
+
+Pin `e7a56b07e0d7` carries the fix. Fixtures are in w4/599, all deleted afterwards (GET 404).
+
+- **DoD 1 passes.** With a docker.io credential holding a bad token in the workspace, the service that selected none (`qa-20261112-r170-anon`) deployed `docker.io/traefik/whoami:v1.10.1` `live`.
+- **DoD 2 passes, with a caveat filed as w4/599.**
+  - While a service selected the credential, `DELETE` → `409 REGISTRY_CREDENTIAL_IN_USE`.
+  - After that service was deleted, the credential deleted with 204, but only ~25 s later. Until then the 409 still named the deleted service, by its Kubernetes object name.
+- **DoD 4 passes.** The bound service failed `update_failed` with "docker.io refused this service's registry credential for the image docker.io/traefik/whoami:v1.10.1 (HTTP 401). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously". It names the registry and the image; the credential appears only as "this service's registry credential", not by name.
+- **Not run:** the GHCR 403 case, and DoD 3 (migration 0219; production count 0).
+
