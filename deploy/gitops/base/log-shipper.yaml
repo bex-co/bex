@@ -29,6 +29,9 @@
 #              Platform request retention keys off RequestHost in a stage, then
 #              stamps a BOUNDED fixed `service` label from the closed allowlist
 #              vocabulary (dashboard|bex-api|hydra|kratos|grafana) — never `host=…`.
+# A request stream's level is its status class (5xx error, 4xx warning, else
+# info, as Render labels request lines, w4/584): a function of status, so it
+# adds no streams.
 # Worst case ≈ replicas×levels + methods×statuses streams per App (low hundreds);
 # typically under 20. Raising `path` to a label would be a cardinality incident.
 #
@@ -989,6 +992,18 @@ spec:
                   template = "{{ "{{" }} if .app {{ "}}" }}{{ "{{" }} else if eq .host \"api.bex.co\" {{ "}}" }}bex-api{{ "{{" }} else if eq .host \"oauth.bex.co\" {{ "}}" }}hydra{{ "{{" }} else if eq .host \"auth.bex.co\" {{ "}}" }}kratos{{ "{{" }} else if eq .host \"obs.bex.co\" {{ "}}" }}grafana{{ "{{" }} else {{ "}}" }}dashboard{{ "{{" }} end {{ "}}" }}"
                 }
 
+                // Render's level for a request line, from its status class, so a
+                // `level` filter selects request lines as it does app lines
+                // (w4/584); bex-api's statusLevel words the same rule on read.
+                stage.regex {
+                  source     = "status"
+                  expression = "^(?P<status_class>[0-9])"
+                }
+                stage.template {
+                  source   = "request_level"
+                  template = "{{ "{{" }} if eq .status_class \"5\" {{ "}}" }}error{{ "{{" }} else if eq .status_class \"4\" {{ "}}" }}warning{{ "{{" }} else {{ "}}" }}info{{ "{{" }} end {{ "}}" }}"
+                }
+
                 stage.labels {
                   values = {
                     namespace = "namespace",
@@ -996,6 +1011,7 @@ spec:
                     service   = "platform_service",
                     method    = "method",
                     status    = "status",
+                    level     = "request_level",
                   }
                 }
                 stage.static_labels {

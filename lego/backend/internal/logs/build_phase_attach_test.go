@@ -19,31 +19,33 @@ package logs
 import (
 	"slices"
 	"testing"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 // w4/582: a build phase shorter than the tail's poll (the push, which prints
-// "Build successful") finishes between two polls; it is still attached, while
-// a phase that ran before the tail attached is not replayed.
+// "Build successful") finishes between two polls; it is seen as finished and
+// still attached, while a phase that was over before the tail attached is not.
 func TestBuildTailAttachesAPhaseThatFinishedBetweenPolls(t *testing.T) {
-	attached := time.Date(2026, 11, 12, 3, 0, 0, 0, time.UTC)
-	ended := func(started time.Time) corev1.ContainerState {
-		return corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{StartedAt: metav1.NewTime(started), FinishedAt: metav1.NewTime(started.Add(time.Second))}}
-	}
-	pod := corev1.Pod{Status: corev1.PodStatus{
-		InitContainerStatuses: []corev1.ContainerStatus{
-			{Name: "clone", State: ended(attached.Add(-time.Minute))},
-			{Name: "buildkit", State: ended(attached.Add(-time.Second))},
-		},
-		ContainerStatuses: []corev1.ContainerStatus{
-			{Name: "push", State: ended(attached.Add(3 * time.Second))},
-			{Name: "cache-save", State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}},
-		},
+	ended := corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 0}}
+	running := corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}
+	atAttach := corev1.Pod{Status: corev1.PodStatus{
+		InitContainerStatuses: []corev1.ContainerStatus{{Name: "clone", State: ended}, {Name: "buildkit", State: running}},
+		ContainerStatuses:     []corev1.ContainerStatus{{Name: "push"}},
 	}}
-	if got := containersStartedSince(pod, attached); !slices.Equal(got, []string{"cache-save", "push"}) {
-		t.Fatalf("attached %v, want the running cache-save and the push that finished since", got)
+	before := terminatedContainers(atAttach)
+	later := corev1.Pod{Status: corev1.PodStatus{
+		InitContainerStatuses: []corev1.ContainerStatus{{Name: "clone", State: ended}, {Name: "buildkit", State: ended}},
+		ContainerStatuses:     []corev1.ContainerStatus{{Name: "push", State: ended}},
+	}}
+	var attach []string
+	for name := range terminatedContainers(later) {
+		if !before[name] {
+			attach = append(attach, name)
+		}
+	}
+	slices.Sort(attach)
+	if !slices.Equal(attach, []string{"buildkit", "push"}) {
+		t.Fatalf("attach %v, want the phases that ended after the tail attached", attach)
 	}
 }

@@ -6,8 +6,8 @@ import {
 } from "../types";
 
 // w8/m147: the viewer's live gate mirrors bex-api's subscribe routing —
-// request filters stream request lines, a level streams app lines, and only a
-// type that cannot carry a filter keeps the tail paused.
+// request filters stream request lines, a level streams app and request lines
+// (w4/584), and only a type that cannot carry a filter keeps the tail paused.
 describe("liveTailUnsupported", () => {
   const f = (over: Partial<LogFilters>): LogFilters => ({
     ...EMPTY_LOG_FILTERS,
@@ -40,6 +40,9 @@ describe("liveTailUnsupported", () => {
       liveTailUnsupported(f({ type: "all", level: "error", method: "GET" })),
     ).toBe(false);
     expect(liveTailUnsupported(f({ type: "app", level: "error" }))).toBe(false);
+    expect(liveTailUnsupported(f({ type: "request", level: "error" }))).toBe(
+      false,
+    );
   });
 
   it("pauses when the type cannot carry a filter", () => {
@@ -49,9 +52,6 @@ describe("liveTailUnsupported", () => {
     expect(liveTailUnsupported(f({ type: "app", method: "GET" }))).toBe(true);
     expect(liveTailUnsupported(f({ type: "app", path: "/x" }))).toBe(true);
     expect(liveTailUnsupported(f({ type: "app", host: "a.onbex.co" }))).toBe(
-      true,
-    );
-    expect(liveTailUnsupported(f({ type: "request", level: "error" }))).toBe(
       true,
     );
   });

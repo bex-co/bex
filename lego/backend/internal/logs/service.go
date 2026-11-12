@@ -25,6 +25,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"io"
 	"regexp"
 	"slices"
@@ -474,12 +475,11 @@ func (q LogQuery) requestFilters() []string {
 // The stream has three producers — app pod stdout, build Job stdout, and a
 // short-interval store poll for request logs (w4/m237). An App tail's
 // structured filters select producers the way the same labels narrow a
-// history query's streams (w8/m147): request filters select request lines and
-// `level` app lines (a request line's level is read from its status, never a
-// stream label the level filter selects, w4/584), so a type-less tail with
-// only one kind follows that producer alone and one with both follows each
-// under its own filters. Refused: a filter the requested type cannot carry,
-// named, and a producerless type (e.g. type=predeploy). Refusing up front
+// history query's streams (w8/m147): request filters select request lines
+// alone, and `level` selects app lines and request lines, whose level is
+// their status class, as on Render (w4/584). Every filter applies to every
+// line it follows. Refused: a filter the requested type cannot carry, named,
+// and a producerless type (e.g. type=predeploy). Refusing up front
 // keeps such a subscription from being accepted into an idle stream that
 // holds a process-global SSE slot until the client disconnects (codex #3).
 // Note: build logs CAN be tailed live (the build Job's pod stdout, w3/m14).
@@ -489,22 +489,15 @@ func (q LogQuery) liveSubscribable() (LogQuery, error) {
 	if isDatastoreResource(q.App) {
 		return q, q.datastoreFilters(q.App)
 	}
-	var level []string
-	if len(q.Level) > 0 {
-		level = []string{LabelLevel}
-	}
 	var routed []string
-	for _, producer := range []struct {
-		logType string
-		filters []string
-	}{{LogTypeApp, level}, {LogTypeRequest, q.requestFilters()}} {
-		if len(producer.filters) == 0 {
-			continue
+	if filters := q.requestFilters(); len(filters) > 0 {
+		if !q.wants(LogTypeRequest) {
+			return q, fmt.Errorf("%w: %s filters %s logs, which type=%v does not include — add type=%s or drop the filter", core.ErrBadRequest, strings.Join(filters, ", "), LogTypeRequest, q.Types, LogTypeRequest)
 		}
-		if !q.wants(producer.logType) {
-			return q, fmt.Errorf("%w: %s filters %s logs, which type=%v does not include — add type=%s or drop the filter", core.ErrBadRequest, strings.Join(producer.filters, ", "), producer.logType, q.Types, producer.logType)
-		}
-		routed = append(routed, producer.logType)
+		routed = []string{LogTypeRequest}
+	}
+	if len(q.Level) > 0 && !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) {
+		return q, fmt.Errorf("%w: %s filters %s and %s logs, which type=%v does not include — drop the filter, or ask for app or request logs", core.ErrBadRequest, LabelLevel, LogTypeApp, LogTypeRequest, q.Types)
 	}
 	if routed != nil {
 		q.Types = routed
@@ -513,6 +506,18 @@ func (q LogQuery) liveSubscribable() (LogQuery, error) {
 		return q, fmt.Errorf("%w: the live tail streams only app, build and request logs; type=%v has no live producer — use the historical logs query", core.ErrBadRequest, q.Types)
 	}
 	return q, nil
+}
+
+// dropStaticSiteRequests drops a static site's request lines from q and
+// reports whether app is one: Render emits no logs for static sites
+// (render.com/docs/logging; a live type=request read returned none, w4/m325),
+// so neither does bex (w4/585). Its build logs stay.
+func dropStaticSiteRequests(app *appv1alpha1.App, q *LogQuery) bool {
+	if app.Spec.Type != appv1alpha1.TypeStaticSite {
+		return false
+	}
+	q.noRequest = true
+	return true
 }
 
 // keepPod reports whether a pod satisfies the `instance` filter.
@@ -768,6 +773,9 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
 		return nil, err
 	}
+	if dropStaticSiteRequests(app, &q) && len(q.Types) > 0 && !slices.ContainsFunc(q.Types, q.wants) {
+		return []LogEntry{}, nil // only request lines were asked for
+	}
 	// The App CR is in hand — its namespace is the per-tenant `<ws>` namespace
 	// (ADR043), where its pods and Loki streams also live; use it directly
 	// rather than the shared s.Namespace, exactly as the metrics feature does.
@@ -1013,6 +1021,9 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
 		return nil, err
 	}
+	if dropStaticSiteRequests(app, &q) && len(q.Types) > 0 && !slices.ContainsFunc(q.Types, q.wants) {
+		return []string{}, nil
+	}
 	if !slices.Contains(DiscoverableLabels, label) {
 		// Naming the offending label beats an empty list, which a client would read
 		// as "this service has no such values".
@@ -1129,6 +1140,9 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	if err := s.requireRequestLogsPlan(ctx, app, &q); err != nil {
 		return err
 	}
+	// A static site's tail without type=build stays open on keepalives, as a
+	// cron job's does between runs: nothing arrives, as on Render.
+	dropStaticSiteRequests(app, &q)
 	if err := q.compileLevelFilter(); err != nil {
 		return err
 	}
@@ -1312,12 +1326,6 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 		go s.pollRequestLogs(ctx, q, target.namespace, ch)
 	}
 
-	// The level filter is the pod producer's: a request line's level is read
-	// from its status, not filtered on (w4/584), and it reaches a tail beside
-	// one only when request filters selected it.
-	requestFilter := q
-	requestFilter.levelFilter = nil
-
 	relist := time.NewTicker(target.relist)
 	defer relist.Stop()
 	var beat <-chan time.Time
@@ -1357,11 +1365,7 @@ func (s *Service) followPods(ctx context.Context, q LogQuery, selectors []string
 				return err
 			}
 		case e := <-ch:
-			filter := &q
-			if e.Labels[LabelType] == LogTypeRequest {
-				filter = &requestFilter
-			}
-			if !filter.keep(e) {
+			if !q.keep(e) {
 				continue
 			}
 			setLogEntryResource(&e, target.resource)
@@ -1422,7 +1426,6 @@ func (c *requestCursor) admit(e LogEntry) bool {
 func (s *Service) pollRequestLogs(ctx context.Context, q LogQuery, namespace string, ch chan<- LogEntry) {
 	pq := q
 	pq.Types = []string{LogTypeRequest}
-	pq.Level, pq.levelFilter = nil, nil // the pod producer's filter: request lines are not level-filtered (w4/584)
 	pq.Direction = DirectionForward
 	pq.Limit = maxLogLimit
 	pq.End = time.Time{}
@@ -1574,7 +1577,9 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 	if err != nil {
 		return err
 	}
-	attachedAt := time.Now()
+	// A phase already over when the tail attached ran before it; any other
+	// is followed once seen, ended or not.
+	before := terminatedContainers(pod)
 
 	ns := s.BuildNamespace
 	if ns == "" {
@@ -1635,8 +1640,8 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 				if cur == nil {
 					return
 				}
-				for _, container := range containersStartedSince(*cur, attachedAt) {
-					if !started[container] {
+				for _, container := range append(runningContainers(*cur), slices.Collect(maps.Keys(terminatedContainers(*cur)))...) {
+					if !started[container] && !before[container] {
 						started[container] = true
 						startStream(container)
 					}
@@ -1740,16 +1745,15 @@ func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressF
 	}
 }
 
-// containersStartedSince is runningContainers plus the containers that
-// started at or after since and have already finished: a phase shorter than
-// the poll interval, such as the push and its "Build successful" line
-// (w4/582), would otherwise never be attached.
-func containersStartedSince(pod corev1.Pod, since time.Time) []string {
-	out := runningContainers(pod)
+// terminatedContainers names pod's containers that have finished. A build
+// tail that only attached running ones would miss a phase shorter than its
+// poll, such as the push and its "Build successful" line (w4/582).
+func terminatedContainers(pod corev1.Pod) map[string]bool {
+	out := map[string]bool{}
 	for _, statuses := range [][]corev1.ContainerStatus{pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses} {
 		for i := range statuses {
-			if done := statuses[i].State.Terminated; done != nil && !done.StartedAt.Time.Before(since.Truncate(time.Second)) {
-				out = append(out, statuses[i].Name)
+			if statuses[i].State.Terminated != nil {
+				out[statuses[i].Name] = true
 			}
 		}
 	}

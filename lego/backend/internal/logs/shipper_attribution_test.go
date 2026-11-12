@@ -509,3 +509,16 @@ func TestShipperFallsBackToServiceNameWithoutAnIngressName(t *testing.T) {
 		t.Fatalf("app = %q, want web from the ServiceName regex fallback", app)
 	}
 }
+
+// w4/584: the shipper labels a request line with Render's level for its
+// status class, the rule bex-api's statusLevel words on read, so a `level`
+// filter selects request lines in Loki as it does app lines.
+func TestShipperLabelsRequestLinesWithTheirLevel(t *testing.T) {
+	tmpl := shipperPipelineTemplate(t, "request_level")
+	for _, status := range []string{"101", "200", "204", "301", "304", "400", "404", "429", "500", "502", "503"} {
+		// The stage.regex before it extracts the first digit as status_class.
+		if got, want := renderStage(t, tmpl, map[string]string{"status_class": status[:1]}), statusLevel(status); got != want {
+			t.Errorf("status %s: shipper level %q, read level %q", status, got, want)
+		}
+	}
+}

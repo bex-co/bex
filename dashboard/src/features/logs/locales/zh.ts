@@ -98,9 +98,9 @@ const zhLogs: Record<string, TranslationEntry> = {
   },
   "logs.liveUnsupported": {
     message:
-      "实时日志已关闭——级别只筛选应用日志，方法、状态码、路径和主机只筛选请求日志，当前日志类型无法按这些条件实时跟踪。",
+      "实时日志已关闭——方法、状态码、路径和主机只筛选请求日志，应用日志无法按这些条件实时跟踪。",
     description:
-      "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs, or a level on request logs)",
+      "Note when the chosen log type cannot carry an active filter, so live tail is off (a request filter on app logs)",
   },
   "logs.storeRequiredTitle": {
     message: "请求日志需要日志存储",

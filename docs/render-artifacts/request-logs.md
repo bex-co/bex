@@ -38,7 +38,7 @@ bex-api renders each stored Traefik access record into this message at read time
 
 - **Lines stored before the rollout** lack the client, size and user agent, and show the keys they have.
 - **The request id was 36 characters** (bex's UUID-shaped `Rndr-Id`), not Render's 18. Since w4/583 bex mints Render's `8-4-4` shape.
-- **Static sites** get request lines on bex. Render has none; w4/585 asks whether to keep them (an ADR018 sign-off) or drop them.
+- **Static sites** had request lines on bex. Render has none, so since w4/585 no read surface returns them: history is empty, discovery offers no request values, and a tail without `type=build` streams nothing, as a cron job's does between runs (the edge still records them; the read path drops them, so a later sign-off could restore them).
 - **Label order** is Render's: `resource`, `instance`, `method`, `statusCode`, `host`, `path`, `level`, `type`. That one order gives both captured line kinds; an app line from the same workspace read `resource`, `instance`, `level`, `type`.
 - **Response time** is truncated to whole milliseconds; Render's rounding was not observable in the capture.
-- **The `level` label is read, not filterable:** a `level` filter selects app lines only (w4/584).
+- **The `level` label is filterable** (w4/584): the shipper labels each request stream with its status class's level, so `level=error` selects 5xx request lines, as Render's does (probed read-only 2026-11-12); lines stored before then carry no label.

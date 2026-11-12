@@ -30,11 +30,13 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w8/m147: a live tail takes every filter Render's /logs/subscribe takes. The
-// request filters select request lines and `level` selects app lines, as the
-// same labels narrow a history query's streams.
+// request filters select request lines, and `level` selects app lines and
+// request lines by their status class (w4/584), as the same labels narrow a
+// history query's streams.
 
 func TestLiveSubscribableRoutesFiltersToTheirProducers(t *testing.T) {
 	app, request, both := []string{LogTypeApp}, []string{LogTypeRequest}, []string{LogTypeApp, LogTypeRequest}
@@ -52,14 +54,14 @@ func TestLiveSubscribableRoutesFiltersToTheirProducers(t *testing.T) {
 		{name: "host alone", q: LogQuery{Host: []string{"web.onbex.co"}}, want: request},
 		{name: "request filters with type=request", q: LogQuery{Types: request, Path: []string{"/x"}}, want: request},
 		{name: "request filters narrow app+request", q: LogQuery{Types: both, StatusCode: []string{"404"}}, want: request},
-		{name: "level alone follows app lines", q: LogQuery{Level: []string{"error"}}, want: app},
+		{name: "level alone keeps every type", q: LogQuery{Level: []string{"error"}}},
 		{name: "level with type=app", q: LogQuery{Types: app, Level: []string{"error"}}, want: app},
-		{name: "level narrows app+request", q: LogQuery{Types: both, Level: []string{"error"}}, want: app},
-		{name: "level and a request filter follow both", q: LogQuery{Level: []string{"error"}, StatusCode: []string{"500"}}, want: both},
+		{name: "level with type=request", q: LogQuery{Types: request, Level: []string{"error"}}, want: request},
+		{name: "level keeps app+request", q: LogQuery{Types: both, Level: []string{"error"}}, want: both},
+		{name: "level and a request filter follow request lines", q: LogQuery{Level: []string{"error"}, StatusCode: []string{"500"}}, want: request},
 		{name: "type=app refuses statusCode", q: LogQuery{Types: app, StatusCode: []string{"500"}}, refuses: "statusCode"},
 		{name: "type=app refuses method and path", q: LogQuery{Types: app, Method: []string{"GET"}, Path: []string{"/x"}}, refuses: "method, path"},
 		{name: "type=build refuses host", q: LogQuery{Types: []string{LogTypeBuild}, Host: []string{"h"}}, refuses: "host"},
-		{name: "type=request refuses level", q: LogQuery{Types: request, Level: []string{"error"}}, refuses: "level"},
 		{name: "type=build refuses level", q: LogQuery{Types: []string{LogTypeBuild}, Level: []string{"error"}}, refuses: "level"},
 		{name: "a datastore keeps its own contract", q: LogQuery{App: keyValueID, Level: []string{"warning"}}},
 	} {
@@ -93,8 +95,9 @@ var liveFilterLines = map[string][]string{webInst: {
 	`2026-07-05T00:00:06Z level=warn msg=careful`,
 }}
 
-// requestStore is a log store holding request lines; it applies a forwarded
-// statusCode or path filter and records every query.
+// requestStore is a log store holding request lines, each labelled with its
+// status class's level as the shipper labels them (w4/584); it applies a
+// forwarded statusCode, path or level filter and records every query.
 type requestStore struct {
 	mu      sync.Mutex
 	lines   []LogEntry
@@ -105,6 +108,9 @@ func (s *requestStore) history(_ context.Context, _ string, q LogQuery) ([]LogEn
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.queries = append(s.queries, q)
+	if !q.wants(LogTypeRequest) {
+		return nil, nil // the selector names no request stream
+	}
 	var out []LogEntry
 	for _, e := range s.lines {
 		if len(q.StatusCode) > 0 && !strings.Contains(e.Message, " "+q.StatusCode[0]) {
@@ -113,10 +119,12 @@ func (s *requestStore) history(_ context.Context, _ string, q LogQuery) ([]LogEn
 		if len(q.Path) > 0 && !strings.Contains(e.Message, " "+q.Path[0]+" ") {
 			continue
 		}
-		if len(q.Level) > 0 {
-			continue // request streams carry no level label
+		fields := strings.Fields(e.Message)
+		level := statusLevel(fields[len(fields)-1])
+		if len(q.Level) > 0 && !slices.Contains(storedLevels(q.Level), level) {
+			continue
 		}
-		out = append(out, LogEntry{Timestamp: e.Timestamp, Message: e.Message, Labels: map[string]string{LabelType: LogTypeRequest}})
+		out = append(out, LogEntry{Timestamp: e.Timestamp, Message: e.Message, Labels: map[string]string{LabelType: LogTypeRequest, LabelLevel: level}})
 	}
 	return out, nil
 }
@@ -176,17 +184,20 @@ func messages(entries []LogEntry) []string {
 }
 
 func TestAppTailFiltersAppLinesByTheShipperLevel(t *testing.T) {
+	appErrors := []string{`time=x level=error msg="logfmt boom"`, `{"level":"error","msg":"json boom"}`, `{"level":50,"msg":"pino boom"}`}
 	for _, tc := range []struct {
 		name string
 		q    LogQuery
 		want []string
+		// polls: whether the request store is read, since a level selects
+		// request lines too (w4/584).
+		polls bool
 	}{
-		{"error", LogQuery{App: "web", Level: []string{"error"}}, []string{
-			`time=x level=error msg="logfmt boom"`, `{"level":"error","msg":"json boom"}`, `{"level":50,"msg":"pino boom"}`}},
-		{"type=app warning", LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"warning"}}, []string{`level=warn msg=careful`}},
-		{"critical is the error bucket", LogQuery{App: "web", Level: []string{"critical"}}, []string{
-			`time=x level=error msg="logfmt boom"`, `{"level":"error","msg":"json boom"}`, `{"level":50,"msg":"pino boom"}`}},
-		{"unknown is the unstructured line", LogQuery{App: "web", Level: []string{"unknown"}}, []string{`plain words: error here`}},
+		{"error", LogQuery{App: "web", Level: []string{"error"}}, append([]string{"GET /other 500", "POST /mk-1 500"}, appErrors...), true},
+		{"type=app warning", LogQuery{App: "web", Types: []string{LogTypeApp}, Level: []string{"warning"}}, []string{`level=warn msg=careful`}, false},
+		{"type=request warning", LogQuery{App: "web", Types: []string{LogTypeRequest}, Level: []string{"warning"}}, []string{"GET /mk-1 404"}, true},
+		{"critical is the error bucket", LogQuery{App: "web", Level: []string{"critical"}}, append([]string{"GET /other 500", "POST /mk-1 500"}, appErrors...), true},
+		{"unknown is the unstructured line", LogQuery{App: "web", Level: []string{"unknown"}}, []string{`plain words: error here`}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			emitted, _, store := liveFilterTail(t, tc.q)
@@ -195,12 +206,16 @@ func TestAppTailFiltersAppLinesByTheShipperLevel(t *testing.T) {
 			}
 			for _, e := range emitted {
 				if e.Labels[LabelLevel] == "" {
-					t.Errorf("app line %q carries no level label", e.Message)
+					t.Errorf("line %q carries no level label", e.Message)
 				}
 			}
-			// Request lines carry no level: the store is never polled.
-			if n := len(store.recorded()); n != 0 {
-				t.Errorf("a level tail polled the request store %d times", n)
+			if polled := len(store.recorded()) > 0; polled != tc.polls {
+				t.Errorf("request store polled = %v, want %v", polled, tc.polls)
+			}
+			for _, q := range store.recorded() {
+				if !slices.Equal(q.Level, tc.q.Level) {
+					t.Fatalf("poll query level = %v, want the subscription's %v", q.Level, tc.q.Level)
+				}
 			}
 		})
 	}
@@ -233,12 +248,11 @@ func TestTypelessRequestFiltersTailRequestLinesAlone(t *testing.T) {
 	}
 }
 
-// With both kinds of filter, each producer takes its own: app lines by level,
-// request lines by their request filter (they carry no level).
-func TestLevelAndRequestFiltersEachSelectTheirOwnLines(t *testing.T) {
+// With a level and a request filter, both apply to request lines, the only
+// lines that carry both, as in a history query (w4/584).
+func TestLevelAndRequestFiltersBothSelectRequestLines(t *testing.T) {
 	emitted, _, store := liveFilterTail(t, LogQuery{App: "web", Level: []string{"error"}, StatusCode: []string{"500"}})
-	want := []string{"GET /other 500", "POST /mk-1 500",
-		`time=x level=error msg="logfmt boom"`, `{"level":"error","msg":"json boom"}`, `{"level":50,"msg":"pino boom"}`}
+	want := []string{"GET /other 500", "POST /mk-1 500"}
 	if got := messages(emitted); !slices.Equal(got, want) {
 		t.Fatalf("emitted %q, want %q", got, want)
 	}
@@ -247,8 +261,8 @@ func TestLevelAndRequestFiltersEachSelectTheirOwnLines(t *testing.T) {
 		t.Fatal("the request store was never polled")
 	}
 	for _, q := range queries {
-		if len(q.Level) > 0 || q.levelFilter != nil {
-			t.Fatalf("poll query carries the level filter %v; request lines have none", q.Level)
+		if !slices.Equal(q.Level, []string{"error"}) || !slices.Equal(q.StatusCode, []string{"500"}) {
+			t.Fatalf("poll query = level %v statusCode %v, want both of the subscription's filters", q.Level, q.StatusCode)
 		}
 	}
 }
@@ -271,7 +285,8 @@ func TestSubscribeRoutesStructuredFiltersBeforeStreaming(t *testing.T) {
 		body, absent string
 	}{
 		{"resource=web&type=app&statusCode=500", true, http.StatusBadRequest, "statusCode filters request logs", ""},
-		{"resource=web&type=request&level=error", true, http.StatusBadRequest, "level filters app logs", ""},
+		{"resource=web&type=build&level=error", true, http.StatusBadRequest, "level filters app and request logs", ""},
+		{"resource=web&type=request&level=error", true, http.StatusOK, "GET /other 500", "GET /mk-1 404"},
 		{"resource=web&path=/mk-1", false, http.StatusServiceUnavailable, "", ""},
 		{"resource=web&path=/mk-1", true, http.StatusOK, "POST /mk-1 500", "json boom"},
 		{"resource=web&level=error", false, http.StatusOK, "json boom", "json fine"},
@@ -354,5 +369,45 @@ func TestRequestFilterTailFollowsThePlan(t *testing.T) {
 	})
 	if !errors.Is(err, context.DeadlineExceeded) || !slices.Equal(got, []string{"level=warn msg=careful"}) {
 		t.Fatalf("hobby level tail = %q, %v; want the warning app line", got, err)
+	}
+}
+
+// w4/585: Render emits no logs for a static site, so its request lines, which
+// bex's edge records, are read on no surface: a history read of them is
+// empty, discovery offers no request type, status or method, and a tail
+// without type=build streams nothing.
+func TestAStaticSiteHasNoRuntimeLogs(t *testing.T) {
+	site := sampleApp("site")
+	site.Spec.Type = appv1alpha1.TypeStaticSite
+	svc := newService(liveFilterLines, site)
+	svc.History = newRequestStore().history
+	labels := map[string][]string{LabelType: {LogTypeRequest}, LabelStatusCode: {"500"}, LabelMethod: {"GET"}}
+	svc.LabelValues = func(_ context.Context, _ string, label string, q LogQuery) ([]string, error) {
+		if !q.wants(LogTypeRequest) {
+			return nil, nil
+		}
+		return labels[label], nil
+	}
+	for _, q := range []LogQuery{{App: "site"}, {App: "site", Types: []string{LogTypeRequest}}} {
+		entries, err := svc.QueryLogs(context.Background(), q)
+		if err != nil || len(entries) != 0 {
+			t.Fatalf("static site history %v = %d lines, %v; want none", q.Types, len(entries), err)
+		}
+	}
+	for _, label := range []string{LabelType, LabelStatusCode, LabelMethod} {
+		if values, err := svc.LogLabelValues(context.Background(), label, LogQuery{App: "site"}); err != nil || len(values) != 0 {
+			t.Fatalf("static site %s values = %v, %v; want none", label, values, err)
+		}
+	}
+	// A tail stays open and streams nothing, as a cron job's does between runs.
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	var tailed []LogEntry
+	err := svc.FollowLogs(ctx, LogQuery{App: "site"}, func(e LogEntry) error {
+		tailed = append(tailed, e)
+		return nil
+	})
+	if !errors.Is(err, context.DeadlineExceeded) || len(tailed) != 0 {
+		t.Fatalf("static site tail = %d lines, %v; want none until the client leaves", len(tailed), err)
 	}
 }

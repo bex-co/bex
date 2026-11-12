@@ -225,7 +225,10 @@ class RequestLogAttributionTest(unittest.TestCase):
             line = json.dumps(dict(base, RequestPath="/" + name, **fields))
             lines.append(line)
             if namespace:
-                labels = {"namespace": namespace, "method": "GET", "status": str(fields["DownstreamStatus"]), "type": "request"}
+                status = str(fields["DownstreamStatus"])
+                # Render's level for the status class (w4/584).
+                level = {"5": "error", "4": "warning"}.get(status[0], "info")
+                labels = {"namespace": namespace, "method": "GET", "status": status, "type": "request", "level": level}
                 if app_name:
                     labels["app"] = app_name
                 if service:

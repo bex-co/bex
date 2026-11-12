@@ -134,14 +134,13 @@ const REQUEST_FILTER_KEYS = LINE_FILTER_KEYS.filter((key) => key !== "level");
 // Whether bex-api refuses the live stream for this filter set, mirroring its
 // subscribe routing exactly (w8/m147): as in history, the request filters
 // select request lines (streamed from the log store's poll, w4/m237) and
-// `level` selects app lines (parsed per line the way the shipper parses it).
-// So every view tails live except one whose type cannot carry a filter: a
-// request filter on the app view, or a level on the request view.
+// `level` selects app lines and request lines, whose level is their status
+// class (w4/584). So every view tails live except one whose type cannot
+// carry a filter: a request filter on the app view.
 export function liveTailUnsupported(f: LogFilters): boolean {
   if (f.type === LOG_TYPE_APP) {
     return REQUEST_FILTER_KEYS.some((key) => f[key] !== "");
   }
-  if (f.type === LOG_TYPE_REQUEST) return f.level !== "";
   return false;
 }
 

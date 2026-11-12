@@ -150,7 +150,7 @@ func TestNormalizeTypesAcceptsPreDeploy(t *testing.T) {
 func TestLiveSubscribableRejectsProducerlessTypes(t *testing.T) {
 	for _, q := range []LogQuery{
 		{Types: []string{LogTypePreDeploy}},
-		{Types: []string{LogTypeRequest}, Level: []string{"error"}},
+		{Types: []string{LogTypeBuild}, Level: []string{"error"}},
 		{Types: []string{LogTypeApp}, StatusCode: []string{"500"}},
 	} {
 		if _, err := q.liveSubscribable(); !errors.Is(err, core.ErrBadRequest) {
