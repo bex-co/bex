@@ -215,3 +215,27 @@ func TestADetectedPortRoutesButIsNotGivenBackAsPort(t *testing.T) {
 		}
 	}
 }
+
+// On a service whose serving port was detected (3000), PORT stays 10000
+// (w8/267), so a later deploy that binds nothing reachable is told to bind
+// PORT (10000), and the detected port is named as where it listened before.
+// It used to say "the port in PORT (3000)" (w8/281).
+func TestNoOpenPortTextNamesThePortTheProcessReceives(t *testing.T) {
+	r, app, dep := detectFixture(t, time.Minute, &cannedScanner{}, nil)
+	app.Status.DetectedPort = 3000
+	got := r.detectBoundPort(t.Context(), app, dep, 3000)
+	for _, want := range []string{"the port in PORT (10000)", "it listened on port 3000 before", "background worker"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("stall text = %q, want %q in it", got, want)
+		}
+	}
+	if strings.Contains(got, "PORT (3000)") {
+		t.Errorf("stall text names the detected port as PORT: %q", got)
+	}
+
+	// A service whose port is its own PORT keeps that number, and nothing else.
+	app.Status.DetectedPort = 0
+	if got := noOpenPortMessage(app, 10000); !strings.Contains(got, "the port in PORT (10000).") || strings.Contains(got, "before") {
+		t.Errorf("stall text for an undetected port = %q", got)
+	}
+}

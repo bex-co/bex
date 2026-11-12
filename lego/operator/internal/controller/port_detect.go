@@ -155,7 +155,7 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 		// (w8/259). The product says what the user can act on, in Render's
 		// terms; the operator's log keeps the scan's own error (w4/393).
 		logf.FromContext(ctx).Info("port detection scan failed", "app", app.Name, "error", err.Error())
-		return noOpenPortMessage(port)
+		return noOpenPortMessage(app, port)
 	}
 	var others []int
 	for _, p := range open {
@@ -166,7 +166,7 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 	}
 	switch len(others) {
 	case 0:
-		return noOpenPortMessage(port)
+		return noOpenPortMessage(app, port)
 	case 1:
 		if app.Status.DetectedPort == int32(others[0]) {
 			return ""
@@ -196,8 +196,18 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 // your service to at least one port. If you don't need to receive traffic on
 // any port, create a background worker instead", and its troubleshooting page
 // names the two fixes: bind host 0.0.0.0, and the port in PORT (w8/259).
-func noOpenPortMessage(port int) string {
-	return fmt.Sprintf(" No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT (%d).", port) + backgroundWorkerHint
+//
+// port is the port probed. The number in PORT is what the process receives
+// (processPort): on a service whose port was detected, PORT is still the
+// default, and the detected port is named as where the server listened
+// before (w8/281).
+func noOpenPortMessage(app *appv1alpha1.App, port int) string {
+	env := processPort(app, port)
+	msg := fmt.Sprintf(" No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT (%d)", env)
+	if env != port {
+		msg += fmt.Sprintf("; it listened on port %d before", port)
+	}
+	return msg + "." + backgroundWorkerHint
 }
 
 // backgroundWorkerHint is Render's alternative for a service that listens on no
