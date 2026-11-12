@@ -130,3 +130,16 @@ w4/m320 (blocked on its live replay; its code is in the new pin) is the image we
 ## Cleanup
 
 Both services were deleted after the reads; `GET /v1/services/<id>` answers 404.
+
+## Post-release probe — QA loop round 193 (2026-11-12, pin `9a5b95e96210`, which carries t001 and t002's `bf4f30330`)
+
+- **t001 passes on production.** On the Free Go web service `qa-20261112-r193-go` (`srv-dbqqp5i8vjhs73do9flg`), `POST /v1/services/{id}/deploys/dep-dbqqp5i8vjhs73do9fm0/cancel` against the live deploy answered `409 {"error":"conflict: deploy \"dep-dbqqp5i8vjhs73do9fm0\" is already live","id":"conflict"}`.
+- **Cancels during the build.**
+  - **First:** `dep-dbqqrn7fn2rs739v0r90`, a dashboard "Clear build cache & deploy", canceled from the deploy page at 12:16:17.
+    - Its rows read `canceled` on the deploy page, in the list and in `deploy_ended`/`build_ended` (`canceled`), and the log ended `==> Deploy canceled`.
+    - It was followed by `server_failed {"unhealthy":"The instance failed its health check"}` at 12:16:28 and `server_available` at 12:16:32, on the unchanged instance (`…1rt1mkhp4aesgs366n0m`, created 12:13:54).
+    - That was during the platform rollout of this pin (deploy job done 12:18:38), so it is not attributed to the cancel.
+  - **Second:** `dep-dbqqtcrk98kc7399u81g`, REST `POST …/deploys {"clearCache":"clear"}` then `POST …/cancel` at 12:19:50, on the settled platform.
+    - It answered `200 {"status":"canceled"}`, and no `server_failed` followed in 45 s.
+    - 1 s polls of the URL answered 200 throughout (66/66, 12:18:54–12:20:43).
+- The race t003 decides (a cancel at the first `update_in_progress`) was not exercised. The fixture was deleted (DELETE 204, then GET 404).
