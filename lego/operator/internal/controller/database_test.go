@@ -578,6 +578,12 @@ func TestCnpgClusterSpecHA(t *testing.T) {
 	if noHA["enablePDB"] != false {
 		t.Errorf("HA off: enablePDB = %v, want false", noHA["enablePDB"])
 	}
+	// A lone instance checks readiness with a query the kubelet bounds, not
+	// pg_isready's fixed 3s, so load alone does not take it off -rw (w8/298).
+	readiness, _, _ := unstructured.NestedMap(noHA, "probes", "readiness")
+	if readiness["type"] != cnpgProbeQuery || readiness["timeoutSeconds"] != singleInstanceReadinessTimeoutSeconds {
+		t.Errorf("HA off: readiness = %v, want the query strategy with a %ds timeout", readiness, singleInstanceReadinessTimeoutSeconds)
+	}
 
 	// HA on => instances raised to 2 and REQUIRED anti-affinity set: CNPG's
 	// default "preferred" type would let the pair share one node (w2/m171).
@@ -593,6 +599,9 @@ func TestCnpgClusterSpecHA(t *testing.T) {
 	// projection withdraws a prior single-instance `false` on growth.
 	if v, has := ha["enablePDB"]; has {
 		t.Errorf("HA on: enablePDB = %v, want key absent (CNPG default)", v)
+	}
+	if v, has := ha["probes"]; has {
+		t.Errorf("HA on: probes = %v, want key absent (CNPG defaults)", v)
 	}
 
 	// HA on a plan that already has >1 instances keeps the higher count.

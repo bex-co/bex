@@ -69,6 +69,9 @@ func TestCNPGNamedReaderCapacity(t *testing.T) {
 			if tc.want > 1 && spec["enablePDB"] != nil {
 				t.Fatal("multi-instance cluster disabled CNPG disruption protection")
 			}
+			if tc.want > 1 && spec["probes"] != nil {
+				t.Fatal("multi-instance cluster overrode CNPG's readiness probe")
+			}
 		})
 	}
 }

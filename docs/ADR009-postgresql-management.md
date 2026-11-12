@@ -208,6 +208,14 @@ Mirrors the compute and KeyValue lifecycle verbs, writing intent to the `Databas
 - **suspend / resume** → `spec.suspended`, mapped to CNPG **hibernation** (`cnpg.io/hibernation=on`/removed). Postgres can't scale-to-zero, but hibernation stops compute and keeps the PVC (data), credentials, and any external route, preserving the sleep=free promise; a suspended DB settles `Ready`/`Suspended` immediately rather than waiting on ready instances.
 - **restart** → `spec.restartedAt` (verb-as-timestamp), stamped onto CNPG's `kubectl.kubernetes.io/restartedAt` annotation for a rolling restart of the primary.
 
+### Readiness under load (w8/298)
+
+A busy Postgres serves new connections slowly; it does not refuse them. CNPG's default readiness check runs `pg_isready`, which gives up after its own 3 s connect timeout (CNPG 1.30.1 `PgIsReady`, no `-t`). On a CPU-saturated 100m instance, starting the probe's backend took longer than that. The lone Pod went NotReady, so the `-rw` Service had no endpoint: every new connection was refused, and the database read `config_restart` while its running queries finished.
+
+- **A single-instance Cluster** sets `spec.probes.readiness` to `type: query` with `timeoutSeconds: 30`. The query strategy connects from the instance manager and is bounded only by the kubelet's timeout. A stopped server still fails at once, because its socket refuses the connection.
+- **Clusters with standbys** (HA or readers) keep CNPG's defaults: there, readiness picks which instances serve.
+- **Rollout without restarts:** the strategy is read from the Cluster at each check, so it applies at once. The timeout is part of the instance Pod's spec, and CNPG applies a change to it by restarting the Pod. An existing Cluster therefore adopts the timeout only when its Pods roll anyway, under the same rule as the datastore priority class (`clusterPodsRoll`): a plan change, an image update, a restart, or hibernation. A restart counts because CNPG 1.30.1 deletes and recreates the Pod for it rather than restarting Postgres in place: only `PendingRestart` is an in-place rollout (`cluster_upgrade.go`).
+
 ### Major-version upgrades (w8/m12)
 
 - `Database.spec.version` is desired intent; changing it upward updates CNPG's `Cluster.spec.imageName`. CNPG performs its offline in-place `pg_upgrade`, so every database instance is unavailable during the operation.

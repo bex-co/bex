@@ -64,23 +64,30 @@ func holdDatastorePriority(tmpl *corev1.PodTemplateSpec, existed bool, before *c
 	}
 }
 
-// clusterAdoptsDatastorePriority reports whether a CNPG Cluster's desired spec
-// should carry the datastore class. It does when the Cluster is new or already
-// carries it, and otherwise only when CNPG is about to replace its instance
-// Pods for another reason:
+// carriesDatastorePriority reports whether a live CNPG Cluster already runs
+// under the datastore class. One that does not adopts it only when its Pods
+// roll anyway (clusterPodsRoll); an added instance counts because the new Pod
+// must not be charged to the compute quota, the refusal the class exists to
+// remove.
+func carriesDatastorePriority(live *unstructured.Unstructured) bool {
+	class, _, _ := unstructured.NestedString(live.Object, "spec", "priorityClassName")
+	return class == appv1alpha1.DatastorePriorityClassName
+}
+
+// clusterPodsRoll reports whether a change to a CNPG Cluster's instance Pod
+// spec costs no restart of its own: the Cluster is new, or CNPG is about to
+// replace its instance Pods for another reason:
 //
 //   - the plan's resources change (CNPG rolls every instance);
 //   - the image changes (minor update or major upgrade);
-//   - an instance is added (HA standby or read replica). The new Pod must not
-//     be charged to the compute quota: that refusal is what this class exists
-//     to remove. CNPG then rolls the existing instances once, primary last;
-//   - a restart is requested (the Render restart verb);
+//   - an instance is added (HA standby or read replica). CNPG then rolls the
+//     existing instances once, primary last;
+//   - a restart is requested (the Render restart verb). CNPG 1.30.1 deletes
+//     and recreates the Pod for it, never restarts in place, so the new spec
+//     lands with that one restart;
 //   - the Cluster is, or is leaving, hibernation: it has no Pods to roll.
-func clusterAdoptsDatastorePriority(live *unstructured.Unstructured, desired map[string]any, suspended bool, restartedAt string) bool {
+func clusterPodsRoll(live *unstructured.Unstructured, desired map[string]any, suspended bool, restartedAt string) bool {
 	if live.GetResourceVersion() == "" || suspended {
-		return true
-	}
-	if class, _, _ := unstructured.NestedString(live.Object, "spec", "priorityClassName"); class == appv1alpha1.DatastorePriorityClassName {
 		return true
 	}
 	annotations := live.GetAnnotations()

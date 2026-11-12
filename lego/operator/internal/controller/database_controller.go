@@ -515,8 +515,7 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 		},
 		// Every instance Pod CNPG generates runs under the datastore class, so
 		// the workspace compute quota does not charge it (w2/m247). An existing
-		// Cluster may withhold it until its Pods roll anyway
-		// (clusterAdoptsDatastorePriority).
+		// Cluster may withhold it until its Pods roll anyway (clusterPodsRoll).
 		"priorityClassName": appv1alpha1.DatastorePriorityClassName,
 	}
 	// A single-instance Cluster gets no PodDisruptionBudget. CNPG's default
@@ -524,10 +523,13 @@ func cnpgClusterSpec(p clusterParams) map[string]any {
 	// while protecting nothing: the lone instance moves with the same brief
 	// downtime either way. After the 2026-08-09 rotation three such pods
 	// pinned an autoscaled node for six days (ADR060 D8; w7/m90). Clusters with
-	// standbys keep CNPG's default so a reader survives a drain. Omitting the
-	// key restores that default when a Cluster grows from one instance.
+	// standbys keep CNPG's default so a reader survives a drain. A lone
+	// instance also gets a readiness check load cannot time out
+	// (singleInstanceReadiness). Omitting the keys restores CNPG's defaults when
+	// a Cluster grows from one instance.
 	if instances == 1 {
 		spec["enablePDB"] = false
+		spec["probes"] = map[string]any{"readiness": singleInstanceReadiness()}
 	}
 	// Pod anti-affinity: primary and standbys MUST land on distinct nodes so a
 	// single node failure never takes out every instance. CNPG's default type is
@@ -1085,8 +1087,11 @@ func (r *DatabaseReconciler) reconcileCluster(ctx context.Context, db *appv1alph
 				spec["postgresql"] = configuration
 			}
 		}
-		if !clusterAdoptsDatastorePriority(cluster, spec, db.Spec.Suspended, db.Spec.RestartedAt) {
-			delete(spec, "priorityClassName")
+		if !clusterPodsRoll(cluster, spec, db.Spec.Suspended, db.Spec.RestartedAt) {
+			if !carriesDatastorePriority(cluster) {
+				delete(spec, "priorityClassName")
+			}
+			holdReadinessTiming(cluster, spec)
 		}
 		// Mark CNPG-managed pods as tenant databases so the node log shipper can
 		// exclude platform/auth CNPG clusters. Propagate workspace identity through

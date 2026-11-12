@@ -94,7 +94,7 @@ func TestExistingKeyValueAdoptsThePriorityClassOnlyWhenItRolls(t *testing.T) {
 	}
 }
 
-func TestExistingClusterAdoptsThePriorityClassOnlyWhenItRolls(t *testing.T) {
+func TestClusterPodsRollOnlyWhenCNPGReplacesThePods(t *testing.T) {
 	desired := func(cpu string, instances int64, image string) map[string]any {
 		spec := map[string]any{
 			"instances": instances,
@@ -149,13 +149,17 @@ func TestExistingClusterAdoptsThePriorityClassOnlyWhenItRolls(t *testing.T) {
 		{"resuming from hibernation", live(func(u *unstructured.Unstructured) {
 			u.SetAnnotations(map[string]string{hibernationAnnotation: "on"})
 		}), desired("1", 1, ""), false, "", true},
-		{"already adopted", live(func(u *unstructured.Unstructured) {
-			_ = unstructured.SetNestedField(u.Object, appv1alpha1.DatastorePriorityClassName, "spec", "priorityClassName")
-		}), desired("1", 1, ""), false, "", true},
 	} {
-		if got := clusterAdoptsDatastorePriority(tc.live, tc.desired, tc.suspended, tc.restartedAt); got != tc.want {
-			t.Errorf("%s: adopts = %v, want %v", tc.name, got, tc.want)
+		if got := clusterPodsRoll(tc.live, tc.desired, tc.suspended, tc.restartedAt); got != tc.want {
+			t.Errorf("%s: rolls = %v, want %v", tc.name, got, tc.want)
 		}
+	}
+	// An adopted class is kept on a reconcile that rolls nothing.
+	adopted := live(func(u *unstructured.Unstructured) {
+		_ = unstructured.SetNestedField(u.Object, appv1alpha1.DatastorePriorityClassName, "spec", "priorityClassName")
+	})
+	if !carriesDatastorePriority(adopted) || carriesDatastorePriority(live(nil)) {
+		t.Error("carriesDatastorePriority misreads the live class")
 	}
 }
 
@@ -209,41 +213,13 @@ func TestDatastoreMaintenanceJobsCarryTheDatastorePriorityClass(t *testing.T) {
 // every instance), and must add it when the reconcile adds an instance.
 func TestReconcileClusterHoldsThePriorityClassUntilTheClusterRolls(t *testing.T) {
 	ctx := context.Background()
-	scheme := runtime.NewScheme()
-	if err := clientgoscheme.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
-	if err := appv1alpha1.AddToScheme(scheme); err != nil {
-		t.Fatal(err)
-	}
 	db := &appv1alpha1.Database{
 		ObjectMeta: metav1.ObjectMeta{Name: "dpg-a", Namespace: "tea-a", UID: "db-uid"},
 		Spec:       appv1alpha1.DatabaseSpec{Plan: "1c-2g"},
 	}
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).Build()
-	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+	cl, reconcile := clusterReconcileHarness(t, db)
 	plan, _ := resolvePlan(db.Spec)
 	params := clusterParams{plan: plan, storageGB: 10, namespace: db.Namespace}
-	key := client.ObjectKey{Namespace: db.Namespace, Name: db.Name}
-	reconcile := func(p clusterParams) *unstructured.Unstructured {
-		t.Helper()
-		cluster := &unstructured.Unstructured{}
-		cluster.SetGroupVersionKind(cnpgClusterGVK)
-		cluster.SetName(db.Name)
-		cluster.SetNamespace(db.Namespace)
-		if err := cl.Get(ctx, key, cluster); err != nil && !apierrors.IsNotFound(err) {
-			t.Fatal(err)
-		}
-		if err := r.reconcileCluster(ctx, db, cluster, p); err != nil {
-			t.Fatal(err)
-		}
-		live := &unstructured.Unstructured{}
-		live.SetGroupVersionKind(cnpgClusterGVK)
-		if err := cl.Get(ctx, key, live); err != nil {
-			t.Fatal(err)
-		}
-		return live
-	}
 	class := func(u *unstructured.Unstructured) string {
 		got, _, _ := unstructured.NestedString(u.Object, "spec", "priorityClassName")
 		return got
@@ -267,5 +243,41 @@ func TestReconcileClusterHoldsThePriorityClassUntilTheClusterRolls(t *testing.T)
 	params.highAvailability = true
 	if got := class(reconcile(params)); got != appv1alpha1.DatastorePriorityClassName {
 		t.Fatalf("a Cluster gaining an instance did not adopt the class: %q", got)
+	}
+}
+
+// clusterReconcileHarness runs reconcileCluster for db against a fake client.
+// Each step reconciles with the given params and returns the stored Cluster.
+func clusterReconcileHarness(t *testing.T, db *appv1alpha1.Database) (client.Client, func(clusterParams) *unstructured.Unstructured) {
+	t.Helper()
+	ctx := context.Background()
+	scheme := runtime.NewScheme()
+	if err := clientgoscheme.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db).Build()
+	r := &DatabaseReconciler{Client: cl, Scheme: scheme}
+	key := client.ObjectKey{Namespace: db.Namespace, Name: db.Name}
+	return cl, func(p clusterParams) *unstructured.Unstructured {
+		t.Helper()
+		cluster := &unstructured.Unstructured{}
+		cluster.SetGroupVersionKind(cnpgClusterGVK)
+		cluster.SetName(db.Name)
+		cluster.SetNamespace(db.Namespace)
+		if err := cl.Get(ctx, key, cluster); err != nil && !apierrors.IsNotFound(err) {
+			t.Fatal(err)
+		}
+		if err := r.reconcileCluster(ctx, db, cluster, p); err != nil {
+			t.Fatal(err)
+		}
+		live := &unstructured.Unstructured{}
+		live.SetGroupVersionKind(cnpgClusterGVK)
+		if err := cl.Get(ctx, key, live); err != nil {
+			t.Fatal(err)
+		}
+		return live
 	}
 }
