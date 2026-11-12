@@ -22,6 +22,21 @@
 # -p 1 as in CI: the integration packages share one database and some reset it.
 set -euo pipefail
 
+# The promtool shim and the suite's rule-file tempdirs are bind-mounted into a
+# container, and the Docker VM behind macOS (colima, Docker Desktop) shares only
+# $HOME, not the default /var/folders TMPDIR: the probe below then fails, and so
+# does any test that checks a rule file. Use a directory under $HOME there, unless
+# the caller already chose one, and hand it to the tests through `env` (w21/061).
+# Linux runs Docker on the host and keeps its TMPDIR.
+if [ "$(uname -s)" = Darwin ]; then
+  case "${TMPDIR:-}" in
+    "$HOME"/*) ;;
+    *) TMPDIR="$HOME/.cache/bex-tmp" ;;
+  esac
+  export TMPDIR
+  mkdir -p "$TMPDIR"
+fi
+
 root=$(cd "$(dirname "$0")/.." && pwd)
 workflow="$root/.github/workflows/backend-test.yml"
 key=$(printf '%s' "$root" | shasum | cut -c1-8)
@@ -141,6 +156,10 @@ export BEX_TEST_OPENBAO_KV_URL='http://127.0.0.1:$(port "$prefix-openbao" 8200)'
 export BEX_TEST_OPENBAO_KV_TOKEN='$bao_token'
 export BEX_TEST_LOKI_URL='http://127.0.0.1:$(port "$prefix-loki" 3100)'
 EOF
+  # The suite writes rule files into its tempdirs, and the shim mounts them.
+  if [ "$(uname -s)" = Darwin ]; then
+    echo "export TMPDIR='$TMPDIR'"
+  fi
   if [ -x "$shim_dir/promtool" ] && ! command -v promtool >/dev/null; then
     echo "export PATH='$shim_dir':\"\$PATH\""
   fi

@@ -76,4 +76,4 @@
 - [x] **058** — Postgres Insights' Top queries on a quiet database still lists the panel's own read-only envelope — `begin read only` and `rollback`, one row per role Insights connected as — so w4/557's empty state never appears (a residual of w4/557 and w21/026) → [`058.md`](done/058.md)
 - [x] **059** — A git-built Docker web service that listens on no port fails with "Set PORT to the HTTP listener", and never says Render's "no open port was detected … create a background worker instead", which w8/259 gave the native runtime only (the native control on the same pin passes) → [`059.md`](done/059.md)
 - [x] **060** — Backend, types and cli have no Go formatting gate, and six backend files are already unformatted → [`060.md`](done/060.md)
-- [ ] **061** — `scripts/ship-gates.sh` fails the backend gate on a Mac whose Docker VM shares only `$HOME`, unless the caller sets `TMPDIR` by hand → [`061.md`](061.md)
+- [x] **061** — `scripts/ship-gates.sh` fails the backend gate on a Mac whose Docker VM shares only `$HOME`, unless the caller sets `TMPDIR` by hand → [`061.md`](done/061.md)
