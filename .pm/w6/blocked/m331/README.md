@@ -1,6 +1,6 @@
 # w6 · m331 — Agent sandboxes run on a Hetzner bare-metal node under Kata
 
-**Worker:** worker6 **Goal:** sandboxes run in microVMs on one Hetzner dedicated EX44, so a build inside a sandbox runs at close to native speed and the scheduled routines finish, with the gVisor cloud node as overflow. **Status:** blocked — t001 done (2026-11-12: gVisor 1.65× runc on the build replay on today's node, ADR105); t002 needs the account owner to order one EX44 and a vSwitch in fsn1 and create Robot credentials
+**Worker:** worker6 **Goal:** sandboxes run in microVMs on one Hetzner dedicated EX44, so a build inside a sandbox runs at close to native speed and the scheduled routines finish, with the gVisor cloud node as overflow. **Status:** blocked — t001 done (2026-11-12: gVisor 1.65× runc on the build replay on today's node, ADR105); t002 needs the user to pick a server, because EX44-1-LTD was out of stock on 2026-11-12; orderable were AX42-1 ($119/month + $59 setup), EX63-1 ($174 + $84) and AX102-1 ($304 + $149), see ADR105 § What can be ordered today; then order it and a vSwitch in fsn1
 
 ## Tasks (in order)
 

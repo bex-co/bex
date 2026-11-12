@@ -100,6 +100,37 @@ Render runs each sandbox in its own Firecracker microVM. bex chose Kata first an
 - **Two servers for redundancy** double the break-even hours. A single server is a single point of failure for every session on it.
 - **Today's pool for comparison:** one `cx33` cloud node at €8.99 a month (ADR053, priced 2026-08-08, may be stale) breaks even at about 50 sandbox-hours a month. A €59 server costs six to seven times more per month, and that fixed cost is the whole downside.
 
+### What can be ordered today (Robot, 2026-11-12)
+
+The tables above use the hetzner.com matrix: EUR, base configuration, read 2026-11-11. The bex account's own Robot order page shows different terms:
+
+- **Account and currency.** The account is Stargately, Inc., priced in USD with 0% VAT.
+- **Billing.** Each price is the most a month can cost; below that cap the server bills by the hour, so cancelling costs only the hours used. Setup fees are one-off and not refunded.
+- **Stock.** On 2026-11-12, every cheap stock-limited `-LTD` model was "Not available", including this ADR's EX44.
+
+| Server | CPU | Threads | RAM | Disks | Max per month | Setup | Orderable on 2026-11-12 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| EX44-1-LTD | Core i5-13500 | 20 | 64 GB DDR4 | 2 × 512 GB | $74 | $0 | no |
+| AX41-1-LTD | Ryzen 5 3600 | 12 | 64 GB DDR4 | 2 × 512 GB | $69 | $0 | no |
+| AX42-1-LTD | Ryzen 7 PRO 8700GE | 16 | 64 GB DDR5 | 2 × 512 GB | $89 | $39 | no |
+| **AX42-1** | Ryzen 7 PRO 8700GE (Zen 4) | 16 | 64 GB DDR5, non-ECC | 2 × 512 GB NVMe Gen 4 | **$119** | $59 | yes |
+| **EX63-1** | Core Ultra 7 265, 8 performance + 12 efficiency cores | 20 | 64 GB DDR5 | 2 × 1 TB NVMe | **$174** | $84 | yes |
+| **AX102-1** | Ryzen 9 7950X3D (Zen 4) | 32 | 128 GB DDR5, non-ECC | 2 × 1.92 TB NVMe Datacenter Gen 4 | **$304** | $149 | yes |
+
+The same capacity model and the same revenue ($0.2168 per sandbox-hour) give:
+
+| Server | Slots without CPU overcommit | Slots at the memory ceiling | CPU overcommit at the ceiling | Cost per slot-hour at full use | Break-even sandbox-hours per month | Break-even use | Setup fee recovered after |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| AX42-1 | 7 | 13 | 1.9 : 1 | $0.0125 | 549 | 5.8% | 272 sandbox-hours |
+| EX63-1 | 9 | 13 | 1.4 : 1 | $0.0183 | 803 | 8.5% | 387 sandbox-hours |
+| AX102-1 | 15 | 28 | 1.9 : 1 | $0.0149 | 1,402 | 6.9% | 687 sandbox-hours |
+
+- **The planned node is not orderable.** Which of these three to order, if any, is the user's to decide. The other path is to wait for `-LTD` stock. Until then m331 t002 stays blocked.
+- **Break-even rises with the price.** It is 549 paid sandbox-hours a month for AX42-1, against 327 for the EX44 as planned.
+- **Disk.** AX42-1's 2 × 512 GB has the EX44's limit: thirteen sandboxes at the 40 GB writable limit do not fit. EX63-1's 2 × 1 TB holds 13 of them, and AX102-1's 2 × 1.92 TB holds 28.
+- **CPU.** The t001 replay showed a cold build is mostly CPU, so per-core speed matters more than thread count for one session. AX42-1 and AX102-1 are Zen 4 with every core alike. EX63-1 mixes performance and efficiency cores, so a session's speed depends on where the host scheduler places it.
+- **ECC.** None of the three has ECC memory. AX42-2 adds ECC for $219 a month plus $109 setup.
+
 ### What the numbers do not show
 
 - **Break-even counts paid hours only.** The steady load today is bex's own eight daily routines: about 240 sandbox-hours a month at one hour each, worth $52 at list price, and not revenue. Platform-wide agent sandbox-hours were not measured for this ADR.
@@ -128,7 +159,7 @@ The goal is to try bare metal and serve real agent sessions from it, not to run 
 - **Non-ECC memory.** Bit errors are not corrected. Accepted for ephemeral sandboxes whose work is pushed to git; not acceptable for durable state.
 - **Disk.** Mirrored, the two 512 GB disks give about 512 GB, and thirteen sandboxes at Render's 40 GB writable limit do not fit. The node needs a per-sandbox quota or a disk-pressure alert.
 - **Uneven cores.** The scheduler prefers performance cores while they are free; under load a sandbox can land on efficiency cores and run slower. Pin by core type only if measured variance justifies it.
-- **Stock.** Whether the EX44 is orderable today, or is one of Hetzner's stock-limited `-LTD` models, was not checked.
+- **Stock.** The EX44 is only sold as the stock-limited EX44-1-LTD. It was not orderable on 2026-11-12; § What can be ordered today lists what was.
 - **One host cannot be replaced surge-first.** The production rule (user rule 2026-11-04, `infra/clusterapi/overlays/hetzner-caph/README.md`) adds a machine before removing one. A one-server pool has no second machine, so a template change or a remediation reprovisions the EX44 in place. Sandboxes running on it end, and new ones overflow to the cloud node until it is back. The user accepted this exception on 2026-11-11 for the single agent sandbox server. A second server is the way out of it, under step 6.
 
 ### What joining the cluster takes
