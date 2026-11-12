@@ -1,6 +1,6 @@
 # w8 · m148 — Static-site builds keep working when GitHub release downloads fail
 
-**Worker:** worker8 **Goal:** a native static-site build no longer fetches Hugo from `github.com/gohugoio/hugo/releases` on each build. When a platform toolchain fetch does fail, the deploy says which download failed and how, not `digest mismatch sha256:…`. **Status:** blocked — code shipped (`735c2474c`, `b05e83e1d`, Hugo pin in this batch); t001–t006 done; t007 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
+**Worker:** worker8 **Goal:** a native static-site build no longer fetches Hugo from `github.com/gohugoio/hugo/releases` on each build. When a platform toolchain fetch does fail, the deploy says which download failed and how, not `digest mismatch sha256:…`. **Status:** done (2026-11-12: t001–t006 shipped 2026-11-10; t007's production replay built, published and served a free static site)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | t002, t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 40m | t004 |
-| t007 | Closeout (live static deploy DoD) | 20m | t006 |
+| t007 | Closeout — **DONE** (live static deploy DoD) | 20m | t006 |
 
 ## Definition of done
 
