@@ -254,7 +254,7 @@ func imageMetadataClient(handler http.Handler) *http.Client {
 }
 
 func TestPrivateTCPPortBounds(t *testing.T) {
-	for _, port := range []string{"0/tcp", "65536/tcp", "18012/tcp", "18013/tcp", "19099/tcp", "bad/tcp", "8123/sctp", "8123"} {
+	for _, port := range []string{"0/tcp", "65536/tcp", "18012/tcp", "18013/tcp", "18014/tcp", "19099/tcp", "bad/tcp", "8123/sctp", "8123"} {
 		if _, err := privateTCPPorts(map[string]json.RawMessage{port: json.RawMessage(`{}`)}); err == nil {
 			t.Errorf("accepted %q", port)
 		}

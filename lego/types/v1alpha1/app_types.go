@@ -53,15 +53,16 @@ func (s AppSpec) EdgeCaching() bool {
 }
 
 // ServesEdgeCache reports whether the App's edge cache actually runs: a
-// caching profile (EdgeCaching) on a paid web service whose port is
-// configured, since the edge-cache sidecar fronts that one port. A free web
-// service never caches, as Render offers no edge caching on free web
-// services; an empty tier is the free tier. The operator starts the sidecar on
-// exactly this (plus knowing its own image), and bex-api reads it on both
-// sides of a profile save, so edge_cache_enabled / edge_cache_disabled never
-// name a cache the operator does not run (w9/m345).
+// caching profile (EdgeCaching) on a paid web service. A free web service
+// never caches, as Render offers no edge caching on free web services; an
+// empty tier is the free tier. The port mode does not matter: on an
+// image-port service the sidecar fronts the image network's primary. The
+// operator starts the sidecar on exactly this (plus knowing its own image),
+// and bex-api reads it on both sides of a profile save, so
+// edge_cache_enabled / edge_cache_disabled never name a cache the operator
+// does not run (w9/m345).
 func (s AppSpec) ServesEdgeCache() bool {
-	return s.EdgeCaching() && s.Tier != "" && s.Tier != "free" && !s.HasImagePorts()
+	return s.EdgeCaching() && s.Tier != "" && s.Tier != "free"
 }
 
 // AnnotationSavedConfigRevision is an opaque notification for an effective

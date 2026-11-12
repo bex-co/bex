@@ -163,20 +163,38 @@ func TestCacheProfileSavesRecordWhetherCachingTurnedOnOrOff(t *testing.T) {
 	}
 }
 
-// A web service on its image's port gets no edge-cache sidecar from the
-// operator (AppSpec.ServesEdgeCache), so a profile save on it turns no cache
-// on, and there is no cache to purge.
-func TestImagePortsServiceSavesNoCacheToggle(t *testing.T) {
-	app := cacheApp("web", "standard", appv1alpha1.TypeWebService)
-	app.Spec.PortMode = appv1alpha1.PortModeWebImageV1
-	svc, _ := newService(nil, app)
-	sink := &captureAuditSink{}
-	svc.Audit = sink
-	if got := saveCacheProfile(t, svc, sink, appv1alpha1.CacheProfileStatic); got != "kept" {
-		t.Fatalf("a profile save on an image-ports service recorded caching %s, want kept", got)
-	}
-	if _, err := svc.PurgeCache(context.Background(), "web"); err == nil {
-		t.Fatal("purging a service the operator runs no cache for must be refused")
+// A web service on its image's port gets the operator's edge-cache sidecar
+// like a configured-port one (AppSpec.ServesEdgeCache), so a profile save on
+// it is Render's edge_cache_enabled / _disabled and its cache can be purged.
+func TestImagePortsServiceTogglesAndPurgesItsCache(t *testing.T) {
+	for _, mode := range []string{appv1alpha1.PortModeWebImageV1, appv1alpha1.PortModeWebImageConfiguredV1} {
+		t.Run(mode, func(t *testing.T) {
+			app := cacheApp("web", "standard", appv1alpha1.TypeWebService)
+			app.Spec.PortMode = mode
+			svc, cl := newService(nil, app)
+			sink := &captureAuditSink{}
+			svc.Audit = sink
+			if got := saveCacheProfile(t, svc, sink, appv1alpha1.CacheProfileStatic); got != "on" {
+				t.Fatalf("turning caching on for an image-ports service recorded caching %s, want on", got)
+			}
+
+			mux := http.NewServeMux()
+			svc.RegisterREST(mux)
+			sink.events = nil
+			if rec := restDo(t, mux, http.MethodPost, "/v1/services/web/cache/purge", ""); rec.Code != http.StatusAccepted {
+				t.Fatalf("purge => %d %s, want Render's 202", rec.Code, rec.Body)
+			}
+			if getApp(t, cl, "web").Annotations[appv1alpha1.CachePurgedAtAnnotation] == "" {
+				t.Fatal("purge must stamp the App so the operator restarts the cache")
+			}
+			if n := sink.countVerb(core.AuditVerbPurgeCache); n != 1 {
+				t.Fatalf("purge recorded %d rows, want 1", n)
+			}
+
+			if got := saveCacheProfile(t, svc, sink, appv1alpha1.CacheProfileNone); got != "off" {
+				t.Fatalf("turning caching off for an image-ports service recorded caching %s, want off", got)
+			}
+		})
 	}
 }
 

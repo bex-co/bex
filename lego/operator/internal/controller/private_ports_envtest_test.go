@@ -97,6 +97,11 @@ func servicePortTargets(name string) map[int32]intstr.IntOrString {
 	GinkgoHelper()
 	svc := &corev1.Service{}
 	Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: "default"}, svc)).To(Succeed())
+	return portTargets(svc)
+}
+
+// portTargets maps svc's published ports to their targets.
+func portTargets(svc *corev1.Service) map[int32]intstr.IntOrString {
 	out := map[int32]intstr.IntOrString{}
 	for _, p := range svc.Spec.Ports {
 		out[p.Port] = p.TargetPort

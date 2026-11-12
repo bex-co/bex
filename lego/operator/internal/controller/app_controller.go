@@ -3532,8 +3532,10 @@ func (r *AppReconciler) deleteStaleChildren(ctx context.Context, objs ...client.
 
 // applyClusterIPService creates/updates one ClusterIP Service named name over
 // the App's runtime pods (privateServiceProjection's selector) on the App's
-// port, targeting the pods' named listener (servingTargetPort). Shared by
-// the primary CR-named Service and the slug alias so the two cannot drift.
+// port, targeting the pods' named listener (servingTargetPort). An image-port
+// service publishes its image network's ports instead, with a caching web
+// service's primary on the edge cache (targetImageEdgeCache). Shared by the
+// primary CR-named Service and the slug alias so the two cannot drift.
 // The port carries the server's own defaults so the mutate matches the stored
 // object and steady-state reconciles stay read-only (no perpetual no-op PUT).
 func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alpha1.App, name string, port int) error {
@@ -3541,12 +3543,17 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 	if err != nil {
 		return err
 	}
-	if !app.Spec.HasImagePorts() {
-		target, err := r.servingTargetPort(ctx, app.Namespace, selector, r.edgeCaches(app))
-		if err != nil {
+	cached := r.edgeCaches(app)
+	if !app.Spec.HasImagePorts() || cached {
+		var pods corev1.PodList
+		if err := r.List(ctx, &pods, client.InNamespace(app.Namespace), client.MatchingLabels(selector)); err != nil {
 			return err
 		}
-		ports[0].Name, ports[0].TargetPort = servingPortName, target
+		if !app.Spec.HasImagePorts() {
+			ports[0].Name, ports[0].TargetPort = servingPortName, servingTargetPort(pods.Items, cached)
+		} else if podsCachePort(pods.Items, app.ServicePort()) {
+			targetImageEdgeCache(ports, app.ServicePort())
+		}
 	}
 	ports = withPrivateNetworkPorts(app, ports)
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
@@ -3564,21 +3571,18 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 // would drop out of a named Service, so its numeric port is kept until it is
 // gone. With edge caching (w5/m151) the target is the cache's listener, held
 // back the same way while a live pod has no cache yet, so turning caching on
-// never empties the Service mid-rollout.
-func (r *AppReconciler) servingTargetPort(ctx context.Context, namespace string, selector map[string]string, cached bool) (intstr.IntOrString, error) {
-	var pods corev1.PodList
-	if err := r.List(ctx, &pods, client.InNamespace(namespace), client.MatchingLabels(selector)); err != nil {
-		return intstr.IntOrString{}, err
-	}
+// never empties the Service mid-rollout. pods are those the Service selects.
+func servingTargetPort(pods []corev1.Pod, cached bool) intstr.IntOrString {
 	target := servingPortName
 	if cached {
 		target = edgeCachePortName
 	}
-	for _, p := range pods.Items {
-		if p.DeletionTimestamp != nil {
+	for i := range pods {
+		p := &pods[i]
+		if !routablePod(p) {
 			continue
 		}
-		if target == edgeCachePortName && !podHasPortName(&p, edgeCachePortName) {
+		if target == edgeCachePortName && !podHasPortName(p, edgeCachePortName) {
 			target = servingPortName
 		}
 		for _, c := range p.Spec.Containers {
@@ -3586,11 +3590,20 @@ func (r *AppReconciler) servingTargetPort(ctx context.Context, namespace string,
 				continue
 			}
 			if !slices.ContainsFunc(c.Ports, func(cp corev1.ContainerPort) bool { return cp.Name == servingPortName }) {
-				return intstr.FromInt32(c.Ports[0].ContainerPort), nil
+				return intstr.FromInt32(c.Ports[0].ContainerPort)
 			}
 		}
 	}
-	return intstr.FromString(target), nil
+	return intstr.FromString(target)
+}
+
+// routablePod reports whether a pod a Service selects can still become one of
+// its endpoints, so its listeners must decide the Service's target ports. A
+// terminating pod cannot, and neither can a Failed or Succeeded one (an
+// eviction, a graceful node shutdown): it keeps its labels and its ReplicaSet
+// never deletes it, so counting it would hold a target back indefinitely.
+func routablePod(p *corev1.Pod) bool {
+	return p.DeletionTimestamp == nil && p.Status.Phase != corev1.PodFailed && p.Status.Phase != corev1.PodSucceeded
 }
 
 func podHasPortName(p *corev1.Pod, name string) bool {

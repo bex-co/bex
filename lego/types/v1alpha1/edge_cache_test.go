@@ -32,7 +32,10 @@ func TestServesEdgeCache(t *testing.T) {
 		{"a free web service", AppSpec{Tier: "free", CacheProfile: CacheProfileStatic}, false},
 		{"an empty tier is free", AppSpec{CacheProfile: CacheProfileStatic}, false},
 		{"not a web service", AppSpec{Tier: "standard", Type: TypePrivateService, CacheProfile: CacheProfileStatic}, false},
-		{"a web service on its image's port", AppSpec{Tier: "standard", Type: TypeWebService, PortMode: PortModeWebImageV1, CacheProfile: CacheProfileStatic}, false},
+		{"a web service on its image's port", AppSpec{Tier: "standard", Type: TypeWebService, PortMode: PortModeWebImageV1, CacheProfile: CacheProfileStatic}, true},
+		{"a web service on its image with an explicit port", AppSpec{Tier: "standard", Type: TypeWebService, PortMode: PortModeWebImageConfiguredV1, Port: 8080, CacheProfile: CacheProfileAll}, true},
+		{"a free web service on its image's port", AppSpec{Tier: "free", Type: TypeWebService, PortMode: PortModeWebImageV1, CacheProfile: CacheProfileStatic}, false},
+		{"a private service on its image's ports", AppSpec{Tier: "standard", Type: TypePrivateService, PortMode: PortModeImageV1, CacheProfile: CacheProfileStatic}, false},
 	} {
 		if got := tc.spec.ServesEdgeCache(); got != tc.want {
 			t.Errorf("%s: ServesEdgeCache() = %v, want %v", tc.name, got, tc.want)

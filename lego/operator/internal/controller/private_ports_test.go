@@ -309,10 +309,7 @@ func TestDiscoverWebServiceListeners(t *testing.T) {
 	if err := r.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: "db"}, svc); err != nil {
 		t.Fatal(err)
 	}
-	targets := map[int32]intstr.IntOrString{}
-	for _, p := range svc.Spec.Ports {
-		targets[p.Port] = p.TargetPort
-	}
+	targets := portTargets(svc)
 	if len(targets) != 3 || targets[9000] != intstr.FromInt32(9000) || targets[10000] != targets[8080] {
 		t.Fatalf("Service ports = %v, want 8080, 10000 on the primary's target, and 9000", targets)
 	}
