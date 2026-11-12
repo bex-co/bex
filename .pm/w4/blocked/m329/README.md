@@ -75,3 +75,19 @@ Why: a Chinese-language owner reads their service header, Metrics limits and a d
   - With `?lang=en` the same places read exactly as today.
 
 - **Addendum (QA loop round 146, 2026-11-11, pin `8330744bd643`):** one more member of the same port-detection family stays English. `/services/<id>/deploys?lang=zh` on a fresh Free image service (`docker.io/traefik/whoami:v1.10.1`) showed `paragraph: Waiting for the container to start before detecting its HTTP port` during its first deploy. It is written at `lego/operator/internal/controller/web_image_http.go:132`. Give it a reason code with the siblings above.
+
+## Post-release probe (QA loop round 168, 2026-11-12): t005's replay passes
+
+Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) carries `2a9b373b8`. Fixtures were two Free image services, both deleted afterwards (DELETE 204, then GET 404):
+
+- `qa-20261112-r168-zh` (`srv-dbqkcherbf4s73estue0`, `traefik/whoami:v1.10.1`);
+- `qa-20261112-r168-nf` (`srv-dbqkdhurbf4s73estug0`, the nonexistent tag `whoami:v0.0.0-qa168-nope`).
+
+- **Port detection in zh.** The `?lang=zh` Deploys row read "正在等待容器启动，然后检测其 HTTP 端口" at 04:53:39, then "已在端口 80 上检测到 HTTP，将通过该端口提供服务" at 04:54:12, then "已上线" at 04:54:44.
+- **Header and Metrics.**
+  - zh: the header term reads "标识（Slug）", and Metrics reads "限额 … 0.100 核";
+  - en: "Slug" and "Limit … 0.100 cores", unchanged.
+- **Image not found in zh.**
+  - REST `failureReason`: "the image docker.io/traefik/whoami:v0.0.0-qa168-nope was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists".
+  - The zh Deploys row: "在镜像仓库中找不到镜像 docker.io/traefik/whoami:v0.0.0-qa168-nope：仓库或标签不存在。请检查镜像 URL 和标签，或部署一个存在的镜像摘要". The en row is unchanged.
+- **Not caught:** the Events "部署已开始" row's port-detection line. The deploy went live before the Events tab was opened, and that line shows only while the deploy is open.
