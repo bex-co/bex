@@ -1,6 +1,6 @@
 # w8 · m158 — A crash or an out-of-memory kill of a running service is recorded with its cause
 
-**Worker:** worker8 **Goal:** when the process of a running service exits or is killed for memory, the Events timeline records it once, with the exit status or the memory limit and the instance, even when the restart is quick, on REST, GraphQL, MCP and the dashboard. **Status:** in progress (2026-11-12: t001–t007, t009 and t010 shipped; t008's replay on pin `a5be11e4e517` held DoD 1–7, and its last check, t010's quick-crash pairing and the public instance id, waits for the deploy that carries them)
+**Worker:** worker8 **Goal:** when the process of a running service exits or is killed for memory, the Events timeline records it once, with the exit status or the memory limit and the instance, even when the restart is quick, on REST, GraphQL, MCP and the dashboard. **Status:** done (2026-11-12: t001–t010 shipped; t008's replay held DoD 1–7 on pin `a5be11e4e517`, and t010's quick-crash pairing and public instance id on `f018ce9455c8`)
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t007 | Test coverage — **DONE**                                                                                 | 20m | t005       |
 | [t009](done/t009.md) | One `server_failed` per outage, whatever arrives first: a 10 s crash records two, and a health-check outage within 3 minutes of a recovered crash records none and leaves an unpaired recovery — **DONE** | 60m | t007 |
 | [t010](done/t010.md) | A crash that restarts before the sampler confirms an outage records `server_failed` and never `server_available`, so the event stays open — **DONE** | 45m | t009 |
-| t008 | Closeout (live replay on production)                                                                     | 30m | t010       |
+| [t008](done/t008.md) | Closeout (live replay on production) — **DONE** | 30m | t010 |
 
 ## Definition of done
 
