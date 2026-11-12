@@ -11,8 +11,14 @@
 - [x] **m298** — [Sandbox execution history (`/sandboxes/{id}/execs`), as on Render](done/m298/README.md) (9 tasks) — **DONE 2026-11-10**: verified on production (isolation matrix 42741929387) ← from `/pm-brainstorm more for w32` 2026-11-09, item 2 (reopens executions from the ADR018 `—` row; groups stay a non-goal)
 - [x] **m299** — [Remaining Render SDK gaps: relative remote paths and mint during resume](done/m299/README.md) (8 tasks) — **DONE 2026-11-10**: verified on production (isolation matrix 42741929387) ← from `/pm-brainstorm more for w32` 2026-11-09, item 3 (the m284 static review's residuals)
 
+- [ ] **m348** — [A sandbox command runs under `bash -c` in the home directory, as on Render](m348/README.md) (9 tasks) ← `/qa-find-bugs-cli` loop sweep 865a 2026-11-12: `copy ./run.sh sbx:run.sh` then `exec -- sh run.sh` fails (`can't open 'run.sh'`, exec runs in `/`), `bash` is missing from the `alpine:3` base (exit 127), and busybox `sh` rejects bash syntax; the Render SDK passes the command to `bash -c` in the home directory; corrects w22/001; major
+
 ## Inbox
 
+- [ ] [018](018.md) — A directory copied into a sandbox loses its files' modification times (1970), and uploads arrive owner-only (~45m) ← `/qa-find-bugs-cli` loop sweep dc0e 2026-11-12
+- [ ] [017](017.md) — A sandbox ended by its lifetime timeout answers 404 for up to ten minutes, then reads `terminated` at the wrong time (~60m) ← `/qa-find-bugs-cli` loop sweep 4488 2026-11-12; the lifetime-expiry half of w3/m318's DoD
+- [ ] [016](016.md) — A sandbox reads region `frankfurt` while its sandbox group reads `oregon` (~45m) ← `/qa-find-bugs-cli` loop sweep edb9 2026-11-12
+- [ ] [015](015.md) — `bex sandboxes list` returns the oldest sandbox first; ADR104 D2 says newest first (~45m) ← `/qa-find-bugs-cli` loop sweep 865a 2026-11-12
 - [x] [014](done/014.md) — `bex agent … -o json` ends with a blank line (the API's own trailing newline plus the CLI's) — DONE (the answer is trimmed before it is re-indented)
 - [x] [013](done/013.md) — the CLI docs and ADR018 still list "Render" prose and the `pg create` wizard hint as branding residuals; w2/073 and w2/082 rewrote both — DONE (docs, ADR018 and the pin-bump checklist now describe the product-name rule and the wizard rewrite)
 - [x] [012](done/012.md) — `BEX_WORKSPACE` set to a workspace name that starts with `tea-` is never resolved (sent as `ownerId`, "not allowed") — DONE (only a value with the id's whole shape is an id; `tea-house` is resolved as a name)

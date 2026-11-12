@@ -37,3 +37,10 @@
 - `Get`, `listFiltered` (under `status=terminated`), `executionsTarget` and the by-id router fall back to the ended record behind the same owner-or-admin boundary (`ownerCheck`, now shared with the live list); a repeat terminate answers 204; both mints, suspend and resume answer 409 `SANDBOX_ENDED` for an ended sandbox, and the mints for a live `errored` one. `Sandbox.terminatedAt` on REST and MCP; GraphQL gains `createdAt` and `terminatedAt`.
 - Render parity (t005): REST, GraphQL and MCP read the same ended sandbox (`TestTerminatedSandboxStaysReadable`); ADR018's row is ✅ with the 30-day window recorded as an assumption to re-check; ADR042 updated. A sandbox created before the migration and ended after it keeps only its OpenSandbox-derived fields (no name or group). Not filed: agent-session sandboxes are recorded too, as the live list shows them.
 - Tests: `TestSandboxRecordsPG`, `TestTerminatedSandboxStaysReadable`, `TestErroredSandboxRefusesConnectTokens`, `TestSweeperEndsAbsentSandboxesAndExpiresOldRecords`, the reaper assertion in `TestReconcileWorkspaceInventoryHonorsLongLifetimes`.
+
+## Live check, partial — 2026-11-12 (`/qa-find-bugs-cli` sweep 4488, w32)
+
+- **Deployed:** pin `3d66946c9e16` contains `c2eee0472`.
+- **Terminate path passes on production:** a sandbox stopped with `bex sandboxes stop` answers `409 SANDBOX_ENDED … was terminated at <real time>` and lists under `--status terminated` (sweeps 865a, 42aa, `bex-canary`).
+- **Lifetime-expiry path fails the DoD for a sandbox younger than ten minutes:** `--timeout 60` sandbox `sbx-dbqnb0qibtfs738vkrb0` answered `404 SANDBOX_NOT_FOUND` from 08:16:02 to 08:24:56 UTC, then read `terminated` with `terminatedAt` 08:25:09, nine minutes after it ended. Cause and fix: [w32/017](../../../w32/017.md) (`EndAbsentSandboxes`' ten-minute guard and sweep-time stamp).
+- **t008 Closeout waits for w32/017**, because the first DoD bullet names "a lifetime expiry".
