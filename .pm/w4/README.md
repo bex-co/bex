@@ -373,6 +373,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **602** — [A cold load of a service's Events tab first shows the actor as a raw user id ("by usr-…"), then swaps it for the email, although the event already carries the email](602.md) (~25m; minor) ← live `/qa-find-bugs w4` loop round 178, 2026-11-12
 - [ ] **601** — [The Events tab shows a deploy's duration as raw rounded seconds ("930s"), while its own Deploys list and header show "15m 29s"](601.md) (~20m; minor) ← live `/qa-find-bugs w4` loop round 175, 2026-11-12
 - [ ] **600** — [The zh dashboard shows every absolute timestamp in English ("November 11, 2026 at 11:06 PM"), while relative ages beside them are Chinese ("6分钟")](600.md) (~45m; minor) ← live `/qa-find-bugs w4` loop round 175, 2026-11-12
 - [x] **599** — [Deleting a registry credential names the blocking service by its Kubernetes object name, and keeps refusing for ~25 s after that service was deleted and answers 404](done/599.md) (~25m; minor) ← live `/qa-find-bugs w4` loop round 170, 2026-11-12 — **DONE 2026-11-11**
