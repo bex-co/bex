@@ -1,6 +1,6 @@
 # w9 · m345 — Render event types for features bex already has: `edge_cache_enabled`/`_disabled`/`_purged` and `pipeline_minutes_exhausted`
 
-**Worker:** worker9 **Goal:** the Events feed and outbound webhooks report edge-cache changes and builds refused for exhausted pipeline minutes with Render's event types, on every surface Render offers them. **Status:** in progress (t001–t007 done and deployed at `f018ce945`; the production check waits on w9/087, because every web service created since w4/m243 is in image-ports mode and never runs the edge cache)
+**Worker:** worker9 **Goal:** the Events feed and outbound webhooks report edge-cache changes and builds refused for exhausted pipeline minutes with Render's event types, on every surface Render offers them. **Status:** done (2026-11-12)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity: the four events match Render on REST, GraphQL, MCP, webhooks and the dashboard — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 45m | t005, t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
