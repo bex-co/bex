@@ -23,6 +23,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -94,8 +95,8 @@ func TestStreamExecAuthorizesMintsTicketAndRelaysSSE(t *testing.T) {
 	if gotNamespace != "tea-a-sandbox" || gotSandbox != "os-1" {
 		t.Errorf("ticket namespace/sandbox = %q/%q", gotNamespace, gotSandbox)
 	}
-	if len(gotCommand) != 3 || gotCommand[0] != "/bin/sh" || gotCommand[2] != "echo hi" {
-		t.Errorf("signed command = %v", gotCommand)
+	if !slices.Equal(gotCommand, execArgv("echo hi", true)) {
+		t.Errorf("signed command = %q", gotCommand)
 	}
 }
 
@@ -498,6 +499,7 @@ func TestExecAgentSessionSandboxRequiresViewSensitive(t *testing.T) {
 func TestExecAgentSessionSandboxSignsSessionClaimForDeveloper(t *testing.T) {
 	secret := []byte("exec-secret")
 	var gotAgentSession string
+	var gotCommand []string
 	gw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
 		if err != nil {
@@ -505,6 +507,7 @@ func TestExecAgentSessionSandboxSignsSessionClaimForDeveloper(t *testing.T) {
 			return
 		}
 		gotAgentSession = claims.AgentSessionID
+		gotCommand = claims.Command
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = w.Write([]byte("event: exit\ndata: {\"exit_code\":0}\n\n"))
 	}))
@@ -520,6 +523,11 @@ func TestExecAgentSessionSandboxSignsSessionClaimForDeveloper(t *testing.T) {
 	}
 	if gotAgentSession != "ags-one" {
 		t.Fatalf("ticket agent-session claim = %q, want ags-one", gotAgentSession)
+	}
+	// An agent session's command starts in its checkout, the image's working
+	// directory, not in $HOME (w32/m348 t004).
+	if want := execArgv("id", false); !slices.Equal(gotCommand, want) {
+		t.Fatalf("agent-session argv = %q, want %q", gotCommand, want)
 	}
 }
 
@@ -628,13 +636,12 @@ func TestStreamExecLiftsTheResumeWriteDeadlineOnceTheGatewayAccepts(t *testing.T
 	}
 }
 
-// Render's exec contract (render.com/docs/sandboxes-executing, read 2026-11-10):
-// the command is one string, run through `sh -c` so pipes, `&&`, quoting and
-// redirection are interpreted inside the sandbox. bex must hand the string to
-// the shell untouched, as ONE argument: splitting it on spaces, or quoting it
-// again, would change what runs. The page names `sh`, not `bash` (the Alpine
-// default image has no bash), and bex runs `/bin/sh -c` (w22/001).
-func TestExecHandsTheCommandStringToShAsOneUntouchedArgument(t *testing.T) {
+// Render's exec contract (w32/m348): the command is one string, passed to
+// `bash -c` (Render SDK 1.8.0 `SandboxClient.exec`) in a new shell in the
+// sandbox's home directory (render.com/docs/sandboxes-executing, read
+// 2026-11-12). bex must hand the string over untouched, as ONE argument:
+// splitting it on spaces, or quoting it again, would change what runs.
+func TestExecHandsTheCommandStringToTheWrapperAsOneUntouchedArgument(t *testing.T) {
 	secret := []byte("exec-secret")
 	var gotCommand []string
 	gw := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -658,8 +665,8 @@ func TestExecHandsTheCommandStringToShAsOneUntouchedArgument(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Exec: %v", err)
 	}
-	if want := []string{"/bin/sh", "-c", command}; strings.Join(gotCommand, "\x00") != strings.Join(want, "\x00") {
-		t.Errorf("argv = %q, want %q: the string must reach sh as one untouched argument", gotCommand, want)
+	if len(gotCommand) == 0 || gotCommand[len(gotCommand)-1] != command {
+		t.Errorf("argv = %q: the command must arrive as one untouched last argument", gotCommand)
 	}
 	// A nonzero exit is data the caller reads, never an error (the SDK does not
 	// raise on one, per the same page).

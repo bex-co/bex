@@ -566,8 +566,11 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		// Both defaults are digest-pinned (w7/m85): a sandbox template names an
 		// image bex RUNS. BEX_AGENT_SESSION_IMAGE is normally supplied by
 		// lego/operator/config/api/deployment.yaml — this default is the floor
-		// for a deployment that omits it, not the production value.
-		cfg.SandboxImage = p.str("BEX_SANDBOX_IMAGE", "docker.io/library/alpine:3@sha256:28bd5fe8b56d1bd048e5babf5b10710ebe0bae67db86916198a6eec434943f8b")
+		// for a deployment that omits it, not the production value. The base
+		// image is the Docker Official `bash` image (Alpine 3.24 plus bash
+		// 5.3), because Render runs a sandbox command under `bash -c`
+		// (w32/m348); it keeps Alpine's busybox tools, apk and musl resolver.
+		cfg.SandboxImage = p.str("BEX_SANDBOX_IMAGE", "docker.io/library/bash:5.3@sha256:589adbc588d8ef3c1ec3c68333faf4baf5dccb65d3cb50f6cf3d78cad2d6e1b0")
 		cfg.AgentSessionImage = p.str("BEX_AGENT_SESSION_IMAGE", "ghcr.io/bex-co/bex-agent-sandbox@sha256:4faafb4ad14e6d76be076fecffe1b02c06d21ec23d9ce1bba780da2af37c698a")
 		cfg.AgentSetupRegistries = getenv("BEX_AGENT_SETUP_REGISTRIES")
 		cfg.SandboxExecURL = getenv("BEX_SANDBOX_EXEC_URL")

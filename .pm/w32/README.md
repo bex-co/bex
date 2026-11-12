@@ -15,6 +15,7 @@
 
 ## Inbox
 
+- [ ] [019](019.md) — A sandbox's home directory is `/root`; Render's is `/home/render` (~45m) ← found while working w32/m348 2026-11-12
 - [ ] [018](018.md) — A directory copied into a sandbox loses its files' modification times (1970), and uploads arrive owner-only (~45m) ← `/qa-find-bugs-cli` loop sweep dc0e 2026-11-12
 - [ ] [017](017.md) — A sandbox ended by its lifetime timeout answers 404 for up to ten minutes, then reads `terminated` at the wrong time (~60m) ← `/qa-find-bugs-cli` loop sweep 4488 2026-11-12; the lifetime-expiry half of w3/m318's DoD
 - [ ] [016](016.md) — A sandbox reads region `frankfurt` while its sandbox group reads `oregon` (~45m) ← `/qa-find-bugs-cli` loop sweep edb9 2026-11-12

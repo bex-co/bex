@@ -70,7 +70,7 @@ type ExecConfig struct {
 
 // ExecRequest is the caller's exec input: OwnerID binds the workspace (Render's
 // query/body ownerId), SandboxID is the target, Command is the single command
-// string the Render CLI sends (run via `/bin/sh -c`).
+// string the Render CLI sends (run by bash, execArgv).
 type ExecRequest struct {
 	OwnerID   string
 	SandboxID string
@@ -91,6 +91,35 @@ type execTarget struct {
 // mints under (it has no caller identity). It is the shared sentinel defined by
 // the ticket package; aliased here for the existing call sites' readability.
 const systemExecSubject = sandboxexec.SystemSubject
+
+// execShell interprets the caller's command ($1) with `bash -c`, as Render's
+// exec does (Render SDK 1.8.0 `SandboxClient.exec`: "command is passed to
+// `bash -c` in the sandbox"). A root filesystem with no bash, such as a
+// sandbox suspended from the Alpine base before w32/m348, falls back to
+// `/bin/sh -c`. `exec` replaces the wrapper, so the exit code, signals and
+// output are the command's own.
+const execShell = `if command -v bash >/dev/null 2>&1; then exec bash -c "$1"; fi
+exec /bin/sh -c "$1"`
+
+// homeExecScript also starts the command in the sandbox user's home
+// directory (render.com/docs/sandboxes-executing, read 2026-11-12: "Each
+// command starts in a new shell in your sandbox's home directory"); pods/exec
+// has no working-directory field, so the wrapper changes directory itself.
+const homeExecScript = `cd -- "${HOME:-/}" 2>/dev/null || cd /
+` + execShell
+
+// execArgv is the argv a caller-facing exec runs. The command stays one
+// positional argument, never interpolated into the wrapper's source. Without
+// inHome the command keeps the image's working directory: an agent-session
+// sandbox's is the session's checkout (/workspace), as a Devin shell starts in
+// its repository (ADR047).
+func execArgv(command string, inHome bool) []string {
+	script := execShell
+	if inHome {
+		script = homeExecScript
+	}
+	return []string{"/bin/sh", "-c", script, "bex-exec", command}
+}
 
 func (s *Service) execEnabled() bool {
 	return s.Exec != nil && len(s.Exec.Secret) > 0 && s.Exec.GatewayURL != ""
@@ -119,7 +148,8 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	// The ticket binds the SUBSTRATE id, not the caller's: the gateway derives
 	// the pod name as `<id>-0`, and a caller may address the sandbox by its
 	// public `sbx-` id (w9/m94).
-	resp, err := s.mintAndDial(ctx, ws, raw.ID, raw.Metadata[metadataAgentSession], []string{"/bin/sh", "-c", req.Command})
+	agentSession := raw.Metadata[metadataAgentSession]
+	resp, err := s.mintAndDial(ctx, ws, raw.ID, agentSession, execArgv(req.Command, agentSession == ""))
 	if err != nil {
 		release()
 		return nil, nil, execTarget{}, err

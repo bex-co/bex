@@ -605,6 +605,20 @@ curl --config "$fixture_dir/rel-upload.curl" --silent --show-error --fail-with-b
 sandbox_exec "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$sandbox_a_id" 'cat "$HOME/m299-rel.txt"' "$fixture_dir/rel-read.txt"
 [ "$(cat "$fixture_dir/rel-read.txt")" = m298 ] || fail "a relative upload did not land under the sandbox user's home"
 pass "a relative remote path resolves under the sandbox user's home"
+
+# Render runs a command under `bash -c` in a new shell in the home directory
+# (w32/m348): a relative upload is readable by its relative path, and bash
+# syntax works without a `bash -c` prefix. The bash line comes second so a
+# `/bin/sh` fallback still prints the directory before it fails to parse.
+sandbox_exec "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$sandbox_a_id" 'pwd; echo "$HOME"; cat m299-rel.txt
+arr=(a b); echo ${arr[1]}; echo {1..3}; [ -x /bin/bash ] && echo shebang-ok' "$fixture_dir/exec-shell.txt"
+{ read -r exec_cwd; read -r exec_home; read -r exec_rel; read -r exec_bash; } <"$fixture_dir/exec-shell.txt" || true
+[ "$exec_cwd" != / ] && [ "$exec_cwd" = "$exec_home" ] && [ "$exec_rel" = m298 ] \
+  || fail "a command does not start in the sandbox user's home: $(tr '\n' ' ' <"$fixture_dir/exec-shell.txt")"
+pass "a command starts in the sandbox user's home, where a relative upload is readable by its relative path"
+[ "$exec_bash" = b ] && [ "$(sed -n '5,6p' "$fixture_dir/exec-shell.txt" | tr '\n' ' ')" = "1 2 3 shebang-ok " ] \
+  || fail "a command is not interpreted by bash, or /bin/bash is missing: $(tr '\n' ' ' <"$fixture_dir/exec-shell.txt")"
+pass "a command is interpreted by bash, and /bin/bash exists for #!/bin/bash scripts"
 if [ "$verify_agent_driver" = 1 ]; then
   container_agent="$(workload_container "$namespace_a" "$pod_agent")"
 fi

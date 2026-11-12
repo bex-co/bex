@@ -1,15 +1,15 @@
 # w32 · m348 — A sandbox command runs under `bash -c` in the home directory, as on Render
 
-**Worker:** worker32 **Goal:** a command sent to a Render sandbox on bex (CLI `sandboxes exec`, the Render SDK's `exec`, REST, GraphQL or MCP) starts in the sandbox user's home directory and is interpreted by `bash -c`, so the documented "copy a file in, then run it" workflow and bash syntax work unchanged **Status:** todo
+**Worker:** worker32 **Goal:** a command sent to a Render sandbox on bex (CLI `sandboxes exec`, the Render SDK's `exec`, REST, GraphQL or MCP) starts in the sandbox user's home directory and is interpreted by `bash -c`, so the documented "copy a file in, then run it" workflow and bash syntax work unchanged **Status:** in progress (t001–t004 done; t005 production walk next)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design: Render's exec contract, the base image and the correction of w22/001 | 45m | — |
-| t002 | The base sandbox image ships `bash` and every tool the file gateway's scripts use | 1.5h | t001 |
-| t003 | Exec starts in `$HOME` and runs the command under `bash -c`, falling back to `sh` | 1h | t001 |
-| t004 | Blast radius: agent-session sandboxes, suspended rootfs images and the other `/bin/sh` callers | 30m | t003 |
+| t001 | Design: Render's exec contract, the base image and the correction of w22/001 — **DONE** | 45m | — |
+| t002 | The base sandbox image ships `bash` and every tool the file gateway's scripts use — **DONE** | 1.5h | t001 |
+| t003 | Exec starts in `$HOME` and runs the command under `bash -c`, falling back to `sh` — **DONE** | 1h | t001 |
+| t004 | Blast radius: agent-session sandboxes, suspended rootfs images and the other `/bin/sh` callers — **DONE** | 30m | t003 |
 | t005 | Production walk with the release CLI and the isolation matrix | 45m | t002, t003, t004 |
 | t006 | Render parity | 20m | t005 |
 | t007 | Simplify | 15m | t006 |

@@ -18,6 +18,9 @@ package main
 
 import (
 	"net/http"
+	"os/exec"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
@@ -53,6 +56,15 @@ func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 	base := templates["base"]
 	if base.Image != "alpine:3" {
 		t.Fatalf("base template image = %q", base.Image)
+	}
+	// w32/m348: the base entrypoint links /bin/bash, then sleeps. OpenSandbox's
+	// bootstrap runs a multi-word entrypoint as argv, so it must be one sh -c
+	// script that parses.
+	if !slices.Equal(base.Entrypoint, []string{"/bin/sh", "-c", baseEntrypoint}) || !strings.HasSuffix(baseEntrypoint, "\nexec sleep infinity") {
+		t.Fatalf("base template entrypoint = %q", base.Entrypoint)
+	}
+	if out, err := exec.Command("/bin/sh", "-n", "-c", baseEntrypoint).CombinedOutput(); err != nil {
+		t.Fatalf("base entrypoint does not parse: %v: %s", err, out)
 	}
 	// w8/247: a sandbox created with no plan runs the base template labelled
 	// with the default plan, so the base template is that plan's size:

@@ -87,6 +87,13 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// baseEntrypoint links /bin/bash to the official bash image's
+// /usr/local/bin/bash, so a script with a `#!/bin/bash` line runs as it would
+// on Render (w32/m348), then sleeps. An image that already has /bin/bash, or
+// has no /usr/local/bin/bash, is left alone.
+const baseEntrypoint = `if [ ! -e /bin/bash ] && [ -x /usr/local/bin/bash ]; then ln -s /usr/local/bin/bash /bin/bash; fi
+exec sleep infinity`
+
 func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Template {
 	// A create without a plan keeps its template's size and is labelled with
 	// the default plan, so the base template is the default plan's size: a
@@ -95,7 +102,7 @@ func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Te
 	baseCPU, baseMemory, _ := sandbox.PlanLimits(sandbox.DefaultPlan)
 	return map[string]sandbox.Template{
 		"base": {
-			Image: baseImage, Entrypoint: []string{"sleep", "infinity"},
+			Image: baseImage, Entrypoint: []string{"/bin/sh", "-c", baseEntrypoint},
 			CPU: baseCPU, Memory: baseMemory,
 		},
 		"agent": {
