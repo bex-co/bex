@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import i18n from "@/i18n/init";
 import { describe, expect, it, vi } from "vitest";
 import { act, type ReactElement } from "react";
 import { hydrateRoot } from "react-dom/client";
@@ -371,6 +372,58 @@ describe("ChargesCard", () => {
     expect(live).not.toHaveTextContent("(deleted)");
     expect(live).toHaveAttribute("title", "api (srv-live)");
   });
+
+  // w4/588: the deleted marker is part of the row's name with a real space,
+  // and two rows sharing a name show their ids; a unique name shows none.
+  it.each([
+    ["en", "(deleted)"],
+    ["zh", "（已删除）"],
+  ])(
+    "reads a deleted row as one name and tells same-named rows apart (%s)",
+    async (lng) => {
+      await i18n.changeLanguage(lng);
+      try {
+        render(
+          <ChargesCard
+            estimatedCost={estimate([
+              resource({
+                serviceId: "srv-gitea-1",
+                serviceName: "gitea",
+                deleted: true,
+                costUsd: "1.48",
+              }),
+              resource({
+                serviceId: "srv-gitea-2",
+                serviceName: "gitea",
+                deleted: true,
+                costUsd: "0.01",
+              }),
+              resource({
+                serviceId: "srv-api",
+                serviceName: "api",
+                deleted: true,
+                costUsd: "1.10",
+              }),
+            ])}
+            invoicedUsd={null}
+            loading={false}
+            period=""
+            now={MID_JULY}
+          />,
+        );
+        fireEvent.click(screen.getByRole("button", { name: /Services|服务/ }));
+        const marker = i18n.t("usage.resourceDeleted");
+        expect(
+          screen.getByRole("button", { name: `api ${marker}$1.10` }),
+        ).toBeInTheDocument();
+        expect(screen.getByText(/· srv-gitea-1/)).toBeInTheDocument();
+        expect(screen.getByText(/· srv-gitea-2/)).toBeInTheDocument();
+        expect(screen.queryByText(/· srv-api/)).toBeNull();
+      } finally {
+        await i18n.changeLanguage("en");
+      }
+    },
+  );
 
   it("labels a zero rate as included rather than as $0/hr", () => {
     render(

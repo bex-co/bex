@@ -127,7 +127,14 @@ function ChargeRow({ charge }: { charge: ChargeLine }) {
   );
 }
 
-function ResourceRow({ resource }: { resource: ResourceEstimate }) {
+function ResourceRow({
+  resource,
+  sharedName,
+}: {
+  resource: ResourceEstimate;
+  /** Another row in its group shows the same name, so the id tells them apart. */
+  sharedName: boolean;
+}) {
   const { t, i18n } = useTranslations();
   const [open, setOpen] = useState(false);
   // A charge outlives its resource. Show the name bex retained, marked as
@@ -151,16 +158,28 @@ function ResourceRow({ resource }: { resource: ResourceEstimate }) {
             open && "rotate-90",
           )}
         />
-        <span
-          className="min-w-0 flex-1 truncate text-sm font-medium"
-          title={
-            named ? `${label} (${resource.serviceId})` : resource.serviceId
-          }
-        >
-          {label}
-          {resource.deleted ? (
-            <span className="text-muted-foreground ml-1.5 font-normal">
-              {t("usage.resourceDeleted")}
+        <span className="flex min-w-0 flex-1 items-baseline text-sm font-medium">
+          <span
+            className="truncate"
+            title={
+              named ? `${label} (${resource.serviceId})` : resource.serviceId
+            }
+          >
+            {label}
+            {/* Real spaces, so the row reads "api (deleted)" (w4/588). */}
+            {resource.deleted ? (
+              <>
+                {" "}
+                <span className="text-muted-foreground font-normal">
+                  {t("usage.resourceDeleted")}
+                </span>
+              </>
+            ) : null}
+          </span>
+          {/* Outside the truncation: a long name gives way, never the id. */}
+          {named && sharedName ? (
+            <span className="text-muted-foreground shrink-0 whitespace-pre font-mono text-xs font-normal">
+              {` · ${resource.serviceId}`}
             </span>
           ) : null}
         </span>
@@ -218,6 +237,12 @@ function CategoryRow({
             <ResourceRow
               key={`${r.resourceKind}:${r.serviceId}`}
               resource={r}
+              sharedName={
+                r.serviceName !== "" &&
+                category.resources.some(
+                  (other) => other !== r && other.serviceName === r.serviceName,
+                )
+              }
             />
           ))}
         </div>
