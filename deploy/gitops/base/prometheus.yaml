@@ -528,8 +528,11 @@ spec:
                     # BexApiOriginLatencyHigh. Its labels are bounded by
                     # construction (route = registered mux pattern, never a path;
                     # tool/operation = closed registry) — see
-                    # lego/backend/internal/api/httpmetrics.go.
-                    regex: bex_(billing|agent_session|agent_platform_model|sandbox|webhooks|push|api)_.*
+                    # lego/backend/internal/api/httpmetrics.go. usage =>
+                    # UsageHourNearlyUnmeterable (w6/m334), whose gauge shipped
+                    # without this entry and so was never stored: the same
+                    # never-arrived failure as webhooks above.
+                    regex: bex_(billing|agent_session|agent_platform_model|sandbox|webhooks|push|api|usage)_.*
                     action: keep
               # Build-plane SLIs from the operator's own registry (docs/ADR060
               # D5). This job is why the series are readable at all: the manager

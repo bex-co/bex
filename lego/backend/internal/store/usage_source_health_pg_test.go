@@ -231,7 +231,7 @@ func TestCloseIdleUsageSourceStreamsKeepsCoverageHealthy(t *testing.T) {
 // counts, a degraded one was metered, and an hour already past the window is
 // not reported (it can no longer be metered). Dated 2001 so streams other
 // tests left in the shared database are outside the window.
-func TestOldestUnmeteredUsageHoursPG(t *testing.T) {
+func TestUnmeteredUsageHolesPG(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
 		testenv.Skip(t, "BEX_TEST_DB_URI not set")
@@ -285,10 +285,21 @@ func TestOldestUnmeteredUsageHoursPG(t *testing.T) {
 		record("srv-unmetered-b-"+tenant.ID, UsageSourceDirect, settled.Add(-5*time.Hour), w, UsageSourceHealthy)
 	}
 
-	got, err := st.OldestUnmeteredUsageHours(ctx, now)
-	if err != nil {
-		t.Fatalf("OldestUnmeteredUsageHours: %v", err)
+	oldest := func(at time.Time) map[string]time.Time {
+		t.Helper()
+		holes, err := st.UnmeteredUsageHoles(ctx, at)
+		if err != nil {
+			t.Fatalf("UnmeteredUsageHoles: %v", err)
+		}
+		out := map[string]time.Time{}
+		for _, h := range holes {
+			if current, seen := out[h.Source]; !seen || h.Window.Before(current) {
+				out[h.Source] = h.Window
+			}
+		}
+		return out
 	}
+	got := oldest(now)
 	want := map[string]time.Time{UsageSourceHTTP: hole, UsageSourceDirect: last.Add(time.Hour)}
 	if !maps.EqualFunc(got, want, time.Time.Equal) {
 		t.Fatalf("oldest unmetered hours = %v, want %v (websocket's degraded hour was metered)", got, want)
@@ -303,17 +314,13 @@ func TestOldestUnmeteredUsageHoursPG(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = $1`, "srv-unmetered-b-"+tenant.ID).Scan(&through); err != nil || through == nil || !through.Equal(last.Add(time.Hour)) {
 		t.Fatalf("taken-over stream ends %v (%v), want an hour after its last reading %v", through, err, last)
 	}
-	if got, err = st.OldestUnmeteredUsageHours(ctx, now); err != nil || !got[UsageSourceDirect].IsZero() {
-		t.Fatalf("after the close, direct's oldest unmetered hour = %v (%v), want none", got[UsageSourceDirect], err)
+	if got = oldest(now); !got[UsageSourceDirect].IsZero() {
+		t.Fatalf("after the close, direct's oldest unmetered hour = %v, want none", got[UsageSourceDirect])
 	}
 
 	// Once the hole is past the window it is skipped for good, not reported.
 	later := now.Add(20 * time.Hour)
-	got, err = st.OldestUnmeteredUsageHours(ctx, later)
-	if err != nil {
-		t.Fatalf("OldestUnmeteredUsageHours later: %v", err)
-	}
-	if h, ok := got[UsageSourceHTTP]; ok && !h.After(hole) {
+	if h, ok := oldest(later)[UsageSourceHTTP]; ok && !h.After(hole) {
 		t.Fatalf("http hole %v reported at %v, past the catch-up window", h, later)
 	}
 }

@@ -21,10 +21,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -86,10 +86,10 @@ type memUsageStore struct {
 	egressIdentities      map[string]store.EgressIdentity
 	egressIdentityErr     error
 	egressIdentityRecords int
-	// oldestUnmetered is what OldestUnmeteredUsageHours answers; closedAtLast
-	// captures each CloseUsageSourceStreamsAtLastReading call.
-	oldestUnmetered map[string]time.Time
-	closedAtLast    []store.UsageResourceRef
+	// holes is what UnmeteredUsageHoles answers; closedAtLast captures each
+	// CloseUsageSourceStreamsAtLastReading call.
+	holes        []store.UsageHole
+	closedAtLast []store.UsageResourceRef
 }
 
 func (m *memUsageStore) CloseUsageSourceStreamsAtLastReading(_ context.Context, ref store.UsageResourceRef) error {
@@ -99,10 +99,10 @@ func (m *memUsageStore) CloseUsageSourceStreamsAtLastReading(_ context.Context, 
 	return nil
 }
 
-func (m *memUsageStore) OldestUnmeteredUsageHours(_ context.Context, _ time.Time) (map[string]time.Time, error) {
+func (m *memUsageStore) UnmeteredUsageHoles(_ context.Context, _ time.Time) ([]store.UsageHole, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return maps.Clone(m.oldestUnmetered), nil
+	return slices.Clone(m.holes), nil
 }
 
 func (m *memUsageStore) RecordAppEgressIdentity(_ context.Context, appID string, identity store.EgressIdentity) error {

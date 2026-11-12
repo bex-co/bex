@@ -26,3 +26,13 @@
 - **Expected outcome:** a metering outage is fixed within its catch-up window instead of being skipped for good.
 - **Why now:** w4/496 made settled holes pass automatically; without an alert that pass is silent.
 - **Render parity task:** omitted, ops only: a metric, an alert and an ADR note, no REST/GraphQL/MCP/UI change.
+
+## Production check — 2026-11-12, first deploy (run 43167265536)
+
+- bex-api publishes the gauge: read from a pod's `/metrics`.
+- **Prometheus did not store it.** The bex-api scrape job keeps only `bex_(billing|agent_session|agent_platform_model|sandbox|webhooks|push|api)_.*`, so the alert evaluated an absent series. Fixed: `usage` was added to the keep-list.
+- **Every hole was unfillable.** All 25 belonged to services deleted before w6/m333. Once scraped, the alert would have paged for about two days on them.
+  - 24 were egress holes with no recorded identity, which the retired pass never meters. Fixed: the gauge counts a deleted App's hole only for its `retiredAppKinds` plus its disk (`TestPublishUnmeteredHoursSkipsHolesNoMeterWillFill`).
+  - 1 was a disk hole that should not have existed: `CloseUsageSourceStreams` had pushed an already-ended disk stream back out to the deletion hour. Fixed: a close never extends a stream that ended earlier (`LEAST`).
+  - Retired records are now kept two hours past the 48 h window, so the gauge still knows a deletion for as long as it reports that deletion's holes.
+- t006 reads the series in Prometheus again after this fix deploys.

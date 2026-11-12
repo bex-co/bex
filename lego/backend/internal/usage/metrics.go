@@ -19,6 +19,7 @@ package usage
 import (
 	"context"
 	"log"
+	"slices"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -70,10 +71,43 @@ func (s *Service) publishUnmeteredHours(ctx context.Context) {
 	}
 	ctx, cancel := context.WithTimeout(ctx, unmeteredReadTimeout)
 	defer cancel()
-	oldest, err := s.Store.OldestUnmeteredUsageHours(ctx, s.Now().UTC())
+	now := s.Now().UTC()
+	oldest, err := s.oldestFillableHoles(ctx, now)
 	if err != nil {
 		log.Printf("usage: read oldest unmetered hours: %v", err)
 		return
 	}
 	s.Metrics.setOldestUnmetered(oldest)
+}
+
+// oldestFillableHoles is, per source, the oldest unmetered hour a meter will
+// still write. A deleted App owes its retiredAppKinds and its disk, which the
+// disk meter bills from the closed disk period. Egress without a recorded
+// identity is never metered after the deletion, so such a hole is an
+// undercount that coverage reports, not one an operator can fill in time.
+func (s *Service) oldestFillableHoles(ctx context.Context, now time.Time) (map[string]time.Time, error) {
+	holes, err := s.Store.UnmeteredUsageHoles(ctx, now)
+	if err != nil || len(holes) == 0 {
+		return nil, err
+	}
+	retired, err := s.Store.ListRetiredUsageResources(ctx, now.Add(-retiredRecordRetention))
+	if err != nil {
+		return nil, err
+	}
+	owed := map[string][]string{}
+	for _, r := range retired {
+		if r.ResourceKind == store.ResourceKindService {
+			owed[r.ResourceID] = append(retiredAppKinds(r), store.UsageKindDiskGBSeconds)
+		}
+	}
+	oldest := map[string]time.Time{}
+	for _, hole := range holes {
+		if kinds, deleted := owed[hole.ServiceID]; deleted && hole.ResourceKind == store.ResourceKindService && !slices.Contains(kinds, hole.Kind) {
+			continue
+		}
+		if current, seen := oldest[hole.Source]; !seen || hole.Window.Before(current) {
+			oldest[hole.Source] = hole.Window
+		}
+	}
+	return oldest, nil
 }

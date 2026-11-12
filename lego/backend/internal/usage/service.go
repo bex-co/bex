@@ -69,8 +69,8 @@ type UsageStore interface {
 	RecordUsageSourceHealth(ctx context.Context, records []store.UsageSourceRecord) error
 	ReconcileUsageSourceStreams(ctx context.Context, active []store.UsageResourceRef, through time.Time) error
 	CurrentUsageCoverage(ctx context.Context, workspaceID string, now time.Time) (store.UsageCoverage, error)
-	// The oldest still-meterable unmetered hour per source, fleet-wide (w6/m334).
-	OldestUnmeteredUsageHours(ctx context.Context, now time.Time) (map[string]time.Time, error)
+	// Every coverage stream's oldest unmetered hour, fleet-wide (w6/m334).
+	UnmeteredUsageHoles(ctx context.Context, now time.Time) ([]store.UsageHole, error)
 	LatestUsageWindow(ctx context.Context, resourceKind, serviceID, kind string) (time.Time, error)
 	// The provisioned-disk meter reads control-plane rows rather than the
 	// cluster, so it needs its own window integration and its own cursor.
@@ -641,7 +641,7 @@ func (s *Service) compact(ctx context.Context) {
 	// A deleted resource retired before the catch-up window can no longer be
 	// metered (w4/m173). Pruned here because compaction runs with or without
 	// Prometheus, while the App delete trigger always records.
-	if _, err := s.Store.PruneRetiredUsageResources(ctx, now.Add(-catchupLimit)); err != nil {
+	if _, err := s.Store.PruneRetiredUsageResources(ctx, now.Add(-retiredRecordRetention)); err != nil {
 		log.Printf("usage: prune retired resources: %v", err)
 	}
 	res, err := s.Store.CompactUsage(ctx, before)
@@ -963,6 +963,11 @@ func (s *Service) meterDatastoresThrough(ctx context.Context, datastores []datas
 		}
 	}
 }
+
+// retiredRecordRetention keeps a retired record past the catch-up window's
+// settled edge (49 h from the last closed hour), so the unmetered-hour gauge
+// still knows an App was deleted for as long as it reports that App's holes.
+const retiredRecordRetention = catchupLimit + 2*time.Hour
 
 // retiredAppKinds are the meters a deleted App owes its final hours to. Pods
 // and build Jobs are named from the derived CR identity, but egress is keyed

@@ -102,6 +102,15 @@ func TestRetiredUsageResourcesPG(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = $1`, kv.ResourceID).Scan(&through); err != nil || !through.Equal(window.Add(time.Hour)) {
 		t.Fatalf("stream expected_through = %v (%v), want %v", through, err, window.Add(time.Hour))
 	}
+	// A later close never stretches a stream that already ended earlier (a
+	// disk deleted before its App), which would expect hours no meter writes
+	// (w6/m334).
+	if err := st.CloseUsageSourceStreams(ctx, UsageResourceRef{ResourceKind: ResourceKindKeyValue, ServiceID: kv.ResourceID}, window.Add(3*time.Hour)); err != nil {
+		t.Fatalf("CloseUsageSourceStreams later: %v", err)
+	}
+	if err := pool.QueryRow(ctx, `SELECT expected_through FROM usage_source_streams WHERE service_id = $1`, kv.ResourceID).Scan(&through); err != nil || !through.Equal(window.Add(time.Hour)) {
+		t.Fatalf("a later close moved expected_through to %v (%v), want it kept at %v", through, err, window.Add(time.Hour))
+	}
 
 	// Records past the catch-up window are pruned.
 	if _, err := pool.Exec(ctx, `UPDATE usage_retired_resources SET retired_at = now() - interval '3 days' WHERE resource_id = $1`, kv.ResourceID); err != nil {

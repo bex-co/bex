@@ -316,7 +316,10 @@ func (s *PGStore) ReconcileUsageSourceStreams(ctx context.Context, active []Usag
 // hour, leaving phantom gaps after a catch-up (w4/m173).
 func (s *PGStore) CloseUsageSourceStreams(ctx context.Context, ref UsageResourceRef, through time.Time) error {
 	_, err := s.Pool.Exec(ctx,
-		`UPDATE usage_source_streams SET expected_through = $3 WHERE resource_kind = $1 AND service_id = $2`,
+		// LEAST: a stream that already ended earlier (a disk deleted before its
+		// App, closed by CloseIdleUsageSourceStreams) keeps that end, rather
+		// than being stretched to the deletion hour it has no rows for.
+		`UPDATE usage_source_streams SET expected_through = LEAST(COALESCE(expected_through, $3), $3) WHERE resource_kind = $1 AND service_id = $2`,
 		NormalizeResourceKind(ref.ResourceKind), ref.ServiceID, through.UTC().Truncate(time.Hour))
 	return err
 }
@@ -461,33 +464,40 @@ func (s *PGStore) usageCoverageStreams(ctx context.Context, from, to time.Time, 
 	return streamByKey, streamOrder, rows.Err()
 }
 
-// OldestUnmeteredUsageHours returns, per source, the start of the oldest hour
-// in any workspace's coverage streams that is still inside the catch-up window
-// and has no metered reading: no health row, or an unavailable one. It is the
-// hour the coverage watermark stops at (evaluateStreamCoverage). Once it falls
-// past usageSettledBefore it can never be metered and is skipped for good
-// (w4/496), so its age is what an operator has to act on (w6/m334). A source
-// with no such hour is absent.
-func (s *PGStore) OldestUnmeteredUsageHours(ctx context.Context, now time.Time) (map[string]time.Time, error) {
+// UsageHole is one coverage stream's oldest hour still inside the catch-up
+// window with no metered reading: no health row, or an unavailable one.
+type UsageHole struct {
+	ResourceKind string
+	ServiceID    string
+	Kind         string
+	Source       string
+	Window       time.Time
+}
+
+// UnmeteredUsageHoles returns, for every workspace's coverage streams, each
+// stream's oldest hole: the hour its coverage watermark stops at
+// (evaluateStreamCoverage). Once that hour falls past usageSettledBefore it
+// can never be metered and is skipped for good (w4/496), so its age is what an
+// operator has to act on (w6/m334). Whether a meter can still fill it is the
+// caller's to judge.
+func (s *PGStore) UnmeteredUsageHoles(ctx context.Context, now time.Time) ([]UsageHole, error) {
 	latestClosed := now.UTC().Truncate(time.Hour)
 	settled := usageSettledBefore(latestClosed)
 	streams, order, err := s.usageCoverageStreams(ctx, settled, latestClosed, "")
 	if err != nil {
 		return nil, err
 	}
-	oldest := map[string]time.Time{}
+	var holes []UsageHole
 	for _, key := range order {
 		stream := streams[key]
 		// From settled on, the watermark stops at the first unmetered hour.
 		hole, target, _ := evaluateStreamCoverage(stream, settled, latestClosed)
-		if !hole.Before(target) {
-			continue
-		}
-		if current, seen := oldest[stream.Source]; !seen || hole.Before(current) {
-			oldest[stream.Source] = hole
+		if hole.Before(target) {
+			holes = append(holes, UsageHole{ResourceKind: stream.ResourceKind, ServiceID: stream.ServiceID,
+				Kind: stream.Kind, Source: stream.Source, Window: hole})
 		}
 	}
-	return oldest, nil
+	return holes, nil
 }
 
 // maxDegradedSources caps how many degraded source names a coverage answer
