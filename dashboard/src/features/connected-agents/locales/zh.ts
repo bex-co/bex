@@ -7,7 +7,7 @@ const zh: Record<string, TranslationEntry> = {
   },
   "connectedAgents.description": {
     message:
-      "您已授权代表您行事的 OAuth 客户端。撤销后将立即使其访问令牌失效。",
+      "你已授权代表你行事的 OAuth 客户端。撤销后将立即使其访问令牌失效。",
     description: "Connected Agents settings card description",
   },
   "connectedAgents.colClient": {
@@ -27,7 +27,7 @@ const zh: Record<string, TranslationEntry> = {
     description: "Connected Agents empty state title",
   },
   "connectedAgents.emptyBody": {
-    message: "您尚未授权任何 OAuth 客户端。",
+    message: "你尚未授权任何 OAuth 客户端。",
     description: "Connected Agents empty state body",
   },
   "connectedAgents.errorTitle": {
@@ -53,7 +53,7 @@ const zh: Record<string, TranslationEntry> = {
   },
   "connectedAgents.revokeConfirmBody": {
     message:
-      "此操作将立即使该客户端持有的所有访问令牌失效。它需要重新获得授权才能再次代表您行事。",
+      "此操作将立即使该客户端持有的所有访问令牌失效。它需要重新获得授权才能再次代表你行事。",
     description: "Connected Agents revoke confirmation dialog body",
   },
   "connectedAgents.revokeCancel": {

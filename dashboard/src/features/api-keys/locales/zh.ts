@@ -53,7 +53,7 @@ const zhApiKeys: Record<string, TranslationEntry> = {
     description: "API Keys state when the caller lacks permission (403)",
   },
   "apiKeys.forbiddenBody": {
-    message: "您没有权限管理此工作区的 API 密钥。",
+    message: "你没有权限管理此工作区的 API 密钥。",
     description: "API Keys forbidden-state body",
   },
   "apiKeys.errorTitle": {

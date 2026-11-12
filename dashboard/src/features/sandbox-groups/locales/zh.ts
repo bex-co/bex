@@ -8,7 +8,7 @@ const zhSandboxGroups: Record<string, TranslationEntry> = {
   },
   "sandboxGroups.createDescription": {
     message:
-      "沙箱组限制其中同时处于活动状态的沙箱数量。沙箱组名称在您的工作区内必须唯一。",
+      "沙箱组限制其中同时处于活动状态的沙箱数量。沙箱组名称在你的工作区内必须唯一。",
     description: "New-sandbox-group dialog description",
   },
   "sandboxGroups.fieldName": {

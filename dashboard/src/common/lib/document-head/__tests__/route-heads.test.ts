@@ -100,14 +100,14 @@ const staticRouteCases: Array<
     ForgotPasswordRoute,
     { search: {} },
     "Reset your password",
-    "重置您的密码",
+    "重置你的密码",
   ],
   [
     "login",
     LoginRoute,
     { search: {} },
     "Sign in to your account",
-    "登录您的账户",
+    "登录你的账户",
   ],
   ["logout", LogoutRoute, { search: {} }, "Sign out", "退出登录"],
   [
@@ -122,14 +122,14 @@ const staticRouteCases: Array<
     SignUpRoute,
     { search: {} },
     "Create your account",
-    "创建您的账户",
+    "创建你的账户",
   ],
   [
     "email verification",
     VerificationRoute,
     { search: {} },
     "Verify your email",
-    "验证您的邮箱",
+    "验证你的邮箱",
   ],
   ["Blueprints", BlueprintsRoute, { search: {} }, "Blueprints", "蓝图"],
   [

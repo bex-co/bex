@@ -839,7 +839,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Empty state title when the caller lacks can_view_logs",
   },
   "keyvalue.logsUnauthorizedBody": {
-    message: "您没有权限查看此 Key Value 存储的日志。",
+    message: "你没有权限查看此 Key Value 存储的日志。",
     description: "Empty state body for a 403 on the logs query",
   },
 };

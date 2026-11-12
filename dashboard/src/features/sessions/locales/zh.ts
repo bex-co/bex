@@ -6,7 +6,7 @@ const zh: Record<string, TranslationEntry> = {
     description: "Active Sessions settings card title",
   },
   "activeSessions.description": {
-    message: "当前以您身份登录的浏览器和设备。",
+    message: "当前以你的身份登录的浏览器和设备。",
     description: "Active Sessions settings card description",
   },
   "activeSessions.signOutOthers": {
@@ -55,7 +55,7 @@ const zh: Record<string, TranslationEntry> = {
     description: "Active Sessions empty state title",
   },
   "activeSessions.emptyBody": {
-    message: "未找到您账户的活跃会话。",
+    message: "你的账户没有活跃会话。",
     description: "Active Sessions empty state body",
   },
   "activeSessions.errorTitle": {

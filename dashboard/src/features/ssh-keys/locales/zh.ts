@@ -6,7 +6,7 @@ const zhSSHKeys: Record<string, TranslationEntry> = {
     description: "SSH keys settings card title",
   },
   "sshKeys.description": {
-    message: "注册到您身份的公钥。私钥始终保留在您的设备上。",
+    message: "注册在你的身份下的公钥。私钥始终保留在你的设备上。",
     description: "SSH keys settings card description",
   },
   "sshKeys.add": {

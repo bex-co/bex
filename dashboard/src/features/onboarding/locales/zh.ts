@@ -6,7 +6,7 @@ const zh: Record<string, TranslationEntry> = {
     description: "Sign-up payment wall hero title (/setup/payment)",
   },
   "onboarding.paymentSetupSubtitle": {
-    message: "完成这最后一步，您的工作区即可开始运行资源",
+    message: "完成这最后一步，你的工作区即可开始运行资源",
     description: "Sign-up payment wall hero subtitle",
   },
   "onboarding.paymentSetupCardTitle": {
@@ -15,7 +15,7 @@ const zh: Record<string, TranslationEntry> = {
   },
   "onboarding.paymentSetupBody": {
     message:
-      "托管版 bex 是付费产品：此工作区在创建或运行任何资源（包括免费层资源）之前，必须先登记一种付款方式。您只需为实际用量付费。",
+      "托管版 bex 是付费产品：此工作区在创建或运行任何资源（包括免费层资源）之前，必须先登记一种付款方式。你只需为实际用量付费。",
     description:
       "Sign-up payment wall explanation (ADR075 D7: card required for all usage, free tier included)",
   },
@@ -34,7 +34,7 @@ const zh: Record<string, TranslationEntry> = {
   },
   "onboarding.paymentSetupSelfHostHint": {
     message:
-      "不想添加银行卡？bex 是开源项目，您可以在自己的基础设施上运行，免费且无限制。",
+      "不想添加银行卡？bex 是开源项目，你可以在自己的基础设施上运行，免费且无限制。",
     description:
       "Lead-in to the self-host exit on the payment wall (ADR075 § Positioning)",
   },
@@ -49,7 +49,7 @@ const zh: Record<string, TranslationEntry> = {
   },
   "onboarding.paymentSetupSelfHostConfirmBody": {
     message:
-      "这将永久删除您的 bex 账号和 workspace。我们从未向您收费，也不会保留任何数据。随后会带您前往自托管指南——bex 在您自己的基础设施上免费运行，没有任何限制。",
+      "这将永久删除你的 bex 账号和 workspace。我们从未向你收费，也不会保留任何数据。随后会带你前往自托管指南——bex 在你自己的基础设施上免费运行，没有任何限制。",
     description: "Body of the self-host exit confirmation dialog",
   },
   "onboarding.paymentSetupSelfHostConfirmAction": {

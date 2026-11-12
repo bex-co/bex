@@ -46,7 +46,7 @@ const zhUsage: Record<string, TranslationEntry> = {
       "Free instance hours used against the monthly allowance (w8/m139)",
   },
   "usage.freeHoursNear": {
-    message: "额度即将用尽。用尽后，您的免费 Web 服务将暂停，直到下月初。",
+    message: "额度即将用尽。用尽后，你的免费 Web 服务将暂停，直到下月初。",
     description:
       "Warning once Free instance hours reach 80 percent of the allowance (w8/m139)",
   },
@@ -63,7 +63,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.buildMinutesDescription": {
     message:
-      "构建和部署前命令会消耗流水线分钟。您的套餐每月包含一定额度；超出部分按分钟计费。",
+      "构建和部署前命令会消耗流水线分钟。你的套餐每月包含一定额度；超出部分按分钟计费。",
     description: "Explains the plan's included build minutes (w6/m308)",
   },
   "usage.buildMinutesUsed": {
@@ -89,7 +89,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.bandwidthDescription": {
     message:
-      "服务向互联网发送的流量会消耗带宽。您的套餐每月包含一定额度；超出部分按 GB 计费。",
+      "服务向互联网发送的流量会消耗带宽。你的套餐每月包含一定额度；超出部分按 GB 计费。",
     description: "Explains the plan's included outbound bandwidth (w6/m319)",
   },
   "usage.bandwidthUsed": {
@@ -120,7 +120,7 @@ const zhUsage: Record<string, TranslationEntry> = {
   },
   "usage.pipelineDescription": {
     message:
-      "构建和部署前命令会消耗流水线分钟。超出套餐包含额度的分钟按分钟计费，不超过您设置的每月消费上限。达到上限后，构建将停止到下月。",
+      "构建和部署前命令会消耗流水线分钟。超出套餐包含额度的分钟按分钟计费，不超过你设置的每月消费上限。达到上限后，构建将停止到下月。",
     description: "Explains the pipeline spend limit (w6/m309)",
   },
   "usage.pipelineSpendLimitValue": {
@@ -351,7 +351,7 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Hosted billing security note",
   },
   "usage.billingUnavailable": {
-    message: "账单设置暂不可用，或您没有账单权限（账单角色或管理员）。",
+    message: "账单设置暂不可用，或你没有账单权限（账单角色或管理员）。",
     description: "Degraded or unauthorized billing onboarding state",
   },
   "usage.billingCheckoutError": {

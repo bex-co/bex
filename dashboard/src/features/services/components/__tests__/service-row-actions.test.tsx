@@ -433,8 +433,8 @@ describe.each([
     publicConfirm: /停止处理流量。其 URL 与证书会保留/,
     staticConfirm: /停止服务，并在暂停期间返回 503。其 URL 与证书会保留/,
     privateConfirm: /缩容至零并停止运行/,
-    publicCard: /关闭它并停止流量服务/,
-    privateCard: /关闭它并停止运行/,
+    publicCard: /将其关闭并停止处理流量/,
+    privateCard: /将其关闭并停止运行/,
   },
 ])("suspension descriptions ($language)", (copy) => {
   beforeEach(async () => {

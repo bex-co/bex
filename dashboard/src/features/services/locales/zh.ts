@@ -3327,12 +3327,12 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.suspendCardDescription": {
     message:
-      "暂停服务将关闭它并停止流量服务。服务的 URL 和证书将保留，您可以随时恢复。",
+      "暂停服务会将其关闭并停止处理流量。服务的 URL 和证书会保留，你可以随时恢复。",
     description:
       "Settings tab suspend section description, for the types served at a public host",
   },
   "services.suspendCardDescriptionNoUrl": {
-    message: "暂停服务将关闭它并停止运行，您可以随时恢复。",
+    message: "暂停服务会将其关闭并停止运行，你可以随时恢复。",
     description:
       "Settings tab suspend section description, for private services and background workers — neither has a public URL or certificates to keep",
   },
@@ -3492,7 +3492,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Create-wizard GitHub tab empty state (no repos in the installation)",
   },
   "services.createRepoNoMatch": {
-    message: "没有匹配您搜索的仓库。",
+    message: "没有与你的搜索匹配的仓库。",
     description:
       "Create-wizard GitHub tab empty state when the search filter returns nothing",
   },
@@ -3502,7 +3502,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Create-wizard GitHub tab connect-prompt heading (no GitHub connection yet)",
   },
   "services.createGitConnectPromptBody": {
-    message: "连接您的 GitHub 账号，以便从私有或公开仓库部署服务。",
+    message: "连接你的 GitHub 账号，以便从私有或公开仓库部署服务。",
     description:
       "Create-wizard GitHub tab connect-prompt body (no GitHub connection yet)",
   },
@@ -3797,7 +3797,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Label above the service type picker in the create wizard",
   },
   "services.createTypeWebDesc": {
-    message: "在公共 URL 上公开您的服务",
+    message: "在公共 URL 上公开你的服务",
     description:
       "Description shown under the Web Service type card in the create wizard",
   },
@@ -5290,7 +5290,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.environmentDraftStale": {
     message:
-      "此环境组在您开始编辑后可能已被更改，因此草稿未保存。请复制需要保留的内容，放弃草稿后重新编辑，以基于最新版本修改。",
+      "此环境组在你开始编辑后可能已被更改，因此草稿未保存。请复制需要保留的内容，放弃草稿后重新编辑，以基于最新版本修改。",
     description:
       "Refusal when a group draft's base revision is no longer current (ENV_GROUP_REVISION_CONFLICT) or predates revision tracking (w4/m161)",
   },

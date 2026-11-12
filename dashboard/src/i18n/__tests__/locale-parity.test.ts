@@ -195,3 +195,14 @@ describe("zh is translated", () => {
     },
   );
 });
+
+// One voice addresses the user: the informal 你, the majority form and the one
+// the confirmation dialogs use, never the formal 您 (w4/573).
+describe("zh addresses the user one way", () => {
+  it.each(NAMESPACES)("$name: no zh message uses 您", ({ zh }) => {
+    const formal = Object.entries(zh ?? {})
+      .filter(([, entry]) => entry.message.includes("您"))
+      .map(([key, entry]) => `${key}: ${entry.message}`);
+    expect(formal).toEqual([]);
+  });
+});

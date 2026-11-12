@@ -6,19 +6,19 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Login page hero title",
   },
   "auth.loginSubtitle": {
-    message: "登录您的账户",
+    message: "登录你的账户",
     description: "Login page hero subtitle",
   },
   "auth.registerTitle": {
-    message: "创建您的账户",
+    message: "创建你的账户",
     description: "Registration page hero title",
   },
   "auth.registerSubtitle": {
-    message: "输入您的信息以开始使用",
+    message: "输入你的信息以开始使用",
     description: "Registration page hero subtitle",
   },
   "auth.forgotPasswordTitle": {
-    message: "重置您的密码",
+    message: "重置你的密码",
     description: "Forgot-password page hero title",
   },
   "auth.forgotPasswordSubtitle": {
@@ -31,21 +31,21 @@ const zhAuth: Record<string, TranslationEntry> = {
       "Document title for the post-recovery reset-password landing page (renders the settings flow's password field)",
   },
   "auth.verificationTitle": {
-    message: "验证您的邮箱",
+    message: "验证你的邮箱",
     description: "Verification page hero title",
   },
   "auth.verificationSubtitle": {
-    message: "输入与您账户关联的邮箱地址以继续",
+    message: "输入与你的账户关联的邮箱地址以继续",
     description:
       "Verification page hero subtitle (email-first Ory step; code arrives after)",
   },
   "auth.verificationRequiredSubtitle": {
-    message: "验证您的邮箱地址后即可继续使用 bex",
+    message: "验证你的邮箱地址后即可继续使用 bex",
     description:
       "Verification page hero subtitle for a signed-in session whose email is not verified yet (ADR075 D8 verification wall)",
   },
   "auth.verificationWrongAccount": {
-    message: "不是您的账户？",
+    message: "不是你的账户？",
     description:
       "Verification wall: lead-in before the sign-out link, shown only to a signed-in session",
   },
@@ -59,7 +59,7 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Account settings page heading",
   },
   "auth.settingsSubtitle": {
-    message: "管理您的身份、集成、访问权限和安全设置。",
+    message: "管理你的身份、集成、访问权限和安全设置。",
     description: "Account settings page subheading",
   },
   "auth.settingsNavigation": {
@@ -71,7 +71,7 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Settings page account section heading and navigation label",
   },
   "auth.accountSectionSubtitle": {
-    message: "更新您的资料、密码和双重身份验证设置。",
+    message: "更新你的资料、密码和双重身份验证设置。",
     description: "Settings page account section description",
   },
   "auth.integrationsSection": {
@@ -105,7 +105,7 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Account settings destructive-actions section",
   },
   "auth.dangerZoneSectionSubtitle": {
-    message: "永久删除您的账户并撤销所有访问权限。",
+    message: "永久删除你的账户并撤销所有访问权限。",
     description: "Account deletion section description",
   },
   "auth.deleteAccountTitle": {
@@ -114,7 +114,7 @@ const zhAuth: Record<string, TranslationEntry> = {
   },
   "auth.deleteAccountDescription": {
     message:
-      "此操作会永久删除您的身份、凭据和仅有您一名成员的工作区。共享工作区仍可由其他管理员使用。",
+      "此操作会永久删除你的身份、凭据和仅有你一名成员的工作区。共享工作区仍可由其他管理员使用。",
     description: "Account deletion consequences",
   },
   "auth.deleteAccountWillDelete": {
@@ -122,7 +122,7 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Account deletion preview heading for sole-member workspaces",
   },
   "auth.deleteAccountWillLeave": {
-    message: "您将离开以下工作区",
+    message: "你将离开以下工作区",
     description: "Account deletion preview heading for shared workspaces",
   },
   "auth.deleteAccountBlockedTitle": {
@@ -208,11 +208,11 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Accepted account deletion terminal page title",
   },
   "auth.accountDeletedSubtitle": {
-    message: "您已安全退出登录。",
+    message: "你已安全退出登录。",
     description: "Accepted account deletion terminal page subtitle",
   },
   "auth.accountDeletedStatus": {
-    message: "正在删除您的工作区和凭据。您可以关闭此页面，无需执行其他操作。",
+    message: "正在删除你的工作区和凭据。你可以关闭此页面，无需执行其他操作。",
     description: "Accepted account deletion background completion status",
   },
   "auth.accountDeletedHome": {
@@ -224,7 +224,7 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Logout page heading while the logout request is in flight",
   },
   "auth.loggingOutSubtitle": {
-    message: "正在结束您的会话，请稍候。",
+    message: "正在结束你的会话，请稍候。",
     description: "Logout page subtext while the logout request is in flight",
   },
   "auth.loggedOutTitle": {
@@ -240,7 +240,7 @@ const zhAuth: Record<string, TranslationEntry> = {
     description: "Logout page heading when the provider logout request failed",
   },
   "auth.logoutFailedSubtitle": {
-    message: "无法结束您的会话，您可能仍处于登录状态，请重试。",
+    message: "无法结束你的会话，你可能仍处于登录状态，请重试。",
     description: "Logout page subtext when the provider logout request failed",
   },
   "auth.logoutRetry": {

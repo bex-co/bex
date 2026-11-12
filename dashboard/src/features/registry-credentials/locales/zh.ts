@@ -41,7 +41,7 @@ const zhRegistryCredentials: Record<string, TranslationEntry> = {
       "Registry Credentials state when the caller lacks permission (403)",
   },
   "registryCredentials.forbiddenBody": {
-    message: "您没有权限管理此工作区的镜像仓库凭据。",
+    message: "你没有权限管理此工作区的镜像仓库凭据。",
     description: "Registry Credentials forbidden-state body",
   },
   "registryCredentials.errorTitle": {

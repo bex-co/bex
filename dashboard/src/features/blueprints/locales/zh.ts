@@ -491,7 +491,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
   },
   "blueprints.emptyBody": {
     message:
-      "每次部署含仓库来源的 render.yaml 时，蓝图将自动注册。部署完成后，您的堆栈将显示在此处，您可以对其进行同步或验证。",
+      "每次部署含仓库来源的 render.yaml 时，蓝图将自动注册。部署完成后，你的堆栈将显示在此处，你可以对其进行同步或验证。",
     description:
       "Blueprints list empty-state body explaining auto-registration",
   },
@@ -579,7 +579,7 @@ const zhBlueprints: Record<string, TranslationEntry> = {
       "Blueprint detail section heading listing services/databases managed by this blueprint",
   },
   "blueprints.resourcesEmpty": {
-    message: "暂无资源——请同步蓝图以应用您的 render.yaml。",
+    message: "暂无资源——请同步蓝图以应用你的 render.yaml。",
     description: "Blueprint managed-resources empty state (never synced)",
   },
   "blueprints.resourcesEmptyAwaitingApproval": {
