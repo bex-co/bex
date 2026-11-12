@@ -952,11 +952,21 @@ spec:
                   source     = "ingress_namespace"
                   expression = "^(?P<ingress_app_namespace>tea-[a-z0-9]{20}|default)$"
                 }
+                // An App's wildcard custom domains route through an Ingress
+                // of its own, "<app>.wildcard" (v1alpha1.ChildIngressName,
+                // w4/m326 t012): its lines are the App's. App names hold no
+                // dot, so the suffix names no other App. (The www/apex
+                // redirect hosts' "-host-redirects" Ingress is not stripped:
+                // that could be another App's own name.)
+                stage.regex {
+                  source     = "ingress_name"
+                  expression = "^(?P<ingress_app>.+?)(?:\\.wildcard)?$"
+                }
                 stage.template {
                   source   = "app"
                   // Escaped for Helm's tpl pass — see the HELM TPL ESCAPING
                   // note at the top of this file for why.
-                  template = "{{ "{{" }} if and .ingress_name (or .Value .ingress_app_namespace) {{ "}}" }}{{ "{{" }} .ingress_name {{ "}}" }}{{ "{{" }} else if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
+                  template = "{{ "{{" }} if and .ingress_app (or .Value .ingress_app_namespace) {{ "}}" }}{{ "{{" }} .ingress_app {{ "}}" }}{{ "{{" }} else if .Value {{ "}}" }}{{ "{{" }} .Value {{ "}}" }}{{ "{{" }} end {{ "}}" }}"
                 }
                 stage.template {
                   source   = "should_drop"

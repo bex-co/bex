@@ -26,6 +26,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -279,5 +280,71 @@ func TestTraefikRouterNamesRejectCrossIngressNormalizedCollision(t *testing.T) {
 	}
 	if _, err := base.TraefikRouterNames(context.Background(), app); err == nil || !strings.Contains(err.Error(), "ambiguous") {
 		t.Fatalf("cross-Ingress normalized collision: got %v, want ambiguity error", err)
+	}
+}
+
+// w4/m326 t012: an App's wildcard custom domains and www/apex redirect hosts
+// have Ingresses of their own beside its serving one. Their routers are the
+// App's traffic too, metered and charted with it — a wildcard-only App has no
+// serving Ingress at all — but only the Ingresses the App controls: another
+// App may be named like a child ("web-host-redirects"), and its serving
+// Ingress name may be another App's child.
+func TestTraefikRouterNamesIncludeTheAppsChildIngresses(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := networkingv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	isController := true
+	ownedBy := func(owner string, ing *networkingv1.Ingress) *networkingv1.Ingress {
+		ing.OwnerReferences = []metav1.OwnerReference{{APIVersion: "app.bex.co/v1alpha1", Kind: "App", Name: owner, UID: types.UID("uid-" + owner), Controller: &isController}}
+		return ing
+	}
+	app := func(name string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default", UID: types.UID("uid-" + name)},
+			Spec:       appv1alpha1.AppSpec{Hosts: []string{"*.example.com"}},
+			Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning},
+		}
+	}
+	serving := ownedBy("web", traefikTestIngress("web", "web", "web.example.com"))
+	redirects := ownedBy("web", traefikTestIngress("web-host-redirects", "web", "www.web.example.com"))
+	wildcard := ownedBy("web", traefikTestIngress("web.wildcard", "web", "*.example.com"))
+	base := &Base{
+		Client:    fake.NewClientBuilder().WithScheme(scheme).WithObjects(serving, redirects, wildcard).Build(),
+		Namespace: "default",
+	}
+	names, err := base.TraefikRouterNames(context.Background(), app("web"))
+	if err != nil {
+		t.Fatalf("App with children: %v", err)
+	}
+	var want []string
+	for _, ing := range []*networkingv1.Ingress{serving, redirects, wildcard} {
+		routers, _ := TraefikRouterNamesForIngress(ing)
+		want = append(want, routers...)
+	}
+	if !slices.Equal(names, slices.Sorted(slices.Values(want))) {
+		t.Fatalf("routers = %v, want the serving, redirect and wildcard Ingresses' %v", names, want)
+	}
+
+	// The App named like web's redirect child has no Ingress of its own: it
+	// meters none of web's routers.
+	names, err = base.TraefikRouterNames(context.Background(), app("web-host-redirects"))
+	if err == nil || len(names) != 0 {
+		t.Fatalf("an App named like another's child: names=%v err=%v, want no routers of web's", names, err)
+	}
+
+	// A wildcard-only App, beside an unowned Ingress named like its child.
+	foreign := traefikTestIngress("solo-host-redirects", "solo-host-redirects", "other.example.com")
+	soloWildcard := ownedBy("solo", traefikTestIngress("solo.wildcard", "solo", "*.solo.example.com"))
+	base = &Base{
+		Client:    fake.NewClientBuilder().WithScheme(scheme).WithObjects(foreign, soloWildcard).Build(),
+		Namespace: "default",
+	}
+	names, err = base.TraefikRouterNames(context.Background(), app("solo"))
+	if err != nil {
+		t.Fatalf("wildcard-only App: %v", err)
+	}
+	if routers, _ := TraefikRouterNamesForIngress(soloWildcard); !slices.Equal(names, routers) {
+		t.Fatalf("routers = %v, want only the App's own wildcard Ingress's %v", names, routers)
 	}
 }

@@ -206,6 +206,11 @@ class RequestLogAttributionTest(unittest.TestCase):
             ("blocked-static", dict(blocked, KubernetesIngressName=static), tenant, static, ""),
             ("blocked-empty-service", dict(blocked, ServiceName=""), tenant, app, ""),
             ("blocked-default", dict(blocked, KubernetesIngressNamespace="default", KubernetesIngressName="web"), "default", "web", ""),
+            # The App's wildcard custom domains' own Ingress (w4/m326 t012).
+            ("wildcard", {"ServiceName": f"{tenant}-{app}-8080@kubernetes", "KubernetesIngressNamespace": tenant,
+                          "KubernetesIngressName": app + ".wildcard", "DownstreamStatus": 200}, tenant, app, ""),
+            # An App whose own name ends like a redirect child keeps its name.
+            ("redirect-like-name", dict(blocked, KubernetesIngressName=app + "-host-redirects"), tenant, app + "-host-redirects", ""),
             # A Host supplied by the client never selects a tenant stream.
             ("spoofed-host", dict(blocked, RequestHost=victim + ".onbex.co"), tenant, app, ""),
             ("spoofed-platform-host", dict(blocked, RequestHost="api.bex.co"), tenant, app, ""),

@@ -21,12 +21,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"unicode"
 
 	networkingv1 "k8s.io/api/networking/v1"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -51,7 +52,10 @@ const traefikTLSEntrypoint = "websecure"
 const traefikWebEntrypoint = "web"
 
 // TraefikRouterNames resolves the exact metric-label identities Traefik 3.7.5
-// emits for an App's operator-owned Ingress. An App without public hosts
+// emits for an App's operator-owned Ingresses: its serving Ingress, and the
+// children it controls beside it — the www/apex redirect hosts' and its
+// wildcard custom domains' (v1alpha1.ChildIngressNames, w4/m326 t012). A
+// wildcard-only App has no serving Ingress at all. An App without public hosts
 // (AppSpec.HasPublicHosts) has no Ingress and no public HTTP egress, and
 // returns an empty slice. That includes an exposed service whose subdomain is
 // disabled and whose last custom domain was deleted (w5/112). An App with
@@ -66,20 +70,37 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 	if namespace == "" {
 		namespace = b.Namespace
 	}
-	var ingress networkingv1.Ingress
-	err := b.Client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: app.Name}, &ingress)
-	if apierrors.IsNotFound(err) {
+	// One List serves both the App's own Ingresses and the collision check.
+	var ingresses networkingv1.IngressList
+	if err := b.Client.List(ctx, &ingresses, client.InNamespace(namespace)); err != nil {
+		return nil, fmt.Errorf("resolve Traefik routers: list Ingresses in %s: %w", namespace, err)
+	}
+	children := map[string]bool{}
+	for _, name := range appv1alpha1.ChildIngressNames(app.Name) {
+		children[name] = true
+	}
+	owned := map[string]bool{}
+	var names []string
+	for i := range ingresses.Items {
+		ingress := &ingresses.Items[i]
+		if !appIngress(ingress, app, children) {
+			continue
+		}
+		routers, err := TraefikRouterNamesForIngress(ingress)
+		if err != nil {
+			return nil, err
+		}
+		owned[ingress.Name] = true
+		names = append(names, routers...)
+	}
+	// Two of the App's own Ingresses can normalize to one router key (a
+	// "wildcard.<base>" host beside "*.<base>"); count that router once.
+	names = slices.Compact(slices.Sorted(slices.Values(names)))
+	if len(owned) == 0 {
 		if app.Spec.HasPublicHosts() && app.Status.Phase == appv1alpha1.PhaseRunning {
 			return nil, fmt.Errorf("resolve Traefik routers: expected Ingress %s/%s is missing", namespace, app.Name)
 		}
 		return []string{}, nil
-	}
-	if err != nil {
-		return nil, fmt.Errorf("resolve Traefik routers: get Ingress %s/%s: %w", namespace, app.Name, err)
-	}
-	names, err := TraefikRouterNamesForIngress(&ingress)
-	if err != nil {
-		return nil, err
 	}
 
 	// Traefik concatenates namespace, Ingress name, host, and path before it
@@ -88,17 +109,13 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 	// App "web" + host "api-x" versus App "web-api" + host "x"). Traefik's
 	// per-Ingress collision hash does not cover that cross-Ingress case. Reject
 	// the ambiguity instead of charging both Apps for one router counter.
-	var ingresses networkingv1.IngressList
-	if err := b.Client.List(ctx, &ingresses, client.InNamespace(namespace)); err != nil {
-		return nil, fmt.Errorf("resolve Traefik routers: list Ingresses in %s: %w", namespace, err)
-	}
 	wanted := make(map[string]struct{}, len(names))
 	for _, name := range names {
 		wanted[name] = struct{}{}
 	}
 	for i := range ingresses.Items {
 		other := &ingresses.Items[i]
-		if other.Name == ingress.Name {
+		if owned[other.Name] {
 			continue
 		}
 		otherNames, err := TraefikRouterNamesForIngress(other)
@@ -107,8 +124,8 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 		}
 		for _, name := range otherNames {
 			if _, collision := wanted[name]; collision {
-				return nil, fmt.Errorf("resolve Traefik routers: metric label %q is ambiguous between Ingresses %s/%s and %s/%s",
-					name, namespace, ingress.Name, namespace, other.Name)
+				return nil, fmt.Errorf("resolve Traefik routers: metric label %q of App %s/%s is ambiguous with Ingress %s/%s",
+					name, namespace, app.Name, namespace, other.Name)
 			}
 		}
 	}
@@ -227,4 +244,21 @@ func traefikNormalize(name string) string {
 	return strings.Join(strings.FieldsFunc(name, func(r rune) bool {
 		return !unicode.IsLetter(r) && !unicode.IsNumber(r)
 	}), "-")
+}
+
+// appIngress reports whether ingress is one of app's own: the serving Ingress
+// named after it, unless another App controls that name, or a child Ingress
+// beside it (v1alpha1.ChildIngressNames) that app controls. A child name can
+// also be another App's own name (an App "web-host-redirects" beside "web"),
+// so a name alone never makes an Ingress an App's, and a router is never
+// metered for two Apps.
+func appIngress(ingress *networkingv1.Ingress, app *appv1alpha1.App, children map[string]bool) bool {
+	switch {
+	case ingress.Name == app.Name:
+		controller := metav1.GetControllerOf(ingress)
+		return controller == nil || controller.UID == app.UID
+	case children[ingress.Name]:
+		return metav1.IsControlledBy(ingress, app)
+	}
+	return false
 }

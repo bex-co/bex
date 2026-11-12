@@ -421,7 +421,40 @@ func shipperAppLabel(t *testing.T, serviceName, ingressName string) (namespace, 
 	namespace, regexApp, _ := attribute(re, serviceName)
 	return namespace, renderStage(t, appTmpl, map[string]string{
 		"Value": regexApp, "ingress_name": ingressName,
+		"ingress_app": shipperIngressApp(t, ingressName),
 	})
+}
+
+// shipperIngressApp runs the pipeline's ingress_name stage.regex, which drops
+// a wildcard route Ingress's ".wildcard" suffix (w4/m326 t012).
+func shipperIngressApp(t *testing.T, ingressName string) string {
+	t.Helper()
+	path := findRepoFile(t, filepath.Join("deploy", "gitops", "base", "log-shipper.yaml"))
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if !strings.HasPrefix(trimmed, "expression =") || !strings.Contains(trimmed, "?P<ingress_app>") {
+			continue
+		}
+		first, last := strings.IndexByte(trimmed, '"'), strings.LastIndexByte(trimmed, '"')
+		re := regexp.MustCompile(strings.ReplaceAll(trimmed[first+1:last], `\\`, `\`))
+		if m := re.FindStringSubmatch(ingressName); m != nil {
+			return m[re.SubexpIndex("ingress_app")]
+		}
+		return ""
+	}
+	t.Fatal("could not find the ingress_name stage.regex in log-shipper.yaml")
+	return ""
+}
+
+// w4/m326 t012: a wildcard route's own Ingress attributes its lines to the App.
+func TestShipperAttributesWildcardRouteLinesToTheApp(t *testing.T) {
+	if _, app := shipperAppLabel(t, prodComputeServiceName, prodComputeIngressName+".wildcard"); app != prodComputeIngressName {
+		t.Fatalf("app = %q, want %q", app, prodComputeIngressName)
+	}
 }
 
 func TestShipperAttributesStaticSiteRequestLines(t *testing.T) {

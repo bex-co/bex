@@ -4384,7 +4384,7 @@ const (
 // domains. Its dot keeps it from ever naming another App's serving Ingress:
 // an App's name has none, an Ingress's may.
 func wildcardIngressName(appName string) string {
-	return childIngressName(appName, ".wildcard")
+	return appv1alpha1.ChildIngressName(appName, appv1alpha1.WildcardIngressSuffix)
 }
 
 // httpsRedirectSpec is the Traefik RedirectScheme every tenant host's Ingress
@@ -4437,17 +4437,7 @@ func hostRedirectResourceName(appName, source string) string {
 }
 
 func hostRedirectIngressName(appName string) string {
-	return childIngressName(appName, "-host-redirects")
-}
-
-// childIngressName is appName+suffix, shortened with a hash of appName when
-// that exceeds a DNS label.
-func childIngressName(appName, suffix string) string {
-	if len(appName)+len(suffix) <= 63 {
-		return appName + suffix
-	}
-	sum := fmt.Sprintf("%x", sha256.Sum256([]byte(appName)))[:8]
-	return appName[:63-len(suffix)-len(sum)-1] + "-" + sum + suffix
+	return appv1alpha1.ChildIngressName(appName, appv1alpha1.HostRedirectsIngressSuffix)
 }
 
 // reconcileHostRedirects projects every valid auto-paired sibling into a
