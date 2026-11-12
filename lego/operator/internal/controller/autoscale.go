@@ -297,6 +297,12 @@ func (r *AppReconciler) applyAutoscaling(ctx context.Context, app *appv1alpha1.A
 		return transition.ToReplicas, true
 	}
 
+	// A held release's new pods are all up beside the serving ones and take
+	// no traffic; counting their start-up usage would scale the service in
+	// the middle of its deploy (w4/571).
+	if webImageReleaseHeld(app) {
+		return current, true
+	}
 	usage, err := r.MetricsReader(ctx, app.Namespace, app.Name)
 	if err != nil {
 		// Metrics unavailable — hold steady, requeue to retry.

@@ -560,11 +560,15 @@ func SandboxComputeLimits(plan string) (cpu, memory resource.Quantity) {
 //
 // The compute axes carry +1 surge pod of headroom above the plan's
 // steady-state budget: App Deployments use the default RollingUpdate strategy
-// (maxSurge 25% → +1 pod at replicas:1, maxUnavailable 25% → 0 — the operator
-// never sets Strategy), so every rollout needs one extra full-tier pod with
-// zero giveback, and a quota with no slack rejects the surge ReplicaSet
-// ("exceeded quota: tenant-compute-quota") and hangs the deploy at the health
-// gate.
+// (maxSurge 25% → +1 pod at replicas:1, maxUnavailable 25% → 0), so every
+// rollout needs one extra full-tier pod with zero giveback, and a quota with
+// no slack rejects the surge ReplicaSet ("exceeded quota:
+// tenant-compute-quota") and hangs the deploy at the health gate. A held web
+// image release surges its whole instance count (maxSurge 100%, w4/571); near
+// the ceiling the quota admits part of it, and the operator then promotes at
+// the first Ready pod as with a single surge pod, so the headroom stays +1.
+// Its rollout reads RolloutBlockedByQuota until the old pods drain and free
+// the room the rest of the surge needs.
 // Derivation: +1 of the largest tier (tiers.yaml; Guaranteed QoS, so the
 // surge is charged on requests AND limits): 50 CPU/100 Gi + 1 pro-ultra surge
 // (8 CPU/32 Gi) = 58/132 Gi; limits.* stay at 2× requests. Hobby has the same

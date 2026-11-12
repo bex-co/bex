@@ -18,6 +18,7 @@ package controller
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"maps"
 	"net/http"
@@ -28,6 +29,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apiequality "k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -327,7 +329,7 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	dep.Namespace, dep.UID = app.Namespace, "dep-uid"
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(app.DeepCopy()).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090); err != nil || moved || app.Status.PriorServingNetwork != nil {
+	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090, *dep.Spec.Replicas); err != nil || moved || app.Status.PriorServingNetwork != nil {
 		t.Fatalf("no ready pod: moved=%v err=%v prior=%v, want nothing moved", moved, err, app.Status.PriorServingNetwork)
 	}
 
@@ -335,7 +337,7 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	// network is kept.
 	cl = fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "final", dep.Spec.Template), app.DeepCopy())...).Build()
 	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090)
+	moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 9090, *dep.Spec.Replicas)
 	if err != nil || !moved || !reflect.DeepEqual(app.Status.ServingNetwork, candidate) || !reflect.DeepEqual(app.Status.PriorServingNetwork, serving) {
 		t.Fatalf("ready pod: moved=%v err=%v serving=%+v prior=%+v", moved, err, app.Status.ServingNetwork, app.Status.PriorServingNetwork)
 	}
@@ -412,7 +414,7 @@ func TestPortChangeRoutesOnlyToTheWrittenTemplate(t *testing.T) {
 
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "discovery", *replaced), app.DeepCopy())...).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 10000); err != nil || moved || app.Status.PriorServingNetwork != nil {
+	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 10000, *dep.Spec.Replicas); err != nil || moved || app.Status.PriorServingNetwork != nil {
 		t.Fatalf("ready pod of a replaced template: moved=%v err=%v prior=%v, want nothing moved", moved, err, app.Status.PriorServingNetwork)
 	}
 	if !reflect.DeepEqual(app.Status.ServingNetwork, serving) {
@@ -498,14 +500,14 @@ func TestWebImageChangeTakesNoTrafficUntilPromotion(t *testing.T) {
 	discovery.Spec.Containers[0].ReadinessProbe = &corev1.Probe{ProbeHandler: healthCheckHandler("/", 80, "")}
 	cl := fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "discovery", *discovery), app.DeepCopy())...).Build()
 	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80); err != nil || moved || !reflect.DeepEqual(app.Status.ServingNetwork, serving) {
+	if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80, *dep.Spec.Replicas); err != nil || moved || !reflect.DeepEqual(app.Status.ServingNetwork, serving) {
 		t.Fatalf("discovery pod Ready: moved=%v err=%v serving=%+v, want nothing moved", moved, err, app.Status.ServingNetwork)
 	}
 	// The final template's pod: routing moves to rev-2 and the Service written
 	// then already pins it.
 	cl = fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(append(readyTemplatePod(dep, "final", dep.Spec.Template), app.DeepCopy())...).Build()
 	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
-	if _, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80); err != nil {
+	if _, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80, *dep.Spec.Replicas); err != nil {
 		t.Fatal(err)
 	}
 	if app.Status.ServingNetwork.Revision != "rev-2" || !reflect.DeepEqual(app.Status.PriorServingNetwork, serving) {
@@ -701,5 +703,98 @@ func TestServedRoutingFollowsAFailedEarlyRoutedRollout(t *testing.T) {
 	}
 	if pin, ok := selector[labelRevision]; ok {
 		t.Fatalf("a newer same-image release is pinned to %q by a leftover record", pin)
+	}
+}
+
+// w4/571: a held release on several instances starts all of them at once and
+// keeps every serving pod, and routing moves only when each new instance is
+// Ready, so the new release never serves on fewer instances than the old one.
+// The hold's strategy lifts with the hold. A quota that refuses part of the
+// surge promotes at the first Ready pod, as a single surge pod did.
+func TestHeldWebImageReleasePromotesAFullSetOfInstances(t *testing.T) {
+	serving := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:a", Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80}, ConfiguredPort: new(int32(0))}
+	candidate := &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:b", Revision: "rev-2", PrimaryPort: 80, Ports: []int32{80}, ConfiguredPort: new(int32(0))}
+	held := func() *appv1alpha1.App {
+		app := webImageApp(2)
+		app.Namespace = "tea-a"
+		app.Status.ActiveRevision = "rev-1"
+		app.Status.ServingNetwork, app.Status.ImageNetwork = serving.DeepCopy(), candidate.DeepCopy()
+		return app
+	}
+	params := deploymentParams{image: candidate.Image, port: 80, replicas: 3}
+	app := held()
+	dep := project(app, params)
+	dep.Namespace, dep.UID = app.Namespace, "dep-uid"
+	if *dep.Spec.Replicas != 3 || !apiequality.Semantic.DeepEqual(dep.Spec.Strategy, heldReleaseStrategy()) {
+		t.Fatalf("held release: replicas %d strategy %+v, want 3 surged at once with none unavailable", *dep.Spec.Replicas, dep.Spec.Strategy)
+	}
+
+	// readyPods is the final template's ReplicaSet with n Ready pods of 3,
+	// Ready since readySince.
+	readySince := metav1.Now()
+	readyPods := func(n int, mutate ...func(*appsv1.ReplicaSet)) client.Client {
+		rs, pod := templateReplicaSetPod(dep, "final", dep.Spec.Template, false)
+		for _, m := range mutate {
+			m(rs)
+		}
+		objs := []client.Object{rs, app.DeepCopy()}
+		for i := range 3 {
+			p := pod.DeepCopy()
+			p.Name = fmt.Sprintf("%s-%d", rs.Name, i)
+			if i < n {
+				p.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue, LastTransitionTime: readySince}}
+			}
+			objs = append(objs, p)
+		}
+		return fake.NewClientBuilder().WithScheme(deletionScheme(t)).WithObjects(objs...).Build()
+	}
+	for _, n := range []int{1, 2} {
+		cl := readyPods(n)
+		r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+		if moved, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80, *dep.Spec.Replicas); err != nil || moved || !reflect.DeepEqual(app.Status.ServingNetwork, serving) {
+			t.Fatalf("%d of 3 Ready: moved=%v err=%v serving=%+v, want routing still on rev-1", n, moved, err, app.Status.ServingNetwork)
+		}
+	}
+	cl := readyPods(3)
+	r := &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if _, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80, *dep.Spec.Replicas); err != nil || app.Status.ServingNetwork.Revision != "rev-2" {
+		t.Fatalf("3 of 3 Ready: err=%v serving=%+v, want rev-2", err, app.Status.ServingNetwork)
+	}
+	// Promoted: the hold lifts, and the strategy is the API server's default
+	// again, so the old pods drain as in any rollout.
+	released := dep.DeepCopy()
+	applyDeploymentSpec(released, app, params)
+	if !apiequality.Semantic.DeepEqual(released.Spec.Strategy, defaultRollingUpdateStrategy()) || released.Spec.MinReadySeconds != 0 {
+		t.Fatalf("after promotion strategy %+v minReadySeconds %d, want the default and 0", released.Spec.Strategy, released.Spec.MinReadySeconds)
+	}
+	// A service that never held keeps whatever the API server stored.
+	untouched := project(projectionApp(), webParams())
+	if !apiequality.Semantic.DeepEqual(untouched.Spec.Strategy, appsv1.DeploymentStrategy{}) {
+		t.Fatalf("an unheld Deployment's strategy = %+v, want it left to the API server", untouched.Spec.Strategy)
+	}
+
+	// The rest are slow: before the first Ready pod's hold would let the
+	// Deployment drain a serving pod, it promotes on its own.
+	app = held()
+	readySince = metav1.NewTime(time.Now().Add(-heldReleaseFullSetWait - time.Second))
+	cl = readyPods(1)
+	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if _, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80, *dep.Spec.Replicas); err != nil || app.Status.ServingNetwork.Revision != "rev-2" {
+		t.Fatalf("1 of 3 Ready for %s: err=%v serving=%+v, want rev-2", heldReleaseFullSetWait, err, app.Status.ServingNetwork)
+	}
+	readySince = metav1.Now()
+
+	// The quota refuses the rest of the surge: the first Ready pod promotes.
+	app = held()
+	cl = readyPods(1, func(rs *appsv1.ReplicaSet) {
+		rs.Status.Conditions = []appsv1.ReplicaSetCondition{{Type: appsv1.ReplicaSetReplicaFailure, Status: corev1.ConditionTrue,
+			Reason: "FailedCreate", Message: `pods "whoami-final-2" is forbidden: exceeded quota: tenant-compute-quota`}}
+	})
+	r = &AppReconciler{Client: cl, Scheme: cl.Scheme()}
+	if !r.rolloutQuotaBlocked(t.Context(), dep) {
+		t.Fatal("the fixture's quota refusal is not seen")
+	}
+	if _, err := r.promoteEarly(t.Context(), app, dep, &dep.Spec.Template, candidate.Image, 80, *dep.Spec.Replicas); err != nil || app.Status.ServingNetwork.Revision != "rev-2" {
+		t.Fatalf("quota-limited surge, 1 Ready: err=%v serving=%+v, want rev-2", err, app.Status.ServingNetwork)
 	}
 }

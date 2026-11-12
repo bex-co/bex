@@ -660,3 +660,28 @@ func TestUnwiredMetricsClearAPendingScaleDown(t *testing.T) {
 		t.Fatalf("the unwired pass left the window recorded: %v", app.Annotations)
 	}
 }
+
+// w4/571: while a web image release is held, its new pods run beside the
+// serving ones without traffic; their start-up usage must not scale the
+// service in the middle of its deploy.
+func TestAHeldWebImageReleaseHoldsTheReplicaCount(t *testing.T) {
+	app := autoscaledApp(time.Now())
+	app.Spec.Type, app.Spec.PortMode = appv1alpha1.TypeWebService, appv1alpha1.PortModeWebImageV1
+	app.Spec.Image = "docker.io/traefik/whoami:v1.10.3"
+	app.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:a", Revision: "rev-1", PrimaryPort: 80}
+	app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{HTTPSelection: appv1alpha1.HTTPSelectionDetected, Image: "nginx@sha256:b", Revision: "rev-2", PrimaryPort: 80}
+	if !webImageReleaseHeld(app) {
+		t.Fatal("the fixture is not a held release")
+	}
+	read := false
+	r := &AppReconciler{
+		Client: fake.NewClientBuilder().WithScheme(wakeScheme()).WithObjects(app).Build(),
+		MetricsReader: func(context.Context, string, string) ([]PodUsage, error) {
+			read = true
+			return threePodsAt(2), nil
+		},
+	}
+	if got, requeue := r.applyAutoscaling(context.Background(), app, 3); got != 3 || !requeue || read {
+		t.Fatalf("held release: replicas %d requeue %v metrics read %v, want 3, true, unread", got, requeue, read)
+	}
+}

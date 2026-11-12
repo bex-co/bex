@@ -612,6 +612,23 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 	projectDeployment(dep, app, p, drain, probeHost)
 }
 
+// heldReleaseStrategy surges a held release's whole instance count and keeps
+// every serving pod until promotion (w4/571).
+func heldReleaseStrategy() appsv1.DeploymentStrategy {
+	surge, unavailable := intstr.FromString("100%"), intstr.FromInt32(0)
+	return appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: &surge, MaxUnavailable: &unavailable}}
+}
+
+// defaultRollingUpdateStrategy is what the API server defaults an unset
+// strategy to, so a Deployment leaving the held strategy reads as one that
+// never had it.
+func defaultRollingUpdateStrategy() appsv1.DeploymentStrategy {
+	quarter := intstr.FromString("25%")
+	return appsv1.DeploymentStrategy{Type: appsv1.RollingUpdateDeploymentStrategyType,
+		RollingUpdate: &appsv1.RollingUpdateDeployment{MaxSurge: &quarter, MaxUnavailable: new(quarter)}}
+}
+
 // projectDeployment is applyDeploymentSpec with the drain and probe Host decided.
 func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymentParams, drain int64, probeHost string) {
 	replicas := clampReplicas(app, p.replicas)
@@ -630,9 +647,14 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	}
 	// A web image release that may not take traffic yet keeps the serving pods
 	// until promotion moves routing to it, through discovery and the roll that
-	// follows it (w4/m320).
+	// follows it (w4/m320). It starts every new instance at once and removes
+	// no serving one, so promotion moves traffic to a full set, as Render's
+	// zero-downtime deploy does (w4/571).
 	if webImageReleaseHeld(app) {
 		dep.Spec.MinReadySeconds = webImageHTTPSelectionHoldSeconds
+		dep.Spec.Strategy = heldReleaseStrategy()
+	} else if apiequality.Semantic.DeepEqual(dep.Spec.Strategy, heldReleaseStrategy()) {
+		dep.Spec.Strategy = defaultRollingUpdateStrategy()
 	}
 
 	// restart = roll the template (same mechanism as kubectl rollout restart,

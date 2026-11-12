@@ -479,12 +479,22 @@ func (r *AppReconciler) promoteImageNetwork(ctx context.Context, app *appv1alpha
 // candidate pod, while portChangeHoldSeconds keeps the old pods serving, so
 // the stable Services always have a ready endpoint on the port they publish
 // (w4/428). A held web image release (webImageReleaseHeld, w4/m320) is
-// promoted the same way, from the pod of its final template. It records the
-// replaced network for the new pods' pin and for a canceled or failed
+// promoted the same way, from the pods of its final template, once all of
+// its replicas are Ready (w4/571): its old pods are held until then, so
+// traffic moves to a full set. It promotes with fewer when the workspace
+// quota refuses part of that surge, or once its first Ready pod nears the end
+// of the hold (heldReleaseFullSetWait), after which the Deployment would start
+// draining the serving pods while the Services still select them. It records
+// the replaced network for the new pods' pin and for a canceled or failed
 // rollout's restore (restoreServedNetwork). moved is promoteImageNetwork's.
 // The caller checks routesEarly first.
-func (r *AppReconciler) promoteEarly(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec, image string, port int) (moved bool, err error) {
-	if !r.templatePodReady(ctx, dep, tmpl) {
+func (r *AppReconciler) promoteEarly(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec, image string, port int, replicas int32) (moved bool, err error) {
+	ready, firstReady := r.templatePodsReady(ctx, dep, tmpl)
+	want := int32(1)
+	if webImageReleaseHeld(app) {
+		want = replicas
+	}
+	if ready == 0 || ready < want && time.Since(firstReady) < heldReleaseFullSetWait && !r.rolloutQuotaBlocked(ctx, dep) {
 		return false, nil
 	}
 	// Record the replaced network before projecting: the very first Service
@@ -520,21 +530,28 @@ func (r *AppReconciler) pinServedThroughCancel(ctx context.Context, app *appv1al
 	return nil
 }
 
-// templatePodReady reports a Ready, non-terminating pod of tmpl, the pod
-// template this pass wrote, rather than merely of its release. A release can
+// heldReleaseFullSetWait bounds how long a held release waits for all of its
+// replicas: its first Ready pod becomes available at the hold's
+// minReadySeconds, and from then the Deployment drains a serving pod for each
+// available new one (w4/571).
+const heldReleaseFullSetWait = time.Duration(webImageHTTPSelectionHoldSeconds)*time.Second - 30*time.Second
+
+// templatePodsReady counts the Ready, non-terminating pods of tmpl, the pod
+// template this pass wrote, rather than merely of its release, and when the
+// first of them became Ready. A release can
 // roll its template more than once (choosing the HTTP port swaps discovery's
 // probe on / for the final TCP probe), and the Deployment controller drains
 // the replaced template's pod as soon as the new ReplicaSet exists, leaving
 // the release with no endpoint until the new pod is Ready (w8/m142 t006). The
 // pods are found through the ReplicaSet created for tmpl; until it exists,
 // none is Ready.
-func (r *AppReconciler) templatePodReady(ctx context.Context, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec) bool {
+func (r *AppReconciler) templatePodsReady(ctx context.Context, dep *appsv1.Deployment, tmpl *corev1.PodTemplateSpec) (ready int32, firstReady time.Time) {
 	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
-		return false
+		return 0, firstReady
 	}
 	var rss appsv1.ReplicaSetList
 	if err := r.List(ctx, &rss, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
-		return false
+		return 0, firstReady
 	}
 	hash := ""
 	for i := range rss.Items {
@@ -553,20 +570,34 @@ func (r *AppReconciler) templatePodReady(ctx context.Context, dep *appsv1.Deploy
 		}
 	}
 	if hash == "" {
-		return false
+		return 0, firstReady
 	}
 	selector := maps.Clone(dep.Spec.Selector.MatchLabels)
 	selector[appsv1.DefaultDeploymentUniqueLabelKey] = hash
 	var pods corev1.PodList
 	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(selector)); err != nil {
-		return false
+		return 0, firstReady
 	}
 	for i := range pods.Items {
-		if pod := &pods.Items[i]; pod.DeletionTimestamp.IsZero() && podReady(pod) {
-			return true
+		pod := &pods.Items[i]
+		if !pod.DeletionTimestamp.IsZero() || !podReady(pod) {
+			continue
+		}
+		ready++
+		for _, c := range pod.Status.Conditions {
+			if c.Type == corev1.PodReady && (firstReady.IsZero() || c.LastTransitionTime.Time.Before(firstReady)) {
+				firstReady = c.LastTransitionTime.Time
+			}
 		}
 	}
-	return false
+	return ready, firstReady
+}
+
+// rolloutQuotaBlocked reports a rollout whose new pods the workspace quota
+// refuses (rolloutQuotaBlockMessage).
+func (r *AppReconciler) rolloutQuotaBlocked(ctx context.Context, dep *appsv1.Deployment) bool {
+	_, msg := r.rolloutQuotaBlockMessage(ctx, dep)
+	return msg != ""
 }
 
 // imageRegistryWait keeps a deploy open while the image registry throttles or

@@ -3347,7 +3347,7 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 	// (w4/428), then completes as any rollout does. The public route stays on
 	// the replaced primary's alias until then (w4/430).
 	if written != nil {
-		if _, err := r.promoteEarly(ctx, app, dep, written, image, port); err != nil {
+		if _, err := r.promoteEarly(ctx, app, dep, written, image, port, replicas); err != nil {
 			res, err := r.fail(ctx, app, "ServiceFailed", err)
 			return res, true, err
 		}
