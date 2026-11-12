@@ -28,6 +28,7 @@ import (
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
@@ -58,7 +59,10 @@ func TestInstanceExitFactsCarryTheCauseAndTheInstance(t *testing.T) {
 		{"exit:srv-1:web-a:1", "web-a", EventReasonNonZeroExit, new(int32(3))},
 	} {
 		f := facts[i]
-		if f.SourceKey != want.key || f.InstanceID != want.instance || f.ReasonCode != want.reason || f.Type != EventFactServerFailed || f.AppID != "srv-1" {
+		// The event names the instance by its public id (w5/m87), never the
+		// pod name; the key keeps the pod name.
+		if f.SourceKey != want.key || f.InstanceID != id.ServiceInstanceID("srv-1", want.instance) || f.InstanceID == want.instance ||
+			f.ReasonCode != want.reason || f.Type != EventFactServerFailed || f.AppID != "srv-1" {
 			t.Errorf("fact %d = %+v, want key %s instance %s reason %s", i, f, want.key, want.instance, want.reason)
 		}
 		if (f.ExitCode == nil) != (want.exit == nil) || (f.ExitCode != nil && *f.ExitCode != *want.exit) {
@@ -124,14 +128,16 @@ func TestPGAnInstanceExitIsTheOutagesOnlyServerFailed(t *testing.T) {
 	type step struct {
 		down  bool
 		exits []appv1alpha1.InstanceExit
-		// transition dates the outage by its Ready transition, as the
-		// operator writes it; without one the pass's own time dates it.
+		// transition dates the step's Ready condition now, as the operator
+		// writes it: an outage's start, or a recovery's; without one the
+		// pass's own time dates an edge.
 		transition bool
 	}
 	tableBuilt := time.Now()
 	first := exit(1, 3, 0, false)
 	// A crash that restarted before the sampler confirmed an outage: no
-	// outage, no recovery of its own.
+	// sampled outage, but its server_failed still gets its server_available
+	// (t010).
 	quick := exit(1, 3, -30*time.Second, false)
 	for _, tc := range []struct {
 		name          string
@@ -178,15 +184,30 @@ func TestPGAnInstanceExitIsTheOutagesOnlyServerFailed(t *testing.T) {
 				{false, []appv1alpha1.InstanceExit{first}, false},
 			},
 			[]string{EventReasonNonZeroExit, EventReasonReadinessFailed}, 2},
-		// The outage starts half a minute after a quick crash that left no
-		// recovery: it is its own outage (review of t009).
+		// The outage starts half a minute after a quick crash: it is its own
+		// outage (review of t009), and each failure has its recovery (t010).
 		{"an outage half a minute after a crash that recovered unseen",
 			[]step{
 				{false, []appv1alpha1.InstanceExit{quick}, false},
 				{true, []appv1alpha1.InstanceExit{quick}, true},
 				{false, []appv1alpha1.InstanceExit{quick}, false},
 			},
-			[]string{EventReasonNonZeroExit, EventReasonReadinessFailed}, 1},
+			[]string{EventReasonNonZeroExit, EventReasonReadinessFailed}, 2},
+		// t010: a crash that restarted between two passes. The sampler never
+		// saw an outage, and the exit's server_failed still gets one
+		// server_available: from the next healthy pass when the recovery was
+		// not seen yet...
+		{"a crash the sampler never saw",
+			[]step{{false, []appv1alpha1.InstanceExit{quick}, false}, {false, []appv1alpha1.InstanceExit{quick}, false}},
+			[]string{EventReasonNonZeroExit}, 1},
+		// ...and at the Ready transition when the exit is read after it.
+		{"an exit read after its recovery was seen",
+			[]step{
+				{false, nil, true},
+				{false, []appv1alpha1.InstanceExit{exit(1, 3, -10*time.Second, false)}, false},
+				{false, []appv1alpha1.InstanceExit{exit(1, 3, -10*time.Second, false)}, false},
+			},
+			[]string{EventReasonNonZeroExit}, 1},
 		// The exit dated a few seconds before the Ready transition it caused.
 		{"an exit just before its outage's Ready transition",
 			[]step{
@@ -237,9 +258,9 @@ func TestPGAnInstanceExitIsTheOutagesOnlyServerFailed(t *testing.T) {
 				cr := healthy.DeepCopy()
 				if s.down {
 					cr = down.DeepCopy()
-					if s.transition {
-						cr.Status.Conditions[0].LastTransitionTime = metav1.NewTime(time.Now())
-					}
+				}
+				if s.transition {
+					cr.Status.Conditions[0].LastTransitionTime = metav1.NewTime(time.Now())
 				}
 				cr.Status.InstanceExits = s.exits
 				observe(cr, 3)

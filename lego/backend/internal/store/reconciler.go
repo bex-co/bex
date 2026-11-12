@@ -1509,12 +1509,16 @@ func instanceExitFacts(appID string, app *appv1alpha1.App) []ServiceEventFact {
 		if e.AfterUnready {
 			continue
 		}
+		// The event names the instance by its public id, the one `bex
+		// services instances`, logs and metrics use, never the pod name
+		// (w5/m87). The key keeps the pod name, so an exit already recorded
+		// is not recorded again.
 		fact := ServiceEventFact{
 			SourceKey:  fmt.Sprintf("exit:%s:%s:%d", appID, e.Instance, e.RestartCount),
 			AppID:      appID,
 			Type:       EventFactServerFailed,
 			At:         e.FinishedAt.Time,
-			InstanceID: e.Instance,
+			InstanceID: ids.ServiceInstanceID(appID, e.Instance),
 		}
 		switch {
 		case e.OOMKilled:

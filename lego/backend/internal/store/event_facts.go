@@ -226,6 +226,7 @@ func (s *PGStore) InsertServiceEventFact(ctx context.Context, fact ServiceEventF
 // source-key idempotency; validation completes before anything is queued.
 func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEventFact) error {
 	batch := &pgx.Batch{}
+	exits := make([]bool, len(facts))
 	for i := range facts {
 		if err := validateServiceEventFact(facts[i]); err != nil {
 			return err
@@ -242,6 +243,7 @@ func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEv
 			// outage's cause, and the outage has its event (w8/m158 t009).
 			args := append(fact.insertArgs(), fact.At.Add(-instanceExitOutageLag), fact.At.Add(instanceExitOutageFallbackLead))
 			batch.Queue(insertInstanceExitFactSQL, args...)
+			exits[i] = true
 			continue
 		}
 		batch.Queue(insertServiceEventFactSQL, fact.insertArgs()...)
@@ -250,16 +252,65 @@ func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEv
 		return nil
 	}
 	results := s.Pool.SendBatch(ctx, batch)
-	for range facts {
-		if _, err := results.Exec(); err != nil {
+	var recorded []ServiceEventFact
+	for i := range facts {
+		tag, err := results.Exec()
+		if err != nil {
 			_ = results.Close()
 			return classify("service event fact", err)
+		}
+		if exits[i] && tag.RowsAffected() > 0 {
+			recorded = append(recorded, facts[i])
 		}
 	}
 	if err := results.Close(); err != nil {
 		return classify("service event fact", err)
 	}
+	for _, exit := range recorded {
+		if err := s.pairInstanceExit(ctx, exit); err != nil {
+			return classify("service event fact", err)
+		}
+	}
 	return nil
+}
+
+// pairInstanceExit gives a recorded exit-caused server_failed its
+// server_available when the sampler never saw the outage (w8/m158 t010): a
+// crash that restarted between two passes left the checkpoint healthy, so no
+// recovery edge ever came and the event stayed open. When the checkpoint's last
+// healthy Ready transition is after the exit, the recovery was already seen,
+// and the server_available is recorded at that transition. Otherwise the
+// checkpoint takes the outage from the exit on, and the next healthy pass
+// records the server_available as any outage's. A checkpoint already down has
+// its outage, and its recovery pairs with this exit.
+func (s *PGStore) pairInstanceExit(ctx context.Context, exit ServiceEventFact) error {
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		var availability string
+		var healthyAt *time.Time
+		err := tx.QueryRow(ctx,
+			`SELECT availability, healthy_transition_at FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
+			exit.AppID).Scan(&availability, &healthyAt)
+		if errors.Is(err, pgx.ErrNoRows) || err == nil && availability != "healthy" {
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		if healthyAt != nil && healthyAt.After(exit.At) {
+			recovered := ServiceEventFact{
+				SourceKey: exit.SourceKey + ":recovered",
+				AppID:     exit.AppID,
+				Type:      EventFactServerAvailable,
+				At:        healthyAt.UTC(),
+			}
+			_, err := tx.Exec(ctx, insertServiceEventFactSQL, recovered.insertArgs()...)
+			return err
+		}
+		_, err = tx.Exec(ctx,
+			`UPDATE service_event_checkpoints SET availability = 'unhealthy', updated_at = $2 WHERE app_id = $1`,
+			exit.AppID, exit.At)
+		return err
+	})
 }
 
 // insertArgs is the fact's insertServiceEventFactSQL arguments, in column order.
@@ -635,9 +686,9 @@ func availabilityEdgeAt(transition, previousChangedAt, observed time.Time) time.
 // so does an exit read after an outage was recorded, which cannot tell how
 // that outage was dated. Either fact may be recorded first; whichever comes
 // second adds no server_failed. An exit further away, or one whose outage has
-// already recovered, is not this outage's cause: a crash that restarted
-// before the sampler confirmed an outage leaves no server_available, and a
-// separate outage half a minute later is its own.
+// already recovered, is not this outage's cause: a separate outage half a
+// minute after a crash is its own. A crash that restarted before the sampler
+// confirmed an outage gets its server_available from pairInstanceExit (t010).
 const (
 	instanceExitOutageLead         = 15 * time.Second
 	instanceExitOutageFallbackLead = time.Minute
