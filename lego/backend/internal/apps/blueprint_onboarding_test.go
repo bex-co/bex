@@ -580,3 +580,66 @@ func TestPlannedCreateAfterADeleteIsANewBlueprint(t *testing.T) {
 		t.Errorf("the deleted Blueprint's row status = %q, want it left disconnected", got)
 	}
 }
+
+// Render ignores a sync:false variable inside an env group instead of refusing
+// the Blueprint (w8/293): the plan succeeds, the key is not prompted for, and
+// one warning notice locates the entry.
+func TestBlueprintPlanWarnsAboutAnIgnoredGroupSecret(t *testing.T) {
+	manifest := `
+envVarGroups:
+  - name: shared
+    envVars:
+      - {key: API_KEY, sync: false}
+      - {key: MODE, value: prod}
+services:
+  - type: web
+    name: api
+    runtime: image
+    image:
+      url: docker.io/library/nginx:1.27
+    envVars:
+      - fromGroup: shared
+`
+	svc, _, ctx := newOnboardingService(t, manifest)
+	svc.EnvGroups = newFakeEnvGroups()
+	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if res.PlanningOutcome != PlanningPlanned || len(res.Notices) != 1 {
+		t.Fatalf("plan = %+v, want planned with one notice", res)
+	}
+	n := res.Notices[0]
+	if n.Severity != "warning" || n.Line == nil || *n.Line != 5 || n.Path == nil || !strings.HasSuffix(*n.Path, "envVarGroups[0].envVars[0]") ||
+		!strings.Contains(n.Message, `envVars["API_KEY"]: sync: false is ignored in an environment group`) {
+		t.Errorf("notice = %+v, want a warning at envVarGroups[0].envVars[0], line 5", n)
+	}
+	if res.Sync == nil || len(res.Sync.RequiredManualEnvVars) != 0 {
+		t.Errorf("an ignored group key is not prompted for: %+v", res.Sync)
+	}
+}
+
+// A group's sync:false entries are skipped, with or without a value, and
+// reported by index and key; its other entries parse as before (w8/293).
+func TestParseEnvGroupIgnoresSyncFalse(t *testing.T) {
+	no := false
+	pg, err := parseEnvGroup(bexEnvGroup{Name: "shared", EnvVars: []bexEnvVar{
+		{Key: "A", Sync: &no}, {Key: "B", Sync: &no, Value: "v"}, {Key: "C", Value: "c"},
+		{Key: "D", Sync: &no, GenerateValue: true},
+	}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(pg.literals) != 1 || pg.literals["C"] != "c" || len(pg.generates) != 1 || pg.generates[0] != "D" {
+		t.Errorf("literals = %v, generates = %v; want C, and D generated as a service's generateValue wins over sync:false", pg.literals, pg.generates)
+	}
+	if len(pg.ignored) != 2 {
+		t.Fatalf("ignored = %v, want A and B", pg.ignored)
+	}
+	for i, key := range []string{"A", "B"} {
+		var entry *envEntryError
+		if !errors.As(pg.ignored[i], &entry) || entry.index != i || !strings.Contains(pg.ignored[i].Error(), `envVars["`+key+`"]: sync: false is ignored`) {
+			t.Errorf("ignored[%d] = %v, want entry %d naming %s", i, pg.ignored[i], i, key)
+		}
+	}
+}

@@ -612,6 +612,10 @@ type parsedEnvGroup struct {
 	literals  map[string]string
 	generates []string
 	grouping  string
+	// ignored are the sync:false entries, which Render ignores in a group
+	// (w8/293), each as its located notice; a sync leaves those keys as they
+	// are.
+	ignored []error
 }
 
 // parsedService is a service ready to apply plus the blueprint env work deferred
@@ -2708,9 +2712,10 @@ func blueprintServiceFields(fields map[string]BlueprintField) map[string]Bluepri
 
 // parseEnvGroup validates one envVarGroups[] entry and classifies its vars into
 // literals + generateValue keys. Per Render, a group var may be only a literal or
-// a generateValue — a group cannot reference services/groups (fromService/
-// fromDatabase/fromGroup) and cannot carry sync:false; each is rejected with a
-// clear per-entry error rather than silently dropped.
+// a generateValue: a group cannot reference services/groups (fromService/
+// fromDatabase/fromGroup), each rejected with a clear per-entry error. A
+// sync:false entry is ignored, as Render documents ("If you do this, Render
+// ignores the environment variable"), and reported by its index (w8/293).
 func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 	name, err := core.TrimmedLabel(g.Name)
 	if err != nil {
@@ -2731,13 +2736,13 @@ func parseEnvGroup(g bexEnvGroup) (parsedEnvGroup, error) {
 		switch {
 		case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
 			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: a group cannot reference services or other groups", core.ErrBadRequest, name, e.Key))
-		case e.Sync != nil && !*e.Sync:
-			return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: sync:false is not allowed inside an env group", core.ErrBadRequest, name, e.Key))
 		case e.GenerateValue:
 			if e.hasValue() {
 				return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: sets both value and generateValue", core.ErrBadRequest, name, e.Key))
 			}
 			pg.generates = append(pg.generates, e.Key)
+		case e.Sync != nil && !*e.Sync: // after generateValue, as a service's parse orders them
+			pg.ignored = append(pg.ignored, atEnvEntry(i, fmt.Errorf("env group %q envVars[%q]: sync: false is ignored in an environment group; add this value to the group after the Blueprint is applied", name, e.Key)))
 		default:
 			if !core.ValidEnvValue(e.Value) {
 				return parsedEnvGroup{}, atEnvEntry(i, fmt.Errorf("%w: env group %q envVars[%q]: %s",

@@ -132,10 +132,6 @@ func TestBlueprintEnvValueRefusalsLocateTheEntry(t *testing.T) {
 			tc{"nested group second " + key, nested(service(plain), group(plain+","+conflict(key))), nest + "envVarGroups[0].envVars[1]"},
 		)
 	}
-	// A group reference is refused by the pinned schema before parsing.
-	cases = append(cases,
-		tc{"group sync:false", root(service(plain), group(plain+`,{"key":"TYPE","value":"x","sync":false}`)), "envVarGroups[0].envVars[1]"},
-	)
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			result, err := svc.ValidateBlueprint(context.Background(), "", c.manifest, "")
@@ -146,6 +142,13 @@ func TestBlueprintEnvValueRefusalsLocateTheEntry(t *testing.T) {
 				t.Fatalf("validation = %+v, want one refusal at %s", result, c.wantPath)
 			}
 		})
+	}
+	// Render ignores a group's sync:false entry rather than refusing the file
+	// (w8/293): the manifest is valid, and the entry is located as a warning.
+	ignored, err := svc.ValidateBlueprint(context.Background(), "", root(service(plain), group(plain+`,{"key":"TYPE","value":"x","sync":false}`)), "")
+	if err != nil || !ignored.Valid || len(ignored.warnings) != 1 || ignored.warnings[0].Path == nil ||
+		*ignored.warnings[0].Path != "envVarGroups[0].envVars[1]" {
+		t.Fatalf("group sync:false = %+v, %v; want valid with one warning at envVarGroups[0].envVars[1]", ignored, err)
 	}
 	// Controls keep their decisions: an empty literal alone and generation alone are valid.
 	for _, ok := range []string{root(service(`{"key":"PLAN","value":""}`), group(`{"key":"TYPE","generateValue":true}`))} {

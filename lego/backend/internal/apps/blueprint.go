@@ -521,6 +521,9 @@ type BlueprintValidation struct {
 	// only when the manifest is valid; an all-free stack carries empty lines
 	// and a "0.00" total (the dashboard hides the panel).
 	EstimatedPricing *pricing.MonthlyEstimate `json:"estimatedPricing,omitempty"`
+	// warnings are located entries a valid manifest earns, which a plan
+	// reports as Render's warning notices; Render's validate has none.
+	warnings []BlueprintValidationError
 }
 
 // SyncBlueprintResult is returned by sync and create.
@@ -841,7 +844,8 @@ func (s *Service) blueprintValidationWithSuffix(ctx context.Context, repo, branc
 			plan.Actions = actionPlan.Actions
 			plan.TotalActions = len(actionPlan.Actions)
 		}
-		return BlueprintValidation{Valid: true, Plan: &plan, EstimatedPricing: blueprintEstimatedPricing(st)}, nil
+		return BlueprintValidation{Valid: true, Plan: &plan, EstimatedPricing: blueprintEstimatedPricing(st),
+			warnings: blueprintIgnoredGroupVars(source, ir, st)}, nil
 	}
 	// Per-resource refusals (a host another site serves is a 409, w8/055) are
 	// located entries whatever their sentinel.
@@ -860,6 +864,21 @@ func (s *Service) blueprintValidationWithSuffix(ctx context.Context, repo, branc
 func blueprintValidationMessage(err error) string {
 	msg := strings.ReplaceAll(err.Error(), core.ErrBadRequest.Error()+": ", "")
 	return strings.ReplaceAll(msg, core.ErrConflict.Error()+": ", "")
+}
+
+// blueprintIgnoredGroupVars locates each sync:false entry of an env group, which
+// Render ignores rather than refusing the file (w8/293).
+func blueprintIgnoredGroupVars(source *BlueprintSource, ir BlueprintIR, st parsedStack) []BlueprintValidationError {
+	var ignored blueprintResourceErrors
+	for _, g := range st.envGroups {
+		for _, err := range g.ignored {
+			ignored = append(ignored, blueprintResourceError{kind: BlueprintResourceEnvVarGroup, name: g.name, err: err})
+		}
+	}
+	if len(ignored) == 0 {
+		return nil
+	}
+	return blueprintResourceValidationErrors(source, ir, ignored)
 }
 
 // blueprintResourceValidationErrors turns per-resource refusals into entries

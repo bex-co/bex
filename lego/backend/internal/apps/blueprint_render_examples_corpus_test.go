@@ -32,12 +32,11 @@ import (
 // corpus file may fail only for these or for a gap already filed
 // (knownBlueprintGaps); any other refusal is a new class to triage (w5/m143).
 var deliberateBlueprintDivergences = []string{
-	"preview environments are not available",        // incl. previewValue
-	"Render Workflows",                              // type: workflow and fromService workflow refs
-	"sync:false is not allowed inside an env group", // Render forbids it too (blueprint-spec)
-	"a private_service requires a paid plan",        // Render has no free private service
-	"'dockerFilePath' not allowed",                  // Render's key is dockerfilePath
-	"is not available on bex; choose one of",        // Render Postgres plans bex does not sell (e.g. pro-8gb)
+	"preview environments are not available", // incl. previewValue
+	"Render Workflows",                       // type: workflow and fromService workflow refs
+	"a private_service requires a paid plan", // Render has no free private service
+	"'dockerFilePath' not allowed",           // Render's key is dockerfilePath
+	"is not available on bex; choose one of", // Render Postgres plans bex does not sell (e.g. pro-8gb)
 }
 
 // knownBlueprintGaps are Render-accepted inputs bex still refuses, each owned

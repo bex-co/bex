@@ -299,7 +299,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 			if e.conflict != nil {
 				message = s.plannedOwnershipNotice(ctx, *e.conflict, owners)
 			}
-			notices = append(notices, BlueprintNotice{Severity: "error", Message: message, Path: e.Path, Line: e.Line, Column: e.Column})
+			notices = append(notices, blueprintNotice("error", message, e))
 		}
 		return s.recordFailedPlan(ctx, plans, *b, commitSHA, notices)
 	}
@@ -325,7 +325,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 			return BlueprintPlanResult{}, store.MapError(err)
 		}
 		*b = settled
-		return BlueprintPlanResult{PlanningOutcome: PlanningNoChanges, Notices: []BlueprintNotice{}}, nil
+		return BlueprintPlanResult{PlanningOutcome: PlanningNoChanges, Notices: blueprintWarningNotices(validation)}, nil
 	}
 	required, err := requiredManualEnvVars(*b, manifest, actions)
 	if err != nil {
@@ -347,7 +347,21 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	if err != nil {
 		return BlueprintPlanResult{}, err
 	}
-	return BlueprintPlanResult{PlanningOutcome: PlanningPlanned, Notices: []BlueprintNotice{}, Sync: s.syncWithPlan(*b, planned, actions, required)}, nil
+	return BlueprintPlanResult{PlanningOutcome: PlanningPlanned, Notices: blueprintWarningNotices(validation), Sync: s.syncWithPlan(*b, planned, actions, required)}, nil
+}
+
+// blueprintWarningNotices are a valid plan's warnings as Render's notices.
+func blueprintWarningNotices(v BlueprintValidation) []BlueprintNotice {
+	notices := make([]BlueprintNotice, 0, len(v.warnings))
+	for _, w := range v.warnings {
+		notices = append(notices, blueprintNotice("warning", w.Error, w))
+	}
+	return notices
+}
+
+// blueprintNotice is Render's notice for a located validation entry.
+func blueprintNotice(severity, message string, e BlueprintValidationError) BlueprintNotice {
+	return BlueprintNotice{Severity: severity, Message: message, Path: e.Path, Line: e.Line, Column: e.Column}
 }
 
 // recordFailedPlan persists a planning failure as an error sync.

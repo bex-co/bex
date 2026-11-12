@@ -411,8 +411,10 @@ The w8/m53 fence that kept booleans as "located schema refusals" was a reading o
 **Corpus guard.** `TestRenderExamplesCorpus` (opt-in: `BEX_RENDER_EXAMPLES_DIR`, files fetched with `scripts/render-examples-corpus.sh` because they are third-party) runs every render-examples `render.yaml` through `ValidateBlueprint`. A file may fail only for:
 
 - a deliberate divergence: previews and `previewValue`, workflows, the 10 GB disk minimum (the reserved `PORT` and `RENDER_*` references were removed by w5/m149 and w5/m148; `region` was removed by w8/152, which normalizes it to `BEX_REGION`);
-- a refusal Render makes too: `sync: false` in an env group, the misspelled `dockerFilePath`, a free `private_service`, retired Postgres plans such as `pro-8gb` (bex sells `pro-4gb` since w2/m171);
+- a refusal Render makes too: the misspelled `dockerFilePath`, a free `private_service`, retired Postgres plans such as `pro-8gb` (bex sells `pro-4gb` since w2/m171);
 - a gap already filed: free-form resource names and dotted env keys, both w5/169.
+
+**`sync: false` in an env group is ignored, not refused (w8/293, 2026-11-12).** Render's spec says "You can't apply `sync: false` to environment variables defined in an environment group. If you do this, Render ignores the environment variable." bex used to refuse the whole file, which blocked three Render templates (`ravendr`, `forem`, `git-scm.com`). The entry is now skipped: validate answers `valid: true`, a plan (create, plan, sync, preview) carries one `warning` notice located at the entry, the key is not prompted for, and a sync leaves whatever the group holds for that key. The corpus guard no longer excuses it.
 
 Any other refusal fails the test as a new class to triage. On 2026-10-20 all 170 files passed this rule.
 
