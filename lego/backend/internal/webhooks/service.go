@@ -170,6 +170,7 @@ const (
 	TypeAutoscalingStarted    = "autoscaling_started"
 	TypeAutoscalingEnded      = "autoscaling_ended"
 	// Edge caching (w9/m345): apps.SetCacheProfile turning the cache on or off,
+	// a plan change to or from Free doing so (apps.SetPlanEdgeCache, w9/088),
 	// and apps.PurgeCache. Render's dashboard picker leaves the three out; its
 	// API, and bex's, accept them.
 	TypeEdgeCacheEnabled  = "edge_cache_enabled"
@@ -238,13 +239,10 @@ func AcceptedEventTypes() []string {
 	return append(slices.Clone(EventTypes), slices.Sorted(maps.Keys(legacyEventTypeAliases))...)
 }
 
-// autoDeployVerb and cacheProfileVerb each produce two event types, told
-// apart by the toggle their audit rows record (project), so neither is in
-// verbEvents.
-const (
-	autoDeployVerb   = core.AuditVerbSetAutoDeploy
-	cacheProfileVerb = core.AuditVerbSetCacheProfile
-)
+// autoDeployVerb and the edge-cache toggle verbs (core.EdgeCacheToggleVerbs)
+// each produce two event types, told apart by the toggle their audit rows
+// record (project), so none is in verbEvents.
+const autoDeployVerb = core.AuditVerbSetAutoDeploy
 
 var factEvents = map[string]string{
 	string(store.EventFactImagePullFailed):          TypeImagePullFailed,
@@ -295,7 +293,8 @@ var factEvents = map[string]string{
 // computed once.
 var auditVerbs = func() []string {
 	verbs := slices.Collect(maps.Keys(verbEvents))
-	verbs = append(verbs, autoDeployVerb, cacheProfileVerb)
+	verbs = append(verbs, autoDeployVerb)
+	verbs = append(verbs, core.EdgeCacheToggleVerbs...)
 	slices.Sort(verbs)
 	return verbs
 }()

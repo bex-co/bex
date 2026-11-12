@@ -45,6 +45,8 @@ limitations under the License.
 //	autoscaling_config_changed  apps.SetAutoscaling / apps.DeleteAutoscaling (details.previous/current min+max)
 //	edge_cache_enabled          apps.SetCacheProfile turning caching on  (details.trigger {manual, user, system}, w9/m345)
 //	edge_cache_disabled         apps.SetCacheProfile turning caching off (same trigger; a save that keeps caching on is no event)
+//	                            apps.SetPlanEdgeCache: a plan change to or from Free that turned the
+//	                            saved profile's cache off or on (trigger.system, w9/088)
 //	edge_cache_purged           apps.PurgeCache                          (same trigger)
 //	pipeline_minutes_exhausted  a deploy whose build the operator refused for exhausted pipeline
 //	                            minutes, a typed fact beside its deploy_ended (details.buildId +
@@ -481,9 +483,11 @@ var eventTypes = map[string]string{
 	core.AuditVerbMaintenanceModeURIUpdated: TypeMaintenanceModeURIUpdated,
 	// w9/m345: a profile save is edge_cache_enabled here, and view reads its
 	// edge_cache_enabled_to to tell enabled from disabled. A save that left
-	// caching as it was records NULL and the store never returns it.
-	core.AuditVerbSetCacheProfile: TypeEdgeCacheEnabled,
-	core.AuditVerbPurgeCache:      TypeEdgeCachePurged,
+	// caching as it was records NULL and the store never returns it. A plan
+	// change's edge-cache effect (w9/088) is read the same way.
+	core.AuditVerbSetCacheProfile:  TypeEdgeCacheEnabled,
+	core.AuditVerbSetPlanEdgeCache: TypeEdgeCacheEnabled,
+	core.AuditVerbPurgeCache:       TypeEdgeCachePurged,
 }
 
 // indexedAuditEventTypes are webhook-visible datastore effects that have no
@@ -573,9 +577,9 @@ func pushDownOne(eventType string) store.ServiceEventFilter {
 	case TypeAutoDeployChanged:
 		return store.ServiceEventFilter{Verbs: []string{core.AuditVerbSetAutoDeploy}, AutoDeploy: store.AutoDeployFilterChanged}
 	case TypeEdgeCacheEnabled:
-		return store.ServiceEventFilter{Verbs: []string{core.AuditVerbSetCacheProfile}, EdgeCache: store.EdgeCacheFilterEnabled}
+		return store.ServiceEventFilter{Verbs: core.EdgeCacheToggleVerbs, EdgeCache: store.EdgeCacheFilterEnabled}
 	case TypeEdgeCacheDisabled:
-		return store.ServiceEventFilter{Verbs: []string{core.AuditVerbSetCacheProfile}, EdgeCache: store.EdgeCacheFilterDisabled}
+		return store.ServiceEventFilter{Verbs: core.EdgeCacheToggleVerbs, EdgeCache: store.EdgeCacheFilterDisabled}
 	case TypeImagePullFailed, TypeServiceSuspended, TypeServiceResumed,
 		TypeServiceHibernated, TypeServiceWoken,
 		TypeServerFailed, TypeServerHardwareFailure, TypeServerAvailable, TypeBranchChanged, TypeBranchDeleted,
@@ -648,10 +652,12 @@ type Trigger struct {
 
 // EdgeCacheTrigger is Render's trigger object on edge_cache_enabled,
 // edge_cache_disabled and edge_cache_purged (w9/m345), {manual, user, system}.
-// Every bex edge-cache change is a caller's API or dashboard write, so the
-// adapters render it manual and never system; User is the caller.
+// User is the caller. System marks a toggle the platform made because the
+// caller changed the plan (w9/088); every other change is the caller's own
+// cache write, which the adapters render manual. The two flags are exclusive.
 type EdgeCacheTrigger struct {
-	User *UserRef
+	User   *UserRef
+	System bool
 }
 
 // EndReason is Render's buildDeployEndReason on deploy_ended and build_ended
@@ -1366,10 +1372,10 @@ func view(r store.ServiceEventRow, service string) Event {
 		case TypeEdgeCacheEnabled, TypeEdgeCachePurged:
 			// A profile save names the way it turned the cache (w9/m345);
 			// one that left it as it was is no event, and Get answers 404.
-			if r.Verb == core.AuditVerbSetCacheProfile {
+			if slices.Contains(core.EdgeCacheToggleVerbs, r.Verb) {
 				ev.Type, _ = store.ToggleEvent(r.EdgeCacheEnabledTo, TypeEdgeCacheEnabled, TypeEdgeCacheDisabled)
 			}
-			ev.Details.EdgeCacheTrigger = &EdgeCacheTrigger{}
+			ev.Details.EdgeCacheTrigger = &EdgeCacheTrigger{System: r.Verb == core.AuditVerbSetPlanEdgeCache}
 			if r.Caller != "" {
 				ev.Details.EdgeCacheTrigger.User = &UserRef{ID: r.Caller}
 			}

@@ -219,11 +219,12 @@ const (
 	AutoDeployFilterChanged AutoDeployFilter = 4
 )
 
-// EdgeCacheFilter is AutoDeployFilter's twin for apps.SetCacheProfile rows
-// (w9/m345): which of edge_cache_enabled (edge_cache_enabled_to = true) and
-// edge_cache_disabled (false) a type filter keeps, OR-ed. The zero value keeps
-// both. A row whose save left caching on or off (NULL) is never an event, so
-// the query drops it whatever the filter.
+// EdgeCacheFilter is AutoDeployFilter's twin for the edge-cache toggle rows
+// (w9/m345), apps.SetCacheProfile and apps.SetPlanEdgeCache (w9/088): which of
+// edge_cache_enabled (edge_cache_enabled_to = true) and edge_cache_disabled
+// (false) a type filter keeps, OR-ed. The zero value keeps both. A row whose
+// save left caching on or off (NULL) is never an event, so the query drops it
+// whatever the filter.
 type EdgeCacheFilter int16
 
 const (
@@ -280,8 +281,8 @@ type ServiceEventFilter struct {
 	// applied to SetAutoDeploy rows only. AutoDeployFilterNone (zero value) means
 	// no additional constraint on auto_deploy_enabled.
 	AutoDeploy AutoDeployFilter
-	// EdgeCache narrows apps.SetCacheProfile rows to the edge-cache types asked
-	// for, in SQL like AutoDeploy; zero keeps both.
+	// EdgeCache narrows the edge-cache toggle rows (core.EdgeCacheToggleVerbs)
+	// to the edge-cache types asked for, in SQL like AutoDeploy; zero keeps both.
 	EdgeCache EdgeCacheFilter
 	// Limit caps the page (<1 or >core.MaxPageLimit clamps to core.DefaultPageLimit).
 	Limit int
@@ -470,7 +471,7 @@ WITH feed AS (
            OR ($10 & 1 <> 0 AND a.auto_deploy_enabled = true)
            OR ($10 & 2 <> 0 AND a.auto_deploy_enabled = false)
            OR ($10 & 4 <> 0 AND a.auto_deploy_enabled IS NULL))
-      AND (a.verb <> '` + core.AuditVerbSetCacheProfile + `'
+      AND (a.verb <> ALL($13::text[])
            OR ($12::smallint IS NULL AND a.edge_cache_enabled_to IS NOT NULL)
            OR ($12 & 1 <> 0 AND a.edge_cache_enabled_to = true)
            OR ($12 & 2 <> 0 AND a.edge_cache_enabled_to = false))
@@ -556,7 +557,7 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 	rows, err := s.Pool.Query(ctx, serviceEventsQuery,
 		appID, ownerWorkspace, f.Verbs, f.Phases,
 		nullTime(f.Since), nullTime(f.Until), nullTime(f.AfterAt), f.AfterKey,
-		limit, nullFilterBits(f.AutoDeploy), f.FactTypes, nullFilterBits(f.EdgeCache))
+		limit, nullFilterBits(f.AutoDeploy), f.FactTypes, nullFilterBits(f.EdgeCache), core.EdgeCacheToggleVerbs)
 	if err != nil {
 		return nil, fmt.Errorf("list service events: %w", err)
 	}
@@ -636,7 +637,7 @@ var auditChangeVerbs = map[string]bool{
 	core.AuditVerbLinkService: true, core.AuditVerbUnlinkService: true, core.AuditVerbLinkEnvGroup: true,
 	core.AuditVerbSetAutoscaling: true, core.AuditVerbDeleteAutoscaling: true,
 	core.AuditVerbSetDisplayName: true, core.AuditVerbAddDomain: true, core.AuditVerbDeleteDomain: true, core.AuditVerbVerifyDomain: true,
-	core.AuditVerbSetCacheProfile: true,
+	core.AuditVerbSetCacheProfile: true, core.AuditVerbSetPlanEdgeCache: true,
 }
 
 // attachAuditChanges fills AuditChanges on a page's audit rows from

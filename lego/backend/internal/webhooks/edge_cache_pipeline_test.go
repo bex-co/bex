@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -51,11 +52,11 @@ func TestEdgeCacheAndPipelineEventsReachTheirSubscribers(t *testing.T) {
 		return store.WebhookEventRow{Key: key, At: at.Add(offset), TenantID: "tea-a", ServiceID: "tea-a-web", ServiceName: "web", Source: source}
 	}
 	on := row("aud-on:", 0, store.EventSourceAudit)
-	on.Verb, on.EdgeCacheEnabledTo = cacheProfileVerb, new(true)
+	on.Verb, on.EdgeCacheEnabledTo = core.AuditVerbSetCacheProfile, new(true)
 	off := row("aud-off:", time.Second, store.EventSourceAudit)
-	off.Verb, off.EdgeCacheEnabledTo = cacheProfileVerb, new(false)
+	off.Verb, off.EdgeCacheEnabledTo = core.AuditVerbSetCacheProfile, new(false)
 	kept := row("aud-kept:", 2*time.Second, store.EventSourceAudit)
-	kept.Verb = cacheProfileVerb
+	kept.Verb = core.AuditVerbSetCacheProfile
 	purge := row("aud-purge:", 3*time.Second, store.EventSourceAudit)
 	purge.Verb = core.AuditVerbPurgeCache
 	refused := row("fact:deploy:dep-1:pipeline_minutes_exhausted", 4*time.Second, store.EventSourceFact)
@@ -100,5 +101,51 @@ func TestEdgeCacheAndPipelineEventsReachTheirSubscribers(t *testing.T) {
 	}
 	if signed != 2 {
 		t.Fatalf("verifiably signed edge_cache_purged deliveries = %d, want 2 (one per subscriber)", signed)
+	}
+}
+
+// w9/088: a plan change's edge-cache toggle (apps.SetPlanEdgeCache) is pushed
+// down into the feed query and delivered as edge_cache_disabled / _enabled
+// beside the plan change's plan_changed, under the event id the Events feed
+// shows, so GET /v1/events/{id} hydrates the delivery to the system-triggered
+// details.
+func TestPlanChangeEdgeCacheTogglesReachTheirSubscribers(t *testing.T) {
+	if !slices.Contains(auditVerbs, core.AuditVerbSetPlanEdgeCache) {
+		t.Fatalf("auditVerbs %v does not push %s down into the feed query", auditVerbs, core.AuditVerbSetPlanEdgeCache)
+	}
+	st := newFakeWorkerStore()
+	now := time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC)
+	at := now.Add(-time.Minute)
+	st.wmSeeded, st.wmAt = true, at.Add(-time.Hour)
+	row := func(key string, offset time.Duration, verb string, enabledTo *bool) store.WebhookEventRow {
+		return store.WebhookEventRow{Key: key, At: at.Add(offset), TenantID: "tea-a", ServiceID: "tea-a-web", ServiceName: "web",
+			Source: store.EventSourceAudit, Verb: verb, EdgeCacheEnabledTo: enabledTo}
+	}
+	st.events = []store.WebhookEventRow{
+		row("aud-free:", 0, core.AuditVerbSetPlan, nil),
+		row("aud-off:", time.Second, core.AuditVerbSetPlanEdgeCache, new(false)),
+		row("aud-paid:", 2*time.Second, core.AuditVerbSetPlan, nil),
+		row("aud-on:", 3*time.Second, core.AuditVerbSetPlanEdgeCache, new(true)),
+	}
+	st.endpoints = []store.WebhookEndpoint{
+		endpoint("whk-cache", "tea-a", "https://example.test/cache", "", TypeEdgeCacheEnabled, TypeEdgeCacheDisabled),
+		endpoint("whk-all", "tea-a", "https://example.test/all", ""),
+	}
+	w := &Worker{Store: st, Clock: func() time.Time { return now }, Client: &http.Client{}}
+	if err := dispatchStored(w); err != nil {
+		t.Fatalf("dispatch: %v", err)
+	}
+	byEndpoint := map[string][]string{}
+	for _, id := range st.queueOrder {
+		d := st.queue[id]
+		byEndpoint[d.EndpointID] = append(byEndpoint[d.EndpointID], d.EventType+" "+d.EventID)
+	}
+	off, on := TypeEdgeCacheDisabled+" "+ids.Derive(ids.Event, "aud-off:"), TypeEdgeCacheEnabled+" "+ids.Derive(ids.Event, "aud-on:")
+	if got := byEndpoint["whk-cache"]; !slices.Equal(got, []string{off, on}) {
+		t.Errorf("edge-cache subscriber got %v, want %v", got, []string{off, on})
+	}
+	want := []string{TypePlanChanged + " " + ids.Derive(ids.Event, "aud-free:"), off, TypePlanChanged + " " + ids.Derive(ids.Event, "aud-paid:"), on}
+	if got := byEndpoint["whk-all"]; !slices.Equal(got, want) {
+		t.Errorf("all-events subscriber got %v, want %v", got, want)
 	}
 }

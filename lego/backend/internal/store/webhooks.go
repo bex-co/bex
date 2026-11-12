@@ -757,9 +757,10 @@ type WebhookEventRow struct {
 	// AutoDeployEnabled discriminates apps.SetAutoDeploy into Render's enabled
 	// and disabled event types. nil on every other row (and on legacy audit rows).
 	AutoDeployEnabled *bool
-	// EdgeCacheEnabledTo discriminates apps.SetCacheProfile into
-	// edge_cache_enabled and edge_cache_disabled (w9/m345); nil on every other
-	// row and on a save that left caching as it was, which is no event.
+	// EdgeCacheEnabledTo discriminates apps.SetCacheProfile (w9/m345) and
+	// apps.SetPlanEdgeCache (w9/088) into edge_cache_enabled and
+	// edge_cache_disabled; nil on every other row and on a save that left
+	// caching as it was, which is no event.
 	EdgeCacheEnabledTo *bool
 	FactType           string // fact rows: closed service_event_facts.fact_type
 	// AppID is the app's internal control-plane id, as opposed to ServiceID's
@@ -858,7 +859,7 @@ WITH feed AS (
     JOIN apps a ON a.id = i.app_id AND a.tenant_id = i.workspace_id
     WHERE e.outcome = 'allowed' AND e.verb = ANY($4) AND a.tenant_id = ANY($5)
       -- A profile save that left caching as it was is no event (w9/m345).
-      AND (e.verb <> '` + core.AuditVerbSetCacheProfile + `' OR e.edge_cache_enabled_to IS NOT NULL)
+      AND (e.verb <> ALL($7::text[]) OR e.edge_cache_enabled_to IS NOT NULL)
   UNION ALL
     SELECT e.at,
            e.id || ':',
@@ -952,7 +953,7 @@ LIMIT $6`
 // webhook vocabulary maps (internal/webhooks owns the mapping, exactly as
 // internal/events owns its own).
 func (s *PGStore) ListWebhookEvents(ctx context.Context, afterAt time.Time, afterKey string, until time.Time, verbs, tenants []string, limit int) ([]WebhookEventRow, error) {
-	rows, err := s.Pool.Query(ctx, webhookEventsQuery, afterAt, afterKey, until, verbs, tenants, limit)
+	rows, err := s.Pool.Query(ctx, webhookEventsQuery, afterAt, afterKey, until, verbs, tenants, limit, core.EdgeCacheToggleVerbs)
 	if err != nil {
 		return nil, fmt.Errorf("list webhook events: %w", err)
 	}

@@ -133,6 +133,115 @@ func TestPGEdgeCacheProfileSavesListOnlyWhenCachingTurned(t *testing.T) {
 	}
 }
 
+// w9/088 against real Postgres: a plan change's edge-cache toggle
+// (apps.SetPlanEdgeCache, recorded beside its apps.SetPlan row) lists, filters
+// and reads by id like a profile save's, carrying its edge_cache_enabled_to,
+// and reaches the webhook feed; the plan_changed rows beside it are untouched
+// by the edge-cache filter. RecordAll writes a pair all or none: the failed
+// pair at minute 5 lists nothing.
+func TestPGPlanChangeEdgeCacheTogglesListLikeProfileSaves(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, tenant.ID)
+	})
+	app, err := st.CreateApp(ctx, App{
+		TenantID: tenant.ID, Name: "replanned", Image: "nginx:1", Type: "web_service",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "standard",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().UTC().Truncate(time.Second)
+	row := func(minute int, verb string, enabledTo *bool) core.AuditEvent {
+		ev := core.AuditEvent{
+			Caller: "fixture-owner", Verb: verb, Resource: core.WorkspaceObject(tenant.ID),
+			Target: core.ServiceTarget(app.ID), Outcome: core.AuditAllowed,
+			At: at.Add(time.Duration(minute) * time.Minute), EdgeCacheEnabledTo: enabledTo,
+		}
+		if verb == core.AuditVerbSetPlan {
+			ev.PlanFrom, ev.PlanTo = new("standard"), new("free")
+		}
+		return ev
+	}
+	if err := st.Record(ctx, row(0, core.AuditVerbSetCacheProfile, new(true))); err != nil { // the member turned caching on
+		t.Fatal(err)
+	}
+	// Each plan change and the toggle it caused land in one transaction.
+	for _, pair := range [][]core.AuditEvent{
+		{row(1, core.AuditVerbSetPlan, nil), row(2, core.AuditVerbSetPlanEdgeCache, new(false))}, // to Free: cache stopped
+		{row(3, core.AuditVerbSetPlan, nil), row(4, core.AuditVerbSetPlanEdgeCache, new(true))},  // back to paid: restarted
+	} {
+		if err := st.RecordAll(ctx, pair); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// A pair whose second row fails leaves neither.
+	bad := row(5, core.AuditVerbSetPlanEdgeCache, new(false))
+	bad.Outcome = "bogus"
+	if err := st.RecordAll(ctx, []core.AuditEvent{row(5, core.AuditVerbSetPlan, nil), bad}); err == nil {
+		t.Fatal("RecordAll accepted a row the outcome check refuses")
+	}
+
+	verbs := []string{core.AuditVerbSetCacheProfile, core.AuditVerbSetPlanEdgeCache, core.AuditVerbSetPlan}
+	label := func(verb string, to *bool) string {
+		switch verb {
+		case core.AuditVerbSetPlan:
+			return "plan"
+		case core.AuditVerbSetPlanEdgeCache:
+			return "system-" + cacheToggle(to)
+		}
+		return cacheToggle(to)
+	}
+	list := func(filter EdgeCacheFilter) ([]string, []ServiceEventRow) {
+		t.Helper()
+		rows, err := st.ListServiceEvents(ctx, app.ID, tenant.ID, ServiceEventFilter{Verbs: verbs, EdgeCache: filter, Since: at.Add(-time.Hour)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out []string
+		for _, r := range rows {
+			out = append(out, label(r.Verb, r.EdgeCacheEnabledTo))
+		}
+		return out, rows
+	}
+	for _, tc := range []struct {
+		name   string
+		filter EdgeCacheFilter
+		want   []string
+	}{
+		{"unfiltered", EdgeCacheFilterNone, []string{"system-on", "plan", "system-off", "plan", "on"}},
+		{"enabled", EdgeCacheFilterEnabled, []string{"system-on", "plan", "plan", "on"}},
+		{"disabled", EdgeCacheFilterDisabled, []string{"plan", "system-off", "plan"}},
+	} {
+		if got, _ := list(tc.filter); !slices.Equal(got, tc.want) {
+			t.Errorf("%s feed = %v, want %v (newest first)", tc.name, got, tc.want)
+		}
+	}
+
+	_, rows := list(EdgeCacheFilterDisabled)
+	lookup, err := st.GetServiceEvent(ctx, tenant.ID, ids.Derive(ids.Event, rows[1].Key))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := label(lookup.Event.Verb, lookup.Event.EdgeCacheEnabledTo); got != "system-off" {
+		t.Fatalf("by-id read = %s, want system-off", got)
+	}
+	feed, err := st.ListWebhookEvents(ctx, time.Time{}, "", time.Now().Add(time.Hour), verbs, []string{tenant.ID}, 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var delivered []string
+	for _, r := range feed {
+		if r.Source == EventSourceAudit {
+			delivered = append(delivered, label(r.Verb, r.EdgeCacheEnabledTo))
+		}
+	}
+	if want := []string{"on", "plan", "system-off", "plan", "system-on"}; !slices.Equal(delivered, want) {
+		t.Fatalf("webhook feed = %v, want %v (oldest first)", delivered, want)
+	}
+}
+
 // buildRefusedCR is the App CR the operator leaves after refusing generation
 // gen's build with reason: phase Failed, and the Build verdict for the release.
 // The operator keeps the Build condition False from one failure to the next,

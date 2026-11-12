@@ -161,10 +161,11 @@ type AuditEvent struct {
 	DisplayNameFrom string
 	DisplayNameTo   string
 	Domain          string
-	// EdgeCacheEnabledTo is what an edge-cache profile save turned caching TO
-	// (w9/m345): true for Render's edge_cache_enabled, false for
-	// edge_cache_disabled. Nil when the save left caching on or off, which
-	// Render has no event for, and for every other verb.
+	// EdgeCacheEnabledTo is what an edge-cache profile save (w9/m345), or a
+	// plan change's edge-cache effect (w9/088), turned caching TO: true for
+	// Render's edge_cache_enabled, false for edge_cache_disabled. Nil when a
+	// save left caching on or off, which Render has no event for, and for
+	// every other verb.
 	EdgeCacheEnabledTo *bool
 }
 
@@ -284,6 +285,15 @@ const (
 	// enclosing SetServices verbs' own fan-out rows remain non-events.
 	AuditVerbProjectServiceMoved     = "projects.MoveService"
 	AuditVerbEnvironmentServiceMoved = "environments.MoveService"
+	// AuditVerbSetPlanEdgeCache is apps.SetPlan's edge-cache effect (w9/088).
+	// Edge caching needs a paid plan, so a plan change to Free turns a saved
+	// caching profile off and a change back to a paid plan turns it on again.
+	// It is fixed vocabulary, recorded beside the plan change's own row only
+	// when the change turned the cache, with the caller who changed the plan.
+	// Its own verb marks the toggle as the platform's (Render's
+	// trigger.system), and keeps the workspace audit log from saying the
+	// caller saved a cache profile.
+	AuditVerbSetPlanEdgeCache = "apps.SetPlanEdgeCache"
 	// Fixed datastore effects that have exact Render webhook counterparts. These
 	// are recorded only after the underlying mutation succeeds, then consumed by
 	// the outbound-webhook projection. Keeping them fixed prevents arbitrary
@@ -341,6 +351,12 @@ const (
 	// name, never a bearer or request body.
 	AuditVerbScopeClass = "api.ScopeClass"
 )
+
+// EdgeCacheToggleVerbs are the verbs whose rows record which way they turned
+// the edge cache in EdgeCacheEnabledTo: a caller's profile save (w9/m345) and
+// a plan change's system toggle (w9/088). The events feed, its store queries
+// and the webhook dispatcher all read them from here.
+var EdgeCacheToggleVerbs = []string{AuditVerbSetCacheProfile, AuditVerbSetPlanEdgeCache}
 
 // DatabaseAuditEffect is the closed set of successful Database mutations that
 // project to Render webhook events.
@@ -491,17 +507,27 @@ func SplitTarget(target string) (kind, name string, ok bool) {
 
 // RecordPlanChanged records the typed from/to detail for a successful SetPlan.
 // Called after the write path confirms success, paired with
-// WithDeferredAllowedWriteAudit on the AuthorizeApp call.
-func (b *Base) RecordPlanChanged(ctx context.Context, app *appv1alpha1.App, fromPlan, toPlan string) {
+// WithDeferredAllowedWriteAudit on the AuthorizeApp call. edgeCacheTo is what
+// the change turned app's edge cache to, nil when it left the cache as it was
+// (w9/088): its AuditVerbSetPlanEdgeCache row lands with the plan row or not
+// at all.
+func (b *Base) RecordPlanChanged(ctx context.Context, app *appv1alpha1.App, fromPlan, toPlan string, edgeCacheTo *bool) {
 	resource, err := b.resourceWorkspace(ctx, app.Labels)
 	if err != nil {
 		log.Printf("audit: resolve plan-change resource: %v", err)
 		return
 	}
-	ev := b.verbAuditEvent(ctx, AuditVerbSetPlan, resource, canonicalAppTarget(app))
+	target := canonicalAppTarget(app)
+	ev := b.verbAuditEvent(ctx, AuditVerbSetPlan, resource, target)
 	ev.PlanFrom = &fromPlan
 	ev.PlanTo = &toPlan
-	b.recordAudit(ctx, ev)
+	if edgeCacheTo == nil {
+		b.recordAudit(ctx, ev)
+		return
+	}
+	toggle := b.verbAuditEvent(ctx, AuditVerbSetPlanEdgeCache, resource, target)
+	toggle.EdgeCacheEnabledTo = edgeCacheTo
+	b.recordAudits(ctx, ev, toggle)
 }
 
 // RecordScaleEffect records the typed from/to detail for a successful Scale.
@@ -1136,6 +1162,15 @@ type AuditSink interface {
 	Record(ctx context.Context, ev AuditEvent) error
 }
 
+// AuditBatchSink is an AuditSink that writes several rows all or none
+// (*store.PGStore, in one transaction). Rows that record one fact, a plan
+// change and the edge-cache toggle it caused, go through it so neither lands
+// alone; a sink without it (the in-memory test sinks) gets them one by one.
+type AuditBatchSink interface {
+	AuditSink
+	RecordAll(ctx context.Context, evs []AuditEvent) error
+}
+
 // auditRecordTimeout bounds Base.emit's sink call: recording must never
 // indefinitely block the verb path it's instrumenting (a stalled sink adds at
 // most this much latency, not an unbounded stall). Short relative to
@@ -1360,6 +1395,23 @@ func (b *Base) emit(ctx context.Context, verb, relation, resource, target string
 // events and typed system events.
 func (b *Base) recordAudit(ctx context.Context, ev AuditEvent) {
 	RecordAuditEvent(ctx, b.Audit, ev)
+}
+
+// recordAudits is recordAudit for rows that must land together: one RecordAll
+// on a batch sink, as bounded and fail-open as RecordAuditEvent.
+func (b *Base) recordAudits(ctx context.Context, evs ...AuditEvent) {
+	sink, ok := b.Audit.(AuditBatchSink)
+	if !ok {
+		for _, ev := range evs {
+			b.recordAudit(ctx, ev)
+		}
+		return
+	}
+	recordCtx, cancel := context.WithTimeout(ctx, auditRecordTimeout)
+	defer cancel()
+	if err := sink.RecordAll(recordCtx, evs); err != nil {
+		log.Printf("audit: record %d rows (%s %s first): %v", len(evs), evs[0].Verb, evs[0].Resource, err)
+	}
 }
 
 // RecordAuditEvent writes ev through sink with the same bounded, fail-open

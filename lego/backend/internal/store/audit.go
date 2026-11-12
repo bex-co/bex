@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -109,7 +110,30 @@ func workspaceOf(resource string) string {
 // wires it directly onto core.Base.Audit (cmd/api/main.go) with no adapter
 // type needed.
 func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
-	_, err := s.Pool.Exec(ctx, `
+	return insertAuditEvent(ctx, s.Pool, ev)
+}
+
+// RecordAll persists evs in one transaction, all or none: *PGStore is
+// core.AuditBatchSink, for rows that record one fact (a plan change and the
+// edge-cache toggle it caused, w9/088).
+func (s *PGStore) RecordAll(ctx context.Context, evs []core.AuditEvent) error {
+	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		for _, ev := range evs {
+			if err := insertAuditEvent(ctx, tx, ev); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+var _ core.AuditBatchSink = (*PGStore)(nil)
+
+// insertAuditEvent writes one audit row through the pool or a transaction.
+func insertAuditEvent(ctx context.Context, q interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}, ev core.AuditEvent) error {
+	_, err := q.Exec(ctx, `
 		INSERT INTO audit_events (id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at,
 		    maintenance_mode_to, plan_from, plan_to, instance_count_from, instance_count_to,
 		    autoscaling_min_from, autoscaling_max_from, autoscaling_min_to, autoscaling_max_to, auto_deploy_enabled,

@@ -70,9 +70,10 @@ var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 var edgeCacheTriggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "EdgeCacheTrigger",
 	Fields: graphql.Fields{
-		// Every bex change is a caller's write: manual, never system.
-		"manual": gqlutil.BoolField(func(EdgeCacheTrigger) any { return true }),
-		"system": gqlutil.BoolField(func(EdgeCacheTrigger) any { return false }),
+		// A caller's cache write is manual; a plan change's toggle is the
+		// system's (w9/088).
+		"manual": gqlutil.BoolField(func(t EdgeCacheTrigger) any { return !t.System }),
+		"system": gqlutil.BoolField(func(t EdgeCacheTrigger) any { return t.System }),
 		"user": &graphql.Field{Type: userRefGQLType, Resolve: gqlutil.Field(func(t EdgeCacheTrigger) any {
 			if t.User == nil {
 				return nil

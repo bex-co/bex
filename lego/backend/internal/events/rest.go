@@ -291,7 +291,7 @@ type renderTrigger struct {
 
 // renderEdgeCacheTrigger is Render's trigger on edge_cache_enabled,
 // edge_cache_disabled and edge_cache_purged (w9/m345): manual and system are
-// required, user names the person who changed the cache.
+// required, user names the person whose write changed the cache.
 type renderEdgeCacheTrigger struct {
 	Manual bool        `json:"manual"`
 	User   *renderUser `json:"user,omitempty"`
@@ -347,8 +347,9 @@ func toRenderEvent(e Event) renderEvent {
 		}
 	}
 	if t := e.Details.EdgeCacheTrigger; t != nil {
-		// Every bex change is a caller's write: manual, never system.
-		d.Trigger = &renderEdgeCacheTrigger{Manual: true, User: toRenderUser(t.User)}
+		// A caller's cache write is manual; a plan change's toggle is the
+		// system's, still naming the caller who changed the plan (w9/088).
+		d.Trigger = &renderEdgeCacheTrigger{Manual: !t.System, User: toRenderUser(t.User), System: t.System}
 	}
 	switch e.Type {
 	case TypePlanChanged:

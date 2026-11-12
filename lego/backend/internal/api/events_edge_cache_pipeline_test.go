@@ -128,7 +128,56 @@ func TestEdgeCacheAndPipelineEventsAgreeOnEverySurface(t *testing.T) {
 	}
 	fake.gotFil = store.ServiceEventFilter{}
 	gql(t, h, `{ serviceEvents(serviceId: "web", type: "edge_cache_disabled", startTime: "2026-11-01T00:00:00Z") { id } }`)
-	if !slices.Equal(fake.gotFil.Verbs, []string{core.AuditVerbSetCacheProfile}) || fake.gotFil.EdgeCache != store.EdgeCacheFilterDisabled {
+	if !slices.Equal(fake.gotFil.Verbs, []string{core.AuditVerbSetCacheProfile, core.AuditVerbSetPlanEdgeCache}) || fake.gotFil.EdgeCache != store.EdgeCacheFilterDisabled {
 		t.Errorf("GraphQL type edge_cache_disabled pushed %+v", fake.gotFil)
+	}
+}
+
+// TestPlanChangeEdgeCacheEventsAreSystemTriggeredOnEverySurface is w9/088's
+// parity gate: a plan change to Free that stopped a service's edge cache, and
+// the move back that restarted it, are edge_cache_disabled / _enabled on REST,
+// MCP, GraphQL and GET /v1/events/{id} (a webhook's data.id), with Render's
+// trigger marked system and naming the member who changed the plan.
+func TestPlanChangeEdgeCacheEventsAreSystemTriggeredOnEverySurface(t *testing.T) {
+	at := time.Date(2026, 11, 12, 9, 0, 0, 0, time.UTC)
+	toggle := func(key string, minute int, enabledTo bool) store.ServiceEventRow {
+		return store.ServiceEventRow{Key: key, At: at.Add(-time.Duration(minute) * time.Minute), Source: store.EventSourceAudit,
+			Verb: core.AuditVerbSetPlanEdgeCache, Caller: "user-x", AuditChanges: store.AuditChanges{EdgeCacheEnabledTo: &enabledTo}}
+	}
+	fake := &fakeEventStore{rows: []store.ServiceEventRow{toggle("aud-paid:", 0, true), toggle("aud-free:", 1, false)}}
+	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, srv := serverWith(t, base, Deps{EventStore: fake, Identities: metadataIdentities{}})
+	wantTypes := []string{events.TypeEdgeCacheEnabled, events.TypeEdgeCacheDisabled}
+	systemTrigger := map[string]any{"manual": false, "system": true, "user": map[string]any{"id": "user-x", "email": "user-x@example.com"}}
+
+	res := do(t, h, "GET", "/v1/services/web/events?startTime=2026-11-01T00:00:00Z", testToken, "")
+	var rest []restEvent
+	if err := json.Unmarshal(res.Body.Bytes(), &rest); err != nil || len(rest) != len(wantTypes) {
+		t.Fatalf("REST events = %d %s (%v), want %d", res.Code, res.Body.String(), err, len(wantTypes))
+	}
+	mcpEvents := callListServiceEvents(t, srv, map[string]any{"serviceId": "web", "startTime": "2026-11-01T00:00:00Z"})
+	gqlList, _ := gql(t, h, `{ serviceEvents(serviceId: "web", startTime: "2026-11-01T00:00:00Z") { id type details { edgeCacheTrigger { manual system user { id email } } } } }`)["serviceEvents"].([]any)
+	if len(mcpEvents) != len(rest) || len(gqlList) != len(rest) {
+		t.Fatalf("MCP %d / GraphQL %d events, want %d", len(mcpEvents), len(gqlList), len(rest))
+	}
+	for i, want := range wantTypes {
+		r := rest[i].Event
+		if r.Type != want || !reflect.DeepEqual(r.Details, map[string]any{"trigger": systemTrigger}) {
+			t.Errorf("REST event %d = %s %v, want %s with trigger %v", i, r.Type, r.Details, want, systemTrigger)
+		}
+		if m := mcpEvents[i].Event; m.ID != r.ID || m.Type != r.Type || !reflect.DeepEqual(m.Details, r.Details) {
+			t.Errorf("event %d: MCP %+v diverges from REST %+v", i, m, r)
+		}
+		g := gqlList[i].(map[string]any)
+		if g["id"] != r.ID || g["type"] != want || !reflect.DeepEqual(g["details"].(map[string]any)["edgeCacheTrigger"], systemTrigger) {
+			t.Errorf("event %d: GraphQL %v, want %s with trigger %v", i, g, want, systemTrigger)
+		}
+	}
+
+	got := do(t, h, "GET", "/v1/events/"+ids.Derive(ids.Event, "aud-free:"), testToken, "")
+	var byID wireEvent
+	if err := json.Unmarshal(got.Body.Bytes(), &byID); err != nil || byID.Type != events.TypeEdgeCacheDisabled ||
+		!reflect.DeepEqual(byID.Details, map[string]any{"trigger": systemTrigger}) {
+		t.Errorf("GET /v1/events/{id} = %d %s, want the system-triggered edge_cache_disabled", got.Code, got.Body.String())
 	}
 }

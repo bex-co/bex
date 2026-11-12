@@ -4379,6 +4379,15 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 			return AppView{}, err
 		}
 	}
+	// Edge caching needs a paid plan: the saved profile is kept, but a move to
+	// Free stops the cache and a move back starts it, Render's
+	// system-triggered edge_cache_disabled / _enabled (w9/088).
+	next := a.Spec
+	next.Tier = tier
+	var edgeCacheTo *bool
+	if cached := next.ServesEdgeCache(); cached != a.Spec.ServesEdgeCache() {
+		edgeCacheTo = &cached
+	}
 	result, err := s.writeThroughStoreFetched(ctx, a,
 		func(ctx context.Context, id string) error { return s.Store.SetAppTier(ctx, id, tier) },
 		func(a *appv1alpha1.App) { a.Spec.Tier = tier })
@@ -4388,7 +4397,7 @@ func (s *Service) SetPlan(ctx context.Context, name, plan string) (AppView, erro
 	// Same no-op guard as Scale: a plan change to the current plan emits no
 	// plan_changed audit row or webhook (the allowed-write audit is deferred here).
 	if fromPlan != plan {
-		s.RecordPlanChanged(ctx, a, fromPlan, plan)
+		s.RecordPlanChanged(ctx, a, fromPlan, plan, edgeCacheTo)
 	}
 	return result, nil
 }

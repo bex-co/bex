@@ -198,6 +198,60 @@ func TestImagePortsServiceTogglesAndPurgesItsCache(t *testing.T) {
 	}
 }
 
+// w9/088: edge caching needs a paid plan, so a plan change across the Free
+// line stops or restarts a saved profile's cache. That records Render's
+// edge_cache_disabled / _enabled as its own apps.SetPlanEdgeCache row beside
+// plan_changed, naming the member who changed the plan, and keeps the saved
+// profile. A plan change that leaves the cache as it was records no toggle.
+func TestPlanChangeAcrossFreeRecordsTheEdgeCacheToggle(t *testing.T) {
+	for _, tc := range []struct {
+		name, profile, fromTier, toPlan, want string
+	}{
+		{"a cached service moved to Free", appv1alpha1.CacheProfileStatic, "standard", "free", "off"},
+		{"a cached service moved back to a paid plan", appv1alpha1.CacheProfileAll, "free", "starter", "on"},
+		{"a cached service moved between paid plans", appv1alpha1.CacheProfileStatic, "standard", "pro", ""},
+		{"an uncached service moved to Free", "", "standard", "free", ""},
+		{"an uncached service moved to a paid plan", "", "free", "standard", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := cacheApp("web", tc.fromTier, appv1alpha1.TypeWebService)
+			app.Spec.Replicas, app.Spec.CacheProfile = 1, tc.profile
+			svc, cl := newService(nil, app)
+			sink := &captureAuditSink{}
+			svc.Audit = sink
+			ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "member-1", Method: "session"})
+			if _, err := svc.SetPlan(ctx, "web", tc.toPlan); err != nil {
+				t.Fatalf("SetPlan(%s): %v", tc.toPlan, err)
+			}
+			if n := sink.countVerb(core.AuditVerbSetPlan); n != 1 {
+				t.Fatalf("plan change recorded %d plan_changed rows, want 1", n)
+			}
+			if got := getApp(t, cl, "web").Spec.CacheProfile; got != tc.profile {
+				t.Fatalf("saved profile = %q, want %q kept across the plan change", got, tc.profile)
+			}
+			var toggles []core.AuditEvent
+			for _, ev := range sink.events {
+				if ev.Verb == core.AuditVerbSetPlanEdgeCache || ev.Verb == core.AuditVerbSetCacheProfile {
+					toggles = append(toggles, ev)
+				}
+			}
+			if tc.want == "" {
+				if len(toggles) != 0 {
+					t.Fatalf("a plan change that left the cache as it was recorded %+v", toggles)
+				}
+				return
+			}
+			if len(toggles) != 1 || toggles[0].Verb != core.AuditVerbSetPlanEdgeCache {
+				t.Fatalf("toggle rows = %+v, want one %s", toggles, core.AuditVerbSetPlanEdgeCache)
+			}
+			ev := toggles[0]
+			if got := cacheToggle(ev.EdgeCacheEnabledTo); got != tc.want || ev.Caller != "member-1" || ev.Outcome != core.AuditAllowed {
+				t.Fatalf("toggle = caching %s by %q (%s), want caching %s by member-1", got, ev.Caller, ev.Outcome, tc.want)
+			}
+		})
+	}
+}
+
 // A refused save records nothing for the feed: the verb authorizes under
 // deferred audit, so only a save that landed is an event.
 func TestRefusedCacheProfileSaveRecordsNoEvent(t *testing.T) {

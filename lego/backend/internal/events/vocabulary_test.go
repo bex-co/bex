@@ -220,6 +220,9 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		// verbs stay excused above.
 		core.AuditVerbProjectServiceMoved:     true,
 		core.AuditVerbEnvironmentServiceMoved: true,
+		// apps.SetPlan's edge-cache effect (w9/088): a fixed verb recorded
+		// beside the plan change when it turned the cache, like the pairs above.
+		core.AuditVerbSetPlanEdgeCache: true,
 		// Historical rows may still name the deleted SetSource alias
 		// (w1/063); the live verb is SetSourceAndRegistryCredential.
 		"apps.SetSource": true,

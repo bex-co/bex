@@ -76,6 +76,31 @@ func TestEdgeCacheEventsCarryRendersTrigger(t *testing.T) {
 	}
 }
 
+// w9/088: a plan change to or from Free that turned the edge cache records
+// apps.SetPlanEdgeCache, which is Render's edge_cache_disabled / _enabled
+// triggered by the system, naming the member who changed the plan.
+func TestPlanChangeEdgeCacheToggleIsSystemTriggered(t *testing.T) {
+	const trigger = `{"trigger":{"manual":false,"user":{"id":"user-x"},"system":true}}`
+	for _, tc := range []struct {
+		name     string
+		to       bool
+		wantType string
+	}{
+		{"a move to Free", false, TypeEdgeCacheDisabled},
+		{"a move back to a paid plan", true, TypeEdgeCacheEnabled},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ev := view(cacheRow(core.AuditVerbSetPlanEdgeCache, new(tc.to)), "web")
+			if ev.Type != tc.wantType {
+				t.Fatalf("type = %q, want %q", ev.Type, tc.wantType)
+			}
+			if got := restDetails(t, ev); got != trigger {
+				t.Fatalf("REST details = %s, want %s", got, trigger)
+			}
+		})
+	}
+}
+
 // The trigger's user is resolved like every other event user: email first, by
 // subject, then the usr- id.
 func TestEdgeCacheTriggerUserIsResolved(t *testing.T) {
@@ -148,6 +173,8 @@ func TestPipelineMinutesExhaustedNamesTheRefusedBuildAndItsTrigger(t *testing.T)
 }
 
 func TestEdgeCacheAndPipelineTypeFiltersArePushedDown(t *testing.T) {
+	// A caller's profile save and a plan change's system toggle (w9/088).
+	toggles := []string{core.AuditVerbSetCacheProfile, core.AuditVerbSetPlanEdgeCache}
 	for _, tc := range []struct {
 		name      string
 		types     []string
@@ -155,9 +182,9 @@ func TestEdgeCacheAndPipelineTypeFiltersArePushedDown(t *testing.T) {
 		wantFacts []string
 		wantCache store.EdgeCacheFilter
 	}{
-		{"enabled", []string{TypeEdgeCacheEnabled}, []string{core.AuditVerbSetCacheProfile}, nil, store.EdgeCacheFilterEnabled},
-		{"disabled", []string{TypeEdgeCacheDisabled}, []string{core.AuditVerbSetCacheProfile}, nil, store.EdgeCacheFilterDisabled},
-		{"both share the verb once", []string{TypeEdgeCacheEnabled, TypeEdgeCacheDisabled}, []string{core.AuditVerbSetCacheProfile}, nil, store.EdgeCacheFilterEnabled | store.EdgeCacheFilterDisabled},
+		{"enabled", []string{TypeEdgeCacheEnabled}, toggles, nil, store.EdgeCacheFilterEnabled},
+		{"disabled", []string{TypeEdgeCacheDisabled}, toggles, nil, store.EdgeCacheFilterDisabled},
+		{"both share the verbs once", []string{TypeEdgeCacheEnabled, TypeEdgeCacheDisabled}, toggles, nil, store.EdgeCacheFilterEnabled | store.EdgeCacheFilterDisabled},
 		{"purged", []string{TypeEdgeCachePurged}, []string{core.AuditVerbPurgeCache}, nil, store.EdgeCacheFilterNone},
 		{"pipeline minutes", []string{TypePipelineMinutesExhausted}, nil, []string{TypePipelineMinutesExhausted}, store.EdgeCacheFilterNone},
 	} {
@@ -177,8 +204,9 @@ func TestEdgeCacheAndPipelineTypeFiltersArePushedDown(t *testing.T) {
 	if _, err := newService(st, sampleApp("web", "srv-1", "tea-a")).List(context.Background(), "web", Filter{}); err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Contains(st.got.Verbs, core.AuditVerbSetCacheProfile) || !slices.Contains(st.got.Verbs, core.AuditVerbPurgeCache) ||
+	if !slices.Contains(st.got.Verbs, core.AuditVerbSetCacheProfile) || !slices.Contains(st.got.Verbs, core.AuditVerbSetPlanEdgeCache) ||
+		!slices.Contains(st.got.Verbs, core.AuditVerbPurgeCache) ||
 		!slices.Contains(st.got.FactTypes, TypePipelineMinutesExhausted) || st.got.EdgeCache != store.EdgeCacheFilterNone {
-		t.Errorf("the unfiltered feed must ask for both cache verbs and the pipeline fact: %+v", st.got)
+		t.Errorf("the unfiltered feed must ask for the three cache verbs and the pipeline fact: %+v", st.got)
 	}
 }

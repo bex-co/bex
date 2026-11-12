@@ -26,6 +26,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // fakeAuditSink records every event handed to it — the acceptance seam t001
@@ -46,6 +50,42 @@ func (f *fakeAuditSink) len() int {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	return len(f.events)
+}
+
+// batchAuditSink is an AuditBatchSink that keeps each RecordAll as one batch.
+type batchAuditSink struct {
+	fakeAuditSink
+	batches [][]AuditEvent
+}
+
+func (f *batchAuditSink) RecordAll(_ context.Context, evs []AuditEvent) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.batches = append(f.batches, evs)
+	return nil
+}
+
+// w9/088: a plan change that turned the edge cache hands its plan row and its
+// toggle row to the sink in one RecordAll, so neither lands without the other;
+// one that left the cache as it was records the plan row alone.
+func TestPlanChangeAndItsEdgeCacheToggleLandTogether(t *testing.T) {
+	sink := &batchAuditSink{}
+	b := &Base{Audit: sink}
+	app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"}}
+	b.RecordPlanChanged(context.Background(), app, "starter", "free", new(false))
+	if len(sink.batches) != 1 || sink.len() != 0 {
+		t.Fatalf("batches %d, single records %d, want one batch and none alone", len(sink.batches), sink.len())
+	}
+	batch := sink.batches[0]
+	if len(batch) != 2 || batch[0].Verb != AuditVerbSetPlan || batch[1].Verb != AuditVerbSetPlanEdgeCache ||
+		batch[1].EdgeCacheEnabledTo == nil || *batch[1].EdgeCacheEnabledTo || batch[0].Target != batch[1].Target {
+		t.Fatalf("batch = %+v, want the plan row and its edge-cache-off toggle on one target", batch)
+	}
+
+	b.RecordPlanChanged(context.Background(), app, "starter", "standard", nil)
+	if len(sink.batches) != 1 || sink.len() != 1 || sink.events[0].Verb != AuditVerbSetPlan {
+		t.Fatalf("a plan change that left the cache recorded %+v beside %d batches", sink.events, len(sink.batches))
+	}
 }
 
 // failingAuditSink always errors — proves a sink outage never fails the verb.
