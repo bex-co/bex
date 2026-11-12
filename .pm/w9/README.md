@@ -33,8 +33,9 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **m344** — **BLOCKED (your action: on the production GitHub App, Settings → Subscribe to events → tick Issue comment and Pull request review, per ADR026 § PR feedback; implementation shipped)** — [PR feedback loop: comments, reviews and CI failures on the agent's draft PR steer its session](blocked/m344/README.md) (11 tasks; t001–t006, t008–t010 done)
 - [ ] **m345** — [Render event types for features bex already has: `edge_cache_*` and `pipeline_minutes_exhausted`](m345/README.md) (8 tasks) ← from `/pm-brainstorm more for w9` 2026-11-11, filed by `/pmx` 2026-11-12
 - [ ] **m346** — [Coordinator tools: a parent session waits for, messages and cancels its children from inside its sandbox](m346/README.md) (8 tasks) ← from `/pm-brainstorm more for w9` 2026-11-11, filed by `/pmx` 2026-11-12
+- [ ] **m348** — [A `/bex` comment on a pull request starts a session that takes it over, as Devin's `/devin` does](m348/README.md) (9 tasks) ← promoted from w9/085 2026-11-12
 - [x] **084** — [The mobile app drops the `agent_automation_paused` push](done/084.md) ← w9/m343 t003 follow-up — **DONE** 2026-11-12
-- [ ] **085** — [A `/bex` comment on any pull request starts an agent session on it](085.md) ← w9/m344 follow-up (Devin `/devin`)
+- [x] **085** — [A `/bex` comment on any pull request starts an agent session on it](done/085.md) ← w9/m344 follow-up (Devin `/devin`) — promoted to m348 2026-11-12
 - [ ] **086** — [An automation link opens in the browser's current workspace, not the automation's](086.md) ← w9/084 review follow-up
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
 - [x] **081** — [Approval mode for codex sessions (withdrawn)](done/081.md) — withdrawn 2026-11-07 with ADR100; removed by m179
