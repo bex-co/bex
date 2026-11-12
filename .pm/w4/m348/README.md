@@ -95,3 +95,28 @@ All on production:
   - An open tab on the old build therefore fails on every lazy route it hasn't loaded yet, until it reloads the document. Each such miss is again stored with `public, max-age=31536000, immutable`.
 - **Control.** After `Network.clearBrowserCache`, the same kind of page on the new build (`/services/srv-dbkq3hdhhjfs73eiahe0/deploys/<id>`) loaded 17 assets, all `text/javascript`, `cf: MISS`.
 - **What this adds to the DoD:** the edge, not only the browser, must never keep a miss (DoD 1's second request). t002's overlap fix must also cover a tab left open on the previous build, which is the common case after a Rollback, a form submit or any lazy route.
+
+## Reproduced again (round 235, 2026-11-12 21:53–21:55 UTC)
+
+Live `/qa-find-bugs w4` loop, round 235, during the rollout of pin `764072bb8e8a`. The pin commit `f12c28585` landed at 21:49:46, and the `deploy.yml` run for `764072bb8e8a` was still `in_progress` at 21:53:04. Same mechanism and same DoD as round 193; nothing in this milestone has shipped yet.
+
+- **21:53:5x.** `page.goto('/services/srv-dbr3aifst1cc739eveqg/settings')` (a fresh Free fixture, deleted afterwards) showed "Something went wrong — Failed to fetch dynamically imported module: https://dashboard.bex.co/assets/ory-toaster-BLHMTEtc.js". The console logged `Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html"` for about 15 chunk URLs.
+- **21:54:24.** `curl` from outside already got JavaScript for the same URLs: `ory-toaster-BLHMTEtc.js` → `200 text/javascript`, `public, max-age=31536000, immutable`, `cf-cache-status: MISS`, `last-modified: Thu, 12 Nov 2026 21:42:48 GMT`.
+- **21:54:37.** A full reload still failed. The browser served its own cached HTML for:
+  - `services._serviceId-B-0w4F0-.js`
+  - `service-detail-layout-CoxPgBCU.js`
+  - `use-cached-service-type-Ncc-kd95.js`
+  - `requires-ssh-key-D5N1Z8dc.js`
+  - `chevron-left-CPCkh6pj.js`
+  - `ory-toaster-BLHMTEtc.js`
+  - `octagon-x-BbWxamwr.js`
+
+  Each came back `200 text/html; charset=utf-8`, `public, max-age=31536000, immutable`, `cf=MISS`.
+- In-page `fetch('/assets/<chunk>')`:
+  - with the default cache: `text/html`;
+  - with `cache: 'no-store'`: `text/javascript`.
+- **Try again** (w4/269) failed the same way.
+- **The serving policy is unchanged on the new pin.** `curl -sSI https://dashboard.bex.co/assets/qa-r235-missing-<ts>.js` twice: `200 text/html; charset=utf-8`, `public, max-age=31536000, immutable`, `cf-cache-status: MISS`, then `HIT`, and the body was `<!DOCTYPE html>…`. That is DoD 1, still failing.
+- **How far it reached.** By 21:55:51 the edge served JavaScript for these URLs, with and without `Accept-Encoding: gzip, deflate, br, zstd` (`cf-cache-status: HIT`, colo SJC). So this round's poisoning stayed in the browser.
+  - The browser still loaded the HTML after DevTools `Network.clearBrowserCache` and a fresh `page.goto` (21:55:42). Its responses read `cf=HIT age=134`, which places the store at about 21:53:28, during the rollout.
+  - Only an in-page `fetch('/assets/<chunk>', {cache: 'reload'})` of each of the seven URLs recovered the page. A user has no equivalent short of clearing site data.
