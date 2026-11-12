@@ -184,6 +184,11 @@ jobs:
             [ "$i" -lt 3 ] || exit 1
             echo "go mod download attempt $i failed, retrying in $((i * 15))s..."; sleep $((i * 15))
           done
+      # The shared CRD contract's own tests: no other job runs them, so a
+      # regression there passed CI while its importers still compiled (w4/589).
+      - name: go test ./... (types)
+        working-directory: lego/types
+        run: go test ./...
       - name: go test ./... (backend)
         working-directory: lego/backend
         env:

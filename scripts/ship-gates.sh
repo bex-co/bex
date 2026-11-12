@@ -88,6 +88,8 @@ if [ -n "$changed" ]; then
   eval "$(bash scripts/backend-test-deps.sh env)"
   # No KUBECONFIG: with the test database set, it would point live-acceptance
   # tests at whatever cluster the caller has open.
+  # The CRD contract's own tests, as backend-test.yml runs them (w4/589).
+  (cd lego/types && GOWORK=off go test ./...)
   (cd lego/backend && env -u KUBECONFIG GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -p 1 ./...)
   # Only on success: a failed suite leaves its database up to inspect.
   bash scripts/backend-test-deps.sh down
