@@ -379,6 +379,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **619** — [With a custom time range applied, the Logs and Metrics range selector reads only "Custom…", so the page never says which window it is showing](619.md) (~25m; minor) ← live `/qa-find-bugs w4` loop round 242, 2026-11-12 UTC (pin `764072bb8e8a`).
 - [ ] **618** — [Adding a custom domain toasts the name as typed ("Added Qa-R238.Example.COM"), while the list, the DNS dialog and the API all use the normalized name `qa-r238.example.com`](618.md) (~10m; minor) ← live `/qa-find-bugs w4` loop round 238, 2026-11-12 UTC (pin `764072bb8e8a`).
 - [ ] **617** — [The Chinese dashboard names the Pre-Deploy Command two ways: "预部署命令" on the Settings row, and "部署前命令" in its own paid-plan notice and the five build-minutes messages](617.md) (~15m; minor) ← live `/qa-find-bugs w4` loop round 231, 2026-11-12 UTC (pin `33e1b1e6117c`).
 - [ ] **616** — [Saving the Health Check Path, Max shutdown delay or Pre-Deploy Command in Settings starts a deploy with no warning: no confirm, and a toast that says only "… updated."](616.md) (~40m; minor) ← live `/qa-find-bugs w4` loop round 230, 2026-11-12 UTC (pin `33e1b1e6117c`).
