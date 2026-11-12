@@ -1,6 +1,6 @@
 # Deterministic build (the bex builder's "auto" mode uses a Dockerfile when present,
 # else Cloud Native Buildpacks). Multi-stage → tiny static image.
-FROM golang:1.24-bookworm AS build
+FROM golang:1.25-bookworm AS build
 WORKDIR /src
 COPY . .
 RUN CGO_ENABLED=0 go build -trimpath -o /app .

@@ -140,8 +140,8 @@
     "ws": "^8.21.0",
     "flatted": "^3.4.2",
     "immutable": "^4.3.9",
-    "seroval": "^1.6.8",
-    "seroval-plugins": "^1.6.8",
+    "seroval": "^1.6.12",
+    "seroval-plugins": "^1.6.12",
     "@graphql-tools/utils": "^12.1.0",
     "zod": "^4.6.6"
   }
