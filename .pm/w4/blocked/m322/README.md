@@ -1,6 +1,6 @@
 # w4 · m322 — A cron job's manually triggered runs, and every run of a cron job named 28–30 characters, chart no CPU, memory or instances and meter no instance time
 
-**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
+**Worker:** worker4 **Goal:** every run a cron job executes appears in its Metrics and in its metered `instance_seconds`, whether the run was scheduled or triggered, and whatever its name length. No other App's pod is counted. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t009 (round 166: long-named run pods are not truncated) is open; t004's live replay passed DoD 1 and waits on t009 for DoD 2, then t008 closes
 
 ## Tasks (in order)
 
@@ -9,13 +9,14 @@
 | [t001](done/t001.md) | Select every run pod of a cron App in the shared cAdvisor matcher: manual-run Jobs and hashed long-name CronJob Jobs — **DONE** | 60m | — |
 | [t002](done/t002.md) | Blast radius: the three matcher callers, sibling-App isolation and regression tests on the shapes that work today — **DONE** | 30m | t001 |
 | [t003](done/t003.md) | A cron App that ran in a window but meters zero is a degraded read, not an honest zero — **DONE** | 30m | t001 |
-| [t004](t004.md) | Live verification in `bex-canary` | 30m | t002, t003 |
+| [t009](t009.md) | A long-named cron job's run pods are not truncated (`<cronjob>-<minute>-<5>`, `<cronjob>-r<8 hex>-<5>`, 67–68 characters), so t001's single-segment alternative matches none and the job still charts nothing | 40m | t001 |
+| [t004](t004.md) | Live verification in `bex-canary` | 30m | t002, t003, t009 |
 | [t005](done/t005.md) | Render parity — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| [t008](t008.md) | Closeout | 10m | t006, t007, t009 |
 
-Eight tasks, 215m (3h35m).
+Nine tasks, 255m (4h15m); t009 added in round 166.
 
 **Major.** The Metrics page reads "No data in range" for runs that ran, and the usage meter, which bills cron jobs per second of run time, records none of that time.
 
@@ -138,3 +139,18 @@ Signed in to `bex-canary` after the release pins this build, with owned Starter 
   - A user debugging a cron job reaches for Trigger Run first, then sees "No data in range" for the run they just watched succeed.
   - Every paid cron run triggered that way is unbilled, silently: the zero reads as healthy.
 - **Render parity included (t005):** REST, GraphQL and MCP metrics and usage numbers change, and the dashboard charts change.
+
+## Post-release probe (QA loop round 166, 2026-11-12): DoD 1 passes, DoD 2 fails (filed as t009)
+
+Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `c1cc477b8`. Fixtures are in t009, deleted afterwards (GET 404).
+
+- **DoD 1 passes.**
+  - Three `POST /v1/cron-jobs/<A>/runs` (no body; a `{}` body is refused as "request body is not allowed for this operation", Render's contract), each after the previous run ended.
+  - `GET /v1/metrics/cpu` returned one series per run instance (`…9hngb0mq`, `…1rn0i5u6`, `…38jb3gir`), and `memory` the same three.
+- **DoD 2 fails.** The 30-character `*/5` cron's manual and scheduled runs both succeeded, and `cpu`, `memory` and `instance-count` all returned `[]`. The run pods' names are not the truncated shape t001 matches (t009).
+- **Seen for DoD 3, not judged yet:**
+  - A's `memory` series continue at the run's last value for ~5 minutes after each run ends. Run 1 ended 04:24:45, and its series has points 04:25–04:29.
+  - `instance-count` read `2` at 04:27, though runs 2 and 3 didn't overlap (run 2 ended 04:26:00, run 3 started 04:26:33).
+  - If the usage meter counts those tails, each 49 s run would meter several minutes. The hourly rollup wasn't waited for, so DoD 3's ±15 s check is still open.
+- **Not run:** DoD 3 (usage after the hour rolls up) and DoD 4 (sibling isolation).
+
