@@ -26,6 +26,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -567,7 +568,7 @@ func TestListLimitIsClampedToOneHundredAndAnUnpagedListIsComplete(t *testing.T) 
 		"?limit=100000":  100,
 		"?limit=0":       1,  // below the minimum clamps up
 		"?limit=junk":    20, // present but unparseable: the paged default
-		"?cursor=os-000": 20, // a cursor alone pages at the default
+		"?cursor=os-129": 20, // a cursor alone pages at the default (newest first; equal times fall back to the id, descending)
 	} {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/sandboxes"+query, nil).WithContext(callerCtx()))
@@ -577,6 +578,72 @@ func TestListLimitIsClampedToOneHundredAndAnUnpagedListIsComplete(t *testing.T) 
 		}
 		if len(envelopes) != want {
 			t.Errorf("list %q returned %d sandboxes, want %d", query, len(envelopes), want)
+		}
+	}
+}
+
+// w32/015: Render lists sandboxes newest first ("Lists sandboxes in the
+// specified workspace, newest first", render.com/docs/sandboxes); OpenSandbox
+// lists them oldest first. REST, GraphQL and MCP share listFiltered's order,
+// and a REST cursor pages through it without skipping or repeating one.
+func TestListIsNewestFirstAndPagesInThatOrder(t *testing.T) {
+	base := time.Date(2026, 11, 12, 10, 0, 0, 0, time.UTC)
+	up := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var items []map[string]any
+		// Oldest first, as OpenSandbox answers; os-c and os-d were created in
+		// the same second, so the id decides.
+		for i, id := range []string{"os-a", "os-b", "os-c", "os-d"} {
+			created := base.Add(time.Duration(min(i, 2)) * time.Hour)
+			items = append(items, map[string]any{
+				"id": id, "createdAt": created,
+				"metadata": map[string]string{
+					metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
+					metadataNetworkPolicy: string(NetworkPolicyDenyAll),
+				},
+				"status": map[string]string{"state": "Running"},
+			})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"items": items})
+	}))
+	t.Cleanup(up.Close)
+	svc := &Service{Base: &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}}, Client: NewClient(up.URL)}
+
+	boxes, err := svc.listFiltered(callerCtx(), nil, "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var ids []string
+	for _, box := range boxes {
+		ids = append(ids, box.ID)
+	}
+	if got := strings.Join(ids, ","); got != "os-d,os-c,os-b,os-a" {
+		t.Fatalf("list order = %s, want newest first: os-d,os-c,os-b,os-a", got)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	for query, want := range map[string]string{
+		"":                       "os-d,os-c,os-b,os-a",
+		"?limit=2":               "os-d,os-c",
+		"?cursor=os-c&limit=2":   "os-b,os-a",
+		"?cursor=os-a&limit=2":   "",
+		"?cursor=os-zzz&limit=2": "", // an unknown cursor ends the list
+	} {
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/sandboxes"+query, nil).WithContext(callerCtx()))
+		var envelopes []SandboxEnvelope
+		if err := json.Unmarshal(rec.Body.Bytes(), &envelopes); err != nil || rec.Code != http.StatusOK {
+			t.Fatalf("list %q = %d %s", query, rec.Code, rec.Body.String())
+		}
+		var got []string
+		for _, e := range envelopes {
+			got = append(got, e.Sandbox.ID)
+			if e.Cursor != e.Sandbox.ID {
+				t.Errorf("list %q: cursor %q for %s", query, e.Cursor, e.Sandbox.ID)
+			}
+		}
+		if strings.Join(got, ",") != want {
+			t.Errorf("list %q = %v, want %s", query, got, want)
 		}
 	}
 }

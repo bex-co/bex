@@ -9,7 +9,7 @@ All requests carry the workspace as an `ownerId` query parameter (Render's team 
 | CLI command | Method + path | Request | Response |
 | --- | --- | --- | --- |
 | `ea sandbox create` | `POST /v1/sandboxes?ownerId=` | `{ "plan": <plan>, "image"?: <ref>, "networkPolicy"?: {…} }` | `Sandbox` |
-| `ea sandbox list` | `GET /v1/sandboxes?ownerId=&cursor=&status=` | — (repeat `status=` per filter; `--all` sends every status) | `[{ sandbox, cursor }]` (cursor pagination) |
+| `ea sandbox list` | `GET /v1/sandboxes?ownerId=&cursor=&status=` | — (repeat `status=` per filter; `--all` sends every status) | `[{ sandbox, cursor }]` newest first, as Render lists them (w32/015; cursor pagination over that order) |
 | (get by id) | `GET /v1/sandboxes/{sandboxId}?ownerId=` | — | `Sandbox` |
 | `ea sandbox exec` (v2.24.0+, step 1) | `POST /v1/sandboxes/{sandboxId}/runs/{operation}/token?ownerId=` (`operation` = `stream`) | `{ "command": "…" }` | `201` `SandboxConnectResponse` `{ executionId: "exe-…", expiresAt, method: "POST", token, uri }` |
 | `ea sandbox exec` (v2.24.0+, step 2) | `POST <uri>` = `/v1/sandboxes/{sandboxId}/runs/{executionId}/stream`, `Authorization: Bearer <token>`, `Accept: text/event-stream` | `{ "command": "…" }` (must equal the minted command) | `200` SSE `output` events followed by `exit` with `exit_code`, or `error` with `{status, message}` |

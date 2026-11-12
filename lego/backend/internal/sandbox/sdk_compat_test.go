@@ -62,7 +62,8 @@ func TestSandboxReadsCarryRenderRequiredFields(t *testing.T) {
 	}
 }
 
-// A page is cut only when asked for; the cursor resumes after that sandbox.
+// A page is cut only when asked for; the cursor resumes after that sandbox in
+// the newest-first order (equal creation times fall back to the id).
 func TestSandboxListPagesOnlyWhenAsked(t *testing.T) {
 	var rows []string
 	for i := 0; i < 3; i++ {
@@ -89,10 +90,10 @@ func TestSandboxListPagesOnlyWhenAsked(t *testing.T) {
 	if got := ids(""); len(got) != 3 {
 		t.Fatalf("unpaged list = %v, want all three", got)
 	}
-	if got := ids("?limit=2"); strings.Join(got, ",") != "sbx-0,sbx-1" {
+	if got := ids("?limit=2"); strings.Join(got, ",") != "sbx-2,sbx-1" {
 		t.Fatalf("first page = %v", got)
 	}
-	if got := ids("?limit=2&cursor=sbx-1"); strings.Join(got, ",") != "sbx-2" {
+	if got := ids("?limit=2&cursor=sbx-1"); strings.Join(got, ",") != "sbx-0" {
 		t.Fatalf("second page = %v", got)
 	}
 }

@@ -19,7 +19,7 @@
 - [ ] [018](018.md) — A directory copied into a sandbox loses its files' modification times (1970), and uploads arrive owner-only (~45m) ← `/qa-find-bugs-cli` loop sweep dc0e 2026-11-12
 - [ ] [017](017.md) — A sandbox ended by its lifetime timeout answers 404 for up to ten minutes, then reads `terminated` at the wrong time (~60m) ← `/qa-find-bugs-cli` loop sweep 4488 2026-11-12; the lifetime-expiry half of w3/m318's DoD
 - [ ] [016](016.md) — A sandbox reads region `frankfurt` while its sandbox group reads `oregon` (~45m) ← `/qa-find-bugs-cli` loop sweep edb9 2026-11-12
-- [ ] [015](015.md) — `bex sandboxes list` returns the oldest sandbox first; ADR104 D2 says newest first (~45m) ← `/qa-find-bugs-cli` loop sweep 865a 2026-11-12
+- [x] [015](done/015.md) — `bex sandboxes list` returned the oldest sandbox first; Render lists newest first — DONE (the shared list is sorted newest first and REST pages over that order)
 - [x] [014](done/014.md) — `bex agent … -o json` ends with a blank line (the API's own trailing newline plus the CLI's) — DONE (the answer is trimmed before it is re-indented)
 - [x] [013](done/013.md) — the CLI docs and ADR018 still list "Render" prose and the `pg create` wizard hint as branding residuals; w2/073 and w2/082 rewrote both — DONE (docs, ADR018 and the pin-bump checklist now describe the product-name rule and the wizard rewrite)
 - [x] [012](done/012.md) — `BEX_WORKSPACE` set to a workspace name that starts with `tea-` is never resolved (sent as `ownerId`, "not allowed") — DONE (only a value with the id's whole shape is an id; `tea-house` is resolved as a name)

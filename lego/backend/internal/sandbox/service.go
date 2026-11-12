@@ -1423,10 +1423,10 @@ func (s *Service) withNames(ctx context.Context, workspace string, boxes []Sandb
 	return boxes, nil
 }
 
-// listFiltered is List narrowed by Render's status filter — the one helper
-// the REST, GraphQL and MCP list adapters share, so all three apply the same
-// default and refuse the same unknown status. The filter is validated before
-// the authorized List runs.
+// listFiltered is List narrowed by Render's status filter, newest first — the
+// one helper the REST, GraphQL and MCP list adapters share, so all three apply
+// the same default, order and refusals. The filter is validated before the
+// authorized List runs.
 func (s *Service) listFiltered(ctx context.Context, status []string, name, groupID string) ([]Sandbox, error) {
 	want, err := parseStatusFilter(status)
 	if err != nil {
@@ -1460,17 +1460,29 @@ func (s *Service) listFiltered(ctx context.Context, status []string, name, group
 		}
 		out = core.Filter(out, func(sb Sandbox) bool { return sb.SandboxGroupID == groupID })
 	}
-	if name == "" {
-		return out, nil
+	if name != "" {
+		// Render's exact-match name filter; names are not unique.
+		out = core.Filter(out, func(box Sandbox) bool { return box.Name != nil && *box.Name == name })
 	}
-	// Render's exact-match name filter; names are not unique.
-	named := out[:0]
-	for _, box := range out {
-		if box.Name != nil && *box.Name == name {
-			named = append(named, box)
-		}
+	slices.SortFunc(out, newestFirst)
+	return out, nil
+}
+
+// newestFirst orders sandboxes as Render lists them (render.com/docs/sandboxes,
+// read 2026-11-12: "Lists sandboxes in the specified workspace, newest
+// first"). OpenSandbox lists oldest first. The id breaks a tie (ids are
+// unique), so a cursor page is stable; a sandbox with no creation time sorts
+// last.
+func newestFirst(a, b Sandbox) int {
+	switch {
+	case a.CreatedAt == nil && b.CreatedAt != nil:
+		return 1
+	case a.CreatedAt != nil && b.CreatedAt == nil:
+		return -1
+	case a.CreatedAt != nil && !a.CreatedAt.Equal(*b.CreatedAt):
+		return b.CreatedAt.Compare(*a.CreatedAt)
 	}
-	return named, nil
+	return strings.Compare(b.ID, a.ID)
 }
 
 // Get returns one sandbox's status. With no workspace named in ctx it acts in
