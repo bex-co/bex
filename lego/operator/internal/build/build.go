@@ -181,7 +181,8 @@ const terminationMessageBytes = 4096
 // mount, `#N`, elapsed seconds and digests) stays out. A failure is always
 // named: the command's exit code, or BuildKit's error for a step around it.
 // What buildctl prints before BuildKit's first step (a daemon that never
-// started) passes through. Since the log is no longer the transcript, bex_run
+// started) passes through. A command step BuildKit served from its layer
+// cache ran nothing, and says so after the narration (w4/582). Since the log is no longer the transcript, bex_run
 // writes the transcript's tail to the termination message, which the failure
 // reason and the platform-fetch classification read (failureDetail). The
 // command reaches the filter through BEX_BUILD_COMMAND, never the script text.
@@ -197,6 +198,11 @@ bex_display() {
           printf "==> Running build command %c%s%c...\n", 39, ENVIRON["BEX_BUILD_COMMAND"], 39
           fflush()
         }
+        next
+      }
+      if (n == step && $2 == "CACHED" && ENVIRON["BEX_BUILD_COMMAND"] != "") {
+        print "==> Reusing the cached result: nothing the build command reads has changed since an earlier build"
+        fflush()
         next
       }
       if ($2 != "ERROR:") {
@@ -236,9 +242,17 @@ bex_display() {
 }
 `
 
-// nativeBuildSucceeded closes a native build's log once BuildKit succeeded,
-// as Render's does.
-const nativeBuildSucceeded = "\necho '==> Build successful \U0001F389'"
+// nativePushNarration is a native build's push phase: Render's upload lines
+// around the push, then its verdict, which a push that fails never reaches
+// (w4/582). skopeo's per-blob transcript stays out, as BuildKit's does; its
+// errors still reach the log on stderr. With image signing on, cosign runs
+// after it (it has no shell to print from), so a signing failure follows the
+// verdict.
+const nativePushNarration = `echo '==> Uploading build...'
+bex_started=$(date +%s)
+skopeo "$@" >/dev/null || exit $?
+echo "==> Uploaded in $(( $(date +%s) - bex_started ))s"
+` + "echo '==> Build successful \U0001F389'"
 
 // classifyBufferBytes bounds the copy of phase output kept for classification.
 // The full stream still reaches the container log; only this tail is retained.
@@ -1218,7 +1232,7 @@ fi
 	} else {
 		// A native build's log reads like Render's: the command, its output,
 		// and the verdict (w4/m324). A Dockerfile build keeps BuildKit's output.
-		buildkitScript = nativeLogDisplay + buildkitScript + nativeBuildSucceeded
+		buildkitScript = nativeLogDisplay + buildkitScript
 	}
 
 	// Keep BuildKit's default OCI process sandbox enabled; the Pod user namespace
@@ -1355,6 +1369,9 @@ fi
 		SecurityContext: restrictedContainerSecurityContext(),
 		Resources:       pushPhaseResources(),
 	}
+	if o.Builder == BuilderNative {
+		pusher.Command = []string{"sh", "-c", nativePushNarration, pushContainer}
+	}
 	mountRegistryCred(&pusher, "push-registry-cred", o.PushSecret)
 
 	podSpec := corev1.PodSpec{
@@ -1485,7 +1502,7 @@ fi
 // Swallowing the status keeps the reason in the build log — which the tenant
 // sees — while leaving the phase's exit code clean. Arguments stay in "$@" as
 // discrete positional parameters, never spliced into the script text.
-const cacheBestEffort = `skopeo "$@" || echo "bex: build cache step failed; continuing (the cache affects speed, never results)" >&2`
+const cacheBestEffort = `skopeo "$@" >/dev/null || echo "bex: build cache step failed; continuing (the cache affects speed, never results)" >&2`
 
 // cacheRestoreBestEffort additionally clears the destination. A restore that
 // dies part-way can leave a layout whose index.json is present and whose blobs
@@ -1493,13 +1510,13 @@ const cacheBestEffort = `skopeo "$@" || echo "bex: build cache step failed; cont
 // which is a different case from the corrupt-index one that was measured safe.
 // Removing the remains turns an ambiguous half-cache into the well-tested
 // no-cache path.
-const cacheRestoreBestEffort = `skopeo "$@" || { rm -rf ` + cacheInMount + `/* ` + cacheInMount + `/.[!.]*; echo "bex: no usable build cache; building clean" >&2; }`
+const cacheRestoreBestEffort = `skopeo "$@" >/dev/null || { rm -rf ` + cacheInMount + `/* ` + cacheInMount + `/.[!.]*; echo "bex: no usable build cache; building clean" >&2; }`
 
 // cachePurgeBestEffort deletes the App's cache tag. Missing tags and transient
 // registry errors must not fail a clear-cache rebuild — the rebuild already
 // skips import, so a purge miss only means a later normal deploy may still see
 // an older tag until this Job's cache-save replaces it.
-const cachePurgeBestEffort = `skopeo "$@" || echo "bex: build cache purge skipped; continuing (clear rebuild does not import)" >&2`
+const cachePurgeBestEffort = `skopeo "$@" >/dev/null || echo "bex: build cache purge skipped; continuing (clear rebuild does not import)" >&2`
 
 // skopeoCopyArgs assembles one credential-isolated registry copy. The
 // TLS-verification flag is derived from which SIDE is the registry rather than

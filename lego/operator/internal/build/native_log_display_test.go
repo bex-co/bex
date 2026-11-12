@@ -158,10 +158,63 @@ func TestNativeBuildLogShowsTheCommandAndItsOutput(t *testing.T) {
 	want := "==> Running build command '" + command + "'...\n" +
 		"added 80 packages, and audited 81 packages in 2s\n" +
 		"\n" +
-		"  run `npm fund` for details\n" +
-		"==> Build successful \U0001F389\n"
+		"  run `npm fund` for details\n"
 	if log != want {
 		t.Fatalf("log:\n%q\nwant:\n%q", log, want)
+	}
+}
+
+// w4/582: a build command step BuildKit served from its layer cache ran
+// nothing, so the log says its result was reused after naming it.
+func TestNativeBuildLogSaysACachedCommandWasReused(t *testing.T) {
+	command := "npm install"
+	transcript := nativeTranscript(command, "")
+	i := strings.Index(transcript, "#23 2.411")
+	j := strings.Index(transcript, "#24 exporting")
+	cached := transcript[:i] + "#23 CACHED\n" + transcript[j:]
+	log, _, exit := runBuildkit(t, nativeLogOptions(command), cached, 0)
+	if exit != 0 {
+		t.Fatalf("exit %d, log:\n%s", exit, log)
+	}
+	if want := "==> Running build command 'npm install'...\n==> Reusing the cached result: nothing the build command reads has changed since an earlier build\n"; log != want {
+		t.Fatalf("log:\n%q\nwant:\n%q", log, want)
+	}
+}
+
+// w4/582: the verdict follows the upload, as Render's does, so a push that
+// fails never reads "Build successful"; skopeo's blob transcript stays out.
+func TestNativeBuildPushSaysSuccessOnlyAfterTheUpload(t *testing.T) {
+	spec := BuildJob(nativeLogOptions("npm install"), nativeLogOptions("npm install").ImageRef()).Spec.Template.Spec
+	push := cachePhaseIn(&spec, pushContainer)
+	if len(push.Command) != 4 || push.Command[0] != "sh" || push.Command[3] != pushContainer {
+		t.Fatalf("native push command = %q, want the narration wrapper", push.Command)
+	}
+	dir := t.TempDir()
+	for name, code := range map[string]int{"pushed": 0, "refused": 1} {
+		bin := filepath.Join(dir, name)
+		if err := os.MkdirAll(bin, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		fake := "#!/bin/sh\necho 'Copying blob sha256:abc'\necho 'denied: requested access to the resource is denied' >&2\nexit " + strconv.Itoa(code) + "\n"
+		if err := os.WriteFile(filepath.Join(bin, "skopeo"), []byte(fake), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command(push.Command[0], append(push.Command[1:], push.Args...)...)
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"))
+		out, err := cmd.CombinedOutput()
+		log := string(out)
+		if strings.Contains(log, "Copying blob") || !strings.HasPrefix(log, "==> Uploading build...\n") {
+			t.Fatalf("%s: log %q, want the narration without skopeo's transcript", name, log)
+		}
+		if code == 0 {
+			if err != nil || !strings.Contains(log, "==> Uploaded in ") || !strings.HasSuffix(log, "==> Build successful \U0001F389\n") {
+				t.Fatalf("pushed: err %v log %q", err, log)
+			}
+			continue
+		}
+		if ee, ok := errors.AsType[*exec.ExitError](err); !ok || ee.ExitCode() != code || strings.Contains(log, "Build successful") || !strings.Contains(log, "denied") {
+			t.Fatalf("refused: err %v log %q, want exit %d, the error and no verdict", err, log, code)
+		}
 	}
 }
 

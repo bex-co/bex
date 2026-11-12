@@ -168,7 +168,7 @@ func TestBuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 				})
 				script := revisionStamp + `bex_run buildctl-daemonless.sh "$@"`
 				if tc.o.Builder == BuilderNative {
-					script = nativeLogDisplay + script + nativeBuildSucceeded
+					script = nativeLogDisplay + script
 				}
 				c.Command[scriptIndex(t, c)] = classifyPrelude + script
 				if j := slices.Index(c.Args, "--export-cache"); j >= 0 {

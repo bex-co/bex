@@ -1574,6 +1574,7 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 	if err != nil {
 		return err
 	}
+	attachedAt := time.Now()
 
 	ns := s.BuildNamespace
 	if ns == "" {
@@ -1634,7 +1635,7 @@ func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource stri
 				if cur == nil {
 					return
 				}
-				for _, container := range runningContainers(*cur) {
+				for _, container := range containersStartedSince(*cur, attachedAt) {
 					if !started[container] {
 						started[container] = true
 						startStream(container)
@@ -1737,6 +1738,22 @@ func (s *Service) awaitBuildPod(ctx context.Context, q LogQuery, prog *progressF
 		case <-time.After(wait):
 		}
 	}
+}
+
+// containersStartedSince is runningContainers plus the containers that
+// started at or after since and have already finished: a phase shorter than
+// the poll interval, such as the push and its "Build successful" line
+// (w4/582), would otherwise never be attached.
+func containersStartedSince(pod corev1.Pod, since time.Time) []string {
+	out := runningContainers(pod)
+	for _, statuses := range [][]corev1.ContainerStatus{pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses} {
+		for i := range statuses {
+			if done := statuses[i].State.Terminated; done != nil && !done.StartedAt.Time.Before(since.Truncate(time.Second)) {
+				out = append(out, statuses[i].Name)
+			}
+		}
+	}
+	return out
 }
 
 func runningContainers(pod corev1.Pod) []string {
