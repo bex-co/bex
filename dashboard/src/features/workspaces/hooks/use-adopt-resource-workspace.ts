@@ -16,7 +16,7 @@ import { useWorkspace } from "@/features/workspaces/context/hooks";
 export function useAdoptResourceWorkspace(
   resourceId: string,
   ownerId: string | null | undefined,
-) {
+): boolean {
   const { workspaces, loading, currentWorkspaceId, setCurrentWorkspaceId } =
     useWorkspace();
   const adoptedFor = useRef<string | null>(null);
@@ -34,4 +34,12 @@ export function useAdoptResourceWorkspace(
     currentWorkspaceId,
     setCurrentWorkspaceId,
   ]);
+  // Pending while a member's resource from another workspace is not yet the
+  // selection, so role-gated UI never renders for the wrong workspace first.
+  // A deliberate switch away navigates home, so this never strands a page.
+  return (
+    !!ownerId &&
+    ownerId !== currentWorkspaceId &&
+    (loading || workspaces.some((w) => w.id === ownerId))
+  );
 }

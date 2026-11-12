@@ -37,7 +37,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **m349** — [Agent sessions survive a sandbox-node hiccup: transient exec failures retry, a lost container's reason is kept, and sandbox logs are shipped](m349/README.md) (11 tasks) ← promoted from w9/089 2026-11-12
 - [x] **084** — [The mobile app drops the `agent_automation_paused` push](done/084.md) ← w9/m343 t003 follow-up — **DONE** 2026-11-12
 - [x] **085** — [A `/bex` comment on any pull request starts an agent session on it](done/085.md) ← w9/m344 follow-up (Devin `/devin`) — promoted to m348 2026-11-12
-- [ ] **086** — [An automation link opens in the browser's current workspace, not the automation's](086.md) ← w9/084 review follow-up
+- [x] **086** — [An automation link opens in the browser's current workspace, not the automation's](done/086.md) ← w9/084 review follow-up — **DONE** 2026-11-12
 - [ ] **087** — [Edge caching never runs for a web service with image ports](087.md) ← w9/m345 t005 follow-up
 - [ ] **088** — [A plan change that turns edge caching on or off records no event](088.md) ← w9/m345 t005 follow-up
 - [x] **089** — [Agent sessions die mid-run: sandboxes are deleted minutes in, and a rollout fails running sessions](done/089.md) ← observed 2026-11-12 on the bex workspace's automations — promoted to m349 2026-11-12

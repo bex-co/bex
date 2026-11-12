@@ -12,6 +12,7 @@ import {
   useAgentAutomation,
   useAutomationMutations,
 } from "@/features/agent-automations/hooks/use-agent-automation";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { useAutomationViewer } from "@/features/agent-automations/hooks/use-automation-viewer";
 import {
   emptyFormValues,
@@ -67,6 +68,7 @@ export function AutomationEditPage({ automationId }: { automationId: string }) {
   const navigate = useNavigate();
   const { automation, loading, error, refetch } =
     useAgentAutomation(automationId);
+  const adopting = useAdoptResourceWorkspace(automationId, automation?.ownerId);
   const mutations = useAutomationMutations();
   const viewer = useAutomationViewer();
   const initial = useMemo(
@@ -74,7 +76,7 @@ export function AutomationEditPage({ automationId }: { automationId: string }) {
     [automation],
   );
 
-  if (loading || (automation && viewer.resolving)) {
+  if (loading || adopting || (automation && viewer.resolving)) {
     return <AutomationFormSkeleton mode="edit" />;
   }
   if (!automation || !initial) {

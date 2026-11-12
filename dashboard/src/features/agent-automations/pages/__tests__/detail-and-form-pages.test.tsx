@@ -45,6 +45,10 @@ vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
 vi.mock("@/features/workspaces/context/hooks", () => ({
   useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
 }));
+const adopt = vi.hoisted(() => vi.fn((): boolean => false));
+vi.mock("@/features/workspaces/hooks/use-adopt-resource-workspace", () => ({
+  useAdoptResourceWorkspace: adopt,
+}));
 vi.mock("@/features/services/hooks/use-repos", () => ({
   useRepos: () => ({
     repos: [],
@@ -110,6 +114,7 @@ vi.mock("@/features/agent-automations/hooks/use-automation-viewer", () => ({
 }));
 
 beforeEach(() => {
+  adopt.mockReset();
   state.automation = automation();
   state.loading = false;
   state.creator = true;
@@ -135,6 +140,17 @@ describe("AutomationDetailPage", () => {
     expect(screen.getByText("Update the dependencies")).toBeInTheDocument();
     expect(screen.getByText("No runs yet.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Edit" })).toBeInTheDocument();
+  });
+
+  it("follows an automation opened from a link to its own workspace, behind its skeleton", () => {
+    state.automation = automation({ id: "aut-1", ownerId: "tea-2" });
+    adopt.mockReturnValue(true);
+    const { container } = render(<AutomationDetailPage automationId="aut-1" />);
+    expect(adopt).toHaveBeenCalledWith("aut-1", "tea-2");
+    // Role-gated actions wait for the owner's workspace to be selected.
+    expect(
+      container.querySelector('[data-route-skeleton="automation-detail"]'),
+    ).not.toBeNull();
   });
 
   it("explains a platform pause and offers Resume", () => {
@@ -223,6 +239,14 @@ describe("form pages", () => {
       "Only the member who created this automation can edit it.",
     );
     expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
+  });
+
+  it("the edit page waits for the automation's workspace before deciding who may edit", () => {
+    state.automation = automation({ id: "aut-1", ownerId: "tea-2" });
+    adopt.mockReturnValue(true);
+    const { container } = render(<AutomationEditPage automationId="aut-1" />);
+    expect(adopt).toHaveBeenCalledWith("aut-1", "tea-2");
+    expect(container.querySelector("[data-route-skeleton]")).not.toBeNull();
   });
 
   it("the edit page opens the creator's form filled from the stored automation", () => {

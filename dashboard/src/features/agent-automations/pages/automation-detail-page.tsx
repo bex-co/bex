@@ -11,6 +11,7 @@ import { AutomationLoadError } from "@/features/agent-automations/components/aut
 import { AutomationSettingsCard } from "@/features/agent-automations/components/automation-settings-card";
 import { RunHistoryCard } from "@/features/agent-automations/components/run-history-card";
 import { useAgentAutomation } from "@/features/agent-automations/hooks/use-agent-automation";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { useAutomationRuns } from "@/features/agent-automations/hooks/use-agent-automation-runs";
 import { useAutomationOperations } from "@/features/agent-automations/hooks/use-automation-operations";
 import { useAutomationViewer } from "@/features/agent-automations/hooks/use-automation-viewer";
@@ -29,11 +30,12 @@ export function AutomationDetailPage({
   const navigate = useNavigate();
   const { automation, loading, error, refetch } =
     useAgentAutomation(automationId);
+  const adopting = useAdoptResourceWorkspace(automationId, automation?.ownerId);
   const runs = useAutomationRuns(automationId);
   const viewer = useAutomationViewer();
   const ops = useAutomationOperations();
 
-  if (loading) return <AutomationDetailSkeleton />;
+  if (loading || adopting) return <AutomationDetailSkeleton />;
   if (!automation) {
     return (
       <AutomationSubPageFrame

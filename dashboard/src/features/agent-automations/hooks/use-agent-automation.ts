@@ -16,6 +16,7 @@ import {
 } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import type { AutomationView } from "@/features/agent-automations/hooks/use-agent-automations";
+import { isAutomationId } from "@/features/agent-automations/lib/automation-id";
 
 const LIST_REFETCH = [AgentAutomationsDocument];
 
@@ -29,19 +30,21 @@ export interface UseAgentAutomationResult {
   refetch: () => Promise<unknown>;
 }
 
-/** One automation by aut- id or name. */
+/** One automation by aut- id (in any of the caller's workspaces) or name. */
 export function useAgentAutomation(id: string): UseAgentAutomationResult {
   const { currentWorkspaceId } = useWorkspace();
+  const byId = isAutomationId(id);
+  const waiting = !byId && currentWorkspaceId == null;
   const { data, loading, error, refetch } = useQuery(AgentAutomationDocument, {
-    variables: { ownerId: currentWorkspaceId ?? "", id },
-    skip: currentWorkspaceId == null,
+    variables: byId ? { id } : { ownerId: currentWorkspaceId ?? "", id },
+    skip: waiting,
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
   });
   const automation = data?.agentAutomation ?? null;
   return {
     automation,
-    loading: currentWorkspaceId == null || (loading && automation == null),
+    loading: waiting || (loading && automation == null),
     error,
     refetch,
   };
@@ -78,6 +81,12 @@ export function useAutomationMutations(): UseAutomationMutations {
     if (ownerId === "") throw new Error("no workspace selected");
     return ownerId;
   }, [ownerId]);
+  // An aut- id names its own workspace, whatever is selected; a name is
+  // resolved within the selected one.
+  const ref = useCallback(
+    (id: string) => (isAutomationId(id) ? { id } : { ownerId: need(), id }),
+    [need],
+  );
 
   const create = useCallback(
     async (input: AgentAutomationInput) => {
@@ -93,61 +102,61 @@ export function useAutomationMutations(): UseAutomationMutations {
   const update = useCallback(
     async (id: string, input: AgentAutomationInput) => {
       const res = await updateM({
-        variables: { ownerId: need(), id, input },
+        variables: { ...ref(id), input },
         refetchQueries: LIST_REFETCH,
       });
       if (!res.data) throw new Error("updateAgentAutomation returned nothing");
       return res.data.updateAgentAutomation;
     },
-    [updateM, need],
+    [updateM, ref],
   );
   const remove = useCallback(
     async (id: string) => {
       await deleteM({
-        variables: { ownerId: need(), id },
+        variables: ref(id),
         refetchQueries: LIST_REFETCH,
       });
     },
-    [deleteM, need],
+    [deleteM, ref],
   );
   const pause = useCallback(
     async (id: string) => {
       const res = await pauseM({
-        variables: { ownerId: need(), id },
+        variables: ref(id),
         refetchQueries: LIST_REFETCH,
       });
       if (!res.data) throw new Error("pauseAgentAutomation returned nothing");
       return res.data.pauseAgentAutomation;
     },
-    [pauseM, need],
+    [pauseM, ref],
   );
   const resume = useCallback(
     async (id: string) => {
       const res = await resumeM({
-        variables: { ownerId: need(), id },
+        variables: ref(id),
         refetchQueries: LIST_REFETCH,
       });
       if (!res.data) throw new Error("resumeAgentAutomation returned nothing");
       return res.data.resumeAgentAutomation;
     },
-    [resumeM, need],
+    [resumeM, ref],
   );
   const takeOver = useCallback(
     async (id: string) => {
       const res = await takeOverM({
-        variables: { ownerId: need(), id },
+        variables: ref(id),
         refetchQueries: LIST_REFETCH,
       });
       if (!res.data)
         throw new Error("takeOverAgentAutomation returned nothing");
       return res.data.takeOverAgentAutomation;
     },
-    [takeOverM, need],
+    [takeOverM, ref],
   );
   const runNow = useCallback(
     async (id: string) => {
       const res = await runM({
-        variables: { ownerId: need(), id },
+        variables: ref(id),
         refetchQueries: [
           AgentAutomationsDocument,
           AgentAutomationDocument,
@@ -157,7 +166,7 @@ export function useAutomationMutations(): UseAutomationMutations {
       if (!res.data) throw new Error("runAgentAutomation returned nothing");
       return res.data.runAgentAutomation;
     },
-    [runM, need],
+    [runM, ref],
   );
 
   return {

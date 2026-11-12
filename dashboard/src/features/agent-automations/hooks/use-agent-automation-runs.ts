@@ -4,6 +4,7 @@ import {
   AgentAutomationRunsDocument,
   type AgentAutomationRunsQuery,
 } from "@/graphql/definitions";
+import { isAutomationId } from "@/features/agent-automations/lib/automation-id";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
 export type AutomationRunRow =
@@ -24,15 +25,15 @@ export interface UseAutomationRunsResult {
 /** An automation's run history, newest first, a cursor page at a time. */
 export function useAutomationRuns(id: string): UseAutomationRunsResult {
   const { currentWorkspaceId } = useWorkspace();
+  const byId = isAutomationId(id);
+  const waiting = !byId && currentWorkspaceId == null;
   const { data, loading, error, refetch, fetchMore } = useQuery(
     AgentAutomationRunsDocument,
     {
-      variables: {
-        ownerId: currentWorkspaceId ?? "",
-        id,
-        limit: RUN_PAGE_SIZE,
-      },
-      skip: currentWorkspaceId == null,
+      variables: byId
+        ? { id, limit: RUN_PAGE_SIZE }
+        : { ownerId: currentWorkspaceId ?? "", id, limit: RUN_PAGE_SIZE },
+      skip: waiting,
       fetchPolicy: "cache-and-network",
       errorPolicy: "all",
     },
@@ -66,7 +67,7 @@ export function useAutomationRuns(id: string): UseAutomationRunsResult {
 
   return {
     runs: list?.runs ?? [],
-    loading: currentWorkspaceId == null || (loading && list == null),
+    loading: waiting || (loading && list == null),
     error,
     refetch,
     loadMore,
