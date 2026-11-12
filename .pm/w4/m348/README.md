@@ -83,3 +83,15 @@ All on production:
 - w3/m244 (QUIC idle) and w9/m60 (bundle size) are other dashboard-delivery items.
 - `grep -rlnE "dynamically imported module|preloadError|stale chunk|max-age=31536000, immutable" .pm` finds only those and static-site items.
 - Not deploy lag: `git log a5be11e4e517..origin/main -- dashboard/server dashboard/vite.config.ts dashboard/deploy` is empty.
+
+## Evidence — QA loop round 196 (2026-11-12): the edge kept the HTML for an hour, and a second rollout reproduced the miss from the other side
+
+- **A page every Rollback lands on.** At 13:16:34, the dashboard's Rollback (on `qa-20261112-r196-rb`) redirected to `/services/<id>/deploys/dep-dbqrobu54r0c73bpufv0`, which showed "Something went wrong". The console logged `Expected a JavaScript-or-Wasm module script but the server responded with a MIME type of "text/html"` for `services._serviceId.deploys._deployId-DPqgC_8P.js` and `deploy-detail-page-DuTmeOhw.js`. The browser cache had been cleared at about 12:30 (round 193).
+- **The edge held the HTML for an hour.** In-page `fetch('/assets/deploy-detail-page-DuTmeOhw.js')` with the default cache answered:
+  - `200 content-type: text/html`, `cf-cache-status: HIT`, `age: 3584`, `date: Thu, 12 Nov 2026 13:16:33 GMT`, body `<!DOCTYPE html>`.
+  - So Cloudflare had stored the HTML under that chunk URL at about 12:16:49, inside the 12:16–12:18 rollout of `9a5b95e96210`. It served it for the whole hour that build was live, to every browser at that edge that did not already hold the JavaScript.
+- **The other direction.** A platform deploy (`workflow_dispatch` run `43222770042`, `f018ce945`, completed about 13:20) was rolling the dashboard to a new build (HTML entry `index-bE9o0aTT.js`, replacing `index-IKLlIlK-.js`).
+  - The same request with `cache: 'reload'` reached the origin (`cf: MISS`) and still answered `text/html`, because the new build has no `deploy-detail-page-DuTmeOhw.js`.
+  - An open tab on the old build therefore fails on every lazy route it hasn't loaded yet, until it reloads the document. Each such miss is again stored with `public, max-age=31536000, immutable`.
+- **Control.** After `Network.clearBrowserCache`, the same kind of page on the new build (`/services/srv-dbkq3hdhhjfs73eiahe0/deploys/<id>`) loaded 17 assets, all `text/javascript`, `cf: MISS`.
+- **What this adds to the DoD:** the edge, not only the browser, must never keep a miss (DoD 1's second request). t002's overlap fix must also cover a tab left open on the previous build, which is the common case after a Rollback, a form submit or any lazy route.
