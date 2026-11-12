@@ -55,8 +55,23 @@ Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenan
 5. **[m310](blocked/m310/README.md)** — **BLOCKED** (Hetzner dedicated-vCPU limit, as `w2/blocked/m250`) — Performance pipeline tier (8 tasks).
 6. **[115](done/115.md)** — **done** — ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository (~15m).
 
+## Approved queue (priority order, 2026-11-11)
+
+Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the long-standing blockers and the two accepted limits, for Render parity), approved by the user's `/pm them all to w6`. Scheduled items for worker6, not a workstream specialty.
+
+1. **[m332](m332/README.md)** — Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it (8 tasks).
+2. **[m333](m333/README.md)** — deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed (8 tasks); absorbs `w4/575`.
+3. **[m334](m334/README.md)** — an unmetered usage hour pages before it can no longer be metered (6 tasks).
+4. **[118](118.md)** — ADR018 records that hosted bex requires a card for every workspace (~20m).
+5. **[119](119.md)** — re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners (~45m).
+
+**User action, not a board item:** raise the Hetzner project's dedicated-vCPU limit to at least 48 (Hetzner Console → Limits, or a support ticket). That releases `m310` (16), `w2/blocked/m250`'s Pro Ultra (32) and `114`'s four dedicated-size plans.
+
 ## Milestones
 
+- [ ] **m332** — [Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it](m332/README.md) (8 tasks) ← `/pm-brainstorm` 2026-11-11 proposal 1; `w2/blocked/m250`, `w6/blocked/114`
+- [ ] **m333** — [Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed](m333/README.md) (8 tasks) ← proposal 2; absorbs `w4/575`
+- [ ] **m334** — [An unmetered usage hour pages before it can no longer be metered](m334/README.md) (6 tasks) ← proposal 3; the limit accepted in `w4/496`
 - [x] **m319** — [Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down](done/m319/README.md) — **done 2026-11-10**: `includedBandwidth` identical on REST, GraphQL, MCP and the billing page on production (8 tasks) ← promoted from `w6/116` 2026-11-10
 - [x] **m306** — [Builds of different services start together, and a held build is visible](done/m306/README.md) — **done 2026-11-11**: on production a workspace's builds 3–4 start while 1–2 run (`examples/build-probe`); the two-minute node wait is `w6/117` (10 tasks) ← `/pm-brainstorm for w6` 2026-11-10 proposal 1; ADR060 §D5/§D6
 - [x] **m307** — [`build_seconds` counts what Render counts as pipeline minutes](done/m307/README.md) — **done 2026-11-10**: a failing build's run metered and the queue wait excluded, identical on REST, GraphQL and MCP on production (9 tasks) ← proposal 2; ADR023
@@ -235,6 +250,8 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **119** — [Re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners](119.md) (~45m) ← proposal 5
+- [ ] **118** — [ADR018 records that hosted bex requires a card for every workspace (ADR075 D7)](118.md) (~20m) ← proposal 4
 - [x] **117** — [A workspace's third and fourth builds wait about two minutes for a build node](done/117.md) — done 2026-11-11: user chose B; `bex-tenant-burst` kept warm at two nodes (min-size 2) ← `w6/m306` production record
 - [x] **116** — [Each plan's included outbound bandwidth is not applied, and a card-less workspace past it keeps running](done/m319/source-w6-116.md) — promoted to `m319` 2026-11-10 by `/loopx w6`
 - [x] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](done/115.md) (~15m) — done 2026-11-10 (ADR026 §8 + ADR018 corrected) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
