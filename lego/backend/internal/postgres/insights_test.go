@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -366,6 +367,76 @@ func TestTopQueriesIntegration(t *testing.T) {
 		t.Fatalf("TopQueries => %v", err)
 	}
 	t.Logf("TopQueries returned %d rows", len(out))
+}
+
+// TestTopQueriesLeavesTheReadOnlyEnvelopeOut pins w21/058: on a database with no
+// application traffic, Top queries listed Insights' own `begin read only` and
+// `rollback`. The test database has no pg_stat_statements (it is not preloaded),
+// so a table of the same columns stands in for the view; the statement under test
+// is the real sqlTopQueries, run through the real read path.
+func TestTopQueriesLeavesTheReadOnlyEnvelopeOut(t *testing.T) {
+	uri := testDBURI(t)
+	ctx := context.Background()
+	admin, err := pgx.Connect(ctx, uri)
+	if err != nil {
+		t.Fatalf("admin connect: %v", err)
+	}
+	defer admin.Close(ctx)
+	var present bool
+	if err := admin.QueryRow(ctx, `SELECT to_regclass('pg_stat_statements') IS NOT NULL`).Scan(&present); err != nil {
+		t.Fatal(err)
+	}
+	if present {
+		t.Skip("the database has a real pg_stat_statements; the stand-in table would not be the one read")
+	}
+	if _, err := admin.Exec(ctx, `CREATE TABLE public.pg_stat_statements (
+		userid oid, query text, calls bigint, total_exec_time double precision,
+		mean_exec_time double precision, rows bigint, shared_blks_hit bigint, shared_blks_read bigint)`); err != nil {
+		t.Fatalf("create stand-in: %v", err)
+	}
+	// The test login is a reserved role (postgres), which the read leaves out by
+	// design, so the rows belong to a customer-like role.
+	if _, err := admin.Exec(ctx, `DROP ROLE IF EXISTS topq_customer`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := admin.Exec(ctx, `CREATE ROLE topq_customer`); err != nil {
+		t.Fatalf("create role: %v", err)
+	}
+	t.Cleanup(func() {
+		c, err := pgx.Connect(ctx, uri)
+		if err != nil {
+			return
+		}
+		defer c.Close(ctx)
+		_, _ = c.Exec(ctx, `DROP TABLE IF EXISTS public.pg_stat_statements`)
+		_, _ = c.Exec(ctx, `DROP ROLE IF EXISTS topq_customer`)
+	})
+	// Largest total time first: the envelope statements outrank the customer's.
+	if _, err := admin.Exec(ctx, `INSERT INTO public.pg_stat_statements
+		SELECT (SELECT oid FROM pg_roles WHERE rolname = 'topq_customer'), q, 1, t, t, 0, 0, 0
+		FROM (VALUES
+			('begin read only', 90.0), ('rollback', 80.0),
+			('SELECT id FROM orders', 70.0), ('ROLLBACK', 60.0), ('BEGIN', 50.0),
+			('SELECT `+insightsTag+` 1', 40.0)) AS v(q, t)`); err != nil {
+		t.Fatalf("seed stand-in: %v", err)
+	}
+
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "topq-envelope", uri)
+	rows, err := svc.TopQueries(ctx, "topq-envelope")
+	if err != nil {
+		t.Fatalf("TopQueries => %v", err)
+	}
+	var got []string
+	for _, r := range rows {
+		got = append(got, r.Query)
+	}
+	// The customer's statement stays, in every spelling that is not the envelope's;
+	// the envelope's two and Insights' own tagged SELECT do not.
+	want := []string{"SELECT id FROM orders", "ROLLBACK", "BEGIN"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("Top queries = %q, want %q", got, want)
+	}
 }
 
 // TestSizesIntegration exercises pg_database_size / pg_total_relation_size.

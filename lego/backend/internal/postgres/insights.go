@@ -323,6 +323,19 @@ type ParameterSpecView struct {
 // ran these statements untagged keeps those rows until its statistics reset.
 const insightsTag = "/* bex:insights */"
 
+// insightsEnvelopeStatements are the two statements every read-only round trip
+// sends around its SELECT (runSQLQuery's BeginTx and Rollback; the SQL console
+// runs the same envelope). pg_stat_statements records them under the connecting
+// role, which is the customer's by design, and a comment cannot tag a
+// statement that has no SELECT, so insightsTag never matches them: on a quiet
+// database Top queries listed the panel's own `begin read only` and `rollback`
+// (one row per role it connected as) instead of its empty state (w21/058). They
+// are left out by their exact text, the spelling pgx sends; the statements carry
+// no SQL, so no customer information is hidden, and a transaction-control
+// statement an application sends in another spelling (`BEGIN`, `COMMIT`,
+// `ROLLBACK`) still shows.
+const insightsEnvelopeStatements = `'begin read only', 'rollback'`
+
 // tagInsight places insightsTag after sql's leading SELECT; every Insights
 // statement is one.
 func tagInsight(sql string) string {
@@ -377,6 +390,7 @@ SELECT COALESCE(left(query, 500), '')   AS query,
 FROM pg_stat_statements
 WHERE userid NOT IN (SELECT oid FROM pg_roles WHERE ` + reservedRoleSQL("rolname") + `)
   AND COALESCE(query, '') NOT LIKE '%` + insightsTag + `%'
+  AND COALESCE(query, '') NOT IN (` + insightsEnvelopeStatements + `)
 ORDER BY total_exec_time DESC
 LIMIT 25`
 
