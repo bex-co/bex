@@ -66,16 +66,23 @@ Render runs each sandbox in its own Firecracker microVM. bex chose Kata first an
 
 **Revenue.** The sandbox meter bills the allocated shape while running, at the AgentCore reference ([ADR030](ADR030-pricing.md), `pricing.yaml`): $0.0895 per vCPU-hour and $0.00945 per GB-hour. An agent sandbox is 2 vCPU / 4 GiB, so it bills **$0.2168 per sandbox-hour**. The session above confirms it: $0.116 of compute for a 32-minute turn.
 
-**Cost.** Hetzner dedicated servers, read from hetzner.com on 2026-11-11, EUR excluding VAT; the price is each model's base configuration. Thread counts and CPU generations are the CPUs' public specifications, not read from Hetzner. USD figures assume 1 EUR = 1.20 USD.
+**Cost.** These are Hetzner dedicated servers as the bex account's Robot order page sells them, read 2026-11-12. The account is Stargately, Inc., billed in USD with 0% VAT.
 
-| Server | CPU | Threads | RAM | Disks | Monthly | Setup |
-| --- | --- | --- | --- | --- | --- | --- |
-| AX41 | Ryzen 5 3600 (Zen 2, 2019) | 12 | 64 GB | 2 × 512 GB | €59 ($70.80) | €0 |
-| EX44 | Core i5-13500 (2023), 6 performance + 8 efficiency cores | 20 | 64 GB | 2 × 512 GB | €59 ($70.80) | €0 |
-| AX42 | Ryzen 7 PRO 8700GE (Zen 4) | 16 | 64 GB ECC | 2 × 1.92 TB | €79 ($94.80) | €49 |
-| EX63 | Core Ultra 7 265, 8 performance + 12 efficiency cores | 20 | 64 GB ECC, up to 192 GB | 2 × 1 TB | €99 ($118.80) | €74 |
-| AX102 | Ryzen 9 7950X3D (Zen 4) | 32 | 128 GB ECC | 2 × 1.92 TB | €159 ($190.80) | €129 |
-| AX162 | EPYC 9454P | 96 | 128 GB ECC, up to 512 GB | not read | €319 ($382.80) | €304 |
+- Each price is the most a month can cost; below that cap the server bills by the hour.
+- Setup fees are one-off and not refunded.
+- Thread counts and CPU generations are the CPUs' public specifications, not read from Hetzner.
+
+| Server | CPU | Threads | RAM | Disks | Max per month | Setup | Orderable on 2026-11-12 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| AX41-1-LTD | Ryzen 5 3600 (Zen 2, 2019) | 12 | 64 GB DDR4 | 2 × 512 GB | $69 | $0 | no |
+| EX44-1-LTD | Core i5-13500 (2023), 6 performance + 8 efficiency cores | 20 | 64 GB DDR4 | 2 × 512 GB | $74 | $0 | no |
+| AX42-1-LTD | Ryzen 7 PRO 8700GE (Zen 4) | 16 | 64 GB DDR5 | 2 × 512 GB | $89 | $39 | no |
+| **AX42-1** | Ryzen 7 PRO 8700GE (Zen 4) | 16 | 64 GB DDR5, non-ECC | 2 × 512 GB NVMe Gen 4 | **$119** | $59 | yes |
+| **EX63-1** | Core Ultra 7 265, 8 performance + 12 efficiency cores | 20 | 64 GB DDR5 | 2 × 1 TB NVMe | **$174** | $84 | yes |
+| **AX102-1** | Ryzen 9 7950X3D (Zen 4) | 32 | 128 GB DDR5, non-ECC | 2 × 1.92 TB NVMe Datacenter Gen 4 | **$304** | $149 | yes |
+| AX162-1-LTD | EPYC 9454P (Zen 4) | 96 | 128 GB DDR5 ECC | 2 × 3.84 TB NVMe Datacenter | $374 | $39 | not checked |
+
+The stock-limited `-LTD` models are the cheapest. On 2026-11-12, every one checked was "Not available", including this ADR's EX44. ECC memory on a 64 GB node is AX42-2, at $219 a month plus $109 setup.
 
 **Capacity model.** One slot is one agent sandbox: 2 vCPU and 4 GiB, plus 0.25 GiB assumed for the guest kernel and VMM. The host keeps 2 threads and 8 GiB.
 
@@ -85,65 +92,43 @@ Render runs each sandbox in its own Firecracker microVM. bex chose Kata first an
 
 ## Unit economics
 
-| Server | Slots without CPU overcommit | Slots at the memory ceiling | CPU overcommit at the ceiling | Cost per slot-hour at full use | Break-even sandbox-hours per month | Break-even use |
-| --- | --- | --- | --- | --- | --- | --- |
-| AX41 | 5 | 13 | 2.6 : 1 | $0.0075 | 327 | 3.4% |
-| **EX44** | 9 | 13 | 1.4 : 1 | $0.0075 | 327 | 3.4% |
-| AX42 | 7 | 13 | 1.9 : 1 | $0.0100 | 437 | 4.6% |
-| EX63 (64 GB) | 9 | 13 | 1.4 : 1 | $0.0125 | 548 | 5.8% |
-| AX102 | 15 | 28 | 1.9 : 1 | $0.0093 | 880 | 4.3% |
-| AX162 (128 GB) | 28 | 28 | none needed | $0.0187 | 1,766 | 8.6% |
-
-- **Cost per slot-hour** is the monthly price over 730 hours and the slots at the memory ceiling. Against $0.2168 of revenue the compute margin at full use is 91% to 97%.
-- **Break-even** is where paid compute revenue covers the server. It depends only on the monthly price: 327 paid sandbox-hours a month for either €59 server, about 11 a day.
-- **EX44 against AX41, same price.** The EX44 has 20 threads to the AX41's 12 and a CPU four years newer, so it reaches the memory ceiling at 1.4 : 1 where the AX41 needs 2.6 : 1. Its efficiency cores are slower than its performance cores, so a sandbox's speed varies with where the host scheduler places it once the node is busy.
-- **Two servers for redundancy** double the break-even hours. A single server is a single point of failure for every session on it.
-- **Today's pool for comparison:** one `cx33` cloud node at €8.99 a month (ADR053, priced 2026-08-08, may be stale) breaks even at about 50 sandbox-hours a month. A €59 server costs six to seven times more per month, and that fixed cost is the whole downside.
-
-### What can be ordered today (Robot, 2026-11-12)
-
-The tables above use the hetzner.com matrix: EUR, base configuration, read 2026-11-11. The bex account's own Robot order page shows different terms:
-
-- **Account and currency.** The account is Stargately, Inc., priced in USD with 0% VAT.
-- **Billing.** Each price is the most a month can cost; below that cap the server bills by the hour, so cancelling costs only the hours used. Setup fees are one-off and not refunded.
-- **Stock.** On 2026-11-12, every cheap stock-limited `-LTD` model was "Not available", including this ADR's EX44.
-
-| Server | CPU | Threads | RAM | Disks | Max per month | Setup | Orderable on 2026-11-12 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| EX44-1-LTD | Core i5-13500 | 20 | 64 GB DDR4 | 2 × 512 GB | $74 | $0 | no |
-| AX41-1-LTD | Ryzen 5 3600 | 12 | 64 GB DDR4 | 2 × 512 GB | $69 | $0 | no |
-| AX42-1-LTD | Ryzen 7 PRO 8700GE | 16 | 64 GB DDR5 | 2 × 512 GB | $89 | $39 | no |
-| **AX42-1** | Ryzen 7 PRO 8700GE (Zen 4) | 16 | 64 GB DDR5, non-ECC | 2 × 512 GB NVMe Gen 4 | **$119** | $59 | yes |
-| **EX63-1** | Core Ultra 7 265, 8 performance + 12 efficiency cores | 20 | 64 GB DDR5 | 2 × 1 TB NVMe | **$174** | $84 | yes |
-| **AX102-1** | Ryzen 9 7950X3D (Zen 4) | 32 | 128 GB DDR5, non-ECC | 2 × 1.92 TB NVMe Datacenter Gen 4 | **$304** | $149 | yes |
-
-The same capacity model and the same revenue ($0.2168 per sandbox-hour) give:
-
 | Server | Slots without CPU overcommit | Slots at the memory ceiling | CPU overcommit at the ceiling | Cost per slot-hour at full use | Break-even sandbox-hours per month | Break-even use | Setup fee recovered after |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| AX41-1-LTD | 5 | 13 | 2.6 : 1 | $0.0073 | 318 | 3.4% | — |
+| **EX44-1-LTD** | 9 | 13 | 1.4 : 1 | $0.0078 | 341 | 3.6% | — |
+| AX42-1-LTD | 7 | 13 | 1.9 : 1 | $0.0094 | 411 | 4.3% | 180 sandbox-hours |
 | AX42-1 | 7 | 13 | 1.9 : 1 | $0.0125 | 549 | 5.8% | 272 sandbox-hours |
 | EX63-1 | 9 | 13 | 1.4 : 1 | $0.0183 | 803 | 8.5% | 387 sandbox-hours |
 | AX102-1 | 15 | 28 | 1.9 : 1 | $0.0149 | 1,402 | 6.9% | 687 sandbox-hours |
+| AX162-1-LTD | 47 | 28 | none needed | $0.0183 | 1,725 | 8.4% | 180 sandbox-hours |
 
-- **The planned node is not orderable.** Which of these three to order, if any, is the user's to decide. The other path is to wait for `-LTD` stock. Until then m331 t002 stays blocked.
-- **Break-even rises with the price.** It is 549 paid sandbox-hours a month for AX42-1, against 327 for the EX44 as planned.
+- **Cost per slot-hour** is the monthly cap over 730 hours and the slots at the memory ceiling. Against $0.2168 of revenue, the compute margin at full use is 92% to 97%.
+- **Break-even** is where paid compute revenue covers the server. It depends only on the monthly cap: 341 paid sandbox-hours a month for the EX44 as planned (about 11 a day), and 549 for the AX42-1.
+- **EX44 against AX41, $5 apart.** The EX44 has 20 threads to the AX41's 12 and a CPU four years newer. It reaches the memory ceiling at 1.4 : 1, where the AX41 needs 2.6 : 1. Its efficiency cores are slower than its performance cores, so once the node is busy a sandbox's speed depends on where the host scheduler places it.
+- **Two servers for redundancy** double the break-even hours. A single server is a single point of failure for every session on it.
+- **Today's pool for comparison.** One `cx33` cloud node costs $9.99 a month (the Hetzner Cloud pricing API, USD, read 2026-11-12) and breaks even at about 46 sandbox-hours a month. The EX44 as planned costs 7.4 times as much a month, and the AX42-1 about 12 times. That fixed cost is the whole downside.
+
+### What can be ordered today (2026-11-12)
+
+- **The planned node is not orderable.** The cheapest servers sold now are AX42-1 ($119 + $59 setup), EX63-1 ($174 + $84) and AX102-1 ($304 + $149). Which of them to order, if any, is the user's to decide; the other path is to wait for `-LTD` stock. Until then m331 t002 stays blocked.
+- **Break-even rises with the price.** It is 549 paid sandbox-hours a month for AX42-1, against 341 for the EX44.
 - **Disk.** AX42-1's 2 × 512 GB has the EX44's limit: thirteen sandboxes at the 40 GB writable limit do not fit. EX63-1's 2 × 1 TB holds 13 of them, and AX102-1's 2 × 1.92 TB holds 28.
 - **CPU.** The t001 replay showed a cold build is mostly CPU, so per-core speed matters more than thread count for one session. AX42-1 and AX102-1 are Zen 4 with every core alike. EX63-1 mixes performance and efficiency cores, so a session's speed depends on where the host scheduler places it.
-- **ECC.** None of the three has ECC memory. AX42-2 adds ECC for $219 a month plus $109 setup.
+- **ECC.** None of the three has ECC memory.
 
 ### What the numbers do not show
 
 - **Break-even counts paid hours only.** The steady load today is bex's own eight daily routines: about 240 sandbox-hours a month at one hour each, worth $52 at list price, and not revenue. Platform-wide agent sandbox-hours were not measured for this ADR.
-- **A faster sandbox bills fewer seconds.** If a routine drops from 60 minutes to 20, its compute revenue drops from $0.22 to $0.07, and the same 327 hours take about three times as many runs. That is acceptable: the same runs carried $0.30 to $0.67 of model cost per 30-minute turn, and the 30% model margin ([ADR091](ADR091-agent-model-pricing.md)) already exceeds the whole compute line. Compute is the minor revenue line of an agent session.
+- **A faster sandbox bills fewer seconds.** If a routine drops from 60 minutes to 20, its compute revenue drops from $0.22 to $0.07, and the same break-even hours take about three times as many runs. That is acceptable: the same runs carried $0.30 to $0.67 of model cost per 30-minute turn, and the 30% model margin ([ADR091](ADR091-agent-model-pricing.md)) already exceeds the whole compute line. Compute is the minor revenue line of an agent session.
 - **The real loss today is failed runs.** Nine of nine runs on 2026-11-11 billed compute and model usage and delivered nothing. Speed is worth more as completion rate than as margin.
 - **Bare metal does not scale to zero.** A dedicated server is paid for the month and needs manual registration in Hetzner Robot before Cluster API can use it.
-- **Not costed:** engineering time, the extra IPv4 address, VAT, free allowances and discounts, and the 2026 Hetzner price changes still in flight.
+- **Not costed:** engineering time, the extra IPv4 address, free allowances and discounts, and further Hetzner price changes.
 
 ## Decision
 
 The goal is to try bare metal and serve real agent sessions from it, not to run a throwaway benchmark.
 
-1. **Rent one EX44 as the first production sandbox node.** It has no setup fee, so the commitment is €59 a month and it is cancelled if the gate in step 3 fails.
+1. **Rent one EX44 as the first production sandbox node.** It has no setup fee, so the commitment is at most $74 a month, billed hourly, and it is cancelled if the gate in step 3 fails. It was not orderable on 2026-11-12 (§ What can be ordered today).
 2. **Run Kata Containers on it behind one neutral `sandbox` RuntimeClass whose handler each node maps to its own runtime.** The RuntimeClass names handler `bex-sandbox`. The cloud sandbox node's containerd maps `bex-sandbox` to runsc and the EX44's maps it to Kata, so the node a Pod lands on decides its runtime. OpenSandbox and bex-api do not choose a runtime. They cannot today: the OpenSandbox server takes one runtime class for every sandbox (`[secure_runtime] k8s_runtime_class` in `deploy/opensandbox/sandbox-cluster.toml`) and one BatchSandbox template. Each node carries a `bex.co/sandbox-runtime` label (`gvisor` or `kata`), so it is always visible which runtime a sandbox ran under. The `gvisor` class stays until no Pod uses it.
 3. **Gate real traffic on evidence.** Until the gate passes, the EX44 carries a trial taint that no sandbox template tolerates, so no customer session lands on it. Measure the four probe operations and a scripted replay of the `rt-unify-duplicates` routine's build and test commands on every substrate. The replay is the gate measure because it is repeatable: a routine's wall time also moves with the model's choices and latency. Proceed when the replay finishes at least twice as fast and the ADR042 controls listed below hold under Kata. Otherwise keep gVisor, cancel the server, and close this ADR as rejected. One real routine run on the node is the production check after the gate.
 4. **Every sandbox prefers the EX44, and the cloud node takes the overflow through the scheduler.** Removing the trial taint opens the node to every workspace at once. There is no per-workspace switch, because nothing in the create path knows the node. Preference comes from scheduling alone. The sandbox template gets a preferred node affinity for the `kata` runtime label, and the cloud sandbox node gets a `PreferNoSchedule` taint. The scheduler scores with `MostAllocated` (`infra/clusterapi/overlays/hetzner-caph/cluster.yaml`), which favours the fuller, smaller cloud node, and `ImageLocality` favours whichever node has the image cached. The default plugin weights are TaintToleration 3 and NodeAffinity 2, against 1 each for those two, so the preference wins. When the EX44 is full, cordoned or down, a new sandbox lands on the cloud node under gVisor with no retry in bex-api. Base sandboxes follow the same template, so they move too. That matches Render, which runs every sandbox in a microVM. Keeping the node for agent sandboxes only would need a per-create scheduling knob. The OpenSandbox create request has none: it carries image, entrypoint, limits, requests, env, metadata and timeout (`lego/backend/internal/sandbox/client.go`). That variant is a follow-up if base sandboxes crowd agent sessions off the node. Rollback is restoring the trial taint: running sandboxes keep running and new ones go to the cloud node.
@@ -191,8 +176,8 @@ Three smaller items:
 ## Alternatives considered
 
 - **gVisor with the KVM platform on bare metal.** Keeps the runtime and removes most of the system-call interception cost. It needs the same server and leaves the gofer file path in place, so it is worth one extra run at the step 3 gate, not a separate project.
-- **AX41 as the first node.** Same price and the same 13-slot memory ceiling, with every core alike, which makes benchmarks cleaner. Rejected because the CPU is two generations behind the AX42 and AX102, it has 12 threads to the EX44's 20, and the node is meant to carry real sessions.
-- **AX42 as the first node.** Same generation as the AX102 and ECC memory, so its numbers transfer to a larger AMD fleet. It costs €20 more a month plus €49 setup; choose it instead if ECC is required from day one.
+- **AX41 as the first node.** $5 a month cheaper ($69 against $74), with the same 13-slot memory ceiling, with every core alike, which makes benchmarks cleaner. Rejected because the CPU is two generations behind the AX42 and AX102, it has 12 threads to the EX44's 20, and the node is meant to carry real sessions.
+- **AX42 as the first node.** It is the same generation as the AX102, so its numbers transfer to a larger AMD fleet. AX42-1 costs $119 a month plus $59 setup, $45 a month more than the EX44, and its memory is not ECC. ECC is AX42-2, at $219 plus $109; choose it if ECC is required from day one.
 - **A larger agent template on the current pool (4 vCPU / 8 GiB).** Relieves CPU contention for no infrastructure work, and raises revenue per hour. It does not touch the per-syscall cost, and a 4 vCPU sandbox would fill a whole `cx33`. The t001 replay shows a cold build is mostly CPU: 19 minutes for the Go half under runc on 2 vCPU. CPU is therefore at least as large a lever as the runtime. The EX44's 20 threads serve both, and t006 measures how much of its gain each one gives.
 - **Build caches on tmpfs or baked into the image.** Cheap, helps cold builds, and is compatible with every option above. Do it regardless of this decision. The t001 replay starts from cold caches, as every session does today, and its build and vet steps are most of its time.
 - **Choosing the runtime per sandbox in OpenSandbox.** This means patching the server to take a runtime class per create, or running a second OpenSandbox server with its own store for Kata. Either way, falling back needs bex-api to notice an unschedulable Pod, delete it and create it again under gVisor, which adds the wait to every overflowed session start. The by-id lookups would also have to learn which server holds a sandbox. Rejected for one handler name mapped per node, where overflow is ordinary scheduling.
@@ -202,7 +187,7 @@ Three smaller items:
 
 ## Sources
 
-- Hetzner AX and EX price matrices, read 2026-11-11: <https://www.hetzner.com/dedicated-rootserver/matrix-ax/>, <https://www.hetzner.com/dedicated-rootserver/matrix-ex/>
+- Hetzner Robot order page for the bex account (USD, VAT 0%), read 2026-11-12. Hetzner Cloud pricing API (`GET /v1/pricing`, USD), read 2026-11-12.
 - Render sandbox plans and isolation: <https://render.com/docs/sandboxes-limits>, <https://render.com/blog/introducing-render-sandboxes>
 - hcloud CCM Robot support, read 2026-11-11: <https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/main/docs/explanation/robot-support.md>, <https://github.com/hetznercloud/hcloud-cloud-controller-manager/blob/main/docs/guides/robot/private-networks.md>
 - Hetzner vSwitch and its MTU: <https://docs.hetzner.com/robot/dedicated-server/network/vswitch/>

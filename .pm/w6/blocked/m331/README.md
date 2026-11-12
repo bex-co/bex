@@ -37,7 +37,7 @@
 - **Why now:** the turn bound was raised from 30 minutes to 4 hours on 2026-11-11 as a stopgap. The slowness it hides is still there, and every agent session pays for it. `w22/blocked/m312` (Docker in a sandbox) also waits on the same node-pool choice.
 - **Render parity task:** omitted. The change is the node pool and runtime under the sandbox, and no REST, GraphQL, MCP or dashboard field changes. One tenant-visible effect is checked in t008: `/tmp` surviving a pause under Kata, which narrows an ADR018 divergence.
 - **External gates:**
-  - t002 spends €59 a month plus a vSwitch, and needs Hetzner Robot access from the account owner.
+  - t002 spends $119–$304 a month depending on the server chosen (ADR105 § What can be ordered today), plus a vSwitch, and needs Hetzner Robot access from the account owner.
   - t009 can end the milestone early with a no-go.
   - The single-host exception to the surge-first rule was accepted by the user on 2026-11-11 (ADR105 § Known limits).
   - The scripted replay as the gate measure is ADR105's default, and the user's to change (ADR105 § Decision step 3).

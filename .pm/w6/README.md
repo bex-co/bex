@@ -60,7 +60,7 @@ Materialized from all six proposals of `/pm-brainstorm for w6` 2026-11-10 (tenan
 Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the long-standing blockers and the two accepted limits, for Render parity), approved by the user's `/pm them all to w6`. Scheduled items for worker6, not a workstream specialty.
 
 1. **[m332](blocked/m332/README.md)** — **BLOCKED** (cx53 stock in eu-central, 2026-11-12) — Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it (8 tasks).
-2. **[m333](m333/README.md)** — deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed (8 tasks); absorbs `w4/575`.
+2. **[m333](blocked/m333/README.md)** — **BLOCKED** (disk clause's production read) — deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed (8 tasks); absorbs `w4/575`.
 3. **[m334](done/m334/README.md)** — **done** — an unmetered usage hour pages before it can no longer be metered (6 tasks).
 4. **[118](done/118.md)** — **done** — ADR018 records that hosted bex requires a card for every workspace (~20m).
 5. **[119](done/119.md)** — **done** — re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners (~45m).
@@ -69,8 +69,8 @@ Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the
 
 ## Milestones
 
-- [ ] **m332** — **BLOCKED (Hetzner / account owner: cx53 stock in eu-central — `412 resource_unavailable` in fsn1, nbg1 and hel1 on 2026-11-12 — or the user revisiting the 2026-11-02 keep-cx53 decision (cpx62 is in stock in fsn1 at €152.99/month against €34.99); t001 done, t003 step 1 done: Render prices `2c-8g` $135, `2c-16g` $200, `8c-16g` $300, `12c-24g` $450)** — [Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it](blocked/m332/README.md) (8 tasks) ← `/pm-brainstorm` 2026-11-11 proposal 1; `w2/blocked/m250`, `w6/blocked/114`
-- [ ] **m333** — [Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed](m333/README.md) (8 tasks) ← proposal 2; absorbs `w4/575`
+- [ ] **m332** — **BLOCKED (Hetzner / account owner: cx53 stock in eu-central — `412 resource_unavailable` in fsn1, nbg1 and hel1 on 2026-11-12 — or the user revisiting the 2026-11-02 keep-cx53 decision (cpx62 is in stock in fsn1 at $152.99/month against $34.99); t001 done, t003 step 1 done: Render prices `2c-8g` $135, `2c-16g` $200, `8c-16g` $300, `12c-24g` $450)** — [Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it](blocked/m332/README.md) (8 tasks) ← `/pm-brainstorm` 2026-11-11 proposal 1; `w2/blocked/m250`, `w6/blocked/114`
+- [ ] **m333** — **BLOCKED (user: a paid service with a disk in `bex-canary` for the disk clause's 50 h production read, or wait for an organic disk deletion; everything else done and verified on production: a deleted service's deletion-hour egress row reads on REST and GraphQL)** — [Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed](blocked/m333/README.md) (8 tasks) ← proposal 2; absorbs `w4/575`
 - [x] **m334** — [An unmetered usage hour pages before it can no longer be metered](done/m334/README.md) — **done 2026-11-12**: `bex_usage_oldest_unmetered_hour_timestamp_seconds` and `UsageHourNearlyUnmeterable` are live on production. The first deploy found the series dropped by the scrape keep-list and every hole unfillable (both fixed; w6/122 guards the keep-list) (6 tasks) ← proposal 3; the limit accepted in `w4/496`
 - [ ] **m331** — **BLOCKED (user: EX44-1-LTD was out of stock in Robot on 2026-11-12, so pick AX42-1 ($119/month + $59 setup), EX63-1 ($174 + $84) or AX102-1 ($304 + $149), or wait for `-LTD` stock (ADR105 § What can be ordered today), then order it with a Robot vSwitch in fsn1; t001 done — gVisor is 1.65× runc on the build replay on today's node, and a cold build is mostly CPU, ADR105 § The probe re-run)** — [Agent sandboxes run on a Hetzner bare-metal node under Kata](blocked/m331/README.md) (14 tasks) ← ADR105, 2026-11-11
 - [x] **m319** — [Each plan includes Render's outbound bandwidth, and a card-less workspace past it spins down](done/m319/README.md) — **done 2026-11-10**: `includedBandwidth` identical on REST, GraphQL, MCP and the billing page on production (8 tasks) ← promoted from `w6/116` 2026-11-10
@@ -251,6 +251,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **123** — [A brand-new service's first minutes of egress are undercounted](123.md) (~1h) ← w6/m333 t005
 - [x] **122** — [A validator fails when an alert's backing series is dropped by its scrape job's keep-list](done/122.md) (~45m) ← w6/m334 production check — **done 2026-11-12**
 - [x] **121** — [A service deleted before its first hourly rollup still loses its egress](done/121.md) (~1h) ← w6/m333 review — **done 2026-11-12**
 - [x] **120** — [The agent image and the platform builder ship the Go that `lego/go.work` requires](done/120.md) (~30m) ← w6/m331 t001 — **done 2026-11-12**
