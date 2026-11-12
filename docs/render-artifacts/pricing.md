@@ -35,6 +35,23 @@ Source: render.com/docs/compute-plans
 
 Monthly pricing covers a continuously-running instance; per-hour rate = monthly / 730 h.
 
+### Spec-named compute plans (read 2026-11-12)
+
+Source: render.com/pricing#compute, the compute table embedded in the page as of 2026-11-12. render.com/docs/compute-plans lists the same IDs with CPU and RAM but no prices. Since 2026-10, Render names plans by size; the six legacy names above map onto `0.5c-512mb`, `1c-2g`, `2c-4g`, `4c-8g`, `4c-16g` and `8c-32g`.
+
+| Plan ID | USD/month | CPU | Memory | bex rung | bex USD/month (× 0.70) |
+| --- | --- | --- | --- | --- | --- |
+| `2c-8g` | $135 | 2 | 8 GB | none yet (w6/m332) | $94.50 |
+| `2c-16g` | $200 | 2 | 16 GB | none yet (w6/m332) | $140.00 |
+| `4c-32g` | $350 | 4 | 32 GB | none yet (w6/blocked/114) | $245.00 |
+| `8c-16g` | $300 | 8 | 16 GB | none yet (w6/m332) | $210.00 |
+| `8c-64g` | $1,000 | 8 | 64 GB | none yet (w6/blocked/114) | $700.00 |
+| `12c-24g` | $450 | 12 | 24 GB | none yet (w6/m332) | $315.00 |
+| `12c-48g` | $800 | 12 | 48 GB | none yet (w6/blocked/114) | $560.00 |
+| `12c-96g` | $1,500 | 12 | 96 GB | none yet (w6/blocked/114) | $1,050.00 |
+
+Web services may use every ID above. For private services and background workers the two Render pages differ. render.com/docs/compute-plans allows every web ID except `free`, while the Blueprint spec's `plan` list stops at `8c-64g`. Cron jobs stop at `8c-64g` on both pages.
+
 ---
 
 ## Managed PostgreSQL

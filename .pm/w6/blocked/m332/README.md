@@ -1,12 +1,12 @@
 # w6 · m332 — Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it
 
-**Worker:** worker6 **Goal:** Pro Plus and Pro Max services run, and Render's `2c-8g`, `2c-16g`, `8c-16g` and `12c-24g` plans are accepted and run on a cx53 node, as on Render. **Status:** todo
+**Worker:** worker6 **Goal:** Pro Plus and Pro Max services run, and Render's `2c-8g`, `2c-16g`, `8c-16g` and `12c-24g` plans are accepted and run on a cx53 node, as on Render. **Status:** blocked — t001 done: on 2026-11-12, cx53 is `resource_unavailable` in fsn1, nbg1 and hel1, so t002 has no location to move to. t003 step 1 (Render's prices) is done; its rung steps wait with t004. The gate is cx53 stock in eu-central, or the user revisiting the 2026-11-02 keep-cx53 decision (cpx62 is in stock in fsn1 at €152.99/month).
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Probe cx53 stock in fsn1, nbg1 and hel1](t001.md) | 30m | — |
+| t001 | [Probe cx53 stock in fsn1, nbg1 and hel1](done/t001.md) — **DONE** | 30m | — |
 | t002 | [Place `bex-tenant-xl` where cx53 is in stock](t002.md) | 1.5h | t001 |
 | t003 | [Render's prices for `2c-8g`, `2c-16g`, `8c-16g`, `12c-24g`, and their rungs](t003.md) | 1h | t001 |
 | t004 | [Accept the four IDs on every surface and run one on production](t004.md) | 1.5h | t002, t003 |

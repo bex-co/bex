@@ -69,7 +69,7 @@ Materialized from all five proposals of `/pm-brainstorm` 2026-11-11 (w4/575, the
 
 ## Milestones
 
-- [ ] **m332** — [Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it](m332/README.md) (8 tasks) ← `/pm-brainstorm` 2026-11-11 proposal 1; `w2/blocked/m250`, `w6/blocked/114`
+- [ ] **m332** — **BLOCKED (Hetzner / account owner: cx53 stock in eu-central — `412 resource_unavailable` in fsn1, nbg1 and hel1 on 2026-11-12 — or the user revisiting the 2026-11-02 keep-cx53 decision (cpx62 is in stock in fsn1 at €152.99/month against €34.99); t001 done, t003 step 1 done: Render prices `2c-8g` $135, `2c-16g` $200, `8c-16g` $300, `12c-24g` $450)** — [Render's mid-size plans have a node: cx53 capacity, and the four plan IDs that fit it](blocked/m332/README.md) (8 tasks) ← `/pm-brainstorm` 2026-11-11 proposal 1; `w2/blocked/m250`, `w6/blocked/114`
 - [ ] **m333** — [Deleting a disk or a service closes its usage coverage, and a deleted service's last egress hours are billed](m333/README.md) (8 tasks) ← proposal 2; absorbs `w4/575`
 - [ ] **m334** — [An unmetered usage hour pages before it can no longer be metered](m334/README.md) (6 tasks) ← proposal 3; the limit accepted in `w4/496`
 - [ ] **m331** — **BLOCKED (account owner: order one Hetzner EX44 in fsn1 (€59 a month, no setup fee) plus a Robot vSwitch, and create Robot webservice credentials (stored per ADR019); t001 done — gVisor is 1.65× runc on the build replay on today's node, and a cold build is mostly CPU, ADR105 § The probe re-run)** — [Agent sandboxes run on a Hetzner bare-metal node under Kata](blocked/m331/README.md) (14 tasks) ← ADR105, 2026-11-11
