@@ -1,6 +1,6 @@
 # w4 · m328 — A service's Events feed records an env-group link only from the Link and Unlink buttons, and no link event names its group
 
-**Worker:** worker4 **Goal:** every change to a service's linked environment groups records one `env_group_linked` or `env_group_unlinked` row in that service's feed, naming the group, whichever path made it. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
+**Worker:** worker4 **Goal:** every change to a service's linked environment groups records one `env_group_linked` or `env_group_unlinked` row in that service's feed, naming the group, whichever path made it. **Status:** done — every task done; t004's live replay passed in the QA loop's round 163 (2026-11-12)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | [t001](done/t001.md) | Backend: a named link/unlink row from every path — Link, Unlink, create with `serviceIds`, group delete, Blueprint `fromGroup` — **DONE** | 45m | — |
 | [t002](done/t002.md) | Store and API: the group's id and name on the audit row, the feed, the by-id lookup, REST, GraphQL and MCP — **DONE** | 60m | t001 |
 | [t003](done/t003.md) | Dashboard: the Events row reads "Environment group <name> linked/unlinked", en and zh — **DONE** | 20m | t002 |
-| [t004](t004.md) | Live verification on an owned service | 20m | t003 |
+| [t004](done/t004.md) | Live verification on an owned service — **DONE** | 20m | t003 |
 | [t005](done/t005.md) | Render parity — **DONE** | 10m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 20m | t005 |
-| [t008](t008.md) | Closeout | 10m | t006, t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t006, t007 |
 
 Eight tasks, 195m (3h15m).
 
