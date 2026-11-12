@@ -1,6 +1,6 @@
 # w8 · m147 — `bex logs --tail` takes every filter Render's subscribe takes
 
-**Worker:** worker8 **Goal:** a live tail accepts the same `level`, `statusCode`, `method`, `host` and `path` filters as Render's `GET /v1/logs/subscribe`, and applies them the way bex's own history query does, instead of answering 400. **Status:** blocked — code shipped `7977bdc09`; t001–t007 done; t008 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
+**Worker:** worker8 **Goal:** a live tail accepts the same `level`, `statusCode`, `method`, `host` and `path` filters as Render's `GET /v1/logs/subscribe`, and applies them the way bex's own history query does, instead of answering 400. **Status:** done (2026-11-12: t001–t007 shipped 2026-11-10; t008's production replay passed — all four filtered tails stream only their lines, and w8/239's datastore tails follow a restart)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Render parity — **DONE** | 20m | t003, t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 20m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | t005 |
-| t008 | Closeout (live CLI DoD on production) | 20m | t007 |
+| t008 | Closeout — **DONE** (live CLI DoD on production) | 20m | t007 |
 
 ## Definition of done
 
