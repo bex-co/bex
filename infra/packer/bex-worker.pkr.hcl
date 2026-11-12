@@ -89,7 +89,7 @@ variable "kubelet_amd64_sha256" {
 # so each kernel change is reviewed (infra/packer/README.md § Kernel).
 variable "kernel_version" {
   type    = string
-  default = "6.8.0-147"
+  default = "6.8.0-149" # CVE-2026-98432 fix, in noble-security since 2026-11 (w1/144)
 }
 
 variable "kubernetes_release_key_sha256" {

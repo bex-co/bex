@@ -22,7 +22,7 @@ The bake replaces the pkgs.k8s.io `kubelet` binary with the same release built w
 
 The base Hetzner image is pinned by immutable id, so node kernels move only when the bake runs `apt-get full-upgrade`. Without it, nodes kept the base's `6.8.0-117` while noble-security shipped `147`. `kernel_version` is the expected newest kernel after that upgrade. The bake fails when apt installs any other newest kernel, so every kernel change is a reviewed bump plus a bake and roll. The pin also goes into the snapshot name and the `bex.co/kernel` label.
 
-CVE-2026-98432 (IPv4 TCP use-after-free) is fixed in noble `6.8.0-149`. Bump `kernel_version` to it once it reaches noble-security, then bake and roll. Until every node runs a fixed kernel, the platform's Go services build with `godebug multipathtcp=0` (in `lego/go.work` plus the operator and backend `go.mod`), so they don't open the MPTCP listeners the claimed exploit chain needs.
+CVE-2026-98432 (IPv4 TCP use-after-free) is fixed in noble `6.8.0-149`, which reached noble-security by 2026-11-11 (Ubuntu: "Fixed in 6.8.0-149.149"); `kernel_version` is pinned to it and the fleet rolls onto the new bake (w1/144). Until every node runs a fixed kernel, the platform's Go services build with `godebug multipathtcp=0` (in `lego/go.work` plus the operator and backend `go.mod`), so they don't open the MPTCP listeners the claimed exploit chain needs.
 
 ## How CAPH picks the image
 
