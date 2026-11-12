@@ -87,6 +87,11 @@ type deps struct {
 	// it. It answers nil when stdin is not a terminal; the value is then read
 	// from stdin.
 	readHidden func(prompt string) ([]byte, error)
+	// workdir is where handoff and pickup find the git checkout.
+	workdir func() (string, error)
+	// execSSH replaces the process with the system ssh and args, after
+	// beforeExec (the launch telemetry).
+	execSSH func(args []string, beforeExec func()) error
 }
 
 func osDeps() deps {
@@ -103,6 +108,8 @@ func osDeps() deps {
 		lookupEnv:   os.LookupEnv,
 		localZone:   machineZone,
 		readHidden:  terminalSecret,
+		workdir:     os.Getwd,
+		execSSH:     execSystemSSH,
 	}
 }
 
@@ -151,7 +158,7 @@ func newCommand(d deps) *cobra.Command {
 		completeAll(archiveCommand(d, "archive", "Archived", "Archive agent sessions (hidden from the default list, read-only)")),
 		completeAll(archiveCommand(d, "unarchive", "Unarchived", "Unarchive agent sessions")),
 		pick(deleteCommand(d)), completeFirst(tagsCommand(d)), pick(treeCommand(d)), pick(costCommand(d)),
-		completeFirst(chatCommand(d)),
+		completeFirst(chatCommand(d)), handoffCommand(d), pick(pickupCommand(d)), completeFirst(sshCommand(d)),
 		automationsCommand(d), secretsCommand(d), skillsCommand(d), envCommand(d), modelsCommand(d),
 	} {
 		// Cobra reads SilenceUsage from the executed command and the root
@@ -566,12 +573,12 @@ func (f *createFlags) bind(c *cobra.Command) {
 // given reports whether any create flag was set.
 func (f *createFlags) given() bool { return anyChanged(f.fs) }
 
-// create starts the session the flags and task describe: files are uploaded
-// first, and the create is idempotent across retries (ADR094 D4).
-func (f *createFlags) create(d deps, a workspaceAPI, task []string) (session, []byte, error) {
+// request is the session the flags and task describe, checked and with the
+// prompt read, before anything is sent; files are uploaded by createSession.
+func (f *createFlags) request(d deps, task []string) (createRequest, error) {
 	t, err := f.turn.resolve(d, task)
 	if err != nil {
-		return session{}, nil, err
+		return createRequest{}, err
 	}
 	in := createRequest{
 		Repo: f.session.repo, Branch: f.session.branch, Title: f.session.title, Tags: f.session.tags,
@@ -580,17 +587,41 @@ func (f *createFlags) create(d deps, a workspaceAPI, task []string) (session, []
 		IdempotencyKey: firstNonEmpty(f.key, d.newKey()),
 	}
 	if in.MaxSpendUSD, err = f.session.maxSpend(f.fs); err != nil {
-		return session{}, nil, err
+		return createRequest{}, err
 	}
 	if f.parent != "" {
 		if in.ParentSessionID, err = sessionRef(f.parent); err != nil {
-			return session{}, nil, err
+			return createRequest{}, err
 		}
 	}
-	if in.AttachmentIDs, err = uploadAll(a.invocation, a.owner, f.turn.attach); err != nil {
+	return in, nil
+}
+
+// create starts the session the flags and task describe.
+func (f *createFlags) create(d deps, a workspaceAPI, task []string) (session, []byte, error) {
+	in, err := f.request(d, task)
+	if err != nil {
+		return session{}, nil, err
+	}
+	return a.createSession(in, f.turn.attach)
+}
+
+// createSession uploads attach, then starts in; the create is idempotent
+// across retries (ADR094 D4).
+func (a workspaceAPI) createSession(in createRequest, attach []string) (session, []byte, error) {
+	var err error
+	if in.AttachmentIDs, err = uploadAll(a.invocation, a.owner, attach); err != nil {
 		return session{}, nil, err
 	}
 	return a.api.create(a.ctx, a.owner, in)
+}
+
+// validateChat refuses --chat where it cannot work.
+func validateChat(d deps, chat bool, w waitFlags) error {
+	if chat && (w.blocking() || !d.interactive()) {
+		return usageError("--chat needs a terminal and no --wait or --follow")
+	}
+	return nil
 }
 
 func runCommand(d deps) *cobra.Command {
@@ -614,8 +645,8 @@ func runCommand(d deps) *cobra.Command {
 			if err := waiting.validate(); err != nil {
 				return err
 			}
-			if chat && (waiting.blocking() || !d.interactive()) {
-				return usageError("--chat needs a terminal and no --wait or --follow")
+			if err := validateChat(d, chat, waiting); err != nil {
+				return err
 			}
 			a, cancel, err := d.startWorkspace(c)
 			if err != nil {

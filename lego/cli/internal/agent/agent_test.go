@@ -358,6 +358,8 @@ func stubDeps(newAPI func() (*api, error)) deps {
 		lookupEnv:   func(string) (string, bool) { return "", false },
 		localZone:   func() string { return "Europe/Berlin" },
 		readHidden:  func(string) ([]byte, error) { return nil, nil },
+		workdir:     os.Getwd,
+		execSSH:     func([]string, func()) error { return errors.New("execSSH not stubbed") },
 	}
 }
 

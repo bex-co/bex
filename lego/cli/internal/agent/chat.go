@@ -56,12 +56,14 @@ and goes out when the turn ends. Commands:
   /tags TAG…|--clear  replace the session's tags
   /tree               show the session's child sessions
   /cost               show the session's model cost
+  /pickup [--stash]   check out the session's branch in this directory
+  /ssh                print the ssh command for the session's sandbox
   /archive            archive the session (it stops taking messages)
   /cancel             cancel the session, after a confirmation
   /quit, /exit        leave; the session keeps running (also Ctrl-D, Ctrl-C)`
 
 // chatVerbs are the `bex agent` commands a chat runs on its session.
-var chatVerbs = []string{"files", "open", "tags", "tree", "cost", "archive"}
+var chatVerbs = []string{"files", "open", "tags", "tree", "cost", "archive", "pickup"}
 
 func chatCommand(d deps) *cobra.Command {
 	var (
@@ -356,6 +358,14 @@ func (ch *chatState) command(words []string) error {
 		}
 		ch.pending.skills = append(ch.pending.skills, skills...)
 		ch.say("the next message uses %d skill(s)", len(ch.pending.skills))
+	case "ssh":
+		// chat reads the terminal's input itself, so an interactive ssh
+		// cannot share it; print the command to run beside the chat.
+		if address, err := sandboxAddress(ch.a.ctx, ch.a.api, ch.id); err != nil {
+			ch.say("ssh: %v", err)
+		} else {
+			ch.say("In another terminal: ssh %s   (or `bex agent ssh %s`)", address, ch.id)
+		}
 	case "cancel":
 		ch.say("Cancel %s? It stops and takes no more messages. [y/N]", ch.id)
 		answer, _, err := ch.next(nil, nil)

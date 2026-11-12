@@ -169,6 +169,9 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 | `bex agent tree <ags-id>` | The tree of child sessions the session belongs to, indented, with state and spend ([ADR102](ADR102-agent-child-sessions.md)). |
 | `bex agent cost <ags-id>` | The session's model cost in total and per turn: requests, tokens, models. |
 | `bex agent chat [<ags-id>]` | Watch and steer a session live in the terminal (alias `attach`); see [below](#live-sessions-bex-agent-chat). |
+| `bex agent handoff [<task…>]` | Hand this checkout's work, uncommitted changes included, to a new session; see [below](#move-work-between-your-machine-and-a-cloud-agent-bex-agent-handoff-pickup-ssh). |
+| `bex agent pickup <ags-id>` | Check out a session's branch here to continue its work locally. |
+| `bex agent ssh <ags-id> [-- <ssh args…>]` | Open a shell on the session's running sandbox with your ssh. |
 | `bex agent open <ags-id>` | Open the running sandbox in bex desktop (like `bex edit ags-…`), or else print and open the session's dashboard page (`--dashboard` forces it). |
 
 - **Picking and completion.** On a terminal, a command whose one argument is a session (`get`, `logs`, `files`, `cancel`, `open`, `delete`, `tree`, `cost`, `chat`) or an automation may leave it out: it lists your 20 most recent sessions (or the workspace's automations) and asks for a number, as Devin's `-r` does. Without a terminal an omitted argument is a usage error, as before. Shell completion (`bex completion …`) offers the same ids and names, giving up silently after 2 seconds.
@@ -208,6 +211,14 @@ bex agent files "$(jq -r .id outcome.json)" --download ./agent-files
 - **Leaving is not cancelling.** Ctrl-D, Ctrl-C and `/quit` leave; the session keeps running and `bex agent chat <ags-id>` attaches again. There are no permission prompts: cloud sessions run unattended.
 - **`--read-only`** watches without sending (for a session you can read but not steer), following each turn someone else starts.
 - **A terminal only:** without one, `chat` exits 2 and points to `run --follow` / `logs --follow`.
+
+### Move work between your machine and a Cloud Agent: `bex agent handoff | pickup | ssh`
+
+These are Devin's `/handoff`, `/pickup` and `devin ssh` ([ADR106](ADR106-cli-cloud-agents-automations.md) D5/D6), built on git and SSH you already use. No new bex-api route is involved: a session started on an existing `bex-agent/*` branch begins from it.
+
+- **`handoff [<task…>]`** commits the worktree as it is (tracked changes, plus untracked files `.gitignore` does not exclude; `--tracked-only` sends tracked changes only) through a temporary index: your index, worktree, stash and HEAD stay as they are. It shows the branch, the commit it starts from, a diffstat and the untracked files it sends, then asks (`--confirm` skips; without a terminal, `--confirm` is required). It pushes that commit with your own git to `bex-agent/handoff-<commit>` on `--remote` (default `origin`, whose `github.com` URL names the repository unless `--repo` does), then starts the session there with every `run` flag (`--model`, `--max-spend`, `--secret`, `--skill`, `--attach`, `--wait`, `--follow`) or `--chat`. `--notes FILE` uploads notes the agent finds under `/attachments`. A create the API refuses deletes the pushed branch again. The idempotency key is the commit plus the task, so re-running after a dropped connection resumes the same session. Your local agent's conversation does not travel (bex has no local agent of its own); say what matters in the task or the notes. The pull request targets the repository's default branch.
+- **`pickup <ags-id>`** fetches the session's branch from `--remote` and switches to it: a new local branch tracks it; an existing one fast-forwards, and one that has diverged is refused with the commands to reconcile it. Uncommitted changes are refused unless `--stash` stashes them first (untracked files too). The checkout's remote must be the session's repository. Before the agent has pushed, it says so and exits 1. `--wait` waits for the turn to end first; otherwise a running session is noted, since it may push more. The cloud session is untouched and still takes messages.
+- **`ssh <ags-id> [-- <ssh args…>]`** runs your `ssh` against the session's sandbox (`ags-…@ssh.bex.co`, as `bex edit ags-…` uses), with your registered SSH key, `~/.ssh/config` and agent. The sandbox runs only while a turn does; a session without one says so and exits 1. Port forwarding is not available ([ADR106](ADR106-cli-cloud-agents-automations.md) OD1, `w1/145`). In `chat`, `/ssh` prints this command, since `chat` reads the terminal's input itself, and `/pickup` runs `pickup` in the current directory.
 
 ### Agent Automations: `bex agent automations`
 
