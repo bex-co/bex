@@ -151,7 +151,8 @@ func TestRndrID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	uuid := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
+	// Render's 18-character shape, as in "303516bf-4995-4cb9" (w4/583).
+	uuid := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}$`)
 	for i := range 2 {
 		req := httptest.NewRequest(http.MethodGet, "https://web.onbex.co/", nil)
 		req.RemoteAddr = "198.51.100.20:1"
@@ -160,7 +161,7 @@ func TestRndrID(t *testing.T) {
 		h.ServeHTTP(rec, req)
 		got := rec.Header().Get("Rndr-Id")
 		if !uuid.MatchString(got) || got != seen[i] {
-			t.Fatalf("request %d: response Rndr-Id %q, app saw %q; want one minted UUID on both", i, got, seen[i])
+			t.Fatalf("request %d: response Rndr-Id %q, app saw %q; want one minted 8-4-4 id on both", i, got, seen[i])
 		}
 	}
 	if seen[0] == seen[1] {

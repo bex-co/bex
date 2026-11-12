@@ -37,7 +37,7 @@ Captured 2026-11-11 (w4/m325 t001) with a read-only `GET https://api.render.com/
 bex-api renders each stored Traefik access record into this message at read time (`requestLine`, `lego/backend/internal/logs/loki.go`) and labels the line `method`, `statusCode`, `host`, `path` and `level` from the same record. The stored JSON is unchanged, since the path and host filters and the request metrics parse it. The edge's access log keeps the three request headers this needs: `Rndr-Id`, `True-Client-Ip` (the real client the client-identity plugin names) and `User-Agent`, plus `DownstreamContentSize`.
 
 - **Lines stored before the rollout** lack the client, size and user agent, and show the keys they have.
-- **The request id is 36 characters** (bex's UUID-shaped `Rndr-Id`), not Render's 18. Filed as w4/583.
+- **The request id was 36 characters** (bex's UUID-shaped `Rndr-Id`), not Render's 18. Since w4/583 bex mints Render's `8-4-4` shape.
 - **Static sites** get request lines on bex. Render has none; w4/585 asks whether to keep them (an ADR018 sign-off) or drop them.
 - **Label order** is Render's: `resource`, `instance`, `method`, `statusCode`, `host`, `path`, `level`, `type`. That one order gives both captured line kinds; an app line from the same workspace read `resource`, `instance`, `level`, `type`.
 - **Response time** is truncated to whole milliseconds; Render's rounding was not observable in the capture.

@@ -124,14 +124,13 @@ func (s *sanitizer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.next.ServeHTTP(w, r)
 }
 
-// requestID is a random UUID-shaped id (version 4 layout).
+// requestID is a random id in Render's Rndr-Id shape: 8-4-4 lowercase hex,
+// 18 characters, as in its "303516bf-4995-4cb9" (w4/583).
 func requestID() string {
-	var b [16]byte
+	var b [8]byte
 	_, _ = rand.Read(b[:]) // never fails on supported platforms (Go 1.24+)
-	b[6] = b[6]&0x0f | 0x40
-	b[8] = b[8]&0x3f | 0x80
 	x := hex.EncodeToString(b[:])
-	return x[0:8] + "-" + x[8:12] + "-" + x[12:16] + "-" + x[16:20] + "-" + x[20:]
+	return x[0:8] + "-" + x[8:12] + "-" + x[12:16]
 }
 
 func (s *sanitizer) fromCloudflare(ip net.IP) bool {
