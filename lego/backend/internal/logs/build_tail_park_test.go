@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 	"testing"
@@ -27,7 +28,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/gorilla/websocket"
+	corev1 "k8s.io/api/core/v1"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -86,14 +89,85 @@ func TestBuildTailEndsWhenTheDeployIsNotBuilding(t *testing.T) {
 	}
 }
 
-// The WebSocket transport (the pinned Render CLI's) ends a refused build tail
-// with one Log-shaped `==>` line carrying the same text as the SSE error event,
-// instead of closing silently, then a terminal close: Render CLI v2.29+
-// reconnects after a normal close, so a 1000 would retry a finished build
-// forever (w8/m67).
-func TestWebSocketBuildTailSendsTheRefusalAsALogLine(t *testing.T) {
-	svc := newService(nil, sampleApp("web"))
+// The WebSocket transport is the pinned Render CLI's, and Render's
+// subscription follows what is generated from now on (w8/m159): a build tail
+// opened with no build running stays open, prints nothing from earlier, and
+// streams the next build once it starts. It used to answer "no running build"
+// and close 4000, so `bex logs --tail --type build` opened before a deploy
+// never showed its build.
+func TestWebSocketBuildTailWaitsForTheNextBuild(t *testing.T) {
+	earlier := buildPodFor("web", "bld-web-gen-1-old", "builds", "buildkit", time.Now().Add(-time.Hour))
+	earlier.Status.Phase = corev1.PodSucceeded
+	// Every pod's lines are known up front: the fake stream reads the map
+	// from other goroutines. The next build's pod appears later.
+	lines := map[string][]string{
+		earlier.Name: {time.Now().Add(-time.Hour).UTC().Format(time.RFC3339Nano) + " an earlier build"},
+		"bld-web-gen-2-next": {
+			time.Now().Add(time.Hour).UTC().Format(time.RFC3339Nano) + " next build one",
+			time.Now().Add(time.Hour+time.Second).UTC().Format(time.RFC3339Nano) + " next build two",
+		},
+	}
+	svc := newService(lines, sampleApp("web"), earlier)
 	svc.BuildNamespace = "builds"
+	svc.BuildPodWaitInterval = 10 * time.Millisecond
+	srv := revalidationTestServer(svc)
+	defer srv.Close()
+
+	wsURL := "ws" + strings.TrimPrefix(srv.URL, "http") + "/v1/logs/subscribe?resource=web&type=build"
+	conn, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("WS dial: %v", err)
+	}
+	defer conn.Close()
+	_ = conn.SetReadDeadline(time.Now().Add(300 * time.Millisecond))
+	if _, payload, err := conn.ReadMessage(); err == nil {
+		t.Fatalf("a build tail with no build sent %s; want it to wait", payload)
+	} else if ne, ok := err.(interface{ Timeout() bool }); !ok || !ne.Timeout() {
+		t.Fatalf("a build tail with no build ended: %v; want it to stay open", err)
+	}
+
+	// The next deploy's build starts. A read deadline that fired leaves the
+	// connection unusable, so read on a second subscription opened now.
+	conn2, _, err := websocket.DefaultDialer.Dial(wsURL, nil)
+	if err != nil {
+		t.Fatalf("WS dial: %v", err)
+	}
+	defer conn2.Close()
+	time.Sleep(50 * time.Millisecond)
+	next := buildPodFor("web", "bld-web-gen-2-next", "builds", "buildkit", time.Now())
+	if err := svc.Client.Create(context.Background(), next); err != nil {
+		t.Fatalf("start the next build: %v", err)
+	}
+	var got []string
+	_ = conn2.SetReadDeadline(time.Now().Add(5 * time.Second))
+	for len(got) < 2 {
+		_, payload, err := conn2.ReadMessage()
+		if err != nil {
+			t.Fatalf("read after %v: %v", got, err)
+		}
+		var line renderLog
+		if err := json.Unmarshal(payload, &line); err != nil {
+			t.Fatalf("frame %s is not a Log: %v", payload, err)
+		}
+		got = append(got, line.Message)
+	}
+	if fmt.Sprint(got) != "[next build one next build two]" {
+		t.Fatalf("lines = %v, want the next build's two lines and nothing earlier", got)
+	}
+	// The build pod still reads Running in the fake, so later passes read its
+	// lines again: none is sent twice.
+	_ = conn2.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+	if _, payload, err := conn2.ReadMessage(); err == nil {
+		t.Errorf("a line was sent twice: %s", payload)
+	}
+}
+
+// A tail that cannot run at all still ends with one Log-shaped `==>` line
+// carrying the reason, then a terminal close: Render CLI v2.29+ reconnects
+// after a normal close, so a 1000 would retry forever (w8/m67).
+func TestWebSocketTailSendsTheRefusalAsALogLine(t *testing.T) {
+	svc := newService(nil, sampleApp("web"))
+	svc.PodLogsFollow = nil
 	srv := revalidationTestServer(svc)
 	defer srv.Close()
 
@@ -112,16 +186,13 @@ func TestWebSocketBuildTailSendsTheRefusalAsALogLine(t *testing.T) {
 	if err := json.Unmarshal(payload, &line); err != nil {
 		t.Fatalf("frame %s is not a Log: %v", payload, err)
 	}
-	if line.Message != "==> "+ErrBuildNotRunning.Error() {
-		t.Errorf("message = %q, want %q", line.Message, "==> "+ErrBuildNotRunning.Error())
-	}
-	if !slices.ContainsFunc(line.Labels, func(l renderLabel) bool { return l.Name == "type" && l.Value == LogTypeBuild }) {
-		t.Errorf("labels = %+v, want type=build", line.Labels)
+	if line.Message != "==> "+core.ErrLogsUnavailable.Error() {
+		t.Errorf("message = %q, want %q", line.Message, "==> "+core.ErrLogsUnavailable.Error())
 	}
 	_, _, err = conn.ReadMessage()
 	var closeErr *websocket.CloseError
-	if !errors.As(err, &closeErr) || closeErr.Code != CloseTailRefused || closeErr.Text != ErrBuildNotRunning.Error() {
-		t.Errorf("after the refusal: %v, want close %d %q", err, CloseTailRefused, ErrBuildNotRunning.Error())
+	if !errors.As(err, &closeErr) || closeErr.Code != CloseTailRefused {
+		t.Errorf("after the refusal: %v, want close %d", err, CloseTailRefused)
 	}
 }
 

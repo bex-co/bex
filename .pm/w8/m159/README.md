@@ -1,17 +1,17 @@
 # w8 · m159 — A deploy's build can be followed from the CLI: build logs combine with other types, and a build tail waits for the next build
 
-**Worker:** worker8 **Goal:** `bex logs --type app,build` and `--type request,build` answer like any other type list, `bex logs --tail --type build` stays open until the service's next build and streams it, and the interactive `bex deploys create` ("Trigger a service deploy and stream logs in real time") shows the build it started. **Status:** todo
+**Worker:** worker8 **Goal:** `bex logs --type app,build` and `--type request,build` answer like any other type list, `bex logs --tail --type build` stays open until the service's next build and streams it, and the interactive `bex deploys create` ("Trigger a service deploy and stream logs in real time") shows the build it started. **Status:** in progress (2026-11-12: t001–t006 done and shipped; t007, the replay on production, waits for the deploy that carries it. Narrowed: the type-less history default is unchanged, and only the Render CLI's WebSocket tail follows every build; see t003)
 
 ## Tasks (in order)
 
 | id   | title                                                                                              | est | depends_on |
 | ---- | -------------------------------------------------------------------------------------------------- | --- | ---------- |
-| t001 | Log history accepts `build` together with `app` and `request`                                      | 60m | —          |
-| t002 | A live tail with `build` in its types follows builds: it waits for the next one and replays none   | 90m | t001       |
-| t003 | The type-less read and tail include build lines; the dashboard Logs tab keeps app and request only | 45m | t001, t002 |
-| t004 | Render parity                                                                                      | 15m | t003       |
-| t005 | Simplify                                                                                           | 15m | t004       |
-| t006 | Test coverage                                                                                      | 30m | t004       |
+| t001 | Log history accepts `build` together with `app` and `request` — **DONE**                                      | 60m | —          |
+| t002 | A live tail with `build` in its types follows builds: it waits for the next one and replays none — **DONE**   | 90m | t001       |
+| t003 | The type-less read and tail include build lines; the dashboard Logs tab keeps app and request only — **DONE** | 45m | t001, t002 |
+| t004 | Render parity — **DONE**                                                                                      | 15m | t003       |
+| t005 | Simplify — **DONE**                                                                                           | 15m | t004       |
+| t006 | Test coverage — **DONE**                                                                                      | 30m | t004       |
 | t007 | Closeout (live replay on production)                                                               | 30m | t006       |
 
 ## Definition of done

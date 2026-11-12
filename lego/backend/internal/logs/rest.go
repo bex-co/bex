@@ -402,6 +402,10 @@ func (s *Service) subscribeWebSocket(w http.ResponseWriter, r *http.Request, que
 			}
 		}
 	}()
+	// Render's own transport: Render's subscription semantics (renderStream).
+	for i := range queries {
+		queries[i].renderStream = true
+	}
 	followErr := s.followAll(r.Context(), queries, func(e LogEntry) error {
 		payload, mErr := json.Marshal(toRenderLog(e))
 		if mErr != nil {

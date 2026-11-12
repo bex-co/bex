@@ -325,6 +325,15 @@ type LogQuery struct {
 	// probe lets a page read one line past the caller's (clamped) Limit, so the
 	// page can tell whether any line lies beyond it (queryLogPage).
 	probe bool
+	// renderStream marks the tail of Render's own transport, the WebSocket
+	// subscription the pinned Render CLI opens (w8/m159). Render's subscribe
+	// "stream[s] logs matching the provided filters ... in real-time as they are
+	// generated": a build tail follows every build while it is open, and a tail
+	// with no type carries build lines too, which the CLI's deploy stream (a
+	// type-less tail from now) needs to show the build it started. The
+	// dashboard's SSE tails keep their own contract: the deploy page's build
+	// tail ends with its build.
+	renderStream bool
 }
 
 // validate rejects a filter value outside the accepted vocabulary — an unknown
@@ -350,14 +359,12 @@ func (q LogQuery) validate() error {
 			return fmt.Errorf("%w: unknown log type %q (want %s|%s|%s|%s)", core.ErrBadRequest, t, LogTypeApp, LogTypeRequest, LogTypeBuild, LogTypePreDeploy)
 		}
 	}
-	// Pre-deploy and build logs are distinct live sources (Job pods, w1/m33 + w3/m14),
-	// not merged with app/request — so each must be requested alone rather than
-	// silently ignored inside a mixed query.
+	// Pre-deploy logs are a distinct live source (the step Job's pod, w1/m33),
+	// not a store stream, so they are requested alone rather than silently
+	// ignored inside a mixed query. Build logs combine with app and request
+	// logs, as Render's type list does: the store read is split (mixesBuild).
 	if slices.Contains(q.Types, LogTypePreDeploy) && len(q.Types) > 1 {
 		return fmt.Errorf("%w: log type %q must be requested on its own", core.ErrBadRequest, LogTypePreDeploy)
-	}
-	if slices.Contains(q.Types, LogTypeBuild) && len(q.Types) > 1 {
-		return fmt.Errorf("%w: log type %q must be requested on its own", core.ErrBadRequest, LogTypeBuild)
 	}
 	// A deploy owns build and pre-deploy output; an app or request line belongs
 	// to the service, so a deploy filter on one would silently do nothing.
@@ -806,11 +813,10 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	if s.History != nil {
 		// The store applies every filter (labels + line) server-side and returns
 		// oldest-first, capped at q.Limit.
-		entries, err := s.History(ctx, appNS, q)
+		entries, err := s.queryHistory(ctx, appNS, q, resource, newProgressContext(app))
 		if err != nil {
 			return labelHistory(nil, err, resource)
 		}
-		entries = s.synthesizeProgress(ctx, q, resource, newProgressContext(app), entries)
 		return setLogResource(entries, resource), nil
 	}
 	if q.needsStore() {
@@ -829,6 +835,104 @@ func (s *Service) QueryLogs(ctx context.Context, q LogQuery) ([]LogEntry, error)
 	}
 	sort.SliceStable(out, func(i, j int) bool { return core.TimestampLess(out[i].Timestamp, out[j].Timestamp) })
 	return setLogResource(q.filterAndCap(out), resource), nil
+}
+
+// mixesBuild reports whether q asks for build lines beside app or request
+// lines (w8/m159). The store keeps build streams under their own label
+// (lokiTypeMatcher), so such a read is two reads (storeReads).
+func (q LogQuery) mixesBuild() bool {
+	return len(q.Types) > 1 && slices.Contains(q.Types, LogTypeBuild)
+}
+
+// storeReads is q as the store can select it: one read, or for a build type
+// beside others the build read and a read of the rest, leaving out a type q
+// cannot want (a static site's request lines). Every caller that hands the
+// store a type list goes through it, so lokiTypeMatcher never sees build
+// combined (w8/m159).
+func (q LogQuery) storeReads() []LogQuery {
+	if !q.mixesBuild() {
+		return []LogQuery{q}
+	}
+	build, rest := q, q
+	build.Types = []string{LogTypeBuild}
+	rest.Types = slices.DeleteFunc(withoutBuild(q.Types), func(t string) bool { return !q.wants(t) })
+	if len(rest.Types) == 0 {
+		return []LogQuery{build}
+	}
+	return []LogQuery{build, rest}
+}
+
+// queryHistory is one durable-store read of an App's lines, with a build
+// read's platform progress lines (synthesizeProgress). A build type beside app
+// or request types is read as storeReads' parts, at once, each to q's limit,
+// merged in time order and cut to the limit, as queryLogPage merges several
+// resources. A part whose scan ran out of time bounds the whole: lines of the
+// other part beyond its edge are dropped, so the next page repeats none.
+func (s *Service) queryHistory(ctx context.Context, ns string, q LogQuery, resource string, pc progressContext) ([]LogEntry, error) {
+	reads := q.storeReads()
+	if len(reads) == 1 {
+		entries, err := s.History(ctx, ns, reads[0])
+		if err != nil {
+			return nil, err
+		}
+		return s.synthesizeProgress(ctx, reads[0], resource, pc, entries), nil
+	}
+	type result struct {
+		entries []LogEntry
+		err     error
+	}
+	results := make([]result, len(reads))
+	var wg sync.WaitGroup
+	for i, part := range reads {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			entries, err := s.History(ctx, ns, part)
+			var partial *ScanIncompleteError
+			if errors.As(err, &partial) {
+				partial.Entries = s.synthesizeProgress(ctx, part, resource, pc, partial.Entries)
+			} else if err == nil {
+				entries = s.synthesizeProgress(ctx, part, resource, pc, entries)
+			}
+			results[i] = result{entries, err}
+		}()
+	}
+	wg.Wait()
+	forward := q.Direction == DirectionForward
+	var all []LogEntry
+	var edge *time.Time
+	for _, r := range results {
+		entries, err := r.entries, r.err
+		var partial *ScanIncompleteError
+		if errors.As(err, &partial) {
+			entries, err = partial.Entries, nil
+			if to := partial.ScannedTo; edge == nil || (forward && to.Before(*edge)) || (!forward && to.After(*edge)) {
+				edge = &to
+			}
+		}
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, entries...)
+	}
+	if edge != nil {
+		all = slices.DeleteFunc(all, func(e LogEntry) bool {
+			t, err := time.Parse(time.RFC3339Nano, e.Timestamp)
+			if err != nil {
+				return false
+			}
+			if forward {
+				return !t.Before(*edge)
+			}
+			return t.Before(*edge)
+		})
+	}
+	sort.SliceStable(all, func(i, j int) bool { return core.TimestampLess(all[i].Timestamp, all[j].Timestamp) })
+	all = q.capToLimit(all)
+	if edge != nil {
+		return nil, &ScanIncompleteError{Entries: all, ScannedTo: *edge}
+	}
+	return all, nil
 }
 
 // queryDatastoreLogs is the one datastore-scoped core read behind the REST,
@@ -1045,9 +1149,13 @@ func (s *Service) LogLabelValues(ctx context.Context, label string, q LogQuery) 
 	}
 	// app.Namespace is the App's `<ws>` namespace under ADR043 (see QueryLogs);
 	// the discoverable stream labels live there, not in the shared s.Namespace.
-	values, err := s.LabelValues(ctx, app.Namespace, label, q.normalized())
-	if err != nil {
-		return nil, err
+	var values []string
+	for _, part := range q.normalized().storeReads() {
+		vals, err := s.LabelValues(ctx, app.Namespace, label, part)
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, vals...)
 	}
 	if label == LabelInstance {
 		return projectLogLabelValues(resource, values), nil
@@ -1186,7 +1294,13 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	ctx, stopWatchdog := withRevalidation(ctx, s.revalidateInterval(), target.revalidate)
 	defer stopWatchdog()
 	if len(q.Types) == 1 && q.Types[0] == LogTypeBuild {
+		if q.renderStream {
+			return s.followBuilds(ctx, q, resource, newProgressContext(app), emit, heartbeat)
+		}
 		return s.followBuildLogs(ctx, q, resource, newProgressContext(app), emit)
+	}
+	if q.mixesBuild() || (q.renderStream && len(q.Types) == 0) {
+		return s.followPodsAndBuilds(ctx, q, selectors, target, podsLive, resource, newProgressContext(app), emit, heartbeat)
 	}
 	if !q.wants(LogTypeApp) && !q.wants(LogTypeRequest) {
 		// SECURITY (codex #3): a query wanting no produced type (e.g.
@@ -1201,6 +1315,191 @@ func (s *Service) followLogs(ctx context.Context, q LogQuery, emit func(LogEntry
 	// app.Namespace: the pods stream from their `<ws>` namespace under ADR043,
 	// the same namespace translateInstanceFilter selected them in.
 	return s.followPods(ctx, q, selectors, target, podsLive, emit, heartbeat)
+}
+
+// followBuildsIdleWait is how long a build tail waits between looks for the
+// next build when none is running (BuildPodWaitInterval overrides it in
+// tests): each look reads the build pods and the newest deploy row.
+const followBuildsIdleWait = 5 * time.Second
+
+// followBuildsDedupe is how many recent line identities a build tail keeps, a
+// second guard against sending a line twice: each pass resumes after the last
+// line sent, and one narration follower serves every pass.
+const followBuildsDedupe = 1024
+
+// followBuilds is a build tail that follows every build of the App while it is
+// open (w8/m159): Render's subscription is a filter over what is generated
+// from now on. A pass is followBuild, which streams the running build to its
+// end. With no build running it answers ErrBuildNotRunning, and a failed read
+// of the build pods ends it too; both mean "look again". Only the client
+// going away ends the tail. Nothing from before the tail opened (or the
+// caller's startTime, which never moves back) is sent: each pass resumes after
+// the last line sent, one progress follower narrates each platform line once,
+// and recent line identities are kept as a second guard. heartbeat (nil-safe)
+// is written on its interval under the same lock as every line.
+func (s *Service) followBuilds(ctx context.Context, q LogQuery, resource string, pc progressContext, emit func(LogEntry) error, heartbeat func() error) error {
+	if q.Since.IsZero() {
+		q.Since = time.Now()
+	}
+	wait := s.BuildPodWaitInterval
+	if wait <= 0 {
+		wait = followBuildsIdleWait
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	var mu sync.Mutex
+	var writeErr error
+	var last time.Time
+	sent := newRecentKeys(followBuildsDedupe)
+	send := func(e LogEntry) error {
+		mu.Lock()
+		defer mu.Unlock()
+		if writeErr != nil {
+			return writeErr
+		}
+		if !sent.add(logID(e)) {
+			return nil
+		}
+		if err := emit(e); err != nil {
+			writeErr = err
+			cancel()
+			return err
+		}
+		if t, err := time.Parse(time.RFC3339Nano, e.Timestamp); err == nil && t.After(last) {
+			last = t
+		}
+		return nil
+	}
+	if heartbeat != nil {
+		go func() {
+			ticker := time.NewTicker(s.tailHeartbeatInterval())
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+				}
+				mu.Lock()
+				if writeErr == nil {
+					if err := heartbeat(); err != nil {
+						writeErr = err
+						cancel()
+					}
+				}
+				mu.Unlock()
+			}
+		}()
+	}
+	prog := s.newProgressFollower(q, resource, pc)
+	for {
+		passStart := time.Now()
+		_ = s.followBuild(ctx, q, resource, prog, send)
+		mu.Lock()
+		failed, resume := writeErr, last.Add(time.Nanosecond)
+		mu.Unlock()
+		if failed != nil {
+			return failed
+		}
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		// The next pass starts after the last line sent, and no later than
+		// this pass's start, so a build that began while it looked is read
+		// whole.
+		next := passStart
+		if !last.IsZero() && resume.Before(next) {
+			next = resume
+		}
+		if next.After(q.Since) {
+			q.Since = next
+		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(wait):
+		}
+	}
+}
+
+// recentKeys is a bounded set of the most recently added keys.
+type recentKeys struct {
+	set   map[string]bool
+	order []string
+	next  int
+}
+
+func newRecentKeys(n int) *recentKeys {
+	return &recentKeys{set: make(map[string]bool, n), order: make([]string, 0, max(n, 1))}
+}
+
+// add records key and reports whether it was new. Past capacity, the oldest
+// key is forgotten.
+func (r *recentKeys) add(key string) bool {
+	if r.set[key] {
+		return false
+	}
+	if len(r.order) < cap(r.order) {
+		r.order = append(r.order, key)
+	} else {
+		delete(r.set, r.order[r.next])
+		r.order[r.next] = key
+		r.next = (r.next + 1) % len(r.order)
+	}
+	r.set[key] = true
+	return true
+}
+
+// withoutBuild is types with build left out.
+func withoutBuild(types []string) []string {
+	return slices.DeleteFunc(slices.Clone(types), func(t string) bool { return t == LogTypeBuild })
+}
+
+// followPodsAndBuilds is a tail of build lines beside app or request lines
+// (w8/m159): the App's pods and request log as followPods streams them, and
+// every build as followBuilds does, onto one transport. Writes and keepalives
+// are serialized; the first producer to fail ends both. A level or instance
+// filter selects app and request lines only (a build line has neither), so
+// with one set there is no build producer.
+func (s *Service) followPodsAndBuilds(ctx context.Context, q LogQuery, selectors []string, target tailTarget, pods []corev1.Pod, resource string, pc progressContext, emit func(LogEntry) error, heartbeat func() error) error {
+	rest := q
+	rest.Types = withoutBuild(q.Types)
+	if len(q.Level) > 0 || len(q.Instance) > 0 {
+		return s.followPods(ctx, rest, selectors, target, pods, emit, heartbeat)
+	}
+	var mu sync.Mutex
+	serial := func(e LogEntry) error {
+		mu.Lock()
+		defer mu.Unlock()
+		return emit(e)
+	}
+	var beat func() error
+	if heartbeat != nil {
+		beat = func() error {
+			mu.Lock()
+			defer mu.Unlock()
+			return heartbeat()
+		}
+	}
+	builds := q
+	builds.Types = []string{LogTypeBuild}
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	buildErr := make(chan error, 1)
+	go func() {
+		err := s.followBuilds(ctx, builds, resource, pc, serial, nil)
+		cancel()
+		buildErr <- err
+	}()
+	podErr := s.followPods(ctx, rest, selectors, target, pods, serial, beat)
+	cancel()
+	err := <-buildErr
+	for _, e := range []error{podErr, err} {
+		if e != nil && !errors.Is(e, context.Canceled) {
+			return e
+		}
+	}
+	return ctx.Err()
 }
 
 // followDatastore is the live tail of a managed Postgres or Key Value
@@ -1569,7 +1868,13 @@ func withRevalidation(parent context.Context, interval time.Duration, check func
 // one final check emits the closing line if the deploy row already turned
 // terminal; otherwise it rides the history read's post-deploy grace poll.
 func (s *Service) followBuildLogs(ctx context.Context, q LogQuery, resource string, pc progressContext, emit func(LogEntry) error) error {
-	prog := s.newProgressFollower(q, resource, pc)
+	return s.followBuild(ctx, q, resource, s.newProgressFollower(q, resource, pc), emit)
+}
+
+// followBuild is followBuildLogs with its narration follower supplied, so a
+// tail that follows several builds narrates each platform line once
+// (followBuilds).
+func (s *Service) followBuild(ctx context.Context, q LogQuery, resource string, prog *progressFollower, emit func(LogEntry) error) error {
 	if err := prog.emitReached(ctx, emit); err != nil {
 		return err
 	}
@@ -1826,18 +2131,22 @@ func (s *Service) translateInstanceFilter(ctx context.Context, resourceID, names
 	if s.LabelValues != nil {
 		disc := *q
 		disc.Instance = nil
-		if vals, err := s.LabelValues(ctx, namespace, LabelInstance, disc.normalized()); err == nil {
-			seen := make(map[string]struct{}, len(cands))
-			for _, c := range cands {
-				seen[c.Name] = struct{}{}
+		seen := make(map[string]struct{}, len(cands))
+		for _, c := range cands {
+			seen[c.Name] = struct{}{}
+		}
+		// One discovery per store read: a build type beside others is two
+		// (storeReads), and their instances are the union.
+		for _, part := range disc.normalized().storeReads() {
+			vals, err := s.LabelValues(ctx, namespace, LabelInstance, part)
+			if err != nil {
+				continue
 			}
 			for _, name := range vals {
-				if name == "" {
+				if _, ok := seen[name]; ok || name == "" {
 					continue
 				}
-				if _, ok := seen[name]; ok {
-					continue
-				}
+				seen[name] = struct{}{}
 				cands = append(cands, ids.InstanceCandidate{Name: name})
 			}
 		}

@@ -512,11 +512,10 @@ func excludeJobsMatcher(jobs []string) string {
 // caller asks for both. Build streams carry type="build" (w7/m28 — shipped by
 // the build_pods pipeline in log-shipper.yaml).
 //
-// Only the callers below reach this, and each has already run validate() (or
-// passes no types at all), so `build` NEVER arrives combined with another type:
-// validate() answers that with `400 log type "build" must be requested on its
-// own`. w6/m131 removed the three build-plus-other branches that encoded a
-// union no request could produce.
+// `build` NEVER arrives combined with another type: one selector cannot union
+// a type label with the container match, so Service.queryHistory splits such a
+// read into a build read and the rest and merges them (w8/m159). w6/m131
+// removed the three build-plus-other branches here.
 func lokiTypeMatcher(q LogQuery) string {
 	if len(q.Types) == 0 {
 		// No explicit type filter (an absent `type`, or `type=all`, both of which

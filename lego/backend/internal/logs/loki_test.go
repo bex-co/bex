@@ -170,33 +170,6 @@ func TestLokiQueryFor(t *testing.T) {
 	}
 }
 
-// TestBuildTypeIsNeverCombined pins the rule that makes lokiTypeMatcher's
-// build-plus-other branches unreachable — w6/m131 removed those branches, so
-// what guards the removal is this: validate() refuses `build` alongside any
-// other type, and every lokiTypeMatcher caller has already validated. If that
-// rule is ever relaxed, this test fails and lokiTypeMatcher needs the union
-// branches back rather than silently returning `type="build"` alone.
-func TestBuildTypeIsNeverCombined(t *testing.T) {
-	for _, types := range [][]string{
-		{LogTypeApp, LogTypeBuild},
-		{LogTypeBuild, LogTypeRequest},
-		{LogTypeApp, LogTypeBuild, LogTypeRequest},
-	} {
-		t.Run(strings.Join(types, "+"), func(t *testing.T) {
-			err := LogQuery{App: "web", Types: types}.validate()
-			if err == nil {
-				t.Fatalf("validate() accepted type=%v; lokiTypeMatcher no longer handles that union", types)
-			}
-			if !errors.Is(err, core.ErrBadRequest) {
-				t.Errorf("validate() error = %v, want core.ErrBadRequest", err)
-			}
-			if !strings.Contains(err.Error(), `"build" must be requested on its own`) {
-				t.Errorf("validate() error = %q, want it to name the build-alone rule", err)
-			}
-		})
-	}
-}
-
 // --- Range + limit resolution (pure) ---
 
 func TestLokiRange(t *testing.T) {

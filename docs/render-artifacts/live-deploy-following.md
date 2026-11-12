@@ -41,7 +41,7 @@ Verified on the local CAPD cluster through w3's isolated `dev-3` identity/API st
 - a create-triggered git build produced 128 `type=build` SSE frames and transitioned `build_in_progress` → `live`; the App reached `Running`;
 - the dashboard Manual Deploy confirmation navigated directly to `/services/<service>/deploys/<deploy>`; its build panel visibly appended BuildKit lines while Chrome remained on that page;
 - the same open page updated its deploy header, timestamps, and timeline to terminal `Build Failed` without a refresh when exercised once without the temporary registry;
-- a subscription after the build had ended emitted the named terminal `no running build is available to follow` error instead of hanging.
+- a subscription after the build had ended emitted the named terminal `no running build is available to follow` error instead of hanging. (Still true of the dashboard's SSE build tail. Since w8/m159 the Render CLI's WebSocket build tail instead waits for the next build, as Render's subscription does; ADR010 § The live tail.)
 
 The temporary test services, registry, pull/push Secrets, and browser profile were removed after verification. No production service was mutated.
 
