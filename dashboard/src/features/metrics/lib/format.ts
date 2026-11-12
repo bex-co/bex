@@ -1,11 +1,19 @@
 import { formatBytes } from "@/common/lib/format/format-bytes";
+import type { Translate } from "@/common/hooks/use-translations";
 import type { MetricId } from "@/features/metrics/types";
 
-/** Formats a metric's value for its unit, matching bex-api's `unit` field. */
-export function formatMetricValue(unit: string, value: number): string {
+/**
+ * Formats a metric's value for its unit, matching bex-api's `unit` field, in
+ * the dashboard's language.
+ */
+export function formatMetricValue(
+  unit: string,
+  value: number,
+  t: Translate,
+): string {
   switch (unit) {
     case "cpu":
-      return `${toFixedNonzero(value, 3)} cores`;
+      return t("metrics.cpuCores", { value: toFixedNonzero(value, 3) });
     case "bytes":
       return formatBytes(value);
     case "seconds":

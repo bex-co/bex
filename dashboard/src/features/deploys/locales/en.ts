@@ -403,6 +403,88 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
   },
+  "deploys.reason.http_port_waiting": {
+    message:
+      "Waiting for the container to start before detecting its HTTP port",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_waiting, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_detecting": {
+    message: "Detecting the container's HTTP port",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_detecting, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_limit": {
+    message:
+      "The detected HTTP port exceeds the service's 75-port limit; set PORT explicitly",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_limit, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_detected": {
+    message: "Detected HTTP on port {port}; serving it",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_detected, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_not_answering": {
+    message:
+      "Port {port} accepted a connection but has not answered HTTP yet; continuing to scan while the container starts",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_not_answering, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_none_yet": {
+    message:
+      "No port answers HTTP yet; continuing to scan while the container starts",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_yet, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_fallback": {
+    message:
+      "No port answered HTTP; using fallback port {port}. Set PORT to the HTTP listener if it binds elsewhere",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_fallback, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.image_not_found": {
+    message:
+      "the image {image} was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_not_found, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.image_credential_refused": {
+    message:
+      "{host} refused this service's registry credential for the image {image} (HTTP {status}). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_credential_refused, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.image_access_refused": {
+    message:
+      "the registry refused access to the image {image}. If the image is private, add a registry credential for {host} to this service",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_access_refused, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.image_read_refused": {
+    message:
+      "the registry refused to read the image {image} (HTTP {status}). Check the image URL and tag",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.build_timed_out": {
+    message:
+      "the build did not finish within the build window; check the build logs",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason build_timed_out, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.pre_deploy_timed_out": {
+    message:
+      "the pre-deploy command did not finish within its window; check the pre-deploy logs",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_timed_out, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.health_timed_out": {
+    message:
+      "the deploy did not become healthy within the health-gate window; check the service logs",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason health_timed_out, w4/566); params are the sentence's values",
+  },
 };
 
 export default enDeploys;

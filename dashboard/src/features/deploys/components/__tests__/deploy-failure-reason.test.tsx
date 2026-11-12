@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { afterEach, describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import i18n from "@/i18n/init";
 import { DeployFailureReason } from "@/features/deploys/components/deploy-failure-reason";
 
 describe("DeployFailureReason", () => {
@@ -37,5 +38,42 @@ describe("DeployFailureReason", () => {
     const el = screen.getByText("image pull failed: not found");
     expect(el.className).toContain("truncate");
     expect(el).toHaveAttribute("title", "image pull failed: not found");
+  });
+
+  // w4/566: a reason with a template the dashboard knows reads in its language.
+  describe("by template", () => {
+    afterEach(async () => {
+      await i18n.changeLanguage("en");
+    });
+    const template = { code: "http_port_detected", params: { port: "80" } };
+
+    it("words a known template in zh, tooltip included", async () => {
+      await i18n.changeLanguage("zh");
+      render(
+        <DeployFailureReason
+          reason="Detected HTTP on port 80; serving it"
+          template={template}
+          truncate
+        />,
+      );
+      const el = screen.getByText(
+        "已在端口 80 上检测到 HTTP，将通过该端口提供服务",
+      );
+      expect(el).toHaveAttribute(
+        "title",
+        "已在端口 80 上检测到 HTTP，将通过该端口提供服务",
+      );
+    });
+
+    it("keeps bex-api's sentence for a template it does not know", async () => {
+      await i18n.changeLanguage("zh");
+      render(
+        <DeployFailureReason
+          reason="Something new"
+          template={{ code: "something_new", params: {} }}
+        />,
+      );
+      expect(screen.getByText("Something new")).toBeInTheDocument();
+    });
   });
 });

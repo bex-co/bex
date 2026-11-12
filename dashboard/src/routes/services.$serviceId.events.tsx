@@ -37,6 +37,7 @@ import {
 import { DeployActions } from "@/features/deploys/components/deploy-actions";
 import { useGoneBuilds } from "@/features/deploys/hooks/use-gone-builds";
 import { DeployFailureReason } from "@/features/deploys/components/deploy-failure-reason";
+import { toDeployReasonTemplate } from "@/features/deploys/lib/deploy-reason";
 import {
   useServiceEvents,
   type ServiceEventView,
@@ -477,7 +478,11 @@ function EventSummary({
             </Badge>
           ) : null}
         </div>
-        <DeployFailureReason reason={details?.failureReason} className="mt-1" />
+        <DeployFailureReason
+          reason={details?.failureReason}
+          template={toDeployReasonTemplate(details?.failureReasonTemplate)}
+          className="mt-1"
+        />
         <DeployFailureReason
           reason={details?.cancelReason}
           tone="neutral"
@@ -489,6 +494,7 @@ function EventSummary({
             leaves it empty everywhere else. */}
         <DeployFailureReason
           reason={details?.stallReason}
+          template={toDeployReasonTemplate(details?.stallReasonTemplate)}
           tone="neutral"
           className="mt-1"
         />

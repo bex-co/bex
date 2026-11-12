@@ -36,6 +36,21 @@ query ServiceEvents(
       cancelReason
       # w4/m112: why an OPEN deploy is not progressing; deploy_started only.
       stallReason
+      # The two sentences by code, worded in the dashboard's language (w4/566).
+      failureReasonTemplate {
+        code
+        params {
+          name
+          value
+        }
+      }
+      stallReasonTemplate {
+        code
+        params {
+          name
+          value
+        }
+      }
       # status is a lifecycle-step event's terminal outcome (w7/m66):
       # build_ended | pre_deploy_ended | job_run_ended → succeeded|failed|canceled.
       status

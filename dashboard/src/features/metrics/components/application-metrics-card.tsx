@@ -444,14 +444,14 @@ function ResourceSection({
               {t("metrics.limitLink")}
             </Link>
             {limit.kind === "single" && (
-              <> {formatMetricValue(limitUnit, limit.value)}</>
+              <> {formatMetricValue(limitUnit, limit.value, t)}</>
             )}
             {limit.kind === "vary" && <> {t("metrics.limitsVary")}</>}
           </span>
           {percentage && hasTarget && (
             <span className="text-xs text-muted-foreground">
               {t("metrics.targetLabel", {
-                value: formatMetricValue("percentage", target),
+                value: formatMetricValue("percentage", target, t),
               })}
             </span>
           )}
@@ -496,11 +496,12 @@ function LatestValue({
   unit: string;
   value: number | null;
 }) {
+  const { t } = useTranslations();
   const text =
     result.loading && result.series.length === 0
       ? "…"
       : value != null
-        ? formatMetricValue(unit, value)
+        ? formatMetricValue(unit, value, t)
         : null;
   if (text == null) return null;
   return (

@@ -77,6 +77,10 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// w4/m112: why an OPEN deploy is not progressing. Empty while a
 		// rollout is healthy; cleared when the deploy goes terminal.
 		"stallReason": gqlutil.StrField(func(d DeployView) any { return d.StallReason }),
+		// The failure and stall sentences by code, for a client that words
+		// them in its own language (w4/566); null for a sentence with none.
+		"failureReasonTemplate": gqlutil.DeployReasonField(func(d DeployView) string { return d.FailureReason }),
+		"stallReasonTemplate":   gqlutil.DeployReasonField(func(d DeployView) string { return d.StallReason }),
 	},
 })
 

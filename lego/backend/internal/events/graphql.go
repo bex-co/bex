@@ -145,6 +145,9 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"cancelReason": gqlutil.StrField(func(d Details) any { return d.CancelReason }),
 		// w4/m112: why an OPEN deploy is not progressing; deploy_started only.
 		"stallReason": gqlutil.StrField(func(d Details) any { return d.StallReason }),
+		// The failure and stall sentences by code (w4/566), as on Deploy.
+		"failureReasonTemplate": gqlutil.DeployReasonField(func(d Details) string { return d.FailureReason }),
+		"stallReasonTemplate":   gqlutil.DeployReasonField(func(d Details) string { return d.StallReason }),
 		// status is a lifecycle-step event's terminal outcome (w7/m66):
 		// build_ended / pre_deploy_ended / job_run_ended → succeeded|failed|canceled.
 		"status": gqlutil.StrField(func(d Details) any { return d.Status }),

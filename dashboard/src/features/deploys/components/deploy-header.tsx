@@ -112,7 +112,10 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
             diagnosis (crash loop with the $PORT hint, image-pull failure,
             build error) or a health-gate-timeout line. A supersede cancel
             (w4/089) uses cancelReason with a neutral tone instead. */}
-        <DeployFailureReason reason={deploy.failureReason} />
+        <DeployFailureReason
+          reason={deploy.failureReason}
+          template={deploy.failureReasonTemplate}
+        />
         <DeployFailureReason reason={deploy.cancelReason} tone="neutral" />
 
         {/* w4/m112: while the deploy is still open, say what the rollout is
@@ -123,7 +126,11 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
             not a verdict; a deploy carrying one may still go live. The server
             clears the field as the deploy goes terminal, so the terminal
             states' copy above is untouched. */}
-        <DeployFailureReason reason={deploy.stallReason} tone="neutral" />
+        <DeployFailureReason
+          reason={deploy.stallReason}
+          template={deploy.stallReasonTemplate}
+          tone="neutral"
+        />
 
         {preDeploy && (
           <p

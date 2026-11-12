@@ -72,6 +72,8 @@ function row(id: string, status: string): DeployRow {
     failureReason: "",
     cancelReason: "",
     stallReason: "",
+    failureReasonTemplate: null,
+    stallReasonTemplate: null,
   } as DeployRow;
 }
 
@@ -217,7 +219,10 @@ describe("service deploy history navigation (w4/284)", () => {
 
   it("drops its filters when a plain link to the same history is followed", async () => {
     const user = userEvent.setup();
-    const router = await renderAt(mount, "/services/web/deploys?status=live&q=dep");
+    const router = await renderAt(
+      mount,
+      "/services/web/deploys?status=live&q=dep",
+    );
     expect(await searchBox()).toHaveValue("dep");
     await user.click(screen.getByText("Deploys nav"));
     await waitFor(() => expect(router.state.location.search).toEqual({}));
@@ -238,7 +243,10 @@ describe("service deploy history navigation (w4/284)", () => {
   });
 
   it("does not carry one service's filters to another service's history", async () => {
-    const router = await renderAt(mount, "/services/web/deploys?status=live&q=dep");
+    const router = await renderAt(
+      mount,
+      "/services/web/deploys?status=live&q=dep",
+    );
     expect(await searchBox()).toHaveValue("dep");
     await act(() =>
       router.navigate({

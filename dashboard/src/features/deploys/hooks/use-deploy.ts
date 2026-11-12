@@ -1,4 +1,8 @@
 import { useEffect } from "react";
+import {
+  toDeployReasonTemplate,
+  type DeployReasonTemplate,
+} from "@/features/deploys/lib/deploy-reason";
 import { useQuery } from "@apollo/client/react";
 import { resourceNotFound } from "@/common/hooks/use-not-found-redirect";
 import {
@@ -57,6 +61,9 @@ export interface DeployView {
    * the moment the deploy goes terminal. An observation, not a verdict.
    */
   stallReason: string;
+  /** failureReason and stallReason by code, for the dashboard's wording (w4/566). */
+  failureReasonTemplate: DeployReasonTemplate | null;
+  stallReasonTemplate: DeployReasonTemplate | null;
 }
 
 export interface UseDeployResult {
@@ -155,5 +162,7 @@ function toDeployView(
     failureReason: d.failureReason ?? "",
     cancelReason: d.cancelReason ?? "",
     stallReason: d.stallReason ?? "",
+    failureReasonTemplate: toDeployReasonTemplate(d.failureReasonTemplate),
+    stallReasonTemplate: toDeployReasonTemplate(d.stallReasonTemplate),
   };
 }

@@ -19,8 +19,8 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/httpport"
@@ -129,11 +129,11 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	}
 	ip, started := r.webImageCandidateIP(ctx, dep)
 	if ip == "" || time.Since(started) < portDetectGrace {
-		return true, "Waiting for the container to start before detecting its HTTP port"
+		return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortWaiting)
 	}
 	key := "http/" + app.Namespace + "/" + app.Name
 	if last, ok := r.portScanned.Load(key); ok && time.Since(last.(time.Time)) < portDetectInterval {
-		return true, "Detecting the container's HTTP port"
+		return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetecting)
 	}
 	r.portScanned.Store(key, time.Now())
 	network := app.Status.ImageNetwork
@@ -169,7 +169,7 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 	if port := found.Port; port > 0 && (found.Unanswered == 0 || !inWindow) {
 		if !slices.Contains(network.Ports, port) {
 			if len(network.Ports) >= appv1alpha1.MaxImagePorts {
-				return true, "The detected HTTP port exceeds the service's 75-port limit; set PORT explicitly"
+				return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortLimit)
 			}
 			if network.NoDeclaredPorts {
 				network.Ports = nil
@@ -179,13 +179,13 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 		}
 		r.portScanned.Delete(key)
 		network.PrimaryPort, network.HTTPSelection = port, appv1alpha1.HTTPSelectionDetected
-		message := fmt.Sprintf("Detected HTTP on port %d; serving it", port)
+		message := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetected, portParam(port))
 		logf.FromContext(ctx).Info(message, "app", app.Name)
 		return true, message // reproject probes and routing on the chosen port first
 	}
 	if inWindow {
 		if found.Unanswered > 0 {
-			return true, fmt.Sprintf("Port %d accepted a connection but has not answered HTTP yet; continuing to scan while the container starts", found.Unanswered)
+			return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNotAnswering, portParam(found.Unanswered))
 		}
 		if err != nil {
 			// A failed probe and one that found nothing read the same from
@@ -193,11 +193,16 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 			// user can act on and the log keeps the probe's own error.
 			logf.FromContext(ctx).Info("HTTP port probe failed", "app", app.Name, "error", err.Error())
 		}
-		return true, "No port answers HTTP yet; continuing to scan while the container starts"
+		return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortNoneYet)
 	}
 	r.portScanned.Delete(key)
 	network.HTTPSelection = appv1alpha1.HTTPSelectionFallback
-	return true, fmt.Sprintf("No port answered HTTP; using fallback port %d. Set PORT to the HTTP listener if it binds elsewhere", network.PrimaryPort)
+	return true, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortFallback, portParam(network.PrimaryPort))
+}
+
+// portParam is a port as a deploy reason's {port}.
+func portParam(port int32) appv1alpha1.DeployReasonParam {
+	return appv1alpha1.DeployReasonParam{Name: "port", Value: strconv.Itoa(int(port))}
 }
 
 func (r *AppReconciler) webImageCandidateIP(ctx context.Context, dep *appsv1.Deployment) (string, time.Time) {

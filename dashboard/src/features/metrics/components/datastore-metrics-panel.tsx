@@ -139,7 +139,7 @@ export function DatastoreMetricsPanel({
     value != null ? (
       <span className="text-xs text-muted-foreground">
         {t("metrics.datastoreLimitLabel", {
-          value: formatMetricValue(unit, value),
+          value: formatMetricValue(unit, value, t),
         })}
       </span>
     ) : null;

@@ -1,4 +1,35 @@
-# 566 — In the zh dashboard, three strings stay English on every service page: the header's "Slug" label, the CPU unit "cores", and the operator's port-detection deploy message ("Detected HTTP on port 80; serving it")
+# w4 · m329 — In the zh dashboard, the service header's "Slug" label, the CPU unit "cores" and the operator's deploy reason sentences stay English
+
+**Worker:** worker4 **Goal:** a Chinese-language owner reads the service header, the Metrics CPU limit and a deploy's in-progress or failure reason in Chinese, while every API keeps Render's English sentences. **Status:** blocked — t001–t004 and t006–t008 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| [t001](done/t001.md) | Dashboard: the zh "Slug" label and the CPU unit through i18n — **DONE** | 15m | — |
+| [t002](done/t002.md) | Types and operator: the deploy reason sentences as coded templates — **DONE** | 40m | — |
+| [t003](done/t003.md) | Backend: GraphQL `failureReasonTemplate` and `stallReasonTemplate` — **DONE** | 30m | t002 |
+| [t004](done/t004.md) | Dashboard: known templates worded in en and zh on the deploy header, the Deploys list and Events — **DONE** | 40m | t003 |
+| [t005](t005.md) | Live verification on an owned image service | 20m | t004 |
+| [t006](done/t006.md) | Render parity — **DONE** | 5m | t004 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t004 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 25m | t004 |
+| [t009](t009.md) | Closeout | 10m | t005–t008 |
+
+Nine tasks, 200m (3h20m).
+
+## Source + Goal linkage
+
+- **Source:** promoted from inbox note w4/566 (live `/qa-find-bugs w4` loop, rounds 76 and 77, 2026-11-11 UTC) on 2026-11-11. Wording the operator's reasons in zh needs coded templates in `lego/types`, the operator and bex-api writers, a GraphQL field and the dashboard, more than one sub-hour task.
+- **Goal linkage:** the zh locale is bex's own promise (w5/m3).
+- **Render parity:** n/a for the zh text; Render's dashboard is English only. REST and MCP keep the English sentences, as Render's API does; the GraphQL template fields are a bex extension.
+
+## Residuals (filed)
+
+- w4/591: the reason families this milestone does not code yet — health-check and progress-deadline stalls, the operator's pre-deploy timeout, "the build never started", the abandoned-deploy reason, kubelet image-pull messages and `cancelReason`.
+- w4/589: `lego/types` tests run in no CI job, which is why this milestone's template tests live in `lego/backend/internal/gqlutil`.
+
+## Finding (from w4/566)
 
 Why: a Chinese-language owner reads their service header, Metrics limits and a deploy in progress in Chinese, except for a header label, a unit, and the one sentence that explains what the deploy is doing. w4/552 fixed the same class of problem for paused-plan reasons only.
 

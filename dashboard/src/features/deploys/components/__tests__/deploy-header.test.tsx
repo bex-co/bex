@@ -23,6 +23,8 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     failureReason: "",
     cancelReason: "",
     stallReason: "",
+    failureReasonTemplate: null,
+    stallReasonTemplate: null,
     ...over,
   };
 }
@@ -240,6 +242,8 @@ describe("DeployHeader", () => {
           failureReason:
             "the deploy did not become healthy within the health-gate window",
           stallReason: "",
+          failureReasonTemplate: null,
+          stallReasonTemplate: null,
         })}
       />,
     );

@@ -96,6 +96,8 @@ function event(id: string, type: string, offset: number, status = "") {
       environmentTo: null,
       envGroupId: null,
       envGroupName: null,
+      failureReasonTemplate: null,
+      stallReasonTemplate: null,
       trigger: null,
     },
   };

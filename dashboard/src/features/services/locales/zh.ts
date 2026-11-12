@@ -253,7 +253,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Immutable service name used to match Blueprint resources.",
   },
   "services.colSlug": {
-    message: "Slug",
+    message: "标识（Slug）",
     description:
       "Service detail header fact (globally-unique platform-host segment, Render's slug field)",
   },

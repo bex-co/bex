@@ -304,7 +304,8 @@ func progressLines(d DeployProgress, pc progressContext) []LogEntry {
 	}
 	if !d.FinishedAt.IsZero() {
 		if (d.Status == "live" || d.Status == "deactivated") && d.DetectedHTTPPort > 0 && d.DetectedHTTPPort <= 65535 {
-			add(d.FinishedAt, fmt.Sprintf("==> Detected HTTP on port %d; serving it", d.DetectedHTTPPort))
+			add(d.FinishedAt, "==> "+appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHTTPPortDetected,
+				appv1alpha1.DeployReasonParam{Name: "port", Value: fmt.Sprint(d.DetectedHTTPPort)}))
 		}
 		for _, msg := range terminalLines(d.Status, pc.serviceType, d.FailureReason) {
 			add(d.FinishedAt, msg)

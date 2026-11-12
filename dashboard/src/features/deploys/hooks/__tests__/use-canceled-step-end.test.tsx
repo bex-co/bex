@@ -93,6 +93,8 @@ const canceled = (over: Partial<DeployView> = {}): DeployView => ({
   failureReason: "",
   cancelReason: "",
   stallReason: "",
+  failureReasonTemplate: null,
+  stallReasonTemplate: null,
   ...over,
 });
 

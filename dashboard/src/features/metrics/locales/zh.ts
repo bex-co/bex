@@ -1,6 +1,11 @@
 import type { TranslationEntry } from "@/i18n";
 
 const zhMetrics: Record<string, TranslationEntry> = {
+  "metrics.cpuCores": {
+    message: "{value} 核",
+    description:
+      "A CPU amount in cores (a limit or the latest usage); value is a decimal such as 0.100 (w4/566)",
+  },
   "metrics.eventsTitle": {
     message: "事件时间线",
     description:

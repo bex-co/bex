@@ -251,6 +251,7 @@ export function DeploysListPage({
                       height is unchanged. */}
                   <DeployFailureReason
                     reason={d.failureReason}
+                    template={d.failureReasonTemplate}
                     truncate
                     className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"
                   />
@@ -265,6 +266,7 @@ export function DeploysListPage({
                       unchanged. */}
                   <DeployFailureReason
                     reason={d.stallReason}
+                    template={d.stallReasonTemplate}
                     tone="neutral"
                     truncate
                     className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"

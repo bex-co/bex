@@ -2134,11 +2134,11 @@ func stallDiagnosis(reason string) bool {
 func timedOutDeployReason(status string) string {
 	switch status {
 	case DeployBuildFailed:
-		return "the build did not finish within the build window; check the build logs"
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonBuildTimedOut)
 	case DeployPreDeployFailed:
-		return "the pre-deploy command did not finish within its window; check the pre-deploy logs"
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployTimedOut)
 	default:
-		return "the deploy did not become healthy within the health-gate window; check the service logs"
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHealthTimedOut)
 	}
 }
 

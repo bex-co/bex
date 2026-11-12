@@ -36,6 +36,8 @@ function deploy(n: number, status = "deactivated") {
     failureReason: "",
     cancelReason: "",
     stallReason: "",
+    failureReasonTemplate: null,
+    stallReasonTemplate: null,
   };
 }
 

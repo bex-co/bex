@@ -36,6 +36,8 @@ const deployState: {
     failureReason: "",
     cancelReason: "",
     stallReason: "",
+    failureReasonTemplate: null,
+    stallReasonTemplate: null,
   },
   loading: false,
   error: undefined as Error | undefined,

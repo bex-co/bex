@@ -1,4 +1,8 @@
 import { useMemo, useState } from "react";
+import {
+  toDeployReasonTemplate,
+  type DeployReasonTemplate,
+} from "@/features/deploys/lib/deploy-reason";
 import { useApolloClient, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeploysDocument, type DeploysQuery } from "@/graphql/definitions";
@@ -47,6 +51,9 @@ export interface DeployRow {
    * the moment the deploy goes terminal. An observation, not a verdict.
    */
   stallReason: string;
+  /** failureReason and stallReason by code, for the dashboard's wording (w4/566). */
+  failureReasonTemplate: DeployReasonTemplate | null;
+  stallReasonTemplate: DeployReasonTemplate | null;
 }
 
 type RawDeploy = NonNullable<DeploysQuery["deploys"]>[number];
@@ -73,6 +80,8 @@ function toRows(raw: DeploysQuery["deploys"] | undefined): DeployRow[] {
       failureReason: d.failureReason ?? "",
       cancelReason: d.cancelReason ?? "",
       stallReason: d.stallReason ?? "",
+      failureReasonTemplate: toDeployReasonTemplate(d.failureReasonTemplate),
+      stallReasonTemplate: toDeployReasonTemplate(d.stallReasonTemplate),
     }));
 }
 

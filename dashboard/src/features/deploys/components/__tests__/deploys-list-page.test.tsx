@@ -83,6 +83,8 @@ function row(overrides: Partial<DeployRow> = {}): DeployRow {
     failureReason: "",
     cancelReason: "",
     stallReason: "",
+    failureReasonTemplate: null,
+    stallReasonTemplate: null,
     ...overrides,
   };
 }

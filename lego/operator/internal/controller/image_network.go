@@ -23,6 +23,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -617,16 +618,21 @@ func imageRefusalError(image string, err error, credentialed bool) error {
 	if !errors.As(err, &refused) {
 		return err
 	}
+	// Worded from the shared templates, which the dashboard words in its own
+	// language (w4/566).
+	imageParam := appv1alpha1.DeployReasonParam{Name: "image", Value: image}
+	hostParam := appv1alpha1.DeployReasonParam{Name: "host", Value: imageRegistryHost(image)}
+	statusParam := appv1alpha1.DeployReasonParam{Name: "status", Value: strconv.Itoa(refused.Status)}
 	switch refused.Status {
 	case http.StatusNotFound:
-		return fmt.Errorf("the image %s was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists", image)
+		return errors.New(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageNotFound, imageParam))
 	case http.StatusUnauthorized, http.StatusForbidden:
 		if credentialed {
-			return fmt.Errorf("%s refused this service's registry credential for the image %s (HTTP %d). Check the credential's username and token, or remove the credential from this service to pull a public image anonymously", imageRegistryHost(image), image, refused.Status)
+			return errors.New(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageCredential, hostParam, imageParam, statusParam))
 		}
-		return fmt.Errorf("the registry refused access to the image %s. If the image is private, add a registry credential for %s to this service", image, imageRegistryHost(image))
+		return errors.New(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageAccess, imageParam, hostParam))
 	}
-	return fmt.Errorf("the registry refused to read the image %s (HTTP %d). Check the image URL and tag", image, refused.Status)
+	return errors.New(appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonImageRead, imageParam, statusParam))
 }
 
 // imageRegistryHost is the registry an image reference names: its first path

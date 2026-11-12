@@ -1,4 +1,9 @@
 import { cn } from "@/common/lib/utils/utils.ts";
+import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  deployReasonText,
+  type DeployReasonTemplate,
+} from "@/features/deploys/lib/deploy-reason";
 
 /**
  * One cause presentation for every surface that shows why a deploy ended
@@ -9,18 +14,23 @@ import { cn } from "@/common/lib/utils/utils.ts";
  */
 export function DeployFailureReason({
   reason,
+  template,
   className,
   truncate = false,
   tone = "destructive",
 }: {
   reason: string | null | undefined;
+  /** The reason's template, worded in the dashboard's language when known (w4/566). */
+  template?: DeployReasonTemplate | null;
   className?: string;
   /** Clamp to one line with a hover tooltip (list rows); default wraps. */
   truncate?: boolean;
   /** `destructive` for failures; `neutral` for supersede cancels (w4/089). */
   tone?: "destructive" | "neutral";
 }) {
+  const { t } = useTranslations();
   if (!reason) return null;
+  const text = deployReasonText(t, reason, template);
   return (
     <p
       className={cn(
@@ -29,9 +39,9 @@ export function DeployFailureReason({
         truncate && "truncate",
         className,
       )}
-      title={truncate ? reason : undefined}
+      title={truncate ? text : undefined}
     >
-      {reason}
+      {text}
     </p>
   );
 }

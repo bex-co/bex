@@ -391,6 +391,81 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy log viewer: button restoring the maximized viewer to its inline size",
   },
+  "deploys.reason.http_port_waiting": {
+    message: "正在等待容器启动，然后检测其 HTTP 端口",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_waiting, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_detecting": {
+    message: "正在检测容器的 HTTP 端口",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_detecting, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_limit": {
+    message: "检测到的 HTTP 端口超出了服务 75 个端口的上限；请显式设置 PORT",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_limit, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_detected": {
+    message: "已在端口 {port} 上检测到 HTTP，将通过该端口提供服务",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_detected, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_not_answering": {
+    message: "端口 {port} 已接受连接，但尚未响应 HTTP；容器启动期间将继续扫描",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_not_answering, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_none_yet": {
+    message: "还没有端口响应 HTTP；容器启动期间将继续扫描",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_yet, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.http_port_fallback": {
+    message:
+      "没有端口响应 HTTP；改用后备端口 {port}。如果 HTTP 监听器绑定在其他端口，请设置 PORT",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_fallback, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.image_not_found": {
+    message:
+      "在镜像仓库中找不到镜像 {image}：仓库或标签不存在。请检查镜像 URL 和标签，或部署一个存在的镜像摘要",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_not_found, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.image_credential_refused": {
+    message:
+      "{host} 拒绝了此服务用于镜像 {image} 的镜像仓库凭据（HTTP {status}）。请检查凭据的用户名和令牌，或从此服务移除该凭据以匿名拉取公开镜像",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_credential_refused, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.image_access_refused": {
+    message:
+      "镜像仓库拒绝访问镜像 {image}。如果镜像是私有的，请为此服务添加 {host} 的镜像仓库凭据",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_access_refused, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.image_read_refused": {
+    message:
+      "镜像仓库拒绝读取镜像 {image}（HTTP {status}）。请检查镜像 URL 和标签",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason image_read_refused, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.build_timed_out": {
+    message: "构建未在构建时限内完成；请查看构建日志",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason build_timed_out, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.pre_deploy_timed_out": {
+    message: "预部署命令未在其时限内完成；请查看预部署日志",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_timed_out, w4/566); params are the sentence's values",
+  },
+  "deploys.reason.health_timed_out": {
+    message: "部署未能在健康检查时限内通过健康检查；请查看服务日志",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason health_timed_out, w4/566); params are the sentence's values",
+  },
 };
 
 export default zhDeploys;

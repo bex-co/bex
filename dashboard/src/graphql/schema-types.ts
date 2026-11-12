@@ -1301,6 +1301,7 @@ export type Deploy = {
   commitMessage: Maybe<Scalars['String']['output']>;
   createdAt: Maybe<Scalars['String']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
+  failureReasonTemplate: Maybe<DeployReason>;
   finishedAt: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   image: Maybe<Scalars['String']['output']>;
@@ -1309,6 +1310,7 @@ export type Deploy = {
   rollbackOf: Maybe<Scalars['String']['output']>;
   serviceId: Maybe<Scalars['String']['output']>;
   stallReason: Maybe<Scalars['String']['output']>;
+  stallReasonTemplate: Maybe<DeployReason>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   trigger: Maybe<Scalars['String']['output']>;
@@ -1318,6 +1320,18 @@ export type Deploy = {
 export type DeployHook = {
   __typename: 'DeployHook';
   url: Maybe<Scalars['String']['output']>;
+};
+
+export type DeployReason = {
+  __typename: 'DeployReason';
+  code: Scalars['String']['output'];
+  params: Array<DeployReasonParam>;
+};
+
+export type DeployReasonParam = {
+  __typename: 'DeployReasonParam';
+  name: Scalars['String']['output'];
+  value: Scalars['String']['output'];
 };
 
 export type DeployTrigger = {
@@ -5080,6 +5094,7 @@ export type ServiceEventDetails = {
   environmentTo: Maybe<Scalars['String']['output']>;
   exitCode: Maybe<Scalars['Int']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
+  failureReasonTemplate: Maybe<DeployReason>;
   finishedAt: Maybe<Scalars['String']['output']>;
   fromCount: Maybe<Scalars['Int']['output']>;
   fromSizeGB: Maybe<Scalars['Int']['output']>;
@@ -5102,6 +5117,7 @@ export type ServiceEventDetails = {
   resumedByUser: Maybe<EventUser>;
   sizeGB: Maybe<Scalars['Int']['output']>;
   stallReason: Maybe<Scalars['String']['output']>;
+  stallReasonTemplate: Maybe<DeployReason>;
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   suspendedByUser: Maybe<EventUser>;

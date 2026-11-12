@@ -32,6 +32,8 @@ function row(partial: Partial<DeployRow> & { id: string }): DeployRow {
     failureReason: "",
     cancelReason: "",
     stallReason: "",
+    failureReasonTemplate: null,
+    stallReasonTemplate: null,
     ...partial,
   };
 }
