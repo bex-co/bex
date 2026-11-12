@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1010" viewBox="0 0 1440 1010" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#1f2328">
+  <title>ADR106 — bex CLI extension for Cloud Agents and Automations</title>
+  <desc>The bex launcher gains new Bex-native subcommands under bex agent. They are thin clients of existing bex-api routes, the ssh-gateway SSE attach stream, the sandbox SSH listener and the developer's own git remote. Only port forwarding needs a server change, gated on open decision OD1.</desc>
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#57606a"/>
+    </marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1a7f37"/>
+    </marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#cf222e"/>
+    </marker>
+    <style>
+      .t { font-weight: 600; font-size: 14px; }
+      .s { fill: #57606a; font-size: 12px; }
+      .m { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+      .mg { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; fill: #1a7f37; }
+      .lane { font-weight: 700; font-size: 12px; letter-spacing: .08em; fill: #57606a; }
+      .tag { font-weight: 700; font-size: 10px; letter-spacing: .06em; fill: #1a7f37; }
+      .ln { stroke: #57606a; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+      .gn { stroke: #1a7f37; stroke-width: 1.8; fill: none; marker-end: url(#g); }
+      .both { marker-start: url(#g); }
+      .rd { stroke: #cf222e; stroke-width: 1.6; fill: none; marker-end: url(#r); }
+      .dash { stroke-dasharray: 6 4; }
+      .ui  { fill: #f6f8fa; stroke: #8c959f; }
+      .new { fill: #dafbe1; stroke: #4ac26b; }
+      .ext { fill: #fbefff; stroke: #c297ff; }
+      .bad { fill: #ffebe9; stroke: #ff8182; stroke-dasharray: 6 4; }
+      .wrap { fill: #ffffff; stroke: #57606a; }
+      rect.b { stroke-width: 1.5; rx: 8; }
+      .lbl { font-size: 12px; font-weight: 600; fill: #1a7f37; }
+      .lblg { font-size: 12px; font-weight: 600; fill: #57606a; }
+    </style>
+  </defs>
+
+  <text x="20" y="34" font-size="20" font-weight="700">ADR106 — bex CLI extension for Cloud Agents and Automations</text>
+  <text x="20" y="56" class="s">new Bex-native subcommands under bex agent · thin clients of routes bex-api already serves · no server change except † forward (open decision OD1) · imported Render CLI tree untouched</text>
+
+  <!-- ============ LANE 1 · DEVELOPER MACHINE ============ -->
+  <rect x="10" y="72" width="1420" height="318" fill="#f6fbff" rx="10"/>
+  <text x="22" y="90" class="lane">1 · DEVELOPER MACHINE OR CI RUNNER</text>
+
+  <rect class="b ext" x="30" y="104" width="220" height="120"/>
+  <text x="44" y="128" class="t">Terminal · CI job</text>
+  <text x="44" y="150" class="s">TTY → chat, picker, confirms</text>
+  <text x="44" y="170" class="s">CI → -o json + exit codes 0–6</text>
+  <text x="44" y="190" class="s">bex login · BEX_ACCESS_TOKEN</text>
+  <text x="44" y="210" class="s">X-Bex-Workspace header</text>
+
+  <rect class="b ext" x="30" y="240" width="220" height="132"/>
+  <text x="44" y="264" class="t">Local git checkout</text>
+  <text x="44" y="286" class="s">origin → github.com/acme/api</text>
+  <text x="44" y="306" class="s">worktree, index, stash, HEAD</text>
+  <text x="44" y="326" class="s">untouched by handoff:</text>
+  <text x="44" y="346" class="s">temp index → commit-tree</text>
+
+  <!-- launcher wrapper -->
+  <rect class="b wrap" x="280" y="104" width="880" height="270"/>
+  <text x="296" y="124" class="t">bex launcher — lego/cli · one binary · imports no sibling module · every rule stays in bex-api</text>
+
+  <!-- row 1 -->
+  <rect class="b ui" x="296" y="134" width="190" height="78"/>
+  <text x="310" y="156" class="t">Render CLI v2.36 tree</text>
+  <text x="310" y="176" class="s">services · deploys · ssh …</text>
+  <text x="310" y="196" class="s">imported, unchanged</text>
+
+  <rect class="b ui" x="498" y="134" width="302" height="78"/>
+  <text x="512" y="156" class="t">bex agent — shipped (w9/m177)</text>
+  <text x="512" y="176" class="m">run · send · wait · get · list</text>
+  <text x="512" y="196" class="m">logs · files · cancel · open</text>
+
+  <rect class="b new" x="812" y="134" width="332" height="78"/>
+  <text x="826" y="156" class="t">bex agent automations (D7)</text>
+  <text x="826" y="176" class="m">list get create update delete</text>
+  <text x="826" y="196" class="m">pause resume run take-over runs</text>
+  <text x="1052" y="156" class="tag">+ apply/export</text>
+
+  <!-- row 2 -->
+  <rect class="b new" x="296" y="222" width="190" height="72"/>
+  <text x="310" y="244" class="t">handoff · pickup (D6)</text>
+  <text x="310" y="264" class="s">worktree → bex-agent/handoff-*</text>
+  <text x="310" y="282" class="s">fetch + switch session branch</text>
+
+  <rect class="b new" x="498" y="222" width="190" height="72"/>
+  <text x="512" y="244" class="t">chat · attach (D2)</text>
+  <text x="512" y="264" class="s">live stream + input line</text>
+  <text x="512" y="282" class="s">queued follow-up → steer</text>
+
+  <rect class="b new" x="700" y="222" width="232" height="72"/>
+  <text x="714" y="244" class="t">lifecycle · config (D4, D8)</text>
+  <text x="714" y="264" class="s">archive · delete · tags · tree · cost</text>
+  <text x="714" y="282" class="s">secrets · skills · env · models</text>
+
+  <rect class="b new" x="944" y="222" width="200" height="72"/>
+  <text x="958" y="244" class="t">ssh · forward† (D5)</text>
+  <text x="958" y="264" class="s">exec system ssh</text>
+  <text x="958" y="282" class="s">† registered after OD1</text>
+
+  <!-- row 3 : shared internals -->
+  <rect class="b new" x="296" y="304" width="190" height="56"/>
+  <text x="310" y="326" class="t">git snapshot</text>
+  <text x="310" y="346" class="s">temp index · push · cleanup</text>
+
+  <rect class="b ui" x="498" y="304" width="190" height="56"/>
+  <text x="512" y="326" class="t">REST client</text>
+  <text x="512" y="346" class="s">Bearer · idempotency keys</text>
+
+  <rect class="b new" x="700" y="304" width="232" height="56"/>
+  <text x="714" y="326" class="t">SSE stream client (D2)</text>
+  <text x="714" y="346" class="s">attach-ticket → SSE · poll fallback</text>
+
+  <rect class="b new" x="944" y="304" width="200" height="56"/>
+  <text x="958" y="326" class="t">picker · completion</text>
+  <text x="958" y="346" class="s">ids, URLs, names (D3)</text>
+
+  <!-- right column, lane 1 -->
+  <rect class="b ext" x="1180" y="134" width="236" height="78"/>
+  <text x="1194" y="156" class="t">.bex/automations/*.yaml</text>
+  <text x="1194" y="176" class="s">REST body shape · multi-document</text>
+  <text x="1194" y="196" class="s">apply --dry-run → field diff</text>
+
+  <rect class="b ext" x="1180" y="222" width="236" height="72"/>
+  <text x="1194" y="244" class="t">system ssh · editor</text>
+  <text x="1194" y="264" class="s">ags-…@ssh.bex.co · ~/.ssh/config</text>
+  <text x="1194" y="282" class="s">bex edit ags-… (Zed, ADR054)</text>
+
+  <!-- lane 1 internal arrows -->
+  <line class="ln" x1="250" y1="164" x2="278" y2="164"/>
+  <line class="gn" x1="296" y1="332" x2="252" y2="332"/>
+  <line class="gn" x1="1180" y1="173" x2="1146" y2="173"/>
+  <line class="gn" x1="1144" y1="258" x2="1178" y2="258"/>
+  <text x="1150" y="250" class="lbl">exec</text>
+
+  <!-- ============ LANE 2 · BEX PLATFORM ============ -->
+  <rect x="10" y="404" width="1420" height="286" fill="#f6fff8" rx="10"/>
+  <text x="70" y="422" class="lane">2 · BEX PLATFORM — api.bex.co · ssh.bex.co (no new service)</text>
+
+  <!-- bex-api container -->
+  <rect class="b ui" x="60" y="436" width="900" height="240"/>
+  <text x="76" y="458" class="t">bex-api :8090 — existing routes, unchanged; the CLI becomes a client of all of them</text>
+  <text x="76" y="482" class="lblg">route</text>
+  <text x="400" y="482" class="lblg">CLI verbs   (● = first CLI client)</text>
+
+  <text x="76" y="506" class="m">/v1/agent-sessions · /{id}</text>
+  <text x="400" y="506" class="m">run · list · get · cancel</text>
+  <text x="76" y="528" class="m">/{id}/steer · /{id}/transcript</text>
+  <text x="400" y="528" class="m">send · logs · chat</text>
+  <circle cx="390" cy="546" r="4" fill="#1a7f37"/>
+  <text x="76" y="550" class="m">/{id}/attach-ticket</text>
+  <text x="400" y="550" class="mg">chat · attach · logs -f</text>
+  <circle cx="390" cy="568" r="4" fill="#1a7f37"/>
+  <text x="76" y="572" class="m">/{id}/archive · tags · tree · model-cost</text>
+  <text x="400" y="572" class="mg">archive · tags · tree · cost</text>
+  <circle cx="390" cy="590" r="4" fill="#1a7f37"/>
+  <text x="76" y="594" class="m">/v1/agent-automations/…  (10 ops)</text>
+  <text x="400" y="594" class="mg">automations … (D7)</text>
+  <circle cx="390" cy="612" r="4" fill="#1a7f37"/>
+  <text x="76" y="616" class="m">/v1/agent-secrets · /v1/agent-skills</text>
+  <text x="400" y="616" class="mg">secrets · skills</text>
+  <circle cx="390" cy="634" r="4" fill="#1a7f37"/>
+  <text x="76" y="638" class="m">/v1/agent-environment · /capabilities</text>
+  <text x="400" y="638" class="mg">env · models</text>
+  <text x="76" y="664" class="s">authorization (OpenFGA) · validation · spend ceilings · idempotency — all server-side</text>
+
+  <rect class="b ui" x="640" y="470" width="304" height="88" fill="#ffffff"/>
+  <text x="654" y="492" class="t">automation scheduler (ADR101)</text>
+  <text x="654" y="512" class="s">every replica · SKIP LOCKED claim</text>
+  <text x="654" y="530" class="s">runs as the creator, re-checked</text>
+  <text x="654" y="548" class="s">→ Service.Create, aut:&lt;id&gt;:&lt;fire_at&gt; key</text>
+
+  <rect class="b ui" x="640" y="570" width="304" height="78" fill="#ffffff"/>
+  <text x="654" y="592" class="t">control-plane Postgres</text>
+  <text x="654" y="612" class="m">agent_sessions · transcripts</text>
+  <text x="654" y="632" class="m">agent_automations · _runs</text>
+
+  <!-- edge + gateway -->
+  <rect class="b ui" x="1000" y="436" width="200" height="64"/>
+  <text x="1014" y="460" class="t">platform edge</text>
+  <text x="1014" y="482" class="s">/stream → gateway by path</text>
+
+  <rect class="b ui" x="1000" y="516" width="416" height="160"/>
+  <text x="1014" y="540" class="t">ssh-gateway (isolated; sole sandbox ingress)</text>
+  <text x="1014" y="562" class="s">agentattach :8083 — SSE replay + live tail, ticket header</text>
+  <text x="1014" y="582" class="s">SSH — ags-…@ssh.bex.co · shell + SFTP (ADR054)</text>
+  <rect class="b bad" x="1014" y="594" width="388" height="70"/>
+  <text x="1028" y="616" class="t" fill="#cf222e">† direct-tcpip → sandbox 127.0.0.1:&lt;port&gt;</text>
+  <text x="1028" y="636" class="s">gated on OD1 · ags- targets only · ≤ 8 channels</text>
+  <text x="1028" y="654" class="s">audited · srv- keeps ADR035's forwarding ban</text>
+
+  <!-- ============ LANE 3 · SANDBOX + REPO ============ -->
+  <rect x="10" y="704" width="1420" height="196" fill="#fbf8ff" rx="10"/>
+  <text x="70" y="722" class="lane">3 · CUSTOMER REPOSITORY AND AGENT SANDBOX</text>
+
+  <rect class="b ext" x="60" y="736" width="490" height="150"/>
+  <text x="76" y="760" class="t">customer GitHub repo (developer's own access)</text>
+  <text x="76" y="784" class="m">bex-agent/handoff-&lt;8hex&gt;  ← ③ developer push</text>
+  <text x="76" y="806" class="m">bex-agent/&lt;ags-id&gt;         ← agent push (ADR090)</text>
+  <text x="76" y="828" class="m">draft PR head              → ④ pickup fetch</text>
+  <text x="76" y="856" class="s">a failed create deletes the pushed handoff branch</text>
+  <text x="76" y="874" class="s">apply/export files live here too, reviewed like code</text>
+
+  <rect class="b ui" x="600" y="736" width="520" height="150"/>
+  <text x="614" y="760" class="t">agent sandbox — one per session</text>
+  <text x="614" y="784" class="s">driver ensureRepo checks out the remote bex-agent/* branch</text>
+  <text x="614" y="804" class="s">when it exists, else the default branch (git-setup.ts)</text>
+  <text x="614" y="824" class="s">→ handoff needs no server or driver change</text>
+  <text x="614" y="844" class="s">driver stream ← gateway · git via gateway smart-HTTP</text>
+  <text x="614" y="864" class="s">unattended: no permission prompts (#APPROVAL-MODE)</text>
+
+  <!-- legend -->
+  <rect class="b" x="1150" y="736" width="266" height="150" fill="#ffffff" stroke="#d0d7de"/>
+  <text x="1164" y="758" class="t">Legend</text>
+  <rect x="1164" y="768" width="22" height="14" rx="3" class="ui" stroke-width="1.5"/>
+  <text x="1194" y="780" class="s">existing, unchanged</text>
+  <rect x="1164" y="790" width="22" height="14" rx="3" class="new" stroke-width="1.5"/>
+  <text x="1194" y="802" class="s">new in ADR106 (CLI code only)</text>
+  <rect x="1164" y="812" width="22" height="14" rx="3" class="ext" stroke-width="1.5"/>
+  <text x="1194" y="824" class="s">outside bex (developer, GitHub)</text>
+  <rect x="1164" y="834" width="22" height="14" rx="3" class="bad" stroke-width="1.5"/>
+  <text x="1194" y="846" class="s">gated on open decision OD1</text>
+  <line x1="1164" y1="866" x2="1186" y2="866" stroke="#1a7f37" stroke-width="1.8"/>
+  <text x="1194" y="870" class="s">new flow (dashed = git / exec)</text>
+
+  <!-- ============ CROSS-LANE FLOWS ============ -->
+  <!-- ① REST -->
+  <line class="ln" x1="593" y1="360" x2="593" y2="434"/>
+  <text x="600" y="420" class="lblg">① HTTPS REST</text>
+
+  <!-- ② SSE -->
+  <path class="gn" d="M816,360 L816,398 L1100,398 L1100,434"/>
+  <text x="826" y="394" class="lbl">② SSE + X-Bex-Agent-Ticket</text>
+  <line class="ln" x1="1100" y1="500" x2="1100" y2="514"/>
+
+  <!-- ③ push / ④ fetch : local checkout ↔ GitHub along the left margin -->
+  <path class="gn both dash" d="M40,374 L40,790 L58,790"/>
+  <text x="31" y="640" class="lbl" transform="rotate(-90 31 640)">③ git push · ④ git fetch</text>
+
+  <!-- ⑤ ssh / ⑥ forward : system ssh → gateway -->
+  <path class="gn dash" d="M1300,294 L1300,514"/>
+  <text x="1308" y="420" class="lbl">⑤ ssh</text>
+  <text x="1308" y="438" class="lbl" fill="#cf222e">⑥ forward†</text>
+
+  <!-- ⑦ apply -->
+  <text x="1153" y="194" class="lbl">⑦</text>
+
+  <!-- platform → sandbox -->
+  <line class="ln" x1="800" y1="676" x2="800" y2="734"/>
+  <text x="808" y="698" class="lblg">dispatch (OpenSandbox)</text>
+  <line class="ln" x1="1060" y1="676" x2="1060" y2="734"/>
+  <text x="1068" y="698" class="lblg">stream · ssh</text>
+
+  <!-- sandbox ↔ GitHub -->
+  <line class="ln dash" x1="598" y1="811" x2="552" y2="811" marker-start="url(#a)"/>
+  <text x="556" y="800" class="lblg">git</text>
+
+  <!-- ============ FOOTER ============ -->
+  <text x="20" y="928" class="s">① every command is a thin REST client: requests are shaped in the CLI, decided in bex-api   ② chat · attach · logs -f: mint attach-ticket, then GET /v1/agent-sessions/{id}/stream (AI SDK v1 SSE); polling when unavailable</text>
+  <text x="20" y="950" class="s">③ handoff: snapshot the worktree via a temp index, push bex-agent/handoff-&lt;8hex&gt; with the developer's credential, create the session on that branch   ④ pickup: fetch + ff-only switch to the session branch</text>
+  <text x="20" y="972" class="s">⑤ ssh: exec system ssh to the session's sshAddress   ⑥ forward†: direct-tcpip to sandbox loopback, only after OD1   ⑦ apply -f: create / update-with-ifVersion by name, never deletes; export round-trips</text>
+  <text x="20" y="994" class="s">server delta: none for ①–⑤ and ⑦ · ⑥ adds one gateway channel type · new exit code 6 = an automation run started no session (skipped_overlap · denied · failed_create)</text>
+</svg>
