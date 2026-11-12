@@ -143,3 +143,23 @@ Both services were deleted after the reads; `GET /v1/services/<id>` answers 404.
     - It answered `200 {"status":"canceled"}`, and no `server_failed` followed in 45 s.
     - 1 s polls of the URL answered 200 throughout (66/66, 12:18:54–12:20:43).
 - The race t003 decides (a cancel at the first `update_in_progress`) was not exercised. The fixture was deleted (DELETE 204, then GET 404).
+
+## Post-release probe — `/qa-find-bugs-cli` sweep 11ae (2026-11-12, pin `9a5b95e96210`)
+
+The definition of done's case "a cancel right after the URL first answers the new build is 409 and adds no instance" still fails on this pin, as expected until t003. One run on the free Node web service `qa-20261112-11ae-web` (`srv-dbqqtobk98kc7399u84g`). Its server answers `ok <pod> stamp=<build>`. The URL was polled about every 0.9 s; the cancel was the released CLI's `bex deploys cancel <srv> <dep> --confirm -o json`. Times are UTC.
+
+```text
+12:50:59.5  bex deploys create → dep-dbqrccrk98kc7399u910
+12:52:20    build log: ==> Build successful 🎉        (no build_ended event yet)
+12:52:35.8  app log, new instance …qabm25rutpl4gd4dc1ma: stamp=1794487903
+12:52:41.9  curl → ok …65c9c4f556-tr7tf stamp=1794487903   (first answer from the new build)
+12:52:41.9  bex deploys cancel → "Deploy dep-dbqrccrk98kc7399u910 successfully canceled", exit 0 (12:52:42.4)
+12:52:42    events: build_ended {"buildStatus":"canceled"} and deploy_ended canceled
+12:52:43 – 12:52:58  the canceled build answers (…tr7tf stamp=1794487903)
+12:52:49.2  app log, a third instance …is6idh5q1ptv1rmpf1q3: stamp=1794487090 (the old build)
+12:52:57 →  ok …6dccd56ff7-c7pj4 stamp=1794487090 (alternating with …tr7tf until 12:52:59, then only c7pj4)
+```
+
+- The cancel was accepted 0.5 s after the canceled build first answered, and that build kept answering for 16 s. The old build came back on a new instance. This is the Evidence's case 1 again, so t001's 409 does not cover the moment the switch has happened but `status.activeRevision` has not moved.
+- New detail: `build_ended` reads `canceled` for a build whose log says `==> Build successful 🎉`, 22 s earlier. That event was written only at the cancel. Check this in t003/t006: a build that finished should end `succeeded` whatever happens to the deploy afterwards.
+- No `server_failed` this time.
