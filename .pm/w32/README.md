@@ -11,7 +11,7 @@
 - [x] **m298** — [Sandbox execution history (`/sandboxes/{id}/execs`), as on Render](done/m298/README.md) (9 tasks) — **DONE 2026-11-10**: verified on production (isolation matrix 42741929387) ← from `/pm-brainstorm more for w32` 2026-11-09, item 2 (reopens executions from the ADR018 `—` row; groups stay a non-goal)
 - [x] **m299** — [Remaining Render SDK gaps: relative remote paths and mint during resume](done/m299/README.md) (8 tasks) — **DONE 2026-11-10**: verified on production (isolation matrix 42741929387) ← from `/pm-brainstorm more for w32` 2026-11-09, item 3 (the m284 static review's residuals)
 
-- [ ] **m348** — [A sandbox command runs under `bash -c` in the home directory, as on Render](m348/README.md) (9 tasks) ← `/qa-find-bugs-cli` loop sweep 865a 2026-11-12: `copy ./run.sh sbx:run.sh` then `exec -- sh run.sh` fails (`can't open 'run.sh'`, exec runs in `/`), `bash` is missing from the `alpine:3` base (exit 127), and busybox `sh` rejects bash syntax; the Render SDK passes the command to `bash -c` in the home directory; corrects w22/001; major
+- [ ] **m348** — **BLOCKED (t005 waits on the production deploy carrying `60879160d` (deploys are batched; the pin was `33e1b1e6117c`); then a worker, as the QA user in `bex-canary`, runs the walk in the milestone README, which also covers w32/015–019 — no user decision needed)** — [A sandbox command runs under `bash -c` in the home directory, as on Render](blocked/m348/README.md) (9 tasks; **t001–t004, t007, t008 done**) ← `/qa-find-bugs-cli` loop sweep 865a 2026-11-12; corrects w22/001
 
 ## Inbox
 

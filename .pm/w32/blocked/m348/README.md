@@ -1,6 +1,6 @@
 # w32 · m348 — A sandbox command runs under `bash -c` in the home directory, as on Render
 
-**Worker:** worker32 **Goal:** a command sent to a Render sandbox on bex (CLI `sandboxes exec`, the Render SDK's `exec`, REST, GraphQL or MCP) starts in the sandbox user's home directory and is interpreted by `bash -c`, so the documented "copy a file in, then run it" workflow and bash syntax work unchanged **Status:** in progress (t001–t004 done; t005 production walk next)
+**Worker:** worker32 **Goal:** a command sent to a Render sandbox on bex (CLI `sandboxes exec`, the Render SDK's `exec`, REST, GraphQL or MCP) starts in the sandbox user's home directory and is interpreted by `bash -c`, so the documented "copy a file in, then run it" workflow and bash syntax work unchanged **Status:** blocked (t001–t004, t007, t008 done; t005 waits on the production deploy)
 
 ## Tasks (in order)
 
@@ -12,8 +12,8 @@
 | t004 | Blast radius: agent-session sandboxes, suspended rootfs images and the other `/bin/sh` callers — **DONE** | 30m | t003 |
 | t005 | Production walk with the release CLI and the isolation matrix | 45m | t002, t003, t004 |
 | t006 | Render parity | 20m | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t006 |
+| t007 | Simplify — **DONE** | 15m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t006 |
 | t009 | Closeout | 10m | t007, t008 |
 
 ## Definition of done
@@ -77,3 +77,16 @@ The same sandbox's exit codes, stderr, the env marker (`--env-var`), a directory
 - Render's default image contents beyond bash: python, git and curl are not stated in Render's docs (render.com/docs/sandboxes*, the launch post; fetched 2026-11-12). t001 records what bex ships and why.
 - The user name and whether Render's home is `/home/render` for every command. t001 decides whether bex moves `HOME` from `/root`.
 - Whether Render creates missing parent directories on upload. Not stated; bex answers `404 … destination parent does not exist` for `rel/f.txt` when `rel/` is missing. Not filed.
+
+## Parked 2026-11-12 (`/loopx w32`): t005 waits on the production deploy
+
+- **Shipped:** `60879160d` (exec wrapper, `bash:5.3` base image, `/bin/bash` link, isolation-matrix check); with it, on the same train, w32/015 (`c35fa52ab`, list newest first), w32/016 (`e607058d1`, one region), w32/017 (`c8a8c0bcd`, lifetime expiry), w32/018 (`717022990`, upload mtimes and modes) and w32/019 (home `/home/render`).
+- **Gate:** production deploys are batched (`deploy.yml` deploys a push or the hourly schedule once the pin is 6 h old); the pin was `33e1b1e6117c` at 18:39 UTC. No user decision is needed: once `git merge-base --is-ancestor <shipped sha> <pinned sha>` holds, a worker runs the walk.
+- **Sign-in works:** `bash scripts/qa-login.sh` established a session on production at ~19:50 UTC (and was logged out), so the CLI device login can be approved through `--login-challenge`.
+- **The walk (t005, then t006 and t009):** in `bex-canary` with the released CLI:
+  1. `bex sandboxes create --wait --timeout 900 -o json`; `copy ./run.sh <sbx>:run.sh` then `exec <sbx> -- sh run.sh` → `from-script`; `exec <sbx> -- pwd` → `/home/render`; `exec <sbx> -- bash -c 'arr=(a b); echo ${arr[1]}; echo {1..3}'` → `b`, `1 2 3`.
+  2. w32/015: `bex sandboxes list --all -o json` lists the newest `createdAt` first.
+  3. w32/016: the sandbox's `region` equals its group's in `bex sandbox-groups list -o json` (`frankfurt`).
+  4. w32/017: `create --wait --timeout 60`, then at +90 s `exec <id> -- true` → 409 "was terminated at <createdAt+60s>".
+  5. w32/018: `copy ./m <sbx>:/tmp/m` then `stat -c '%a %Y'` shows the local file mtimes and `/tmp/m` is not 700; a single uploaded file is 644.
+  6. Run `isolation-matrix.yml` and record its run id here.
