@@ -306,6 +306,10 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
     message: "Spend limit per run",
     description: "Settings row label",
   },
+  "agentAutomations.row.emailNotifications": {
+    message: "Email notifications",
+    description: "Settings row label",
+  },
   "agentAutomations.row.secrets": {
     message: "Secrets",
     description: "Settings row label",
@@ -466,6 +470,10 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
     message: "Spend limit per run (USD)",
     description: "Form field label",
   },
+  "agentAutomations.field.emailNotifications": {
+    message: "Email notifications",
+    description: "Form field label",
+  },
   "agentAutomations.field.secrets": {
     message: "Secrets",
     description: "Form field label",
@@ -493,6 +501,24 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.frequency.custom": {
     message: "Custom (cron)",
     description: "Frequency option",
+  },
+  "agentAutomations.emailNotifications.always": {
+    message: "Always",
+    description: "Email notification option: every run emails the creator",
+  },
+  "agentAutomations.emailNotifications.on_failure": {
+    message: "On failure",
+    description:
+      "Email notification option: only failed runs email the creator",
+  },
+  "agentAutomations.emailNotifications.on_success": {
+    message: "On success",
+    description:
+      "Email notification option: only succeeded runs email the creator",
+  },
+  "agentAutomations.emailNotifications.never": {
+    message: "Never",
+    description: "Email notification option: no run emails the creator",
   },
   "agentAutomations.weekday.mon": {
     message: "Mon",
@@ -558,6 +584,10 @@ const enAgentAutomations: Record<string, TranslationEntry> = {
     message:
       "A ceiling on model spend for each run. Required when runs use the platform model.",
     description: "Spend limit field help",
+  },
+  "agentAutomations.help.emailNotifications": {
+    message: "Which runs email you. A platform pause always does.",
+    description: "Email notifications field help",
   },
   "agentAutomations.help.secrets": {
     message:

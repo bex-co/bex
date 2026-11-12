@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -74,7 +75,8 @@ func (f *fakeAutomations) seed(name string, schedule map[string]any, template ma
 	f.stored[id] = map[string]any{
 		"id": id, "ownerId": "tea-ws", "name": name, "enabled": true, "createdBy": "usr-me",
 		"triggers": []any{map[string]any{"type": "schedule", "schedule": schedule}},
-		"template": template, "overlapPolicy": "skip", "nextFireAt": "2026-11-13T08:00:00Z",
+		"template": template, "notifications": map[string]any{"email": "on_failure"},
+		"overlapPolicy": "skip", "nextFireAt": "2026-11-13T08:00:00Z",
 		"lastFireAt": nil, "consecutiveFailures": 0, "version": float64(1),
 		"createdAt": "2026-11-11T08:00:00Z", "updatedAt": "2026-11-11T08:00:00Z",
 	}
@@ -137,7 +139,8 @@ func (f *fakeAutomations) serve(w http.ResponseWriter, r *http.Request) {
 	case len(parts) == 1 && r.Method == http.MethodPost:
 		f.next++
 		id := fmt.Sprintf("aut-%020d", f.next)
-		a := map[string]any{"id": id, "ownerId": "tea-ws", "enabled": true, "createdBy": "usr-me", "version": float64(1)}
+		a := map[string]any{"id": id, "ownerId": "tea-ws", "enabled": true, "createdBy": "usr-me", "version": float64(1),
+			"notifications": map[string]any{"email": "on_failure"}} // the API's default
 		for k, v := range body {
 			a[k] = v
 		}
@@ -390,6 +393,67 @@ func TestAutomationUpdateConflictIsReportedNotRetried(t *testing.T) {
 	}
 }
 
+func TestAutomationNotifyEmailFlag(t *testing.T) {
+	f := newFakeAutomations(t)
+	_, stderr, code := run(t, f.deps(), "automations", "create", "--name", "triage", "--every", "day", "--at", "09:00",
+		"--max-spend", "1", "--notify-email", "on_success", "task")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if got := asJSON(t, f.calls(http.MethodPost)[0].body["notifications"]); got != `{"email":"on_success"}` {
+		t.Fatalf("notifications %s, want the flag's value", got)
+	}
+	stdout, _, _ := run(t, f.deps(), "-o", "text", "automations", "get", "triage")
+	if !regexp.MustCompile(`(?m)^Notify email\s+on_success$`).MatchString(stdout) {
+		t.Fatalf("get does not read back on_success:\n%s", stdout)
+	}
+
+	if _, stderr, code := run(t, f.deps(), "automations", "create", "--name", "plain", "--every", "day", "--at", "09:00",
+		"--max-spend", "1", "task"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if body := f.calls(http.MethodPost)[1].body; body["notifications"] != nil {
+		t.Fatalf("a create without --notify-email sent notifications: %v", body)
+	}
+
+	f.find("triage")["notifications"] = map[string]any{"email": "on_success", "push": true} // a setting the CLI does not model
+	if _, stderr, code := run(t, f.deps(), "automations", "update", "triage", "--notify-email", "never"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	patch := f.calls(http.MethodPatch)[0].body
+	if got := asJSON(t, patch["notifications"]); got != `{"email":"never","push":true}` {
+		t.Fatalf("notifications %s: want the new email setting, every other one kept", got)
+	}
+	if patch["template"] != nil || patch["triggers"] != nil {
+		t.Fatalf("a notifications-only update resent more: %v", patch)
+	}
+
+	if _, stderr, code := run(t, f.deps(), "automations", "update", "triage", "--at", "10:00"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if patch := f.calls(http.MethodPatch)[1].body; patch["notifications"] != nil {
+		t.Fatalf("an update without --notify-email sent notifications: %v", patch)
+	}
+}
+
+func TestAutomationNotifyEmailRefusesAnUnknownValue(t *testing.T) {
+	for _, args := range [][]string{
+		{"create", "--name", "x", "--every", "day", "--at", "09:00", "--notify-email", "sometimes", "task"},
+		{"update", "triage", "--notify-email", "sometimes"},
+		{"update", "triage", "--notify-email", ""},
+	} {
+		f := newFakeAutomations(t)
+		f.seed("triage", daily(), tpl("t"))
+		_, stderr, code := run(t, f.deps(), append([]string{"automations"}, args...)...)
+		if code != exitUsage || !strings.Contains(stderr, "--notify-email must be one of always, on_failure, on_success, never") {
+			t.Errorf("%v: exit %d, stderr %q; want exit 2 naming the values", args, code, stderr)
+		}
+		if len(f.requests) != 0 {
+			t.Errorf("%v: sent %d request(s) before refusing", args, len(f.requests))
+		}
+	}
+}
+
 func TestAutomationRunExitsByOutcome(t *testing.T) {
 	for _, outcome := range []string{"skipped_overlap", "denied", "failed_create"} {
 		t.Run(outcome, func(t *testing.T) {
@@ -451,7 +515,7 @@ func TestAutomationTextOutput(t *testing.T) {
 		t.Fatalf("exit %d:\n%s", code, stdout)
 	}
 	stdout, _, _ = run(t, f.deps(), "-o", "text", "automations", "get", "triage")
-	for _, want := range []string{"· triage · active", "Max spend", "$3 a run", "Triage new errors"} {
+	for _, want := range []string{"· triage · active", "Max spend", "$3 a run", "Triage new errors", "Notify email  on_failure"} {
 		if !strings.Contains(stdout, want) {
 			t.Fatalf("get lacks %q:\n%s", want, stdout)
 		}
@@ -594,6 +658,76 @@ func TestApplyNotCreatorPointsToTakeOver(t *testing.T) {
 	}
 }
 
+// triageFile is the seeded "triage" automation as a file, without
+// notifications, plus a new automation.
+const triageFile = `name: triage
+triggers:
+  - type: schedule
+    schedule: {frequency: day, at: "09:00", timezone: Europe/Berlin}
+template: {task: Triage, repo: acme/api, agentConfig: {agent: claude}, maxSpendUSD: 3}
+---
+name: fresh
+triggers:
+  - type: schedule
+    schedule: {frequency: hour, minute: 0, timezone: UTC}
+template: {task: Hourly, agentConfig: {agent: claude}, maxSpendUSD: 1}
+`
+
+func TestApplyWithoutNotificationsKeepsTheStoredSetting(t *testing.T) {
+	f := newFakeAutomations(t)
+	f.seed("triage", daily(), tpl("Triage"))
+	f.find("triage")["notifications"] = map[string]any{"email": "on_success"}
+	file := filepath.Join(t.TempDir(), "a.yaml")
+	writeFile(t, file, triageFile)
+	stdout, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--dry-run")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "unchanged triage") || strings.Contains(stdout, "notifications") {
+		t.Fatalf("a file without notifications plans a change to them:\n%s", stdout)
+	}
+	if _, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--confirm"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if n := len(f.calls(http.MethodPatch)); n != 0 {
+		t.Fatalf("%d PATCH(es) for an unchanged automation", n)
+	}
+	posts := f.calls(http.MethodPost)
+	if len(posts) != 1 || posts[0].body["name"] != "fresh" || posts[0].body["notifications"] != nil {
+		t.Fatalf("POSTs %v: want fresh created without notifications, leaving the API's default", posts)
+	}
+	if got := asJSON(t, f.find("triage")["notifications"]); got != `{"email":"on_success"}` {
+		t.Fatalf("stored notifications %s after apply, want on_success kept", got)
+	}
+}
+
+func TestApplyChangedNotificationsDiffsAndSendsThem(t *testing.T) {
+	f := newFakeAutomations(t)
+	f.seed("triage", daily(), tpl("Triage"))
+	file := filepath.Join(t.TempDir(), "a.yaml")
+	writeFile(t, file, strings.Replace(triageFile, "template: {task: Triage,", "notifications: {email: never}\ntemplate: {task: Triage,", 1))
+	stdout, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--dry-run")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if !strings.Contains(stdout, "will update triage") || !strings.Contains(stdout, `notifications.email: "on_failure" → "never"`) {
+		t.Fatalf("plan lacks the notifications diff:\n%s", stdout)
+	}
+	if _, stderr, code := run(t, f.deps(), "-o", "text", "automations", "apply", "-f", file, "--confirm"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	patches := f.calls(http.MethodPatch)
+	if len(patches) != 1 {
+		t.Fatalf("%d PATCHes, want 1", len(patches))
+	}
+	if got := asJSON(t, patches[0].body["notifications"]); got != `{"email":"never"}` {
+		t.Fatalf("PATCH notifications %s, want the file's", got)
+	}
+	if patches[0].body["template"] != nil || patches[0].body["triggers"] != nil {
+		t.Fatalf("PATCH %v resent fields the file did not change", patches[0].body)
+	}
+}
+
 func TestExportRoundTripsThroughApply(t *testing.T) {
 	f := newFakeAutomations(t)
 	template := tpl("Triage")
@@ -608,6 +742,9 @@ func TestExportRoundTripsThroughApply(t *testing.T) {
 		if strings.Contains(exported, field) {
 			t.Fatalf("export kept the read-only %s:\n%s", field, exported)
 		}
+	}
+	if strings.Count(exported, "notifications:\n  email: on_failure") != 2 {
+		t.Fatalf("export dropped the email setting:\n%s", exported)
 	}
 	d := f.deps()
 	d.stdin = strings.NewReader(exported)
@@ -664,7 +801,8 @@ func TestAutomationContractFixtureDecodes(t *testing.T) {
 	a := golden.Automation
 	s := firstSchedule(a)
 	if a.ID == "" || a.Name == "" || a.Version != 7 || a.PausedReason == "" || a.NextFireAt == nil || a.LastSessionID == "" || s == nil ||
-		s.Timezone == "" || s.At == "" || len(s.Weekdays) != 1 || s.EndsAt == nil || a.Template.MaxSpendUSD == nil || a.Template.AgentConfig.Agent == "" {
+		s.Timezone == "" || s.At == "" || len(s.Weekdays) != 1 || s.EndsAt == nil || a.Template.MaxSpendUSD == nil || a.Template.AgentConfig.Agent == "" ||
+		a.Notifications.Email == "" {
 		t.Fatalf("automation fields lost: %+v", a)
 	}
 	if golden.AutomationList.NextCursor == "" || golden.RunList.NextCursor == "" {

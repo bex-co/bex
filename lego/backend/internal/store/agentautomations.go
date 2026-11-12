@@ -17,6 +17,7 @@ limitations under the License.
 package store
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -41,10 +42,39 @@ type AgentAutomation struct {
 	LastSessionID       string
 	PausedReason        string
 	ConsecutiveFailures int
-	Version             int
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	// NotifyEmail is which run outcomes email the creator (w9/m343):
+	// AutomationNotify*. Empty on a write means the default, on_failure.
+	NotifyEmail string
+	// NotifyFailureStreak counts consecutive failed runs for the email
+	// backoff; the notice claim maintains it.
+	NotifyFailureStreak int
+	// PausedAt is when the platform last paused the automation (a pause with
+	// a reason); PauseNotifiedAt when its creator was last told.
+	PausedAt        *time.Time
+	PauseNotifiedAt *time.Time
+	Version         int
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
+
+// Email notification settings of an automation (w9/m343).
+const (
+	AutomationNotifyAlways    = "always"
+	AutomationNotifyOnFailure = "on_failure"
+	AutomationNotifyOnSuccess = "on_success"
+	AutomationNotifyNever     = "never"
+)
+
+// AutomationNotifyEmails are the email settings, in the order surfaces list them.
+var AutomationNotifyEmails = []string{AutomationNotifyAlways, AutomationNotifyOnFailure, AutomationNotifyOnSuccess, AutomationNotifyNever}
+
+// Reasons the platform pauses an automation (ADR101 D7); the migration 0209
+// CHECK lists the same three.
+const (
+	AutomationPausedRepeatedFailures  = "repeated_failures"
+	AutomationPausedCreatorLostAccess = "creator_lost_access"
+	AutomationPausedTemplateInvalid   = "template_invalid"
+)
 
 // Outcomes of an AgentAutomationRun.
 const (
@@ -98,7 +128,8 @@ var (
 
 const agentAutomationColumns = `id, workspace_id, name, enabled, created_by, triggers, template, overlap_policy,
 	next_fire_at, last_fire_at, coalesce(last_session_id, ''), coalesce(paused_reason, ''),
-	consecutive_failures, version, created_at, updated_at`
+	consecutive_failures, notify_email, notify_failure_streak, paused_at, pause_notified_at,
+	version, created_at, updated_at`
 
 const agentAutomationRunColumns = `automation_id, fire_at, outcome, coalesce(session_id, ''), missed_ticks, error,
 	claimed_until, created_at, settled_at`
@@ -107,7 +138,8 @@ func scanAgentAutomation(row pgx.Row) (AgentAutomation, error) {
 	var a AgentAutomation
 	err := row.Scan(&a.ID, &a.WorkspaceID, &a.Name, &a.Enabled, &a.CreatedBy, &a.Triggers, &a.Template,
 		&a.OverlapPolicy, &a.NextFireAt, &a.LastFireAt, &a.LastSessionID, &a.PausedReason,
-		&a.ConsecutiveFailures, &a.Version, &a.CreatedAt, &a.UpdatedAt)
+		&a.ConsecutiveFailures, &a.NotifyEmail, &a.NotifyFailureStreak, &a.PausedAt, &a.PauseNotifiedAt,
+		&a.Version, &a.CreatedAt, &a.UpdatedAt)
 	return a, err
 }
 
@@ -143,11 +175,11 @@ func (s *PGStore) CreateAgentAutomation(ctx context.Context, in AgentAutomation)
 	}
 	out, err := scanAgentAutomation(s.Pool.QueryRow(ctx, `
 		INSERT INTO agent_automations (id, workspace_id, name, enabled, created_by, triggers, template,
-			overlap_policy, next_fire_at, paused_reason)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, ''))
+			overlap_policy, next_fire_at, paused_reason, notify_email)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NULLIF($10, ''), $11)
 		RETURNING `+agentAutomationColumns,
 		in.ID, in.WorkspaceID, in.Name, in.Enabled, in.CreatedBy, orEmptyJSON(in.Triggers, "[]"),
-		orEmptyJSON(in.Template, "{}"), policy, in.NextFireAt, in.PausedReason))
+		orEmptyJSON(in.Template, "{}"), policy, in.NextFireAt, in.PausedReason, cmp.Or(in.NotifyEmail, AutomationNotifyOnFailure)))
 	if err != nil {
 		return AgentAutomation{}, classify("agent automation", err)
 	}
@@ -213,7 +245,7 @@ func clampLimit(limit int) int {
 }
 
 // UpdateAgentAutomation replaces an automation's editable fields (name,
-// enabled, triggers, template, overlap policy, next fire time) when its
+// enabled, triggers, template, overlap policy, email setting, next fire time) when its
 // version is still ifVersion, and bumps the version. A stale version is
 // ErrAgentAutomationVersion, a missing row ErrNotFound and a taken name
 // ErrConflict. A non-empty CreatedBy replaces the creator (take-over, ADR101 D4).
@@ -226,11 +258,12 @@ func (s *PGStore) UpdateAgentAutomation(ctx context.Context, in AgentAutomation,
 	out, err := scanAgentAutomation(s.Pool.QueryRow(ctx, `
 		UPDATE agent_automations
 		SET name=$3, enabled=$4, triggers=$5, template=$6, overlap_policy=$7, next_fire_at=$8,
-		    created_by=COALESCE(NULLIF($10, ''), created_by), version=version+1, updated_at=now()
+		    created_by=COALESCE(NULLIF($10, ''), created_by), notify_email=$11,
+		    version=version+1, updated_at=now()
 		WHERE id=$1 AND version=$2 AND workspace_id=$9
 		RETURNING `+agentAutomationColumns,
 		in.ID, ifVersion, in.Name, in.Enabled, orEmptyJSON(in.Triggers, "[]"), orEmptyJSON(in.Template, "{}"),
-		policy, in.NextFireAt, in.WorkspaceID, in.CreatedBy))
+		policy, in.NextFireAt, in.WorkspaceID, in.CreatedBy, in.NotifyEmail))
 	if errors.Is(err, pgx.ErrNoRows) {
 		var exists bool
 		if err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM agent_automations WHERE id=$1 AND workspace_id=$2)`,
@@ -265,8 +298,11 @@ func (s *PGStore) DeleteAgentAutomation(ctx context.Context, id string) error {
 }
 
 // SetAgentAutomationPaused pauses an automation (enabled=false, with reason)
-// or resumes it (enabled=true, no reason, consecutive failures reset), and
-// bumps the version. The caller supplies a new next_fire_at through Update.
+// or resumes it (enabled=true, no reason, consecutive failures and the email
+// failure streak reset), and bumps the version. A pause with a reason is a
+// platform pause: it stamps paused_at once (a repeated pause keeps it) and
+// leaves the pause to be notified (w9/m343). A manual pause or a resume clears
+// both. The caller supplies a new next_fire_at through Update.
 func (s *PGStore) SetAgentAutomationPaused(ctx context.Context, id string, paused bool, reason string) (AgentAutomation, error) {
 	if !textBindable(id) {
 		return AgentAutomation{}, ErrNotFound
@@ -275,7 +311,13 @@ func (s *PGStore) SetAgentAutomationPaused(ctx context.Context, id string, pause
 		UPDATE agent_automations
 		SET enabled = NOT $2,
 		    paused_reason = CASE WHEN $2 THEN NULLIF($3, '') ELSE NULL END,
+		    paused_at = CASE WHEN NOT $2 OR $3 = '' THEN NULL
+		                     WHEN paused_reason IS NOT NULL AND paused_at IS NOT NULL THEN paused_at
+		                     ELSE now() END,
+		    pause_notified_at = CASE WHEN $2 AND $3 <> '' AND paused_reason IS NOT NULL AND paused_at IS NOT NULL
+		                             THEN pause_notified_at END,
 		    consecutive_failures = CASE WHEN $2 THEN consecutive_failures ELSE 0 END,
+		    notify_failure_streak = CASE WHEN $2 THEN notify_failure_streak ELSE 0 END,
 		    version=version+1, updated_at=now()
 		WHERE id=$1
 		RETURNING `+agentAutomationColumns, id, paused, reason))

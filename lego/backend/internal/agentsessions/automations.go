@@ -22,6 +22,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -44,9 +46,9 @@ const (
 
 	// Pause reasons (ADR101 D7). The scheduler sets them; the service only
 	// exposes them and clears them on resume.
-	AutomationPausedRepeatedFailures  = "repeated_failures"
-	AutomationPausedCreatorLostAccess = "creator_lost_access"
-	AutomationPausedTemplateInvalid   = "template_invalid"
+	AutomationPausedRepeatedFailures  = store.AutomationPausedRepeatedFailures
+	AutomationPausedCreatorLostAccess = store.AutomationPausedCreatorLostAccess
+	AutomationPausedTemplateInvalid   = store.AutomationPausedTemplateInvalid
 
 	// Named error codes.
 	CodeAutomationInvalid           = "AGENT_AUTOMATION_INVALID"
@@ -108,24 +110,33 @@ func (t *AutomationTemplate) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// AutomationNotifications is how an automation tells its creator about runs
+// (w9/m343, Devin's Email notification action). Email is always, on_failure
+// (the default, as Devin's scheduled sessions), on_success or never. A
+// platform auto-pause is always notified, whatever it says.
+type AutomationNotifications struct {
+	Email string `json:"email" jsonschema:"always, on_failure (default), on_success or never: which run outcomes email the automation's creator"`
+}
+
 // AgentAutomation is an automation as every surface shows it.
 type AgentAutomation struct {
-	ID                  string              `json:"id"`
-	OwnerID             string              `json:"ownerId"`
-	Name                string              `json:"name"`
-	Enabled             bool                `json:"enabled"`
-	CreatedBy           string              `json:"createdBy"`
-	Triggers            []AutomationTrigger `json:"triggers"`
-	Template            AutomationTemplate  `json:"template"`
-	OverlapPolicy       string              `json:"overlapPolicy"`
-	NextFireAt          *time.Time          `json:"nextFireAt"`
-	LastFireAt          *time.Time          `json:"lastFireAt"`
-	LastSessionID       string              `json:"lastSessionId,omitempty"`
-	PausedReason        string              `json:"pausedReason,omitempty"`
-	ConsecutiveFailures int                 `json:"consecutiveFailures"`
-	Version             int                 `json:"version"`
-	CreatedAt           time.Time           `json:"createdAt"`
-	UpdatedAt           time.Time           `json:"updatedAt"`
+	ID                  string                  `json:"id"`
+	OwnerID             string                  `json:"ownerId"`
+	Name                string                  `json:"name"`
+	Enabled             bool                    `json:"enabled"`
+	CreatedBy           string                  `json:"createdBy"`
+	Triggers            []AutomationTrigger     `json:"triggers"`
+	Template            AutomationTemplate      `json:"template"`
+	OverlapPolicy       string                  `json:"overlapPolicy"`
+	Notifications       AutomationNotifications `json:"notifications"`
+	NextFireAt          *time.Time              `json:"nextFireAt"`
+	LastFireAt          *time.Time              `json:"lastFireAt"`
+	LastSessionID       string                  `json:"lastSessionId,omitempty"`
+	PausedReason        string                  `json:"pausedReason,omitempty"`
+	ConsecutiveFailures int                     `json:"consecutiveFailures"`
+	Version             int                     `json:"version"`
+	CreatedAt           time.Time               `json:"createdAt"`
+	UpdatedAt           time.Time               `json:"updatedAt"`
 }
 
 // AgentAutomationList is one page of a workspace's automations, newest first.
@@ -140,11 +151,14 @@ type AgentAutomationList struct {
 // field keeps its value; Triggers and Template replace the stored ones whole.
 // IfVersion, when set, refuses the write unless the automation is still at it.
 type AgentAutomationInput struct {
-	Name      *string             `json:"name,omitempty" jsonschema:"lowercase letters, digits and single hyphens, at most 64"`
-	Enabled   *bool               `json:"enabled,omitempty" jsonschema:"default true on create; resume a paused automation with resume, not enabled"`
-	Triggers  []AutomationTrigger `json:"triggers,omitempty" jsonschema:"exactly one trigger, of type schedule"`
-	Template  *AutomationTemplate `json:"template,omitempty" jsonschema:"the session each fire starts"`
-	IfVersion *int                `json:"ifVersion,omitempty" jsonschema:"update only: refuse with AGENT_AUTOMATION_CONFLICT unless the automation is still at this version"`
+	Name     *string             `json:"name,omitempty" jsonschema:"lowercase letters, digits and single hyphens, at most 64"`
+	Enabled  *bool               `json:"enabled,omitempty" jsonschema:"default true on create; resume a paused automation with resume, not enabled"`
+	Triggers []AutomationTrigger `json:"triggers,omitempty" jsonschema:"exactly one trigger, of type schedule"`
+	Template *AutomationTemplate `json:"template,omitempty" jsonschema:"the session each fire starts"`
+	// Notifications on create defaults to email on_failure; on update an
+	// omitted value keeps the stored one.
+	Notifications *AutomationNotifications `json:"notifications,omitempty" jsonschema:"which run outcomes email the creator; default {email: on_failure}"`
+	IfVersion     *int                     `json:"ifVersion,omitempty" jsonschema:"update only: refuse with AGENT_AUTOMATION_CONFLICT unless the automation is still at this version"`
 }
 
 // AutomationStore is the agent_automations table.
@@ -196,10 +210,24 @@ func isAutomationID(ref string) bool {
 	return ok && kind == ids.AgentAutomation
 }
 
+// applyAutomationNotifications validates a requested notification setting
+// onto row; nil keeps row's.
+func applyAutomationNotifications(row *store.AgentAutomation, n *AutomationNotifications) error {
+	if n == nil {
+		return nil
+	}
+	if !slices.Contains(store.AutomationNotifyEmails, n.Email) {
+		return automationInvalid("notifications.email", "notifications.email must be one of "+strings.Join(store.AutomationNotifyEmails, ", "))
+	}
+	row.NotifyEmail = n.Email
+	return nil
+}
+
 func automationView(row store.AgentAutomation) (AgentAutomation, error) {
 	out := AgentAutomation{
 		ID: row.ID, OwnerID: row.WorkspaceID, Name: row.Name, Enabled: row.Enabled, CreatedBy: row.CreatedBy,
-		OverlapPolicy: row.OverlapPolicy, NextFireAt: row.NextFireAt, LastFireAt: row.LastFireAt,
+		OverlapPolicy: row.OverlapPolicy, Notifications: AutomationNotifications{Email: row.NotifyEmail},
+		NextFireAt: row.NextFireAt, LastFireAt: row.LastFireAt,
 		LastSessionID: row.LastSessionID, PausedReason: row.PausedReason, ConsecutiveFailures: row.ConsecutiveFailures,
 		Version: row.Version, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt,
 	}
@@ -285,9 +313,12 @@ func (s *Service) CreateAgentAutomation(ctx context.Context, ownerID string, in 
 	}
 	row := store.AgentAutomation{
 		ID: ids.New(ids.AgentAutomation), WorkspaceID: workspaceID, Name: *in.Name, Enabled: in.Enabled == nil || *in.Enabled,
-		CreatedBy: caller, OverlapPolicy: automationOverlapSkip,
+		CreatedBy: caller, OverlapPolicy: automationOverlapSkip, NotifyEmail: store.AutomationNotifyOnFailure,
 	}
 	if err := validateAutomationName(row.Name); err != nil {
+		return AgentAutomation{}, err
+	}
+	if err := applyAutomationNotifications(&row, in.Notifications); err != nil {
 		return AgentAutomation{}, err
 	}
 	if err := s.applyAutomationDefinition(ctx, workspaceID, &row, in.Triggers, in.Template); err != nil {
@@ -341,6 +372,9 @@ func (s *Service) UpdateAgentAutomation(ctx context.Context, ownerID, ref string
 				"the automation is paused ("+row.PausedReason+"); resume it instead", map[string]any{"pausedReason": row.PausedReason})
 		}
 		row.Enabled = *in.Enabled
+	}
+	if err := applyAutomationNotifications(&row, in.Notifications); err != nil {
+		return AgentAutomation{}, err
 	}
 	if in.Triggers != nil || in.Template != nil {
 		triggers, template := in.Triggers, in.Template

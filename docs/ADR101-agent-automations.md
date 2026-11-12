@@ -35,6 +35,7 @@ An automation belongs to a workspace and holds:
 - `triggers`: an array. **Phase 1 accepts exactly one trigger, of type `schedule`.** The array shape is the public contract from day one, so adding Webhook or GitHub triggers later is additive and needs no API break;
 - `template`: the session to start (D5);
 - `overlapPolicy`: `skip` in phase 1 (D6);
+- `notifications`: `{email: always | on_failure | on_success | never}`, default `on_failure` (D7, w9/m343);
 - read-only: `createdBy`, `nextFireAt`, `lastRun`, `pausedReason`, `createdAt`, `updatedAt`.
 
 Ids are `aut-<20 chars>`, minted with `id.New` in `internal/id` (bex-native; Render has no such resource). The prefix is to be confirmed free against [ADR020](ADR020-identifiers.md) when the Kind is added.
@@ -132,7 +133,8 @@ If the previous run's session is still active, the new fire is recorded as `skip
 
 - Each run is an ordinary session, billed under [ADR091](ADR091-agent-model-pricing.md) (price = upstream cost × 1.30). Automations add no fee of their own.
 - A platform-metered template **must** carry `maxSpendUSD`. A recurring run with no ceiling is the one way to turn a typo into a large bill. The workspace's existing live-session limit and trust-tier ceiling (ADR091 D10) apply to each run unchanged.
-- **Auto-pause.** Three consecutive `failed_create` or `denied` runs pause the automation with `pausedReason` (`repeated_failures`, `creator_lost_access`, `template_invalid`). The creator gets the existing push notification, and the dashboard shows the reason and a Resume button. `skipped_overlap` does not count as a failure.
+- **Auto-pause.** Three consecutive `failed_create` or `denied` runs pause the automation with `pausedReason` (`repeated_failures`, `creator_lost_access`, `template_invalid`). The creator gets a push notification (`agent_automation_paused`, deep link `/automations/<id>`, on by default, creator only) and an email, whatever the email setting, and the dashboard shows the reason and a Resume button. `skipped_overlap` does not count as a failure. _Built in w9/m343 (2026-11-12): before it, the pause only wrote a log line._
+- **Run emails (w9/m343, Devin parity).** `notifications.email` picks which run outcomes email the creator, as Devin's Email notification action does: `always`, `on_failure` (the default, as Devin's scheduled sessions), `on_success`, or `never` (Devin's scheduled-session option). A run succeeds when its session completes and fails when its session fails or no session starts (`failed_create`, `denied`); a canceled session mails only under `always`, and an overlap skip never mails. Failure emails back off as Devin's do: they go out after the 1st, 3rd, 9th, 27th… consecutive failure, and the count restarts on a success or a resume. Each run is claimed for its email once, after its session ends, so no run mails twice across replicas; a send that fails is logged, not retried, as the build-minutes notices are. Emails are English, like every bex email.
 - Run outcomes: `claimed`, `started`, `skipped_overlap`, `skipped_missed` (counted inside the run that did fire), `failed_create`, `denied`.
 - Create, update, pause, resume, take-over, delete and run-now write the audit log with the actor.
 
@@ -194,7 +196,7 @@ Checked against [Devin's Automations guide](https://docs.devin.ai/product-guides
 | Overlap: "enable queueing", concurrency and queue depth | `skip` only: an overlapping fire is recorded `skipped_overlap` (D6). `queue` and `allow` are follow-ups |
 | Invocation limit per time window; default 50 runs/hour | **Minimum interval of 5 minutes** (`AGENT_AUTOMATION_SCHEDULE_TOO_FREQUENT`, one constant) and at most 50 automations per workspace (`AGENT_AUTOMATION_LIMIT`). No per-window cap |
 | Missed events while the platform is down | Only the latest missed tick fires; the run records `missedTicks` (D3) |
-| Notifications: email and Slack, always / on failure / on success | **Not shipped.** The creator gets the existing push notification when an automation auto-pauses; completion notifications are a follow-up |
+| Notifications: email and Slack, always / on failure / on success | Email, `notifications.email` = `always`, `on_failure` (default), `on_success` or `never`, with Devin's failure backoff (1st, 3rd, 9th…), sent to the creator (D7, w9/m343). A platform auto-pause also sends the creator a push. **Difference:** no Slack ([DO_NOT_DO.md](../.pm/DO_NOT_DO.md)) and no recipient list: the creator, whom every fire runs as, is the one recipient |
 | Preflight check (LLM filter or script), persistent state (`STATE_FILE`), "message existing session" | Not in phase 1 |
 | GitHub, Slack, Linear, Jira, PagerDuty, Webhook triggers | Not in phase 1; the array shape reserves them |
 | Advanced child-session toggle (_live only_) | Not on the template. Child sessions (ADR102) exist for sessions; whether an automation's session may spawn them follows the session defaults |

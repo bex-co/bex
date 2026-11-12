@@ -162,3 +162,55 @@ func TestAutomationScheduleSpendAndUnavailableCodesAcrossSurfaces(t *testing.T) 
 		t.Fatalf("MCP unavailable = %q", text)
 	}
 }
+
+// The email notification setting (w9/m343) reads and writes the same way on
+// REST, GraphQL and MCP: on_failure by default, kept by an update that omits
+// it, and an unknown value is the named 400 on notifications.email.
+func TestAutomationNotificationsAcrossSurfaces(t *testing.T) {
+	a := newAutomationAdapters(t)
+	status, created := a.rest(http.MethodPost, "/v1/agent-automations?ownerId=tea-a", automationBody("nightly"), "dev")
+	if status != http.StatusCreated {
+		t.Fatalf("create = %d %v", status, created)
+	}
+	emailOf := func(view map[string]any) any {
+		n, _ := view["notifications"].(map[string]any)
+		return n["email"]
+	}
+	if got := emailOf(created); got != "on_failure" {
+		t.Fatalf("default notifications.email = %v, want on_failure", got)
+	}
+	id := created["id"].(string)
+
+	if status, body := a.rest(http.MethodPatch, "/v1/agent-automations/"+id+"?ownerId=tea-a", map[string]any{"notifications": map[string]any{"email": "on_success"}}, "dev"); status != http.StatusOK || emailOf(body) != "on_success" {
+		t.Fatalf("REST update = %d %v", status, body)
+	}
+	if status, body := a.rest(http.MethodPatch, "/v1/agent-automations/"+id+"?ownerId=tea-a", map[string]any{"name": "nightly-two"}, "dev"); status != http.StatusOK || emailOf(body) != "on_success" {
+		t.Fatalf("an update without notifications changed it: %d %v", status, body)
+	}
+	data, code := a.gql(fmt.Sprintf(`mutation { updateAgentAutomation(ownerId: "tea-a", id: %q, input: {notifications: {email: "never"}}) { notifications { email } } }`, id), "dev")
+	if code != "" || emailOf(data["updateAgentAutomation"].(map[string]any)) != "never" {
+		t.Fatalf("GraphQL update = %v %q", data, code)
+	}
+	got, text := a.mcp("get_agent_automation", map[string]any{"ownerId": "tea-a", "automation": id}, "dev")
+	if text != "" || emailOf(got) != "never" {
+		t.Fatalf("MCP get = %v %q", got, text)
+	}
+	created2, text := a.mcp("create_agent_automation", withOwner(map[string]any{
+		"name": "always-mail", "triggers": automationBody("x")["triggers"], "template": automationBody("x")["template"],
+		"notifications": map[string]any{"email": "always"}}), "dev")
+	if text != "" || emailOf(created2) != "always" {
+		t.Fatalf("MCP create with always = %v %q", created2, text)
+	}
+
+	bad := map[string]any{"notifications": map[string]any{"email": "sometimes"}}
+	if status, body := a.rest(http.MethodPatch, "/v1/agent-automations/"+id+"?ownerId=tea-a", bad, "dev"); status != http.StatusBadRequest ||
+		body["code"] != CodeAutomationInvalid || !strings.Contains(fmt.Sprint(body), "notifications.email") {
+		t.Fatalf("REST unknown value = %d %v", status, body)
+	}
+	if _, code := a.gql(fmt.Sprintf(`mutation { updateAgentAutomation(ownerId: "tea-a", id: %q, input: {notifications: {email: "sometimes"}}) { id } }`, id), "dev"); code != CodeAutomationInvalid {
+		t.Fatalf("GraphQL unknown value code = %q", code)
+	}
+	if _, text := a.mcp("update_agent_automation", map[string]any{"ownerId": "tea-a", "automation": id, "notifications": map[string]any{"email": "sometimes"}}, "dev"); !strings.Contains(text, CodeAutomationInvalid) {
+		t.Fatalf("MCP unknown value = %q", text)
+	}
+}

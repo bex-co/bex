@@ -4,7 +4,11 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { codedGraphQLError } from "@/test/mocks/apollo";
 import { AutomationForm } from "@/features/agent-automations/components/automation-form";
-import { emptyFormValues } from "@/features/agent-automations/lib/form";
+import {
+  emptyFormValues,
+  valuesFromAutomation,
+} from "@/features/agent-automations/lib/form";
+import { automation } from "./fixtures";
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
   const actual =
@@ -166,7 +170,80 @@ describe("AutomationForm", () => {
         secretNames: ["TOKEN"],
         skills: [],
       },
+      notifications: { email: "on_failure" },
     });
+  });
+
+  it("emails on failure by default and saves the email setting the person picks (w9/m343)", async () => {
+    const { user, onSave } = setup();
+    await fillValid(user);
+    const email = screen.getByRole("combobox", { name: "Email notifications" });
+    expect(email).toHaveTextContent("On failure");
+    expect(email).toHaveAccessibleDescription(
+      "Which runs email you. A platform pause always does.",
+    );
+    await user.click(email);
+    await user.click(await screen.findByRole("option", { name: "On success" }));
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({ notifications: { email: "on_success" } }),
+      ),
+    );
+  });
+
+  it("an edit form opens on the stored email setting and saves it back", async () => {
+    const user = userEvent.setup();
+    const onSave = vi.fn(async () => undefined);
+    const stored = automation({
+      notifications: {
+        __typename: "AgentAutomationNotifications",
+        email: "never",
+      },
+    });
+    render(
+      <AutomationForm
+        mode="edit"
+        initial={valuesFromAutomation(stored)}
+        version={stored.version}
+        onSave={onSave}
+        cancelTo={{ to: "/automations/$automationId", id: stored.id }}
+      />,
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Email notifications" }),
+    ).toHaveTextContent("Never");
+    await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledWith(
+        expect.objectContaining({
+          notifications: { email: "never" },
+          ifVersion: 1,
+        }),
+      ),
+    );
+  });
+
+  it("shows the server's refusal of the email setting under that field", async () => {
+    const onSave = vi.fn(async () => {
+      throw codedGraphQLError(
+        "AGENT_AUTOMATION_INVALID",
+        { field: "notifications.email" },
+        "notifications.email must be always, on_failure, on_success or never",
+      );
+    });
+    const { user } = setup(onSave);
+    await fillValid(user);
+    await user.click(screen.getByRole("button", { name: "Create automation" }));
+
+    const email = screen.getByRole("combobox", { name: "Email notifications" });
+    await waitFor(() => expect(email).toHaveAttribute("aria-invalid", "true"));
+    expect(email).toHaveAccessibleDescription(
+      /notifications\.email must be always, on_failure, on_success or never/i,
+    );
+    expect(screen.getAllByRole("alert")).toHaveLength(1);
   });
 
   it("shows the server's spend-limit refusal under the spend field and clears it on edit", async () => {

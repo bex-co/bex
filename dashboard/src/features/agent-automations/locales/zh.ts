@@ -300,6 +300,10 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
     message: "每次运行的花费上限",
     description: "Settings row label",
   },
+  "agentAutomations.row.emailNotifications": {
+    message: "邮件通知",
+    description: "Settings row label",
+  },
   "agentAutomations.row.secrets": {
     message: "密钥",
     description: "Settings row label",
@@ -458,6 +462,10 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
     message: "每次运行的花费上限（美元）",
     description: "Form field label",
   },
+  "agentAutomations.field.emailNotifications": {
+    message: "邮件通知",
+    description: "Form field label",
+  },
   "agentAutomations.field.secrets": {
     message: "密钥",
     description: "Form field label",
@@ -485,6 +493,24 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.frequency.custom": {
     message: "自定义（cron）",
     description: "Frequency option",
+  },
+  "agentAutomations.emailNotifications.always": {
+    message: "每次运行",
+    description: "Email notification option: every run emails the creator",
+  },
+  "agentAutomations.emailNotifications.on_failure": {
+    message: "仅失败时",
+    description:
+      "Email notification option: only failed runs email the creator",
+  },
+  "agentAutomations.emailNotifications.on_success": {
+    message: "仅成功时",
+    description:
+      "Email notification option: only succeeded runs email the creator",
+  },
+  "agentAutomations.emailNotifications.never": {
+    message: "从不",
+    description: "Email notification option: no run emails the creator",
   },
   "agentAutomations.weekday.mon": {
     message: "周一",
@@ -546,6 +572,10 @@ const zhAgentAutomations: Record<string, TranslationEntry> = {
   "agentAutomations.help.spendLimit": {
     message: "每次运行的模型花费上限。使用平台模型时必填。",
     description: "Spend limit field help",
+  },
+  "agentAutomations.help.emailNotifications": {
+    message: "哪些运行会给你发邮件。平台暂停此自动化时总会发送。",
+    description: "Email notifications field help",
   },
   "agentAutomations.help.secrets": {
     message: "智能体以环境变量形式获得的工作区密钥。请在工作区设置中添加。",

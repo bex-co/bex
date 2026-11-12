@@ -68,6 +68,8 @@ const eventKeys: Record<PushNotificationEvent, string> = {
     "notifications.pushEventAgentNeedsDecision",
   [PushNotificationEvent.AgentPrReady]: "notifications.pushEventAgentPrReady",
   [PushNotificationEvent.AgentFailed]: "notifications.pushEventAgentFailed",
+  [PushNotificationEvent.AgentAutomationPaused]:
+    "notifications.pushEventAgentAutomationPaused",
   [PushNotificationEvent.PostgresUnavailable]:
     "notifications.pushEventPostgresUnavailable",
   [PushNotificationEvent.PostgresAvailable]:

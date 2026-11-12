@@ -112,6 +112,16 @@ var automationTemplateGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var automationNotificationsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentAutomationNotifications",
+	Description: "How an automation tells its creator about runs (w9/m343).",
+	Fields: graphql.Fields{
+		"email": &graphql.Field{Type: graphql.NewNonNull(graphql.String),
+			Description: "always, on_failure, on_success or never: which run outcomes email the creator.",
+			Resolve:     gqlutil.Field(func(v AutomationNotifications) any { return v.Email })},
+	},
+})
+
 var agentAutomationGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentAutomation",
 	Description: "A schedule trigger plus a session template that runs as the member who created it (ADR101).",
@@ -125,6 +135,7 @@ var agentAutomationGQLType = graphql.NewObject(graphql.ObjectConfig{
 			func(v AgentAutomation) any { return v.Triggers }),
 		"template":            gqlutil.Typed(graphql.NewNonNull(automationTemplateGQLType), func(v AgentAutomation) any { return v.Template }),
 		"overlapPolicy":       gqlutil.ReqStrField(func(v AgentAutomation) any { return v.OverlapPolicy }),
+		"notifications":       gqlutil.Typed(graphql.NewNonNull(automationNotificationsGQLType), func(v AgentAutomation) any { return v.Notifications }),
 		"nextFireAt":          gqlutil.TimeField(func(v AgentAutomation) any { return v.NextFireAt }),
 		"lastFireAt":          gqlutil.TimeField(func(v AgentAutomation) any { return v.LastFireAt }),
 		"lastSessionId":       gqlutil.OptionalStrField(func(v AgentAutomation) any { return v.LastSessionID }),
@@ -223,14 +234,24 @@ var automationTemplateGQLInput = graphql.NewInputObject(graphql.InputObjectConfi
 	},
 })
 
+var automationNotificationsGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "AgentAutomationNotificationsInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"email": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String),
+			Description: "always, on_failure (the default), on_success or never."},
+	},
+})
+
 var agentAutomationGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name:        "AgentAutomationInput",
 	Description: "An automation's fields. On update, omitted fields keep their value; triggers and template replace the stored ones whole.",
 	Fields: graphql.InputObjectConfigFieldMap{
-		"name":      &graphql.InputObjectFieldConfig{Type: graphql.String},
-		"enabled":   &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
-		"triggers":  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(automationTriggerGQLInput)), Description: "Exactly one trigger, of type schedule."},
-		"template":  &graphql.InputObjectFieldConfig{Type: automationTemplateGQLInput},
+		"name":     &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"enabled":  &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
+		"triggers": &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(automationTriggerGQLInput)), Description: "Exactly one trigger, of type schedule."},
+		"template": &graphql.InputObjectFieldConfig{Type: automationTemplateGQLInput},
+		"notifications": &graphql.InputObjectFieldConfig{Type: automationNotificationsGQLInput,
+			Description: "Which run outcomes email the creator; on create the default is {email: on_failure}."},
 		"ifVersion": &graphql.InputObjectFieldConfig{Type: graphql.Int, Description: "Update only: refuse unless the automation is still at this version."},
 	},
 })

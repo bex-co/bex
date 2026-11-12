@@ -49,7 +49,7 @@ func TestPushSettingsDefaults(t *testing.T) {
 		Enabled: true,
 		Events: []DeliveryEvent{
 			DeliveryEventDeployFailed, DeliveryEventServerFailed, DeliveryEventCronFailed,
-			DeliveryEventAgentPRReady, DeliveryEventAgentFailed,
+			DeliveryEventAgentPRReady, DeliveryEventAgentFailed, DeliveryEventAgentAutomationPaused,
 		},
 		MinimumUrgency: DeliveryUrgencyImportant, TimeZone: "UTC",
 		WorkingHours: []PushClockRangeView{}, QuietHours: []PushClockRangeView{},

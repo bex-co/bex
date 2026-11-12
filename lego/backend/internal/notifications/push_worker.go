@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strconv"
 	"sync"
 	"time"
 
@@ -61,6 +62,7 @@ type PushWorkerStore interface {
 	EnsurePushWatermark(context.Context, time.Time) (time.Time, string, error)
 	ListWebhookEvents(context.Context, time.Time, string, time.Time, []string, []string, int) ([]store.WebhookEventRow, error)
 	ListTerminalAgentSessionsForPush(context.Context, time.Time) ([]store.AgentSession, error)
+	ListPausedAutomationsForPush(context.Context, time.Time) ([]store.AgentAutomation, error)
 	EnqueuePushNotifications(context.Context, []store.PushNotificationBatchItem, time.Time, string) error
 	ClaimDuePushDeliveries(context.Context, time.Time, time.Time, int) ([]store.DuePushDelivery, error)
 	AcceptPushDelivery(context.Context, store.DuePushDelivery, string, time.Time, time.Time) (bool, error)
@@ -146,21 +148,74 @@ type PushWorker struct {
 	// and advanced by every committed page (store.FeedCursor).
 	cursor    store.FeedCursor
 	lastSweep time.Time
-	// agentSessionCursor is the newest session UpdatedAt already projected to
-	// push, and agentSessionBoundary the source keys sitting at exactly that
-	// instant. Terminal sessions stay in the 6h scan window, so without them
-	// every tick (2s) re-fans-out and re-enqueues the same sessions for six
-	// hours — ~10k redundant write transactions per session, each a batch of
-	// INSERTs that only ON CONFLICT DO NOTHING saves from being duplicates.
-	//
-	// The boundary set is what makes the skip exact rather than merely cheap: a
-	// bare timestamp forces a choice between re-projecting the newest instant
-	// forever (no saving) and skipping not-newer sessions (losing one that
-	// commits after this tick's read but shares that instant). Naming the keys
-	// already projected at the boundary rules out both. It holds one entry in
-	// the ordinary case — only sessions sharing the exact newest timestamp.
-	agentSessionCursor   time.Time
-	agentSessionBoundary map[string]bool
+	// agentSessions and automationPauses are the workspace-keyed projections'
+	// positions (terminal sessions by updated_at, platform pauses by paused_at).
+	agentSessions    projectionCursor
+	automationPauses projectionCursor
+}
+
+// projectionCursor is a workspace-keyed projection's position: the newest
+// occurrence instant already projected to push, and the source keys sitting
+// at exactly that instant. Projected rows stay in the 6h scan window, so
+// without it every tick (2s) re-fans-out and re-enqueues the same rows for six
+// hours — ~10k redundant write transactions per row, each a batch of INSERTs
+// that only ON CONFLICT DO NOTHING saves from being duplicates.
+//
+// The boundary set is what makes the skip exact rather than merely cheap: a
+// bare timestamp forces a choice between re-projecting the newest instant
+// forever (no saving) and skipping not-newer rows (losing one that commits
+// after this tick's read but shares that instant). Naming the keys already
+// projected at the boundary rules out both. It holds one entry in the ordinary
+// case — only rows sharing the exact newest timestamp.
+type projectionCursor struct {
+	at       time.Time
+	boundary map[string]bool
+}
+
+// since is the scan's lower bound: the window start, or the cursor when it is
+// newer (rows at the cursor instant are re-read for the boundary check).
+func (c projectionCursor) since(windowStart time.Time) time.Time {
+	if c.at.After(windowStart) {
+		return c.at
+	}
+	return windowStart
+}
+
+// projectionPass is one tick over a projection's rows in occurrence order.
+type projectionPass struct {
+	prev, next projectionCursor
+}
+
+func (c projectionCursor) pass() *projectionPass {
+	return &projectionPass{prev: c, next: projectionCursor{at: c.at, boundary: map[string]bool{}}}
+}
+
+// observe records a row and reports whether it is new to the projection:
+// anything strictly older than the cursor, and the keys recorded at the cursor
+// instant itself, were already projected.
+func (p *projectionPass) observe(at time.Time, key string) bool {
+	if at.After(p.next.at) {
+		p.next = projectionCursor{at: at, boundary: map[string]bool{}}
+	}
+	if at.Equal(p.next.at) {
+		p.next.boundary[key] = true
+	}
+	return !at.Before(p.prev.at) && !(at.Equal(p.prev.at) && p.prev.boundary[key])
+}
+
+// commitProjection enqueues a pass's batch and only then advances its cursor,
+// so a failed enqueue is retried. It passes the CURRENT feed watermark: the
+// monotonic guard makes the cursor UPDATE a no-op while the notification
+// inserts commit (deduped by source_event_key).
+func (w *PushWorker) commitProjection(ctx context.Context, batch []store.PushNotificationBatchItem, cursor *projectionCursor, pass *projectionPass) error {
+	if len(batch) > 0 {
+		watermarkAt, watermarkKey := w.cursor.Position()
+		if err := w.Store.EnqueuePushNotifications(ctx, batch, watermarkAt, watermarkKey); err != nil {
+			return err
+		}
+	}
+	*cursor = pass.next
+	return nil
 }
 
 func (w *PushWorker) pollInterval() time.Duration {
@@ -210,7 +265,7 @@ func (w *PushWorker) RunOnce(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("list active push destinations: %w", err)
 	}
-	var eventsErr, sessionsErr error
+	var eventsErr, sessionsErr, pausesErr error
 	if len(destinations) > 0 {
 		// Built once per tick: both dispatchers evaluate the SAME recipients, and
 		// the build recompiles every subscriber's stored policy (and evidences the
@@ -220,20 +275,23 @@ func (w *PushWorker) RunOnce(ctx context.Context) error {
 		if err := w.dispatch(ctx, byTenant, tenants); err != nil {
 			eventsErr = fmt.Errorf("project push events: %w", err)
 		}
-		if err := w.dispatchAgentSessions(ctx, byTenant, tenants); err != nil {
+		if err := w.dispatchAgentSessions(ctx, byTenant); err != nil {
 			sessionsErr = fmt.Errorf("project agent-session push events: %w", err)
+		}
+		if err := w.dispatchAutomationPauses(ctx, byTenant); err != nil {
+			pausesErr = fmt.Errorf("project automation pause push events: %w", err)
 		}
 	}
 	if w.Sender == nil && w.Receipts == nil {
 		w.Metrics.SetEnabled(false)
-		return errors.Join(eventsErr, sessionsErr)
+		return errors.Join(eventsErr, sessionsErr, pausesErr)
 	}
 	w.Metrics.SetEnabled(true)
 	var sendErr error
 	if w.Sender != nil {
 		sendErr = w.send(ctx)
 	}
-	err = errors.Join(eventsErr, sessionsErr, sendErr, w.checkReceipts(ctx), w.sweep(ctx))
+	err = errors.Join(eventsErr, sessionsErr, pausesErr, sendErr, w.checkReceipts(ctx), w.sweep(ctx))
 	if stats, statsErr := w.Store.PushDeliveryStats(ctx); statsErr == nil {
 		w.Metrics.SetQueue(stats)
 	}
@@ -340,6 +398,7 @@ var pushEventUrgency = map[DeliveryEvent]DeliveryUrgency{
 	DeliveryEventAgentNeedsDecision:    DeliveryUrgencyImportant,
 	DeliveryEventAgentPRReady:          DeliveryUrgencyImportant,
 	DeliveryEventAgentFailed:           DeliveryUrgencyImportant,
+	DeliveryEventAgentAutomationPaused: DeliveryUrgencyImportant,
 	DeliveryEventPostgresUnavailable:   DeliveryUrgencyCritical,
 	DeliveryEventPostgresAvailable:     DeliveryUrgencyImportant,
 	DeliveryEventKeyValueUnhealthy:     DeliveryUrgencyCritical,
@@ -482,49 +541,38 @@ func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
 // so they can't ride the webhook-events feed. It scans recent terminal sessions,
 // evaluates the SAME recipients/policy, and enqueues a session-deep-linked push
 // deduped by (session, phase). It never advances the feed watermark.
-func (w *PushWorker) dispatchAgentSessions(ctx context.Context, byTenant map[string]map[string]*pushRecipient, tenants []string) error {
+func (w *PushWorker) dispatchAgentSessions(ctx context.Context, byTenant map[string]map[string]*pushRecipient) error {
 	if !w.cursor.Loaded() {
 		return nil // the feed dispatch anchors the watermark first
 	}
-	if len(tenants) == 0 {
+	if len(byTenant) == 0 {
 		return nil
 	}
-	sessions, err := w.Store.ListTerminalAgentSessionsForPush(ctx, w.now().Add(-agentPushWindow))
+	sessions, err := w.Store.ListTerminalAgentSessionsForPush(ctx, w.agentSessions.since(w.now().Add(-agentPushWindow)))
 	if err != nil {
 		return err
 	}
 	if len(sessions) == 0 {
 		return nil
 	}
-	tenantSet := make(map[string]bool, len(tenants))
-	for _, tenant := range tenants {
-		tenantSet[tenant] = true
-	}
 	decisionTime := w.now()
 	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
 	batch := make([]store.PushNotificationBatchItem, 0)
-	newestSeen := w.agentSessionCursor
-	boundary := map[string]bool{}
+	pass := w.agentSessions.pass()
 	for _, session := range sessions {
-		if !tenantSet[session.WorkspaceID] {
+		recipients, ok := byTenant[session.WorkspaceID]
+		if !ok {
 			continue
 		}
 		sourceKey := "agent:" + session.ID + ":" + session.Phase
-		if session.UpdatedAt.After(newestSeen) {
-			newestSeen = session.UpdatedAt
-			boundary = map[string]bool{}
-		}
-		if session.UpdatedAt.Equal(newestSeen) {
-			boundary[sourceKey] = true
-		}
-		if w.agentSessionProjected(session.UpdatedAt, sourceKey) {
+		if !pass.observe(session.UpdatedAt, sourceKey) {
 			continue
 		}
 		projected, ok := projectAgentSessionPush(session)
 		if !ok {
 			continue
 		}
-		batch, err = fanOutPush(batch, evaluator, byTenant[session.WorkspaceID], pushTarget{
+		batch, err = fanOutPush(batch, evaluator, recipients, pushTarget{
 			workspaceID:  session.WorkspaceID,
 			sourceKey:    sourceKey,
 			resourceKind: resourceKindAgentSession, resourceID: session.ID,
@@ -534,29 +582,58 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, byTenant map[str
 			return err
 		}
 	}
-	if len(batch) == 0 {
-		w.agentSessionCursor, w.agentSessionBoundary = newestSeen, boundary
-		return nil
-	}
-	// Pass the CURRENT watermark: the monotonic guard makes the cursor UPDATE a
-	// no-op while the notification inserts commit (deduped by source_event_key).
-	watermarkAt, watermarkKey := w.cursor.Position()
-	if err := w.Store.EnqueuePushNotifications(ctx, batch, watermarkAt, watermarkKey); err != nil {
-		return err
-	}
-	// Advance only after the write commits, so a failed enqueue is retried.
-	w.agentSessionCursor, w.agentSessionBoundary = newestSeen, boundary
-	return nil
+	return w.commitProjection(ctx, batch, &w.agentSessions, pass)
 }
 
-// agentSessionProjected reports whether this session has already been fanned
-// out: anything strictly older than the cursor, plus the keys recorded at the
-// cursor instant itself.
-func (w *PushWorker) agentSessionProjected(updatedAt time.Time, sourceKey string) bool {
-	if updatedAt.Before(w.agentSessionCursor) {
-		return true
+// projectAutomationPausePush is the push for a platform auto-pause. Like the
+// agent-session pushes its lock-screen text stays generic (ADR087): no
+// automation name or reason, which the deep link shows after sign-in.
+func projectAutomationPausePush() projectedPush {
+	return newProjectedPush(DeliveryEventAgentAutomationPaused, "Automation paused",
+		"An agent automation was paused and will not run until it is resumed.")
+}
+
+// dispatchAutomationPauses projects a platform auto-pause of an agent
+// automation (w9/m343, ADR101 D7) to its creator alone: the automation runs as
+// that member, so the pause is theirs to resolve. Deduped by (automation,
+// paused_at).
+func (w *PushWorker) dispatchAutomationPauses(ctx context.Context, byTenant map[string]map[string]*pushRecipient) error {
+	if !w.cursor.Loaded() || len(byTenant) == 0 {
+		return nil
 	}
-	return updatedAt.Equal(w.agentSessionCursor) && w.agentSessionBoundary[sourceKey]
+	paused, err := w.Store.ListPausedAutomationsForPush(ctx, w.automationPauses.since(w.now().Add(-agentPushWindow)))
+	if err != nil || len(paused) == 0 {
+		return err
+	}
+	decisionTime := w.now()
+	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
+	batch := make([]store.PushNotificationBatchItem, 0)
+	pass := w.automationPauses.pass()
+	for _, a := range paused {
+		recipients, ok := byTenant[a.WorkspaceID]
+		if a.PausedAt == nil || !ok {
+			continue
+		}
+		pausedAt := *a.PausedAt
+		sourceKey := "automation:" + a.ID + ":paused:" + strconv.FormatInt(pausedAt.UnixMicro(), 10)
+		if !pass.observe(pausedAt, sourceKey) {
+			continue
+		}
+		creator, ok := recipients[a.CreatedBy]
+		if !ok {
+			continue
+		}
+		batch, err = fanOutPush(batch, evaluator, map[string]*pushRecipient{a.CreatedBy: creator}, pushTarget{
+			workspaceID: a.WorkspaceID, sourceKey: sourceKey,
+			resourceKind: resourceKindAgentAutomation, resourceID: a.ID,
+			deepLink: "/automations/" + a.ID, occurredAt: pausedAt,
+			projected: projectAutomationPausePush(),
+		})
+		if err != nil {
+			return err
+		}
+	}
+	return w.commitProjection(ctx, batch, &w.automationPauses, pass)
 }
 
 func (w *PushWorker) dispatch(ctx context.Context, byTenant map[string]map[string]*pushRecipient, tenants []string) error {

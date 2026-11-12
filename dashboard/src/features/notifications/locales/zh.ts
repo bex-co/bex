@@ -206,6 +206,10 @@ const zhNotifications: Record<string, TranslationEntry> = {
     message: "智能体会话失败",
     description: "Push event",
   },
+  "notifications.pushEventAgentAutomationPaused": {
+    message: "自动化已暂停",
+    description: "Push event: the platform paused an agent automation",
+  },
   "notifications.pushEventPostgresUnavailable": {
     message: "数据库不可用",
     description: "Push event",

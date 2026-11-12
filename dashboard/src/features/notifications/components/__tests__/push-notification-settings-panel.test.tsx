@@ -45,6 +45,7 @@ const publishedUrgencies: PushEventUrgencies = publishedPushEvents(
       [PushNotificationEvent.AgentNeedsDecision, Important],
       [PushNotificationEvent.AgentPrReady, Important],
       [PushNotificationEvent.AgentFailed, Important],
+      [PushNotificationEvent.AgentAutomationPaused, Important],
       [PushNotificationEvent.PostgresUnavailable, Critical],
       [PushNotificationEvent.PostgresAvailable, Important],
       [PushNotificationEvent.KeyValueUnhealthy, Critical],
@@ -252,6 +253,16 @@ describe("PushNotificationSettingsPanel", () => {
       expect(eventRow("Deploy succeeded")).toHaveTextContent("Routine");
       expect(eventRow("Deploy failed")).toHaveTextContent("Important");
       expect(eventRow("Service crashed")).toHaveTextContent("Critical");
+    });
+
+    // w9/m343: a platform-paused automation is one of the agent events, listed
+    // right after a failed agent session.
+    it("lists Automation paused right after Agent session failed", () => {
+      render(<PushNotificationSettingsPanel />);
+
+      const paused = eventRow("Automation paused");
+      expect(paused).toHaveTextContent("Important");
+      expect(eventRow("Agent session failed").nextElementSibling).toBe(paused);
     });
 
     // w4/349: an event nothing sends yet is labeled, not hidden, and a

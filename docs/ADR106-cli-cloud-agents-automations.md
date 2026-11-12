@@ -193,12 +193,14 @@ The command group maps one-to-one onto ADR101 D8 and adds two client-side verbs,
   - The **template flags** are `run`'s flags. The task is given as positional words or with `-f FILE`.
   - Flags a template cannot carry are refused with exit 2 and a reason: `--attach`, `--secret-from-env`, `--idempotency-key`, `--parent`. `--secret-from-env` points to `bex agent secrets set`.
   - The **schedule flags** build the one `schedule` trigger (see [the spec](#bex-agent-automations)). `--timezone` defaults to the machine's IANA zone, from `TZ` or the `/etc/localtime` link, and the CLI prints the zone it used. This matches the dashboard's default from the browser. If no IANA name can be found, the command exits 2 and asks for `--timezone`. The API still never guesses.
-- **Updates are read-modify-write with optimistic concurrency.** `update` reads the automation, merges the flags into `triggers` and `template` (the API replaces each of them whole) and sends `PATCH` with `ifVersion` set to the version it read. A concurrent edit answers `409 AGENT_AUTOMATION_CONFLICT`, which the CLI reports with "re-run to apply on top of the newer version". It never retries silently.
+  - **`--notify-email always|on_failure|on_success|never`** sets `notifications.email`, which run outcomes email the creator (w9/m343). Any other value exits 2 before a request is sent. Without the flag the request leaves `notifications` out: `create` gets the API's default `on_failure`, and `update` keeps the stored setting.
+- **Updates are read-modify-write with optimistic concurrency.** `update` reads the automation, merges the flags into `triggers`, `template` and `notifications` (the API replaces each of them whole) and sends `PATCH` with `ifVersion` set to the version it read. A concurrent edit answers `409 AGENT_AUTOMATION_CONFLICT`, which the CLI reports with "re-run to apply on top of the newer version". It never retries silently.
 - **`run` (run now)** answers with the settled run.
   - With `--wait` or `--follow`, the CLI then waits on the run's session and exits by its state.
   - A run that started nothing (`skipped_overlap`, `denied` or `failed_create`) exits **6**, and stderr names the outcome and the recorded error.
 - **`apply -f FILE|DIR|-`** is declarative.
-  - Documents use the REST request body exactly (`name`, `enabled`, `triggers`, `template`), in YAML or JSON. A file may hold several YAML documents. There is no CLI-only schema.
+  - Documents use the REST request body exactly (`name`, `enabled`, `triggers`, `template`, `notifications`), in YAML or JSON. A file may hold several YAML documents. There is no CLI-only schema.
+  - Only the fields a document sets are compared and sent. A document without `notifications` therefore keeps the stored email setting: the plan shows no change for it and the write does not send it.
   - Each document is matched by `name`. A missing one is created, a changed one is updated with `ifVersion`, and an unchanged one is skipped.
   - `--dry-run` prints the plan and a field-level diff and changes nothing.
   - `apply` **never deletes**. Removing a document from the file does not remove the automation; that is an explicit `delete`.
@@ -206,6 +208,7 @@ The command group maps one-to-one onto ADR101 D8 and adds two client-side verbs,
 - **`export <automation>…|--all`** prints exactly the fields `apply` accepts. Read-only fields (`id`, `createdBy`, `nextFireAt`, `version`, …) are dropped, so `export | apply -f -` changes nothing.
 - **Text output.**
   - The schedule is rendered in words ("every day at 09:00 Europe/Berlin, until 2026-12-31"), next to the next fire, the last run and any `pausedReason`.
+  - `get` shows the email setting as `Notify email`, in the flag's words (`on_failure`, …).
   - `-o json|yaml` stays the API's own answer.
 
 ### D8 — Workspace agent configuration
@@ -347,8 +350,8 @@ bex agent pickup  [<session>] [--remote origin] [--stash] [--wait [--timeout D]]
 ```
 bex agent automations list    [--mine] [--limit N] [--cursor C]
 bex agent automations get     <automation>
-bex agent automations create  --name NAME <schedule flags> <template flags> [--disabled] (<task…> | -f FILE)
-bex agent automations update  <automation> [--name NAME] [<schedule flags>] [<template flags>] [<task…> | -f FILE]
+bex agent automations create  --name NAME <schedule flags> <template flags> [--disabled] [--notify-email WHEN] (<task…> | -f FILE)
+bex agent automations update  <automation> [--name NAME] [<schedule flags>] [<template flags>] [--notify-email WHEN] [<task…> | -f FILE]
 bex agent automations delete  <automation> [--confirm]
 bex agent automations pause   <automation>
 bex agent automations resume  <automation>
@@ -393,6 +396,8 @@ template:
   maxSpendUSD: 5
   secretNames: [NPM_TOKEN]
   tags: [deps]
+notifications:
+  email: on_failure # always | on_failure | on_success | never; left out, the stored setting stays
 ---
 name: morning-triage
 # … more automations in the same file

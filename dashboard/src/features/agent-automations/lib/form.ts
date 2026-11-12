@@ -20,6 +20,11 @@ import {
 } from "@/features/agent-sessions/lib/composer-skills";
 import { parseSpendLimit } from "@/features/agent-sessions/lib/spend-limit";
 import {
+  DEFAULT_EMAIL_NOTIFICATION,
+  isEmailNotification,
+  type EmailNotification,
+} from "@/features/agent-automations/lib/display";
+import {
   defaultScheduleDraft,
   draftToScheduleInput,
   scheduleProblems,
@@ -41,6 +46,8 @@ export interface AutomationFormValues {
   secretNames: string[];
   skills: ComposerSkill[];
   schedule: ScheduleDraft;
+  /** Which run outcomes email the creator (w9/m343). */
+  emailNotifications: EmailNotification;
   /**
    * Template fields the form does not edit but must not drop on an update
    * (the template is replaced whole): branch, model, title, tags, output
@@ -62,6 +69,7 @@ export function emptyFormValues(timezone?: string): AutomationFormValues {
     secretNames: [],
     skills: [],
     schedule: defaultScheduleDraft(timezone),
+    emailNotifications: DEFAULT_EMAIL_NOTIFICATION,
     carried: {},
   };
 }
@@ -90,6 +98,9 @@ export function valuesFromAutomation(
       ...(s.arguments ? { arguments: s.arguments } : {}),
     })),
     schedule: schedule ? scheduleToDraft(schedule) : defaultScheduleDraft(),
+    emailNotifications: isEmailNotification(automation.notifications.email)
+      ? automation.notifications.email
+      : DEFAULT_EMAIL_NOTIFICATION,
     carried: {
       branch: tpl.branch ?? undefined,
       title: tpl.title ?? undefined,
@@ -104,7 +115,13 @@ export function valuesFromAutomation(
 }
 
 export type FormField =
-  "name" | "task" | "repo" | "spendLimit" | "skills" | "schedule";
+  | "name"
+  | "task"
+  | "repo"
+  | "spendLimit"
+  | "emailNotifications"
+  | "skills"
+  | "schedule";
 
 export interface FormProblems {
   fields: Partial<Record<FormField, string>>;
@@ -166,6 +183,7 @@ export function toAutomationInput(
       { type: "schedule", schedule: draftToScheduleInput(values.schedule) },
     ],
     template,
+    notifications: { email: values.emailNotifications },
     ...(options.ifVersion != null ? { ifVersion: options.ifVersion } : {}),
   };
 }
@@ -202,6 +220,11 @@ function targetForField(
     return { target: "schedule" };
   const sub = SCHEDULE_FIELDS[bare];
   if (sub) return { target: "schedule", scheduleField: sub };
+  // notifications.email: the email setting is the form's only notification
+  // setting (w9/m343).
+  if (field === "notifications" || field.startsWith("notifications.")) {
+    return { target: "emailNotifications" };
+  }
   switch (field) {
     case "name":
       return { target: "name" };

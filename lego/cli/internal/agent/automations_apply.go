@@ -38,8 +38,9 @@ import (
 
 // A definition is an automation as a file holds it: exactly the REST create
 // body (ADR106 D7), so `export` output is valid `apply` input and nothing
-// here is a CLI-only schema.
-var definitionKeys = []string{"name", "enabled", "triggers", "template"}
+// here is a CLI-only schema. A key a file leaves out keeps the stored value
+// (planDefinition compares only what the file sets).
+var definitionKeys = []string{"name", "enabled", "triggers", "template", "notifications"}
 
 // maxDefinitionBytes bounds one definition file (or stdin).
 const maxDefinitionBytes = 8 << 20
@@ -92,10 +93,12 @@ func automationApplyCommand(d deps) *cobra.Command {
 		Short: "Create or update automations from files",
 		Long: "Reads automations from YAML or JSON files (several YAML documents per\n" +
 			"file; a directory's *.yaml, *.yml and *.json), each the REST body:\n" +
-			"name, enabled, triggers, template. An automation is matched by name:\n" +
-			"missing ones are created, changed ones updated, the rest left alone.\n\n" +
+			"name, enabled, triggers, template, notifications. An automation is\n" +
+			"matched by name: missing ones are created, changed ones updated, the\n" +
+			"rest left alone.\n\n" +
 			"apply compares only the fields a file sets (the API fills defaults such\n" +
-			"as the title); to clear a field, set it empty. apply never deletes: an\n" +
+			"as the title, and a file without notifications keeps the stored email\n" +
+			"setting); to clear a field, set it empty. apply never deletes: an\n" +
 			"automation missing from the files stays. --dry-run prints the plan and\n" +
 			"each changed field without writing.",
 		Example: "  bex agent automations apply -f .bex/automations/ --dry-run\n" +
@@ -168,9 +171,9 @@ func automationExportCommand(d deps) *cobra.Command {
 	c := &cobra.Command{
 		Use:   "export (<automation>… | --all)",
 		Short: "Print automations as definitions `apply` reads",
-		Long: "Prints each automation's name, enabled, triggers and template as YAML\n" +
-			"documents (-o json: a JSON array). Read-only fields are dropped, so\n" +
-			"`export | apply -f -` changes nothing.",
+		Long: "Prints each automation's name, enabled, triggers, template and\n" +
+			"notifications as YAML documents (-o json: a JSON array). Read-only\n" +
+			"fields are dropped, so `export | apply -f -` changes nothing.",
 		RunE: func(c *cobra.Command, args []string) error {
 			if all == (len(args) > 0) {
 				return usageError("give automations to export, or --all")

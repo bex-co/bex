@@ -218,6 +218,10 @@ const enNotifications: Record<string, TranslationEntry> = {
     message: "Agent session failed",
     description: "Push event",
   },
+  "notifications.pushEventAgentAutomationPaused": {
+    message: "Automation paused",
+    description: "Push event: the platform paused an agent automation",
+  },
   "notifications.pushEventPostgresUnavailable": {
     message: "Database unavailable",
     description: "Push event",

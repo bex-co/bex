@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -240,6 +241,31 @@ func ianaName(v string) string {
 	return v
 }
 
+const notifyEmailFlag = "notify-email"
+
+// notifyEmailValues are the run outcomes that email an automation's creator
+// (notifications.email, w9/m343). The API defaults a new automation to
+// on_failure.
+var notifyEmailValues = []string{"always", "on_failure", "on_success", "never"}
+
+func bindNotifyEmail(c *cobra.Command) {
+	c.Flags().String(notifyEmailFlag, "", "email the creator after a run: "+strings.Join(notifyEmailValues, ", ")+" (default on create: on_failure)")
+}
+
+// notifyEmail is --notify-email, checked before anything is sent; "" when
+// the flag was not given, so the request leaves notifications to the API.
+func notifyEmail(c *cobra.Command) (string, error) {
+	if !c.Flags().Changed(notifyEmailFlag) {
+		return "", nil
+	}
+	value, _ := c.Flags().GetString(notifyEmailFlag)
+	email := strings.ToLower(strings.TrimSpace(value))
+	if !slices.Contains(notifyEmailValues, email) {
+		return "", usageError("--%s must be one of %s, not %q", notifyEmailFlag, strings.Join(notifyEmailValues, ", "), value)
+	}
+	return email, nil
+}
+
 // sessionOnly are flags of a single session that a recurring template
 // cannot carry, each refused with the reason.
 var sessionOnly = []struct{ name, why string }{
@@ -288,13 +314,19 @@ func (t *templateFlags) changed() bool { return anyChanged(t.fs) }
 // template returns the template the flags describe. current is the stored
 // template on update (nil on create): only the flags given change it, and
 // every field the CLI does not model is kept.
+// cloneMap is a copy of v when it is a JSON object, else an empty one.
+func cloneMap(v any) map[string]any {
+	m, _ := v.(map[string]any)
+	if m = maps.Clone(m); m == nil {
+		return map[string]any{}
+	}
+	return m
+}
+
 func (t *templateFlags) template(c *cobra.Command, d deps, task []string, current map[string]any) (map[string]any, error) {
 	f := t.fs
 	creating := current == nil
-	out := maps.Clone(current)
-	if out == nil {
-		out = map[string]any{}
-	}
+	out := cloneMap(current)
 	if creating || len(task) > 0 || t.turn.prompt.file != "" {
 		prompt, err := t.turn.prompt.read(d, task)
 		if err != nil {
@@ -302,11 +334,7 @@ func (t *templateFlags) template(c *cobra.Command, d deps, task []string, curren
 		}
 		out["task"] = prompt
 	}
-	agent, _ := out["agentConfig"].(map[string]any)
-	agent = maps.Clone(agent)
-	if agent == nil {
-		agent = map[string]any{}
-	}
+	agent := cloneMap(out["agentConfig"])
 	// set writes a flag's value on create (when given a value) or when the
 	// flag was given; an emptied flag removes the field.
 	set := func(into map[string]any, key, flag, value string) {

@@ -52,6 +52,7 @@ type fakePushWorkerStore struct {
 	destinations  []store.ActivePushSubscription
 	events        []store.WebhookEventRow
 	agentSessions []store.AgentSession
+	automations   []store.AgentAutomation
 	serviceIDs    map[string]string
 	factStatuses  map[string]string
 	watermarkAt   time.Time
@@ -157,6 +158,18 @@ func (f *fakePushWorkerStore) ListTerminalAgentSessionsForPush(_ context.Context
 	for _, session := range f.agentSessions {
 		if (session.Phase == "completed" || session.Phase == "failed") && !session.UpdatedAt.Before(since) {
 			out = append(out, session)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakePushWorkerStore) ListPausedAutomationsForPush(_ context.Context, since time.Time) ([]store.AgentAutomation, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var out []store.AgentAutomation
+	for _, a := range f.automations {
+		if a.PausedReason != "" && a.PausedAt != nil && !a.PausedAt.Before(since) {
+			out = append(out, a)
 		}
 	}
 	return out, nil
@@ -519,12 +532,13 @@ func TestProjectPushEventLifecycleUrgencies(t *testing.T) {
 // The default policy's event set grows only by deliberate decision, never as a
 // side effect of new events joining the vocabulary: the m78 lifecycle events
 // (server_available/service_suspended/service_resumed) are additive opt-in and
-// must stay out; the failure defaults plus w11/m6's agent terminal events are
-// the chosen set.
+// must stay out; the failure defaults plus w11/m6's agent terminal events and
+// w9/m343's automation auto-pause (ADR101 D7 promises its creator the push)
+// are the chosen set.
 func TestDefaultPushSettingsEventsUnchanged(t *testing.T) {
 	want := []DeliveryEvent{
 		DeliveryEventDeployFailed, DeliveryEventServerFailed, DeliveryEventCronFailed,
-		DeliveryEventAgentPRReady, DeliveryEventAgentFailed,
+		DeliveryEventAgentPRReady, DeliveryEventAgentFailed, DeliveryEventAgentAutomationPaused,
 	}
 	if !slices.Equal(defaultPushSettings.Events, want) {
 		t.Fatalf("defaultPushSettings.Events = %v, want %v", defaultPushSettings.Events, want)

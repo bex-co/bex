@@ -37,7 +37,10 @@ import "github.com/bex-co/bex/lego/backend/internal/core"
 
 // resourceKindAgentSession is the stored ResourceKind the agent-session
 // projection stamps (push_worker.go) and deep links route by.
-const resourceKindAgentSession = "agentSession"
+const (
+	resourceKindAgentSession    = "agentSession"
+	resourceKindAgentAutomation = "agentAutomation"
+)
 
 // destinationRequiredRelation maps an event family to the relation its
 // destination read/decision requires: "" for the all-roles families
@@ -45,7 +48,7 @@ const resourceKindAgentSession = "agentSession"
 // so does managed-datastore supervision, whose destination read is the
 // datastore's OWN can_view, `can_view from workspace` on type postgres in
 // model.fga, not the App's), can_operate for agent session reads, can_create
-// for a decision request —
+// for an automation pause (automations are can_create-only) and for a decision request —
 // approving/steering asks for work only create-holders may dispatch (the
 // event constant exists even though no producer ships yet).
 //
@@ -56,7 +59,7 @@ func destinationRequiredRelation(event DeliveryEvent) string {
 	switch event {
 	case DeliveryEventAgentPRReady, DeliveryEventAgentFailed:
 		return core.RelCanOperate
-	case DeliveryEventAgentNeedsDecision:
+	case DeliveryEventAgentNeedsDecision, DeliveryEventAgentAutomationPaused:
 		return core.RelCanCreate
 	default:
 		return ""

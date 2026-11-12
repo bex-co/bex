@@ -924,7 +924,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Add an agent automation: a name, exactly one schedule trigger and a session template (task, repo, agentConfig, and maxSpendUSD when the model is platform-metered). Every fire starts a session as you. At most 50 per workspace.",
+    "description": "Add an agent automation: a name, exactly one schedule trigger and a session template (task, repo, agentConfig, and maxSpendUSD when the model is platform-metered). Every fire starts a session as you. notifications.email (always, on_failure by default, on_success or never) says which run outcomes email you; a platform auto-pause always does. At most 50 per workspace.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -947,6 +947,23 @@
           "type": [
             "null",
             "string"
+          ]
+        },
+        "notifications": {
+          "additionalProperties": false,
+          "description": "which run outcomes email the creator; default {email: on_failure}",
+          "properties": {
+            "email": {
+              "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "type": [
+            "null",
+            "object"
           ]
         },
         "ownerId": {
@@ -1176,6 +1193,19 @@
             "string"
           ]
         },
+        "notifications": {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "type": "object"
+        },
         "overlapPolicy": {
           "type": "string"
         },
@@ -1380,6 +1410,7 @@
         "triggers",
         "template",
         "overlapPolicy",
+        "notifications",
         "nextFireAt",
         "lastFireAt",
         "consecutiveFailures",
@@ -2287,6 +2318,19 @@
             "string"
           ]
         },
+        "notifications": {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "type": "object"
+        },
         "overlapPolicy": {
           "type": "string"
         },
@@ -2491,6 +2535,7 @@
         "triggers",
         "template",
         "overlapPolicy",
+        "notifications",
         "nextFireAt",
         "lastFireAt",
         "consecutiveFailures",
@@ -4094,6 +4139,19 @@
                   "string"
                 ]
               },
+              "notifications": {
+                "additionalProperties": false,
+                "properties": {
+                  "email": {
+                    "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "email"
+                ],
+                "type": "object"
+              },
               "overlapPolicy": {
                 "type": "string"
               },
@@ -4298,6 +4356,7 @@
               "triggers",
               "template",
               "overlapPolicy",
+              "notifications",
               "nextFireAt",
               "lastFireAt",
               "consecutiveFailures",
@@ -5127,6 +5186,19 @@
             "string"
           ]
         },
+        "notifications": {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "type": "object"
+        },
         "overlapPolicy": {
           "type": "string"
         },
@@ -5331,6 +5403,7 @@
         "triggers",
         "template",
         "overlapPolicy",
+        "notifications",
         "nextFireAt",
         "lastFireAt",
         "consecutiveFailures",
@@ -5402,6 +5475,19 @@
             "string"
           ]
         },
+        "notifications": {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "type": "object"
+        },
         "overlapPolicy": {
           "type": "string"
         },
@@ -5606,6 +5692,7 @@
         "triggers",
         "template",
         "overlapPolicy",
+        "notifications",
         "nextFireAt",
         "lastFireAt",
         "consecutiveFailures",
@@ -7654,6 +7741,19 @@
             "string"
           ]
         },
+        "notifications": {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "type": "object"
+        },
         "overlapPolicy": {
           "type": "string"
         },
@@ -7858,6 +7958,7 @@
         "triggers",
         "template",
         "overlapPolicy",
+        "notifications",
         "nextFireAt",
         "lastFireAt",
         "consecutiveFailures",
@@ -8209,6 +8310,23 @@
             "string"
           ]
         },
+        "notifications": {
+          "additionalProperties": false,
+          "description": "which run outcomes email the creator; default {email: on_failure}",
+          "properties": {
+            "email": {
+              "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
         "ownerId": {
           "type": "string"
         },
@@ -8439,6 +8557,19 @@
             "string"
           ]
         },
+        "notifications": {
+          "additionalProperties": false,
+          "properties": {
+            "email": {
+              "description": "always, on_failure (default), on_success or never: which run outcomes email the automation's creator",
+              "type": "string"
+            }
+          },
+          "required": [
+            "email"
+          ],
+          "type": "object"
+        },
         "overlapPolicy": {
           "type": "string"
         },
@@ -8643,6 +8774,7 @@
         "triggers",
         "template",
         "overlapPolicy",
+        "notifications",
         "nextFireAt",
         "lastFireAt",
         "consecutiveFailures",

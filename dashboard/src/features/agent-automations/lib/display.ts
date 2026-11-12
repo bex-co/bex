@@ -104,6 +104,41 @@ export function automationStatus(a: {
   return a.nextFireAt ? "active" : "ended";
 }
 
+/**
+ * The email setting (w9/m343): which run outcomes email the creator, in the
+ * form's order. A platform pause emails the creator whatever it says.
+ */
+export const EMAIL_NOTIFICATIONS = [
+  "always",
+  "on_failure",
+  "on_success",
+  "never",
+] as const;
+
+export type EmailNotification = (typeof EMAIL_NOTIFICATIONS)[number];
+
+/** A create's setting unless the person picks another, as on the server. */
+export const DEFAULT_EMAIL_NOTIFICATION: EmailNotification = "on_failure";
+
+const EMAIL_NOTIFICATION_KEYS: Record<EmailNotification, string> = {
+  always: "agentAutomations.emailNotifications.always",
+  on_failure: "agentAutomations.emailNotifications.on_failure",
+  on_success: "agentAutomations.emailNotifications.on_success",
+  never: "agentAutomations.emailNotifications.never",
+};
+
+export function isEmailNotification(value: string): value is EmailNotification {
+  return Object.hasOwn(EMAIL_NOTIFICATION_KEYS, value);
+}
+
+/** The setting in words; a value this dashboard does not know shows as itself. */
+export function emailNotificationLabel(
+  value: string,
+  t: (key: string) => string,
+): string {
+  return isEmailNotification(value) ? t(EMAIL_NOTIFICATION_KEYS[value]) : value;
+}
+
 export interface ViewerRole {
   /** Fail-closed: true only on an affirmative, fresh capability answer. */
   canCreate: boolean;

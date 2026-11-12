@@ -1,20 +1,20 @@
 # w9 · m343 — Automation run notifications: email per run outcome, and the auto-pause alert ADR101 promised
 
-**Worker:** worker9 **Goal:** a failing or paused agent automation reaches its creator. Each automation has an email setting (Always / On failure / On success / Never, default On failure) as in Devin, repeated failures back off on the 1st, 3rd and 9th, and a platform auto-pause always sends a push, an inbox entry and an email. **Status:** todo
+**Worker:** worker9 **Goal:** a failing or paused agent automation reaches its creator. Each automation has an email setting (Always / On failure / On success / Never, default On failure) as in Devin, repeated failures back off on the 1st, 3rd and 9th, and a platform auto-pause always sends a push, an inbox entry and an email. **Status:** todo (t001–t005, t007–t009 done; t006 live check after the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | An automation stores its email notification setting: `always`, `on_failure`, `on_success` or `never` | 60m | — |
-| [t002](t002.md) | A run's outcome emails the creator per the setting, with failure backoff on the 1st, 3rd and 9th consecutive failure | 90m | t001 |
-| [t003](t003.md) | Auto-pause tells the creator: push, inbox entry and email, as ADR101 D7 promises | 45m | t002 |
-| [t004](t004.md) | Dashboard: the automation form and page show the email notification setting, en and zh | 60m | t001 |
-| [t005](t005.md) | `bex agent automations` carries the notification setting, on flags and in files | 30m | t001 |
+| [t001](done/t001.md) | An automation stores its email notification setting: `always`, `on_failure`, `on_success` or `never` — **DONE** | 60m | — |
+| [t002](done/t002.md) | A run's outcome emails the creator per the setting, with failure backoff on the 1st, 3rd and 9th consecutive failure — **DONE** | 90m | t001 |
+| [t003](done/t003.md) | Auto-pause tells the creator: push, inbox entry and email, as ADR101 D7 promises — **DONE** | 45m | t002 |
+| [t004](done/t004.md) | Dashboard: the automation form and page show the email notification setting, en and zh — **DONE** | 60m | t001 |
+| [t005](done/t005.md) | `bex agent automations` carries the notification setting, on flags and in files — **DONE** | 30m | t001 |
 | [t006](t006.md) | Live check on production: a failing automation emails on the 1st and 3rd failure, and its auto-pause notifies | 45m | t003, t004, t005 |
-| [t007](t007.md) | Render parity (Devin): automation notifications match Devin across REST, GraphQL, MCP, CLI and dashboard | 20m | t006 |
-| [t008](t008.md) | Simplify | 15m | t007 |
-| [t009](t009.md) | Test coverage | 45m | t007, t008 |
+| [t007](done/t007.md) | Render parity (Devin): automation notifications match Devin across REST, GraphQL, MCP, CLI and dashboard — **DONE** | 20m | t006 |
+| [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
+| [t009](done/t009.md) | Test coverage — **DONE** | 45m | t007, t008 |
 | [t010](t010.md) | Closeout | 10m | t009 |
 
 ## Definition of done

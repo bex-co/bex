@@ -18,6 +18,7 @@ export const pushEvents = [
   PushNotificationEvent.AgentNeedsDecision,
   PushNotificationEvent.AgentPrReady,
   PushNotificationEvent.AgentFailed,
+  PushNotificationEvent.AgentAutomationPaused,
   PushNotificationEvent.PostgresUnavailable,
   PushNotificationEvent.PostgresAvailable,
   PushNotificationEvent.KeyValueUnhealthy,

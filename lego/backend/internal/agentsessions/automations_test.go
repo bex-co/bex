@@ -130,6 +130,7 @@ func (f *fakeAutomations) UpdateAgentAutomation(_ context.Context, in store.Agen
 		}
 	}
 	cur.Name, cur.Enabled, cur.Triggers, cur.Template, cur.NextFireAt = in.Name, in.Enabled, in.Triggers, in.Template, in.NextFireAt
+	cur.NotifyEmail = in.NotifyEmail
 	if in.CreatedBy != "" {
 		cur.CreatedBy = in.CreatedBy
 	}

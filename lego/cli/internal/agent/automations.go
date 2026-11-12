@@ -51,18 +51,25 @@ const (
 
 // automation is an automation as the API shows it, decoded for text output.
 type automation struct {
-	ID                  string              `json:"id"`
-	Name                string              `json:"name"`
-	Enabled             bool                `json:"enabled"`
-	CreatedBy           string              `json:"createdBy"`
-	Triggers            []automationTrigger `json:"triggers"`
-	Template            automationTemplate  `json:"template"`
-	NextFireAt          *time.Time          `json:"nextFireAt"`
-	LastFireAt          *time.Time          `json:"lastFireAt"`
-	LastSessionID       string              `json:"lastSessionId"`
-	PausedReason        string              `json:"pausedReason"`
-	ConsecutiveFailures int                 `json:"consecutiveFailures"`
-	Version             int                 `json:"version"`
+	ID                  string                  `json:"id"`
+	Name                string                  `json:"name"`
+	Enabled             bool                    `json:"enabled"`
+	CreatedBy           string                  `json:"createdBy"`
+	Triggers            []automationTrigger     `json:"triggers"`
+	Template            automationTemplate      `json:"template"`
+	Notifications       automationNotifications `json:"notifications"`
+	NextFireAt          *time.Time              `json:"nextFireAt"`
+	LastFireAt          *time.Time              `json:"lastFireAt"`
+	LastSessionID       string                  `json:"lastSessionId"`
+	PausedReason        string                  `json:"pausedReason"`
+	ConsecutiveFailures int                     `json:"consecutiveFailures"`
+	Version             int                     `json:"version"`
+}
+
+// automationNotifications is when a run emails the creator: one of
+// notifyEmailValues.
+type automationNotifications struct {
+	Email string `json:"email"`
 }
 
 type automationTrigger struct {
@@ -351,7 +358,8 @@ func automationCreateCommand(d deps) *cobra.Command {
 		Long: "Creates an automation with one schedule trigger and a session template.\n" +
 			"Give exactly one of --every, --once or --cron. --timezone defaults to\n" +
 			"this machine's time zone. A template on the platform model needs\n" +
-			"--max-spend; the API refuses one without.",
+			"--max-spend; the API refuses one without. Without --notify-email the\n" +
+			"creator is emailed when a run fails (on_failure).",
 		Example: "  bex agent automations create --name nightly-deps --every week --on mon --at 03:00 \\\n" +
 			"    --repo acme/api --max-spend 5 --secret NPM_TOKEN \"Update dependencies and open a draft PR\"",
 		RunE: func(c *cobra.Command, args []string) error {
@@ -359,6 +367,10 @@ func automationCreateCommand(d deps) *cobra.Command {
 				return usageError("--name is required")
 			}
 			if err := refuseSessionOnly(c); err != nil {
+				return err
+			}
+			email, err := notifyEmail(c)
+			if err != nil {
 				return err
 			}
 			schedule, err := sched.build(c, d, nil)
@@ -372,6 +384,9 @@ func automationCreateCommand(d deps) *cobra.Command {
 			body := map[string]any{"name": name, "triggers": scheduleTriggers(schedule), "template": template}
 			if disabled {
 				body["enabled"] = false
+			}
+			if email != "" {
+				body["notifications"] = map[string]any{"email": email}
 			}
 			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
@@ -387,6 +402,7 @@ func automationCreateCommand(d deps) *cobra.Command {
 	}
 	c.Flags().StringVar(&name, "name", "", "automation name: lowercase letters, digits and hyphens, at most 64")
 	c.Flags().BoolVar(&disabled, "disabled", false, "create it paused")
+	bindNotifyEmail(c)
 	sched.bind(c)
 	tpl.bind(c)
 	return c
@@ -400,7 +416,7 @@ func automationUpdateCommand(d deps) *cobra.Command {
 	)
 	c := &cobra.Command{
 		Use:   "update <automation> [flags] [<task…>]",
-		Short: "Change an automation's name, schedule or template",
+		Short: "Change an automation's name, schedule, template or notifications",
 		Long: "Changes only what the flags (and a new task) name; everything else keeps\n" +
 			"its stored value. The update is refused if someone else changed the\n" +
 			"automation since it was read: re-run the command to apply on top.",
@@ -409,9 +425,13 @@ func automationUpdateCommand(d deps) *cobra.Command {
 			if err := refuseSessionOnly(c); err != nil {
 				return err
 			}
+			email, err := notifyEmail(c)
+			if err != nil {
+				return err
+			}
 			ref, task := args[0], args[1:]
 			renaming := c.Flags().Changed("name")
-			if !renaming && !sched.changed() && !tpl.changed() && len(task) == 0 {
+			if !renaming && !sched.changed() && !tpl.changed() && len(task) == 0 && email == "" {
 				return usageError("nothing to update: give a flag or a new task")
 			}
 			a, cancel, err := d.startWorkspace(c)
@@ -446,6 +466,12 @@ func automationUpdateCommand(d deps) *cobra.Command {
 				}
 				patch["template"] = template
 			}
+			if email != "" {
+				// Kept whole like the template: any other setting stays.
+				notifications := cloneMap(stored["notifications"])
+				notifications["email"] = email
+				patch["notifications"] = notifications
+			}
 			raw, err = a.patchAutomation(ref, stored["version"], patch)
 			if err != nil {
 				return err
@@ -454,6 +480,7 @@ func automationUpdateCommand(d deps) *cobra.Command {
 		},
 	}
 	c.Flags().StringVar(&name, "name", "", "rename the automation")
+	bindNotifyEmail(c)
 	sched.bind(c)
 	tpl.bind(c)
 	return c
@@ -595,6 +622,7 @@ func writeAutomation(w io.Writer, a automation) {
 	}
 	tw.row("Secrets", strings.Join(t.SecretNames, ", "))
 	tw.row("Task", clip(firstLine(t.Task), 80))
+	tw.row("Notify email", a.Notifications.Email)
 	tw.row("Created by", a.CreatedBy)
 	tw.row("Version", strconv.Itoa(a.Version))
 	_ = tw.Flush()

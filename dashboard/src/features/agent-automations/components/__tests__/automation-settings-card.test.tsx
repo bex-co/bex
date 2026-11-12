@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import i18n from "@/i18n/init";
 import { AutomationSettingsCard } from "@/features/agent-automations/components/automation-settings-card";
 import { automation } from "./fixtures";
 
@@ -38,5 +39,44 @@ describe("AutomationSettingsCard spend limit", () => {
   it("keeps the no-limit copy when none is set", () => {
     render(<AutomationSettingsCard automation={withLimit(null)} />);
     expect(screen.queryByText(/^\$/)).toBeNull();
+  });
+});
+
+function withEmail(email: string) {
+  return automation({
+    notifications: { __typename: "AgentAutomationNotifications", email },
+  });
+}
+
+/** The value beside a settings row's label. */
+function rowValue(label: string) {
+  return screen.getByText(label, { selector: "dt" }).nextElementSibling;
+}
+
+// w9/m343: the stored email setting, in words, in each language.
+describe("AutomationSettingsCard email notifications", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it.each([
+    ["always", "Always"],
+    ["on_failure", "On failure"],
+    ["on_success", "On success"],
+    ["never", "Never"],
+  ])("shows %s as %s", (email, text) => {
+    render(<AutomationSettingsCard automation={withEmail(email)} />);
+    expect(rowValue("Email notifications")).toHaveTextContent(text);
+  });
+
+  it("shows the setting in Chinese", async () => {
+    await i18n.changeLanguage("zh");
+    render(<AutomationSettingsCard automation={withEmail("on_failure")} />);
+    expect(rowValue("邮件通知")).toHaveTextContent("仅失败时");
+  });
+
+  it("shows a value this dashboard does not know as itself", () => {
+    render(<AutomationSettingsCard automation={withEmail("weekly_digest")} />);
+    expect(rowValue("Email notifications")).toHaveTextContent("weekly_digest");
   });
 });

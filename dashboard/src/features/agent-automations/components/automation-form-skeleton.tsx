@@ -120,6 +120,15 @@ export function AutomationFormSkeleton({ mode }: { mode: "create" | "edit" }) {
                 {INPUT}
               </FormField>
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FormField
+                id="sk-email"
+                label={t("agentAutomations.field.emailNotifications")}
+                help={t("agentAutomations.help.emailNotifications")}
+              >
+                {INPUT}
+              </FormField>
+            </div>
             <div className="space-y-1.5">
               <Label>{t("agentAutomations.field.secrets")}</Label>
               <div className="flex flex-wrap items-center gap-2">

@@ -46,6 +46,10 @@ export function automation(over: Partial<AutomationView> = {}): AutomationView {
       outputSchema: null,
       outputRequired: null,
     },
+    notifications: {
+      __typename: "AgentAutomationNotifications",
+      email: "on_failure",
+    },
     nextFireAt: "2099-01-01T08:00:00Z",
     lastFireAt: null,
     lastSessionId: null,

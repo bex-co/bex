@@ -249,6 +249,10 @@ var ErrAgentSessionAdmissionLimit = errors.New("agent session admission limit re
 // order matters.
 var ActiveAgentSessionPhases = []string{"creating", "running", "resuming", "redispatching"}
 
+// TerminalAgentSessionPhases are the phases a session ends in; canceling is
+// still working.
+var TerminalAgentSessionPhases = []string{"completed", "failed", "canceled"}
+
 var activeAgentSessionPhasesSQL = "phase IN ('" + strings.Join(ActiveAgentSessionPhases, "', '") + "')"
 
 // AgentSessionCount narrows CountActiveAgentSessions.
@@ -790,7 +794,7 @@ func (s *PGStore) ListTerminalAgentSessionsWithSandbox(ctx context.Context, now 
 		  AND (sandbox_reap_after IS NULL OR sandbox_reap_after <= $2)
 		ORDER BY COALESCE(sandbox_reap_after, updated_at) ASC, id ASC
 		LIMIT 200`,
-		[]string{"completed", "failed", "canceled"}, now)
+		TerminalAgentSessionPhases, now)
 	if err != nil {
 		return nil, err
 	}

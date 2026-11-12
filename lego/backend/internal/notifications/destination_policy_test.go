@@ -315,3 +315,43 @@ func TestInboxFollowsDestinationAccess(t *testing.T) {
 		}
 	})
 }
+
+// An automation auto-pause (w9/m343) reaches its creator alone, opens the
+// automation, and is projected once per pause however many ticks see it; a
+// creator who can no longer create sessions (a contributor) is not sent it.
+func TestAutomationPausePushReachesOnlyTheCreator(t *testing.T) {
+	now := time.Date(2026, time.November, 12, 12, 0, 0, 0, time.UTC)
+	pausedAt := now.Add(-time.Minute)
+	queue := newFakePushWorkerStore()
+	queue.watermarkAt = now.Add(-time.Hour)
+	device := func(subject, role string) store.ActivePushSubscription {
+		return store.ActivePushSubscription{TenantID: "tea-one", Subject: subject, Role: role, DeviceID: subject + "-ios",
+			Provider: "expo", Platform: "ios", Token: subject, CreatedAt: now.Add(-time.Hour)}
+	}
+	queue.destinations = []store.ActivePushSubscription{device("alice", "developer"), device("root", "admin"), device("dan", "contributor")}
+	queue.automations = []store.AgentAutomation{
+		{ID: "aut-c185th5c2rvvnhbfiltg", WorkspaceID: "tea-one", CreatedBy: "alice", PausedReason: "repeated_failures", PausedAt: &pausedAt},
+		{ID: "aut-c185th5c2rvvnhbfilu0", WorkspaceID: "tea-one", CreatedBy: "dan", PausedReason: "creator_lost_access", PausedAt: &pausedAt},
+	}
+	worker := &PushWorker{Store: queue, Clock: func() time.Time { return now }}
+	for range 3 {
+		if err := worker.RunOnce(context.Background()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	queue.mu.Lock()
+	defer queue.mu.Unlock()
+	if len(queue.notifications) != 1 {
+		t.Fatalf("pause pushes = %+v, want one for alice", queue.notifications)
+	}
+	for _, n := range queue.notifications {
+		if n.Subject != "alice" || n.EventType != string(DeliveryEventAgentAutomationPaused) ||
+			n.ResourceKind != "agentAutomation" || n.DeepLink != "/automations/aut-c185th5c2rvvnhbfiltg" ||
+			strings.Contains(n.Body, "repeated") {
+			t.Fatalf("pause push = %+v", n)
+		}
+		if err := store.ValidatePushNotification(n); err != nil {
+			t.Fatalf("pause push is not enqueueable: %v", err)
+		}
+	}
+}

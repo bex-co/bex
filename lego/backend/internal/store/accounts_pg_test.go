@@ -298,6 +298,7 @@ var accountDeletionDispositions = map[string]string{
 	"agent_session_attachments.created_by":      "anonymize: CleanupAccountSubject replaces the uploader; an unbound upload then has no owner and expires within 24 hours",
 	"agent_skills.updated_by":                   "anonymize: CleanupAccountSubject replaces the last editor on surviving workspace skills (ADR099)",
 	"agent_skill_versions.created_by":           "anonymize: CleanupAccountSubject replaces the saver on surviving skill versions (ADR099)",
+	"agent_automations.notify_email":            "retain: which run outcomes email the creator (always/on_failure/on_success/never), a setting, not an address; the recipient is resolved from created_by at send time (w9/m343)",
 	"agent_automations.created_by":              "anonymize: CleanupAccountSubject replaces the creator; the marker is no member, so the scheduler pauses the automation as creator_lost_access (ADR101)",
 	"agent_sessions.created_by":                 "anonymize: CleanupAccountSubject replaces the creator; the marker is no member, so the session can no longer spawn children (ADR102 D9)",
 	"alert_email_events.subject":                "cascade: membership deletion removes failure-alert dedupe records",

@@ -590,6 +590,9 @@ var (
 	// the workspace, not an App — so the resource is the agent_session id and the
 	// deep link opens the session, never a service.
 	agentEventRule = pushEventRule{resourceKind: "agentSession", idKind: ids.AgentSession, deepLinkPrefix: "/sessions/"}
+	// An automation the platform paused (w9/m343, ADR101 D7) opens the
+	// automation, whose page carries the reason and the Resume button.
+	automationEventRule = pushEventRule{resourceKind: "agentAutomation", idKind: ids.AgentAutomation, deepLinkPrefix: "/automations/"}
 	// Managed datastores (w3/m82 t005) are two families, not one: a Postgres
 	// and a Key Value have different id kinds and different destinations, and
 	// pairing kind/id/link is exactly what these rules exist to do.
@@ -598,7 +601,7 @@ var (
 )
 
 // pushEventRules is the whole DB-enqueueable push vocabulary; its key set must
-// stay equal to the push_notifications event_type CHECK (migration 0109). The
+// stay equal to the push_notifications event_type CHECK (migration 0236). The
 // lifecycle and datastore names are deliberately the fact names;
 // deploy_*/cron_failed are projection-only names with no fact constant.
 var pushEventRules = map[string]pushEventRule{
@@ -613,6 +616,7 @@ var pushEventRules = map[string]pushEventRule{
 	"agent_pr_ready":                  agentEventRule,
 	"agent_failed":                    agentEventRule,
 	"agent_needs_decision":            agentEventRule,
+	"agent_automation_paused":         automationEventRule,
 
 	string(DatastoreFactPostgresUnavailable):   databaseEventRule,
 	string(DatastoreFactPostgresAvailable):     databaseEventRule,

@@ -100,7 +100,15 @@ describe("toAutomationInput", () => {
         secretNames: ["API_KEY", "TOKEN"],
         skills: [{ name: "run-tests", arguments: "fast" }, { name: "lint" }],
       },
+      notifications: { email: "on_failure" },
     });
+  });
+
+  it("sends the chosen email setting; a new form defaults to on_failure (w9/m343)", () => {
+    expect(emptyFormValues().emailNotifications).toBe("on_failure");
+    expect(
+      toAutomationInput(valid({ emailNotifications: "never" })).notifications,
+    ).toEqual({ email: "never" });
   });
 
   it("sends a blank repo as null and a blank spend limit as null", () => {
@@ -159,6 +167,10 @@ describe("toAutomationInput", () => {
         outputSchema: '{"type":"object"}',
         outputRequired: true,
       },
+      notifications: {
+        __typename: "AgentAutomationNotifications",
+        email: "on_success",
+      },
       nextFireAt: null,
       lastFireAt: null,
       lastSessionId: null,
@@ -172,7 +184,9 @@ describe("toAutomationInput", () => {
     expect(values.agent).toBe("codex");
     expect(values.spendLimit).toBe("2.5");
     expect(values.schedule.weekdays).toEqual(["mon", "wed"]);
+    expect(values.emailNotifications).toBe("on_success");
     const input = toAutomationInput(values, { ifVersion: 3 });
+    expect(input.notifications).toEqual({ email: "on_success" });
     expect(input.template).toMatchObject({
       branch: "bex-agent/fixed",
       title: "Weekly",
@@ -251,6 +265,22 @@ describe("mapAutomationError (server refusals placed on their field)", () => {
         fallback,
       ).target,
     ).toBe("repo");
+  });
+
+  it("places a refused email setting on the email notifications field", () => {
+    expect(
+      mapAutomationError(
+        codedGraphQLError(
+          "AGENT_AUTOMATION_INVALID",
+          { field: "notifications.email" },
+          "notifications.email must be always, on_failure, on_success or never",
+        ),
+        fallback,
+      ),
+    ).toMatchObject({
+      target: "emailNotifications",
+      code: "AGENT_AUTOMATION_INVALID",
+    });
   });
 
   it("puts a taken name on the name but a stale version in the general slot", () => {

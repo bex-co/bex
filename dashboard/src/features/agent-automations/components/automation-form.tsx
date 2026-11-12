@@ -37,6 +37,11 @@ import {
   FormSection,
 } from "@/features/agent-automations/components/form-field";
 import { describedBy } from "@/features/agent-automations/lib/aria";
+import {
+  EMAIL_NOTIFICATIONS,
+  emailNotificationLabel,
+  isEmailNotification,
+} from "@/features/agent-automations/lib/display";
 import { SchedulePicker } from "@/features/agent-automations/components/schedule-picker";
 import {
   hasProblems,
@@ -67,10 +72,11 @@ interface AutomationFormProps {
 /**
  * The create and edit form (ADR101 D9): name, the schedule picker, then the
  * session each fire starts with the same task, repository, agent, spend-limit,
- * secrets and skills controls the /agents composer has. Shape errors are caught
- * here and shown beside their field; the server's named refusals (a schedule
- * too frequent, a missing spend limit, a taken name) are shown beside the field
- * they name, with the server's own wording.
+ * secrets and skills controls the /agents composer has, and which runs email
+ * the creator. Shape errors are caught here and shown beside their field; the
+ * server's named refusals (a schedule too frequent, a missing spend limit, a
+ * taken name, a bad email setting) are shown beside the field they name, with
+ * the server's own wording.
  */
 const subscribeNever = () => () => {};
 
@@ -176,6 +182,7 @@ export function AutomationForm({
   const taskError = fieldError("task");
   const repoError = fieldError("repo");
   const spendError = fieldError("spendLimit");
+  const emailError = fieldError("emailNotifications");
   const skillsError = fieldError("skills");
 
   return (
@@ -318,6 +325,44 @@ export function AutomationForm({
                 hasHelp: true,
               })}
             />
+          </FormField>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <FormField
+            id={id("email")}
+            label={t("agentAutomations.field.emailNotifications")}
+            help={t("agentAutomations.help.emailNotifications")}
+            error={emailError}
+          >
+            <Select
+              value={values.emailNotifications}
+              onValueChange={(email) => {
+                if (isEmailNotification(email)) {
+                  change({ emailNotifications: email });
+                }
+              }}
+              disabled={saving}
+            >
+              <SelectTrigger
+                id={id("email")}
+                className="w-full"
+                aria-invalid={emailError != null}
+                aria-describedby={describedBy(id("email"), {
+                  hasError: emailError != null,
+                  hasHelp: true,
+                })}
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EMAIL_NOTIFICATIONS.map((email) => (
+                  <SelectItem key={email} value={email}>
+                    {emailNotificationLabel(email, t)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </FormField>
         </div>
 

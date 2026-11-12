@@ -80,6 +80,7 @@ export type AgentAutomation = {
   lastSessionId: Maybe<Scalars['String']['output']>;
   name: Scalars['String']['output'];
   nextFireAt: Maybe<Scalars['String']['output']>;
+  notifications: AgentAutomationNotifications;
   overlapPolicy: Scalars['String']['output'];
   ownerId: Scalars['String']['output'];
   pausedReason: Maybe<Scalars['String']['output']>;
@@ -108,6 +109,8 @@ export type AgentAutomationInput = {
   /** Update only: refuse unless the automation is still at this version. */
   ifVersion?: InputMaybe<Scalars['Int']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
+  /** Which run outcomes email the creator; on create the default is {email: on_failure}. */
+  notifications?: InputMaybe<AgentAutomationNotificationsInput>;
   template?: InputMaybe<AgentAutomationTemplateInput>;
   /** Exactly one trigger, of type schedule. */
   triggers?: InputMaybe<Array<AgentAutomationTriggerInput>>;
@@ -118,6 +121,18 @@ export type AgentAutomationList = {
   automations: Array<AgentAutomation>;
   nextCursor: Maybe<Scalars['String']['output']>;
   ownerId: Scalars['String']['output'];
+};
+
+/** How an automation tells its creator about runs (w9/m343). */
+export type AgentAutomationNotifications = {
+  __typename: 'AgentAutomationNotifications';
+  /** always, on_failure, on_success or never: which run outcomes email the creator. */
+  email: Scalars['String']['output'];
+};
+
+export type AgentAutomationNotificationsInput = {
+  /** always, on_failure (the default), on_success or never. */
+  email: Scalars['String']['input'];
 };
 
 /** One fire of an automation (ADR101 D3, D7). */
@@ -3658,6 +3673,7 @@ export type PushNotificationClockRangeInput = {
 };
 
 export enum PushNotificationEvent {
+  AgentAutomationPaused = 'AGENT_AUTOMATION_PAUSED',
   AgentFailed = 'AGENT_FAILED',
   AgentNeedsDecision = 'AGENT_NEEDS_DECISION',
   AgentPrReady = 'AGENT_PR_READY',

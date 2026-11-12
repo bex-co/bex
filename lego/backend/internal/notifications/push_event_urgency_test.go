@@ -100,6 +100,7 @@ func TestProjectedPushUrgencyIsPublished(t *testing.T) {
 		agent(store.AgentSession{Phase: "completed", PRURL: "https://github.com/o/r/pull/1"}),
 		agent(store.AgentSession{Phase: "completed"}),
 		agent(store.AgentSession{Phase: "failed"}),
+		{projectAutomationPausePush(), true},
 	}
 	projected := map[DeliveryEvent]bool{}
 	for _, p := range projections {

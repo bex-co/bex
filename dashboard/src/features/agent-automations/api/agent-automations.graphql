@@ -44,6 +44,9 @@ fragment AgentAutomationFields on AgentAutomation {
     outputSchema
     outputRequired
   }
+  notifications {
+    email
+  }
   nextFireAt
   lastFireAt
   lastSessionId

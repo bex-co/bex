@@ -73,6 +73,9 @@ const (
 	DeliveryEventAgentNeedsDecision DeliveryEvent = "agent_needs_decision"
 	DeliveryEventAgentPRReady       DeliveryEvent = "agent_pr_ready"
 	DeliveryEventAgentFailed        DeliveryEvent = "agent_failed"
+	// DeliveryEventAgentAutomationPaused is the platform pausing an agent
+	// automation (w9/m343, ADR101 D7); only its creator receives it.
+	DeliveryEventAgentAutomationPaused DeliveryEvent = "agent_automation_paused"
 )
 
 // Managed-datastore events (w3/m82 t005). Their names come from eventvocab

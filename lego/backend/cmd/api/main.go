@@ -1588,6 +1588,17 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 			Mailer: n.Mailer, Identities: n.Identities, DashboardBaseURL: n.DashboardBaseURL,
 		}).Run(ctx)
 	}
+	// Agent automation emails (w9/m343, ADR101 D7): each run's outcome per the
+	// automation's email setting, and every platform auto-pause. It runs even
+	// without SMTP, so unmailed notices are consumed rather than mailed in bulk
+	// once mail is configured.
+	if st != nil {
+		w := &notifications.AutomationEmailWorker{Store: st}
+		if n := srv.Notifications; n != nil {
+			w.Mailer, w.Identities, w.DashboardBaseURL = n.Mailer, n.Identities, n.DashboardBaseURL
+		}
+		go w.Run(ctx)
+	}
 	// Native push (ADR048 D2): only an explicitly configured, startup-validated
 	// transport starts the event consumer. With config absent there is no client,
 	// no worker, no feed advancement, and no provider network traffic.
