@@ -392,12 +392,14 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 	if err != nil {
 		return mapStoreErr(err)
 	}
-	if app, bound, err := s.appBoundToCredential(ctx, workspaceID, cred); err != nil {
+	if app, err := s.appBoundToCredential(ctx, workspaceID, cred); err != nil {
 		return fmt.Errorf("checking registry credential %q for App bindings: %w", id, err)
-	} else if bound {
+	} else if app != nil {
+		// Named as the dashboard shows the service, not by its object name.
+		name, serviceID := core.DisplayedAppName(app), core.AppPublicID(app)
 		return core.NewConflictError("REGISTRY_CREDENTIAL_IN_USE",
-			fmt.Sprintf("registry credential %q is still used by service %q; remove it from the service first", id, app),
-			map[string]any{"appName": app})
+			fmt.Sprintf("registry credential %q is still used by service %q (%s); remove it from the service first", id, name, serviceID),
+			map[string]any{"serviceId": serviceID, "serviceName": name})
 	}
 	if err := s.Secret.Delete(ctx, secretPath(workspaceID, id)); err != nil {
 		return fmt.Errorf("delete registry credential secret: %w", err)

@@ -470,16 +470,48 @@ func TestDeleteRefusesWhileExplicitlyBound(t *testing.T) {
 	}
 	credID := created.ID
 	app := &appv1alpha1.App{
-		ObjectMeta: metav1.ObjectMeta{Name: "bound-app", Namespace: "default"},
+		ObjectMeta: metav1.ObjectMeta{Name: "tea-x-bound-app", Namespace: "default", Labels: map[string]string{
+			core.LabelServiceName: "bound-app", core.LabelAppID: "srv-0123456789abcdefghij",
+		}},
+		Spec: appv1alpha1.AppSpec{RegistryCredentialID: &credID, DisplayName: "Bound App"},
+	}
+	s := &Service{Base: &core.Base{Namespace: "default", Client: fakeK8sClient(app)}, Store: st, Secret: kv}
+
+	err = s.Delete(context.Background(), credID)
+	if !errors.Is(err, core.ErrConflict) {
+		t.Fatalf("Delete while explicitly bound = %v, want ErrConflict", err)
+	}
+	// w4/599: the service is named as the dashboard shows it, never by its
+	// object name.
+	if msg := err.Error(); !strings.Contains(msg, `service "Bound App" (srv-0123456789abcdefghij)`) || strings.Contains(msg, "tea-x-") {
+		t.Errorf("refusal = %q, want it to name Bound App (srv-0123456789abcdefghij)", msg)
+	}
+	if _, err := st.GetRegistryCredential(context.Background(), core.DefaultTenant, credID); err != nil {
+		t.Errorf("row must survive a refused delete: %v", err)
+	}
+}
+
+// TestDeleteProceedsOnceTheBoundServiceIsBeingDeleted is w4/599: a service
+// whose deletion has begun answers 404 everywhere and takes its pull Secret
+// with it, so it no longer holds the credential.
+func TestDeleteProceedsOnceTheBoundServiceIsBeingDeleted(t *testing.T) {
+	st := newFakeStore()
+	kv := newFakeSecretKV()
+	created, err := (&Service{Base: &core.Base{Namespace: "default"}, Store: st, Secret: kv}).Create(
+		context.Background(), CreateRequest{Host: "ghcr.io", Username: "alice", Secret: "hunter2"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	credID := created.ID
+	now := metav1.Now()
+	app := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: "going-app", Namespace: "default", DeletionTimestamp: &now, Finalizers: []string{"app.bex.co/finalizer"}},
 		Spec:       appv1alpha1.AppSpec{RegistryCredentialID: &credID},
 	}
 	s := &Service{Base: &core.Base{Namespace: "default", Client: fakeK8sClient(app)}, Store: st, Secret: kv}
 
-	if err := s.Delete(context.Background(), credID); !errors.Is(err, core.ErrConflict) {
-		t.Fatalf("Delete while explicitly bound = %v, want ErrConflict", err)
-	}
-	if _, err := st.GetRegistryCredential(context.Background(), core.DefaultTenant, credID); err != nil {
-		t.Errorf("row must survive a refused delete: %v", err)
+	if err := s.Delete(context.Background(), credID); err != nil {
+		t.Fatalf("Delete while the bound service is being deleted = %v, want success", err)
 	}
 }
 

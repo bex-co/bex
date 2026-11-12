@@ -372,7 +372,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
-- [ ] **599** — [Deleting a registry credential names the blocking service by its Kubernetes object name, and keeps refusing for ~25 s after that service was deleted and answers 404](599.md) (~25m; minor) ← live `/qa-find-bugs w4` loop round 170, 2026-11-12
+- [x] **599** — [Deleting a registry credential names the blocking service by its Kubernetes object name, and keeps refusing for ~25 s after that service was deleted and answers 404](done/599.md) (~25m; minor) ← live `/qa-find-bugs w4` loop round 170, 2026-11-12 — **DONE 2026-11-11**
 - [ ] **598** — [Does Render's `PUT …/autoscaling` with `enabled: false` store the body's range and targets? bex keeps the old settings and ignores the body](blocked/598.md) (~30m after the answer; minor) ← w4/597 `/simplify` review, `/loopx w4` 2026-11-11. — **BLOCKED (user: Render's answer to a `PUT …/autoscaling` with `enabled: false` and new values; checking it is a write on the reference account, which the read-only rule forbids — run it, or allow one probe)**
 - [x] **597** — [Turning autoscaling off forgets its instance range and targets, while Render keeps them for the next time it is turned on](done/597.md) (~1h; minor) ← found working w4/m335, `/loopx w4` 2026-11-11. — **DONE 2026-11-11**
 - [x] **596** — [A service read carries no `serviceDetails.autoscaling`, where Render's schema puts the policy, so a Render client sees autoscaling as unset on a service that has it on](done/596.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 164, 2026-11-12 — **DONE 2026-11-11**

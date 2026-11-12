@@ -270,8 +270,10 @@ func (s *Service) DeployPullSecretSource() pullSecretSource { return pullSecretS
 // would leave that App's derived <app>-registry-pull Secret live with a
 // now-unrecoverable password forever: the Secret carries no ownerRef (see
 // materializePullSecret's doc comment) and is only reaped on the App's own
-// delete, not the credential's (w4/029.md #12).
-func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, cred store.RegistryCredential) (string, bool, error) {
+// delete, not the credential's (w4/029.md #12). An App whose deletion has
+// begun no longer counts: the service is gone on every read, and its Secret
+// is reaped with it (w4/599).
+func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, cred store.RegistryCredential) (*appv1alpha1.App, error) {
 	var list appv1alpha1.AppList
 	opts := []client.ListOption{client.InNamespace(s.AppNamespace(workspaceID))}
 	// DefaultTenant is the legacy store-off/shared-namespace mode (mirrors
@@ -281,12 +283,13 @@ func (s *Service) appBoundToCredential(ctx context.Context, workspaceID string, 
 		opts = append(opts, client.MatchingLabels{core.LabelTenant: workspaceID})
 	}
 	if err := s.Client.List(ctx, &list, opts...); err != nil {
-		return "", false, err
+		return nil, err
 	}
-	for _, a := range list.Items {
-		if a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) == cred.ID {
-			return a.Name, true, nil
+	for i := range list.Items {
+		a := &list.Items[i]
+		if a.DeletionTimestamp == nil && a.Spec.RegistryCredentialID != nil && strings.TrimSpace(*a.Spec.RegistryCredentialID) == cred.ID {
+			return a, nil
 		}
 	}
-	return "", false, nil
+	return nil, nil
 }
