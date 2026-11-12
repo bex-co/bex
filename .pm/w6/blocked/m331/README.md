@@ -1,6 +1,6 @@
 # w6 · m331 — Agent sandboxes run on a Hetzner bare-metal node under Kata
 
-**Worker:** worker6 **Goal:** sandboxes run in microVMs on one Hetzner dedicated AX42-1 (ordered 2026-11-12; the planned AX42-1 was out of stock), so a build inside a sandbox runs at close to native speed and the scheduled routines finish, with the gVisor cloud node as overflow. **Status:** blocked — t001 done; t002 in progress: the AX42-1 was ordered 2026-11-12 and Hetzner is provisioning it. vSwitch #88064 is coupled to `bex` as `10.10.64.0/24`, CAPH accepts it, and the Robot webservice credentials are in `.env`.
+**Worker:** worker6 **Goal:** sandboxes run in microVMs on one Hetzner dedicated AX42-1 (ordered 2026-11-12; the planned EX44 was out of stock), so a build inside a sandbox runs at close to native speed and the scheduled routines finish, with the gVisor cloud node as overflow. **Status:** blocked — parked until 2026-12-12 (user, 2026-11-12: Hetzner's delivery is expected to take weeks). t001 done; t002 in progress: the AX42-1 was ordered 2026-11-12 and is not delivered yet. vSwitch #88064 is coupled to `bex` as `10.10.64.0/24`, CAPH accepts it, and the Robot webservice credentials are in `.env`.
 
 ## Tasks (in order)
 
