@@ -136,3 +136,20 @@ Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `6be581c67`. This is a part
   - `host=qa-20261112-r159-rb.onbex.co` → 2;
   - `host=nope.onbex.co` → 0.
 - **Not run:** a 503 line, the Metrics request count and latency (DoD 3), a static site (DoD 4), and GraphQL/MCP label agreement (DoD 5).
+
+## Post-release probe addendum (QA loop round 162, 2026-11-12): the rest of the DoD except MCP
+
+Same pin. Fixtures, both deleted afterwards (DELETE 204, then GET 404):
+
+- Free web service `qa-20261112-r162-web` (`srv-dbqj28a140ds739rb87g`), `docker.io/mendhak/http-https-echo:35`, `HTTP_PORT=8080`. This is the DoD's image.
+- Free static site `qa-20261112-r162-st` (`srv-dbqj28a140ds739rb85g`), `bex-co/bex` `examples/static-site`.
+
+- **DoD 1 passes for the 503 line.** `curl -H 'x-set-response-status-code: 503' …/qa-err`, then `GET /v1/logs?…&type=request&path=/qa-err`:
+  - `message` `clientIP="162.224.81.143" requestID="817a36de-…" responseTimeMS=9 responseBytes=982 userAgent="curl/8.7.1"`;
+  - labels `resource, method=GET, statusCode=503, host=qa-20261112-r162-web.onbex.co, path=/qa-err, level=error, type=request`.
+- **DoD 3:**
+  - filters: `statusCode=503` → 2 lines (the app's and the first-deploy activator's); `host=…` → 3;
+  - `GET /v1/metrics/http-requests?…&aggregateBy=statusCode` over the window → `200`: 1, `503`: 2, matching the three requests.
+  - **Latency observation, not filed:** `GET /v1/metrics/http-latency` returned `values: []` for those first three requests (after more than a minute). After 12 more requests, one point appeared (`03:25:57`, 7.7 ms), while `http-requests` showed two buckets (`03:25=3`, `03:26=12`). This may be the quantile window's alignment rather than a defect, and needs a closer look before anyone files it.
+- **DoD 4 passes.** The static site's request lines read the same way, e.g. `clientIP="…" requestID="…" responseTimeMS=49 responseBytes=10 userAgent="curl/8.7.1"` with `statusCode=404`, `path=/qa162-static`, `level=warning`. Whether static request lines should exist at all is w4/585.
+- **DoD 5, GraphQL agrees.** `logs(resource, type: "request", path: ["/qa-err"])` → the same `message`, with `method GET`, `statusCode 503`, `host`, `path /qa-err` and `level error`. **Not run:** MCP `list_logs`.
