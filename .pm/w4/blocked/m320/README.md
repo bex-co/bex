@@ -226,3 +226,13 @@ Pin `8330744bd643` contains `7dec58bb5`, but not t011's `f24e6e7f7`.
   - When the superseding deploy crash-looped (exit 3), the service read `Failed` everywhere, with no live row and no Rollback action, while its first release answered `200` throughout.
   - `releaseInFlight` never pins a prebuilt-image release, and the backend closes such a row `live` only when `activeRevision` names it.
   - Probes are in t012's round 157 addendum. All three fixtures were deleted (GET 404).
+
+## Post-release probe addendum (QA loop round 161, 2026-11-12): t011's digest bullet, two of three arms
+
+Pin `e7a56b07e0d7` contains `f24e6e7f7`.
+
+- On `qa-20261112-r161-rbd` (`srv-dbqiraq140ds739rb7v0`, Free, `traefik/whoami`, deleted afterwards), every row carried `image.sha`:
+  - three `imageUrl` deploys (v1.10.2 → v1.10.4);
+  - the rollback `dep-dbqivki140ds739rb83g` to v1.10.3's digest (`sha256:43a68d10…`, live 03:19:39).
+- **Not run:** the saved-image change plus a standard deploy, and the rest of this DoD (t006).
+

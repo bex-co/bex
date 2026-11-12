@@ -118,3 +118,19 @@ Signed in to `bex-canary` after the release pins this build, on an owned Free we
 - **Expected outcome:** during a health-check outage, the service's status and the saved-changes notice agree with the Deploys list, and a user knows to deploy to apply their saved change.
 - **Why now:** every health-check outage of every live service shows this, and it is exactly when a user is reading the status to decide what to do.
 - **Render parity included (t007):** REST, GraphQL, MCP and the dashboard read the changed status.
+
+## Post-release probe (QA loop round 161, 2026-11-12)
+
+Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `8f38a34dc`. This is a partial run of the DoD, recorded for t006; t006 stays todo.
+
+- **Fixture:** Free web service `qa-20261112-r161-hc` (`srv-dbqisea140ds739rb810`), created over REST from `docker.io/traefik/whoami:v1.10.1` with `healthCheckPath: "/health"`. First deploy `live` at 03:12:25. Deleted afterwards (DELETE 204, then GET 404).
+- **DoD 1 passes.** `PATCH /v1/services/{id} {"serviceDetails":{"healthCheckPath":"/api"}}` at 03:12:26 → 200. GraphQL `server { phase undeployedChanges undeployedChangesApplying }` → `Running`, `true`, `false`. Settings read "Saved changes aren't live yet. Use a standard deploy to apply them."
+- **DoD 2 passes (en).**
+  - `curl -X POST -d 500 …/health` at 03:12:51. `/` answered 503 from 03:13:10.
+  - At 03:13:41 GraphQL read `Running`, `true`, `false`. The header read "Service Running · Latest deploy: Live", and the Overview row read "Running". The notice was unchanged.
+  - Events showed "Instance failed — A running instance failed its health check."
+- **DoD 3 passes.**
+  - REST `/events`: `server_failed` 03:13:19 (`reason.unhealthy: "The instance failed its health check"`), then `server_available` 03:15:29.
+  - `GET …/instances` still lists the one instance `…-ruhev6ibkllg5qc4725l` (created 03:11:03), restarted in place. `/` and `/health` answered 200 again at 03:17:08.
+- **Not run:** the zh strings, and DoD 4's controls (a Manual Deploy reading Deploying; a Free wake).
+
