@@ -35,6 +35,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **m346** — [Coordinator tools: a parent session waits for, messages and cancels its children from inside its sandbox](m346/README.md) (8 tasks) ← from `/pm-brainstorm more for w9` 2026-11-11, filed by `/pmx` 2026-11-12
 - [x] **084** — [The mobile app drops the `agent_automation_paused` push](done/084.md) ← w9/m343 t003 follow-up — **DONE** 2026-11-12
 - [ ] **085** — [A `/bex` comment on any pull request starts an agent session on it](085.md) ← w9/m344 follow-up (Devin `/devin`)
+- [ ] **086** — [An automation link opens in the browser's current workspace, not the automation's](086.md) ← w9/084 review follow-up
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
 - [x] **081** — [Approval mode for codex sessions (withdrawn)](done/081.md) — withdrawn 2026-11-07 with ADR100; removed by m179
 - [x] **082** — [Settings: the Team card skeleton is shorter than the ready card](done/082.md) ← w9 final skeleton check 2026-11-06

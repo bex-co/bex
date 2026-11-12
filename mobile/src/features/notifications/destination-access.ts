@@ -15,6 +15,7 @@ export function notificationActions(item: {
   )
     actions.push("can_operate");
   if (
+    item.route.startsWith("/automations/") ||
     item.event === "agent_needs_decision" ||
     item.event === "agent_automation_paused"
   )

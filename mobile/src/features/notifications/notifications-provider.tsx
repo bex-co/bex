@@ -25,8 +25,8 @@ import { useNetworkState } from "@/common/apollo/network-state";
 import { authManager, useAuth } from "@/features/auth/auth-provider";
 import { mobileConfig } from "@/features/auth/config";
 import {
+  isDashboardRoute,
   notificationMatchesBinding,
-  notificationWebURL,
   parseNotificationEnvelope,
   type NotificationEnvelope,
   type NotificationRoute,
@@ -49,9 +49,11 @@ function openRoute(
   router: ReturnType<typeof useRouter>,
   route: NotificationRoute,
 ): void {
-  const url = notificationWebURL(route, mobileConfig.dashboardOrigin);
-  if (url) void Linking.openURL(url).catch(() => undefined);
-  else router.push(route);
+  if (isDashboardRoute(route)) {
+    void Linking.openURL(mobileConfig.dashboardOrigin + route).catch(
+      () => undefined,
+    );
+  } else router.push(route);
 }
 
 type NotificationsContextValue = {

@@ -21,12 +21,13 @@ export const notificationEvents = [
 ] as const;
 
 export type NotificationEvent = (typeof notificationEvents)[number];
+type DashboardRoute = `/automations/aut-${string}`;
 export type NotificationRoute =
   | `/services/srv-${string}`
   | `/databases/dpg-${string}`
   | `/key-values/red-${string}`
   | `/sessions/ags-${string}`
-  | `/automations/aut-${string}`;
+  | DashboardRoute;
 
 export type NotificationEnvelope = {
   schema: "bex.notification.v1";
@@ -95,11 +96,10 @@ export function parseNotificationEnvelope(
 
 // The app has no automations screen, so an automation's route opens its page
 // on the dashboard; every other route is an app screen.
-export function notificationWebURL(
+export function isDashboardRoute(
   route: NotificationRoute,
-  dashboardOrigin: string,
-): string | null {
-  return route.startsWith("/automations/") ? dashboardOrigin + route : null;
+): route is DashboardRoute {
+  return route.startsWith("/automations/");
 }
 
 export function notificationMatchesBinding(
