@@ -98,6 +98,48 @@ test("a steering turn's overlay names the existing PR and asks for a whole-branc
   );
 });
 
+test("a takeover pushes its own branch and fast-forwards the person's PR with the tool", () => {
+  const takeover = {
+    ...repoContext,
+    deliveryBaseline: { baseBranch: "feature/fix-login" },
+    existingPrUrl: "https://github.com/acme/widgets/pull/7",
+    existingPrNumber: 7,
+    prTakeover: true,
+  };
+  const text = platformOverlay(takeover);
+  assert.match(
+    text,
+    /You took over pull request #7 \(https:\/\/github\.com\/acme\/widgets\/pull\/7\), which a person opened\. Your branch `bex-agent\/ags-abc` started from its branch `feature\/fix-login`\./,
+  );
+  assert.match(
+    text,
+    /Pushing `bex-agent\/ags-abc` does not change the pull request: `open_or_update_draft_pr` brings it up to date by fast-forwarding `feature\/fix-login`/,
+  );
+  assert.match(text, /git push origin HEAD:bex-agent\/ags-abc/);
+  assert.match(text, /Do not force-push, and do not rebase or amend pushed commits/);
+  assert.match(
+    text,
+    /`pr_branch_diverged`.*`git fetch origin feature\/fix-login && git merge FETCH_HEAD`/,
+  );
+  assert.match(
+    text,
+    /leaves the pull request's title, description and draft or ready state as they are/,
+  );
+  assert.match(text, /call `reply_on_pull_request` with what you changed/);
+  assert.match(text, /a `\/bex` comment on pull request #7/);
+  assert.doesNotMatch(text, /The deliverable is a draft pull request/);
+  assert.doesNotMatch(text, /Leave the pull request as a draft/);
+  assert.doesNotMatch(text, /already opened draft pull request/);
+  assert.doesNotMatch(text, /\b(MUST|NEVER|ALWAYS|IMPORTANT|CRITICAL)\b/);
+  // Without a recorded PR the flag changes nothing: the draft-PR overlay stays.
+  const unrecorded = platformOverlay({
+    ...takeover,
+    existingPrUrl: "",
+    existingPrNumber: null,
+  });
+  assert.match(unrecorded, /The deliverable is a draft pull request/);
+});
+
 test("a repo-less session gets the scratch overlay without Git delivery", () => {
   const text = platformOverlay({
     ...repoContext,

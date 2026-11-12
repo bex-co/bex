@@ -92,6 +92,7 @@ const toolDescription =
   "The title and body you send replace the existing ones, so they must describe every commit on the branch since the base " +
   "(run `git log <base>..HEAD`), including work from earlier turns, not only this turn's change. " +
   "The head and base branches are fixed by the platform, and the bex footer is appended automatically. " +
+  "When this session took over a person's pull request, it instead fast-forwards that pull request's branch to your pushed commits (takenOver: true) and leaves its title, body and draft state as they are. " +
   "If it returns an error, report that error to the user; do not try other ways to create a pull request.";
 
 const toolDefinition = {
@@ -123,6 +124,9 @@ interface PullRequestResult {
   number: number;
   created: boolean;
   headSha: string;
+  // Set when the session took this pull request over: the verb fast-forwarded
+  // its branch to headSha and changed nothing else on it.
+  takenOver?: true;
 }
 
 type ToolOutcome =
@@ -183,7 +187,10 @@ function upstreamError(message: string): ToolOutcome {
 
 function asResult(value: unknown): PullRequestResult | undefined {
   if (!value || typeof value !== "object") return undefined;
-  const { url, number, created, headSha } = value as Record<string, unknown>;
+  const { url, number, created, headSha, takenOver } = value as Record<
+    string,
+    unknown
+  >;
   if (typeof url !== "string" || !url || typeof number !== "number") {
     return undefined;
   }
@@ -192,6 +199,7 @@ function asResult(value: unknown): PullRequestResult | undefined {
     number,
     created: created === true,
     headSha: typeof headSha === "string" ? headSha : "",
+    ...(takenOver === true ? { takenOver: true as const } : {}),
   };
 }
 

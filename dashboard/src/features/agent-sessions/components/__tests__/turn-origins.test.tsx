@@ -19,8 +19,8 @@ const REVIEW_URL =
 const COMMENT_URL = "https://github.com/acme/widgets/pull/7#issuecomment-22";
 const RUN_URL = "https://github.com/acme/widgets/actions/runs/33";
 
-function lines() {
-  const list = screen.getByRole("list", { name: "What steered this turn" });
+function lines(name = "What steered this turn") {
+  const list = screen.getByRole("list", { name });
   return within(list).getAllByRole("listitem");
 }
 
@@ -123,6 +123,62 @@ describe("TurnOrigins (w9/m344)", () => {
       />,
     );
     expect(container).toBeEmptyDOMElement();
+  });
+
+  it("names the /bex comment that started the session on turn 1 (w9/m348)", () => {
+    const { rerender } = render(
+      <TurnOrigins
+        origins={[
+          { turn: 1, kind: "pr_comment", author: "bob", url: COMMENT_URL },
+        ]}
+      />,
+    );
+    const list = screen.getByRole("list", {
+      name: "What started this session",
+    });
+    expect(
+      within(list).getByRole("link", { name: "Started from @bob's comment" }),
+    ).toHaveAttribute("href", COMMENT_URL);
+    rerender(
+      <TurnOrigins
+        origins={[{ turn: 1, kind: "pr_comment", author: "", url: null }]}
+      />,
+    );
+    expect(
+      lines("What started this session").map((line) => line.textContent),
+    ).toEqual(["Started from a PR comment"]);
+    // A comment on a later turn is still a steer.
+    rerender(
+      <TurnOrigins
+        origins={[
+          { turn: 2, kind: "pr_comment", author: "bob", url: COMMENT_URL },
+        ]}
+      />,
+    );
+    expect(lines().map((line) => line.textContent)).toEqual([
+      "Steered by a PR comment from @bob",
+    ]);
+  });
+
+  it("words the starting comment in zh", async () => {
+    await i18n.changeLanguage("zh");
+    try {
+      render(
+        <TurnOrigins
+          origins={[
+            { turn: 1, kind: "pr_comment", author: "bob", url: COMMENT_URL },
+          ]}
+        />,
+      );
+      const list = screen.getByRole("list", { name: "发起本会话的来源" });
+      expect(
+        within(list)
+          .getAllByRole("listitem")
+          .map((line) => line.textContent),
+      ).toEqual(["由 @bob 的评论发起"]);
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("words every kind in zh", async () => {

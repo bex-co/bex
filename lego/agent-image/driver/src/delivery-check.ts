@@ -42,6 +42,9 @@ export interface GitFacts {
   prRecorded: boolean;
   prUrl: string;
   prNumber: number | null;
+  // A takeover session's pull request does not have the session branch's
+  // pushed head yet: pushing alone does not update it.
+  prBehind: boolean;
 }
 
 // DeliveryStatus is the status file's `git` object: the facts after the final
@@ -59,7 +62,38 @@ export interface DeliveryCheckConfig {
   prRecordPath: string;
   existingPrUrl?: string;
   existingPrNumber?: number | null;
+  // The session took over the pull request whose branch is baseBranch.
+  prTakeover?: boolean;
   deliveryBaseline?: DeliveryBaseline;
+}
+
+// prLacksPushedHead reports whether a taken-over pull request's branch does
+// not contain the session branch's pushed head. Unknown (a failed probe, or a
+// branch that moved to a commit not fetched here) reads as not lacking it, so
+// the agent is never nudged on a guess.
+async function prLacksPushedHead(
+  config: DeliveryCheckConfig,
+  remoteHead: string,
+): Promise<boolean> {
+  const prBranch = config.deliveryBaseline?.baseBranch || config.baseBranch;
+  if (!config.prTakeover || !prBranch || !remoteHead) return false;
+  const prHead = await remoteOid(config.cwd, config.repoUrl, prBranch, {
+    retry: false,
+  }).catch(() => "");
+  if (!prHead || prHead === remoteHead) return false;
+  if (!(await hasCommit(config.cwd, prHead))) return false;
+  if (!(await hasCommit(config.cwd, remoteHead))) return false;
+  try {
+    await git(config.cwd, [
+      "merge-base",
+      "--is-ancestor",
+      remoteHead,
+      prHead,
+    ]);
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 async function readPrRecord(
@@ -138,6 +172,7 @@ export async function readGitFacts(
     prRecorded: record.url !== "",
     prUrl: record.url,
     prNumber: record.number,
+    prBehind: await prLacksPushedHead(config, remoteHead),
   };
 }
 
@@ -160,12 +195,25 @@ export function undeliveredFacts(
       `origin/${config.branch} has pushed commits but no draft pull request was recorded`,
     );
   }
+  if (facts.prBehind) {
+    const number = facts.prNumber ? ` #${facts.prNumber}` : "";
+    reasons.push(
+      `pull request${number} does not have the commits pushed to origin/${config.branch} yet`,
+    );
+  }
   return reasons;
 }
 
-export function deliveryNudge(reasons: string[], branch: string): string {
+export function deliveryNudge(
+  reasons: string[],
+  branch: string,
+  takeover = false,
+): string {
+  const deliver = takeover
+    ? `bring the pull request up to date with \`${toolName}\``
+    : `open or update the draft pull request with \`${toolName}\``;
   return (
     `Your changes are not fully delivered: ${reasons.join("; ")}. ` +
-    `Commit, push with \`git push origin HEAD:${branch}\` and open or update the draft pull request with \`${toolName}\`, or explain why not.`
+    `Commit, push with \`git push origin HEAD:${branch}\` and ${deliver}, or explain why not.`
   );
 }

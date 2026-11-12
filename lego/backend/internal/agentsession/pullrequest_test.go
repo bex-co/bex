@@ -44,6 +44,44 @@ type fakeForge struct {
 	prs       map[string]*github.PullRequest
 	bodies    map[int]string
 	comments  []forgeComment
+	// existing is a person's pull request a takeover session works on;
+	// sessionHead is its session branch's head on GitHub ("" when not
+	// pushed), diverged makes the fast-forward refuse, and moved records the
+	// branch and commit it fast-forwarded.
+	existing    github.PullRequestDetail
+	sessionHead string
+	diverged    bool
+	protected   bool
+	reads       int
+	moved       []string
+}
+
+func (f *fakeForge) GetPullRequest(_ context.Context, _ int64, _, _ string, number int) (github.PullRequestDetail, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.reads++
+	if f.err != nil {
+		return github.PullRequestDetail{}, f.err
+	}
+	if number != f.existing.Number {
+		return github.PullRequestDetail{}, &github.APIError{Status: http.StatusNotFound}
+	}
+	return f.existing, nil
+}
+
+func (f *fakeForge) FastForwardBranch(_ context.Context, _ int64, _, _, branch, from string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	switch {
+	case f.sessionHead == "":
+		return "", github.ErrHeadBranchNotFound
+	case f.diverged:
+		return "", github.ErrNotFastForward
+	case f.protected:
+		return "", github.ErrBranchUpdateRefused
+	}
+	f.moved = append(f.moved, branch+"<-"+from+"@"+f.sessionHead)
+	return f.sessionHead, nil
 }
 
 // forgeComment is one comment the comment verb posted.

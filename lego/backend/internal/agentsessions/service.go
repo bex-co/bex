@@ -479,6 +479,9 @@ func validateCreate(req *CreateRequest) error {
 	// PR delivery (driverEnv sets BEX_AGENT_DELIVER=0, and a turn that pushes
 	// nothing completes as an honest no-op). A branch is meaningless here.
 	if strings.TrimSpace(req.Repo) == "" {
+		if req.Takeover != nil {
+			return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "a pull request takeover needs its repository", map[string]any{"field": "repo"})
+		}
 		req.Repo = ""
 		req.Branch = ""
 		return nil
@@ -492,6 +495,11 @@ func validateCreate(req *CreateRequest) error {
 	if branch != "" {
 		if err := agentsession.ValidateBranch(branch); err != nil {
 			return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch must start with bex-agent/", map[string]any{"field": "branch"})
+		}
+	}
+	if req.Takeover != nil {
+		if err := req.Takeover.validate(); err != nil {
+			return err
 		}
 	}
 	req.Repo = repository
@@ -637,7 +645,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	record, err := s.Store.CreateAgentSession(ctx, store.AgentSession{
+	row := store.AgentSession{
 		WorkspaceID:   workspaceID,
 		Repo:          req.Repo,
 		Branch:        req.Branch,
@@ -654,7 +662,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		InitialOutput:  output,
 		InitialSkills:  skills,
 		AdmissionLimit: admission.limit, AdmissionCount: admission.count,
-	})
+	}
+	req.Takeover.apply(&row)
+	record, err := s.Store.CreateAgentSession(ctx, row)
 	if errors.Is(err, store.ErrAgentSessionAdmissionLimit) {
 		return View{}, admission.refusal(admission.limit)
 	}
@@ -1542,6 +1552,13 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 		env["BEX_AGENT_PR_URL"] = record.PRURL
 		env["BEX_AGENT_PR_NUMBER"] = fmt.Sprintf("%d", record.PRNumber)
 	}
+	// A takeover's branch starts from the head of the pull request it took
+	// over, and its overlay explains that the PR verb, not the push, brings
+	// that pull request up to date.
+	if deliver == "1" && record.IsTakeover() {
+		env[envPRTakeover] = "1"
+		env[envBaseBranch] = record.TakeoverHeadRef
+	}
 	// ADR095 D6: every session may hand the user files through its Pod-bound
 	// share URL once the attachments store exists; repo-less sessions too.
 	if s.attachmentsEnabled() {
@@ -1990,6 +2007,15 @@ func viewOf(record store.AgentSession) (View, error) {
 }
 
 func mapStoreError(id string, err error) error {
+	if errors.Is(err, store.ErrAgentSessionPullRequestOwned) {
+		// A takeover create or unarchive while another live session works on
+		// the pull request: one live session per pull request.
+		var params map[string]any
+		if id != "" {
+			params = map[string]any{"id": id}
+		}
+		return core.NewConflictError(codePullRequestOwned, "another live session already works on this pull request", params)
+	}
 	if errors.Is(err, store.ErrAgentSessionPromptQuota) {
 		return core.NewConflictError("AGENT_SESSION_PROMPT_QUOTA", "agent session prompt history has reached its byte limit", map[string]any{"id": id, "maxBytes": store.MaxAgentSessionPromptBytes})
 	}

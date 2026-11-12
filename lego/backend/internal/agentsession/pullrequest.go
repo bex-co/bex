@@ -89,6 +89,12 @@ const (
 	PullRequestUpstreamError   = "upstream_error"
 	PullRequestRateLimited     = "rate_limited"
 	PullRequestUnavailable     = "unavailable"
+	// PullRequestBranchDiverged, PullRequestBranchProtected and
+	// PullRequestClosed refuse a takeover session's fast-forward of the pull
+	// request it took over; only the first clears by merging and retrying.
+	PullRequestBranchDiverged  = "pr_branch_diverged"
+	PullRequestBranchProtected = "pr_branch_protected"
+	PullRequestClosed          = "pull_request_closed"
 )
 
 // noOtherRoute ends every hint: the agent must not go looking for a token, the
@@ -130,6 +136,12 @@ func NewPullRequestError(code, message string) *PullRequestError {
 		status, hint = http.StatusTooManyRequests, "Wait and call this tool again later; do not call it in a loop."
 	case PullRequestUnavailable:
 		status, hint = http.StatusServiceUnavailable, "The pull-request service is unavailable; tell the user the branch is pushed but the pull request could not be opened."
+	case PullRequestBranchDiverged:
+		status, hint = http.StatusConflict, "Someone pushed to the pull request's branch since your branch started from it. Merge it into your branch as the message says (never rebase or force-push), push, and call this tool again."
+	case PullRequestClosed:
+		status, hint = http.StatusConflict, "The pull request was closed or merged. Tell the user; your commits stay on the session branch."
+	case PullRequestBranchProtected:
+		status, hint = http.StatusForbidden, "Do not call this tool again for it. Tell the user the pull request could not be updated and name your session branch, which has your commits."
 	}
 	return &PullRequestError{Status: status, Code: code, Message: message, Hint: hint + noOtherRoute}
 }
@@ -185,17 +197,22 @@ type PullRequestRequest struct {
 }
 
 // PullRequestResponse is what the sandbox receives. It never carries a token.
+// TakenOver marks the pull request a takeover session works on: the verb
+// fast-forwarded its branch to HeadSHA and changed nothing else on it.
 type PullRequestResponse struct {
-	URL     string `json:"url"`
-	Number  int    `json:"number"`
-	Created bool   `json:"created"`
-	HeadSHA string `json:"headSha"`
+	URL       string `json:"url"`
+	Number    int    `json:"number"`
+	Created   bool   `json:"created"`
+	HeadSHA   string `json:"headSha"`
+	TakenOver bool   `json:"takenOver,omitempty"`
 }
 
-// PullRequestGitHub opens or updates the draft PR and comments on it
-// (*github.Client).
+// PullRequestGitHub opens or updates the draft PR, brings a taken-over one up
+// to date, and comments on it (*github.Client).
 type PullRequestGitHub interface {
 	SyncDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string) (github.DraftPullRequestResult, error)
+	GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error)
+	FastForwardBranch(ctx context.Context, installationID int64, owner, repo, branch, from string) (string, error)
 	CreateIssueComment(ctx context.Context, installationID int64, owner, repo string, number int, body string) (string, error)
 }
 
@@ -251,7 +268,10 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 		return PullRequestResponse{}, refusal
 	}
 	session := target.session
-	body := PullRequestBodyWithFooter(req.Body, sessionProfile(session), p.sessionURL(session.ID), session.ID)
+	if session.IsTakeover() {
+		return p.fastForwardTakenOver(ctx, target)
+	}
+	body := PullRequestBodyWithFooter(req.Body, sessionProfile(session), sessionDashboardURL(p.DashboardURL, session.ID), session.ID)
 	result, err := p.GitHub.SyncDraftPullRequest(ctx, target.installationID, target.owner, target.name, session.Branch, strings.TrimSpace(req.Title), body)
 	switch {
 	case errors.Is(err, github.ErrHeadBranchNotFound):
@@ -269,6 +289,52 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 		log.Printf("agent-session pull request: record on session failed (session=%s pr=%s): %v", session.ID, result.HTMLURL, recErr)
 	}
 	return PullRequestResponse{URL: result.HTMLURL, Number: result.Number, Created: result.Created, HeadSHA: result.HeadSHA}, nil
+}
+
+// fastForwardTakenOver is the PR verb of a session a `/bex` comment handed a
+// person's pull request. The session pushes only its own bex-agent/ branch;
+// this verb moves the pull request's head branch to what the session pushed,
+// as a fast-forward only. GitHub refuses anything else, so a rebase or
+// force-push of the session branch can never rewrite the pull request's
+// history. It opens no pull request and never touches the title, body or
+// draft state, which belong to the person who opened it.
+func (p *PullRequester) fastForwardTakenOver(ctx context.Context, target pullRequestTarget) (PullRequestResponse, error) {
+	session := target.session
+	pr, err := p.GitHub.GetPullRequest(ctx, target.installationID, target.owner, target.name, session.TakeoverPR)
+	if err != nil {
+		return PullRequestResponse{}, NewPullRequestError(PullRequestUpstreamError, "GitHub could not read the pull request this session took over")
+	}
+	if pr.Number != session.TakeoverPR || pr.HTMLURL == "" || pr.HeadRef != session.TakeoverHeadRef {
+		return PullRequestResponse{}, NewPullRequestError(PullRequestUpstreamError, "GitHub returned a different pull request than the one this session took over")
+	}
+	if pr.State != "open" {
+		return PullRequestResponse{}, NewPullRequestError(PullRequestClosed, fmt.Sprintf("pull request #%d is no longer open, so its branch was left as it is", pr.Number))
+	}
+	// The same rules the takeover was admitted under, re-read: never the
+	// default branch, never a branch outside the session's repository.
+	if pr.HeadRef == pr.DefaultBranch || !strings.EqualFold(pr.HeadRepo, target.repository) || !strings.EqualFold(pr.BaseRepo, target.repository) {
+		return PullRequestResponse{}, NewPullRequestError(PullRequestBranchProtected, fmt.Sprintf("pull request #%d's branch is the default branch or lives in another repository, so bex cannot update it", pr.Number))
+	}
+	sha, err := p.GitHub.FastForwardBranch(ctx, target.installationID, target.owner, target.name, pr.HeadRef, session.Branch)
+	switch {
+	case errors.Is(err, github.ErrHeadBranchNotFound):
+		refusal := NewPullRequestError(PullRequestBranchNotPushed, "the session branch "+session.Branch+" does not exist on GitHub yet")
+		refusal.Hint = branchNotPushedHint(session.Branch) + noOtherRoute
+		return PullRequestResponse{}, refusal
+	case errors.Is(err, github.ErrNotFastForward):
+		return PullRequestResponse{}, NewPullRequestError(PullRequestBranchDiverged, fmt.Sprintf(
+			"%s has commits the session branch does not: run `git fetch origin %s && git merge FETCH_HEAD`, push %s again, then call this tool again",
+			pr.HeadRef, pr.HeadRef, session.Branch))
+	case errors.Is(err, github.ErrBranchUpdateRefused):
+		return PullRequestResponse{}, NewPullRequestError(PullRequestBranchProtected, fmt.Sprintf(
+			"the pull request's branch %s is protected; bex cannot update it, and your commits stay on %s", pr.HeadRef, session.Branch))
+	case err != nil:
+		return PullRequestResponse{}, NewPullRequestError(PullRequestUpstreamError, "GitHub refused or failed the pull request branch update")
+	}
+	if recErr := p.Sessions.RecordAgentSessionPullRequest(ctx, session.ID, pr.HTMLURL, pr.Number, sha); recErr != nil {
+		log.Printf("agent-session pull request: record taken-over head failed (session=%s pr=%s): %v", session.ID, pr.HTMLURL, recErr)
+	}
+	return PullRequestResponse{URL: pr.HTMLURL, Number: pr.Number, HeadSHA: sha, TakenOver: true}, nil
 }
 
 // pullRequestTarget is what both PR-side verbs act on, all of it read from the
@@ -317,8 +383,23 @@ func (p *PullRequester) sessionTarget(ctx context.Context, req MintRequest, refu
 	return target, nil
 }
 
-func (p *PullRequester) sessionURL(sessionID string) string {
-	return resourcemeta.Config{DashboardBaseURL: p.DashboardURL}.DashboardURL(agentSessionDashboardRoute, sessionID)
+// sessionDashboardURL is the session's page on the dashboard at dashboardURL
+// (BEX_DASHBOARD_URL); "" when that is empty or invalid.
+func sessionDashboardURL(dashboardURL, sessionID string) string {
+	return resourcemeta.Config{DashboardBaseURL: dashboardURL}.DashboardURL(agentSessionDashboardRoute, sessionID)
+}
+
+// SessionReference is how GitHub text points at a session: a Markdown link
+// to its dashboard page, or its id when no dashboard URL is configured.
+func SessionReference(dashboardURL, sessionID string) string {
+	return sessionLink(sessionDashboardURL(dashboardURL, sessionID), sessionID)
+}
+
+func sessionLink(sessionURL, sessionID string) string {
+	if sessionURL == "" {
+		return "session `" + sessionID + "`"
+	}
+	return "[view session](" + sessionURL + ")"
 }
 
 func (p *PullRequester) now() time.Time {
@@ -365,11 +446,7 @@ func withAgentFooter(body, attribution, profile, sessionURL, sessionID string) s
 		body = strings.TrimRight(body[:i], " \t\r\n") + "\n\n" + dropFooterLines(body[i+len(PullRequestFooterMarker):])
 	}
 	body = strings.TrimRight(body, " \t\r\n")
-	link := "session `" + sessionID + "`"
-	if sessionURL != "" {
-		link = "[view session](" + sessionURL + ")"
-	}
-	footer := PullRequestFooterMarker + "\n---\n" + attribution + " (" + profile + ") · " + link
+	footer := PullRequestFooterMarker + "\n---\n" + attribution + " (" + profile + ") · " + sessionLink(sessionURL, sessionID)
 	if strings.TrimSpace(body) == "" {
 		return footer
 	}

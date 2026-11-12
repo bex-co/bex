@@ -19,6 +19,7 @@ package agentcred
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -47,6 +48,16 @@ func (f *prForge) CreateIssueComment(_ context.Context, _ int64, owner, repo str
 	f.calls++
 	f.comments = append(f.comments, number)
 	return "https://github.com/" + owner + "/" + repo + "/pull/" + strconv.Itoa(number) + "#issuecomment-1", nil
+}
+
+// GetPullRequest and FastForwardBranch serve only takeover sessions, which
+// these gateway tests do not run; reaching them is a test failure.
+func (f *prForge) GetPullRequest(context.Context, int64, string, string, int) (github.PullRequestDetail, error) {
+	return github.PullRequestDetail{}, errors.New("no taken-over pull request in the gateway tests")
+}
+
+func (f *prForge) FastForwardBranch(context.Context, int64, string, string, string, string) (string, error) {
+	return "", errors.New("no taken-over pull request in the gateway tests")
 }
 
 func (f *prForge) SyncDraftPullRequest(_ context.Context, _ int64, owner, repo, head, _, _ string) (github.DraftPullRequestResult, error) {

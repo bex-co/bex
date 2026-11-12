@@ -96,6 +96,10 @@ export interface AgentDriverConfig {
   // re-dispatched sandbox updates it rather than describing only its own turn.
   existingPrUrl: string;
   existingPrNumber: number | null;
+  // The session took over that pull request from the person who opened it:
+  // its branch started from the pull request's branch (BEX_AGENT_BASE_BRANCH),
+  // which the PR tool fast-forwards to the pushed session branch.
+  prTakeover: boolean;
   exitAfterTurn: boolean;
   turnTimeoutMs: number;
   credentialEnvName: string;
@@ -352,6 +356,7 @@ export function loadConfig(
     existingPrNumber:
       optionalNonNegativeInt(env.BEX_AGENT_PR_NUMBER, "BEX_AGENT_PR_NUMBER") ||
       null,
+    prTakeover: env.BEX_AGENT_PR_TAKEOVER === "1" && Boolean(env.BEX_AGENT_PR_URL),
     exitAfterTurn: env.BEX_AGENT_EXIT_AFTER_TURN === "1",
     turnTimeoutMs: positiveMilliseconds(env.BEX_AGENT_TURN_TIMEOUT_MS),
     credentialEnvName,

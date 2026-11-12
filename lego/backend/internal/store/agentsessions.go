@@ -218,6 +218,25 @@ type AgentSession struct {
 	// CreatedBy is the subject that created the session (ADR102 D9): the
 	// authority its in-sandbox spawn acts with. Empty for older rows.
 	CreatedBy string
+	// TakeoverPR is the pull request a `/bex` comment handed the session
+	// (ADR047 D11), 0 for every other session, and TakeoverHeadRef that pull
+	// request's head branch. The session still works on its own bex-agent/
+	// Branch, started from that head; its PR verb fast-forwards
+	// TakeoverHeadRef to it. Set at create (with PRNumber, PRURL and HeadSHA)
+	// by the internal PR intake only, and never changed.
+	TakeoverPR      int
+	TakeoverHeadRef string
+	// InitialOrigin is create-only input: the comment that started a takeover
+	// session, stored in the same transaction as PR feedback delivered by turn
+	// 1, so the session's turn origins show it and a redelivery of the comment
+	// queues nothing. Never scanned.
+	InitialOrigin *AgentSessionFeedback
+	// TakeoverScope is create-only input: the workspaces whose sessions count
+	// as already owning TakeoverPR. The create is refused with
+	// ErrAgentSessionPullRequestOwned when one of them has a live session on
+	// it, checked under a per-pull-request advisory lock so two concurrent
+	// `/bex` comments start one session. Never scanned.
+	TakeoverScope []string
 	// IdempotencyKey and IdempotencyHash are create-only input (ADR094 D4): the
 	// client's key and the digest of its normalized request. Not scanned by
 	// scanAgentSession; FindAgentSessionByIdempotencyKey reads the hash back.
@@ -239,8 +258,16 @@ type AgentSession struct {
 	AdmissionCount AgentSessionCount
 }
 
+// IsTakeover reports whether a `/bex` comment handed the session a pull
+// request to take over.
+func (s AgentSession) IsTakeover() bool { return s.TakeoverPR > 0 }
+
 // ErrAgentSessionAdmissionLimit is a create refused at its AdmissionLimit.
 var ErrAgentSessionAdmissionLimit = errors.New("agent session admission limit reached")
+
+// ErrAgentSessionPullRequestOwned is a takeover create refused because a live
+// session in its scope already works on the pull request.
+var ErrAgentSessionPullRequestOwned = errors.New("a session already works on this pull request")
 
 // ActiveAgentSessionPhases are the non-terminal phases a workspace's session
 // counts are taken over (agentsessions.activePhases; a test there keeps the
@@ -283,7 +310,7 @@ const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandb
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
-	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by`
+	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
@@ -291,7 +318,7 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
-		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy)
+		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef)
 	return s, err
 }
 
@@ -303,6 +330,11 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 	// an LLM caller should not have to invent a name that passes the prefix rule.
 	if in.Repo != "" && in.Branch == "" {
 		in.Branch = DefaultAgentBranchPrefix + in.ID
+	}
+	// A takeover records its pull request from the start, so its feedback and
+	// CI find the session.
+	if in.IsTakeover() && (in.Repo == "" || in.TakeoverHeadRef == "" || in.PRNumber != in.TakeoverPR) {
+		return AgentSession{}, fmt.Errorf("%w: a takeover session needs its repository and pull request", ErrInvalid)
 	}
 	if len(in.AgentConfig) == 0 {
 		in.AgentConfig = json.RawMessage(`{}`)
@@ -330,6 +362,15 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 			in.RootSessionID, in.Depth = lineage.root, lineage.depth
 		}
+		if in.IsTakeover() {
+			scope := in.TakeoverScope
+			if len(scope) == 0 {
+				scope = []string{in.WorkspaceID}
+			}
+			if err := lockUnownedPullRequest(ctx, tx, in.Repo, in.TakeoverPR, scope, ""); err != nil {
+				return err
+			}
+		}
 		if in.IdempotencyKey != "" {
 			// Release a key past its window so it can bind to this new session.
 			if _, err = tx.Exec(ctx, `
@@ -340,10 +381,10 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 		}
 		row, err = scanAgentSession(tx.QueryRow(ctx, `
-			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names, automation_id, parent_session_id, root_session_id, depth, created_by)
-			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12, NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), $16, $17)
+			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names, automation_id, parent_session_id, root_session_id, depth, created_by, takeover_pr_number, takeover_head_ref, pr_number, pr_url, head_sha)
+			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12, NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), $16, $17, $18, $19, $20, $21, $22)
 			RETURNING `+agentSessionColumns,
-			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames), in.AutomationID, in.ParentSessionID, in.RootSessionID, in.Depth, in.CreatedBy))
+			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames), in.AutomationID, in.ParentSessionID, in.RootSessionID, in.Depth, in.CreatedBy, in.TakeoverPR, in.TakeoverHeadRef, in.PRNumber, in.PRURL, in.HeadSHA))
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "agent_sessions_idempotency_key_idx" {
@@ -359,12 +400,18 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 				err = bindAgentAttachments(ctx, tx, in.WorkspaceID, in.ID, 1, in.InitialAttachments)
 			}
 		}
+		if err == nil && in.InitialOrigin != nil {
+			origin := *in.InitialOrigin
+			origin.SessionID = in.ID
+			_, err = insertAgentSessionFeedback(ctx, tx, origin, 1)
+		}
 		if err != nil {
 			return err
 		}
 		return insertAgentDispatch(ctx, tx, row, "")
 	})
-	if errors.Is(err, ErrAgentSessionIdempotencyKey) || errors.Is(err, ErrAgentSessionAdmissionLimit) || isAgentSessionLineageRefusal(err) {
+	if errors.Is(err, ErrAgentSessionIdempotencyKey) || errors.Is(err, ErrAgentSessionAdmissionLimit) ||
+		errors.Is(err, ErrAgentSessionPullRequestOwned) || isAgentSessionLineageRefusal(err) {
 		return AgentSession{}, err
 	}
 	if err != nil {
@@ -374,6 +421,33 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		return AgentSession{}, classify("agent session", err)
 	}
 	return row, nil
+}
+
+// liveAgentSessionSQL is the predicate of a session that still works on its
+// pull request: not archived, not canceled or canceling.
+const liveAgentSessionSQL = `archived_at IS NULL AND phase NOT IN ('canceling', 'canceled')`
+
+// lockUnownedPullRequest serializes everything that makes a takeover session
+// live on one pull request (its create, its unarchive) and refuses while
+// another live session in scope already works on it, so the pull request
+// has one live session at most. except is the session being unarchived.
+func lockUnownedPullRequest(ctx context.Context, tx pgx.Tx, repo string, prNumber int, scope []string, except string) error {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+		"agent-session-takeover:"+strings.ToLower(repo)+"#"+strconv.Itoa(prNumber)); err != nil {
+		return err
+	}
+	var owned bool
+	if err := tx.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM agent_sessions
+		WHERE repo = lower($1) AND pr_number = $2 AND workspace_id = ANY($3) AND id <> $4
+		  AND `+liveAgentSessionSQL+`)`,
+		repo, prNumber, scope, except).Scan(&owned); err != nil {
+		return err
+	}
+	if owned {
+		return ErrAgentSessionPullRequestOwned
+	}
+	return nil
 }
 
 // FindAgentSessionByIdempotencyKey returns the session bound to key in the
@@ -390,7 +464,7 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
 		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
 		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID,
-		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &hash)
+		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef, &hash)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -665,16 +739,56 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 // the honest one), and unarchiving a working-set row is a no-op. It never
 // touches phase/status — archive is list-state, not lifecycle-state.
 func (s *PGStore) SetAgentSessionArchived(ctx context.Context, id string, archived bool) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET archived_at = CASE WHEN $2 THEN COALESCE(archived_at, now()) ELSE NULL END,
-		    updated_at = now()
-		WHERE id=$1
-		RETURNING `+agentSessionColumns, id, archived))
+	var out AgentSession
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		if !archived {
+			if err := lockUnarchivedTakeover(ctx, tx, id); err != nil {
+				return err
+			}
+		}
+		var err error
+		out, err = scanAgentSession(tx.QueryRow(ctx, `
+			UPDATE agent_sessions
+			SET archived_at = CASE WHEN $2 THEN COALESCE(archived_at, now()) ELSE NULL END,
+			    updated_at = now()
+			WHERE id=$1
+			RETURNING `+agentSessionColumns, id, archived))
+		return err
+	})
+	if errors.Is(err, ErrAgentSessionPullRequestOwned) {
+		return AgentSession{}, err
+	}
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)
 	}
 	return out, nil
+}
+
+// lockUnarchivedTakeover refuses to unarchive a takeover session while
+// another live session already works on its pull request: one in the
+// session's workspace, or in a workspace sharing a GitHub App installation
+// with it (the scope its `/bex` intake searched).
+func lockUnarchivedTakeover(ctx context.Context, tx pgx.Tx, id string) error {
+	var repo, workspaceID string
+	var takeoverPR int
+	var archivedAt *time.Time
+	err := tx.QueryRow(ctx, `SELECT repo, workspace_id, takeover_pr_number, archived_at FROM agent_sessions WHERE id=$1`, id).
+		Scan(&repo, &workspaceID, &takeoverPR, &archivedAt)
+	if err != nil || takeoverPR == 0 || archivedAt == nil {
+		return err
+	}
+	scope, err := collectWith(func(row pgx.Row) (string, error) {
+		var ws string
+		return ws, row.Scan(&ws)
+	})(tx.Query(ctx, `
+		SELECT $1::text UNION
+		SELECT peer.workspace_id FROM git_connections own
+		JOIN git_connections peer ON peer.installation_id = own.installation_id
+		WHERE own.workspace_id = $1`, workspaceID))
+	if err != nil {
+		return err
+	}
+	return lockUnownedPullRequest(ctx, tx, repo, takeoverPR, scope, id)
 }
 
 // ReplaceAgentSessionTags replaces a session's whole tag set (w7/m296, Devin's

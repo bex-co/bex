@@ -98,6 +98,11 @@ func TestPGGitConnectionsManyToMany(t *testing.T) {
 	if !seen["tea-ws1"] || !seen["tea-ws2"] {
 		t.Fatalf("bindings = %+v, want both tea-ws1 and tea-ws2", bindings)
 	}
+	// Oldest connection first: a `/bex` takeover picks the first
+	// workspace that qualifies, so this order is its deterministic choice.
+	if bindings[0].WorkspaceID != "tea-ws1" {
+		t.Fatalf("bindings = %+v, want the oldest connection (tea-ws1) first", bindings)
+	}
 	// ws1 gained nothing: its own set is unchanged by another workspace binding.
 	if n, _ := st.CountGitConnections(ctx, "tea-ws1"); n != 2 {
 		t.Fatalf("after ws2 bound 101, ws1 count = %d, want 2", n)

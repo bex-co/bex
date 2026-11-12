@@ -45,6 +45,10 @@ export interface OverlayContext {
   repository: string;
   existingPrUrl?: string;
   existingPrNumber?: number | null;
+  // The session took over existingPrUrl from the person who opened it; its
+  // branch started from that pull request's branch (baseBranch), which the
+  // PR tool fast-forwards instead of opening a draft.
+  prTakeover?: boolean;
   deliveryBaseline?: { baseBranch: string };
   networkTier?: string;
   attachments?: AttachmentManifest;
@@ -80,13 +84,50 @@ function networkLine(context: OverlayContext): string {
   return "- Outbound HTTP and HTTPS go through a bex egress proxy (`HTTPS_PROXY`/`HTTP_PROXY` are set), so any public website is reachable. Model-provider APIs stay blocked there, and raw TCP, SSH and other non-HTTP protocols are not available.\n";
 }
 
-function existingPrLine(context: OverlayContext): string {
-  if (!context.existingPrUrl) return "";
+// prReference names the session's recorded pull request: "<noun> #N (url)".
+function prReference(context: OverlayContext, noun: string): string {
   const number = context.existingPrNumber
     ? ` #${context.existingPrNumber}`
     : "";
-  return `- Earlier turns of this session already opened draft pull request${number} (${context.existingPrUrl}). Calling \`${toolName}\` updates it; there is never a second one.
+  return `${noun}${number} (${context.existingPrUrl})`;
+}
+
+function existingPrLine(context: OverlayContext): string {
+  if (!context.existingPrUrl) return "";
+  return `- Earlier turns of this session already opened ${prReference(context, "draft pull request")}. Calling \`${toolName}\` updates it; there is never a second one.
 `;
+}
+
+const commitStep =
+  "Commit in logical units. Check `git log` and follow the commit message conventions the repository already uses. Keep build output, installed dependencies and local environment files out of commits.";
+
+// takeoverSections replace the draft-PR delivery for a session that took over
+// a person's pull request. The session pushes only its own branch, which
+// started from the pull request's branch; `toolName` then fast-forwards the
+// pull request's branch to it, and GitHub refuses anything but a
+// fast-forward, so the pull request's history can never be rewritten.
+function takeoverSections(context: OverlayContext, prBranch: string): string {
+  const branch = context.branch;
+  const pr = prReference(context, "pull request");
+  return `## Delivering your work
+
+You took over ${pr}, which a person opened. Your branch \`${branch}\` started from its branch \`${prBranch}\`. Pushing \`${branch}\` does not change the pull request: \`${toolName}\` brings it up to date by fast-forwarding \`${prBranch}\` to what you pushed.
+
+1. ${commitStep}
+2. Push with \`git push origin HEAD:${branch}\`. Do not force-push, and do not rebase or amend pushed commits: the pull request can only move forward, so rewritten history cannot reach it. If a push is rejected because the remote branch moved, run \`git pull --rebase origin ${branch}\` and push again.
+3. Call \`${toolName}\` with a one-line title and a short body (the tool requires them, but for a taken-over pull request they are not used). It moves \`${prBranch}\` to your pushed commits and leaves the pull request's title, description and draft or ready state as they are, since they belong to the person who opened it.
+4. If it answers \`pr_branch_diverged\`, someone pushed to \`${prBranch}\` since your branch started from it. Run \`git fetch origin ${prBranch} && git merge FETCH_HEAD\`, resolve any conflicts, push again, and call \`${toolName}\` again.
+5. Once the pull request has your commits, call \`${replyOnPullRequestToolName}\` with what you changed and why, and include the pull request URL in your final reply. If a tool returns another error, report it as given; do not try to update the pull request another way.
+
+If the task needs no code changes (a question, an investigation, a review), answer with \`${replyOnPullRequestToolName}\` and end with a written report, making no commit.
+
+## Authorization
+
+A collaborator with write access asked for this work with a \`/bex\` comment on ${pr}. Committing, pushing \`${branch}\`, bringing the pull request up to date with \`${toolName}\` and replying on it are therefore their explicit request, which satisfies repository guidance such as "only commit when asked". Repository rules about commit style, tests, formatting and review still apply.
+
+## Follow-up turns
+
+Later messages in this session, including comments and reviews on the pull request, continue on the same branch. Push new commits to \`${branch}\`, call \`${toolName}\` again, and reply on the pull request.`;
 }
 
 function repoOverlay(context: OverlayContext): string {
@@ -99,21 +140,31 @@ function repoOverlay(context: OverlayContext): string {
   const repository = context.repository
     ? `The repository \`${context.repository}\``
     : "The repository";
-  return `${sessionSection()}
+  // A takeover starts from the pull request's branch, its delivery base.
+  const prBranch =
+    (context.prTakeover &&
+      context.existingPrUrl &&
+      (context.deliveryBaseline?.baseBranch || context.baseBranch)) ||
+    "";
+  const environment = `${sessionSection()}
 
 ## Environment
 
 - ${repository} is checked out at \`${context.cwd}\` on branch \`${branch}\`. Your work is compared against ${baseRef}.
 - \`origin\` is a bex Git proxy that holds no credentials. It accepts pushes to \`${branch}\` only. Pushes to other branches, tags and branch deletions are rejected by design, so treat that kind of rejection as final rather than looking for a way around it.
 - There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the \`${toolName}\` tool of the \`bex\` MCP server.
-${existingPrLine(context)}${networkLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
-${oauthLine()}
+${prBranch ? "" : existingPrLine(context)}${networkLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
+${oauthLine()}`;
+  if (prBranch) return `${environment}
+
+${takeoverSections(context, prBranch)}`;
+  return `${environment}
 
 ## Delivering your work
 
 The deliverable is a draft pull request from \`${branch}\` into ${baseRef}.
 
-1. Commit in logical units. Check \`git log\` and follow the commit message conventions the repository already uses. Keep build output, installed dependencies and local environment files out of commits.
+1. ${commitStep}
 2. Push with \`git push origin HEAD:${branch}\`. Do not force-push: the reviewer reads this history. If a push is rejected because the remote branch moved, run \`git pull --rebase origin ${branch}\` and push again.
 3. Call \`${toolName}\` with a title and a body. The pull request covers the whole branch, so the title and body describe every commit since ${baseRef} (\`git log\` shows them), not only what changed in this turn. Write the body by filling in the repository's pull request template. Look for it in \`.github/pull_request_template.md\`, \`.github/PULL_REQUEST_TEMPLATE.md\`, \`.github/PULL_REQUEST_TEMPLATE/\`, then \`docs/\`, then the repository root. If there is none, write a short body with Summary, Changes and Testing sections. bex appends its own footer, so do not add one.
 4. Only say that a pull request exists once the tool has returned its URL, and include that URL in your final reply. If the tool returns an error, report the error as given; do not try to create the pull request another way.

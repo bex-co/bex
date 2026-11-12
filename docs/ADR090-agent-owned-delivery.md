@@ -84,6 +84,7 @@ The PR-side twin of the Git proxy's exact-branch rule: one narrowly-scoped, cred
 - **Server-filled fields.** Owner, repo and base come from the session record. Head is pinned to the bound `bex-agent/<id>` branch. The agent cannot name any of them.
 - **Typed refusals.** `branch_not_pushed`, `not_ahead`, `invalid_request`, `too_large`, `forbidden`, `upstream_error`.
 - **Semantics.** It creates a **draft** PR, or updates the title and body of the existing open PR for that head. It never undrafts. bex-api appends a server-side footer behind a `<!-- bex-agent-footer -->` marker; an update replaces anything after an existing marker, so the footer is idempotent and always present. `prUrl`, `prNumber` and `headSha` are persisted on the session immediately, so REST, GraphQL and MCP show the PR mid-turn.
+- **A taken-over PR (w9/m348).** A session that a `/bex` comment started on a person's PR still pushes only its own `bex-agent/<id>` branch, started from that PR's head ([ADR094 D3](ADR094-coding-agent-mcp.md#d3--create_agent_session-input)). For it the verb opens no PR and never touches the title, body or draft state. It reads the session branch's head on GitHub and fast-forwards the PR's head branch to it (`PATCH …/git/refs/heads/<head>`, `force: false`); it compares the two first, so behind or diverged is `pr_branch_diverged` with the merge to run, a write GitHub refuses anyway is a branch rule (`pr_branch_protected`, not retried), and a closed PR is `pull_request_closed`. It records the new head and answers `{url, number, created: false, headSha, takenOver: true}`. The overlay replaces the draft-PR delivery steps with "push your branch, bring the PR up to date with the tool, merge on divergence, reply with `reply_on_pull_request`", and the delivery check nudges a turn whose PR lacks its pushed head.
 
 ### D4 — Agent-facing tool: the `bex` stdio MCP server
 
@@ -111,7 +112,7 @@ The controls that still bound a sandbox are unchanged: default-deny egress, the 
 
 ### D7 — Out of scope and follow-ups
 
-- Gateway-side non-fast-forward rejection, so a force-push is refused by the proxy and not only by the overlay.
+- Gateway-side non-fast-forward rejection, so a force-push is refused by the proxy and not only by the overlay. A `/bex` takeover does not depend on it: it never pushes the person's PR branch, which only moves by GitHub's fast-forward-only ref update.
 - A PR-comment steering loop (webhook → steer the session), with the AI footer also on comments the agent posts. _Decided in [ADR047 D11](ADR047-cloud-coding-agent-sessions.md#d11--pr-feedback-steers-the-session-w9m344-2026-11-12) (w9/m344)._
 - A tenant per-session instruction field, with the D2 layer-4 wrapper (not yet implemented).
 - Requester `Co-authored-by` on agent commits.

@@ -5,13 +5,15 @@ import type { AgentSessionTurnOrigin } from "@/graphql/schema-types";
 export type TurnOrigin = Pick<
   AgentSessionTurnOrigin,
   "kind" | "author" | "url"
->;
+> &
+  Partial<Pick<AgentSessionTurnOrigin, "turn">>;
 
 const NO_ORIGINS: TurnOrigin[] = [];
 
 /**
  * What PR feedback started one steering turn (w9/m344): a PR comment, a review
- * or a failed CI run, several when one steer delivered a queue of them. Reads
+ * or a failed CI run, several when one steer delivered a queue of them. Turn 1
+ * has one only when a `/bex` comment started the session (w9/m348). Reads
  * the detail page's own `agentSession(id)` query, which the page already
  * holds and polls, so a turn adds no request and a just-delivered steer's
  * origin appears on the page's next poll.

@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // Kinds of PR feedback (ADR047 D11).
@@ -66,9 +67,11 @@ type FeedbackTurn struct {
 	CIOnly bool
 }
 
-// FindAgentSessionForPullRequest returns the newest session in one of
-// workspaceIDs whose repository is repo (owner/name; sessions store it
-// lowercase) and whose PR is prNumber. ErrNotFound when none.
+// FindAgentSessionForPullRequest returns the session in one of workspaceIDs
+// whose repository is repo (owner/name; sessions store it lowercase) and
+// whose PR is prNumber: the newest live one, else the newest of any state, so
+// an ended session never shadows one that still works on the pull request.
+// ErrNotFound when none.
 func (s *PGStore) FindAgentSessionForPullRequest(ctx context.Context, workspaceIDs []string, repo string, prNumber int) (AgentSession, error) {
 	if !textBindable(repo) || prNumber <= 0 || len(workspaceIDs) == 0 {
 		return AgentSession{}, ErrNotFound
@@ -76,7 +79,7 @@ func (s *PGStore) FindAgentSessionForPullRequest(ctx context.Context, workspaceI
 	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `SELECT `+agentSessionColumns+`
 		FROM agent_sessions
 		WHERE repo = lower($2) AND pr_number = $3 AND workspace_id = ANY($1)
-		ORDER BY created_at DESC LIMIT 1`, workspaceIDs, repo, prNumber))
+		ORDER BY (`+liveAgentSessionSQL+`) DESC, created_at DESC LIMIT 1`, workspaceIDs, repo, prNumber))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AgentSession{}, ErrNotFound
 	}
@@ -98,15 +101,39 @@ func (s *PGStore) FindAgentSessionsForHead(ctx context.Context, workspaceIDs []s
 // QueueAgentSessionFeedback adds one piece of feedback; inserted is false when
 // the same source was already queued for the session (a redelivery).
 func (s *PGStore) QueueAgentSessionFeedback(ctx context.Context, f AgentSessionFeedback) (bool, error) {
-	tag, err := s.Pool.Exec(ctx, `
-		INSERT INTO agent_session_feedback (session_id, source_key, kind, actor, author, url, body, head_sha)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-		ON CONFLICT (session_id, source_key) DO NOTHING`,
-		f.SessionID, f.SourceKey, f.Kind, f.Actor, f.Author, f.URL, f.Body, f.HeadSHA)
+	inserted, err := insertAgentSessionFeedback(ctx, s.Pool, f, 0)
 	if err != nil {
 		return false, classify("agent session feedback", err)
 	}
+	return inserted, nil
+}
+
+// insertAgentSessionFeedback writes one feedback row, pending or, with
+// deliveredTurn > 0, already delivered by that turn (a takeover's starting
+// comment). A row for the same source is left as it is.
+func insertAgentSessionFeedback(ctx context.Context, q interface {
+	Exec(ctx context.Context, sql string, args ...any) (pgconn.CommandTag, error)
+}, f AgentSessionFeedback, deliveredTurn int) (bool, error) {
+	tag, err := q.Exec(ctx, `
+		INSERT INTO agent_session_feedback (session_id, source_key, kind, actor, author, url, body, head_sha, delivered_turn, delivered_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, 0), CASE WHEN $9 > 0 THEN now() END)
+		ON CONFLICT (session_id, source_key) DO NOTHING`,
+		f.SessionID, f.SourceKey, f.Kind, f.Actor, f.Author, f.URL, f.Body, f.HeadSHA, deliveredTurn)
+	if err != nil {
+		return false, err
+	}
 	return tag.RowsAffected() == 1, nil
+}
+
+// HasAgentSessionFeedback reports whether feedback from sourceKey is already
+// stored for the session, pending, delivered or dropped.
+func (s *PGStore) HasAgentSessionFeedback(ctx context.Context, sessionID, sourceKey string) (bool, error) {
+	var found bool
+	if err := s.Pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM agent_session_feedback WHERE session_id=$1 AND source_key=$2)`,
+		sessionID, sourceKey).Scan(&found); err != nil {
+		return false, classify("agent session feedback", err)
+	}
+	return found, nil
 }
 
 // ClaimDeliverableFeedback leases the pending feedback of up to limit sessions

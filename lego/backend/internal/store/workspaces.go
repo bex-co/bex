@@ -309,9 +309,15 @@ func countTenantMembers(ctx context.Context, q queryRower, tenantID string) (int
 // to this workspace", and an API key is not a who. The key's own row still
 // exists and still authorizes; it is listed on the API-keys surface instead.
 func (s *PGStore) ListTenantMembers(ctx context.Context, tenantID string) ([]TenantMember, error) {
+	return s.ListMembersOfTenants(ctx, []string{tenantID})
+}
+
+// ListMembersOfTenants is ListTenantMembers for several workspaces in one
+// query; each row names its TenantID.
+func (s *PGStore) ListMembersOfTenants(ctx context.Context, tenantIDs []string) ([]TenantMember, error) {
 	rows, err := s.Pool.Query(ctx,
 		`SELECT tenant_id, subject, role, created_at, kind FROM tenant_members
-		 WHERE tenant_id = $1 AND kind = 'user' ORDER BY created_at`, tenantID)
+		 WHERE tenant_id = ANY($1) AND kind = 'user' ORDER BY created_at`, tenantIDs)
 	if err != nil {
 		return nil, err
 	}

@@ -18,6 +18,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import test from "node:test";
+import { readGitFacts, undeliveredFacts } from "../src/delivery-check.js";
 import { ensureRepo } from "../src/git-setup.js";
 import { runHeadlessTurn } from "../src/session.js";
 import { UIMessageStreamHub } from "../src/stream-hub.js";
@@ -89,6 +90,7 @@ test("an agent that commits, pushes and opens its PR gets no nudge", async () =>
     prRecorded: true,
     prUrl: "https://github.com/acme/widgets/pull/7",
     prNumber: 7,
+    prBehind: false,
     undelivered: [],
   };
   assert.deepEqual(result.git, expected);
@@ -147,6 +149,7 @@ test("an agent that ignores the nudge ends succeeded with git.dirty and no drive
     prRecorded: false,
     prUrl: "",
     prNumber: null,
+    prBehind: false,
     undelivered: ["the working tree has uncommitted changes"],
   });
   const status = JSON.parse(await readFile(config.statusPath, "utf8"));
@@ -205,4 +208,30 @@ test("a steering turn's pushed commits count as delivered when an earlier turn o
   assert.equal(result.git?.prRecorded, true);
   assert.equal(result.git?.prUrl, "https://github.com/acme/widgets/pull/7");
   assert.equal(result.git?.prNumber, 7);
+});
+
+test("a takeover that pushed but did not bring its pull request up to date is nudged", async () => {
+  // The session branch started from the pull request's branch (here main);
+  // pushing it alone leaves the pull request without the commits.
+  const { config, remote, promptsLog } = await repoSession("push-no-pr");
+  config.existingPrUrl = "https://github.com/acme/widgets/pull/7";
+  config.existingPrNumber = 7;
+  config.prTakeover = true;
+  const result = await runHeadlessTurn(
+    config,
+    childEnv(config),
+    new UIMessageStreamHub(),
+  );
+  const sent = await promptsSent(promptsLog);
+  assert.equal(sent.length, 2);
+  assert.match(
+    sent[1],
+    /pull request #7 does not have the commits pushed to origin\/bex-agent\/ags-test yet\. Commit, push with `git push origin HEAD:bex-agent\/ags-test` and bring the pull request up to date with `open_or_update_draft_pr`, or explain why not\.$/,
+  );
+  assert.equal(result.git?.prBehind, true);
+  // Once the pull request's branch has the pushed head, nothing is missing.
+  git(remote, ["update-ref", "refs/heads/main", remoteBranch(remote)]);
+  const facts = await readGitFacts(config);
+  assert.equal(facts.prBehind, false);
+  assert.deepEqual(undeliveredFacts(facts, config), []);
 });

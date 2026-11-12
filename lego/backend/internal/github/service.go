@@ -1082,6 +1082,10 @@ type installationResolver struct{ s *Service }
 // This is the ONLY place an installation resolves to workspaces. Every other
 // consumer runs the opposite direction (workspace → its connections), which is
 // why the N:N blast radius is this function and its one caller.
+//
+// The workspaces come oldest connection first (GitConnectionsByInstallation's
+// order): a `/bex` takeover starts its session in the first one the
+// commenter qualifies in, so the choice is deterministic.
 func (r installationResolver) WorkspacesForInstallation(ctx context.Context, installationID int64) ([]string, error) {
 	if r.s.Store == nil {
 		return nil, nil

@@ -65,7 +65,11 @@ const (
 	// upstream hop: https://openrouter.ai/api/v1/messages.
 	openRouterEndpoint   = "https://" + OpenRouterHost + openRouterPathPrefix
 	openRouterPathPrefix = "/api"
-	openRouterAgent      = "claude"
+	openRouterAgent      = ClaudeAgent
+	// ClaudeAgent is the claude agent profile: the one the model routes serve
+	// and the dashboard composer's default, so a session bex starts on a
+	// user's behalf (a `/bex` takeover) runs it too.
+	ClaudeAgent = "claude"
 	// OpenRouterHost is the upstream host a route mints; the gateway model
 	// proxy admits it alongside api.anthropic.com.
 	OpenRouterHost = "openrouter.ai"

@@ -84,6 +84,7 @@ export async function tempConfig(
     spawnUrl: "",
     existingPrUrl: "",
     existingPrNumber: null,
+    prTakeover: false,
     turn: 1,
     exitAfterTurn: false,
     turnTimeoutMs: 1_000,

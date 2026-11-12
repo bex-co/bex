@@ -1430,6 +1430,21 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "A turn started by a failed CI run on the pull request. Links to the failed checks",
   },
+  "agentSessions.turnOriginsStart": {
+    message: "What started this session",
+    description:
+      "Accessible label of the line above a session's first turn when a /bex comment on a pull request started it (w9/m348)",
+  },
+  "agentSessions.turnOriginStartComment": {
+    message: "Started from @{author}'s comment",
+    description:
+      "The first turn of a session a /bex pull-request comment started; {author} is the commenter's GitHub login. Links to the comment",
+  },
+  "agentSessions.turnOriginStartCommentAnonymous": {
+    message: "Started from a PR comment",
+    description:
+      "The first turn of a session a /bex pull-request comment started, when the commenter is unknown. Links to the comment",
+  },
   "agentSessions.lineage.childSessions": {
     message: "Child sessions",
     description:

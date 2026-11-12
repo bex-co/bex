@@ -113,7 +113,7 @@ func (s *Service) SpawnChild(ctx context.Context, parentSessionID string, req Sp
 		create.SecretNames = append([]string{}, *req.SecretNames...)
 	}
 	if req.IdempotencyKey != "" {
-		create.IdempotencyKey = spawnKeyPrefix + parent.ID + ":" + req.IdempotencyKey
+		create.IdempotencyKey, create.platformKey = spawnKeyPrefix+parent.ID+":"+req.IdempotencyKey, true
 	}
 	// Act as the person who started the parent (ADR101 D4's rule).
 	ctx = core.WithIdentity(ctx, core.Identity{Subject: parent.CreatedBy, Method: "session"})

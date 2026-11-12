@@ -332,23 +332,7 @@ func oversizedPublicGitHead(data []byte, ref string) string {
 }
 
 func validPublicGitRef(ref string) bool {
-	if ref == "HEAD" || core.ValidCommitSHA(ref) {
-		return true
-	}
-	if ref == "" || len(ref) > 1024 || strings.ContainsAny(ref, " ~^:?*[\\") || strings.Contains(ref, "..") || strings.Contains(ref, "@{") {
-		return false
-	}
-	for _, c := range ref {
-		if c < 0x20 || c == 0x7f {
-			return false
-		}
-	}
-	for _, part := range strings.Split(ref, "/") {
-		if part == "" || strings.HasPrefix(part, ".") || strings.HasSuffix(part, ".") || strings.HasSuffix(part, ".lock") {
-			return false
-		}
-	}
-	return true
+	return ref == "HEAD" || core.ValidCommitSHA(ref) || (len(ref) <= 1024 && core.ValidGitRefName(ref))
 }
 
 // Under Git's v0 advertisement contract, an annotated tag MUST have a

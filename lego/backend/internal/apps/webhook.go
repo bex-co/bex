@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -84,14 +85,15 @@ type GitWebhook struct {
 	// nothing durable to claim with.
 	Replays WebhookReplayGuard
 	// PRFeedback receives the PR feedback that steers agent sessions
-	// (ADR047 D11): comments, reviews and completed check suites. Nil drops
-	// them.
+	// (ADR047 D11): comments, inline review comments, reviews and completed
+	// check suites, and the `/bex` comments that start a session.
+	// Nil drops them.
 	PRFeedback PRFeedbackSink
 }
 
-// PRFeedbackSink queues feedback on agent-session pull requests from one
-// GitHub App delivery confined to workspaceIDs (implemented by
-// agentsessions.PRFeedback).
+// PRFeedbackSink queues feedback on agent-session pull requests, or starts a
+// session for a `/bex` comment, from one GitHub App delivery confined to
+// workspaceIDs (implemented by agentsessions.PRFeedback).
 type PRFeedbackSink interface {
 	HandlePRFeedback(ctx context.Context, event string, body []byte, workspaceIDs []string) (queued int, err error)
 }
@@ -326,6 +328,49 @@ func (t *deliveryTrace) logIfSlow(ctx context.Context, key string) {
 		key, total.Round(time.Millisecond), ctx.Err(), strings.Join(t.steps, " "))
 }
 
+// prFeedbackEvent is what the prefilter reads of a feedback delivery.
+type prFeedbackEvent struct {
+	Action       string `json:"action"`
+	Installation struct {
+		ID int64 `json:"id"`
+	} `json:"installation"`
+	CheckSuite struct {
+		Conclusion string `json:"conclusion"`
+	} `json:"check_suite"`
+	Issue struct {
+		State       string          `json:"state"`
+		PullRequest json.RawMessage `json:"pull_request"`
+	} `json:"issue"`
+	PullRequest struct {
+		State string `json:"state"`
+	} `json:"pull_request"`
+	Comment struct {
+		Body string `json:"body"`
+		User struct {
+			Type string `json:"type"`
+		} `json:"user"`
+	} `json:"comment"`
+}
+
+// worthALookup drops, before any workspace lookup, the deliveries that can
+// neither steer nor start a session. Check suites arrive for every commit of
+// every installed repository and only a failed one steers. A comment must be
+// new, a person's, and on an open pull request; an inline comment, whose
+// review is delivered as well, matters only as a `/bex` command.
+func (ev prFeedbackEvent) worthALookup(event string) bool {
+	switch event {
+	case "check_suite":
+		return ev.Action == "completed" && (ev.CheckSuite.Conclusion == "failure" || ev.CheckSuite.Conclusion == "timed_out")
+	case "issue_comment":
+		onPullRequest := len(ev.Issue.PullRequest) > 0 && string(ev.Issue.PullRequest) != "null"
+		return ev.Action == "created" && ev.Comment.User.Type == "User" && onPullRequest && ev.Issue.State == "open"
+	case "pull_request_review_comment":
+		_, command := github.BexCommand(ev.Comment.Body)
+		return ev.Action == "created" && ev.Comment.User.Type == "User" && ev.PullRequest.State == "open" && command
+	}
+	return true
+}
+
 // forwardPRFeedback hands a GitHub App delivery to the PR feedback sink,
 // confined to the workspaces its installation is bound to. Anything else is
 // dropped: only the App's signed installation id says whose session it is.
@@ -333,21 +378,8 @@ func (h *GitWebhook) forwardPRFeedback(ctx context.Context, event string, body [
 	if h.PRFeedback == nil || key != keyGitHubApp {
 		return 0, nil
 	}
-	var ev struct {
-		Action       string `json:"action"`
-		Installation struct {
-			ID int64 `json:"id"`
-		} `json:"installation"`
-		CheckSuite struct {
-			Conclusion string `json:"conclusion"`
-		} `json:"check_suite"`
-	}
-	if json.Unmarshal(body, &ev) != nil || ev.Installation.ID == 0 {
-		return 0, nil
-	}
-	// Check suites arrive for every commit of every installed repository;
-	// only a failed one can steer, so the rest cost no workspace lookup.
-	if event == "check_suite" && (ev.Action != "completed" || (ev.CheckSuite.Conclusion != "failure" && ev.CheckSuite.Conclusion != "timed_out")) {
+	var ev prFeedbackEvent
+	if json.Unmarshal(body, &ev) != nil || ev.Installation.ID == 0 || !ev.worthALookup(event) {
 		return 0, nil
 	}
 	scopes, proceed := h.scopesFor(ctx, key, ev.Installation.ID)
@@ -391,7 +423,7 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.serveDelete(w, r, body, key)
 		return
 	}
-	if event == "issue_comment" || event == "pull_request_review" {
+	if event == "issue_comment" || event == "pull_request_review" || event == "pull_request_review_comment" {
 		queued, err := h.forwardPRFeedback(r.Context(), event, body, key)
 		if err != nil {
 			log.Printf("webhook: %s feedback: %v", event, err)

@@ -209,6 +209,13 @@ type CreateRequest struct {
 	// inherits (and may narrow) the parent's secrets.
 	ParentSessionID string   `json:"parentSessionId,omitempty" jsonschema:"start this session as a child of the active session with this id (same workspace; you need to be able to operate it): at most 3 levels deep and 5 live children per parent. The child's spend counts against the parent's maxSpendUSD ceiling and may not exceed what is left of it; the child inherits the parent's secrets, and secretNames may only narrow them (inline secrets are refused)"`
 	MaxSpendUSD     *float64 `json:"maxSpendUSD,omitempty" jsonschema:"a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE"`
+	// Takeover makes the session take over an existing pull request. Only the
+	// PR intake sets it, for a `/bex` comment; no client surface decodes it.
+	Takeover *PRTakeover `json:"-"`
+	// platformKey marks an IdempotencyKey bex minted itself (a spawn, a
+	// takeover or an automation run), which may use the namespaces a client
+	// key may not.
+	platformKey bool
 }
 
 // SteerRequest is a follow-up prompt turn on an existing session (ADR047 D8

@@ -476,10 +476,11 @@ func main() {
 	if st != nil {
 		srv.WebhookReplays = st
 		// PR feedback (w9/m344, ADR047 D11) needs the App to read who
-		// commented and Kratos to link their GitHub sign-in to a member.
+		// commented and Kratos to link their GitHub sign-in to a member. A
+		// `/bex` takeover's reply links the session's dashboard page.
 		if srv.AgentSessions != nil && ghClient != nil && kratosAdminURL != "" {
 			srv.PRFeedback = &agentsessions.PRFeedback{Sessions: srv.AgentSessions, Store: st, GitHub: ghClient,
-				Identities: workspaces.NewKratosIdentities(kratosAdminURL)}
+				Identities: workspaces.NewKratosIdentities(kratosAdminURL), DashboardURL: cfg.DashboardURL}
 		}
 		srv.CLIRefreshes = st
 		// Replay claims are partitioned by the authenticated signing-secret epoch.

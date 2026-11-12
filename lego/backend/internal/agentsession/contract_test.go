@@ -64,7 +64,11 @@ func TestAuthorizePodBindsEverySessionTarget(t *testing.T) {
 }
 
 func TestValidateBranchConfinesMint(t *testing.T) {
-	for _, branch := range []string{"main", "feature/x", "bex-agent/", "bex-agent/a..b", "bex-agent/a b", "bex-agent/a~b"} {
+	// The prefix rule, then the shared ref-name components: an empty, dot-led
+	// or ".lock" component is refused like the characters Git refuses.
+	for _, branch := range []string{"main", "feature/x", "bex-agent/", "bex-agent/a..b", "bex-agent/a b", "bex-agent/a~b",
+		"bex-agent//x", "bex-agent/.x", "bex-agent/x.lock", "bex-agent/x/", "bex-agent/x.",
+		"bex-agent/a\u00a0b", "bex-agent/a\u0085b"} {
 		if err := ValidateBranch(branch); !errors.Is(err, ErrForbidden) {
 			t.Errorf("ValidateBranch(%q) = %v, want forbidden", branch, err)
 		}

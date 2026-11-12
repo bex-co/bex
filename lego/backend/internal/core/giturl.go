@@ -39,6 +39,29 @@ func CanonicalRepo(u string) string {
 	return strings.TrimSuffix(strings.TrimRight(s, "/"), ".git")
 }
 
+// ValidGitRefName reports whether ref is a ref name Git accepts that cannot
+// read as revision syntax or a refspec: no space, ASCII control character or
+// any of ~^:?*[\, no ".." or "@{", and no empty, dot-led, dot-ended or
+// ".lock" path component, as Git's check-ref-format refuses. Callers bound
+// the length. Shared by the public-Git ref check and the agent-session branch
+// gate, which refuses non-ASCII whitespace and controls on top.
+func ValidGitRefName(ref string) bool {
+	if ref == "" || strings.Contains(ref, "..") || strings.Contains(ref, "@{") {
+		return false
+	}
+	for _, r := range ref {
+		if r < 0x20 || r == 0x7f || strings.ContainsRune(" ~^:?*[\\", r) {
+			return false
+		}
+	}
+	for _, part := range strings.Split(ref, "/") {
+		if part == "" || strings.HasPrefix(part, ".") || strings.HasSuffix(part, ".") || strings.HasSuffix(part, ".lock") {
+			return false
+		}
+	}
+	return true
+}
+
 // ValidCommitSHA accepts Git object IDs GitHub returns for a branch HEAD:
 // 40 hex chars (SHA-1) or 64 (SHA-256 repos). Anything else is malformed
 // provenance a Blueprint pin must refuse (w8/m36 / w8/m41).

@@ -57,7 +57,8 @@ func deliverFeedback(h *GitWebhook, event, secret, body string) *httptest.Respon
 func TestGitWebhookForwardsPRFeedbackConfinedToTheInstallation(t *testing.T) {
 	sink := &recordingFeedbackSink{}
 	h := &GitWebhook{Secret: "manual", GitHubSecret: "gh-key", Installations: fakeInstallations{7: {"tea-a", "tea-b"}}, PRFeedback: sink}
-	body := `{"action":"created","installation":{"id":7},"issue":{"number":3}}`
+	body := `{"action":"created","installation":{"id":7},"issue":{"number":3,"state":"open","pull_request":{"url":"x"}},` +
+		`"pull_request":{"number":3,"state":"open"},"comment":{"body":"/bex fix it","user":{"type":"User"}}}`
 	if rec := deliverFeedback(h, "issue_comment", "gh-key", body); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"queued":1`) {
 		t.Fatalf("app-signed comment = %d %s", rec.Code, rec.Body)
 	}
@@ -80,6 +81,38 @@ func TestGitWebhookForwardsPRFeedbackConfinedToTheInstallation(t *testing.T) {
 		}
 		if len(sink.events) != before {
 			t.Fatalf("%s reached the sink", name)
+		}
+	}
+
+	// An inline `/bex` comment reaches the same sink. What can neither steer
+	// nor start a session drops before any workspace lookup: an edit or a
+	// deletion, a bot's comment, a closed pull request, a plain issue, and an
+	// inline comment that is not the command (its review is delivered too).
+	if rec := deliverFeedback(h, "pull_request_review_comment", "gh-key", body); rec.Code != http.StatusOK || sink.events[len(sink.events)-1] != "pull_request_review_comment" {
+		t.Fatalf("inline comment = %d %s, sink saw %v", rec.Code, rec.Body, sink.events)
+	}
+	dropped := map[string][]string{
+		"edited":            {`"created"`, `"edited"`},
+		"deleted":           {`"created"`, `"deleted"`},
+		"a bot's":           {`"User"`, `"Bot"`},
+		"on a closed PR":    {`"state":"open"`, `"state":"closed"`},
+		"not the command":   {"/bex fix it", "please fix it"},
+		"on a plain issue":  {`"pull_request":{"url":"x"}`, `"pull_request":null`},
+		"with no commenter": {`"user":{"type":"User"}`, `"user":{}`},
+	}
+	for _, event := range []string{"pull_request_review_comment", "issue_comment"} {
+		for name, swap := range dropped {
+			if event == "issue_comment" && name == "not the command" {
+				continue // a conversation comment is feedback whatever it says
+			}
+			if event == "pull_request_review_comment" && name == "on a plain issue" {
+				continue
+			}
+			before := len(sink.events)
+			variant := strings.Replace(body, swap[0], swap[1], -1)
+			if rec := deliverFeedback(h, event, "gh-key", variant); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"queued":0`) || len(sink.events) != before {
+				t.Fatalf("%s %s = %d %s, reached the sink: %v", event, name, rec.Code, rec.Body, len(sink.events) != before)
+			}
 		}
 	}
 

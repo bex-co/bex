@@ -239,6 +239,36 @@ test("oversize and malformed input is rejected before any request", async (t) =>
   );
 });
 
+test("a taken-over pull request's fast-forward is reported as such", async (t) => {
+  const pr = {
+    url: "https://github.com/acme/widgets/pull/7",
+    number: 7,
+    created: false,
+    headSha: "b".repeat(40),
+  };
+  const gateway = await stubGateway(() => ({
+    status: 200,
+    body: { ...pr, takenOver: true },
+  }));
+  t.after(gateway.close);
+  const client = mcpClient({ BEX_PR_ENDPOINT: gateway.endpoint });
+  t.after(() => client.close());
+  const listed = await client.request("tools/list");
+  assert.match(
+    listed.result.tools[0].description,
+    /took over a person's pull request, it instead fast-forwards that pull request's branch to your pushed commits \(takenOver: true\)/,
+  );
+  const called = await client.request("tools/call", {
+    name: "open_or_update_draft_pr",
+    arguments: { title: "t", body: "b" },
+  });
+  assert.equal(called.result.isError, false);
+  assert.deepEqual(called.result.structuredContent, {
+    ...pr,
+    takenOver: true,
+  });
+});
+
 test("a non-JSON gateway failure becomes upstream_error", async (t) => {
   const gateway = await stubGateway(() => ({ status: 502, body: "bad" }));
   t.after(gateway.close);

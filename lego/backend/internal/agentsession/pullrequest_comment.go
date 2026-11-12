@@ -179,7 +179,7 @@ func (p *PullRequester) Comment(ctx context.Context, req PullRequestCommentReque
 	if session.PRNumber <= 0 {
 		return PullRequestCommentResponse{}, NewPullRequestCommentError(PullRequestNoPullRequest, "this session has not opened its pull request yet")
 	}
-	body := withAgentFooter(req.Body, commentFooterAttribution, sessionProfile(session), p.sessionURL(session.ID), session.ID)
+	body := withAgentFooter(req.Body, commentFooterAttribution, sessionProfile(session), sessionDashboardURL(p.DashboardURL, session.ID), session.ID)
 	url, err := p.GitHub.CreateIssueComment(ctx, target.installationID, target.owner, target.name, session.PRNumber, body)
 	if err != nil {
 		return PullRequestCommentResponse{}, NewPullRequestCommentError(PullRequestUpstreamError, "GitHub refused or failed the comment")

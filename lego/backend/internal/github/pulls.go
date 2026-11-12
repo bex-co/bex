@@ -115,11 +115,11 @@ func (c *Client) SyncDraftPullRequest(ctx context.Context, installationID int64,
 		}
 		return DraftPullRequestResult{}, headErr
 	}
-	ahead, err := c.aheadBy(ctx, tok.Token, owner, repo, base, headSHA)
+	comparison, err := c.compare(ctx, tok.Token, owner, repo, base, headSHA)
 	if err != nil {
 		return DraftPullRequestResult{}, err
 	}
-	if ahead <= 0 {
+	if comparison.AheadBy <= 0 {
 		return DraftPullRequestResult{}, ErrHeadNotAhead
 	}
 	if existErr != nil {
@@ -203,37 +203,43 @@ func (c *Client) doPull(ctx context.Context, token, method, url string, payload 
 	return out.export(), nil
 }
 
-// aheadBy reports how many commits headSHA has that base lacks (GET
-// /repos/{owner}/{repo}/compare/{base}...{head}). The head is addressed by its
-// commit SHA so a branch name containing "/" never has to be escaped into the
-// compare path. per_page=1 keeps the commit list to one entry: ahead_by covers
-// the whole comparison regardless of the page size.
-func (c *Client) aheadBy(ctx context.Context, token, owner, repo, base, headSHA string) (int, error) {
+// comparison is how a head commit relates to a base: how many commits it has
+// that base lacks, and GitHub's status of it ("ahead", "behind", "identical"
+// or "diverged").
+type comparison struct {
+	AheadBy int    `json:"ahead_by"`
+	Status  string `json:"status"`
+}
+
+// compare reads GET /repos/{owner}/{repo}/compare/{base}...{head}. The head is
+// addressed by its commit SHA so a branch name containing "/" never has to be
+// escaped into the compare path. per_page=1 keeps the commit list to one
+// entry: ahead_by and status cover the whole comparison regardless of the
+// page size.
+func (c *Client) compare(ctx context.Context, token, owner, repo, base, headSHA string) (comparison, error) {
 	url := fmt.Sprintf("%s/repos/%s/%s/compare/%s...%s?per_page=1", c.baseURL, owner, repo, neturl.PathEscape(base), neturl.PathEscape(headSHA))
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return 0, err
+		return comparison{}, err
 	}
 	setTokenAuth(req, token)
 	req.Header.Set("Accept", acceptHeader)
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return 0, fmt.Errorf("github: compare: %w", err)
+		return comparison{}, fmt.Errorf("github: compare: %w", err)
 	}
 	defer resp.Body.Close()
-	// The first compare page still carries the changed-files list; only
-	// ahead_by is read, so the decode is bounded rather than fully buffered.
+	// The first compare page still carries the changed-files list; only the
+	// summary is read, so the decode is bounded rather than fully buffered.
 	if resp.StatusCode != http.StatusOK {
 		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		return 0, &APIError{Status: resp.StatusCode, Body: string(raw)}
+		return comparison{}, &APIError{Status: resp.StatusCode, Body: string(raw)}
 	}
-	var out struct {
-		AheadBy int `json:"ahead_by"`
-	}
+	var out comparison
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 16<<20)).Decode(&out); err != nil {
-		return 0, fmt.Errorf("github: decode compare response: %w", err)
+		return comparison{}, fmt.Errorf("github: decode compare response: %w", err)
 	}
-	return out.AheadBy, nil
+	return out, nil
 }
 
 // findOpenPull returns the open PR for owner:head, if any (Number 0 when none).

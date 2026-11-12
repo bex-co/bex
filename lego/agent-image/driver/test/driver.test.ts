@@ -68,6 +68,19 @@ test("configuration accepts only operator-owned adapter paths", () => {
     loadConfig(hosted({ BEX_AGENT_NETWORK_TIER: "everything" })).networkTier,
     "",
   );
+  // A takeover is read only with the PR it took over.
+  assert.equal(config.prTakeover, false);
+  const pr = "https://github.com/acme/widgets/pull/7";
+  assert.equal(
+    loadConfig(
+      hosted({ BEX_AGENT_PR_TAKEOVER: "1", BEX_AGENT_PR_URL: pr }),
+    ).prTakeover,
+    true,
+  );
+  assert.equal(
+    loadConfig(hosted({ BEX_AGENT_PR_TAKEOVER: "1" })).prTakeover,
+    false,
+  );
   assert.throws(
     () => loadConfig(hosted({ BEX_AGENT_ARGS: "--flag" })),
     /JSON array/,

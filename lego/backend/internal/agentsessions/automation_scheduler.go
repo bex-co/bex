@@ -151,8 +151,12 @@ func (s *Service) retireUnschedulable(ctx context.Context, f store.ClaimFailure)
 // the resolution of the run table's fire_at, so two run-now fires in one
 // second never share a key.
 func automationIdempotencyKey(automationID string, fireAt time.Time) string {
-	return "aut:" + automationID + ":" + strconv.FormatInt(fireAt.UnixMicro(), 10)
+	return automationKeyPrefix + automationID + ":" + strconv.FormatInt(fireAt.UnixMicro(), 10)
 }
+
+// automationKeyPrefix opens the scheduler's idempotency keys; client keys
+// may not use it, so no member can pre-claim a run's key.
+const automationKeyPrefix = "aut:"
 
 // fireAutomationRun is ADR101 D3 steps 3 and 4 for a run the caller owns:
 // re-authorize the creator (D4), skip on overlap (D6), create the session
@@ -223,7 +227,7 @@ func (t AutomationTemplate) createRequest(a store.AgentAutomation, key string) C
 	return CreateRequest{
 		OwnerID: a.WorkspaceID, Repo: t.Repo, Branch: t.Branch,
 		AgentConfig:     AgentConfig{Agent: t.AgentConfig.Agent, Model: t.AgentConfig.Model, Task: t.Task, Template: t.AgentConfig.Template},
-		EgressAllowlist: t.EgressAllowlist, IdempotencyKey: key, AutomationID: a.ID, Title: t.Title, Tags: t.Tags,
+		EgressAllowlist: t.EgressAllowlist, IdempotencyKey: key, platformKey: true, AutomationID: a.ID, Title: t.Title, Tags: t.Tags,
 		OutputSchema: t.OutputSchema, OutputRequired: t.OutputRequired, MaxSpendUSD: t.MaxSpendUSD,
 		SessionSecretsInput: SessionSecretsInput{SecretNames: t.SecretNames}, Skills: t.Skills,
 	}

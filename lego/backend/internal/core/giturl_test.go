@@ -39,3 +39,19 @@ func TestCanonicalRepo(t *testing.T) {
 		t.Error("distinct repos must not collide")
 	}
 }
+
+func TestValidGitRefName(t *testing.T) {
+	// Git accepts non-ASCII names, NBSP and NEL included, and so does the
+	// public-Git ref check; the agent branch gate refuses those on top.
+	for _, ref := range []string{"main", "feature/fix-login", "release-1.2", "bex-agent/ags-1/fix", "refs/heads/x", "users/a_b", "a\u00a0b", "a\u0085b"} {
+		if !ValidGitRefName(ref) {
+			t.Errorf("ValidGitRefName(%q) = false, want true", ref)
+		}
+	}
+	for _, ref := range []string{"", "/x", "x/", "a//b", ".x", "a/.b", "a.", "a.lock", "a/b.lock/c", "a..b", "a@{1}",
+		"a b", "a\tb", "a~1", "a^", "a:b", "a?", "a*", "a[", `a\b`, "a\x7fb"} {
+		if ValidGitRefName(ref) {
+			t.Errorf("ValidGitRefName(%q) = true, want false", ref)
+		}
+	}
+}

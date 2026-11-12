@@ -7,12 +7,22 @@ import (
 	"encoding/json"
 	"errors"
 	"slices"
+	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 const maxIdempotencyKeyLen = 128
+
+// codeIdempotencyKeyReused is the 409 for a key reused with another request.
+const codeIdempotencyKeyReused = "AGENT_SESSION_IDEMPOTENCY_KEY_REUSED"
+
+// platformKeyPrefixes are the idempotency key namespaces bex's own creates
+// use (a spawned child, a `/bex` takeover, an automation run). A client key
+// in one of them is refused, so no client can claim, or collide with, a key
+// bex will mint.
+var platformKeyPrefixes = []string{spawnKeyPrefix, takeoverKeyPrefix, automationKeyPrefix}
 
 // idempotencyOf validates the client's key and digests the normalized request
 // it guards. The digest covers everything that shapes the session the client
@@ -25,6 +35,9 @@ func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurn
 	}
 	if len(key) > maxIdempotencyKeyLen {
 		return "", "", core.NewBadRequestError("AGENT_SESSION_IDEMPOTENCY_KEY_INVALID", "idempotency key must be 1-128 printable ASCII characters", nil)
+	}
+	if !req.platformKey && slices.ContainsFunc(platformKeyPrefixes, func(prefix string) bool { return strings.HasPrefix(key, prefix) }) {
+		return "", "", core.NewBadRequestError("AGENT_SESSION_IDEMPOTENCY_KEY_INVALID", "idempotency keys starting with "+strings.Join(platformKeyPrefixes, " or ")+" are reserved for the platform", nil)
 	}
 	for _, r := range key {
 		if r < 0x21 || r > 0x7e {
@@ -56,7 +69,9 @@ func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurn
 		// secrets (no secretNames given); omitted for a top-level session.
 		Parent  string `json:"p,omitempty"`
 		Inherit bool   `json:"i,omitempty"`
-	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput), req.Skills, req.ParentSessionID, req.ParentSessionID != "" && req.SecretNames == nil && len(req.Secrets) == 0})
+		// The pull request a takeover works on; omitted otherwise.
+		Takeover int `json:"x,omitempty"`
+	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput), req.Skills, req.ParentSessionID, req.ParentSessionID != "" && req.SecretNames == nil && len(req.Secrets) == 0, req.Takeover.number()})
 	if err != nil {
 		return "", "", err
 	}
@@ -76,7 +91,7 @@ func (s *Service) replayCreate(ctx context.Context, workspaceID, key, hash strin
 		return View{}, false, err
 	}
 	if storedHash != hash {
-		return View{}, false, core.NewConflictError("AGENT_SESSION_IDEMPOTENCY_KEY_REUSED",
+		return View{}, false, core.NewConflictError(codeIdempotencyKeyReused,
 			"this idempotency key was already used for a different agent session request", map[string]any{"id": existing.ID})
 	}
 	view, err := s.toView(existing)

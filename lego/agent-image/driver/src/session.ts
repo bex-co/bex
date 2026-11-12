@@ -301,7 +301,7 @@ export async function runHeadlessTurn(
               if (reasons.length > 0) {
                 for (const chunk of mapper.flush()) writer.write(chunk);
                 promptResponse = await provider.prompt(
-                  deliveryNudge(reasons, config.branch),
+                  deliveryNudge(reasons, config.branch, config.prTakeover),
                 );
                 facts = await readGitFacts(config);
                 reasons = undeliveredFacts(facts, config);

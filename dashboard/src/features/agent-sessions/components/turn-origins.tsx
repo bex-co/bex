@@ -13,8 +13,14 @@ const ICONS = {
 } as const;
 
 // The line for one origin, or null for a kind this build does not know: a
-// wrong claim about why a turn started is worse than none.
-function originLabel(t: Translate, { kind, author }: TurnOrigin) {
+// wrong claim about why a turn started is worse than none. A turn-1 comment
+// is the `/bex` comment that started the session (w9/m348), not a steer.
+function originLabel(t: Translate, { kind, author, turn }: TurnOrigin) {
+  if (turn === 1 && kind === "pr_comment") {
+    return author
+      ? t("agentSessions.turnOriginStartComment", { author })
+      : t("agentSessions.turnOriginStartCommentAnonymous");
+  }
   switch (kind) {
     case "pr_review":
       return author
@@ -32,7 +38,8 @@ function originLabel(t: Translate, { kind, author }: TurnOrigin) {
 }
 
 /**
- * Why a steering turn started when PR feedback started it (w9/m344): one muted,
+ * Why a steering turn started when PR feedback started it (w9/m344), or the
+ * `/bex` comment that started the session on turn 1 (w9/m348): one muted,
  * right-aligned line per origin above the turn, each linking the comment,
  * review or failed run on GitHub. Only an http(s) URL becomes a link.
  */
@@ -43,10 +50,15 @@ export function TurnOrigins({ origins }: { origins: TurnOrigin[] }) {
     return label ? [{ origin, label }] : [];
   });
   if (lines.length === 0) return null;
+  const starting = lines.every(({ origin }) => origin.turn === 1);
   return (
     <ul
       className="text-muted-foreground mb-1 flex flex-col items-end gap-0.5 pl-8 text-xs"
-      aria-label={t("agentSessions.turnOrigins")}
+      aria-label={t(
+        starting
+          ? "agentSessions.turnOriginsStart"
+          : "agentSessions.turnOrigins",
+      )}
       data-testid="turn-origins"
     >
       {lines.map(({ origin, label }, index) => {

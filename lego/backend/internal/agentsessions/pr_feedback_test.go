@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -40,10 +41,14 @@ type fakeFeedbackStore struct {
 	dropped   map[string]string
 	released  []string
 	batches   []store.FeedbackBatch
+	// workspaceMembers, when set, lists each workspace's own members;
+	// memberQueries counts the member reads.
+	workspaceMembers map[string][]store.TenantMember
+	memberQueries    int
 }
 
 func (f *fakeFeedbackStore) FindAgentSessionForPullRequest(_ context.Context, ws []string, repo string, n int) (store.AgentSession, error) {
-	if f.session.ID == "" || n != f.session.PRNumber || !strings.EqualFold(repo, f.session.Repo) || ws[0] != f.session.WorkspaceID {
+	if f.session.ID == "" || n != f.session.PRNumber || !strings.EqualFold(repo, f.session.Repo) || !slices.Contains(ws, f.session.WorkspaceID) {
 		return store.AgentSession{}, store.ErrNotFound
 	}
 	return f.session, nil
@@ -100,14 +105,67 @@ func (f *fakeFeedbackStore) ReleaseFeedback(_ context.Context, _ string, keys []
 	return nil
 }
 
-func (f *fakeFeedbackStore) ListTenantMembers(context.Context, string) ([]store.TenantMember, error) {
-	return f.members, nil
+// ListMembersOfTenants lists each asked workspace's members: workspaceMembers
+// when set, else the same members in every workspace.
+func (f *fakeFeedbackStore) ListMembersOfTenants(_ context.Context, workspaceIDs []string) ([]store.TenantMember, error) {
+	f.memberQueries++
+	var out []store.TenantMember
+	for _, ws := range workspaceIDs {
+		members := f.members
+		if f.workspaceMembers != nil {
+			members = f.workspaceMembers[ws]
+		}
+		for _, m := range members {
+			m.TenantID = ws
+			out = append(out, m)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeFeedbackStore) HasAgentSessionFeedback(_ context.Context, sessionID, sourceKey string) (bool, error) {
+	return slices.ContainsFunc(f.queued, func(q store.AgentSessionFeedback) bool {
+		return q.SessionID == sessionID && q.SourceKey == sourceKey
+	}), nil
 }
 
 type fakeFeedbackGitHub struct {
 	permissions map[string]string
 	review      []github.ReviewComment
 	runs        []github.CheckRun
+	// reviewState and reviewBody are what GetReview returns, reviewErr and
+	// prErr fail the reads, and reviewReads counts GetReview calls.
+	reviewState, reviewBody string
+	reviewErr, prErr        error
+	reviewReads             int
+	// pr is what GetPullRequest returns; protected marks its head protected.
+	pr        github.PullRequestDetail
+	protected bool
+	reactions []string
+	replies   []string
+}
+
+func (g *fakeFeedbackGitHub) BranchProtected(context.Context, int64, string, string, string) (bool, error) {
+	return g.protected, nil
+}
+
+func (g *fakeFeedbackGitHub) GetReview(_ context.Context, _ int64, _, _ string, _ int, reviewID int64) (github.Review, error) {
+	g.reviewReads++
+	return github.Review{Body: g.reviewBody, State: g.reviewState, URL: fmt.Sprintf("https://github.com/bex-co/app/pull/7#pullrequestreview-%d", reviewID)}, g.reviewErr
+}
+
+func (g *fakeFeedbackGitHub) GetPullRequest(context.Context, int64, string, string, int) (github.PullRequestDetail, error) {
+	return g.pr, g.prErr
+}
+
+func (g *fakeFeedbackGitHub) AddCommentReaction(_ context.Context, _ int64, _, _ string, commentID int64, inline bool, content string) error {
+	g.reactions = append(g.reactions, fmt.Sprintf("%d:%v:%s", commentID, inline, content))
+	return nil
+}
+
+func (g *fakeFeedbackGitHub) CreateIssueComment(_ context.Context, _ int64, _, _ string, _ int, body string) (string, error) {
+	g.replies = append(g.replies, body)
+	return "https://github.com/bex-co/app/pull/7#issuecomment-1", nil
 }
 
 func (g *fakeFeedbackGitHub) CollaboratorPermission(_ context.Context, _ int64, _, _, login string) (string, error) {
@@ -149,10 +207,47 @@ type fakeSteerer struct {
 	turn    int
 	steers  map[string]bool // who may steer
 	prompts []string
+	// creates are the takeover creates, as subject and request;
+	// creators is who may start sessions in which workspace, createErr the
+	// create's refusal, and onCreate what the store does with the new row.
+	creates []struct {
+		subject string
+		req     CreateRequest
+	}
+	creators  map[string][]string
+	createErr error
+	onCreate  func(View, CreateRequest)
 }
 
 func (f *fakeSteerer) maySteer(_ context.Context, subject, _ string) (bool, error) {
 	return f.steers[subject], nil
+}
+
+func (f *fakeSteerer) mayCreate(_ context.Context, subject, workspaceID string) (bool, error) {
+	return slices.Contains(f.creators[subject], workspaceID), nil
+}
+
+func (f *fakeSteerer) Create(ctx context.Context, req CreateRequest) (View, error) {
+	id, _ := core.IdentityFrom(ctx)
+	for _, prior := range f.creates {
+		if prior.req.IdempotencyKey == req.IdempotencyKey {
+			created := false // an idempotent replay
+			return View{ID: "ags-replayed", Created: &created}, nil
+		}
+	}
+	f.creates = append(f.creates, struct {
+		subject string
+		req     CreateRequest
+	}{id.Subject, req})
+	if f.createErr != nil {
+		return View{}, f.createErr
+	}
+	created := true
+	view := View{ID: "ags-d0takeover0000000000", Branch: req.Branch, Created: &created}
+	if f.onCreate != nil {
+		f.onCreate(view, req)
+	}
+	return view, nil
 }
 
 func (f *fakeSteerer) Steer(ctx context.Context, req SteerRequest) (View, error) {

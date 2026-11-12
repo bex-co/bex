@@ -28,6 +28,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 const (
@@ -151,22 +153,35 @@ func NormalizeRepository(raw string) (string, error) {
 	return strings.ToLower(parts[0] + "/" + parts[1]), nil
 }
 
-// ValidateBranch enforces ADR047 D2's server-side mint gate. This is a policy
+// ValidateBranch enforces ADR047 D2's server-side mint gate: the branch must
+// start with BranchPrefix and be a ref name Git accepts (core.ValidGitRefName,
+// the same component rules as the public-Git ref check). This is a policy
 // check, not a claim that GitHub installation tokens encode a branch scope;
 // tenants must still protect default branches.
 func ValidateBranch(branch string) error {
 	if !strings.HasPrefix(branch, BranchPrefix) || len(branch) == len(BranchPrefix) || len(branch) > 255 {
 		return fmt.Errorf("%w: branch must match %s*", ErrForbidden, BranchPrefix)
 	}
-	if strings.HasSuffix(branch, "/") || strings.HasSuffix(branch, ".") || strings.Contains(branch, "..") || strings.Contains(branch, "@{") {
+	if !ValidAgentRefName(branch) {
 		return fmt.Errorf("%w: invalid branch", ErrForbidden)
 	}
-	for _, r := range branch {
-		if unicode.IsSpace(r) || unicode.IsControl(r) || strings.ContainsRune("~^:?*[\\", r) {
-			return fmt.Errorf("%w: invalid branch", ErrForbidden)
+	return nil
+}
+
+// ValidAgentRefName is the ref-name rule for a branch an agent session
+// names or starts from (its own, a taken-over pull request's head):
+// core.ValidGitRefName, plus no Unicode whitespace or control character,
+// since the name reaches env vars, prompts and command lines.
+func ValidAgentRefName(ref string) bool {
+	if !core.ValidGitRefName(ref) {
+		return false
+	}
+	for _, r := range ref {
+		if unicode.IsSpace(r) || unicode.IsControl(r) {
+			return false
 		}
 	}
-	return nil
+	return true
 }
 
 // BindingLabels is the integration contract for the future session-create path:
