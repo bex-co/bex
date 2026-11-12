@@ -1,4 +1,30 @@
-# 594 — A service's "Display name changed" event names neither the old nor the new name, and its custom-domain added/removed/verified rows name no domain: REST `details` is `{}`, and the audit rows carry only the service id
+# w4 · m337 — A service's "Display name changed" event names neither name, and its custom-domain rows name no domain
+
+**Worker:** worker4 **Goal:** a rename event names the old and new names, and every custom-domain added/removed/verified event names its hostname, on REST, GraphQL, MCP and the Events tab. **Status:** blocked — t001–t004 and t006–t008 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| [t001](done/t001.md) | Backend: the rename's names and the domain's hostname on the audit row — **DONE** | 30m | — |
+| [t002](done/t002.md) | API: `from`/`to` and `domain` on REST and MCP, the names on GraphQL — **DONE** | 20m | t001 |
+| [t003](done/t003.md) | Dashboard: the rename line and the named domain titles, en and zh — **DONE** | 20m | t002 |
+| [t004](done/t004.md) | Docs: the service-events contract and ADR018 — **DONE** | 5m | t002 |
+| [t005](t005.md) | Live verification on an owned service | 15m | t003 |
+| [t006](done/t006.md) | Render parity — **DONE** | 5m | t002 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t004 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 20m | t004 |
+| [t009](t009.md) | Closeout | 5m | t005–t008 |
+
+Nine tasks, 135m (2h15m).
+
+## Source + Goal linkage
+
+- **Source:** promoted from inbox note w4/594 (live `/qa-find-bugs w4` loop, rounds 155 and 160, 2026-11-12) on 2026-11-11: two typed detail families across a migration, two recorders, the feed lookup, three API surfaces, the dashboard and a live replay.
+- **Goal linkage:** the Events feed is the owner's record of what changed (ADR006 events). w4/568, w4/561, w4/m328 and w4/m335 made the neighbouring rows say what changed.
+- **Render parity:** included only to keep the details in the shape Render's other event details use: `display_name_changed` and `custom_domain_*` are bex extensions, absent from Render's event enum. A create under a free-form name records no rename, as Render records none on a create.
+
+## Finding (from w4/594)
 
 Why: after a rename, the Events feed reads "Display name changed" and nothing else, so nobody can tell from the feed what the service used to be called. w4/568, w4/561 and w4/m328 made the neighbouring rows (instance count, plan, autoscaling, moves, env groups) say what changed. This row is the one left blank.
 

@@ -124,6 +124,8 @@ func TestBlueprintNamesThatShareAResourceNameAreDuplicates(t *testing.T) {
 // under its slug and keeps the name as the label; a dry run shows the label.
 func TestCreateMapsAFreeFormNameOntoASlugAndKeepsItAsTheLabel(t *testing.T) {
 	svc, cl := newService(nil)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
 	v, err := svc.Create(context.Background(), CreateRequest{Name: "My API", Image: "nginx:1"})
 	if err != nil {
 		t.Fatalf("Create: %v", err)
@@ -133,6 +135,11 @@ func TestCreateMapsAFreeFormNameOntoASlugAndKeepsItAsTheLabel(t *testing.T) {
 	}
 	if a := getApp(t, cl, "my-api"); a.Spec.DisplayName != "My API" {
 		t.Errorf("spec.displayName = %q, want My API", a.Spec.DisplayName)
+	}
+	// The label comes with the create, so no rename is recorded (w4/m337):
+	// the owner never chose the resource name it maps to.
+	if n := sink.countVerb(core.AuditVerbSetDisplayName); n != 0 {
+		t.Errorf("a create under a free-form name recorded %d renames, want none", n)
 	}
 	dry, err := svc.Create(context.Background(), CreateRequest{Name: "Other App", Image: "nginx:1", DryRun: true})
 	if err != nil || dry.DisplayName != "Other App" || dry.Name != "other-app" {

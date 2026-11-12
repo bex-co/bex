@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -362,5 +363,31 @@ func TestRESTBlankRenameClearsLikeGraphQL(t *testing.T) {
 	}
 	if code, out := patch(`{"name":"hello-go"}`); code != http.StatusConflict || out["code"] != "CONFLICT" {
 		t.Errorf("PATCH to a taken name = %d %v, want 409 CONFLICT", code, out)
+	}
+}
+
+// w4/m337: a rename's row names the label on each side, and a cleared label
+// reads as the service's own name, the store's name for a managed service. A
+// label that shows the name already shown is no rename.
+func TestRenameEventNamesBothNames(t *testing.T) {
+	app := manage(displayNameApp("immutable-id"), "srv-1")
+	app.Labels[core.LabelServiceName] = "checkout"
+	svc, _ := newService(&recordingStore{}, app)
+	sink := &captureAuditSink{}
+	svc.Audit = sink
+	ctx := context.Background()
+	for _, label := range []string{"Renamed", "Renamed", "", "checkout", ""} {
+		if _, err := svc.SetDisplayName(ctx, "immutable-id", label); err != nil {
+			t.Fatalf("SetDisplayName(%q): %v", label, err)
+		}
+	}
+	var got []string
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbSetDisplayName {
+			got = append(got, ev.DisplayNameFrom+" → "+ev.DisplayNameTo)
+		}
+	}
+	if want := []string{"Original label → Renamed", "Renamed → checkout"}; !slices.Equal(got, want) {
+		t.Fatalf("rename rows %q, want %q", got, want)
 	}
 }

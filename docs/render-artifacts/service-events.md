@@ -142,6 +142,14 @@ bex also names **`env_group_linked`** and **`env_group_unlinked`**, its own type
 | Details | `envGroupId` / `envGroupName`: the group's `evg-` id and its name at the time, in typed audit columns (migration 0230); rows recorded before carry neither |
 | Surfaces | REST/GraphQL/MCP via the shared view; the dashboard titles the row "Environment group <name> linked/unlinked" (en + zh) |
 
+bex's own **`display_name_changed`** and **`custom_domain_added`** / **`custom_domain_removed`** / **`custom_domain_verified`** name what changed (w4/m337):
+
+| Property | Contract |
+| --- | --- |
+| Source | Audit verbs `apps.SetDisplayName` (a rename in Settings, the API or MCP; a create under a free-form name and a Blueprint's first label record none) and `apps.AddDomain` / `apps.DeleteDomain` / `apps.VerifyDomain`, one row per host: deleting an apex also records the `www.` sibling it takes with it |
+| Details | `display_name_changed`: REST `from` / `to`, GraphQL `displayNameFrom` / `displayNameTo`, the label on each side, or the service's own name on a side with no label; a label change that shows the same name records nothing. `custom_domain_*`: REST and GraphQL `domain`, the canonical hostname. In typed audit columns (migration 0232); rows recorded before carry neither |
+| Surfaces | REST/GraphQL/MCP via the shared view; the dashboard adds "Name <old> → <new>" to a rename and titles a domain row "Custom domain <host> added/removed/verified" (en + zh) |
+
 The enclosing `environments.SetServices`/`projects.SetServices` fan-out verbs remain excused non-events — their per-member `AuthorizeApp` rows are isolation-label plumbing, not placement facts.
 
 The official API specification is explicitly unversioned, so this comparison records the capture date and should be refreshed when Render changes its enum.

@@ -4735,6 +4735,26 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Service activity title for env_group_unlinked naming the group, by its name at the time (w4/563)",
   },
+  "services.eventsCustomDomainAddedNamed": {
+    message: "已添加自定义域名 {name}",
+    description:
+      "Service activity title for custom_domain_added naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsCustomDomainRemovedNamed": {
+    message: "已移除自定义域名 {name}",
+    description:
+      "Service activity title for custom_domain_removed naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsCustomDomainVerifiedNamed": {
+    message: "自定义域名 {name} 已验证",
+    description:
+      "Service activity title for custom_domain_verified naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsDisplayNameChange": {
+    message: "名称 {from} → {to}",
+    description:
+      "display_name_changed detail line: the service's name before and after the rename (w4/m337)",
+  },
   "services.eventsTypeAutoDeployChanged": {
     message: "自动部署已更新",
     description: "Service activity type: auto-deploy setting changed",

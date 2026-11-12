@@ -2161,7 +2161,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (AppView, error
 		v.DisplayName = label
 		return v, nil
 	}
-	return s.SetDisplayName(ctx, cmp.Or(v.ID, v.Name), label)
+	return s.labelNewService(ctx, cmp.Or(v.ID, v.Name), label)
 }
 
 // create is the unauthorized core of Create — a same-workspace duplicate name
@@ -5390,6 +5390,17 @@ func (s *Service) setMaintenanceMode(ctx context.Context, name string, in Mainte
 // every webhook and push notification for a renamed service reports the
 // immutable creation-time name.
 func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) (AppView, error) {
+	return s.setDisplayName(ctx, name, displayName, true)
+}
+
+// labelNewService gives a service just created from a free-form name that
+// name as its label. It records no rename: the owner chose the label, never
+// the resource name it maps to, and Render records none on a create.
+func (s *Service) labelNewService(ctx context.Context, name, label string) (AppView, error) {
+	return s.setDisplayName(ctx, name, label, false)
+}
+
+func (s *Service) setDisplayName(ctx context.Context, name, displayName string, recordRename bool) (AppView, error) {
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
 		return AppView{}, err
@@ -5414,8 +5425,11 @@ func (s *Service) SetDisplayName(ctx context.Context, name, displayName string) 
 	if err != nil {
 		return AppView{}, err
 	}
-	if previous != trimmed {
-		s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetDisplayName)
+	// A side with no label reads as the name the service shows instead, and
+	// a change of label that shows the same name is no rename.
+	fallback := core.AppPublicName(a)
+	if from, to := cmp.Or(previous, fallback), cmp.Or(trimmed, fallback); recordRename && from != to {
+		s.RecordDisplayNameChanged(ctx, a, from, to)
 	}
 	return view, nil
 }

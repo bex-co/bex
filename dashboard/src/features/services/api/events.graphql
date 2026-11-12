@@ -107,6 +107,9 @@ query ServiceEvents(
       environmentTo
       envGroupId
       envGroupName
+      displayNameFrom
+      displayNameTo
+      domain
       trigger {
         firstBuild
         envUpdated

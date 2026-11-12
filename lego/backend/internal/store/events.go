@@ -537,8 +537,9 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 
 // AuditChanges are the audit_events columns event details need beyond the
 // feed's UNION: Render's maintenance-mode, disk-resize, auto-deploy and
-// autoscaling-target members, and the env group a link names. Nil for every
-// other verb and for rows recorded before they existed.
+// autoscaling-target members, the env group a link names, and a rename's or a
+// custom-domain event's names. Nil for every other verb and for rows recorded
+// before they existed.
 type AuditChanges struct {
 	MaintenanceModeTo  *bool
 	DiskSizeFromGB     *int32
@@ -554,18 +555,25 @@ type AuditChanges struct {
 	AutoscalingCPUTo      *int32
 	AutoscalingMemoryFrom *int32
 	AutoscalingMemoryTo   *int32
+	// A rename's label on each side, and a custom-domain event's hostname
+	// (w4/m337).
+	DisplayNameFrom *string
+	DisplayNameTo   *string
+	Domain          *string
 }
 
 // auditChangesColumns are AuditChanges' columns of audit_events aliased a, in
 // scanDestinations' order.
 const auditChangesColumns = `a.maintenance_mode_to, a.disk_size_from_gb, a.maintenance_uri_from, a.maintenance_uri_to,
        a.auto_deploy_reason, a.auto_deploy_trigger, a.env_group_id, a.env_group_name,
-       a.autoscaling_cpu_from, a.autoscaling_cpu_to, a.autoscaling_memory_from, a.autoscaling_memory_to`
+       a.autoscaling_cpu_from, a.autoscaling_cpu_to, a.autoscaling_memory_from, a.autoscaling_memory_to,
+       a.display_name_from, a.display_name_to, a.domain`
 
 func (c *AuditChanges) scanDestinations() []any {
 	return []any{&c.MaintenanceModeTo, &c.DiskSizeFromGB, &c.MaintenanceURIFrom, &c.MaintenanceURITo,
 		&c.AutoDeployReason, &c.AutoDeployTrigger, &c.EnvGroupID, &c.EnvGroupName,
-		&c.AutoscalingCPUFrom, &c.AutoscalingCPUTo, &c.AutoscalingMemoryFrom, &c.AutoscalingMemoryTo}
+		&c.AutoscalingCPUFrom, &c.AutoscalingCPUTo, &c.AutoscalingMemoryFrom, &c.AutoscalingMemoryTo,
+		&c.DisplayNameFrom, &c.DisplayNameTo, &c.Domain}
 }
 
 // auditRowID is an audit row's id from its feed key ("<audit row id>:").
@@ -577,6 +585,7 @@ var auditChangeVerbs = map[string]bool{
 	core.AuditVerbUpdateDisk: true, core.AuditVerbSetAutoDeploy: true,
 	core.AuditVerbLinkService: true, core.AuditVerbUnlinkService: true, core.AuditVerbLinkEnvGroup: true,
 	core.AuditVerbSetAutoscaling: true, core.AuditVerbDeleteAutoscaling: true,
+	core.AuditVerbSetDisplayName: true, core.AuditVerbAddDomain: true, core.AuditVerbDeleteDomain: true, core.AuditVerbVerifyDomain: true,
 }
 
 // attachAuditChanges fills AuditChanges on a page's audit rows from

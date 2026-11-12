@@ -118,7 +118,7 @@ type renderDetails struct {
 	FromInstances *int32 `json:"fromInstances,omitempty"`
 	ToInstances   *int32 `json:"toInstances,omitempty"`
 	// plan_changed ("Instance Type Changed" on Render) and bex's
-	// branch_changed carry a from/to string pair.
+	// branch_changed and display_name_changed carry a from/to string pair.
 	From *string `json:"from,omitempty"`
 	To   *string `json:"to,omitempty"`
 	// ID / URL are commit_ignored's commit (Render's "Commit Ignored").
@@ -158,6 +158,9 @@ type renderDetails struct {
 	// at the time (bex extension; these types are bex's own).
 	EnvGroupID   string `json:"envGroupId,omitempty"`
 	EnvGroupName string `json:"envGroupName,omitempty"`
+	// custom_domain_added / _removed / _verified (w4/m337): the domain's
+	// hostname (bex extension; these types are bex's own).
+	Domain string `json:"domain,omitempty"`
 	// disk_created's size, disk_updated's before and after (w3/m317).
 	SizeGB     *int32 `json:"sizeGB,omitempty"`
 	FromSizeGB *int32 `json:"fromSizeGB,omitempty"`
@@ -408,6 +411,12 @@ func toRenderEvent(e Event) renderEvent {
 		d.UsagePercent, d.ThresholdPercent = e.Details.UsagePercent, e.Details.ThresholdPercent
 	case TypeEnvGroupLinked, TypeEnvGroupUnlinked:
 		d.EnvGroupID, d.EnvGroupName = e.Details.EnvGroupID, e.Details.EnvGroupName
+	case TypeDisplayNameChanged:
+		if e.Details.DisplayNameTo != "" {
+			d.From, d.To = &e.Details.DisplayNameFrom, &e.Details.DisplayNameTo
+		}
+	case TypeCustomDomainAdded, TypeCustomDomainRemoved, TypeCustomDomainVerified:
+		d.Domain = e.Details.Domain
 	}
 	return renderEvent{
 		ID:        e.ID,

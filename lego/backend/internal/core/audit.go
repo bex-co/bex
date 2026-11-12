@@ -42,8 +42,9 @@ const (
 // typed detail fields (MaintenanceModeTo, PlanFrom/PlanTo,
 // InstanceCountFrom/InstanceCountTo, Autoscaling*From/*To, AutoDeployEnabled,
 // and the datastore configuration values below) are non-secret scalars
-// required by Render's event contracts; the one string a tenant chose is the
-// maintenance page URI, which the service itself already shows to any reader.
+// required by Render's event contracts. The strings a tenant chose are the
+// maintenance page URI, a rename's display names and a custom domain's
+// hostname, each of which the service itself already shows to any reader.
 // There is no free-form path for a secret to reach an event.
 type AuditEvent struct {
 	// ID is normally empty (the sink mints one). A writer that may deliver the
@@ -150,6 +151,13 @@ type AuditEvent struct {
 	// Empty for every other verb.
 	EnvGroupID   string
 	EnvGroupName string
+	// DisplayNameFrom/DisplayNameTo are a rename's label before and after, the
+	// service's immutable name on a side with no label; Domain is the hostname
+	// a custom-domain verb added, removed or verified (w4/m337). Empty for
+	// every other verb.
+	DisplayNameFrom string
+	DisplayNameTo   string
+	Domain          string
 }
 
 type deferAllowedWriteAuditKey struct{}
@@ -590,13 +598,9 @@ func (b *Base) recordAutoDeploy(ctx context.Context, app *appv1alpha1.App, enabl
 // is written at authorize time; this is the only path that produces the row,
 // and it runs after the mutation succeeded (w4/m122).
 //
-// It deliberately carries NO hostname. The live evidence showed `details: {}`
-// and a bare "Custom domain verified", which on a multi-domain service says
-// little — but naming the domain means a new persisted detail column and its
-// migration, and the row being TRUE is the defect here. Recorded as a possible
-// follow-up rather than smuggled in: an event that names the wrong thing is a
-// different bug from an event that should not exist.
-func (b *Base) RecordDomainEffect(ctx context.Context, app *appv1alpha1.App, verb string) {
+// The row names the domain's hostname (w4/m337), so a service with several
+// domains says which one changed.
+func (b *Base) RecordDomainEffect(ctx context.Context, app *appv1alpha1.App, verb, hostname string) {
 	switch verb {
 	case AuditVerbAddDomain, AuditVerbVerifyDomain, AuditVerbDeleteDomain:
 	default:
@@ -608,7 +612,9 @@ func (b *Base) RecordDomainEffect(ctx context.Context, app *appv1alpha1.App, ver
 		log.Printf("audit: resolve domain resource: %v", err)
 		return
 	}
-	b.recordAudit(ctx, b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app)))
+	ev := b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app))
+	ev.Domain = hostname
+	b.recordAudit(ctx, ev)
 }
 
 // appConfigVerbs are the service-configuration verbs recorded after their write
@@ -672,6 +678,14 @@ func (b *Base) recordAppConfig(ctx context.Context, app *appv1alpha1.App, verb s
 		detail(&ev)
 	}
 	b.recordAudit(ctx, ev)
+}
+
+// RecordDisplayNameChanged is RecordAppConfigChanged for a rename, naming the
+// label on each side (w4/m337).
+func (b *Base) RecordDisplayNameChanged(ctx context.Context, app *appv1alpha1.App, from, to string) {
+	b.recordAppConfig(ctx, app, AuditVerbSetDisplayName, func(ev *AuditEvent) {
+		ev.DisplayNameFrom, ev.DisplayNameTo = from, to
+	})
 }
 
 // RecordEnvGroupLinkChanged is RecordAppConfigChanged for an env-group link or

@@ -4847,6 +4847,26 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Service activity title for env_group_unlinked naming the group, by its name at the time (w4/563)",
   },
+  "services.eventsCustomDomainAddedNamed": {
+    message: "Custom domain {name} added",
+    description:
+      "Service activity title for custom_domain_added naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsCustomDomainRemovedNamed": {
+    message: "Custom domain {name} removed",
+    description:
+      "Service activity title for custom_domain_removed naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsCustomDomainVerifiedNamed": {
+    message: "Custom domain {name} verified",
+    description:
+      "Service activity title for custom_domain_verified naming the domain's hostname (w4/m337)",
+  },
+  "services.eventsDisplayNameChange": {
+    message: "Name {from} → {to}",
+    description:
+      "display_name_changed detail line: the service's name before and after the rename (w4/m337)",
+  },
   "services.eventsTypeAutoDeployChanged": {
     message: "Auto-deploy updated",
     description: "Service activity type: auto-deploy setting changed",

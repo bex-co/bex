@@ -1066,7 +1066,7 @@ func (s *Service) checkAndPromoteClaim(ctx context.Context, app *appv1alpha1.App
 	if s.Kick != nil {
 		s.Kick()
 	}
-	s.RecordDomainEffect(ctx, app, core.AuditVerbVerifyDomain)
+	s.RecordDomainEffect(ctx, app, core.AuditVerbVerifyDomain, claim.Host)
 	return promoted, nil
 }
 
@@ -1690,7 +1690,7 @@ func (s *Service) addOne(ctx context.Context, appName, hostname, redirectForName
 	// record, or records without adding.
 	defer func() {
 		if err == nil && added {
-			s.RecordDomainEffect(ctx, app, core.AuditVerbAddDomain)
+			s.RecordDomainEffect(ctx, app, core.AuditVerbAddDomain, hostname)
 		}
 	}()
 	// The create path and the Blueprint path both refuse a domain on a type that
@@ -1841,17 +1841,15 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (e
 	if err != nil {
 		return err
 	}
-	// removedSomething is set only where a claim or host actually went away.
-	//
-	// It stays ONE row per delete call, not one per host: an add can attach a
-	// `www.` sibling alongside the primary, and deleting the primary takes the
-	// sibling with it. That add/delete pairing asymmetry is pre-existing and
-	// deliberately documented (.pm/w7/done/050.md:259); this milestone gates
-	// WHETHER a row is written, and does not change how many.
-	removedSomething := false
+	// removedHosts are the hosts that actually went away, one row each: an add
+	// can attach a `www.` sibling with its own row, and deleting the primary
+	// takes the sibling with it, so the feed names both (w4/m337).
+	var removedHosts []string
 	defer func() {
-		if err == nil && removedSomething {
-			s.RecordDomainEffect(ctx, app, core.AuditVerbDeleteDomain)
+		if err == nil {
+			for _, h := range removedHosts {
+				s.RecordDomainEffect(ctx, app, core.AuditVerbDeleteDomain, h)
+			}
 		}
 	}()
 	if hostname, err = s.domainHost(ctx, app, hostname); err != nil {
@@ -1870,11 +1868,21 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (e
 		_, getErr := claims.GetDomainClaim(ctx, appID, hostname)
 		switch {
 		case getErr == nil, errors.Is(getErr, store.ErrNotFound) && (slices.Contains(app.Spec.Hosts, hostname) || app.Spec.Host == hostname):
-			removedSomething = true
 		case errors.Is(getErr, store.ErrNotFound):
 			return core.NotFound("custom domain")
 		default:
 			return getErr
+		}
+		// RemoveDomain takes the claims redirecting to the host with it.
+		before, err := claims.ListDomainClaims(ctx, appID)
+		if err != nil {
+			return err
+		}
+		goes := []string{hostname}
+		for _, c := range before {
+			if c.RedirectForName == hostname && c.Host != hostname {
+				goes = append(goes, c.Host)
+			}
 		}
 		if err := s.Store.RemoveDomain(ctx, appID, hostname); err != nil {
 			return fmt.Errorf("delete domain claim: %w", err)
@@ -1883,6 +1891,7 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (e
 		if err != nil {
 			return err
 		}
+		removedHosts = goes
 		if err := s.projectDomainClaims(ctx, app, rows); err != nil {
 			return err
 		}
@@ -1906,7 +1915,11 @@ func (s *Service) DeleteDomain(ctx context.Context, appName, hostname string) (e
 	if len(updated) == len(app.Spec.Hosts) {
 		return core.NotFound("custom domain") // not present, and no event
 	}
-	removedSomething = true
+	for _, h := range app.Spec.Hosts {
+		if _, ok := removed[h]; ok {
+			removedHosts = append(removedHosts, h)
+		}
+	}
 	if s.Store != nil {
 		if id := managedAppID(app); id != "" {
 			if err := s.Store.RemoveDomain(ctx, id, hostname); err != nil {

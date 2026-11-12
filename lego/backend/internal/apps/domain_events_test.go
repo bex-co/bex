@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -120,11 +121,11 @@ func TestRefusedAddLeavesNoTraceInTheFeed(t *testing.T) {
 	}
 }
 
-// TestDeleteRecordsOnlyARealRemoval covers the third verb, and pins that the
-// pre-existing add/delete pairing asymmetry is NOT changed here: an add can
-// attach a `www.` sibling alongside the primary, and deleting the primary takes
-// the sibling with it in ONE call and one row (.pm/w7/done/050.md:259). This
-// milestone gates whether a row is written, not how many.
+// TestDeleteRecordsOnlyARealRemoval covers the third verb: an absent host
+// records nothing, and a real removal records one row per host that went away.
+// An add attaches a `www.` sibling with its own row, and deleting the primary
+// takes the sibling with it, so the call records both, each naming its host
+// (w4/m337), and the feed shows the sibling gone as it showed it added.
 func TestDeleteRecordsOnlyARealRemoval(t *testing.T) {
 	svc, _, sink := auditedDomainService(t)
 	ctx := context.Background()
@@ -143,8 +144,19 @@ func TestDeleteRecordsOnlyARealRemoval(t *testing.T) {
 	if err := svc.DeleteDomain(ctx, "web", "foo.com"); err != nil {
 		t.Fatalf("DeleteDomain: %v", err)
 	}
-	if n := sink.countVerb(core.AuditVerbDeleteDomain); n != 1 {
-		t.Errorf("a real removal recorded %d events, want exactly 1", n)
+	var added, removed []string
+	for _, ev := range sink.events {
+		switch ev.Verb {
+		case core.AuditVerbAddDomain:
+			added = append(added, ev.Domain)
+		case core.AuditVerbDeleteDomain:
+			removed = append(removed, ev.Domain)
+		}
+	}
+	slices.Sort(added)
+	slices.Sort(removed)
+	if want := []string{"foo.com", "www.foo.com"}; !slices.Equal(added, want) || !slices.Equal(removed, want) {
+		t.Errorf("rows added %q and removed %q, want both naming %q", added, removed, want)
 	}
 }
 
@@ -306,5 +318,34 @@ func TestAcceptedConfigWritesStillRecordExactlyOne(t *testing.T) {
 				t.Fatalf("an accepted %s recorded %d events, want exactly 1", tc.verb, n)
 			}
 		})
+	}
+}
+
+// TestDomainEventsNameTheirHostname is w4/m337: each custom-domain row names
+// the domain it added, verified or removed, canonicalized as the service shows
+// it, so a service with several domains says which one changed.
+func TestDomainEventsNameTheirHostname(t *testing.T) {
+	svc, _, sink := auditedDomainService(t)
+	ctx := context.Background()
+	svc.DomainTraffic = domainTrafficFunc(func(context.Context, string, string) bool { return true })
+	if _, err := svc.AddDomain(ctx, "web", "App.Example.com"); err != nil {
+		t.Fatalf("AddDomain: %v", err)
+	}
+	if _, err := svc.VerifyDomain(ctx, "web", "app.example.com"); err != nil {
+		t.Fatalf("VerifyDomain: %v", err)
+	}
+	if err := svc.DeleteDomain(ctx, "web", "app.example.com"); err != nil {
+		t.Fatalf("DeleteDomain: %v", err)
+	}
+	for _, verb := range []string{core.AuditVerbAddDomain, core.AuditVerbVerifyDomain, core.AuditVerbDeleteDomain} {
+		var named []string
+		for _, ev := range sink.events {
+			if ev.Verb == verb {
+				named = append(named, ev.Domain)
+			}
+		}
+		if len(named) != 1 || named[0] != "app.example.com" {
+			t.Errorf("%s rows name %q, want one naming app.example.com", verb, named)
+		}
 	}
 }

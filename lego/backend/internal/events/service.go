@@ -835,6 +835,11 @@ type Details struct {
 	// at the time. Empty on rows recorded before groups were named.
 	EnvGroupID   string
 	EnvGroupName string
+	// display_name_changed's label before and after, and a custom_domain_*
+	// event's hostname (w4/m337). Empty on rows recorded before them.
+	DisplayNameFrom string
+	DisplayNameTo   string
+	Domain          string
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -1303,6 +1308,14 @@ func view(r store.ServiceEventRow, service string) Event {
 			}
 			if r.EnvGroupName != nil {
 				ev.Details.EnvGroupName = *r.EnvGroupName
+			}
+		case TypeDisplayNameChanged:
+			if r.DisplayNameFrom != nil && r.DisplayNameTo != nil {
+				ev.Details.DisplayNameFrom, ev.Details.DisplayNameTo = *r.DisplayNameFrom, *r.DisplayNameTo
+			}
+		case TypeCustomDomainAdded, TypeCustomDomainRemoved, TypeCustomDomainVerified:
+			if r.Domain != nil {
+				ev.Details.Domain = *r.Domain
 			}
 		case TypeKeyValueConfigRestart:
 			ev.Details.MaxmemoryPolicy = r.MaxmemoryPolicy

@@ -243,6 +243,11 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// name at the time.
 		"envGroupId":   gqlutil.StrField(func(d Details) any { return d.EnvGroupID }),
 		"envGroupName": gqlutil.StrField(func(d Details) any { return d.EnvGroupName }),
+		// display_name_changed's label before and after, and a custom_domain_*
+		// event's hostname (w4/m337); empty on rows recorded before them.
+		"displayNameFrom": gqlutil.StrField(func(d Details) any { return d.DisplayNameFrom }),
+		"displayNameTo":   gqlutil.StrField(func(d Details) any { return d.DisplayNameTo }),
+		"domain":          gqlutil.StrField(func(d Details) any { return d.Domain }),
 	},
 })
 

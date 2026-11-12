@@ -1157,7 +1157,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		// cannot take (already used by another service) leaves the resource
 		// name showing, never a half-applied sync.
 		if created && svc.displayName != "" && app != nil {
-			if labeled, err := s.SetDisplayName(verbCtx, ref, svc.displayName); err == nil {
+			if labeled, err := s.labelNewService(verbCtx, ref, svc.displayName); err == nil {
 				v, app.Spec.DisplayName = labeled, svc.displayName
 			} else {
 				log.Printf("blueprint: service %s keeps its resource name as its label: %v", ref, err)

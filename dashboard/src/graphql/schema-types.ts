@@ -5093,6 +5093,9 @@ export type ServiceEventDetails = {
   deployStatus: Maybe<Scalars['String']['output']>;
   diskId: Maybe<Scalars['String']['output']>;
   diskName: Maybe<Scalars['String']['output']>;
+  displayNameFrom: Maybe<Scalars['String']['output']>;
+  displayNameTo: Maybe<Scalars['String']['output']>;
+  domain: Maybe<Scalars['String']['output']>;
   envGroupId: Maybe<Scalars['String']['output']>;
   envGroupName: Maybe<Scalars['String']['output']>;
   environmentFrom: Maybe<Scalars['String']['output']>;

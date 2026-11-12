@@ -209,6 +209,63 @@ func TestPGAutoscalingTargetsRoundTrip(t *testing.T) {
 	}
 }
 
+// TestPGRenameAndDomainNamesRoundTrip pins w4/m337: a rename keeps both
+// names and a custom-domain event its hostname, and the feed and the by-id
+// lookup read them back.
+func TestPGRenameAndDomainNamesRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	t.Cleanup(pool.Close)
+	tenant, err := st.CreateWorkspace(ctx, "rename-domain-"+ids.New(ids.Workspace), PlanHobby, "fixture-owner")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, tenant.ID)
+		_ = st.DeleteTenant(context.Background(), tenant.ID)
+	})
+	app, err := st.CreateApp(ctx, App{
+		TenantID: tenant.ID, Name: "renamed", Image: "nginx:1", Type: "web_service",
+		Branch: "main", Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().UTC().Truncate(time.Second)
+	for i, ev := range []core.AuditEvent{
+		{Verb: core.AuditVerbSetDisplayName, DisplayNameFrom: "renamed", DisplayNameTo: "Checkout API"},
+		{Verb: core.AuditVerbAddDomain, Domain: "app.example.com"},
+	} {
+		ev.Caller, ev.Resource, ev.Target = "fixture-owner", core.WorkspaceObject(tenant.ID), core.ServiceTarget(app.ID)
+		ev.Outcome, ev.At = core.AuditAllowed, at.Add(time.Duration(i)*time.Minute)
+		if err := st.Record(ctx, ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	page, err := st.ListServiceEvents(ctx, app.ID, tenant.ID, ServiceEventFilter{Verbs: []string{core.AuditVerbSetDisplayName, core.AuditVerbAddDomain}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Newest first: the domain, then the rename.
+	want := []AuditChanges{{Domain: new("app.example.com")}, {DisplayNameFrom: new("renamed"), DisplayNameTo: new("Checkout API")}}
+	if len(page) != len(want) {
+		t.Fatalf("feed rows = %+v, want %d", page, len(want))
+	}
+	for i, row := range page {
+		if !reflect.DeepEqual(row.AuditChanges, want[i]) {
+			t.Errorf("feed %s changes = %+v, want %+v", row.Verb, row.AuditChanges, want[i])
+		}
+		lookup, err := st.GetServiceEvent(ctx, tenant.ID, ids.Derive(ids.Event, row.Key))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := lookup.Event.AuditChanges; !reflect.DeepEqual(got, want[i]) {
+			t.Errorf("by-id %s changes = %+v, want %+v", row.Verb, got, want[i])
+		}
+	}
+}
+
 // TestPGAuditRecordWithDerivedIDRecordsOnce pins w2/067: Stripe redelivers
 // checkout.session.completed, and a row carrying a derived id must land once
 // however often it is recorded.

@@ -559,6 +559,80 @@ describe("ServiceEventsPage — env-group link titles (w4/563)", () => {
   });
 });
 
+// w4/m337: a rename names both names, and a custom-domain row its hostname;
+// rows recorded before either keep their bare titles.
+describe("ServiceEventsPage — rename and custom-domain details (w4/m337)", () => {
+  it("names the service's names and the domain, in en and zh", async () => {
+    const row = (
+      id: string,
+      type: string,
+      hour: number,
+      details: Record<string, string>,
+    ) => ({
+      id,
+      type,
+      timestamp: `2026-08-28T${String(hour).padStart(2, "0")}:00:00Z`,
+      cursor: `c-${id}`,
+      details,
+    });
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          row("evt-rename", "display_name_changed", 9, {
+            displayNameFrom: "api",
+            displayNameTo: "Checkout API",
+          }),
+          row("evt-added", "custom_domain_added", 8, {
+            domain: "app.example.com",
+          }),
+          row("evt-verified", "custom_domain_verified", 7, {
+            domain: "app.example.com",
+          }),
+          row("evt-removed", "custom_domain_removed", 6, {
+            domain: "app.example.com",
+          }),
+          row("evt-rename-legacy", "display_name_changed", 5, {}),
+          row("evt-added-legacy", "custom_domain_added", 4, {}),
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText("Name api → Checkout API"),
+    ).toBeInTheDocument();
+    for (const title of [
+      "Custom domain app.example.com added",
+      "Custom domain app.example.com verified",
+      "Custom domain app.example.com removed",
+    ]) {
+      expect(screen.getByText(title)).toBeInTheDocument();
+    }
+    expect(screen.getAllByText("Display name changed")).toHaveLength(2);
+    expect(screen.getByText("Custom domain added")).toBeInTheDocument();
+    expect(screen.getAllByText(/^Name /)).toHaveLength(1);
+
+    await act(() => i18n.changeLanguage("zh"));
+    try {
+      expect(
+        await screen.findByText("名称 api → Checkout API"),
+      ).toBeInTheDocument();
+      for (const title of [
+        "已添加自定义域名 app.example.com",
+        "自定义域名 app.example.com 已验证",
+        "已移除自定义域名 app.example.com",
+      ]) {
+        expect(screen.getByText(title)).toBeInTheDocument();
+      }
+    } finally {
+      await act(() => i18n.changeLanguage("en"));
+    }
+  });
+});
+
 describe("ServiceEventsPage — service_moved placement details (w6/m134)", () => {
   afterEach(() => {
     placementState.projects = [];

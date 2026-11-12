@@ -185,3 +185,30 @@ func TestAutoscalingEventDetailsCarryTheTargets(t *testing.T) {
 		}
 	}
 }
+
+// TestRenameAndDomainEventDetailsNameThem pins w4/m337: a rename sends both
+// names as from/to, a custom-domain event its hostname, and a row recorded
+// before either keeps empty details.
+func TestRenameAndDomainEventDetailsNameThem(t *testing.T) {
+	for _, tc := range []struct {
+		row  store.ServiceEventRow
+		want string
+	}{
+		{store.ServiceEventRow{Verb: "apps.SetDisplayName", AuditChanges: store.AuditChanges{DisplayNameFrom: new("api"), DisplayNameTo: new("Checkout API")}}, `{"from":"api","to":"Checkout API"}`},
+		{store.ServiceEventRow{Verb: "apps.SetDisplayName"}, `{}`},
+		{store.ServiceEventRow{Verb: "apps.AddDomain", AuditChanges: store.AuditChanges{Domain: new("app.example.com")}}, `{"domain":"app.example.com"}`},
+		{store.ServiceEventRow{Verb: "apps.VerifyDomain", AuditChanges: store.AuditChanges{Domain: new("app.example.com")}}, `{"domain":"app.example.com"}`},
+		{store.ServiceEventRow{Verb: "apps.DeleteDomain", AuditChanges: store.AuditChanges{Domain: new("app.example.com")}}, `{"domain":"app.example.com"}`},
+		{store.ServiceEventRow{Verb: "apps.DeleteDomain"}, `{}`},
+	} {
+		tc.row.Source, tc.row.Key = store.EventSourceAudit, "aud-1:"
+		event := toRenderEvent(view(tc.row, "srv-0123456789abcdefghij"))
+		body, err := json.Marshal(event.Details)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(body) != tc.want {
+			t.Errorf("%s (%s): details %s, want %s", event.Type, tc.row.Verb, body, tc.want)
+		}
+	}
+}

@@ -51,6 +51,37 @@ import {
 const CATALOG_TYPES = new Set(SERVICE_EVENT_TYPES);
 import { ServiceEventsSkeleton } from "@/common/components/route-skeletons";
 
+type EventDetails = ServiceEventView["details"];
+
+/** The titles that name their group or domain, by event type. */
+const NAMED_TITLES: Partial<
+  Record<
+    string,
+    { key: string; name: (d: EventDetails) => string | null | undefined }
+  >
+> = {
+  env_group_linked: {
+    key: "services.eventsEnvGroupLinkedNamed",
+    name: (d) => d?.envGroupName,
+  },
+  env_group_unlinked: {
+    key: "services.eventsEnvGroupUnlinkedNamed",
+    name: (d) => d?.envGroupName,
+  },
+  custom_domain_added: {
+    key: "services.eventsCustomDomainAddedNamed",
+    name: (d) => d?.domain,
+  },
+  custom_domain_removed: {
+    key: "services.eventsCustomDomainRemovedNamed",
+    name: (d) => d?.domain,
+  },
+  custom_domain_verified: {
+    key: "services.eventsCustomDomainVerifiedNamed",
+    name: (d) => d?.domain,
+  },
+};
+
 export const Route = createFileRoute("/services/$serviceId/events")({
   head: serviceTabHead("services.navEvents", "/services/$serviceId"),
   component: RouteComponent,
@@ -430,15 +461,12 @@ function EventSummary({
   const projectTo = details?.projectTo ?? null;
   const environmentFrom = details?.environmentFrom ?? null;
   const environmentTo = details?.environmentTo ?? null;
-  // An env-group link names its group (w4/563); a row recorded before that
-  // keeps the bare type label.
-  const envGroupName = details?.envGroupName || null;
-  const envGroupTitle =
-    envGroupName && type === "env_group_linked"
-      ? t("services.eventsEnvGroupLinkedNamed", { name: envGroupName })
-      : envGroupName && type === "env_group_unlinked"
-        ? t("services.eventsEnvGroupUnlinkedNamed", { name: envGroupName })
-        : null;
+  // An env-group link names its group (w4/563) and a custom-domain row its
+  // hostname (w4/m337); a row recorded before that keeps the bare type label.
+  const named = NAMED_TITLES[type];
+  const titleName = named?.name(details);
+  const namedTitle =
+    named && titleName ? t(named.key, { name: titleName }) : null;
   const projectChanged = type === "service_moved" && projectFrom !== projectTo;
   const environmentChanged =
     type === "service_moved" && environmentFrom !== environmentTo;
@@ -463,7 +491,7 @@ function EventSummary({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium group-hover:text-primary">
-            {envGroupTitle ??
+            {namedTitle ??
               t(serviceEventLabelKey(type) as Parameters<typeof t>[0])}
           </p>
           {isDeploy && status ? (
@@ -578,6 +606,14 @@ function EventSummary({
               mountPath: details?.mountPath ?? "",
               usage: usagePercent.toFixed(1),
               threshold: thresholdPercent.toFixed(0),
+            })}
+          </p>
+        ) : null}
+        {type === "display_name_changed" && details?.displayNameTo ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t("services.eventsDisplayNameChange", {
+              from: details.displayNameFrom ?? "",
+              to: details.displayNameTo,
             })}
           </p>
         ) : null}
