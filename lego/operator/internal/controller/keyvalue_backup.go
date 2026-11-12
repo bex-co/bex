@@ -340,7 +340,7 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 	if controllerutil.ContainsFinalizer(kv, kvTLSFinalizer) || controllerutil.ContainsFinalizer(kv, kvFinalizer) {
 		done, cleanupErr := r.reconcileKeyValueTLSCleanup(ctx, kv)
 		if cleanupErr != nil {
-			if r.kvDeletionOverran(kv) {
+			if deletionOverran(kv, finalizerOverrunWindow(r.FinalizerOverrunAfter)) {
 				r.recordKVDeletionStalled(ctx, kv, "TLS cleanup returned errors")
 			}
 			return result, cleanupErr
@@ -360,7 +360,7 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 
 	cron := &batchv1.CronJob{ObjectMeta: metav1.ObjectMeta{Name: keyValueBackupName(kv.Name), Namespace: kv.Namespace}}
 	if gone, err := deleteAndWait(ctx, r.Client, cron); err != nil {
-		if r.kvDeletionOverran(kv) {
+		if deletionOverran(kv, finalizerOverrunWindow(r.FinalizerOverrunAfter)) {
 			r.recordKVDeletionStalled(ctx, kv, "delete KeyValue backup CronJob returned errors")
 		}
 		return result, fmt.Errorf("delete KeyValue backup CronJob: %w", err)
@@ -370,7 +370,7 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 
 	jobsGone, err := r.deleteKeyValueBackupJobs(ctx, kv)
 	if err != nil {
-		if r.kvDeletionOverran(kv) {
+		if deletionOverran(kv, finalizerOverrunWindow(r.FinalizerOverrunAfter)) {
 			r.recordKVDeletionStalled(ctx, kv, "delete KeyValue backup Jobs returned errors")
 		}
 		return result, err
@@ -382,7 +382,7 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 	if r.Backup.configured() && kv.Annotations[appv1alpha1.AnnotationPreserveKeyValueBackups] != kvPreserveBackupsTrue {
 		done, err := reconcileCleanupJob(ctx, r.Client, kv, r.keyValueBackupPurgeJob(kv), annotKVBackupPurgeComplete)
 		if err != nil {
-			if r.kvDeletionOverran(kv) {
+			if deletionOverran(kv, finalizerOverrunWindow(r.FinalizerOverrunAfter)) {
 				r.recordKVDeletionStalled(ctx, kv, "RDB backup purge returned errors")
 			}
 			return result, err
@@ -399,20 +399,6 @@ func (r *KeyValueReconciler) handleKeyValueDeletion(ctx context.Context, kv *app
 	return result, nil
 }
 
-func (r *KeyValueReconciler) kvFinalizerOverrunWindow() time.Duration {
-	if r.FinalizerOverrunAfter > 0 {
-		return r.FinalizerOverrunAfter
-	}
-	return finalizerOverrunAfter
-}
-
-func (r *KeyValueReconciler) kvDeletionOverran(kv *appv1alpha1.KeyValue) bool {
-	if kv.DeletionTimestamp.IsZero() {
-		return false
-	}
-	return time.Since(kv.DeletionTimestamp.Time) >= r.kvFinalizerOverrunWindow()
-}
-
 func (r *KeyValueReconciler) recordKVDeletionStalled(ctx context.Context, kv *appv1alpha1.KeyValue, blockedStep string) {
 	changed := meta.SetStatusCondition(&kv.Status.Conditions, metav1.Condition{
 		Type:               conditionDeletionStalled,
@@ -420,18 +406,18 @@ func (r *KeyValueReconciler) recordKVDeletionStalled(ctx context.Context, kv *ap
 		Reason:             reasonCleanupExceededDeadline,
 		ObservedGeneration: kv.Generation,
 		Message: fmt.Sprintf("key value finalization has not completed within %s of deletion (%s); the finalizer is retained so no backup data or TLS material is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
-			r.kvFinalizerOverrunWindow(), blockedStep),
+			finalizerOverrunWindow(r.FinalizerOverrunAfter), blockedStep),
 	})
 	if !changed {
 		return
 	}
 	logf.FromContext(ctx).Error(nil, "KeyValue finalization stalled past its bound; surfaced as DeletionStalled",
-		"keyvalue", kv.Name, "window", r.kvFinalizerOverrunWindow(), "step", blockedStep)
+		"keyvalue", kv.Name, "window", finalizerOverrunWindow(r.FinalizerOverrunAfter), "step", blockedStep)
 	_ = updateStatusIfChanged(ctx, r.Client, kv)
 }
 
 func (r *KeyValueReconciler) kvDeletionPending(ctx context.Context, kv *appv1alpha1.KeyValue, step string) ctrl.Result {
-	if r.kvDeletionOverran(kv) {
+	if deletionOverran(kv, finalizerOverrunWindow(r.FinalizerOverrunAfter)) {
 		r.recordKVDeletionStalled(ctx, kv, step)
 		return ctrl.Result{RequeueAfter: childHealthRequeue}
 	}

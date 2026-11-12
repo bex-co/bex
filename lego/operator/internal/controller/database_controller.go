@@ -2105,7 +2105,7 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 			job := r.dbBackupPurgeJob(db)
 			done, err := reconcileCleanupJob(ctx, r.Client, db, job, annotDBBackupPurgeComplete)
 			if err != nil {
-				if r.dbDeletionOverran(db) {
+				if deletionOverran(db, finalizerOverrunWindow(r.FinalizerOverrunAfter)) {
 					r.recordDBDeletionStalled(ctx, db, "backup purge returned errors")
 				}
 				return ctrl.Result{}, err
@@ -2114,7 +2114,7 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 				return r.dbDeletionPending(ctx, db, "waiting for barman backup purge Job", settleRequeue), nil
 			}
 		} else if db.Status.BackupsEnabled {
-			if r.dbDeletionOverran(db) {
+			if deletionOverran(db, finalizerOverrunWindow(r.FinalizerOverrunAfter)) {
 				r.recordDBDeletionStalled(ctx, db, "backup purge configuration unavailable")
 			}
 			return ctrl.Result{}, fmt.Errorf("database backup purge configuration is unavailable")
@@ -2127,20 +2127,6 @@ func (r *DatabaseReconciler) handleDBDeletion(ctx context.Context, req ctrl.Requ
 	return ctrl.Result{}, nil
 }
 
-func (r *DatabaseReconciler) dbFinalizerOverrunWindow() time.Duration {
-	if r.FinalizerOverrunAfter > 0 {
-		return r.FinalizerOverrunAfter
-	}
-	return finalizerOverrunAfter
-}
-
-func (r *DatabaseReconciler) dbDeletionOverran(db *appv1alpha1.Database) bool {
-	if db.DeletionTimestamp.IsZero() {
-		return false
-	}
-	return time.Since(db.DeletionTimestamp.Time) >= r.dbFinalizerOverrunWindow()
-}
-
 func (r *DatabaseReconciler) recordDBDeletionStalled(ctx context.Context, db *appv1alpha1.Database, blockedStep string) {
 	changed := meta.SetStatusCondition(&db.Status.Conditions, metav1.Condition{
 		Type:               conditionDeletionStalled,
@@ -2148,13 +2134,13 @@ func (r *DatabaseReconciler) recordDBDeletionStalled(ctx context.Context, db *ap
 		Reason:             reasonCleanupExceededDeadline,
 		ObservedGeneration: db.Generation,
 		Message: fmt.Sprintf("database finalization has not completed within %s of deletion (%s); the finalizer is retained so no backup data is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
-			r.dbFinalizerOverrunWindow(), blockedStep),
+			finalizerOverrunWindow(r.FinalizerOverrunAfter), blockedStep),
 	})
 	if !changed {
 		return
 	}
 	logf.FromContext(ctx).Error(nil, "Database finalization stalled past its bound; surfaced as DeletionStalled",
-		"database", db.Name, "window", r.dbFinalizerOverrunWindow(), "step", blockedStep)
+		"database", db.Name, "window", finalizerOverrunWindow(r.FinalizerOverrunAfter), "step", blockedStep)
 	_ = updateStatusIfChanged(ctx, r.Client, db)
 }
 
@@ -2163,7 +2149,7 @@ func (r *DatabaseReconciler) recordDBDeletionStalled(ctx context.Context, db *ap
 // inWindow is the tight requeue used while cleanup is still progressing normally
 // (5s while waiting on the CNPG Cluster; settleRequeue for the purge Job).
 func (r *DatabaseReconciler) dbDeletionPending(ctx context.Context, db *appv1alpha1.Database, step string, inWindow time.Duration) ctrl.Result {
-	if r.dbDeletionOverran(db) {
+	if deletionOverran(db, finalizerOverrunWindow(r.FinalizerOverrunAfter)) {
 		r.recordDBDeletionStalled(ctx, db, step)
 		return ctrl.Result{RequeueAfter: childHealthRequeue}
 	}

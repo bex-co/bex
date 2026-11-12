@@ -7646,28 +7646,6 @@ func appPodRequests(_ context.Context, object client.Object) []reconcile.Request
 	return []reconcile.Request{{NamespacedName: client.ObjectKey{Namespace: object.GetNamespace(), Name: name}}}
 }
 
-// finalizerOverrunWindow returns the window past which a still-running App
-// finalization is surfaced as stalled. FinalizerOverrunAfter is a test seam so
-// the overrun path can be exercised without a multi-minute wall-clock wait.
-func (r *AppReconciler) finalizerOverrunWindow() time.Duration {
-	if r.FinalizerOverrunAfter > 0 {
-		return r.FinalizerOverrunAfter
-	}
-	return finalizerOverrunAfter
-}
-
-// deletionOverran reports whether finalization has run past its bound. It keys
-// on the App's own DeletionTimestamp — the wall-clock instant Kubernetes
-// accepted the delete — so no extra status field is needed to remember when
-// teardown began, and a manager restart mid-teardown still measures from the
-// same origin.
-func (r *AppReconciler) deletionOverran(app *appv1alpha1.App) bool {
-	if app.DeletionTimestamp.IsZero() {
-		return false
-	}
-	return time.Since(app.DeletionTimestamp.Time) >= r.finalizerOverrunWindow()
-}
-
 // recordDeletionStalled stamps the DeletionStalled condition so a wedged
 // finalizer (a static-content purge that keeps failing, a missing publish
 // Secret, an S3 outage) is observable to operators within a bounded window
@@ -7686,13 +7664,13 @@ func (r *AppReconciler) recordDeletionStalled(ctx context.Context, app *appv1alp
 		Reason:             reasonCleanupExceededDeadline,
 		ObservedGeneration: app.Generation,
 		Message: fmt.Sprintf("app finalization has not completed within %s of deletion (%s); the finalizer is retained so no data is orphaned, the resource stays absent from tenant reads and keeps counting against the workspace terminating quota until cleanup succeeds",
-			r.finalizerOverrunWindow(), blockedStep),
+			finalizerOverrunWindow(r.FinalizerOverrunAfter), blockedStep),
 	})
 	if !changed {
 		return
 	}
 	logf.FromContext(ctx).Error(nil, "App finalization stalled past its bound; surfaced as DeletionStalled",
-		"app", app.Name, "window", r.finalizerOverrunWindow(), "step", blockedStep)
+		"app", app.Name, "window", finalizerOverrunWindow(r.FinalizerOverrunAfter), "step", blockedStep)
 	r.updateStatusRetrying(ctx, app, "recordDeletionStalled")
 }
 
@@ -7725,7 +7703,7 @@ func (r *AppReconciler) handleAppDeletion(ctx context.Context, app *appv1alpha1.
 		// stamp DeletionStalled and back the requeue off from settleRequeue to
 		// childHealthRequeue so a wedged App stops hot-looping. The finalizer is
 		// still retained on every non-terminal branch below.
-		overran := r.deletionOverran(app)
+		overran := deletionOverran(app, finalizerOverrunWindow(r.FinalizerOverrunAfter))
 		if cleanupErr != nil {
 			if overran {
 				r.recordDeletionStalled(ctx, app, "external/execution cleanup returned errors")
