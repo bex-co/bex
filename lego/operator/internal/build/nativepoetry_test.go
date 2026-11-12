@@ -106,10 +106,15 @@ func TestCommonLegacyPythonDefaultPoetryBootstrap(t *testing.T) {
 			if !tc.historical {
 				assertCommonPrimaryOrder(t, recipe, primary, "PYTHON_VERSION", version, true)
 			}
-			for _, reject := range []string{"ENV VIRTUAL_ENV", "ENV PYTHONHOME", "ENV PYTHONPATH", "POETRY_VIRTUALENVS_USE_POETRY_PYTHON", "ENV PATH=\"/usr/bin"} {
+			for _, reject := range []string{"ENV PYTHONHOME", "ENV PYTHONPATH", "POETRY_VIRTUALENVS_USE_POETRY_PYTHON", "ENV PATH=\"/usr/bin"} {
 				if strings.Contains(recipe, reject) {
 					t.Fatalf("tool bootstrap changed application environment with %q", reject)
 				}
+			}
+			// The only virtualenv the application sees is Render's own
+			// (w8/274), never the tool's.
+			if strings.Count(recipe, "VIRTUAL_ENV=") != 1 || !strings.Contains(recipe, "ENV VIRTUAL_ENV="+nativePythonVenv+" ") {
+				t.Fatalf("the application's virtualenv is not Render's alone:\n%s", recipe)
 			}
 			for _, retained := range []string{" /usr/local/bin/node /usr/local/bin/node\n", " /usr/local/lib/node_modules /usr/local/lib/node_modules\n", " /usr/local/bin/bun /usr/local/bin/bun\n", "/usr/local/bin/yarn", "/usr/local/bin/pnpm", " /ffmpeg /ffprobe /\n"} {
 				if !strings.Contains(recipe, retained) {

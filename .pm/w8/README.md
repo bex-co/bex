@@ -459,7 +459,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **275** — [A Node build keeps no `node_modules` between builds, and `NODE_MODULES_CACHE` is unset](275.md) (~3h, milestone-sized) ← w8/256, 2026-11-11: Render's switch for a cache bex does not have; minor.
 
-- [ ] **274** — [A native Python service has no virtualenv at Render's path, so `VENV_ROOT` is not set](274.md) (~2h) ← w8/256, 2026-11-11: the variable names a directory that does not exist on bex; minor.
+- [x] **274** — [A native Python service has no virtualenv at Render's path, so `VENV_ROOT` is not set](done/274.md) (~2h) — **DONE 2026-11-12:** shipped; native Python builds and runs in Render's virtualenv at `/opt/render/project/src/.venv` (`VENV_ROOT`), checked with local pip, uv and Poetry builds; the live check waits for the next deploy ← w8/256, 2026-11-11: the variable names a directory that does not exist on bex; minor.
 
 - [x] **273** — [A Rust service does not get Render's `ROCKET_PORT`, so a Rocket app listens on its own default port](done/273.md) — **DONE (2026-11-12)**: passed on production (sweep 81af)
 

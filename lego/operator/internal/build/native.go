@@ -381,6 +381,10 @@ func nativeSecretFileLinks(o Options) string {
 		strings.Join(o.NativeFiles, " "), nativeSecretFilesDir)
 }
 
+// nativePythonVenv is where Render keeps a Python service's virtualenv
+// (VENV_ROOT, render.com/docs/environment-variables).
+const nativePythonVenv = "/opt/render/project/src/.venv"
+
 // nativeBuildDefaults is the environment Render gives a native runtime at
 // build and runtime alike, as image ENV before the build RUN: the env loader
 // exports the service's own values over it for the build, and the container's
@@ -424,10 +428,15 @@ func nativeSecretFileLinks(o Options) string {
 // is routed on, so the operator sets it on the pod (rocketPortDefault,
 // w8/273). Elixir gets RELEASE_DISTRIBUTION=name (w8/272): a release starts
 // its node with a long name, which needs a hostname with a domain, so the
-// operator gives an Elixir service's pods one (elixirNodeSubdomain). Two are
-// left out, each with its own follow-up: VENV_ROOT (no virtualenv exists at
-// Render's path) and NODE_MODULES_CACHE (would have to turn the dependency
-// cache off when false).
+// operator gives an Elixir service's pods one (elixirNodeSubdomain). Python
+// gets Render's virtualenv (w8/274): one at /opt/render/project/src/.venv,
+// made with the selected interpreter before the source is copied, activated
+// (VIRTUAL_ENV, its bin first on PATH) for the build, the pre-deploy step and
+// the started service, and named by VENV_ROOT. pip, Pipenv, Poetry and uv
+// install into an active virtualenv, so a build command's packages land there
+// and its commands resolve from there. One is left out, with its own
+// follow-up: NODE_MODULES_CACHE (would have to turn the dependency cache off
+// when false).
 func nativeBuildDefaults(o Options) string {
 	switch nativeRuntime(o) {
 	case "elixir":
@@ -439,7 +448,10 @@ func nativeBuildDefaults(o Options) string {
 		return `RUN mkdir -p /opt/render/project && ln -s "$CARGO_HOME" ` + nativeCargoHome + ` && ln -s "$RUSTUP_HOME" ` + nativeRustupHome + "\n" +
 			"ENV CARGO_HOME=" + nativeCargoHome + " RUSTUP_HOME=" + nativeRustupHome + " ROCKET_ENV=prod\n"
 	case nativePythonRuntime:
-		return `ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n" +
+		return "RUN python3 -m venv " + nativePythonVenv + "\n" +
+			"ENV VIRTUAL_ENV=" + nativePythonVenv + " VENV_ROOT=" + nativePythonVenv + "\n" +
+			"ENV PATH=" + nativePythonVenv + "/bin:$PATH\n" +
+			`ENV GUNICORN_CMD_ARGS="--preload --access-logfile -"` + "\n" +
 			`ENV FORWARDED_ALLOW_IPS="*"` + "\n" +
 			"ENV PIPENV_YES=true\n" +
 			"ARG CI=true\n"

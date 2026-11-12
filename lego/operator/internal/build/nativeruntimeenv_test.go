@@ -484,6 +484,13 @@ func TestNativeRuntimeDefaultsFromRendersTable(t *testing.T) {
 		// w8/272: the operator gives an Elixir service's pods a hostname with
 		// a domain, which a long node name needs.
 		{"elixir", []string{"ENV MIX_ENV=prod", "ENV RELEASE_DISTRIBUTION=name"}, []string{"RELEASE_DISTRIBUTION"}},
+		// w8/274: Render's virtualenv, made before the source and active from
+		// then on.
+		{nativePythonRuntime, []string{
+			"RUN python3 -m venv /opt/render/project/src/.venv",
+			"ENV VIRTUAL_ENV=/opt/render/project/src/.venv VENV_ROOT=/opt/render/project/src/.venv",
+			"ENV PATH=/opt/render/project/src/.venv/bin:$PATH",
+		}, []string{"VENV_ROOT", "VIRTUAL_ENV", ".venv"}},
 		{"go", []string{
 			"ENV GO111MODULE=on GOPATH=/opt/render/project/go",
 			"ENV PATH=/opt/render/project/go/bin:$PATH",
@@ -525,14 +532,14 @@ func TestNativeRuntimeDefaultsFromRendersTable(t *testing.T) {
 	if df := nativeDockerfile(rust); strings.Index(df, `ln -s "$CARGO_HOME"`) > strings.Index(df, "ENV CARGO_HOME=") {
 		t.Errorf("CARGO_HOME is renamed before it is linked:\n%s", df)
 	}
-	// The two Render defaults bex leaves out stay out until their follow-ups,
-	// and ROCKET_PORT is the operator's to set on the pod, never an image
-	// default (w8/273).
+	// NODE_MODULES_CACHE, the Render default bex leaves out, stays out until
+	// its follow-up, and ROCKET_PORT is the operator's to set on the pod,
+	// never an image default (w8/273).
 	for runtime := range nativeToolchains {
 		o := nativeOptions()
 		o.Runtime = runtime
 		df := nativeDockerfile(o)
-		for _, name := range []string{"ROCKET_PORT", "VENV_ROOT", "NODE_MODULES_CACHE"} {
+		for _, name := range []string{"ROCKET_PORT", "NODE_MODULES_CACHE"} {
 			if strings.Contains(df, name) {
 				t.Errorf("%s sets %s, which is not safe to default yet", runtime, name)
 			}
