@@ -159,12 +159,18 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 | `bex agent send <ags-id> <message…>` | Start the next turn, with `--attach`, `--output-schema`, `--skill`, `--secret` and `--secret-from-env` for that turn. |
 | `bex agent wait <ags-id>…` | Wait until up to 20 sessions end their turn (`--any`: the first one). |
 | `bex agent get <ags-id>` | Show a session and its outcome: state, summary, PR, shared files, result, model cost. |
-| `bex agent list` | List the workspace's sessions (`--state`, `--tag`, `--repo`, `--archived`, `--limit`, `--cursor`). |
+| `bex agent list` | List the workspace's sessions (`--state`, `--phase`, `--tag`, `--repo`, `--archived`, `--mine`, `--created-by` (repeatable, up to 20), `--automation` (an `aut-` id or a name), `--parent`, `--since`/`--until` (RFC 3339 or an age: `24h`, `7d`), `--limit`, `--cursor`). |
 | `bex agent logs <ags-id>` | Print the transcript: the agent's messages and one line per tool call (`--turn N`, `--reasoning`; `-o json` prints one transcript row per line). `--follow` streams until the turn ends. |
 | `bex agent files <ags-id>` | List the files the agent shared (`--direction input` or `all` for the attached ones; `--turn N`). `--download DIR` saves them, checks each SHA-256, never overwrites without `--force`, asks for a new link when a 15-minute download link has expired, and still lists the files that landed when one fails. |
 | `bex agent cancel <ags-id>` | Stop the running turn and close the session. |
+| `bex agent archive` / `unarchive <ags-id>…` | Archive (hide from the default list, read-only) or unarchive one or more sessions. A failure does not stop the others; the command then exits 1 naming each. |
+| `bex agent delete <ags-id>` | Delete the session, its transcript and its files (its pull request stays). Asks on a terminal; elsewhere needs `--confirm`. |
+| `bex agent tags <ags-id> (<tag>… \| --clear)` | Replace the session's tags, as the API does. |
+| `bex agent tree <ags-id>` | The tree of child sessions the session belongs to, indented, with state and spend ([ADR102](ADR102-agent-child-sessions.md)). |
+| `bex agent cost <ags-id>` | The session's model cost in total and per turn: requests, tokens, models. |
 | `bex agent open <ags-id>` | Open the running sandbox in bex desktop (like `bex edit ags-…`), or else print and open the session's dashboard page (`--dashboard` forces it). |
 
+- **Sessions by URL.** Every `<ags-id>` may also be the session's dashboard URL (`https://dashboard.bex.co/agents/ags-…`, on any dashboard origin), as Devin's CLI takes a session URL ([ADR106](ADR106-cli-cloud-agents-automations.md) D3). `run --parent <ags-id>` starts a child session; its spend counts against the parent's ceiling.
 - **Waiting.** `run` and `send` return as soon as the turn starts. `--wait` polls until it ends; `--follow` streams the transcript while it runs. `--timeout 30m` bounds either one. REST has no blocking wait (`wait_agent_sessions` is MCP-only), so the CLI polls the session with backoff (2 s rising to 15 s; `--follow` backs off the same way while the agent is quiet) and survives up to five consecutive transient failures (a 429, a gateway 5xx or a dropped connection), waiting at least as long as a `Retry-After` asks. Once the session has settled, `--follow` reads the transcript one last time with the same tolerance. If that read still fails, the command warns on stderr that the end of the transcript may be missing, then prints the session and exits by its state as usual: the result is already known (w32/010).
 - **Exit codes.** These apply to `run`/`send` with `--wait` or `--follow`, to `wait`, and to `logs --follow`. With several sessions, a failure wins over a cancel, which wins over needs-input. A plain `get` always exits 0.
 
@@ -240,6 +246,25 @@ bex agent automations apply -f .bex/automations/ --confirm
 # Test one now; fail the job if it started nothing or the session failed.
 bex agent automations run nightly-deps --wait --timeout 45m -o json > session.json
 ```
+
+### Workspace agent configuration: `bex agent secrets | skills | env | models`
+
+These manage what sessions and automation templates refer to by name ([ADR106](ADR106-cli-cloud-agents-automations.md) D8), each a thin client of its route. Writes to skills and the environment need a workspace admin; the API enforces it.
+
+| Command | What it does |
+| --- | --- |
+| `secrets list` | The workspace's agent secret names ([ADR098](ADR098-agent-session-secrets.md)); values are never shown. |
+| `secrets set NAME [--from-env VAR]` | Create or replace a secret. The value comes from `--from-env`, a hidden prompt on a terminal, or stdin (one trailing newline dropped), never from an argument. |
+| `secrets delete NAME` | Delete it (asks, or `--confirm`). Sessions that name it then fail to start. |
+| `skills list` | The workspace skills ([ADR099](ADR099-agent-skills.md)): name, version, enabled, triggers, description. |
+| `skills get NAME [--version N]` | Print the skill's SKILL.md, or one saved version of it. |
+| `skills create -f SKILL.md` / `skills update NAME -f SKILL.md` | Save a whole SKILL.md (YAML frontmatter with `name` and `description`, then the body); `-` reads stdin. Each save keeps a version. |
+| `skills versions NAME` / `skills delete NAME` | The version history (`--limit`, `--cursor`); delete the skill and its history. |
+| `env` | The agent environment: network tier, custom hosts, default model, model source, monthly spend cap and month-to-date spend. |
+| `env set …` | Change only what the flags name: `--network-tier`, `--custom-host` (repeatable, replaces the list) or `--no-custom-hosts`, `--default-model` (`""` returns to the provider default), `--spend-cap USD\|default`, `--model-key-stdin` (the workspace's own model key, from stdin or a hidden prompt) or `--clear-model-key`. |
+| `models` | Whether the workspace is ready for sessions, the GitHub connection, and each agent with whether it can reach its model. |
+
+Workspace skills are what cloud sessions read; skills for the coding agents on your own machine are [`bex skills`](#compatibility-and-branding-limits).
 
 ### Self-update: `bex upgrade`
 

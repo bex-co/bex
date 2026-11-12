@@ -86,6 +86,22 @@ func (t table) row(label, value string) {
 	}
 }
 
+// showAs prints an API answer: the answer itself for -o json/yaml, else
+// decoded as T and written by text.
+func showAs[T any](inv *invocation, raw []byte, what string, text func(io.Writer, T) error) error {
+	if inv.format != formatText {
+		return writeRaw(inv.out, inv.format, raw)
+	}
+	var v T
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	if err := text(inv.out, v); err != nil {
+		return fmt.Errorf("%s: %w", what, err)
+	}
+	return nil
+}
+
 // writeRaw prints an API answer (or a JSON array of them) as JSON or YAML.
 func writeRaw(w io.Writer, f format, raw []byte) error {
 	if f == formatYAML {

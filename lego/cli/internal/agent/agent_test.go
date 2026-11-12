@@ -358,7 +358,16 @@ func stubDeps(newAPI func() (*api, error)) deps {
 		newKey:      func() string { return "bex-cli-testkey" },
 		lookupEnv:   func(string) (string, bool) { return "", false },
 		localZone:   func() string { return "Europe/Berlin" },
+		readHidden:  func(string) ([]byte, error) { return nil, nil },
 	}
+}
+
+// serverDeps is stubDeps talking to srv.
+func serverDeps(srv *httptest.Server) deps {
+	return stubDeps(func() (*api, error) {
+		return &api{server: srv.URL + "/v1/", http: srv.Client(), download: srv.Client(),
+			sleep: func(context.Context, time.Duration) error { return nil }}, nil
+	})
 }
 
 // run executes `bex agent args…` under a root that carries upstream's

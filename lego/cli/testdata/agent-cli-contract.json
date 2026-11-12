@@ -51,7 +51,9 @@
         "computeUSD": "0.0895",
         "totalUSD": "0.5095"
       }
-    }
+    },
+    "parentSessionId": "ags-d0abc123def456ghij70",
+    "depth": 1
   },
   "attachment": {
     "id": "att-d0abc123def456ghij78",
@@ -97,5 +99,103 @@
     "message": "agent session not found",
     "id": "not_found",
     "code": "AGENT_SESSION_NOT_FOUND"
+  },
+  "tree": {
+    "rootSessionId": "ags-d0abc123def456ghij70",
+    "sessions": [
+      {
+        "id": "ags-d0abc123def456ghij70",
+        "state": "working",
+        "title": "Plan",
+        "depth": 0,
+        "agentConfig": {
+          "agent": "claude",
+          "task": "Plan"
+        },
+        "outcome": {
+          "cost": {
+            "totalUSD": "0.12"
+          }
+        }
+      }
+    ]
+  },
+  "modelCost": {
+    "sessionId": "ags-d0abc123def456ghij78",
+    "modelSource": "platform",
+    "costUsd": "1.56",
+    "requests": 12,
+    "turns": [
+      {
+        "turn": 1,
+        "costUsd": "1.56",
+        "requests": 12,
+        "inputTokens": 1000,
+        "outputTokens": 200,
+        "models": [
+          "claude-sonnet-5-5"
+        ]
+      }
+    ]
+  },
+  "secretList": {
+    "ownerId": "tea-d0abc123def456ghij78",
+    "secrets": [
+      {
+        "name": "NPM_TOKEN"
+      }
+    ]
+  },
+  "skill": {
+    "name": "triage",
+    "description": "Triage errors",
+    "triggers": [
+      "user",
+      "model"
+    ],
+    "enabled": true,
+    "body": "Do it.",
+    "content": "---\nname: triage\n---\nDo it.\n",
+    "version": 2
+  },
+  "skillVersionList": {
+    "versions": [
+      {
+        "version": 2,
+        "shortId": "abc1234",
+        "message": "Update skills/triage/SKILL.md",
+        "createdBy": "usr-d0abc123def456ghij78",
+        "createdAt": "2026-11-12T08:00:00Z",
+        "current": true
+      }
+    ],
+    "nextCursor": "1"
+  },
+  "environment": {
+    "networkTier": "standard",
+    "customHosts": [
+      "sentry.io"
+    ],
+    "defaultModel": "claude-sonnet-5-5",
+    "modelSource": "platform",
+    "modelKeySet": false,
+    "agentModelMonthlySpendCapUsd": 50,
+    "agentModelSpendMonthToDateUsd": 3.25,
+    "trustTier": "tier-1"
+  },
+  "capabilities": {
+    "ready": true,
+    "github": {
+      "connected": true,
+      "accountLogin": "acme",
+      "installUrl": "https://github.com/apps/bex/installations/new"
+    },
+    "agents": [
+      {
+        "id": "claude",
+        "label": "Claude Code",
+        "modelKeyReady": true
+      }
+    ]
   }
 }

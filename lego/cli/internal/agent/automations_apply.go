@@ -109,12 +109,12 @@ func automationApplyCommand(d deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			a, cancel, err := d.startAutomations(c)
+			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
 				return err
 			}
 			defer cancel()
-			stored, err := a.all()
+			stored, err := a.allAutomations()
 			if err != nil {
 				return err
 			}
@@ -144,7 +144,7 @@ func automationApplyCommand(d deps) *cobra.Command {
 			}
 			failed := 0
 			for _, p := range plan {
-				if err := a.execute(p); err != nil {
+				if err := a.applyPlanned(p); err != nil {
 					p.Error = err.Error()
 					failed++
 				}
@@ -175,19 +175,19 @@ func automationExportCommand(d deps) *cobra.Command {
 			if all == (len(args) > 0) {
 				return usageError("give automations to export, or --all")
 			}
-			a, cancel, err := d.startAutomations(c)
+			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
 				return err
 			}
 			defer cancel()
 			var stored []map[string]any
 			if all {
-				if stored, err = a.all(); err != nil {
+				if stored, err = a.allAutomations(); err != nil {
 					return err
 				}
 			}
 			for _, ref := range args {
-				raw, err := a.get(ref)
+				raw, err := a.getAutomation(ref)
 				if err != nil {
 					return err
 				}
@@ -217,8 +217,8 @@ func automationExportCommand(d deps) *cobra.Command {
 	return c
 }
 
-// all reads every automation in the workspace, numbers kept exact.
-func (a automationsAPI) all() ([]map[string]any, error) {
+// allAutomations reads every automation in the workspace, numbers kept exact.
+func (a workspaceAPI) allAutomations() ([]map[string]any, error) {
 	var out []map[string]any
 	seen := map[string]bool{}
 	page := pageFlags{limit: 200}
@@ -412,8 +412,8 @@ func planDefinition(def definition, stored map[string]any) *planned {
 	return p
 }
 
-// execute performs one planned write and records the API's answer.
-func (a automationsAPI) execute(p *planned) error {
+// applyPlanned performs one planned write and records the API's answer.
+func (a workspaceAPI) applyPlanned(p *planned) error {
 	var (
 		raw []byte
 		err error
@@ -428,7 +428,7 @@ func (a automationsAPI) execute(p *planned) error {
 		for _, key := range p.Changes {
 			patch[key] = p.def.body[key]
 		}
-		if raw, err = a.patch(p.Name, p.version, patch); err != nil {
+		if raw, err = a.patchAutomation(p.Name, p.version, patch); err != nil {
 			return err
 		}
 	default:
@@ -438,7 +438,7 @@ func (a automationsAPI) execute(p *planned) error {
 	return nil
 }
 
-func (a automationsAPI) printPlan(plan []*planned, preview bool) error {
+func (a workspaceAPI) printPlan(plan []*planned, preview bool) error {
 	if a.format != formatText {
 		return writeValue(a.out, a.format, plan)
 	}

@@ -1,22 +1,22 @@
 # w1 · m339 — Session lifecycle verbs, list filters and workspace agent configuration in `bex agent`
 
-**Worker:** worker1 **Goal:** every agent-session and workspace agent-configuration route bex-api already serves is reachable from `bex agent`, with secret values never on argv. **Status:** todo
+**Worker:** worker1 **Goal:** every agent-session and workspace agent-configuration route bex-api already serves is reachable from `bex agent`, with secret values never on argv. **Status:** in progress (2026-11-12: every task done except t008's live child-session start, which waits for a free platform session slot in the QA workspace, and closeout)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Dashboard URLs as `<session>`, list filters, `run --parent` | 60m | — |
-| t002 | `archive`/`unarchive`/`delete`/`tags`/`tree`/`cost` | 75m | t001 |
-| t003 | `secrets list/set/delete` with values never on argv | 45m | — |
-| t004 | `skills list/get/create/update/delete/versions` | 60m | — |
-| t005 | `env`, `env set` and `models` | 60m | — |
-| t006 | Contract fixture additions and backend twin | 45m | t002, t003, t004, t005 |
-| t007 | Document the new verbs | 30m | t006 |
+| t001 | Dashboard URLs as `<session>`, list filters, `run --parent` — **DONE** | 60m | — |
+| t002 | `archive`/`unarchive`/`delete`/`tags`/`tree`/`cost` — **DONE** | 75m | t001 |
+| t003 | `secrets list/set/delete` with values never on argv — **DONE** | 45m | — |
+| t004 | `skills list/get/create/update/delete/versions` — **DONE** | 60m | — |
+| t005 | `env`, `env set` and `models` — **DONE** | 60m | — |
+| t006 | Contract fixture additions and backend twin — **DONE** | 45m | t002, t003, t004, t005 |
+| t007 | Document the new verbs — **DONE** | 30m | t006 |
 | t008 | Live check on production with a locally built binary | 45m | t007 |
-| t009 | Render parity (Devin reference) | 15m | t008 |
-| t010 | Simplify | 15m | t009 |
-| t011 | Test coverage | 30m | t009 |
+| t009 | Render parity (Devin reference) — **DONE** | 15m | t008 |
+| t010 | Simplify — **DONE** | 15m | t009 |
+| t011 | Test coverage — **DONE** | 30m | t009 |
 | t012 | Closeout | 10m | t011 |
 
 ## Definition of done
@@ -33,3 +33,22 @@
 - **Goal linkage:** ADR008 AI-native surfaces; Devin CLI parity (`/archive`, `devin list`, subagents) for the agent routes of ADR065, ADR094 w7/m296, ADR098, ADR099, ADR102.
 - **Expected outcome:** a workspace can be set up for Cloud Agents and its sessions managed without the dashboard; m340's chat slash commands reuse these verbs.
 - **Why now:** all of these routes are shipped and reachable only from the dashboard, GraphQL and MCP; m340 depends on the lifecycle verbs and URL references. Render parity is included with Devin as the reference product; REST/GraphQL/MCP are unchanged.
+
+## Live check (t008, 2026-11-12)
+
+A locally built `bex`, signed in as the QA user through the isolated device login used for m338, ran in the `bex` workspace with `qa-20261112-m339*` fixtures only.
+
+| Check | Result |
+| --- | --- |
+| `models` | `Ready true`, `GitHub connected (bex-co)`. `claude` is ready; `codex` and `gemini` show "needs the workspace's own model key" |
+| `env`, then `env set --default-model ""` | The env read showed the network tier, hosts, model source, `$10.00 a month, $6.34 used`, trust tier `T0`. The set was a no-op (the default model was already the provider default), and the env JSON before and after compared equal apart from `updatedAt`. `env set` with no flag exited 2 |
+| Secrets | `printf … \| secrets set QA_20261112_M339` set it, and the value was never echoed. `list` showed the name. `delete` without `--confirm` exited 2; with it, deleted. `list` no longer showed it |
+| Skills | `create -f` saved version 1 and `update -f` version 2. `list` showed version 2, enabled, `user,model`. `get` printed v2's body and `get --version 1` v1's. `versions` showed `2 (current)` and `1` with short ids. `delete --confirm` deleted it |
+| `run` and `cost` | A parent fixture succeeded. `cost` printed 3 requests, 21967/198 tokens, model `deepseek/deepseek-v4.1-flash-1017` |
+| `tree` by URL | `tree https://dashboard.bex.co/agents/ags-…` printed the one-node tree with the asked session marked |
+| `tags` | `tags … qa qa:m339` set `['qa', 'qa:m339']`; `--clear` emptied them |
+| Filters | `list --mine --since 1h` returned the fixture. `list --parent <URL>` returned an empty list (no child). `list --automation rt-fix-logic-bugs --since 2d` resolved the name to its `aut-` id and returned only that automation's 2 sessions |
+| `archive`, `unarchive`, `delete` | `archive` of three ids archived all three, and `list --archived true` listed them. `unarchive` worked. `delete` without `--confirm` exited 2; with it, all three fixtures and m338's two fire sessions were deleted |
+| `run --parent` | **Pending.** The API received and enforced the parent link: `409 AGENT_SESSION_PARENT_NOT_ACTIVE` while the parent had settled, and `400 AGENT_SESSION_CHILD_SPEND_EXCEEDS_PARENT` for a child ceiling over the parent's remainder. Starting a child then failed on `409 AGENT_SESSION_TRUST_LIMIT`: the workspace's T0 tier runs 2 platform sessions, and the scheduled `rt-fix-logic-bugs` routine held the other slot. Retried at closeout |
+
+Found and fixed during the check: a session id with a space (`"ags-a ags-b"`, which zsh passes unsplit) passed the prefix-only id check and reached the API as a 403. Ids are now `ags-` plus the lowercase letters and digits of an xid, with a test.

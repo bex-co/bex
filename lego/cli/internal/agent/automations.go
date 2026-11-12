@@ -23,11 +23,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/render-oss/cli/pkg/command"
@@ -138,18 +138,8 @@ func automationsCommand(d deps) *cobra.Command {
 	return c
 }
 
-// automationArgs requires an automation reference first, then up to more
-// further arguments (-1: any number, such as a new task).
 func automationArgs(more int) cobra.PositionalArgs {
-	return func(_ *cobra.Command, args []string) error {
-		if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
-			return usageError("expected an automation (an aut- id or a name)")
-		}
-		if more >= 0 && len(args) > 1+more {
-			return usageError("unexpected arguments after %s: %s", args[0], strings.Join(args[1:], " "))
-		}
-		return nil
-	}
+	return refArgs("an automation (an aut- id or a name)", more)
 }
 
 // automationPath is the collection, one automation, or a verb on it.
@@ -157,26 +147,26 @@ func automationPath(parts ...string) []string {
 	return append([]string{"agent-automations"}, parts...)
 }
 
-// automationsAPI is an invocation bound to the active workspace, the one an
-// automation name resolves in.
-type automationsAPI struct {
+// workspaceAPI is an invocation bound to the active workspace, for the routes
+// addressed by ownerId, where a name resolves.
+type workspaceAPI struct {
 	*invocation
 	owner string
 }
 
-func (d deps) startAutomations(c *cobra.Command) (automationsAPI, context.CancelFunc, error) {
+func (d deps) startWorkspace(c *cobra.Command) (workspaceAPI, context.CancelFunc, error) {
 	owner, err := d.owner()
 	if err != nil {
-		return automationsAPI{}, nil, err
+		return workspaceAPI{}, nil, err
 	}
 	inv, cancel, err := d.start(c)
 	if err != nil {
-		return automationsAPI{}, nil, err
+		return workspaceAPI{}, nil, err
 	}
-	return automationsAPI{inv, owner}, cancel, nil
+	return workspaceAPI{inv, owner}, cancel, nil
 }
 
-func (a automationsAPI) call(method string, query url.Values, payload any, path ...string) ([]byte, error) {
+func (a workspaceAPI) call(method string, query url.Values, payload any, path ...string) ([]byte, error) {
 	if query == nil {
 		query = url.Values{}
 	}
@@ -184,7 +174,7 @@ func (a automationsAPI) call(method string, query url.Values, payload any, path 
 	return a.api.send(a.ctx, method, request{path: path, query: query}, payload)
 }
 
-func (a automationsAPI) get(ref string) ([]byte, error) {
+func (a workspaceAPI) getAutomation(ref string) ([]byte, error) {
 	raw, err := a.call(http.MethodGet, nil, nil, automationPath(ref)...)
 	if err != nil {
 		return nil, fmt.Errorf("get automation %s: %w", ref, err)
@@ -192,9 +182,9 @@ func (a automationsAPI) get(ref string) ([]byte, error) {
 	return raw, nil
 }
 
-// patch updates ref if it is still at version, with the way out of the two
-// refusals a stale or foreign write meets.
-func (a automationsAPI) patch(ref string, version any, patch map[string]any) ([]byte, error) {
+// patchAutomation updates ref if it is still at version, with the way out of
+// the two refusals a stale or foreign write meets.
+func (a workspaceAPI) patchAutomation(ref string, version any, patch map[string]any) ([]byte, error) {
 	patch["ifVersion"] = version
 	raw, err := a.call(http.MethodPatch, nil, patch, automationPath(ref)...)
 	var apiErr *apiError
@@ -234,31 +224,15 @@ func writeMore(w io.Writer, cursor string) {
 	}
 }
 
-// listPage reads one page of path and prints it: the API's answer for -o
-// json/yaml, else page decoded and written by text.
+// listPage reads one page of path and prints it, then the cursor of the
+// next page that text returns.
 func listPage[T any](d deps, c *cobra.Command, page pageFlags, extra url.Values, what string, text func(io.Writer, T) string, path ...string) error {
-	a, cancel, err := d.startAutomations(c)
-	if err != nil {
-		return err
-	}
-	defer cancel()
 	query := page.query()
-	for key, values := range extra {
-		query[key] = values
-	}
-	raw, err := a.call(http.MethodGet, query, nil, path...)
-	if err != nil {
-		return fmt.Errorf("%s: %w", what, err)
-	}
-	if a.format != formatText {
-		return writeRaw(a.out, a.format, raw)
-	}
-	var decoded T
-	if err := json.Unmarshal(raw, &decoded); err != nil {
-		return fmt.Errorf("%s: %w", what, err)
-	}
-	writeMore(a.out, text(a.out, decoded))
-	return nil
+	maps.Copy(query, extra)
+	return workspaceShow(d, c, http.MethodGet, query, nil, what, func(w io.Writer, v T) error {
+		writeMore(w, text(w, v))
+		return nil
+	}, path...)
 }
 
 func automationListCommand(d deps) *cobra.Command {
@@ -316,7 +290,7 @@ func automationCommand(d deps, use, short, method, verb, question string) *cobra
 					return err
 				}
 			}
-			a, cancel, err := d.startAutomations(c)
+			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
 				return err
 			}
@@ -359,21 +333,7 @@ func automationDeleteCommand(d deps) *cobra.Command {
 		Short: "Delete an automation and its run history (its sessions stay)",
 		Args:  automationArgs(0),
 		RunE: func(c *cobra.Command, args []string) error {
-			if err := d.confirm(c, fmt.Sprintf("Delete automation %s and its run history?", args[0])); err != nil {
-				return err
-			}
-			a, cancel, err := d.startAutomations(c)
-			if err != nil {
-				return err
-			}
-			defer cancel()
-			if _, err := a.call(http.MethodDelete, nil, nil, automationPath(args[0])...); err != nil {
-				return fmt.Errorf("delete automation %s: %w", args[0], err)
-			}
-			if a.format == formatText {
-				_, _ = fmt.Fprintf(a.out, "Deleted automation %s.\n", args[0])
-			}
-			return nil
+			return d.workspaceDelete(c, "automation", fmt.Sprintf("Delete automation %s and its run history?", args[0]), automationPath(args[0])...)
 		},
 	}
 }
@@ -413,7 +373,7 @@ func automationCreateCommand(d deps) *cobra.Command {
 			if disabled {
 				body["enabled"] = false
 			}
-			a, cancel, err := d.startAutomations(c)
+			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
 				return err
 			}
@@ -454,12 +414,12 @@ func automationUpdateCommand(d deps) *cobra.Command {
 			if !renaming && !sched.changed() && !tpl.changed() && len(task) == 0 {
 				return usageError("nothing to update: give a flag or a new task")
 			}
-			a, cancel, err := d.startAutomations(c)
+			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
 				return err
 			}
 			defer cancel()
-			raw, err := a.get(ref)
+			raw, err := a.getAutomation(ref)
 			if err != nil {
 				return err
 			}
@@ -486,7 +446,7 @@ func automationUpdateCommand(d deps) *cobra.Command {
 				}
 				patch["template"] = template
 			}
-			raw, err = a.patch(ref, stored["version"], patch)
+			raw, err = a.patchAutomation(ref, stored["version"], patch)
 			if err != nil {
 				return err
 			}
@@ -513,7 +473,7 @@ func automationRunCommand(d deps) *cobra.Command {
 			if err := waiting.validate(); err != nil {
 				return err
 			}
-			a, cancel, err := d.startAutomations(c)
+			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
 				return err
 			}
@@ -548,15 +508,10 @@ func automationRunCommand(d deps) *cobra.Command {
 }
 
 func (inv *invocation) showAutomation(raw []byte) error {
-	if inv.format != formatText {
-		return writeRaw(inv.out, inv.format, raw)
-	}
-	var a automation
-	if err := json.Unmarshal(raw, &a); err != nil {
-		return fmt.Errorf("decode automation: %w", err)
-	}
-	writeAutomation(inv.out, a)
-	return nil
+	return showAs(inv, raw, "decode automation", func(w io.Writer, a automation) error {
+		writeAutomation(w, a)
+		return nil
+	})
 }
 
 func (inv *invocation) showRun(raw []byte, r automationRun) error {
@@ -650,7 +605,7 @@ func writeAutomationList(w io.Writer, list []automation) {
 		_, _ = fmt.Fprintln(w, "No automations.")
 		return
 	}
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	tw := newTable(w)
 	_, _ = fmt.Fprintln(tw, "NAME\tSCHEDULE\tNEXT FIRE\tSTATUS\tID")
 	for _, a := range list {
 		s := firstSchedule(a)
@@ -664,7 +619,7 @@ func writeRunList(w io.Writer, runs []automationRun) {
 		_, _ = fmt.Fprintln(w, "No runs.")
 		return
 	}
-	tw := tabwriter.NewWriter(w, 0, 0, 2, ' ', 0)
+	tw := newTable(w)
 	_, _ = fmt.Fprintln(tw, "FIRED\tOUTCOME\tSESSION\tMISSED\tERROR")
 	for _, r := range runs {
 		_, _ = fmt.Fprintf(tw, "%s\t%s\t%s\t%d\t%s\n", r.FireAt.Local().Format(minuteLayout), r.Outcome, firstNonEmpty(r.SessionID, "—"), r.MissedTicks, clip(r.Error, 60))

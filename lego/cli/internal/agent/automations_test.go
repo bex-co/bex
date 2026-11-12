@@ -17,7 +17,6 @@ limitations under the License.
 package agent
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -64,12 +63,7 @@ func newFakeAutomations(t *testing.T) *fakeAutomations {
 	return f
 }
 
-func (f *fakeAutomations) deps() deps {
-	return stubDeps(func() (*api, error) {
-		return &api{server: f.srv.URL + "/v1/", http: f.srv.Client(), download: f.srv.Client(),
-			sleep: func(context.Context, time.Duration) error { return nil }}, nil
-	})
-}
+func (f *fakeAutomations) deps() deps { return serverDeps(f.srv) }
 
 // seed stores an automation as the API would show it.
 func (f *fakeAutomations) seed(name string, schedule map[string]any, template map[string]any) string {

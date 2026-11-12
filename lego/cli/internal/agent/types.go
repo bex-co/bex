@@ -54,6 +54,8 @@ type session struct {
 	SSHAddress        string      `json:"sshAddress"`
 	CreatedAt         time.Time   `json:"createdAt"`
 	Outcome           *outcome    `json:"outcome"`
+	ParentSessionID   string      `json:"parentSessionId"`
+	Depth             int         `json:"depth"`
 }
 
 type agentConfig struct {
@@ -115,6 +117,8 @@ type createRequest struct {
 	MaxSpendUSD    *float64          `json:"maxSpendUSD,omitempty"`
 	IdempotencyKey string            `json:"-"`
 	Skills         []skillInvocation `json:"skills,omitempty"`
+	// ParentSessionID makes the session a child of that one (ADR102).
+	ParentSessionID string `json:"parentSessionId,omitempty"`
 	sessionSecrets
 }
 

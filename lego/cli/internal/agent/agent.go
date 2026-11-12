@@ -28,6 +28,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
 	"os"
 	"os/signal"
@@ -82,6 +83,10 @@ type deps struct {
 	// localZone is this machine's IANA time zone, "" when unknown: an
 	// automation schedule defaults to it, as the dashboard's to the browser's.
 	localZone func() string
+	// readHidden prompts on the terminal and reads a secret without echoing
+	// it. It answers nil when stdin is not a terminal; the value is then read
+	// from stdin.
+	readHidden func(prompt string) ([]byte, error)
 }
 
 func osDeps() deps {
@@ -97,6 +102,7 @@ func osDeps() deps {
 		newKey:      newIdempotencyKey,
 		lookupEnv:   os.LookupEnv,
 		localZone:   machineZone,
+		readHidden:  terminalSecret,
 	}
 }
 
@@ -137,7 +143,10 @@ func newCommand(d deps) *cobra.Command {
 	for _, sub := range []*cobra.Command{
 		runCommand(d), sendCommand(d), waitCommand(d), getCommand(d), listCommand(d),
 		logsCommand(d), filesCommand(d), cancelCommand(d), openCommand(d),
-		automationsCommand(d),
+		archiveCommand(d, "archive", "Archived", "Archive agent sessions (hidden from the default list, read-only)"),
+		archiveCommand(d, "unarchive", "Unarchived", "Unarchive agent sessions"),
+		deleteCommand(d), tagsCommand(d), treeCommand(d), costCommand(d),
+		automationsCommand(d), secretsCommand(d), skillsCommand(d), envCommand(d), modelsCommand(d),
 	} {
 		// Cobra reads SilenceUsage from the executed command and the root
 		// only, and a failed turn is not a usage mistake.
@@ -151,28 +160,31 @@ func usageError(format string, args ...any) error {
 	return command.NewExitError(exitUsage, fmt.Errorf(format, args...))
 }
 
-// sessionArgs requires a session id first, then up to more further
-// arguments (-1: any number, such as a message).
+// sessionArgs requires a session first, then up to more further arguments
+// (-1: any number, such as a message). Like sessionIDs, it rewrites a
+// dashboard URL to its id in place (cobra hands RunE the same slice), so
+// RunE always sees an ags- id.
 func sessionArgs(more int) cobra.PositionalArgs {
-	return func(_ *cobra.Command, args []string) error {
+	return func(_ *cobra.Command, args []string) (err error) {
 		if len(args) == 0 {
-			return usageError("expected an agent session id (ags-…)")
+			return usageError("expected an agent session id (ags-…) or its dashboard URL")
 		}
 		if more >= 0 && len(args) > 1+more {
 			return usageError("unexpected arguments after %s: %s", args[0], strings.Join(args[1:], " "))
 		}
-		return checkSessionID(args[0])
+		args[0], err = sessionRef(args[0])
+		return err
 	}
 }
 
-// sessionIDs requires 1 to max arguments, each a session id.
+// sessionIDs requires 1 to max arguments, each a session.
 func sessionIDs(max int) cobra.PositionalArgs {
-	return func(_ *cobra.Command, args []string) error {
+	return func(_ *cobra.Command, args []string) (err error) {
 		if len(args) == 0 || len(args) > max {
-			return usageError("expected 1 to %d agent session ids (ags-…)", max)
+			return usageError("expected 1 to %d agent sessions (ags-… ids or dashboard URLs)", max)
 		}
-		for _, id := range args {
-			if err := checkSessionID(id); err != nil {
+		for i := range args {
+			if args[i], err = sessionRef(args[i]); err != nil {
 				return err
 			}
 		}
@@ -180,11 +192,47 @@ func sessionIDs(max int) cobra.PositionalArgs {
 	}
 }
 
-func checkSessionID(id string) error {
-	if !strings.HasPrefix(id, "ags-") || len(id) == len("ags-") {
-		return usageError("%q is not an agent session id (ags-…)", id)
+// refArgs requires one reference to what (an id or a name) first, then up to
+// more further arguments (-1: any number, such as a new task).
+func refArgs(what string, more int) cobra.PositionalArgs {
+	return func(_ *cobra.Command, args []string) error {
+		if len(args) == 0 || strings.TrimSpace(args[0]) == "" {
+			return usageError("expected %s", what)
+		}
+		if more >= 0 && len(args) > 1+more {
+			return usageError("unexpected arguments after %s: %s", args[0], strings.Join(args[1:], " "))
+		}
+		return nil
 	}
-	return nil
+}
+
+// dashboardAgents is the dashboard's sessions path segment: /agents/ags-….
+const dashboardAgents = "agents"
+
+// isSessionID is an ags- id: the prefix, then the lowercase letters and
+// digits of an xid (ADR020).
+func isSessionID(s string) bool {
+	rest, ok := strings.CutPrefix(s, "ags-")
+	return ok && rest != "" && strings.Trim(rest, "abcdefghijklmnopqrstuvwxyz0123456789") == ""
+}
+
+// sessionRef is the session an argument names: an ags- id, or a dashboard
+// session URL (…/agents/ags-…, on any dashboard origin) as Devin's CLI
+// takes a session URL (ADR106 D3).
+func sessionRef(arg string) (string, error) {
+	if isSessionID(arg) {
+		return arg, nil
+	}
+	if u, err := url.Parse(arg); err == nil && (u.Scheme == "https" || u.Scheme == "http") {
+		parts := strings.Split(strings.Trim(u.Path, "/"), "/")
+		for i := 0; i+1 < len(parts); i++ {
+			if parts[i] == dashboardAgents && isSessionID(parts[i+1]) {
+				return parts[i+1], nil
+			}
+		}
+		return "", usageError("%q is not an agent session URL (…/agents/ags-…)", arg)
+	}
+	return "", usageError("%q is not an agent session id (ags-…) or URL", arg)
 }
 
 // invocation is what every subcommand needs once flags are parsed.
@@ -328,6 +376,18 @@ func readPathOrStdin(d deps, path string, limit int64) ([]byte, error) {
 	return raw, nil
 }
 
+// terminalSecret prompts on stderr and reads a line from a terminal stdin
+// without echo; nil when stdin is not a terminal.
+func terminalSecret(prompt string) ([]byte, error) {
+	fd := int(os.Stdin.Fd())
+	if !term.IsTerminal(fd) {
+		return nil, nil
+	}
+	_, _ = fmt.Fprintf(os.Stderr, "%s (input hidden): ", prompt)
+	defer func() { _, _ = fmt.Fprintln(os.Stderr) }()
+	return term.ReadPassword(fd)
+}
+
 // readSchema loads --output-schema: a JSON object (ADR094 D5).
 func readSchema(path string) (json.RawMessage, error) {
 	if path == "" {
@@ -380,9 +440,9 @@ func (s *secretFlags) resolve(d deps) (sessionSecrets, error) {
 		if name == "" || from == "" {
 			return sessionSecrets{}, usageError("--secret-from-env takes NAME or NAME=VAR, not %q", spec)
 		}
-		value, set := d.lookupEnv(from)
-		if !set || value == "" {
-			return sessionSecrets{}, usageError("--secret-from-env %s: the environment variable %s is not set", name, from)
+		value, err := envValue(d, "--secret-from-env "+name, from)
+		if err != nil {
+			return sessionSecrets{}, err
 		}
 		out.Secrets = append(out.Secrets, inlineSecret{Name: name, Value: value})
 	}
@@ -485,6 +545,7 @@ func runCommand(d deps) *cobra.Command {
 		sf      sessionFlags
 		turn    turnFlags
 		key     string
+		parent  string
 		waiting waitFlags
 	)
 	c := &cobra.Command{
@@ -511,6 +572,11 @@ func runCommand(d deps) *cobra.Command {
 			in.AgentConfig.Agent, in.AgentConfig.Model = sf.agent, sf.model
 			if in.MaxSpendUSD, err = sf.maxSpend(c); err != nil {
 				return err
+			}
+			if parent != "" {
+				if in.ParentSessionID, err = sessionRef(parent); err != nil {
+					return err
+				}
 			}
 			if key == "" {
 				key = d.newKey()
@@ -541,6 +607,7 @@ func runCommand(d deps) *cobra.Command {
 	}
 	sf.bind(c.Flags())
 	c.Flags().StringVar(&key, "idempotency-key", "", "reuse a key to make re-running this command safe (default: one per invocation)")
+	c.Flags().StringVar(&parent, "parent", "", "start the session as a child of this one (ags- id or URL); its spend counts against the parent's ceiling")
 	turn.bind(c.Flags())
 	waiting.bindTurn(c)
 	return c
@@ -648,68 +715,140 @@ func getCommand(d deps) *cobra.Command {
 	}
 }
 
+// defaultListLimit is `bex agent list`'s page size.
+const defaultListLimit = 20
+
+// sessionFilters are `bex agent list`'s filters, each one of the API's.
+type sessionFilters struct {
+	states, phases, createdBy               []string
+	tag, repo, archived, automation, parent string
+	since, until, cursor                    string
+	mine                                    bool
+	limit                                   int
+}
+
+func (f *sessionFilters) bind(c *cobra.Command) {
+	fs := c.Flags()
+	fs.StringArrayVar(&f.states, "state", nil, "only sessions in this state ("+strings.Join(sessionStates, ", ")+"); repeatable")
+	fs.StringArrayVar(&f.phases, "phase", nil, "only sessions in this lifecycle phase (finer than --state); repeatable")
+	fs.StringVar(&f.tag, "tag", "", "only sessions with this tag")
+	fs.StringVar(&f.repo, "repo", "", "only sessions on this repository")
+	fs.StringVar(&f.archived, "archived", "", "true for archived sessions only, all for both")
+	fs.BoolVar(&f.mine, "mine", false, "only sessions I started")
+	fs.StringArrayVar(&f.createdBy, "created-by", nil, "only sessions this member started; repeatable, up to 20")
+	fs.StringVar(&f.automation, "automation", "", "only sessions this automation started (an aut- id or a name)")
+	fs.StringVar(&f.parent, "parent", "", "only the direct children of this session")
+	fs.StringVar(&f.since, "since", "", "only sessions created at or after this time (RFC 3339, or relative: 5m, 24h, 7d)")
+	fs.StringVar(&f.until, "until", "", "only sessions created before this time (RFC 3339, or relative)")
+	fs.IntVar(&f.limit, "limit", defaultListLimit, "page size (1-200)")
+	fs.StringVar(&f.cursor, "cursor", "", "the last session id of the previous page")
+}
+
+// query is the API query the filters ask for, but the automation, which a
+// name makes a lookup (see workspaceAPI.automationID).
+func (f *sessionFilters) query(now time.Time) (url.Values, error) {
+	for _, state := range f.states {
+		if !slices.Contains(sessionStates, state) {
+			return nil, usageError("--state must be one of %s, not %q", strings.Join(sessionStates, ", "), state)
+		}
+	}
+	if len(f.createdBy) > 20 {
+		return nil, usageError("--created-by takes at most 20 members")
+	}
+	query := url.Values{"limit": {strconv.Itoa(f.limit)}, "state": f.states, "phase": f.phases, "createdBy": f.createdBy}
+	if f.mine {
+		query.Set("mine", "true")
+	}
+	if f.parent != "" {
+		id, err := sessionRef(f.parent)
+		if err != nil {
+			return nil, err
+		}
+		query.Set("parentSessionId", id)
+	}
+	for key, value := range map[string]string{"createdAfter": f.since, "createdBefore": f.until} {
+		if value == "" {
+			continue
+		}
+		at, err := parseTimeOrAge(value, now)
+		if err != nil {
+			return nil, err
+		}
+		query.Set(key, at.UTC().Format(time.RFC3339))
+	}
+	for key, value := range map[string]string{"tag": f.tag, "repo": f.repo, "archived": f.archived, "cursor": f.cursor} {
+		if value != "" {
+			query.Set(key, value)
+		}
+	}
+	return query, nil
+}
+
 func listCommand(d deps) *cobra.Command {
-	var (
-		states   []string
-		tag      string
-		repo     string
-		archived string
-		limit    int
-		cursor   string
-	)
+	var filters sessionFilters
 	c := &cobra.Command{
 		Use:   "list",
 		Short: "List the workspace's agent sessions",
 		Long: "Lists the active workspace's unarchived sessions, newest first. Page with\n" +
-			"--cursor set to the last id of the previous page.",
+			"--cursor set to the last id of the previous page. --since and --until take\n" +
+			"RFC 3339 or a relative time such as 24h or 7d, as `bex logs` does.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
-			for _, state := range states {
-				if !slices.Contains(sessionStates, state) {
-					return usageError("--state must be one of %s, not %q", strings.Join(sessionStates, ", "), state)
-				}
-			}
-			owner, err := d.owner()
+			query, err := filters.query(time.Now())
 			if err != nil {
 				return err
 			}
-			inv, cancel, err := d.start(c)
+			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
 				return err
 			}
 			defer cancel()
-			query := url.Values{"ownerId": {owner}, "limit": {strconv.Itoa(limit)}}
-			for _, state := range states {
-				query.Add("state", state)
-			}
-			for key, value := range map[string]string{"tag": tag, "repo": repo, "archived": archived, "cursor": cursor} {
-				if value != "" {
-					query.Set(key, value)
+			if filters.automation != "" {
+				id, err := a.automationID(filters.automation)
+				if err != nil {
+					return err
 				}
+				query.Set("automationId", id)
 			}
-			raw, err := inv.api.getJSON(inv.ctx, query, "agent-sessions")
+			raw, err := a.call(http.MethodGet, query, nil, "agent-sessions")
 			if err != nil {
 				return fmt.Errorf("list agent sessions: %w", err)
 			}
-			if inv.format != formatText {
-				return writeRaw(inv.out, inv.format, raw)
-			}
-			var sessions []session
-			if err := json.Unmarshal(raw, &sessions); err != nil {
-				return fmt.Errorf("list agent sessions: %w", err)
-			}
-			writeSessionList(inv.out, sessions)
-			return nil
+			return showAs(a.invocation, raw, "list agent sessions", func(w io.Writer, sessions []session) error {
+				writeSessionList(w, sessions)
+				return nil
+			})
 		},
 	}
-	f := c.Flags()
-	f.StringArrayVar(&states, "state", nil, "only sessions in this state ("+strings.Join(sessionStates, ", ")+"); repeatable")
-	f.StringVar(&tag, "tag", "", "only sessions with this tag")
-	f.StringVar(&repo, "repo", "", "only sessions on this repository")
-	f.StringVar(&archived, "archived", "", "true for archived sessions only, all for both")
-	f.IntVar(&limit, "limit", 20, "page size (1-200)")
-	f.StringVar(&cursor, "cursor", "", "the last session id of the previous page")
+	filters.bind(c)
 	return c
+}
+
+// parseTimeOrAge reads a time the way upstream's `logs --start` does: RFC
+// 3339, or relative to now (5m, 24h, 7d).
+func parseTimeOrAge(value string, now time.Time) (time.Time, error) {
+	t, err := command.ParseTime(now, &value)
+	if err != nil || t == nil || t.T == nil {
+		return time.Time{}, usageError("%q is not a time: use RFC 3339 or a relative time such as 24h or 7d", value)
+	}
+	return *t.T, nil
+}
+
+// automationID is ref as an aut- id: a name is looked up in the workspace,
+// since the session filter takes ids.
+func (a workspaceAPI) automationID(ref string) (string, error) {
+	if strings.HasPrefix(ref, "aut-") {
+		return ref, nil
+	}
+	raw, err := a.getAutomation(ref)
+	if err != nil {
+		return "", err
+	}
+	var found automation
+	if err := json.Unmarshal(raw, &found); err != nil {
+		return "", fmt.Errorf("get automation %s: %w", ref, err)
+	}
+	return found.ID, nil
 }
 
 func logsCommand(d deps) *cobra.Command {
@@ -807,7 +946,7 @@ func openCommand(d deps) *cobra.Command {
 					telemetry.EmitLaunch(c.CommandPath(), startedAt, c.ErrOrStderr())
 				})
 			}
-			page := strings.TrimSuffix(d.dashboard(), "/") + "/agents/" + url.PathEscape(id)
+			page := strings.TrimSuffix(d.dashboard(), "/") + "/" + dashboardAgents + "/" + url.PathEscape(id)
 			_, _ = fmt.Fprintln(inv.out, page)
 			if d.interactive() {
 				_ = d.openURL(page)
