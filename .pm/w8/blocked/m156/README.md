@@ -1,6 +1,6 @@
 # w8 · m156 — A running service's build stays in the registry, and a rollback is offered only where its build is stored
 
-**Worker:** worker8 **Goal:** the image a service is running, and the ten most recent builds it has run on, stay in the cluster registry whatever else is pushed, so failed deploys never cost a service its ability to start; a deploy whose build is gone is not offered as a rollback target and is refused at once with a sentence that says so. **Status:** in progress (t001–t005 done and shipped: the retention fix, a rollback to a build that is gone is refused, a missing build's pull failure says so, and a pull failure of the live release is recorded with no deploy open; t010, the service's shown status, and the closing tasks t006–t009 are open)
+**Worker:** worker8 **Goal:** the image a service is running, and the ten most recent builds it has run on, stay in the cluster registry whatever else is pushed, so failed deploys never cost a service its ability to start; a deploy whose build is gone is not offered as a rollback target and is refused at once with a sentence that says so. **Status:** blocked (2026-11-12: t010 needs a cluster where a served release's image cannot be pulled; this host's local mock cluster cannot start worker nodes with `fs.inotify.max_user_instances=128`, see § Blocked. Before that: t001–t005 done and shipped: the retention fix, a rollback to a build that is gone is refused, a missing build's pull failure says so, and a pull failure of the live release is recorded with no deploy open; t010, the service's shown status, and the closing tasks t006–t009 are open)
 
 ## Tasks (in order)
 
@@ -162,3 +162,10 @@ w1/m183 (done) added the `live-` rule and the tag push; this is that rule not ta
 ## Cleanup
 
 The service was deleted after the recovery deploy; `GET /v1/services/<id>` answers 404.
+
+## Blocked (2026-11-12, `/loopx w8`)
+
+- **Gate:** t010 changes the phase a served release reports when its own image cannot be pulled, which the wake, hibernate, failed-rollout hold and `rolloutPending` paths all read; its context asks for it to be built against a pod that really cannot pull, on a cluster. t006–t009 depend on it.
+- **What was tried:** `bash scripts/mock-cluster.sh` (pre-approved) after installing kind v0.33.0, kubectl v1.36.1, clusterctl v1.14.4, helm v4.3.1 and yq into a scratch directory. The management cluster and the app cluster's control plane came up; both worker machines stayed at `CGroupsReady: Waiting for cgroups ready`, and inside them systemd logged `Failed to create inotify object: Too many open files`. The host has `fs.inotify.max_user_instances = 128` and `fs.inotify.max_user_watches = 65536`; raising them needs sudo. The half-built cluster was deleted.
+- **To unblock (user, one command):** `sudo sysctl -w fs.inotify.max_user_instances=512 fs.inotify.max_user_watches=524288` (and the same lines in `/etc/sysctl.d/` to keep them), then `/unblock w8` or a new `/loopx w8`; the bring-up and t010 continue from there. Or name another cluster where an image can be removed from the registry under a running service.
+- **Production meanwhile:** the retention fix (t001–t005) is deployed (pin `3d66946c9e16`); DoD 2, 3 and 5 can be replayed on production whenever t009 runs.
