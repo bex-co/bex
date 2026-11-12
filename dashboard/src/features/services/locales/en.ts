@@ -4793,6 +4793,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Environment group unlinked",
     description: "Service activity type: environment group unlinked",
   },
+  "services.eventsEnvGroupLinkedNamed": {
+    message: "Environment group {name} linked",
+    description:
+      "Service activity title for env_group_linked naming the group, by its name at the time (w4/563)",
+  },
+  "services.eventsEnvGroupUnlinkedNamed": {
+    message: "Environment group {name} unlinked",
+    description:
+      "Service activity title for env_group_unlinked naming the group, by its name at the time (w4/563)",
+  },
   "services.eventsTypeAutoDeployChanged": {
     message: "Auto-deploy updated",
     description: "Service activity type: auto-deploy setting changed",

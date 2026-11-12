@@ -94,6 +94,8 @@ function event(id: string, type: string, offset: number, status = "") {
       projectTo: null,
       environmentFrom: null,
       environmentTo: null,
+      envGroupId: null,
+      envGroupName: null,
       trigger: null,
     },
   };

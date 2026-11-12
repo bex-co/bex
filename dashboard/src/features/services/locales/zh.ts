@@ -4679,6 +4679,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "已取消关联环境组",
     description: "Service activity type: environment group unlinked",
   },
+  "services.eventsEnvGroupLinkedNamed": {
+    message: "已关联环境组 {name}",
+    description:
+      "Service activity title for env_group_linked naming the group, by its name at the time (w4/563)",
+  },
+  "services.eventsEnvGroupUnlinkedNamed": {
+    message: "已取消关联环境组 {name}",
+    description:
+      "Service activity title for env_group_unlinked naming the group, by its name at the time (w4/563)",
+  },
   "services.eventsTypeAutoDeployChanged": {
     message: "自动部署已更新",
     description: "Service activity type: auto-deploy setting changed",

@@ -134,6 +134,14 @@ bex adds **`service_moved`** (deliberately not `service_environment_changed`, wh
 | Surfaces | REST/GraphQL/MCP via the shared view; webhook-subscribable (`service_moved`, thin payload, hydrate via `GET /v1/events/{id}`); dashboard Configuration group with per-dimension from→to detail lines (en + zh) |
 | `?type=` param | Refused 400 like every bex-named type (the pinned-enum rule above) |
 
+bex also names **`env_group_linked`** and **`env_group_unlinked`**, its own types for a change to a service's linked environment groups:
+
+| Property | Contract |
+| --- | --- |
+| Source | Audit verbs `envgroups.LinkService` / `envgroups.UnlinkService`, one row per service whose groups changed: the Link and Unlink controls, a group created with `serviceIds`, a Blueprint `fromGroup`, and a group deleted while linked (w4/563) |
+| Details | `envGroupId` / `envGroupName`: the group's `evg-` id and its name at the time, in typed audit columns (migration 0230); rows recorded before carry neither |
+| Surfaces | REST/GraphQL/MCP via the shared view; the dashboard titles the row "Environment group <name> linked/unlinked" (en + zh) |
+
 The enclosing `environments.SetServices`/`projects.SetServices` fan-out verbs remain excused non-events — their per-member `AuthorizeApp` rows are isolation-label plumbing, not placement facts.
 
 The official API specification is explicitly unversioned, so this comparison records the capture date and should be refreshed when Render changes its enum.

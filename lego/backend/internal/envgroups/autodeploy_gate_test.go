@@ -205,7 +205,7 @@ func TestUnlinkAndGroupDeleteOnARunningGatedServiceAreStaged(t *testing.T) {
 	svc.Rollout = &rollout.Tracker{}
 	original := getApp(t, svc.Client, "off")
 
-	if err := svc.detach(ctx, "evg-run", "off"); err != nil {
+	if _, err := svc.detach(ctx, "evg-run", "off"); err != nil {
 		t.Fatalf("detach: %v", err)
 	}
 	staged := getApp(t, svc.Client, "off")

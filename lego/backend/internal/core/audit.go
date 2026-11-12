@@ -139,6 +139,11 @@ type AuditEvent struct {
 	OAuthClientID string
 	OAuthAudience string
 	OAuthScopes   []string
+	// EnvGroupID/EnvGroupName name the group an env-group link or unlink
+	// attached or detached (w4/563): its evg- id and its name at the time.
+	// Empty for every other verb.
+	EnvGroupID   string
+	EnvGroupName string
 }
 
 type deferAllowedWriteAuditKey struct{}
@@ -641,12 +646,36 @@ func (b *Base) RecordAppConfigChanged(ctx context.Context, app *appv1alpha1.App,
 		log.Printf("audit: refusing to record %q as a service-configuration effect", verb)
 		return
 	}
+	b.recordAppConfig(ctx, app, verb, nil)
+}
+
+// recordAppConfig records verb on app's service, with detail filling the
+// verb's typed fields when it has any.
+func (b *Base) recordAppConfig(ctx context.Context, app *appv1alpha1.App, verb string, detail func(*AuditEvent)) {
 	resource, err := b.resourceWorkspace(ctx, app.Labels)
 	if err != nil {
 		log.Printf("audit: resolve %s resource: %v", verb, err)
 		return
 	}
-	b.recordAudit(ctx, b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app)))
+	ev := b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app))
+	if detail != nil {
+		detail(&ev)
+	}
+	b.recordAudit(ctx, ev)
+}
+
+// RecordEnvGroupLinkChanged is RecordAppConfigChanged for an env-group link or
+// unlink, naming the group (w4/563): the Link and Unlink controls, a group
+// created with services, a Blueprint fromGroup, and a group deleted while
+// linked.
+func (b *Base) RecordEnvGroupLinkChanged(ctx context.Context, app *appv1alpha1.App, verb, groupID, groupName string) {
+	if verb != AuditVerbLinkService && verb != AuditVerbUnlinkService {
+		log.Printf("audit: refusing to record %q as an env-group link", verb)
+		return
+	}
+	b.recordAppConfig(ctx, app, verb, func(ev *AuditEvent) {
+		ev.EnvGroupID, ev.EnvGroupName = groupID, groupName
+	})
 }
 
 // RecordDiskChanged records a disk verb that completed with Render's disk

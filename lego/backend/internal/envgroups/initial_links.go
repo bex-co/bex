@@ -40,8 +40,8 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 	}
 	service := core.AppPublicID(a)
 	type initialGroup struct {
-		gid   string
-		added bool
+		gid, name string
+		added     bool
 	}
 	groups := make([]initialGroup, 0, len(names))
 	for _, name := range names {
@@ -61,7 +61,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 		if findErr = s.validateInitialGroup(ctx, g, service, a); findErr != nil {
 			return findErr
 		}
-		groups = append(groups, initialGroup{gid: g.ID})
+		groups = append(groups, initialGroup{gid: g.ID, name: g.Name})
 	}
 	defer func() {
 		if err == nil {
@@ -134,7 +134,7 @@ func (s *Service) WithInitialEnvGroups(ctx context.Context, names []string, a *a
 	}
 	for _, group := range groups {
 		if group.added {
-			s.RecordAppConfigChanged(ctx, a, core.AuditVerbLinkService)
+			s.RecordEnvGroupLinkChanged(ctx, a, core.AuditVerbLinkService, group.gid, group.name)
 		}
 	}
 	return nil

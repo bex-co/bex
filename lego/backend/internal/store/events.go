@@ -545,16 +545,19 @@ type AuditChanges struct {
 	MaintenanceURITo   *string
 	AutoDeployReason   *string
 	AutoDeployTrigger  *string
+	// The group an env-group link or unlink named (w4/563).
+	EnvGroupID   *string
+	EnvGroupName *string
 }
 
 // auditChangesColumns are AuditChanges' columns of audit_events aliased a, in
 // scanDestinations' order.
 const auditChangesColumns = `a.maintenance_mode_to, a.disk_size_from_gb, a.maintenance_uri_from, a.maintenance_uri_to,
-       a.auto_deploy_reason, a.auto_deploy_trigger`
+       a.auto_deploy_reason, a.auto_deploy_trigger, a.env_group_id, a.env_group_name`
 
 func (c *AuditChanges) scanDestinations() []any {
 	return []any{&c.MaintenanceModeTo, &c.DiskSizeFromGB, &c.MaintenanceURIFrom, &c.MaintenanceURITo,
-		&c.AutoDeployReason, &c.AutoDeployTrigger}
+		&c.AutoDeployReason, &c.AutoDeployTrigger, &c.EnvGroupID, &c.EnvGroupName}
 }
 
 // auditRowID is an audit row's id from its feed key ("<audit row id>:").
@@ -564,6 +567,7 @@ func auditRowID(feedKey string) string { return strings.TrimSuffix(feedKey, ":")
 var auditChangeVerbs = map[string]bool{
 	core.AuditVerbMaintenanceModeEnabled: true, core.AuditVerbMaintenanceModeURIUpdated: true,
 	core.AuditVerbUpdateDisk: true, core.AuditVerbSetAutoDeploy: true,
+	core.AuditVerbLinkService: true, core.AuditVerbUnlinkService: true, core.AuditVerbLinkEnvGroup: true,
 }
 
 // attachAuditChanges fills the maintenance-mode, disk-resize and auto-deploy

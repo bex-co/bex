@@ -18,9 +18,11 @@ package events
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -179,5 +181,21 @@ func TestCronJobRunEndedStatusUsesTheRunEnum(t *testing.T) {
 	}
 	if got := status(TypeJobRunEnded, store.EventStatusSucceeded); got != store.EventStatusSucceeded {
 		t.Errorf("job_run_ended succeeded -> %q, want it unchanged", got)
+	}
+}
+
+// w4/563: an env-group link or unlink names its group on REST and MCP.
+func TestEnvGroupLinkDetailsNameTheGroup(t *testing.T) {
+	id, name := "evg-shared", "shared"
+	for _, verb := range []string{core.AuditVerbLinkService, core.AuditVerbUnlinkService} {
+		row := store.ServiceEventRow{Key: "aud-1:", Source: store.EventSourceAudit, Verb: verb}
+		row.AuditChanges.EnvGroupID, row.AuditChanges.EnvGroupName = &id, &name
+		body, err := json.Marshal(toRenderEvent(view(row, "srv-1")).Details)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), `"envGroupId":"evg-shared"`) || !strings.Contains(string(body), `"envGroupName":"shared"`) {
+			t.Fatalf("%s details = %s, want the group named", verb, body)
+		}
 	}
 }

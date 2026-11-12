@@ -77,6 +77,8 @@ query ServiceEvents(
       projectTo
       environmentFrom
       environmentTo
+      envGroupId
+      envGroupName
       trigger {
         firstBuild
         envUpdated

@@ -154,6 +154,10 @@ type renderDetails struct {
 	MountPath        string   `json:"mountPath,omitempty"`
 	UsagePercent     *float64 `json:"usagePercent,omitempty"`
 	ThresholdPercent *float64 `json:"thresholdPercent,omitempty"`
+	// env_group_linked / _unlinked (w4/563): the group, by id and by its name
+	// at the time (bex extension; these types are bex's own).
+	EnvGroupID   string `json:"envGroupId,omitempty"`
+	EnvGroupName string `json:"envGroupName,omitempty"`
 	// disk_created's size, disk_updated's before and after (w3/m317).
 	SizeGB     *int32 `json:"sizeGB,omitempty"`
 	FromSizeGB *int32 `json:"fromSizeGB,omitempty"`
@@ -366,6 +370,8 @@ func toRenderEvent(e Event) renderEvent {
 	case TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered:
 		d.DiskID, d.DiskName, d.MountPath = e.Details.DiskID, e.Details.DiskName, e.Details.MountPath
 		d.UsagePercent, d.ThresholdPercent = e.Details.UsagePercent, e.Details.ThresholdPercent
+	case TypeEnvGroupLinked, TypeEnvGroupUnlinked:
+		d.EnvGroupID, d.EnvGroupName = e.Details.EnvGroupID, e.Details.EnvGroupName
 	}
 	return renderEvent{
 		ID:        e.ID,

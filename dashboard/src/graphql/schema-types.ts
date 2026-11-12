@@ -5074,6 +5074,8 @@ export type ServiceEventDetails = {
   deployStatus: Maybe<Scalars['String']['output']>;
   diskId: Maybe<Scalars['String']['output']>;
   diskName: Maybe<Scalars['String']['output']>;
+  envGroupId: Maybe<Scalars['String']['output']>;
+  envGroupName: Maybe<Scalars['String']['output']>;
   environmentFrom: Maybe<Scalars['String']['output']>;
   environmentTo: Maybe<Scalars['String']['output']>;
   exitCode: Maybe<Scalars['Int']['output']>;

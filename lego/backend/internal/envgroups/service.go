@@ -479,6 +479,10 @@ func (s *Service) createEnvGroupAuthorized(ctx context.Context, req CreateEnvGro
 	if err != nil {
 		return EnvGroupView{}, err
 	}
+	// Each service's feed records the group it gained, as a Link does (w4/563).
+	for _, a := range services {
+		s.RecordEnvGroupLinkChanged(ctx, a, core.AuditVerbLinkService, g.ID, g.Name)
+	}
 	view := viewOf(g)
 	view.PendingServiceIDs = pending
 	written := groupContents{env: env, files: files}
@@ -531,8 +535,10 @@ func prepareCreateFiles(files []SecretFileView) (map[string]string, error) {
 }
 
 // prepareCreateServices resolves every serviceId inside the create workspace
-// without calling another public verb (and therefore without a second audit
-// event). It is read-only: all links are proven before any group state exists.
+// without calling another public verb (and therefore without an authorization
+// audit event per service; the create records each service's link once it
+// stands, w4/563). It is read-only: all links are proven before any group
+// state exists.
 func (s *Service) prepareCreateServices(
 	ctx context.Context,
 	serviceIDs []string,
@@ -571,7 +577,8 @@ func (s *Service) prepareCreateServices(
 
 // findCreateService reuses Base's id/name-compatible App resolution, then
 // narrows the result to the group workspace. GetApp's resource gate has no
-// audit side effect, so the composite create still emits exactly one event.
+// audit side effect, so the composite create emits its own event and one
+// named link row per service, and nothing for the lookups.
 func (s *Service) findCreateService(ctx context.Context, serviceID, workspace string) (*appv1alpha1.App, error) {
 	a, err := s.GetApp(ctx, core.RelCanCreate, serviceID)
 	if err != nil {
@@ -822,8 +829,14 @@ func (s *Service) DeleteEnvGroup(ctx context.Context, gid string) error {
 	// Detach from linked services first (drop the spec refs + roll) so no pod is
 	// left referencing a Secret about to be deleted.
 	for _, svc := range deleted.ServiceLinks {
-		if err := s.detach(ctx, gid, svc); err != nil {
+		detached, err := s.detach(ctx, gid, svc)
+		if err != nil {
 			return err
+		}
+		// Each service's feed records the group it lost, as an Unlink does
+		// (w4/563).
+		if detached != nil {
+			s.RecordEnvGroupLinkChanged(ctx, detached, core.AuditVerbUnlinkService, deleted.ID, deleted.Name)
 		}
 	}
 	if err := s.deleteSecret(ctx, deleted.TenantID, envSecretName(gid)); err != nil {
@@ -1109,7 +1122,7 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 	}
 	// A link that actually happened: past the already-linked return, past the
 	// environment-scope check, and both the App patch and the link commit stuck.
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbLinkService)
+	s.RecordEnvGroupLinkChanged(ctx, a, core.AuditVerbLinkService, g.ID, g.Name)
 	return nil
 }
 
@@ -1196,7 +1209,8 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 	// below via detachFetched, so this is the only fetch of `service` UnlinkService
 	// makes. detach (DeleteEnvGroup's bulk-unlink path over every linked service,
 	// which authorizes once for the GROUP, not per service) still does its own
-	// bare GetApp: it must not fan out into one audit event per linked service.
+	// bare GetApp: it records no authorization event per linked service, only
+	// the named unlink row each service's feed shows (w4/563).
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, service)
 	if errors.Is(err, core.ErrNotFound) {
 		return s.dropDeletedLink(ctx, gid, service, err)
@@ -1230,7 +1244,7 @@ func (s *Service) UnlinkService(ctx context.Context, gid, service string) error 
 		return err
 	}
 	// A group deleted meanwhile leaves the App detach as the durable outcome.
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbUnlinkService)
+	s.RecordEnvGroupLinkChanged(ctx, a, core.AuditVerbUnlinkService, g.ID, g.Name)
 	return nil
 }
 
@@ -1258,28 +1272,32 @@ func (s *Service) dropDeletedLink(ctx context.Context, gid, service string, notF
 // detach removes the group's Secret refs from a service and rolls it, tolerating a
 // service that no longer exists (a deleted service simply drops from the group).
 // A service deleted, or deleted and recreated, since its read is judged again:
-// the App now at service is detached if it mounts the group (w5/158).
-func (s *Service) detach(ctx context.Context, gid, service string) error {
-	err := s.detachOnce(ctx, gid, service)
+// the App now at service is detached if it mounts the group (w5/158). It
+// returns the service it detached, or nil when there was nothing to detach.
+func (s *Service) detach(ctx context.Context, gid, service string) (*appv1alpha1.App, error) {
+	a, err := s.detachOnce(ctx, gid, service)
 	if errors.Is(err, core.ErrServiceReplaced) || apierrors.IsNotFound(err) {
-		err = s.detachOnce(ctx, gid, service)
+		a, err = s.detachOnce(ctx, gid, service)
 	}
-	return err
+	return a, err
 }
 
-func (s *Service) detachOnce(ctx context.Context, gid, service string) error {
+func (s *Service) detachOnce(ctx context.Context, gid, service string) (*appv1alpha1.App, error) {
 	// A link may name a build source (w2/m254); its reference must go too.
 	a, err := s.GetApp(core.WithBuildSources(ctx), core.RelCanCreate, service)
 	if errors.Is(err, core.ErrNotFound) {
-		return nil // a since-deleted service just drops from the group
+		return nil, nil // a since-deleted service just drops from the group
 	}
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if !mountsGroup(a, gid) {
-		return nil // whatever the link named, this service does not mount the group
+		return nil, nil // whatever the link named, this service does not mount the group
 	}
-	return s.detachFetched(ctx, gid, a)
+	if err := s.detachFetched(ctx, gid, a); err != nil {
+		return nil, err
+	}
+	return a, nil
 }
 
 // detachFetched is detach's second half, for a caller (UnlinkService) that

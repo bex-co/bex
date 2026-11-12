@@ -352,6 +352,52 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
   });
 });
 
+// w4/563: an env-group link or unlink names its group; a row recorded
+// before groups were named keeps the bare type label.
+describe("ServiceEventsPage — env-group link titles (w4/563)", () => {
+  it("names the group a link added or an unlink removed", async () => {
+    mockUseQuery.mockReturnValue({
+      data: {
+        serviceEvents: [
+          {
+            id: "evt-link-1",
+            type: "env_group_linked",
+            timestamp: "2026-08-28T09:00:00Z",
+            cursor: "cursor-link-1",
+            details: { envGroupId: "evg-shared", envGroupName: "shared" },
+          },
+          {
+            id: "evt-unlink-1",
+            type: "env_group_unlinked",
+            timestamp: "2026-08-28T08:00:00Z",
+            cursor: "cursor-unlink-1",
+            details: { envGroupId: "evg-old", envGroupName: "legacy" },
+          },
+          {
+            id: "evt-link-0",
+            type: "env_group_linked",
+            timestamp: "2026-08-28T07:00:00Z",
+            cursor: "cursor-link-0",
+            details: {},
+          },
+        ],
+      },
+      loading: false,
+      refetch: vi.fn(),
+    });
+
+    renderEvents("app");
+
+    expect(
+      await screen.findByText("Environment group shared linked"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Environment group legacy unlinked"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Environment group linked")).toBeInTheDocument();
+  });
+});
+
 describe("ServiceEventsPage — service_moved placement details (w6/m134)", () => {
   afterEach(() => {
     placementState.projects = [];

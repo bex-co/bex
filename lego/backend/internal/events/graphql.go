@@ -230,6 +230,10 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"projectTo":       gqlutil.StrField(func(d Details) any { return d.ProjectTo }),
 		"environmentFrom": gqlutil.StrField(func(d Details) any { return d.EnvironmentFrom }),
 		"environmentTo":   gqlutil.StrField(func(d Details) any { return d.EnvironmentTo }),
+		// env_group_linked / _unlinked (w4/563): the group, by id and by its
+		// name at the time.
+		"envGroupId":   gqlutil.StrField(func(d Details) any { return d.EnvGroupID }),
+		"envGroupName": gqlutil.StrField(func(d Details) any { return d.EnvGroupName }),
 	},
 })
 

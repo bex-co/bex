@@ -1,4 +1,29 @@
-# 563 — A service's Events feed records an env-group link only from the Link and Unlink buttons: a group created with `serviceIds`, or deleted while linked, changes the service's groups and rolls a deploy with no `env_group_linked`/`env_group_unlinked`, and no link event names its group
+# w4 · m328 — A service's Events feed records an env-group link only from the Link and Unlink buttons, and no link event names its group
+
+**Worker:** worker4 **Goal:** every change to a service's linked environment groups records one `env_group_linked` or `env_group_unlinked` row in that service's feed, naming the group, whichever path made it. **Status:** blocked — t001–t003 and t005–t007 done (shipped); t004 live replay waits for the next production deploy, then t008 closes
+
+## Tasks (in order)
+
+| id | title | est | depends_on |
+| --- | --- | --- | --- |
+| [t001](done/t001.md) | Backend: a named link/unlink row from every path — Link, Unlink, create with `serviceIds`, group delete, Blueprint `fromGroup` — **DONE** | 45m | — |
+| [t002](done/t002.md) | Store and API: the group's id and name on the audit row, the feed, the by-id lookup, REST, GraphQL and MCP — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | Dashboard: the Events row reads "Environment group <name> linked/unlinked", en and zh — **DONE** | 20m | t002 |
+| [t004](t004.md) | Live verification on an owned service | 20m | t003 |
+| [t005](done/t005.md) | Render parity — **DONE** | 10m | t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 10m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 20m | t005 |
+| [t008](t008.md) | Closeout | 10m | t006, t007 |
+
+Eight tasks, 195m (3h15m).
+
+## Source + Goal linkage
+
+- **Source:** promoted from inbox note w4/563 (live `/qa-find-bugs w4` loop, round 62, 2026-11-11 UTC) on 2026-11-11: naming the group needs typed audit columns, the feed and lookup projections, every API surface and the dashboard, more than one sub-hour task.
+- **Goal linkage:** the Events feed is the owner's record of why a service's environment changed (ADR006 events).
+- **Render parity:** `env_group_linked`/`env_group_unlinked` are bex-named types; included only to keep their details in the same shape as Render's event details on every surface.
+
+## Finding (from w4/563)
 
 Why: the feed is the owner's record of why the service's environment changed. When the group arrives through the create dialog or disappears with a group delete, the feed shows a "Config Change" deploy with no cause. When the cause is recorded, it doesn't say which group.
 

@@ -425,6 +425,15 @@ function EventSummary({
   const projectTo = details?.projectTo ?? null;
   const environmentFrom = details?.environmentFrom ?? null;
   const environmentTo = details?.environmentTo ?? null;
+  // An env-group link names its group (w4/563); a row recorded before that
+  // keeps the bare type label.
+  const envGroupName = details?.envGroupName || null;
+  const envGroupTitle =
+    envGroupName && type === "env_group_linked"
+      ? t("services.eventsEnvGroupLinkedNamed", { name: envGroupName })
+      : envGroupName && type === "env_group_unlinked"
+        ? t("services.eventsEnvGroupUnlinkedNamed", { name: envGroupName })
+        : null;
   const projectChanged = type === "service_moved" && projectFrom !== projectTo;
   const environmentChanged =
     type === "service_moved" && environmentFrom !== environmentTo;
@@ -449,7 +458,8 @@ function EventSummary({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium group-hover:text-primary">
-            {t(serviceEventLabelKey(type) as Parameters<typeof t>[0])}
+            {envGroupTitle ??
+              t(serviceEventLabelKey(type) as Parameters<typeof t>[0])}
           </p>
           {isDeploy && status ? (
             <Badge variant={statusVariant(status)}>

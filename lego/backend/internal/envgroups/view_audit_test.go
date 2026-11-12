@@ -68,3 +68,86 @@ func TestEnvGroupValueRevealRecordsOneViewEvent(t *testing.T) {
 		t.Fatalf("recorded %+v, want one ViewEnvVarValuesEvent", sink.events)
 	}
 }
+
+// w4/563: every change to a service's linked groups records one row its feed
+// shows, naming the group — a group created with services, the Link and
+// Unlink controls, and a group deleted while linked.
+func TestEveryLinkChangeRecordsANamedRow(t *testing.T) {
+	svc := newService(newFakeStore(), sampleApp("api"), sampleApp("web"))
+	ctx := testCtx()
+	sink := &viewAuditSink{}
+	svc.Audit = sink
+	// A slice, not a map by target: a doubled row for one service must count.
+	links := func(verb string) []core.AuditEvent {
+		var out []core.AuditEvent
+		for _, ev := range sink.events {
+			if ev.Verb == verb && ev.Outcome == core.AuditAllowed {
+				out = append(out, ev)
+			}
+		}
+		return out
+	}
+	named := func(t *testing.T, rows []core.AuditEvent, id, name string, want int) {
+		t.Helper()
+		if len(rows) != want {
+			t.Fatalf("rows = %+v, want %d", rows, want)
+		}
+		for _, ev := range rows {
+			if ev.EnvGroupID != id || ev.EnvGroupName != name {
+				t.Errorf("row %+v does not name group %s %q", ev, id, name)
+			}
+		}
+	}
+
+	g, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "shared", ServiceIDs: []string{"api", "web"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	named(t, links(core.AuditVerbLinkService), g.ID, "shared", 2)
+
+	sink.events = nil
+	if err := svc.UnlinkService(ctx, g.ID, "web"); err != nil {
+		t.Fatal(err)
+	}
+	named(t, links(core.AuditVerbUnlinkService), g.ID, "shared", 1)
+
+	sink.events = nil
+	if err := svc.LinkService(ctx, g.ID, "web"); err != nil {
+		t.Fatal(err)
+	}
+	named(t, links(core.AuditVerbLinkService), g.ID, "shared", 1)
+
+	sink.events = nil
+	if err := svc.DeleteEnvGroup(ctx, g.ID); err != nil {
+		t.Fatal(err)
+	}
+	named(t, links(core.AuditVerbUnlinkService), g.ID, "shared", 2)
+}
+
+// w4/563: a service a Blueprint creates with fromGroup records one named link
+// row per group it starts with.
+func TestBlueprintInitialGroupsRecordNamedLinks(t *testing.T) {
+	svc := newService(newFakeStore())
+	ctx := testCtx()
+	group, err := svc.CreateEnvGroup(ctx, CreateEnvGroupRequest{Name: "first"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sink := &viewAuditSink{}
+	svc.Audit = sink
+	app := managedApp("web")
+	if err := svc.WithInitialEnvGroups(ctx, []string{"first"}, app, func() error {
+		return svc.Client.Create(ctx, app)
+	}, nil); err != nil {
+		t.Fatal(err)
+	}
+	var links []core.AuditEvent
+	for _, ev := range sink.events {
+		if ev.Verb == core.AuditVerbLinkService && ev.Outcome == core.AuditAllowed {
+			links = append(links, ev)
+		}
+	}
+	if len(links) != 1 || links[0].EnvGroupID != group.ID || links[0].EnvGroupName != "first" {
+		t.Fatalf("link rows = %+v, want one naming %s first", links, group.ID)
+	}
+}

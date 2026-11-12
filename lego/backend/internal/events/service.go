@@ -825,6 +825,10 @@ type Details struct {
 	// enable or before a disable, and why a disable happened.
 	AutoDeployTrigger *string
 	AutoDeployReason  *string
+	// env_group_linked / _unlinked (w4/563): the group, by id and by its name
+	// at the time. Empty on rows recorded before groups were named.
+	EnvGroupID   string
+	EnvGroupName string
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -1285,6 +1289,13 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.MaintenanceEnabled = r.MaintenanceModeTo
 		case TypeMaintenanceModeURIUpdated:
 			ev.Details.MaintenanceURIFrom, ev.Details.MaintenanceURITo = r.MaintenanceURIFrom, r.MaintenanceURITo
+		case TypeEnvGroupLinked, TypeEnvGroupUnlinked:
+			if r.EnvGroupID != nil {
+				ev.Details.EnvGroupID = *r.EnvGroupID
+			}
+			if r.EnvGroupName != nil {
+				ev.Details.EnvGroupName = *r.EnvGroupName
+			}
 		case TypeKeyValueConfigRestart:
 			ev.Details.MaxmemoryPolicy = r.MaxmemoryPolicy
 			ev.Details.PersistenceMode = r.PersistenceMode
