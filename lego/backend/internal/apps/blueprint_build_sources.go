@@ -436,7 +436,7 @@ func (r *blueprintActionResolver) planBlueprintBuildSource(ctx context.Context, 
 	probe := *current.Spec.DeepCopy()
 	changed, err := ApplyBlueprintServiceSpec(&probe, want, b.svc.fields)
 	if err != nil {
-		return BlueprintPlanAction{}, err
+		return BlueprintPlanAction{}, blueprintServiceResourceError(resource, err)
 	}
 	if !changed {
 		action.Operation = BlueprintPlanNoop

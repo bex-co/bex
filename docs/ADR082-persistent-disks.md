@@ -167,6 +167,7 @@ The four fail-closed `capabilities.json` entries (`#/definitions/disk/{name,moun
 - omission on adopt/sync **preserves** the existing disk (and Blueprint sync never deletes — removing the `disk` block does not delete the disk, matching Render's documented no-sync-delete rule; deletion stays a manual API/dashboard act);
 - explicit `sizeGB` below the current size fails validation before any write;
 - the disk fields obey the same fail-closed rule as before in the other direction: they either translate fully or the file is refused — never a lossy approximation.
+- the eligibility rules (paid plan, one instance, no autoscaling) hold for the service a validate or sync would leave, and are refused in product words at the field that breaks them (a 400 naming the service), never with the App's admission rule: a `disk` beside `scaling` in one entry (w8/279), and a sync that adds a disk to a service that autoscales or runs two instances, or adds `scaling`, `numInstances: 2` or `plan: free` to one that has a disk. Each rule is judged on its own, so a rule a legacy service already breaks (a disk with no recorded plan) does not excuse a new one.
 
 The Blueprint estimated-pricing panel gains the "Disks" group Render shows (its absence is currently recorded as a deliberate divergence in ADR018), priced from the sheet below — and unlike the datastore rows, the disk estimate **matches the invoice basis exactly**, since both are provisioned GB.
 

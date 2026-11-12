@@ -3621,7 +3621,10 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 	// this apply makes. The host index is the apply's (withHostClaimScope).
 	ctx = withRequestMemo(ctx)
 	if effectiveType(existing.Spec.Type) != effectiveType(desired.Type) {
-		return AppView{}, fmt.Errorf("%w: spec.type is immutable; delete and recreate the service to change type", core.ErrBadRequest)
+		// Render's Blueprint spec: an existing resource's type cannot be
+		// modified. Said in product words, not the App rule's (w8/279).
+		return AppView{}, fmt.Errorf("%w: service %q: a service's type cannot be changed after it is created; delete the service and create it again to change its type",
+			core.ErrBadRequest, req.Name)
 	}
 	if err := s.resolveBlueprintSwitchBranch(ctx, req, fields, existing, &desired); err != nil {
 		return AppView{}, err
@@ -3631,7 +3634,7 @@ func (s *Service) updateStackService(ctx context.Context, req CreateRequest, fie
 	final := existing.DeepCopy()
 	specChanged, err := applyBlueprintServiceSpec(&final.Spec, desired, fields)
 	if err != nil {
-		return AppView{}, fmt.Errorf("%w: %s", core.ErrBadRequest, err)
+		return AppView{}, fmt.Errorf("%w: service %q %w", core.ErrBadRequest, req.Name, err)
 	}
 	// A key this file now copies into the store must not stay on spec.Env from
 	// an earlier apply: the container env would shadow the copy, and the copy's

@@ -301,6 +301,40 @@ func errDisksUnavailable() error {
 	return fmt.Errorf("%w: disks require the control-plane store", core.ErrUnavailable)
 }
 
+// The disk rules every surface states in the same words.
+const (
+	diskPaidPlanRefusal        = "disks require a paid instance type"
+	diskWithAutoscalingRefusal = "a service with a disk cannot use autoscaling"
+)
+
+func diskInstancesRefusal(replicas int32) string {
+	return fmt.Sprintf("a service with a disk cannot run more than one instance (currently %d)", replicas)
+}
+
+// diskShapeRefusal is one reason a service cannot keep the disk it has, by
+// the Blueprint field on that side of the rule.
+type diskShapeRefusal struct{ field, message string }
+
+// diskShapeRefusals is every rule spec breaks by keeping its disk: the plan,
+// the instance count and autoscaling, in that order. Empty for a service with
+// no disk or an allowed shape.
+func diskShapeRefusals(spec appv1alpha1.AppSpec) []diskShapeRefusal {
+	if spec.Disk == nil {
+		return nil
+	}
+	var refusals []diskShapeRefusal
+	if spec.Tier == "" || spec.Tier == diskFreeTier {
+		refusals = append(refusals, diskShapeRefusal{"plan", diskPaidPlanRefusal})
+	}
+	if spec.Replicas > 1 {
+		refusals = append(refusals, diskShapeRefusal{"numInstances", diskInstancesRefusal(spec.Replicas)})
+	}
+	if spec.Autoscaling != nil && spec.Autoscaling.Enabled {
+		refusals = append(refusals, diskShapeRefusal{"scaling", diskWithAutoscalingRefusal})
+	}
+	return refusals
+}
+
 // validateDisk applies the eligibility rules the CRD enforces in CEL, so every
 // surface refuses the same disk for the same stated reason instead of leaving
 // it to the API server's less legible message.
@@ -320,15 +354,13 @@ func validateDisk(a *appv1alpha1.App, name, mountPath string, sizeGB int32) (str
 			core.ErrBadRequest, serviceType)
 	}
 	if a.Spec.Tier == "" || a.Spec.Tier == diskFreeTier {
-		return "", "", 0, fmt.Errorf("%w: disks require a paid instance type", core.ErrBadRequest)
+		return "", "", 0, fmt.Errorf("%w: %s", core.ErrBadRequest, diskPaidPlanRefusal)
 	}
 	if a.Spec.Replicas > 1 {
-		return "", "", 0, fmt.Errorf("%w: a service with a disk cannot run more than one instance (currently %d)",
-			core.ErrBadRequest, a.Spec.Replicas)
+		return "", "", 0, fmt.Errorf("%w: %s", core.ErrBadRequest, diskInstancesRefusal(a.Spec.Replicas))
 	}
 	if a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled {
-		return "", "", 0, fmt.Errorf("%w: a service with a disk cannot use autoscaling; turn autoscaling off first",
-			core.ErrBadRequest)
+		return "", "", 0, fmt.Errorf("%w: %s; turn autoscaling off first", core.ErrBadRequest, diskWithAutoscalingRefusal)
 	}
 	if err := validateDiskName(name); err != nil {
 		return "", "", 0, err
@@ -738,7 +770,13 @@ func blueprintDisk(d *bexDisk) *ServiceDiskView {
 //
 // The messages deliberately match AddDisk's, so a `render.yaml` refused here
 // reads the same as the equivalent API call refused there.
-func validateCreateDisk(svcType, tier string, replicas int32, disk *ServiceDiskView) (*appv1alpha1.DiskSpec, error) {
+//
+// autoscaling says the same request also declares a scaling block. AddDisk's
+// sentence for that tells the caller to turn autoscaling off first, which fits
+// a service that already scales; here the two arrive together, so the sentence
+// stops at the rule. Without this check the App's admission rule answered, in
+// the cluster's words (w8/279).
+func validateCreateDisk(svcType, tier string, replicas int32, autoscaling bool, disk *ServiceDiskView) (*appv1alpha1.DiskSpec, error) {
 	if disk == nil {
 		return nil, nil
 	}
@@ -746,6 +784,9 @@ func validateCreateDisk(svcType, tier string, replicas int32, disk *ServiceDiskV
 	name, mountPath, sizeGB, err := validateDisk(probe, disk.Name, disk.MountPath, disk.SizeGB)
 	if err != nil {
 		return nil, err
+	}
+	if autoscaling {
+		return nil, fmt.Errorf("%w: %s", core.ErrBadRequest, diskWithAutoscalingRefusal)
 	}
 	return &appv1alpha1.DiskSpec{Name: name, MountPath: mountPath, SizeGB: sizeGB}, nil
 }

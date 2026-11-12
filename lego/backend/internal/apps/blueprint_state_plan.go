@@ -225,7 +225,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		dropServedPortEnv(&want, r.services[resource.Name])
 		changed, err := ApplyBlueprintServiceSpec(&probe, want, svc.fields)
 		if err != nil {
-			return BlueprintPlanAction{}, err
+			return BlueprintPlanAction{}, blueprintServiceResourceError(resource, err)
 		}
 		if changed {
 			action.Operation = BlueprintPlanUpdate

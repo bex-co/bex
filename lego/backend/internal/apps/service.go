@@ -3290,7 +3290,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	// A Blueprint declares a disk inline with its service, so eligibility is
 	// checked here rather than on a later attach — there is no moment when the
 	// service exists without it.
-	disk, err := validateCreateDisk(svcType, tier, replicas, req.Disk)
+	disk, err := validateCreateDisk(svcType, tier, replicas, req.Autoscaling != nil, req.Disk)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}

@@ -260,16 +260,27 @@ func applyBlueprintServiceSpecFieldSet(t *testing.T) map[string]bool {
 	for _, policy := range BlueprintServiceFieldPolicies {
 		allFields[policy.Name] = BlueprintField{}
 	}
+	// A disk cannot sit beside autoscaling or a second instance, and the
+	// sync refuses that shape (w8/279): the scaling probe carries no disk,
+	// and the manual probe carries the disk on one instance.
+	scaled := want
+	scaled.Disk = nil
 	var withScaling appv1alpha1.AppSpec
-	ApplyBlueprintServiceSpec(&withScaling, want, allFields)
+	if _, err := ApplyBlueprintServiceSpec(&withScaling, scaled, allFields); err != nil {
+		t.Fatalf("the scaling probe was refused: %v", err)
+	}
 	withoutScaling := map[string]BlueprintField{}
 	for name := range allFields {
 		if name != "scaling" {
 			withoutScaling[name] = BlueprintField{}
 		}
 	}
+	single := want
+	single.Replicas = 1
 	var manual appv1alpha1.AppSpec
-	ApplyBlueprintServiceSpec(&manual, want, withoutScaling)
+	if _, err := ApplyBlueprintServiceSpec(&manual, single, withoutScaling); err != nil {
+		t.Fatalf("the manual probe was refused: %v", err)
+	}
 	set := nonZeroSpecFields(withScaling)
 	for field := range nonZeroSpecFields(manual) {
 		set[field] = true

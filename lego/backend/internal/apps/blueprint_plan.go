@@ -458,6 +458,34 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 		dst.Replicas = want.Replicas
 	}
 
+	// The disk rules hold for the service the sync leaves, not only for the
+	// fields one file declares together (validateCreateDisk): a disk attached,
+	// or a scaling range set, outside the Blueprint meets the half the file
+	// declares here. Refused before any write, the reason is a product
+	// sentence at a source path; otherwise the App's admission rule answers in
+	// the cluster's words (w8/279). Each rule is judged on its own, so a rule
+	// the live service already breaks (a legacy disk with no plan) does not
+	// excuse a new one. The path is the disk when the sync adds it, else the
+	// field that no longer fits it. Only the whole apply is judged: a
+	// single-field probe sees a combination the file never asks for.
+	if only == "" {
+		broken := diskShapeRefusals(before)
+		for _, refusal := range diskShapeRefusals(*dst) {
+			if slices.ContainsFunc(broken, func(b diskShapeRefusal) bool { return b.field == refusal.field }) {
+				continue
+			}
+			field, message := refusal.field, refusal.message
+			if field == "scaling" && !present("scaling") {
+				message += "; declare numInstances in the file to turn autoscaling off"
+			}
+			if before.Disk == nil {
+				field = "disk"
+			}
+			*dst = before
+			return false, &BlueprintFieldConflictError{Path: field, Message: message}
+		}
+	}
+
 	return !reflect.DeepEqual(before, *dst), nil
 }
 
@@ -598,6 +626,14 @@ func blueprintDatabaseAdmissionConflict(err error, fields map[string]BlueprintFi
 		}
 	}
 	return &BlueprintFieldConflictError{Path: field, Message: err.Error()}
+}
+
+// blueprintServiceResourceError is a service's field conflict as a refusal
+// of the file: a bad request naming the service, which keeps the conflict's
+// field path reachable. Unclassified, it would answer 500 (w8/279).
+func blueprintServiceResourceError(resource BlueprintResourceIR, err error) blueprintResourceErrors {
+	return blueprintResourceErrors{{kind: resource.Kind, name: resource.Name,
+		err: fmt.Errorf("%w: service %q %w", core.ErrBadRequest, resource.Name, err)}}
 }
 
 func blueprintDatabaseResourceError(name string, err error) blueprintResourceErrors {
