@@ -127,3 +127,9 @@ This answers part of t001's step 2 from the customer side. The platform side (wh
   - Whether pulls failed in the same window.
 - **For t002's guarantee:** a registry restart that any tenant's new service can trigger fails other tenants' in-flight pushes. Removing the bounce removes that failure class. Until then, the push's retry budget (3 attempts over 10 s) is shorter than a zot restart.
 - **Separate, not this milestone:** the raw skopeo records that name `zot.bex-registry.svc:5000` and `10.106.213.240` are w8/286 (`a177508f3`, on `main` after this pin). Deploys wait for the 6-hour pin age (`.github/workflows/deploy.yml:20-24`).
+
+## Evidence — QA loop round 201 (2026-11-12, pin `f018ce9455c8`)
+
+- **Another push met an unreachable registry.** A native Node build (`qa-20261112-r201-commit`, `dep-dbqt0t2mfp7s73dv7qb0`) began `==> Uploading build...` at 14:44:18. It logged `retrying (1 of 3)` at 14:44:19 and `(2 of 3)` at 14:44:21, then `Uploaded in 22s` at 14:44:40. The upload took 22 s, against round 190's 9–13 s.
+- **Unverified:** whether a credential-activation bounce caused it. Other sessions were creating services (`qa-20261112-6aa7-sd` was present), and this service's own first build at 14:38–14:42 had waited about a minute in `queued` before building.
+- **The narration is the tenant-facing text** since w8/286. The retry budget held this time, but the round 190 outage (at least 10 s) had exhausted it.
