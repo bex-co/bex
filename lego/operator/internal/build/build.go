@@ -149,7 +149,7 @@ const transientLogPattern = `dial tcp|connection refused|connection reset|networ
 // A phase may redefine bex_display, which turns the stream into what its log
 // shows (nativeLogDisplay), and set bex_message so a failure's raw tail still
 // reaches the termination message when the log is no longer the raw stream.
-var classifyPrelude = fmt.Sprintf(`bex_rc_file=/tmp/bex-rc; bex_log=/tmp/bex-phase.log; bex_message=
+var classifyPrelude = fmt.Sprintf(`bex_rc_file=/tmp/bex-rc; bex_log=/tmp/bex-phase.log; bex_message=/dev/termination-log
 bex_display() { cat; }
 bex_run() {
   rm -f "$bex_rc_file" "$bex_log"
@@ -158,7 +158,7 @@ bex_run() {
   bex_rc="$(cat "$bex_rc_file" 2>/dev/null || echo missing)"
   set -e
   [ "$bex_rc" = 0 ] && return 0
-  [ -z "$bex_message" ] || tail -c %d "$bex_log" 2>/dev/null > "$bex_message" || :
+  [ -z "$bex_message" ] || tail -c "${BEX_MESSAGE_BYTES:-%d}" "$bex_log" 2>/dev/null > "$bex_message" || :
   if [ "$bex_rc" = missing ]; then
     echo "bex: phase exit status unavailable; treating as retryable" >&2
     exit %d
@@ -173,6 +173,14 @@ bex_run() {
 // terminationMessageBytes is the most of a termination message file the
 // kubelet reads into the container status.
 const terminationMessageBytes = 4096
+
+// podTerminationMessageBytes is the kubelet's budget for all of a pod's
+// termination messages: it divides it evenly among every container in the
+// spec, init containers included, and keeps the head of each message
+// (status_manager.go normalizeStatus). A phase writes the tail of its output,
+// whose end holds the verdict, so it must not write more than its share or
+// the verdict is cut off (w8/295).
+const podTerminationMessageBytes = 12 * 1024
 
 // nativeLogDisplay is what a native build's tenant log shows of BuildKit's
 // plain transcript (w4/m324): Render's narration and the build command's own
@@ -1029,7 +1037,7 @@ func buildkitFailureSummary(msg string) string {
 
 // failureTailBytes bounds how much of the failing container's output enters
 // the tenant-facing failure reason. The termination message itself is already
-// capped by the kubelet (4 KiB / 80 lines); the failure reason is a sentence
+// capped at the phase's share of the pod's 12 KiB (at most 4 KiB); the failure reason is a sentence
 // surfaced on the deploy row, the dashboard, and the failure email, so it
 // keeps only the end — errors conclude output, they don't open it.
 const failureTailBytes = 800
@@ -1867,15 +1875,23 @@ func buildPodFailurePolicy() *batchv1.PodFailurePolicy {
 }
 
 // captureFailureTail sets terminationMessagePolicy on every build phase so a
-// failing container's output is retrievable from the pod status. Applied after
-// the containers are assembled so it cannot be forgotten when a phase is added
-// or reordered (signing moves the push container between slices, for example).
+// failing container's output is retrievable from the pod status, and tells
+// each phase its share of the pod's message budget (BEX_MESSAGE_BYTES): a
+// phase run through classifyPrelude writes that much of its output's tail, so
+// the kubelet keeps it whole, where its 2 KiB log fallback would lose the end
+// once the pod has more than six containers. Applied after the containers
+// are assembled so it cannot be forgotten when a phase is added or reordered
+// (signing moves the push container between slices, for example).
 func captureFailureTail(spec *corev1.PodSpec) {
+	share := min(terminationMessageBytes, podTerminationMessageBytes/max(1, len(spec.InitContainers)+len(spec.Containers)))
+	budget := corev1.EnvVar{Name: "BEX_MESSAGE_BYTES", Value: strconv.Itoa(share)}
 	for i := range spec.InitContainers {
 		spec.InitContainers[i].TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
+		spec.InitContainers[i].Env = append(spec.InitContainers[i].Env, budget)
 	}
 	for i := range spec.Containers {
 		spec.Containers[i].TerminationMessagePolicy = corev1.TerminationMessageFallbackToLogsOnError
+		spec.Containers[i].Env = append(spec.Containers[i].Env, budget)
 	}
 }
 

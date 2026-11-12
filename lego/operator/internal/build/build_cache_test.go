@@ -175,6 +175,15 @@ func TestBuildCacheAddsOnlyWhatItClaimsToAdd(t *testing.T) {
 					c.Args = slices.Delete(c.Args, j, j+2)
 				}
 			}
+			// Each phase's share of the pod's message budget follows the phase
+			// count, which the cache phases change (w8/295).
+			for _, pod := range []*corev1.PodSpec{&want.Spec.Template.Spec, &got.Spec.Template.Spec} {
+				for _, cs := range [][]corev1.Container{pod.InitContainers, pod.Containers} {
+					for i := range cs {
+						cs[i].Env = slices.DeleteFunc(cs[i].Env, func(e corev1.EnvVar) bool { return e.Name == "BEX_MESSAGE_BYTES" })
+					}
+				}
+			}
 			if !reflect.DeepEqual(want, got) {
 				wantJSON, _ := json.MarshalIndent(want, "", "  ")
 				gotJSON, _ := json.MarshalIndent(got, "", "  ")
