@@ -195,7 +195,7 @@ func TestNativeBuildPushSaysSuccessOnlyAfterTheUpload(t *testing.T) {
 		if err := os.MkdirAll(bin, 0o755); err != nil {
 			t.Fatal(err)
 		}
-		fake := "#!/bin/sh\necho 'Copying blob sha256:abc'\necho 'denied: requested access to the resource is denied' >&2\nexit " + strconv.Itoa(code) + "\n"
+		fake := "#!/bin/sh\necho 'Copying blob sha256:abc'\n" + skopeoRegistryRefusal + "exit " + strconv.Itoa(code) + "\n"
 		if err := os.WriteFile(filepath.Join(bin, "skopeo"), []byte(fake), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -212,9 +212,55 @@ func TestNativeBuildPushSaysSuccessOnlyAfterTheUpload(t *testing.T) {
 			}
 			continue
 		}
-		if ee, ok := errors.AsType[*exec.ExitError](err); !ok || ee.ExitCode() != code || strings.Contains(log, "Build successful") || !strings.Contains(log, "denied") {
-			t.Fatalf("refused: err %v log %q, want exit %d, the error and no verdict", err, log, code)
+		if ee, ok := errors.AsType[*exec.ExitError](err); !ok || ee.ExitCode() != code || strings.Contains(log, "Build successful") ||
+			!strings.Contains(log, "==> The transfer to the build registry failed; retrying (1 of 3)\n") || !strings.HasSuffix(log, "==> Uploading build failed\n") {
+			t.Fatalf("refused: err %v log %q, want exit %d, the retry and the failure in product words, and no verdict", err, log, code)
 		}
+		assertNoRegistryInternals(t, name, log)
+	}
+}
+
+// skopeoRegistryRefusal is what skopeo writes to stderr when the build
+// registry refuses its connections (w8/286, sweep 81af): a retry record, then
+// the fatal one, naming the registry's cluster host, its address and a digest.
+const skopeoRegistryRefusal = `echo 'time="2026-11-12T09:35:02Z" level=warning msg="Failed, retrying in 1s ... (1/3). Error: trying to reuse blob sha256:4f4fb700ef54 at destination: pinging container registry zot.bex-registry.svc:5000: Get \"http://zot.bex-registry.svc:5000/v2/\": dial tcp 10.96.12.34:5000: connect: connection refused"' >&2
+echo 'time="2026-11-12T09:35:13Z" level=fatal msg="trying to reuse blob sha256:4f4fb700ef54 at destination: pinging container registry zot.bex-registry.svc:5000: Get \"http://zot.bex-registry.svc:5000/v2/\": dial tcp 10.96.12.34:5000: connect: connection refused"' >&2
+`
+
+func assertNoRegistryInternals(t *testing.T, name, log string) {
+	t.Helper()
+	for _, internal := range []string{"zot", ".svc", "10.96.12.34", "sha256:4f4f", "level=", "msg="} {
+		if strings.Contains(log, internal) {
+			t.Errorf("%s: the build log names %q:\n%s", name, internal, log)
+		}
+	}
+}
+
+// w8/286: a Dockerfile build's push keeps skopeo's transcript and loses its
+// error records too, and every cache phase's skopeo does.
+func TestEveryBuildSkopeoKeepsRegistryInternalsOutOfTheLog(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "skopeo"), []byte("#!/bin/sh\necho 'Copying blob sha256:abc'\n"+skopeoRegistryRefusal+"exit 1\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	run := func(script string) (string, error) {
+		cmd := exec.Command("sh", "-c", script, "phase", "copy", "a", "b")
+		cmd.Env = append(os.Environ(), "PATH="+dir+":"+os.Getenv("PATH"))
+		out, err := cmd.CombinedOutput()
+		return string(out), err
+	}
+	log, err := run(dockerfilePush)
+	if ee, ok := errors.AsType[*exec.ExitError](err); !ok || ee.ExitCode() != 1 || !strings.HasPrefix(log, "Copying blob sha256:abc\n") ||
+		!strings.HasSuffix(log, "==> Uploading build failed\n") {
+		t.Fatalf("Dockerfile push: err %v log %q", err, log)
+	}
+	assertNoRegistryInternals(t, "Dockerfile push", log)
+	for name, script := range map[string]string{"cache save": cacheBestEffort, "cache restore": cacheRestoreBestEffort, "cache purge": cachePurgeBestEffort} {
+		log, err := run(script)
+		if err != nil || !strings.Contains(log, "bex: ") {
+			t.Fatalf("%s: err %v log %q, want its own product line and a clean exit", name, err, log)
+		}
+		assertNoRegistryInternals(t, name, log)
 	}
 }
 
