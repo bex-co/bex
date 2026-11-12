@@ -69,7 +69,9 @@ func DeployReasonTemplates() map[string]string {
 	return maps.Clone(deployReasonTemplates)
 }
 
-// DeployReasonParam is one named value a reason sentence carries.
+// DeployReasonParam is one named value a reason sentence carries. It is no
+// part of a CRD, so it gets no deepcopy.
+// +kubebuilder:object:generate=false
 type DeployReasonParam struct {
 	Name, Value string
 }
