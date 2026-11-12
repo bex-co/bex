@@ -175,10 +175,10 @@ func costCommand(d deps) *cobra.Command {
 func writeTree(w io.Writer, tree sessionTree, asked string) error {
 	for _, s := range tree.Sessions {
 		line := strings.Repeat("  ", s.Depth) + s.ID + " · " + s.State
-		if s.Outcome != nil && s.Outcome.Cost != nil && s.Outcome.Cost.TotalUSD != "" {
-			line += " · $" + s.Outcome.Cost.TotalUSD
+		if cost := costUSD(s); cost != "" {
+			line += " · $" + cost
 		}
-		line += " · " + clip(firstNonEmpty(s.Title, firstLine(s.AgentConfig.Task)), 60)
+		line += " · " + clip(sessionTitle(s), 60)
 		if s.ID == asked {
 			line += "  ←"
 		}

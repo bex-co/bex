@@ -47,6 +47,7 @@ type session struct {
 	Tags              []string    `json:"tags"`
 	AgentConfig       agentConfig `json:"agentConfig"`
 	State             string      `json:"state"`
+	Steerable         bool        `json:"steerable"`
 	Turns             int         `json:"turns"`
 	PRURL             string      `json:"prUrl"`
 	FailureReason     string      `json:"failureReason"`

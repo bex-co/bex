@@ -86,6 +86,38 @@ func (t table) row(label, value string) {
 	}
 }
 
+// repoBranch is "owner/repo @ branch" (or just the repo).
+func repoBranch(repo, branch string) string {
+	return strings.TrimSpace(repo + " " + branchSuffix(branch))
+}
+
+// sessionTitle is the session's title, else its task's first line.
+func sessionTitle(s session) string { return firstNonEmpty(s.Title, firstLine(s.AgentConfig.Task)) }
+
+// prURL is the pull request the session opened, if any.
+func prURL(s session) string {
+	if o := s.Outcome; o != nil && o.PullRequest != nil && o.PullRequest.URL != "" {
+		return o.PullRequest.URL
+	}
+	return s.PRURL
+}
+
+// failureCode is the code the session's last turn failed with.
+func failureCode(s session) string {
+	if s.Outcome != nil && s.Outcome.FailureReasonCode != "" {
+		return s.Outcome.FailureReasonCode
+	}
+	return s.FailureReasonCode
+}
+
+// costUSD is the session's total cost so far, "" when none is reported.
+func costUSD(s session) string {
+	if s.Outcome != nil && s.Outcome.Cost != nil {
+		return s.Outcome.Cost.TotalUSD
+	}
+	return ""
+}
+
 // showAs prints an API answer: the answer itself for -o json/yaml, else
 // decoded as T and written by text.
 func showAs[T any](inv *invocation, raw []byte, what string, text func(io.Writer, T) error) error {
@@ -177,17 +209,13 @@ func writeSession(w io.Writer, s session) {
 	row := tw.row
 	row("Title", s.Title)
 	if s.Repo != "" {
-		row("Repo", strings.TrimSpace(s.Repo+" "+branchSuffix(s.Branch)))
+		row("Repo", repoBranch(s.Repo, s.Branch))
 	}
 	o := s.Outcome
 	if o == nil {
 		o = &outcome{}
 	}
-	if o.PullRequest != nil && o.PullRequest.URL != "" {
-		row("PR", o.PullRequest.URL)
-	} else {
-		row("PR", s.PRURL)
-	}
+	row("PR", prURL(s))
 	row("Delivery", o.DeliveryNote)
 	if c := o.Cost; c != nil {
 		switch {
@@ -197,7 +225,7 @@ func writeSession(w io.Writer, s session) {
 			row("Cost", "$"+c.ModelUSD)
 		}
 	}
-	if code := firstNonEmpty(o.FailureReasonCode, s.FailureReasonCode); code != "" || s.FailureReason != "" {
+	if code := failureCode(s); code != "" || s.FailureReason != "" {
 		row("Failure", strings.TrimSpace(strings.TrimSuffix(code+": "+s.FailureReason, ": ")))
 	}
 	_ = tw.Flush()
@@ -315,17 +343,45 @@ func (p *partPrinter) print(part transcriptPart) {
 		_, _ = fmt.Fprintf(p.w, "%s\n", compactJSON(part.raw))
 		return
 	}
-	if part.Turn != p.lastTurn {
-		p.lastTurn = part.Turn
-		_, _ = fmt.Fprintf(p.w, "── turn %d ──\n", part.Turn)
-		if prompt := strings.TrimSpace(p.prompts[part.Turn]); prompt != "" {
-			_, _ = fmt.Fprintf(p.w, "> %s\n", clip(strings.ReplaceAll(prompt, "\n", " "), 200))
-		}
-	}
 	var ui uiPart
 	if json.Unmarshal(part.Part, &ui) != nil {
+		p.turnHeader(part.Turn)
 		return
 	}
+	p.printItem(part.Turn, ui)
+}
+
+func (p *partPrinter) setPrompt(turn int, prompt string) { p.prompts[turn] = prompt }
+
+// toolError reports a tool call's failure on its own line: the stream shows
+// a call when it starts, before its outcome is known.
+func (p *partPrinter) toolError(turn int, name, text string) {
+	p.turnHeader(turn)
+	_, _ = fmt.Fprintf(p.w, "  ✗ %s: %s\n", name, clip(errorLine(text), 120))
+}
+
+// turnError reports an error the turn itself ended with.
+func (p *partPrinter) turnError(turn int, text string) {
+	p.turnHeader(turn)
+	_, _ = fmt.Fprintf(p.w, "error: %s\n", clip(firstLine(text), 200))
+}
+
+// turnHeader opens turn with its prompt, once.
+func (p *partPrinter) turnHeader(turn int) {
+	if turn == p.lastTurn {
+		return
+	}
+	p.lastTurn = turn
+	_, _ = fmt.Fprintf(p.w, "── turn %d ──\n", turn)
+	if prompt := strings.TrimSpace(p.prompts[turn]); prompt != "" {
+		_, _ = fmt.Fprintf(p.w, "> %s\n", clip(strings.ReplaceAll(prompt, "\n", " "), 200))
+	}
+}
+
+// printItem renders one complete transcript item of turn: the agent's text,
+// its reasoning (with --reasoning), a line per tool call, a shared file.
+func (p *partPrinter) printItem(turn int, ui uiPart) {
+	p.turnHeader(turn)
 	switch {
 	case ui.Type == "text":
 		if text := strings.TrimRight(ui.Text, "\n"); text != "" {
@@ -346,7 +402,7 @@ func (p *partPrinter) print(part transcriptPart) {
 		}
 		switch ui.State {
 		case "output-error":
-			line += " — error: " + clip(firstLine(ui.ErrorText), 120)
+			line += " — error: " + clip(errorLine(ui.ErrorText), 120)
 		case "output-denied":
 			line += " — denied"
 		}
@@ -354,6 +410,17 @@ func (p *partPrinter) print(part transcriptPart) {
 	case ui.Type == "file":
 		_, _ = fmt.Fprintf(p.w, "file: %s\n", ui.Filename)
 	}
+}
+
+// errorLine is the first line of a tool error that says something: tools
+// often wrap their output in a markdown fence.
+func errorLine(text string) string {
+	for _, line := range strings.Split(text, "\n") {
+		if line = strings.TrimSpace(line); line != "" && strings.Trim(line, "`~") != "" {
+			return line
+		}
+	}
+	return strings.TrimSpace(text)
 }
 
 // inputSummary is the one argument that says what a tool call did.

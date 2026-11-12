@@ -35,7 +35,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
 
@@ -374,10 +373,7 @@ func serverDeps(srv *httptest.Server) deps {
 // persistent --output flag, and returns stdout, stderr and the exit code.
 func run(t *testing.T, d deps, args ...string) (string, string, int) {
 	t.Helper()
-	root := &cobra.Command{Use: "bex", SilenceErrors: true}
-	root.PersistentFlags().StringP("output", "o", "interactive", "")
-	root.PersistentFlags().Bool("confirm", false, "")
-	root.AddCommand(newCommand(d))
+	root := agentRoot(d, "interactive")
 	var stdout, stderr bytes.Buffer
 	root.SetOut(&stdout)
 	root.SetErr(&stderr)

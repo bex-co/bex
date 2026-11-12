@@ -130,6 +130,8 @@ func newCommand(d deps) *cobra.Command {
 			"  6    an automation run started no session (automations run)\n" +
 			"  124  --timeout elapsed while the session was still working\n" +
 			"  130  interrupted (Ctrl-C or SIGTERM)\n\n" +
+			"On a terminal, a command whose one argument is a session may leave it\n" +
+			"out and pick one of your recent sessions.\n\n" +
 			"Use -o json (or yaml) for the API's own answer on stdout; streamed\n" +
 			"transcript output then goes to stderr.",
 		Example: "  bex agent run --repo acme/api --attach crash.log --wait -o json \"Fix the crash in crash.log\"\n" +
@@ -140,12 +142,16 @@ func newCommand(d deps) *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return command.NewExitError(exitUsage, err)
 	})
+	pick := func(c *cobra.Command) *cobra.Command { return d.withPicker(sessionsKind, c) }
+	completeFirst := func(c *cobra.Command) *cobra.Command { return d.withCompletion(sessionsKind, 1, c) }
+	completeAll := func(c *cobra.Command) *cobra.Command { return d.withCompletion(sessionsKind, -1, c) }
 	for _, sub := range []*cobra.Command{
-		runCommand(d), sendCommand(d), waitCommand(d), getCommand(d), listCommand(d),
-		logsCommand(d), filesCommand(d), cancelCommand(d), openCommand(d),
-		archiveCommand(d, "archive", "Archived", "Archive agent sessions (hidden from the default list, read-only)"),
-		archiveCommand(d, "unarchive", "Unarchived", "Unarchive agent sessions"),
-		deleteCommand(d), tagsCommand(d), treeCommand(d), costCommand(d),
+		runCommand(d), completeFirst(sendCommand(d)), completeAll(waitCommand(d)), pick(getCommand(d)), listCommand(d),
+		pick(logsCommand(d)), pick(filesCommand(d)), pick(cancelCommand(d)), pick(openCommand(d)),
+		completeAll(archiveCommand(d, "archive", "Archived", "Archive agent sessions (hidden from the default list, read-only)")),
+		completeAll(archiveCommand(d, "unarchive", "Unarchived", "Unarchive agent sessions")),
+		pick(deleteCommand(d)), completeFirst(tagsCommand(d)), pick(treeCommand(d)), pick(costCommand(d)),
+		completeFirst(chatCommand(d)),
 		automationsCommand(d), secretsCommand(d), skillsCommand(d), envCommand(d), modelsCommand(d),
 	} {
 		// Cobra reads SilenceUsage from the executed command and the root
@@ -527,9 +533,9 @@ func (s *sessionFlags) bind(f *pflag.FlagSet) {
 	f.Float64Var(&s.spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")
 }
 
-// maxSpend is --max-spend when it was given.
-func (s *sessionFlags) maxSpend(c *cobra.Command) (*float64, error) {
-	if !c.Flags().Changed("max-spend") {
+// maxSpend is --max-spend when it was given (fs holds the bound flags).
+func (s *sessionFlags) maxSpend(fs *pflag.FlagSet) (*float64, error) {
+	if !fs.Changed("max-spend") {
 		return nil, nil
 	}
 	if s.spend <= 0 {
@@ -539,14 +545,59 @@ func (s *sessionFlags) maxSpend(c *cobra.Command) (*float64, error) {
 	return &spend, nil
 }
 
+// createFlags are what starting a session takes, on run and chat.
+type createFlags struct {
+	session sessionFlags
+	turn    turnFlags
+	key     string
+	parent  string
+	fs      *pflag.FlagSet
+}
+
+func (f *createFlags) bind(c *cobra.Command) {
+	f.fs = pflag.NewFlagSet("create", pflag.ContinueOnError)
+	f.session.bind(f.fs)
+	f.fs.StringVar(&f.key, "idempotency-key", "", "reuse a key to make re-running this command safe (default: one per invocation)")
+	f.fs.StringVar(&f.parent, "parent", "", "start the session as a child of this one (ags- id or URL); its spend counts against the parent's ceiling")
+	f.turn.bind(f.fs)
+	c.Flags().AddFlagSet(f.fs)
+}
+
+// given reports whether any create flag was set.
+func (f *createFlags) given() bool { return anyChanged(f.fs) }
+
+// create starts the session the flags and task describe: files are uploaded
+// first, and the create is idempotent across retries (ADR094 D4).
+func (f *createFlags) create(d deps, a workspaceAPI, task []string) (session, []byte, error) {
+	t, err := f.turn.resolve(d, task)
+	if err != nil {
+		return session{}, nil, err
+	}
+	in := createRequest{
+		Repo: f.session.repo, Branch: f.session.branch, Title: f.session.title, Tags: f.session.tags,
+		AgentConfig:  agentConfig{Agent: f.session.agent, Model: f.session.model, Task: t.prompt},
+		OutputSchema: t.schema, Skills: t.skills, sessionSecrets: t.secrets,
+		IdempotencyKey: firstNonEmpty(f.key, d.newKey()),
+	}
+	if in.MaxSpendUSD, err = f.session.maxSpend(f.fs); err != nil {
+		return session{}, nil, err
+	}
+	if f.parent != "" {
+		if in.ParentSessionID, err = sessionRef(f.parent); err != nil {
+			return session{}, nil, err
+		}
+	}
+	if in.AttachmentIDs, err = uploadAll(a.invocation, a.owner, f.turn.attach); err != nil {
+		return session{}, nil, err
+	}
+	return a.api.create(a.ctx, a.owner, in)
+}
+
 func runCommand(d deps) *cobra.Command {
 	var (
-		in      createRequest
-		sf      sessionFlags
-		turn    turnFlags
-		key     string
-		parent  string
+		flags   createFlags
 		waiting waitFlags
+		chat    bool
 	)
 	c := &cobra.Command{
 		Use:   "run [flags] <task…>",
@@ -563,53 +614,31 @@ func runCommand(d deps) *cobra.Command {
 			if err := waiting.validate(); err != nil {
 				return err
 			}
-			t, err := turn.resolve(d, args)
-			if err != nil {
-				return err
+			if chat && (waiting.blocking() || !d.interactive()) {
+				return usageError("--chat needs a terminal and no --wait or --follow")
 			}
-			in.AgentConfig.Task, in.OutputSchema, in.Skills, in.sessionSecrets = t.prompt, t.schema, t.skills, t.secrets
-			in.Repo, in.Branch, in.Title, in.Tags = sf.repo, sf.branch, sf.title, sf.tags
-			in.AgentConfig.Agent, in.AgentConfig.Model = sf.agent, sf.model
-			if in.MaxSpendUSD, err = sf.maxSpend(c); err != nil {
-				return err
-			}
-			if parent != "" {
-				if in.ParentSessionID, err = sessionRef(parent); err != nil {
-					return err
-				}
-			}
-			if key == "" {
-				key = d.newKey()
-			}
-			in.IdempotencyKey = key
-			owner, err := d.owner()
-			if err != nil {
-				return err
-			}
-			inv, cancel, err := d.start(c)
+			a, cancel, err := d.startWorkspace(c)
 			if err != nil {
 				return err
 			}
 			defer cancel()
-			if in.AttachmentIDs, err = uploadAll(inv, owner, turn.attach); err != nil {
-				return err
-			}
-			created, raw, err := inv.api.create(inv.ctx, owner, in)
+			created, raw, err := flags.create(d, a, args)
 			if err != nil {
 				return err
 			}
-			if !waiting.blocking() {
-				return inv.show(created, raw)
+			switch {
+			case chat:
+				return d.chat(a, created.ID, chatOptions{reasoning: waiting.reasoning})
+			case !waiting.blocking():
+				return a.show(created, raw)
 			}
-			_, _ = fmt.Fprintf(inv.errOut, "Started %s\n", created.ID)
-			return inv.await(created, 1, waiting)
+			_, _ = fmt.Fprintf(a.errOut, "Started %s\n", created.ID)
+			return a.await(created, 1, waiting)
 		},
 	}
-	sf.bind(c.Flags())
-	c.Flags().StringVar(&key, "idempotency-key", "", "reuse a key to make re-running this command safe (default: one per invocation)")
-	c.Flags().StringVar(&parent, "parent", "", "start the session as a child of this one (ags- id or URL); its spend counts against the parent's ceiling")
-	turn.bind(c.Flags())
+	flags.bind(c)
 	waiting.bindTurn(c)
+	c.Flags().BoolVar(&chat, "chat", false, "attach interactively after starting (a terminal only)")
 	return c
 }
 
@@ -879,7 +908,7 @@ func logsCommand(d deps) *cobra.Command {
 			if waiting.follow {
 				ctx, stop := waiting.context(inv.ctx)
 				defer stop()
-				result, err := inv.api.follow(ctx, args[0], turn, p)
+				result, err := inv.api.followLive(ctx, args[0], turn, p)
 				if err != nil {
 					return err
 				}
@@ -981,7 +1010,7 @@ func (inv *invocation) await(s session, fromTurn int, w waitFlags) error {
 		if inv.format != formatText {
 			stream = inv.errOut
 		}
-		result, err = inv.api.follow(ctx, s.ID, fromTurn, newPartPrinter(stream, false, w.reasoning))
+		result, err = inv.api.followLive(ctx, s.ID, fromTurn, newPartPrinter(stream, false, w.reasoning))
 		if err == nil {
 			inv.warnTail(s.ID, result)
 			if inv.format == formatText && len(result.sessions) > 0 {

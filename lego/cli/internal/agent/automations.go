@@ -117,6 +117,7 @@ type automationRunList struct {
 }
 
 func automationsCommand(d deps) *cobra.Command {
+	pick := func(c *cobra.Command) *cobra.Command { return d.withPicker(automationsKind, c) }
 	c := &cobra.Command{
 		Use:     "automations",
 		Aliases: []string{"automation", "aut"},
@@ -132,12 +133,13 @@ func automationsCommand(d deps) *cobra.Command {
 			"  bex agent automations run error-triage --wait --timeout 45m",
 	}
 	for _, sub := range []*cobra.Command{
-		automationListCommand(d), automationGetCommand(d), automationCreateCommand(d),
-		automationUpdateCommand(d), automationDeleteCommand(d),
-		automationVerbCommand(d, "pause", "Stop an automation firing"),
-		automationVerbCommand(d, "resume", "Let a paused automation fire again (re-validates it)"),
-		automationRunCommand(d), automationTakeOverCommand(d), automationRunsCommand(d),
-		automationApplyCommand(d), automationExportCommand(d),
+		automationListCommand(d), pick(automationGetCommand(d)), automationCreateCommand(d),
+		d.withCompletion(automationsKind, 1, automationUpdateCommand(d)), pick(automationDeleteCommand(d)),
+		pick(automationVerbCommand(d, "pause", "Stop an automation firing")),
+		pick(automationVerbCommand(d, "resume", "Let a paused automation fire again (re-validates it)")),
+		pick(automationRunCommand(d)), pick(automationTakeOverCommand(d)), pick(automationRunsCommand(d)),
+		d.withCompletion(automationsKind, -1, automationExportCommand(d)),
+		automationApplyCommand(d),
 	} {
 		sub.SilenceUsage = true
 		c.AddCommand(sub)
@@ -573,13 +575,25 @@ func (d deps) confirm(c *cobra.Command, question string) error {
 	if !d.interactive() {
 		return usageError("%s needs confirmation: pass --confirm", c.CommandPath())
 	}
-	_, _ = fmt.Fprintf(c.ErrOrStderr(), "%s [y/N] ", question)
-	line, _ := bufio.NewReader(d.stdin).ReadString('\n')
-	switch strings.ToLower(strings.TrimSpace(line)) {
-	case "y", "yes":
+	if isYes(d.ask(c.ErrOrStderr(), question+" [y/N] ")) {
 		return nil
 	}
 	return errors.New("aborted")
+}
+
+// ask prompts on w and reads one line of the answer.
+func (d deps) ask(w io.Writer, prompt string) string {
+	_, _ = fmt.Fprint(w, prompt)
+	line, _ := bufio.NewReader(d.stdin).ReadString('\n')
+	return strings.TrimSpace(line)
+}
+
+func isYes(answer string) bool {
+	switch strings.ToLower(strings.TrimSpace(answer)) {
+	case "y", "yes":
+		return true
+	}
+	return false
 }
 
 // scheduleTriggers is the one schedule trigger ADR101 phase 1 accepts.
@@ -614,7 +628,7 @@ func writeAutomation(w io.Writer, a automation) {
 	}
 	t := a.Template
 	if t.Repo != "" {
-		tw.row("Repo", strings.TrimSpace(t.Repo+" "+branchSuffix(t.Branch)))
+		tw.row("Repo", repoBranch(t.Repo, t.Branch))
 	}
 	tw.row("Agent", strings.TrimSuffix(t.AgentConfig.Agent+" · "+t.AgentConfig.Model, " · "))
 	if t.MaxSpendUSD != nil {

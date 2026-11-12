@@ -1,6 +1,6 @@
 # ADR106 — bex CLI extension for Cloud Agents and their Automations
 
-**Status:** proposed (2026-11-11), implementation in progress (2026-11-12: D7 `bex agent automations` shipped in w1/m338; D3 filters, D4 and D8 in w1/m339; both verified on production) · **Date:** 2026-11-11 · **Extends:** [bex-cli.md § Cloud Agents](bex-cli.md#cloud-agents-bex-agent) (the shipped `bex agent` group), [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions, attach stream), [ADR094](ADR094-coding-agent-mcp.md) (session contract), [ADR101](ADR101-agent-automations.md) (automations), [ADR054](ADR054-open-in-zed.md) (sandbox SSH), [ADR065](ADR065-agent-session-archive.md), [ADR098](ADR098-agent-session-secrets.md), [ADR099](ADR099-agent-skills.md), [ADR102](ADR102-agent-child-sessions.md) · **Parity:** Devin CLI and Devin Automations (no Render equivalent; see [Parity](#parity)).
+**Status:** proposed (2026-11-11), implementation in progress (2026-11-12: D7 `bex agent automations` shipped in w1/m338; D3 filters, D4 and D8 in w1/m339; D2 and the D3 picker in w1/m340; all verified on production) · **Date:** 2026-11-11 · **Extends:** [bex-cli.md § Cloud Agents](bex-cli.md#cloud-agents-bex-agent) (the shipped `bex agent` group), [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions, attach stream), [ADR094](ADR094-coding-agent-mcp.md) (session contract), [ADR101](ADR101-agent-automations.md) (automations), [ADR054](ADR054-open-in-zed.md) (sandbox SSH), [ADR065](ADR065-agent-session-archive.md), [ADR098](ADR098-agent-session-secrets.md), [ADR099](ADR099-agent-skills.md), [ADR102](ADR102-agent-child-sessions.md) · **Parity:** Devin CLI and Devin Automations (no Render equivalent; see [Parity](#parity)).
 
 ![ADR106 architecture: the bex launcher gains new command groups that are thin clients of existing bex-api routes, the gateway's SSE attach stream, the sandbox SSH listener, and the developer's own git remote](ADR106-cli-cloud-agents-automations.svg)
 
@@ -109,7 +109,7 @@ bex agent
   - The public live-turn path is disabled (`AGENT_SESSION_LIVE_TURN_UNAVAILABLE`, ADR047 D9), so a message typed while a turn runs is **queued in the client** in one slot.
   - The queued message is sent with `steer` when the turn settles. Typing again replaces it, and the prompt shows `queued — sends when this turn ends`.
   - A message typed while no turn runs is sent with `steer` at once.
-- **Detach is not cancel.** Ctrl-D, `/quit` or Ctrl-C on an empty line detach and leave the session running. `/cancel` asks for confirmation and then calls the cancel verb. This is ADR047's "client disconnect ≠ cancel" rule.
+- **Detach is not cancel.** Ctrl-D, `/quit` or Ctrl-C detach and leave the session running. `/cancel` asks for confirmation and then calls the cancel verb. This is ADR047's "client disconnect ≠ cancel" rule.
 - **New sessions.** `bex agent chat --repo acme/api [task…]` creates the session with the `run` flags and an idempotency key, then attaches. With no task it asks for the first message.
 - **Not for scripts.** With no TTY, `chat` exits 2 and points to `run --follow`. `logs --follow` and `run`/`send --follow` move to the same SSE client with polling as the fallback, so CI sees the agent's output sooner and its exit codes do not change.
 
@@ -296,7 +296,7 @@ alias: bex agent attach
 | `/tags TAG…`, `/tree`, `/cost`, `/archive` | as the D4 verbs |
 | `/cancel` | confirm, then cancel the session |
 | `/help` | list these commands |
-| `/quit`, `/exit`, Ctrl-D, Ctrl-C on an empty line | detach; the session keeps running |
+| `/quit`, `/exit`, Ctrl-D, Ctrl-C | detach; the session keeps running (line mode cannot tell an empty line from a typed one at Ctrl-C, so Ctrl-C always detaches) |
 
 - `--read-only` shows the stream with no input line, for watching a teammate's session that you have `can_operate` but not `can_create` on.
 - Header line: `ags-… · owner/repo@bex-agent/… · model · state · $spent`.

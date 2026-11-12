@@ -168,10 +168,12 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 | `bex agent tags <ags-id> (<tag>… \| --clear)` | Replace the session's tags, as the API does. |
 | `bex agent tree <ags-id>` | The tree of child sessions the session belongs to, indented, with state and spend ([ADR102](ADR102-agent-child-sessions.md)). |
 | `bex agent cost <ags-id>` | The session's model cost in total and per turn: requests, tokens, models. |
+| `bex agent chat [<ags-id>]` | Watch and steer a session live in the terminal (alias `attach`); see [below](#live-sessions-bex-agent-chat). |
 | `bex agent open <ags-id>` | Open the running sandbox in bex desktop (like `bex edit ags-…`), or else print and open the session's dashboard page (`--dashboard` forces it). |
 
+- **Picking and completion.** On a terminal, a command whose one argument is a session (`get`, `logs`, `files`, `cancel`, `open`, `delete`, `tree`, `cost`, `chat`) or an automation may leave it out: it lists your 20 most recent sessions (or the workspace's automations) and asks for a number, as Devin's `-r` does. Without a terminal an omitted argument is a usage error, as before. Shell completion (`bex completion …`) offers the same ids and names, giving up silently after 2 seconds.
 - **Sessions by URL.** Every `<ags-id>` may also be the session's dashboard URL (`https://dashboard.bex.co/agents/ags-…`, on any dashboard origin), as Devin's CLI takes a session URL ([ADR106](ADR106-cli-cloud-agents-automations.md) D3). `run --parent <ags-id>` starts a child session; its spend counts against the parent's ceiling.
-- **Waiting.** `run` and `send` return as soon as the turn starts. `--wait` polls until it ends; `--follow` streams the transcript while it runs. `--timeout 30m` bounds either one. REST has no blocking wait (`wait_agent_sessions` is MCP-only), so the CLI polls the session with backoff (2 s rising to 15 s; `--follow` backs off the same way while the agent is quiet) and survives up to five consecutive transient failures (a 429, a gateway 5xx or a dropped connection), waiting at least as long as a `Retry-After` asks. Once the session has settled, `--follow` reads the transcript one last time with the same tolerance. If that read still fails, the command warns on stderr that the end of the transcript may be missing, then prints the session and exits by its state as usual: the result is already known (w32/010).
+- **Waiting.** `run` and `send` return as soon as the turn starts. `--wait` polls until it ends; `--follow` streams the transcript while it runs. `--follow` (and `logs --follow` in text) read the live stream ([ADR047](ADR047-cloud-coding-agent-sessions.md) D9): a single-use read ticket from `attach-ticket`, then the gateway's server-sent events with the ticket in `X-Bex-Agent-Ticket` (no bearer), reconnecting with a fresh ticket after a drop and printing each item once. A deployment without the stream, or `logs --follow -o json` (one transcript row per line), polls as before. `--timeout 30m` bounds either one. REST has no blocking wait (`wait_agent_sessions` is MCP-only), so the CLI polls the session with backoff (2 s rising to 15 s; `--follow` backs off the same way while the agent is quiet) and survives up to five consecutive transient failures (a 429, a gateway 5xx or a dropped connection), waiting at least as long as a `Retry-After` asks. Once the session has settled, `--follow` reads the transcript one last time with the same tolerance. If that read still fails, the command warns on stderr that the end of the transcript may be missing, then prints the session and exits by its state as usual: the result is already known (w32/010).
 - **Exit codes.** These apply to `run`/`send` with `--wait` or `--follow`, to `wait`, and to `logs --follow`. With several sessions, a failure wins over a cancel, which wins over needs-input. A plain `get` always exits 0.
 
   | Code  | Meaning                                                        |
@@ -196,6 +198,16 @@ bex agent run --repo acme/api --attach test-output.txt --output-schema schema.js
   "Make the failing test in test-output.txt pass" > outcome.json
 bex agent files "$(jq -r .id outcome.json)" --download ./agent-files
 ```
+
+### Live sessions: `bex agent chat`
+
+`bex agent chat <ags-id>` (alias `attach`; or `run … --chat`) is a session live in the terminal, Devin's `devin --cloud` ([ADR106](ADR106-cli-cloud-agents-automations.md) D2). It prints a header (`ags-… · repo@branch · model · state · $spent`), the transcript so far, then the agent's work as it happens: its text, one line per tool call (`▸ Bash go test ./...`), a summary at each turn's end (state, PR, cost). `--reasoning` also shows reasoning. With no session and the run flags or a task (`chat --repo acme/api "…"`), it starts one first; with neither, it picks one of your recent sessions.
+
+- **Input is line mode,** not a full-screen UI, so scrollback, tmux and pipes keep working. A message typed while a turn runs waits, marked `queued — sends when this turn ends`, and goes out as the next turn (bex takes no messages into a running turn); typing again replaces it. Between turns a message is sent at once.
+- **Commands:** `/attach FILE` and `/skill NAME[:ARGS]` go with the next message; `/files`, `/open`, `/tags`, `/tree`, `/cost` and `/archive` run the `bex agent` command of that name on the session; `/cancel` asks, then cancels; `/help`; `/quit` or `/exit`.
+- **Leaving is not cancelling.** Ctrl-D, Ctrl-C and `/quit` leave; the session keeps running and `bex agent chat <ags-id>` attaches again. There are no permission prompts: cloud sessions run unattended.
+- **`--read-only`** watches without sending (for a session you can read but not steer), following each turn someone else starts.
+- **A terminal only:** without one, `chat` exits 2 and points to `run --follow` / `logs --follow`.
 
 ### Agent Automations: `bex agent automations`
 

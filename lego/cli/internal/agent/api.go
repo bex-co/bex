@@ -213,13 +213,18 @@ func (a *api) do(ctx context.Context, r request) ([]byte, error) {
 		return nil, errResponseTooLarge
 	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		e := decodeAPIError(resp.StatusCode, body)
-		if seconds, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && seconds > 0 {
-			e.RetryAfter = time.Duration(seconds) * time.Second
-		}
-		return nil, e
+		return nil, responseError(resp, body)
 	}
 	return body, nil
+}
+
+// responseError is a non-2xx answer as an *apiError, with its Retry-After.
+func responseError(resp *http.Response, body []byte) *apiError {
+	e := decodeAPIError(resp.StatusCode, body)
+	if seconds, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && seconds > 0 {
+		e.RetryAfter = time.Duration(seconds) * time.Second
+	}
+	return e
 }
 
 func (a *api) getJSON(ctx context.Context, query url.Values, path ...string) ([]byte, error) {
@@ -318,11 +323,8 @@ func (a *api) upload(ctx context.Context, owner, path string) (attachment, error
 	if err != nil {
 		return attachment{}, err
 	}
-	if !info.Mode().IsRegular() {
-		return attachment{}, fmt.Errorf("attach %s: not a regular file", path)
-	}
-	if info.Size() == 0 {
-		return attachment{}, fmt.Errorf("attach %s: the file is empty", path)
+	if err := attachable(path, info); err != nil {
+		return attachment{}, err
 	}
 	raw, err := a.do(ctx, request{
 		method: http.MethodPost, path: []string{"agent-attachments"},
@@ -337,6 +339,26 @@ func (a *api) upload(ctx context.Context, owner, path string) (attachment, error
 		return attachment{}, fmt.Errorf("attach %s: %w", path, err)
 	}
 	return out, nil
+}
+
+// attachable refuses what the API cannot take as an attachment.
+func attachable(path string, info os.FileInfo) error {
+	switch {
+	case !info.Mode().IsRegular():
+		return fmt.Errorf("attach %s: not a regular file", path)
+	case info.Size() == 0:
+		return fmt.Errorf("attach %s: the file is empty", path)
+	}
+	return nil
+}
+
+// checkAttachable is attachable for a path not yet opened.
+func checkAttachable(path string) error {
+	info, err := os.Stat(path)
+	if err != nil {
+		return err
+	}
+	return attachable(path, info)
 }
 
 // attachmentsPage is the largest page the API serves (Render's 100).

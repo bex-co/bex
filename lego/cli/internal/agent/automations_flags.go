@@ -354,7 +354,7 @@ func (t *templateFlags) template(c *cobra.Command, d deps, task []string, curren
 	if f.Changed("tag") {
 		out["tags"] = t.session.tags
 	}
-	spend, err := t.session.maxSpend(c)
+	spend, err := t.session.maxSpend(f)
 	if err != nil {
 		return nil, err
 	}
