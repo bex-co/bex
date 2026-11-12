@@ -304,7 +304,8 @@ const cdParent = `cd_parent() {
 }
 `
 
-// Both supported images supply POSIX sh, tar, cat, wc, rm, mkdir and Linux mv.
+// Both supported images supply POSIX sh, tar, cat, wc, tr, rm, rmdir, mkdir,
+// chmod and Linux mv.
 // Untrusted paths are positional argv, never interpolated into shell source.
 // Extraction always starts in an empty private staging tree; existing target
 // trees are never merged, so their symlinks cannot redirect archive writes.
@@ -601,9 +602,6 @@ func (r terminatedReader) Read(p []byte) (int, error) {
 	return n, err
 }
 
-// copyArchive validates before forwarding each member, strips owners and
-// special permission bits, and supplies end markers only after the complete
-// source (including its gzip checksum, when present) has been verified.
 // ValidateArchive applies the extraction rules copyArchive enforces without
 // writing anything, so a producer of upload archives can prove its output is
 // one the gateway accepts.
@@ -612,18 +610,19 @@ func ValidateArchive(src io.Reader) error {
 	return err
 }
 
-// plainFileMode is an uploaded file's mode, and an archive root's when the
-// archive names none: what a plain create gives under the default umask, as
-// the pinned client's own download path chmods a file (render-oss/cli
-// pkg/sandbox/files.go:103-105). Render documents no server-side mode.
+// plainFileMode is a single uploaded file's mode (an overwritten file takes it
+// too), and plainDirMode an archive root's when the archive names none: what
+// a plain create gives under the default umask, as the pinned client's own
+// download path chmods a file (render-oss/cli pkg/sandbox/files.go:103-105).
+// Render documents no server-side mode.
 const (
 	plainFileMode = 0o644
 	plainDirMode  = 0o755
 )
 
-// archiveModTime keeps an entry's modification time, as extracting a tar does
-// (w32/018), in whole seconds within the range a USTAR header holds, which
-// BusyBox tar reads.
+// archiveModTime keeps an entry's modification time (w32/018), in whole
+// seconds within the range a USTAR header holds, which BusyBox tar reads.
+// BusyBox restores it on files; a directory's is its extraction time.
 func archiveModTime(t time.Time) time.Time {
 	const ustarMaxSeconds = 1<<33 - 1
 	return time.Unix(min(max(t.Unix(), 0), ustarMaxSeconds), 0)
@@ -638,7 +637,10 @@ func entryMode(h *tar.Header) int64 {
 	return h.Mode&0777 | 0600
 }
 
-// copyArchive returns the mode the archive gives its root (its `.` entry,
+// copyArchive validates before forwarding each member, keeps only its
+// permission bits and modification time, and supplies end markers only after
+// the complete source (including its gzip checksum, when present) has been
+// verified. It returns the mode the archive gives its root (its `.` entry,
 // plainDirMode when it has none), for the published directory.
 func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 	tr := tar.NewReader(terminatedReader{src})

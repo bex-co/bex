@@ -640,3 +640,36 @@ func TestAMissingPathIsAFileNotFoundCode(t *testing.T) {
 		}
 	}
 }
+
+// w32/018: the publish step receives the mode upload chose: the archive
+// root's for a directory, 0755 when the archive has none, 0644 for a file.
+func TestUploadPublishesWithTheChosenMode(t *testing.T) {
+	for _, tc := range []struct {
+		name, media string
+		body        []byte
+		want        string
+	}{
+		{"file", "application/octet-stream", []byte("abc"), "644"},
+		{"directory with a root", "application/x-tar", archive(t, &tar.Header{Name: "./", Typeflag: tar.TypeDir, Mode: 0o750}), "750"},
+		{"directory without a root", "application/x-tar", archive(t, &tar.Header{Name: "f", Typeflag: tar.TypeReg, Mode: 0o600, Size: 1}), "755"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var mode string
+			s := serverFor(func(_ context.Context, cmd []string, input io.Reader, _ io.Writer) (int, error) {
+				if input != nil {
+					_, _ = io.Copy(io.Discard, input)
+				} else if cmd[2] == publishScript {
+					mode = cmd[len(cmd)-1]
+				}
+				return 0, nil
+			})
+			r := requestFor(t, http.MethodPut, tc.body)
+			r.Header.Set("Content-Type", tc.media)
+			w := httptest.NewRecorder()
+			s.Handler().ServeHTTP(w, r)
+			if w.Code != http.StatusNoContent || mode != tc.want {
+				t.Fatalf("status %d, published with mode %q; want 204 and %q", w.Code, mode, tc.want)
+			}
+		})
+	}
+}

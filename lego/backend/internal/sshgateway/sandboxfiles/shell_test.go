@@ -145,8 +145,8 @@ func TestShellResolvesRelativePathsUnderHome(t *testing.T) {
 	}
 }
 
-// w32/018: a directory upload keeps each entry's modification time, as
-// extracting a tar does, and publishes its root with the archive's own mode,
+// w32/018: a directory upload keeps each file's modification time and
+// publishes its root with the archive's own mode,
 // not the 0700 staging leaves; a single uploaded file is published 0644, a
 // plain create's mode. The published file modes inside the tree are tar's own
 // and are not asserted: they depend on the extracting user and tar.
@@ -169,20 +169,20 @@ func TestUploadKeepsModTimesAndPublishesPlainModes(t *testing.T) {
 	}
 	mtime := time.Unix(1767323045, 0)
 	src := archive(t,
-		&tar.Header{Name: "./", Typeflag: tar.TypeDir, Mode: 0o755, ModTime: mtime},
+		&tar.Header{Name: "./", Typeflag: tar.TypeDir, Mode: 0o750, ModTime: mtime},
 		&tar.Header{Name: "x.sh", Typeflag: tar.TypeReg, Mode: 0o755, Size: 3, ModTime: mtime},
 		&tar.Header{Name: "sub/", Typeflag: tar.TypeDir, Mode: 0o750, ModTime: mtime},
 		&tar.Header{Name: "sub/y.txt", Typeflag: tar.TypeReg, Mode: 0o644, Size: 2, ModTime: mtime},
 	)
 	var clean bytes.Buffer
 	mode, err := copyArchive(&clean, bytes.NewReader(src))
-	if err != nil || mode != 0o755 {
-		t.Fatalf("copyArchive = %o, %v; want the root's 755", mode, err)
+	if err != nil || mode != 0o750 {
+		t.Fatalf("copyArchive = %o, %v; want the root's 750", mode, err)
 	}
 	run(clean.Bytes(), shell(stageScript, root, "m", ".bex-copy-dir", "directory", "0"))
 	run(nil, shell(publishScript, root, "m", ".bex-copy-dir", "directory", strconv.FormatInt(mode, 8)))
-	if info, err := os.Stat(filepath.Join(root, "m")); err != nil || info.Mode().Perm() != 0o755 {
-		t.Fatalf("published root = %v, %v; want 0755", info, err)
+	if info, err := os.Stat(filepath.Join(root, "m")); err != nil || info.Mode().Perm() != 0o750 {
+		t.Fatalf("published root = %v, %v; want the archive root's 0750", info, err)
 	}
 	for _, name := range []string{"x.sh", "sub/y.txt"} {
 		if info, err := os.Stat(filepath.Join(root, "m", name)); err != nil || !info.ModTime().Equal(mtime) {
