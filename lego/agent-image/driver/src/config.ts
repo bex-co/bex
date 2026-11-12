@@ -79,7 +79,8 @@ export interface AgentDriverConfig {
   // share_file posts to; empty when the deployment has no attachments store.
   shareUrl: string;
   // The session's Pod-bound spawn URL (ADR102 D9) the bex MCP server's
-  // spawn_session and get_child_session call; empty when the session cannot
+  // spawn_session, get_child_session and the coordinator tools
+  // (wait/message/cancel_child_session) call; empty when the session cannot
   // spawn (depth limit, older bex-api). It carries no credential.
   spawnUrl: string;
   // Structured output (ADR094 D5): the session's Pod-bound result URL, the

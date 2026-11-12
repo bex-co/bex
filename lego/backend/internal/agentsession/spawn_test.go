@@ -41,6 +41,21 @@ func (s *recordingSpawns) ReadChildSession(_ context.Context, e SpawnEnvelope) (
 	return ChildView{SessionID: e.ChildID, State: "working"}, nil
 }
 
+func (s *recordingSpawns) MessageChildSession(_ context.Context, e SpawnEnvelope) (ChildView, error) {
+	s.reads = append(s.reads, e)
+	return ChildView{SessionID: e.ChildID, State: "working"}, nil
+}
+
+func (s *recordingSpawns) CancelChildSession(_ context.Context, e SpawnEnvelope) (ChildView, error) {
+	s.reads = append(s.reads, e)
+	return ChildView{SessionID: e.ChildID, State: "canceled"}, nil
+}
+
+func (s *recordingSpawns) WaitChildSessions(_ context.Context, e SpawnEnvelope) (SpawnWaitResponse, error) {
+	s.reads = append(s.reads, e)
+	return SpawnWaitResponse{Settled: []string{}}, nil
+}
+
 func validSpawnEnvelope() SpawnEnvelope {
 	return SpawnEnvelope{Kind: SpawnKind, Op: SpawnOpCreate, Workspace: "tea-a", SessionID: "ags-one", PodName: "sbx-1-0", PodUID: "uid-1",
 		Spawn: &SpawnContent{Task: "t"}, Nonce: "nonce-1"}
@@ -146,6 +161,15 @@ func (s *refusingSpawns) SpawnSession(context.Context, SpawnEnvelope) (SpawnResp
 func (s *refusingSpawns) ReadChildSession(context.Context, SpawnEnvelope) (ChildView, error) {
 	return ChildView{}, s.err
 }
+func (s *refusingSpawns) MessageChildSession(context.Context, SpawnEnvelope) (ChildView, error) {
+	return ChildView{}, s.err
+}
+func (s *refusingSpawns) CancelChildSession(context.Context, SpawnEnvelope) (ChildView, error) {
+	return ChildView{}, s.err
+}
+func (s *refusingSpawns) WaitChildSessions(context.Context, SpawnEnvelope) (SpawnWaitResponse, error) {
+	return SpawnWaitResponse{}, s.err
+}
 
 func asSpawnError(err error, target **SpawnError) bool {
 	e, ok := err.(*SpawnError)
@@ -179,5 +203,41 @@ func TestParseSpawnPathAndContent(t *testing.T) {
 	empty, _ := DecodeSpawnContent([]byte(`{"task":"t","secretNames":[]}`))
 	if absent.SecretNames != nil || empty.SecretNames == nil || len(*empty.SecretNames) != 0 {
 		t.Fatalf("absent=%v empty=%v", absent.SecretNames, empty.SecretNames)
+	}
+}
+
+// Each coordinator op carries exactly its own payload; one op cannot be sent
+// with another's (w9/m346).
+func TestSpawnEnvelopeCoordinatorOps(t *testing.T) {
+	base := validSpawnEnvelope()
+	base.Spawn = nil
+	child := "ags-c185th5c2rvvnhbfiltg"
+	cases := []struct {
+		name  string
+		edit  func(*SpawnEnvelope)
+		valid bool
+	}{
+		{"message", func(e *SpawnEnvelope) { e.Op, e.ChildID, e.Message = SpawnOpMessage, child, &SpawnMessage{Prompt: "p"} }, true},
+		{"message without a child", func(e *SpawnEnvelope) { e.Op, e.Message = SpawnOpMessage, &SpawnMessage{Prompt: "p"} }, false},
+		{"cancel", func(e *SpawnEnvelope) { e.Op, e.ChildID = SpawnOpCancel, child }, true},
+		{"cancel carrying a message", func(e *SpawnEnvelope) { e.Op, e.ChildID, e.Message = SpawnOpCancel, child, &SpawnMessage{Prompt: "p"} }, false},
+		{"wait", func(e *SpawnEnvelope) { e.Op, e.Wait = SpawnOpWait, &SpawnWait{ChildIDs: []string{child}} }, true},
+		{"wait naming a child", func(e *SpawnEnvelope) {
+			e.Op, e.ChildID, e.Wait = SpawnOpWait, child, &SpawnWait{ChildIDs: []string{child}}
+		}, false},
+		{"read carrying a spawn", func(e *SpawnEnvelope) { e.Op, e.ChildID, e.Spawn = SpawnOpRead, child, &SpawnContent{Task: "t"} }, false},
+	}
+	for _, tc := range cases {
+		e := base
+		tc.edit(&e)
+		if got := e.valid(); got != tc.valid {
+			t.Errorf("%s: valid=%v, want %v", tc.name, got, tc.valid)
+		}
+	}
+	for timeout, ok := range map[int]bool{0: true, 1: true, MaxSpawnWaitSeconds: true, MaxSpawnWaitSeconds + 1: false, -1: false} {
+		wait := SpawnWait{ChildIDs: []string{child}, TimeoutSeconds: timeout}
+		if err := wait.Validate(); (err == nil) != ok || wait.TimeoutSeconds != timeout {
+			t.Errorf("wait timeout %d: err=%v, want ok=%v and the value unchanged", timeout, err, ok)
+		}
 	}
 }

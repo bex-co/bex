@@ -203,12 +203,14 @@ const (
 
 // admission is an admitted request: r carries the bounded context, verified is
 // the label-authorized target, and release frees the concurrency slot and the
-// timeout — callers defer it.
+// timeout — callers defer it. freeSlot frees only the slot, early, for a
+// request that idles past admission while its context stays live.
 type admission struct {
 	r        *http.Request
 	pod      SessionPod
 	verified agentsession.MintRequest
 	release  func()
+	freeSlot func()
 }
 
 // podAuthorizer binds a resolved source Pod to the request's claimed target:
@@ -254,9 +256,10 @@ func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorize
 		return admission{}, false
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), b.maxDuration())
+	freeSlot := sync.OnceFunc(func() { limiter.Release(sourceIP) })
 	release := func() {
 		cancel()
-		limiter.Release(sourceIP)
+		freeSlot()
 	}
 	r = r.WithContext(ctx)
 	pod, err := b.Pods.ResolveSessionPod(ctx, namespace, sourceIP)
@@ -285,7 +288,7 @@ func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorize
 		release()
 		return admission{}, false
 	}
-	return admission{r: r, pod: pod, verified: verified, release: release}, true
+	return admission{r: r, pod: pod, verified: verified, release: release, freeSlot: freeSlot}, true
 }
 
 func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {

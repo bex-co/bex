@@ -175,12 +175,22 @@ func (s *Service) SpawnSession(ctx context.Context, envelope agentsession.SpawnE
 // error keeps its code and message; anything else is logged and reported as
 // unavailable, never relayed.
 func spawnRefusal(parentID string, err error) *agentsession.SpawnError {
+	return childRefusal(parentID, "started", err)
+}
+
+// childRefusal is spawnRefusal for any child verb; done names what failed
+// ("started", "messaged", "canceled", "waited on"). The bare authorization
+// denial reads as the creator's lost access, as on a spawn.
+func childRefusal(parentID, done string, err error) *agentsession.SpawnError {
 	var coded *core.CodedError
+	if errors.As(err, &coded) && coded.Code == forbiddenCode {
+		return agentsession.NewSpawnError(SpawnCreatorForbiddenCode, "the person who started this session can no longer act in this workspace")
+	}
 	if errors.As(err, &coded) && coded.Code != "" {
 		return agentsession.NewSpawnError(coded.Code, coded.Error())
 	}
-	log.Printf("agent-session spawn: not started (parent=%s): %v", parentID, err)
-	return agentsession.NewSpawnError(agentsession.SpawnUnavailable, "the child session could not be started")
+	log.Printf("agent-session child: not %s (parent=%s): %v", done, parentID, err)
+	return agentsession.NewSpawnError(agentsession.SpawnUnavailable, "the child session could not be "+done)
 }
 
 // ReadChildSession is the internal child-read verb: one descendant of the
@@ -192,18 +202,109 @@ func (s *Service) ReadChildSession(ctx context.Context, envelope agentsession.Sp
 	if err != nil {
 		return agentsession.ChildView{}, err
 	}
-	notFound := agentsession.NewSpawnError(agentsession.SpawnNotFound, "no such child session")
-	descendant, err := s.Store.IsAgentSessionDescendant(ctx, parent.WorkspaceID, parent.ID, envelope.ChildID)
-	if err != nil {
-		log.Printf("agent-session child read: lineage check failed (parent=%s): %v", parent.ID, err)
-		return agentsession.ChildView{}, agentsession.NewSpawnError(agentsession.SpawnUnavailable, "the child session could not be read")
+	if err := s.requireDescendants(ctx, parent, envelope.ChildID); err != nil {
+		return agentsession.ChildView{}, err
 	}
-	if !descendant {
-		return agentsession.ChildView{}, notFound
-	}
-	record, err := s.Store.GetAgentSession(ctx, envelope.ChildID)
+	return s.childView(ctx, envelope.ChildID)
+}
+
+// MessageChildSession starts a follow-up turn on one of the parent's
+// descendants (w9/m346), as the parent's creator: Steer's own can_create
+// check and every steer rule apply, and its refusals pass through by name.
+func (s *Service) MessageChildSession(ctx context.Context, envelope agentsession.SpawnEnvelope) (agentsession.ChildView, error) {
+	parent, creatorCtx, err := s.coordinatingParent(ctx, envelope, envelope.ChildID)
 	if err != nil {
-		return agentsession.ChildView{}, notFound
+		return agentsession.ChildView{}, err
+	}
+	view, err := s.Steer(creatorCtx, SteerRequest{SessionID: envelope.ChildID, Prompt: envelope.Message.Prompt})
+	if err != nil {
+		return agentsession.ChildView{}, childRefusal(parent.ID, "messaged", err)
+	}
+	return childViewOf(view), nil
+}
+
+// CancelChildSession cancels one of the parent's descendants, as the
+// parent's creator.
+func (s *Service) CancelChildSession(ctx context.Context, envelope agentsession.SpawnEnvelope) (agentsession.ChildView, error) {
+	parent, creatorCtx, err := s.coordinatingParent(ctx, envelope, envelope.ChildID)
+	if err != nil {
+		return agentsession.ChildView{}, err
+	}
+	view, err := s.Cancel(creatorCtx, envelope.ChildID)
+	if err != nil {
+		return agentsession.ChildView{}, childRefusal(parent.ID, "canceled", err)
+	}
+	return childViewOf(view), nil
+}
+
+// WaitChildSessions blocks until every named descendant has settled or the
+// deadline passes (Wait's LISTEN-driven loop), as the parent's creator. It
+// answers with each child's state; outcomes are read with ReadChildSession.
+func (s *Service) WaitChildSessions(ctx context.Context, envelope agentsession.SpawnEnvelope) (agentsession.SpawnWaitResponse, error) {
+	parent, creatorCtx, err := s.coordinatingParent(ctx, envelope, envelope.Wait.ChildIDs...)
+	if err != nil {
+		return agentsession.SpawnWaitResponse{}, err
+	}
+	result, err := s.Wait(creatorCtx, WaitRequest{IDs: envelope.Wait.ChildIDs, TimeoutSeconds: envelope.Wait.TimeoutSeconds}, nil)
+	if err != nil {
+		return agentsession.SpawnWaitResponse{}, childRefusal(parent.ID, "waited on", err)
+	}
+	out := agentsession.SpawnWaitResponse{Settled: result.Settled, TimedOut: result.TimedOut, Children: make([]agentsession.ChildView, 0, len(result.Sessions))}
+	if out.Settled == nil {
+		out.Settled = []string{}
+	}
+	for _, session := range result.Sessions {
+		out.Children = append(out.Children, agentsession.ChildView{SessionID: session.ID, State: session.State})
+	}
+	return out, nil
+}
+
+// coordinatingParent is the verified parent of a coordinator verb, every
+// named child checked to be its descendant, and a context acting as the
+// person who started it (ADR101 D4's rule, as SpawnChild does).
+func (s *Service) coordinatingParent(ctx context.Context, envelope agentsession.SpawnEnvelope, childIDs ...string) (store.AgentSession, context.Context, error) {
+	parent, err := s.verifiedParent(ctx, envelope)
+	if err != nil {
+		return store.AgentSession{}, nil, err
+	}
+	if parent.CreatedBy == "" {
+		return store.AgentSession{}, nil, agentsession.NewSpawnError(SpawnNoCreatorCode,
+			"this session does not record who started it, so it cannot manage child sessions")
+	}
+	if err := s.requireDescendants(ctx, parent, childIDs...); err != nil {
+		return store.AgentSession{}, nil, err
+	}
+	ctx = core.WithIdentity(ctx, core.Identity{Subject: parent.CreatedBy, Method: "session"})
+	return parent, core.WithWorkspace(ctx, parent.WorkspaceID), nil
+}
+
+// childViewOf is a session view as the parent's agent reads a child, without
+// its outcome (the child read carries that).
+func childViewOf(v View) agentsession.ChildView {
+	return agentsession.ChildView{SessionID: v.ID, ParentSessionID: v.ParentSessionID, State: v.State,
+		Title: v.Title, Repo: v.Repo, Branch: v.Branch, Depth: v.Depth}
+}
+
+// requireDescendants refuses, as not found, any id outside the parent's tree.
+func (s *Service) requireDescendants(ctx context.Context, parent store.AgentSession, childIDs ...string) error {
+	for _, childID := range childIDs {
+		descendant, err := s.Store.IsAgentSessionDescendant(ctx, parent.WorkspaceID, parent.ID, childID)
+		if err != nil {
+			log.Printf("agent-session child access: lineage check failed (parent=%s): %v", parent.ID, err)
+			return agentsession.NewSpawnError(agentsession.SpawnUnavailable, "the child session could not be read")
+		}
+		if !descendant {
+			return agentsession.NewSpawnError(agentsession.SpawnNotFound, "no such child session")
+		}
+	}
+	return nil
+}
+
+// childView is a descendant as the agent reads it.
+func (s *Service) childView(ctx context.Context, childID string) (agentsession.ChildView, error) {
+	record, err := s.Store.GetAgentSession(ctx, childID)
+	if err != nil {
+		return agentsession.ChildView{}, agentsession.NewSpawnError(agentsession.SpawnNotFound, "no such child session")
 	}
 	view, err := s.toView(record)
 	if err != nil {

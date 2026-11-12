@@ -32,6 +32,9 @@
 //   - spawn_session and get_child_session (when the session can still start
 //     children, ADR102 D9) start a child session and read the sessions this
 //     one started, through the session's Pod-bound spawn URL.
+//   - wait_child_sessions, message_child_session and cancel_child_session
+//     (same condition and URL, w9/m346) block until named descendants finish,
+//     start a follow-up turn on one, or cancel one.
 // No secret is involved: the gateway authenticates the source Pod.
 //
 // The transport is newline-delimited JSON-RPC 2.0 over stdio, hand-rolled to
@@ -49,12 +52,21 @@ import {
   submitResultToolName,
 } from "./submit-result.js";
 import {
+  cancelChildSession,
+  cancelChildSessionToolDefinition,
+  cancelChildSessionToolName,
   getChildSession,
   getChildSessionToolDefinition,
   getChildSessionToolName,
+  messageChildSession,
+  messageChildSessionToolDefinition,
+  messageChildSessionToolName,
   spawnSession,
   spawnSessionToolDefinition,
   spawnSessionToolName,
+  waitChildSessions,
+  waitChildSessionsToolDefinition,
+  waitChildSessionsToolName,
 } from "./spawn-session.js";
 import {
   shareFile,
@@ -253,7 +265,13 @@ export function availableTools(
     tools.push(submitResultToolDefinition);
   }
   if (env.BEX_SPAWN_ENDPOINT) {
-    tools.push(spawnSessionToolDefinition, getChildSessionToolDefinition);
+    tools.push(
+      spawnSessionToolDefinition,
+      getChildSessionToolDefinition,
+      waitChildSessionsToolDefinition,
+      messageChildSessionToolDefinition,
+      cancelChildSessionToolDefinition,
+    );
   }
   return tools;
 }
@@ -273,10 +291,28 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
     lines.push(`Use ${submitResultToolName} to hand back this task's structured result.`);
   }
   if (env.BEX_SPAWN_ENDPOINT) {
-    lines.push(`Use ${spawnSessionToolName} to hand a separate task to a child session and ${getChildSessionToolName} to read its outcome.`);
+    lines.push(`Use ${spawnSessionToolName} to hand a separate task to a child session, ${waitChildSessionsToolName} to wait until children finish instead of polling ${getChildSessionToolName}, and ${messageChildSessionToolName} or ${cancelChildSessionToolName} to follow up on or stop one.`);
   }
   return lines.join(" ");
 }
+
+type ToolHandler = (
+  args: unknown,
+  env: NodeJS.ProcessEnv,
+) => Promise<{ ok: true; result: unknown } | { ok: false; error: ToolError }>;
+
+// toolHandlers maps every tool availableTools can list to its implementation.
+const toolHandlers: Record<string, ToolHandler> = {
+  [toolName]: openOrUpdateDraftPr,
+  [shareFileToolName]: shareFile,
+  [submitResultToolName]: submitResult,
+  [spawnSessionToolName]: spawnSession,
+  [getChildSessionToolName]: getChildSession,
+  [waitChildSessionsToolName]: waitChildSessions,
+  [messageChildSessionToolName]: messageChildSession,
+  [cancelChildSessionToolName]: cancelChildSession,
+  [replyOnPullRequestToolName]: replyOnPullRequest,
+};
 
 interface JsonRpcMessage {
   jsonrpc?: string;
@@ -328,19 +364,7 @@ export async function handleMessage(
       if (!availableTools(env).some((tool) => tool.name === name)) {
         return rpcError(message.id, -32602, `unknown tool: ${String(name)}`);
       }
-      const args = message.params?.arguments;
-      const outcome =
-        name === shareFileToolName
-          ? await shareFile(args, env)
-          : name === submitResultToolName
-            ? await submitResult(args, env)
-            : name === spawnSessionToolName
-              ? await spawnSession(args, env)
-              : name === getChildSessionToolName
-                ? await getChildSession(args, env)
-                : name === replyOnPullRequestToolName
-                  ? await replyOnPullRequest(args, env)
-                  : await openOrUpdateDraftPr(args, env);
+      const outcome = await toolHandlers[name as string](message.params?.arguments, env);
       const structured = outcome.ok ? outcome.result : { error: outcome.error };
       return rpcResult(message.id, {
         content: [{ type: "text", text: JSON.stringify(structured) }],

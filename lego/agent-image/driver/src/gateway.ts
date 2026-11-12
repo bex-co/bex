@@ -51,8 +51,8 @@ export async function postToGateway(
     label: string;
     fallbackCode: string;
     timeoutMs: number;
-    // POST unless a read-only verb says otherwise.
-    method?: "GET" | "POST";
+    // POST unless a read-only or cancel verb says otherwise.
+    method?: "GET" | "POST" | "DELETE";
   },
 ): Promise<GatewayReply> {
   let response: Response;

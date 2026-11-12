@@ -442,13 +442,7 @@ func main() {
 	// orders of magnitude past any in-cluster pack exchange; response streaming
 	// (the clone direction) is a write and stays unbounded.
 	if credentials.Enabled() {
-		credentialMux := http.NewServeMux()
-		credentialMux.Handle("GET "+agentsession.GitProxyPath, credentials.Handler())
-		credentialMux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
-		credentialMux.Handle("POST "+agentsession.ShareFileProxyPath, credentials.ShareFileHandler())
-		credentialMux.Handle("POST "+agentsession.ResultProxyPath, credentials.ResultHandler())
-		credentialMux.Handle("POST "+agentsession.SpawnProxyPath, credentials.SpawnHandler())
-		credentialMux.Handle("GET "+agentsession.SpawnProxyPath, credentials.SpawnHandler())
+		credentialMux := newCredentialMux(credentials)
 		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_GIT_READ_TIMEOUT", 10*time.Minute)
@@ -785,4 +779,19 @@ func waitForDB(ctx context.Context, pool *pgxpool.Pool) error {
 		}
 	}
 	return fmt.Errorf("after 30 attempts: %w", last)
+}
+
+// newCredentialMux routes the agent listener: the Git proxy (with the PR
+// verbs under it), shared files, structured results and the child-session
+// verbs (spawn, read, message, cancel, wait).
+func newCredentialMux(credentials *agentcred.Broker) *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.Handle("GET "+agentsession.GitProxyPath, credentials.Handler())
+	mux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
+	mux.Handle("POST "+agentsession.ShareFileProxyPath, credentials.ShareFileHandler())
+	mux.Handle("POST "+agentsession.ResultProxyPath, credentials.ResultHandler())
+	for _, method := range []string{http.MethodPost, http.MethodGet, http.MethodDelete} {
+		mux.Handle(method+" "+agentsession.SpawnProxyPath, credentials.SpawnHandler())
+	}
+	return mux
 }

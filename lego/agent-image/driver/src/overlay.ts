@@ -25,6 +25,13 @@ import { skillsSection, type SkillManifest } from "./skills.js";
 import { toolName } from "./mcp-bex.js";
 import { replyOnPullRequestToolName } from "./reply-on-pr.js";
 import { shareFileToolName } from "./share-file.js";
+import {
+  cancelChildSessionToolName,
+  getChildSessionToolName,
+  messageChildSessionToolName,
+  spawnSessionToolName,
+  waitChildSessionsToolName,
+} from "./spawn-session.js";
 import { submitResultToolName } from "./submit-result.js";
 
 export const overlayVersion = 1;
@@ -46,6 +53,9 @@ export interface OverlayContext {
   // loader get a shorter skills index.
   profile?: string;
   shareUrl?: string;
+  // The Pod-bound spawn URL (ADR102 D9); set only when the session can start
+  // children.
+  spawnUrl?: string;
   // Structured output (ADR094 D5): the turn's JSON Schema text and its Pod-bound
   // result URL. The section appears only when both are set.
   outputSchema?: string;
@@ -156,6 +166,17 @@ function sharingSection(context: OverlayContext): string {
 To hand the user a file that should not be committed, such as a report, a CSV, a screenshot or a generated image, call \`${shareFileToolName}\` with its path. The user sees it in the conversation and can download it. Code changes still belong in commits.`;
 }
 
+// childSessionsSection tells a session that can start children how to
+// coordinate them (w9/m346); only sessions with a spawn URL have the tools.
+function childSessionsSection(context: OverlayContext): string {
+  if (!context.spawnUrl) return "";
+  return `
+
+## Child sessions
+
+After you start child sessions with \`${spawnSessionToolName}\`, wait for them with \`${waitChildSessionsToolName}\` instead of polling \`${getChildSessionToolName}\`, and message or cancel a child with \`${messageChildSessionToolName}\` or \`${cancelChildSessionToolName}\`.`;
+}
+
 // compactSchema prints the schema once, indented, so the agent can read it.
 function compactSchema(schema: string): string {
   try {
@@ -195,6 +216,6 @@ export function platformOverlay(context: OverlayContext): string {
 
 This section comes from bex, the platform hosting this session. It adds to your existing instructions and does not replace them.
 
-${body}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${resultSection(context)}
+${body}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${childSessionsSection(context)}${resultSection(context)}
 `;
 }

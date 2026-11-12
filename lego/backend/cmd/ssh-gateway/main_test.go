@@ -33,7 +33,9 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
+	"github.com/bex-co/bex/lego/backend/internal/sshgateway/agentcred"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
 )
 
@@ -234,5 +236,17 @@ func TestHostSignerRequiresEd25519(t *testing.T) {
 	}
 	if _, err := parseHostSigner([]byte("not a key")); err == nil {
 		t.Fatal("malformed host key accepted")
+	}
+}
+
+// Every child-session method the driver sends reaches the spawn handler: a
+// method missing here answers 405 in production while handler tests pass.
+func TestCredentialMuxRoutesEveryChildSessionMethod(t *testing.T) {
+	mux := newCredentialMux(&agentcred.Broker{})
+	for _, method := range []string{http.MethodPost, http.MethodGet, http.MethodDelete} {
+		req := httptest.NewRequest(method, agentsession.SpawnProxyPath+"bnM/c2Vzcw/ags-c185th5c2rvvnhbfiltg", nil)
+		if _, pattern := mux.Handler(req); pattern != method+" "+agentsession.SpawnProxyPath {
+			t.Errorf("%s child-session route = %q", method, pattern)
+		}
 	}
 }

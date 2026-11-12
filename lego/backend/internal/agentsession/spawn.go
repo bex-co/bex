@@ -40,8 +40,16 @@ import (
 // (a parentSessionId, say) is refused. No bex API credential and no user token
 // ever enters the sandbox.
 //
-//	POST /agent-children/<b64 ns>/<b64 session>              start one child
-//	GET  /agent-children/<b64 ns>/<b64 session>/<child id>   read a descendant
+//	POST   /agent-children/<b64 ns>/<b64 session>              start one child
+//	GET    /agent-children/<b64 ns>/<b64 session>/<child id>   read a descendant
+//	POST   /agent-children/<b64 ns>/<b64 session>/<child id>   message a descendant
+//	DELETE /agent-children/<b64 ns>/<b64 session>/<child id>   cancel a descendant
+//	POST   /agent-children/<b64 ns>/<b64 session>/wait         wait for descendants
+//
+// The last three are the coordinator verbs (w9/m346, ADR102): a parent waits
+// for its children to finish without polling, steers one, or stops one. Each
+// acts as the parent's recorded creator, through the same authorization a
+// person's steer, cancel or wait makes.
 
 const (
 	// SpawnProxyPath prefixes the sandbox-facing routes on the gateway's agent
@@ -54,8 +62,19 @@ const (
 	SpawnKind = "spawn-session"
 	// SpawnOpCreate and SpawnOpRead are the envelope's two operations; the MAC
 	// covers the whole envelope, so one cannot be replayed as the other.
-	SpawnOpCreate = "create"
-	SpawnOpRead   = "read"
+	SpawnOpCreate  = "create"
+	SpawnOpRead    = "read"
+	SpawnOpMessage = "message"
+	SpawnOpCancel  = "cancel"
+	SpawnOpWait    = "wait"
+
+	// SpawnWaitSegment is the path segment of the wait route.
+	SpawnWaitSegment = "wait"
+	// MaxSpawnWaitChildren and MaxSpawnWaitSeconds bound one wait, here and in
+	// agentsessions.Service.Wait: 20 ids, and a deadline inside bex-api's 30 s
+	// write timeout. The agent calls again to keep waiting.
+	MaxSpawnWaitChildren = 20
+	MaxSpawnWaitSeconds  = 25
 
 	// MaxSpawnTaskBytes mirrors the create limit on agentConfig.task.
 	MaxSpawnTaskBytes = 100_000
@@ -70,8 +89,11 @@ const (
 	maxSpawnResponseBytes = 1 << 20
 
 	// AuditVerbSpawn and AuditVerbReadChild record every decision on both hops.
-	AuditVerbSpawn     = "agentsessions.SpawnChild"
-	AuditVerbReadChild = "agentsessions.ReadChild"
+	AuditVerbSpawn        = "agentsessions.SpawnChild"
+	AuditVerbReadChild    = "agentsessions.ReadChild"
+	AuditVerbMessageChild = "agentsessions.MessageChild"
+	AuditVerbCancelChild  = "agentsessions.CancelChild"
+	AuditVerbWaitChildren = "agentsessions.WaitChildren"
 )
 
 var spawnMACDomain = []byte(SpawnKind + "\n")
@@ -146,12 +168,63 @@ func ParseSpawnPath(path string) (namespace, sessionID, childID string, err erro
 	if err != nil {
 		return "", "", "", ErrInvalidRequest
 	}
-	if hasRest {
-		if kind, ok := id.KindOf(rest); !ok || kind != id.AgentSession {
-			return "", "", "", ErrInvalidRequest
-		}
+	if hasRest && rest != SpawnWaitSegment && !isSessionID(rest) {
+		return "", "", "", ErrInvalidRequest
 	}
 	return namespace, sessionID, rest, nil
+}
+
+// SpawnMessage is a follow-up turn the parent sends one child.
+type SpawnMessage struct {
+	Prompt string `json:"prompt"`
+}
+
+// Validate bounds a message on both hops.
+func (m SpawnMessage) Validate() *SpawnError {
+	if strings.TrimSpace(m.Prompt) == "" {
+		return NewSpawnError(SpawnInvalidRequest, "prompt is required")
+	}
+	if len(m.Prompt) > MaxSpawnTaskBytes {
+		return NewSpawnError(SpawnTooLarge, fmt.Sprintf("prompt exceeds %d bytes", MaxSpawnTaskBytes))
+	}
+	return nil
+}
+
+// SpawnWait names the children a wait blocks on and its deadline.
+type SpawnWait struct {
+	ChildIDs       []string `json:"childIds"`
+	TimeoutSeconds int      `json:"timeoutSeconds,omitempty"`
+}
+
+// Validate bounds a wait on both hops; 0 leaves the wait verb's default.
+func (w *SpawnWait) Validate() *SpawnError {
+	if len(w.ChildIDs) == 0 || len(w.ChildIDs) > MaxSpawnWaitChildren {
+		return NewSpawnError(SpawnInvalidRequest, fmt.Sprintf("childIds must name 1-%d child sessions", MaxSpawnWaitChildren))
+	}
+	for _, child := range w.ChildIDs {
+		if !isSessionID(child) {
+			return NewSpawnError(SpawnInvalidRequest, "childIds must be agent session ids")
+		}
+	}
+	if w.TimeoutSeconds < 0 || w.TimeoutSeconds > MaxSpawnWaitSeconds {
+		return NewSpawnError(SpawnInvalidRequest, fmt.Sprintf("timeoutSeconds must be 1-%d; call again to keep waiting", MaxSpawnWaitSeconds))
+	}
+	return nil
+}
+
+func isSessionID(s string) bool {
+	kind, ok := id.KindOf(s)
+	return ok && kind == id.AgentSession
+}
+
+// DecodeSpawnBody strictly decodes one coordinator request body into out.
+func DecodeSpawnBody(raw []byte, out interface{ Validate() *SpawnError }) *SpawnError {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(out); err != nil || decoder.More() {
+		return NewSpawnError(SpawnInvalidRequest, "the request body is not the expected JSON object")
+	}
+	return out.Validate()
 }
 
 // SpawnContent is the sandbox's whole say in a spawn: the child's own fields.
@@ -219,6 +292,8 @@ type SpawnEnvelope struct {
 	PodUID    string        `json:"podUid"`
 	Spawn     *SpawnContent `json:"spawn,omitempty"`
 	ChildID   string        `json:"childId,omitempty"`
+	Message   *SpawnMessage `json:"message,omitempty"`
+	Wait      *SpawnWait    `json:"wait,omitempty"`
 	Nonce     string        `json:"nonce"`
 }
 
@@ -228,11 +303,21 @@ func (e SpawnEnvelope) valid() bool {
 	if e.Kind != SpawnKind || e.Workspace == "" || e.SessionID == "" || e.PodName == "" || e.PodUID == "" {
 		return false
 	}
+	payloads := 0
+	for _, set := range []bool{e.Spawn != nil, e.ChildID != "", e.Message != nil, e.Wait != nil} {
+		if set {
+			payloads++
+		}
+	}
 	switch e.Op {
 	case SpawnOpCreate:
-		return e.Spawn != nil && e.ChildID == ""
-	case SpawnOpRead:
-		return e.Spawn == nil && e.ChildID != ""
+		return e.Spawn != nil && payloads == 1
+	case SpawnOpRead, SpawnOpCancel:
+		return e.ChildID != "" && payloads == 1
+	case SpawnOpMessage:
+		return e.ChildID != "" && e.Message != nil && payloads == 2
+	case SpawnOpWait:
+		return e.Wait != nil && payloads == 1
 	}
 	return false
 }
@@ -266,12 +351,24 @@ type ChildView struct {
 	Outcome         json.RawMessage `json:"outcome,omitempty"`
 }
 
-// SpawnSink creates and reads a session's descendants for a verified Pod.
-// Every error it returns should be a *SpawnError; anything else is reported
-// as unavailable.
+// SpawnWaitResponse is what a wait returns: each named child's id and state,
+// which have settled, and whether the wait ended on its deadline. A child's
+// outcome is read with the child read, which keeps a wait on 20 children small.
+type SpawnWaitResponse struct {
+	Children []ChildView `json:"children"`
+	Settled  []string    `json:"settled"`
+	TimedOut bool        `json:"timedOut"`
+}
+
+// SpawnSink creates, reads and coordinates a session's descendants for a
+// verified Pod. Every error it returns should be a *SpawnError; anything else
+// is reported as unavailable.
 type SpawnSink interface {
 	SpawnSession(ctx context.Context, envelope SpawnEnvelope) (SpawnResponse, error)
 	ReadChildSession(ctx context.Context, envelope SpawnEnvelope) (ChildView, error)
+	MessageChildSession(ctx context.Context, envelope SpawnEnvelope) (ChildView, error)
+	CancelChildSession(ctx context.Context, envelope SpawnEnvelope) (ChildView, error)
+	WaitChildSessions(ctx context.Context, envelope SpawnEnvelope) (SpawnWaitResponse, error)
 }
 
 // SpawnHandler is bex-api's internal spawn verb.
@@ -314,14 +411,28 @@ func (h *SpawnHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var response any
-	if envelope.Op == SpawnOpCreate {
-		if invalid := envelope.Spawn.Validate(); invalid != nil {
-			WriteSpawnError(w, invalid)
-			return
+	var invalid *SpawnError
+	switch envelope.Op {
+	case SpawnOpCreate:
+		if invalid = envelope.Spawn.Validate(); invalid == nil {
+			response, err = h.Spawns.SpawnSession(r.Context(), envelope)
 		}
-		response, err = h.Spawns.SpawnSession(r.Context(), envelope)
-	} else {
+	case SpawnOpRead:
 		response, err = h.Spawns.ReadChildSession(r.Context(), envelope)
+	case SpawnOpMessage:
+		if invalid = envelope.Message.Validate(); invalid == nil {
+			response, err = h.Spawns.MessageChildSession(r.Context(), envelope)
+		}
+	case SpawnOpCancel:
+		response, err = h.Spawns.CancelChildSession(r.Context(), envelope)
+	case SpawnOpWait:
+		if invalid = envelope.Wait.Validate(); invalid == nil {
+			response, err = h.Spawns.WaitChildSessions(r.Context(), envelope)
+		}
+	}
+	if invalid != nil {
+		WriteSpawnError(w, invalid)
+		return
 	}
 	if err != nil {
 		var typed *SpawnError
@@ -366,12 +477,38 @@ func (c *SpawnClient) Spawn(ctx context.Context, envelope SpawnEnvelope) (SpawnR
 // ReadChild forwards a Pod-verified read of one descendant.
 func (c *SpawnClient) ReadChild(ctx context.Context, envelope SpawnEnvelope) (ChildView, error) {
 	envelope.Op = SpawnOpRead
+	return c.child(ctx, envelope)
+}
+
+// MessageChild forwards a Pod-verified follow-up turn for one descendant.
+func (c *SpawnClient) MessageChild(ctx context.Context, envelope SpawnEnvelope) (ChildView, error) {
+	envelope.Op = SpawnOpMessage
+	return c.child(ctx, envelope)
+}
+
+// CancelChild forwards a Pod-verified cancel of one descendant.
+func (c *SpawnClient) CancelChild(ctx context.Context, envelope SpawnEnvelope) (ChildView, error) {
+	envelope.Op = SpawnOpCancel
+	return c.child(ctx, envelope)
+}
+
+func (c *SpawnClient) child(ctx context.Context, envelope SpawnEnvelope) (ChildView, error) {
 	var out ChildView
 	if err := c.call(ctx, envelope, &out); err != nil {
 		return ChildView{}, err
 	}
 	if out.SessionID == "" {
 		return ChildView{}, NewSpawnError(SpawnUnavailable, "the spawn service returned an invalid response")
+	}
+	return out, nil
+}
+
+// WaitChildren forwards a Pod-verified wait on descendants.
+func (c *SpawnClient) WaitChildren(ctx context.Context, envelope SpawnEnvelope) (SpawnWaitResponse, error) {
+	envelope.Op = SpawnOpWait
+	var out SpawnWaitResponse
+	if err := c.call(ctx, envelope, &out); err != nil {
+		return SpawnWaitResponse{}, err
 	}
 	return out, nil
 }

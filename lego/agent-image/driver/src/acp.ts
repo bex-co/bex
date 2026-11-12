@@ -104,9 +104,10 @@ export function bexMcpServerScript(): string {
 // /pull-request/comment) and share_file when the
 // deployment stores attachments (the Pod-bound share URL, ADR095 D6) and
 // submit_result when the turn carries an outputSchema (the Pod-bound result
-// URL, ADR094 D5) and spawn_session and get_child_session when the session can
-// still start children (the Pod-bound spawn URL, ADR102 D9). The
-// gateway authenticates the source Pod, so no secret is passed.
+// URL, ADR094 D5) and spawn_session, get_child_session and the coordinator
+// tools when the session can still start children (the Pod-bound spawn URL,
+// ADR102 D9). The gateway authenticates the source Pod, so no secret is
+// passed.
 export function bexMcpServers(
   config: Pick<
     AgentDriverConfig,

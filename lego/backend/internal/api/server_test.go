@@ -1229,7 +1229,12 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	// (agentsessions/spawn_pg_test.go); ReadChildSession is limited to the
 	// verified session's descendants. Envelope, replay and Pod-binding contracts
 	// live in agentsession/spawn_test.go and sshgateway/agentcred/spawn_test.go.
-	if recv == reflect.TypeFor[*agentsessions.Service]() && (m.Name == "SpawnChild" || m.Name == "SpawnSession" || m.Name == "ReadChildSession") {
+	// The coordinator verbs (w9/m346) are the same kind: MessageChildSession,
+	// CancelChildSession and WaitChildSessions are limited to the verified
+	// session's descendants and then call Steer, Cancel and Wait as the
+	// parent's creator, which authorize there.
+	coordinator := m.Name == "MessageChildSession" || m.Name == "CancelChildSession" || m.Name == "WaitChildSessions"
+	if recv == reflect.TypeFor[*agentsessions.Service]() && (m.Name == "SpawnChild" || m.Name == "SpawnSession" || m.Name == "ReadChildSession" || coordinator) {
 		return false
 	}
 	if !declaredMethodsOn(recv)[m.Name] {

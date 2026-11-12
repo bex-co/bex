@@ -36,6 +36,8 @@ import (
 type recordingSpawns struct {
 	envelopes []agentsession.SpawnEnvelope
 	refuse    *agentsession.SpawnError
+	// duringWait runs inside a wait, while the gateway holds it open.
+	duringWait func()
 }
 
 func (s *recordingSpawns) SpawnSession(_ context.Context, envelope agentsession.SpawnEnvelope) (agentsession.SpawnResponse, error) {
@@ -52,6 +54,33 @@ func (s *recordingSpawns) ReadChildSession(_ context.Context, envelope agentsess
 		return agentsession.ChildView{}, s.refuse
 	}
 	return agentsession.ChildView{SessionID: envelope.ChildID, ParentSessionID: envelope.SessionID, State: "succeeded", Outcome: json.RawMessage(`{"result":{"n":1}}`)}, nil
+}
+
+func (s *recordingSpawns) MessageChildSession(_ context.Context, envelope agentsession.SpawnEnvelope) (agentsession.ChildView, error) {
+	s.envelopes = append(s.envelopes, envelope)
+	if s.refuse != nil {
+		return agentsession.ChildView{}, s.refuse
+	}
+	return agentsession.ChildView{SessionID: envelope.ChildID, ParentSessionID: envelope.SessionID, State: "working"}, nil
+}
+
+func (s *recordingSpawns) CancelChildSession(_ context.Context, envelope agentsession.SpawnEnvelope) (agentsession.ChildView, error) {
+	s.envelopes = append(s.envelopes, envelope)
+	if s.refuse != nil {
+		return agentsession.ChildView{}, s.refuse
+	}
+	return agentsession.ChildView{SessionID: envelope.ChildID, ParentSessionID: envelope.SessionID, State: "canceled"}, nil
+}
+
+func (s *recordingSpawns) WaitChildSessions(_ context.Context, envelope agentsession.SpawnEnvelope) (agentsession.SpawnWaitResponse, error) {
+	s.envelopes = append(s.envelopes, envelope)
+	if s.duringWait != nil {
+		s.duringWait()
+	}
+	if s.refuse != nil {
+		return agentsession.SpawnWaitResponse{}, s.refuse
+	}
+	return agentsession.SpawnWaitResponse{Settled: envelope.Wait.ChildIDs, Children: []agentsession.ChildView{{SessionID: envelope.Wait.ChildIDs[0], State: "succeeded"}}}, nil
 }
 
 func spawnHarness(t *testing.T) (*Broker, *recordingSpawns, *credentialAudit) {
@@ -211,11 +240,12 @@ func TestSpawnRouteReadsOneNamedDescendantAndNothingElse(t *testing.T) {
 
 	// The wrong method for the shape of the URL, a non-session id, no id.
 	for name, tc := range map[string]struct{ method, target string }{
-		"POST to a child":    {http.MethodPost, target},
-		"GET without an id":  {http.MethodGet, spawnURL(t, "tea-a-sandbox", "ags-one")},
-		"GET a traversal":    {http.MethodGet, spawnURL(t, "tea-a-sandbox", "ags-one") + "/..%2Fags-two"},
-		"GET a foreign kind": {http.MethodGet, spawnURL(t, "tea-a-sandbox", "ags-one") + "/app-abcdefghij"},
-		"DELETE":             {http.MethodDelete, target},
+		"POST a spawn body to a child": {http.MethodPost, target},
+		"GET without an id":            {http.MethodGet, spawnURL(t, "tea-a-sandbox", "ags-one")},
+		"GET a traversal":              {http.MethodGet, spawnURL(t, "tea-a-sandbox", "ags-one") + "/..%2Fags-two"},
+		"GET a foreign kind":           {http.MethodGet, spawnURL(t, "tea-a-sandbox", "ags-one") + "/app-abcdefghij"},
+		"DELETE the collection":        {http.MethodDelete, spawnURL(t, "tea-a-sandbox", "ags-one")},
+		"GET the wait route":           {http.MethodGet, spawnURL(t, "tea-a-sandbox", "ags-one") + "/wait"},
 	} {
 		before := len(sink.envelopes)
 		reply := callSpawn(t, broker, tc.method, tc.target, "10.0.0.1", `{"task":"t"}`, nil)
@@ -238,5 +268,69 @@ func TestSpawnRouteRelaysCreatePathRefusalsVerbatim(t *testing.T) {
 	reply := callSpawn(t, broker, http.MethodPost, spawnURL(t, "tea-a-sandbox", "ags-one"), "10.0.0.1", `{"task":"t"}`, nil)
 	if reply.code != http.StatusServiceUnavailable || reply.error.Code != agentsession.SpawnUnavailable {
 		t.Fatalf("status=%d body=%s, want unavailable without the verb", reply.code, reply.raw)
+	}
+}
+
+// The coordinator routes (w9/m346): message and cancel one descendant, wait
+// for several, each a signed envelope naming the verified parent; bodies are
+// strict and bounded before anything is forwarded.
+func TestSpawnRouteCoordinatesDescendants(t *testing.T) {
+	broker, sink, audit := spawnHarness(t)
+	base := spawnURL(t, "tea-a-sandbox", "ags-one")
+	childID := id.New(id.AgentSession)
+
+	reply := callSpawn(t, broker, http.MethodPost, base+"/"+childID, "10.0.0.1", `{"prompt":"also add tests"}`, nil)
+	if reply.code != http.StatusOK || !strings.Contains(reply.raw, `"state":"working"`) {
+		t.Fatalf("message: status=%d body=%s", reply.code, reply.raw)
+	}
+	if got := sink.envelopes[0]; got.Op != agentsession.SpawnOpMessage || got.SessionID != "ags-one" || got.ChildID != childID || got.Message == nil || got.Message.Prompt != "also add tests" {
+		t.Fatalf("message envelope = %+v", got)
+	}
+	reply = callSpawn(t, broker, http.MethodDelete, base+"/"+childID, "10.0.0.1", "", nil)
+	if reply.code != http.StatusOK || !strings.Contains(reply.raw, `"state":"canceled"`) || sink.envelopes[1].Op != agentsession.SpawnOpCancel {
+		t.Fatalf("cancel: status=%d body=%s envelope=%+v", reply.code, reply.raw, sink.envelopes[1])
+	}
+	reply = callSpawn(t, broker, http.MethodPost, base+"/wait", "10.0.0.1", `{"childIds":["`+childID+`"]}`, nil)
+	if reply.code != http.StatusOK || !strings.Contains(reply.raw, `"settled":["`+childID+`"]`) {
+		t.Fatalf("wait: status=%d body=%s", reply.code, reply.raw)
+	}
+	if got := sink.envelopes[2]; got.Op != agentsession.SpawnOpWait || got.Wait == nil || got.Wait.TimeoutSeconds != 0 {
+		t.Fatalf("wait envelope = %+v (an omitted deadline is the wait verb's default)", got)
+	}
+	if audit.events[1].TargetName != childID {
+		t.Fatalf("cancel audit names %q, want the child", audit.events[1].TargetName)
+	}
+	// A wait idles past admission without the sandbox's only slot: the
+	// sandbox can still read a child while it is in flight.
+	broker.Limits = sshgateway.NewSessionLimiter(1, 1)
+	sink.duringWait = func() {
+		if read := callSpawn(t, broker, http.MethodGet, base+"/"+childID, "10.0.0.1", "", nil); read.code != http.StatusOK {
+			t.Errorf("a read during a wait: status=%d body=%s", read.code, read.raw)
+		}
+	}
+	if reply := callSpawn(t, broker, http.MethodPost, base+"/wait", "10.0.0.1", `{"childIds":["`+childID+`"],"timeoutSeconds":5}`, nil); reply.code != http.StatusOK {
+		t.Fatalf("wait under a one-slot limit: status=%d body=%s", reply.code, reply.raw)
+	}
+	sink.duringWait = nil
+	verbs := []string{audit.events[0].Verb, audit.events[1].Verb, audit.events[2].Verb}
+	if verbs[0] != agentsession.AuditVerbMessageChild || verbs[1] != agentsession.AuditVerbCancelChild || verbs[2] != agentsession.AuditVerbWaitChildren {
+		t.Fatalf("audit verbs = %v", verbs)
+	}
+
+	for name, tc := range map[string]struct{ target, body string }{
+		"an empty prompt":        {base + "/" + childID, `{"prompt":"  "}`},
+		"a message naming more":  {base + "/" + childID, `{"prompt":"x","childId":"ags-two"}`},
+		"no children to wait on": {base + "/wait", `{"childIds":[]}`},
+		"a wait past 25 s":       {base + "/wait", `{"childIds":["` + childID + `"],"timeoutSeconds":26}`},
+		"a wait on a non-id":     {base + "/wait", `{"childIds":["app-abc"]}`},
+	} {
+		before := len(sink.envelopes)
+		reply := callSpawn(t, broker, http.MethodPost, tc.target, "10.0.0.1", tc.body, nil)
+		if reply.error.Code != agentsession.SpawnInvalidRequest || len(sink.envelopes) != before {
+			t.Fatalf("%s: status=%d body=%.200s", name, reply.code, reply.raw)
+		}
+	}
+	if reply := callSpawn(t, broker, http.MethodPost, base+"/wait?x=1", "10.0.0.1", `{"childIds":["`+childID+`"]}`, nil); reply.error.Code != agentsession.SpawnInvalidRequest {
+		t.Fatalf("a query string was accepted: %d %s", reply.code, reply.raw)
 	}
 }

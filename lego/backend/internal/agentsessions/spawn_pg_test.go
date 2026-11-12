@@ -23,6 +23,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -368,5 +369,106 @@ func TestReadChildSessionIsLimitedToDescendants(t *testing.T) {
 	envelope.Op, envelope.ChildID, envelope.PodName = agentsession.SpawnOpRead, childResp.SessionID, "sbx-old-0"
 	if _, err := e.svc.ReadChildSession(context.Background(), envelope); spawnCode(err) != agentsession.SpawnForbidden {
 		t.Fatalf("a stale pod = %v", err)
+	}
+}
+
+// The coordinator verbs (w9/m346) against the real store: a parent waits on,
+// messages and cancels its own descendants as its creator, and reaches
+// nothing outside its tree.
+func TestCoordinatorVerbsActOnlyOnDescendants(t *testing.T) {
+	e := newLineageEnv(t)
+	ctx := context.Background()
+	// No LISTEN connection: it would hold a pooled connection the test's pool
+	// cleanup waits on forever. The poll timer wakes the waiter instead.
+	e.svc.busOnce.Do(func() { e.svc.stateBus = &stateBus{} })
+	e.svc.WaitPoll = 50 * time.Millisecond
+	parent, outsider := e.create(t, ""), e.create(t, "")
+	done, err := e.spawn(t, parent.ID, agentsession.SpawnContent{Task: "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	working, err := e.spawn(t, parent.ID, agentsession.SpawnContent{Task: "t"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	e.setPhase(t, done.SessionID, PhaseCompleted)
+	e.setPhase(t, working.SessionID, PhaseRunning)
+	wait := func(caller string, timeout int, ids ...string) (agentsession.SpawnWaitResponse, error) {
+		envelope := e.pod(t, caller)
+		envelope.Op, envelope.Wait = agentsession.SpawnOpWait, &agentsession.SpawnWait{ChildIDs: ids, TimeoutSeconds: timeout}
+		return e.svc.WaitChildSessions(ctx, envelope)
+	}
+	childOp := func(op, caller, child string) (agentsession.ChildView, error) {
+		envelope := e.pod(t, caller)
+		envelope.Op, envelope.ChildID = op, child
+		if op == agentsession.SpawnOpMessage {
+			envelope.Message = &agentsession.SpawnMessage{Prompt: "also add tests"}
+			return e.svc.MessageChildSession(ctx, envelope)
+		}
+		return e.svc.CancelChildSession(ctx, envelope)
+	}
+
+	// A finished child settles the wait at once, with the default deadline
+	// too; a working one waits out the deadline.
+	if got, err := wait(parent.ID, 0, done.SessionID); err != nil || got.TimedOut || len(got.Settled) != 1 {
+		t.Fatalf("a default-deadline wait on a finished child = %+v / %v", got, err)
+	}
+	got, err := wait(parent.ID, 1, done.SessionID)
+	if err != nil || got.TimedOut || !slices.Equal(got.Settled, []string{done.SessionID}) || len(got.Children) != 1 || got.Children[0].State != StateSucceeded {
+		t.Fatalf("wait on a finished child = %+v / %v", got, err)
+	}
+	got, err = wait(parent.ID, 1, working.SessionID)
+	if err != nil || !got.TimedOut || len(got.Settled) != 0 || got.Children[0].State != StateWorking {
+		t.Fatalf("wait on a working child = %+v / %v", got, err)
+	}
+
+	// A message to a working child reaches Steer as the creator and relays its refusal.
+	if _, err := childOp(agentsession.SpawnOpMessage, parent.ID, working.SessionID); spawnCode(err) != codeTurnInFlight {
+		t.Fatalf("message to a working child = %v, want %s", err, codeTurnInFlight)
+	}
+	// Cancel ends the child.
+	view, err := childOp(agentsession.SpawnOpCancel, parent.ID, working.SessionID)
+	if err != nil || (view.State != StateCanceled && view.State != StateWorking) || e.phase(t, working.SessionID) != PhaseCanceled && e.phase(t, working.SessionID) != PhaseCanceling {
+		t.Fatalf("cancel = %+v / %v (phase %s)", view, err, e.phase(t, working.SessionID))
+	}
+
+	// Nothing outside the tree: an outsider, the parent itself, an unknown id.
+	for name, target := range map[string]string{"an outsider": outsider.ID, "itself": parent.ID, "an unknown id": "ags-d1abcdefghijklmnopqr"} {
+		if _, err := wait(parent.ID, 1, done.SessionID, target); spawnCode(err) != agentsession.SpawnNotFound {
+			t.Errorf("wait including %s = %v, want not_found", name, err)
+		}
+		for _, op := range []string{agentsession.SpawnOpMessage, agentsession.SpawnOpCancel} {
+			if _, err := childOp(op, parent.ID, target); spawnCode(err) != agentsession.SpawnNotFound {
+				t.Errorf("%s %s = %v, want not_found", op, name, err)
+			}
+		}
+	}
+	// A pod that is not the parent's current sandbox is refused outright.
+	envelope := e.pod(t, parent.ID)
+	envelope.Op, envelope.ChildID, envelope.PodName = agentsession.SpawnOpCancel, done.SessionID, "sbx-old-0"
+	if _, err := e.svc.CancelChildSession(ctx, envelope); spawnCode(err) != agentsession.SpawnForbidden {
+		t.Fatalf("a stale pod = %v", err)
+	}
+
+	// The creator lost can_create: a message to the finished child, which
+	// would otherwise start its next turn, reads as the lost access.
+	allow := e.svc.Authz
+	e.svc.Authz = checkerFunc(func(ctx context.Context, subject, relation, object string) (bool, error) {
+		if strings.TrimPrefix(subject, "user:") == "alice" && relation == core.RelCanCreate {
+			return false, nil
+		}
+		return allow.Check(ctx, subject, relation, object)
+	})
+	if _, err := childOp(agentsession.SpawnOpMessage, parent.ID, done.SessionID); spawnCode(err) != SpawnCreatorForbiddenCode {
+		t.Fatalf("a message after the creator lost can_create = %v, want %s", err, SpawnCreatorForbiddenCode)
+	}
+	e.svc.Authz = allow
+
+	// A parent recording no creator has no one to act as.
+	if _, err := e.pg.Pool.Exec(ctx, `UPDATE agent_sessions SET created_by = '' WHERE id = $1`, parent.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := wait(parent.ID, 1, done.SessionID); spawnCode(err) != SpawnNoCreatorCode {
+		t.Fatalf("a wait under a creator-less parent = %v, want %s", err, SpawnNoCreatorCode)
 	}
 }

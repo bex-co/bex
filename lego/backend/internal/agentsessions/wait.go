@@ -9,6 +9,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -18,9 +19,9 @@ import (
 // write timeout and the ~60 s tool-call timeout of common MCP clients; the
 // caller calls again when timedOut is true.
 const (
-	maxWaitIDs         = 20
-	maxWaitSeconds     = 25
-	defaultWaitSeconds = 25
+	maxWaitIDs         = agentsession.MaxSpawnWaitChildren
+	maxWaitSeconds     = agentsession.MaxSpawnWaitSeconds
+	defaultWaitSeconds = agentsession.MaxSpawnWaitSeconds
 	defaultWaitPoll    = 2 * time.Second
 	waitUntilAny       = "any"
 	waitUntilAll       = "all"
