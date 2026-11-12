@@ -12,6 +12,7 @@ export type AgentSessionConfigInput = {
 };
 
 export type PushNotificationEvent =
+  | 'AGENT_AUTOMATION_PAUSED'
   | 'AGENT_FAILED'
   | 'AGENT_NEEDS_DECISION'
   | 'AGENT_PR_READY'

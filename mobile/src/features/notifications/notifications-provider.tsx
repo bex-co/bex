@@ -3,7 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { randomUUID } from "expo-crypto";
 import * as Notifications from "expo-notifications";
 import { useRouter } from "expo-router";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 import {
   createContext,
   useCallback,
@@ -26,8 +26,10 @@ import { authManager, useAuth } from "@/features/auth/auth-provider";
 import { mobileConfig } from "@/features/auth/config";
 import {
   notificationMatchesBinding,
+  notificationWebURL,
   parseNotificationEnvelope,
   type NotificationEnvelope,
+  type NotificationRoute,
 } from "./deep-link";
 import { ExpoNotificationAdapter } from "./expo-adapter";
 import { ApolloNotificationSubscriptionClient } from "./graphql-client";
@@ -42,6 +44,15 @@ import {
   type NotificationRegistrationState,
 } from "./registration-controller";
 import { useWorkspace } from "@/features/workspaces/workspace-provider";
+
+function openRoute(
+  router: ReturnType<typeof useRouter>,
+  route: NotificationRoute,
+): void {
+  const url = notificationWebURL(route, mobileConfig.dashboardOrigin);
+  if (url) void Linking.openURL(url).catch(() => undefined);
+  else router.push(route);
+}
 
 type NotificationsContextValue = {
   state: NotificationRegistrationState;
@@ -241,7 +252,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         void scope.subscriptions
           .markNotificationRead(envelope.notificationId)
           .catch(() => undefined);
-        router.push(envelope.route);
+        openRoute(router, envelope.route);
       }
       return true;
     },
@@ -430,7 +441,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     void scope.subscriptions
       .markNotificationRead(item.id)
       .catch(() => undefined);
-    router.push(item.route);
+    openRoute(router, item.route);
   };
   return (
     <NotificationsContext.Provider

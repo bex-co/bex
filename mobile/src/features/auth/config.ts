@@ -19,6 +19,7 @@ export const DEFAULT_OAUTH_AUDIENCE = "https://api.bex.co/mcp";
 export type MobileConfig = {
   apiOrigin: string;
   graphqlUrl: string;
+  dashboardOrigin: string;
   oauthIssuer: string;
   oauthClientId: string;
   oauthAudience: string;
@@ -75,6 +76,11 @@ export function readMobileConfig(
     env.EXPO_PUBLIC_BEX_API_URL ?? "https://api.bex.co",
     allowLocalHttp,
   );
+  const dashboardOrigin = parseOrigin(
+    "EXPO_PUBLIC_BEX_DASHBOARD_URL",
+    env.EXPO_PUBLIC_BEX_DASHBOARD_URL ?? "https://dashboard.bex.co",
+    allowLocalHttp,
+  );
   const oauthIssuer = parseOrigin(
     "EXPO_PUBLIC_BEX_OAUTH_ISSUER",
     env.EXPO_PUBLIC_BEX_OAUTH_ISSUER ?? "https://oauth.bex.co",
@@ -92,6 +98,7 @@ export function readMobileConfig(
   return {
     apiOrigin,
     graphqlUrl: `${apiOrigin}/graphql`,
+    dashboardOrigin,
     oauthIssuer,
     oauthClientId,
     oauthAudience,

@@ -12,6 +12,22 @@ describe("mobile auth configuration", () => {
     expect(config.oauthRedirectUri).toBe(MOBILE_REDIRECT_URI);
     expect(config.graphqlUrl).toBe("https://api.bex.co/graphql");
     expect(config.oauthAudience).toBe(DEFAULT_OAUTH_AUDIENCE);
+    expect(config.dashboardOrigin).toBe("https://dashboard.bex.co");
+  });
+
+  it("reads the dashboard origin from the environment, HTTPS only", () => {
+    expect(
+      readMobileConfig(
+        { EXPO_PUBLIC_BEX_DASHBOARD_URL: "https://dashboard.dev.bex.co/" },
+        false,
+      ).dashboardOrigin,
+    ).toBe("https://dashboard.dev.bex.co");
+    expect(() =>
+      readMobileConfig(
+        { EXPO_PUBLIC_BEX_DASHBOARD_URL: "http://dashboard.bex.co" },
+        false,
+      ),
+    ).toThrow(/HTTPS/);
   });
 
   it("allows plain HTTP only for local development", () => {

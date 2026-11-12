@@ -1,5 +1,7 @@
+import { notificationActions } from "../destination-access";
 import {
   notificationMatchesBinding,
+  notificationWebURL,
   parseNotificationEnvelope,
 } from "../deep-link";
 
@@ -14,7 +16,7 @@ const valid = {
 };
 
 describe("parseNotificationEnvelope", () => {
-  it("accepts only the four authenticated detail routes", () => {
+  it("accepts only the authenticated detail routes", () => {
     expect(parseNotificationEnvelope(valid)?.route).toBe(
       "/services/srv-abc123",
     );
@@ -52,6 +54,37 @@ describe("parseNotificationEnvelope", () => {
       "service_resumed",
     ] as const) {
       expect(parseNotificationEnvelope({ ...valid, event })?.event).toBe(event);
+    }
+  });
+
+  it("opens an automation pause on the dashboard, for create-holders only (w9/084)", () => {
+    const paused = parseNotificationEnvelope({
+      ...valid,
+      event: "agent_automation_paused",
+      route: "/automations/aut-dbpvn25hi5vc738gj8e0",
+    });
+    expect(paused?.event).toBe("agent_automation_paused");
+    if (!paused) return;
+    expect(notificationWebURL(paused.route, "https://dashboard.bex.co")).toBe(
+      "https://dashboard.bex.co/automations/aut-dbpvn25hi5vc738gj8e0",
+    );
+    expect(notificationActions(paused)).toEqual(["can_view", "can_create"]);
+    // App screens stay in the app.
+    expect(
+      notificationWebURL("/sessions/ags-a1", "https://dashboard.bex.co"),
+    ).toBe(null);
+    for (const route of [
+      "/automations/srv-a1",
+      "/automations/aut-a1/edit",
+      "/automations/aut-A1",
+    ]) {
+      expect(
+        parseNotificationEnvelope({
+          ...valid,
+          event: "agent_automation_paused",
+          route,
+        }),
+      ).toBe(null);
     }
   });
 

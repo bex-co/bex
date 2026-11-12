@@ -14,6 +14,10 @@ export function notificationActions(item: {
     item.event === "agent_failed"
   )
     actions.push("can_operate");
-  if (item.event === "agent_needs_decision") actions.push("can_create");
+  if (
+    item.event === "agent_needs_decision" ||
+    item.event === "agent_automation_paused"
+  )
+    actions.push("can_create");
   return actions;
 }

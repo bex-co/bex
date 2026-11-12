@@ -10,6 +10,7 @@ export const notificationEvents = [
   "agent_needs_decision",
   "agent_pr_ready",
   "agent_failed",
+  "agent_automation_paused",
   "postgres_unavailable",
   "postgres_available",
   "key_value_unhealthy",
@@ -24,7 +25,8 @@ export type NotificationRoute =
   | `/services/srv-${string}`
   | `/databases/dpg-${string}`
   | `/key-values/red-${string}`
-  | `/sessions/ags-${string}`;
+  | `/sessions/ags-${string}`
+  | `/automations/aut-${string}`;
 
 export type NotificationEnvelope = {
   schema: "bex.notification.v1";
@@ -44,6 +46,7 @@ const routes = [
   /^\/databases\/dpg-[a-z0-9]{1,64}$/,
   /^\/key-values\/red-[a-z0-9]{1,64}$/,
   /^\/sessions\/ags-[a-z0-9]{1,64}$/,
+  /^\/automations\/aut-[a-z0-9]{1,64}$/,
 ];
 
 export function parseNotificationEnvelope(
@@ -88,6 +91,15 @@ export function parseNotificationEnvelope(
     return null;
   }
   return record as NotificationEnvelope;
+}
+
+// The app has no automations screen, so an automation's route opens its page
+// on the dashboard; every other route is an app screen.
+export function notificationWebURL(
+  route: NotificationRoute,
+  dashboardOrigin: string,
+): string | null {
+  return route.startsWith("/automations/") ? dashboardOrigin + route : null;
 }
 
 export function notificationMatchesBinding(

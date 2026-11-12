@@ -11,6 +11,7 @@ import type { MobileConfig } from "../config";
 const config: MobileConfig = {
   apiOrigin: "https://api.bex.co",
   graphqlUrl: "https://api.bex.co/graphql",
+  dashboardOrigin: "https://dashboard.bex.co",
   oauthIssuer: "https://oauth.bex.co",
   oauthClientId: "bex-mobile",
   oauthAudience: "https://api.bex.co/mcp",
