@@ -129,3 +129,20 @@ Signed in to `bex-canary` after the release pins this build, with owned fixtures
 - **Expected outcome:** the dashboard's default private-service-from-image path goes live on the image's port, as the API path already does. A stalled service can be fixed the way its stall reason says.
 - **Why now:** this is the default path through the form, and the form's own hint steers users into it. w6/095 made the dashboard the only create surface still on the old rule.
 - **Render parity included (t005):** the create form and Settings change, and t002 may add a REST, GraphQL and MCP verb.
+
+## Post-release probe (QA loop round 167, 2026-11-12): DoD 1–3 pass
+
+Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) carries the fix.
+
+Fixtures: Starter private services from `docker.io/traefik/whoami:v1.10.1`, created in the dashboard: `qa-20261112-r167-p80`, `-p8080`, `-p3` and `-p4`. All were deleted afterwards (DELETE 204, then GET 404).
+
+- **DoD 1 passes.**
+  - New Private Service → Existing Image with every other field at its default. The Port box was empty, and the captured `CreateService` variables were `{image, name, type, registryCredentialId, runtime: "image", plan: "starter", ownerId}`, with no `port`.
+  - The first deploy went `live`. `GET /v1/services/srv-dbqk5d2140ds739rb8vg` read `port 80`, `internalAddress "qa-20261112-r167-p80:80"`, `openPorts [{80,TCP}]`.
+  - The peer `wget` was not rerun this round. Round 155's worker→private probe reached the same shape.
+- **DoD 2 passes.** With Port `8080`, the service read `port 8080`, `openPorts [80, 8080]`, and the deploy stalled with "… Nothing accepted a TCP connection on port 8080, set by the service's configured port; the image declares TCP ports (80). Change the service's port in Settings to the one it listens on, or remove it to use the image's port."
+- **DoD 3 passes.** Settings → Port → clear → Save changes (04:40:45):
+  - `port` read `80`;
+  - a `service_updated` deploy was queued, and the stalled first deploy closed `canceled`;
+  - the new deploy read `live` at 04:41:44.
+- **Not run:** DoD 4's controls (a Git-built Docker private service and the native 10000 pre-fill).
