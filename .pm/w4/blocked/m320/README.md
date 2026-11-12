@@ -1,6 +1,6 @@
 # w4 · m320 — An image web service's deploy takes no traffic until it is the live release: HTTP port discovery doesn't put the candidate in front of users, an image change rolls once, and a canceled deploy never answered
 
-**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** blocked — t001–t005, t007–t009 and t011 done (shipped); t006 live replay waits for the next production deploy, then t010 closes
+**Worker:** worker4 **Goal:** a web service deploy that changes its image behaves as Render's zero-downtime deploy does. The live release receives all traffic while the new one starts. Traffic moves to the new release at the moment its deploy becomes `live`. A deploy canceled before that point never answered a request, and the release that was serving keeps its own pods. **Status:** blocked — t001–t005, t007–t009 and t011 done (shipped); t012 (round 156: a supersede in the settling window) is open; t006 live replay follows it and the next production deploy, then t010 closes
 
 ## Tasks (in order)
 
@@ -11,14 +11,15 @@
 | [t003](done/t003.md) | Cancel before promotion keeps the serving pods, and the canceled candidate never answered — **DONE** | 30m | t001, t002 |
 | [t004](done/t004.md) | A deploy whose release already holds all traffic reads `live` in the same pass — **DONE** | 40m | t001 |
 | [t005](done/t005.md) | Blast radius: every rollout kind through the Service selector and the discovery hold — **DONE** | 40m | t002, t003, t004 |
-| [t006](t006.md) | Live verification on an owned image web service | 30m | t005 |
+| [t006](t006.md) | Live verification on an owned image web service | 30m | t005, t012 |
 | [t007](done/t007.md) | Render parity — **DONE** | 20m | t006 |
 | [t008](done/t008.md) | Simplify — **DONE** | 15m | t007 |
 | [t009](done/t009.md) | Test coverage — **DONE** | 30m | t007 |
 | [t011](done/t011.md) | Regression of w8/m122: every image change on an image web service goes live without `image.sha`, because the row closes `live` before the operator records the digest — **DONE** | 40m | t004 |
-| [t010](t010.md) | Closeout | 10m | t008, t009, t011 |
+| [t012](t012.md) | A second image deploy in the settling window, after the first already holds all traffic, closes that first release `canceled`, puts the older release back for about a minute, and drops requests | 60m | t004 |
+| [t010](t010.md) | Closeout | 10m | t008, t009, t011, t012 |
 
-Eleven tasks, 360m (6h). **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
+Twelve tasks, 420m (7h); t012 added in round 156. **Major:** an image change puts a release in front of users before the product says it is live. A canceled release keeps answering after the API has returned `canceled`.
 
 ## Finding
 
@@ -139,6 +140,10 @@ Live on production after the release pins this build, on an owned Free image web
 - **Same-image redeploy control.** The row turns `live` within one poll of the instance switch seen in the logs; today the gap is 24 s.
 - **Unchanged neighbours.** A port-changing image deploy (w4/428), an env save and a restart still roll with no response error.
 - **Image digest (t011, added from loop round 133).** Each image change goes live with its own `image.sha`: an `imageUrl` deploy, a saved-image change plus a standard deploy, and a rollback to another digest. Today both read none, though the create and a same-image redeploy carry one. REST, GraphQL `imageSha` and the dashboard agree.
+- **Supersede after promotion (t012, added from loop round 156).** Hook the next tag, and when the poller first reads the new version, hook another tag (repeat at +5 s and +12 s):
+  - every poll answers `200`;
+  - the version only moves forward;
+  - the first deploy's row reads `live`, then `deactivated`, never `canceled`.
 - **Checks.** The operator suite (`make test`) and lint pass.
 - **Cleanup.** No fixture remains, and only that run's session is revoked.
 
@@ -200,3 +205,15 @@ The release gate cleared at `6ee0197c7` (14:43 UTC): production is pinned to `f6
   - **Instances:**
     - `GET /v1/logs?…&type=app` shows a new instance `…-rtvu0adlfj393lchkli9` logging "hello-go listening on 10000: "r123-two"" at 17:27:08.
     - `GET …/instances` afterwards lists only `…-qtgrk9qi0a8fmhegt3a0`, created 17:27:41. That is two new instances for one deploy, as in Run A.
+
+## Post-release probe (QA loop round 156, 2026-11-12)
+
+Pin `8330744bd643` contains `7dec58bb5`, but not t011's `f24e6e7f7`.
+
+- **Fixture:** Free web service `qa-20261112-r156-rb` (`srv-dbqhk3qv3e1c73bps6q0`), nginx from `1.26-alpine`, no port. Deleted afterwards (DELETE 204, then GET 404).
+- **Clean deploys:** a hook `imgURL` deploy from a settled live release gave 59 of 59 polls `200`, with one switch. A dashboard rollback gave 58 of 58 `200`, with one switch.
+- **Filed as t012: a second hook in the settling window.** Fired 5 s, 12 s and 15 s after the first new version answered.
+  - Twice, the release that answered closed `canceled` ("Superseded by …"). A 503 `no available server` followed, and an **older** release then answered for about 60–70 s.
+  - Once, the first row closed `live`, but every poll from 01:49:13 to 01:50:06 answered `503`.
+  - Probes and timelines are in t012.
+- **Not run:** the DoD's no-early-traffic and one-instance bullets. They are left for t006.
