@@ -178,6 +178,8 @@ Existing `standard` subscriptions move at their next billing period (user decisi
 
 ### 13. Each plan includes pipeline minutes, as on Render (decided 2026-11-10; shipped in `w6/m307`, `w6/m308`, `w6/m309`)
 
+On hosted bex.co every workspace binds a card at sign-up (ADR075 D7), so the card-less path below runs only on self-hosted installs; [ADR018](ADR018-render-parity.md) records that divergence (w6/118).
+
 Render's [build pipeline](https://render.com/docs/build-pipeline) (read 2026-11-10) gives each workspace Starter-tier pipeline minutes every month: Hobby 500, Pro 1,000, Scale 5,000. Every pipeline task counts: the build command, a Dockerfile image build, and the pre-deploy command. Past the allowance, Render buys more minutes automatically at $5 per 1,000 (the $0.005/min in §2). The exceptions are a workspace that has reached its pipeline spend limit (set under Workspace Settings → Build Pipeline) or has no payment method. Render then stops pipeline tasks, builds included, for the rest of the month ("Build Minutes Exhausted"), until the limit is raised or a payment method is added.
 
 Until `w6/m308`, bex had no allowance: `estimatedCost` and the Stripe `build_seconds` meter priced every build minute, including the ones Render includes. With the per-workspace build cap gone ([ADR060 §D6](ADR060-build-worker-reliability-and-performance.md)), minutes are the only bound on usage, as on Render. bex now follows Render:
@@ -192,6 +194,8 @@ Until `w6/m308`, bex had no allowance: `estimatedCost` and the Stripe `build_sec
 - **Unverified.** Render's rounding of partial minutes, whether failed or canceled builds consume minutes, and its exact emails. bex counts whole seconds, rounds once per month, and counts every build that ran, failed ones included: the parity-sufficient reading of "all pipeline tasks consume pipeline minutes".
 
 ### 14. Each plan includes outbound bandwidth, as on Render (decided 2026-11-10; shipped in `w6/m319`)
+
+On hosted bex.co every workspace binds a card at sign-up (ADR075 D7), so the card-less path below runs only on self-hosted installs; [ADR018](ADR018-render-parity.md) records that divergence (w6/118).
 
 Render's [outbound bandwidth](https://render.com/docs/outbound-bandwidth) (read 2026-11-10) is included per workspace plan: Hobby 5 GB, Pro 25 GB, Scale 1 TB, Enterprise custom. Beyond it, public-internet bandwidth costs $0.15/GB (§2). "If you haven't added a payment method and you exceed your included bandwidth, Render spins down your workspace's services until the start of the next month."
 

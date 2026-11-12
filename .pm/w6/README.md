@@ -254,7 +254,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 - [ ] **121** — [A service deleted before its first hourly rollup still loses its egress](121.md) (~1h) ← w6/m333 review
 - [ ] **120** — [The agent image and the platform builder ship the Go that `lego/go.work` requires](120.md) (~30m) ← w6/m331 t001
 - [ ] **119** — [Re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners](119.md) (~45m) ← proposal 5
-- [ ] **118** — [ADR018 records that hosted bex requires a card for every workspace (ADR075 D7)](118.md) (~20m) ← proposal 4
+- [x] **118** — [ADR018 records that hosted bex requires a card for every workspace (ADR075 D7)](done/118.md) (~20m) ← proposal 4 — **done 2026-11-12**
 - [x] **117** — [A workspace's third and fourth builds wait about two minutes for a build node](done/117.md) — done 2026-11-11: user chose B; `bex-tenant-burst` kept warm at two nodes (min-size 2) ← `w6/m306` production record
 - [x] **116** — [Each plan's included outbound bandwidth is not applied, and a card-less workspace past it keeps running](done/m319/source-w6-116.md) — promoted to `m319` 2026-11-10 by `/loopx w6`
 - [x] **115** — [ADR026's "bex ahead" paragraph misdescribes Render's Public Git Repository](done/115.md) (~15m) — done 2026-11-10 (ADR026 §8 + ADR018 corrected) ← `/pm-brainstorm for w6` 2026-11-10 proposal 6
