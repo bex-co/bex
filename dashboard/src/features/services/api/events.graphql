@@ -50,7 +50,8 @@ query ServiceEvents(
       autoscalingEnabledFrom
       planFrom
       planTo
-      # The two sentences by code, worded in the dashboard's language (w4/566).
+      # The three sentences by code, worded in the dashboard's language
+      # (w4/566, w4/591).
       failureReasonTemplate {
         code
         params {
@@ -59,6 +60,13 @@ query ServiceEvents(
         }
       }
       stallReasonTemplate {
+        code
+        params {
+          name
+          value
+        }
+      }
+      cancelReasonTemplate {
         code
         params {
           name

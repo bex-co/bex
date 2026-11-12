@@ -407,18 +407,18 @@ const enDeploys: Record<string, TranslationEntry> = {
     message:
       "Waiting for the container to start before detecting its HTTP port",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_waiting, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_waiting, w4/566)",
   },
   "deploys.reason.http_port_detecting": {
     message: "Detecting the container's HTTP port",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_detecting, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_detecting, w4/566)",
   },
   "deploys.reason.http_port_limit": {
     message:
       "The detected HTTP port exceeds the service's 75-port limit; set PORT explicitly",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_limit, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_limit, w4/566)",
   },
   "deploys.reason.http_port_detected": {
     message: "Detected HTTP on port {port}; serving it",
@@ -435,7 +435,7 @@ const enDeploys: Record<string, TranslationEntry> = {
     message:
       "No port answers HTTP yet; continuing to scan while the container starts",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_yet, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_yet, w4/566)",
   },
   "deploys.reason.http_port_fallback": {
     message:
@@ -471,19 +471,169 @@ const enDeploys: Record<string, TranslationEntry> = {
     message:
       "the build did not finish within the build window; check the build logs",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason build_timed_out, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason build_timed_out, w4/566)",
   },
   "deploys.reason.pre_deploy_timed_out": {
     message:
       "the pre-deploy command did not finish within its window; check the pre-deploy logs",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_timed_out, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_timed_out, w4/566)",
   },
   "deploys.reason.health_timed_out": {
     message:
       "the deploy did not become healthy within the health-gate window; check the service logs",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason health_timed_out, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason health_timed_out, w4/566)",
+  },
+  "deploys.reason.probe_http_waiting": {
+    message:
+      "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: GET {path} on port {port}. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_http_waiting, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_http_waiting_restarted": {
+    message:
+      "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: GET {path} on port {port}. The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_http_waiting_restarted, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_http_failed": {
+    message:
+      "the container is running but its {kind} health check never succeeded within the rollout window, so the deploy failed: GET {path} on port {port}. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_http_failed, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_http_failed_restarted": {
+    message:
+      "the container is running but its {kind} health check never succeeded within the rollout window, so the deploy failed: GET {path} on port {port}. The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_http_failed_restarted, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_tcp_waiting": {
+    message:
+      "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: a TCP connect to port {port}. No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on that port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_tcp_waiting, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_tcp_waiting_restarted": {
+    message:
+      "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: a TCP connect to port {port}. The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow. No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on that port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_tcp_waiting_restarted, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_tcp_failed": {
+    message:
+      "the container is running but its {kind} health check never succeeded within the rollout window, so the deploy failed: a TCP connect to port {port}. No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on that port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_tcp_failed, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_tcp_failed_restarted": {
+    message:
+      "the container is running but its {kind} health check never succeeded within the rollout window, so the deploy failed: a TCP connect to port {port}. The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow. No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on that port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_tcp_failed_restarted, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.rollout_deadline_exceeded": {
+    message: "rollout did not become healthy within the progress deadline",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason rollout_deadline_exceeded, w4/591)",
+  },
+  "deploys.reason.pre_deploy_window_exceeded": {
+    message:
+      "the pre-deploy command did not finish within its {minutes}-minute window; check the pre-deploy logs",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_window_exceeded, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.pre_deploy_out_of_memory": {
+    message:
+      "the pre-deploy command ran out of memory (exit code {code}); check the pre-deploy logs",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_out_of_memory, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.pre_deploy_exited": {
+    message:
+      "the pre-deploy command exited with code {code}; check the pre-deploy logs",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_exited, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.pre_deploy_failed": {
+    message: "the pre-deploy command failed; check the pre-deploy logs",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_failed, w4/591)",
+  },
+  "deploys.reason.pre_deploy_could_not_launch": {
+    message:
+      "the pre-deploy command could not start: the container runtime could not launch its program; the program never ran, so there are no pre-deploy logs",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_could_not_launch, w4/591)",
+  },
+  "deploys.reason.build_never_started": {
+    message: "the build never started: {cause}",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason build_never_started, w4/591); {cause} is the operator's own wait message, shown as-is",
+  },
+  "deploys.reason.build_abandoned": {
+    message:
+      "the build did not finish within the build window, and this service's App record could not be read to explain why",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason build_abandoned, w4/591)",
+  },
+  "deploys.reason.deploy_abandoned": {
+    message:
+      "the deploy did not finish within its window, and this service's App record could not be read to explain why",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason deploy_abandoned, w4/591)",
+  },
+  "deploys.reason.canceled_suspended": {
+    message: "Canceled: the service was suspended",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason canceled_suspended, w4/591)",
+  },
+  "deploys.reason.superseded_by_newer_release": {
+    message: "Superseded by a newer release",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason superseded_by_newer_release, w4/591)",
+  },
+  "deploys.reason.superseded_by": {
+    message: "Superseded by {deploy}",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason superseded_by, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.canceled_by_restart": {
+    message:
+      "Canceled by restart {deploy}, which kept the running release: what this deploy was applying was not deployed",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason canceled_by_restart, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.canceled_along_with": {
+    message: "Canceled along with {deploy}",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason canceled_along_with, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.canceled_along_with_newer": {
+    message: "Canceled along with a newer deploy",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason canceled_along_with_newer, w4/591)",
+  },
+  "deploys.reason.restart_service_gone": {
+    message: "the service no longer exists",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_service_gone, w4/591)",
+  },
+  "deploys.reason.restart_wait_timed_out": {
+    message: "the deploy this restart waited for did not finish within {wait}",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_wait_timed_out, w4/591); params are the sentence's values",
+  },
+  "deploys.reasonParam.kind.startup": {
+    message: "startup",
+    description:
+      "A deploy reason's {kind} value startup (w4/591): which health check a stalled rollout is waiting on",
+  },
+  "deploys.reasonParam.kind.readiness": {
+    message: "readiness",
+    description:
+      "A deploy reason's {kind} value readiness (w4/591): which health check a stalled rollout is waiting on",
   },
 };
 

@@ -266,6 +266,7 @@ func TestRolloutDeadlineOverPriorReleaseKeepsTheDiagnosis(t *testing.T) {
 		ready      bool
 		wantReason string
 		wantMsg    string
+		wantCode   string // the deploy reason template the message parses as (w4/591)
 	}{
 		"image pull": {
 			state: corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{
@@ -277,6 +278,7 @@ func TestRolloutDeadlineOverPriorReleaseKeepsTheDiagnosis(t *testing.T) {
 			state:      corev1.ContainerState{Running: &corev1.ContainerStateRunning{}},
 			ready:      true,
 			wantReason: "ProgressDeadlineExceeded", wantMsg: "rollout did not become healthy within the progress deadline",
+			wantCode: appv1alpha1.DeployReasonRolloutDeadline,
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
@@ -317,6 +319,9 @@ func TestRolloutDeadlineOverPriorReleaseKeepsTheDiagnosis(t *testing.T) {
 			if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.Reason != tc.wantReason ||
 				!strings.HasPrefix(rollout.Message, tc.wantMsg) || rollout.ObservedGeneration != 3 {
 				t.Fatalf("Rollout = %+v, want False/%s %q at release generation 3", rollout, tc.wantReason, tc.wantMsg)
+			}
+			if code, _, _ := appv1alpha1.ParseDeployReason(rollout.Message); tc.wantCode != "" && code != tc.wantCode {
+				t.Fatalf("Rollout message %q parses as %q, want %s", rollout.Message, code, tc.wantCode)
 			}
 			ready := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionReady)
 			if ready == nil || ready.Reason != appv1alpha1.ReasonPriorReleaseServing ||

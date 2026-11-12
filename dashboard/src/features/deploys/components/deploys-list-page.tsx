@@ -257,6 +257,7 @@ export function DeploysListPage({
                   />
                   <DeployFailureReason
                     reason={d.cancelReason}
+                    template={d.cancelReasonTemplate}
                     tone="neutral"
                     truncate
                     className="mt-1 max-w-[16rem] sm:max-w-md lg:max-w-lg"

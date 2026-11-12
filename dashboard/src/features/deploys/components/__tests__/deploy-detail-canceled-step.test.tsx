@@ -79,6 +79,7 @@ function serverLink(server: Server) {
               stallReason: "",
               failureReasonTemplate: null,
               stallReasonTemplate: null,
+              cancelReasonTemplate: null,
               ...server.deploy,
             },
           };

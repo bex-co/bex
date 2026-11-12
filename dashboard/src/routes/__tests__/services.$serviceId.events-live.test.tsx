@@ -101,6 +101,7 @@ function event(id: string, type: string, offset: number, status = "") {
       domain: null,
       failureReasonTemplate: null,
       stallReasonTemplate: null,
+      cancelReasonTemplate: null,
       instanceCountFrom: null,
       instanceCountTo: null,
       autoscalingMinFrom: null,

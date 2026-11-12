@@ -3917,7 +3917,7 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 			reason, msg = lr, lm
 		} else {
 			reason = reasonProgressDeadlineExceeded
-			msg = "rollout did not become healthy within the progress deadline"
+			msg = appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonRolloutDeadline)
 		}
 	}
 	msg = terminalStallMessage(reason, msg)
@@ -6432,24 +6432,33 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 			if !probeHadTimeToFail(probe, cs.State.Running.StartedAt.Time) {
 				continue
 			}
-			msg := fmt.Sprintf("the container is running but its %s health check %s: %s.",
-				kind, probeStallWaiting, probeTargetDescription(probe))
-			if cs.RestartCount > 0 {
-				msg += fmt.Sprintf(
-					" The liveness check has already restarted the container %d time(s), so the check is failing rather than merely slow.",
-					cs.RestartCount)
-			}
-			if probe.TCPSocket != nil {
-				// No path to check: the connect only asks whether anything
-				// listens on the port (w8/259).
-				msg += " No Health Check Path is set, so the check is a TCP connect, which only asks whether the process is listening on that port."
-			} else {
-				msg += " Check that the path returns a 2xx or 3xx status on the service's own port."
-			}
-			return reasonHealthCheckFailing, msg
+			return reasonHealthCheckFailing, probeStallText(kind, probe, cs.RestartCount)
 		}
 	}
 	return "", ""
+}
+
+// probeStallText is a probe stall's in-flight sentence. A GET or a TCP connect
+// is worded from the shared templates, which the dashboard words in its own
+// language (w4/591); any other check keeps the composed English.
+func probeStallText(kind string, probe *corev1.Probe, restarts int32) string {
+	path, port, ok := probeGET(probe)
+	tcp := probe.TCPSocket != nil
+	if tcp {
+		// No path to check: the connect only asks whether anything listens on
+		// the port (w8/259).
+		port, ok = probe.TCPSocket.Port.String(), true
+	}
+	if !ok {
+		msg := fmt.Sprintf("the container is running but its %s health check %s: the configured health check.", kind, probeStallWaiting)
+		if restarts > 0 {
+			msg += fmt.Sprintf(
+				" The liveness check has already restarted the container %d time(s), so the check is failing rather than merely slow.",
+				restarts)
+		}
+		return msg + " Check that the path returns a 2xx or 3xx status on the service's own port."
+	}
+	return appv1alpha1.ProbeStallReason(kind, tcp, path, port, restarts)
 }
 
 // probeStallWaiting is the in-flight half of a probe stall message;
@@ -6522,19 +6531,16 @@ func probeHadTimeToFail(probe *corev1.Probe, startedAt time.Time) bool {
 	return time.Since(startedAt) > delay+period+timeout
 }
 
-// probeTargetDescription renders what the probe actually checks, in the shape
-// the Health Check Path setting is phrased in.
-func probeTargetDescription(probe *corev1.Probe) string {
+// probeGET is the path and port a GET probe checks, whether the kubelet sends
+// it or the exec health-probe helper does; ok is false for any other check.
+func probeGET(probe *corev1.Probe) (path, port string, ok bool) {
 	if g := probe.HTTPGet; g != nil {
-		return fmt.Sprintf("GET %s on port %s", g.Path, g.Port.String())
-	}
-	if t := probe.TCPSocket; t != nil {
-		return fmt.Sprintf("a TCP connect to port %s", t.Port.String())
+		return g.Path, g.Port.String(), true
 	}
 	if path, _, port, ok := healthProbeExecArgs(probe.Exec); ok {
-		return fmt.Sprintf("GET %s on port %d", path, port)
+		return path, strconv.Itoa(port), true
 	}
-	return "the configured health check"
+	return "", "", false
 }
 
 // rolloutQuotaBlockMessage is the stall diagnosis for a rollout whose new pod

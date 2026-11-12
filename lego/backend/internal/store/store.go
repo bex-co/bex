@@ -2740,7 +2740,12 @@ func cancelPendingDeploys(ctx context.Context, tx pgx.Tx, appID, cancelReason st
 // whichever path closes it: the coalesced pending slot, a late trigger for an
 // older generation, or the reconciler's supersede close.
 func supersededByReason(id string) string {
-	return "Superseded by " + id
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonSupersededBy, deployParam(id))
+}
+
+// deployParam is a deploy id as a cancel reason's {deploy}.
+func deployParam(id string) appv1alpha1.DeployReasonParam {
+	return appv1alpha1.DeployReasonParam{Name: "deploy", Value: id}
 }
 
 // SupersedingDeployID is the newer deploy a cancel_reason names (w8/m146):
@@ -2764,7 +2769,7 @@ func SupersedingDeployID(cancelReason string) string {
 // what the ended deploy was applying — saved changes, or a rollback's target;
 // "Superseded" would imply it did (w8/m119).
 func restartCanceledReason(id string) string {
-	return "Canceled by restart " + id + ", which kept the running release: what this deploy was applying was not deployed"
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonCanceledByRestart, deployParam(id))
 }
 
 // CreateRollbackDeploy opens a "rollback"-triggered deploy row (w2/m10):

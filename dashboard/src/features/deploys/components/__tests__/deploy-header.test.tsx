@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
+import i18n from "@/i18n/init";
 import { DeployHeader } from "@/features/deploys/components/deploy-header";
 import type { DeployView } from "@/features/deploys/hooks/use-deploy";
 
@@ -25,6 +26,7 @@ function deploy(over: Partial<DeployView> = {}): DeployView {
     stallReason: "",
     failureReasonTemplate: null,
     stallReasonTemplate: null,
+    cancelReasonTemplate: null,
     ...over,
   };
 }
@@ -244,6 +246,7 @@ describe("DeployHeader", () => {
           stallReason: "",
           failureReasonTemplate: null,
           stallReasonTemplate: null,
+          cancelReasonTemplate: null,
         })}
       />,
     );
@@ -252,5 +255,30 @@ describe("DeployHeader", () => {
         "the deploy did not become healthy within the health-gate window",
       ),
     ).toBeInTheDocument();
+  });
+
+  // w4/591: a zh owner read "Superseded by dep-…" in English.
+  it("words a supersede cancel in zh, keeping the deploy id", async () => {
+    await i18n.changeLanguage("zh");
+    try {
+      render(
+        <DeployHeader
+          deploy={deploy({
+            status: "canceled",
+            cancelReason: "Superseded by dep-d4newer",
+            cancelReasonTemplate: {
+              code: "superseded_by",
+              params: { deploy: "dep-d4newer" },
+            },
+          })}
+        />,
+      );
+      expect(screen.getByText("已被 dep-d4newer 取代")).toBeInTheDocument();
+      expect(
+        screen.queryByText("Superseded by dep-d4newer"),
+      ).not.toBeInTheDocument();
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

@@ -19,7 +19,6 @@ package deploys
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -144,7 +143,8 @@ func (w *DeferredRestartWorker) tick(ctx context.Context) error {
 		case r.Ready:
 			w.Svc.runDeferredRestart(ctx, queue, r.Deploy)
 		case now().Sub(r.CreatedAt) > maxWait:
-			closeDeferredRestart(ctx, queue, r.ID, fmt.Sprintf("the deploy this restart waited for did not finish within %s", maxWait))
+			closeDeferredRestart(ctx, queue, r.ID, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonRestartWaitTimedOut,
+				appv1alpha1.DeployReasonParam{Name: "wait", Value: maxWait.String()}))
 		}
 	}
 	return nil
@@ -159,7 +159,7 @@ func (s *Service) runDeferredRestart(ctx context.Context, queue DeferredRestartQ
 		return
 	}
 	if len(list.Items) != 1 {
-		closeDeferredRestart(ctx, queue, d.ID, "the service no longer exists")
+		closeDeferredRestart(ctx, queue, d.ID, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonRestartServiceGone))
 		return
 	}
 	a := &list.Items[0]
@@ -176,6 +176,9 @@ func (s *Service) runDeferredRestart(ctx context.Context, queue DeferredRestartQ
 	}
 }
 
+// closeDeferredRestart ends a waiting Restart with reason as its cancelReason.
+// The fixed reasons are worded from the shared templates, which the dashboard
+// words in its own language (w4/591).
 func closeDeferredRestart(ctx context.Context, queue DeferredRestartQueue, id, reason string) {
 	if _, err := queue.CancelDeferredRestart(ctx, id, reason); err != nil {
 		log.Printf("deferred restart %s: cancel: %v", id, err)

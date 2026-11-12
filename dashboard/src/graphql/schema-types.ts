@@ -1296,6 +1296,7 @@ export type Deploy = {
   buildAvailable: Maybe<Scalars['Boolean']['output']>;
   buildId: Maybe<Scalars['String']['output']>;
   cancelReason: Maybe<Scalars['String']['output']>;
+  cancelReasonTemplate: Maybe<DeployReason>;
   commitCreatedAt: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
   commitMessage: Maybe<Scalars['String']['output']>;
@@ -5086,6 +5087,7 @@ export type ServiceEventDetails = {
   branchFrom: Maybe<Scalars['String']['output']>;
   branchTo: Maybe<Scalars['String']['output']>;
   cancelReason: Maybe<Scalars['String']['output']>;
+  cancelReasonTemplate: Maybe<DeployReason>;
   commitId: Maybe<Scalars['String']['output']>;
   commitMessage: Maybe<Scalars['String']['output']>;
   commitUrl: Maybe<Scalars['String']['output']>;

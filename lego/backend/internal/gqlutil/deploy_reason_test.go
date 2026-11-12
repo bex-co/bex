@@ -60,7 +60,16 @@ var templateParam = regexp.MustCompile(`\{([a-z]+)\}`)
 // Every template formats and parses back to its code and parameters, so the
 // dashboard can word any of them; a sentence none matches stays English.
 func TestDeployReasonsRoundTrip(t *testing.T) {
-	params := []appv1alpha1.DeployReasonParam{{Name: "host", Value: "ghcr.io"}, {Name: "image", Value: "ghcr.io/acme/web:v1"}, {Name: "port", Value: "8080"}, {Name: "status", Value: "403"}}
+	// By name, the order the parsed parameters are sorted in.
+	params := []appv1alpha1.DeployReasonParam{
+		{Name: "cause", Value: "Waiting for build capacity: 4 of 4 builds are running"},
+		{Name: "code", Value: "137"}, {Name: "deploy", Value: "dep-d1a2b3c4d5e6f7g8h9i0"},
+		{Name: "hint", Value: " No open port was detected on the instance."},
+		{Name: "host", Value: "ghcr.io"}, {Name: "image", Value: "ghcr.io/acme/web:v1"},
+		{Name: "kind", Value: "readiness"}, {Name: "minutes", Value: "10"}, {Name: "path", Value: "/healthz"},
+		{Name: "port", Value: "8080"}, {Name: "restarts", Value: "3"}, {Name: "status", Value: "403"},
+		{Name: "wait", Value: "3h0m0s"},
+	}
 	for code, tmpl := range appv1alpha1.DeployReasonTemplates() {
 		var want []appv1alpha1.DeployReasonParam
 		for _, p := range params {
@@ -77,6 +86,25 @@ func TestDeployReasonsRoundTrip(t *testing.T) {
 	}
 	if _, _, ok := appv1alpha1.ParseDeployReason("a sentence no template words"); ok {
 		t.Error("an unknown sentence parsed")
+	}
+}
+
+// w4/591: a sentence two templates match reads as the one that fixes more of
+// it, never the one whose parameter swallows the difference.
+func TestDeployReasonPrefersTheMoreSpecificTemplate(t *testing.T) {
+	restarted := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonProbeHTTPWaitingRestarted,
+		appv1alpha1.DeployReasonParam{Name: "kind", Value: "startup"}, appv1alpha1.DeployReasonParam{Name: "path", Value: "/"},
+		appv1alpha1.DeployReasonParam{Name: "port", Value: "80"}, appv1alpha1.DeployReasonParam{Name: "restarts", Value: "2"})
+	for text, want := range map[string]string{
+		"Superseded by a newer release":      appv1alpha1.DeployReasonSupersededByNewer,
+		"Superseded by dep-abc":              appv1alpha1.DeployReasonSupersededBy,
+		"Canceled along with a newer deploy": appv1alpha1.DeployReasonCanceledAlongNewer,
+		"Canceled along with dep-abc":        appv1alpha1.DeployReasonCanceledAlongWith,
+		restarted:                            appv1alpha1.DeployReasonProbeHTTPWaitingRestarted,
+	} {
+		if got, _, _ := appv1alpha1.ParseDeployReason(text); got != want {
+			t.Errorf("%q parses as %s, want %s", text, got, want)
+		}
 	}
 }
 

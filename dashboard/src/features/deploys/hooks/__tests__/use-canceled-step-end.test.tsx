@@ -95,6 +95,7 @@ const canceled = (over: Partial<DeployView> = {}): DeployView => ({
   stallReason: "",
   failureReasonTemplate: null,
   stallReasonTemplate: null,
+  cancelReasonTemplate: null,
   ...over,
 });
 

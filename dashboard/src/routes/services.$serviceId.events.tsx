@@ -517,6 +517,7 @@ function EventSummary({
         />
         <DeployFailureReason
           reason={details?.cancelReason}
+          template={toDeployReasonTemplate(details?.cancelReasonTemplate)}
           tone="neutral"
           className="mt-1"
         />

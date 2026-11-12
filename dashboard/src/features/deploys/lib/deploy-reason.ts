@@ -30,7 +30,9 @@ export function toDeployReasonTemplate(
 
 /**
  * The reason in the dashboard's language when its code is one the dashboard
- * words, else bex-api's own sentence.
+ * words, else bex-api's own sentence. A parameter that is itself an English
+ * word the catalog words (`deploys.reasonParam.<name>.<value>`, a probe's
+ * "startup") is worded too; any other value, an id or a path, reads as-is.
  */
 export function deployReasonText(
   t: Translate,
@@ -39,5 +41,11 @@ export function deployReasonText(
 ): string {
   const key = template ? `deploys.reason.${template.code}` : "";
   if (!template || !(key in en)) return text;
-  return t(key as keyof typeof en, template.params);
+  const params = Object.fromEntries(
+    Object.entries(template.params).map(([name, value]) => {
+      const word = `deploys.reasonParam.${name}.${value}`;
+      return [name, word in en ? t(word as keyof typeof en) : value];
+    }),
+  );
+  return t(key as keyof typeof en, params);
 }

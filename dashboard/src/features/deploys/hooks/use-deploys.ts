@@ -51,9 +51,10 @@ export interface DeployRow {
    * the moment the deploy goes terminal. An observation, not a verdict.
    */
   stallReason: string;
-  /** failureReason and stallReason by code, for the dashboard's wording (w4/566). */
+  /** The three reasons by code, for the dashboard's wording (w4/566, w4/591). */
   failureReasonTemplate: DeployReasonTemplate | null;
   stallReasonTemplate: DeployReasonTemplate | null;
+  cancelReasonTemplate: DeployReasonTemplate | null;
 }
 
 type RawDeploy = NonNullable<DeploysQuery["deploys"]>[number];
@@ -82,6 +83,7 @@ function toRows(raw: DeploysQuery["deploys"] | undefined): DeployRow[] {
       stallReason: d.stallReason ?? "",
       failureReasonTemplate: toDeployReasonTemplate(d.failureReasonTemplate),
       stallReasonTemplate: toDeployReasonTemplate(d.stallReasonTemplate),
+      cancelReasonTemplate: toDeployReasonTemplate(d.cancelReasonTemplate),
     }));
 }
 

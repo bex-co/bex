@@ -74,6 +74,7 @@ function row(id: string, status: string): DeployRow {
     stallReason: "",
     failureReasonTemplate: null,
     stallReasonTemplate: null,
+    cancelReasonTemplate: null,
   } as DeployRow;
 }
 

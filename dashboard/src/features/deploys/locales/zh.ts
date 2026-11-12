@@ -394,17 +394,17 @@ const zhDeploys: Record<string, TranslationEntry> = {
   "deploys.reason.http_port_waiting": {
     message: "正在等待容器启动，然后检测其 HTTP 端口",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_waiting, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_waiting, w4/566)",
   },
   "deploys.reason.http_port_detecting": {
     message: "正在检测容器的 HTTP 端口",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_detecting, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_detecting, w4/566)",
   },
   "deploys.reason.http_port_limit": {
     message: "检测到的 HTTP 端口超出了服务 75 个端口的上限；请显式设置 PORT",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_limit, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_limit, w4/566)",
   },
   "deploys.reason.http_port_detected": {
     message: "已在端口 {port} 上检测到 HTTP，将通过该端口提供服务",
@@ -419,7 +419,7 @@ const zhDeploys: Record<string, TranslationEntry> = {
   "deploys.reason.http_port_none_yet": {
     message: "还没有端口响应 HTTP；容器启动期间将继续扫描",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_yet, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason http_port_none_yet, w4/566)",
   },
   "deploys.reason.http_port_fallback": {
     message:
@@ -454,17 +454,162 @@ const zhDeploys: Record<string, TranslationEntry> = {
   "deploys.reason.build_timed_out": {
     message: "构建未在构建时限内完成；请查看构建日志",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason build_timed_out, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason build_timed_out, w4/566)",
   },
   "deploys.reason.pre_deploy_timed_out": {
     message: "预部署命令未在其时限内完成；请查看预部署日志",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_timed_out, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_timed_out, w4/566)",
   },
   "deploys.reason.health_timed_out": {
     message: "部署未能在健康检查时限内通过健康检查；请查看服务日志",
     description:
-      "A deploy failure or in-progress reason by its code (bex-api DeployReason health_timed_out, w4/566); params are the sentence's values",
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason health_timed_out, w4/566)",
+  },
+  "deploys.reason.probe_http_waiting": {
+    message:
+      "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：端口 {port} 上的 GET {path}。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_http_waiting, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_http_waiting_restarted": {
+    message:
+      "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：端口 {port} 上的 GET {path}。存活检查已重启容器 {restarts} 次，说明检查确实在失败，而不只是响应慢。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_http_waiting_restarted, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_http_failed": {
+    message:
+      "容器正在运行，但其{kind}健康检查在发布时限内始终未成功，部署因此失败：端口 {port} 上的 GET {path}。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_http_failed, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_http_failed_restarted": {
+    message:
+      "容器正在运行，但其{kind}健康检查在发布时限内始终未成功，部署因此失败：端口 {port} 上的 GET {path}。存活检查已重启容器 {restarts} 次，说明检查确实在失败，而不只是响应慢。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_http_failed_restarted, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_tcp_waiting": {
+    message:
+      "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：到端口 {port} 的 TCP 连接。未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否在该端口上监听。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_tcp_waiting, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_tcp_waiting_restarted": {
+    message:
+      "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：到端口 {port} 的 TCP 连接。存活检查已重启容器 {restarts} 次，说明检查确实在失败，而不只是响应慢。未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否在该端口上监听。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_tcp_waiting_restarted, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_tcp_failed": {
+    message:
+      "容器正在运行，但其{kind}健康检查在发布时限内始终未成功，部署因此失败：到端口 {port} 的 TCP 连接。未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否在该端口上监听。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_tcp_failed, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_tcp_failed_restarted": {
+    message:
+      "容器正在运行，但其{kind}健康检查在发布时限内始终未成功，部署因此失败：到端口 {port} 的 TCP 连接。存活检查已重启容器 {restarts} 次，说明检查确实在失败，而不只是响应慢。未设置健康检查路径，因此这项检查只是一次 TCP 连接，只能确认进程是否在该端口上监听。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_tcp_failed_restarted, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.rollout_deadline_exceeded": {
+    message: "发布未能在进度时限内进入健康状态",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason rollout_deadline_exceeded, w4/591)",
+  },
+  "deploys.reason.pre_deploy_window_exceeded": {
+    message: "预部署命令未在 {minutes} 分钟的时限内完成；请查看预部署日志",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_window_exceeded, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.pre_deploy_out_of_memory": {
+    message: "预部署命令内存不足（退出码 {code}）；请查看预部署日志",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_out_of_memory, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.pre_deploy_exited": {
+    message: "预部署命令以退出码 {code} 退出；请查看预部署日志",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_exited, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.pre_deploy_failed": {
+    message: "预部署命令失败；请查看预部署日志",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_failed, w4/591)",
+  },
+  "deploys.reason.pre_deploy_could_not_launch": {
+    message:
+      "预部署命令无法启动：容器运行时无法运行其程序；该程序从未运行，因此没有预部署日志",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason pre_deploy_could_not_launch, w4/591)",
+  },
+  "deploys.reason.build_never_started": {
+    message: "构建一直未开始：{cause}",
+    description:
+      "A deploy failure reason by its code (bex-api DeployReason build_never_started, w4/591); {cause} is the operator's own wait message, shown as-is",
+  },
+  "deploys.reason.build_abandoned": {
+    message: "构建未在构建时限内完成，且无法读取此服务的 App 记录来说明原因",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason build_abandoned, w4/591)",
+  },
+  "deploys.reason.deploy_abandoned": {
+    message: "部署未在其时限内完成，且无法读取此服务的 App 记录来说明原因",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason deploy_abandoned, w4/591)",
+  },
+  "deploys.reason.canceled_suspended": {
+    message: "已取消：服务已暂停",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason canceled_suspended, w4/591)",
+  },
+  "deploys.reason.superseded_by_newer_release": {
+    message: "已被较新的发布取代",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason superseded_by_newer_release, w4/591)",
+  },
+  "deploys.reason.superseded_by": {
+    message: "已被 {deploy} 取代",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason superseded_by, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.canceled_by_restart": {
+    message:
+      "已被重启 {deploy} 取消，该重启保留了正在运行的发布：此部署要应用的内容未被部署",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason canceled_by_restart, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.canceled_along_with": {
+    message: "已随 {deploy} 一同取消",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason canceled_along_with, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.canceled_along_with_newer": {
+    message: "已随一个较新的部署一同取消",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason canceled_along_with_newer, w4/591)",
+  },
+  "deploys.reason.restart_service_gone": {
+    message: "该服务已不存在",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_service_gone, w4/591)",
+  },
+  "deploys.reason.restart_wait_timed_out": {
+    message: "这次重启等待的部署未在 {wait} 内完成",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_wait_timed_out, w4/591); params are the sentence's values",
+  },
+  "deploys.reasonParam.kind.startup": {
+    message: "启动",
+    description:
+      "A deploy reason's {kind} value startup (w4/591): which health check a stalled rollout is waiting on",
+  },
+  "deploys.reasonParam.kind.readiness": {
+    message: "就绪",
+    description:
+      "A deploy reason's {kind} value readiness (w4/591): which health check a stalled rollout is waiting on",
   },
 };
 

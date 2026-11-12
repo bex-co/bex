@@ -83,8 +83,8 @@ func TestHealthPathProjectsTheNoRedirectExecProbe(t *testing.T) {
 	if got := probedHealthCheckPath(app); got == nil || *got != "/cgi-bin/health" {
 		t.Errorf("probedHealthCheckPath = %v, want the exec probe's path", got)
 	}
-	if desc := probeTargetDescription(app.ReadinessProbe); desc != "GET /cgi-bin/health on port 8080" {
-		t.Errorf("probeTargetDescription = %q", desc)
+	if path, port, ok := probeGET(app.ReadinessProbe); !ok || path != "/cgi-bin/health" || port != "8080" {
+		t.Errorf("probeGET = %q %q %v, want the exec probe's GET /cgi-bin/health on port 8080", path, port, ok)
 	}
 }
 

@@ -41,6 +41,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -267,29 +268,30 @@ func Observe(j *batchv1.Job) State {
 // exit code read from the pod's terminated container. Never the Job
 // controller's condition text — "BackoffLimitExceeded" only says a zero-retry
 // Job failed once. Image failures name the cause instead of pointing to logs
-// for a command that never started.
+// for a command that never started. Its own sentences are worded from the
+// shared templates, which the dashboard words in its own language (w4/591).
 func FailureMessage(ctx context.Context, cl client.Reader, j *batchv1.Job) string {
-	const logs = "; check the pre-deploy logs"
 	// A pod that never got its image never ran the command: no log to point
 	// at, and the deadline only measured the pull retries (w8/m44).
 	if w, _ := pullFailure(ctx, cl, j); w != nil {
 		return pullFailureMessage(w)
 	}
 	if execution.JobFailedReason(j) == batchv1.JobReasonDeadlineExceeded {
-		return fmt.Sprintf("the pre-deploy command did not finish within its %d-minute window%s",
-			int(predeployTimeout/time.Minute), logs)
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployWindowExceeded,
+			appv1alpha1.DeployReasonParam{Name: "minutes", Value: strconv.Itoa(int(predeployTimeout / time.Minute))})
 	}
 	if t := terminatedContainer(ctx, cl, j); t != nil {
+		exitCode := appv1alpha1.DeployReasonParam{Name: "code", Value: strconv.Itoa(int(t.ExitCode))}
 		switch {
 		case t.Reason == "StartError":
 			return startErrorMessage(t.Message)
 		case t.Reason == "OOMKilled":
-			return fmt.Sprintf("the pre-deploy command ran out of memory (exit code %d)%s", t.ExitCode, logs)
+			return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployOutOfMemory, exitCode)
 		case t.ExitCode != 0:
-			return fmt.Sprintf("the pre-deploy command exited with code %d%s", t.ExitCode, logs)
+			return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployExited, exitCode)
 		}
 	}
-	return "the pre-deploy command failed" + logs
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployFailed)
 }
 
 // startExecFailure matches runc's exec failure inside a StartError message:
@@ -302,7 +304,7 @@ func startErrorMessage(runtimeMsg string) string {
 	const neverRan = "; the program never ran, so there are no pre-deploy logs"
 	m := startExecFailure.FindStringSubmatch(runtimeMsg)
 	if m == nil {
-		return "the pre-deploy command could not start: the container runtime could not launch its program" + neverRan
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonPreDeployCouldNotLaunch)
 	}
 	program, cause := m[1], m[2]
 	switch {

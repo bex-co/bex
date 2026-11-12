@@ -19,10 +19,12 @@ package deploys
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // deferringStore adds the Wait-policy capabilities PGStore has to fakeStore.
@@ -197,7 +199,48 @@ func TestDeferredRestartGivesUpAfterMaxWait(t *testing.T) {
 	if err := w.tick(context.Background()); err != nil {
 		t.Fatal(err)
 	}
-	if row := ds.byApp["srv-1"][0]; row.Status != store.DeployCanceled {
+	row := ds.byApp["srv-1"][0]
+	if row.Status != store.DeployCanceled {
 		t.Fatalf("restart row = %+v, want canceled after MaxWait", row)
+	}
+	assertCancelReason(t, row.CancelReason, "the deploy this restart waited for did not finish within 1h0m0s",
+		appv1alpha1.DeployReasonRestartWaitTimedOut, appv1alpha1.DeployReasonParam{Name: "wait", Value: "1h0m0s"})
+}
+
+// One whose service was deleted meanwhile is canceled saying so.
+func TestDeferredRestartOfADeletedServiceIsCanceled(t *testing.T) {
+	ds := deferringStore{newFakeStore()}
+	seedDeploys(ds.fakeStore,
+		store.Deploy{ID: "dep-flight", Status: store.DeployBuildInProgress, Generation: 3},
+		store.Deploy{ID: "dep-live", Status: store.DeployLive, Commit: runningCommit, Generation: 2},
+	)
+	svc, cl := newService(ds, repoApp("web", "srv-1", "main"))
+	if _, err := svc.Restart(context.Background(), "web"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Delete(context.Background(), getApp(t, cl, "web")); err != nil {
+		t.Fatal(err)
+	}
+	ds.set("dep-flight", func(d *store.Deploy) { d.Status = store.DeployLive })
+	if err := (&DeferredRestartWorker{Svc: svc}).tick(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	row := ds.byApp["srv-1"][0]
+	if row.Status != store.DeployCanceled {
+		t.Fatalf("restart row = %+v, want canceled", row)
+	}
+	assertCancelReason(t, row.CancelReason, "the service no longer exists", appv1alpha1.DeployReasonRestartServiceGone)
+}
+
+// w4/591: a deferred restart's cancelReason parses back to its template and
+// values, so the dashboard can word it in its own language.
+func assertCancelReason(t *testing.T, got, want, code string, params ...appv1alpha1.DeployReasonParam) {
+	t.Helper()
+	if got != want {
+		t.Fatalf("cancel_reason = %q, want %q", got, want)
+	}
+	gotCode, gotParams, ok := appv1alpha1.ParseDeployReason(got)
+	if !ok || gotCode != code || !slices.Equal(gotParams, params) {
+		t.Fatalf("%q parses as %s %v (ok=%v), want %s %v", got, gotCode, gotParams, ok, code, params)
 	}
 }

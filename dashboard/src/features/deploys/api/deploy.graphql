@@ -22,7 +22,8 @@ query Deploy($serviceId: String!, $deployId: String!) {
     failureReason
     cancelReason
     stallReason
-    # The two sentences by code, worded in the dashboard's language (w4/566).
+    # The three sentences by code, worded in the dashboard's language
+    # (w4/566, w4/591).
     failureReasonTemplate {
       code
       params {
@@ -31,6 +32,13 @@ query Deploy($serviceId: String!, $deployId: String!) {
       }
     }
     stallReasonTemplate {
+      code
+      params {
+        name
+        value
+      }
+    }
+    cancelReasonTemplate {
       code
       params {
         name

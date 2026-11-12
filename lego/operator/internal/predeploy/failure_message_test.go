@@ -18,6 +18,7 @@ package predeploy
 
 import (
 	"context"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -27,6 +28,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // w1/m149: a failed pre-deploy command is explained by its exit code, OOM kill,
@@ -255,5 +258,60 @@ func TestFailureMessageNamesTheProgramThatNeverStarted(t *testing.T) {
 	got := FailureMessage(context.Background(), cl, job)
 	if !strings.Contains(got, `"/bin/sh" does not exist in this image`) || strings.Contains(got, "check the pre-deploy logs") {
 		t.Fatalf("message = %q", got)
+	}
+}
+
+// w4/591: each verdict FailureMessage words itself parses back to its
+// template and values, so the dashboard can word it in its own language,
+// while every API keeps the English it has always returned.
+func TestFailureMessageParsesAsItsTemplate(t *testing.T) {
+	startError := corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{
+		ExitCode: 128, Reason: "StartError", Message: "failed to create containerd task: unknown",
+	}}
+	for name, tc := range map[string]struct {
+		job    *batchv1.Job
+		state  *corev1.ContainerState
+		want   string
+		code   string
+		params []appv1alpha1.DeployReasonParam
+	}{
+		"window": {
+			job:  failedJob(batchv1.JobReasonDeadlineExceeded),
+			want: "the pre-deploy command did not finish within its 10-minute window; check the pre-deploy logs",
+			code: appv1alpha1.DeployReasonPreDeployWindowExceeded, params: []appv1alpha1.DeployReasonParam{{Name: "minutes", Value: "10"}},
+		},
+		"out of memory": {
+			job: failedJob("BackoffLimitExceeded"), state: new(terminated(137, "OOMKilled")),
+			want: "the pre-deploy command ran out of memory (exit code 137); check the pre-deploy logs",
+			code: appv1alpha1.DeployReasonPreDeployOutOfMemory, params: []appv1alpha1.DeployReasonParam{{Name: "code", Value: "137"}},
+		},
+		"exit code": {
+			job: failedJob("BackoffLimitExceeded"), state: new(terminated(3, "Error")),
+			want: "the pre-deploy command exited with code 3; check the pre-deploy logs",
+			code: appv1alpha1.DeployReasonPreDeployExited, params: []appv1alpha1.DeployReasonParam{{Name: "code", Value: "3"}},
+		},
+		"no exit code": {
+			job:  failedJob("BackoffLimitExceeded"),
+			want: "the pre-deploy command failed; check the pre-deploy logs",
+			code: appv1alpha1.DeployReasonPreDeployFailed,
+		},
+		"unrecognized start error": {
+			job: failedJob("BackoffLimitExceeded"), state: &startError,
+			want: "the pre-deploy command could not start: the container runtime could not launch its program; the program never ran, so there are no pre-deploy logs",
+			code: appv1alpha1.DeployReasonPreDeployCouldNotLaunch,
+		},
+	} {
+		objs := []client.Object{tc.job}
+		if tc.state != nil {
+			objs = append(objs, jobPod(jobUID, tc.job.Namespace, *tc.state))
+		}
+		got := FailureMessage(context.Background(), fakeClient(objs...), tc.job)
+		if got != tc.want {
+			t.Errorf("%s: message = %q, want %q", name, got, tc.want)
+		}
+		code, params, ok := appv1alpha1.ParseDeployReason(got)
+		if !ok || code != tc.code || !slices.Equal(params, tc.params) {
+			t.Errorf("%s: %q parses as %s %v (ok=%v), want %s %v", name, got, code, params, ok, tc.code, tc.params)
+		}
 	}
 }

@@ -1667,6 +1667,8 @@ func observedDeployStatus(open Deploy, app *appv1alpha1.App, timedOut bool) stri
 
 // suspendCancelReason is the cancel_reason of a rollout a user suspend ended.
 // The events feed gives it no reason code: it was not superseded (w5/m114).
+// A constant because the feed's SQL names it; it is the canceled_suspended
+// template's sentence (w4/591).
 const suspendCancelReason = "Canceled: the service was suspended"
 
 // suspendEndsRollout reports that a user suspend ended this open row's
@@ -1687,7 +1689,7 @@ func suspendEndsRollout(open Deploy, app *appv1alpha1.App) bool {
 // a generation-agnostic line (orphaned/timed-out rows whose release gen is
 // behind, or the superseding row not yet projected).
 func (r *Reconciler) supersededCancelReason(ctx context.Context, open Deploy, app *appv1alpha1.App) string {
-	const fallback = "Superseded by a newer release"
+	fallback := appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonSupersededByNewer)
 	if app == nil || app.Status.ReleaseGeneration <= open.Generation {
 		return fallback
 	}
@@ -1738,9 +1740,9 @@ func awaitingSurvivor(open Deploy, app *appv1alpha1.App) bool {
 func (r *Reconciler) canceledAlongReason(ctx context.Context, open Deploy, app *appv1alpha1.App) string {
 	canceled, _ := canceledReleaseGeneration(app)
 	if id, err := r.Store.DeployIDByGeneration(ctx, open.AppID, canceled); err == nil && id != "" {
-		return "Canceled along with " + id
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonCanceledAlongWith, deployParam(id))
 	}
-	return "Canceled along with a newer deploy"
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonCanceledAlongNewer)
 }
 
 // servedReleaseImage is the image a release that served ran, read after a newer
@@ -2059,7 +2061,8 @@ func currentFailureReason(app *appv1alpha1.App) (string, string, bool) {
 			return c.Message, "", true
 		case c.Reason == appv1alpha1.ReasonBuildQueued || c.Reason == appv1alpha1.ReasonRegistryCredsPending:
 			if c.Message != "" {
-				return "the build never started: " + c.Message, "", true
+				return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonBuildNeverStarted,
+					appv1alpha1.DeployReasonParam{Name: "cause", Value: c.Message}), "", true
 			}
 		case appv1alpha1.IsBuildFailureReason(c.Reason):
 			return c.Message, "", true
@@ -2148,9 +2151,9 @@ func timedOutDeployReason(status string) string {
 // implying it observed a build or a rollout that failed.
 func abandonedDeployReason(status string) string {
 	if status == DeployBuildFailed {
-		return "the build did not finish within the build window, and this service's App record could not be read to explain why"
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonBuildAbandoned)
 	}
-	return "the deploy did not finish within its window, and this service's App record could not be read to explain why"
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonDeployAbandoned)
 }
 
 // concreteContainerFailure reports whether a Ready=False reason names a defect

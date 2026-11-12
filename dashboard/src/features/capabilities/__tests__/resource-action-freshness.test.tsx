@@ -205,6 +205,7 @@ describe("resource action projection freshness", () => {
       stallReason: "",
       failureReasonTemplate: null,
       stallReasonTemplate: null,
+      cancelReasonTemplate: null,
     }));
     const root = createRootRoute();
     const route = createRoute({

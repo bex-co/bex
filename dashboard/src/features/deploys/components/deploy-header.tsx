@@ -116,7 +116,11 @@ export function DeployHeader({ deploy, actions }: DeployHeaderProps) {
           reason={deploy.failureReason}
           template={deploy.failureReasonTemplate}
         />
-        <DeployFailureReason reason={deploy.cancelReason} tone="neutral" />
+        <DeployFailureReason
+          reason={deploy.cancelReason}
+          template={deploy.cancelReasonTemplate}
+          tone="neutral"
+        />
 
         {/* w4/m112: while the deploy is still open, say what the rollout is
             waiting on. Live on 2026-09-17 a 404ing Health Check Path held a
