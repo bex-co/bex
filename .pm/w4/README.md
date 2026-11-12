@@ -368,6 +368,8 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **593** — [Saving a cron job's Command says "The operator will apply the new schedule on its next reconcile pass", while the schedule is unchanged and a deploy starts at once](593.md) (~20m; minor) ← live `/qa-find-bugs w4` loop round 154, 2026-11-12
+- [ ] **592** — [Resuming a suspended cron job immediately runs it once, off schedule, for the slot that passed while it was suspended](592.md) (~1h; major) ← live `/qa-find-bugs w4` loop round 154, 2026-11-12
 - [ ] **591** — [In the zh dashboard, the deploy reasons w4/m329 does not code yet stay English: health-check and progress-deadline stalls, the operator's pre-deploy timeout, "the build never started", the abandoned-deploy reason, kubelet image-pull messages and `cancelReason`](591.md) (~1h; minor) ← w4/m329 `/simplify` review, `/loopx w4` 2026-11-11.
 - [ ] **590** — [An autoscaling change that only moves the CPU or memory target reads as a no-op in Events, because the row records only the minimum and maximum](590.md) (~45m; minor) ← w4/568 `/simplify` review, `/loopx w4` 2026-11-11.
 - [ ] **589** — [`lego/types` tests run in no CI job: ten test files, including the ID, host and release-snapshot contracts, never gate a push](589.md) (~30m; minor–major) ← w4/m329 `/simplify` review, `/loopx w4` 2026-11-11.
