@@ -81,3 +81,19 @@ Why: after a rename, the Events feed reads "Display name changed" and nothing el
   - the DNS dialog gives CNAME `qa160` → `qa-20261112-r160-dom.onbex.co`;
   - Re-check answers "qa160.example.com isn't verified yet — DNS may still be propagating";
   - the delete dialog says nothing was served and no certificate was issued.
+
+## Post-release probe (QA loop round 175, 2026-11-12): t005 passes
+
+- **Pin:** `10acf5314735`, deployed 06:46 UTC.
+- **Fixture:** Starter web service `qa-20261112-r175-web` (`srv-dbqm93s5ph4s73f9gpbg`), deleted afterwards (DELETE 204, then GET 404).
+- **Rename:** in Settings → General, **Edit service name** → `qa-20261112-r175-renamed` → **Save changes**.
+  - The toast reads `Service renamed to "qa-20261112-r175-renamed".`
+  - REST `display_name_changed` has `{"from":"qa-20261112-r175-web","to":"qa-20261112-r175-renamed"}`.
+  - GraphQL `serviceEvents { details { displayNameFrom displayNameTo } }` returns the same two names.
+- **Domains:**
+  - `POST …/custom-domains {"name":"qa-20261112-r175.example"}` → 201. It created the apex and `www.qa-20261112-r175.example`, both `unverified`.
+  - `DELETE …/custom-domains/qa-20261112-r175.example` → 204 removed both, and the list read `[]`.
+  - REST lists four rows, each with `{"domain":…}`: `custom_domain_added` for the apex and for www, then `custom_domain_removed` for both. GraphQL `details.domain` agrees.
+- **Events tab:**
+  - en: "Name qa-20261112-r175-web → qa-20261112-r175-renamed", "Custom domain qa-20261112-r175.example added" and "Custom domain www.qa-20261112-r175.example removed".
+  - zh: "名称 qa-20261112-r175-web → qa-20261112-r175-renamed", "已添加自定义域名 qa-20261112-r175.example" and "已移除自定义域名 www.qa-20261112-r175.example".

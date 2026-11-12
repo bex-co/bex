@@ -38,3 +38,24 @@ Why: since w4/568 the Events row shows an autoscaling change's before and after.
   - Check Render's `autoscaling_config_changed` details (`fromConfig`/`toConfig`) with a read-only GET on the reference account first, and match their shape.
 - **Tests:** a target-only change records both targets; an unchanged save records no row.
 - **Dedupe:** w4/568 (done) shows the range only.
+
+## Post-release probe (QA loop round 175, 2026-11-12): t005 passes
+
+- **Pin:** `10acf5314735`, deployed 06:46 UTC (`deploy (bex via Argo)` succeeded).
+- **Fixture:** Starter web service `qa-20261112-r175-web` (`srv-dbqm93s5ph4s73f9gpbg`, `traefik/whoami:v1.10.1`), deleted afterwards (DELETE 204, then GET 404).
+- **Sequence:** four REST calls at 07:03, each 200 or 204:
+  1. `PUT …/autoscaling` with 1–3 and CPU 70%;
+  2. the same with CPU 60%;
+  3. the same CPU 60% body again;
+  4. `DELETE …/autoscaling`.
+- **Events:** `GET …/events` lists exactly three `autoscaling_config_changed`. The unchanged save recorded none.
+  - 07:03:06: `fromConfig {"enabled":false,"min":0,"max":0,…}` → `toConfig {"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":true,"percentage":70},…}}`.
+  - 07:03:09: `fromConfig` cpu 70 → `toConfig` cpu 60, with min/max 1/3 on both sides.
+  - 07:03:15: `fromConfig` enabled, 1–3, cpu 60 → `toConfig {"enabled":false,"min":1,"max":3,…cpu 60…}`. The disable keeps the settings (w4/597).
+- **Events tab:**
+  - en reads "Autoscaling Off → 1–3 instances, CPU 70%", "Autoscaling 1–3 instances, CPU 70% → 1–3 instances, CPU 60%" and "Autoscaling 1–3 instances, CPU 60% → Off".
+  - zh reads "自动伸缩 关闭 → 1–3 个实例，CPU 70%", "自动伸缩 1–3 个实例，CPU 70% → 1–3 个实例，CPU 60%" and "自动伸缩 1–3 个实例，CPU 60% → 关闭".
+- **Also verified, w4/597, on the private service `qa-20261112-r175-as` (`srv-dbqm2igrcnqs73dmcuu0`, deleted):**
+  - After a disable, the Scaling page's switch pre-fills 1–2 and CPU 60%.
+  - Saving it records `fromConfig {"enabled":false,"min":1,"max":2,…cpu 60…}`, and Events reads "Autoscaling Off → 1–2 instances, CPU 60%".
+  - A `DELETE` on an already-disabled policy recorded no event.
