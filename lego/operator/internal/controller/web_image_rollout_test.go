@@ -737,7 +737,8 @@ func TestHeldWebImageReleasePromotesAFullSetOfInstances(t *testing.T) {
 		for _, m := range mutate {
 			m(rs)
 		}
-		objs := []client.Object{rs, app.DeepCopy()}
+		objs := make([]client.Object, 0, 5)
+		objs = append(objs, rs, app.DeepCopy())
 		for i := range 3 {
 			p := pod.DeepCopy()
 			p.Name = fmt.Sprintf("%s-%d", rs.Name, i)

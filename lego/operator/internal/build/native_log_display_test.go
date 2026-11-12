@@ -169,9 +169,9 @@ func TestNativeBuildLogShowsTheCommandAndItsOutput(t *testing.T) {
 func TestNativeBuildLogSaysACachedCommandWasReused(t *testing.T) {
 	command := "npm install"
 	transcript := nativeTranscript(command, "")
-	i := strings.Index(transcript, "#23 2.411")
-	j := strings.Index(transcript, "#24 exporting")
-	cached := transcript[:i] + "#23 CACHED\n" + transcript[j:]
+	head, rest, _ := strings.Cut(transcript, "#23 2.411")
+	_, tail, _ := strings.Cut(rest, "#24 exporting")
+	cached := head + "#23 CACHED\n#24 exporting" + tail
 	log, _, exit := runBuildkit(t, nativeLogOptions(command), cached, 0)
 	if exit != 0 {
 		t.Fatalf("exit %d, log:\n%s", exit, log)

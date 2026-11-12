@@ -34,10 +34,10 @@ import (
 
 type maxmemoryCall struct{ maxmemory, policy string }
 
-// newMaxmemoryFixture is a running Persistence Off store with an eviction
-// policy, its pod on the StatefulSet's current revision, and the runtime
+// newMaxmemoryFixture is a running Persistence Off store with the allkeys-lru
+// eviction policy, its pod on the StatefulSet's current revision, and the runtime
 // CONFIG SET stubbed to record each call (or fail with *fail).
-func newMaxmemoryFixture(t *testing.T, policy string) (*runtimeTLSFixture, *[]maxmemoryCall, *error) {
+func newMaxmemoryFixture(t *testing.T) (*runtimeTLSFixture, *[]maxmemoryCall, *error) {
 	f := newRuntimeTLSFixture(t)
 	var calls []maxmemoryCall
 	var fail error
@@ -65,7 +65,7 @@ func newMaxmemoryFixture(t *testing.T, policy string) (*runtimeTLSFixture, *[]ma
 			return c.Update(ctx, obj, opts...)
 		},
 	})
-	f.updateSpec(func(spec *appv1alpha1.KeyValueSpec) { spec.MaxmemoryPolicy = policy })
+	f.updateSpec(func(spec *appv1alpha1.KeyValueSpec) { spec.MaxmemoryPolicy = "allkeys-lru" })
 	f.startPod()
 	f.settleRollout()
 	return f, &calls, &fail
@@ -123,7 +123,7 @@ func (f *runtimeTLSFixture) templatePolicy() string {
 // is lost. A change that restarts the store anyway (a plan change) starts the
 // new server with the current policy.
 func TestKeyValueMaxmemoryPolicyChangeRestartsNothing(t *testing.T) {
-	f, calls, fail := newMaxmemoryFixture(t, "allkeys-lru")
+	f, calls, fail := newMaxmemoryFixture(t)
 	free, _ := resolveKVPlan(appv1alpha1.KeyValueSpec{Plan: "free"})
 	budget := valkeyMaxmemory(free)
 	if f.kv.Status.MaxmemoryPolicy != "allkeys-lru" || !slices.Contains(*calls, maxmemoryCall{budget, "allkeys-lru"}) {
@@ -172,7 +172,7 @@ func TestKeyValueMaxmemoryPolicyChangeRestartsNothing(t *testing.T) {
 // A suspended store has no process: nothing is dialed, its template takes the
 // new policy, and the resumed server starts with it.
 func TestKeyValueMaxmemoryPolicyWhileSuspended(t *testing.T) {
-	f, calls, _ := newMaxmemoryFixture(t, "allkeys-lru")
+	f, calls, _ := newMaxmemoryFixture(t)
 	f.updateSpec(func(spec *appv1alpha1.KeyValueSpec) { spec.Suspended = true })
 	before := len(*calls)
 	f.updateSpec(func(spec *appv1alpha1.KeyValueSpec) { spec.MaxmemoryPolicy = "allkeys-lfu" })
@@ -190,7 +190,7 @@ func TestKeyValueMaxmemoryPolicyWhileSuspended(t *testing.T) {
 // dialed; while the template holds an older one, every pass re-applies the
 // current one, so a server restarted from that template is corrected.
 func TestKeyValueMaxmemoryPolicyDialsOnlyWhileHeld(t *testing.T) {
-	f, calls, _ := newMaxmemoryFixture(t, "allkeys-lru")
+	f, calls, _ := newMaxmemoryFixture(t)
 	before := len(*calls)
 	f.reconcileTwice()
 	if len(*calls) != before {
@@ -219,7 +219,7 @@ func TestKeyValueMaxmemoryPolicyDialsOnlyTheServingProcess(t *testing.T) {
 		},
 	} {
 		t.Run(name, func(t *testing.T) {
-			f, calls, _ := newMaxmemoryFixture(t, "allkeys-lru")
+			f, calls, _ := newMaxmemoryFixture(t)
 			f.updateSpec(func(spec *appv1alpha1.KeyValueSpec) { spec.MaxmemoryPolicy = "volatile-lru" })
 			pod := &corev1.Pod{}
 			if err := f.cl.Get(f.ctx, client.ObjectKey{Namespace: f.nn.Namespace, Name: f.nn.Name + "-0"}, pod); err != nil {
