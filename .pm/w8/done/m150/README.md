@@ -1,6 +1,6 @@
 # w8 · m150 — Blueprint create reads a public repo even while GitHub's API stumbles
 
-**Worker:** worker8 **Goal:** creating or syncing a Blueprint from a public GitHub repo succeeds through transient GitHub API failures: idempotent GitHub reads retry, and a public repo's ref and file are read over git transport and GitHub's raw CDN when the API still fails. **Status:** blocked — code shipped in this batch; t001–t006 done; t007 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
+**Worker:** worker8 **Goal:** creating or syncing a Blueprint from a public GitHub repo succeeds through transient GitHub API failures: idempotent GitHub reads retry, and a public repo's ref and file are read over git transport and GitHub's raw CDN when the API still fails. **Status:** done (2026-11-12: t001–t006 shipped 2026-11-10; t007's production replay planned a Blueprint from the public repository, fixture deleted)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 15m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
-| t007 | Closeout (live Blueprint create on production) | 20m | t006 |
+| t007 | Closeout — **DONE** (live Blueprint create on production) | 20m | t006 |
 
 ## Definition of done
 
