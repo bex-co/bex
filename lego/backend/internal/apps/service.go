@@ -3201,6 +3201,7 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	}
 	if s.Store != nil {
 		if id := managedAppID(a); id != "" {
+			s.recordEgressIdentity(ctx, a, id)
 			// An already-gone row is the intended end state, not an error (a
 			// prior attempt may have completed the cleanup and row delete) —
 			// fall through to delete the orphaned CR.
@@ -3213,6 +3214,41 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	// store-managed App whose row delete triggered a Kick) — the end state is
 	// what matters.
 	return client.IgnoreNotFound(s.Client.Delete(ctx, a))
+}
+
+// egressIdentityRecorder is an optional IntentStore extension, implemented by
+// *store.PGStore: the usage meter's record of each App's egress identity.
+type egressIdentityRecorder interface {
+	RecordAppEgressIdentity(ctx context.Context, appID string, identity store.EgressIdentity) error
+}
+
+// Recording turns off silently if the production store stops implementing it.
+var _ egressIdentityRecorder = (*store.PGStore)(nil)
+
+// egressIdentityTimeout bounds the Ingress lookup so it cannot hold a delete.
+const egressIdentityTimeout = 5 * time.Second
+
+// recordEgressIdentity keeps the router names a deleted App's last hours of
+// egress are metered by, while its CR and Ingresses still exist. The hourly
+// meter records them too, but never sees an App created and deleted between
+// two rollups (w6/121). Best-effort: a failure leaves every hour not yet
+// metered without egress, never fails the delete.
+func (s *Service) recordEgressIdentity(ctx context.Context, a *appv1alpha1.App, appID string) {
+	recorder, ok := s.Store.(egressIdentityRecorder)
+	if !ok {
+		return
+	}
+	ctx, cancel := context.WithTimeout(ctx, egressIdentityTimeout)
+	defer cancel()
+	routers, err := s.TraefikRouterNames(ctx, a)
+	if err != nil {
+		log.Printf("apps: delete %s: resolve egress routers: %v", appID, err)
+		return
+	}
+	identity := store.EgressIdentity{Routers: routers, Direct: a.Spec.Type != appv1alpha1.TypeStaticSite}
+	if err := recorder.RecordAppEgressIdentity(ctx, appID, identity); err != nil {
+		log.Printf("apps: delete %s: record egress identity: %v", appID, err)
+	}
 }
 
 // specFromCreate validates a CreateRequest and projects it onto a fresh App

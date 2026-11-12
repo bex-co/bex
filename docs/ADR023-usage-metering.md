@@ -154,7 +154,7 @@ The loop iterates `ListApps` (App services) and then all `Database` and `KeyValu
     - The pass records the identity in `usage_egress_identities`, migration `0233_usage_retired_egress_identity`. These are observed cluster state, so they live beside the `apps` row, not on it; an unchanged identity writes nothing.
     - The retired pass reads the identity with the retired record and meters egress with the same per-source health gating as a live App. Pruning the record removes the identity.
     - The direct and WebSocket counters are keyed by the App's id. The router names are covered by the same-name skip below.
-    - **Gap.** An App deleted before any pass resolved its routers has no identity, so its egress stays unmetered, as before. That is an App created and deleted between two hourly rollups (w6/121).
+    - **Deletion records it too (w6/121).** The delete verb resolves the routers while the CR and Ingresses still exist and records them, so an App created and deleted between two hourly rollups is still metered. This is best-effort: a failed resolution or write never blocks the delete. A workspace deletion's cascade does not go through the verb, so its Apps rely on the hourly record. An App with no identity from either path keeps its final-hour egress unmetered, as before.
   - **A same-name App** created by the deletion hour (one that is live, or deleted later) is already billing those same pods under its own ID, so the deleted App is skipped.
   - **Datastores** go through the live datastore pass, so their display names are retained and all three meters run.
 - **Coverage.** Each retired resource's coverage streams close at the end of its deletion hour.

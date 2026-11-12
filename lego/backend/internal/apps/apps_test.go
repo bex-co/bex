@@ -31,6 +31,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -1408,6 +1409,58 @@ func TestDeleteManagedAppDeletesRowThenCR(t *testing.T) {
 	}
 	// The row is the single writer of intent — it must be deleted (so a resync
 	// can't resurrect the CR) — and the CR is removed directly for immediacy.
+	if len(rec.deleteCalls) != 1 || rec.deleteCalls[0] != "srv-1" {
+		t.Fatalf("want row delete [srv-1], got %v", rec.deleteCalls)
+	}
+	gone(t, cl, "web")
+}
+
+// egressRecordingStore is a recordingStore that also keeps usage egress
+// identities, as store.PGStore does.
+type egressRecordingStore struct {
+	recordingStore
+	identities map[string]store.EgressIdentity
+}
+
+func (s *egressRecordingStore) RecordAppEgressIdentity(_ context.Context, appID string, identity store.EgressIdentity) error {
+	if s.identities == nil {
+		s.identities = map[string]store.EgressIdentity{}
+	}
+	s.identities[appID] = identity
+	return nil
+}
+
+// w6/121: a service deleted before any hourly rollup resolved its routers still
+// has its last hour of egress metered, because the delete records the routers
+// while its Ingress still exists.
+func TestDeleteRecordsTheEgressIdentityWhileItsIngressExists(t *testing.T) {
+	ctx := context.Background()
+	app := managedApp("web", "srv-1")
+	app.Spec.Host = "web.onbex.co"
+	rec := &egressRecordingStore{}
+	svc, cl := newService(rec, app)
+	class, pathType := "traefik", networkingv1.PathTypePrefix
+	if err := cl.Create(ctx, &networkingv1.Ingress{
+		ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default"},
+		Spec: networkingv1.IngressSpec{IngressClassName: &class, Rules: []networkingv1.IngressRule{{
+			Host: "web.onbex.co",
+			IngressRuleValue: networkingv1.IngressRuleValue{HTTP: &networkingv1.HTTPIngressRuleValue{Paths: []networkingv1.HTTPIngressPath{{
+				Path: "/", PathType: &pathType,
+				Backend: networkingv1.IngressBackend{Service: &networkingv1.IngressServiceBackend{Name: "web"}},
+			}}}},
+		}}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := svc.Delete(ctx, "web"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	got, ok := rec.identities["srv-1"]
+	want := []string{"default-web-web-onbex-co@kubernetes", "web-default-web-web-onbex-co@kubernetes"}
+	if !ok || !got.Direct || !slices.Equal(got.Routers, want) {
+		t.Fatalf("recorded egress identity = %+v (recorded %v), want routers %v with direct egress", got, ok, want)
+	}
 	if len(rec.deleteCalls) != 1 || rec.deleteCalls[0] != "srv-1" {
 		t.Fatalf("want row delete [srv-1], got %v", rec.deleteCalls)
 	}
