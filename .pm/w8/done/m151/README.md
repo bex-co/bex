@@ -1,6 +1,6 @@
 # w8 · m151 — A sandbox exec runs as long as its command does
 
-**Worker:** worker8 **Goal:** `bex sandboxes exec` streams a command's output and exit code for as long as the command runs, bounded by the sandbox and the gateway session, not by a 210 s write deadline; an execution record never stays open after its stream is gone. **Status:** blocked — code shipped in this batch; t001–t006 done; t007 (live closeout) waits for the 2026-11-10 19:00 UTC deploy and a working QA login (see the workstream README)
+**Worker:** worker8 **Goal:** `bex sandboxes exec` streams a command's output and exit code for as long as the command runs, bounded by the sandbox and the gateway session, not by a 210 s write deadline; an execution record never stays open after its stream is gone. **Status:** done (2026-11-12: t001–t006 shipped 2026-11-10; t007's production replay passed — two 300 s execs exited 6 and 3 with their records closed)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 15m | t001, t002 |
 | [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
-| t007 | Closeout (live long exec on production) | 20m | t006 |
+| t007 | Closeout — **DONE** (live long exec on production) | 20m | t006 |
 
 ## Definition of done
 
