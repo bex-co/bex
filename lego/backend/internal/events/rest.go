@@ -206,10 +206,11 @@ func toFailureReason(d Details) *FailureReason {
 const imagePullFailedMessage = "The image could not be pulled"
 
 // autoscalingState is one side of autoscaling_config_changed: Render's
-// autoscaling config, the body of its PUT …/autoscaling (w4/m335). Render's
-// disable keeps the config with enabled false, so a disable's toConfig is its
-// fromConfig turned off; a side with no config to show reads as bex's GET
-// …/autoscaling does without autoscaling: zero bounds and no criterion enabled.
+// autoscaling config, the body of its PUT …/autoscaling (w4/m335). A disable
+// keeps the config turned off, as Render's does (w4/597), so a disable's
+// toConfig is its fromConfig turned off and an enable's fromConfig is the kept
+// config; a side with no config reads as bex's GET …/autoscaling does without
+// autoscaling: zero bounds and no criterion enabled.
 // Criteria is nil only on an enabled side recorded before the targets were, as
 // an enabled config always has one.
 type autoscalingState struct {
@@ -229,11 +230,13 @@ type autoscalingCriterion struct {
 	Percentage int32 `json:"percentage"`
 }
 
-func autoscalingSide(minimum, maximum, cpu, memory *int32) *autoscalingState {
+// autoscalingSide is one side's config; enabled is false for settings a
+// disable kept, and nil reads as running wherever there are settings.
+func autoscalingSide(enabled *bool, minimum, maximum, cpu, memory *int32) *autoscalingState {
 	if minimum == nil || maximum == nil {
 		return &autoscalingState{Criteria: &autoscalingCriteria{}}
 	}
-	side := &autoscalingState{Enabled: true, Min: *minimum, Max: *maximum}
+	side := &autoscalingState{Enabled: enabled == nil || *enabled, Min: *minimum, Max: *maximum}
 	if cpu != nil || memory != nil {
 		side.Criteria = &autoscalingCriteria{CPU: autoscalingTarget(cpu), Memory: autoscalingTarget(memory)}
 	}
@@ -332,8 +335,8 @@ func toRenderEvent(e Event) renderEvent {
 		d.FromInstances = e.Details.InstanceCountFrom
 		d.ToInstances = e.Details.InstanceCountTo
 	case TypeAutoscalingConfigChanged:
-		d.FromConfig = autoscalingSide(e.Details.AutoscalingMinFrom, e.Details.AutoscalingMaxFrom, e.Details.AutoscalingCPUFrom, e.Details.AutoscalingMemoryFrom)
-		d.ToConfig = autoscalingSide(e.Details.AutoscalingMinTo, e.Details.AutoscalingMaxTo, e.Details.AutoscalingCPUTo, e.Details.AutoscalingMemoryTo)
+		d.FromConfig = autoscalingSide(e.Details.AutoscalingEnabledFrom, e.Details.AutoscalingMinFrom, e.Details.AutoscalingMaxFrom, e.Details.AutoscalingCPUFrom, e.Details.AutoscalingMemoryFrom)
+		d.ToConfig = autoscalingSide(nil, e.Details.AutoscalingMinTo, e.Details.AutoscalingMaxTo, e.Details.AutoscalingCPUTo, e.Details.AutoscalingMemoryTo)
 		if !d.ToConfig.Enabled && d.FromConfig.Enabled {
 			kept := *d.FromConfig
 			kept.Enabled = false

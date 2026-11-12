@@ -130,6 +130,10 @@ func TestPUTAutoscalingEnabledFalseDisables(t *testing.T) {
 	if view.Enabled {
 		t.Fatalf("still enabled: %+v", view)
 	}
+	// The answer is the settings the disable kept, turned off (w4/597).
+	if want := `{"enabled":false,"min":1,"max":1,"criteria":{"cpu":{"enabled":true,"percentage":50},"memory":{"enabled":false,"percentage":0}}}`; strings.TrimSpace(w.Body.String()) != want {
+		t.Fatalf("body = %s, want %s", w.Body.String(), want)
+	}
 }
 
 func TestPUTAutoscalingUnionBodyNamesUnknownFields(t *testing.T) {

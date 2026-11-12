@@ -6184,7 +6184,8 @@ func autoscalingSpec(req SetAutoscalingRequest, serviceType, tier string) (appv1
 }
 
 // autoscalingView projects spec.autoscaling onto the neutral view. Nil
-// spec.autoscaling => disabled with zero bounds (the disabled state).
+// spec.autoscaling => disabled with zero bounds (never configured); settings
+// a disable kept read with enabled false (w4/597).
 // Ineligible types always report disabled even if a stale enabled config was
 // stored before the type gate existed (w4/m101) — echoing enabled:true made
 // the accept-then-discard invisible.
@@ -6228,10 +6229,7 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 	if err != nil {
 		return AutoscalingView{}, err
 	}
-	var from *appv1alpha1.AutoscalingSpec
-	if a.Spec.Autoscaling != nil && a.Spec.Autoscaling.Enabled {
-		from = a.Spec.Autoscaling.DeepCopy()
-	}
+	from := a.Spec.Autoscaling.DeepCopy() // nil, running, or kept by a disable
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
 		a.Spec.Autoscaling = &as
 	})
@@ -6245,8 +6243,10 @@ func (s *Service) SetAutoscaling(ctx context.Context, name string, req SetAutosc
 }
 
 // DeleteAutoscaling disables autoscaling on a service (Render's DELETE
-// .../autoscaling): clears spec.autoscaling so the service reverts to its
-// fixed spec.replicas count. Idempotent — already-disabled is a no-op.
+// .../autoscaling): the service reverts to its fixed spec.replicas count, and
+// spec.autoscaling keeps its range and targets turned off, as Render keeps
+// them for the next enable (w4/597). A type autoscaling never applies to has
+// its stale settings cleared instead. Idempotent — already-disabled is a no-op.
 func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
 	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanOperate, name)
 	if err != nil {
@@ -6257,13 +6257,30 @@ func (s *Service) DeleteAutoscaling(ctx context.Context, name string) error {
 	}
 	from := a.Spec.Autoscaling.DeepCopy()
 	_, err = s.patchFetched(ctx, a, func(a *appv1alpha1.App) {
-		a.Spec.Autoscaling = nil
+		turnOffAutoscaling(&a.Spec)
 	})
 	if err != nil {
 		return err
 	}
 	s.RecordAutoscalingChanged(ctx, a, from, nil)
 	return nil
+}
+
+// turnOffAutoscaling returns spec to manual scaling. Its settings stay,
+// turned off, for the next enable, as Render keeps them (w4/597); a type
+// autoscaling never applies to has its stale settings cleared. It assigns a
+// copy, so a caller's earlier snapshot of spec still differs from the result.
+func turnOffAutoscaling(spec *appv1alpha1.AppSpec) {
+	if spec.Autoscaling == nil {
+		return
+	}
+	if !autoscalingEligible(spec.Type) {
+		spec.Autoscaling = nil
+		return
+	}
+	kept := spec.Autoscaling.DeepCopy()
+	kept.Enabled = false
+	spec.Autoscaling = kept
 }
 
 // linkedEnvGroupIDs projects spec.envFromSecrets back to the group ids that

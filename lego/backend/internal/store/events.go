@@ -555,6 +555,8 @@ type AuditChanges struct {
 	AutoscalingCPUTo      *int32
 	AutoscalingMemoryFrom *int32
 	AutoscalingMemoryTo   *int32
+	// Whether the settings before an autoscaling change were running (w4/597).
+	AutoscalingEnabledFrom *bool
 	// A rename's label on each side, and a custom-domain event's hostname
 	// (w4/m337).
 	DisplayNameFrom *string
@@ -567,13 +569,13 @@ type AuditChanges struct {
 const auditChangesColumns = `a.maintenance_mode_to, a.disk_size_from_gb, a.maintenance_uri_from, a.maintenance_uri_to,
        a.auto_deploy_reason, a.auto_deploy_trigger, a.env_group_id, a.env_group_name,
        a.autoscaling_cpu_from, a.autoscaling_cpu_to, a.autoscaling_memory_from, a.autoscaling_memory_to,
-       a.display_name_from, a.display_name_to, a.domain`
+       a.display_name_from, a.display_name_to, a.domain, a.autoscaling_enabled_from`
 
 func (c *AuditChanges) scanDestinations() []any {
 	return []any{&c.MaintenanceModeTo, &c.DiskSizeFromGB, &c.MaintenanceURIFrom, &c.MaintenanceURITo,
 		&c.AutoDeployReason, &c.AutoDeployTrigger, &c.EnvGroupID, &c.EnvGroupName,
 		&c.AutoscalingCPUFrom, &c.AutoscalingCPUTo, &c.AutoscalingMemoryFrom, &c.AutoscalingMemoryTo,
-		&c.DisplayNameFrom, &c.DisplayNameTo, &c.Domain}
+		&c.DisplayNameFrom, &c.DisplayNameTo, &c.Domain, &c.AutoscalingEnabledFrom}
 }
 
 // auditRowID is an audit row's id from its feed key ("<audit row id>:").

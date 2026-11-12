@@ -897,7 +897,7 @@ func (s *Service) applyServicePatch(ctx context.Context, in updateServiceArgs) (
 func (s *Service) registerAutoscalingTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_autoscaling",
-		Description: "Get the autoscaling configuration for a service (minInstances, maxInstances, targetCPUPercent, targetMemoryPercent). Returns enabled:false when autoscaling is not configured. bex extension over Render's MCP.",
+		Description: "Get the autoscaling configuration for a service (minInstances, maxInstances, targetCPUPercent, targetMemoryPercent). Returns enabled:false when autoscaling is off, with the settings a disable kept, or zeros when it was never configured. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceArgs) (*mcp.CallToolResult, AutoscalingView, error) {
 		av, err := s.GetAutoscaling(ctx, in.ServiceID)
 		if err != nil {

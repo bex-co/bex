@@ -476,6 +476,22 @@ describe("ServiceEventsPage — configuration change values (w4/568)", () => {
             cursor: "c-before-targets",
             details: { autoscalingMinTo: 1, autoscalingMaxTo: 2 },
           },
+          {
+            // w4/597: enabling the settings a disable kept.
+            id: "evt-kept",
+            type: "autoscaling_config_changed",
+            timestamp: "2026-08-28T05:00:00Z",
+            cursor: "c-kept",
+            details: {
+              autoscalingMinFrom: 2,
+              autoscalingMaxFrom: 3,
+              autoscalingCPUFrom: 50,
+              autoscalingEnabledFrom: false,
+              autoscalingMinTo: 2,
+              autoscalingMaxTo: 3,
+              autoscalingCPUTo: 50,
+            },
+          },
         ],
       },
       loading: false,
@@ -495,6 +511,10 @@ describe("ServiceEventsPage — configuration change values (w4/568)", () => {
     // A row recorded before the targets were shows the range alone.
     expect(
       screen.getByText("Autoscaling Off → 1–2 instances"),
+    ).toBeInTheDocument();
+    // Settings a disable kept read as Off until they run again.
+    expect(
+      screen.getByText("Autoscaling Off → 2–3 instances, CPU 50%"),
     ).toBeInTheDocument();
 
     await act(() => i18n.changeLanguage("zh"));

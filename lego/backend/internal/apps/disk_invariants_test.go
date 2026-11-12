@@ -114,7 +114,7 @@ func TestDiskInvariantAllowedTransitions(t *testing.T) {
 			t.Fatal(err)
 		}
 		after := getApp(t, svc.Client, "disk-web")
-		if after.Spec.Autoscaling != nil || after.Spec.Disk == nil {
+		if after.Spec.Autoscaling == nil || after.Spec.Autoscaling.Enabled || after.Spec.Disk == nil {
 			t.Fatalf("disable did not preserve disk: %+v", after.Spec)
 		}
 	})

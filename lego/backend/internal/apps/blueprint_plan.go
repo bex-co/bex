@@ -449,12 +449,12 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	// declared. Omission of both preserves the currently active scaling mode.
 	if applies("scaling") {
 		if want.Autoscaling == nil {
-			dst.Autoscaling = nil
+			turnOffAutoscaling(dst)
 		} else {
 			dst.Autoscaling = want.Autoscaling.DeepCopy()
 		}
 	} else if applies("numInstances") && !present("scaling") {
-		dst.Autoscaling = nil
+		turnOffAutoscaling(dst)
 		dst.Replicas = want.Replicas
 	}
 

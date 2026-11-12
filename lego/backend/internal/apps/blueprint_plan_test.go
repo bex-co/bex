@@ -154,8 +154,21 @@ func TestApplyBlueprintServiceSpecScalingOwnership(t *testing.T) {
 		if _, err := ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{Replicas: 5}, map[string]BlueprintField{"numInstances": {}}); err != nil {
 			t.Fatalf("apply: %v", err)
 		}
-		if got.Autoscaling != nil || got.Replicas != 5 {
-			t.Fatalf("manual scaling = %#v, want replicas 5 with nil autoscaling", got)
+		// The settings stay, turned off, for the next enable (w4/597).
+		if as := got.Autoscaling; as == nil || as.Enabled || as.MaxReplicas != 4 || got.Replicas != 5 {
+			t.Fatalf("manual scaling = %#v, want replicas 5 with the autoscaling settings kept, turned off", got)
+		}
+	})
+
+	t.Run("a manual count already in force is no change beside kept settings", func(t *testing.T) {
+		got := *initial.DeepCopy()
+		got.Autoscaling.Enabled = false
+		changed, err := ApplyBlueprintServiceSpec(&got, appv1alpha1.AppSpec{Replicas: 2}, map[string]BlueprintField{"numInstances": {}})
+		if err != nil {
+			t.Fatalf("apply: %v", err)
+		}
+		if changed || got.Autoscaling == nil || got.Autoscaling.MaxReplicas != 4 {
+			t.Fatalf("changed %v, spec %#v; want no change and the kept settings", changed, got)
 		}
 	})
 

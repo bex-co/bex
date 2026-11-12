@@ -166,14 +166,26 @@ func TestSetAutoscalingRejectsAbovePlatformCeiling(t *testing.T) {
 	}
 }
 
-func TestDeleteAutoscalingClearsSpec(t *testing.T) {
+// w4/597: disabling keeps the range and targets turned off, as Render keeps
+// them for the next enable, and a read returns them with enabled false.
+func TestDeleteAutoscalingKeepsTheSettingsTurnedOff(t *testing.T) {
 	svc, cl := newService(nil, mkAutoscaledApp())
 	if err := svc.DeleteAutoscaling(context.Background(), "web"); err != nil {
 		t.Fatalf("DeleteAutoscaling: %v", err)
 	}
-	app := getApp(t, cl, "web")
-	if app.Spec.Autoscaling != nil {
-		t.Errorf("spec.autoscaling should be nil after delete, got %+v", app.Spec.Autoscaling)
+	as := getApp(t, cl, "web").Spec.Autoscaling
+	if as == nil || as.Enabled || as.MinReplicas != 1 || as.MaxReplicas != 5 || as.TargetCPUPercent == nil || *as.TargetCPUPercent != 80 {
+		t.Fatalf("spec.autoscaling after delete = %+v, want 1–5 at CPU 80%% turned off", as)
+	}
+	v, err := svc.GetAutoscaling(context.Background(), "web")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if v.Enabled || v.MinInstances != 1 || v.MaxInstances != 5 || v.TargetCPUPercent == nil || *v.TargetCPUPercent != 80 {
+		t.Fatalf("GetAutoscaling after delete = %+v, want the kept settings, disabled", v)
+	}
+	if err := svc.DeleteAutoscaling(context.Background(), "web"); err != nil {
+		t.Fatalf("a second delete: %v", err)
 	}
 }
 
@@ -240,8 +252,8 @@ func TestRESTDeleteAutoscaling(t *testing.T) {
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("DELETE autoscaling => 204, got %d: %s", rec.Code, rec.Body)
 	}
-	if getApp(t, cl, "web").Spec.Autoscaling != nil {
-		t.Fatal("spec.autoscaling not cleared after DELETE")
+	if as := getApp(t, cl, "web").Spec.Autoscaling; as == nil || as.Enabled {
+		t.Fatalf("spec.autoscaling after DELETE = %+v, want the settings kept, turned off", as)
 	}
 }
 
@@ -318,8 +330,8 @@ func TestGraphQLDisableAutoscalingMutation(t *testing.T) {
 	if len(res.Errors) > 0 {
 		t.Fatalf("errors: %v", res.Errors)
 	}
-	if getApp(t, cl, "web").Spec.Autoscaling != nil {
-		t.Fatal("spec.autoscaling not cleared")
+	if as := getApp(t, cl, "web").Spec.Autoscaling; as == nil || as.Enabled {
+		t.Fatalf("spec.autoscaling after disable = %+v, want the settings kept, turned off", as)
 	}
 }
 
@@ -523,6 +535,21 @@ func TestAutoscalingEventsRecordTheTargets(t *testing.T) {
 	if from, to := side(ev.AutoscalingMinFrom, ev.AutoscalingMaxFrom, ev.AutoscalingCPUFrom, ev.AutoscalingMemoryFrom),
 		side(ev.AutoscalingMinTo, ev.AutoscalingMaxTo, ev.AutoscalingCPUTo, ev.AutoscalingMemoryTo); from != "1/5 cpu 60 memory 70" || to != "-/- cpu - memory -" {
 		t.Fatalf("disabling recorded %s → %s", from, to)
+	}
+	if ev.AutoscalingEnabledFrom == nil || !*ev.AutoscalingEnabledFrom {
+		t.Fatalf("disabling recorded the settings before as not running: %v", ev.AutoscalingEnabledFrom)
+	}
+
+	// Enabling again names the settings the disable kept, as not running
+	// (w4/597).
+	sink.events = nil
+	if _, err := svc.SetAutoscaling(ctx, "web", SetAutoscalingRequest{MinInstances: 2, MaxInstances: 5, TargetCPUPercent: int32p(60)}); err != nil {
+		t.Fatal(err)
+	}
+	ev = last(core.AuditVerbSetAutoscaling)
+	if from := side(ev.AutoscalingMinFrom, ev.AutoscalingMaxFrom, ev.AutoscalingCPUFrom, ev.AutoscalingMemoryFrom); from != "1/5 cpu 60 memory 70" ||
+		ev.AutoscalingEnabledFrom == nil || *ev.AutoscalingEnabledFrom {
+		t.Fatalf("enabling after a disable recorded from %s (running %v), want the kept 1/5 cpu 60 memory 70, not running", from, ev.AutoscalingEnabledFrom)
 	}
 }
 

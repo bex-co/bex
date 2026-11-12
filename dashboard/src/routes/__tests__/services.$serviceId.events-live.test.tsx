@@ -111,6 +111,7 @@ function event(id: string, type: string, offset: number, status = "") {
       autoscalingCPUTo: null,
       autoscalingMemoryFrom: null,
       autoscalingMemoryTo: null,
+      autoscalingEnabledFrom: null,
       planFrom: null,
       planTo: null,
       trigger: null,

@@ -171,6 +171,10 @@ func TestAutoscalingEventDetailsCarryTheTargets(t *testing.T) {
 		{"disabling", store.ServiceEventRow{Verb: "apps.DeleteAutoscaling", AutoscalingMinFrom: &one, AutoscalingMaxFrom: &three, AuditChanges: store.AuditChanges{AutoscalingMemoryFrom: &sixty}},
 			`{"fromConfig":{"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":false,"percentage":0},"memory":{"enabled":true,"percentage":60}}},` +
 				`"toConfig":{"enabled":false,"min":1,"max":3,"criteria":{"cpu":{"enabled":false,"percentage":0},"memory":{"enabled":true,"percentage":60}}}}`},
+		{"enabling the settings a disable kept (w4/597)", store.ServiceEventRow{Verb: "apps.SetAutoscaling", AutoscalingMinFrom: &one, AutoscalingMaxFrom: &three, AutoscalingMinTo: &one, AutoscalingMaxTo: &three,
+			AuditChanges: store.AuditChanges{AutoscalingEnabledFrom: new(false), AutoscalingCPUFrom: &sixty, AutoscalingCPUTo: &sixty}},
+			`{"fromConfig":{"enabled":false,"min":1,"max":3,"criteria":{"cpu":{"enabled":true,"percentage":60},"memory":{"enabled":false,"percentage":0}}},` +
+				`"toConfig":{"enabled":true,"min":1,"max":3,"criteria":{"cpu":{"enabled":true,"percentage":60},"memory":{"enabled":false,"percentage":0}}}}`},
 		{"recorded before the targets", store.ServiceEventRow{Verb: "apps.SetAutoscaling", AutoscalingMinTo: &one, AutoscalingMaxTo: &three},
 			`{"fromConfig":` + off + `,"toConfig":{"enabled":true,"min":1,"max":3}}`},
 	} {

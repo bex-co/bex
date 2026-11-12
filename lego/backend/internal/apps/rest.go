@@ -1390,7 +1390,12 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 			if err := s.DeleteAutoscaling(r.Context(), r.PathValue("id")); err != nil {
 				return nil, err
 			}
-			return renderAutoscalingConfigFromView(AutoscalingView{}), nil
+			// The settings the disable kept, turned off (w4/597).
+			view, err := s.GetAutoscaling(r.Context(), r.PathValue("id"))
+			if err != nil {
+				return nil, err
+			}
+			return renderAutoscalingConfigFromView(view), nil
 		}
 		view, err := s.SetAutoscaling(r.Context(), r.PathValue("id"), req)
 		if err != nil {

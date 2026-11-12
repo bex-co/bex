@@ -778,6 +778,9 @@ type Details struct {
 	AutoscalingCPUTo      *int32
 	AutoscalingMemoryFrom *int32
 	AutoscalingMemoryTo   *int32
+	// whether the from side's settings were running, not kept by a disable
+	// (w4/597); nil on a side with none and on rows recorded before
+	AutoscalingEnabledFrom *bool
 	// service_moved (w6/m134): the before/after public prj-/evm- ids; nil = no
 	// placement on that side, so assign, move, and unassign share one shape.
 	ProjectFrom     *string
@@ -1279,6 +1282,7 @@ func view(r store.ServiceEventRow, service string) Event {
 			ev.Details.AutoscalingMaxTo = r.AutoscalingMaxTo
 			ev.Details.AutoscalingCPUFrom, ev.Details.AutoscalingCPUTo = r.AutoscalingCPUFrom, r.AutoscalingCPUTo
 			ev.Details.AutoscalingMemoryFrom, ev.Details.AutoscalingMemoryTo = r.AutoscalingMemoryFrom, r.AutoscalingMemoryTo
+			ev.Details.AutoscalingEnabledFrom = r.AutoscalingEnabledFrom
 		case TypeServiceMoved:
 			ev.Details.ProjectFrom = r.ProjectFrom
 			ev.Details.ProjectTo = r.ProjectTo

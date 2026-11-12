@@ -81,7 +81,10 @@ type AuditEvent struct {
 	AutoscalingCPUTo      *int32
 	AutoscalingMemoryFrom *int32
 	AutoscalingMemoryTo   *int32
-	AutoDeployEnabled     *bool
+	// AutoscalingEnabledFrom is whether the settings before the change were
+	// running, not kept by a disable (w4/597); nil when that side had none.
+	AutoscalingEnabledFrom *bool
+	AutoDeployEnabled      *bool
 	// Managed-datastore configuration values (w3/m82). Each is the value the
 	// corresponding field was set TO by a successful PATCH — the
 	// AutoDeployEnabled shape, not a from/to pair, because Render's datastore
@@ -513,7 +516,8 @@ func (b *Base) RecordScaleEffect(ctx context.Context, app *appv1alpha1.App, from
 
 // RecordAutoscalingChanged records the typed from/to detail for a successful
 // SetAutoscaling or DeleteAutoscaling: each side's bounds and targets. from is
-// nil when autoscaling was previously disabled; to is nil when it was deleted.
+// nil when the service had no settings, and Enabled false when a disable kept
+// them; to is nil when autoscaling was disabled.
 // Called after the write path confirms success, paired with
 // WithDeferredAllowedWriteAudit on the AuthorizeApp call.
 func (b *Base) RecordAutoscalingChanged(ctx context.Context, app *appv1alpha1.App, from, to *appv1alpha1.AutoscalingSpec) {
@@ -530,6 +534,7 @@ func (b *Base) RecordAutoscalingChanged(ctx context.Context, app *appv1alpha1.Ap
 	if from != nil {
 		ev.AutoscalingMinFrom, ev.AutoscalingMaxFrom = &from.MinReplicas, &from.MaxReplicas
 		ev.AutoscalingCPUFrom, ev.AutoscalingMemoryFrom = from.TargetCPUPercent, from.TargetMemoryPercent
+		ev.AutoscalingEnabledFrom = &from.Enabled
 	}
 	if to != nil {
 		ev.AutoscalingMinTo, ev.AutoscalingMaxTo = &to.MinReplicas, &to.MaxReplicas

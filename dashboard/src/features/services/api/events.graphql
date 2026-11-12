@@ -47,6 +47,7 @@ query ServiceEvents(
       autoscalingCPUTo
       autoscalingMemoryFrom
       autoscalingMemoryTo
+      autoscalingEnabledFrom
       planFrom
       planTo
       # The two sentences by code, worded in the dashboard's language (w4/566).

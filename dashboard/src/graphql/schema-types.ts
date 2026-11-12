@@ -5076,6 +5076,7 @@ export type ServiceEventDetails = {
   autoDeployTrigger: Maybe<Scalars['String']['output']>;
   autoscalingCPUFrom: Maybe<Scalars['Int']['output']>;
   autoscalingCPUTo: Maybe<Scalars['Int']['output']>;
+  autoscalingEnabledFrom: Maybe<Scalars['Boolean']['output']>;
   autoscalingMaxFrom: Maybe<Scalars['Int']['output']>;
   autoscalingMaxTo: Maybe<Scalars['Int']['output']>;
   autoscalingMemoryFrom: Maybe<Scalars['Int']['output']>;

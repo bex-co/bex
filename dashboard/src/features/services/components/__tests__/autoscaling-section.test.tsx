@@ -52,3 +52,29 @@ describe("AutoscalingSection on the free plan (w4/365)", () => {
     expect(screen.getByRole("switch")).toBeDisabled();
   });
 });
+
+// w4/597: a disable keeps the settings turned off, so turning autoscaling back
+// on starts from them and saves them unchanged.
+describe("AutoscalingSection after a disable (w4/597)", () => {
+  it("turns back on with the kept range and targets", async () => {
+    const as = storedFreeConfig({
+      enabled: false,
+      minInstances: 2,
+      maxInstances: 4,
+      targetCPUPercent: 70,
+    });
+    render(<AutoscalingSection autoscaling={as} plan="starter" />);
+
+    expect(screen.getByText("Autoscaling off")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("switch"));
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Save Changes" }),
+    );
+    expect(as.save).toHaveBeenCalledWith({
+      minInstances: 2,
+      maxInstances: 4,
+      targetCPUPercent: 70,
+      targetMemoryPercent: null,
+    });
+  });
+});

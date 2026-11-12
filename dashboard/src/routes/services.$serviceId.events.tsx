@@ -723,8 +723,9 @@ function PlacementChange({
 /**
  * An autoscaling configuration change, each side Off or a range with its CPU
  * and memory targets (w4/568, w4/m335), so a change to a target alone reads as
- * one. A row recorded before the values were keeps its bare title, and one
- * recorded before the targets were shows the range alone.
+ * one. Settings a disable kept read as Off until they run again (w4/597). A row
+ * recorded before the values were keeps its bare title, and one recorded before
+ * the targets were shows the range alone.
  */
 function AutoscalingChange({
   details,
@@ -734,6 +735,7 @@ function AutoscalingChange({
   const { t } = useTranslations();
   const { autoscalingMinFrom, autoscalingMaxFrom } = details;
   const { autoscalingMinTo, autoscalingMaxTo } = details;
+  const fromOff = details.autoscalingEnabledFrom === false;
   if (
     autoscalingMinFrom == null &&
     autoscalingMaxFrom == null &&
@@ -770,12 +772,14 @@ function AutoscalingChange({
   return (
     <p className="text-muted-foreground mt-2 text-xs">
       {t("services.eventsAutoscalingChange", {
-        from: side(
-          autoscalingMinFrom,
-          autoscalingMaxFrom,
-          details.autoscalingCPUFrom,
-          details.autoscalingMemoryFrom,
-        ),
+        from: fromOff
+          ? t("services.eventsAutoscalingOff")
+          : side(
+              autoscalingMinFrom,
+              autoscalingMaxFrom,
+              details.autoscalingCPUFrom,
+              details.autoscalingMemoryFrom,
+            ),
         to: side(
           autoscalingMinTo,
           autoscalingMaxTo,

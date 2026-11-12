@@ -187,7 +187,7 @@ func TestPGAutoscalingTargetsRoundTrip(t *testing.T) {
 		Caller: "fixture-owner", Verb: core.AuditVerbSetAutoscaling, Resource: core.WorkspaceObject(tenant.ID),
 		Target: core.ServiceTarget(app.ID), Outcome: core.AuditAllowed, At: time.Now().UTC(),
 		AutoscalingMinFrom: &one, AutoscalingMaxFrom: &three, AutoscalingMinTo: &one, AutoscalingMaxTo: &three,
-		AutoscalingCPUFrom: &seventy, AutoscalingCPUTo: &sixty, AutoscalingMemoryTo: &seventy,
+		AutoscalingCPUFrom: &seventy, AutoscalingCPUTo: &sixty, AutoscalingMemoryTo: &seventy, AutoscalingEnabledFrom: new(false),
 	}); err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func TestPGAutoscalingTargetsRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := AuditChanges{AutoscalingCPUFrom: &seventy, AutoscalingCPUTo: &sixty, AutoscalingMemoryTo: &seventy}
+	want := AuditChanges{AutoscalingCPUFrom: &seventy, AutoscalingCPUTo: &sixty, AutoscalingMemoryTo: &seventy, AutoscalingEnabledFrom: new(false)}
 	if len(page) != 1 || !reflect.DeepEqual(page[0].AuditChanges, want) {
 		t.Fatalf("feed rows = %+v, want one carrying CPU 70 → 60 and memory → 70", page)
 	}

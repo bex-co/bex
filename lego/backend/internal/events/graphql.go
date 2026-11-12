@@ -233,6 +233,9 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"autoscalingCPUTo":      gqlutil.IntField(func(d Details) any { return d.AutoscalingCPUTo }),
 		"autoscalingMemoryFrom": gqlutil.IntField(func(d Details) any { return d.AutoscalingMemoryFrom }),
 		"autoscalingMemoryTo":   gqlutil.IntField(func(d Details) any { return d.AutoscalingMemoryTo }),
+		// false when the from side's settings were kept by a disable, not
+		// running (w4/597); null on a side with none and on older rows.
+		"autoscalingEnabledFrom": gqlutil.BoolField(func(d Details) any { return d.AutoscalingEnabledFrom }),
 		// service_moved before/after placement (w6/m134): public prj-/evm- ids,
 		// null = no placement on that side.
 		"projectFrom":     gqlutil.StrField(func(d Details) any { return d.ProjectFrom }),
