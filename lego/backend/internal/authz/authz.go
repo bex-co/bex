@@ -48,7 +48,24 @@ type openfgaChecker struct {
 	mu      sync.Mutex
 	storeID string
 	cache   *core.TTLCache[bool]
+
+	// epochMu serializes a revoke's cache eviction with an in-flight check's
+	// cache write, and epoch numbers those events (the same discipline as
+	// api/auth.go's revocationEpoch — a plain atomic re-check is not enough).
+	// Without it, a check that read the pre-revoke tuple state and answers
+	// after RevokeWorkspaceMember evicted the subject would re-put its positive:
+	// the revoked decision would survive for the rest of PositiveTTL, silently
+	// undoing the eviction that exists to remove it.
+	epochMu sync.Mutex
+	epoch   uint64
 }
+
+// Keep CheckFresh wired: core.Base silently degrades to its cached check when
+// the configured checker lacks the capability, so renaming or dropping this
+// method would reopen the ≤PositiveTTL window on every write relation without
+// a compile error anywhere else. The assertion is the only place that failure
+// is loud.
+var _ core.FreshChecker = (*openfgaChecker)(nil)
 
 // NewOpenFGAChecker returns the production core.Checker talking to the
 // cluster-internal OpenFGA API with its preshared key.
@@ -67,9 +84,10 @@ func (o *openfgaChecker) Check(ctx context.Context, subject, relation, object st
 		return allowed, nil // only positives are ever put
 	}
 	v, err, _ := o.group.Do(key, func() (any, error) {
+		epoch := o.currentEpoch() // before the round trip: a later revoke invalidates this answer
 		allowed, err := o.checkUpstream(ctx, subject, relation, object)
 		if err == nil && allowed {
-			o.cache.Put(key, true, time.Now().Add(core.PositiveTTL))
+			o.cachePositive(key, epoch)
 		}
 		return allowed, err
 	})
@@ -208,10 +226,41 @@ func (o *openfgaChecker) RevokeWorkspaceMember(ctx context.Context, tenantID, su
 	// the membership. Same-replica revocation is then immediate; other
 	// replicas' caches still drain within PositiveTTL, which is why the
 	// destructive/issuance verbs additionally use CheckFresh.
+	//
+	// The epoch bump shares epochMu with the eviction and with a concurrent
+	// check's cache write, so a check already in flight for this subject cannot
+	// restore the decision past the eviction.
+	o.epochMu.Lock()
+	o.epoch++
 	o.cache.DeleteKeyIf(func(key string) bool {
 		return strings.HasPrefix(key, subject+"\x00")
 	})
+	o.epochMu.Unlock()
 	return nil
+}
+
+// currentEpoch snapshots the revocation epoch before an upstream round trip.
+// The bump is global rather than per-subject: an unrelated revoke merely makes
+// this check's positive skip the cache (the next check re-asks upstream), which
+// is safe, while a per-subject epoch would need a keyed map under the same lock.
+func (o *openfgaChecker) currentEpoch() uint64 {
+	o.epochMu.Lock()
+	defer o.epochMu.Unlock()
+	return o.epoch
+}
+
+// cachePositive stores a positive only if no revoke has happened since epoch was
+// snapshotted. The comparison and the Put are atomic with respect to
+// RevokeWorkspaceMember's bump-and-evict, which is what closes the race: either
+// the Put lands first and the eviction removes it, or the revoke lands first and
+// this Put is skipped.
+func (o *openfgaChecker) cachePositive(key string, epoch uint64) {
+	o.epochMu.Lock()
+	defer o.epochMu.Unlock()
+	if o.epoch != epoch {
+		return
+	}
+	o.cache.Put(key, true, time.Now().Add(core.PositiveTTL))
 }
 
 // store resolves the `bex` store id by name once, deduplicating the lookup
