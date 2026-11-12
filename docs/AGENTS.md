@@ -61,6 +61,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR014-sandboxes.md](ADR014-sandboxes.md) — E2B-compatible sandboxes over opensandbox
 - [ADR042-sandbox-cluster-substrate.md](ADR042-sandbox-cluster-substrate.md) — multi-node OpenSandbox substrate, Kata/gVisor
 - [ADR044-sandbox-runtime-comparison.md](ADR044-sandbox-runtime-comparison.md) — AgentENV vs OpenSandbox survey
+- [ADR105-agent-sandbox-hetzner-bare-metal.md](ADR105-agent-sandbox-hetzner-bare-metal.md) — proposed (2026-11-11) agent sandboxes on Hetzner bare metal: gVisor `systrap` cost measured in a live sandbox (with `overlay2=none` and a shared-vCPU node in the numbers), unit economics per dedicated server (327 paid sandbox-hours a month covers a €59 node), one EX44 running Kata behind a neutral `sandbox` RuntimeClass mapped per node so the cloud node is scheduler overflow, what a dedicated server needs to join the Cloud-network cluster, and a go/no-go gate
 - [ADR035-ssh.md](ADR035-ssh.md) — instance SSH, gateway + Kubernetes exec bridge
 - [ADR054-open-in-zed.md](ADR054-open-in-zed.md) — `zed://ssh/ags-…@ssh.bex.co/workspace`
 - [ADR047-cloud-coding-agent-sessions.md](ADR047-cloud-coding-agent-sessions.md) — sandbox-per-session, ACP driver, gateway grants; D5 per-workspace network tiers, registries open through the agent phase (2026-10-27)
