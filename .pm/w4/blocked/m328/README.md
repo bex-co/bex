@@ -69,3 +69,21 @@ Why: the feed is the owner's record of why the service's environment changed. Wh
   1. Create a group with `serviceIds` naming it. The service's Events lists `env_group_linked` naming the group.
   2. Delete that group. Events lists `env_group_unlinked` naming it.
   3. Link and Unlink from the Environment tab still each record one row, now with the group's name, in en and zh.
+
+## Post-release probe (QA loop round 163, 2026-11-12): t004's replay passes
+
+Pin `e7a56b07e0d7` (`c5518dc24`, 02:23 UTC) contains `5f2bd5dd3`. This records t004's live check; the worker can close it from here.
+
+- **Fixtures**, both deleted afterwards (GET 404):
+  - Free image service `qa-20261112-r163-eg` (`srv-dbqj9ca140ds739rb8c0`, `ealen/echo-server:0.9.2`);
+  - env group `qa-20261112-r163-grp` (`evg-dbqj9da140ds739rb8dg`, `QA163_GROUP`).
+- **`GET /v1/services/srv-dbqj9ca140ds739rb8c0/events`**, the `env_group_*` rows in order:
+  1. `POST /v1/env-groups {…, serviceIds: [<svc>]}` (03:38:29) → `env_group_linked` `{envGroupId: "evg-dbqj9da140ds739rb8dg", envGroupName: "qa-20261112-r163-grp"}`.
+  2. Environment tab → `Unlink qa-20261112-r163-grp` (03:38:59) → one `env_group_unlinked` naming the group.
+  3. `Link qa-20261112-r163-grp` (03:39:07) → one `env_group_linked` naming it.
+  4. `DELETE /v1/env-groups/evg-dbqj9da140ds739rb8dg` → 204 (03:39:31) → `env_group_unlinked` naming it.
+- **Dashboard Events:**
+  - en reads "Environment group qa-20261112-r163-grp linked" / "… unlinked";
+  - zh reads "已关联环境组 qa-20261112-r163-grp" / "已取消关联环境组 qa-20261112-r163-grp".
+- **Toasts:** both read "The service's configuration changed. A repo-backed service with auto-deploy off picks it up with its next deploy; any other service deploys it now" (w4/554). This image service did deploy each time (`service_updated` rows).
+- **Not run:** the Blueprint `fromGroup` path.
