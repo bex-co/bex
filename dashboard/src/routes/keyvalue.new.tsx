@@ -30,11 +30,12 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { isValidLabel } from "@/common/lib/utils/resource-label";
-import type { en } from "@/i18n";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
 import { useCreateKeyValue } from "@/features/keyvalue/hooks/use-create-key-value";
 import {
   MAXMEMORY_POLICIES,
+  PERSISTENCE_LABEL_KEYS,
+  PERSISTENCE_MODES,
   RECOMMENDED_MAXMEMORY_POLICY,
 } from "@/features/keyvalue/lib/labels";
 import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
@@ -51,24 +52,12 @@ import { KeyValueCreatePageSkeleton } from "@/common/components/route-skeletons"
 const VERSION_DEFAULT = "default";
 const VERSIONS = ["8", "7"] as const;
 
-// Persistence modes, matching the KeyValue CRD's enum
-// (lego/types/v1alpha1/keyvalue_types.go) and Render's Key Value create form
-// (docs/render-artifacts/key-value.md). Persistence modes get i18n labels; the
-// maxmemory (eviction) policy tokens live in the feature's shared lib
-// (MAXMEMORY_POLICIES) so the create wizard and the detail-page editor agree.
-// Every bex plan — the Free tier included (tiers.yaml gives it a 1 GB disk) —
-// can persist, so neither dropdown is plan-locked (w6/m127); the default is
-// journal-snapshot, matching the API create path.
-const PERSISTENCE_MODES = ["journal-snapshot", "snapshot", "off"] as const;
-const PERSISTENCE_LABEL_KEYS: Record<
-  (typeof PERSISTENCE_MODES)[number],
-  keyof typeof en
-> = {
-  "journal-snapshot": "keyvalue.persistenceJournalSnapshot",
-  snapshot: "keyvalue.persistenceSnapshot",
-  off: "keyvalue.persistenceOff",
-};
-
+// Persistence modes and their i18n labels live in the feature's shared lib
+// (PERSISTENCE_MODES/PERSISTENCE_LABEL_KEYS) so the create wizard and the
+// detail-page editor agree. Every bex plan — the Free tier included
+// (tiers.yaml gives it a 1 GB disk) — can persist, so neither dropdown is
+// plan-locked (w6/m127); the default is journal-snapshot, matching the API
+// create path.
 export const Route = createFileRoute("/keyvalue/new")({
   staticData: { chrome: true },
   component: NewKeyValuePage,

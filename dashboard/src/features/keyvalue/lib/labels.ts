@@ -104,12 +104,32 @@ export function maxmemoryPolicyToUi(apiValue: string): string {
     : apiValue;
 }
 
-/** Persistence modes offered at create and on the detail editor (w4/066). */
+/**
+ * Persistence modes offered at create and on the detail editor (w4/066),
+ * matching the KeyValue CRD's enum (lego/types/v1alpha1/keyvalue_types.go) and
+ * Render's Key Value create form (docs/render-artifacts/key-value.md). The
+ * maxmemory (eviction) policy tokens live alongside (MAXMEMORY_POLICIES) so the
+ * create wizard and the detail-page editor agree.
+ */
 export const PERSISTENCE_MODES = [
   "journal-snapshot",
   "snapshot",
   "off",
 ] as const;
+
+/**
+ * i18n label for each persistence mode. Shared by the create wizard and the
+ * detail-page editor so a mode renders the same word in both, and a new mode
+ * needs its label added in one place.
+ */
+export const PERSISTENCE_LABEL_KEYS: Record<
+  (typeof PERSISTENCE_MODES)[number],
+  keyof typeof en
+> = {
+  "journal-snapshot": "keyvalue.persistenceJournalSnapshot",
+  snapshot: "keyvalue.persistenceSnapshot",
+  off: "keyvalue.persistenceOff",
+};
 
 /** Normalize underscored API reads onto the hyphen UI vocabulary. */
 export function persistenceModeToUi(apiValue: string): string {

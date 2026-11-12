@@ -14,19 +14,10 @@ import {
 } from "@/features/services/components/editable-field-row";
 import {
   keyValueClearPhrase,
+  PERSISTENCE_LABEL_KEYS,
   PERSISTENCE_MODES,
 } from "@/features/keyvalue/lib/labels";
 import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
-import type { en } from "@/i18n";
-
-const PERSISTENCE_LABEL_KEYS: Record<
-  (typeof PERSISTENCE_MODES)[number],
-  keyof typeof en
-> = {
-  "journal-snapshot": "keyvalue.persistenceJournalSnapshot",
-  snapshot: "keyvalue.persistenceSnapshot",
-  off: "keyvalue.persistenceOff",
-};
 
 /**
  * Key Value detail Persistence Mode section — mirrors Maxmemory Policy so the
