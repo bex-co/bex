@@ -1,6 +1,6 @@
 # w4 · m330 — A Key Value maxmemory-policy change restarts the store, though Render documents no restart for it
 
-**Worker:** worker4 **Goal:** a maxmemory-policy change applies to the running Key Value without a restart, as on Render: no connection drops, a Persistence Off store keeps every key, and no surface asks for or warns about a restart. **Status:** blocked — t001–t004 and t006–t008 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
+**Worker:** worker4 **Goal:** a maxmemory-policy change applies to the running Key Value without a restart, as on Render: no connection drops, a Persistence Off store keeps every key, and no surface asks for or warns about a restart. **Status:** done — every task done; t005's live replay passed in the QA loop's round 169 (2026-11-12)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | [t002](done/t002.md) | Backend: descriptions, a restart-free write, no `key_value_config_restart` for a policy change — **DONE** | 25m | t001 |
 | [t003](done/t003.md) | Dashboard: the Maxmemory Policy card saves without a dialog — **DONE** | 20m | t001 |
 | [t004](done/t004.md) | Docs: ADR021, ADR018 and the webhook record — **DONE** | 10m | t001 |
-| [t005](t005.md) | Live verification on an owned Free Key Value with Persistence Off | 20m | t002, t003 |
+| [t005](done/t005.md) | Live verification on an owned Free Key Value with Persistence Off — **DONE** | 20m | t002, t003 |
 | [t006](done/t006.md) | Render parity — **DONE** | 5m | t001 |
 | [t007](done/t007.md) | Simplify — **DONE** | 15m | t004 |
 | [t008](done/t008.md) | Test coverage — **DONE** | 30m | t004 |
-| [t009](t009.md) | Closeout | 10m | t005–t008 |
+| [t009](done/t009.md) | Closeout — **DONE** | 10m | t005–t008 |
 
 Nine tasks, 195m (3h15m).
 
