@@ -128,3 +128,22 @@ The released `bex v0.5.0`, on the free Node web service `qa-20261112-11ae-web` (
 - **DoD 4 holds apart from t009.** The interactive `bex deploys create <srv>` (Enter, then `y`; deploy `dep-dbqr2ebk98kc7399u8i0`) showed the build's lines, then the app line and the live line. The Logs view's "No logs to show" lasted only until the first line.
 - **t008's failing build holds on the CLI.** The build command `yarn install && echo QA-FAIL-11ae && exit 3` (`dep-dbqr56p4nu2c739q1td0`): the tail printed all 28 lines of history, including `QA-FAIL-11ae`, `error: build command … exited with code 3` and the `==> Build failed: …` lines. Unlike round 195's SSE stream, the CLI's tail stays open between builds (`followBuilds`), so it did receive the closing verdict, after the error line. t009's second half is therefore a single-build-stream issue (SSE `followBuildLogs`); the CLI form already ends with the verdict.
 - **History has the same ordering fault when the row is late.** `startedAt` came from 2 s before to 15 s after the build's first line across this sweep's builds. For `dep-dbqr2ebk98kc7399u8i0` (`startedAt` 12:30:11, `==> Using Node 24` 12:29:56), a forward read lists `Building from` after `Using Node 24`. t009's acceptance ("before `Running build command`") allows that.
+
+## Post-release probe — QA loop round 203 (2026-11-12, pin `ca7fbbe606c8`, which carries t009's `4c799fad1`)
+
+The tail was read over SSE (`GET /v1/logs/subscribe?…&type=build`, `Accept: text/event-stream`), opened right after `POST …/deploys`. The fixture was the Free Node service `qa-20261112-r203-tail` (`srv-dbqtcqsdhgcs73anvso0`, `render-examples/express-hello-world@039c347`), deleted afterwards (DELETE 204, then GET 404).
+
+- **t009's acceptance passes.**
+  - **Order:** `dep-dbqtelomuegs73e0hip0` delivered, in arrival order:
+    - `==> Build queued` (15:12:24.3);
+    - `==> Using Node 24` (15:12:44.5);
+    - **`==> Building from …@039c347` (15:12:50.4)**;
+    - `==> Running build command …` (15:13:15.7);
+    - `QA203-BUILD-MARK`;
+    - `==> Uploading build...`;
+    - `==> Uploaded in 8s` / `==> Build successful 🎉` (15:13:58.3).
+
+    This is the history's order.
+  - **The failure's verdict:** `dep-dbqtfvkdhgcs73anvssg` (build command `… && exit 3`) delivered `QA203-FAIL-MARK`, then `error: build command … exited with code 3` (15:15:54.9), then `==> Build failed: …` (15:16:08.8), and then the stream ended. The row closed `build_failed` at 15:16:07.3.
+- **Residual against t009's objective, not its acceptance:** the successful build's tail ended at 15:14:09.3, 11 s after `Build successful`. The row went `live` at 15:15:07.3, and the history then ends with `==> Your service is live 🎉` (15:15:07.277). The tail never delivers that line. t007's closeout decides whether DoD 2–3 need it.
+- The `==> Build failed:` text quoting bex's toolchain is w4/m324 t009, unchanged.
