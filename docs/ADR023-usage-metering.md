@@ -148,7 +148,13 @@ The loop iterates `ListApps` (App services) and then all `Database` and `KeyValu
 
 - **What fills it.** An `AFTER DELETE` trigger on `apps` writes a row on every App deletion path: the delete verb or a workspace cascade. The table has no foreign key, so that cascade cannot fail. `RollbackAppCreation` discards the row, because a create that never completed owes nothing. `DeletePostgres` and `DeleteKeyValue` record the CR's identity, namespace, display name, public flag, plan and creation time **before** deleting it. If the record cannot be written they refuse the delete as unavailable.
 - **How it is metered.** Each rollup and catch-up meters these rows through the hour of deletion, using the same per-meter cursors and the same 48-hour floor from the current window.
-  - **Apps** are metered for `instance_seconds` and `build_seconds` by their derived pod identity. Their final-hour `egress_bytes` stays unmetered, because the Traefik router names it needs exist only on the live CR.
+  - **Apps** are metered for `instance_seconds` and `build_seconds` by their derived pod identity.
+  - **Apps' `egress_bytes` too (w6/m333).** Their final hours' bandwidth is billed, as on Render ([outbound bandwidth](https://render.com/docs/outbound-bandwidth)). The HTTP counter is keyed by Traefik router names that exist only while the CR and its Ingresses do.
+    - So each catch-up pass resolves an App's egress identity once and uses it for every window. The identity is the router names and the direct-egress flag.
+    - The pass records the identity in `usage_egress_identities`, migration `0233_usage_retired_egress_identity`. These are observed cluster state, so they live beside the `apps` row, not on it; an unchanged identity writes nothing.
+    - The retired pass reads the identity with the retired record and meters egress with the same per-source health gating as a live App. Pruning the record removes the identity.
+    - The direct and WebSocket counters are keyed by the App's id. The router names are covered by the same-name skip below.
+    - **Gap.** An App deleted before any pass resolved its routers has no identity, so its egress stays unmetered, as before. That is an App created and deleted between two hourly rollups (w6/121).
   - **A same-name App** created by the deletion hour (one that is live, or deleted later) is already billing those same pods under its own ID, so the deleted App is skipped.
   - **Datastores** go through the live datastore pass, so their display names are retained and all three meters run.
 - **Coverage.** Each retired resource's coverage streams close at the end of its deletion hour.

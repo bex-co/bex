@@ -61,6 +61,9 @@ type UsageStore interface {
 	PruneRetiredUsageResources(ctx context.Context, before time.Time) (int64, error)
 	CloseUsageSourceStreams(ctx context.Context, ref store.UsageResourceRef, through time.Time) error
 	CloseIdleUsageSourceStreams(ctx context.Context, kind, source string, active []string, through time.Time) error
+	// The live egress meter keeps each App's resolved egress identity, which a
+	// deleted App's final hours are metered from (w6/m333).
+	RecordAppEgressIdentity(ctx context.Context, appID string, identity store.EgressIdentity) error
 	UpsertUsageHourly(ctx context.Context, row store.HourlyRow) error
 	RecordUsageSourceHealth(ctx context.Context, records []store.UsageSourceRecord) error
 	ReconcileUsageSourceStreams(ctx context.Context, active []store.UsageResourceRef, through time.Time) error
@@ -951,13 +954,20 @@ func (s *Service) meterDatastoresThrough(ctx context.Context, datastores []datas
 	}
 }
 
-// retiredAppMeterKinds are the App meters a deleted App can still be measured
-// by: pods and build Jobs are named from the derived CR identity, but egress
-// is keyed by router names only the live CR can supply, so a deleted App's
-// final-hour egress stays unmetered.
-var retiredAppMeterKinds = [...]string{
-	store.UsageKindInstanceSeconds,
-	store.UsageKindBuildSeconds,
+// retiredAppKinds are the meters a deleted App owes its final hours to. Pods
+// and build Jobs are named from the derived CR identity, but egress is keyed
+// by router names only the live CR supplies, so it is owed only when the live
+// meter recorded them (w6/m333). A deleted build source owes only its last
+// builds: a carrier never runs instances (w2/m254).
+func retiredAppKinds(r store.RetiredUsageResource) []string {
+	switch k, ok := ids.KindOf(r.ResourceID); {
+	case ok && k == ids.BuildSource:
+		return []string{store.UsageKindBuildSeconds}
+	case r.Egress != nil:
+		return appMeterKinds[:]
+	default:
+		return []string{store.UsageKindInstanceSeconds, store.UsageKindBuildSeconds}
+	}
 }
 
 // meterRetiredThrough meters each resource deleted within the catch-up window
@@ -984,14 +994,8 @@ func (s *Service) meterRetiredThrough(ctx context.Context, live []store.App, las
 				TenantID: r.WorkspaceID, Plan: r.Tier, Kind: r.ResourceKind, CreatedAt: r.CreatedAt, Through: through,
 			})
 		} else if !podIdentityReused(r, through, live, retired) {
-			app := store.App{ID: r.ResourceID, TenantID: r.WorkspaceID, Name: r.Name, Tier: r.Tier, CreatedAt: r.CreatedAt}
-			kinds := retiredAppMeterKinds[:]
-			// A deleted build source still owes its last builds, and only
-			// those: a carrier never runs instances (w2/m254).
-			if k, ok := ids.KindOf(r.ResourceID); ok && k == ids.BuildSource {
-				kinds = []string{store.UsageKindBuildSeconds}
-			}
-			for _, kind := range kinds {
+			app := store.App{ID: r.ResourceID, TenantID: r.WorkspaceID, Name: r.Name, Tier: r.Tier, CreatedAt: r.CreatedAt, Egress: r.Egress}
+			for _, kind := range retiredAppKinds(r) {
 				s.catchUpAppMeter(ctx, app, kind, floor, through)
 			}
 		}
@@ -1100,6 +1104,17 @@ func (s *Service) catchUpAppMeter(ctx context.Context, app store.App, kind strin
 		start = floor
 	} else {
 		start = start.Add(time.Hour)
+	}
+	if kind == store.UsageKindEgressBytes && app.Egress == nil && !start.After(last) {
+		// One resolution serves every window of the pass, and recording it lets
+		// a deletion before the next pass still be metered (w6/m333). Metering
+		// does not depend on the record, so a failed write only logs.
+		if identity, ok := s.appEgressIdentity(ctx, app); ok {
+			app.Egress = &identity
+			if err := s.Store.RecordAppEgressIdentity(ctx, app.ID, identity); err != nil {
+				log.Printf("usage: egress_bytes record identity for %s: %v", app.ID, err)
+			}
+		}
 	}
 	for window := start; !window.After(last); window = window.Add(time.Hour) {
 		result := s.processAppMeterWindowResult(ctx, app, kind, window)
@@ -1498,17 +1513,11 @@ func degradeSourceHealth(health []store.UsageSourceObservation) []store.UsageSou
 }
 
 func (s *Service) queryEgressBytesEvidence(ctx context.Context, app store.App, start, end time.Time) (int64, []store.UsageSourceObservation, bool) {
-	cr, found := s.resolveAppCR(ctx, app, store.UsageKindEgressBytes)
-	if !found {
+	identity, ok := s.appEgressIdentity(ctx, app)
+	if !ok {
 		return 0, unavailableAppEgressSources(false), false
 	}
-	direct := cr.Spec.Type != appv1alpha1.TypeStaticSite
-	routers, err := s.TraefikRouterNames(ctx, cr)
-	if err != nil {
-		log.Printf("usage: egress_bytes resolve routers for %s: %v", app.ID, err)
-		return 0, unavailableAppEgressSources(false), false
-	}
-	specs := egressquery.App(app.ID, routers, direct)
+	specs := egressquery.App(app.ID, identity.Routers, identity.Direct)
 	if len(specs) == 0 {
 		// A private/no-router static site has explicit healthy zero egress; it is
 		// not missing evidence merely because no public counter applies.
@@ -1522,6 +1531,25 @@ func (s *Service) queryEgressBytesEvidence(ctx context.Context, app store.App, s
 		return 0, observations, false
 	}
 	return s.queryEgressSourcesEvidence(ctx, app.ID, specs, start, end)
+}
+
+// appEgressIdentity is the router names and direct flag app's egress is read
+// by: the one app carries (resolved for this pass, or a deleted App's recorded
+// one), else resolved from its CR and Ingresses.
+func (s *Service) appEgressIdentity(ctx context.Context, app store.App) (store.EgressIdentity, bool) {
+	if app.Egress != nil {
+		return *app.Egress, true
+	}
+	cr, found := s.resolveAppCR(ctx, app, store.UsageKindEgressBytes)
+	if !found {
+		return store.EgressIdentity{}, false
+	}
+	routers, err := s.TraefikRouterNames(ctx, cr)
+	if err != nil {
+		log.Printf("usage: egress_bytes resolve routers for %s: %v", app.ID, err)
+		return store.EgressIdentity{}, false
+	}
+	return store.EgressIdentity{Routers: routers, Direct: cr.Spec.Type != appv1alpha1.TypeStaticSite}, true
 }
 
 func unavailableAppEgressSources(direct bool) []store.UsageSourceObservation {

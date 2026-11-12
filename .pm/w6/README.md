@@ -251,6 +251,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **121** — [A service deleted before its first hourly rollup still loses its egress](121.md) (~1h) ← w6/m333 review
 - [ ] **120** — [The agent image and the platform builder ship the Go that `lego/go.work` requires](120.md) (~30m) ← w6/m331 t001
 - [ ] **119** — [Re-triage m158, m164, m291 and m163 now that bex CI runs on GitHub-hosted runners](119.md) (~45m) ← proposal 5
 - [ ] **118** — [ADR018 records that hosted bex requires a card for every workspace (ADR075 D7)](118.md) (~20m) ← proposal 4

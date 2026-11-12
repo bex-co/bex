@@ -18,8 +18,10 @@ package usage
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -201,5 +203,122 @@ func TestRetiredBuildSourceMetersBuildsOnly(t *testing.T) {
 	}
 	if !sawBuild {
 		t.Error("a deleted build source's last hour of builds was not metered")
+	}
+}
+
+// w6/m333: a web service deleted inside an hour owes that hour's bandwidth,
+// as on Render. Its CR and Ingresses are gone, so the meter reads it by the
+// router names and direct flag its live egress meter recorded, with the same
+// per-source health gating as a live service, and still ends its coverage
+// with the deletion hour.
+func TestRetiredAppMetersItsDeletionHourEgressFromItsRecordedIdentity(t *testing.T) {
+	const router = "default-tea-short-whoami-whoami-onbex-co@kubernetes"
+	app := store.RetiredUsageResource{ResourceKind: store.ResourceKindService, ResourceID: "srv-short", WorkspaceID: "tea-short",
+		// It lived across an earlier rollup, which is when its identity was recorded.
+		Name: "whoami", Tier: "starter", CreatedAt: retiredHour.Add(-2*time.Hour + 21*time.Minute), RetiredAt: retiredHour.Add(27 * time.Minute),
+		Egress: &store.EgressIdentity{Routers: []string{router}, Direct: true}}
+	st := newMemUsageStore()
+	st.retired = []store.RetiredUsageResource{app}
+	ranAt := strconv.FormatInt(retiredHour.Add(time.Hour).Unix(), 10)
+	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("query")
+		ran := r.URL.Query().Get("time") == ranAt
+		v := "0"
+		switch {
+		case strings.Contains(q, "healthy") || strings.Contains(q, `up{job=`):
+			v = "1"
+		case ran && strings.Contains(q, "traefik_router_responses_bytes_total") && strings.Contains(q, router):
+			v = "40"
+		case ran && strings.Contains(q, "bex_app_direct_egress_bytes_total") && strings.Contains(q, `app_id="srv-short"`):
+			v = "2"
+		}
+		_, _ = w.Write([]byte(`{"status":"success","data":{"resultType":"vector","result":[{"value":[0,"` + v + `"]}]}}`))
+	}))
+	defer prom.Close()
+	svc := &Service{Base: &core.Base{Client: appMeterClient(t, store.App{ID: "srv-live", TenantID: "tea-live", Name: "live"}), Namespace: "default"},
+		Store: st, PromBase: prom.URL}
+
+	svc.rollup(context.Background(), retiredHour.Add(time.Hour+5*time.Second))
+	svc.rollup(context.Background(), retiredHour.Add(2*time.Hour+5*time.Second))
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	var deletionHour *store.HourlyRow
+	for _, row := range st.rows {
+		if row.ServiceID != app.ResourceID || row.Kind != store.UsageKindEgressBytes {
+			continue
+		}
+		if row.WindowStart.After(retiredHour) {
+			t.Errorf("egress metered for %v, after the deletion hour %v", row.WindowStart, retiredHour)
+		}
+		if row.WindowStart.Equal(retiredHour) {
+			deletionHour = &row
+		}
+	}
+	if deletionHour == nil || deletionHour.Quantity != 42 {
+		t.Fatalf("deletion-hour egress row = %+v, want 42 bytes (40 HTTP + 2 direct)", deletionHour)
+	}
+	for _, health := range deletionHour.SourceHealth {
+		if health.State != store.UsageSourceHealthy {
+			t.Errorf("egress source %s = %s, want healthy", health.Source, health.State)
+		}
+	}
+	ref := store.UsageResourceRef{ResourceKind: app.ResourceKind, ServiceID: app.ResourceID}
+	if through := st.closed[ref]; !through.Equal(retiredHour.Add(time.Hour)) {
+		t.Errorf("coverage closed at %v, want the deletion hour's end %v", through, retiredHour.Add(time.Hour))
+	}
+}
+
+// The identity a retired App's egress is read by comes from its live meter:
+// each catch-up pass resolves it once, uses it for every window, and records
+// it for the App, so the retirement has it when the App is deleted (w6/m333).
+func TestLiveEgressMeterRecordsTheAppsEgressIdentityOncePerPass(t *testing.T) {
+	prom := fakeProm(1)
+	defer prom.Close()
+	app := store.App{ID: "srv-web", TenantID: "tea-one", Name: "web", CreatedAt: retiredHour.Add(-2 * time.Hour)}
+	st := newMemUsageStore()
+	svc := &Service{Base: &core.Base{Client: publicAppMeterClient(t, app, "tea-one-web", "tea-one-web", "web.onbex.co"), Namespace: "default"},
+		Store: st, PromBase: prom.URL}
+
+	svc.catchUpAppMeter(context.Background(), app, store.UsageKindEgressBytes, retiredHour.Add(-2*time.Hour), retiredHour)
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if windows := len(st.rows); windows != 3 {
+		t.Fatalf("metered %d egress windows, want the pass's 3", windows)
+	}
+	if st.egressIdentityRecords != 1 {
+		t.Errorf("identity recorded %d times in one 3-window pass, want once", st.egressIdentityRecords)
+	}
+	got := st.egressIdentities[app.ID]
+	// The bare router and its web-entrypoint name (traefikWebEntrypoint).
+	want := []string{"default-tea-one-web-web-onbex-co@kubernetes", "web-default-tea-one-web-web-onbex-co@kubernetes"}
+	if !got.Direct || !slices.Equal(got.Routers, want) {
+		t.Fatalf("recorded identity = %+v, want routers %v with direct egress", got, want)
+	}
+}
+
+// Recording the identity is for a later deletion only: a failed write must not
+// cost the live App this hour's egress (w6/m333).
+func TestLiveEgressIsMeteredWhenRecordingItsIdentityFails(t *testing.T) {
+	prom := fakeProm(40)
+	defer prom.Close()
+	app := store.App{ID: "srv-web", TenantID: "tea-one", Name: "web", CreatedAt: retiredHour}
+	st := newMemUsageStore()
+	st.egressIdentityErr = errors.New("store unavailable")
+	svc := &Service{Base: &core.Base{Client: publicAppMeterClient(t, app, "tea-one-web", "tea-one-web", "web.onbex.co"), Namespace: "default"},
+		Store: st, PromBase: prom.URL}
+
+	svc.catchUpAppMeter(context.Background(), app, store.UsageKindEgressBytes, retiredHour, retiredHour)
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if len(st.rows) != 1 {
+		t.Fatalf("egress rows with a failing identity record = %d, want the hour metered", len(st.rows))
+	}
+	for _, row := range st.rows {
+		if row.Quantity < 40 {
+			t.Fatalf("egress row = %+v, want the hour's bytes", row)
+		}
 	}
 }

@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 )
@@ -130,5 +131,112 @@ func TestRetiredUsageResourcesPG(t *testing.T) {
 	}
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM usage_retired_resources WHERE workspace_id = $1`, tenant.ID).Scan(&left); err != nil || left != 0 {
 		t.Fatalf("the deleted workspace's records survived the prune (%d, %v)", left, err)
+	}
+}
+
+// w6/m333: the egress identity the live meter records for an App outlives the
+// App's row, so the retired pass can meter its deletion hour's egress. An App
+// whose identity was never resolved retires with none; one with no routers
+// keeps "known, empty". The identity goes when its retired record is pruned.
+func TestRetiredAppCarriesItsEgressIdentityPG(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	create := func(name string) App {
+		t.Helper()
+		app, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: name, Type: "web_service", Image: "nginx:1", Replicas: 1, Tier: "starter"})
+		if err != nil {
+			t.Fatalf("CreateApp %s: %v", name, err)
+		}
+		return app
+	}
+	web, unresolved, private := create("egress-web"), create("egress-unresolved"), create("egress-private")
+	identity := EgressIdentity{Routers: []string{"default-a-web@kubernetes", "web-default-a-web@kubernetes"}, Direct: true}
+	if err := st.RecordAppEgressIdentity(ctx, web.ID, identity); err != nil {
+		t.Fatalf("RecordAppEgressIdentity: %v", err)
+	}
+	// An unchanged identity is not rewritten every pass.
+	version := func() string {
+		t.Helper()
+		var xmin string
+		if err := pool.QueryRow(ctx, `SELECT xmin::text FROM usage_egress_identities WHERE service_id = $1`, web.ID).Scan(&xmin); err != nil {
+			t.Fatal(err)
+		}
+		return xmin
+	}
+	before := version()
+	if err := st.RecordAppEgressIdentity(ctx, web.ID, identity); err != nil {
+		t.Fatalf("RecordAppEgressIdentity again: %v", err)
+	}
+	if after := version(); after != before {
+		t.Fatalf("an unchanged identity rewrote its row (xmin %s -> %s)", before, after)
+	}
+	if err := st.RecordAppEgressIdentity(ctx, private.ID, EgressIdentity{Direct: true}); err != nil {
+		t.Fatalf("RecordAppEgressIdentity private: %v", err)
+	}
+	for _, app := range []App{web, unresolved, private} {
+		if err := st.DeleteApp(ctx, app.ID); err != nil {
+			t.Fatalf("DeleteApp %s: %v", app.Name, err)
+		}
+	}
+	list, err := st.ListRetiredUsageResources(ctx, time.Now().Add(-48*time.Hour))
+	if err != nil {
+		t.Fatalf("ListRetiredUsageResources: %v", err)
+	}
+	got := map[string]*EgressIdentity{}
+	for _, r := range list {
+		got[r.ResourceID] = r.Egress
+	}
+	if e := got[web.ID]; e == nil || !e.Direct || !slices.Equal(e.Routers, identity.Routers) {
+		t.Fatalf("retired web service egress = %+v, want %+v", e, identity)
+	}
+	if e, ok := got[unresolved.ID]; !ok || e != nil {
+		t.Fatalf("never-resolved service egress = %+v (listed %v), want nil", e, ok)
+	}
+	if e := got[private.ID]; e == nil || len(e.Routers) != 0 || !e.Direct {
+		t.Fatalf("no-router service egress = %+v, want known with no routers and direct egress", e)
+	}
+
+	// Pruning the retired records takes their identities with them.
+	if _, err := pool.Exec(ctx, `UPDATE usage_retired_resources SET retired_at = now() - interval '3 days' WHERE resource_id = ANY($1)`, []string{web.ID, private.ID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.PruneRetiredUsageResources(ctx, time.Now().Add(-48*time.Hour)); err != nil {
+		t.Fatalf("PruneRetiredUsageResources: %v", err)
+	}
+	var left int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM usage_egress_identities WHERE service_id = ANY($1)`, []string{web.ID, private.ID}).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("%d identities left after their records were pruned (%v), want 0", left, err)
+	}
+}
+
+// w6/m333 t004: once a deleted service's last hour of egress is metered and its
+// streams close, the month's coverage names no egress source degraded.
+func TestDeletedServiceEgressCoverageReadsHealthyPG(t *testing.T) {
+	st, _, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	service := "srv-gone-" + tenant.ID
+	hour := time.Now().UTC().Truncate(time.Hour).Add(-72 * time.Hour)
+	if err := st.UpsertUsageHourly(ctx, HourlyRow{
+		WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: service,
+		Kind: UsageKindEgressBytes, WindowStart: hour, Quantity: 42,
+		SourceHealth: []UsageSourceObservation{
+			{Source: UsageSourceHTTP, State: UsageSourceHealthy, ExpectedFrom: hour},
+			{Source: UsageSourceWebSocket, State: UsageSourceHealthy, ExpectedFrom: hour},
+			{Source: UsageSourceDirect, State: UsageSourceHealthy, ExpectedFrom: hour},
+		},
+	}); err != nil {
+		t.Fatalf("UpsertUsageHourly: %v", err)
+	}
+	if err := st.CloseUsageSourceStreams(ctx, UsageResourceRef{ResourceKind: ResourceKindService, ServiceID: service}, hour.Add(time.Hour)); err != nil {
+		t.Fatalf("CloseUsageSourceStreams: %v", err)
+	}
+	coverage, err := st.CurrentUsageCoverage(ctx, tenant.ID, time.Now())
+	if err != nil {
+		t.Fatalf("CurrentUsageCoverage: %v", err)
+	}
+	for _, source := range []string{UsageSourceHTTP, UsageSourceWebSocket, UsageSourceDirect} {
+		if slices.Contains(coverage.DegradedSources, source) {
+			t.Errorf("coverage %+v names %s degraded after the deleted service's last hour was metered", coverage, source)
+		}
 	}
 }

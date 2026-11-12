@@ -80,6 +80,25 @@ type memUsageStore struct {
 	closed  map[store.UsageResourceRef]time.Time
 	// idleClosed captures each CloseIdleUsageSourceStreams call.
 	idleClosed []idleStreamClose
+	// egressIdentities captures the last RecordAppEgressIdentity per App;
+	// egressIdentityErr makes every record fail.
+	egressIdentities      map[string]store.EgressIdentity
+	egressIdentityErr     error
+	egressIdentityRecords int
+}
+
+func (m *memUsageStore) RecordAppEgressIdentity(_ context.Context, appID string, identity store.EgressIdentity) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.egressIdentityRecords++
+	if m.egressIdentityErr != nil {
+		return m.egressIdentityErr
+	}
+	if m.egressIdentities == nil {
+		m.egressIdentities = map[string]store.EgressIdentity{}
+	}
+	m.egressIdentities[appID] = identity
+	return nil
 }
 
 type idleStreamClose struct {

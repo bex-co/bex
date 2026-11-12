@@ -173,6 +173,10 @@ type App struct {
 	// deploys, empty until one is selected. Both empty for every other app.
 	BuildSourceID    string `json:"buildSourceId,omitempty"`
 	BuildSourceImage string `json:"-"`
+	// Egress is the usage meter's egress identity for this App, never
+	// persisted with the row: resolved once per catch-up pass for a live App,
+	// or a deleted App's recorded one (w6/m333).
+	Egress *EgressIdentity `json:"-"`
 	// ScopeProjectID is a build source carrier's project scope (Render's
 	// projectId on a build source); empty for every other app.
 	ScopeProjectID string `json:"-"`

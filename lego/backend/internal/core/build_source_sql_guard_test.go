@@ -44,6 +44,7 @@ var sqlAppsReadsThatMayIncludeBuildSources = map[string]string{
 	"store/store.go:CountWorkspaceDomainClaims":                 "a carrier claims no domain",
 	"store/store.go:ListDesiredApps":                            "the reconciler projects every App, carriers included",
 	"store/store.go:listAppsWhere":                              "callers pass serviceAppsOnly or buildSourcesOnly",
+	"store/usage_retired.go:PruneRetiredUsageResources":         "asks only whether an egress identity's App row still exists; any row, carrier included, keeps it",
 }
 
 // appsTableRead matches SQL that reads the apps table (not apps_*).
