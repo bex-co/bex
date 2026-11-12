@@ -2754,7 +2754,7 @@ func TestBuildFactsForTerminalSkip(t *testing.T) {
 	}
 
 	start := time.Date(2026, 8, 27, 19, 57, 15, 0, time.UTC)
-	facts := buildLifecycleFacts(queued, DeployBuildFailed, &start)
+	facts := buildLifecycleFacts(queued, DeployBuildFailed, &buildWindow{start: start, finish: start.Add(time.Minute)})
 	if len(facts) != 2 || facts[0].Type != EventFactBuildStarted || !facts[0].At.Equal(start) {
 		t.Fatalf("facts = %+v, want build_started at the recorded window's start", facts)
 	}
@@ -2777,7 +2777,7 @@ func TestBuildFactsForSuccessfulSkip(t *testing.T) {
 		if facts := buildLifecycleFacts(open, DeployLive, nil); facts != nil {
 			t.Errorf("%s→live without evidence emitted %+v, want none", status, facts)
 		}
-		facts := buildLifecycleFacts(open, DeployLive, &window)
+		facts := buildLifecycleFacts(open, DeployLive, &buildWindow{start: window, finish: window.Add(time.Minute)})
 		if len(facts) != 2 || facts[0].Type != EventFactBuildStarted || !facts[0].At.Equal(window) ||
 			facts[1].Type != EventFactBuildEnded || facts[1].Status != EventStatusSucceeded {
 			t.Errorf("%s→live with evidence = %+v, want build_started at %v + build_ended(succeeded)", status, facts, window)
@@ -2787,7 +2787,7 @@ func TestBuildFactsForSuccessfulSkip(t *testing.T) {
 	// An in-progress observation already dated the build: live keeps it.
 	observed := time.Date(2026, 10, 3, 3, 33, 50, 0, time.UTC)
 	started := Deploy{ID: "dep-2", AppID: "srv-1", Status: DeployBuildInProgress, CreatedAt: created, StartedAt: &observed}
-	if facts := buildLifecycleFacts(started, DeployLive, &window); len(facts) != 2 || !facts[0].At.Equal(observed) {
+	if facts := buildLifecycleFacts(started, DeployLive, &buildWindow{start: window, finish: window.Add(time.Minute)}); len(facts) != 2 || !facts[0].At.Equal(observed) {
 		t.Errorf("observed build → live = %+v, want build_started at the observed %v", facts, observed)
 	}
 
@@ -2795,7 +2795,7 @@ func TestBuildFactsForSuccessfulSkip(t *testing.T) {
 	// queue before dispatch), so one observed straight at a build failure is
 	// dated by the operator's recorded build window, never by created_at.
 	open := Deploy{ID: "dep-3", AppID: "srv-1", Status: DeployCreated, CreatedAt: created}
-	if facts := buildLifecycleFacts(open, DeployBuildFailed, &window); len(facts) != 2 || !facts[0].At.Equal(window) {
+	if facts := buildLifecycleFacts(open, DeployBuildFailed, &buildWindow{start: window, finish: window.Add(time.Minute)}); len(facts) != 2 || !facts[0].At.Equal(window) {
 		t.Errorf("created→build_failed = %+v, want build_started at the recorded window %v", facts, window)
 	}
 	if facts := buildLifecycleFacts(open, DeployBuildFailed, nil); facts != nil {
@@ -3278,5 +3278,48 @@ func TestLifecycleFactsIgnoreARefusedTransition(t *testing.T) {
 	defer st.mu.Unlock()
 	if f, ok := st.eventFacts["deploy:dep-x:build_ended"]; ok {
 		t.Fatalf("refused transition minted build_ended: %+v", f)
+	}
+}
+
+// w8/287: a deploy that waited behind a failed one built while its row still
+// read queued, and the first pass after the build saw update_in_progress.
+// Both build facts and the row's start come from the operator's recorded
+// window, so the build reads as the 50 s it ran, before it ended. A row seen
+// leaving the queue into build_in_progress keeps the observation's clock.
+func TestBuildFactsForARowFirstSeenPastItsBuild(t *testing.T) {
+	created := time.Date(2026, 11, 12, 8, 33, 0, 0, time.UTC)
+	window := buildWindow{start: time.Date(2026, 11, 12, 8, 54, 16, 0, time.UTC), finish: time.Date(2026, 11, 12, 8, 55, 10, 0, time.UTC)}
+	queued := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployQueued, CreatedAt: created}
+	for _, past := range []string{DeployUpdateInProgress, DeployPreDeployInProgress} {
+		facts := buildLifecycleFacts(queued, past, &window)
+		if len(facts) != 2 || !facts[0].At.Equal(window.start) || facts[1].Type != EventFactBuildEnded || !facts[1].At.Equal(window.finish) {
+			t.Errorf("queued→%s = %+v, want build_started %v and build_ended %v", past, facts, window.start, window.finish)
+		}
+	}
+	before := time.Now()
+	facts := buildLifecycleFacts(queued, DeployBuildInProgress, nil)
+	if len(facts) != 1 || facts[0].At.Before(before) {
+		t.Errorf("queued→build_in_progress = %+v, want build_started at the observation", facts)
+	}
+
+	ctx := context.Background()
+	st := newMemStore()
+	tenant, err := st.CreateTenant(ctx, "w8-287", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	row, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "web", Repo: "https://example.invalid/acme/web.git", Tier: "free"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := st.CreateDeploy(ctx, row.ID, TriggerAPI, "", 4, CommitInfo{}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ok, err := st.TransitionDeploy(ctx, d.ID, DeployUpdateInProgress, RanImage{}, "", "", "", &window.start); err != nil || !ok {
+		t.Fatalf("transition: %v %v", ok, err)
+	}
+	if got, _ := st.GetDeploy(ctx, row.ID, d.ID); got.StartedAt == nil || !got.StartedAt.Equal(window.start) {
+		t.Fatalf("started_at = %v, want the recorded build start %v", got.StartedAt, window.start)
 	}
 }

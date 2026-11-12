@@ -726,7 +726,9 @@ type Store interface {
 	// operator's recorded build window, w6/m123), applied only when the row
 	// carries none — a terminal skip (failure, or live first observed at live,
 	// w4/m156) otherwise leaves started_at honestly null rather than
-	// fabricating one; pass nil without evidence.
+	// fabricating one; pass nil without evidence. On a dispatch-observing
+	// phase it outranks this transition's clock: a row first seen past its
+	// build began when the build did (w8/287).
 	// A stale/repeated/invalid transition returns false without changing data.
 	// cancelReason (w4/089) is stored with the same transition when non-empty —
 	// pass it only alongside DeployCanceled from the reconciler's supersede or
@@ -3084,7 +3086,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			     pre_deploy_status = CASE WHEN $5 AND pre_deploy_status = $10
 			                              THEN CASE $2 WHEN $11 THEN $12 WHEN $14 THEN $15 ELSE $13 END
 			                              ELSE pre_deploy_status END,
-			     started_at = CASE WHEN $4 THEN COALESCE(started_at, clock_timestamp())
+			     started_at = CASE WHEN $4 THEN COALESCE(started_at, $9, clock_timestamp())
 			                       ELSE COALESCE(started_at, $9) END,
 			     finished_at = CASE WHEN $5 THEN COALESCE(finished_at, clock_timestamp()) ELSE finished_at END,
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())

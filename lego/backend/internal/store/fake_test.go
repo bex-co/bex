@@ -899,11 +899,11 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status string, ran Ra
 	}
 	if d.StartedAt == nil {
 		switch {
-		case DeployStatusStampsDispatch(status):
-			d.StartedAt = &now
 		case startedAt != nil:
 			at := *startedAt
 			d.StartedAt = &at
+		case DeployStatusStampsDispatch(status):
+			d.StartedAt = &now
 		}
 	}
 	if IsTerminalDeployStatus(status) && d.FinishedAt == nil {
