@@ -16,6 +16,12 @@
 #                   under FIXED namespace/service pairs (w5/053, ADR088 §6) so
 #                   the obs availability dashboard's log panel can explain a
 #                   platform-API outage. Every other host still drops.
+#   type=sandbox  — agent-session sandbox pods in the tenant `<ws>-sandbox`
+#                   namespaces (pod label bex.co/agent-session), labelled
+#                   namespace/service=agent-sandbox/agent_session/pod/container.
+#                   Operator evidence only: no tenant selector matches them (no
+#                   `app` label, and a sandbox namespace is never an App's).
+#                   See AGENT SANDBOX PODS below.
 #
 # These are exactly the labels bex-api's LogQL selects on (see lokiSelectorFor /
 # docs/ADR010-observability.md § Log labels), and both push to /loki/api/v1/push.
@@ -92,6 +98,21 @@
 # so no tenant pipeline needs a kubelet filter. bex-api's direct reads apply
 # the same rule by source: every container line carries the timestamp the
 # kubelet stamps, and its own answers carry none.
+#
+# AGENT SANDBOX PODS: the sandbox_pods pipeline tails their CRI files (a
+# crashing container's last lines are the evidence, and the API tailer misses
+# a container that exits fast), caps a reassembled line at 16 KiB (the
+# kubelet's own line size; see CRI LINE CAP), rate-limits each pod to 20
+# lines/s with a 400-line burst and drops the excess, and then drops every
+# line that looks like a credential rather than redacting it: the agent runs
+# untrusted code that may print secrets it was given. That covers a private
+# key's BEGIN/END lines and its base64 body lines, an Authorization or Cookie
+# header, a key=/token=/password= value, known token shapes and a URL with
+# userinfo. Retention cost against Loki's 21 days (loki.yaml, 60Gi): a driver
+# logs a few lines per turn, so real volume is KiBs per session; the rate cap
+# bounds a runaway pod at ~150 MiB/day of raw lines (~15-30 MiB in Loki
+# chunks), so even 10 pods flooding for the whole window stay under ~7 GiB.
+# The SSH gateway and opensandbox-system ship with the other platform pods.
 #
 # NOTE (the cluster-specific knobs, like prometheus.yaml's): the App pod-label
 # name (app.bex.co/app => Alloy meta key __meta_kubernetes_pod_label_app_bex_co_app),
@@ -383,15 +404,17 @@ spec:
               discovery.relabel "platform_pods" {
                 targets = discovery.kubernetes.pods.targets
 
-                // One keep for dashboard + zot + static-server (w2/m93) and the
+                // One keep for dashboard + zot + static-server (w2/m93), the
                 // bex-api + operator manager pods (w7/m157), whose logs were
-                // otherwise lost with every replaced replica. Closed service=
-                // vocabulary is stamped below; bex-system's other components
-                // (activator, proxies, egress meter, ssh-gateway) stay out.
+                // otherwise lost with every replaced replica, and the SSH
+                // gateway + every opensandbox-system pod, which exec into and
+                // run the agent sandboxes. Closed service= vocabulary is
+                // stamped below; bex-system's other components (activator,
+                // proxies, egress meter) stay out.
                 rule {
                   source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_bex_co_component", "__meta_kubernetes_pod_label_app_kubernetes_io_name", "__meta_kubernetes_pod_label_control_plane"]
                   separator     = ";"
-                  regex         = "dashboard;.*|bex-registry;.*|bex-system;static-server;.*|bex-system;;bex-api;.*|bex-system;;[^;]*;controller-manager"
+                  regex         = "dashboard;.*|bex-registry;.*|bex-system;static-server;.*|bex-system;;bex-api;.*|bex-system;;[^;]*;controller-manager|bex-system;;bex-ssh-gateway;.*|opensandbox-system;.*"
                   action        = "keep"
                 }
                 rule {
@@ -430,6 +453,19 @@ spec:
                   regex         = "bex-system;controller-manager"
                   target_label  = "service"
                   replacement   = "operator"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_app_kubernetes_io_name"]
+                  separator     = ";"
+                  regex         = "bex-system;bex-ssh-gateway"
+                  target_label  = "service"
+                  replacement   = "ssh-gateway"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  regex         = "opensandbox-system"
+                  target_label  = "service"
+                  replacement   = "opensandbox"
                 }
                 rule {
                   source_labels = ["__meta_kubernetes_pod_name"]
@@ -1024,6 +1060,97 @@ spec:
                   values = ["job"]
                 }
 
+                forward_to = [loki.write.default.receiver]
+              }
+
+              // --- type=sandbox: agent-session sandbox pods ---
+              //
+              // See AGENT SANDBOX PODS at the top of this file. FILE-BASED like
+              // the tenant pipelines. A query for one sandbox is
+              // {type="sandbox", pod="<sandbox id>-0"}, for one session
+              // {type="sandbox", agent_session="<ags- id>"}.
+
+              discovery.relabel "sandbox_pods" {
+                targets = discovery.kubernetes.pods.targets
+
+                // Only the agent-session pods of the tenant sandbox
+                // namespaces: a tenant's own Render sandboxes carry no session
+                // label and stay out.
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_label_bex_co_agent_session"]
+                  separator     = ";"
+                  regex         = ".+-sandbox;ags-.+"
+                  action        = "keep"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_namespace"]
+                  target_label  = "namespace"
+                }
+                // One session per pod, so the label adds no streams.
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_label_bex_co_agent_session"]
+                  target_label  = "agent_session"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_name"]
+                  target_label  = "pod"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_container_name"]
+                  target_label  = "container"
+                }
+                rule {
+                  source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+                  separator     = "/"
+                  target_label  = "__path__"
+                  replacement   = "/var/log/pods/*$1/*.log"
+                }
+              }
+
+              local.file_match "sandbox_pods" {
+                path_targets = discovery.relabel.sandbox_pods.output
+              }
+
+              loki.source.file "sandbox_pods" {
+                targets    = local.file_match.sandbox_pods.targets
+                forward_to = [loki.process.sandbox_logs.receiver]
+              }
+
+              loki.process "sandbox_logs" {
+                // CRI-framed file lines, as in app_logs, capped at the
+                // kubelet's own 16 KiB line: see CRI LINE CAP above.
+                stage.cri {
+                  max_partial_line_size          = 16384
+                  max_partial_line_size_truncate = true
+                }
+                stage.label_drop {
+                  values = ["filename", "stream"]
+                }
+                // Per pod, before the credential match below so a flooding
+                // pod's excess never pays for it: a runaway sandbox cannot
+                // flood Loki or starve the other pipelines on its node; the
+                // excess is dropped, counted.
+                stage.limit {
+                  rate          = 20
+                  burst         = 400
+                  by_label_name = "pod"
+                  drop          = true
+                }
+                // Credential-looking lines are dropped whole, never redacted:
+                // an agent runs untrusted code that may print what it was
+                // given. A PEM block goes line by line: its BEGIN/END lines,
+                // and every body line, which is nothing but base64 (so is a
+                // bare token or hash on a line of its own, dropped too).
+                stage.drop {
+                  expression          = `(?i:authorization:\s*\S+|(set-)?cookie:\s*\S+|bearer\s+[a-z0-9._~+/=-]{16,}|(password|passwd|secret|token|api[_-]?key|access[_-]?key|private[_-]?key|credential)s?["']?\s*[:=]\s*["']?[^\s"',;]{8,}|-----(begin|end) [a-z0-9 ]+-----|open-sandbox-api-key|x-bex-[a-z-]*(ticket|token|credential)|[a-z][a-z0-9+.-]*://[^/\s@]+@)|^\s*(?:[A-Za-z0-9+/]{16,}={0,2}|[A-Za-z0-9+/]{2,}={1,2})\s*$|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|\bsk-[A-Za-z0-9_-]{20,}|\b[sr]k_(live|test)_[A-Za-z0-9]{10,}|AIza[0-9A-Za-z_-]{35}|AKIA[0-9A-Z]{16}|xox[abposr]-[A-Za-z0-9-]{10,}|eyJ[A-Za-z0-9_-]{10,}\.eyJ[A-Za-z0-9_-]{10,}`
+                  drop_counter_reason = "credential_like"
+                }
+                stage.static_labels {
+                  values = {
+                    type    = "sandbox",
+                    service = "agent-sandbox",
+                  }
+                }
                 forward_to = [loki.write.default.receiver]
               }
 

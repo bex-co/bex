@@ -51,6 +51,11 @@ const (
 	timeoutNone = "none"
 )
 
+// DefaultLifetime is a sandbox's lifetime when its timeout is omitted, which
+// is how every agent-session sandbox is created; a turn bounded past it would
+// be cut by its sandbox's end first.
+const DefaultLifetime = defaultSandboxTimeout * time.Second
+
 // resolveTimeout applies Render's timeoutSeconds contract. requested nil is an
 // omitted timeout. The result uses Render's semantics: 0 is no timeout,
 // otherwise the lifetime in seconds.

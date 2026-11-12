@@ -477,6 +477,18 @@ type Deps struct {
 	// Injected into the sandbox as BEX_AGENT_TURN_TIMEOUT_MS so a hung turn is
 	// bounded here, not by the driver's 4h fallback. Zero ⇒ the 30m default.
 	AgentTurnTimeout time.Duration
+	// AgentTurnIdleTimeout bounds how long one turn may make no progress
+	// (BEX_AGENT_TURN_IDLE_TIMEOUT), injected as BEX_AGENT_TURN_IDLE_TIMEOUT_MS;
+	// AgentTurnTimeout is its ceiling. Zero ⇒ the 30m default.
+	AgentTurnIdleTimeout time.Duration
+	// AgentToolCallTimeout bounds how long one tool call may pause the idle
+	// bound (BEX_AGENT_TOOL_CALL_TIMEOUT), injected as
+	// BEX_AGENT_TOOL_CALL_TIMEOUT_MS. Zero ⇒ the 2h default.
+	AgentToolCallTimeout time.Duration
+	// AgentStatusRetryWindow is the Completer's window for transient
+	// status-read failures (BEX_AGENT_STATUS_RETRY_WINDOW). Zero ⇒ the 10m
+	// default.
+	AgentStatusRetryWindow time.Duration
 	// FreeInstanceHours overrides the monthly Free instance-hours allowance
 	// (BEX_FREE_INSTANCE_HOURS, w8/m139); 0 means 750.
 	FreeInstanceHours float64
@@ -1130,6 +1142,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 			SSHHost:        sshHost, ModelKeys: d.Secrets, GitHub: gh,
 			MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
 			TurnTimeout:      d.AgentTurnTimeout,
+			TurnIdleTimeout:  d.AgentTurnIdleTimeout,
+			ToolCallTimeout:  d.AgentToolCallTimeout,
 			Environments:     d.AgentEnvironmentStore,
 			Spend:            d.AgentSpendStore,
 			ModelCosts:       d.AgentModelCostStore,
@@ -1157,8 +1171,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 		ServiceRefs:        &apps.ServiceRefPropagator{Svc: appsSvc},
 		AgentSessionCompleter: &agentsessions.Completer{
 			Store: d.AgentSessionStore, Sandbox: agentLifecycle,
-			IdleTTL:           d.AgentSandboxIdleTTL,
-			InventoryInterval: time.Minute,
+			IdleTTL:              d.AgentSandboxIdleTTL,
+			StatusReadFailureTTL: d.AgentStatusRetryWindow,
+			TurnTimeout:          d.AgentTurnTimeout,
+			InventoryInterval:    time.Minute,
 		},
 		Postgres:      pg,
 		KeyValue:      kv,

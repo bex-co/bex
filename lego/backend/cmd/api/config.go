@@ -247,6 +247,16 @@ type Config struct {
 	AgentGitProxyURL       string
 	AgentSandboxIdleTTL    time.Duration
 	AgentTurnTimeout       time.Duration
+	// AgentTurnIdleTimeout bounds how long one turn may go without progress
+	// (BEX_AGENT_TURN_IDLE_TIMEOUT); AgentTurnTimeout is its ceiling.
+	AgentTurnIdleTimeout time.Duration
+	// AgentToolCallTimeout bounds how long one tool call may pause the idle
+	// bound (BEX_AGENT_TOOL_CALL_TIMEOUT).
+	AgentToolCallTimeout time.Duration
+	// AgentStatusRetryWindow is how long the Completer's status reads may keep
+	// failing transiently before a session fails
+	// (BEX_AGENT_STATUS_RETRY_WINDOW).
+	AgentStatusRetryWindow time.Duration
 	// FreeInstanceHours is the monthly Free instance-hours allowance per
 	// workspace (BEX_FREE_INSTANCE_HOURS, w8/m139); 0 means Render's 750.
 	FreeInstanceHours float64
@@ -597,7 +607,14 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	if after, err := time.ParseDuration(strings.TrimSpace(getenv("BEX_CRASHLOOP_SUSPEND_AFTER"))); err == nil && after > 0 {
 		cfg.CrashLoopSuspendAfter = after
 	}
-	cfg.AgentTurnTimeout = p.zeroableDuration("BEX_AGENT_TURN_TIMEOUT", 30*time.Minute)
+	cfg.AgentTurnTimeout = p.defaultedDuration("BEX_AGENT_TURN_TIMEOUT", 30*time.Minute)
+	// A turn fails once it has made no progress this long (the ceiling above
+	// stays), and one tool call may pause that clock only so long.
+	cfg.AgentTurnIdleTimeout = p.defaultedDuration("BEX_AGENT_TURN_IDLE_TIMEOUT", 30*time.Minute)
+	cfg.AgentToolCallTimeout = p.defaultedDuration("BEX_AGENT_TOOL_CALL_TIMEOUT", 2*time.Hour)
+	// The Completer's retry window for transient status-read failures (a node
+	// stall, a gateway restart).
+	cfg.AgentStatusRetryWindow = p.defaultedDuration("BEX_AGENT_STATUS_RETRY_WINDOW", 10*time.Minute)
 	cfg.AgentMaxLiveSandboxesPerWorkspace = p.zeroableInt("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)
 	cfg.MaxBlueprintGroupings = p.zeroableInt("BEX_MAX_BLUEPRINT_GROUPINGS", 1000)
 	// Render's sandbox numbers (render.com/docs/sandboxes-limits, read
@@ -901,6 +918,24 @@ func (p *parser) zeroableDuration(name string, def time.Duration) time.Duration 
 	d, err := time.ParseDuration(v)
 	if err != nil || d < 0 {
 		p.warnf("%s=%q invalid (want a non-negative Go duration, 0 to disable); using default %s", name, v, def)
+		return def
+	}
+	return d
+}
+
+// defaultedDuration — policy "warn": a bound that is never disabled. Unset
+// or 0 ⇒ def; negative or unparseable ⇒ warn and keep def.
+func (p *parser) defaultedDuration(name string, def time.Duration) time.Duration {
+	v := p.getenv(name)
+	if v == "" {
+		return def
+	}
+	d, err := time.ParseDuration(v)
+	if err != nil || d < 0 {
+		p.warnf("%s=%q invalid (want a positive Go duration; unset or 0 uses the default); using default %s", name, v, def)
+		return def
+	}
+	if d == 0 {
 		return def
 	}
 	return d

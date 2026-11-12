@@ -76,6 +76,10 @@ const (
 	statusReadOK             statusReadOutcome = "ok"
 	statusReadTerminal       statusReadOutcome = "terminal"
 	statusReadTransientError statusReadOutcome = "transient_error"
+	// statusReadError is a failed read that is neither transient nor a gone
+	// sandbox (the platform cannot read sandboxes at all); it does not count
+	// toward the retry window. AgentSessionStatusReadsFailing alerts on it.
+	statusReadError statusReadOutcome = "error"
 )
 
 type terminalConvergenceReason string
@@ -83,6 +87,9 @@ type terminalConvergenceReason string
 const (
 	convergenceTargetTerminated  terminalConvergenceReason = "target_terminated"
 	convergenceStatusUnavailable terminalConvergenceReason = "status_unavailable"
+	// convergenceStatusDeadline is a turn past its ceiling plus the retry
+	// window whose status still could not be read.
+	convergenceStatusDeadline terminalConvergenceReason = "status_deadline"
 )
 
 func NewCompletionMetrics(reg prometheus.Registerer) *CompletionMetrics {

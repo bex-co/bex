@@ -92,6 +92,10 @@ def run_pipeline(test, pipeline_name, lines, receiver_type, target='database = "
                 fields = dict(meta, __path__=f"/tmp/pod{i}.log")
                 targets.append("{" + ", ".join(f"{k} = {json.dumps(v)}" for k, v in fields.items()) + "}")
             source = block.group().replace("discovery.kubernetes.pods.targets", "[" + ", ".join(targets) + "]")
+            # A file-tailed block points __path__ at the kubelet's pod-log glob;
+            # drop that one rule so each synthetic pod reads its fixture file.
+            source = re.sub(r'^[ \t]*rule \{\n(?:(?![ \t]*(?:rule \{|\})\n)[^\n]*\n)*?[ \t]*target_label\s*=\s*"__path__"\n'
+                            r'(?:(?![ \t]*(?:rule \{|\})\n)[^\n]*\n)*?[ \t]*\}\n', '', source, flags=re.M)
             source += '''
 loki.source.file "test" {
   targets = discovery.relabel.%s.output
@@ -142,7 +146,9 @@ loki.echo "test" {}
                         labels = dict(re.findall(r'(\w+)="([^"\\]*)"', entry["labels"]))
                         if cri:
                             labels["__ts"] = entry.get("entry_timestamp")
-                        test.assertEqual(labels.get("type"), receiver_type)
+                        # None: the pipeline ships more than one type.
+                        if receiver_type is not None:
+                            test.assertEqual(labels.get("type"), receiver_type)
                         actual[entry["entry"]] = labels
                 if completed or (relabel and len(actual) >= expect):
                     break
@@ -452,8 +458,9 @@ class CriPartialTimestampTest(unittest.TestCase):
 
 
 class PlatformLogsTest(unittest.TestCase):
-    """w7/m157: bex-api and the operator manager ship as type=platform under a
-    closed service= vocabulary; other bex-system components stay out."""
+    """w7/m157: bex-api, the operator manager, the SSH gateway and every
+    opensandbox-system pod ship as type=platform under a closed service=
+    vocabulary; other bex-system components stay out."""
 
     def test_core_services_collected_with_closed_labels(self):
         def pod(ns, name, container, **labels):
@@ -475,18 +482,23 @@ class PlatformLogsTest(unittest.TestCase):
             (pod("bex-system", "bex-activator-1", "activator", app_bex_co_component="activator"),
              "m157-activator-must-not-ship"),
             (pod("bex-system", "bex-ssh-gateway-1", "ssh-gateway", app_kubernetes_io_name="bex-ssh-gateway"),
-             "m157-ssh-gateway-must-not-ship"),
+             "sandbox exec target not ready (sandbox=sbx-1): its node may be NotReady"),
             (pod("opensandbox-system", "osb-controller-manager-1", "manager", control_plane="controller-manager"),
-             "m157-foreign-operator-must-not-ship"),
+             "opensandbox controller marker"),
+            (pod("opensandbox-system", "opensandbox-server-1", "server", app_kubernetes_io_name="opensandbox-server"),
+             "opensandbox server marker"),
         ]
         actual, output = run_pipeline(self, "platform_logs", [line for _, line in pods], "platform",
-                                      relabel=("platform_pods", [meta for meta, _ in pods]), expect=5)
+                                      relabel=("platform_pods", [meta for meta, _ in pods]), expect=8)
         want = {
             pods[0][1]: ("bex-api", "bex-system", "bex-api-1", "api", "unknown"),
             pods[1][1]: ("operator", "bex-system", "bex-controller-manager-1", "manager", "error"),
             pods[2][1]: ("static-server", "bex-system", "bex-static-server-1", "static-server", "warning"),
             pods[3][1]: ("dashboard", "dashboard", "dashboard-1", "dashboard", "unknown"),
             pods[4][1]: ("static-server", "bex-system", "bex-static-server-2", "static-server", "error"),
+            pods[6][1]: ("ssh-gateway", "bex-system", "bex-ssh-gateway-1", "ssh-gateway", "unknown"),
+            pods[7][1]: ("opensandbox", "opensandbox-system", "osb-controller-manager-1", "manager", "unknown"),
+            pods[8][1]: ("opensandbox", "opensandbox-system", "opensandbox-server-1", "server", "unknown"),
         }
         self.assertEqual(set(actual), set(want), f"unexpected platform lines:\n{output}")
         for line, (service, ns, pod_name, container, level) in want.items():
@@ -500,6 +512,92 @@ class PlatformLogsTest(unittest.TestCase):
                        if '"component_id":"loki.process.platform_logs"' in line
                        and re.search(r'"level":"(error|warn)"', line)]
         self.assertEqual(diagnostics, [], "platform_logs emitted parse diagnostics")
+
+
+SANDBOX_TARGET = ('namespace = "tea-d98210cbbpdc73dcrkvg-sandbox", agent_session = "ags-d4b2c0j5lhkc73a1b2c0", '
+                  'pod = "sbx-d4b2c0j5lhkc73a1b2d0-0", container = "sandbox"')
+# stage.cri's max_partial_line_size in sandbox_logs: the kubelet's own line.
+SANDBOX_LINE_CAP = 16384
+
+
+class SandboxLogsTest(unittest.TestCase):
+    """Agent-session sandbox pods ship from their CRI files under closed
+    labels, with long lines capped and credential-looking lines dropped."""
+
+    def test_collects_agent_sandbox_pods_only(self):
+        def pod(ns, name, container, **labels):
+            meta = {"__meta_kubernetes_namespace": ns, "__meta_kubernetes_pod_name": name,
+                    "__meta_kubernetes_pod_container_name": container,
+                    "__meta_kubernetes_pod_uid": "uid-" + name}
+            meta.update({"__meta_kubernetes_pod_label_" + k: v for k, v in labels.items()})
+            return meta
+        session, ns = "ags-d4b2c0j5lhkc73a1b2c0", "tea-d98210cbbpdc73dcrkvg-sandbox"
+        pods = [
+            (pod(ns, "sbx-d4b2c0j5lhkc73a1b2d0-0", "sandbox", bex_co_agent_session=session),
+             "2026-11-12T13:06:00.000000001Z stderr F driver marker: ACP agent exited (code=137)"),
+            (pod(ns, "sbx-d4b2c0j5lhkc73a1b2e0-0", "sandbox"),
+             "2026-11-12T12:00:00.000000001Z stdout F a tenant Render sandbox must not ship"),
+            (pod("bex-system", "bex-ssh-gateway-1", "ssh-gateway", app_kubernetes_io_name="bex-ssh-gateway"),
+             "2026-11-12T12:22:30.000000001Z stderr F the gateway ships with the platform pods"),
+        ]
+        actual, output = run_pipeline(self, "sandbox_logs", [line for _, line in pods], "sandbox",
+                                      relabel=("sandbox_pods", [meta for meta, _ in pods]), expect=1)
+        self.assertEqual(set(actual), {"driver marker: ACP agent exited (code=137)"},
+                         f"unexpected sandbox lines:\n{output}")
+        got = next(iter(actual.values()))
+        self.assertEqual((got.get("service"), got.get("namespace"), got.get("pod"), got.get("container"),
+                          got.get("agent_session")),
+                         ("agent-sandbox", ns, "sbx-d4b2c0j5lhkc73a1b2d0-0", "sandbox", session))
+        self.assertNotIn("app", got, "sandbox streams must stay outside tenant selectors")
+
+    def test_bounds_lines_and_drops_credentials(self):
+        long_line = "long-line-".ljust(20000, "x")
+        safe = [
+            "safe: driver turn 3 started",
+            "safe: sandbox exec stream failed (sandbox=sbx-1): context deadline exceeded",
+            "safe: max_tokens=4096 secret store not configured",
+            "safe: disk-usage-percentage-for-volume-is-high-now",
+            "safe: task-runner-abcdefghijklmnopqrstuvwxyz started",
+        ]
+        credentials = [
+            "Authorization: Bearer abcdefghijklmnopqrstuvwxyz012345",
+            "authorization: deadbeefcafe",
+            "Cookie: session=abc123",
+            "Set-Cookie: sid=xyz; HttpOnly",
+            "export ANTHROPIC_API_KEY=sk-ant-api03-abcdefghijklmnopqrstuvwx",
+            '{"token":"0123456789abcdef0123"}',
+            "password = hunter2hunter2",
+            "remote: https://x-access-token:ghs_abcdefghij@github.com/acme/app.git",
+            "using ghp_abcdefghijklmnopqrstuvwxyz0123456789",
+            "stripe sk_live_51HxABCDEFGHIJKLMNOPQRS",
+            "stripe rk_live_abcdefghij1234567890",
+            "maps key AIza" + "B" * 35,
+            "aws AKIAABCDEFGHIJKLMNOP configured",
+            "jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig",
+            "OPEN-SANDBOX-API-KEY: osk-1",
+            # A whole PEM block, line by line.
+            "-----BEGIN RSA PRIVATE KEY-----",
+            "MIIEowIBAAKCAQEAu1SU1LfVLPHCozMxH2Mo4lgOEePzNm0tRgeLezV6ffAt0gunVTLw",
+            "7mUQ4C2b8Yw0rP+Xk/1eV3pZ5Qq7aT9cLr2Hn0QwYb6xNs8EeKz1Jm4Wd3Vt",
+            "Xk/1eV3pZ==",
+            "-----END RSA PRIVATE KEY-----",
+        ]
+        lines = [*safe, *credentials,
+                 f"2026-11-12T13:06:00.100000001Z stdout P {long_line[:15000]}",
+                 f"2026-11-12T13:06:00.200000002Z stdout F {long_line[15000:]}"]
+        actual, output = run_pipeline(self, "sandbox_logs", lines, "sandbox", SANDBOX_TARGET, cri=True)
+        self.assertEqual(set(actual), {*safe, long_line[:SANDBOX_LINE_CAP]},
+                         f"sandbox_logs shipped a credential or lost a line:\n{output}")
+        with tempfile.TemporaryDirectory(prefix="bex-log-shipper-") as tmp:
+            config, _ = render_alloy(Path(tmp))
+        self.assertIn('loki.source.file "sandbox_pods"', config)
+        self.assertNotIn('loki.source.kubernetes "sandbox_pods"', config)
+        pipeline = re.search(r'^loki\.process "sandbox_logs" \{\n.*?^\}', config, re.M | re.S).group()
+        for required in ('stage.limit {', 'by_label_name = "pod"', 'drop          = true',
+                         'drop_counter_reason = "credential_like"'):
+            self.assertIn(required, pipeline)
+        self.assertLess(pipeline.index("stage.limit {"), pipeline.index("stage.drop {"),
+                        "a flooding pod must be rate-limited before the credential match")
 
 
 class ZotGCMetricsTest(unittest.TestCase):

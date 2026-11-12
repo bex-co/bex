@@ -1351,8 +1351,12 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 					Secret:         []byte(cfg.SandboxExecSecret),
 					GatewayURL:     gwURL,
 					FileGatewayURL: fileURL.String(),
-					Client:         &http.Client{}, // no timeout: the exec stream is long-lived
-					TTL:            60 * time.Second,
+					// No overall timeout (an exec stream is long-lived); dialing
+					// and the gateway's answer are bounded. The gateway answers an
+					// exec's headers on admission and a file transfer's once it is
+					// written, so 2m never cuts either short.
+					Client: sshgateway.NewUpstreamClient(2 * time.Minute),
+					TTL:    60 * time.Second,
 					// The pinned CLI's run connect-token handshake (w7/m147): the
 					// minted `uri` is on the public API origin, and the token is
 					// single-use across both replicas through the shared store (the
@@ -1470,8 +1474,13 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// w5/m80 t002: one turn's wall-clock bound, injected into the sandbox as
 	// BEX_AGENT_TURN_TIMEOUT_MS. Default 30m; a 0/invalid value falls back to the
 	// Service's 30m default (the bound is never disabled — that is the 4h-hang bug
-	// this fixes).
+	// this fixes). It is the ceiling over the inactivity bound, which one tool
+	// call may pause only so long, and never outlives the sandbox.
 	deps.AgentTurnTimeout = cfg.AgentTurnTimeout
+	deps.AgentTurnIdleTimeout = cfg.AgentTurnIdleTimeout
+	deps.AgentToolCallTimeout = cfg.AgentToolCallTimeout
+	// Transient status-read failures fail a session only after this.
+	deps.AgentStatusRetryWindow = cfg.AgentStatusRetryWindow
 	deps.FreeInstanceHours = cfg.FreeInstanceHours
 	deps.CrashLoopSuspendAfter = cfg.CrashLoopSuspendAfter
 	deps.AgentMaxLiveSandboxesPerWorkspace = cfg.AgentMaxLiveSandboxesPerWorkspace

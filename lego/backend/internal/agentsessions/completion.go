@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"strings"
 	"sync"
@@ -90,12 +91,21 @@ type Completer struct {
 	// tests on the pre-m67 behavior so the ADR054 D6 suite is unchanged.
 	IdleTTL time.Duration
 
-	// StatusReadFailureTTL bounds a continuous ambiguous gateway/status-read
-	// failure before the session is terminalized honestly. A coded missing/dead
-	// target converges immediately. Zero uses two minutes; successful reads reset
-	// the streak, so a one-off gateway rollout remains transient.
+	// StatusReadFailureTTL is the retry window: how long status reads may keep
+	// failing transiently (sandbox.Transient — a node that is not ready, a
+	// gateway restart, a read timeout) before the session is failed honestly.
+	// A coded missing/dead target converges immediately; a successful read
+	// resets the streak; any other error (the platform unable to read
+	// sandboxes at all) neither starts nor extends it, since it says nothing
+	// about the sandbox. Zero uses ten minutes (BEX_AGENT_STATUS_RETRY_WINDOW).
 	StatusReadFailureTTL time.Duration
-	Metrics              *CompletionMetrics
+	// TurnTimeout is the turn ceiling the driver enforces
+	// (BEX_AGENT_TURN_TIMEOUT; zero ⇒ its 30m default). Once a turn has run
+	// past it plus the retry window and its status still cannot be read, by
+	// any error, the driver's own verdict is unreachable and the session is
+	// failed, so no unreadable sandbox holds its slots until its lifetime ends.
+	TurnTimeout time.Duration
+	Metrics     *CompletionMetrics
 	// SandboxMetrics reports inventory gauges and durable teardown failures.
 	// nil is a working no-op.
 	SandboxMetrics *sandbox.Metrics
@@ -123,7 +133,79 @@ type idleSandbox struct {
 	deferReason string // last deferral reason logged for this turn
 }
 
-const defaultStatusReadFailureTTL = 2 * time.Minute
+const defaultStatusReadFailureTTL = 10 * time.Minute
+
+// Per-read bounds. The Completer reads every session in turn on one loop, so
+// one read hung on a stalled node must not hold up every other session's. A
+// status file is a few hundred bytes; a transcript is up to the driver's
+// 16 MiB log.
+const (
+	statusReadTimeout     = 10 * time.Second
+	transcriptReadTimeout = 2 * time.Minute
+)
+
+// defaultLostSandboxReason is a lost sandbox's failure reason when nothing
+// recorded how its container ended.
+const defaultLostSandboxReason = "sandbox terminated before completion"
+
+// lostSandboxReason names how the sandbox behind a NotFound status read
+// ended (OOMKilled, an exit code) when the gateway saw its container, else
+// the default reason.
+func lostSandboxReason(readErr error) string {
+	termination, _ := sandbox.TerminationOf(readErr)
+	if reason := termination.Describe(); reason != "" {
+		return reason
+	}
+	return defaultLostSandboxReason
+}
+
+// retryWindowReason is the failure reason of a session whose status stayed
+// unreadable for the whole retry window; lastErr is the read that ended it.
+func (c *Completer) retryWindowReason(lastErr error) string {
+	if sandbox.StateUnknown(lastErr) {
+		return fmt.Sprintf("sandbox state was unreadable for the %s retry window", shortDuration(c.statusReadFailureTTL()))
+	}
+	return fmt.Sprintf("sandbox status remained unavailable for the %s retry window", shortDuration(c.statusReadFailureTTL()))
+}
+
+// shortDuration prints d without trailing zero units: 10m, 4h, 1h30m.
+func shortDuration(d time.Duration) string {
+	s := d.String()
+	if strings.HasSuffix(s, "m0s") {
+		s = strings.TrimSuffix(s, "0s")
+	}
+	if strings.HasSuffix(s, "h0m") {
+		s = strings.TrimSuffix(s, "0m")
+	}
+	return s
+}
+
+// pastStatusDeadline reports a session whose current turn began longer ago
+// than the turn ceiling plus the retry window: the driver has ended the turn
+// by now, so a status that still cannot be read never will be.
+func (c *Completer) pastStatusDeadline(ctx context.Context, record store.AgentSession) bool {
+	deadline := turnCeiling(c.TurnTimeout) + c.statusReadFailureTTL()
+	now := c.now()
+	// A turn starts no earlier than its session: a young session needs no read.
+	if now.Sub(record.CreatedAt) < deadline {
+		return false
+	}
+	turns, err := c.Store.AgentSessionTurns(ctx, record.ID)
+	if err != nil {
+		return false
+	}
+	start := record.UpdatedAt
+	for _, turn := range turns {
+		if turn.Turn != record.Turns {
+			continue
+		}
+		start = turn.CreatedAt
+		if turn.StartedAt != nil {
+			start = *turn.StartedAt
+		}
+	}
+	return now.Sub(start) >= deadline
+}
 
 func (c *Completer) statusReadFailureTTL() time.Duration {
 	if c.StatusReadFailureTTL > 0 {
@@ -393,23 +475,12 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 	if record.SandboxID == "" {
 		return
 	}
-	raw, err := c.Sandbox.ReadSessionStatus(ctx, record.WorkspaceID, record.ID, record.SandboxID)
+	readCtx, cancel := context.WithTimeout(ctx, statusReadTimeout)
+	raw, err := c.Sandbox.ReadSessionStatus(readCtx, record.WorkspaceID, record.ID, record.SandboxID)
+	timedOut := errors.Is(readCtx.Err(), context.DeadlineExceeded) && ctx.Err() == nil
+	cancel()
 	if err != nil {
-		// A lost sandbox can never finish its turn; anything else is transient and
-		// retried on the next tick. Log the transient case: a persistent read error
-		// silently strands a session in running forever (the exact failure mode the
-		// w3/m43 live E2E hit), so this loop must never be unobservable.
-		if errors.Is(err, core.ErrNotFound) {
-			c.Metrics.read(statusReadTerminal)
-			c.clearStatusFailure(record.ID)
-			c.failLostSandbox(ctx, record, "sandbox terminated before completion", convergenceTargetTerminated)
-		} else {
-			c.Metrics.read(statusReadTransientError)
-			log.Printf("agent-session completer: read status failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
-			if c.noteStatusFailure(record.ID) {
-				c.failLostSandbox(ctx, record, "sandbox status remained unavailable beyond the retry window", convergenceStatusUnavailable)
-			}
-		}
+		c.statusReadFailed(ctx, record, err, timedOut)
 		return
 	}
 	c.Metrics.read(statusReadOK)
@@ -544,6 +615,39 @@ func (c *Completer) fail(ctx context.Context, record store.AgentSession, reason 
 	c.Metrics.observeTerminalTurn(turnOutcomeFailed, fact)
 	log.Printf("agent-session completer: failed session=%s reason=%q", record.ID, reason)
 	c.teardown(ctx, final)
+}
+
+// statusReadFailed handles a failed status read. A lost sandbox can never
+// finish its turn: it fails at once, with how its container ended when the
+// gateway saw it. A transient failure is retried each tick and fails the
+// session once it has lasted the whole retry window. Any other failure says
+// nothing about the sandbox and is only logged. Whatever the error, a turn
+// past its ceiling plus the retry window fails: the driver's own verdict can
+// no longer be read. Every retried case is logged — a persistent read error
+// silently strands a session in running (the exact failure mode the w3/m43
+// live E2E hit), so this loop must never be unobservable.
+func (c *Completer) statusReadFailed(ctx context.Context, record store.AgentSession, err error, timedOut bool) {
+	if errors.Is(err, core.ErrNotFound) {
+		c.Metrics.read(statusReadTerminal)
+		c.failLostSandbox(ctx, record, lostSandboxReason(err), convergenceTargetTerminated)
+		return
+	}
+	transient := sandbox.Transient(err) || timedOut
+	if transient {
+		c.Metrics.read(statusReadTransientError)
+		log.Printf("agent-session completer: read status failed (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
+	} else {
+		c.Metrics.read(statusReadError)
+		log.Printf("agent-session completer: read status failed, not counted toward the retry window (session=%s sandbox=%s): %v", record.ID, record.SandboxID, err)
+	}
+	switch {
+	case c.pastStatusDeadline(ctx, record):
+		reason := fmt.Sprintf("sandbox status could not be read for %s after the turn's %s limit",
+			shortDuration(c.statusReadFailureTTL()), shortDuration(turnCeiling(c.TurnTimeout)))
+		c.failLostSandbox(ctx, record, reason, convergenceStatusDeadline)
+	case transient && c.noteStatusFailure(record.ID):
+		c.failLostSandbox(ctx, record, c.retryWindowReason(err), convergenceStatusUnavailable)
+	}
 }
 
 // failLostSandbox is the dead-target backstop. Unlike an ordinary driver-
@@ -687,7 +791,9 @@ const (
 // suppress the rest. It reports whether the log was read and stored, so a
 // failed harvest is retried on the next tick.
 func (c *Completer) captureTranscript(ctx context.Context, record store.AgentSession) bool {
-	raw, err := c.Sandbox.ReadSessionTranscript(ctx, record.WorkspaceID, record.ID, record.SandboxID)
+	readCtx, cancel := context.WithTimeout(ctx, transcriptReadTimeout)
+	raw, err := c.Sandbox.ReadSessionTranscript(readCtx, record.WorkspaceID, record.ID, record.SandboxID)
+	cancel()
 	if err != nil {
 		if !errors.Is(err, core.ErrNotFound) {
 			log.Printf("agent-session completer: transcript read failed (session=%s): %v", record.ID, err)

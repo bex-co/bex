@@ -219,21 +219,32 @@ type SandboxEnvelope struct {
 // Render-compatible Status vocabulary. Unknown states report errored rather
 // than inventing a healthy status.
 func mapOpenSandboxStatus(s string) Status {
+	status, _ := openSandboxStatus(s)
+	return status
+}
+
+// openSandboxStatus is mapOpenSandboxStatus plus whether bex knows the state
+// at all. A view reports an unknown state as errored, but the agent-session
+// Completer must not read one as a dead sandbox and delete it: it waits for
+// a state it knows.
+func openSandboxStatus(s string) (Status, bool) {
 	switch s {
 	case "Running", "running", "Ready", "ready":
-		return StatusRunning
+		return StatusRunning, true
 	case "Creating", "creating", "Pending", "pending", "Allocated", "allocated":
-		return StatusCreating
+		return StatusCreating, true
 	case "Pausing", "pausing", "Suspending", "suspending":
-		return StatusSuspending
+		return StatusSuspending, true
 	case "Paused", "paused", "Stopped", "stopped", "Suspended", "suspended":
-		return StatusSuspended
+		return StatusSuspended, true
 	case "Resuming", "resuming":
-		return StatusResuming
+		return StatusResuming, true
 	case "Terminated", "terminated", "Deleted", "deleted":
-		return StatusTerminated
+		return StatusTerminated, true
+	case "Failed", "failed", "Error", "error", "Errored", "errored":
+		return StatusErrored, true
 	default:
-		return StatusErrored
+		return StatusErrored, false
 	}
 }
 

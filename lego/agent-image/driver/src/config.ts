@@ -101,7 +101,12 @@ export interface AgentDriverConfig {
   // which the PR tool fast-forwards to the pushed session branch.
   prTakeover: boolean;
   exitAfterTurn: boolean;
+  // The turn's hard wall-clock ceiling, at most the sandbox's 24h lifetime.
   turnTimeoutMs: number;
+  // How long the turn may make no progress, and how long one tool call may
+  // pause that clock; both at most the ceiling. See turn-bound.ts.
+  turnIdleTimeoutMs: number;
+  toolCallTimeoutMs: number;
   credentialEnvName: string;
   // Only the session-bound model-proxy placeholder (ADR062); never a real key.
   modelCredential: string;
@@ -215,15 +220,58 @@ function positivePort(value: string | undefined): number {
   return port;
 }
 
-function positiveMilliseconds(value: string | undefined): number {
-  // bex-api always injects BEX_AGENT_TURN_TIMEOUT_MS. This fallback is the
-  // safety net for a directly-launched driver: 30m — a sane bound, not the
-  // former 4h, so a hung turn converges in tens of minutes rather than hours.
-  const milliseconds = Number(value || 30 * 60 * 1000);
+// bex-api always injects the turn bounds. These fallbacks are the safety net
+// for a directly-launched driver: 30m for the ceiling and the idle bound, 2h
+// for one tool call, each capped at the ceiling.
+const defaultTurnBoundMs = 30 * 60 * 1000;
+const defaultToolCallMs = 2 * 60 * 60 * 1000;
+
+// maxTurnTimeoutMs caps the ceiling at the agent sandbox's lifetime, a copy of
+// sandbox.DefaultLifetime (lego/backend/internal/sandbox/lifetime.go): a turn
+// bounded past it would be cut by its sandbox's end first. It also keeps every
+// bound far below setTimeout's 2^31-1 ms limit.
+export const maxTurnTimeoutMs = 24 * 60 * 60 * 1000;
+
+function positiveMilliseconds(
+  value: string | undefined,
+  name: string,
+  fallback = defaultTurnBoundMs,
+): number {
+  const milliseconds = Number(value || fallback);
   if (!Number.isInteger(milliseconds) || milliseconds < 1) {
-    throw new Error("BEX_AGENT_TURN_TIMEOUT_MS must be a positive integer");
+    throw new Error(`${name} must be a positive integer`);
   }
   return milliseconds;
+}
+
+// turnBounds reads the ceiling and the two bounds under it.
+function turnBounds(env: NodeJS.ProcessEnv): {
+  turnTimeoutMs: number;
+  turnIdleTimeoutMs: number;
+  toolCallTimeoutMs: number;
+} {
+  const turnTimeoutMs = Math.min(
+    positiveMilliseconds(env.BEX_AGENT_TURN_TIMEOUT_MS, "BEX_AGENT_TURN_TIMEOUT_MS"),
+    maxTurnTimeoutMs,
+  );
+  return {
+    turnTimeoutMs,
+    turnIdleTimeoutMs: Math.min(
+      positiveMilliseconds(
+        env.BEX_AGENT_TURN_IDLE_TIMEOUT_MS,
+        "BEX_AGENT_TURN_IDLE_TIMEOUT_MS",
+      ),
+      turnTimeoutMs,
+    ),
+    toolCallTimeoutMs: Math.min(
+      positiveMilliseconds(
+        env.BEX_AGENT_TOOL_CALL_TIMEOUT_MS,
+        "BEX_AGENT_TOOL_CALL_TIMEOUT_MS",
+        defaultToolCallMs,
+      ),
+      turnTimeoutMs,
+    ),
+  };
 }
 
 function optionalNonNegativeInt(
@@ -358,7 +406,7 @@ export function loadConfig(
       null,
     prTakeover: env.BEX_AGENT_PR_TAKEOVER === "1" && Boolean(env.BEX_AGENT_PR_URL),
     exitAfterTurn: env.BEX_AGENT_EXIT_AFTER_TURN === "1",
-    turnTimeoutMs: positiveMilliseconds(env.BEX_AGENT_TURN_TIMEOUT_MS),
+    ...turnBounds(env),
     credentialEnvName,
     modelCredential,
     sessionID,

@@ -172,7 +172,7 @@ Render's error body has no `code`, so these are extensions a Render client ignor
   - a hosted checkout or portal session the provider fails;
   - the paid-intent gate's marker read;
   - workspace creation's payment setup, verification and contract calls.
-- An exec stream that breaks mid-command answers `sandbox runtime not configured: sandbox exec stream failed` (503).
+- An exec stream that breaks mid-command answers `503 SANDBOX_UNREACHABLE` (`the sandbox cannot be reached right now (the exec stream broke); retry shortly`), the code a configured exec or file gateway that does not answer, a sandbox Pod that is not ready and a gateway 5xx also answer (w9/m349). `sandbox runtime not configured` means only that exec is not configured.
 - A malformed Postgres server CA answers that the CA is malformed (503), without the parse error.
 - The ssh-gateway's sandbox file transfer, a separate process, follows the same rule with its own helper. An executor's failure, or any other failure the endpoint did not word itself, answers `sandbox file operation failed` (503), and the gateway logs the cause with the sandbox's id (w5/131). A malformed upload archive still answers its own 400. A transfer whose access is revoked mid-stream answers `access was revoked during this transfer` (403), as the exec stream answers its own revocation, and the gateway logs it with the sandbox's id and counts the session as revoked (w5/139). A download that has already started streaming can only be aborted.
 

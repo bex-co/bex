@@ -36,7 +36,9 @@ Agent choice is configuration, not image logic:
 | `BEX_AGENT_MODEL_API_KEY` | must be exactly the session placeholder `bex-model-proxy-placeholder-<session id>`; the driver refuses anything else |
 | `BEX_AGENT_SESSION_LOG` | local JSONL transcript path |
 | `BEX_AGENT_STATUS_FILE` | machine-readable `running`/`succeeded`/`failed` status; the `bex` MCP tool records the PR in `pull-request.json` beside it |
-| `BEX_AGENT_TURN_TIMEOUT_MS` | hard headless-turn bound (default four hours) |
+| `BEX_AGENT_TURN_TIMEOUT_MS` | hard wall-clock turn ceiling (default 30 minutes, at most 24 hours, the sandbox's lifetime); bex-api injects it from `BEX_AGENT_TURN_TIMEOUT` |
+| `BEX_AGENT_TURN_IDLE_TIMEOUT_MS` | the turn fails once no ACP update or prompt has happened this long (default 30 minutes, at most the ceiling); the clock is paused while a tool call runs |
+| `BEX_AGENT_TOOL_CALL_TIMEOUT_MS` | how long one running tool call may pause that clock before the turn fails (default two hours, at most the ceiling) |
 | `BEX_AGENT_EXIT_AFTER_TURN` | `1` exits after the one headless turn; otherwise listeners stay |
 
 ## Agent-owned delivery (ADR090)

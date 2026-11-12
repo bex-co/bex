@@ -831,6 +831,7 @@ type fakeLifecycle struct {
 	sandboxSeq                          int
 	status                              string
 	statusErr                           error
+	statusReadBudget                    time.Duration // time left on the last status read's context
 	transcriptLog                       string
 	transcriptErr                       error
 	readTranscript                      int
@@ -880,7 +881,10 @@ func (f *fakeLifecycle) ReconcileWorkspaceInventory(context.Context, string, str
 	}
 	return sandbox.InventoryCounts{OldestAge: map[string]float64{}}, nil
 }
-func (f *fakeLifecycle) ReadSessionStatus(context.Context, string, string, string) (string, error) {
+func (f *fakeLifecycle) ReadSessionStatus(ctx context.Context, _, _, _ string) (string, error) {
+	if deadline, ok := ctx.Deadline(); ok {
+		f.statusReadBudget = time.Until(deadline)
+	}
 	return f.status, f.statusErr
 }
 func (f *fakeLifecycle) ReadSessionTranscript(context.Context, string, string, string) (string, error) {

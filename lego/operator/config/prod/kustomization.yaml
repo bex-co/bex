@@ -135,8 +135,10 @@ patches:
       # One agent turn's wall-clock bound. The 30m code default killed every
       # scheduled rt-* routine on 2026-11-11 while it was still building and
       # testing (ADR047 § turn timeout), losing the unpushed work. 4h leaves a
-      # routine room to finish; a hung turn now holds its sandbox that long
-      # until an idle timeout replaces the wall clock as the hang guard.
+      # routine room to finish. It is only the ceiling: a turn that stops
+      # making progress fails at the inactivity bound
+      # (BEX_AGENT_TURN_IDLE_TIMEOUT, default 30m), and one hung tool call at
+      # BEX_AGENT_TOOL_CALL_TIMEOUT (default 2h).
       - op: add
         path: /spec/template/spec/containers/0/env/-
         value:

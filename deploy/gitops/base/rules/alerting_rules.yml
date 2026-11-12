@@ -1291,6 +1291,21 @@ groups:
           summary: "{{ $value | humanizePercentage }} of agent-session sandbox provisions are failing"
           description: "More than a quarter of agent-session sandbox creations failed to reach Running in the last hour, so users are accepting a session that never boots (ADR047 accept-fast/provision-async). Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_AGENT_SESSION_IMAGE. bex_agent_session_provision_seconds{outcome} separates a slow provision from a failed one. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
 
+      # The Completer's status reads failing for a reason that is neither a
+      # gone sandbox nor a transient one: exec unconfigured, the gateway
+      # refusing bex-api's tickets, a tenant-key lookup failing. Such a read
+      # never fails a session inside its turn's ceiling plus the retry
+      # window, so the sessions sit "working" with an unreadable verdict;
+      # every one of these reads is a platform fault, hence no traffic floor.
+      - alert: AgentSessionStatusReadsFailing
+        expr: sum(rate(bex_agent_session_status_reads_total{outcome="error"}[10m])) > 0
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Agent-session status reads are failing for a platform reason"
+          description: "bex-api's agent-session Completer has been unable to read sandbox status files for 15 minutes for a reason that is not a node stall or a gone sandbox, so running sessions cannot finish until their turn ceiling plus BEX_AGENT_STATUS_RETRY_WINDOW passes. Read the bex-api log lines 'read status failed, not counted toward the retry window' for the cause; check BEX_SANDBOX_EXEC_SECRET/BEX_SANDBOX_EXEC_URL match the SSH gateway and that the gateway's :8081 listener answers. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
+
       # ADR091 D5 global backstop. The platform OpenRouter key carries a
       # credit limit set in the OpenRouter console; at 100% OpenRouter
       # refuses every platform-model request for every workspace. Every

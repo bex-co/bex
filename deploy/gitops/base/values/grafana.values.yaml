@@ -4295,8 +4295,8 @@ dashboards:
             {
              "id": 5,
              "type": "timeseries",
-             "title": "Agent terminal convergences (1h)",
-             "description": "Sessions terminalized by the lifecycle backstop rather than a driver report, by reason — each one is a driver/sandbox that died unreported.",
+             "title": "Agent terminal convergences + failed status reads (1h)",
+             "description": "Sessions terminalized by the lifecycle backstop rather than a driver report, by reason — each one is a driver/sandbox that died unreported — beside the Completer's failed status reads by outcome (transient_error waits out the retry window; error is a platform fault, AgentSessionStatusReadsFailing).",
              "gridPos": {
                "h": 9,
                "w": 8,
@@ -4319,6 +4319,11 @@ dashboards:
                  "refId": "A",
                  "expr": "sum by (reason) (increase(bex_agent_session_terminal_convergences_total[1h]))",
                  "legendFormat": "{{reason}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum by (outcome) (increase(bex_agent_session_status_reads_total{outcome=~\"error|transient_error|terminal\"}[1h]))",
+                 "legendFormat": "status read {{outcome}}"
                 }
               ]
             },

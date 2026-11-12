@@ -86,6 +86,9 @@ func TestLoadConfigDefaults(t *testing.T) {
 		{"AuthMaxInflightPerCredential", cfg.AuthMaxInflightPerCredential, 64},
 		{"AgentSandboxIdleTTL", cfg.AgentSandboxIdleTTL, 2 * time.Hour},
 		{"AgentTurnTimeout", cfg.AgentTurnTimeout, 30 * time.Minute},
+		{"AgentTurnIdleTimeout", cfg.AgentTurnIdleTimeout, 30 * time.Minute},
+		{"AgentToolCallTimeout", cfg.AgentToolCallTimeout, 2 * time.Hour},
+		{"AgentStatusRetryWindow", cfg.AgentStatusRetryWindow, 10 * time.Minute},
 		{"AgentMaxLiveSandboxesPerWorkspace", cfg.AgentMaxLiveSandboxesPerWorkspace, 5},
 		{"MaxBlueprintGroupings", cfg.MaxBlueprintGroupings, 1000},
 		{"ImageCompatibilityWorkspaces (every workspace)", cfg.ImageCompatibilityWorkspaces["*"], true},
@@ -775,5 +778,42 @@ func TestLoadConfigPublicImageRegistriesTurnsOffOnlyOnFalse(t *testing.T) {
 	cfg, _, err := loadFor(t, map[string]string{"BEX_PUBLIC_IMAGE_REGISTRIES": "false"})
 	if err != nil || cfg.PublicImageRegistries {
 		t.Fatalf("BEX_PUBLIC_IMAGE_REGISTRIES=false => %v, %v; want the allowlist", cfg.PublicImageRegistries, err)
+	}
+}
+
+// The turn bounds and the Completer's retry window are never disabled: a set
+// Go duration is used, 0 means the default silently, and an invalid value
+// keeps the default and warns.
+func TestLoadConfigAgentTurnBoundsAndRetryWindow(t *testing.T) {
+	cfg, _, err := loadFor(t, map[string]string{
+		"BEX_AGENT_STATUS_RETRY_WINDOW": "15m",
+		"BEX_AGENT_TURN_IDLE_TIMEOUT":   "45m",
+		"BEX_AGENT_TOOL_CALL_TIMEOUT":   "90m",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AgentStatusRetryWindow != 15*time.Minute || cfg.AgentTurnIdleTimeout != 45*time.Minute || cfg.AgentToolCallTimeout != 90*time.Minute {
+		t.Fatalf("retry window = %v, idle = %v, tool call = %v; want 15m, 45m, 90m", cfg.AgentStatusRetryWindow, cfg.AgentTurnIdleTimeout, cfg.AgentToolCallTimeout)
+	}
+	cfg, warnings, err := loadFor(t, map[string]string{
+		"BEX_AGENT_STATUS_RETRY_WINDOW": "soon",
+		"BEX_AGENT_TURN_IDLE_TIMEOUT":   "-1m",
+		"BEX_AGENT_TOOL_CALL_TIMEOUT":   "0",
+		"BEX_AGENT_TURN_TIMEOUT":        "0",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.AgentStatusRetryWindow != 10*time.Minute || cfg.AgentTurnIdleTimeout != 30*time.Minute ||
+		cfg.AgentToolCallTimeout != 2*time.Hour || cfg.AgentTurnTimeout != 30*time.Minute {
+		t.Fatalf("defaults not kept: retry window = %v, idle = %v, tool call = %v, ceiling = %v",
+			cfg.AgentStatusRetryWindow, cfg.AgentTurnIdleTimeout, cfg.AgentToolCallTimeout, cfg.AgentTurnTimeout)
+	}
+	if !hasWarning(warnings, "BEX_AGENT_STATUS_RETRY_WINDOW") || !hasWarning(warnings, "BEX_AGENT_TURN_IDLE_TIMEOUT") {
+		t.Fatalf("warnings missing knob names: %v", warnings)
+	}
+	if hasWarning(warnings, "BEX_AGENT_TOOL_CALL_TIMEOUT") || hasWarning(warnings, "BEX_AGENT_TURN_TIMEOUT") {
+		t.Fatalf("0 warned instead of meaning the default: %v", warnings)
 	}
 }

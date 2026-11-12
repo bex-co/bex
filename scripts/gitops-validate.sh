@@ -1599,18 +1599,22 @@ if [ -f "$LOGSHIP" ]; then
     || { echo "FAIL: log-shipper.yaml's discovery.kubernetes \"pods\" block lost its node-scope field selector — every replica would discover every pod cluster-wide again (N× log duplication)" >&2; fail=1; }
 
   # Tenant pipelines tail CRI files (w4/m174 apps, w5/m122 Postgres and Key
-  # Value; rationale in the log-shipper header). Behavior test:
-  # scripts/test_log_shipper.py.
+  # Value, and agent sandboxes; rationale in the log-shipper header).
+  # Behavior test: scripts/test_log_shipper.py.
   echo "==> $LOGSHIP tenant pods tail CRI files (w4/m174, w5/m122)"
-  for pods in app_pods database_pods keyvalue_pods; do
+  for pods in app_pods database_pods keyvalue_pods sandbox_pods; do
     grep -q "loki.source.kubernetes \"$pods\"" <<<"$vals" \
       && { echo "FAIL: log-shipper.yaml tails $pods through loki.source.kubernetes again — it drops out-of-order CRI lines and ships the kubelet's own answers as tenant lines" >&2; fail=1; }
     grep -qF "loki.source.file \"$pods\"" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml lost loki.source.file \"$pods\"" >&2; fail=1; }
   done
-  for logs in app_logs database_logs keyvalue_logs; do
+  for logs in app_logs database_logs keyvalue_logs sandbox_logs; do
     block="$(awk -v name="$logs" '$0 ~ "loki.process \"" name "\" \\{" {on=1; match($0, /^ */); end=substr($0, 1, RLENGTH) "}"} on{print} on&&$0==end{exit}' <<<"$vals")"
-    for required in 'stage.cri {' 'max_partial_line_size_truncate = true' 'values = ["filename", "stream"]'; do
+    required_stages=('stage.cri {' 'max_partial_line_size_truncate = true' 'values = ["filename", "stream"]')
+    # Agent sandboxes run untrusted code: a per-pod rate limit and the
+    # credential-line drop too.
+    [ "$logs" = sandbox_logs ] && required_stages+=('stage.limit {' 'by_label_name = "pod"' 'drop_counter_reason = "credential_like"')
+    for required in "${required_stages[@]}"; do
       grep -qF "$required" <<<"$block" \
         || { echo "FAIL: log-shipper.yaml $logs lost required stage: $required" >&2; fail=1; }
     done
@@ -1669,15 +1673,19 @@ if [ -f "$LOGSHIP" ]; then
       || { echo "FAIL: log-shipper.yaml migration evidence pipeline lost required rule: $required" >&2; fail=1; }
   done
 
-  # Core-service incident evidence (w7/m157): bex-api and the operator manager
-  # ship as type=platform under closed service=bex-api|operator labels.
+  # Core-service incident evidence (w7/m157): bex-api, the operator manager,
+  # the SSH gateway and OpenSandbox ship as type=platform under closed
+  # service=bex-api|operator|ssh-gateway|opensandbox labels.
   echo "==> $LOGSHIP core-service platform retention (w7/m157)"
   for required in \
     'bex-system;;bex-api;.*|bex-system;;[^;]*;controller-manager' \
     'regex         = "bex-system;bex-api"' \
     'replacement   = "bex-api"' \
     'regex         = "bex-system;controller-manager"' \
-    'replacement   = "operator"'; do
+    'replacement   = "operator"' \
+    'bex-system;;bex-ssh-gateway;.*|opensandbox-system;.*' \
+    'replacement   = "ssh-gateway"' \
+    'replacement   = "opensandbox"'; do
     grep -qF "$required" <<<"$vals" \
       || { echo "FAIL: log-shipper.yaml core-service platform retention lost required rule: $required" >&2; fail=1; }
   done

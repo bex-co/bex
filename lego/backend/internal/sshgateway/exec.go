@@ -40,6 +40,29 @@ import (
 // transport maps it to a code; bex-api never has direct Pod access.
 var ErrTargetTerminated = errors.New("sandbox target terminated")
 
+// ErrTargetNotReady is the gateway-internal signal that the exact Pod still
+// exists and is not terminal but cannot serve exec right now: it is not Ready,
+// which is what a Pod on a NotReady or unreachable node reads while its phase
+// still says Running. The transports map it to a 503 of its own, which bex-api
+// treats as transient, never as a dead sandbox.
+var ErrTargetNotReady = errors.New("sandbox target not ready")
+
+// TargetTerminatedError is ErrTargetTerminated with what the target's container
+// last reported when it ended: the kubelet's terminated reason (OOMKilled,
+// Error, …) and exit code, or the Pod's own reason (Evicted) when no container
+// recorded one. Both are empty for a Pod that no longer exists.
+type TargetTerminatedError struct {
+	Detail   string
+	Reason   string
+	ExitCode *int
+}
+
+func (e *TargetTerminatedError) Error() string {
+	return ErrTargetTerminated.Error() + ": " + e.Detail
+}
+
+func (e *TargetTerminatedError) Unwrap() error { return ErrTargetTerminated }
+
 // TargetTerminated reports whether the exact Pod/container can no longer serve
 // exec or attach traffic. Both transports use this predicate so they project
 // the same Kubernetes terminal states.
@@ -55,18 +78,77 @@ func TargetTerminated(pod *corev1.Pod, container string) bool {
 	return false
 }
 
+// targetNotReady reports a Pod that is not Ready. The node lifecycle
+// controller marks every Pod on a NotReady or unreachable (Unknown) node
+// Ready=False, so the Pod's own Ready condition carries its node's state; the
+// gateway does not read Nodes, a cluster-scoped grant it deliberately does not
+// hold (scripts/gitops-validate.sh). A Pod with no Ready condition at all is
+// not known to be Ready either.
+func targetNotReady(pod *corev1.Pod) bool {
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.PodReady {
+			return condition.Status != corev1.ConditionTrue
+		}
+	}
+	return true
+}
+
+// ClassifyTarget reads one exec target's Pod after an exec into it failed: a
+// *TargetTerminatedError for a terminal Pod or container, ErrTargetNotReady
+// for a live Pod that is not Ready, and nil for a Ready one (the exec failed
+// for another reason).
+func ClassifyTarget(pod *corev1.Pod, container string) error {
+	if TargetTerminated(pod, container) {
+		reason, exitCode := targetTermination(pod, container)
+		return &TargetTerminatedError{Detail: "pod or container is terminal", Reason: reason, ExitCode: exitCode}
+	}
+	if targetNotReady(pod) {
+		return fmt.Errorf("%w: its node may be NotReady or unreachable", ErrTargetNotReady)
+	}
+	return nil
+}
+
+// targetTermination is the container's current terminated state, else its
+// last one (a restarted container), else the Pod's own reason (Evicted), else
+// why it is being deleted (DisruptionTarget: a taint eviction from a NotReady
+// node, a preemption).
+func targetTermination(pod *corev1.Pod, container string) (string, *int) {
+	if pod == nil {
+		return "", nil
+	}
+	for _, status := range pod.Status.ContainerStatuses {
+		if status.Name != container {
+			continue
+		}
+		terminated := status.State.Terminated
+		if terminated == nil {
+			terminated = status.LastTerminationState.Terminated
+		}
+		if terminated != nil {
+			code := int(terminated.ExitCode)
+			return terminated.Reason, &code
+		}
+	}
+	if pod.Status.Reason != "" {
+		return pod.Status.Reason, nil
+	}
+	for _, condition := range pod.Status.Conditions {
+		if condition.Type == corev1.DisruptionTarget && condition.Status == corev1.ConditionTrue {
+			return condition.Reason, nil
+		}
+	}
+	return "", nil
+}
+
 func (e *KubeExecutor) checkTarget(ctx context.Context, target apps.SSHInstanceTarget) error {
 	pod, err := e.Client.CoreV1().Pods(target.Namespace).Get(ctx, target.PodName, metav1.GetOptions{})
 	if apierrors.IsNotFound(err) {
-		return fmt.Errorf("%w: pod no longer exists", ErrTargetTerminated)
+		return &TargetTerminatedError{Detail: "pod no longer exists"}
 	}
 	if err != nil {
 		return err
 	}
-	if TargetTerminated(pod, target.Container) {
-		return fmt.Errorf("%w: pod or container is terminal", ErrTargetTerminated)
-	}
-	return nil
+	return ClassifyTarget(pod, target.Container)
 }
 
 // Executor is the single privileged pods/exec seam shared by every transport
@@ -103,8 +185,9 @@ func (e *KubeExecutor) Execute(ctx context.Context, target apps.SSHInstanceTarge
 	}
 	// Classify a failed exec against fresh Pod state. A dead target must converge
 	// as terminal instead of becoming a generic retrying "container not found"
-	// error forever; healthy execs avoid an extra Kubernetes GET.
-	if targetErr := e.checkTarget(ctx, target); errors.Is(targetErr, ErrTargetTerminated) {
+	// error forever, and a Pod on a stalled node as not ready rather than as a
+	// broken exec; healthy execs avoid an extra Kubernetes GET.
+	if targetErr := e.checkTarget(ctx, target); errors.Is(targetErr, ErrTargetTerminated) || errors.Is(targetErr, ErrTargetNotReady) {
 		return 126, targetErr
 	}
 	return 126, err

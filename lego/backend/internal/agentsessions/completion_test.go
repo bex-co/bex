@@ -448,8 +448,170 @@ func TestCompleterLostSandboxFailsSession(t *testing.T) {
 	}
 }
 
+// transientReadErr is a status read the gateway could not complete for now
+// (a Pod on a NotReady node), the class the retry window counts.
+var transientReadErr = core.NewUnavailableError(sandbox.CodeSandboxUnreachable,
+	"the sandbox cannot be reached right now (its pod is not ready); retry shortly", nil)
+
+// Nine minutes of transient status-read failures leave the session working;
+// the tenth fails it, under the default 10-minute window.
+func TestCompleterRetriesTransientStatusFailuresForTenMinutes(t *testing.T) {
+	c, st, lc, id := completerFixture("", transientReadErr)
+	start := time.Date(2026, 11, 12, 12, 21, 0, 0, time.UTC)
+	now := start
+	c.Now = func() time.Time { return now }
+	for minute := 0; minute <= 9; minute++ {
+		now = start.Add(time.Duration(minute) * time.Minute)
+		c.Reconcile(context.Background())
+		if st.rows[id].Phase != PhaseRunning || lc.canceled != 0 {
+			t.Fatalf("after %d minutes of transient failures: row=%+v canceled=%d", minute, st.rows[id], lc.canceled)
+		}
+	}
+	now = start.Add(10 * time.Minute)
+	c.Reconcile(context.Background())
+	if st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason != "sandbox status remained unavailable for the 10m retry window" || lc.canceled != 1 {
+		t.Fatalf("ten minutes of transient failures: row=%+v canceled=%d", st.rows[id], lc.canceled)
+	}
+}
+
+// A state the lifecycle server reports and bex does not know waits out the
+// window too, and the reason says the state was what could not be read.
+func TestCompleterUnknownStateFailsNamingTheUnreadableState(t *testing.T) {
+	unknown := core.NewUnavailableError(sandbox.CodeSandboxStateUnknown, "the sandbox runtime reports a state bex does not know; retry shortly", nil)
+	c, st, _, id := completerFixture("", unknown)
+	start := time.Date(2026, 11, 12, 12, 21, 0, 0, time.UTC)
+	now := start
+	c.Now = func() time.Time { return now }
+	c.Reconcile(context.Background())
+	now = start.Add(10 * time.Minute)
+	c.Reconcile(context.Background())
+	if st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason != "sandbox state was unreadable for the 10m retry window" {
+		t.Fatalf("unknown state for the window: row=%+v", st.rows[id])
+	}
+}
+
+// A successful read resets the window, so two stalls nine minutes each never
+// fail the session.
+func TestCompleterStatusSuccessResetsTheRetryWindow(t *testing.T) {
+	c, st, lc, id := completerFixture("", transientReadErr)
+	start := time.Date(2026, 11, 12, 12, 21, 0, 0, time.UTC)
+	now := start
+	c.Now = func() time.Time { return now }
+	at := func(d time.Duration, err error) {
+		t.Helper()
+		now, lc.statusErr = start.Add(d), err
+		c.Reconcile(context.Background())
+		if st.rows[id].Phase != PhaseRunning {
+			t.Fatalf("at +%v: row=%+v", d, st.rows[id])
+		}
+	}
+	at(0, transientReadErr)
+	at(9*time.Minute, transientReadErr)
+	at(9*time.Minute+30*time.Second, nil) // the node is back: the empty status file reads fine
+	at(10*time.Minute, transientReadErr)
+	at(19*time.Minute, transientReadErr)
+	now = start.Add(20 * time.Minute)
+	c.Reconcile(context.Background())
+	if st.rows[id].Phase != PhaseFailed {
+		t.Fatalf("the second stall lasted the whole window but the session survived: %+v", st.rows[id])
+	}
+}
+
+// A really-gone sandbox fails at once, even mid-stall.
+func TestCompleterNotFoundFailsAtOnceMidStall(t *testing.T) {
+	c, st, lc, id := completerFixture("", transientReadErr)
+	start := time.Date(2026, 11, 12, 12, 21, 0, 0, time.UTC)
+	now := start
+	c.Now = func() time.Time { return now }
+	c.Reconcile(context.Background())
+	now, lc.statusErr = start.Add(time.Minute), core.ErrNotFound
+	c.Reconcile(context.Background())
+	if st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason != defaultLostSandboxReason || lc.canceled != 1 {
+		t.Fatalf("a gone sandbox did not fail at once: row=%+v canceled=%d", st.rows[id], lc.canceled)
+	}
+}
+
+// An error that says the platform cannot read sandboxes at all (exec
+// unconfigured, the gateway refusing bex-api's tickets) is not about the
+// sandbox, so it does not fail or delete the session inside the turn's bound.
+func TestCompleterDoesNotCountPlatformReadErrors(t *testing.T) {
+	for _, readErr := range []error{core.ErrSandboxesUnavailable, core.ErrForbidden} {
+		c, st, lc, id := completerFixture("", readErr)
+		start := time.Date(2026, 11, 12, 12, 21, 0, 0, time.UTC)
+		now := start
+		c.Now = func() time.Time { return now }
+		for minute := 0; minute <= 30; minute += 5 {
+			now = start.Add(time.Duration(minute) * time.Minute)
+			c.Reconcile(context.Background())
+		}
+		if st.rows[id].Phase != PhaseRunning || lc.canceled != 0 || len(c.statusFailures) != 0 {
+			t.Fatalf("%v for 30 minutes: row=%+v canceled=%d streaks=%v", readErr, st.rows[id], lc.canceled, c.statusFailures)
+		}
+	}
+}
+
+// Whatever the error, a turn past its ceiling plus the retry window whose
+// status still cannot be read fails: the driver has ended the turn by now,
+// and its verdict will never be readable.
+func TestCompleterFailsAnUnreadableTurnPastItsCeiling(t *testing.T) {
+	for _, readErr := range []error{core.ErrSandboxesUnavailable, core.ErrForbidden, transientReadErr} {
+		c, st, lc, id := completerFixture("", readErr)
+		c.TurnTimeout, c.StatusReadFailureTTL = time.Hour, 24*time.Hour // only the deadline can fire
+		started := st.rows[id].UpdatedAt
+		now := started.Add(time.Hour + 24*time.Hour - time.Second)
+		c.Now = func() time.Time { return now }
+		c.Reconcile(context.Background())
+		if st.rows[id].Phase != PhaseRunning {
+			t.Fatalf("%v before the deadline: row=%+v", readErr, st.rows[id])
+		}
+		now = started.Add(time.Hour + 24*time.Hour)
+		c.Reconcile(context.Background())
+		if st.rows[id].Phase != PhaseFailed || lc.canceled != 1 ||
+			st.rows[id].FailureReason != "sandbox status could not be read for 24h after the turn's 1h limit" {
+			t.Fatalf("%v past the deadline: row=%+v canceled=%d", readErr, st.rows[id], lc.canceled)
+		}
+	}
+}
+
+// Each status read is bounded at 10 s, and a read cut off by that bound
+// counts as transient.
+func TestCompleterBoundsEachStatusRead(t *testing.T) {
+	c, _, lc, id := completerFixture("", context.DeadlineExceeded)
+	c.Reconcile(context.Background())
+	if lc.statusReadBudget <= 0 || lc.statusReadBudget > 10*time.Second {
+		t.Fatalf("status read budget = %v, want at most 10s", lc.statusReadBudget)
+	}
+	if _, counted := c.statusFailures[id]; !counted {
+		t.Fatal("a timed-out status read did not count toward the retry window")
+	}
+}
+
+// Before a lost sandbox is deleted, the session's failure records how its
+// container ended when the gateway saw it; a NotFound that recorded nothing
+// keeps the default reason.
+func TestCompleterLostSandboxRecordsHowItsContainerEnded(t *testing.T) {
+	code := 137
+	for _, tc := range []struct {
+		name    string
+		readErr error
+		want    string
+	}{
+		{"OOM killed", &sandbox.TerminatedError{Termination: sandbox.Termination{Reason: "OOMKilled", ExitCode: &code}}, "the sandbox ran out of memory (exit 137)"},
+		{"pod already gone", &sandbox.TerminatedError{}, defaultLostSandboxReason},
+		{"lifecycle server only", core.ErrNotFound, defaultLostSandboxReason},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, st, lc, id := completerFixture("", tc.readErr)
+			c.Reconcile(context.Background())
+			if st.rows[id].Phase != PhaseFailed || st.rows[id].FailureReason != tc.want || lc.canceled != 1 {
+				t.Fatalf("failure reason = %q (phase %s, canceled %d), want %q", st.rows[id].FailureReason, st.rows[id].Phase, lc.canceled, tc.want)
+			}
+		})
+	}
+}
+
 func TestCompleterBoundsContinuousAmbiguousStatusFailure(t *testing.T) {
-	c, st, lc, id := completerFixture("", core.ErrSandboxesUnavailable)
+	c, st, lc, id := completerFixture("", transientReadErr)
 	now := time.Date(2026, 8, 17, 12, 0, 0, 0, time.UTC)
 	c.Now = func() time.Time { return now }
 	c.StatusReadFailureTTL = time.Minute
@@ -468,7 +630,7 @@ func TestCompleterBoundsContinuousAmbiguousStatusFailure(t *testing.T) {
 }
 
 func TestCompleterPrunesStatusFailureForSessionThatLeftActiveSet(t *testing.T) {
-	c, st, _, id := completerFixture("", core.ErrSandboxesUnavailable)
+	c, st, _, id := completerFixture("", transientReadErr)
 	c.Reconcile(context.Background())
 	if len(c.statusFailures) != 1 {
 		t.Fatalf("status failure streaks=%d, want 1", len(c.statusFailures))

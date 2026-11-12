@@ -35,6 +35,7 @@ import { platformOverlay } from "./overlay.js";
 import { readResultRecord, resultReminder } from "./submit-result.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 import { TurnLogSink } from "./turn-log.js";
+import { TurnBound } from "./turn-bound.js";
 import { SecretRedactor } from "./redact.js";
 
 interface RunTurnOptions {
@@ -217,11 +218,18 @@ export async function runHeadlessTurn(
     once: true,
   });
   if (options.abortSignal?.aborted) abortFromOutside();
-  const turnTimer = setTimeout(() => {
-    const error = new Error(`ACP turn exceeded ${config.turnTimeoutMs}ms`);
-    turnAbort.abort(error);
-    rejectDeadline(error);
-  }, config.turnTimeoutMs);
+  // The turn fails once it stops making progress (the idle bound, paused for
+  // at most toolCallMs while a tool call runs) or at the hard ceiling,
+  // whichever comes first.
+  const bound = new TurnBound({
+    idleMs: config.turnIdleTimeoutMs,
+    toolCallMs: config.toolCallTimeoutMs,
+    ceilingMs: config.turnTimeoutMs,
+    onExpire: (error) => {
+      turnAbort.abort(error);
+      rejectDeadline(error);
+    },
+  });
   try {
     if (!prompt)
       throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
@@ -239,10 +247,22 @@ export async function runHeadlessTurn(
       const mapper = createUpdateMapper();
       const stream = createUIMessageStream({
         execute: async ({ writer }) => {
+          // Every prompt is progress when sent and when answered.
+          const sendPrompt = async (
+            ...args: Parameters<SessionProvider["prompt"]>
+          ): ReturnType<SessionProvider["prompt"]> => {
+            bound.progress();
+            try {
+              return await provider!.prompt(...args);
+            } finally {
+              bound.promptSettled();
+            }
+          };
           try {
             writer.write({ type: "start" });
             provider = await createSessionProvider(config, agentEnv, {
               onUpdate: (update) => {
+                bound.update(update);
                 for (const chunk of mapper.map(update)) writer.write(chunk);
               },
               abortSignal: turnAbort.signal,
@@ -273,7 +293,7 @@ export async function runHeadlessTurn(
             }
             // Attachments ride the dispatching turn only: later live turns
             // reach a sandbox whose agent already has them in context.
-            promptResponse = await provider.prompt(
+            promptResponse = await sendPrompt(
               continuity.prompt,
               turn === config.turn
                 ? await attachmentBlocks(config.attachments, provider.imagePrompts)
@@ -288,7 +308,7 @@ export async function runHeadlessTurn(
               const reminded = config.outputRequired && !final;
               if (reminded) {
                 for (const chunk of mapper.flush()) writer.write(chunk);
-                promptResponse = await provider.prompt(resultReminder());
+                promptResponse = await sendPrompt(resultReminder());
                 final = (await readResultRecord(config.resultRecordPath)).final;
               }
               output = { final, reminded };
@@ -300,7 +320,7 @@ export async function runHeadlessTurn(
               let reasons = undeliveredFacts(facts, config);
               if (reasons.length > 0) {
                 for (const chunk of mapper.flush()) writer.write(chunk);
-                promptResponse = await provider.prompt(
+                promptResponse = await sendPrompt(
                   deliveryNudge(reasons, config.branch, config.prTakeover),
                 );
                 facts = await readGitFacts(config);
@@ -371,7 +391,7 @@ export async function runHeadlessTurn(
     });
     throw terminalError;
   } finally {
-    clearTimeout(turnTimer);
+    bound.stop();
     options.abortSignal?.removeEventListener("abort", abortFromOutside);
     // Idempotent safety net for errors thrown before the success/catch path
     // could stop the ACP child. Never replace the persisted failure verdict.

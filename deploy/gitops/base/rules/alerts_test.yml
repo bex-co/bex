@@ -1481,6 +1481,34 @@ tests:
         alertname: AgentSessionProvisionFailing
         exp_alerts: []
 
+  # Status reads failing for a platform reason (the "error" outcome) page;
+  # transient ones (a node stall waiting out the retry window) do not.
+  - name: status reads failing for a platform reason page
+    interval: 1m
+    input_series:
+      - series: 'bex_agent_session_status_reads_total{outcome="error",job="bex-api",instance="prod-a"}'
+        values: "0+4x60"
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: AgentSessionStatusReadsFailing
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "Agent-session status reads are failing for a platform reason"
+              description: "bex-api's agent-session Completer has been unable to read sandbox status files for 15 minutes for a reason that is not a node stall or a gone sandbox, so running sessions cannot finish until their turn ceiling plus BEX_AGENT_STATUS_RETRY_WINDOW passes. Read the bex-api log lines 'read status failed, not counted toward the retry window' for the cause; check BEX_SANDBOX_EXEC_SECRET/BEX_SANDBOX_EXEC_URL match the SSH gateway and that the gateway's :8081 listener answers. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
+
+  - name: transient status-read failures stay silent
+    interval: 1m
+    input_series:
+      - series: 'bex_agent_session_status_reads_total{outcome="transient_error",job="bex-api",instance="prod-a"}'
+        values: "0+4x60"
+      - series: 'bex_agent_session_status_reads_total{outcome="error",job="bex-api",instance="prod-a"}'
+        values: "0x60"
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: AgentSessionStatusReadsFailing
+        exp_alerts: []
+
   # w5/m95 — the /v1/sandboxes surface, the row ADR088's coverage table left
   # unfiled. Same three cases as the agent-session sibling above, plus the one
   # that is specific to this rule: refusals must not move it in either direction.

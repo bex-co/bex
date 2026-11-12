@@ -221,8 +221,20 @@ type Service struct {
 	// turn that never converges — a hung model call or an infinite tool loop —
 	// is bounded here instead of the driver's 4h fallback. <= 0 ⇒ the 30m
 	// defaultTurnTimeout; there is deliberately no "disable" (removing the bound
-	// is the failure mode this fixes).
+	// is the failure mode this fixes). It is the hard ceiling over
+	// TurnIdleTimeout, capped at the sandbox's own lifetime (turnCeiling).
 	TurnTimeout time.Duration
+	// TurnIdleTimeout bounds how long one turn may make no progress
+	// (BEX_AGENT_TURN_IDLE_TIMEOUT): the driver fails a turn once no ACP update
+	// or prompt has happened for this long. It is injected as
+	// BEX_AGENT_TURN_IDLE_TIMEOUT_MS; <= 0 ⇒ defaultTurnIdleTimeout; never
+	// above the ceiling.
+	TurnIdleTimeout time.Duration
+	// ToolCallTimeout bounds how long one running tool call may pause the idle
+	// clock (BEX_AGENT_TOOL_CALL_TIMEOUT), injected as
+	// BEX_AGENT_TOOL_CALL_TIMEOUT_MS; <= 0 ⇒ defaultToolCallTimeout; never
+	// above the ceiling.
+	ToolCallTimeout time.Duration
 	// Metrics records sandbox provisioning latency (w5/m81 t002). It is the same
 	// *CompletionMetrics the Completer holds, so lifecycle timing shares one
 	// registration; nil ⇒ no observation (byte-identical to before).
@@ -1584,8 +1596,12 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 	}
 	// Bound one turn (w5/m80 t002): the driver's own fallback is otherwise 4h, so
 	// a hung model call or a runaway tool loop would hold the sandbox for hours.
-	// Always inject a positive millisecond bound; <= 0 ⇒ the 30m default.
+	// Always inject a positive millisecond bound; <= 0 ⇒ the 30m default. It is
+	// the ceiling; the idle bound, and the tool-call cap on pausing it, are what
+	// end a hung turn.
 	env["BEX_AGENT_TURN_TIMEOUT_MS"] = fmt.Sprintf("%d", s.turnTimeout().Milliseconds())
+	env["BEX_AGENT_TURN_IDLE_TIMEOUT_MS"] = fmt.Sprintf("%d", s.turnIdleTimeout().Milliseconds())
+	env["BEX_AGENT_TOOL_CALL_TIMEOUT_MS"] = fmt.Sprintf("%d", s.toolCallTimeout().Milliseconds())
 	// The session's model (agentConfig.model, else the workspace default) for
 	// the claude profile, whose CLI reads ANTHROPIC_MODEL. Other profiles keep
 	// their release default. Pod env, not BEX_AGENT_ENV_JSON, because the driver
@@ -1607,11 +1623,41 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 // fallback, so a stuck turn converges to failed in tens of minutes, not hours.
 const defaultTurnTimeout = 30 * time.Minute
 
-func (s *Service) turnTimeout() time.Duration {
-	if s.TurnTimeout > 0 {
-		return s.TurnTimeout
+// defaultTurnIdleTimeout is how long a turn may make no progress when
+// BEX_AGENT_TURN_IDLE_TIMEOUT is unset.
+const defaultTurnIdleTimeout = 30 * time.Minute
+
+// defaultToolCallTimeout is how long one tool call may pause the idle clock
+// when BEX_AGENT_TOOL_CALL_TIMEOUT is unset: a long build or test suite fits,
+// a hung tool does not hold the turn until the ceiling.
+const defaultToolCallTimeout = 2 * time.Hour
+
+// turnCeiling is one turn's hard wall-clock bound for a configured value:
+// <= 0 ⇒ defaultTurnTimeout, and never past an agent sandbox's lifetime,
+// which would cut the turn first with a worse reason.
+func turnCeiling(configured time.Duration) time.Duration {
+	if configured <= 0 {
+		return defaultTurnTimeout
 	}
-	return defaultTurnTimeout
+	return min(configured, sandbox.DefaultLifetime)
+}
+
+// boundUnderCeiling is configured (or def when <= 0), at most ceiling.
+func boundUnderCeiling(configured, def, ceiling time.Duration) time.Duration {
+	if configured <= 0 {
+		configured = def
+	}
+	return min(configured, ceiling)
+}
+
+func (s *Service) turnTimeout() time.Duration { return turnCeiling(s.TurnTimeout) }
+
+func (s *Service) turnIdleTimeout() time.Duration {
+	return boundUnderCeiling(s.TurnIdleTimeout, defaultTurnIdleTimeout, s.turnTimeout())
+}
+
+func (s *Service) toolCallTimeout() time.Duration {
+	return boundUnderCeiling(s.ToolCallTimeout, defaultToolCallTimeout, s.turnTimeout())
 }
 
 // defaultEgressProxyURL is the gateway egress proxy origin a full-tier

@@ -40,6 +40,11 @@ const (
 	TicketHeader              = "X-Bex-Sandbox-Exec-Ticket"
 	SandboxContainer          = "sandbox"
 	ErrorCodeTargetTerminated = "sandbox_terminated"
+	// ErrorCodeTargetUnavailable is the exec stream's code for a sandbox Pod
+	// that exists but is not Ready, as a Pod on a NotReady or unreachable node
+	// reads. bex-api treats it as transient: the sandbox is neither gone nor
+	// unconfigured, only out of reach for now.
+	ErrorCodeTargetUnavailable = "target_unavailable"
 )
 
 // SystemSubject is the ticket subject the trusted Completer's status/transcript
@@ -133,6 +138,12 @@ type ErrorEvent struct {
 	Message string `json:"message"`
 	Error   string `json:"error"`
 	Code    string `json:"code,omitempty"`
+	// TerminatedReason and TerminatedExitCode ride a sandbox_terminated event
+	// when the target's container recorded how it ended (the kubelet's
+	// terminated reason, e.g. OOMKilled, and its exit code), so a lost
+	// session sandbox fails with its cause. The pinned CLI ignores both.
+	TerminatedReason   string `json:"terminatedReason,omitempty"`
+	TerminatedExitCode *int   `json:"terminatedExitCode,omitempty"`
 }
 
 // NewErrorEvent carries one message under both keys.

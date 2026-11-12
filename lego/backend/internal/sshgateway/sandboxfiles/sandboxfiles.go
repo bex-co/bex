@@ -190,6 +190,9 @@ const codeFileNotFound = "file_not_found"
 var (
 	errOperationFailed = &statusError{status: http.StatusServiceUnavailable, message: "sandbox file operation failed"}
 	errRevoked         = &statusError{status: http.StatusForbidden, message: "access was revoked during this transfer"}
+	// errNotReady is a target Pod that is not Ready (a NotReady or unreachable
+	// node): out of reach for now, never a missing sandbox.
+	errNotReady = &statusError{status: http.StatusServiceUnavailable, message: "sandbox is not reachable right now: its pod is not ready"}
 )
 
 // hideCause answers errOperationFailed in place of an unclassified failure: a
@@ -271,6 +274,9 @@ func (s *Server) execute(ctx context.Context, target apps.SSHInstanceTarget, com
 	code, err := s.Executor.Execute(ctx, target, command, false, nil, input, output, io.Discard)
 	if ctx.Err() != nil {
 		return ctx.Err()
+	}
+	if errors.Is(err, sshgateway.ErrTargetNotReady) {
+		return errNotReady
 	}
 	if err != nil && !errors.Is(err, sshgateway.ErrTargetTerminated) {
 		// The executor's own failure answers as one whatever it wraps, never as

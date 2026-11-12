@@ -169,8 +169,10 @@ func TestExecBufferedFailsClosedWithoutExitEvent(t *testing.T) {
 		Exec:   &ExecConfig{Secret: secret, GatewayURL: gw.URL, Client: gw.Client()},
 	}
 	_, err := svc.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "echo hi"})
-	if !errors.Is(err, core.ErrSandboxesUnavailable) {
-		t.Fatalf("truncated buffered exec = %v, want ErrSandboxesUnavailable", err)
+	// A 503 that says the stream broke, not that the runtime is
+	// unconfigured.
+	if !errors.Is(err, core.ErrUnavailable) || !Transient(err) || errors.Is(err, core.ErrSandboxesUnavailable) {
+		t.Fatalf("truncated buffered exec = %v, want a transient 503", err)
 	}
 }
 
@@ -186,12 +188,14 @@ func (b failingBody) Read(p []byte) (int, error) {
 }
 
 // TestAFailedExecStreamAnswersWithoutItsCause (w5/123): a stream that breaks
-// mid-exec answers "sandbox exec stream failed" without the read error, whose
-// text names internal addresses.
+// mid-exec answers a fixed sentence without the read error, whose text names
+// internal addresses. It is out of reach for now, never an unconfigured
+// runtime.
 func TestAFailedExecStreamAnswersWithoutItsCause(t *testing.T) {
 	_, err := bufferExec(&http.Response{Body: io.NopCloser(failingBody{strings.NewReader("event: output\ndata: {\"stream\":\"stdout\",\"data\":\"partial\"}\n\n")})})
-	if !errors.Is(err, core.ErrSandboxesUnavailable) || !strings.HasSuffix(err.Error(), "sandbox exec stream failed") {
-		t.Fatalf("broken stream = %v, want ErrSandboxesUnavailable ending in the fixed sentence", err)
+	if !Transient(err) || errors.Is(err, core.ErrSandboxesUnavailable) ||
+		!strings.Contains(err.Error(), "the exec stream broke") || strings.Contains(err.Error(), "10.0") {
+		t.Fatalf("broken stream = %v, want a transient fixed sentence without its cause", err)
 	}
 }
 
@@ -522,9 +526,11 @@ func TestExecAgentSessionSandboxSignsSessionClaimForDeveloper(t *testing.T) {
 // A sandbox whose OpenSandbox state is terminal/errored (its pod exited) can
 // never report a success status; ReadSessionStatus must surface NotFound so the
 // Completer finalizes the session as failed instead of exec-ing into a dead pod
-// forever (w3/m43 crash-leg stranding).
+// forever (w3/m43 crash-leg stranding). An errored one is probed once for how
+// its container ended (reachability_test.go); an unknown state is not
+// terminal.
 func TestReadSessionStatusFailsClosedOnTerminalSandbox(t *testing.T) {
-	for _, state := range []string{"terminated", "Failed", "Deleted", ""} {
+	for _, state := range []string{"terminated", "Deleted"} {
 		t.Run("state="+state, func(t *testing.T) {
 			upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent" {

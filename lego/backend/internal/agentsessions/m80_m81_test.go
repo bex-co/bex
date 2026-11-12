@@ -54,6 +54,32 @@ func TestDriverEnvInjectsTurnTimeout(t *testing.T) {
 	}
 }
 
+// The idle bound and the tool-call cap are always injected, never above the
+// ceiling, and the ceiling never outlives the sandbox's 24h lifetime.
+func TestDriverEnvInjectsIdleBoundsUnderACappedCeiling(t *testing.T) {
+	rec := store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Turns: 1}
+	ms := func(d time.Duration) string { return strconv.FormatInt(d.Milliseconds(), 10) }
+	bounds := func(env map[string]string) [3]string {
+		return [3]string{env["BEX_AGENT_TURN_TIMEOUT_MS"], env["BEX_AGENT_TURN_IDLE_TIMEOUT_MS"], env["BEX_AGENT_TOOL_CALL_TIMEOUT_MS"]}
+	}
+	for _, tc := range []struct {
+		name string
+		svc  *Service
+		want [3]time.Duration // ceiling, idle, tool call
+	}{
+		{"defaults under the 30m ceiling", &Service{}, [3]time.Duration{30 * time.Minute, 30 * time.Minute, 30 * time.Minute}},
+		{"defaults under a 4h ceiling", &Service{TurnTimeout: 4 * time.Hour}, [3]time.Duration{4 * time.Hour, 30 * time.Minute, 2 * time.Hour}},
+		{"configured", &Service{TurnTimeout: 4 * time.Hour, TurnIdleTimeout: 20 * time.Minute, ToolCallTimeout: time.Hour}, [3]time.Duration{4 * time.Hour, 20 * time.Minute, time.Hour}},
+		{"bounds above the ceiling", &Service{TurnTimeout: time.Hour, TurnIdleTimeout: 2 * time.Hour, ToolCallTimeout: 3 * time.Hour}, [3]time.Duration{time.Hour, time.Hour, time.Hour}},
+		{"ceiling past the sandbox lifetime", &Service{TurnTimeout: 72 * time.Hour}, [3]time.Duration{24 * time.Hour, 30 * time.Minute, 2 * time.Hour}},
+	} {
+		got := bounds(tc.svc.driverEnv(AgentConfig{Agent: "claude"}, rec, false))
+		if want := [3]string{ms(tc.want[0]), ms(tc.want[1]), ms(tc.want[2])}; got != want {
+			t.Errorf("%s: ceiling/idle/tool = %v, want %v", tc.name, got, want)
+		}
+	}
+}
+
 // ADR090 D5: a re-dispatched steering sandbox learns the PR earlier turns
 // opened; turn 1 and repo-less sessions carry none.
 func TestDriverEnvNamesTheExistingPullRequest(t *testing.T) {

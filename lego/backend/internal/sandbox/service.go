@@ -1182,14 +1182,7 @@ const agentSessionStatusPath = "/var/run/bex-agent/status.json"
 // output means the file is not present yet (the headless turn is still running).
 func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error) {
 	s := l.service
-	if !s.enabled() || !s.execEnabled() {
-		return "", core.ErrSandboxesUnavailable
-	}
-	key, err := s.agentSessionKey(ctx, workspaceID)
-	if err != nil {
-		return "", err
-	}
-	sb, err := s.agentSessionSandbox(ctx, key, workspaceID, sessionID, sandboxID)
+	status, err := s.sessionSandboxState(ctx, workspaceID, sessionID, sandboxID)
 	if err != nil {
 		return "", err
 	}
@@ -1198,17 +1191,22 @@ func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspace
 	// fails forever — which silently stranded the session in `running` (w3/m43
 	// live E2E, the nonexistent-adapter crash leg). Surface it as NotFound so the
 	// Completer finalizes it as a failed turn instead of retrying every tick.
-	switch mapOpenSandboxStatus(sb.Status.State) {
-	case StatusTerminated, StatusErrored:
+	switch status {
+	case StatusTerminated:
+		return "", sandboxNotFound(sandboxID)
+	case StatusErrored:
+		// Its container ended. One no-op exec fails, and while the Pod is still
+		// there the gateway's target check answers how (OOMKilled, an exit
+		// code), so the session fails with its cause before the sandbox is
+		// deleted. NotFound either way.
+		_, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID, "true", maxExecOutputBytes)
+		if _, ok := TerminationOf(err); ok {
+			return "", err
+		}
 		return "", sandboxNotFound(sandboxID)
 	}
-	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID,
-		[]string{"/bin/sh", "-c", "cat " + agentSessionStatusPath + " 2>/dev/null || true"})
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = resp.Body.Close() }()
-	result, err := bufferExec(resp)
+	result, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID,
+		"cat "+agentSessionStatusPath+" 2>/dev/null || true", maxExecOutputBytes)
 	if err != nil {
 		return "", err
 	}
@@ -1232,7 +1230,35 @@ const maxTranscriptLogBytes = 16 << 20
 // it) surfaces as NotFound so the caller treats it as "nothing to capture".
 func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error) {
 	s := l.service
-	if !s.enabled() || !s.execEnabled() {
+	status, err := s.sessionSandboxState(ctx, workspaceID, sessionID, sandboxID)
+	if err != nil {
+		return "", err
+	}
+	if status == StatusTerminated || status == StatusErrored {
+		return "", sandboxNotFound(sandboxID)
+	}
+	// The public buffered-exec cap is 2 MiB, but the driver's own log is
+	// bounded at 16 MiB. Collect that full trusted artifact with framing headroom
+	// and fail explicitly if even this bound truncates it.
+	result, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID,
+		fmt.Sprintf("tail -c %d %s 2>/dev/null || true", maxTranscriptLogBytes, agentSessionLogPath),
+		maxTranscriptLogBytes+1<<20)
+	if err != nil {
+		return "", err
+	}
+	if result.Truncated {
+		return "", fmt.Errorf("%w: agent session transcript exceeded harvest limit", core.ErrSandboxesUnavailable)
+	}
+	return result.Stdout, nil
+}
+
+// sessionSandboxState re-validates a session read's sandbox binding and
+// returns its lifecycle state. A state bex does not know is refused as
+// errStateUnknown, retried and never read as a dead sandbox. Exec
+// configuration is checked after a terminated state, so a sandbox past its
+// lifetime still reads as gone when exec is not configured.
+func (s *Service) sessionSandboxState(ctx context.Context, workspaceID, sessionID, sandboxID string) (Status, error) {
+	if !s.enabled() {
 		return "", core.ErrSandboxesUnavailable
 	}
 	key, err := s.agentSessionKey(ctx, workspaceID)
@@ -1243,27 +1269,25 @@ func (l *AgentSessionLifecycle) ReadSessionTranscript(ctx context.Context, works
 	if err != nil {
 		return "", err
 	}
-	switch mapOpenSandboxStatus(sb.Status.State) {
-	case StatusTerminated, StatusErrored:
-		return "", sandboxNotFound(sandboxID)
+	status, known := openSandboxStatus(sb.Status.State)
+	switch {
+	case !known:
+		return "", errStateUnknown
+	case status != StatusTerminated && !s.execEnabled():
+		return "", core.ErrSandboxesUnavailable
 	}
-	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID,
-		[]string{"/bin/sh", "-c", fmt.Sprintf("tail -c %d %s 2>/dev/null || true", maxTranscriptLogBytes, agentSessionLogPath)})
+	return status, nil
+}
+
+// sessionExec runs one trusted Completer command in the session sandbox
+// through the gateway and buffers its output up to limit.
+func (s *Service) sessionExec(ctx context.Context, workspaceID, sessionID, sandboxID, command string, limit int) (ExecResult, error) {
+	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c", command})
 	if err != nil {
-		return "", err
+		return ExecResult{}, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	// The public buffered-exec cap is 2 MiB, but the driver's own log is
-	// bounded at 16 MiB. Collect that full trusted artifact with framing headroom
-	// and fail explicitly if even this bound truncates it.
-	result, err := bufferExecWithLimit(resp, maxTranscriptLogBytes+1<<20)
-	if err != nil {
-		return "", err
-	}
-	if result.Truncated {
-		return "", fmt.Errorf("%w: agent session transcript exceeded harvest limit", core.ErrSandboxesUnavailable)
-	}
-	return result.Stdout, nil
+	return bufferExecWithLimit(resp, limit)
 }
 
 func (s *Service) agentSessionKey(ctx context.Context, workspaceID string) (string, error) {

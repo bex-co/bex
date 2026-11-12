@@ -515,6 +515,8 @@ func TestAnExecutorFailureAnswersWithoutItsText(t *testing.T) {
 		"dropped stream":    {&url.Error{Op: "Post", URL: execURL, Err: io.ErrUnexpectedEOF}, http.StatusServiceUnavailable, failed, execURL},
 		"exec deadline":     {&url.Error{Op: "Post", URL: execURL, Err: context.DeadlineExceeded}, http.StatusServiceUnavailable, failed, execURL},
 		"terminated target": {fmt.Errorf("%w: pod no longer exists", sshgateway.ErrTargetTerminated), http.StatusNotFound, `{"error":"sandbox target terminated: pod no longer exists","id":"not_found","message":"sandbox target terminated: pod no longer exists"}` + "\n", ""},
+		// A Pod on a NotReady node: out of reach for now, never gone.
+		"target not ready": {fmt.Errorf("%w: its node may be NotReady or unreachable", sshgateway.ErrTargetNotReady), http.StatusServiceUnavailable, `{"error":"sandbox is not reachable right now: its pod is not ready","id":"unavailable","message":"sandbox is not reachable right now: its pod is not ready"}` + "\n", ""},
 	} {
 		for _, method := range []string{http.MethodPut, http.MethodGet} {
 			t.Run(name+"/"+method, func(t *testing.T) {

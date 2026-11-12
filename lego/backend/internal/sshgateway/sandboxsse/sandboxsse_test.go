@@ -18,6 +18,7 @@ package sandboxsse
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -79,6 +80,53 @@ func TestSandboxExecCodesTerminalTarget(t *testing.T) {
 	if !strings.Contains(string(body), `"status":404,"message":"sandbox is no longer running"`) ||
 		!strings.Contains(string(body), `"code":"`+sandboxexec.ErrorCodeTargetTerminated+`"`) {
 		t.Fatalf("terminal SSE = %s", body)
+	}
+}
+
+// execEvents runs one exec through the gateway over exec and returns the SSE
+// body.
+func execEvents(t *testing.T, exec sshgateway.Executor) string {
+	t.Helper()
+	secret := []byte("exec-secret")
+	srv := httptest.NewServer(newSandboxExecGateway(exec, secret).Handler())
+	defer srv.Close()
+	tok, _ := sandboxexec.Mint(secret, sandboxexec.Claims{
+		Subject: "id-a", SandboxID: "os-1", Namespace: "tea-a-sandbox",
+		Command: []string{"true"}, ExpiresAt: time.Now().Add(time.Minute).Unix(),
+	})
+	req, _ := http.NewRequest(http.MethodPost, srv.URL, nil)
+	req.Header.Set(sandboxexec.TicketHeader, tok)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+	return string(body)
+}
+
+// A Pod on a NotReady node answers its own code, not the generic
+// "exec failed to start", so bex-api never reads a node stall as a broken or
+// unconfigured sandbox.
+func TestSandboxExecCodesUnavailableTarget(t *testing.T) {
+	body := execEvents(t, &echoExecutor{code: 126, err: fmt.Errorf("%w: pod is not Ready", sshgateway.ErrTargetNotReady)})
+	if !strings.Contains(body, `"status":503`) ||
+		!strings.Contains(body, `"code":"`+sandboxexec.ErrorCodeTargetUnavailable+`"`) ||
+		strings.Contains(body, "exec failed to start") {
+		t.Fatalf("unavailable SSE = %s", body)
+	}
+}
+
+// A terminal target event carries how its container ended.
+func TestSandboxExecTerminalTargetCarriesItsExit(t *testing.T) {
+	code := 137
+	body := execEvents(t, &echoExecutor{code: 126, err: &sshgateway.TargetTerminatedError{Detail: "pod or container is terminal", Reason: "OOMKilled", ExitCode: &code}})
+	if !strings.Contains(body, `"code":"`+sandboxexec.ErrorCodeTargetTerminated+`"`) ||
+		!strings.Contains(body, `"terminatedReason":"OOMKilled","terminatedExitCode":137`) {
+		t.Fatalf("terminal SSE = %s", body)
+	}
+	if bare := execEvents(t, &echoExecutor{code: 126, err: sshgateway.ErrTargetTerminated}); strings.Contains(bare, "terminatedReason") || strings.Contains(bare, "terminatedExitCode") {
+		t.Fatalf("a termination nothing recorded was invented: %s", bare)
 	}
 }
 

@@ -242,7 +242,18 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	case err != nil && errors.Is(err, sshgateway.ErrTargetTerminated):
 		log.Printf("sandbox exec target terminal (sandbox=%s)", claims.SandboxID)
 		result = "failed"
-		sse.emit("error", newErrorEvent(http.StatusNotFound, "sandbox is no longer running", sandboxexec.ErrorCodeTargetTerminated))
+		event := newErrorEvent(http.StatusNotFound, "sandbox is no longer running", sandboxexec.ErrorCodeTargetTerminated)
+		var terminated *sshgateway.TargetTerminatedError
+		if errors.As(err, &terminated) {
+			event.TerminatedReason, event.TerminatedExitCode = terminated.Reason, terminated.ExitCode
+		}
+		sse.emit("error", event)
+	case err != nil && errors.Is(err, sshgateway.ErrTargetNotReady):
+		// A Pod on a NotReady or unreachable node still reads Running; its own
+		// code keeps bex-api from reading a node stall as a broken sandbox.
+		log.Printf("sandbox exec target not ready (sandbox=%s): %v", claims.SandboxID, err)
+		result = "failed"
+		sse.emit("error", newErrorEvent(http.StatusServiceUnavailable, "sandbox is not reachable right now: its pod is not ready", sandboxexec.ErrorCodeTargetUnavailable))
 	case err != nil && execCtx.Err() != nil && timedCtx.Err() == nil:
 		// The watchdog ended the stream (revocation), not the client or the cap.
 		// Reported through the session vocabulary (result="revoked"), like the
@@ -289,7 +300,7 @@ func newExitEvent(code int) exitEvent {
 
 // newErrorEvent carries one message under both keys and an HTTP-ish status
 // the CLI prints: 404 for a terminated target, 403 for revoked access, 503
-// when the exec could not start.
+// when the target is not ready or the exec could not start.
 func newErrorEvent(status int, msg, code string) errorEvent {
 	return sandboxexec.NewErrorEvent(status, msg, code)
 }

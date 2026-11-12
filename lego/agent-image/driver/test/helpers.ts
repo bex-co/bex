@@ -88,6 +88,10 @@ export async function tempConfig(
     turn: 1,
     exitAfterTurn: false,
     turnTimeoutMs: 1_000,
+    // Out of the way unless a test exercises it: the ceiling above bounds
+    // every fixture turn.
+    turnIdleTimeoutMs: 60_000,
+    toolCallTimeoutMs: 60_000,
     credentialEnvName: "ANTHROPIC_API_KEY",
     modelCredential: modelProxyPlaceholder("ags-test"),
     sessionID: "ags-test",

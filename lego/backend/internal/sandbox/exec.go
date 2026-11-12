@@ -49,8 +49,10 @@ type ExecConfig struct {
 	// FileGatewayURL is the gateway's internal /sandbox-files endpoint. File
 	// transfers use distinct tickets and never pass a caller-chosen command.
 	FileGatewayURL string
-	// Client is the HTTP client used to stream from the gateway (no timeout —
-	// the stream is long-lived; the request context bounds it).
+	// Client is the HTTP client used to stream from the gateway:
+	// sshgateway.NewUpstreamClient in production, which bounds dialing and the
+	// gateway's answer but not the long-lived stream itself (the request
+	// context bounds that).
 	Client *http.Client
 	// TTL bounds the minted ticket's lifetime (default 60s).
 	TTL time.Duration
@@ -251,17 +253,20 @@ func (s *Service) mintAndDial(ctx context.Context, ws, sandboxID, agentSessionID
 	}
 	resp, err := client.Do(greq)
 	if err != nil {
-		return nil, fmt.Errorf("%w: sandbox exec gateway unreachable", core.ErrSandboxesUnavailable)
+		// A configured gateway that does not answer is out of reach, not
+		// unconfigured. The cause is not logged here: every caller logs the
+		// error it is handed.
+		return nil, unreachable("the exec gateway did not answer")
 	}
 	if resp.StatusCode != http.StatusOK {
 		_ = resp.Body.Close()
 		switch resp.StatusCode {
-		case http.StatusUnauthorized:
+		case http.StatusUnauthorized, http.StatusForbidden:
 			return nil, core.ErrForbidden
 		case http.StatusTooManyRequests:
-			return nil, fmt.Errorf("%w: too many concurrent exec sessions", core.ErrBadRequest)
+			return nil, errExecSessionLimit
 		default:
-			return nil, fmt.Errorf("%w: sandbox exec unavailable", core.ErrSandboxesUnavailable)
+			return nil, unreachable(fmt.Sprintf("the exec gateway answered %d", resp.StatusCode))
 		}
 	}
 	return resp, nil
@@ -491,33 +496,44 @@ func bufferExecWithLimit(resp *http.Response, maxOutputBytes int) (ExecResult, e
 				// Same transition: the pinned CLI's {status, message} beside the
 				// internal {error, code}. `code` (or a 404 status) names the
 				// terminated target either way.
-				var ev struct {
-					Status  int    `json:"status"`
-					Message string `json:"message"`
-					Error   string `json:"error"`
-					Code    string `json:"code"`
-				}
+				var ev sandboxexec.ErrorEvent
 				if json.Unmarshal([]byte(payload), &ev) == nil {
-					msg := ev.Message
-					if msg == "" {
-						msg = ev.Error
+					if err := execEventError(ev); err != nil {
+						return finish(), err
 					}
-					if msg == "" {
-						break
-					}
-					if ev.Code == sandboxexec.ErrorCodeTargetTerminated || ev.Status == http.StatusNotFound {
-						return finish(), fmt.Errorf("%w: sandbox terminated", core.ErrNotFound)
-					}
-					return finish(), fmt.Errorf("%w: %s", core.ErrSandboxesUnavailable, msg)
 				}
 			}
 		}
 	}
 	if err := sc.Err(); err != nil {
-		return finish(), core.HideCause(fmt.Errorf("%w: sandbox exec stream failed", core.ErrSandboxesUnavailable), err)
+		return finish(), core.HideCause(unreachable("the exec stream broke"), err)
 	}
 	if !exitSeen {
-		return finish(), fmt.Errorf("%w: sandbox exec stream ended without an exit event", core.ErrSandboxesUnavailable)
+		return finish(), unreachable("the exec stream ended without an exit status")
 	}
 	return finish(), nil
+}
+
+// execEventError maps the gateway's `error` event onto bex-api's error
+// classes: a terminated target is gone (NotFound, with how its container
+// ended when the gateway saw it), revoked access is forbidden, and anything
+// else — a target that is not ready, an exec that could not start — is out of
+// reach for now, never "sandbox runtime not configured". nil for an
+// event without a message.
+func execEventError(ev sandboxexec.ErrorEvent) error {
+	msg := ev.Message
+	if msg == "" {
+		msg = ev.Error
+	}
+	switch {
+	case msg == "":
+		return nil
+	case ev.Code == sandboxexec.ErrorCodeTargetTerminated || ev.Status == http.StatusNotFound:
+		return &TerminatedError{Termination: Termination{Reason: ev.TerminatedReason, ExitCode: ev.TerminatedExitCode}}
+	case ev.Code == sandboxexec.ErrorCodeTargetUnavailable:
+		return unreachable("its pod is not ready; its node may be NotReady or unreachable")
+	case ev.Status == http.StatusForbidden:
+		return fmt.Errorf("%w: %s", core.ErrForbidden, msg)
+	}
+	return unreachable(msg)
 }

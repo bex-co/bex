@@ -24,7 +24,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 )
@@ -70,7 +69,7 @@ func (l *AgentSessionLifecycle) UploadAgentSessionFiles(ctx context.Context, wor
 			}
 		default:
 			log.Printf("agent session files: sandbox file gateway answered %d (session=%s path=%s)", status, sessionID, path)
-			return fmt.Errorf("%w: sandbox file gateway answered %d", core.ErrSandboxesUnavailable, status)
+			return unreachable(fmt.Sprintf("the file gateway answered %d", status))
 		}
 	}
 }
@@ -92,7 +91,7 @@ func (s *Service) putAgentSessionArchive(ctx context.Context, workspaceID string
 	resp, err := s.gatewayClient().Do(req)
 	if err != nil {
 		log.Printf("agent session files: sandbox file gateway unreachable: %v", err)
-		return 0, core.ErrSandboxesUnavailable
+		return 0, unreachable("the file gateway did not answer")
 	}
 	_ = resp.Body.Close()
 	return resp.StatusCode, nil

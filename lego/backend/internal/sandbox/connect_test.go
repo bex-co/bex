@@ -412,8 +412,12 @@ func TestBufferExecReadsPinnedAndTransitionalShapes(t *testing.T) {
 		{"pinned terminated by status", "event: error\ndata: {\"status\":404,\"message\":\"sandbox is no longer running\"}\n\n", 0, core.ErrNotFound, ""},
 		{"pinned terminated by code", "event: error\ndata: {\"status\":404,\"message\":\"gone\",\"error\":\"gone\",\"code\":\"sandbox_terminated\"}\n\n", 0, core.ErrNotFound, ""},
 		{"legacy terminated", "event: error\ndata: {\"error\":\"sandbox is no longer running\",\"code\":\"sandbox_terminated\"}\n\n", 0, core.ErrNotFound, ""},
-		{"pinned unavailable keeps message", "event: error\ndata: {\"status\":503,\"message\":\"exec failed to start in this sandbox\"}\n\n", 0, core.ErrSandboxesUnavailable, "exec failed to start in this sandbox"},
-		{"legacy unavailable keeps message", "event: error\ndata: {\"error\":\"access was revoked during this exec\"}\n\n", 0, core.ErrSandboxesUnavailable, "access was revoked during this exec"},
+		// An exec that could not start is out of reach for now (503),
+		// never "sandbox runtime not configured".
+		{"pinned unavailable keeps message", "event: error\ndata: {\"status\":503,\"message\":\"exec failed to start in this sandbox\"}\n\n", 0, core.ErrUnavailable, "exec failed to start in this sandbox"},
+		{"legacy unavailable keeps message", "event: error\ndata: {\"error\":\"access was revoked during this exec\"}\n\n", 0, core.ErrUnavailable, "access was revoked during this exec"},
+		{"target not ready", "event: error\ndata: {\"status\":503,\"message\":\"sandbox is not reachable right now: its pod is not ready\",\"code\":\"target_unavailable\"}\n\n", 0, core.ErrUnavailable, "its pod is not ready"},
+		{"pinned revoked is forbidden", "event: error\ndata: {\"status\":403,\"message\":\"access was revoked during this exec\"}\n\n", 0, core.ErrForbidden, "access was revoked during this exec"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -426,6 +430,9 @@ func TestBufferExecReadsPinnedAndTransitionalShapes(t *testing.T) {
 			}
 			if !errors.Is(err, tc.wantErr) {
 				t.Fatalf("err=%v, want %v", err, tc.wantErr)
+			}
+			if errors.Is(err, core.ErrSandboxesUnavailable) {
+				t.Fatalf("err=%v reads as an unconfigured sandbox runtime", err)
 			}
 			if tc.wantMsg != "" && !strings.Contains(err.Error(), tc.wantMsg) {
 				t.Fatalf("err=%q lost the gateway message %q", err, tc.wantMsg)
