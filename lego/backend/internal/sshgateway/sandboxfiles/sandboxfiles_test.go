@@ -232,7 +232,7 @@ func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 	for _, name := range []string{"/", "/absolute", "a/../b", "../b", "a//b", "a\nb", "a\\b", strings.Repeat("a", files.MaxPathBytes+1)} {
 		t.Run(name, func(t *testing.T) {
 			data := archive(t, &tar.Header{Name: name, Typeflag: tar.TypeDir})
-			if err := copyArchive(io.Discard, bytes.NewReader(data)); err == nil {
+			if _, err := copyArchive(io.Discard, bytes.NewReader(data)); err == nil {
 				t.Fatal("unsafe archive accepted")
 			}
 		})
@@ -241,7 +241,7 @@ func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 		{{Name: "same", Typeflag: tar.TypeReg}, {Name: "same", Typeflag: tar.TypeReg}},
 		{{Name: "missing/child", Typeflag: tar.TypeReg}},
 	} {
-		if err := copyArchive(io.Discard, bytes.NewReader(archive(t, headers...))); err == nil {
+		if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, headers...))); err == nil {
 			t.Fatal("duplicate/missing parent accepted")
 		}
 	}
@@ -250,14 +250,14 @@ func TestArchiveEntryPolicyAndBudgets(t *testing.T) {
 	if err := tw.WriteHeader(&tar.Header{Name: "huge", Typeflag: tar.TypeReg, Size: files.MaxTransferBytes + 1}); err != nil {
 		t.Fatal(err)
 	}
-	if err := copyArchive(io.Discard, &large); err == nil {
+	if _, err := copyArchive(io.Discard, &large); err == nil {
 		t.Fatal("oversized member accepted")
 	}
 	entries := make([]*tar.Header, files.MaxArchiveEntries+1)
 	for i := range entries {
 		entries[i] = &tar.Header{Name: "./", Typeflag: tar.TypeDir}
 	}
-	if err := copyArchive(io.Discard, bytes.NewReader(archive(t, entries...))); err == nil {
+	if _, err := copyArchive(io.Discard, bytes.NewReader(archive(t, entries...))); err == nil {
 		t.Fatal("entry count bypass through root directories")
 	}
 	if _, err := io.Copy(io.Discard, &boundedReader{reader: strings.NewReader("123456789"), remaining: 8}); !errors.Is(err, errTooLarge) {

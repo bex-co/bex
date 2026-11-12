@@ -16,7 +16,7 @@
 ## Inbox
 
 - [ ] [019](019.md) — A sandbox's home directory is `/root`; Render's is `/home/render` (~45m) ← found while working w32/m348 2026-11-12
-- [ ] [018](018.md) — A directory copied into a sandbox loses its files' modification times (1970), and uploads arrive owner-only (~45m) ← `/qa-find-bugs-cli` loop sweep dc0e 2026-11-12
+- [x] [018](done/018.md) — A directory copied into a sandbox lost its files' modification times (1970), and uploads arrived owner-only — DONE (archive mtimes are kept; the published root takes the archive's mode and a single file is 0644)
 - [x] [017](done/017.md) — A sandbox ended by its lifetime timeout answered 404 for up to ten minutes, then read `terminated` at the wrong time — DONE (records carry the lifetime deadline; an absent expired sandbox ends at it on the next sweep)
 - [x] [016](done/016.md) — A sandbox read region `frankfurt` while its sandbox group read `oregon` — DONE (both read the platform region; `oregon` stays accepted on a group create; the dashboard dialog no longer claims Oregon)
 - [x] [015](done/015.md) — `bex sandboxes list` returned the oldest sandbox first; Render lists newest first — DONE (the shared list is sorted newest first and REST pages over that order)

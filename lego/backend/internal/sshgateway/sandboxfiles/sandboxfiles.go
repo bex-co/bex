@@ -331,15 +331,19 @@ fi
 complete=1
 `
 
+// publishScript's $5 is the published entry's octal mode, chosen by the
+// gateway (the archive root's, or plainFileMode): staging runs under umask 077.
 const publishScript = cdParent + `set -eu
 cd_parent "$1"
-name=$2 stage=$3 kind=$4
+name=$2 stage=$3 kind=$4 mode=$5
 [ -d "$stage" ] && [ ! -L "$stage" ] || exit 73
 if [ "$kind" = directory ]; then
   [ ! -e "$name" ] && [ ! -L "$name" ] || exit 73
+  chmod -- "$mode" "$stage/tree"
   mv -T -- "$stage/tree" "$name"
 else
   [ ! -L "$name" ] && { [ ! -e "$name" ] || [ -f "$name" ]; } || exit 73
+  chmod -- "$mode" "$stage/data"
   mv -T -- "$stage/data" "$name"
 fi
 rmdir "$stage"
@@ -423,10 +427,11 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	})
 	defer stopPipe()
 	validated := make(chan error, 1)
+	mode := int64(plainFileMode)
 	go func() {
 		var err error
 		if kind == "directory" {
-			err = copyArchive(writer, input)
+			mode, err = copyArchive(writer, input)
 		} else {
 			var n int64
 			n, err = io.Copy(writer, input)
@@ -455,7 +460,7 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	err = s.execute(ctx, target, shell(publishScript, parent, name, stage, kind), nil, io.Discard)
+	err = s.execute(ctx, target, shell(publishScript, parent, name, stage, kind, strconv.FormatInt(mode, 8)), nil, io.Discard)
 	published = err == nil
 	return err
 }
@@ -518,7 +523,7 @@ func (s *Server) download(ctx context.Context, target apps.SSHInstanceTarget, so
 	gz := gzip.NewWriter(&boundedWriter{writer: w, remaining: files.MaxTransferBytes})
 	bounded := &boundedReader{reader: input, remaining: files.MaxTransferBytes}
 	if kind == "directory\n" {
-		err = copyArchive(gz, bounded)
+		_, err = copyArchive(gz, bounded)
 	} else {
 		_, err = io.Copy(gz, bounded)
 	}
@@ -602,60 +607,90 @@ func (r terminatedReader) Read(p []byte) (int, error) {
 // ValidateArchive applies the extraction rules copyArchive enforces without
 // writing anything, so a producer of upload archives can prove its output is
 // one the gateway accepts.
-func ValidateArchive(src io.Reader) error { return copyArchive(io.Discard, src) }
+func ValidateArchive(src io.Reader) error {
+	_, err := copyArchive(io.Discard, src)
+	return err
+}
 
-func copyArchive(dst io.Writer, src io.Reader) error {
+// plainFileMode is an uploaded file's mode, and an archive root's when the
+// archive names none: what a plain create gives under the default umask, as
+// the pinned client's own download path chmods a file (render-oss/cli
+// pkg/sandbox/files.go:103-105). Render documents no server-side mode.
+const (
+	plainFileMode = 0o644
+	plainDirMode  = 0o755
+)
+
+// archiveModTime keeps an entry's modification time, as extracting a tar does
+// (w32/018), in whole seconds within the range a USTAR header holds, which
+// BusyBox tar reads.
+func archiveModTime(t time.Time) time.Time {
+	const ustarMaxSeconds = 1<<33 - 1
+	return time.Unix(min(max(t.Unix(), 0), ustarMaxSeconds), 0)
+}
+
+// entryMode is an entry's permission bits without owners or special bits,
+// plus the owner access its extraction needs.
+func entryMode(h *tar.Header) int64 {
+	if h.Typeflag == tar.TypeDir {
+		return h.Mode&0777 | 0700
+	}
+	return h.Mode&0777 | 0600
+}
+
+// copyArchive returns the mode the archive gives its root (its `.` entry,
+// plainDirMode when it has none), for the published directory.
+func copyArchive(dst io.Writer, src io.Reader) (int64, error) {
 	tr := tar.NewReader(terminatedReader{src})
 	tw := tar.NewWriter(&boundedWriter{writer: dst, remaining: files.MaxTransferBytes})
 	seen := map[string]byte{}
 	entries := 0
+	root := int64(plainDirMode)
 	for {
 		h, err := tr.Next()
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
-			return archiveError(err)
+			return 0, archiveError(err)
 		}
 		entries++
 		if entries > files.MaxArchiveEntries {
-			return fmt.Errorf("%w: too many entries", errBadArchive)
+			return 0, fmt.Errorf("%w: too many entries", errBadArchive)
 		}
 		if (h.Name == "." || h.Name == "./") && h.Typeflag == tar.TypeDir {
+			root = entryMode(h)
 			continue
 		}
 		name := strings.TrimSuffix(strings.TrimPrefix(h.Name, "./"), "/")
 		if h.Typeflag != tar.TypeReg && h.Typeflag != tar.TypeDir {
-			return fmt.Errorf("%w: links and special entries are unsupported", errBadArchive)
+			return 0, fmt.Errorf("%w: links and special entries are unsupported", errBadArchive)
 		}
 		if h.Size > files.MaxTransferBytes {
-			return errTooLarge
+			return 0, errTooLarge
 		}
 		if name == "" || name == "." || path.IsAbs(name) || path.Clean(name) != name ||
 			name == ".." || strings.HasPrefix(name, "../") || strings.ContainsRune(name, '\\') ||
 			strings.IndexFunc(name, unicode.IsControl) >= 0 || len(name) > files.MaxPathBytes ||
 			strings.Count(name, "/") >= files.MaxPathDepth || h.Size < 0 {
-			return fmt.Errorf("%w: unsafe entry", errBadArchive)
+			return 0, fmt.Errorf("%w: unsafe entry", errBadArchive)
 		}
 		if _, exists := seen[name]; exists {
-			return fmt.Errorf("%w: duplicate entry", errBadArchive)
+			return 0, fmt.Errorf("%w: duplicate entry", errBadArchive)
 		}
 		if parent := path.Dir(name); parent != "." && seen[parent] != tar.TypeDir {
-			return fmt.Errorf("%w: parent directory must precede its children", errBadArchive)
+			return 0, fmt.Errorf("%w: parent directory must precede its children", errBadArchive)
 		}
 		seen[name] = h.Typeflag
-		clean := &tar.Header{Name: name, Typeflag: h.Typeflag, Size: h.Size, Mode: h.Mode & 0777}
+		clean := &tar.Header{Name: name, Typeflag: h.Typeflag, Size: h.Size, Mode: entryMode(h), ModTime: archiveModTime(h.ModTime)}
 		if h.Typeflag == tar.TypeDir {
-			clean.Mode |= 0700
 			clean.Size = 0
-		} else {
-			clean.Mode |= 0600
 		}
 		if err := tw.WriteHeader(clean); err != nil {
-			return err
+			return 0, err
 		}
 		if _, err := io.Copy(tw, tr); err != nil {
-			return archiveError(err)
+			return 0, archiveError(err)
 		}
 	}
 	// Reading through EOF also verifies a gzip footer. Reject non-padding data
@@ -665,15 +700,15 @@ func copyArchive(dst io.Writer, src io.Reader) error {
 		n, err := src.Read(buf)
 		for _, b := range buf[:n] {
 			if b != 0 {
-				return fmt.Errorf("%w: trailing data", errBadArchive)
+				return 0, fmt.Errorf("%w: trailing data", errBadArchive)
 			}
 		}
 		if errors.Is(err, io.EOF) {
 			break
 		}
 		if err != nil {
-			return archiveError(err)
+			return 0, archiveError(err)
 		}
 	}
-	return tw.Close()
+	return root, tw.Close()
 }
