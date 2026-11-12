@@ -1959,8 +1959,9 @@ export type Mutation = {
   setIdleTimeout: Maybe<Service>;
   setImage: Maybe<Service>;
   setKeyValueIpAllowList: Maybe<KeyValue>;
-  /** Change the store's eviction policy. The change restarts the store, which is unavailable for up to a minute. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. Accepted without a confirmation. */
+  /** Change the store's eviction policy. The change restarts the store, which is unavailable for up to a minute. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. Accepted without a confirmation outside a protected environment; in one, pass the confirm phrase the refusal names. */
   setKeyValueMaxmemoryPolicy: Maybe<KeyValue>;
+  /** Change the store's persistence mode. The change restarts the store, which is unavailable for up to a minute. A switch to or from off deletes every key in the restart; a switch between journal-snapshot and snapshot keeps the persisted data. Accepted without a confirmation outside a protected environment; in one, pass the confirm phrase the refusal names. */
   setKeyValuePersistenceMode: Maybe<KeyValue>;
   setKeyValuePublic: Maybe<KeyValue>;
   setMaintenanceMode: Maybe<Service>;

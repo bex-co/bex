@@ -244,9 +244,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		// (w6/m127): persistenceMode becomes updatable post-create through the same
 		// shared UpdateKeyValue, so a store created on `off` can reach durable
 		// persistence without being recreated. Render's PATCH input carries it too.
-		"setKeyValuePersistenceMode": gqlutil.PatchMutation(keyValueGQLType, "persistenceMode",
+		"setKeyValuePersistenceMode": withDescription(gqlutil.PatchMutation(keyValueGQLType, "persistenceMode",
 			func(mode string) KeyValuePatch { return KeyValuePatch{PersistenceMode: &mode} },
-			s.UpdateKeyValue, s.UpdateKeyValueDryRun),
+			s.UpdateKeyValue, s.UpdateKeyValueDryRun), setKeyValuePersistenceModeDescription),
 		"renameKeyValue": gqlutil.PatchMutation(keyValueGQLType, "name",
 			func(name string) KeyValuePatch { return KeyValuePatch{Name: &name} },
 			s.UpdateKeyValue, s.UpdateKeyValueDryRun),
@@ -304,7 +304,13 @@ const updateKeyValuePlanDescription = "Change the store's instance plan. The cha
 
 // setKeyValueMaxmemoryPolicyDescription is the same disclosure for the eviction
 // policy, a valkey-server flag whose change replaces the store's pod (w4/m316).
-const setKeyValueMaxmemoryPolicyDescription = "Change the store's eviction policy. The change restarts the store, which is unavailable for up to a minute. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. Accepted without a confirmation."
+const setKeyValueMaxmemoryPolicyDescription = "Change the store's eviction policy. The change restarts the store, which is unavailable for up to a minute. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. Accepted without a confirmation outside a protected environment; in one, pass the confirm phrase the refusal names."
+
+// setKeyValuePersistenceModeDescription is the same disclosure for the
+// durability setting, Render's own words included: a switch to or from off
+// loses the data (w4/570). The dashboard asks for a phrase; the API, like
+// Render's, does not.
+const setKeyValuePersistenceModeDescription = "Change the store's persistence mode. The change restarts the store, which is unavailable for up to a minute. A switch to or from off deletes every key in the restart; a switch between journal-snapshot and snapshot keeps the persisted data. Accepted without a confirmation outside a protected environment; in one, pass the confirm phrase the refusal names."
 
 func withDescription(f *graphql.Field, description string) *graphql.Field {
 	f.Description = description

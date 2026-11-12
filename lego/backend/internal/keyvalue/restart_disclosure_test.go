@@ -39,6 +39,13 @@ func TestRestartingWritesDiscloseThePersistenceOffDataLoss(t *testing.T) {
 			t.Errorf("GraphQL %s description does not disclose the restart and the Off data loss: %+v", name, field)
 		}
 	}
+	// w4/570: a persistence switch to or from off is itself the restart that
+	// deletes the keys, in Render's words.
+	const switchLoss = "to or from off deletes every key"
+	if field := schema.MutationType().Fields()["setKeyValuePersistenceMode"]; field == nil ||
+		!strings.Contains(field.Description, "restarts the store") || !strings.Contains(field.Description, switchLoss) {
+		t.Errorf("GraphQL setKeyValuePersistenceMode description does not disclose the restart and the switch loss: %+v", field)
+	}
 
 	cs := kvMCPSession(t, svc)
 	defer func() { _ = cs.Close() }()
@@ -52,6 +59,9 @@ func TestRestartingWritesDiscloseThePersistenceOffDataLoss(t *testing.T) {
 		}
 		if !strings.Contains(tool.Description, "maxmemoryPolicy change RESTARTS") {
 			t.Errorf("update_key_value description does not say a policy change restarts the store:\n%s", tool.Description)
+		}
+		if !strings.Contains(tool.Description, "persistenceMode change RESTARTS") || !strings.Contains(tool.Description, switchLoss) {
+			t.Errorf("update_key_value description does not disclose a persistence switch:\n%s", tool.Description)
 		}
 		raw, err := json.Marshal(tool.InputSchema)
 		if err != nil {
@@ -69,6 +79,9 @@ func TestRestartingWritesDiscloseThePersistenceOffDataLoss(t *testing.T) {
 			if d := schema.Properties[arg].Description; !strings.Contains(d, "RESTARTS the store") || !strings.Contains(d, loss) {
 				t.Errorf("update_key_value %s argument does not disclose the restart and the Off data loss: %q", arg, d)
 			}
+		}
+		if d := schema.Properties["persistenceMode"].Description; !strings.Contains(d, "RESTARTS the store") || !strings.Contains(d, switchLoss) {
+			t.Errorf("update_key_value persistenceMode argument does not disclose the restart and the switch loss: %q", d)
 		}
 		return
 	}
