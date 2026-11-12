@@ -1,6 +1,6 @@
 # w8 · m157 — An emptied inbound IP list blocks a service, as on Render; an untouched service reads the allow-all rule
 
-**Worker:** worker8 **Goal:** on a web service or a static site an explicitly empty inbound IP list blocks every public request, a list nobody has changed reads Render's allow-all default, and a write that omits the field changes nothing, on REST, GraphQL, MCP, Blueprints and the dashboard alike. **Status:** in progress (t001–t007 done and shipped; t008, the live replay on production, waits for the deploy that carries it)
+**Worker:** worker8 **Goal:** on a web service or a static site an explicitly empty inbound IP list blocks every public request, a list nobody has changed reads Render's allow-all default, and a write that omits the field changes nothing, on REST, GraphQL, MCP, Blueprints and the dashboard alike. **Status:** done (2026-11-12: t008's production replay on pins `e7a56b07e0d7` and `3d66946c9e16` met DoD 1–10; IPv6 has no ingress to exercise; the read-shape difference is w8/284)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity — **DONE**                                                                               | 15m | t002, t003 |
 | t006 | Simplify — **DONE**                                                                                    | 15m | t005       |
 | t007 | Test coverage — **DONE**                                                                               | 20m | t005       |
-| t008 | Closeout (live replay on production)                                                                   | 30m | t007       |
+| t008 | Closeout (live replay on production) — **DONE**                                                        | 30m | t007       |
 
 ## Definition of done
 
