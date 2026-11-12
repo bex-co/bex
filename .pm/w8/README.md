@@ -15,7 +15,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m158** — [A crash or an out-of-memory kill of a running service is recorded with its cause](m158/README.md) (8 tasks;265m) ← promoted from `263` on 2026-11-11 (major): a crash that restarts within half a minute left no event, a longer one read "The instance failed its health check", and the exit status and the memory kill appeared nowhere.
+- [ ] **m158** — [A crash or an out-of-memory kill of a running service is recorded with its cause](m158/README.md) (9 tasks;325m) ← promoted from `263` on 2026-11-11 (major): a crash that restarts within half a minute left no event, a longer one read "The instance failed its health check", and the exit status and the memory kill appeared nowhere.
 
 - [ ] **m157** — [An emptied inbound IP list blocks a service, as on Render; an untouched service reads the allow-all rule](m157/README.md) (8 tasks;230m) ← promoted from `269` on 2026-11-11 (major, a security control that fails open): `PATCH {"serviceDetails":{"ipAllowList":[]}}` on a locked-down web service removed the restriction and the service answered anyone within seconds; Render blocks all traffic for an empty list.
 

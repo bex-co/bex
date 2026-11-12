@@ -1,6 +1,6 @@
 # w8 · m158 — A crash or an out-of-memory kill of a running service is recorded with its cause
 
-**Worker:** worker8 **Goal:** when the process of a running service exits or is killed for memory, the Events timeline records it once, with the exit status or the memory limit and the instance, even when the restart is quick, on REST, GraphQL, MCP and the dashboard. **Status:** in progress (t001–t007 done and shipped; t008, the live replay on production, waits for the deploy that carries it)
+**Worker:** worker8 **Goal:** when the process of a running service exits or is killed for memory, the Events timeline records it once, with the exit status or the memory limit and the instance, even when the restart is quick, on REST, GraphQL, MCP and the dashboard. **Status:** in progress (t001–t007 done and shipped; the round 176 live replay on pin `3d66946c9e16` passed DoD 2, 4, 5, 6 and 7 and failed DoD 1 and 3, so t009 fixes those before the t008 closeout)
 
 ## Tasks (in order)
 
@@ -13,7 +13,8 @@
 | t005 | Render parity — **DONE**                                                                                 | 20m | t003, t004 |
 | t006 | Simplify — **DONE**                                                                                      | 15m | t005       |
 | t007 | Test coverage — **DONE**                                                                                 | 20m | t005       |
-| t008 | Closeout (live replay on production)                                                                     | 30m | t007       |
+| [t009](t009.md) | One `server_failed` per outage, whatever arrives first: a 10 s crash records two, and a health-check outage within 3 minutes of a recovered crash records none and leaves an unpaired recovery | 60m | t007 |
+| t008 | Closeout (live replay on production)                                                                     | 30m | t009       |
 
 ## Definition of done
 
@@ -42,6 +43,27 @@
 - **Memory limit.** The fact does not store it. The read fills `reason.oomKilled.memoryLimit` from the service's current plan ("512Mi" on Free), so an event from before a plan change shows the new limit.
 - **Found by review and fixed before commit.** A new release that crashed once while starting and then came up was reported as a failed instance (now only exits after the rollout settled count). A health-check restart of a process that exits cleanly on the signal was reported as the application exiting, and a crash loop wrote one event per restart (now marked `afterUnready`). The kept set could flip at the bound when exits tied on their second (now a total order).
 - **Not done.** The mobile app shows the raw reason code for the new causes (another workstream's screen). Whether Render groups a crash loop is unverified.
+
+## Post-release probe (QA loop round 176, 2026-11-12): DoD 1 and 3 fail
+
+- **Pin:** `3d66946c9e16`, deployed 07:27 UTC; it carries t001–t007.
+- **Fixture:** Free web service `qa-20261112-r176-crash` (`srv-dbqmmsiibtfs738vknt0`, `node:22-alpine`, Health Check Path `/health`). Its `node -e` server exits on `/exit3` and `/exit0`, allocates memory on `/oom`, and answers 500 on `/health` after `/sick`. It was deleted afterwards (DELETE 204, then GET 404), which is DoD 7.
+- **DoD 1 — fails.** `/exit3` at 07:33:48; the service answered 200 again from 07:33:59.
+  - `GET …/events?type=server_failed` holds **two** events at 07:33:49: `{"instanceID":"…-h7vz4","reason":{"nonZeroExit":3}}` and `{"reason":{"unhealthy":"The instance failed its health check"}}`.
+  - The sampled one was recorded on a pass at 07:34:01, before the exit fact existed. See t009, defect 1.
+- **DoD 2 — passes.**
+  - `/oom` at 07:35:11 → one `server_failed` at 07:35:20, `{"oomKilled":{"memoryLimit":"512Mi"}}` with `instanceID`; `server_available` at 07:36:10.
+  - `/exit0` at 07:36:54 → one `server_failed` at 07:36:55, `{"earlyExit":true}`; `server_available` at 07:37:41.
+- **DoD 3 — fails after a recent crash, passes without one.**
+  - `/sick` at 07:38:07 (503 from 07:38:20) recorded **no** `server_failed`, then an unpaired `server_available` at 07:41:12. The 3-minute exit window covered the already-recovered 07:35:20 and 07:36:55 exits (t009, defect 2).
+  - The control `/sick` at 07:42:47 recorded `server_failed` `unhealthy` at 07:43:07 and `server_available` at 07:45:48.
+- **DoD 4 — passes.**
+  - en reads "The instance's process exited with status 3 and was restarted.", "The instance ran out of memory (512 MB limit) and was restarted.", "The instance's process exited and was restarted. A service is expected to keep running." and "A running instance failed its health check.", each with "· Instance <pod>".
+  - zh reads "实例进程以状态码 3 退出，已重新启动。", "实例内存不足（上限 512 MB），已重新启动。", "实例进程已退出并重新启动。服务应当持续运行。" and "运行中的实例未通过健康检查。".
+- **DoD 5 — passes.**
+  - A PATCH of the command to `node -e '…process.exit(1)'` recorded `commands_changed`. `POST …/deploys` closed `update_failed` at 07:47:10: "container exited shortly after start and is restarting repeatedly (last exit code 1) — check the service logs for the crash output…".
+  - No `server_failed` appeared through 07:48:35, and the previous release kept answering 200.
+- **DoD 6 — passes.** The OOM outage (about 40 s) and the `exit(0)` outage (about 45 s) each added no second `server_failed`, and their `server_available` followed.
 
 ## Source + Goal linkage
 
