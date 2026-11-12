@@ -518,7 +518,9 @@ func TestCreateUsesDefaultTemplateWhenEmpty(t *testing.T) {
 		DefaultTemplate: "base",
 	}
 	// The Render CLI sends no template — an empty Template must resolve to the default.
-	sb, err := svc.Create(callerCtx(), CreateRequest{Plan: PlanStarter, Region: "oregon", TimeoutSeconds: ptr(3600)})
+	// A create's region is a compatibility value (w32/016): the sandbox reads
+	// the platform's, here Render's `oregon` since the Service names none.
+	sb, err := svc.Create(callerCtx(), CreateRequest{Plan: PlanStarter, Region: "frankfurt", TimeoutSeconds: ptr(3600)})
 	if err != nil {
 		t.Fatalf("create with empty template should use default: %v", err)
 	}
@@ -526,7 +528,7 @@ func TestCreateUsesDefaultTemplateWhenEmpty(t *testing.T) {
 		t.Errorf("image = %q, want alpine:3 (default template)", sb.Image)
 	}
 	if sb.Region != "oregon" || sb.TimeoutSeconds != 3600 {
-		t.Errorf("region/timeout not echoed: %+v", sb)
+		t.Errorf("region is not the platform's, or the timeout is not echoed: %+v", sb)
 	}
 	if !contains(gotBody, `"alpine:3"`) {
 		t.Errorf("create body %q missing default-template image", gotBody)

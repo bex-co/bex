@@ -51,7 +51,6 @@ const (
 	// session policy); enforcedPolicyStamp relies on that difference.
 	metadataEgress        = sessionegress.EgressLabel
 	metadataPlan          = "bex.co/plan"
-	metadataRegion        = "bex.co/region"
 	metadataTimeout       = "bex.co/timeout-seconds"
 	metadataComputeWeight = "bex.co/compute-weight-milli"
 	// metadataMemoryMiB is the allocated memory the memory meter bills;
@@ -138,7 +137,7 @@ type Service struct {
 	// sandboxes retain the m35 compatibility policy when it is nil.
 	SessionEgress SessionEgress
 	// Region is the public Render region sandboxes run in (BEX_REGION through
-	// resourcemeta.RenderRegion), reported when a create named none.
+	// resourcemeta.RenderRegion), which every sandbox and group reads (region).
 	Region string
 	// SandboxEgress installs a Render allow-list sandbox's per-sandbox policy
 	// (w32/m283). allow-all and deny-all need none (static platform policies
@@ -189,8 +188,9 @@ type Service struct {
 
 // CreateRequest is the caller's create input. OwnerID binds the workspace (as
 // every create does); Template selects a registered image (empty ⇒ the default,
-// since the Render CLI sends no template); Plan/Region/TimeoutSeconds/NetworkPolicy
-// are Render CLI create fields echoed back on the resource. A named Plan sizes
+// since the Render CLI sends no template); Plan/TimeoutSeconds/NetworkPolicy
+// are Render CLI create fields echoed back on the resource, and Region is a
+// label-safe compatibility value the sandbox does not read back (region). A named Plan sizes
 // the sandbox (planResources); an omitted one keeps the template's own size.
 // TimeoutSeconds nil is an omitted timeout (see resolveTimeout), and
 // IdleTimeoutSeconds nil an omitted idle timeout (see resolveIdleTimeout).
@@ -460,7 +460,7 @@ func ownerID(ctx context.Context) string {
 	return "subject-" + hex.EncodeToString(sum[:20])
 }
 
-func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan, region string, timeout int, policy *NetworkPolicy, weight, memoryMiB int64) map[string]string {
+func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan, timeout int, policy *NetworkPolicy, weight, memoryMiB int64) map[string]string {
 	metadata := map[string]string{
 		metadataOwner:         ownerID(ctx),
 		metadataWorkspace:     workspace,
@@ -471,9 +471,6 @@ func sandboxMetadata(ctx context.Context, workspace, template string, plan Plan,
 		metadataRegime:        metadataSandboxRegime,
 		metadataComputeWeight: strconv.FormatInt(weight, 10),
 		metadataMemoryMiB:     strconv.FormatInt(memoryMiB, 10),
-	}
-	if region != "" {
-		metadata[metadataRegion] = region
 	}
 	return metadata
 }
@@ -726,14 +723,25 @@ func (s *Service) ownedSandbox(ctx context.Context, key, workspace, id string) (
 }
 
 // sandboxView is a sandbox's public read shape. Render requires `region` on
-// every sandbox, and the Render SDK refuses a response without it; a sandbox
-// created without one runs in the platform region, so it reads that.
+// every sandbox, and the Render SDK refuses a response without it.
 func (s *Service) sandboxView(raw osSandbox, workspace string) Sandbox {
 	box := sandboxFromOpenSandbox(raw, workspace)
-	if box.Region == "" {
-		box.Region = s.Region
-	}
+	box.Region = s.region()
 	return box
+}
+
+// region is the one region every sandbox and sandbox group reads, so a
+// sandbox and its group always agree, as on Render, where "every sandbox
+// belongs to a sandbox group, which scopes it to a region" (w32/016): the
+// platform's region as Render names it (BEX_REGION through
+// resourcemeta.RenderRegion, as services read it), or Render's `oregon` when
+// the deployment names none. A create's `region` is a compatibility value that
+// does not affect placement, as the Render SDK documents it.
+func (s *Service) region() string {
+	if s.Region != "" {
+		return s.Region
+	}
+	return store.SandboxGroupRegion
 }
 
 func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
@@ -745,7 +753,6 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 		ID:             canonicalID(raw),
 		Plan:           Plan(raw.Metadata[metadataPlan]),
 		Status:         mapOpenSandboxStatus(raw.Status.State),
-		Region:         raw.Metadata[metadataRegion],
 		TimeoutSeconds: timeoutFromMetadata(raw.Metadata[metadataTimeout]),
 		// Agent-session sandboxes carry no stamp and read 0: they never
 		// idle-suspend (their feature owns their lifecycle).
@@ -853,7 +860,7 @@ func (s *Service) launch(ctx context.Context, req CreateRequest, ws, publicID, n
 		if err := s.Names.SetSandboxName(ctx, ws, publicID, req.Name); err != nil {
 			return Sandbox{}, err
 		}
-		box, err := s.createWithID(ctx, ws, publicID, name, tmpl, plan, req.Region, timeout, idle, policy, req.Env)
+		box, err := s.createWithID(ctx, ws, publicID, name, tmpl, plan, timeout, idle, policy, req.Env)
 		if err != nil {
 			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
 			defer cancel()
@@ -865,18 +872,18 @@ func (s *Service) launch(ctx context.Context, req CreateRequest, ws, publicID, n
 		box.Name = &req.Name
 		return box, nil
 	}
-	return s.createWithID(ctx, ws, publicID, name, tmpl, plan, req.Region, timeout, idle, policy, req.Env)
+	return s.createWithID(ctx, ws, publicID, name, tmpl, plan, timeout, idle, policy, req.Env)
 }
 
 // createWithID creates the sandbox under the public id bex minted for it.
-func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, tmpl Template, plan Plan, region string, timeout, idle int, policy *NetworkPolicy, env map[string]string) (Sandbox, error) {
+func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, tmpl Template, plan Plan, timeout, idle int, policy *NetworkPolicy, env map[string]string) (Sandbox, error) {
 	extra := map[string]string{
 		metadataPublicID:    publicID,
 		metadataIdleTimeout: strconv.Itoa(idle),
 		metadataEgress:      string(policy.Default),
 	}
 	if policy.Default != NetworkPolicyAllowList {
-		return s.createResolved(ctx, ws, name, tmpl, plan, region, timeout, policy, env, extra)
+		return s.createResolved(ctx, ws, name, tmpl, plan, timeout, policy, env, extra)
 	}
 	// An allow-list's per-sandbox policy exists before the Pod does, so the Pod
 	// is never selected by anything looser than its own rules.
@@ -887,7 +894,7 @@ func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, t
 	if err := s.SandboxEgress.Apply(ctx, namespace, publicID, ruleDomains(policy.Rules)); err != nil {
 		return Sandbox{}, err
 	}
-	box, err := s.createResolved(ctx, ws, name, tmpl, plan, region, timeout, policy, env, extra)
+	box, err := s.createResolved(ctx, ws, name, tmpl, plan, timeout, policy, env, extra)
 	if err != nil {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
 		defer cancel()
@@ -922,7 +929,7 @@ func (s *Service) withRules(ctx context.Context, workspace string, box Sandbox) 
 
 // createResolved starts a sandbox whose timeout is already resolved in
 // Render's semantics (0 = no timeout; see resolveTimeout).
-func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, region string, timeout int, policy *NetworkPolicy, env, extraMetadata map[string]string) (Sandbox, error) {
+func (s *Service) createResolved(ctx context.Context, workspace, template string, tmpl Template, plan Plan, timeout int, policy *NetworkPolicy, env, extraMetadata map[string]string) (Sandbox, error) {
 	cpu, mem := tmpl.CPU, tmpl.Memory
 	if cpu == "" {
 		cpu = "500m"
@@ -953,7 +960,7 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	if len(entry) == 0 {
 		entry = []string{"sleep", "infinity"}
 	}
-	metadata := sandboxMetadata(ctx, workspace, template, plan, region, timeout, policy, weight, memoryMiBOf(mem))
+	metadata := sandboxMetadata(ctx, workspace, template, plan, timeout, policy, weight, memoryMiBOf(mem))
 	for k, v := range extraMetadata {
 		metadata[k] = v
 	}
@@ -1074,7 +1081,7 @@ func (l *AgentSessionLifecycle) CreateAgentSessionSandbox(ctx context.Context, w
 	// must not delete a newer generation's policy; durable dispatch recovery
 	// removes this attempt's sandbox independently.
 	// Agent-session sandboxes keep the 86400 s bound on every plan (w5/m99).
-	return s.createResolved(ctx, workspaceID, template, tmpl, plan, "", defaultSandboxTimeout, policy, env, bindings)
+	return s.createResolved(ctx, workspaceID, template, tmpl, plan, defaultSandboxTimeout, policy, env, bindings)
 }
 
 // EnterAgentSessionPhase narrows one exact session sandbox from setup registry

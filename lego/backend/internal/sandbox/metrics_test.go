@@ -148,7 +148,7 @@ func TestAgentSessionCreatesStayOutOfTheSandboxSurfaceSignal(t *testing.T) {
 
 	// The shared inner path the agent-session dispatch uses does not.
 	if _, err := svc.createResolved(callerCtx(), "tea-a", "node", svc.Templates["node"],
-		PlanStandard, "", 0, &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil, nil); err != nil {
+		PlanStandard, 0, &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil, nil); err != nil {
 		t.Fatalf("createResolved: %v", err)
 	}
 	if got := testutil.ToFloat64(svc.Metrics.creates.WithLabelValues(outcomeSucceeded)); got != 1 {

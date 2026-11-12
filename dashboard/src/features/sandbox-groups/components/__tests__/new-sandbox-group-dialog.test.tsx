@@ -27,7 +27,7 @@ const GROUP = {
   __typename: "SandboxGroup",
   id: "sbg-created",
   name: "ci",
-  region: "oregon",
+  region: "frankfurt",
   isDefault: true,
   concurrencyLimit: 1000,
 };
@@ -57,21 +57,20 @@ function Harness() {
 }
 
 describe("NewSandboxGroupDialog", () => {
-  it("asks for a name and shows the region fixed as Oregon, with no environment picker", () => {
+  it("asks for a name only: no region field (bex-api places the group) and no environment picker", () => {
     renderOpen();
     const dialog = screen.getByRole("dialog", { name: "New Sandbox Group" });
 
     expect(within(dialog).getByLabelText("Name")).toHaveValue("");
-    const region = within(dialog).getByLabelText("Region");
-    expect(region).toHaveValue("Oregon (US West)");
-    expect(region).toBeDisabled();
+    expect(within(dialog).queryByLabelText("Region")).not.toBeInTheDocument();
+    expect(within(dialog).queryByText(/oregon/i)).not.toBeInTheDocument();
     expect(within(dialog).queryByText(/environment/i)).not.toBeInTheDocument();
     expect(
       within(dialog).getByRole("button", { name: "Create Sandbox Group" }),
     ).toBeDisabled();
   });
 
-  it("creates the group and confirms it in place: id, name, default, concurrency limit", async () => {
+  it("creates the group and confirms it in place: id, name, region, default, concurrency limit", async () => {
     mutate.mockResolvedValue({ data: { createSandboxGroup: GROUP } });
     const user = userEvent.setup();
     renderOpen();
@@ -84,14 +83,15 @@ describe("NewSandboxGroupDialog", () => {
 
     // bex-api refuses a padded name, so the dialog sends it trimmed.
     expect(mutate).toHaveBeenCalledWith({
-      variables: { name: "ci", region: "oregon", ownerId: "tea-owner" },
+      variables: { name: "ci", ownerId: "tea-owner" },
     });
     expect(
       await within(dialog).findByText("Sandbox group created"),
     ).toBeInTheDocument();
     expect(within(dialog).getByText("sbg-created")).toBeInTheDocument();
     expect(within(dialog).getByText("ci", { selector: "span" })).toBeVisible();
-    expect(within(dialog).getByText("Oregon (US West)")).toBeVisible();
+    // The region bex-api reports, as service settings show theirs.
+    expect(within(dialog).getByText("frankfurt")).toBeVisible();
     expect(within(dialog).getByText("Yes")).toBeVisible();
     expect(within(dialog).getByText("1000")).toBeVisible();
     // The form is gone, and nothing on the confirmation links anywhere.

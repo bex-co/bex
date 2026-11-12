@@ -22,15 +22,7 @@ const zhSandboxGroups: Record<string, TranslationEntry> = {
   "sandboxGroups.fieldRegion": {
     message: "区域",
     description:
-      "Label of the fixed region row in the new-sandbox-group dialog",
-  },
-  "sandboxGroups.regionOregon": {
-    message: "俄勒冈（美国西部）",
-    description: "The one region a sandbox group runs in, shown read-only",
-  },
-  "sandboxGroups.regionHelp": {
-    message: "沙箱组仅在俄勒冈区域运行。",
-    description: "Help text under the fixed region row",
+      "Label of the region row in the created sandbox group's confirmation",
   },
   "sandboxGroups.createCancel": {
     message: "取消",

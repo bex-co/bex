@@ -29,7 +29,7 @@ const GROUP = {
   __typename: "SandboxGroup",
   id: "sbg-created",
   name: "ci",
-  region: "oregon",
+  region: "frankfurt",
   isDefault: true,
   concurrencyLimit: 1000,
 };
@@ -52,14 +52,14 @@ async function createCi(result: {
 }
 
 describe("useCreateSandboxGroup", () => {
-  it("creates the group in the selected workspace, in Oregon, and returns it", async () => {
+  it("creates the group in the selected workspace, leaving the region to bex-api, and returns it", async () => {
     mutate.mockResolvedValue({ data: { createSandboxGroup: GROUP } });
     const { result } = renderHook(() => useCreateSandboxGroup());
 
     expect(await createCi(result)).toEqual(GROUP);
 
     expect(mutate).toHaveBeenCalledWith({
-      variables: { name: "ci", region: "oregon", ownerId: "tea-owner" },
+      variables: { name: "ci", ownerId: "tea-owner" },
     });
     expect(result.current.refusal).toBeNull();
     expect(toastError).not.toHaveBeenCalled();

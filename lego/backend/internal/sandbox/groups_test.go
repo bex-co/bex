@@ -831,3 +831,38 @@ func TestBusyAdmissionIsARetryable503(t *testing.T) {
 		t.Fatalf("admit = %v, want a 503 %s", err, CodeSandboxAdmissionBusy)
 	}
 }
+
+// w32/016: a sandbox and its group read the same region, the platform's as
+// services read it; Render's `oregon` is still accepted on a group create,
+// and a sandbox create's region does not change what it reads.
+func TestASandboxAndItsGroupReadTheSameRegion(t *testing.T) {
+	f := newGroupFixture(t)
+	f.svc.Region = "frankfurt"
+	for _, region := range []string{"", "oregon", "frankfurt"} {
+		body := fmt.Sprintf(`{"ownerId":%q,"name":"g-%s","region":%q}`, f.ws, region, region)
+		if region == "" {
+			body = fmt.Sprintf(`{"ownerId":%q,"name":"g-none"}`, f.ws)
+		}
+		code, out := f.do(t, http.MethodPost, "/v1/sandbox-groups", body)
+		var g Group
+		if err := json.Unmarshal([]byte(out), &g); code != http.StatusCreated || err != nil || g.Region != "frankfurt" {
+			t.Fatalf("create group with region %q = %d %s, want 201 in frankfurt", region, code, out)
+		}
+	}
+	if code, body := f.do(t, http.MethodPost, "/v1/sandbox-groups", fmt.Sprintf(`{"ownerId":%q,"name":"x","region":"virginia"}`, f.ws)); code != http.StatusBadRequest || errCode(body) != CodeSandboxGroupRegionInvalid {
+		t.Fatalf("create group in virginia = %d %s, want 400 %s", code, body, CodeSandboxGroupRegionInvalid)
+	}
+	code, body := f.do(t, http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"region":"oregon"}`, f.ws))
+	var sb Sandbox
+	if err := json.Unmarshal([]byte(body), &sb); code != http.StatusCreated || err != nil {
+		t.Fatalf("create sandbox = %d %s", code, body)
+	}
+	code, body = f.do(t, http.MethodGet, "/v1/sandbox-groups/"+sb.SandboxGroupID, "")
+	var g Group
+	if err := json.Unmarshal([]byte(body), &g); code != http.StatusOK || err != nil {
+		t.Fatalf("get group = %d %s", code, body)
+	}
+	if sb.Region != "frankfurt" || g.Region != sb.Region {
+		t.Fatalf("sandbox reads %q and its group %q, want both frankfurt", sb.Region, g.Region)
+	}
+}

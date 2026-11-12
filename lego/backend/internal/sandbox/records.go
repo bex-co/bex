@@ -125,7 +125,7 @@ func (s *Service) endedSandbox(ctx context.Context, ws, id string) (Sandbox, err
 	if !allowed {
 		return Sandbox{}, sandboxNotFound(id)
 	}
-	return endedView(r)
+	return s.endedView(r)
 }
 
 // orEnded answers a by-id read whose live lookup failed: ws's ended sandbox
@@ -176,7 +176,7 @@ func (s *Service) endedSandboxes(ctx context.Context, ws string, live []Sandbox)
 		} else if !ok {
 			continue
 		}
-		box, err := endedView(r)
+		box, err := s.endedView(r)
 		if err != nil {
 			return nil, err
 		}
@@ -185,11 +185,13 @@ func (s *Service) endedSandboxes(ctx context.Context, ws string, live []Sandbox)
 	return out, nil
 }
 
-func endedView(r store.SandboxRecord) (Sandbox, error) {
+// endedView is an ended record as Render reads it. Its region is the one a
+// live sandbox reads, not the one saved at create, so it agrees with its group.
+func (s *Service) endedView(r store.SandboxRecord) (Sandbox, error) {
 	var box Sandbox
 	if err := json.Unmarshal(r.View, &box); err != nil {
 		return Sandbox{}, fmt.Errorf("read sandbox record %s: %w", r.SandboxID, err)
 	}
-	box.Status, box.TerminatedAt = StatusTerminated, r.TerminatedAt
+	box.Status, box.TerminatedAt, box.Region = StatusTerminated, r.TerminatedAt, s.region()
 	return box, nil
 }

@@ -116,8 +116,8 @@ type GroupEnvelope struct {
 }
 
 // CreateGroupRequest is the caller's group create input, and the body of REST's
-// POST and MCP's create_sandbox_group. OwnerID binds the workspace; an empty
-// Region is Render's default, oregon.
+// POST and MCP's create_sandbox_group. OwnerID binds the workspace; Region may
+// be empty, Render's `oregon`, or the platform's (validateGroupRegion).
 type CreateGroupRequest struct {
 	OwnerID string `json:"ownerId,omitempty"`
 	Name    string `json:"name"`
@@ -157,7 +157,7 @@ func (s *Service) effectiveLimit(g store.SandboxGroup) int { return s.clampLimit
 
 func (s *Service) groupView(g store.SandboxGroup) Group {
 	return Group{
-		ID: g.ID, OwnerID: g.WorkspaceID, Name: g.Name, Region: g.Region, IsDefault: g.IsDefault,
+		ID: g.ID, OwnerID: g.WorkspaceID, Name: g.Name, Region: s.region(), IsDefault: g.IsDefault,
 		ConcurrencyLimit: s.effectiveLimit(g), CreatedAt: g.CreatedAt, UpdatedAt: g.UpdatedAt,
 	}
 }
@@ -189,15 +189,20 @@ func validateGroupName(name string) error {
 		map[string]any{"field": "name", "maxLength": maxGroupName})
 }
 
-// groupRegion resolves a group's region: Render has one, oregon, and the group
-// carries it as a compatibility value that does not affect placement.
-func groupRegion(region string) (string, error) {
-	if region == "" || region == store.SandboxGroupRegion {
-		return store.SandboxGroupRegion, nil
+// validateGroupRegion accepts a create's region when it is empty, the one
+// every group and sandbox reads (s.region), or Render's own `oregon`, the one
+// region Render runs sandboxes in and the value Render's clients send.
+func (s *Service) validateGroupRegion(region string) error {
+	if region == "" || region == store.SandboxGroupRegion || region == s.region() {
+		return nil
 	}
-	return "", core.NewBadRequestError(CodeSandboxGroupRegionInvalid,
-		fmt.Sprintf("sandbox groups run in %s only, got %q", store.SandboxGroupRegion, region),
-		map[string]any{"field": "region", "supported": []string{store.SandboxGroupRegion}})
+	supported := []string{s.region()}
+	if s.region() != store.SandboxGroupRegion {
+		supported = append(supported, store.SandboxGroupRegion)
+	}
+	return core.NewBadRequestError(CodeSandboxGroupRegionInvalid,
+		fmt.Sprintf("sandbox groups run in %s only, got %q", s.region(), region),
+		map[string]any{"field": "region", "supported": supported})
 }
 
 // CreateGroup adds a group to the caller's workspace. The workspace's first
@@ -213,11 +218,10 @@ func (s *Service) CreateGroup(ctx context.Context, req CreateGroupRequest) (Grou
 	if err := validateGroupName(req.Name); err != nil {
 		return Group{}, err
 	}
-	region, err := groupRegion(req.Region)
-	if err != nil {
+	if err := s.validateGroupRegion(req.Region); err != nil {
 		return Group{}, err
 	}
-	g, err := s.Groups.CreateSandboxGroup(ctx, s.WorkspaceOrDefault(ctx), req.Name, region, s.newGroupLimit(), s.MaxGroups)
+	g, err := s.Groups.CreateSandboxGroup(ctx, s.WorkspaceOrDefault(ctx), req.Name, s.region(), s.newGroupLimit(), s.MaxGroups)
 	switch {
 	case errors.Is(err, store.ErrSandboxGroupNameTaken):
 		return Group{}, core.NewConflictError(CodeSandboxGroupNameTaken,

@@ -128,7 +128,7 @@ func (s *Service) registerGroupMCP(server *mcp.Server) {
 			g, err := s.GetGroup(ctx, in.ID)
 			return nil, g, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups, and a group runs in region oregon only."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "create_sandbox_group", Description: "Create a sandbox group with a unique name. The workspace's first group becomes its default. A workspace may have a limited number of groups. A group and its sandboxes run in the platform's region, which the group reports; region may be omitted, oregon (Render's value) or that region."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in CreateGroupRequest) (*mcp.CallToolResult, Group, error) {
 			g, err := s.CreateGroup(ctx, in)
 			return nil, g, err

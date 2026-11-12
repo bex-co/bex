@@ -22,15 +22,7 @@ const enSandboxGroups: Record<string, TranslationEntry> = {
   "sandboxGroups.fieldRegion": {
     message: "Region",
     description:
-      "Label of the fixed region row in the new-sandbox-group dialog",
-  },
-  "sandboxGroups.regionOregon": {
-    message: "Oregon (US West)",
-    description: "The one region a sandbox group runs in, shown read-only",
-  },
-  "sandboxGroups.regionHelp": {
-    message: "Sandbox groups run in Oregon only.",
-    description: "Help text under the fixed region row",
+      "Label of the region row in the created sandbox group's confirmation",
   },
   "sandboxGroups.createCancel": {
     message: "Cancel",

@@ -20,7 +20,6 @@ import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import {
   SANDBOX_GROUP_NAME_MAX,
-  SANDBOX_GROUP_REGION,
   useCreateSandboxGroup,
   type SandboxGroup,
 } from "@/features/sandbox-groups/hooks/use-create-sandbox-group";
@@ -36,10 +35,12 @@ export interface NewSandboxGroupDialogProps {
 
 /**
  * "New Sandbox Group" from the "+ New" menu, as on Render (ADR104, w22/m311).
- * A name, with the region shown fixed as Oregon (the only region a group runs
- * in); Render's optional project environment is not offered because bex does
- * not bind a group to one. Once created the dialog confirms the group (id,
- * name, whether it is the default, its concurrency limit) in place, the way
+ * A name. The region is not asked: bex-api places every group in the
+ * platform's region (w32/016), which the confirmation shows as reported, the
+ * way service settings show theirs. Render's optional project environment is
+ * not offered because bex does not bind a group to one. Once created the
+ * dialog confirms the group (id, name, region, whether it is the default, its
+ * concurrency limit) in place, the way
  * the API-key dialog confirms a mint: Render documents no list or detail page
  * for groups, so there is nowhere truthful to navigate to.
  *
@@ -148,25 +149,6 @@ export function NewSandboxGroupDialog({
               ) : null}
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="sandbox-group-region">
-                {t("sandboxGroups.fieldRegion")}
-              </Label>
-              <Input
-                id="sandbox-group-region"
-                value={t("sandboxGroups.regionOregon")}
-                readOnly
-                disabled
-                aria-describedby="sandbox-group-region-help"
-              />
-              <p
-                id="sandbox-group-region-help"
-                className="text-muted-foreground text-sm"
-              >
-                {t("sandboxGroups.regionHelp")}
-              </p>
-            </div>
-
             {limitRefusal ? (
               <Alert variant="destructive">
                 <AlertTitle>{t("sandboxGroups.errorLimitTitle")}</AlertTitle>
@@ -214,9 +196,7 @@ function CreatedGroup({ group }: { group: SandboxGroup }) {
         </div>
       </Row>
       <Row label={t("sandboxGroups.fieldRegion")}>
-        {group.region === SANDBOX_GROUP_REGION
-          ? t("sandboxGroups.regionOregon")
-          : group.region}
+        {group.region}
       </Row>
       <Row label={t("sandboxGroups.fieldDefault")}>
         {group.isDefault

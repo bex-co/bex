@@ -12,9 +12,6 @@ import {
 } from "@/common/lib/graphql-error";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 
-/** The only region a sandbox group runs in (Render has one; bex mirrors it). */
-export const SANDBOX_GROUP_REGION = "oregon";
-
 /** The longest group name bex-api accepts (`maxGroupName`, in characters). */
 export const SANDBOX_GROUP_NAME_MAX = 100;
 
@@ -77,11 +74,9 @@ export function useCreateSandboxGroup(): UseCreateSandboxGroupResult {
       setRefusal(null);
       try {
         const res = await mutate({
-          variables: {
-            name,
-            region: SANDBOX_GROUP_REGION,
-            ownerId: currentWorkspaceId,
-          },
+          // No region: bex-api places every group in the platform's region
+          // and reports it, as services report theirs (w32/016).
+          variables: { name, ownerId: currentWorkspaceId },
         });
         const group = res.data?.createSandboxGroup;
         if (!group?.id) throw new Error("createSandboxGroup returned no id");

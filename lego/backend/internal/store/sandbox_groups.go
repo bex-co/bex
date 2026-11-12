@@ -36,8 +36,10 @@ import (
 // called; Render's OpenAPI example names it "Default".
 const DefaultSandboxGroupName = "Default"
 
-// SandboxGroupRegion is the one region a group runs in, Render's own
-// (render.com/docs/sandboxes-limits, read 2026-11-10); placement ignores it.
+// SandboxGroupRegion is the one region Render runs sandboxes in
+// (render.com/docs/sandboxes-limits, read 2026-11-10). bex accepts it on a
+// group create and reads it only on a deployment that names no region of its
+// own (sandbox.Service.region, w32/016); placement ignores it.
 const SandboxGroupRegion = "oregon"
 
 var (
