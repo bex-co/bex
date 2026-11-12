@@ -687,7 +687,7 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 		if gerr != nil {
 			return Object{}, gerr
 		}
-		obj.etag = contentETag(obj.Body)
+		obj.etag = contentETag(obj.Body, contentType(reqPath, obj.ContentType))
 		h.cache.put(site.AppID, ck, obj)
 		return obj, nil
 	})
@@ -698,11 +698,15 @@ func (h *Handler) get(ctx context.Context, site Site, reqPath string) (Object, e
 	return obj, negativeErr(obj)
 }
 
-// contentETag is the strong entity tag for an object's bytes: changed bytes
-// after a republish get a new tag, so revalidation returns them (w4/m160).
-func contentETag(body []byte) string {
-	sum := sha256.Sum256(body)
-	return `"` + base64.RawURLEncoding.EncodeToString(sum[:16]) + `"`
+// contentETag is the strong entity tag for an object's bytes and served type:
+// changed bytes after a republish get a new tag, so revalidation returns them
+// (w4/m160), and so does a corrected type, which a 304 would not carry (w4/581).
+func contentETag(body []byte, servedType string) string {
+	h := sha256.New()
+	h.Write([]byte(servedType))
+	h.Write([]byte{0})
+	h.Write(body)
+	return `"` + base64.RawURLEncoding.EncodeToString(h.Sum(nil)[:16]) + `"`
 }
 
 // negativeErr maps a cached confirmed miss back onto the ErrNotFound contract.
@@ -1056,19 +1060,37 @@ func hostOnly(host string) string {
 	return h
 }
 
-// contentType prefers the origin's content type, else infers from the extension,
-// else falls back to octet-stream.
+// contentType prefers the origin's content type, else infers from the
+// extension, else falls back to octet-stream. An unknown origin type in either
+// spelling counts as none: the publish upload sets no type for an extension
+// the AWS CLI doesn't know, and the store then reports binary/octet-stream
+// (w4/581).
 func contentType(servedPath, originType string) string {
-	if originType != "" && originType != "application/octet-stream" {
+	if originType != "" && originType != "application/octet-stream" && originType != "binary/octet-stream" {
 		return originType
 	}
-	if ct := mime.TypeByExtension(path.Ext(servedPath)); ct != "" {
+	ext := strings.ToLower(path.Ext(servedPath))
+	if ct := staticExtensionTypes[ext]; ct != "" {
 		return ct
 	}
-	if originType != "" {
-		return originType
+	if ct := mime.TypeByExtension(ext); ct != "" {
+		return ct
 	}
 	return "application/octet-stream"
+}
+
+// staticExtensionTypes are the IANA types of web extensions Go's built-in
+// table lacks; the distroless image has no /etc/mime.types to add them.
+var staticExtensionTypes = map[string]string{
+	".woff":  "font/woff",
+	".woff2": "font/woff2",
+	".ttf":   "font/ttf",
+	".otf":   "font/otf",
+	".cjs":   "text/javascript; charset=utf-8",
+	".map":   "application/json",
+	".yaml":  "application/yaml",
+	".yml":   "application/yaml",
+	".ogg":   "audio/ogg",
 }
 
 // defaultCacheControl is the browser/CDN policy for every successful response

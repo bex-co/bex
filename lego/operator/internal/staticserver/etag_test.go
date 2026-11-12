@@ -41,13 +41,13 @@ func TestEveryServePathCarriesTheGeneratedETag(t *testing.T) {
 		key("app.html"):   {Body: []byte("<h1>app</h1>"), ContentType: "text/html"},
 		key("site.css"):   {Body: []byte("body{}"), ContentType: "text/css"},
 	})
-	for _, tc := range []struct{ path, served string }{
-		{"/site.css", "body{}"},
-		{"/app", "<h1>app</h1>"},
-		{"/dashboard/settings", "<h1>spa</h1>"},
+	for _, tc := range []struct{ path, served, servedType string }{
+		{"/site.css", "body{}", "text/css"},
+		{"/app", "<h1>app</h1>", "text/html"},
+		{"/dashboard/settings", "<h1>spa</h1>", "text/html"},
 	} {
 		rec := do(h, http.MethodGet, tc.path)
-		want := contentETag([]byte(tc.served))
+		want := contentETag([]byte(tc.served), tc.servedType)
 		if rec.Code != http.StatusOK || rec.Body.String() != tc.served || rec.Header().Get("ETag") != want {
 			t.Fatalf("GET %s => %d %q ETag %q, want 200 %q ETag %q", tc.path, rec.Code, rec.Body, rec.Header().Get("ETag"), tc.served, want)
 		}
@@ -63,7 +63,7 @@ func TestEveryServePathCarriesTheGeneratedETag(t *testing.T) {
 func TestBrotliAndIdentityValidateAgainstEachOther(t *testing.T) {
 	body := repeated("console.log('etag');\n")
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("app.js"): {Body: body, ContentType: "text/javascript"}})
-	strong := contentETag(body)
+	strong := contentETag(body, "text/javascript")
 
 	br := doWith(h, http.MethodGet, "/app.js", brHeader("br"))
 	assertBrotli(t, "br", br, body)
@@ -112,7 +112,7 @@ func TestRepublishChangesTheTagOnlyWhenBytesChange(t *testing.T) {
 func TestRangeResumeUsesTheGeneratedETag(t *testing.T) {
 	body := repeated("console.log('resume');\n")
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("app.js"): {Body: body, ContentType: "text/javascript"}})
-	tag := contentETag(body)
+	tag := contentETag(body, "text/javascript")
 
 	if rec := doWith(h, http.MethodGet, "/app.js", http.Header{"Range": {"bytes=0-9"}, "If-Range": {tag}}); rec.Code != http.StatusPartialContent || rec.Body.String() != string(body[:10]) {
 		t.Errorf("If-Range current tag => %d %q, want 206 of the first 10 bytes", rec.Code, rec.Body)

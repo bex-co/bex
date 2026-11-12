@@ -118,7 +118,7 @@ func TestGeneratedETagValidatesWithoutASavedRule(t *testing.T) {
 	})
 	first := do(h, http.MethodGet, "/version.txt")
 	tag := first.Header().Get("ETag")
-	if first.Code != http.StatusOK || tag != contentETag([]byte(versionBytes)) || strings.HasPrefix(tag, "W/") {
+	if first.Code != http.StatusOK || tag != contentETag([]byte(versionBytes), "text/plain") || strings.HasPrefix(tag, "W/") {
 		t.Fatalf("GET => %d ETag %q, want 200 with the strong content tag", first.Code, tag)
 	}
 	for _, method := range []string{http.MethodGet, http.MethodHead} {

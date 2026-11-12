@@ -390,8 +390,8 @@ func TestExistingObjectWinsOverCatchAllRewrite(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Fatalf("%s /render.yaml => %d, want 200", method, rec.Code)
 		}
-		if ct := rec.Header().Get("Content-Type"); ct != "binary/octet-stream" {
-			t.Errorf("%s content-type = %q, want the object's own", method, ct)
+		if ct := rec.Header().Get("Content-Type"); ct != "application/yaml" {
+			t.Errorf("%s content-type = %q, want the YAML type, not the store's binary/octet-stream (w4/581)", method, ct)
 		}
 		if cc := rec.Header().Get("Cache-Control"); cc != revalidate {
 			t.Errorf("%s cache-control = %q, want the default %q", method, cc, revalidate)
@@ -767,5 +767,37 @@ func TestUnresolvedHostAndMethodStayHeaderless(t *testing.T) {
 	}
 	if got := rec.Header().Get("X-Qa-Marker"); got != "" {
 		t.Errorf("unknown-host 404 must stay headerless, got X-Qa-Marker=%q", got)
+	}
+}
+
+// w4/581: an origin type that says nothing (none, application/octet-stream,
+// or the store's binary/octet-stream for an upload with no type) gives way to
+// the extension's IANA type, including the web types Go's table lacks; a
+// specific origin type still wins, and an unknown extension stays
+// application/octet-stream. binary/octet-stream is never served.
+func TestContentTypeForUntypedObjects(t *testing.T) {
+	for ext, want := range map[string]string{
+		".webp": "image/webp", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf", ".otf": "font/otf",
+		".map": "application/json", ".cjs": "text/javascript; charset=utf-8", ".yaml": "application/yaml", ".yml": "application/yaml",
+		".ogg": "audio/ogg", ".TTF": "font/ttf", ".unknownext": "application/octet-stream",
+	} {
+		for _, origin := range []string{"", "application/octet-stream", "binary/octet-stream"} {
+			if got := contentType("/assets/f"+ext, origin); got != want {
+				t.Errorf("contentType(f%s, %q) = %q, want %q", ext, origin, got, want)
+			}
+		}
+	}
+	if got := contentType("/a.md", "text/markdown"); got != "text/markdown" {
+		t.Errorf("a specific origin type = %q, want it kept", got)
+	}
+	// A corrected type is a new entity: a cache holding the old type
+	// revalidates into a 200 that carries it (a 304 would not).
+	if contentETag([]byte("x"), "font/ttf") == contentETag([]byte("x"), "binary/octet-stream") {
+		t.Error("the ETag ignores the served type")
+	}
+	for _, ct := range []string{"font/ttf", "font/otf", "application/json", "application/yaml"} {
+		if !compressibleType(ct) {
+			t.Errorf("%s is not compressible", ct)
+		}
 	}
 }

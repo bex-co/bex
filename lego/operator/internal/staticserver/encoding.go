@@ -114,7 +114,7 @@ func compressibleType(contentType string) bool {
 	}
 	switch mediaType {
 	case "application/javascript", "application/x-javascript", "application/ecmascript",
-		"application/json", "application/xml", "application/wasm",
+		"application/json", "application/xml", "application/wasm", "application/yaml",
 		"image/svg+xml", "image/x-icon", "image/vnd.microsoft.icon", "image/bmp",
 		"font/ttf", "font/otf", "application/vnd.ms-fontobject",
 		"application/x-font-ttf", "application/x-font-otf":
