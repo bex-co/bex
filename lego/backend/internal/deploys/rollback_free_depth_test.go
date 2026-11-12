@@ -57,6 +57,10 @@ func TestFreeWebServiceRollsBackOnlyToItsTwoMostRecentPreviousDeploys(t *testing
 	if !errors.Is(err, core.ErrConflict) || !strings.Contains(err.Error(), "two most recent previous deploys") || !strings.Contains(err.Error(), d1.ID) {
 		t.Fatalf("rollback to the third previous deploy = %v, want the Free refusal naming it", err)
 	}
+	// The fixture is image-backed: it has no commit to deploy again.
+	if !strings.Contains(err.Error(), "deploy its image again") || strings.Contains(err.Error(), "commit") {
+		t.Errorf("an image-backed service's refusal = %q, want it to say to deploy its image again", err)
+	}
 	if after, _ := ds.ListDeploys(ctx, "srv-1", store.DeployFilter{Limit: 50}); len(after) != len(before) {
 		t.Fatalf("the refused rollback added a deploy row: %d, was %d", len(after), len(before))
 	}
@@ -102,5 +106,35 @@ func TestDeployActionsFollowTheFreeRollbackDepth(t *testing.T) {
 	svc, _, _, _, _, _ := fourLiveDeploys(t, "free", appv1alpha1.TypeWebService)
 	if pre := rollbackPrecondition(t, svc, "web"); pre != "" {
 		t.Errorf("rollback precondition = %q, want none: the two most recent previous deploys are targets", pre)
+	}
+}
+
+// A rollback refusal says how to bring the deploy back, in the terms of the
+// target deploy's own source: its commit, its image, or a build of the linked
+// build source (QA round 161).
+func TestRedeployHintFollowsTheTargetsSource(t *testing.T) {
+	repo := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "https://github.com/a/app"}}
+	image := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Image: "docker.io/traefik/whoami:v1.10.1"}}
+	linked := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{BuildSource: &appv1alpha1.BuildSourceLink{}}}
+	built := store.Deploy{Commit: "7e9ae1d5bf898167b01d5fad9327d8d08daabc03"}
+	ran := store.Deploy{Image: "docker.io/traefik/whoami:v1.10.0"}
+	for name, tc := range map[string]struct {
+		app     *appv1alpha1.App
+		target  store.Deploy
+		capital bool
+		want    string
+	}{
+		"a build":                               {repo, built, false, "deploy its commit again"},
+		"a build, capitalized":                  {repo, built, true, "Deploy its commit again"},
+		"a build with no recorded commit":       {repo, store.Deploy{}, false, "deploy its commit again"},
+		"an image":                              {image, ran, false, "deploy its image again"},
+		"an image, capitalized":                 {image, ran, true, "Deploy its image again"},
+		"an image before the switch to a repo":  {repo, ran, false, "deploy its image again"},
+		"a build before the switch to an image": {image, built, false, "deploy its commit again"},
+		"a linked service's build":              {linked, built, false, "build its commit again in the build source"},
+	} {
+		if got := redeployHint(tc.app, tc.target, tc.capital); got != tc.want {
+			t.Errorf("%s: redeployHint = %q, want %q", name, got, tc.want)
+		}
 	}
 }

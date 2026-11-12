@@ -798,6 +798,24 @@ func sameImageRepository(configured, requested string) error {
 // repository does not have (w8/280).
 const commitNotFoundCode = "commit_not_found"
 
+// redeployHint is how a rollback refusal says to bring target back, in the
+// terms of target's own source (QA round 161 on w8/262): a deploy built from a
+// commit deploys that commit again, one that ran an image deploys that image
+// again, and a linked service's deploys come from builds of its build source.
+func redeployHint(a *appv1alpha1.App, target store.Deploy, capital bool) string {
+	hint := "deploy its image again"
+	switch {
+	case a.Spec.BuildSource != nil:
+		hint = "build its commit again in the build source"
+	case target.Commit != "", a.Spec.Repo != "" && target.Image == "":
+		hint = "deploy its commit again"
+	}
+	if capital {
+		return "D" + hint[1:]
+	}
+	return hint
+}
+
 // triggerFetched is the one deploy-trigger implementation shared by the
 // authenticated Trigger verb and the secret-URL deploy hook. The caller owns
 // the authentication boundary and supplies an already-resolved App; everything
@@ -1238,7 +1256,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	// Refused here, before any row or patch: the pull would fail minutes
 	// later with the service already mid-rollout (w8/m156).
 	if !BuildStored(a, target) {
-		return DeployView{}, fmt.Errorf("%w: the build of deploy %q (%s) is no longer stored — only a service's recent builds are kept. Deploy its commit again instead", core.ErrConflict, deployID, store.PublicImageRef(target.ResolvedImage))
+		return DeployView{}, fmt.Errorf("%w: the build of deploy %q (%s) is no longer stored — only a service's recent builds are kept. %s instead", core.ErrConflict, deployID, store.PublicImageRef(target.ResolvedImage), redeployHint(a, target, true))
 	}
 	if target.Status == store.DeployDeactivated {
 		ids, limited, err := s.freeRollbackTargets(ctx, a)
@@ -1246,7 +1264,7 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 			return DeployView{}, err
 		}
 		if limited && !slices.Contains(ids, deployID) {
-			return DeployView{}, fmt.Errorf("%w: a Free web service can roll back only to its two most recent previous deploys, and deploy %q is older. Upgrade the instance type to roll back further, or deploy its commit again", core.ErrConflict, deployID)
+			return DeployView{}, fmt.Errorf("%w: a Free web service can roll back only to its two most recent previous deploys, and deploy %q is older. Upgrade the instance type to roll back further, or %s", core.ErrConflict, deployID, redeployHint(a, target, false))
 		}
 	}
 	// A static site restores the target's retained publication, built or
