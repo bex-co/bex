@@ -379,6 +379,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **620** — [A new Python service with no version signal builds on 3.14.8 and a new Ruby service on 3.4.4; Render's defaults for services created since 2026-11-03 are 3.14.10 and 3.4.12](620.md) (~40m, minor) ← live `/qa-find-bugs w4` loop round 246, 2026-11-13: `exactDefaults` holds one open-ended `{cutoff, version}` per runtime (`nativeversion.go:166-174`); the reviewed line pins already equal Render's new defaults
 - [ ] **619** — [With a custom time range applied, the Logs and Metrics range selector reads only "Custom…", so the page never says which window it is showing](619.md) (~25m; minor) ← live `/qa-find-bugs w4` loop round 242, 2026-11-12 UTC (pin `764072bb8e8a`).
 - [ ] **618** — [Adding a custom domain toasts the name as typed ("Added Qa-R238.Example.COM"), while the list, the DNS dialog and the API all use the normalized name `qa-r238.example.com`](618.md) (~10m; minor) ← live `/qa-find-bugs w4` loop round 238, 2026-11-12 UTC (pin `764072bb8e8a`).
 - [ ] **617** — [The Chinese dashboard names the Pre-Deploy Command two ways: "预部署命令" on the Settings row, and "部署前命令" in its own paid-plan notice and the five build-minutes messages](617.md) (~15m; minor) ← live `/qa-find-bugs w4` loop round 231, 2026-11-12 UTC (pin `33e1b1e6117c`).
