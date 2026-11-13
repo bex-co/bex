@@ -110,3 +110,11 @@ Both read `available` at 10:44:42 and were deleted afterwards (`DELETE` 204, the
   - Since 2025 that limit is a refilling bucket: 50 per 7 days, refilled gradually, about one certificate every 202 minutes. So the two certificates this round got may simply be refill.
   - This is unverified. t001 still has to read the Orders, or the ACME account's rate-limit errors, from the failed window.
   - If the bucket is the cause, the next burst of QA datastores will drain it again within minutes. t002's guard (a `*.db.bex.co`/`*.kv.bex.co` wildcard via DNS-01, or reuse across re-creates) is therefore still needed, and t003's pending-state surface is still owed. Neither could be exercised this round, because the certificate was already trusted.
+
+## Round 286 — stalled again 42 minutes later (2026-11-13 11:23–11:30 UTC, pin `5de3d5bcce8e`)
+
+- **Fixture:** Free Postgres 18 `qa-20261113-r286-pg` (`dpg-dbrf619ens8c73fghhug`), created by REST with `ipAllowList: [0.0.0.0/0]`. It read `available` at 11:24:42. Deleted afterwards (`GET` 404).
+- **What was served:**
+  - The endpoint served `issuer=OU=tea-daif693dqjvc73e7as3g, CN=dpg-dbrf619ens8c73fghhug` (the private CA) at all 12 checks from 11:24:49 to 11:30:01, roughly every 30 s. The last check was 5m19s after `available`, past DoD 1's 5-minute bound.
+  - `connection-info` carried `?sslmode=verify-full` and `serverCaCertificate`.
+- **What it adds:** round 283's two certificates, issued at about 10:43, were the last ones for a while. This fixture, about 42 minutes later, got none. That fits a nearly empty refilling bucket (candidate 1) better than a fixed outage window. The round-283 note's reading stands: unverified until t001 reads the ACME errors. QA rounds should keep creating private datastores (`ipAllowList: []`) unless they are probing this milestone.
