@@ -13,6 +13,14 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-11-12 (brainstorm round 8, residuals)
+
+- [ ] **m356** — [In the zh dashboard, a deploy's port hints and a build's queued cause stay English, and the hint comes and goes between passes](m356/README.md) (9 tasks; 4h20m total) ← round 8 item 1; w4/m336 residuals
+- [ ] **182** — [A header rule that changes a static file's Content-Type leaves its ETag unchanged, so a browser that revalidates keeps the old type](182.md) (~30m) ← round 8 item 2; w4/581 residual
+- [ ] **183** — [The workspace audit log names neither a rename's names, a custom domain, nor the env group a link changed](183.md) (~45m–1h) ← round 8 item 3; w4/m337, w4/m328 residual
+- [ ] **184** — [Top queries still lists Insights' own statements on a database that ran Insights before w4/557](184.md) (~30m) ← round 8 item 4; w4/557 residual
+- [ ] **185** — [The Access panel's pooled connection strings print the Postgres password in clear after their Reveal](185.md) (~25m) ← round 8 item 5; w4/586 residual
+
 ## Approved queue — 2026-11-07 (brainstorm round 7)
 
 User decision 2026-11-07: all five items of the seventh `/pm-brainstorm for w5` proposal, in priority order, followed by `/loopx w5`. m284 follows Render's workspace-creation-date Wait rule and m285 returns the secret to the roles Render lets read webhooks; both are the parity-sufficient choices recorded in their READMEs. Render parity is included for all five. The git-webhook fast acknowledgement stays with `w3/blocked/m248`; m286 exempts that route.
