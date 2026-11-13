@@ -1,6 +1,6 @@
 # w6 · m354 — Routines finish: a cpx42 sandbox node, a 4 vCPU / 8 GiB routine template, a spread schedule and warm build caches
 
-**Worker:** worker6 **Goal:** the eight scheduled `rt-*` routines complete instead of dying with their sandbox, and run faster, while the AX42-1 (m331) is parked until 2026-12-12. **Status:** in progress — t001–t004 done and live (cpx42 since 2026-11-13 00:02 UTC; the routines run `agent-4c-8g` on a three-hour spread); t005 run 1 was evicted for ephemeral storage after 49.5 minutes (t009 fixes it); t006 shipped, deploying.
+**Worker:** worker6 **Goal:** the eight scheduled `rt-*` routines complete instead of dying with their sandbox, and run faster, while the AX42-1 (m331) is parked until 2026-12-12. **Status:** blocked — on the user: the bex workspace's agent model spend is capped at trust tier T0's $10 (Scale plan, never paid; $10.01 used in November), so every routine fails at its first model call. A first payment of at least $10 (Settings → Billing) lifts it to T1, where the $100 cap set on 2026-11-13 applies; or the workspace sets its own model key. t001–t006 and t009 done and live; the replay is 2,437 s → 367 s (ADR105). t007 (a routine timed end to end) and t008 remain.
 
 ## Tasks (in order)
 
@@ -10,9 +10,9 @@
 | t002 | [Sandbox pods tolerate a 300 s node stall](done/t002.md) — **DONE** | 15m | — |
 | t003 | [An `agent-4c-8g` agent template in bex-api](done/t003.md) — **DONE** | 20m | — |
 | t004 | [The routines use `agent-4c-8g` and a spread schedule](done/t004.md) — **DONE** | 15m | t003 |
-| t005 | [Measure a routine on the new node](t005.md) | 1h | t001, t004 |
-| t009 | [Agent sandboxes get 30Gi of ephemeral storage, and a storage eviction says so](t009.md) | 45m | t005 |
-| t006 | [Warm build caches for the routines](t006.md) | 3h | t005 |
+| t005 | [Measure a routine on the new node](done/t005.md) — **DONE** | 1h | t001, t004 |
+| t009 | [Agent sandboxes get 30Gi of ephemeral storage, and a storage eviction says so](done/t009.md) — **DONE** | 45m | t005 |
+| t006 | [Warm build caches for the routines](done/t006.md) — **DONE** | 3h | t005 |
 | t007 | [Measure again and record both in ADR105](t007.md) | 1h | t006 |
 | t008 | [Closeout](t008.md) | 10m | t007 |
 

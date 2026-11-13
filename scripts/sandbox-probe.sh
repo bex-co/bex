@@ -9,6 +9,7 @@
 #   sandbox-probe.sh replay-go SRC          its Go half (lego/)
 #   sandbox-probe.sh replay-dashboard SRC   its dashboard half (yarn via corepack)
 #   sandbox-probe.sh all SRC                probes, then the replay
+#   PROBE_WARM=1 sandbox-probe.sh replay-go SRC   the Go half on the image's warm cache
 #
 # Output is one `step<TAB>seconds` line per timed step on stdout; progress goes
 # to stderr. Run it inside the sandbox (kubectl exec / sandbox exec), not on
@@ -112,8 +113,15 @@ replay_go() {
   local work pkgs
   work=$(replay_dir)
   cp -a "$src/lego" "$work/"
-  export GOCACHE="$work/gocache" GOMODCACHE="$work/gomodcache"
-  (cd "$work/lego" && timed go_mod_download go mod download)
+  # PROBE_WARM=1 keeps the image's warm Go dependency cache (GOMODCACHE /
+  # GOCACHE under /opt/bex-go) and skips `go mod download`, which fetches every
+  # module graph rather than what a build needs; a session never runs it.
+  if [ "${PROBE_WARM:-}" = 1 ]; then
+    echo "replay-go: warm, GOMODCACHE=$(go env GOMODCACHE) GOCACHE=$(go env GOCACHE)" >&2
+  else
+    export GOCACHE="$work/gocache" GOMODCACHE="$work/gomodcache"
+    (cd "$work/lego" && timed go_mod_download go mod download)
+  fi
   # A go.work root holds no module of its own, so `./...` there matches
   # nothing; build every module the workspace lists.
   pkgs=$(cd "$work/lego" && go list -m -f '{{.Dir}}' | sed "s|^$work/lego|.|; s|\$|/...|")

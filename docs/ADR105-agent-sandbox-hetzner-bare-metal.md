@@ -234,6 +234,32 @@ Since 09:30 UTC, three machines in other pools (two `cx33`, one `cx43`) have fai
 - **A larger routine template.** An automation already names its template (`agentConfig.template`). The routines can move to 4 vCPU / 8 GiB without changing customers' sessions or their price.
 - **How to re-measure.** `POST /v1/agent-automations/{id}/run` starts a routine on demand. Time it from its first turn's `started_at` to `completed_at`. A run's `settledAt` is when the session was accepted, not when it finished.
 
+**What the interim setup measured (w6/m354, 2026-11-13).** The user chose the cpx42 on 2026-11-12. The pool has run one since 00:02 UTC on 2026-11-13, with kubelet reservations, the routines on `agent-4c-8g`, a three-hour schedule, a warm Go dependency cache in the agent image and 30Gi of ephemeral storage. The t001 replay (`scripts/sandbox-probe.sh`; `PROBE_WARM=1` keeps the image's cache) ran in a sandbox-shaped Pod on it: gVisor, 4 CPU / 8Gi, the deployed agent image.
+
+| Replay step | t001: `cx33`, 2 vCPU, cold | cpx42, 4 vCPU, cold | cpx42, 4 vCPU, warm cache |
+| --- | --- | --- | --- |
+| `go mod download` | 189 s | 117 s | none (in the image) |
+| `go build`, four modules | 1,236 s | 428 s | 101 s |
+| `go vet`, four modules | 706 s | 249 s | 89 s |
+| `go test ./...` in `lego/types` | 44 s | 15 s | 15 s |
+| dashboard `yarn install` | 75 s | 42 s | 42 s |
+| dashboard `yarn typecheck` | 187 s | 121 s | 121 s |
+| **Total** | **2,437 s** | **971 s** | **367 s** |
+
+- **The replay is 6.6 times faster**, still under gVisor. Twice the CPUs on a less contended node account for 2.5 times, and the warm cache for the rest: `go build` is 12 times and `go vet` 8 times faster than on the `cx33`.
+- **It beats runc on the old node.** t001's runc replay took 1,361 s without the download; the warm gVisor replay takes 367 s in all. This is the step 3 gate's comparison, and it now favours the cloud node: on the AX42-1, Kata has to beat 367 s, not 2,437 s. t006 measures it.
+- **The dashboard half is now the larger part** (163 of 367 s). Its yarn cache is not baked.
+
+**What stopped the routines instead.** No routine has completed on the interim setup yet, and none stopped on speed:
+
+| Run (2026-11-13 UTC) | Setup | Turn | End |
+| --- | --- | --- | --- |
+| `rt-unify-duplicates`, on demand | cold, 10Gi | 49 min 34 s | evicted: ephemeral storage over 10Gi (t009 raised it to 30Gi) |
+| `rt-simplify-logic`, scheduled | warm, 10Gi | 22 min 27 s | `AGENT_MODEL_SPEND_CAP_REACHED`; disk at 4.6Gi |
+| `rt-unify-duplicates`, on demand | warm, 30Gi | 7 min 47 s | `AGENT_MODEL_SPEND_CAP_REACHED` |
+
+The bex workspace is on the Scale plan (a $2,000 monthly cap) but has never paid, so trust tier T0's $10 ceiling applies (ADR091); its November platform-model spend reached $10.01. The workspace's own cap was set to $100 on 2026-11-13, and takes effect once a first payment of at least $10 lifts it to T1. Until then, or with the workspace's own model key, every routine fails at its first model call.
+
 **Rolling the pool.**
 
 - The MachineDeployment adds the new machine before it removes the `cx33`. Removing the `cx33` ends any sandbox running on it, so the roll waits for an idle node.
