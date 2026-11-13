@@ -133,6 +133,12 @@ interface LogFilterBarProps {
   unsupportedReasonId?: string;
   range?: RangeSelection;
   onRangeChange?: (range: RangeSelection) => void;
+  /**
+   * False for a service that receives no public HTTP requests (a worker,
+   * cron job or private service): no request log type and no request
+   * filters, as Render generates request logs for web services only (w4/613).
+   */
+  servesRequests?: boolean;
 }
 
 export function LogFilterBar({
@@ -145,6 +151,7 @@ export function LogFilterBar({
   unsupportedReasonId,
   range = DEFAULT_LOG_RANGE,
   onRangeChange = () => undefined,
+  servesRequests = true,
 }: LogFilterBarProps) {
   const { t } = useTranslations();
   const hydrated = useIsHydrated();
@@ -157,11 +164,13 @@ export function LogFilterBar({
   );
   const methods = mergeOptions(
     METHOD_FALLBACK,
-    useLogLabelDiscovery(resource, LOG_LABEL_METHOD),
+    useLogLabelDiscovery(resource, LOG_LABEL_METHOD, { skip: !servesRequests }),
   );
   const statuses = mergeOptions(
     STATUS_CLASSES,
-    useLogLabelDiscovery(resource, LOG_LABEL_STATUS_CODE),
+    useLogLabelDiscovery(resource, LOG_LABEL_STATUS_CODE, {
+      skip: !servesRequests,
+    }),
   );
   const instances = mergeOptions(
     [],
@@ -184,7 +193,9 @@ export function LogFilterBar({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          {LOG_TYPE_FILTERS.map((f) => (
+          {LOG_TYPE_FILTERS.filter(
+            (f) => servesRequests || f !== LOG_TYPE_REQUEST,
+          ).map((f) => (
             <SelectItem key={f} value={f}>
               {t(TYPE_LABEL_KEYS[f])}
             </SelectItem>
@@ -235,20 +246,24 @@ export function LogFilterBar({
             options={levels}
             onValueChange={(level) => onChange({ level })}
           />
-          <SelectFilterRow
-            label={t("logs.methodLabel")}
-            allLabel={t("logs.methodAll")}
-            value={filters.method}
-            options={methods}
-            onValueChange={(method) => onChange({ method })}
-          />
-          <SelectFilterRow
-            label={t("logs.statusCodeLabel")}
-            allLabel={t("logs.statusCodeAll")}
-            value={filters.statusCode}
-            options={statuses}
-            onValueChange={(statusCode) => onChange({ statusCode })}
-          />
+          {servesRequests && (
+            <>
+              <SelectFilterRow
+                label={t("logs.methodLabel")}
+                allLabel={t("logs.methodAll")}
+                value={filters.method}
+                options={methods}
+                onValueChange={(method) => onChange({ method })}
+              />
+              <SelectFilterRow
+                label={t("logs.statusCodeLabel")}
+                allLabel={t("logs.statusCodeAll")}
+                value={filters.statusCode}
+                options={statuses}
+                onValueChange={(statusCode) => onChange({ statusCode })}
+              />
+            </>
+          )}
           <SelectFilterRow
             label={t("logs.instanceLabel")}
             allLabel={t("logs.instanceAll")}
@@ -256,24 +271,28 @@ export function LogFilterBar({
             options={instances}
             onValueChange={(instance) => onChange({ instance })}
           />
-          <FilterRow label={t("logs.pathLabel")}>
-            <Input
-              value={filters.path}
-              onChange={(e) => onChange({ path: e.target.value })}
-              placeholder={t("logs.pathPlaceholder")}
-              aria-label={t("logs.pathLabel")}
-              className="h-9"
-            />
-          </FilterRow>
-          <FilterRow label={t("logs.hostLabel")}>
-            <Input
-              value={filters.host}
-              onChange={(e) => onChange({ host: e.target.value })}
-              placeholder={t("logs.hostPlaceholder")}
-              aria-label={t("logs.hostLabel")}
-              className="h-9"
-            />
-          </FilterRow>
+          {servesRequests && (
+            <>
+              <FilterRow label={t("logs.pathLabel")}>
+                <Input
+                  value={filters.path}
+                  onChange={(e) => onChange({ path: e.target.value })}
+                  placeholder={t("logs.pathPlaceholder")}
+                  aria-label={t("logs.pathLabel")}
+                  className="h-9"
+                />
+              </FilterRow>
+              <FilterRow label={t("logs.hostLabel")}>
+                <Input
+                  value={filters.host}
+                  onChange={(e) => onChange({ host: e.target.value })}
+                  placeholder={t("logs.hostPlaceholder")}
+                  aria-label={t("logs.hostLabel")}
+                  className="h-9"
+                />
+              </FilterRow>
+            </>
+          )}
         </PopoverContent>
       </Popover>
 

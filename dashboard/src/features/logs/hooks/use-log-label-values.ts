@@ -40,6 +40,7 @@ export interface LogLabelDiscovery {
 export function useLogLabelDiscovery(
   resource: string,
   label: string,
+  { skip = false }: { skip?: boolean } = {},
 ): LogLabelDiscovery {
   // Discovery keeps up with traffic while the page stays open: a method or
   // status first seen after load becomes selectable on the next visible poll
@@ -48,6 +49,7 @@ export function useLogLabelDiscovery(
   const { data, loading, error } = useQuery(LogLabelValuesDocument, {
     variables: { resource, label },
     errorPolicy: "all",
+    skip,
     pollInterval: RESOURCE_POLL_INTERVAL_MS,
     skipPollAttempt: skipPollWhenHidden,
   });
@@ -68,6 +70,10 @@ export function useLogLabelDiscovery(
  * The values alone, for callers that have no static fallback to reconcile
  * against and so cannot act on the distinction.
  */
-export function useLogLabelValues(resource: string, label: string): string[] {
-  return useLogLabelDiscovery(resource, label).values;
+export function useLogLabelValues(
+  resource: string,
+  label: string,
+  options: { skip?: boolean } = {},
+): string[] {
+  return useLogLabelDiscovery(resource, label, options).values;
 }

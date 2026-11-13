@@ -525,8 +525,9 @@ func TestLegacyLabelLessAppNameMetricsCompatibility(t *testing.T) {
 // Since w4/m119 Loki also serves the UNFILTERED http_requests read, for
 // exactness rather than for the host/path axis — so the invariant this test
 // pins is no longer "Loki only with a filter" but the routing table in
-// TestUnfilteredRequestCountsComeFromTheAccessLog below. What stays true here:
-// http_latency without a filter, and bandwidth, never leave Prometheus.
+// TestUnfilteredRequestCountsComeFromTheAccessLog below (which, since w4/605,
+// sends unfiltered http_latency there too). What stays true here: bandwidth
+// never reaches the access log.
 func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 	var promCalled, lokiCalled bool
 	prom := func(_ context.Context, _ RequestMetricsRequest) ([]MetricSeries, error) {
@@ -535,7 +536,7 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 	}
 	loki := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
 		lokiCalled = true
-		if len(r.Hosts) == 0 && len(r.Paths) == 0 && r.Metric != MetricHTTPRequests {
+		if len(r.Hosts) == 0 && len(r.Paths) == 0 && r.Metric != MetricHTTPRequests && r.Metric != MetricHTTPLatency {
 			t.Errorf("loki source reached without a host/path filter on %s: %+v", r.Metric, r)
 		}
 		return []MetricSeries{{Points: []MetricPoint{{Value: 3}}}}, nil
@@ -581,8 +582,8 @@ func TestHostPathFiltersRouteToLogStore(t *testing.T) {
 		t.Errorf("host filter with no Loki source: want ErrLogStoreUnavailable, got %v", err)
 	}
 
-	// The same queries without host/path still answer — http_requests from the
-	// access log (w4/m119), http_latency from Prometheus.
+	// The same queries without host/path still answer, both from the access
+	// log (w4/m119, w4/605).
 	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "5xx"}); err != nil {
 		t.Errorf("unfiltered http_requests should succeed, got %v", err)
 	}
@@ -1734,10 +1735,11 @@ func TestUnfilteredRequestCountsComeFromTheAccessLog(t *testing.T) {
 		// speak the same group-by vocabulary, so routing must not depend on it.
 		{"http_requests grouped by status", MetricQuery{App: "web", Metric: MetricHTTPRequests, GroupBy: "status"}, true},
 		{"http_requests filtered by status", MetricQuery{App: "web", Metric: MetricHTTPRequests, StatusCode: "2xx"}, true},
-		// Percentiles come from Traefik's histogram; rate() is correct there and
-		// the access log's unwrapped latencies are the filtered path's answer,
-		// not a replacement for the histogram.
-		{"unfiltered http_latency", MetricQuery{App: "web", Metric: MetricHTTPLatency}, false},
+		// Percentiles come from the access log too (w4/605): Traefik's
+		// histogram never counts a router series' first request, which a Free
+		// service's wake always is.
+		{"unfiltered http_latency", MetricQuery{App: "web", Metric: MetricHTTPLatency}, true},
+		{"http_latency grouped by status", MetricQuery{App: "web", Metric: MetricHTTPLatency, GroupBy: "status"}, true},
 		// Bandwidth has no per-request line to count.
 		{"bandwidth", MetricQuery{App: "web", Metric: MetricBandwidth}, false},
 	} {
@@ -1814,6 +1816,27 @@ func TestUnfilteredRequestCountsComeFromTheAccessLog(t *testing.T) {
 		}
 		if !promHit || series[0].Points[0].Value != promValue {
 			t.Errorf("fallback did not reach the counter: hit=%v series=%+v", promHit, series)
+		}
+	})
+
+	// A failing access-log latency read falls back to the histogram the
+	// same way, rather than blanking Response Times.
+	t.Run("access-log latency read fails", func(t *testing.T) {
+		promHit := false
+		prom := func(_ context.Context, r RequestMetricsRequest) ([]MetricSeries, error) {
+			promHit = r.Metric == MetricHTTPLatency
+			return []MetricSeries{{Points: []MetricPoint{{Value: promValue}}}}, nil
+		}
+		svc := newService(nil, prom, sampleApp("web"), podFor("web", webInst))
+		svc.RequestLogMetrics = func(context.Context, RequestMetricsRequest) ([]MetricSeries, error) {
+			return nil, errors.New("loki unreachable")
+		}
+		series, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricHTTPLatency})
+		if err != nil {
+			t.Fatalf("a failing access-log latency read must fall back, not error: %v", err)
+		}
+		if !promHit || series[0].Points[0].Value != promValue {
+			t.Errorf("fallback did not reach the histogram: hit=%v series=%+v", promHit, series)
 		}
 	})
 

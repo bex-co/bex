@@ -282,6 +282,59 @@ describe("DatastoreLogViewer level and live tail (w5/m139)", () => {
     expect(onFiltersChange).toHaveBeenLastCalledWith({ level: "debug" });
   });
 
+  // w4/625: the datastore tab follows w21/016's service-Logs contract: a
+  // custom window that had ended when it was applied never opens the tail.
+  it("keeps Live off and disabled, with its reason, for a custom range that has already ended", async () => {
+    const end = new Date(Date.now() - 59 * 60_000).toISOString();
+    const start = new Date(Date.now() - 60 * 60_000).toISOString();
+    render(
+      <DatastoreLogViewer
+        kind="keyvalue"
+        resource="red-example"
+        filters={{ text: "", instance: "", level: "" }}
+        onFiltersChange={() => undefined}
+        range={{
+          id: "custom",
+          startTime: start,
+          endTime: end,
+          resolutionSeconds: 60,
+        }}
+        onRangeChange={() => undefined}
+        createEventSource={createEventSource}
+      />,
+    );
+    const toggle = screen.getByRole("switch", { name: "Live" });
+    expect(toggle).toBeDisabled();
+    expect(toggle).not.toBeChecked();
+    expect(
+      screen.getByText(/this custom range has already ended/i),
+    ).toBeInTheDocument();
+    expect(streams).toHaveLength(0);
+  });
+
+  it("tails a custom range that ends in the future", async () => {
+    render(
+      <DatastoreLogViewer
+        kind="keyvalue"
+        resource="red-example"
+        filters={{ text: "", instance: "", level: "" }}
+        onFiltersChange={() => undefined}
+        range={{
+          id: "custom",
+          startTime: new Date(Date.now() - 5 * 60_000).toISOString(),
+          endTime: new Date(Date.now() + 60 * 60_000).toISOString(),
+          resolutionSeconds: 60,
+        }}
+        onRangeChange={() => undefined}
+        createEventSource={createEventSource}
+      />,
+    );
+    const toggle = screen.getByRole("switch", { name: "Live" });
+    expect(toggle).toBeEnabled();
+    await userEvent.click(toggle);
+    expect(streams).toHaveLength(1);
+  });
+
   it("opens no stream until Live is switched on, then tails with the same filters", async () => {
     // History inside the selected window, as the server returns it: the merge
     // drops lines stamped before the window's start.

@@ -215,8 +215,7 @@ describe("useLiveRange while paused (w4/399)", () => {
   it("freezes the window while paused and resamples on resume", () => {
     const range = relative;
     const paused = renderHook(
-      ({ paused }: { paused: boolean }) =>
-        useLiveRange(range, "k", { paused }),
+      ({ paused }: { paused: boolean }) => useLiveRange(range, "k", { paused }),
       { initialProps: { paused: true } },
     );
     const frozen = paused.result.current.endTime;
