@@ -117,6 +117,33 @@ func TestEnvironmentReportsTheMintsCapVerdict(t *testing.T) {
 			t.Errorf("%s: charges at threshold = %v, want %t", tc.name, got.AgentModelChargesAtThreshold, tc.chargeable)
 		}
 	}
+
+	// REST, MCP and GraphQL carry both verdicts: a chargeable T0 workspace
+	// at $10 is not refused, and reaching its threshold charges the card.
+	spend.trust, spend.used, spend.chargeable = store.BillingTrust{}, 10_000_000, true
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(caller("viewer")))
+	var view map[string]any
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &view) != nil ||
+		view["agentModelSpendCapReached"] != false || view["agentModelChargesAtThreshold"] != true {
+		t.Fatalf("REST = %d %s", rec.Code, rec.Body.String())
+	}
+	res, err := newMCPClient(t, caller("viewer"), svc).CallTool(caller("viewer"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
+	if err != nil || res.IsError {
+		t.Fatalf("MCP = %+v, %v", res, err)
+	}
+	out, _ := res.StructuredContent.(map[string]any)
+	if out["agentModelSpendCapReached"] != false || out["agentModelChargesAtThreshold"] != true {
+		t.Fatalf("MCP = %+v", out)
+	}
+	r := graphql.Do(graphql.Params{Schema: environmentSchema(t, svc), Context: caller("viewer"),
+		RequestString: `{ agentEnvironment(ownerId: "tea-a") { agentModelSpendCapReached agentModelChargesAtThreshold } }`})
+	data, _ := r.Data.(map[string]any)
+	if env, _ := data["agentEnvironment"].(map[string]any); len(r.Errors) != 0 || env["agentModelSpendCapReached"] != false || env["agentModelChargesAtThreshold"] != true {
+		t.Fatalf("GraphQL = %#v %#v", r.Data, r.Errors)
+	}
 }
 
 // Only an admin writes the cap; above 10× the plan default it is a typed 400

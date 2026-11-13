@@ -1,6 +1,6 @@
 # w6 · m362 — Reaching an agent-model charge threshold charges the card and the workspace keeps working
 
-**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t007 and t011–t016 done (t006 passed on production 2026-11-13: charged $10.50 in 4.9 s, the session kept running, T1 at once); t008–t010 remain, and t010 checks t016's window boundary on production after the batched deploy
+**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** blocked — on time: the next batched production deploy (no earlier than 15:46 UTC on 2026-11-13; it carries t014, t016 and t007) and the bex workspace's 2026-11-16 cycle invoice. t010 then confirms that `agent_model_billed_until` is recorded, Settings → Billing lists both kinds of charge, and the cycle invoice turns the −$10.29 into customer balance and nothing else. t001–t009 and t011–t016 done.
 
 ## Tasks (in order)
 
@@ -19,8 +19,8 @@
 | t016 | [A charge collects only usage no subscription invoice has billed](done/t016.md) — **DONE** | 2h30 | t011, t012 |
 | t006 | [Production check: a T0 workspace reaches $10, is charged at once and keeps working](done/t006.md) — **DONE** | 1h | t001, t005, t011–t016 |
 | t007 | [Render parity (Devin): spend and charge surfaces agree](done/t007.md) — **DONE** | 20m | t006 |
-| t008 | [Simplify](t008.md) | 15m | t007 |
-| t009 | [Test coverage](t009.md) | 45m | t007, t008 |
+| t008 | [Simplify](done/t008.md) — **DONE** | 15m | t007 |
+| t009 | [Test coverage](done/t009.md) — **DONE** | 45m | t007, t008 |
 | t010 | [Closeout](t010.md) | 10m | t009 |
 
 ## Definition of done
