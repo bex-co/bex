@@ -490,7 +490,9 @@ func TestMCPSetIPAllowListRejectsConflictingForms(t *testing.T) {
 		Arguments: map[string]any{
 			"serviceId":        "web",
 			"ipAllowListCidrs": []string{"203.0.113.0/24"},
-			"ipAllowList":      []map[string]any{{"cidrBlock": "10.0.0.0/8"}},
+			// description is schema-required, so omitting it would fail
+			// argument validation before the guard under test ever runs.
+			"ipAllowList": []map[string]any{{"cidrBlock": "10.0.0.0/8", "description": "office"}},
 		},
 	})
 	if err != nil {
@@ -498,6 +500,11 @@ func TestMCPSetIPAllowListRejectsConflictingForms(t *testing.T) {
 	}
 	if !result.IsError {
 		t.Fatalf("conflicting MCP forms should return a tool error: %#v", result)
+	}
+	// Any tool error would satisfy IsError above — an unknown argument or a
+	// lookup failure included — so pin the shared guard's message.
+	if text := mcpResultText(result); !strings.Contains(text, "conflicting values") {
+		t.Fatalf("conflict refusal = %q, want the shared conflicting-forms message", text)
 	}
 }
 

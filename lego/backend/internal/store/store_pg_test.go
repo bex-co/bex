@@ -3080,7 +3080,10 @@ func TestInviteResendAndTokenAcceptance(t *testing.T) {
 		t.Errorf("create must hand back the plaintext for the mail, got %q", inv.Token)
 	}
 	var atRest string
-	wantHash := hashInviteToken("tok-late")
+	// Pinned known vector (sha256 hex of "tok-late"), independent of the
+	// subject: computing it with hashInviteToken would pass an identity or
+	// weakened hash that keeps lookups working.
+	wantHash := "b2e1ba9e7d363901dda8850fc26ae7a9355f633495edc6e5926d50c5d14f8cff"
 	if err := pool.QueryRow(ctx, `SELECT token_hash FROM tenant_invites WHERE id = $1`, inv.ID).Scan(&atRest); err != nil {
 		t.Fatalf("read token_hash: %v", err)
 	}

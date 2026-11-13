@@ -276,7 +276,9 @@ func TestPlanNamesOnlyTheFieldThatChanged(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if !strings.Contains(out.Manifest, tc.from) {
-				t.Skipf("export does not contain %q; nothing to perturb", tc.from)
+				// The fixture is controlled; a missing field means the exporter
+				// dropped it, which is the regression this test exists to catch.
+				t.Fatalf("exported manifest does not contain %q — the field was dropped:\n%s", tc.from, out.Manifest)
 			}
 			changed := strings.Replace(out.Manifest, tc.from, tc.to, 1)
 			v, err := svc.ValidateBlueprint(ctx, "", changed, "")
