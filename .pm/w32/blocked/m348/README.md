@@ -90,3 +90,29 @@ The same sandbox's exit codes, stderr, the env marker (`--env-var`), a directory
   4. w32/017: `create --wait --timeout 60`, then at +90 s `exec <id> -- true` → 409 "was terminated at <createdAt+60s>".
   5. w32/018: `copy ./m <sbx>:/tmp/m` then `stat -c '%a %Y'` shows the local file mtimes and `/tmp/m` is not 700; a single uploaded file is 644.
   6. Run `isolation-matrix.yml` and record its run id here.
+
+## Live check — 2026-11-13 (`/qa-find-bugs-cli` sweep b3e6): walk steps 1–5 pass
+
+- **Gate:** the production pin is `8acf1d116941` (`c3caaf154`). `git merge-base --is-ancestor` confirms that it carries `60879160d` and the w32/015–019 commits.
+- **Setup:** release `bex` v0.5.0, human device login, `bex-canary`. Sandboxes `sbx-dbr854chd5js73auep00` (`--timeout 900 --idle-timeout 300 --network-policy deny-all`) and `sbx-dbr85g4hd5js73auep7g` (`--timeout 60`), both since terminated.
+- **Step 1 (m348) passes:**
+  - `copy ./run.sh <sbx>:run.sh`, then `exec <sbx> -- sh run.sh` printed `from-script` and `pwd=/home/render` (exit 0).
+  - `exec <sbx> -- pwd` printed `/home/render`.
+  - `exec <sbx> -- bash -c 'arr=(a b); echo ${arr[1]}; echo {1..3}'` printed `b` and `1 2 3` (exit 0).
+  - The shell is bash 5.3.20, with `/bin/bash -> /usr/local/bin/bash`. `HOME=/home/render`, the user is root, and `/bin/sh` is busybox.
+  - After an idle suspend (~5 min) and an exec-driven resume (4.3 s), `pwd`, bash, `~/run.sh` and `~/rel-m` (with its mtimes) were all intact. `/tmp` was empty, which is the recorded ADR042 D5 divergence.
+- **Step 2 (w32/015) passes:** `sandboxes list --all -o json` is newest `createdAt` first (30 items before the walk, 33 after).
+- **Step 3 (w32/016) passes:** the sandbox and its group `sbg-dbpugr7bq3ic73c0acmg` (`sandbox-groups list -o json`) both read `frankfurt`.
+- **Step 4 (w32/017) passes:** at +95 s, `exec <id> -- true` answered `409 (SANDBOX_ENDED): … was terminated at 2026-11-13T03:24:44Z`, which is `createdAt` + 60 s. The list shows the same `terminatedAt`.
+- **Step 5 (w32/018) passes:**
+  - `copy ./m <sbx>:/tmp/m` and `copy ./m <sbx>:rel-m` kept the files' local mtimes (`1767323045`, `1749283750`). Both roots are `755`, the local mode, not `700`.
+  - The single uploaded `run.sh` is `644`.
+- **Not run:**
+  - Step 6 (`isolation-matrix.yml`) and t005's two new `verify-sandbox-isolation.sh` checks, which are implementation work for t005.
+  - The DoD bullet for a resumed sandbox with no `bash` in its rootfs: no such sandbox survives in `bex-canary`. The same fallback was later checked another way (next bullet).
+- **No-bash rootfs, checked 2026-11-13 09:45 UTC on pin `5de3d5bcce8e` (sweep efb1):**
+  - Setup: `bex sandbox-groups images import alpine:3.20 --name qa-…-img --wait` (build `sbb-dbrdog988lvs73dnfo9g`), then `bex sandboxes create --image qa-…-img --wait` (`sbx-dbrdok188lvs73dnfob0`).
+  - `exec <sbx> -- sh -c 'echo "pwd=$(pwd) HOME=$HOME shell=$0"; command -v bash || echo no-bash'` printed `pwd=/home/render HOME=/home/render shell=sh` and `no-bash`. A rootfs without bash runs commands through `/bin/sh` in `$HOME`, as the DoD asks.
+  - Bash syntax there fails with exit 127 (`/bin/sh: bash: not found`), as expected for an image that ships no bash.
+  - The sandbox was stopped and the image deleted (REST `DELETE …/builds/{id}` returned `204`).
+- **New, filed separately:** a sandbox's `createdAt` reads whole seconds while it runs and microseconds in the create echo and once it ends ([w32/020](../../020.md)).
