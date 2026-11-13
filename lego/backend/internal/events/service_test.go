@@ -962,3 +962,40 @@ func TestDeployTriggerNamesTheCauseItActuallyHad(t *testing.T) {
 		})
 	}
 }
+
+// w4/621: a deploy event's details carry no image when the deploy was built
+// from source, as Render's deploy omits it for a Git-backed deploy, whether
+// the row has the commit or only its service names a repo. An image service's
+// deploy event keeps the image.
+func TestDeployEventImageOnlyForImageServices(t *testing.T) {
+	const built = "ws/ws-svc:gen-1@sha256:abc"
+	repo := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "https://github.com/bex-co/bex"}}
+	image := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Image: "docker.io/traefik/whoami:v1.10"}}
+	cases := []struct {
+		name      string
+		app       *appv1alpha1.App
+		commit    string
+		wantImage bool
+	}{
+		{"repo service, commit on the row", repo, "abc123", false},
+		{"repo service, commit-less row", repo, "", false},
+		{"service gone, commit on the row", nil, "abc123", false},
+		{"image service", image, "", true},
+	}
+	for _, c := range cases {
+		for _, typ := range []string{TypeDeployStarted, TypeDeployEnded} {
+			ev := Event{Type: typ, Details: Details{Image: built, CommitID: c.commit}}
+			withoutGitImage(&ev, c.app)
+			if got := ev.Details.Image != ""; got != c.wantImage {
+				t.Errorf("%s %s: image present = %v, want %v", typ, c.name, got, c.wantImage)
+			}
+		}
+	}
+	// Another event's image is a different fact: image_pull_failed's
+	// imageURL, which Render requires, survives on a repo service.
+	pull := Event{Type: TypeImagePullFailed, Details: Details{Image: built, CommitID: "abc123"}}
+	withoutGitImage(&pull, repo)
+	if pull.Details.Image != built {
+		t.Errorf("image_pull_failed lost its image: %+v", pull.Details)
+	}
+}

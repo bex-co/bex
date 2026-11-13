@@ -89,7 +89,7 @@ func (rs *renderSpec) validateStatus(operationID string, status int, body []byte
 // the gate's own rule (renderOperation over the REST mux), so a bex-native
 // route that only looks like a Render path stays unvalidated here exactly as
 // it does there; GraphQL, MCP and every non-/v1 route pass through untouched.
-func validatingRenderResponses(t testing.TB, rest *http.ServeMux, next http.Handler) http.Handler {
+func validatingRenderResponses(t testing.TB, rest *http.ServeMux, next http.Handler, unconfigured ...rendertest.Source) http.Handler {
 	t.Helper()
 	contract, err := renderContractOnce()
 	if err != nil {
@@ -108,7 +108,27 @@ func validatingRenderResponses(t testing.TB, rest *http.ServeMux, next http.Hand
 			return nil
 		}
 		return route
-	})
+	}, unconfigured...)
+}
+
+// unconfiguredSources are the resource-metadata sources srv runs without
+// (rendertest.Source): the validator excuses a field missing for that reason
+// only, and holds a server configured like production to the full schema.
+func unconfiguredSources(srv *Server) []rendertest.Source {
+	var missing []rendertest.Source
+	if srv.Apps == nil || srv.Apps.Metadata.PlatformRegion() == "" {
+		missing = append(missing, rendertest.SourceRegion)
+	}
+	if srv.Apps == nil || !srv.Apps.Metadata.DashboardConfigured() {
+		missing = append(missing, rendertest.SourceDashboardURL)
+	}
+	if srv.Workspaces == nil || srv.Workspaces.Store == nil {
+		missing = append(missing, rendertest.SourceWorkspaces)
+	}
+	if srv.Workspaces == nil || srv.Workspaces.Identities == nil {
+		missing = append(missing, rendertest.SourceIdentities)
+	}
+	return missing
 }
 
 // recordingTB captures what the response validator reports, so a test can
@@ -147,7 +167,7 @@ func TestBuildHandlerFailsAWrongFieldInAServedResponse(t *testing.T) {
 	}
 
 	honest := &recordingTB{TB: t}
-	do(t, validatingRenderResponses(honest, muxes.rest, srv.wrapMuxes(muxes)), "GET", "/v1/services/web", testToken, "")
+	do(t, validatingRenderResponses(honest, muxes.rest, srv.wrapMuxes(muxes), unconfiguredSources(srv)...), "GET", "/v1/services/web", testToken, "")
 	if len(honest.errors) != 0 {
 		t.Fatalf("the untampered response failed validation: %q", honest.errors)
 	}

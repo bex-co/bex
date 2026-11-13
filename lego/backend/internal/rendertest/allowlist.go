@@ -59,58 +59,42 @@ const (
 // entry (and lower the pinned size) once bex conforms; fix a new violation
 // rather than adding one.
 var Allowlist = map[string][]Divergence{
-	// Services: bex omits the owner, dashboard link and timestamps it cannot
-	// state (no resolved workspace, BEX_DASHBOARD_URL unset) and projects a
-	// partial serviceDetails, checked field by field against the union member
-	// the service's type selects. openPorts is not among the omissions
-	// (emitted since w6/m148, pinned by apps.TestRenderServiceDetailsOpenPorts).
+	// Services: a partial serviceDetails, checked field by field against the
+	// union member the service's type selects. Owner, region, dashboard link
+	// and updatedAt are not entries: the fake API server stamps managedFields
+	// (Stamped), and a server lacking a metadata source is excused by its
+	// Source list (Wrap, Unallowed), not here.
 	"list-services": join(
-		missing(RowMetadata, SuiteAPI, "ownerId", "dashboardUrl", "updatedAt"),
-		details(SuiteAPI, "buildPlan", "envSpecificDetails", "healthCheckPath", "plan", "publishPath", "region", "url"),
+		details(SuiteAPI, "envSpecificDetails", "plan", "publishPath", "url"),
 		imageCommands(SuiteAPI),
 	),
 	"retrieve-service": join(
-		missing(RowMetadata, SuiteAPI, "ownerId", "dashboardUrl", "updatedAt"),
-		details(SuiteAPI, "buildPlan", "envSpecificDetails", "healthCheckPath", "plan", "region", "url"),
+		details(SuiteAPI, "envSpecificDetails", "plan", "url"),
 		imageCommands(SuiteAPI),
 		details(SuiteApps, "env", "publishPath", "runtime"),
 	),
 	"create-service": join(
-		missing(RowMetadata, SuiteAPI, "ownerId", "dashboardUrl"),
-		details(SuiteAPI, "buildPlan", "envSpecificDetails", "healthCheckPath", "region", "url"),
+		details(SuiteAPI, "envSpecificDetails", "url"),
 		imageCommands(SuiteAPI),
 		details(SuiteApps, "disk/id"),
 		[]Divergence{{Contains: "status 200: not a documented response", ADR018: RowDryRun, Suite: SuiteApps}},
 	),
 	"update-service": join(
-		missing(RowMetadata, SuiteAPI, "dashboardUrl"),
-		missing(RowMetadata, SuiteApps, "ownerId", "updatedAt"),
-		details(SuiteAPI, "buildPlan", "envSpecificDetails", "healthCheckPath", "region", "url"),
+		details(SuiteAPI, "envSpecificDetails", "url"),
 		details(SuiteApps, "env", "plan", "runtime"),
 		imageCommands(SuiteApps),
 	),
 
-	// Datastores and projects: owner (and its email), region, version,
-	// project and dashboard link are omitted when unknown or unconfigured.
-	// ipAllowList and readReplicas left these lists in w6/m109, role and
-	// suspenders in w8/129, the Key Value version when it was reported.
-	"list-postgres":      missing(RowMetadata, SuiteAPI, "updatedAt", "owner", "owner/email", "region", "version", "dashboardUrl"),
-	"retrieve-postgres":  missing(RowMetadata, SuiteAPI, "updatedAt", "owner", "owner/email", "region", "version", "dashboardUrl", "project"),
-	"create-postgres":    missing(RowMetadata, SuiteAPI, "owner", "region", "version", "dashboardUrl", "project"),
-	"update-postgres":    missing(RowMetadata, SuiteAPI, "owner", "region", "version", "dashboardUrl", "project"),
-	"recover-postgres":   missing(RowMetadata, SuiteAPI, "owner", "region", "version", "dashboardUrl", "project"),
-	"list-key-value":     missing(RowMetadata, SuiteAPI, "updatedAt", "owner", "owner/email", "region", "dashboardUrl"),
-	"retrieve-key-value": missing(RowMetadata, SuiteAPI, "updatedAt", "owner", "owner/email", "region"),
-	"create-key-value":   join(missing(RowMetadata, SuiteAPI, "owner", "region"), dryRun()),
-	"update-key-value":   missing(RowMetadata, SuiteAPI, "owner", "region"),
+	// Postgres: version and project, open questions recorded in their
+	// RowMetadata row.
+	"list-postgres":     missing(RowMetadata, SuiteAPI, "version"),
+	"retrieve-postgres": missing(RowMetadata, SuiteAPI, "version", "project"),
+	"create-postgres":   missing(RowMetadata, SuiteAPI, "version", "project"),
+	"update-postgres":   missing(RowMetadata, SuiteAPI, "version", "project"),
+	"recover-postgres":  missing(RowMetadata, SuiteAPI, "version", "project"),
+	"create-key-value":  dryRun(),
 	// Render's deprecated /redis spelling of the same Key Value (w3/m274).
-	"list-redis":       missing(RowMetadata, SuiteAPI, "updatedAt", "owner", "region", "dashboardUrl"),
-	"retrieve-redis":   missing(RowMetadata, SuiteAPI, "updatedAt", "owner", "region"),
-	"create-redis":     join(missing(RowMetadata, SuiteAPI, "owner", "region"), dryRun()),
-	"update-redis":     missing(RowMetadata, SuiteAPI, "owner", "region"),
-	"list-projects":    missing(RowMetadata, SuiteAPI, "owner"),
-	"retrieve-project": missing(RowMetadata, SuiteAPI, "owner/email"),
-	"create-project":   missing(RowMetadata, SuiteAPI, "owner/email"),
+	"create-redis": dryRun(),
 
 	// Events: bex-named types keep their enum violation; every other event's
 	// details are checked against the member its type names (w3/m302), and
@@ -146,10 +130,16 @@ func join(groups ...[]Divergence) []Divergence { return slices.Concat(groups...)
 func missing(row, suite string, fields ...string) []Divergence {
 	out := make([]Divergence, 0, len(fields))
 	for _, field := range fields {
-		name := field[strings.LastIndex(field, "/")+1:]
-		out = append(out, Divergence{Contains: fmt.Sprintf(`/%s: property %q is missing`, field, name), ADR018: row, Suite: suite})
+		out = append(out, Divergence{Contains: missingProperty(field), ADR018: row, Suite: suite})
 	}
 	return out
+}
+
+// missingProperty is the tail of Validate's violation for a required field
+// missing at the JSON pointer tail field ("owner/email" is a present owner's
+// email).
+func missingProperty(field string) string {
+	return fmt.Sprintf(`/%s: property %q is missing`, field, field[strings.LastIndex(field, "/")+1:])
 }
 
 // details is missing for serviceDetails members.
@@ -187,10 +177,11 @@ func Allowed(operationID, violation string) bool {
 	return false
 }
 
-// Unallowed returns the violations no Allowlist entry excuses.
-func Unallowed(operationID string, violations []string) []string {
+// Unallowed returns the violations no Allowlist entry excuses, after dropping
+// the omissions the server's unconfigured metadata sources explain.
+func Unallowed(operationID string, violations []string, unconfigured ...Source) []string {
 	var out []string
-	for _, v := range violations {
+	for _, v := range withoutUnconfigured(violations, unconfigured) {
 		if !Allowed(operationID, v) {
 			out = append(out, v)
 		}

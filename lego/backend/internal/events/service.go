@@ -165,6 +165,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // EventStore is the Service's seam to the control-plane store: one composed list
@@ -1083,6 +1084,7 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 	out := make([]Event, 0, len(rows))
 	for _, r := range rows {
 		ev := view(r, service)
+		withoutGitImage(&ev, a)
 		withMemoryLimit(&ev, a.Spec.Tier)
 		out = append(out, ev)
 	}
@@ -1198,12 +1200,19 @@ func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
 		return Event{}, err
 	}
 	event := view(lookup.Event, lookup.ServiceID)
-	if event.Type == TypeServerFailed && event.Details.ReasonCode == store.EventReasonOOMKilled {
-		// Best effort: the limit is the plan's, and a service that is gone
-		// leaves it empty.
-		if a, err := s.GetApp(ctx, core.RelCanView, lookup.ServiceID); err == nil {
-			withMemoryLimit(&event, a.Spec.Tier)
+	// The service is read only when the event needs it, best effort: a service
+	// that is gone leaves only the event's own commit to tell a Git-backed
+	// deploy, and no plan for an OOM's memory limit.
+	var a *appv1alpha1.App
+	oom := event.Type == TypeServerFailed && event.Details.ReasonCode == store.EventReasonOOMKilled
+	if oom || (isDeployEvent(event) && event.Details.Image != "" && event.Details.CommitID == "") {
+		if got, err := s.GetApp(ctx, core.RelCanView, lookup.ServiceID); err == nil {
+			a = got
 		}
+	}
+	withoutGitImage(&event, a)
+	if a != nil {
+		withMemoryLimit(&event, a.Spec.Tier)
 	}
 	page := []Event{event}
 	s.resolveUserEmails(ctx, page)
@@ -1245,6 +1254,19 @@ func (s *Service) checkWindow(since, until time.Time) error {
 		return fmt.Errorf("%w: query range exceeds %d hours", core.ErrBadRequest, s.MaxQueryHours)
 	}
 	return nil
+}
+
+// withoutGitImage drops a deploy event's image when the deploy was built from
+// source (core.GitBacked). Only deploy events: another event's image, such as
+// image_pull_failed's imageURL, is a different fact Render requires.
+func withoutGitImage(ev *Event, a *appv1alpha1.App) {
+	if isDeployEvent(*ev) && core.GitBacked(a, ev.Details.CommitID) {
+		ev.Details.Image = ""
+	}
+}
+
+func isDeployEvent(ev Event) bool {
+	return ev.Type == TypeDeployStarted || ev.Type == TypeDeployEnded
 }
 
 // view projects one composed store row onto the Render event vocabulary. The id

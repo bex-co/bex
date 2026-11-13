@@ -56,7 +56,7 @@ func fakeClient(objs ...client.Object) client.Client {
 	_ = appv1alpha1.AddToScheme(scheme)
 	return fake.NewClientBuilder().WithScheme(scheme).
 		WithObjects(rendertest.Stamped(objs...)...).
-		WithInterceptorFuncs(rendertest.StampOnCreate).Build()
+		WithInterceptorFuncs(rendertest.StampOnCreate).WithReturnManagedFields().Build()
 }
 
 func sampleApp(name string) *appv1alpha1.App {
@@ -1881,11 +1881,14 @@ func TestRESTListTimeWindowExcludes(t *testing.T) {
 		query string
 		want  []string
 	}{
-		// "unstamped" has no timestamp, so it rides along with every window.
+		// "unstamped" has no updated-at annotation, so its updatedAt is the
+		// managedFields time a real API server records, here the fake server's
+		// creation epoch (2023-11-14, rendertest.Stamped); it is placed by that.
+		// The no-source passthrough is TestRESTListTimeFilters' unstamped client.
 		{"?updatedBefore=2026-06-01T00:00:00Z", []string{"old", "unstamped"}},
-		{"?updatedAfter=2026-06-01T00:00:00Z", []string{"new", "unstamped"}},
-		{"?updatedAfter=2026-06-01T00:00:00Z&updatedBefore=2027-01-01T00:00:00Z", []string{"new", "unstamped"}},
-		{"?updatedAfter=2027-01-01T00:00:00Z", []string{"unstamped"}},
+		{"?updatedAfter=2026-06-01T00:00:00Z", []string{"new"}},
+		{"?updatedAfter=2026-06-01T00:00:00Z&updatedBefore=2027-01-01T00:00:00Z", []string{"new"}},
+		{"?updatedAfter=2027-01-01T00:00:00Z", []string{}},
 	}
 	for _, c := range cases {
 		want := slices.Clone(c.want)

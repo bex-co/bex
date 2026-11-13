@@ -89,13 +89,14 @@ func testScheme() *runtime.Scheme {
 	return scheme
 }
 
-// fakeClient stamps creationTimestamp like a real API server
-// (rendertest.Stamped), so served responses carry the createdAt Render
-// requires and the response validator in buildHandler sees production shapes.
+// fakeClient stamps creationTimestamp and managedFields like a real API server
+// (rendertest.Stamped) and returns managedFields as one does, so served
+// responses carry the createdAt and updatedAt Render requires and the response
+// validator in buildHandler sees production shapes.
 func fakeClient(objs ...client.Object) client.Client {
 	return fake.NewClientBuilder().WithScheme(testScheme()).
 		WithObjects(rendertest.Stamped(objs...)...).
-		WithInterceptorFuncs(rendertest.StampOnCreate).Build()
+		WithInterceptorFuncs(rendertest.StampOnCreate).WithReturnManagedFields().Build()
 }
 
 func sampleApp(name string) *appv1alpha1.App {
@@ -200,7 +201,7 @@ func buildHandler(t *testing.T, srv *Server) http.Handler {
 	if err != nil {
 		t.Fatalf("Handler: %v", err)
 	}
-	return validatingRenderResponses(t, muxes.rest, srv.wrapMuxes(muxes))
+	return validatingRenderResponses(t, muxes.rest, srv.wrapMuxes(muxes), unconfiguredSources(srv)...)
 }
 
 func do(t *testing.T, h http.Handler, method, path, token, body string) *httptest.ResponseRecorder {

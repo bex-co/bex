@@ -1,17 +1,17 @@
 # w10 · m373 — Service and deploy reads match Render's schema both ways; the rendertest allowlist excuses only signed-off divergences
 
-**Worker:** worker10 **Goal:** a client generated from Render's pinned OpenAPI with required-field validation parses every bex service and deploy read, and `rendertest.Allowlist` no longer excuses omissions that exist only because the test fixtures run without production configuration. **Status:** todo
+**Worker:** worker10 **Goal:** a client generated from Render's pinned OpenAPI with required-field validation parses every bex service and deploy read, and `rendertest.Allowlist` no longer excuses omissions that exist only because the test fixtures run without production configuration. **Status:** in progress (t001, t002, t004, t005, t006 done 2026-11-13; t003 open with its findings below; live DoD 3-4 wait for the deploy that carries this)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | The rendertest suites run on production-shaped fixtures; drop the metadata entries that only fixtures reproduce | 1.5h | — |
-| [t002](t002.md) | Every service read carries Render's required `buildPlan`, and a web service its `healthCheckPath` (absorbs w4/626) | 40m | t001 |
+| [t001](done/t001.md) | The rendertest suites run on production-shaped fixtures; drop the metadata entries that only fixtures reproduce — **DONE** | 1.5h | — |
+| [t002](done/t002.md) | Every service read carries Render's required `buildPlan`, and a web service its `healthCheckPath` (absorbs w4/626) — **DONE** | 40m | t001 |
 | [t003](t003.md) | The remaining serviceDetails entries: conform each, or record it with the user's sign-off | 1h | t002 |
-| [t004](t004.md) | A Git-built service's deploys carry no `image` on any tenant read (absorbs w4/621) | 45m | t001 |
-| [t005](t005.md) | `numInstances` appears only where Render's schema has it; a cron job's header has no Instances fact (absorbs w4/606) | 30m | t001 |
-| [t006](t006.md) | ADR018 and the allowlist record what is left | 20m | t003, t004, t005 |
+| [t004](done/t004.md) | A Git-built service's deploys carry no `image` on any tenant read (absorbs w4/621) — **DONE** | 45m | t001 |
+| [t005](done/t005.md) | `numInstances` appears only where Render's schema has it; a cron job's header has no Instances fact (absorbs w4/606) — **DONE** | 30m | t001 |
+| [t006](done/t006.md) | ADR018 and the allowlist record what is left — **DONE** | 20m | t003, t004, t005 |
 | [t007](t007.md) | Render parity | 20m | t006 |
 | [t008](t008.md) | Simplify | 15m | t007 |
 | [t009](t009.md) | Test coverage | 40m | t007, t008 |
@@ -39,4 +39,14 @@ Total: **10 tasks, about 6h10m**.
 
 ## Findings
 
-None yet.
+**2026-11-13 (`/loopx w10`).** The allowlist went from 109 entries to 40: 22 "Partial serviceDetails projection", 9 "Resource metadata omitted when unknown" (Postgres `version` ×5, `project` ×4), 6 event details, 3 dry-run previews.
+
+- **What the 66 metadata entries were.** A production read (QA user, `GET /v1/postgres`, `/v1/key-value`, `/v1/projects`, 2026-11-13) carries `owner` (with email), `region`, `version`, `dashboardUrl` and `updatedAt`. The entries came from fixtures: controller-runtime's fake client drops `managedFields` unless `WithReturnManagedFields()` (bex reads an unannotated object's `updatedAt` from them), and most test servers run without `Region`, `DashboardURL` or a workspace store. Fix: `rendertest.Stamped` stamps a `managedFields` entry and both `fakeClient` helpers return them; `rendertest.Wrap` takes the server's unconfigured `Source`s (`unconfiguredSources(srv)` in the api suite; `AllSources` for the bare apps mux), so only a server that lacks a source is excused. `TestRenderConformance` now runs with a region and dashboard URL, and `TestResourceRESTMetadataUsesOwnWorkspaceAndAuthoritativeSources` with every source, so a dropped field fails there. Two tests that asserted an unannotated object omits `updatedAt` now expect the managedFields time (the no-source fallback stays covered in `resourcemeta`).
+- **Postgres `version` (open).** `spec.version` empty means "operator default", and the view reads `status.currentVersion`, so a create without a version answers no `version` until the operator reports. This happens in production too. Stating it needs the operator's default in bex-api.
+- **Postgres `project` (open).** Render's pinned `postgresDetail` lists `project` as required but defines no property for it; bex sends `projectId`. Its shape is unknowable from the contract; a Render capture (needs a Render account, w10/002's gate) settles it.
+- **t003, the remaining serviceDetails entries** (temporarily removed and attributed to the tests that reproduce them):
+  - `plan` (133 tests) and `url` (134): fixture Apps without `spec.plan` or `status.url`. `plan` is likely fixture-only but many tests key behavior on an empty plan, so it needs care; `url` is also missing on a create before the first live revision, which Render answers with the URL it assigned at creation — a real gap bex can close by deriving the URL from the slug, as it already does for a static site before its first deploy.
+  - `envSpecificDetails` (179): an image service without a command omits it. Real in production; Render's shape for an image service with no command is not in the contract (needs a capture).
+  - `runtime`/`env` (2): a build-source-linked service has no runtime. Real; same capture question.
+  - `publishPath` (6) and `disk/id` (3, no control-plane store): fixture-shaped.
+- **Not changed:** `logs.DeployProgress.Image` (`api/server.go:889`) still narrates a Git deploy's internal image in the deploy log stream; `AppView.Image` is unchanged.
