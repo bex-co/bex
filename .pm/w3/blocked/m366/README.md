@@ -1,6 +1,6 @@
 # w3 · m366 — A cron job's run history and `lastSuccessfulRunAt` outlive the ten-run status window, as on Render
 
-**Worker:** worker3 **Goal:** a cron job's runs list, run reads and `lastSuccessfulRunAt` come from the durable run facts bex already records, merged with the live status. A run is no longer forgotten once ten newer runs have happened, and the last success stays known through any number of failures. **Status:** in progress (t001–t003, t005–t008 done: fact-backed run list, get and cancel past the status window, durable `status.lastSuccessfulRunAt`, docs; t004 is the production check after this deploy, then t009 closes)
+**Worker:** worker3 **Goal:** a cron job's runs list, run reads and `lastSuccessfulRunAt` come from the durable run facts bex already records, merged with the live status. A run is no longer forgotten once ten newer runs have happened, and the last success stays known through any number of failures. **Status:** blocked (t004: waits on the batched production deploy carrying `3db02dcd9`; the production pin is batched (`deploy.yml` pins only when the current pin is ≥ 6 h old; the pin was `4c3c68e6b` at 05:33Z, so the next is ~11:33Z 2026-11-13 or later). Then a worker, as the QA user in `bex-canary`, creates a `* * * * *` QA cron, waits for at least twelve runs, checks REST paging, the eleventh-newest run's read and the Runs page past the tenth, and deletes the fixture — no user decision needed; then t009 closes)
 
 ## Tasks (in order)
 
