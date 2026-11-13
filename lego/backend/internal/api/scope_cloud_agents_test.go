@@ -1,7 +1,11 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"testing"
+
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -41,6 +45,66 @@ func TestCloudAgentsScopeCoversOnlyTheToolset(t *testing.T) {
 		if (err == nil) != c.allow {
 			t.Errorf("%s: scopes=%q op=%q err=%v, want allow=%t", c.name, c.scopes, c.op, err, c.allow)
 		}
+	}
+}
+
+// TestMCPCloudAgentsScopeReachesTheRelationGate pins the second half of ADR094
+// D9: the class gate lets bex.cloud_agents through for the toolset, and the MCP
+// seam must carry that same narrowing onto the context the service verb
+// authorizes with — otherwise every create/operate/view inside a session
+// refuses with insufficient_token_scope for a scope the caller did consent to.
+// Only a covered tool is marked; an unrelated tool, a token without the scope,
+// and exempt identities are left untouched.
+func TestMCPCloudAgentsScopeReachesTheRelationGate(t *testing.T) {
+	cases := []struct {
+		name   string
+		id     core.Identity
+		tool   string
+		marked bool
+	}{
+		{"write tool in the toolset", oauthID(core.ScopeCloudAgents), "create_agent_session", true},
+		{"read tool in the toolset", oauthID(core.ScopeCloudAgents), "get_agent_session", true},
+		{"caller-scoped toolset lookup", oauthID(core.ScopeCloudAgents), "list_workspaces", true},
+		{"tool outside the toolset", oauthID(core.ScopeCloudAgents), "update_service", false},
+		{"read token on a write tool", oauthID(core.ScopeRead), "create_agent_session", false},
+		{"write token keeps its own grant", oauthID(core.ScopeWrite), "create_agent_session", false},
+		{"session is exempt and untouched", core.Identity{Subject: "u", Method: "session", Human: true}, "create_agent_session", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := core.WithIdentity(context.Background(), tc.id)
+			req := &mcp.CallToolRequest{Params: &mcp.CallToolParamsRaw{Name: tc.tool, Arguments: json.RawMessage(`{}`)}}
+			var seen core.Identity
+			next := func(ctx context.Context, _ string, _ mcp.Request) (mcp.Result, error) {
+				seen, _ = core.IdentityFrom(ctx)
+				return &mcp.CallToolResult{}, nil
+			}
+			if _, err := mcpBindCallWorkspace(ctx, &core.Base{}, "tools/call", req, next, nil); err != nil {
+				t.Fatalf("bind: %v", err)
+			}
+			if seen.CloudAgentsToolset != tc.marked {
+				t.Errorf("CloudAgentsToolset = %t, want %t", seen.CloudAgentsToolset, tc.marked)
+			}
+			if seen.CanonicalScopes != tc.id.CanonicalScopes {
+				t.Errorf("scopes rewritten: %q, want %q", seen.CanonicalScopes, tc.id.CanonicalScopes)
+			}
+		})
+	}
+}
+
+// TestCloudAgentsMarkerClearsTheAgentSessionVerb proves the end-to-end
+// sequence the MCP seam performs: mark, then the verb's own relation gate. The
+// fake checker allows so only the OAuth half is under test.
+func TestCloudAgentsMarkerClearsTheAgentSessionVerb(t *testing.T) {
+	base := &core.Base{Authz: &fakeChecker{allow: true}, Workspace: fakeWorkspace{"u": "tea-a"}}
+	id := oauthID(core.ScopeCloudAgents)
+	ctx := core.WithIdentity(context.Background(), id)
+	ctx = mcpMarkCloudAgentsToolset(ctx, "create_agent_session")
+	if err := base.Authorize(ctx, core.RelCanCreate); err != nil {
+		t.Fatalf("marked cloud-agents create: %v", err)
+	}
+	if err := base.Authorize(core.WithIdentity(context.Background(), id), core.RelCanCreate); err == nil {
+		t.Fatal("unmarked token cleared can_create; the marker must be what bridges the toolset")
 	}
 }
 

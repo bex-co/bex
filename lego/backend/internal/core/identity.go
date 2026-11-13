@@ -69,6 +69,14 @@ type Identity struct {
 	// platform registry. False for sessions, machine keys, third-party human
 	// tokens, and classification-not-needed grants.
 	PlatformClient bool
+	// CloudAgentsToolset marks THIS call (never the introspected identity) as
+	// admitted through bex.cloud_agents on a cloud-agents MCP toolset tool. The
+	// MCP seam sets it after that scope satisfied the operation-class check, so
+	// RequireCapability can accept the same scope in place of bex.read /
+	// bex.write for the relation the tool's verb maps to. It never substitutes
+	// for bex.sensitive, never leaves the toolset, and never grants more than
+	// the caller's OpenFGA relations — the scope is a narrowing, not a grant.
+	CloudAgentsToolset bool
 }
 
 type identityCtxKey struct{}

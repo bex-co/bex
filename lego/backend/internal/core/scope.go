@@ -237,6 +237,12 @@ func (id Identity) RequireOpClass(class string) error {
 // human OAuth delegation must hold the capability mapped to the relation, in
 // addition to OpenFGA. Sessions and machine keys are authenticated by their
 // own non-OAuth mechanisms. A public client id never substitutes for a scope.
+//
+// bex.cloud_agents is a narrowing, not a grant (ADR094 D9). A token that
+// requested it consented to the cloud-agents MCP toolset only, so the MCP seam
+// marks that call and it may stand in for the read/write capabilities those
+// tools' verbs map to. It never stands in for bex.sensitive, and OpenFGA still
+// decides every relation.
 func (id Identity) RequireCapability(relation string) error {
 	if id.CapabilityExempt() {
 		return nil
@@ -246,6 +252,10 @@ func (id Identity) RequireCapability(relation string) error {
 		return NewInsufficientScopeError("")
 	}
 	if ContainsScope(id.CanonicalScopes, want) {
+		return nil
+	}
+	if id.CloudAgentsToolset && (want == ScopeRead || want == ScopeWrite) &&
+		ContainsScope(id.CanonicalScopes, ScopeCloudAgents) {
 		return nil
 	}
 	return NewInsufficientScopeError(want)
