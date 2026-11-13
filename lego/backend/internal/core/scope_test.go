@@ -82,6 +82,37 @@ func TestNormalizeOAuthGrantCanonicalizesAndBounds(t *testing.T) {
 	}
 }
 
+// TestNormalizeOAuthGrantBoundsEveryAudience pins the contract its doc states:
+// every audience is bounded, not just the entries scanned before a resource
+// match — including when this API accepted no resource at all.
+func TestNormalizeOAuthGrantBoundsEveryAudience(t *testing.T) {
+	atLimit := strings.Repeat("a", MaxOAuthAudienceLen)
+	over := strings.Repeat("a", MaxOAuthAudienceLen+1)
+	resource := "https://api.bex.co/mcp"
+	cases := []struct {
+		name      string
+		audiences []string
+		resource  string
+		wantErr   bool
+	}{
+		{name: "limit is accepted", audiences: []string{atLimit}, wantErr: false},
+		{name: "oversized without a resource", audiences: []string{over}, wantErr: true},
+		{name: "oversized after the match", audiences: []string{resource, over}, resource: resource, wantErr: true},
+		{name: "oversized before the match", audiences: []string{over, resource}, resource: resource, wantErr: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g, err := NormalizeOAuthGrant(ScopeRead, tc.audiences, "c", tc.resource)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("err = %v, wantErr = %t", err, tc.wantErr)
+			}
+			if err == nil && g.Scopes != ScopeRead {
+				t.Errorf("scopes = %q, want %q", g.Scopes, ScopeRead)
+			}
+		})
+	}
+}
+
 func TestHasGranularCapabilityExactMatchOnly(t *testing.T) {
 	if HasGranularCapability("bex.read-only") || ContainsScope("bex.read-only", ScopeRead) {
 		t.Error("prefix near-match must not count")

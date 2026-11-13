@@ -187,12 +187,17 @@ func NormalizeOAuthGrant(scope string, audiences []string, clientID, resource st
 	if len(audiences) > MaxOAuthAudiences {
 		return OAuthGrant{}, fmt.Errorf("oauth audience list exceeds %d members", MaxOAuthAudiences)
 	}
+	// Bound every audience, not just the ones scanned before a match: an
+	// oversized entry after the accepted resource (or when this API accepted no
+	// resource at all) is still malformed input and must fail closed.
+	for _, a := range audiences {
+		if len(a) > MaxOAuthAudienceLen {
+			return OAuthGrant{}, fmt.Errorf("oauth audience exceeds %d bytes", MaxOAuthAudienceLen)
+		}
+	}
 	accepted := ""
 	if resource != "" {
 		for _, a := range audiences {
-			if len(a) > MaxOAuthAudienceLen {
-				return OAuthGrant{}, fmt.Errorf("oauth audience exceeds %d bytes", MaxOAuthAudienceLen)
-			}
 			if a == resource {
 				accepted = resource
 				break
