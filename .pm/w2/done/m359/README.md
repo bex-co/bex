@@ -1,6 +1,6 @@
 # w2 · m359 — Delete a sandbox group and change the workspace default, as on Render
 
-**Worker:** worker2 **Goal:** `render sandbox-groups delete` and `render sandbox-groups default set` work against bex with Render's semantics. Deleting a group terminates its sandboxes and deletes what they stored. The workspace's default group cannot be deleted until another group is made the default. **Status:** in progress (t001–t004 and t006–t008 done; t005, the production walk, waits for the deploy; then t009)
+**Worker:** worker2 **Goal:** `render sandbox-groups delete` and `render sandbox-groups default set` work against bex with Render's semantics. Deleting a group terminates its sandboxes and deletes what they stored. The workspace's default group cannot be deleted until another group is made the default. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Set default: one default per workspace, swapped under a lock; REST, GraphQL and MCP — **DONE** | 45m | t001 |
 | t003 | Delete: refuse the default group; terminate the group's sandboxes; delete its suspended rootfs images and imported images; stop their storage meters; idempotent — **DONE** | 75m | t002 |
 | t004 | Dashboard: offer Delete and Make default wherever Render's dashboard does; bex shows groups only in a create dialog today — **DONE** | 45m | t003 |
-| t005 | Production walk: delete a group with a sandbox in it, swap the default, and see the default refused | 30m | t004 |
+| t005 | Production walk: delete a group with a sandbox in it, swap the default, and see the default refused — **DONE** | 30m | t004 |
 | t006 | Render parity — **DONE** | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t007 |
-| t009 | Closeout | 10m | t008 |
+| t009 | Closeout — **DONE** | 10m | t008 |
 
 ## Definition of done
 
