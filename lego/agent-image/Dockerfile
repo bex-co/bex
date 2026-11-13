@@ -104,10 +104,10 @@ RUN chmod 0755 dist/main.js \
 # committed. /bex/skills is the workspace's skills (ADR099 D5), extracted the
 # same way into /var/lib/bex-agent/skills.
 RUN useradd --create-home --home-dir /home/bex --uid 10001 --shell /bin/bash bex \
-    && mkdir -p /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /bex \
+    && mkdir -p /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /bex /var/tmp/go-tmp \
     && ln -s /var/lib/bex-agent/attachments /attachments \
     && ln -s /var/lib/bex-agent/skills /bex/skills \
-    && chown -R bex:bex /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex
+    && chown -R bex:bex /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex /var/tmp/go-tmp
 
 # A linked layer does not depend on the layers above it, so the registry build
 # cache reuses it, and a node keeps it, until the dependency list changes; the
@@ -116,9 +116,14 @@ COPY --link --from=go-deps --chown=10001:10001 /opt/bex-go /opt/bex-go
 
 # Neither listener has an edge route. OpenSandbox supplies the remaining
 # non-secret BEX_AGENT_* session binding values per sandbox.
+# GOTMPDIR keeps the go command's work directory (compiled packages, link
+# outputs, test binaries) on the rootfs: under gVisor /tmp is a tmpfs that
+# counts against the sandbox's memory limit, and a full build and test of a
+# large repository there ran an 8 GiB sandbox out of memory (w6/124).
 ENV HOME=/home/bex \
     GOMODCACHE=/opt/bex-go/mod \
     GOCACHE=/opt/bex-go/cache \
+    GOTMPDIR=/var/tmp/go-tmp \
     BEX_AGENT_CWD=/workspace \
     BEX_AGENT_LISTEN_HOST=0.0.0.0 \
     BEX_AGENT_LISTEN_PORT=8787
