@@ -36,6 +36,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/mutate"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/types"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -258,6 +259,136 @@ func TestImportRefusesImagesASandboxCannotRun(t *testing.T) {
 	}
 	if rows, err := f.st.SandboxBuilds(context.Background(), f.ws, f.group.ID, "", nil); err != nil || len(rows) != 0 {
 		t.Fatalf("refused imports left %d builds, %v", len(rows), err)
+	}
+}
+
+// w5/m383: an import brings in only bytes bex copies. A source in the sandbox
+// registry itself is refused (its blobs would be mounted across repositories
+// with the importer's credential), and so is a source with a layer that
+// carries download URLs (containerd would fetch it from them on the node);
+// both before anything is written.
+func TestImportRefusesSourcesItWouldNotCopy(t *testing.T) {
+	f := newImageFixture(t)
+	img, _ := pushImage(t, hostOf(f.source)+"/acme/base:1", linuxAMD64, 256)
+	foreign, err := random.Layer(128, types.DockerForeignLayer)
+	if err != nil {
+		t.Fatal(err)
+	}
+	withForeign, err := mutate.Append(img, mutate.Addendum{Layer: foreign, MediaType: types.DockerForeignLayer,
+		URLs: []string{"https://downloads.example/layer.tar.gz"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	foreignRef, err := name.ParseReference(hostOf(f.source) + "/acme/foreign:1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := remote.Write(foreignRef, withForeign); err != nil {
+		t.Fatal(err)
+	}
+	foreignDigest, _ := foreign.Digest()
+
+	for _, tc := range []struct{ source, mentions string }{
+		{hostOf(f.sink) + "/snapshots/other-workspace/image:latest", "sandbox registry itself"},
+		{strings.ToUpper(hostOf(f.sink)) + "/snapshots/other-workspace/image:latest", "sandbox registry itself"},
+		{hostOf(f.source) + "/acme/foreign:1", foreignDigest.String()},
+	} {
+		code, body := f.importImage(t, fmt.Sprintf(`{"name":"refused","sourceImage":%q}`, tc.source))
+		if code != http.StatusBadRequest || errCode(body) != CodeSandboxImageInvalid || !strings.Contains(body, tc.mentions) {
+			t.Errorf("import of %s = %d %s, want 400 %s mentioning %q", tc.source, code, body, CodeSandboxImageInvalid, tc.mentions)
+		}
+	}
+	if rows, err := f.st.SandboxBuilds(context.Background(), f.ws, f.group.ID, "", nil); err != nil || len(rows) != 0 {
+		t.Fatalf("refused imports left %d builds, %v", len(rows), err)
+	}
+	// The ordinary image beside them still imports.
+	if b := f.waitBuild(t, f.mustImport(t, fmt.Sprintf(`{"name":"base","sourceImage":%q}`, hostOf(f.source)+"/acme/base:1")).ID); b.Status != store.SandboxBuildSucceeded {
+		t.Fatalf("the ordinary import = %+v", b)
+	}
+}
+
+// w5/m383: the copy writes only the image resolveSource checked. A registry
+// labels a manifest by header, so the same bytes could read as an image at
+// the check and as an index at the copy, which then picks another child.
+func TestCopyWritesOnlyTheCheckedImage(t *testing.T) {
+	f := newImageFixture(t)
+	ctx := context.Background()
+	img, digest := pushImage(t, hostOf(f.source)+"/acme/pinned:1", linuxAMD64, 256)
+	ref, err := name.NewDigest(hostOf(f.source) + "/acme/pinned@" + digest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	build := store.SandboxBuild{ID: "sbb-pinnedcopytest000000", WorkspaceID: f.ws}
+	other := v1.Hash{Algorithm: "sha256", Hex: strings.Repeat("0", 64)}
+	if _, _, err := f.svc.Images.copy(ctx, build, ref, other, nil); err == nil || !strings.Contains(err.Error(), "not the") {
+		t.Fatalf("copy of a different image than checked = %v, want a refusal", err)
+	}
+	repo, err := f.svc.Images.imageRepository(build.WorkspaceID, build.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := remote.Head(repo.Tag(imageTag), remote.WithAuth(authn.FromConfig(authn.AuthConfig{Username: "bex-sandbox-importer", Password: "importer-pw"}))); err == nil {
+		t.Fatal("a refused copy wrote the image anyway")
+	}
+	checked, _ := img.Digest()
+	if _, _, err := f.svc.Images.copy(ctx, build, ref, checked, nil); err != nil {
+		t.Fatalf("copy of the checked image: %v", err)
+	}
+}
+
+// w5/m383: the imported bytes of every workspace together stay under the
+// platform budget: an import that would pass it is a 429 before anything is
+// written, while repeating an import already counted is not refused.
+func TestImportStaysUnderThePlatformBudget(t *testing.T) {
+	f := newImageFixture(t)
+	ctx := context.Background()
+	first, _ := pushImage(t, hostOf(f.source)+"/acme/first:1", linuxAMD64, 512)
+	second, _ := pushImage(t, hostOf(f.source)+"/acme/second:1", linuxAMD64, 512)
+	// The store's platformImportedBytesSQL, read from outside the package.
+	imported := func() int64 {
+		t.Helper()
+		var n int64
+		if err := f.st.Pool.QueryRow(ctx, `SELECT COALESCE(sum(size_bytes), 0) FROM sandbox_builds
+			WHERE status <> 'failed' AND deleted_at IS NULL`).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	firstSize, err := imageBytes(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondSize, err := imageBytes(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Room for the first, one byte short for the second as well; the
+	// workspace's share does not bind here.
+	f.svc.Images.PlatformBudgetBytes = imported() + firstSize + secondSize - 1
+	f.svc.Images.WorkspaceShareBytes = firstSize + secondSize
+	firstBody := fmt.Sprintf(`{"name":"first","sourceImage":%q}`, hostOf(f.source)+"/acme/first:1")
+	built := f.waitBuild(t, f.mustImport(t, firstBody).ID)
+	if built.Status != store.SandboxBuildSucceeded {
+		t.Fatalf("the import within the budget = %+v", built)
+	}
+	code, body := f.importImage(t, fmt.Sprintf(`{"name":"second","sourceImage":%q}`, hostOf(f.source)+"/acme/second:1"))
+	if code != http.StatusTooManyRequests || errCode(body) != CodeSandboxImportCapacity {
+		t.Fatalf("an import past the platform budget = %d %s, want 429 %s", code, body, CodeSandboxImportCapacity)
+	}
+	if again := f.mustImport(t, firstBody); again.ID != built.ID {
+		t.Fatalf("repeating a counted import = %s, want the existing build %s", again.ID, built.ID)
+	}
+	// A workspace past its share is refused however much room the platform
+	// has, so one workspace cannot hold the whole budget.
+	f.svc.Images.PlatformBudgetBytes = imported() + 100*(firstSize+secondSize)
+	f.svc.Images.WorkspaceShareBytes = firstSize + secondSize - 1
+	code, body = f.importImage(t, fmt.Sprintf(`{"name":"second","sourceImage":%q}`, hostOf(f.source)+"/acme/second:1"))
+	if code != http.StatusTooManyRequests || errCode(body) != CodeSandboxImportCapacity || !strings.Contains(body, "share") {
+		t.Fatalf("an import past the workspace's share = %d %s, want 429 %s naming the share", code, body, CodeSandboxImportCapacity)
+	}
+	f.svc.Images.PlatformBudgetBytes, f.svc.Images.WorkspaceShareBytes = 0, 0 // off: those bounds alone refused it
+	if b := f.waitBuild(t, f.mustImport(t, fmt.Sprintf(`{"name":"second","sourceImage":%q}`, hostOf(f.source)+"/acme/second:1")).ID); b.Status != store.SandboxBuildSucceeded {
+		t.Fatalf("the second import without the bounds = %+v", b)
 	}
 }
 

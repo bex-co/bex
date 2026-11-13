@@ -64,6 +64,17 @@ type SandboxBuild struct {
 	FinishedAt  *time.Time
 }
 
+// ErrSandboxImportBudget is a new import refused because the imported image
+// bytes of every workspace together would pass the platform budget
+// (NewSandboxBuild.PlatformBudgetBytes, w5/m383).
+var ErrSandboxImportBudget = errors.New("sandbox import platform budget reached")
+
+// ErrSandboxImportShare is a new import refused because the workspace's own
+// imported images would pass its share of the platform budget
+// (NewSandboxBuild.WorkspaceShareBytes), so one workspace cannot hold the
+// whole budget against everyone else (w5/m383).
+var ErrSandboxImportShare = errors.New("sandbox import workspace share reached")
+
 // NewSandboxBuild is an import to record: the resolved source and the name.
 type NewSandboxBuild struct {
 	WorkspaceID      string
@@ -82,6 +93,15 @@ type NewSandboxBuild struct {
 	// *SandboxStorageLimitError, checked under a workspace-wide lock so
 	// concurrent imports into different groups cannot all pass it.
 	MaxStorageBytes int64
+	// PlatformBudgetBytes bounds the imported image bytes of every workspace
+	// together, stored and in flight (0: none), so imports cannot fill the
+	// shared sandbox registry (w5/m383). Past it a new build is
+	// ErrSandboxImportBudget, checked under a platform-wide lock taken after
+	// the workspace's.
+	PlatformBudgetBytes int64
+	// WorkspaceShareBytes bounds one workspace's imported image bytes within
+	// that budget (0: none); past it a new build is ErrSandboxImportShare.
+	WorkspaceShareBytes int64
 }
 
 // SandboxStorageLimitError refuses a new build that would take its workspace
@@ -132,16 +152,40 @@ func (s *PGStore) CreateSandboxBuild(ctx context.Context, in NewSandboxBuild, ma
 				return ErrSandboxBuildLimit
 			}
 		}
-		if in.MaxStorageBytes > 0 && in.SizeBytes > 0 {
+		if (in.MaxStorageBytes > 0 || in.WorkspaceShareBytes > 0) && in.SizeBytes > 0 {
 			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "sandbox-storage:"+in.WorkspaceID); err != nil {
 				return err
 			}
+		}
+		if in.MaxStorageBytes > 0 && in.SizeBytes > 0 {
 			var used int64
 			if err := tx.QueryRow(ctx, sandboxStorageBytesSQL, in.WorkspaceID).Scan(&used); err != nil {
 				return err
 			}
 			if used+in.SizeBytes > in.MaxStorageBytes {
 				return &SandboxStorageLimitError{UsedBytes: used}
+			}
+		}
+		if in.WorkspaceShareBytes > 0 && in.SizeBytes > 0 {
+			var own int64
+			if err := tx.QueryRow(ctx, `SELECT COALESCE(sum(size_bytes), 0) FROM sandbox_builds
+				WHERE workspace_id = $1 AND `+importedBuildSQL, in.WorkspaceID).Scan(&own); err != nil {
+				return err
+			}
+			if own+in.SizeBytes > in.WorkspaceShareBytes {
+				return ErrSandboxImportShare
+			}
+		}
+		if in.PlatformBudgetBytes > 0 && in.SizeBytes > 0 {
+			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "sandbox-import-platform"); err != nil {
+				return err
+			}
+			var imported int64
+			if err := tx.QueryRow(ctx, platformImportedBytesSQL).Scan(&imported); err != nil {
+				return err
+			}
+			if imported+in.SizeBytes > in.PlatformBudgetBytes {
+				return ErrSandboxImportBudget
 			}
 		}
 		b, err = scanSandboxBuild(tx.QueryRow(ctx, `
@@ -153,7 +197,7 @@ func (s *PGStore) CreateSandboxBuild(ctx context.Context, in NewSandboxBuild, ma
 		created = err == nil
 		return err
 	})
-	if limit := (*SandboxStorageLimitError)(nil); errors.As(err, &limit) {
+	if limit := (*SandboxStorageLimitError)(nil); errors.As(err, &limit) || errors.Is(err, ErrSandboxImportBudget) || errors.Is(err, ErrSandboxImportShare) {
 		return SandboxBuild{}, false, err
 	}
 	if err != nil {

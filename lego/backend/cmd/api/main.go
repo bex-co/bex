@@ -1489,6 +1489,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 					importer.Credentials = secretCredentials(cl, key, registrySecretImporterUserKey, registrySecretImporterPasswordKey, time.Now)
 					deps.SandboxImages = sandbox.NewImages(st, importer)
 					deps.SandboxImages.Reaper = &sandbox.RegistryReaper{RegistryConfig: reaper}
+					deps.SandboxImages.PlatformBudgetBytes = int64(cfg.SandboxImportPlatformBudgetGB) * store.BytesPerDecimalGB
 				}
 			}
 			go deps.SandboxMeter.Run(ctx)

@@ -282,6 +282,12 @@ type Config struct {
 	// disables). The GC credential, with the delete action on the snapshot
 	// prefix, turns on deleting a gone sandbox's images.
 	SandboxMaxStorageGBPerWorkspace int
+	// SandboxImportPlatformBudgetGB bounds the imported sandbox image bytes of
+	// every workspace together, stored and in flight, in decimal GB (0
+	// disables); one workspace may hold a quarter of it. The default sits
+	// below the shared Zot volume (deploy/gitops/base/zot.yaml, 100Gi), which
+	// suspended sandboxes' snapshots share, uncounted here (w5/m383).
+	SandboxImportPlatformBudgetGB int
 	// SandboxSnapshotRegistrySecret ("<namespace>/<name>") names the Secret the
 	// operator mints with the meter's two Zot users; bex-api reads it instead of
 	// the user and password variables, which stay as an override for a registry
@@ -635,6 +641,7 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		}
 	}
 	cfg.SandboxMaxStorageGBPerWorkspace = p.zeroableInt("BEX_SANDBOX_MAX_STORAGE_GB_PER_WORKSPACE", 500)
+	cfg.SandboxImportPlatformBudgetGB = p.zeroableInt("BEX_SANDBOX_IMPORT_PLATFORM_BUDGET_GB", 80)
 	cfg.SandboxSnapshotRegistrySecret = strings.TrimSpace(getenv("BEX_SANDBOX_SNAPSHOT_REGISTRY_SECRET"))
 	if ref := cfg.SandboxSnapshotRegistrySecret; ref != "" {
 		if _, err := parseSecretRef(ref); err != nil {
