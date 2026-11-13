@@ -63,7 +63,6 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 		if start.After(end) {
 			return nil, nil
 		}
-		query := lokiQueryFor(namespace, q)
 		// A local text search reads raw pages and matches in Go, so each request
 		// asks for a scan page of raw lines rather than the caller's page of matches.
 		pageQ := q
@@ -76,25 +75,12 @@ func NewLokiSource(base string, hc *http.Client) LogHistorySource {
 			end = end.Add(time.Nanosecond)
 			pageQ.End = time.Time{}
 		}
-		fetch := func(ctx context.Context, from, to time.Time) ([]LogEntry, error) {
-			u := fmt.Sprintf("%s/loki/api/v1/query_range?%s", base, url.Values{
-				"query": {query},
-				"start": {strconv.FormatInt(from.UnixNano(), 10)},
-				"end":   {lokiEndParam(pageQ, to)},
-				"limit": {strconv.FormatInt(pageQ.Limit, 10)},
-				// Render's direction decides which end of the window `limit` keeps:
-				// backward (default) the newest lines, forward the oldest.
-				"direction": {lokiDirection(q)},
-			}.Encode())
-			var lr lokiRangeResponse
-			if err := lokiGet(ctx, hc, u, &lr); err != nil {
-				return nil, err
-			}
-			// Raw candidates, unmatched: scanLokiWindow measures coverage by
-			// every line read before it keeps the matches (w8/m58).
-			return parseLokiStreams(lr, pageQ)
+		reader := lokiReader{
+			hc: hc, base: base, pageQ: pageQ,
+			selector: lokiSelectorFor(namespace, q),
+			pipeline: lokiPipelineFor(q),
 		}
-		return scanLokiWindow(ctx, q, start, end, lokiScansLines(q), lokiScanBudget, fetch)
+		return scanLokiWindow(ctx, q, start, end, lokiScansLines(q), lokiScanBudget, reader.fetch)
 	}
 }
 
@@ -556,20 +542,25 @@ func lokiTypeMatcher(q LogQuery) string {
 // "filter request logs by their path/host".
 // Search must be normalized by the source boundary.
 func lokiQueryFor(namespace string, q LogQuery) string {
-	query := lokiSelectorFor(namespace, q)
+	return lokiSelectorFor(namespace, q) + lokiPipelineFor(q)
+}
+
+// lokiPipelineFor is the stages lokiQueryFor appends to the stream selector: none
+// without a path or host filter.
+func lokiPipelineFor(q LogQuery) string {
 	if len(q.Path) == 0 && len(q.Host) == 0 {
-		return query
+		return ""
 	}
 	// One `json` stage extracting only the two fields we filter on (not the whole
 	// line — the access log has ~20 fields), then a label filter per field.
-	query += ` | json request_path="RequestPath", request_host="RequestHost"`
+	pipeline := ` | json request_path="RequestPath", request_host="RequestHost"`
 	if m := labelMatcher("request_path", q.Path); m != "" {
-		query += " | " + m
+		pipeline += " | " + m
 	}
 	if m := labelMatcher("request_host", q.Host); m != "" {
-		query += " | " + m
+		pipeline += " | " + m
 	}
-	return query
+	return pipeline
 }
 
 // labelMatcher renders one LogQL matcher for a Render filter's value set. Render's

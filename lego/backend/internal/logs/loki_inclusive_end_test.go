@@ -33,6 +33,9 @@ import (
 func exclusiveEndLoki(t *testing.T, stamps []time.Time) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if answerSeries(w, r) {
+			return
+		}
 		q := r.URL.Query()
 		start, _ := strconv.ParseInt(q.Get("start"), 10, 64)
 		end, _ := strconv.ParseInt(q.Get("end"), 10, 64)
