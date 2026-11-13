@@ -152,19 +152,13 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 		case stripe.EventTypeInvoicePaymentFailed:
 			before, after, _, err = t.Store.RecordBillingTrustFailure(ctx, ws, invoice.ID, at)
 		default:
-			paidAt := at
-			if invoice.StatusTransitions != nil && invoice.StatusTransitions.PaidAt > 0 {
-				paidAt = time.Unix(invoice.StatusTransitions.PaidAt, 0).UTC()
-			}
-			if invoice.AmountPaid <= 0 {
+			payment := trustPayment(&invoice, ws, at)
+			if payment.AmountCents <= 0 {
 				// Credits and $0 invoices are not payment history, but they
 				// do close the invoice for the balance-due refusal.
-				return ignoreWorkspaceGone(t.Store.SettleBillingTrustInvoice(ctx, ws, invoice.ID, paidAt))
+				return ignoreWorkspaceGone(t.Store.SettleBillingTrustInvoice(ctx, ws, invoice.ID, payment.PaidAt))
 			}
-			before, after, _, err = t.Store.RecordBillingTrustPayment(ctx, store.BillingTrustPayment{
-				InvoiceID: invoice.ID, WorkspaceID: ws, AmountCents: invoice.AmountPaid,
-				Cycle: invoice.BillingReason == stripe.InvoiceBillingReasonSubscriptionCycle, PaidAt: paidAt,
-			})
+			before, after, _, err = t.Store.RecordBillingTrustPayment(ctx, payment)
 		}
 	case stripe.EventTypeChargeDisputeCreated, stripe.EventTypeChargeDisputeClosed:
 		var dispute stripe.Dispute
@@ -197,6 +191,75 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 	}
 	t.notifyTierChange(ctx, workspaceID, before, after)
 	return nil
+}
+
+// trustPayment is invoice as trust history counts it, with paid_at from the
+// invoice's own transition, else fallback. Amount paid is gross: a later
+// refund stays counted, as the invoice.paid webhook counts it.
+func trustPayment(invoice *stripe.Invoice, workspaceID string, fallback time.Time) store.BillingTrustPayment {
+	paidAt := fallback
+	if invoice.StatusTransitions != nil && invoice.StatusTransitions.PaidAt > 0 {
+		paidAt = time.Unix(invoice.StatusTransitions.PaidAt, 0).UTC()
+	}
+	return store.BillingTrustPayment{
+		InvoiceID: invoice.ID, WorkspaceID: workspaceID, AmountCents: invoice.AmountPaid,
+		Cycle: invoice.BillingReason == stripe.InvoiceBillingReasonSubscriptionCycle, PaidAt: paidAt,
+	}
+}
+
+// paidInvoicePayment is a listed paid invoice as trust history, ok only for a
+// bex contract invoice with a positive amount paid.
+func paidInvoicePayment(invoice *stripe.Invoice) (store.BillingTrustPayment, bool) {
+	workspaceID, _, ok := invoiceContract(invoice)
+	if !ok || invoice.AmountPaid <= 0 {
+		return store.BillingTrustPayment{}, false
+	}
+	return trustPayment(invoice, workspaceID, time.Unix(invoice.Created, 0).UTC()), true
+}
+
+// PaidInvoiceHistory lists a Stripe customer's paid bex invoices.
+type PaidInvoiceHistory interface {
+	PaidInvoices(ctx context.Context, customerID string) ([]store.BillingTrustPayment, error)
+}
+
+// Backfill counts the paid invoices of the mapped workspaces that the
+// invoice.paid webhook never recorded; the invoice ledger keeps a rerun from
+// counting anything twice. An invoice whose contract names another workspace
+// is left alone. It returns how many invoices it counted.
+func (t *Trust) Backfill(ctx context.Context, mappings []store.BillingProviderMapping, history PaidInvoiceHistory) (int, error) {
+	if t == nil || t.Store == nil || history == nil {
+		return 0, fmt.Errorf("billing trust backfill unavailable")
+	}
+	counted := 0
+	var errs []error
+	for _, m := range mappings {
+		if err := ctx.Err(); err != nil {
+			return counted, errors.Join(append(errs, err)...)
+		}
+		if m.CustomerID == "" {
+			continue
+		}
+		payments, err := history.PaidInvoices(ctx, m.CustomerID)
+		if err != nil {
+			errs = append(errs, fmt.Errorf("workspace %s: %w", m.WorkspaceID, err))
+			continue
+		}
+		for _, p := range payments {
+			if p.WorkspaceID != m.WorkspaceID || p.AmountCents <= 0 {
+				continue
+			}
+			before, after, ok, err := t.Store.RecordBillingTrustPayment(ctx, p)
+			if err = ignoreWorkspaceGone(err); err != nil {
+				errs = append(errs, fmt.Errorf("workspace %s invoice %s: %w", p.WorkspaceID, p.InvoiceID, err))
+				continue
+			}
+			if ok {
+				counted++
+				t.notifyTierChange(ctx, p.WorkspaceID, before, after)
+			}
+		}
+	}
+	return counted, errors.Join(errs...)
 }
 
 // ignoreWorkspaceGone acknowledges an event whose workspace was deleted.

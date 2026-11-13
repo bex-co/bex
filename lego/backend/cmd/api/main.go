@@ -1100,6 +1100,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 				OnTierChanged: thresholds.OnTierChanged,
 				WriteOffs:     st, Invoices: stripeClient}
 			handler.OnTrust = trust.HandleStripeEvent
+			go backfillBillingTrust(ctx, st, stripeClient, trust)
 			deps.StripeWebhook = handler
 		}
 		log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
@@ -1880,6 +1881,28 @@ func backfillModelKeyFlags(ctx context.Context, keys core.SecretKV, st *store.PG
 		log.Printf("bex-api: agent model key flag backfill failed (retrying next start): %v", err)
 	}
 	log.Printf("bex-api: agent model key flag backfill: workspaces=%d keys=%d flags_set=%d platform_routed=%d failed=%d", r.Workspaces, r.Keys, r.Marked, r.PlatformRouted, r.Failed)
+}
+
+// backfillBillingTrust is the startup pass that counts the paid invoices the
+// invoice.paid webhook never recorded (billing.Trust.Backfill), on one replica
+// at a time; a failure is retried on the next start.
+func backfillBillingTrust(ctx context.Context, st *store.PGStore, stripeClient *billing.StripeClient, trust *billing.Trust) {
+	_, err := st.RunExclusive(ctx, "billing:trust-backfill", func(ctx context.Context) error {
+		const limit = 500
+		mappings, err := st.ListBillingProviderMappings(ctx, stripeClient.ExpectedLivemode(), limit)
+		if err != nil {
+			return err
+		}
+		if len(mappings) == limit {
+			log.Printf("bex-api: billing trust backfill reads only the first %d billing mappings", limit)
+		}
+		counted, err := trust.Backfill(ctx, mappings, stripeClient)
+		log.Printf("bex-api: billing trust backfill: counted %d paid invoices across %d workspaces", counted, len(mappings))
+		return err
+	})
+	if err != nil {
+		log.Printf("bex-api: billing trust backfill failed (retrying next start): %v", err)
+	}
 }
 
 // backfillSkillVersionContent is the one-shot startup pass that re-renders the

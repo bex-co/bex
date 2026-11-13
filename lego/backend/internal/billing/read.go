@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	stripe "github.com/stripe/stripe-go/v86"
 )
 
@@ -297,6 +298,28 @@ func (c *StripeClient) currentInvoice(ctx context.Context, customerID, subscript
 		PeriodStart:       unixOrFallback(inv.PeriodStart, fallbackStart),
 		PeriodEnd:         unixOrFallback(inv.PeriodEnd, fallbackEnd),
 	}, nil
+}
+
+// PaidInvoices lists customerID's paid bex invoices with a positive amount
+// paid, the history Trust.Backfill counts.
+func (c *StripeClient) PaidInvoices(ctx context.Context, customerID string) ([]store.BillingTrustPayment, error) {
+	params := &stripe.InvoiceListParams{
+		ListParams: stripe.ListParams{Limit: stripe.Int64(100)},
+		Customer:   stripe.String(customerID),
+		Status:     stripe.String(string(stripe.InvoiceStatusPaid)),
+	}
+	params.Context = ctx
+	iter := c.sc.Invoices.List(params)
+	var out []store.BillingTrustPayment
+	for iter.Next() {
+		if p, ok := paidInvoicePayment(iter.Invoice()); ok {
+			out = append(out, p)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		return nil, fmt.Errorf("stripe: list paid invoices for customer %s: %w", customerID, err)
+	}
+	return out, nil
 }
 
 func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscriptionID string) ([]Invoice, error) {

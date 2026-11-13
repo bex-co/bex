@@ -18,6 +18,8 @@ package billing
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -228,6 +230,119 @@ func TestWebhookSetupScriptSubscribesToHandledEvents(t *testing.T) {
 		"invoice.voided", "invoice.marked_uncollectible", "invoice.created"} {
 		if !slices.Contains(events, event) {
 			t.Fatalf("%s must be subscribed", event)
+		}
+	}
+}
+
+type fakePaidInvoices map[string][]store.BillingTrustPayment
+
+func (f fakePaidInvoices) PaidInvoices(_ context.Context, customerID string) ([]store.BillingTrustPayment, error) {
+	if customerID == "cus_unreachable" {
+		return nil, errors.New("stripe unavailable")
+	}
+	return f[customerID], nil
+}
+
+// Paid invoices the webhook never recorded (paid before billing_trust
+// existed) are counted once, lift the tier, and a rerun or a later webhook
+// for the same invoice adds nothing; another workspace's invoice and a $0
+// invoice are left alone.
+func TestTrustBackfillCountsUnrecordedPaidInvoicesOnce(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	tenant, err := pg.CreateTenant(ctx, "backfill-"+time.Now().Format("150405.000000000"), store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pg.DeleteTenant(ctx, tenant.ID) }()
+	customer := "cus_backfill_" + strings.ReplaceAll(tenant.ID, "-", "")
+	// A customer Stripe cannot list is reported without stopping the others.
+	mappings := []store.BillingProviderMapping{{WorkspaceID: "tea-unreachable", CustomerID: "cus_unreachable"}, {WorkspaceID: tenant.ID, CustomerID: customer}}
+	paid := time.Date(2026, 10, 16, 1, 0, 0, 0, time.UTC)
+	history := fakePaidInvoices{customer: {
+		{InvoiceID: "in_bf_create_" + tenant.ID, WorkspaceID: tenant.ID, AmountCents: 1500, PaidAt: paid},
+		{InvoiceID: "in_bf_cycle_" + tenant.ID, WorkspaceID: tenant.ID, AmountCents: 2000, Cycle: true, PaidAt: paid.Add(24 * time.Hour)},
+		{InvoiceID: "in_bf_zero_" + tenant.ID, WorkspaceID: tenant.ID, AmountCents: 0, PaidAt: paid},
+		{InvoiceID: "in_bf_other_" + tenant.ID, WorkspaceID: "tea-someoneelse", AmountCents: 9900, PaidAt: paid},
+	}}
+	var tiers []string
+	h := &Trust{Store: pg, OnTierChanged: func(_ context.Context, ws string, tier pricing.Tier) {
+		if ws == tenant.ID {
+			tiers = append(tiers, tier.Name)
+		}
+	}}
+
+	counted, err := h.Backfill(ctx, mappings, history)
+	if counted != 2 || err == nil || !strings.Contains(err.Error(), "tea-unreachable") {
+		t.Fatalf("Backfill = %d, %v; want 2 counted and the unreachable customer reported", counted, err)
+	}
+	trust, err := pg.GetBillingTrust(ctx, tenant.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if trust.LifetimePaidCents != 3500 || trust.PaidCycleInvoices != 1 {
+		t.Fatalf("trust = %d cents, %d cycle invoices; want 3500, 1", trust.LifetimePaidCents, trust.PaidCycleInvoices)
+	}
+	if len(tiers) != 1 || tiers[0] != "T1" {
+		t.Fatalf("tier changes = %v, want [T1]", tiers)
+	}
+
+	if again, _ := h.Backfill(ctx, mappings, history); again != 0 {
+		t.Fatalf("rerun Backfill counted %d, want 0", again)
+	}
+	// The webhook for an invoice the backfill already counted adds nothing.
+	at := paid.Add(48 * time.Hour)
+	if err := h.HandleStripeEvent(ctx, trustEvent("evt_bf_late", stripe.EventTypeInvoicePaid, at, trustInvoice(tenant.ID, "in_bf_create_"+tenant.ID, 1500, "subscription_create", at))); err != nil {
+		t.Fatal(err)
+	}
+	if trust, _ = pg.GetBillingTrust(ctx, tenant.ID); trust.LifetimePaidCents != 3500 {
+		t.Fatalf("after the late webhook lifetime paid = %d cents, want 3500", trust.LifetimePaidCents)
+	}
+}
+
+// A listed paid invoice becomes trust history only when it is a bex contract
+// invoice with a positive amount paid; paid_at comes from the invoice's own
+// transition, else its creation.
+func TestPaidInvoicePayment(t *testing.T) {
+	created := time.Date(2026, 10, 16, 1, 0, 0, 0, time.UTC)
+	contract := func(id string, amount int64, reason stripe.InvoiceBillingReason, paidAt int64) *stripe.Invoice {
+		var inv stripe.Invoice
+		if err := json.Unmarshal([]byte(trustInvoice("tea-bf", id, amount, string(reason), created)), &inv); err != nil {
+			t.Fatal(err)
+		}
+		inv.Created = created.Unix()
+		inv.StatusTransitions = &stripe.InvoiceStatusTransitions{PaidAt: paidAt}
+		return &inv
+	}
+	paid := created.Add(time.Hour)
+	for _, tc := range []struct {
+		name string
+		inv  *stripe.Invoice
+		want store.BillingTrustPayment
+		ok   bool
+	}{
+		{"cycle invoice", contract("in_1", 2000, stripe.InvoiceBillingReasonSubscriptionCycle, paid.Unix()),
+			store.BillingTrustPayment{InvoiceID: "in_1", WorkspaceID: "tea-bf", AmountCents: 2000, Cycle: true, PaidAt: paid}, true},
+		{"no paid transition", contract("in_2", 1500, stripe.InvoiceBillingReasonSubscriptionCreate, 0),
+			store.BillingTrustPayment{InvoiceID: "in_2", WorkspaceID: "tea-bf", AmountCents: 1500, PaidAt: created}, true},
+		{"zero amount", contract("in_3", 0, stripe.InvoiceBillingReasonSubscriptionCycle, paid.Unix()), store.BillingTrustPayment{}, false},
+		{"not a bex contract", &stripe.Invoice{ID: "in_4", AmountPaid: 900}, store.BillingTrustPayment{}, false},
+	} {
+		got, ok := paidInvoicePayment(tc.inv)
+		if ok != tc.ok || got != tc.want {
+			t.Errorf("%s: paidInvoicePayment = %+v, %t; want %+v, %t", tc.name, got, ok, tc.want, tc.ok)
 		}
 	}
 }
