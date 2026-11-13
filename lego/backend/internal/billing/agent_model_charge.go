@@ -432,6 +432,51 @@ func (c *StripeClient) AgentModelBilledUntil(ctx context.Context, workspaceID st
 	return until, nil
 }
 
+// VoidAgentModelChargesBilledBy voids workspaceID's open threshold charge
+// invoices created before until: a declined charge whose usage a
+// subscription invoice billing the meter through until (a cycle or settle
+// invoice) now bills again (ADR091 D10.2a). Paying both would charge that
+// usage twice, and after a deletion nothing would net it back. Voiding
+// closes the charge's balance due through the invoice.voided webhook; a
+// failure of the subscription invoice raises its own. customerID is taken
+// from the caller, never looked up: a late webhook can arrive after the
+// workspace and its Customer mapping are deleted.
+func (c *StripeClient) VoidAgentModelChargesBilledBy(ctx context.Context, workspaceID, customerID string, until time.Time) error {
+	if customerID == "" {
+		return nil
+	}
+	params := &stripe.InvoiceListParams{
+		ListParams: stripe.ListParams{Limit: stripe.Int64(100)},
+		Customer:   stripe.String(customerID),
+		Status:     stripe.String(string(stripe.InvoiceStatusOpen)),
+	}
+	params.Context = ctx
+	var open []string
+	iter := c.sc.Invoices.List(params)
+	for iter.Next() {
+		inv := iter.Invoice()
+		if ws, charge := agentModelChargeInvoice(inv); charge && ws == workspaceID && inv.Created < until.Unix() {
+			open = append(open, inv.ID)
+		}
+	}
+	if err := iter.Err(); err != nil {
+		code, _ := safeStripeError(err)
+		return fmt.Errorf("stripe: list open invoices of %s: %s", customerID, code)
+	}
+	for _, id := range open {
+		vp := &stripe.InvoiceVoidInvoiceParams{}
+		vp.Context = ctx
+		vp.SetIdempotencyKey("bex-threshold-void-" + id)
+		if _, err := c.sc.Invoices.VoidInvoice(id, vp); err != nil {
+			c.metrics.Operation("agent_model_charge_void", "error")
+			code, _ := safeStripeError(err)
+			return fmt.Errorf("stripe: void agent-model charge invoice %s: %s", id, code)
+		}
+		c.metrics.Operation("agent_model_charge_void", "success")
+	}
+	return nil
+}
+
 // AgentModelChargeStore is AgentModelCharger's store surface; *store.PGStore
 // satisfies it.
 type AgentModelChargeStore interface {

@@ -841,3 +841,62 @@ func TestTrustRecordsWhereTheMeterWasBilled(t *testing.T) {
 		t.Fatalf("billed until = %v, want %v", ledger.billedUntil, want)
 	}
 }
+
+// A declined charge whose usage a later subscription invoice bills is voided:
+// only the workspace's open charge invoices created before that invoice's
+// period end, never a subscription invoice or a newer charge.
+func TestVoidAgentModelChargesBilledBy(t *testing.T) {
+	until := time.Date(2026, 11, 16, 0, 0, 0, 0, time.UTC)
+	var voided []string
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/invoices":
+			charge := `{"id":%q,"object":"invoice","status":"open","created":%d,"metadata":{"bex_workspace":"tea-a","bex_agent_model_charge":"true"}}`
+			return 200, `{"object":"list","has_more":false,"data":[` +
+				fmt.Sprintf(charge, "in_old", until.Add(-48*time.Hour).Unix()) + `,` +
+				fmt.Sprintf(charge, "in_new", until.Add(time.Hour).Unix()) + `,` +
+				fmt.Sprintf(`{"id":"in_cycle","object":"invoice","status":"open","created":%d}`, until.Add(-time.Hour).Unix()) + `]}`
+		case method == http.MethodPost && strings.HasSuffix(path, "/void"):
+			voided = append(voided, path)
+			return 200, `{"id":"in_old","object":"invoice","status":"void"}`
+		}
+		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+	})
+	if err := c.VoidAgentModelChargesBilledBy(context.Background(), "tea-a", "cus_1", until); err != nil || !slices.Equal(voided, []string{"/v1/invoices/in_old/void"}) {
+		t.Fatalf("voided %v, %v; want only in_old", voided, err)
+	}
+}
+
+// Trust voids the declined charges a cycle invoice bills again, from its
+// created and paid events; a charge invoice's own events void nothing.
+func TestTrustVoidsDeclinedChargesTheCycleInvoiceBills(t *testing.T) {
+	now := chargeTestNow
+	invoices := &voidRecorder{}
+	h := &Trust{Store: &chargeTrustFake{}, ModelCharges: &chargeLedgerFake{}, Invoices: invoices, Clock: func() time.Time { return now }}
+	end := time.Date(2026, 11, 16, 0, 0, 0, 0, time.UTC)
+	cycle := strings.Replace(trustInvoice("tea-a", "in_cy", 0, "subscription_cycle", now), `"billing_reason"`,
+		fmt.Sprintf(`"period_end":%d,"billing_reason"`, end.Unix()), 1)
+	for i, eventType := range []stripe.EventType{stripe.EventTypeInvoiceCreated, stripe.EventTypeInvoicePaid} {
+		if err := h.HandleStripeEvent(context.Background(), trustEvent(fmt.Sprintf("evt_v%d", i), eventType, now, cycle)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := h.HandleStripeEvent(context.Background(), trustEvent("evt_vc", stripe.EventTypeInvoicePaid, now, chargeInvoiceJSON("tea-a", "in_c1", 1000, now))); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"tea-a/cus_x@2026-11-16T00:00:00Z", "tea-a/cus_x@2026-11-16T00:00:00Z"}
+	if !slices.Equal(invoices.voids, want) {
+		t.Fatalf("voids = %v, want %v", invoices.voids, want)
+	}
+}
+
+// voidRecorder is a TrustInvoices that records the void requests.
+type voidRecorder struct {
+	trustInvoicesFake
+	voids []string
+}
+
+func (v *voidRecorder) VoidAgentModelChargesBilledBy(_ context.Context, ws, customerID string, until time.Time) error {
+	v.voids = append(v.voids, ws+"/"+customerID+"@"+until.UTC().Format(time.RFC3339))
+	return nil
+}

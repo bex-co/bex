@@ -80,6 +80,10 @@ type TrustInvoices interface {
 	// of the invoice failed, else the Customer's default card ("" ⇒ none),
 	// kept on the write-off for D10.6.
 	WrittenOffCardFingerprint(ctx context.Context, invoiceID, customerID string) (string, error)
+	// VoidAgentModelChargesBilledBy voids the workspace's open (declined)
+	// threshold charge invoices that a subscription invoice billing the
+	// meter through until bills again.
+	VoidAgentModelChargesBilledBy(ctx context.Context, workspaceID, customerID string, until time.Time) error
 }
 
 // TierChangedFunc is told a workspace's trust tier changed through a
@@ -322,20 +326,29 @@ func ignoreWorkspaceGone(err error) error {
 	return err
 }
 
-// recordMeterBilled moves the workspace's charge window past a subscription
-// invoice that billed the meter, once it exists (created) and again once it
-// is paid, in case the created event is not delivered. The charger also
-// reads it from Stripe before each charge.
+// recordMeterBilled acts on a subscription invoice that billed the meter,
+// once it exists (created) and again once it is paid, in case the created
+// event is not delivered: it moves the workspace's charge window past it
+// (the charger also reads it from Stripe before each charge), and voids the
+// declined charge invoices whose usage it now bills, so that usage is never
+// owed twice.
 func (t *Trust) recordMeterBilled(ctx context.Context, eventType stripe.EventType, workspaceID string, invoice *stripe.Invoice) error {
-	if t.ModelCharges == nil || (eventType != stripe.EventTypeInvoiceCreated && eventType != stripe.EventTypeInvoicePaid) {
+	if eventType != stripe.EventTypeInvoiceCreated && eventType != stripe.EventTypeInvoicePaid {
 		return nil
 	}
 	until := meterBilledUntil(invoice)
 	if until.IsZero() {
 		return nil
 	}
-	if _, err := t.ModelCharges.RecordAgentModelBilledUntil(ctx, workspaceID, until); err != nil {
-		return fmt.Errorf("record where %s was last billed: %w", workspaceID, err)
+	if t.ModelCharges != nil {
+		if _, err := t.ModelCharges.RecordAgentModelBilledUntil(ctx, workspaceID, until); err != nil {
+			return fmt.Errorf("record where %s was last billed: %w", workspaceID, err)
+		}
+	}
+	if t.Invoices != nil && invoice.Customer != nil {
+		if err := t.Invoices.VoidAgentModelChargesBilledBy(ctx, workspaceID, invoice.Customer.ID, until); err != nil {
+			return fmt.Errorf("void the agent-model charges %s bills again: %w", invoice.ID, err)
+		}
 	}
 	return nil
 }

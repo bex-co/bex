@@ -106,6 +106,7 @@ type SettleInvoicer interface {
 	SettleContract(ctx context.Context, workspaceID string) (SettleContract, bool, error)
 	AwaitMeteredUsage(ctx context.Context, contract SettleContract, totals []store.ExportedUsageTotal) error
 	ChargeBalance(ctx context.Context, contract SettleContract, awaitUsage func(context.Context) error) error
+	VoidAgentModelChargesBilledBy(ctx context.Context, workspaceID, customerID string, until time.Time) error
 }
 
 // Settler runs the settle step. It satisfies the workspaces feature's
@@ -144,7 +145,8 @@ func (s *Settler) SettleWorkspace(ctx context.Context, workspaceID string) error
 			return fmt.Errorf("settle workspace %s: %w", workspaceID, err)
 		}
 	}
-	return s.Invoices.ChargeBalance(ctx, contract, func(ctx context.Context) error {
+	settledAt := time.Now()
+	if err := s.Invoices.ChargeBalance(ctx, contract, func(ctx context.Context) error {
 		if s.Usage == nil || contract.From.IsZero() {
 			return nil
 		}
@@ -153,7 +155,17 @@ func (s *Settler) SettleWorkspace(ctx context.Context, workspaceID string) error
 			return fmt.Errorf("settle workspace %s: read exported usage: %w", workspaceID, err)
 		}
 		return s.Invoices.AwaitMeteredUsage(ctx, contract, totals)
-	})
+	}); err != nil {
+		return err
+	}
+	// The settle invoice billed every agent-model hour, a declined threshold
+	// charge's too: void that charge's open invoice before the workspace (and
+	// the webhook's way back to it) is gone. A failure leaves the deletion
+	// retryable; the retry finds nothing more to charge.
+	if err := s.Invoices.VoidAgentModelChargesBilledBy(ctx, workspaceID, contract.CustomerID, settledAt); err != nil {
+		return fmt.Errorf("settle workspace %s: %w", workspaceID, err)
+	}
+	return nil
 }
 
 // settleSeal is the settle export's finality horizon at now: every hour that
