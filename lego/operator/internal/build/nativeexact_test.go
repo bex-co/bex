@@ -19,9 +19,12 @@ package build
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -371,15 +374,14 @@ func TestNodeRangePinsTheNewestOfficialReleaseInside(t *testing.T) {
 	}
 }
 
-// A range no official image of the line's variant meets (Node 16.13 has
-// bullseye images, not bookworm ones) keeps the reviewed patch, and the build
-// log says so; another Debian variant is w8/309's.
+// A range no official image meets in any Debian variant keeps the reviewed
+// patch, and the build log says so.
 func TestNodeRangeWithoutAnOfficialReleaseSaysSo(t *testing.T) {
-	fake := &fakeExact{digests: map[string]string{"node:16.13.2-bullseye": exactDigest, "node:16.20.2-bookworm": exactDigest}}
+	fake := &fakeExact{digests: map[string]string{"node:16.20.2-bookworm": exactDigest}}
 	choices, _ := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "~16.13.0"}, nil)
 	line, _ := nativeToolchains["node"].find("16")
 	narration := choices[0].Narration()
-	if choices[0].Image != line.image || !strings.Contains(narration, "No official node:16.x-bookworm image satisfies ~16.13.0") || !strings.Contains(narration, "(16.20.2)") {
+	if choices[0].Image != line.image || !strings.Contains(narration, "No official node:16.x (bookworm, bullseye or buster) image satisfies ~16.13.0") || !strings.Contains(narration, "(16.20.2)") {
 		t.Fatalf("choice image %q, narration %q; want the reviewed image and a line naming the substitution", choices[0].Image, narration)
 	}
 }
@@ -406,5 +408,116 @@ func TestNodeRangeListingFailureSaysSo(t *testing.T) {
 	line, _ := nativeToolchains["node"].find("18")
 	if choices[0].Image != line.image || !strings.Contains(choices[0].Narration(), "Could not list node releases for ~18.17.0 (hub answered 503)") {
 		t.Fatalf("choice image %q, narration %q", choices[0].Image, choices[0].Narration())
+	}
+}
+
+// w8/309: Node's bookworm images start at 16.20 and 18.16. An older release,
+// asked for exactly or through a range, keeps the line's bookworm image and
+// takes the release's node and node_modules from its bullseye image, before
+// the legacy node-gyp patch edits that npm.
+func TestNodeReleaseOlderThanBookwormIsCopiedOntoTheLine(t *testing.T) {
+	const donor = "node:16.13.2-bullseye@" + exactDigest
+	for name, env := range map[string]map[string]string{
+		"exact": {"NODE_VERSION": "16.13.2"},
+		"range": {"NODE_VERSION": "~16.13.0"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := &fakeExact{digests: map[string]string{"node:16.13.1-bullseye": exactDigest, "node:16.13.2-bullseye": exactDigest, "node:16.20.2-bookworm": exactDigest}}
+			choices, dockerfile := resolveExact(t, fake, "node", env, nil)
+			line, _ := nativeToolchains["node"].find("16")
+			narration := choices[0].Narration()
+			if choices[0].Image != line.image || !strings.HasPrefix(narration, "==> Using Node 16.13.2 (") || !strings.Contains(narration, "copying Node 16.13.2 from node:16.13.2-bullseye onto the Node 16 image") {
+				t.Fatalf("choice image %q, narration %q", choices[0].Image, narration)
+			}
+			copyNode := strings.Index(dockerfile, "COPY --link --from="+donor+" /usr/local/bin/node /usr/local/bin/node")
+			patch := strings.Index(dockerfile, "prepare-node14-tools.py")
+			if copyNode < 0 || !strings.Contains(dockerfile, "FROM "+expectedNativeBase(line.image)+"\n") || patch < copyNode {
+				t.Fatalf("Dockerfile must keep the line base and copy the release before patching npm:\n%s", dockerfile)
+			}
+		})
+	}
+}
+
+// Node 18 before 18.12 gets the legacy standalone pnpm: pnpm 10 refuses it.
+func TestNodeReleaseBefore1812GetsTheLegacyPnpm(t *testing.T) {
+	fake := &fakeExact{digests: map[string]string{"node:18.10.0-bullseye": exactDigest}}
+	_, dockerfile := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "18.10.0"}, nil)
+	if !strings.Contains(dockerfile, nativeLegacyPnpmInstall()) || strings.Contains(dockerfile, nativePnpmInstall()) {
+		t.Fatalf("Node 18.10.0 did not get the legacy pnpm:\n%s", dockerfile)
+	}
+	if strings.Contains(dockerfile, "prepare-node14-tools.py") {
+		t.Errorf("Node 18's node-gyp needs no legacy Python patch:\n%s", dockerfile)
+	}
+}
+
+// A companion Node copies an older-variant release the same way.
+func TestNodeCompanionCopiesAnOlderVariantRelease(t *testing.T) {
+	fake := &fakeExact{digests: map[string]string{"node:16.13.2-bullseye": exactDigest}}
+	_, dockerfile := resolveExact(t, fake, "python", map[string]string{"NODE_VERSION": "16.13.2"}, nil)
+	if !strings.Contains(dockerfile, "COPY --link --from=node:16.13.2-bullseye@"+exactDigest+" /usr/local/bin/node /usr/local/bin/node") {
+		t.Fatalf("companion did not copy the release:\n%s", dockerfile)
+	}
+}
+
+// TestOlderNodeReleaseRunsOnTheLineImage is w8/309's real-image check: it
+// resolves NODE_VERSION=16.13.2 against Docker Hub, builds the Dockerfile and
+// runs node, npm and pnpm from the image. Opt-in: needs Docker and the network.
+func TestOlderNodeReleaseRunsOnTheLineImage(t *testing.T) {
+	if os.Getenv("BEX_BUILDKIT_INTEGRATION") == "" {
+		t.Skip("set BEX_BUILDKIT_INTEGRATION=1 to resolve, build and run the generated image")
+	}
+	o := nativeOptions()
+	o.Runtime = "node"
+	o.BuildCommand = "/usr/local/bin/node -v"
+	o.StartCommand = `/bin/sh -c 'echo node=$(node -v) npm=$(npm -v) npx=$(npx -v) pnpm=$(pnpm -v) corepack=$(corepack -v) env=$NODE_VERSION'`
+	env := map[string]string{"NODE_VERSION": "16.13.2"}
+	bundle, dockerfile, src := writeResolveFixture(t, o, env, map[string]string{"package.json": `{"name":"it","version":"1.0.0"}`})
+	choices, err := ResolveNativeBuildExact(context.Background(), NewDockerHubResolver(), time.Time{}, "node", bundle, dockerfile, src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Log(choices[0].Narration())
+	// A toolchain container without buildx hands the resolved context to the
+	// host's docker instead, and checks nothing itself.
+	if root := os.Getenv("BEX_NATIVE_TEST_HANDOFF"); root != "" {
+		out, err := os.MkdirTemp(root, "node-donor-")
+		must(t, err)
+		for name, from := range map[string]string{"Dockerfile": dockerfile, "render-env": bundle, "src/package.json": filepath.Join(src, "package.json")} {
+			data, err := os.ReadFile(from)
+			must(t, err)
+			must(t, os.MkdirAll(filepath.Dir(filepath.Join(out, name)), 0o755))
+			must(t, os.WriteFile(filepath.Join(out, name), data, 0o600))
+		}
+		t.Skipf("resolved build context written to %s; build and run it with the host's docker", out)
+	}
+	tag := fmt.Sprintf("bex-native-node-donor-it:%d", os.Getpid())
+	t.Cleanup(func() { _ = exec.Command("docker", "image", "rm", "-f", tag).Run() })
+	build := exec.Command("docker", "build", "-q", "-t", tag, "--secret", "id=render-env,src="+bundle, "-f", dockerfile, src)
+	build.Env = append(os.Environ(), "DOCKER_BUILDKIT=1")
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("build: %v\n%s", err, out)
+	}
+	out, err := exec.Command("docker", "run", "--rm", tag).CombinedOutput()
+	if err != nil || !strings.Contains(string(out), "node=v16.13.2 npm=8.1.2 npx=8.1.2 pnpm=") || !strings.Contains(string(out), "env=16.13.2") {
+		t.Fatalf("run = %v\n%s; want node v16.13.2 with its npm 8.1.2 and a working pnpm", err, out)
+	}
+	t.Log(strings.TrimSpace(string(out)))
+}
+
+// A release with no bullseye image either (Node 14.17 predates bullseye)
+// takes its buster image; the copy names the release, links Corepack only
+// where it exists, and sets the image's NODE_VERSION.
+func TestNodeReleaseFallsBackToBuster(t *testing.T) {
+	fake := &fakeExact{digests: map[string]string{"node:16.8.0-buster": exactDigest}}
+	_, dockerfile := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "16.8.0"}, nil)
+	for _, want := range []string{
+		"COPY --link --from=node:16.8.0-buster@" + exactDigest + " /usr/local/bin/node /usr/local/bin/node",
+		"COPY --link --from=node:16.8.0-buster@" + exactDigest + " /usr/local/include/node /usr/local/include/node",
+		"else rm -f /usr/local/bin/corepack; fi",
+		"ENV NODE_VERSION=16.8.0\n",
+	} {
+		if !strings.Contains(dockerfile, want) {
+			t.Errorf("Dockerfile lacks %q:\n%s", want, dockerfile)
+		}
 	}
 }

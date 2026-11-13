@@ -16,7 +16,10 @@ limitations under the License.
 
 package build
 
-import "strings"
+import (
+	"strconv"
+	"strings"
+)
 
 // nativePnpm is the reviewed pnpm every native Node build carries (w8/m73).
 // Render's native Node environment has pnpm at build and runtime with no
@@ -78,9 +81,22 @@ func nativeLegacyPnpmLine(line string) bool {
 	return major == "14" || major == "16"
 }
 
-// nativePnpmFor is the pnpm layers for the selected Node line.
+// nativeLegacyPnpmRelease reports whether a Node line or exact release needs
+// the legacy standalone pnpm: lines 14 and 16, and Node 18 before 18.12, which
+// pnpm 10 refuses (an exact release copied onto its line, w8/309).
+func nativeLegacyPnpmRelease(version string) bool {
+	if nativeLegacyPnpmLine(version) {
+		return true
+	}
+	major, rest, _ := strings.Cut(version, ".")
+	minor, _, _ := strings.Cut(rest, ".")
+	n, err := strconv.Atoi(minor)
+	return major == "18" && err == nil && n < 12
+}
+
+// nativePnpmFor is the pnpm layers for the selected Node line or release.
 func nativePnpmFor(line string) string {
-	if nativeLegacyPnpmLine(line) {
+	if nativeLegacyPnpmRelease(line) {
 		return nativeLegacyPnpmInstall()
 	}
 	return nativePnpmInstall()

@@ -64,6 +64,11 @@ type NativeChoice struct {
 	// the resolve phase pins the newest official release inside it, as Render
 	// installs one (w8/307).
 	rangeRequest string
+	// nodeDonor is the official image of the exact Node release in an older
+	// Debian variant, when the line's own variant has none (16.13.2 has
+	// bullseye images, not bookworm ones): its node binary and global
+	// node_modules are copied onto the line's image (w8/309).
+	nodeDonor string
 	// note is an extra build-log line (an exact version that fell back to the
 	// line's reviewed patch).
 	note string

@@ -184,24 +184,38 @@ func ResolveNativeBuildExact(ctx context.Context, exact ExactImageResolver, crea
 }
 
 // rewriteNativePrimaryBase points the generated Dockerfile at the selected
-// primary line. The generator wrote the default Node line's pnpm; Node 14/16
-// get the standalone instead (w8/226).
+// primary line, and copies an exact Node release from its older-variant image
+// onto it (w8/309). That copy is inserted last, so it lands first after the
+// base: the release's npm is in place before the legacy node-gyp patch edits it.
 func rewriteNativePrimaryBase(dockerfile, runtime string, choice NativeChoice) (string, error) {
+	rewritten, err := rewriteNativeLineBase(dockerfile, runtime, choice)
+	if err != nil || choice.nodeDonor == "" {
+		return rewritten, err
+	}
+	return afterNativeBase(rewritten, choice.Image, nativeNodeDonorLines(choice.nodeDonor, choice.Line))
+}
+
+// rewriteNativeLineBase points the generated Dockerfile at the selected line.
+// The generator wrote the default Node line's pnpm; Node 14/16, and a Node 18
+// release before 18.12, get the standalone instead (w8/226, w8/309).
+func rewriteNativeLineBase(dockerfile, runtime string, choice NativeChoice) (string, error) {
 	rewritten, err := rewriteNativeBase(dockerfile, nativeToolchains[runtime].defaultImage(), choice.Image)
-	if err != nil || runtime != nativeNodeRuntime || !nativeLegacyPnpmLine(choice.Line) {
+	if err != nil || runtime != nativeNodeRuntime || !nativeLegacyPnpmRelease(choice.Line) {
 		return rewritten, err
 	}
 	if strings.Count(rewritten, nativePnpmInstall()) != 1 {
 		return "", fmt.Errorf("generated Node build lacks its unique pnpm layers")
 	}
 	rewritten = strings.Replace(rewritten, nativePnpmInstall(), nativeLegacyPnpmInstall(), 1)
-	lines, err := nativeHistoricalNodePythonLines(choice.Image, choice.Line)
-	if err != nil {
-		return "", err
-	}
-	if lines != "" {
-		if rewritten, err = afterNativeBase(rewritten, choice.Image, lines); err != nil {
+	if nativeLegacyPnpmLine(choice.Line) {
+		lines, err := nativeHistoricalNodePythonLines(choice.Image, choice.Line)
+		if err != nil {
 			return "", err
+		}
+		if lines != "" {
+			if rewritten, err = afterNativeBase(rewritten, choice.Image, lines); err != nil {
+				return "", err
+			}
 		}
 	}
 	return prependNativeRuntimeStage(rewritten, choice.Image, nativeLegacyPnpmStages())
@@ -471,6 +485,17 @@ func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice Nativ
 		return choice
 	}
 	digest, found, err := exact.ResolveTag(ctx, repo, tag)
+	// The common base reads its runtime from the selected image itself, so a
+	// copied release is offered only on the official line images.
+	if err == nil && !found && nativeCommonBase == "" {
+		if donor, ok := olderNodeDonor(ctx, exact, repo, tag); ok {
+			donorRef, _, _ := strings.Cut(donor, "@")
+			choice.note = fmt.Sprintf("==> %s:%s does not exist; copying Node %s from %s onto the %s %s image", repo, tag, choice.Exact, donorRef, choice.Label, choice.Line)
+			choice.nodeDonor = donor
+			choice.Line = choice.Exact
+			return choice
+		}
+	}
 	switch {
 	case err != nil:
 		choice.note = fmt.Sprintf("==> Could not look up %s:%s (%v); using the reviewed %s %s image", repo, tag, err, choice.Label, choice.Line)
@@ -507,8 +532,18 @@ func pinRangeRelease(ctx context.Context, exact ExactImageResolver, choice Nativ
 		return choice
 	}
 	best := newestTagRelease(tags, suffix, constraint)
+	searched := repo + ":" + choice.Line + ".x" + suffix
+	if best == nil && repo == nativeNodeRuntime && suffix == "-bookworm" && nativeCommonBase == "" {
+		searched = repo + ":" + choice.Line + ".x (bookworm, bullseye or buster)"
+		// pinExactVersion copies a release from its older variant (w8/309).
+		for _, older := range nodeOlderVariants {
+			if best = newestTagRelease(tags, older, constraint); best != nil {
+				break
+			}
+		}
+	}
 	if best == nil {
-		choice.note = fmt.Sprintf("==> No official %s image satisfies %s; using the reviewed %s %s image (%s)", repo+":"+choice.Line+".x"+suffix, choice.rangeRequest, choice.Label, choice.Line, reviewed)
+		choice.note = fmt.Sprintf("==> No official %s image satisfies %s; using the reviewed %s %s image (%s)", searched, choice.rangeRequest, choice.Label, choice.Line, reviewed)
 		return choice
 	}
 	choice.Exact = best.Original()
@@ -533,4 +568,40 @@ func newestTagRelease(tags []string, suffix string, constraint *semver.Constrain
 		}
 	}
 	return best
+}
+
+// nodeOlderVariants are the Debian variants an official Node image of a
+// release older than its line's bookworm images is published in, newest first.
+var nodeOlderVariants = []string{"-bullseye", "-buster"}
+
+// olderNodeDonor is the digest-pinned official image of a Node release whose
+// bookworm tag does not exist, in the newest older Debian variant that has it.
+// The node binary is the same nodejs.org build in every variant (glibc 2.17
+// baseline), so it runs on the line's bookworm image (w8/309).
+func olderNodeDonor(ctx context.Context, exact ExactImageResolver, repo, tag string) (string, bool) {
+	release, ok := strings.CutSuffix(tag, "-bookworm")
+	if repo != nativeNodeRuntime || !ok {
+		return "", false
+	}
+	for _, variant := range nodeOlderVariants {
+		if digest, found, err := exact.ResolveTag(ctx, repo, release+variant); err == nil && found {
+			return repo + ":" + release + variant + "@" + digest, true
+		}
+	}
+	return "", false
+}
+
+// nativeNodeDonorLines copies an exact Node release's binary, global
+// node_modules (npm, Corepack) and headers over the line image's, with the
+// npm links, a Corepack link only where the release ships Corepack (16.9+),
+// and the image's NODE_VERSION.
+func nativeNodeDonorLines(donor, release string) string {
+	return "COPY --link --from=" + donor + " /usr/local/bin/node /usr/local/bin/node\n" +
+		"RUN rm -rf /usr/local/lib/node_modules /usr/local/include/node\n" +
+		"COPY --link --from=" + donor + " /usr/local/lib/node_modules /usr/local/lib/node_modules\n" +
+		"COPY --link --from=" + donor + " /usr/local/include/node /usr/local/include/node\n" +
+		"RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm" +
+		" && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx" +
+		" && if [ -e /usr/local/lib/node_modules/corepack/dist/corepack.js ]; then ln -sf ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack; else rm -f /usr/local/bin/corepack; fi\n" +
+		"ENV NODE_VERSION=" + release + "\n"
 }
