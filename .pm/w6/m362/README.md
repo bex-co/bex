@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | [Backfill `billing_trust` from Stripe's paid invoices, and confirm new payments are counted](t001.md) | 1h30 | — |
 | t002 | [Price sheet: no tier cap ceiling, an in-flight allowance per tier](t002.md) | 45m | — |
-| t003 | [bex issues the threshold charge itself, and Stripe item thresholds are retired](t003.md) | 3h | t002 |
+| t003 | [Every subscribed workspace's threshold reaches Stripe, so its threshold invoice is charged](t003.md) | 1h | t002 |
 | t004 | [The mint keeps a workspace working while its charge is in flight, and stops it only on a failed or unauthenticated charge](t004.md) | 1h30 | t003 |
 | t005 | [Settings → Billing, the agent environment (REST, GraphQL, MCP) and the CLI describe charge-to-continue](t005.md) | 1h30 | t004 |
 | t006 | [Production check: a T0 workspace crosses $10, is charged once and keeps working](t006.md) | 1h | t001, t005 |
@@ -19,9 +19,9 @@
 
 ## Definition of done
 
-- On production, a workspace at T0 whose platform-model spend reaches $10 is charged once by bex (one `bex-threshold-…` invoice, paid off-session) and its sessions keep running; it reads T1 within a minute of the payment, and its next threshold is $25.
+- On production, a workspace at T0 whose platform-model spend reaches $10 is charged once (one threshold invoice, finalized at once and paid) and its sessions keep running; it reads T1 within a minute of the payment, and its next threshold is $25.
 - A charge that fails, or that needs 3-D Secure, stops platform-model spend with `BILLING_BALANCE_DUE` and a hosted payment link; nothing else refuses at a threshold. The workspace's own monthly cap still refuses at the cap.
-- No subscription carries a Stripe item `billing_thresholds` for the agent-model meter, and the cycle invoice bills only usage not yet charged.
+- Every subscribed workspace's agent-model item carries its tier's `billing_thresholds`, and the cycle invoice bills only usage not yet charged.
 - `billing_trust` carries every workspace's paid, non-zero invoices, including those before migration 0194.
 - Settings → Billing and the agent environment on REST, GraphQL and MCP state the next charge point and no longer report a T0 ceiling.
 

@@ -334,14 +334,22 @@ type AgentModelThresholdState struct {
 // AgentModelThresholdsDue lists up to limit workspaces whose threshold may be
 // stale at now: never applied, trust record changed since the value applied,
 // or payment lock expired after it was computed. A workspace in failure
-// backoff is skipped until its retry time.
+// backoff is skipped until its retry time. A subscribed workspace that never
+// paid has no trust record yet and is due too: its T0 threshold has to reach
+// Stripe before its first charge can happen.
 func (s *PGStore) AgentModelThresholdsDue(ctx context.Context, now time.Time, limit int) ([]string, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT workspace_id FROM billing_trust
-		WHERE (threshold_next_attempt_at IS NULL OR threshold_next_attempt_at <= $1)
-		  AND (threshold_synced_version IS DISTINCT FROM updated_at
-		       OR (locked_until > threshold_synced_at AND locked_until <= $1))
-		ORDER BY threshold_next_attempt_at NULLS FIRST, workspace_id
+		SELECT workspace_id FROM (
+		  SELECT workspace_id, threshold_next_attempt_at AS next_attempt FROM billing_trust
+		  WHERE (threshold_next_attempt_at IS NULL OR threshold_next_attempt_at <= $1)
+		    AND (threshold_synced_version IS DISTINCT FROM updated_at
+		         OR (locked_until > threshold_synced_at AND locked_until <= $1))
+		  UNION ALL
+		  SELECT m.workspace_id, NULL FROM billing_provider_mappings m
+		  WHERE m.subscription_id IS NOT NULL
+		    AND NOT EXISTS (SELECT 1 FROM billing_trust b WHERE b.workspace_id = m.workspace_id)
+		) due
+		ORDER BY next_attempt NULLS FIRST, workspace_id
 		LIMIT $2`, now.UTC(), limit)
 	if err != nil {
 		return nil, err
@@ -356,12 +364,18 @@ func (s *PGStore) AgentModelThresholdsDue(ctx context.Context, now time.Time, li
 // recorded against the trust version apply saw (a change committed meanwhile
 // leaves the workspace due again); on failure the workspace backs off
 // (1 minute doubling to 1 hour) and apply's error is returned. A workspace
-// with no trust record runs apply on the zero record and records nothing.
+// with no trust record gets an empty one (T0) first, so its sync is recorded
+// like any other; a deleted workspace is a no-op.
 func (s *PGStore) WithAgentModelThresholdSync(ctx context.Context, workspaceID string, now time.Time, apply func(AgentModelThresholdState) (*int64, error)) error {
 	var applyErr error
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
 			"agent-model-threshold:"+workspaceID); err != nil {
+			return err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO billing_trust (workspace_id) SELECT id FROM tenants WHERE id = $1
+			ON CONFLICT (workspace_id) DO NOTHING`, workspaceID); err != nil {
 			return err
 		}
 		var (
@@ -373,16 +387,14 @@ func (s *PGStore) WithAgentModelThresholdSync(ctx context.Context, workspaceID s
 			SELECT `+billingTrustColumns+`, updated_at, threshold_synced_version IS NOT NULL, threshold_synced_microusd
 			FROM billing_trust WHERE workspace_id = $1`, workspaceID,
 		).Scan(append(r.dest(), &version, &state.Synced, &state.SyncedMicroUSD)...)
-		found := err == nil
-		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil // the insert above found no tenant: the workspace is gone
+		}
+		if err != nil {
 			return err
 		}
 		state.Trust = r.record(workspaceID)
 		value, err := apply(state)
-		if !found {
-			applyErr = err
-			return nil
-		}
 		if err != nil {
 			applyErr = err
 			_, err = tx.Exec(ctx, `

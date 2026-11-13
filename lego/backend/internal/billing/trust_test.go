@@ -346,3 +346,97 @@ func TestPaidInvoicePayment(t *testing.T) {
 		}
 	}
 }
+
+// A subscribed workspace that never paid has no trust record, and the sweep
+// still finds it: its T0 threshold is applied once and recorded, after which
+// it is no longer due.
+func TestThresholdSweepFindsAWorkspaceThatNeverPaid(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	tenant, err := pg.CreateTenant(ctx, "neverpaid-"+time.Now().Format("150405.000000000"), store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pg.DeleteTenant(ctx, tenant.ID) }()
+	if err := pg.UpsertBillingProviderMapping(ctx, store.BillingProviderMapping{
+		WorkspaceID: tenant.ID, CustomerID: "cus_np_" + strings.ReplaceAll(tenant.ID, "-", ""), SubscriptionID: "sub_np",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	due := func() bool {
+		t.Helper()
+		ids, err := pg.AgentModelThresholdsDue(ctx, now, 1000)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return slices.Contains(ids, tenant.ID)
+	}
+	if !due() {
+		t.Fatal("a subscribed workspace with no trust record is not due")
+	}
+	ten := int64(10_000_000)
+	var applied *int64
+	if err := pg.WithAgentModelThresholdSync(ctx, tenant.ID, now, func(s store.AgentModelThresholdState) (*int64, error) {
+		if s.Synced {
+			t.Error("a never-synced workspace reads as synced")
+		}
+		applied = &ten
+		return applied, nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if applied == nil || due() {
+		t.Fatalf("after the sync applied %v the workspace is still due", applied)
+	}
+	if trust, err := pg.GetBillingTrust(ctx, tenant.ID); err != nil || trust.LifetimePaidCents != 0 {
+		t.Fatalf("trust record = %+v, %v; want an empty T0 record", trust, err)
+	}
+
+	// A Stripe failure on a never-paid workspace backs off like any other.
+	other, err := pg.CreateTenant(ctx, "neverpaid-fail-"+time.Now().Format("150405.000000000"), store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pg.DeleteTenant(ctx, other.ID) }()
+	if err := pg.UpsertBillingProviderMapping(ctx, store.BillingProviderMapping{
+		WorkspaceID: other.ID, CustomerID: "cus_npf_" + strings.ReplaceAll(other.ID, "-", ""), SubscriptionID: "sub_npf",
+	}); err != nil {
+		t.Fatal(err)
+	}
+	stripeDown := errors.New("stripe unavailable")
+	if err := pg.WithAgentModelThresholdSync(ctx, other.ID, now, func(store.AgentModelThresholdState) (*int64, error) {
+		return nil, stripeDown
+	}); !errors.Is(err, stripeDown) {
+		t.Fatalf("failed sync = %v, want the Stripe error", err)
+	}
+	if ids, err := pg.AgentModelThresholdsDue(ctx, now, 1000); err != nil || slices.Contains(ids, other.ID) {
+		t.Fatalf("after a failed sync the workspace is due at once (%v): no backoff", err)
+	}
+	// A deleted workspace is a no-op: nothing reaches Stripe.
+	gone, err := pg.CreateTenant(ctx, "neverpaid-gone-"+time.Now().Format("150405.000000000"), store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.DeleteTenant(ctx, gone.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := pg.WithAgentModelThresholdSync(ctx, gone.ID, now, func(store.AgentModelThresholdState) (*int64, error) {
+		t.Error("apply ran for a deleted workspace")
+		return nil, nil
+	}); err != nil {
+		t.Fatalf("sync of a deleted workspace = %v, want nil", err)
+	}
+}

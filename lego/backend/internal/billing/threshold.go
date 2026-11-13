@@ -183,6 +183,9 @@ func (c *StripeClient) SyncAgentModelThreshold(ctx context.Context, workspaceID 
 	}
 	item := c.agentModelItem(workspaceID, sub.ID, items)
 	if item == nil {
+		// Its threshold cannot reach Stripe until EnsureContract adds the
+		// item, and until then the workspace is never charged mid-cycle.
+		log.Printf("billing: subscription %s of workspace %s has no agent-model item; its threshold waits for the next contract sync", sub.ID, workspaceID)
 		return nil
 	}
 	return c.applyAgentModelThreshold(ctx, workspaceID, item, want)
