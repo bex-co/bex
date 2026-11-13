@@ -180,6 +180,14 @@ type SpendStatus struct {
 // subscription invoice already billed this month is not held against it.
 func (s SpendStatus) Reached() bool { return s.ownCapReached() || s.tierCeilingReached() }
 
+// RefusesAtCap reports whether the mint refuses a new platform-model
+// request at the cap now: the workspace's own cap is reached, or the tier's
+// ceiling is and no charge is due to lift it (a paid charge raises the tier,
+// never the workspace's own cap).
+func (s SpendStatus) RefusesAtCap() bool {
+	return s.ownCapReached() || (s.tierCeilingReached() && !s.ChargeDue())
+}
+
 func (s SpendStatus) ownCapReached() bool { return s.MonthToDate >= s.OwnCap }
 
 func (s SpendStatus) tierCeilingReached() bool {
@@ -190,15 +198,20 @@ func (s SpendStatus) tierCeilingReached() bool {
 // charges made in it have not collected yet.
 func (s SpendStatus) UnbilledMicroUSD() int64 { return max(s.WindowSpend-s.ChargedMicroUSD, 0) }
 
+// ChargesAtThreshold reports that reaching the tier's charge threshold
+// charges the card and the workspace keeps working. A locked workspace
+// (whose tier a payment would not lift), one with a balance due (refused
+// anyway), one on its own model key, and one bex cannot charge (excluded,
+// comped, or no Subscription) are never charged: the cap alone stops them.
+func (s SpendStatus) ChargesAtThreshold() bool {
+	return !s.Locked && !s.BalanceDue && !s.ModelKeySet && s.Chargeable && s.ThresholdMicroUSD != nil
+}
+
 // ChargeDue reports that the unbilled spend reached the tier's charge
-// threshold, so the mint charges the card before serving the request. A
-// locked workspace (whose tier a payment would not lift), one with a balance
-// due (refused anyway), one on its own model key, and one bex cannot charge
-// (excluded, comped, or no Subscription) are never charged here: the cap
-// alone stops them.
+// threshold of a workspace bex charges there, so the mint charges the card
+// before serving the request.
 func (s SpendStatus) ChargeDue() bool {
-	return !s.Locked && !s.BalanceDue && !s.ModelKeySet && s.Chargeable &&
-		s.ThresholdMicroUSD != nil && s.UnbilledMicroUSD() >= *s.ThresholdMicroUSD
+	return s.ChargesAtThreshold() && s.UnbilledMicroUSD() >= *s.ThresholdMicroUSD
 }
 
 // SpendCapReachedReason is the readable failureReason for a session refused

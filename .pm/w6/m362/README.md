@@ -1,6 +1,6 @@
 # w6 · m362 — Reaching an agent-model charge threshold charges the card and the workspace keeps working
 
-**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t005 and t011–t016 done; t006's production crossing passed on 2026-11-13 (charged $10.50 in 4.9 s, the session kept running, T1 at once); its re-check of the cycle preview and t007–t010 remain
+**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t007 and t011–t016 done (t006 passed on production 2026-11-13: charged $10.50 in 4.9 s, the session kept running, T1 at once); t008–t010 remain, and t010 checks t016's window boundary on production after the batched deploy
 
 ## Tasks (in order)
 
@@ -17,8 +17,8 @@
 | t014 | [Settings → Billing lists the mid-month agent-model charges, and the month-end invoice reads net of them](done/t014.md) — **DONE** | 1h30 | t012 |
 | t015 | [Settle-before-delete charges unbilled agent-model usage through the same charger](done/t015.md) — **DONE** | 30m | t011, t012 |
 | t016 | [A charge collects only usage no subscription invoice has billed](done/t016.md) — **DONE** | 2h30 | t011, t012 |
-| t006 | [Production check: a T0 workspace reaches $10, is charged at once and keeps working](t006.md) | 1h | t001, t005, t011–t016 |
-| t007 | [Render parity (Devin): spend and charge surfaces agree](t007.md) | 20m | t006 |
+| t006 | [Production check: a T0 workspace reaches $10, is charged at once and keeps working](done/t006.md) — **DONE** | 1h | t001, t005, t011–t016 |
+| t007 | [Render parity (Devin): spend and charge surfaces agree](done/t007.md) — **DONE** | 20m | t006 |
 | t008 | [Simplify](t008.md) | 15m | t007 |
 | t009 | [Test coverage](t009.md) | 45m | t007, t008 |
 | t010 | [Closeout](t010.md) | 10m | t009 |

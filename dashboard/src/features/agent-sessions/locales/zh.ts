@@ -992,6 +992,12 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已使用 {used} / {cap}。达到上限后将停止新的模型请求。",
     description: "Composer warning body",
   },
+  "agentSessions.spendWarningBodyCharge": {
+    message:
+      "已使用 {used} / {cap}。达到 {cap} 时会从绑定的卡扣款，会话继续运行；只有扣款失败才会停止新的模型请求。",
+    description:
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+  },
   "agentSessions.spendReachedTitle.cap": {
     message: "已达到每月智能体模型支出上限",
     description: "Composer refusal title: the workspace's own cap",

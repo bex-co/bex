@@ -245,6 +245,10 @@ export type AgentEnvironment = {
   agentModelPlanSpendCapUsd: Maybe<Scalars['Float']['output']>;
   /** The admin's spend cap override in USD; null means the plan default. */
   agentModelSpendCapOverrideUsd: Maybe<Scalars['Float']['output']>;
+  /** Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold. */
+  agentModelChargesAtThreshold: Maybe<Scalars['Boolean']['output']>;
+  /** Platform-model requests are refused at the spend cap now. False while the next request would charge the card at the trust tier's threshold instead. */
+  agentModelSpendCapReached: Maybe<Scalars['Boolean']['output']>;
   /** The trust tier's ceiling, not the plan default or override, sets the effective spend cap. */
   agentModelSpendCapTierLimited: Maybe<Scalars['Boolean']['output']>;
   /** Month-to-date agent-model spend in USD (UTC calendar month). */

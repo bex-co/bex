@@ -33,6 +33,50 @@ describe("spendPosition", () => {
   });
 });
 
+describe("the server's cap verdict", () => {
+  it("is the mint's: a T0 workspace whose next request charges its card is not reached", () => {
+    const charging = env(10.5, 10, {
+      agentModelSpendCapTierLimited: true,
+      agentModelSpendCapReached: false,
+      agentModelChargesAtThreshold: true,
+    });
+    expect(spendPosition(charging)).toMatchObject({
+      level: "warning",
+      chargePoint: true,
+      fraction: 1,
+    });
+    expect(blocksCreate(composerSpendGate(charging))).toBe(false);
+    // Reached when the server says so, whatever the figures read.
+    expect(
+      composerSpendGate(
+        env(10, 10, {
+          agentModelSpendCapTierLimited: true,
+          agentModelSpendCapReached: true,
+        }),
+      ),
+    ).toMatchObject({ kind: "reached", cause: "newWorkspace" });
+    // A workspace bex cannot charge, or one under a payment hold, has a
+    // ceiling, never a charge point.
+    expect(
+      spendPosition(
+        env(9, 10, {
+          agentModelSpendCapTierLimited: true,
+          agentModelChargesAtThreshold: false,
+        }),
+      )?.chargePoint,
+    ).toBe(false);
+    expect(
+      spendPosition(
+        env(9, 10, {
+          agentModelSpendCapTierLimited: true,
+          trustTierLocked: true,
+        }),
+      )?.chargePoint,
+    ).toBe(false);
+    expect(spendPosition(env(16, 20))?.chargePoint).toBe(false);
+  });
+});
+
 describe("composerSpendGate", () => {
   it("gates only the platform route", () => {
     expect(composerSpendGate(null).kind).toBe("none");

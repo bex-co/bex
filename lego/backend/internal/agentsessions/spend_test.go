@@ -41,10 +41,11 @@ type fakeSpend struct {
 	trust      store.BillingTrust
 	used       int64
 	balanceDue bool
+	chargeable bool
 }
 
 func (f *fakeSpend) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
-	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, BalanceDue: f.balanceDue}, nil
+	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, BalanceDue: f.balanceDue, Chargeable: f.chargeable}, nil
 }
 
 func spendEnvironmentService(plan string, trust store.BillingTrust) (*Service, *fakeSpend) {
@@ -86,6 +87,35 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 	got, _ = svc.Environment(caller("viewer"), "tea-a")
 	if *got.TrustTier != "T0" || !*got.TrustTierLocked || !*got.BillingBalanceDue {
 		t.Fatalf("locked view = %+v", got)
+	}
+}
+
+// agentModelSpendCapReached is the mint's verdict (ADR091 D10.2a): a T0
+// workspace at its $10 threshold that bex can charge is not reached (its
+// next request charges the card), one bex cannot charge is, and so is a
+// workspace at its own cap.
+func TestEnvironmentReportsTheMintsCapVerdict(t *testing.T) {
+	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
+	for _, tc := range []struct {
+		name       string
+		trust      store.BillingTrust
+		used       int64
+		chargeable bool
+		want       bool
+	}{
+		{"under the threshold", store.BillingTrust{}, 9_000_000, true, false},
+		{"T0 at $10, chargeable", store.BillingTrust{}, 10_000_000, true, false},
+		{"T0 at $10, not chargeable", store.BillingTrust{}, 10_000_000, false, true},
+		{"T1 at the Pro cap", paidT1, 200_000_000, true, true},
+	} {
+		spend.trust, spend.used, spend.chargeable = tc.trust, tc.used, tc.chargeable
+		got, err := svc.Environment(caller("viewer"), "tea-a")
+		if err != nil || got.AgentModelSpendCapReached == nil || *got.AgentModelSpendCapReached != tc.want {
+			t.Errorf("%s: reached = %v (%v), want %t", tc.name, got.AgentModelSpendCapReached, err, tc.want)
+		}
+		if got.AgentModelChargesAtThreshold == nil || *got.AgentModelChargesAtThreshold != tc.chargeable {
+			t.Errorf("%s: charges at threshold = %v, want %t", tc.name, got.AgentModelChargesAtThreshold, tc.chargeable)
+		}
 	}
 }
 

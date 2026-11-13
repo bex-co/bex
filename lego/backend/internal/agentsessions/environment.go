@@ -95,10 +95,20 @@ type Environment struct {
 	// tier's ceiling, not the plan or override, sets the effective cap.
 	// BillingBalanceDue: a failed invoice is open or a written-off one unpaid,
 	// so platform-model requests are refused with BILLING_BALANCE_DUE
-	// (D10.3). All nil when the store is off.
+	// (D10.3). AgentModelSpendCapReached: the mint refuses a new
+	// platform-model request at the cap now; a workspace whose next request
+	// would charge its card instead (D10.2a) is not reached, so clients need
+	// not re-derive the verdict from the figures. All nil when the store is
+	// off.
 	TrustTierLocked               *bool `json:"trustTierLocked"`
 	AgentModelSpendCapTierLimited *bool `json:"agentModelSpendCapTierLimited"`
 	BillingBalanceDue             *bool `json:"billingBalanceDue"`
+	AgentModelSpendCapReached     *bool `json:"agentModelSpendCapReached"`
+	// AgentModelChargesAtThreshold: reaching nextChargeThresholdUsd charges
+	// the workspace's card and it keeps working (D10.2a); false where bex
+	// cannot charge it (no subscription, excluded, comped), on its own model
+	// key, or under a payment hold. Nil when the store is off.
+	AgentModelChargesAtThreshold *bool `json:"agentModelChargesAtThreshold"`
 }
 
 // EnvironmentInput is a partial update: an omitted (or null) field keeps its

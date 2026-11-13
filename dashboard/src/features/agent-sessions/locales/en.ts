@@ -1056,6 +1056,12 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "{used} of {cap} used. New model requests stop at the cap.",
     description: "Composer warning body",
   },
+  "agentSessions.spendWarningBodyCharge": {
+    message:
+      "{used} of {cap} used. At {cap} the card on file is charged and sessions keep running; new model requests stop only if the charge fails.",
+    description:
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+  },
   "agentSessions.spendReachedTitle.cap": {
     message: "Monthly agent model spend cap reached",
     description: "Composer refusal title: the workspace's own cap",

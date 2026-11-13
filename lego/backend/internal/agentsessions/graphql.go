@@ -164,6 +164,8 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"nextChargeThresholdUsd":        optionalFloatField("The agent-model spend at which the card is charged mid-cycle; null at the top tier (month-end only).", func(v Environment) *float64 { return v.NextChargeThresholdUSD }),
 		"trustTierLocked":               optionalBoolField("A failed or disputed payment holds the workspace at the first trust tier.", func(v Environment) *bool { return v.TrustTierLocked }),
 		"agentModelSpendCapTierLimited": optionalBoolField("The trust tier's ceiling, not the plan default or override, sets the effective spend cap.", func(v Environment) *bool { return v.AgentModelSpendCapTierLimited }),
+		"agentModelSpendCapReached":     optionalBoolField("Platform-model requests are refused at the spend cap now. False while the next request would charge the card at the trust tier's threshold instead.", func(v Environment) *bool { return v.AgentModelSpendCapReached }),
+		"agentModelChargesAtThreshold":  optionalBoolField("Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold.", func(v Environment) *bool { return v.AgentModelChargesAtThreshold }),
 		"billingBalanceDue":             optionalBoolField("A failed invoice is unpaid, so platform-model requests are refused with BILLING_BALANCE_DUE until it is paid.", func(v Environment) *bool { return v.BillingBalanceDue }),
 	},
 })

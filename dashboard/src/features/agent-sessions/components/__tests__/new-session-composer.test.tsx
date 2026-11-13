@@ -1154,6 +1154,23 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
     expect(screen.queryByRole("link", { name: "Increase cap" })).toBeNull();
   });
 
+  it("lets a new workspace at its charge point start, saying the card is charged (ADR091 D10.2a)", async () => {
+    spending(10.5, {
+      agentModelMonthlySpendCapUsd: 10,
+      agentModelSpendCapTierLimited: true,
+      agentModelSpendCapReached: false,
+      agentModelChargesAtThreshold: true,
+      trustTier: "T0",
+    });
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toHaveTextContent(
+      "At $10.00 the card on file is charged and sessions keep running",
+    );
+    expect(start()).toBeEnabled();
+  });
+
   it("blocks with a Billing link while a payment is due", async () => {
     spending(1, { billingBalanceDue: true });
     const user = userEvent.setup();

@@ -30,6 +30,8 @@ export function agentEnvironment(
     trustTierLocked: null,
     nextChargeThresholdUsd: null,
     billingBalanceDue: null,
+    agentModelSpendCapReached: null,
+    agentModelChargesAtThreshold: null,
     ...over,
   };
 }

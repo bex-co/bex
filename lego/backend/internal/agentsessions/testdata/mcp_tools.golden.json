@@ -2669,7 +2669,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold, whether a failed or disputed payment holds the tier (trustTierLocked), whether the tier's ceiling sets the cap (agentModelSpendCapTierLimited), and whether an unpaid failed invoice refuses platform-model requests (billingBalanceDue).",
+    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold, whether a failed or disputed payment holds the tier (trustTierLocked), whether the tier's ceiling sets the cap (agentModelSpendCapTierLimited), whether new platform-model requests are refused at the cap now (agentModelSpendCapReached: false while the next request would charge the card at the tier's threshold instead), whether reaching the next charge threshold charges the card and the workspace keeps working (agentModelChargesAtThreshold), and whether an unpaid failed invoice refuses platform-model requests (billingBalanceDue).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -2683,6 +2683,12 @@
     "outputSchema": {
       "additionalProperties": false,
       "properties": {
+        "agentModelChargesAtThreshold": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "agentModelMaxSpendCapUsd": {
           "type": [
             "null",
@@ -2705,6 +2711,12 @@
           "type": [
             "null",
             "number"
+          ]
+        },
+        "agentModelSpendCapReached": {
+          "type": [
+            "null",
+            "boolean"
           ]
         },
         "agentModelSpendCapTierLimited": {
@@ -2815,7 +2827,9 @@
         "nextChargeThresholdUsd",
         "trustTierLocked",
         "agentModelSpendCapTierLimited",
-        "billingBalanceDue"
+        "billingBalanceDue",
+        "agentModelSpendCapReached",
+        "agentModelChargesAtThreshold"
       ],
       "type": "object"
     }
@@ -9226,6 +9240,12 @@
     "outputSchema": {
       "additionalProperties": false,
       "properties": {
+        "agentModelChargesAtThreshold": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "agentModelMaxSpendCapUsd": {
           "type": [
             "null",
@@ -9248,6 +9268,12 @@
           "type": [
             "null",
             "number"
+          ]
+        },
+        "agentModelSpendCapReached": {
+          "type": [
+            "null",
+            "boolean"
           ]
         },
         "agentModelSpendCapTierLimited": {
@@ -9358,7 +9384,9 @@
         "nextChargeThresholdUsd",
         "trustTierLocked",
         "agentModelSpendCapTierLimited",
-        "billingBalanceDue"
+        "billingBalanceDue",
+        "agentModelSpendCapReached",
+        "agentModelChargesAtThreshold"
       ],
       "type": "object"
     }
