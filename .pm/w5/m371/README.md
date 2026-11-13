@@ -21,7 +21,7 @@ Total: **10 tasks, about 9h40m**.
 
 ## Definition of done
 
-1. Every surface in t001's scope table has a verdict (no finding, finding fixed, finding filed, or accepted residual with its DO_NOT_DO anchor) in `docs/ADR107-security-review-round24.md`.
+1. Every surface in t001's scope table has a verdict (no finding, finding fixed, finding filed, or accepted residual with its DO_NOT_DO anchor) in the round-24 ADR (`docs/ADR107-security-review-round24`, a Markdown file t006 creates; take the next free number if 107 is gone by then).
 2. Every confirmed Critical or High finding is fixed, covered by a regression test that fails without the fix, and deployed; each Medium or Low is fixed or filed as a board item with severity and owner.
 3. ADR107 is linked from the security lineage in `docs/AGENTS.md` and the root `AGENTS.md` key entry points.
 4. No accepted residual in `.pm/DO_NOT_DO.md` (#PSL, #CI-RUNNERS, #RUNNER-HOSTS, #ENV-REVIEWERS, #APPROVAL-MODE) is re-filed as a finding.
