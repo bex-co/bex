@@ -5720,15 +5720,15 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		return AppView{}, err
 	}
 	s.RecordAppConfigChanged(ctx, a, verb)
-	// After the audit row, so the feed reads "Suspended by" before "Service
-	// suspended" (w5/m369, from w4/604): a Resume that lands before any pass
-	// saw the Suspend still records the pair, and push and webhooks send both.
-	if suspended {
-		if marker, ok := s.Store.(suspensionMarker); ok {
-			if appID := managedAppID(a); appID != "" {
-				if err := marker.RecordServiceSuspensionRequested(ctx, appID, s.Now()); err != nil {
-					log.Printf("apps: %s: %v", name, err)
-				}
+	// Logged after the audit row, so the feed reads "Suspended by" before
+	// "Service suspended" and "Resumed by" before "Service resumed" (w21/065,
+	// from w5/m369 and w4/604). The event projector replays every action in
+	// order, so two actions closer together than one reconcile pass still
+	// report two events each, and push and webhooks send them all.
+	if marker, ok := s.Store.(suspensionLogger); ok {
+		if appID := managedAppID(a); appID != "" {
+			if err := marker.RecordServiceSuspensionChange(ctx, appID, suspended, s.Now()); err != nil {
+				log.Printf("apps: %s: %v", name, err)
 			}
 		}
 	}
@@ -5738,17 +5738,16 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 	return view, nil
 }
 
-// suspensionMarker is an optional IntentStore extension, implemented by
-// *store.PGStore: an accepted Suspend marked on the service's event
-// checkpoint, so its service_suspended/service_resumed pair never depends on a
-// reconcile pass sampling the suspension (w5/m369).
-type suspensionMarker interface {
-	RecordServiceSuspensionRequested(ctx context.Context, appID string, at time.Time) error
+// suspensionLogger is an optional IntentStore extension, implemented by
+// *store.PGStore: each accepted Suspend and Resume logged for the event
+// projector, so its service_suspended/service_resumed events never depend on a
+// reconcile pass sampling the flag between two actions (w21/065).
+type suspensionLogger interface {
+	RecordServiceSuspensionChange(ctx context.Context, appID string, suspended bool, at time.Time) error
 }
 
-// The quick-undo pair goes missing silently if the production store stops
-// implementing it.
-var _ suspensionMarker = (*store.PGStore)(nil)
+// The events go missing silently if the production store stops implementing it.
+var _ suspensionLogger = (*store.PGStore)(nil)
 
 // writeThroughStoreFetched is the shared shape of every intent-field verb
 // with a row as the single writer of truth (suspend/resume, plan, …): for

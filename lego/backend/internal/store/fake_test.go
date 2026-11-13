@@ -26,7 +26,6 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // memStore is the in-memory Store used by the API and reconciler tests. It
@@ -53,6 +52,10 @@ type memStore struct {
 	// eventChangedAt mirrors service_event_checkpoints.updated_at: the last
 	// unsuppressed pass that changed the checkpoint, not merely the last pass.
 	eventChangedAt map[string]time.Time
+	// suspensionChanges mirrors service_suspension_changes: the logged Suspends and
+	// Resumes no pass has replayed yet, oldest first.
+	suspensionChanges map[string][]suspensionChange
+	suspensionSeq     int64
 	// Managed-datastore observation mirror (w3/m82), keyed on the dpg-/red-
 	// resource id exactly as the Postgres tables are.
 	datastoreFacts       map[string]DatastoreEventFact
@@ -67,18 +70,19 @@ type memberKey struct{ tenant, subject string }
 
 func newMemStore() *memStore {
 	return &memStore{
-		tenants:          map[string]Tenant{},
-		apps:             map[string]App{},
-		domains:          map[string]Domain{},
-		disks:            map[string]Disk{},
-		members:          map[memberKey]string{},
-		ownerOf:          map[string]string{},
-		usage:            map[usageKey]HourlyRow{},
-		monthly:          map[monthKey]monthlyRow{},
-		deploys:          map[string]Deploy{},
-		eventFacts:       map[string]ServiceEventFact{},
-		eventCheckpoints: map[string]ObservedServiceState{},
-		eventChangedAt:   map[string]time.Time{},
+		tenants:           map[string]Tenant{},
+		apps:              map[string]App{},
+		domains:           map[string]Domain{},
+		disks:             map[string]Disk{},
+		members:           map[memberKey]string{},
+		ownerOf:           map[string]string{},
+		usage:             map[usageKey]HourlyRow{},
+		monthly:           map[monthKey]monthlyRow{},
+		deploys:           map[string]Deploy{},
+		eventFacts:        map[string]ServiceEventFact{},
+		eventCheckpoints:  map[string]ObservedServiceState{},
+		eventChangedAt:    map[string]time.Time{},
+		suspensionChanges: map[string][]suspensionChange{},
 
 		datastoreFacts:       map[string]DatastoreEventFact{},
 		datastoreCheckpoints: map[string]ObservedDatastoreState{},
@@ -1027,50 +1031,65 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	if obs.At.IsZero() {
 		obs.At = time.Now().UTC()
 	}
-	previous, ok := m.eventCheckpoints[obs.AppID]
-	if !ok {
+	if _, ok := m.eventCheckpoints[obs.AppID]; !ok {
 		obs.Availability = heldAvailability("", "", obs).Availability
 		m.eventCheckpoints[obs.AppID] = obs
 		m.eventChangedAt[obs.AppID] = obs.At
+		// What was logged before the baseline is history it reports nothing for.
+		delete(m.suspensionChanges, obs.AppID)
 		return nil, nil
 	}
-	obs = deferStaleSuspension(obs, previous.Suspended, m.eventChangedAt[obs.AppID])
-	obs = heldAvailability(previous.ServicePhase, previous.Availability, obs)
-	if !obs.AvailabilityObserved {
-		obs.Availability = previous.Availability
+	var recorded []ServiceEventFact
+	// apply mirrors PGStore's: one observation against the checkpoint.
+	apply := func(o ObservedServiceState) {
+		previous := m.eventCheckpoints[o.AppID]
+		o = deferStaleSuspension(o, previous.Suspended, m.eventChangedAt[o.AppID])
+		o = heldAvailability(previous.ServicePhase, previous.Availability, o)
+		if !o.AvailabilityObserved {
+			o.Availability = previous.Availability
+		}
+		facts := observedStateFacts(o, previous.ServicePhase, previous.Availability, previous.Suspended, m.eventChangedAt[o.AppID])
+		// Only an observed, timestamped healthy conclusion advances the recorded
+		// healthy-transition reference (PG: the change-guarded UPDATE's
+		// COALESCE($5, healthy_transition_at)); every other observation carries
+		// the previous one forward.
+		if !(o.AvailabilityObserved && o.Availability == "healthy" && !o.ReadyTransitionAt.IsZero()) {
+			o.ReadyTransitionAt = previous.ReadyTransitionAt
+		}
+		for _, fact := range facts {
+			m.eventFacts[fact.SourceKey] = fact
+		}
+		recorded = append(recorded, facts...)
+		o.Suspended = checkpointServiceSuspended(previous.ServicePhase, o.ServicePhase, previous.Suspended, o.Suspended, o.Asleep)
+		o.ServicePhase = checkpointServicePhase(previous.ServicePhase, o.ServicePhase)
+		changed := o.ServicePhase != previous.ServicePhase || o.Availability != previous.Availability || o.Suspended != previous.Suspended
+		if changed && !o.AvailabilitySuppressed {
+			m.eventChangedAt[o.AppID] = o.At
+		}
+		m.eventCheckpoints[o.AppID] = o
 	}
-	facts := observedStateFacts(obs, previous.ServicePhase, previous.Availability, previous.Suspended, m.eventChangedAt[obs.AppID])
-	// Only an observed, timestamped healthy conclusion advances the recorded
-	// healthy-transition reference (PG: the change-guarded UPDATE's
-	// COALESCE($5, healthy_transition_at)); every other observation carries
-	// the previous one forward.
-	if !(obs.AvailabilityObserved && obs.Availability == "healthy" && !obs.ReadyTransitionAt.IsZero()) {
-		obs.ReadyTransitionAt = previous.ReadyTransitionAt
+	checkpoint := func() serviceCheckpoint {
+		previous := m.eventCheckpoints[obs.AppID]
+		return serviceCheckpoint{Phase: previous.ServicePhase, Availability: previous.Availability, Suspended: previous.Suspended, ChangedAt: m.eventChangedAt[obs.AppID]}
 	}
-	for _, fact := range facts {
-		m.eventFacts[fact.SourceKey] = fact
+	changes := m.suspensionChanges[obs.AppID]
+	keep, _ := replaySuspensionChanges(changes, obs, checkpoint, func(o ObservedServiceState) error {
+		apply(o)
+		return nil
+	})
+	m.suspensionChanges[obs.AppID] = nil
+	if keep != 0 {
+		m.suspensionChanges[obs.AppID] = []suspensionChange{changes[slices.IndexFunc(changes, func(c suspensionChange) bool { return c.Seq == keep })]}
 	}
-	obs.Suspended = checkpointServiceSuspended(previous.ServicePhase, obs.ServicePhase, previous.Suspended, obs.Suspended, obs.Asleep)
-	obs.ServicePhase = checkpointServicePhase(previous.ServicePhase, obs.ServicePhase)
-	changed := obs.ServicePhase != previous.ServicePhase || obs.Availability != previous.Availability || obs.Suspended != previous.Suspended
-	if changed && !obs.AvailabilitySuppressed {
-		m.eventChangedAt[obs.AppID] = obs.At
-	}
-	m.eventCheckpoints[obs.AppID] = obs
-	return facts, nil
+	return recorded, nil
 }
 
-// RecordServiceSuspensionRequested mirrors PGStore's mark.
-func (m *memStore) RecordServiceSuspensionRequested(_ context.Context, appID string, at time.Time) error {
+// RecordServiceSuspensionChange mirrors PGStore's log.
+func (m *memStore) RecordServiceSuspensionChange(_ context.Context, appID string, suspended bool, at time.Time) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	checkpoint, ok := m.eventCheckpoints[appID]
-	if !ok || checkpoint.Suspended || checkpoint.ServicePhase == string(appv1alpha1.PhaseHibernated) {
-		return nil
-	}
-	checkpoint.Suspended = true
-	m.eventCheckpoints[appID] = checkpoint
-	m.eventChangedAt[appID] = at.UTC()
+	m.suspensionSeq++
+	m.suspensionChanges[appID] = append(m.suspensionChanges[appID], suspensionChange{Seq: m.suspensionSeq, Suspended: suspended, At: at.UTC()})
 	return nil
 }
 

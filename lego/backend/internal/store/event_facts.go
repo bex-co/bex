@@ -387,8 +387,8 @@ type ObservedServiceState struct {
 	Suspended bool
 	// SpecReadAt is when the pass that made this observation read the desired
 	// rows its Suspended comes from (the pass start). Zero means unknown. When
-	// the checkpoint changed after it, this observation's flag defers to the
-	// checkpoint's for one pass (deferStaleSuspension, w5/m369).
+	// a logged action or the checkpoint changed after it, this observation's flag
+	// gives way to theirs (replaySuspensionChanges, deferStaleSuspension).
 	SpecReadAt time.Time
 	// Asleep marks a Hibernated service the operator parked for idleness (its
 	// current Ready reason is AutoHibernated), not for a suspension: it stays
@@ -434,9 +434,47 @@ type ObservedServiceState struct {
 	AvailabilitySuppressed bool
 }
 
+// selectServiceCheckpointSQL reads, and locks, one service's checkpoint, and
+// whether logged Suspends or Resumes await replay: the steady state has none,
+// and then the pass costs no extra query. The flag is read under the statement's
+// snapshot, taken before any wait for the lock, so it can name rows another pass
+// has replayed since: the read that follows may find none.
+const selectServiceCheckpointSQL = `SELECT service_phase, availability, suspended, updated_at,
+	EXISTS (SELECT 1 FROM service_suspension_changes c WHERE c.app_id = $1)
+FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`
+
+// healthyTransitionAt is what an observation records as the checkpoint's
+// healthy_transition_at — the reference rejectStaleUnhealthy orders future
+// unhealthy edges against. It is set only by an observed healthy conclusion;
+// nullTime maps a missing condition timestamp to SQL NULL, and anything else
+// leaves the column alone (NULL included), so a checkpoint whose transition time
+// is unknown fails open toward recording.
+func healthyTransitionAt(o ObservedServiceState) *time.Time {
+	if o.AvailabilityObserved && o.Availability == "healthy" {
+		return nullTime(o.ReadyTransitionAt.UTC())
+	}
+	return nil
+}
+
+// serviceCheckpoint is the part of a service's event checkpoint the edge rules
+// compare an observation to: the phase, availability and suspension reason it
+// last recorded, and when it last changed.
+type serviceCheckpoint struct {
+	Phase        string
+	Availability string
+	Suspended    bool
+	ChangedAt    time.Time
+}
+
 // RecordObservedServiceState atomically advances a service checkpoint and
 // appends any phase/availability edges it crossed. The first observation is a
 // baseline; replaying the same observation is a no-op.
+//
+// The Suspends and Resumes the verbs logged since the checkpoint last advanced
+// replay first, one at a time and in the order they were accepted
+// (replaySuspensionChanges), so an action is reported however little time separates
+// it from the next one (w21/065). Only then does this pass's own observation
+// apply.
 func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedServiceState) ([]ServiceEventFact, error) {
 	if obs.AppID == "" {
 		return nil, fmt.Errorf("observed service state requires app id")
@@ -453,25 +491,12 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 	if obs.At.IsZero() {
 		obs.At = time.Now().UTC()
 	}
-	// healthyTransition is recorded as the checkpoint's healthy_transition_at —
-	// the reference rejectStaleUnhealthy orders future unhealthy edges against.
-	// It is set only by an observed healthy conclusion; nullTime maps a missing
-	// condition timestamp to SQL NULL, and anything else leaves the column
-	// alone (NULL included), so a checkpoint whose transition time is unknown
-	// fails open toward recording.
-	var healthyTransition *time.Time
-	if obs.AvailabilityObserved && obs.Availability == "healthy" {
-		healthyTransition = nullTime(obs.ReadyTransitionAt.UTC())
-	}
 
 	var inserted []ServiceEventFact
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
-		var previousPhase, previousAvailability string
-		var previousSuspended bool
-		var previousChangedAt time.Time
-		err := tx.QueryRow(ctx,
-			`SELECT service_phase, availability, suspended, updated_at FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
-			obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended, &previousChangedAt)
+		var cp serviceCheckpoint
+		var logged bool
+		err := tx.QueryRow(ctx, selectServiceCheckpointSQL, obs.AppID).Scan(&cp.Phase, &cp.Availability, &cp.Suspended, &cp.ChangedAt, &logged)
 		if errors.Is(err, pgx.ErrNoRows) {
 			// The first observation is held like any other from an empty
 			// baseline, so an unhealthy one latches nothing (w4/350).
@@ -479,85 +504,126 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			tag, insertErr := tx.Exec(ctx,
 				`INSERT INTO service_event_checkpoints (app_id, service_phase, availability, suspended, updated_at, healthy_transition_at)
 				 VALUES ($1, $2, $3, $4, $5, $6) ON CONFLICT (app_id) DO NOTHING`,
-				obs.AppID, obs.ServicePhase, baseline, obs.Suspended, obs.At, healthyTransition)
+				obs.AppID, obs.ServicePhase, baseline, obs.Suspended, obs.At, healthyTransitionAt(obs))
 			if insertErr != nil {
 				return insertErr
 			}
 			if tag.RowsAffected() > 0 {
-				return nil
+				// What was logged before the baseline is history it reports
+				// nothing for.
+				_, err := tx.Exec(ctx, `DELETE FROM service_suspension_changes WHERE app_id = $1`, obs.AppID)
+				return err
 			}
-			err = tx.QueryRow(ctx,
-				`SELECT service_phase, availability, suspended, updated_at FROM service_event_checkpoints WHERE app_id = $1 FOR UPDATE`,
-				obs.AppID).Scan(&previousPhase, &previousAvailability, &previousSuspended, &previousChangedAt)
+			err = tx.QueryRow(ctx, selectServiceCheckpointSQL, obs.AppID).Scan(&cp.Phase, &cp.Availability, &cp.Suspended, &cp.ChangedAt, &logged)
 		}
 		if err != nil {
 			return err
 		}
 
-		obs = deferStaleSuspension(obs, previousSuspended, previousChangedAt)
-		obs = heldAvailability(previousPhase, previousAvailability, obs)
-		availability := previousAvailability
-		if obs.AvailabilityObserved {
-			availability = obs.Availability
-		}
-		obs.Availability = availability
-		facts := observedStateFacts(obs, previousPhase, previousAvailability, previousSuspended, previousChangedAt)
-		for _, fact := range facts {
-			// The process exiting is the outage's cause, and the exit already
-			// has its own server_failed with the cause on it (w8/m158). The
-			// sampled outage adds none; its server_available still follows.
-			if fact.Type == EventFactServerFailed && fact.ReasonCode == EventReasonReadinessFailed {
-				// The outage starts at its Ready transition, which follows the
-				// process's exit within seconds; only an outage dated by the
-				// pass that saw it (no transition to trust) looks a minute back.
-				lead := instanceExitOutageFallbackLead
-				if !obs.ReadyTransitionAt.IsZero() && fact.At.Equal(obs.ReadyTransitionAt) {
-					lead = instanceExitOutageLead
-				}
-				var exited bool
-				if err := tx.QueryRow(ctx, instanceExitExplainsOutageSQL, fact.AppID,
-					fact.At.Add(-lead), fact.At.Add(instanceExitOutageLag), fact.At).Scan(&exited); err != nil {
-					return err
-				}
-				if exited {
-					continue
-				}
-			}
+		insertFact := func(fact ServiceEventFact) error {
 			if _, err := tx.Exec(ctx, insertServiceEventFactSQL, fact.insertArgs()...); err != nil {
 				return err
 			}
 			inserted = append(inserted, fact)
+			return nil
 		}
-		checkpointPhase := checkpointServicePhase(previousPhase, obs.ServicePhase)
-		checkpointSuspended := checkpointServiceSuspended(previousPhase, obs.ServicePhase, previousSuspended, obs.Suspended, obs.Asleep)
-		// IS DISTINCT FROM makes the steady state a no-op instead of a row
-		// write: the reconciler records an observation for EVERY app on every
-		// resync (30s) and every Kick (after each successful API write), and
-		// almost none of them changed. Same shape as SetDeployPreDeployStatus's
-		// guard in store.go.
-		//
-		// updated_at is the floor availabilityEdgeAt orders the next edge
-		// after, so it moves with every recorded change except a suppressed
-		// pass's (w5/m113): on a readiness loss the debounced first pass still
-		// records Running → Deploying, and that write must not lift the floor
-		// past the Ready transition the confirmed server_failed carries.
-		//
-		// healthy_transition_at moves only inside this change-guarded write, so
-		// a healthy conclusion re-observed with an older or missing timestamp
-		// never erases a newer recorded one (COALESCE keeps the stored value
-		// when this pass has none to offer).
-		// suspended joins the guard tuple, not just the SET list: a user who
-		// suspends an already auto-hibernated App changes only this flag (the
-		// phase is Hibernated either way), and losing that write would make the
-		// later wake edge report service_woken for a real user Resume.
+		// apply records one observation against cp and moves cp to the state it
+		// leaves the checkpoint in.
+		apply := func(o ObservedServiceState) error {
+			o = deferStaleSuspension(o, cp.Suspended, cp.ChangedAt)
+			o = heldAvailability(cp.Phase, cp.Availability, o)
+			availability := cp.Availability
+			if o.AvailabilityObserved {
+				availability = o.Availability
+			}
+			o.Availability = availability
+			for _, fact := range observedStateFacts(o, cp.Phase, cp.Availability, cp.Suspended, cp.ChangedAt) {
+				// The process exiting is the outage's cause, and the exit already
+				// has its own server_failed with the cause on it (w8/m158). The
+				// sampled outage adds none; its server_available still follows.
+				if fact.Type == EventFactServerFailed && fact.ReasonCode == EventReasonReadinessFailed {
+					// The outage starts at its Ready transition, which follows the
+					// process's exit within seconds; only an outage dated by the
+					// pass that saw it (no transition to trust) looks a minute back.
+					lead := instanceExitOutageFallbackLead
+					if !o.ReadyTransitionAt.IsZero() && fact.At.Equal(o.ReadyTransitionAt) {
+						lead = instanceExitOutageLead
+					}
+					var exited bool
+					if err := tx.QueryRow(ctx, instanceExitExplainsOutageSQL, fact.AppID,
+						fact.At.Add(-lead), fact.At.Add(instanceExitOutageLag), fact.At).Scan(&exited); err != nil {
+						return err
+					}
+					if exited {
+						continue
+					}
+				}
+				if err := insertFact(fact); err != nil {
+					return err
+				}
+			}
+			phase := checkpointServicePhase(cp.Phase, o.ServicePhase)
+			suspended := checkpointServiceSuspended(cp.Phase, o.ServicePhase, cp.Suspended, o.Suspended, o.Asleep)
+			// IS DISTINCT FROM makes the steady state a no-op instead of a row
+			// write: the reconciler records an observation for EVERY app on every
+			// resync (30s) and every Kick (after each successful API write), and
+			// almost none of them changed. Same shape as SetDeployPreDeployStatus's
+			// guard in store.go.
+			//
+			// updated_at is the floor availabilityEdgeAt orders the next edge
+			// after, so it moves with every recorded change except a suppressed
+			// pass's (w5/m113): on a readiness loss the debounced first pass still
+			// records Running → Deploying, and that write must not lift the floor
+			// past the Ready transition the confirmed server_failed carries.
+			//
+			// healthy_transition_at moves only inside this change-guarded write, so
+			// a healthy conclusion re-observed with an older or missing timestamp
+			// never erases a newer recorded one (COALESCE keeps the stored value
+			// when this pass has none to offer).
+			// suspended joins the guard tuple, not just the SET list: a user who
+			// suspends an already auto-hibernated App changes only this flag (the
+			// phase is Hibernated either way), and losing that write would make the
+			// later wake edge report service_woken for a real user Resume.
+			if phase == cp.Phase && availability == cp.Availability && suspended == cp.Suspended {
+				return nil
+			}
+			if _, err := tx.Exec(ctx,
+				`UPDATE service_event_checkpoints
+				 SET service_phase = $2, availability = $3, suspended = $4,
+				     updated_at = CASE WHEN $7 THEN updated_at ELSE $5 END,
+				     healthy_transition_at = COALESCE($6, healthy_transition_at)
+				 WHERE app_id = $1
+				   AND (service_phase, availability, suspended) IS DISTINCT FROM ($2, $3, $4)`,
+				o.AppID, phase, availability, suspended, o.At, healthyTransitionAt(o), o.AvailabilitySuppressed); err != nil {
+				return err
+			}
+			// Mirrors the UPDATE: updated_at moves with a change, except a
+			// suppressed pass's.
+			if !o.AvailabilitySuppressed {
+				cp.ChangedAt = o.At
+			}
+			cp.Phase, cp.Availability, cp.Suspended = phase, availability, suspended
+			return nil
+		}
+
+		if !logged {
+			return apply(obs)
+		}
+		changes, err := pendingSuspensionChanges(ctx, tx, obs.AppID)
+		if err != nil {
+			return err
+		}
+		keep, err := replaySuspensionChanges(changes, obs, func() serviceCheckpoint { return cp }, apply)
+		if err != nil {
+			return err
+		}
+		// Nothing to delete while only a held Resume is logged (replaySuspensionChanges).
+		if len(changes) == 0 || len(changes) == 1 && changes[0].Seq == keep {
+			return nil
+		}
 		_, err = tx.Exec(ctx,
-			`UPDATE service_event_checkpoints
-			 SET service_phase = $2, availability = $3, suspended = $4,
-			     updated_at = CASE WHEN $7 THEN updated_at ELSE $5 END,
-			     healthy_transition_at = COALESCE($6, healthy_transition_at)
-			 WHERE app_id = $1
-			   AND (service_phase, availability, suspended) IS DISTINCT FROM ($2, $3, $4)`,
-			obs.AppID, checkpointPhase, availability, checkpointSuspended, obs.At, healthyTransition, obs.AvailabilitySuppressed)
+			`DELETE FROM service_suspension_changes WHERE app_id = $1 AND seq <= $2 AND seq <> $3`,
+			obs.AppID, changes[len(changes)-1].Seq, keep)
 		return err
 	})
 	if err != nil {
@@ -765,16 +831,18 @@ func failureFactType(obs ObservedServiceState) ServiceEventFactType {
 
 // deferStaleSuspension keeps the checkpoint's suspension flag when this
 // observation read the spec before the checkpoint last changed (w5/m369). A
-// Suspend marks the checkpoint as it is accepted; a pass that read the desired
-// rows just before that write still carries suspended=false, and taking it at
-// its word would turn the mark into a resume that never happened.
+// logged Suspend replays into the checkpoint as it is accepted; a pass that
+// read the desired rows just before that write still carries suspended=false,
+// and taking it at its word would turn the Suspend into a resume that never
+// happened. (A pass whose own read the log shows to be older never reaches this:
+// the log's flag replaces it, replaySuspensionChanges.)
 //
 // The checkpoint keeps one change time (updated_at) for every recorded change,
 // so another replica's phase or availability write also defers a flag change
 // read before it. Either way the cost is one pass, never a fact: the next pass
-// reads the spec after the change. The mark moving updated_at also lifts the
-// availability-edge floor (availabilityEdgeAt) to the Suspend, so an outage
-// that began moments before it is dated at its observation instead.
+// reads the spec after the change. A replayed Suspend moving updated_at also
+// lifts the availability-edge floor (availabilityEdgeAt) to the Suspend, so an
+// outage that began moments before it is dated at its observation instead.
 func deferStaleSuspension(obs ObservedServiceState, previousSuspended bool, previousChangedAt time.Time) ObservedServiceState {
 	if obs.Suspended != previousSuspended && !obs.SpecReadAt.IsZero() && previousChangedAt.After(obs.SpecReadAt) {
 		obs.Suspended = previousSuspended
@@ -782,27 +850,145 @@ func deferStaleSuspension(obs ObservedServiceState, previousSuspended bool, prev
 	return obs
 }
 
-// RecordServiceSuspensionRequested records an accepted Suspend on the event
-// checkpoint at once (w5/m369, from w4/604). The pair Render records for a
-// suspension undone quickly, service_suspended then service_resumed, comes from
-// observedStateFacts reading a checkpoint that saw the flag rise; a Resume that
-// lands before any pass saw the Suspend used to record neither, so no push or
-// webhook went out. With the mark, the next pass that sees the flag down
-// reports both, the suspension dated at the mark.
+// suspensionChange is one accepted Suspend (Suspended) or Resume, as the verbs
+// log it for the event projector to replay (w21/065).
+type suspensionChange struct {
+	Seq       int64
+	Suspended bool
+	At        time.Time
+}
+
+// RecordServiceSuspensionChange logs an accepted Suspend or Resume for the
+// event projector (w21/065, replacing w5/m369's one-bit mark, from w4/604).
 //
-// Only a Running-side checkpoint is marked. A Hibernated one (a sleeping Free
-// service) records the rising flag itself (w4/562), and an already-suspended
-// or missing checkpoint has nothing to add. at should follow the Suspend's
-// audit row, so the feed lists "Suspended by" before "Service suspended".
-func (s *PGStore) RecordServiceSuspensionRequested(ctx context.Context, appID string, at time.Time) error {
-	_, err := s.Pool.Exec(ctx,
-		`UPDATE service_event_checkpoints SET suspended = true, updated_at = $2
-		 WHERE app_id = $1 AND NOT suspended AND service_phase <> $3`,
-		appID, at.UTC(), string(appv1alpha1.PhaseHibernated))
-	if err != nil {
-		return fmt.Errorf("record suspension request: %w", err)
+// service_suspended and service_resumed come from RecordObservedServiceState
+// comparing what a pass samples to the checkpoint, so two actions closer
+// together than a pass reached it as one sample, and a Suspend's mark that
+// landed before the pass had recorded the previous Resume overwrote it: six
+// runs 5 s apart gave 4 of 12 events. Logged, every action reaches the
+// projector, in order. at should follow the verb's audit row, so the feed lists
+// "Suspended by" before "Service suspended".
+func (s *PGStore) RecordServiceSuspensionChange(ctx context.Context, appID string, suspended bool, at time.Time) error {
+	if _, err := s.Pool.Exec(ctx,
+		`INSERT INTO service_suspension_changes (app_id, suspended, at) VALUES ($1, $2, $3)`,
+		appID, suspended, at.UTC()); err != nil {
+		return fmt.Errorf("record suspension change: %w", err)
 	}
 	return nil
+}
+
+// pendingSuspensionChanges returns the service's logged actions that no pass
+// has replayed, oldest first. It runs inside the transaction that holds the
+// checkpoint's row lock, so concurrent passes replay each action once.
+func pendingSuspensionChanges(ctx context.Context, tx pgx.Tx, appID string) ([]suspensionChange, error) {
+	rows, err := tx.Query(ctx,
+		`SELECT seq, suspended, at FROM service_suspension_changes WHERE app_id = $1 ORDER BY seq`, appID)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, func(row pgx.CollectableRow) (suspensionChange, error) {
+		var c suspensionChange
+		err := row.Scan(&c.Seq, &c.Suspended, &c.At)
+		c.At = c.At.UTC()
+		return c, err
+	})
+}
+
+// serviceCheckpoint.hibernated reports a checkpoint that has the service stopped.
+func (c serviceCheckpoint) hibernated() bool { return c.Phase == string(appv1alpha1.PhaseHibernated) }
+
+// replaySuspensionChanges turns the logged actions into what a pass sampling
+// after every one of them would have recorded (w21/065), and ends with the
+// pass's own observation. It calls apply for each step, in order, and checkpoint
+// reports the checkpoint as the steps so far left it. Both stores run it, so
+// production and its test mirror cannot drift. It returns the seq of the one
+// change that must stay logged, 0 when none.
+//
+// Each action replays against the checkpoint's own phase, frozen: the log knows
+// the order of the flag, not when the operator moved the phase, and the pass
+// that follows records the phase edges itself. The usual edge rules then do the
+// rest: a Suspend and a Resume on a service that stayed up are a quick pair
+// dated at the two actions, a Suspend of a sleeping service is recorded at its
+// action.
+//
+// Two cases need more than that. A Resume of a service stopped by its
+// suspension wakes it, and that wake reports service_resumed at Ready (w4/562),
+// so the Resume is held, and stays logged while the checkpoint has the service
+// stopped. A Suspend that comes before the wake finishes ends it unreported: the
+// Resume owes its event now, so it is recorded as a Resume of a service that
+// stays asleep (the same rule), then the Suspend is recorded, and each action
+// has its own event, as on Render (w4/527). And when the pass itself reports a
+// wake that completed between two logged actions, that wake edge replays at the
+// instant the instance went Ready, between them, so the actions after it see a
+// service that is up. The pass's own flag gives way to the log's when a logged
+// action is newer than the pass's read of the spec.
+func replaySuspensionChanges(changes []suspensionChange, obs ObservedServiceState, checkpoint func() serviceCheckpoint, apply func(ObservedServiceState) error) (keep int64, err error) {
+	if len(changes) == 0 { // another pass replayed them while this one waited for the checkpoint's lock
+		return 0, apply(obs)
+	}
+	var owed *suspensionChange // the held Resume of a stopped service
+	var flag bool              // the suspension flag after the last change replayed
+	wakeAt := pendingWakeAt(checkpoint(), obs, changes)
+	for i, change := range changes {
+		if i > 0 && !wakeAt.IsZero() && change.At.After(wakeAt) {
+			step := obs
+			step.At, step.SpecReadAt, step.Suspended = wakeAt, time.Time{}, flag
+			wakeAt, owed = time.Time{}, nil // the edge reports the Resume that woke it
+			if err := apply(step); err != nil {
+				return 0, err
+			}
+		}
+		flag = change.Suspended
+		cp := checkpoint()
+		steps := []ObservedServiceState{{AppID: obs.AppID, At: change.At, ServicePhase: cp.Phase, Suspended: change.Suspended}}
+		if cp.hibernated() {
+			switch {
+			case !change.Suspended && cp.Suspended:
+				held := change
+				owed, steps = &held, nil
+			case change.Suspended && owed != nil:
+				resume := ObservedServiceState{AppID: obs.AppID, At: owed.At, ServicePhase: cp.Phase, Asleep: true}
+				owed, steps = nil, append([]ObservedServiceState{resume}, steps...)
+			}
+		}
+		for _, step := range steps {
+			if err := apply(step); err != nil {
+				return 0, err
+			}
+		}
+	}
+	if last := changes[len(changes)-1]; obs.SpecReadAt.IsZero() || last.At.After(obs.SpecReadAt) {
+		// The log is the truth now: no later "read before the checkpoint
+		// changed" check (deferStaleSuspension) may put the stale flag back.
+		obs.Suspended, obs.SpecReadAt = last.Suspended, time.Time{}
+	}
+	if err := apply(obs); err != nil {
+		return 0, err
+	}
+	if owed != nil && checkpoint().hibernated() {
+		return owed.Seq, nil
+	}
+	return 0, nil
+}
+
+// pendingWakeAt is when the wake the pass itself reports completed, zero when it
+// reports none. A pass that sees the service Running over a checkpoint that has
+// it stopped reports a wake that completed. Its Ready time says when; with none,
+// it is taken to follow the last Resume logged, the one that most likely started
+// it, and a Suspend after that Resume came to a service already up.
+func pendingWakeAt(cp serviceCheckpoint, obs ObservedServiceState, changes []suspensionChange) (at time.Time) {
+	if !cp.hibernated() || obs.ServicePhase != string(appv1alpha1.PhaseRunning) {
+		return at
+	}
+	if !obs.ReadyTransitionAt.IsZero() {
+		return obs.ReadyTransitionAt
+	}
+	for _, change := range changes {
+		if !change.Suspended {
+			at = change.At
+		}
+	}
+	return at
 }
 
 // quickSuspendPair dates a Suspend undone before the service stopped (w4/555).

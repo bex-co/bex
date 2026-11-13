@@ -2337,24 +2337,30 @@ func TestCreatePinsTheFirstBuildToTheCommitItsDeployRecords(t *testing.T) {
 	}
 }
 
-// markingStore is a recordingStore that also takes the suspension mark, as
-// *store.PGStore does (suspensionMarker).
-type markingStore struct {
+// loggingStore is a recordingStore that also takes the suspension log, as
+// *store.PGStore does (suspensionLogger).
+type loggingStore struct {
 	*recordingStore
-	marks []string
+	changes []suspensionChange
 }
 
-func (m *markingStore) RecordServiceSuspensionRequested(_ context.Context, appID string, _ time.Time) error {
-	m.marks = append(m.marks, appID)
+type suspensionChange struct {
+	appID     string
+	suspended bool
+}
+
+func (m *loggingStore) RecordServiceSuspensionChange(_ context.Context, appID string, suspended bool, _ time.Time) error {
+	m.changes = append(m.changes, suspensionChange{appID, suspended})
 	return nil
 }
 
-// TestSuspendMarksTheCheckpointAndKicksTheProjector (w5/m369, from w4/604): a
-// Suspend marks the service's event checkpoint so a quick Resume still records
-// the service_suspended/service_resumed pair, and both verbs kick the projector
-// instead of waiting for its resync.
-func TestSuspendMarksTheCheckpointAndKicksTheProjector(t *testing.T) {
-	st := &markingStore{recordingStore: &recordingStore{}}
+// TestSuspendAndResumeLogEachActionAndKickTheProjector (w21/065, from w5/m369
+// and w4/604): every Suspend and every Resume is logged for the event
+// projector, so two actions closer together than a reconcile pass still report
+// two events each, and both verbs kick the projector instead of waiting for its
+// resync.
+func TestSuspendAndResumeLogEachActionAndKickTheProjector(t *testing.T) {
+	st := &loggingStore{recordingStore: &recordingStore{}}
 	svc, _ := newService(st, managedApp("web", "srv-1"))
 	kicks := 0
 	svc.Kick = func() { kicks++ }
@@ -2362,13 +2368,13 @@ func TestSuspendMarksTheCheckpointAndKicksTheProjector(t *testing.T) {
 	if _, err := svc.Suspend(context.Background(), "web"); err != nil {
 		t.Fatalf("Suspend: %v", err)
 	}
-	if len(st.marks) != 1 || st.marks[0] != "srv-1" || kicks != 1 {
-		t.Fatalf("after Suspend: marks %v, kicks %d; want [srv-1] and 1", st.marks, kicks)
+	if want := []suspensionChange{{"srv-1", true}}; !slices.Equal(st.changes, want) || kicks != 1 {
+		t.Fatalf("after Suspend: log %v, kicks %d; want %v and 1", st.changes, kicks, want)
 	}
 	if _, err := svc.Resume(context.Background(), "web"); err != nil {
 		t.Fatalf("Resume: %v", err)
 	}
-	if len(st.marks) != 1 || kicks != 2 {
-		t.Fatalf("after Resume: marks %v, kicks %d; want the Suspend's mark only and 2 kicks", st.marks, kicks)
+	if want := []suspensionChange{{"srv-1", true}, {"srv-1", false}}; !slices.Equal(st.changes, want) || kicks != 2 {
+		t.Fatalf("after Resume: log %v, kicks %d; want %v and 2", st.changes, kicks, want)
 	}
 }
