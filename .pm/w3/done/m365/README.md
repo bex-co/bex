@@ -1,6 +1,6 @@
 # w3 · m365 — Leaked credentials are refused at push time on the public repository, and the setting cannot silently turn off
 
-**Worker:** worker3 **Goal:** a push to `bex-co/bex` that carries a credential in a format GitHub recognizes is refused before it lands. `main` cannot be deleted or force-pushed. A daily check opens an issue when any of these settings regresses. **Status:** in progress (t001–t007 done: secret scanning and push protection on, push refusal proven, both alerts dispositioned, `main history` ruleset active, drift check daily and on every ship; t008 closes after the drift workflow's first green run on `main`)
+**Worker:** worker3 **Goal:** a push to `bex-co/bex` that carries a credential in a format GitHub recognizes is refused before it lands. `main` cannot be deleted or force-pushed. A daily check opens an issue when any of these settings regresses. **Status:** done (2026-11-13)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | [t005](done/t005.md) | Ship skill, AGENTS.md and ADR019: a push refused by push protection is fixed by removing and rotating the secret, never by a bypass — **DONE** | 20m | t004 |
 | [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
 | [t007](done/t007.md) | Test coverage — **DONE** | 30m | t006 |
-| [t008](t008.md) | Closeout | 10m | t007 |
+| [t008](done/t008.md) | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 

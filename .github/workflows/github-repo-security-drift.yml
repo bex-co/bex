@@ -8,9 +8,12 @@ name: GitHub repository security drift
 # them. This reads the live settings daily and keeps one tracking issue open
 # while they drift.
 #
-# GITHUB_TOKEN cannot read push protection (only admins see
-# security_and_analysis); the script says so instead of passing it off, and
-# scripts/ship-gates.sh runs the same check with each shipper's admin token.
+# GITHUB_TOKEN can read only the rules on main: security_and_analysis is
+# admin-only and the secret-scanning alerts list answers it 403 even with
+# security-events: read (first run 43385888364, 2026-11-13). The script prints
+# NOTE lines for what it could not read instead of passing it off, and
+# scripts/ship-gates.sh runs the same check in full with each shipper's admin
+# token.
 # Not a gate, like github-environments-drift: an advisory reader of repository
 # settings must not be able to block releases.
 
@@ -22,8 +25,6 @@ on:
 permissions:
   contents: read
   issues: write
-  # The secret-scanning alerts list answers 404 when scanning is disabled.
-  security-events: read
 
 jobs:
   drift:
