@@ -361,11 +361,6 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 				return ErrAgentSessionAdmissionLimit
 			}
 		}
-		if namedBranch && in.Repo != "" {
-			if err := lockUnheldBranch(ctx, tx, in.WorkspaceID, in.Repo, in.Branch, in.ParentSessionID != ""); err != nil {
-				return err
-			}
-		}
 		if in.ParentSessionID != "" {
 			lineage, err := lockParentLineage(ctx, tx, in.WorkspaceID, in.ParentSessionID)
 			if err != nil {
@@ -402,6 +397,13 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 				return ErrAgentSessionIdempotencyKey
 			}
 			return err
+		}
+		// After the insert, so a retry with the same idempotency key fails on
+		// its key (and replays) before it could be refused for the branch.
+		if namedBranch && in.Repo != "" {
+			if err := lockUnheldBranch(ctx, tx, in.WorkspaceID, in.Repo, in.Branch, in.ID, in.ParentSessionID != ""); err != nil {
+				return err
+			}
 		}
 		if in.InitialPrompt != "" {
 			_, err = tx.Exec(ctx, `
@@ -783,7 +785,7 @@ func (s *PGStore) SetAgentSessionArchived(ctx context.Context, id string, archiv
 // names, any session that could still push holds it too: a finished one can
 // be messaged again. A person's or an automation's create may reuse a
 // finished session's branch (an automation's next run does).
-func lockUnheldBranch(ctx context.Context, tx pgx.Tx, workspaceID, repo, branch string, child bool) error {
+func lockUnheldBranch(ctx context.Context, tx pgx.Tx, workspaceID, repo, branch, self string, child bool) error {
 	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
 		"agent-session-branch:"+workspaceID+":"+repo+":"+branch); err != nil {
 		return err
@@ -794,8 +796,8 @@ func lockUnheldBranch(ctx context.Context, tx pgx.Tx, workspaceID, repo, branch 
 	}
 	var held bool
 	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM agent_sessions
-		WHERE workspace_id = $1 AND repo = $2 AND branch = $3 AND `+holds+`)`,
-		workspaceID, repo, branch).Scan(&held); err != nil {
+		WHERE workspace_id = $1 AND repo = $2 AND branch = $3 AND id <> $4 AND `+holds+`)`,
+		workspaceID, repo, branch, self).Scan(&held); err != nil {
 		return err
 	}
 	if held {

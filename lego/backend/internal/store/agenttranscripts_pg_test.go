@@ -41,7 +41,7 @@ func seedSession(t *testing.T, s *PGStore, workspace string, parts []AgentSessio
 	t.Helper()
 	ctx := context.Background()
 	session, err := s.CreateAgentSession(ctx, AgentSession{
-		WorkspaceID: workspace, Repo: "bex-co/bex", Branch: "bex-agent/s1",
+		WorkspaceID: workspace, Repo: "bex-co/bex",
 		AgentConfig: []byte(`{"agent":"claude","task":"t"}`), InitialPrompt: "t",
 	})
 	if err != nil {

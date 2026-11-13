@@ -683,17 +683,13 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if lineageErr := lineageRefusal(req.ParentSessionID, err); lineageErr != nil {
 		return View{}, lineageErr
 	}
-	if errors.Is(err, store.ErrAgentSessionIdempotencyKey) ||
-		(idemKey != "" && errors.Is(err, store.ErrAgentSessionBranchInUse)) {
-		// Lost the race for the key to a concurrent identical create; one
-		// naming a branch loses at the branch lock first (w5/m382).
+	if errors.Is(err, store.ErrAgentSessionIdempotencyKey) {
+		// Lost the race for the key to a concurrent identical create.
 		view, found, replayErr := s.replayCreate(ctx, workspaceID, idemKey, idemHash)
 		if replayErr != nil || found {
 			return view, replayErr
 		}
-		if !errors.Is(err, store.ErrAgentSessionBranchInUse) {
-			return View{}, core.NewConflictError("AGENT_SESSION_CONFLICT", "agent session conflicts with existing state", nil)
-		}
+		return View{}, core.NewConflictError("AGENT_SESSION_CONFLICT", "agent session conflicts with existing state", nil)
 	}
 	if err != nil {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
