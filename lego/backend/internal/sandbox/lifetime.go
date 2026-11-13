@@ -66,7 +66,7 @@ func resolveTimeout(requested *int) (int, error) {
 	t := *requested
 	if t < 0 || t > maxSandboxTimeout || t > 0 && t < minSandboxTimeout {
 		msg := fmt.Sprintf("sandbox timeoutSeconds must be 0 (no timeout) or between %d and %d", minSandboxTimeout, maxSandboxTimeout)
-		return 0, core.NewBadRequestError("SANDBOX_TIMEOUT_INVALID", msg, map[string]any{"field": "timeoutSeconds", "minimumNonZero": minSandboxTimeout, "max": maxSandboxTimeout})
+		return 0, core.NewBadRequestError(CodeInvalidTimeoutSeconds, msg, map[string]any{"field": "timeoutSeconds", "minimumNonZero": minSandboxTimeout, "max": maxSandboxTimeout})
 	}
 	return t, nil
 }

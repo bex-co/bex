@@ -403,8 +403,12 @@ func validateSandboxEnv(env map[string]string) error {
 // `snapshotId`/`snapshotName` create fields and every snapshot route.
 const codeSandboxSnapshotsUnsupported = "SANDBOX_SNAPSHOTS_UNSUPPORTED"
 
-// CodeInvalidSandboxName is Render's invalid_sandbox_name.
-const CodeInvalidSandboxName = "invalid_sandbox_name"
+// Render's create-sandbox refusal codes (its pinned errorCode vocabulary).
+const (
+	CodeInvalidSandboxName    = "invalid_sandbox_name"
+	CodeInvalidSandboxPlan    = "invalid_sandbox_plan"
+	CodeInvalidTimeoutSeconds = "invalid_timeout_seconds"
+)
 
 // maxSandboxName is Render's name bound, in characters.
 const maxSandboxName = 64
@@ -413,17 +417,23 @@ const maxSandboxName = 64
 // `sbx-` id, so the id stays the unambiguous handle.
 func validateSandboxName(name string) error {
 	if utf8.RuneCountInString(name) > maxSandboxName || strings.HasPrefix(name, ids.Sandbox.Prefix()+"-") {
-		return core.NewBadRequestError(CodeInvalidSandboxName,
-			fmt.Sprintf("sandbox name must be at most %d characters and must not start with %q", maxSandboxName, ids.Sandbox.Prefix()+"-"),
-			map[string]any{"field": "name", "maxLength": maxSandboxName})
+		return InvalidSandboxNameError()
 	}
 	return nil
+}
+
+// InvalidSandboxNameError is the name refusal, shared with the REST gate,
+// which refuses an over-long name before the Service sees it (w8/312).
+func InvalidSandboxNameError() error {
+	return core.NewBadRequestError(CodeInvalidSandboxName,
+		fmt.Sprintf("sandbox name must be at most %d characters and must not start with %q", maxSandboxName, ids.Sandbox.Prefix()+"-"),
+		map[string]any{"field": "name", "maxLength": maxSandboxName})
 }
 
 // invalidPlan is Render's invalid_sandbox_plan refusal: the message lists the
 // accepted plans.
 func invalidPlan(plan Plan) error {
-	return core.NewBadRequestError("SANDBOX_PLAN_INVALID",
+	return core.NewBadRequestError(CodeInvalidSandboxPlan,
 		fmt.Sprintf("unknown sandbox plan %q; use one of %s", plan, strings.Join(planNames(), ", ")),
 		map[string]any{"field": "plan", "supported": planNames()})
 }

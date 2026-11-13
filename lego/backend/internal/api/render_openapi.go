@@ -737,7 +737,8 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// Datastore region filters accept repeated keys as well as comma lists.
 	// kin's explode=false decoder validates only the first repeated value, so
 	// combine them on the clone to check every region against the pinned enum.
-	if operationID := compatOperationID(route.Operation.OperationID); operationID == "list-postgres" || operationID == "list-key-value" {
+	operationID := compatOperationID(route.Operation.OperationID)
+	if operationID == "list-postgres" || operationID == "list-key-value" {
 		query := validationRequest.URL.Query()
 		if regions := query["region"]; len(regions) > 1 {
 			query.Set("region", strings.Join(regions, ","))
@@ -760,7 +761,12 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	r.ContentLength = validationRequest.ContentLength
 	if err != nil {
 		message := safeRenderValidationMessage(err)
-		if field, code := renderValidationCode(err); code != "" {
+		field, constraint := renderValidationField(err)
+		if override, ok := renderOperationRefusals[operationID][field]; ok && (override.constraint == "" || override.constraint == constraint) {
+			core.WriteErr(w, override.refuse(message))
+			return
+		}
+		if code := renderValidationErrorCodes[field]; code != "" {
 			core.WriteErr(w, core.NewBadRequestError(code, message, map[string]any{"field": field}))
 			return
 		}
@@ -899,33 +905,52 @@ func unsupportedQueryMessage(unknown []string, operationID string) string {
 }
 
 // renderValidationErrorCodes names the machine code a refused value of a
-// parameter (path, query or top-level body field) answers. The pinned OpenAPI's
-// `errorCode` vocabulary says an id that is not a well-formed `sbg-` identifier
-// is `invalid_sandbox_group_id`; and `update-sandbox-group` requires an integer
+// parameter (path, query or top-level body field) answers, for names that mean
+// the same thing in every operation. The pinned OpenAPI's `errorCode`
+// vocabulary says an id that is not a well-formed `sbg-` identifier is
+// `invalid_sandbox_group_id`; and `update-sandbox-group` requires an integer
 // `concurrencyLimit` of at least 1, which the gate refuses before the Service's
 // own check (SANDBOX_GROUP_LIMIT_INVALID) can. The gate otherwise answers a
 // codeless 400, so without these a malformed group id or an absent or zero limit
 // on REST would carry no code while GraphQL and MCP, which reach the Service's
-// own checks, do (w22/m311). Each name is unique to its operation in the pin.
+// own checks, do (w22/m311).
 var renderValidationErrorCodes = map[string]string{
 	"sandboxGroupId":   sandbox.CodeInvalidSandboxGroupID,
 	"concurrencyLimit": sandbox.CodeSandboxGroupLimitInvalid,
 }
 
-// renderValidationCode is the field and code of a request error that has one.
-func renderValidationCode(err error) (field, code string) {
+// renderOperationRefusal overrides the gate's answer for one operation's field,
+// optionally only for one schema constraint.
+type renderOperationRefusal struct {
+	constraint string // a schema keyword such as "maxLength"; "" for any
+	refuse     func(message string) error
+}
+
+// renderOperationRefusals are per-operation overrides for field names whose
+// meaning differs by operation: the Service's own refusal, so REST answers
+// what GraphQL and MCP do (w8/312). The gate refuses create-sandbox's
+// over-long name and list-sandbox-builds' unknown status before the Service.
+var renderOperationRefusals = map[string]map[string]renderOperationRefusal{
+	"create-sandbox": {"name": {constraint: "maxLength", refuse: func(string) error { return sandbox.InvalidSandboxNameError() }}},
+	"list-sandbox-builds": {"status": {refuse: func(message string) error {
+		return core.NewBadRequestError(sandbox.CodeInvalidBuildStatus, message, map[string]any{"field": "status", "supported": sandbox.BuildStatuses()})
+	}}},
+}
+
+// renderValidationField is the parameter or top-level body field a request
+// error refuses, and the schema keyword it failed for a body field.
+func renderValidationField(err error) (field, constraint string) {
 	var requestError *openapi3filter.RequestError
 	if !errors.As(err, &requestError) {
 		return "", ""
 	}
 	if requestError.Parameter != nil {
-		field = requestError.Parameter.Name
-		return field, renderValidationErrorCodes[field]
+		return requestError.Parameter.Name, ""
 	}
 	var schemaError *openapi3.SchemaError
 	if requestError.RequestBody != nil && errors.As(err, &schemaError) {
 		if pointer := schemaError.JSONPointer(); len(pointer) > 0 {
-			return pointer[0], renderValidationErrorCodes[pointer[0]]
+			return pointer[0], schemaError.SchemaField
 		}
 	}
 	return "", ""

@@ -107,6 +107,10 @@ var linuxAMD64 = v1.Platform{OS: "linux", Architecture: "amd64"}
 
 var buildStatuses = []string{store.SandboxBuildPending, store.SandboxBuildRunning, store.SandboxBuildSucceeded, store.SandboxBuildFailed}
 
+// BuildStatuses is the build list's status filter vocabulary, for refusals
+// the REST gate answers before the Service (w8/312).
+func BuildStatuses() []string { return slices.Clone(buildStatuses) }
+
 // Build is Render's sandbox build, the shape of the pinned OpenAPI schema.
 type Build struct {
 	ID             string      `json:"id"`
