@@ -57,6 +57,16 @@ describe("redirectRenderAlias", () => {
     ).toBe("/services/srv-abc/settings");
   });
 
+  // Render's cron Builds and Runs pages (changelog 2026-09-03) land on bex's
+  // (w2/m360).
+  it("lands a cron job's Builds and Runs deep links on bex's pages", () => {
+    for (const page of ["builds", "runs"]) {
+      expect(
+        hrefOf("cron", `srv-abc/${page}`, locationOf(`/cron/srv-abc/${page}`)),
+      ).toBe(`/services/srv-abc/${page}`);
+    }
+  });
+
   it("preserves the query string and hash", () => {
     expect(
       hrefOf(

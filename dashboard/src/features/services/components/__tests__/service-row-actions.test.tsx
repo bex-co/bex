@@ -414,7 +414,7 @@ describe.each([
     menu: /^Actions for /,
     suspend: "Suspend",
     resume: "Resume",
-    cron: /pauses future scheduled runs\. An active run continues\. To stop it, select Cancel in Recent Runs\./,
+    cron: /pauses future scheduled runs\. An active run continues\. To stop it, select Cancel on the Runs page\./,
     cronResume: "Resuming this cron job resumes scheduled runs.",
     publicConfirm: /stops serving traffic\. Its URL and certificates are kept/,
     staticConfirm:
@@ -428,7 +428,7 @@ describe.each([
     menu: /的操作$/,
     suspend: "暂停",
     resume: "恢复",
-    cron: /暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“最近运行”中选择“取消”/,
+    cron: /暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“运行”页面中选择“取消”/,
     cronResume: "恢复此定时任务会恢复计划运行。",
     publicConfirm: /停止处理流量。其 URL 与证书会保留/,
     staticConfirm: /停止服务，并在暂停期间返回 503。其 URL 与证书会保留/,

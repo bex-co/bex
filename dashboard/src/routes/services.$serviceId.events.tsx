@@ -23,8 +23,6 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { useInstanceTypes } from "@/features/services/hooks/use-instance-types";
 import { useProjects } from "@/features/projects/hooks/use-projects";
 import { useEnvironments } from "@/features/environments/hooks/use-environments";
-import { CronRunsSection } from "@/features/services/components/cron-runs-section";
-import { isCron } from "@/features/services/lib/service-type";
 import { useServiceBase } from "@/features/services/lib/service-base";
 import { RelativeAge } from "@/common/components/relative-time";
 import { useLocalDateTime } from "@/common/hooks/use-local-date";
@@ -129,7 +127,8 @@ function triggerKey(trigger: TriggerFlags): string | null {
 export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const base = useServiceBase();
-  // A cron_job's first-class run history hangs off the same landing tab.
+  // The service's createdAt bounds the history and autoDeploy words the
+  // auto-deploy events; a cron job's runs have their own Runs page (w2/m360).
   const { service } = useServer(serviceId, { poll: false });
   // Hidden, not selected (w6/m122): seeding from the catalog made the feed render
   // `events ∩ catalog`, so any type the backend emits that the catalog omits was
@@ -406,10 +405,6 @@ export function ServiceEventsPage({ serviceId }: { serviceId: string }) {
           )}
         </CardContent>
       </Card>
-
-      {service && isCron(service) ? (
-        <CronRunsSection serviceId={serviceId} />
-      ) : null}
     </div>
   );
 }

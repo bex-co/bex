@@ -207,7 +207,7 @@ function PageHeaderSkeleton({
   );
 }
 
-function TableRowsSkeleton({
+export function TableRowsSkeleton({
   rows = 3,
   columns = 4,
   rowClassName,
@@ -1792,6 +1792,18 @@ export function DeployDetailSkeleton() {
   );
 }
 
+/** A cron job's Runs page (w2/m360): the runs card, its title with Trigger Run
+ *  beside it, over the four-column run table. */
+export function ServiceCronRunsSkeleton() {
+  return (
+    <PendingFrame route="cron-runs">
+      <Region name="cron-runs-table">
+        <TableCardSkeleton rows={3} columns={4} />
+      </Region>
+    </PendingFrame>
+  );
+}
+
 export function ServiceEventsSkeleton() {
   return (
     <PendingFrame route="service-events" className="space-y-6">
@@ -2806,6 +2818,7 @@ export function KeyValueOverviewSkeleton() {
 }
 
 type ServiceRouteSkeletonKind =
+  | "cron-runs"
   | "deploy-detail"
   | "deploys"
   | "disk"
@@ -2822,6 +2835,7 @@ type ServiceRouteSkeletonKind =
 const SERVICE_ROUTE_SKELETON_BY_ID = {
   "/services/$serviceId": "deploys",
   "/services/$serviceId/": "deploys",
+  "/services/$serviceId/builds": "deploys",
   "/services/$serviceId/deploys/": "deploys",
   "/services/$serviceId/deploys/$deployId": "deploy-detail",
   "/services/$serviceId/disk": "disk",
@@ -2832,6 +2846,7 @@ const SERVICE_ROUTE_SKELETON_BY_ID = {
   "/services/$serviceId/metrics": "metrics",
   "/services/$serviceId/plan": "plan",
   "/services/$serviceId/redirects": "rules",
+  "/services/$serviceId/runs": "cron-runs",
   "/services/$serviceId/scaling": "scaling",
   "/services/$serviceId/settings": "settings",
   "/services/$serviceId/shell": "shell",
@@ -2866,6 +2881,8 @@ export function ServiceRouteContentSkeleton({
     : undefined;
 
   switch (kind) {
+    case "cron-runs":
+      return <ServiceCronRunsSkeleton />;
     case "deploy-detail":
       return <DeployDetailSkeleton />;
     case "deploys":

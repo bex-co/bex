@@ -68,7 +68,7 @@ function toRuns(
  *
  * Polls page 1 on the shared visible-tab cadence, because the operator creates
  * scheduled runs with no dashboard mutation to hang a refetch on. Without this,
- * a mounted Recent Runs table showed its original rows indefinitely while the
+ * a mounted runs table showed its original rows indefinitely while the
  * API already reported newer successful executions — only a reload added them
  * (w4/138). Apollo's Server poll cannot cover it: it rewrites CronRun ENTITIES
  * already referenced by this list, but nothing inserts a new reference into the

@@ -8,7 +8,9 @@ import {
   Braces,
   ChartNoAxesCombined,
   CreditCard,
+  Hammer,
   HardDrive,
+  History,
   Rocket,
   Scaling,
   ScrollText,
@@ -58,6 +60,10 @@ export function serviceNavGroups(
   base: ServiceBase = "/services",
 ): SidebarNavGroup[] {
   const DEPLOYS = navItem(base, "/deploys", "services.navDeploys", Rocket);
+  // A cron job's history splits in two, as on Render (changelog 2026-09-03,
+  // render.com/docs/cronjobs): Builds and Runs replace its Deploys tab (w2/m360).
+  const BUILDS = navItem(base, "/builds", "services.navBuilds", Hammer);
+  const RUNS = navItem(base, "/runs", "services.navRuns", History);
   const SETTINGS = navItem(base, "/settings", "services.navSettings", Settings);
   const DISK = navItem(base, "/disk", "services.navDisk", HardDrive);
   const EVENTS = navItem(base, "/events", "services.navEvents", Activity);
@@ -100,7 +106,12 @@ export function serviceNavGroups(
   // or Shell/Scaling/Plan, so those wait for the type. Events stays under
   // Monitor here (its non-static home); a static site repositions it to
   // top-level once its type is known.
-  const topLevel = type === null ? [SETTINGS] : [DEPLOYS, SETTINGS];
+  const topLevel =
+    type === null
+      ? [SETTINGS]
+      : type === "cron"
+        ? [BUILDS, RUNS, SETTINGS]
+        : [DEPLOYS, SETTINGS];
   // Render orders Manage as Environment, Previews, Disk, One-Off Jobs, Shell;
   // bex has neither Previews nor Jobs, so Disk sits directly after Environment.
   //

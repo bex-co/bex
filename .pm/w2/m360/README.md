@@ -1,19 +1,19 @@
 # w2 · m360 — Cron jobs get Render's Builds and Runs pages
 
-**Worker:** worker2 **Goal:** a cron job's dashboard is laid out like Render's. Its sidebar has a **Builds** page for build history and a **Runs** page for run history, each run's logs, Trigger Run and cancel. The Events page shows events only, and Render-style links to a cron job's runs or builds open the matching page. **Status:** todo
+**Worker:** worker2 **Goal:** a cron job's dashboard is laid out like Render's. Its sidebar has a **Builds** page for build history and a **Runs** page for run history, each run's logs, Trigger Run and cancel. The Events page shows events only, and Render-style links to a cron job's runs or builds open the matching page. **Status:** in progress (t001–t004 and t006–t008 done; t005, the dev-2 pending/ready comparison, waits for the local cluster; then t009)
 
 ## Tasks (in order)
 
 | id   | title | est | depends_on |
 | ---- | ----- | --- | ---------- |
-| t001 | Capture Render's cron dashboard: sidebar order, Builds and Runs columns, per-run logs, Trigger Run and cancel placement | 30m | — |
-| t002 | A Runs page at `/services/$serviceId/runs`: the runs list leaves Events, with each run's logs and Trigger Run in the page header | 75m | t001 |
-| t003 | A Builds page at `/services/$serviceId/builds` for cron jobs, replacing their Deploys entry; `/deploys` redirects there for a cron job | 45m | t002 |
-| t004 | Render aliases and links: `/cron/srv-…/runs` and `…/builds` resolve; emails and notifications about a run link to Runs | 30m | t003 |
+| t001 | Capture Render's cron dashboard: sidebar order, Builds and Runs columns, per-run logs, Trigger Run and cancel placement — **DONE** | 30m | — |
+| t002 | A Runs page at `/services/$serviceId/runs`: the runs list leaves Events, with each run's logs and Trigger Run in the page header — **DONE** | 75m | t001 |
+| t003 | A Builds page at `/services/$serviceId/builds` for cron jobs, replacing their Deploys entry; `/deploys` redirects there for a cron job — **DONE** | 45m | t002 |
+| t004 | Render aliases and links: `/cron/srv-…/runs` and `…/builds` resolve; emails and notifications about a run link to Runs — **DONE** | 30m | t003 |
 | t005 | Skeletons that match the loaded Runs and Builds pages at desktop and narrow-mobile widths; en/zh strings | 30m | t004 |
-| t006 | Render parity | 20m | t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t007 |
+| t006 | Render parity — **DONE** | 20m | t005 |
+| t007 | Simplify — **DONE** | 15m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t007 |
 | t009 | Closeout | 10m | t008 |
 
 ## Definition of done

@@ -402,7 +402,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.suspendCronDescription": {
     message:
-      "Suspending this cron job pauses future scheduled runs. An active run continues. To stop it, select Cancel in Recent Runs.",
+      "Suspending this cron job pauses future scheduled runs. An active run continues. To stop it, select Cancel on the Runs page.",
     description:
       "Cron suspension explanation in Settings and suspend confirmations; suspension does not cancel an active run",
   },
@@ -3260,8 +3260,13 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Service-type badge fallback for an unrecognized type",
   },
   "services.cronRunsTitle": {
-    message: "Recent Runs",
-    description: "Cron job overview: recent-runs section title",
+    message: "Runs",
+    description: "Cron job Runs page: card title over the run history (w2/m360)",
+  },
+  "services.cronRunViewLogs": {
+    message: "View logs",
+    description:
+      "Cron job Runs page: link from a run's detail to the Logs tab narrowed to the run's time window (w2/m360)",
   },
   "services.cronRunsEmpty": {
     message: "No runs yet.",
@@ -3359,7 +3364,7 @@ const enServices: Record<string, TranslationEntry> = {
   "services.cronRunDetailToggleNotStarted": {
     message: "Run details, not started yet (row {n})",
     description:
-      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number in Recent Runs, never its id (w4/m300)",
+      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
   },
   "services.cronRunDetailError": {
     message: "Couldn't load this run's detail.",
@@ -4091,6 +4096,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Deploys",
     description:
       "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+  },
+  "services.navBuilds": {
+    message: "Builds",
+    description:
+      "Service-detail nav item for a cron job: its build history, Render's Builds page (w2/m360)",
+  },
+  "services.navRuns": {
+    message: "Runs",
+    description:
+      "Service-detail nav item for a cron job: its run history, Render's Runs page (w2/m360)",
   },
   "services.navDisk": {
     message: "Disk",

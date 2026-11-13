@@ -5,6 +5,31 @@ import { CronRunsSection } from "@/features/services/components/cron-runs-sectio
 import type { CronRunView } from "@/features/services/types";
 import { toResourceSnapshot } from "@/features/capabilities/lib/resource-actions";
 
+// The run detail's logs link (w2/m360): rendered as a plain anchor carrying
+// its target, so the test reads the window it opens without a router.
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({
+    children,
+    to,
+    params,
+    search,
+    className,
+  }: {
+    children: React.ReactNode;
+    to: string;
+    params: { serviceId: string };
+    search: Record<string, string>;
+    className?: string;
+  }) => (
+    <a
+      className={className}
+      href={`${to.replace("$serviceId", params.serviceId)}?${new URLSearchParams(search)}`}
+    >
+      {children}
+    </a>
+  ),
+}));
+
 const cancel = vi.fn();
 const loadMore = vi.fn();
 const trigger = vi.fn();
@@ -273,6 +298,37 @@ describe("CronRunsSection", () => {
     // The detail exposes the run id + Finished label, which the row never shows.
     expect(screen.getByText("crr-success")).toBeInTheDocument();
     expect(screen.getByText("Finished")).toBeInTheDocument();
+    // The run's logs open the Logs tab over the run's own window, padded 5 s
+    // each side for the container's lines around it (w2/m360).
+    expect(
+      screen.getByRole("link", { name: "View logs" }).getAttribute("href"),
+    ).toBe(
+      "/services/nightly/logs?" +
+        new URLSearchParams({
+          range: "custom",
+          rangeStart: "2026-07-09T10:04:55.000Z",
+          rangeEnd: "2026-07-09T10:05:10.000Z",
+        }).toString(),
+    );
+  });
+
+  it("opens a running run's logs in the live view (w2/m360)", async () => {
+    const running = {
+      id: "crr-live",
+      startedAt: "2026-07-09T10:05:00Z",
+      finishedAt: null,
+      status: "pending",
+    };
+    runs = [running];
+    detailRun = running;
+    const user = userEvent.setup();
+    render(<CronRunsSection serviceId="nightly" />);
+    await user.click(
+      screen.getByRole("button", { name: /Run details, started/ }),
+    );
+    expect(
+      screen.getByRole("link", { name: "View logs" }).getAttribute("href"),
+    ).toBe("/services/nightly/logs?");
   });
 
   // w4/213: every row's toggle was named "Toggle run detail", so keyboard and

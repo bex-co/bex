@@ -377,3 +377,17 @@ func TestAlertFeedAppliesTheServicePolicyBySrvID(t *testing.T) {
 		t.Errorf("alerts = %v, want %s (none silent; failure mails everyone; default follows each member)", got, want)
 	}
 }
+
+// A failed cron run's email opens the cron job's Runs page, where the run and
+// its logs are (w2/m360); every other service alert opens Events.
+func TestAlertEmailLinksCronFailuresToRuns(t *testing.T) {
+	w := &AlertEmailWorker{DashboardBaseURL: "https://dashboard.example"}
+	for event, want := range map[string]string{
+		store.AlertEmailCronFailed:   "https://dashboard.example/services/srv-1/runs",
+		store.AlertEmailServerFailed: "https://dashboard.example/services/srv-1/events",
+	} {
+		if got := w.dashboardURL(store.AlertEmailStream{ResourceID: "srv-1", Event: event}); got != want {
+			t.Errorf("%s link = %q, want %q", event, got, want)
+		}
+	}
+}

@@ -391,7 +391,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.suspendCronDescription": {
     message:
-      "暂停此定时任务会暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“最近运行”中选择“取消”。",
+      "暂停此定时任务会暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“运行”页面中选择“取消”。",
     description:
       "Cron suspension explanation in Settings and suspend confirmations; suspension does not cancel an active run",
   },
@@ -3192,8 +3192,13 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Service-type badge fallback for an unrecognized type",
   },
   "services.cronRunsTitle": {
-    message: "最近运行",
-    description: "Cron job overview: recent-runs section title",
+    message: "运行",
+    description: "Cron job Runs page: card title over the run history (w2/m360)",
+  },
+  "services.cronRunViewLogs": {
+    message: "查看日志",
+    description:
+      "Cron job Runs page: link from a run's detail to the Logs tab narrowed to the run's time window (w2/m360)",
   },
   "services.cronRunsEmpty": {
     message: "暂无运行记录。",
@@ -3291,7 +3296,7 @@ const zhServices: Record<string, TranslationEntry> = {
   "services.cronRunDetailToggleNotStarted": {
     message: "运行详情，尚未开始（第 {n} 行）",
     description:
-      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number in Recent Runs, never its id (w4/m300)",
+      "Screen-reader name of the expand/collapse control of a run that has not started (a just-triggered pending run); {n} is its row number on the Runs page, never its id (w4/m300)",
   },
   "services.cronRunDetailError": {
     message: "无法加载该运行的详情。",
@@ -4004,6 +4009,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "部署",
     description:
       "Service-detail nav item (dedicated deploy-history tab, w9/002)",
+  },
+  "services.navBuilds": {
+    message: "构建",
+    description:
+      "Service-detail nav item for a cron job: its build history, Render's Builds page (w2/m360)",
+  },
+  "services.navRuns": {
+    message: "运行",
+    description:
+      "Service-detail nav item for a cron job: its run history, Render's Runs page (w2/m360)",
   },
   "services.navDisk": {
     message: "磁盘",

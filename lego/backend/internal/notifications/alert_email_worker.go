@@ -424,7 +424,8 @@ func (w *AlertEmailWorker) sweep(ctx context.Context) error {
 }
 
 // dashboardURL is where the email's button points: the service's Events page,
-// or the Blueprint's page. Empty when the dashboard URL is unset.
+// a cron job's Runs page for a failed run (w2/m360), or the Blueprint's page.
+// Empty when the dashboard URL is unset.
 func (w *AlertEmailWorker) dashboardURL(st store.AlertEmailStream) string {
 	if w.DashboardBaseURL == "" {
 		return ""
@@ -434,6 +435,9 @@ func (w *AlertEmailWorker) dashboardURL(st store.AlertEmailStream) string {
 		// ResourceID holds the durable blp- id; the page is addressed by the
 		// public exs- id the dashboard and API show (w2/m269).
 		return cfg.DashboardURL("blueprints", id.BlueprintPublicID(st.ResourceID))
+	}
+	if st.Event == store.AlertEmailCronFailed {
+		return cfg.DashboardURL(path.Join("services", st.ResourceID), "runs")
 	}
 	return cfg.DashboardURL(path.Join("services", st.ResourceID), "events")
 }
@@ -448,7 +452,7 @@ func alertEmail(st store.AlertEmailStream, url string) (string, email.Message) {
 		title, cta = "Service unavailable", "View events"
 		lead = fmt.Sprintf("%q became unhealthy: an instance stopped running or failed its health checks.", name)
 	case store.AlertEmailCronFailed:
-		title, cta = "Cron job failed", "View events"
+		title, cta = "Cron job failed", "View runs"
 		lead = fmt.Sprintf("A run of the cron job %q failed.", name)
 	case store.AlertEmailImagePullFailed:
 		title, cta = "Image pull failed", "View events"

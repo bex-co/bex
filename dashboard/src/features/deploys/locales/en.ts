@@ -272,6 +272,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "Deploys",
     description: "Deploys tab: card title over the deploy-history list",
   },
+  "deploys.buildsTitle": {
+    message: "Builds",
+    description:
+      "A cron job's Builds tab: card title over its build history, Render's Builds page (w2/m360)",
+  },
   "deploys.columnDeploy": {
     message: "Deploy",
     description:

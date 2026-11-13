@@ -1,3 +1,4 @@
+import { isCron } from "@/features/services/lib/service-type";
 import { useMemo } from "react";
 import { EmptyState } from "@/common/components/empty-state";
 import { Button } from "@/common/components/ui/button";
@@ -48,13 +49,17 @@ export function DeployDetailPage({
   // SERVICE id never reaches here: the services.$serviceId layout redirects
   // before mounting its Outlet. `useDeploy` already excludes query errors
   // from `notFound`, so outages keep the inline error state below.
+  // A cron job's history tab is Builds (w2/m360).
+  const cron = service ? isCron(service) : false;
   const deploysTab = useMemo(
     () => ({
-      to: `${base}/$serviceId/deploys` as const,
+      to: cron
+        ? ("/services/$serviceId/builds" as const)
+        : (`${base}/$serviceId/deploys` as const),
       params: { serviceId },
       replace: true,
     }),
-    [serviceId, base],
+    [serviceId, base, cron],
   );
   useNotFoundRedirect(notFound, deploysTab);
 

@@ -1,12 +1,8 @@
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
-import { DeploysListPage } from "@/features/deploys/components/deploys-list-page";
+import { DeployHistoryView } from "@/features/deploys/components/deploy-history-view";
 import { DeploysListSkeleton } from "@/common/components/route-skeletons";
-import {
-  deployListFiltersFromSearch,
-  deployListFiltersToSearch,
-  parseDeployListSearch,
-} from "@/features/deploys/lib/deploy-list-search";
+import { parseDeployListSearch } from "@/features/deploys/lib/deploy-list-search";
 
 /**
  * A static_site has no Deploys tab in its sidebar (Render parity, w5/m57), but
@@ -28,18 +24,13 @@ function RouteComponent() {
   const search = Route.useSearch();
   const navigate = Route.useNavigate();
   return (
-    <DeploysListPage
-      // Filters belong to one service's history.
-      key={serviceId}
+    <DeployHistoryView
       serviceId={serviceId}
-      urlFilters={deployListFiltersFromSearch(search)}
-      onFiltersChange={(filters) =>
-        // Replace, so typing adds no history entries; the functional form
-        // commits the explicit undefineds, which is what clears a key.
-        void navigate({
-          search: () => deployListFiltersToSearch(filters),
-          replace: true,
-        })
+      search={search}
+      // The functional form commits the explicit undefineds, which is what
+      // clears a key.
+      replaceSearch={(next) =>
+        void navigate({ search: () => next, replace: true })
       }
     />
   );

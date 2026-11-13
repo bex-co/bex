@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useEffectEvent, useState } from "react";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { Link } from "@tanstack/react-router";
+import { makeCustomRange, rangeToSearch } from "@/features/metrics/lib/range";
 import { Badge } from "@/common/components/ui/badge";
 import { Button } from "@/common/components/ui/button";
 import {
@@ -11,6 +13,7 @@ import {
 } from "@/common/components/ui/card";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { TableRowsSkeleton } from "@/common/components/route-skeletons";
 import {
   Table,
   TableBody,
@@ -203,11 +206,9 @@ export function CronRunsSection({ serviceId }: { serviceId: string }) {
             <p className="mb-4 text-sm text-destructive">{triggerError}</p>
           ) : null}
           {loading && runs.length === 0 ? (
-            <div className="space-y-2">
-              {[0, 1, 2].map((row) => (
-                <Skeleton key={row} className="h-10 w-full" />
-              ))}
-            </div>
+            // The route skeleton's table, so the page does not change shape
+            // between the route's pending state and the runs read (w2/m360).
+            <TableRowsSkeleton rows={3} columns={4} />
           ) : error && runs.length === 0 ? (
             <p className="text-sm text-destructive">
               {t("services.cronRunsLoadError")}
@@ -402,7 +403,40 @@ function CronRunDetail({
       </p>
     );
   }
-  return <CronRunFields run={run} masked={false} />;
+  return (
+    <div className="space-y-2">
+      <CronRunFields run={run} masked={false} />
+      {run.startedAt ? (
+        <Link
+          to="/services/$serviceId/logs"
+          params={{ serviceId }}
+          search={runLogsSearch(run)}
+          className="text-sm font-medium underline-offset-4 hover:underline"
+        >
+          {t("services.cronRunViewLogs")}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+/** How far a run's log window extends past its recorded start and end:
+ *  its container logs a little before the run is marked started and after it
+ *  is marked finished, and a one-second run has equal timestamps. */
+const RUN_LOG_PAD_MS = 5_000;
+
+/** A run's logs are the cron job's logs over the run's window: runs never
+ *  overlap (one execution at a time), so the window is the run (w2/m360). A
+ *  run still going opens the live view, which follows it. */
+function runLogsSearch(run: CronRunView) {
+  if (!run.startedAt || !run.finishedAt) return {};
+  const pad = (iso: string, ms: number) =>
+    new Date(new Date(iso).getTime() + ms).toISOString();
+  const range = makeCustomRange(
+    pad(run.startedAt, -RUN_LOG_PAD_MS),
+    pad(run.finishedAt, RUN_LOG_PAD_MS),
+  );
+  return typeof range === "string" ? {} : rangeToSearch(range);
 }
 
 /** The detail's five-field grid — one layout for the masked preview and the

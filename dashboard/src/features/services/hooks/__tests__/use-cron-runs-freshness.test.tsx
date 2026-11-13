@@ -18,7 +18,7 @@ vi.mock("@/common/hooks/use-translations", () => ({
 // w4/138: the operator creates scheduled runs with no dashboard mutation to
 // hang a refetch on, and Apollo's Server poll only rewrites CronRun ENTITIES
 // already referenced by this list — nothing inserts a NEW reference into the
-// root cronJobRuns array. So a mounted Recent Runs table showed its original
+// root cronJobRuns array. So a mounted runs table showed its original
 // rows indefinitely while the API already reported newer successful runs; only
 // a reload added them. These exercise the real cache and link, because the
 // defect lives exactly in that entity-versus-array-membership distinction.

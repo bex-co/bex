@@ -532,6 +532,12 @@ export const ROUTE_SKELETON_MANIFEST = {
     shape: "static-edge-rules",
     regions: ["rules-editor"],
   },
+  "/services/$serviceId/runs": {
+    kind: "render",
+    owner: "routes/services.$serviceId.runs.tsx",
+    shape: "cron-runs",
+    regions: ["cron-runs-table"],
+  },
   "/services/$serviceId/scaling": {
     kind: "render",
     owner: "routes/services.$serviceId.scaling.tsx",
@@ -637,6 +643,12 @@ export const ROUTE_SKELETON_MANIFEST = {
   "/services/$serviceId/deploys/": {
     kind: "render",
     owner: "routes/services.$serviceId.deploys.index.tsx",
+    shape: "deploys-list",
+    regions: ["deploys-table"],
+  },
+  "/services/$serviceId/builds": {
+    kind: "render",
+    owner: "routes/services.$serviceId.builds.tsx",
     shape: "deploys-list",
     regions: ["deploys-table"],
   },

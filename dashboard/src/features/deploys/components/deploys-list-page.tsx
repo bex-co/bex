@@ -72,6 +72,8 @@ export interface DeploysListPageProps {
   urlFilters?: DeployListFilters;
   /** Fired with the whole filter state on each change, for the URL write. */
   onFiltersChange?: (filters: DeployListFilters) => void;
+  /** The card's title: "Deploys", or a cron job's "Builds" (w2/m360). */
+  titleKey?: "deploys.listTitle" | "deploys.buildsTitle";
 }
 
 type Translate = ReturnType<typeof useTranslations>["t"];
@@ -105,6 +107,7 @@ export function DeploysListPage({
   serviceId,
   urlFilters = NO_DEPLOY_LIST_FILTERS,
   onFiltersChange,
+  titleKey = "deploys.listTitle",
 }: DeploysListPageProps) {
   const { t, i18n } = useTranslations();
   const hydrated = useIsHydrated();
@@ -162,7 +165,7 @@ export function DeploysListPage({
       <EmptyState
         role="alert"
         iconName="AlertCircle"
-        title={t("deploys.listTitle")}
+        title={t(titleKey)}
         description={mutationErrorMessage(error, t("common.loadErrorRetry"))}
       />
     );
@@ -367,7 +370,7 @@ export function DeploysListPage({
     <Card className="@container/deploys">
       <CardHeader className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <CardTitle>{t("deploys.listTitle")}</CardTitle>
+          <CardTitle>{t(titleKey)}</CardTitle>
           {!loading ? (
             <p className="text-xs text-muted-foreground" aria-live="polite">
               {t(countKey, {

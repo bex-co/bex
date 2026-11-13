@@ -51,6 +51,24 @@ describe("serviceNavGroups (w5/m48, w5/m57)", () => {
     expect(flat).toContain("services.navScaling");
   });
 
+  it("cron: Builds and Runs replace Deploys, as on Render (w2/m360)", () => {
+    const groups = serviceNavGroups("cron", "/services");
+    expect(labels(groups)[0]).toEqual([
+      "services.navBuilds",
+      "services.navRuns",
+      "services.navSettings",
+    ]);
+    expect(tos(groups)).toContain("/services/$serviceId/builds");
+    expect(tos(groups)).toContain("/services/$serviceId/runs");
+    expect(tos(groups)).not.toContain("/services/$serviceId/deploys");
+    // Only a cron job has them; the type-unknown frame shows neither.
+    for (const type of ["web", "private", "worker", "static", null] as const) {
+      const flat = labels(serviceNavGroups(type)).flat();
+      expect(flat).not.toContain("services.navBuilds");
+      expect(flat).not.toContain("services.navRuns");
+    }
+  });
+
   it("cron omits Disk and Scaling (no long-running instance)", () => {
     const flat = labels(serviceNavGroups("cron")).flat();
     expect(flat).toContain("services.navShell");
