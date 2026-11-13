@@ -412,10 +412,13 @@ func TestCompletedDeletionIsIdempotent(t *testing.T) {
 type balanceDueTeardown struct {
 	due     bool
 	settled []bool
+	waits   []time.Duration
 }
 
 func (b *balanceDueTeardown) Delete(ctx context.Context, id string) error {
 	b.settled = append(b.settled, core.SettledBalance(ctx))
+	wait, _ := core.SettleWait(ctx)
+	b.waits = append(b.waits, wait)
 	if b.due {
 		return core.NewBillingBalanceDueError(core.BalanceDue{WorkspaceID: id, InvoiceID: "in_1",
 			HostedInvoiceURL: "https://invoice.stripe.com/i/acct_1/in_1", AmountDueCents: 312, Currency: "usd"})
@@ -457,6 +460,11 @@ func TestWorkerBalanceDueEmailsInvoiceLinkAndStoresCode(t *testing.T) {
 	}
 	if len(teardown.settled) != 1 || teardown.settled[0] {
 		t.Fatalf("an hour-old intent skipped the teardown settle: %v", teardown.settled)
+	}
+	// The worker is bound by no request: its settle may outwait Stripe's
+	// minute of meter aggregation instead of refusing BILLING_SETTLING.
+	if teardown.waits[0] != workerSettleWait || workerSettleWait < 2*time.Minute {
+		t.Fatalf("teardown settle wait = %v, want workerSettleWait (%v)", teardown.waits, workerSettleWait)
 	}
 	// The retry with the code already stored does not email again.
 	row.LastError = core.CodeBillingBalanceDue

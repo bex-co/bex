@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -223,5 +229,80 @@ describe("AccountDeletionCard", () => {
     expect(
       screen.getByRole("button", { name: "Delete my account" }),
     ).toBeEnabled();
+  });
+
+  // ADR091 D10.4: Stripe can take a minute to aggregate the final usage, so a
+  // BILLING_SETTLING refusal shows "Finalizing final usage…" and retries every
+  // 15 s for up to 3 minutes before it is shown as an error.
+  it("retries BILLING_SETTLING while finalizing final usage", async () => {
+    preview({
+      delete: [{ id: "tea-personal", name: "personal", action: "delete" }],
+    });
+    vi.mocked(endBrowserSession).mockResolvedValue(undefined);
+    mutate
+      .mockRejectedValueOnce(codedGraphQLError("BILLING_SETTLING"))
+      .mockResolvedValue({ data: { deleteAccount: { state: "PENDING" } } });
+    render(<AccountDeletionCard />);
+    fireEvent.change(screen.getByLabelText("Sudo Command"), {
+      target: { value: accountDeletionConfirmation },
+    });
+
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "Delete my account" }),
+        );
+      });
+      expect(screen.getByText("Finalizing final usage…")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Delete my account" }),
+      ).toBeDisabled();
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000);
+      });
+      expect(mutate).toHaveBeenCalledTimes(2);
+      expect(window.location.assign).toHaveBeenCalledWith(
+        "/auth/account-deleted",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("shows the retry message after 3 minutes of BILLING_SETTLING", async () => {
+    preview({
+      delete: [{ id: "tea-personal", name: "personal", action: "delete" }],
+    });
+    mutate.mockRejectedValue(codedGraphQLError("BILLING_SETTLING"));
+    render(<AccountDeletionCard />);
+    fireEvent.change(screen.getByLabelText("Sudo Command"), {
+      target: { value: accountDeletionConfirmation },
+    });
+
+    vi.useFakeTimers();
+    try {
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole("button", { name: "Delete my account" }),
+        );
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(180_000);
+      });
+      expect(mutate).toHaveBeenCalledTimes(13);
+      expect(screen.queryByText("Finalizing final usage…")).toBeNull();
+      expect(
+        screen.getByText(
+          "The final usage is still being processed. Try deleting again in a few minutes.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Delete my account" }),
+      ).toBeEnabled();
+      expect(window.location.assign).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

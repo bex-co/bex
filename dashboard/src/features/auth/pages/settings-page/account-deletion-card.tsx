@@ -22,6 +22,11 @@ import {
   type BillingBalanceDue,
 } from "@/common/lib/graphql-error";
 import { BalanceDueAlert } from "@/common/components/balance-due-alert";
+import { BillingSettlingAlert } from "@/common/components/billing-settling-alert";
+import {
+  isBillingSettling,
+  useSettlingRetry,
+} from "@/common/hooks/use-settling-retry";
 import {
   clearBrowserAccountState,
   endBrowserSession,
@@ -116,6 +121,7 @@ export function AccountDeletionCard() {
   const [balanceDue, setBalanceDue] = useState<BillingBalanceDue | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submitGuard = useRef(false);
+  const { run, settling } = useSettlingRetry();
 
   if (loading) return <PreviewSkeleton />;
 
@@ -162,12 +168,16 @@ export function AccountDeletionCard() {
     setError(null);
     setBalanceDue(null);
     try {
-      await remove({ variables: { confirmation } });
+      // BILLING_SETTLING (final usage still aggregating) retries every 15 s
+      // for up to 3 minutes before it is shown as an error.
+      await run(() => remove({ variables: { confirmation } }));
     } catch (cause) {
       submitGuard.current = false;
       setSubmitting(false);
       const due = billingBalanceDue(cause);
       if (due) setBalanceDue(due);
+      else if (isBillingSettling(cause))
+        setError(t("common.billingSettlingTimeout"));
       else setError(mutationErrorMessage(cause, t("auth.deleteAccountError")));
       return;
     }
@@ -234,6 +244,8 @@ export function AccountDeletionCard() {
           onValueChange={setConfirmation}
           inputClassName="max-w-sm"
         />
+
+        {settling ? <BillingSettlingAlert /> : null}
 
         {balanceDue ? (
           <BalanceDueAlert

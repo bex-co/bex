@@ -1109,3 +1109,57 @@ func TestPGStoreBillingCompletionNoticeCarriesMappingLivemode(t *testing.T) {
 		t.Fatalf("enforced notice livemode = %v (err %v), want the mapping's true", livemode, err)
 	}
 }
+
+// MarkBillingSettling excuses only a subscription_past_due observed before
+// its expiry: a past_due after it, and any invoice failure during it, still
+// open the grace period. An excused event is left unapplied, so the same
+// observation replayed after the mark expires counts.
+func TestPGStoreSettlingMarkExcusesOnlyTheSettlesPastDue(t *testing.T) {
+	s, ctx := newBillingTestStore(t)
+	base := time.Date(2026, 11, 12, 12, 0, 0, 0, time.UTC)
+	newTenant := func(name string) string {
+		tenant, err := s.CreateTenant(ctx, name, "pro")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.MarkBillingSettling(ctx, tenant.ID, base.Add(10*time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+		// A shorter later mark never shortens the first.
+		if err := s.MarkBillingSettling(ctx, tenant.ID, base.Add(time.Minute)); err != nil {
+			t.Fatal(err)
+		}
+		return tenant.ID
+	}
+	event := func(ws, id, reason string, at time.Time) StripeBillingEvent {
+		return StripeBillingEvent{EventID: id, EventType: "customer.subscription.updated", WorkspaceID: ws,
+			CustomerID: "cus_" + ws, SubscriptionID: "sub_" + ws, ObjectID: "sub_" + ws,
+			ProviderCreatedAt: at, ReceivedAt: at, Outcome: BillingOutcomeFailure, Reason: reason}
+	}
+
+	settling := newTenant("settling")
+	state, inserted, changed, err := s.RecordStripeBillingEvent(ctx, event(settling, "evt_pd_1", BillingReasonSubscriptionPastDue, base.Add(5*time.Minute)), time.Hour)
+	if err != nil || !inserted || changed || state.Status != BillingHealthy {
+		t.Fatalf("past_due inside the mark = %+v inserted=%v changed=%v err=%v, want healthy", state, inserted, changed, err)
+	}
+	failed := event(settling, "evt_failed_1", "payment_failed", base.Add(6*time.Minute))
+	failed.EventType = "invoice.payment_failed"
+	if state, _, _, err = s.RecordStripeBillingEvent(ctx, failed, time.Hour); err != nil || state.Status != BillingGrace {
+		t.Fatalf("a failed invoice inside the mark = %+v err=%v, want grace", state, err)
+	}
+
+	expired := newTenant("expired")
+	pastDue := event(expired, "evt_pd_2", BillingReasonSubscriptionPastDue, base.Add(5*time.Minute))
+	if state, _, _, err = s.RecordStripeBillingEvent(ctx, pastDue, time.Hour); err != nil || state.Status != BillingHealthy {
+		t.Fatalf("past_due inside the mark = %+v err=%v, want healthy", state, err)
+	}
+	if _, err := s.Pool.Exec(ctx, `UPDATE billing_lifecycles SET settling_until=$2 WHERE workspace_id=$1`, expired, base); err != nil {
+		t.Fatal(err)
+	}
+	if state, _, _, err = s.RecordStripeBillingEvent(ctx, pastDue, time.Hour); err != nil || state.Status != BillingGrace {
+		t.Fatalf("the same past_due replayed after the mark expired = %+v err=%v, want grace", state, err)
+	}
+	if state, _, _, err = s.RecordStripeBillingEvent(ctx, event(newTenant("late"), "evt_pd_3", BillingReasonSubscriptionPastDue, base.Add(11*time.Minute)), time.Hour); err != nil || state.Status != BillingGrace {
+		t.Fatalf("past_due after the mark = %+v err=%v, want grace", state, err)
+	}
+}

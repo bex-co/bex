@@ -20,9 +20,5 @@ const getServerSnapshot = () => false;
  * (`common/components/local-time.tsx`) which bake this in.
  */
 export function useIsHydrated(): boolean {
-  return useSyncExternalStore(
-    subscribe,
-    getClientSnapshot,
-    getServerSnapshot,
-  );
+  return useSyncExternalStore(subscribe, getClientSnapshot, getServerSnapshot);
 }

@@ -514,6 +514,23 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Link from a plan notice (a Pro-and-higher feature on Hobby) to the Billing page (w8/m138)",
   },
+  "common.billingSettlingTitle": {
+    message: "Finalizing final usage…",
+    description:
+      "Title while a deletion waits for the workspace's final usage to be charged (BILLING_SETTLING); retried automatically",
+  },
+  "common.billingSettlingDescription": {
+    message:
+      "bex is charging the final usage before deleting. This can take a minute or two; it retries automatically, so keep this page open.",
+    description:
+      "Body while a deletion waits for the final usage to be charged (BILLING_SETTLING)",
+  },
+  "common.billingSettlingTimeout": {
+    message:
+      "The final usage is still being processed. Try deleting again in a few minutes.",
+    description:
+      "Deletion error after BILLING_SETTLING retries ran out (about three minutes)",
+  },
   "common.balanceDueTitle": {
     message: "Unpaid balance",
     description:

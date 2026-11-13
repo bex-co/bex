@@ -14,6 +14,7 @@ import { Route as BlueprintsRoute } from "@/routes/blueprints";
 import { Route as EnvGroupsRoute } from "@/routes/env-groups";
 import { Route as IndexRoute } from "@/routes/index";
 import { Route as NewKeyValueRoute } from "@/routes/keyvalue.new";
+import { Route as AgentModelTermsRoute } from "@/routes/legal.agent-models";
 import { Route as NewWorkspaceRoute } from "@/routes/new.workspace";
 import { Route as NotificationsRoute } from "@/routes/notifications";
 import { Route as ProjectRoute } from "@/routes/project.$projectId";
@@ -194,6 +195,13 @@ const staticRouteCases: Array<
   ],
   ["account settings", SettingsRoute, { search: {} }, "Settings", "设置"],
   ["billing", BillingRoute, { search: {} }, "Billing", "账单"],
+  [
+    "agent model terms",
+    AgentModelTermsRoute,
+    { search: {} },
+    "Agent model usage terms",
+    "智能体模型使用条款",
+  ],
   ["webhooks", WebhooksRoute, { search: {} }, "Webhooks", "Webhooks"],
   [
     "new webhook",

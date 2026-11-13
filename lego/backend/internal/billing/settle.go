@@ -44,7 +44,7 @@ import (
 //     a declined settle) is paid as it is, without invoicing again. Otherwise
 //     bex waits until Stripe's meter event summaries cover everything bex
 //     has exported for the period (BILLING_SETTLING, retryable, if they do
-//     not within SettleWait), previews the upcoming invoice, and only when it
+//     not within the settle wait; see below), previews the upcoming invoice, and only when it
 //     is above zero resets the billing cycle anchor to now with
 //     proration_behavior=always_invoice and payment_behavior=
 //     default_incomplete: Stripe invoices the shortened period's metered
@@ -60,6 +60,29 @@ import (
 // gone, which is the wrong order when the charge can fail. The workspace
 // purger still cancels the Subscription with invoice_now afterwards, which
 // bills whatever reached Stripe in between.
+//
+// Waiting for the meter summaries. A Stripe test-mode probe (2026-11-12)
+// measured 55 s and 62 s before the summaries reflected exported usage, longer
+// than any request can wait inside bex-api's 30 s HTTP write timeout. So an
+// API request waits at most DefaultSettleWait (20 s, and never past its own
+// deadline less the charge reserve) and answers the retryable
+// BILLING_SETTLING; the dashboard keeps retrying the deletion for a few
+// minutes. A caller not bound by a request (the account-deletion worker's
+// teardown) passes a longer wait with core.WithSettleWait.
+//
+// The settle's own past_due. With payment_behavior=default_incomplete Stripe
+// leaves the Subscription past_due from the anchor reset until bex pays the
+// new invoice (billing_reason subscription_update, attempt_count 0), and
+// reports it through customer.subscription.updated and the reconciler's
+// snapshot. That is not a payment failure, so before the reset the settle
+// records a short-lived mark (store.MarkBillingSettling, settleMarkTTL ahead),
+// and the lifecycle store ignores a subscription_past_due observed before it.
+// A store mark, not an inspection of the latest invoice, because the webhook
+// path sees only the Subscription and has no Stripe client to look the invoice
+// up, and the mark is written before Stripe can emit the event. Only past_due
+// is excused: a declined settle charge, like any failed invoice, still arrives
+// as invoice.payment_failed and opens the grace period, and a settle that
+// never pays shows past_due again once the mark expires.
 
 // SettleUsageStore is the per-workspace outbox read plus the exported totals
 // the meter summaries are checked against; *store.PGStore satisfies it.
@@ -278,8 +301,15 @@ func decimalValue(s string) float64 {
 }
 
 // DefaultSettleWait bounds how long a deletion waits for Stripe to aggregate
-// the usage it exported.
-const DefaultSettleWait = 60 * time.Second
+// the usage it exported. It fits an API request inside bex-api's 30 s HTTP
+// write timeout; Stripe's summaries can take a minute (file comment), and the
+// caller retries BILLING_SETTLING.
+const DefaultSettleWait = 20 * time.Second
+
+// settleMarkTTL is how long a settle's mark excuses its Subscription's
+// past_due: the reset and the one charge take seconds, and a webhook for it
+// can arrive minutes later.
+const settleMarkTTL = 10 * time.Minute
 
 // settleChargeReserve is the time kept, before a caller's deadline, for the
 // preview, the anchor reset and the charge that follow the wait.
@@ -287,8 +317,9 @@ const settleChargeReserve = 5 * time.Second
 
 // AwaitMeteredUsage polls each meter's event summary for the Customer over the
 // contract window, with backoff, until it covers what bex exported there. A
-// meter still short after the settle wait (or near ctx's deadline) refuses with the retryable
-// BILLING_SETTLING; the Subscription is not touched. A shortfall larger than
+// meter still short after the settle wait (DefaultSettleWait, or
+// core.WithSettleWait's; never past ctx's deadline less settleChargeReserve)
+// refuses with the retryable BILLING_SETTLING; the Subscription is not touched. A shortfall larger than
 // the recent exports cannot be aggregation lag, so it is logged and counted
 // (settle_meter_mismatch) instead of blocking the deletion forever.
 func (c *StripeClient) AwaitMeteredUsage(ctx context.Context, contract SettleContract, totals []store.ExportedUsageTotal) error {
@@ -299,6 +330,9 @@ func (c *StripeClient) AwaitMeteredUsage(ctx context.Context, contract SettleCon
 	wait := c.settleWait
 	if wait <= 0 {
 		wait = DefaultSettleWait
+	}
+	if longer, ok := core.SettleWait(ctx); ok {
+		wait = longer
 	}
 	deadline := time.Now().Add(wait)
 	// An API request's own deadline (GraphQL execution, HTTP write) is
@@ -440,6 +474,13 @@ func (c *StripeClient) invoiceUsageNow(ctx context.Context, contract SettleContr
 	if upcoming.AmountDue <= 0 {
 		c.metrics.Operation("settle_invoice", "nothing_due")
 		return nil, nil
+	}
+	// Mark first: Stripe reports the past_due this reset causes as soon as
+	// the update returns (see the file comment).
+	if c.state != nil {
+		if err := c.state.MarkBillingSettling(ctx, contract.WorkspaceID, time.Now().Add(settleMarkTTL)); err != nil {
+			return nil, fmt.Errorf("mark settle of %s: %w", contract.WorkspaceID, err)
+		}
 	}
 	params := &stripe.SubscriptionParams{
 		BillingCycleAnchorNow: stripe.Bool(true),

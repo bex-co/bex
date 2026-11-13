@@ -103,7 +103,7 @@ Store the value out of band as `BEX_STRIPE_SECRET_KEY` using the same custody pa
 
 ### Radar rules for card binding (ADR091 D10.5)
 
-bex refuses prepaid cards (`card.funding = prepaid`) and cards whose fingerprint is on an unpaid agent-model write-off in code, at Checkout completion and workspace creation: the card is detached, never bound, and the workspace's billing readiness reports `paymentMethodRejection` (`prepaid_card` or `unpaid_balance`). Stripe Radar rules are configured in the Stripe Dashboard, not by the runtime or the setup script. Once per mode (test, then live), under **Radar → Rules**:
+bex refuses prepaid cards (`card.funding = prepaid`) and cards whose fingerprint is on an unpaid agent-model write-off in code, at Checkout completion and workspace creation: the card is detached, never bound, and the workspace's billing readiness reports `paymentMethodRejection` (`prepaid_card` or `unpaid_balance`). Stripe Radar rules are configured in the Stripe Dashboard, not by the runtime or the setup script. **Optional, not a rollout gate (user decision 2026-11-12):** the bex checks above and Stripe's default risk blocking already apply, so apply the custom rules below only when abuse data calls for a second layer. Once per mode (test, then live), under **Radar → Rules**:
 
 1. Keep Stripe's default rules on (block if CVC or postal-code verification fails, block highest-risk payments).
 2. Enable **Request 3D Secure** for `:risk_level: = 'elevated'` and for SetupIntents when 3DS is recommended, so a card saved for off-session charges is authenticated at binding.

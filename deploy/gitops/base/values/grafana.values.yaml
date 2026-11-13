@@ -5079,8 +5079,8 @@ dashboards:
             {
              "id": 24,
              "type": "timeseries",
-             "title": "Platform model key: OpenRouter credit used vs limit",
-             "description": "The platform OpenRouter key's spend against the credit limit set in the OpenRouter console (ADR091 D5 global backstop), read from GET /api/v1/key every 10 minutes. PlatformModelCreditHigh warns at 80% (the dashed fraction line); at 100% OpenRouter refuses every platform-model request. Limit 0 means no limit is set.",
+             "title": "Platform model: OpenRouter account balance",
+             "description": "Credit left on the OpenRouter account behind the platform model key (ADR091 D5 global backstop; the key has no limit, so the account balance is the cap), read from GET /api/v1/credits every 10 minutes. PlatformModelCreditLow warns below $25 (orange line) and PlatformModelCreditCritical below $5 (red line); PlatformModelCreditStale warns when no replica has read it for 30 minutes. At $0 OpenRouter refuses every platform-model request. Top up the OpenRouter account before it gets there.",
              "gridPos": {
                "h": 9,
                "w": 12,
@@ -5094,25 +5094,24 @@ dashboards:
              "fieldConfig": {
                "defaults": {
                  "unit": "currencyUSD",
-                 "min": 0
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "red", "value": null },
+                      { "color": "red", "value": 5 },
+                      { "color": "orange", "value": 25 }
+                    ]
+                  }
                 },
                "overrides": []
               },
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "max(bex_agent_platform_model_credit_usage_usd)",
-                 "legendFormat": "used"
-                },
-                {
-                 "refId": "B",
-                 "expr": "max(bex_agent_platform_model_credit_limit_usd)",
-                 "legendFormat": "limit"
-                },
-                {
-                 "refId": "C",
-                 "expr": "0.8 * max(bex_agent_platform_model_credit_limit_usd > 0)",
-                 "legendFormat": "80% alert line"
+                 "expr": "min(bex_agent_platform_model_credit_balance_usd)",
+                 "legendFormat": "balance"
                 }
               ]
             },
@@ -5178,6 +5177,44 @@ dashboards:
                  "refId": "B",
                  "expr": "sum(rate(bex_sandbox_concurrency_refusals_total{limit=\"storage\"}[1h])) * 3600",
                  "legendFormat": "suspends refused by the cap / h"
+                }
+              ]
+            },
+            {
+             "id": 27,
+             "type": "timeseries",
+             "title": "Platform model: OpenRouter balance read age",
+             "description": "Seconds since any bex-api replica last read the OpenRouter account balance (GET /api/v1/credits, every 10 minutes). PlatformModelCreditStale warns past 30 minutes (red line), or when the route is configured and no replica has read the balance at all (no line here). While stale, the balance panel shows the last value read.",
+             "gridPos": {
+               "h": 9,
+               "w": 12,
+               "x": 12,
+               "y": 116
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": {
+                 "unit": "s",
+                 "min": 0,
+                 "custom": { "thresholdsStyle": { "mode": "line" } },
+                 "thresholds": {
+                   "mode": "absolute",
+                   "steps": [
+                      { "color": "green", "value": null },
+                      { "color": "red", "value": 1800 }
+                    ]
+                  }
+                },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "time() - max(bex_agent_platform_model_credit_last_success_timestamp_seconds)",
+                 "legendFormat": "since last read"
                 }
               ]
             }

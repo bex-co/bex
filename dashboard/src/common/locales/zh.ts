@@ -498,6 +498,22 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Link from a plan notice (a Pro-and-higher feature on Hobby) to the Billing page (w8/m138)",
   },
+  "common.billingSettlingTitle": {
+    message: "正在结算最终用量…",
+    description:
+      "Title while a deletion waits for the workspace's final usage to be charged (BILLING_SETTLING); retried automatically",
+  },
+  "common.billingSettlingDescription": {
+    message:
+      "bex 正在删除前结算最终用量，这可能需要一两分钟。系统会自动重试，请保持此页面打开。",
+    description:
+      "Body while a deletion waits for the final usage to be charged (BILLING_SETTLING)",
+  },
+  "common.billingSettlingTimeout": {
+    message: "最终用量仍在处理中。请过几分钟后再次删除。",
+    description:
+      "Deletion error after BILLING_SETTLING retries ran out (about three minutes)",
+  },
   "common.balanceDueTitle": {
     message: "存在未付余额",
     description:

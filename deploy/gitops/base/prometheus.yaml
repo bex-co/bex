@@ -265,6 +265,13 @@ spec:
               - source_matchers: [alertname=~"TenantCustomDomainCert.*"]
                 target_matchers: [alertname=~"CertificateNotReady|CertificateExpiringSoon"]
                 equal: [namespace, name]
+              # ADR091 D5: the balance tiers are one global series each
+              # (min() across replicas, no labels left), so the critical
+              # page mutes the warning outright. equal is deliberately
+              # empty: there is no per-target label to match on.
+              - source_matchers: [alertname="PlatformModelCreditCritical"]
+                target_matchers: [alertname="PlatformModelCreditLow"]
+                equal: []
         server:
           # 3.13 LTS security release: Go 1.26.10 and distrust compromised CAs.
           # Keep the chart unchanged; explicitly select the reviewed server image.

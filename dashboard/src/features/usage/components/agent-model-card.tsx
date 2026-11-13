@@ -25,6 +25,7 @@ import { Button } from "@/common/components/ui/button";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { money, usd } from "@/features/usage/lib/charges";
+import { PricingWithTerms } from "@/features/legal/components/agent-model-terms-link";
 import type { AgentModelUsage } from "../hooks/use-usage";
 import { AgentModelCardSkeleton } from "./agent-model-card-skeleton";
 
@@ -64,7 +65,9 @@ export function AgentModelCard({
     <Card data-testid="agent-model-card">
       <CardHeader>
         <CardTitle>{t("usage.agentModelTitle")}</CardTitle>
-        <CardDescription>{t("usage.agentModelPricing")}</CardDescription>
+        <CardDescription>
+          <PricingWithTerms pricing={t("usage.agentModelPricing")} />
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
         <div className="flex items-baseline justify-between gap-4">

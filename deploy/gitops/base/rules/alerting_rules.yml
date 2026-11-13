@@ -1306,22 +1306,54 @@ groups:
           summary: "Agent-session status reads are failing for a platform reason"
           description: "bex-api's agent-session Completer has been unable to read sandbox status files for 15 minutes for a reason that is not a node stall or a gone sandbox, so running sessions cannot finish until their turn ceiling plus BEX_AGENT_STATUS_RETRY_WINDOW passes. Read the bex-api log lines 'read status failed, not counted toward the retry window' for the cause; check BEX_SANDBOX_EXEC_SECRET/BEX_SANDBOX_EXEC_URL match the SSH gateway and that the gateway's :8081 listener answers. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
 
-      # ADR091 D5 global backstop. The platform OpenRouter key carries a
-      # credit limit set in the OpenRouter console; at 100% OpenRouter
-      # refuses every platform-model request for every workspace. Every
-      # bex-api replica reads the key's own limit/usage every 10 minutes,
-      # so max() collapses the replicas to one series. No limit set (0)
-      # never fires.
-      - alert: PlatformModelCreditHigh
-        expr: |
-          max(bex_agent_platform_model_credit_usage_usd)
-            / max(bex_agent_platform_model_credit_limit_usd > 0) >= 0.8
+      # ADR091 D5 global backstop (user decision 2026-11-12). The platform
+      # OpenRouter key has no credit limit; the OpenRouter account balance
+      # is the cap, and at $0 OpenRouter refuses every platform-model
+      # request for every workspace. Every bex-api replica reads the
+      # account's credits/usage (GET /api/v1/credits) every 10 minutes, so
+      # min() collapses the replicas to one series (the freshest poll is
+      # the lowest balance). Critical inhibits the warning in Alertmanager.
+      # A replica exports no balance until its first successful read, so a
+      # failing poller never looks like an empty account; staleness is
+      # PlatformModelCreditStale's job.
+      - alert: PlatformModelCreditLow
+        expr: min(bex_agent_platform_model_credit_balance_usd) < 25
         for: 10m
         labels:
           severity: warning
         annotations:
-          summary: "Platform model key has used {{ $value | humanizePercentage }} of its OpenRouter credit limit"
-          description: "Platform agent-model spend has passed 80% of the credit limit on the platform OpenRouter key (BEX_AGENT_PLATFORM_MODEL_KEY). At 100% OpenRouter refuses every platform-model request, so every workspace's agent sessions stop. Check per-workspace spend (agent_model_cost_microusd) for an outlier, then raise the key's credit limit in the OpenRouter console (Settings → API Keys) if the spend is expected. Runbook: docs/ADR091-agent-model-pricing.md#d5--spend-caps"
+          summary: "OpenRouter account balance is {{ $value | humanize }} USD; top up the OpenRouter account"
+          description: "The OpenRouter account behind the platform model key (BEX_AGENT_PLATFORM_MODEL_KEY) has less than $25 of credit left. The key has no limit of its own, so the account balance is the cap: at $0 OpenRouter refuses every platform-model request and every workspace's agent sessions on the bex model stop. Top up the OpenRouter account (openrouter.ai → Settings → Credits). If the burn is unexpected, check per-workspace spend (agent_model_cost_microusd) for an outlier first. Runbook: docs/ADR091-agent-model-pricing.md#d5--spend-caps"
+
+      - alert: PlatformModelCreditCritical
+        expr: min(bex_agent_platform_model_credit_balance_usd) < 5
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: "OpenRouter account balance is {{ $value | humanize }} USD; top up the OpenRouter account now"
+          description: "The OpenRouter account behind the platform model key (BEX_AGENT_PLATFORM_MODEL_KEY) has less than $5 of credit left; at $0 OpenRouter refuses every platform-model request and every workspace's agent sessions on the bex model stop. Top up the OpenRouter account now (openrouter.ai → Settings → Credits). Runbook: docs/ADR091-agent-model-pricing.md#d5--spend-caps"
+
+      # The balance alerts above read only a balance bex-api has actually
+      # read (no fake 0 before the first success), so a poller that stops
+      # reading would leave them silent on a stale value or on nothing. This
+      # watches the read itself: the newest successful read across replicas
+      # is over 30 minutes old (three missed polls), or the monitor is
+      # configured (bex_agent_platform_model_credit_monitor_configured,
+      # exported only while the platform route runs) and no replica has read
+      # the balance at all. Neither branch fires where the route is off.
+      - alert: PlatformModelCreditStale
+        expr: |
+          (time() - max(bex_agent_platform_model_credit_last_success_timestamp_seconds) > 1800)
+            or
+          (absent(bex_agent_platform_model_credit_last_success_timestamp_seconds)
+            and on() max(bex_agent_platform_model_credit_monitor_configured) == 1)
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "bex-api has not read the OpenRouter account balance for over 30 minutes"
+          description: "No bex-api replica has read the OpenRouter account balance behind the platform model key (GET https://openrouter.ai/api/v1/credits) in the last 30 minutes, or none has read it since starting, so PlatformModelCreditLow/Critical cannot see the balance. Read the bex-api log lines 'agent platform model credit: read account credits: …' for the cause (an HTTP status means OpenRouter refused the key or is down; a timeout means egress). Check the balance by hand at openrouter.ai → Settings → Credits meanwhile. Runbook: docs/ADR091-agent-model-pricing.md#d5--spend-caps"
 
       # w5/m95. ADR088's tenant-facing coverage table carried one
       # row reading "none (accepted for now) ... Owner: unfiled":

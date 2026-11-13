@@ -1454,6 +1454,36 @@ for family in sandbox agent_session agent_platform_model api billing webhooks pu
   fi
 done
 
+# ADR091 D5 global backstop (user decision 2026-11-12): the platform key has
+# no limit, so the OpenRouter account balance is the cap. The alerts, the
+# Grafana panel and bex-api's poller must agree on the balance gauge, or the
+# backstop silently evaluates a series nobody exports.
+echo "==> platform model credit alerts read the balance bex-api exports"
+for metric in credit_balance_usd credit_last_success_timestamp_seconds credit_monitor_configured; do
+  if ! grep -q "\"bex_agent_platform_model_${metric}\"" lego/backend/internal/agentsession/platformcredit.go; then
+    echo "FAIL: lego/backend/internal/agentsession/platformcredit.go no longer exports bex_agent_platform_model_${metric}" >&2
+    fail=1
+  fi
+done
+if ! yq -e '.groups[].rules[] | select(.alert == "PlatformModelCreditStale") | .expr | (test("bex_agent_platform_model_credit_last_success_timestamp_seconds") and test("bex_agent_platform_model_credit_monitor_configured"))' deploy/gitops/base/rules/alerting_rules.yml >/dev/null 2>&1; then
+  echo "FAIL: alert PlatformModelCreditStale is missing or no longer reads the last-success timestamp and the configured gauge" >&2
+  fail=1
+fi
+for rule in PlatformModelCreditLow PlatformModelCreditCritical; do
+  if ! yq -e ".groups[].rules[] | select(.alert == \"$rule\") | .expr | test(\"bex_agent_platform_model_credit_balance_usd\")" deploy/gitops/base/rules/alerting_rules.yml >/dev/null 2>&1; then
+    echo "FAIL: alert $rule is missing or does not read bex_agent_platform_model_credit_balance_usd" >&2
+    fail=1
+  fi
+done
+if ! grep -q 'bex_agent_platform_model_credit_balance_usd' deploy/gitops/base/values/grafana.values.yaml; then
+  echo "FAIL: the Grafana platform model credit panel no longer reads bex_agent_platform_model_credit_balance_usd" >&2
+  fail=1
+fi
+if grep -qE 'credit_(limit|usage)_usd' deploy/gitops/base/rules/alerting_rules.yml deploy/gitops/base/values/grafana.values.yaml; then
+  echo "FAIL: bex_agent_platform_model_credit_{limit,usage}_usd are no longer exported (the key has no limit; ADR091 D5) but are still read" >&2
+  fail=1
+fi
+
 echo "==> Product analytics uses its restricted reader with encrypted, CA-unpinned TLS and bounded pooling"
 if ! yq -e '
   (.datasources."datasources.yaml".datasources[] | select(.uid == "product-analytics")) as $ds |

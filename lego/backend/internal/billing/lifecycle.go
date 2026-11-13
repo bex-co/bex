@@ -167,7 +167,7 @@ func subscriptionOutcome(status stripe.SubscriptionStatus) (string, string) {
 	case stripe.SubscriptionStatusActive, stripe.SubscriptionStatusTrialing:
 		return store.BillingOutcomeSuccess, "payment_succeeded"
 	case stripe.SubscriptionStatusPastDue:
-		return store.BillingOutcomeFailure, "subscription_past_due"
+		return store.BillingOutcomeFailure, store.BillingReasonSubscriptionPastDue
 	case stripe.SubscriptionStatusUnpaid:
 		return store.BillingOutcomeFailure, "subscription_unpaid"
 	case stripe.SubscriptionStatusPaused:

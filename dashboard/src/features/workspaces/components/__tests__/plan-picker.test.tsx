@@ -56,10 +56,14 @@ describe("PlanPicker", () => {
       </>,
     );
     await user.tab();
-    expect(document.activeElement).toBe(screen.getByRole("radio", { name: /Hobby/ }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("radio", { name: /Hobby/ }),
+    );
     await user.keyboard("{ArrowRight}");
     expect(onSelect).toHaveBeenLastCalledWith("pro");
-    expect(document.activeElement).toBe(screen.getByRole("radio", { name: /Pro/ }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("radio", { name: /Pro/ }),
+    );
     rerender(
       <>
         <PlanPicker selected="pro" onSelect={onSelect} />
@@ -67,6 +71,8 @@ describe("PlanPicker", () => {
       </>,
     );
     await user.tab();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "after" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "after" }),
+    );
   });
 });

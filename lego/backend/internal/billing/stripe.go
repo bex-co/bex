@@ -133,7 +133,9 @@ type StripeConfig struct {
 	// leaves every item without a threshold.
 	AgentModelThreshold func(ctx context.Context, workspaceID string) (*int64, error)
 	// SettleWait bounds how long settle before delete waits for Stripe to
-	// aggregate exported usage (ADR091 D10.4); zero is DefaultSettleWait.
+	// aggregate exported usage (ADR091 D10.4); zero is DefaultSettleWait. A
+	// caller not bound by a request (the account-deletion worker) lengthens
+	// it per call with core.WithSettleWait.
 	SettleWait time.Duration
 	// Cards screens a payment method at binding against unpaid write-offs and
 	// records why one was refused (ADR091 D10.5–D10.6). Nil still refuses
@@ -153,6 +155,9 @@ type BillingStateStore interface {
 	// adopted at Checkout completion is invisible to Search for up to a minute,
 	// and a second replica must not mint a duplicate in that window.
 	BillingCustomerID(ctx context.Context, workspaceID string, livemode bool) (string, bool, error)
+	// MarkBillingSettling excuses the workspace's Subscription past_due until
+	// until; settle before delete calls it before its anchor reset.
+	MarkBillingSettling(ctx context.Context, workspaceID string, until time.Time) error
 }
 
 // compile-time check: the Stripe sink satisfies the emitter's Ingester seam,

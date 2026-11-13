@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -662,6 +663,21 @@ func WithSettledBalance(ctx context.Context) context.Context {
 func SettledBalance(ctx context.Context) bool {
 	settled, _ := ctx.Value(settledBalanceKey{}).(bool)
 	return settled
+}
+
+type settleWaitKey struct{}
+
+// WithSettleWait sets how long a settle before delete under ctx may wait for
+// Stripe to aggregate the usage it exported, for a caller that is not bound
+// by an API request's timeout (the account-deletion worker).
+func WithSettleWait(ctx context.Context, wait time.Duration) context.Context {
+	return context.WithValue(ctx, settleWaitKey{}, wait)
+}
+
+// SettleWait is the wait WithSettleWait set on ctx.
+func SettleWait(ctx context.Context) (time.Duration, bool) {
+	wait, ok := ctx.Value(settleWaitKey{}).(time.Duration)
+	return wait, ok && wait > 0
 }
 
 // InsufficientScopeCode is the one machine-readable refusal when a third-party

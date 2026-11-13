@@ -215,7 +215,7 @@ const (
 // block or fail a model exchange. One worker drains a bounded queue, retrying
 // each report with backoff under its fixed request id (bex-api records a
 // request id once). A full queue or an exhausted retry drops the report with
-// a log line and a metric — the OpenRouter key's own credit limit is the
+// a log line and a metric — the OpenRouter account balance (ADR091 D5) is the
 // spend backstop for such a loss.
 type usageReporter struct {
 	api   usageAPI

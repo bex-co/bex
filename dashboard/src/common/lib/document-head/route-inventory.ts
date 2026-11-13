@@ -54,6 +54,7 @@ export const ROUTE_HEAD_INVENTORY: Record<
     "invite.tsx",
     "keyvalue.$keyValueId.tsx",
     "keyvalue.new.tsx",
+    "legal.agent-models.tsx",
     "new.workspace.tsx",
     "notifications.tsx",
     "project.$projectId.settings.tsx",

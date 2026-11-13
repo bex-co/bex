@@ -41,6 +41,10 @@ const (
 
 	BillingOutcomeFailure = "failure"
 	BillingOutcomeSuccess = "success"
+
+	// BillingReasonSubscriptionPastDue is a Subscription observed past_due;
+	// during a settle's anchor reset it is not a failure (MarkBillingSettling).
+	BillingReasonSubscriptionPastDue = "subscription_past_due"
 )
 
 // BillingProviderMapping is the durable relationship that lets a signed
@@ -291,6 +295,39 @@ func (s *PGStore) EnsureBillingLifecycle(ctx context.Context, workspaceID string
 	return s.GetBillingLifecycle(ctx, workspaceID)
 }
 
+// MarkBillingSettling records that a settle before delete (ADR091 D10.4) is
+// about to reset the workspace's billing cycle anchor, which leaves its
+// Subscription past_due until bex pays the resulting invoice. Until until,
+// RecordStripeBillingEvent does not treat a subscription_past_due observation
+// as a payment failure. It never shortens a later mark.
+func (s *PGStore) MarkBillingSettling(ctx context.Context, workspaceID string, until time.Time) error {
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, ensureBillingLifecycleSQL, workspaceID); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `UPDATE billing_lifecycles
+			SET settling_until = GREATEST(COALESCE(settling_until, $2), $2)
+			WHERE workspace_id = $1`, workspaceID, until.UTC())
+		return err
+	})
+}
+
+// settlingPastDue reports whether e is the Subscription's past_due during a
+// settle's anchor reset (MarkBillingSettling): observed (provider time) before
+// the workspace's settling_until. Only subscription_past_due is excused; an
+// invoice.payment_failed (a declined settle charge, or any real failed
+// invoice) is still a failure.
+func settlingPastDue(ctx context.Context, tx pgx.Tx, e StripeBillingEvent) (bool, error) {
+	if e.Outcome != BillingOutcomeFailure || e.Reason != BillingReasonSubscriptionPastDue {
+		return false, nil
+	}
+	var until *time.Time
+	if err := tx.QueryRow(ctx, `SELECT settling_until FROM billing_lifecycles WHERE workspace_id=$1`, e.WorkspaceID).Scan(&until); err != nil {
+		return false, err
+	}
+	return until != nil && e.ProviderCreatedAt.Before(*until), nil
+}
+
 // normalizeBillingOverride applies the shared operator-override input
 // contract: actor defaults to the control plane, reason is a required,
 // bounded operator explanation.
@@ -472,6 +509,12 @@ func stripeBillingEventGuards(ctx context.Context, tx pgx.Tx, e StripeBillingEve
 			return BillingLifecycle{}, false, err
 		}
 		return state, true, nil
+	}
+	// A settle's own past_due is ignored, and left unapplied: the same
+	// observation after the mark expires (a settle that never paid) is then a
+	// real failure.
+	if settling, err := settlingPastDue(ctx, tx, e); err != nil || settling {
+		return state, settling, err
 	}
 	return state, false, nil
 }

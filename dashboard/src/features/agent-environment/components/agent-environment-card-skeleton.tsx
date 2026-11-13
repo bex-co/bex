@@ -13,6 +13,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
 import { TIERS } from "@/features/agent-environment/lib/environment";
+import { PricingWithTerms } from "@/features/legal/components/agent-model-terms-link";
 
 /** One network-tier option's frame, shared by the ready card and this skeleton. */
 export const TIER_OPTION_CLASS =
@@ -24,7 +25,7 @@ export function AgentSectionHeading({
   description,
 }: {
   title: string;
-  description: string;
+  description: ReactNode;
 }) {
   return (
     <div className="space-y-1">
@@ -201,7 +202,12 @@ export function AgentEnvironmentCardSkeleton() {
         >
           <AgentSectionHeading
             title={t("agentEnvironment.spendTitle")}
-            description={t("agentEnvironment.spendPricing")}
+            description={
+              <PricingWithTerms
+                pricing={t("agentEnvironment.spendPricing")}
+                placeholder
+              />
+            }
           />
           <div className="space-y-2">
             <p className="text-sm font-medium">

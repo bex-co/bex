@@ -54,7 +54,7 @@
   <rect class="b ext" x="740" y="100" width="250" height="78"/>
   <text x="756" y="124" class="t">OpenRouter (platform key)</text>
   <text x="756" y="146" class="m">deepseek-v4.1-flash-1017</text>
-  <text x="756" y="166" class="s">data_collection: deny · credit limit</text>
+  <text x="756" y="166" class="s">data_collection: deny · account balance</text>
 
   <rect class="b ext" x="740" y="192" width="250" height="62"/>
   <text x="756" y="216" class="t">BYO provider key (D7)</text>
@@ -62,8 +62,8 @@
 
   <rect class="b bil" x="1060" y="100" width="330" height="78"/>
   <text x="1076" y="124" class="t">Ops backstop (D5)</text>
-  <text x="1076" y="146">OpenRouter key credit limit</text>
-  <text x="1076" y="166" class="s">alert when platform spend ≥ 80% of it</text>
+  <text x="1076" y="146">OpenRouter account balance</text>
+  <text x="1076" y="166" class="s">alert below $25 · critical below $5</text>
 
   <path class="ln" d="M260,165 L328,165"/>
   <path class="ln" d="M660,139 L738,139"/>

@@ -511,5 +511,23 @@ describe("AgentEnvironmentCard", () => {
         buttons.getByRole("button", { name: "Reset to plan default" }),
       ).toHaveClass("min-w-48");
     });
+
+    // ADR091 D8: the pricing statement links the public terms, and the
+    // skeleton holds the same "Terms" text so the description wraps alike.
+    it("links the agent model terms from the pricing statement", () => {
+      setup(SPEND);
+      const link = within(screen.getByTestId("spend-cap-section")).getByRole(
+        "link",
+        { name: "Terms" },
+      );
+      expect(link).toHaveAttribute("href", "/legal/agent-models");
+      expect(link).toHaveAttribute("target", "_blank");
+      cleanup();
+
+      setup(null, true);
+      const skeleton = within(screen.getByTestId("spend-cap-section-skeleton"));
+      expect(skeleton.getByText("Terms")).toBeInTheDocument();
+      expect(skeleton.queryByRole("link")).toBeNull();
+    });
   });
 });

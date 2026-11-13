@@ -121,6 +121,10 @@ const (
 	// settledReuseWindow is how long after the request's own settle the
 	// worker's teardown skips settling again.
 	settledReuseWindow = 5 * time.Minute
+	// workerSettleWait is how long the worker's teardown settle waits for
+	// Stripe's meter summaries. It is bound by no request, and a Stripe
+	// test-mode probe (2026-11-12) measured 55-62 s of aggregation lag.
+	workerSettleWait = 150 * time.Second
 )
 
 // WorkspaceSettler settles a workspace's balance; *billing.Settler satisfies
@@ -282,9 +286,9 @@ func (s *Service) process(ctx context.Context, d store.AccountDeletion) error {
 			}
 			// Request settled every deleted workspace just before the intent
 			// committed; a teardown moments later does not charge again.
-			teardownCtx := ctx
+			teardownCtx := core.WithSettleWait(ctx, workerSettleWait)
 			if !d.CreatedAt.IsZero() && s.now().Sub(d.CreatedAt) < settledReuseWindow {
-				teardownCtx = core.WithSettledBalance(ctx)
+				teardownCtx = core.WithSettledBalance(teardownCtx)
 			}
 			for _, workspace := range d.Workspaces {
 				switch workspace.Action {

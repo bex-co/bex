@@ -8,6 +8,10 @@ import {
   mutationErrorMessage,
   type BillingBalanceDue,
 } from "@/common/lib/graphql-error";
+import {
+  isBillingSettling,
+  useSettlingRetry,
+} from "@/common/hooks/use-settling-retry";
 
 export interface UseDeleteWorkspaceResult {
   /** Fires deleteWorkspace; resolves true on success. */
@@ -18,6 +22,9 @@ export interface UseDeleteWorkspaceResult {
   /** Set instead of `error` when the delete was refused because settling the
    *  workspace's unbilled usage failed to charge (BILLING_BALANCE_DUE). */
   balanceDue: BillingBalanceDue | null;
+  /** True while the delete waits for the final usage to be charged
+   *  (BILLING_SETTLING) and retries on its own. */
+  settling: boolean;
 }
 
 /**
@@ -26,7 +33,8 @@ export interface UseDeleteWorkspaceResult {
  * and FGA tuples. `confirmation` must equal Render's "sudo delete workspace
  * <name>" phrase (workspaceDeleteConfirmation) — the backend re-validates it (a
  * client-side-only check would be bypassable), so this hook never second-guesses
- * the server's answer.
+ * the server's answer. A BILLING_SETTLING refusal (Stripe still aggregating the
+ * final usage) is retried every 15 s for up to 3 minutes (useSettlingRetry).
  */
 export function useDeleteWorkspace(): UseDeleteWorkspaceResult {
   const { t } = useTranslations();
@@ -34,6 +42,7 @@ export function useDeleteWorkspace(): UseDeleteWorkspaceResult {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [balanceDue, setBalanceDue] = useState<BillingBalanceDue | null>(null);
+  const { run, settling } = useSettlingRetry();
 
   const remove = useCallback(
     async (id: string, name: string, confirmation: string) => {
@@ -41,20 +50,22 @@ export function useDeleteWorkspace(): UseDeleteWorkspaceResult {
       setError(null);
       setBalanceDue(null);
       try {
-        await mutate({ variables: { id, confirmation } });
+        await run(() => mutate({ variables: { id, confirmation } }));
         toast.success(t("workspaces.deleteSuccess", { name }));
         return true;
       } catch (err) {
         const due = billingBalanceDue(err);
         if (due) setBalanceDue(due);
+        else if (isBillingSettling(err))
+          setError(t("common.billingSettlingTimeout"));
         else setError(mutationErrorMessage(err, t("workspaces.deleteError")));
         return false;
       } finally {
         setBusy(false);
       }
     },
-    [mutate, t],
+    [mutate, run, t],
   );
 
-  return { remove, busy, error, balanceDue };
+  return { remove, busy, error, balanceDue, settling };
 }

@@ -23,6 +23,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -30,59 +31,97 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// Platform credit backstop (ADR091 D5 "Global backstop"). The platform
-// OpenRouter key carries a credit limit set in the OpenRouter console (an ops
-// step, not code). bex-api reads the key's own limit and usage from
-// OpenRouter's GET /api/v1/key every 10 minutes and exports them, and the
-// PlatformModelCreditHigh alert fires at 80% of the limit. The key never
-// leaves the Authorization header: it is not logged, labelled or returned.
+// Platform credit backstop (ADR091 D5 "Global backstop"; user decision
+// 2026-11-12). The platform OpenRouter key has no credit limit of its own:
+// the OpenRouter account balance is the cap, and at zero OpenRouter refuses
+// every platform-model request for every workspace. bex-api reads the
+// account's purchased credits and usage from OpenRouter's GET /api/v1/credits
+// every 10 minutes and exports the remaining balance, and
+// PlatformModelCreditLow / PlatformModelCreditCritical fire below $25 / $5.
+//
+// No fake zero: the balance and last-success samples appear only after the
+// first successful read, so a monitor that cannot read the account exports
+// nothing a threshold alert could mistake for an empty account. Instead
+// PlatformModelCreditStale fires when the last success is older than 30
+// minutes, or when the monitor is configured (the configured gauge, exported
+// from construction) yet has never read the account.
+//
+// The key never leaves the Authorization header: it is not logged, labelled
+// or returned.
 
-// openRouterKeyURL is OpenRouter's "current API key" endpoint.
-const openRouterKeyURL = openRouterEndpoint + "/v1/key"
+// openRouterCreditsURL is OpenRouter's account credits endpoint.
+const openRouterCreditsURL = openRouterEndpoint + "/v1/credits"
 
 const (
-	// PlatformCreditPollInterval is how often the key's usage is read.
+	// PlatformCreditPollInterval is how often the account balance is read.
 	PlatformCreditPollInterval = 10 * time.Minute
 	platformCreditFetchTimeout = 15 * time.Second
 	maxPlatformCreditBody      = 1 << 20
 )
 
-// PlatformCreditMonitor polls the platform key's credit limit and usage.
+var (
+	platformCreditBalanceDesc = prometheus.NewDesc(
+		"bex_agent_platform_model_credit_balance_usd",
+		"OpenRouter account balance (USD) behind the platform model key: total_credits - total_usage, as of the last successful read. Negative when usage has overrun the credits; absent until the first successful read.",
+		nil, nil)
+	platformCreditLastSuccessDesc = prometheus.NewDesc(
+		"bex_agent_platform_model_credit_last_success_timestamp_seconds",
+		"Unix time of the last successful OpenRouter account balance read; absent until the first one.",
+		nil, nil)
+	platformCreditConfiguredDesc = prometheus.NewDesc(
+		"bex_agent_platform_model_credit_monitor_configured",
+		"1 when this bex-api runs the platform model route and polls the OpenRouter account balance.",
+		nil, nil)
+)
+
+// PlatformCreditMonitor polls the OpenRouter account's balance. It is a
+// prometheus.Collector, so it can leave its samples out until it has one.
 type PlatformCreditMonitor struct {
 	Key      string
 	URL      string
 	HTTP     *http.Client
 	Interval time.Duration
 
-	limit, usage prometheus.Gauge
+	mu          sync.Mutex
+	balance     float64
+	lastSuccess time.Time // zero until the first successful read
 }
 
-// NewPlatformCreditMonitor registers the two gauges on registerer:
-// bex_agent_platform_model_credit_limit_usd (0 = no limit set) and
-// bex_agent_platform_model_credit_usage_usd (usage counted against it).
+// NewPlatformCreditMonitor registers the monitor on registerer:
+// bex_agent_platform_model_credit_monitor_configured (1 from now on), and,
+// once a read succeeds, bex_agent_platform_model_credit_balance_usd and
+// bex_agent_platform_model_credit_last_success_timestamp_seconds.
 func NewPlatformCreditMonitor(registerer prometheus.Registerer, key string) *PlatformCreditMonitor {
-	m := &PlatformCreditMonitor{
-		Key: key,
-		limit: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "bex", Subsystem: "agent_platform_model", Name: "credit_limit_usd",
-			Help: "Credit limit (USD) set on the platform OpenRouter key; 0 when the key has no limit.",
-		}),
-		usage: prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "bex", Subsystem: "agent_platform_model", Name: "credit_usage_usd",
-			Help: "Platform OpenRouter key spend (USD) counted against its credit limit (limit - limit_remaining; all-time usage when no limit is set).",
-		}),
-	}
-	registerer.MustRegister(m.limit, m.usage)
+	m := &PlatformCreditMonitor{Key: key}
+	registerer.MustRegister(m)
 	return m
 }
 
-// openRouterKeyInfo is the subset of GET /api/v1/key's data bex reads.
-// limit and limit_remaining are null for an unlimited key.
-type openRouterKeyInfo struct {
+// Describe implements prometheus.Collector.
+func (m *PlatformCreditMonitor) Describe(ch chan<- *prometheus.Desc) {
+	ch <- platformCreditBalanceDesc
+	ch <- platformCreditLastSuccessDesc
+	ch <- platformCreditConfiguredDesc
+}
+
+// Collect implements prometheus.Collector.
+func (m *PlatformCreditMonitor) Collect(ch chan<- prometheus.Metric) {
+	ch <- prometheus.MustNewConstMetric(platformCreditConfiguredDesc, prometheus.GaugeValue, 1)
+	m.mu.Lock()
+	balance, last := m.balance, m.lastSuccess
+	m.mu.Unlock()
+	if last.IsZero() {
+		return
+	}
+	ch <- prometheus.MustNewConstMetric(platformCreditBalanceDesc, prometheus.GaugeValue, balance)
+	ch <- prometheus.MustNewConstMetric(platformCreditLastSuccessDesc, prometheus.GaugeValue, float64(last.UnixNano())/1e9)
+}
+
+// openRouterCredits is GET /api/v1/credits's body.
+type openRouterCredits struct {
 	Data struct {
-		Limit          *float64 `json:"limit"`
-		LimitRemaining *float64 `json:"limit_remaining"`
-		Usage          *float64 `json:"usage"`
+		TotalCredits *float64 `json:"total_credits"`
+		TotalUsage   *float64 `json:"total_usage"`
 	} `json:"data"`
 }
 
@@ -95,43 +134,38 @@ func (m *PlatformCreditMonitor) Run(ctx context.Context) {
 	core.Poll(ctx, "agent platform model credit", interval, m.Poll)
 }
 
-// Poll reads the key once and sets the gauges. A failed read keeps the last
-// values (the alert's own staleness bound covers a long outage).
+// Poll reads the account once and records the balance. A failed read keeps
+// the last balance and its timestamp, which PlatformModelCreditStale watches.
 func (m *PlatformCreditMonitor) Poll(ctx context.Context) error {
-	limit, usage, err := m.fetch(ctx)
+	balance, err := m.fetch(ctx)
 	if err != nil {
 		return err
 	}
-	m.limit.Set(limit)
-	m.usage.Set(usage)
+	m.mu.Lock()
+	m.balance, m.lastSuccess = balance, time.Now()
+	m.mu.Unlock()
 	return nil
 }
 
-func (m *PlatformCreditMonitor) fetch(ctx context.Context) (limit, usage float64, err error) {
+func (m *PlatformCreditMonitor) fetch(ctx context.Context) (float64, error) {
 	url := m.URL
 	if url == "" {
-		url = openRouterKeyURL
+		url = openRouterCreditsURL
 	}
-	var info openRouterKeyInfo
+	var c openRouterCredits
 	if err := getOpenRouterJSON(ctx, m.HTTP, url, m.Key, platformCreditFetchTimeout, maxPlatformCreditBody, func(r io.Reader) error {
-		if json.NewDecoder(r).Decode(&info) != nil {
+		if json.NewDecoder(r).Decode(&c) != nil {
 			return fmt.Errorf("malformed response")
 		}
 		return nil
 	}); err != nil {
-		return 0, 0, fmt.Errorf("read key usage: %w", err)
+		return 0, fmt.Errorf("read account credits: %w", err)
 	}
 	valid := func(v *float64) bool { return v != nil && !math.IsNaN(*v) && !math.IsInf(*v, 0) && *v >= 0 }
-	d := info.Data
-	switch {
-	case valid(d.Limit) && *d.Limit > 0 && valid(d.LimitRemaining):
-		return *d.Limit, math.Max(*d.Limit-*d.LimitRemaining, 0), nil
-	case valid(d.Limit) && *d.Limit > 0 && valid(d.Usage):
-		return *d.Limit, *d.Usage, nil
-	case valid(d.Usage):
-		return 0, *d.Usage, nil // no limit set: nothing to alert against
+	if !valid(c.Data.TotalCredits) || !valid(c.Data.TotalUsage) {
+		return 0, fmt.Errorf("read account credits: response carries no credits or usage")
 	}
-	return 0, 0, fmt.Errorf("read key usage: response carries no usage")
+	return *c.Data.TotalCredits - *c.Data.TotalUsage, nil
 }
 
 // getOpenRouterJSON GETs url (with bearer as the Authorization token when

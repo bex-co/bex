@@ -118,6 +118,15 @@ type billingStateStoreFake struct {
 	checkoutsStarted   []string
 	checkoutStartedErr error
 	mappings           []store.BillingProviderMapping
+	settling           map[string]time.Time
+}
+
+func (f *billingStateStoreFake) MarkBillingSettling(_ context.Context, workspaceID string, until time.Time) error {
+	if f.settling == nil {
+		f.settling = map[string]time.Time{}
+	}
+	f.settling[workspaceID] = until
+	return nil
 }
 
 func (f *billingStateStoreFake) MarkCheckoutStarted(_ context.Context, workspaceID string, _ time.Time) error {

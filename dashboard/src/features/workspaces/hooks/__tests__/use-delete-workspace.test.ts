@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 
 const mockUseMutation = vi.fn();
@@ -98,6 +98,66 @@ describe("useDeleteWorkspace", () => {
       amountDueCents: 300,
       currency: "usd",
       hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/in_1",
+    });
+  });
+
+  describe("BILLING_SETTLING", () => {
+    beforeEach(() => vi.useFakeTimers());
+    afterEach(() => vi.useRealTimers());
+
+    it("shows settling and retries every 15 s until the delete goes through", async () => {
+      const mutate = vi
+        .fn()
+        .mockRejectedValueOnce(codedGraphQLError("BILLING_SETTLING"))
+        .mockResolvedValue({ data: { deleteWorkspace: "tea-1" } });
+      mockUseMutation.mockReturnValue([mutate]);
+
+      const { result } = renderHook(() => useDeleteWorkspace());
+      let ok: Promise<boolean> = Promise.resolve(false);
+      await act(async () => {
+        ok = result.current.remove(
+          "tea-1",
+          "acme-hq",
+          "sudo delete workspace acme-hq",
+        );
+      });
+      expect(result.current.settling).toBe(true);
+      expect(result.current.busy).toBe(true);
+      expect(result.current.error).toBeNull();
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(15_000);
+      });
+      expect(await ok).toBe(true);
+      expect(mutate).toHaveBeenCalledTimes(2);
+      expect(result.current.settling).toBe(false);
+      expect(toastSuccess).toHaveBeenCalledWith("Deleted acme-hq");
+    });
+
+    it("shows the retry message once 3 minutes of retries run out", async () => {
+      const mutate = vi
+        .fn()
+        .mockRejectedValue(codedGraphQLError("BILLING_SETTLING"));
+      mockUseMutation.mockReturnValue([mutate]);
+
+      const { result } = renderHook(() => useDeleteWorkspace());
+      let ok: Promise<boolean> = Promise.resolve(true);
+      await act(async () => {
+        ok = result.current.remove(
+          "tea-1",
+          "acme-hq",
+          "sudo delete workspace acme-hq",
+        );
+      });
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(180_000);
+      });
+      expect(await ok).toBe(false);
+      expect(mutate).toHaveBeenCalledTimes(13);
+      expect(result.current.settling).toBe(false);
+      expect(result.current.error).toBe(
+        "The final usage is still being processed. Try deleting again in a few minutes.",
+      );
     });
   });
 });

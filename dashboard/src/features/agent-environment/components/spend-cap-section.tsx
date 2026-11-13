@@ -19,6 +19,7 @@ import {
   spendPosition,
 } from "@/features/agent-environment/lib/spend";
 import { AgentSectionHeading } from "@/features/agent-environment/components/agent-environment-card-skeleton";
+import { PricingWithTerms } from "@/features/legal/components/agent-model-terms-link";
 
 interface SpendCapSectionProps {
   saved: AgentEnvironmentView;
@@ -102,7 +103,9 @@ export function SpendCapSection({
     <div className="space-y-3 border-t pt-6" data-testid="spend-cap-section">
       <AgentSectionHeading
         title={t("agentEnvironment.spendTitle")}
-        description={t("agentEnvironment.spendPricing")}
+        description={
+          <PricingWithTerms pricing={t("agentEnvironment.spendPricing")} />
+        }
       />
       <div className="space-y-2">
         <p className="text-sm font-medium" data-testid="spend-summary">

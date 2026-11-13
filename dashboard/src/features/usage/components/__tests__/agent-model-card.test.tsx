@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { AgentModelCard } from "@/features/usage/components/agent-model-card";
 
@@ -77,5 +77,28 @@ describe("AgentModelCard", () => {
   it("renders its skeleton while the first read is in flight", () => {
     render(<AgentModelCard agentModel={null} loading current />);
     expect(screen.getByTestId("agent-model-card-skeleton")).toBeInTheDocument();
+  });
+
+  // ADR091 D8: the pricing statement links the public terms; the skeleton
+  // carries the same title, statement and "Terms" text, so the header keeps
+  // its ready geometry, with nothing to follow while loading.
+  it("links the agent model terms, and holds the link text in its skeleton", () => {
+    const { unmount } = render(
+      <AgentModelCard agentModel={USAGE} loading={false} current />,
+    );
+    expect(screen.getByRole("link", { name: "Terms" })).toHaveAttribute(
+      "href",
+      "/legal/agent-models",
+    );
+    unmount();
+
+    render(<AgentModelCard agentModel={null} loading current />);
+    const skeleton = within(screen.getByTestId("agent-model-card-skeleton"));
+    expect(skeleton.getByText("Agent model")).toBeInTheDocument();
+    expect(
+      skeleton.getByText("Billed at the model provider's cost + 30%."),
+    ).toBeInTheDocument();
+    expect(skeleton.getByText("Terms")).toBeInTheDocument();
+    expect(skeleton.queryByRole("link")).toBeNull();
   });
 });

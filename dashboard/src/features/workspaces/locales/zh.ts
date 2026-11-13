@@ -165,7 +165,8 @@ const zhWorkspaces: Record<string, TranslationEntry> = {
     description: "/new/workspace slug field label",
   },
   "workspaces.fieldSlugHelp": {
-    message: "CLI 和 API 使用的唯一标识。仅限小写字母、数字和连字符，1–30 个字符。",
+    message:
+      "CLI 和 API 使用的唯一标识。仅限小写字母、数字和连字符，1–30 个字符。",
     description: "/new/workspace slug helper text",
   },
   "workspaces.fieldSlugError": {

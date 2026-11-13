@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -99,5 +100,38 @@ func TestAwaitMeteredUsageIgnoresOldShortfall(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("an old shortfall blocked the settle: %v", err)
+	}
+}
+
+// A caller bound by no request (core.WithSettleWait) outwaits Stripe's
+// aggregation lag that would refuse an API request's settle.
+func TestAwaitMeteredUsageHonorsALongerCallerWait(t *testing.T) {
+	// The summary catches up 200ms after caughtUpAt is armed.
+	var caughtUpAt atomic.Int64
+	caughtUpAt.Store(time.Now().Add(time.Hour).UnixNano())
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		value := 1.0
+		if time.Now().UnixNano() >= caughtUpAt.Load() {
+			value = 3
+		}
+		return 200, fmt.Sprintf(`{"object":"list","data":[{"id":"mtrusg_1","object":"billing.meter_event_summary","aggregated_value":%g}],"has_more":false,"url":"/x"}`, value)
+	})
+	c.priceIDs = []string{"price_egress"}
+	c.priceByKey = map[string]string{"egress_gib": "price_egress"}
+	c.priceMeters = map[string]string{"price_egress": "mtr_egress"}
+	c.settleWait = 10 * time.Millisecond
+	totals := []store.ExportedUsageTotal{
+		{Kind: store.UsageKindEgressBytes, Quantity: 3 * pricing.BytesPerGiB, Recent: 3 * pricing.BytesPerGiB},
+	}
+	var coded *core.CodedError
+	if err := c.AwaitMeteredUsage(context.Background(), settleContractFixture, totals); !errors.As(err, &coded) || coded.Code != core.CodeBillingSettling {
+		t.Fatalf("short wait = %v, want BILLING_SETTLING", err)
+	}
+	caughtUpAt.Store(time.Now().Add(200 * time.Millisecond).UnixNano())
+	if err := c.AwaitMeteredUsage(core.WithSettleWait(context.Background(), 30*time.Second), settleContractFixture, totals); err != nil {
+		t.Fatalf("longer caller wait = %v, want caught up", err)
+	}
+	if DefaultSettleWait+settleChargeReserve > 25*time.Second {
+		t.Fatalf("DefaultSettleWait %v plus the charge reserve no longer fits a request under the 30 s write timeout", DefaultSettleWait)
 	}
 }

@@ -500,3 +500,43 @@ func TestDeleteRetryAfterStripeTeardownSkipsSettle(t *testing.T) {
 		t.Fatalf("a retired Customer was settled: %d rows pending, calls %v", pending, g.stripe.calls)
 	}
 }
+
+// The anchor reset (payment_behavior=default_incomplete) leaves the
+// Subscription past_due until bex pays the new invoice. The settle marks the
+// workspace first, so that past_due opens no grace period; a real failed
+// invoice (here the declined settle charge's invoice.payment_failed) still
+// does.
+func TestSettlePastDueIsNotAPaymentFailure(t *testing.T) {
+	f := newSettleFixture(t)
+	f.stripe.declining = true
+	ctx := context.Background()
+	before := time.Now()
+	err := (AccountTeardown{Service: f.svc}).Delete(ctx, f.tenant.ID)
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != core.CodeBillingBalanceDue {
+		t.Fatalf("delete with a declining card = %v, want BILLING_BALANCE_DUE", err)
+	}
+	var until *time.Time
+	if err := f.pg.Pool.QueryRow(ctx, `SELECT settling_until FROM billing_lifecycles WHERE workspace_id=$1`, f.tenant.ID).Scan(&until); err != nil {
+		t.Fatal(err)
+	}
+	if until == nil || until.Before(before.Add(9*time.Minute)) || until.After(time.Now().Add(11*time.Minute)) {
+		t.Fatalf("settling_until = %v, want about ten minutes after the settle", until)
+	}
+
+	event := func(id, eventType, reason string, at time.Time) store.StripeBillingEvent {
+		return store.StripeBillingEvent{EventID: id, EventType: eventType, WorkspaceID: f.tenant.ID,
+			CustomerID: "cus_settle", SubscriptionID: "sub_1", ObjectID: "sub_1",
+			ProviderCreatedAt: at, ReceivedAt: at, Outcome: store.BillingOutcomeFailure, Reason: reason}
+	}
+	state, _, changed, err := f.pg.RecordStripeBillingEvent(ctx,
+		event("evt_settle_past_due", "customer.subscription.updated", store.BillingReasonSubscriptionPastDue, time.Now()), 72*time.Hour)
+	if err != nil || changed || state.Status != store.BillingHealthy {
+		t.Fatalf("the settle's own past_due = %+v changed=%v err=%v, want healthy and unchanged", state, changed, err)
+	}
+	state, _, changed, err = f.pg.RecordStripeBillingEvent(ctx,
+		event("evt_settle_payment_failed", "invoice.payment_failed", "payment_failed", time.Now().Add(time.Second)), 72*time.Hour)
+	if err != nil || !changed || state.Status != store.BillingGrace {
+		t.Fatalf("the declined invoice = %+v changed=%v err=%v, want grace", state, changed, err)
+	}
+}

@@ -232,9 +232,10 @@ func main() {
 	// origin-side view of an incident lives on the same registry /metrics serves.
 	originMetrics := api.NewOriginMetrics(metricRegistry)
 	if cfg.AgentPlatformModelRoute != "" && cfg.AgentPlatformModelKey != "" {
-		// ADR091 D5 global backstop: export the platform key's OpenRouter
-		// credit limit and usage every 10 minutes (PlatformModelCreditHigh
-		// alerts at 80%). The limit itself is set in the OpenRouter console.
+		// ADR091 D5 global backstop: export the OpenRouter account balance
+		// behind the platform key every 10 minutes (PlatformModelCreditLow
+		// warns below $25, PlatformModelCreditCritical below $5). The
+		// account balance is the cap; the key itself has no limit.
 		go agentsession.NewPlatformCreditMonitor(metricRegistry, cfg.AgentPlatformModelKey).Run(ctx)
 	}
 	pushMetrics.SetEnabled(mobilePush != nil || webPush != nil)
