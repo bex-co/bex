@@ -477,6 +477,11 @@ func main() {
 	// the other registries so ModelAuthFailer on :8091 can observe too (w5/m88).
 	srv.AgentSessionCompleter.Metrics = agentMetrics
 	srv.AgentSessions.Metrics = agentMetrics
+	// The completer records the session branch's head as GitHub has it, not as
+	// the sandbox reports it (w5/m382).
+	if ghClient != nil {
+		srv.AgentSessionCompleter.Heads = agentsession.BranchHeads{GitHub: ghClient, Connections: st}
+	}
 	// The /v1/sandboxes surface reports separately from agent sessions above:
 	// they share a runtime, but only this series answers whether the sandbox API
 	// itself is healthy — the gap ADR088's coverage table left unfiled (w5/m95).

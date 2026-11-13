@@ -52,6 +52,9 @@ const (
 	// CreatorRemovedCode is the failureReasonCode of a session canceled because
 	// its creator's membership of the workspace ended (w5/186).
 	CreatorRemovedCode = "AGENT_SESSION_CREATOR_REMOVED"
+	// BranchInUseCode refuses a create or spawn naming a branch another
+	// session in the workspace holds on the same repository (w5/m382).
+	BranchInUseCode = "AGENT_SESSION_BRANCH_IN_USE"
 )
 
 func (s *Service) authorizeParent(ctx context.Context, parentID string) error {

@@ -683,13 +683,17 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if lineageErr := lineageRefusal(req.ParentSessionID, err); lineageErr != nil {
 		return View{}, lineageErr
 	}
-	if errors.Is(err, store.ErrAgentSessionIdempotencyKey) {
-		// Lost the race for the key to a concurrent identical create.
+	if errors.Is(err, store.ErrAgentSessionIdempotencyKey) ||
+		(idemKey != "" && errors.Is(err, store.ErrAgentSessionBranchInUse)) {
+		// Lost the race for the key to a concurrent identical create; one
+		// naming a branch loses at the branch lock first (w5/m382).
 		view, found, replayErr := s.replayCreate(ctx, workspaceID, idemKey, idemHash)
 		if replayErr != nil || found {
 			return view, replayErr
 		}
-		return View{}, core.NewConflictError("AGENT_SESSION_CONFLICT", "agent session conflicts with existing state", nil)
+		if !errors.Is(err, store.ErrAgentSessionBranchInUse) {
+			return View{}, core.NewConflictError("AGENT_SESSION_CONFLICT", "agent session conflicts with existing state", nil)
+		}
 	}
 	if err != nil {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
@@ -2050,6 +2054,11 @@ func mapStoreError(id string, err error) error {
 			params = map[string]any{"id": id}
 		}
 		return core.NewConflictError(codePullRequestOwned, "another live session already works on this pull request", params)
+	}
+	if errors.Is(err, store.ErrAgentSessionBranchInUse) {
+		return core.NewConflictError(BranchInUseCode,
+			"another session is already working on this branch; send that session a message, or name another bex-agent/ branch",
+			map[string]any{"field": "branch"})
 	}
 	if errors.Is(err, store.ErrAgentSessionPromptQuota) {
 		return core.NewConflictError("AGENT_SESSION_PROMPT_QUOTA", "agent session prompt history has reached its byte limit", map[string]any{"id": id, "maxBytes": store.MaxAgentSessionPromptBytes})

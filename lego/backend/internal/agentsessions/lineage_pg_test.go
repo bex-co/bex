@@ -514,3 +514,87 @@ func TestCancelMemberSessionsEndsOnlyTheDepartedMembersUnfinishedSessions(t *tes
 		t.Fatalf("another member's session became %s", got)
 	}
 }
+
+// w5/m382: one session at work per branch. A create naming a branch a
+// working session in the workspace holds is refused, archived or not; once
+// that session has finished a person's (or an automation's next run's) create
+// may reuse it, but a spawned child, which an agent names, may not take any
+// branch a session could still push to. Racing creates on one branch yield
+// one session, and an idempotent retry gets that session back, not a 409.
+func TestOneSessionAtWorkPerBranch(t *testing.T) {
+	e := newLineageEnv(t)
+	branch := fmt.Sprintf("bex-agent/shared-%d", time.Now().UnixNano())
+	named := func(b string) CreateRequest {
+		in := e.input("")
+		in.Branch = b
+		return in
+	}
+	holder, err := e.svc.Create(caller("alice"), named(branch))
+	if err != nil {
+		t.Fatalf("first create on %s: %v", branch, err)
+	}
+	if _, err := e.svc.Create(caller("alice"), named(branch)); codeOf(err) != BranchInUseCode {
+		t.Fatalf("a create on a working session's branch = %v, want %s", err, BranchInUseCode)
+	}
+	if _, err := e.svc.SpawnChild(caller("alice"), holder.ID, SpawnRequest{Task: "help", Branch: branch}); codeOf(err) != BranchInUseCode {
+		t.Fatalf("a spawn onto the parent's working branch = %v, want %s", err, BranchInUseCode)
+	}
+	// Archiving does not stop a turn, so it does not free the branch.
+	if _, err := e.svc.Archive(caller("alice"), holder.ID); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+	if _, err := e.svc.Create(caller("alice"), named(branch)); codeOf(err) != BranchInUseCode {
+		t.Fatalf("a create on an archived but working session's branch = %v, want %s", err, BranchInUseCode)
+	}
+	if _, err := e.svc.Unarchive(caller("alice"), holder.ID); err != nil {
+		t.Fatalf("unarchive: %v", err)
+	}
+
+	// Finished but still messageable: a child may not take it, a person may.
+	e.setPhase(t, holder.ID, PhaseCompleted)
+	other := e.create(t, "")
+	if _, err := e.svc.SpawnChild(caller("alice"), other.ID, SpawnRequest{Task: "help", Branch: branch}); codeOf(err) != BranchInUseCode {
+		t.Fatalf("a spawn onto a finished session's branch = %v, want %s", err, BranchInUseCode)
+	}
+	if _, err := e.svc.Create(caller("alice"), named(branch)); err != nil {
+		t.Fatalf("a person's create on a finished session's branch: %v", err)
+	}
+
+	// Racing creates on a fresh branch: one wins, the rest are refused; with
+	// one idempotency key, every caller gets the one session.
+	race := func(b, key string) (ids []string, refused int) {
+		t.Helper()
+		type result struct {
+			id  string
+			err error
+		}
+		results := make(chan result, 4)
+		for range 4 {
+			go func() {
+				in := named(b)
+				in.IdempotencyKey = key
+				view, err := e.svc.Create(caller("alice"), in)
+				results <- result{view.ID, err}
+			}()
+		}
+		for range 4 {
+			r := <-results
+			switch {
+			case r.err == nil:
+				ids = append(ids, r.id)
+			case codeOf(r.err) == BranchInUseCode:
+				refused++
+			default:
+				t.Errorf("a racing create failed otherwise: %v", r.err)
+			}
+		}
+		return ids, refused
+	}
+	if ids, refused := race(branch+"-race", ""); len(ids) != 1 || refused != 3 {
+		t.Fatalf("racing creates: %d won, %d refused, want 1 and 3", len(ids), refused)
+	}
+	ids, refused := race(branch+"-retry", fmt.Sprintf("key-%d", time.Now().UnixNano()))
+	if refused != 0 || len(ids) != 4 || len(slices.Compact(slices.Sorted(slices.Values(ids)))) != 1 {
+		t.Fatalf("idempotent retries: sessions %v, %d refused, want one session for all four", ids, refused)
+	}
+}

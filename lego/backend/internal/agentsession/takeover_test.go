@@ -96,6 +96,12 @@ func TestPullRequesterTakeoverRefusals(t *testing.T) {
 		// A rule on the branch refused the fast-forward: not retryable.
 		"the PR branch is protected": {&fakeForge{existing: takenOverPR(), sessionHead: sessionHead, protected: true},
 			PullRequestBranchProtected, http.StatusForbidden, "is protected; bex cannot update it"},
+		// w5/m382: protected since the takeover began, even where GitHub
+		// would let the installation write it; checked before any write.
+		"the PR branch became protected": {&fakeForge{existing: takenOverPR(), sessionHead: sessionHead, ruleProtected: true},
+			PullRequestBranchProtected, http.StatusForbidden, "is protected; bex cannot update it"},
+		"GitHub cannot say whether it is protected": {&fakeForge{existing: takenOverPR(), sessionHead: sessionHead, protectErr: &github.APIError{Status: 502, Body: "secret upstream text"}},
+			PullRequestUpstreamError, http.StatusBadGateway, "could not say whether"},
 		// Re-read at every call: the default branch or another repository's
 		// branch is never updated.
 		"the head became the default branch": {&fakeForge{existing: withPR(func(p *github.PullRequestDetail) { p.DefaultBranch = prHead }), sessionHead: sessionHead},

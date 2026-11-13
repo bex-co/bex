@@ -213,6 +213,7 @@ type PullRequestGitHub interface {
 	SyncDraftPullRequest(ctx context.Context, installationID int64, owner, repo, head, title, body string) (github.DraftPullRequestResult, error)
 	GetPullRequest(ctx context.Context, installationID int64, owner, repo string, number int) (github.PullRequestDetail, error)
 	FastForwardBranch(ctx context.Context, installationID int64, owner, repo, branch, from string) (string, error)
+	BranchProtected(ctx context.Context, installationID int64, owner, repo, branch string) (bool, error)
 	CreateIssueComment(ctx context.Context, installationID int64, owner, repo string, number int, body string) (string, error)
 }
 
@@ -315,6 +316,18 @@ func (p *PullRequester) fastForwardTakenOver(ctx context.Context, target pullReq
 	if pr.HeadRef == pr.DefaultBranch || !strings.EqualFold(pr.HeadRepo, target.repository) || !strings.EqualFold(pr.BaseRepo, target.repository) {
 		return PullRequestResponse{}, NewPullRequestError(PullRequestBranchProtected, fmt.Sprintf("pull request #%d's branch is the default branch or lives in another repository, so bex cannot update it", pr.Number))
 	}
+	protectedRefusal := NewPullRequestError(PullRequestBranchProtected, fmt.Sprintf(
+		"the pull request's branch %s is protected; bex cannot update it, and your commits stay on %s", pr.HeadRef, session.Branch))
+	// Protection too, as the takeover was admitted (pr_takeover.go): a branch
+	// protected since then is not updated, whether or not GitHub would accept
+	// the installation's write, and an unreadable answer refuses (w5/m382).
+	protected, err := p.GitHub.BranchProtected(ctx, target.installationID, target.owner, target.name, pr.HeadRef)
+	if err != nil {
+		return PullRequestResponse{}, NewPullRequestError(PullRequestUpstreamError, "GitHub could not say whether the pull request's branch is protected")
+	}
+	if protected {
+		return PullRequestResponse{}, protectedRefusal
+	}
 	sha, err := p.GitHub.FastForwardBranch(ctx, target.installationID, target.owner, target.name, pr.HeadRef, session.Branch)
 	switch {
 	case errors.Is(err, github.ErrHeadBranchNotFound):
@@ -326,8 +339,7 @@ func (p *PullRequester) fastForwardTakenOver(ctx context.Context, target pullReq
 			"%s has commits the session branch does not: run `git fetch origin %s && git merge FETCH_HEAD`, push %s again, then call this tool again",
 			pr.HeadRef, pr.HeadRef, session.Branch))
 	case errors.Is(err, github.ErrBranchUpdateRefused):
-		return PullRequestResponse{}, NewPullRequestError(PullRequestBranchProtected, fmt.Sprintf(
-			"the pull request's branch %s is protected; bex cannot update it, and your commits stay on %s", pr.HeadRef, session.Branch))
+		return PullRequestResponse{}, protectedRefusal
 	case err != nil:
 		return PullRequestResponse{}, NewPullRequestError(PullRequestUpstreamError, "GitHub refused or failed the pull request branch update")
 	}

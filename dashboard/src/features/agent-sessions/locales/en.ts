@@ -461,6 +461,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "This session is busy with another operation. Try again shortly.",
     description: "Mapped message for AGENT_SESSION_CONFLICT",
   },
+  "agentSessions.errors.AGENT_SESSION_BRANCH_IN_USE": {
+    message:
+      "Another session is already working on this branch. Send that session a message, or use another bex-agent/ branch.",
+    description: "Mapped message for AGENT_SESSION_BRANCH_IN_USE (w5/m382)",
+  },
   "agentSessions.errors.AGENT_SESSION_NOT_STEERABLE": {
     message: "This session can't be steered in its current phase ({phase}).",
     description: "Mapped message for AGENT_SESSION_NOT_STEERABLE",

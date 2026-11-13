@@ -448,6 +448,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "该会话正在执行其他操作，请稍后重试。",
     description: "Mapped message for AGENT_SESSION_CONFLICT",
   },
+  "agentSessions.errors.AGENT_SESSION_BRANCH_IN_USE": {
+    message:
+      "已有另一个会话在此分支上工作。请给那个会话发消息，或改用另一个 bex-agent/ 分支。",
+    description: "Mapped message for AGENT_SESSION_BRANCH_IN_USE (w5/m382)",
+  },
   "agentSessions.errors.AGENT_SESSION_NOT_STEERABLE": {
     message: "该会话在当前阶段（{phase}）无法引导。",
     description: "Mapped message for AGENT_SESSION_NOT_STEERABLE",
