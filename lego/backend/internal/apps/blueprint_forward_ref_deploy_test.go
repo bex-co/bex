@@ -17,9 +17,12 @@ limitations under the License.
 package apps
 
 import (
+	"context"
+	"fmt"
 	"slices"
 	"testing"
 
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -58,9 +61,11 @@ services:
 	}
 }
 
-// Two services that take each other's address cannot both be written after
-// the other: the second write still resolves through the reference pass.
-func TestMutualHostReferencesStillResolve(t *testing.T) {
+// w8/316: two services that take each other's address cannot both be written
+// after the other, so the cycle's back edge resolves from the sibling's
+// predicted slug, and neither service is re-applied: each first deploy is its
+// only one. Before, the back edge took the reference pass and a second deploy.
+func TestMutualHostReferencesResolveInTheFirstWrite(t *testing.T) {
 	const manifest = `
 services:
   - name: a
@@ -82,11 +87,154 @@ services:
 	if _, err := svc.DeployStack(ownershipCtx(), DeployRequest{Manifest: manifest}); err != nil {
 		t.Fatalf("DeployStack: %v", err)
 	}
-	if len(rec.deployCalls) != 1 {
-		t.Errorf("redeploys = %d, want 1: only the cycle's back edge takes the second pass", len(rec.deployCalls))
+	if len(rec.appCreates) != 2 || len(rec.deployCalls) != 0 {
+		t.Fatalf("creates = %d, redeploys = %+v; want two creates and no redeploy", len(rec.appCreates), rec.deployCalls)
 	}
-	if findEnv(t, getTenantApp(t, svc.Client, connOwner, "a").Spec.Env, "B_HOST").Value == "" || findEnv(t, getTenantApp(t, svc.Client, connOwner, "b").Spec.Env, "A_HOST").Value == "" {
-		t.Fatalf("a mutual reference was left unresolved")
+	if got := findEnv(t, getTenantApp(t, svc.Client, connOwner, "a").Spec.Env, "B_HOST").Value; got != "b" {
+		t.Errorf("a's B_HOST = %q, want b's slug", got)
+	}
+	if got := findEnv(t, getTenantApp(t, svc.Client, connOwner, "b").Spec.Env, "A_HOST").Value; got != "a" {
+		t.Errorf("b's A_HOST = %q, want a's slug", got)
+	}
+}
+
+// w8/316: render-examples/ai-hedge-fund-on-render wires an API and a static
+// site to each other's RENDER_EXTERNAL_URL. Both first writes carry the
+// sibling's public URL, so the site's first build bakes the API's in.
+func TestMutualExternalURLsResolveInTheFirstWrite(t *testing.T) {
+	const manifest = `
+services:
+  - name: site
+    type: web
+    runtime: static
+    repo: https://github.com/o/r
+    staticPublishPath: dist
+    envVars:
+      - {key: VITE_API_URL, fromService: {name: api, type: web, envVarKey: RENDER_EXTERNAL_URL}}
+  - name: api
+    type: web
+    runtime: image
+    image: {url: "api:1"}
+    envVars:
+      - {key: FRONTEND_URL, fromService: {name: site, type: web, envVarKey: RENDER_EXTERNAL_URL}}
+`
+	rec := &recordingStore{}
+	svc, _ := connectionService(t)
+	svc.Store, svc.BaseDomain = rec, "onbex.test"
+	if _, err := svc.DeployStack(ownershipCtx(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if len(rec.deployCalls) != 0 {
+		t.Fatalf("redeploys = %+v, want none", rec.deployCalls)
+	}
+	if got := findEnv(t, getTenantApp(t, svc.Client, connOwner, "site").Spec.Env, "VITE_API_URL").Value; got != "https://api.onbex.test" {
+		t.Errorf("site's VITE_API_URL = %q", got)
+	}
+	if got := findEnv(t, getTenantApp(t, svc.Client, connOwner, "api").Spec.Env, "FRONTEND_URL").Value; got != "https://site.onbex.test" {
+		t.Errorf("api's FRONTEND_URL = %q", got)
+	}
+}
+
+// suffixingStore mints a suffixed slug for one service, as store.CreateApp
+// does when the bare name is taken.
+type suffixingStore struct {
+	*recordingStore
+	name string
+}
+
+func (s suffixingStore) CreateApp(ctx context.Context, a store.App) (store.App, error) {
+	if a.Name == s.name {
+		a.Slug = a.Name + "-x7k2"
+	}
+	return s.recordingStore.CreateApp(ctx, a)
+}
+
+// w8/316: when the sibling's create mints another slug than the predicted bare
+// name, the reference pass corrects the value with one redeploy, replacing the
+// provisional variable rather than adding a second. RENDER_SERVICE_ID, the
+// sibling's id, is unknown until its create and always takes that pass. In
+// this cycle referencedFirst writes b first, so b's reference to a is the
+// back edge.
+func TestAMispredictedOrIDBackEdgeTakesTheReferencePass(t *testing.T) {
+	for _, tc := range []struct {
+		name, key, ref, want string
+		suffixed             bool
+	}{
+		{"suffixed slug", "A_HOST", "property: host", "a-x7k2", true},
+		{"service id", "A_ID", "envVarKey: RENDER_SERVICE_ID", "srv-test", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			manifest := fmt.Sprintf(`
+services:
+  - name: a
+    type: web
+    runtime: image
+    image: {url: "a:1"}
+    envVars:
+      - {key: B_HOST, fromService: {name: b, type: web, property: host}}
+  - name: b
+    type: web
+    runtime: image
+    image: {url: "b:1"}
+    envVars:
+      - {key: %s, fromService: {name: a, type: web, %s}}
+`, tc.key, tc.ref)
+			rec := &recordingStore{}
+			svc, _ := connectionService(t)
+			svc.Store = rec
+			if tc.suffixed {
+				svc.Store = suffixingStore{recordingStore: rec, name: "a"}
+			}
+			if _, err := svc.DeployStack(ownershipCtx(), DeployRequest{Manifest: manifest}); err != nil {
+				t.Fatalf("DeployStack: %v", err)
+			}
+			if len(rec.deployCalls) != 1 {
+				t.Fatalf("redeploys = %+v, want one for b", rec.deployCalls)
+			}
+			env := getTenantApp(t, svc.Client, connOwner, "b").Spec.Env
+			if got := findEnv(t, env, tc.key).Value; got != tc.want {
+				t.Errorf("b's %s = %q, want %q", tc.key, got, tc.want)
+			}
+			if n := len(slices.DeleteFunc(slices.Clone(env), func(e appv1alpha1.EnvVar) bool { return e.Name != tc.key })); n != 1 {
+				t.Errorf("b carries %s %d times, want once", tc.key, n)
+			}
+		})
+	}
+}
+
+// w8/316, ADR089 D4: a port back edge is never guessed. A Docker or image
+// sibling learns its port only at runtime, so its created App has none yet; the
+// variable stays out of the first write and the reference pass leaves it to the
+// propagator, without a redeploy.
+func TestAPortBackEdgeIsNeverGuessed(t *testing.T) {
+	const manifest = `
+services:
+  - name: a
+    type: web
+    runtime: docker
+    repo: https://github.com/o/r
+    envVars:
+      - {key: B_HOST, fromService: {name: b, type: pserv, property: host}}
+  - name: b
+    type: pserv
+    runtime: docker
+    repo: https://github.com/o/r
+    envVars:
+      - {key: A_HOSTPORT, fromService: {name: a, type: web, property: hostport}}
+`
+	rec := &recordingStore{}
+	svc, _ := connectionService(t)
+	svc.Store = rec
+	if _, err := svc.DeployStack(ownershipCtx(), DeployRequest{Manifest: manifest}); err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if len(rec.deployCalls) != 0 {
+		t.Fatalf("redeploys = %+v, want none", rec.deployCalls)
+	}
+	for _, e := range getTenantApp(t, svc.Client, connOwner, "b").Spec.Env {
+		if e.Name == "A_HOSTPORT" {
+			t.Fatalf("b carries a guessed A_HOSTPORT = %q", e.Value)
+		}
 	}
 }
 
