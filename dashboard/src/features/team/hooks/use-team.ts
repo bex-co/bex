@@ -30,7 +30,6 @@ function toMembers(
       createdAt: m.createdAt,
       mfaEnabled: m.mfaEnabled ?? false,
       identityResolved: m.identityResolved ?? true,
-      isOwner: m.isOwner ?? false,
       isSelf: m.isSelf ?? false,
     }));
 }

@@ -245,10 +245,6 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "离开工作区失败，请重试。",
     description: "Fallback message when leaving fails without a server reason",
   },
-  "team.leaveOwnerReason": {
-    message: "你拥有此工作区，因此不能离开。转移所有权功能尚未提供。",
-    description: "Reason the Leave action is disabled for the workspace owner",
-  },
   "team.leaveLastAdminReason": {
     message:
       "你是最后一名管理员。请先将他人设为管理员，以确保工作区仍有管理员。",
@@ -258,30 +254,14 @@ const zhTeam: Record<string, TranslationEntry> = {
     message: "你",
     description: "Badge marking the caller's own row in the members table",
   },
-  "team.owner": {
-    message: "所有者",
-    description: "Badge marking the workspace owner's row in the members table",
-  },
-  "team.ownerTooltip": {
-    message: "此工作区归该账户所有。所有者不能被移除或降级。",
-    description: "Tooltip for the workspace-owner member badge",
-  },
   "team.removeSelfReason": {
     message: "你不能移除自己。请改用离开工作区。",
     description:
       "Reason the Remove control is disabled on the caller's own row",
   },
-  "team.removeOwnerReason": {
-    message: "不能移除工作区所有者。转移所有权功能尚未提供。",
-    description: "Reason the Remove control is disabled on the owner's row",
-  },
   "team.changeOwnRoleReason": {
     message: "你不能更改自己的角色。请让其他管理员更改。",
     description: "Reason the role picker is disabled on the caller's own row",
-  },
-  "team.changeOwnerRoleReason": {
-    message: "工作区所有者必须保持为管理员。",
-    description: "Reason the role picker is disabled on the owner's row",
   },
   "team.identityUnresolvedTooltip": {
     message: "无法查找此成员的账户。在管理员移除之前，他们仍占用一个席位。",

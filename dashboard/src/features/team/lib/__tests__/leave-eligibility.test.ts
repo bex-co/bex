@@ -11,14 +11,14 @@ function member(overrides: Partial<MemberView> = {}): MemberView {
     createdAt: null,
     mfaEnabled: false,
     identityResolved: true,
-    isOwner: false,
     isSelf: false,
     ...overrides,
   };
 }
 
-// The UI pre-check must agree with the server's refusals (w5/m102): the owner
-// and the last admin cannot leave, everyone else can.
+// The UI pre-check must agree with the server's refusals (w5/m102): the last
+// admin cannot leave, everyone else can, the workspace's creator included
+// (w5/m372).
 describe("leaveEligibility", () => {
   it("lets an ordinary member leave", () => {
     expect(
@@ -29,13 +29,13 @@ describe("leaveEligibility", () => {
     ).toEqual({ isMember: true, blockedReason: null });
   });
 
-  it("refuses the workspace owner", () => {
+  it("lets an admin leave while another admin remains", () => {
     expect(
       leaveEligibility([
-        member({ subject: "me", isSelf: true, isOwner: true, role: "ADMIN" }),
+        member({ subject: "me", isSelf: true, role: "ADMIN" }),
         member({ subject: "other", role: "ADMIN" }),
       ]),
-    ).toEqual({ isMember: true, blockedReason: "team.leaveOwnerReason" });
+    ).toEqual({ isMember: true, blockedReason: null });
   });
 
   it("refuses the last admin", () => {

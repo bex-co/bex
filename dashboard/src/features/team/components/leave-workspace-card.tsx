@@ -35,8 +35,8 @@ export interface LeaveWorkspaceCardProps {
  * control names this action as the way out.
  *
  * Renders nothing when the caller has no membership here (nothing to leave).
- * For the workspace owner and the last admin the button stays rendered but
- * disabled with the reason — the same server refusals, seen before the click —
+ * For the last admin the button stays rendered but disabled with the reason —
+ * the same server refusal, seen before the click —
  * and a genuine server refusal still renders inline, for the race where
  * somebody else's role changes while this page is open.
  *

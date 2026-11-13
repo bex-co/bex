@@ -25,7 +25,7 @@ User selection 2026-11-12: items 1–4 of the ninth `/pm-brainstorm for w5` prop
 - [ ] **188** — [Agent delivery hardening: unique session branches, verified head SHA, protection re-check before a takeover fast-forward](188.md) (~1h30m, may promote) ← round 24 hardening (ADR107)
 - [ ] **189** — [Sandbox image imports: a platform-wide budget sized to the registry, fair import workers, and no foreign layer URLs](189.md) (>1h, promote) ← round 24 S-3 remainder (ADR107)
 - [ ] **190** — [Hosting and obs hardening from round 24: approve binds its plan, Grafana sessions end on removal, retired Postgres logins end their sessions](190.md) ← round 24 hardening (ADR107)
-- [ ] **m372** — [The workspace creator is an ordinary Admin, as on Render: another Admin can demote or remove them, and they can leave](m372/README.md) (10 tasks; 6h10m total) ← round 9 item 4; render.com/docs/team-members; recommendation recorded, user confirmation open
+- [ ] **m372** — [The workspace creator is an ordinary Admin, as on Render: another Admin can demote or remove them, and they can leave](blocked/m372/README.md) (10 tasks; 6h10m total) ← round 9 item 4; render.com/docs/team-members — **BLOCKED (release gate: the next batched production deploy pins this code, then a worker replays the creator's removal and demotion on a `bex-canary`-owned workspace if a second QA identity exists (t010); also open: the user's confirmation of amending the 2026-09-16 owner rule, recorded as the proposal's recommendation in ADR024)** (t001–t009 done; code shipped)
 
 ## Approved queue — 2026-11-12 (brainstorm round 8, residuals)
 

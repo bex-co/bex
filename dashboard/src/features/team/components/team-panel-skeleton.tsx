@@ -32,7 +32,7 @@ const PLACEHOLDER_SUBJECT = "00000000-0000-0000-0000-000000000000";
 /**
  * The Team card's content while its members load: the search box, the table
  * header and one row shaped like the caller's own (the one member every
- * workspace has — "You" and "Owner" badges, the identity id line, a role
+ * workspace has — the "You" badge, the identity id line, a role
  * select and a remove button). A workspace with more members still grows by
  * their rows on a first visit; a revisit reads them from the cache instead.
  */
@@ -67,9 +67,6 @@ export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
                 </span>
                 <Badge variant="secondary" className="shrink-0">
                   <span className="text-transparent">{t("team.you")}</span>
-                </Badge>
-                <Badge variant="outline" className="shrink-0">
-                  <span className="text-transparent">{t("team.owner")}</span>
                 </Badge>
               </div>
               <div className="font-mono text-xs text-transparent">

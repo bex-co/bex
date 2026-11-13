@@ -195,7 +195,7 @@ func (f *fakeStore) CountInvites(_ context.Context, _ string) (int, error) {
 }
 
 // ownerSubject is the workspace's onboarding owner binding ("" = unset, the
-// CreateWorkspace shape). Tests set it to exercise the w5/m101 owner guards.
+// CreateWorkspace shape).
 func (f *fakeStore) TenantOwnerSubject(_ context.Context, _ string) (string, error) {
 	return f.ownerSubject, nil
 }
@@ -217,6 +217,9 @@ func (f *fakeStore) UpdateMemberRole(_ context.Context, _, subject, role string)
 	}
 	m.Role = role
 	f.members[subject] = m
+	if role != "admin" {
+		f.detachOwner(subject)
+	}
 	return nil
 }
 
@@ -225,7 +228,16 @@ func (f *fakeStore) RemoveMember(_ context.Context, _, subject string) error {
 		return fmt.Errorf("tenant_member: %w", store.ErrNotFound)
 	}
 	delete(f.members, subject)
+	f.detachOwner(subject)
 	return nil
+}
+
+// detachOwner mirrors PGStore's detachOwnerTx (w5/m372): the binding ends with
+// the creator's admin membership.
+func (f *fakeStore) detachOwner(subject string) {
+	if f.ownerSubject == subject {
+		f.ownerSubject = ""
+	}
 }
 
 func (f *fakeStore) CreateInvite(_ context.Context, tenantID, email, role, token, invitedBy string, expiresAt time.Time) (store.Invite, error) {

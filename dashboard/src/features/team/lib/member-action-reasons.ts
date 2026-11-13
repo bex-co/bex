@@ -8,19 +8,13 @@ export function memberActionReasonKeys(member: MemberView): {
   removeReason: string | null;
   roleReason: string | null;
 } {
-  // Self wins over owner in the copy: on your own owner row, "you cannot act on
-  // yourself" is the reason you would hit first, and it names Leave workspace
-  // (w5/m102) — the exit that replaces self-removal.
+  // "You cannot act on yourself" names Leave workspace (w5/m102), the exit
+  // that replaces self-removal. The workspace's creator is an ordinary Admin
+  // (w5/m372), so no other row is refused up front.
   if (member.isSelf) {
     return {
       removeReason: "team.removeSelfReason",
       roleReason: "team.changeOwnRoleReason",
-    };
-  }
-  if (member.isOwner) {
-    return {
-      removeReason: "team.removeOwnerReason",
-      roleReason: "team.changeOwnerRoleReason",
     };
   }
   return { removeReason: null, roleReason: null };

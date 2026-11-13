@@ -113,7 +113,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		Name: "leave_workspace",
 		Description: "Leave a workspace yourself, giving up your own membership and access. " +
 			"Acts ONLY on the calling identity — it cannot remove anyone else; use remove_workspace_member for that. " +
-			"Refused for the workspace owner and for the last remaining admin. bex extension over Render's MCP.",
+			"Refused for the last remaining admin. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, okResult, error) {
 		err := s.LeaveWorkspace(ctx, core.NamedWorkspace(ctx))
 		return nil, okResult{OK: err == nil}, err

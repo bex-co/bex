@@ -32,9 +32,9 @@ import (
 // half (row+tuple both gone against live Postgres and OpenFGA, and the
 // post-leave resolution) lives in internal/api/members_leave_e2e_test.go.
 
-// leaveWorkspace seeds a workspace owned by `owner` with `caller` as a second
-// admin and a developer alongside, so neither the owner rule nor the last-admin
-// rule can be what explains an unexpected refusal.
+// leaveFixture seeds a workspace whose creator is owner-1, with admin-2 as a
+// second admin and dev-1 a developer, so the last-admin rule cannot be what
+// explains an unexpected refusal.
 func leaveFixture(t *testing.T) *fakeStore {
 	t.Helper()
 	st := newFakeStore(store.PlanPro)
@@ -66,19 +66,20 @@ func TestLeaveWorkspaceDropsTheCallersRowAndTuple(t *testing.T) {
 	}
 }
 
-func TestLeaveWorkspaceRefusesTheOwner(t *testing.T) {
+// The workspace's creator leaves like any admin, as on Render (w5/m372): the
+// membership ends and the onboarding binding with it.
+func TestLeaveWorkspaceLetsTheCreatorLeave(t *testing.T) {
 	st := leaveFixture(t)
 	s := svc(st, newFakeGranter(), nil, nil)
 
-	err := s.LeaveWorkspace(ctxWith("owner-1"), "tea-1")
-	if !errors.Is(err, core.ErrConflict) || codedErrorCode(err) != ErrorOwnerCannotLeave {
-		t.Fatalf("owner leaving: %v code=%q, want ErrConflict/%s", err, codedErrorCode(err), ErrorOwnerCannotLeave)
+	if err := s.LeaveWorkspace(ctxWith("owner-1"), "tea-1"); err != nil {
+		t.Fatalf("creator leaving with another admin: %v", err)
 	}
-	if _, ok := st.members["owner-1"]; !ok {
-		t.Error("owner left anyway")
+	if _, ok := st.members["owner-1"]; ok {
+		t.Error("the creator's membership survived the leave")
 	}
-	if !strings.Contains(err.Error(), "ownership") {
-		t.Errorf("refusal does not name the recovery path: %q", err.Error())
+	if st.ownerSubject != "" {
+		t.Errorf("owner binding = %q after the creator left, want none", st.ownerSubject)
 	}
 }
 
@@ -226,13 +227,15 @@ func TestLeaveWorkspaceEvictsTheCallersResolution(t *testing.T) {
 // A refused leave must evict nothing — eviction is a consequence of actually
 // having left, and a spurious one would churn every caller's resolution.
 func TestRefusedLeaveEvictsNothing(t *testing.T) {
-	st := leaveFixture(t)
+	st := newFakeStore(store.PlanPro)
+	st.seedMember("admin-1", "admin")
+	st.seedMember("dev-1", "developer")
 	resolver := &recordingResolver{}
 	s := svc(st, newFakeGranter(), nil, nil)
 	s.Base.Workspace = resolver
 
-	if err := s.LeaveWorkspace(ctxWith("owner-1"), "tea-1"); err == nil {
-		t.Fatal("owner leave was not refused")
+	if err := s.LeaveWorkspace(ctxWith("admin-1"), "tea-1"); err == nil {
+		t.Fatal("the last admin's leave was not refused")
 	}
 	if len(resolver.invalidatedTenants) != 0 || len(resolver.invalidatedMemberships) != 0 {
 		t.Errorf("refused leave evicted caches: %v %v",

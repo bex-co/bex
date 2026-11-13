@@ -99,10 +99,10 @@ func (s *PGStore) TenantForOwner(ctx context.Context, identityID string) (Tenant
 // every workspace minted through CreateWorkspace has, since only onboarding's
 // CreateTenantWithMember sets it. ErrNotFound when the workspace doesn't exist.
 //
-// The membership guards read it (w5/m101): the owner binding is the key
-// EnsureTenant resolves the personal workspace by, so a removed or demoted
-// owner is either silently re-granted admin on their next request or left with
-// no workspace at all — both are refused instead.
+// The members view reads it to mark the creator's row (information only). The
+// binding is the key EnsureTenant resolves the personal workspace by, so the
+// store ends it when the creator is removed, demoted or leaves (detachOwnerTx,
+// w5/m372).
 func (s *PGStore) TenantOwnerSubject(ctx context.Context, tenantID string) (string, error) {
 	var owner *string
 	if err := s.Pool.QueryRow(ctx,
