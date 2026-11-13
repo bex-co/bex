@@ -49,6 +49,9 @@ const (
 	// ParentCanceledCode is the failureReasonCode of a session canceled because
 	// an ancestor was.
 	ParentCanceledCode = "AGENT_SESSION_PARENT_CANCELED"
+	// CreatorRemovedCode is the failureReasonCode of a session canceled because
+	// its creator's membership of the workspace ended (w5/186).
+	CreatorRemovedCode = "AGENT_SESSION_CREATOR_REMOVED"
 )
 
 func (s *Service) authorizeParent(ctx context.Context, parentID string) error {
@@ -216,22 +219,120 @@ func (s *Service) cancelDescendants(ctx context.Context, parent store.AgentSessi
 }
 
 func (s *Service) cancelDescendant(ctx context.Context, d store.AgentSession, causeID string) error {
-	var err error
-	if d.Phase != PhaseCanceling {
-		if d, err = s.Store.SetAgentSessionLifecycle(ctx, d.ID, "", PhaseCanceling, "canceling", false); err != nil {
-			return mapStoreError(d.ID, err)
-		}
-	}
-	canceled, err := s.finishCancel(ctx, d)
+	canceled, err := s.cancelTree(ctx, d, false)
 	if err != nil {
 		return err
 	}
+	s.recordCancelCause(ctx, canceled,
+		fmt.Sprintf("canceled because its parent session %s was canceled", causeID), ParentCanceledCode)
+	return nil
+}
+
+// cancelTree takes a session to canceled. The flip to canceling comes first:
+// it is what stops the session's git and model mints
+// (agentsession.CurrentSandboxCaller), and a canceling session can start no
+// new child, so with withDescendants the descendants listed next are the whole
+// set (ADR102 D6). They are canceled before the session finishes, so a
+// failure leaves it canceling and a retry converges the rest.
+func (s *Service) cancelTree(ctx context.Context, record store.AgentSession, withDescendants bool) (store.AgentSession, error) {
+	if record.Phase != PhaseCanceling {
+		var err error
+		if record, err = s.Store.SetAgentSessionLifecycle(ctx, record.ID, "", PhaseCanceling, "canceling", false); err != nil {
+			return store.AgentSession{}, mapStoreError(record.ID, err)
+		}
+	}
+	if withDescendants {
+		if err := s.cancelDescendants(ctx, record); err != nil {
+			return store.AgentSession{}, err
+		}
+	}
+	return s.finishCancel(ctx, record)
+}
+
+// recordCancelCause records why a session the platform canceled was canceled;
+// a person's own cancel records none.
+func (s *Service) recordCancelCause(ctx context.Context, canceled store.AgentSession, reason, code string) {
 	if canceled.Phase != PhaseCanceled {
+		return
+	}
+	if err := s.Store.SetAgentSessionCancelCause(ctx, canceled.ID, reason, code); err != nil {
+		log.Printf("agent-session cancel: record cause failed (session=%s): %v", canceled.ID, err)
+	}
+}
+
+// memberSessionPage bounds one read of a member's unfinished sessions.
+const memberSessionPage = 100
+
+// CancelMemberSessions cancels every unfinished session that creators (a
+// departing member's subject and the client ids of the API keys they created
+// here) started in workspaceID, with the sessions below each (w5/186, ADR107).
+// Without it a removed member's running turn kept minting git and model
+// credentials until its turn timeout; every later step (steer, spawn, resume,
+// the next automation fire) was already refused. Automation and child
+// sessions carry their creator's subject, so they are included.
+//
+// Trusted: the caller authorized the membership change, so no per-session
+// check is made. It runs in two passes:
+//
+//  1. Flip every session to canceling, which stops its mints. A failure here
+//     is returned, so the membership change fails and its retry converges.
+//  2. Tear each one down with its descendants. Best effort: a canceling
+//     session mints nothing, and the sandbox inventory reconciler stops a
+//     canceling session's sandbox, so a sandbox outage must not block the
+//     exit. The first failure ends the pass, so an unreachable sandbox API
+//     costs one timeout rather than one per session; the sessions left
+//     canceling converge on a later Cancel.
+func (s *Service) CancelMemberSessions(ctx context.Context, workspaceID string, creators []string) error {
+	creators = slices.DeleteFunc(slices.Clone(creators), func(c string) bool { return c == "" })
+	if !s.enabled() || len(creators) == 0 {
 		return nil
 	}
-	reason := fmt.Sprintf("canceled because its parent session %s was canceled", causeID)
-	if err := s.Store.SetAgentSessionCancelCause(ctx, d.ID, reason, ParentCanceledCode); err != nil {
-		log.Printf("agent-session cancel cascade: record cause failed (session=%s): %v", d.ID, err)
+	phases, _ := phasesOfState(StateWorking)
+	query := store.AgentSessionListQuery{
+		Archived:  store.ArchivedInclude, // archiving does not stop a running turn
+		Phases:    phases,
+		CreatedBy: creators,
+		Limit:     memberSessionPage,
+	}
+	var stopped []store.AgentSession
+	for {
+		page, err := s.Store.ListAgentSessions(ctx, workspaceID, query)
+		if err != nil {
+			return fmt.Errorf("list the sessions %v started: %w", creators, err)
+		}
+		for _, listed := range page {
+			// Re-read: its turn may have finished since the list, and the
+			// lifecycle write would reopen a finished session as canceling.
+			d, err := s.Store.GetAgentSession(ctx, listed.ID)
+			if errors.Is(err, store.ErrNotFound) {
+				continue
+			}
+			if err != nil {
+				return mapStoreError(listed.ID, err)
+			}
+			if finishedPhase(d.Phase) {
+				continue
+			}
+			if d.Phase != PhaseCanceling {
+				if d, err = s.Store.SetAgentSessionLifecycle(ctx, d.ID, "", PhaseCanceling, "canceling", false); err != nil {
+					return mapStoreError(listed.ID, err)
+				}
+			}
+			stopped = append(stopped, d)
+		}
+		if len(page) < memberSessionPage {
+			break
+		}
+		query.Cursor = page[len(page)-1].ID
+	}
+	reason := "canceled because its creator is no longer a member of the workspace"
+	for _, d := range stopped {
+		canceled, err := s.cancelTree(ctx, d, true)
+		if err != nil {
+			log.Printf("agent-session cancel: a departed member's sessions are left canceling (workspace=%s, from session %s): %v", workspaceID, d.ID, err)
+			break
+		}
+		s.recordCancelCause(ctx, canceled, reason, CreatorRemovedCode)
 	}
 	return nil
 }

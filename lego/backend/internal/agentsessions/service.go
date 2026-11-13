@@ -1459,18 +1459,7 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	if record.Phase == PhaseCanceled {
 		return s.toView(record) // idempotent public cancel
 	}
-	record, err = s.Store.SetAgentSessionLifecycle(ctx, sessionID, "", PhaseCanceling, "canceling", false)
-	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
-	}
-	// ADR102 D6: with the parent canceling it can start no new child, so the
-	// descendants listed now are the whole set. They are canceled before the
-	// parent finishes, so a failure leaves the parent canceling and a retry
-	// of this verb converges the rest.
-	if err := s.cancelDescendants(ctx, record); err != nil {
-		return View{}, err
-	}
-	record, err = s.finishCancel(ctx, record)
+	record, err = s.cancelTree(ctx, record, true)
 	if err != nil {
 		return View{}, err
 	}

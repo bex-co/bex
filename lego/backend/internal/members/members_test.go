@@ -1371,10 +1371,12 @@ func TestAccountOffboarderDoesNotDisposeKeys(t *testing.T) {
 	// The assertion that matters is structural: AccountOffboarder has no key
 	// seam to call, so it cannot double-dispose. If someone adds one, this test
 	// is where they must justify it.
-	if reflect.ValueOf(off).NumField() != 3 {
-		t.Errorf("AccountOffboarder gained a field — if it is a key disposer, the "+
-			"account worker would run teardown twice (w2/m163 t003); fields = %d",
-			reflect.ValueOf(off).NumField())
+	disposer := reflect.TypeFor[MemberKeyDisposer]()
+	for i, typ := 0, reflect.TypeOf(off); i < typ.NumField(); i++ {
+		if f := typ.Field(i); f.Type.Implements(disposer) || (f.Type.Kind() == reflect.Interface && disposer.Implements(f.Type)) {
+			t.Errorf("AccountOffboarder.%s can dispose keys — the account worker would "+
+				"run teardown twice (w2/m163 t003)", f.Name)
+		}
 	}
 }
 

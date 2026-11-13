@@ -457,3 +457,59 @@ func TestCancelParentCancelsUnfinishedDescendants(t *testing.T) {
 		t.Fatalf("second cancel = %+v / %v", again, err)
 	}
 }
+
+// w5/186: when a member leaves or is removed, the sessions they started,
+// directly or through an API key they created, are canceled with their
+// descendants and the cause recorded; their finished sessions and everyone
+// else's are left alone. A sandbox outage does not fail the exit: every
+// session is already canceling (no longer minting), and a later cancel
+// converges it.
+func TestCancelMemberSessionsEndsOnlyTheDepartedMembersUnfinishedSessions(t *testing.T) {
+	e := newLineageEnv(t)
+	ctx := context.Background()
+	setCreator := func(id, creator string) {
+		t.Helper()
+		if _, err := e.pg.Pool.Exec(ctx, `UPDATE agent_sessions SET created_by = $2 WHERE id = $1`, id, creator); err != nil {
+			t.Fatal(err)
+		}
+	}
+	running := e.create(t, "")
+	child := e.create(t, running.ID)
+	byKey := e.create(t, "")
+	setCreator(byKey.ID, "key-client-1")
+	finished := e.create(t, "")
+	e.setPhase(t, finished.ID, PhaseCompleted)
+	someoneElses := e.create(t, "")
+	setCreator(someoneElses.ID, "bob")
+	creators := []string{"alice", "key-client-1"}
+
+	e.lc.cancelErr = errors.New("sandbox api down")
+	if err := e.svc.CancelMemberSessions(ctx, e.ws, creators); err != nil {
+		t.Fatalf("a sandbox outage failed the exit: %v", err)
+	}
+	for _, id := range []string{running.ID, child.ID, byKey.ID} {
+		if got := e.phase(t, id); got != PhaseCanceling {
+			t.Fatalf("session %s after a failed teardown = %s, want canceling (no longer minting)", id, got)
+		}
+	}
+	e.lc.cancelErr = nil
+	if err := e.svc.CancelMemberSessions(ctx, e.ws, creators); err != nil {
+		t.Fatalf("second pass: %v", err)
+	}
+
+	for _, id := range []string{running.ID, byKey.ID} {
+		row, err := e.pg.GetAgentSession(ctx, id)
+		if err != nil || row.Phase != PhaseCanceled || row.FailureReasonCode != CreatorRemovedCode {
+			t.Fatalf("the departed member's session %s = phase %s code %q / %v", id, row.Phase, row.FailureReasonCode, err)
+		}
+	}
+	if got := e.phase(t, child.ID); got != PhaseCanceled {
+		t.Fatalf("its child = %s, want canceled", got)
+	}
+	if got := e.phase(t, finished.ID); got != PhaseCompleted {
+		t.Fatalf("a finished session became %s", got)
+	}
+	if got := e.phase(t, someoneElses.ID); got == PhaseCanceled || got == PhaseCanceling {
+		t.Fatalf("another member's session became %s", got)
+	}
+}

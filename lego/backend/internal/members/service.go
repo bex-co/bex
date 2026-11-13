@@ -143,6 +143,19 @@ type Service struct {
 	// dispose), NOT a silent skip: when it is wired, its error is surfaced and
 	// the removal fails rather than reporting a clean exit.
 	Keys MemberKeyDisposer
+	// Sessions cancels the agent sessions a departing member started in this
+	// workspace, directly or through the API keys Keys just disposed of
+	// (w5/186): their running turns would otherwise keep minting git and model
+	// credentials until the turn timeout. Nil means agent sessions are not
+	// wired.
+	Sessions MemberSessionCanceler
+}
+
+// MemberSessionCanceler is the members service's seam to agent-session
+// teardown, satisfied by *agentsessions.Service. creators are the subjects
+// whose sessions end: the member and the client ids of their keys.
+type MemberSessionCanceler interface {
+	CancelMemberSessions(ctx context.Context, workspaceID string, creators []string) error
 }
 
 // MemberKeyDisposer is the members service's seam to machine-credential
@@ -1143,6 +1156,12 @@ func (s *Service) Remove(ctx context.Context, workspaceID, subject string) error
 //     no privilege) that a retry converges — whereas deleting the row first
 //     would strand a stale tuple the retry can no longer reach (the member is
 //     gone, GetTenantMember 404s). The revoke error is SURFACED, not discarded.
+//     Then stop the agent sessions the member started here, directly or
+//     through the keys step 1 revoked (w5/186): a running turn keeps minting
+//     credentials. After the keys and the role, so neither can start another;
+//     before the row, so a failure leaves a member a retry can find. (A retry
+//     no longer knows the revoked keys' ids; the stop fails only on a
+//     database error.)
 //  3. Delete the row. For the workspace's creator the store ends the
 //     onboarding binding in the same transaction (w5/m372).
 //  4. For an admin, revoke the admin tuple once more. Onboarding re-grants a
@@ -1159,6 +1178,9 @@ func (s *Service) endMembership(
 		return 0, err
 	}
 	if err := s.revokeRoleErr(ctx, workspaceID, "user:"+subject, role); err != nil {
+		return 0, err
+	}
+	if err := cancelMemberSessions(ctx, s.Sessions, workspaceID, append([]string{subject}, revokedKeys...)); err != nil {
 		return 0, err
 	}
 	if err := s.Store.RemoveMember(ctx, workspaceID, subject); err != nil {
@@ -1187,7 +1209,8 @@ func (s *Service) endMembership(
 // The end state is Remove's, reached the same fail-closed way: dispose the
 // caller's API keys in this workspace (w2/m163 — a credential must not outlive
 // the membership that justified it, whichever exit was taken), then revoke the
-// role tuple, then delete the row, then evict the caller's cached workspace
+// role tuple, then stop the agent sessions the caller started here (w5/186),
+// then delete the row, then evict the caller's cached workspace
 // resolution so their very next request does not answer from a membership that
 // no longer exists.
 func (s *Service) LeaveWorkspace(ctx context.Context, workspaceID string) error {
@@ -1303,6 +1326,11 @@ type AccountOffboarder struct {
 	Store     AccountMemberStore
 	Revoker   RoleRevoker
 	Workspace core.WorkspaceResolver
+	// Sessions cancels the deleting account's agent sessions in a workspace
+	// that survives it (w5/186), as a membership exit does. The account's keys
+	// were disposed of before this runs, so sessions a key started are not
+	// found here.
+	Sessions MemberSessionCanceler
 }
 
 func (a AccountOffboarder) Remove(ctx context.Context, workspaceID, subject string) error {
@@ -1321,11 +1349,26 @@ func (a AccountOffboarder) Remove(ctx context.Context, workspaceID, subject stri
 			return fmt.Errorf("revoke %s from workspace %s: %w", subject, workspaceID, err)
 		}
 	}
+	if err := cancelMemberSessions(ctx, a.Sessions, workspaceID, []string{subject}); err != nil {
+		return err
+	}
 	if err := a.Store.RemoveAccountMember(ctx, workspaceID, subject); err != nil {
 		return mapStoreErr(err)
 	}
 	if inv, ok := a.Workspace.(interface{ InvalidateTenant(string) }); ok {
 		inv.InvalidateTenant(subject)
+	}
+	return nil
+}
+
+// cancelMemberSessions stops the agent sessions creators started in
+// workspaceID; a nil canceler means agent sessions are not wired.
+func cancelMemberSessions(ctx context.Context, c MemberSessionCanceler, workspaceID string, creators []string) error {
+	if c == nil {
+		return nil
+	}
+	if err := c.CancelMemberSessions(ctx, workspaceID, creators); err != nil {
+		return fmt.Errorf("stop the agent sessions %s started in workspace %s: %w", creators[0], workspaceID, err)
 	}
 	return nil
 }
