@@ -13,6 +13,15 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-11-12 (brainstorm round 9)
+
+User selection 2026-11-12: items 1–4 of the ninth `/pm-brainstorm for w5` proposal (`/pmx 1,2,3,4`, with w5 chosen in a follow-up question), followed by `/loopx w5`. Item 5 (a public status page) was not selected. m369 absorbs w4/604, w4/609 and w4/624 (moved to `w4/done/` as source evidence; not fixed by the move). Render parity is included for m369, m371 (conditionally) and m372, and omitted for m370 (operator mechanism and observability). m372's amendment of the 2026-09-16 owner rule is the proposal's recommendation under ADR008 Render parity first, not a user decision; the user's confirmation is still open (see its README).
+
+- [ ] **m369** — [A deploy's verdict, a Suspend→Resume and a rollout's start reach every surface within seconds, not on the next 30 s pass](m369/README.md) (8 tasks; 5h20m total) ← round 9 item 1; absorbs w4/624, w4/604, w4/609
+- [ ] **m370** — [A spec change takes effect in seconds: the operator's App work queue is measured, alerted on and kept short](m370/README.md) (7 tasks; 5h35m total) ← round 9 item 2; w4/603, w21/012 evidence
+- [ ] **m371** — [Security review round 24: the agent, sandbox and hosting surfaces shipped since round 23](m371/README.md) (10 tasks; 9h40m total) ← round 9 item 3; ADR085 (2026-08-29) was the last broad round
+- [ ] **m372** — [The workspace creator is an ordinary Admin, as on Render: another Admin can demote or remove them, and they can leave](m372/README.md) (10 tasks; 6h10m total) ← round 9 item 4; render.com/docs/team-members; recommendation recorded, user confirmation open
+
 ## Approved queue — 2026-11-12 (brainstorm round 8, residuals)
 
 - [ ] **m356** — [In the zh dashboard, a deploy's port hints and a build's queued cause stay English, and the hint comes and goes between passes](blocked/m356/README.md) (9 tasks; 4h20m total) ← round 8 item 1; w4/m336 residuals — **BLOCKED (release gate: the next production deploy pins this fix, then a worker replays the live DoD (t005) — no user action)** (t001–t004, t006–t008 done; code shipped; t005 and t009 pending)
