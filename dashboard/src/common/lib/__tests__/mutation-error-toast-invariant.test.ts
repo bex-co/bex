@@ -41,6 +41,8 @@ const ALLOWED: Record<string, string> = {
     "the browser clipboard API failed; there is no server to relay",
   'features/blueprints/hooks/use-disconnect-blueprint.ts: toast.error(t("blueprints.disconnectBusy"))':
     DEDICATED,
+  'features/blueprints/hooks/use-planned-sync.ts: toast.error(t("blueprints.plannedChanged"))':
+    DEDICATED,
   'features/blueprints/hooks/use-sync-blueprint.ts: toast.error(t("blueprints.syncSourceChanged"))':
     DEDICATED,
   'features/blueprints/hooks/use-sync-blueprint.ts: toast.error(t("blueprints.syncBusy"))':
