@@ -1,6 +1,6 @@
 # w2 · m361 — A just-deleted service's name can be reused at once, as on Render
 
-**Worker:** worker2 **Goal:** creating a service under the name of a service that was just deleted succeeds at once on every surface (REST, GraphQL, MCP, Blueprint, the dashboard and the pinned CLI), as on Render. The old service's teardown finishes on its own, and nothing of it (logs, metrics, events, registry images) is mixed into the new service. **Status:** in progress (t001–t004, t007, t008 done: a create and a Blueprint apply wait up to 20 s for the old teardown; t005 production walk after the deploy)
+**Worker:** worker2 **Goal:** creating a service under the name of a service that was just deleted succeeds at once on every surface (REST, GraphQL, MCP, Blueprint, the dashboard and the pinned CLI), as on Render. The old service's teardown finishes on its own, and nothing of it (logs, metrics, events, registry images) is mixed into the new service. **Status:** blocked (t001–t004, t006–t008 done; w2/m365 `18b9e89d5` replaced the 20 s wait with an immediate re-create; t005 production walk runs as w2/m365 t006 after the batched deploy)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Name resolution and Blueprints ignore an App being deleted; the same check for Postgres and Key Value names — **DONE** | 60m | t002 |
 | t004 | ADR018:81's open divergence is removed and `SERVICE_NAME_STILL_DELETING` retired — **DONE** | 20m | t003 |
 | t005 | Production walk: delete then recreate the same name within seconds by CLI and by Blueprint sync | 30m | t004 |
-| t006 | Render parity | 20m | t005 |
+| t006 | Render parity — **DONE** (with w2/m365 t007) | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t007 |
 | t009 | Closeout | 10m | t008 |

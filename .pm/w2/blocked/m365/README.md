@@ -1,6 +1,6 @@
 # w2 · m365 — A re-created service gets its own App object, so a name is free at once whatever the old teardown takes
 
-**Worker:** worker2 **Goal:** creating a service under the name of one just deleted answers 201 at once, as on Render, even while the old service's teardown runs for minutes (a static site's object purge, a stalled finalizer). The old and new services never share a host, a Service, env vars, logs, metrics or artifacts. **Status:** in progress (t001–t005, t008, t009 done; t006 production walk after the deploy)
+**Worker:** worker2 **Goal:** creating a service under the name of one just deleted answers 201 at once, as on Render, even while the old service's teardown runs for minutes (a static site's object purge, a stalled finalizer). The old and new services never share a host, a Service, env vars, logs, metrics or artifacts. **Status:** blocked (t001–t005, t007–t009 done, shipped `18b9e89d5`; t006 production walk after the batched deploy, pre-verified on dev-2)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | ✅ The old service's host and slug Service never collide with the new one | 90m | t002 |
 | t005 | ✅ `SERVICE_NAME_STILL_DELETING` and the 20 s wait retire; ADR018's open gap closes | 30m | t003, t004 |
 | t006 | Production walk: re-create a static site and a web service while their old teardown is still running | 45m | t005 |
-| t007 | Render parity | 20m | t006 |
+| t007 | ✅ Render parity | 20m | t006 |
 | t008 | ✅ Simplify | 15m | t007 |
 | t009 | ✅ Test coverage | 45m | t008 |
 | t010 | Closeout | 10m | t009 |
