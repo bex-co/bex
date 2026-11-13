@@ -51,3 +51,15 @@ func (w Workspaces) Tenant(context.Context, core.Identity) (string, bool) {
 func (w Workspaces) IsMember(_ context.Context, _ core.Identity, workspaceID string) (bool, error) {
 	return slices.Contains(w, workspaceID), nil
 }
+
+// PlatformClients is a core.PlatformClientResolver from a fixed set of client
+// ids, for the AuthorizeMintClass tests.
+type PlatformClients map[string]bool
+
+func (p PlatformClients) IsPlatformClient(_ context.Context, clientID string) (bool, error) {
+	return p[clientID], nil
+}
+
+func (p PlatformClients) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
+	return p.IsPlatformClient(ctx, clientID)
+}

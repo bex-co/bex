@@ -383,10 +383,12 @@ func TestDestinationURLRedactedForReadOnlyOAuthAdmin(t *testing.T) {
 	st := newFakeEndpointStore()
 	s := &Service{Base: &core.Base{
 		Namespace: "default", Workspace: coretest.Workspaces{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
+		PlatformClients: coretest.PlatformClients{"platform-cli": true},
 	}, Store: st}
+	// The admin through bex's own CLI client; a third-party client is below.
 	oauthAdmin := func(scopes string) context.Context {
 		return core.WithIdentity(context.Background(), core.Identity{
-			Subject: "id-admin", Method: "oauth2", Human: true, CanonicalScopes: scopes,
+			Subject: "id-admin", Method: "oauth2", ClientID: "platform-cli", Human: true, PlatformClient: true, CanonicalScopes: scopes,
 		})
 	}
 
@@ -431,6 +433,17 @@ func TestDestinationURLRedactedForReadOnlyOAuthAdmin(t *testing.T) {
 	}
 	if got, _ := s.Get(sessionAdmin, "", created.ID); got.Secret != created.Secret {
 		t.Fatalf("session admin Get secret = %q, want the minted secret", got.Secret)
+	}
+	// Round 24: a consented third-party client holding the same admin's write
+	// token reads the destination and secret redacted, as it may not create an
+	// endpoint (the export AuthorizeMintClass gates).
+	thirdParty := core.WithIdentity(context.Background(), core.Identity{
+		Subject: "id-admin", Method: "oauth2", ClientID: "dcr-agent-7", Human: true, CanonicalScopes: core.ScopeRead + " " + core.ScopeWrite,
+	})
+	if got, err := s.Get(thirdParty, "", created.ID); err != nil {
+		t.Fatalf("third-party admin Get: %v", err)
+	} else if got.URL != redacted || got.Secret != "" {
+		t.Fatalf("third-party admin Get = URL %q secret %q, want the redacted origin and no secret", got.URL, got.Secret)
 	}
 }
 

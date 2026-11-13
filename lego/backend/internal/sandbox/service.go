@@ -673,16 +673,16 @@ func isPublicSandboxID(idStr string) bool {
 }
 
 // resolveSandbox fetches one OpenSandbox object by either id form (w9/m94
-// dual-accept). A substrate id is a direct Get; a public `sbx-` id is matched
-// against the tenant key's own list — the key scopes that list to the caller's
-// `<ws>-sandbox` namespace, so the scan is bounded by the workspace's live
-// sandbox capacity and can never see another tenant's object. It performs no
-// authorization; ownedSandbox owns the ownership boundary.
+// dual-accept). A substrate id is a direct Get; a public `sbx-` id is found
+// through OpenSandbox's metadata filter on the tenant key's own list (the key
+// scopes it to the caller's `<ws>-sandbox` namespace, so it never sees another
+// tenant's object), re-checked here in case a server ignores the filter. It
+// performs no authorization; ownedSandbox owns the ownership boundary.
 func (s *Service) resolveSandbox(ctx context.Context, key, idStr string) (osSandbox, error) {
 	if !isPublicSandboxID(idStr) {
 		return s.Client.Get(ctx, key, idStr)
 	}
-	rows, err := s.Client.List(ctx, key)
+	rows, err := s.Client.ListByMetadata(ctx, key, map[string]string{metadataPublicID: idStr})
 	if err != nil {
 		return osSandbox{}, err
 	}

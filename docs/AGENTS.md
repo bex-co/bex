@@ -6,7 +6,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 
 - Each `ADR*.md` is self-contained; read the ADR directly for design + status.
 - Render-parity ledgers ([ADR018](ADR018-render-parity.md), [cli-compatibility-checklist.md](cli-compatibility-checklist.md)) are evidence-backed.
-- Security reviews form a chain ADR028 → ADR085, plus the focused ADR103 (see § Security lineage); read the latest for current residual.
+- Security reviews form a chain ADR028 → ADR085 → ADR107, plus the focused ADR103 (see § Security lineage); read the latest for current residual.
 
 ## Catalog — by topic
 
@@ -155,5 +155,6 @@ Each entry is a codex-security triage; earlier rounds' residuals are re-confirme
 - [ADR084-security-review-round22.md](ADR084-security-review-round22.md) — round 22: dnR05P triage; 3 security fixes, 5 boundary/correctness hardenings, 2 accepted residuals
 - [ADR085-security-review-round23.md](ADR085-security-review-round23.md) — round 23: 5PePz5 managed-Postgres credential resurrection fixed
 - [ADR103-security-review-static-rewrite-proxy.md](ADR103-security-review-static-rewrite-proxy.md) — focused review (2026-11-10, w3/m304): the static-site external-rewrite proxy; 3 fixed (internal header, per-site in-flight cap, oversize abort), 4 accepted residuals
+- [ADR107-security-review-round24.md](ADR107-security-review-round24.md) — round 24 (2026-11-13, w5/m371): the agent, sandbox and hosting surfaces shipped since round 23; 4 findings (1 high), all fixed (S-3 partly, remainder w5/189); hardening filed as w5/186–190
 
 Other docs: [PRFAQ001-bex-v1-hosting.md](PRFAQ001-bex-v1-hosting.md), [assets/](assets/) media.

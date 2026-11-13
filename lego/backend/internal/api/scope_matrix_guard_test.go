@@ -174,6 +174,14 @@ func heuristicRequiredClass(op string) (want string, ok bool) {
 		return core.OpClassMint, true
 	case strings.Contains(op, "createWebhookEndpoint") || op == "MCP create_webhook_endpoint" || op == "REST POST /v1/webhooks":
 		return core.OpClassMint, true
+	case strings.Contains(op, "inviteWorkspaceMember") || strings.Contains(op, "invite_workspace_member") ||
+		strings.Contains(op, "resendWorkspaceInvite") || strings.Contains(op, "resend_workspace_invite") ||
+		strings.Contains(op, "changeWorkspaceMemberRole") || strings.Contains(op, "change_workspace_member_role") ||
+		op == "REST POST /v1/workspaces/{workspaceId}/members" ||
+		op == "REST POST /v1/workspaces/{workspaceId}/invites/{inviteId}/resend" ||
+		op == "REST PATCH /v1/owners/{ownerId}/members/{userId}" ||
+		op == "REST PATCH /v1/workspaces/{workspaceId}/members/{subject}":
+		return core.OpClassMint, true
 	case strings.Contains(op, "connection-info") || strings.Contains(op, "connection_info") ||
 		strings.Contains(op, "ConnectionInfo"):
 		return core.OpClassSensitive, true

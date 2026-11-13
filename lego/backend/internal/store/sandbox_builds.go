@@ -19,6 +19,7 @@ package store
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -72,6 +73,23 @@ type NewSandboxBuild struct {
 	SourceImage      string
 	SourceReference  string
 	SourceDigest     string
+	// SizeBytes is the compressed size the source manifest declares, stored at
+	// once so an import still copying counts against the workspace's storage
+	// cap (round 24, S-3). A failed import clears it.
+	SizeBytes int64
+	// MaxStorageBytes is the workspace's sandbox storage cap (0: none). A new
+	// build whose size would take the workspace past it is
+	// *SandboxStorageLimitError, checked under a workspace-wide lock so
+	// concurrent imports into different groups cannot all pass it.
+	MaxStorageBytes int64
+}
+
+// SandboxStorageLimitError refuses a new build that would take its workspace
+// past its sandbox storage cap.
+type SandboxStorageLimitError struct{ UsedBytes int64 }
+
+func (e *SandboxStorageLimitError) Error() string {
+	return fmt.Sprintf("sandbox storage limit: %d bytes already used", e.UsedBytes)
 }
 
 const sandboxBuildColumns = `id, workspace_id, sandbox_group_id, name, source_repository, source_image,
@@ -114,15 +132,30 @@ func (s *PGStore) CreateSandboxBuild(ctx context.Context, in NewSandboxBuild, ma
 				return ErrSandboxBuildLimit
 			}
 		}
+		if in.MaxStorageBytes > 0 && in.SizeBytes > 0 {
+			if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "sandbox-storage:"+in.WorkspaceID); err != nil {
+				return err
+			}
+			var used int64
+			if err := tx.QueryRow(ctx, sandboxStorageBytesSQL, in.WorkspaceID).Scan(&used); err != nil {
+				return err
+			}
+			if used+in.SizeBytes > in.MaxStorageBytes {
+				return &SandboxStorageLimitError{UsedBytes: used}
+			}
+		}
 		b, err = scanSandboxBuild(tx.QueryRow(ctx, `
-			INSERT INTO sandbox_builds (id, workspace_id, sandbox_group_id, name, source_repository, source_image, source_reference, source_digest)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+			INSERT INTO sandbox_builds (id, workspace_id, sandbox_group_id, name, source_repository, source_image, source_reference, source_digest, size_bytes)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, 0))
 			RETURNING `+sandboxBuildColumns,
 			ids.New(ids.SandboxBuild), in.WorkspaceID, in.SandboxGroupID, in.Name,
-			in.SourceRepository, in.SourceImage, in.SourceReference, in.SourceDigest))
+			in.SourceRepository, in.SourceImage, in.SourceReference, in.SourceDigest, in.SizeBytes))
 		created = err == nil
 		return err
 	})
+	if limit := (*SandboxStorageLimitError)(nil); errors.As(err, &limit) {
+		return SandboxBuild{}, false, err
+	}
 	if err != nil {
 		// A group deleted meanwhile (23503) classifies as ErrNotFound.
 		return SandboxBuild{}, false, classify("sandbox build", err)
@@ -205,7 +238,7 @@ func (s *PGStore) SucceedSandboxBuild(ctx context.Context, id, imageDigest strin
 // failureCode and a reason.
 func (s *PGStore) FailSandboxBuild(ctx context.Context, id, code, reason string) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE sandbox_builds
-		SET status = 'failed', failure_code = $2, failure_reason = $3, updated_at = now(), finished_at = now()
+		SET status = 'failed', size_bytes = NULL, failure_code = $2, failure_reason = $3, updated_at = now(), finished_at = now()
 		WHERE id = $1 AND status IN ('pending', 'running')`, id, code, reason)
 	return err
 }
@@ -215,7 +248,7 @@ func (s *PGStore) FailSandboxBuild(ctx context.Context, id, code, reason string)
 // is deleted.
 func (s *PGStore) FailGroupSandboxBuilds(ctx context.Context, workspaceID, groupID, reason string) error {
 	_, err := s.Pool.Exec(ctx, `UPDATE sandbox_builds
-		SET status = 'failed', failure_code = 'internal_error', failure_reason = $3, updated_at = now(), finished_at = now()
+		SET status = 'failed', size_bytes = NULL, failure_code = 'internal_error', failure_reason = $3, updated_at = now(), finished_at = now()
 		WHERE workspace_id = $1 AND sandbox_group_id = $2 AND status IN ('pending', 'running')`, workspaceID, groupID, reason)
 	return err
 }
@@ -226,7 +259,7 @@ func (s *PGStore) FailGroupSandboxBuilds(ctx context.Context, workspaceID, group
 // have needed was never stored, so it cannot be resumed.
 func (s *PGStore) FailStaleSandboxBuilds(ctx context.Context, staleAfter time.Duration, reason string) (int64, error) {
 	tag, err := s.Pool.Exec(ctx, `UPDATE sandbox_builds
-		SET status = 'failed', failure_code = 'internal_error', failure_reason = $2, updated_at = now(), finished_at = now()
+		SET status = 'failed', size_bytes = NULL, failure_code = 'internal_error', failure_reason = $2, updated_at = now(), finished_at = now()
 		WHERE status IN ('pending', 'running') AND updated_at < now() - make_interval(secs => $1)`,
 		staleAfter.Seconds(), reason)
 	return tag.RowsAffected(), err

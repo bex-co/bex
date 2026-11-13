@@ -24,19 +24,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
-
-// fakePlatformResolver answers IsPlatformClient from a fixed map.
-type fakePlatformResolver map[string]bool
-
-func (f fakePlatformResolver) IsPlatformClient(_ context.Context, clientID string) (bool, error) {
-	return f[clientID], nil
-}
-
-func (f fakePlatformResolver) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
-	return f.IsPlatformClient(ctx, clientID)
-}
 
 // codex round-7 F3, completing the fix — a deploy-hook URL is a durable bearer
 // credential, so handing one out is a mint verb and is reserved for direct
@@ -77,7 +67,7 @@ func TestDeployHookVerbsRequireMintCredentialClass(t *testing.T) {
 		{
 			name:     "third-party OAuth client cannot outlive its consent",
 			id:       core.Identity{Subject: "user-a", Method: "oauth2", ClientID: "dcr-agent-7", Human: true},
-			platform: fakePlatformResolver{"platform-cli": true},
+			platform: coretest.PlatformClients{"platform-cli": true},
 			want:     core.ErrForbidden,
 		},
 		{
@@ -92,7 +82,7 @@ func TestDeployHookVerbsRequireMintCredentialClass(t *testing.T) {
 				Subject: "user-a", Method: "oauth2", ClientID: "platform-cli",
 				Human: true, PlatformClient: true, CanonicalScopes: core.ScopeWrite + " " + core.ScopeSensitive,
 			},
-			platform: fakePlatformResolver{"platform-cli": true},
+			platform: coretest.PlatformClients{"platform-cli": true},
 			want:     nil,
 		},
 		{

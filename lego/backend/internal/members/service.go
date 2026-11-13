@@ -643,6 +643,12 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 	// its target (the invite id) is minted by the store, so recording at
 	// authorize time could carry no target at all. Denials record immediately.
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	// An invite, admin or not, is a redeemable membership that outlives the
+	// inviter's credential, so a delegated third-party OAuth token may not
+	// issue one (round 24, H-1): only a direct session or a platform client.
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return InviteView{}, err
+	}
 	workspaceID, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, workspaceID)
 	if err != nil {
 		return InviteView{}, err
@@ -733,8 +739,16 @@ func (s *Service) Invite(ctx context.Context, workspaceID, email, role string) (
 // supersedes the original, which stops redeeming. An accepted or unknown
 // invite is a 404 on every surface.
 func (s *Service) ResendInvite(ctx context.Context, workspaceID, inviteID string) (InviteView, error) {
+	// Re-minting the token issues a fresh redeemable capability: the same
+	// credential-class and fresh-authority gates as Invite (round 24, H-1).
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return InviteView{}, err
+	}
 	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, workspaceID, core.InviteTarget(inviteID))
 	if err != nil {
+		return InviteView{}, err
+	}
+	if err := s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(workspaceID)); err != nil {
 		return InviteView{}, err
 	}
 	// round-19 #3: resending re-issues a redeemable capability — the members
@@ -900,6 +914,12 @@ func (s *Service) ChangeRole(ctx context.Context, workspaceID, subject, role str
 	// leaves only the denial/attempt trail. Denials record immediately, with
 	// the member target the caller asked to change.
 	ctx = core.WithDeferredAllowedWriteAudit(ctx)
+	// A role change writes a membership that outlives the caller's credential
+	// (a promotion to admin is a durable administrator), so a delegated
+	// third-party OAuth token may not make one (round 24, H-1).
+	if err := s.AuthorizeMintClass(ctx); err != nil {
+		return MemberView{}, err
+	}
 	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, workspaceID, core.MemberTarget(subject))
 	if err != nil {
 		return MemberView{}, err

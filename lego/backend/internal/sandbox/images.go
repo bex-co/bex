@@ -20,9 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"path"
 	"regexp"
 	"slices"
 	"strings"
@@ -341,6 +343,7 @@ func imageBytes(img v1.Image) (int64, error) {
 type resolvedSource struct {
 	source BuildSource
 	ref    name.Digest // repository@digest (an index's digest, when it is one)
+	size   int64       // the linux/amd64 image's compressed size, as its manifest declares
 }
 
 // resolveSource resolves ref to its digest and checks the image it names can
@@ -364,6 +367,10 @@ func (im *Images) resolveSource(ctx context.Context, ref string, cred *RegistryC
 	if err != nil {
 		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
 			fmt.Sprintf("%s has no linux/amd64 image, the platform sandboxes run: %v", parsed, err), map[string]any{"field": "sourceImage"})
+	}
+	if err := checkConfigSize(img); err != nil {
+		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
+			fmt.Sprintf("%s: %v", parsed, err), map[string]any{"field": "sourceImage"})
 	}
 	cfg, err := img.ConfigFile()
 	if err != nil {
@@ -391,7 +398,81 @@ func (im *Images) resolveSource(ctx context.Context, ref string, cred *RegistryC
 	return resolvedSource{
 		source: BuildSource{Repository: registry, Image: parsed.Context().RepositoryStr(), Reference: parsed.Identifier()},
 		ref:    parsed.Context().Digest(desc.Digest.String()),
+		size:   size,
 	}, nil
+}
+
+// Source registries are untrusted, and bex-api reads an image's manifest and
+// config into memory (round 24, S-2: a config declared 400 MB, or -1 with a
+// chunked body, took a 128 MiB bex-api replica down). A config is a few KiB;
+// real manifests are under a few hundred KiB.
+const (
+	maxSourceManifestBytes = 4 << 20
+	maxSourceConfigBytes   = 1 << 20
+)
+
+// checkConfigSize refuses an image whose manifest declares its config empty,
+// negative or larger than maxSourceConfigBytes, before the config is read: the
+// read is bounded by the declared size, so the declaration is what to check.
+func checkConfigSize(img v1.Image) error {
+	m, err := img.Manifest()
+	if err != nil {
+		return fmt.Errorf("unreadable manifest: %w", err)
+	}
+	if size := m.Config.Size; size <= 0 || size > maxSourceConfigBytes {
+		return fmt.Errorf("its manifest declares a %d-byte config; a config must be between 1 byte and %d bytes", size, maxSourceConfigBytes)
+	}
+	return nil
+}
+
+// capManifests bounds every manifest response from a source registry at
+// maxSourceManifestBytes. Blobs are left alone: layers stream through the copy,
+// and the config is bounded by checkConfigSize.
+type capManifests struct{ next http.RoundTripper }
+
+func (t capManifests) RoundTrip(r *http.Request) (*http.Response, error) {
+	resp, err := t.next.RoundTrip(r)
+	if err != nil || !isManifestRequest(r) {
+		return resp, err
+	}
+	if resp.ContentLength > maxSourceManifestBytes {
+		_ = resp.Body.Close()
+		return nil, errManifestTooLarge
+	}
+	resp.Body = &cappedBody{ReadCloser: resp.Body, left: maxSourceManifestBytes}
+	return resp, nil
+}
+
+var errManifestTooLarge = fmt.Errorf("the registry's manifest is over the %d-byte limit", maxSourceManifestBytes)
+
+// isManifestRequest reports whether r, or the request a redirect chain
+// started from, is a registry /v2/<name>/manifests/<reference> read.
+func isManifestRequest(r *http.Request) bool {
+	for r.Response != nil && r.Response.Request != nil {
+		r = r.Response.Request
+	}
+	return path.Base(path.Dir(r.URL.Path)) == "manifests"
+}
+
+// cappedBody fails a read past its limit instead of truncating it.
+type cappedBody struct {
+	io.ReadCloser
+	left int64
+}
+
+func (b *cappedBody) Read(p []byte) (int, error) {
+	if b.left <= 0 {
+		return 0, errManifestTooLarge
+	}
+	if int64(len(p)) > b.left+1 {
+		p = p[:b.left+1]
+	}
+	n, err := b.ReadCloser.Read(p)
+	b.left -= int64(n)
+	if b.left < 0 {
+		return n + int(b.left), errManifestTooLarge
+	}
+	return n, err
 }
 
 func (im *Images) sourceOptions(ctx context.Context, cred *RegistryCredential) []remote.Option {
@@ -401,7 +482,7 @@ func (im *Images) sourceOptions(ctx context.Context, cred *RegistryCredential) [
 	}
 	return []remote.Option{
 		remote.WithContext(ctx), remote.WithAuth(auth), remote.WithPlatform(linuxAMD64),
-		remote.WithTransport(im.sourceTransport()),
+		remote.WithTransport(capManifests{next: im.sourceTransport()}),
 	}
 }
 
@@ -418,23 +499,26 @@ func (s *Service) ImportImage(ctx context.Context, groupID string, req ImportIma
 	if strings.TrimSpace(req.SourceImage) == "" {
 		return Build{}, core.NewBadRequestError(CodeSandboxImageInvalid, "sourceImage is required", map[string]any{"field": "sourceImage"})
 	}
-	if used, full := s.storageFull(ctx, group.WorkspaceID); full {
-		s.Metrics.observeRefusal("storage", "import")
-		return Build{}, core.NewTooManyRequestsError(CodeSandboxStorageLimit,
-			fmt.Sprintf("this workspace's sandbox images and suspended sandboxes already hold %s of its %s sandbox storage limit; terminate sandboxes or delete sandbox groups you no longer need, then import again",
-				formatGB(used), formatGB(s.MaxStorageBytes)),
-			map[string]any{"limitBytes": s.MaxStorageBytes, "usedBytes": used})
+	// An import stores up to the image size cap in the platform registry, so it
+	// takes the billing gates a sandbox create takes (round 24, S-3).
+	if err := s.RequireBillingFor(ctx, group.WorkspaceID, true); err != nil {
+		return Build{}, err
 	}
 	src, err := s.Images.resolveSource(ctx, req.SourceImage, req.RegistryCredential)
 	if err != nil {
 		return Build{}, err
 	}
+	// The store counts imports still copying at their declared size and checks
+	// this one's against the cap under a workspace-wide lock (round 24, S-3).
 	b, created, err := s.Images.Store.CreateSandboxBuild(ctx, store.NewSandboxBuild{
 		WorkspaceID: group.WorkspaceID, SandboxGroupID: group.ID, Name: req.Name,
 		SourceRepository: src.source.Repository, SourceImage: src.source.Image, SourceReference: src.source.Reference,
-		SourceDigest: src.ref.DigestStr(),
+		SourceDigest: src.ref.DigestStr(), SizeBytes: src.size, MaxStorageBytes: s.MaxStorageBytes,
 	}, s.Images.maxInFlight())
+	var limit *store.SandboxStorageLimitError
 	switch {
+	case errors.As(err, &limit):
+		return Build{}, s.storageLimitError(limit.UsedBytes, src.size, "import")
 	case errors.Is(err, store.ErrSandboxBuildLimit):
 		return Build{}, core.NewTooManyRequestsError(CodeSandboxBuildLimit,
 			fmt.Sprintf("this sandbox group already has %d images importing, its limit; wait for one to finish, then import again", s.Images.maxInFlight()),
