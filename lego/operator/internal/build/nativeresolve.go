@@ -506,6 +506,18 @@ func pinRangeRelease(ctx context.Context, exact ExactImageResolver, choice Nativ
 		choice.note = fmt.Sprintf("==> Could not list %s releases for %s (%v); using the reviewed %s %s image (%s)", repo, choice.rangeRequest, err, choice.Label, choice.Line, reviewed)
 		return choice
 	}
+	best := newestTagRelease(tags, suffix, constraint)
+	if best == nil {
+		choice.note = fmt.Sprintf("==> No official %s image satisfies %s; using the reviewed %s %s image (%s)", repo+":"+choice.Line+".x"+suffix, choice.rangeRequest, choice.Label, choice.Line, reviewed)
+		return choice
+	}
+	choice.Exact = best.Original()
+	return choice
+}
+
+// newestTagRelease is the newest X.Y.Z among tags of the given variant suffix
+// that satisfies constraint, or nil.
+func newestTagRelease(tags []string, suffix string, constraint *semver.Constraints) *semver.Version {
 	var best *semver.Version
 	for _, tag := range tags {
 		version, ok := strings.CutSuffix(tag, suffix)
@@ -520,10 +532,5 @@ func pinRangeRelease(ctx context.Context, exact ExactImageResolver, choice Nativ
 			best = v
 		}
 	}
-	if best == nil {
-		choice.note = fmt.Sprintf("==> No official %s image satisfies %s; using the reviewed %s %s image (%s)", repo+":"+choice.Line+".x"+suffix, choice.rangeRequest, choice.Label, choice.Line, reviewed)
-		return choice
-	}
-	choice.Exact = best.Original()
-	return choice
+	return best
 }

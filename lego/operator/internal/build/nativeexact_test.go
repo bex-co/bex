@@ -371,8 +371,9 @@ func TestNodeRangePinsTheNewestOfficialReleaseInside(t *testing.T) {
 	}
 }
 
-// A range no official image of the line's variant meets (Node 16.13 predates
-// Debian bookworm) keeps the reviewed patch, and the build log says so.
+// A range no official image of the line's variant meets (Node 16.13 has
+// bullseye images, not bookworm ones) keeps the reviewed patch, and the build
+// log says so; another Debian variant is w8/309's.
 func TestNodeRangeWithoutAnOfficialReleaseSaysSo(t *testing.T) {
 	fake := &fakeExact{digests: map[string]string{"node:16.13.2-bullseye": exactDigest, "node:16.20.2-bookworm": exactDigest}}
 	choices, _ := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "~16.13.0"}, nil)
@@ -380,6 +381,21 @@ func TestNodeRangeWithoutAnOfficialReleaseSaysSo(t *testing.T) {
 	narration := choices[0].Narration()
 	if choices[0].Image != line.image || !strings.Contains(narration, "No official node:16.x-bookworm image satisfies ~16.13.0") || !strings.Contains(narration, "(16.20.2)") {
 		t.Fatalf("choice image %q, narration %q; want the reviewed image and a line naming the substitution", choices[0].Image, narration)
+	}
+}
+
+// A Python service's Node companion takes NODE_VERSION's exact release too.
+func TestNodeCompanionTakesTheExactRelease(t *testing.T) {
+	fake := &fakeExact{digests: map[string]string{"node:18.17.1-bookworm": exactDigest}}
+	choices, dockerfile := resolveExact(t, fake, "python", map[string]string{"NODE_VERSION": "18.17.1"}, nil)
+	var node NativeChoice
+	for _, c := range choices {
+		if c.Label == "Node" {
+			node = c
+		}
+	}
+	if node.Image != "node:18.17.1-bookworm@"+exactDigest || !strings.Contains(dockerfile, "COPY --link --from=node:18.17.1-bookworm@"+exactDigest+" /usr/local/bin/node") {
+		t.Fatalf("companion = %+v; want node:18.17.1-bookworm copied in\n%s", node, dockerfile)
 	}
 }
 

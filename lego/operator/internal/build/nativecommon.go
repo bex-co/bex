@@ -191,6 +191,11 @@ func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, runti
 	if runtime == nativeRubyRuntime {
 		return choice, nativeRubyToolLines(choice.Image), nil
 	}
+	// A companion Node takes an exact version or range like a primary does
+	// (w8/308).
+	if runtime == nativeNodeRuntime {
+		choice = pinExactVersion(ctx, exact, choice)
+	}
 	choice.primaryStage += legacyPnpm
 	return choice, nativeJSToolLines(choice.Image, choice.Line), nil
 }
