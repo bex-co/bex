@@ -53,6 +53,16 @@ func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 	if agent.CPU != "2" || agent.Memory != "4Gi" {
 		t.Fatalf("agent resource limits = %s/%s, want 2/4Gi", agent.CPU, agent.Memory)
 	}
+	large, ok := templates["agent-4c-8g"]
+	if !ok {
+		t.Fatal("agent-4c-8g template is not registered")
+	}
+	if large.Image != agent.Image || !slices.Equal(large.Entrypoint, agent.Entrypoint) {
+		t.Fatalf("agent-4c-8g template = %+v, want the agent template's image and driver", large)
+	}
+	if large.CPU != "4" || large.Memory != "8Gi" {
+		t.Fatalf("agent-4c-8g resource limits = %s/%s, want 4/8Gi", large.CPU, large.Memory)
+	}
 	base := templates["base"]
 	if base.Image != "alpine:3" {
 		t.Fatalf("base template image = %q", base.Image)

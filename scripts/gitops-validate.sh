@@ -2146,6 +2146,13 @@ batchsandbox_shape="$(yq -N \
   deploy/opensandbox/batchsandbox-template.yaml | tr -d '\n')"
 [ "$batchsandbox_shape" = "sandbox:sandbox:gvisor:false:sandbox:bex.co/sandbox:true:NoSchedule" ] \
   || { echo "FAIL: BatchSandbox security shape is '$batchsandbox_shape'" >&2; fail=1; }
+# A sandbox rides out a 300 s node stall instead of the cluster's 45 s, under
+# the sandbox MachineHealthCheck's 600 s (w9/m349 t006).
+batchsandbox_stall="$(yq -N \
+  '[.spec.template.spec.tolerations[] | select(.effect == "NoExecute") | .key + "=" + (.tolerationSeconds | tostring)] | sort | join(",")' \
+  deploy/opensandbox/batchsandbox-template.yaml | tr -d '\n')"
+[ "$batchsandbox_stall" = "node.kubernetes.io/not-ready=300,node.kubernetes.io/unreachable=300" ] \
+  || { echo "FAIL: BatchSandbox node-stall tolerations are '$batchsandbox_stall'" >&2; fail=1; }
 # Both templates keep ndots:1; the hosted one says why (w8/m152).
 for batchsandbox_template in \
   deploy/opensandbox/batchsandbox-template.yaml \

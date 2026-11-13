@@ -108,16 +108,21 @@ func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Te
 	// sandbox created with no flags is Render's 1c-2g in size, meter weight
 	// and name (w8/247).
 	baseCPU, baseMemory, _ := sandbox.PlanLimits(sandbox.DefaultPlan)
+	agentTemplate := func(plan sandbox.Plan) sandbox.Template {
+		cpu, memory, _ := sandbox.PlanLimits(plan)
+		return sandbox.Template{Image: agentImage, Entrypoint: []string{"bex-agent-driver"}, CPU: cpu, Memory: memory}
+	}
 	return map[string]sandbox.Template{
 		"base": {
 			Image: baseImage, Entrypoint: []string{"/bin/sh", "-c", baseEntrypoint},
 			Env: map[string]string{"HOME": baseHome},
 			CPU: baseCPU, Memory: baseMemory,
 		},
-		"agent": {
-			Image: agentImage, Entrypoint: []string{"bex-agent-driver"},
-			CPU: "2", Memory: "4Gi",
-		},
+		// Customers' sessions keep the 2c-4g agent; a session or automation
+		// that builds a large repository names agent-4c-8g, and the sandbox
+		// meter bills the larger shape.
+		"agent":       agentTemplate(sandbox.Plan2C4G),
+		"agent-4c-8g": agentTemplate(sandbox.Plan4C8G),
 	}
 }
 

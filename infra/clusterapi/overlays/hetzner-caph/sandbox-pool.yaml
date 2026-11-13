@@ -1,7 +1,7 @@
 # Dedicated gVisor sandbox node pool (ADR042 D3 as amended / w3/m32 t004).
 #
 # Applied to prod 2026-07-28 and validated: a stable (replicas=1, NOT autoscaled
-# — an idle burst node gets reclaimed) cpx32 node, tainted bex.co/sandbox, with
+# — an idle burst node gets reclaimed) node, tainted bex.co/sandbox, with
 # gVisor (runsc) installed at BOOTSTRAP via preKubeadmCommands (an in-place
 # containerd restart on a live node breaks the Cilium datapath). A Pod under
 # runtimeClassName: gvisor on this node reports kernel "4.19.0-gvisor" (not the
@@ -9,8 +9,10 @@
 # cpx has none, so Kata is impossible here; see ADR042 D3).
 #
 # Mirrors bex-tenant-0 (baked bex-worker image) + adds: gVisor install, the
-# bex.co/pool=sandbox label, and the bex.co/sandbox NoSchedule taint. The
-# generated kubeletExtraArgs use CAPI's list form (server-normalized).
+# bex.co/pool=sandbox label, the bex.co/sandbox NoSchedule taint and kubelet
+# reservations. The generated kubeletExtraArgs use CAPI's list form
+# (server-normalized). The MachineDeployment runs the cpx42 template since
+# 2026-11-13; the cpx32 and cx33 templates stay for rollback.
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
@@ -24,8 +26,8 @@ spec:
       placementGroupName: tenant-0
       type: cpx32
 ---
-# cx33 rollback (docs/ADR053): immutable template the sandbox MachineDeployment
-# repoints to; cpx32 above stays the fallback for an fsn1 cx stock-out.
+# cx33 (docs/ADR053): the pool's type until 2026-11-13, kept for rollback;
+# cpx32 above is the older fallback for an fsn1 cx stock-out.
 apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
 kind: HCloudMachineTemplate
 metadata:
@@ -37,6 +39,23 @@ spec:
       imageName: bex-worker-k8s-1-34
       placementGroupName: tenant-0
       type: cx33
+---
+# cpx42, 8 vCPU / 16 GB (ADR105 § Until the AX42-1 arrives, user decision
+# 2026-11-12): the cx line is out of stock in eu-central, and four agent
+# sandboxes' memory limits came to 2.1 times a cx33's. It has cx43's shape, so
+# the pool returns to a cx43 template when stock does. tenant-large, because tenant-0 holds 9
+# of the 10 servers a spread group allows.
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: HCloudMachineTemplate
+metadata:
+  name: bex-sandbox-cpx42
+  namespace: bex-capi
+spec:
+  template:
+    spec:
+      imageName: bex-worker-k8s-1-34
+      placementGroupName: tenant-large
+      type: cpx42
 ---
 apiVersion: bootstrap.cluster.x-k8s.io/v1beta2
 kind: KubeadmConfigTemplate
@@ -189,8 +208,12 @@ spec:
             value: external
           - name: event-qps
             value: '5'
+          - name: eviction-hard
+            value: memory.available<512Mi,nodefs.available<10%,imagefs.available<15%
           - name: feature-gates
             value: UserNamespacesSupport=true
+          - name: kube-reserved
+            value: cpu=500m,memory=512Mi
           - name: kubeconfig
             value: /etc/kubernetes/kubelet.conf
           - name: max-pods
@@ -203,6 +226,8 @@ spec:
             value: /etc/kubernetes/resolv.conf
           - name: rotate-server-certificates
             value: 'true'
+          - name: system-reserved
+            value: cpu=500m,memory=1Gi
           - name: tls-cipher-suites
             value: TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_256_GCM_SHA384,TLS_RSA_WITH_AES_128_GCM_SHA256
           - name: register-with-taints
@@ -225,7 +250,7 @@ spec:
       # against upstream's published digests:
       #   https://storage.googleapis.com/gvisor/releases/release/20260622.0/x86_64/runsc.sha512
       #   https://storage.googleapis.com/gvisor/releases/release/20260622.0/x86_64/containerd-shim-runsc-v1.sha512
-      # x86_64 is the only architecture this pool runs (cpx32/cx33). The
+      # x86_64 is the only architecture this pool runs (cpx and cx). The
       # download retries a few times; the gate after the containerd config
       # below is what makes a wrong arch, a failed download or a digest
       # mismatch fatal (w9/074).
@@ -321,7 +346,7 @@ spec:
       infrastructureRef:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
-        name: bex-sandbox-cx33
+        name: bex-sandbox-cpx42
 ---
 # w9/074: a sandbox machine whose bootstrap gate refused to join (or whose
 # node goes NotReady) is deleted and recreated from the current template.

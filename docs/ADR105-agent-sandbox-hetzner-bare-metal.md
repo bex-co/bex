@@ -1,6 +1,6 @@
 # ADR105 — Agent sandboxes on Hetzner bare metal: unit economics and a first production node
 
-**Status:** proposed (2026-11-11; the first node is an AX42-1, ordered 2026-11-12 by user decision because the EX44 was out of stock; revised the same day — the first server is a production node, not a one-month spike, and it is an EX44; revised again the same day after a review of what joining the cluster takes, how a sandbox picks its runtime, and what the probe measured) · **Extends:** [ADR042](ADR042-sandbox-cluster-substrate.md) (D3 — gVisor because the cloud nodes have no KVM), [ADR044](ADR044-sandbox-runtime-comparison.md) (watch item 2 — Kata on bare metal), [ADR047](ADR047-cloud-coding-agent-sessions.md), [ADR053](ADR053-node-instance-types.md) · **Amends when accepted:** ADR042 D3, ADR053 (a bare-metal pool), [ADR002](ADR002-architecture.md) § Network (a vSwitch subnet in the `bex` network)
+**Status:** proposed (2026-11-11; the first node is an AX42-1, ordered 2026-11-12 by user decision because the EX44 was out of stock; revised the same day — the first server is a production node, not a one-month spike, and it is an EX44; revised again the same day after a review of what joining the cluster takes, how a sandbox picks its runtime, and what the probe measured; on 2026-11-12 the AX42-1 was parked until 2026-12-12 and the options for the cloud sandbox node in the meantime were recorded, choice pending — § Until the AX42-1 arrives) · **Extends:** [ADR042](ADR042-sandbox-cluster-substrate.md) (D3 — gVisor because the cloud nodes have no KVM), [ADR044](ADR044-sandbox-runtime-comparison.md) (watch item 2 — Kata on bare metal), [ADR047](ADR047-cloud-coding-agent-sessions.md), [ADR053](ADR053-node-instance-types.md) · **Amends when accepted:** ADR042 D3, ADR053 (a bare-metal pool), [ADR002](ADR002-architecture.md) § Network (a vSwitch subnet in the `bex` network)
 
 ## Context
 
@@ -58,7 +58,7 @@ What this changes:
 - **A cold build is mostly CPU.** The replay is 1.65 times slower under gVisor than runc on the same node. Even under runc, the Go half takes 19 minutes on 2 vCPU of a `cx33`.
   - So the runtime alone does not reach the step 3 gate of twice as fast. The gate compares Kata on the AX42-1 with gVisor on the `cx33`, so it can pass only with the AX42-1's faster cores. t006 separates the two with runc and runsc on the AX42-1.
   - The vCPU count and cold caches cost as much as the runtime. That is why the larger-template and warm-cache alternatives below were re-weighed.
-- **Every session also downloads a Go toolchain.** The agent image ships Go 1.26.10, and `lego/go.work` requires 1.27.3 because `lego/cli/go.mod` does. So `go mod download` fetches go1.27.3 before the first build (w6/120).
+- **Every session also downloads a Go toolchain.** The agent image ships Go 1.26.10, and `lego/go.work` requires 1.27.3 because `lego/cli/go.mod` does. So `go mod download` fetched go1.27.3 before the first build. Fixed since by w6/120: the image ships Go 1.27.4.
 
 Render runs each sandbox in its own Firecracker microVM. bex chose Kata first and fell back to gVisor only because Hetzner Cloud nodes expose no `/dev/kvm` (ADR042 D3, verified on `cpx32` on 2026-07-28). ADR042 already says Kata "remains the choice if KVM-capable nodes (Hetzner dedicated/bare-metal) ever join". This ADR prices that step.
 
@@ -92,21 +92,27 @@ The stock-limited `-LTD` models are the cheapest. On 2026-11-12, every one check
 
 ## Unit economics
 
-| Server | Slots without CPU overcommit | Slots at the memory ceiling | CPU overcommit at the ceiling | Cost per slot-hour at full use | Break-even sandbox-hours per month | Break-even use | Setup fee recovered after |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| AX41-1-LTD | 5 | 13 | 2.6 : 1 | $0.0073 | 318 | 3.4% | — |
-| **EX44-1-LTD** | 9 | 13 | 1.4 : 1 | $0.0078 | 341 | 3.6% | — |
-| AX42-1-LTD | 7 | 13 | 1.9 : 1 | $0.0094 | 411 | 4.3% | 180 sandbox-hours |
-| AX42-1 | 7 | 13 | 1.9 : 1 | $0.0125 | 549 | 5.8% | 272 sandbox-hours |
-| EX63-1 | 9 | 13 | 1.4 : 1 | $0.0183 | 803 | 8.5% | 387 sandbox-hours |
-| AX102-1 | 15 | 28 | 1.9 : 1 | $0.0149 | 1,402 | 6.9% | 687 sandbox-hours |
-| AX162-1-LTD | 47 | 28 | none needed | $0.0183 | 1,725 | 8.4% | 180 sandbox-hours |
+| Server | Kind | Max per month | Slots without CPU overcommit | Slots at the memory ceiling | CPU overcommit at the ceiling | Cost per slot-hour at full use | Break-even sandbox-hours per month | Break-even use | Setup fee recovered after |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| AX41-1-LTD | dedicated | $69 | 5 | 13 | 2.6 : 1 | $0.0073 | 318 | 3.4% | — |
+| **EX44-1-LTD** | dedicated | $74 | 9 | 13 | 1.4 : 1 | $0.0078 | 341 | 3.6% | — |
+| AX42-1-LTD | dedicated | $89 | 7 | 13 | 1.9 : 1 | $0.0094 | 411 | 4.3% | 180 sandbox-hours |
+| **AX42-1** (ordered) | dedicated | $119 | 7 | 13 | 1.9 : 1 | $0.0125 | 549 | 5.8% | 272 sandbox-hours |
+| EX63-1 | dedicated | $174 | 9 | 13 | 1.4 : 1 | $0.0183 | 803 | 8.5% | 387 sandbox-hours |
+| AX102-1 | dedicated | $304 | 15 | 28 | 1.9 : 1 | $0.0149 | 1,402 | 6.9% | 687 sandbox-hours |
+| AX162-1-LTD | dedicated | $374 | 47 | 28 | none needed | $0.0183 | 1,725 | 8.4% | 180 sandbox-hours |
+| `cx33` (today's node, out of stock) | cloud | $9.99 | 1 | 1 | none needed | $0.0137 | 46 | 6.3% | — |
+| `cpx42` | cloud | $81.99 | 3 | 3 | none needed | $0.0374 | 378 | 17.3% | — |
+| `cpx52` | cloud | $118.99 | 5 | 5 | none needed | $0.0326 | 549 | 15.0% | — |
+| `cpx62` | cloud | $152.99 | 7 | 7 | none needed | $0.0299 | 706 | 13.8% | — |
 
-- **Cost per slot-hour** is the monthly cap over 730 hours and the slots at the memory ceiling. Against $0.2168 of revenue, the compute margin at full use is 92% to 97%.
+- **Cost per slot-hour** is the monthly cap over 730 hours and the slots at the memory ceiling. Against $0.2168 of revenue, the compute margin at full use is 92% to 97% on the dedicated servers, 94% on the `cx33`, and 83% to 86% on the `cpx` nodes.
+- **The cloud rows use the cloud node's capacity, not the bare-metal host's.** The `cpx` and `cx` prices are the Hetzner Cloud API's for fsn1, read 2026-11-12, with no setup fee and hourly billing. A cloud node runs gVisor, so a slot carries no VMM overhead (gVisor's own memory is not counted). The node keeps 1 vCPU and about 2 GiB for the system, the kubelet and the eviction threshold, and Hetzner's "GB" gives 0.946 GiB of capacity, as measured on the `cx33`. Their 2 GB per vCPU matches the slot's 4 GiB per 2 vCPU, so a cloud node fills its memory and its cores together and never needs CPU overcommit. A 4 vCPU / 8 GiB routine sandbox (§ Until the AX42-1 arrives) takes two slots.
+- **Cloud against bare metal.** A `cpx` slot-hour costs 2.4 to 3 times the AX42-1's. The `cpx52` and the AX42-1 have the same monthly cap and the same 549 break-even hours, but the AX42-1 holds 13 slots to the `cpx52`'s 5, so it breaks even at 5.8% use where the `cpx52` needs 15.0%. The cloud node's advantages are hourly billing with no setup fee, delivery in minutes, and replacement surge-first.
 - **Break-even** is where paid compute revenue covers the server. It depends only on the monthly cap: 341 paid sandbox-hours a month for the EX44 as planned (about 11 a day), and 549 for the AX42-1.
 - **EX44 against AX41, $5 apart.** The EX44 has 20 threads to the AX41's 12 and a CPU four years newer. It reaches the memory ceiling at 1.4 : 1, where the AX41 needs 2.6 : 1. Its efficiency cores are slower than its performance cores, so once the node is busy a sandbox's speed depends on where the host scheduler places it.
 - **Two servers for redundancy** double the break-even hours. A single server is a single point of failure for every session on it.
-- **Today's pool for comparison.** One `cx33` cloud node costs $9.99 a month (the Hetzner Cloud pricing API, USD, read 2026-11-12) and breaks even at about 46 sandbox-hours a month. The EX44 as planned costs 7.4 times as much a month, and the AX42-1 about 12 times. That fixed cost is the whole downside.
+- **Today's pool for comparison.** One `cx33` cloud node costs $9.99 a month and breaks even at about 46 sandbox-hours a month. The EX44 as planned costs 7.4 times as much a month, and the AX42-1 about 12 times. That fixed cost was the whole downside while the `cx33` could be bought; on 2026-11-12 the whole `cx` line was out of stock, and the cloud nodes that can be bought cost more per slot than the AX42-1.
 
 ### What can be ordered today (2026-11-12)
 
@@ -172,6 +178,68 @@ Three smaller items:
 - **`/tmp` across a pause.** gVisor mounts `/tmp` as an internal tmpfs, so it is lost on pause, and ADR018 records that as a divergence from Render. Under Kata, `/tmp` is part of the rootfs the commit captures. Verify it; if it holds, the divergence narrows for sandboxes on the AX42-1.
 - **Density.** The 0.25 GiB per-VM overhead and the CPU overcommit ratio are assumptions. Measure idle and build-time memory per microVM, and CPU pressure at the 12-sandbox cap.
 - **Memory snapshots.** Firecracker can snapshot memory, which is the gap behind ADR104 D5 (`runtime` snapshots). Out of scope here, but record whether the chosen backend keeps that door open.
+
+## Until the AX42-1 arrives: the cloud sandbox node (2026-11-12)
+
+m331 is parked until 2026-12-12, because Hetzner's delivery is expected to take weeks. Meanwhile the routines fail on the cloud sandbox node's capacity, not on gVisor's speed.
+
+**What the routines did on 2026-11-12,** under the 4 h turn bound. Read from production `agent_automation_runs`, joined to each session's first turn:
+
+| Outcome | Runs | Routines, with the time each ran |
+| --- | --- | --- |
+| Completed | 2 | `rt-fix-logic-bugs` (3 h 34 min), `rt-fix-prod-crashes` (3 h 06 min) |
+| Sandbox terminated before completion | 3 | `rt-normalize-abstractions` (1 h 26 min), `rt-remove-dead-code` (6 min), `rt-simplify-logic` (1 h 28 min) |
+| Sandbox status unavailable beyond the retry window | 1 | `rt-flatten-abstractions` (2 h 24 min) |
+| Ran out of memory | 1 | `rt-unify-duplicates` (2 h 26 min) |
+| Not created | 1 | `rt-prune-useless-tests`: trust tier T0 allows the workspace two platform-model sessions at once |
+
+- **They overlap.** The eight routines start hourly from 08:00 to 15:00 UTC and run 1.5 to 4 hours. Four ran at once from 11:00 to 11:34 UTC.
+- **On one small node.** Each agent sandbox has limits of 2 vCPU and 4 GiB and requests a quarter of that. The only sandbox node is a `cx33`: 4 vCPU and 7.5 GiB allocatable, with no kubelet reservations. Four sandboxes hold 16 GiB of memory limits on it, 2.1 times what it has.
+- **w9/m349 t006 waits on the same choice.** It names the fix: kubelet reservations, a longer not-ready toleration for sandbox pods, and a larger pool.
+
+**The cheap cloud line is out of stock.** Read from the Hetzner Cloud API on 2026-11-12:
+
+| Type | vCPU / RAM | $ per month | fsn1 | nbg1 | hel1 |
+| ---- | ---------- | ----------- | ---- | ---- | ---- |
+| cx23 | 2 / 4 GB   | 6.49        | no   | yes  | yes  |
+| cx33 | 4 / 8 GB   | 9.99        | no   | no   | no   |
+| cx43 | 8 / 16 GB  | 18.49       | no   | no   | no   |
+| cx53 | 16 / 32 GB | 34.99       | no   | no   | no   |
+
+Since 09:30 UTC, three machines in other pools (two `cx33`, one `cx43`) have failed in fsn1 with `resource_unavailable`. All three locations are in the `eu-central` network zone, so a node outside fsn1 could join the cluster, but they have no stock either.
+
+**Options for the sandbox node now.** The table assumes:
+
+- Hetzner's "GB" gives 0.946 GiB of node capacity, as on today's `cx33` (7.57 GiB of "8 GB").
+- Kubelet reservations and the eviction threshold take about 2 GiB, until t006 sets them.
+- The routines move to a 4 vCPU / 8 GiB template; customers' agent sessions stay at 2 vCPU / 4 GiB.
+- gVisor's own memory per sandbox is not counted.
+
+| Type | vCPU / RAM | $ per month | Times today's node | Memory after reservations | Fits at full memory limits |
+| --- | --- | --- | --- | --- | --- |
+| cpx42 | 8 shared / 16 GB | 81.99 | 8.2 | about 13 GiB | one routine and one customer session (12 GiB); two routines hold 16 GiB, 1.2 times it |
+| cpx52 | 12 shared / 24 GB | 118.99 | 11.9 | about 20.7 GiB | two routines and one customer session (20 GiB) |
+| cpx62 | 16 shared / 32 GB | 152.99 | 15.3 | about 28.3 GiB | three routines and one customer session (28 GiB); four routines, as at 11:00, hold 32 GiB |
+
+- **cpx42** costs least. It has `cx43`'s shape, so the pool can return to `cx43` ($18.49) when stock does, and what fits stays the same.
+- **cpx52** holds two routines at the larger size and a customer session with no memory overcommit. With the schedule spread so that at most two routines overlap, that covers them. It costs the same as the AX42-1's monthly cap, which buys 16 dedicated threads and 64 GB.
+- **cpx62** is the option for more concurrency: a trust tier above T0, or the schedule left as it is.
+- **Unit economics.** § Unit economics carries the three options as rows beside the dedicated servers. With the `cx` line out of stock, every cloud option costs more per slot than the AX42-1: $0.0299 to $0.0374 a slot-hour against $0.0125.
+- **Choice:** the user's, pending.
+
+**Independent of the choice:**
+
+- **Spread the schedule.** Moving the routines' start times so that at most two overlap costs nothing and lowers the peak on any node.
+- **Warm build caches** (§ Alternatives considered: do it regardless). Give bex's own routines a separate agent template whose image adds the bex repo's Go module, build and vet caches and the dashboard's yarn cache. Build them at the paths a session uses (`/workspace`, `/home/bex`). The repo is public, so the caches expose nothing. Customers' `agent` template does not change.
+- **A larger routine template.** An automation already names its template (`agentConfig.template`). The routines can move to 4 vCPU / 8 GiB without changing customers' sessions or their price.
+- **How to re-measure.** `POST /v1/agent-automations/{id}/run` starts a routine on demand. Time it from its first turn's `started_at` to `completed_at`. A run's `settledAt` is when the session was accepted, not when it finished.
+
+**Rolling the pool.**
+
+- The MachineDeployment adds the new machine before it removes the `cx33`. Removing the `cx33` ends any sandbox running on it, so the roll waits for an idle node.
+- The new machine belongs in an empty placement group: `tenant-large` holds 0 of 10 servers, `tenant-0` holds 9.
+- It boots on the kernel 6.8.0-149 image, which also closes the sandbox pool's part of w1/144.
+- When the AX42-1 joins, this node becomes the overflow node of Decision step 4. It can shrink back to a `cx` type once stock returns.
 
 ## Alternatives considered
 

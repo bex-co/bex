@@ -38,3 +38,16 @@ spec:
           operator: Equal
           value: "true"
           effect: NoSchedule
+        # A sandbox outlives a short node stall: the cluster default evicts a
+        # pod 45 s after its node goes NotReady or unreachable, which ended
+        # agent sessions over a brief kubelet or network hiccup (w9/m349
+        # t006). 300 s stays under the sandbox MachineHealthCheck's 600 s, so
+        # a node that is really gone is still replaced.
+        - key: node.kubernetes.io/not-ready
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
+        - key: node.kubernetes.io/unreachable
+          operator: Exists
+          effect: NoExecute
+          tolerationSeconds: 300
