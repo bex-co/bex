@@ -185,3 +185,36 @@ func TestConditionalFramingOverHTTP(t *testing.T) {
 		t.Fatalf("range => %d %q %q, want 206 of the first 7 bytes", res.StatusCode, body, res.Header.Get("Content-Range"))
 	}
 }
+
+// w5/182: a header rule that changes a file's Content-Type changes its
+// generated tag too. A 304 carries no Content-Type, so a browser holding the
+// old tag would otherwise keep serving itself the old type. A saved ETag rule
+// still wins, and with no Content-Type rule the tag is the content tag.
+func TestAContentTypeRuleChangesTheGeneratedETag(t *testing.T) {
+	objects := map[string]Object{key("module.dat"): {Body: []byte("\x00asm"), ContentType: "application/octet-stream"}}
+	plain, _ := newTestHandler(t, Site{}, objects)
+	old := do(plain, http.MethodGet, "/module.dat").Header().Get("ETag")
+	if old == "" {
+		t.Fatal("no generated ETag without a rule")
+	}
+
+	rule := appv1alpha1.StaticHeader{Path: "/*.dat", Name: "Content-Type", Value: "application/wasm"}
+	typed, _ := newTestHandler(t, Site{Headers: []appv1alpha1.StaticHeader{rule}}, objects)
+	got := do(typed, http.MethodGet, "/module.dat")
+	tag := got.Header().Get("ETag")
+	if got.Header().Get("Content-Type") != "application/wasm" || tag == "" || tag == old || strings.HasPrefix(tag, "W/") {
+		t.Fatalf("with the rule: Content-Type %q ETag %q, want application/wasm under a new strong tag (old %q)", got.Header().Get("Content-Type"), tag, old)
+	}
+	if rec := doWith(typed, http.MethodGet, "/module.dat", http.Header{"If-None-Match": {old}}); rec.Code != http.StatusOK || rec.Header().Get("Content-Type") != "application/wasm" {
+		t.Errorf("revalidating with the old tag => %d %q, want 200 with the new type", rec.Code, rec.Header().Get("Content-Type"))
+	}
+	if rec := doWith(typed, http.MethodGet, "/module.dat", http.Header{"If-None-Match": {tag}}); rec.Code != http.StatusNotModified {
+		t.Errorf("revalidating with the new tag => %d, want 304", rec.Code)
+	}
+
+	saved := appv1alpha1.StaticHeader{Path: "/*", Name: "ETag", Value: savedETag}
+	pinned, _ := newTestHandler(t, Site{Headers: []appv1alpha1.StaticHeader{rule, saved}}, objects)
+	if rec := doWith(pinned, http.MethodGet, "/module.dat", http.Header{"If-None-Match": {savedETag}}); rec.Code != http.StatusNotModified || rec.Header().Get("ETag") != savedETag {
+		t.Errorf("a saved ETag rule => %d ETag %q, want 304 under %s", rec.Code, rec.Header().Get("ETag"), savedETag)
+	}
+}

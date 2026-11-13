@@ -492,7 +492,8 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	}
 
 	hdr := w.Header()
-	hdr.Set("Content-Type", contentType(servedPath, obj.ContentType))
+	servedType := contentType(servedPath, obj.ContentType)
+	hdr.Set("Content-Type", servedType)
 	hdr.Set("Cache-Control", defaultCacheControl)
 	// Render's static-site security defaults (w8/194). A saved header rule
 	// still replaces either (applyHeaders below).
@@ -504,6 +505,12 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 	// Custom headers win over the defaults above (last-write for a given key),
 	// so a saved ETag rule replaces the generated one (w4/272).
 	applyHeaders(hdr, site.Headers, requestPath)
+	// A Content-Type rule changes the representation, so the generated tag
+	// follows it: a 304 carries no Content-Type, and a browser holding the
+	// old tag would keep the old type (w5/182).
+	if final := hdr.Get("Content-Type"); obj.etag != "" && final != servedType && hdr.Get("Etag") == obj.etag {
+		hdr.Set("Etag", retypedETag(obj.etag, final))
+	}
 
 	// Automatic Brotli and gzip (w8/m79, w8/m132). The representation is chosen before
 	// ServeContent, so its preconditions and byte ranges apply to the bytes
@@ -706,6 +713,16 @@ func contentETag(body []byte, servedType string) string {
 	h.Write([]byte(servedType))
 	h.Write([]byte{0})
 	h.Write(body)
+	return `"` + base64.RawURLEncoding.EncodeToString(h.Sum(nil)[:16]) + `"`
+}
+
+// retypedETag is the generated tag of an object served as servedType by a
+// header rule, without hashing its bytes again.
+func retypedETag(tag, servedType string) string {
+	h := sha256.New()
+	h.Write([]byte(tag))
+	h.Write([]byte{0})
+	h.Write([]byte(servedType))
 	return `"` + base64.RawURLEncoding.EncodeToString(h.Sum(nil)[:16]) + `"`
 }
 
