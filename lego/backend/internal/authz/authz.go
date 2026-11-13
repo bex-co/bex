@@ -47,7 +47,12 @@ type openfgaChecker struct {
 
 	mu      sync.Mutex
 	storeID string
-	cache   *core.TTLCache[bool]
+	// revokeEpoch counts completed RevokeWorkspaceMember evictions. A Check
+	// snapshots it before asking upstream and may only cache its positive while
+	// the epoch is unchanged, so a revoke that lands mid-flight cannot be
+	// resurrected by the answer it was meant to invalidate.
+	revokeEpoch uint64
+	cache       *core.TTLCache[bool]
 }
 
 // NewOpenFGAChecker returns the production core.Checker talking to the
@@ -67,9 +72,10 @@ func (o *openfgaChecker) Check(ctx context.Context, subject, relation, object st
 		return allowed, nil // only positives are ever put
 	}
 	v, err, _ := o.group.Do(key, func() (any, error) {
+		epoch := o.revokeGeneration()
 		allowed, err := o.checkUpstream(ctx, subject, relation, object)
 		if err == nil && allowed {
-			o.cache.Put(key, true, time.Now().Add(core.PositiveTTL))
+			o.cachePositive(key, epoch)
 		}
 		return allowed, err
 	})
@@ -77,6 +83,28 @@ func (o *openfgaChecker) Check(ctx context.Context, subject, relation, object st
 		return false, err
 	}
 	return v.(bool), nil
+}
+
+// revokeGeneration snapshots the revocation counter. Taken before the upstream
+// question so a revoke completing while it is in flight invalidates the answer.
+func (o *openfgaChecker) revokeGeneration() uint64 {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	return o.revokeEpoch
+}
+
+// cachePositive stores a positive only when no revocation completed since
+// epoch. The compare and the Put share mu with the revoke's increment, so a
+// stale answer can neither be written after its eviction nor slip in between
+// the increment and the eviction. An unrelated concurrent revoke only costs one
+// missed cache entry, never a wrong decision.
+func (o *openfgaChecker) cachePositive(key string, epoch uint64) {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	if o.revokeEpoch != epoch {
+		return
+	}
+	o.cache.Put(key, true, time.Now().Add(core.PositiveTTL))
 }
 
 // CheckFresh answers a decision straight from OpenFGA, bypassing the positive
@@ -208,9 +236,16 @@ func (o *openfgaChecker) RevokeWorkspaceMember(ctx context.Context, tenantID, su
 	// the membership. Same-replica revocation is then immediate; other
 	// replicas' caches still drain within PositiveTTL, which is why the
 	// destructive/issuance verbs additionally use CheckFresh.
+	//
+	// Bumping the epoch under the same lock that guards cachePositive closes
+	// the in-flight window: a Check that read upstream before this revoke
+	// re-checks the epoch before writing and skips its now-stale positive.
+	o.mu.Lock()
+	o.revokeEpoch++
 	o.cache.DeleteKeyIf(func(key string) bool {
 		return strings.HasPrefix(key, subject+"\x00")
 	})
+	o.mu.Unlock()
 	return nil
 }
 

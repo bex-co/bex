@@ -163,6 +163,65 @@ func TestGrantAgentSessionWorkspaceWritesFirstClassParentTuple(t *testing.T) {
 	}
 }
 
+// TestRevokeWorkspaceMemberDoesNotResurrectAnInflightPositive pins the
+// concurrency half of the same invariant: a Check that read upstream before the
+// revoke must not write its now-stale positive after the eviction, or the
+// revoked member keeps authorizing on this replica for the rest of
+// PositiveTTL — exactly the window CheckFresh exists to avoid elsewhere.
+func TestRevokeWorkspaceMemberDoesNotResurrectAnInflightPositive(t *testing.T) {
+	var hits atomic.Int32
+	started := make(chan struct{})
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/stores":
+			_, _ = fmt.Fprint(w, `{"stores":[{"id":"store-1","name":"bex"}]}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-1/check":
+			if hits.Add(1) == 1 {
+				close(started)
+				<-release
+			}
+			_, _ = fmt.Fprint(w, `{"allowed":true}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-1/write":
+			_, _ = fmt.Fprint(w, `{}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	chk := NewOpenFGAChecker(srv.URL, "")
+	revoker := chk.(interface {
+		RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error
+	})
+	ctx := context.Background()
+
+	done := make(chan error, 1)
+	go func() {
+		ok, err := chk.Check(ctx, "user:mallory", core.RelCanView, "workspace:tea-a")
+		if err == nil && !ok {
+			err = fmt.Errorf("inflight check denied")
+		}
+		done <- err
+	}()
+	<-started
+	if err := revoker.RevokeWorkspaceMember(ctx, "tea-a", "user:mallory", "admin"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatalf("inflight check: %v", err)
+	}
+
+	// The eviction must win: the next decision re-consults upstream instead of
+	// serving the inflight answer.
+	if _, err := chk.Check(ctx, "user:mallory", core.RelCanView, "workspace:tea-a"); err != nil {
+		t.Fatal(err)
+	}
+	if got := hits.Load(); got != 2 {
+		t.Fatalf("upstream checks = %d, want 2 (inflight positive survived the revoke)", got)
+	}
+}
+
 // TestRevokeWorkspaceMemberEvictsCachedPositives pins codex-security round-6
 // #16: revoking a member must evict the subject's cached positive decisions in
 // the same replica — every key for that subject (workspace and derived
