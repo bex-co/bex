@@ -1,6 +1,6 @@
 # w2 · m358 — Sandboxes start from imported images, as on Render
 
-**Worker:** worker2 **Goal:** `render sandbox-groups images import|get` and `render sandboxes create --image` work against bex as they do on Render. An OCI image is imported into a sandbox group, a sandbox starts from it by id or by name, and a private registry credential is used for that import only and never stored. **Status:** in progress (t001–t006 and t008–t010 done; t007, the production walk, waits for the deploy; then t011)
+**Worker:** worker2 **Goal:** `render sandbox-groups images import|get` and `render sandboxes create --image` work against bex as they do on Render. An OCI image is imported into a sandbox group, a sandbox starts from it by id or by name, and a private registry credential is used for that import only and never stored. **Status:** done
 
 ## Tasks (in order)
 
@@ -12,11 +12,11 @@
 | t004 | REST, GraphQL and MCP: create, list and get sandbox builds; the routes leave `NotOfferedRoutes` — **DONE** | 60m | t003 |
 | t005 | Create resolves `buildId`/`buildName` to an image and starts the sandbox from it; suspend/resume and exec keep working — **DONE** | 90m | t004 |
 | t006 | ADR018 sandbox rows and `docs/cli-compatibility-checklist.md` record images as served — **DONE** | 20m | t005 |
-| t007 | Production walk with the pinned CLI v2.36: import, create, exec, a re-import and a private-registry import | 45m | t006 |
+| t007 | Production walk with the pinned CLI v2.36: import, create, exec, a re-import and a private-registry import — **DONE** | 45m | t006 |
 | t008 | Render parity — **DONE** | 20m | t007 |
 | t009 | Simplify — **DONE** | 15m | t008 |
 | t010 | Test coverage — **DONE** | 30m | t009 |
-| t011 | Closeout | 10m | t010 |
+| t011 | Closeout — **DONE** | 10m | t010 |
 
 ## Definition of done
 
