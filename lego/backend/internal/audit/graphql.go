@@ -75,9 +75,16 @@ var auditLogGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return e.TargetName
 		})},
-		"relation":      gqlutil.StrField(func(e Event) any { return emptyAsNil(e.Relation) }),
-		"oauthClientId": gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthClientID) }),
-		"oauthAudience": gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthAudience) }),
+		// What a rename, a custom-domain verb or an env-group link changed
+		// (w5/183); empty for every other row.
+		"displayNameFrom": gqlutil.StrField(func(e Event) any { return e.DisplayNameFrom }),
+		"displayNameTo":   gqlutil.StrField(func(e Event) any { return e.DisplayNameTo }),
+		"domain":          gqlutil.StrField(func(e Event) any { return e.Domain }),
+		"envGroupId":      gqlutil.StrField(func(e Event) any { return e.EnvGroupID }),
+		"envGroupName":    gqlutil.StrField(func(e Event) any { return e.EnvGroupName }),
+		"relation":        gqlutil.StrField(func(e Event) any { return emptyAsNil(e.Relation) }),
+		"oauthClientId":   gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthClientID) }),
+		"oauthAudience":   gqlutil.StrField(func(e Event) any { return emptyAsNil(e.OAuthAudience) }),
 		"oauthScopes": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(e Event) any {
 			if len(e.OAuthScopes) == 0 {
 				return nil

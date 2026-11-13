@@ -26,6 +26,11 @@ query AuditLogs(
     status
     resource
     targetName
+    displayNameFrom
+    displayNameTo
+    domain
+    envGroupId
+    envGroupName
     relation
     oauthClientId
     oauthAudience

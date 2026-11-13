@@ -132,6 +132,11 @@ describe("AuditLogPanel", () => {
         status: "success",
         resource: "workspace:tea-1",
         targetName: "my-api",
+        displayNameFrom: "api",
+        displayNameTo: "Checkout API",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
         relation: "",
         oauthClientId: "",
         oauthAudience: "",
@@ -146,6 +151,11 @@ describe("AuditLogPanel", () => {
         status: "denied",
         resource: "service:srv-1",
         targetName: "",
+        displayNameFrom: "",
+        displayNameTo: "",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
         relation: "can_operate",
         oauthClientId: "dcr-agent",
         oauthAudience: "https://api.bex.co/mcp",
@@ -163,6 +173,9 @@ describe("AuditLogPanel", () => {
     // carries one; a pre-0038 row (empty targetName) keeps the id-only cell.
     expect(rows[0]).toHaveTextContent("my-api");
     expect(rows[0]).toHaveTextContent("workspace:tea-1");
+    // A rename names both names (w5/183); other rows carry no change line.
+    expect(rows[0]).toHaveTextContent("Name api → Checkout API");
+    expect(rows[1]).not.toHaveTextContent("Name ");
     expect(rows[1]).not.toHaveTextContent("my-api");
     expect(rows[1]).toHaveTextContent("service:srv-1");
     expect(rows[1]).toHaveTextContent("dcr-agent");
@@ -188,6 +201,11 @@ describe("AuditLogPanel", () => {
         status: "success",
         resource: "workspace:tea-1",
         targetName: "",
+        displayNameFrom: "",
+        displayNameTo: "",
+        domain: "",
+        envGroupId: "",
+        envGroupName: "",
         relation: "",
         oauthClientId: "",
         oauthAudience: "",

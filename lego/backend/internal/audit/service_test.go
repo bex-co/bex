@@ -542,3 +542,22 @@ func TestRenderAuditLogUserActorsCarryTheirUsrID(t *testing.T) {
 		t.Errorf("no resolver: id = %q", got)
 	}
 }
+
+// w5/183: a rename, a custom-domain verb and an env-group link name what they
+// changed in the audit log's metadata, in the keys the service's events use.
+func TestAuditMetadataNamesWhatChanged(t *testing.T) {
+	rename := toRenderAuditLog(Event{Verb: core.AuditVerbSetDisplayName, Target: "service:srv-1", DisplayNameFrom: "api", DisplayNameTo: "Checkout API"})
+	if rename.Event != "UpdateServiceNameEvent" || rename.Metadata["from"] != "api" || rename.Metadata["to"] != "Checkout API" || rename.Metadata["service"] != "srv-1" {
+		t.Errorf("rename metadata = %v (%s), want service, from and to", rename.Metadata, rename.Event)
+	}
+	if domain := toRenderAuditLog(Event{Verb: core.AuditVerbAddDomain, Target: "service:srv-1", Domain: "app.example.com"}); domain.Metadata["domain"] != "app.example.com" {
+		t.Errorf("domain metadata = %v, want domain", domain.Metadata)
+	}
+	link := toRenderAuditLog(Event{Verb: core.AuditVerbLinkService, Target: "service:srv-1", EnvGroupID: "evg-1", EnvGroupName: "shared"})
+	if link.Metadata["envGroupId"] != "evg-1" || link.Metadata["envGroupName"] != "shared" {
+		t.Errorf("link metadata = %v, want envGroupId and envGroupName", link.Metadata)
+	}
+	if bare := toRenderAuditLog(Event{Verb: core.AuditVerbSetDisplayName, Target: "service:srv-1"}); len(bare.Metadata) != 1 {
+		t.Errorf("a row recorded before the names = %v, want only the service", bare.Metadata)
+	}
+}

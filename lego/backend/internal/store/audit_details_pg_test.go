@@ -266,6 +266,46 @@ func TestPGRenameAndDomainNamesRoundTrip(t *testing.T) {
 	}
 }
 
+// TestPGAuditListNamesWhatChanged pins w5/183: the workspace audit log reads
+// back the names a rename, a custom-domain verb and an env-group link recorded.
+func TestPGAuditListNamesWhatChanged(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	t.Cleanup(pool.Close)
+	workspace := ids.New(ids.Workspace)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, workspace)
+	})
+	at := time.Now().UTC().Truncate(time.Second)
+	for i, ev := range []core.AuditEvent{
+		{Verb: core.AuditVerbSetDisplayName, DisplayNameFrom: "api", DisplayNameTo: "Checkout API"},
+		{Verb: core.AuditVerbAddDomain, Domain: "app.example.com"},
+		{Verb: core.AuditVerbLinkService, EnvGroupID: "evg-1", EnvGroupName: "shared"},
+	} {
+		ev.Caller, ev.CallerMethod, ev.Resource, ev.Target = "usr-1", "session", core.WorkspaceObject(workspace), core.ServiceTarget("srv-1")
+		ev.Outcome, ev.At = core.AuditAllowed, at.Add(time.Duration(i)*time.Minute)
+		if err := st.Record(ctx, ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows, err := st.ListAuditEvents(ctx, workspace, AuditFilter{OldestFirst: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 3 {
+		t.Fatalf("audit rows = %+v, want 3", rows)
+	}
+	if r := rows[0]; r.DisplayNameFrom != "api" || r.DisplayNameTo != "Checkout API" {
+		t.Errorf("rename row = %+v, want both names", r)
+	}
+	if r := rows[1]; r.Domain != "app.example.com" {
+		t.Errorf("domain row = %+v, want the hostname", r)
+	}
+	if r := rows[2]; r.EnvGroupID != "evg-1" || r.EnvGroupName != "shared" {
+		t.Errorf("link row = %+v, want the group", r)
+	}
+}
+
 // TestPGAuditRecordWithDerivedIDRecordsOnce pins w2/067: Stripe redelivers
 // checkout.session.completed, and a row carrying a derived id must land once
 // however often it is recorded.

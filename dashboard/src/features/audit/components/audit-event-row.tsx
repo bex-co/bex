@@ -15,6 +15,17 @@ export interface AuditEventRowProps {
 export function AuditEventRow({ event }: AuditEventRowProps) {
   const { t } = useTranslations();
   const actor = useWorkspaceSubjectLabel(event.actor ?? "");
+  // What a rename, a custom-domain verb or an env-group link changed (w5/183).
+  const change = event.displayNameTo
+    ? t("audit.changeRename", {
+        from: event.displayNameFrom,
+        to: event.displayNameTo,
+      })
+    : event.domain
+      ? t("audit.changeDomain", { domain: event.domain })
+      : event.envGroupName
+        ? t("audit.changeEnvGroup", { name: event.envGroupName })
+        : null;
 
   return (
     <TableRow>
@@ -65,6 +76,9 @@ export function AuditEventRow({ event }: AuditEventRowProps) {
         ) : (
           <span className="font-mono">{event.resource}</span>
         )}
+        {change ? (
+          <span className="block truncate text-xs">{change}</span>
+        ) : null}
       </TableCell>
     </TableRow>
   );

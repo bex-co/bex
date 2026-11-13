@@ -653,6 +653,11 @@ export type AuditLog = {
   action: Maybe<Scalars['String']['output']>;
   actor: Maybe<Scalars['String']['output']>;
   actorMethod: Maybe<Scalars['String']['output']>;
+  displayNameFrom: Maybe<Scalars['String']['output']>;
+  displayNameTo: Maybe<Scalars['String']['output']>;
+  domain: Maybe<Scalars['String']['output']>;
+  envGroupId: Maybe<Scalars['String']['output']>;
+  envGroupName: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   metadata: Maybe<AuditLogMetadata>;
   oauthAudience: Maybe<Scalars['String']['output']>;

@@ -131,6 +131,18 @@ func renderMetadata(e Event) map[string]string {
 	if len(e.OAuthScopes) > 0 {
 		md["oauthScopes"] = strings.Join(e.OAuthScopes, " ")
 	}
+	// What a rename, a custom-domain verb or an env-group link changed
+	// (w5/183), in the keys the service's events use for the same facts.
+	// Render's metadata is a free string map; its keys for these events were
+	// never captured.
+	for key, value := range map[string]string{
+		"from": e.DisplayNameFrom, "to": e.DisplayNameTo, "domain": e.Domain,
+		"envGroupId": e.EnvGroupID, "envGroupName": e.EnvGroupName,
+	} {
+		if value != "" {
+			md[key] = value
+		}
+	}
 	if denied(e) {
 		md["outcome"] = "denied"
 	}

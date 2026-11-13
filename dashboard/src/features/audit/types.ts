@@ -14,6 +14,14 @@ export interface AuditEvent {
   /** Target display name (backend migration 0038); "" on pre-0038 rows — the
    *  row falls back to the raw resource id. */
   targetName: string;
+  /** A rename's label before and after; "" on every other row (w5/183). */
+  displayNameFrom: string;
+  displayNameTo: string;
+  /** The hostname a custom-domain verb changed; "" on every other row. */
+  domain: string;
+  /** The env group a link or unlink changed; "" on every other row. */
+  envGroupId: string;
+  envGroupName: string;
   /** RelCan… the decision was made against; "" on pre-0088 and system rows. */
   relation: string;
   /** Verified OAuth client id; "" on session/machine/pre-0088 rows. */

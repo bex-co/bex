@@ -75,6 +75,13 @@ type AuditRow struct {
 	OAuthClientID string
 	OAuthAudience string
 	OAuthScopes   []string
+	// The facts a rename, a custom-domain verb and an env-group link record
+	// (w4/m337, w4/563): empty for every other verb and for older rows.
+	DisplayNameFrom string
+	DisplayNameTo   string
+	Domain          string
+	EnvGroupID      string
+	EnvGroupName    string
 }
 
 // AuditFilter narrows ListAuditEvents: Since/Until bound At inclusively
@@ -188,23 +195,24 @@ func nullIfEmptyScopes(scopes []string) []string {
 	return scopes
 }
 
-const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at, maintenance_mode_to, role_from, role_to, revoked_key_count, relation, oauth_client_id, oauth_audience, oauth_scopes`
+const auditColumns = `id, workspace_id, caller, caller_method, verb, resource, target, target_name, outcome, at, maintenance_mode_to, role_from, role_to, revoked_key_count, relation, oauth_client_id, oauth_audience, oauth_scopes,
+	display_name_from, display_name_to, domain, env_group_id, env_group_name`
 
 func scanAuditRow(row pgx.Row) (AuditRow, error) {
 	var r AuditRow
-	var relation, oauthClientID, oauthAudience *string
-	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.TargetName, &r.Outcome, &r.At, &r.MaintenanceModeTo, &r.RoleFrom, &r.RoleTo, &r.RevokedKeyCount, &relation, &oauthClientID, &oauthAudience, &r.OAuthScopes)
+	var relation, oauthClientID, oauthAudience, nameFrom, nameTo, domain, groupID, groupName *string
+	err := row.Scan(&r.ID, &r.WorkspaceID, &r.Caller, &r.CallerMethod, &r.Verb, &r.Resource, &r.Target, &r.TargetName, &r.Outcome, &r.At, &r.MaintenanceModeTo, &r.RoleFrom, &r.RoleTo, &r.RevokedKeyCount, &relation, &oauthClientID, &oauthAudience, &r.OAuthScopes,
+		&nameFrom, &nameTo, &domain, &groupID, &groupName)
 	if err != nil {
 		return AuditRow{}, err
 	}
-	if relation != nil {
-		r.Relation = *relation
-	}
-	if oauthClientID != nil {
-		r.OAuthClientID = *oauthClientID
-	}
-	if oauthAudience != nil {
-		r.OAuthAudience = *oauthAudience
+	for dst, src := range map[*string]*string{
+		&r.Relation: relation, &r.OAuthClientID: oauthClientID, &r.OAuthAudience: oauthAudience,
+		&r.DisplayNameFrom: nameFrom, &r.DisplayNameTo: nameTo, &r.Domain: domain, &r.EnvGroupID: groupID, &r.EnvGroupName: groupName,
+	} {
+		if src != nil {
+			*dst = *src
+		}
 	}
 	return r, nil
 }

@@ -30,6 +30,21 @@ const zhAudit: Record<string, TranslationEntry> = {
     message: "资源",
     description: "Audit Log table column header — the object acted on",
   },
+  "audit.changeRename": {
+    message: "名称 {from} → {to}",
+    description:
+      "Audit log Resource cell: a service rename's label before and after (w5/183)",
+  },
+  "audit.changeDomain": {
+    message: "域名 {domain}",
+    description:
+      "Audit log Resource cell: the custom domain a domain verb added, removed or verified (w5/183)",
+  },
+  "audit.changeEnvGroup": {
+    message: "环境组 {name}",
+    description:
+      "Audit log Resource cell: the environment group a link or unlink changed (w5/183)",
+  },
   "audit.statusAllowed": {
     message: "已允许",
     description: "Audit Log status badge for a successful action",

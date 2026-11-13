@@ -17,6 +17,11 @@ const event = (overrides: Partial<AuditEvent> = {}): AuditEvent => ({
   status: "success",
   resource: "srv-1",
   targetName: "web",
+  displayNameFrom: "",
+  displayNameTo: "",
+  domain: "",
+  envGroupId: "",
+  envGroupName: "",
   relation: "",
   oauthClientId: "",
   oauthAudience: "",
@@ -33,6 +38,17 @@ describe("auditEventsToCSV", () => {
     expect(row).toBe(
       '2026-11-10T09:00:00Z,admin@example.com,apps.Suspend,success,"{""resource"":""srv-1"",""targetName"":""web"",""actorMethod"":""session""}"',
     );
+  });
+
+  // w5/183: what a rename, a domain verb or a link changed rides the metadata.
+  it("carries a rename's names and a domain in the metadata", () => {
+    const csv = auditEventsToCSV([
+      event({ displayNameFrom: "api", displayNameTo: "Checkout API" }),
+      event({ domain: "app.example.com" }),
+    ]);
+    const [, rename, domain] = csv.trimEnd().split("\r\n");
+    expect(rename).toContain('""from"":""api"",""to"":""Checkout API""');
+    expect(domain).toContain('""domain"":""app.example.com""');
   });
 
   it("quotes commas, quotes and newlines", () => {
@@ -102,7 +118,12 @@ describe("fetchAuditRange", () => {
 
   it("reads every page with no-cache, so an export leaves nothing in the cache", async () => {
     const query = vi.fn().mockResolvedValueOnce(page(0, 1));
-    await fetchAuditRange({ query } as never, "tea-1", "2026-11-01", "2026-11-10");
+    await fetchAuditRange(
+      { query } as never,
+      "tea-1",
+      "2026-11-01",
+      "2026-11-10",
+    );
     expect(query.mock.calls[0][0].fetchPolicy).toBe("no-cache");
   });
 
@@ -113,7 +134,13 @@ describe("fetchAuditRange", () => {
       return Promise.resolve(page(0, 1000));
     });
     await expect(
-      fetchAuditRange({ query } as never, "tea-1", "2026-11-01", "2026-11-10", controller.signal),
+      fetchAuditRange(
+        { query } as never,
+        "tea-1",
+        "2026-11-01",
+        "2026-11-10",
+        controller.signal,
+      ),
     ).rejects.toThrow();
     expect(query).toHaveBeenCalledTimes(1);
   });

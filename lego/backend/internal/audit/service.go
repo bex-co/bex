@@ -88,6 +88,13 @@ type Event struct {
 	OAuthClientID string
 	OAuthAudience string
 	OAuthScopes   []string
+	// A rename's label on each side, a custom-domain verb's hostname and the
+	// env group a link changed (w5/183); empty for every other verb.
+	DisplayNameFrom string
+	DisplayNameTo   string
+	Domain          string
+	EnvGroupID      string
+	EnvGroupName    string
 }
 
 func view(r store.AuditRow) Event {
@@ -109,6 +116,11 @@ func view(r store.AuditRow) Event {
 		OAuthClientID:     r.OAuthClientID,
 		OAuthAudience:     r.OAuthAudience,
 		OAuthScopes:       r.OAuthScopes,
+		DisplayNameFrom:   r.DisplayNameFrom,
+		DisplayNameTo:     r.DisplayNameTo,
+		Domain:            r.Domain,
+		EnvGroupID:        r.EnvGroupID,
+		EnvGroupName:      r.EnvGroupName,
 	}
 }
 

@@ -30,6 +30,21 @@ const enAudit: Record<string, TranslationEntry> = {
     message: "Resource",
     description: "Audit Log table column header — the object acted on",
   },
+  "audit.changeRename": {
+    message: "Name {from} → {to}",
+    description:
+      "Audit log Resource cell: a service rename's label before and after (w5/183)",
+  },
+  "audit.changeDomain": {
+    message: "Domain {domain}",
+    description:
+      "Audit log Resource cell: the custom domain a domain verb added, removed or verified (w5/183)",
+  },
+  "audit.changeEnvGroup": {
+    message: "Environment group {name}",
+    description:
+      "Audit log Resource cell: the environment group a link or unlink changed (w5/183)",
+  },
   "audit.statusAllowed": {
     message: "Allowed",
     description: "Audit Log status badge for a successful action",

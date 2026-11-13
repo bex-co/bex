@@ -93,6 +93,11 @@ function metadata(event: AuditEvent): string {
   const entries: [string, string | string[]][] = [
     ["resource", event.resource],
     ["targetName", event.targetName],
+    ["from", event.displayNameFrom],
+    ["to", event.displayNameTo],
+    ["domain", event.domain],
+    ["envGroupId", event.envGroupId],
+    ["envGroupName", event.envGroupName],
     ["actorMethod", event.actorMethod],
     ["relation", event.relation],
     ["oauthClientId", event.oauthClientId],
