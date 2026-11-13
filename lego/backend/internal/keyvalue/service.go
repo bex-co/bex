@@ -1321,7 +1321,10 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 	external := string(sec.Data["externalUri"]) // legacy connection Secret (public only)
 	if kv.Status.CredentialSecretName != "" {
 		password := sec.Data["password"]
-		if kv.Status.Phase != appv1alpha1.KVPhaseReady || kv.Status.CredentialRevision == "" ||
+		// The operator records the revision only once the pods serve it (or
+		// while suspended), and the password never changes, so a match is
+		// enough: a restart keeps the recorded revision (w8/305).
+		if kv.Status.CredentialRevision == "" ||
 			kv.Status.CredentialRevision != appv1alpha1.KeyValueCredentialRevision(password) {
 			return KeyValueConnectionInfo{}, fmt.Errorf("%w: key value credentials are still converging", core.ErrConflict)
 		}
