@@ -183,6 +183,10 @@ type App struct {
 	// CreationPending prevents the projector from dispatching a Blueprint App
 	// before its initial environment-group composition has committed.
 	CreationPending bool `json:"-"`
+	// ObjectName is the App object's name when it is not CRName(TenantID,
+	// Name): a service re-created while its predecessor's App still tears down
+	// under that name (w2/m365). Read it through AppObjectName.
+	ObjectName string `json:"-"`
 	// InitialDisk is CreateApp input only. Save the disk and its first metering
 	// period in the service transaction, before a projector can observe the row.
 	InitialDisk *appv1alpha1.DiskSpec `json:"-"`
@@ -1096,6 +1100,12 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 		a.ID, a.DisplayName = ids.New(ids.Service), ""
 	}
 	a.Slug = a.Name
+	if a.ObjectName != "" {
+		// Beside its predecessor's App, whose Ingress and slug Service keep
+		// the bare slug until they are gone, a new subdomain: Render never
+		// reuses an onrender.com one either.
+		a.Slug = a.Name + "-" + randomSlugSuffix()
+	}
 	for attempt := 0; ; attempt++ {
 		deployID := ids.New(ids.Deploy)
 		err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
@@ -1115,12 +1125,12 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			}
 			if err := tx.QueryRow(ctx,
 				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode, creation_pending,
-				   build_source_id, build_source_image, scope_project_id, display_name)
+				   build_source_id, build_source_image, scope_project_id, display_name, object_name)
 				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''), $17, $18, $19,
-				   NULLIF($20,''), $21, NULLIF($22,''), $23)
+				   NULLIF($20,''), $21, NULLIF($22,''), $23, NULLIF($24,''))
 				 RETURNING created_at`,
 				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID, a.ContainerPolicy, a.PortMode, a.CreationPending,
-				a.BuildSourceID, a.BuildSourceImage, a.ScopeProjectID, a.DisplayName,
+				a.BuildSourceID, a.BuildSourceImage, a.ScopeProjectID, a.DisplayName, a.ObjectName,
 			).Scan(&a.CreatedAt); err != nil {
 				return err
 			}
@@ -1159,7 +1169,8 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,''), COALESCE(a.image,''), a.registry_credential_id,
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended,
 	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode, a.creation_pending,
-	COALESCE(a.display_name,''), COALESCE(a.build_source_id,''), a.build_source_image, COALESCE(a.scope_project_id,'')`
+	COALESCE(a.display_name,''), COALESCE(a.build_source_id,''), a.build_source_image, COALESCE(a.scope_project_id,''),
+	COALESCE(a.object_name,'')`
 
 // SetAppBuildSource links service id to build source carrierID, deploying
 // image (empty until the source has built): the source then provides the
@@ -1267,12 +1278,21 @@ const serviceAppsOnly = `a.type <> '` + TypeBuildSource + `'`
 // buildSourcesOnly is serviceAppsOnly's complement: the carrier rows.
 const buildSourcesOnly = `a.type = '` + TypeBuildSource + `'`
 
+// AppObjectName is the name of the App object a row projects to: its
+// ObjectName, else CRName(tenant, name).
+func (a App) AppObjectName() string {
+	if a.ObjectName != "" {
+		return a.ObjectName
+	}
+	return CRName(a.TenantID, a.Name)
+}
+
 func scanApp(row pgx.Row) (App, error) {
 	var a App
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Type, &a.Repo, &a.Image,
 		&a.RegistryCredentialID, &a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
 		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode, &a.CreationPending, &a.DisplayName,
-		&a.BuildSourceID, &a.BuildSourceImage, &a.ScopeProjectID)
+		&a.BuildSourceID, &a.BuildSourceImage, &a.ScopeProjectID, &a.ObjectName)
 	return a, err
 }
 
@@ -1782,7 +1802,7 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
 			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName,
-			&d.BuildSourceID, &d.BuildSourceImage, &d.ScopeProjectID, &d.TenantName, &envRules, &d.SourceRevision)
+			&d.BuildSourceID, &d.BuildSourceImage, &d.ScopeProjectID, &d.ObjectName, &d.TenantName, &envRules, &d.SourceRevision)
 		if err != nil {
 			return nil, err
 		}

@@ -352,7 +352,7 @@ func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) error
 			continue
 		}
 		var a appv1alpha1.App
-		if err := s.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: store.CRName(row.TenantID, row.Name)}, &a); err != nil {
+		if err := s.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: row.AppObjectName()}, &a); err != nil {
 			errs = append(errs, fanoutFailure(wrap(row.ID, err)))
 			continue
 		}

@@ -19,8 +19,8 @@ package apps
 import (
 	"context"
 	"os"
+	"strings"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -30,13 +30,13 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
 )
 
-// TestPGCreateUnderAStillDeletingNameIsNamedThenSucceeds is the w2/075 dev-2
-// walk on real Postgres: create a service, delete it (its App held
-// Terminating by the operator's finalizer), create one under the same name
-// at once. With the service's row already gone, the create — dry run and
-// real alike — answers 409 SERVICE_NAME_STILL_DELETING and writes no row;
-// once the teardown finishes the same create succeeds.
-func TestPGCreateUnderAStillDeletingNameIsNamedThenSucceeds(t *testing.T) {
+// TestPGCreateUnderADeletedNameSucceedsAtOnce is the w2/075 dev-2 walk on
+// real Postgres, with Render's answer (w2/m365): create a service, delete it
+// (its App held Terminating by the operator's finalizer), create one under the
+// same name at once. The create, dry run and real alike, succeeds; the new
+// row records its own App object name and a fresh slug; the name resolves to
+// it; and a repeated delete of the old service's id touches nothing.
+func TestPGCreateUnderADeletedNameSucceedsAtOnce(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
 		testenv.Skip(t, "BEX_TEST_DB_URI not set")
@@ -57,8 +57,7 @@ func TestPGCreateUnderAStillDeletingNameIsNamedThenSucceeds(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.DeleteTenant(ctx, workspace.ID) })
-	// A teardown that outlasts the create's wait (w2/m361), kept short here.
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{owner: workspace.ID}}, Store: st, DomainTraffic: allowDomainTraffic{}, NameReleaseWait: 100 * time.Millisecond}
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{owner: workspace.ID}}, Store: st, DomainTraffic: allowDomainTraffic{}}
 	// Storage refuses the held name as the API server does.
 	svc.Client = apiServerDryRuns{svc.Client}
 	rows := func() int {
@@ -77,7 +76,8 @@ func TestPGCreateUnderAStillDeletingNameIsNamedThenSucceeds(t *testing.T) {
 	}
 
 	req := CreateRequest{Name: "api", Image: "nginx:1"}
-	if _, err := svc.Create(ctx, req); err != nil {
+	first, err := svc.Create(ctx, req)
+	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
 	key := appKeyIn(t, svc, workspace.ID, "api")
@@ -89,23 +89,44 @@ func TestPGCreateUnderAStillDeletingNameIsNamedThenSucceeds(t *testing.T) {
 		t.Fatalf("%d service rows after the delete, want 0", n)
 	}
 
-	for _, dryRun := range []bool{true, false} {
-		again := req
-		again.DryRun = dryRun
-		_, err := svc.Create(ctx, again)
-		if err == nil || coded(t, err) != ServiceNameStillDeletingCode {
-			t.Fatalf("create (dryRun=%v) during the teardown: err = %v, want %s", dryRun, err, ServiceNameStillDeletingCode)
-		}
-		if n := rows(); n != 0 {
-			t.Fatalf("the refused create (dryRun=%v) left %d service rows", dryRun, n)
-		}
+	dry := req
+	dry.DryRun = true
+	if _, err := svc.Create(ctx, dry); err != nil {
+		t.Fatalf("dry-run create during the teardown: %v", err)
 	}
-
-	releaseAppFinalizer(t, ctx, svc.Client, key)
-	if _, err := svc.Create(ctx, req); err != nil {
-		t.Fatalf("create after the teardown: %v", err)
+	if n := rows(); n != 0 {
+		t.Fatalf("the dry run left %d service rows", n)
+	}
+	second, err := svc.Create(ctx, req)
+	if err != nil {
+		t.Fatalf("create during the teardown: %v", err)
+	}
+	if second.ID == first.ID {
+		t.Fatalf("the re-created service reuses the deleted one's id %s", first.ID)
+	}
+	row, err := st.GetApp(ctx, second.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(row.ObjectName, key.Name+"-") || row.AppObjectName() != row.ObjectName {
+		t.Fatalf("object name = %q, want %s-xxxx beside the old App", row.ObjectName, key.Name)
+	}
+	if row.Slug == "api" || !strings.HasPrefix(row.Slug, "api-") {
+		t.Fatalf("slug = %q, want a fresh api-xxxx: the old App still holds its host", row.Slug)
+	}
+	if got, err := svc.Get(ctx, "api"); err != nil || got.ID != second.ID {
+		t.Fatalf("GET api = %+v, %v; want the new service %s", got, err, second.ID)
+	}
+	// A repeated delete of the old service, still reachable by id, is done
+	// already and touches nothing (it would purge the name's secrets).
+	if err := svc.Delete(ctx, first.ID); err != nil {
+		t.Fatalf("repeat delete of %s: %v", first.ID, err)
 	}
 	if n := rows(); n != 1 {
-		t.Fatalf("%d service rows after the re-create, want 1", n)
+		t.Fatalf("%d service rows after the repeat delete, want the new one", n)
+	}
+	releaseAppFinalizer(t, ctx, svc.Client, key)
+	if got, err := svc.Get(ctx, "api"); err != nil || got.ID != second.ID {
+		t.Fatalf("GET api after the old teardown = %+v, %v", got, err)
 	}
 }

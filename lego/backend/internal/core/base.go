@@ -1271,14 +1271,18 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		}
 		getErr := notServiceAppFor(ctx, b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a), &a)
 		if getErr == nil {
-			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, a.Labels)
-			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&a), verb, resolveErr); err != nil {
+			found, err := b.LiveSuccessor(ctx, acting, name, &a)
+			if err != nil {
 				return nil, err
 			}
-			if err := b.refuseAmbiguousName(ctx, name, &a); err != nil {
+			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, found.Labels)
+			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(found), verb, resolveErr); err != nil {
 				return nil, err
 			}
-			return &a, nil
+			if err := b.refuseAmbiguousName(ctx, name, found); err != nil {
+				return nil, err
+			}
+			return found, nil
 		}
 		if !apierrors.IsNotFound(getErr) {
 			return nil, getErr
@@ -1293,7 +1297,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		if err := b.Client.List(ctx, &list, opts...); err != nil {
 			return nil, err
 		}
-		list.Items = serviceAppsFor(ctx, list.Items)
+		list.Items = preferLive(serviceAppsFor(ctx, list.Items))
 		// Every colliding candidate is a distinct authorization decision, but
 		// individually auditing an unbounded number of them would let one GET
 		// against a common colliding name serialize one synchronous audit
@@ -1415,6 +1419,7 @@ func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*ap
 			candidates = append(candidates, a)
 		}
 	}
+	candidates = preferLive(candidates)
 	preferOwnWorkspaceNamespace(candidates)
 	var matches []*appv1alpha1.App
 	visible := map[string]bool{}
@@ -1845,6 +1850,47 @@ func appCandidateNames(acting, name string) []string {
 	return []string{CRName(acting, name), name}
 }
 
+// preferLive drops Apps being deleted when a live App is among items: a
+// service re-created under a just-deleted one's name runs beside the old App
+// until that teardown ends, and only the live one answers to the name
+// (w2/m365). With no live App, items are returned as they are.
+func preferLive(items []appv1alpha1.App) []appv1alpha1.App {
+	var live []appv1alpha1.App
+	for _, a := range items {
+		if a.DeletionTimestamp.IsZero() {
+			live = append(live, a)
+		}
+	}
+	if len(live) == 0 {
+		return items
+	}
+	return live
+}
+
+// LiveSuccessor returns the live App a re-created service runs as when a,
+// found under the name's CRName, is the deleted predecessor still tearing
+// down (w2/m365); otherwise a itself.
+func (b *Base) LiveSuccessor(ctx context.Context, acting, name string, a *appv1alpha1.App) (*appv1alpha1.App, error) {
+	if a.DeletionTimestamp.IsZero() || len(validation.IsValidLabelValue(name)) != 0 {
+		return a, nil
+	}
+	labels := client.MatchingLabels{LabelServiceName: name}
+	if acting != "" {
+		labels[LabelTenant] = acting
+	}
+	var list appv1alpha1.AppList
+	if err := b.Client.List(ctx, &list, client.InNamespace(b.AppNamespace(acting)), labels); err != nil {
+		return nil, err
+	}
+	for _, other := range serviceAppsFor(ctx, list.Items) {
+		// Unbound, only another unbound App succeeds it.
+		if other.DeletionTimestamp.IsZero() && other.Labels[LabelTenant] == acting {
+			return &other, nil
+		}
+	}
+	return a, nil
+}
+
 // GetApp fetches one App by typed service id or name, mapping absence to
 // ErrNotFound, and gates it on `relation` — the SAME relation the calling verb
 // just authorized. Shared by the apps/logs/metrics/secrets/deploys/events/
@@ -1949,13 +1995,17 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 		}
 		err := notServiceAppFor(ctx, b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a), &a)
 		if err == nil {
-			if err := b.AuthorizeLabeled(ctx, relation, a.Labels); err != nil {
+			found, err := b.LiveSuccessor(ctx, acting, name, &a)
+			if err != nil {
 				return nil, err
 			}
-			if err := b.refuseAmbiguousName(ctx, name, &a); err != nil {
+			if err := b.AuthorizeLabeled(ctx, relation, found.Labels); err != nil {
 				return nil, err
 			}
-			return &a, nil
+			if err := b.refuseAmbiguousName(ctx, name, found); err != nil {
+				return nil, err
+			}
+			return found, nil
 		}
 		if !apierrors.IsNotFound(err) {
 			return nil, err
@@ -1972,7 +2022,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	if err := b.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
-	list.Items = serviceAppsFor(ctx, list.Items)
+	list.Items = preferLive(serviceAppsFor(ctx, list.Items))
 	lastErr := error(ErrNotFound)
 	for i := range list.Items {
 		if err := b.AuthorizeLabeled(ctx, relation, list.Items[i].Labels); err == nil {

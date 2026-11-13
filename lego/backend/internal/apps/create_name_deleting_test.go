@@ -18,14 +18,12 @@ package apps
 
 import (
 	"context"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/graphql-go/graphql"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -34,13 +32,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// w2/075: creating a service under the name of one just deleted, whose App
-// is still being torn down (held by the operator's finalizer), is refused by
-// name with a retry hint, never a 500 and never the live-holder wording.
-
-const stillDeletingMsg = `a service named "web" was just deleted and its cleanup is still finishing; retry in a minute to create a service with this name`
+// w2/m365: creating a service under the name of one just deleted, whose App
+// is still being torn down (held by the operator's finalizer), succeeds at
+// once, as on Render: the new service gets its own App object beside the old
+// one (w2/075 answered a named 409, w2/m361 waited up to 20 s).
 
 // deletingService is a Service whose "web" App was deleted and is still
 // Terminating behind the operator's finalizer.
@@ -49,8 +48,6 @@ func deletingService(t *testing.T) (*Service, client.Client) {
 	held := sampleApp("web")
 	held.Finalizers = []string{"app.bex.co/finalizer"}
 	svc, cl := newService(nil, held)
-	// A teardown that outlasts the create's wait (w2/m361): keep it short here.
-	svc.NameReleaseWait = 50 * time.Millisecond
 	if err := cl.Delete(context.Background(), held); err != nil {
 		t.Fatal(err)
 	}
@@ -61,26 +58,51 @@ func deletingService(t *testing.T) (*Service, client.Client) {
 	return svc, cl
 }
 
-func TestREST_CreateUnderAStillDeletingNameIsANamed409(t *testing.T) {
-	svc, _ := deletingService(t)
+// liveAndDeleting splits the Apps answering to the service name name: how
+// many are being deleted, and the live ones.
+func liveAndDeleting(t *testing.T, cl client.Client, name string) (deleting int, live []appv1alpha1.App) {
+	t.Helper()
+	var list appv1alpha1.AppList
+	if err := cl.List(context.Background(), &list); err != nil {
+		t.Fatal(err)
+	}
+	for _, a := range list.Items {
+		switch {
+		case core.AppPublicName(&a) != name:
+		case a.DeletionTimestamp.IsZero():
+			live = append(live, a)
+		default:
+			deleting++
+		}
+	}
+	return deleting, live
+}
+
+func TestREST_CreateUnderADeletedNameSucceedsAtOnce(t *testing.T) {
+	svc, cl := deletingService(t)
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
-	for _, body := range []string{
-		`{"name":"web","image":{"imagePath":"nginx"}}`,
-		`{"name":"web","image":{"imagePath":"nginx"},"dryRun":true}`,
+	for body, want := range map[string]int{
+		`{"name":"web","image":{"imagePath":"nginx"},"dryRun":true}`: http.StatusOK,
+		`{"name":"web","image":{"imagePath":"nginx"}}`:               http.StatusCreated,
 	} {
 		rec := httptest.NewRecorder()
 		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
-		var out struct{ Code, Message string }
-		_ = json.Unmarshal(rec.Body.Bytes(), &out)
-		if rec.Code != http.StatusConflict || out.Code != ServiceNameStillDeletingCode || out.Message != stillDeletingMsg {
-			t.Fatalf("POST /v1/services %s = %d %s, want 409 %s", body, rec.Code, rec.Body, ServiceNameStillDeletingCode)
+		if rec.Code != want {
+			t.Fatalf("POST /v1/services %s = %d %s, want %d", body, rec.Code, rec.Body, want)
 		}
+	}
+	deleting, live := liveAndDeleting(t, cl, "web")
+	if deleting != 1 || len(live) != 1 || !strings.HasPrefix(live[0].Name, "web-") || len(live[0].Name) != len("web-")+4 {
+		t.Fatalf("Apps: %d deleting, live %v; want the old one tearing down beside a new web-xxxx", deleting, live)
+	}
+	if got, err := svc.Get(context.Background(), "web"); err != nil || got.Name != "web" {
+		t.Fatalf("GET web = %+v, %v; want the new service", got, err)
 	}
 }
 
-func TestGraphQL_CreateServiceUnderAStillDeletingNameIsCoded(t *testing.T) {
-	svc, _ := deletingService(t)
+func TestGraphQL_CreateServiceUnderADeletedNameSucceeds(t *testing.T) {
+	svc, cl := deletingService(t)
 	gqlSchema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
@@ -90,77 +112,33 @@ func TestGraphQL_CreateServiceUnderAStillDeletingNameIsCoded(t *testing.T) {
 	}
 	res := graphql.Do(graphql.Params{
 		Schema: gqlSchema, Context: context.Background(),
-		RequestString: `mutation { createService(name: "web", image: "nginx") { id } }`,
+		RequestString: `mutation { createService(name: "web", image: "nginx") { name } }`,
 	})
-	if len(res.Errors) != 1 {
-		t.Fatalf("errors = %v, want one", res.Errors)
+	if len(res.Errors) != 0 {
+		t.Fatalf("errors = %v, want none", res.Errors)
 	}
-	if code, _ := res.Errors[0].Extensions["code"].(string); code != ServiceNameStillDeletingCode || res.Errors[0].Message != stillDeletingMsg {
-		t.Fatalf("error = %q %v, want %s %q", res.Errors[0].Message, res.Errors[0].Extensions, ServiceNameStillDeletingCode, stillDeletingMsg)
+	if _, live := liveAndDeleting(t, cl, "web"); len(live) != 1 {
+		t.Fatalf("live Apps = %v, want the new service", live)
 	}
 }
 
-// w2/m361: Render accepts a just-deleted service's name at once. A create
-// that meets a teardown in progress waits for it, and succeeds once the
-// operator's finalizer releases the App object name, on every surface.
-func TestCreateWaitsForATeardownToReleaseTheName(t *testing.T) {
+// Once a create has taken a just-deleted name beside the old teardown, the
+// live successor holds it: a second create of the name is refused, so two
+// live services never share it (with the store off too, where no row
+// uniqueness backs the check).
+func TestASecondCreateBesideTheTeardownIsNameInUse(t *testing.T) {
 	svc, cl := deletingService(t)
-	svc.NameReleaseWait = 10 * time.Second
-	held := sampleApp("web")
-	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: held.Namespace, Name: held.Name}, held); err != nil {
-		t.Fatal(err)
+	if _, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:1"}); err != nil {
+		t.Fatalf("first create: %v", err)
 	}
-	released := make(chan error, 1)
-	go func() {
-		time.Sleep(700 * time.Millisecond)
-		held.Finalizers = nil // the operator's teardown finishes
-		released <- cl.Update(context.Background(), held)
-	}()
-	start := time.Now()
-	v, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:1"})
-	if err != nil {
-		t.Fatalf("create while the old service tears down = %v, want it to wait and succeed", err)
+	for _, dryRun := range []bool{true, false} {
+		_, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:1", DryRun: dryRun})
+		if err == nil || err.Error() != errServiceNameInUse("web").Error() {
+			t.Fatalf("second create (dry run %v) = %v, want %v", dryRun, err, errServiceNameInUse("web"))
+		}
 	}
-	if err := <-released; err != nil {
-		t.Fatal(err)
-	}
-	if waited := time.Since(start); waited < 500*time.Millisecond || waited > 5*time.Second {
-		t.Fatalf("create returned after %s, want it to wait for the release (~0.7 s)", waited)
-	}
-	if v.Name != "web" {
-		t.Fatalf("created %+v, want the requested name", v)
-	}
-}
-
-// A teardown still running when the wait ends keeps the named retry refusal,
-// and the wait never outlives its bound.
-func TestCreateGivesUpOnATeardownThatOutlastsTheWait(t *testing.T) {
-	svc, _ := deletingService(t)
-	svc.NameReleaseWait = 300 * time.Millisecond
-	start := time.Now()
-	_, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:1"})
-	if err == nil || coded(t, err) != ServiceNameStillDeletingCode {
-		t.Fatalf("create = %v, want %s", err, ServiceNameStillDeletingCode)
-	}
-	if waited := time.Since(start); waited < 300*time.Millisecond || waited > 3*time.Second {
-		t.Fatalf("create waited %s, want about the 300 ms bound", waited)
-	}
-}
-
-// The wait never eats the writes' share of the request's own deadline: with
-// 9 s left and an 8 s reserve, it gives up after about one second.
-func TestNameWaitLeavesTheRequestTimeForItsWrites(t *testing.T) {
-	svc, _ := deletingService(t)
-	svc.NameReleaseWait = 20 * time.Second
-	ctx, cancel := context.WithTimeout(context.Background(), createWriteReserve+time.Second)
-	defer cancel()
-	start := time.Now()
-	_, err := svc.Create(ctx, CreateRequest{Name: "web", Image: "nginx:1"})
-	if err == nil || coded(t, err) != ServiceNameStillDeletingCode {
-		t.Fatalf("create = %v, want %s", err, ServiceNameStillDeletingCode)
-	}
-	if waited := time.Since(start); waited > 3*time.Second {
-		t.Fatalf("create waited %s, past the request's reserve for its writes", waited)
+	if deleting, live := liveAndDeleting(t, cl, "web"); deleting != 1 || len(live) != 1 {
+		t.Fatalf("web Apps: %d deleting, %d live; want one of each", deleting, len(live))
 	}
 }
 
@@ -201,8 +179,9 @@ func (c *hiddenUntilCreate) Create(ctx context.Context, obj client.Object, opts 
 }
 
 // Storage's AlreadyExists — the dry-run's admission and the write's alike —
-// for a still-deleting holder is the named refusal, not a raw 500.
-func TestCreateWhoseStorageMeetsAStillDeletingNameIsNamed(t *testing.T) {
+// for a holder the name probe missed in a race with its delete is retried
+// once under a suffixed object name, so the create still succeeds.
+func TestCreateWhoseStorageMeetsADeletedNameRetriesUnderItsOwnObject(t *testing.T) {
 	for name, tc := range map[string]struct {
 		dryRun     bool
 		dryRunOnly bool
@@ -219,9 +198,11 @@ func TestCreateWhoseStorageMeetsAStillDeletingNameIsNamed(t *testing.T) {
 			} else {
 				svc.Client = &hiddenUntilCreate{Client: apiServerDryRuns{cl}, hidden: "web"}
 			}
-			_, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:1", DryRun: tc.dryRun})
-			if err == nil || coded(t, err) != ServiceNameStillDeletingCode || err.Error() != stillDeletingMsg {
-				t.Fatalf("create = %v, want %s", err, ServiceNameStillDeletingCode)
+			if _, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:1", DryRun: tc.dryRun}); err != nil {
+				t.Fatalf("create = %v, want it retried under its own object name", err)
+			}
+			if _, live := liveAndDeleting(t, cl, "web"); !tc.dryRun && (len(live) != 1 || !strings.HasPrefix(live[0].Name, "web-")) {
+				t.Fatalf("live Apps = %v, want one web-xxxx", live)
 			}
 		})
 	}

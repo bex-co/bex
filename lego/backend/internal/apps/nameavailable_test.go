@@ -53,7 +53,7 @@ func TestNameAvailable_TakenSuggestsFirstFreeSuffix(t *testing.T) {
 }
 
 // w2/m361: a deleted service's name is free while its teardown finishes, as
-// on Render; the create waits for the release.
+// on Render.
 func TestNameAvailable_DeletedServiceNameIsFree(t *testing.T) {
 	held := tenantApp("web", "tea-a")
 	held.Finalizers = []string{"app.bex.co/finalizer"}

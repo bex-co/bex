@@ -506,6 +506,40 @@ func TestProjectAppUsesTenantIDNotMutableTenantName(t *testing.T) {
 	}
 }
 
+// w2/m365: a service re-created while its predecessor's App still tears down
+// under CRName records its own object name; the projector creates and names
+// everything after it, and its labels keep the public name.
+func TestReconcileProjectsARecreatedServiceUnderItsOwnObjectName(t *testing.T) {
+	ctx := context.Background()
+	rec, store, cl := newTestReconciler(t)
+	ten, _ := store.CreateTenant(ctx, "acme", "free")
+	credentialID := "rgc-private"
+	objectName := core.CRName(ten.ID, "web") + "-ab12"
+	row, err := store.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", ObjectName: objectName, Image: "ghcr.io/acme/private:1",
+		RegistryCredentialID: &credentialID, Port: 80, Replicas: 1, Tier: "starter",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if row.Slug == "web" {
+		t.Fatalf("slug = %q, want a fresh web-xxxx", row.Slug)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	app := getApp(t, cl)
+	if app.Name != objectName || app.Labels[LabelTenant] != ten.ID || app.Labels[LabelAppID] != row.ID {
+		t.Fatalf("projected %s labels %v, want %s for %s", app.Name, app.Labels, objectName, row.ID)
+	}
+	if want := objectName + "-registry-pull"; app.Spec.ExternalRegistryPullSecret != want {
+		t.Errorf("pull secret = %q, want %q", app.Spec.ExternalRegistryPullSecret, want)
+	}
+	if got := (App{TenantID: ten.ID, Name: "web"}).AppObjectName(); got != core.CRName(ten.ID, "web") {
+		t.Errorf("a row without an object name projects as %q, want CRName", got)
+	}
+}
+
 func TestReconcileProjectsExplicitRegistryCredential(t *testing.T) {
 	ctx := context.Background()
 	rec, store, cl := newTestReconciler(t)

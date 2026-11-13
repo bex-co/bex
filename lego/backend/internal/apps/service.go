@@ -62,8 +62,6 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
-	// NameReleaseWait overrides defaultNameReleaseWait (tests).
-	NameReleaseWait time.Duration
 	// ImageCompatibilityWorkspaces gives new Docker/image services in these
 	// workspaces ("*" for every workspace) the render-v1 container policy,
 	// Render's measured capability set (ADR089 § Privilege slice decisions,
@@ -2254,13 +2252,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err != nil {
 		return AppView{}, err
 	}
-	// A just-deleted service's name is free on Render at once: wait for its
-	// teardown to release the App object name (w2/m361).
-	if holder, err = s.awaitNameRelease(ctx, tenantID, req.Name, holder, s.nameReleaseDeadline(ctx, createWriteReserve)); err != nil {
-		return AppView{}, err
-	}
-	if holder != nil {
-		return AppView{}, errNameHeldBy(holder, req.Name)
+	releasing := holder != nil && !holder.DeletionTimestamp.IsZero()
+	if holder != nil && !releasing {
+		return AppView{}, errServiceNameInUse(req.Name)
 	}
 
 	// Refuse at create what every later env write refuses: a malformed name
@@ -2301,17 +2295,33 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 		}
 	}
 
+	// A storage refusal that met a just-deleted service's App, which the name
+	// probe missed in a race with that delete, is retried once under a
+	// suffixed object name (w2/m365).
+	v, err := s.createNamed(ctx, req, desired, tenantID, environment, appObjectName(tenantID, req.Name, releasing))
+	if errors.Is(err, errNameReleasing) {
+		v, err = s.createNamed(ctx, req, desired, tenantID, environment, appObjectName(tenantID, req.Name, true))
+	}
+	if errors.Is(err, errNameReleasing) {
+		return AppView{}, errServiceNameInUse(req.Name)
+	}
+	return v, err
+}
+
+// createNamed names, plans and writes a new service's App: create's tail,
+// which a race with a delete runs twice.
+func (s *Service) createNamed(ctx context.Context, req CreateRequest, desired appv1alpha1.AppSpec, tenantID string, environment core.EnvironmentAssignment, objectName string) (AppView, error) {
 	a := &appv1alpha1.App{}
-	a.Name = req.Name
-	if tenantID != "" {
-		// Collision-free object name (w4/m19): all tenants' Apps share one
-		// namespace, so two tenants both naming a service "web" must not
-		// collide on the bare name the way the pre-migration scheme did.
-		a.Name = core.CRName(tenantID, req.Name)
+	a.Name = objectName
+	switch {
+	case tenantID != "":
 		// LabelServiceName is what lets GetApp find this App from one of the
 		// caller's OTHER workspaces by its public name (w4/m19) — metadata.Name
 		// alone no longer serves that purpose once it's tenant-prefixed.
 		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
+	case objectName != req.Name:
+		// Unbound, a suffixed App still answers to its public name.
+		a.Labels = map[string]string{core.LabelServiceName: req.Name}
 	}
 	a.Namespace = s.AppNamespace(tenantID)
 	a.Spec = *desired.DeepCopy()
@@ -2360,92 +2370,41 @@ func (s *Service) nameStorageRefusal(ctx context.Context, tenantID, name string,
 	if readErr != nil || holder == nil {
 		return err
 	}
-	return errNameHeldBy(holder, name)
+	if !holder.DeletionTimestamp.IsZero() {
+		return errNameReleasing
+	}
+	return errServiceNameInUse(name)
 }
 
-// ServiceNameStillDeletingCode refuses a service create under the name of a
-// service the workspace just deleted whose App is still being torn down: its
-// App object holds the name until the teardown finishes (w2/075), as
-// ServiceStillDeletingCode refuses a Blueprint apply's re-create.
-const ServiceNameStillDeletingCode = "SERVICE_NAME_STILL_DELETING"
+// errNameReleasing is a write that met a deleted service's App still holding
+// the object name it chose; create retries it under a suffixed name.
+var errNameReleasing = errors.New("the service name's previous App is still being torn down")
 
-// defaultNameReleaseWait bounds how long a create waits for a just-deleted
-// service's teardown to release its name (w2/m361). Render accepts the same
-// name at once; an ordinary teardown here clears in 1–15 s
-// (finalizerOverrunAfter in the operator), so the create answers 201 as
-// Render's does, while a static site's object purge (up to 15 min) or a
-// stalled teardown still answers ServiceNameStillDeletingCode. It stays inside
-// the API's 30 s write timeout.
-const defaultNameReleaseWait = 20 * time.Second
-
-// nameReleasePoll is how often the wait re-reads the holder.
-const nameReleasePoll = 500 * time.Millisecond
-
-// createWriteReserve and applyWriteReserve are the request time a name wait
-// leaves for the writes after it: a create's repository check and create lease,
-// a Blueprint apply's every service write. A wait never cuts them short.
-const (
-	createWriteReserve = 8 * time.Second
-	applyWriteReserve  = 15 * time.Second
-)
-
-func (s *Service) nameReleaseWait() time.Duration {
-	if s.NameReleaseWait > 0 {
-		return s.NameReleaseWait
+// appObjectName is the App object name a new service called name gets in
+// tenantID. Collision-free across workspaces (w4/m19): CRName(tenant, name),
+// or the bare name with the store off or the caller unbound. While a deleted
+// service's App still holds that name in its teardown (releasing), a random
+// suffix, so the create goes ahead at once as on Render and the old App
+// finishes beside it (w2/m365). A suffix that is somehow taken too fails
+// storage like any held name.
+func appObjectName(tenantID, name string, releasing bool) string {
+	base := name
+	if tenantID != "" {
+		base = core.CRName(tenantID, name)
 	}
-	return defaultNameReleaseWait
+	if releasing {
+		return base + "-" + store.NewNameSuffix()
+	}
+	return base
 }
 
-// nameReleaseDeadline is when a wait for a name's release must give up: the
-// configured wait, or earlier when the request's own deadline leaves less than
-// reserve for the writes that follow it.
-func (s *Service) nameReleaseDeadline(ctx context.Context, reserve time.Duration) time.Time {
-	deadline := time.Now().Add(s.nameReleaseWait())
-	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Add(-reserve).Before(deadline) {
-		deadline = ctxDeadline.Add(-reserve)
+// suffixedObjectName is objectName when it differs from the CRName a row
+// otherwise projects as (store.App.ObjectName), else empty.
+func suffixedObjectName(objectName, tenantID, name string) string {
+	if objectName == core.CRName(tenantID, name) {
+		return ""
 	}
-	return deadline
-}
-
-// awaitNameRelease returns the holder of name once it is no longer a deleted
-// service's App still being torn down: nil when the teardown released the
-// name, a live holder when another service took it meanwhile, or the deleting
-// holder itself when the wait ran out (deadline, or ctx done).
-func (s *Service) awaitNameRelease(ctx context.Context, tenantID, name string, holder *appv1alpha1.App, deadline time.Time) (*appv1alpha1.App, error) {
-	for holder != nil && !holder.DeletionTimestamp.IsZero() {
-		left := time.Until(deadline)
-		if left <= 0 {
-			return holder, nil
-		}
-		timer := time.NewTimer(min(nameReleasePoll, left))
-		select {
-		case <-ctx.Done():
-			timer.Stop()
-			return holder, nil
-		case <-timer.C:
-		}
-		next, err := s.nameHolder(ctx, tenantID, name)
-		if err != nil {
-			if ctx.Err() != nil {
-				return holder, nil
-			}
-			return nil, err
-		}
-		holder = next
-	}
-	return holder, nil
-}
-
-// errNameHeldBy is the refusal of a create whose name holder is holder: a
-// live service's name is in use; a deleted one's is free again once its
-// teardown finishes, so the create is retried then.
-func errNameHeldBy(holder *appv1alpha1.App, name string) error {
-	if holder.DeletionTimestamp.IsZero() {
-		return errServiceNameInUse(name)
-	}
-	return core.NewConflictError(ServiceNameStillDeletingCode,
-		fmt.Sprintf("a service named %q was just deleted and its cleanup is still finishing; retry in a minute to create a service with this name", name),
-		map[string]any{"service": name})
+	return objectName
 }
 
 // planNewApp is every refusal a create meets, run before its first write: the
@@ -2604,9 +2563,19 @@ func takeCreateEnvLiterals(spec *appv1alpha1.AppSpec) map[string]string {
 // still see it as taken; a bare-named App belonging to a DIFFERENT tenant (or
 // none) must not. tenantID == "" (store off / unbound caller) falls back to
 // the single flat bare-name probe, the pre-migration behavior for that mode.
-// A holder still being deleted counts too: its object keeps the name until
-// its teardown finishes (errNameHeldBy). nil means the name is free.
+// A holder still being deleted is returned too: its object keeps the name
+// until its teardown finishes, so the create takes a suffixed object name
+// beside it (appObjectName, w2/m365) — unless a live service already took
+// the name that way, which holds it instead. nil means the name is free.
 func (s *Service) nameHolder(ctx context.Context, tenantID, name string) (*appv1alpha1.App, error) {
+	holder, err := s.nameObjectHolder(ctx, tenantID, name)
+	if err != nil || holder == nil {
+		return holder, err
+	}
+	return s.LiveSuccessor(ctx, tenantID, name, holder)
+}
+
+func (s *Service) nameObjectHolder(ctx context.Context, tenantID, name string) (*appv1alpha1.App, error) {
 	get := func(objName string) (*appv1alpha1.App, error) {
 		var a appv1alpha1.App
 		err := s.Client.Get(ctx, client.ObjectKey{Namespace: s.AppNamespace(tenantID), Name: objName}, &a)
@@ -2660,10 +2629,14 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 		}
 	}
 	if tenantID != "" {
-		// Collision-free object name (w4/m19) — see create's identical stamp;
-		// the stack path shares this helper so it never re-introduces the
-		// bare-name collision create() just closed.
-		a.Name = core.CRName(tenantID, req.Name)
+		// The stack path shares create's naming so it never re-introduces the
+		// bare-name collision create() closed. A live holder is the plan's to
+		// refuse (its admission dry-run meets the name).
+		holder, err := s.nameHolder(ctx, tenantID, req.Name)
+		if err != nil {
+			return stackAppPlan{}, err
+		}
+		a.Name = appObjectName(tenantID, req.Name, holder != nil && !holder.DeletionTimestamp.IsZero())
 		a.Labels = map[string]string{core.LabelTenant: tenantID, core.LabelServiceName: req.Name}
 		// Land the CR (and its clone/pull Secrets, written to a.Namespace) in the
 		// workspace's own namespace under per-tenant isolation (ADR043), matching
@@ -2775,6 +2748,8 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 			// Provenance for the first deploy row CreateApp opens (w9/001).
 			FirstDeployCommit: firstCommit,
 			CreationPending:   len(req.initialEnvGroups) > 0,
+			// A re-created service's App beside its predecessor's (w2/m365).
+			ObjectName: suffixedObjectName(a.Name, tenantID, req.Name),
 		})
 		if err != nil {
 			// A build source's taken name keeps its own sentinel for
@@ -3256,6 +3231,13 @@ func (s *Service) Delete(ctx context.Context, name string) error {
 	}
 	if err := s.requireUnprotected(ctx, a, "delete"); err != nil {
 		return err
+	}
+	// The App's own delete is the last step below, so an App already being
+	// deleted had every earlier one done. Repeating them would purge the
+	// OpenBao paths, keyed by the service's name, of a service re-created
+	// under that name beside this teardown (w2/m365).
+	if !a.DeletionTimestamp.IsZero() {
+		return nil
 	}
 	// codex round-8 #8: deletion is irreversible (store row + CR cascade + OpenBao
 	// purge) — re-assert can_create uncached so a member revoked inside

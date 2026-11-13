@@ -200,9 +200,9 @@ func (s *Service) previewStackCountCaps(ctx context.Context, planned map[Bluepri
 // passed but whose App object name storage found taken (the API server checks
 // the name last). The plan creates only names the workspace snapshot lacks, so
 // the holder is normally the customer's just-deleted service still in its
-// teardown: the create is planned, and approving it answers
-// ServiceStillDeletingCode until the teardown finishes (w2/m256 t014). Any
-// other holder is the name conflict a create would meet.
+// teardown: the create is planned, and approving it creates the service under
+// its own object name beside the old App (w2/m365). Any other holder is the
+// name conflict a create would meet.
 func previewNameHeld(ctx context.Context, name string, snap *workspaceSnapshot) (refusal, fatal error) {
 	deleting, err := snap.serviceDeleting(ctx, name)
 	if err != nil {

@@ -83,8 +83,8 @@ func (s *Service) tenantNames(ctx context.Context) (map[string]bool, error) {
 	}
 	names := make(map[string]bool, len(list.Items))
 	for i := range list.Items {
-		// A deleted service's name is free, as on Render: a create waits for
-		// its teardown to release the object name (w2/m361).
+		// A deleted service's name is free at once, as on Render: a create
+		// runs beside its teardown under a suffixed object name (w2/m365).
 		if !list.Items[i].DeletionTimestamp.IsZero() {
 			continue
 		}

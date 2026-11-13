@@ -60,7 +60,7 @@ func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (Blue
 	// Blueprint: every later plan and sync names the same suffixed resources
 	// (w2/m261). Render's shape, like the onrender.com slug suffix.
 	if b.ExistingResources == BlueprintExistingCreateNew && b.ResourceSuffix == "" {
-		b.ResourceSuffix = NewBlueprintResourceSuffix()
+		b.ResourceSuffix = NewNameSuffix()
 	}
 	var out Blueprint
 	var active string
@@ -77,12 +77,13 @@ func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (Blue
 	return out, nil
 }
 
-// NewBlueprintResourceSuffix mints the suffix a create_new Blueprint appends
-// to the name of every resource it manages.
-func NewBlueprintResourceSuffix() string { return randomSlugSuffix() }
+// NewNameSuffix mints the 4-char suffix a create_new Blueprint appends to the
+// name of every resource it manages, and a re-created service's App object
+// name takes beside its predecessor's (w2/m365).
+func NewNameSuffix() string { return randomSlugSuffix() }
 
 // ValidBlueprintResourceSuffix reports whether suffix has the shape
-// NewBlueprintResourceSuffix mints, for a suffix a caller sends back.
+// NewNameSuffix mints, for a suffix a caller sends back.
 func ValidBlueprintResourceSuffix(suffix string) bool {
 	if len(suffix) != slugSuffixLength {
 		return false

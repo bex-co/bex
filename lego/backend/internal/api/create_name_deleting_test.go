@@ -19,48 +19,75 @@ package api
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
-	"time"
 
-	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// TestCreatingUnderAStillDeletingNameIsCodedOnEverySurface (w2/075): a
-// service create under the name of one just deleted, whose App the
-// operator's finalizer still holds, answers one named 409 with a retry hint on
-// REST, GraphQL and MCP — never a 500, never the live holder's "already in
-// use".
-func TestCreatingUnderAStillDeletingNameIsCodedOnEverySurface(t *testing.T) {
-	want := codedRefusal{
-		status: http.StatusConflict, code: apps.ServiceNameStillDeletingCode,
-		msg:    `a service named "gone" was just deleted and its cleanup is still finishing; retry in a minute to create a service with this name`,
-		params: map[string]any{"service": "gone"},
-	}
-	setup := func(t *testing.T) (http.Handler, *Server) {
+// TestCreatingUnderAJustDeletedNameSucceedsOnEverySurface (w2/075, w2/m365):
+// a service create under the name of one just deleted, whose App the
+// operator's finalizer still holds, succeeds at once on REST, GraphQL and MCP,
+// as on Render. The new service gets its own App object beside the old one.
+func TestCreatingUnderAJustDeletedNameSucceedsOnEverySurface(t *testing.T) {
+	setup := func(t *testing.T) (http.Handler, *Server, client.Client) {
 		t.Helper()
 		gone := sampleApp("gone")
 		gone.Finalizers = []string{"app.bex.co/finalizer"}
-		adm := &admission{}
-		cl := adm.client(gone)
+
+		cl := fakeClient(gone)
 		if err := cl.Delete(context.Background(), gone); err != nil {
 			t.Fatal(err)
 		}
 		h, srv := serverWith(t, &core.Base{Client: cl, Namespace: "default", Authz: &fakeChecker{allow: true}}, Deps{})
-		// A teardown that outlasts the create's wait (w2/m361), kept short here.
-		srv.Apps.NameReleaseWait = 100 * time.Millisecond
-		return h, srv
+		return h, srv, cl
+	}
+	successor := func(t *testing.T, cl client.Client) {
+		t.Helper()
+		var list appv1alpha1.AppList
+		if err := cl.List(context.Background(), &list, client.InNamespace("default")); err != nil {
+			t.Fatal(err)
+		}
+		live := 0
+		for _, a := range list.Items {
+			if a.DeletionTimestamp.IsZero() {
+				live++
+				if !strings.HasPrefix(a.Name, "gone-") {
+					t.Fatalf("the new service's App is %q, want gone-xxxx beside the old one", a.Name)
+				}
+			}
+		}
+		if live != 1 || len(list.Items) != 2 {
+			t.Fatalf("%d Apps (%d live), want the old one tearing down and one new", len(list.Items), live)
+		}
 	}
 	t.Run("REST", func(t *testing.T) {
-		h, _ := setup(t)
-		want.onREST(t, h, http.MethodPost, "/v1/services", `{"name":"gone","ownerId":"default","image":{"ownerId":"default","imagePath":"nginx"}}`)
+		h, _, cl := setup(t)
+		res := do(t, h, http.MethodPost, "/v1/services", testToken, `{"name":"gone","ownerId":"default","image":{"ownerId":"default","imagePath":"nginx"}}`)
+		if res.Code != http.StatusCreated {
+			t.Fatalf("POST /v1/services = %d %s, want 201", res.Code, res.Body)
+		}
+		successor(t, cl)
 	})
 	t.Run("GraphQL", func(t *testing.T) {
-		h, _ := setup(t)
-		want.onGraphQL(t, h, `mutation { createService(name: "gone", image: "nginx") { id } }`)
+		h, _, cl := setup(t)
+		if _, errs, body := rawGraphQL(t, h, `mutation { createService(name: "gone", image: "nginx") { id } }`); len(errs) != 0 {
+			t.Fatalf("createService = %s, want success", body)
+		}
+		successor(t, cl)
 	})
 	t.Run("MCP", func(t *testing.T) {
-		_, srv := setup(t)
-		want.onMCP(t, mcpSessionAs(t, srv, "dana"), "create_web_service", map[string]any{"name": "gone", "image": "nginx", "runtime": "image"})
+		_, srv, cl := setup(t)
+		cs := mcpSessionAs(t, srv, "dana")
+		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "create_web_service", Arguments: map[string]any{"name": "gone", "image": "nginx", "runtime": "image"}})
+		if err != nil || res.IsError {
+			t.Fatalf("create_web_service = %s, %v; want success", fmtMCP(res), err)
+		}
+		successor(t, cl)
 	})
 }

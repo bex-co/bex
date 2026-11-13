@@ -255,6 +255,9 @@ func (m *memStore) CreateApp(ctx context.Context, a App) (App, error) {
 	}
 	a.ID = ids.New(ids.Service)
 	a.Slug = a.Name
+	if a.ObjectName != "" {
+		a.Slug = a.Name + "-" + randomSlugSuffix()
+	}
 	for attempt := 0; m.slugTaken(a.Slug) && attempt < maxSlugMintAttempts; attempt++ {
 		a.Slug = a.Name + "-" + randomSlugSuffix()
 	}

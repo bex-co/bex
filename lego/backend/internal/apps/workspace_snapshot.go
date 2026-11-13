@@ -166,8 +166,7 @@ func (snap *workspaceSnapshot) allApps(ctx context.Context) (*appv1alpha1.AppLis
 }
 
 // serviceDeleting reports whether a service the workspace no longer has (it
-// is not in services) is still being torn down under name, so a create of
-// that name would collide with its App object until the teardown finishes.
+// is not in services) is still being torn down under name.
 func (snap *workspaceSnapshot) serviceDeleting(ctx context.Context, name string) (bool, error) {
 	if _, err := snap.allApps(ctx); err != nil {
 		return false, err

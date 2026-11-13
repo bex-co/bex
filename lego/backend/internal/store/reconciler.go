@@ -2584,7 +2584,7 @@ func (r *Reconciler) projectApp(ctx context.Context, d DesiredApp) *appv1alpha1.
 	ns := namespaceFor(d)
 	a := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      CRName(d.TenantID, d.Name),
+			Name:      d.AppObjectName(),
 			Namespace: ns,
 		},
 		Spec: projectSpec(d),
@@ -2645,7 +2645,7 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 		// Explicit credentials materialize to a deterministic Secret name. Keep
 		// this in the desired spec (not only projectApp) so every later resync
 		// preserves the reference instead of treating it as stale owned state.
-		s.ExternalRegistryPullSecret = appv1alpha1.ExternalRegistryPullSecretName(CRName(d.TenantID, d.Name))
+		s.ExternalRegistryPullSecret = appv1alpha1.ExternalRegistryPullSecretName(d.AppObjectName())
 	}
 	return s
 }

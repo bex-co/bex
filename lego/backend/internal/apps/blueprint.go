@@ -1191,7 +1191,7 @@ func (s *Service) previewBlueprintWith(ctx context.Context, ownerID, repo, branc
 			}
 		}
 		if selfID == "" && mode == store.BlueprintExistingCreateNew {
-			preview.ResourceSuffix = store.NewBlueprintResourceSuffix()
+			preview.ResourceSuffix = store.NewNameSuffix()
 		}
 		if selfID == "" {
 			base := strings.TrimSpace(opts.Name)
@@ -1342,7 +1342,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 		return BlueprintView{}, err
 	case mode == store.BlueprintExistingCreateNew:
 		if suffix = req.ResourceSuffix; suffix == "" {
-			suffix = store.NewBlueprintResourceSuffix()
+			suffix = store.NewNameSuffix()
 		}
 	}
 	// A retry keeps the name its Blueprint already has (admission writes a

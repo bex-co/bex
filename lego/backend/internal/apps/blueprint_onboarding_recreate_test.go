@@ -23,7 +23,6 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,12 +122,6 @@ func plannedActions(res BlueprintPlanResult) string {
 	return strings.Join(parts, ", ")
 }
 
-// w2/m256 t014, the production walk: create → approve, delete the Blueprint,
-// delete its service, create again. The re-created Blueprint plans the
-// service's re-creation (Render: "the next time you sync your Blueprint,
-// Render detects that a defined resource is missing and recreates it"), even
-// while the deleted App is still Terminating, and approving re-creates it
-// once the teardown is over.
 // recreatedDuringTeardown connects a Blueprint, applies it, disconnects it,
 // deletes its service with the App's finalizer held, and connects the
 // Blueprint again: the new plan creates the service while its old App is
@@ -136,7 +129,6 @@ func plannedActions(res BlueprintPlanResult) string {
 func recreatedDuringTeardown(t *testing.T) (*Service, *fakeBlueprintStore, context.Context, string, client.ObjectKey) {
 	t.Helper()
 	svc, st, ctx := newOnboardingService(t, recreateManifest)
-	svc.NameReleaseWait = 100 * time.Millisecond
 	// The production 500: the plan's dry-run create of the re-created App
 	// met the deleted App's name, still held by its teardown.
 	svc.Client = apiServerDryRuns{svc.Client}
@@ -181,64 +173,27 @@ func recreatedDuringTeardown(t *testing.T) (*Service, *fakeBlueprintStore, conte
 
 func TestRecreatedBlueprintPlansADeletedServiceAsCreate(t *testing.T) {
 	svc, st, ctx, againID, key := recreatedDuringTeardown(t)
-	// While the deleted App's teardown still holds its name past the apply's
-	// wait (w2/m361), approving refuses by name before writing anything, and
-	// nothing is left stuck.
-	if _, err := svc.ApproveBlueprint(ctx, againID, "tea-a", nil); err == nil || coded(t, err) != ServiceStillDeletingCode {
-		t.Fatalf("approve during the teardown: err = %v, want %s", err, ServiceStillDeletingCode)
-	}
-
-	releaseAppFinalizer(t, ctx, svc.Client, key)
-	plan, err := svc.PlanBlueprint(ctx, againID, "tea-a")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if plan.PlanningOutcome != PlanningPlanned || plannedActions(plan) != "create service api" {
-		t.Fatalf("plan after the teardown = %s %q, want planned with create service api", plan.PlanningOutcome, plannedActions(plan))
-	}
+	// Approving while the deleted App still tears down re-creates the service
+	// at once, as on Render, under its own App object beside the old one
+	// (w2/m365); the old App finishes on its own.
 	approved, err := svc.ApproveBlueprint(ctx, againID, "tea-a", nil)
 	if err != nil {
-		t.Fatal(err)
-	}
-	if approved.ID != plan.Sync.ID || approved.State != store.BlueprintSyncStateSuccess {
-		t.Fatalf("approved = %+v, want the plan %s applied", approved, plan.Sync.ID)
-	}
-	if err := svc.Client.Get(ctx, appKey(t, svc, "api"), &appv1alpha1.App{}); err != nil {
-		t.Fatalf("approval did not re-create api: %v", err)
-	}
-	if b := st.blueprints[ids.BlueprintStorageID(againID)]; b.Status != store.BlueprintStatusInSync {
-		t.Errorf("status after approval = %q, want in_sync", b.Status)
-	}
-}
-
-// w2/m361: Render re-creates at once. A teardown that finishes while the
-// approval waits lets the approval itself re-create the service.
-func TestApproveWaitsForATeardownToReleaseTheName(t *testing.T) {
-	svc, _, ctx, againID, key := recreatedDuringTeardown(t)
-	svc.NameReleaseWait = 10 * time.Second
-	released := make(chan error, 1)
-	go func() {
-		time.Sleep(700 * time.Millisecond)
-		var a appv1alpha1.App
-		err := svc.Client.Get(ctx, key, &a)
-		if err == nil {
-			a.Finalizers = nil // the operator's teardown finishes
-			err = svc.Client.Update(ctx, &a)
-		}
-		released <- err
-	}()
-	approved, err := svc.ApproveBlueprint(ctx, againID, "tea-a", nil)
-	if rerr := <-released; rerr != nil {
-		t.Fatal(rerr)
-	}
-	if err != nil {
-		t.Fatalf("approve while the old service tears down = %v, want it to wait and apply", err)
+		t.Fatalf("approve during the teardown = %v, want the service re-created at once", err)
 	}
 	if approved.State != store.BlueprintSyncStateSuccess {
 		t.Fatalf("approved = %+v, want success", approved)
 	}
-	if err := svc.Client.Get(ctx, appKey(t, svc, "api"), &appv1alpha1.App{}); err != nil {
-		t.Fatalf("approval did not re-create api: %v", err)
+	deleting, live := liveAndDeleting(t, svc.Client, "api")
+	if len(live) != 1 || deleting != 1 || !strings.HasPrefix(live[0].Name, key.Name+"-") {
+		t.Fatalf("api Apps: live %v, %d deleting; want a new %s-xxxx beside the old %s", live, deleting, key.Name, key.Name)
+	}
+	if b := st.blueprints[ids.BlueprintStorageID(againID)]; b.Status != store.BlueprintStatusInSync {
+		t.Errorf("status after approval = %q, want in_sync", b.Status)
+	}
+	// The old App's teardown then finishes without touching the new one.
+	releaseAppFinalizer(t, ctx, svc.Client, key)
+	if err := svc.Client.Get(ctx, client.ObjectKey{Namespace: key.Namespace, Name: live[0].Name}, &appv1alpha1.App{}); err != nil {
+		t.Fatalf("the re-created App after the old teardown: %v", err)
 	}
 }
 

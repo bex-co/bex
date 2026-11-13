@@ -1289,7 +1289,7 @@ func (s *Service) recordSourceHealth(ctx context.Context, workspaceID, resourceK
 // shared with metrics/source.go precisely so a service can never be charged for
 // pods its Metrics page does not chart, or the reverse).
 //
-// crName is the App's Kubernetes object name (core.CRName(tenant, name)), which
+// crName is the App's Kubernetes object name (store.App.AppObjectName), which
 // is what its ReplicaSet pods are named after — not the workspace-scoped
 // store.App.Name.
 func (s *Service) queryInstanceSeconds(ctx context.Context, crName, namespace string, start, end time.Time) (int64, bool) {
@@ -1450,7 +1450,7 @@ func (s *Service) appPodIdentity(app store.App, cr *appv1alpha1.App) (name, name
 	if app.TenantID == "" || app.Name == "" {
 		return "", "", false
 	}
-	return core.CRName(app.TenantID, app.Name), s.AppNamespace(app.TenantID), true
+	return app.AppObjectName(), s.AppNamespace(app.TenantID), true
 }
 
 // expectsRunningPods reports whether an App should have at least one pod alive
