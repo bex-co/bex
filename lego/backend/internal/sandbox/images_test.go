@@ -324,7 +324,11 @@ func TestImageReadsAndCreateRefusals(t *testing.T) {
 		{"get another group's build", http.MethodGet, "/v1/sandbox-groups/" + other.ID + "/builds/" + pending.ID, "", 404, CodeBuildNotFound},
 		{"list unknown status", http.MethodGet, "/v1/sandbox-groups/" + f.group.ID + "/builds?status=done", "", 400, CodeInvalidBuildStatus},
 		{"import into a malformed group", http.MethodPost, "/v1/sandbox-groups/nope/builds", `{"name":"x","sourceImage":"python:3.13"}`, 400, CodeInvalidSandboxGroupID},
-		{"create from a pending build", http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"sandboxGroupId":%q,"buildId":%q}`, f.ws, f.group.ID, pending.ID), 400, CodeSandboxImageNotReady},
+		{"create from a pending build", http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"sandboxGroupId":%q,"buildId":%q}`, f.ws, f.group.ID, pending.ID), 409, CodeBuildNotSucceeded},
+		// Render's 404 is for a name no build has; a name whose only build is
+		// still importing is its 409 (w8/314).
+		{"create from a name still importing", http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"sandboxGroupId":%q,"buildName":"slow"}`, f.ws, f.group.ID), 409, CodeBuildNotSucceeded},
+		{"create from an unknown name", http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"sandboxGroupId":%q,"buildName":"nope"}`, f.ws, f.group.ID), 404, CodeBuildNotFound},
 		{"create from another group's build", http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"sandboxGroupId":%q,"buildId":%q}`, f.ws, other.ID, pending.ID), 404, CodeBuildNotFound},
 		{"create naming both", http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"ownerId":%q,"buildId":%q,"buildName":"slow"}`, f.ws, pending.ID), 400, CodeSandboxImageInvalid},
 	} {

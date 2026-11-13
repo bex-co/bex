@@ -43,11 +43,11 @@ type RecordStore interface {
 	EndedSandboxWorkspaces(ctx context.Context, sandboxID string) ([]string, error)
 }
 
-// CodeSandboxEnded is the 409 a connect-token mint (and the exec and file
+// CodeSandboxNotRunning is the 409 a connect-token mint (and the exec and file
 // transfer they authorize), suspend or resume answers for a terminated
-// sandbox, and a mint for an errored one: Render's 409Conflict, which the CLI
-// turns into "sandbox … was terminated at …" from a GET of the sandbox.
-const CodeSandboxEnded = "SANDBOX_ENDED"
+// sandbox, and a mint for an errored one: Render's sandbox_not_running, which
+// the CLI turns into "sandbox … was terminated at …" from a GET of the sandbox.
+const CodeSandboxNotRunning = "sandbox_not_running"
 
 // recordWriteTimeout bounds a record write, which never fails the verb.
 const recordWriteTimeout = 5 * time.Second
@@ -63,7 +63,7 @@ func sandboxEndedError(box Sandbox) error {
 			details["terminatedAt"] = at
 		}
 	}
-	return core.NewConflictError(CodeSandboxEnded, message, details)
+	return core.NewConflictError(CodeSandboxNotRunning, message, details)
 }
 
 // endedLive reports whether a live sandbox's reported state is one Render

@@ -68,9 +68,9 @@ const (
 	// CodeSandboxBuildLimit is the 429 for a group with its limit of imports
 	// pending or running.
 	CodeSandboxBuildLimit = "SANDBOX_BUILD_LIMIT"
-	// CodeSandboxImageNotReady refuses a create from a build that has not
-	// succeeded.
-	CodeSandboxImageNotReady = "SANDBOX_IMAGE_NOT_READY"
+	// CodeBuildNotSucceeded is Render's 409 for a create from a build, or a
+	// name, with no succeeded import.
+	CodeBuildNotSucceeded = "build_not_succeeded"
 	// CodeSandboxImagesUnavailable is the 503 of a deployment with no sandbox
 	// registry or store to keep imported images in.
 	CodeSandboxImagesUnavailable = "SANDBOX_IMAGES_UNAVAILABLE"
@@ -711,16 +711,14 @@ func (s *Service) createImage(ctx context.Context, workspace, groupID, buildID, 
 	} else {
 		b, err = s.Images.Store.NewestSucceededSandboxBuild(ctx, workspace, group.ID, buildName)
 		if errors.Is(err, store.ErrNotFound) {
-			return "", core.NewNotFoundError(CodeBuildNotFound,
-				fmt.Sprintf("sandbox group %s has no image named %q that has finished importing", group.ID, buildName),
-				map[string]any{"buildName": buildName, "sandboxGroupId": group.ID})
+			return "", s.noSucceededBuild(ctx, workspace, group.ID, buildName)
 		}
 	}
 	if err != nil {
 		return "", store.MapError(err)
 	}
 	if b.Status != store.SandboxBuildSucceeded || b.ImageDigest == nil {
-		return "", core.NewBadRequestError(CodeSandboxImageNotReady,
+		return "", core.NewConflictError(CodeBuildNotSucceeded,
 			fmt.Sprintf("image %s is %s; a sandbox can start from it once it has succeeded", b.ID, b.Status),
 			map[string]any{"buildId": b.ID, "status": b.Status})
 	}
@@ -729,6 +727,24 @@ func (s *Service) createImage(ctx context.Context, workspace, groupID, buildID, 
 		return "", err
 	}
 	return repo.Digest(*b.ImageDigest).String(), nil
+}
+
+// noSucceededBuild is Render's answer for a buildName with no succeeded build:
+// 409 build_not_succeeded when the group has builds of that name, and 404
+// build_not_found only when it has none (w8/314).
+func (s *Service) noSucceededBuild(ctx context.Context, workspace, groupID, name string) error {
+	builds, err := s.Images.Store.SandboxBuilds(ctx, workspace, groupID, name, nil)
+	if err != nil {
+		return store.MapError(err)
+	}
+	if len(builds) == 0 {
+		return core.NewNotFoundError(CodeBuildNotFound, fmt.Sprintf("sandbox group %s has no image named %q", groupID, name),
+			map[string]any{"buildName": name, "sandboxGroupId": groupID})
+	}
+	newest := builds[0]
+	return core.NewConflictError(CodeBuildNotSucceeded,
+		fmt.Sprintf("no image named %q in sandbox group %s has succeeded; the newest, %s, is %s", name, groupID, newest.ID, newest.Status),
+		map[string]any{"buildName": name, "sandboxGroupId": groupID, "buildId": newest.ID, "status": newest.Status})
 }
 
 // importedImage matches the image a sandbox started from an import runs, so a
