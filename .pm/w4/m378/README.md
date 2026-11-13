@@ -1,4 +1,4 @@
-# w4 · m378 — Six of Render's MCP read tools answer in bex's own envelope, not the text Render's server returns; `list_logs` lines lose their `id` and say `service` where Render says `resource`
+# w4 · m378 — Seven of Render's MCP read tools answer in bex's own envelope, not the text Render's server returns; `list_logs` lines lose their `id` and say `service` where Render says `resource`
 
 **Worker:** worker4 **Goal:** every MCP read tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** todo
 
@@ -8,7 +8,8 @@
 | --- | --- | --- | --- |
 | [t001](t001.md) | List tools answer in Render's text: `list_services`, `list_postgres_instances`, `list_key_value`, `list_workspaces` and `list_log_label_values` as a bare JSON array, and `list_deploys` as an array plus `\n\n cursor: <cursor>` | 45m | — |
 | [t002](t002.md) | `list_logs` returns Render's (REST's) line shape: `id`, `labels` as `[{name, value}]` with `resource`, `message`, `timestamp` | 30m | — |
-| [t003](t003.md) | Pin each shared tool's result shape against Render's server, so a wrapped or re-keyed answer fails CI | 45m | t001, t002 |
+| [t008](t008.md) | `get_metrics` returns Render's `MetricsResponse` (`resourceId`, `timeRange`, `metrics[{type, data}]`, with REST's `labels[{field, value}]` and `values`), not bex's `{series:[{labels:{…}, points}]}` | 30m | — |
+| [t003](t003.md) | Pin each shared tool's result shape against Render's server, so a wrapped or re-keyed answer fails CI | 45m | t001, t002, t008 |
 | [t004](t004.md) | Render parity | 20m | t003 |
 | [t005](t005.md) | Simplify | 15m | t004 |
 | [t006](t006.md) | Test coverage | 30m | t004 |
@@ -24,12 +25,13 @@ All on production, workspace `bex-canary`. Use streamable HTTP to `https://api.b
 
    Today each is an object (`{"services":[…]}`, `{"postgres":[…]}`, `{"keyValues":[…]}`, `{"workspaces":[…]}`, `{"values":[…]}`, `{"cursor":…,"deploys":[…]}`).
 2. **Log lines are Render's.** `list_logs {"resource":[<id>],"limit":2,"type":["build"]}` returns the REST envelope. Each entry carries `id` and `labels: [{"name":"resource","value":<id>}, {"name":"instance",…}, {"name":"type","value":"build"}]`, byte-for-byte what `GET /v1/logs` returns for the same window.
-3. **Unchanged:**
+3. **Metrics are Render's.** `get_metrics {"resourceId":<id>,"metricTypes":["cpu_usage","http_request_count"]}` returns `{"resourceId":<id>,"timeRange":{…},"metrics":[{"type":"cpu_usage","data":[{"labels":[{"field":"resource",…}],"unit":"cpu","values":[{"timestamp":…,"value":…}]}]},…]}`. The `data` items equal `GET /v1/metrics/cpu?resource=<id>` for the same window, and an `aggregateHttpRequestCountsBy: statusCode` series is labeled `statusCode`, not `code`.
+4. **Unchanged:**
    - `list_events` keeps its array-plus-cursor text;
    - `get_service`, `get_deploy` and `update_environment_variables` keep their current text, which already matches;
    - bex-only tools are not touched.
-4. **Guarded:** the t003 test fails when any of these tools' text is rewrapped in an object or a log label is renamed.
-5. **Fixtures:** every fixture is deleted, and each GET answers 404.
+5. **Guarded:** the t003 test fails when any of these tools' text is rewrapped in an object or a log label is renamed.
+6. **Fixtures:** every fixture is deleted, and each GET answers 404.
 
 ## Source + Goal linkage
 
@@ -79,6 +81,24 @@ All on production, workspace `bex-canary`. Use streamable HTTP to `https://api.b
   - The comment at `logs/mcp.go:90-91` gives the reason: "Render's tool returns a bare array; MCP tool results are objects, so bex names the field". That no longer holds at this SDK version, which accepts array structured output with a text fallback (the SEP-2106 comment at `server.go:473-476`). bex's own `list_events` (`lego/backend/internal/events/mcp.go:148-155`) already returns Render's text by setting `Content` itself.
   - `list_logs` returns `listLogsResult{Logs []LogEntry}` (`logs/mcp.go:83-88`). That is bex's internal `LogEntry`, whose labels are a map keyed by the core's `service`. The REST adapter maps it to Render's `resource` and to an ordered `[{name, value}]` with an `id` (`lego/backend/internal/logs/render.go:46-60`). `mcpLogEntries` (`logs/mcp.go:203-215`) filters keys but keeps the map.
   - The tools live in `apps/mcp.go:665` (`list_services`), `deploys/mcp.go:117` (`list_deploys`), `postgres/mcp.go:108` (`list_postgres_instances`), `keyvalue/mcp.go:109` (`list_key_value`), `workspaces/mcp.go:52` (`list_workspaces`) and `logs/mcp.go:138`/`:173` (`list_logs`, `list_log_label_values`).
+
+## Round 296 extension — `get_metrics` has bex's shape too (2026-11-13 13:52–13:58 UTC, pin `5de3d5bcce8e`)
+
+- **Fixture:** Free web service `qa-20261113-r296-met` (`srv-dbrhc2pens8c73fghodg`), `busybox:1.37`, with 30 requests sent. Deleted afterwards (`DELETE` 204, then `GET` 404).
+- **bex `get_metrics`:** `{"resourceId":"srv-dbrhc2pens8c73fghodg","metricTypes":["cpu_usage","http_request_count","instance_count"]}` returned:
+
+  ```
+  {"series":[{"labels":{"instance":"srv-…-m70f97s6mj0lje4rr4eq","metric":"cpu_usage","resource":"srv-dbrhc2pens8c73fghodg"},"points":[{"timestamp":"2026-11-13T13:53:00Z","value":0.00025…},…],"unit":"cpu"},{"labels":{"metric":"http_request_count",…},"points":[…],"unit":"count"},{"labels":{"metric":"instance_count",…},…}]}
+  ```
+
+  With `aggregateHttpRequestCountsBy: "statusCode"`, each series is labeled `"code":"200"`.
+- **REST, the same service:**
+  - `GET /v1/metrics/cpu?resource=…` → `[{"labels":[{"field":"instance",…},{"field":"resource",…}],"unit":"cpu","values":[{"timestamp":…,"value":…}]}]`.
+  - `GET /v1/metrics/http-requests?…&aggregateBy=statusCode` labels `{"field":"statusCode","value":"200"}`.
+- **Render's server:** `json.Marshal(response)` of `MetricsResponse{ResourceID, TimeRange{Start, End}, Metrics []MetricData{Type, Data TimeSeriesCollection}}`. See `pkg/metrics/tools.go:233-238` and `pkg/metrics/repo.go:64-75`. `Data` is REST's time-series collection.
+- **Root cause:** `getMetricsResult{Series []MetricSeries}` (`lego/backend/internal/metrics/mcp.go:73-79`) is returned through the typed path. That is the same go-sdk mechanism as § Finding: the internal `MetricSeries` (a labels map, `points`, the core's `code` label) becomes the text.
+  - The tool's own description (`mcp.go:171-172`) says "as Render-shaped time-series".
+- **Added:** task t008. t003 now also depends on it.
 
 ## Unverified
 
