@@ -17,6 +17,7 @@ limitations under the License.
 package build
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"regexp"
@@ -58,6 +59,11 @@ type NativeChoice struct {
 	commonOTP     string
 	legacySource  bool
 	runtimeCheck  string
+	// rangeRequest is the semver range a Node service asked for when its
+	// line's reviewed patch falls outside it (`~16.13.0` against 16.20.2):
+	// the resolve phase pins the newest official release inside it, as Render
+	// installs one (w8/307).
+	rangeRequest string
 	// note is an extra build-log line (an exact version that fell back to the
 	// line's reviewed patch).
 	note string
@@ -158,6 +164,9 @@ func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]st
 		choice.Exact = exactRequest(runtime, choice, readFile)
 		if choice.Exact == "" {
 			choice.Exact = defaultExact(created, runtime, choice)
+		}
+		if choice.Exact == "" && runtime == nativeNodeRuntime {
+			choice.rangeRequest = excludedNodeRange(choice, readFile)
 		}
 	}
 	return choice, err
@@ -526,20 +535,10 @@ func lineHasRelease(l nativeLine, c *semver.Constraints) bool {
 }
 
 func (r resolver) fromPackageEngines() (string, string, bool, error) {
-	raw, ok := r.readFile("package.json")
-	if !ok {
+	request := strings.TrimSpace(packageEnginesNode(r.readFile))
+	if request == "" {
 		return "", "", false, nil
 	}
-	var pkg struct {
-		Engines struct {
-			Node string `json:"node"`
-		} `json:"engines"`
-	}
-	if json.Unmarshal(raw, &pkg) != nil || strings.TrimSpace(pkg.Engines.Node) == "" {
-		// An unparseable package.json is npm's error to report, not a version request.
-		return "", "", false, nil
-	}
-	request := strings.TrimSpace(pkg.Engines.Node)
 	line, ok := r.nodeRequest(request)
 	if !ok {
 		return "", "", false, r.unsupported(fmt.Sprintf("package.json engines.node %q", request))
@@ -702,6 +701,56 @@ func (r resolver) elixir() (NativeChoice, error) {
 
 var fullVersion = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
 
+// excludedNodeRange is the Node request behind choice when it is a semver
+// range its line's reviewed patch does not satisfy, else "". A partial version
+// (`18.17`) is a range too, as node-version-alias reads it; a fully qualified
+// one is exactRequest's, and an alias (lts/*, a codename) names no range.
+func excludedNodeRange(choice NativeChoice, readFile func(string) ([]byte, bool)) string {
+	var raw string
+	switch signal := choice.Source; {
+	case strings.HasPrefix(signal, "NODE_VERSION="):
+		raw = strings.TrimPrefix(signal, "NODE_VERSION=")
+	case signal == ".node-version" || signal == ".nvmrc":
+		raw = firstLine(readFile, signal)
+	case signal == "package.json engines.node":
+		raw = packageEnginesNode(readFile)
+	}
+	request := strings.TrimPrefix(strings.ToLower(strings.TrimSpace(raw)), "v")
+	if request == "" || fullVersion.MatchString(request) {
+		return ""
+	}
+	constraint, err := semver.NewConstraint(request)
+	if err != nil {
+		return ""
+	}
+	line, ok := nativeToolchains[nativeNodeRuntime].find(choice.Line)
+	if !ok {
+		return ""
+	}
+	if pin, err := semver.NewVersion(line.version); err != nil || constraint.Check(pin) {
+		return ""
+	}
+	return request
+}
+
+// packageEnginesNode is package.json's engines.node, or "" when there is none.
+// An unparseable package.json is npm's error to report, not a version request.
+func packageEnginesNode(readFile func(string) ([]byte, bool)) string {
+	raw, ok := readFile("package.json")
+	if !ok {
+		return ""
+	}
+	var pkg struct {
+		Engines struct {
+			Node string `json:"node"`
+		} `json:"engines"`
+	}
+	if json.Unmarshal(raw, &pkg) != nil {
+		return ""
+	}
+	return pkg.Engines.Node
+}
+
 // exactRequest returns the fully qualified version a service pinned within the
 // chosen line when it differs from the line's reviewed patch, else "". Only a
 // plain version signal counts (an env var or a single-version file); a range,
@@ -731,14 +780,20 @@ func exactRequest(runtime string, choice NativeChoice, readFile func(string) ([]
 // exactImage names the official tag for an exact version: the line's tag with
 // its line replaced by the version (python:3.11-bookworm → python:3.11.9-bookworm).
 func exactImage(choice NativeChoice) (repo, tag string, ok bool) {
-	image := choice.Image
-	if choice.upstream != "" {
-		image = choice.upstream
-	}
-	ref, _, _ := strings.Cut(image, "@")
-	repo, lineTag, found := strings.Cut(ref, ":")
-	if !found || choice.Exact == "" || !strings.HasPrefix(lineTag, choice.Line) {
+	repo, suffix, ok := lineImageVariant(choice)
+	if !ok || choice.Exact == "" {
 		return "", "", false
 	}
-	return repo, choice.Exact + strings.TrimPrefix(lineTag, choice.Line), true
+	return repo, choice.Exact + suffix, true
+}
+
+// lineImageVariant splits the line's official image (python:3.11-bookworm)
+// into its repository and the variant suffix after the line (-bookworm).
+func lineImageVariant(choice NativeChoice) (repo, suffix string, ok bool) {
+	ref, _, _ := strings.Cut(cmp.Or(choice.upstream, choice.Image), "@")
+	repo, lineTag, found := strings.Cut(ref, ":")
+	if !found || !strings.HasPrefix(lineTag, choice.Line) {
+		return "", "", false
+	}
+	return repo, strings.TrimPrefix(lineTag, choice.Line), true
 }

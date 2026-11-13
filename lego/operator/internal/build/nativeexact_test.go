@@ -334,3 +334,61 @@ func TestPythonDefaultIsRendersExactPatch(t *testing.T) {
 		t.Errorf("a missing tag must fall back to the reviewed patch and say so: %+v %v", choices[0], err)
 	}
 }
+
+// w8/307: a range the line's reviewed patch misses (`~18.17.0` against
+// 18.20.8) builds on the newest official release inside it, as Render installs
+// one, from the env, a version file or package.json engines.
+func TestNodeRangePinsTheNewestOfficialReleaseInside(t *testing.T) {
+	for name, tc := range map[string]struct {
+		env   map[string]string
+		files map[string]string
+	}{
+		"env":     {env: map[string]string{"NODE_VERSION": "~18.17.0"}},
+		"nvmrc":   {files: map[string]string{".nvmrc": "~18.17.0\n"}},
+		"engines": {files: map[string]string{"package.json": `{"engines":{"node":"~18.17.0"}}`}},
+		// A partial version is a range, as node-version-alias reads it.
+		"partial": {env: map[string]string{"NODE_VERSION": "v18.17"}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			fake := &fakeExact{
+				digests: map[string]string{
+					"node:18.17.0-bookworm": exactDigest, "node:18.17.1-bookworm": exactDigest,
+					"node:18.17.1-bullseye": exactDigest, "node:18.18.0-bookworm": exactDigest,
+					// Other variants of a newer patch are not the line's image.
+					"node:18.17.2-bookworm-slim": exactDigest, "node:18.17.3-alpine": exactDigest,
+				},
+				env:     []string{"NODE_VERSION=18.17.1"},
+				history: []string{"# debian.sh --arch 'amd64' out/ 'bookworm' '@1749513600'"},
+			}
+			choices, _ := resolveExact(t, fake, "node", tc.env, tc.files)
+			if choices[0].Image != "node:18.17.1-bookworm@"+exactDigest || !strings.HasPrefix(choices[0].Narration(), "==> Using Node 18.17.1 (") {
+				t.Fatalf("choice = %+v, narration %q; want node:18.17.1-bookworm", choices[0], choices[0].Narration())
+			}
+			if !slices.Contains(fake.asked, "list node:18.") || !slices.Contains(fake.asked, "node:18.17.1-bookworm") {
+				t.Errorf("asked %v, want the listing and the chosen tag", fake.asked)
+			}
+		})
+	}
+}
+
+// A range no official image of the line's variant meets (Node 16.13 predates
+// Debian bookworm) keeps the reviewed patch, and the build log says so.
+func TestNodeRangeWithoutAnOfficialReleaseSaysSo(t *testing.T) {
+	fake := &fakeExact{digests: map[string]string{"node:16.13.2-bullseye": exactDigest, "node:16.20.2-bookworm": exactDigest}}
+	choices, _ := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "~16.13.0"}, nil)
+	line, _ := nativeToolchains["node"].find("16")
+	narration := choices[0].Narration()
+	if choices[0].Image != line.image || !strings.Contains(narration, "No official node:16.x-bookworm image satisfies ~16.13.0") || !strings.Contains(narration, "(16.20.2)") {
+		t.Fatalf("choice image %q, narration %q; want the reviewed image and a line naming the substitution", choices[0].Image, narration)
+	}
+}
+
+// A tag listing that fails keeps the reviewed patch and says why.
+func TestNodeRangeListingFailureSaysSo(t *testing.T) {
+	fake := &fakeExact{err: errors.New("hub answered 503")}
+	choices, _ := resolveExact(t, fake, "node", map[string]string{"NODE_VERSION": "~18.17.0"}, nil)
+	line, _ := nativeToolchains["node"].find("18")
+	if choices[0].Image != line.image || !strings.Contains(choices[0].Narration(), "Could not list node releases for ~18.17.0 (hub answered 503)") {
+		t.Fatalf("choice image %q, narration %q", choices[0].Image, choices[0].Narration())
+	}
+}

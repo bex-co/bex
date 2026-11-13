@@ -33,6 +33,8 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+
+	"github.com/Masterminds/semver/v3"
 )
 
 // The resolve-native-runtime phase (w8/m51) runs bex's own image after the
@@ -459,6 +461,11 @@ func resolveNativeBunExact(ctx context.Context, exact ExactImageResolver, env ma
 // A tag that does not exist or a registry that cannot be reached keeps the
 // reviewed patch and says so in the build log; the build never fails on it.
 func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice NativeChoice) NativeChoice {
+	if choice.Exact == "" && choice.rangeRequest != "" {
+		if choice = pinRangeRelease(ctx, exact, choice); choice.Exact == "" {
+			return choice
+		}
+	}
 	repo, tag, ok := exactImage(choice)
 	if !ok {
 		return choice
@@ -473,5 +480,50 @@ func pinExactVersion(ctx context.Context, exact ExactImageResolver, choice Nativ
 		choice.Image = repo + ":" + tag + "@" + digest
 		choice.Line = choice.Exact
 	}
+	return choice
+}
+
+// pinRangeRelease sets choice.Exact to the newest official release of the
+// line's image variant that satisfies the service's range, or leaves the
+// reviewed patch with a build-log line saying why (w8/307). Official tags are
+// the only releases bex can install, so an old range (Node 16.13 predates
+// Debian bookworm) can find none. Only Node records a range.
+func pinRangeRelease(ctx context.Context, exact ExactImageResolver, choice NativeChoice) NativeChoice {
+	constraint, err := semver.NewConstraint(choice.rangeRequest)
+	if err != nil {
+		return choice
+	}
+	repo, suffix, ok := lineImageVariant(choice)
+	if !ok {
+		return choice
+	}
+	reviewed := choice.Line
+	if line, ok := nativeToolchains[nativeNodeRuntime].find(choice.Line); ok {
+		reviewed = line.version
+	}
+	tags, err := exact.ListTags(ctx, repo, choice.Line+".")
+	if err != nil {
+		choice.note = fmt.Sprintf("==> Could not list %s releases for %s (%v); using the reviewed %s %s image (%s)", repo, choice.rangeRequest, err, choice.Label, choice.Line, reviewed)
+		return choice
+	}
+	var best *semver.Version
+	for _, tag := range tags {
+		version, ok := strings.CutSuffix(tag, suffix)
+		if !ok || !fullVersion.MatchString(version) {
+			continue
+		}
+		v, err := semver.NewVersion(version)
+		if err != nil || !constraint.Check(v) {
+			continue
+		}
+		if best == nil || v.GreaterThan(best) {
+			best = v
+		}
+	}
+	if best == nil {
+		choice.note = fmt.Sprintf("==> No official %s image satisfies %s; using the reviewed %s %s image (%s)", repo+":"+choice.Line+".x"+suffix, choice.rangeRequest, choice.Label, choice.Line, reviewed)
+		return choice
+	}
+	choice.Exact = best.Original()
 	return choice
 }
