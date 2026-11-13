@@ -100,3 +100,42 @@ func TestSourceLimiterPreAuthFairness(t *testing.T) {
 		}
 	}
 }
+
+// A stray Release must not drive the counts negative and lift either cap.
+func TestUnmatchedReleaseKeepsCaps(t *testing.T) {
+	sessions := NewSessionLimiter(2, 1)
+	channels := NewChannelLimiter(2, 1)
+	for _, tc := range []struct {
+		name                 string
+		acquire              func(string) (bool, string)
+		release              func(string)
+		globalScope, idScope string
+	}{
+		{"session", sessions.Acquire, sessions.Release, "global", "identity"},
+		{"channel", channels.AcquireChannel, channels.ReleaseChannel, "channel_global", "channel_identity"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.release("a") // never acquired
+			if ok, _ := tc.acquire("a"); !ok {
+				t.Fatal("first slot refused")
+			}
+			if ok, scope := tc.acquire("a"); ok || scope != tc.idScope {
+				t.Fatalf("identity cap lifted by an unmatched release (ok=%v scope=%q)", ok, scope)
+			}
+			if ok, _ := tc.acquire("b"); !ok {
+				t.Fatal("second global slot refused")
+			}
+			if ok, scope := tc.acquire("c"); ok || scope != tc.globalScope {
+				t.Fatalf("global cap lifted by an unmatched release (ok=%v scope=%q)", ok, scope)
+			}
+			tc.release("a")
+			tc.release("a") // double release
+			if ok, _ := tc.acquire("c"); !ok {
+				t.Fatal("released slot not reusable")
+			}
+			if ok, scope := tc.acquire("d"); ok || scope != tc.globalScope {
+				t.Fatalf("global cap lifted by a double release (ok=%v scope=%q)", ok, scope)
+			}
+		})
+	}
+}

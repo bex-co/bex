@@ -150,7 +150,7 @@ Approved by `$pm all for w7 and $ship` after the four-item additional brainstorm
 
 ## Inbox
 
-- [ ] **062** — [SessionLimiter/ChannelLimiter: an unmatched Release is a no-op](062.md) (30m) ← `/code-review` of closed PR #138 (finding 3), scoped by `/pm-brainstorm for w7` 2026-11-13; one stray release permanently raises the gateway-wide session/channel cap by one until restart. Latent: every current caller is balanced.
+- [x] **062** — [SessionLimiter/ChannelLimiter: an unmatched Release is a no-op](done/062.md) (30m) — **DONE 2026-11-13:** `releaseSlot` guards both limiters; regression test fails on the old code. ← `/code-review` of closed PR #138 (finding 3), scoped by `/pm-brainstorm for w7` 2026-11-13; one stray release permanently raises the gateway-wide session/channel cap by one until restart. Latent: every current caller is balanced.
 - [x] **061** — [Verify OpenBao revocation recovery after readonly-storage errors](done/061.md) — done 2026-09-28: all 71 standby `readonly storage` revocation failures in 72h hash-match leases the uninterrupted active (openbao-0) revoked <1s later; no failover, no residual.
 
 **Approved execution order** (`$pm all for w7`): **054 → 053 → 055**, approximately **2h05m** total. Each was scoped under an hour with no dependency on the others. Remote main has since completed 054 and 053 and moved 055 to blocked after investigation; their approved scopes are preserved at those current paths.
