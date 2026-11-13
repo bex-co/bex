@@ -30,6 +30,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
+	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -349,7 +350,7 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 						),
 						VolumeMounts:    []corev1.VolumeMount{{Name: exportWorkVolume, MountPath: "/work"}},
 						Resources:       guaranteedResources("250m", "512Mi"),
-						SecurityContext: tenantSecCtx(),
+						SecurityContext: execution.RestrictedContainerSecurityContext(),
 					}},
 					Containers: []corev1.Container{{
 						Name:            "upload",
@@ -366,7 +367,7 @@ func exportJob(db *appv1alpha1.Database, request appv1alpha1.DatabaseExportReque
 						EnvFrom:         []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: store.S3Secret}}}},
 						VolumeMounts:    []corev1.VolumeMount{{Name: exportWorkVolume, MountPath: "/work"}},
 						Resources:       guaranteedResources("100m", "128Mi"),
-						SecurityContext: tenantSecCtx(),
+						SecurityContext: execution.RestrictedContainerSecurityContext(),
 					}},
 				},
 			},
@@ -423,7 +424,7 @@ func exportCleanupJob(db *appv1alpha1.Database, status appv1alpha1.DatabaseExpor
 						},
 						EnvFrom:         []corev1.EnvFromSource{{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: store.S3Secret}}}},
 						Resources:       guaranteedResources("100m", "128Mi"),
-						SecurityContext: tenantSecCtx(),
+						SecurityContext: execution.RestrictedContainerSecurityContext(),
 					}},
 				},
 			},

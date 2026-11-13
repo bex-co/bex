@@ -75,10 +75,6 @@ func (r *AppReconciler) platformRepoReference(image string) (repo, reference str
 // imagePortPreferred is the declared image port chosen as primary when present.
 const imagePortPreferred int32 = 3000
 
-func configuredPortMode(mode string) bool {
-	return mode == appv1alpha1.PortModeImageConfiguredV1 || mode == appv1alpha1.PortModeWebImageConfiguredV1
-}
-
 // parseExternalImageReference splits a prebuilt image reference into the
 // registry API host, repository and reference for its metadata read
 // (w4/m243). No platform credential is ever attached to it.

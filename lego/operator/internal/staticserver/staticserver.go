@@ -50,6 +50,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/bex-co/bex/lego/types/netutil"
+	"github.com/bex-co/bex/lego/types/routepattern"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -787,20 +788,6 @@ func matchPattern(pattern, reqPath string) (string, bool) {
 	return "", pattern == reqPath
 }
 
-func placeholderName(segment string) (string, bool) {
-	if len(segment) < 2 || segment[0] != ':' {
-		return "", false
-	}
-	name := segment[1:]
-	for i, c := range name {
-		if c == '_' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || i > 0 && c >= '0' && c <= '9' {
-			continue
-		}
-		return "", false
-	}
-	return name, true
-}
-
 // matchRoutePattern is matchPattern plus whole-segment ":name" captures. A
 // placeholder matches exactly one non-empty segment and may precede a
 // trailing "/*". Patterns without placeholders keep matchPattern semantics.
@@ -808,7 +795,7 @@ func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool
 	base, hasSplat := strings.CutSuffix(pattern, "/*")
 	hasPlaceholder := false
 	for seg := range strings.SplitSeq(base, "/") {
-		if _, ok := placeholderName(seg); ok {
+		if _, ok := routepattern.PlaceholderName(seg); ok {
 			hasPlaceholder = true
 			break
 		}
@@ -824,7 +811,7 @@ func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool
 	}
 	captures := map[string]string{}
 	for i, seg := range patSegs {
-		if name, ok := placeholderName(seg); ok {
+		if name, ok := routepattern.PlaceholderName(seg); ok {
 			if reqSegs[i] == "" {
 				return "", nil, false
 			}
@@ -871,7 +858,7 @@ func substituteCaptures(destPath, splat string, captures map[string]string) (str
 			j++
 		}
 		name := destPath[i+1 : j]
-		if _, ok := placeholderName(":" + name); !ok {
+		if _, ok := routepattern.PlaceholderName(":" + name); !ok {
 			i++
 			continue
 		}

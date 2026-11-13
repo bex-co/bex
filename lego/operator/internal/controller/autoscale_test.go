@@ -31,6 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
+	"github.com/bex-co/bex/lego/types/podmetrics"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -89,9 +90,9 @@ func TestParsePodUsage(t *testing.T) {
 		{"100m", "128Mi"},
 		{"250m", "256Mi"},
 	})
-	usage, err := parsePodUsage(raw)
+	usage, err := podmetrics.Parse(raw)
 	if err != nil {
-		t.Fatalf("parsePodUsage: %v", err)
+		t.Fatalf("podmetrics.Parse: %v", err)
 	}
 	if len(usage) != 2 {
 		t.Fatalf("len = %d, want 2", len(usage))

@@ -18,12 +18,10 @@ package controller
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"net/http"
 	"net/url"
-	"sort"
 	"strconv"
 	"time"
 
@@ -32,6 +30,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
+	"github.com/bex-co/bex/lego/types/podmetrics"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -66,11 +65,9 @@ const annotAutoscaleScaleDownTo = "app.bex.co/autoscale-scale-down-to"
 const annotAutoscaleReplicas = "app.bex.co/autoscale-replicas"
 
 // PodUsage is one pod's current resource consumption, as reported by metrics-server.
-type PodUsage struct {
-	Pod         string
-	CPUCores    float64
-	MemoryBytes float64
-}
+// It is the shared decoder's record so autoscaling and bex-api's reported usage
+// read the same payload identically.
+type PodUsage = podmetrics.Usage
 
 // MetricsReader reads the current resource usage of an App's pods from
 // metrics-server. Returns one entry per running pod. A nil MetricsReader
@@ -89,45 +86,8 @@ func NewMetricsServerReader(cs kubernetes.Interface) MetricsReader {
 		if err != nil {
 			return nil, err
 		}
-		return parsePodUsage(raw)
+		return podmetrics.Parse(raw)
 	}
-}
-
-// podMetricsList is the subset of metrics.k8s.io/v1beta1 PodMetricsList bex reads.
-type podMetricsList struct {
-	Items []struct {
-		Metadata struct {
-			Name string `json:"name"`
-		} `json:"metadata"`
-		Containers []struct {
-			Usage struct {
-				CPU    string `json:"cpu"`
-				Memory string `json:"memory"`
-			} `json:"usage"`
-		} `json:"containers"`
-	} `json:"items"`
-}
-
-func parsePodUsage(raw []byte) ([]PodUsage, error) {
-	var list podMetricsList
-	if err := json.Unmarshal(raw, &list); err != nil {
-		return nil, fmt.Errorf("decode pod metrics: %w", err)
-	}
-	out := make([]PodUsage, 0, len(list.Items))
-	for _, it := range list.Items {
-		u := PodUsage{Pod: it.Metadata.Name}
-		for _, ctr := range it.Containers {
-			if q, err := resource.ParseQuantity(ctr.Usage.CPU); err == nil {
-				u.CPUCores += q.AsApproximateFloat64()
-			}
-			if q, err := resource.ParseQuantity(ctr.Usage.Memory); err == nil {
-				u.MemoryBytes += float64(q.Value())
-			}
-		}
-		out = append(out, u)
-	}
-	sort.SliceStable(out, func(i, j int) bool { return out[i].Pod < out[j].Pod })
-	return out, nil
 }
 
 // promInstantSample is one labeled scalar from a Prometheus instant query.
