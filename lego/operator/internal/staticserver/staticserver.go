@@ -286,23 +286,19 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		)
 	}
 
-	// An existing published object wins over both redirect and rewrite rules,
-	// matching Render's documented order. Only a genuine miss advances to the
-	// ordered rules; permission denials, timeouts, capacity and size failures
-	// keep their own classes below rather than degrading into a rule.
+	// An existing published object, or the page an extensionless path names,
+	// wins over both redirect and rewrite rules, matching Render's documented
+	// order. Only a genuine miss advances to the ordered rules; permission
+	// denials, timeouts, capacity and size failures keep their own classes
+	// below rather than degrading into a rule.
 	//
 	// The store cannot hold a key past maxObjectKeyBytes, so a path whose
 	// derived key (after index.html defaulting) is longer can never match an
-	// object — nor plausibly be an SPA route. Treat it as a miss without an
-	// origin round trip instead of misreporting the store's key-length client
-	// error as an origin failure (w6/047).
-	var obj Object
-	var servedPath string
-	err := ErrNotFound
+	// object — nor plausibly be an SPA route. fetchPage treats it as a miss
+	// without an origin round trip instead of misreporting the store's
+	// key-length client error as an origin failure (w6/047).
 	overlong := overlongKey(site, requestPath)
-	if !overlong {
-		obj, servedPath, err = h.fetch(r.Context(), site, requestPath)
-	}
+	obj, servedPath, err := h.fetchPage(r.Context(), site, requestPath)
 	if err == nil {
 		h.serveObject(w, r, site, obj, servedPath, requestPath)
 		return
@@ -320,13 +316,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			message = "invalid redirect target"
 		}
 		serveSiteError(w, site, requestPath, http.StatusBadRequest, message)
-		return
-	}
-	// A directory requested without its trailing slash: an existing published
-	// <path>/index.html is an object hit like any other, so it wins over the
-	// ordered rules and the SPA fallback. Redirecting to the slash form keeps
-	// the page's relative links resolving beneath the directory (w4/384).
-	if !overlong && h.redirectToDirectory(w, r, site, requestPath) {
 		return
 	}
 	if act == actRedirect {
@@ -364,22 +353,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.serveNotFound(w, r, site, requestPath)
 			return
 		}
-		obj, servedPath, err = h.fetch(r.Context(), site, fallbackPath)
-		if err != nil && !errors.Is(err, ErrNotFound) {
-			serveOriginError(w, site, requestPath, err)
-			return
-		}
+		// A rewrite target resolves as a request for it would, page included.
+		obj, servedPath, err = h.fetchPage(r.Context(), site, fallbackPath)
 		if err == nil {
 			h.serveObject(w, r, site, obj, servedPath, requestPath)
 			return
 		}
-		// A rewrite to a directory serves that directory's index in place.
-		if h.hasDirectoryIndex(r.Context(), site, fallbackPath) {
-			dir := lookupPath(strings.TrimSuffix(fallbackPath, "/") + "/")
-			if obj, err = h.get(r.Context(), site, dir); err == nil {
-				h.serveObject(w, r, site, obj, dir, requestPath)
-				return
-			}
+		if !errors.Is(err, ErrNotFound) {
+			serveOriginError(w, site, requestPath, err)
+			return
 		}
 	}
 
@@ -405,21 +387,6 @@ func (h *Handler) serveOtherMethod(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Allow", "GET, HEAD")
 	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-}
-
-// redirectToDirectory answers a directory requested without its trailing slash
-// and holding a published index.html with a 301 to the slash form.
-func (h *Handler) redirectToDirectory(w http.ResponseWriter, r *http.Request, site Site, requestPath string) bool {
-	if !h.hasDirectoryIndex(r.Context(), site, requestPath) {
-		return false
-	}
-	location := (&url.URL{Path: requestPath + "/", RawQuery: r.URL.RawQuery}).String()
-	if !safeRedirectTarget(location) {
-		return false
-	}
-	applyHeaders(w.Header(), site.Headers, requestPath)
-	http.Redirect(w, r, location, http.StatusMovedPermanently)
-	return true
 }
 
 // serveNotFound answers a miss as Render does: 404 with the site's root
@@ -628,20 +595,46 @@ func lookupPath(reqPath string) string {
 	return reqPath
 }
 
-// hasDirectoryIndex reports whether reqPath, an extensionless path without a
-// trailing slash, names a directory whose index.html is published. Every
-// other outcome, origin errors included, is false: the caller's own miss
-// handling then decides, as it did before directories were resolved.
-func (h *Handler) hasDirectoryIndex(ctx context.Context, site Site, reqPath string) bool {
-	if reqPath == "/" || strings.HasSuffix(reqPath, "/") || path.Ext(reqPath) != "" {
-		return false
+// fetchPage resolves reqPath as Render serves a visitor's path: the object at
+// it (index.html beneath "/" or a slash path), else the page an extensionless
+// path names, in place with 200 and no redirect (w8/317, w8/318). `/about`
+// and `/about/` serve a published about.html, and `/blog` serves
+// blog/index.html. Only a miss is ErrNotFound; any other origin error is
+// returned, so the caller answers its class rather than a wrong page.
+func (h *Handler) fetchPage(ctx context.Context, site Site, reqPath string) (Object, string, error) {
+	if !overlongKey(site, reqPath) {
+		obj, servedPath, err := h.fetch(ctx, site, reqPath)
+		if !errors.Is(err, ErrNotFound) {
+			return obj, servedPath, err
+		}
 	}
-	dir := reqPath + "/"
-	if overlongKey(site, dir) {
-		return false
+	return h.resolvePage(ctx, site, reqPath)
+}
+
+// resolvePage is fetchPage's miss step. Only .html is tried, so a path with an
+// extension (`/favicon`'s favicon.png, `/about.html/`) stays a miss. A
+// slashless path tries <path>.html before <path>/index.html; a slash path's
+// directory index was fetch's own lookup. Render's order when both exist was
+// not captured.
+func (h *Handler) resolvePage(ctx context.Context, site Site, reqPath string) (Object, string, error) {
+	page := strings.TrimSuffix(reqPath, "/")
+	if page == "" || path.Ext(page) != "" {
+		return Object{}, "", ErrNotFound
 	}
-	_, err := h.get(ctx, site, lookupPath(dir))
-	return err == nil
+	candidates := []string{page + ".html"}
+	if !strings.HasSuffix(reqPath, "/") {
+		candidates = append(candidates, lookupPath(page+"/"))
+	}
+	for _, candidate := range candidates {
+		if overlongKey(site, candidate) {
+			continue
+		}
+		obj, err := h.get(ctx, site, candidate)
+		if !errors.Is(err, ErrNotFound) {
+			return obj, candidate, err
+		}
+	}
+	return Object{}, "", ErrNotFound
 }
 
 // spaFallback fetches the site's root index.html for extension-less misses so a
