@@ -263,6 +263,12 @@ func (s *Service) recordCancelCause(ctx context.Context, canceled store.AgentSes
 // memberSessionPage bounds one read of a member's unfinished sessions.
 const memberSessionPage = 100
 
+// MemberExit is the trusted adapter the members service ends a departing
+// member's sessions through (w5/186). It is not a Service verb: only the
+// composition root hands it to the members service, whose exit verbs did the
+// authorization.
+type MemberExit struct{ Service *Service }
+
 // CancelMemberSessions cancels every unfinished session that creators (a
 // departing member's subject and the client ids of the API keys they created
 // here) started in workspaceID, with the sessions below each (w5/186, ADR107).
@@ -271,8 +277,7 @@ const memberSessionPage = 100
 // the next automation fire) was already refused. Automation and child
 // sessions carry their creator's subject, so they are included.
 //
-// Trusted: the caller authorized the membership change, so no per-session
-// check is made. It runs in two passes:
+// No per-session check is made. It runs in two passes:
 //
 //  1. Flip every session to canceling, which stops its mints. A failure here
 //     is returned, so the membership change fails and its retry converges.
@@ -282,9 +287,10 @@ const memberSessionPage = 100
 //     exit. The first failure ends the pass, so an unreachable sandbox API
 //     costs one timeout rather than one per session; the sessions left
 //     canceling converge on a later Cancel.
-func (s *Service) CancelMemberSessions(ctx context.Context, workspaceID string, creators []string) error {
+func (m MemberExit) CancelMemberSessions(ctx context.Context, workspaceID string, creators []string) error {
+	s := m.Service
 	creators = slices.DeleteFunc(slices.Clone(creators), func(c string) bool { return c == "" })
-	if !s.enabled() || len(creators) == 0 {
+	if s == nil || !s.enabled() || len(creators) == 0 {
 		return nil
 	}
 	phases, _ := phasesOfState(StateWorking)

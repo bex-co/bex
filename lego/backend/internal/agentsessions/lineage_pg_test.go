@@ -482,9 +482,10 @@ func TestCancelMemberSessionsEndsOnlyTheDepartedMembersUnfinishedSessions(t *tes
 	someoneElses := e.create(t, "")
 	setCreator(someoneElses.ID, "bob")
 	creators := []string{"alice", "key-client-1"}
+	exit := MemberExit{Service: e.svc}
 
 	e.lc.cancelErr = errors.New("sandbox api down")
-	if err := e.svc.CancelMemberSessions(ctx, e.ws, creators); err != nil {
+	if err := exit.CancelMemberSessions(ctx, e.ws, creators); err != nil {
 		t.Fatalf("a sandbox outage failed the exit: %v", err)
 	}
 	for _, id := range []string{running.ID, child.ID, byKey.ID} {
@@ -493,7 +494,7 @@ func TestCancelMemberSessionsEndsOnlyTheDepartedMembersUnfinishedSessions(t *tes
 		}
 	}
 	e.lc.cancelErr = nil
-	if err := e.svc.CancelMemberSessions(ctx, e.ws, creators); err != nil {
+	if err := exit.CancelMemberSessions(ctx, e.ws, creators); err != nil {
 		t.Fatalf("second pass: %v", err)
 	}
 

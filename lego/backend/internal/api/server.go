@@ -1139,9 +1139,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Feedback:         d.AgentFeedbackStore,
 	}
 	// A membership exit ends the sessions the member started (w5/186).
-	membersSvc.Sessions = agentSessionsSvc
+	memberExit := agentsessions.MemberExit{Service: agentSessionsSvc}
+	membersSvc.Sessions = memberExit
 	accountSvc.Members = members.AccountOffboarder{
-		Store: d.AccountStore, Revoker: d.MembersRevoker, Workspace: workspaceResolver, Sessions: agentSessionsSvc,
+		Store: d.AccountStore, Revoker: d.MembersRevoker, Workspace: workspaceResolver, Sessions: memberExit,
 	}
 	srv := &Server{
 		Apps: appsSvc,
