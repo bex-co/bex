@@ -65,6 +65,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"apps.ConfigureMaintenanceMode": "one atomic write records its typed field effects only after the patch succeeds",
 		"apps.ApplyServicePatch":        "w9/m166: its AuthorizeApp is the read-only preflight that decides whether the WHOLE patch may proceed; each present field's own verb still records that field's effect, so naming this one too would double-count every multi-field save",
 		"deploys.Trigger":               "the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
+		"jobs.CreateEphemeralShell":     "always refuses with 410 EPHEMERAL_SHELLS_UNSUPPORTED after authorization (w8/304): no shell is ever created, so nothing happens to record",
 		"deploys.TriggerBuild":          "a build is its build source carrier's deploy row; carriers have no service feed (ADR097)",
 		"deploys.TriggerManual":         "the dashboard twin of deploys.Trigger: the deploys row it opens IS the deploy_started event — mapping the verb too would double-count",
 		// w4/m118: the same argument for cron runs. These three are INTENT;
