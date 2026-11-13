@@ -548,7 +548,7 @@ const zhDeploys: Record<string, TranslationEntry> = {
   "deploys.reason.build_never_started": {
     message: "构建一直未开始：{cause}",
     description:
-      "A deploy failure reason by its code (bex-api DeployReason build_never_started, w4/591); {cause} is the operator's own wait message, shown as-is",
+      "A deploy failure reason by its code (bex-api DeployReason build_never_started, w4/591); {cause} is the operator's wait, whose sentences are worded as parts (w5/m356)",
   },
   "deploys.reason.build_abandoned": {
     message: "构建未在构建时限内完成，且无法读取此服务的 App 记录来说明原因",
@@ -603,9 +603,173 @@ const zhDeploys: Record<string, TranslationEntry> = {
       "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_service_gone, w4/591)",
   },
   "deploys.reason.restart_wait_timed_out": {
-    message: "这次重启等待的部署未在 {wait} 内完成",
+    message: "这次重启等待的部署未在 {wait}内完成",
     description:
       "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_wait_timed_out, w4/591); params are the sentence's values",
+  },
+  "deploys.reason.probe_other_waiting": {
+    message:
+      "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：已配置的健康检查。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_waiting, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
+  },
+  "deploys.reason.probe_other_waiting_restarted": {
+    message:
+      "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：已配置的健康检查。存活检查已重启容器 {restarts} 次，说明检查确实在失败，而不只是响应慢。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_waiting_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
+  },
+  "deploys.reason.probe_other_failed": {
+    message:
+      "容器正在运行，但其{kind}健康检查在发布时限内始终未成功，部署因此失败：已配置的健康检查。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
+  },
+  "deploys.reason.probe_other_failed_restarted": {
+    message:
+      "容器正在运行，但其{kind}健康检查在发布时限内始终未成功，部署因此失败：已配置的健康检查。存活检查已重启容器 {restarts} 次，说明检查确实在失败，而不只是响应慢。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
+  },
+  "deploys.reason.hint_image_default_port": {
+    message:
+      "端口 {port} 上没有任何进程接受 TCP 连接；镜像未声明任何 TCP 端口，因此使用的是默认端口。服务器必须绑定到 0.0.0.0，并监听 PORT 环境变量指定的端口（{port}）。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_image_default_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_image_declared_ports": {
+    message:
+      "端口 {port} 上没有任何进程接受 TCP 连接，它是从镜像声明的 TCP 端口（{ports}）中选出的主端口。请让服务器在其中一个端口上绑定 0.0.0.0，或把服务的端口设为它实际监听的端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_image_declared_ports, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_env_port_only": {
+    message:
+      "端口 {port} 上没有任何进程接受 TCP 连接，该端口由服务的 PORT 环境变量设定；镜像未声明其他 TCP 端口。请让服务器在端口 {port} 上绑定 0.0.0.0，或把服务的端口改为它实际监听的端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_configured_port_only": {
+    message:
+      "端口 {port} 上没有任何进程接受 TCP 连接，该端口是服务配置的端口；镜像未声明其他 TCP 端口。请让服务器在端口 {port} 上绑定 0.0.0.0，或把服务的端口改为它实际监听的端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_configured_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_env_port_declared": {
+    message:
+      "端口 {port} 上没有任何进程接受 TCP 连接，该端口由服务的 PORT 环境变量设定；镜像声明了 TCP 端口（{ports}）。请把 PORT 环境变量改为它实际监听的端口，或删除该变量以使用镜像的端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_declared, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_configured_port_declared": {
+    message:
+      "端口 {port} 上没有任何进程接受 TCP 连接，该端口是服务配置的端口；镜像声明了 TCP 端口（{ports}）。请在设置中把服务的端口改为它实际监听的端口，或删除该设置以使用镜像的端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_configured_port_declared, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_background_worker": {
+    message: "如果服务不需要在任何端口上接收流量，请改为创建后台工作进程。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_background_worker, w5/m356); en starts with the space that joins it to the sentence before",
+  },
+  "deploys.reason.hint_no_http_discovered": {
+    message: "启动探测期间没有端口响应 HTTP。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_http_discovered, w5/m356); en starts with the space that joins it to the sentence before",
+  },
+  "deploys.reason.hint_listening": {
+    message: "进程正在端口 {port} 上监听。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_listening, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_listening_adopted": {
+    message: "进程正在端口 {port} 上监听，服务现已改用该端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_listening_adopted, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_listening_ports": {
+    message:
+      "进程正在端口 {ports} 上监听，而不是端口 {port}；请把服务的端口（或其 PORT 变量）设为提供 HTTP 服务的那个端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_listening_ports, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_listening_primary": {
+    message: "进程正在端口 {port} 上监听，服务现已将其用作主端口。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_listening_primary, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port": {
+    message:
+      "实例上未检测到开放端口：服务器必须绑定到 0.0.0.0，并监听 PORT 环境变量指定的端口（{port}）。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port_before": {
+    message:
+      "实例上未检测到开放端口：服务器必须绑定到 0.0.0.0，并监听 PORT 环境变量指定的端口（{port}）；它之前监听的是端口 {previous}。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port_before, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_service_port": {
+    message:
+      "实例上未检测到开放端口：服务器必须绑定到 0.0.0.0，并监听服务的端口（{port}）。",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.queued_build_limit": {
+    message: "{noun}已有 {active}/{limit} 个并发构建在运行；正在等待空位",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_build_limit, w5/m356): a full concurrent-build cap; {noun} is the cap's scope, worded by deploys.reasonParam.noun.*",
+  },
+  "deploys.reason.queued_cluster_full": {
+    message: "集群的构建容量已满；正在等待空位",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_cluster_full, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_slot_taken": {
+    message: "同时发起的另一个构建占用了最后一个构建空位；正在等待空位",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_slot_taken, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_database": {
+    message: "正在等待关联的数据库 {database} 可用，然后再开始构建",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_database, w5/m356): what the build waited on; params are the sentence's values",
+  },
+  "deploys.reason.queued_datastore": {
+    message: "正在等待关联数据存储的连接信息，然后再开始构建",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_datastore, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_build_credential": {
+    message: "正在等待镜像仓库接受此应用的构建凭据",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_build_credential, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_pull_credential": {
+    message: "正在等待镜像仓库接受此应用的拉取凭据",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_pull_credential, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_capacity": {
+    message: "正在等待构建资源：{detail}",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_capacity, w5/m356): waiting for build capacity; {detail} is the build plane's own wait, shown as-is",
+  },
+  "deploys.reason.queued_capacity_pod": {
+    message: "正在等待构建资源：构建任务已派发，正在等待创建其构建 Pod",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_capacity_pod, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_capacity_no_node": {
+    message: "正在等待构建资源：暂无空闲的构建节点",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_capacity_no_node, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_capacity_short": {
+    message: "正在等待构建资源：暂无空闲的构建节点（可用的 {resources} 不足）",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_capacity_short, w5/m356): what the build waited on; params are the sentence's values",
   },
   "deploys.reasonParam.kind.startup": {
     message: "启动",
@@ -616,6 +780,28 @@ const zhDeploys: Record<string, TranslationEntry> = {
     message: "就绪",
     description:
       "A deploy reason's {kind} value readiness (w4/591): which health check a stalled rollout is waiting on",
+  },
+  "deploys.reasonParam.noun.workspace": {
+    message: "工作区",
+    description:
+      "A deploy reason's {noun} value workspace (w5/m356): the scope of a full concurrent-build cap",
+  },
+  "deploys.reasonWait.duration": {
+    message: "{units}",
+    description:
+      "A deferred restart's wait, restart_wait_timed_out's {wait} (w5/m356): {wait} is bex-api's Go duration (3h0m0s), which en keeps so the sentence reads as the API's; {units} is the duration in words (deploys.reasonWait.hours and the rest), which other languages read",
+  },
+  "deploys.reasonWait.hours": {
+    message: "{hours} 小时",
+    description: "A deferred restart's wait in words (w5/m356): its hours",
+  },
+  "deploys.reasonWait.minutes": {
+    message: "{minutes} 分钟",
+    description: "A deferred restart's wait in words (w5/m356): its minutes",
+  },
+  "deploys.reasonWait.seconds": {
+    message: "{seconds} 秒",
+    description: "A deferred restart's wait in words (w5/m356): its seconds",
   },
 };
 

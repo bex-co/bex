@@ -209,7 +209,7 @@ func (r *AppReconciler) declaredPortsClosed(ctx context.Context, ip string, netw
 // listener (3000 if open, else the lowest) answers two scans in a row, that
 // listener becomes the candidate network's primary and joins its ports, so
 // the next pass probes and publishes on it. It returns text for the stall
-// message.
+// message: between scans, the last scan's.
 func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
 	network := app.Status.ImageNetwork
 	if r.PortScanner == nil || !app.Spec.UsesImagePorts() || app.Spec.HealthCheckPath != "" || network == nil ||
@@ -220,17 +220,22 @@ func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alph
 	if _, configured := app.ConfiguredImagePort(); configured {
 		return ""
 	}
-	key, ip := r.dueUnreadyScan(ctx, app, dep)
-	if ip == "" {
-		return ""
+	key, pod := r.dueUnreadyScan(ctx, app, dep)
+	if pod == nil {
+		return r.replayPortHint(ctx, key, dep, port)
 	}
+	return r.keepPortHint(key, pod, port, r.scanForPrivatePrimary(ctx, app, key, pod.Status.PodIP, port))
+}
 
+// scanForPrivatePrimary is detectPrivatePrimary's scan of ip.
+func (r *AppReconciler) scanForPrivatePrimary(ctx context.Context, app *appv1alpha1.App, key, ip string, port int) string {
+	network := app.Status.ImageNetwork
 	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 	defer cancel()
 	open, err := scanBoundPort(scanCtx, r.PortScanner, ip, port)
 	if err != nil {
 		logf.FromContext(ctx).Info("private primary port scan failed", "app", app.Name, "error", err.Error())
-		return fmt.Sprintf(" No open port was detected on the instance: the server must bind host 0.0.0.0 on the service's port (%d).", port)
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintNoOpenServicePort, portParam(int32(port)))
 	}
 	found := listenerSet(open)
 	if len(found) == 0 || slices.Contains(found, network.PrimaryPort) {
@@ -247,14 +252,14 @@ func (r *AppReconciler) detectPrivatePrimary(ctx context.Context, app *appv1alph
 	// primary is still booting is not mistaken for it.
 	if prev, ok := r.portCandidate.Load(key); !ok || prev.(int) != int(chosen) {
 		r.portCandidate.Store(key, int(chosen))
-		return fmt.Sprintf(" The process is listening on port %d.", chosen)
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListening, portParam(chosen))
 	}
 	r.portCandidate.Delete(key)
 	logf.FromContext(ctx).Info("selected the port the process listens on as the private primary", "app", app.Name,
 		"port", chosen, "was", network.PrimaryPort)
 	network.PrimaryPort = chosen
 	network.Ports = mergePorts(network.Ports, []int32{chosen})
-	return fmt.Sprintf(" The process is listening on port %d, which the service now uses as its primary port.", chosen)
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningPrimary, portParam(chosen))
 }
 
 // listenerSet is a scan's answer as a sorted, deduplicated status set without

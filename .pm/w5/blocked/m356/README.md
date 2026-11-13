@@ -1,19 +1,19 @@
 # w5 · m356 — In the zh dashboard, a deploy's port hints and a build's queued cause stay English, and the hint comes and goes between passes
 
-**Worker:** worker5 **Goal:** the health-check stall's port hints, a queued build's cause and the deferred restart's wait read in the dashboard's language, and the stall text holds still while the deploy waits; REST and MCP keep Render's English byte for byte. **Status:** todo
+**Worker:** worker5 **Goal:** the health-check stall's port hints, a queued build's cause and the deferred restart's wait read in the dashboard's language, and the stall text holds still while the deploy waits; REST and MCP keep Render's English byte for byte. **Status:** blocked — t001–t004 and t006–t008 done (shipped); t005 live replay waits for the next production deploy, then t009 closes
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Types: templates for the port hints, the fallback-HTTP hint, the build's queued causes and the gRPC stall; a parser that reads an appended tail sentence by sentence | 60m | — |
-| [t002](t002.md) | Operator: hints and queued causes format through the templates; the stall keeps the last port-scan verdict, so its text holds between passes | 45m | t001 |
-| [t003](t003.md) | bex-api: GraphQL `DeployReason.parts` for a hint or cause that parses | 30m | t001 |
-| [t004](t004.md) | Dashboard: render the parts, en and zh keys, `{wait}` as a localized duration | 45m | t003 |
+| [t001](done/t001.md) | Types: templates for the port hints, the fallback-HTTP hint, the build's queued causes and the gRPC stall; a parser that reads an appended tail sentence by sentence — **DONE** | 60m | — |
+| [t002](done/t002.md) | Operator: hints and queued causes format through the templates; the stall keeps the last port-scan verdict, so its text holds between passes — **DONE** | 45m | t001 |
+| [t003](done/t003.md) | bex-api: GraphQL `DeployReason.parts` for a hint or cause that parses — **DONE** | 30m | t001 |
+| [t004](done/t004.md) | Dashboard: render the parts, en and zh keys, `{wait}` as a localized duration — **DONE** | 45m | t003 |
 | [t005](t005.md) | Live verification in zh on owned services | 20m | t002, t004 |
-| [t006](t006.md) | Render parity | 10m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t006 |
+| [t006](done/t006.md) | Render parity — **DONE** | 10m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t006 |
 | [t009](t009.md) | Closeout | 5m | t007, t008 |
 
 Nine tasks, 260m (4h20m).
@@ -21,7 +21,7 @@ Nine tasks, 260m (4h20m).
 ## Definition of done
 
 - In `bex-canary`, with the dashboard in zh, a web image service whose server binds only 127.0.0.1 shows its stall on the deploy header entirely in Chinese, the port hint included, and three reads 5 s apart show the same text.
-- A deploy held behind the workspace's concurrent-build limit shows its queued cause in Chinese on the deploy header and the Deploys list.
+- A deploy whose build never started shows its queued cause in Chinese on the deploy header and the Deploys list (`build_never_started`'s cause). Amended 2026-11-12 after review: a deploy still queued carries no in-flight reason, because the backend's `stallDiagnosis` (`lego/backend/internal/store/reconciler.go`) does not surface `BuildQueued`; showing it while waiting would be a new surface, not this milestone's wording.
 - A restart that waited for a deploy and timed out shows its wait as a Chinese duration, not "3h0m0s".
 - REST `GET /v1/services/{id}/deploys` and MCP return the same English sentences as before; the writers' tests pin them byte for byte.
 - An appended sentence no template words still shows, in English, after the worded ones.

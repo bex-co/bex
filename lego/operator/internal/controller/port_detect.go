@@ -19,14 +19,15 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -115,36 +116,41 @@ func crashHintPort(app *appv1alpha1.App, port int) int {
 }
 
 // dueUnreadyScan returns the App's scan key and its rollout's Running but
-// unready pod IP when a scan is due (at most one per portDetectInterval per
-// App, shared by both detectors), recording the scan; ip is "" otherwise.
-func (r *AppReconciler) dueUnreadyScan(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) (key, ip string) {
+// unready pod when a scan is due (at most one per portDetectInterval per App,
+// shared by both detectors), recording the scan; pod is nil otherwise.
+func (r *AppReconciler) dueUnreadyScan(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) (key string, pod *corev1.Pod) {
 	key = app.Namespace + "/" + app.Name
 	every := portDetectInterval
 	if r.portDetectEvery > 0 {
 		every = r.portDetectEvery
 	}
 	if last, ok := r.portScanned.Load(key); ok && time.Since(last.(time.Time)) < every {
-		return key, ""
+		return key, nil
 	}
-	if ip = r.unreadyPodIP(ctx, dep); ip != "" {
+	if pod = r.unreadyPod(ctx, dep); pod != nil {
 		r.portScanned.Store(key, time.Now())
 	}
-	return key, ip
+	return key, pod
 }
 
 // detectBoundPort scans the rollout's unready pod when the App qualifies, sets
 // status.detectedPort when exactly one other port answers, and returns text to
-// append to the stall message (empty when there is nothing to add).
+// append to the stall message (empty when there is nothing to add). Between
+// scans it returns the last scan's text.
 func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) string {
 	if r.PortScanner == nil || explicitServingPort(app) ||
 		(app.Spec.Type != "" && app.Spec.Type != appv1alpha1.TypeWebService) {
 		return ""
 	}
-	key, ip := r.dueUnreadyScan(ctx, app, dep)
-	if ip == "" {
-		return ""
+	key, pod := r.dueUnreadyScan(ctx, app, dep)
+	if pod == nil {
+		return r.replayPortHint(ctx, key, dep, port)
 	}
+	return r.keepPortHint(key, pod, port, r.scanForBoundPort(ctx, app, key, pod.Status.PodIP, port))
+}
 
+// scanForBoundPort is detectBoundPort's scan of ip.
+func (r *AppReconciler) scanForBoundPort(ctx context.Context, app *appv1alpha1.App, key, ip string, port int) string {
 	scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 	defer cancel()
 	open, err := scanBoundPort(scanCtx, r.PortScanner, ip)
@@ -175,18 +181,18 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 		// the HTTP server is still booting is not mistaken for the service.
 		if prev, ok := r.portCandidate.Load(key); !ok || prev.(int) != others[0] {
 			r.portCandidate.Store(key, others[0])
-			return fmt.Sprintf(" The process is listening on port %d.", others[0])
+			return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListening, portParam(int32(others[0])))
 		}
 		logf.FromContext(ctx).Info("detected the port the process listens on", "app", app.Name, "port", others[0], "was", port)
 		app.Status.DetectedPort = int32(others[0])
-		return fmt.Sprintf(" The process is listening on port %d, which the service now uses.", others[0])
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningAdopted, portParam(int32(others[0])))
 	default:
 		list := make([]string, len(others))
 		for i, p := range others {
 			list[i] = strconv.Itoa(p)
 		}
-		return fmt.Sprintf(" The process is listening on ports %s, not on port %d; set the service's port (or its PORT variable) to the one that serves HTTP.",
-			strings.Join(list, ", "), port)
+		return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintListeningPorts, portParam(int32(port)),
+			appv1alpha1.DeployReasonParam{Name: "ports", Value: strings.Join(list, ", ")})
 	}
 }
 
@@ -203,16 +209,17 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 // before (w8/281).
 func noOpenPortMessage(app *appv1alpha1.App, port int) string {
 	env := processPort(app, port)
-	msg := fmt.Sprintf(" No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT (%d)", env)
+	code := appv1alpha1.DeployReasonHintNoOpenPort
 	if env != port {
-		msg += fmt.Sprintf("; it listened on port %d before", port)
+		code = appv1alpha1.DeployReasonHintNoOpenPortBefore
 	}
-	return msg + "." + backgroundWorkerHint
+	return appv1alpha1.FormatDeployReason(code, portParam(int32(env)),
+		appv1alpha1.DeployReasonParam{Name: "previous", Value: strconv.Itoa(port)}) + backgroundWorkerHint
 }
 
 // backgroundWorkerHint is Render's alternative for a service that listens on no
 // port: it does not belong in a web or private service (w21/059).
-const backgroundWorkerHint = " If the service does not need to receive traffic on any port, create a background worker instead."
+var backgroundWorkerHint = appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintBackgroundWorker)
 
 // commonHTTPPorts are probed first (w4/393): with dropped packets a full
 // 65k sweep cannot finish inside portDetectTimeout, but a verdict on the
@@ -253,21 +260,19 @@ func scanBoundPort(ctx context.Context, scanner portscan.Scanner, ip string, als
 	return open, err
 }
 
-// unreadyPodIP is the address of the rollout's current-revision pod whose app
-// container has been running past the grace period without becoming ready.
-func (r *AppReconciler) unreadyPodIP(ctx context.Context, dep *appsv1.Deployment) string {
+// unreadyPod is the rollout's current-revision pod whose app container has
+// been running past the grace period without becoming ready, or nil.
+func (r *AppReconciler) unreadyPod(ctx context.Context, dep *appsv1.Deployment) *corev1.Pod {
 	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
-		return ""
+		return nil
 	}
 	var pods corev1.PodList
 	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
-		return ""
+		return nil
 	}
-	revision := dep.Spec.Template.Labels[labelRevision]
 	for i := range pods.Items {
 		p := &pods.Items[i]
-		if p.DeletionTimestamp != nil || p.Status.Phase != corev1.PodRunning || p.Status.PodIP == "" ||
-			(revision != "" && p.Labels[labelRevision] != revision) {
+		if p.Status.Phase != corev1.PodRunning || p.Status.PodIP == "" || !rolloutPodUnready(p, dep) {
 			continue
 		}
 		cached := false
@@ -278,11 +283,76 @@ func (r *AppReconciler) unreadyPodIP(ctx context.Context, dep *appsv1.Deployment
 			continue
 		}
 		for _, cs := range p.Status.ContainerStatuses {
-			if cs.Name == appContainerName && !cs.Ready && cs.State.Running != nil &&
+			if cs.Name == appContainerName && cs.State.Running != nil &&
 				time.Since(cs.State.Running.StartedAt.Time) > portDetectGrace {
-				return p.Status.PodIP
+				return p
 			}
 		}
 	}
-	return ""
+	return nil
+}
+
+// rolloutPodUnready reports a live pod of dep's current revision whose app
+// container is not ready.
+func rolloutPodUnready(p *corev1.Pod, dep *appsv1.Deployment) bool {
+	if revision := dep.Spec.Template.Labels[labelRevision]; p.DeletionTimestamp != nil || (revision != "" && p.Labels[labelRevision] != revision) {
+		return false
+	}
+	for _, cs := range p.Status.ContainerStatuses {
+		if cs.Name == appContainerName {
+			return !cs.Ready
+		}
+	}
+	return false
+}
+
+// scannedHint is what the last port scan of an App's rollout pod, checked
+// against port, added to its stall message.
+type scannedHint struct {
+	pod  string
+	uid  types.UID
+	port int
+	text string
+}
+
+// keepPortHint records a scan's verdict on pod as the App's hint and returns
+// it; an empty verdict (the configured port answers, nothing to add) clears it.
+func (r *AppReconciler) keepPortHint(key string, pod *corev1.Pod, port int, text string) string {
+	if text == "" {
+		r.portHint.Delete(key)
+	} else {
+		r.portHint.Store(key, scannedHint{pod: pod.Name, uid: pod.UID, port: port, text: text})
+	}
+	return text
+}
+
+// forgetPortScans drops a deleted App's scan state.
+func (r *AppReconciler) forgetPortScans(key string) {
+	for _, m := range []*sync.Map{&r.portScanned, &r.portCandidate, &r.portHint} {
+		m.Delete(key)
+	}
+	r.portScanned.Delete("http/" + key)
+}
+
+// replayPortHint is the last scan's verdict on a pass that does not scan, while
+// the pod it scanned is still the rollout's and unready. A scan runs once per
+// portDetectInterval and an in-flight rollout requeues every 5 s, so without it
+// the stall's text dropped its hint on most passes (w5/m356).
+func (r *AppReconciler) replayPortHint(ctx context.Context, key string, dep *appsv1.Deployment, port int) string {
+	v, ok := r.portHint.Load(key)
+	if !ok {
+		return ""
+	}
+	hint := v.(scannedHint)
+	var pod corev1.Pod
+	if hint.port != port {
+		r.portHint.Delete(key)
+		return ""
+	}
+	if err := r.Get(ctx, client.ObjectKey{Namespace: dep.Namespace, Name: hint.pod}, &pod); err != nil ||
+		pod.UID != hint.uid || !rolloutPodUnready(&pod, dep) {
+		r.portHint.Delete(key)
+		return ""
+	}
+	return hint.text
 }

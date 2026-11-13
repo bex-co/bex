@@ -1357,6 +1357,9 @@ export type DeployReason = {
   __typename: 'DeployReason';
   code: Scalars['String']['output'];
   params: Array<DeployReasonParam>;
+  parts: Array<DeployReason>;
+  remainder: Scalars['String']['output'];
+  text: Scalars['String']['output'];
 };
 
 export type DeployReasonParam = {

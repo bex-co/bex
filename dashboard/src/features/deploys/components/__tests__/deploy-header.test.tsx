@@ -269,6 +269,8 @@ describe("DeployHeader", () => {
             cancelReasonTemplate: {
               code: "superseded_by",
               params: { deploy: "dep-d4newer" },
+              parts: [],
+              remainder: "",
             },
           })}
         />,

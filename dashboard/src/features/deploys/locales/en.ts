@@ -570,7 +570,7 @@ const enDeploys: Record<string, TranslationEntry> = {
   "deploys.reason.build_never_started": {
     message: "the build never started: {cause}",
     description:
-      "A deploy failure reason by its code (bex-api DeployReason build_never_started, w4/591); {cause} is the operator's own wait message, shown as-is",
+      "A deploy failure reason by its code (bex-api DeployReason build_never_started, w4/591); {cause} is the operator's wait, whose sentences are worded as parts (w5/m356)",
   },
   "deploys.reason.build_abandoned": {
     message:
@@ -631,6 +631,179 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_wait_timed_out, w4/591); params are the sentence's values",
   },
+  "deploys.reason.probe_other_waiting": {
+    message:
+      "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: the configured health check. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_waiting, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
+  },
+  "deploys.reason.probe_other_waiting_restarted": {
+    message:
+      "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: the configured health check. The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_waiting_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
+  },
+  "deploys.reason.probe_other_failed": {
+    message:
+      "the container is running but its {kind} health check never succeeded within the rollout window, so the deploy failed: the configured health check. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
+  },
+  "deploys.reason.probe_other_failed_restarted": {
+    message:
+      "the container is running but its {kind} health check never succeeded within the rollout window, so the deploy failed: the configured health check. The liveness check has already restarted the container {restarts} time(s), so the check is failing rather than merely slow. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",
+    description:
+      "A deploy failure or in-progress reason by its code (bex-api DeployReason probe_other_failed_restarted, w5/m356): the stall of a health check that is neither a GET nor a TCP connect; params are the sentence's values",
+  },
+  "deploys.reason.hint_image_default_port": {
+    message:
+      " Nothing accepted a TCP connection on port {port}, the default because the image declares no TCP ports. The server must bind host 0.0.0.0 on the port in PORT ({port}).",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_image_default_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_image_declared_ports": {
+    message:
+      " Nothing accepted a TCP connection on port {port}, the primary port selected from the image's declared TCP ports ({ports}). Bind the server to 0.0.0.0 on one of those ports, or set the service's port to the one it listens on.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_image_declared_ports, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_env_port_only": {
+    message:
+      " Nothing accepted a TCP connection on port {port}, set by the service's PORT environment variable; the image declares no other TCP port. Bind the server to 0.0.0.0 on port {port}, or change the service's port to the one it listens on.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_configured_port_only": {
+    message:
+      " Nothing accepted a TCP connection on port {port}, set by the service's configured port; the image declares no other TCP port. Bind the server to 0.0.0.0 on port {port}, or change the service's port to the one it listens on.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_configured_port_only, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_env_port_declared": {
+    message:
+      " Nothing accepted a TCP connection on port {port}, set by the service's PORT environment variable; the image declares TCP ports ({ports}). Change the PORT environment variable to the port it listens on, or remove it to use the image's port.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_env_port_declared, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_configured_port_declared": {
+    message:
+      " Nothing accepted a TCP connection on port {port}, set by the service's configured port; the image declares TCP ports ({ports}). Change the service's port in Settings to the one it listens on, or remove it to use the image's port.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_configured_port_declared, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_background_worker": {
+    message:
+      " If the service does not need to receive traffic on any port, create a background worker instead.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_background_worker, w5/m356); en starts with the space that joins it to the sentence before",
+  },
+  "deploys.reason.hint_no_http_discovered": {
+    message: " No port answered HTTP during startup discovery.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_http_discovered, w5/m356); en starts with the space that joins it to the sentence before",
+  },
+  "deploys.reason.hint_listening": {
+    message: " The process is listening on port {port}.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_listening, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_listening_adopted": {
+    message:
+      " The process is listening on port {port}, which the service now uses.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_listening_adopted, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_listening_ports": {
+    message:
+      " The process is listening on ports {ports}, not on port {port}; set the service's port (or its PORT variable) to the one that serves HTTP.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_listening_ports, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_listening_primary": {
+    message:
+      " The process is listening on port {port}, which the service now uses as its primary port.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_listening_primary, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port": {
+    message:
+      " No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT ({port}).",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_port_before": {
+    message:
+      " No open port was detected on the instance: the server must bind host 0.0.0.0 on the port in PORT ({port}); it listened on port {previous} before.",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_port_before, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.hint_no_open_service_port": {
+    message:
+      " No open port was detected on the instance: the server must bind host 0.0.0.0 on the service's port ({port}).",
+    description:
+      "A port hint the operator appends to a health-check stall, by its code (bex-api DeployReason part hint_no_open_service_port, w5/m356); en starts with the space that joins it to the sentence before; params are the sentence's values",
+  },
+  "deploys.reason.queued_build_limit": {
+    message:
+      "{noun} has {active}/{limit} concurrent builds active; waiting for a slot",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_build_limit, w5/m356): a full concurrent-build cap; {noun} is the cap's scope, worded by deploys.reasonParam.noun.*",
+  },
+  "deploys.reason.queued_cluster_full": {
+    message: "the cluster's build capacity is full; waiting for a slot",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_cluster_full, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_slot_taken": {
+    message:
+      "a concurrent dispatch took the last build slot; waiting for a slot",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_slot_taken, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_database": {
+    message:
+      "Waiting for linked database {database} to become available before building",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_database, w5/m356): what the build waited on; params are the sentence's values",
+  },
+  "deploys.reason.queued_datastore": {
+    message:
+      "Waiting for a linked datastore's connection details before building",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_datastore, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_build_credential": {
+    message: "Waiting for the registry to accept this app's build credential",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_build_credential, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_pull_credential": {
+    message: "Waiting for the registry to accept this app's pull credential",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_pull_credential, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_capacity": {
+    message: "waiting for build capacity: {detail}",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_capacity, w5/m356): waiting for build capacity; {detail} is the build plane's own wait, shown as-is",
+  },
+  "deploys.reason.queued_capacity_pod": {
+    message:
+      "waiting for build capacity: build job dispatched; waiting for its build pod to be created",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_capacity_pod, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_capacity_no_node": {
+    message: "waiting for build capacity: no build node has room for it yet",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_capacity_no_node, w5/m356): what the build waited on",
+  },
+  "deploys.reason.queued_capacity_short": {
+    message:
+      "waiting for build capacity: no build node has room for it yet (not enough {resources} free)",
+    description:
+      "A never-started build's cause by its code (bex-api DeployReason part queued_capacity_short, w5/m356): what the build waited on; params are the sentence's values",
+  },
   "deploys.reasonParam.kind.startup": {
     message: "startup",
     description:
@@ -640,6 +813,28 @@ const enDeploys: Record<string, TranslationEntry> = {
     message: "readiness",
     description:
       "A deploy reason's {kind} value readiness (w4/591): which health check a stalled rollout is waiting on",
+  },
+  "deploys.reasonParam.noun.workspace": {
+    message: "workspace",
+    description:
+      "A deploy reason's {noun} value workspace (w5/m356): the scope of a full concurrent-build cap",
+  },
+  "deploys.reasonWait.duration": {
+    message: "{wait}",
+    description:
+      "A deferred restart's wait, restart_wait_timed_out's {wait} (w5/m356): {wait} is bex-api's Go duration (3h0m0s), which en keeps so the sentence reads as the API's; {units} is the duration in words (deploys.reasonWait.hours and the rest), which other languages read",
+  },
+  "deploys.reasonWait.hours": {
+    message: "{hours} h",
+    description: "A deferred restart's wait in words (w5/m356): its hours",
+  },
+  "deploys.reasonWait.minutes": {
+    message: "{minutes} min",
+    description: "A deferred restart's wait in words (w5/m356): its minutes",
+  },
+  "deploys.reasonWait.seconds": {
+    message: "{seconds} s",
+    description: "A deferred restart's wait in words (w5/m356): its seconds",
   },
 };
 

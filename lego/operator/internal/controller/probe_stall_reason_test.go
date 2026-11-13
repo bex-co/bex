@@ -124,18 +124,41 @@ func TestProbeStallMessageParsesAsItsTemplate(t *testing.T) {
 	}
 }
 
-// A check that is neither a GET nor a TCP connect keeps its English sentence
-// and no template: rare, so it is not worded per language.
-func TestProbeStallOfAnotherCheckStaysEnglish(t *testing.T) {
+// w5/m356: a check that is neither a GET nor a TCP connect keeps its English
+// sentence, which parses as its own template, in flight and once failed.
+func TestProbeStallOfAnotherCheckParsesAsItsTemplate(t *testing.T) {
 	grpc := &corev1.Probe{ProbeHandler: corev1.ProbeHandler{GRPC: &corev1.GRPCAction{Port: 9000}}}
-	got := probeStallText("readiness", grpc, 2)
-	want := "the container is running but its readiness health check has not succeeded, so the rollout is waiting: the configured health check." +
-		" The liveness check has already restarted the container 2 time(s), so the check is failing rather than merely slow." +
-		" Check that the path returns a 2xx or 3xx status on the service's own port."
-	if got != want {
-		t.Fatalf("message = %q, want %q", got, want)
-	}
-	if code, _, ok := appv1alpha1.ParseDeployReason(got); ok {
-		t.Fatalf("%q parses as %s, want no template", got, code)
+	const (
+		head      = "the container is running but its readiness health check "
+		restarted = " The liveness check has already restarted the container 2 time(s), so the check is failing rather than merely slow."
+		pathTail  = " Check that the path returns a 2xx or 3xx status on the service's own port."
+	)
+	for name, tc := range map[string]struct {
+		restarts           int32
+		waiting, failed    string
+		waitCode, failCode string
+	}{
+		"restarted": {
+			restarts: 2,
+			waiting:  head + "has not succeeded, so the rollout is waiting: the configured health check." + restarted + pathTail,
+			failed:   head + "never succeeded within the rollout window, so the deploy failed: the configured health check." + restarted + pathTail,
+			waitCode: appv1alpha1.DeployReasonProbeOtherWaitingRestarted, failCode: appv1alpha1.DeployReasonProbeOtherFailedRestarted,
+		},
+		"not restarted": {
+			waiting:  head + "has not succeeded, so the rollout is waiting: the configured health check." + pathTail,
+			failed:   head + "never succeeded within the rollout window, so the deploy failed: the configured health check." + pathTail,
+			waitCode: appv1alpha1.DeployReasonProbeOtherWaiting, failCode: appv1alpha1.DeployReasonProbeOtherFailed,
+		},
+	} {
+		waiting := probeStallText("readiness", grpc, tc.restarts)
+		failed := terminalStallMessage(reasonHealthCheckFailing, waiting)
+		if waiting != tc.waiting || failed != tc.failed {
+			t.Errorf("%s:\n waiting %q\n want    %q\n failed  %q\n want    %q", name, waiting, tc.waiting, failed, tc.failed)
+		}
+		for text, want := range map[string]string{waiting: tc.waitCode, failed: tc.failCode} {
+			if code, _, ok := appv1alpha1.ParseDeployReason(text); !ok || code != want {
+				t.Errorf("%s: %q parses as %s (ok=%v), want %s", name, text, code, ok, want)
+			}
+		}
 	}
 }

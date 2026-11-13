@@ -321,6 +321,8 @@ type AppReconciler struct {
 	privatePortScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
 	// portCandidate remembers the lone port a scan found until a second scan agrees.
 	portCandidate sync.Map // "<ns>/<name>" -> int
+	// portHint keeps the last scan's stall hint for the passes between scans.
+	portHint sync.Map // "<ns>/<name>" -> scannedHint
 	// portDetectEvery overrides the scan spacing (tests); zero uses the default.
 	portDetectEvery time.Duration
 	// BuildClient bypasses controller-runtime's shared cache for build-plane
@@ -605,6 +607,9 @@ func (r *AppReconciler) canonicalNamespace(app *appv1alpha1.App) bool {
 func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	var app appv1alpha1.App
 	if err := r.Get(ctx, req.NamespacedName, &app); err != nil {
+		if apierrors.IsNotFound(err) {
+			r.forgetPortScans(req.Namespace + "/" + req.Name)
+		}
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
@@ -1137,7 +1142,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 	if r.PerAppRegistry != nil && r.Registry != "" {
 		if res, halted := r.awaitRegistryCredActive(ctx, app, appv1alpha1.PhaseBuilding,
 			"registry credential probe failed before build; requeueing",
-			"Waiting for the registry to accept this app's build credential"); halted {
+			appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedBuildCred)); halted {
 			return halt(res, nil)
 		}
 	}
@@ -1259,7 +1264,7 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 			logf.FromContext(ctx).Error(err, "re-count after build create failed; leaving the overshoot in place", "app", app.Name)
 		} else if shed {
 			r.setPhaseWith(ctx, app, appv1alpha1.PhaseBuilding, reasonBuildQueued,
-				"a concurrent dispatch took the last build slot; waiting for a slot",
+				appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedSlotTaken),
 				holdBuild(app, appv1alpha1.BuildHoldAdmission, time.Now()))
 			return halt(ctrl.Result{RequeueAfter: 30 * time.Second}, nil)
 		}
@@ -1314,7 +1319,8 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		// (a build that waits for a node must not spend that wait from its own
 		// budget; the 2026-08-11 misattribution incident, ADR034 §3).
 		r.setBuildingPhase(ctx, app, reasonBuildQueued,
-			"waiting for build capacity: "+obs.Message, holdEnded)
+			appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedCapacity, appv1alpha1.DeployReasonParam{Name: "detail", Value: obs.Message}),
+			holdEnded)
 		return halt(ctrl.Result{RequeueAfter: buildObserveRequeue}, nil)
 	default: // build.PhaseBuilding — a pod is placed and compiling
 		r.setBuildingPhase(ctx, app, reasonBuilding, "Building image from "+app.Spec.Repo, holdEnded)
@@ -1542,10 +1548,16 @@ type buildCap struct {
 	noun      string
 }
 
+// fullMessage is what a release held by a full workspace cap reads.
+func (c buildCap) fullMessage(active int) string {
+	return appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedBuildLimit, appv1alpha1.DeployReasonParam{Name: "noun", Value: c.noun},
+		appv1alpha1.DeployReasonParam{Name: "active", Value: strconv.Itoa(active)}, appv1alpha1.DeployReasonParam{Name: "limit", Value: strconv.Itoa(c.limit)})
+}
+
 // clusterFullMessage is what a release held by the cluster ceiling reads. It
 // carries no counts: a count would change with every slot that frees and turn
 // each turnover into a status write per held release.
-const clusterFullMessage = "the cluster's build capacity is full; waiting for a slot"
+var clusterFullMessage = appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedClusterFull)
 
 // admitBuild applies the caps to a new dispatch and returns why the release
 // must wait, or "" to admit it. One build-plane listing answers every cap.
@@ -1560,7 +1572,7 @@ func (r *AppReconciler) admitBuild(ctx context.Context, app *appv1alpha1.App, ca
 	for _, c := range caps {
 		if c.workspace != "" {
 			if n := byWorkspace[c.workspace]; n >= c.limit {
-				return fmt.Sprintf("%s has %d/%d concurrent builds active; waiting for a slot", c.noun, n, c.limit), nil
+				return c.fullMessage(n), nil
 			}
 			continue
 		}
@@ -1736,7 +1748,7 @@ func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alp
 		return nil, buildInputs{}, "", fmt.Errorf("checking linked databases: %w", err)
 	}
 	if db != "" {
-		return nil, buildInputs{}, "Waiting for linked database " + db + " to become available before building", nil
+		return nil, buildInputs{}, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedDatabase, appv1alpha1.DeployReasonParam{Name: "database", Value: db}), nil
 	}
 	// Native builds and Dockerfile builds (including "auto", which builds the
 	// repo's Dockerfile) both receive the merged env and secret files: a
@@ -1752,7 +1764,7 @@ func (r *AppReconciler) prepareSourceBuildEnv(ctx context.Context, app *appv1alp
 	}
 	inputs, err := r.projectBuildInputs(ctx, app, buildNs, projectLiterals)
 	if errors.Is(err, errBuildEnvRefPending) {
-		return nil, buildInputs{}, "Waiting for a linked datastore's connection details before building", nil
+		return nil, buildInputs{}, appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedDatastore), nil
 	}
 	if err != nil {
 		return nil, buildInputs{}, "", err
@@ -2939,7 +2951,7 @@ func (r *AppReconciler) deployRegistryGate(ctx context.Context, app *appv1alpha1
 	}
 	return r.awaitRegistryCredActive(ctx, app, appv1alpha1.PhaseDeploying,
 		"registry credential probe failed; requeueing",
-		"Waiting for the registry to accept this app's pull credential")
+		appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonQueuedPullCred))
 }
 
 // rolloutPending reports whether something is actually rolling out. A settled
@@ -3938,6 +3950,9 @@ func (r *AppReconciler) holdFailedFirstRelease(ctx context.Context, app *appv1al
 // served ⇒ PhaseFailed. ActiveRevision set ⇒ prior release still describes what
 // is (or was) serving ⇒ Running / Hibernated, deploy fact only.
 func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int) (ctrl.Result, error) {
+	// The verdict is kept for good, so it rests on a scan of now, not the
+	// last one replayed (w5/m356).
+	r.portScanned.Delete(app.Namespace + "/" + app.Name)
 	reason, msg := r.rolloutStallDiagnosis(ctx, app, dep, port)
 	if msg == "" {
 		if qr, qm := r.rolloutQuotaBlockMessage(ctx, dep); qm != "" {
@@ -6089,7 +6104,7 @@ func (r *AppReconciler) rolloutStallDiagnosis(ctx context.Context, app *appv1alp
 func imageStallNote(app *appv1alpha1.App, port int) string {
 	note := imagePortStallHint(app, port)
 	if network := app.Status.ImageNetwork; network != nil && network.HTTPSelection == appv1alpha1.HTTPSelectionFallback {
-		note += " No port answered HTTP during startup discovery."
+		note += appv1alpha1.FormatDeployReason(appv1alpha1.DeployReasonHintNoHTTPDiscovered)
 	}
 	return note
 }
@@ -6107,39 +6122,33 @@ func imagePortStallHint(app *appv1alpha1.App, port int) string {
 	if !app.Spec.HasImagePorts() || app.Spec.HealthCheckPath != "" || network == nil || len(network.Ports) == 0 {
 		return ""
 	}
-	source := ""
-	switch {
-	case app.Status.EnvPort > 0:
-		source = "the service's PORT environment variable"
-	case configuredPortMode(app.Spec.PortMode):
-		source = "the service's configured port"
-	}
+	env := app.Status.EnvPort > 0
+	configured := env || configuredPortMode(app.Spec.PortMode)
 	declared := make([]string, 0, len(network.Ports))
 	for _, p := range network.Ports {
-		if source == "" || int(p) != port {
+		if !configured || int(p) != port {
 			declared = append(declared, strconv.Itoa(int(p)))
 		}
 	}
-	if source == "" && network.NoDeclaredPorts {
-		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the default because the image declares no TCP ports."+
-			" The server must bind host 0.0.0.0 on the port in PORT (%d).", port, port) + backgroundWorkerHint
+	// A PORT variable wins over any port setting, so the hint names it and
+	// only changing it helps (w4/m323).
+	var code string
+	switch {
+	case !configured && network.NoDeclaredPorts:
+		code = appv1alpha1.DeployReasonHintImageDefaultPort
+	case !configured:
+		code = appv1alpha1.DeployReasonHintImageDeclaredPorts
+	case len(declared) == 0 && env:
+		code = appv1alpha1.DeployReasonHintEnvPortOnly
+	case len(declared) == 0:
+		code = appv1alpha1.DeployReasonHintConfiguredPortOnly
+	case env:
+		code = appv1alpha1.DeployReasonHintEnvPortDeclared
+	default:
+		code = appv1alpha1.DeployReasonHintConfiguredPortDeclared
 	}
-	if source == "" {
-		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, the primary port selected from the image's declared TCP ports (%s)."+
-			" Bind the server to 0.0.0.0 on one of those ports, or set the service's port to the one it listens on.",
-			port, strings.Join(declared, ", ")) + backgroundWorkerHint
-	}
-	if len(declared) == 0 {
-		return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares no other TCP port."+
-			" Bind the server to 0.0.0.0 on port %d, or change the service's port to the one it listens on.", port, source, port) + backgroundWorkerHint
-	}
-	fix := " Change the service's port in Settings to the one it listens on, or remove it to use the image's port."
-	if app.Status.EnvPort > 0 {
-		// The variable wins over any port setting, so only changing it helps
-		// (w4/m323).
-		fix = " Change the PORT environment variable to the port it listens on, or remove it to use the image's port."
-	}
-	return fmt.Sprintf(" Nothing accepted a TCP connection on port %d, set by %s; the image declares TCP ports (%s).", port, source, strings.Join(declared, ", ")) + fix + backgroundWorkerHint
+	return appv1alpha1.FormatDeployReason(code, portParam(int32(port)),
+		appv1alpha1.DeployReasonParam{Name: "ports", Value: strings.Join(declared, ", ")}) + backgroundWorkerHint
 }
 
 // nodeLossDisruptions are the DisruptionTarget reasons Kubernetes gives a pod
@@ -6468,9 +6477,8 @@ func probeStallMessage(pods []corev1.Pod) (string, string) {
 	return "", ""
 }
 
-// probeStallText is a probe stall's in-flight sentence. A GET or a TCP connect
-// is worded from the shared templates, which the dashboard words in its own
-// language (w4/591); any other check keeps the composed English.
+// probeStallText is a probe stall's in-flight sentence, worded from the shared
+// templates, which the dashboard words in its own language (w4/591, w5/m356).
 func probeStallText(kind string, probe *corev1.Probe, restarts int32) string {
 	path, port, ok := probeGET(probe)
 	tcp := probe.TCPSocket != nil
@@ -6480,13 +6488,7 @@ func probeStallText(kind string, probe *corev1.Probe, restarts int32) string {
 		port, ok = probe.TCPSocket.Port.String(), true
 	}
 	if !ok {
-		msg := fmt.Sprintf("the container is running but its %s health check %s: the configured health check.", kind, probeStallWaiting)
-		if restarts > 0 {
-			msg += fmt.Sprintf(
-				" The liveness check has already restarted the container %d time(s), so the check is failing rather than merely slow.",
-				restarts)
-		}
-		return msg + " Check that the path returns a 2xx or 3xx status on the service's own port."
+		return appv1alpha1.OtherProbeStallReason(kind, restarts)
 	}
 	return appv1alpha1.ProbeStallReason(kind, tcp, path, port, restarts)
 }

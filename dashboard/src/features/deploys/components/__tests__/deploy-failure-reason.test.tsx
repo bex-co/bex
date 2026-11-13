@@ -45,7 +45,12 @@ describe("DeployFailureReason", () => {
     afterEach(async () => {
       await i18n.changeLanguage("en");
     });
-    const template = { code: "http_port_detected", params: { port: "80" } };
+    const template = {
+      code: "http_port_detected",
+      params: { port: "80" },
+      parts: [],
+      remainder: "",
+    };
 
     it("words a known template in zh, tooltip included", async () => {
       await i18n.changeLanguage("zh");
@@ -70,7 +75,12 @@ describe("DeployFailureReason", () => {
       render(
         <DeployFailureReason
           reason="Something new"
-          template={{ code: "something_new", params: {} }}
+          template={{
+            code: "something_new",
+            params: {},
+            parts: [],
+            remainder: "",
+          }}
         />,
       );
       expect(screen.getByText("Something new")).toBeInTheDocument();
