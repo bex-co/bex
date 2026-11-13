@@ -241,6 +241,8 @@ func TestTerminationDescribe(t *testing.T) {
 		{Termination{Reason: "Error", ExitCode: code(137)}, "the sandbox's agent was killed by signal 9 (exit 137)"},
 		{Termination{Reason: "Completed", ExitCode: code(0)}, "the sandbox's agent exited before finishing its turn (exit 0)"},
 		{Termination{Reason: "Evicted"}, "the sandbox was evicted from its node"},
+		{Termination{Reason: "EvictedEphemeralStorage"}, "the sandbox ran out of disk space (it wrote more than its ephemeral storage limit)"},
+		{Termination{Reason: "EvictedEphemeralStorage", ExitCode: code(137)}, "the sandbox ran out of disk space (it wrote more than its ephemeral storage limit; exit 137)"},
 		{Termination{Reason: "DeletionByTaintManager"}, "the sandbox was evicted from its node after the node stopped responding"},
 		{Termination{Reason: "DeadlineExceeded"}, "the sandbox stopped (DeadlineExceeded)"},
 		{Termination{Reason: "not one word; rm -rf"}, ""},

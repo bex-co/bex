@@ -167,6 +167,9 @@ type osImageSpec struct {
 type osResourceLimits struct {
 	CPU    string `json:"cpu"`
 	Memory string `json:"memory"`
+	// EphemeralStorage caps the container's writable layer when set; without
+	// it the namespace LimitRange's default (10Gi) applies.
+	EphemeralStorage string `json:"ephemeral-storage,omitempty"`
 }
 
 // withoutReadRetry is c with a read sent once, for a caller that holds
@@ -299,17 +302,17 @@ func serverErrorCode(body []byte) string {
 
 // Create starts a sandbox from a resolved template image and returns its id and
 // mapped status. tenantKey scopes it to the caller's `<ws>-sandbox` namespace.
-func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint []string, cpu, memory string, timeout int, env, metadata map[string]string) (osSandbox, error) {
+func (c *Client) Create(ctx context.Context, tenantKey, image string, entrypoint []string, limits osResourceLimits, timeout int, env, metadata map[string]string) (osSandbox, error) {
 	// Overcommit: request a fraction of the limit so bursty, mostly-idle sandboxes
 	// pack the node instead of each reserving its full limit at schedule time
 	// (which capped a node at ~2 sandboxes and produced "Insufficient cpu/memory"
 	// scheduling failures at low real load). The limit still caps a burst.
-	reqCPU, reqMem := requestFor(cpu, memory)
+	reqCPU, reqMem := requestFor(limits.CPU, limits.Memory)
 	data, code, err := c.do(ctx, http.MethodPost, "/sandboxes", tenantKey, createRequest{
 		Image:            osImageSpec{URI: image},
 		Entrypoint:       entrypoint,
-		ResourceLimits:   osResourceLimits{CPU: cpu, Memory: memory},
-		ResourceRequests: osResourceLimits{CPU: reqCPU, Memory: reqMem},
+		ResourceLimits:   limits,
+		ResourceRequests: osResourceLimits{CPU: reqCPU, Memory: reqMem, EphemeralStorage: ephemeralRequestFor(limits.EphemeralStorage)},
 		Env:              env,
 		Metadata:         metadata,
 		Timeout:          timeout,

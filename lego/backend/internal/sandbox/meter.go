@@ -153,6 +153,18 @@ func requestFor(cpu, memory string) (reqCPU, reqMem string) {
 	return reqCPU, reqMem
 }
 
+// ephemeralRequestFor requests a quarter of an ephemeral storage limit, as
+// requestFor does for CPU and memory, with the LimitRange's 1Gi default
+// request as the floor; "" stays "" (the LimitRange default applies).
+func ephemeralRequestFor(limit string) string {
+	q, err := resource.ParseQuantity(limit)
+	if err != nil || q.Value() <= 0 {
+		return ""
+	}
+	bytes := max(q.Value()/4, 1<<30)
+	return resource.NewQuantity(bytes, resource.BinarySI).String()
+}
+
 // memoryMiBOf is an allocated memory quantity ("2Gi", "512Mi") in whole MiB,
 // rounded up; 0 for an unparseable or non-positive one, which the memory meter
 // skips instead of guessing.

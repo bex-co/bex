@@ -107,6 +107,18 @@ func TestKubeExecutorRecordsHowATerminalTargetEnded(t *testing.T) {
 	evicted := readyPod(corev1.ConditionFalse)
 	evicted.Status.Phase, evicted.Status.Reason = corev1.PodFailed, "Evicted"
 	evicted.Status.ContainerStatuses = nil
+	// An ephemeral storage eviction leaves the container a synthetic
+	// ContainerStatusUnknown exit 137; the Pod's reason names the cause.
+	diskEvicted := readyPod(corev1.ConditionFalse)
+	diskEvicted.Status.Phase, diskEvicted.Status.Reason = corev1.PodFailed, "Evicted"
+	diskEvicted.Status.Message = "Pod ephemeral local storage usage exceeds the total limit of containers 10Gi. "
+	diskEvicted.Status.ContainerStatuses[0].State = corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{Reason: "ContainerStatusUnknown", ExitCode: 137}}
+	// A real termination the container recorded still wins over the eviction.
+	oomEvicted := diskEvicted.DeepCopy()
+	oomEvicted.Status.ContainerStatuses[0].State = corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{Reason: "OOMKilled", ExitCode: 137}}
+	// Node disk pressure is an eviction, not the sandbox's own limit.
+	pressureEvicted := diskEvicted.DeepCopy()
+	pressureEvicted.Status.Message = "The node was low on resource: ephemeral-storage. "
 	// A Pod on a node NotReady past its toleration is deleted by the taint
 	// manager while its container still reads Running.
 	tainted := readyPod(corev1.ConditionFalse)
@@ -124,6 +136,9 @@ func TestKubeExecutorRecordsHowATerminalTargetEnded(t *testing.T) {
 		{"OOM killed", oom, "OOMKilled", 137},
 		{"earlier exit", restarted, "Error", 3},
 		{"evicted pod", evicted, "Evicted", -1},
+		{"ephemeral storage eviction", diskEvicted, "EvictedEphemeralStorage", -1},
+		{"OOM before an eviction", oomEvicted, "OOMKilled", 137},
+		{"node disk pressure eviction", pressureEvicted, "Evicted", -1},
 		{"taint eviction", tainted, "DeletionByTaintManager", -1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

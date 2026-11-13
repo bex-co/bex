@@ -96,6 +96,8 @@ func (t Termination) Describe() string {
 			return "the sandbox ran out of memory (exit 137)"
 		case "Evicted":
 			return "the sandbox was evicted from its node"
+		case "EvictedEphemeralStorage":
+			return "the sandbox ran out of disk space (it wrote more than its ephemeral storage limit)"
 		case "DeletionByTaintManager":
 			return "the sandbox was evicted from its node after the node stopped responding"
 		}
@@ -111,6 +113,8 @@ func (t Termination) Describe() string {
 		return fmt.Sprintf("the sandbox ran out of memory (exit %d)", code)
 	case reason == "Evicted":
 		return fmt.Sprintf("the sandbox was evicted from its node (exit %d)", code)
+	case reason == "EvictedEphemeralStorage":
+		return fmt.Sprintf("the sandbox ran out of disk space (it wrote more than its ephemeral storage limit; exit %d)", code)
 	case code > 128 && code < 128+65:
 		return fmt.Sprintf("the sandbox's agent was killed by signal %d (exit %d)%s", code-128, code, suffix)
 	case code != 0:

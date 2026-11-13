@@ -63,6 +63,15 @@ func TestSandboxTemplateRegistryIncludesPluggableAgentDriver(t *testing.T) {
 	if large.CPU != "4" || large.Memory != "8Gi" {
 		t.Fatalf("agent-4c-8g resource limits = %s/%s, want 4/8Gi", large.CPU, large.Memory)
 	}
+	// Above the namespace's 10Gi default, within its 32Gi max.
+	for name, tmpl := range map[string]sandbox.Template{"agent": agent, "agent-4c-8g": large} {
+		if tmpl.EphemeralStorage != "30Gi" {
+			t.Errorf("%s ephemeral storage = %q, want 30Gi", name, tmpl.EphemeralStorage)
+		}
+	}
+	if got := templates["base"].EphemeralStorage; got != "" {
+		t.Errorf("base ephemeral storage = %q, want the LimitRange default", got)
+	}
 	base := templates["base"]
 	if base.Image != "alpine:3" {
 		t.Fatalf("base template image = %q", base.Image)

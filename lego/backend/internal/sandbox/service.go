@@ -92,6 +92,9 @@ type Template struct {
 	Entrypoint []string
 	CPU        string
 	Memory     string
+	// EphemeralStorage caps the sandbox's writable layer; "" keeps the
+	// namespace LimitRange's default.
+	EphemeralStorage string
 	// Env is the template's own environment, under the caller's create env
 	// (a caller's variable of the same name wins).
 	Env map[string]string
@@ -972,7 +975,8 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 		maps.Copy(merged, env)
 		env = merged
 	}
-	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, openSandboxTimeout(timeout), env, metadata)
+	limits := osResourceLimits{CPU: cpu, Memory: mem, EphemeralStorage: tmpl.EphemeralStorage}
+	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, limits, openSandboxTimeout(timeout), env, metadata)
 	if err != nil {
 		if errors.Is(err, errPodReadyTimeout) {
 			return Sandbox{}, s.podReadyTimeoutError(ctx, key, workspace, cpu, mem)

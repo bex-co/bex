@@ -47,7 +47,7 @@ func TestClientCreateSendsTenantKeyAndMapsStatus(t *testing.T) {
 	defer srv.Close()
 
 	c := NewClient(srv.URL)
-	sandbox, err := c.Create(context.Background(), "wskey-123", "img:1", []string{"sh"}, "500m", "512Mi", 600, map[string]string{"A": "b"}, map[string]string{metadataOwner: "id-a"})
+	sandbox, err := c.Create(context.Background(), "wskey-123", "img:1", []string{"sh"}, osResourceLimits{CPU: "500m", Memory: "512Mi"}, 600, map[string]string{"A": "b"}, map[string]string{metadataOwner: "id-a"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,6 +70,9 @@ func TestClientCreateSendsTenantKeyAndMapsStatus(t *testing.T) {
 	// pod schedules on a fraction of its cap (see requestFor).
 	if gotBody.ResourceLimits.CPU != "500m" || gotBody.ResourceLimits.Memory != "512Mi" {
 		t.Errorf("limits = %+v, want 500m/512Mi", gotBody.ResourceLimits)
+	}
+	if gotBody.ResourceLimits.EphemeralStorage != "" || gotBody.ResourceRequests.EphemeralStorage != "" {
+		t.Errorf("ephemeral storage = %q/%q, want none (the LimitRange default)", gotBody.ResourceLimits.EphemeralStorage, gotBody.ResourceRequests.EphemeralStorage)
 	}
 	if gotBody.ResourceRequests.CPU != "125m" || gotBody.ResourceRequests.Memory != "128Mi" {
 		t.Errorf("requests = %+v, want overcommit 125m/128Mi", gotBody.ResourceRequests)
@@ -95,6 +98,34 @@ func TestRequestForQuartersLimitWithFloors(t *testing.T) {
 		if gotCPU != tc.wantCPU || gotMem != tc.wMem {
 			t.Errorf("requestFor(%q,%q) = %q/%q, want %q/%q", tc.cpu, tc.mem, gotCPU, gotMem, tc.wantCPU, tc.wMem)
 		}
+	}
+}
+
+// An ephemeral storage limit requests a quarter, never below the
+// LimitRange's 1Gi default request; no limit asks for nothing.
+func TestEphemeralRequestForQuartersLimitWithFloor(t *testing.T) {
+	for limit, want := range map[string]string{"30Gi": "7680Mi", "2Gi": "1Gi", "": "", "garbage": ""} {
+		if got := ephemeralRequestFor(limit); got != want {
+			t.Errorf("ephemeralRequestFor(%q) = %q, want %q", limit, got, want)
+		}
+	}
+}
+
+// The ephemeral storage limit and its request travel in the create body.
+func TestClientCreateSendsEphemeralStorage(t *testing.T) {
+	var gotBody createRequest
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"id":"os-abc","status":{"state":"Creating"}}`))
+	}))
+	defer srv.Close()
+	limits := osResourceLimits{CPU: "4", Memory: "8Gi", EphemeralStorage: "30Gi"}
+	if _, err := NewClient(srv.URL).Create(context.Background(), "k", "img", []string{"sh"}, limits, 0, nil, nil); err != nil {
+		t.Fatal(err)
+	}
+	if gotBody.ResourceLimits.EphemeralStorage != "30Gi" || gotBody.ResourceRequests.EphemeralStorage != "7680Mi" {
+		t.Errorf("ephemeral storage limit/request = %q/%q, want 30Gi/7680Mi", gotBody.ResourceLimits.EphemeralStorage, gotBody.ResourceRequests.EphemeralStorage)
 	}
 }
 
@@ -239,7 +270,7 @@ func TestClientCreateErrorsOnBadStatus(t *testing.T) {
 	}))
 	defer srv.Close()
 	c := NewClient(srv.URL)
-	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, "500m", "512Mi", 0, nil, nil); err == nil {
+	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, osResourceLimits{CPU: "500m", Memory: "512Mi"}, 0, nil, nil); err == nil {
 		t.Fatal("expected error on 500")
 	}
 }
@@ -255,14 +286,14 @@ func TestClientCreateMapsPodReadyTimeoutSignature(t *testing.T) {
 
 	// The server's own error code for an elapsed synchronous pod-ready wait.
 	body = `{"code":"KUBERNETES::POD_READY_TIMEOUT","message":"sandbox pod not ready within 300s"}`
-	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, "500m", "512Mi", 0, nil, nil); !errors.Is(err, errPodReadyTimeout) {
+	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, osResourceLimits{CPU: "500m", Memory: "512Mi"}, 0, nil, nil); !errors.Is(err, errPodReadyTimeout) {
 		t.Fatalf("timeout-signature create error = %v, want errPodReadyTimeout", err)
 	}
 
 	// Narrow mapping: any other failure — even the same status — keeps the
 	// generic mapping and is never reported as a capacity refusal.
 	body = `{"code":"KUBERNETES::INTERNAL","message":"boom"}`
-	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, "500m", "512Mi", 0, nil, nil); err == nil || errors.Is(err, errPodReadyTimeout) {
+	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, osResourceLimits{CPU: "500m", Memory: "512Mi"}, 0, nil, nil); err == nil || errors.Is(err, errPodReadyTimeout) {
 		t.Fatalf("non-timeout create error = %v, want a generic error without errPodReadyTimeout", err)
 	}
 }

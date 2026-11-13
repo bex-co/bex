@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -109,13 +110,14 @@ func ClassifyTarget(pod *corev1.Pod, container string) error {
 }
 
 // targetTermination is the container's current terminated state, else its
-// last one (a restarted container), else the Pod's own reason (Evicted), else
-// why it is being deleted (DisruptionTarget: a taint eviction from a NotReady
-// node, a preemption).
+// last one (a restarted container), else the Pod's eviction (by its ephemeral
+// storage limit, or another cause), else why it is being deleted
+// (DisruptionTarget: a taint eviction from a NotReady node, a preemption).
 func targetTermination(pod *corev1.Pod, container string) (string, *int) {
 	if pod == nil {
 		return "", nil
 	}
+	eviction := evictionReason(pod)
 	for _, status := range pod.Status.ContainerStatuses {
 		if status.Name != container {
 			continue
@@ -124,10 +126,15 @@ func targetTermination(pod *corev1.Pod, container string) (string, *int) {
 		if terminated == nil {
 			terminated = status.LastTerminationState.Terminated
 		}
-		if terminated != nil {
+		// After an eviction the kubelet records a synthetic
+		// ContainerStatusUnknown exit 137, which would hide the cause.
+		if terminated != nil && (eviction == "" || terminated.Reason != "ContainerStatusUnknown") {
 			code := int(terminated.ExitCode)
 			return terminated.Reason, &code
 		}
+	}
+	if eviction != "" {
+		return eviction, nil
 	}
 	if pod.Status.Reason != "" {
 		return pod.Status.Reason, nil
@@ -138,6 +145,20 @@ func targetTermination(pod *corev1.Pod, container string) (string, *int) {
 		}
 	}
 	return "", nil
+}
+
+// evictionReason is "EvictedEphemeralStorage" for a Pod the kubelet evicted
+// for exceeding its ephemeral storage limit (recognised by the kubelet's fixed
+// wording, so no node text is kept), "Evicted" for any other eviction, else "".
+func evictionReason(pod *corev1.Pod) string {
+	if pod.Status.Phase != corev1.PodFailed || pod.Status.Reason != "Evicted" {
+		return ""
+	}
+	message := pod.Status.Message
+	if strings.Contains(message, "ephemeral local storage usage exceeds") || strings.Contains(message, "exceeded its local ephemeral storage limit") {
+		return "EvictedEphemeralStorage"
+	}
+	return "Evicted"
 }
 
 func (e *KubeExecutor) checkTarget(ctx context.Context, target apps.SSHInstanceTarget) error {

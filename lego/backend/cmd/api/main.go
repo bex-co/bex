@@ -108,9 +108,12 @@ func sandboxTemplateRegistry(baseImage, agentImage string) map[string]sandbox.Te
 	// sandbox created with no flags is Render's 1c-2g in size, meter weight
 	// and name (w8/247).
 	baseCPU, baseMemory, _ := sandbox.PlanLimits(sandbox.DefaultPlan)
+	// An agent session clones and builds a whole repository, which needs more
+	// than the sandbox namespace's 10Gi ephemeral storage default (ADR105
+	// § Until the AX42-1 arrives); 30Gi stays within the LimitRange's 32Gi max.
 	agentTemplate := func(plan sandbox.Plan) sandbox.Template {
 		cpu, memory, _ := sandbox.PlanLimits(plan)
-		return sandbox.Template{Image: agentImage, Entrypoint: []string{"bex-agent-driver"}, CPU: cpu, Memory: memory}
+		return sandbox.Template{Image: agentImage, Entrypoint: []string{"bex-agent-driver"}, CPU: cpu, Memory: memory, EphemeralStorage: "30Gi"}
 	}
 	return map[string]sandbox.Template{
 		"base": {
