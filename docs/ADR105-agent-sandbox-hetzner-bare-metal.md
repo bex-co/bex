@@ -225,7 +225,7 @@ Since 09:30 UTC, three machines in other pools (two `cx33`, one `cx43`) have fai
 - **cpx52** holds two routines at the larger size and a customer session with no memory overcommit. With the schedule spread so that at most two routines overlap, that covers them. It costs the same as the AX42-1's monthly cap, which buys 16 dedicated threads and 64 GB.
 - **cpx62** is the option for more concurrency: a trust tier above T0, or the schedule left as it is.
 - **Unit economics.** § Unit economics carries the three options as rows beside the dedicated servers. With the `cx` line out of stock, every cloud option costs more per slot than the AX42-1: $0.0299 to $0.0374 a slot-hour against $0.0125.
-- **Choice:** the user's, pending.
+- **Choice:** cpx42, the user's decision on 2026-11-12 (§ What the interim setup measured).
 
 **Independent of the choice:**
 
@@ -250,15 +250,21 @@ Since 09:30 UTC, three machines in other pools (two `cx33`, one `cx43`) have fai
 - **It beats runc on the old node.** t001's runc replay took 1,361 s without the download; the warm gVisor replay takes 367 s in all. This is the step 3 gate's comparison, and it now favours the cloud node: on the AX42-1, Kata has to beat 367 s, not 2,437 s. t006 measures it.
 - **The dashboard half is now the larger part** (163 of 367 s). Its yarn cache is not baked.
 
-**What stopped the routines instead.** No routine has completed on the interim setup yet, and none stopped on speed:
+**What the routines did on the interim setup (2026-11-13 UTC).** Each turn is timed from its `started_at` to `completed_at`:
 
-| Run (2026-11-13 UTC) | Setup | Turn | End |
+| Run | Setup | Turn | End |
 | --- | --- | --- | --- |
 | `rt-unify-duplicates`, on demand | cold, 10Gi | 49 min 34 s | evicted: ephemeral storage over 10Gi (t009 raised it to 30Gi) |
-| `rt-simplify-logic`, scheduled | warm, 10Gi | 22 min 27 s | `AGENT_MODEL_SPEND_CAP_REACHED`; disk at 4.6Gi |
+| `rt-simplify-logic`, scheduled 02:00 | warm, 10Gi | 22 min 27 s | `AGENT_MODEL_SPEND_CAP_REACHED`; disk at 4.6Gi |
 | `rt-unify-duplicates`, on demand | warm, 30Gi | 7 min 47 s | `AGENT_MODEL_SPEND_CAP_REACHED` |
+| `rt-unify-duplicates`, on demand 07:02 | warm, 30Gi | 68 min 24 s | out of memory at 8 GiB: the go command's work directory was in gVisor's memory-backed `/tmp` (w6/124 moved it to `/var/tmp`) |
+| `rt-fix-logic-bugs`, scheduled 08:00 | warm, 30Gi | **41 min 43 s** | completed: PR #142 (3 h 34 min on 2026-11-12) |
+| `rt-unify-duplicates`, on demand 09:47 | warm, 30Gi, `/var/tmp` | **61 min 56 s** | completed: PR #143 (out of memory after 2 h 26 min on 2026-11-12) |
 
-The bex workspace is on the Scale plan (a $2,000 monthly cap) but has never paid, so trust tier T0's $10 ceiling applies (ADR091); its November platform-model spend reached $10.01. The workspace's own cap was set to $100 on 2026-11-13, and takes effect once a first payment of at least $10 lifts it to T1. Until then, or with the workspace's own model key, every routine fails at its first model call.
+- **The first two completed routines are 2.6 to 5 times faster than on the `cx33`.** `rt-fix-logic-bugs` took 41 min 43 s against 3 h 34 min. `rt-unify-duplicates`, which ran out of memory after 2 h 26 min on 2026-11-12, completed in 61 min 56 s, with 82 s more before the turn for the sandbox to start.
+- **CPU is now the bound, not memory or disk.** The 09:47 run, sampled every two minutes: about 11 minutes reading code at 0.5 to 1.4 cores, then 48 minutes at 3.8 to 4.0 of its 4 cores while it ran `go test ./...`, `go vet` and the linters over and over. Its memory peaked at 6.2 of 8 GiB and its disk at 4.9 of 30 GiB. A larger template (6 or 7 of the cpx42's 7 allocatable cores) would shorten that part, at one routine per node; so would a routine that tests only the packages it changed.
+- **Model spend is small.** The 09:47 run cost $0.25 of platform-model spend in 62 minutes.
+- **The spend cap no longer stops them.** The bex workspace (Scale plan, never paid before) sat at trust tier T0's $10 until 09:50:32, when its 09:47 run's first model request found $10.50 unbilled. bex charged the card $10.50 in that request (paid 4.9 s later, ADR091 D10.2a, w6/m362), the workspace moved to T1 with the $100 cap set on 2026-11-13, and the session continued.
 
 **Rolling the pool.**
 
