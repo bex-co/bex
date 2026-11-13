@@ -25,6 +25,7 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/graphql-go/graphql"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -48,6 +49,8 @@ func deletingService(t *testing.T) (*Service, client.Client) {
 	held := sampleApp("web")
 	held.Finalizers = []string{"app.bex.co/finalizer"}
 	svc, cl := newService(nil, held)
+	// A teardown that outlasts the create's wait (w2/m361): keep it short here.
+	svc.NameReleaseWait = 50 * time.Millisecond
 	if err := cl.Delete(context.Background(), held); err != nil {
 		t.Fatal(err)
 	}
@@ -94,6 +97,70 @@ func TestGraphQL_CreateServiceUnderAStillDeletingNameIsCoded(t *testing.T) {
 	}
 	if code, _ := res.Errors[0].Extensions["code"].(string); code != ServiceNameStillDeletingCode || res.Errors[0].Message != stillDeletingMsg {
 		t.Fatalf("error = %q %v, want %s %q", res.Errors[0].Message, res.Errors[0].Extensions, ServiceNameStillDeletingCode, stillDeletingMsg)
+	}
+}
+
+// w2/m361: Render accepts a just-deleted service's name at once. A create
+// that meets a teardown in progress waits for it, and succeeds once the
+// operator's finalizer releases the App object name, on every surface.
+func TestCreateWaitsForATeardownToReleaseTheName(t *testing.T) {
+	svc, cl := deletingService(t)
+	svc.NameReleaseWait = 10 * time.Second
+	held := sampleApp("web")
+	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: held.Namespace, Name: held.Name}, held); err != nil {
+		t.Fatal(err)
+	}
+	released := make(chan error, 1)
+	go func() {
+		time.Sleep(700 * time.Millisecond)
+		held.Finalizers = nil // the operator's teardown finishes
+		released <- cl.Update(context.Background(), held)
+	}()
+	start := time.Now()
+	v, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:1"})
+	if err != nil {
+		t.Fatalf("create while the old service tears down = %v, want it to wait and succeed", err)
+	}
+	if err := <-released; err != nil {
+		t.Fatal(err)
+	}
+	if waited := time.Since(start); waited < 500*time.Millisecond || waited > 5*time.Second {
+		t.Fatalf("create returned after %s, want it to wait for the release (~0.7 s)", waited)
+	}
+	if v.Name != "web" {
+		t.Fatalf("created %+v, want the requested name", v)
+	}
+}
+
+// A teardown still running when the wait ends keeps the named retry refusal,
+// and the wait never outlives its bound.
+func TestCreateGivesUpOnATeardownThatOutlastsTheWait(t *testing.T) {
+	svc, _ := deletingService(t)
+	svc.NameReleaseWait = 300 * time.Millisecond
+	start := time.Now()
+	_, err := svc.Create(context.Background(), CreateRequest{Name: "web", Image: "nginx:1"})
+	if err == nil || coded(t, err) != ServiceNameStillDeletingCode {
+		t.Fatalf("create = %v, want %s", err, ServiceNameStillDeletingCode)
+	}
+	if waited := time.Since(start); waited < 300*time.Millisecond || waited > 3*time.Second {
+		t.Fatalf("create waited %s, want about the 300 ms bound", waited)
+	}
+}
+
+// The wait never eats the writes' share of the request's own deadline: with
+// 9 s left and an 8 s reserve, it gives up after about one second.
+func TestNameWaitLeavesTheRequestTimeForItsWrites(t *testing.T) {
+	svc, _ := deletingService(t)
+	svc.NameReleaseWait = 20 * time.Second
+	ctx, cancel := context.WithTimeout(context.Background(), createWriteReserve+time.Second)
+	defer cancel()
+	start := time.Now()
+	_, err := svc.Create(ctx, CreateRequest{Name: "web", Image: "nginx:1"})
+	if err == nil || coded(t, err) != ServiceNameStillDeletingCode {
+		t.Fatalf("create = %v, want %s", err, ServiceNameStillDeletingCode)
+	}
+	if waited := time.Since(start); waited > 3*time.Second {
+		t.Fatalf("create waited %s, past the request's reserve for its writes", waited)
 	}
 }
 

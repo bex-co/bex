@@ -20,6 +20,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -45,7 +46,10 @@ func TestCreatingUnderAStillDeletingNameIsCodedOnEverySurface(t *testing.T) {
 		if err := cl.Delete(context.Background(), gone); err != nil {
 			t.Fatal(err)
 		}
-		return serverWith(t, &core.Base{Client: cl, Namespace: "default", Authz: &fakeChecker{allow: true}}, Deps{})
+		h, srv := serverWith(t, &core.Base{Client: cl, Namespace: "default", Authz: &fakeChecker{allow: true}}, Deps{})
+		// A teardown that outlasts the create's wait (w2/m361), kept short here.
+		srv.Apps.NameReleaseWait = 100 * time.Millisecond
+		return h, srv
 	}
 	t.Run("REST", func(t *testing.T) {
 		h, _ := setup(t)

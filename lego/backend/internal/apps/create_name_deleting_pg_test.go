@@ -20,6 +20,7 @@ import (
 	"context"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -56,7 +57,8 @@ func TestPGCreateUnderAStillDeletingNameIsNamedThenSucceeds(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = st.DeleteTenant(ctx, workspace.ID) })
-	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{owner: workspace.ID}}, Store: st, DomainTraffic: allowDomainTraffic{}}
+	// A teardown that outlasts the create's wait (w2/m361), kept short here.
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{owner: workspace.ID}}, Store: st, DomainTraffic: allowDomainTraffic{}, NameReleaseWait: 100 * time.Millisecond}
 	// Storage refuses the held name as the API server does.
 	svc.Client = apiServerDryRuns{svc.Client}
 	rows := func() int {

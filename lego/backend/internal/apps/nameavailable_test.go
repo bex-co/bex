@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
@@ -48,6 +49,21 @@ func TestNameAvailable_TakenSuggestsFirstFreeSuffix(t *testing.T) {
 	}
 	if got.Available || got.Suggestion != "beancount-cms-v2-1" {
 		t.Errorf("taken name = %+v, want unavailable with suggestion beancount-cms-v2-1", got)
+	}
+}
+
+// w2/m361: a deleted service's name is free while its teardown finishes, as
+// on Render; the create waits for the release.
+func TestNameAvailable_DeletedServiceNameIsFree(t *testing.T) {
+	held := tenantApp("web", "tea-a")
+	held.Finalizers = []string{"app.bex.co/finalizer"}
+	svc, cl := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, held)
+	if err := cl.Delete(context.Background(), held); err != nil {
+		t.Fatal(err)
+	}
+	got, err := svc.NameAvailable(ctxAs("identity-a"), "web")
+	if err != nil || !got.Available || got.Suggestion != "" {
+		t.Fatalf("NameAvailable(web) during its teardown = %+v, %v; want available", got, err)
 	}
 }
 

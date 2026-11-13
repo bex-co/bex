@@ -62,6 +62,8 @@ import (
 // — the operator does the mechanism.
 type Service struct {
 	*core.Base
+	// NameReleaseWait overrides defaultNameReleaseWait (tests).
+	NameReleaseWait time.Duration
 	// ImageCompatibilityWorkspaces gives new Docker/image services in these
 	// workspaces ("*" for every workspace) the render-v1 container policy,
 	// Render's measured capability set (ADR089 § Privilege slice decisions,
@@ -2252,6 +2254,11 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err != nil {
 		return AppView{}, err
 	}
+	// A just-deleted service's name is free on Render at once: wait for its
+	// teardown to release the App object name (w2/m361).
+	if holder, err = s.awaitNameRelease(ctx, tenantID, req.Name, holder, s.nameReleaseDeadline(ctx, createWriteReserve)); err != nil {
+		return AppView{}, err
+	}
 	if holder != nil {
 		return AppView{}, errNameHeldBy(holder, req.Name)
 	}
@@ -2361,6 +2368,73 @@ func (s *Service) nameStorageRefusal(ctx context.Context, tenantID, name string,
 // App object holds the name until the teardown finishes (w2/075), as
 // ServiceStillDeletingCode refuses a Blueprint apply's re-create.
 const ServiceNameStillDeletingCode = "SERVICE_NAME_STILL_DELETING"
+
+// defaultNameReleaseWait bounds how long a create waits for a just-deleted
+// service's teardown to release its name (w2/m361). Render accepts the same
+// name at once; an ordinary teardown here clears in 1–15 s
+// (finalizerOverrunAfter in the operator), so the create answers 201 as
+// Render's does, while a static site's object purge (up to 15 min) or a
+// stalled teardown still answers ServiceNameStillDeletingCode. It stays inside
+// the API's 30 s write timeout.
+const defaultNameReleaseWait = 20 * time.Second
+
+// nameReleasePoll is how often the wait re-reads the holder.
+const nameReleasePoll = 500 * time.Millisecond
+
+// createWriteReserve and applyWriteReserve are the request time a name wait
+// leaves for the writes after it: a create's repository check and create lease,
+// a Blueprint apply's every service write. A wait never cuts them short.
+const (
+	createWriteReserve = 8 * time.Second
+	applyWriteReserve  = 15 * time.Second
+)
+
+func (s *Service) nameReleaseWait() time.Duration {
+	if s.NameReleaseWait > 0 {
+		return s.NameReleaseWait
+	}
+	return defaultNameReleaseWait
+}
+
+// nameReleaseDeadline is when a wait for a name's release must give up: the
+// configured wait, or earlier when the request's own deadline leaves less than
+// reserve for the writes that follow it.
+func (s *Service) nameReleaseDeadline(ctx context.Context, reserve time.Duration) time.Time {
+	deadline := time.Now().Add(s.nameReleaseWait())
+	if ctxDeadline, ok := ctx.Deadline(); ok && ctxDeadline.Add(-reserve).Before(deadline) {
+		deadline = ctxDeadline.Add(-reserve)
+	}
+	return deadline
+}
+
+// awaitNameRelease returns the holder of name once it is no longer a deleted
+// service's App still being torn down: nil when the teardown released the
+// name, a live holder when another service took it meanwhile, or the deleting
+// holder itself when the wait ran out (deadline, or ctx done).
+func (s *Service) awaitNameRelease(ctx context.Context, tenantID, name string, holder *appv1alpha1.App, deadline time.Time) (*appv1alpha1.App, error) {
+	for holder != nil && !holder.DeletionTimestamp.IsZero() {
+		left := time.Until(deadline)
+		if left <= 0 {
+			return holder, nil
+		}
+		timer := time.NewTimer(min(nameReleasePoll, left))
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return holder, nil
+		case <-timer.C:
+		}
+		next, err := s.nameHolder(ctx, tenantID, name)
+		if err != nil {
+			if ctx.Err() != nil {
+				return holder, nil
+			}
+			return nil, err
+		}
+		holder = next
+	}
+	return holder, nil
+}
 
 // errNameHeldBy is the refusal of a create whose name holder is holder: a
 // live service's name is in use; a deleted one's is free again once its

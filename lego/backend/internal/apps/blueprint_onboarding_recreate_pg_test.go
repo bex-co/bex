@@ -59,10 +59,12 @@ func newRecreatePGService(t *testing.T) (*Service, *store.PGStore, *pgxpool.Pool
 	}
 	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
 	svc := &Service{
-		Base:       &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{"recreate-owner": ws.ID}},
-		Blueprints: st,
-		GitFetcher: fakeBlueprintFetcher{contents: recreateManifest},
-		EnvSeeder:  &fakeSeeder{},
+		// A teardown that outlasts the apply's wait (w2/m361), kept short here.
+		NameReleaseWait: 100 * time.Millisecond,
+		Base:            &core.Base{Client: fakeClient(), Namespace: "default", Workspace: fakeWorkspace{"recreate-owner": ws.ID}},
+		Blueprints:      st,
+		GitFetcher:      fakeBlueprintFetcher{contents: recreateManifest},
+		EnvSeeder:       &fakeSeeder{},
 	}
 	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "recreate-owner", Method: "oauth2"})
 	return svc, st, pool, ctx, ws.ID
