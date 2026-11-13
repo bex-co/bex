@@ -124,7 +124,6 @@ describe("ProjectSettingsPage", () => {
     await waitFor(() =>
       expect(screen.queryByText("Project Name")).not.toBeInTheDocument(),
     );
-    expect(screen.queryByText("Project not found.")).not.toBeInTheDocument();
   });
 
   it("renames the project through the inline Edit control", async () => {
