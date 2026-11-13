@@ -158,6 +158,7 @@ func TestStatusFingerprintNamesEveryStatusField(t *testing.T) {
 		"UndeployedChangesReason":    "read by service views, not recorded",
 		"PendingReleaseGeneration":   "the pending release's verdict arrives through the phase and conditions",
 		"SelectedReleaseGeneration":  "the selected release's verdict arrives through the phase and conditions",
+		"LastSuccessfulRunAt":        "moves when a run in Runs succeeds, which already kicks; read by service views",
 		"SandboxID":                  "sandbox runtime only",
 		"Endpoint":                   "sandbox runtime only",
 	}
