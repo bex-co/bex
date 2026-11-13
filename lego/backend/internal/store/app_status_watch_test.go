@@ -54,6 +54,68 @@ func failRollout(t *testing.T, ctx context.Context, cl client.Client) {
 // row within seconds, with the resync far away. The control shows the same
 // status write waits for the resync when nothing watches.
 func TestStatusWatchClosesAFailedDeployWithoutWaitingForTheResync(t *testing.T) {
+	watchClosesDeploy(t, failRollout, DeployUpdateFailed)
+}
+
+// settlingRollout is the operator's first word that a good rollout serves: the
+// release is the active revision while the Deployment's own bookkeeping still
+// converges (app_controller.go reportRolloutProgress, w4/405).
+func settlingRollout(t *testing.T, ctx context.Context, cl client.Client) {
+	t.Helper()
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	app.Status.ReleaseGeneration = 1
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.Conditions = []metav1.Condition{{
+		Type: "Ready", Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonRolloutSettling,
+		Message: "current revision fully ready; Deployment status still converging", ObservedGeneration: app.Generation,
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// runningRollout is the same release once the rollout has completed.
+func runningRollout(t *testing.T, ctx context.Context, cl client.Client) {
+	t.Helper()
+	app := getApp(t, cl)
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	app.Status.ReleaseGeneration = 1
+	app.Status.ActiveRevision = "rev-1"
+	app.Status.Conditions = []metav1.Condition{{
+		Type: "Ready", Status: metav1.ConditionTrue, Reason: "Deployed",
+		Message: "1/1 replicas ready", ObservedGeneration: app.Generation,
+	}}
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestStatusWatchClosesAGoodDeployLiveWithoutWaitingForTheResync is the success
+// path of the same promise (w21/064): a deploy reads live within seconds of the
+// operator saying its release serves, with the resync far away. The failed-build
+// test above passes for a watch that kicks on failures and not on this
+// transition, so this one pins the transition itself, in both shapes the
+// operator writes it (the settling stamp, then Running), each with its
+// no-watch control.
+func TestStatusWatchClosesAGoodDeployLiveWithoutWaitingForTheResync(t *testing.T) {
+	for _, shape := range []struct {
+		name  string
+		write func(*testing.T, context.Context, client.Client)
+	}{
+		{"settling rollout with the release active", settlingRollout},
+		{"running", runningRollout},
+	} {
+		t.Run(shape.name, func(t *testing.T) { watchClosesDeploy(t, shape.write, DeployLive) })
+	}
+}
+
+// watchClosesDeploy writes the operator's status into a reconciled App after
+// the projector's first pass, with a resync 10 minutes away, and asserts the
+// deploy row reaches want when an App status watch is running and does not when
+// none is (the control: the write alone changes nothing the projector reads).
+func watchClosesDeploy(t *testing.T, write func(*testing.T, context.Context, client.Client), want string) {
+	t.Helper()
 	for _, watching := range []bool{true, false} {
 		name := "watching"
 		if !watching {
@@ -85,16 +147,16 @@ func TestStatusWatchClosesAFailedDeployWithoutWaitingForTheResync(t *testing.T) 
 					t.Fatal("the watch never started")
 				}
 			}
-			failRollout(t, ctx, cl)
+			write(t, ctx, cl)
 
 			if watching {
-				waitFor(t, "the deploy to close update_failed without a resync",
-					func() bool { return onlyDeploy(t, s, row.ID).Status == DeployUpdateFailed })
+				waitFor(t, "the deploy to close "+want+" without a resync",
+					func() bool { return onlyDeploy(t, s, row.ID).Status == want })
 				return
 			}
 			time.Sleep(time.Second)
-			if onlyDeploy(t, s, row.ID).Status == DeployUpdateFailed {
-				t.Fatalf("deploy closed with no watch and the resync 10 minutes away; the control does not control")
+			if onlyDeploy(t, s, row.ID).Status == want {
+				t.Fatalf("deploy closed %s with no watch and the resync 10 minutes away; the control does not control", want)
 			}
 		})
 	}
