@@ -56,6 +56,13 @@ func (e *gitError) Error() string {
 	return fmt.Sprintf("git %s: exit status %d", e.args[0], e.code)
 }
 
+// gitSaid reports whether err is a git run whose message contains msg (git
+// speaks the C locale here, so its wording is stable).
+func gitSaid(err error, msg string) bool {
+	var gitErr *gitError
+	return errors.As(err, &gitErr) && strings.Contains(gitErr.stderr, msg)
+}
+
 // errBranchNotPushed is a fetch of a branch the remote does not have.
 var errBranchNotPushed = errors.New("the remote has no such branch")
 
@@ -164,6 +171,9 @@ func (g gitRepo) snapshot(ctx context.Context, message string, trackedOnly bool)
 		return s, nil
 	}
 	if s.commit, err = g.output(ctx, "commit-tree", tree, "-p", head, "-m", message); err != nil {
+		if gitSaid(err, "identity unknown") {
+			return snapshot{}, usageError(`git has no identity to author the handoff commit: set one with git config --global user.name "Your Name" and git config --global user.email you@example.com, then run it again`)
+		}
 		return snapshot{}, err
 	}
 	s.stat, _ = g.output(ctx, "diff", "--stat", "--stat-count="+fmt.Sprint(untrackedShown), head, s.commit)
@@ -231,8 +241,7 @@ func (g gitRepo) deleteRemoteBranch(ctx context.Context, remote, branch string) 
 func (g gitRepo) fetchBranch(ctx context.Context, remote, branch string) (string, error) {
 	tracking := "refs/remotes/" + remote + "/" + branch
 	err := g.run(ctx, "fetch", remote, "+refs/heads/"+branch+":"+tracking)
-	var gitErr *gitError
-	if errors.As(err, &gitErr) && strings.Contains(gitErr.stderr, "couldn't find remote ref") {
+	if gitSaid(err, "couldn't find remote ref") {
 		return "", errBranchNotPushed
 	}
 	return tracking, err

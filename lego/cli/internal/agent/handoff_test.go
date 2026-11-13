@@ -31,10 +31,10 @@ import (
 
 const testRemote = "git@github.com:acme/api.git"
 
-// gitIn runs git in dir as a test fixture author.
+// gitIn runs git in dir; the author is TestMain's identity.
 func gitIn(t *testing.T, dir string, args ...string) string {
 	t.Helper()
-	cmd := exec.Command("git", append([]string{"-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "init.defaultBranch=main"}, args...)...)
+	cmd := exec.Command("git", append([]string{"-c", "init.defaultBranch=main"}, args...)...)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -131,6 +131,24 @@ func TestSnapshotOfACleanCheckoutIsHEAD(t *testing.T) {
 	snap, err := g.snapshot(context.Background(), "m", false)
 	if err != nil || snap.commit != snap.head || snap.commit != gitIn(t, f.dir, "rev-parse", "HEAD") {
 		t.Fatalf("snapshot %+v, %v", snap, err)
+	}
+}
+
+func TestHandoffWithoutAGitIdentitySaysHowToSetOne(t *testing.T) {
+	g := newGitFixture(t)
+	t.Setenv("GIT_CONFIG_COUNT", "1") // keep useConfigOnly, drop TestMain's identity
+	g.dirtyUp(t)
+	before := g.state(t)
+	_, d := handoffDeps(t, g)
+	_, stderr, code := run(t, d, "handoff", "--confirm", "Finish the retry logic")
+	if code != exitUsage || !strings.Contains(stderr, "git config --global user.email") || strings.Contains(stderr, "Please tell me who you are") {
+		t.Fatalf("exit %d, want %d with the identity hint and not git's raw text:\n%s", code, exitUsage, stderr)
+	}
+	if after := g.state(t); after != before {
+		t.Fatalf("the checkout changed:\nbefore %s\nafter  %s", before, after)
+	}
+	if branches := remoteBranches(t, g.bare); strings.Contains(branches, handoffPrefix) {
+		t.Fatalf("a branch was pushed:\n%s", branches)
 	}
 }
 
