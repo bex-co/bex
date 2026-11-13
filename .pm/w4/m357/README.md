@@ -1,6 +1,6 @@
 # w4 · m357 — A new public Postgres keeps its private-CA certificate: the copied external URL carries `sslmode=verify-full` and fails on a stock client ("root certificate file … does not exist"), a regression of w2/m245's publicly trusted URL
 
-**Worker:** worker4 **Goal:** a new public Postgres serves a publicly trusted certificate within minutes of becoming Available, and its connection info is again Render's `postgresql://user:pass@<id>.db.bex.co:5432/db` with no `sslmode` and no CA, so a copied URL connects from any stock client. While issuance is pending, the user is told so. **Status:** todo
+**Worker:** worker4 **Goal:** a new public Postgres serves a publicly trusted certificate within minutes of becoming Available, and its connection info is again Render's `postgresql://user:pass@<id>.db.bex.co:5432/db` with no `sslmode` and no CA, so a copied URL connects from any stock client. While issuance is pending, the user is told so. A new public Key Value gets its TLS listener (and so any external access) within the same window; round 254 showed it has none at all while issuance stalls. **Status:** todo
 
 ## Tasks (in order)
 
@@ -22,7 +22,7 @@ All on production, workspace `bex-canary`, on a Free Postgres created from New �
 2. **Render's connection info.** `GET /v1/postgres/<id>/connection-info` returns `externalConnectionString` with no `sslmode` and no `serverCaCertificate`, and `psqlCommand` is `PGPASSWORD=… psql -h <id>.db.bex.co -U <user> <db>`. GraphQL agrees.
 3. **A copied URL connects.** Copy External connection string, then `psql "$(pbpaste)" -c 'select 1'` on a machine with no `~/.postgresql/root.crt` and no `PGSSLROOTCERT` returns `1`. Round 253 got "root certificate file "/Users/…/.postgresql/root.crt" does not exist".
 4. **Pending is visible.** Between Available and trusted, the Connections card says a publicly trusted certificate is being issued and how to connect meanwhile. REST and GraphQL carry the state.
-5. **No regression for Key Value.** A new public Key Value's external endpoint still verifies with system roots (round 251's `redis-cli --tls` connected with no CA file).
+5. **Key Value too.** A new public Key Value's external endpoint accepts TLS with a publicly trusted certificate no later than 5 minutes after it reads Available: `redis-cli --tls --sni <id>.kv.bex.co -h <id>.kv.bex.co -p 6379 PING` answers `NOAUTH Authentication required.`, and a copied External URL answers `PONG`. Round 254's store had no TLS listener at all 10 minutes after creation (`SSL_connect failed: unexpected eof while reading`). Round 251's store, created at 01:57, connected within a minute.
 6. **Fixtures.** Every fixture is deleted, and each GET answers 404.
 
 ## Source + Goal linkage
@@ -65,3 +65,19 @@ All on production, workspace `bex-canary`, on a Free Postgres created from New �
   3. The operator never creating the Certificate.
 - **crt.sh** returned `[]` for `%.db.bex.co`, and its Key Value entries stop at 2026-10-07, though round 251's store verified. Its index lags, so it could not count the week's issuance.
 - **Key Value as a control.** Round 251's `qa-20261113-r251-kv` (created 01:57) connected with `redis-cli --tls` and no CA file, so a `*.kv.bex.co` certificate issued 26 minutes before this database's did not. That fits candidate 1 (the budget ran out between them) as well as a Postgres-only fault.
+
+## Round 254 corroboration — Key Value is hit harder (2026-11-13 02:47–02:58 UTC, pin `8acf1d116941`)
+
+Two fixtures were created by REST at 02:47:04: Free Postgres `qa-20261113-r254-pg` (`dpg-dbr7k9qshdos73f2f4f0`), and Free Key Value `qa-20261113-r254-kv` (`red-dbr7ka4hd5js73aueoag`, `ipAllowList: [0.0.0.0/0]`, `public: true`). Both were deleted at 02:58 (`DELETE` 204, then `GET` 404). Each endpoint was polled with `openssl s_client` every ~30 s.
+
+| UTC | Postgres issuer | Key Value issuer |
+| --- | --- | --- |
+| 02:47:14–02:48:48 | none (still creating) | none |
+| 02:49:19 → 02:57:32 | `OU=tea-daif693dqjvc73e7as3g, CN=dpg-dbr7k9qshdos73f2f4f0` (private CA), 16 checks | **no peer certificate** (`SSL routines::unexpected eof while reading`), 15 checks |
+
+- **The Key Value read `status: available`, `public: true`** with an `externalHost`, and its dashboard reads Public access Yes. Yet `redis-cli --tls --sni red-dbr7ka4hd5js73aueoag.kv.bex.co … PING` failed at every attempt with `SSL_connect failed: unexpected eof while reading`, the same bare close as a blocked allowlist.
+  - Re-saving the allowlist from the dashboard (adding `::/0`, toast "Allowlist updated.") at 02:55:24 changed nothing over the next 66 s. The REST create path is not the cause.
+- **Why Key Value has no fallback.** [ADR021](../../../docs/ADR021-keyvalue-management.md) (lines 92–97): the external listener opens only once cert-manager has written the `<id>-kv-tls` Secret ("Once cert-manager has written the Secret, the operator … runs `CONFIG SET tls-cert-file …`"). With issuance stalled, a new public store's external access is simply off, while every surface says it is public. Postgres at least falls back to its private CA.
+- **Control: existing certificates still serve.** The workspace's older `qa-20261110-81b5-kv` (`red-dbpf5q5me2kc73f2l0og`, not created by this run; only its public endpoint's certificate was read) presents `issuer=C=US, O=Let's Encrypt, CN=YR2`, `notBefore=Nov 10 09:36:13 2026 GMT`. So serving works, and **new issuance** for `*.db.bex.co` and `*.kv.bex.co` is what broke. That happened between round 251's store (01:57, trusted within a minute) and round 253's database (02:23).
+- **What it does to the cause list.** Both datastore domains fail together, which points away from a Postgres-only operator fault (candidate 3) and toward the shared issuance path: the `bex.co` Let's Encrypt budget (candidate 1) or the cluster's ACME/HTTP-01 solver (candidate 2). t001 still has to read the Orders.
+- **Scope added to the tasks:** t002 covers Key Value issuance with the same fix, and t003 also shows the pending state on the Key Value Connections card, REST and GraphQL. A pending public store must not read as reachable.
