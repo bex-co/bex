@@ -270,6 +270,28 @@ describe("AccessControlPanel connection pooling", () => {
     ).toBeEnabled();
   });
 
+  // w5/185: the pooled strings carry the password, so they stay masked until
+  // shown, as the Connections panel's strings do; copy carries the full value.
+  it("masks the password in the pooled strings until it is shown", async () => {
+    const internal = "postgresql://app_user:s3cretPw@pool-internal:5432/app";
+    const external = "postgresql://app_user:s3cretPw@pool.db.bex.co:5432/app";
+    pooled = { internal, external };
+    renderPanel({ plan: "basic-1gb", poolerEnabled: true });
+    expect(screen.queryByText(/s3cretPw/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText("postgresql://app_user:••••••••@pool-internal:5432/app"),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Show password" }),
+    );
+    expect(screen.getByText(internal)).toBeInTheDocument();
+    expect(screen.getByText(external)).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Hide password" }),
+    );
+    expect(screen.queryByText(/s3cretPw/)).not.toBeInTheDocument();
+  });
+
   it("keeps existing pooled connections visible on an unsupported plan", () => {
     pooled = { internal: "postgresql://existing-pool", external: "" };
     renderPanel({ poolerEnabled: true });

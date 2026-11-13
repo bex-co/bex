@@ -1,5 +1,5 @@
 import { useState, useId } from "react";
-import { Loader2, Plus, Trash2, Eye } from "lucide-react";
+import { Loader2, Plus, Trash2, Eye, EyeOff } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -23,6 +23,10 @@ import { useUpdateDatabaseConnectionPool } from "@/features/databases/hooks/use-
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import type { DatabaseDetailView } from "@/features/databases/types";
+import {
+  connectionURLPassword,
+  maskSecret,
+} from "@/features/databases/lib/mask-secret";
 
 export interface AccessControlPanelProps {
   database: Pick<
@@ -254,6 +258,14 @@ function PoolerSection({
   const hasPooledStrings = Boolean(
     access.pooled?.internal || access.pooled?.external,
   );
+  // The pooled strings carry the database password, so they stay masked until
+  // shown, as the Connections panel's strings do (w5/185). Copy is unmasked.
+  const [passwordShown, setPasswordShown] = useState(false);
+  const pooledPassword = connectionURLPassword(
+    access.pooled?.internal || access.pooled?.external || "",
+  );
+  const pooledDisplay = (value: string) =>
+    passwordShown ? value : maskSecret(value, pooledPassword);
 
   async function handleToggle(enabled: boolean) {
     if (await updateConnectionPool(id, name, enabled)) {
@@ -285,9 +297,24 @@ function PoolerSection({
       </p>
       {access.pooled && hasPooledStrings ? (
         <div className="space-y-2">
+          {pooledPassword ? (
+            <div className="flex justify-end">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPasswordShown((shown) => !shown)}
+              >
+                {passwordShown ? <EyeOff /> : <Eye />}
+                {passwordShown
+                  ? t("databases.connHidePassword")
+                  : t("databases.connShowPassword")}
+              </Button>
+            </div>
+          ) : null}
           <ConnectionField
             label={t("databases.accessPoolerInternal")}
             value={access.pooled.internal}
+            displayValue={pooledDisplay(access.pooled.internal)}
             copiedText={t("databases.copied")}
             copyErrorText={t("databases.copyError")}
           />
@@ -295,6 +322,7 @@ function PoolerSection({
             <ConnectionField
               label={t("databases.accessPoolerExternal")}
               value={access.pooled.external}
+              displayValue={pooledDisplay(access.pooled.external)}
               copiedText={t("databases.copied")}
               copyErrorText={t("databases.copyError")}
             />

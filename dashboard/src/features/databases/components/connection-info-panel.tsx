@@ -21,6 +21,7 @@ import { PermissionTooltip } from "@/features/capabilities/components/permission
 import { CopyButton } from "@/common/components/copy-button";
 import { ConnectionField } from "@/common/components/connection-field";
 import type { ConnectionInfoView } from "@/features/databases/types";
+import { maskSecret } from "@/features/databases/lib/mask-secret";
 
 /**
  * Render's "Connections" panel. The connection strings + password are fetched
@@ -159,13 +160,6 @@ function ServerCAField({ id, pem }: { id: string; pem: string }) {
     </div>
   );
 }
-
-/** Every occurrence of secret in value, masked; value unchanged without one. */
-function maskSecret(value: string, secret: string): string {
-  return secret ? value.split(secret).join(MASK) : value;
-}
-
-const MASK = "••••••••";
 
 /** The password, masked unless shown, with a show/hide toggle + copy. */
 function PasswordField({
