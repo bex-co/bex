@@ -207,6 +207,11 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if !ok {
 			return BlueprintPlanAction{}, fmt.Errorf("compiled service is missing")
 		}
+		var refsPending bool
+		var err error
+		if svc.req, refsPending, err = r.withPlannedRefs(svc); err != nil {
+			return BlueprintPlanAction{}, err
+		}
 		want, err := blueprintReadSpec(ctx, withCurrentTier(svc.req, r.services[resource.Name]))
 		if err != nil {
 			return BlueprintPlanAction{}, err
@@ -256,6 +261,9 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if len(svc.generatedCopies) > 0 {
 			addChangedFields(&action, "envVars")
 			action.Message = generatedCopyMessage(svc.generatedCopies)
+		}
+		if refsPending {
+			addChangedFields(&action, "envVars")
 		}
 		if err := r.planMoves(ctx, &action, svc.grouping, svc.ungrouped, true, r.services[resource.Name].Labels); err != nil {
 			return BlueprintPlanAction{}, err
@@ -324,6 +332,50 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 	}
 	action.Operation = BlueprintPlanNoop
 	return action, nil
+}
+
+// withPlannedRefs is svc's request with its references resolved as the apply
+// writes them (resolveServiceRefs), against the datastores and services that
+// exist now, so the envVars probe compares them with the live service. Until
+// w8/300 the probe saw only the file's literals: a sync that added
+// DATABASE_URL, or pointed it at another database, planned no change to it.
+// pending reports a reference to a resource this file declares and this sync
+// creates: it cannot resolve before that create, and the service cannot hold
+// it yet, so it is a change. A reference to nothing is the apply's error.
+func (r *blueprintActionResolver) withPlannedRefs(svc parsedService) (req CreateRequest, pending bool, err error) {
+	if len(svc.databaseRefs)+len(svc.kvRefs)+len(svc.hostRefs) == 0 {
+		return svc.req, false, nil
+	}
+	for _, ref := range svc.databaseRefs {
+		if _, ok := r.databases[ref.FromDatabase.Name]; !ok {
+			if _, declared := parsedBlueprintDatabase(r.parsed, ref.FromDatabase.Name); declared {
+				return svc.req, true, nil
+			}
+		}
+	}
+	for _, ref := range svc.kvRefs {
+		if _, ok := r.keyValues[ref.FromService.Name]; !ok {
+			if _, declared := parsedBlueprintKeyValue(r.parsed, ref.FromService.Name); declared {
+				return svc.req, true, nil
+			}
+		}
+	}
+	dbRefs := make(map[string]databaseRef, len(r.databases))
+	for name, database := range r.databases {
+		dbRefs[name] = databaseRefOf(database)
+	}
+	kvCRNames := make(map[string]string, len(r.keyValues))
+	for name, keyValue := range r.keyValues {
+		kvCRNames[name] = keyValue.Name
+	}
+	svc.req.Env = slices.Clone(svc.req.Env)
+	// A forward host reference names a sibling this sync creates (an unknown
+	// target is refused by hostReferenceProblems before the plan).
+	later, err := resolveServiceRefs(&svc, dbRefs, kvCRNames, func(name string) *appv1alpha1.App { return r.services[name] }, r.service.BaseDomain)
+	if err != nil {
+		return CreateRequest{}, false, err
+	}
+	return svc.req, len(later) > 0, nil
 }
 
 // planMoves adds to an existing resource's action the placement its apply
