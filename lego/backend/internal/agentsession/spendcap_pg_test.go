@@ -92,10 +92,11 @@ func TestPGSpendCapRefusesTheMintAtThePlanCap(t *testing.T) {
 	client := &ModelClient{URL: api.URL + InternalModelMintPath, Secret: secret, HTTP: api.Client()}
 	req := ModelMintRequest{SessionID: session.ID, Workspace: tenant.ID, PodName: "sbx-cap-0", PodUID: "uid-cap"}
 
-	// Unpaid: T0 caps even Hobby at $10.
-	spend(10_000_000)
+	// Unpaid: T0 is charged at $10 and caps even Hobby at $15, its threshold
+	// plus the in-flight allowance (ADR091 D10.2a).
+	spend(15_000_000)
 	if _, err := client.Mint(ctx, req); !errors.Is(err, ErrModelSpendCapReached) {
-		t.Fatalf("T0 at $10: %v, want the spend cap", err)
+		t.Fatalf("T0 at $15: %v, want the spend cap", err)
 	}
 	// First successful payment → T1: the Hobby plan cap ($20) applies.
 	if _, _, _, err := pg.RecordBillingTrustPayment(ctx, store.BillingTrustPayment{
@@ -103,7 +104,7 @@ func TestPGSpendCapRefusesTheMintAtThePlanCap(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	spend(9_990_000) // $19.99
+	spend(4_990_000) // $19.99
 	clock = clock.Add(spendStatusTTL)
 	got, err := client.Mint(ctx, req)
 	if err != nil || got.Credential != testPlatformKey {
