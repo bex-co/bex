@@ -183,11 +183,14 @@ sandboxSnapshot:
 # trustTiers is ordered T0..T4; a workspace sits in the highest tier whose
 # minLifetimePaidUsd AND minPaidCycleInvoices it meets (successful, non-zero
 # bex invoices only), and a failed charge or dispute holds it at T0 for 30
-# days after settlement. chargeThresholdUsd null = month-end only (no
-# threshold); inFlightAllowanceUsd is how far past its threshold a workspace
+# days after settlement. chargeThresholdUsd is the unbilled spend at which bex
+# charges the card, inside the model request that reaches it, and that
+# request waits for the result (ADR091 D10.2a); null = month-end only (no
+# threshold). inFlightAllowanceUsd is how far past its threshold a workspace
 # may spend while that charge is unpaid, so the tier's cap ceiling is
-# chargeThresholdUsd + inFlightAllowanceUsd (ADR091 D10.2a: a paid charge moves
-# it up a tier; null = no ceiling beyond the plan/override cap);
+# chargeThresholdUsd + inFlightAllowanceUsd (a paid charge moves it up a tier;
+# null = no ceiling beyond the plan/override cap). T0's is 0: the charge at
+# $10 lifts the tier at once, and without billing the workspace stops there.
 # maxConcurrentSessions null = no tier limit on live platform-model sessions.
 agentModel:
   markup: 1.30
@@ -204,7 +207,7 @@ agentModel:
       minLifetimePaidUsd: 0
       minPaidCycleInvoices: 0
       chargeThresholdUsd: 10
-      inFlightAllowanceUsd: 5
+      inFlightAllowanceUsd: 0
       maxConcurrentSessions: 2
     - tier: T1
       minLifetimePaidUsd: 10

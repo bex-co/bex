@@ -31,13 +31,15 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// Threshold billing (ADR091 D10.2). The Subscription's agent-model item
-// carries billing_thresholds.usage_gte equal to the workspace's trust-tier
-// charge threshold in meter units (micro-USD); Stripe then invoices and
-// charges that item's usage as soon as it crosses the threshold, and the
-// cycle invoice bills only the remainder (Stripe test-mode probe 2026-11-05). The
-// threshold is item-level so compute never triggers it. A held agent-model
-// meter (no catalog Price yet) has no item, so no threshold is ever set.
+// Stripe item thresholds (ADR091 D10.2), retired by D10.2a. The
+// Subscription's agent-model item used to carry billing_thresholds.usage_gte
+// at the workspace's trust-tier charge threshold, so Stripe invoiced the
+// item's usage once the hourly meter export crossed it (15 to 28 minutes
+// late). bex now charges the threshold itself, in the request that reaches it
+// (agent_model_charge.go), so only one mechanism charges: every workspace
+// wants no item threshold, and the sync below remains only to remove the ones
+// Stripe still holds (migration 0247 made every workspace due once). A held
+// agent-model meter (no catalog Price yet) has no item, so it never had one.
 
 // agentModelMeter is the resolved agent-model catalog Price and its meter,
 // both "" while the meter is held or the catalog is unresolved.
@@ -280,7 +282,6 @@ func (c *StripeClient) FinalizeThresholdInvoice(ctx context.Context, invoiceID s
 // ThresholdStore is AgentModelThresholds' store surface; *store.PGStore
 // satisfies it.
 type ThresholdStore interface {
-	GetBillingTrust(ctx context.Context, workspaceID string) (store.BillingTrust, error)
 	AgentModelThresholdsDue(ctx context.Context, now time.Time, limit int) ([]string, error)
 	WithAgentModelThresholdSync(ctx context.Context, workspaceID string, now time.Time, apply func(store.AgentModelThresholdState) (*int64, error)) error
 	RunExclusive(ctx context.Context, name string, fn func(context.Context) error) (bool, error)
@@ -293,18 +294,18 @@ type ThresholdSetter interface {
 	SyncAgentModelThreshold(ctx context.Context, workspaceID string, want *int64) error
 }
 
-// AgentModelThresholds keeps every workspace's Stripe agent-model threshold
-// equal to its trust tier's charge threshold. A webhook tier change syncs at
-// once (OnTierChanged); a periodic sweep (Run) syncs every workspace whose
-// trust record changed, or whose payment lock expired, since the value last
-// applied (store.AgentModelThresholdsDue), which covers the tier change no
-// webhook announces and retries a failed sync with per-workspace backoff. One
-// replica sweeps at a time. Each pass also snapshots the month's agent-model
-// revenue and exports the bad-debt gauges (the D10 prepaid trigger).
+// AgentModelThresholds keeps every workspace's Stripe agent-model item
+// without a usage threshold (retired by ADR091 D10.2a; see the file comment).
+// A webhook tier change syncs at once (OnTierChanged); a periodic sweep (Run)
+// syncs every workspace whose trust record changed, or whose payment lock
+// expired, since the value last applied (store.AgentModelThresholdsDue),
+// retrying a failed sync with per-workspace backoff; a workspace whose
+// recorded value is already none is not sent to Stripe. One replica sweeps
+// at a time. Each pass also snapshots the month's agent-model revenue and
+// exports the bad-debt gauges (the D10 prepaid trigger).
 type AgentModelThresholds struct {
 	Store    ThresholdStore
 	Stripe   ThresholdSetter
-	Sheet    *pricing.Sheet // nil ⇒ pricing.Default
 	Interval time.Duration
 	Metrics  *Metrics
 	Clock    func() time.Time
@@ -324,42 +325,18 @@ func (a *AgentModelThresholds) now() time.Time {
 	return time.Now().UTC()
 }
 
-func (a *AgentModelThresholds) sheet() *pricing.Sheet {
-	if a.Sheet != nil {
-		return a.Sheet
-	}
-	return pricing.Default
+// Want is workspaceID's item threshold, StripeConfig.AgentModelThreshold:
+// none for every workspace, so a new agent-model item is created without one
+// (ADR091 D10.2a).
+func (a *AgentModelThresholds) Want(context.Context, string) (*int64, error) {
+	return nil, nil
 }
 
-// TierThresholdMicroUSD is tier's agent-model charge threshold in micro-USD
-// (the meter's unit); nil when the tier has none (T4).
-func TierThresholdMicroUSD(tier pricing.Tier) *int64 {
-	if tier.ChargeThresholdUSD == nil {
-		return nil
-	}
-	micro := pricing.USDToMicro(*tier.ChargeThresholdUSD)
-	return &micro
-}
-
-func (a *AgentModelThresholds) threshold(trust store.BillingTrust, now time.Time) *int64 {
-	return TierThresholdMicroUSD(a.sheet().TrustTier(trust.LifetimePaidCents, trust.PaidCycleInvoices, trust.Lock(), now))
-}
-
-// Want is workspaceID's threshold now: StripeConfig.AgentModelThreshold.
-func (a *AgentModelThresholds) Want(ctx context.Context, workspaceID string) (*int64, error) {
-	trust, err := a.Store.GetBillingTrust(ctx, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-	return a.threshold(trust, a.now()), nil
-}
-
-// sync brings workspaceID's Stripe threshold to its tier at now and records
-// the value applied. Stripe is not called when the recorded value already
-// equals the tier's.
+// sync brings workspaceID's Stripe item threshold to none and records it.
+// Stripe is not called when the recorded value already is none.
 func (a *AgentModelThresholds) sync(ctx context.Context, workspaceID string, now time.Time) error {
 	return a.Store.WithAgentModelThresholdSync(ctx, workspaceID, now, func(state store.AgentModelThresholdState) (*int64, error) {
-		want := a.threshold(state.Trust, now)
+		var want *int64
 		if state.Synced && sameThreshold(state.SyncedMicroUSD, want) {
 			return want, nil
 		}
@@ -371,8 +348,9 @@ func sameThreshold(a, b *int64) bool {
 	return (a == nil) == (b == nil) && (a == nil || *a == *b)
 }
 
-// OnTierChanged is Trust.OnTierChanged: the threshold follows the new tier at
-// once. A failure is logged; the sweep retries it after its backoff.
+// OnTierChanged is Trust.OnTierChanged: it logs the new tier and syncs the
+// workspace at once (a no-op once its item threshold is removed). A failure
+// is logged; the sweep retries it after its backoff.
 func (a *AgentModelThresholds) OnTierChanged(ctx context.Context, workspaceID string, tier pricing.Tier) {
 	log.Printf("billing trust: workspace %s is now agent-model trust tier %s", workspaceID, tier.Name)
 	if err := a.sync(ctx, workspaceID, a.now()); err != nil {

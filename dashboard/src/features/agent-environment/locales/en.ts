@@ -281,7 +281,7 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNew": {
     message:
-      "New workspaces are charged when agent model spend reaches {amount} and keep working while that charge settles; once it's paid, the limit rises to your plan's cap.",
+      "New workspaces are charged when agent model spend reaches {amount}: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",
     description:
       "Explains T0: charged at its threshold, working while the charge settles (ADR091 D10.2a)",
   },

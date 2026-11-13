@@ -302,7 +302,11 @@ type ModelMinter struct {
 	// maxSpendUSD ceiling (ADR094 D8). A session with a ceiling fails closed
 	// when it is unwired.
 	SessionSpend SessionSpendStore
-	spend        spendCache
+	// Charges charges the card in the request whose unbilled spend reaches
+	// the tier's charge threshold (ADR091 D10.2a). Nil (billing off) leaves
+	// the cap alone: a T0 workspace stops at its threshold.
+	Charges ThresholdCharger
+	spend   spendCache
 }
 
 func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response ModelMintResponse, err error) {
@@ -374,6 +378,13 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		// before the cap is even consulted.
 		if status.BalanceDue {
 			return ModelMintResponse{}, ErrBillingBalanceDue
+		}
+		// The unbilled spend reached the charge threshold: charge the card
+		// now, and serve this request only once it is paid.
+		if m.Charges != nil && status.ChargeDue() {
+			if status, err = m.chargeThreshold(ctx, req.Workspace); err != nil {
+				return ModelMintResponse{}, err
+			}
 		}
 		if status.Reached() {
 			return ModelMintResponse{}, ErrModelSpendCapReached

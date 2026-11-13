@@ -271,12 +271,12 @@ func TestPlatformRouteInjectsDataPolicyAndRefusesClientProvider(t *testing.T) {
 // A workspace under its spend cap is served; at the cap the mint is refused
 // with a typed 429 the agent CLI can show, and the session fails with the
 // readable spend-cap reason (ADR091 D5). A fresh Hobby workspace is T0: it is
-// charged at $10 and keeps working until $15 while that charge is unpaid
-// (D10.2a), so its cap is $15.
+// charged at $10 in the request that reaches it, and with no charge made
+// (this harness has no charger) it stops there (D10.2a), so its cap is $10.
 func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	upstream := &cannedTransport{contentType: "application/json", body: `{"usage":{"input_tokens":1,"output_tokens":1}}`}
 	proxy, st := platformHarness(t, upstream)
-	st.usedMicro = 14_999_999
+	st.usedMicro = 9_999_999
 	resp := requestBody(t, proxy, pinnedBody)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -284,7 +284,7 @@ func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	}
 
 	st.mu.Lock()
-	st.usedMicro = 15_000_000
+	st.usedMicro = 10_000_000
 	st.mu.Unlock()
 	st.advance(time.Minute) // past the mint's spend cache
 	upstream.last = nil

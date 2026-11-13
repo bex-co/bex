@@ -1,6 +1,6 @@
 # w6 · m362 — Reaching an agent-model charge threshold charges the card and the workspace keeps working
 
-**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t005 done (the interim Stripe-threshold mechanism with T0's $5 allowance is live); t011–t015 (bex charges at the moment of the crossing, coexisting with monthly hosting billing) next, then the production check t006
+**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t005 and t011–t013 done (bex charges at the moment of the crossing; shipping); t014, t015, then the production check t006
 
 ## Tasks (in order)
 
@@ -11,9 +11,9 @@
 | t003 | [Every subscribed workspace's threshold reaches Stripe, so its threshold invoice is charged](done/t003.md) — **DONE** | 1h | t002 |
 | t004 | [The mint keeps a workspace working while its charge is in flight, and stops it only on a failed or unauthenticated charge](done/t004.md) — **DONE** | 1h30 | t003 |
 | t005 | [Settings → Billing, the agent environment (REST, GraphQL, MCP) and the CLI describe charge-to-continue](done/t005.md) — **DONE** | 1h30 | t004 |
-| t011 | [bex charges the card the moment a workspace reaches its threshold, and the request waits for the result](t011.md) | 3h | — |
-| t012 | [The month-end invoice bills only agent-model usage not already charged](t012.md) | 1h30 | t011 |
-| t013 | [A failed agent-model charge stops only model spend; hosting billing is untouched](t013.md) | 1h | t011 |
+| t011 | [bex charges the card the moment a workspace reaches its threshold, and the request waits for the result](done/t011.md) — **DONE** | 3h | — |
+| t012 | [The month-end invoice bills only agent-model usage not already charged](done/t012.md) — **DONE** | 1h30 | t011 |
+| t013 | [A failed agent-model charge stops only model spend; hosting billing is untouched](done/t013.md) — **DONE** | 1h | t011 |
 | t014 | [Settings → Billing lists the mid-month agent-model charges, and the month-end invoice reads net of them](t014.md) | 1h30 | t012 |
 | t015 | [Settle-before-delete charges unbilled agent-model usage through the same charger](t015.md) | 30m | t011, t012 |
 | t006 | [Production check: a T0 workspace reaches $10, is charged at once and keeps working](t006.md) | 1h | t001, t005, t011–t015 |
@@ -34,7 +34,7 @@
 ## Source + Goal linkage
 
 - **2026-11-13 user decisions (after t001–t005 shipped):** "应该是执行到 [上限] 然后扣钱，扣成功了就不阻断，否则打断" — charge at the moment the workspace would be stopped; only a failed charge interrupts (t011). Then `/pmx for w6 to implement such 两种扣法叠在一起，并且解决要守住几条边界`: agent-model charges coexist with hosting's monthly billing on one account, with the boundaries in t012–t015.
-- **Recommendations, not user decisions:** the charge point is the tier's threshold ($10 at T0), and the $5 in-flight allowance retires with the race it covered; the user's sentence named $15, the stop point at the time, and moving the first charge to $15 is one `pricing.yaml` value. Netting charged usage out of the cycle invoice by not exporting it to the meter, rather than with a credit, follows `.pm/DO_NOT_DO.md`'s rejection of the ADR071 credit system.
+- **Recommendations, not user decisions:** the charge point is the tier's threshold ($10 at T0), and the $5 in-flight allowance retires with the race it covered; the user's sentence named $15, the stop point at the time, and moving the first charge to $15 is one `pricing.yaml` value. Netting a paid charge out of the cycle invoice with a negative pending invoice item on the subscription (t012, revised: not exporting it to the meter cannot undo hours already exported); it issues no value, so it is not `.pm/DO_NOT_DO.md`'s rejected ADR071 credit system.
 - **Why the interim mechanism is replaced:** it reused Stripe's asynchronous threshold invoice (an hourly meter export plus 15 to 28 minutes) behind a $5 buffer, which a slow invoice could still exhaust and stop a workspace whose card was fine — the race the user ruled out.
 
 - **Source:** [ADR091 D10.2a](../../../docs/ADR091-agent-model-pricing.md) (amended 2026-11-13, user decision: "到达 $10 的时候应该是扣钱以继续，而不是阻止 … 收到钱 / 升级 / 收到更多钱 / 然后逐渐升级"). Found while timing the routines in `w6/blocked/m354`: the bex workspace (Scale plan, card bound since 2026-08-17) reached $10.01 of platform-model spend on 2026-11-13, no threshold invoice came, `billing_trust` held no row for any workspace, and every routine failed with `AGENT_MODEL_SPEND_CAP_REACHED` until the month's reset.

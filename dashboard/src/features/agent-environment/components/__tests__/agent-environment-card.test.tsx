@@ -386,7 +386,7 @@ describe("AgentEnvironmentCard", () => {
         "Trust tier T0: your card is charged when agent model spend reaches $10.00.",
       );
       expect(screen.getByTestId("spend-tier-note")).toHaveTextContent(
-        "New workspaces are charged when agent model spend reaches $10.00 and keep working while that charge settles; once it's paid, the limit rises to your plan's cap.",
+        "New workspaces are charged when agent model spend reaches $10.00: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",
       );
       expect(capField()).toHaveValue(20);
       expect(

@@ -293,10 +293,6 @@ type thresholdStoreFake struct {
 	revenue []time.Time
 }
 
-func (f *thresholdStoreFake) GetBillingTrust(_ context.Context, ws string) (store.BillingTrust, error) {
-	return f.trust[ws], nil
-}
-
 func (f *thresholdStoreFake) AgentModelThresholdsDue(context.Context, time.Time, int) ([]string, error) {
 	return f.due, nil
 }
@@ -359,65 +355,63 @@ func thresholdValues(calls []*int64) []string {
 	return out
 }
 
-// A webhook tier change moves the threshold through Trust.OnTierChanged:
-// T0 ($10) → T1 ($25) after the first payment, and a T4 workspace has none.
-func TestTierChangeUpdatesTheThreshold(t *testing.T) {
+// ADR091 D10.2a retired the Stripe item threshold: a webhook tier change
+// (Trust.OnTierChanged) removes a workspace's item threshold once, at any
+// tier, and a workspace whose recorded value is already none is not sent to
+// Stripe again.
+func TestTierChangeRemovesTheThreshold(t *testing.T) {
 	now := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
-	fake := &thresholdStoreFake{trust: map[string]store.BillingTrust{
-		"tea-a": {LifetimePaidCents: 1000},
-		"tea-b": {LifetimePaidCents: 300_000, PaidCycleInvoices: 6},
-	}}
+	fake := &thresholdStoreFake{synced: map[string]*int64{"tea-a": micro(10_000_000)}}
 	setter := &thresholdSetterFake{}
 	th := &AgentModelThresholds{Store: fake, Stripe: setter, Clock: func() time.Time { return now }}
 	th.OnTierChanged(context.Background(), "tea-a", pricing.TrustTier(1000, 0, time.Time{}, now))
 	th.OnTierChanged(context.Background(), "tea-b", pricing.TrustTier(300_000, 6, time.Time{}, now))
-	if got := thresholdValues(setter.calls["tea-a"]); !slices.Equal(got, []string{"25000000"}) {
-		t.Fatalf("tea-a thresholds = %v, want [25000000] (T1)", got)
+	th.OnTierChanged(context.Background(), "tea-a", pricing.TrustTier(10_000, 0, time.Time{}, now))
+	if got := thresholdValues(setter.calls["tea-a"]); !slices.Equal(got, []string{"none"}) {
+		t.Fatalf("tea-a thresholds = %v, want [none] once", got)
 	}
 	if got := thresholdValues(setter.calls["tea-b"]); !slices.Equal(got, []string{"none"}) {
-		t.Fatalf("tea-b thresholds = %v, want [none] (T4)", got)
+		t.Fatalf("tea-b thresholds = %v, want [none]", got)
+	}
+	if want, err := th.Want(context.Background(), "tea-a"); err != nil || want != nil {
+		t.Fatalf("Want = %v, %v: a new agent-model item gets no threshold", want, err)
 	}
 
 	// Through the real Trust reducer: an invoice.paid that lifts T0 → T1
-	// calls the hook, which syncs the new tier's threshold.
+	// calls the hook, which removes the threshold.
 	trustStore := &trustStoreFake{after: store.BillingTrust{LifetimePaidCents: 1000}}
-	fake.trust["tea-c"] = store.BillingTrust{LifetimePaidCents: 1000}
 	h := &Trust{Store: trustStore, OnTierChanged: th.OnTierChanged, Clock: func() time.Time { return now }}
 	if err := h.HandleStripeEvent(context.Background(), trustEvent("evt_paid", stripe.EventTypeInvoicePaid, now,
 		trustInvoice("tea-c", "in_1", 1000, "subscription_threshold", now))); err != nil {
 		t.Fatal(err)
 	}
-	if got := thresholdValues(setter.calls["tea-c"]); !slices.Equal(got, []string{"25000000"}) {
-		t.Fatalf("tea-c thresholds = %v, want [25000000]", got)
+	if got := thresholdValues(setter.calls["tea-c"]); !slices.Equal(got, []string{"none"}) {
+		t.Fatalf("tea-c thresholds = %v, want [none]", got)
 	}
 }
 
-// The sweep syncs every due workspace even when one fails, skips Stripe
-// when the recorded value already equals the tier's, runs only on the
-// replica holding its lock, and snapshots the current and closed month's
+// The sweep removes the item threshold of every due workspace even when one
+// fails, skips Stripe when the recorded value is already none, runs only on
+// the replica holding its lock, and snapshots the current and closed month's
 // revenue (the closed one only until an hour into the new month).
 func TestThresholdSweep(t *testing.T) {
 	now := time.Date(2026, 11, 1, 0, 30, 0, 0, time.UTC)
 	fake := &thresholdStoreFake{
 		due: []string{"tea-a", "tea-b", "tea-c"},
-		trust: map[string]store.BillingTrust{
-			// The failed-payment lock expired: T1 again.
-			"tea-a": {LifetimePaidCents: 1000, LockedUntil: now.Add(-time.Minute)},
-			"tea-b": {LifetimePaidCents: 1000},
-			"tea-c": {LifetimePaidCents: 1000},
-		},
-		synced: map[string]*int64{"tea-c": micro(25_000_000)},
+		// tea-b still holds the T1 threshold it had before D10.2a; tea-c's
+		// was already removed.
+		synced: map[string]*int64{"tea-b": micro(25_000_000), "tea-c": nil},
 	}
 	setter := &thresholdSetterFake{fail: map[string]bool{"tea-a": true}}
 	th := &AgentModelThresholds{Store: fake, Stripe: setter, Clock: func() time.Time { return now }}
 	if err := th.RunOnce(context.Background()); err == nil || !strings.Contains(err.Error(), "tea-a") {
 		t.Fatalf("err = %v, want tea-a's failure surfaced", err)
 	}
-	if got := thresholdValues(setter.calls["tea-b"]); !slices.Equal(got, []string{"25000000"}) {
+	if got := thresholdValues(setter.calls["tea-b"]); !slices.Equal(got, []string{"none"}) {
 		t.Fatalf("tea-b = %v: a failure must not stop the others", got)
 	}
 	if _, called := setter.calls["tea-c"]; called {
-		t.Fatal("tea-c's recorded value already equals its tier's: no Stripe call")
+		t.Fatal("tea-c's recorded value is already none: no Stripe call")
 	}
 	if _, recorded := fake.synced["tea-a"]; recorded {
 		t.Fatal("a failed sync was recorded as applied")

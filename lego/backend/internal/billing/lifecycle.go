@@ -100,6 +100,13 @@ func normalizeStripeLifecycleEvent(event *stripe.Event, receivedAt time.Time) (s
 		if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
 			return e, fmt.Errorf("invalid invoice event: %w", err)
 		}
+		// An agent-model threshold charge never drives hosting's grace and
+		// enforcement (ADR040 §7): a declined charge stops model spend only
+		// (BILLING_BALANCE_DUE, through Trust), whatever else the invoice
+		// carries.
+		if invoice.Metadata[agentModelChargeMetadataKey] == "true" {
+			return e, fmt.Errorf("invoice %s is an agent-model charge: %w", invoice.ID, errNotBexBillingContract)
+		}
 		workspaceID, subscriptionID, ok := invoiceContract(&invoice)
 		if !ok {
 			return e, fmt.Errorf("invoice %s: %w", invoice.ID, errNotBexBillingContract)

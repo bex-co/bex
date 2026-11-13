@@ -397,7 +397,8 @@ func main() {
 		usageSvc.Metrics = usage.NewMetrics(metricRegistry)
 		deps.Usage = usageSvc
 
-		stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin = wireStripeBilling(ctx, cfg, &deps, base, cl, st, appsNS, usageSvc, billingMetrics)
+		var thresholdCharges agentsession.ThresholdCharger
+		stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin, thresholdCharges = wireStripeBilling(ctx, cfg, &deps, base, cl, st, appsNS, usageSvc, billingMetrics)
 
 		go usageSvc.Run(ctx)
 
@@ -417,10 +418,11 @@ func main() {
 		// cap (ADR091 D5: min(admin override or pricing.yaml plan default,
 		// the trust tier's ceiling) on month-to-date cost) and the BYO key
 		// flag (D7), read through one cache that this process's key writes
-		// invalidate.
+		// invalidate. Charges: the threshold charge made in the request that
+		// reaches it (D10.2a; nil without Stripe billing).
 		var modelMinter *agentsession.ModelMinter
 		if deps.Secrets != nil {
-			modelMinter = &agentsession.ModelMinter{Keys: deps.Secrets, Sessions: st, Audit: st, Spend: st, SessionSpend: st}
+			modelMinter = &agentsession.ModelMinter{Keys: deps.Secrets, Sessions: st, Audit: st, Spend: st, SessionSpend: st, Charges: thresholdCharges}
 			deps.AgentModelKeyChanged = modelMinter.ForgetSpend
 			go backfillModelKeyFlags(ctx, deps.Secrets, st)
 		}
@@ -992,11 +994,14 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 // client drives both the seal-then-emit meter-event sidecar and the usage
 // surface's invoice read-back. BEX_STRIPE_SECRET_KEY unset means no client,
 // emitter, reader, or public Stripe webhook: estimate-only behavior stays
-// unchanged.
-func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *core.Base, cl client.Client, st *store.PGStore, appsNS string, usageSvc *usage.Service, billingMetrics *billing.Metrics) (*billing.Worker, *billing.Reconciler, store.BillingAdmin) {
+// unchanged. The returned ThresholdCharger is the model mint's agent-model
+// threshold charger (ADR091 D10.2a), nil while billing or the agent-model
+// meter is off.
+func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *core.Base, cl client.Client, st *store.PGStore, appsNS string, usageSvc *usage.Service, billingMetrics *billing.Metrics) (*billing.Worker, *billing.Reconciler, store.BillingAdmin, agentsession.ThresholdCharger) {
 	var stripeLifecycleWorker *billing.Worker
 	var stripeLifecycleReconciler *billing.Reconciler
 	var stripeBillingAdmin store.BillingAdmin
+	var thresholdCharges agentsession.ThresholdCharger
 	requirePaymentMethod := cfg.RequirePaymentMethod
 	stripeSecretKey, billingEpoch, stripeEnabled := cfg.StripeSecretKey, cfg.StripeEpoch, cfg.StripeEnabled
 	if stripeEnabled {
@@ -1096,16 +1101,26 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			stripeLifecycleReconciler = &billing.Reconciler{Store: st, Provider: stripeClient, GracePeriod: grace, Interval: reconcileEvery, Metrics: billingMetrics, ExpectedLivemode: stripeClient.ExpectedLivemode()}
 			log.Printf("bex-api Stripe dunning enabled (livemode %t, grace %s, reconcile %s)", stripeClient.ExpectedLivemode(), grace, reconcileEvery)
 		}
+		// ADR091 D10.1–D10.3: invoice and dispute events feed the agent-model
+		// trust tiers, bad debt and the threshold charge ledger; the
+		// threshold charger records its own charges in the same trust record.
+		trust := &billing.Trust{Store: st, Charges: stripeClient,
+			OnTierChanged: thresholds.OnTierChanged,
+			WriteOffs:     st, Invoices: stripeClient, ModelCharges: st}
+		// ADR091 D10.2a: the mint charges a workspace's unbilled agent-model
+		// spend in the request that reaches its tier's threshold. Netting the
+		// charge out of the cycle invoice assumes the meter bills that usage,
+		// so a held meter has no charger (a T0 workspace stops at $10).
+		if cfg.StripeAgentModelMeter {
+			modelCharges := &billing.AgentModelCharger{Store: st, Stripe: stripeClient, Trust: trust}
+			go modelCharges.Run(ctx)
+			thresholdCharges = thresholdCharger{modelCharges}
+		}
 		if secret := cfg.StripeWebhookSecret; secret != "" {
 			handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession, OnCustomerUpdated: stripeClient.RecordPortalPaymentMethodChange, Metrics: billingMetrics}
 			if lifecycle != nil {
 				handler.OnLifecycle = lifecycle.HandleStripeEvent
 			}
-			// ADR091 D10.1–D10.3: invoice and dispute events feed the
-			// agent-model trust tiers, the threshold and bad debt.
-			trust := &billing.Trust{Store: st, Charges: stripeClient,
-				OnTierChanged: thresholds.OnTierChanged,
-				WriteOffs:     st, Invoices: stripeClient}
 			handler.OnTrust = trust.HandleStripeEvent
 			go backfillBillingTrust(ctx, st, stripeClient, trust)
 			deps.StripeWebhook = handler
@@ -1113,7 +1128,26 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
 		go emitter.Run(ctx)
 	}
-	return stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin
+	return stripeLifecycleWorker, stripeLifecycleReconciler, stripeBillingAdmin, thresholdCharges
+}
+
+// thresholdCharger adapts the billing charger to the mint's
+// agentsession.ThresholdCharger, which keeps Stripe out of agentsession (and
+// so out of the SSH gateway that imports it).
+type thresholdCharger struct{ charger *billing.AgentModelCharger }
+
+func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsession.ThresholdCharge) (agentsession.ThresholdChargeOutcome, error) {
+	result, err := t.charger.ChargeThreshold(ctx, charge.WorkspaceID, charge.At, charge.SeenSeq, charge.UnbilledMicroUSD)
+	if err != nil {
+		return agentsession.ThresholdChargePending, err
+	}
+	switch result.Outcome {
+	case billing.ChargePaid:
+		return agentsession.ThresholdChargePaid, nil
+	case billing.ChargeDeclined:
+		return agentsession.ThresholdChargeDeclined, nil
+	}
+	return agentsession.ThresholdChargePending, nil
 }
 
 // startControlPlaneServer starts the internal control-plane API (:8091): it
