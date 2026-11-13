@@ -48,6 +48,12 @@ const (
 // MaxItems marker on ImageNetworkStatus.Ports, which must stay a literal.
 const MaxImagePorts = 75
 
+// IsConfiguredPortMode reports a port mode whose port the owner set
+// explicitly: the image's own ports still apply, with this one as the primary.
+func IsConfiguredPortMode(mode string) bool {
+	return mode == PortModeImageConfiguredV1 || mode == PortModeWebImageConfiguredV1
+}
+
 // IsReservedImagePort keeps explicit primary ports and discovered TCP ports
 // under the same image-compatibility policy.
 func IsReservedImagePort(port int32) bool {
@@ -198,7 +204,7 @@ func (a *App) ConfiguredImagePort() (port int32, ok bool) {
 	if a.Spec.HasImagePorts() && a.Status.EnvPort > 0 {
 		return a.Status.EnvPort, true
 	}
-	if a.Spec.HasImagePorts() && (a.Spec.PortMode == PortModeImageConfiguredV1 || a.Spec.PortMode == PortModeWebImageConfiguredV1) {
+	if a.Spec.HasImagePorts() && IsConfiguredPortMode(a.Spec.PortMode) {
 		return a.Spec.Port, true
 	}
 	return 0, false

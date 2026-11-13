@@ -27,10 +27,22 @@ const (
 // policy. notifyOnFail=notify meant "force failures", while ignore meant
 // "suppress failures". Mapping those to failure/none preserves that intent.
 func (s AppSpec) EffectiveNotificationsToSend() string {
-	if s.NotificationsToSend != "" {
-		return s.NotificationsToSend
+	return EffectiveNotificationsToSendFor(s.NotificationsToSend, s.NotifyOnFail)
+}
+
+// EffectiveNotificationsToSendFor resolves an explicit service policy from the
+// pair of fields, for callers that hold the strings rather than an AppSpec
+// (bex-api's alert worker reads them off a selected App). One mapping serves
+// the CR contract and notification delivery, so the two cannot drift.
+//
+// The legacy field only ever spoke about failures, so "notify" maps to
+// "failure", not "all": both send the same failure mail, but only "all" opts
+// into non-failure mail such as a disk back below its threshold.
+func EffectiveNotificationsToSendFor(notificationsToSend, notifyOnFail string) string {
+	if notificationsToSend != "" {
+		return notificationsToSend
 	}
-	switch s.NotifyOnFail {
+	switch notifyOnFail {
 	case "notify":
 		return NotificationsToSendFailure
 	case "ignore":
