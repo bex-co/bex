@@ -102,7 +102,7 @@ func TestApprovalModeBlueprintPlansAndAppliesAnEnvironmentSettingAlone(t *testin
 		t.Fatal(err)
 	}
 	bpID := res.Blueprint.ID
-	if _, err := svc.ApproveBlueprint(creator, bpID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(creator, bpID, "tea-a", "", nil); err != nil {
 		t.Fatalf("approve the create: %v", err)
 	}
 	settings := func(project, environment string) string {
@@ -166,7 +166,7 @@ func TestApprovalModeBlueprintPlansAndAppliesAnEnvironmentSettingAlone(t *testin
 		if len(st.environments) != envs || (!step.create && settings(step.project, step.environment) != before) || len(controlRows(sink)) != 0 {
 			t.Fatalf("%s: planning wrote the environments (%d -> %d rows, %v)", step.name, envs, len(st.environments), controlRows(sink))
 		}
-		if _, err := svc.ApproveBlueprint(approver, bpID, "tea-a", nil); err != nil {
+		if _, err := svc.ApproveBlueprint(approver, bpID, "tea-a", "", nil); err != nil {
 			t.Fatalf("%s: approve: %v", step.name, err)
 		}
 		if got := settings(step.project, step.environment); got != step.want {

@@ -118,7 +118,20 @@ func TestBlueprintSyncPublicIDOnEverySurface(t *testing.T) {
 		t.Fatalf("GraphQL blueprintPlannedSync id = %v, want %s", got, plan)
 	}
 
-	code, body = rest(http.MethodPost, "/v1/blueprints/"+bp+"/approve", `{}`)
+	// w5/m384: an approval bound to a plan that a re-plan replaced is refused
+	// and applies nothing; bound to the newest plan, it applies.
+	if created.Sync.ID == plan {
+		t.Fatalf("the re-plan kept the create's sync id %s", plan)
+	}
+	code, body = rest(http.MethodPost, "/v1/blueprints/"+bp+"/approve", fmt.Sprintf(`{"syncId":%q}`, created.Sync.ID))
+	if code != http.StatusConflict || !strings.Contains(body, "BLUEPRINT_PLAN_CHANGED") || !strings.Contains(body, plan) {
+		t.Fatalf("approve of a replaced plan = %d %s, want 409 BLUEPRINT_PLAN_CHANGED naming %s", code, body, plan)
+	}
+	if run := st.syncs[ids.BlueprintSyncStorageID(plan)]; run.State != store.BlueprintSyncStateCreated {
+		t.Fatalf("a refused approval moved the newest plan to %s", run.State)
+	}
+	// Either spelling of the reviewed plan's id binds it.
+	code, body = rest(http.MethodPost, "/v1/blueprints/"+bp+"/approve", fmt.Sprintf(`{"syncId":%q}`, ids.BlueprintSyncStorageID(plan)))
 	var approved struct {
 		ID    string `json:"id"`
 		State string `json:"state"`
@@ -132,7 +145,7 @@ func TestBlueprintSyncPublicIDOnEverySurface(t *testing.T) {
 
 	// Approving again is refused; the refusal names the newest sync by its
 	// public id, in the message and in details.syncId.
-	_, err := svc.ApproveBlueprint(ctx, bp, "tea-a", nil)
+	_, err := svc.ApproveBlueprint(ctx, bp, "tea-a", "", nil)
 	var refusal *core.CodedError
 	if !errors.As(err, &refusal) || refusal.Params["syncId"] != plan || !strings.Contains(refusal.Error(), plan) {
 		t.Fatalf("second approve = %v, want a refusal naming %s", err, plan)

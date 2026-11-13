@@ -408,7 +408,7 @@ func TestBlueprintPlanApprovalSettingChangesNameTheApprover(t *testing.T) {
 		t.Fatal(err)
 	}
 	bpID := res.Blueprint.ID
-	if _, err := svc.ApproveBlueprint(creator, bpID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(creator, bpID, "tea-a", "", nil); err != nil {
 		t.Fatalf("approve the create: %v", err)
 	}
 
@@ -419,7 +419,7 @@ func TestBlueprintPlanApprovalSettingChangesNameTheApprover(t *testing.T) {
 	if got := serviceRows(sink); len(got) != 0 {
 		t.Fatalf("creating and planning recorded %v, want nothing", got)
 	}
-	if _, err := svc.ApproveBlueprint(approver, bpID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(approver, bpID, "tea-a", "", nil); err != nil {
 		t.Fatalf("approve the change: %v", err)
 	}
 	want := []string{"apps.SetAutoscaling none->1..3 cpu 70 by approver"}

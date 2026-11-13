@@ -214,17 +214,17 @@ func TestBlueprintOnboardingCreatePlanApprove(t *testing.T) {
 		t.Fatalf("blueprint id %q / dashboardUrl %q, want the exs- public id", bpID, res.Sync.DashboardURL)
 	}
 
-	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", nil); err == nil || coded(t, err) != "BLUEPRINT_MANUAL_ENV_VARS_MISSING" {
+	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", nil); err == nil || coded(t, err) != "BLUEPRINT_MANUAL_ENV_VARS_MISSING" {
 		t.Fatalf("approve without the prompt value: err = %v", err)
 	}
 	unknown := "x"
 	// The durable blp- key addresses the same Blueprint as its exs- alias.
-	if _, err := svc.ApproveBlueprint(ctx, ids.BlueprintStorageID(bpID), "tea-a", []ManualEnvVar{{ServiceType: "web", ServiceName: "other", Key: "API_TOKEN", Value: &unknown}}); err == nil || coded(t, err) != "BLUEPRINT_MANUAL_ENV_VAR_UNKNOWN" {
+	if _, err := svc.ApproveBlueprint(ctx, ids.BlueprintStorageID(bpID), "tea-a", "", []ManualEnvVar{{ServiceType: "web", ServiceName: "other", Key: "API_TOKEN", Value: &unknown}}); err == nil || coded(t, err) != "BLUEPRINT_MANUAL_ENV_VAR_UNKNOWN" {
 		t.Fatalf("approve with an unknown value: err = %v", err)
 	}
 
 	token := "s3cret"
-	approved, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", []ManualEnvVar{{ServiceType: "web", ServiceName: "api", Key: "API_TOKEN", Value: &token}})
+	approved, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", []ManualEnvVar{{ServiceType: "web", ServiceName: "api", Key: "API_TOKEN", Value: &token}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -247,7 +247,7 @@ func TestBlueprintOnboardingCreatePlanApprove(t *testing.T) {
 	if err != nil || again.PlanningOutcome != PlanningNoChanges || again.Sync != nil {
 		t.Fatalf("re-plan = %+v err=%v, want no_changes with no sync", again, err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", nil); err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" {
+	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", "", nil); err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" {
 		t.Fatalf("approve after an applied sync: err = %v", err)
 	}
 }
@@ -265,7 +265,7 @@ func TestBlueprintOnboardingCreateNewManagesASuffixedCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, adopted.Blueprint.ID, "tea-a", answer("api")); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, adopted.Blueprint.ID, "tea-a", "", answer("api")); err != nil {
 		t.Fatal(err)
 	}
 	original := &appv1alpha1.App{}
@@ -288,7 +288,7 @@ func TestBlueprintOnboardingCreateNewManagesASuffixedCopy(t *testing.T) {
 	if res.PlanningOutcome != PlanningPlanned || len(res.Sync.RequiredManualEnvVars) != 1 || res.Sync.RequiredManualEnvVars[0] != want {
 		t.Fatalf("plan = %+v, want the suffixed service's manual env var %+v", res, want)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, b.ID, "tea-a", answer(copyName)); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, b.ID, "tea-a", "", answer(copyName)); err != nil {
 		t.Fatal(err)
 	}
 	var apps appv1alpha1.AppList
@@ -324,7 +324,7 @@ func TestBlueprintOnboardingFailedPlanCannotBeApproved(t *testing.T) {
 		failed.Sync == nil || failed.Sync.State != store.BlueprintSyncStateError {
 		t.Fatalf("plan = %+v, want failed with an error notice and an error sync", failed)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", nil); err == nil || coded(t, err) != "BLUEPRINT_SYNC_PLANNING_FAILED" {
+	if _, err := svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", "", nil); err == nil || coded(t, err) != "BLUEPRINT_SYNC_PLANNING_FAILED" {
 		t.Fatalf("approve after a failed plan: err = %v", err)
 	}
 	if b := st.blueprints[ids.BlueprintStorageID(res.Blueprint.ID)]; b.Status != store.BlueprintStatusCreated {
@@ -537,7 +537,7 @@ func TestBlueprintPlannedSyncIsReadableUntilApproved(t *testing.T) {
 	}
 
 	token := "s3cret"
-	if _, err := svc.ApproveBlueprint(ctx, id, "tea-a", []ManualEnvVar{{ServiceType: "web", ServiceName: "api", Key: "API_TOKEN", Value: &token}}); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, id, "tea-a", "", []ManualEnvVar{{ServiceType: "web", ServiceName: "api", Key: "API_TOKEN", Value: &token}}); err != nil {
 		t.Fatal(err)
 	}
 	if got, err := svc.PlannedSync(ctx, id, "tea-a"); err != nil || got != nil {

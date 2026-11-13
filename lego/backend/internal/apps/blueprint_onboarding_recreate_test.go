@@ -137,7 +137,7 @@ func recreatedDuringTeardown(t *testing.T) (*Service, *fakeBlueprintStore, conte
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	key := appKey(t, svc, "api")
@@ -176,7 +176,7 @@ func TestRecreatedBlueprintPlansADeletedServiceAsCreate(t *testing.T) {
 	// Approving while the deleted App still tears down re-creates the service
 	// at once, as on Render, under its own App object beside the old one
 	// (w2/m365); the old App finishes on its own.
-	approved, err := svc.ApproveBlueprint(ctx, againID, "tea-a", nil)
+	approved, err := svc.ApproveBlueprint(ctx, againID, "tea-a", "", nil)
 	if err != nil {
 		t.Fatalf("approve during the teardown = %v, want the service re-created at once", err)
 	}
@@ -205,7 +205,7 @@ func TestBlueprintSyncRecreatesADeletedService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := svc.Delete(ctx, "api"); err != nil {
@@ -234,7 +234,7 @@ func TestNoChangesFirstPlanLeavesCreated(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := svc.DisconnectBlueprint(ctx, first.Blueprint.ID, "tea-a"); err != nil {
@@ -256,7 +256,7 @@ func TestNoChangesFirstPlanLeavesCreated(t *testing.T) {
 		t.Fatalf("stored = status %q manifest %q, want in_sync with the planned file", stored.Status, stored.Manifest)
 	}
 	// Nothing to approve on this connection, said without the earlier one's sync.
-	_, err = svc.ApproveBlueprint(ctx, again.Blueprint.ID, "tea-a", nil)
+	_, err = svc.ApproveBlueprint(ctx, again.Blueprint.ID, "tea-a", "", nil)
 	if err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" || strings.Contains(err.Error(), first.Sync.ID) {
 		t.Fatalf("approve = %v, want BLUEPRINT_NOTHING_TO_APPROVE naming no earlier-connection sync", err)
 	}
@@ -284,7 +284,7 @@ func TestNoChangesPlanSupersedesAWaitingPlan(t *testing.T) {
 	if err != nil || plan.PlanningOutcome != PlanningNoChanges {
 		t.Fatalf("plan = %+v err=%v, want no_changes", plan, err)
 	}
-	_, err = svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", nil)
+	_, err = svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", "", nil)
 	if err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" || !strings.Contains(err.Error(), "superseded") {
 		t.Fatalf("approving the superseded plan: err = %v, want BLUEPRINT_NOTHING_TO_APPROVE (superseded)", err)
 	}

@@ -2103,6 +2103,7 @@ export type MutationApproveBlueprintArgs = {
   id: Scalars['String']['input'];
   manualEnvVars?: InputMaybe<Array<InputMaybe<BlueprintManualEnvVarInput>>>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  syncId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

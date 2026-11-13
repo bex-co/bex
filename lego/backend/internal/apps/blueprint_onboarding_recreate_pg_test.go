@@ -91,7 +91,7 @@ func TestRecreatedBlueprintRecreatesDeletedServicePG(t *testing.T) {
 	if first.PlanningOutcome != PlanningPlanned || plannedActions(first) != "create service api" {
 		t.Fatalf("create = %s %q", first.PlanningOutcome, plannedActions(first))
 	}
-	firstApproved, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, wsID, nil)
+	firstApproved, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, wsID, "", nil)
 	if err != nil || firstApproved.State != store.BlueprintSyncStateSuccess {
 		t.Fatalf("approve = %+v err=%v", firstApproved, err)
 	}
@@ -127,7 +127,7 @@ func TestRecreatedBlueprintRecreatesDeletedServicePG(t *testing.T) {
 	// Approving while the deleted App still tears down re-creates the service
 	// at once, as on Render, under its own App object beside the old one
 	// (w2/m365); the old App finishes on its own.
-	approved, err := svc.ApproveBlueprint(ctx, again.Blueprint.ID, wsID, nil)
+	approved, err := svc.ApproveBlueprint(ctx, again.Blueprint.ID, wsID, "", nil)
 	if err != nil || approved.ID != again.Sync.ID || approved.State != store.BlueprintSyncStateSuccess {
 		t.Fatalf("approve during the teardown = %+v err=%v, want the plan %s applied", approved, err, again.Sync.ID)
 	}
@@ -158,7 +158,7 @@ func TestNoChangesFirstPlanLeavesCreatedPG(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, wsID, nil); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, wsID, "", nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := svc.DisconnectBlueprint(ctx, first.Blueprint.ID, wsID); err != nil {
@@ -176,7 +176,7 @@ func TestNoChangesFirstPlanLeavesCreatedPG(t *testing.T) {
 	if err != nil || b.Status != store.BlueprintStatusInSync || b.LastSyncAt == nil || b.Manifest != recreateManifest {
 		t.Fatalf("stored = %+v err=%v, want in_sync with last_sync_at and the planned file", b, err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, again.Blueprint.ID, wsID, nil); err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" {
+	if _, err := svc.ApproveBlueprint(ctx, again.Blueprint.ID, wsID, "", nil); err == nil || coded(t, err) != "BLUEPRINT_NOTHING_TO_APPROVE" {
 		t.Fatalf("approve: err = %v, want BLUEPRINT_NOTHING_TO_APPROVE", err)
 	}
 	res, err := svc.SyncBlueprint(ctx, again.Blueprint.ID, wsID, "", "", nil)
