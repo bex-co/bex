@@ -98,7 +98,7 @@ func (s *usageStore) RecordAgentModelUsage(_ context.Context, u store.AgentModel
 func (s *usageStore) AgentSpendInputs(context.Context, string, time.Time) (store.AgentSpendInputs, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return store.AgentSpendInputs{Plan: s.plan, Trust: s.trust, MonthToDateMicroUSD: s.usedMicro, BalanceDue: s.due}, nil
+	return store.AgentSpendInputs{Plan: s.plan, Trust: s.trust, MonthToDateMicroUSD: s.usedMicro, WindowSpendMicroUSD: s.usedMicro, BalanceDue: s.due}, nil
 }
 
 // now is the minter's clock; advance moves it past the mint's spend cache.
