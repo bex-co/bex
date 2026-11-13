@@ -1,15 +1,15 @@
 # w5 · m370 — A spec change takes effect in seconds: the operator's App work queue is measured, alerted on and kept short
 
-**Worker:** worker5 **Goal:** the operator's App controller queue is visible on obs.bex.co, an alert fires when it backs up, and the cause of the intermittent minute-long lag is found and fixed, so a settings change such as maintenance mode reaches the cluster within seconds. **Status:** todo
+**Worker:** worker5 **Goal:** the operator's App controller queue is visible on obs.bex.co, an alert fires when it backs up, and the cause of the intermittent minute-long lag is found and fixed, so a settings change such as maintenance mode reaches the cluster within seconds. **Status:** in progress (t001, t004 done: the queue metrics, recording rule, alert and Builds-dashboard panels are shipped; t002 next)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Keep the App controller's work-queue and reconcile-time metrics, with recording rules and an ADR088 panel | 40m | — |
+| [t001](done/t001.md) | Keep the App controller's work-queue and reconcile-time metrics, with recording rules and an ADR088 panel — **DONE** | 40m | — |
 | [t002](t002.md) | Reproduce the queue wait on the mock cluster at production-like load and find the slow passes | 1h30m | t001 |
 | [t003](t003.md) | Keep the App queue short: fix the cause t002 measured | 1h30m | t002 |
-| [t004](t004.md) | Alert when the App queue backs up, with a promtool test | 40m | t001 |
+| [t004](done/t004.md) | Alert when the App queue backs up, with a promtool test — **DONE** | 40m | t001 |
 | [t005](t005.md) | Simplify | 15m | t003, t004 |
 | [t006](t006.md) | Test coverage | 30m | t005 |
 | [t007](t007.md) | Closeout (24 h production reading and live replay) | 30m | t006 |
@@ -37,3 +37,13 @@ Total: **7 tasks, about 5h35m**.
 - **Why now:** two QA workstreams keep hitting the lag with no way to see its cause, and it grows with the number of Apps.
 - **Render parity: omitted.** Operator mechanism and platform observability only; no REST, GraphQL, MCP or dashboard change. The tenant-visible effect is latency, checked by the DoD's live replay.
 - **Risk:** reading obs.bex.co needs the ops-workspace gate (ADR088). If the worker lacks it, the Closeout's production reading needs the user to read and paste the panel.
+
+## Findings
+
+### 2026-11-13 — t001 and t004 (loopx w5)
+
+- **Kept:** the `bex-operator` scrape now keeps `workqueue_depth`, `workqueue_queue_duration_seconds_*`, `workqueue_work_duration_seconds_*`, `controller_runtime_reconcile_time_seconds_*`, `controller_runtime_active_workers` and `controller_runtime_max_concurrent_reconciles` beside `bex_(build|datastore)` (`deploy/gitops/base/prometheus.yaml`).
+- **Recording rule:** `bex:operator_app_queue_wait_seconds:p95` (the `app` queue, 5 m rate).
+- **Alert:** `BexOperatorReconcileQueueSlow` (p95 over 15 s for 10 minutes, warning), with `deploy/gitops/base/rules/operator_queue_alerts_test.yml`: a sustained 20–60 s wait fires, a healthy queue and a five-minute spike do not.
+- **Panels:** two on the Builds dashboard (`bex-builds`, ids 11 and 12): queue wait p50/p95 with depth, and reconcile p95 with busy and maximum workers. `scripts/obs-coverage-check.sh` maps the alert to them.
+- **t002 tooling:** this host had neither `kind` nor `clusterctl`, so `scripts/mock-cluster.sh` could not run. Installed the versions CI pins (kind v0.33.0 from `.github/workflows/egress-meter-live.yml`, clusterctl v1.13.2 from `.github/workflows/app-cluster.yml`) into `~/go/bin` and `~/.local/toolchains/bin`.
