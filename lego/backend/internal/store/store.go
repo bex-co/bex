@@ -310,11 +310,16 @@ const (
 	// TriggerDeployedByRender is a deploy the platform itself started (the
 	// platform-rebuild fleet rebuild), in Render's own spelling.
 	TriggerDeployedByRender = "deployed_by_render"
+	// TriggerBlueprintSync is a rollout a Blueprint sync (manual, approved
+	// or automatic) opened on an existing service it changed. It keeps the
+	// "blueprint" the first syncs stored; REST spells it Render's
+	// blueprint_sync (w8/301).
+	TriggerBlueprintSync = "blueprint"
 )
 
 // AllTriggers is every Trigger* value — the set REST conformance proves maps
 // onto Render's enum (w8/058). A guard test keeps it in step with the consts.
-var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerManual, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerSettingsChange, TriggerRestart, TriggerDeployedByRender}
+var AllTriggers = []string{TriggerCreate, TriggerAPI, TriggerManual, TriggerDeployHook, TriggerRollback, TriggerNewCommit, TriggerConfigChange, TriggerSettingsChange, TriggerRestart, TriggerDeployedByRender, TriggerBlueprintSync}
 
 // ErrCommitNotFound is a commit lookup the repository's host answered with
 // "no such commit" (w8/280), as opposed to one that could not be made: the

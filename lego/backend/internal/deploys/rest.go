@@ -314,14 +314,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 // renderTrigger maps bex's deploy trigger onto Render's closed `trigger` enum
 // (components.schemas.deploy.properties.trigger) so a strictly generated
 // Render client can decode every deploy (w8/058). A settings-driven rollout
-// is Render's service_updated; a service's first deploy has no exact Render
-// value, so it is `other` rather than a cause bex cannot vouch for (a
-// new_commit or an api call). The rest are spelled alike. Unknown values map
-// to `other` too; TestRenderConformance seeds every store.AllTriggers entry.
+// is Render's service_updated, and a Blueprint sync's rollout (stored
+// "blueprint") its blueprint_sync (w8/301). A service's first deploy has no
+// exact Render value, so it is `other` rather than a cause bex cannot vouch
+// for (a new_commit or an api call). The rest are spelled alike. Unknown
+// values map to `other` too; TestRenderConformance seeds every
+// store.AllTriggers entry.
 func renderTrigger(trigger string) string {
 	switch trigger {
 	case store.TriggerConfigChange, store.TriggerSettingsChange:
 		return "service_updated"
+	case store.TriggerBlueprintSync:
+		return "blueprint_sync"
 	case store.TriggerAPI, store.TriggerManual, store.TriggerDeployHook, store.TriggerRollback, store.TriggerNewCommit, store.TriggerDeployedByRender:
 		return trigger
 	case "":

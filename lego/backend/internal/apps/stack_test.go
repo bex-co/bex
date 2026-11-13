@@ -730,7 +730,7 @@ func TestDeployStackChangedServiceRedeploys(t *testing.T) {
 	if a.Spec.RestartedAt == "" {
 		t.Error("a changed re-apply must bump RestartedAt")
 	}
-	if len(rec.deployCalls) != 1 || rec.deployCalls[0].Trigger != "blueprint" {
+	if len(rec.deployCalls) != 1 || rec.deployCalls[0].Trigger != store.TriggerBlueprintSync {
 		t.Errorf("changed re-apply => 1 blueprint deploy record, got %+v", rec.deployCalls)
 	}
 	if got := rec.deployCalls[0].Generation; got != existing.Generation+1 {

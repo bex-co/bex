@@ -56,7 +56,7 @@ func TestCancelOfThePendingDeployLeavesTheOlderOneRunning(t *testing.T) {
 		"a pushed commit":                                    {repoApp(), store.TriggerAPI, "", store.TriggerNewCommit, false, "2", "1", "aaa"},
 		"the older deploy itself":                            {repoApp(), store.TriggerCreate, "", store.TriggerAPI, true, "1", "", "bbb"},
 		"a configuration change":                             {repoApp(), store.TriggerCreate, "", store.TriggerConfigChange, false, "2", "", "bbb"},
-		"a blueprint sync":                                   {repoApp(), store.TriggerCreate, "", "blueprint", false, "2", "", "bbb"},
+		"a blueprint sync":                                   {repoApp(), store.TriggerCreate, "", store.TriggerBlueprintSync, false, "2", "", "bbb"},
 		"a deploy behind a rollback":                         {repoApp(), store.TriggerRollback, "web@sha256:old", store.TriggerAPI, false, "2", "", "bbb"},
 		"an image-backed service":                            {imageApp(), store.TriggerCreate, "web:v1", store.TriggerAPI, false, "2", "1", ""},
 		"an image service's deploy behind an --image deploy": {imageApp(), store.TriggerAPI, "web@sha256:pinned", store.TriggerAPI, false, "2", "", ""},
