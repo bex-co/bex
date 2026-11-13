@@ -1,7 +1,9 @@
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
-import { DeployHistoryView } from "@/features/deploys/components/deploy-history-view";
-import { DeploysListSkeleton } from "@/common/components/route-skeletons";
+import {
+  DeployHistorySkeleton,
+  DeployHistoryView,
+} from "@/features/deploys/components/deploy-history-view";
 import { parseDeployListSearch } from "@/features/deploys/lib/deploy-list-search";
 
 /**
@@ -13,7 +15,7 @@ import { parseDeployListSearch } from "@/features/deploys/lib/deploy-list-search
 export const Route = createFileRoute("/static/$serviceId/deploys/")({
   head: serviceTabHead("services.navDeploys", "/static/$serviceId"),
   component: RouteComponent,
-  pendingComponent: DeploysListSkeleton,
+  pendingComponent: DeployHistorySkeleton,
   // The history's filters live in the URL, so Back from a deploy's detail
   // returns to the narrowed list (w4/284).
   validateSearch: parseDeployListSearch,
@@ -25,6 +27,7 @@ function RouteComponent() {
   const navigate = Route.useNavigate();
   return (
     <DeployHistoryView
+      base={"/static"}
       serviceId={serviceId}
       search={search}
       // The functional form commits the explicit undefineds, which is what

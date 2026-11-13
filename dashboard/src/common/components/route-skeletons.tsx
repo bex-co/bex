@@ -1761,9 +1761,17 @@ export function ServiceCreatePageSkeleton() {
   );
 }
 
-export function DeploysListSkeleton() {
+export function DeploysListSkeleton({
+  banner,
+}: {
+  /** The auto-deploy-off banner the ready page shows above the list
+   *  (w3/064): its own content is already known, so the pending state shows
+   *  it as is and matches at every width. */
+  banner?: React.ReactNode;
+} = {}) {
   return (
-    <PendingFrame route="deploys-list">
+    <PendingFrame route="deploys-list" className="space-y-4">
+      {banner ? <Region name="auto-deploy-off-banner">{banner}</Region> : null}
       <Region name="deploys-table">
         <TableCardSkeleton rows={3} columns={4} controls />
       </Region>

@@ -266,6 +266,23 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy timeline: graceful fallback when service-events query fails",
   },
+  "deploys.autoDeployOffTitle": {
+    message: "自动部署已关闭",
+    description:
+      "Deploys page banner title when the service's auto-deploy is off (Render, w3/064)",
+  },
+  "deploys.autoDeployOffBody": {
+    message: "推送到 {branch} 不会部署此服务。请手动部署，或重新开启自动部署。",
+    description: "Deploys page banner body; {branch} is the tracked git branch",
+  },
+  "deploys.autoDeployOffBodyNoBranch": {
+    message: "推送不会部署此服务。请手动部署，或重新开启自动部署。",
+    description: "Deploys page banner body when the branch is unknown",
+  },
+  "deploys.autoDeployOffSettings": {
+    message: "自动部署设置",
+    description: "Deploys page banner link to the service Settings page",
+  },
   "deploys.listTitle": {
     message: "部署",
     description: "Deploys tab: card title over the deploy-history list",
