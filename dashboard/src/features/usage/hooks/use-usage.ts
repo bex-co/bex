@@ -85,6 +85,8 @@ export interface BillingAmount {
 export interface BillingInvoice {
   id: string;
   status: string;
+  /** "cycle" or "agent_model_charge" (a charge made when agent model spend reached its threshold). */
+  kind: string;
   amountUsd: string;
   creditsAppliedUsd: string;
   amountDueUsd: string;
@@ -296,6 +298,7 @@ export function useUsage(period?: string): UseUsageResult {
                     .map((i) => ({
                       id: i!.id ?? "",
                       status: i!.status ?? "",
+                      kind: i!.kind ?? "cycle",
                       amountUsd: i!.amountUsd ?? "0.00",
                       creditsAppliedUsd: i!.creditsAppliedUsd ?? "0.00",
                       amountDueUsd: i!.amountDueUsd ?? "0.00",

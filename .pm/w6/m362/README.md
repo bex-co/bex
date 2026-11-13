@@ -1,6 +1,6 @@
 # w6 · m362 — Reaching an agent-model charge threshold charges the card and the workspace keeps working
 
-**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t005 and t011–t013 done (bex charges at the moment of the crossing; shipping); t014, t015, then the production check t006
+**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t005 and t011–t015 done; the production check t006 runs on the deploy of `5de3d5bcc`
 
 ## Tasks (in order)
 
@@ -14,8 +14,8 @@
 | t011 | [bex charges the card the moment a workspace reaches its threshold, and the request waits for the result](done/t011.md) — **DONE** | 3h | — |
 | t012 | [The month-end invoice bills only agent-model usage not already charged](done/t012.md) — **DONE** | 1h30 | t011 |
 | t013 | [A failed agent-model charge stops only model spend; hosting billing is untouched](done/t013.md) — **DONE** | 1h | t011 |
-| t014 | [Settings → Billing lists the mid-month agent-model charges, and the month-end invoice reads net of them](t014.md) | 1h30 | t012 |
-| t015 | [Settle-before-delete charges unbilled agent-model usage through the same charger](t015.md) | 30m | t011, t012 |
+| t014 | [Settings → Billing lists the mid-month agent-model charges, and the month-end invoice reads net of them](done/t014.md) — **DONE** | 1h30 | t012 |
+| t015 | [Settle-before-delete charges unbilled agent-model usage through the same charger](done/t015.md) — **DONE** | 30m | t011, t012 |
 | t006 | [Production check: a T0 workspace reaches $10, is charged at once and keeps working](t006.md) | 1h | t001, t005, t011–t015 |
 | t007 | [Render parity (Devin): spend and charge surfaces agree](t007.md) | 20m | t006 |
 | t008 | [Simplify](t008.md) | 15m | t007 |

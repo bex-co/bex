@@ -116,6 +116,7 @@ describe("grouped money amounts", () => {
       invoices: [
         {
           id: "in_big",
+          kind: "cycle",
           status: "paid",
           amountUsd: "1234.50",
           creditsAppliedUsd: "0.00",
@@ -152,6 +153,7 @@ describe("InvoiceHistoryCard", () => {
           invoices: [
             {
               id: "in_1",
+              kind: "cycle",
               status: "paid",
               amountUsd: "74.78",
               creditsAppliedUsd: "74.78",
@@ -167,5 +169,69 @@ describe("InvoiceHistoryCard", () => {
 
     expect(screen.getByText("$0.00")).toBeInTheDocument();
     expect(screen.queryByText("$74.78")).not.toBeInTheDocument();
+  });
+
+  it("labels an agent model charge and says the month's invoice deducts it", () => {
+    const row = {
+      creditsAppliedUsd: "0.00",
+      currency: "USD",
+      periodEnd: "2026-11-13T00:00:00Z",
+    };
+    render(
+      <InvoiceHistoryCard
+        billing={creditedPeriod({
+          invoices: [
+            {
+              ...row,
+              id: "in_charge",
+              status: "paid",
+              kind: "agent_model_charge",
+              amountUsd: "10.00",
+              amountDueUsd: "10.00",
+              periodStart: "2026-11-13T00:00:00Z",
+            },
+            {
+              ...row,
+              id: "in_cycle",
+              status: "paid",
+              kind: "cycle",
+              amountUsd: "40.00",
+              amountDueUsd: "40.00",
+              periodStart: "2026-10-01T00:00:00Z",
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.getAllByText("Agent model charge")).toHaveLength(1);
+    expect(
+      screen.getByText(/Agent model charges made during a month are deducted/),
+    ).toBeInTheDocument();
+  });
+
+  it("adds no charge note when the history has only cycle invoices", () => {
+    render(
+      <InvoiceHistoryCard
+        billing={creditedPeriod({
+          invoices: [
+            {
+              id: "in_cycle",
+              status: "paid",
+              kind: "cycle",
+              amountUsd: "40.00",
+              creditsAppliedUsd: "0.00",
+              amountDueUsd: "40.00",
+              currency: "USD",
+              periodStart: "2026-10-01T00:00:00Z",
+              periodEnd: "2026-11-01T00:00:00Z",
+            },
+          ],
+        })}
+      />,
+    );
+
+    expect(screen.queryByText("Agent model charge")).not.toBeInTheDocument();
+    expect(screen.queryByText(/deducted/)).not.toBeInTheDocument();
   });
 });

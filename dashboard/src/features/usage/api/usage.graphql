@@ -104,6 +104,7 @@ query Usage($period: String, $ownerId: String) {
       invoices {
         id
         status
+        kind
         amountUsd
         creditsAppliedUsd
         amountDueUsd

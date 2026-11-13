@@ -273,7 +273,7 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNew": {
     message:
-      "新工作区的 agent 模型花费到 {amount} 时会当场扣款；扣款成功后会话继续运行，上限提高到套餐上限。",
+      "新工作区的智能体模型支出达到 {amount} 时会当场扣款；扣款成功后会话继续运行，上限提高到套餐上限。",
     description:
       "Explains T0: charged at its threshold, working while the charge settles (ADR091 D10.2a)",
   },

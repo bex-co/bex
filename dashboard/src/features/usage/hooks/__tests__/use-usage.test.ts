@@ -261,6 +261,7 @@ describe("useUsage", () => {
       invoices: [
         {
           id: "inv_1",
+          kind: "cycle",
           status: "FINALIZED",
           amountUsd: "40.00",
           creditsAppliedUsd: "0.00",

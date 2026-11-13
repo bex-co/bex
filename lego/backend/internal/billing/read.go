@@ -90,8 +90,12 @@ type Amount struct {
 // Invoice is one normalized non-draft Stripe invoice. Its money fields carry
 // the same gross/credit/due split as Amount, for the same reason.
 type Invoice struct {
-	ID                string `json:"id"`
-	Status            string `json:"status"`
+	ID     string `json:"id"`
+	Status string `json:"status"`
+	// Kind is InvoiceKindCycle for the subscription's own invoices and
+	// InvoiceKindAgentModelCharge for a charge bex made when agent-model spend
+	// reached its threshold, which the next cycle invoice deducts.
+	Kind              string `json:"kind"`
 	AmountUSD         string `json:"amountUsd"`
 	CreditsAppliedUSD string `json:"creditsAppliedUsd"`
 	AmountDueUSD      string `json:"amountDueUsd"`
@@ -99,6 +103,12 @@ type Invoice struct {
 	PeriodStart       string `json:"periodStart"`
 	PeriodEnd         string `json:"periodEnd"`
 }
+
+// The kinds of invoice a workspace's billing history lists.
+const (
+	InvoiceKindCycle            = "cycle"
+	InvoiceKindAgentModelCharge = "agent_model_charge"
+)
 
 // BillingFor resolves (without creating) the workspace's Customer and bex
 // Subscription, then reads Stripe's current invoice preview plus finalized
@@ -323,17 +333,44 @@ func (c *StripeClient) PaidInvoices(ctx context.Context, customerID string) ([]s
 }
 
 func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscriptionID string) ([]Invoice, error) {
+	cycle, err := c.listInvoices(ctx, customerID, subscriptionID, false)
+	if err != nil {
+		return nil, err
+	}
+	// A threshold charge is a standalone invoice on the customer (it never
+	// names the subscription, so it moves neither the billing anchor nor
+	// proration); it belongs in the history beside the cycle invoices that
+	// deduct it.
+	charges, err := c.listInvoices(ctx, customerID, "", true)
+	if err != nil {
+		return nil, err
+	}
+	out := append(cycle, charges...)
+	sort.SliceStable(out, func(i, j int) bool { return out[i].PeriodStart > out[j].PeriodStart })
+	return out, nil
+}
+
+// listInvoices is customerID's finalized invoices (on subscriptionID when it
+// is set): its agent-model charge invoices when charges, else every other one.
+func (c *StripeClient) listInvoices(ctx context.Context, customerID, subscriptionID string, charges bool) ([]Invoice, error) {
+	kind := InvoiceKindCycle
+	if charges {
+		kind = InvoiceKindAgentModelCharge
+	}
 	params := &stripe.InvoiceListParams{
-		ListParams:   stripe.ListParams{Limit: stripe.Int64(100)},
-		Customer:     stripe.String(customerID),
-		Subscription: stripe.String(subscriptionID),
+		ListParams: stripe.ListParams{Limit: stripe.Int64(100)},
+		Customer:   stripe.String(customerID),
+	}
+	if subscriptionID != "" {
+		params.Subscription = stripe.String(subscriptionID)
 	}
 	params.Context = ctx
 	iter := c.sc.Invoices.List(params)
 	out := make([]Invoice, 0)
 	for iter.Next() {
 		inv := iter.Invoice()
-		if inv.Status == stripe.InvoiceStatusDraft {
+		_, isCharge := agentModelChargeInvoice(inv)
+		if inv.Status == stripe.InvoiceStatusDraft || isCharge != charges {
 			continue
 		}
 		gross, creditsApplied, due, err := invoiceFigures(inv)
@@ -343,6 +380,7 @@ func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscr
 		out = append(out, Invoice{
 			ID:                inv.ID,
 			Status:            strings.ToUpper(string(inv.Status)),
+			Kind:              kind,
 			AmountUSD:         gross,
 			CreditsAppliedUSD: creditsApplied,
 			AmountDueUSD:      due,
@@ -354,7 +392,6 @@ func (c *StripeClient) finalizedInvoices(ctx context.Context, customerID, subscr
 	if err := iter.Err(); err != nil {
 		return nil, fmt.Errorf("stripe: list invoices for customer %s: %w", customerID, err)
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].PeriodStart > out[j].PeriodStart })
 	return out, nil
 }
 
