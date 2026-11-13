@@ -23,6 +23,8 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -55,13 +57,16 @@ services:
 // TestBlueprintAddressRefsRequireAnAddressableTarget: host, port and hostport
 // all name a sibling's network address, which only web/private services have.
 // port used to resolve to "0" and hostport to "<slug>:0" for a worker, cron
-// job or static site (w8/081); host was already refused.
+// job or static site (w8/081). A static site's host is accepted (w8/303).
 func TestBlueprintAddressRefsRequireAnAddressableTarget(t *testing.T) {
 	svc, _ := newService(nil)
 	refTypes := map[string]string{"worker": "worker", "cron": "cron", "static": "web"}
 	for _, target := range []string{"worker", "cron", "static"} {
 		refType := refTypes[target]
 		for _, property := range []string{"host", "port", "hostport"} {
+			if target == "static" && property == "host" {
+				continue // the site's public hostname (w8/303)
+			}
 			manifest := addressRefManifest(target, refType, "property: "+property)
 			t.Run(target+"/"+property, func(t *testing.T) {
 				_, err := parseStack(DeployRequest{Manifest: manifest})
@@ -95,6 +100,62 @@ func TestBlueprintAddressRefsRequireAnAddressableTarget(t *testing.T) {
 			})
 		}
 	}
+}
+
+// w8/303: Render's own movie-context-provider template takes its static
+// widget site's host and builds the site's public URL from it. The reference
+// resolves to the site's public hostname, whether the file declares the site
+// or it already exists in the workspace.
+func TestBlueprintStaticSiteHostIsItsPublicHostname(t *testing.T) {
+	ctx := context.Background()
+	t.Run("declared", func(t *testing.T) {
+		svc, cl := newBaseDomainService("onbex.test", "")
+		if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: addressRefManifest("static", "web", "property: host")}); err != nil {
+			t.Fatalf("DeployStack: %v", err)
+		}
+		if got := findEnv(t, getApp(t, cl, "caller").Spec.Env, "UPSTREAM").Value; got != "target.onbex.test" {
+			t.Errorf("UPSTREAM = %q, want the static site's public hostname target.onbex.test", got)
+		}
+	})
+	manifest := `
+services:
+  - name: caller
+    type: web
+    runtime: image
+    image: {url: "c:1"}
+    envVars:
+      - {key: UPSTREAM, fromService: {name: widget, type: web, property: host}}
+`
+	existing := func(policy string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "widget", Namespace: "default"},
+			Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Expose: true, Repo: "https://github.com/o/r",
+				Subdomain: "widget-x7k2", SubdomainPolicy: policy},
+		}
+	}
+	t.Run("existing", func(t *testing.T) {
+		svc, cl := newBaseDomainService("onbex.test", "", existing(""))
+		if v, err := svc.ValidateBlueprint(ctx, "", manifest, ""); err != nil || !v.Valid {
+			t.Fatalf("validate = %+v, %v; want valid", v, err)
+		}
+		if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+			t.Fatalf("DeployStack: %v", err)
+		}
+		if got := findEnv(t, getApp(t, cl, "caller").Spec.Env, "UPSTREAM").Value; got != "widget-x7k2.onbex.test" {
+			t.Errorf("UPSTREAM = %q, want the existing site's public hostname widget-x7k2.onbex.test", got)
+		}
+	})
+	// A site with its platform subdomain disabled has no public hostname of
+	// its own: the variable is left out, and the service is still written.
+	t.Run("no platform host", func(t *testing.T) {
+		svc, cl := newBaseDomainService("onbex.test", "", existing(appv1alpha1.SubdomainPolicyDisabled))
+		if _, err := svc.DeployStack(ctx, DeployRequest{Manifest: manifest}); err != nil {
+			t.Fatalf("DeployStack: %v", err)
+		}
+		if env := getApp(t, cl, "caller").Spec.Env; hasEnv(env, "UPSTREAM") {
+			t.Errorf("caller env = %+v, want UPSTREAM left out", env)
+		}
+	})
 }
 
 // The refusal lands in parse, so a direct deploy writes nothing.

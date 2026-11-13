@@ -688,8 +688,8 @@ type parsedService struct {
 
 // hostRef is a deferred fromService host/hostport/port reference: the env key,
 // the sibling render.yaml name it targets, and the property. The hostname is
-// the sibling's slug, minted at create (docs/ADR041-service-addresses.md D3);
-// the port is the sibling's current serving port, which an image-port private
+// the sibling's slug, minted at create (docs/ADR041-service-addresses.md D3),
+// or a static site's public hostname (takesStaticHost); the port is the sibling's current serving port, which an image-port private
 // service only knows after its first build. Both resolve at apply, and a
 // port-carrying reference is recorded on its consumer (serviceRefsAnnotation)
 // so bex-api keeps it current when that port changes (w6/m148). refType and
@@ -717,11 +717,17 @@ func (ref hostRef) carriesPort() bool {
 	return ref.property != serviceRefPropertyHost && !strings.HasPrefix(ref.property, platformEnvRefProperty)
 }
 
-// env materializes the reference from target's slug and serving port. ok is
-// false for a port-carrying reference whose target port is not known yet: the
+// env materializes the reference from target's slug and serving port, or from
+// a platform variable (a static site's host is its RENDER_EXTERNAL_HOSTNAME).
+// ok is false when the value does not exist yet: a port-carrying reference
+// whose target port is unknown, or a platform variable the target lacks. The
 // variable is then omitted, never written with a guessed 3000 (ADR089 D4).
 func (ref hostRef) env(target *appv1alpha1.App, baseDomain string) (appv1alpha1.EnvVar, bool) {
-	if name, ok := strings.CutPrefix(ref.property, platformEnvRefProperty); ok {
+	name, platform := strings.CutPrefix(ref.property, platformEnvRefProperty)
+	if !platform && takesStaticHost(target.Spec.Type, ref.property) {
+		name, platform = renderenv.ExternalHostname, true
+	}
+	if platform {
 		value, ok := renderenv.Value(target, name, baseDomain)
 		return appv1alpha1.EnvVar{Name: ref.key, Value: value}, ok
 	}
@@ -794,11 +800,11 @@ var dbPropertyKey = map[string]string{
 }
 
 // serviceRefProperty is the set of fromService properties bex honors for a
-// web/private service (host/port/hostport). All three resolve at apply to
-// literal env values (hostRef): the sibling's slug — the hostname the
-// operator's slug-named Service makes resolvable in-cluster
-// (docs/ADR041-service-addresses.md D3, w9/m57) — and its serving port
-// (w6/m148).
+// web/private service (host/port/hostport), and for a static site its host
+// alone (takesStaticHost). All three resolve at apply to literal env values
+// (hostRef): the sibling's slug — the hostname the operator's slug-named
+// Service makes resolvable in-cluster (docs/ADR041-service-addresses.md D3,
+// w9/m57) — and its serving port (w6/m148).
 var serviceRefProperty = map[string]bool{
 	serviceRefPropertyHost: true, serviceRefPropertyPort: true, serviceRefPropertyHostPort: true,
 }
@@ -2637,6 +2643,7 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	// host, hostport and port all name a declared sibling's network address,
 	// which only web/private services have; a worker, cron job or static
 	// site has no port to resolve (it would become "0"/"<slug>:0", w8/081).
+	// A static site's host is the exception: its public hostname (w8/303).
 	// An undeclared host target gets the same checks against the existing
 	// workspace App (hostReferenceProblems).
 	//
@@ -2645,7 +2652,10 @@ func (idx *stackIndex) classifyRef(svc *parsedService, r envRef) error {
 	// only after its first build), so resolution is deferred to apply like
 	// databaseRefs above (w6/m148).
 	if r.FromService != nil && r.FromService.EnvVarKey == "" && serviceRefProperty[r.FromService.Property] {
-		if declaredService && !idx.addressableServices[r.FromService.Name] {
+		if targetType := idx.serviceTypes[r.FromService.Name]; declaredService && !idx.addressableServices[r.FromService.Name] && !takesStaticHost(targetType, r.FromService.Property) {
+			if targetType == appv1alpha1.TypeStaticSite {
+				return serviceRefStaticPort(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
+			}
 			return serviceRefUnaddressable(svc.req.Name, r.Key, r.FromService.Property, r.FromService.Name)
 		}
 		if declaredService && r.FromService.Name != svc.req.Name && idx.freeServices[r.FromService.Name] && refersToPrivateAddress(r.FromService.Property) {
@@ -2908,6 +2918,23 @@ func serviceRefTypeError(service, key, refType, target, targetType string) error
 // no Service: only web/private services are addressable (ADR041 D1, w8/081).
 func serviceRefUnaddressable(service, key, property, target string) error {
 	return fmt.Errorf("%w: service %q: envVars[%q] fromService %s references %q which has no network address (only web/private services are addressable)", core.ErrBadRequest, service, key, property, target)
+}
+
+// takesStaticHost reports whether a fromService reference of property to a
+// target of targetType is a static site's host. A static site has no private
+// address, but Render's own movie-context-provider template takes its host
+// and builds the site's public URL from it, so it resolves to the site's
+// RENDER_EXTERNAL_HOSTNAME (w8/303). The full hostname, not the bare slug:
+// the template appends .onrender.com to a value without a dot. Its port and
+// hostport stay refused (serviceRefStaticPort).
+func takesStaticHost(targetType, property string) bool {
+	return targetType == appv1alpha1.TypeStaticSite && property == serviceRefPropertyHost
+}
+
+// serviceRefStaticPort refuses a static site's port or hostport: a static site
+// has no port, and only its host (its public hostname) can be referenced.
+func serviceRefStaticPort(service, key, property, target string) error {
+	return fmt.Errorf("%w: service %q: envVars[%q] fromService %s references static site %q, which has no network address or port (only its host, its public hostname, can be referenced)", core.ErrBadRequest, service, key, property, target)
 }
 
 // refersToPrivateAddress reports whether a fromService property names the

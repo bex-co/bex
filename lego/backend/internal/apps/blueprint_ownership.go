@@ -713,7 +713,8 @@ func (s *Service) validateWorkspaceReferences(ctx context.Context, source *Bluep
 // `property: host` reference to a target the manifest does not declare that
 // is no existing workspace service (resolved by manifest name, as the apply
 // resolves them, w5/m133), or an existing App the supplied type does not name
-// or that has no network address — classifyRef's declared-sibling rules
+// or that has no network address (a static site's host is its public
+// hostname, w8/303) — classifyRef's declared-sibling rules
 // applied to the App's actual kind. Each refusal is at its authored envVars
 // entry. Validate reports them all (w8/026); the apply refuses the first
 // before any write (w4/206).
@@ -744,6 +745,9 @@ func existingHostTargetError(service string, ref hostRef, target *appv1alpha1.Ap
 	}
 	if err := serviceRefTypeError(service, ref.key, ref.refType, ref.target, effectiveType(target.Spec.Type)); err != nil {
 		return err
+	}
+	if takesStaticHost(target.Spec.Type, ref.property) {
+		return nil // its public hostname, not a private address
 	}
 	if !target.Spec.InternallyAddressable() {
 		return serviceRefUnaddressable(service, ref.key, serviceRefPropertyHost, ref.target)

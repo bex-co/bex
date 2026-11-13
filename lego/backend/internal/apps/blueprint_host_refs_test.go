@@ -403,8 +403,9 @@ func TestValidateBlueprintChecksExistingHostTargets(t *testing.T) {
 		{target: "ex-worker", refType: "web", want: mismatch, field: ".fromService.type"},
 		{target: "ex-worker", refType: "worker", want: noAddress},
 		{target: "ex-cron", refType: "cron", want: noAddress},
-		{target: "ex-static", refType: "web", want: noAddress},
-		{target: "ex-static", refType: "static", want: noAddress},
+		// A static site's host is its public hostname (w8/303).
+		{target: "ex-static", refType: "web"},
+		{target: "ex-static", refType: "static"},
 		{target: "ex-missing", refType: "web", want: unknown},
 		// A declared sibling takes precedence over the same-named existing App,
 		// whichever way its own kind decides.
@@ -452,7 +453,7 @@ func TestDeployStackRefusesInvalidExistingHostTargetBeforeWriting(t *testing.T) 
 	for _, tc := range []struct {
 		name, refType, target, want string
 	}{
-		{"static-host", "web", "ex-static", `envVars["UPSTREAM"] fromService host references "ex-static" which has no network address`},
+		{"cron-host", "cron", "ex-cron", `envVars["UPSTREAM"] fromService host references "ex-cron" which has no network address`},
 		{"web-wrong-type", "worker", "ex-web", `envVars["UPSTREAM"] fromService.type "worker" does not match "ex-web" (want type web)`},
 		{"missing", "web", "ex-missing", `fromService references unknown service "ex-missing"`},
 	} {
@@ -518,13 +519,13 @@ func TestHostReferenceRefusalsAgreeAcrossValidationSurfaces(t *testing.T) {
       - {key: ONE, fromService: {type: web, name: absent, property: host}}
       - {key: TWO, fromService: {type: web, name: absent, property: host}}
 `,
-		"existing static and wrong type": `services:
+		"existing worker and wrong type": `services:
   - type: web
     name: consumer
     runtime: image
     image: {url: nginx:1.27}
     envVars:
-      - {key: SITE, fromService: {type: web, name: ex-static, property: host}}
+      - {key: JOBS, fromService: {type: worker, name: ex-worker, property: host}}
       - {key: API, fromService: {type: worker, name: ex-web, property: host}}
 `,
 	} {
