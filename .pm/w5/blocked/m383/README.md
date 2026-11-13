@@ -33,7 +33,7 @@ Total: **8 tasks, about 3h55m**.
 - **Expected outcome:** imports cannot exhaust the registry other tenants' builds depend on, and an imported image holds only bytes bex copied.
 - **Why now:** round 24's S-3 fix bounded each workspace, not the platform; this closes the remainder.
 - **Surface consistency:** included (t005). The new refusals are new API errors on the import surfaces (REST, GraphQL, MCP); there is no Render or Devin counterpart for image import limits, so the check is consistency across bex's own surfaces.
-- **Approach note:** the note asked to strip foreign URLs and to check Zot's cross-repo mount and dedupe behavior, both "needs a deployment test". Refusing foreign blobs (t002) needs none: a refused manifest never reaches containerd. Refusing a source on the registry's own host (t001) closes go-containerregistry's cross-repository mount. Whether Zot's dedupe links a blob another repository holds when the importer checks for it is still open and filed as [w5/192](../../192.md).
+- **Approach note:** the note asked to strip foreign URLs and to check Zot's cross-repo mount and dedupe behavior, both "needs a deployment test". Refusing foreign blobs (t002) needs none: a refused manifest never reaches containerd. Refusing a source on the registry's own host (t001) closes go-containerregistry's cross-repository mount. Whether Zot's dedupe links a blob another repository holds was filed as w5/192, which found that it does on any mount request and that every import sent one; fixed there (ADR107 S-4).
 
 ## Findings (2026-11-13)
 

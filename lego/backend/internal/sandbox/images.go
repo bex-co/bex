@@ -463,8 +463,8 @@ func (im *Images) resolveSource(ctx context.Context, ref string, cred *RegistryC
 	// host the write mounts blobs across repositories with the importer's
 	// credential. The in-cluster registry is also behind the source dial
 	// guard; this names the refusal wherever the registry is reachable.
-	// (Whether Zot's dedupe links a blob another repository holds when the
-	// write checks for it is w5/192.)
+	// (Zot's dedupe linking a mounted digest across repositories is closed
+	// by uploadOnly, w5/192.)
 	if sink, _, err := im.registryHost(); err == nil && sameRegistryHost(parsed.Context().RegistryStr(), sink) {
 		return resolvedSource{}, core.NewBadRequestError(CodeSandboxImageInvalid,
 			fmt.Sprintf("sourceImage %s is in the sandbox registry itself; import it from the registry it was published to", parsed),
@@ -1070,7 +1070,7 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 	if im.Registry.HTTP != nil && im.Registry.HTTP.Transport != nil {
 		opts = append(opts, remote.WithTransport(im.Registry.HTTP.Transport))
 	}
-	if err := remote.Write(repo.Tag(imageTag), img, opts...); err != nil {
+	if err := remote.Write(repo.Tag(imageTag), uploadOnly{img}, opts...); err != nil {
 		// The source image is lazy: its layers are read during the write, so
 		// a refusal from the source registry surfaces here too.
 		if sink, _, herr := im.registryHost(); herr == nil && fromOtherHost(err, sink) {
@@ -1084,6 +1084,33 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 	}
 	size, err := imageBytes(img)
 	return digest.String(), size, err
+}
+
+// uploadOnly is an image whose layers the write uploads, never mounts
+// (w5/192). go-containerregistry asks the sink to mount every layer it read
+// from a source (?mount=<digest>&from=…&origin=…), whatever the source
+// registry, and Zot links a mounted digest from any repository the pusher can
+// read, whatever the from (verified against v2.1.22; the importer reads every
+// workspace's). An untrusted source could then name another workspace's layer
+// digest and have it linked into its own image. A plain layer is uploaded
+// from the bytes the source actually served. (A HEAD links nothing while
+// storage.hydrateBlobOnRead stays off, which the operator pins.) The cost: a
+// layer the registry already holds is sent again rather than linked.
+type uploadOnly struct{ v1.Image }
+
+func (i uploadOnly) Layers() ([]v1.Layer, error) {
+	layers, err := i.Image.Layers()
+	if err != nil {
+		return nil, err
+	}
+	out := make([]v1.Layer, len(layers))
+	for n, l := range layers {
+		if mountable, ok := l.(*remote.MountableLayer); ok {
+			l = mountable.Layer
+		}
+		out[n] = l
+	}
+	return out, nil
 }
 
 // RunImageSweeper fails, every minute, the imports whose bex-api replica

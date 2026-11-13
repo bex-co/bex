@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -304,6 +305,38 @@ func TestImportRefusesSourcesItWouldNotCopy(t *testing.T) {
 	// The ordinary image beside them still imports.
 	if b := f.waitBuild(t, f.mustImport(t, fmt.Sprintf(`{"name":"base","sourceImage":%q}`, hostOf(f.source)+"/acme/base:1")).ID); b.Status != store.SandboxBuildSucceeded {
 		t.Fatalf("the ordinary import = %+v", b)
+	}
+}
+
+// w5/192: the sandbox registry (Zot with dedupe) links a blob by digest from
+// any repository on a mount request, with or without a from repository
+// (verified against v2.1.22), so the importer must never send one: it would
+// let a manifest naming another workspace's layer digest borrow that layer.
+// go-containerregistry asks to mount every layer it read from any source, so
+// the copy hands it plain layers (uploadOnly) and every blob is uploaded.
+func TestImportNeverAsksTheSandboxRegistryToMount(t *testing.T) {
+	f := newImageFixture(t)
+	var mu sync.Mutex
+	var mounts []string
+	sink := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Has("mount") {
+			mu.Lock()
+			mounts = append(mounts, r.URL.String())
+			mu.Unlock()
+		}
+		f.sink.Config.Handler.ServeHTTP(w, r)
+	}))
+	t.Cleanup(sink.Close)
+	f.svc.Images.Registry.BaseURL = sink.URL
+	pushImage(t, hostOf(f.source)+"/acme/mountless:1", linuxAMD64, 512)
+	b := f.waitBuild(t, f.mustImport(t, fmt.Sprintf(`{"name":"mountless","sourceImage":%q}`, hostOf(f.source)+"/acme/mountless:1")).ID)
+	if b.Status != store.SandboxBuildSucceeded {
+		t.Fatalf("import = %+v", b)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	if len(mounts) != 0 {
+		t.Fatalf("the import asked the sandbox registry to mount blobs: %v", mounts)
 	}
 }
 
