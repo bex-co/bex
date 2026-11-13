@@ -1,4 +1,4 @@
-# w4 · m378 — Ten of Render's shared MCP tools answer in bex's own shapes, not the text Render's server returns: list envelopes, `list_logs`/`get_metrics` series, and service creates without `deployId`
+# w4 · m378 — Fifteen of Render's shared MCP tools answer in bex's own shapes, not what Render's server returns: list envelopes, `list_logs`/`get_metrics` series, service creates without `deployId`, and datastores without `owner`/`options`
 
 **Worker:** worker4 **Goal:** every MCP tool that bex shares with Render's official server (`render-oss/render-mcp-server`) returns the text that server returns for the same call. A Render-trained agent, prompt or skill parses bex's answers without a special case, and a test pins each tool's result shape so it cannot drift again. **Status:** todo
 
@@ -10,7 +10,8 @@
 | [t002](t002.md) | `list_logs` returns Render's (REST's) line shape: `id`, `labels` as `[{name, value}]` with `resource`, `message`, `timestamp` | 30m | — |
 | [t008](t008.md) | `get_metrics` returns Render's `MetricsResponse` (`resourceId`, `timeRange`, `metrics[{type, data}]`, with REST's `labels[{field, value}]` and `values`), not bex's `{series:[{labels:{…}, points}]}` | 30m | — |
 | [t009](t009.md) | `create_web_service`, `create_static_site` and `create_cron_job` return Render's `{service, deployId}` (`ServiceAndDeploy`), as REST already does, not the bare service | 20m | — |
-| [t003](t003.md) | Pin each shared tool's result shape against Render's server, so a wrapped or re-keyed answer fails CI | 45m | t001, t002, t008, t009 |
+| [t010](t010.md) | Key Value and Postgres tools (`list_key_value`, `get_key_value`, `create_key_value`, `list_postgres_instances`, `get_postgres`, `create_postgres`) return REST's Render-shaped detail: an `owner` object, and Key Value's `options`, not bex's flat view | 40m | — |
+| [t003](t003.md) | Pin each shared tool's result shape against Render's server, so a wrapped or re-keyed answer fails CI | 45m | t001, t002, t008, t009, t010 |
 | [t004](t004.md) | Render parity | 20m | t003 |
 | [t005](t005.md) | Simplify | 15m | t004 |
 | [t006](t006.md) | Test coverage | 30m | t004 |
@@ -28,12 +29,13 @@ All on production, workspace `bex-canary`. Use streamable HTTP to `https://api.b
 2. **Log lines are Render's.** `list_logs {"resource":[<id>],"limit":2,"type":["build"]}` returns the REST envelope. Each entry carries `id` and `labels: [{"name":"resource","value":<id>}, {"name":"instance",…}, {"name":"type","value":"build"}]`, byte-for-byte what `GET /v1/logs` returns for the same window.
 3. **Metrics are Render's.** `get_metrics {"resourceId":<id>,"metricTypes":["cpu_usage","http_request_count"]}` returns `{"resourceId":<id>,"timeRange":{…},"metrics":[{"type":"cpu_usage","data":[{"labels":[{"field":"resource",…}],"unit":"cpu","values":[{"timestamp":…,"value":…}]}]},…]}`. The `data` items equal `GET /v1/metrics/cpu?resource=<id>` for the same window, and an `aggregateHttpRequestCountsBy: statusCode` series is labeled `statusCode`, not `code`.
 4. **Creates carry the deploy.** `create_web_service {"name":"qa-…","runtime":"go","repo":"https://github.com/bex-co/bex","branch":"main","buildCommand":…,"startCommand":…,"plan":"free"}` returns `{"service":{…},"deployId":"dep-…"}`, the same envelope as `POST /v1/services`. `create_static_site` and `create_cron_job` do the same.
-5. **Unchanged:**
+5. **Datastores are Render's details.** `get_key_value`, `create_key_value` and every `list_key_value` item carry `owner: {id, name, email, type}` and `options: {maxmemoryPolicy, persistenceMode}`, as `GET /v1/key-value/{id}` does, with no flat `ownerId`/`maxmemoryPolicy`/`persistenceMode`. `get_postgres`, `create_postgres` and every `list_postgres_instances` item carry the `owner` object.
+6. **Unchanged:**
    - `list_events` keeps its array-plus-cursor text;
    - `get_service`, `get_deploy` and `update_environment_variables` keep their current text, which already matches;
    - bex-only tools are not touched.
-6. **Guarded:** the t003 test fails when any of these tools' text is rewrapped in an object or a log label is renamed.
-7. **Fixtures:** every fixture is deleted, and each GET answers 404.
+7. **Guarded:** the t003 test fails when any of these tools' text is rewrapped in an object or a log label is renamed.
+8. **Fixtures:** every fixture is deleted, and each GET answers 404.
 
 ## Source + Goal linkage
 
@@ -113,6 +115,26 @@ All on production, workspace `bex-canary`. Use streamable HTTP to `https://api.b
 - **Root cause:** `renderServiceResult` (`lego/backend/internal/apps/mcp.go:1108-1114`) returns `toRenderService(app)` alone. It has 3 create callers (`create_web_service` `:692`, `create_cron_job` `:703`, `create_static_site` `:714`), so all three drop the deploy id.
 - **Control:** `trigger_deploy` returns the deploy object, as Render's does (`pkg/deploy/tools.go:177-191`).
 - **Added:** task t009. t003 now also depends on it.
+
+## Round 298 extension — datastore tools return bex's flat views (2026-11-13 14:22–14:30 UTC, pin `5de3d5bcce8e`)
+
+- **Fixtures:**
+  - Free Key Value `qa-20261113-r298-kv` (`red-dbrhq80k58is73auob2g`), created with MCP `create_key_value`;
+  - Free Postgres 18 `qa-20261113-r298-pg` (`dpg-dbrhq81ens8c73fghph0`), created with `create_postgres`, which defaulted to `0.0.0.0/0` and `::/0`, as Render's Postgres does.
+
+  Both were deleted afterwards (`DELETE` 204, then `GET` 404).
+- **Key Value:**
+  - MCP `get_key_value`, `create_key_value` and the `list_key_value` items have keys `createdAt, dashboardUrl, id, internalAuth, ipAllowList, maxmemoryPolicy, name, ownerId, persistenceMode, plan, public, region, status, suspended, updatedAt, version`. `list_key_value` items add `blueprintId` and `projectId`, and `create_key_value` adds `externalAccessRestarts`.
+  - REST `GET /v1/key-value/{id}` has `owner` and `options` in their place.
+  - Render's `keyValueDetail` requires `owner` and `options`. Render's server returns `json.Marshal(keyValue)` of that client type (`pkg/keyvalue/tools.go:85`, `:182`).
+- **Postgres:**
+  - MCP `get_postgres`, `create_postgres` and the list items have `ownerId` and no `owner`.
+  - REST has both. Render's `postgresDetail` requires `owner` (`pkg/postgres/tools.go:89`, `:193`).
+- **Root cause:**
+  - The tools return `KeyValueView`/`PostgresView` directly (`lego/backend/internal/keyvalue/mcp.go:109-140`, `lego/backend/internal/postgres/mcp.go:108-140`).
+  - REST maps through `renderKeyValue` (`lego/backend/internal/keyvalue/rest.go:45-…`). That mapper's own comment says bex's flat `ownerId`/`maxmemoryPolicy`/`persistenceMode` is "the shape GraphQL/MCP read directly off KeyValueView" and "silently zero-valued or failed to decode client-side because Render's real contract nests owner/options".
+  - ADR018:423 records that REST fix (2026-07-15). MCP was left on the old shape.
+- **Added:** task t010. t003 now also depends on it.
 
 ## Unverified
 
