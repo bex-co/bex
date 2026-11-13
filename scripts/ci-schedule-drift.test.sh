@@ -252,14 +252,14 @@ fetch "fetch path, every event" 0
 # and one scheduled run; the next pages hold the rest. One page read it as
 # "never fired" from a single verdict; paging reads it whole and on time.
 history="$(run 1 "" schedule in_progress)"
-for i in $(seq 1 150); do history="$history$(run 2 success push)"; done
+for _ in $(seq 1 150); do history="$history$(run 2 success push)"; done
 for h in 5 9 13 17 21 25 29 33 37 41 45 49 53 57 61 65; do history="$history$(run "$h" success schedule)"; done
 runs "$history" | jq '."w.yml"' >"$stub/runs.json"
 BEX_CI_RUN_LIMIT=100 fetch "push-heavy workflow pages past its pushes" 0
 BEX_CI_RUN_LIMIT=100 BEX_CI_RUN_PAGES=1 fetch "one page reads the same history as never fired (the #112 report)" 1 "no scheduled run reached a verdict in the 1 inspected"
 # The page cap still bounds a history that never reaches back far enough.
 history=""
-for i in $(seq 1 120); do history="$history$(run 1 success push)"; done
+for _ in $(seq 1 120); do history="$history$(run 1 success push)"; done
 runs "$history" | jq '."w.yml"' >"$stub/runs.json"
 BEX_CI_RUN_LIMIT=50 BEX_CI_RUN_PAGES=2 fetch "page cap with no scheduled run reports never" 1 "no scheduled run reached a verdict in the 0 inspected"
 
