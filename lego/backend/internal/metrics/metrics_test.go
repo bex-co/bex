@@ -43,6 +43,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/types/podmetrics"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -971,7 +972,7 @@ func TestParsePodMetrics(t *testing.T) {
 	    {"name":"app","usage":{"cpu":"250m","memory":"268435456"}},
 	    {"name":"sidecar","usage":{"cpu":"250m","memory":"0"}}]}
 	]}`)
-	got, err := parsePodMetrics(raw)
+	got, err := podmetrics.Parse(raw)
 	if err != nil || len(got) != 2 {
 		t.Fatalf("parse: %v len=%d", err, len(got))
 	}

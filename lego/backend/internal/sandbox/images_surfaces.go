@@ -113,7 +113,7 @@ func (s *Service) imageQueryFields() graphql.Fields {
 				"limit":          gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListImages(ownerScoped(p), p.Args["sandboxGroupId"].(string), gqlutil.Str(p.Args, "name"),
+				return s.ListImages(gqlutil.OwnerScoped(p), p.Args["sandboxGroupId"].(string), gqlutil.Str(p.Args, "name"),
 					gqlutil.StringList(p.Args["status"]), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"))
 			},
 		},
@@ -125,7 +125,7 @@ func (s *Service) imageQueryFields() graphql.Fields {
 				"ownerId":        gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetImage(ownerScoped(p), p.Args["sandboxGroupId"].(string), p.Args["id"].(string))
+				return s.GetImage(gqlutil.OwnerScoped(p), p.Args["sandboxGroupId"].(string), p.Args["id"].(string))
 			},
 		},
 	}
@@ -141,7 +141,7 @@ func (s *Service) imageMutationFields() graphql.Fields {
 				"ownerId":        gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				if err := s.DeleteImage(ownerScoped(p), p.Args["sandboxGroupId"].(string), p.Args["id"].(string)); err != nil {
+				if err := s.DeleteImage(gqlutil.OwnerScoped(p), p.Args["sandboxGroupId"].(string), p.Args["id"].(string)); err != nil {
 					return nil, err
 				}
 				return true, nil
@@ -163,7 +163,7 @@ func (s *Service) imageMutationFields() graphql.Fields {
 				if user, pass := gqlutil.Str(p.Args, "registryUsername"), gqlutil.Str(p.Args, "registryPassword"); user != "" || pass != "" {
 					req.RegistryCredential = &RegistryCredential{Username: user, Password: pass}
 				}
-				return s.ImportImage(ownerScoped(p), p.Args["sandboxGroupId"].(string), req)
+				return s.ImportImage(gqlutil.OwnerScoped(p), p.Args["sandboxGroupId"].(string), req)
 			},
 		},
 	}

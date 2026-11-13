@@ -56,7 +56,7 @@ func (s *Service) groupQueryFields() graphql.Fields {
 				"limit":   gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.ListGroups(ownerScoped(p), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"))
+				return s.ListGroups(gqlutil.OwnerScoped(p), gqlutil.Str(p.Args, "cursor"), gqlutil.Int(p.Args, "limit"))
 			},
 		},
 		"sandboxGroup": &graphql.Field{
@@ -66,7 +66,7 @@ func (s *Service) groupQueryFields() graphql.Fields {
 				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.GetGroup(ownerScoped(p), p.Args["id"].(string))
+				return s.GetGroup(gqlutil.OwnerScoped(p), p.Args["id"].(string))
 			},
 		},
 	}
@@ -97,7 +97,7 @@ func (s *Service) groupMutationFields() graphql.Fields {
 				"ownerId": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				if err := s.DeleteGroup(ownerScoped(p), p.Args["id"].(string)); err != nil {
+				if err := s.DeleteGroup(gqlutil.OwnerScoped(p), p.Args["id"].(string)); err != nil {
 					return false, err
 				}
 				return true, nil
@@ -111,7 +111,7 @@ func (s *Service) groupMutationFields() graphql.Fields {
 				"ownerId":          gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.UpdateGroup(ownerScoped(p), p.Args["id"].(string), p.Args["concurrencyLimit"].(int))
+				return s.UpdateGroup(gqlutil.OwnerScoped(p), p.Args["id"].(string), p.Args["concurrencyLimit"].(int))
 			},
 		},
 	}

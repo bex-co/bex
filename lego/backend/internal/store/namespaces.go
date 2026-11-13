@@ -111,15 +111,8 @@ func NewNamespaceReconciler(cl client.Client, store Store) *NamespaceReconciler 
 	}
 }
 
-// identity is the control-plane identity this reconciler stamps and prunes
-// under. Exported Identity may be set after construction, so normalize here —
-// this is the single defaulting site.
-func (r *NamespaceReconciler) identity() string {
-	if r.Identity == "" {
-		return DefaultControlPlaneIdentity
-	}
-	return r.Identity
-}
+// identity is the control-plane identity this reconciler stamps and prunes under.
+func (r *NamespaceReconciler) identity() string { return controlPlaneIdentity(r.Identity) }
 
 // Kick schedules an immediate reconcile (non-blocking, coalescing) — called
 // after a workspace create/delete so provisioning is not a full resync away.

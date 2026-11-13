@@ -55,7 +55,7 @@ func mountedGroups(a *appv1alpha1.App) []string {
 		for _, suffix := range []string{envSecretName(""), filesSecretName("")} {
 			gid, ok := strings.CutSuffix(ref, suffix)
 			if kind, group := id.KindOf(gid); ok && group && kind == id.EnvGroup {
-				gids = addString(gids, gid)
+				gids = core.AppendListValue(gids, gid)
 			}
 		}
 	}
