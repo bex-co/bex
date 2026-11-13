@@ -5217,6 +5217,7 @@ func (r *AppReconciler) convergeCronRuntime(ctx context.Context, app *appv1alpha
 	}
 
 	app.Status.Runs = runs
+	app.Status.LastSuccessfulRunAt = appv1alpha1.NewestSuccessfulRunAt(app.Status.LastSuccessfulRunAt, runs)
 	if suspended {
 		return ctrl.Result{}, nil
 	}

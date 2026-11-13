@@ -19,6 +19,7 @@ package v1alpha1
 import (
 	"crypto/sha256"
 	"fmt"
+	"time"
 
 	"github.com/bex-co/bex/lego/types/k8sname"
 )
@@ -56,4 +57,26 @@ func ManualCronRunJobName(appName, runAt string) string {
 func LegacyManualCronRunJobName(appName, runAt string) string {
 	sum := sha256.Sum256([]byte(runAt))
 	return k8sname.Fit(fmt.Sprintf("%s-run-%x", appName, sum[:4]))
+}
+
+// NewestSuccessfulRunAt is the newer of a recorded last success and any
+// Succeeded run in runs: the operator folds it into status.lastSuccessfulRunAt
+// so the last success outlives the ten-run history, and bex-api applies it to
+// read an operator from before that field (w3/m366). An unparseable time is
+// never kept and never wins.
+func NewestSuccessfulRunAt(recorded string, runs []CronRun) string {
+	out := ""
+	best, err := time.Parse(time.RFC3339Nano, recorded)
+	if err == nil {
+		out = recorded
+	}
+	for _, run := range runs {
+		if run.Status != CronRunSucceeded {
+			continue
+		}
+		if at, perr := time.Parse(time.RFC3339Nano, run.FinishedAt); perr == nil && (out == "" || at.After(best)) {
+			best, out = at, run.FinishedAt
+		}
+	}
+	return out
 }

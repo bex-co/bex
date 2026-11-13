@@ -606,7 +606,7 @@ func cronRunFacts(appID string, run appv1alpha1.CronRun) []ServiceEventFact {
 		return facts
 	}
 	ended := ServiceEventFact{
-		SourceKey: cronRunSourceKey(appID, run.Name, "ended"),
+		SourceKey: cronRunSourceKey(appID, run.Name, cronRunEnded),
 		AppID:     appID,
 		Type:      EventFactCronRunEnded,
 		At:        finished,
@@ -619,7 +619,10 @@ func cronRunFacts(appID string, run appv1alpha1.CronRun) []ServiceEventFact {
 	return append(facts, ended)
 }
 
-const cronRunStarted = "started"
+const (
+	cronRunStarted = "started"
+	cronRunEnded   = "ended"
+)
 
 // cronRunSourceKey is a cron run transition's fact source key. Its feed row's
 // Key is "fact:" + this (ListServiceEvents), which CronRunNameFromStartedKey

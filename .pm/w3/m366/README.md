@@ -1,19 +1,19 @@
 # w3 · m366 — A cron job's run history and `lastSuccessfulRunAt` outlive the ten-run status window, as on Render
 
-**Worker:** worker3 **Goal:** a cron job's runs list, run reads and `lastSuccessfulRunAt` come from the durable run facts bex already records, merged with the live status. A run is no longer forgotten once ten newer runs have happened, and the last success stays known through any number of failures. **Status:** todo
+**Worker:** worker3 **Goal:** a cron job's runs list, run reads and `lastSuccessfulRunAt` come from the durable run facts bex already records, merged with the live status. A run is no longer forgotten once ten newer runs have happened, and the last success stays known through any number of failures. **Status:** in progress (t001–t003, t005–t008 done: fact-backed run list, get and cancel past the status window, durable `status.lastSuccessfulRunAt`, docs; t004 is the production check after this deploy, then t009 closes)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Store: list a cron job's runs from the `cron_job_run_started`/`_ended` facts, newest first with a cursor, plus the newest succeeded run | 60m | — |
-| [t002](t002.md) | apps: `ListCronRuns`, `GetCronRun` and `lastSuccessfulRunAt` read the facts merged with `status.runs` and the unmaterialized runs `cronRunsOf` adds; no run regresses or appears twice | 75m | t001 |
-| [t003](t003.md) | REST, GraphQL and MCP: runs older than the status window list and read with 200; trigger and cancel unchanged | 45m | t002 |
+| [t001](done/t001.md) | Store: list a cron job's runs from the `cron_job_run_started`/`_ended` facts, newest first with a cursor, plus the newest succeeded run — **DONE** | 60m | — |
+| [t002](done/t002.md) | apps: `ListCronRuns`, `GetCronRun` and `lastSuccessfulRunAt` read the facts merged with `status.runs` and the unmaterialized runs `cronRunsOf` adds; no run regresses or appears twice — **DONE** | 75m | t001 |
+| [t003](done/t003.md) | REST, GraphQL and MCP: runs older than the status window list and read with 200; trigger and cancel unchanged — **DONE** | 45m | t002 |
 | [t004](t004.md) | Edges and production check: runs before the facts existed, runs whose logs aged out, and a long-running production cron | 30m | t003 |
-| [t005](t005.md) | Docs: ADR038 run history, `docs/render-artifacts/cron-runs.md`, the ADR018 cron row | 20m | t004 |
-| [t006](t006.md) | Render parity | 20m | t005 |
-| [t007](t007.md) | Simplify | 15m | t006 |
-| [t008](t008.md) | Test coverage | 30m | t007 |
+| [t005](done/t005.md) | Docs: ADR038 run history, `docs/render-artifacts/cron-runs.md`, the ADR018 cron row — **DONE** | 20m | t004 |
+| [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Simplify — **DONE** | 15m | t006 |
+| [t008](done/t008.md) | Test coverage — **DONE** | 30m | t007 |
 | [t009](t009.md) | Closeout | 10m | t008 |
 
 ## Definition of done

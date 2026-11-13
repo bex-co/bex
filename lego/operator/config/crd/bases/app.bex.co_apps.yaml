@@ -1427,6 +1427,13 @@ spec:
                 maxItems: 10
                 type: array
                 x-kubernetes-list-type: atomic
+              lastSuccessfulRunAt:
+                description: |-
+                  LastSuccessfulRunAt is the FinishedAt (RFC3339) of the newest Succeeded
+                  run the operator has observed. Unlike Runs it survives bounded history
+                  eviction, so a cron_job's last success stays known through any number of
+                  later failures (Render's cronJobDetails.lastSuccessfulRunAt, w3/m366).
+                type: string
               manualRunHandledAt:
                 description: |-
                   ManualRunHandledAt is the exact spec.runAt token whose Job has been

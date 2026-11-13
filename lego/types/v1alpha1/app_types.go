@@ -1867,6 +1867,13 @@ type AppStatus struct {
 	// +optional
 	Runs []CronRun `json:"runs,omitempty"`
 
+	// LastSuccessfulRunAt is the FinishedAt (RFC3339) of the newest Succeeded
+	// run the operator has observed. Unlike Runs it survives bounded history
+	// eviction, so a cron_job's last success stays known through any number of
+	// later failures (Render's cronJobDetails.lastSuccessfulRunAt, w3/m366).
+	// +optional
+	LastSuccessfulRunAt string `json:"lastSuccessfulRunAt,omitempty"`
+
 	// ManualRunHandledAt is the exact spec.runAt token whose Job has been
 	// materialized or whose cancellation has been accepted. It survives bounded
 	// run-history eviction and Job deletion, preventing the same intent from

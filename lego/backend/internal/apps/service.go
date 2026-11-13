@@ -158,6 +158,10 @@ type Service struct {
 	// EventFacts persists closed, non-secret service activity that cannot be
 	// represented by an ordinary authorization audit row. nil in store-less mode.
 	EventFacts store.EventFactWriter
+	// CronRunHistory reads a cron job's finished runs from their durable facts,
+	// past the ten App.status.runs keeps (w3/m366). nil in store-less mode,
+	// where run reads see the status window only.
+	CronRunHistory store.CronRunHistory
 	// GitHub, when set (the GitHub App + control-plane store are wired), mints a
 	// fresh installation token and writes the <app>-clone Secret on every deploy
 	// trigger whose repo belongs to the workspace's connection, so private repos
@@ -1187,7 +1191,7 @@ func view(a *appv1alpha1.App) AppView {
 		Schedule:             a.Spec.Schedule,
 		Command:              cronCommand(a.Spec),
 		Runs:                 cronRunViews(cronRunsOf(a, time.Now())),
-		LastSuccessfulRunAt:  lastSuccessfulCronRunAt(a.Status.Runs),
+		LastSuccessfulRunAt:  lastSuccessfulCronRunAt(a.Status),
 		Plan:                 plan,
 		Revision:             a.Status.ActiveRevision,
 		CreatedAt:            created,
@@ -1439,13 +1443,11 @@ func renderCronRunStatus(status string) string {
 	}
 }
 
-func lastSuccessfulCronRunAt(runs []appv1alpha1.CronRun) string {
-	for _, run := range runs {
-		if renderCronRunStatus(run.Status) == cronRunSuccessful && run.FinishedAt != "" {
-			return run.FinishedAt
-		}
-	}
-	return ""
+// lastSuccessfulCronRunAt is the operator's durable status.lastSuccessfulRunAt,
+// which outlives the ten-run history (w3/m366), or the newest success still in
+// status.runs when that is newer (an operator from before the field).
+func lastSuccessfulCronRunAt(st appv1alpha1.AppStatus) string {
+	return appv1alpha1.NewestSuccessfulRunAt(st.LastSuccessfulRunAt, st.Runs)
 }
 
 // nextCronRunAt computes a cron_job's next scheduled fire time (RFC3339 UTC)
@@ -4309,8 +4311,77 @@ func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit i
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return nil, core.ErrNotFound
 	}
-	runs := cronRunViews(cronRunsOf(a, s.Now()))
-	return core.Page(runs, cursor, core.PageLimitOrAbsent(limit), func(run CronRunView) string { return run.ID }), nil
+	return s.cronRunPage(ctx, a, cursor, core.PageLimitOrAbsent(limit))
+}
+
+// cronRunPage pages the status window first (live runs, triggers not yet in
+// status), then the finished runs it has evicted, read from their facts
+// (w3/m366). The cursor is a run id in either part; an unknown one yields an
+// empty tail.
+func (s *Service) cronRunPage(ctx context.Context, a *appv1alpha1.App, cursor string, limit int) ([]CronRunView, error) {
+	head := cronRunViews(cronRunsOf(a, s.Now()))
+	appID := a.Labels[store.LabelAppID]
+	if s.CronRunHistory == nil || appID == "" {
+		return core.Page(head, cursor, limit, func(run CronRunView) string { return run.ID }), nil
+	}
+	start, after := 0, ""
+	if cursor != "" {
+		start = slices.IndexFunc(head, func(run CronRunView) bool { return run.ID == cursor }) + 1
+		if start == 0 { // not in the window: page the facts past it
+			start, after = len(head), cursor
+		}
+	}
+	end := min(start+limit, len(head))
+	page := head[start:end:end] // capped, so the appends below never write into head
+	if len(page) == limit {
+		return page, nil
+	}
+	exclude := make([]string, len(head))
+	for i, run := range head {
+		exclude[i] = run.ID
+	}
+	recs, err := s.CronRunHistory.ListCronRunRecords(ctx, appID, after, exclude, limit-len(page))
+	if err != nil {
+		return nil, err
+	}
+	for _, rec := range recs {
+		page = append(page, cronRunRecordView(rec))
+	}
+	return page, nil
+}
+
+// findCronRun finds a run in the status window, then among the finished runs
+// it has evicted.
+func (s *Service) findCronRun(ctx context.Context, a *appv1alpha1.App, runID string) (CronRunView, error) {
+	run, err := cronRunByID(cronRunsOf(a, s.Now()), runID)
+	if err == nil {
+		return run, nil
+	}
+	appID := a.Labels[store.LabelAppID]
+	if kind, ok := ids.KindOf(runID); s.CronRunHistory == nil || appID == "" || !ok || kind != ids.CronRun {
+		return CronRunView{}, err
+	}
+	rec, found, herr := s.CronRunHistory.CronRunRecord(ctx, appID, runID)
+	if herr != nil {
+		return CronRunView{}, herr
+	}
+	if !found {
+		return CronRunView{}, err
+	}
+	return cronRunRecordView(rec), nil
+}
+
+func cronRunRecordView(rec store.CronRunRecord) CronRunView {
+	// RFC3339Nano, as status carries a canceled run's cancel time, so a run
+	// reads the same before and after eviction (to the microsecond Postgres keeps).
+	view := CronRunView{ID: rec.ID, Name: rec.Name, Status: renderCronRunStatus(rec.Status)}
+	if !rec.StartedAt.IsZero() {
+		view.StartedAt = rec.StartedAt.Format(time.RFC3339Nano)
+	}
+	if !rec.FinishedAt.IsZero() {
+		view.FinishedAt = rec.FinishedAt.Format(time.RFC3339Nano)
+	}
+	return view
 }
 
 // GetCronRun fetches one run by its stable derived id, scoped to its cron_job.
@@ -4324,7 +4395,7 @@ func (s *Service) GetCronRun(ctx context.Context, name, runID string) (CronRunVi
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, cronRunNotFound(runID)
 	}
-	return cronRunByID(cronRunsOf(a, s.Now()), runID)
+	return s.findCronRun(ctx, a, runID)
 }
 
 // CancelCronRun records cancellation intent for one pending run. Terminal runs
@@ -4340,7 +4411,9 @@ func (s *Service) CancelCronRun(ctx context.Context, name, runID string) (CronRu
 	if a.Spec.Type != appv1alpha1.TypeCronJob {
 		return CronRunView{}, cronRunNotFound(runID)
 	}
-	run, err := cronRunByID(cronRunsOf(a, s.Now()), runID)
+	// An evicted run is finished, so its cancel is the same 409 as any
+	// terminal run's, never a 404 that reads as an unknown id.
+	run, err := s.findCronRun(ctx, a, runID)
 	if err != nil {
 		return CronRunView{}, err
 	}

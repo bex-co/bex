@@ -861,6 +861,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.GitHubStore = st          // git connections (w2/m8): connect/disconnect/list read+write git_connections
 	deps.EventStore = st           // service events: deploy + audit + typed observed/Git facts
 	deps.EventFacts = st           // typed observed/Git event facts (w3/m19), written outside the operator
+	deps.CronRunHistory = st       // cron runs past the status window, from their facts (w3/m366)
 	deps.NotificationsStore = st   // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
 	deps.ProjectsStore = st        // project groupings (w1/m31): project CRUD + service-assignment
 	deps.EnvironmentsStore = st    // environment groupings (layered on w1/m31): environment CRUD + service-assignment

@@ -58,7 +58,7 @@ The bex list extension uses Render's standard array item envelope:
 
 `cursor` is the last run's stable derived ID, and `limit` follows the shared 1–100/default-20 REST rule. Unknown cursors return an empty tail. GraphQL and MCP return the same run fields; their clients page by echoing the final run ID.
 
-The derived ID deliberately hides the Kubernetes Job name while remaining stable across reads and after Job garbage collection. `App.status.runs` retains terminal history, capped at ten entries.
+The derived ID deliberately hides the Kubernetes Job name while remaining stable across reads and after Job garbage collection. `App.status.runs` retains terminal history, capped at ten entries. The run reads go past it: finished runs that status has evicted are read back from their durable `cron_job_run_started`/`_ended` facts (w3/m366), so list, get and cancel reach any run recorded since 2026-08-16.
 
 ## Service field
 
