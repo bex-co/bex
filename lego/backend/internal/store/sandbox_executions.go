@@ -67,6 +67,17 @@ func (s *PGStore) StopSandboxExecution(ctx context.Context, workspaceID, executi
 	return err
 }
 
+// SetSandboxExecutionCommand records the command an execution ran when its
+// connect token was minted without one (Render's round-7 mint, w3/065): the
+// command then arrives with the stream. A recorded command is never replaced.
+func (s *PGStore) SetSandboxExecutionCommand(ctx context.Context, workspaceID, executionID, command string) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE sandbox_executions SET command = $3
+		WHERE workspace_id = $1 AND id = $2 AND command = ''`,
+		workspaceID, executionID, command)
+	return err
+}
+
 // TouchSandboxExecution records that an open execution's stream is still
 // running (w8/m151).
 func (s *PGStore) TouchSandboxExecution(ctx context.Context, workspaceID, executionID string, seenAt time.Time) error {

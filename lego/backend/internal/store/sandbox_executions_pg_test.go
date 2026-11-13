@@ -168,3 +168,38 @@ func TestSandboxExecutionHeartbeatPG(t *testing.T) {
 		t.Errorf("a stopped record moved: %v, want %v", e.StoppedAt, start)
 	}
 }
+
+// w3/065: an execution minted without a command gets the one its stream ran,
+// once; a recorded command, or another workspace's execution, is untouched.
+func TestSetSandboxExecutionCommandPG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-exec-command").ID
+	other := lifecycleTenant(t, st, "sandbox-exec-command-other").ID
+	stamp := time.Now().UnixNano()
+	box := fmt.Sprintf("sbx-c%d", stamp)
+	at := time.Now().UTC().Truncate(time.Microsecond)
+	unbound, bound := fmt.Sprintf("exe-%d-u", stamp), fmt.Sprintf("exe-%d-b", stamp)
+	for _, e := range []SandboxExecution{
+		{ID: unbound, WorkspaceID: ws, SandboxID: box, Type: "runs", Operation: "stream", Subject: "s", StartedAt: at},
+		{ID: bound, WorkspaceID: ws, SandboxID: box, Type: "runs", Operation: "stream", Command: "echo bound", Subject: "s", StartedAt: at},
+	} {
+		if err := st.RecordSandboxExecution(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := st.SetSandboxExecutionCommand(ctx, other, unbound, "from another workspace"); err != nil {
+		t.Fatal(err)
+	}
+	for _, step := range []struct{ id, command string }{{unbound, "echo ran"}, {unbound, "echo again"}, {bound, "echo replaced"}} {
+		if err := st.SetSandboxExecutionCommand(ctx, ws, step.id, step.command); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for id, want := range map[string]string{unbound: "echo ran", bound: "echo bound"} {
+		got, err := st.SandboxExecution(ctx, ws, box, id)
+		if err != nil || got.Command != want {
+			t.Errorf("%s command = %q (%v), want %q", id, got.Command, err, want)
+		}
+	}
+}

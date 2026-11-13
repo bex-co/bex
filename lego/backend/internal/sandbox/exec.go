@@ -140,7 +140,7 @@ func (s *Service) execEnabled() bool {
 // The returned release ends the command's hold on the sandbox's idle timer
 // (holdActive); the caller runs it when the stream ends.
 func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Response, func(), execTarget, error) {
-	ws, raw, err := s.authorizeExecTarget(ctx, req)
+	ws, raw, err := s.authorizeExecTarget(ctx, req.OwnerID, req.SandboxID, req.Command, true)
 	if err != nil {
 		return nil, nil, execTarget{}, err
 	}
@@ -183,8 +183,13 @@ func (s *Service) openExecution(ctx context.Context, req ExecRequest, target exe
 // opens no stream and mints nothing, but it does record the interaction and
 // resume a sandbox that was suspended for inactivity (ensureRunning), so the
 // run token is minted, and the command runs, against a running sandbox.
-func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (string, osSandbox, error) {
-	ctx, err := s.scopeSandbox(ctx, req.OwnerID, req.SandboxID)
+//
+// A direct exec and every redeem must name a command; the run connect mint
+// may not (Render's round-7 mint, w3/065), so it passes needCommand false. The
+// check stays after authorization: an unauthorized caller is refused (and
+// audited) before any input is judged.
+func (s *Service) authorizeExecTarget(ctx context.Context, ownerID, sandboxID, command string, needCommand bool) (string, osSandbox, error) {
+	ctx, err := s.scopeSandbox(ctx, ownerID, sandboxID)
 	if err != nil {
 		return "", osSandbox{}, err
 	}
@@ -194,7 +199,7 @@ func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (str
 	if !s.execEnabled() || !s.enabled() {
 		return "", osSandbox{}, core.ErrSandboxesUnavailable
 	}
-	if req.SandboxID == "" || req.Command == "" {
+	if sandboxID == "" || (needCommand && command == "") {
 		return "", osSandbox{}, fmt.Errorf("%w: sandbox id and command are required", core.ErrBadRequest)
 	}
 	ws, ok := s.Tenant(ctx)
@@ -205,9 +210,9 @@ func (s *Service) authorizeExecTarget(ctx context.Context, req ExecRequest) (str
 	if err != nil {
 		return "", osSandbox{}, err
 	}
-	raw, err := s.ownedSandbox(ctx, key, ws, req.SandboxID)
+	raw, err := s.ownedSandbox(ctx, key, ws, sandboxID)
 	if err != nil {
-		return "", osSandbox{}, s.endedConflict(ctx, ws, req.SandboxID, err)
+		return "", osSandbox{}, s.endedConflict(ctx, ws, sandboxID, err)
 	}
 	// An agent-session sandbox is a credential-capable pod (the Git-write and
 	// model proxies live behind it), and model.fga deliberately gates a real

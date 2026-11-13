@@ -54,6 +54,7 @@ const executionRecordTimeout = 2 * time.Second
 // ExecutionStore is where execution records live; *store.PGStore implements it.
 type ExecutionStore interface {
 	RecordSandboxExecution(ctx context.Context, e store.SandboxExecution) error
+	SetSandboxExecutionCommand(ctx context.Context, workspaceID, executionID, command string) error
 	StopSandboxExecution(ctx context.Context, workspaceID, executionID string, stoppedAt time.Time, exitCode *int) error
 	StopOpenSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, stoppedAt time.Time) error
 	TouchSandboxExecution(ctx context.Context, workspaceID, executionID string, seenAt time.Time) error
@@ -105,6 +106,19 @@ func (s *Service) recordExecution(ctx context.Context, e store.SandboxExecution)
 	defer cancel()
 	if err := s.Executions.RecordSandboxExecution(ctx, e); err != nil {
 		log.Printf("sandbox: record execution %s of %s: %v", e.ID, e.SandboxID, err)
+	}
+}
+
+// recordExecutionCommand records the command an unbound connect token's
+// redeem ran (w3/065), best effort like the record it completes.
+func (s *Service) recordExecutionCommand(ctx context.Context, ws, executionID, command string) {
+	if s.Executions == nil {
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), executionRecordTimeout)
+	defer cancel()
+	if err := s.Executions.SetSandboxExecutionCommand(ctx, ws, executionID, truncateCommand(command)); err != nil {
+		log.Printf("sandbox: record the command of execution %s: %v", executionID, err)
 	}
 }
 

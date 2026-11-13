@@ -56,6 +56,8 @@ func TestSandboxCallsPassTheRenderGate(t *testing.T) {
 		{http.MethodGet, "/v1/sandboxes/" + sbx + "?ownerId=tea-a", ""},
 		{http.MethodPost, "/v1/sandboxes/" + sbx + "/terminate", ""},
 		{http.MethodPost, "/v1/sandboxes/" + sbx + "/runs/stream/token", `{"command":"true"}`},
+		// Render's round-7 mint takes no body (w3/065).
+		{http.MethodPost, "/v1/sandboxes/" + sbx + "/runs/stream/token", ""},
 		{http.MethodPost, "/v1/sandboxes/" + sbx + "/files/upload/token?path=/workspace/a", ""},
 		// Render's execution history (w32/m298), with and without bex's
 		// optional ownerId.

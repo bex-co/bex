@@ -289,8 +289,9 @@ var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
 // whose pinned Render schema declares none, for a client that still sends one.
 // Render's 2026-11-13 contract (round 7, w3/m367) dropped connect-sandbox-run's
 // {"command"} body, but the pinned CLI v2.36 still posts it (`sandboxes exec`,
-// pkg/sandbox/repo.go connect), and bex binds the connect token to that
-// command. Drop the entry when the CLI pin stops sending it.
+// pkg/sandbox/repo.go connect), and bex then binds the connect token to that
+// command; a mint without one takes the redeem's command (w3/065). Drop the
+// entry when the CLI pin stops sending it.
 var renderRequestBodyExtensions = map[string]func() *openapi3.Schema{
 	// Open, as the round-6 pin's body was, with the handler's ownerId (query
 	// or body) beside the command.

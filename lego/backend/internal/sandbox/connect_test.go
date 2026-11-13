@@ -92,10 +92,12 @@ func loadExecContract(t *testing.T) execContract {
 type contractExecutor struct {
 	calls      atomic.Int32
 	terminated bool
+	lastArgv   atomic.Value // []string
 }
 
-func (e *contractExecutor) Execute(_ context.Context, _ apps.SSHInstanceTarget, _ []string, _ bool, _ remotecommand.TerminalSizeQueue, _ io.Reader, stdout, stderr io.Writer) (int, error) {
+func (e *contractExecutor) Execute(_ context.Context, _ apps.SSHInstanceTarget, argv []string, _ bool, _ remotecommand.TerminalSizeQueue, _ io.Reader, stdout, stderr io.Writer) (int, error) {
 	e.calls.Add(1)
+	e.lastArgv.Store(argv)
 	if e.terminated {
 		return 0, sshgateway.ErrTargetTerminated
 	}
@@ -235,7 +237,6 @@ func TestConnectRunRefusalsMintNothing(t *testing.T) {
 		wantCode   string
 	}{
 		{"unsupported operation", newConnectFixture(t, "id-a", nil), "/v1/sandboxes/os-1/runs/attach/token?ownerId=tea-a", c.Command, http.StatusBadRequest, ""},
-		{"missing command", newConnectFixture(t, "id-a", nil), c.Connect.Path + "?ownerId=tea-a", "", http.StatusBadRequest, ""},
 		{"unknown sandbox", newConnectFixture(t, "id-a", nil), "/v1/sandboxes/os-404/runs/stream/token?ownerId=tea-a", c.Command, http.StatusNotFound, "SANDBOX_NOT_FOUND"},
 		{"foreign sandbox is the same not-found", newConnectFixture(t, "id-b", nil), c.Connect.Path + "?ownerId=tea-a", c.Command, http.StatusNotFound, "SANDBOX_NOT_FOUND"},
 		{"no can_create", newConnectFixture(t, "id-a", denyChecker{}), c.Connect.Path + "?ownerId=tea-a", c.Command, http.StatusForbidden, ""},
@@ -256,6 +257,72 @@ func TestConnectRunRefusalsMintNothing(t *testing.T) {
 				t.Errorf("refusal carries no message: %v", out)
 			}
 		})
+	}
+}
+
+// Render's round-7 contract (2026-11-13) drops the mint's {command} body
+// (w3/065): a token minted without one is unbound, and its single redeem runs
+// the command the stream request names. It is still single-use, and a redeem
+// that names no command is refused without spending it.
+func TestConnectRunWithoutACommandBindsTheRedeemsCommand(t *testing.T) {
+	c := loadExecContract(t)
+	f := newConnectFixture(t, "id-a", nil)
+	execs := &fakeExecutions{}
+	f.svc.Executions = execs
+	resp, out := f.mint(t, c.Connect.Path+"?"+c.Connect.Query, "")
+	if resp.StatusCode != http.StatusCreated || out["token"] == nil {
+		t.Fatalf("command-less mint = %d %v, want 201 with a token", resp.StatusCode, out)
+	}
+	uri, token := out["uri"].(string), out["token"].(string)
+
+	resp, body := f.redeem(t, uri, token, "")
+	if resp.StatusCode != http.StatusBadRequest || !strings.Contains(body, "send the command") {
+		t.Fatalf("redeem with no command = %d %s, want 400", resp.StatusCode, body)
+	}
+	if f.executor.calls.Load() != 0 {
+		t.Fatal("a redeem with no command ran something")
+	}
+	resp, body = f.redeem(t, uri, token, c.Command)
+	if resp.StatusCode != c.Stream.Status || body != c.Transcripts.Exit7 {
+		t.Fatalf("redeem = %d %q", resp.StatusCode, body)
+	}
+	argv, _ := f.executor.lastArgv.Load().([]string)
+	if len(argv) == 0 || argv[len(argv)-1] != c.Command {
+		t.Fatalf("executed %q, want the redeem's command %q", argv, c.Command)
+	}
+	if resp, body := f.redeem(t, uri, token, "other"); resp.StatusCode != http.StatusConflict {
+		t.Fatalf("second redeem of an unbound token = %d %s, want 409", resp.StatusCode, body)
+	}
+	// The history records the command that ran, as Render's records it from
+	// the stream when the mint named none.
+	execs.mu.Lock()
+	recorded := ""
+	for _, r := range execs.rows {
+		if r.ID == out["executionId"] {
+			recorded = r.Command
+		}
+	}
+	execs.mu.Unlock()
+	if recorded != c.Command {
+		t.Errorf("execution history command = %q, want the redeem's %q", recorded, c.Command)
+	}
+}
+
+// The exec gate runs again at redeem, under the minter: a member who loses
+// can_create after minting cannot spend the token, bound or unbound.
+func TestConnectRedeemRechecksPermission(t *testing.T) {
+	c := loadExecContract(t)
+	for _, command := range []string{c.Command, ""} {
+		f := newConnectFixture(t, "id-a", nil)
+		resp, out := f.mint(t, c.Connect.Path+"?"+c.Connect.Query, command)
+		if resp.StatusCode != http.StatusCreated {
+			t.Fatalf("mint = %d %v", resp.StatusCode, out)
+		}
+		f.svc.Authz = denyChecker{}
+		resp, body := f.redeem(t, out["uri"].(string), out["token"].(string), c.Command)
+		if resp.StatusCode != http.StatusForbidden || f.executor.calls.Load() != 0 {
+			t.Fatalf("redeem after revocation (minted with %q) = %d %s, %d exec calls; want 403 and none", command, resp.StatusCode, body, f.executor.calls.Load())
+		}
 	}
 }
 

@@ -186,6 +186,7 @@ Render's sandbox builds are imported images: `render sandbox-groups images impor
   - `image_access_denied`, `image_not_found` or `image_pull_failed` for the source registry's refusal;
   - `deadline_exceeded` for the import timeout;
   - `internal_error` for bex's own side, and for builds that failed before codes were recorded.
+- **Run connect tokens (round 7, w3/065).** Render's `connect-sandbox-run` takes no body since 2026-11-13. A token minted with no command is unbound: its single redeem runs the command the stream request names, which must not be empty, under the same single-use nonce and lifetime. Its execution-history entry has no command text, as Render's timeline takes it from the mint. A token minted with a command (the pinned CLI v2.36 still sends one) keeps the exact-command binding.
 - **Credentials (round 7).** The seven `sandbox-groups/{id}/credentials*` operations are in Render's public OpenAPI since 2026-11-13. render.com/sandboxes still marks brokering early access, so they stay a named refusal (`SANDBOX_CREDENTIALS_UNSUPPORTED`) outside the parity bar until it leaves early access.
 
 ### D8 — Pricing and billing

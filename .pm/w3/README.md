@@ -102,7 +102,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 
 ## Inbox
 
-- [ ] **065** — [A sandbox run connect token can be minted without a command, as Render's round-7 contract allows](065.md) (~45m) ← w3/m367 simplify review 2026-11-13
+- [x] **065** — **done 2026-11-13** ([done/065.md](done/065.md)): a sandbox run connect token minted without a command, as Render's round-7 mint allows, runs the command its single redeem names, re-gated under the minter and recorded in the execution history. Bound tokens keep the exact-command rule.
 - [ ] **064** — [The Deploys page says when auto-deploys are off, as on Render's 2026-09-03 Deploys page](064.md) (~40m) ← from `/pm-brainstorm for w3` 2026-11-12, item 5
 - [ ] **063** — **BLOCKED (date gate: after 2026-12-10, when the last sub-minute sandbox from before w3/m303 has passed its 30-day suspended retention, a worker checks no live sandbox carries `bex.co/timeout-seconds` below 60 and removes the floor — no user decision needed)** — [Remove the sandbox sub-minute timeout floor after 2026-12-10](blocked/063.md) ← w3/m303 2026-11-10
 - [x] **062** — **promoted 2026-11-10 → [`m318`](blocked/m318/README.md)** ([done/062.md](done/062.md)): terminated and errored sandboxes stay readable, as on Render.

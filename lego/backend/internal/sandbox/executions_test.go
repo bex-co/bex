@@ -80,6 +80,17 @@ func (f *fakeExecutions) RecordSandboxExecution(_ context.Context, e store.Sandb
 	return nil
 }
 
+func (f *fakeExecutions) SetSandboxExecutionCommand(_ context.Context, ws, id, command string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for i := range f.rows {
+		if r := &f.rows[i]; r.WorkspaceID == ws && r.ID == id && r.Command == "" {
+			r.Command = command
+		}
+	}
+	return nil
+}
+
 func (f *fakeExecutions) StopSandboxExecution(_ context.Context, ws, id string, at time.Time, exit *int) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()

@@ -41,9 +41,11 @@ import (
 // redeems that token — as the Bearer credential, NOT its OAuth token — at the
 // `uri` bex returned, and reads the response as the exec SSE stream. The token
 // is a short-lived, single-use HMAC ticket bound to the workspace, sandbox,
-// execution id, operation, and the exact command, so the redeem route can be
-// served outside the OAuth gate without becoming a second way to choose a
-// command or a sandbox.
+// execution id, operation, and the exact command when the mint named one, so
+// the redeem route can be served outside the OAuth gate without becoming a
+// second way to choose a sandbox. A token minted without a command (Render's
+// round-7 mint, w3/065) runs the one command its redeem names, under the
+// minter's identity and the same exec gate, once.
 const (
 	// ConnectOperationStream is the only run operation bex serves; the
 	// pinned client sends it for `ea sandboxes exec`.
@@ -74,15 +76,19 @@ type connectClaims struct {
 	ExecutionID string `json:"exe"`
 	Operation   string `json:"op"`
 	Command     string `json:"cmd"`
-	IssuedAt    int64  `json:"iat"`
-	ExpiresAt   int64  `json:"exp"`
-	Nonce       string `json:"nonce"`
+	// Unbound marks a token minted with no command (Render's round-7 mint,
+	// w3/065): it authorizes one stream of the command its redeem names.
+	Unbound   bool   `json:"ub,omitempty"`
+	IssuedAt  int64  `json:"iat"`
+	ExpiresAt int64  `json:"exp"`
+	Nonce     string `json:"nonce"`
 }
 
 // ConnectRequest is the mint input: OwnerID binds the workspace (Render's
 // query/body ownerId), Operation is the path's `{operation}`, Command is the
-// body's `command` — always sent by the pinned exec client, and required here
-// because it is what the token binds.
+// body's optional `command`. The pinned exec client sends it, and the token
+// then binds it; Render's round-7 contract dropped the body, and a token
+// minted without one takes the command its redeem names (w3/065).
 type ConnectRequest struct {
 	OwnerID   string
 	SandboxID string
@@ -137,7 +143,7 @@ func (c *ExecConfig) connectTTL() time.Duration {
 // gets no token. baseURL is the public API origin the returned URI is built
 // on (the pinned client follows it verbatim).
 func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL string) (ConnectResponse, error) {
-	ws, raw, err := s.authorizeExecTarget(ctx, ExecRequest{OwnerID: req.OwnerID, SandboxID: req.SandboxID, Command: req.Command})
+	ws, raw, err := s.authorizeExecTarget(ctx, req.OwnerID, req.SandboxID, req.Command, false)
 	if err != nil {
 		return ConnectResponse{}, err
 	}
@@ -160,6 +166,7 @@ func (s *Service) ConnectRun(ctx context.Context, req ConnectRequest, baseURL st
 		ExecutionID: id.New(id.SandboxExecution),
 		Operation:   req.Operation,
 		Command:     req.Command,
+		Unbound:     req.Command == "",
 		IssuedAt:    now.Unix(),
 		ExpiresAt:   now.Add(ttl).Unix(),
 	}
@@ -205,7 +212,9 @@ func (e *connectStatusError) Error() string { return e.msg }
 // was minted for another sandbox, another execution, or another command is
 // refused BEFORE the nonce is consumed: misuse must not burn the legitimate
 // redemption. The command comparison is exact, not normalized — the token
-// binds bytes, and the gateway ticket is minted from the token's copy.
+// binds bytes, and the gateway ticket is minted from the token's copy. An
+// unbound token (minted with no command) takes the redeem's command instead,
+// which must not be empty.
 func (s *Service) verifyConnectToken(ctx context.Context, token, sandboxID, executionID, command string) (connectClaims, error) {
 	var claims connectClaims
 	if token == "" {
@@ -227,7 +236,14 @@ func (s *Service) verifyConnectToken(ctx context.Context, token, sandboxID, exec
 	if claims.Operation != ConnectOperationStream || claims.SandboxID != sandboxID || claims.ExecutionID != executionID {
 		return claims, &connectStatusError{http.StatusForbidden, "connect token was not minted for this sandbox run"}
 	}
-	if claims.Command != command {
+	switch {
+	case claims.Unbound && command == "":
+		return claims, &connectStatusError{http.StatusBadRequest, "this connect token was minted without a command; send the command to run in the request body"}
+	case claims.Unbound:
+		// One stream of the command the redeem names, still single-use and
+		// bounded by the token's lifetime.
+		claims.Command = command
+	case claims.Command != command:
 		return claims, &connectStatusError{http.StatusForbidden, "command does not match the one this connect token was minted for"}
 	}
 	if !s.Exec.nonces().Consume(ctx, claims.Nonce, hmacticket.NonceExpiry(claims.ExpiresAt), now) {
@@ -237,7 +253,8 @@ func (s *Service) verifyConnectToken(ctx context.Context, token, sandboxID, exec
 }
 
 // ConnectStreamHandler serves ConnectStreamPattern: it redeems a run connect
-// token and streams the bound command's exec. It runs OUTSIDE the OAuth gate,
+// token and streams the command's exec: the bound one, or an unbound token's
+// redeemed one. It runs OUTSIDE the OAuth gate,
 // so it takes no identity from the request — the identity is the token's
 // minter, and the exec gate (dialGateway) is applied again under that identity
 // at redeem time: the sandbox must still exist in the bound workspace and the
@@ -267,6 +284,9 @@ func (s *Service) ConnectStreamHandler() http.Handler {
 			return
 		}
 		ctx := core.WithIdentity(r.Context(), core.Identity{Subject: claims.Subject, Method: "sandbox-connect"})
+		if claims.Unbound {
+			s.recordExecutionCommand(ctx, claims.Workspace, claims.ExecutionID, claims.Command)
+		}
 		flush := func() {
 			if f, ok := w.(http.Flusher); ok {
 				f.Flush()
