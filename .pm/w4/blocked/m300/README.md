@@ -15,9 +15,10 @@
 | [t007](done/t007.md) | Test coverage — **DONE** | 40m | w4/m300/t005 |
 | [t009](t009.md) | A run canceled before it started is announced as "not started yet" in Recent Runs | 15m | w4/m300/t003 |
 | [t010](t010.md) | A run canceled or replaced within a second of its trigger still executes (its pod prints after the row reads `canceled`), and a replaced run reads `finishedAt` before `startedAt` | 60m | w4/m300/t002 |
-| [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007, w4/m300/t009, w4/m300/t010 |
+| [t011](t011.md) | A triggered run that has not started yet reads "Running" in Recent Runs | 15m | w4/m300/t003 |
+| [t008](t008.md) | Closeout | 15m | w4/m300/t006, w4/m300/t007, w4/m300/t009, w4/m300/t010, w4/m300/t011 |
 
-Ten tasks, 375m (6h15m); t010 added in round 171. One finding, major. t009 was added in round 81 of the `/qa-find-bugs w4` loop (2026-11-11). This milestone schedules the work only.
+Eleven tasks, 390m (6h30m); t010 added in round 171, t011 in round 244. One finding, major. t009 was added in round 81 of the `/qa-find-bugs w4` loop (2026-11-11). This milestone schedules the work only.
 
 ## Finding — a triggered run is invisible until the operator reconciles it
 
