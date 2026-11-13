@@ -1,6 +1,6 @@
 # w3 · m368 — A dead alert pipeline or a public outage reaches a maintainer within minutes, not the 5–9 h GitHub's scheduler leaves
 
-**Worker:** worker3 **Goal:** an external dead-man's switch hears from Alertmanager's `Watchdog` every minute and alerts when it stops, and external HTTP checks watch the public endpoints every few minutes. The documented detection time becomes a measured one. The schedule-drift check stops reporting a false "never" for push-heavy workflows. **Status:** todo
+**Worker:** worker3 **Goal:** an external dead-man's switch hears from Alertmanager's `Watchdog` every minute and alerts when it stops, and external HTTP checks watch the public endpoints every few minutes. The documented detection time becomes a measured one. The schedule-drift check stops reporting a false "never" for push-heavy workflows. **Status:** blocked (t004 done: the schedule-drift check pages past push-heavy history, #112's false `deploy.yml` "never" is gone; t001 needs the user: choose the external monitor (recommended (A) a hosted dead-man's switch such as healthchecks.io) and create its account and Watchdog check, putting the ping URL in `.env` as `BEX_WATCHDOG_PING_URL` and in the `production-observe` environment; t002, t003 and t005 follow)
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | [t001](t001.md) | Decision and design: the external monitor (recommended: a hosted dead-man's switch plus HTTP checks), its account and where its URLs live | 20m | — |
 | [t002](t002.md) | Alertmanager routes `Watchdog` to a webhook receiver that pings the dead-man's switch at least every minute; URL from an out-of-band Secret | 60m | t001 |
 | [t003](t003.md) | External HTTP checks of `api.bex.co`, `dashboard.bex.co` and a tenant `onbex.co` host at ≤ 5-minute intervals, as code or documented configuration | 45m | t001 |
-| [t004](t004.md) | `ci-schedule-drift.sh` reads enough history for push-heavy workflows; a fixture reproduces #112's false "never" | 45m | — |
+| [t004](done/t004.md) | `ci-schedule-drift.sh` reads enough history for push-heavy workflows; a fixture reproduces #112's false "never" — **DONE** | 45m | — |
 | [t005](t005.md) | Drill: stop the feed and record time to notification; ADR010 and ADR088 state the measured bound | 40m | t002, t003 |
 | [t006](t006.md) | Simplify | 15m | t004, t005 |
 | [t007](t007.md) | Test coverage | 30m | t006 |
@@ -38,3 +38,9 @@
 - **Why now:** detection got slower on 2026-11-09 and nothing replaced the cadence. w7/055 deferred an in-cluster trigger with "worsening drift can reopen that decision"; #112 is that drift. This is independent of w3/m174's blocked drill.
 - **Open decision, recommendation only (not a user decision):** t001 recommends (A) a hosted dead-man's switch with HTTP checks, e.g. healthchecks.io (open source, so it can later be self-hosted outside the cluster), which is the kube-prometheus documented use of `Watchdog`. Alternatives: (B) a Cloudflare Worker cron that dispatches the heartbeat workflow every 10 minutes (no new vendor; needs a Workers token and a fine-grained PAT); (C) documentation only, accepting about 12 hours (shrinks the DoD and needs the user's sign-off). The account and its URLs need the user (t001); t004 can proceed without them.
 - **Render parity omitted:** platform-internal operations. No REST, GraphQL, MCP or dashboard surface changes.
+
+## Decision (2026-11-13, `/loopx w3`, blocked)
+
+- **Gate:** t001 needs an external monitor account and its ping URL. No credential for any monitor or for Cloudflare (alternative (B)) exists in `.env.example`, and a signup is the user's. t002 (the Alertmanager receiver reads the URL from a Secret, and a missing Secret would stop Alertmanager from starting), t003 and t005 depend on it.
+- **Done meanwhile:** t004 (`scripts/ci-schedule-drift.sh` paging, #112).
+- **Next, once the account exists:** run `/unblock w3`. The worker then does t001's ADR010 decision record and `.env.example` name, then t002 → t003 → t005, then closes.

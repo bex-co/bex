@@ -207,39 +207,61 @@ done
 runs "$history" | jq '."w.yml"' >"$stub/runs.json"
 cat >"$stub/gh" <<'STUB'
 #!/usr/bin/env bash
-# Minimal `gh run list --workflow W [--event E] --limit N --json F`.
+# Minimal `gh api repos/{owner}/{repo}/actions/workflows/W/runs?per_page=N&page=P`
+# over runs.json (newest first), in the Actions API's shape.
 set -euo pipefail
-[ "$1 $2" = "run list" ] || { echo "stub gh: unexpected $*" >&2; exit 1; }
-shift 2
-limit=20 event=""
-while [ $# -gt 0 ]; do
-  case "$1" in
-    --limit) limit="$2"; shift 2 ;;
-    -e|--event) event="$2"; shift 2 ;;
-    --workflow|--json) shift 2 ;;
-    *) echo "stub gh: unexpected flag $1" >&2; exit 1 ;;
+[ "$1" = api ] || { echo "stub gh: unexpected $*" >&2; exit 1; }
+url="$2"
+case "$url" in repos/*/actions/workflows/*/runs\?*) ;; *) echo "stub gh: unexpected $url" >&2; exit 1 ;; esac
+query="${url#*\?}"
+per_page=30 page=1 event=""
+IFS='&' read -ra pairs <<<"$query"
+for kv in "${pairs[@]}"; do
+  case "$kv" in
+    per_page=*) per_page="${kv#*=}" ;;
+    page=*) page="${kv#*=}" ;;
+    event=*) event="${kv#*=}" ;;
   esac
 done
 runs="$(dirname "$0")/runs.json"
 if [ -n "$event" ]; then
-  # The search's stale answer: only runs older than a day.
-  jq --arg e "$event" --argjson n "$limit" '[.[] | select(.event == $e)] | .[-3:] | .[:$n]' "$runs"
+  # The search's stale answer: only the oldest scheduled runs.
+  jq --arg e "$event" '{workflow_runs: ([.[] | select(.event == $e)] | .[-3:] | map({created_at: .createdAt, html_url: .url, event, status, conclusion}))}' "$runs"
 else
-  jq --argjson n "$limit" '.[:$n]' "$runs"
+  jq --argjson n "$per_page" --argjson p "$page" '{workflow_runs: (.[($p - 1) * $n : $p * $n] | map({created_at: .createdAt, html_url: .url, event, status, conclusion}))}' "$runs"
 fi
 STUB
 chmod +x "$stub/gh"
-set +e
-out="$(PATH="$stub:$PATH" BEX_CI_DRIFT_NOW="$NOW" BEX_CI_DRIFT_WINDOWS="$tmp/windows" bash "$SCRIPT" 2>&1)"
-rc=$?
-set -e
-if [ "$rc" != 0 ]; then
-  echo "FAIL [fetch path, every event]: exit=$rc want=0 (the stale event search must not be used)" >&2
-  echo "$out" | sed 's/^/    /' >&2
-  fails=$((fails + 1))
-else
-  echo "ok   [fetch path, every event]"
-fi
+fetch() { # fetch <label> <want_exit> [needle] — the real fetch path over runs.json
+  local label="$1" want="$2" needle="${3:-}" out rc
+  set +e
+  out="$(PATH="$stub:$PATH" BEX_CI_DRIFT_NOW="$NOW" BEX_CI_DRIFT_WINDOWS="$tmp/windows" GH_RETRY_DELAY=0 bash "$SCRIPT" 2>&1)"
+  rc=$?
+  set -e
+  if [ "$rc" != "$want" ] || { [ -n "$needle" ] && ! printf '%s' "$out" | grep -qF -- "$needle"; }; then
+    echo "FAIL [$label]: exit=$rc want=$want${needle:+ with '$needle'}" >&2
+    echo "$out" | sed 's/^/    /' >&2
+    fails=$((fails + 1))
+  else
+    echo "ok   [$label]"
+  fi
+}
+fetch "fetch path, every event" 0
+
+# (p) #112 (w3/m368): a push-heavy workflow. Its first page holds pushes only
+# and one scheduled run; the next pages hold the rest. One page read it as
+# "never fired" from a single verdict; paging reads it whole and on time.
+history="$(run 1 "" schedule in_progress)"
+for i in $(seq 1 150); do history="$history$(run 2 success push)"; done
+for h in 5 9 13 17 21 25 29 33 37 41 45 49 53 57 61 65; do history="$history$(run "$h" success schedule)"; done
+runs "$history" | jq '."w.yml"' >"$stub/runs.json"
+BEX_CI_RUN_LIMIT=100 fetch "push-heavy workflow pages past its pushes" 0
+BEX_CI_RUN_LIMIT=100 BEX_CI_RUN_PAGES=1 fetch "one page reads the same history as never fired (the #112 report)" 1 "no scheduled run reached a verdict in the 1 inspected"
+# The page cap still bounds a history that never reaches back far enough.
+history=""
+for i in $(seq 1 120); do history="$history$(run 1 success push)"; done
+runs "$history" | jq '."w.yml"' >"$stub/runs.json"
+BEX_CI_RUN_LIMIT=50 BEX_CI_RUN_PAGES=2 fetch "page cap with no scheduled run reports never" 1 "no scheduled run reached a verdict in the 0 inspected"
 
 if [ "$fails" -ne 0 ]; then
   echo "ci-schedule-drift self-test FAILED ($fails)" >&2

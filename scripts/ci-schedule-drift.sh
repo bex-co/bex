@@ -36,8 +36,10 @@
 # Config:
 #   BEX_CI_DRIFT_LOOKBACK_HOURS  how far back a recovered gap is still reported
 #                                (default 48: two daily checks see it)
-#   BEX_CI_RUN_LIMIT             runs to fetch per workflow, every event; the
-#                                scheduled ones are kept (default 100)
+#   BEX_CI_RUN_LIMIT             runs per page, every event; the scheduled ones
+#                                are kept (default 100)
+#   BEX_CI_RUN_PAGES             pages to read at most per workflow, until the
+#                                runs reach past window + lookback (default 10)
 #   BEX_CI_DRIFT_RUNS_JSON       read runs from this file, a JSON object keyed by
 #                                workflow file, instead of the GitHub API
 #   BEX_CI_DRIFT_WINDOWS         read windows from this file instead of the table
@@ -94,6 +96,7 @@ ci-schedule-drift.yml -
 
 LOOKBACK="${BEX_CI_DRIFT_LOOKBACK_HOURS:-48}"
 LIMIT="${BEX_CI_RUN_LIMIT:-100}"
+MAX_PAGES="${BEX_CI_RUN_PAGES:-10}"
 here="$(cd "$(dirname "$0")" && pwd)"
 WORKFLOWS_DIR="${BEX_CI_DRIFT_WORKFLOWS_DIR:-$here/../.github/workflows}"
 
@@ -160,23 +163,38 @@ else
   . "$(dirname "${BASH_SOURCE[0]}")/lib/gh-retry.sh"
 fi
 
-runs_for() { # runs_for <workflow file> — its newest runs, newest first
+runs_for() { # runs_for <workflow file> <window hours> — its newest runs, newest first
   if [ -n "${BEX_CI_DRIFT_RUNS_JSON:-}" ]; then
     echo "$all_runs" | jq --arg f "$1" '.[$f] // []'
-  else
-    # Never `--event schedule`: GitHub answers an event filter by searching
-    # runs, and its search lags, so newer runs can be missing from it
-    # (cli/cli#7341). List the workflow's newest runs, one API page of 100, and
-    # keep the scheduled ones in the filter below. Measured 2026-10-07 over each
-    # scheduled workflow's newest 100: infra's are the most mixed (81
-    # scheduled, 18 pushes), the weekly workflows hold 12 runs or fewer in all,
-    # and the check needs about 11 scheduled verdicts for ssh-edge-liveness
-    # (its 18h window plus the 48h lookback) and at most 60 for the hourly
-    # heartbeat.
-    gh_retry gh run list --workflow "$1" --limit "$LIMIT" \
-      --json conclusion,status,event,createdAt,url 2>/dev/null \
-      || unusable "could not list runs of $1"
+    return
   fi
+  # Never an `event` filter: GitHub answers one by searching runs, and its
+  # search lags, so newer runs can be missing from it (cli/cli#7341). List the
+  # workflow's runs, every event, and keep the scheduled ones in the filter
+  # below. One page of 100 was enough until a push-heavy workflow (deploy.yml
+  # runs on every push, ~900 a week) held a single scheduled run in it and
+  # read as "never fired" (#112, w3/m368). So page back until the runs reach
+  # past the window and the lookback and at least one scheduled run is in
+  # hand, or the history ends, or MAX_PAGES.
+  local need page=1 out='[]' batch n oldest
+  need=$((now - ($2 + LOOKBACK) * 3600))
+  while :; do
+    batch="$(gh_retry gh api "repos/{owner}/{repo}/actions/workflows/$1/runs?per_page=$LIMIT&page=$page" 2>/dev/null)" \
+      || unusable "could not list runs of $1"
+    batch="$(echo "$batch" | jq -c '[.workflow_runs[]? | {conclusion, status, event, createdAt: .created_at, url: .html_url}]' 2>/dev/null)" \
+      || unusable "runs of $1 are not a run list"
+    out="$(jq -c -s 'add' <<<"$out"$'\n'"$batch")"
+    n="$(jq 'length' <<<"$batch")"
+    oldest="$(jq -r 'map(.createdAt | fromdateiso8601) | min // empty' <<<"$batch")"
+    if [ "$n" -lt "$LIMIT" ] || [ "$page" -ge "$MAX_PAGES" ]; then
+      break
+    fi
+    if [ -n "$oldest" ] && [ "$oldest" -lt "$need" ] && jq -e 'any(.event == "schedule")' <<<"$out" >/dev/null; then
+      break
+    fi
+    page=$((page + 1))
+  done
+  echo "$out"
 }
 
 hours() { # hours <seconds> — "27h04m"
@@ -190,7 +208,7 @@ while read -r file window; do
     exempt="$exempt $file"
     continue
   fi
-  runs="$(runs_for "$file")"
+  runs="$(runs_for "$file" "$window")"
   echo "$runs" | jq -e 'type == "array"' >/dev/null 2>&1 \
     || unusable "run data for $file is not a JSON array"
   # One tab-separated finding per line: kind, gap seconds, gap start, gap end,
