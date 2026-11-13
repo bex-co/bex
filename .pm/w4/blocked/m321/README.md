@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Record Render's `ViewConnectionInfoEvent` for Postgres and Key Value connection info — **DONE** | 30m | t001 |
 | [t010](done/t010.md) | One Render-named event per user action wherever Render's enum has one, including `CreateProjectEvent` and `CreateEnvironmentEvent`, which the mapping names but never emits — **DONE** | 50m | t001 |
 | [t004](done/t004.md) | Ledger and artifact: ADR018's audit row and `audit-logs-api.md` state the read rules and the event mapping — **DONE** | 20m | t002, t003, t010 |
-| [t011](t011.md) | A service or project create, and a project delete, name what they created or deleted: their rows read only `{"relation":"can_create"}` | 35m | t004 |
+| [t011](t011.md) | A service or project create, and a project delete, name what they created or deleted: their rows read only `{"relation":"can_create"}` (round 311 adds env group, webhook and Blueprint rows) | 50m | t004 |
 | [t012](t012.md) | A refused service create records a `CreateServerEvent` with status `success`: the row is written at authorization, before the 409, and env-group create shares the shape | 30m | t011 |
 | [t005](t005.md) | Live verification in `bex-canary` | 30m | t004, t011, t012 |
 | [t006](done/t006.md) | Render parity — **DONE** | 20m | t005 |
