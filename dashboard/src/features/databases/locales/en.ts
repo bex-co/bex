@@ -1526,8 +1526,9 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.insightsNoTopQueries": {
     message:
-      "No query stats yet — pg_stat_statements may not be enabled on this cluster.",
-    description: "Insights top-queries empty state",
+      "No queries yet. Statements your application and the SQL console run will appear here.",
+    description:
+      "Insights top-queries empty state: the read succeeded and nothing the owner ran is in the list. A failed read, including a missing pg_stat_statements, shows insightsUnavailable instead, so this text must not blame the extension",
   },
   "databases.insightsQueryHidden": {
     message: "Hidden",

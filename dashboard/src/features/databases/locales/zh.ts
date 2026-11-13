@@ -1479,8 +1479,9 @@ const zhDatabases: Record<string, TranslationEntry> = {
     description: "Insights panel — pg_stat_statements sub-section heading",
   },
   "databases.insightsNoTopQueries": {
-    message: "暂无查询统计 — 此集群可能未启用 pg_stat_statements。",
-    description: "Insights top-queries empty state",
+    message: "暂无查询。你的应用和 SQL 控制台运行的语句会显示在这里。",
+    description:
+      "Insights top-queries empty state: the read succeeded and nothing the owner ran is in the list. A failed read, including a missing pg_stat_statements, shows insightsUnavailable instead, so this text must not blame the extension",
   },
   "databases.insightsQueryHidden": {
     message: "已隐藏",

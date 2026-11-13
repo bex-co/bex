@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { render, screen, within } from "@testing-library/react";
 import { InsightsPanel } from "@/features/databases/components/insights-panel";
+import i18n from "@/i18n/init";
 
 // The literal PostgreSQL substitutes for a query text the reading role may not
 // see. On 2026-09-19 it rendered 34 times on a live database's Insights section
@@ -76,12 +77,14 @@ type ScanRow = {
 const state: {
   processes: ProcessRow[];
   topQueries: TopQueryRow[];
+  topQueriesError: Error | undefined;
   parameterSpec: SpecRow[];
   sizes: { database: null; tables: SizeRow[] } | null;
   tableScans: ScanRow[];
 } = {
   processes: [],
   topQueries: [],
+  topQueriesError: undefined,
   parameterSpec: [],
   sizes: null,
   tableScans: [],
@@ -94,7 +97,7 @@ vi.mock("@/features/databases/hooks/use-database-insights", () => ({
     processesError: undefined,
     topQueries: state.topQueries,
     topQueriesLoading: false,
-    topQueriesError: undefined,
+    topQueriesError: state.topQueriesError,
     sizes: state.sizes,
     sizesLoading: false,
     sizesError: undefined,
@@ -112,9 +115,68 @@ vi.mock("@/features/databases/hooks/use-database-insights", () => ({
 beforeEach(() => {
   state.processes = [];
   state.topQueries = [];
+  state.topQueriesError = undefined;
   state.parameterSpec = [];
   state.sizes = null;
   state.tableScans = [];
+});
+
+afterEach(async () => {
+  await i18n.changeLanguage("en");
+});
+
+// bex-api answers an empty list only when pg_stat_statements answered and holds
+// no row of the owner's: a missing extension or an unreachable database is an
+// error, which lands on the unavailable line. After w21/058 stopped the panel's
+// own envelope statements from filling the list, a quiet database reaches this
+// empty state, and it told the owner their cluster was misconfigured (w21/062).
+describe("InsightsPanel Top queries empty state", () => {
+  function topQueriesSection() {
+    const heading = screen.getByRole("heading", {
+      name: /top queries|热门查询/i,
+    });
+    return within(heading.closest("div.space-y-2") as HTMLElement);
+  }
+
+  it("says nothing has run, without blaming pg_stat_statements", () => {
+    render(<InsightsPanel id="dpg-1" />);
+
+    const section = topQueriesSection();
+    expect(section.getByText(/No queries yet/)).toBeInTheDocument();
+    expect(
+      section.queryByText(/pg_stat_statements|enabled|misconfigured/i),
+    ).toBeNull();
+  });
+
+  it("drops the empty text once a statement is listed", () => {
+    state.topQueries = [topQuery({ query: "SELECT 1 AS qa_one" })];
+
+    render(<InsightsPanel id="dpg-1" />);
+
+    const section = topQueriesSection();
+    expect(section.getByText("SELECT 1 AS qa_one")).toBeInTheDocument();
+    expect(section.queryByText(/No queries yet/)).toBeNull();
+  });
+
+  it("still shows the unavailable line when the read failed", () => {
+    state.topQueriesError = new Error("top query statistics could not be read");
+
+    render(<InsightsPanel id="dpg-1" />);
+
+    const section = topQueriesSection();
+    expect(section.getByText(/^Unavailable/)).toBeInTheDocument();
+    expect(section.queryByText(/No queries yet/)).toBeNull();
+  });
+
+  it("reads the same in Chinese", async () => {
+    await i18n.changeLanguage("zh");
+
+    render(<InsightsPanel id="dpg-1" />);
+
+    const section = topQueriesSection();
+    expect(section.getByText(/暂无查询。/)).toBeInTheDocument();
+    expect(section.queryByText(/pg_stat_statements|未启用/)).toBeNull();
+  });
 });
 
 describe("InsightsPanel masked rows", () => {
