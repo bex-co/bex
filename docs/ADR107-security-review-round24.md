@@ -36,7 +36,7 @@ Four confirmed findings: one high and three medium. All four are fixed; one fix 
 - **Accepted, unchanged:** `.pm/DO_NOT_DO.md` #PSL, #CI-RUNNERS, #RUNNER-HOSTS, #ENV-REVIEWERS, #APPROVAL-MODE.
 - **Filed as hardening, not exploitable today:**
   - w5/186: a removed member's in-flight agent turns run until their turn timeout. Fixed 2026-11-13: a membership exit (remove, leave, account deletion) stops the sessions the member started in that workspace, directly or through a key it revoked, before the membership row goes (ADR024).
-  - w5/187: HMAC ticket flavors that share a secret are not domain-separated.
+  - w5/187: HMAC ticket flavors that share a secret are not domain-separated. Fixed 2026-11-13: every MAC binds its flavor name; the previous release's body-only MAC is accepted until w5/191 removes it.
   - w5/188: session branches are not unique across spawn; the head SHA is self-reported; takeover protection is re-checked only once.
   - w5/189: no platform-wide import budget; the import worker pool is shared; foreign layer URLs are kept; Zot cross-repo mounts are unchecked.
   - w5/190: Blueprint approve does not bind its plan; a Grafana session outlives ops removal; retired Postgres logins keep their sessions.

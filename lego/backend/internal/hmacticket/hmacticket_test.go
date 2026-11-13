@@ -226,6 +226,72 @@ func TestOpenRejectsEveryEnvelopeFailure(t *testing.T) {
 	}
 }
 
+// w5/187: two flavors that share a secret refuse each other's tickets even
+// when the claims would satisfy both: the flavor name is in the MAC.
+func TestFlavorsSharingASecretRefuseEachOthersTickets(t *testing.T) {
+	shell, agent := New("shell ticket"), New("agent session ticket")
+	token, err := shell.Sign(secret, claims{Subject: "user-1", ExpiresAt: 42})
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+	var got claims
+	if err := agent.Open(secret, token, &got); !errors.Is(err, ErrSignature) {
+		t.Fatalf("another flavor opened the ticket: %v, want ErrSignature", err)
+	}
+	if got != (claims{}) {
+		t.Errorf("a refused ticket decoded %+v", got)
+	}
+	if err := shell.Open(secret, token, &got); err != nil {
+		t.Fatalf("its own flavor refused it: %v", err)
+	}
+}
+
+// A ticket the previous release minted (body-only MAC) still opens across the
+// deploy, until w5/191 removes the fallback.
+func TestOpenAcceptsTheBodyOnlyMACOfThePreviousRelease(t *testing.T) {
+	c := New("disk snapshot key")
+	payload, err := json.Marshal(claims{Subject: "user-1", ExpiresAt: 42})
+	if err != nil {
+		t.Fatal(err)
+	}
+	body := base64.RawURLEncoding.EncodeToString(payload)
+	var got claims
+	if err := c.Open(secret, body+"."+mac(secret, body), &got); err != nil || got.Subject != "user-1" {
+		t.Fatalf("a previous-release ticket = %+v / %v, want it opened", got, err)
+	}
+}
+
+// A current ticket re-wrapped so its flavor-bound message reads as a body
+// ("<flavor>\n<body>.<mac>") must not pass the previous-release fallback. With
+// a flavor name made only of base64 characters (here "ICAg", three spaces) the
+// re-wrapped body even decodes to valid JSON, so the signature check is the
+// only thing refusing it.
+func TestOpenRefusesACurrentTicketRewrappedAsAPreviousReleaseOne(t *testing.T) {
+	c := New("ICAg")
+	token, err := c.Sign(secret, claims{Subject: "user-1", ExpiresAt: 42})
+	if err != nil {
+		t.Fatalf("Sign: %v", err)
+	}
+	body, sig, _ := strings.Cut(token, ".")
+	var got claims
+	if err := c.Open(secret, "ICAg\n"+body+"."+sig, &got); !errors.Is(err, ErrSignature) {
+		t.Fatalf("re-wrapped ticket = %+v / %v, want ErrSignature", got, err)
+	}
+}
+
+func TestNewRefusesANameThatCouldShiftTheMACBoundary(t *testing.T) {
+	for _, name := range []string{"", "shell\nticket"} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("New(%q) did not panic", name)
+				}
+			}()
+			New(name)
+		}()
+	}
+}
+
 func TestSignRequiresASecret(t *testing.T) {
 	c := New("test ticket")
 	if _, err := c.Sign(nil, claims{Subject: "user-1"}); !errors.Is(err, ErrNoSecret) {

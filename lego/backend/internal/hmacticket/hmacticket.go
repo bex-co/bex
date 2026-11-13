@@ -20,16 +20,21 @@ limitations under the License.
 // sandbox network path) verifies it. Because the token is HMAC-SHA256-signed,
 // verification needs no shared database — only the secret both processes hold.
 //
-// A flavor package (internal/shellticket, internal/sandboxexec,
-// internal/agentsessionticket) owns its Claims shape, its required-claim rules,
+// A flavor package (internal/shellticket, internal/agentsessionticket,
+// internal/snapshotticket, internal/sandboxexec, internal/sandboxfiles, and the
+// sandbox connect tokens) owns its Claims shape, its required-claim rules,
 // and its error vocabulary; everything below the claims — the wire format, the
 // constant-time signature check, the clock-skew bounds, the nonce — lives here
 // once, so a rule like "a ticket dated in the future is refused" cannot hold in
 // one flavor and be missing from another.
 //
 // The wire format is "<body>.<mac>", where body is base64url(JSON(claims)) and
-// mac is base64url(HMAC-SHA256(secret, body)). It is deliberately NOT a JWT: no
-// algorithm is named in the token, so there is no algorithm to confuse.
+// mac is base64url(HMAC-SHA256(secret, flavor + "\n" + body)). It is
+// deliberately NOT a JWT: no algorithm is named in the token, so there is no
+// algorithm to confuse. The flavor name in the MAC keeps flavors that share a
+// secret apart (w5/187): shellticket, agentsessionticket and snapshotticket all
+// sign with BEX_SHELL_TICKET_SECRET, and a ticket of one must never verify as
+// another, whatever claims a later change gives them.
 package hmacticket
 
 import (
@@ -87,6 +92,7 @@ func (e *flavorErr) Unwrap() error { return e.marker }
 // must reject rather than return a nil error — a nil error here would be read by
 // every caller as a verified ticket.
 type Codec struct {
+	domain    string // the flavor name, bound into every MAC
 	malformed error
 	signature error
 	expired   error
@@ -94,9 +100,17 @@ type Codec struct {
 }
 
 // New builds a Codec for a flavor named in the singular and lower case, e.g.
-// "shell ticket".
+// "shell ticket". The name is part of the wire format, not only the error
+// wording: it is bound into every MAC, so renaming a flavor invalidates every
+// ticket of it still in date. It must be non-empty and hold no newline, the
+// MAC's separator; a flavor is a package-level constant, so a bad one panics
+// at startup.
 func New(name string) *Codec {
+	if name == "" || strings.ContainsRune(name, '\n') {
+		panic(fmt.Sprintf("hmacticket: invalid flavor name %q", name))
+	}
 	return &Codec{
+		domain:    name,
 		malformed: &flavorErr{msg: "malformed " + name, marker: ErrMalformed},
 		signature: &flavorErr{msg: name + " signature mismatch", marker: ErrSignature},
 		expired:   &flavorErr{msg: name + " expired", marker: ErrExpired},
@@ -151,7 +165,7 @@ func (c *Codec) Sign(secret []byte, claims any) (string, error) {
 		return "", err
 	}
 	body := base64.RawURLEncoding.EncodeToString(payload)
-	return body + "." + mac(secret, body), nil
+	return body + "." + c.mac(secret, body), nil
 }
 
 // Open verifies token's signature against secret and decodes the payload into
@@ -172,7 +186,7 @@ func (c *Codec) Open(secret []byte, token string, claims any) error {
 	if !ok || body == "" || signature == "" {
 		return c.Malformed()
 	}
-	if !hmac.Equal([]byte(signature), []byte(mac(secret, body))) {
+	if !c.signedBy(secret, body, signature) {
 		return c.Signature()
 	}
 	payload, err := base64.RawURLEncoding.DecodeString(body)
@@ -233,8 +247,31 @@ func NonceExpiry(expiresAt int64) time.Time {
 	return time.Unix(expiresAt, 0).Add(ClockSkew)
 }
 
-func mac(secret []byte, body string) string {
+// signedBy reports whether signature is body's MAC under this flavor, or the
+// body-only MAC every flavor signed before w5/187. The second form keeps the
+// tickets the previous release minted valid for their lifetime across the
+// deploy (a disk snapshot key lives 24 hours). It is refused for a body that
+// holds a newline: every current MAC covers "<flavor>\n<body>", so without
+// that check a current ticket re-wrapped as "<flavor>\n<body>.<mac>" would
+// pass as a previous-release one (base64 decoding skips the newline). w5/191
+// removes the fallback.
+func (c *Codec) signedBy(secret []byte, body, signature string) bool {
+	if hmac.Equal([]byte(signature), []byte(c.mac(secret, body))) {
+		return true
+	}
+	return !strings.ContainsRune(body, '\n') && hmac.Equal([]byte(signature), []byte(mac(secret, body)))
+}
+
+func (c *Codec) mac(secret []byte, body string) string {
+	var domain string
+	if c != nil {
+		domain = c.domain
+	}
+	return mac(secret, domain+"\n"+body)
+}
+
+func mac(secret []byte, message string) string {
 	h := hmac.New(sha256.New, secret)
-	_, _ = h.Write([]byte(body))
+	_, _ = h.Write([]byte(message))
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
