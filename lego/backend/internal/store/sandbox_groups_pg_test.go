@@ -440,3 +440,115 @@ func TestSandboxAdmissionWaitIsBoundedPG(t *testing.T) {
 		t.Fatalf("admission after the holder finished = %v", err)
 	}
 }
+
+// w2/m359: a default swap leaves exactly one default however many race, the
+// default is never deleted (by the store and by the database), and a group
+// being deleted is invisible and leaves the cap.
+func TestSandboxGroupDefaultSwapAndDeletePG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-groups-delete").ID
+	a, err := st.CreateSandboxGroup(ctx, ws, "a", SandboxGroupRegion, 10, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := st.CreateSandboxGroup(ctx, ws, "b", SandboxGroupRegion, 10, 3)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			target := a.ID
+			if i%2 == 1 {
+				target = b.ID
+			}
+			if _, err := st.SetDefaultSandboxGroup(ctx, ws, target); err != nil {
+				t.Errorf("set default %s: %v", target, err)
+			}
+		}()
+	}
+	wg.Wait()
+	groups, err := st.SandboxGroups(ctx, ws)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defaults := 0
+	for _, g := range groups {
+		if g.IsDefault {
+			defaults++
+		}
+	}
+	if defaults != 1 {
+		t.Fatalf("%d defaults after racing swaps, want 1", defaults)
+	}
+
+	if _, err := st.SetDefaultSandboxGroup(ctx, ws, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.MarkSandboxGroupDeleting(ctx, ws, a.ID); !errors.Is(err, ErrSandboxGroupIsDefault) {
+		t.Fatalf("mark the default deleting = %v, want ErrSandboxGroupIsDefault", err)
+	}
+	if _, err := st.Pool.Exec(ctx, `UPDATE sandbox_groups SET deleting_at = now() WHERE id = $1`, a.ID); err == nil {
+		t.Fatal("the database let the default group be marked deleting")
+	}
+	if _, err := st.MarkSandboxGroupDeleting(ctx, ws, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.SandboxGroup(ctx, ws, b.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a group being deleted reads %v, want ErrNotFound", err)
+	}
+	if _, err := st.MarkSandboxGroupDeleting(ctx, ws, b.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("a second delete = %v, want ErrNotFound", err)
+	}
+	if _, err := st.SetDefaultSandboxGroup(ctx, ws, b.ID); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("make a group being deleted the default = %v, want ErrNotFound", err)
+	}
+	// No sandbox is admitted to a group whose delete started.
+	bind := func(groupID, sandboxID string, lease time.Time) error {
+		return st.WithSandboxAdmission(ctx, ws, func(adm SandboxAdmission) error { return adm.Bind(ctx, sandboxID, groupID, lease) })
+	}
+	if err := bind(b.ID, "sbx-late", time.Now().Add(time.Minute)); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("bind into a group being deleted = %v, want ErrNotFound", err)
+	}
+	// It leaves the cap at once: with the cap at 2, a new group fits.
+	if _, err := st.CreateSandboxGroup(ctx, ws, "c", SandboxGroupRegion, 10, 2); err != nil {
+		t.Fatalf("a create once a group is being deleted = %v", err)
+	}
+	// A create admitted just before the mark still holds its lease: the group
+	// stays until the lease ends, so its sandbox can be terminated first.
+	d, err := st.CreateSandboxGroup(ctx, ws, "d", SandboxGroupRegion, 10, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := bind(d.ID, "sbx-starting", time.Now().Add(time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.MarkSandboxGroupDeleting(ctx, ws, d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteSandboxGroup(ctx, ws, d.ID); err == nil {
+		t.Fatal("a group with a leased binding was removed")
+	}
+	if _, err := st.Pool.Exec(ctx, `UPDATE sandbox_group_members SET lease_until = now() - interval '1 minute' WHERE sandbox_id = 'sbx-starting'`); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.DeleteSandboxGroup(ctx, ws, d.ID); err != nil {
+		t.Fatalf("remove once the lease ended = %v", err)
+	}
+	if err := st.DeleteSandboxGroup(ctx, ws, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	// Its name is free again.
+	if _, err := st.CreateSandboxGroup(ctx, ws, "b", SandboxGroupRegion, 10, 0); err != nil {
+		t.Fatalf("re-create a deleted group's name = %v", err)
+	}
+	if err := st.DeleteSandboxGroup(ctx, ws, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.SandboxGroup(ctx, ws, a.ID); err != nil {
+		t.Fatalf("DeleteSandboxGroup removed a group whose delete never started: %v", err)
+	}
+}

@@ -1914,6 +1914,7 @@ export type Mutation = {
   deleteRegistryCredential: Maybe<Scalars['Boolean']['output']>;
   deleteRouterKey: Maybe<Scalars['Boolean']['output']>;
   deleteSSHKey: Scalars['Boolean']['output'];
+  deleteSandboxGroup: Scalars['Boolean']['output'];
   deleteSecretFile: Maybe<Scalars['Boolean']['output']>;
   deleteService: Maybe<Scalars['Boolean']['output']>;
   deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
@@ -1984,6 +1985,7 @@ export type Mutation = {
   setDatabaseIpAllowList: Maybe<Database>;
   setDatabasePublic: Maybe<Database>;
   setDatabaseReadReplicas: Maybe<Database>;
+  setDefaultSandboxGroup: Maybe<SandboxGroup>;
   setDisplayName: Maybe<Service>;
   setDockerContext: Maybe<Service>;
   setDockerfilePath: Maybe<Service>;
@@ -2577,6 +2579,12 @@ export type MutationDeleteSshKeyArgs = {
 };
 
 
+export type MutationDeleteSandboxGroupArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationDeleteSecretFileArgs = {
   name: Scalars['String']['input'];
   serviceId: Scalars['String']['input'];
@@ -3002,6 +3010,12 @@ export type MutationSetDatabaseReadReplicasArgs = {
   dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   id: Scalars['String']['input'];
   readReplicas: Array<DatabaseReadReplicaInput>;
+};
+
+
+export type MutationSetDefaultSandboxGroupArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

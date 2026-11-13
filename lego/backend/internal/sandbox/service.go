@@ -1584,6 +1584,16 @@ func (s *Service) clientTerminate(ctx context.Context, key string, raw osSandbox
 	return nil
 }
 
+// endTerminated is what a terminate does after OpenSandbox accepted it, for a
+// sandbox ended without a caller's lifecycle verb (its group was deleted,
+// w2/m359): its slot, its meter and its record.
+func (s *Service) endTerminated(ctx context.Context, workspace string, raw osSandbox) {
+	s.releaseSlot(ctx, workspace, canonicalID(raw))
+	raw.Status.State = string(StatusTerminated)
+	s.Meter.Observe(ctx, raw)
+	s.recordEnded(ctx, workspace, raw)
+}
+
 func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Status, op func(context.Context, string, osSandbox) error) error {
 	ctx, err := s.scopeSandbox(ctx, "", id)
 	if err != nil {

@@ -75,6 +75,9 @@ type fakeOpenSandbox struct {
 	// resumeStatus, when set, is what a resume answers instead of accepting it (a
 	// failing runtime).
 	resumeStatus int
+	// terminateStatus, when set, is what a terminate answers instead of
+	// removing the box (an OpenSandbox outage, w2/m359).
+	terminateStatus int
 }
 
 func newFakeOpenSandbox(t *testing.T) (*fakeOpenSandbox, *Client) {
@@ -260,6 +263,10 @@ func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusAccepted)
 	case r.Method == http.MethodDelete && len(parts) == 1:
 		f.calls = append(f.calls, "terminate "+parts[0])
+		if f.terminateStatus != 0 {
+			w.WriteHeader(f.terminateStatus)
+			return
+		}
 		delete(f.boxes, parts[0])
 		w.WriteHeader(http.StatusNoContent)
 	case r.Method == http.MethodPatch && len(parts) == 2 && parts[1] == "metadata":

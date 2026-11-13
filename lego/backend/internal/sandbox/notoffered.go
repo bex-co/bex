@@ -20,22 +20,16 @@ import "github.com/bex-co/bex/lego/backend/internal/core"
 
 const (
 	snapshotsNotOffered   = "bex does not support Render's sandbox snapshots (sandboxes snapshots create|list|get|delete, sandboxes create --from)"
-	groupOpNotOffered     = "bex does not support deleting a sandbox group or changing the workspace's default group (sandbox-groups delete, sandbox-groups default set)"
 	credentialsNotOffered = "bex does not support Render's brokered sandbox credentials (sandbox-groups credentials), an early-access feature"
 )
-
-// CodeSandboxGroupOperationUnsupported names the group operations CLI v2.36
-// added that bex's served groups (w22/m311) do not answer yet: delete and the
-// workspace default (w3/m303).
-const CodeSandboxGroupOperationUnsupported = "SANDBOX_GROUP_OPERATION_UNSUPPORTED"
 
 // CodeSandboxCredentialsUnsupported names Render's early-access brokered
 // sandbox credentials (CLI v2.36 `sandbox-groups credentials`, w3/m303).
 const CodeSandboxCredentialsUnsupported = "SANDBOX_CREDENTIALS_UNSUPPORTED"
 
-// NotOfferedRoutes are the Render sandbox snapshot and group-management
-// operations the pinned Render CLI calls (`sandboxes snapshots …`; v2.36's
-// `sandbox-groups delete|default set|credentials`)
+// NotOfferedRoutes are the Render sandbox snapshot and credential operations
+// the pinned Render CLI calls (`sandboxes snapshots …`; v2.36's
+// `sandbox-groups credentials`)
 // and bex does not serve. Each answers a 404 naming the
 // unsupported feature instead of the router's bare one, which the CLI prints
 // verbatim (ADR018 § Render operation omissions, w2/m263). The group routes
@@ -44,11 +38,8 @@ const CodeSandboxCredentialsUnsupported = "SANDBOX_CREDENTIALS_UNSUPPORTED"
 // the sandbox Service: they answer the same whether or not OpenSandbox is
 // configured, and they reach no workspace data.
 var NotOfferedRoutes = map[string]core.NotOffered{
-	// CLI v2.36's `sandbox-groups delete`, `default set` and `credentials`
-	// (w3/m303), absent from the public OpenAPI and not served by the group
-	// routes w22/m311 added.
-	"DELETE /v1/sandbox-groups/{sandboxGroupId}":                                  {Code: CodeSandboxGroupOperationUnsupported, Message: groupOpNotOffered},
-	"POST /v1/sandbox-groups/{sandboxGroupId}/set-default":                        {Code: CodeSandboxGroupOperationUnsupported, Message: groupOpNotOffered},
+	// CLI v2.36's `sandbox-groups credentials` (w3/m303), an early-access
+	// feature absent from the public OpenAPI.
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials":                         {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials":                        {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":          {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},

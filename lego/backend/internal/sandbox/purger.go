@@ -41,6 +41,9 @@ type PurgeKeyLookup interface {
 type WorkspacePurger struct {
 	Client *Client
 	Keys   PurgeKeyLookup
+	// Images, when it has a reaper, deletes the workspace's imported images
+	// from the registry (w2/m359) while their rows still name them.
+	Images *Images
 }
 
 // PurgeWorkspace stops every sandbox in the deleted workspace's `<ws>-sandbox`
@@ -52,6 +55,9 @@ type WorkspacePurger struct {
 // (NotFound), so a retried delete (or one racing the namespace prune) completes
 // cleanly. Never authorizes here — there is no Identity in ctx to check against.
 func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) error {
+	if err := p.purgeImages(ctx, tenantID); err != nil {
+		return err
+	}
 	if p.Client == nil || p.Keys == nil {
 		return nil
 	}
@@ -72,4 +78,18 @@ func (p *WorkspacePurger) PurgeWorkspace(ctx context.Context, tenantID string) e
 		}
 	}
 	return nil
+}
+
+// purgeImages deletes every image the workspace imported. It runs before the
+// tenant's rows cascade, which would otherwise leave the registry holding
+// images nothing names.
+func (p *WorkspacePurger) purgeImages(ctx context.Context, tenantID string) error {
+	if p.Images == nil || p.Images.Reaper == nil {
+		return nil
+	}
+	builds, err := p.Images.Store.SandboxBuildIDs(ctx, tenantID, "")
+	if err != nil {
+		return err
+	}
+	return p.Images.deleteImported(ctx, tenantID, builds)
 }

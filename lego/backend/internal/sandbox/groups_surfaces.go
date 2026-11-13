@@ -89,6 +89,20 @@ func (s *Service) groupMutationFields() graphql.Fields {
 				})
 			},
 		},
+		"setDefaultSandboxGroup": gqlutil.OwnedIDVerb(sandboxGroupGQLType, s.SetDefaultGroup),
+		"deleteSandboxGroup": &graphql.Field{
+			Type: graphql.NewNonNull(graphql.Boolean),
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.DeleteGroup(ownerScoped(p), p.Args["id"].(string)); err != nil {
+					return false, err
+				}
+				return true, nil
+			},
+		},
 		"updateSandboxGroup": &graphql.Field{
 			Type: sandboxGroupGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -112,6 +126,11 @@ type listGroupsResult struct {
 	SandboxGroups []Group `json:"sandboxGroups"`
 }
 
+type deleteGroupResult struct {
+	ID      string `json:"id"`
+	Deleted bool   `json:"deleted"`
+}
+
 type updateGroupArgs struct {
 	ID               string `json:"id"`
 	ConcurrencyLimit int    `json:"concurrencyLimit"`
@@ -132,6 +151,18 @@ func (s *Service) registerGroupMCP(server *mcp.Server) {
 		func(ctx context.Context, _ *mcp.CallToolRequest, in CreateGroupRequest) (*mcp.CallToolResult, Group, error) {
 			g, err := s.CreateGroup(ctx, in)
 			return nil, g, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "set_default_sandbox_group", Description: "Make a sandbox group the workspace's default: a sandbox create or image import that names no group then uses it. The previous default stays as an ordinary group."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, Group, error) {
+			g, err := s.SetDefaultGroup(ctx, in.ID)
+			return nil, g, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "delete_sandbox_group", Description: "Delete a sandbox group. This is irreversible: it terminates the group's sandboxes and deletes the images imported into it. The workspace's default group cannot be deleted (default_sandbox_group_not_deletable); make another group the default first with set_default_sandbox_group."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, deleteGroupResult, error) {
+			if err := s.DeleteGroup(ctx, in.ID); err != nil {
+				return nil, deleteGroupResult{}, err
+			}
+			return nil, deleteGroupResult{ID: in.ID, Deleted: true}, nil
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "update_sandbox_group", Description: "Set a sandbox group's concurrencyLimit, the most active sandboxes it allows (at least 1; a higher value is capped to the platform's maximum and the response returns the effective limit). Lowering it stops no running sandbox; the group just admits no new one until its active count is below the limit. Suspended sandboxes do not count."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in updateGroupArgs) (*mcp.CallToolResult, Group, error) {

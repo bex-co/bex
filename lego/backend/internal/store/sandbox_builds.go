@@ -188,12 +188,14 @@ func (s *PGStore) TouchSandboxBuild(ctx context.Context, id string) (bool, error
 	return tag.RowsAffected() == 1, err
 }
 
-// SucceedSandboxBuild settles a running build with its stored image.
-func (s *PGStore) SucceedSandboxBuild(ctx context.Context, id, imageDigest string, sizeBytes int64) error {
-	_, err := s.Pool.Exec(ctx, `UPDATE sandbox_builds
+// SucceedSandboxBuild settles a running build with its stored image; false
+// when the build was settled or deleted meanwhile (its group was deleted,
+// say), so the caller deletes the image nothing names.
+func (s *PGStore) SucceedSandboxBuild(ctx context.Context, id, imageDigest string, sizeBytes int64) (bool, error) {
+	tag, err := s.Pool.Exec(ctx, `UPDATE sandbox_builds
 		SET status = 'succeeded', image_digest = $2, size_bytes = $3, updated_at = now(), finished_at = now()
 		WHERE id = $1 AND status IN ('pending', 'running')`, id, imageDigest, sizeBytes)
-	return err
+	return tag.RowsAffected() == 1, err
 }
 
 // FailSandboxBuild settles an unfinished build as failed with a reason.
@@ -201,6 +203,16 @@ func (s *PGStore) FailSandboxBuild(ctx context.Context, id, reason string) error
 	_, err := s.Pool.Exec(ctx, `UPDATE sandbox_builds
 		SET status = 'failed', failure_reason = $2, updated_at = now(), finished_at = now()
 		WHERE id = $1 AND status IN ('pending', 'running')`, id, reason)
+	return err
+}
+
+// FailGroupSandboxBuilds fails a group's pending and running builds, whose
+// imports then stop (their heartbeat finds the build settled), when the group
+// is deleted.
+func (s *PGStore) FailGroupSandboxBuilds(ctx context.Context, workspaceID, groupID, reason string) error {
+	_, err := s.Pool.Exec(ctx, `UPDATE sandbox_builds
+		SET status = 'failed', failure_reason = $3, updated_at = now(), finished_at = now()
+		WHERE workspace_id = $1 AND sandbox_group_id = $2 AND status IN ('pending', 'running')`, workspaceID, groupID, reason)
 	return err
 }
 
@@ -214,4 +226,16 @@ func (s *PGStore) FailStaleSandboxBuilds(ctx context.Context, staleAfter time.Du
 		WHERE status IN ('pending', 'running') AND updated_at < now() - make_interval(secs => $1)`,
 		staleAfter.Seconds(), reason)
 	return tag.RowsAffected(), err
+}
+
+// SandboxBuildIDs are the builds of one group, or of the whole workspace when
+// groupID is empty, that may have an image in the registry (every status but
+// failed): what a group or workspace delete removes from the registry.
+func (s *PGStore) SandboxBuildIDs(ctx context.Context, workspaceID, groupID string) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `SELECT id FROM sandbox_builds
+		WHERE workspace_id = $1 AND ($2 = '' OR sandbox_group_id = $2) AND status <> 'failed'`, workspaceID, groupID)
+	if err != nil {
+		return nil, classify("sandbox builds", err)
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
 }

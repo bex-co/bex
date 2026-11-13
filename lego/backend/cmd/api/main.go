@@ -495,6 +495,8 @@ func main() {
 			// Imports whose replica died are failed, so a caller is not left
 			// polling a build no one advances (w2/m358).
 			go srv.Sandbox.RunImageSweeper(ctx)
+			// Group deletes a request could not finish (w2/m359).
+			go srv.Sandbox.RunGroupDeleteSweeper(ctx)
 		}
 	}
 	// codex round-8 #9: the signed git webhook durably claims each processed
@@ -1434,12 +1436,14 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 					deps.SandboxMeter.Reaper = &sandbox.RegistryReaper{RegistryConfig: reaper}
 				}
 				// Imported sandbox images (w2/m358) are written by the operator's
-				// importer user, so they need the operator-minted Secret.
+				// importer user, so they need the operator-minted Secret; the
+				// reaper deletes a deleted group's images (w2/m359).
 				if cfg.SandboxSnapshotRegistrySecret != "" {
 					key, _ := parseSecretRef(cfg.SandboxSnapshotRegistrySecret) // validated in config
 					importer := registry
 					importer.Credentials = secretCredentials(cl, key, registrySecretImporterUserKey, registrySecretImporterPasswordKey, time.Now)
 					deps.SandboxImages = sandbox.NewImages(st, importer)
+					deps.SandboxImages.Reaper = &sandbox.RegistryReaper{RegistryConfig: reaper}
 				}
 			}
 			go deps.SandboxMeter.Run(ctx)
@@ -1458,7 +1462,7 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			// never minting). Only meaningful with the store on (workspace delete
 			// needs it) and the client wired — both true in this branch.
 			deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st})
+				&sandbox.WorkspacePurger{Client: deps.SandboxClient, Keys: st, Images: deps.SandboxImages})
 		}
 	}
 }

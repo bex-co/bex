@@ -319,12 +319,35 @@ func (r *RegistryReaper) DeleteImages(ctx context.Context, workspaceID, ref stri
 		if !snapshotTag.MatchString(tag) {
 			continue // never delete what the controller did not write
 		}
-		if _, _, err := r.request(ctx, http.MethodDelete, "/v2/"+escaped+"/manifests/"+url.PathEscape(tag), ""); err != nil {
-			if errors.As(err, &re) && re.status == http.StatusNotFound {
-				continue
-			}
+		if err := r.deleteTag(ctx, escaped, tag); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// DeleteImportedImage deletes an imported image (w2/m358) once its group is
+// deleted (w2/m359): the one tag its repository holds. An image already gone
+// is not an error.
+func (r *RegistryReaper) DeleteImportedImage(ctx context.Context, workspaceID, buildID string) error {
+	if err := validateBuildID(buildID); err != nil {
+		return err
+	}
+	return r.deleteTag(ctx, escapeRepository(r.importedRepository(workspaceID, buildID)), imageTag)
+}
+
+// importedRepository is an imported image's repository path in the registry.
+func (r *RegistryConfig) importedRepository(workspaceID, buildID string) string {
+	return r.namespacePath(workspaceID) + imagesSegment + buildID
+}
+
+// deleteTag deletes one tag of an escaped repository; a tag already gone is
+// not an error.
+func (r *RegistryReaper) deleteTag(ctx context.Context, escapedRepo, tag string) error {
+	_, _, err := r.request(ctx, http.MethodDelete, "/v2/"+escapedRepo+"/manifests/"+url.PathEscape(tag), "")
+	var re *registryError
+	if errors.As(err, &re) && re.status == http.StatusNotFound {
+		return nil
+	}
+	return err
 }

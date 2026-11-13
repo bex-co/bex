@@ -503,13 +503,14 @@ func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
 	for pattern := range NotOfferedRoutes {
 		mux.HandleFunc(pattern, func(http.ResponseWriter, *http.Request) {})
 	}
-	// The four group routes are served since w22/m311, and the three image
-	// routes since w2/m358, so none is here.
+	// The four group routes are served since w22/m311, the three image routes
+	// since w2/m358, and delete and default set since w2/m359, so none is here.
 	for _, served := range []string{
 		"GET /v1/sandbox-groups", "POST /v1/sandbox-groups",
 		"GET /v1/sandbox-groups/{sandboxGroupId}", "PATCH /v1/sandbox-groups/{sandboxGroupId}",
 		"GET /v1/sandbox-groups/{sandboxGroupId}/builds", "POST /v1/sandbox-groups/{sandboxGroupId}/builds",
 		"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}",
+		"DELETE /v1/sandbox-groups/{sandboxGroupId}", "POST /v1/sandbox-groups/{sandboxGroupId}/set-default",
 	} {
 		if _, refused := NotOfferedRoutes[served]; refused {
 			t.Errorf("%s is served by the Service, so it must not also be a not-offered refusal", served)
@@ -518,9 +519,7 @@ func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
 	for _, tc := range []struct{ method, path, code, mentions string }{
 		{http.MethodPost, "/v1/sandboxes/sbx-1/snapshots", codeSandboxSnapshotsUnsupported, "snapshots"},
 		{http.MethodDelete, "/v1/sandbox-groups/sbg-1/snapshots/snp-1", codeSandboxSnapshotsUnsupported, "snapshots"},
-		// CLI v2.36's sandbox-groups delete, default set and credentials (w3/m303).
-		{http.MethodDelete, "/v1/sandbox-groups/sbg-1", CodeSandboxGroupOperationUnsupported, "sandbox-groups delete"},
-		{http.MethodPost, "/v1/sandbox-groups/sbg-1/set-default", CodeSandboxGroupOperationUnsupported, "default set"},
+		// CLI v2.36's sandbox-groups credentials (w3/m303).
 		{http.MethodGet, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
 		{http.MethodPost, "/v1/sandbox-groups/sbg-1/credentials", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},
 		{http.MethodPatch, "/v1/sandbox-groups/sbg-1/credentials/sbc-1", CodeSandboxCredentialsUnsupported, "brokered sandbox credentials"},

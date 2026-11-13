@@ -53,6 +53,9 @@ var (
 	// ErrSandboxGroupLimit is a create past the workspace's group cap (Render's
 	// `sandbox_group_limit_reached`).
 	ErrSandboxGroupLimit = errors.New("sandbox group limit reached")
+	// ErrSandboxGroupIsDefault is a delete of the workspace's default group
+	// (Render's `default_sandbox_group_not_deletable`).
+	ErrSandboxGroupIsDefault = errors.New("the default sandbox group cannot be deleted")
 )
 
 // SandboxGroup is one row of sandbox_groups. ConcurrencyLimit is the configured
@@ -102,7 +105,7 @@ func (s *PGStore) CreateSandboxGroup(ctx context.Context, workspaceID, name, reg
 			return err
 		}
 		var count int
-		if err := tx.QueryRow(ctx, `SELECT count(*) FROM sandbox_groups WHERE workspace_id = $1`, workspaceID).Scan(&count); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM sandbox_groups WHERE workspace_id = $1 AND deleting_at IS NULL`, workspaceID).Scan(&count); err != nil {
 			return err
 		}
 		if maxGroups > 0 && count >= maxGroups {
@@ -122,7 +125,7 @@ func insertSandboxGroup(ctx context.Context, tx pgx.Tx, workspaceID, name, regio
 		RETURNING `+sandboxGroupColumns,
 		ids.New(ids.SandboxGroup), workspaceID, name, region, concurrencyLimit, isDefault))
 	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "sandbox_groups_workspace_name_key" {
+	if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "sandbox_groups_live_name" {
 		return SandboxGroup{}, ErrSandboxGroupNameTaken
 	}
 	if err != nil {
@@ -159,15 +162,15 @@ func (s *PGStore) EnsureDefaultSandboxGroup(ctx context.Context, workspaceID str
 			return err
 		}
 		var count int
-		if err := tx.QueryRow(ctx, `SELECT count(*) FROM sandbox_groups WHERE workspace_id = $1`, workspaceID).Scan(&count); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM sandbox_groups WHERE workspace_id = $1 AND deleting_at IS NULL`, workspaceID).Scan(&count); err != nil {
 			return err
 		}
 		if count > 0 {
-			// Groups without a default cannot arise from these writes; if a future
-			// delete leaves that state, the oldest group takes the role.
+			// Groups without a default cannot arise from these writes (the default
+			// is never deleted); if it ever happens, the oldest group takes the role.
 			out, err = scanSandboxGroup(tx.QueryRow(ctx, `
 				UPDATE sandbox_groups SET is_default = true, updated_at = now()
-				WHERE id = (SELECT id FROM sandbox_groups WHERE workspace_id = $1 ORDER BY created_at, id LIMIT 1)
+				WHERE id = (SELECT id FROM sandbox_groups WHERE workspace_id = $1 AND deleting_at IS NULL ORDER BY created_at, id LIMIT 1)
 				RETURNING `+sandboxGroupColumns, workspaceID))
 			return err
 		}
@@ -188,7 +191,7 @@ const maxSandboxGroupsListed = 1000
 // SandboxGroups returns one workspace's groups, newest first.
 func (s *PGStore) SandboxGroups(ctx context.Context, workspaceID string) ([]SandboxGroup, error) {
 	rows, err := s.Pool.Query(ctx, `
-		SELECT `+sandboxGroupColumns+` FROM sandbox_groups WHERE workspace_id = $1
+		SELECT `+sandboxGroupColumns+` FROM sandbox_groups WHERE workspace_id = $1 AND deleting_at IS NULL
 		ORDER BY created_at DESC, id DESC LIMIT $2`, workspaceID, maxSandboxGroupsListed)
 	if err != nil {
 		return nil, err
@@ -206,10 +209,10 @@ func (s *PGStore) SandboxGroups(ctx context.Context, workspaceID string) ([]Sand
 }
 
 // SandboxGroup returns one group of a workspace, or ErrNotFound. A group of
-// another workspace is ErrNotFound too.
+// another workspace, or one being deleted, is ErrNotFound too.
 func (s *PGStore) SandboxGroup(ctx context.Context, workspaceID, id string) (SandboxGroup, error) {
 	g, err := scanSandboxGroup(s.Pool.QueryRow(ctx,
-		`SELECT `+sandboxGroupColumns+` FROM sandbox_groups WHERE workspace_id = $1 AND id = $2`, workspaceID, id))
+		`SELECT `+sandboxGroupColumns+` FROM sandbox_groups WHERE workspace_id = $1 AND id = $2 AND deleting_at IS NULL`, workspaceID, id))
 	if err != nil {
 		return SandboxGroup{}, classify("sandbox group", err)
 	}
@@ -221,7 +224,7 @@ func (s *PGStore) SandboxGroup(ctx context.Context, workspaceID, id string) (San
 // loads the group through SandboxGroup in that workspace.
 func (s *PGStore) SandboxGroupWorkspace(ctx context.Context, id string) (string, error) {
 	var workspace string
-	if err := s.Pool.QueryRow(ctx, `SELECT workspace_id FROM sandbox_groups WHERE id = $1`, id).Scan(&workspace); err != nil {
+	if err := s.Pool.QueryRow(ctx, `SELECT workspace_id FROM sandbox_groups WHERE id = $1 AND deleting_at IS NULL`, id).Scan(&workspace); err != nil {
 		return "", classify("sandbox group", err)
 	}
 	return workspace, nil
@@ -233,12 +236,110 @@ func (s *PGStore) SandboxGroupWorkspace(ctx context.Context, id string) (string,
 func (s *PGStore) SetSandboxGroupLimit(ctx context.Context, workspaceID, id string, limit int) (SandboxGroup, error) {
 	g, err := scanSandboxGroup(s.Pool.QueryRow(ctx, `
 		UPDATE sandbox_groups SET concurrency_limit = $3, updated_at = now()
-		WHERE workspace_id = $1 AND id = $2
+		WHERE workspace_id = $1 AND id = $2 AND deleting_at IS NULL
 		RETURNING `+sandboxGroupColumns, workspaceID, id, limit))
 	if err != nil {
 		return SandboxGroup{}, classify("sandbox group", err)
 	}
 	return g, nil
+}
+
+// lockedSandboxGroup takes the workspace's group lock and the group's row for
+// update, so a default swap and a delete mark never interleave.
+func lockedSandboxGroup(ctx context.Context, tx pgx.Tx, workspaceID, id string) (SandboxGroup, error) {
+	if err := lockSandboxGroups(ctx, tx, workspaceID); err != nil {
+		return SandboxGroup{}, err
+	}
+	return scanSandboxGroup(tx.QueryRow(ctx, `SELECT `+sandboxGroupColumns+` FROM sandbox_groups
+		WHERE workspace_id = $1 AND id = $2 AND deleting_at IS NULL FOR UPDATE`, workspaceID, id))
+}
+
+// SetDefaultSandboxGroup makes a group the workspace's default and returns it
+// (Render's `sandbox-groups default set`). The previous default stops being
+// one in the same transaction, so a workspace always has exactly one.
+func (s *PGStore) SetDefaultSandboxGroup(ctx context.Context, workspaceID, id string) (SandboxGroup, error) {
+	var out SandboxGroup
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		target, err := lockedSandboxGroup(ctx, tx, workspaceID, id)
+		if err != nil {
+			return err
+		}
+		if target.IsDefault {
+			out = target
+			return nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE sandbox_groups SET is_default = false, updated_at = now()
+			WHERE workspace_id = $1 AND is_default`, workspaceID); err != nil {
+			return err
+		}
+		out, err = scanSandboxGroup(tx.QueryRow(ctx, `UPDATE sandbox_groups SET is_default = true, updated_at = now()
+			WHERE id = $1 RETURNING `+sandboxGroupColumns, id))
+		return err
+	})
+	if err != nil {
+		return SandboxGroup{}, classify("sandbox group", err)
+	}
+	return out, nil
+}
+
+// MarkSandboxGroupDeleting starts a group's delete: from now on no read sees
+// it and no sandbox is admitted to it. The default group is
+// ErrSandboxGroupIsDefault; a group already being deleted, or none, is
+// ErrNotFound.
+func (s *PGStore) MarkSandboxGroupDeleting(ctx context.Context, workspaceID, id string) (SandboxGroup, error) {
+	var out SandboxGroup
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		g, err := lockedSandboxGroup(ctx, tx, workspaceID, id)
+		if err != nil {
+			return err
+		}
+		if g.IsDefault {
+			return ErrSandboxGroupIsDefault
+		}
+		_, err = tx.Exec(ctx, `UPDATE sandbox_groups SET deleting_at = now(), updated_at = now() WHERE id = $1`, id)
+		out = g
+		return err
+	})
+	if err != nil && !errors.Is(err, ErrSandboxGroupIsDefault) {
+		return SandboxGroup{}, classify("sandbox group", err)
+	}
+	return out, err
+}
+
+// ClaimStaleSandboxGroupDeletes returns the groups whose delete was last
+// attempted at least olderThan ago (by the database's clock) and has not
+// finished, and restamps them, so one replica retries each and the next retry
+// waits olderThan again.
+func (s *PGStore) ClaimStaleSandboxGroupDeletes(ctx context.Context, olderThan time.Duration) ([]SandboxGroup, error) {
+	rows, err := s.Pool.Query(ctx, `UPDATE sandbox_groups SET deleting_at = now()
+		WHERE deleting_at IS NOT NULL AND deleting_at < now() - make_interval(secs => $1)
+		RETURNING `+sandboxGroupColumns, olderThan.Seconds())
+	if err != nil {
+		return nil, classify("sandbox groups", err)
+	}
+	return pgx.CollectRows(rows, func(r pgx.CollectableRow) (SandboxGroup, error) { return scanSandboxGroup(r) })
+}
+
+// DeleteSandboxGroup removes a group whose delete was started, with its
+// sandbox bindings and its imported images' rows. A binding still holding a
+// create's lease (the create may yet start its sandbox) is kept, so the group
+// cannot be removed yet: the error says so and the sweeper retries once the
+// lease ends and the sandbox can be terminated. Removing nothing is not an
+// error: another replica may have finished the same delete.
+func (s *PGStore) DeleteSandboxGroup(ctx context.Context, workspaceID, id string) error {
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `DELETE FROM sandbox_group_members
+			WHERE workspace_id = $1 AND group_id = $2 AND (lease_until IS NULL OR lease_until < now())`, workspaceID, id); err != nil {
+			return err
+		}
+		_, err := tx.Exec(ctx, `DELETE FROM sandbox_groups WHERE workspace_id = $1 AND id = $2 AND deleting_at IS NOT NULL`, workspaceID, id)
+		return err
+	})
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return fmt.Errorf("sandbox group %s still has a sandbox being created; retrying once it starts", id)
+	}
+	return err
 }
 
 // SandboxGroupMembers returns the group binding of every sandbox of one
@@ -357,6 +458,18 @@ func (a admissionTx) Members(ctx context.Context) (map[string]SandboxGroupMember
 }
 
 func (a admissionTx) Bind(ctx context.Context, sandboxID, groupID string, lease time.Time) error {
+	// FOR SHARE waits for a delete mark (FOR UPDATE) in flight, so a sandbox is
+	// never bound to a group whose delete has started (w2/m359): it is refused
+	// as not found instead, and survives no teardown.
+	// The group checked is the one the binding will name: an existing
+	// binding's own (a re-bind only renews the lease), else groupID.
+	var live bool
+	if err := a.tx.QueryRow(ctx, `SELECT true FROM sandbox_groups g
+		WHERE g.workspace_id = $2 AND g.deleting_at IS NULL
+		  AND g.id = COALESCE((SELECT group_id FROM sandbox_group_members WHERE workspace_id = $2 AND sandbox_id = $3), $1)
+		FOR SHARE OF g`, groupID, a.workspaceID, sandboxID).Scan(&live); err != nil {
+		return fmt.Errorf("bind sandbox to group: %w", classify("sandbox group", err))
+	}
 	_, err := a.tx.Exec(ctx, `
 		INSERT INTO sandbox_group_members (workspace_id, sandbox_id, group_id, lease_until) VALUES ($1, $2, $3, $4)
 		ON CONFLICT (workspace_id, sandbox_id) DO UPDATE SET lease_until = EXCLUDED.lease_until`,

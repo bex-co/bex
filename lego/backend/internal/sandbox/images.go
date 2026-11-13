@@ -148,9 +148,17 @@ type ImageStore interface {
 	NewestSucceededSandboxBuild(ctx context.Context, workspaceID, groupID, name string) (store.SandboxBuild, error)
 	StartSandboxBuild(ctx context.Context, id string) (bool, error)
 	TouchSandboxBuild(ctx context.Context, id string) (bool, error)
-	SucceedSandboxBuild(ctx context.Context, id, imageDigest string, sizeBytes int64) error
+	SucceedSandboxBuild(ctx context.Context, id, imageDigest string, sizeBytes int64) (bool, error)
 	FailSandboxBuild(ctx context.Context, id, reason string) error
 	FailStaleSandboxBuilds(ctx context.Context, staleAfter time.Duration, reason string) (int64, error)
+	SandboxBuildIDs(ctx context.Context, workspaceID, groupID string) ([]string, error)
+	FailGroupSandboxBuilds(ctx context.Context, workspaceID, groupID, reason string) error
+}
+
+// ImageDeleter deletes an imported image from the registry;
+// *RegistryReaper implements it.
+type ImageDeleter interface {
+	DeleteImportedImage(ctx context.Context, workspaceID, buildID string) error
 }
 
 // Images imports sandbox images into the sandbox registry. nil on the Service
@@ -169,6 +177,9 @@ type Images struct {
 	// (no private, loopback, link-local or metadata destination, no ambient
 	// proxy). Tests override it.
 	SourceTransport http.RoundTripper
+	// Reaper deletes a deleted group's images from the registry (w2/m359);
+	// nil leaves them, as a deployment without the reaper credential does.
+	Reaper ImageDeleter
 
 	workersOnce sync.Once
 	workers     chan struct{}
@@ -232,7 +243,7 @@ func (im *Images) imageRepository(workspace, buildID string) (name.Repository, e
 	if insecure {
 		opts = append(opts, name.Insecure)
 	}
-	return name.NewRepository(host+"/"+im.Registry.namespacePath(workspace)+imagesSegment+buildID, opts...)
+	return name.NewRepository(host+"/"+im.Registry.importedRepository(workspace, buildID), opts...)
 }
 
 // requireImages is the 503 of a deployment that cannot keep imported images.
@@ -561,9 +572,34 @@ func (im *Images) run(b store.SandboxBuild, ref name.Digest, cred *RegistryCrede
 		}
 		return
 	}
-	if err := im.Store.SucceedSandboxBuild(settle, b.ID, digest, size); err != nil {
+	settled, err := im.Store.SucceedSandboxBuild(settle, b.ID, digest, size)
+	if err != nil {
 		log.Printf("sandbox images: succeed %s: %v", b.ID, err)
+		return
 	}
+	if !settled {
+		// The build was failed or its group deleted while the copy ran: the
+		// image it just wrote is named by nothing, so it goes too.
+		if err := im.deleteImported(settle, b.WorkspaceID, []string{b.ID}); err != nil {
+			log.Printf("sandbox images: delete the orphaned image of %s: %v", b.ID, err)
+		}
+	}
+}
+
+// deleteImported deletes imported images from the registry, every one it can;
+// without a reaper it leaves them, as a deployment without the reaper
+// credential does.
+func (im *Images) deleteImported(ctx context.Context, workspace string, buildIDs []string) error {
+	if im.Reaper == nil {
+		return nil
+	}
+	var errs []error
+	for _, id := range buildIDs {
+		if err := im.Reaper.DeleteImportedImage(ctx, workspace, id); err != nil {
+			errs = append(errs, fmt.Errorf("delete image %s: %w", id, err))
+		}
+	}
+	return errors.Join(errs...)
 }
 
 // heartbeat advances the build's updated_at until ctx ends, and calls stop

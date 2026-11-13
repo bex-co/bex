@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"strings"
@@ -72,6 +73,22 @@ const (
 	CodeSandboxGroupLimitInvalid = "SANDBOX_GROUP_LIMIT_INVALID"
 	// CodeSandboxGroupRegionInvalid refuses a region other than Render's one.
 	CodeSandboxGroupRegionInvalid = "SANDBOX_REGION_INVALID"
+	// CodeDefaultSandboxGroupNotDeletable is Render's 409
+	// `default_sandbox_group_not_deletable` (CLI v2.36 pkg/sandboxgroup).
+	CodeDefaultSandboxGroupNotDeletable = "default_sandbox_group_not_deletable"
+)
+
+const (
+	// groupDeleteRequestTimeout bounds the request's own attempt to finish a
+	// delete, inside the server's 30 s write timeout; groupDeleteTimeout bounds
+	// a sweeper attempt.
+	groupDeleteRequestTimeout = 20 * time.Second
+	groupDeleteTimeout        = 2 * time.Minute
+	// groupDeleteSweepEvery is how often the sweeper looks, and
+	// groupDeleteRetryAfter how long after the last attempt a delete is retried:
+	// longer than any attempt, so attempts never overlap.
+	groupDeleteSweepEvery = time.Minute
+	groupDeleteRetryAfter = 3 * time.Minute
 )
 
 // GroupStore is where sandbox groups and each sandbox's group live;
@@ -84,6 +101,10 @@ type GroupStore interface {
 	SandboxGroup(ctx context.Context, workspaceID, id string) (store.SandboxGroup, error)
 	SandboxGroupWorkspace(ctx context.Context, id string) (string, error)
 	SetSandboxGroupLimit(ctx context.Context, workspaceID, id string, limit int) (store.SandboxGroup, error)
+	SetDefaultSandboxGroup(ctx context.Context, workspaceID, id string) (store.SandboxGroup, error)
+	MarkSandboxGroupDeleting(ctx context.Context, workspaceID, id string) (store.SandboxGroup, error)
+	ClaimStaleSandboxGroupDeletes(ctx context.Context, olderThan time.Duration) ([]store.SandboxGroup, error)
+	DeleteSandboxGroup(ctx context.Context, workspaceID, id string) error
 	SandboxGroupMembers(ctx context.Context, workspaceID string) (map[string]store.SandboxGroupMember, error)
 	WithSandboxAdmission(ctx context.Context, workspaceID string, fn func(store.SandboxAdmission) error) error
 	SetSandboxSlotLease(ctx context.Context, workspaceID, sandboxID string, until *time.Time) error
@@ -290,17 +311,8 @@ func (s *Service) GetGroup(ctx context.Context, id string) (Group, error) {
 // lowering the limit stops no running sandbox: the group simply admits nothing
 // new until its active count falls below the limit.
 func (s *Service) UpdateGroup(ctx context.Context, id string, concurrencyLimit int) (Group, error) {
-	ctx, err := s.scopeGroup(ctx, id)
+	ctx, err := s.writableGroup(ctx, id)
 	if err != nil {
-		return Group{}, err
-	}
-	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
-		return Group{}, err
-	}
-	if err := s.requireGroups(); err != nil {
-		return Group{}, err
-	}
-	if err := validateGroupID(id); err != nil {
 		return Group{}, err
 	}
 	if concurrencyLimit < 1 {
@@ -315,6 +327,164 @@ func (s *Service) UpdateGroup(ctx context.Context, id string, concurrencyLimit i
 		return Group{}, store.MapError(err)
 	}
 	return s.groupView(g), nil
+}
+
+// writableGroup is the preamble of a verb that changes a group: scope it,
+// authorize the change there, and check the id.
+func (s *Service) writableGroup(ctx context.Context, id string) (context.Context, error) {
+	ctx, err := s.scopeGroup(ctx, id)
+	if err != nil {
+		return ctx, err
+	}
+	if err := s.Authorize(ctx, core.RelCanCreate); err != nil {
+		return ctx, err
+	}
+	if err := s.requireGroups(); err != nil {
+		return ctx, err
+	}
+	return ctx, validateGroupID(id)
+}
+
+// SetDefaultGroup makes a group its workspace's default (Render's
+// `sandbox-groups default set`); a create or an import that names no group
+// then uses it.
+func (s *Service) SetDefaultGroup(ctx context.Context, id string) (Group, error) {
+	ctx, err := s.writableGroup(ctx, id)
+	if err != nil {
+		return Group{}, err
+	}
+	g, err := s.Groups.SetDefaultSandboxGroup(ctx, s.WorkspaceOrDefault(ctx), id)
+	if errors.Is(err, store.ErrNotFound) {
+		return Group{}, groupNotFound(id)
+	}
+	if err != nil {
+		return Group{}, store.MapError(err)
+	}
+	return s.groupView(g), nil
+}
+
+// DeleteGroup deletes a group as Render's `sandbox-groups delete` does: it is
+// gone from every read at once, its sandboxes are terminated and its imported
+// images deleted, and the workspace's default group cannot be deleted. What
+// the request cannot finish, the sweeper does.
+func (s *Service) DeleteGroup(ctx context.Context, id string) error {
+	ctx, err := s.writableGroup(ctx, id)
+	if err != nil {
+		return err
+	}
+	g, err := s.Groups.MarkSandboxGroupDeleting(ctx, s.WorkspaceOrDefault(ctx), id)
+	switch {
+	case errors.Is(err, store.ErrSandboxGroupIsDefault):
+		return core.NewConflictError(CodeDefaultSandboxGroupNotDeletable,
+			fmt.Sprintf("sandbox group %s is the workspace's default and cannot be deleted; make another group the default first (sandbox-groups default set)", id),
+			map[string]any{"id": id})
+	case errors.Is(err, store.ErrNotFound):
+		return groupNotFound(id)
+	case err != nil:
+		return store.MapError(err)
+	}
+	finish, cancel := context.WithTimeout(context.WithoutCancel(ctx), groupDeleteRequestTimeout)
+	defer cancel()
+	if err := s.finishGroupDelete(finish, g); err != nil {
+		log.Printf("sandbox groups: finish deleting %s (the sweeper retries): %v", g.ID, err)
+	}
+	return nil
+}
+
+// finishGroupDelete terminates the group's sandboxes, stops and deletes its
+// imported images and removes the group. Every step is idempotent and runs
+// even when an earlier one failed, so a retry only repeats what is left; the
+// group is removed only when everything else succeeded.
+func (s *Service) finishGroupDelete(ctx context.Context, g store.SandboxGroup) error {
+	var errs []error
+	if err := s.terminateGroupSandboxes(ctx, g); err != nil {
+		errs = append(errs, err)
+	}
+	if s.Images != nil {
+		// A pending or running import stops; one that finishes anyway deletes
+		// the image it wrote (Images.run).
+		if err := s.Images.Store.FailGroupSandboxBuilds(ctx, g.WorkspaceID, g.ID, "its sandbox group was deleted"); err != nil {
+			errs = append(errs, err)
+		}
+		builds, err := s.Images.Store.SandboxBuildIDs(ctx, g.WorkspaceID, g.ID)
+		if err == nil {
+			err = s.Images.deleteImported(ctx, g.WorkspaceID, builds)
+		}
+		if err != nil {
+			errs = append(errs, err)
+		}
+	}
+	if len(errs) > 0 {
+		return errors.Join(errs...)
+	}
+	return s.Groups.DeleteSandboxGroup(ctx, g.WorkspaceID, g.ID)
+}
+
+// terminateGroupSandboxes terminates every live sandbox bound to the group.
+func (s *Service) terminateGroupSandboxes(ctx context.Context, g store.SandboxGroup) error {
+	members, err := s.Groups.SandboxGroupMembers(ctx, g.WorkspaceID)
+	if err != nil {
+		return err
+	}
+	bound := false
+	for _, m := range members {
+		if m.GroupID == g.ID {
+			bound = true
+			break
+		}
+	}
+	if !bound || !s.enabled() {
+		return nil
+	}
+	key, err := s.agentSessionKey(ctx, g.WorkspaceID)
+	if err != nil {
+		return err
+	}
+	live, err := s.Client.List(ctx, key)
+	if err != nil {
+		return err
+	}
+	var errs []error
+	for _, raw := range live {
+		if m, bound := members[canonicalID(raw)]; !bound || m.GroupID != g.ID || mapOpenSandboxStatus(raw.Status.State) == StatusTerminated {
+			continue
+		}
+		if err := s.clientTerminate(ctx, key, raw); err != nil && !errors.Is(err, errOpenSandboxNotFound) {
+			errs = append(errs, fmt.Errorf("terminate %s: %w", canonicalID(raw), err))
+			continue
+		}
+		s.endTerminated(ctx, g.WorkspaceID, raw)
+	}
+	return errors.Join(errs...)
+}
+
+// RunGroupDeleteSweeper finishes, every minute, the group deletes a request
+// could not (an OpenSandbox or registry outage, a bex-api restart).
+func (s *Service) RunGroupDeleteSweeper(ctx context.Context) {
+	if s.Groups == nil {
+		return
+	}
+	core.Poll(ctx, "sandbox-group-deletes", groupDeleteSweepEvery, func(ctx context.Context) error {
+		return s.sweepGroupDeletes(ctx, groupDeleteRetryAfter)
+	})
+}
+
+// sweepGroupDeletes claims and finishes every group delete last attempted at
+// least olderThan ago.
+func (s *Service) sweepGroupDeletes(ctx context.Context, olderThan time.Duration) error {
+	groups, err := s.Groups.ClaimStaleSandboxGroupDeletes(ctx, olderThan)
+	if err != nil {
+		return err
+	}
+	for _, g := range groups {
+		attempt, cancel := context.WithTimeout(ctx, groupDeleteTimeout)
+		err := s.finishGroupDelete(attempt, g)
+		cancel()
+		if err != nil {
+			log.Printf("sandbox groups: finish deleting %s: %v", g.ID, err)
+		}
+	}
+	return nil
 }
 
 // storedGroup loads one group of the request's workspace after the caller was
@@ -363,7 +533,8 @@ func (s *Service) groupOwner(id string) core.ResourceOwner {
 	}
 }
 
-// registerGroupREST mounts Render's four sandbox-group routes.
+// registerGroupREST mounts Render's sandbox-group routes: the four of the
+// public OpenAPI and CLI v2.36's delete and default set (w2/m359).
 func (s *Service) registerGroupREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandbox-groups", func(w http.ResponseWriter, r *http.Request) {
 		var req CreateGroupRequest
@@ -419,6 +590,21 @@ func (s *Service) registerGroupREST(mux *http.ServeMux) {
 			limit = *body.ConcurrencyLimit
 		}
 		g, err := s.UpdateGroup(r.Context(), r.PathValue("sandboxGroupId"), limit)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, g)
+	})
+	mux.HandleFunc("DELETE /v1/sandbox-groups/{sandboxGroupId}", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.DeleteGroup(r.Context(), r.PathValue("sandboxGroupId")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("POST /v1/sandbox-groups/{sandboxGroupId}/set-default", func(w http.ResponseWriter, r *http.Request) {
+		g, err := s.SetDefaultGroup(r.Context(), r.PathValue("sandboxGroupId"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return

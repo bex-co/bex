@@ -73,8 +73,11 @@ func TestSandboxBuildsPG(t *testing.T) {
 	if ok, _ := st.StartSandboxBuild(ctx, first.ID); ok {
 		t.Fatal("a running build started twice")
 	}
-	if err := st.SucceedSandboxBuild(ctx, first.ID, "sha256:stored", 1500); err != nil {
-		t.Fatal(err)
+	if ok, err := st.SucceedSandboxBuild(ctx, first.ID, "sha256:stored", 1500); err != nil || !ok {
+		t.Fatalf("succeed = %v, %v", ok, err)
+	}
+	if ok, err := st.SucceedSandboxBuild(ctx, first.ID, "sha256:other", 1); err != nil || ok {
+		t.Fatalf("succeeding a settled build = %v, %v; want false so its import deletes the orphan", ok, err)
 	}
 	if live, err := st.TouchSandboxBuild(ctx, first.ID); err != nil || live {
 		t.Fatalf("touch a settled build = %v, %v; want false so its import stops", live, err)
