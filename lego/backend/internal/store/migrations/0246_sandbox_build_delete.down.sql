@@ -1,0 +1,11 @@
+DROP INDEX IF EXISTS sandbox_builds_newest;
+CREATE INDEX sandbox_builds_newest ON sandbox_builds (sandbox_group_id, created_at DESC, id DESC);
+DROP INDEX IF EXISTS sandbox_builds_stored;
+CREATE INDEX sandbox_builds_stored ON sandbox_builds (workspace_id) INCLUDE (size_bytes) WHERE status = 'succeeded';
+DROP INDEX IF EXISTS sandbox_builds_by_name;
+CREATE INDEX sandbox_builds_by_name ON sandbox_builds (sandbox_group_id, name, created_at DESC) WHERE status = 'succeeded';
+DROP INDEX IF EXISTS sandbox_builds_dedupe;
+DELETE FROM sandbox_builds WHERE deleted_at IS NOT NULL;
+CREATE UNIQUE INDEX sandbox_builds_dedupe ON sandbox_builds (sandbox_group_id, name, source_digest) WHERE status <> 'failed';
+ALTER TABLE sandbox_builds DROP COLUMN IF EXISTS failure_code;
+ALTER TABLE sandbox_builds DROP COLUMN IF EXISTS deleted_at;

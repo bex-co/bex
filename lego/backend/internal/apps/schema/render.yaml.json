@@ -175,6 +175,10 @@
         "runtime": {
           "$ref": "#/definitions/runtime"
         },
+        "buildSource": {
+          "type": "string",
+          "description": "The name of the build source whose source and build configuration this cron job uses."
+        },
         "schedule": {
           "type": "string",
           "description": "The schedule for running the cron job, as a cron expression."
@@ -239,7 +243,30 @@
           "description": "Command that runs after the build command but before the start command. Recommended for database migrations."
         }
       },
-      "required": ["type", "name", "runtime", "schedule"],
+      "required": ["type", "name", "schedule"],
+      "allOf": [
+        {
+          "if": { "not": { "required": ["buildSource"] } },
+          "then": { "required": ["runtime"] }
+        },
+        {
+          "if": { "required": ["buildSource"] },
+          "then": {
+            "properties": {
+              "runtime": false,
+              "repo": false,
+              "branch": false,
+              "image": false,
+              "registryCredential": false,
+              "buildCommand": false,
+              "buildFilter": false,
+              "dockerContext": false,
+              "dockerfilePath": false,
+              "rootDir": false
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     },
     "database": {
@@ -1111,6 +1138,7 @@
               "buildFilter": false,
               "dockerContext": false,
               "dockerfilePath": false,
+              "rootDir": false,
               "previews": false,
               "pullRequestPreviewsEnabled": false,
               "previewPlan": false

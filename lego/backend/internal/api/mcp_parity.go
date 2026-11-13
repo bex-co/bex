@@ -100,6 +100,11 @@ var mcpAcceptedDivergences = map[string]string{
 	// bex has no preview environments at all (PR previews are a recorded
 	// non-goal in .pm/DO_NOT_DO.md), so there is no set to include or exclude.
 	"list_services": "`includePreviews` has no meaning in bex — PR preview environments are a recorded non-goal",
+
+	// Render's Workflows (task and flow runs) are a deliberate non-goal
+	// (.pm/DO_NOT_DO.md), so bex has no task or task run whose logs these
+	// filters could select (w3/m367, render-mcp-server #189).
+	"list_logs": "`task`/`taskRun` filter Render Workflows task-run logs, a recorded non-goal; bex has no task runs",
 }
 
 // mcpKnownUpstreamOnly records upstream tools bex deliberately does not ship.
@@ -112,7 +117,32 @@ var mcpKnownUpstreamOnly = map[string]string{
 	// transitional.
 	"select_workspace":       "w1/m55 adopted the request-scoped workspaceId contract and removed session selection; upstream calls its own selection tools transitional",
 	"get_selected_workspace": "w1/m55 — see select_workspace",
+
+	// Render Workflows (render-mcp-server #189, re-pinned by w3/m367): an
+	// orchestration product, not a hosting primitive, and a recorded non-goal.
+	"cancel_flow_run":          mcpWorkflowsNonGoal,
+	"create_workflow":          mcpWorkflowsNonGoal,
+	"create_workflow_version":  mcpWorkflowsNonGoal,
+	"get_flow":                 mcpWorkflowsNonGoal,
+	"get_flow_run":             mcpWorkflowsNonGoal,
+	"get_flow_run_results":     mcpWorkflowsNonGoal,
+	"get_flow_run_step":        mcpWorkflowsNonGoal,
+	"get_workflow":             mcpWorkflowsNonGoal,
+	"get_workflow_run":         mcpWorkflowsNonGoal,
+	"get_workflow_run_results": mcpWorkflowsNonGoal,
+	"get_workflow_task":        mcpWorkflowsNonGoal,
+	"get_workflow_version":     mcpWorkflowsNonGoal,
+	"list_flow_run_steps":      mcpWorkflowsNonGoal,
+	"list_flow_runs":           mcpWorkflowsNonGoal,
+	"list_flows":               mcpWorkflowsNonGoal,
+	"list_workflow_runs":       mcpWorkflowsNonGoal,
+	"list_workflow_tasks":      mcpWorkflowsNonGoal,
+	"list_workflow_versions":   mcpWorkflowsNonGoal,
+	"list_workflows":           mcpWorkflowsNonGoal,
+	"start_flow_run":           mcpWorkflowsNonGoal,
 }
+
+const mcpWorkflowsNonGoal = "Render Workflows are a recorded non-goal (.pm/DO_NOT_DO.md, ADR018 `—` row); bex serves no workflows, tasks or flows"
 
 // mcpAcceptedTypeDivergences records each "tool.arg" whose bex JSON type
 // deliberately differs from upstream's, with the reason (w5/m145). A type

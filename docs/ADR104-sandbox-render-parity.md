@@ -178,6 +178,15 @@ Render's sandbox builds are imported images: `render sandbox-groups images impor
 - **What an image needs.** The base template's entrypoint and environment apply (`/bin/sh -c`, `sleep infinity`, `HOME=/home/render`), so an image must have `/bin/sh` and `sleep`; exec falls back to `/bin/sh` when it has no bash. A distroless image fails to start.
 - **What a read shows.** The sandbox's bex-only `image` field and its charge label show the build's `sbb-` id, never the sandbox registry's address.
 - **Cleanup.** A deleted group's images are deleted with it (w2/m359, D7). Deleting a workspace deletes its imported images too (w2/m359 t003).
+- **Delete (w3/m367).** Render's `delete-sandbox-build` (round 7, 2026-11-13) is served on REST, GraphQL `deleteSandboxImage` and MCP `delete_sandbox_image`.
+  - The build is marked deleted. It leaves lists, reads, the create by id or name, the dedupe and the storage gauge, and its registry image is deleted.
+  - A repeat answers 204, as Render documents. An import still running stops.
+  - `409 image_in_use` names up to ten sandboxes, from OpenSandbox's own list, that started from it and have not terminated or errored, suspended ones included. bex has no snapshots, Render's other dependents.
+- **Failure codes (w3/m367).** A failed build carries Render's `failureCode` beside `failureReason`, from Render's SDK enum:
+  - `image_access_denied`, `image_not_found` or `image_pull_failed` for the source registry's refusal;
+  - `deadline_exceeded` for the import timeout;
+  - `internal_error` for bex's own side, and for builds that failed before codes were recorded.
+- **Credentials (round 7).** The seven `sandbox-groups/{id}/credentials*` operations are in Render's public OpenAPI since 2026-11-13. render.com/sandboxes still marks brokering early access, so they stay a named refusal (`SANDBOX_CREDENTIALS_UNSUPPORTED`) outside the parity bar until it leaves early access.
 
 ### D8 — Pricing and billing
 

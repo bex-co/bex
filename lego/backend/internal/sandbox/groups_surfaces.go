@@ -126,7 +126,7 @@ type listGroupsResult struct {
 	SandboxGroups []Group `json:"sandboxGroups"`
 }
 
-type deleteGroupResult struct {
+type deleteResult struct {
 	ID      string `json:"id"`
 	Deleted bool   `json:"deleted"`
 }
@@ -158,11 +158,11 @@ func (s *Service) registerGroupMCP(server *mcp.Server) {
 			return nil, g, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "delete_sandbox_group", Description: "Delete a sandbox group. This is irreversible: it terminates the group's sandboxes and deletes the images imported into it. The workspace's default group cannot be deleted (default_sandbox_group_not_deletable); make another group the default first with set_default_sandbox_group."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, deleteGroupResult, error) {
+		func(ctx context.Context, _ *mcp.CallToolRequest, in sandboxIDArgs) (*mcp.CallToolResult, deleteResult, error) {
 			if err := s.DeleteGroup(ctx, in.ID); err != nil {
-				return nil, deleteGroupResult{}, err
+				return nil, deleteResult{}, err
 			}
-			return nil, deleteGroupResult{ID: in.ID, Deleted: true}, nil
+			return nil, deleteResult{ID: in.ID, Deleted: true}, nil
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "update_sandbox_group", Description: "Set a sandbox group's concurrencyLimit, the most active sandboxes it allows (at least 1; a higher value is capped to the platform's maximum and the response returns the effective limit). Lowering it stops no running sandbox; the group just admits no new one until its active count is below the limit. Suspended sandboxes do not count."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in updateGroupArgs) (*mcp.CallToolResult, Group, error) {

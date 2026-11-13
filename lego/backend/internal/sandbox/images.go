@@ -33,6 +33,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -52,6 +53,9 @@ import (
 const (
 	// CodeBuildNotFound is Render's `build_not_found`: no such build in the group.
 	CodeBuildNotFound = "build_not_found"
+	// CodeImageInUse is Render's `image_in_use`: sandboxes still depend on the
+	// build a delete names.
+	CodeImageInUse = "image_in_use"
 	// CodeInvalidBuildStatus is Render's `invalid_status` on the build list.
 	CodeInvalidBuildStatus = "invalid_status"
 	// CodeSandboxImageInvalid refuses a name or source image Render's create
@@ -71,7 +75,9 @@ const (
 )
 
 const (
-	maxImageName = 255
+	// maxImageDependents is how many dependents an image_in_use names, as Render.
+	maxImageDependents = 10
+	maxImageName       = 255
 	// imageTag is the one tag a build's repository holds; registry retention
 	// reaps untagged manifests, so the copy needs one.
 	imageTag = "image"
@@ -108,8 +114,11 @@ type Build struct {
 	SourceDigest   string      `json:"sourceDigest"`
 	Status         string      `json:"status"`
 	FailureReason  *string     `json:"failureReason"`
-	CreatedAt      time.Time   `json:"createdAt"`
-	FinishedAt     *time.Time  `json:"finishedAt"`
+	// FailureCode is Render's machine-readable failureCode: null unless
+	// failed (w3/m367).
+	FailureCode *string    `json:"failureCode"`
+	CreatedAt   time.Time  `json:"createdAt"`
+	FinishedAt  *time.Time `json:"finishedAt"`
 }
 
 // BuildSource is the image a build converts: the registry, the image path in
@@ -149,7 +158,9 @@ type ImageStore interface {
 	StartSandboxBuild(ctx context.Context, id string) (bool, error)
 	TouchSandboxBuild(ctx context.Context, id string) (bool, error)
 	SucceedSandboxBuild(ctx context.Context, id, imageDigest string, sizeBytes int64) (bool, error)
-	FailSandboxBuild(ctx context.Context, id, reason string) error
+	FailSandboxBuild(ctx context.Context, id, code, reason string) error
+	DeleteSandboxBuild(ctx context.Context, workspaceID, groupID, id string) (bool, error)
+	RestoreSandboxBuild(ctx context.Context, workspaceID, groupID, id string) error
 	FailStaleSandboxBuilds(ctx context.Context, staleAfter time.Duration, reason string) (int64, error)
 	SandboxBuildIDs(ctx context.Context, workspaceID, groupID string) ([]string, error)
 	FailGroupSandboxBuilds(ctx context.Context, workspaceID, groupID, reason string) error
@@ -281,9 +292,22 @@ func buildView(b store.SandboxBuild) Build {
 	return Build{
 		ID: b.ID, SandboxGroupID: b.SandboxGroupID, Name: b.Name,
 		Source:       BuildSource{Repository: b.SourceRepository, Image: b.SourceImage, Reference: b.SourceReference},
-		SourceDigest: b.SourceDigest, Status: b.Status, FailureReason: b.FailureReason,
+		SourceDigest: b.SourceDigest, Status: b.Status, FailureReason: b.FailureReason, FailureCode: failureCode(b),
 		CreatedAt: b.CreatedAt, FinishedAt: b.FinishedAt,
 	}
+}
+
+// failureCode is a failed build's recorded code, or internal_error for one
+// that failed before codes were recorded; null for any other status.
+func failureCode(b store.SandboxBuild) *string {
+	if b.Status != store.SandboxBuildFailed {
+		return nil
+	}
+	if b.FailureCode != nil {
+		return b.FailureCode
+	}
+	code := buildFailedInternal
+	return &code
 }
 
 // imageGroup scopes a group verb, authorizes rel there and loads the group.
@@ -447,6 +471,103 @@ func (s *Service) GetImage(ctx context.Context, groupID, buildID string) (Build,
 	return buildView(b), nil
 }
 
+// DeleteImage deletes one build of a group, as Render's delete-sandbox-build
+// (w3/m367): it leaves lists and reads, a create can no longer start from it
+// by id or name, its registry image goes, and a repeated delete succeeds.
+// Sandboxes still running or suspended from it keep it: 409 image_in_use,
+// naming up to ten of them. bex has no snapshots, Render's other dependents.
+func (s *Service) DeleteImage(ctx context.Context, groupID, buildID string) error {
+	ctx, group, err := s.imageGroup(ctx, groupID, core.RelCanCreate)
+	if err != nil {
+		return err
+	}
+	if err := validateBuildID(buildID); err != nil {
+		return err
+	}
+	// Mark first, so no create can start from the build while its dependents
+	// are read, and undo the mark if one is found.
+	deleted, err := s.Images.Store.DeleteSandboxBuild(ctx, group.WorkspaceID, group.ID, buildID)
+	if errors.Is(err, store.ErrNotFound) {
+		return buildNotFound(buildID)
+	}
+	if err != nil {
+		return store.MapError(err)
+	}
+	if !deleted {
+		return nil // already deleted: Render answers 204 again
+	}
+	dependents, hidden, err := s.buildDependents(ctx, group.WorkspaceID, buildID)
+	if err == nil && len(dependents)+hidden > 0 {
+		err = imageInUse(buildID, dependents, hidden)
+	}
+	if err != nil {
+		if rerr := s.Images.Store.RestoreSandboxBuild(ctx, group.WorkspaceID, group.ID, buildID); rerr != nil {
+			return errors.Join(err, store.MapError(rerr))
+		}
+		return err
+	}
+	// A failure here is retried by the group's or workspace's delete, which
+	// still lists the deleted build's image (SandboxBuildIDs).
+	if err := s.Images.deleteImported(ctx, group.WorkspaceID, []string{buildID}); err != nil {
+		log.Printf("sandbox images: delete the image of %s: %v", buildID, err)
+	}
+	return nil
+}
+
+// imageInUse is Render's 409 image_in_use, naming the dependents the caller
+// may see and counting the rest, as a list would hide them.
+func imageInUse(buildID string, dependents []string, hidden int) error {
+	named := strings.Join(dependents, ", ")
+	switch {
+	case named == "":
+		named = fmt.Sprintf("%d of other members", hidden)
+	case hidden > 0:
+		named += fmt.Sprintf(" and %d of other members", hidden)
+	}
+	return core.NewConflictError(CodeImageInUse,
+		fmt.Sprintf("sandboxes that have not terminated still depend on this build: %s; terminate them before deleting it", named),
+		map[string]any{"id": buildID, "dependents": dependents})
+}
+
+// buildDependents are up to maxImageDependents of the workspace's sandboxes,
+// every member's, that started from the build and have not terminated or
+// errored: suspended ones included, as on Render. dependents are the ones the
+// caller may see; hidden counts the others. OpenSandbox's own list is the
+// authority, not the best-effort records, so a missed record write cannot let
+// a delete pull the image from under a live sandbox.
+func (s *Service) buildDependents(ctx context.Context, ws, buildID string) (dependents []string, hidden int, err error) {
+	if !s.enabled() {
+		return nil, 0, nil
+	}
+	key, err := s.workspaceKey(ctx)
+	if err != nil {
+		return nil, 0, err
+	}
+	raw, err := s.Client.List(ctx, key)
+	if err != nil {
+		return nil, 0, err
+	}
+	visible := s.ownerCheck(ctx, ws)
+	for _, r := range raw {
+		if !validOwnedSandbox(r, ws) || displayImage(r.Image.URI) != buildID || endedLive(r) {
+			continue
+		}
+		ok, err := visible(r.Metadata[metadataOwner])
+		if err != nil {
+			return nil, 0, err
+		}
+		if !ok {
+			hidden++
+		} else {
+			dependents = append(dependents, canonicalID(r))
+		}
+		if len(dependents)+hidden == maxImageDependents {
+			break
+		}
+	}
+	return dependents, hidden, nil
+}
+
 // ListImages lists a group's builds newest first, filtered by name and status,
 // one page after the cursor.
 func (s *Service) ListImages(ctx context.Context, groupID, imageName string, statuses []string, after string, limit int) ([]Build, error) {
@@ -567,7 +688,7 @@ func (im *Images) run(b store.SandboxBuild, ref name.Digest, cred *RegistryCrede
 		if errors.Is(err, context.DeadlineExceeded) {
 			reason = fmt.Sprintf("the import did not finish within %s", importTimeout)
 		}
-		if ferr := im.Store.FailSandboxBuild(settle, b.ID, reason); ferr != nil {
+		if ferr := im.Store.FailSandboxBuild(settle, b.ID, buildFailureCode(err), reason); ferr != nil {
 			log.Printf("sandbox images: fail %s: %v", b.ID, ferr)
 		}
 		return
@@ -623,6 +744,51 @@ func (im *Images) heartbeat(ctx context.Context, stop context.CancelFunc, id str
 	}
 }
 
+// Render's sandboxBuildFailureCode values bex records (its SDK's enum, 2026-11-13).
+const (
+	buildFailedDeadline     = "deadline_exceeded"
+	buildFailedAccessDenied = "image_access_denied"
+	buildFailedNotFound     = "image_not_found"
+	buildFailedPull         = "image_pull_failed"
+	buildFailedInternal     = "internal_error"
+)
+
+// sourceError is a failure reading the source image, as opposed to writing the
+// sandbox registry: the source's fault, which Render names by kind.
+type sourceError struct{ err error }
+
+func (e sourceError) Error() string { return e.err.Error() }
+func (e sourceError) Unwrap() error { return e.err }
+
+// fromOtherHost reports a registry error for a request to a host other than
+// host, the sandbox registry's: the source registry's refusal.
+func fromOtherHost(err error, host string) bool {
+	var terr *transport.Error
+	return errors.As(err, &terr) && terr.Request != nil && terr.Request.URL != nil && terr.Request.URL.Host != host
+}
+
+// buildFailureCode classifies an import failure. Platform and size problems are
+// refused before the import starts, so they never reach here.
+func buildFailureCode(err error) string {
+	if errors.Is(err, context.DeadlineExceeded) {
+		return buildFailedDeadline
+	}
+	var src sourceError
+	if !errors.As(err, &src) {
+		return buildFailedInternal
+	}
+	var terr *transport.Error
+	if errors.As(err, &terr) {
+		switch terr.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return buildFailedAccessDenied
+		case http.StatusNotFound:
+			return buildFailedNotFound
+		}
+	}
+	return buildFailedPull
+}
+
 // copy writes the linux/amd64 image at ref to the build's repository under
 // imageTag and returns the stored manifest's digest and its compressed size.
 func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Digest, cred *RegistryCredential) (string, int64, error) {
@@ -632,11 +798,11 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 	}
 	desc, err := remote.Get(ref, im.sourceOptions(ctx, cred)...)
 	if err != nil {
-		return "", 0, err
+		return "", 0, sourceError{err}
 	}
 	img, err := desc.Image()
 	if err != nil {
-		return "", 0, err
+		return "", 0, sourceError{err}
 	}
 	user, password, err := im.Registry.credentials(ctx)
 	if err != nil {
@@ -647,6 +813,11 @@ func (im *Images) copy(ctx context.Context, b store.SandboxBuild, ref name.Diges
 		opts = append(opts, remote.WithTransport(im.Registry.HTTP.Transport))
 	}
 	if err := remote.Write(repo.Tag(imageTag), img, opts...); err != nil {
+		// The source image is lazy: its layers are read during the write, so
+		// a refusal from the source registry surfaces here too.
+		if sink, _, herr := im.registryHost(); herr == nil && fromOtherHost(err, sink) {
+			return "", 0, sourceError{err}
+		}
 		return "", 0, err
 	}
 	digest, err := img.Digest()

@@ -394,7 +394,7 @@ func (s *PGStore) SandboxStorageBytes(ctx context.Context, workspaceID string) (
 		SELECT ((SELECT COALESCE(sum(bytes), 0) FROM sandbox_storage_objects
 		        WHERE workspace_id = $1 AND ended_at IS NULL)
 		     + (SELECT COALESCE(sum(size_bytes), 0) FROM sandbox_builds
-		        WHERE workspace_id = $1 AND status = 'succeeded'))::bigint`, workspaceID).Scan(&bytes)
+		        WHERE workspace_id = $1 AND status = 'succeeded' AND deleted_at IS NULL))::bigint`, workspaceID).Scan(&bytes)
 	return bytes, err
 }
 

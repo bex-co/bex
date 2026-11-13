@@ -38,8 +38,9 @@ const CodeSandboxCredentialsUnsupported = "SANDBOX_CREDENTIALS_UNSUPPORTED"
 // the sandbox Service: they answer the same whether or not OpenSandbox is
 // configured, and they reach no workspace data.
 var NotOfferedRoutes = map[string]core.NotOffered{
-	// CLI v2.36's `sandbox-groups credentials` (w3/m303), an early-access
-	// feature absent from the public OpenAPI.
+	// CLI v2.36's `sandbox-groups credentials` (w3/m303). In Render's public
+	// OpenAPI since round 7 (2026-11-13, w3/m367), but render.com/sandboxes
+	// still marks brokering early access, which ADR104 keeps outside parity.
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials":                         {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials":                        {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":          {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},

@@ -36,7 +36,7 @@ func TestRenderBlueprintCapabilityRegistryExhaustive(t *testing.T) {
 	if got, want := registry.Schema.SHA256, RenderBlueprintSchemaSHA256; got != want {
 		t.Fatalf("registry schema digest = %q, want %q", got, want)
 	}
-	if got, want := len(registry.Fields), 206; got != want {
+	if got, want := len(registry.Fields), 218; got != want { // +12 cronService buildSource and its branch, serverService rootDir (w3/m367)
 		t.Fatalf("registered field count = %d, want %d", got, want)
 	}
 	if got, want := len(registry.EnumValues), 24; got != want {

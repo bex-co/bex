@@ -951,10 +951,12 @@ func buildSourceStartRule(native bool, command, ref string) error {
 }
 
 // linkStartCommand is the command a service linked to a build source runs: a
-// cron job's command, any other service's start command.
+// cron job's command, or the startCommand a Blueprint gives a cron (Render's
+// render.yaml names a cron's command startCommand, w3/m367), and any other
+// service's start command.
 func linkStartCommand(svcType, startCommand, command string) string {
 	if svcType == appv1alpha1.TypeCronJob {
-		return command
+		return cmp.Or(command, startCommand)
 	}
 	return startCommand
 }
@@ -1025,7 +1027,9 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 		spec := &app.Spec
 		linkBuildSourceSpec(spec, *link)
 		if cron {
-			spec.Command = start
+			// A cron's command lives in Command; a startCommand left from a
+			// Blueprint would read as its command again (linkStartCommand).
+			spec.Command, spec.StartCommand = start, ""
 		} else {
 			spec.StartCommand = start
 		}

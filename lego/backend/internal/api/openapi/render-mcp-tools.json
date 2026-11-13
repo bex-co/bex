@@ -1,6 +1,6 @@
 {
   "pin": {
-    "capturedAt": "2026-11-07",
+    "capturedAt": "2026-11-13",
     "capturedBy": "scripts/render-mcp-capture.py --ref main (MCP stdio tools/list)",
     "latestRelease": {
       "tag": "v0.3.0",
@@ -33,14 +33,15 @@
       "optional (bc94f8d, #154, Dockerfile-based creation). The tools array is the capture",
       "verbatim; only this 'pin' block and 'source' are hand-maintained.",
       "w5/m145 (2026-10-20): re-captured at the same upstream commit with each argument's JSON type (and enum) and the tools' behavior hints (readOnly/destructive/idempotent/openWorld), which a client acts on; descriptions and annotation titles stay out.",
-      "w5/m283 (2026-11-07): re-captured at 16fe2e9 (2026-11-06). Upstream added create_blueprint (plans without applying), plan_blueprint, approve_blueprint, get_blueprint and update_blueprint (#205, #218, #221, #222, #224, #230); bex implements all five to this contract. No other tool moved."
+      "w5/m283 (2026-11-07): re-captured at 16fe2e9 (2026-11-06). Upstream added create_blueprint (plans without applying), plan_blueprint, approve_blueprint, get_blueprint and update_blueprint (#205, #218, #221, #222, #224, #230); bex implements all five to this contract. No other tool moved.",
+      "w3/m367 (2026-11-13): re-captured at 23fb336 (2026-11-12). Upstream added 20 Workflows tools (create_workflow, the workflow version, run and task reads, list_flows, get_flow, start_flow_run, cancel_flow_run and the flow-run reads; render-mcp-server #189), a deliberate non-goal (.pm/DO_NOT_DO.md), recorded in mcpKnownUpstreamOnly; list_logs gained the Workflows task/taskRun filters. No other tool moved."
     ]
   },
   "source": {
     "repo": "github.com/render-oss/render-mcp-server",
     "ref": "main",
-    "commit": "16fe2e9977b0cf4837d6b68fe7f02f3cd85c4bd7",
-    "commitDate": "2026-11-06T09:18:10Z"
+    "commit": "23fb336069482a3844dbbf76215de815f1b04e7f",
+    "commitDate": "2026-11-12T23:21:19Z"
   },
   "tools": [
     {
@@ -59,6 +60,30 @@
         },
         "manualEnvVars": {
           "type": "array"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "cancel_flow_run",
+      "args": [
+        "flowRunId",
+        "workspaceId"
+      ],
+      "required": [
+        "flowRunId"
+      ],
+      "argTypes": {
+        "flowRunId": {
+          "type": "string"
         },
         "workspaceId": {
           "type": "string"
@@ -580,6 +605,117 @@
       }
     },
     {
+      "name": "create_workflow",
+      "args": [
+        "autoDeploy",
+        "branch",
+        "buildCommand",
+        "envVars",
+        "name",
+        "region",
+        "repo",
+        "rootDir",
+        "runCommand",
+        "runtime",
+        "workspaceId"
+      ],
+      "required": [
+        "buildCommand",
+        "name",
+        "repo",
+        "runCommand",
+        "runtime"
+      ],
+      "argTypes": {
+        "autoDeploy": {
+          "type": "string",
+          "enum": [
+            "checksPass",
+            "commit",
+            "off"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "buildCommand": {
+          "type": "string"
+        },
+        "envVars": {
+          "type": "array"
+        },
+        "name": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string",
+          "enum": [
+            "frankfurt",
+            "ohio",
+            "oregon",
+            "singapore",
+            "virginia"
+          ]
+        },
+        "repo": {
+          "type": "string"
+        },
+        "rootDir": {
+          "type": "string"
+        },
+        "runCommand": {
+          "type": "string"
+        },
+        "runtime": {
+          "type": "string",
+          "enum": [
+            "elixir",
+            "go",
+            "node",
+            "python",
+            "ruby"
+          ]
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "create_workflow_version",
+      "args": [
+        "commit",
+        "workflowId",
+        "workspaceId"
+      ],
+      "required": [
+        "workflowId"
+      ],
+      "argTypes": {
+        "commit": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": true,
+        "readOnlyHint": false
+      }
+    },
+    {
       "name": "get_blueprint",
       "args": [
         "blueprintId",
@@ -619,6 +755,123 @@
           "type": "string"
         },
         "serviceId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "get_flow",
+      "args": [
+        "flowId",
+        "workspaceId"
+      ],
+      "required": [
+        "flowId"
+      ],
+      "argTypes": {
+        "flowId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "get_flow_run",
+      "args": [
+        "flowRunId",
+        "workspaceId"
+      ],
+      "required": [
+        "flowRunId"
+      ],
+      "argTypes": {
+        "flowRunId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "get_flow_run_results",
+      "args": [
+        "flowRunId",
+        "limit",
+        "offset",
+        "sha256",
+        "workspaceId"
+      ],
+      "required": [
+        "flowRunId"
+      ],
+      "argTypes": {
+        "flowRunId": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "offset": {
+          "type": "number"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "get_flow_run_step",
+      "args": [
+        "flowRunId",
+        "seq",
+        "stepKey",
+        "workspaceId"
+      ],
+      "required": [
+        "flowRunId",
+        "seq"
+      ],
+      "argTypes": {
+        "flowRunId": {
+          "type": "string"
+        },
+        "seq": {
+          "type": "number"
+        },
+        "stepKey": {
           "type": "string"
         },
         "workspaceId": {
@@ -785,6 +1038,142 @@
       }
     },
     {
+      "name": "get_workflow",
+      "args": [
+        "workflowId",
+        "workspaceId"
+      ],
+      "required": [
+        "workflowId"
+      ],
+      "argTypes": {
+        "workflowId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "get_workflow_run",
+      "args": [
+        "taskRunId",
+        "workspaceId"
+      ],
+      "required": [
+        "taskRunId"
+      ],
+      "argTypes": {
+        "taskRunId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "get_workflow_run_results",
+      "args": [
+        "attempt",
+        "limit",
+        "offset",
+        "sha256",
+        "taskRunId",
+        "workspaceId"
+      ],
+      "required": [
+        "taskRunId"
+      ],
+      "argTypes": {
+        "attempt": {
+          "type": "number"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "offset": {
+          "type": "number"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "taskRunId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "get_workflow_task",
+      "args": [
+        "taskId",
+        "workspaceId"
+      ],
+      "required": [
+        "taskId"
+      ],
+      "argTypes": {
+        "taskId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "get_workflow_version",
+      "args": [
+        "workflowVersionId",
+        "workspaceId"
+      ],
+      "required": [
+        "workflowVersionId"
+      ],
+      "argTypes": {
+        "workflowVersionId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
       "name": "list_deploys",
       "args": [
         "cursor",
@@ -847,6 +1236,125 @@
           "type": "string"
         },
         "startTime": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "list_flow_run_steps",
+      "args": [
+        "cursor",
+        "flowRunId",
+        "limit",
+        "workspaceId"
+      ],
+      "required": [
+        "flowRunId"
+      ],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "flowRunId": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "list_flow_runs",
+      "args": [
+        "cursor",
+        "flowId",
+        "flowSlug",
+        "limit",
+        "status",
+        "workflowId",
+        "workflowVersionId",
+        "workspaceId"
+      ],
+      "required": [],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "flowId": {
+          "type": "string"
+        },
+        "flowSlug": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "canceled",
+            "failed",
+            "pending",
+            "running",
+            "succeeded"
+          ]
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "workflowVersionId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "list_flows",
+      "args": [
+        "cursor",
+        "flowSlug",
+        "limit",
+        "workflowVersionId",
+        "workspaceId"
+      ],
+      "required": [],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "flowSlug": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "workflowVersionId": {
           "type": "string"
         },
         "workspaceId": {
@@ -977,6 +1485,8 @@
         "resource",
         "startTime",
         "statusCode",
+        "task",
+        "taskRun",
         "text",
         "type",
         "workspaceId"
@@ -1020,6 +1530,12 @@
           "type": "string"
         },
         "statusCode": {
+          "type": "array"
+        },
+        "task": {
+          "type": "array"
+        },
+        "taskRun": {
           "type": "array"
         },
         "text": {
@@ -1074,6 +1590,150 @@
       },
       "annotations": {
         "destructiveHint": false,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "list_workflow_runs",
+      "args": [
+        "cursor",
+        "limit",
+        "rootTaskRunId",
+        "taskSlug",
+        "workflowId",
+        "workflowVersionId",
+        "workspaceId"
+      ],
+      "required": [],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "rootTaskRunId": {
+          "type": "string"
+        },
+        "taskSlug": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "workflowVersionId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "list_workflow_tasks",
+      "args": [
+        "cursor",
+        "limit",
+        "taskSlug",
+        "workflowId",
+        "workflowVersionId",
+        "workspaceId"
+      ],
+      "required": [],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "taskSlug": {
+          "type": "string"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "workflowVersionId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "list_workflow_versions",
+      "args": [
+        "cursor",
+        "limit",
+        "workflowId",
+        "workspaceId"
+      ],
+      "required": [],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "workflowId": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false,
+        "readOnlyHint": true
+      }
+    },
+    {
+      "name": "list_workflows",
+      "args": [
+        "cursor",
+        "environmentId",
+        "limit",
+        "name",
+        "workspaceId"
+      ],
+      "required": [],
+      "argTypes": {
+        "cursor": {
+          "type": "string"
+        },
+        "environmentId": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "name": {
+          "type": "string"
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": true,
         "openWorldHint": false,
         "readOnlyHint": true
       }
@@ -1160,6 +1820,38 @@
         "destructiveHint": false,
         "idempotentHint": true,
         "openWorldHint": false,
+        "readOnlyHint": false
+      }
+    },
+    {
+      "name": "start_flow_run",
+      "args": [
+        "flow",
+        "idempotencyKey",
+        "input",
+        "workspaceId"
+      ],
+      "required": [
+        "flow"
+      ],
+      "argTypes": {
+        "flow": {
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "type": "string"
+        },
+        "input": {
+          "type": ""
+        },
+        "workspaceId": {
+          "type": "string"
+        }
+      },
+      "annotations": {
+        "destructiveHint": false,
+        "idempotentHint": false,
+        "openWorldHint": true,
         "readOnlyHint": false
       }
     },

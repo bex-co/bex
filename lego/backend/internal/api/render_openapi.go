@@ -40,13 +40,14 @@ import (
 )
 
 const (
-	renderOpenAPISHA256 = "98b0ce65994172dd30ba4be596e96c2e9aa72f34f694e29d98198afe8af10b44"
+	renderOpenAPISHA256 = "6229bc62f2329a2a011c8b9e03547df46941e43074476c79e0c4fcb55cb31628"
 	renderAPIPrefix     = "/v1"
 )
 
 // renderOpenAPISource is Render's complete, unversioned public contract,
-// fetched on 2026-11-08 (round-6 drift: 252 -> 255 operations, Render's
-// sandbox builds; round 5 on 2026-11-02 was w2/m251: 208 -> 252, and the
+// fetched on 2026-11-13 (round-7 drift, w3/m367: 255 -> 263 operations, the
+// sandbox build delete and sandbox-group credentials; round 6 on 2026-11-08
+// added sandbox builds, round 5 on 2026-11-02 was w2/m251: 208 -> 252, and the
 // 2026-09-11 pin came from w6/073). It is embedded by the leaf asset
 // package so the test-only response validator (internal/rendertest) reads the
 // very same bytes.
@@ -284,6 +285,22 @@ var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
 	"update-registry-credential": {"expiresAt": {Value: openapi3.NewStringSchema()}},
 }
 
+// renderRequestBodyExtensions declares an optional JSON body on an operation
+// whose pinned Render schema declares none, for a client that still sends one.
+// Render's 2026-11-13 contract (round 7, w3/m367) dropped connect-sandbox-run's
+// {"command"} body, but the pinned CLI v2.36 still posts it (`sandboxes exec`,
+// pkg/sandbox/repo.go connect), and bex binds the connect token to that
+// command. Drop the entry when the CLI pin stops sending it.
+var renderRequestBodyExtensions = map[string]func() *openapi3.Schema{
+	// Open, as the round-6 pin's body was, with the handler's ownerId (query
+	// or body) beside the command.
+	"connect-sandbox-run": func() *openapi3.Schema {
+		return openapi3.NewObjectSchema().
+			WithProperty("command", openapi3.NewStringSchema()).
+			WithProperty("ownerId", openapi3.NewStringSchema())
+	},
+}
+
 // legacyRedisOperations maps each of Render's deprecated /redis operations to
 // its Key Value twin (w3/m274). bex serves both spellings from the same
 // handlers, so every per-operation concession above applies to the pair
@@ -401,6 +418,9 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			}
 
 			remove := renderRequiredCompatibility[operationID]
+			if body, ok := renderRequestBodyExtensions[operationID]; ok && (operation.RequestBody == nil || operation.RequestBody.Value == nil) {
+				operation.RequestBody = &openapi3.RequestBodyRef{Value: openapi3.NewRequestBody().WithJSONSchema(body())}
+			}
 			if operation.RequestBody == nil || operation.RequestBody.Value == nil {
 				continue
 			}
