@@ -19,7 +19,7 @@
 
 ## Decision
 
-![ADR091 pricing and metering architecture](ADR091-agent-model-pricing.svg)
+![ADR091 pricing and metering architecture](assets/ADR091-agent-model-pricing.svg)
 
 ### D1 — Price formula
 

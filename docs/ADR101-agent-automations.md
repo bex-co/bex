@@ -2,7 +2,7 @@
 
 **Status:** accepted (w21/m278 t001, 2026-11-07; the four defaults below stand until the user says otherwise) · **Date:** 2026-11-07 · **Extends:** [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions), [ADR094](ADR094-coding-agent-mcp.md) D4 (idempotent create), [ADR098](ADR098-agent-session-secrets.md) (secrets), [ADR099](ADR099-agent-skills.md) (skills) · **Parity:** Devin Automations (no Render equivalent; see [Parity](#parity)).
 
-![ADR101 agent automations architecture](ADR101-agent-automations.svg)
+![ADR101 agent automations architecture](assets/ADR101-agent-automations.svg)
 
 ## Context
 

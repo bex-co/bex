@@ -2,7 +2,7 @@
 
 **Status:** proposed (2026-11-11), implementation in progress (2026-11-12: D7 `bex agent automations` shipped in w1/m338; D3 filters, D4 and D8 in w1/m339; D2 and the D3 picker in w1/m340; D5 `ssh` and D6 in w1/m341; all verified on production; D5 `forward` waits on OD1) · **Date:** 2026-11-11 · **Extends:** [bex-cli.md § Cloud Agents](bex-cli.md#cloud-agents-bex-agent) (the shipped `bex agent` group), [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions, attach stream), [ADR094](ADR094-coding-agent-mcp.md) (session contract), [ADR101](ADR101-agent-automations.md) (automations), [ADR054](ADR054-open-in-zed.md) (sandbox SSH), [ADR065](ADR065-agent-session-archive.md), [ADR098](ADR098-agent-session-secrets.md), [ADR099](ADR099-agent-skills.md), [ADR102](ADR102-agent-child-sessions.md) · **Parity:** Devin CLI and Devin Automations (no Render equivalent; see [Parity](#parity)).
 
-![ADR106 architecture: the bex launcher gains new command groups that are thin clients of existing bex-api routes, the gateway's SSE attach stream, the sandbox SSH listener, and the developer's own git remote](ADR106-cli-cloud-agents-automations.svg)
+![ADR106 architecture: the bex launcher gains new command groups that are thin clients of existing bex-api routes, the gateway's SSE attach stream, the sandbox SSH listener, and the developer's own git remote](assets/ADR106-cli-cloud-agents-automations.svg)
 
 ## Context
 

@@ -14,7 +14,7 @@ It is built from a sourced research pass on 2026-11-08 (fan-out search, 19 sourc
 
 ## Implementation at a glance
 
-![Sandbox architecture and Render-parity state](ADR104-sandbox-render-parity.svg)
+![Sandbox architecture and Render-parity state](assets/ADR104-sandbox-render-parity.svg)
 
 Every client reaches bex-api on Render's `/v1/sandboxes*` paths. bex-api authorizes, tracks idle time, mints the exec and file connect tokens, and is the **only** caller of the OpenSandbox lifecycle API; the ssh-gateway is the only holder of `pods/exec`. Sandboxes run as gVisor pods in a per-tenant namespace, and Cilium decides what they can reach. Solid green is shipped and verified live, dashed green is shipped with the live check pending, yellow is scheduled, orange diverges (memory and processes on suspend, D5; Docker in a sandbox, D6). Source of the picture: ADR042's architecture and network-policy sections, plus ADR018's sandbox rows.
 

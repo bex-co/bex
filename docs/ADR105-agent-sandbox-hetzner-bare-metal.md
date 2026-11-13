@@ -4,7 +4,7 @@
 
 ## Context
 
-![The agent sandbox today, and the layers this ADR proposes to replace](ADR105-agent-sandbox-hetzner-bare-metal.svg)
+![The agent sandbox today, and the layers this ADR proposes to replace](assets/ADR105-agent-sandbox-hetzner-bare-metal.svg)
 
 The upper part of the figure is the sandbox as it runs now. The band at the bottom is the proposal: the node, the isolation layer, the file path and scheduling change; everything else stays.
 

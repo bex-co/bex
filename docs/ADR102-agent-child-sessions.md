@@ -2,7 +2,7 @@
 
 **Status:** accepted (w21/m279 t001, 2026-11-08; the two decisions marked "adopted by the worker, user may override" stand until the user says otherwise) · **Date:** 2026-11-08 · **Extends:** [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions), [ADR094](ADR094-coding-agent-mcp.md) (D4 idempotent create, D8 spend ceilings; closes its "Parent and child sessions" deferral), [ADR098](ADR098-agent-session-secrets.md) (secrets), [ADR091](ADR091-agent-model-pricing.md) (spend and ceilings) · **Parity:** Devin child sessions (no Render equivalent; see [Parity](#parity)).
 
-![ADR102 agent child sessions architecture](ADR102-agent-child-sessions.svg)
+![ADR102 agent child sessions architecture](assets/ADR102-agent-child-sessions.svg)
 
 ## Context
 
