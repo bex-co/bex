@@ -802,3 +802,97 @@ func TestInsightsRedactLiterals(t *testing.T) {
 		}
 	}
 }
+
+// TestTopQueriesLeavesInsightsQueryIDsOut pins w5/184: a database that ran an
+// Insights statement untagged, before w4/557, keeps that untagged text under the
+// statement's query id, and every tagged run since adds to the same row. Top
+// queries leaves Insights' query ids out, read from EXPLAIN. The test database
+// has no pg_stat_statements, so compute_query_id is turned on for it and a table
+// stands in for the view, as in the envelope test above.
+func TestTopQueriesLeavesInsightsQueryIDsOut(t *testing.T) {
+	uri := testDBURI(t)
+	ctx := context.Background()
+	admin, err := pgx.Connect(ctx, uri)
+	if err != nil {
+		t.Fatalf("admin connect: %v", err)
+	}
+	defer admin.Close(ctx)
+	var present bool
+	if err := admin.QueryRow(ctx, `SELECT to_regclass('pg_stat_statements') IS NOT NULL`).Scan(&present); err != nil {
+		t.Fatal(err)
+	}
+	if present {
+		t.Skip("the database has a real pg_stat_statements; the stand-in table would not be the one read")
+	}
+	var dbname string
+	if err := admin.QueryRow(ctx, `SELECT current_database()`).Scan(&dbname); err != nil {
+		t.Fatal(err)
+	}
+	for _, stmt := range []string{
+		`ALTER DATABASE ` + pgx.Identifier{dbname}.Sanitize() + ` SET compute_query_id = on`,
+		`DROP ROLE IF EXISTS topq_ids_customer`,
+		`CREATE ROLE topq_ids_customer`,
+		`CREATE TABLE public.pg_stat_statements (
+			userid oid, queryid bigint, query text, calls bigint, total_exec_time double precision,
+			mean_exec_time double precision, rows bigint, shared_blks_hit bigint, shared_blks_read bigint)`,
+	} {
+		if _, err := admin.Exec(ctx, stmt); err != nil {
+			t.Fatalf("%s: %v", stmt, err)
+		}
+	}
+	t.Cleanup(func() {
+		c, err := pgx.Connect(ctx, uri)
+		if err != nil {
+			return
+		}
+		defer c.Close(ctx)
+		_, _ = c.Exec(ctx, `ALTER DATABASE `+pgx.Identifier{dbname}.Sanitize()+` RESET compute_query_id`)
+		_, _ = c.Exec(ctx, `DROP TABLE IF EXISTS public.pg_stat_statements`)
+		_, _ = c.Exec(ctx, `DROP ROLE IF EXISTS topq_ids_customer`)
+	})
+
+	// The query id the table-sizes insight runs under, as EXPLAIN reports it
+	// on a fresh session (the setting applies to new connections).
+	probe, err := pgx.Connect(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines, err := probe.Query(ctx, "EXPLAIN (VERBOSE) "+tagInsight(sqlTableSizes))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var plan strings.Builder
+	for lines.Next() {
+		var line string
+		if err := lines.Scan(&line); err != nil {
+			t.Fatal(err)
+		}
+		plan.WriteString(line + "\n")
+	}
+	lines.Close()
+	_ = probe.Close(ctx)
+	m := explainQueryID.FindStringSubmatch(plan.String())
+	if m == nil {
+		t.Fatalf("EXPLAIN reported no query id: %s", plan.String())
+	}
+	if _, err := admin.Exec(ctx, `INSERT INTO public.pg_stat_statements
+		SELECT (SELECT oid FROM pg_roles WHERE rolname = 'topq_ids_customer'), id::bigint, q, 1, t, t, 0, 0, 0
+		FROM (VALUES ($1, 'SELECT schemaname AS schema FROM pg_tables WHERE schemaname NOT IN ($1 /*, ... */) LIMIT $2', 90.0),
+		             ('42', 'SELECT id FROM orders', 70.0)) AS v(id, q, t)`, m[1]); err != nil {
+		t.Fatalf("seed stand-in: %v", err)
+	}
+
+	svc, _ := newService()
+	seedDatabaseAt(t, svc, "topq-ids", uri)
+	rows, err := svc.TopQueries(ctx, "topq-ids")
+	if err != nil {
+		t.Fatalf("TopQueries => %v", err)
+	}
+	var got []string
+	for _, r := range rows {
+		got = append(got, r.Query)
+	}
+	if want := []string{"SELECT id FROM orders"}; !slices.Equal(got, want) {
+		t.Fatalf("Top queries = %q, want %q: the untagged Insights row left out by its query id", got, want)
+	}
+}

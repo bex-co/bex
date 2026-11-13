@@ -26,8 +26,11 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"slices"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -433,6 +436,69 @@ WHERE source NOT IN ('default', 'override')
 ORDER BY name`
 )
 
+// insightStatements are every statement Insights runs as the owner. One run
+// untagged, before w4/557, left its untagged text in pg_stat_statements under a
+// query id the tag does not change, so the tagged runs since add to that row and
+// Top queries leaves those query ids out too (w5/184).
+var insightStatements = []string{sqlProcesses, sqlTopQueries, sqlDatabaseSize, sqlTableSizes, sqlTableScans, sqlParameterOverrides}
+
+// insightQueryIDTTL bounds how long a database's Insights query ids are reused:
+// they depend on its catalog, which a restore or a major upgrade replaces.
+const insightQueryIDTTL = time.Hour
+
+type insightQueryIDs struct {
+	ids []int64
+	at  time.Time
+}
+
+// insightQueryIDCache holds each database's Insights query ids, so Top queries
+// asks for them once an hour rather than on every read.
+var insightQueryIDCache sync.Map
+
+var explainQueryID = regexp.MustCompile(`Query Identifier: (-?[0-9]+)`)
+
+// insightQueryIDSQL is a NOT IN clause on queryid for Insights' own statements,
+// read from EXPLAIN, which reports the query id pg_stat_statements files a
+// statement under (PostgreSQL computes it when pg_stat_statements is loaded).
+// Empty when the database reports none, as without pg_stat_statements.
+func insightQueryIDSQL(ctx context.Context, db *appv1alpha1.Database, uri string) string {
+	key := string(db.UID) + "/" + db.Namespace + "/" + db.Name
+	if v, ok := insightQueryIDCache.Load(key); ok && time.Since(v.(insightQueryIDs).at) < insightQueryIDTTL {
+		return queryIDClause(v.(insightQueryIDs).ids)
+	}
+	var ids []int64
+	for _, sql := range insightStatements {
+		res, err := runReadOnlyQuery(ctx, uri, "EXPLAIN (VERBOSE) "+tagInsight(sql), queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap})
+		if err != nil {
+			continue
+		}
+		for _, row := range res.Rows {
+			if len(row) == 0 {
+				continue
+			}
+			if m := explainQueryID.FindStringSubmatch(strVal(row[0])); m != nil {
+				if id, err := strconv.ParseInt(m[1], 10, 64); err == nil {
+					ids = append(ids, id)
+				}
+				break
+			}
+		}
+	}
+	insightQueryIDCache.Store(key, insightQueryIDs{ids: ids, at: time.Now()})
+	return queryIDClause(ids)
+}
+
+func queryIDClause(ids []int64) string {
+	if len(ids) == 0 {
+		return ""
+	}
+	list := make([]string, len(ids))
+	for i, id := range ids {
+		list[i] = strconv.FormatInt(id, 10)
+	}
+	return "\n  AND queryid NOT IN (" + strings.Join(list, ", ") + ")"
+}
+
 // runInsight dials the database and executes sql inside the standard read-only
 // envelope (same safety rails as Query). The caller maps rows to its typed view.
 func (s *Service) runInsight(ctx context.Context, relation, dbID, sql string) (QueryResult, error) {
@@ -487,16 +553,25 @@ func (s *Service) runAuthorizedInsight(ctx context.Context, db *appv1alpha1.Data
 	if err := requireQueryable(db); err != nil {
 		return QueryResult{}, err
 	}
-	sec, err := s.databaseSecret(ctx, db)
+	uri, err := s.databaseURI(ctx, db)
 	if err != nil {
 		return QueryResult{}, err
 	}
-	uri := string(sec.Data["uri"])
-	if uri == "" {
-		return QueryResult{}, core.ErrNotFound
-	}
 	return runReadOnlyQuery(ctx, uri, tagInsight(sql), queryLimits{statementTimeout: queryStatementTimeout, rowCap: queryRowCap,
 		serverSettings: serverSettings})
+}
+
+// databaseURI is the connection string an insight dials as the owner.
+func (s *Service) databaseURI(ctx context.Context, db *appv1alpha1.Database) (string, error) {
+	sec, err := s.databaseSecret(ctx, db)
+	if err != nil {
+		return "", err
+	}
+	uri := string(sec.Data["uri"])
+	if uri == "" {
+		return "", core.ErrNotFound
+	}
+	return uri, nil
 }
 
 // strVal extracts a string from a pgx any value (nil → "").
@@ -597,7 +672,11 @@ func (s *Service) TopQueries(ctx context.Context, dbID string) ([]TopQueryView, 
 	if err := requireQueryable(db); err != nil {
 		return nil, err
 	}
-	res, err := s.runAuthorizedInsight(ctx, db, sqlTopQueries, false)
+	sql := sqlTopQueries
+	if uri, err := s.databaseURI(ctx, db); err == nil {
+		sql = strings.Replace(sql, "\nORDER BY total_exec_time", insightQueryIDSQL(ctx, db, uri)+"\nORDER BY total_exec_time", 1)
+	}
+	res, err := s.runAuthorizedInsight(ctx, db, sql, false)
 	if err != nil {
 		return nil, fmt.Errorf("%w: top query statistics could not be read; the database must be reachable with pg_stat_statements enabled", core.ErrUnavailable)
 	}
