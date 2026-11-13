@@ -47,7 +47,7 @@ Total: **10 tasks, about 9h40m**.
   - H-1: `members.Invite`, `ResendInvite` and `ChangeRole` take `AuthorizeMintClass`, the operations are classified mint, a webhook repoint takes it too, and a delegated token reads the secret redacted.
   - S-1: paged `sandbox.Client.List`, refusing a list that moved; public-id lookups use the server's metadata filter.
   - S-2: the declared config size is checked before the read; source manifests are capped.
-  - S-3: in-flight imports count at their declared size, a new import is checked in the build transaction under a workspace lock, and imports take the billing gates. Migration 0247 aligns the index.
+  - S-3: in-flight imports count at their declared size, a new import is checked in the build transaction under a workspace lock, and imports take the billing gates. Migration 0248 aligns the index.
 - **t006:** ADR107, the `docs/AGENTS.md` lineage and the root `AGENTS.md` entry points.
 - **t007 (Render parity):** each fix answers the same on REST, GraphQL and MCP because the three share one service verb: `members`, `webhooks.Update`/`Get`/`List`, `sandbox.ImportImage`, and the sandbox list consumers. Render has no third-party OAuth clients (its API keys are user-level), so H-1's refusal has no Render counterpart to drift from. A sandbox import's new 429 `SANDBOX_STORAGE_LIMIT` and its billing refusals are bex's existing codes for sandbox storage and creation.
 - **t008 (Simplify):** three reviewers.
