@@ -455,16 +455,17 @@ func nativeVersionResolver(o Options) corev1.Container {
 	}
 }
 
-// resolveNativeBunExact is ResolveNativeBun with a floating tag (canary)
-// pinned to the digest it has for this build, narrated in the build log; an
-// unreachable registry keeps the reviewed default line (pinExactVersion).
+// resolveNativeBunExact is ResolveNativeBun with an exact version or a
+// floating tag (canary) pinned to the digest it has for this build, the
+// floating one narrated in the build log; an unreachable registry keeps the
+// reviewed line (pinExactVersion).
 func resolveNativeBunExact(ctx context.Context, exact ExactImageResolver, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, bool, error) {
 	bun, withBun, err := ResolveNativeBun(env, readFile)
 	if err != nil || !withBun || bun.Exact == "" {
 		return bun, withBun, err
 	}
 	bun = pinExactVersion(ctx, exact, bun)
-	if bun.Line == bun.Exact {
+	if bun.Line == nativeBunCanary {
 		bun.note = "==> Bun " + bun.Exact + " is " + bun.Image
 	}
 	return bun, withBun, nil

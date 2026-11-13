@@ -166,7 +166,7 @@ const pythonDefaultVersion = "3.14.8"
 func ResolveNativeVersionAt(created time.Time, runtime string, env map[string]string, readFile func(string) ([]byte, bool)) (NativeChoice, error) {
 	choice, err := resolveNativeLine(created, runtime, env, readFile)
 	if err == nil {
-		choice.Exact = exactRequest(runtime, choice, readFile)
+		choice.Exact = exactRequest(nativeToolchains[runtime], choice, readFile)
 		if choice.Exact == "" {
 			choice.Exact = defaultExact(created, runtime, choice)
 		}
@@ -232,10 +232,15 @@ func resolveNativeLine(created time.Time, runtime string, env map[string]string,
 // precedence: BUN_VERSION → .bun-version → a bun.lock or bun.lockb lockfile
 // (the default line). found is false when the service does not opt in, which
 // leaves the build exactly as before (w8/m71). A version maps onto its
-// major.minor line, as the primary toolchains' do.
+// major.minor line, as the primary toolchains' do, and a fully qualified one
+// is installed exactly, as Render does (w8/315).
 func ResolveNativeBun(env map[string]string, readFile func(string) ([]byte, bool)) (choice NativeChoice, found bool, err error) {
 	r := resolver{t: nativeBun, env: env, readFile: readFile}
-	return r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile(nativeBunLockfiles...))
+	choice, found, err = r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile(nativeBunLockfiles...))
+	if found && choice.Exact == "" {
+		choice.Exact = exactRequest(nativeBun, choice, readFile)
+	}
+	return choice, found, err
 }
 
 // nativeBunCanary is Render's BUN_VERSION / .bun-version value for Bun's
@@ -760,7 +765,7 @@ func packageEnginesNode(readFile func(string) ([]byte, bool)) string {
 // chosen line when it differs from the line's reviewed patch, else "". Only a
 // plain version signal counts (an env var or a single-version file); a range,
 // an alias or a lockfile keeps resolving to the line's reviewed patch.
-func exactRequest(runtime string, choice NativeChoice, readFile func(string) ([]byte, bool)) string {
+func exactRequest(t nativeToolchain, choice NativeChoice, readFile func(string) ([]byte, bool)) string {
 	signal, _, _ := strings.Cut(choice.Source, ", ")
 	var raw string
 	if key, value, isEnv := strings.Cut(signal, "="); isEnv {
@@ -772,10 +777,10 @@ func exactRequest(runtime string, choice NativeChoice, readFile func(string) ([]
 		raw = firstLine(readFile, signal)
 	}
 	version := strings.ToLower(strings.TrimSpace(raw))
-	for _, prefix := range []string{"python-", "ruby-", "v"} {
+	for _, prefix := range []string{"python-", "ruby-", "bun-", "v"} {
 		version = strings.TrimPrefix(version, prefix)
 	}
-	line, ok := nativeToolchains[runtime].find(choice.Line)
+	line, ok := t.find(choice.Line)
 	if !ok || !fullVersion.MatchString(version) || version == line.version || !strings.HasPrefix(version, choice.Line+".") {
 		return ""
 	}
