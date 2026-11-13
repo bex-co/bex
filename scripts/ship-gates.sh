@@ -46,6 +46,15 @@ done
 root=$(cd "$(dirname "$0")/.." && pwd)
 cd "$root"
 
+# Repository security settings (w3/m365): a warning, never a stop. Push
+# protection is readable only with an admin token, which shippers hold and the
+# daily github-repo-security-drift workflow's GITHUB_TOKEN does not, so this is
+# where it is checked in full. It runs in the background, one try per call, and
+# is read at the end; an unreadable answer (no gh, no network) is quiet.
+security_out=$(mktemp)
+GH_RETRY_ATTEMPTS=1 bash scripts/github-repo-security-drift.sh >"$security_out" 2>/dev/null &
+security_pid=$!
+
 # No --branch: that filter turns GitHub's run listing into a search, which can
 # answer with a page of only old runs (it once blocked a green main on a
 # month-old failure). deploy.yml runs on main pushes and manual dispatches, so
@@ -130,4 +139,11 @@ if [ -n "$native_changed" ]; then
   echo "ship-gates: native custody paths changed — running the native custody suites" >&2
   python3 -B -m unittest discover -s .github/scripts -p 'test_native_oci_*.py'
 fi
+security_rc=0
+wait "$security_pid" || security_rc=$?
+if [ "$security_rc" -eq 1 ]; then
+  echo "ship-gates: warning: the repository's secret scanning or main's history protection drifted (w3/m365):" >&2
+  grep '^DRIFT' "$security_out" >&2 || true
+fi
+rm -f "$security_out"
 echo "ship-gates: ok" >&2

@@ -18,4 +18,6 @@ rm -f "$tmp/calls"; out=$(gh_retry flaky 3 a) || fail "third attempt should succ
 rm -f "$tmp/calls"; if gh_retry flaky 4 b >/dev/null; then fail "a fourth attempt was made"; fi
 [ "$(cat "$tmp/calls")" = 3 ] || fail "want 3 attempts, got $(cat "$tmp/calls")"
 rm -f "$tmp/calls"; out=$(gh_retry flaky 1 c); [ "$out" = "ok:c" ] && [ "$(cat "$tmp/calls")" = 1 ] || fail "a success was retried"
+rm -f "$tmp/calls"; if GH_RETRY_ATTEMPTS=1 gh_retry flaky 2 d >/dev/null; then fail "GH_RETRY_ATTEMPTS=1 retried"; fi
+[ "$(cat "$tmp/calls")" = 1 ] || fail "GH_RETRY_ATTEMPTS=1: want 1 attempt, got $(cat "$tmp/calls")"
 echo "PASS: gh-retry"

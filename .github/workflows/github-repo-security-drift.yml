@@ -1,0 +1,68 @@
+name: GitHub repository security drift
+
+# The push-time refusal of leaked credentials and main's protection against
+# deletion and force-push live in repository settings no file in this tree can
+# see (w3/m365): secret scanning + push protection, and the `main history`
+# ruleset. A settings change, or a history rewrite that forgets to re-enable
+# the ruleset (docs/runbooks/main-history-rewrite.md), would silently remove
+# them. This reads the live settings daily and keeps one tracking issue open
+# while they drift.
+#
+# GITHUB_TOKEN cannot read push protection (only admins see
+# security_and_analysis); the script says so instead of passing it off, and
+# scripts/ship-gates.sh runs the same check with each shipper's admin token.
+# Not a gate, like github-environments-drift: an advisory reader of repository
+# settings must not be able to block releases.
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "47 9 * * *"
+
+permissions:
+  contents: read
+  issues: write
+  # The secret-scanning alerts list answers 404 when scanning is disabled.
+  security-events: read
+
+jobs:
+  drift:
+    runs-on: ubuntu-24.04-arm
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
+      - name: Self-test the drift rules
+        run: bash scripts/github-repo-security-drift.test.sh
+      - name: Check the repository's security settings
+        id: check
+        run: |
+          if bash scripts/github-repo-security-drift.sh > drift.txt 2>&1; then
+            echo "drift=false" >> "$GITHUB_OUTPUT"
+          else
+            rc=$?
+            if [ "$rc" -ne 1 ]; then
+              cat drift.txt
+              exit "$rc" # unusable (2) or crashed: never a silent pass, never "drift"
+            fi
+            echo "drift=true" >> "$GITHUB_OUTPUT"
+          fi
+          cat drift.txt
+      - name: Open or update the tracking issue
+        if: steps.check.outputs.drift == 'true'
+        run: |
+          { cat drift.txt; echo; echo "Fix in repository Settings → Advanced Security and Settings → Rules → Rulesets (w3/m365). After a deliberate history rewrite, re-enable the ruleset per docs/runbooks/main-history-rewrite.md."; } > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label github-repo-security-drift \
+            --color B60205 --description "Secret scanning, push protection or main's history rules drifted" \
+            --title "Repository secret scanning or main's history protection is off" --body-file issue-body.md
+      - name: Close the tracking issue once the settings match again
+        if: steps.check.outputs.drift == 'false'
+        run: |
+          bash scripts/lib/tracking-issue.sh close --label github-repo-security-drift --comment "Secret scanning and main's deletion and non-fast-forward rules match w3/m365 again."

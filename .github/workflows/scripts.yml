@@ -97,6 +97,9 @@ jobs:
       # w3/m173: the live-settings reader behind production-secret confinement.
       - name: GitHub environment drift self-test
         run: bash scripts/github-environments-drift.test.sh
+      # w3/m365: secret scanning, push protection and main's history rules.
+      - name: GitHub repository security drift self-test
+        run: bash scripts/github-repo-security-drift.test.sh
       # w6/110 (#134): an activator-held wake is a wake, and stage 4 polls.
       - name: Tenant-view canary stage 4 self-test
         run: bash scripts/tenant-view-liveness.test.sh

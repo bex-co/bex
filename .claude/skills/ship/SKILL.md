@@ -119,6 +119,16 @@ git push origin main
 
 If the push is rejected (non-fast-forward), re-run Step 3, resolve any conflicts using its procedure, run the gates again, and retry push. Do not force-push to `main`.
 
+If the push is rejected by **push protection** (`GH013: Repository rule violations found` naming `GITHUB PUSH PROTECTION` and a secret type, w3/m365), a commit carries a credential in a format GitHub recognizes. Never follow the "allow the secret" URL, and never bypass it any other way.
+
+1. Find the commit and path the refusal names. Do not print the value.
+2. Rewrite your **unpushed** commits so the value is gone (for example `git reset --soft origin/main`, remove the value, and commit again). Never rewrite commits that are already on `origin/main`.
+3. If the value is a real credential, treat it as exposed: rotate it (ADR019 §Decision 6) and update `.env` and GitHub secrets through `scripts/gh-secrets.sh`.
+4. If it is a test fixture or a published test vector, change the fixture so it no longer matches the provider's format.
+5. Run the gates and push again.
+
+`main` itself refuses deletion and non-fast-forward pushes (ruleset `main history`). A deliberate history rewrite follows `docs/runbooks/main-history-rewrite.md`; it is never part of a ship.
+
 ## Step 6 — Report
 
 Once the push succeeds, the ship is done. Print one line — the shipped `HEAD` SHA + subject:

@@ -81,6 +81,27 @@ printf '#!/bin/sh\nexit 1\n' >"$tmp/gh"
 run_ok HEAD
 grep -q "warning" "$tmp/err" || fail "unreadable status gave no warning"
 
+# Repository security drift (w3/m365) is a warning, never a stop: a gh that
+# answers as an admin, with push protection set by $PP. GITHUB_REPOSITORY is
+# pinned because CI always sets it to the real repository.
+cat >"$tmp/gh" <<STUB
+#!/bin/sh
+case "\$*" in
+  "run list"*) printf '%s\n' '[$(r success completed 10)]' ;;
+  "repo view"*) echo o/r ;;
+  "api repos/o/r") printf '{"security_and_analysis":{"secret_scanning":{"status":"enabled"},"secret_scanning_push_protection":{"status":"%s"}}}\n' "\$PP" ;;
+  "api repos/o/r/rules/branches/main") echo '[{"type":"deletion","ruleset_id":7},{"type":"non_fast_forward","ruleset_id":7}]' ;;
+  "api repos/o/r/rulesets/7") echo '{"id":7,"bypass_actors":[]}' ;;
+  *) exit 1 ;;
+esac
+STUB
+chmod +x "$tmp/gh"
+GITHUB_REPOSITORY=o/r PP=disabled run_quiet HEAD
+grep -q "secret scanning or main's history protection drifted" "$tmp/err" || fail "push protection off gave no warning: $(cat "$tmp/err")"
+grep -q "DRIFT: secret_scanning_push_protection is disabled" "$tmp/err" || fail "the warning does not name the setting: $(cat "$tmp/err")"
+GITHUB_REPOSITORY=o/r PP=enabled run_quiet HEAD
+if grep -q "drifted" "$tmp/err"; then fail "matching settings warned: $(cat "$tmp/err")"; fi
+
 if bash "$root/scripts/ship-gates.sh" 2>/dev/null; then fail "a missing base ref must be refused"; fi
 
 # The dashboard gate (w6/m159), in a throwaway repo with a stubbed yarn: a
