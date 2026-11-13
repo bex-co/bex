@@ -21,6 +21,8 @@ import (
 	"errors"
 	"testing"
 
+	"sigs.k8s.io/controller-runtime/pkg/client"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -33,11 +35,6 @@ func blueprintApp(name string) *appv1alpha1.App {
 	a := sampleApp(name)
 	a.Spec.Env = []appv1alpha1.EnvVar{
 		{Name: "MESSAGE", Value: "hello from bex"},
-		// A Secret-key reference has no value to show and no view to live in —
-		// it must be skipped, not rendered as an empty variable.
-		{Name: "FROM_SECRET", ValueFrom: &appv1alpha1.EnvVarSource{
-			SecretKeyRef: &appv1alpha1.SecretKeySelector{Name: "other", Key: "k"},
-		}},
 	}
 	return a
 }
@@ -78,9 +75,6 @@ func TestManifestEnvIsVisibleOnEveryRead(t *testing.T) {
 	}
 	if got := byKey["TOKEN"]; got.Value != "t0ken" || got.ManagedBy != "" {
 		t.Errorf("store var = %+v, want an unflagged editable variable", got)
-	}
-	if _, leaked := byKey["FROM_SECRET"]; leaked {
-		t.Error("a ValueFrom reference has no value to show and must not appear as a variable")
 	}
 
 	// The single-key read agreed with the list only by 404ing before this fix.
@@ -144,8 +138,6 @@ func TestNonBlueprintServiceReadsAreUnchanged(t *testing.T) {
 // the manifest's own `env` entry beats. The API said 200, the Environment tab
 // showed the new value, and the process kept the old one.
 func TestManifestKeyWritesAreRefused(t *testing.T) {
-	const manifestValue = "hello from bex"
-
 	assertRefused := func(t *testing.T, err error) {
 		t.Helper()
 		if err == nil {
@@ -160,60 +152,74 @@ func TestManifestKeyWritesAreRefused(t *testing.T) {
 		}
 	}
 
-	t.Run("SetEnvVar", func(t *testing.T) {
-		store := newFakeSecretStore()
-		svc := newService(store, blueprintApp("bp"))
-		_, err := svc.SetEnvVar(context.Background(), "bp", "MESSAGE", EnvVarWrite{Value: "overwritten"})
-		assertRefused(t, err)
-		if _, wrote := store.m[envPath("bp")]["MESSAGE"]; wrote {
-			t.Error("a refused write must leave nothing in the store")
-		}
-		// The read still reports what the process actually has.
-		got, err := svc.GetEnvVar(context.Background(), "bp", "MESSAGE")
-		if err != nil || got.Value != manifestValue {
-			t.Errorf("after the refusal MESSAGE = %+v (err %v), want the manifest value", got, err)
-		}
-	})
+	// A literal (w4/m120) and a Blueprint reference (w8/299): the container's
+	// `env` beats the store's `envFrom` for both, so both shadow a store write.
+	for _, tc := range []struct {
+		name, key, value string
+		objs             func() []client.Object
+	}{
+		{"literal", "MESSAGE", "hello from bex", func() []client.Object { return []client.Object{blueprintApp("bp")} }},
+		{"reference", "PGRST_DB_URI", "postgresql://app:pw@dpg-x-rw.default:5432/app", func() []client.Object {
+			return []client.Object{referencingApp("bp"), databaseSecret()}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Run("SetEnvVar", func(t *testing.T) {
+				store := newFakeSecretStore()
+				svc := newService(store, tc.objs()...)
+				_, err := svc.SetEnvVar(context.Background(), "bp", tc.key, EnvVarWrite{Value: "overwritten"})
+				assertRefused(t, err)
+				if _, wrote := store.m[envPath("bp")][tc.key]; wrote {
+					t.Error("a refused write must leave nothing in the store")
+				}
+				// The read still reports what the process actually has.
+				got, err := svc.GetEnvVar(context.Background(), "bp", tc.key)
+				if err != nil || got.Value != tc.value {
+					t.Errorf("after the refusal %s = %+v (err %v), want %q", tc.key, got, err, tc.value)
+				}
+			})
 
-	t.Run("DeleteEnvVar", func(t *testing.T) {
-		svc := newService(newFakeSecretStore(), blueprintApp("bp"))
-		assertRefused(t, svc.DeleteEnvVar(context.Background(), "bp", "MESSAGE"))
-	})
+			t.Run("DeleteEnvVar", func(t *testing.T) {
+				svc := newService(newFakeSecretStore(), tc.objs()...)
+				assertRefused(t, svc.DeleteEnvVar(context.Background(), "bp", tc.key))
+			})
 
-	t.Run("SetEnvVars refuses the whole bulk write", func(t *testing.T) {
-		store := newFakeSecretStore()
-		svc := newService(store, blueprintApp("bp"))
-		_, err := svc.SetEnvVars(context.Background(), "bp", []EnvVarView{
-			{Key: "INNOCENT", Value: "fine"},
-			{Key: "MESSAGE", Value: "overwritten"},
+			t.Run("SetEnvVars refuses the whole bulk write", func(t *testing.T) {
+				store := newFakeSecretStore()
+				svc := newService(store, tc.objs()...)
+				_, err := svc.SetEnvVars(context.Background(), "bp", []EnvVarView{
+					{Key: "INNOCENT", Value: "fine"},
+					{Key: tc.key, Value: "overwritten"},
+				})
+				assertRefused(t, err)
+				// All-or-nothing: the caller wrote this as one unit, so the innocent
+				// half must not land either.
+				if _, wrote := store.m[envPath("bp")]["INNOCENT"]; wrote {
+					t.Error("a refused bulk write must not apply its innocent half")
+				}
+			})
+
+			t.Run("PatchEnvironment", func(t *testing.T) {
+				svc := newService(newFakeSecretStore(), tc.objs()...)
+				_, err := svc.PatchEnvironment(context.Background(), "bp", EnvironmentPatch{
+					SaveMode: SaveModeOnly,
+					EnvVars:  []EnvVarPatch{{Key: tc.key, Value: "overwritten", ValueSet: true}},
+				})
+				assertRefused(t, err)
+			})
+
+			t.Run("PatchEnvironment rename away from a manifest key", func(t *testing.T) {
+				// A rename deletes the source key, so naming a manifest key as fromKey
+				// is the same shadowing hazard by another route.
+				svc := newService(newFakeSecretStore(), tc.objs()...)
+				_, err := svc.PatchEnvironment(context.Background(), "bp", EnvironmentPatch{
+					SaveMode: SaveModeOnly,
+					EnvVars:  []EnvVarPatch{{Key: "RENAMED", FromKey: tc.key, ValueSet: true}},
+				})
+				assertRefused(t, err)
+			})
 		})
-		assertRefused(t, err)
-		// All-or-nothing: the caller wrote this as one unit, so the innocent
-		// half must not land either.
-		if _, wrote := store.m[envPath("bp")]["INNOCENT"]; wrote {
-			t.Error("a refused bulk write must not apply its innocent half")
-		}
-	})
-
-	t.Run("PatchEnvironment", func(t *testing.T) {
-		svc := newService(newFakeSecretStore(), blueprintApp("bp"))
-		_, err := svc.PatchEnvironment(context.Background(), "bp", EnvironmentPatch{
-			SaveMode: SaveModeOnly,
-			EnvVars:  []EnvVarPatch{{Key: "MESSAGE", Value: "overwritten", ValueSet: true}},
-		})
-		assertRefused(t, err)
-	})
-
-	t.Run("PatchEnvironment rename away from a manifest key", func(t *testing.T) {
-		// A rename deletes the source key, so naming a manifest key as fromKey
-		// is the same shadowing hazard by another route.
-		svc := newService(newFakeSecretStore(), blueprintApp("bp"))
-		_, err := svc.PatchEnvironment(context.Background(), "bp", EnvironmentPatch{
-			SaveMode: SaveModeOnly,
-			EnvVars:  []EnvVarPatch{{Key: "RENAMED", FromKey: "MESSAGE", ValueSet: true}},
-		})
-		assertRefused(t, err)
-	})
+	}
 }
 
 // TestNonManifestKeysStayWritable is the other regression target: the guard

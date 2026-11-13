@@ -36,7 +36,9 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -243,8 +245,8 @@ func (s *Service) readMap(ctx context.Context, path string) (map[string]string, 
 	return cur, nil
 }
 
-// manifestEnv returns the literal environment a render.yaml manifest owns on
-// this App's spec, keyed by name.
+// manifestEnv returns the environment a render.yaml manifest owns on this
+// App's spec, keyed by name.
 //
 // A blueprint's plain `envVars:` literals deliberately stay on spec.Env rather
 // than moving into the mutable store the way an interactively-created
@@ -255,24 +257,62 @@ func (s *Service) readMap(ctx context.Context, path string) (map[string]string, 
 // mentioned them: a blueprint service's Environment tab was empty while its
 // process ran the manifest's values.
 //
-// ValueFrom entries are skipped: they are Secret-key references the operator
-// resolves, not values, and have no representation in an env-var view — the
-// same rule takeCreateEnvLiterals applies on the interactive path.
+// A reference (`fromDatabase`, or `fromService` to a Key Value with a
+// property) is owned the same way. A Blueprint stores it as a SecretKeyRef so a
+// credential rotation never writes plaintext into the App, and the container's
+// `env` resolves it, beating `envFrom` just as a literal does. Render stores
+// such a variable on the service and lists it (w8/299). Its value is whatever
+// the named Secret holds, so manifestEnv lists it with "" and reads that need
+// values fill it in (resolveManifestRefs).
 func manifestEnv(a *appv1alpha1.App) map[string]string {
 	if a == nil || len(a.Spec.Env) == 0 {
 		return nil
 	}
 	out := make(map[string]string, len(a.Spec.Env))
 	for _, item := range a.Spec.Env {
-		if item.ValueFrom == nil {
+		switch {
+		case item.ValueFrom == nil:
 			out[item.Name] = item.Value
+		case item.ValueFrom.SecretKeyRef != nil:
+			out[item.Name] = ""
 		}
 	}
 	return out
 }
 
-// mergeManifestEnv overlays the manifest's literals onto the store's map and
-// reports which keys the manifest owns.
+// resolveManifestRefs sets each reference in manifest to the value its Secret
+// holds now, the value a container started now would get. The Secret lives in
+// the App's own namespace, the only one a SecretKeyRef can name. A Secret or key
+// that is absent (a datastore still provisioning, or deleted) reads "", as
+// the process cannot start with it either.
+func (s *Service) resolveManifestRefs(ctx context.Context, a *appv1alpha1.App, manifest map[string]string) error {
+	secrets := map[string]*corev1.Secret{}
+	for _, item := range a.Spec.Env {
+		if item.ValueFrom == nil || item.ValueFrom.SecretKeyRef == nil {
+			continue
+		}
+		ref := item.ValueFrom.SecretKeyRef
+		sec, seen := secrets[ref.Name]
+		if !seen {
+			sec = &corev1.Secret{}
+			if err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: ref.Name}, sec); err != nil {
+				if !apierrors.IsNotFound(err) {
+					return envSourceUnavailable(err)
+				}
+				sec = nil
+			}
+			secrets[ref.Name] = sec
+		}
+		if sec != nil {
+			manifest[item.Name] = string(sec.Data[ref.Key])
+		}
+	}
+	return nil
+}
+
+// mergeManifestEnv overlays the manifest's literals and references onto the
+// store's map and reports which keys the manifest owns. withValues resolves
+// the references' values; a keys-only read leaves them "" and reads no Secret.
 //
 // The manifest WINS a collision, because the runtime does: Kubernetes `env`
 // beats `envFrom`, so the manifest value is what the process holds. A
@@ -280,10 +320,15 @@ func manifestEnv(a *appv1alpha1.App) map[string]string {
 // that landed before those guards shipped would otherwise make the read report
 // a value no process ever sees, which is the exact failure this milestone is
 // about.
-func mergeManifestEnv(env map[string]string, a *appv1alpha1.App) (map[string]string, map[string]bool) {
+func (s *Service) mergeManifestEnv(ctx context.Context, env map[string]string, a *appv1alpha1.App, withValues bool) (map[string]string, map[string]bool, error) {
 	manifest := manifestEnv(a)
 	if len(manifest) == 0 {
-		return env, nil
+		return env, nil, nil
+	}
+	if withValues {
+		if err := s.resolveManifestRefs(ctx, a, manifest); err != nil {
+			return nil, nil, err
+		}
 	}
 	merged := make(map[string]string, len(env)+len(manifest))
 	for k, v := range env {
@@ -296,7 +341,7 @@ func mergeManifestEnv(env map[string]string, a *appv1alpha1.App) (map[string]str
 		// create before w8/027, not manifest-owned: listed, but deletable.
 		owned[k] = core.ValidEnvKey(k)
 	}
-	return merged, owned
+	return merged, owned, nil
 }
 
 // dropInvalidSpecEnv removes spec.Env literals whose names no env verb accepts
@@ -324,11 +369,11 @@ func dropInvalidSpecEnv(a *appv1alpha1.App, drop func(name string) bool) bool {
 // stable response (Render's GET /v1/services/{id}/env-vars). Reading secret
 // values is sensitive, gated like connection strings (RelCanViewSensitive).
 //
-// The set is the union of the mutable store and the manifest literals — see
-// manifestEnv for why the latter live somewhere else and why omitting them was
-// a lie about the running process.
+// The set is the union of the mutable store and the manifest's literals and
+// references — see manifestEnv for why the latter live somewhere else and why
+// omitting them was a lie about the running process.
 func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView, error) {
-	vars, a, err := s.listEnvVars(ctx, service)
+	vars, a, err := s.listEnvVars(ctx, service, true)
 	if err != nil {
 		return nil, err
 	}
@@ -337,13 +382,17 @@ func (s *Service) ListEnvVars(ctx context.Context, service string) ([]EnvVarView
 }
 
 // listEnvVars is ListEnvVars without the view record, for reads that show no
-// one a value (ListEnvVarNames) or decide for themselves (listEnvVarsPage).
-func (s *Service) listEnvVars(ctx context.Context, service string) ([]EnvVarView, *appv1alpha1.App, error) {
+// one a value (ListEnvVarNames, which also skips resolving references) or
+// decide for themselves (listEnvVarsPage).
+func (s *Service) listEnvVars(ctx context.Context, service string, withValues bool) ([]EnvVarView, *appv1alpha1.App, error) {
 	env, a, revision, err := s.readAuthorizedEnv(ctx, service)
 	if err != nil {
 		return nil, nil, err
 	}
-	merged, owned := mergeManifestEnv(env, a)
+	merged, owned, err := s.mergeManifestEnv(ctx, env, a, withValues)
+	if err != nil {
+		return nil, nil, err
+	}
 	return envVarViews(merged, revision, owned), a, nil
 }
 
@@ -362,7 +411,8 @@ func (s *Service) recordValuesViewed(ctx context.Context, a *appv1alpha1.App) {
 //
 // It returns the App alongside the store's map because the store is not the
 // only source of a service's environment: a blueprint manifest owns literals
-// on spec.Env that every read must also report (w4/m120, see manifestEnv).
+// and references on spec.Env that every read must also report (w4/m120,
+// w8/299, see manifestEnv).
 func (s *Service) readAuthorizedEnv(ctx context.Context, service string) (map[string]string, *appv1alpha1.App, string, error) {
 	a, ctx, service, err := s.scope(ctx, core.RelCanViewSensitive, service)
 	if err != nil {
@@ -400,8 +450,9 @@ func (s *Service) readVersionedEnvMap(ctx context.Context, path string, versione
 }
 
 // envSourceUnavailable answers a failed read or write against a configured
-// store (w4/404): the public message says the store could not be read, never
-// that it is "not configured", and the cause (never secret values) is logged.
+// store (w4/404), or a failed read of a Secret a Blueprint reference names
+// (w8/299): the public message says the store could not be read, never that it
+// is "not configured", and the cause (never secret values) is logged.
 func envSourceUnavailable(cause error) error {
 	return core.HideCause(core.ErrSecretsStoreFailed, cause)
 }
@@ -415,7 +466,7 @@ func secretChanged() error {
 // variables. after is the prior page's item cursor (the env-var key). Paging
 // policy: see applyPageLimits.
 func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, limit int) ([]EnvVarView, error) {
-	vars, a, err := s.listEnvVarsPage(ctx, service, after, limit)
+	vars, a, err := s.listEnvVarsPage(ctx, service, after, limit, true)
 	if err != nil {
 		return nil, err
 	}
@@ -424,9 +475,10 @@ func (s *Service) ListEnvVarsPage(ctx context.Context, service, after string, li
 }
 
 // listEnvVarsPage is ListEnvVarsPage without the view record, for GraphQL's
-// field, which records only when the query selects values.
-func (s *Service) listEnvVarsPage(ctx context.Context, service, after string, limit int) ([]EnvVarView, *appv1alpha1.App, error) {
-	vars, a, err := s.listEnvVars(ctx, service)
+// field, which records only when the query selects values and resolves
+// references only then.
+func (s *Service) listEnvVarsPage(ctx context.Context, service, after string, limit int, withValues bool) ([]EnvVarView, *appv1alpha1.App, error) {
+	vars, a, err := s.listEnvVars(ctx, service, withValues)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -469,7 +521,10 @@ func (s *Service) GetEnvVar(ctx context.Context, service, key string) (EnvVarVie
 	if err != nil {
 		return EnvVarView{}, err
 	}
-	merged, owned := mergeManifestEnv(env, a)
+	merged, owned, err := s.mergeManifestEnv(ctx, env, a, true)
+	if err != nil {
+		return EnvVarView{}, err
+	}
 	v, ok := merged[key]
 	if !ok {
 		return EnvVarView{}, core.NotFound("env var")
@@ -800,7 +855,10 @@ func (s *Service) EnvVarKeys(ctx context.Context, service string) ([]core.EnvVar
 	if err != nil {
 		return nil, err
 	}
-	merged, owned := mergeManifestEnv(env, a)
+	merged, owned, err := s.mergeManifestEnv(ctx, env, a, false)
+	if err != nil {
+		return nil, err
+	}
 	keys := core.SortedKeys(merged)
 	out := make([]core.EnvVar, 0, len(keys))
 	for _, key := range keys {
@@ -830,7 +888,10 @@ func (s *Service) envVarValue(ctx context.Context, service, key string) (core.En
 	if err != nil {
 		return core.EnvVar{}, nil, err
 	}
-	merged, owned := mergeManifestEnv(env, a)
+	merged, owned, err := s.mergeManifestEnv(ctx, env, a, true)
+	if err != nil {
+		return core.EnvVar{}, nil, err
+	}
 	value, ok := merged[key]
 	if !ok {
 		return core.EnvVar{}, nil, core.NotFound("env var")
@@ -1217,12 +1278,12 @@ var (
 	_ core.SecretFileReader = (*Service)(nil)
 )
 
-// ListEnvVarNames returns only the NAMES of a service's mutable-store env
-// vars — the Blueprint generator's seam (w8/m22): generated manifests emit
-// sync:false name-only entries, so values must never leave this package for
-// that path.
+// ListEnvVarNames returns only the NAMES of a service's env vars, the store's
+// and the manifest's — the Blueprint generator's seam (w8/m22): generated
+// manifests emit sync:false name-only entries, so values must never leave this
+// package for that path, and no referenced Secret is read for it.
 func (s *Service) ListEnvVarNames(ctx context.Context, service string) ([]string, error) {
-	vars, _, err := s.listEnvVars(ctx, service)
+	vars, _, err := s.listEnvVars(ctx, service, false)
 	if err != nil {
 		return nil, err
 	}
