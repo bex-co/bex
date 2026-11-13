@@ -155,3 +155,18 @@ func TestKeysOnlyReadsDoNotReadReferencedSecrets(t *testing.T) {
 		t.Errorf("ListEnvVars with the referenced Secret unreadable = %v, want ErrSecretsStoreFailed", err)
 	}
 }
+
+// w8/302: a Blueprint sync could write a variable with no name. No process
+// reads it, so no env read lists it.
+func TestANamelessManifestVariableIsNotListed(t *testing.T) {
+	a := sampleApp("pg")
+	a.Spec.Env = []appv1alpha1.EnvVar{{Name: "APP_ENV", Value: "prod"}, {}}
+	svc := newService(newFakeSecretStore(), a)
+	list, err := svc.ListEnvVars(context.Background(), "pg")
+	if err != nil {
+		t.Fatalf("ListEnvVars: %v", err)
+	}
+	if len(list) != 1 || list[0].Key != "APP_ENV" {
+		t.Fatalf("list = %+v, want APP_ENV alone", list)
+	}
+}

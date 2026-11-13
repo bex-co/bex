@@ -271,6 +271,8 @@ func manifestEnv(a *appv1alpha1.App) map[string]string {
 	out := make(map[string]string, len(a.Spec.Env))
 	for _, item := range a.Spec.Env {
 		switch {
+		case item.Name == "":
+			// A sync before w8/302 could write one; no process reads it.
 		case item.ValueFrom == nil:
 			out[item.Name] = item.Value
 		case item.ValueFrom.SecretKeyRef != nil:

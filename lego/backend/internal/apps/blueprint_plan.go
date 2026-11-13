@@ -504,6 +504,9 @@ func mergeBlueprintEnv(current, declared []appv1alpha1.EnvVar) []appv1alpha1.Env
 	}
 	merged := make([]appv1alpha1.EnvVar, 0, len(current)+len(declared))
 	for _, variable := range current {
+		if variable.Name == "" {
+			continue // a sync before w8/302 could write one: this sync drops it
+		}
 		if replacement, ok := byName[variable.Name]; ok {
 			merged = append(merged, replacement)
 			delete(byName, variable.Name)

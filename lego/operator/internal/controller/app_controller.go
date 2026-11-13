@@ -2130,7 +2130,7 @@ func effectiveDeployRef(spec appv1alpha1.AppSpec) string {
 func buildEnv(builder string, env []appv1alpha1.EnvVar) []corev1.EnvVar {
 	out := make([]corev1.EnvVar, 0, len(env))
 	for _, item := range env {
-		if item.ValueFrom != nil {
+		if item.Name == "" || item.ValueFrom != nil {
 			continue
 		}
 		if builder == build.BuilderBuildpack && !buildpackEnvName(item.Name) {
@@ -5877,6 +5877,12 @@ func appEnv(app *appv1alpha1.App, port int) []corev1.EnvVar {
 	for _, e := range app.Spec.Env {
 		if e.Name == portEnvName {
 			continue // restated last as the serving port (envPort, w5/m149)
+		}
+		// A sync before w8/302 could write a nameless variable, which no
+		// process can read and which makes Kubernetes refuse the whole pod
+		// template: skipping it lets an App that carries one roll again.
+		if e.Name == "" {
+			continue
 		}
 		ev := corev1.EnvVar{Name: e.Name, Value: execution.KubernetesLiteral(e.Value)}
 		if e.ValueFrom != nil && e.ValueFrom.SecretKeyRef != nil {

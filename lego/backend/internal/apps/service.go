@@ -3383,7 +3383,10 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 		MaxShutdownDelaySeconds: clonePtr(
 			req.MaxShutdownDelaySeconds,
 		),
-		Env:               req.Env,
+		// A copy: a Blueprint sync plans, then applies, one parsed request,
+		// and an in-place edit of this spec's env must not reach the next
+		// step's read of it (w8/302).
+		Env:               slices.Clone(req.Env),
 		AutoDeploy:        autoDeploy,
 		AutoDeployTrigger: createAutoDeployTrigger(autoDeploy, req.AutoDeployChecksPass),
 		NotifyOnFail:      notifyOnFail,

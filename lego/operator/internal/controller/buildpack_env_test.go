@@ -182,3 +182,17 @@ func TestEffectiveBuilderMapsRenderRuntime(t *testing.T) {
 		}
 	}
 }
+
+// w8/302: a Blueprint sync could write a variable with no name. Kubernetes
+// refuses a pod whose env has one, so neither the build nor the runtime
+// container may carry it.
+func TestANamelessVariableReachesNoContainer(t *testing.T) {
+	env := []appv1alpha1.EnvVar{{Name: "APP_ENV", Value: "prod"}, {}}
+	if got := buildEnv(build.BuilderNative, env); len(got) != 1 || got[0].Name != "APP_ENV" {
+		t.Fatalf("buildEnv(native) = %#v, want APP_ENV alone", got)
+	}
+	app := projectionApp(func(a *appv1alpha1.App) { a.Spec.Env = env })
+	if got := appEnv(app, 10000); slices.ContainsFunc(got, func(e corev1.EnvVar) bool { return e.Name == "" }) {
+		t.Fatalf("appEnv = %#v, want no nameless variable", got)
+	}
+}
