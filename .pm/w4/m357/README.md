@@ -118,3 +118,19 @@ Both read `available` at 10:44:42 and were deleted afterwards (`DELETE` 204, the
   - The endpoint served `issuer=OU=tea-daif693dqjvc73e7as3g, CN=dpg-dbrf619ens8c73fghhug` (the private CA) at all 12 checks from 11:24:49 to 11:30:01, roughly every 30 s. The last check was 5m19s after `available`, past DoD 1's 5-minute bound.
   - `connection-info` carried `?sslmode=verify-full` and `serverCaCertificate`.
 - **What it adds:** round 283's two certificates, issued at about 10:43, were the last ones for a while. This fixture, about 42 minutes later, got none. That fits a nearly empty refilling bucket (candidate 1) better than a fixed outage window. The round-283 note's reading stands: unverified until t001 reads the ACME errors. QA rounds should keep creating private datastores (`ipAllowList: []`) unless they are probing this milestone.
+
+## Round 304 — still stalled for Key Value at 16:02 (2026-11-13 15:52–16:02 UTC, pin `5de3d5bcce8e`)
+
+- **Fixture:** Free Key Value `qa-20261113-r304-kv` (`red-dbrj4f9ens8c73fghrlg`), created by REST at 15:52:24 with `ipAllowList: [0.0.0.0/0]`. It read `available` and `public: true` at 15:53:08. Deleted at 16:02 (`DELETE` 204, then `GET` 404).
+- **What was served:**
+  - `openssl s_client -connect red-dbrj4f9ens8c73fghrlg.kv.bex.co:6379 -servername …` answered `unexpected eof while reading` at every check from 15:58:49 to 16:01:57, 9 minutes after `available`. The host resolves (`49.12.20.236`), so only the TLS listener is missing, as in round 254.
+  - `GET /v1/key-value/{id}/connection-info` answered, every 15–20 s from 15:53 to 16:02:
+
+    ```
+    {"internalConnectionString":"redis://red-dbrj4f9ens8c73fghrlg:6379","externalConnectionString":"","cliCommand":"redis-cli -u redis://red-dbrj4f9ens8c73fghrlg:6379"}
+    ```
+
+- **What it adds to t003:**
+  - While the listener waits, a public store's `cliCommand` falls back to the internal URL (`KeyValueConnectionInfo`, `lego/backend/internal/keyvalue/service.go:1356-1371`). That command cannot reach the store from outside the cluster, and nothing in the response says the external endpoint is pending.
+  - GraphQL `KeyValueConnectionInfo` has the same three fields only (`cliCommand`, `externalConnectionString`, `internalConnectionString`), so the dashboard cannot tell pending from private either.
+- **Reading:** the round-286 stall had lasted at least 4.5 h by this check, or it recurred. No certificate request result was read. t001 still owns the ACME errors.
