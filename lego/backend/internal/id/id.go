@@ -131,6 +131,10 @@ var (
 	// sandbox is created in and a concurrency limit applies to. Render's own id
 	// pattern is ^sbg-[0-9a-v]{20}$, which is exactly xid's shape.
 	SandboxGroup = Kind{prefix: "sbg", desc: "sandbox group"}
+	// SandboxBuild is Render's `sbb-` sandbox build (w2/m358): one import of an
+	// OCI image into a sandbox group, which a sandbox create names as buildId.
+	// Render's pattern is ^sbb-[0-9a-v]{20}$, xid's shape.
+	SandboxBuild = Kind{prefix: "sbb", desc: "sandbox build (imported sandbox image)"}
 	// StaticRoute / StaticHeader are static-site rules stored as plain lists on
 	// the App spec, so their ids are derived (Derive, never New) — w8/062.
 	StaticRoute  = Kind{prefix: "rte", desc: "static site redirect/rewrite rule (derived)"}
@@ -159,7 +163,7 @@ var (
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

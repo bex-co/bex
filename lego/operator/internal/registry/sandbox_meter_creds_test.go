@@ -45,8 +45,9 @@ func getSecret(t *testing.T, c *Creds, name string) corev1.Secret {
 }
 
 // The meter's read user can read the snapshot repositories and nothing else; the
-// reaper can also delete; neither can push, and both are scoped to snapshots/**.
-func TestSandboxMeterCredsMintTwoScopedUsers(t *testing.T) {
+// reaper can also delete; the importer can push but not delete (w2/m358); all
+// three are scoped to snapshots/**.
+func TestSandboxMeterCredsMintScopedUsers(t *testing.T) {
 	ctx := context.Background()
 	c := meterTestCreds(t)
 	if err := c.EnsureSandboxMeterCreds(ctx); err != nil {
@@ -60,13 +61,16 @@ func TestSandboxMeterCredsMintTwoScopedUsers(t *testing.T) {
 	if string(sec.Data[SandboxMeterReaderUserKey]) != SandboxMeterReaderUser || string(sec.Data[SandboxMeterReaperUserKey]) != SandboxMeterReaperUser {
 		t.Errorf("usernames = %q / %q", sec.Data[SandboxMeterReaderUserKey], sec.Data[SandboxMeterReaperUserKey])
 	}
-	reader, reaper := string(sec.Data[SandboxMeterReaderPasswordKey]), string(sec.Data[SandboxMeterReaperPasswordKey])
-	if reader == "" || reaper == "" || reader == reaper {
-		t.Fatalf("passwords must be set and distinct, got %q and %q", reader, reaper)
+	if string(sec.Data[SandboxImporterUserKey]) != SandboxImporterUser {
+		t.Errorf("importer username = %q", sec.Data[SandboxImporterUserKey])
+	}
+	reader, reaper, importer := string(sec.Data[SandboxMeterReaderPasswordKey]), string(sec.Data[SandboxMeterReaperPasswordKey]), string(sec.Data[SandboxImporterPasswordKey])
+	if reader == "" || reaper == "" || importer == "" || reader == reaper || importer == reader || importer == reaper {
+		t.Fatalf("passwords must be set and distinct, got %q, %q and %q", reader, reaper, importer)
 	}
 
 	ht := getSecret(t, c, "zot-htpasswd")
-	for _, user := range []string{SandboxMeterReaderUser, SandboxMeterReaperUser, "bex-builder", "snap-tea-a-sandbox"} {
+	for _, user := range []string{SandboxMeterReaderUser, SandboxMeterReaperUser, SandboxImporterUser, "bex-builder", "snap-tea-a-sandbox"} {
 		if _, ok := htpasswdUserHash(ht.Data[htpasswdKey], user); !ok {
 			t.Errorf("htpasswd entry for %s missing (the existing users must survive)", user)
 		}
@@ -79,7 +83,14 @@ func TestSandboxMeterCredsMintTwoScopedUsers(t *testing.T) {
 	if !zotRepoUserGrants(data, snapshotsRepoGlob, SandboxMeterReaperUser, zotReadDeleteActions) {
 		t.Error("the reaper lacks read and delete on snapshots/**")
 	}
-	// The reader must never gain delete, and nobody gains write.
+	if !zotRepoUserGrants(data, snapshotsRepoGlob, SandboxImporterUser, zotImportActions) {
+		t.Error("the importer lacks read, create and update on snapshots/**")
+	}
+	// The reader must never gain delete, only the importer writes, and it never
+	// deletes.
+	if zotRepoUserGrants(data, snapshotsRepoGlob, SandboxImporterUser, zotReadWriteActions) {
+		t.Error("the importer must not be able to delete")
+	}
 	if zotRepoUserGrants(data, snapshotsRepoGlob, SandboxMeterReaderUser, zotReadDeleteActions) {
 		t.Error("the meter user must not be able to delete")
 	}
@@ -95,7 +106,7 @@ func TestSandboxMeterCredsMintTwoScopedUsers(t *testing.T) {
 		for _, p := range policies {
 			users, _ := p.(map[string]any)["users"].([]any)
 			for _, u := range users {
-				if u == SandboxMeterReaderUser || u == SandboxMeterReaperUser {
+				if u == SandboxMeterReaderUser || u == SandboxMeterReaperUser || u == SandboxImporterUser {
 					t.Errorf("%v is granted on %s, outside snapshots/**", u, repo)
 				}
 			}
@@ -155,7 +166,7 @@ func TestSandboxMeterCredsHealAMissingPasswordAndAMissingSecret(t *testing.T) {
 		t.Fatal(err)
 	}
 	fresh, ht := getSecret(t, c, SandboxMeterSecretName), getSecret(t, c, "zot-htpasswd")
-	for user, key := range map[string]string{SandboxMeterReaderUser: SandboxMeterReaderPasswordKey, SandboxMeterReaperUser: SandboxMeterReaperPasswordKey} {
+	for user, key := range map[string]string{SandboxMeterReaderUser: SandboxMeterReaderPasswordKey, SandboxMeterReaperUser: SandboxMeterReaperPasswordKey, SandboxImporterUser: SandboxImporterPasswordKey} {
 		hash, ok := htpasswdUserHash(ht.Data[htpasswdKey], user)
 		if !ok {
 			t.Fatalf("htpasswd entry for %s missing", user)
@@ -187,7 +198,7 @@ func TestSandboxMeterCredsReachEveryNamespacePattern(t *testing.T) {
 	for _, ns := range []string{"tea-a-sandbox", "tea-b-sandbox"} {
 		repo := SnapshotRepoGlob(ns)
 		if !zotRepoGrantsWith(data, repo, SnapshotZotUsername(ns), zotReadOnlyActions, sandboxMeterGrants()) {
-			t.Errorf("%s = %v, want the namespace's read user plus the meter's reader and reaper", repo, zotRepos(data)[repo])
+			t.Errorf("%s = %v, want the namespace's read user plus the meter's reader, reaper and importer", repo, zotRepos(data)[repo])
 		}
 	}
 	if !zotRepoGrants(data, "tea-a/web", "app-tea-a-web", zotReadWriteActions) {

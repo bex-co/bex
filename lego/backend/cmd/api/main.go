@@ -492,6 +492,9 @@ func main() {
 		// activity record and no tenant keys to sweep.
 		if st != nil {
 			go (&sandbox.IdleSuspender{Service: srv.Sandbox, Tenants: st}).Run(ctx)
+			// Imports whose replica died are failed, so a caller is not left
+			// polling a build no one advances (w2/m358).
+			go srv.Sandbox.RunImageSweeper(ctx)
 		}
 	}
 	// codex round-8 #9: the signed git webhook durably claims each processed
@@ -1429,6 +1432,14 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 				deps.SandboxMeter.Sizer = &sandbox.RegistrySizer{RegistryConfig: registry}
 				if reap {
 					deps.SandboxMeter.Reaper = &sandbox.RegistryReaper{RegistryConfig: reaper}
+				}
+				// Imported sandbox images (w2/m358) are written by the operator's
+				// importer user, so they need the operator-minted Secret.
+				if cfg.SandboxSnapshotRegistrySecret != "" {
+					key, _ := parseSecretRef(cfg.SandboxSnapshotRegistrySecret) // validated in config
+					importer := registry
+					importer.Credentials = secretCredentials(cl, key, registrySecretImporterUserKey, registrySecretImporterPasswordKey, time.Now)
+					deps.SandboxImages = sandbox.NewImages(st, importer)
 				}
 			}
 			go deps.SandboxMeter.Run(ctx)

@@ -43,6 +43,8 @@ Add a sandbox feature package in `lego/backend/internal/` that owns an **opensan
 
 ### D2 — Control-plane E2B compatibility now; spawn from templates
 
+> **Amended 2026-11-12 (w2/m358, Render parity first).** A sandbox also starts from an image the workspace imported into its sandbox group (Render's `sandbox-groups images import` and `sandboxes create --image`). The image runs with the base template's entrypoint and environment, so the "image + entrypoint fixed at registration" rule below now holds for the entrypoint only. Design: [ADR104 § Images](ADR104-sandbox-render-parity.md#images-w2m358).
+
 Serve E2B's REST **lifecycle** shapes so E2B lifecycle tooling transfers. Spawn from **pre-registered templates** (image + entrypoint fixed at registration), which takes the host-local `docker inspect` out of the hot path and matches E2B's own template model. Exec is surfaced through opensandbox `execd`. **Defer** full envd gRPC data-plane parity — `.pm/w2/m3/t002` already lists filesystem/proc APIs as out of scope, opensandbox already has its own exec daemon, and the primary consumer drives exec over MCP, not the E2B SDK's gRPC.
 
 | E2B (control plane) | bex route | opensandbox call |

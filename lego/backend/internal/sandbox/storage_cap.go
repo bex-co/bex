@@ -42,23 +42,31 @@ type StorageUsage interface {
 // does not refuse: the cap bounds bex's registry, and blocking every suspend on
 // a database blip would keep every idle sandbox billing.
 func (s *Service) checkStorageCap(ctx context.Context, raw osSandbox) error {
-	if s.MaxStorageBytes <= 0 || s.Storage == nil {
-		return nil
-	}
-	workspace := raw.Metadata[metadataWorkspace]
-	used, err := s.Storage.SandboxStorageBytes(ctx, workspace)
-	if err != nil {
-		log.Printf("sandbox storage: cap check workspace=%s: %v", workspace, err)
-		return nil
-	}
-	if used < s.MaxStorageBytes {
+	used, full := s.storageFull(ctx, raw.Metadata[metadataWorkspace])
+	if !full {
 		return nil
 	}
 	s.Metrics.observeRefusal("storage", "suspend")
 	return core.NewTooManyRequestsError(CodeSandboxStorageLimit,
-		fmt.Sprintf("this workspace's suspended sandboxes already hold %s of its %s sandbox storage limit; terminate sandboxes you no longer need, then suspend again",
+		fmt.Sprintf("this workspace's suspended sandboxes and sandbox images already hold %s of its %s sandbox storage limit; terminate sandboxes you no longer need, then suspend again",
 			formatGB(used), formatGB(s.MaxStorageBytes)),
 		map[string]any{"limitBytes": s.MaxStorageBytes, "usedBytes": used})
+}
+
+// storageFull reports whether the workspace's retained images (suspended
+// sandboxes' and imported ones, w2/m358) have reached MaxStorageBytes, and
+// how much they hold. A read failure is not full: the cap bounds bex's
+// registry, and refusing on every outage would cost more than it saves.
+func (s *Service) storageFull(ctx context.Context, workspace string) (int64, bool) {
+	if s.MaxStorageBytes <= 0 || s.Storage == nil {
+		return 0, false
+	}
+	used, err := s.Storage.SandboxStorageBytes(ctx, workspace)
+	if err != nil {
+		log.Printf("sandbox storage: cap check workspace=%s: %v", workspace, err)
+		return 0, false
+	}
+	return used, used >= s.MaxStorageBytes
 }
 
 func formatGB(bytes int64) string {

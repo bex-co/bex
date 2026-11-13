@@ -170,6 +170,9 @@ type Service struct {
 	// MaxGroups caps a workspace's groups (Render: 10; 0 = uncapped), past which a
 	// group create answers 400 sandbox_group_limit_reached.
 	MaxGroups int
+	// Images imports Render's sandbox images and resolves a create's buildId or
+	// buildName (w2/m358); nil answers the image routes 503.
+	Images *Images
 	// MaxGroupConcurrency is the ceiling and default of a group's concurrencyLimit
 	// (Render: 1,000; 0 = no ceiling). A higher requested value is capped to it.
 	MaxGroupConcurrency int
@@ -216,6 +219,10 @@ type CreateRequest struct {
 	// SandboxGroupID is the group to create in (Render's `sandboxGroupId`); empty
 	// means the workspace's default group.
 	SandboxGroupID string
+	// BuildID or BuildName starts the sandbox from an image imported into its
+	// group (Render's `--image`, w2/m358); both empty means the template image.
+	BuildID   string
+	BuildName string
 }
 
 func (s *Service) enabled() bool { return s.Client != nil }
@@ -395,24 +402,6 @@ func validateSandboxEnv(env map[string]string) error {
 // codeSandboxSnapshotsUnsupported names Render's sandbox snapshots: the
 // `snapshotId`/`snapshotName` create fields and every snapshot route.
 const codeSandboxSnapshotsUnsupported = "SANDBOX_SNAPSHOTS_UNSUPPORTED"
-
-// CodeSandboxImagesUnsupported names Render's imported sandbox images
-// (`sandbox-groups images import|get`, `sandboxes create --image`). bex starts
-// every sandbox from a registered template (ADR014 D2), never a caller image.
-const CodeSandboxImagesUnsupported = "SANDBOX_IMAGES_UNSUPPORTED"
-
-// refuseImage names the Render create fields that select an imported image
-// (`buildId`/`buildName` from `--image` and its deprecated alias `--build`, or a
-// raw `image` ref). Without this declaration strict decoding answered `unknown
-// field "buildId"` — an internal wire key, not the flag the user typed (w2/m263).
-func refuseImage(hasImage bool) error {
-	if !hasImage {
-		return nil
-	}
-	return core.NewBadRequestError(CodeSandboxImagesUnsupported,
-		"sandbox images are not supported (--image, or its deprecated alias --build): bex starts every sandbox from its base image; create the sandbox without --image and install what you need inside it",
-		map[string]any{"fields": []string{"buildId", "buildName", "image"}, "flags": []string{"--image", "--build"}})
-}
 
 // CodeInvalidSandboxName is Render's invalid_sandbox_name.
 const CodeInvalidSandboxName = "invalid_sandbox_name"
@@ -767,7 +756,7 @@ func sandboxFromOpenSandbox(raw osSandbox, workspace string) Sandbox {
 		Owner:              raw.Metadata[metadataOwner],
 		Workspace:          raw.Metadata[metadataWorkspace],
 		CreatedAt:          raw.Created,
-		Image:              raw.Image.URI,
+		Image:              displayImage(raw.Image.URI),
 		ungrouped:          !idleTracked(raw),
 	}
 }
@@ -836,6 +825,15 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	// plan keeps the template's registered size (the default plan only labels).
 	if size, named := planResources[req.Plan]; named {
 		tmpl.CPU, tmpl.Memory = size.CPU, size.Memory
+	}
+	// An imported image replaces the template's image and keeps its entrypoint,
+	// environment and size, so the sandbox behaves as a base one does.
+	image, err := s.createImage(ctx, ws, req.SandboxGroupID, req.BuildID, req.BuildName)
+	if err != nil {
+		return Sandbox{}, err
+	}
+	if image != "" {
+		tmpl.Image = image
 	}
 	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
 	// so bex stamps its own and carries it as durable metadata (metadataPublicID).

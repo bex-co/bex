@@ -19,7 +19,6 @@ package sandbox
 import "github.com/bex-co/bex/lego/backend/internal/core"
 
 const (
-	imagesNotOffered      = "bex does not support Render's imported sandbox images (sandbox-groups images import|get, sandboxes create --image): every sandbox starts from its base image"
 	snapshotsNotOffered   = "bex does not support Render's sandbox snapshots (sandboxes snapshots create|list|get|delete, sandboxes create --from)"
 	groupOpNotOffered     = "bex does not support deleting a sandbox group or changing the workspace's default group (sandbox-groups delete, sandbox-groups default set)"
 	credentialsNotOffered = "bex does not support Render's brokered sandbox credentials (sandbox-groups credentials), an early-access feature"
@@ -34,9 +33,9 @@ const CodeSandboxGroupOperationUnsupported = "SANDBOX_GROUP_OPERATION_UNSUPPORTE
 // sandbox credentials (CLI v2.36 `sandbox-groups credentials`, w3/m303).
 const CodeSandboxCredentialsUnsupported = "SANDBOX_CREDENTIALS_UNSUPPORTED"
 
-// NotOfferedRoutes are the Render sandbox image, snapshot and group-management
-// operations the pinned Render CLI calls (`sandbox-groups images import|get`,
-// `sandboxes snapshots …`; v2.36's `sandbox-groups delete|default set|credentials`)
+// NotOfferedRoutes are the Render sandbox snapshot and group-management
+// operations the pinned Render CLI calls (`sandboxes snapshots …`; v2.36's
+// `sandbox-groups delete|default set|credentials`)
 // and bex does not serve. Each answers a 404 naming the
 // unsupported feature instead of the router's bare one, which the CLI prints
 // verbatim (ADR018 § Render operation omissions, w2/m263). The group routes
@@ -57,9 +56,6 @@ var NotOfferedRoutes = map[string]core.NotOffered{
 	"DELETE /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}":       {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/versions": {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
 	"POST /v1/sandbox-groups/{sandboxGroupId}/credentials/{credentialId}/restore": {Code: CodeSandboxCredentialsUnsupported, Message: credentialsNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/builds":                              {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
-	"POST /v1/sandbox-groups/{sandboxGroupId}/builds":                             {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
-	"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}":                    {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
 	"POST /v1/sandboxes/{id}/snapshots":                                           {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots":                           {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}":              {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},

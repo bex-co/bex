@@ -47,17 +47,22 @@ import (
 
 const (
 	// SandboxMeterSecretName is the Secret, in the registry namespace, that holds
-	// the two users' credentials for bex-api.
+	// the platform users' credentials for bex-api.
 	SandboxMeterSecretName = "bex-sandbox-registry"
 
 	SandboxMeterReaderUser = "bex-sandbox-meter"
 	SandboxMeterReaperUser = "bex-sandbox-reaper"
+	// SandboxImporterUser copies imported sandbox images into a workspace's
+	// snapshot repositories (w2/m358).
+	SandboxImporterUser = "bex-sandbox-importer"
 
 	// The Secret's keys; bex-api reads the same names.
 	SandboxMeterReaderUserKey     = "reader-username"
 	SandboxMeterReaderPasswordKey = "reader-password"
 	SandboxMeterReaperUserKey     = "reaper-username"
 	SandboxMeterReaperPasswordKey = "reaper-password"
+	SandboxImporterUserKey        = "importer-username"
+	SandboxImporterPasswordKey    = "importer-password"
 
 	// snapshotsRepoGlob covers every sandbox snapshot repository, which the
 	// patched controller nests as snapshots/<ws>-sandbox/<sandbox>-<container>.
@@ -68,12 +73,28 @@ const (
 // deletes them, and never writes an image.
 var zotReadDeleteActions = []string{zotActionRead, zotActionDelete}
 
-// sandboxMeterGrants are the platform's two grants on a snapshot pattern.
+// zotImportActions is the importer's grant: it pushes an image and never
+// deletes one (the reaper does).
+var zotImportActions = []string{zotActionRead, zotActionCreate, zotActionUpdate}
+
+// sandboxMeterUsers are the platform's users on the snapshot repositories: each
+// one's Secret keys and grant.
+var sandboxMeterUsers = []struct {
+	user, userKey, passwordKey string
+	actions                    []string
+}{
+	{SandboxMeterReaderUser, SandboxMeterReaderUserKey, SandboxMeterReaderPasswordKey, zotReadOnlyActions},
+	{SandboxMeterReaperUser, SandboxMeterReaperUserKey, SandboxMeterReaperPasswordKey, zotReadDeleteActions},
+	{SandboxImporterUser, SandboxImporterUserKey, SandboxImporterPasswordKey, zotImportActions},
+}
+
+// sandboxMeterGrants are the platform's grants on a snapshot pattern.
 func sandboxMeterGrants() []zotGrant {
-	return []zotGrant{
-		{SandboxMeterReaderUser, zotReadOnlyActions},
-		{SandboxMeterReaperUser, zotReadDeleteActions},
+	grants := make([]zotGrant, 0, len(sandboxMeterUsers))
+	for _, u := range sandboxMeterUsers {
+		grants = append(grants, zotGrant{u.user, u.actions})
 	}
+	return grants
 }
 
 // isSnapshotNamespaceGlob reports whether repo is a workspace's own snapshot
@@ -91,33 +112,27 @@ func (c *Creds) snapshotPlatformGrants(repo string) []zotGrant {
 	return nil
 }
 
-// EnsureSandboxMeterCreds idempotently provisions the two users:
+// EnsureSandboxMeterCreds idempotently provisions the platform's users:
 //  1. the Secret SandboxMeterSecretName in the registry namespace, with a
 //     generated password for each (a missing or empty one is regenerated);
 //  2. a htpasswd entry for each in the zot-htpasswd Secret;
 //  3. an ACL entry for each on "snapshots/**" in zot-config: read for the
-//     meter, read and delete for the reaper.
+//     meter, read and delete for the reaper, read and push for the importer.
 //
 // A new entry takes effect only after a Zot restart, like every other
 // credential here, so a write bounces Zot within the shared cooldown.
 func (c *Creds) EnsureSandboxMeterCreds(ctx context.Context) error {
-	readerPassword, reaperPassword, err := c.ensureSandboxMeterSecret(ctx)
+	passwords, err := c.ensureSandboxMeterSecret(ctx)
 	if err != nil {
 		return err
 	}
 	wrote := false
-	for _, u := range []struct {
-		user, password string
-		actions        []string
-	}{
-		{SandboxMeterReaderUser, readerPassword, zotReadOnlyActions},
-		{SandboxMeterReaperUser, reaperPassword, zotReadDeleteActions},
-	} {
-		wroteUser, err := c.ensureHTPasswdEntry(ctx, u.user, u.password)
+	for _, u := range sandboxMeterUsers {
+		wroteUser, err := c.ensureHTPasswdEntry(ctx, u.user, passwords[u.user])
 		if err != nil {
 			return fmt.Errorf("htpasswd %s: %w", u.user, err)
 		}
-		// A per-user policy on the shared pattern: the two users must not replace
+		// A per-user policy on the shared pattern: the users must not replace
 		// each other's, and the per-namespace snap-* users are on other patterns.
 		wroteACL, err := c.grantZotRepoUser(ctx, snapshotsRepoGlob, u.user, u.actions)
 		if err != nil {
@@ -127,8 +142,9 @@ func (c *Creds) EnsureSandboxMeterCreds(ctx context.Context) error {
 	}
 	// Zot applies only the longest matching pattern, so a workspace's own
 	// "snapshots/<ns>/**" shadows "snapshots/**": without these grants the meter
-	// can read, and the reaper delete, only where a workspace has no pattern of
-	// its own (production, 2026-11-11: 403 for every workspace that has one).
+	// can read, the reaper delete and the importer push only where a workspace
+	// has no pattern of its own (production, 2026-11-11: 403 for every workspace
+	// that has one).
 	wroteNamespaces, err := c.grantMeterOnNamespacePatterns(ctx)
 	if err != nil {
 		return fmt.Errorf("zot config namespace patterns: %w", err)
@@ -139,7 +155,7 @@ func (c *Creds) EnsureSandboxMeterCreds(ctx context.Context) error {
 	return nil
 }
 
-// grantMeterOnNamespacePatterns adds the meter's two users to every existing
+// grantMeterOnNamespacePatterns adds the platform's users to every existing
 // "snapshots/<ns>/**" pattern in one document hold, leaving the namespace's own
 // user and every other policy where they are.
 func (c *Creds) grantMeterOnNamespacePatterns(ctx context.Context) (bool, error) {
@@ -173,8 +189,8 @@ func (c *Creds) grantMeterOnNamespacePatterns(ctx context.Context) (bool, error)
 }
 
 // ensureSandboxMeterSecret gets or creates the credentials Secret, filling any
-// password it lacks, and returns the two passwords it now holds.
-func (c *Creds) ensureSandboxMeterSecret(ctx context.Context) (reader, reaper string, err error) {
+// password it lacks, and returns each user's password it now holds.
+func (c *Creds) ensureSandboxMeterSecret(ctx context.Context) (map[string]string, error) {
 	key := client.ObjectKey{Namespace: c.ZotNamespace, Name: SandboxMeterSecretName}
 	var sec corev1.Secret
 	create := false
@@ -189,16 +205,13 @@ func (c *Creds) ensureSandboxMeterSecret(ctx context.Context) (reader, reaper st
 			Type: corev1.SecretTypeOpaque,
 		}
 	case err != nil:
-		return "", "", fmt.Errorf("get %s: %w", SandboxMeterSecretName, err)
+		return nil, fmt.Errorf("get %s: %w", SandboxMeterSecretName, err)
 	}
 	changed := create
 	if sec.Data == nil {
 		sec.Data = map[string][]byte{}
 	}
-	for _, field := range []struct{ userKey, passwordKey, user string }{
-		{SandboxMeterReaderUserKey, SandboxMeterReaderPasswordKey, SandboxMeterReaderUser},
-		{SandboxMeterReaperUserKey, SandboxMeterReaperPasswordKey, SandboxMeterReaperUser},
-	} {
+	for _, field := range sandboxMeterUsers {
 		if string(sec.Data[field.userKey]) != field.user {
 			sec.Data[field.userKey] = []byte(field.user)
 			changed = true
@@ -206,7 +219,7 @@ func (c *Creds) ensureSandboxMeterSecret(ctx context.Context) (reader, reaper st
 		if len(sec.Data[field.passwordKey]) == 0 {
 			password, err := generatePassword()
 			if err != nil {
-				return "", "", fmt.Errorf("generate password: %w", err)
+				return nil, fmt.Errorf("generate password: %w", err)
 			}
 			sec.Data[field.passwordKey] = []byte(password)
 			changed = true
@@ -227,8 +240,12 @@ func (c *Creds) ensureSandboxMeterSecret(ctx context.Context) (reader, reaper st
 			// the htpasswd entries must hash.
 			return c.ensureSandboxMeterSecret(ctx)
 		default:
-			return "", "", fmt.Errorf("write %s: %w", SandboxMeterSecretName, err)
+			return nil, fmt.Errorf("write %s: %w", SandboxMeterSecretName, err)
 		}
 	}
-	return string(sec.Data[SandboxMeterReaderPasswordKey]), string(sec.Data[SandboxMeterReaperPasswordKey]), nil
+	passwords := make(map[string]string, len(sandboxMeterUsers))
+	for _, u := range sandboxMeterUsers {
+		passwords[u.user] = string(sec.Data[u.passwordKey])
+	}
+	return passwords, nil
 }

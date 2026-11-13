@@ -1925,6 +1925,7 @@ export type Mutation = {
   executeDatabaseQuery: Maybe<DatabaseQueryResult>;
   failoverDatabase: Maybe<Scalars['Boolean']['output']>;
   finalizeWorkspaceCreation: Maybe<Workspace>;
+  importSandboxImage: Maybe<SandboxImage>;
   inviteWorkspaceMember: Maybe<WorkspaceInvite>;
   leaveWorkspace: Maybe<Scalars['Boolean']['output']>;
   linkBuildSource: Maybe<Service>;
@@ -2369,6 +2370,8 @@ export type MutationCreateSshKeyArgs = {
 
 
 export type MutationCreateSandboxArgs = {
+  buildId?: InputMaybe<Scalars['String']['input']>;
+  buildName?: InputMaybe<Scalars['String']['input']>;
   env?: InputMaybe<Array<EnvVarInput>>;
   idleTimeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
   name?: InputMaybe<Scalars['String']['input']>;
@@ -2636,6 +2639,16 @@ export type MutationFailoverDatabaseArgs = {
 
 export type MutationFinalizeWorkspaceCreationArgs = {
   attemptId: Scalars['String']['input'];
+};
+
+
+export type MutationImportSandboxImageArgs = {
+  name: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  registryPassword?: InputMaybe<Scalars['String']['input']>;
+  registryUsername?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+  sourceImage: Scalars['String']['input'];
 };
 
 
@@ -3898,6 +3911,8 @@ export type Query = {
   sandboxExecutions: Maybe<Array<Maybe<SandboxExecution>>>;
   sandboxGroup: Maybe<SandboxGroup>;
   sandboxGroups: Maybe<Array<Maybe<SandboxGroup>>>;
+  sandboxImage: Maybe<SandboxImage>;
+  sandboxImages: Maybe<Array<Maybe<SandboxImage>>>;
   sandboxes: Maybe<Array<Maybe<Sandbox>>>;
   secretFiles: Maybe<Array<Maybe<SecretFileWithCursor>>>;
   server: Maybe<Service>;
@@ -4616,6 +4631,23 @@ export type QuerySandboxGroupsArgs = {
 };
 
 
+export type QuerySandboxImageArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
+export type QuerySandboxImagesArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+  status?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+
 export type QuerySandboxesArgs = {
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -4946,6 +4978,26 @@ export type SandboxGroup = {
   ownerId: Scalars['String']['output'];
   region: Scalars['String']['output'];
   updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+export type SandboxImage = {
+  __typename: 'SandboxImage';
+  createdAt: Maybe<Scalars['String']['output']>;
+  failureReason: Maybe<Scalars['String']['output']>;
+  finishedAt: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  sandboxGroupId: Scalars['String']['output'];
+  source: SandboxImageSource;
+  sourceDigest: Scalars['String']['output'];
+  status: Scalars['String']['output'];
+};
+
+export type SandboxImageSource = {
+  __typename: 'SandboxImageSource';
+  image: Scalars['String']['output'];
+  reference: Scalars['String']['output'];
+  repository: Scalars['String']['output'];
 };
 
 export type SandboxNetworkPolicy = {

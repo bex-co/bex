@@ -58,12 +58,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			IdleTimeoutSeconds *int `json:"idleTimeoutSeconds"`
 			// v2.32 `--group`/`--sandbox-group` sends sandboxGroupId (w22/m311).
 			SandboxGroupID string `json:"sandboxGroupId"`
-			// Declared to be refused by name, like SnapshotID above:
-			// v2.34 `--image` sends buildId (an `sbb-` id) or buildName. A raw
-			// `image` ref (ea-sandbox.md's original wire table) is the same request.
+			// v2.34 `--image` sends buildId (an `sbb-` id) or buildName, an
+			// image imported into the sandbox's group (w2/m358).
 			BuildID   string `json:"buildId"`
 			BuildName string `json:"buildName"`
-			Image     string `json:"image"`
 			// Render CLI v2.36 / SDK v1.8 `--name`.
 			Name string `json:"name"`
 		}
@@ -75,10 +73,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		if err := refuseSnapshotCreate(body.SnapshotID != "" || body.SnapshotName != ""); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		if err := refuseImage(body.BuildID != "" || body.BuildName != "" || body.Image != ""); err != nil {
 			core.WriteErr(w, err)
 			return
 		}
@@ -99,6 +93,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			Name:               body.Name,
 			Env:                body.Env,
 			SandboxGroupID:     body.SandboxGroupID,
+			BuildID:            body.BuildID,
+			BuildName:          body.BuildName,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
@@ -241,6 +237,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		s.lifecycleREST(w, r, s.Resume)
 	})
 	s.registerGroupREST(mux)
+	s.registerImageREST(mux)
 }
 
 func (s *Service) lifecycleREST(w http.ResponseWriter, r *http.Request, op func(ctx context.Context, id string) error) {

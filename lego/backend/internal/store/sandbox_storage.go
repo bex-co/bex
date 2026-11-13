@@ -383,15 +383,18 @@ func (s *PGStore) MarkSandboxStorageReaped(ctx context.Context, workspaceID, obj
 	return err
 }
 
-// SandboxStorageBytes is the stored bytes of a workspace's open, sized objects:
-// what the per-workspace cap reads. An object not sized yet counts for nothing,
-// so a workspace can pass the cap by the images still waiting for a size.
+// SandboxStorageBytes is the stored bytes of a workspace's open, sized objects
+// plus its imported images (w2/m358): what the per-workspace cap reads. Imported
+// images count toward the cap but are not billed (ADR104 § Images). An object
+// not sized yet counts for nothing, so a workspace can pass the cap by the
+// images still waiting for a size.
 func (s *PGStore) SandboxStorageBytes(ctx context.Context, workspaceID string) (int64, error) {
 	var bytes int64
 	err := s.Pool.QueryRow(ctx, `
-		SELECT COALESCE(sum(bytes), 0)::bigint
-		FROM sandbox_storage_objects
-		WHERE workspace_id = $1 AND ended_at IS NULL`, workspaceID).Scan(&bytes)
+		SELECT ((SELECT COALESCE(sum(bytes), 0) FROM sandbox_storage_objects
+		        WHERE workspace_id = $1 AND ended_at IS NULL)
+		     + (SELECT COALESCE(sum(size_bytes), 0) FROM sandbox_builds
+		        WHERE workspace_id = $1 AND status = 'succeeded'))::bigint`, workspaceID).Scan(&bytes)
 	return bytes, err
 }
 

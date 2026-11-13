@@ -28,13 +28,17 @@ import (
 )
 
 // The keys of the Secret the operator mints for the sandbox storage meter's Zot
-// users (lego/operator/internal/registry/sandbox_meter_creds.go, w22/m321); the
-// two modules cannot share a constant, so these must match it.
+// users (lego/operator/internal/registry/sandbox_meter_creds.go, w22/m321,
+// w2/m358); the two modules cannot share a constant, so these must match it.
 const (
 	registrySecretReaderUserKey     = "reader-username"
 	registrySecretReaderPasswordKey = "reader-password"
 	registrySecretReaperUserKey     = "reaper-username"
 	registrySecretReaperPasswordKey = "reaper-password"
+	// The importer copies imported sandbox images into the snapshot
+	// repositories (w2/m358).
+	registrySecretImporterUserKey     = "importer-username"
+	registrySecretImporterPasswordKey = "importer-password"
 
 	// registrySecretTTL bounds how stale a cached credential may get: the Secret
 	// is read at most this often, and a rotated password is picked up within it.

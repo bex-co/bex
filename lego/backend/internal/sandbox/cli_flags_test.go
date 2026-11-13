@@ -307,24 +307,25 @@ func mcpClient(t *testing.T, svc *Service) *mcp.ClientSession {
 	return client
 }
 
-func TestImageCreateFieldsAreRefusedByName(t *testing.T) {
+// A deployment that cannot keep imported images answers a create naming one
+// 503 by name, never "unknown field" (w2/m358); the raw `image` key is not a
+// Render field and stays a decode error.
+func TestImageCreateFieldsWithoutImagesAreUnavailable(t *testing.T) {
 	for _, tc := range []struct {
-		name, body, code, flag string
+		name, body, want string
+		status           int
 	}{
-		{"--image by id", `{"buildId":"sbb-aaaaaaaaaaaaaaaaaaaa"}`, CodeSandboxImagesUnsupported, "--image"},
-		{"--image by name", `{"buildName":"python"}`, CodeSandboxImagesUnsupported, "--image"},
-		{"raw image ref", `{"image":"python:3.13"}`, CodeSandboxImagesUnsupported, "--image"},
+		{"--image by id", `{"template":"node","buildId":"sbb-aaaaaaaaaaaaaaaaaaaa"}`, CodeSandboxImagesUnavailable, http.StatusServiceUnavailable},
+		{"--image by name", `{"template":"node","buildName":"python"}`, CodeSandboxImagesUnavailable, http.StatusServiceUnavailable},
+		{"raw image ref", `{"image":"python:3.13"}`, "unknown field", http.StatusBadRequest},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			mux := http.NewServeMux()
 			refusingUpstream(t).RegisterREST(mux)
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(tc.body)).WithContext(callerCtx()))
-			if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), tc.code) || !strings.Contains(rec.Body.String(), tc.flag) {
-				t.Fatalf("= %d %s, want 400 %s naming %s", rec.Code, rec.Body.String(), tc.code, tc.flag)
-			}
-			if strings.Contains(rec.Body.String(), "unknown field") {
-				t.Fatalf("refusal leaks the wire key: %s", rec.Body.String())
+			if rec.Code != tc.status || !strings.Contains(rec.Body.String(), tc.want) {
+				t.Fatalf("= %d %s, want %d %s", rec.Code, rec.Body.String(), tc.status, tc.want)
 			}
 		})
 	}
@@ -502,18 +503,19 @@ func TestNotOfferedRoutesNameTheFeature(t *testing.T) {
 	for pattern := range NotOfferedRoutes {
 		mux.HandleFunc(pattern, func(http.ResponseWriter, *http.Request) {})
 	}
-	// The four group routes are served since w22/m311 and are no longer here.
+	// The four group routes are served since w22/m311, and the three image
+	// routes since w2/m358, so none is here.
 	for _, served := range []string{
 		"GET /v1/sandbox-groups", "POST /v1/sandbox-groups",
 		"GET /v1/sandbox-groups/{sandboxGroupId}", "PATCH /v1/sandbox-groups/{sandboxGroupId}",
+		"GET /v1/sandbox-groups/{sandboxGroupId}/builds", "POST /v1/sandbox-groups/{sandboxGroupId}/builds",
+		"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}",
 	} {
 		if _, refused := NotOfferedRoutes[served]; refused {
 			t.Errorf("%s is served by the Service, so it must not also be a not-offered refusal", served)
 		}
 	}
 	for _, tc := range []struct{ method, path, code, mentions string }{
-		{http.MethodPost, "/v1/sandbox-groups/sbg-1/builds", CodeSandboxImagesUnsupported, "images import"},
-		{http.MethodGet, "/v1/sandbox-groups/sbg-1/builds/sbb-1", CodeSandboxImagesUnsupported, "images import|get"},
 		{http.MethodPost, "/v1/sandboxes/sbx-1/snapshots", codeSandboxSnapshotsUnsupported, "snapshots"},
 		{http.MethodDelete, "/v1/sandbox-groups/sbg-1/snapshots/snp-1", codeSandboxSnapshotsUnsupported, "snapshots"},
 		// CLI v2.36's sandbox-groups delete, default set and credentials (w3/m303).

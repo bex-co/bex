@@ -225,6 +225,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		},
 	}
 	maps.Copy(fields, s.groupQueryFields())
+	maps.Copy(fields, s.imageQueryFields())
 	return fields
 }
 
@@ -245,6 +246,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"name":               gqlutil.Arg(graphql.String),
 				// Render's sandboxGroupId (w22/m311): omitted = the default group.
 				"sandboxGroupId": gqlutil.Arg(graphql.String),
+				// Render's buildId / buildName (w2/m358): start from an image
+				// imported into the sandbox's group.
+				"buildId":   gqlutil.Arg(graphql.String),
+				"buildName": gqlutil.Arg(graphql.String),
 				// Render's create-time env; write-only, so no read field.
 				"env": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(gqlutil.EnvVarInputType))),
 			},
@@ -268,6 +273,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					NetworkPolicy:      policy,
 					Env:                env,
 					SandboxGroupID:     gqlutil.Str(p.Args, "sandboxGroupId"),
+					BuildID:            gqlutil.Str(p.Args, "buildId"),
+					BuildName:          gqlutil.Str(p.Args, "buildName"),
 				})
 			},
 		},
@@ -286,5 +293,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 	}
 	maps.Copy(fields, s.groupMutationFields())
+	maps.Copy(fields, s.imageMutationFields())
 	return fields
 }

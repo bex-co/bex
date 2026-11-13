@@ -94,18 +94,38 @@ func (r *RegistryConfig) client() *http.Client {
 	return &http.Client{Timeout: 15 * time.Second}
 }
 
+// namespacePath is the workspace's snapshot namespace in the registry, under
+// which its suspended sandboxes' and imported images' repositories live.
+func (r *RegistryConfig) namespacePath(workspaceID string) string {
+	prefix := r.Prefix
+	if prefix == "" {
+		prefix = DefaultSnapshotRepoPrefix
+	}
+	return prefix + "/" + store.SandboxNamespace(workspaceID)
+}
+
 func (r *RegistryConfig) repository(workspaceID, ref string) (string, error) {
 	if !registryRef.MatchString(ref) {
 		return "", fmt.Errorf("sandbox storage: %q is not a registry-safe sandbox id", ref)
 	}
-	prefix, container := r.Prefix, r.Container
-	if prefix == "" {
-		prefix = DefaultSnapshotRepoPrefix
-	}
+	container := r.Container
 	if container == "" {
 		container = DefaultSnapshotContainer
 	}
-	return prefix + "/" + store.SandboxNamespace(workspaceID) + "/" + ref + "-" + container, nil
+	return r.namespacePath(workspaceID) + "/" + ref + "-" + container, nil
+}
+
+// credentials is the user and password a registry call sends: the Secret's
+// when Credentials is set, else User and Password.
+func (r *RegistryConfig) credentials(ctx context.Context) (string, string, error) {
+	if r.Credentials == nil {
+		return r.User, r.Password, nil
+	}
+	user, password, err := r.Credentials(ctx)
+	if err != nil {
+		return "", "", fmt.Errorf("registry credentials: %w", err)
+	}
+	return user, password, nil
 }
 
 // registryError is a registry answer that was not a success.
@@ -128,12 +148,9 @@ func (r *RegistryConfig) request(ctx context.Context, method, path, accept strin
 	if accept != "" {
 		req.Header.Set("Accept", accept)
 	}
-	user, password := r.User, r.Password
-	if r.Credentials != nil {
-		var err error
-		if user, password, err = r.Credentials(ctx); err != nil {
-			return nil, nil, fmt.Errorf("registry credentials: %w", err)
-		}
+	user, password, err := r.credentials(ctx)
+	if err != nil {
+		return nil, nil, err
 	}
 	if user != "" {
 		req.SetBasicAuth(user, password)

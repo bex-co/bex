@@ -179,14 +179,19 @@ func groupNotFound(id string) error {
 // unique within the workspace, so bex asks for a non-empty, unpadded label with
 // no control characters, at most 100 characters.
 func validateGroupName(name string) error {
-	bad := name == "" || strings.TrimSpace(name) != name || utf8.RuneCountInString(name) > maxGroupName ||
-		strings.ContainsFunc(name, func(r rune) bool { return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' })
-	if !bad {
+	if labelOK(name, maxGroupName) {
 		return nil
 	}
 	return core.NewBadRequestError(CodeSandboxGroupNameInvalid,
 		fmt.Sprintf("sandbox group name must be 1 to %d characters, with no leading or trailing space and no control characters", maxGroupName),
 		map[string]any{"field": "name", "maxLength": maxGroupName})
+}
+
+// labelOK is the rule for a group's or an imported image's name: non-empty, at
+// most max characters, no leading or trailing space, no control characters.
+func labelOK(name string, max int) bool {
+	return name != "" && strings.TrimSpace(name) == name && utf8.RuneCountInString(name) <= max &&
+		!strings.ContainsFunc(name, func(r rune) bool { return unicode.IsControl(r) || r == '\u2028' || r == '\u2029' })
 }
 
 // validateGroupRegion accepts a create's region when it is empty, the one

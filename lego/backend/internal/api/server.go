@@ -398,6 +398,9 @@ type Deps struct {
 	// (w22/m311); nil (store off) serves no group route, refuses a create that
 	// names a group and enforces no concurrency limit.
 	SandboxGroups sandbox.GroupStore
+	// SandboxImages imports Render's sandbox images into the sandbox registry
+	// (w2/m358); nil answers the image routes 503.
+	SandboxImages *sandbox.Images
 	// SandboxMaxGroups caps a workspace's groups (BEX_SANDBOX_MAX_GROUPS_PER_WORKSPACE,
 	// Render's 10; 0 = uncapped), SandboxMaxGroupConcurrency is the ceiling and
 	// default of a group's concurrencyLimit (BEX_SANDBOX_MAX_GROUP_CONCURRENCY,
@@ -1310,6 +1313,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		UserIDs:         userIDLookup(d.SandboxExecutions),
 
 		Groups:              d.SandboxGroups,
+		Images:              d.SandboxImages,
 		MaxGroups:           d.SandboxMaxGroups,
 		MaxGroupConcurrency: d.SandboxMaxGroupConcurrency,
 		MaxActive:           d.SandboxMaxActive,

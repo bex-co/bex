@@ -2183,6 +2183,14 @@ batchsandbox_stall="$(yq -N \
   deploy/opensandbox/batchsandbox-template.yaml | tr -d '\n')"
 [ "$batchsandbox_stall" = "node.kubernetes.io/not-ready=300,node.kubernetes.io/unreachable=300" ] \
   || { echo "FAIL: BatchSandbox node-stall tolerations are '$batchsandbox_stall'" >&2; fail=1; }
+# A sandbox from an imported image pulls with its namespace's snapshot pull
+# Secret, the same one the controller resumes with (w2/m358).
+batchsandbox_pull="$(yq -N '[.spec.template.spec.imagePullSecrets[].name] | join(",")' \
+  deploy/opensandbox/batchsandbox-template.yaml | tr -d '\n')"
+resume_pull="$(yq -N '.controller.snapshot.resumePullSecret' \
+  deploy/gitops/overlays/prod/values/opensandbox-controller.values.yaml | tr -d '\n')"
+[ -n "$resume_pull" ] && [ "$batchsandbox_pull" = "$resume_pull" ] \
+  || { echo "FAIL: BatchSandbox imagePullSecrets '$batchsandbox_pull' must be the controller's resumePullSecret '$resume_pull'" >&2; fail=1; }
 # Both templates keep ndots:1; the hosted one says why (w8/m152).
 for batchsandbox_template in \
   deploy/opensandbox/batchsandbox-template.yaml \

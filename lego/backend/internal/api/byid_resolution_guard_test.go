@@ -259,6 +259,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.GitClaimSelection.Prefix():        {"git", ""},
 	ids.Sandbox.Prefix():                  {"sandboxes", ""},
 	ids.SandboxGroup.Prefix():             {"sandbox-groups", ""},
+	ids.SandboxBuild.Prefix():             {"", "an imported image is addressed under its sandbox group"},
 	ids.StaticRoute.Prefix():              {"", "a derived rule listed under its static site; no per-rule verb yet"},
 	ids.StaticHeader.Prefix():             {"", "a derived rule listed under its static site; no per-rule verb yet"},
 	ids.AgentModelRequest.Prefix():        {"", "gateway-internal usage-report idempotency key, no API"},

@@ -258,7 +258,7 @@ func (m *Meter) Label(ctx context.Context, raw osSandbox) {
 		return
 	}
 	obs, ok := meterObservation(raw, m.now())
-	label := sandboxChargeLabel(obs.Tier, raw.Image.URI)
+	label := sandboxChargeLabel(obs.Tier, displayImage(raw.Image.URI))
 	if !ok || label == "" {
 		return
 	}

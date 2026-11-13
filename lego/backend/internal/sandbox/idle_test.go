@@ -49,6 +49,7 @@ type fakeBox struct {
 	metadata    map[string]string
 	created     time.Time
 	expires     *time.Time // BatchSandbox spec.expireTime; nil = no timeout
+	image       string     // the create's image URI
 }
 
 // fakeOpenSandbox is a stateful OpenSandbox lifecycle server for the idle
@@ -162,7 +163,7 @@ func (f *fakeOpenSandbox) create(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	f.nextID++
 	id := fmt.Sprintf("os-new-%d", f.nextID)
-	f.boxes[id] = &fakeBox{state: "Running", metadata: maps.Clone(body.Metadata), created: time.Now()}
+	f.boxes[id] = &fakeBox{state: "Running", metadata: maps.Clone(body.Metadata), created: time.Now(), image: body.Image.URI}
 	f.calls = append(f.calls, "create "+id)
 	f.mu.Unlock()
 	w.WriteHeader(http.StatusCreated)

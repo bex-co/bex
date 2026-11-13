@@ -20,6 +20,12 @@ spec:
     spec:
       runtimeClassName: gvisor
       automountServiceAccountToken: false
+      # A sandbox started from an imported image (w2/m358) pulls it from its
+      # workspace's snapshot repositories with the namespace's own read-only
+      # Secret, the one the operator mints and the controller's resume pull
+      # uses (--resume-pull-secret). Guarded by scripts/gitops-validate.sh.
+      imagePullSecrets:
+        - name: bex-snapshot-pull
       nodeSelector:
         bex.co/pool: sandbox
       restartPolicy: Never

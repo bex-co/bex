@@ -147,8 +147,9 @@ type Sandbox struct {
 	// TerminatedAt is when an ended sandbox ended (Render's nullable
 	// terminatedAt, w3/m318); null while it lives.
 	TerminatedAt *time.Time `json:"terminatedAt"`
-	// Image is the resolved template image (bex Create is template-based,
-	// ADR014 D2) — informational; the request never picks an arbitrary image.
+	// Image is the template image the sandbox started from, or the sbb- id of
+	// the imported image it started from (w2/m358) — informational, a bex
+	// extension Render's schema does not have.
 	Image string `json:"image,omitempty"`
 	// SandboxGroupID is the group the sandbox belongs to (Render's
 	// `sandboxGroupId`, w22/m311). Empty, so omitted, for an agent-session
