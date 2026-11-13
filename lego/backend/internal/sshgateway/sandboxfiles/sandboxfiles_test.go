@@ -138,15 +138,18 @@ func TestUploadPublishesOnlyAfterCompleteValidation(t *testing.T) {
 		{"fifo", archive(t, &tar.Header{Name: "fifo", Typeflag: tar.TypeFifo}), "application/x-tar", "", 400},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			publishes, cleanups := 0, 0
+			checks, publishes, cleanups := 0, 0, 0
 			s := serverFor(func(_ context.Context, cmd []string, input io.Reader, _ io.Writer) (int, error) {
-				if input != nil {
+				switch {
+				case input != nil:
 					// Model tar's dangerous behavior: even a malformed/truncated
 					// input can look like clean EOF to the remote process.
 					_, _ = io.Copy(io.Discard, input)
-				} else if cmd[2] == publishScript {
+				case cmd[2] == checkScript:
+					checks++
+				case cmd[2] == publishScript:
 					publishes++
-				} else {
+				default:
 					cleanups++
 				}
 				return 0, nil
@@ -166,8 +169,56 @@ func TestUploadPublishesOnlyAfterCompleteValidation(t *testing.T) {
 			if tc.status == 204 {
 				wantCleanups = 0
 			}
-			if cleanups != wantCleanups {
-				t.Fatalf("cleanup count = %d", cleanups)
+			if cleanups != wantCleanups || checks != 1 {
+				t.Fatalf("cleanup count = %d, destination checks = %d", cleanups, checks)
+			}
+		})
+	}
+}
+
+// w8/313: a refused destination is refused before any of the upload is sent.
+// The stage exec models the real stall: a remote that exits without reading
+// stdin leaves a pods/exec stream that never ends, so reaching it with a
+// refused destination would hang until the request's own deadline.
+func TestARefusedDestinationAnswersBeforeTheUploadStreams(t *testing.T) {
+	for _, tc := range []struct {
+		name, media string
+		body        []byte
+		code        int
+		status      int
+	}{
+		{"file onto a directory", "application/octet-stream", []byte("data"), 73, http.StatusConflict},
+		{"directory onto an existing one", "application/x-tar", archive(t, &tar.Header{Name: "f", Typeflag: tar.TypeReg, Size: 1}), 73, http.StatusConflict},
+		{"file into a missing parent", "application/octet-stream", []byte("data"), 66, http.StatusNotFound},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var staged, cleaned atomic.Bool
+			s := serverFor(func(ctx context.Context, cmd []string, input io.Reader, _ io.Writer) (int, error) {
+				switch {
+				case cmd[2] == checkScript:
+					return tc.code, nil
+				case input != nil:
+					staged.Store(true)
+					<-ctx.Done()
+					return 126, ctx.Err()
+				default:
+					cleaned.Store(true)
+					return 0, nil
+				}
+			})
+			s.TransferTimeout = time.Minute
+			r := requestFor(t, http.MethodPut, tc.body)
+			r.Header.Set("Content-Type", tc.media)
+			w := httptest.NewRecorder()
+			done := make(chan struct{})
+			go func() { s.Handler().ServeHTTP(w, r); close(done) }()
+			select {
+			case <-done:
+			case <-time.After(5 * time.Second):
+				t.Fatal("a refused upload streamed into the stage exec")
+			}
+			if w.Code != tc.status || staged.Load() || cleaned.Load() {
+				t.Fatalf("answered %d %s (staged %v, cleaned %v), want %d before staging", w.Code, w.Body, staged.Load(), cleaned.Load(), tc.status)
 			}
 		})
 	}

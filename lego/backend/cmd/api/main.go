@@ -1423,7 +1423,9 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 					// No overall timeout (an exec stream is long-lived); dialing
 					// and the gateway's answer are bounded. The gateway answers an
 					// exec's headers on admission and a file transfer's once it is
-					// written, so 2m never cuts either short.
+					// written or refused (a refused upload destination is checked
+					// before the body is streamed, w8/313), so 2m never cuts either
+					// short.
 					Client: sshgateway.NewUpstreamClient(2 * time.Minute),
 					TTL:    60 * time.Second,
 					// The pinned CLI's run connect-token handshake (w7/m147): the
