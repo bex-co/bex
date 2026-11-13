@@ -6,6 +6,7 @@ import {
   SANDBOX_CAPACITY_LIMIT,
   isSteerablePhase,
   isTerminalPhase,
+  isTerminalState,
   toAgentSessionTicket,
   toAgentSessionView,
 } from "@/features/agent-sessions/lib/mapper";
@@ -83,6 +84,22 @@ describe("phase predicates", () => {
   it("treats an unknown phase string as neither terminal nor steerable", () => {
     expect(isTerminalPhase("bogus")).toBe(false);
     expect(isSteerablePhase("bogus")).toBe(false);
+  });
+
+  it("isTerminalState is true only for the server's settled states", () => {
+    // The server's coarse vocabulary (ADR094 D7); `working` and `needs_input`
+    // are not settled, and an unknown state reads as working.
+    const terminal = new Set(["succeeded", "failed", "canceled"]);
+    for (const state of [
+      "working",
+      "needs_input",
+      "succeeded",
+      "failed",
+      "canceled",
+      "bogus",
+    ]) {
+      expect(isTerminalState(state)).toBe(terminal.has(state));
+    }
   });
 });
 
@@ -176,6 +193,9 @@ describe("toAgentSessionView", () => {
     );
     expect(view.isSteerable).toBe(false);
     expect(view.state).toBe("needs_input");
+    // The server's state decides terminal-ness: a completed phase that the
+    // server still reports as awaiting input is not settled.
+    expect(view.isTerminal).toBe(false);
     expect(view.outcome).toEqual({
       state: "needs_input",
       steerable: false,
@@ -195,6 +215,14 @@ describe("toAgentSessionView", () => {
     expect(partial.isSteerable).toBe(true);
     expect(partial.state).toBeNull();
     expect(partial.outcome).toBeNull();
+
+    // The server's state wins over the phase: the client never decodes the
+    // lifecycle enum to answer "is it done?".
+    const settled = toAgentSessionView(
+      wire({ phase: "running", state: "succeeded" }),
+    );
+    expect(settled.isTerminal).toBe(true);
+    expect(settled.isFinished).toBe(true);
   });
 });
 

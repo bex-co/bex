@@ -199,10 +199,14 @@ export interface AgentSessionView {
   /**
    * Terminal — past all live work. Gates the delete verb and the
    * replay-only conversation attach (ADR065 D2/D4); the backend twin is
-   * `finishedPhase`.
+   * `finishedPhase`, read here from the server's coarse `state`.
    */
   isFinished: boolean;
-  /** completed/failed/canceled — the session will not change further on its own. */
+  /**
+   * The server's terminal `state` (succeeded/failed/canceled) — the session
+   * will not change further on its own. Falls back to `phase` only when a
+   * partial cache entry predates `state`.
+   */
   isTerminal: boolean;
   /**
    * True when the GraphQL steer/resume redispatch path accepts a new prompt: an

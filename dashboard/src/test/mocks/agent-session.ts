@@ -6,9 +6,11 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
  * shape one copy was missed and rotted silently — `tsconfig.app.json` excludes tests from `tsc -b` and
  * vitest does not typecheck, so nothing catches it.
  *
- * `isTerminal`/`isSteerable` default to what the mapper derives from `phase`, so
- * a fixture cannot claim a phase/flag combination the real projection never
- * produces. `task` is a convenience override for the nested `agentConfig.task`.
+ * `isTerminal`/`isSteerable` default to what the mapper derives — the server's
+ * coarse `state` for terminal-ness, else `phase`, and `phase` for steerability —
+ * so a fixture cannot claim a state/phase/flag combination the real projection
+ * never produces. `task` is a convenience override for the nested
+ * `agentConfig.task`.
  */
 export function agentSessionView({
   task = "refactor the mapper",
@@ -17,10 +19,13 @@ export function agentSessionView({
 }: Partial<AgentSessionView> & { task?: string } = {}): AgentSessionView {
   const phase = over.phase ?? "running";
   const archivedAt = over.archivedAt ?? null;
+  const terminal = over.state
+    ? ["succeeded", "failed", "canceled"].includes(over.state)
+    : ["completed", "failed", "canceled"].includes(phase);
   return {
     archivedAt,
     isArchived: archivedAt != null,
-    isFinished: ["completed", "failed", "canceled"].includes(phase),
+    isFinished: terminal,
     id: "as-1",
     ownerId: "tea-1",
     repo: "acme/widgets",
@@ -58,7 +63,7 @@ export function agentSessionView({
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     canceledAt: null,
-    isTerminal: ["completed", "failed", "canceled"].includes(phase),
+    isTerminal: terminal,
     isSteerable: ["completed", "failed"].includes(phase),
     ...over,
   };
