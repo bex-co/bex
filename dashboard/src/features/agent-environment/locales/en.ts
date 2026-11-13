@@ -281,8 +281,9 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNew": {
     message:
-      "New workspaces start with a $10 limit that rises after the first successful payment.",
-    description: "Explains the T0 new-workspace limit",
+      "New workspaces are charged when agent model spend reaches {amount} and keep working while that charge settles; once it's paid, the limit rises to your plan's cap.",
+    description:
+      "Explains T0: charged at its threshold, working while the charge settles (ADR091 D10.2a)",
   },
   "agentEnvironment.spendTierLocked": {
     message:

@@ -1,16 +1,16 @@
 # w6 · m362 — Reaching an agent-model charge threshold charges the card and the workspace keeps working
 
-**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** todo
+**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t005 done (t003 live: every subscribed workspace's $10 threshold is on Stripe); t006, the production charge, next
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Backfill `billing_trust` from Stripe's paid invoices, and confirm new payments are counted](t001.md) | 1h30 | — |
-| t002 | [Price sheet: no tier cap ceiling, an in-flight allowance per tier](t002.md) | 45m | — |
-| t003 | [Every subscribed workspace's threshold reaches Stripe, so its threshold invoice is charged](t003.md) | 1h | t002 |
-| t004 | [The mint keeps a workspace working while its charge is in flight, and stops it only on a failed or unauthenticated charge](t004.md) | 1h30 | t003 |
-| t005 | [Settings → Billing, the agent environment (REST, GraphQL, MCP) and the CLI describe charge-to-continue](t005.md) | 1h30 | t004 |
+| t001 | [Backfill `billing_trust` from Stripe's paid invoices, and confirm new payments are counted](done/t001.md) — **DONE** | 1h30 | — |
+| t002 | [Price sheet: no tier cap ceiling, an in-flight allowance per tier](done/t002.md) — **DONE** | 45m | — |
+| t003 | [Every subscribed workspace's threshold reaches Stripe, so its threshold invoice is charged](done/t003.md) — **DONE** | 1h | t002 |
+| t004 | [The mint keeps a workspace working while its charge is in flight, and stops it only on a failed or unauthenticated charge](done/t004.md) — **DONE** | 1h30 | t003 |
+| t005 | [Settings → Billing, the agent environment (REST, GraphQL, MCP) and the CLI describe charge-to-continue](done/t005.md) — **DONE** | 1h30 | t004 |
 | t006 | [Production check: a T0 workspace crosses $10, is charged once and keeps working](t006.md) | 1h | t001, t005 |
 | t007 | [Render parity (Devin): spend and charge surfaces agree](t007.md) | 20m | t006 |
 | t008 | [Simplify](t008.md) | 15m | t007 |

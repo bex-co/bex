@@ -270,12 +270,13 @@ func TestPlatformRouteInjectsDataPolicyAndRefusesClientProvider(t *testing.T) {
 
 // A workspace under its spend cap is served; at the cap the mint is refused
 // with a typed 429 the agent CLI can show, and the session fails with the
-// readable spend-cap reason (ADR091 D5). A fresh Hobby workspace is T0, so
-// its cap is the $10 tier ceiling.
+// readable spend-cap reason (ADR091 D5). A fresh Hobby workspace is T0: it is
+// charged at $10 and keeps working until $15 while that charge is unpaid
+// (D10.2a), so its cap is $15.
 func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	upstream := &cannedTransport{contentType: "application/json", body: `{"usage":{"input_tokens":1,"output_tokens":1}}`}
 	proxy, st := platformHarness(t, upstream)
-	st.usedMicro = 9_999_999
+	st.usedMicro = 14_999_999
 	resp := requestBody(t, proxy, pinnedBody)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -283,7 +284,7 @@ func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	}
 
 	st.mu.Lock()
-	st.usedMicro = 10_000_000
+	st.usedMicro = 15_000_000
 	st.mu.Unlock()
 	st.advance(time.Minute) // past the mint's spend cache
 	upstream.last = nil
@@ -307,8 +308,8 @@ func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 		t.Fatal("refusal leaked the platform key")
 	}
 	eventually(t, func() bool { _, reason := st.snapshot(); return reason != "" })
-	// T0's ceiling, not the plan cap, is what binds: the reason says so.
-	if _, reason := st.snapshot(); !strings.Contains(reason, agentsession.ModelSpendCapReachedCode) || !strings.Contains(reason, "new workspaces") {
+	// T0's unpaid first charge, not the plan cap, is what binds: the reason says so.
+	if _, reason := st.snapshot(); !strings.Contains(reason, agentsession.ModelSpendCapReachedCode) || !strings.Contains(reason, "not paid yet") {
 		t.Fatalf("session failure reason = %q", reason)
 	}
 }

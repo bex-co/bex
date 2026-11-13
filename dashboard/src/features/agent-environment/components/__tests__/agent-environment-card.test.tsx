@@ -115,7 +115,10 @@ describe("AgentEnvironmentCard", () => {
     expect(source).toHaveClass("text-transparent");
     const spend = screen.getByTestId("spend-cap-section-skeleton");
     expect(spend).toHaveTextContent(/Trust tier T0: your card is charged/);
-    expect(spend).toHaveTextContent(/A failed or disputed payment/);
+    // The longer of the T0 and payment-locked explanations.
+    expect(spend).toHaveTextContent(
+      /New workspaces are charged when agent model spend reaches/,
+    );
   });
 
   it("renders the three selectable tiers and the registry hosts", async () => {
@@ -383,7 +386,7 @@ describe("AgentEnvironmentCard", () => {
         "Trust tier T0: your card is charged when agent model spend reaches $10.00.",
       );
       expect(screen.getByTestId("spend-tier-note")).toHaveTextContent(
-        "New workspaces start with a $10 limit that rises after the first successful payment.",
+        "New workspaces are charged when agent model spend reaches $10.00 and keep working while that charge settles; once it's paid, the limit rises to your plan's cap.",
       );
       expect(capField()).toHaveValue(20);
       expect(

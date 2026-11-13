@@ -43,7 +43,7 @@ const ModelSpendCapReachedCode = "AGENT_MODEL_SPEND_CAP_REACHED"
 // the hold after a failed or disputed payment.
 const (
 	ModelSpendCapReachedReason   = "this workspace reached its monthly agent model spend cap (" + ModelSpendCapReachedCode + "); a workspace admin can raise the cap in Settings → Agents, or wait for it to reset on the 1st (UTC), then start a new session"
-	modelSpendNewWorkspaceReason = "this workspace reached the agent model spend limit for new workspaces (" + ModelSpendCapReachedCode + "); the limit rises after the workspace's first successful payment, or resets on the 1st (UTC)"
+	modelSpendNewWorkspaceReason = "this workspace's first agent model charge is not paid yet (" + ModelSpendCapReachedCode + "); a new workspace is charged when its spend reaches the charge threshold and keeps working while the charge settles, and new sessions continue once it is paid — check the card in Settings → Billing"
 	modelSpendLockedReason       = "this workspace's agent model spend is limited after a failed or disputed payment (" + ModelSpendCapReachedCode + "); settle the outstanding payment in Settings → Billing, then start a new session"
 )
 

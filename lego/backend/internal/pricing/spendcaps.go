@@ -44,8 +44,10 @@ type Tier struct {
 	// ChargeThresholdUSD is the agent-model charge threshold; nil means none
 	// (month-end invoice only, T4).
 	ChargeThresholdUSD *float64 `json:"chargeThresholdUsd"`
-	// CapCeilingMicroUSD lowers the effective spend cap; nil means the plan
-	// (or override) cap applies unchanged.
+	// CapCeilingMicroUSD is the most a workspace spends at this tier while its
+	// threshold charge is unpaid: the threshold plus the tier's in-flight
+	// allowance (ADR091 D10.2a). Paying the charge moves the workspace up a
+	// tier. nil means the plan (or override) cap applies unchanged.
 	CapCeilingMicroUSD *int64 `json:"capCeilingMicroUsd"`
 	// MaxConcurrentSessions caps live platform-model sessions; 0 means the
 	// tier adds no limit.
@@ -66,7 +68,7 @@ type tierFile struct {
 	MinLifetimePaidUSD    float64  `json:"minLifetimePaidUsd"`
 	MinPaidCycleInvoices  int      `json:"minPaidCycleInvoices"`
 	ChargeThresholdUSD    *float64 `json:"chargeThresholdUsd"`
-	CapCeilingUSD         *float64 `json:"capCeilingUsd"`
+	InFlightAllowanceUSD  *float64 `json:"inFlightAllowanceUsd"`
 	MaxConcurrentSessions *int     `json:"maxConcurrentSessions"`
 }
 
@@ -124,8 +126,12 @@ func (s *Sheet) parseSpendControls(f sheetFile) error {
 			MinLifetimePaidCents: USDToCents(e.MinLifetimePaidUSD), MinPaidCycleInvoices: e.MinPaidCycleInvoices,
 			ChargeThresholdUSD: e.ChargeThresholdUSD,
 		}
-		if e.CapCeilingUSD != nil {
-			ceiling := USDToMicro(*e.CapCeilingUSD)
+		if e.InFlightAllowanceUSD != nil {
+			a := *e.InFlightAllowanceUSD
+			if math.IsNaN(a) || math.IsInf(a, 0) || a < 0 || e.ChargeThresholdUSD == nil {
+				return fmt.Errorf("agentModel.trustTiers %s inFlightAllowanceUsd must be zero or positive, on a tier with a charge threshold", e.Tier)
+			}
+			ceiling := USDToMicro(*e.ChargeThresholdUSD + a)
 			t.CapCeilingMicroUSD = &ceiling
 		}
 		if i == 0 && (t.MinLifetimePaidCents != 0 || t.MinPaidCycleInvoices != 0) {
@@ -138,10 +144,8 @@ func (s *Sheet) parseSpendControls(f sheetFile) error {
 				return fmt.Errorf("agentModel.trustTiers %s must need more than %s", e.Tier, prev.Name)
 			}
 		}
-		for name, v := range map[string]*float64{"chargeThresholdUsd": e.ChargeThresholdUSD, "capCeilingUsd": e.CapCeilingUSD} {
-			if v != nil && !positiveFinite(*v) {
-				return fmt.Errorf("agentModel.trustTiers %s %s must be positive or null", e.Tier, name)
-			}
+		if e.ChargeThresholdUSD != nil && !positiveFinite(*e.ChargeThresholdUSD) {
+			return fmt.Errorf("agentModel.trustTiers %s chargeThresholdUsd must be positive or null", e.Tier)
 		}
 		if e.MaxConcurrentSessions != nil {
 			if *e.MaxConcurrentSessions <= 0 {

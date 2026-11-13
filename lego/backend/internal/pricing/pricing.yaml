@@ -184,7 +184,10 @@ sandboxSnapshot:
 # minLifetimePaidUsd AND minPaidCycleInvoices it meets (successful, non-zero
 # bex invoices only), and a failed charge or dispute holds it at T0 for 30
 # days after settlement. chargeThresholdUsd null = month-end only (no
-# threshold); capCeilingUsd null = the plan/override cap applies;
+# threshold); inFlightAllowanceUsd is how far past its threshold a workspace
+# may spend while that charge is unpaid, so the tier's cap ceiling is
+# chargeThresholdUsd + inFlightAllowanceUsd (ADR091 D10.2a: a paid charge moves
+# it up a tier; null = no ceiling beyond the plan/override cap);
 # maxConcurrentSessions null = no tier limit on live platform-model sessions.
 agentModel:
   markup: 1.30
@@ -201,29 +204,25 @@ agentModel:
       minLifetimePaidUsd: 0
       minPaidCycleInvoices: 0
       chargeThresholdUsd: 10
-      capCeilingUsd: 10
+      inFlightAllowanceUsd: 5
       maxConcurrentSessions: 2
     - tier: T1
       minLifetimePaidUsd: 10
       minPaidCycleInvoices: 0
       chargeThresholdUsd: 25
-      capCeilingUsd: null
       maxConcurrentSessions: null
     - tier: T2
       minLifetimePaidUsd: 100
       minPaidCycleInvoices: 1
       chargeThresholdUsd: 50
-      capCeilingUsd: null
       maxConcurrentSessions: null
     - tier: T3
       minLifetimePaidUsd: 500
       minPaidCycleInvoices: 3
       chargeThresholdUsd: 250
-      capCeilingUsd: null
       maxConcurrentSessions: null
     - tier: T4
       minLifetimePaidUsd: 2000
       minPaidCycleInvoices: 6
       chargeThresholdUsd: null
-      capCeilingUsd: null
       maxConcurrentSessions: null

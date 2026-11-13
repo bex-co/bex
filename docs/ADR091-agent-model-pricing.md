@@ -133,7 +133,7 @@ Mature platforms combine several. API products, where every request has a real c
 
    | Tier | Reached when (successful payments only) | Charge threshold | Spend cap | Concurrent sessions |
    | --- | --- | --- | --- | --- |
-   | T0 new | no successful payment yet | $10 | none: the threshold charge must succeed (D10.2a) | 2 |
+   | T0 new | no successful payment yet | $10 | $15 while that charge is unpaid: the threshold plus the in-flight allowance (D10.2a) | 2 |
    | T1 | lifetime paid ≥ $10 | $25 | plan (D5) | plan |
    | T2 | lifetime paid ≥ $100 and ≥ 1 paid cycle invoice | $50 | plan | plan |
    | T3 | lifetime paid ≥ $500 and ≥ 3 paid cycle invoices | $250 | plan | plan |
@@ -144,7 +144,7 @@ Mature platforms combine several. API products, where every request has a real c
      - _A failed invoice payment_ (`invoice.payment_failed`) holds T0 until **that invoice** is paid, then for 30 days after its `paid_at`. Paying a different invoice never lifts the hold, a payment older than the failure never lifts it, and a failure event for an invoice already recorded as paid is ignored (late redelivery).
      - _A dispute_ (`charge.dispute.created`) holds T0 on its own, independently of payments, until `charge.dispute.closed` arrives for that dispute with status `won`. A lost (or otherwise closed) dispute keeps the hold; ops lifts it by hand once the account is settled (the statement is in migration 0194).
      - Amended 2026-11-05 (review of the first implementation): the earlier "30 days after the balance is settled" read as "after any later payment", which let an unrelated or out-of-order payment lift the hold.
-   - **The effective cap** is min(plan default or admin override, tier cap). Since 2026-11-13 no tier has a cap of its own (D10.2a): the threshold charge, not a ceiling, limits a new workspace. On Hobby the plan cap ($20) is below the T1 threshold, so after T0 a Hobby workspace's exposure is bounded by its cap and it is charged at month end.
+   - **The effective cap** is min(plan default or admin override, tier cap). Since 2026-11-13 T0's cap is its threshold plus the in-flight allowance (D10.2a), so a new workspace keeps working while its first charge settles; a paid charge moves it to T1, which has no cap of its own. On Hobby the plan cap ($20) is below the T1 threshold, so after T0 a Hobby workspace's exposure is bounded by its cap and it is charged at month end.
    - **State.** A durable `billing_trust` record (lifetime paid, paid cycle invoices, lock-until with the failed invoice, the open dispute) is updated from the `invoice.paid`, `invoice.payment_failed`, `charge.dispute.created` and `charge.dispute.closed` webhooks. The tier is a pure function of those counters and the `pricing.yaml` table. `stripe_billing_events` cannot serve, because it stores no amounts and is purged after 90 days.
    - **Visible.** Settings → Billing shows the current tier, the next charge point and what reaches the next tier. The fee cost of small charges falls only on T0: Stripe's per-charge fee is about 6% of a $10 charge, 4% of $25 and 3.5% of $50.
    - **Prepay to jump a tier** (DigitalOcean's model) comes later, with [ADR071](ADR071-tenant-billing-credits.md) credit grants.

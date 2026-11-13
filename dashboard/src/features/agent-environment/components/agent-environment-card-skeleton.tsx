@@ -235,7 +235,7 @@ export function AgentEnvironmentCardSkeleton() {
             <p className="text-muted-foreground text-xs">
               <SkeletonText>
                 {longest(
-                  t("agentEnvironment.spendTierNew"),
+                  t("agentEnvironment.spendTierNew", { amount: WIDE_USD }),
                   t("agentEnvironment.spendTierLocked"),
                 )}
               </SkeletonText>

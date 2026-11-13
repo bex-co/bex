@@ -95,8 +95,8 @@ export function SpendCapSection({
     : null;
   const tierNote = saved.trustTierLocked
     ? t("agentEnvironment.spendTierLocked")
-    : tier === NEW_WORKSPACE_TIER
-      ? t("agentEnvironment.spendTierNew")
+    : tier === NEW_WORKSPACE_TIER && next != null
+      ? t("agentEnvironment.spendTierNew", { amount: usd(next) })
       : null;
 
   return (

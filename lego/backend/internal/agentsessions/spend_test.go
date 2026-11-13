@@ -57,8 +57,9 @@ func spendEnvironmentService(plan string, trust store.BillingTrust) (*Service, *
 
 var paidT1 = store.BillingTrust{LifetimePaidCents: 1000}
 
-// ADR091 D5/D10.1: the environment view carries the spend controls; a T0
-// workspace is capped at $10 even on Pro, and a paid one gets its plan cap.
+// ADR091 D5/D10.1/D10.2a: the environment view carries the spend controls; a
+// T0 workspace is charged at $10 and stops at $15 while that charge is unpaid,
+// even on Pro, and a paid one gets its plan cap.
 func TestEnvironmentReportsSpendControls(t *testing.T) {
 	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
 	spend.used = 1_234_567
@@ -66,7 +67,7 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if *got.AgentModelMonthlySpendCapUSD != 10 || *got.AgentModelPlanSpendCapUSD != 200 || *got.TrustTier != "T0" ||
+	if *got.AgentModelMonthlySpendCapUSD != 15 || *got.AgentModelPlanSpendCapUSD != 200 || *got.TrustTier != "T0" ||
 		*got.NextChargeThresholdUSD != 10 || *got.AgentModelSpendMonthToDateUSD != 1.234567 ||
 		*got.AgentModelMaxSpendCapUSD != 2000 || got.AgentModelSpendCapOverrideUSD != nil ||
 		!*got.AgentModelSpendCapTierLimited || *got.TrustTierLocked || *got.BillingBalanceDue {

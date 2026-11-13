@@ -272,8 +272,10 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description: "Top trust tier, charged only at month end",
   },
   "agentEnvironment.spendTierNew": {
-    message: "新工作区的上限为 $10，首次成功付款后会提高。",
-    description: "Explains the T0 new-workspace limit",
+    message:
+      "新工作区的 agent 模型花费到 {amount} 时会扣款，扣款处理期间可以继续使用；付款成功后，上限提高到套餐上限。",
+    description:
+      "Explains T0: charged at its threshold, working while the charge settles (ADR091 D10.2a)",
   },
   "agentEnvironment.spendTierLocked": {
     message:

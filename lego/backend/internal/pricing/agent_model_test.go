@@ -40,7 +40,7 @@ func sheetWithAgentModel(t *testing.T, block string) (*Sheet, error) {
 // spendBlock is a minimal valid spend-control block the validation cases edit.
 const spendBlock = "  maxCapMultiplier: 10\n" +
 	"  monthlySpendCapUsd:\n    - plan: hobby\n      usd: 20\n    - plan: pro\n      usd: 200\n    - plan: scale\n      usd: 2000\n" +
-	"  trustTiers:\n    - tier: T0\n      minLifetimePaidUsd: 0\n      minPaidCycleInvoices: 0\n      capCeilingUsd: 10\n      maxConcurrentSessions: 2\n" +
+	"  trustTiers:\n    - tier: T0\n      minLifetimePaidUsd: 0\n      minPaidCycleInvoices: 0\n      chargeThresholdUsd: 10\n      inFlightAllowanceUsd: 5\n      maxConcurrentSessions: 2\n" +
 	"    - tier: T1\n      minLifetimePaidUsd: 10\n      minPaidCycleInvoices: 0\n"
 
 func agentSessionRows(model string) []store.UsageSummaryRow {
