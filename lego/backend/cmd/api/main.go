@@ -1146,6 +1146,8 @@ func (t thresholdCharger) ChargeThreshold(ctx context.Context, charge agentsessi
 		return agentsession.ThresholdChargePaid, nil
 	case billing.ChargeDeclined:
 		return agentsession.ThresholdChargeDeclined, nil
+	case billing.ChargeNotDue:
+		return agentsession.ThresholdChargeNotDue, nil
 	}
 	return agentsession.ThresholdChargePending, nil
 }

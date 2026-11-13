@@ -32,21 +32,24 @@ func MonthStartUTC(t time.Time) time.Time {
 // agentSessionUsageSumSQL sums agent_session usage of the kinds in the
 // text[] placeholder kinds over the UTC calendar month starting at the
 // timestamptz placeholder start: its hourly rows plus its compacted monthly
-// row. where narrows both halves (e.g. "workspace_id = $1 AND "). resource_kind
-// is a literal so the planner can use the partial usage_hourly indexes. The
-// month's end is computed on a timestamp without time zone, so the session
-// TimeZone cannot shift it.
+// row. where narrows both halves (e.g. "workspace_id = $1 AND ").
 func agentSessionUsageSumSQL(where, start, kinds string) string {
-	return `(SELECT COALESCE(SUM(quantity), 0)::bigint FROM (
-		SELECT quantity FROM usage_hourly
+	return `(` + agentSessionHourlySumSQL(where, start, start, kinds) + ` + (SELECT COALESCE(SUM(quantity), 0)::bigint FROM usage_monthly
 		WHERE ` + where + `resource_kind = '` + ResourceKindAgentSession + `' AND kind = ANY(` + kinds + `::text[])
-		  AND window_start >= ` + start + `::timestamptz
-		  AND window_start < ((` + start + `::timestamptz AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC'
-		UNION ALL
-		SELECT quantity FROM usage_monthly
+		  AND month = (` + start + `::timestamptz AT TIME ZONE 'UTC')::date))`
+}
+
+// agentSessionHourlySumSQL sums the usage_hourly half of
+// agentSessionUsageSumSQL from the hour starting at or after from to the end
+// of the UTC calendar month starting at monthStart (both timestamptz SQL
+// expressions). resource_kind is a literal so the planner can use the
+// partial usage_hourly indexes. The month's end is computed on a timestamp
+// without time zone, so the session TimeZone cannot shift it.
+func agentSessionHourlySumSQL(where, from, monthStart, kinds string) string {
+	return `(SELECT COALESCE(SUM(quantity), 0)::bigint FROM usage_hourly
 		WHERE ` + where + `resource_kind = '` + ResourceKindAgentSession + `' AND kind = ANY(` + kinds + `::text[])
-		  AND month = (` + start + `::timestamptz AT TIME ZONE 'UTC')::date
-	) u)`
+		  AND window_start >= ` + from + `::timestamptz
+		  AND window_start < ((` + monthStart + `::timestamptz AT TIME ZONE 'UTC') + interval '1 month') AT TIME ZONE 'UTC')`
 }
 
 // ErrInvalidAgentModelWriteOff refuses a write-off missing a field or with an

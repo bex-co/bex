@@ -306,3 +306,22 @@ func (s *PGStore) ListAgentModelCharges(ctx context.Context, workspaceID string,
 		WHERE workspace_id = $1 AND created_at >= $2
 		ORDER BY created_at, seq`, workspaceID, since.UTC()))
 }
+
+// RecordAgentModelBilledUntil moves workspaceID's charge window boundary
+// (migration 0249) forward to until: a bex subscription invoice billed the
+// meter through it. It never moves back, and a workspace with no mapping is
+// a no-op. advanced reports that the boundary moved, so a spend read made
+// before it is stale.
+func (s *PGStore) RecordAgentModelBilledUntil(ctx context.Context, workspaceID string, until time.Time) (advanced bool, err error) {
+	if workspaceID == "" || until.IsZero() {
+		return false, fmt.Errorf("agent-model billed-until needs a workspace and a time")
+	}
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE billing_provider_mappings SET agent_model_billed_until = $2
+		WHERE workspace_id = $1 AND (agent_model_billed_until IS NULL OR agent_model_billed_until < $2)`,
+		workspaceID, until.UTC())
+	if err != nil {
+		return false, err
+	}
+	return tag.RowsAffected() == 1, nil
+}

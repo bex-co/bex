@@ -92,7 +92,10 @@ type spendLedger struct {
 	byo      bool
 	err      error
 	reads    int
-	// The threshold charge inputs (ADR091 D10.2a).
+	// The threshold charge inputs (ADR091 D10.2a). billed is the month's
+	// spend a subscription invoice already billed: the charge window holds
+	// used minus it.
+	billed     int64
 	charged    int64
 	chargeSeq  int
 	pending    bool
@@ -103,7 +106,7 @@ type spendLedger struct {
 func (q *spendLedger) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
 	q.reads++
 	return store.AgentSpendInputs{Plan: q.plan, Trust: q.trust, OverrideMicroUSD: q.override, MonthToDateMicroUSD: q.used, ModelKeySet: q.byo,
-		ChargedMicroUSD: q.charged, ChargeSeq: q.chargeSeq, ChargePending: q.pending, Chargeable: q.chargeable, BalanceDue: q.due}, q.err
+		WindowSpendMicroUSD: q.used - q.billed, ChargedMicroUSD: q.charged, ChargeSeq: q.chargeSeq, ChargePending: q.pending, Chargeable: q.chargeable, BalanceDue: q.due}, q.err
 }
 
 // ADR091 D5/D10.1: the effective cap is min(override clamped to the plan's

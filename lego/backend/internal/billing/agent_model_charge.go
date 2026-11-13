@@ -375,6 +375,63 @@ func (c *StripeClient) NetAgentModelCharge(ctx context.Context, charge store.Age
 	return item.ID, nil
 }
 
+// meterBilledUntil is where a bex subscription invoice billed the meter
+// through: its period_end, for a billing reason that bills the usage accrued
+// to it (a cycle, threshold or update invoice). Zero for any other invoice,
+// a threshold charge invoice included (it has no subscription). The charge
+// window opens there (ADR091 D10.2a), so a charge never collects usage that
+// invoice billed.
+func meterBilledUntil(invoice *stripe.Invoice) time.Time {
+	if _, _, ok := invoiceContract(invoice); !ok || invoice.PeriodEnd <= 0 {
+		return time.Time{}
+	}
+	switch invoice.BillingReason {
+	case stripe.InvoiceBillingReasonSubscriptionCycle, stripe.InvoiceBillingReasonSubscriptionThreshold,
+		stripe.InvoiceBillingReasonSubscriptionUpdate:
+		return time.Unix(invoice.PeriodEnd, 0).UTC()
+	}
+	return time.Time{}
+}
+
+// meterInvoicesRead bounds how many of the Subscription's latest invoices
+// AgentModelBilledUntil reads: enough to pass the prorations and manual
+// invoices that can follow the last cycle invoice.
+const meterInvoicesRead = 10
+
+// AgentModelBilledUntil is where workspaceID's live Subscription last billed
+// the meter, read from its latest invoices (drafts included: a draft cycle
+// invoice already holds its period's usage). Zero when it has no live
+// Subscription or no such invoice. The charger reads it before it charges,
+// so a webhook that arrives late cannot make a charge collect usage again.
+func (c *StripeClient) AgentModelBilledUntil(ctx context.Context, workspaceID string) (time.Time, error) {
+	customerID, found, err := c.findCustomer(ctx, workspaceID)
+	if err != nil || !found {
+		return time.Time{}, err
+	}
+	sub, err := c.liveSubscription(ctx, workspaceID, customerID, false)
+	if err != nil || sub == nil {
+		return time.Time{}, err
+	}
+	params := &stripe.InvoiceListParams{
+		ListParams:   stripe.ListParams{Limit: stripe.Int64(meterInvoicesRead), Single: true},
+		Customer:     stripe.String(customerID),
+		Subscription: stripe.String(sub.ID),
+	}
+	params.Context = ctx
+	iter := c.sc.Invoices.List(params)
+	var until time.Time
+	for iter.Next() {
+		if at := meterBilledUntil(iter.Invoice()); at.After(until) {
+			until = at
+		}
+	}
+	if err := iter.Err(); err != nil {
+		code, _ := safeStripeError(err)
+		return time.Time{}, fmt.Errorf("stripe: list invoices of %s: %s", sub.ID, code)
+	}
+	return until, nil
+}
+
 // AgentModelChargeStore is AgentModelCharger's store surface; *store.PGStore
 // satisfies it.
 type AgentModelChargeStore interface {
@@ -385,6 +442,7 @@ type AgentModelChargeStore interface {
 	SettleAgentModelCharge(ctx context.Context, key store.AgentModelChargeKey, settlement store.AgentModelChargeSettlement) (store.AgentModelCharge, error)
 	SetAgentModelChargeNetItem(ctx context.Context, key store.AgentModelChargeKey, itemID string) error
 	AgentModelChargesToRetry(ctx context.Context, pendingOlderThan time.Time, limit int) ([]store.AgentModelCharge, error)
+	RecordAgentModelBilledUntil(ctx context.Context, workspaceID string, until time.Time) (bool, error)
 	RunExclusive(ctx context.Context, name string, fn func(context.Context) error) (bool, error)
 }
 
@@ -392,6 +450,7 @@ type AgentModelChargeStore interface {
 type AgentModelChargeProvider interface {
 	ChargeAgentModelUsage(ctx context.Context, charge store.AgentModelCharge, recordInvoice func(context.Context, string) error) (AgentModelChargeResult, error)
 	NetAgentModelCharge(ctx context.Context, charge store.AgentModelCharge) (string, error)
+	AgentModelBilledUntil(ctx context.Context, workspaceID string) (time.Time, error)
 }
 
 // ChargeOutcome is how a threshold charge ended for the request waiting on it.
@@ -406,6 +465,9 @@ const (
 	// ChargeDeclined: the card was declined or needs authentication; the
 	// workspace has a balance due until the invoice is paid.
 	ChargeDeclined
+	// ChargeNotDue: a subscription invoice billed the meter since the
+	// caller's spend read, so nothing was charged; the caller re-reads.
+	ChargeNotDue
 )
 
 // ChargeResult is a threshold charge's outcome and its invoice.
@@ -457,6 +519,20 @@ func (c *AgentModelCharger) ChargeThreshold(ctx context.Context, workspaceID str
 	}
 	if unbilledMicroUSD <= 0 {
 		return ChargeResult{}, fmt.Errorf("agent-model charge of %s has nothing to charge", workspaceID)
+	}
+	// The window the caller read may be stale: a subscription invoice whose
+	// webhook has not arrived could have billed this usage. A failed read
+	// leaves the window the webhooks recorded.
+	if until, err := c.Stripe.AgentModelBilledUntil(ctx, workspaceID); err != nil {
+		log.Printf("agent-model charge of %s: %v; the recorded charge window stands", workspaceID, err)
+	} else if !until.IsZero() {
+		advanced, err := c.Store.RecordAgentModelBilledUntil(ctx, workspaceID, until)
+		if err != nil {
+			return ChargeResult{}, fmt.Errorf("record where %s was last billed: %w", workspaceID, err)
+		}
+		if advanced {
+			return ChargeResult{Outcome: ChargeNotDue}, nil
+		}
 	}
 	charge, started, err := c.Store.BeginAgentModelCharge(ctx, workspaceID, at, seenSeq, unbilledMicroUSD, agentModelChargeCents(unbilledMicroUSD))
 	if err != nil {

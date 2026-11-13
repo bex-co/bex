@@ -1,6 +1,6 @@
 # w6 · m362 — Reaching an agent-model charge threshold charges the card and the workspace keeps working
 
-**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t005 and t011–t015 done; t006's production crossing passed on 2026-11-13 (charged $10.50 in 4.9 s, the session kept running, T1 at once) and found t016: a charge can collect usage a subscription invoice already billed
+**Worker:** worker6 **Goal:** a new workspace using the platform model is charged at each trust-tier threshold and keeps working, climbing the tiers as its payments succeed; only a failed or unauthenticated charge stops its model spend (ADR091 D10.2a). **Status:** in progress — t001–t005 and t011–t016 done; t006's production crossing passed on 2026-11-13 (charged $10.50 in 4.9 s, the session kept running, T1 at once); its re-check of the cycle preview and t007–t010 remain
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 | t013 | [A failed agent-model charge stops only model spend; hosting billing is untouched](done/t013.md) — **DONE** | 1h | t011 |
 | t014 | [Settings → Billing lists the mid-month agent-model charges, and the month-end invoice reads net of them](done/t014.md) — **DONE** | 1h30 | t012 |
 | t015 | [Settle-before-delete charges unbilled agent-model usage through the same charger](done/t015.md) — **DONE** | 30m | t011, t012 |
-| t016 | [A charge collects only usage no subscription invoice has billed](t016.md) | 2h30 | t011, t012 |
+| t016 | [A charge collects only usage no subscription invoice has billed](done/t016.md) — **DONE** | 2h30 | t011, t012 |
 | t006 | [Production check: a T0 workspace reaches $10, is charged at once and keeps working](t006.md) | 1h | t001, t005, t011–t016 |
 | t007 | [Render parity (Devin): spend and charge surfaces agree](t007.md) | 20m | t006 |
 | t008 | [Simplify](t008.md) | 15m | t007 |

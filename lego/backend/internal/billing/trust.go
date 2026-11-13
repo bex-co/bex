@@ -63,6 +63,7 @@ type Trust struct {
 // *store.PGStore satisfies it.
 type AgentModelChargeLedger interface {
 	SettleAgentModelChargeInvoice(ctx context.Context, invoiceID string, settlement store.AgentModelChargeSettlement) (store.AgentModelCharge, bool, error)
+	RecordAgentModelBilledUntil(ctx context.Context, workspaceID string, until time.Time) (bool, error)
 }
 
 // WriteOffStore records agent-model bad debt; *store.PGStore satisfies it.
@@ -155,6 +156,9 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 			return nil
 		}
 		workspaceID = ws
+		if err := t.recordMeterBilled(ctx, event.Type, ws, &invoice); err != nil {
+			return err
+		}
 		switch event.Type {
 		case stripe.EventTypeInvoiceCreated:
 			return t.finalizeThresholdInvoice(ctx, &invoice)
@@ -316,6 +320,24 @@ func ignoreWorkspaceGone(err error) error {
 		return nil
 	}
 	return err
+}
+
+// recordMeterBilled moves the workspace's charge window past a subscription
+// invoice that billed the meter, once it exists (created) and again once it
+// is paid, in case the created event is not delivered. The charger also
+// reads it from Stripe before each charge.
+func (t *Trust) recordMeterBilled(ctx context.Context, eventType stripe.EventType, workspaceID string, invoice *stripe.Invoice) error {
+	if t.ModelCharges == nil || (eventType != stripe.EventTypeInvoiceCreated && eventType != stripe.EventTypeInvoicePaid) {
+		return nil
+	}
+	until := meterBilledUntil(invoice)
+	if until.IsZero() {
+		return nil
+	}
+	if _, err := t.ModelCharges.RecordAgentModelBilledUntil(ctx, workspaceID, until); err != nil {
+		return fmt.Errorf("record where %s was last billed: %w", workspaceID, err)
+	}
+	return nil
 }
 
 // finalizeThresholdInvoice finalizes a draft subscription_threshold invoice so

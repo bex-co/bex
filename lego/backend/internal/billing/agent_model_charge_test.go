@@ -36,9 +36,10 @@ import (
 // chargeStoreFake is an in-memory AgentModelChargeStore with the PGStore's
 // begin and settle rules.
 type chargeStoreFake struct {
-	mu      sync.Mutex
-	charges map[store.AgentModelChargeKey]store.AgentModelCharge
-	locked  bool
+	mu          sync.Mutex
+	charges     map[store.AgentModelChargeKey]store.AgentModelCharge
+	billedUntil map[string]time.Time
+	locked      bool
 }
 
 func (f *chargeStoreFake) put(c store.AgentModelCharge) {
@@ -156,6 +157,19 @@ func (f *chargeStoreFake) AgentModelChargesToRetry(_ context.Context, cutoff tim
 	return out, nil
 }
 
+func (f *chargeStoreFake) RecordAgentModelBilledUntil(_ context.Context, ws string, until time.Time) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.billedUntil == nil {
+		f.billedUntil = map[string]time.Time{}
+	}
+	if !until.After(f.billedUntil[ws]) {
+		return false, nil
+	}
+	f.billedUntil[ws] = until
+	return true, nil
+}
+
 func (f *chargeStoreFake) RunExclusive(ctx context.Context, _ string, fn func(context.Context) error) (bool, error) {
 	if f.locked {
 		return false, nil
@@ -199,6 +213,8 @@ type chargeStub struct {
 	pay     func() (int, string)
 	current string
 	items   int
+	// listed is the Subscription's latest invoices, as JSON objects.
+	listed []string
 }
 
 func newChargeStub(t *testing.T) (*StripeClient, *stripeStub, *chargeStub) {
@@ -210,6 +226,8 @@ func newChargeStub(t *testing.T) (*StripeClient, *stripeStub, *chargeStub) {
 		switch {
 		case method == http.MethodGet && path == "/v1/subscriptions":
 			return 200, chargeTestSubscriptions
+		case method == http.MethodGet && path == "/v1/invoices":
+			return 200, `{"object":"list","has_more":false,"data":[` + strings.Join(cs.listed, ",") + `]}`
 		case method == http.MethodPost && path == "/v1/invoices":
 			return 200, `{"id":"in_c1","object":"invoice","status":"draft","customer":"cus_1","subtotal":0}`
 		case method == http.MethodGet && path == "/v1/invoices/in_c1":
@@ -268,13 +286,18 @@ func TestAgentModelChargePaidStandaloneAndNetted(t *testing.T) {
 		t.Fatalf("result = %+v, %v; want paid in_c1", result, err)
 	}
 
-	wantPaths := []string{"/v1/subscriptions", "/v1/invoices", "/v1/invoiceitems", "/v1/invoices/in_c1/finalize",
-		"/v1/invoices/in_c1/pay", "/v1/subscriptions", "/v1/invoiceitems"}
+	// The charge window is read first (the Subscription's latest invoices),
+	// then the charge is made.
+	wantPaths := []string{"/v1/subscriptions", "/v1/invoices", "/v1/subscriptions", "/v1/invoices", "/v1/invoiceitems",
+		"/v1/invoices/in_c1/finalize", "/v1/invoices/in_c1/pay", "/v1/subscriptions", "/v1/invoiceitems"}
 	if !slices.Equal(stub.hits, wantPaths) {
 		t.Fatalf("Stripe calls = %v, want %v", stub.hits, wantPaths)
 	}
 	invoices := stub.requests("/v1/invoices")
-	create := form(t, invoices[0].body)
+	if invoices[0].body != "" {
+		t.Fatalf("the window read is not a list: %q", invoices[0].body)
+	}
+	create := form(t, invoices[1].body)
 	if _, onSubscription := create["subscription"]; onSubscription {
 		t.Fatalf("the charge invoice names a subscription: %v", create)
 	}
@@ -288,7 +311,7 @@ func TestAgentModelChargePaidStandaloneAndNetted(t *testing.T) {
 			t.Errorf("invoice %s = %q, want %q", k, got, want)
 		}
 	}
-	if got := invoices[0].header.Get("Idempotency-Key"); got != "bex-threshold-tea-a-2026-11-1-invoice-a0" {
+	if got := invoices[1].header.Get("Idempotency-Key"); got != "bex-threshold-tea-a-2026-11-1-invoice-a0" {
 		t.Errorf("invoice idempotency key = %q", got)
 	}
 	items := stub.requests("/v1/invoiceitems")
@@ -384,7 +407,7 @@ func TestAgentModelChargeUndecidedThenSwept(t *testing.T) {
 		joined.Outcome != ChargePending || time.Since(start) > time.Second {
 		t.Fatalf("join = %+v, %v after %s", joined, err, time.Since(start))
 	}
-	if n := len(stub.requests("/v1/invoices")); n != 1 {
+	if n := countPosts(stub.requests("/v1/invoices")); n != 1 {
 		t.Fatalf("invoices created = %d, want one", n)
 	}
 
@@ -410,7 +433,7 @@ func TestAgentModelChargeUndecidedThenSwept(t *testing.T) {
 	if len(pays) != 2 || pays[1].header.Get("Idempotency-Key") != "bex-threshold-tea-a-2026-11-1-pay-a1" {
 		t.Fatalf("pays = %d, second key %q; want the re-pay under attempt 1", len(pays), pays[len(pays)-1].header.Get("Idempotency-Key"))
 	}
-	if n := len(stub.requests("/v1/invoices")); n != 1 {
+	if n := countPosts(stub.requests("/v1/invoices")); n != 1 {
 		t.Fatalf("invoices created = %d: the sweep made another invoice instead of paying in_c1", n)
 	}
 	if got := st.get(chargeTestKey); got.Status != store.AgentModelChargePaid || got.NetItemID == "" {
@@ -471,7 +494,15 @@ func TestAgentModelChargeJoinWaitsForTheChargeInFlight(t *testing.T) {
 }
 
 // chargeProviderFake counts charges; it is never meant to be reached.
-type chargeProviderFake struct{ charges int }
+// billedUntil is what AgentModelBilledUntil reads from Stripe.
+type chargeProviderFake struct {
+	charges     int
+	billedUntil time.Time
+}
+
+func (f *chargeProviderFake) AgentModelBilledUntil(context.Context, string) (time.Time, error) {
+	return f.billedUntil, nil
+}
 
 func (f *chargeProviderFake) ChargeAgentModelUsage(context.Context, store.AgentModelCharge, func(context.Context, string) error) (AgentModelChargeResult, error) {
 	f.charges++
@@ -490,8 +521,17 @@ func TestAgentModelChargeCents(t *testing.T) {
 	}
 }
 
-// chargeLedgerFake records the charge settlements the webhook makes.
-type chargeLedgerFake struct{ settled []string }
+// chargeLedgerFake records the charge settlements and charge window
+// boundaries the webhook makes.
+type chargeLedgerFake struct {
+	settled     []string
+	billedUntil []string
+}
+
+func (f *chargeLedgerFake) RecordAgentModelBilledUntil(_ context.Context, ws string, until time.Time) (bool, error) {
+	f.billedUntil = append(f.billedUntil, ws+"@"+until.UTC().Format(time.RFC3339))
+	return true, nil
+}
 
 func (f *chargeLedgerFake) SettleAgentModelChargeInvoice(_ context.Context, invoiceID string, s store.AgentModelChargeSettlement) (store.AgentModelCharge, bool, error) {
 	f.settled = append(f.settled, invoiceID+":"+s.Status+":"+s.Failure)
@@ -680,7 +720,7 @@ func TestAgentModelChargeAgainstPostgres(t *testing.T) {
 			t.Fatalf("racer %d = %v, want every racer served by the one paid charge", i, o)
 		}
 	}
-	if n := len(stub.requests("/v1/invoices")); n != 1 {
+	if n := countPosts(stub.requests("/v1/invoices")); n != 1 {
 		t.Fatalf("invoices created = %d, want exactly one for the crossing", n)
 	}
 	in, err := pg.AgentSpendInputs(ctx, ws, now)
@@ -720,5 +760,84 @@ func TestAgentModelChargeAgainstPostgres(t *testing.T) {
 	}
 	if charges, err = pg.ListAgentModelCharges(ctx, ws, now.Add(-time.Hour)); err != nil || len(charges) != 2 || charges[1].NetItemID == "" {
 		t.Fatalf("charges = %+v, %v; want the late-paid charge netted by the sweep", charges, err)
+	}
+}
+
+// ADR091 D10.2a: a charge collects only usage no subscription invoice has
+// billed. Before it charges, the charger reads where the
+// Subscription last billed the meter; when that moved past the caller's spend
+// read (the webhook has not arrived), it charges nothing and answers not due,
+// so the caller re-reads the narrower window. The next attempt, with the
+// boundary already recorded, charges.
+func TestAgentModelChargeNotDueWhenAnInvoiceBilledTheMeter(t *testing.T) {
+	c, stub, cs := newChargeStub(t)
+	boundary := time.Date(2026, 11, 13, 8, 39, 52, 0, time.UTC)
+	contract := `"parent":{"type":"subscription_details","subscription_details":{"subscription":"sub_old","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}}`
+	cs.listed = []string{
+		fmt.Sprintf(`{"id":"in_thr","object":"invoice","status":"paid","billing_reason":"subscription_threshold","period_end":%d,%s}`, boundary.Unix(), contract),
+		`{"id":"in_man","object":"invoice","status":"paid","billing_reason":"manual","period_end":1894000000,` + contract + `}`,
+	}
+	charger, st, _ := newTestCharger(c)
+	result, err := charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 10_495_014)
+	if err != nil || result.Outcome != ChargeNotDue {
+		t.Fatalf("result = %+v, %v; want not due", result, err)
+	}
+	if n := countPosts(stub.requests("/v1/invoices")); n != 0 {
+		t.Fatalf("invoices created = %d, want none", n)
+	}
+	if got := st.billedUntil["tea-a"]; !got.Equal(boundary) {
+		t.Fatalf("billed until = %s, want the threshold invoice's period end %s (a manual invoice bills no meter)", got, boundary)
+	}
+	if result, err = charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 10_000_000); err != nil || result.Outcome != ChargePaid {
+		t.Fatalf("second attempt = %+v, %v; want paid", result, err)
+	}
+}
+
+// Only a subscription invoice that bills the meter moves the window, to its
+// period end; a charge invoice never does.
+func TestMeterBilledUntil(t *testing.T) {
+	end := time.Date(2026, 11, 16, 0, 0, 0, 0, time.UTC)
+	contract := &stripe.InvoiceParent{SubscriptionDetails: &stripe.InvoiceParentSubscriptionDetails{
+		Subscription: &stripe.Subscription{ID: "sub_x"},
+		Metadata:     map[string]string{subscriptionMetadataKey: "true", workspaceMetadataKey: "tea-a"},
+	}}
+	for reason, want := range map[stripe.InvoiceBillingReason]time.Time{
+		stripe.InvoiceBillingReasonSubscriptionCycle:     end,
+		stripe.InvoiceBillingReasonSubscriptionThreshold: end,
+		stripe.InvoiceBillingReasonSubscriptionUpdate:    end,
+		stripe.InvoiceBillingReasonSubscriptionCreate:    {},
+		stripe.InvoiceBillingReasonManual:                {},
+	} {
+		if got := meterBilledUntil(&stripe.Invoice{BillingReason: reason, PeriodEnd: end.Unix(), Parent: contract}); !got.Equal(want) {
+			t.Errorf("%s: %s, want %s", reason, got, want)
+		}
+	}
+	charge := &stripe.Invoice{BillingReason: stripe.InvoiceBillingReasonSubscriptionCycle, PeriodEnd: end.Unix(),
+		Metadata: map[string]string{agentModelChargeMetadataKey: "true", workspaceMetadataKey: "tea-a"}}
+	if got := meterBilledUntil(charge); !got.IsZero() {
+		t.Errorf("a charge invoice moved the window to %s", got)
+	}
+}
+
+// Trust moves the window when a cycle or threshold invoice is created and
+// again when it is paid; a charge invoice's events never move it.
+func TestTrustRecordsWhereTheMeterWasBilled(t *testing.T) {
+	now := chargeTestNow
+	ledger := &chargeLedgerFake{}
+	h := &Trust{Store: &chargeTrustFake{}, ModelCharges: ledger, Clock: func() time.Time { return now }}
+	end := time.Date(2026, 11, 16, 0, 0, 0, 0, time.UTC)
+	cycle := strings.Replace(trustInvoice("tea-a", "in_cy", 0, "subscription_cycle", now), `"billing_reason"`,
+		fmt.Sprintf(`"period_end":%d,"billing_reason"`, end.Unix()), 1)
+	for i, eventType := range []stripe.EventType{stripe.EventTypeInvoiceCreated, stripe.EventTypeInvoicePaid} {
+		if err := h.HandleStripeEvent(context.Background(), trustEvent(fmt.Sprintf("evt_cy%d", i), eventType, now, cycle)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := h.HandleStripeEvent(context.Background(), trustEvent("evt_ch", stripe.EventTypeInvoicePaid, now, chargeInvoiceJSON("tea-a", "in_c1", 1000, now))); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"tea-a@2026-11-16T00:00:00Z", "tea-a@2026-11-16T00:00:00Z"}
+	if !slices.Equal(ledger.billedUntil, want) {
+		t.Fatalf("billed until = %v, want %v", ledger.billedUntil, want)
 	}
 }
