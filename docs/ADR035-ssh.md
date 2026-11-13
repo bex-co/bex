@@ -152,7 +152,7 @@ The Web Shell rides the same isolated gateway as native SSH, so it inherits that
 
 ## Explicit non-goals
 
-This ADR does not authorize ephemeral shell instances, `--ephemeral`, one-off jobs, cron shell access, hosted sandboxes, SFTP/SCP, forwarding, agent forwarding, direct TCP/Unix-socket channels, shell installation, or an sshd sidecar. The in-dashboard [Browser Web Shell](#browser-web-shell) attaches to an already-running instance and is in scope; ephemeral and hosted execution remain excluded.
+This ADR does not authorize ephemeral shell instances, `--ephemeral`, one-off jobs, cron shell access, hosted sandboxes, SFTP/SCP, forwarding, agent forwarding, direct TCP/Unix-socket channels, shell installation, or an sshd sidecar. The in-dashboard [Browser Web Shell](#browser-web-shell) attaches to an already-running instance and is in scope; ephemeral and hosted execution remain excluded. A refused feature refuses by name: `POST /v1/services/{id}/ephemeral-shell`, the route the pinned CLI's `ssh --ephemeral` calls on a paid service, answers 410 `EPHEMERAL_SHELLS_UNSUPPORTED` after the same authorization as `jobs create`, and its message points to plain `bex ssh <service>` (w8/304). Until then the route did not exist, and the CLI printed "failed to create ephemeral shell: not found".
 
 ## Verification
 

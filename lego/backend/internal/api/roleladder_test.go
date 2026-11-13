@@ -403,8 +403,9 @@ var representativeVerbRelations = map[string]string{
 	// round-5 F2: a pre-deploy command and a one-off job command are both
 	// attacker-chosen code run in the service's image with its secret
 	// projections, reaching the identical sink as SetCommands above.
-	"*apps.Service.SetPreDeployCommand": core.RelCanCreate,
-	"*jobs.Service.Create":              core.RelCanCreate,
+	"*apps.Service.SetPreDeployCommand":  core.RelCanCreate,
+	"*jobs.Service.Create":               core.RelCanCreate,
+	"*jobs.Service.CreateEphemeralShell": core.RelCanCreate,
 	// Build-root selection, reclassified from can_operate by codex round-9 #8
 	// (the m68 "in-repo content" carve-out ignored that an API role is
 	// independent of git access — see m68_executable_selection_test.go): the

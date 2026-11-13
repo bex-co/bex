@@ -83,7 +83,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_job",
-		Description: "bex extension: Render's `jobs create`. One-off jobs are not supported on bex — this tool always refuses with ONE_OFF_JOBS_UNSUPPORTED; run the command over SSH, as a pre-deploy command, or as a cron job instead. list_jobs/get_job/cancel_job still serve existing jobs.",
+		Description: "bex extension: Render's `jobs create`. One-off jobs are not supported on bex — this tool always refuses with ONE_OFF_JOBS_UNSUPPORTED; run the command as a pre-deploy command or a cron job, or over SSH on a paid instance, instead. list_jobs/get_job/cancel_job still serve existing jobs.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createJobArgs) (*mcp.CallToolResult, renderJob, error) {
 		v, err := s.Create(ctx, in.ServiceID, in.StartCommand, in.PlanID)
 		if err != nil {

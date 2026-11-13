@@ -249,3 +249,40 @@ type denyAllChecker struct{}
 func (denyAllChecker) Check(context.Context, string, string, string) (bool, error) {
 	return false, nil
 }
+
+// w8/304: ephemeral shells are off-roadmap with one-off jobs, and the pinned
+// CLI's `ssh --ephemeral` reached a route that did not exist, printing
+// "failed to create ephemeral shell: not found". It now refuses by name,
+// after authorization, and submits nothing.
+func TestEphemeralShellIsRefusedWithNamedGone(t *testing.T) {
+	h := newGateHarness(t, allowAllChecker{})
+	// The pinned CLI sends no body, or {"plan": …} with --plan; neither is read.
+	if rec := h.do(t, http.MethodPost, "/v1/services/web/ephemeral-shell", `{"plan":"pro"}`); rec.Code != http.StatusGone {
+		t.Errorf("with --plan: status = %d, want 410 (body: %s)", rec.Code, rec.Body.String())
+	}
+	rec := h.do(t, http.MethodPost, "/v1/services/web/ephemeral-shell", "")
+	if rec.Code != http.StatusGone {
+		t.Fatalf("status = %d, want 410 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var body struct {
+		ID      string `json:"id"`
+		Message string `json:"message"`
+		Code    string `json:"code"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode body: %v (%s)", err, rec.Body.String())
+	}
+	if body.ID != "gone" || body.Code != CodeEphemeralShellsUnsupported || !strings.Contains(body.Message, "bex ssh <service>") {
+		t.Errorf("body = %+v, want gone/%s naming plain bex ssh", body, CodeEphemeralShellsUnsupported)
+	}
+	h.assertNothingSubmitted(t)
+
+	denied := newGateHarness(t, denyAllChecker{})
+	if rec := denied.do(t, http.MethodPost, "/v1/services/web/ephemeral-shell", ""); rec.Code == http.StatusGone || rec.Code < 400 {
+		t.Errorf("unauthorized ephemeral shell = %d, want an authz refusal, not 410 (body: %s)", rec.Code, rec.Body.String())
+	}
+	denied.assertNothingSubmitted(t)
+	if rec := h.do(t, http.MethodPost, "/v1/services/nope/ephemeral-shell", ""); rec.Code != http.StatusNotFound {
+		t.Errorf("ephemeral shell on a missing service = %d, want 404 (body: %s)", rec.Code, rec.Body.String())
+	}
+}

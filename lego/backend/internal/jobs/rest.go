@@ -30,8 +30,11 @@ import (
 //	POST /v1/services/{id}/jobs                  → 410 ONE_OFF_JOBS_UNSUPPORTED (gated, w4/m116/t003)
 //	GET  /v1/services/{id}/jobs/{jobId}          → get job (job 200)
 //	POST /v1/services/{id}/jobs/{jobId}/cancel   → cancel job (job 200)
+//	POST /v1/services/{id}/ephemeral-shell       → 410 EPHEMERAL_SHELLS_UNSUPPORTED (gated, w8/304)
 //
-// Behavior lives in the Service so GraphQL and MCP stay identical.
+// Behavior lives in the Service so GraphQL and MCP stay identical. The
+// ephemeral-shell refusal is REST only: its one client is the pinned CLI's
+// `ssh --ephemeral`, and Render's MCP has no such tool.
 
 // renderJobStatus maps Render's job status values — the same set the CLI's
 // types_gen.go declares (pending/running/succeeded/failed/canceled).
@@ -134,6 +137,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		core.WriteJSON(w, http.StatusCreated, toRenderJob(j))
+	})
+
+	mux.HandleFunc("POST "+base+"/{id}/ephemeral-shell", func(w http.ResponseWriter, r *http.Request) {
+		core.WriteErr(w, s.CreateEphemeralShell(r.Context(), r.PathValue("id")))
 	})
 
 	mux.HandleFunc("GET "+base+"/{id}/jobs/{jobId}", func(w http.ResponseWriter, r *http.Request) {

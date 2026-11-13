@@ -21,7 +21,8 @@ limitations under the License.
 // serving the history of jobs created before that gate — their status is still
 // synced from any surviving Kubernetes Job. The store (BEX_CP_DB_URI) is
 // required for the history verbs — without it they return ErrJobsUnavailable
-// (503), the standard bex degrade shape.
+// (503), the standard bex degrade shape. Ephemeral shells, off-roadmap with
+// one-off jobs, refuse here too (CreateEphemeralShell, REST only).
 package jobs
 
 import (
@@ -184,7 +185,7 @@ const CodeOneOffJobsUnsupported = "ONE_OFF_JOBS_UNSUPPORTED"
 // List/get/cancel keep serving the jobs created before the gate.
 var ErrOneOffJobsUnsupported = core.NewGoneError(
 	CodeOneOffJobsUnsupported,
-	"one-off jobs are not supported on bex; run the command in the service itself (`bex ssh <service>`), as a pre-deploy command, or as a cron job — existing jobs remain listable",
+	"one-off jobs are not supported on bex; run the command as a pre-deploy command or a cron job, or in the running service with `bex ssh <service>` on a paid instance — existing jobs remain listable",
 	map[string]any{"feature": "one-off jobs"},
 )
 
@@ -201,6 +202,32 @@ func (s *Service) Create(ctx context.Context, serviceID, _, _ string) (JobView, 
 		return JobView{}, err
 	}
 	return JobView{}, ErrOneOffJobsUnsupported
+}
+
+// CodeEphemeralShellsUnsupported is the stable refusal code for an ephemeral
+// shell, carried as CodeOneOffJobsUnsupported is.
+const CodeEphemeralShellsUnsupported = "EPHEMERAL_SHELLS_UNSUPPORTED"
+
+// ErrEphemeralShellsUnsupported is what CreateEphemeralShell returns. Ephemeral
+// shells are off-roadmap together with one-off jobs (.pm/DO_NOT_DO.md, ADR035,
+// w8/304). The pinned CLI prints this message after its "failed to create
+// ephemeral shell: " prefix.
+var ErrEphemeralShellsUnsupported = core.NewGoneError(
+	CodeEphemeralShellsUnsupported,
+	"ephemeral shells are not supported on bex; connect to the running service with `bex ssh <service>` (without --ephemeral)",
+	map[string]any{"feature": "ephemeral shells"},
+)
+
+// CreateEphemeralShell is Render's ephemeral shell create. bex refuses it with
+// ErrEphemeralShellsUnsupported (410) once the caller is authorized for the
+// service, under the same can_create gate as Create: a shell would run the
+// caller's commands in the service's image. As in Create, a refusal records no
+// audit event (deferred audit).
+func (s *Service) CreateEphemeralShell(ctx context.Context, serviceID string) error {
+	if _, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, serviceID); err != nil {
+		return err
+	}
+	return ErrEphemeralShellsUnsupported
 }
 
 // Get fetches a single job by id, syncing status from the cluster if non-terminal.

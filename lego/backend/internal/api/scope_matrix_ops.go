@@ -956,6 +956,7 @@ var classifiedOps = map[string]string{
 	"REST POST /v1/services/{id}/deploy-hook/regenerate":                               core.OpClassMint,
 	"REST POST /v1/services/{id}/deploys":                                              core.OpClassWrite,
 	"REST POST /v1/services/{id}/deploys/{deployId}/cancel":                            core.OpClassWrite,
+	"REST POST /v1/services/{id}/ephemeral-shell":                                      core.OpClassWrite,
 	"REST POST /v1/services/{id}/headers":                                              core.OpClassWrite,
 	"REST POST /v1/services/{id}/jobs":                                                 core.OpClassWrite,
 	"REST POST /v1/services/{id}/jobs/{jobId}/cancel":                                  core.OpClassWrite,
