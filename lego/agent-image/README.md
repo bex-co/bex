@@ -61,6 +61,16 @@ Live turns are a second signed boundary. The driver receives only a derived Ed25
 
 The sandbox never holds a real model key. `BEX_AGENT_MODEL_API_KEY` is only the session-bound placeholder; the driver hands it to the ACP child under the adapter's native name next to the gateway model-proxy base URL, and the gateway swaps in the real key on its upstream hop (ADR062). There is therefore no credential scrub, Git-object scan or pre-snapshot hook. Nothing in the sandbox outlives it: there is no workspace snapshot or restore (ADR059 hibernation was retired on 2026-10-25). An idle session's sandbox is terminated after `BEX_AGENT_SANDBOX_IDLE_TTL` (2h), and the next message runs in a fresh sandbox that re-clones the session branch and is primed from the durable transcript (ADR047 D3).
 
+## Warm Go dependency cache
+
+The image carries a Go cache at `/opt/bex-go` (`GOMODCACHE=/opt/bex-go/mod`, `GOCACHE=/opt/bex-go/cache`) for sessions that build this repository, such as the scheduled `rt-*` routines (ADR105 § Until the AX42-1 arrives):
+
+- `deploy.yml` writes `agent-image/go-deps.txt`, the third-party packages `go list -deps -test` finds over the four `lego/` modules in workspace mode. The Dockerfile's `go-deps` stage builds them, vets a throwaway package importing them to cache their vet facts, and drops the module zips. A build without the list, such as `scripts/dev-env.sh`'s, leaves the cache empty.
+- The stage resolves the same workspace with the same Go as a session, at the same paths, so a session's build and vet with default flags reuse its entries: locally, `go build` over the four modules took 17 s instead of 29 s and `go vet` 10 s instead of 35 s, with nothing downloaded.
+- Cached entries carry a far-future mtime, so Go neither trims them nor rewrites their mtime on use (which would copy each used file into the sandbox's writable layer).
+- `/opt/bex-go` is a linked layer (`COPY --link`), independent of the layers above it, and the registry build cache serves its stage, so it changes, and a node pulls it again, only when the dependency list does. `AGENT_REBUILD` rebuilds the other layers on each deploy, so apt packages refresh. The Trivy gate and the SBOM skip `/opt/bex-go`: it is build input for sessions, not software the image runs.
+- About 3.4 GB uncompressed (1.2 GB of modules, 2.2 GB of build output). A session that builds a different repository is unaffected; writes go to the session's own layer as before.
+
 The gateway's `internal/sshgateway/agentcred` tests exercise clone/fetch/push smart-HTTP mediation, exact-ref rejection, Pod binding, and the no-token-response invariant. Driver tests lock ACP spawn, typed chunks, session resume gating, listener behavior, signed turn grants, the overlay channels, the `bex` MCP tool, the agent Git environment and the post-turn delivery check.
 
 ## Live verification

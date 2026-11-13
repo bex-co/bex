@@ -36,6 +36,11 @@
 # TypeScript, compiled in its own build stage, so the build context needs the
 # .ts sources + tsconfig.json (not dist/, which is a fresh build artifact).
 !agent-image/
+# The agent image's warm Go dependency cache resolves modules in workspace
+# mode, as a session does, from the package list deploy.yml writes.
+!go.work
+!go.work.sum
+!agent-image/go-deps.txt
 !agent-image/driver/
 !agent-image/driver/src/
 !agent-image/driver/src/*.ts
@@ -45,5 +50,8 @@
 
 # The CLI (cli/) is a user-installed binary released via the bex-cli/v* tag
 # train, not an image entrypoint — keep it out of the build context despite
-# the !**/*.go re-includes above.
+# the !**/*.go re-includes above. Its module files stay: the workspace that
+# the agent image's warm Go dependency cache resolves lists cli/.
 cli/
+!cli/go.mod
+!cli/go.sum

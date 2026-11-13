@@ -421,6 +421,32 @@ jobs:
             ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}
 
       # --- 1d. build the ADR047 agent sandbox template image (w3/m37) ---
+      # The image carries a warm Go dependency cache for sessions that build
+      # this repository (ADR105 § Until the AX42-1 arrives): the third-party
+      # packages `go list -deps -test` finds over the four modules in workspace
+      # mode, as a session builds them. The list is written here because the
+      # build context has neither test files nor a workspace to compute it.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: lego/go.work
+          cache: false
+      # An optimisation never blocks a deploy: without the list the image
+      # builds with an empty cache.
+      - name: list the agent image's warm Go dependencies
+        continue-on-error: true
+        working-directory: lego
+        run: |
+          set -o pipefail
+          if go list -deps -test \
+              -f '{{if and (not .Standard) .Module}}{{if not .Module.Main}}{{.ImportPath}}{{end}}{{end}}' \
+              ./types/... ./operator/... ./backend/... ./cli/... | sort -u > agent-image/go-deps.txt \
+            && test -s agent-image/go-deps.txt; then
+            echo "$(wc -l < agent-image/go-deps.txt) third-party packages"
+          else
+            rm -f agent-image/go-deps.txt
+            echo "::warning::no warm Go dependency list; the agent image's cache is empty"
+            exit 1
+          fi
       - id: build_agent_sandbox
         timeout-minutes: 45
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
@@ -429,6 +455,12 @@ jobs:
           file: lego/agent-image/Dockerfile
           platforms: linux/amd64
           push: true
+          # The registry cache serves the Go dependency stage, which changes
+          # only with the dependency list; AGENT_REBUILD rebuilds the other
+          # layers on each deploy, so apt packages refresh.
+          build-args: AGENT_REBUILD=${{ github.sha }}
+          cache-from: type=registry,ref=${{ env.AGENT_SANDBOX_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.AGENT_SANDBOX_IMAGE }}:buildcache,mode=max,ignore-error=true
           tags: |
             ${{ env.AGENT_SANDBOX_IMAGE }}:${{ github.sha }}
             ${{ env.AGENT_SANDBOX_IMAGE }}:latest
@@ -517,7 +549,9 @@ jobs:
           # Every SBOM at once (at most five images, on the hosted 4-vCPU / 16 GB
           # runner): the slowest image sets the wall clock instead of the sum.
           sbom() {
-            retry 1200 2 syft "$1" -o "spdx-json=/tmp/sbom-$2.spdx.json" \
+            # /opt/bex-go is the agent image's warm Go dependency cache: build
+            # input for sessions, not software the image runs.
+            retry 1200 2 syft "$1" --exclude '/opt/bex-go/**' -o "spdx-json=/tmp/sbom-$2.spdx.json" \
               || { echo "::error::the SBOM for $1 failed"; return 1; }
           }
           pids=()
@@ -640,6 +674,9 @@ jobs:
           cache: false
           skip-setup-trivy: true
           image-ref: '${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}'
+          # The warm Go dependency cache is source and build output for
+          # sessions' own builds, never run by the image.
+          skip-dirs: /opt/bex-go
           format: table
           exit-code: '0'
           ignore-unfixed: true
@@ -651,6 +688,9 @@ jobs:
           cache: false
           skip-setup-trivy: true
           image-ref: '${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}'
+          # The warm Go dependency cache is source and build output for
+          # sessions' own builds, never run by the image.
+          skip-dirs: /opt/bex-go
           format: table
           exit-code: '1'
           ignore-unfixed: true

@@ -16,11 +16,58 @@ COPY backend/internal/agentsession/agent-profiles.json ./agent-profiles.json
 COPY agent-image/driver/src ./src
 RUN npm run build
 
+# Warm Go dependency cache (ADR105 § Until the AX42-1 arrives). This stage
+# builds the third-party packages listed in agent-image/go-deps.txt (deploy.yml
+# writes it with `go list -deps -test` over the four modules) in workspace mode,
+# with the toolchain the image ships, so that a session building this
+# repository with default flags reuses them. GOMODCACHE and GOCACHE must equal
+# the final stage's: build cache keys include each package's directory. A build
+# without the list (a local one) leaves the cache empty.
+FROM go-toolchain AS go-deps
+ENV GOMODCACHE=/opt/bex-go/mod \
+    GOCACHE=/opt/bex-go/cache \
+    GOFLAGS= \
+    GOTOOLCHAIN=local
+WORKDIR /workspace/lego
+COPY go.work go.work.sum agent-image/go-deps.tx[t] ./
+COPY types/go.mod types/go.sum ./types/
+COPY operator/go.mod operator/go.sum ./operator/
+COPY backend/go.mod backend/go.sum ./backend/
+COPY cli/go.mod cli/go.sum ./cli/
+# Every listed package builds in a session too, so a failure here is real; the
+# retries cover the module proxy. `go vet` in a session computes facts for every
+# dependency, so a throwaway package importing each importable one is vetted to
+# cache those too. The module zips are dropped: a build reads the extracted
+# trees. Entries get a far-future mtime, so Go neither trims them (it trims by
+# mtime) nor rewrites their mtime on use, which on an image layer would copy
+# every used file into the sandbox's writable layer.
+RUN set -e; \
+    mkdir -p "$GOMODCACHE" "$GOCACHE"; \
+    if [ -s go-deps.txt ]; then \
+      n=0; until xargs go build < go-deps.txt; do \
+        n=$((n+1)); [ "$n" -lt 3 ] || exit 1; sleep $((n*15)); \
+      done; \
+      mkdir backend/zzwarmvet; \
+      { echo 'package zzwarmvet'; echo 'import ('; \
+        grep -Ev '(^|/)internal(/|$)' go-deps.txt | sed 's/.*/\t_ "&"/'; \
+        echo ')'; } > backend/zzwarmvet/warm.go; \
+      go vet ./backend/zzwarmvet || echo "warning: vet facts are partial"; \
+      rm -rf backend/zzwarmvet; \
+    fi; \
+    if [ -d "$GOMODCACHE/cache/download" ]; then find "$GOMODCACHE/cache/download" -name '*.zip' -delete; fi; \
+    find "$GOCACHE" -type f -name '*-[ad]' -exec touch -d @4102444800 {} +; \
+    du -sh "$GOMODCACHE" "$GOCACHE"
+
 FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 
 ARG NPM_VERSION=11.19.0
+# deploy.yml passes the commit, so every layer from here on rebuilds on each
+# deploy and apt packages refresh, while the registry build cache serves the
+# Go dependency stage.
+ARG AGENT_REBUILD=
 
-RUN apt-get update \
+RUN echo "agent image rebuild ${AGENT_REBUILD}" \
+    && apt-get update \
     && apt-get install --no-install-recommends -y \
         build-essential \
         ca-certificates \
@@ -62,9 +109,16 @@ RUN useradd --create-home --home-dir /home/bex --uid 10001 --shell /bin/bash bex
     && ln -s /var/lib/bex-agent/skills /bex/skills \
     && chown -R bex:bex /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex
 
+# A linked layer does not depend on the layers above it, so the registry build
+# cache reuses it, and a node keeps it, until the dependency list changes; the
+# per-deploy layers never pull it.
+COPY --link --from=go-deps --chown=10001:10001 /opt/bex-go /opt/bex-go
+
 # Neither listener has an edge route. OpenSandbox supplies the remaining
 # non-secret BEX_AGENT_* session binding values per sandbox.
 ENV HOME=/home/bex \
+    GOMODCACHE=/opt/bex-go/mod \
+    GOCACHE=/opt/bex-go/cache \
     BEX_AGENT_CWD=/workspace \
     BEX_AGENT_LISTEN_HOST=0.0.0.0 \
     BEX_AGENT_LISTEN_PORT=8787

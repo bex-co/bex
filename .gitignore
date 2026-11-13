@@ -68,3 +68,6 @@ bex-desktop/
 # Agent worktrees are full checkouts. .git/info/exclude hides them locally, but
 # EAS Build archives from a fresh clone that only honors committed ignore rules.
 .claude/worktrees/
+
+# Written by deploy.yml before the agent image build (its warm Go dependency list).
+/lego/agent-image/go-deps.txt

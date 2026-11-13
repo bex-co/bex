@@ -230,7 +230,7 @@ Since 09:30 UTC, three machines in other pools (two `cx33`, one `cx43`) have fai
 **Independent of the choice:**
 
 - **Spread the schedule.** Moving the routines' start times so that at most two overlap costs nothing and lowers the peak on any node.
-- **Warm build caches** (§ Alternatives considered: do it regardless). Give bex's own routines a separate agent template whose image adds the bex repo's Go module, build and vet caches and the dashboard's yarn cache. Build them at the paths a session uses (`/workspace`, `/home/bex`). The repo is public, so the caches expose nothing. Customers' `agent` template does not change.
+- **Warm build caches** (§ Alternatives considered: do it regardless). Done in w6/m354 t006 for Go, in the agent image itself rather than a separate template: the third-party packages of the four `lego/` modules, their module trees and their vet facts, in a layer that changes only with the dependencies (`lego/agent-image/README.md` § Warm Go dependency cache). Locally, `go build` over the four modules fell from 29 s to 17 s and `go vet` from 35 s to 10 s, and the module download (137 to 436 s in the sandbox) is gone. The repo is public, so the cache exposes nothing; it adds about 3.4 GB to the image, pulled once per dependency change. The dashboard's yarn cache is not included.
 - **A larger routine template.** An automation already names its template (`agentConfig.template`). The routines can move to 4 vCPU / 8 GiB without changing customers' sessions or their price.
 - **How to re-measure.** `POST /v1/agent-automations/{id}/run` starts a routine on demand. Time it from its first turn's `started_at` to `completed_at`. A run's `settledAt` is when the session was accepted, not when it finished.
 

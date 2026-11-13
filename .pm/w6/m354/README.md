@@ -1,15 +1,15 @@
 # w6 · m354 — Routines finish: a cpx42 sandbox node, a 4 vCPU / 8 GiB routine template, a spread schedule and warm build caches
 
-**Worker:** worker6 **Goal:** the eight scheduled `rt-*` routines complete instead of dying with their sandbox, and run faster, while the AX42-1 (m331) is parked until 2026-12-12. **Status:** in progress — t001 done (the sandbox pool runs one cpx42 since 2026-11-13 00:02 UTC).
+**Worker:** worker6 **Goal:** the eight scheduled `rt-*` routines complete instead of dying with their sandbox, and run faster, while the AX42-1 (m331) is parked until 2026-12-12. **Status:** in progress — t001–t004 done and live (cpx42 since 2026-11-13 00:02 UTC; the routines run `agent-4c-8g` on a three-hour spread); t005 running.
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Roll the sandbox pool onto cpx42 with kubelet reservations](done/t001.md) — **DONE** | 30m | — |
-| t002 | [Sandbox pods tolerate a 300 s node stall](t002.md) | 15m | — |
-| t003 | [An `agent-4c-8g` agent template in bex-api](t003.md) | 20m | — |
-| t004 | [The routines use `agent-4c-8g` and a spread schedule](t004.md) | 15m | t003 |
+| t002 | [Sandbox pods tolerate a 300 s node stall](done/t002.md) — **DONE** | 15m | — |
+| t003 | [An `agent-4c-8g` agent template in bex-api](done/t003.md) — **DONE** | 20m | — |
+| t004 | [The routines use `agent-4c-8g` and a spread schedule](done/t004.md) — **DONE** | 15m | t003 |
 | t005 | [Measure a routine on the new node](t005.md) | 1h | t001, t004 |
 | t006 | [Warm build caches for the routines](t006.md) | 3h | t005 |
 | t007 | [Measure again and record both in ADR105](t007.md) | 1h | t006 |
