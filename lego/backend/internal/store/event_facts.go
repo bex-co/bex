@@ -385,6 +385,11 @@ type ObservedServiceState struct {
 	// signal that separates a user-driven suspension from free-tier idle
 	// auto-hibernation, since both observe the same Hibernated phase (w6/m47).
 	Suspended bool
+	// SpecReadAt is when the pass that made this observation read the desired
+	// rows its Suspended comes from (the pass start). Zero means unknown. When
+	// the checkpoint changed after it, this observation's flag defers to the
+	// checkpoint's for one pass (deferStaleSuspension, w5/m369).
+	SpecReadAt time.Time
 	// Asleep marks a Hibernated service the operator parked for idleness (its
 	// current Ready reason is AutoHibernated), not for a suspension: it stays
 	// down until a request wakes it. A Resume that leaves it asleep is
@@ -489,6 +494,7 @@ func (s *PGStore) RecordObservedServiceState(ctx context.Context, obs ObservedSe
 			return err
 		}
 
+		obs = deferStaleSuspension(obs, previousSuspended, previousChangedAt)
 		obs = heldAvailability(previousPhase, previousAvailability, obs)
 		availability := previousAvailability
 		if obs.AvailabilityObserved {
@@ -755,6 +761,48 @@ func failureFactType(obs ObservedServiceState) ServiceEventFactType {
 		return EventFactServerHardwareFailure
 	}
 	return EventFactServerFailed
+}
+
+// deferStaleSuspension keeps the checkpoint's suspension flag when this
+// observation read the spec before the checkpoint last changed (w5/m369). A
+// Suspend marks the checkpoint as it is accepted; a pass that read the desired
+// rows just before that write still carries suspended=false, and taking it at
+// its word would turn the mark into a resume that never happened.
+//
+// The checkpoint keeps one change time (updated_at) for every recorded change,
+// so another replica's phase or availability write also defers a flag change
+// read before it. Either way the cost is one pass, never a fact: the next pass
+// reads the spec after the change. The mark moving updated_at also lifts the
+// availability-edge floor (availabilityEdgeAt) to the Suspend, so an outage
+// that began moments before it is dated at its observation instead.
+func deferStaleSuspension(obs ObservedServiceState, previousSuspended bool, previousChangedAt time.Time) ObservedServiceState {
+	if obs.Suspended != previousSuspended && !obs.SpecReadAt.IsZero() && previousChangedAt.After(obs.SpecReadAt) {
+		obs.Suspended = previousSuspended
+	}
+	return obs
+}
+
+// RecordServiceSuspensionRequested records an accepted Suspend on the event
+// checkpoint at once (w5/m369, from w4/604). The pair Render records for a
+// suspension undone quickly, service_suspended then service_resumed, comes from
+// observedStateFacts reading a checkpoint that saw the flag rise; a Resume that
+// lands before any pass saw the Suspend used to record neither, so no push or
+// webhook went out. With the mark, the next pass that sees the flag down
+// reports both, the suspension dated at the mark.
+//
+// Only a Running-side checkpoint is marked. A Hibernated one (a sleeping Free
+// service) records the rising flag itself (w4/562), and an already-suspended
+// or missing checkpoint has nothing to add. at should follow the Suspend's
+// audit row, so the feed lists "Suspended by" before "Service suspended".
+func (s *PGStore) RecordServiceSuspensionRequested(ctx context.Context, appID string, at time.Time) error {
+	_, err := s.Pool.Exec(ctx,
+		`UPDATE service_event_checkpoints SET suspended = true, updated_at = $2
+		 WHERE app_id = $1 AND NOT suspended AND service_phase <> $3`,
+		appID, at.UTC(), string(appv1alpha1.PhaseHibernated))
+	if err != nil {
+		return fmt.Errorf("record suspension request: %w", err)
+	}
+	return nil
 }
 
 // quickSuspendPair dates a Suspend undone before the service stopped (w4/555).

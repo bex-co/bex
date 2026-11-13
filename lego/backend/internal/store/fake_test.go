@@ -26,6 +26,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // memStore is the in-memory Store used by the API and reconciler tests. It
@@ -1033,6 +1034,7 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 		m.eventChangedAt[obs.AppID] = obs.At
 		return nil, nil
 	}
+	obs = deferStaleSuspension(obs, previous.Suspended, m.eventChangedAt[obs.AppID])
 	obs = heldAvailability(previous.ServicePhase, previous.Availability, obs)
 	if !obs.AvailabilityObserved {
 		obs.Availability = previous.Availability
@@ -1056,6 +1058,20 @@ func (m *memStore) RecordObservedServiceState(_ context.Context, obs ObservedSer
 	}
 	m.eventCheckpoints[obs.AppID] = obs
 	return facts, nil
+}
+
+// RecordServiceSuspensionRequested mirrors PGStore's mark.
+func (m *memStore) RecordServiceSuspensionRequested(_ context.Context, appID string, at time.Time) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	checkpoint, ok := m.eventCheckpoints[appID]
+	if !ok || checkpoint.Suspended || checkpoint.ServicePhase == string(appv1alpha1.PhaseHibernated) {
+		return nil
+	}
+	checkpoint.Suspended = true
+	m.eventCheckpoints[appID] = checkpoint
+	m.eventChangedAt[appID] = at.UTC()
+	return nil
 }
 
 func (m *memStore) LastHealthyTransitionAt(_ context.Context, appID string) (time.Time, error) {

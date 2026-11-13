@@ -2333,3 +2333,39 @@ func TestCreatePinsTheFirstBuildToTheCommitItsDeployRecords(t *testing.T) {
 		})
 	}
 }
+
+// markingStore is a recordingStore that also takes the suspension mark, as
+// *store.PGStore does (suspensionMarker).
+type markingStore struct {
+	*recordingStore
+	marks []string
+}
+
+func (m *markingStore) RecordServiceSuspensionRequested(_ context.Context, appID string, _ time.Time) error {
+	m.marks = append(m.marks, appID)
+	return nil
+}
+
+// TestSuspendMarksTheCheckpointAndKicksTheProjector (w5/m369, from w4/604): a
+// Suspend marks the service's event checkpoint so a quick Resume still records
+// the service_suspended/service_resumed pair, and both verbs kick the projector
+// instead of waiting for its resync.
+func TestSuspendMarksTheCheckpointAndKicksTheProjector(t *testing.T) {
+	st := &markingStore{recordingStore: &recordingStore{}}
+	svc, _ := newService(st, managedApp("web", "srv-1"))
+	kicks := 0
+	svc.Kick = func() { kicks++ }
+
+	if _, err := svc.Suspend(context.Background(), "web"); err != nil {
+		t.Fatalf("Suspend: %v", err)
+	}
+	if len(st.marks) != 1 || st.marks[0] != "srv-1" || kicks != 1 {
+		t.Fatalf("after Suspend: marks %v, kicks %d; want [srv-1] and 1", st.marks, kicks)
+	}
+	if _, err := svc.Resume(context.Background(), "web"); err != nil {
+		t.Fatalf("Resume: %v", err)
+	}
+	if len(st.marks) != 1 || kicks != 2 {
+		t.Fatalf("after Resume: marks %v, kicks %d; want the Suspend's mark only and 2 kicks", st.marks, kicks)
+	}
+}

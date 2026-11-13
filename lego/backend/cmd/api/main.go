@@ -245,7 +245,8 @@ func main() {
 	utilruntime.Must(appv1alpha1.AddToScheme(scheme))
 
 	kubeCfg := ctrl.GetConfigOrDie() // in-cluster, or KUBECONFIG for local dev
-	cl, err := client.New(kubeCfg, client.Options{Scheme: scheme})
+	// WithWatch: the App status watch (w5/m369) watches through it too.
+	cl, err := client.NewWithWatch(kubeCfg, client.Options{Scheme: scheme})
 	if err != nil {
 		log.Fatalf("kube client: %v", err)
 	}
@@ -1544,7 +1545,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	deps.MaxCustomDomainsPerWorkspace = cfg.MaxCustomDomainsPerWorkspace
 }
 
-func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.Client, base *core.Base, cfg *Config) {
+func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler, st *store.PGStore, cl client.WithWatch, base *core.Base, cfg *Config) {
 	// Wire the reconciler ↔ apps.Service now that both exist (w2/m11):
 	// - CloneSecrets: the projector mints clone Secrets for private-repo rows
 	//   created via the internal CP API (store/api.go POST /v1/apps).
@@ -1600,6 +1601,11 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 			nsRec.Kick()
 		}
 		go rec.Run(ctx)
+		// The operator's status writes kick the projector (w5/m369): a deploy's
+		// verdict reaches its row, events and webhooks within seconds instead of
+		// on the next resync. Every replica watches, as every replica projects;
+		// the store's transitions are idempotent across replicas.
+		go (&store.AppStatusWatch{Client: cl, Kick: rec.KickFromWatch, Metrics: rec.Metrics}).Run(ctx)
 		go nsRec.Run(ctx)
 		go (&store.ProductInventoryCollector{Store: st, Client: cl, Identity: cpIdentity}).Run(ctx)
 	}

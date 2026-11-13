@@ -1189,7 +1189,7 @@ _(`018.md` promoted to **m28**, `019.md` promoted to **m29**, `022.md` promoted 
 
 ## Transfers to w5 — 2026-11-12
 
-- Inbox 624, 609 and 604 absorbed into [w5/m369](../w5/m369/README.md) (control plane reacts to App status within seconds; quick Suspend→Resume pair; dispatch start time), filed by `/pmx 1,2,3,4` from `/pm-brainstorm for w5` round 9. Their evidence is preserved in [done/624.md](done/624.md), [done/609.md](done/609.md) and [done/604.md](done/604.md); the findings are not fixed by the move.
+- Inbox 624, 609 and 604 absorbed into [w5/m369](../w5/blocked/m369/README.md) (control plane reacts to App status within seconds; quick Suspend→Resume pair; dispatch start time), filed by `/pmx 1,2,3,4` from `/pm-brainstorm for w5` round 9. Their evidence is preserved in [done/624.md](done/624.md), [done/609.md](done/609.md) and [done/604.md](done/604.md); the findings are not fixed by the move.
 
 ## Transfers to w5 — 2026-09-30
 

@@ -538,8 +538,13 @@ spec:
                     # lego/backend/internal/api/httpmetrics.go. usage =>
                     # UsageHourNearlyUnmeterable (w6/m334), whose gauge shipped
                     # without this entry and so was never stored: the same
-                    # never-arrived failure as webhooks above.
-                    regex: bex_(billing|agent_session|agent_platform_model|sandbox|webhooks|push|api|usage)_.*
+                    # never-arrived failure as webhooks above. controlplane =>
+                    # the App projector's pass duration, kicks by source and
+                    # status-watch failures (w5/m369), paneled to read what a
+                    # pass costs now that operator status writes kick it; it
+                    # also stores observed_state_rejections_total (w6/m41),
+                    # which was registered but, without this entry, never kept.
+                    regex: bex_(billing|agent_session|agent_platform_model|sandbox|webhooks|push|controlplane|api|usage)_.*
                     action: keep
               # Build-plane SLIs from the operator's own registry (docs/ADR060
               # D5). This job is why the series are readable at all: the manager

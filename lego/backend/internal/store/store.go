@@ -506,6 +506,9 @@ type DiskUsageRow struct {
 
 type DesiredApp struct {
 	App
+	// ReadAt is when the projector pass read this row (its pass start), zero
+	// outside a pass. The observed service state carries it as SpecReadAt.
+	ReadAt time.Time
 	// SourceRevision advances only on explicit source writes, including a
 	// rollback selecting the same image. It fences checked-dispatch recovery
 	// without treating unrelated settings as a newer source decision.

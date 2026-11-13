@@ -5217,6 +5217,70 @@ dashboards:
                  "legendFormat": "since last read"
                 }
               ]
+            },
+            {
+             "id": 32,
+             "type": "timeseries",
+             "title": "Control-plane projection pass p50/p95",
+             "description": "How long one App projection pass (ReconcileOnce) takes, across bex-api replicas. Since w5/m369 the operator's status writes kick a pass, so a deploy's verdict reaches its row, events and webhooks within seconds; this is the cost of each pass. The 30 s resync still runs.",
+             "gridPos": {
+               "h": 9,
+               "w": 12,
+               "x": 0,
+               "y": 125
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": { "unit": "s", "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "histogram_quantile(0.5, sum by (le) (rate(bex_controlplane_reconcile_pass_seconds_bucket[5m])))",
+                 "legendFormat": "p50"
+                },
+                {
+                 "refId": "B",
+                 "expr": "histogram_quantile(0.95, sum by (le) (rate(bex_controlplane_reconcile_pass_seconds_bucket[5m])))",
+                 "legendFormat": "p95"
+                }
+              ]
+            },
+            {
+             "id": 33,
+             "type": "timeseries",
+             "title": "Control-plane projection kicks by source + status-watch failures (5m)",
+             "description": "Requests for an immediate projection pass: api (a write through bex-api), watch (an App status change the operator wrote; spaced to at least max(1 s, 3x the last pass) after a pass) and confirm (the unhealthy debounce). Kicks coalesce, so passes run at most once per kick. Watch failures count errors and expired resource versions, not the apiserver's routine watch timeouts; a steady climb means verdicts are falling back to the 30 s resync.",
+             "gridPos": {
+               "h": 9,
+               "w": 12,
+               "x": 12,
+               "y": 125
+              },
+             "datasource": {
+               "type": "prometheus",
+               "uid": "prometheus"
+              },
+             "fieldConfig": {
+               "defaults": { "min": 0 },
+               "overrides": []
+              },
+             "targets": [
+                {
+                 "refId": "A",
+                 "expr": "sum by (source) (increase(bex_controlplane_reconcile_kicks_total[5m]))",
+                 "legendFormat": "kicks: {{source}}"
+                },
+                {
+                 "refId": "B",
+                 "expr": "sum(increase(bex_controlplane_app_status_watch_failures_total[5m]))",
+                 "legendFormat": "watch failures"
+                }
+              ]
             }
           ]
         }

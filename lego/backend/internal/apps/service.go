@@ -5720,8 +5720,35 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 		return AppView{}, err
 	}
 	s.RecordAppConfigChanged(ctx, a, verb)
+	// After the audit row, so the feed reads "Suspended by" before "Service
+	// suspended" (w5/m369, from w4/604): a Resume that lands before any pass
+	// saw the Suspend still records the pair, and push and webhooks send both.
+	if suspended {
+		if marker, ok := s.Store.(suspensionMarker); ok {
+			if appID := managedAppID(a); appID != "" {
+				if err := marker.RecordServiceSuspensionRequested(ctx, appID, s.Now()); err != nil {
+					log.Printf("apps: %s: %v", name, err)
+				}
+			}
+		}
+	}
+	if s.Kick != nil {
+		s.Kick()
+	}
 	return view, nil
 }
+
+// suspensionMarker is an optional IntentStore extension, implemented by
+// *store.PGStore: an accepted Suspend marked on the service's event
+// checkpoint, so its service_suspended/service_resumed pair never depends on a
+// reconcile pass sampling the suspension (w5/m369).
+type suspensionMarker interface {
+	RecordServiceSuspensionRequested(ctx context.Context, appID string, at time.Time) error
+}
+
+// The quick-undo pair goes missing silently if the production store stops
+// implementing it.
+var _ suspensionMarker = (*store.PGStore)(nil)
 
 // writeThroughStoreFetched is the shared shape of every intent-field verb
 // with a row as the single writer of truth (suspend/resume, plan, …): for
