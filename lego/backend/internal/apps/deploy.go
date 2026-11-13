@@ -886,7 +886,7 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 // 5. Preflight env-groups, env-vars and protected placement (w3/m281)
 // 6. Apply groupings (projects, environments) — asserts Blueprint execution first
 // 7. Apply env-groups → datastores → services (each family re-asserts)
-// 8. Patch forward-referenced services (deferred fromService host slugs)
+// 8. Patch the services a fromService reference cycle left unresolved (deferred host slugs)
 // 9. Auto-register Blueprint row (enables subsequent sync operations)
 // 10. Stamp ownership only while the admitted (generation, run) claim still holds
 func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st parsedStack, snap *workspaceSnapshot) (StackResult, error) {
@@ -989,10 +989,10 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		return res, err
 	}
 	// Sibling slugs for fromService host/hostport refs (ADR041 D3): a target
-	// that already exists (re-sync, or declared earlier in this apply) resolves
-	// before its referrer is written — no spec churn; a ref to a service created
-	// later in this same first apply is deferred to the post-create patch pass
-	// below.
+	// that already exists resolves before its referrer is written — no spec
+	// churn — and the apply creates a new target before its referrer
+	// (referencedFirst, w8/306). Only a reference cycle's back edges are
+	// deferred to the post-create patch pass below.
 	// The port half is the target's current serving port (App.ServicePort),
 	// never a parse-time default (w6/m148).
 	serviceApps := make(map[string]*appv1alpha1.App, len(st.services))
@@ -1145,7 +1145,8 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 	if err != nil {
 		return nil, err
 	}
-	for _, svc := range st.services {
+	views := make(map[string]AppView, len(st.services))
+	for _, svc := range referencedFirst(st.services, appsByName) {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return nil, err
 		}
@@ -1212,7 +1213,10 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 				return nil, fmt.Errorf("seeding env for %q: %w", svc.req.Name, err)
 			}
 		}
-		res.Services = append(res.Services, v)
+		views[svc.req.Name] = v
+	}
+	for _, svc := range st.services {
+		res.Services = append(res.Services, views[svc.req.Name])
 	}
 	// Every service now exists and every generateValue is minted, whatever
 	// order the file declared them in: copy each generated source value into
@@ -1241,6 +1245,41 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		}
 	}
 	return deferred, nil
+}
+
+// referencedFirst orders services so each comes after the declared siblings
+// this apply creates that its host references name, and otherwise keeps file
+// order. A sibling's slug is minted at its create, so a service written before
+// it took the reference only in the second pass (patchDeferredStackServices),
+// whose re-apply opened a second deploy that canceled the new service's first
+// (w8/306). A target that already exists resolves in any order, so a re-sync
+// keeps file order, which a domain handed between services relies on (the
+// apply's host-claim index). A reference cycle's back edges still take the
+// second pass.
+func referencedFirst(services []parsedService, existing map[string]*appv1alpha1.App) []parsedService {
+	index := make(map[string]int, len(services))
+	for i, svc := range services {
+		index[svc.req.Name] = i
+	}
+	visited := make([]bool, len(services))
+	ordered := make([]parsedService, 0, len(services))
+	var visit func(i int)
+	visit = func(i int) {
+		if visited[i] {
+			return
+		}
+		visited[i] = true
+		for _, ref := range services[i].hostRefs {
+			if j, ok := index[ref.target]; ok && existing[ref.target] == nil {
+				visit(j)
+			}
+		}
+		ordered = append(ordered, services[i])
+	}
+	for i := range services {
+		visit(i)
+	}
+	return ordered
 }
 
 // patchDeferredStackServices is the second pass: every service now exists,
