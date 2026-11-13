@@ -81,3 +81,32 @@ Two fixtures were created by REST at 02:47:04: Free Postgres `qa-20261113-r254-p
 - **Control: existing certificates still serve.** The workspace's older `qa-20261110-81b5-kv` (`red-dbpf5q5me2kc73f2l0og`, not created by this run; only its public endpoint's certificate was read) presents `issuer=C=US, O=Let's Encrypt, CN=YR2`, `notBefore=Nov 10 09:36:13 2026 GMT`. So serving works, and **new issuance** for `*.db.bex.co` and `*.kv.bex.co` is what broke. That happened between round 251's store (01:57, trusted within a minute) and round 253's database (02:23).
 - **What it does to the cause list.** Both datastore domains fail together, which points away from a Postgres-only operator fault (candidate 3) and toward the shared issuance path: the `bex.co` Let's Encrypt budget (candidate 1) or the cluster's ACME/HTTP-01 solver (candidate 2). t001 still has to read the Orders.
 - **Scope added to the tasks:** t002 covers Key Value issuance with the same fix, and t003 also shows the pending state on the Key Value Connections card, REST and GraphQL. A pending public store must not read as reachable.
+
+## Round 283 recheck — issuance works again (2026-11-13 10:41–10:47 UTC, pin `5de3d5bcce8e`)
+
+Two fixtures were created by REST at 10:41:54, each with `ipAllowList: [0.0.0.0/0]`:
+
+- Free Postgres 18 `qa-20261113-r283-pg` (`dpg-dbreisgk58is73auns90`);
+- Free Key Value `qa-20261113-r283-kv` (`red-dbreishens8c73fghfb0`).
+
+Both read `available` at 10:44:42 and were deleted afterwards (`DELETE` 204, then `GET` 404). No local `~/.postgresql/root.crt` and no `PGSSLROOTCERT`.
+
+- **Certificates:** both endpoints served Let's Encrypt from the first check, at 10:44:45:
+  - Postgres: `subject=CN=dpg-dbreisgk58is73auns90.db.bex.co`, `issuer=C=US, O=Let's Encrypt, CN=YR2`;
+  - Key Value: `CN=red-dbreishens8c73fghfb0.kv.bex.co`, `issuer=… CN=YR1`.
+  - Both have `notBefore=Nov 13 09:43:47 2026 GMT`. Let's Encrypt backdates `notBefore` by an hour, so issuance came about 1m53s after creation.
+- **DoD 1 and 2 hold for this database:**
+  - `GET /v1/postgres/dpg-dbreisgk58is73auns90/connection-info` returns `externalConnectionString` = `postgresql://<user>:<pw>@dpg-dbreisgk58is73auns90.db.bex.co:5432/<db>`, with no query string and no `serverCaCertificate` key.
+  - `psqlCommand` = `PGPASSWORD=… psql -h dpg-dbreisgk58is73auns90.db.bex.co -U <user> <db>`.
+- **DoD 3 holds:**
+  - `psql "<copied URL>" -Atc "select 'connected', current_setting('ssl'), version()"` → `connected|on|PostgreSQL 18.6 …`.
+  - `?sslmode=verify-full&sslrootcert=system` → `verify-full-system-ok`.
+- **DoD 5 holds with the documented SNI:**
+  - `redis-cli --tls --sni red-….kv.bex.co -h red-….kv.bex.co -p 6379 PING` → `NOAUTH Authentication required.`
+  - The copied URL with the card's `cliCommand` (`redis-cli --sni <host> -u rediss://…`) → `PONG`.
+  - `redis-cli -u rediss://…` alone (redis-cli 8.10.1, which sends no SNI from `-u`) → `SSL_connect failed: unexpected eof while reading`. That is the SNI routing ADR021 documents, not this milestone's fault. t004 should still note it: Render's single regional hostname needs no SNI.
+- **What it says about the cause:**
+  - Issuance failed from 02:23 (round 253) to at least 02:58 (round 254), with no code change, and works again about eight hours later. That fits candidate 1, the Let's Encrypt new-certificate limit for `bex.co`.
+  - Since 2025 that limit is a refilling bucket: 50 per 7 days, refilled gradually, about one certificate every 202 minutes. So the two certificates this round got may simply be refill.
+  - This is unverified. t001 still has to read the Orders, or the ACME account's rate-limit errors, from the failed window.
+  - If the bucket is the cause, the next burst of QA datastores will drain it again within minutes. t002's guard (a `*.db.bex.co`/`*.kv.bex.co` wildcard via DNS-01, or reuse across re-creates) is therefore still needed, and t003's pending-state surface is still owed. Neither could be exercised this round, because the certificate was already trusted.
