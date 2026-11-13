@@ -23,7 +23,7 @@ All `make` targets live in **`lego/operator/`**; see [lego/AGENTS.md](lego/AGENT
 
 - `make test` (operator, from `lego/operator/`) — CRD/RBAC codegen + envtest
 - `cd lego/backend && go test ./...` — backend (real Postgres + OpenFGA in CI)
-- `make lint` (all four modules) — golangci-lint + whole-program dead-code analysis; depguard guards the `id` convention
+- `make lint` (all four modules) — golangci-lint + whole-program dead-code analysis; depguard guards the `id` convention and each module's side of the import DAG
 - `cd lego/cli && go test ./...` — CLI launcher
 
 All three platform suites + `dashboard/yarn test` must pass before `deploy.yml` builds.
