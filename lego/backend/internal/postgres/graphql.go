@@ -47,6 +47,7 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"statusReasonCode":        gqlutil.OptionalStrField(func(v PostgresView) any { return v.StatusReasonCode }),
 		"databaseName":            gqlutil.StrField(func(v PostgresView) any { return v.DatabaseName }),
 		"databaseUser":            gqlutil.StrField(func(v PostgresView) any { return v.DatabaseUser }),
+		"defaultUser":             gqlutil.StrField(func(v PostgresView) any { return v.DefaultUser }), // the current default login (w4/610)
 		"diskSizeGB":              gqlutil.IntField(func(v PostgresView) any { return v.DiskSizeGB }),
 		"diskAutoscalingEnabled":  gqlutil.BoolField(func(v PostgresView) any { return v.DiskAutoscalingEnabled }),
 		"highAvailabilityEnabled": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityEnabled }),

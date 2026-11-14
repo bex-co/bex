@@ -1200,6 +1200,7 @@ export type Database = {
   dashboardUrl: Maybe<Scalars['String']['output']>;
   databaseName: Maybe<Scalars['String']['output']>;
   databaseUser: Maybe<Scalars['String']['output']>;
+  defaultUser: Maybe<Scalars['String']['output']>;
   diskAutoscalingEnabled: Maybe<Scalars['Boolean']['output']>;
   diskSizeGB: Maybe<Scalars['Int']['output']>;
   environmentId: Maybe<Scalars['String']['output']>;

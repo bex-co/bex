@@ -66,6 +66,24 @@ function renderCard(database: DatabaseDetailView) {
 }
 
 describe("DatabaseMetadataCard", () => {
+  // w4/610: the User fact names the login to connect as, which a credential
+  // rotation moves off the create-time owner.
+  it("names the current default login as the User, and the owner before a rotation", () => {
+    const { unmount } = render(
+      <DatabaseMetadataCard
+        database={db({ defaultUser: "orders_user2" })}
+        onVersionChanged={vi.fn()}
+        onRenamed={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("orders_user2")).toBeInTheDocument();
+    expect(screen.queryByText("orders_user")).not.toBeInTheDocument();
+    unmount();
+
+    renderCard(db({ defaultUser: "orders_user" }));
+    expect(screen.getByText("orders_user")).toBeInTheDocument();
+  });
+
   // w4/m170: "Unavailable" is never a dead end — the reason sits beside it.
   it("shows why an unavailable database is unavailable, and nothing otherwise", () => {
     renderCard(

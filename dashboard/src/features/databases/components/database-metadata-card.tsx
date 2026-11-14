@@ -81,7 +81,9 @@ export function DatabaseMetadataCard({
         },
         {
           label: t("databases.metaDatabaseUser"),
-          value: database.databaseUser ?? "—",
+          // The user to connect as: the current default login, which a
+          // credential rotation moves off the create-time owner (w4/610).
+          value: database.defaultUser ?? database.databaseUser ?? "—",
         },
         {
           label: t("databases.metaStorage"),

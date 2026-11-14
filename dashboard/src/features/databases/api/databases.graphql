@@ -54,6 +54,8 @@ query Database($id: String!) {
     statusReasonCode
     databaseName
     databaseUser
+    # The current default login after a credential rotation (w4/610).
+    defaultUser
     diskSizeGB
     diskAutoscalingEnabled
     # The configured value, as on Render (w2/059).

@@ -56,6 +56,11 @@ export interface DatabaseDetailView extends DatabaseView {
   databaseName: string | null;
   /** Owner role, `<db>_user`. */
   databaseUser: string | null;
+  /**
+   * The login the connection info uses now: the rotated default after a new
+   * default credential, else the owner (w4/610). Null from a list read.
+   */
+  defaultUser?: string | null;
   /** Observed: the standby is running (≥2 ready instances). */
   highAvailabilityEnabled: boolean;
   /**
@@ -131,7 +136,10 @@ export type DatabaseStatusKey =
   | "unknown";
 
 export type DatabaseBadgeVariant =
-  "default" | "secondary" | "outline" | "destructive";
+  | "default"
+  | "secondary"
+  | "outline"
+  | "destructive";
 
 export interface DatabaseStatus {
   key: DatabaseStatusKey;

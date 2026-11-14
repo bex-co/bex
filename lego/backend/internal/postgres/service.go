@@ -120,7 +120,12 @@ type PostgresView struct {
 	StatusReasonCode string `json:"statusReasonCode,omitempty"`
 	DatabaseName     string `json:"databaseName"` // the actual (normalized) db
 	DatabaseUser     string `json:"databaseUser"`
-	DiskSizeGB       int32  `json:"diskSizeGB,omitempty"`
+	// DefaultUser is the login every connection string and psql command uses
+	// now (spec.defaultUser after a credential rotation, else the create-time
+	// owner; w4/610). A GraphQL-only bex extension: REST and MCP keep Render's
+	// create-time databaseUser.
+	DefaultUser string `json:"-"`
+	DiskSizeGB  int32  `json:"diskSizeGB,omitempty"`
 	// DiskAutoscalingEnabled is Render's read-side field. Writes use the
 	// intentionally asymmetric enableDiskAutoscaling input name.
 	DiskAutoscalingEnabled bool `json:"diskAutoscalingEnabled"`
@@ -624,6 +629,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		StatusReasonCode:          reasonCode,
 		DatabaseName:              dbn,
 		DatabaseUser:              dbUser,
+		DefaultUser:               d.Spec.DefaultCredential(d.Name),
 		DiskSizeGB:                DatabaseStorageHighWater(d),
 		DiskAutoscalingEnabled:    d.Spec.DiskAutoscaling,
 		HighAvailabilityEnabled:   d.Spec.HighAvailability,

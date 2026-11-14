@@ -77,6 +77,7 @@ export function toDatabaseDetailView(
     statusReasonCode: d.statusReasonCode || null,
     databaseName: d.databaseName ?? null,
     databaseUser: d.databaseUser ?? null,
+    defaultUser: ("defaultUser" in d ? d.defaultUser : null) ?? null,
     // The view keeps "enabled" as the observed standby. Since w2/059 the wire's
     // highAvailabilityEnabled is the configured value (as on Render) and the
     // observed one is highAvailabilityReady; an older API has no Ready field
@@ -147,7 +148,10 @@ export function deriveStatus(d: {
  * states are left to the server's own answer.
  */
 export type SQLConsoleBlock =
-  "suspended" | "creating" | "upgrading" | "restarting";
+  | "suspended"
+  | "creating"
+  | "upgrading"
+  | "restarting";
 
 const SQL_CONSOLE_BLOCKS: ReadonlySet<string> = new Set([
   "suspended",
