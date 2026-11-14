@@ -385,6 +385,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **665** — [Since pin `c99e7815ebec`, a new image web service takes 2–5 minutes to go live (was about 75 s): its deploy waits 23–104 s before it starts, and its route takes about a minute to follow a detected port](665.md) (~1h30m; major, cause unverified — needs the operator reading w21/064 also waits on) ← live `/qa-find-bugs w4` loop rounds 361–362, 2026-11-14 UTC (pin `c99e7815ebec`)
 - [ ] **664** — [Scaling a healthy web service up records `server_failed` ("The instance failed its health check") and later `server_available`, though every existing instance kept serving](664.md) (~1h; minor to major) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`)
 - [ ] **663** — [While a pre-deploy command runs, the service's instance list includes the pre-deploy Job's pod: a first deploy lists an instance before anything serves, and the Web Shell picker offers it](663.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`)
 - [ ] **662** — [The zh env-group card still says 链接/已链接 for Link and Linked, under headings and an Unlink button that say 关联](662.md) (~20m; minor) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`), residual of w4/646
