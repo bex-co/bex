@@ -159,17 +159,23 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
   const reconcileSession = useCallback(
     (session: AgentSessionFieldsFragment) => {
       // The result carries the shared fragment, not the detail-only
-      // turnOrigins (w9/m344); keep the detail read's so the transcript's
-      // steer annotations survive a cancel or an archive.
-      const turnOrigins =
-        client.readQuery({
-          query: AgentSessionDocument,
-          variables: { id: session.id },
-        })?.agentSession?.turnOrigins ?? null;
+      // turnOrigins (w9/m344) and appliedSecrets (w9/m385); keep the detail
+      // read's so the transcript's steer annotations and the header's
+      // secrets survive a cancel or an archive.
+      const detail = client.readQuery({
+        query: AgentSessionDocument,
+        variables: { id: session.id },
+      })?.agentSession;
       client.writeQuery({
         query: AgentSessionDocument,
         variables: { id: session.id },
-        data: { agentSession: { ...session, turnOrigins } },
+        data: {
+          agentSession: {
+            ...session,
+            turnOrigins: detail?.turnOrigins ?? null,
+            appliedSecrets: detail?.appliedSecrets ?? [],
+          },
+        },
       });
       client.cache.evict({ id: "ROOT_QUERY", fieldName: "agentSessions" });
       client.cache.gc();

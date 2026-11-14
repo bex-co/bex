@@ -202,6 +202,10 @@ type AgentSession struct {
 	// (ADR098 D1): workspace agent secret references and inline session
 	// secrets. Values live only in OpenBao; this never holds one.
 	SecretNames []string
+	// AppliedSecrets are the secrets the latest dispatch applied, each with
+	// its source (w9/m385): named, inline, or by a workspace or repo scope.
+	// Names only; written by SetAgentSessionAppliedSecrets.
+	AppliedSecrets []AppliedSecret
 	// InitialPrompt is create-only input used to atomically insert turn 1 with
 	// the session row. It is not an agent_sessions column and is never scanned.
 	InitialPrompt string
@@ -315,7 +319,8 @@ const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandb
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
-	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref`
+	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref,
+	applied_secrets`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
@@ -323,7 +328,8 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
-		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef)
+		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef,
+		&s.AppliedSecrets)
 	return s, err
 }
 
@@ -477,7 +483,8 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
 		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
 		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID,
-		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef, &hash)
+		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef,
+		&out.AppliedSecrets, &hash)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -1515,4 +1522,23 @@ func (s *PGStore) listenOnce(ctx context.Context, fn func(id string)) error {
 		}
 		fn(n.Payload)
 	}
+}
+
+// AppliedSecret is one secret a session's latest dispatch applied and why:
+// inline, explicit (named), repo or workspace. Never a value.
+type AppliedSecret struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
+}
+
+// SetAgentSessionAppliedSecrets records what the session's latest dispatch
+// applied (names and sources only).
+func (s *PGStore) SetAgentSessionAppliedSecrets(ctx context.Context, sessionID string, applied []AppliedSecret) error {
+	if applied == nil {
+		applied = []AppliedSecret{}
+	}
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET applied_secrets = $2 WHERE id = $1`, sessionID, applied); err != nil {
+		return fmt.Errorf("record agent session applied secrets: %w", err)
+	}
+	return nil
 }

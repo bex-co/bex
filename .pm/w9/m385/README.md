@@ -1,16 +1,16 @@
 # w9 · m385 — Agent secrets apply on their own: workspace-wide and per-repo scopes (Devin parity)
 
-**Worker:** worker9 **Goal:** a workspace agent secret can be scoped to the whole workspace or to one repository and then reaches every matching session — API, dashboard, automation, `/bex` takeover, PR-feedback steer and child — without being named, as Devin's organization and repository secrets do; `explicit` keeps today's attach-by-name. **Status:** todo
+**Worker:** worker9 **Goal:** a workspace agent secret can be scoped to the whole workspace or to one repository and then reaches every matching session — API, dashboard, automation, `/bex` takeover, PR-feedback steer and child — without being named, as Devin's organization and repository secrets do; `explicit` keeps today's attach-by-name. **Status:** todo (t001, t002, t003, t004, t005 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | ADR098: secret scopes, which session origins they reach, and the migration default | 45m | — |
-| [t002](t002.md) | Store: persist each workspace agent secret's scope and repository | 60m | t001 |
-| [t003](t003.md) | Dispatch: every session origin receives the secrets whose scope matches it | 90m | t002 |
-| [t004](t004.md) | REST, GraphQL and MCP: read and set a secret's scope; the session view names what applied and why | 90m | t003 |
-| [t005](t005.md) | Dashboard: scope picker on the Agent secrets card; applied secrets on the session page | 90m | t004 |
+| [t001](done/t001.md) | ADR098: secret scopes, which session origins they reach, and the migration default — **DONE** | 45m | — |
+| [t002](done/t002.md) | Store: persist each workspace agent secret's scope and repository — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | Dispatch: every session origin receives the secrets whose scope matches it — **DONE** | 90m | t002 |
+| [t004](done/t004.md) | REST, GraphQL and MCP: read and set a secret's scope; the session view names what applied and why — **DONE** | 90m | t003 |
+| [t005](done/t005.md) | Dashboard: scope picker on the Agent secrets card; applied secrets on the session page — **DONE** | 90m | t004 |
 | [t006](t006.md) | Live check on production: unnamed sessions and an automation receive workspace and repo secrets; another repo's session does not | 45m | t005 |
 | [t007](t007.md) | Render parity (Devin): every surface this milestone touched agrees, and matches Devin | 20m | t006 |
 | [t008](t008.md) | Simplify | 15m | t007 |

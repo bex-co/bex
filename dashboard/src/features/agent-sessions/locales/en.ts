@@ -1338,6 +1338,40 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "This session already has a secret with that name.",
     description: "Composer Secrets popover: duplicate inline secret name",
   },
+  "agentSessions.secretsScopeRepo": {
+    message: "This repository",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to the chosen repository, included",
+  },
+  "agentSessions.secretsScopeOtherRepo": {
+    message: "Only on {repo}",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to another repository, not available here",
+  },
+  "agentSessions.appliedSecretsTitle": {
+    message: "Secrets in the latest turn",
+    description:
+      "Session header: heading of the applied-secrets popover (names and sources, never values)",
+  },
+  "agentSessions.appliedSecretSource.inline": {
+    message: "this session",
+    description:
+      "Applied secret source: an inline secret given to this session only",
+  },
+  "agentSessions.appliedSecretSource.explicit": {
+    message: "selected",
+    description: "Applied secret source: a workspace secret the session picked",
+  },
+  "agentSessions.appliedSecretSource.repo": {
+    message: "repository",
+    description:
+      "Applied secret source: a workspace secret scoped to the session's repository",
+  },
+  "agentSessions.appliedSecretSource.workspace": {
+    message: "workspace",
+    description:
+      "Applied secret source: a workspace secret every session receives",
+  },
   "agentSessions.metaSecrets_one": {
     message: "{count} secret",
     description:

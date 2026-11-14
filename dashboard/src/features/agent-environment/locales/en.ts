@@ -378,11 +378,11 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.secrets.help": {
     message:
-      "Saving an existing name replaces its value. Sessions read the new value from their next turn.",
+      "Saving an existing name replaces its value. Sessions pick up changes from their next turn.",
     description: "Agent secrets card help line for admins",
   },
   "agentEnvironment.secrets.readOnly": {
-    message: "Only workspace admins can add or delete agent secrets.",
+    message: "Only workspace admins can add, change or delete agent secrets.",
     description: "Agent secrets card help line for non-admins",
   },
   "agentEnvironment.secrets.saved": {
@@ -430,6 +430,60 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.secrets.saveFailed": {
     message: "Couldn't save the change. Try again.",
     description: "Generic secret write failure",
+  },
+  "agentEnvironment.secrets.valueKeepPlaceholder": {
+    message: "Keep current value",
+    description:
+      "Agent secrets card: value placeholder when the name is an existing secret (empty keeps its value)",
+  },
+  "agentEnvironment.secrets.editLabel": {
+    message: "Edit {name}",
+    description:
+      "Accessible label of a secret's edit button (loads it into the form to rotate or rescope)",
+  },
+  "agentEnvironment.secrets.scopeLabel": {
+    message: "Scope",
+    description:
+      "Agent secrets card: accessible label of the scope picker (ADR098 D9)",
+  },
+  "agentEnvironment.secrets.scopeWorkspace": {
+    message: "All sessions",
+    description:
+      "Scope picker option: every session in the workspace receives the secret",
+  },
+  "agentEnvironment.secrets.scopeRepo": {
+    message: "One repository",
+    description:
+      "Scope picker option: sessions on one repository receive the secret",
+  },
+  "agentEnvironment.secrets.scopeExplicit": {
+    message: "Only when selected",
+    description:
+      "Scope picker option: only sessions that pick the secret receive it",
+  },
+  "agentEnvironment.secrets.scopeBadgeRepo": {
+    message: "Repository: {repo}",
+    description:
+      "Secret row badge: repo scope, naming the repository (owner/name)",
+  },
+  "agentEnvironment.secrets.repoLabel": {
+    message: "Repository",
+    description:
+      "Agent secrets card: accessible label of the repo scope's repository field",
+  },
+  "agentEnvironment.secrets.repoPlaceholder": {
+    message: "owner/name",
+    description: "Agent secrets card: repository field placeholder",
+  },
+  "agentEnvironment.secrets.repoEmpty": {
+    message: "No connected repository matches.",
+    description:
+      "Agent secrets card: repository picker with no matching connected repository",
+  },
+  "agentEnvironment.secrets.repoInvalid": {
+    message: "Enter the repository as owner/name.",
+    description:
+      "Repo scope validation error (also AGENT_SECRET_SCOPE_INVALID)",
   },
   "agentEnvironment.skills.title": {
     message: "Agent skills",

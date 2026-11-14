@@ -74,8 +74,39 @@ func nameArg(what string) cobra.PositionalArgs { return refArgs("one "+what+" na
 
 type agentSecretList struct {
 	Secrets []struct {
-		Name string `json:"name"`
+		Name  string `json:"name"`
+		Scope string `json:"scope"`
+		Repo  string `json:"repo"`
 	} `json:"secrets"`
+}
+
+// secretBody is a secret write's body, leaving out what is unset: no value
+// keeps the stored one, no scope keeps an existing secret's scope (a new one
+// is workspace-wide).
+func secretBody(value, scope, repo string) map[string]string {
+	body := map[string]string{}
+	for key, v := range map[string]string{"value": value, "scope": scope, "repo": repo} {
+		if v != "" {
+			body[key] = v
+		}
+	}
+	return body
+}
+
+func addScopeFlags(c *cobra.Command, scope, repo *string) {
+	c.Flags().StringVar(scope, "scope", "", "workspace (every session; the default for a new secret), repo (sessions on --repo) or explicit (only sessions that name it)")
+	c.Flags().StringVar(repo, "repo", "", "owner/name, with --scope repo")
+}
+
+// scopeLabel is how list prints a scope: workspace, explicit, repo:owner/name.
+func scopeLabel(scope, repo string) string {
+	if scope == "repo" {
+		return "repo:" + repo
+	}
+	if scope == "" {
+		return "explicit"
+	}
+	return scope
 }
 
 func secretsCommand(d deps) *cobra.Command {
@@ -83,13 +114,15 @@ func secretsCommand(d deps) *cobra.Command {
 		Use:     "secrets",
 		Aliases: []string{"secret"},
 		Short:   "Manage the workspace's agent secrets (values are write-only)",
-		Long: "Workspace agent secrets reach a session as env vars when it names them\n" +
-			"(`run --secret NAME`, an automation's --secret). Reads show names only;\n" +
-			"a value is set from stdin, a hidden prompt or --from-env, never an argument.",
+		Long: "Workspace agent secrets reach sessions as env vars by scope: workspace (every\n" +
+			"session, the default for a new secret), repo (sessions on one repository) or\n" +
+			"explicit (only sessions that name it: `run --secret NAME`, an automation's\n" +
+			"--secret). Reads show names and scopes only; a value is set from stdin, a\n" +
+			"hidden prompt or --from-env, never an argument.",
 	}
 	root.AddCommand(&cobra.Command{
 		Use:   "list",
-		Short: "List the workspace's agent secret names",
+		Short: "List the workspace's agent secrets and their scopes",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return workspaceShow(d, c, http.MethodGet, nil, nil, "list agent secrets", func(w io.Writer, list agentSecretList) error {
@@ -97,13 +130,13 @@ func secretsCommand(d deps) *cobra.Command {
 					_, _ = fmt.Fprintln(w, "No agent secrets.")
 				}
 				for _, s := range list.Secrets {
-					_, _ = fmt.Fprintln(w, s.Name)
+					_, _ = fmt.Fprintf(w, "%s\t%s\n", s.Name, scopeLabel(s.Scope, s.Repo))
 				}
 				return nil
 			}, secretPath()...)
 		},
 	})
-	var fromEnv string
+	var fromEnv, scope, repo string
 	set := &cobra.Command{
 		Use:   "set NAME",
 		Short: "Create or replace an agent secret",
@@ -121,7 +154,7 @@ func secretsCommand(d deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			return workspaceShow(d, c, http.MethodPut, nil, map[string]string{"value": value}, "set agent secret "+args[0],
+			return workspaceShow(d, c, http.MethodPut, nil, secretBody(value, scope, repo), "set agent secret "+args[0],
 				func(w io.Writer, _ struct{}) error {
 					_, _ = fmt.Fprintf(w, "Set agent secret %s.\n", args[0])
 					return nil
@@ -129,7 +162,28 @@ func secretsCommand(d deps) *cobra.Command {
 		},
 	}
 	set.Flags().StringVar(&fromEnv, "from-env", "", "read the value from this environment variable")
-	root.AddCommand(set, &cobra.Command{
+	addScopeFlags(set, &scope, &repo)
+	var rescopeScope, rescopeRepo string
+	rescope := &cobra.Command{
+		Use:   "rescope NAME --scope SCOPE",
+		Short: "Change which sessions receive an agent secret, keeping its value",
+		Args:  nameArg("secret"),
+		RunE: func(c *cobra.Command, args []string) error {
+			if rescopeScope == "" {
+				return usageError("--scope is required: workspace, repo or explicit")
+			}
+			return workspaceShow(d, c, http.MethodPut, nil, secretBody("", rescopeScope, rescopeRepo), "rescope agent secret "+args[0],
+				func(w io.Writer, out struct {
+					Scope string `json:"scope"`
+					Repo  string `json:"repo"`
+				}) error {
+					_, _ = fmt.Fprintf(w, "Agent secret %s is now %s.\n", args[0], scopeLabel(out.Scope, out.Repo))
+					return nil
+				}, secretPath(args[0])...)
+		},
+	}
+	addScopeFlags(rescope, &rescopeScope, &rescopeRepo)
+	root.AddCommand(set, rescope, &cobra.Command{
 		Use:   "delete NAME",
 		Short: "Delete an agent secret",
 		Args:  nameArg("secret"),

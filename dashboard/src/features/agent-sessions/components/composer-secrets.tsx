@@ -14,8 +14,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSecrets } from "@/features/agent-environment/hooks/use-agent-secrets";
 import {
   MAX_SESSION_SECRETS,
+  secretAppliesByScope,
   secretNameProblem,
   secretValueProblem,
+  type AgentSecretView,
 } from "@/features/agent-environment/lib/secrets";
 import {
   composerSecretNames,
@@ -29,6 +31,11 @@ interface ComposerSecretsProps {
   onChange: (value: ComposerSecretsValue) => void;
   disabled?: boolean;
   /**
+   * The session's repository (owner/name), or none for a chat-only session:
+   * secrets scoped to it are included without being picked (ADR098 D9).
+   */
+  repo?: string | null;
+  /**
    * Offer only the workspace's stored secrets. An automation template (ADR101
    * D5) carries names, never inline values, so its form hides the inline half.
    */
@@ -40,12 +47,18 @@ interface ComposerSecretsProps {
  * session_secrets: pick workspace agent secrets and add inline ones the agent
  * reads as env vars. A fixed-size icon button on the toolbar, so the prompt
  * box keeps its skeleton geometry; the workspace list loads only when opened.
+ *
+ * Scoped secrets (ADR098 D9) are listed as included, not picked: a
+ * workspace-scoped one always, a repo-scoped one when the session's
+ * repository matches. The server applies them itself, so they never join
+ * `secretNames`; only the explicit picks do.
  */
 export function ComposerSecrets({
   ownerId,
   value,
   onChange,
   disabled,
+  repo = null,
   workspaceOnly = false,
 }: ComposerSecretsProps) {
   const { t } = useTranslations();
@@ -75,6 +88,7 @@ export function ComposerSecrets({
           ownerId={ownerId}
           value={value}
           onChange={onChange}
+          repo={repo}
           workspaceOnly={workspaceOnly}
         />
       </PopoverContent>
@@ -86,11 +100,12 @@ function SecretsPanel({
   ownerId,
   value,
   onChange,
+  repo,
   workspaceOnly = false,
 }: Omit<ComposerSecretsProps, "disabled">) {
   const { t } = useTranslations();
   const ids = useId();
-  const { names, loading, error } = useAgentSecrets(ownerId);
+  const { secrets, loading, error } = useAgentSecrets(ownerId);
   const [name, setName] = useState("");
   const [secretValue, setSecretValue] = useState("");
   const full = composerSecretNames(value).length >= MAX_SESSION_SECRETS;
@@ -111,6 +126,18 @@ function SecretsPanel({
     secretValue !== "" &&
     problem == null &&
     valueProblem == null;
+
+  /** Why a scoped secret is or isn't included, beside its name. */
+  function scopeHint(secret: AgentSecretView, included: boolean): string {
+    if (!included) {
+      return t("agentSessions.secretsScopeOtherRepo", {
+        repo: secret.repo ?? "",
+      });
+    }
+    return secret.scope === "workspace"
+      ? t("agentEnvironment.secrets.scopeWorkspace")
+      : t("agentSessions.secretsScopeRepo");
+  }
 
   function toggle(secret: string, checked: boolean) {
     const next = checked
@@ -155,7 +182,7 @@ function SecretsPanel({
           <p className="text-destructive text-xs" role="alert">
             {t("agentSessions.secretsWorkspaceLoadFailed")}
           </p>
-        ) : names.length === 0 ? (
+        ) : secrets.length === 0 ? (
           <p className="text-muted-foreground text-xs">
             {t("agentSessions.secretsWorkspaceEmpty")}{" "}
             <Link
@@ -168,20 +195,35 @@ function SecretsPanel({
           </p>
         ) : (
           <ul className="max-h-40 space-y-1.5 overflow-auto">
-            {names.map((secret) => {
-              const id = `${ids}-${secret}`;
-              const checked = value.secretNames.includes(secret);
+            {secrets.map((secret) => {
+              const id = `${ids}-${secret.name}`;
+              const picked = value.secretNames.includes(secret.name);
+              const scoped = secretAppliesByScope(secret, repo);
+              // A repo-scoped secret off this repository can't be picked;
+              // one an automation already names stays removable.
+              const offRepo = secret.scope === "repo" && !scoped && !picked;
               return (
-                <li key={secret} className="flex items-center gap-2">
+                <li key={secret.name} className="flex items-center gap-2">
                   <Checkbox
                     id={id}
-                    checked={checked}
-                    disabled={!checked && full}
-                    onCheckedChange={(c) => toggle(secret, c === true)}
+                    checked={scoped || picked}
+                    disabled={scoped || offRepo || (!picked && full)}
+                    onCheckedChange={(c) => toggle(secret.name, c === true)}
                   />
-                  <Label htmlFor={id} className="font-mono text-xs">
-                    {secret}
+                  <Label
+                    htmlFor={id}
+                    className="min-w-0 truncate font-mono text-xs"
+                  >
+                    {secret.name}
                   </Label>
+                  {scoped || offRepo ? (
+                    <span
+                      className="text-muted-foreground ml-auto max-w-[55%] truncate text-xs"
+                      data-testid="agent-composer-secret-scope"
+                    >
+                      {scopeHint(secret, scoped)}
+                    </span>
+                  ) : null}
                 </li>
               );
             })}

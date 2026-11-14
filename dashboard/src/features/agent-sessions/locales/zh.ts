@@ -1266,6 +1266,40 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "此会话已有同名密钥。",
     description: "Composer Secrets popover: duplicate inline secret name",
   },
+  "agentSessions.secretsScopeRepo": {
+    message: "此仓库",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to the chosen repository, included",
+  },
+  "agentSessions.secretsScopeOtherRepo": {
+    message: "仅限 {repo}",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to another repository, not available here",
+  },
+  "agentSessions.appliedSecretsTitle": {
+    message: "最近一轮的密钥",
+    description:
+      "Session header: heading of the applied-secrets popover (names and sources, never values)",
+  },
+  "agentSessions.appliedSecretSource.inline": {
+    message: "此会话",
+    description:
+      "Applied secret source: an inline secret given to this session only",
+  },
+  "agentSessions.appliedSecretSource.explicit": {
+    message: "已选择",
+    description: "Applied secret source: a workspace secret the session picked",
+  },
+  "agentSessions.appliedSecretSource.repo": {
+    message: "仓库",
+    description:
+      "Applied secret source: a workspace secret scoped to the session's repository",
+  },
+  "agentSessions.appliedSecretSource.workspace": {
+    message: "工作区",
+    description:
+      "Applied secret source: a workspace secret every session receives",
+  },
   "agentSessions.metaSecrets_other": {
     message: "{count} 个密钥",
     description:

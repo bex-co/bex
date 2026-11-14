@@ -269,6 +269,10 @@ type View struct {
 	// SecretNames are the names of the secrets attached to the session
 	// (ADR098); a value is never returned.
 	SecretNames []string `json:"secretNames,omitempty"`
+	// AppliedSecrets are the secrets the latest dispatch applied, each with
+	// its source: inline, explicit (named), repo or workspace (ADR098 D9).
+	// Names only, never a value.
+	AppliedSecrets []AppliedSecret `json:"appliedSecrets"`
 	// AutomationID is the agent automation that started the session (ADR101
 	// D5); absent for a session started by a person or client.
 	AutomationID string `json:"automationId,omitempty"`
@@ -507,4 +511,10 @@ type TranscriptPage struct {
 	Parts        []TranscriptPart `json:"parts"`
 	Turns        []TranscriptTurn `json:"turns"`
 	NextAfterSeq int64            `json:"nextAfterSeq"`
+}
+
+// AppliedSecret is one secret a session's latest turn received and why.
+type AppliedSecret struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
 }

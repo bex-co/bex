@@ -368,11 +368,11 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     description: "Agent secrets card: save (create or replace) button",
   },
   "agentEnvironment.secrets.help": {
-    message: "保存已有名称会替换其值。会话从下一轮开始读取新值。",
+    message: "保存已有名称会替换其值。会话从下一轮开始使用更改。",
     description: "Agent secrets card help line for admins",
   },
   "agentEnvironment.secrets.readOnly": {
-    message: "只有工作区管理员可以添加或删除智能体密钥。",
+    message: "只有工作区管理员可以添加、更改或删除智能体密钥。",
     description: "Agent secrets card help line for non-admins",
   },
   "agentEnvironment.secrets.saved": {
@@ -418,6 +418,60 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.secrets.saveFailed": {
     message: "无法保存更改，请重试。",
     description: "Generic secret write failure",
+  },
+  "agentEnvironment.secrets.valueKeepPlaceholder": {
+    message: "保留当前值",
+    description:
+      "Agent secrets card: value placeholder when the name is an existing secret (empty keeps its value)",
+  },
+  "agentEnvironment.secrets.editLabel": {
+    message: "编辑 {name}",
+    description:
+      "Accessible label of a secret's edit button (loads it into the form to rotate or rescope)",
+  },
+  "agentEnvironment.secrets.scopeLabel": {
+    message: "范围",
+    description:
+      "Agent secrets card: accessible label of the scope picker (ADR098 D9)",
+  },
+  "agentEnvironment.secrets.scopeWorkspace": {
+    message: "所有会话",
+    description:
+      "Scope picker option: every session in the workspace receives the secret",
+  },
+  "agentEnvironment.secrets.scopeRepo": {
+    message: "单个仓库",
+    description:
+      "Scope picker option: sessions on one repository receive the secret",
+  },
+  "agentEnvironment.secrets.scopeExplicit": {
+    message: "仅在选中时",
+    description:
+      "Scope picker option: only sessions that pick the secret receive it",
+  },
+  "agentEnvironment.secrets.scopeBadgeRepo": {
+    message: "仓库：{repo}",
+    description:
+      "Secret row badge: repo scope, naming the repository (owner/name)",
+  },
+  "agentEnvironment.secrets.repoLabel": {
+    message: "仓库",
+    description:
+      "Agent secrets card: accessible label of the repo scope's repository field",
+  },
+  "agentEnvironment.secrets.repoPlaceholder": {
+    message: "owner/name",
+    description: "Agent secrets card: repository field placeholder",
+  },
+  "agentEnvironment.secrets.repoEmpty": {
+    message: "没有匹配的已连接仓库。",
+    description:
+      "Agent secrets card: repository picker with no matching connected repository",
+  },
+  "agentEnvironment.secrets.repoInvalid": {
+    message: "请以 owner/name 的形式输入仓库。",
+    description:
+      "Repo scope validation error (also AGENT_SECRET_SCOPE_INVALID)",
   },
   "agentEnvironment.skills.title": {
     message: "智能体技能",

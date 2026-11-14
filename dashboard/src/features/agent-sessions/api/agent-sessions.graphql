@@ -143,6 +143,13 @@ query AgentSession($id: String!) {
       author
       url
     }
+    # The secrets the latest turn received and why (w9/m385, ADR098 D9):
+    # inline, explicit (picked), repo or workspace. Names only. Like
+    # turnOrigins it stays off the list fragment.
+    appliedSecrets {
+      name
+      source
+    }
   }
 }
 

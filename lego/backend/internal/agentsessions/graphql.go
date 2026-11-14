@@ -325,6 +325,7 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"maxSpendUSD":     gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
 		"tags":            &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
 		"secretNames":     &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
+		"appliedSecrets":  &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(appliedSecretGQLType))), Description: "The secrets the latest turn received, each with its source (inline, explicit, repo or workspace); values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.AppliedSecrets })},
 		"automationId":    &graphql.Field{Type: graphql.String, Description: "The agent automation (aut-…) that started this session, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.AutomationID })},
 		"createdBy":       &graphql.Field{Type: graphql.String, Description: "Who started the session: a member's identity id, or an API key's client id. An automation's sessions carry the automation's creator and a child session its parent's creator. Absent on sessions from before it was recorded.", Resolve: gqlutil.Field(func(v View) any { return v.CreatedBy })},
 		"parentSessionId": &graphql.Field{Type: graphql.String, Description: "The agent session (ags-…) that spawned this one, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.ParentSessionID })},
@@ -538,9 +539,20 @@ var agentSessionSecretGQLInput = graphql.NewInputObject(graphql.InputObjectConfi
 
 var agentSecretGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentSecret",
-	Description: "A workspace agent secret. Only its name is readable.",
+	Description: "A workspace agent secret: its name and scope. The value is never readable.",
 	Fields: graphql.Fields{
-		"name": gqlutil.ReqStrField(func(v AgentSecret) any { return v.Name }),
+		"name":  gqlutil.ReqStrField(func(v AgentSecret) any { return v.Name }),
+		"scope": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "workspace (every session receives it), repo (sessions on `repo`) or explicit (only sessions that name it in secretNames).", Resolve: gqlutil.Field(func(v AgentSecret) any { return v.Scope })},
+		"repo":  gqlutil.OptionalStrField(func(v AgentSecret) any { return v.Repo }),
+	},
+})
+
+var appliedSecretGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentAppliedSecret",
+	Description: "A secret a session's latest turn received: its name and why.",
+	Fields: graphql.Fields{
+		"name":   gqlutil.ReqStrField(func(v AppliedSecret) any { return v.Name }),
+		"source": gqlutil.ReqStrField(func(v AppliedSecret) any { return v.Source }),
 	},
 })
 
@@ -769,14 +781,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"setAgentSecret": &graphql.Field{
 			Type:        graphql.NewNonNull(agentSecretGQLType),
-			Description: "Create or rotate a workspace agent secret (admins only). The value is write-only.",
+			Description: "Create, rotate or rescope a workspace agent secret (admins only). The value is write-only; omit it to change only the scope of an existing secret. A new secret without a scope is workspace-wide.",
 			Args: graphql.FieldConfigArgument{
 				"ownerId": gqlutil.Arg(graphql.String),
 				"name":    gqlutil.ReqArg(graphql.String),
-				"value":   gqlutil.ReqArg(graphql.String),
+				"value":   gqlutil.Arg(graphql.String),
+				"scope":   gqlutil.Arg(graphql.String),
+				"repo":    gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetAgentSecret(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "name"), gqlutil.Str(p.Args, "value"))
+				return s.SetAgentSecret(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "name"),
+					AgentSecretInput{Value: gqlutil.Str(p.Args, "value"), Scope: gqlutil.StrPtr(p.Args, "scope"), Repo: gqlutil.Str(p.Args, "repo")})
 			},
 		},
 		"deleteAgentSecret": &graphql.Field{

@@ -391,6 +391,7 @@ export function NewSessionComposer() {
                 ownerId={currentWorkspaceId}
                 value={secrets}
                 onChange={setSecrets}
+                repo={repo}
                 disabled={isSubmitting}
               />
 

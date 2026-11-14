@@ -149,9 +149,11 @@ type agentSecretArgs struct {
 }
 
 type setAgentSecretArgs struct {
-	OwnerID string `json:"ownerId,omitempty"`
-	Name    string `json:"name" jsonschema:"the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH"`
-	Value   string `json:"value" jsonschema:"the secret value, 1 B to 32 KiB; write-only, never returned"`
+	OwnerID string  `json:"ownerId,omitempty"`
+	Name    string  `json:"name" jsonschema:"the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH"`
+	Value   string  `json:"value,omitempty" jsonschema:"the secret value, 1 B to 32 KiB; write-only, never returned. Required for a new secret; omit it to change only an existing secret's scope"`
+	Scope   *string `json:"scope,omitempty" jsonschema:"which sessions receive it without naming it: workspace (every session; the default for a new secret), repo (sessions on repo) or explicit (only sessions that name it in secretNames). Omit to keep an existing secret's scope"`
+	Repo    string  `json:"repo,omitempty" jsonschema:"owner/name, required with scope repo"`
 }
 
 type agentSkillArgs struct {
@@ -383,14 +385,14 @@ func (s *Service) registerSkillMCP(server *mcp.Server) {
 // registerSecretMCP adds the ADR098 D4 workspace agent secret tools. Values
 // are write-only: no tool returns one.
 func (s *Service) registerSecretMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_secrets", Description: "List a workspace's agent secrets by name (values are never returned). Pass names in secretNames to create_agent_session or send_agent_session_message to expose them to the agent as env vars."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_secrets", Description: "List a workspace's agent secrets with their scopes (values are never returned). A workspace-scoped secret reaches every session and a repo-scoped one every session on its repository, as env vars of the same name; pass an explicit secret's name in secretNames to create_agent_session or send_agent_session_message to expose it."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in environmentArgs) (*mcp.CallToolResult, AgentSecretList, error) {
 			out, err := s.AgentSecrets(ctx, in.OwnerID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_secret", Description: "Create or rotate a workspace agent secret (workspace admins only). The value is write-only: no read returns it, and it is redacted from session transcripts. Sessions that reference the name read the new value from their next turn. At most 50 per workspace."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_secret", Description: "Create, rotate or rescope a workspace agent secret (workspace admins only). The value is write-only: no read returns it, and it is redacted from session transcripts. A new secret is workspace-wide unless scope says otherwise. Sessions read the new value and scope from their next turn. At most 50 per workspace."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in setAgentSecretArgs) (*mcp.CallToolResult, AgentSecret, error) {
-			out, err := s.SetAgentSecret(ctx, in.OwnerID, in.Name, in.Value)
+			out, err := s.SetAgentSecret(ctx, in.OwnerID, in.Name, AgentSecretInput{Value: in.Value, Scope: in.Scope, Repo: in.Repo})
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_secret", Description: "Delete a workspace agent secret (workspace admins only). A session that still references it fails its next turn with failureReasonCode AGENT_SESSION_SECRET_UNAVAILABLE."},

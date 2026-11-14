@@ -44,6 +44,13 @@ export type ActionDecision = {
   reason: Maybe<Scalars['String']['output']>;
 };
 
+/** A secret a session's latest turn received: its name and why. */
+export type AgentAppliedSecret = {
+  __typename: 'AgentAppliedSecret';
+  name: Scalars['String']['output'];
+  source: Scalars['String']['output'];
+};
+
 export type AgentAttachment = {
   __typename: 'AgentAttachment';
   createdAt: Scalars['String']['output'];
@@ -321,10 +328,13 @@ export enum AgentNetworkTier {
   Registries = 'REGISTRIES'
 }
 
-/** A workspace agent secret. Only its name is readable. */
+/** A workspace agent secret: its name and scope. The value is never readable. */
 export type AgentSecret = {
   __typename: 'AgentSecret';
   name: Scalars['String']['output'];
+  repo: Maybe<Scalars['String']['output']>;
+  /** workspace (every session receives it), repo (sessions on `repo`) or explicit (only sessions that name it in secretNames). */
+  scope: Scalars['String']['output'];
 };
 
 export type AgentSecretList = {
@@ -336,6 +346,8 @@ export type AgentSecretList = {
 export type AgentSession = {
   __typename: 'AgentSession';
   agentConfig: AgentSessionConfig;
+  /** The secrets the latest turn received, each with its source (inline, explicit, repo or workspace); values are never returned. */
+  appliedSecrets: Array<AgentAppliedSecret>;
   archivedAt: Maybe<Scalars['String']['output']>;
   /** The agent automation (aut-…) that started this session, when one did. */
   automationId: Maybe<Scalars['String']['output']>;
@@ -1976,7 +1988,7 @@ export type Mutation = {
   runCronJob: Maybe<CronRun>;
   scaleService: Maybe<Service>;
   selectGitClaim: Maybe<GitConnection>;
-  /** Create or rotate a workspace agent secret (admins only). The value is write-only. */
+  /** Create, rotate or rescope a workspace agent secret (admins only). The value is write-only; omit it to change only the scope of an existing secret. A new secret without a scope is workspace-wide. */
   setAgentSecret: AgentSecret;
   /** Replaces all of a session's tags; [] clears them. Refused on an archived session. */
   setAgentSessionTags: Maybe<AgentSession>;
@@ -2940,7 +2952,9 @@ export type MutationSelectGitClaimArgs = {
 export type MutationSetAgentSecretArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
-  value: Scalars['String']['input'];
+  repo?: InputMaybe<Scalars['String']['input']>;
+  scope?: InputMaybe<Scalars['String']['input']>;
+  value?: InputMaybe<Scalars['String']['input']>;
 };
 
 

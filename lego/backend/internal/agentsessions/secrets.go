@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"golang.org/x/sync/errgroup"
@@ -70,12 +71,40 @@ type SecretInput struct {
 	Value string `json:"value" jsonschema:"the secret value, 1 B to 32 KiB; write-only, redacted from the transcript"`
 }
 
-// AgentSecret is a workspace agent secret as every read shows it: its name.
+// AgentSecret is a workspace agent secret as every read shows it: its name
+// and scope (w9/m385, ADR098 D9), never its value.
 type AgentSecret struct {
 	Name string `json:"name"`
+	// Scope is which sessions receive the secret without naming it:
+	// workspace (every session), repo (sessions on Repo) or explicit (only
+	// sessions that name it in secretNames).
+	Scope string `json:"scope"`
+	Repo  string `json:"repo,omitempty"`
 }
 
-// AgentSecretList is the workspace's agent secrets, names only.
+// AgentSecretInput is a create, rotate or rescope of one workspace agent
+// secret. An empty Value keeps the stored value (a scope-only update of an
+// existing secret); a nil Scope keeps the stored scope, or gives a new secret
+// workspace scope (Devin's organization secrets).
+type AgentSecretInput struct {
+	Value string
+	Scope *string
+	Repo  string
+}
+
+// SecretScopeStore persists workspace agent secret scopes (ADR098 D9).
+// *store.PGStore satisfies it; nil (store off) ⇒ every secret is explicit.
+type SecretScopeStore interface {
+	ListAgentSecretScopes(ctx context.Context, workspaceID string) ([]store.AgentSecretScope, error)
+	UpsertAgentSecretScope(ctx context.Context, workspaceID string, in store.AgentSecretScope) error
+	DeleteAgentSecretScope(ctx context.Context, workspaceID, name string) error
+}
+
+// appliedSourceInline marks an applied secret whose value came from the
+// session's own inline document; the other sources are the scope constants.
+const appliedSourceInline = "inline"
+
+// AgentSecretList is the workspace's agent secrets: names and scopes.
 type AgentSecretList struct {
 	OwnerID string        `json:"ownerId"`
 	Secrets []AgentSecret `json:"secrets"`
@@ -114,6 +143,37 @@ func validateSecretValue(field, value string) error {
 	return nil
 }
 
+func errSecretScopeInvalid(field, msg string) error {
+	return core.NewBadRequestError("AGENT_SECRET_SCOPE_INVALID", msg, map[string]any{"field": field})
+}
+
+// requestedSecretScope validates the scope a write asks for; nil when it asks
+// for none. A repo scope names its repository as owner/name, lowercased like
+// a session's repo so the two compare equal; no other scope names one.
+func requestedSecretScope(name string, scope *string, repo string) (*store.AgentSecretScope, error) {
+	if scope == nil {
+		if strings.TrimSpace(repo) != "" {
+			return nil, errSecretScopeInvalid("repo", "only a repo scope names a repository")
+		}
+		return nil, nil
+	}
+	switch *scope {
+	case store.AgentSecretScopeWorkspace, store.AgentSecretScopeExplicit:
+		if strings.TrimSpace(repo) != "" {
+			return nil, errSecretScopeInvalid("repo", "only a repo scope names a repository")
+		}
+		return &store.AgentSecretScope{Name: name, Scope: *scope}, nil
+	case store.AgentSecretScopeRepo:
+		normalized, err := agentsession.NormalizeRepository(repo)
+		if err != nil {
+			return nil, errSecretScopeInvalid("repo", "a repo scope names its repository as owner/name")
+		}
+		return &store.AgentSecretScope{Name: name, Scope: *scope, Repo: normalized}, nil
+	default:
+		return nil, errSecretScopeInvalid("scope", `a secret's scope is "workspace", "repo" or "explicit"`)
+	}
+}
+
 func secretLimitError(msg string, limit int) error {
 	return core.NewBadRequestError("AGENT_SECRET_LIMIT_EXCEEDED", msg, map[string]any{"limit": limit})
 }
@@ -146,16 +206,52 @@ func (s *Service) AgentSecrets(ctx context.Context, ownerID string) (AgentSecret
 	if err != nil {
 		return AgentSecretList{}, err
 	}
+	scopes, err := s.secretScopes(ctx, workspaceID)
+	if err != nil {
+		return AgentSecretList{}, err
+	}
 	out := AgentSecretList{OwnerID: workspaceID, Secrets: make([]AgentSecret, 0, len(names))}
 	for _, name := range names {
-		out.Secrets = append(out.Secrets, AgentSecret{Name: name})
+		out.Secrets = append(out.Secrets, secretView(name, scopes))
 	}
 	return out, nil
 }
 
-// SetAgentSecret creates or rotates a workspace agent secret (admins only).
-// Sessions that reference it read the new value from their next dispatch.
-func (s *Service) SetAgentSecret(ctx context.Context, ownerID, name, value string) (AgentSecret, error) {
+// secretScopes reads the workspace's scope rows by name; with no scope store
+// every secret is explicit.
+func (s *Service) secretScopes(ctx context.Context, workspaceID string) (map[string]store.AgentSecretScope, error) {
+	out := map[string]store.AgentSecretScope{}
+	if s.SecretScopes == nil {
+		return out, nil
+	}
+	rows, err := s.SecretScopes.ListAgentSecretScopes(ctx, workspaceID)
+	if err != nil {
+		return nil, core.HideCause(core.NewAgentSessionDependencyUnavailableError(), err)
+	}
+	for _, row := range rows {
+		out[row.Name] = row
+	}
+	return out, nil
+}
+
+// storedScope is a secret's scope row; no row means explicit, the behavior
+// every secret had before scopes.
+func storedScope(name string, scopes map[string]store.AgentSecretScope) store.AgentSecretScope {
+	if row, ok := scopes[name]; ok {
+		return row
+	}
+	return store.AgentSecretScope{Name: name, Scope: store.AgentSecretScopeExplicit}
+}
+
+func secretView(name string, scopes map[string]store.AgentSecretScope) AgentSecret {
+	row := storedScope(name, scopes)
+	return AgentSecret{Name: name, Scope: row.Scope, Repo: row.Repo}
+}
+
+// SetAgentSecret creates, rotates or rescopes a workspace agent secret
+// (admins only). Sessions read the new value and scope from their next
+// dispatch.
+func (s *Service) SetAgentSecret(ctx context.Context, ownerID, name string, in AgentSecretInput) (AgentSecret, error) {
 	workspaceID, err := s.AuthorizeWorkspaceTarget(ctx, core.RelCanManage, ownerID, AgentSecretAuditTarget)
 	if err != nil {
 		return AgentSecret{}, err
@@ -163,23 +259,131 @@ func (s *Service) SetAgentSecret(ctx context.Context, ownerID, name, value strin
 	if err := validateSecretName("name", name); err != nil {
 		return AgentSecret{}, err
 	}
-	if err := validateSecretValue("value", value); err != nil {
+	if in.Value != "" {
+		if err := validateSecretValue("value", in.Value); err != nil {
+			return AgentSecret{}, err
+		}
+	}
+	requested, err := requestedSecretScope(name, in.Scope, in.Repo)
+	if err != nil {
 		return AgentSecret{}, err
 	}
-	if s.ModelKeys == nil {
+	if s.ModelKeys == nil || (requested != nil && requested.Scope != store.AgentSecretScopeExplicit && s.SecretScopes == nil) {
 		return AgentSecret{}, errSecretsUnavailable()
 	}
 	names, err := s.workspaceSecretNames(ctx, workspaceID)
 	if err != nil {
 		return AgentSecret{}, err
 	}
-	if !slices.Contains(names, name) && len(names) >= maxWorkspaceAgentSecrets {
+	exists := slices.Contains(names, name)
+	if !exists && len(names) >= maxWorkspaceAgentSecrets {
 		return AgentSecret{}, secretLimitError(fmt.Sprintf("a workspace holds at most %d agent secrets", maxWorkspaceAgentSecrets), maxWorkspaceAgentSecrets)
 	}
-	if err := s.ModelKeys.Put(ctx, workspaceSecretPath(workspaceID, name), map[string]string{agentSecretValueField: value}); err != nil {
-		return AgentSecret{}, secretStoreFailure("write", workspaceID, err)
+	if !exists && in.Value == "" {
+		return AgentSecret{}, validateSecretValue("value", "")
 	}
-	return AgentSecret{Name: name}, nil
+	scopes, err := s.secretScopes(ctx, workspaceID)
+	if err != nil {
+		return AgentSecret{}, err
+	}
+	// A row left by a deleted secret of the same name is not the new
+	// secret's: only scopes of secrets that still exist count.
+	for row := range scopes {
+		if !slices.Contains(names, row) {
+			delete(scopes, row)
+		}
+	}
+	stored := storedScope(name, scopes)
+	next := stored
+	switch {
+	case s.SecretScopes == nil:
+		next = store.AgentSecretScope{Name: name, Scope: store.AgentSecretScopeExplicit}
+	case requested != nil:
+		next = *requested
+	case !exists:
+		next = store.AgentSecretScope{Name: name, Scope: store.AgentSecretScopeWorkspace}
+	}
+	if in.Value != "" || !exists || widens(stored, next) {
+		if err := s.checkScopedTotal(ctx, workspaceID, scopes, next, in.Value); err != nil {
+			return AgentSecret{}, err
+		}
+	}
+	if in.Value != "" {
+		if err := s.ModelKeys.Put(ctx, workspaceSecretPath(workspaceID, name), map[string]string{agentSecretValueField: in.Value}); err != nil {
+			return AgentSecret{}, secretStoreFailure("write", workspaceID, err)
+		}
+	}
+	// The value is written first: if the scope write then fails, a new
+	// secret reads explicit (no row), the narrower behavior.
+	if s.SecretScopes != nil && (!exists || next != stored) {
+		if err := s.SecretScopes.UpsertAgentSecretScope(ctx, workspaceID, next); err != nil {
+			return AgentSecret{}, core.HideCause(core.NewAgentSessionDependencyUnavailableError(), err)
+		}
+	}
+	return AgentSecret{Name: name, Scope: next.Scope, Repo: next.Repo}, nil
+}
+
+// widens reports whether moving a secret from one scope to another can add
+// sessions that receive it: explicit → anything scoped, or a repo scope →
+// workspace or another repository.
+func widens(from, to store.AgentSecretScope) bool {
+	switch from.Scope {
+	case store.AgentSecretScopeExplicit:
+		return to.Scope != store.AgentSecretScopeExplicit
+	case store.AgentSecretScopeRepo:
+		return to.Scope == store.AgentSecretScopeWorkspace || (to.Scope == store.AgentSecretScopeRepo && to.Repo != from.Repo)
+	default:
+		return false
+	}
+}
+
+// checkScopedTotal refuses a scope that would push the secrets some session
+// receives without naming them past the session total (ADR098 D3): the
+// workspace-scoped values plus one repository's repo-scoped values, with
+// next's value replacing its stored one. Only the totals next can change are
+// read: a repo scope bounds its own repository; a workspace scope bounds the
+// largest one.
+func (s *Service) checkScopedTotal(ctx context.Context, workspaceID string, scopes map[string]store.AgentSecretScope, next store.AgentSecretScope, value string) error {
+	if next.Scope == store.AgentSecretScopeExplicit {
+		return nil
+	}
+	rows := maps.Clone(scopes)
+	rows[next.Name] = next
+	counts := func(row store.AgentSecretScope) bool {
+		return row.Scope == store.AgentSecretScopeWorkspace ||
+			(row.Scope == store.AgentSecretScopeRepo && (next.Scope == store.AgentSecretScopeWorkspace || row.Repo == next.Repo))
+	}
+	var names []string
+	for name, row := range rows {
+		if counts(row) && (name != next.Name || value == "") {
+			names = append(names, name)
+		}
+	}
+	values, err := s.workspaceSecretValues(ctx, workspaceID, names)
+	if err != nil {
+		return err
+	}
+	if value != "" {
+		values[next.Name] = value
+	}
+	workspaceTotal, repoTotals := 0, map[string]int{}
+	for name, row := range rows {
+		switch {
+		case !counts(row):
+		case row.Scope == store.AgentSecretScopeWorkspace:
+			workspaceTotal += len(values[name])
+		default:
+			repoTotals[row.Repo] += len(values[name])
+		}
+	}
+	largest := 0
+	for _, total := range repoTotals {
+		largest = max(largest, total)
+	}
+	if workspaceTotal+largest > maxSessionSecretBytes {
+		return secretLimitError(fmt.Sprintf("the secrets a session receives by scope total at most %d KiB", maxSessionSecretBytes>>10), maxSessionSecretBytes)
+	}
+	return nil
 }
 
 // DeleteAgentSecret removes a workspace agent secret (admins only). A session
@@ -204,6 +408,13 @@ func (s *Service) DeleteAgentSecret(ctx context.Context, ownerID, name string) e
 	}
 	if err := s.ModelKeys.Delete(ctx, workspaceSecretPath(workspaceID, name)); err != nil {
 		return secretStoreFailure("delete", workspaceID, err)
+	}
+	// A row left behind is harmless: no value backs it, so no dispatch
+	// applies it, and a new secret of the same name starts from the default.
+	if s.SecretScopes != nil {
+		if err := s.SecretScopes.DeleteAgentSecretScope(ctx, workspaceID, name); err != nil {
+			log.Printf("agent secrets: scope row delete failed (workspace=%s name=%s): %v", workspaceID, name, err)
+		}
 	}
 	return nil
 }
@@ -311,9 +522,10 @@ func (s *Service) attachSecrets(ctx context.Context, workspaceID string, prior [
 	return out, nil
 }
 
-// secretReadConcurrency bounds the parallel OpenBao reads of one attach or
-// dispatch (at most maxSessionSecrets names).
-const secretReadConcurrency = 5
+// secretReadConcurrency bounds the parallel OpenBao reads of one attach,
+// dispatch or scope check: a dispatch reads its named secrets plus every
+// scoped one, up to maxWorkspaceAgentSecrets.
+const secretReadConcurrency = 10
 
 // workspaceSecretValues reads the named workspace secrets concurrently. A
 // missing one reads as "".
@@ -397,20 +609,30 @@ var secretUnavailableFailure = store.AgentSessionFailure{
 	Code:   "AGENT_SESSION_SECRET_UNAVAILABLE",
 }
 
-// withSessionSecrets resolves the session's attached secrets into the
-// dispatch env (ADR098 D5): the inline value wins, else the workspace
-// secret's. A name that resolves to nothing fails the dispatch rather than
-// running the agent without it. The error never carries a value.
-func (s *Service) withSessionSecrets(ctx context.Context, record store.AgentSession, env map[string]string) (map[string]string, error) {
-	if len(record.SecretNames) == 0 {
-		return env, nil
+// withSessionSecrets resolves the secrets a dispatch applies into its env
+// (ADR098 D5, D9): the names the session attached (the inline value wins,
+// else the workspace secret's), plus every workspace-scoped secret and every
+// secret scoped to the session's repository. An attached name that resolves
+// to nothing fails the dispatch rather than running the agent without it; a
+// scoped secret deleted since its row was read is simply not applied. Every
+// applied name joins the driver's scrub list. It returns what applied, with
+// each name's source; the error never carries a value.
+func (s *Service) withSessionSecrets(ctx context.Context, record store.AgentSession, env map[string]string) (map[string]string, []store.AppliedSecret, error) {
+	scoped, err := s.scopedSecretsFor(ctx, record)
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(record.SecretNames) == 0 && len(scoped) == 0 {
+		return env, nil, nil
 	}
 	if s.ModelKeys == nil {
-		return nil, errSessionSecretUnavailable
+		return nil, nil, errSessionSecretUnavailable
 	}
-	inline, _, err := s.sessionInline(ctx, record)
-	if err != nil {
-		return nil, err
+	var inline map[string]string
+	if len(record.SecretNames) > 0 {
+		if inline, _, err = s.sessionInline(ctx, record); err != nil {
+			return nil, nil, err
+		}
 	}
 	var referenced []string
 	for _, name := range record.SecretNames {
@@ -418,23 +640,74 @@ func (s *Service) withSessionSecrets(ctx context.Context, record store.AgentSess
 			referenced = append(referenced, name)
 		}
 	}
+	for _, row := range scoped {
+		referenced = append(referenced, row.Name)
+	}
 	workspace, err := s.workspaceSecretValues(ctx, record.WorkspaceID, referenced)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	out := withEnv(env, secretNamesEnv, strings.Join(record.SecretNames, ","))
+	out := withEnv(env, secretNamesEnv, "")
+	applied := make([]store.AppliedSecret, 0, len(record.SecretNames)+len(scoped))
+	names := make([]string, 0, cap(applied))
+	add := func(name, value, source string) {
+		out[name] = value
+		names = append(names, name)
+		applied = append(applied, store.AppliedSecret{Name: name, Source: source})
+	}
 	for _, name := range record.SecretNames {
 		value, ok := inline[name]
+		source := appliedSourceInline
 		if !ok {
-			value = workspace[name]
+			value, source = workspace[name], store.AgentSecretScopeExplicit
 		}
 		if value == "" {
 			log.Printf("agent-session dispatch: attached secret missing (session=%s name=%s)", record.ID, name)
-			return nil, errSessionSecretUnavailable
+			return nil, nil, errSessionSecretUnavailable
 		}
-		out[name] = value
+		add(name, value, source)
+	}
+	for _, row := range scoped {
+		if value := workspace[row.Name]; value != "" {
+			add(row.Name, value, row.Scope)
+		}
+	}
+	out[secretNamesEnv] = strings.Join(names, ",")
+	return out, applied, nil
+}
+
+// scopedSecretsFor lists the scoped secrets that reach the session without
+// being named: every workspace-scoped one and every one scoped to its
+// repository, leaving out names it attached itself (their own source wins).
+func (s *Service) scopedSecretsFor(ctx context.Context, record store.AgentSession) ([]store.AgentSecretScope, error) {
+	if s.SecretScopes == nil || s.ModelKeys == nil {
+		return nil, nil
+	}
+	rows, err := s.SecretScopes.ListAgentSecretScopes(ctx, record.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	var out []store.AgentSecretScope
+	for _, row := range rows {
+		if slices.Contains(record.SecretNames, row.Name) {
+			continue
+		}
+		if row.Scope == store.AgentSecretScopeWorkspace || (row.Scope == store.AgentSecretScopeRepo && record.Repo != "" && row.Repo == record.Repo) {
+			out = append(out, row)
+		}
 	}
 	return out, nil
+}
+
+// recordAppliedSecrets keeps the session view's appliedSecrets current. It is
+// informational, so a failed write is logged and the dispatch goes on.
+func (s *Service) recordAppliedSecrets(ctx context.Context, record store.AgentSession, applied []store.AppliedSecret) {
+	if slices.Equal(record.AppliedSecrets, applied) {
+		return
+	}
+	if err := s.Store.SetAgentSessionAppliedSecrets(ctx, record.ID, applied); err != nil {
+		log.Printf("agent-session dispatch: applied secrets not recorded (session=%s): %v", record.ID, err)
+	}
 }
 
 // attachSteerSecrets stores a steer's inline secrets and returns the session's

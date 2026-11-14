@@ -51,6 +51,9 @@ type Store interface {
 	AbandonAgentDispatch(context.Context, store.AgentDispatch, time.Time, store.AgentSessionFailure) (store.TerminalTurnFact, error)
 	DeferAgentDispatchCleanup(context.Context, store.AgentDispatch, time.Time) error
 	GetAgentSession(context.Context, string) (store.AgentSession, error)
+	// SetAgentSessionAppliedSecrets records the names (and sources) the
+	// latest dispatch applied (ADR098 D9).
+	SetAgentSessionAppliedSecrets(context.Context, string, []store.AppliedSecret) error
 	ListAgentSessions(context.Context, string, store.AgentSessionListQuery) ([]store.AgentSession, error)
 	ListAgentSessionsByPhases(context.Context, []string) ([]store.AgentSession, error)
 	SetAgentSessionLifecycle(context.Context, string, string, string, string, bool) (store.AgentSession, error)
@@ -270,6 +273,9 @@ type Service struct {
 	// AttachmentCopier puts a dispatch's input files into its sandbox; nil ⇒
 	// attachments are unavailable too. Skills are copied the same way.
 	AttachmentCopier AttachmentCopier
+	// SecretScopes stores workspace agent secret scopes and each dispatch's
+	// applied secrets (w9/m385, ADR098 D9). nil ⇒ every secret is explicit.
+	SecretScopes SecretScopeStore
 	// Skills is the ADR099 workspace skills table. nil ⇒ every skill verb
 	// answers AGENT_SKILLS_UNAVAILABLE and dispatches deliver none.
 	Skills SkillStore
@@ -798,13 +804,17 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	}
 	// Secrets are resolved per dispatch (ADR098 D5), so a rotated workspace
 	// secret applies from the next turn and a deleted one fails it.
-	if spec.env, err = s.withSessionSecrets(ctx, record, spec.env); err != nil {
+	// Scoped secrets (ADR098 D9) are listed per dispatch as well, so a new
+	// workspace secret reaches the next turn of every session.
+	var applied []store.AppliedSecret
+	if spec.env, applied, err = s.withSessionSecrets(ctx, record, spec.env); err != nil {
 		failure := store.AgentSessionFailure{Reason: "the session's secrets could not be read"}
 		if errors.Is(err, errSessionSecretUnavailable) {
 			failure = secretUnavailableFailure
 		}
 		return s.failDispatch(ctx, record, spec.turn, failure, err)
 	}
+	s.recordAppliedSecrets(ctx, record, applied)
 	provisionStart := time.Now()
 	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
 	if err != nil {
@@ -2033,12 +2043,20 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AutomationID: record.AutomationID, CreatedBy: record.CreatedBy,
+		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AppliedSecrets: appliedSecretsOf(record.AppliedSecrets), AutomationID: record.AutomationID, CreatedBy: record.CreatedBy,
 		ParentSessionID: record.ParentSessionID, RootSessionID: record.RootSessionID, Depth: record.Depth}
 	if record.MaxSpendMicroUSD != nil {
 		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)
 	}
 	return view, nil
+}
+
+func appliedSecretsOf(rows []store.AppliedSecret) []AppliedSecret {
+	out := make([]AppliedSecret, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, AppliedSecret{Name: row.Name, Source: row.Source})
+	}
+	return out
 }
 
 func mapStoreError(id string, err error) error {

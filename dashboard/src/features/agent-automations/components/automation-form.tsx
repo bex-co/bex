@@ -379,6 +379,7 @@ export function AutomationForm({
               ownerId={currentWorkspaceId ?? null}
               value={{ secretNames: values.secretNames, secrets: [] }}
               onChange={(next) => change({ secretNames: next.secretNames })}
+              repo={values.repo || null}
               disabled={saving}
               workspaceOnly
             />
