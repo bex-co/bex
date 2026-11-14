@@ -109,7 +109,12 @@ func newLocalFileExecutor(t *testing.T) *localFileExecutor {
 	if err := os.WriteFile(filepath.Join(bin, "mv"), []byte(shim), 0o700); err != nil {
 		t.Fatal(err)
 	}
-	e.env = append(e.env, "PATH="+bin+":"+os.Getenv("PATH"), "BEX_TEST_FILE_EXEC_BINARY="+binary, "BEX_TEST_FILE_RENAME_HELPER=1")
+	// The scripts run the host's tar, which on macOS is bsdtar: it archives a
+	// file's extended attributes as extra AppleDouble entries unless told not to,
+	// and those entries fail the gateway's archive checks. The sandbox's own tar
+	// is Linux's.
+	e.env = append(e.env, "PATH="+bin+":"+os.Getenv("PATH"), "BEX_TEST_FILE_EXEC_BINARY="+binary,
+		"BEX_TEST_FILE_RENAME_HELPER=1", "COPYFILE_DISABLE=1")
 	return e
 }
 
