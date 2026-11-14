@@ -67,10 +67,12 @@ func TestExecRevalidatorRelations(t *testing.T) {
 	}
 
 	t.Run("system subject exempt", func(t *testing.T) {
-		claims := caller
-		claims.Subject = sandboxexec.SystemSubject
-		if err := base(relChecker{}).RevalidateExec(context.Background(), claims); err != nil {
-			t.Fatalf("system ticket revalidated against roles: %v", err)
+		for _, subject := range []string{sandboxexec.SystemSubject, sandboxexec.ProbeSubjectPrefix + "tea-a"} {
+			claims := caller
+			claims.Subject = subject
+			if err := base(relChecker{}).RevalidateExec(context.Background(), claims); err != nil {
+				t.Fatalf("%s ticket revalidated against roles: %v", subject, err)
+			}
 		}
 	})
 

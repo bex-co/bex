@@ -95,7 +95,7 @@ func TestStreamExecAuthorizesMintsTicketAndRelaysSSE(t *testing.T) {
 	if gotNamespace != "tea-a-sandbox" || gotSandbox != "os-1" {
 		t.Errorf("ticket namespace/sandbox = %q/%q", gotNamespace, gotSandbox)
 	}
-	if !slices.Equal(gotCommand, execArgv("echo hi", true)) {
+	if !slices.Equal(gotCommand, execArgv("echo hi", "")) {
 		t.Errorf("signed command = %q", gotCommand)
 	}
 }
@@ -526,7 +526,7 @@ func TestExecAgentSessionSandboxSignsSessionClaimForDeveloper(t *testing.T) {
 	}
 	// An agent session's command starts in its checkout, the image's working
 	// directory, not in $HOME (w32/m348 t004).
-	if want := execArgv("id", false); !slices.Equal(gotCommand, want) {
+	if want := agentExecArgv("id"); !slices.Equal(gotCommand, want) {
 		t.Fatalf("agent-session argv = %q, want %q", gotCommand, want)
 	}
 }

@@ -1314,7 +1314,13 @@ func (s *Service) sessionSandboxState(ctx context.Context, workspaceID, sessionI
 // sessionExec runs one trusted Completer command in the session sandbox
 // through the gateway and buffers its output up to limit.
 func (s *Service) sessionExec(ctx context.Context, workspaceID, sessionID, sandboxID, command string, limit int) (ExecResult, error) {
-	resp, err := s.mintAndDial(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c", command})
+	return s.systemExec(ctx, workspaceID, sandboxID, sessionID, []string{"/bin/sh", "-c", command}, limit)
+}
+
+// systemExec runs one trusted argv of bex-api's own in a sandbox and buffers
+// its output up to limit: no caller-facing wrapper, record or activity.
+func (s *Service) systemExec(ctx context.Context, ws, sandboxID, agentSessionID string, argv []string, limit int) (ExecResult, error) {
+	resp, err := s.mintAndDial(ctx, ws, sandboxID, agentSessionID, argv)
 	if err != nil {
 		return ExecResult{}, err
 	}

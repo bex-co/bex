@@ -82,9 +82,15 @@ type ExecRequest struct {
 	ExecutionID string
 }
 
-// execTarget is the sandbox an exec resolved to: its workspace and public id.
+// execTarget is the sandbox an exec resolved to, its workspace and public id,
+// and the execution record the command reports to. registered says the
+// wrapper records the command in the sandbox's command registry
+// (commands.go), so a stream that ends without the command's exit leaves its
+// record for reconcileCommands to close (w32/m381).
 type execTarget struct {
 	workspace, sandboxID string
+	executionID          string
+	registered           bool
 }
 
 // systemExecSubject is the ticket subject the trusted Completer's status read
@@ -98,27 +104,45 @@ const systemExecSubject = sandboxexec.SystemSubject
 // sandbox suspended from the Alpine base before w32/m348, falls back to
 // `/bin/sh -c`. `exec` replaces the wrapper, so the exit code, signals and
 // output are the command's own.
-const execShell = `if command -v bash >/dev/null 2>&1; then exec bash -c "$1"; fi
-exec /bin/sh -c "$1"`
+const execShell = pickShell + `exec "$shell" -c "$1"`
+
+const pickShell = `shell=/bin/sh
+if command -v bash >/dev/null 2>&1; then shell=bash; fi
+`
 
 // homeExecScript also starts the command in the sandbox user's home
 // directory (render.com/docs/sandboxes-executing, read 2026-11-12: "Each
 // command starts in a new shell in your sandbox's home directory"); pods/exec
 // has no working-directory field, so the wrapper changes directory itself.
+//
+// Given a registry path ($1), it runs the command ($3) as its child instead of
+// exec'ing it, through commandStart ($2), and records it there (commands.go),
+// so bex can tell the command still runs after its stream ends (w32/m381).
+// The child is a foreground one, so the command keeps SIGINT and SIGQUIT, its
+// output is the same two pipes, and the wrapper exits with its exit code.
+// Without a path, or where the registry cannot be made, it runs as execShell
+// does.
 const homeExecScript = `cd -- "${HOME:-/}" 2>/dev/null || cd /
-` + execShell
+` + pickShell + `reg=$1
+if [ -z "$reg" ] || ! mkdir -p "${reg%/*}" 2>/dev/null; then exec "$shell" -c "$3"; fi
+/bin/sh -c "$2" bex-exec "$reg" "$shell" -c "$3"
+rc=$?
+` + commandEnd + `
+exit "$rc"`
 
-// execArgv is the argv a caller-facing exec runs. The command stays one
-// positional argument, never interpolated into the wrapper's source. Without
-// inHome the command keeps the image's working directory: an agent-session
-// sandbox's is the session's checkout (/workspace), as a Devin shell starts in
-// its repository (ADR047).
-func execArgv(command string, inHome bool) []string {
-	script := execShell
-	if inHome {
-		script = homeExecScript
-	}
-	return []string{"/bin/sh", "-c", script, "bex-exec", command}
+// execArgv is the argv an ordinary sandbox's exec runs, registry its
+// registry path or empty. The command stays one positional argument, never
+// interpolated into the wrapper's source, and the last one.
+func execArgv(command, registry string) []string {
+	return []string{"/bin/sh", "-c", homeExecScript, "bex-exec", registry, commandStart, command}
+}
+
+// agentExecArgv is an agent-session sandbox's: its command keeps the image's
+// working directory, the session's checkout (/workspace), as a Devin shell
+// starts in its repository (ADR047). Agent sandboxes never idle-suspend, so
+// nothing is registered.
+func agentExecArgv(command string) []string {
+	return []string{"/bin/sh", "-c", execShell, "bex-exec", command}
 }
 
 func (s *Service) execEnabled() bool {
@@ -148,22 +172,36 @@ func (s *Service) dialGateway(ctx context.Context, req ExecRequest) (*http.Respo
 	// The ticket binds the SUBSTRATE id, not the caller's: the gateway derives
 	// the pod name as `<id>-0`, and a caller may address the sandbox by its
 	// public `sbx-` id (w9/m94).
-	agentSession := raw.Metadata[metadataAgentSession]
-	resp, err := s.mintAndDial(ctx, ws, raw.ID, agentSession, execArgv(req.Command, agentSession == ""))
+	// The record's id is known before the command starts: the wrapper names
+	// the command's registry entry after it.
+	target := execTarget{workspace: ws, sandboxID: canonicalID(raw), executionID: req.ExecutionID,
+		registered: idleTracked(raw) && s.Executions != nil}
+	if target.executionID == "" {
+		target.executionID = id.New(id.SandboxExecution)
+	}
+	argv := agentExecArgv(req.Command)
+	if idleTracked(raw) {
+		registry := ""
+		if target.registered {
+			registry = commandRegistry + "/" + target.executionID
+		}
+		argv = execArgv(req.Command, registry)
+	}
+	resp, err := s.mintAndDial(ctx, ws, raw.ID, raw.Metadata[metadataAgentSession], argv)
 	if err != nil {
 		release()
 		return nil, nil, execTarget{}, err
 	}
-	return resp, release, execTarget{workspace: ws, sandboxID: canonicalID(raw)}, nil
+	return resp, release, target, nil
 }
 
 // openExecution returns the record an exec reports to: the one its connect
 // token opened, or a new one for an exec that had no token.
 func (s *Service) openExecution(ctx context.Context, req ExecRequest, target execTarget, operation string) string {
+	executionID := target.executionID
 	if req.ExecutionID != "" {
-		return req.ExecutionID
+		return executionID
 	}
-	executionID := id.New(id.SandboxExecution)
 	subject := ""
 	if idn, ok := core.IdentityFrom(ctx); ok {
 		subject = idn.Subject
@@ -334,8 +372,16 @@ func (s *Service) StreamExec(ctx context.Context, req ExecRequest, w http.Respon
 	executionID := s.openExecution(ctx, req, target, ConnectOperationStream)
 	var exit exitSniffer
 	// Synchronous, so a listing right after the stream ends sees it stopped;
-	// the write is one bounded keyed UPDATE.
-	defer func() { s.stopExecution(ctx, target.workspace, executionID, exit.exitCode) }()
+	// the write is one bounded keyed UPDATE. A stream that ended without the
+	// command's exit may only have lost its client, and the command runs on
+	// (render.com/docs/sandboxes-executing: "Disconnecting your client does not
+	// stop an executing command"): its record stays open until
+	// reconcileCommands reads the command's own end (w32/m381).
+	defer func() {
+		if exit.exitCode != nil || !target.registered {
+			s.stopExecution(ctx, target.workspace, executionID, exit.exitCode)
+		}
+	}()
 	defer s.keepExecutionAlive(ctx, target.workspace, executionID)()
 	stream.start()
 	// The gateway accepted: the command now runs as long as it needs, bounded
@@ -460,7 +506,10 @@ func (s *Service) ExecBuffered(ctx context.Context, req ExecRequest) (ExecResult
 	if err == nil && !res.Truncated {
 		exitCode = &res.ExitCode
 	}
-	s.stopExecution(ctx, target.workspace, executionID, exitCode)
+	// Past its output limit the command runs on, as after a disconnect.
+	if exitCode != nil || !target.registered {
+		s.stopExecution(ctx, target.workspace, executionID, exitCode)
+	}
 	return res, err
 }
 

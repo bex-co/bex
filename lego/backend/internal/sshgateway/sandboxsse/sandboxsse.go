@@ -105,7 +105,7 @@ func (r *ExecRevalidator) RevalidateExec(ctx context.Context, claims sandboxexec
 	if r == nil || r.Base == nil {
 		return nil // authorization kernel not wired: admission-only (pre-round-13)
 	}
-	if claims.Subject == "" || claims.Subject == sandboxexec.SystemSubject {
+	if claims.Subject == "" || sandboxexec.PlatformSubject(claims.Subject) {
 		return nil
 	}
 	if claims.Workspace == "" {

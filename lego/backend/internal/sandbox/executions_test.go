@@ -54,20 +54,39 @@ func (f *fakeExecutions) TouchSandboxExecution(_ context.Context, ws, id string,
 	return nil
 }
 
+// lastSeen is a record's last refresh, or its start if it was never
+// refreshed; f.mu is held.
+func (f *fakeExecutions) lastSeen(r store.SandboxExecution) time.Time {
+	if last, seen := f.seen[r.ID]; seen {
+		return last
+	}
+	return r.StartedAt
+}
+
 func (f *fakeExecutions) StopStaleSandboxExecutions(_ context.Context, ws, box string, before time.Time) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	for i := range f.rows {
 		r := &f.rows[i]
-		last, seen := f.seen[r.ID]
-		if !seen {
-			last = r.StartedAt
-		}
+		last := f.lastSeen(*r)
 		if r.WorkspaceID == ws && r.SandboxID == box && r.StoppedAt == nil && last.Before(before) {
 			r.StoppedAt = &last
 		}
 	}
 	return nil
+}
+
+func (f *fakeExecutions) OpenSandboxExecutions(_ context.Context, ws, box string, before time.Time, limit int) ([]store.OpenSandboxExecution, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	var open []store.OpenSandboxExecution
+	for _, r := range slices.Backward(f.rows) {
+		last := f.lastSeen(r)
+		if r.WorkspaceID == ws && r.SandboxID == box && r.Type == ExecutionTypeRuns && r.StoppedAt == nil && last.Before(before) && len(open) < limit {
+			open = append(open, store.OpenSandboxExecution{ID: r.ID, SeenAt: last})
+		}
+	}
+	return open, nil
 }
 
 func (f *fakeExecutions) RecordSandboxExecution(_ context.Context, e store.SandboxExecution) error {
@@ -96,6 +115,9 @@ func (f *fakeExecutions) StopSandboxExecution(_ context.Context, ws, id string, 
 	defer f.mu.Unlock()
 	for i := range f.rows {
 		if r := &f.rows[i]; r.WorkspaceID == ws && r.ID == id && r.StoppedAt == nil {
+			if at.Before(r.StartedAt) { // the store's GREATEST(stopped, started)
+				at = r.StartedAt
+			}
 			r.StoppedAt, r.ExitCode = &at, exit
 		}
 	}

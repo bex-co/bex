@@ -203,3 +203,55 @@ func TestSetSandboxExecutionCommandPG(t *testing.T) {
 		}
 	}
 }
+
+// w32/m381: the open command records of a sandbox that a probe asks about,
+// newest first, with when each was last seen: never a stopped one, a
+// transfer, another sandbox's or another workspace's, nor one seen since
+// seenBefore, and at most limit of them. A stop before its record's start is
+// held to the start.
+func TestOpenSandboxExecutionsPG(t *testing.T) {
+	ctx := context.Background()
+	st := openLifecyclePG(t)
+	ws := lifecycleTenant(t, st, "sandbox-open-execs").ID
+	other := lifecycleTenant(t, st, "sandbox-open-execs-other").ID
+	stamp := time.Now().UnixNano()
+	box := fmt.Sprintf("sbx-o%d", stamp)
+	base := time.Now().Add(-time.Hour).UTC().Truncate(time.Microsecond)
+	record := func(id, workspace, sandbox, kind string, started time.Time) string {
+		t.Helper()
+		id = fmt.Sprintf("exe-%d-%s", stamp, id)
+		if err := st.RecordSandboxExecution(ctx, SandboxExecution{ID: id, WorkspaceID: workspace, SandboxID: sandbox,
+			Type: kind, Operation: "stream", Subject: "s", StartedAt: started}); err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	older := record("older", ws, box, "runs", base)
+	newer := record("newer", ws, box, "runs", base.Add(time.Minute))
+	stopped := record("stopped", ws, box, "runs", base)
+	fresh := record("fresh", ws, box, "runs", base)
+	record("transfer", ws, box, "files", base)
+	record("elsewhere", ws, box+"-2", "runs", base)
+	record("foreign", other, box, "runs", base)
+	if err := st.StopSandboxExecution(ctx, ws, stopped, base.Add(time.Minute), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := st.TouchSandboxExecution(ctx, ws, fresh, base.Add(30*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	open, err := st.OpenSandboxExecutions(ctx, ws, box, base.Add(10*time.Minute), 10)
+	want := []OpenSandboxExecution{{ID: newer, SeenAt: base.Add(time.Minute)}, {ID: older, SeenAt: base}}
+	if err != nil || len(open) != 2 || open[0].ID != want[0].ID || !open[0].SeenAt.Equal(want[0].SeenAt) ||
+		open[1].ID != want[1].ID || !open[1].SeenAt.Equal(want[1].SeenAt) {
+		t.Fatalf("open = %+v (err %v), want %+v", open, err, want)
+	}
+	if open, err = st.OpenSandboxExecutions(ctx, ws, box, base.Add(10*time.Minute), 1); err != nil || len(open) != 1 || open[0].ID != newer {
+		t.Fatalf("open limit 1 = %+v (err %v), want the newest", open, err)
+	}
+	if err := st.StopSandboxExecution(ctx, ws, older, base.Add(-time.Hour), nil); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := st.SandboxExecution(ctx, ws, box, older); err != nil || got.StoppedAt == nil || !got.StoppedAt.Equal(base) {
+		t.Fatalf("stopped before its start = %+v (err %v), want stopped at its start", got, err)
+	}
+}

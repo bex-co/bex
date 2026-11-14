@@ -179,10 +179,16 @@ func idleTracked(raw osSandbox) bool {
 // logged and never refuses the interaction: activity is a billing
 // optimization, not an authorization input.
 func (s *Service) touchActivity(ctx context.Context, ws, sandboxID string) *time.Time {
+	return s.touchActivityAt(ctx, ws, sandboxID, s.Now())
+}
+
+// touchActivityAt records activity at a past instant too, such as the end of
+// a command that outlived its stream; the store keeps the latest.
+func (s *Service) touchActivityAt(ctx context.Context, ws, sandboxID string, at time.Time) *time.Time {
 	if s.Activity == nil {
 		return nil
 	}
-	claimed, err := s.Activity.TouchSandboxActivity(ctx, ws, sandboxID, s.Now())
+	claimed, err := s.Activity.TouchSandboxActivity(ctx, ws, sandboxID, at)
 	if err != nil {
 		log.Printf("sandbox activity: touch workspace=%s sandbox=%s: %v", ws, sandboxID, err)
 		return nil
@@ -507,6 +513,10 @@ func (w *IdleSuspender) suspendIfIdle(ctx context.Context, key store.SandboxTena
 		return false
 	}
 	if !claimed {
+		return false
+	}
+	if s.commandsKeepAwake(ctx, key.WorkspaceID, raw, idle) {
+		s.clearSuspendClaim(ctx, key.WorkspaceID, raw.ID)
 		return false
 	}
 	if err := s.beforeSuspend(ctx, key.APIKey, raw); err != nil {

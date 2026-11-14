@@ -18,7 +18,6 @@ package sandbox
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,25 +28,25 @@ import (
 // this host's real /bin/sh, with the given environment and starting directory.
 func runExecArgv(t *testing.T, command string, inHome bool, dir string, env ...string) (stdout, stderr string, exitCode int) {
 	t.Helper()
-	if _, err := os.Stat("/bin/sh"); err != nil {
-		t.Skip("no /bin/sh on this host")
+	needSh(t)
+	argv := agentExecArgv(command)
+	if inHome {
+		argv = execArgv(command, "")
 	}
-	argv := execArgv(command, inHome)
 	cmd := exec.Command(argv[0], argv[1:]...)
 	cmd.Dir = dir
 	cmd.Env = env
 	var out, errOut bytes.Buffer
 	cmd.Stdout, cmd.Stderr = &out, &errOut
-	err := cmd.Run()
-	var exit *exec.ExitError
-	switch {
-	case err == nil:
-	case errors.As(err, &exit):
-		exitCode = exit.ExitCode()
-	default:
-		t.Fatalf("run %q: %v", argv, err)
+	code := commandExitCode(t, cmd.Run())
+	return out.String(), errOut.String(), code
+}
+
+func needSh(t *testing.T) {
+	t.Helper()
+	if _, err := os.Stat("/bin/sh"); err != nil {
+		t.Skip("no /bin/sh on this host")
 	}
-	return out.String(), errOut.String(), exitCode
 }
 
 // pathWithBash is a PATH holding only a link to this host's bash, so the

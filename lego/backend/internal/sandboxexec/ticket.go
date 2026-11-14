@@ -29,6 +29,7 @@ limitations under the License.
 package sandboxexec
 
 import (
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
@@ -55,6 +56,18 @@ const (
 // distinguish platform-internal tickets (whose authority is the HMAC itself)
 // from caller tickets (which must re-verify their authorization while live).
 const SystemSubject = "system:agent-session-completer"
+
+// ProbeSubjectPrefix starts the subject bex-api's command registry probe mints
+// under (w32/m381), followed by the workspace, so one tenant's probes never
+// take another's gateway session slots or the Completer's. Its authority is
+// the HMAC too.
+const ProbeSubjectPrefix = "system:sandbox-command-probe:"
+
+// PlatformSubject reports whether a ticket's subject is one bex-api mints for
+// itself rather than a caller's.
+func PlatformSubject(subject string) bool {
+	return subject == SystemSubject || strings.HasPrefix(subject, ProbeSubjectPrefix)
+}
 
 var codec = hmacticket.New("sandbox exec ticket")
 

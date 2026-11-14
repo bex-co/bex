@@ -61,7 +61,7 @@ func (s *PGStore) RecordSandboxExecution(ctx context.Context, e SandboxExecution
 // retried report, the sandbox's finalization) leaves the first one standing.
 func (s *PGStore) StopSandboxExecution(ctx context.Context, workspaceID, executionID string, stoppedAt time.Time, exitCode *int) error {
 	_, err := s.Pool.Exec(ctx, `
-		UPDATE sandbox_executions SET stopped_at = $3, exit_code = $4
+		UPDATE sandbox_executions SET stopped_at = GREATEST($3, started_at), exit_code = $4
 		WHERE workspace_id = $1 AND id = $2 AND stopped_at IS NULL`,
 		workspaceID, executionID, stoppedAt, exitCode)
 	return err
@@ -98,6 +98,29 @@ func (s *PGStore) StopStaleSandboxExecutions(ctx context.Context, workspaceID, s
 		  AND COALESCE(seen_at, started_at) < $3`,
 		workspaceID, sandboxID, staleBefore)
 	return err
+}
+
+// OpenSandboxExecution is an open command record and when it was last
+// refreshed (or, never refreshed, started).
+type OpenSandboxExecution struct {
+	ID     string
+	SeenAt time.Time
+}
+
+// OpenSandboxExecutions lists, newest first, up to limit of a sandbox's open
+// command records last seen before seenBefore: the ones whose stream may have
+// ended without the command's exit (w32/m381).
+func (s *PGStore) OpenSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, seenBefore time.Time, limit int) ([]OpenSandboxExecution, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT id, COALESCE(seen_at, started_at) FROM sandbox_executions
+		WHERE workspace_id = $1 AND sandbox_id = $2 AND type = 'runs' AND stopped_at IS NULL
+		  AND COALESCE(seen_at, started_at) < $3
+		ORDER BY started_at DESC, id DESC LIMIT $4`,
+		workspaceID, sandboxID, seenBefore, limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowToStructByPos[OpenSandboxExecution])
 }
 
 // StopOpenSandboxExecutions ends every execution still open in a sandbox,

@@ -59,6 +59,7 @@ type ExecutionStore interface {
 	StopOpenSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, stoppedAt time.Time) error
 	TouchSandboxExecution(ctx context.Context, workspaceID, executionID string, seenAt time.Time) error
 	StopStaleSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, staleBefore time.Time) error
+	OpenSandboxExecutions(ctx context.Context, workspaceID, sandboxID string, seenBefore time.Time, limit int) ([]store.OpenSandboxExecution, error)
 	SandboxExecutions(ctx context.Context, workspaceID, sandboxID, after string, limit int) ([]store.SandboxExecution, error)
 	SandboxExecution(ctx context.Context, workspaceID, sandboxID, executionID string) (store.SandboxExecution, error)
 	PruneSandboxExecutions(ctx context.Context, workspaceID string, live []string) error
@@ -167,21 +168,43 @@ func (s *Service) touchExecution(ctx context.Context, workspace, executionID str
 }
 
 // closeStaleExecutions ends the sandbox's records whose stream stopped
-// refreshing them, before a history read reports them (w8/m151).
-func (s *Service) closeStaleExecutions(ctx context.Context, workspace, sandboxID string) {
-	if err := s.Executions.StopStaleSandboxExecutions(ctx, workspace, sandboxID, s.Now().Add(-executionStaleAfter)); err != nil {
-		log.Printf("sandbox: close stale executions of %s: %v", sandboxID, err)
+// refreshing them, before a history read reports them (w8/m151). In a running
+// sandbox it first asks the command registry about them (w32/m381): a command
+// still running keeps its record open, and one that ended closes it at its
+// own exit with its exit code. Only the rest end at their last refresh, with
+// no exit code. live is the sandbox, nil once it has ended.
+func (s *Service) closeStaleExecutions(ctx context.Context, h historyTarget) {
+	staleBefore := s.Now().Add(-executionStaleAfter)
+	if live := h.live; live != nil && idleTracked(*live) && mapOpenSandboxStatus(live.Status.State) == StatusRunning && s.execEnabled() {
+		open, err := s.Executions.OpenSandboxExecutions(ctx, h.workspace, h.sandboxID, staleBefore, maxProbedCommands)
+		if err != nil {
+			log.Printf("sandbox: open executions of %s: %v", h.sandboxID, err)
+		} else if len(open) > 0 {
+			if _, _, err := s.reconcileCommands(ctx, h.workspace, *live, open); err != nil {
+				// Unknown, so none is ended: a command may still be running.
+				log.Printf("sandbox: command registry of %s: %v", h.sandboxID, err)
+			}
+			return
+		}
+	}
+	if err := s.Executions.StopStaleSandboxExecutions(ctx, h.workspace, h.sandboxID, staleBefore); err != nil {
+		log.Printf("sandbox: close stale executions of %s: %v", h.sandboxID, err)
 	}
 }
 
 // stopExecution closes a record; exitCode is nil when none was reported.
 func (s *Service) stopExecution(ctx context.Context, workspace, executionID string, exitCode *int) {
+	s.stopExecutionAt(ctx, workspace, executionID, s.Now(), exitCode)
+}
+
+// stopExecutionAt closes a record at the instant its command ended.
+func (s *Service) stopExecutionAt(ctx context.Context, workspace, executionID string, at time.Time, exitCode *int) {
 	if s.Executions == nil || executionID == "" {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), executionStopTimeout)
 	defer cancel()
-	if err := s.Executions.StopSandboxExecution(ctx, workspace, executionID, s.Now(), exitCode); err != nil {
+	if err := s.Executions.StopSandboxExecution(ctx, workspace, executionID, at, exitCode); err != nil {
 		log.Printf("sandbox: stop execution %s: %v", executionID, err)
 	}
 }
@@ -189,29 +212,36 @@ func (s *Service) stopExecution(ctx context.Context, workspace, executionID stri
 // executionsTarget authorizes a history read exactly as a sandbox read (Get's
 // scope, relation and ownership), without Get's projection: a sandbox the
 // caller cannot Get has no history they can see.
-func (s *Service) executionsTarget(ctx context.Context, sandboxID string) (string, string, error) {
+func (s *Service) executionsTarget(ctx context.Context, sandboxID string) (historyTarget, error) {
 	ctx, err := s.scopeSandbox(ctx, "", sandboxID)
 	if err != nil {
-		return "", "", err
+		return historyTarget{}, err
 	}
 	if err := s.Authorize(ctx, core.RelCanView); err != nil {
-		return "", "", err
+		return historyTarget{}, err
 	}
 	if !s.enabled() || s.Executions == nil {
-		return "", "", core.ErrSandboxesUnavailable
+		return historyTarget{}, core.ErrSandboxesUnavailable
 	}
 	key, err := s.workspaceKey(ctx)
 	if err != nil {
-		return "", "", err
+		return historyTarget{}, err
 	}
 	ws := s.WorkspaceOrDefault(ctx)
 	raw, err := s.ownedSandbox(ctx, key, ws, sandboxID)
 	if err != nil {
 		// An ended sandbox's history stays readable with its record (w3/m318).
 		box, err := s.orEnded(ctx, ws, sandboxID, err)
-		return ws, box.ID, err
+		return historyTarget{workspace: ws, sandboxID: box.ID}, err
 	}
-	return ws, canonicalID(raw), nil
+	return historyTarget{workspace: ws, sandboxID: canonicalID(raw), live: &raw}, nil
+}
+
+// historyTarget is the sandbox a history read resolved to: its workspace,
+// public id, and the live sandbox (nil once it has ended).
+type historyTarget struct {
+	workspace, sandboxID string
+	live                 *osSandbox
 }
 
 // ListExecutions is Render's `GET /sandboxes/{id}/execs`: newest first,
@@ -229,12 +259,12 @@ func (s *Service) ListExecutions(ctx context.Context, sandboxID, after string, l
 }
 
 func (s *Service) listExecutionViews(ctx context.Context, sandboxID, after string, limit int) ([]Execution, error) {
-	ws, box, err := s.executionsTarget(ctx, sandboxID)
+	h, err := s.executionsTarget(ctx, sandboxID)
 	if err != nil {
 		return nil, err
 	}
-	s.closeStaleExecutions(ctx, ws, box)
-	rows, err := s.Executions.SandboxExecutions(ctx, ws, box, after, limit)
+	s.closeStaleExecutions(ctx, h)
+	rows, err := s.Executions.SandboxExecutions(ctx, h.workspace, h.sandboxID, after, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -243,12 +273,12 @@ func (s *Service) listExecutionViews(ctx context.Context, sandboxID, after strin
 
 // GetExecution is Render's `GET /sandboxes/{id}/execs/{execId}`.
 func (s *Service) GetExecution(ctx context.Context, sandboxID, executionID string) (Execution, error) {
-	ws, box, err := s.executionsTarget(ctx, sandboxID)
+	h, err := s.executionsTarget(ctx, sandboxID)
 	if err != nil {
 		return Execution{}, err
 	}
-	s.closeStaleExecutions(ctx, ws, box)
-	row, err := s.Executions.SandboxExecution(ctx, ws, box, executionID)
+	s.closeStaleExecutions(ctx, h)
+	row, err := s.Executions.SandboxExecution(ctx, h.workspace, h.sandboxID, executionID)
 	if errors.Is(err, store.ErrNotFound) {
 		return Execution{}, core.NewNotFoundError("SANDBOX_EXECUTION_NOT_FOUND", "sandbox execution not found", map[string]any{"id": executionID})
 	}

@@ -368,6 +368,12 @@ func (f *fakeActivity) touchCount(id string) int {
 	return f.touches["tea-a/"+id]
 }
 
+func (f *fakeActivity) lastActivity(id string) time.Time {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.last["tea-a/"+id]
+}
+
 func (f *fakeActivity) claimed(id string) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -384,6 +390,12 @@ type idleFixture struct {
 	now      time.Time
 	gwStates []string // the sandbox's state each time the exec gateway was dialed
 	mu       sync.Mutex
+	// The command registry probe's answer (commands_test.go): its stdout and
+	// exit code, and the ids each probe asked about.
+	probeOut     string
+	probeExit    int
+	probeAsked   [][]string
+	probeSubject string
 }
 
 func newIdleFixture(t *testing.T) *idleFixture {
@@ -406,6 +418,16 @@ func newIdleFixture(t *testing.T) *idleFixture {
 			return
 		}
 		f.mu.Lock()
+		if len(claims.Command) > 4 && claims.Command[2] == commandProbe {
+			f.probeAsked = append(f.probeAsked, slices.Clone(claims.Command[5:]))
+			f.probeSubject = claims.Subject
+			out, code := f.probeOut, f.probeExit
+			f.mu.Unlock()
+			data, _ := json.Marshal(map[string]string{"stream": "stdout", "data": out})
+			w.Header().Set("Content-Type", "text/event-stream")
+			_, _ = fmt.Fprintf(w, "event: output\ndata: %s\n\nevent: exit\ndata: {\"exit_code\":%d}\n\n", data, code)
+			return
+		}
 		f.gwStates = append(f.gwStates, f.os.state(claims.SandboxID))
 		f.mu.Unlock()
 		w.Header().Set("Content-Type", "text/event-stream")
