@@ -260,7 +260,7 @@ func (s *Service) patchEnvironmentCAS(ctx context.Context, service string, a *ap
 	if err := applyEnvPatch(env, patch.EnvVars); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
-	if err := patchWithinQuota(oldEnv, env, envMapWithinQuota); err != nil {
+	if err := patchWithinQuota(oldEnv, env, envQuota); err != nil {
 		return EnvironmentPatchResult{}, err
 	}
 	envChanged := !maps.Equal(oldEnv, env)
@@ -325,7 +325,7 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 			applyErr = err
 			return false
 		}
-		if err := patchWithinQuota(before, current, envMapWithinQuota); err != nil {
+		if err := patchWithinQuota(before, current, envQuota); err != nil {
 			applyErr = err
 			return false
 		}
@@ -344,7 +344,7 @@ func (s *Service) patchEnvironmentSparse(ctx context.Context, service string, a 
 			applyErr = err
 			return false
 		}
-		if err := patchWithinQuota(before, current, filesMapWithinQuota); err != nil {
+		if err := patchWithinQuota(before, current, filesQuota); err != nil {
 			applyErr = err
 			return false
 		}
@@ -779,9 +779,9 @@ func (s *Service) rollbackCASEnvProjection(ctx context.Context, originalApp *app
 // (ADR066 #6); adding an entry or bytes to an over-quota map does not. Before
 // w1/m147 the batch patch ran no check at all, so the dashboard's Environment
 // editor stored and deployed a 614,400-byte secret file past the 512 KiB cap.
-func patchWithinQuota(before, after map[string]string, within func(map[string]string) error) error {
-	err := within(after)
-	if err == nil || (len(after) <= len(before) && mapBytes(after) <= mapBytes(before)) {
+func patchWithinQuota(before, after map[string]string, q mapQuota) error {
+	err := q.check(after)
+	if err == nil || (len(after) <= len(before) && q.size(after) <= q.size(before)) {
 		return nil
 	}
 	return err

@@ -1566,12 +1566,16 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// wrappers outside it clone the request, so reading r.Pattern after the
 	// fact would only ever see the outer `/v1/` mount, not the specific route
 	// the telemetry needs (w3/m84).
-	mux.Handle(restMountPattern, auth(rl(withValidQueryText(restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, s.withRequestBudget(rest)))))))))
+	mux.Handle(restMountPattern, auth(rl(withValidQueryText(restBodyLimit(s.MaxBodyBytes)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, s.withRequestBudget(rest)))))))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
-	// generic body limiter intentionally skips bodies).
-	mux.Handle("POST /graphql", auth(rl(bodyLimit(s.graphqlHandler()))))
-	mux.Handle("/mcp", auth(rl(bodyLimit(s.mcpHTTPHandler()))))
+	// generic body limiter intentionally skips bodies). Both carry the
+	// environment editor's and agents' secret-file writes
+	// (patchServiceEnvironment, patch_service_environment), and the operation is
+	// unknown until the body is read, so both take the environment cap.
+	environmentBody := withBodyLimit(environmentBodyLimit(s.MaxBodyBytes))
+	mux.Handle("POST /graphql", auth(rl(environmentBody(s.graphqlHandler()))))
+	mux.Handle("/mcp", auth(rl(environmentBody(s.mcpHTTPHandler()))))
 	// The cloud-agents toolset (ADR094 D1): the same server, auth gate, rate
 	// limiter, workspace binding and scope gate, serving only the nine
 	// cloud-agent tools plus list_workspaces and list_repos.
@@ -2234,10 +2238,12 @@ func (s *Server) RunStdio(ctx context.Context) error {
 
 // Blueprint validation owns a manifest limit and a JSON/multipart envelope
 // allowance. Enforce its named refusal before OpenAPI reads the body, even
-// when the configurable global limit is lower, higher, or disabled.
-func restBodyLimit(global func(http.Handler) http.Handler) func(http.Handler) http.Handler {
+// when the configurable global limit is lower, higher, or disabled. Routes
+// that write secret-file contents get environmentBodyLimit instead.
+func restBodyLimit(global int64) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		narrow := global(next)
+		narrow := withBodyLimit(global)(next)
+		environment := withBodyLimit(environmentBodyLimit(global))(next)
 		blueprint := withBodyLimitMessage(apps.MaxBlueprintValidationBodyBytes, apps.ErrBlueprintTooLarge.Error())(next)
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost && r.URL.Path == apps.BlueprintValidationPath {
@@ -2249,9 +2255,40 @@ func restBodyLimit(global func(http.Handler) http.Handler) func(http.Handler) ht
 				next.ServeHTTP(w, r)
 				return
 			}
+			if writesSecretFiles(r) {
+				environment.ServeHTTP(w, r)
+				return
+			}
 			narrow.ServeHTTP(w, r)
 		})
 	}
+}
+
+// environmentBodyLimit is the body cap where a request carries secret-file
+// contents (w4/m363): the global cap, raised to secrets.MaxEnvironmentBodyBytes
+// so a Render-valid environment write fits even when JSON escaping doubles
+// every byte. A disabled global cap stays disabled.
+func environmentBodyLimit(global int64) int64 {
+	if global <= 0 {
+		return global
+	}
+	return max(global, secrets.MaxEnvironmentBodyBytes)
+}
+
+// writesSecretFiles reports whether a REST request is one of the environment
+// writes whose body is secret-file contents: a service's or build source's
+// secret-files PUTs, a service's or group's batch environment PATCH, a group's
+// secret-file PUT and its contents PATCH.
+func writesSecretFiles(r *http.Request) bool {
+	path := r.URL.Path
+	switch r.Method {
+	case http.MethodPut:
+		return strings.Contains(path, "/secret-files")
+	case http.MethodPatch:
+		return strings.HasSuffix(path, "/environment") ||
+			(strings.HasPrefix(path, "/v1/env-groups/") && strings.HasSuffix(path, "/contents"))
+	}
+	return false
 }
 
 // memberMutator drops members.MemberView: the Render member routes answer

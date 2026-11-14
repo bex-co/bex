@@ -513,14 +513,14 @@ func TestProjectNativeBuildFilesMergesRuntimeOrder(t *testing.T) {
 	// still win, exactly as secretFileMounts resolves it at runtime.
 	app := nativeFilesApp("web", "web-files", "evg-a-files", "evg-gone-files", "evg-b-files")
 
-	name, files, err := r.projectNativeBuildFiles(context.Background(), app, "bex-build")
+	names, files, err := r.projectNativeBuildFiles(context.Background(), app, "bex-build")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if name != "bld-web-native-files" {
-		t.Fatalf("files Secret name = %q", name)
+	if !slices.Equal(names, []string{"bld-web-native-files"}) {
+		t.Fatalf("files Secret names = %q", names)
 	}
-	merged := readSecret(t, cl, "bex-build", name)
+	merged := readSecret(t, cl, "bex-build", names[0])
 	want := map[string]string{"shared.pem": "from-own", "layered": "from-b", "group.txt": "g", "empty": "", "nl": "two\n\n"}
 	if len(merged.Data) != len(want) || len(files) != len(want) {
 		t.Fatalf("merged keys = %v, want %v", merged.Data, want)
@@ -580,9 +580,9 @@ func TestProjectNativeBuildFilesRemovalAndOwnership(t *testing.T) {
 		t.Fatal(err)
 	}
 	app.Spec.FilesFromSecrets = nil
-	name, files, err := r.projectNativeBuildFiles(context.Background(), app, "bex-build")
-	if err != nil || name != "" || files != nil {
-		t.Fatalf("no files = (%q, %v, %v), want no projection", name, files, err)
+	names, files, err := r.projectNativeBuildFiles(context.Background(), app, "bex-build")
+	if err != nil || len(names) != 0 || len(files) != 0 {
+		t.Fatalf("no files = (%q, %v, %v), want no projection", names, files, err)
 	}
 	var gone corev1.Secret
 	if err := cl.Get(context.Background(), client.ObjectKey{Namespace: "bex-build", Name: "bld-web-native-files"}, &gone); err == nil {

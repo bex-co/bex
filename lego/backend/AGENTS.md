@@ -118,6 +118,6 @@ Full meanings + defaults + ADR pointers live in the long descriptions below; thi
 | bex-api | `BEX_REQUIRE_VERIFIED_EMAIL` (on unless `0`) | ADR075 D8 revision (w2/m168): every human caller (Kratos session or human OAuth token) with an unverified trait email gets 403 `EMAIL_VERIFICATION_REQUIRED` before onboarding; human OAuth subjects resolve via `BEX_KRATOS_ADMIN_URL` (unset → those bearers fail closed 503); machine callers exempt |
 | bex-api | `BEX_OAUTH_ISSUER`, `…_RESOURCE`, `…_REQUIRE_AUDIENCE`, `…_PLATFORM_CLIENTS`, `…_API_SCOPE` (compat, closed vocab `bex.read/write/sensitive`) | OAuth 2.1 discovery + audience/scope rules; `…_PLATFORM_CLIENTS` is the operator-owned client-ID registry ([ADR012] §7) |
 | bex-api | `BEX_RATE_LIMIT` `500`, `…_BURST`, `…_AUTH_FAILURE_LIMIT` `60`, `…_MAX_INFLIGHT` `64`, `…_MAX_INFLIGHT_PER_CREDENTIAL` `64`, `…_DEVICE_LIMIT` `30`, `…_WEBHOOK_LIMIT` `600`, `…_TRUSTED_PROXY_CIDRS` | token-bucket rates + trusted proxy CIDRs |
-| bex-api | `BEX_MAX_BODY_BYTES` `2MiB`, `…_QUERY_HOURS` `720`, `…_SSE_CONNS` `100/5/20`, `…_LOG_STREAM_REVALIDATE_INTERVAL` `1m` | body/query/SSE/log-tail bounds |
+| bex-api | `BEX_MAX_BODY_BYTES` `2MiB`, `…_QUERY_HOURS` `720`, `…_SSE_CONNS` `100/5/20`, `…_LOG_STREAM_REVALIDATE_INTERVAL` `1m` | body/query/SSE/log-tail bounds; `/graphql`, `/mcp` and the REST secret-file writes take at least 4 MiB (`secrets.MaxEnvironmentBodyBytes`, w4/m363) |
 
 Detailed semantics, ADRs, and startup-fail-closed conditions: see the original per-variable paragraphs in git history or the referenced `docs/ADR*.md`.

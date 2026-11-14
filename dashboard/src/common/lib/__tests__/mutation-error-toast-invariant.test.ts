@@ -6,8 +6,8 @@ import { describe, expect, it } from "vitest";
  * The mutation-error toast invariant (w1/m145).
  *
  * When bex-api refuses a request it says why: "schedule must be a valid
- * 5-field cron expression", "total secret file size limit of 524288 bytes
- * exceeded". Showing that sentence is the only thing that turns a refusal into
+ * 5-field cron expression", "total environment variable size limit of 524288
+ * bytes exceeded". Showing that sentence is the only thing that turns a refusal into
  * something the user can fix. w6/037 did that for `useFieldMutation`, but 77+
  * other catch blocks kept `catch { toast.error(t("…")) }`, so the same
  * refusals still read "Please try again", which no retry ever fixes.

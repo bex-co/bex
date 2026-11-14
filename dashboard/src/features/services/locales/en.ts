@@ -5835,9 +5835,9 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.secretFileLimit": {
     message:
-      "Secret files are limited to 500 and 512 KiB in total per service or group.",
+      "Secret files are limited to 500 per service or group, and their combined size to 1 MiB.",
     description:
-      "Draft validation when the secret files would exceed bex-api's per-service quota",
+      "Draft validation when the secret files would exceed bex-api's per-service quota: 500 files, 1 MiB of contents (names not counted), Render's 1 MB (w4/m363)",
   },
   "services.secretFileViewContent": {
     message: "View contents",

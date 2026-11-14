@@ -517,14 +517,15 @@ type Options struct {
 	// alone do not invalidate BuildKit's cache. Empty means "none". It also
 	// covers NativeFiles' bytes (w4/m163).
 	NativeEnvRevision string
-	// NativeFilesSecret names the operator's App-owned merged projection of the
-	// service's secret files (linked groups, then its own), and NativeFiles its
-	// sorted keys. A native build command reads each at /etc/secrets/<name>
-	// through a transient BuildKit secret mount (w4/m163); a Dockerfile build
-	// gets each as a build secret under Render's id (renderSecretFileID, w1/m178).
-	// Both empty = none.
-	NativeFilesSecret string
-	NativeFiles       []string
+	// NativeFilesSecrets names the operator's App-owned merged projection of the
+	// service's secret files (linked groups, then its own), packed into as many
+	// Secrets as Kubernetes' per-Secret limit needs (w4/m363) and projected
+	// into one directory, and NativeFiles their sorted keys. A native build
+	// command reads each at /etc/secrets/<name> through a transient BuildKit
+	// secret mount (w4/m163); a Dockerfile build gets each as a build secret
+	// under Render's id (renderSecretFileID, w1/m178). Both empty = none.
+	NativeFilesSecrets []string
+	NativeFiles        []string
 	// NativeResolverImage is bex's own image, whose /native-resolve picks the
 	// toolchain line a native build asked for (w8/m51). Empty skips the phase:
 	// the build runs on its runtime's default line, as before the resolver.
@@ -1203,6 +1204,21 @@ func secretVolume(name, secretName string) corev1.Volume {
 	}
 }
 
+// projectedSecretsVolume merges several Secrets' keys into one directory, as
+// the runtime /etc/secrets volume does: how a build's packed secret files
+// (NativeFilesSecrets) reach it as one set.
+func projectedSecretsVolume(name string, secretNames []string) corev1.Volume {
+	sources := make([]corev1.VolumeProjection, 0, len(secretNames))
+	for _, secretName := range secretNames {
+		sources = append(sources, corev1.VolumeProjection{Secret: &corev1.SecretProjection{
+			LocalObjectReference: corev1.LocalObjectReference{Name: secretName}}})
+	}
+	return corev1.Volume{
+		Name:         name,
+		VolumeSource: corev1.VolumeSource{Projected: &corev1.ProjectedVolumeSource{Sources: sources}},
+	}
+}
+
 // boundedSourceDir resolves a repo-relative directory inside the source
 // mount, structurally containing traversal input (path.Clean under a rooted
 // prefix) — the shared rule for RootDir and DockerContext.
@@ -1350,8 +1366,8 @@ fi
 	if o.RuntimeEnvSecret != "" {
 		volumes = append(volumes, secretVolume(runtimeEnvVolume, o.RuntimeEnvSecret))
 	}
-	if o.NativeFilesSecret != "" {
-		volumes = append(volumes, secretVolume(secretFilesVolume, o.NativeFilesSecret))
+	if len(o.NativeFilesSecrets) > 0 {
+		volumes = append(volumes, projectedSecretsVolume(secretFilesVolume, o.NativeFilesSecrets))
 		if o.Builder != BuilderNative {
 			volumes = append(volumes, emptyDirVolume(buildInputsVolume))
 		}
@@ -1409,7 +1425,7 @@ fi
 		if o.RuntimeEnvSecret != "" {
 			buildkit.VolumeMounts = append(buildkit.VolumeMounts, corev1.VolumeMount{Name: runtimeEnvVolume, MountPath: dockerBuildEnvMount, ReadOnly: true})
 		}
-		if o.NativeFilesSecret != "" {
+		if len(o.NativeFilesSecrets) > 0 {
 			buildkit.VolumeMounts = append(buildkit.VolumeMounts,
 				corev1.VolumeMount{Name: secretFilesVolume, MountPath: dockerBuildFilesMount, ReadOnly: true},
 				corev1.VolumeMount{Name: buildInputsVolume, MountPath: dockerBuildInputsMount},

@@ -3,6 +3,7 @@ import {
   MAX_ENVIRONMENT_ENTRIES,
   MAX_ENVIRONMENT_MAP_BYTES,
   MAX_ENV_ENTRY_BYTES,
+  MAX_SECRET_FILES_TOTAL_BYTES,
   RESERVED_PLATFORM_PORTS,
   isValidPortValue,
   createEnvironmentDraft,
@@ -338,39 +339,70 @@ describe("environment draft", () => {
     });
   });
 
-  // w1/m147: bex-api caps each map at 500 entries and 512 KiB of names plus
-  // values. The editor used to allow any number of files up to 1 MiB each, so
-  // the 614,400-byte file from the milestone's evidence reached the server.
+  // w1/m147: bex-api caps each map at 500 entries. w4/m363: secret files hold
+  // Render's 1 MB combined — 1 MiB of contents, names not counted — while env
+  // vars keep 512 KiB of names plus values.
   describe("quota", () => {
-    it("allows a new file whose name and content are exactly 512 KiB", () => {
+    it("is 1 MiB of secret-file contents and 512 KiB of env vars", () => {
+      expect(MAX_SECRET_FILES_TOTAL_BYTES).toBe(1024 * 1024);
+      expect(MAX_ENVIRONMENT_MAP_BYTES).toBe(512 * 1024);
+    });
+
+    it("admits run sf13's 614,400-byte upload beside a saved file", () => {
+      const draft = createEnvironmentDraft([], ["existing.pem"]);
+      addFile(draft, "cert600k.txt", "x".repeat(614_400));
+      const validation = validateEnvironmentDraft(draft);
+      expect(validation.files).toEqual({});
+      expect(isDraftValid(validation)).toBe(true);
+    });
+
+    it("allows files whose contents are exactly 1 MiB, however long their names", () => {
       const draft = createEnvironmentDraft([], []);
-      addFile(draft, "a.pem", "x".repeat(MAX_ENVIRONMENT_MAP_BYTES - 5));
+      addFile(draft, "a".repeat(253), "x".repeat(614_400));
+      addFile(
+        draft,
+        "b".repeat(253),
+        "y".repeat(MAX_SECRET_FILES_TOTAL_BYTES - 614_400),
+      );
       expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(true);
     });
 
-    it("flags a new file that takes the known total one byte past 512 KiB", () => {
+    it("flags the file that takes the contents one byte past 1 MiB", () => {
       const draft = createEnvironmentDraft([], []);
-      addFile(draft, "a.pem", "x".repeat(MAX_ENVIRONMENT_MAP_BYTES - 4));
+      addFile(draft, "a.pem", "x".repeat(614_400));
+      addFile(
+        draft,
+        "b.pem",
+        "y".repeat(MAX_SECRET_FILES_TOTAL_BYTES - 614_400 + 1),
+      );
       const validation = validateEnvironmentDraft(draft);
-      expect(validation.files).toEqual({ "new:a.pem": "limit" });
-      expect(isDraftValid(validation)).toBe(false);
-    });
-
-    it("flags the milestone's 614,400-byte upload", () => {
-      const draft = createEnvironmentDraft([], ["existing.pem"]);
-      addFile(draft, "big.bin", "x".repeat(614_400));
-      expect(validateEnvironmentDraft(draft).files).toEqual({
-        "new:big.bin": "limit",
+      expect(validation.files).toEqual({
+        "new:a.pem": "limit",
+        "new:b.pem": "limit",
       });
+      expect(isDraftValid(validation)).toBe(false);
     });
 
     it("measures UTF-8 bytes, not characters", () => {
       const draft = createEnvironmentDraft([], []);
-      // "é" is two bytes: half as many characters already fill the map.
-      addFile(draft, "a", "é".repeat(MAX_ENVIRONMENT_MAP_BYTES / 2));
+      // "é" is two bytes: half as many characters fill the map, one more passes it.
+      addFile(draft, "a", "é".repeat(MAX_SECRET_FILES_TOTAL_BYTES / 2));
+      expect(isDraftValid(validateEnvironmentDraft(draft))).toBe(true);
+      addFile(draft, "b", "x");
       expect(validateEnvironmentDraft(draft).files).toEqual({
         "new:a": "limit",
+        "new:b": "limit",
       });
+    });
+
+    it("still counts env var names toward their 512 KiB", () => {
+      const draft = createEnvironmentDraft([], []);
+      // Five values under the per-entry limit: 5 × 104,857 bytes plus the five
+      // names pass 512 KiB only because names count.
+      for (let i = 0; i < 5; i++)
+        addVar(draft, `NAME_${i}`, "x".repeat(104_857));
+      expect(104_857 * 5).toBeLessThan(MAX_ENVIRONMENT_MAP_BYTES);
+      expect(Object.keys(validateEnvironmentDraft(draft).env)).toHaveLength(5);
     });
 
     it("allows the 500th file and flags the 501st", () => {

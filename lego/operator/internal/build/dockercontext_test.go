@@ -97,10 +97,10 @@ func TestDockerfileBuildCopiesSecretFilesIntoTheContext(t *testing.T) {
 
 func TestOnlyADockerfileBuildWithSecretFilesGetsTheStep(t *testing.T) {
 	without := dockerOpts()
-	without.NativeFilesSecret, without.NativeFiles = "", nil
+	without.NativeFilesSecrets, without.NativeFiles = []string{""}, nil
 	native := opts()
 	native.Builder = BuilderNative
-	native.NativeFilesSecret, native.NativeFiles = "bld-hello-native-files", []string{".env"}
+	native.NativeFilesSecrets, native.NativeFiles = []string{"bld-hello-native-files"}, []string{".env"}
 	for name, o := range map[string]Options{"a Dockerfile build without secret files": without, "a native build": native} {
 		if names := initContainerNames(BuildJob(o, o.ImageRef()).Spec.Template.Spec); slices.Contains(names, contextFilesContainer) {
 			t.Errorf("%s runs %s: %v", name, contextFilesContainer, names)

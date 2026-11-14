@@ -107,7 +107,7 @@ func TestNativeRecipeAndBuildLiteralsSurviveKubeletExpansion(t *testing.T) {
 func TestDockerBuildLiteralArgsSurviveKubeletAndInputShell(t *testing.T) {
 	o := dockerOpts()
 	o.NativeFiles = nil
-	o.NativeFilesSecret = ""
+	o.NativeFilesSecrets = nil
 	o.RuntimeEnvSecret = ""
 	literal := "a$$b $(HOME) $$(PORT)\ntrailing\n\n"
 	o.BuildEnv = []corev1.EnvVar{{Name: "MARK", Value: literal}}

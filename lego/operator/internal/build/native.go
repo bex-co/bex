@@ -224,7 +224,7 @@ func validateNativeOptions(o Options) error {
 // strictly ascending, which keeps the build deterministic for one file set and
 // rules out duplicates.
 func validateSecretFiles(o Options) error {
-	if (o.NativeFilesSecret == "") != (len(o.NativeFiles) == 0) {
+	if (len(o.NativeFilesSecrets) == 0) != (len(o.NativeFiles) == 0) {
 		return fmt.Errorf("build: secret files need both a Secret and a file list")
 	}
 	for i, name := range o.NativeFiles {
@@ -539,7 +539,7 @@ func nativeBuildPreparer(o Options) corev1.Container {
 	if o.RuntimeEnvSecret != "" {
 		mounts = append(mounts, corev1.VolumeMount{Name: runtimeEnvVolume, MountPath: "/runtime-env", ReadOnly: true})
 	}
-	if o.NativeFilesSecret != "" {
+	if len(o.NativeFilesSecrets) > 0 {
 		mounts = append(mounts, corev1.VolumeMount{Name: secretFilesVolume, MountPath: "/native-files", ReadOnly: true})
 	}
 	return corev1.Container{

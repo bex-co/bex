@@ -33,8 +33,9 @@ const ReleaseSnapshotSuffix = "-r"
 
 // ReleaseSnapshotName is the immutable per-release copy of a configuration source
 // Secret: `<source>-r<generation>`. The operator writes one per source a release
-// reads — never one flattened Secret — so each copy inherits the per-map 512 KiB
-// quota that keeps it under Kubernetes' 1 MiB Secret ceiling.
+// reads — never one flattened Secret — so each copy inherits its source map's
+// quota (512 KiB of env vars, 1 MiB of secret-file contents) that keeps it
+// within Kubernetes' 1 MiB Secret limit.
 func ReleaseSnapshotName(source string, generation int64) string {
 	return source + ReleaseSnapshotSuffix + strconv.FormatInt(generation, 10)
 }

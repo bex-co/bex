@@ -95,6 +95,11 @@ var _ = Describe("Dockerfile build env and secret files (w1/m178)", func() {
 			if v.Secret != nil {
 				volumes = append(volumes, v.Name+"="+v.Secret.SecretName)
 			}
+			if v.Projected != nil {
+				for _, source := range v.Projected.Sources {
+					volumes = append(volumes, v.Name+"="+source.Secret.Name)
+				}
+			}
 		}
 		Expect(volumes).To(ContainElements("runtime-env="+nativeEnvSecretName(name), "native-files="+nativeFilesSecretName(name)))
 

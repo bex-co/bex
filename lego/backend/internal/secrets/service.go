@@ -962,38 +962,72 @@ const casMaxRetries = 3
 // Aggregate per-service secret-map quotas (round-11 #6): per-key writes merged
 // into one whole-map object made each write cost O(total map) in OpenBao AND in
 // the Kubernetes Secret projection, with no bound on count or bytes — repeated
-// SetEnvVar/SetSecretFile calls grew the map without limit. The byte quota
-// stays under Kubernetes' 1 MiB Secret ceiling, so a map that passes the quota
-// can always materialize; before this, a >1 MiB map wrote to OpenBao first and
-// then FAILED at the k8s projection (source/projection divergence).
+// SetEnvVar/SetSecretFile calls grew the map without limit. Each map projects
+// into its own Secret (<name>-env, <name>-files) that holds nothing else, so a
+// map that passes its quota can always materialize; before round 11, a >1 MiB
+// map wrote to OpenBao first and then FAILED at the k8s projection
+// (source/projection divergence).
+//
+// The two maps have different bounds (w4/m363):
+//   - Secret files take Render's "combined size of all secret files … cannot
+//     exceed 1 MB", counted on contents only. Kubernetes measures a Secret the
+//     same way: the raw bytes of its Data values, keys excluded, refused only
+//     past corev1.MaxSecretSize (1 MiB). The operator envtest "secret files
+//     bound (w4/m363)" (secret_files_bound_envtest_test.go) pins a real
+//     apiserver and etcd at exactly that bound with 500 maximal names, so a
+//     full map fits its one Secret.
+//   - Environment variables keep 512 KiB counted on keys plus values: a
+//     process's environment has an exec-time ceiling of its own, which the
+//     operator's merged-env check enforces across linked groups.
 const (
-	maxEnvKeys        = 500
-	maxSecretFiles    = 500
-	maxSecretMapBytes = 512 << 10 // 512 KiB aggregate (keys + values)
+	maxEnvKeys          = 500
+	maxSecretFiles      = 500
+	maxSecretMapBytes   = 512 << 10            // env vars: 512 KiB aggregate (keys + values)
+	maxSecretFilesBytes = corev1.MaxSecretSize // secret files: 1 MiB of contents
 )
 
-// envMapWithinQuota reports a friendly error when an env map exceeds the
-// per-service aggregate quotas.
-func envMapWithinQuota(env map[string]string) error {
-	if len(env) > maxEnvKeys {
-		return fmt.Errorf("%w: environment variable limit of %d exceeded", core.ErrBadRequest, maxEnvKeys)
+// MaxEnvironmentBodyBytes is the request body a full environment write may
+// need (4 MiB): both maps at their bounds with every byte JSON-escaped to two
+// (a `"` or `\` in a file), plus 1 MiB for names, keys and the envelope. The
+// API raises its body cap to it on the routes that write secret files
+// (w4/m363), so a set Render accepts is never cut off by the transport.
+const MaxEnvironmentBodyBytes = 2*(maxSecretFilesBytes+maxSecretMapBytes) + 1<<20
+
+// mapQuota is one map's aggregate bound: a key count and a byte total measured
+// by size, with the refusals that name each limit.
+type mapQuota struct {
+	maxKeys, maxBytes int
+	size              func(map[string]string) int
+	tooMany, tooLarge string
+}
+
+var (
+	envQuota = mapQuota{
+		maxKeys: maxEnvKeys, maxBytes: maxSecretMapBytes, size: mapBytes,
+		tooMany:  fmt.Sprintf("environment variable limit of %d exceeded", maxEnvKeys),
+		tooLarge: fmt.Sprintf("total environment variable size limit of %d bytes exceeded", maxSecretMapBytes),
 	}
-	if mapBytes(env) > maxSecretMapBytes {
-		return fmt.Errorf("%w: total environment variable size limit of %d bytes exceeded", core.ErrBadRequest, maxSecretMapBytes)
+	filesQuota = mapQuota{
+		maxKeys: maxSecretFiles, maxBytes: maxSecretFilesBytes, size: contentBytes,
+		tooMany:  fmt.Sprintf("secret file limit of %d exceeded", maxSecretFiles),
+		tooLarge: fmt.Sprintf("the combined size of all secret files cannot exceed 1 MB (%d bytes)", maxSecretFilesBytes),
+	}
+)
+
+// check reports a friendly core.ErrBadRequest when m exceeds the quota.
+func (q mapQuota) check(m map[string]string) error {
+	if len(m) > q.maxKeys {
+		return fmt.Errorf("%w: %s", core.ErrBadRequest, q.tooMany)
+	}
+	if q.size(m) > q.maxBytes {
+		return fmt.Errorf("%w: %s", core.ErrBadRequest, q.tooLarge)
 	}
 	return nil
 }
 
-// filesMapWithinQuota is envMapWithinQuota for a service's secret files.
-func filesMapWithinQuota(files map[string]string) error {
-	if len(files) > maxSecretFiles {
-		return fmt.Errorf("%w: secret file limit of %d exceeded", core.ErrBadRequest, maxSecretFiles)
-	}
-	if mapBytes(files) > maxSecretMapBytes {
-		return fmt.Errorf("%w: total secret file size limit of %d bytes exceeded", core.ErrBadRequest, maxSecretMapBytes)
-	}
-	return nil
-}
+func envMapWithinQuota(env map[string]string) error { return envQuota.check(env) }
+
+func filesMapWithinQuota(files map[string]string) error { return filesQuota.check(files) }
 
 // ValidateEnvMapQuota and ValidateFilesMapQuota are shared by env-group and
 // service creation paths. Keeping the limit in this package prevents a
@@ -1008,19 +1042,29 @@ func ValidateFilesMapQuota(files map[string]string) error { return filesMapWithi
 // round-11 cap existed would otherwise be permanently unfixable, since the only
 // way down is a write and every write was refused.
 func ValidatePatchEnvMapQuota(before, after map[string]string) error {
-	return patchWithinQuota(before, after, envMapWithinQuota)
+	return patchWithinQuota(before, after, envQuota)
 }
 
 func ValidatePatchFilesMapQuota(before, after map[string]string) error {
-	return patchWithinQuota(before, after, filesMapWithinQuota)
+	return patchWithinQuota(before, after, filesQuota)
 }
 
-// mapBytes measures a map's aggregate stored size: every key and value length
-// summed, the shape the KV engine and the Kubernetes projection both carry.
+// mapBytes measures an env map's aggregate size: every key and value length
+// summed.
 func mapBytes(m map[string]string) int {
 	total := 0
 	for k, v := range m {
 		total += len(k) + len(v)
+	}
+	return total
+}
+
+// contentBytes measures a secret-files map as Render's 1 MB and Kubernetes'
+// Secret limit both do: the files' contents, names excluded.
+func contentBytes(m map[string]string) int {
+	total := 0
+	for _, v := range m {
+		total += len(v)
 	}
 	return total
 }

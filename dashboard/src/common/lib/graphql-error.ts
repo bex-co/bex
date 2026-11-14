@@ -213,8 +213,9 @@ export function isNameConflictError(err: unknown): boolean {
 /**
  * The message for a failed request — a mutation's toast, a read's error
  * panel: the server's own refusal when it answered with one ("schedule must be
- * a valid 5-field cron expression", a name conflict, "total secret file size
- * limit of 524288 bytes exceeded"), and the caller's generic copy otherwise.
+ * a valid 5-field cron expression", a name conflict, "total environment
+ * variable size limit of 524288 bytes exceeded"), and the caller's generic
+ * copy otherwise.
  * Generic is right for a transport failure, which has no answer to relay
  * ("Failed to fetch" names nothing the user can act on; an expired session is a
  * transport 401 the auth link already redirects), for bex-api's redacted

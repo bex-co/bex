@@ -183,7 +183,7 @@ func TestBatchPatchWhoseEnvWriteWasSupersededSaysSo(t *testing.T) {
 	_, err := svc.PatchEnvironment(ctx, "web", EnvironmentPatch{
 		SaveMode:    SaveModeDeploy,
 		EnvVars:     []EnvVarPatch{{Key: "A_KEY", Value: "a"}},
-		SecretFiles: []SecretFilePatch{{Name: "big.bin", Content: strings.Repeat("x", maxSecretMapBytes)}},
+		SecretFiles: []SecretFilePatch{{Name: "big.bin", Content: strings.Repeat("x", maxSecretFilesBytes+1)}},
 	})
 	var coded *core.CodedError
 	if !errors.As(err, &coded) || coded.Code != "ENVIRONMENT_RESTORATION_FAILED" || !errors.Is(err, core.ErrConflict) {

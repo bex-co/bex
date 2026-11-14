@@ -5691,9 +5691,10 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Draft validation for missing new-file content",
   },
   "services.secretFileLimit": {
-    message: "每个服务或环境组最多 500 个秘密文件，总大小不超过 512 KiB。",
+    message:
+      "每个服务或环境组最多 500 个秘密文件，所有文件内容合计不超过 1 MiB。",
     description:
-      "Draft validation when the secret files would exceed bex-api's per-service quota",
+      "Draft validation when the secret files would exceed bex-api's per-service quota: 500 files, 1 MiB of contents (names not counted), Render's 1 MB (w4/m363)",
   },
   "services.secretFileViewContent": {
     message: "查看内容",

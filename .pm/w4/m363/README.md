@@ -1,18 +1,18 @@
 # w4 · m363 — A service's or environment group's secret files hold Render's 1 MB combined, not 512 KiB
 
-**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** todo
+**Worker:** worker4 **Goal:** a service or environment group accepts secret files up to Render's documented combined size ("The combined size of all secret files uploaded to any given service or environment group cannot exceed 1 MB"). The cap counts file contents, as Render's sentence and Kubernetes' Secret limit both do. The dashboard, REST, GraphQL and MCP all enforce that one bound, and a full-size set mounts at `/etc/secrets`. The environment-variable caps are unchanged. **Status:** todo (t001–t007 done; t008 live replay pending a deployed pin)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Secret-file maps hold 1 MiB of contents on every writer; env-var maps keep 512 KiB | 40m | — |
-| [t002](t002.md) | Prove a full-size files map materializes, projects and mounts, and fits every request-body limit on the way | 35m | t001 |
-| [t003](t003.md) | The dashboard's secret-file total follows the server: contents only, 1 MiB, en and zh copy | 30m | t001 |
-| [t004](t004.md) | Amend ADR018's Secret files row and ADR066 #6: the divergence and its base64 rationale go | 15m | t001, t002 |
-| [t005](t005.md) | Render parity | 20m | t002, t003, t004 |
-| [t006](t006.md) | Simplify | 15m | t005 |
-| [t007](t007.md) | Test coverage | 30m | t005 |
+| [t001](done/t001.md) | Secret-file maps hold 1 MiB of contents on every writer; env-var maps keep 512 KiB — **DONE** | 40m | — |
+| [t002](done/t002.md) | Prove a full-size files map materializes, projects and mounts, and fits every request-body limit on the way — **DONE** | 35m | t001 |
+| [t003](done/t003.md) | The dashboard's secret-file total follows the server: contents only, 1 MiB, en and zh copy — **DONE** | 30m | t001 |
+| [t004](done/t004.md) | Amend ADR018's Secret files row and ADR066 #6: the divergence and its base64 rationale go — **DONE** | 15m | t001, t002 |
+| [t005](done/t005.md) | Render parity — **DONE** | 20m | t002, t003, t004 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 30m | t005 |
 | [t008](t008.md) | Closeout (live replay on production) | 20m | t006, t007 |
 
 ## Definition of done
@@ -66,3 +66,15 @@ All on production, in workspace `bex-canary`. The fixture is a Free web service 
 - **etcd and body limits.** Production etcd's `--max-request-bytes` (default 1.5 MiB) was not read. bex-api's REST body limit sits between 1 MiB and 4 MiB (w4/422: 1024 KiB → 400, 4096 KiB → 413). GraphQL's and MCP's limits were not probed. A 1 MiB file whose JSON escaping inflates it, through the batch `PATCH …/environment` with other changes, may hit a body limit first. t002 measures each one.
 - **Environment groups were not probed live this round.** The shared check is `secrets.ValidateFilesMapQuota` (`lego/backend/internal/envgroups/service.go:612`).
 - **Render's exact number.** "1 MB" may mean 1,000,000 bytes or 1 MiB. The DoD accepts either reading by requiring at least 1,000,000 bytes.
+
+Settled by t002 (2026-11-14): the apiserver refuses only `> MaxSecretSize`, so exactly 1,048,576 bytes of values is accepted (envtest). The REST, GraphQL and MCP body cap is 2 MiB by default, and it is now at least 4 MiB on secret-file writes. Production etcd's `--max-request-bytes` is still unread. Environment groups are covered offline (`envgroups.TestEveryEnvGroupFilesWriterTakesExactlyTheContentsBound`) and live in t008.
+
+## Render parity (t005, 2026-11-14)
+
+- **One refusal everywhere.** One byte past 1 MiB of contents answers the same way on every writer: status 400, `id` `bad_request`, message `bad request: the combined size of all secret files cannot exceed 1 MB (1048576 bytes)`.
+  - The writers: REST per-file `PUT …/secret-files/{name}`, replace-all `PUT …/secret-files`, the batch `PATCH …/environment`, GraphQL `patchServiceEnvironment`, MCP `patch_service_environment`, and the group writes (create, per-file PUT, batch patch).
+  - Pinned by `secrets.TestPatchEnvironmentQuotaRefusalIsIdenticalAcrossAdapters`, `envgroups.TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters` and the two `files_bound_test.go` files.
+  - The editor marks the row before saving, with "Secret files are limited to 500 per service or group, and their combined size to 1 MiB.", for both the service tab and the group page.
+- **Drift: no `code`.** The quota refusal carries no `code`, on the per-file PUT and everywhere else. Sibling secret-file refusals (a bad name) carry `SECRET_FILE_INVALID`. The two do not agree. Render's own code for this refusal is unknown, because it was not observed. This is left as a follow-up rather than inventing a code.
+- **Render's sentence.** It was not re-fetched in this run; the 2026-11-13 read in § Finding stands. "Any given service or environment group" means each one is bounded separately, as bex does. A service with linked groups can therefore mount more than 1 MB in total. bex supports that: at runtime through the projected `/etc/secrets` volume (one Secret per source), and in builds by packing (t002).
+- **"1 MB" read as 1 MiB.** bex reads it as 1,048,576 bytes, Kubernetes' own Secret limit and the top of the DoD's range. If Render enforces exactly 1,000,000 bytes, bex accepts up to 48,576 bytes more than Render. That difference is within the DoD's range, and it only admits more.

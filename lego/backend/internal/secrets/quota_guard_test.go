@@ -41,6 +41,7 @@ import (
 // that let batch.go's writes go unguarded for a month after ADR066 #6.
 func TestEveryServiceMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 	big := strings.Repeat("x", maxSecretMapBytes+1)
+	bigFile := strings.Repeat("x", maxSecretFilesBytes+1)
 	ctx := context.Background()
 
 	writers := map[string]func(*Service) error{
@@ -56,15 +57,15 @@ func TestEveryServiceMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 			return s.SeedEnvVars(ctx, "web", map[string]string{"BIG": big}, nil)
 		},
 		"SetSecretFile": func(s *Service) error {
-			_, err := s.SetSecretFile(ctx, "web", "big.bin", big)
+			_, err := s.SetSecretFile(ctx, "web", "big.bin", bigFile)
 			return err
 		},
 		"SetSecretFiles": func(s *Service) error {
-			_, err := s.SetSecretFiles(ctx, "web", []SecretFileView{{Name: "big.bin", Content: big}})
+			_, err := s.SetSecretFiles(ctx, "web", []SecretFileView{{Name: "big.bin", Content: bigFile}})
 			return err
 		},
 		"SeedSecretFiles": func(s *Service) error {
-			return s.SeedSecretFiles(ctx, "web", []core.SecretFile{{Name: "big.bin", Content: big}})
+			return s.SeedSecretFiles(ctx, "web", []core.SecretFile{{Name: "big.bin", Content: bigFile}})
 		},
 		"PatchEnvironment": func(s *Service) error {
 			_, envErr := s.PatchEnvironment(ctx, "web", EnvironmentPatch{
@@ -73,7 +74,7 @@ func TestEveryServiceMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 			})
 			_, fileErr := s.PatchEnvironment(ctx, "web", EnvironmentPatch{
 				SaveMode:    SaveModeDeploy,
-				SecretFiles: []SecretFilePatch{{Name: "big.bin", Content: big}},
+				SecretFiles: []SecretFilePatch{{Name: "big.bin", Content: bigFile}},
 			})
 			if !errors.Is(envErr, core.ErrBadRequest) {
 				return envErr

@@ -60,11 +60,12 @@ import (
 // Two shape decisions, both load-bearing, recorded in
 // docs/ADR004-app-deployment.md §Per-release configuration snapshots:
 //
-//   - ONE SNAPSHOT PER SOURCE, NEVER FLATTENED. maxSecretMapBytes (512 KiB) is a
-//     per-map quota shared by the service and env-group paths, set under
-//     Kubernetes' 1 MiB Secret ceiling so "a map that passes the quota can always
-//     materialize". Flattening a 512 KiB service map with two 512 KiB group maps
-//     reaches ~1.5 MiB while every input passed its own quota — recreating the
+//   - ONE SNAPSHOT PER SOURCE, NEVER FLATTENED. bex-api's per-map quotas (512
+//     KiB of env vars; 1 MiB of secret-file contents, w4/m363) are per map,
+//     shared by the service and env-group paths, and sit within Kubernetes' 1
+//     MiB Secret limit so "a map that passes the quota can always materialize".
+//     Flattening a full service map with two full group maps reaches 1.5-3 MiB
+//     while every input passed its own quota — recreating the
 //     source/projection divergence that quota exists to prevent. A per-source copy
 //     inherits the guarantee by construction.
 //   - PRECEDENCE IS NEVER RE-DERIVED. The envFrom list and the projected-volume

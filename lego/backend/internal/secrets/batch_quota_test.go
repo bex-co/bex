@@ -34,7 +34,11 @@ import (
 // w1/m147: the batch environment patch (REST PATCH /v1/services/{id}/environment,
 // GraphQL patchServiceEnvironment, MCP) ran no quota check, while every sibling
 // write path did. The dashboard's Environment editor stored and deployed a
-// 614,400-byte secret file past the 512 KiB cap.
+// 614,400-byte secret file past the 512 KiB cap. w4/m363 raised the files cap
+// to Render's 1 MB of contents; the refusal and its surfaces are unchanged.
+
+// filesOverQuota is the refusal past the secret-files bound.
+const filesOverQuota = "the combined size of all secret files cannot exceed 1 MB (1048576 bytes)"
 
 func manyEntries(prefix string, n int) map[string]string {
 	out := make(map[string]string, n)
@@ -53,7 +57,6 @@ func quotaService(store core.SecretKV) (*Service, *patchCountingClient) {
 }
 
 func TestPatchEnvironmentRefusesAPatchPastTheQuota(t *testing.T) {
-	big := strings.Repeat("x", 614_400)
 	for _, tc := range []struct {
 		name    string
 		env     map[string]string
@@ -62,9 +65,15 @@ func TestPatchEnvironmentRefusesAPatchPastTheQuota(t *testing.T) {
 		message string
 	}{
 		{
-			name:    "a secret file past 512 KiB (the milestone's upload)",
-			patch:   EnvironmentPatch{SecretFiles: []SecretFilePatch{{Name: "big.bin", Content: big}}},
-			message: "total secret file size limit of 524288 bytes exceeded",
+			name:    "a secret file one byte past 1 MiB",
+			patch:   EnvironmentPatch{SecretFiles: []SecretFilePatch{{Name: "big.bin", Content: strings.Repeat("x", maxSecretFilesBytes+1)}}},
+			message: filesOverQuota,
+		},
+		{
+			name:    "a file that takes a full map one byte past 1 MiB",
+			files:   map[string]string{"cert600k.txt": strings.Repeat("c", 614_400)},
+			patch:   EnvironmentPatch{SecretFiles: []SecretFilePatch{{Name: "rest.bin", Content: strings.Repeat("r", maxSecretFilesBytes-614_400+1)}}},
+			message: filesOverQuota,
 		},
 		{
 			name:    "the 501st secret file",
@@ -119,8 +128,8 @@ func TestPatchEnvironmentRefusesAPatchPastTheQuota(t *testing.T) {
 // The refusal is the same sentence on every surface the dashboard, the Render
 // CLI and agents reach the batch patch through (t005).
 func TestPatchEnvironmentQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
-	const want = "total secret file size limit of 524288 bytes exceeded"
-	big := strings.Repeat("x", 614_400)
+	const want = filesOverQuota
+	big := strings.Repeat("x", maxSecretFilesBytes+1)
 
 	t.Run("REST", func(t *testing.T) {
 		store := newVersionedFakeSecretStore()
@@ -181,7 +190,7 @@ func TestPatchEnvironmentRestoresTheEnvMapWhenTheFilesHalfIsOverQuota(t *testing
 	_, err := svc.PatchEnvironment(context.Background(), "web", EnvironmentPatch{
 		SaveMode:    SaveModeDeploy,
 		EnvVars:     []EnvVarPatch{{Key: "NEW", Value: "fits"}},
-		SecretFiles: []SecretFilePatch{{Name: "big.bin", Content: strings.Repeat("x", maxSecretMapBytes+1)}},
+		SecretFiles: []SecretFilePatch{{Name: "big.bin", Content: strings.Repeat("x", maxSecretFilesBytes+1)}},
 	})
 	if !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("mixed over-quota patch = %v, want bad request", err)

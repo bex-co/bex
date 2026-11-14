@@ -373,7 +373,7 @@ func runNativeBuildShell(t *testing.T, o Options, bundle string) ([]byte, error)
 // with only NAMES in the Dockerfile and Job — never a COPY, ARG or ENV.
 func TestNativeSecretFilesTransport(t *testing.T) {
 	o := nativeOptions()
-	o.NativeFilesSecret, o.NativeFiles = "bld-web-native-files", []string{".npmrc", "qa-r59.txt"}
+	o.NativeFilesSecrets, o.NativeFiles = []string{"bld-web-native-files"}, []string{".npmrc", "qa-r59.txt"}
 	if err := validateNativeOptions(o); err != nil {
 		t.Fatal(err)
 	}
@@ -400,8 +400,8 @@ func TestNativeSecretFilesTransport(t *testing.T) {
 			filesVolume = &spec.Volumes[i]
 		}
 	}
-	if filesVolume == nil || filesVolume.Secret == nil || filesVolume.Secret.SecretName != o.NativeFilesSecret {
-		t.Fatalf("native-files volume = %+v, want Secret %s", filesVolume, o.NativeFilesSecret)
+	if filesVolume == nil || !slices.Equal(projectedSecretNames(*filesVolume), o.NativeFilesSecrets) {
+		t.Fatalf("native-files volume = %+v, want Secrets %v projected", filesVolume, o.NativeFilesSecrets)
 	}
 	buildkit := containerByName(spec.InitContainers, "buildkit")
 	for i, name := range o.NativeFiles {
@@ -455,7 +455,10 @@ func TestValidateNativeSecretFiles(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			o := nativeOptions()
-			o.NativeFilesSecret, o.NativeFiles = tc.secret, tc.files
+			o.NativeFilesSecrets, o.NativeFiles = nil, tc.files
+			if tc.secret != "" {
+				o.NativeFilesSecrets = []string{tc.secret}
+			}
 			if err := validateNativeOptions(o); err == nil {
 				t.Fatalf("accepted %q / %q", tc.secret, tc.files)
 			}
@@ -485,7 +488,7 @@ func TestNativeSecretFilesRoundTrip(t *testing.T) {
 	}
 	o := nativeOptions()
 	o.BuildEnv = nil
-	o.NativeFilesSecret = "bld-web-native-files"
+	o.NativeFilesSecrets = []string{"bld-web-native-files"}
 	o.NativeFiles = []string{".npmrc", "cert.pem", "qa-r59.txt", "zero.bin"}
 	runPreparer := func() ([]byte, error) {
 		prep := nativeBuildPreparer(o)
@@ -558,7 +561,7 @@ func TestNativeSecretFilesPinnedBuildKit(t *testing.T) {
 		o.StaticSite, o.Runtime, o.StartCommand, o.BuildEnv = true, "", "", nil
 		o.BuildCommand = "cp /etc/secrets/qa-r59.txt index.html && cp /etc/secrets/empty.txt empty.out"
 		o.NativeEnvRevision = revision
-		o.NativeFilesSecret, o.NativeFiles = "bld-web-native-files", []string{"empty.txt", "qa-r59.txt"}
+		o.NativeFilesSecrets, o.NativeFiles = []string{"bld-web-native-files"}, []string{"empty.txt", "qa-r59.txt"}
 		if err := validateNativeOptions(o); err != nil {
 			t.Fatal(err)
 		}
@@ -1258,7 +1261,7 @@ func TestNativeSecretFilesLinkedInServiceRoot(t *testing.T) {
 	for _, runtime := range []string{"node", "python", "ruby", "go", "rust", "elixir"} {
 		o := nativeOptions()
 		o.Runtime = runtime
-		o.NativeFilesSecret, o.NativeFiles = "bld-web-native-files", []string{".env", "cfg.json"}
+		o.NativeFilesSecrets, o.NativeFiles = []string{"bld-web-native-files"}, []string{".env", "cfg.json"}
 		if err := validateNativeOptions(o); err != nil {
 			t.Fatalf("%s: %v", runtime, err)
 		}
@@ -1285,7 +1288,7 @@ func TestNativeSecretFilesLinkedInServiceRoot(t *testing.T) {
 	// A cron job or worker built without a baked start command gets them too.
 	buildOnly := nativeOptions()
 	buildOnly.BuildOnly, buildOnly.StartCommand = true, ""
-	buildOnly.NativeFilesSecret, buildOnly.NativeFiles = "bld-web-native-files", []string{".env", "cfg.json"}
+	buildOnly.NativeFilesSecrets, buildOnly.NativeFiles = []string{"bld-web-native-files"}, []string{".env", "cfg.json"}
 	if got := nativeLinkStep(nativeDockerfile(buildOnly)); got != want {
 		t.Fatalf("build-only link step = %q, want %q", got, want)
 	}
@@ -1297,7 +1300,7 @@ func TestNativeSecretFilesLinkedInServiceRoot(t *testing.T) {
 	// A static site's image never runs, so it has no service root to link in.
 	static := nativeOptions()
 	static.StaticSite, static.StartCommand = true, ""
-	static.NativeFilesSecret, static.NativeFiles = "bld-web-native-files", []string{".env"}
+	static.NativeFilesSecrets, static.NativeFiles = []string{"bld-web-native-files"}, []string{".env"}
 	if got := nativeLinkStep(nativeDockerfile(static)); got != "" {
 		t.Fatalf("a static site got the step %q", got)
 	}
@@ -1308,7 +1311,7 @@ func TestNativeSecretFilesLinkedInServiceRoot(t *testing.T) {
 // that name is left alone, and names that start with a dot or a dash work.
 func TestNativeSecretFileLinkStepRuns(t *testing.T) {
 	o := nativeOptions()
-	o.NativeFilesSecret, o.NativeFiles = "bld-web-native-files", []string{"-dash.txt", ".env", "confdir", "existing.txt", "new.json", "relinked"}
+	o.NativeFilesSecrets, o.NativeFiles = []string{"bld-web-native-files"}, []string{"-dash.txt", ".env", "confdir", "existing.txt", "new.json", "relinked"}
 	if err := validateNativeOptions(o); err != nil {
 		t.Fatal(err)
 	}

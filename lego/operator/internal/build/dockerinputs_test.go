@@ -41,9 +41,43 @@ func dockerOpts() Options {
 		{Name: "GREETING", Value: "from-literal"},
 		{Name: "PORT", Value: "9999"},
 	}
-	o.NativeFilesSecret = "bld-hello-native-files"
+	o.NativeFilesSecrets = []string{"bld-hello-native-files"}
 	o.NativeFiles = []string{".env", "credentials.json"}
 	return o
+}
+
+// projectedSecretNames lists the Secrets a projected volume merges, in order;
+// nil when v is not a projected volume.
+func projectedSecretNames(v corev1.Volume) []string {
+	if v.Projected == nil {
+		return nil
+	}
+	var names []string
+	for _, source := range v.Projected.Sources {
+		if source.Secret != nil {
+			names = append(names, source.Secret.Name)
+		}
+	}
+	return names
+}
+
+// Packed secret files (w4/m363) project every Secret into the one directory
+// the build reads, so the build sees one set however many Secrets hold it.
+func TestBuildJobProjectsEveryPackedSecretFilesSecret(t *testing.T) {
+	for _, o := range []Options{dockerOpts(), nativeOptions()} {
+		o.NativeFilesSecrets = []string{"bld-hello-native-files", "bld-hello-native-files-2", "bld-hello-native-files-3"}
+		o.NativeFiles = []string{".env", "credentials.json"}
+		job := BuildJob(o, o.ImageRef())
+		var got []string
+		for _, v := range job.Spec.Template.Spec.Volumes {
+			if v.Name == secretFilesVolume {
+				got = projectedSecretNames(v)
+			}
+		}
+		if !slices.Equal(got, o.NativeFilesSecrets) {
+			t.Fatalf("%s build projects %v, want every packed Secret %v", o.Builder, got, o.NativeFilesSecrets)
+		}
+	}
 }
 
 func buildkitContainer(t *testing.T, job *batchv1.Job) corev1.Container {
@@ -107,8 +141,8 @@ func TestDockerfileBuildJobMountsEnvAndSecretFiles(t *testing.T) {
 	if v := volumes[runtimeEnvVolume]; v.Secret == nil || v.Secret.SecretName != o.RuntimeEnvSecret {
 		t.Errorf("env volume = %+v, want Secret %s", v, o.RuntimeEnvSecret)
 	}
-	if v := volumes[secretFilesVolume]; v.Secret == nil || v.Secret.SecretName != o.NativeFilesSecret {
-		t.Errorf("secret-files volume = %+v, want Secret %s", v, o.NativeFilesSecret)
+	if v := volumes[secretFilesVolume]; !slices.Equal(projectedSecretNames(v), o.NativeFilesSecrets) {
+		t.Errorf("secret-files volume = %+v, want Secrets %v projected", v, o.NativeFilesSecrets)
 	}
 	if v := volumes[buildInputsVolume]; v.EmptyDir == nil {
 		t.Errorf("snapshot volume = %+v, want an EmptyDir", v)

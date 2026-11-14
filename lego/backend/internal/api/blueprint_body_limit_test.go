@@ -35,7 +35,7 @@ func TestRESTBodyLimitKeepsBlueprintBoundIndependentOfGlobal(t *testing.T) {
 	for _, global := range []int64{0, 64, 2 << 20, 8 << 20} {
 		t.Run(fmt.Sprint(global), func(t *testing.T) {
 			var reached int
-			handler := restBodyLimit(withBodyLimit(global))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			handler := restBodyLimit(global)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				body, _ := io.ReadAll(r.Body)
 				reached = len(body)
 				w.WriteHeader(http.StatusOK)

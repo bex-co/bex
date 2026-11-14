@@ -1250,18 +1250,18 @@ func (r *AppReconciler) buildFromSource(ctx context.Context, app *appv1alpha1.Ap
 		DockerfilePath: app.Spec.DockerfilePath, DockerContext: app.Spec.DockerContext,
 		Name: app.Name, AppUID: string(app.UID),
 		Registry: r.Registry, KpackRegistry: r.KpackRegistry,
-		Builder:           builder,
-		Runtime:           app.Spec.Runtime,
-		StaticSite:        app.Spec.Type == appv1alpha1.TypeStaticSite,
-		BuildOnly:         app.Spec.Type == appv1alpha1.TypeBuildSource,
-		StaticPublishPath: app.Spec.PublishPath,
-		BuildCommand:      app.Spec.BuildCommand,
-		StartCommand:      app.Spec.StartCommand,
-		BuildEnv:          buildLiterals,
-		RuntimeEnvSecret:  inputs.envSecret,
-		NativeEnvRevision: inputs.revision,
-		NativeFilesSecret: inputs.filesSecret,
-		NativeFiles:       inputs.files,
+		Builder:            builder,
+		Runtime:            app.Spec.Runtime,
+		StaticSite:         app.Spec.Type == appv1alpha1.TypeStaticSite,
+		BuildOnly:          app.Spec.Type == appv1alpha1.TypeBuildSource,
+		StaticPublishPath:  app.Spec.PublishPath,
+		BuildCommand:       app.Spec.BuildCommand,
+		StartCommand:       app.Spec.StartCommand,
+		BuildEnv:           buildLiterals,
+		RuntimeEnvSecret:   inputs.envSecret,
+		NativeEnvRevision:  inputs.revision,
+		NativeFilesSecrets: inputs.filesSecrets,
+		NativeFiles:        inputs.files,
 		// bex's own image runs the version resolver (w8/m51); unresolved, the
 		// build keeps its runtime's default line.
 		NativeResolverImage:  r.BackupHelperImage,
@@ -1826,17 +1826,18 @@ func (r *AppReconciler) relocateBuildSecret(ctx context.Context, app *appv1alpha
 
 // buildInputs is what a native or Dockerfile build receives beside its source:
 // the merged env Secret, the opaque native cache revision covering env and file
-// bytes, and the merged secret-files Secret with its sorted file names.
+// bytes, and the secret-files Secrets (packSecretFiles) with their sorted file
+// names.
 type buildInputs struct {
-	envSecret, revision, filesSecret string
-	files                            []string
+	envSecret, revision string
+	filesSecrets, files []string
 }
 
 // projectBuildInputs projects the in-flight release's secret files and
 // environment next to the build Job. Files go first because their bytes feed
 // the environment Secret's revision (w4/m163).
 func (r *AppReconciler) projectBuildInputs(ctx context.Context, app *appv1alpha1.App, buildNs string, literals []corev1.EnvVar) (buildInputs, error) {
-	filesSecret, files, err := r.projectNativeBuildFiles(ctx, app, buildNs)
+	filesSecrets, files, err := r.projectNativeBuildFiles(ctx, app, buildNs)
 	if err != nil {
 		return buildInputs{}, err
 	}
@@ -1845,7 +1846,7 @@ func (r *AppReconciler) projectBuildInputs(ctx context.Context, app *appv1alpha1
 		return buildInputs{}, err
 	}
 	return buildInputs{envSecret: envSecret, revision: revision,
-		filesSecret: filesSecret, files: slices.Sorted(maps.Keys(files))}, nil
+		filesSecrets: filesSecrets, files: slices.Sorted(maps.Keys(files))}, nil
 }
 
 // nativeEnvSecretName is the App-owned merged native-build env Secret. Linked
@@ -2002,18 +2003,61 @@ func (r *AppReconciler) readBuildSecretSources(ctx context.Context, app *appv1al
 // refuses any remaining same-name collision rather than overwriting it.
 func nativeFilesSecretName(app string) string { return build.JobName(app, "native-files") }
 
+// nativeFilesShardName is the i-th (0-based) Secret of a build's packed secret
+// files: the first keeps nativeFilesSecretName, the rest are numbered from 2.
+func nativeFilesShardName(app string, i int) string {
+	if i == 0 {
+		return nativeFilesSecretName(app)
+	}
+	return build.JobName(app, "native-files-"+strconv.Itoa(i+1))
+}
+
+// maxFilesPerShard bounds one packed Secret's keys at a single source map's
+// file count, so a shard is never a larger object than bex-api's own
+// `<name>-files` Secret at its limits (500 names, 1 MiB of contents), the
+// shape secret_files_bound_envtest_test.go proves the apiserver and etcd take.
+const maxFilesPerShard = 500
+
+// packSecretFiles splits a build's merged secret files into Secrets that each
+// fit Kubernetes' limit (w4/m363). bex-api bounds each source map, a service's
+// or a group's, at corev1.MaxSecretSize of contents, the apiserver's own
+// measure of a Secret (the raw bytes of its Data values). The service and every
+// linked group merged can exceed it, so the files go, in name order, into as
+// many Secrets as they need: each at most MaxSecretSize of values and
+// maxFilesPerShard keys. The build projects them all into one directory, so
+// where a file lands does not matter. A single file over the limit cannot have
+// come from a map bex-api accepted, and fails the build by name.
+func packSecretFiles(data map[string][]byte) ([]map[string][]byte, error) {
+	var shards []map[string][]byte
+	size := 0
+	for _, name := range slices.Sorted(maps.Keys(data)) {
+		value := data[name]
+		if len(value) > corev1.MaxSecretSize {
+			return nil, fmt.Errorf("secret file %q is %d bytes, over the %d bytes one Secret can hold", name, len(value), corev1.MaxSecretSize)
+		}
+		if len(shards) == 0 || size+len(value) > corev1.MaxSecretSize || len(shards[len(shards)-1]) == maxFilesPerShard {
+			shards = append(shards, map[string][]byte{})
+			size = 0
+		}
+		shards[len(shards)-1][name] = value
+		size += len(value)
+	}
+	return shards, nil
+}
+
 // projectNativeBuildFiles merges the in-flight release's secret-file sources —
 // secretFileSources, the exact list and order the runtime /etc/secrets volume
 // projects, so linked groups come first and the service's own files win — into
-// one App-owned Secret next to the build Job (w4/m163). Like the runtime
+// App-owned Secrets next to the build Job (w4/m163), packed so none exceeds
+// Kubernetes' Secret limit (packSecretFiles, w4/m363). Like the runtime
 // projection every source is optional: an absent one contributes no files,
 // while any other read failure or a protected source fails the build.
 //
-// It returns the Secret's name and the merged bytes (which feed the native
-// cache revision; they never leave the operator otherwise). No files => ("",
-// nil) and any earlier projection this App owns is deleted, so removed file
-// bytes do not linger in the build namespace.
-func (r *AppReconciler) projectNativeBuildFiles(ctx context.Context, app *appv1alpha1.App, buildNs string) (string, map[string][]byte, error) {
+// It returns the Secrets' names and the merged bytes (which feed the native
+// cache revision; they never leave the operator otherwise). No files => (nil,
+// nil). Every packed Secret past the ones this pass wrote is deleted, so
+// removed file bytes do not linger in the build namespace.
+func (r *AppReconciler) projectNativeBuildFiles(ctx context.Context, app *appv1alpha1.App, buildNs string) ([]string, map[string][]byte, error) {
 	names := secretFileSources(inFlightRelease(ctx, app))
 	sources := make([]buildSecretSource, 0, len(names))
 	for _, name := range names {
@@ -2021,30 +2065,56 @@ func (r *AppReconciler) projectNativeBuildFiles(ctx context.Context, app *appv1a
 	}
 	data, err := r.readBuildSecretSources(ctx, app, "file", sources)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
-	name := nativeFilesSecretName(app.Name)
-	if len(data) == 0 {
-		owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
-			Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
-		if _, err := deleteOwnedObject(ctx, r.buildPlaneClient(), buildNs, name, &corev1.Secret{}, owned); err != nil {
-			return "", nil, fmt.Errorf("removing stale native build files: %w", err)
+	shards, err := packSecretFiles(data)
+	if err != nil {
+		return nil, nil, err
+	}
+	written := make([]string, 0, len(shards))
+	for i, shard := range shards {
+		packed := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: nativeFilesShardName(app.Name, i), Namespace: buildNs}}
+		if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), packed, func() error {
+			if err := checkOwnedArtifact(packed, app); err != nil {
+				return err
+			}
+			packed.Type = corev1.SecretTypeOpaque
+			packed.Data = shard
+			packed.Labels = artifactLabels(app, "native-files-secret")
+			return nil
+		}); err != nil {
+			return nil, nil, fmt.Errorf("projecting build secret files: %w", err)
 		}
-		return "", nil, nil
+		written = append(written, packed.Name)
 	}
-	merged := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: buildNs}}
-	if _, err := controllerutil.CreateOrUpdate(ctx, r.buildPlaneClient(), merged, func() error {
-		if err := checkOwnedArtifact(merged, app); err != nil {
-			return err
+	if err := r.deleteStaleFilesShards(ctx, app, buildNs, len(shards)); err != nil {
+		return nil, nil, err
+	}
+	return written, data, nil
+}
+
+// deleteStaleFilesShards removes this App's packed secret-files Secrets from
+// index from on. Shards are written contiguously, so the first absent name ends
+// the sweep; a same-named Secret another App owns is left alone.
+func (r *AppReconciler) deleteStaleFilesShards(ctx context.Context, app *appv1alpha1.App, buildNs string, from int) error {
+	owned := execution.ArtifactIdentity{Name: app.Name, UID: string(app.UID),
+		Workspace: app.Labels[labelWorkspace], Namespace: app.Namespace}
+	cl := r.buildPlaneClient()
+	for i := from; ; i++ {
+		stale := &corev1.Secret{}
+		err := cl.Get(ctx, client.ObjectKey{Namespace: buildNs, Name: nativeFilesShardName(app.Name, i)}, stale)
+		if apierrors.IsNotFound(err) {
+			return nil
 		}
-		merged.Type = corev1.SecretTypeOpaque
-		merged.Data = data
-		merged.Labels = artifactLabels(app, "native-files-secret")
-		return nil
-	}); err != nil {
-		return "", nil, fmt.Errorf("projecting build secret files: %w", err)
+		if err != nil {
+			return fmt.Errorf("removing stale native build files: %w", err)
+		}
+		if owned.Owns(stale) {
+			if err := cl.Delete(ctx, stale); err != nil && !apierrors.IsNotFound(err) {
+				return fmt.Errorf("removing stale native build files: %w", err)
+			}
+		}
 	}
-	return name, data, nil
 }
 
 // projectBuildpackBuildEnv is the buildpack (kpack) counterpart of

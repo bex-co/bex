@@ -8,20 +8,24 @@ export const VALID_ENV_KEY = /^(?!\.\.)(?!\.$)[-._a-zA-Z0-9]{1,253}$/;
 
 const VALID_SECRET_FILE_NAME = /^[-._a-zA-Z0-9]{1,253}$/;
 /**
- * The upload path's read guard: a file this large is never read into memory.
- * It is not the storage limit — that is MAX_ENVIRONMENT_MAP_BYTES in total.
- */
-export const MAX_SECRET_FILE_BYTES = 1024 * 1024;
-
-/**
- * bex-api's per-service (and per-environment-group) quota on each map:
- * `maxEnvKeys` / `maxSecretFiles` and `maxSecretMapBytes`, measured as every
- * name plus value in UTF-8 bytes (`lego/backend/internal/secrets/service.go`,
- * ADR066 #6). The draft checks what it can see; values the editor never
- * revealed are opaque here, so the server remains the authority (w1/m147).
+ * bex-api's per-service (and per-environment-group) quotas
+ * (`lego/backend/internal/secrets/service.go`, ADR066 #6): 500 entries in
+ * each map (`maxEnvKeys` / `maxSecretFiles`); environment variables at most
+ * 512 KiB of names plus values (`maxSecretMapBytes`); secret files Render's
+ * "combined size … cannot exceed 1 MB", 1 MiB of contents with names not
+ * counted (`maxSecretFilesBytes`, w4/m363). All in UTF-8 bytes. The draft
+ * checks what it can see; values the editor never revealed are opaque here,
+ * so the server remains the authority (w1/m147).
  */
 export const MAX_ENVIRONMENT_ENTRIES = 500;
 export const MAX_ENVIRONMENT_MAP_BYTES = 512 * 1024;
+export const MAX_SECRET_FILES_TOTAL_BYTES = 1024 * 1024;
+
+/**
+ * The upload path's read guard: a file this large is never read into memory.
+ * One file can be no larger than the whole set's limit.
+ */
+export const MAX_SECRET_FILE_BYTES = MAX_SECRET_FILES_TOTAL_BYTES;
 
 export interface EnvDraftRow {
   id: string;
@@ -255,21 +259,37 @@ const utf8 = new TextEncoder();
 // replacing a more specific error. Only rows this draft adds or rewrites are
 // flagged: they are what the save would grow the map by. An already-saved
 // opaque row is never flagged, so a map that is over quota today can still be
-// shrunk (deleting frees room, ADR066 #6).
+// shrunk (deleting frees room, ADR066 #6). The quota says how bytes count:
+// env vars count names and values, secret files their contents only.
+interface MapQuota {
+  maxBytes: number;
+  countsNames: boolean;
+}
+
+const ENV_QUOTA: MapQuota = {
+  maxBytes: MAX_ENVIRONMENT_MAP_BYTES,
+  countsNames: true,
+};
+const FILES_QUOTA: MapQuota = {
+  maxBytes: MAX_SECRET_FILES_TOTAL_BYTES,
+  countsNames: false,
+};
+
 function flagOverLimit<R extends { id: string; deleted: boolean }>(
   rows: readonly R[],
   lens: RowLens<R>,
+  quota: MapQuota,
   errors: Record<string, string>,
 ): void {
   const live = rows.filter((row) => !row.deleted);
   const knownBytes = live.reduce((total, row) => {
     const value = lens.value(row);
-    return value == null
-      ? total
-      : total + utf8.encode(lens.name(row).trim() + value).length;
+    if (value == null) return total;
+    const counted = quota.countsNames ? lens.name(row).trim() + value : value;
+    return total + utf8.encode(counted).length;
   }, 0);
   const tooMany = live.length > MAX_ENVIRONMENT_ENTRIES;
-  const tooLarge = knownBytes > MAX_ENVIRONMENT_MAP_BYTES;
+  const tooLarge = knownBytes > quota.maxBytes;
   if (!tooMany && !tooLarge) return;
   for (const row of live) {
     if (errors[row.id]) continue;
@@ -371,8 +391,8 @@ export function validateEnvironmentDraft(
       env[row.id] = rule;
     }
   }
-  flagOverLimit(draft.envVars, ENV_LENS, env);
-  flagOverLimit(draft.secretFiles, FILE_LENS, files);
+  flagOverLimit(draft.envVars, ENV_LENS, ENV_QUOTA, env);
+  flagOverLimit(draft.secretFiles, FILE_LENS, FILES_QUOTA, files);
   return { env, files };
 }
 

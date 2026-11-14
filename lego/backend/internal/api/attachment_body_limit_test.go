@@ -32,7 +32,7 @@ import (
 func TestAttachmentUploadBypassesTheBufferedBodyLimit(t *testing.T) {
 	const global = 16
 	var seen int
-	handler := restBodyLimit(withBodyLimit(global))(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	handler := restBodyLimit(global)(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
 		seen = len(b)
 		w.WriteHeader(http.StatusCreated)

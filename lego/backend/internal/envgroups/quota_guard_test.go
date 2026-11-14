@@ -36,8 +36,8 @@ import (
 // already refused an over-quota secret file with the same sentence the service
 // batch patch now uses (t005's env-group rows).
 func TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
-	const want = "total secret file size limit of 524288 bytes exceeded"
-	big := strings.Repeat("x", 614_400)
+	const want = filesOverQuota
+	big := strings.Repeat("x", 1<<20+1)
 	ctx := testCtx()
 
 	fixture := func(t *testing.T) (*Service, EnvGroupView) {
@@ -117,6 +117,7 @@ func TestEnvGroupPatchQuotaRefusalIsIdenticalAcrossAdapters(t *testing.T) {
 // case nor a reasoned exemption.
 func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 	big := strings.Repeat("x", 512*1024+1)
+	bigFile := strings.Repeat("x", 1<<20+1)
 	ctx := testCtx()
 
 	writers := map[string]func(*Service, EnvGroupView) error{
@@ -140,14 +141,14 @@ func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 			return err
 		},
 		"SetEnvGroupFile": func(s *Service, g EnvGroupView) error {
-			_, err := s.SetEnvGroupFile(ctx, g.ID, "big.bin", big)
+			_, err := s.SetEnvGroupFile(ctx, g.ID, "big.bin", bigFile)
 			return err
 		},
 		"PatchEnvironment": func(s *Service, g EnvGroupView) error {
 			_, err := s.PatchEnvironment(ctx, g.ID, EnvironmentPatch{
 				ExpectedRevision: &g.Revision,
 				SaveMode:         SaveModeOnly,
-				SecretFiles:      []SecretFilePatch{{Name: "big.bin", Content: big}},
+				SecretFiles:      []SecretFilePatch{{Name: "big.bin", Content: bigFile}},
 			})
 			return err
 		},
@@ -216,13 +217,13 @@ func TestEveryEnvGroupMapWriterRefusesAnOverQuotaWrite(t *testing.T) {
 // over-quota group was permanently unfixable through the batch patch.
 func TestEnvGroupPatchLetsAnOverQuotaMapShrinkButNotGrow(t *testing.T) {
 	ctx := testCtx()
-	// Three of these total ~900 KiB. Deleting one still leaves ~600 KiB, over
-	// the 512 KiB cap — so only the before/after comparison can admit it. A
+	// Three of these total 1.8 MB. Deleting one still leaves 1.2 MB, over
+	// the 1 MiB files cap — so only the before/after comparison can admit it. A
 	// seed that fell UNDER the cap after the delete would pass either way and
 	// prove nothing.
-	big := strings.Repeat("x", 300_000)
+	big := strings.Repeat("x", 600_000)
 
-	// Seed past the 512 KiB files cap through the store directly: every public
+	// Seed past the 1 MiB files cap through the store directly: every public
 	// write path already refuses it, which is exactly the trap being fixed.
 	seed := func(t *testing.T) (*Service, string) {
 		t.Helper()
@@ -262,7 +263,7 @@ func TestEnvGroupPatchLetsAnOverQuotaMapShrinkButNotGrow(t *testing.T) {
 		if err == nil {
 			t.Fatal("adding to an over-quota group must still be refused")
 		}
-		if !strings.Contains(err.Error(), "total secret file size limit of 524288 bytes exceeded") {
+		if !strings.Contains(err.Error(), filesOverQuota) {
 			t.Fatalf("refusal sentence changed, breaking the w1/m147 adapter table: %v", err)
 		}
 	})

@@ -862,7 +862,7 @@ func TestSecretMapAggregateQuotas(t *testing.T) {
 		t.Fatal("rejected batch must not reach the store")
 	}
 
-	// Secret files carry the same two caps.
+	// Secret files carry their own two caps: 500 files and 1 MiB of contents.
 	for i := 0; i < maxSecretFiles; i++ {
 		name := "f" + strconv.Itoa(i)
 		if _, err := svc.SetSecretFile(ctx, "web", name, "x"); err != nil {
@@ -872,7 +872,7 @@ func TestSecretMapAggregateQuotas(t *testing.T) {
 	if _, err := svc.SetSecretFile(ctx, "web", "overflow.txt", "x"); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("file %d beyond the cap = %v, want ErrBadRequest", maxSecretFiles+1, err)
 	}
-	if _, err := svc.SetSecretFile(ctx, "web", "f0", big); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.SetSecretFile(ctx, "web", "f0", strings.Repeat("y", maxSecretFilesBytes+1)); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("oversized file = %v, want ErrBadRequest", err)
 	}
 	if _, ok := store.m[filesPath("web")]["overflow.txt"]; ok {

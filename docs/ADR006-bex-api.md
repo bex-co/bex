@@ -700,7 +700,7 @@ Admission overload and the per-caller rate limiter both answer **HTTP 429 + `Ret
 
 | Cap | Default | Env var |
 | --- | --- | --- |
-| Non-GET body size | 2 MiB (2097152 bytes) → 413 | `BEX_MAX_BODY_BYTES` |
+| Non-GET body size | 2 MiB (2097152 bytes) → 413; at least 4 MiB (`secrets.MaxEnvironmentBodyBytes`) on `/graphql`, `/mcp` and the REST routes that write secret files, so a full 1 MiB set fits even when JSON escaping doubles it (w4/m363) | `BEX_MAX_BODY_BYTES` |
 | Log / metrics query window (`startTime`..`endTime`) | 720 h (30 days) → 400 | `BEX_MAX_QUERY_HOURS` |
 | Concurrent `GET /v1/logs/subscribe` SSE streams | 100 → 429, per bex-api replica | `BEX_MAX_SSE_CONNS` |
 | … per subject (one user or API key) | 5 → 429, per bex-api replica | `BEX_MAX_SSE_CONNS_PER_SUBJECT` |

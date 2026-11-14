@@ -36,7 +36,7 @@ import (
 //
 // The inputs are the same App-owned projections a native build mounts —
 // RuntimeEnvSecret (linked groups, then the service's own Secret) and
-// NativeFilesSecret — plus the literal BuildEnv entries, which win last as they
+// NativeFilesSecrets — plus the literal BuildEnv entries, which win last as they
 // do at runtime. Secret-backed values never enter the Job spec: the BuildKit
 // container reads them from its mounts and appends each as a discrete
 // `--opt build-arg:K=V` positional parameter, and copies the secret files into
@@ -159,7 +159,7 @@ func dockerContextDir(o Options) string {
 // copiesContextFiles reports whether the build is a Dockerfile build that
 // has secret files to put in its context.
 func copiesContextFiles(o Options) bool {
-	return o.Builder != BuilderNative && o.NativeFilesSecret != "" && len(o.NativeFiles) > 0
+	return o.Builder != BuilderNative && len(o.NativeFilesSecrets) > 0 && len(o.NativeFiles) > 0
 }
 
 // dockerContextFilesStep puts each secret file in the root of the Docker
