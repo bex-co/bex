@@ -58,7 +58,7 @@ func run() error {
 	all := flag.Bool("all", false, "migrate every App in --namespace")
 	apply := flag.Bool("apply", false, "execute the plan (default is dry-run)")
 	registryHost := flag.String("registry", env.Or("BEX_REGISTRY", "zot.bex-registry.svc:5000"), "Zot host")
-	regUser := flag.String("registry-user", env.Or("BEX_REGISTRY_USER", "bex-builder"), "registry username for list/digest")
+	regUser := flag.String("registry-user", env.Or("BEX_REGISTRY_USER", "bex-builder"), "registry username (list/digest)")
 	regPass := flag.String("registry-password", os.Getenv("BEX_REGISTRY_BUILDER_PASSWORD"),
 		"registry password (never logged)")
 	bucket := flag.String("bucket", os.Getenv("BEX_STATIC_S3_BUCKET"), "static bucket (empty skips S3)")
