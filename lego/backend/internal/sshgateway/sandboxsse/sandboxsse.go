@@ -36,6 +36,7 @@ import (
 	"net/http"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
@@ -235,9 +236,11 @@ func (s *Server) serveSandboxExec(w http.ResponseWriter, r *http.Request) {
 	// stdin — `ea sandbox exec` runs one non-interactive command.
 	stopKeepAlive := sse.keepAlive(r.Context(), s.KeepAlive)
 	defer stopKeepAlive()
-	code, err := s.Executor.Execute(execCtx, target, claims.Command, false, nil, nil,
-		sse.stream("stdout"), sse.stream("stderr"))
+	stdout, stderr := sse.stream("stdout"), sse.stream("stderr")
+	code, err := s.Executor.Execute(execCtx, target, claims.Command, false, nil, nil, stdout, stderr)
 	stopKeepAlive()
+	stdout.flush()
+	stderr.flush()
 	switch {
 	case err != nil && errors.Is(err, sshgateway.ErrTargetTerminated):
 		log.Printf("sandbox exec target terminal (sandbox=%s)", claims.SandboxID)
@@ -313,8 +316,7 @@ type sseWriter struct {
 	mu      sync.Mutex
 }
 
-// stream returns an io.Writer that emits each write as an `output` SSE event of
-// the given kind ("stdout" or "stderr").
+// stream returns the writer for one output stream ("stdout" or "stderr").
 func (s *sseWriter) stream(kind string) *sseStream { return &sseStream{sse: s, kind: kind} }
 
 // emit writes one SSE event: an `event:` name line then a `data:` JSON line.
@@ -363,12 +365,63 @@ func (s *sseWriter) keepAlive(ctx context.Context, interval time.Duration) (stop
 	}
 }
 
+// sseStream emits one stream's writes as output events. Each event's data is
+// a JSON string, which cannot hold part of a UTF-8 character: json.Marshal
+// replaces either half of one a write boundary split with U+FFFD, and a pipe
+// splits them wherever its writes fall (w32/021; Render: "Write each chunk as
+// received to preserve the original output"). So a write's trailing partial
+// character waits in carry for the next write. The lock is there because an
+// executor ended by its context may return while a copy still writes.
 type sseStream struct {
-	sse  *sseWriter
-	kind string
+	sse    *sseWriter
+	kind   string
+	mu     sync.Mutex
+	carry  []byte
+	closed bool
 }
 
 func (s *sseStream) Write(p []byte) (int, error) {
-	s.sse.emit("output", outputEvent{Stream: s.kind, Data: string(p)})
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return len(p), nil
+	}
+	data := p
+	if len(s.carry) > 0 {
+		data = append(s.carry, p...)
+	}
+	whole := completeUTF8(data)
+	if whole > 0 {
+		s.sse.emit("output", outputEvent{Stream: s.kind, Data: string(data[:whole])})
+	}
+	s.carry = append(s.carry[:0], data[whole:]...)
 	return len(p), nil
+}
+
+// flush emits what the stream held back once its output has ended, and drops
+// any later write, which would follow the terminal event. A character still
+// incomplete then was invalid in the output itself.
+func (s *sseStream) flush() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.closed = true
+	if len(s.carry) > 0 {
+		s.sse.emit("output", outputEvent{Stream: s.kind, Data: string(s.carry)})
+		s.carry = nil
+	}
+}
+
+// completeUTF8 is the length of p up to its last whole character: a trailing
+// sequence whose lead byte announces more bytes than follow it is held back.
+// Invalid bytes count as whole, so at most 3 bytes are ever held.
+func completeUTF8(p []byte) int {
+	for i := 1; i < utf8.UTFMax && i <= len(p); i++ {
+		if start := len(p) - i; utf8.RuneStart(p[start]) {
+			if utf8.FullRune(p[start:]) {
+				return len(p)
+			}
+			return start
+		}
+	}
+	return len(p)
 }

@@ -18,6 +18,7 @@ package sandboxsse
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -432,5 +433,61 @@ func TestSandboxExecKeepsAQuietStreamAlive(t *testing.T) {
 	}
 	if strings.Contains(got[exit:], "keep-alive") {
 		t.Fatalf("a keep-alive followed the terminal event:\n%s", got)
+	}
+}
+
+// splitExecutor writes each of its outputs in two writes split at one byte
+// offset, stdout and stderr interleaved, as a pipe's writes can fall anywhere.
+type splitExecutor struct {
+	stdout, stderr string
+	at             int
+}
+
+func (e splitExecutor) Execute(_ context.Context, _ apps.SSHInstanceTarget, _ []string, _ bool, _ remotecommand.TerminalSizeQueue, _ io.Reader, stdout, stderr io.Writer) (int, error) {
+	so, se := min(e.at, len(e.stdout)), min(e.at, len(e.stderr))
+	_, _ = stdout.Write([]byte(e.stdout[:so]))
+	_, _ = stderr.Write([]byte(e.stderr[:se]))
+	_, _ = stdout.Write([]byte(e.stdout[so:]))
+	_, _ = stderr.Write([]byte(e.stderr[se:]))
+	return 0, nil
+}
+
+// outputs reassembles each stream's data from an SSE body.
+func outputs(t *testing.T, body string) map[string]string {
+	t.Helper()
+	got := map[string]string{}
+	for _, event := range strings.Split(body, "\n\n") {
+		data, ok := strings.CutPrefix(event, "event: output\ndata: ")
+		if !ok {
+			continue
+		}
+		var out outputEvent
+		if err := json.Unmarshal([]byte(data), &out); err != nil {
+			t.Fatalf("output event %q: %v", data, err)
+		}
+		got[out.Stream] += out.Data
+	}
+	return got
+}
+
+// w32/021: a character a write boundary splits arrives whole, whichever byte
+// the boundary falls after, on both streams at once. A byte invalid in the
+// output itself, or a character still incomplete when the output ends, is
+// replaced, as a JSON string must.
+func TestSandboxExecKeepsCharactersSplitAcrossWrites(t *testing.T) {
+	const text = "日志 ab é𝄞z\n"
+	for at := 0; at <= len(text); at++ {
+		body := execEvents(t, splitExecutor{stdout: text, stderr: "错误" + text, at: at})
+		if got := outputs(t, body); got["stdout"] != text || got["stderr"] != "错误"+text {
+			t.Fatalf("split after byte %d: stdout %q, stderr %q", at, got["stdout"], got["stderr"])
+		}
+		if !strings.Contains(body, "event: exit") {
+			t.Fatalf("split after byte %d: no exit event in %s", at, body)
+		}
+	}
+	got := outputs(t, execEvents(t, splitExecutor{stdout: "ok\xff then \xe6\x97", at: 4}))
+	// encoding/json replaces each byte of an invalid sequence, as before.
+	if got["stdout"] != "ok\uFFFD then \uFFFD\uFFFD" {
+		t.Fatalf("invalid bytes = %q, want each byte replaced", got["stdout"])
 	}
 }
