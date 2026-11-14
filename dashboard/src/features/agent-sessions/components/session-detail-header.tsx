@@ -548,6 +548,7 @@ function StopTurnButton({
     <Tooltip>
       {/* A disabled button swallows pointer events, so wrap it for the tooltip. */}
       <TooltipTrigger asChild>
+        {/* eslint-disable-next-line jsx-a11y-x/no-noninteractive-tabindex -- the wrapper is the tooltip's trigger, focusable so keyboard users can reach the reason a disabled button explains */}
         <span className="shrink-0" tabIndex={disabled ? 0 : undefined}>
           <Button
             size="sm"
