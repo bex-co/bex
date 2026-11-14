@@ -43,7 +43,11 @@ type serviceArgs struct {
 	ServiceID string `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 }
 
-type listServicesArgs struct{}
+// listServicesArgs takes Render's includePreviews (w4/660). bex has no preview
+// services (.pm/DO_NOT_DO.md), so either value returns the same list.
+type listServicesArgs struct {
+	IncludePreviews bool `json:"includePreviews,omitempty" jsonschema:"accepted for compatibility with Render's MCP server; bex has no preview services, so the list is the same either way"`
+}
 
 // scaleArgs is scale_service's input — the desired running instance count,
 // keyed on numInstances like Render's REST/GraphQL surfaces.

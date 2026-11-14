@@ -97,9 +97,8 @@ var mcpAcceptedDivergences = map[string]string{
 	// repaired in w2/m91.
 	"create_static_site": "`publishPath` is genuinely required in bex (no default publish dir); autoDeploy/buildCommand wired in w2/m91",
 
-	// bex has no preview environments at all (PR previews are a recorded
-	// non-goal in .pm/DO_NOT_DO.md), so there is no set to include or exclude.
-	"list_services": "`includePreviews` has no meaning in bex — PR preview environments are a recorded non-goal",
+	// list_services takes Render's includePreviews since w4/660; bex has no
+	// preview services (.pm/DO_NOT_DO.md), so either value lists the same.
 
 	// Render's Workflows (task and flow runs) are a deliberate non-goal
 	// (.pm/DO_NOT_DO.md), so bex has no task or task run whose logs these
