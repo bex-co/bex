@@ -339,6 +339,42 @@ describe("SessionDetailHeader", () => {
     );
   });
 
+  // w9/m386: the PR's state sits beside the #N link once bex has read it.
+  it.each([
+    ["open", "Open"],
+    ["merged", "Merged"],
+    ["closed", "Closed"],
+  ] as const)("shows a %s PR's state beside its link", (prState, label) => {
+    render(
+      <SessionDetailHeader
+        session={view({
+          prNumber: 7,
+          prUrl: "https://github.com/acme/widgets/pull/7",
+          prState,
+        })}
+      />,
+    );
+    const link = screen.getByRole("link", { name: /#7/ });
+    const badge = screen.getByText(label);
+    expect(badge).toHaveAttribute("data-pr-state", prState);
+    expect(link).not.toContainElement(badge);
+    expect(link.parentElement).toContainElement(badge);
+  });
+
+  it("shows no PR state until bex has read it", () => {
+    render(
+      <SessionDetailHeader
+        session={view({
+          prNumber: 7,
+          prUrl: "https://github.com/acme/widgets/pull/7",
+          prState: null,
+        })}
+      />,
+    );
+    expect(screen.getByRole("link", { name: /#7/ })).toBeInTheDocument();
+    expect(document.querySelector("[data-pr-state]")).toBeNull();
+  });
+
   // The default (opted-out) session has no PR at all — the badge must stay away
   // rather than render an empty or dead reference.
   it("renders no PR badge for a session that never asked for one", () => {

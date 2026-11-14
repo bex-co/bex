@@ -166,8 +166,7 @@ export const InlineMentionEditor = forwardRef<
     },
     render: () => {
       let component:
-        | ReactRenderer<MentionMenuHandle, MentionMenuProps>
-        | undefined;
+        ReactRenderer<MentionMenuHandle, MentionMenuProps> | undefined;
       let unmount: (() => void) | undefined;
       let stopWatching: (() => void) | undefined;
 
@@ -288,8 +287,7 @@ export const InlineMentionEditor = forwardRef<
             return false;
           }
           const mention = mentionPluginKey.getState(view.state) as
-            | { active?: boolean }
-            | undefined;
+            { active?: boolean } | undefined;
           if (mention?.active) return false;
           event.preventDefault();
           runtime.onSubmit();

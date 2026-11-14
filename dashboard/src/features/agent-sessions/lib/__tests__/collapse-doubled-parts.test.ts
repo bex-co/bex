@@ -34,8 +34,18 @@ describe("partSignature", () => {
   });
 
   it("keeps tool input/output as identity (distinct calls stay distinct)", () => {
-    const readFoo = { type: "tool", toolName: "read", input: { path: "foo" }, id: "1" };
-    const readBar = { type: "tool", toolName: "read", input: { path: "bar" }, id: "2" };
+    const readFoo = {
+      type: "tool",
+      toolName: "read",
+      input: { path: "foo" },
+      id: "1",
+    };
+    const readBar = {
+      type: "tool",
+      toolName: "read",
+      input: { path: "bar" },
+      id: "2",
+    };
     expect(partSignature(readFoo)).not.toBe(partSignature(readBar));
   });
 
@@ -44,11 +54,23 @@ describe("partSignature", () => {
     // replay carries it settled. Identity is text + turn, not delivery status.
     const dispatched = {
       type: "data-user-prompt",
-      data: { text: "hi", turn: 1, settled: false, complete: false, truncated: false },
+      data: {
+        text: "hi",
+        turn: 1,
+        settled: false,
+        complete: false,
+        truncated: false,
+      },
     };
     const settled = {
       type: "data-user-prompt",
-      data: { text: "hi", turn: 1, settled: true, complete: true, truncated: false },
+      data: {
+        text: "hi",
+        turn: 1,
+        settled: true,
+        complete: true,
+        truncated: false,
+      },
     };
     expect(partSignature(dispatched)).toBe(partSignature(settled));
   });
@@ -162,9 +184,11 @@ describe("keepLastReplay", () => {
     const kept = keepLastReplay(parts, partSignature);
     expect(kept).toHaveLength(2);
     expect(
-      kept.map((p) =>
-        (p as { text?: string }).text ??
-        ((p as { data?: { text?: string } }).data?.text ?? ""),
+      kept.map(
+        (p) =>
+          (p as { text?: string }).text ??
+          (p as { data?: { text?: string } }).data?.text ??
+          "",
       ),
     ).toEqual(["capital of France?", "Paris."]);
   });

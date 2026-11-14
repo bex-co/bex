@@ -264,6 +264,9 @@ type Server struct {
 	// requests into steering turns (w9/m344, ADR047 D11); nil leaves those
 	// GitHub App events ignored.
 	PRFeedback *agentsessions.PRFeedback
+	// PRStates reads every agent-session pull request's state from GitHub
+	// and applies pull_request deliveries (w9/m386); nil leaves states unread.
+	PRStates *agentsessions.PRStates
 
 	// RateLimiter, when set, enforces per-caller token-bucket limits on the three
 	// auth-gated surfaces (REST, GraphQL, MCP). nil disables rate limiting. The
@@ -1491,6 +1494,9 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 		// assigning a nil *github.Service would trap a typed-nil in the interface.
 		if s.GitHub != nil {
 			wh.Installations = s.GitHub.InstallationResolver()
+		}
+		if s.PRStates != nil {
+			wh.PRStates = s.PRStates
 		}
 		if s.PRFeedback != nil {
 			wh.PRFeedback = s.PRFeedback

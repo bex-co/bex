@@ -232,6 +232,13 @@ The input is `{ ids: [ags-…] (1–20), until: "any" | "all" (default "all"), t
 
 GraphQL spells the fields `cost { modelUSD computeUSD totalUSD }`; REST, MCP and the webhook payload carry the same object.
 
+**As built (w9/m386, 2026-11-13): the pull request's state.** Devin's v3 session read carries `pull_requests: [{pr_url, pr_state}]`, and its PR metrics count PRs "open + merged + closed" (v3 OpenAPI `SessionPullRequest`, `PrMetricsResponse`, checked 2026-11-13). bex keeps its `prUrl`/`prNumber` fields and adds the state beside them, with Devin's three values:
+
+- `prState` (and `outcome.pullRequest.state`) is `open`, `merged` or `closed`; a draft pull request is `open`, as Devin has no draft state. It is absent until bex has read it. `prStateAt` is when it last changed.
+- A reconciler on every bex-api replica reads each session's pull request from GitHub with the App's installation token, on a schedule kept in `pr_next_check_at`: an open one every five minutes for a week after its state last changed, then hourly for a month, then daily (so abandoned pull requests stop spending the installation's API budget); a closed one hourly for a week (so a reopen is seen); a merged one never. A read GitHub refuses is retried an hour later. A finished pull request leaves the reconciler's index, so it is not rescanned. It needs no webhook subscription the App may lack. When the App does deliver `pull_request` (opened, closed, reopened, ready_for_review, converted_to_draft), the state updates at once, confined to the workspaces the installation is bound to.
+- Lists filter by it: REST `?prState=` (repeatable), GraphQL `prStates`, MCP `prStates`; an unknown value is `400 AGENT_SESSION_FILTER_INVALID`.
+- Not adopted here: Devin's PR metrics endpoint (counts per state); the state is now there to count when that work comes.
+
 ### D8 — Cost and spend ceilings ride ADR091
 
 `maxSpendUSD` on create is a **per-session** ceiling under ADR091's monthly workspace cap. The gateway model proxy checks the lower of the two before it forwards each request. A session at its own ceiling gets the ADR091 refusal code with a session qualifier, `AGENT_MODEL_SPEND_CAP_REACHED` plus `scope: "session"`, and its turn ends `failed`. This is the equivalent of Devin's `max_acu_limit`, priced in dollars rather than an opaque unit. It ships only after `w10/m14` lands the cost meter. Before that, the field is accepted and rejected with `400 AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE`, never silently ignored.

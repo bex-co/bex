@@ -13,7 +13,10 @@ import type {
   AgentSessionFieldsFragment,
   AgentSessionMintFieldsFragment,
 } from "@/graphql/definitions";
-import type { AgentSessionPhase } from "@/features/agent-sessions/types";
+import {
+  AGENT_SESSION_PR_STATES,
+  type AgentSessionPhase,
+} from "@/features/agent-sessions/types";
 import { goStringConstant } from "@/test/go-source";
 import { agentSessionView } from "@/test/mocks/agent-session";
 
@@ -195,6 +198,29 @@ describe("toAgentSessionView", () => {
     expect(partial.isSteerable).toBe(true);
     expect(partial.state).toBeNull();
     expect(partial.outcome).toBeNull();
+  });
+
+  // w9/m386: the PR's state as bex last read it from GitHub.
+  it.each(["open", "merged", "closed"])("carries PR state %s", (prState) => {
+    expect(toAgentSessionView(wire({ prNumber: 7, prState })).prState).toBe(
+      prState,
+    );
+  });
+
+  it("maps an unread, absent or unknown PR state to null", () => {
+    expect(toAgentSessionView(wire({ prState: null })).prState).toBeNull();
+    expect(toAgentSessionView(wire()).prState).toBeNull();
+    // A state a newer bex-api adds shows no badge rather than a raw key.
+    expect(toAgentSessionView(wire({ prState: "draft" })).prState).toBeNull();
+  });
+
+  it("knows exactly bex-api's PR states", () => {
+    const path = "lego/backend/internal/store/agentsession_pr_state.go";
+    expect([...AGENT_SESSION_PR_STATES]).toEqual([
+      goStringConstant(path, "PRStateOpen"),
+      goStringConstant(path, "PRStateMerged"),
+      goStringConstant(path, "PRStateClosed"),
+    ]);
   });
 });
 

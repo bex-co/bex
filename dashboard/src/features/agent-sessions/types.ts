@@ -69,6 +69,22 @@ export function parseAgentSessionPhase(
   return AGENT_SESSION_PHASES.find((phase) => phase === value);
 }
 
+/**
+ * A session PR's state as bex last read it from GitHub (w9/m386, Devin's
+ * `pr_state`). A draft PR counts as open. The const list is the single source
+ * for the route search, the list filter and the wire mapping.
+ */
+export const AGENT_SESSION_PR_STATES = ["open", "merged", "closed"] as const;
+
+export type AgentSessionPrState = (typeof AGENT_SESSION_PR_STATES)[number];
+
+/** A known PR state, or undefined for anything else (search value or wire). */
+export function parseAgentSessionPrState(
+  value: unknown,
+): AgentSessionPrState | undefined {
+  return AGENT_SESSION_PR_STATES.find((state) => state === value);
+}
+
 /** Translate the UI's `archived` name to the backend's `true` wire value. */
 export function agentSessionArchivedQueryValue(
   value: AgentSessionArchivedFilter | "false" | undefined,
@@ -82,6 +98,8 @@ export interface AgentSessionListSearch {
   phase?: AgentSessionPhase;
   /** Show only sessions carrying this tag (w21/002). */
   tag?: string;
+  /** Show only sessions whose PR is in this state (w9/m386). */
+  prState?: AgentSessionPrState;
 }
 
 /** How a turn's sandbox was obtained (backend Delivery* constants). */
@@ -169,6 +187,12 @@ export interface AgentSessionView {
   headSha: string | null;
   prUrl: string | null;
   prNumber: number | null;
+  /**
+   * The PR's state as bex last read it from GitHub (w9/m386); null until bex
+   * has read it, for a session with no PR, and for a value this dashboard
+   * does not know.
+   */
+  prState: AgentSessionPrState | null;
   /** Number of prompt turns taken so far. */
   turns: number;
   deliveryMode: AgentSessionDeliveryMode | null;

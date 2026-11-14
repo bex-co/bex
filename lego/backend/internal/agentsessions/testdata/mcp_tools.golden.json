@@ -201,6 +201,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -248,6 +251,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -561,6 +573,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -608,6 +623,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -918,6 +942,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -965,6 +992,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -1925,6 +1961,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -1972,6 +2011,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -3171,6 +3219,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -3218,6 +3269,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -4013,6 +4073,9 @@
                       "number": {
                         "type": "integer"
                       },
+                      "state": {
+                        "type": "string"
+                      },
                       "url": {
                         "type": "string"
                       }
@@ -4060,6 +4123,15 @@
               },
               "prNumber": {
                 "type": "integer"
+              },
+              "prState": {
+                "type": "string"
+              },
+              "prStateAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
               },
               "prUrl": {
                 "type": "string"
@@ -4978,6 +5050,16 @@
             "array"
           ]
         },
+        "prStates": {
+          "description": "only the sessions whose pull request is in one of these states: open, merged, closed",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "repo": {
           "type": "string"
         },
@@ -5182,6 +5264,9 @@
                       "number": {
                         "type": "integer"
                       },
+                      "state": {
+                        "type": "string"
+                      },
                       "url": {
                         "type": "string"
                       }
@@ -5229,6 +5314,15 @@
               },
               "prNumber": {
                 "type": "integer"
+              },
+              "prState": {
+                "type": "string"
+              },
+              "prStateAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
               },
               "prUrl": {
                 "type": "string"
@@ -6333,6 +6427,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -6380,6 +6477,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -6849,6 +6955,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -6896,6 +7005,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -7277,6 +7395,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -7324,6 +7445,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -7780,6 +7910,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -7827,6 +7960,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -8230,6 +8372,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -8277,6 +8422,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -8876,6 +9030,9 @@
                 "number": {
                   "type": "integer"
                 },
+                "state": {
+                  "type": "string"
+                },
                 "url": {
                   "type": "string"
                 }
@@ -8923,6 +9080,15 @@
         },
         "prNumber": {
           "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
         },
         "prUrl": {
           "type": "string"
@@ -10152,6 +10318,9 @@
                       },
                       "number": {
                         "type": "integer"
+                      },
+                      "state": {
+                        "type": "string"
                       },
                       "url": {
                         "type": "string"

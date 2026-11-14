@@ -124,3 +124,53 @@ func TestGitWebhookForwardsPRFeedbackConfinedToTheInstallation(t *testing.T) {
 		t.Fatalf("no sink: %d", rec.Code)
 	}
 }
+
+type recordingPRStateSink struct {
+	scopes [][]string
+	err    error
+}
+
+func (r *recordingPRStateSink) HandlePullRequestEvent(_ context.Context, _ []byte, workspaceIDs []string) error {
+	r.scopes = append(r.scopes, workspaceIDs)
+	return r.err
+}
+
+// A pull_request delivery reaches the state sink confined to the
+// installation's workspaces (w9/m386); a manual-key delivery or an unbound
+// installation reaches nothing, and a sink failure still answers 200 because
+// the reconciler reads every state from GitHub anyway.
+func TestGitWebhookForwardsPullRequestStateConfinedToTheInstallation(t *testing.T) {
+	sink := &recordingPRStateSink{}
+	h := &GitWebhook{Secret: "manual", GitHubSecret: "gh-key", Installations: fakeInstallations{7: {"tea-a", "tea-b"}}, PRStates: sink}
+	body := `{"action":"closed","installation":{"id":7},"pull_request":{"number":3,"state":"closed","merged":true},"repository":{"full_name":"bex-co/app"}}`
+	if rec := deliverFeedback(h, "pull_request", "gh-key", body); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"accepted":"pull_request"`) {
+		t.Fatalf("app-signed pull_request = %d %s", rec.Code, rec.Body)
+	}
+	if len(sink.scopes) != 1 || !slices.Equal(sink.scopes[0], []string{"tea-a", "tea-b"}) {
+		t.Fatalf("sink saw %v", sink.scopes)
+	}
+	for name, tc := range map[string]struct{ secret, body string }{
+		"manual key":           {"manual", body},
+		"unbound installation": {"gh-key", strings.Replace(body, `"id":7`, `"id":8`, 1)},
+		"no installation":      {"gh-key", `{"action":"closed"}`},
+		"a synchronize":        {"gh-key", strings.Replace(body, `"action":"closed"`, `"action":"synchronize"`, 1)},
+		"a label change":       {"gh-key", strings.Replace(body, `"action":"closed"`, `"action":"labeled"`, 1)},
+	} {
+		before := len(sink.scopes)
+		if rec := deliverFeedback(h, "pull_request", tc.secret, tc.body); rec.Code != http.StatusOK {
+			t.Fatalf("%s = %d %s", name, rec.Code, rec.Body)
+		}
+		if len(sink.scopes) != before {
+			t.Fatalf("%s reached the sink", name)
+		}
+	}
+	sink.err = errors.New("postgres down")
+	if rec := deliverFeedback(h, "pull_request", "gh-key", body); rec.Code != http.StatusOK {
+		t.Fatalf("a sink failure = %d %s", rec.Code, rec.Body)
+	}
+	// No sink: still acknowledged, not ignored as an unknown event.
+	h.PRStates = nil
+	if rec := deliverFeedback(h, "pull_request", "gh-key", body); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "accepted") {
+		t.Fatalf("no sink = %d %s", rec.Code, rec.Body)
+	}
+}

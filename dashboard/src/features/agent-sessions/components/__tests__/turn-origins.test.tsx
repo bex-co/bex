@@ -238,6 +238,7 @@ function detail(
       headSha: null,
       prUrl: "https://github.com/acme/widgets/pull/7",
       prNumber: 7,
+      prState: "open",
       turns: 3,
       deliveryMode: null,
       failureReason: null,

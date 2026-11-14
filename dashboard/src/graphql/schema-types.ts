@@ -388,6 +388,8 @@ export type AgentSession = {
   parentSessionId: Maybe<Scalars['String']['output']>;
   phase: Scalars['String']['output'];
   prNumber: Maybe<Scalars['Int']['output']>;
+  prState: Maybe<Scalars['String']['output']>;
+  prStateAt: Maybe<Scalars['String']['output']>;
   prUrl: Maybe<Scalars['String']['output']>;
   repo: Scalars['String']['output'];
   /** The top of this session's tree, absent on a top-level session. */
@@ -490,6 +492,7 @@ export type AgentSessionPullRequest = {
   __typename: 'AgentSessionPullRequest';
   headSha: Maybe<Scalars['String']['output']>;
   number: Maybe<Scalars['Int']['output']>;
+  state: Maybe<Scalars['String']['output']>;
   url: Scalars['String']['output'];
 };
 
@@ -4098,6 +4101,7 @@ export type QueryAgentSessionsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   parentSessionId?: InputMaybe<Scalars['String']['input']>;
   phases?: InputMaybe<Array<Scalars['String']['input']>>;
+  prStates?: InputMaybe<Array<Scalars['String']['input']>>;
   repo?: InputMaybe<Scalars['String']['input']>;
   states?: InputMaybe<Array<Scalars['String']['input']>>;
   tag?: InputMaybe<Scalars['String']['input']>;

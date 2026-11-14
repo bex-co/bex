@@ -73,4 +73,29 @@ describe("AgentsPageSkeleton", () => {
       container.querySelector('[data-skeleton-region="composer"]'),
     ).toBeNull();
   });
+
+  // w9/m386: the ready list's heading row carries the PR-state filter at
+  // every width, so the pending row reserves it at the same height.
+  it("reserves the list's heading row with its PR-state filter", () => {
+    const { container } = render(<AgentsPageSkeleton mode="list" />);
+    const toolbar = container.querySelector(
+      '[data-skeleton-region="session-list-toolbar"]',
+    );
+    expect(toolbar).toHaveClass(
+      "flex",
+      "h-7",
+      "items-center",
+      "justify-between",
+    );
+    const filter = toolbar?.querySelector(
+      '[data-skeleton-region="pr-state-filter"]',
+    );
+    expect(filter).toHaveClass("h-7", "shrink-0", "text-transparent");
+    expect(filter).toHaveTextContent("AnyOpenMergedClosed");
+    // The composer page has no list, so no filter either.
+    const composer = render(<AgentsPageSkeleton />).container;
+    expect(
+      composer.querySelector('[data-skeleton-region="pr-state-filter"]'),
+    ).toBeNull();
+  });
 });

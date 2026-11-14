@@ -987,6 +987,9 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 }
 
 // validPhases is the closed phase vocabulary a list filter may name.
+// validPRStates are the list's prState filter values (Devin's pr_state).
+var validPRStates = map[string]bool{store.PRStateOpen: true, store.PRStateMerged: true, store.PRStateClosed: true}
+
 var validPhases = map[string]bool{
 	PhaseCreating: true, PhaseRunning: true, PhaseResuming: true,
 	PhaseRedispatching: true, PhaseCompleted: true, PhaseFailed: true,
@@ -1062,6 +1065,13 @@ func (req *ListRequest) storeQuery() (store.AgentSessionListQuery, error) {
 		q.Phases = fromStates
 	}
 	q.Tag = strings.TrimSpace(req.Tag)
+	for _, state := range req.PRStates {
+		if state = strings.TrimSpace(state); !validPRStates[state] {
+			return store.AgentSessionListQuery{}, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
+				"prState must be open, merged or closed", map[string]any{"prState": state})
+		}
+		q.PRStates = core.AppendListValue(q.PRStates, state)
+	}
 	for _, subject := range req.CreatedBy {
 		if q.CreatedBy = core.AppendListValue(q.CreatedBy, subject); len(q.CreatedBy) > maxCreatedByFilter {
 			return store.AgentSessionListQuery{}, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
@@ -2066,7 +2076,7 @@ func viewOf(record store.AgentSession) (View, error) {
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
 		State: stateOf(record.Phase), Steerable: steerable(record.Phase, record.ArchivedAt != nil),
 		Outcome: outcomeOf(record),
-		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber,
+		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber, PRState: record.PRState, PRStateAt: record.PRStateAt,
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,

@@ -69,6 +69,7 @@ type listArgs struct {
 	ParentSessionID string   `json:"parentSessionId,omitempty" jsonschema:"only the direct children of this session (ags-…); read the whole tree with get_agent_session_tree"`
 	Mine            bool     `json:"mine,omitempty" jsonschema:"only the sessions you started"`
 	CreatedBy       []string `json:"createdBy,omitempty" jsonschema:"only the sessions these subjects started (a session's createdBy); at most 20"`
+	PRStates        []string `json:"prStates,omitempty" jsonschema:"only the sessions whose pull request is in one of these states: open, merged, closed"`
 	CreatedBefore   string   `json:"createdBefore,omitempty"`
 	CreatedAfter    string   `json:"createdAfter,omitempty"`
 	Cursor          string   `json:"cursor,omitempty"`
@@ -233,7 +234,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			}
 			out, err := s.List(ctx, ListRequest{
 				OwnerID: in.OwnerID, Archived: in.Archived, Phases: in.Phases, States: in.States, Tag: in.Tag,
-				Repo: in.Repo, AutomationID: in.AutomationID, ParentSessionID: in.ParentSessionID, Mine: in.Mine, CreatedBy: in.CreatedBy,
+				Repo: in.Repo, AutomationID: in.AutomationID, ParentSessionID: in.ParentSessionID, Mine: in.Mine, CreatedBy: in.CreatedBy, PRStates: in.PRStates,
 				CreatedBefore: before, CreatedAfter: after,
 				Cursor: in.Cursor, Limit: in.Limit,
 			})

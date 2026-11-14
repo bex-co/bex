@@ -1,16 +1,16 @@
 # w9 · m386 — Sessions report their PR's state: open, merged or closed (Devin v3 `pr_state`)
 
-**Worker:** worker9 **Goal:** every session that opened a pull request shows whether it is draft, open, merged or closed on REST, GraphQL, MCP and `/agents`, filterable by state, as Devin's v3 session reads do — kept current by bex reading the PR, so it needs no new GitHub App event. **Status:** todo
+**Worker:** worker9 **Goal:** every session that opened a pull request shows whether it is open (a draft too), merged or closed on REST, GraphQL, MCP and `/agents`, filterable by state, as Devin's v3 session reads do — kept current by bex reading the PR, so it needs no new GitHub App event. **Status:** todo (t001, t002, t003, t004, t005 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Store: `pr_state` and `pr_state_at` on agent sessions | 45m | — |
-| [t002](t002.md) | Reconciler: read each session PR's state from GitHub and backfill existing sessions | 90m | t001 |
-| [t003](t003.md) | Webhook: apply `pull_request` closed, reopened and ready-for-review events when the App delivers them | 60m | t002 |
-| [t004](t004.md) | REST, GraphQL and MCP: PR state on the session view and a `prState` list filter | 90m | t002 |
-| [t005](t005.md) | Dashboard: PR state badge and filter on `/agents` and the session page | 90m | t004 |
+| [t001](done/t001.md) | Store: `pr_state` and `pr_state_at` on agent sessions — **DONE** | 45m | — |
+| [t002](done/t002.md) | Reconciler: read each session PR's state from GitHub and backfill existing sessions — **DONE** | 90m | t001 |
+| [t003](done/t003.md) | Webhook: apply `pull_request` closed, reopened and ready-for-review events when the App delivers them — **DONE** | 60m | t002 |
+| [t004](done/t004.md) | REST, GraphQL and MCP: PR state on the session view and a `prState` list filter — **DONE** | 90m | t002 |
+| [t005](done/t005.md) | Dashboard: PR state badge and filter on `/agents` and the session page — **DONE** | 90m | t004 |
 | [t006](t006.md) | Live check on production: merging one QA PR and closing another updates both sessions | 45m | t003, t005 |
 | [t007](t007.md) | Render parity (Devin): every surface this milestone touched agrees, and matches Devin | 20m | t006 |
 | [t008](t008.md) | Simplify | 15m | t007 |

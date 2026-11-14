@@ -293,8 +293,13 @@ type View struct {
 	HeadSHA         string `json:"headSha,omitempty"`
 	PRURL           string `json:"prUrl,omitempty"`
 	PRNumber        int    `json:"prNumber,omitempty"`
-	Turns           int    `json:"turns,omitempty"`
-	DeliveryMode    string `json:"deliveryMode,omitempty"`
+	// PRState is the pull request's state as bex last read it from GitHub:
+	// open (a draft too), merged or closed (Devin's pr_state); absent until
+	// first read. PRStateAt is when it last changed.
+	PRState      string     `json:"prState,omitempty"`
+	PRStateAt    *time.Time `json:"prStateAt,omitempty"`
+	Turns        int        `json:"turns,omitempty"`
+	DeliveryMode string     `json:"deliveryMode,omitempty"`
 	// DeliveryNote is the driver's plain-language account of what a completed
 	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
 	// a pushed branch with no pull request. The work stays in the sandbox only
@@ -390,6 +395,8 @@ type PullRequest struct {
 	URL     string `json:"url"`
 	Number  int    `json:"number,omitempty"`
 	HeadSHA string `json:"headSha,omitempty"`
+	// State is open, merged or closed once read (Devin's pr_state).
+	State string `json:"state,omitempty"`
 }
 
 // Archived-filter wire vocabulary for the session list (ADR065 D3). Empty and
@@ -431,8 +438,11 @@ type ListRequest struct {
 	// Mine keeps the sessions the caller started (Devin's sidebar default);
 	// CreatedBy keeps the sessions any of these subjects started (Devin v3
 	// user_ids). Given together, the caller joins the set (w7/m296).
-	Mine          bool
-	CreatedBy     []string
+	Mine      bool
+	CreatedBy []string
+	// PRStates keeps the sessions whose pull request is open, merged or
+	// closed (Devin's pr_state).
+	PRStates      []string
 	CreatedBefore time.Time
 	CreatedAfter  time.Time
 	Cursor        string

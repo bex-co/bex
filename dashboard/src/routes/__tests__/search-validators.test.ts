@@ -51,8 +51,27 @@ describe.each([
   [
     "/agents",
     AgentsRoute,
-    { phase: "bogus", view: "grid", archived: "no" },
-    { view: undefined, archived: undefined, phase: undefined, tag: undefined },
+    { phase: "bogus", view: "grid", archived: "no", prState: "draft" },
+    {
+      view: undefined,
+      archived: undefined,
+      phase: undefined,
+      tag: undefined,
+      prState: undefined,
+    },
+  ],
+  // The list's PR-state filter (w9/m386).
+  [
+    "/agents",
+    AgentsRoute,
+    { prState: "merged" },
+    {
+      view: undefined,
+      archived: undefined,
+      phase: undefined,
+      tag: undefined,
+      prState: "merged",
+    },
   ],
   [
     "/agents/$agentSessionId",

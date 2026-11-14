@@ -270,6 +270,7 @@ var agentSessionPullRequestGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"url":     gqlutil.ReqStrField(func(v PullRequest) any { return v.URL }),
 		"number":  gqlutil.IntField(func(v PullRequest) any { return v.Number }),
 		"headSha": gqlutil.StrField(func(v PullRequest) any { return v.HeadSHA }),
+		"state":   gqlutil.OptionalStrField(func(v PullRequest) any { return v.State }),
 	},
 })
 
@@ -365,6 +366,8 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"status":          gqlutil.ReqStrField(func(v View) any { return v.Status }),
 		"headSha":         gqlutil.StrField(func(v View) any { return v.HeadSHA }),
 		"prUrl":           gqlutil.StrField(func(v View) any { return v.PRURL }),
+		"prState":         &graphql.Field{Type: graphql.String, Description: "The pull request's state as bex last read it from GitHub: open (a draft too), merged or closed; null until first read.", Resolve: gqlutil.OptionalStrField(func(v View) any { return v.PRState }).Resolve},
+		"prStateAt":       gqlutil.TimeField(func(v View) any { return v.PRStateAt }),
 		"prNumber": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any {
 			if v.PRNumber == 0 {
 				return nil
@@ -620,6 +623,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"parentSessionId": &graphql.ArgumentConfig{Type: graphql.String, Description: "Only the direct children of this session (ags-…)."},
 				"mine":            &graphql.ArgumentConfig{Type: graphql.Boolean, Description: "Only the sessions you started."},
 				"createdBy":       &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Only the sessions these subjects started (at most 20)."},
+				"prStates":        &graphql.ArgumentConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Only the sessions whose pull request is in one of these states: open, merged, closed."},
 				"createdBefore":   gqlutil.Arg(graphql.String),
 				"createdAfter":    gqlutil.Arg(graphql.String),
 				"cursor":          &graphql.ArgumentConfig{Type: graphql.String, Description: "The prior page's last session id; a shorter/empty page signals the end."},
@@ -648,6 +652,7 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					AutomationID:    gqlutil.Str(p.Args, "automationId"),
 					ParentSessionID: gqlutil.Str(p.Args, "parentSessionId"),
 					Mine:            gqlutil.Bool(p.Args, "mine"),
+					PRStates:        gqlutil.StringList(p.Args["prStates"]),
 					CreatedBy:       gqlutil.StringList(p.Args["createdBy"]),
 					CreatedBefore:   before,
 					CreatedAfter:    after,

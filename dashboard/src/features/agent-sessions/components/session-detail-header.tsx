@@ -8,7 +8,6 @@ import {
   Code2,
   ExternalLink,
   GitBranch,
-  GitPullRequest,
   Loader2,
   MoreHorizontal,
   Tag,
@@ -51,7 +50,10 @@ import type {
   AgentSessionListSearch,
   AgentSessionView,
 } from "@/features/agent-sessions/types";
-import { AgentSessionPhaseChip } from "@/features/agent-sessions/components/session-list";
+import {
+  AgentSessionPhaseChip,
+  AgentSessionPrLink,
+} from "@/features/agent-sessions/components/session-list";
 import { EditTagsDialog } from "@/features/agent-sessions/components/edit-tags-dialog";
 
 /** Compact `h/m/s` elapsed label ("1h 4m", "12m 8s", "3s"). */
@@ -439,30 +441,18 @@ function OpenInZedButton({ session }: { session: AgentSessionView }) {
   );
 }
 
-/** The inline draft-PR badge `#N` — links `prUrl` in a new tab when present. */
+/**
+ * The inline PR badge `#N` — links `prUrl` in a new tab when present — with
+ * the PR's state (Open/Merged/Closed) beside it once bex has read it.
+ */
 function HeaderPrBadge({ session }: { session: AgentSessionView }) {
-  const { t } = useTranslations();
   if (session.prNumber == null || session.prNumber === 0) return null;
-  const label = t("agentSessions.prBadge", { number: session.prNumber });
-  const badge = (
-    <Badge variant="secondary" className="hidden gap-1 sm:inline-flex">
-      <GitPullRequest className="size-3.5" />
-      {label}
-    </Badge>
-  );
-  if (!session.prUrl) return badge;
   return (
-    <a
-      href={session.prUrl}
-      target="_blank"
-      rel="noreferrer"
+    <AgentSessionPrLink
+      session={session}
       className="hidden shrink-0 sm:inline-flex"
-    >
-      <Badge variant="secondary" className="hover:bg-secondary/70 gap-1">
-        <GitPullRequest className="size-3.5" />
-        {label}
-      </Badge>
-    </a>
+      iconClassName="size-3.5"
+    />
   );
 }
 

@@ -28,7 +28,7 @@ func outcomeOf(record store.AgentSession) *Outcome {
 		FailureReasonCode: record.FailureReasonCode,
 	}
 	if record.PRURL != "" {
-		out.PullRequest = &PullRequest{URL: record.PRURL, Number: record.PRNumber, HeadSHA: record.HeadSHA}
+		out.PullRequest = &PullRequest{URL: record.PRURL, Number: record.PRNumber, HeadSHA: record.HeadSHA, State: record.PRState}
 	}
 	return out
 }

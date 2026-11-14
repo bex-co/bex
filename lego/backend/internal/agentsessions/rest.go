@@ -75,6 +75,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			ParentSessionID: q.Get("parentSessionId"),
 			Mine:            mine,
 			CreatedBy:       core.QueryList(q, "createdBy"),
+			PRStates:        core.QueryList(q, "prState"),
 			CreatedBefore:   window.Before,
 			CreatedAfter:    window.After,
 			Cursor:          q.Get("cursor"),

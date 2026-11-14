@@ -26,6 +26,7 @@ import { RelativeAge } from "@/common/components/relative-time";
 import type {
   AgentSessionArchivedFilter,
   AgentSessionPhase,
+  AgentSessionPrState,
   AgentSessionView,
 } from "@/features/agent-sessions/types";
 import { AgentSessionsEmptyState } from "@/features/agent-sessions/components/empty-state";
@@ -67,6 +68,87 @@ export function AgentSessionPhaseChip({ phase }: { phase: AgentSessionPhase }) {
   );
 }
 
+/**
+ * The PR's state as bex last read it from GitHub, in the phase
+ * chip's colors: an open PR is live work (blue), a merged one landed (the
+ * success green), a closed one was abandoned (grey, like a canceled session).
+ */
+const PR_STATE_CHIP: Record<
+  AgentSessionPrState,
+  { variant: ChipVariant; className?: string }
+> = {
+  open: { variant: "outline", className: ACTIVE_CHIP_CLASS },
+  merged: { variant: "success" },
+  closed: { variant: "secondary" },
+};
+
+/**
+ * The badge beside a session's PR link: Open, Merged or Closed. Renders
+ * nothing until bex has read the PR's state. Shared by the list rows and the
+ * detail header so the copy and colors can't drift.
+ */
+export function AgentSessionPrStateBadge({
+  state,
+}: {
+  state: AgentSessionPrState | null;
+}) {
+  const { t } = useTranslations();
+  if (state == null) return null;
+  const chip = PR_STATE_CHIP[state];
+  return (
+    <Badge
+      variant={chip.variant}
+      className={chip.className}
+      data-pr-state={state}
+    >
+      {t(`agentSessions.prState.${state}`)}
+    </Badge>
+  );
+}
+
+/**
+ * A session's pull request as a badge, a link when its URL is known, with its
+ * state beside it.
+ */
+export function AgentSessionPrLink({
+  session,
+  className,
+  iconClassName,
+}: {
+  session: AgentSessionView;
+  className?: string;
+  iconClassName?: string;
+}) {
+  const { t } = useTranslations();
+  const badge = (
+    <Badge
+      variant="secondary"
+      className={cn("gap-1", session.prUrl && "hover:bg-secondary/70")}
+    >
+      <GitPullRequest className={iconClassName} />
+      {t("agentSessions.prBadge", { number: session.prNumber ?? 0 })}
+    </Badge>
+  );
+  return (
+    <span className={cn("inline-flex items-center gap-1", className)}>
+      {session.prUrl ? (
+        <a
+          href={session.prUrl}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="inline-flex"
+        >
+          {badge}
+        </a>
+      ) : (
+        badge
+      )}
+      <AgentSessionPrStateBadge state={session.prState} />
+    </span>
+  );
+}
+
 function PrBadge({
   session,
   hideEmpty,
@@ -74,34 +156,11 @@ function PrBadge({
   session: AgentSessionView;
   hideEmpty?: boolean;
 }) {
-  const { t } = useTranslations();
   if (session.prNumber == null || session.prNumber === 0) {
     if (hideEmpty) return null;
     return <span className="text-muted-foreground">—</span>;
   }
-  const label = t("agentSessions.prBadge", { number: session.prNumber });
-  if (!session.prUrl) {
-    return (
-      <Badge variant="secondary" className="gap-1">
-        <GitPullRequest />
-        {label}
-      </Badge>
-    );
-  }
-  return (
-    <a
-      href={session.prUrl}
-      target="_blank"
-      rel="noreferrer"
-      onClick={(e) => e.stopPropagation()}
-      className="inline-flex"
-    >
-      <Badge variant="secondary" className="gap-1 hover:bg-secondary/70">
-        <GitPullRequest />
-        {label}
-      </Badge>
-    </a>
-  );
+  return <AgentSessionPrLink session={session} />;
 }
 
 const META_SEPARATOR = " · ";
@@ -160,6 +219,8 @@ export interface SessionListProps {
   phase?: AgentSessionPhase;
   /** The active tag filter, when the list is narrowed to one tag (w21/002). */
   tag?: string;
+  /** The active PR-state filter. */
+  prState?: AgentSessionPrState;
 }
 
 /**
@@ -262,6 +323,7 @@ export function SessionList({
   archiveFilter,
   phase,
   tag,
+  prState,
 }: SessionListProps) {
   const { t } = useTranslations();
   const { toggle, busyId } = useArchiveToggle(onChanged);
@@ -290,7 +352,7 @@ export function SessionList({
     return (
       <AgentSessionsEmptyState
         mode={
-          phase || tag
+          phase || tag || prState
             ? "filtered"
             : archiveFilter === "archived"
               ? "archived"

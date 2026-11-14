@@ -63,6 +63,10 @@ fragment AgentSessionFields on AgentSession {
   headSha
   prUrl
   prNumber
+  # The PR's state as bex last read it from GitHub (Devin's
+  # pr_state): open (a draft counts as open), merged or closed; null until
+  # bex has read it, and for a session with no PR.
+  prState
   turns
   deliveryMode
   failureReason
@@ -110,6 +114,8 @@ query AgentSessionCapabilities($ownerId: String) {
 # One filtered page (ADR065 D3): the backend defaults to the unarchived
 # working set, newest first, limit 50. `archived` selects false|true|all;
 # `cursor` is the prior page's last session id (a shorter/empty page = end).
+# `prStates` keeps only sessions whose PR is in one of open|merged|closed
+#.
 query AgentSessions(
   $ownerId: String
   $archived: String
@@ -117,6 +123,7 @@ query AgentSessions(
   $repo: String
   $tag: String
   $mine: Boolean
+  $prStates: [String!]
   $cursor: String
   $limit: Int
 ) {
@@ -127,6 +134,7 @@ query AgentSessions(
     repo: $repo
     tag: $tag
     mine: $mine
+    prStates: $prStates
     cursor: $cursor
     limit: $limit
   ) {

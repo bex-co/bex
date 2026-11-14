@@ -3,6 +3,10 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { buttonVariants } from "@/common/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
 import { useTranslations } from "@/common/hooks/use-translations";
+import {
+  SESSION_LIST_HEADING_ROW_CLASS,
+  SessionPrStateFilterSkeleton,
+} from "@/features/agent-sessions/components/session-pr-state-filter";
 
 /**
  * Composable, presentation-only loading skeletons for the resource detail pages
@@ -39,7 +43,8 @@ export function ListPageSkeleton() {
 
 /**
  * `/agents` pending state. Its default prompt workspace is composer-only;
- * explicit Archived/All/phase URLs render the page heading plus history list.
+ * explicit Archived/All/phase/tag/PR-state URLs render the page heading, the
+ * list's heading row with its PR-state filter, and the history list.
  * Other list routes keep `ListPageSkeleton`.
  */
 export function AgentsPageSkeleton({
@@ -78,7 +83,15 @@ export function AgentsPageSkeleton({
               className="mx-auto w-full max-w-4xl space-y-3"
               data-skeleton-region="session-list"
             >
-              <Skeleton className="h-5 w-24" />
+              {/* The ready list's heading row: heading at the left, the
+                  PR-state filter at its real size at the right. */}
+              <div
+                className={SESSION_LIST_HEADING_ROW_CLASS}
+                data-skeleton-region="session-list-toolbar"
+              >
+                <Skeleton className="h-5 w-24" />
+                <SessionPrStateFilterSkeleton />
+              </div>
               <div className="space-y-2">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-14 w-full rounded-lg" />

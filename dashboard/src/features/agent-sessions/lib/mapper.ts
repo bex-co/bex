@@ -6,12 +6,13 @@ import type {
   AgentSessionFieldsFragment,
   AgentSessionMintFieldsFragment,
 } from "@/graphql/definitions";
-import type {
-  AgentSessionConfigView,
-  AgentSessionDeliveryMode,
-  AgentSessionPhase,
-  AgentSessionTicket,
-  AgentSessionView,
+import {
+  parseAgentSessionPrState,
+  type AgentSessionConfigView,
+  type AgentSessionDeliveryMode,
+  type AgentSessionPhase,
+  type AgentSessionTicket,
+  type AgentSessionView,
 } from "@/features/agent-sessions/types";
 
 /** Phases after which the session will not change on its own. */
@@ -79,6 +80,7 @@ export function toAgentSessionView(
     // chat-only session, or one that pushed nothing) normalizes to null so the
     // "PR is ready" phrase and PR card key off genuine delivery, not 0.
     prNumber: wire.prNumber || null,
+    prState: parseAgentSessionPrState(wire.prState) ?? null,
     turns: wire.turns ?? 0,
     deliveryMode:
       (wire.deliveryMode as AgentSessionDeliveryMode | null) ?? null,

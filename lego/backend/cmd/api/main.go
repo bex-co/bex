@@ -525,6 +525,11 @@ func main() {
 			srv.PRFeedback = &agentsessions.PRFeedback{Sessions: srv.AgentSessions, Store: st, GitHub: ghClient,
 				Identities: workspaces.NewKratosIdentities(kratosAdminURL), DashboardURL: cfg.DashboardURL}
 		}
+		// Pull request states (w9/m386) are read with the App's installation
+		// tokens; no extra webhook subscription is needed.
+		if srv.AgentSessions != nil && ghClient != nil {
+			srv.PRStates = &agentsessions.PRStates{Store: st, GitHub: ghClient}
+		}
 		srv.CLIRefreshes = st
 		// Replay claims are partitioned by the authenticated signing-secret epoch.
 		// Every replica leases the epochs it still accepts; only after all leases
@@ -1702,6 +1707,11 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 		// lease keeps replicas from steering one session twice.
 		if srv.PRFeedback != nil {
 			go srv.PRFeedback.Run(ctx)
+		}
+		// Every replica reads due pull request states; the claim's SKIP LOCKED
+		// keeps two from reading the same one.
+		if srv.PRStates != nil {
+			go srv.PRStates.Run(ctx)
 		}
 	}
 	// Failure alert emails (w2/m252): a crashing service, a failed cron run, a

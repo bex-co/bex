@@ -67,7 +67,9 @@ describe("m92 t004 — bounded task title", () => {
   it("short titles pass through unchanged", () => {
     const v = {
       id: "as-1",
-      agentConfig: { task: "short title" } as unknown as AgentSessionView["agentConfig"],
+      agentConfig: {
+        task: "short title",
+      } as unknown as AgentSessionView["agentConfig"],
     };
     expect(sessionTitleShort(v)).toBe("short title");
   });

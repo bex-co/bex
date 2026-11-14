@@ -38,6 +38,31 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "#{number}",
     description: "Draft PR badge label — the pull-request number",
   },
+  "agentSessions.prState.open": {
+    message: "已打开",
+    description:
+      "PR state badge beside a session's PR link — the pull request is open (a draft counts as open)",
+  },
+  "agentSessions.prState.merged": {
+    message: "已合并",
+    description:
+      "PR state badge beside a session's PR link — the pull request was merged",
+  },
+  "agentSessions.prState.closed": {
+    message: "已关闭",
+    description:
+      "PR state badge beside a session's PR link — the pull request was closed without merging",
+  },
+  "agentSessions.prStateFilter": {
+    message: "按拉取请求状态筛选",
+    description:
+      "Session list — accessible name of the Any/Open/Merged/Closed PR-state filter",
+  },
+  "agentSessions.prStateFilterAny": {
+    message: "全部",
+    description:
+      "Session list PR-state filter — the option that shows sessions whatever their PR state, including sessions with no PR",
+  },
   "agentSessions.errorTitle": {
     message: "无法加载会话。",
     description: "Agent sessions list error — one sentence, Retry beside it",
