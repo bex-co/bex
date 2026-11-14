@@ -31,6 +31,7 @@ vi.mock("@/common/hooks/use-cookie-storage-state/cookie", () => ({
 
 import { WorkspaceProvider } from "@/features/workspaces/context";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import {
   getPersistedWorkspaceId,
   WORKSPACE_SELECTION_KEY,
@@ -126,6 +127,55 @@ describe("WorkspaceProvider", () => {
     );
     expect(localStorage.getItem).not.toHaveBeenCalled();
     expect(localStorage.setItem).not.toHaveBeenCalled();
+  });
+
+  // w4/640: a resource page deep-linked with no cookie adopts its own
+  // workspace in a child effect, which runs before the provider's fallback in
+  // the same commit; the fallback must not overwrite it with the first one.
+  it("keeps a first visit's adopted workspace in the cookie, not the fallback", async () => {
+    mockReady();
+    function Adopter() {
+      useAdoptResourceWorkspace("srv-1", "tea-2");
+      return null;
+    }
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <WorkspaceProvider>
+        <Adopter />
+        {children}
+      </WorkspaceProvider>
+    );
+    const { result } = renderHook(() => useWorkspace(), { wrapper });
+
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-2"),
+    );
+    expect(getPersistedWorkspaceId()).toBe("tea-2");
+    expect(cookieFns.set).not.toHaveBeenCalledWith(
+      WORKSPACE_SELECTION_KEY,
+      "tea-1",
+      expect.anything(),
+    );
+  });
+
+  it("still moves an existing cookie for another workspace to the adopted one", async () => {
+    mockReady();
+    persistedCookie = "tea-1";
+    function Adopter() {
+      useAdoptResourceWorkspace("srv-1", "tea-2");
+      return null;
+    }
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <WorkspaceProvider initialWorkspaceId="tea-1">
+        <Adopter />
+        {children}
+      </WorkspaceProvider>
+    );
+    const { result } = renderHook(() => useWorkspace(), { wrapper });
+
+    await waitFor(() =>
+      expect(result.current.currentWorkspaceId).toBe("tea-2"),
+    );
+    expect(getPersistedWorkspaceId()).toBe("tea-2");
   });
 
   it("restores the cookie-backed server selection when it still exists", async () => {

@@ -34,6 +34,12 @@ export function WorkspaceProvider({
   const [preferredId, setPreferredId] = useState<string | null>(
     initialWorkspaceId,
   );
+  // The preference as of the latest write, ahead of the re-render that
+  // carries it: a child's effect (a resource page adopting its own workspace,
+  // w6/091) runs before this provider's effect in the same commit, so the
+  // fallback below must not see the stale render's null and overwrite the
+  // cookie with the first workspace (w4/640).
+  const preferredRef = useRef<string | null>(initialWorkspaceId);
   const handledEmptyRef = useRef(false);
   const handledFallbackRef = useRef<string | null>(null);
 
@@ -74,8 +80,9 @@ export function WorkspaceProvider({
     }
 
     handledEmptyRef.current = false;
+    const preferred = preferredRef.current;
     const preferredExists =
-      preferredId !== null && workspaces.some((w) => w.id === preferredId);
+      preferred !== null && workspaces.some((w) => w.id === preferred);
     if (!preferredExists) {
       const fallback = workspaces[0].id;
       if (handledFallbackRef.current !== fallback) {
@@ -91,6 +98,7 @@ export function WorkspaceProvider({
 
   const setCurrentWorkspaceId = useCallback(
     (id: string) => {
+      preferredRef.current = id;
       setPreferredId(id);
       persistWorkspaceId(id);
       bumpAccessGeneration();
