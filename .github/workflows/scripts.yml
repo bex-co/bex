@@ -20,6 +20,7 @@ on:
       - ".claude/commands/**"
       - ".claude/skills/**"
       - ".env.example"
+      - ".gitleaks.toml"
       - ".github/workflows/**"
       - "skills-lock.json"
   push:
@@ -40,6 +41,7 @@ on:
       - ".claude/commands/**"
       - ".claude/skills/**"
       - ".env.example"
+      - ".gitleaks.toml"
       - ".github/workflows/**"
       - "skills-lock.json"
 
