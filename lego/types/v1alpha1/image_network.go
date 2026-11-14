@@ -54,15 +54,16 @@ func IsConfiguredPortMode(mode string) bool {
 	return mode == PortModeImageConfiguredV1 || mode == PortModeWebImageConfiguredV1
 }
 
+// ReservedImagePorts are the ports bex's own processes listen on inside a
+// tenant pod; no service port may be one of them.
+func ReservedImagePorts() []int32 { return slices.Clone(reservedImagePorts) }
+
+var reservedImagePorts = []int32{18012, 18013, 18014, 19099}
+
 // IsReservedImagePort keeps explicit primary ports and discovered TCP ports
 // under the same image-compatibility policy.
 func IsReservedImagePort(port int32) bool {
-	switch port {
-	case 18012, 18013, 18014, 19099:
-		return true
-	default:
-		return false
-	}
+	return slices.Contains(reservedImagePorts, port)
 }
 
 // ImageNetworkStatus binds a private port set to an immutable image and release.

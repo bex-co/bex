@@ -18,7 +18,8 @@ limitations under the License.
 // as an exec probe on a service with a Health Check Path (w8/m133;
 // internal/healthprobe). "install DEST" copies this binary into the pod's
 // shared volume (the init container); "check" runs one no-redirect request
-// and exits 0 for a 2xx/3xx answer.
+// and exits 0 for a 2xx/3xx answer; "open-port" exits 0 when the pod accepts a
+// TCP connection on any port it listens on (w4/m350), Render's default check.
 package main
 
 import (
@@ -26,6 +27,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/healthprobe"
@@ -33,7 +36,8 @@ import (
 
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Fprintln(os.Stderr, "usage: health-probe install DEST | check --port N --path P [--host H] [--timeout D]")
+		fmt.Fprintln(os.Stderr, "usage: health-probe install DEST | check --port N --path P [--host H] [--timeout D]"+
+			" | open-port [--skip P,Q] [--timeout D]")
 		os.Exit(2)
 	}
 	switch os.Args[1] {
@@ -48,6 +52,8 @@ func main() {
 		}
 	case "check":
 		os.Exit(check(os.Args[2:]))
+	case "open-port":
+		os.Exit(openPort(os.Args[2:]))
 	default:
 		fmt.Fprintf(os.Stderr, "health-probe: unknown command %q\n", os.Args[1])
 		os.Exit(2)
@@ -71,6 +77,37 @@ func check(args []string) int {
 		return 1
 	}
 	if err := healthprobe.Check(context.Background(), addrs[0], *port, *path, *host, *timeout); err != nil {
+		fmt.Fprintln(os.Stderr, "health-probe:", err)
+		return 1
+	}
+	return 0
+}
+
+func openPort(args []string) int {
+	fs := flag.NewFlagSet("open-port", flag.ContinueOnError)
+	skipList := fs.String("skip", "", "comma-separated ports that are not the service's")
+	timeout := fs.Duration("timeout", 5*time.Second, "check timeout")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	var skip []int
+	for field := range strings.SplitSeq(*skipList, ",") {
+		if field == "" {
+			continue
+		}
+		port, err := strconv.Atoi(field)
+		if err != nil {
+			return 2
+		}
+		skip = append(skip, port)
+	}
+	addrs := healthprobe.PodAddrs()
+	if len(addrs) == 0 {
+		fmt.Fprintln(os.Stderr, "health-probe: no pod address")
+		return 1
+	}
+	listening := healthprobe.Listening()
+	if _, err := healthprobe.OpenPort(context.Background(), addrs[0], listening, skip, *timeout); err != nil {
 		fmt.Fprintln(os.Stderr, "health-probe:", err)
 		return 1
 	}

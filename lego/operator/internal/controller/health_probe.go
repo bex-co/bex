@@ -18,12 +18,14 @@ package controller
 
 import (
 	"strconv"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/bex-co/bex/lego/operator/internal/execution"
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // The no-redirect health probe (w8/m133). Render counts a "2xx or 3xx status
@@ -35,7 +37,9 @@ import (
 // health-probe binary (internal/healthprobe), which makes one request, follows
 // nothing and exits 0 for 2xx/3xx. An init container copies the binary out of
 // bex's image into a shared volume, so it works for any tenant image, shell-less
-// and distroless ones included. A service with no path keeps the TCP probe.
+// and distroless ones included. A service with no path keeps the TCP probe,
+// except a first web image release still discovering its HTTP port, which
+// checks any open port with the same helper (w4/m350).
 const (
 	healthProbeVolumeName = "bex-health"
 	healthProbeMountPath  = "/bex-health"
@@ -56,6 +60,28 @@ func healthProbeExecHandler(path string, port int, host string) corev1.ProbeHand
 		command = append(command, "--host", host)
 	}
 	return corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: command}}
+}
+
+// healthProbeOpenPortHandler is Render's default check, "TCP socket probes to
+// one of your service's open ports", as an exec of the same helper: it passes
+// when the pod accepts a connection on any port it listens on, bex's own
+// sidecar ports aside. It names no port, so a first release's template stays
+// the same whichever port HTTP discovery chooses (w4/m350).
+func healthProbeOpenPortHandler() corev1.ProbeHandler {
+	reserved := appv1alpha1.ReservedImagePorts()
+	skip := make([]string, len(reserved))
+	for i, port := range reserved {
+		skip[i] = strconv.Itoa(int(port))
+	}
+	return corev1.ProbeHandler{Exec: &corev1.ExecAction{Command: []string{healthProbeBinary, "open-port",
+		"--skip", strings.Join(skip, ","),
+		"--timeout", (time.Duration(healthCheckTimeoutSeconds) * time.Second).String()}}}
+}
+
+// healthProbeChecksOpenPort reports an exec probe that is the any-open-port
+// check (healthProbeOpenPortHandler).
+func healthProbeChecksOpenPort(exec *corev1.ExecAction) bool {
+	return exec != nil && len(exec.Command) >= 2 && exec.Command[0] == healthProbeBinary && exec.Command[1] == "open-port"
 }
 
 // healthProbeExecArgs reads the path, port and Host back off an exec health

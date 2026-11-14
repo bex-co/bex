@@ -194,13 +194,57 @@ type deploymentParams struct {
 	// readinessPeriod overrides the readiness probe period while a stored
 	// template still carries its previous one (applyDeploymentSpec); 0 = current.
 	readinessPeriod int32
+	// openPortCheck is a first web image release whose template must not
+	// depend on the HTTP port discovery chooses (checksAnyOpenPort, w4/m350).
+	openPortCheck bool
 }
 
-// usesHealthProbeBinary reports whether the App's HTTP health check runs as the
-// no-redirect exec probe: a web or private service with a Health Check Path,
-// on an operator that knows its own image.
+// usesHealthProbeBinary reports whether the App's health check runs as an exec
+// of bex's health-probe helper: a web or private service with a Health Check
+// Path (the no-redirect HTTP check), or one checking any open port, on an
+// operator that knows its own image.
 func (p deploymentParams) usesHealthProbeBinary(app *appv1alpha1.App) bool {
-	return !p.worker && app.Spec.HealthCheckPath != "" && p.healthProbeImage != ""
+	return !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck) && p.healthProbeImage != ""
+}
+
+// usesOpenPortCheck reports the any-open-port check on an operator that can
+// install its helper.
+func (p deploymentParams) usesOpenPortCheck(app *appv1alpha1.App) bool {
+	return p.openPortCheck && p.usesHealthProbeBinary(app)
+}
+
+// checksAnyOpenPort reports a release whose pod template must be the same
+// whichever port HTTP discovery chooses (w4/m350): the first release of a web
+// service whose image chooses its own HTTP port, with no Health Check Path.
+// Discovery used to move its TCP probe and container ports from the declared
+// port to the one found, rolling a second ReplicaSet on the first deploy, and
+// the first instance could never become Ready on a port nothing listened on.
+// Such a release checks Render's default, any open port, and pins no container
+// port, so discovery moves only the Services and the route. The choice is kept
+// for the release once its stored template carries it, so going live does not
+// roll it again. A release over a serving one keeps w4/m320's HTTP guard, and
+// later releases the TCP probe on their known port. An edge-cached service
+// keeps its sidecar on the primary, which discovery moves, so it is left out.
+func checksAnyOpenPort(stored corev1.PodTemplateSpec, app *appv1alpha1.App, p deploymentParams) bool {
+	if p.worker || p.healthProbeImage == "" || p.edgeCacheImage != "" || app.Spec.HealthCheckPath != "" ||
+		!discoversWebImagePort(app) || webImageHTTPSelectionGuardsServing(app) {
+		return false
+	}
+	if stored.Labels[labelRevision] == releaseRevision(app) && storedChecksOpenPort(stored.Spec) {
+		return true
+	}
+	return app.Status.ActiveRevision == "" && app.Status.ServingNetwork == nil
+}
+
+// storedChecksOpenPort reports a stored pod spec whose app container checks any
+// open port.
+func storedChecksOpenPort(spec corev1.PodSpec) bool {
+	for _, c := range spec.Containers {
+		if c.Name == appContainerName && c.StartupProbe != nil {
+			return healthProbeChecksOpenPort(c.StartupProbe.Exec)
+		}
+	}
+	return false
 }
 
 // appPodLabels builds the pod template's label set.
@@ -293,7 +337,7 @@ func appContainerEnv(app *appv1alpha1.App, p deploymentParams) []corev1.EnvVar {
 // probeHost is the Host header its HTTP health probes send ("" for none).
 func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) corev1.Container {
 	var ports []corev1.ContainerPort
-	if !p.worker {
+	if !p.worker && !p.usesOpenPortCheck(app) {
 		ports = []corev1.ContainerPort{{Name: servingPortName, ContainerPort: int32(p.port)}}
 		if app.Spec.HasImagePorts() && app.Status.ImageNetwork != nil {
 			ports = make([]corev1.ContainerPort, 0, len(app.Status.ImageNetwork.Ports))
@@ -363,6 +407,9 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 		handler := healthCheckHandler(path, p.port, probeHost)
 		if p.usesHealthProbeBinary(app) {
 			handler = healthProbeExecHandler(app.Spec.HealthCheckPath, p.port, probeHost)
+			if p.usesOpenPortCheck(app) {
+				handler = healthProbeOpenPortHandler()
+			}
 			container.VolumeMounts = append(container.VolumeMounts,
 				corev1.VolumeMount{Name: healthProbeVolumeName, MountPath: healthProbeMountPath, ReadOnly: true})
 		}
@@ -583,6 +630,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 		probeHost = healthProbeHost(app, p.baseDomain)
 	}
 	drain := drainSecondsFor(app, p)
+	p.openPortCheck = checksAnyOpenPort(dep.Spec.Template, app, p)
 	if stored := dep.Spec.Template; len(stored.Spec.Containers) > 0 {
 		keptDrain, keptPeriod := storedDrain(stored.Spec), storedReadinessPeriod(stored.Spec)
 		keptProbeImage := storedHealthProbeImage(stored.Spec)
@@ -592,7 +640,7 @@ func applyDeploymentSpec(dep *appsv1.Deployment, app *appv1alpha1.App, p deploym
 		// running release keeps its HTTP probe, or the helper image it was
 		// installed from, until its template changes for another reason, so
 		// an operator upgrade never rolls the fleet.
-		probeStale := !p.worker && app.Spec.HealthCheckPath != "" && keptProbeImage != p.healthProbeImage
+		probeStale := !p.worker && (app.Spec.HealthCheckPath != "" || p.openPortCheck) && keptProbeImage != p.healthProbeImage
 		if drainStale || periodStale || probeStale {
 			// Keep whatever the stored template carries when nothing else
 			// about it changes; any other change adopts the current values.

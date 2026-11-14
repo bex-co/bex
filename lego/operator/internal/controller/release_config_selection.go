@@ -123,7 +123,8 @@ func (rec *runtimeConfigRecord) adoptLegacySpec(app *appv1alpha1.App, generation
 
 // probedHealthCheckPath reads the health-check path a container was projected
 // with back from its readiness probe (healthCheckHandler's inverse): "" for the
-// TCP check, the GET path for HTTP, and nil when it carries no probe at all.
+// TCP or any-open-port check, the GET path for HTTP, and nil when it carries
+// no probe at all.
 func probedHealthCheckPath(c corev1.Container) *string {
 	switch {
 	case c.ReadinessProbe == nil:
@@ -133,6 +134,9 @@ func probedHealthCheckPath(c corev1.Container) *string {
 	case c.ReadinessProbe.Exec != nil:
 		if path, _, _, ok := healthProbeExecArgs(c.ReadinessProbe.Exec); ok {
 			return new(path)
+		}
+		if healthProbeChecksOpenPort(c.ReadinessProbe.Exec) {
+			return new("") // Render's default check, as the TCP probe (w4/m350)
 		}
 		return nil
 	case c.ReadinessProbe.TCPSocket != nil:

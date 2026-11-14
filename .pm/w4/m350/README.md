@@ -1,15 +1,15 @@
 # w4 · m350 — A new image web service whose process listens on a port its image doesn't declare starts twice on its first deploy: the first instance is replaced about a minute in, and Live comes about 45 s later than for the same image on its declared port
 
-**Worker:** worker4 **Goal:** a first deploy rolls one ReplicaSet whichever port the image's HTTP listener turns out to be on. HTTP port discovery changes only the Services and the route, never the pod template, as Render's port scan routes to the port it finds without restarting the instance. **Status:** todo
+**Worker:** worker4 **Goal:** a first deploy rolls one ReplicaSet whichever port the image's HTTP listener turns out to be on. HTTP port discovery changes only the Services and the route, never the pod template, as Render's port scan routes to the port it finds without restarting the instance. **Status:** todo (t001–t004 done 2026-11-14; t005 replays the DoD after the next production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Reproduce in envtest and pin which pod-template fields discovery changes on a first release | 30m | — |
-| [t002](t002.md) | Keep a first release's pod template independent of HTTP port discovery | 60m | t001 |
-| [t003](t003.md) | Simplify | 15m | t002 |
-| [t004](t004.md) | Test coverage | 30m | t002 |
+| [t001](done/t001.md) | Reproduce in envtest and pin which pod-template fields discovery changes on a first release — **DONE** | 30m | — |
+| [t002](done/t002.md) | Keep a first release's pod template independent of HTTP port discovery — **DONE** | 60m | t001 |
+| [t003](done/t003.md) | Simplify — **DONE** | 15m | t002 |
+| [t004](done/t004.md) | Test coverage — **DONE** | 30m | t002 |
 | [t005](t005.md) | Closeout (live replay on production) | 30m | t003, t004 |
 
 ## Definition of done
