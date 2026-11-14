@@ -1,6 +1,6 @@
 # w4 · m355 — Between two linked environment groups, bex gives the key to the group linked last, while Render gives it to the group created last; relinking an older group silently flips the value a service runs
 
-**Worker:** worker4 **Goal:** when two linked environment groups define the same env var or secret file, a service runs the value from the **most recently created** group, as Render documents. Relinking, or linking in a different order, no longer changes the winner. A service's own value still beats every group. **Status:** todo (t001–t007 done; t008 production replay open)
+**Worker:** worker4 **Goal:** when two linked environment groups define the same env var or secret file, a service runs the value from the **most recently created** group, as Render documents. Relinking, or linking in a different order, no longer changes the winner. A service's own value still beats every group. **Status:** blocked — release gate (t001–t007 done, code shipped 2026-11-14 by `/loopx w4`; t008 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
