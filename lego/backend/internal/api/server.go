@@ -264,6 +264,9 @@ type Server struct {
 	// requests into steering turns (w9/m344, ADR047 D11); nil leaves those
 	// GitHub App events ignored.
 	PRFeedback *agentsessions.PRFeedback
+	// PRStates reads every agent-session pull request's state from GitHub
+	// and applies pull_request deliveries (w9/m386); nil leaves states unread.
+	PRStates *agentsessions.PRStates
 
 	// RateLimiter, when set, enforces per-caller token-bucket limits on the three
 	// auth-gated surfaces (REST, GraphQL, MCP). nil disables rate limiting. The
@@ -431,6 +434,9 @@ type Deps struct {
 	// AgentEnvironmentStore persists each workspace's agent environment
 	// (w10/m17); nil ⇒ defaults only.
 	AgentEnvironmentStore agentsessions.EnvironmentStore
+	// AgentMetaRouteMaxSessions caps live muse sessions across every workspace
+	// on the one Meta key (BEX_AGENT_META_ROUTE_MAX_SESSIONS); 0 ⇒ default.
+	AgentMetaRouteMaxSessions int
 	// AgentSpendStore reads the agent-model spend controls (ADR091 D5,
 	// D10.1): the trust tier's session limit and the environment's spend
 	// fields; nil ⇒ neither.
@@ -451,6 +457,9 @@ type Deps struct {
 	// AgentSkillStore is the ADR099 workspace skills table; nil ⇒ skills
 	// unavailable.
 	AgentSkillStore agentsessions.SkillStore
+	// AgentSecretScopeStore holds workspace agent secret scopes (w9/m385,
+	// ADR098 D9); nil ⇒ every agent secret is explicit.
+	AgentSecretScopeStore agentsessions.SecretScopeStore
 	// AgentAutomationStore is the ADR101 agent automations table; nil =>
 	// automations unavailable.
 	AgentAutomationStore agentsessions.AutomationStore
@@ -1135,8 +1144,11 @@ func NewServer(base *core.Base, d Deps) *Server {
 		AttachmentRows:   d.AgentAttachmentStore,
 		AttachmentCopier: agentCopier,
 		Skills:           d.AgentSkillStore,
+		SecretScopes:     d.AgentSecretScopeStore,
 		Automations:      d.AgentAutomationStore,
 		Feedback:         d.AgentFeedbackStore,
+
+		MetaRouteMaxSessions: d.AgentMetaRouteMaxSessions,
 	}
 	// A membership exit ends the sessions the member started (w5/186).
 	memberExit := agentsessions.MemberExit{Service: agentSessionsSvc}
@@ -1482,6 +1494,9 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 		// assigning a nil *github.Service would trap a typed-nil in the interface.
 		if s.GitHub != nil {
 			wh.Installations = s.GitHub.InstallationResolver()
+		}
+		if s.PRStates != nil {
+			wh.PRStates = s.PRStates
 		}
 		if s.PRFeedback != nil {
 			wh.PRFeedback = s.PRFeedback

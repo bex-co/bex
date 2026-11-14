@@ -10,6 +10,7 @@ import {
 } from "@/test/mocks/agent-session";
 import { AgentModelSource } from "@/graphql/definitions";
 import type { AgentSessionModelCost } from "@/features/agent-sessions/hooks/use-agent-session-model-cost";
+import type { AppliedSecret } from "@/features/agent-sessions/hooks/use-agent-session-applied-secrets";
 
 const navigateMock = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -69,6 +70,15 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-model-cost", () => ({
   }),
 }));
 
+// What the latest turn received (w9/m385) reads the detail query on its own.
+const appliedSecrets = vi.hoisted(() => ({ current: [] as AppliedSecret[] }));
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-applied-secrets",
+  () => ({
+    useAgentSessionAppliedSecrets: () => appliedSecrets.current,
+  }),
+);
+
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
   return agentSessionView({ phase: "completed", turns: 1, ...over });
 }
@@ -86,6 +96,7 @@ function heading(): HTMLElement {
 
 describe("SessionDetailHeader", () => {
   beforeEach(() => {
+    appliedSecrets.current = [];
     modelCost.cost = null;
     modelCost.loading = false;
     navigateMock.mockClear();
@@ -94,6 +105,54 @@ describe("SessionDetailHeader", () => {
     deleteMock.mockClear();
     setTagsMock.mockReset();
     setTagsMock.mockResolvedValue(undefined);
+  });
+
+  // w9/m385: the latest turn's secrets, each with why it received it.
+  it("lists the secrets the latest turn received with their sources", async () => {
+    appliedSecrets.current = [
+      { name: "STRIPE_KEY", source: "explicit" },
+      { name: "API_DEPLOY_KEY", source: "repo" },
+      { name: "ORG_TOKEN", source: "workspace" },
+      { name: "TEST_TOKEN", source: "inline" },
+    ];
+    render(
+      <SessionDetailHeader
+        session={view({ secretNames: ["STRIPE_KEY", "TEST_TOKEN"] })}
+      />,
+    );
+    expect(screen.queryByTestId("session-secret-names")).toBeNull();
+    const trigger = screen.getByTestId("session-applied-secrets");
+    expect(trigger).toHaveTextContent("4 secrets");
+    await userEvent.click(trigger);
+    const list = await screen.findByRole("list", {
+      name: "Secrets in the latest turn",
+    });
+    expect(
+      within(list)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent),
+    ).toEqual([
+      "STRIPE_KEY· selected",
+      "API_DEPLOY_KEY· repository",
+      "ORG_TOKEN· workspace",
+      "TEST_TOKEN· this session",
+    ]);
+  });
+
+  it("counts the attached secrets until a turn has applied any", () => {
+    render(
+      <SessionDetailHeader session={view({ secretNames: ["STRIPE_KEY"] })} />,
+    );
+    expect(screen.getByTestId("session-secret-names")).toHaveTextContent(
+      "1 secret",
+    );
+    expect(screen.queryByTestId("session-applied-secrets")).toBeNull();
+  });
+
+  it("shows no secrets when the session has none", () => {
+    render(<SessionDetailHeader session={view()} />);
+    expect(screen.queryByTestId("session-secret-names")).toBeNull();
+    expect(screen.queryByTestId("session-applied-secrets")).toBeNull();
   });
 
   // w7/m296: every session says who started it, as Devin's sessions do.
@@ -278,6 +337,42 @@ describe("SessionDetailHeader", () => {
       "href",
       "https://github.com/acme/widgets/pull/7",
     );
+  });
+
+  // w9/m386: the PR's state sits beside the #N link once bex has read it.
+  it.each([
+    ["open", "Open"],
+    ["merged", "Merged"],
+    ["closed", "Closed"],
+  ] as const)("shows a %s PR's state beside its link", (prState, label) => {
+    render(
+      <SessionDetailHeader
+        session={view({
+          prNumber: 7,
+          prUrl: "https://github.com/acme/widgets/pull/7",
+          prState,
+        })}
+      />,
+    );
+    const link = screen.getByRole("link", { name: /#7/ });
+    const badge = screen.getByText(label);
+    expect(badge).toHaveAttribute("data-pr-state", prState);
+    expect(link).not.toContainElement(badge);
+    expect(link.parentElement).toContainElement(badge);
+  });
+
+  it("shows no PR state until bex has read it", () => {
+    render(
+      <SessionDetailHeader
+        session={view({
+          prNumber: 7,
+          prUrl: "https://github.com/acme/widgets/pull/7",
+          prState: null,
+        })}
+      />,
+    );
+    expect(screen.getByRole("link", { name: /#7/ })).toBeInTheDocument();
+    expect(document.querySelector("[data-pr-state]")).toBeNull();
   });
 
   // The default (opted-out) session has no PR at all — the badge must stay away

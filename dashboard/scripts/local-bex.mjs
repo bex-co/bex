@@ -2839,8 +2839,15 @@ function resolveGraphQL({ operationName, variables = {} }) {
       };
     case "SyncBlueprint":
       return { syncBlueprint: null };
-    case "AgentSessions":
-      return { agentSessions: agentSessionsFor(variables.ownerId) };
+    case "AgentSessions": {
+      // The list's PR-state filter; the stub honors no other filter.
+      const prStates = variables.prStates ?? [];
+      return {
+        agentSessions: agentSessionsFor(variables.ownerId).filter(
+          (s) => prStates.length === 0 || prStates.includes(s.prState),
+        ),
+      };
+    }
     case "AgentSession": {
       const one = agentSessionsFor().find((s) => s.id === variables.id);
       return { agentSession: one ?? null };
@@ -2870,6 +2877,7 @@ function resolveGraphQL({ operationName, variables = {} }) {
         headSha: null,
         prUrl: null,
         prNumber: null,
+        prState: null,
         turns: 1,
         deliveryMode: null,
         failureReason: null,
@@ -2925,6 +2933,8 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
     headSha: null,
     prUrl: null,
     prNumber: null,
+    // The PR's state as bex last read it from GitHub.
+    prState: null,
     turns: 0,
     deliveryMode: null,
     failureReason: null,
@@ -2961,6 +2971,7 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
       headSha: "56e215d4e64e30ead0c7dafd096b8fec46c26342",
       prUrl: "https://github.com/bex-co/bex-hello-go-live/pull/6",
       prNumber: 6,
+      prState: "merged",
       turns: 1,
       deliveryMode: null,
       createdAt: agoISO(2),
@@ -2977,6 +2988,7 @@ function agentSessionsFor(ownerId = WORKSPACE_DEFAULT) {
       headSha: "f327bff2b40951cac1d432e9f198592f5d000da0",
       prUrl: "https://github.com/bex-co/bex-hello-go-live/pull/5",
       prNumber: 5,
+      prState: "open",
       turns: 2,
       deliveryMode: "redispatch",
       createdAt: agoISO(9),

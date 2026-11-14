@@ -84,6 +84,7 @@ jobs:
   # --- secret scanning: gitleaks over the commits being deployed (w7/002) ---
   # Runs in parallel with the test gates. Findings are warn-first and do not
   # block CI until the historical baseline is tuned; scanner setup failures do.
+  # Shapes that are never credentials are allowlisted in .gitleaks.toml.
   # Distinct from trivy CVE scanning (w7/m10 — image vulnerabilities) and
   # Dependabot (w1/006 — dependency CVEs): this catches secrets in the repo itself.
   secret-scan:

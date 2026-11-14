@@ -269,6 +269,84 @@ describe("SessionList", () => {
     expect(screen.queryByRole("link", { name: /#7/ })).not.toBeInTheDocument();
   });
 
+  // w9/m386: the PR's state sits beside its link, on recents and the table.
+  describe.each([
+    ["recents", undefined],
+    ["table", "all" as const],
+  ])("PR state on %s", (_layout, archiveFilter) => {
+    it.each([
+      ["open", "Open"],
+      ["merged", "Merged"],
+      ["closed", "Closed"],
+    ] as const)("badges a %s PR as %s beside its link", (prState, label) => {
+      render(
+        <SessionList
+          loading={false}
+          archiveFilter={archiveFilter}
+          sessions={[
+            view({
+              prNumber: 42,
+              prUrl: "https://github.com/acme/widgets/pull/42",
+              prState,
+            }),
+          ]}
+        />,
+      );
+      const link = screen.getByRole("link", { name: /#42/ });
+      const badge = screen.getByText(label);
+      expect(badge).toHaveAttribute("data-pr-state", prState);
+      // Beside the link, not inside it: the badge is not part of the link.
+      expect(link).not.toContainElement(badge);
+      expect(link.parentElement).toContainElement(badge);
+      // Each state reads in the phase chip's colors.
+      expect(badge).toHaveClass(
+        {
+          open: "text-blue-700",
+          merged: "text-emerald-800",
+          closed: "bg-secondary",
+        }[prState],
+      );
+    });
+
+    it("shows no state until bex has read it, nor on a session without a PR", () => {
+      render(
+        <SessionList
+          loading={false}
+          archiveFilter={archiveFilter}
+          sessions={[
+            view({
+              id: "as-unread",
+              task: "unread",
+              prNumber: 5,
+              prUrl: "https://github.com/acme/widgets/pull/5",
+              prState: null,
+            }),
+            view({ id: "as-nopr", task: "no pr", prNumber: null }),
+          ]}
+        />,
+      );
+      expect(screen.getByRole("link", { name: /#5/ })).toBeInTheDocument();
+      expect(document.querySelector("[data-pr-state]")).toBeNull();
+      for (const label of ["Open", "Merged", "Closed"]) {
+        expect(screen.queryByText(label)).not.toBeInTheDocument();
+      }
+    });
+  });
+
+  it("explains an empty PR-state filter as a filtered list", () => {
+    render(
+      <SessionList
+        sessions={[]}
+        loading={false}
+        archiveFilter="archived"
+        prState="merged"
+        onClearFilters={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("No matching sessions")).toBeInTheDocument();
+    expect(screen.queryByText("No archived sessions")).not.toBeInTheDocument();
+  });
+
   it("falls back to the session id when the task prompt is empty", () => {
     render(
       <SessionList

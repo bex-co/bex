@@ -41,6 +41,12 @@ const enLegal: Record<string, TranslationEntry> = {
       "Requests are routed only to providers that do not store prompts beyond processing them and do not train on them: bex uses OpenRouter provider routing with data collection denied.",
     description: "Terms: the routing policy",
   },
+  "legal.agentModels.dataMuse": {
+    message:
+      "Muse Code sessions are the exception. bex sends them directly to Meta's model API on its contributor tier, under which Meta may use the prompts, code, files and context sent, and the responses returned, to train its models. Muse Code stays off in a workspace until an admin turns it on and acknowledges this.",
+    description:
+      "Terms: the Muse Code exception to the routing policy (ADR108)",
+  },
   "legal.agentModels.dataOwnKey": {
     message:
       "If the workspace uses its own provider key instead, requests go to your provider under your agreement with them, and bex bills no model tokens.",

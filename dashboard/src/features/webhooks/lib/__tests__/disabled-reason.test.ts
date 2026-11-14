@@ -5,12 +5,18 @@ const t = () => "translated";
 
 describe("disabledReasonText (w21/022)", () => {
   it("translates the auto-disable sentence", () => {
+    const keys: string[] = [];
+    const translate = (key: string) => {
+      keys.push(key);
+      return "translated";
+    };
     expect(
       disabledReasonText(
         "disabled automatically after repeated delivery failures",
-        t,
+        translate,
       ),
     ).toBe("translated");
+    expect(keys).toEqual(["webhooks.disabledReasonAuto"]);
   });
   it("shows nothing for a manual disable or no reason", () => {
     expect(disabledReasonText("disabled manually", t)).toBeNull();

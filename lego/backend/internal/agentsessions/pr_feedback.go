@@ -215,6 +215,7 @@ type feedbackEvent struct {
 	PullRequest struct {
 		Number int    `json:"number"`
 		State  string `json:"state"`
+		Merged bool   `json:"merged"`
 	} `json:"pull_request"`
 	// check_suite
 	CheckSuite struct {

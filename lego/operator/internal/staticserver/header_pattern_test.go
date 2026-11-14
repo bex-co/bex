@@ -30,7 +30,8 @@ func TestHeaderPatternLiteralBoundaries(t *testing.T) {
 		{"/**/*.css", "/assets/.css", true},
 		{"/**/*", "/blog/", true},
 		{"/**/*", "/blog", false},
-		{"/blog/*", "/blog", true}, // Existing subtree compatibility.
+		{"/blog/*", "/blog", false}, // Render skips the bare path (w8/325).
+		{"/blog/*", "/blog/", true},
 		{"/*.css", "/theme.CSS", false},
 		{"/*.css", "/a%2Fb.css", true}, // Input is already URL-decoded once.
 		{"/*.css", "/a/b.css", false},

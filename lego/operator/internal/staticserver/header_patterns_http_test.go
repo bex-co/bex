@@ -66,7 +66,12 @@ func TestHeaderPatternsResolvedErrors(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if response.StatusCode != tc.code || response.Header.Get("X-Selected") != "nested" {
+				// A bare 404 carries none of the site's rules, as on Render (w8/322).
+				wantSelected := "nested"
+				if tc.code == http.StatusNotFound {
+					wantSelected = ""
+				}
+				if response.StatusCode != tc.code || response.Header.Get("X-Selected") != wantSelected {
 					t.Errorf("%s response=%d headers=%v", method, response.StatusCode, response.Header)
 				}
 				if response.Header.Get("Content-Type") != "text/plain; charset=utf-8" || response.Header.Get("Content-Length") == "999" || response.Header.Get("Transfer-Encoding") == "999" {

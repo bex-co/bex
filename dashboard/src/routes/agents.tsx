@@ -19,12 +19,15 @@ import {
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
 import { SessionList } from "@/features/agent-sessions/components/session-list";
 import {
+  SESSION_LIST_HEADING_ROW_CLASS,
+  SessionPrStateFilter,
+} from "@/features/agent-sessions/components/session-pr-state-filter";
+import {
   agentSessionArchivedQueryValue,
   parseAgentSessionArchivedFilter,
   parseAgentSessionPhase,
-  type AgentSessionArchivedFilter,
+  parseAgentSessionPrState,
   type AgentSessionListSearch,
-  type AgentSessionPhase,
 } from "@/features/agent-sessions/types";
 
 export interface AgentsSearch extends AgentSessionListSearch {
@@ -42,11 +45,12 @@ export const Route = createFileRoute("/agents")({
   },
   // Prefetch the requested working set on hover-intent so `/agents` mounts warm
   // (same pattern as `/` and `/blueprints`). Variables match the list hook's
-  // archive/phase filters and default page size exactly.
+  // archive/phase/tag/PR-state filters and default page size exactly.
   loaderDeps: ({ search }) => ({
     archived: search.archived,
     phase: search.phase,
     tag: search.tag,
+    prState: search.prState,
   }),
   loader: ({ context, cause, deps }) => {
     const ownerId = context.workspaceId;
@@ -62,6 +66,7 @@ export const Route = createFileRoute("/agents")({
             repo: null,
             tag: deps.tag ?? null,
             mine: null,
+            prStates: deps.prState ? [deps.prState] : null,
             limit: AGENT_SESSION_PAGE_SIZE,
           },
           fetchPolicy: titleLoaderFetchPolicy(cause),
@@ -74,6 +79,7 @@ export const Route = createFileRoute("/agents")({
   // (ADR065 D3 — the sidebar's Archived entry targets `?archived=archived`);
   // legacy `?archived=true` is still accepted for old links and maps to "archived".
   // `?phase=` is still honored if linked; the page no longer offers a dropdown.
+  // `?prState=open|merged|closed` is the list's PR-state filter.
   // A rejected value is undefined, not omitted: the router merges this over the
   // raw search, so `?phase=bogus` would otherwise reach the list query (w5/100).
   validateSearch: (search: Record<string, unknown>): AgentsSearch => ({
@@ -81,6 +87,7 @@ export const Route = createFileRoute("/agents")({
     archived: parseAgentSessionArchivedFilter(search.archived),
     phase: parseAgentSessionPhase(search.phase),
     tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
+    prState: parseAgentSessionPrState(search.prState),
   }),
   head: ({ match }) => translatedTitleHead("agentSessions.pageTitle", match),
 });
@@ -92,9 +99,14 @@ export const Route = createFileRoute("/agents")({
  * history view. This page renders no sidebar of its own.
  */
 function AgentSessionsPage() {
-  const { archived, phase, tag } = Route.useSearch();
+  const { archived, phase, tag, prState } = Route.useSearch();
   return (
-    <AgentSessionsPageContent archived={archived} phase={phase} tag={tag} />
+    <AgentSessionsPageContent
+      archived={archived}
+      phase={phase}
+      tag={tag}
+      prState={prState}
+    />
   );
 }
 
@@ -107,16 +119,21 @@ function agentSessionsPageMode({
   archived,
   phase,
   tag,
-}: Pick<AgentsSearch, "archived" | "phase" | "tag">): "composer" | "list" {
-  return archived != null || phase != null || tag != null ? "list" : "composer";
+  prState,
+}: AgentSessionListSearch): "composer" | "list" {
+  return archived != null || phase != null || tag != null || prState != null
+    ? "list"
+    : "composer";
 }
 
 export function AgentSessionsPageContent({
   archived,
   phase,
   tag,
-}: Pick<AgentsSearch, "archived" | "phase" | "tag">) {
-  const listMode = agentSessionsPageMode({ archived, phase, tag }) === "list";
+  prState,
+}: AgentSessionListSearch) {
+  const listMode =
+    agentSessionsPageMode({ archived, phase, tag, prState }) === "list";
 
   return (
     <DashboardLayout>
@@ -125,7 +142,12 @@ export function AgentSessionsPageContent({
           {listMode ? (
             <>
               <PageHeader />
-              <SessionListSection archived={archived} phase={phase} tag={tag} />
+              <SessionListSection
+                archived={archived}
+                phase={phase}
+                tag={tag}
+                prState={prState}
+              />
             </>
           ) : (
             <ComposerSection />
@@ -164,11 +186,8 @@ function SessionListSection({
   archived,
   phase,
   tag,
-}: {
-  archived?: AgentSessionArchivedFilter;
-  phase?: AgentSessionPhase;
-  tag?: string;
-}) {
+  prState,
+}: AgentSessionListSearch) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { sessions, loading, error, refetch, loadMore, loadingMore, hasMore } =
@@ -177,6 +196,7 @@ function SessionListSection({
       archived,
       phases: phase ? [phase] : undefined,
       tag,
+      prStates: prState ? [prState] : undefined,
     });
 
   const heading = tag
@@ -192,9 +212,18 @@ function SessionListSection({
       className="mx-auto w-full max-w-4xl space-y-3"
       aria-labelledby="session-list-title"
     >
-      <h2 id="session-list-title" className="text-base font-semibold">
-        {heading}
-      </h2>
+      {/* One row at every width: the heading truncates rather than wrapping
+          the filter onto a second line, so the pending skeleton (which draws
+          this row at the same height) never shifts on load. */}
+      <div className={SESSION_LIST_HEADING_ROW_CLASS}>
+        <h2
+          id="session-list-title"
+          className="min-w-0 truncate text-base font-semibold"
+        >
+          {heading}
+        </h2>
+        <SessionPrStateFilter search={{ archived, phase, tag, prState }} />
+      </div>
       <SessionList
         sessions={sessions}
         loading={loading}
@@ -202,6 +231,7 @@ function SessionListSection({
         archiveFilter={archived}
         phase={phase}
         tag={tag}
+        prState={prState}
         onChanged={() => refetch()}
         onRetry={() => void refetch()}
         onClearFilters={() => void navigate({ to: "/agents", search: {} })}

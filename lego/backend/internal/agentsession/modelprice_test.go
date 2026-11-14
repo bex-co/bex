@@ -254,6 +254,13 @@ func TestModelUsageRecorderPricesByCostSource(t *testing.T) {
 	if computed.CostSource != store.AgentModelCostComputed || computed.UpstreamCostMicroUSD != 300_000 || computed.PriceMicroUSD != 390_000 {
 		t.Fatalf("computed = %+v, want computed 300000 → 390000 (peak override)", computed)
 	}
+	// Muse on Meta's API (ADR108) has no OpenRouter row and reports no cost:
+	// pricing.yaml's list price applies. 1M input ($0.10) + 1M cached ($0.002)
+	// + 1M output ($0.20) = $0.302 → × 1.3.
+	muse := record(ModelUsageReport{Model: "muse-spark-1.3-contributor", InputTokens: 1_000_000, CacheReadTokens: 1_000_000, OutputTokens: 1_000_000})
+	if muse.CostSource != store.AgentModelCostComputed || muse.UpstreamCostMicroUSD != 302_000 || muse.PriceMicroUSD != 392_600 {
+		t.Fatalf("muse = %+v, want computed 302000 → 392600", muse)
+	}
 	// The start time picks the price: 01:00 tokens started at 00:59 are off-peak.
 	offPeak := record(ModelUsageReport{Model: DefaultDevModel, InputTokens: 1_000_000, StartedAt: time.Date(2026, 11, 3, 0, 59, 0, 0, time.UTC)})
 	if offPeak.UpstreamCostMicroUSD != 150_000 {

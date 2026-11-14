@@ -36,6 +36,9 @@ func TestRedirectToExternalHost(t *testing.T) {
 		status         int
 	}{
 		{"/maps/a/b.png", "https://cdn.example.com/maps/a/b.png", http.StatusMovedPermanently},
+		// The subtree rule never claims the bare path (w8/325, as wc3v.onrender.com).
+		{"/maps", "", http.StatusNotFound},
+		{"/maps/", "https://cdn.example.com/maps/", http.StatusMovedPermanently},
 		{"/old", "https://example.org/new?x=1", http.StatusMovedPermanently},
 		{"/at/@evil.com/x", "https://cdn.example.com/@evil.com/x", http.StatusMovedPermanently},
 		{"/at//evil.com", "https://cdn.example.com/evil.com", http.StatusMovedPermanently},

@@ -14,6 +14,15 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   modelKeySet
   modelSource
   registryHosts
+  # The agent profiles members can start sessions with, and each profile
+  # whose model provider may train on session data with its admin
+  # acknowledgement (w7/m392).
+  enabledAgents
+  agentDataUse {
+    agent
+    acknowledgedAt
+    acknowledgedBy
+  }
   updatedAt
   # Agent-model spend controls (ADR091 D5, D10.1); null when the store is off.
   # agentModelMonthlySpendCapUsd is the effective cap: min(the admin override

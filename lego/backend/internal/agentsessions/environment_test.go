@@ -88,6 +88,18 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 			row.ModelKeySetAt = &at
 		}
 	}
+	if patch.DisabledAgents != nil {
+		row.DisabledAgents = slices.Clone(*patch.DisabledAgents)
+	}
+	for _, agent := range patch.AcknowledgeDataUse {
+		if _, kept := row.DataUseAcks[agent]; kept {
+			continue
+		}
+		if row.DataUseAcks == nil {
+			row.DataUseAcks = map[string]store.AgentDataUseAck{}
+		}
+		row.DataUseAcks[agent] = store.AgentDataUseAck{At: time.Date(2026, 11, 14, 9, 0, 0, 0, time.UTC), By: patch.AcknowledgedBy}
+	}
 	row.UpdatedAt = time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
 	f.rows[ws] = row
 	return row, nil
@@ -156,7 +168,8 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	if err != nil {
 		t.Fatalf("Environment: %v", err)
 	}
-	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains()}
+	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
+		EnabledAgents: []string{"claude", "codex", "gemini"}, AgentDataUse: []AgentDataUse{{Agent: "muse"}}}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
 	}
@@ -643,5 +656,96 @@ func TestSteerFollowsAFullTierSwitch(t *testing.T) {
 		if lifecycle.fullInternet != full || hasProxy != full || lifecycle.driverEnv["BEX_AGENT_NETWORK_TIER"] != tier {
 			t.Fatalf("steer under %s: full=%v HTTPS_PROXY=%v tier env=%q", tier, lifecycle.fullInternet, hasProxy, lifecycle.driverEnv["BEX_AGENT_NETWORK_TIER"])
 		}
+	}
+}
+
+// w7/m392: admins choose the available agents. Muse Code (whose provider may
+// train on session data, ADR108) starts off and turns on only with an
+// acknowledgement, which the first admin's record keeps; unknown ids and
+// stray acknowledgements are refused; members cannot change the list.
+func TestEnvironmentAgentAvailability(t *testing.T) {
+	envs := newFakeEnvironments()
+	svc := environmentService("tea-a", envs)
+
+	_, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{EnabledAgents: &[]string{"claude", "muse"}})
+	if !isCode(err, DataUseUnacknowledgedCode) {
+		t.Fatalf("enable muse without acknowledgement = %v, want %s", err, DataUseUnacknowledgedCode)
+	}
+	for _, input := range []EnvironmentInput{
+		{EnabledAgents: &[]string{"claude", "copilot"}},
+		{AcknowledgeAgentDataUse: []string{"codex"}},
+	} {
+		if _, err := svc.UpdateEnvironment(caller("admin"), "tea-a", input); !isCode(err, AgentListInvalidCode) {
+			t.Fatalf("update %+v = %v, want %s", input, err, AgentListInvalidCode)
+		}
+	}
+	if _, err := svc.UpdateEnvironment(caller("dev"), "tea-a", EnvironmentInput{EnabledAgents: &[]string{"claude"}}); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("member update = %v, want forbidden", err)
+	}
+	if len(envs.rows) != 0 {
+		t.Fatalf("a refused update wrote %+v", envs.rows)
+	}
+
+	// An acknowledgement alone records it but turns nothing on.
+	got, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{AcknowledgeAgentDataUse: []string{"muse"}})
+	if err != nil || !slices.Equal(got.EnabledAgents, []string{"claude", "codex", "gemini"}) || got.AgentDataUse[0].AcknowledgedAt == nil {
+		t.Fatalf("acknowledgement alone = %+v / %+v, %v", got.EnabledAgents, got.AgentDataUse, err)
+	}
+	got, err = svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{
+		EnabledAgents: &[]string{"claude", "muse"}, AcknowledgeAgentDataUse: []string{"muse"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(got.EnabledAgents, []string{"claude", "muse"}) || len(got.AgentDataUse) != 1 ||
+		got.AgentDataUse[0].AcknowledgedAt == nil || *got.AgentDataUse[0].AcknowledgedBy != "admin" {
+		t.Fatalf("after enabling muse = %+v / %+v", got.EnabledAgents, got.AgentDataUse)
+	}
+	if row := envs.rows["tea-a"]; !slices.Equal(row.DisabledAgents, []string{"codex", "gemini"}) {
+		t.Fatalf("stored disabled agents = %v, want codex and gemini", row.DisabledAgents)
+	}
+	// Turning muse off and on again needs no new acknowledgement, and the
+	// first one is kept.
+	if _, err := svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{EnabledAgents: &[]string{"claude"}}); err != nil {
+		t.Fatal(err)
+	}
+	got, err = svc.UpdateEnvironment(caller("admin"), "tea-a", EnvironmentInput{EnabledAgents: &[]string{"claude", "muse", "codex"}})
+	if err != nil || !slices.Equal(got.EnabledAgents, []string{"claude", "codex", "muse"}) {
+		t.Fatalf("re-enable = %+v, %v", got.EnabledAgents, err)
+	}
+}
+
+// A turned-off agent disappears from capabilities and cannot start a
+// session on any path (they all run resolveCreateModel); a session that is
+// already running can still be steered.
+func TestDisabledAgentIsRefusedAtCreateButKeepsSteering(t *testing.T) {
+	svc, _, _, _ := fixture()
+	running, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	envs := newFakeEnvironments()
+	envs.rows["tea-a"] = store.AgentEnvironment{WorkspaceID: "tea-a", NetworkTier: NetworkTierRegistries, DisabledAgents: []string{"codex"}}
+	svc.Environments = envs
+
+	caps, err := svc.Capabilities(caller("alice"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, profile := range caps.Agents {
+		if profile.ID == "codex" || profile.ID == "muse" {
+			t.Fatalf("capabilities offered %s: %+v", profile.ID, caps.Agents)
+		}
+	}
+	second := createInput()
+	second.Branch = "bex-agent/session-second"
+	if _, err := svc.Create(caller("alice"), second); !isCode(err, AgentDisabledCode) {
+		t.Fatalf("create a turned-off agent = %v, want %s", err, AgentDisabledCode)
+	}
+	if !agentEnabled(envs.rows["tea-a"], "claude") || agentEnabled(envs.rows["tea-a"], "muse") {
+		t.Fatal("claude must stay on and muse off without its acknowledgement")
+	}
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: running.ID, Prompt: "keep going"}); isCode(err, AgentDisabledCode) {
+		t.Fatalf("steering a running session of a turned-off agent was refused: %v", err)
 	}
 }

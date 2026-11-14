@@ -89,6 +89,16 @@ type GitWebhook struct {
 	// check suites, and the `/bex` comments that start a session.
 	// Nil drops them.
 	PRFeedback PRFeedbackSink
+	// PRStates applies pull_request deliveries to the state of agent-session
+	// pull requests (w9/m386). Nil drops them; the reconciler still reads
+	// every state from GitHub.
+	PRStates PRStateSink
+}
+
+// PRStateSink applies one GitHub App pull_request delivery to the sessions in
+// workspaceIDs (implemented by agentsessions.PRStates).
+type PRStateSink interface {
+	HandlePullRequestEvent(ctx context.Context, body []byte, workspaceIDs []string) error
 }
 
 // PRFeedbackSink queues feedback on agent-session pull requests, or starts a
@@ -367,26 +377,60 @@ func (ev prFeedbackEvent) worthALookup(event string) bool {
 	case "pull_request_review_comment":
 		_, command := github.BexCommand(ev.Comment.Body)
 		return ev.Action == "created" && ev.Comment.User.Type == "User" && ev.PullRequest.State == "open" && command
+	case "pull_request":
+		return prStateActions[ev.Action]
 	}
 	return true
+}
+
+// prStateActions are the pull_request actions that can change a pull
+// request's state; synchronize, labeled, edited and the rest are dropped
+// before any workspace lookup.
+var prStateActions = map[string]bool{"opened": true, "closed": true, "reopened": true, "ready_for_review": true, "converted_to_draft": true}
+
+// deliveryScopes resolves a GitHub App delivery worth acting on to the
+// workspaces its installation is bound to. Anything else acts on nothing:
+// only the App's signed installation id says whose session it is.
+func (h *GitWebhook) deliveryScopes(ctx context.Context, event string, body []byte, key verifiedKey) ([]string, bool) {
+	if key != keyGitHubApp {
+		return nil, false
+	}
+	var ev prFeedbackEvent
+	if json.Unmarshal(body, &ev) != nil || ev.Installation.ID == 0 || !ev.worthALookup(event) {
+		return nil, false
+	}
+	scopes, proceed := h.scopesFor(ctx, key, ev.Installation.ID)
+	if !proceed || slices.Contains(scopes, "") {
+		return nil, false
+	}
+	return scopes, true
 }
 
 // forwardPRFeedback hands a GitHub App delivery to the PR feedback sink,
 // confined to the workspaces its installation is bound to. Anything else is
 // dropped: only the App's signed installation id says whose session it is.
 func (h *GitWebhook) forwardPRFeedback(ctx context.Context, event string, body []byte, key verifiedKey) (int, error) {
-	if h.PRFeedback == nil || key != keyGitHubApp {
+	if h.PRFeedback == nil {
 		return 0, nil
 	}
-	var ev prFeedbackEvent
-	if json.Unmarshal(body, &ev) != nil || ev.Installation.ID == 0 || !ev.worthALookup(event) {
-		return 0, nil
-	}
-	scopes, proceed := h.scopesFor(ctx, key, ev.Installation.ID)
-	if !proceed || slices.Contains(scopes, "") {
+	scopes, ok := h.deliveryScopes(ctx, event, body, key)
+	if !ok {
 		return 0, nil
 	}
 	return h.PRFeedback.HandlePRFeedback(ctx, event, body, scopes)
+}
+
+// forwardPRState hands a GitHub App pull_request delivery to the state sink,
+// confined like forwardPRFeedback to the installation's workspaces.
+func (h *GitWebhook) forwardPRState(ctx context.Context, body []byte, key verifiedKey) error {
+	if h.PRStates == nil {
+		return nil
+	}
+	scopes, ok := h.deliveryScopes(ctx, "pull_request", body, key)
+	if !ok {
+		return nil
+	}
+	return h.PRStates.HandlePullRequestEvent(ctx, body, scopes)
 }
 
 func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -431,6 +475,13 @@ func (h *GitWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		core.WriteJSON(w, http.StatusOK, map[string]int{"queued": queued})
+		return
+	}
+	if event == "pull_request" {
+		if err := h.forwardPRState(r.Context(), body, key); err != nil {
+			log.Printf("webhook: pull_request state: %v", err)
+		}
+		core.WriteJSON(w, http.StatusOK, map[string]string{"accepted": event})
 		return
 	}
 	if event == "check_suite" {

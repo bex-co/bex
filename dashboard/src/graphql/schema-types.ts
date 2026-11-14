@@ -44,6 +44,13 @@ export type ActionDecision = {
   reason: Maybe<Scalars['String']['output']>;
 };
 
+/** A secret a session's latest turn received: its name and why. */
+export type AgentAppliedSecret = {
+  __typename: 'AgentAppliedSecret';
+  name: Scalars['String']['output'];
+  source: Scalars['String']['output'];
+};
+
 export type AgentAttachment = {
   __typename: 'AgentAttachment';
   createdAt: Scalars['String']['output'];
@@ -235,8 +242,19 @@ export type AgentAutomationTriggerInput = {
   type: Scalars['String']['input'];
 };
 
+export type AgentDataUse = {
+  __typename: 'AgentDataUse';
+  acknowledgedAt: Maybe<Scalars['String']['output']>;
+  acknowledgedBy: Maybe<Scalars['String']['output']>;
+  agent: Scalars['String']['output'];
+};
+
 export type AgentEnvironment = {
   __typename: 'AgentEnvironment';
+  /** Each agent profile whose model provider may train on what its sessions send, and the admin acknowledgement turning it on requires. */
+  agentDataUse: Array<AgentDataUse>;
+  /** Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold. */
+  agentModelChargesAtThreshold: Maybe<Scalars['Boolean']['output']>;
   /** The highest override an admin may set (10x the plan default). */
   agentModelMaxSpendCapUsd: Maybe<Scalars['Float']['output']>;
   /** Effective monthly agent-model spend cap in USD: min(the admin override or the plan default, the trust tier's ceiling). */
@@ -245,8 +263,6 @@ export type AgentEnvironment = {
   agentModelPlanSpendCapUsd: Maybe<Scalars['Float']['output']>;
   /** The admin's spend cap override in USD; null means the plan default. */
   agentModelSpendCapOverrideUsd: Maybe<Scalars['Float']['output']>;
-  /** Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold. */
-  agentModelChargesAtThreshold: Maybe<Scalars['Boolean']['output']>;
   /** Platform-model requests are refused at the spend cap now. False while the next request would charge the card at the trust tier's threshold instead. */
   agentModelSpendCapReached: Maybe<Scalars['Boolean']['output']>;
   /** The trust tier's ceiling, not the plan default or override, sets the effective spend cap. */
@@ -257,11 +273,13 @@ export type AgentEnvironment = {
   billingBalanceDue: Maybe<Scalars['Boolean']['output']>;
   customHosts: Array<Scalars['String']['output']>;
   defaultModel: Maybe<Scalars['String']['output']>;
+  /** The agent profiles members can start sessions with, as the workspace's admins chose. */
+  enabledAgents: Array<Scalars['String']['output']>;
   modelKeySet: Scalars['Boolean']['output'];
   modelPinned: Scalars['Boolean']['output'];
   modelSource: AgentModelSource;
   networkTier: AgentNetworkTier;
-  /** The agent-model spend at which the card is charged mid-cycle; null at the top tier (month-end only). */
+  /** The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only). */
   nextChargeThresholdUsd: Maybe<Scalars['Float']['output']>;
   ownerId: Scalars['String']['output'];
   pinnedModel: Maybe<Scalars['String']['output']>;
@@ -274,6 +292,8 @@ export type AgentEnvironment = {
 };
 
 export type AgentEnvironmentInput = {
+  /** Agent profiles from agentDataUse whose data use this admin acknowledges. */
+  acknowledgeAgentDataUse?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Monthly agent-model spend cap in USD (more than 0, at most 10x the plan default). */
   agentModelMonthlySpendCapUsd?: InputMaybe<Scalars['Float']['input']>;
   /** true removes the workspace's own model provider key. */
@@ -282,6 +302,8 @@ export type AgentEnvironmentInput = {
   customHosts?: InputMaybe<Array<Scalars['String']['input']>>;
   /** "" returns to the provider default. */
   defaultModel?: InputMaybe<Scalars['String']['input']>;
+  /** Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first. */
+  enabledAgents?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet. */
   modelApiKey?: InputMaybe<Scalars['String']['input']>;
   networkTier?: InputMaybe<AgentNetworkTier>;
@@ -321,10 +343,13 @@ export enum AgentNetworkTier {
   Registries = 'REGISTRIES'
 }
 
-/** A workspace agent secret. Only its name is readable. */
+/** A workspace agent secret: its name and scope. The value is never readable. */
 export type AgentSecret = {
   __typename: 'AgentSecret';
   name: Scalars['String']['output'];
+  repo: Maybe<Scalars['String']['output']>;
+  /** workspace (every session receives it), repo (sessions on `repo`) or explicit (only sessions that name it in secretNames). */
+  scope: Scalars['String']['output'];
 };
 
 export type AgentSecretList = {
@@ -336,6 +361,8 @@ export type AgentSecretList = {
 export type AgentSession = {
   __typename: 'AgentSession';
   agentConfig: AgentSessionConfig;
+  /** The secrets the latest turn received, each with its source (inline, explicit, repo or workspace); values are never returned. */
+  appliedSecrets: Array<AgentAppliedSecret>;
   archivedAt: Maybe<Scalars['String']['output']>;
   /** The agent automation (aut-…) that started this session, when one did. */
   automationId: Maybe<Scalars['String']['output']>;
@@ -361,6 +388,8 @@ export type AgentSession = {
   parentSessionId: Maybe<Scalars['String']['output']>;
   phase: Scalars['String']['output'];
   prNumber: Maybe<Scalars['Int']['output']>;
+  prState: Maybe<Scalars['String']['output']>;
+  prStateAt: Maybe<Scalars['String']['output']>;
   prUrl: Maybe<Scalars['String']['output']>;
   repo: Scalars['String']['output'];
   /** The top of this session's tree, absent on a top-level session. */
@@ -463,6 +492,7 @@ export type AgentSessionPullRequest = {
   __typename: 'AgentSessionPullRequest';
   headSha: Maybe<Scalars['String']['output']>;
   number: Maybe<Scalars['Int']['output']>;
+  state: Maybe<Scalars['String']['output']>;
   url: Scalars['String']['output'];
 };
 
@@ -1920,6 +1950,7 @@ export type Mutation = {
   deleteRouterKey: Maybe<Scalars['Boolean']['output']>;
   deleteSSHKey: Scalars['Boolean']['output'];
   deleteSandboxGroup: Scalars['Boolean']['output'];
+  deleteSandboxImage: Scalars['Boolean']['output'];
   deleteSecretFile: Maybe<Scalars['Boolean']['output']>;
   deleteService: Maybe<Scalars['Boolean']['output']>;
   deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
@@ -1976,7 +2007,7 @@ export type Mutation = {
   runCronJob: Maybe<CronRun>;
   scaleService: Maybe<Service>;
   selectGitClaim: Maybe<GitConnection>;
-  /** Create or rotate a workspace agent secret (admins only). The value is write-only. */
+  /** Create, rotate or rescope a workspace agent secret (admins only). The value is write-only; omit it to change only the scope of an existing secret. A new secret without a scope is workspace-wide. */
   setAgentSecret: AgentSecret;
   /** Replaces all of a session's tags; [] clears them. Refused on an archived session. */
   setAgentSessionTags: Maybe<AgentSession>;
@@ -2591,6 +2622,13 @@ export type MutationDeleteSandboxGroupArgs = {
 };
 
 
+export type MutationDeleteSandboxImageArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
+};
+
+
 export type MutationDeleteSecretFileArgs = {
   name: Scalars['String']['input'];
   serviceId: Scalars['String']['input'];
@@ -2940,7 +2978,9 @@ export type MutationSelectGitClaimArgs = {
 export type MutationSetAgentSecretArgs = {
   name: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
-  value: Scalars['String']['input'];
+  repo?: InputMaybe<Scalars['String']['input']>;
+  scope?: InputMaybe<Scalars['String']['input']>;
+  value?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -3369,6 +3409,7 @@ export type MutationTerminateSandboxArgs = {
 
 export type MutationTriggerBuildArgs = {
   buildSourceId: Scalars['String']['input'];
+  clearCache?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4060,6 +4101,7 @@ export type QueryAgentSessionsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   parentSessionId?: InputMaybe<Scalars['String']['input']>;
   phases?: InputMaybe<Array<Scalars['String']['input']>>;
+  prStates?: InputMaybe<Array<Scalars['String']['input']>>;
   repo?: InputMaybe<Scalars['String']['input']>;
   states?: InputMaybe<Array<Scalars['String']['input']>>;
   tag?: InputMaybe<Scalars['String']['input']>;
@@ -5003,6 +5045,7 @@ export type SandboxGroup = {
 export type SandboxImage = {
   __typename: 'SandboxImage';
   createdAt: Maybe<Scalars['String']['output']>;
+  failureCode: Maybe<Scalars['String']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
   finishedAt: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];

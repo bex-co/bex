@@ -154,10 +154,13 @@ type SpendStatus struct {
 	EffectiveCap int64
 	TierLimited  bool
 	MonthToDate  int64
-	// WindowSpend is the spend in the charge window: the month's hours since
-	// a subscription invoice last billed the meter
-	// (store.AgentSpendInputs.UnbilledFrom).
-	WindowSpend int64
+	// WindowSpend is the spend in the charge window: the hours since a
+	// subscription invoice last billed the meter
+	// (store.AgentSpendInputs.UnbilledFrom). CreditMicroUSD is the billing
+	// credits that invoice's successor applies to metered usage first, as
+	// the charger last read them in the window (0 when it has not).
+	WindowSpend    int64
+	CreditMicroUSD int64
 	// ModelKeySet: the workspace set its own model key, so the platform route
 	// (and this cap) does not apply to it.
 	ModelKeySet bool
@@ -176,8 +179,9 @@ type SpendStatus struct {
 
 // Reached reports whether month-to-date spend is at or over the workspace's
 // own cap, or the unbilled spend at or over the tier's ceiling where one
-// binds. The ceiling bounds what no invoice or charge has billed: spend a
-// subscription invoice already billed this month is not held against it.
+// binds. The ceiling bounds what no invoice, charge or billing credit
+// covers: spend a subscription invoice already billed, or credits will pay,
+// is not held against it.
 func (s SpendStatus) Reached() bool { return s.ownCapReached() || s.tierCeilingReached() }
 
 // RefusesAtCap reports whether the mint refuses a new platform-model
@@ -194,9 +198,12 @@ func (s SpendStatus) tierCeilingReached() bool {
 	return s.TierLimited && s.UnbilledMicroUSD() >= s.EffectiveCap
 }
 
-// UnbilledMicroUSD is the charge window's spend that the paid threshold
-// charges made in it have not collected yet.
-func (s SpendStatus) UnbilledMicroUSD() int64 { return max(s.WindowSpend-s.ChargedMicroUSD, 0) }
+// UnbilledMicroUSD is the charge window's spend that neither billing credits
+// cover nor the paid threshold charges made in it collected: credits pay
+// first, and the card only what they leave.
+func (s SpendStatus) UnbilledMicroUSD() int64 {
+	return max(s.WindowSpend-s.CreditMicroUSD-s.ChargedMicroUSD, 0)
+}
 
 // ChargesAtThreshold reports that reaching the tier's charge threshold
 // charges the card and the workspace keeps working. A locked workspace
@@ -245,6 +252,7 @@ func SpendStatusOf(sheet *pricing.Sheet, in store.AgentSpendInputs, now time.Tim
 		MaxCap:          sheet.AgentModelMaxCapMicroUSD(in.Plan),
 		MonthToDate:     in.MonthToDateMicroUSD,
 		WindowSpend:     in.WindowSpendMicroUSD,
+		CreditMicroUSD:  in.CreditMicroUSD,
 		ModelKeySet:     in.ModelKeySet,
 		ChargedMicroUSD: in.ChargedMicroUSD,
 		ChargeSeq:       in.ChargeSeq,
@@ -336,15 +344,9 @@ type ThresholdCharger interface {
 	ChargeThreshold(ctx context.Context, charge ThresholdCharge) (ThresholdChargeOutcome, error)
 }
 
-// ThresholdCharge is one crossing, as the spend read it at At saw it.
-type ThresholdCharge struct {
-	WorkspaceID string
-	At          time.Time
-	// SeenSeq is the month's last charge in that read: a charge numbered past
-	// it already covers this crossing, so the charger joins it.
-	SeenSeq          int
-	UnbilledMicroUSD int64
-}
+// ThresholdCharge is one crossing, as the spend read it at At saw it; the
+// billing charger takes the same type.
+type ThresholdCharge = store.AgentModelCrossing
 
 // ThresholdChargeOutcome is how a threshold charge ended.
 type ThresholdChargeOutcome int
@@ -359,8 +361,9 @@ const (
 	// ThresholdChargeDeclined: the card was declined or needs
 	// authentication; the workspace has a balance due.
 	ThresholdChargeDeclined
-	// ThresholdChargeNotDue: a subscription invoice billed the meter since
-	// the spend read, so nothing was charged; the spend is read again.
+	// ThresholdChargeNotDue: a subscription invoice billed the meter, or the
+	// billing credits changed, since the spend read, so nothing was charged;
+	// the spend is read again.
 	ThresholdChargeNotDue
 )
 
@@ -406,8 +409,8 @@ func (m *ModelMinter) readPlatformStatus(ctx context.Context, workspaceID string
 // charge since it was cached.
 //
 // A charge the charger finds not due (a subscription invoice billed the
-// meter since the read) is re-read: the narrower window may still be due, and
-// is charged then.
+// meter, or the credits changed, since the read) is re-read: what is left may
+// still be due, and is charged then.
 func (m *ModelMinter) chargeThreshold(ctx context.Context, workspaceID string) (SpendStatus, error) {
 	for range 2 {
 		now := m.now()
@@ -423,6 +426,7 @@ func (m *ModelMinter) chargeThreshold(ctx context.Context, workspaceID string) (
 		}
 		outcome, err := m.Charges.ChargeThreshold(ctx, ThresholdCharge{
 			WorkspaceID: workspaceID, At: now, SeenSeq: status.ChargeSeq, UnbilledMicroUSD: status.UnbilledMicroUSD(),
+			CreditMicroUSD: status.CreditMicroUSD,
 		})
 		if err != nil {
 			log.Printf("agent model threshold charge for %s not made: %v", workspaceID, err)
@@ -442,8 +446,8 @@ func (m *ModelMinter) chargeThreshold(ctx context.Context, workspaceID string) (
 			return SpendStatus{}, ErrModelSpendCapReached
 		}
 	}
-	// The window moved twice in one request: serve on a fresh read, and let
-	// the next mint charge whatever is still due.
+	// The window or the credits moved twice in one request: serve on a fresh
+	// read, and let the next mint charge whatever is still due.
 	return m.readPlatformStatus(ctx, workspaceID, m.now())
 }
 

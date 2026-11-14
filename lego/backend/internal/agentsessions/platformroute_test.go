@@ -25,6 +25,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 const platformKey = "sk-or-v1-PLATFORM-SECRET"
@@ -189,5 +190,139 @@ func TestCapabilitiesReportModelReadinessPerAgent(t *testing.T) {
 	svc.ModelKeys = fixtureModelKeys("tea-a")
 	if got := ready(); !got["claude"] || !got["codex"] || !got["gemini"] {
 		t.Fatalf("workspace with its own key: %v, want every profile ready", got)
+	}
+}
+
+// A platform-only agent (ADR108 D5, muse) is offered and created only where a
+// bex-owned route serves it. No route serves it yet, so even a workspace with
+// its own model key neither sees it nor can start it, and the refusal is the
+// agent-unavailable code, not a model-key prompt the key could never satisfy.
+func TestPlatformOnlyAgentIsHiddenAndRefusedUntilARouteServesIt(t *testing.T) {
+	svc, st, _, lifecycle := fixture()
+	svc.ModelKeys = fixtureModelKeys("tea-a")
+	enableMuse(svc, "tea-a")
+	caps, err := svc.Capabilities(caller("alice"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, profile := range caps.Agents {
+		if profile.ID == "muse" {
+			t.Fatalf("capabilities offered muse without a route: %+v", caps.Agents)
+		}
+	}
+	if len(caps.Agents) != 3 {
+		t.Fatalf("capabilities agents = %+v, want claude, codex and gemini", caps.Agents)
+	}
+	input := createInput()
+	input.AgentConfig = AgentConfig{Agent: "muse", Task: "fix the tests"}
+	_, err = svc.Create(caller("alice"), input)
+	if !isCode(err, AgentUnavailableCode) {
+		t.Fatalf("create muse without a route = %v, want %s", err, AgentUnavailableCode)
+	}
+	if len(st.rows) != 0 || lifecycle.created != 0 {
+		t.Fatalf("a refused create still created a session (rows=%d sandboxes=%d)", len(st.rows), lifecycle.created)
+	}
+}
+
+// enableMuse records the admin acknowledgement muse needs (w7/m392), so the
+// tests below exercise the route rather than the workspace's choice.
+func enableMuse(svc *Service, workspaces ...string) {
+	envs := newFakeEnvironments()
+	for _, ws := range workspaces {
+		envs.rows[ws] = store.AgentEnvironment{WorkspaceID: ws, NetworkTier: NetworkTierRegistries,
+			DataUseAcks: map[string]store.AgentDataUseAck{"muse": {By: "admin"}}}
+	}
+	svc.Environments = envs
+}
+
+func enableMetaRoute(t *testing.T, workspaces ...string) {
+	t.Helper()
+	agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET", workspaces)
+	t.Cleanup(func() { agentsession.EnablePlatformMetaRoute("", nil) })
+}
+
+func museInput() CreateRequest {
+	input := createInput()
+	input.AgentConfig = AgentConfig{Agent: "muse", Task: "fix the tests"}
+	return input
+}
+
+// Where the Meta route serves it (ADR108), muse is offered and ready even
+// without a workspace key, runs only its contributor model, never receives
+// the Meta key in the sandbox, and is metered (maxSpendUSD is accepted).
+func TestMuseRunsOnTheMetaRouteWithItsPinnedModel(t *testing.T) {
+	enableMetaRoute(t, "tea-a")
+	svc, _, _, lifecycle := fixture()
+	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
+	enableMuse(svc, "tea-a")
+	caps, err := svc.Capabilities(caller("alice"), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var muse *AgentProfile
+	for i := range caps.Agents {
+		if caps.Agents[i].ID == "muse" {
+			muse = &caps.Agents[i]
+		}
+	}
+	if muse == nil || !muse.ModelKeyReady || muse.Label != "Muse Code" {
+		t.Fatalf("capabilities muse = %+v, want offered and ready", muse)
+	}
+
+	explicit := museInput()
+	explicit.AgentConfig.Model = "muse-spark-1.3"
+	if _, err := svc.Create(caller("alice"), explicit); !isCode(err, "AGENT_SESSION_MODEL_PINNED") {
+		t.Fatalf("create muse on the standard-tier model = %v, want AGENT_SESSION_MODEL_PINNED", err)
+	}
+	limit := 5.0
+	input := museInput()
+	input.MaxSpendUSD = &limit
+	view, err := svc.Create(caller("alice"), input)
+	if err != nil {
+		t.Fatalf("create muse: %v", err)
+	}
+	if view.AgentConfig.Model != "muse-spark-1.3-contributor" {
+		t.Fatalf("muse model = %q, want the contributor model", view.AgentConfig.Model)
+	}
+	for name, value := range lifecycle.driverEnv {
+		if strings.Contains(value, "meta-PLATFORM-SECRET") {
+			t.Fatalf("the Meta key reached the sandbox env %s", name)
+		}
+	}
+	if !strings.HasPrefix(lifecycle.modelAPIKey, "bex-model-proxy-placeholder-") {
+		t.Fatal("the sandbox received something other than the session placeholder")
+	}
+}
+
+// One Meta key carries every workspace's muse sessions, so live sessions are
+// capped across workspaces; the session being steered never counts itself.
+func TestMuseSessionsAreCappedAcrossWorkspaces(t *testing.T) {
+	enableMetaRoute(t, "tea-a", "tea-b")
+	svc, _, _, _ := fixture()
+	enableMuse(svc, "tea-a", "tea-b")
+	svc.MetaRouteMaxSessions = 2
+	first, err := svc.Create(caller("alice"), museInput())
+	if err != nil {
+		t.Fatal(err)
+	}
+	other := museInput()
+	other.OwnerID = "tea-b"
+	other.Branch = "bex-agent/session-other"
+	if _, err := svc.Create(caller("bob"), other); err != nil {
+		t.Fatal(err)
+	}
+	third := museInput()
+	third.Branch = "bex-agent/session-third"
+	_, err = svc.Create(caller("alice"), third)
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != MetaRouteCapacityCode || coded.Params["limit"] != 2 {
+		t.Fatalf("third live muse session = %#v, want %s at limit 2", err, MetaRouteCapacityCode)
+	}
+	// Other agents are not affected.
+	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+		t.Fatalf("codex beside the muse cap: %v", err)
+	}
+	if err := svc.enforceMetaRouteCapacity(caller("alice"), "muse", first.ID); err != nil {
+		t.Fatalf("steering a counted session must not count it twice: %v", err)
 	}
 }

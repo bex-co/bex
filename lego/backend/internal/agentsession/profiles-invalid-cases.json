@@ -97,5 +97,47 @@
     "name": "env conflict",
     "path": ["profiles", 0, "modelProxy", "baseUrlEnv"],
     "value": "ANTHROPIC_API_KEY"
+  },
+  {
+    "name": "native binary for an unknown architecture",
+    "path": ["profiles", 3, "nativeBinary", "artifacts"],
+    "value": {
+      "riscv64": {
+        "url": "https://example.com/muse",
+        "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    }
+  },
+  {
+    "name": "native binary without a SHA-256 pin",
+    "path": ["profiles", 3, "nativeBinary", "artifacts", "amd64", "sha256"],
+    "value": "latest"
+  },
+  {
+    "name": "native binary over plain HTTP",
+    "path": ["profiles", 3, "nativeBinary", "artifacts", "amd64", "url"],
+    "value": "http://lookaside.facebook.com/muse"
+  },
+  {
+    "name": "native binary outside /opt",
+    "path": ["profiles", 3, "nativeBinary", "path"],
+    "value": "/usr/local/bin/muse"
+  },
+  {
+    "name": "native binary without artifacts",
+    "path": ["profiles", 3, "nativeBinary", "artifacts"],
+    "value": {}
+  },
+  {
+    "name": "model with spaces",
+    "path": ["profiles", 3, "model"],
+    "value": "Muse Spark"
+  },
+  {
+    "name": "session config value with spaces",
+    "path": ["profiles", 3, "sessionConfig"],
+    "value": {
+      "mode": "bypass approvals"
+    }
   }
 ]

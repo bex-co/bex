@@ -1108,7 +1108,7 @@ func (s *Service) linkFetched(ctx context.Context, gid string, a *appv1alpha1.Ap
 		if slices.Contains(cur.ServiceLinks, key) {
 			return errMetaUnchanged
 		}
-		cur.ServiceLinks = addString(cur.ServiceLinks, key)
+		cur.ServiceLinks = core.AddString(cur.ServiceLinks, key)
 		cur.UpdatedAt = s.nowTime()
 		return nil
 	})
@@ -1191,8 +1191,8 @@ func (s *Service) rollLinked(ctx context.Context, a *appv1alpha1.App, stamp, gid
 	}
 	return false, s.rollLinkedService(ctx, a, func(a *appv1alpha1.App) {
 		if link {
-			a.Spec.EnvFromSecrets = addString(a.Spec.EnvFromSecrets, envSecretName(gid))
-			a.Spec.FilesFromSecrets = addString(a.Spec.FilesFromSecrets, filesSecretName(gid))
+			a.Spec.EnvFromSecrets = core.AddString(a.Spec.EnvFromSecrets, envSecretName(gid))
+			a.Spec.FilesFromSecrets = core.AddString(a.Spec.FilesFromSecrets, filesSecretName(gid))
 		} else {
 			a.Spec.EnvFromSecrets = removeString(a.Spec.EnvFromSecrets, envSecretName(gid))
 			a.Spec.FilesFromSecrets = removeString(a.Spec.FilesFromSecrets, filesSecretName(gid))
@@ -1819,13 +1819,6 @@ func fileNameViewsFromNames(names []string) []SecretFileView {
 		out = append(out, SecretFileView{Name: name})
 	}
 	return out
-}
-
-func addString(list []string, s string) []string {
-	if slices.Contains(list, s) {
-		return list
-	}
-	return append(list, s)
 }
 
 // removeString returns list without any occurrence of the drop values. It

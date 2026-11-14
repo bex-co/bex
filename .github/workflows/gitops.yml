@@ -240,6 +240,23 @@ jobs:
           for plugin in deploy/gitops/charts/traefik-plugins/*/; do
             (cd "$plugin" && GOWORK=off go vet ./... && GOWORK=off go test ./...)
           done
+      # The edge runs the plugins interpreted, and Yaegi differs from compiled
+      # Go: compiled code sees an interpreted ResponseWriter without Flush, so
+      # a wrapper that passes go test can still buffer every stream (w8/321).
+      # Yaegi v0.16.1 is the version traefik v3.7.17 (base/values image.tag)
+      # pins; bump it with the image. Only the plugin and its Yaegi-safe
+      # origin-server tests run here: the sanitizer tests panic in v0.16.1's
+      # type checker, the compiled-only test uses a fake Yaegi would hide, and
+      # the egress plugin's fakes do not type-check under it.
+      - name: Traefik client-identity plugin under Yaegi
+        run: |
+          GOWORK=off GOBIN="$RUNNER_TEMP/bin" go install github.com/traefik/yaegi/cmd/yaegi@v0.16.1
+          plugin=deploy/gitops/charts/traefik-plugins/clientipheaders
+          gopath="$RUNNER_TEMP/yaegi"
+          module="$(awk '/^module/ {print $2}' "$plugin/go.mod")"
+          mkdir -p "$gopath/src/$module"
+          cp "$plugin/clientipheaders.go" "$plugin/originserver_test.go" "$gopath/src/$module/"
+          cd "$gopath" && GOPATH="$gopath" GO111MODULE=off timeout 300 "$RUNNER_TEMP/bin/yaegi" test "$module"
       - name: app log severity parsing in the pinned Alloy image
         run: python3 -m unittest scripts/test_log_shipper.py -v
       - name: log delivery failure and recovery in pinned Alloy and Loki

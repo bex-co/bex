@@ -10,6 +10,7 @@ on:
       # Backend files the dashboard's drift guards read. push and pull_request
       # keep one list; scripts/ci_test_inputs.py fails on a read it misses.
       - "docs/render-artifacts/fixtures/render-webhook-vocabulary-*.json"
+      - "lego/backend/internal/agentsession/agent-profiles.json"
       - "lego/backend/internal/agentsessions/secrets.go"
       - "lego/backend/internal/apps/testdata/cron-schedule-vectors.json"
       - "lego/backend/internal/core/testdata/config-key-vectors.json"
@@ -23,6 +24,7 @@ on:
       - "lego/backend/internal/postgres/testdata/read-replica-name-vectors.json"
       - "lego/backend/internal/pricing/pricing.yaml"
       - "lego/backend/internal/sandbox/service.go"
+      - "lego/backend/internal/store/agentsession_pr_state.go"
       - "lego/backend/internal/store/event_facts.go"
       - "lego/types/tiers/tiers.yaml"
       - "lego/types/v1alpha1/testdata/postgres-identifiers.json"
@@ -33,6 +35,7 @@ on:
     paths:
       - "dashboard/**"
       - "docs/render-artifacts/fixtures/render-webhook-vocabulary-*.json"
+      - "lego/backend/internal/agentsession/agent-profiles.json"
       - "lego/backend/internal/agentsessions/secrets.go"
       - "lego/backend/internal/apps/testdata/cron-schedule-vectors.json"
       - "lego/backend/internal/core/testdata/config-key-vectors.json"
@@ -46,6 +49,7 @@ on:
       - "lego/backend/internal/postgres/testdata/read-replica-name-vectors.json"
       - "lego/backend/internal/pricing/pricing.yaml"
       - "lego/backend/internal/sandbox/service.go"
+      - "lego/backend/internal/store/agentsession_pr_state.go"
       - "lego/backend/internal/store/event_facts.go"
       - "lego/types/tiers/tiers.yaml"
       - "lego/types/v1alpha1/testdata/postgres-identifiers.json"

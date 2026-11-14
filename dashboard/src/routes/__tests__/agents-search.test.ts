@@ -32,11 +32,22 @@ describe("agent-session filter search contracts", () => {
       archived: undefined,
       phase: undefined,
       tag: undefined,
+      prState: undefined,
     });
     // w21/002: a tag filter is kept; an empty or non-string one is dropped.
     expect(validateList({ tag: "release" })).toMatchObject({ tag: "release" });
     expect(validateList({ tag: "" })).toMatchObject({ tag: undefined });
     expect(validateList({ tag: 5 })).toMatchObject({ tag: undefined });
+    // w9/m386: a known PR state is kept; anything else is dropped.
+    for (const prState of ["open", "merged", "closed"]) {
+      expect(validateList({ prState })).toMatchObject({ prState });
+    }
+    expect(validateList({ prState: "draft" })).toMatchObject({
+      prState: undefined,
+    });
+    expect(validateList({ prState: "MERGED" })).toMatchObject({
+      prState: undefined,
+    });
   });
 
   it("does not wire a phase-filter dropdown on /agents", async () => {

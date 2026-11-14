@@ -17,6 +17,7 @@ limitations under the License.
 package pricing
 
 import (
+	"math"
 	"slices"
 	"strings"
 	"testing"
@@ -113,6 +114,36 @@ func TestAgentModelSheetValidation(t *testing.T) {
 	} {
 		if _, err := sheetWithAgentModel(t, block); err == nil {
 			t.Errorf("%s: parse accepted an invalid agentModel block", name)
+		}
+	}
+}
+
+// Muse (ADR108) is priced from its pricing.yaml list price: Meta reports no
+// per-request cost. Cached input is the cache-read rate.
+func TestAgentModelUpstreamCostMuseContributor(t *testing.T) {
+	got, ok := Default.AgentModelUpstreamCost("muse-spark-1.3-contributor", 2_000_000, 1_000_000, 1_000_000, 0)
+	if !ok {
+		t.Fatal("muse-spark-1.3-contributor has no upstream price")
+	}
+	// 2M input × $0.10 + 1M cached × $0.002 + 1M output × $0.20.
+	if want := 0.2 + 0.002 + 0.2; math.Abs(got-want) > 1e-12 {
+		t.Fatalf("cost = %v, want %v", got, want)
+	}
+	if _, ok := Default.AgentModelUpstreamCost("deepseek/deepseek-v4.1-flash-1017", 1, 1, 0, 0); ok {
+		t.Fatal("an OpenRouter model must keep OpenRouter's own cost")
+	}
+}
+
+func TestAgentModelUpstreamPricesRejectBadRows(t *testing.T) {
+	base := string(sheetYAML)
+	for name, row := range map[string]string{
+		"negative":  "    - model: x\n      inputUsdPerMTok: -1\n      cachedInputUsdPerMTok: 0\n      outputUsdPerMTok: 0\n",
+		"empty":     "    - model: \"\"\n      inputUsdPerMTok: 1\n      cachedInputUsdPerMTok: 0\n      outputUsdPerMTok: 0\n",
+		"duplicate": "    - model: muse-spark-1.3-contributor\n      inputUsdPerMTok: 1\n      cachedInputUsdPerMTok: 0\n      outputUsdPerMTok: 0\n",
+	} {
+		raw := strings.Replace(base, "  upstreamPrices:\n", "  upstreamPrices:\n"+row, 1)
+		if _, err := parseSheet([]byte(raw)); err == nil {
+			t.Fatalf("%s upstream price row accepted", name)
 		}
 	}
 }

@@ -8,16 +8,24 @@ import {
 
 const fetchMore = vi.fn();
 let listed: ReturnType<typeof wireSession>[] = [];
+// The variables the hook's latest render queried with.
+let queriedVariables: Record<string, unknown> | undefined;
 
 vi.mock("@apollo/client/react", () => ({
-  useQuery: () => ({
-    data: { agentSessions: listed },
-    loading: false,
-    error: undefined,
-    refetch: vi.fn(),
-    startPolling: vi.fn(),
-    fetchMore,
-  }),
+  useQuery: (
+    _document: unknown,
+    options: { variables: Record<string, unknown> },
+  ) => {
+    queriedVariables = options.variables;
+    return {
+      data: { agentSessions: listed },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+      startPolling: vi.fn(),
+      fetchMore,
+    };
+  },
 }));
 
 vi.mock("@/features/workspaces/context/hooks", () => ({
@@ -105,5 +113,39 @@ describe("useAgentSessions pagination", () => {
     expect(result.current.hasMore).toBe(true);
     // The previous filter's end never shows against the new filter's list.
     expect(committedHasMore).toEqual([true]);
+  });
+
+  it("offers more again when only the PR-state filter changes", async () => {
+    fetchMore.mockResolvedValue({ data: { agentSessions: [] } });
+    const { result, rerender } = renderHook(useCommittedAgentSessions, {
+      initialProps: { poll: false, limit: 2 } as UseAgentSessionsOptions,
+    });
+    await act(() => result.current.loadMore());
+    expect(result.current.hasMore).toBe(false);
+
+    rerender({ poll: false, limit: 2, prStates: ["merged"] });
+    expect(result.current.hasMore).toBe(true);
+  });
+});
+
+// w9/m386: the list's PR-state filter reaches bex-api as `prStates`.
+describe("useAgentSessions PR-state filter", () => {
+  beforeEach(() => {
+    listed = [];
+    queriedVariables = undefined;
+  });
+
+  it("queries only the PR states asked for", () => {
+    renderHook(() =>
+      useAgentSessions({ poll: false, prStates: ["merged", "closed"] }),
+    );
+    expect(queriedVariables?.prStates).toEqual(["merged", "closed"]);
+  });
+
+  it("sends no PR-state filter when none or an empty list is asked for", () => {
+    renderHook(() => useAgentSessions({ poll: false }));
+    expect(queriedVariables?.prStates).toBeNull();
+    renderHook(() => useAgentSessions({ poll: false, prStates: [] }));
+    expect(queriedVariables?.prStates).toBeNull();
   });
 });

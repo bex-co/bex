@@ -202,6 +202,15 @@ type AgentSession struct {
 	// (ADR098 D1): workspace agent secret references and inline session
 	// secrets. Values live only in OpenBao; this never holds one.
 	SecretNames []string
+	// PRState is the pull request's state as bex last read it from GitHub
+	// (PRStateOpen, PRStateMerged, PRStateClosed), "" until first read;
+	// PRStateAt is when it last changed (w9/m386).
+	PRState   string
+	PRStateAt *time.Time
+	// AppliedSecrets are the secrets the latest dispatch applied, each with
+	// its source (w9/m385): named, inline, or by a workspace or repo scope.
+	// Names only; written by SetAgentSessionAppliedSecrets.
+	AppliedSecrets []AppliedSecret
 	// InitialPrompt is create-only input used to atomically insert turn 1 with
 	// the session row. It is not an agent_sessions column and is never scanned.
 	InitialPrompt string
@@ -293,6 +302,10 @@ type AgentSessionCount struct {
 	// ExcludeID leaves one session out: the one a steer or resume reactivates
 	// must not count against itself.
 	ExcludeID string
+	// AllWorkspaces counts across every workspace (the workspace argument is
+	// ignored): a limit shared by one platform key, such as Meta's per-key
+	// rate limit for the muse profile (ADR108).
+	AllWorkspaces bool
 }
 
 // DefaultAgentBranchPrefix prefixes the branch a session gets when the caller
@@ -315,7 +328,8 @@ const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandb
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
-	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref`
+	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref,
+	applied_secrets, pr_state, pr_state_at`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
@@ -323,7 +337,8 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
-		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef)
+		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef,
+		&s.AppliedSecrets, &s.PRState, &s.PRStateAt)
 	return s, err
 }
 
@@ -387,8 +402,9 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 		}
 		row, err = scanAgentSession(tx.QueryRow(ctx, `
-			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names, automation_id, parent_session_id, root_session_id, depth, created_by, takeover_pr_number, takeover_head_ref, pr_number, pr_url, head_sha)
-			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12, NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), $16, $17, $18, $19, $20, $21, $22)
+			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names, automation_id, parent_session_id, root_session_id, depth, created_by, takeover_pr_number, takeover_head_ref, pr_number, pr_url, head_sha, pr_next_check_at)
+			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12, NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), $16, $17, $18, $19, $20, $21, $22,
+			        CASE WHEN $20 > 0 THEN now() END)
 			RETURNING `+agentSessionColumns,
 			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames), in.AutomationID, in.ParentSessionID, in.RootSessionID, in.Depth, in.CreatedBy, in.TakeoverPR, in.TakeoverHeadRef, in.PRNumber, in.PRURL, in.HeadSHA))
 		if err != nil {
@@ -477,7 +493,8 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
 		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
 		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID,
-		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef, &hash)
+		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef,
+		&out.AppliedSecrets, &out.PRState, &out.PRStateAt, &hash)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -657,7 +674,10 @@ type AgentSessionListQuery struct {
 	// ParentSessionID keeps only the direct children of this session (ADR102).
 	ParentSessionID string
 	// CreatedBy keeps only the sessions these subjects started (w7/m296).
-	CreatedBy     []string
+	CreatedBy []string
+	// PRStates keeps only sessions whose pull request is in one of these
+	// states (open, merged, closed).
+	PRStates      []string
 	CreatedBefore time.Time
 	CreatedAfter  time.Time
 	Cursor        string
@@ -707,6 +727,9 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	}
 	if q.ParentSessionID != "" {
 		sql += ` AND parent_session_id = ` + arg(q.ParentSessionID)
+	}
+	if len(q.PRStates) > 0 {
+		sql += ` AND pr_number > 0 AND pr_state = ANY(` + arg(q.PRStates) + `)`
 	}
 	switch len(createdBy) {
 	case 0:
@@ -1052,10 +1075,16 @@ func (s *PGStore) CountActiveAgentSessions(ctx context.Context, workspaceID stri
 func countActiveAgentSessions(ctx context.Context, q interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, workspaceID string, c AgentSessionCount) (int, error) {
+	// Two statement texts, so a cached generic plan for the per-workspace
+	// count keeps its workspace index.
+	scope := `workspace_id = $1`
+	if c.AllWorkspaces {
+		scope = `$1::text IS NOT NULL`
+	}
 	var n int
 	err := q.QueryRow(ctx, `
 		SELECT count(*) FROM agent_sessions
-		WHERE workspace_id = $1 AND `+activeAgentSessionPhasesSQL+`
+		WHERE `+scope+` AND `+activeAgentSessionPhasesSQL+`
 		  AND (NOT $2::boolean OR sandbox_id <> '')
 		  AND ($3::text = '' OR agent_config->>'agent' = $3::text)
 		  AND id <> $4::text`,
@@ -1180,7 +1209,11 @@ func (s *PGStore) RecordAgentSessionPullRequest(ctx context.Context, id, prURL s
 	_, err := s.Pool.Exec(ctx, `
 		UPDATE agent_sessions
 		SET pr_url=$2, pr_number=$3,
-		    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END
+		    head_sha = CASE WHEN $4 <> '' THEN $4 ELSE head_sha END,
+		    -- A new pull request starts unread and is read at once (w9/m386).
+		    pr_state = CASE WHEN pr_number IS DISTINCT FROM $3 THEN '' ELSE pr_state END,
+		    pr_state_at = CASE WHEN pr_number IS DISTINCT FROM $3 THEN NULL ELSE pr_state_at END,
+		    pr_next_check_at = CASE WHEN pr_number IS DISTINCT FROM $3 AND $3 > 0 THEN now() ELSE pr_next_check_at END
 		WHERE id=$1 AND phase IN ('creating','running','resuming','redispatching')
 		  AND (pr_url IS DISTINCT FROM $2 OR pr_number IS DISTINCT FROM $3
 		       OR ($4 <> '' AND head_sha IS DISTINCT FROM $4))`, id, prURL, prNumber, headSHA)
@@ -1515,4 +1548,23 @@ func (s *PGStore) listenOnce(ctx context.Context, fn func(id string)) error {
 		}
 		fn(n.Payload)
 	}
+}
+
+// AppliedSecret is one secret a session's latest dispatch applied and why:
+// inline, explicit (named), repo or workspace. Never a value.
+type AppliedSecret struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
+}
+
+// SetAgentSessionAppliedSecrets records what the session's latest dispatch
+// applied (names and sources only).
+func (s *PGStore) SetAgentSessionAppliedSecrets(ctx context.Context, sessionID string, applied []AppliedSecret) error {
+	if applied == nil {
+		applied = []AppliedSecret{}
+	}
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET applied_secrets = $2 WHERE id = $1`, sessionID, applied); err != nil {
+		return fmt.Errorf("record agent session applied secrets: %w", err)
+	}
+	return nil
 }

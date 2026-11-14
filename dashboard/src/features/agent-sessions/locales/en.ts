@@ -38,6 +38,31 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "#{number}",
     description: "Draft PR badge label — the pull-request number",
   },
+  "agentSessions.prState.open": {
+    message: "Open",
+    description:
+      "PR state badge beside a session's PR link — the pull request is open (a draft counts as open)",
+  },
+  "agentSessions.prState.merged": {
+    message: "Merged",
+    description:
+      "PR state badge beside a session's PR link — the pull request was merged",
+  },
+  "agentSessions.prState.closed": {
+    message: "Closed",
+    description:
+      "PR state badge beside a session's PR link — the pull request was closed without merging",
+  },
+  "agentSessions.prStateFilter": {
+    message: "Filter by pull request state",
+    description:
+      "Session list — accessible name of the Any/Open/Merged/Closed PR-state filter",
+  },
+  "agentSessions.prStateFilterAny": {
+    message: "Any",
+    description:
+      "Session list PR-state filter — the option that shows sessions whatever their PR state, including sessions with no PR",
+  },
   "agentSessions.errorTitle": {
     message: "Couldn't load sessions.",
     description: "Agent sessions list error — one sentence, Retry beside it",
@@ -210,6 +235,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.agent.codex": {
     message: "Codex",
     description: "Composer — agent option: codex",
+  },
+  "agentSessions.agent.muse": {
+    message: "Muse Code",
+    description: "Composer — agent option: muse (Meta's Muse Code)",
   },
   "agentSessions.submit": {
     message: "Start session",
@@ -1063,7 +1092,7 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "{used} of {cap} used. At {cap} the card on file is charged and sessions keep running; new model requests stop only if the charge fails.",
+      "{used} of {cap} used. Billing credits pay first; once spend beyond them reaches {cap}, the card on file is charged and sessions keep running. New model requests stop only if the charge fails.",
     description:
       "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
   },
@@ -1337,6 +1366,40 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.secretsDuplicate": {
     message: "This session already has a secret with that name.",
     description: "Composer Secrets popover: duplicate inline secret name",
+  },
+  "agentSessions.secretsScopeRepo": {
+    message: "This repository",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to the chosen repository, included",
+  },
+  "agentSessions.secretsScopeOtherRepo": {
+    message: "Only on {repo}",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to another repository, not available here",
+  },
+  "agentSessions.appliedSecretsTitle": {
+    message: "Secrets in the latest turn",
+    description:
+      "Session header: heading of the applied-secrets popover (names and sources, never values)",
+  },
+  "agentSessions.appliedSecretSource.inline": {
+    message: "this session",
+    description:
+      "Applied secret source: an inline secret given to this session only",
+  },
+  "agentSessions.appliedSecretSource.explicit": {
+    message: "selected",
+    description: "Applied secret source: a workspace secret the session picked",
+  },
+  "agentSessions.appliedSecretSource.repo": {
+    message: "repository",
+    description:
+      "Applied secret source: a workspace secret scoped to the session's repository",
+  },
+  "agentSessions.appliedSecretSource.workspace": {
+    message: "workspace",
+    description:
+      "Applied secret source: a workspace secret every session receives",
   },
   "agentSessions.metaSecrets_one": {
     message: "{count} secret",

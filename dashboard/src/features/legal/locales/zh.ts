@@ -37,6 +37,12 @@ const zhLegal: Record<string, TranslationEntry> = {
       "请求只会路由到在处理之外不存储提示词、也不使用其进行训练的提供方：bex 使用拒绝数据收集的 OpenRouter 提供方路由。",
     description: "Terms: the routing policy",
   },
+  "legal.agentModels.dataMuse": {
+    message:
+      "Muse Code 会话是例外。bex 会将其直接发送到 Meta 模型 API 的贡献者层级，在该层级下，Meta 可能使用所发送的提示词、代码、文件和上下文以及返回的回复来训练其模型。在管理员开启 Muse Code 并确认这一点之前，它在工作区中保持关闭。",
+    description:
+      "Terms: the Muse Code exception to the routing policy (ADR108)",
+  },
   "legal.agentModels.dataOwnKey": {
     message:
       "如果工作区改用自己的提供方密钥，请求将依据你与该提供方之间的协议发送给你的提供方，bex 不收取模型 token 费用。",

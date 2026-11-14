@@ -126,7 +126,8 @@ export async function replyOnPullRequest(
       ok: false,
       error: {
         code: "upstream_error",
-        message: "pull-request comment endpoint returned an unexpected response",
+        message:
+          "pull-request comment endpoint returned an unexpected response",
       },
     };
   }

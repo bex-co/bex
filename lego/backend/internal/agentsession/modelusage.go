@@ -129,8 +129,9 @@ func microUSD(usd float64) int64 {
 
 // price resolves an exchange's upstream cost, its source and the customer
 // price (ADR091 D1/D2): OpenRouter's reported cost first, else a cost
-// computed from the price table at the request's start, else unpriced at
-// zero — logged loudly, because it is spend bex cannot bill.
+// computed from pricing.yaml's list price or the price table at the request's
+// start, else unpriced at zero — logged loudly, because it is spend bex
+// cannot bill.
 func (r *ModelUsageRecorder) price(rep ModelUsageReport, now time.Time) (upstream int64, source string, price int64) {
 	var cost float64
 	reported := rep.UpstreamCostUSD
@@ -144,8 +145,10 @@ func (r *ModelUsageRecorder) price(rep ModelUsageReport, now time.Time) (upstrea
 		cost, source = *reported, store.AgentModelCostReported
 	default:
 		at := startedAt(rep, now)
-		computed, ok := 0.0, false
-		if r.Prices != nil {
+		// A model bex calls directly (Muse on Meta's API, ADR108) has a list
+		// price in pricing.yaml; everything else is an OpenRouter model.
+		computed, ok := pricing.Default.AgentModelUpstreamCost(rep.Model, rep.InputTokens, rep.OutputTokens, rep.CacheReadTokens, rep.CacheWriteTokens)
+		if !ok && r.Prices != nil {
 			computed, ok = r.Prices.Cost(rep.Model, at, rep.InputTokens, rep.OutputTokens, rep.CacheReadTokens, rep.CacheWriteTokens)
 		}
 		if !ok || math.IsNaN(computed) || math.IsInf(computed, 0) || computed < 0 {

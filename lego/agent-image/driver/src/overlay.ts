@@ -155,7 +155,8 @@ function repoOverlay(context: OverlayContext): string {
 - There is no GitHub token in the sandbox and the \`gh\` CLI is not authenticated. Pull requests go through the \`${toolName}\` tool of the \`bex\` MCP server.
 ${prBranch ? "" : existingPrLine(context)}${networkLine(context)}- Model and Git credentials are injected outside the sandbox. There is no secret here for you to protect, rotate or print.
 ${oauthLine()}`;
-  if (prBranch) return `${environment}
+  if (prBranch)
+    return `${environment}
 
 ${takeoverSections(context, prBranch)}`;
   return `${environment}

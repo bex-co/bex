@@ -19,6 +19,15 @@ export function agentEnvironment(
     modelKeySet: false,
     modelSource: AgentModelSource.Platform,
     registryHosts: [],
+    enabledAgents: ["claude", "codex", "gemini"],
+    agentDataUse: [
+      {
+        __typename: "AgentDataUse",
+        agent: "muse",
+        acknowledgedAt: null,
+        acknowledgedBy: null,
+      },
+    ],
     updatedAt: null,
     agentModelMonthlySpendCapUsd: null,
     agentModelPlanSpendCapUsd: null,

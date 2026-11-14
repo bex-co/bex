@@ -245,15 +245,7 @@ func (c *StripeClient) SettleContract(ctx context.Context, workspaceID string) (
 	}
 	contract := SettleContract{WorkspaceID: workspaceID, CustomerID: customerID, SubscriptionID: sub.ID,
 		To: time.Now().UTC().Truncate(time.Minute).Add(time.Minute)}
-	var start int64
-	if sub.Items != nil {
-		for _, item := range sub.Items.Data {
-			if item.CurrentPeriodStart > 0 && (start == 0 || item.CurrentPeriodStart < start) {
-				start = item.CurrentPeriodStart
-			}
-		}
-	}
-	if start > 0 {
+	if start, _ := subscriptionPeriod(sub); start > 0 {
 		contract.From = time.Unix(start, 0).UTC().Truncate(time.Minute)
 	}
 	return contract, true, nil

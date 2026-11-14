@@ -15,6 +15,7 @@ import {
 import { toAgentSessionViews } from "@/features/agent-sessions/lib/mapper";
 import {
   agentSessionArchivedQueryValue,
+  type AgentSessionPrState,
   type AgentSessionView,
 } from "@/features/agent-sessions/types";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -46,6 +47,8 @@ export interface UseAgentSessionsOptions {
   tag?: string;
   /** Only the sessions the viewer started (w7/m296, Devin's sidebar default). */
   mine?: boolean;
+  /** PR-state filter (w9/m386, repeatable): open|merged|closed; omitted ⇒ any. */
+  prStates?: AgentSessionPrState[];
   /** Page size; omitted ⇒ the backend default (50, max 200). */
   limit?: number;
 }
@@ -89,6 +92,7 @@ export function useAgentSessions({
   repo,
   tag,
   mine,
+  prStates,
   limit,
 }: UseAgentSessionsOptions = {}): UseAgentSessionsResult {
   const { currentWorkspaceId } = useWorkspace();
@@ -105,6 +109,7 @@ export function useAgentSessions({
         repo: repo || null,
         tag: tag || null,
         mine: mine || null,
+        prStates: prStates?.length ? prStates : null,
         limit: effectiveLimit,
       },
       skip: !resolved,
@@ -132,6 +137,7 @@ export function useAgentSessions({
     repo ?? "",
     tag ?? "",
     mine ?? false,
+    prStates ?? [],
     limit ?? 0,
   ]);
   const [loadingMore, setLoadingMore] = useState(false);

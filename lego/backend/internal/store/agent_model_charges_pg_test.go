@@ -301,9 +301,40 @@ func TestAgentSpendInputsChargeWindow(t *testing.T) {
 		t.Fatalf("after the 08:39 invoice: %+v, %v; want the 09:00 hour's $4 and the 09:50 charge's $1, month at $9", in, err)
 	}
 
-	// A boundary in an earlier month leaves the window at this month's start.
-	if in, err = st.AgentSpendInputs(ctx, ws, time.Date(2026, 12, 2, 0, 0, 0, 0, time.UTC)); err != nil ||
-		!in.UnbilledFrom.Equal(time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)) || in.WindowSpendMicroUSD != 0 {
-		t.Fatalf("December: %+v, %v; want December's window, nothing spent", in, err)
+	// Billing credits count only when read inside the window.
+	if err := st.RecordAgentModelCredits(ctx, ws, 2_500_000, boundary.Add(-time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	if in, err = st.AgentSpendInputs(ctx, ws, now); err != nil || in.CreditMicroUSD != 0 {
+		t.Fatalf("credits read before the boundary: %+v, %v; want none counted (that invoice consumed them)", in, err)
+	}
+	if err := st.RecordAgentModelCredits(ctx, ws, 2_500_000, now); err != nil {
+		t.Fatal(err)
+	}
+	if in, err = st.AgentSpendInputs(ctx, ws, now); err != nil || in.CreditMicroUSD != 2_500_000 {
+		t.Fatalf("credits read in the window: %+v, %v; want $2.50", in, err)
+	}
+
+	// A boundary in the previous month still opens the window: that month's
+	// hours and charges since it are what the next invoice bills, and the
+	// credits read since it are counted once. December has no charge yet.
+	december := time.Date(2026, 12, 2, 0, 0, 0, 0, time.UTC)
+	if in, err = st.AgentSpendInputs(ctx, ws, december); err != nil || !in.UnbilledFrom.Equal(boundary) || in.MonthToDateMicroUSD != 0 ||
+		in.WindowSpendMicroUSD != 4_000_000 || in.ChargedMicroUSD != 1_000_000 || in.CreditMicroUSD != 2_500_000 || in.ChargeSeq != 0 {
+		t.Fatalf("December: %+v, %v; want the window from November's boundary, nothing spent this month", in, err)
+	}
+	// Never before the previous month's start, whose hours compaction keeps.
+	january := time.Date(2027, 1, 2, 0, 0, 0, 0, time.UTC)
+	if in, err = st.AgentSpendInputs(ctx, ws, january); err != nil || !in.UnbilledFrom.Equal(time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)) ||
+		in.WindowSpendMicroUSD != 0 || in.ChargedMicroUSD != 0 || in.CreditMicroUSD != 0 {
+		t.Fatalf("January: %+v, %v; want the window clamped to December's start, November's credit read not counted", in, err)
+	}
+
+	// A later invoice consumes credits: moving the boundary clears them.
+	if advanced, err := st.RecordAgentModelBilledUntil(ctx, ws, now.Add(-time.Minute)); err != nil || !advanced {
+		t.Fatalf("billed-until: advanced=%t, %v", advanced, err)
+	}
+	if in, err = st.AgentSpendInputs(ctx, ws, now); err != nil || in.CreditMicroUSD != 0 {
+		t.Fatalf("after the boundary moved: %+v, %v; want the credits cleared", in, err)
 	}
 }

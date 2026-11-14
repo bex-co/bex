@@ -86,7 +86,7 @@ spec:
             # ADR047 D1/D3: the separate `agent` sandbox template. deploy.yml
             # builds and publishes this image from lego/agent-image/.
             - name: BEX_AGENT_SESSION_IMAGE
-              value: ghcr.io/bex-co/bex-agent-sandbox@sha256:8e9f3e5962130b11e6550ffacc3f0becc0e902a9059ae099dc6510a10afda38e
+              value: ghcr.io/bex-co/bex-agent-sandbox@sha256:100cf65ddca3216744482264f7500b4fbe04a62d668d5306bb3775298281df87
             # ADR062 / security round 10: mandatory credential-injecting model
             # proxy. Agent-session sandboxes receive only a session placeholder;
             # the reusable workspace key stays on the gateway→vendor hop.
@@ -587,6 +587,16 @@ spec:
                 secretKeyRef:
                   name: bex-agent-platform-model
                   key: openrouter-api-key
+                  optional: true
+            # ADR108: the platform-only muse profile runs on Meta's official
+            # API with this bex-owned key (muse-spark-1.3-contributor only),
+            # in the same allowlisted workspaces. Optional like the key above:
+            # absent, muse is offered nowhere.
+            - name: BEX_AGENT_PLATFORM_META_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-platform-model
+                  key: meta-api-key
                   optional: true
             # Login-time invite redemption requires a Kratos-VERIFIED email
             # (w1/040, closing w1/m53's V1 window: an attacker who registered

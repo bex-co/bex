@@ -16,6 +16,7 @@ import { mockCapabilities } from "@/test/mocks/capabilities";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { AgentModelSource } from "@/graphql/definitions";
 import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
+import type { AgentSecretView } from "@/features/agent-environment/lib/secrets";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -100,6 +101,7 @@ const capabilitiesState = {
   capabilities: {
     enabled: true,
     modelKeyReady: true,
+    agents: ["claude", "gemini", "codex"] as string[] | undefined,
     github: {
       connected: true,
     },
@@ -173,9 +175,18 @@ vi.mock("@/features/agent-environment/hooks/use-agent-skills", () => ({
   }),
 }));
 
+// Workspace agent secrets with their scopes (ADR098 D9): the picker offers
+// the explicit ones and shows the scoped ones as included.
+const workspaceSecrets = vi.hoisted(() => ({
+  current: [] as AgentSecretView[],
+}));
+const EXPLICIT_SECRETS: AgentSecretView[] = [
+  { name: "STRIPE_KEY", scope: "explicit", repo: null },
+  { name: "SENTRY_DSN", scope: "explicit", repo: null },
+];
 vi.mock("@/features/agent-environment/hooks/use-agent-secrets", () => ({
   useAgentSecrets: () => ({
-    names: ["STRIPE_KEY", "SENTRY_DSN"],
+    secrets: workspaceSecrets.current,
     loading: false,
     error: undefined,
     refetch: vi.fn(),
@@ -187,6 +198,7 @@ vi.mock("@/features/agent-environment/hooks/use-agent-secrets", () => ({
 
 beforeEach(() => {
   spend.environment = null;
+  workspaceSecrets.current = EXPLICIT_SECRETS;
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   uploads.length = 0;
   capabilitiesState.capabilities.attachments.enabled = true;
@@ -195,6 +207,7 @@ beforeEach(() => {
   reposState.loading = false;
   capabilitiesState.capabilities.enabled = true;
   capabilitiesState.capabilities.modelKeyReady = true;
+  capabilitiesState.capabilities.agents = ["claude", "gemini", "codex"];
   capabilitiesState.capabilities.github.connected = true;
   capabilitiesState.loading = false;
   capabilitiesState.error = undefined;
@@ -635,6 +648,76 @@ describe("NewSessionComposer", () => {
     ]);
   });
 
+  // ADR098 D9: the server applies scoped secrets itself, so the picker shows
+  // them as included, can't untick them, and never sends them by name.
+  it("includes workspace- and repo-scoped secrets without sending them (ADR098 D9)", async () => {
+    workspaceSecrets.current = [
+      { name: "ORG_TOKEN", scope: "workspace", repo: null },
+      { name: "WIDGETS_KEY", scope: "repo", repo: "acme/widgets" },
+      { name: "ANVILS_KEY", scope: "repo", repo: "acme/anvils" },
+      ...EXPLICIT_SECRETS,
+    ];
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await pickRepo(user, /widgets/);
+    await user.click(screen.getByRole("button", { name: "Secrets" }));
+
+    const org = await screen.findByRole("checkbox", { name: "ORG_TOKEN" });
+    expect(org).toBeChecked();
+    expect(org).toBeDisabled();
+    // The chosen repository is acme/widgets: its secret is included, the
+    // other repository's is not and can't be picked.
+    const widgets = screen.getByRole("checkbox", { name: "WIDGETS_KEY" });
+    expect(widgets).toBeChecked();
+    expect(widgets).toBeDisabled();
+    const anvils = screen.getByRole("checkbox", { name: "ANVILS_KEY" });
+    expect(anvils).not.toBeChecked();
+    expect(anvils).toBeDisabled();
+    const hints = screen
+      .getAllByTestId("agent-composer-secret-scope")
+      .map((hint) => hint.textContent);
+    expect(hints).toEqual([
+      "All sessions",
+      "This repository",
+      "Only on acme/anvils",
+    ]);
+    await user.click(org);
+    expect(org).toBeChecked();
+
+    await user.click(screen.getByRole("checkbox", { name: "STRIPE_KEY" }));
+    await user.keyboard("{Escape}");
+    expect(
+      screen.getByRole("button", { name: "Secrets (1 attached)" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].secretNames).toEqual(["STRIPE_KEY"]);
+  });
+
+  it("matches a repo-scoped secret to the chosen repository case-insensitively", async () => {
+    workspaceSecrets.current = [
+      { name: "ANVILS_KEY", scope: "repo", repo: "acme/anvils" },
+    ];
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.click(screen.getByRole("button", { name: "Secrets" }));
+    // No repository yet (a chat-only session): not included.
+    const before = await screen.findByRole("checkbox", { name: "ANVILS_KEY" });
+    expect(before).not.toBeChecked();
+    expect(before).toBeDisabled();
+    await user.keyboard("{Escape}");
+    await pickRepo(user, /anvils/);
+    await user.click(screen.getByRole("button", { name: "Secrets" }));
+    const after = await screen.findByRole("checkbox", { name: "ANVILS_KEY" });
+    expect(after).toBeChecked();
+    expect(after).toBeDisabled();
+    expect(screen.getByTestId("agent-composer-secret-scope")).toHaveTextContent(
+      "This repository",
+    );
+  });
+
   it("sends the chosen skills with their arguments and lists only enabled ones (ADR099)", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);
@@ -893,6 +976,28 @@ describe("NewSessionComposer", () => {
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(create.mock.calls[0][0].agent).toBe("gemini");
+  });
+
+  it("offers Muse Code only when the workspace's capabilities list it", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<NewSessionComposer />);
+    await user.click(await screen.findByLabelText("Agent"));
+    expect(
+      await screen.findByRole("option", { name: "Gemini" }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Muse Code" })).toBeNull();
+    unmount();
+
+    capabilitiesState.capabilities.agents = ["claude", "codex", "muse"];
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await pickRepo(user);
+    await user.click(screen.getByLabelText("Agent"));
+    expect(screen.queryByRole("option", { name: "Gemini" })).toBeNull();
+    await user.click(await screen.findByRole("option", { name: "Muse Code" }));
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].agent).toBe("muse");
   });
 
   it("shows the selected repo on the toolbar chip", async () => {
@@ -1166,7 +1271,7 @@ describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
     render(<NewSessionComposer />);
     await typeTask(user);
     expect(banner()).toHaveTextContent(
-      "At $10.00 the card on file is charged and sessions keep running",
+      "Billing credits pay first; once spend beyond them reaches $10.00, the card on file is charged and sessions keep running",
     );
     expect(start()).toBeEnabled();
   });

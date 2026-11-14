@@ -215,7 +215,11 @@ func writeSession(w io.Writer, s session) {
 	if o == nil {
 		o = &outcome{}
 	}
-	row("PR", prURL(s))
+	pr := prURL(s)
+	if s.PRState != "" {
+		pr += " (" + s.PRState + ")"
+	}
+	row("PR", pr)
 	row("Delivery", o.DeliveryNote)
 	if c := o.Cost; c != nil {
 		switch {

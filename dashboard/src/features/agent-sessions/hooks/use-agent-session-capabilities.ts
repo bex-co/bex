@@ -40,6 +40,7 @@ export function useAgentSessionCapabilities(
         ? {
             enabled: value.enabled,
             modelKeyReady: value.modelKeyReady,
+            agents: value.agents.map((agent) => agent.id),
             github: {
               connected: value.github.connected,
             },

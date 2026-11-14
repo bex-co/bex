@@ -309,22 +309,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	// Miss: edge rules run in order, first match wins.
 	act, target, routeErr := matchRoutes(site.Routes, requestPath)
-	if routeErr != nil {
-		message := "invalid rewrite target"
-		if act == actRedirect {
-			message = "invalid redirect target"
-		}
-		serveSiteError(w, site, requestPath, http.StatusBadRequest, message)
+	if act == actRedirect {
+		serveRedirect(w, r, site, requestPath, target, routeErr)
 		return
 	}
-	if act == actRedirect {
-		location := target.String()
-		if !safeRedirectLocation(location, target) {
-			serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid redirect target")
-			return
-		}
-		applyHeaders(w.Header(), site.Headers, requestPath)
-		http.Redirect(w, r, location, http.StatusMovedPermanently)
+	if routeErr != nil {
+		serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid rewrite target")
 		return
 	}
 
@@ -380,18 +370,53 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // serveOtherMethod answers a method other than GET and HEAD on a live site. A
 // site's objects are read with those two; any other method reaches content
 // only through an external rewrite, Render's way to reach an API from a
-// static site (w8/184). Anything else gets Render's edge answer: a bare 200
-// with no body and none of the site's headers, on any path (w8/319, captured
-// on four Render static sites 2026-11-13).
+// static site (w8/184). A matched redirect rule answers with GET's 301
+// (w8/324), file or not: no lookup runs, as for an external rewrite, and
+// Render's answer for a file under a redirect rule is uncaptured. Anything
+// else gets Render's edge answer: a bare 200 with no body and none of the
+// site's headers, on any path (w8/319, captured on four Render static sites
+// 2026-11-13).
 func (h *Handler) serveOtherMethod(w http.ResponseWriter, r *http.Request, site Site, requestPath string) {
-	// The root path is never rewritten, as on the GET path.
 	act, target, err := matchRoutes(site.Routes, requestPath)
-	if err == nil && isExternalRewrite(act, target) && requestPath != "/" {
+	switch {
+	case act == actRedirect && !hasGitSegment(requestPath):
+		serveRedirect(w, r, site, requestPath, target, err)
+		return
+	case err == nil && isExternalRewrite(act, target) && requestPath != "/":
+		// The root path is never rewritten, as on the GET path.
 		h.serveExternalRewrite(w, r, site, requestPath, target)
 		return
 	}
 	w.Header().Set("Content-Length", "0")
 	w.WriteHeader(http.StatusOK)
+}
+
+// serveRedirect answers a matched redirect rule as Render does (w8/324,
+// captured on wc3v.onrender.com 2026-11-14): a 301 to the expanded destination
+// carrying the request's query, for every method, with only Content-Type and
+// Location — none of the site's rules, HSTS or the cache policy. A target that
+// failed to expand (expandErr) is a 400 instead. The request's query is
+// checked apart from the destination: past the "?" a reverse solidus cannot
+// move the Location's host or path. A raw "#" in it is escaped, so the
+// visitor's text never becomes the Location's fragment.
+func serveRedirect(w http.ResponseWriter, r *http.Request, site Site, requestPath string, target *url.URL, expandErr error) {
+	query := r.URL.RawQuery
+	var location string
+	if expandErr == nil {
+		location = target.String()
+	}
+	if expandErr != nil || !safeRedirectLocation(location, target) || hasControlByte(query) {
+		serveSiteError(w, site, requestPath, http.StatusBadRequest, "invalid redirect target")
+		return
+	}
+	if query != "" {
+		location = withVisitorQuery(target, strings.ReplaceAll(query, "#", "%23")).String()
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		// http.Redirect types only a GET or HEAD answer; Render types them all.
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	}
+	http.Redirect(w, r, location, http.StatusMovedPermanently)
 }
 
 // isExternalRewrite reports whether a matched rule rewrites to a full URL,
@@ -400,18 +425,20 @@ func isExternalRewrite(act routeAction, target *url.URL) bool {
 	return act == actRewrite && target.Host != ""
 }
 
-// serveNotFound answers a miss as Render does: 404 with the site's root
-// /404.html when it publishes one, else a plain 404. The page is an error body:
-// custom error headers apply, and no validators or ranges (a conditional
-// request for it would read as a cache hit on a 404).
+// serveNotFound answers a miss as Render does (w8/322, captured 2026-11-14 on
+// four Render sites with /* rules): 404 with the site's root /404.html, sent
+// with the headers of any published file (the default cache policy, HSTS,
+// nosniff and the matching rules), else a bare 404 with nosniff and none of
+// the site's rules. The page carries no validators or ranges: a conditional
+// request for it would read as a cache hit on a 404.
 func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Site, requestPath string) {
 	if !site.NoSPAFallback {
-		serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
+		serveBareNotFound(w)
 		return
 	}
 	obj, err := h.get(r.Context(), site, "/404.html")
 	if err != nil {
-		serveSiteError(w, site, requestPath, http.StatusNotFound, "not found")
+		serveBareNotFound(w)
 		return
 	}
 	if r.Method != http.MethodHead {
@@ -423,14 +450,34 @@ func (h *Handler) serveNotFound(w http.ResponseWriter, r *http.Request, site Sit
 		defer h.liveBodies.Release(lease)
 	}
 	hdr := w.Header()
-	applyErrorHeaders(hdr, site.Headers, requestPath)
-	hdr.Set("Content-Type", contentType("/404.html", obj.ContentType))
+	setFileHeaders(hdr, site, requestPath, contentType("/404.html", obj.ContentType), "")
 	hdr.Set("Content-Length", strconv.Itoa(len(obj.Body)))
-	hdr.Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusNotFound)
 	if r.Method != http.MethodHead {
 		_, _ = w.Write(obj.Body)
 	}
+}
+
+// serveBareNotFound is Render's answer to a miss on a site with no 404.html
+// (w8/322): text/plain "Not Found" with nosniff and none of the site's rules.
+func serveBareNotFound(w http.ResponseWriter) {
+	http.Error(w, "Not Found", http.StatusNotFound)
+}
+
+// setFileHeaders gives a published file's response its headers: its type,
+// the default cache policy, Render's static-site security defaults (w8/194)
+// and an ETag when it has one, then the site's rules matching the request
+// path, which win over each (last write for a key), so a saved ETag rule
+// replaces the generated one (w4/272).
+func setFileHeaders(hdr http.Header, site Site, requestPath, servedType, etag string) {
+	hdr.Set("Content-Type", servedType)
+	hdr.Set("Cache-Control", defaultCacheControl)
+	hdr.Set("Strict-Transport-Security", defaultStrictTransportSecurity)
+	hdr.Set("X-Content-Type-Options", "nosniff")
+	if etag != "" {
+		hdr.Set("Etag", etag)
+	}
+	applyHeaders(hdr, site.Headers, requestPath)
 }
 
 // serveOriginError maps a non-miss fetch failure onto its response class:
@@ -471,18 +518,7 @@ func (h *Handler) serveObject(w http.ResponseWriter, r *http.Request, site Site,
 
 	hdr := w.Header()
 	servedType := contentType(servedPath, obj.ContentType)
-	hdr.Set("Content-Type", servedType)
-	hdr.Set("Cache-Control", defaultCacheControl)
-	// Render's static-site security defaults (w8/194). A saved header rule
-	// still replaces either (applyHeaders below).
-	hdr.Set("Strict-Transport-Security", defaultStrictTransportSecurity)
-	hdr.Set("X-Content-Type-Options", "nosniff")
-	if obj.etag != "" {
-		hdr.Set("Etag", obj.etag)
-	}
-	// Custom headers win over the defaults above (last-write for a given key),
-	// so a saved ETag rule replaces the generated one (w4/272).
-	applyHeaders(hdr, site.Headers, requestPath)
+	setFileHeaders(hdr, site, requestPath, servedType, obj.etag)
 	// A Content-Type rule changes the representation, so the generated tag
 	// follows it: a 304 carries no Content-Type, and a browser holding the
 	// old tag would keep the old type (w5/182).
@@ -773,16 +809,14 @@ func matchRoutes(routes []appv1alpha1.StaticRoute, reqPath string) (routeAction,
 
 // matchPattern reports whether reqPath matches pattern and returns the splat (the
 // text captured by a trailing "/*"). "/*" matches everything (splat = the path
-// minus its leading slash); "/foo/*" matches "/foo" and "/foo/..."; any other
-// pattern is an exact match (splat empty).
+// minus its leading slash); "/foo/*" matches "/foo/" and "/foo/...", never the
+// bare "/foo", as on Render (w8/325); any other pattern is an exact match
+// (splat empty).
 func matchPattern(pattern, reqPath string) (string, bool) {
 	if pattern == "/*" {
 		return strings.TrimPrefix(reqPath, "/"), true
 	}
 	if prefix, ok := strings.CutSuffix(pattern, "/*"); ok { // "/foo/*" -> "/foo"
-		if reqPath == prefix {
-			return "", true
-		}
 		if rest, ok := strings.CutPrefix(reqPath, prefix+"/"); ok {
 			return rest, true
 		}
@@ -807,7 +841,9 @@ func placeholderName(segment string) (string, bool) {
 
 // matchRoutePattern is matchPattern plus whole-segment ":name" captures. A
 // placeholder matches exactly one non-empty segment and may precede a
-// trailing "/*". Patterns without placeholders keep matchPattern semantics.
+// trailing "/*", which, as in matchPattern, needs the slash after the last
+// segment: "/:lang/*" matches "/en/" but not "/en". Patterns without
+// placeholders keep matchPattern semantics.
 func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool) {
 	base, hasSplat := strings.CutSuffix(pattern, "/*")
 	hasPlaceholder := false
@@ -823,7 +859,7 @@ func matchRoutePattern(pattern, reqPath string) (string, map[string]string, bool
 	}
 	patSegs := strings.Split(base, "/")
 	reqSegs := strings.Split(reqPath, "/")
-	if len(reqSegs) < len(patSegs) || !hasSplat && len(reqSegs) != len(patSegs) {
+	if hasSplat && len(reqSegs) <= len(patSegs) || !hasSplat && len(reqSegs) != len(patSegs) {
 		return "", nil, false
 	}
 	captures := map[string]string{}
@@ -1020,8 +1056,9 @@ func applyErrorHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPat
 }
 
 // serveSiteError writes an error for a resolved site. Custom headers apply
-// before http.Error so every response class for a known site — including 404 —
-// carries the visitor's matching rules (w4/m101). A request that never
+// before http.Error so every error class for a known site carries the
+// visitor's matching rules (w4/m101), except a bare 404, which Render sends
+// without them (serveBareNotFound, w8/322). A request that never
 // resolved a site (an unknown host) stays on bare http.Error: there are no
 // rules, and applying host-derived headers there would be an existence oracle.
 func serveSiteError(w http.ResponseWriter, site Site, requestPath string, code int, msg string) {
@@ -1081,16 +1118,20 @@ func hostOnly(host string) string {
 	return h
 }
 
-// contentType prefers the origin's content type, else infers from the
+// contentType serves Render's type for the extensions renderExtensionTypes
+// names, else prefers the origin's content type, else infers from the
 // extension, else falls back to octet-stream. An unknown origin type in either
 // spelling counts as none: the publish upload sets no type for an extension
 // the AWS CLI doesn't know, and the store then reports binary/octet-stream
 // (w4/581).
 func contentType(servedPath, originType string) string {
+	ext := strings.ToLower(path.Ext(servedPath))
+	if ct := renderExtensionTypes[ext]; ct != "" {
+		return ct
+	}
 	if originType != "" && originType != "application/octet-stream" && originType != "binary/octet-stream" {
 		return originType
 	}
-	ext := strings.ToLower(path.Ext(servedPath))
 	if ct := staticExtensionTypes[ext]; ct != "" {
 		return ct
 	}
@@ -1107,15 +1148,29 @@ var staticExtensionTypes = map[string]string{
 	".woff2": "font/woff2",
 	".ttf":   "font/ttf",
 	".otf":   "font/otf",
-	".cjs":   "text/javascript; charset=utf-8",
 	".map":   "application/json",
 	".yaml":  "application/yaml",
 	".yml":   "application/yaml",
 	".ogg":   "audio/ogg",
 }
 
+// renderExtensionTypes are the types Render's static sites serve for these
+// extensions whatever the upload guessed (w8/326, captured 2026-11-14 on five
+// Render sites). The publish uploader's Python 3.12 table stores text/javascript,
+// text/xml and application/manifest+json instead. Render sends no charset on
+// any of the three and leaves a manifest uncompressed. .mjs and .cjs were not
+// captured, so they follow .js.
+var renderExtensionTypes = map[string]string{
+	".js":          "application/javascript",
+	".mjs":         "application/javascript",
+	".cjs":         "application/javascript",
+	".xml":         "application/xml",
+	".webmanifest": "binary/octet-stream",
+}
+
 // defaultCacheControl is the browser/CDN policy for every successful response
-// without a matching custom Cache-Control rule (w4/m160). Revision prefixes
+// and the 404.html page (w8/322) without a matching custom Cache-Control rule
+// (w4/m160). Revision prefixes
 // keep origin objects immutable, but browsers key responses by public URL,
 // which survives a republish — so any filename must revalidate, hashed-looking
 // or not. Owners with content-addressed assets opt into long freshness through
@@ -1125,7 +1180,8 @@ var staticExtensionTypes = map[string]string{
 const defaultCacheControl = "public, max-age=0, must-revalidate"
 
 // defaultStrictTransportSecurity is what Render's static sites send on every
-// successful response (w8/194): HTTPS only, ten years, subdomains, preloadable.
+// successful response and the 404.html page (w8/194, w8/322): HTTPS only, ten
+// years, subdomains, preloadable.
 const defaultStrictTransportSecurity = "max-age=315360000; includeSubdomains; preload"
 
 // drain fully reads and closes an origin body (used by the S3 origin), bounded by

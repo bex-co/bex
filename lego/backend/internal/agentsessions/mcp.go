@@ -69,6 +69,7 @@ type listArgs struct {
 	ParentSessionID string   `json:"parentSessionId,omitempty" jsonschema:"only the direct children of this session (ags-…); read the whole tree with get_agent_session_tree"`
 	Mine            bool     `json:"mine,omitempty" jsonschema:"only the sessions you started"`
 	CreatedBy       []string `json:"createdBy,omitempty" jsonschema:"only the sessions these subjects started (a session's createdBy); at most 20"`
+	PRStates        []string `json:"prStates,omitempty" jsonschema:"only the sessions whose pull request is in one of these states: open, merged, closed"`
 	CreatedBefore   string   `json:"createdBefore,omitempty"`
 	CreatedAfter    string   `json:"createdAfter,omitempty"`
 	Cursor          string   `json:"cursor,omitempty"`
@@ -149,9 +150,11 @@ type agentSecretArgs struct {
 }
 
 type setAgentSecretArgs struct {
-	OwnerID string `json:"ownerId,omitempty"`
-	Name    string `json:"name" jsonschema:"the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH"`
-	Value   string `json:"value" jsonschema:"the secret value, 1 B to 32 KiB; write-only, never returned"`
+	OwnerID string  `json:"ownerId,omitempty"`
+	Name    string  `json:"name" jsonschema:"the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH"`
+	Value   string  `json:"value,omitempty" jsonschema:"the secret value, 1 B to 32 KiB; write-only, never returned. Required for a new secret; omit it to change only an existing secret's scope"`
+	Scope   *string `json:"scope,omitempty" jsonschema:"which sessions receive it without naming it: workspace (every session; the default for a new secret), repo (sessions on repo) or explicit (only sessions that name it in secretNames). Omit to keep an existing secret's scope"`
+	Repo    string  `json:"repo,omitempty" jsonschema:"owner/name, required with scope repo"`
 }
 
 type agentSkillArgs struct {
@@ -231,7 +234,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			}
 			out, err := s.List(ctx, ListRequest{
 				OwnerID: in.OwnerID, Archived: in.Archived, Phases: in.Phases, States: in.States, Tag: in.Tag,
-				Repo: in.Repo, AutomationID: in.AutomationID, ParentSessionID: in.ParentSessionID, Mine: in.Mine, CreatedBy: in.CreatedBy,
+				Repo: in.Repo, AutomationID: in.AutomationID, ParentSessionID: in.ParentSessionID, Mine: in.Mine, CreatedBy: in.CreatedBy, PRStates: in.PRStates,
 				CreatedBefore: before, CreatedAfter: after,
 				Cursor: in.Cursor, Limit: in.Limit,
 			})
@@ -257,12 +260,12 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Capabilities(ctx, in.OwnerID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_environment", Description: "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold, whether a failed or disputed payment holds the tier (trustTierLocked), whether the tier's ceiling sets the cap (agentModelSpendCapTierLimited), whether new platform-model requests are refused at the cap now (agentModelSpendCapReached: false while the next request would charge the card at the tier's threshold instead), whether reaching the next charge threshold charges the card and the workspace keeps working (agentModelChargesAtThreshold), and whether an unpaid failed invoice refuses platform-model requests (billingBalanceDue)."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_environment", Description: "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold (billing credits pay agent-model spend first; the card is charged when the spend they leave reaches it), whether a failed or disputed payment holds the tier (trustTierLocked), whether the tier's ceiling sets the cap (agentModelSpendCapTierLimited), whether new platform-model requests are refused at the cap now (agentModelSpendCapReached: false while the next request would charge the card at the tier's threshold instead), whether reaching the next charge threshold charges the card and the workspace keeps working (agentModelChargesAtThreshold), whether an unpaid failed invoice refuses platform-model requests (billingBalanceDue), the agent profiles members can start sessions with (enabledAgents), and each profile whose model provider may train on what its sessions send with the admin acknowledgement turning it on requires (agentDataUse)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in environmentArgs) (*mcp.CallToolResult, Environment, error) {
 			out, err := s.Environment(ctx, in.OwnerID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_environment", Description: "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. agentModelMonthlySpendCapUsd sets the monthly agent-model spend cap in USD (more than 0, at most 10x the plan default; null or resetAgentModelMonthlySpendCap: true returns to the plan default). modelApiKey (write-only) sets or rotates the workspace's own model provider key, which then wins over the bex-provided model (no token billing, no spend cap); clearModelApiKey: true removes it. The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards; the spend cap applies within 20 seconds."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_environment", Description: "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. agentModelMonthlySpendCapUsd sets the monthly agent-model spend cap in USD (more than 0, at most 10x the plan default; null or resetAgentModelMonthlySpendCap: true returns to the plan default). modelApiKey (write-only) sets or rotates the workspace's own model provider key, which then wins over the bex-provided model (no token billing, no spend cap); clearModelApiKey: true removes it. enabledAgents replaces the agent profiles members can start sessions with (the others are turned off; running sessions keep running); a profile listed in agentDataUse can be enabled only with acknowledgeAgentDataUse naming it, now or earlier. The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards; the spend cap applies within 20 seconds."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentArgs) (*mcp.CallToolResult, Environment, error) {
 			out, err := s.UpdateEnvironment(ctx, in.OwnerID, in.EnvironmentInput)
 			return nil, out, err
@@ -383,14 +386,14 @@ func (s *Service) registerSkillMCP(server *mcp.Server) {
 // registerSecretMCP adds the ADR098 D4 workspace agent secret tools. Values
 // are write-only: no tool returns one.
 func (s *Service) registerSecretMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_secrets", Description: "List a workspace's agent secrets by name (values are never returned). Pass names in secretNames to create_agent_session or send_agent_session_message to expose them to the agent as env vars."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_secrets", Description: "List a workspace's agent secrets with their scopes (values are never returned). A workspace-scoped secret reaches every session and a repo-scoped one every session on its repository, as env vars of the same name; pass an explicit secret's name in secretNames to create_agent_session or send_agent_session_message to expose it."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in environmentArgs) (*mcp.CallToolResult, AgentSecretList, error) {
 			out, err := s.AgentSecrets(ctx, in.OwnerID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_secret", Description: "Create or rotate a workspace agent secret (workspace admins only). The value is write-only: no read returns it, and it is redacted from session transcripts. Sessions that reference the name read the new value from their next turn. At most 50 per workspace."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "set_agent_secret", Description: "Create, rotate or rescope a workspace agent secret (workspace admins only). The value is write-only: no read returns it, and it is redacted from session transcripts. A new secret is workspace-wide unless scope says otherwise. Sessions read the new value and scope from their next turn. At most 50 per workspace."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in setAgentSecretArgs) (*mcp.CallToolResult, AgentSecret, error) {
-			out, err := s.SetAgentSecret(ctx, in.OwnerID, in.Name, in.Value)
+			out, err := s.SetAgentSecret(ctx, in.OwnerID, in.Name, AgentSecretInput{Value: in.Value, Scope: in.Scope, Repo: in.Repo})
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_secret", Description: "Delete a workspace agent secret (workspace admins only). A session that still references it fails its next turn with failureReasonCode AGENT_SESSION_SECRET_UNAVAILABLE."},

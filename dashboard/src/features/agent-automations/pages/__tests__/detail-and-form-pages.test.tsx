@@ -57,6 +57,10 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
     refetch: vi.fn(),
   }),
 }));
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-capabilities",
+  () => ({ useAgentSessionCapabilities: () => ({ capabilities: null }) }),
+);
 vi.mock("@/features/agent-sessions/components/composer-secrets", () => ({
   ComposerSecrets: () => <button type="button">secrets</button>,
 }));

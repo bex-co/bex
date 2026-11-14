@@ -194,6 +194,15 @@ sandboxSnapshot:
 # maxConcurrentSessions null = no tier limit on live platform-model sessions.
 agentModel:
   markup: 1.30
+  # Upstream list prices for models bex calls directly instead of through
+  # OpenRouter, whose API reports no per-request cost (ADR091 D2, ADR108).
+  # USD per million tokens; the customer price is this × markup like any other.
+  # muse-spark-1.3-contributor: https://dev.meta.ai/docs/pricing-rate-limits
+  upstreamPrices:
+    - model: muse-spark-1.3-contributor
+      inputUsdPerMTok: 0.10
+      cachedInputUsdPerMTok: 0.002
+      outputUsdPerMTok: 0.20
   maxCapMultiplier: 10
   monthlySpendCapUsd:
     - plan: hobby

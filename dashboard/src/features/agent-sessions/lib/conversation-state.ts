@@ -1,11 +1,7 @@
 import type { AgentSessionPhase } from "@/features/agent-sessions/types";
 
 export type ConversationState =
-  | "not-started"
-  | "connecting"
-  | "live"
-  | "broken"
-  | "ended";
+  "not-started" | "connecting" | "live" | "broken" | "ended";
 
 export interface ConversationStateInput {
   phase?: AgentSessionPhase;

@@ -63,7 +63,7 @@ func TestEveryServePathCarriesTheGeneratedETag(t *testing.T) {
 func TestBrotliAndIdentityValidateAgainstEachOther(t *testing.T) {
 	body := repeated("console.log('etag');\n")
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("app.js"): {Body: body, ContentType: "text/javascript"}})
-	strong := contentETag(body, "text/javascript")
+	strong := contentETag(body, contentType("/app.js", "text/javascript"))
 
 	br := doWith(h, http.MethodGet, "/app.js", brHeader("br"))
 	assertBrotli(t, "br", br, body)
@@ -112,7 +112,7 @@ func TestRepublishChangesTheTagOnlyWhenBytesChange(t *testing.T) {
 func TestRangeResumeUsesTheGeneratedETag(t *testing.T) {
 	body := repeated("console.log('resume');\n")
 	h, _ := newTestHandler(t, Site{}, map[string]Object{key("app.js"): {Body: body, ContentType: "text/javascript"}})
-	tag := contentETag(body, "text/javascript")
+	tag := contentETag(body, contentType("/app.js", "text/javascript"))
 
 	if rec := doWith(h, http.MethodGet, "/app.js", http.Header{"Range": {"bytes=0-9"}, "If-Range": {tag}}); rec.Code != http.StatusPartialContent || rec.Body.String() != string(body[:10]) {
 		t.Errorf("If-Range current tag => %d %q, want 206 of the first 10 bytes", rec.Code, rec.Body)

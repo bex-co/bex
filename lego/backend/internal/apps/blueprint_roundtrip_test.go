@@ -267,16 +267,18 @@ func TestPlanNamesOnlyTheFieldThatChanged(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		from, to  string
-		wantKind  string
+		wantKind  BlueprintResourceKind
 		wantField string
 	}{
-		{"key value eviction policy", "maxmemoryPolicy: allkeys-lru", "maxmemoryPolicy: noeviction", "keyvalue", "maxmemoryPolicy"},
-		{"postgres plan", "plan: 1c-2g", "plan: basic-4gb", "postgres", "plan"},
-		{"service health check", "healthCheckPath: /healthz", "healthCheckPath: /live", "service", "healthCheckPath"},
+		{"key value eviction policy", "maxmemoryPolicy: allkeys-lru", "maxmemoryPolicy: noeviction", BlueprintResourceKeyValue, "maxmemoryPolicy"},
+		{"postgres plan", "plan: 1c-2g", "plan: basic-4gb", BlueprintResourcePostgres, "plan"},
+		{"service health check", "healthCheckPath: /healthz", "healthCheckPath: /live", BlueprintResourceService, "healthCheckPath"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if !strings.Contains(out.Manifest, tc.from) {
-				t.Skipf("export does not contain %q; nothing to perturb", tc.from)
+				// The fixture is controlled; a missing field means the exporter
+				// dropped it, which is the regression this test exists to catch.
+				t.Fatalf("exported manifest does not contain %q — the field was dropped:\n%s", tc.from, out.Manifest)
 			}
 			changed := strings.Replace(out.Manifest, tc.from, tc.to, 1)
 			v, err := svc.ValidateBlueprint(ctx, "", changed, "")
@@ -290,6 +292,11 @@ func TestPlanNamesOnlyTheFieldThatChanged(t *testing.T) {
 					continue
 				}
 				updates++
+				// The change belongs to the perturbed resource, not one that
+				// happens to declare a field of the same name.
+				if action.Kind != tc.wantKind {
+					t.Errorf("%s %q is planned as %s, want only the %s to change", action.Kind, action.Name, action.Operation, tc.wantKind)
+				}
 				paths := fieldPaths(action.ChangedFields)
 				// Exactly the perturbed field — not the declared set, and
 				// never the match key, which cannot have changed.

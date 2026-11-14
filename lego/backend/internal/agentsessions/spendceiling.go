@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 )
@@ -62,13 +61,6 @@ func parseSessionCeiling(usd *float64, metered bool) (*int64, error) {
 			map[string]any{"field": spendLimitField})
 	}
 	return &micro, nil
-}
-
-// sessionMetered reports whether a session of agent in workspaceID would run
-// on the platform route (and so record a price): the route serves the agent
-// profile in a workspace it covers that has not set its own key.
-func sessionMetered(workspaceID, agent string, byoKey bool) bool {
-	return agentsession.PlatformModelKeyReady(workspaceID, byoKey) && agentsession.PinnedAgent(agent)
 }
 
 // microUSDDecimal is micro-USD as an exact decimal string with at least two

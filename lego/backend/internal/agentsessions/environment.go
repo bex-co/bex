@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"maps"
 	"regexp"
@@ -79,7 +80,13 @@ type Environment struct {
 	ModelKeySet   bool        `json:"modelKeySet"`
 	ModelSource   ModelSource `json:"modelSource"`
 	RegistryHosts []string    `json:"registryHosts"`
-	UpdatedAt     *time.Time  `json:"updatedAt"`
+	// EnabledAgents are the agent profiles members can start sessions with,
+	// as the workspace's admins chose (w7/m392); AgentDataUse lists each
+	// profile whose model provider may train on what its sessions send, and
+	// the admin acknowledgement that turning it on requires.
+	EnabledAgents []string       `json:"enabledAgents"`
+	AgentDataUse  []AgentDataUse `json:"agentDataUse"`
+	UpdatedAt     *time.Time     `json:"updatedAt"`
 	// The agent-model spend controls (ADR091 D5, D10.1); all nil when the
 	// store is off. AgentModelMonthlySpendCapUSD is the effective cap:
 	// min(the admin override or the plan default, the trust tier's ceiling).
@@ -128,9 +135,109 @@ type EnvironmentInput struct {
 	// log line or the audit trail.
 	ModelAPIKey      *string `json:"modelApiKey,omitempty" jsonschema:"write-only: sets or rotates the workspace's own model provider key (admins only); it is never returned, and sessions then use it instead of the bex-provided model"`
 	ClearModelAPIKey bool    `json:"clearModelApiKey,omitempty" jsonschema:"true removes the workspace's own model provider key"`
+	// EnabledAgents replaces the agent profiles members can use;
+	// AcknowledgeAgentDataUse records the acknowledgement a profile in
+	// agentDataUse needs before it can be enabled.
+	EnabledAgents           *[]string `json:"enabledAgents,omitempty" jsonschema:"replaces the agent profiles members can start sessions with (admins only); the others are turned off, and running sessions keep running. A profile listed in agentDataUse can be enabled only once acknowledged"`
+	AcknowledgeAgentDataUse []string  `json:"acknowledgeAgentDataUse,omitempty" jsonschema:"agent profiles from agentDataUse whose data use this admin acknowledges: their model provider may train on the prompts, code, files, context and responses their sessions send"`
 	// AgentModelMonthlySpendCapSet is true when the field was present, so a
 	// nil value with it set clears the override.
 	AgentModelMonthlySpendCapSet bool `json:"-"`
+}
+
+// AgentDataUse is one profile whose model provider may train on what its
+// sessions send, and who acknowledged that and when (nil until someone did).
+type AgentDataUse struct {
+	Agent          string     `json:"agent"`
+	AcknowledgedAt *time.Time `json:"acknowledgedAt"`
+	AcknowledgedBy *string    `json:"acknowledgedBy"`
+}
+
+// Agent availability refusals (w7/m392).
+const (
+	// AgentDisabledCode refuses a session of an agent the workspace's admins
+	// turned off (or one that needs a data-use acknowledgement nobody gave).
+	AgentDisabledCode = "AGENT_SESSION_AGENT_DISABLED"
+	// AgentListInvalidCode refuses an unknown profile id in enabledAgents or
+	// acknowledgeAgentDataUse, or an acknowledgement a profile does not need.
+	AgentListInvalidCode = "AGENT_ENVIRONMENT_AGENT_INVALID"
+	// DataUseUnacknowledgedCode refuses enabling a profile in agentDataUse
+	// without its acknowledgement.
+	DataUseUnacknowledgedCode = "AGENT_ENVIRONMENT_DATA_USE_UNACKNOWLEDGED"
+)
+
+// agentEnabled reports whether members of the workspace env belongs to can
+// start agent: a known profile its admins did not turn off and, if its
+// provider may train on session data, whose acknowledgement is on record.
+func agentEnabled(env store.AgentEnvironment, agent string) bool {
+	profile, ok := agentsession.LookupAgentProfile(agent)
+	if !ok || slices.Contains(env.DisabledAgents, profile.ID) {
+		return false
+	}
+	_, acknowledged := env.DataUseAcks[profile.ID]
+	return !profile.RequiresDataUseAcknowledgement || acknowledged
+}
+
+// agentAvailabilityPatch validates an enabledAgents / acknowledgeAgentDataUse
+// update against the stored acknowledgements and fills patch: the turned-off
+// list is every profile not enabled, so a profile added later starts on
+// unless it needs an acknowledgement. An acknowledgement alone never turns an
+// agent on: the agents on now are written as the list.
+func agentAvailabilityPatch(current store.AgentEnvironment, input EnvironmentInput, subject string, patch *store.AgentEnvironmentPatch) error {
+	acknowledged := map[string]bool{}
+	for id := range current.DataUseAcks {
+		acknowledged[id] = true
+	}
+	for _, agent := range input.AcknowledgeAgentDataUse {
+		profile, ok := agentsession.LookupAgentProfile(agent)
+		if !ok || !profile.RequiresDataUseAcknowledgement {
+			return core.NewBadRequestError(AgentListInvalidCode,
+				fmt.Sprintf("acknowledgeAgentDataUse: %q is not an agent profile that needs a data-use acknowledgement", agent),
+				map[string]any{"field": "acknowledgeAgentDataUse", "agent": agent})
+		}
+		if !acknowledged[profile.ID] {
+			patch.AcknowledgeDataUse = append(patch.AcknowledgeDataUse, profile.ID)
+			acknowledged[profile.ID] = true
+		}
+	}
+	if len(patch.AcknowledgeDataUse) > 0 {
+		patch.AcknowledgedBy = subject
+	}
+	enabled := map[string]bool{}
+	if input.EnabledAgents == nil {
+		for _, id := range agentsession.AgentProfileIDs() {
+			enabled[id] = agentEnabled(current, id)
+		}
+	}
+	for _, agent := range deref(input.EnabledAgents) {
+		profile, ok := agentsession.LookupAgentProfile(agent)
+		if !ok {
+			return core.NewBadRequestError(AgentListInvalidCode,
+				fmt.Sprintf("enabledAgents: %q is not an agent profile", agent),
+				map[string]any{"field": "enabledAgents", "agent": agent})
+		}
+		if profile.RequiresDataUseAcknowledgement && !acknowledged[profile.ID] {
+			return core.NewBadRequestError(DataUseUnacknowledgedCode,
+				fmt.Sprintf("the %s agent's model provider may train on what its sessions send; acknowledge that (acknowledgeAgentDataUse) to turn it on", profile.ID),
+				map[string]any{"field": "enabledAgents", "agent": profile.ID})
+		}
+		enabled[profile.ID] = true
+	}
+	disabled := []string{}
+	for _, id := range agentsession.AgentProfileIDs() {
+		if !enabled[id] {
+			disabled = append(disabled, id)
+		}
+	}
+	patch.DisabledAgents = &disabled
+	return nil
+}
+
+func deref[T any](list *[]T) []T {
+	if list == nil {
+		return nil
+	}
+	return *list
 }
 
 // spendCapField is the wire name of the spend-cap override.
@@ -158,6 +265,11 @@ const ModelKeyInvalidCode = "AGENT_ENVIRONMENT_MODEL_KEY_INVALID"
 // ModelKeyRequiredCode refuses a session whose agent the workspace cannot run:
 // not served by the platform model route and no model key of its own.
 const ModelKeyRequiredCode = "AGENT_SESSION_MODEL_KEY_REQUIRED"
+
+// AgentUnavailableCode refuses a platform-only agent (ADR108 D5) in a
+// workspace no bex-owned model route serves it in: a workspace key never runs
+// it.
+const AgentUnavailableCode = "AGENT_SESSION_AGENT_UNAVAILABLE"
 
 // maxModelKeyBytes bounds a model key (provider keys and OAuth tokens are
 // well under 1 KB).
@@ -255,6 +367,15 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	patch, err := validateEnvironmentInput(workspaceID, input, byoKey)
 	if err != nil {
 		return Environment{}, err
+	}
+	if input.EnabledAgents != nil || len(input.AcknowledgeAgentDataUse) > 0 {
+		current, err := s.workspaceEnvironment(ctx, workspaceID)
+		if err != nil {
+			return Environment{}, err
+		}
+		if err := agentAvailabilityPatch(current, input, core.SubjectFrom(ctx), &patch); err != nil {
+			return Environment{}, err
+		}
 	}
 	// One spend read serves both the cap bound and the returned view; the
 	// written override is applied to it in hand.
@@ -458,6 +579,20 @@ func (s *Service) environmentView(row store.AgentEnvironment) Environment {
 		view.ModelSource = ModelSourceNone
 	}
 	view.ModelKeySet = view.ModelSource == ModelSourceBYO
+	view.EnabledAgents, view.AgentDataUse = []string{}, []AgentDataUse{}
+	for _, id := range agentsession.AgentProfileIDs() {
+		if agentEnabled(row, id) {
+			view.EnabledAgents = append(view.EnabledAgents, id)
+		}
+		if profile, _ := agentsession.LookupAgentProfile(id); profile.RequiresDataUseAcknowledgement {
+			use := AgentDataUse{Agent: id}
+			if ack, ok := row.DataUseAcks[id]; ok {
+				at, by := ack.At.UTC(), ack.By
+				use.AcknowledgedAt, use.AcknowledgedBy = &at, &by
+			}
+			view.AgentDataUse = append(view.AgentDataUse, use)
+		}
+	}
 	if !row.UpdatedAt.IsZero() {
 		at := row.UpdatedAt.UTC()
 		view.UpdatedAt = &at
@@ -490,6 +625,13 @@ func sessionEgress(env store.AgentEnvironment, allowlist []string) sessionegress
 	return sessionegress.Egress{FullInternet: env.NetworkTier == NetworkTierFull, Hosts: allowlist}
 }
 
+// modelPinnedError refuses an explicit model other than the one a session
+// must run.
+func modelPinnedError(message, pinned string) error {
+	return core.NewBadRequestError("AGENT_SESSION_MODEL_PINNED", message,
+		map[string]any{"field": "agentConfig.model", "pinnedModel": pinned})
+}
+
 // sessionModel resolves the model a session runs: the request's explicit
 // model, else the workspace default. The claude session of a workspace on
 // the platform route (one without its own model key) always runs the pinned
@@ -502,12 +644,18 @@ func sessionEgress(env store.AgentEnvironment, allowlist []string) sessionegress
 // drops the pinned OpenRouter model for the workspace default (empty: the
 // agent profile's), which its own provider serves.
 func sessionModel(workspaceID string, config AgentConfig, env store.AgentEnvironment, explicit bool) (string, error) {
+	// A profile with a release-locked model (ADR108 D4, muse) runs only it,
+	// whatever the workspace default.
+	if profile, _ := agentsession.LookupAgentProfile(config.Agent); profile.Model != "" {
+		if explicit && config.Model != "" && config.Model != profile.Model {
+			return "", modelPinnedError(fmt.Sprintf("the %s agent runs only model %s; omit agentConfig.model or set it to that model", profile.ID, profile.Model), profile.Model)
+		}
+		return profile.Model, nil
+	}
 	pinnedAgent := agentsession.PinnedAgent(config.Agent)
 	if pinned, ok := agentsession.PlatformPinnedModel(workspaceID, env.ModelKeySet()); ok && pinnedAgent {
 		if explicit && config.Model != "" && config.Model != pinned {
-			return "", core.NewBadRequestError("AGENT_SESSION_MODEL_PINNED",
-				"this workspace runs agents on the platform model; omit agentConfig.model or set it to the pinned model",
-				map[string]any{"field": "agentConfig.model", "pinnedModel": pinned})
+			return "", modelPinnedError("this workspace runs agents on the platform model; omit agentConfig.model or set it to the pinned model", pinned)
 		}
 		return pinned, nil
 	}

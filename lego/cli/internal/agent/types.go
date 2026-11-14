@@ -50,6 +50,7 @@ type session struct {
 	Steerable         bool        `json:"steerable"`
 	Turns             int         `json:"turns"`
 	PRURL             string      `json:"prUrl"`
+	PRState           string      `json:"prState"`
 	FailureReason     string      `json:"failureReason"`
 	FailureReasonCode string      `json:"failureReasonCode"`
 	SSHAddress        string      `json:"sshAddress"`

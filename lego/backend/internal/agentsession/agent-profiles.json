@@ -53,6 +53,47 @@
       "npmPackage": "@google/gemini-cli@0.55.1",
       "authentication": "environment",
       "permissionPolicy": "sandbox-auto-approve"
+    },
+    {
+      "id": "muse",
+      "executable": "/usr/local/bin/muse-code-acp",
+      "args": [],
+      "env": {
+        "MUSE_CODE_EXECUTABLE": "/opt/muse/muse",
+        "MUSE_CODE_ACP_ALLOW_YOLO": "1"
+      },
+      "modelEndpoint": "https://api.meta.ai/v1",
+      "modelProxy": {
+        "baseUrlEnv": "MUSE_CODE_ACP_GATEWAY_URL",
+        "baseUrlSuffix": "/v1",
+        "credentialEnv": "MUSE_CODE_ACP_GATEWAY_KEY"
+      },
+      "sessionState": [".local"],
+      "npmPackage": "@bex-co/muse-code-acp@0.11.0",
+      "nativeBinary": {
+        "version": "1.4.14-R7309.1",
+        "path": "/opt/muse/muse",
+        "artifacts": {
+          "amd64": {
+            "url": "https://lookaside.facebook.com/lookaside/muse/download/?channel=muse&version=1.4.14-R7309.1&file=muse-x86-linux",
+            "sha256": "0809aac7cb58d18f5022b6d05e02aa1974683c0ec430e5f04d25b60ed17de2da"
+          },
+          "arm64": {
+            "url": "https://lookaside.facebook.com/lookaside/muse/download/?channel=muse&version=1.4.14-R7309.1&file=muse-aarch64-linux",
+            "sha256": "3dc39b8fa26f9963cc2038f2966c0932ed5a39f0f9efb39cc0266a261cbbcf76"
+          }
+        }
+      },
+      "model": "muse-spark-1.3-contributor",
+      "platformOnly": true,
+      "requiresDataUseAcknowledgement": true,
+      "sessionConfig": {
+        "sandbox": "disabled",
+        "nativeApprovalPolicy": "allowAll",
+        "mode": "bypassApprovals"
+      },
+      "authentication": "environment",
+      "permissionPolicy": "sandbox-auto-approve"
     }
   ]
 }

@@ -196,18 +196,23 @@ type AgentSpendInputs struct {
 	// BalanceDue reports an open failed invoice (paid or voided closes it) or
 	// an unpaid agent-model write-off (ADR091 D10.3).
 	BalanceDue bool
-	// UnbilledFrom opens the charge window (ADR091 D10.2a): the later of the
-	// month's start and where a subscription invoice last billed the meter
-	// (billing_provider_mappings.agent_model_billed_until).
-	// WindowSpendMicroUSD is agent_model_cost_microusd in the month's hours
-	// that started at or after it, and ChargedMicroUSD what the paid charges
-	// made since it collected: the difference is the spend no invoice and no
-	// charge has billed. ChargeSeq is the month's last charge (0 = none),
-	// whatever its status; ChargePending reports a charge in flight (in any
-	// month).
+	// UnbilledFrom opens the charge window (ADR091 D10.2a): where a
+	// subscription invoice last billed the meter
+	// (billing_provider_mappings.agent_model_billed_until), even in the
+	// previous month, or the month's start before any invoice has; never
+	// before the previous month's start, the oldest hours compaction keeps
+	// for certain. WindowSpendMicroUSD is agent_model_cost_microusd in the
+	// hours that started at or after it, and ChargedMicroUSD what the paid
+	// charges made since it collected: the difference is the spend no invoice
+	// and no charge has billed. CreditMicroUSD is the billing credits the
+	// charger read inside the window (0 when it has not), which the next
+	// subscription invoice applies to metered usage before the card pays.
+	// ChargeSeq is the month's last charge (0 = none), whatever its status;
+	// ChargePending reports a charge in flight (in any month).
 	UnbilledFrom        time.Time
 	WindowSpendMicroUSD int64
 	ChargedMicroUSD     int64
+	CreditMicroUSD      int64
 	ChargeSeq           int
 	ChargePending       bool
 	// Chargeable reports that a threshold charge can be collected: the
@@ -234,7 +239,7 @@ func (s *PGStore) AgentSpendInputs(ctx context.Context, workspaceID string, now 
 		       win.start,
 		       CASE WHEN win.start = $2::timestamptz THEN mtd.spend
 		            ELSE `+agentSessionHourlySumSQL("workspace_id = $1 AND ", "win.start", "$2", "$3")+` END,
-		       ch.charged, ch.seq,
+		       ch.charged, CASE WHEN win.credit_at >= win.start THEN COALESCE(win.credit, 0) ELSE 0 END, ch.seq,
 		       EXISTS (SELECT 1 FROM agent_model_threshold_charges p WHERE p.workspace_id = t.id AND p.status = 'pending'),
 		       NOT t.billing_excluded AND NOT t.billing_comped
 		       AND EXISTS (SELECT 1 FROM billing_provider_mappings m WHERE m.workspace_id = t.id AND m.subscription_id IS NOT NULL)
@@ -243,19 +248,21 @@ func (s *PGStore) AgentSpendInputs(ctx context.Context, workspaceID string, now 
 		LEFT JOIN agent_environments ae ON ae.workspace_id = t.id
 		CROSS JOIN LATERAL (SELECT `+agentSessionMonthToDateSQL+` AS spend) mtd
 		CROSS JOIN LATERAL (
-			-- GREATEST ignores the NULL of a workspace no invoice has billed.
-			SELECT GREATEST($2::timestamptz,
-			       (SELECT m.agent_model_billed_until FROM billing_provider_mappings m WHERE m.workspace_id = t.id)) AS start
+			SELECT CASE WHEN m.agent_model_billed_until IS NULL THEN $2::timestamptz
+			            ELSE GREATEST(m.agent_model_billed_until,
+			                          (($2::timestamptz AT TIME ZONE 'UTC') - interval '1 month') AT TIME ZONE 'UTC') END AS start,
+			       m.agent_model_credit_microusd AS credit, m.agent_model_credit_read_at AS credit_at
+			FROM (SELECT 1) one LEFT JOIN billing_provider_mappings m ON m.workspace_id = t.id
 		) win
 		CROSS JOIN LATERAL (
 			SELECT COALESCE(SUM(c.amount_microusd) FILTER (WHERE c.status = 'paid' AND c.created_at >= win.start), 0)::bigint AS charged,
-			       COALESCE(MAX(c.seq), 0) AS seq
+			       COALESCE(MAX(c.seq) FILTER (WHERE c.month = ($2::timestamptz AT TIME ZONE 'UTC')::date), 0) AS seq
 			FROM agent_model_threshold_charges c
-			WHERE c.workspace_id = t.id AND c.month = ($2::timestamptz AT TIME ZONE 'UTC')::date
+			WHERE c.workspace_id = t.id AND c.month >= (($2::timestamptz AT TIME ZONE 'UTC') - interval '1 month')::date
 		) ch
 		WHERE t.id = $1`, workspaceID, MonthStartUTC(now), []string{UsageKindAgentModelCostMicroUSD},
 	).Scan(append(append([]any{&in.Plan}, trust.dest()...), &in.OverrideMicroUSD, &in.MonthToDateMicroUSD, &in.ModelKeySet, &in.BalanceDue,
-		&in.UnbilledFrom, &in.WindowSpendMicroUSD, &in.ChargedMicroUSD, &in.ChargeSeq, &in.ChargePending, &in.Chargeable)...)
+		&in.UnbilledFrom, &in.WindowSpendMicroUSD, &in.ChargedMicroUSD, &in.CreditMicroUSD, &in.ChargeSeq, &in.ChargePending, &in.Chargeable)...)
 	if err != nil {
 		return AgentSpendInputs{}, classify("workspace", err)
 	}

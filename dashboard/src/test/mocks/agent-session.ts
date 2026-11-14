@@ -50,6 +50,7 @@ export function agentSessionView({
     headSha: null,
     prUrl: null,
     prNumber: null,
+    prState: null,
     turns: 0,
     deliveryMode: null,
     failureReason: null,

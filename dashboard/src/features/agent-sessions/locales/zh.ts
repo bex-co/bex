@@ -38,6 +38,31 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "#{number}",
     description: "Draft PR badge label — the pull-request number",
   },
+  "agentSessions.prState.open": {
+    message: "已打开",
+    description:
+      "PR state badge beside a session's PR link — the pull request is open (a draft counts as open)",
+  },
+  "agentSessions.prState.merged": {
+    message: "已合并",
+    description:
+      "PR state badge beside a session's PR link — the pull request was merged",
+  },
+  "agentSessions.prState.closed": {
+    message: "已关闭",
+    description:
+      "PR state badge beside a session's PR link — the pull request was closed without merging",
+  },
+  "agentSessions.prStateFilter": {
+    message: "按拉取请求状态筛选",
+    description:
+      "Session list — accessible name of the Any/Open/Merged/Closed PR-state filter",
+  },
+  "agentSessions.prStateFilterAny": {
+    message: "全部",
+    description:
+      "Session list PR-state filter — the option that shows sessions whatever their PR state, including sessions with no PR",
+  },
   "agentSessions.errorTitle": {
     message: "无法加载会话。",
     description: "Agent sessions list error — one sentence, Retry beside it",
@@ -210,6 +235,10 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.agent.codex": {
     message: "Codex",
     description: "Composer — agent option: codex",
+  },
+  "agentSessions.agent.muse": {
+    message: "Muse Code",
+    description: "Composer — agent option: muse (Meta's Muse Code)",
   },
   "agentSessions.submit": {
     message: "开始会话",
@@ -999,7 +1028,7 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.spendWarningBodyCharge": {
     message:
-      "已使用 {used} / {cap}。达到 {cap} 时会从绑定的卡扣款，会话继续运行；只有扣款失败才会停止新的模型请求。",
+      "已使用 {used} / {cap}。先用 billing credits 抵扣；超出部分达到 {cap} 时会从绑定的卡扣款，会话继续运行。只有扣款失败才会停止新的模型请求。",
     description:
       "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
   },
@@ -1265,6 +1294,40 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.secretsDuplicate": {
     message: "此会话已有同名密钥。",
     description: "Composer Secrets popover: duplicate inline secret name",
+  },
+  "agentSessions.secretsScopeRepo": {
+    message: "此仓库",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to the chosen repository, included",
+  },
+  "agentSessions.secretsScopeOtherRepo": {
+    message: "仅限 {repo}",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to another repository, not available here",
+  },
+  "agentSessions.appliedSecretsTitle": {
+    message: "最近一轮的密钥",
+    description:
+      "Session header: heading of the applied-secrets popover (names and sources, never values)",
+  },
+  "agentSessions.appliedSecretSource.inline": {
+    message: "此会话",
+    description:
+      "Applied secret source: an inline secret given to this session only",
+  },
+  "agentSessions.appliedSecretSource.explicit": {
+    message: "已选择",
+    description: "Applied secret source: a workspace secret the session picked",
+  },
+  "agentSessions.appliedSecretSource.repo": {
+    message: "仓库",
+    description:
+      "Applied secret source: a workspace secret scoped to the session's repository",
+  },
+  "agentSessions.appliedSecretSource.workspace": {
+    message: "工作区",
+    description:
+      "Applied secret source: a workspace secret every session receives",
   },
   "agentSessions.metaSecrets_other": {
     message: "{count} 个密钥",

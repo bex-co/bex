@@ -39,6 +39,7 @@ type chargeStoreFake struct {
 	mu          sync.Mutex
 	charges     map[store.AgentModelChargeKey]store.AgentModelCharge
 	billedUntil map[string]time.Time
+	credits     map[string]int64
 	locked      bool
 }
 
@@ -167,7 +168,18 @@ func (f *chargeStoreFake) RecordAgentModelBilledUntil(_ context.Context, ws stri
 		return false, nil
 	}
 	f.billedUntil[ws] = until
+	delete(f.credits, ws)
 	return true, nil
+}
+
+func (f *chargeStoreFake) RecordAgentModelCredits(_ context.Context, ws string, micro int64, _ time.Time) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.credits == nil {
+		f.credits = map[string]int64{}
+	}
+	f.credits[ws] = micro
+	return nil
 }
 
 func (f *chargeStoreFake) RunExclusive(ctx context.Context, _ string, fn func(context.Context) error) (bool, error) {
@@ -213,14 +225,23 @@ type chargeStub struct {
 	pay     func() (int, string)
 	current string
 	items   int
-	// listed is the Subscription's latest invoices, as JSON objects.
-	listed []string
+	// listed is the Subscription's latest invoices, as JSON objects;
+	// creditCents the customer's available metered billing credit.
+	listed      []string
+	creditCents int64
 }
 
 func newChargeStub(t *testing.T) (*StripeClient, *stripeStub, *chargeStub) {
 	t.Helper()
 	cs := &chargeStub{pay: func() (int, string) { return 200, chargeTestPaidInvoice }, current: chargeTestOpenInvoice}
-	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+	c, stub := newStripeTest(t, newChargeStubRoute(cs))
+	c.storeCustomer("tea-a", "cus_1")
+	return c, stub, cs
+}
+
+// newChargeStubRoute is chargeStub's Stripe routes.
+func newChargeStubRoute(cs *chargeStub) func(method, path string) (int, string) {
+	return func(method, path string) (int, string) {
 		cs.mu.Lock()
 		defer cs.mu.Unlock()
 		switch {
@@ -228,6 +249,10 @@ func newChargeStub(t *testing.T) (*StripeClient, *stripeStub, *chargeStub) {
 			return 200, chargeTestSubscriptions
 		case method == http.MethodGet && path == "/v1/invoices":
 			return 200, `{"object":"list","has_more":false,"data":[` + strings.Join(cs.listed, ",") + `]}`
+		case method == http.MethodGet && path == "/v1/billing/credit_balance_summary":
+			return 200, creditBalanceJSON(cs.creditCents)
+		case method == http.MethodGet && path == "/v1/billing/credit_grants":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/billing/credit_grants"}`
 		case method == http.MethodPost && path == "/v1/invoices":
 			return 200, `{"id":"in_c1","object":"invoice","status":"draft","customer":"cus_1","subtotal":0}`
 		case method == http.MethodGet && path == "/v1/invoices/in_c1":
@@ -241,9 +266,12 @@ func newChargeStub(t *testing.T) (*StripeClient, *stripeStub, *chargeStub) {
 			return cs.pay()
 		}
 		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
-	})
-	c.storeCustomer("tea-a", "cus_1")
-	return c, stub, cs
+	}
+}
+
+// creditBalanceJSON is a credit balance summary of cents available.
+func creditBalanceJSON(cents int64) string {
+	return fmt.Sprintf(`{"object":"billing.credit_balance_summary","livemode":false,"balances":[{"available_balance":{"type":"monetary","monetary":{"currency":"usd","value":%d}},"ledger_balance":{"type":"monetary","monetary":{"currency":"usd","value":%d}}}]}`, cents, cents)
 }
 
 func (cs *chargeStub) setPay(status int, body string) {
@@ -281,14 +309,16 @@ var chargeTestKey = store.AgentModelChargeKey{WorkspaceID: "tea-a", Month: time.
 func TestAgentModelChargePaidStandaloneAndNetted(t *testing.T) {
 	c, stub, _ := newChargeStub(t)
 	charger, st, trust := newTestCharger(c)
-	result, err := charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 10_005_000)
+	result, err := charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 10_005_000})
 	if err != nil || result.Outcome != ChargePaid || result.InvoiceID != "in_c1" {
 		t.Fatalf("result = %+v, %v; want paid in_c1", result, err)
 	}
 
-	// The charge window is read first (the Subscription's latest invoices),
-	// then the charge is made.
-	wantPaths := []string{"/v1/subscriptions", "/v1/invoices", "/v1/subscriptions", "/v1/invoices", "/v1/invoiceitems",
+	// The charge window is read first (the Subscription's latest invoices
+	// and the billing credits; with none, no grant is listed), then the charge
+	// is made.
+	wantPaths := []string{"/v1/subscriptions", "/v1/invoices", "/v1/billing/credit_balance_summary",
+		"/v1/subscriptions", "/v1/invoices", "/v1/invoiceitems",
 		"/v1/invoices/in_c1/finalize", "/v1/invoices/in_c1/pay", "/v1/subscriptions", "/v1/invoiceitems"}
 	if !slices.Equal(stub.hits, wantPaths) {
 		t.Fatalf("Stripe calls = %v, want %v", stub.hits, wantPaths)
@@ -362,7 +392,7 @@ func TestAgentModelChargeDeclined(t *testing.T) {
 			c, stub, cs := newChargeStub(t)
 			cs.setPay(tc.status, tc.body)
 			charger, st, trust := newTestCharger(c)
-			result, err := charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 10_000_000)
+			result, err := charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 10_000_000})
 			if err != nil || result.Outcome != ChargeDeclined || result.HostedInvoiceURL != "https://pay.stripe.test/in_c1" {
 				t.Fatalf("result = %+v, %v; want declined with the hosted page", result, err)
 			}
@@ -389,7 +419,7 @@ func TestAgentModelChargeUndecidedThenSwept(t *testing.T) {
 	c, stub, cs := newChargeStub(t)
 	cs.setPay(500, `{"error":{"type":"api_error","message":"down"}}`)
 	charger, st, trust := newTestCharger(c)
-	result, err := charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 10_000_000)
+	result, err := charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 10_000_000})
 	if err != nil || result.Outcome != ChargePending {
 		t.Fatalf("result = %+v, %v; want pending", result, err)
 	}
@@ -403,7 +433,7 @@ func TestAgentModelChargeUndecidedThenSwept(t *testing.T) {
 	// A second crossing while it is pending joins it, and does not wait on
 	// a charge Stripe already could not decide.
 	start := time.Now()
-	if joined, err := charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 12_000_000); err != nil ||
+	if joined, err := charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 12_000_000}); err != nil ||
 		joined.Outcome != ChargePending || time.Since(start) > time.Second {
 		t.Fatalf("join = %+v, %v after %s", joined, err, time.Since(start))
 	}
@@ -482,7 +512,7 @@ func TestAgentModelChargeJoinWaitsForTheChargeInFlight(t *testing.T) {
 				time.Sleep(50 * time.Millisecond)
 				_, _ = st.SettleAgentModelCharge(context.Background(), chargeTestKey, store.AgentModelChargeSettlement{Status: tc.settle, At: chargeTestNow})
 			}()
-			result, err := charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 10_000_000)
+			result, err := charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 10_000_000})
 			if err != nil || result.Outcome != tc.want || result.InvoiceID != "in_c1" {
 				t.Fatalf("join = %+v, %v; want %v", result, err, tc.want)
 			}
@@ -494,14 +524,14 @@ func TestAgentModelChargeJoinWaitsForTheChargeInFlight(t *testing.T) {
 }
 
 // chargeProviderFake counts charges; it is never meant to be reached.
-// billedUntil is what AgentModelBilledUntil reads from Stripe.
+// meter is what AgentModelMeter reads from Stripe.
 type chargeProviderFake struct {
-	charges     int
-	billedUntil time.Time
+	charges int
+	meter   AgentModelMeter
 }
 
-func (f *chargeProviderFake) AgentModelBilledUntil(context.Context, string) (time.Time, error) {
-	return f.billedUntil, nil
+func (f *chargeProviderFake) AgentModelMeter(context.Context, string) (AgentModelMeter, error) {
+	return f.meter, nil
 }
 
 func (f *chargeProviderFake) ChargeAgentModelUsage(context.Context, store.AgentModelCharge, func(context.Context, string) error) (AgentModelChargeResult, error) {
@@ -707,7 +737,7 @@ func TestAgentModelChargeAgainstPostgres(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			result, err := replicas[i%2].ChargeThreshold(ctx, ws, now, 0, 10_000_000)
+			result, err := replicas[i%2].ChargeThreshold(ctx, store.AgentModelCrossing{WorkspaceID: ws, At: now, UnbilledMicroUSD: 10_000_000})
 			if err != nil {
 				t.Error(err)
 			}
@@ -740,7 +770,7 @@ func TestAgentModelChargeAgainstPostgres(t *testing.T) {
 	}
 
 	// The next crossing is declined: balance due, nothing netted.
-	result, err := replicas[0].ChargeThreshold(ctx, ws, now, 1, 25_000_000)
+	result, err := replicas[0].ChargeThreshold(ctx, store.AgentModelCrossing{WorkspaceID: ws, At: now, SeenSeq: 1, UnbilledMicroUSD: 25_000_000})
 	if err != nil || result.Outcome != ChargeDeclined || result.HostedInvoiceURL == "" {
 		t.Fatalf("second charge = %+v, %v; want declined with its hosted page", result, err)
 	}
@@ -778,7 +808,7 @@ func TestAgentModelChargeNotDueWhenAnInvoiceBilledTheMeter(t *testing.T) {
 		`{"id":"in_man","object":"invoice","status":"paid","billing_reason":"manual","period_end":1894000000,` + contract + `}`,
 	}
 	charger, st, _ := newTestCharger(c)
-	result, err := charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 10_495_014)
+	result, err := charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 10_495_014})
 	if err != nil || result.Outcome != ChargeNotDue {
 		t.Fatalf("result = %+v, %v; want not due", result, err)
 	}
@@ -788,8 +818,104 @@ func TestAgentModelChargeNotDueWhenAnInvoiceBilledTheMeter(t *testing.T) {
 	if got := st.billedUntil["tea-a"]; !got.Equal(boundary) {
 		t.Fatalf("billed until = %s, want the threshold invoice's period end %s (a manual invoice bills no meter)", got, boundary)
 	}
-	if result, err = charger.ChargeThreshold(context.Background(), "tea-a", chargeTestNow, 0, 10_000_000); err != nil || result.Outcome != ChargePaid {
+	if result, err = charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 10_000_000}); err != nil || result.Outcome != ChargePaid {
 		t.Fatalf("second attempt = %+v, %v; want paid", result, err)
+	}
+}
+
+// ADR091 D10.2a: billing credits pay before the card. A standalone charge
+// invoice cannot spend them, so the charger reads the balance first: when it
+// differs from what the caller's read counted, it records it and charges
+// nothing (the caller re-reads and finds the credit covers the spend); when
+// it matches, the charge collects only what the credit left. A failed
+// credit read keeps the recorded credit and the charge goes ahead.
+func TestAgentModelChargeCreditsPayFirst(t *testing.T) {
+	c, stub, cs := newChargeStub(t)
+	cs.creditCents = 2000
+	charger, st, _ := newTestCharger(c)
+	result, err := charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 10_000_000})
+	if err != nil || result.Outcome != ChargeNotDue {
+		t.Fatalf("first crossing = %+v, %v; want not due (the credit was not counted)", result, err)
+	}
+	if n := countPosts(stub.requests("/v1/invoices")); n != 0 || st.credits["tea-a"] != 20_000_000 {
+		t.Fatalf("invoices created = %d, credit recorded = %d; want none and $20", n, st.credits["tea-a"])
+	}
+
+	result, err = charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 5_000_000, CreditMicroUSD: 20_000_000})
+	if err != nil || result.Outcome != ChargePaid {
+		t.Fatalf("crossing past the credit = %+v, %v; want paid", result, err)
+	}
+	if got := st.get(chargeTestKey); got.AmountCents != 500 {
+		t.Fatalf("charge = %+v, want the $5 the credit left", got)
+	}
+
+	failing, failStub := newStripeTest(t, func(method, path string) (int, string) {
+		if path == "/v1/billing/credit_balance_summary" {
+			return 403, `{"error":{"type":"invalid_request_error","message":"restricted key"}}`
+		}
+		return newChargeStubRoute(cs)(method, path)
+	})
+	failing.storeCustomer("tea-a", "cus_1")
+	charger, st, _ = newTestCharger(failing)
+	st.credits = map[string]int64{"tea-a": 7_000_000}
+	result, err = charger.ChargeThreshold(context.Background(), store.AgentModelCrossing{WorkspaceID: "tea-a", At: chargeTestNow, UnbilledMicroUSD: 10_000_000, CreditMicroUSD: 7_000_000})
+	if err != nil || result.Outcome != ChargePaid || countPosts(failStub.requests("/v1/invoices")) != 1 || st.credits["tea-a"] != 7_000_000 {
+		t.Fatalf("failed credit read = %+v, %v, credit %d; want the charge made and the recorded credit kept", result, err, st.credits["tea-a"])
+	}
+}
+
+// The credit the next invoice applies is the available metered balance less
+// what grants expiring by the period's end hold (Stripe applies a grant only
+// to an invoice whose period ends before it expires); a grant that outlives
+// the period, a never-expiring one and a voided one are not read. Before
+// any invoice has billed the meter, the window opens at the Subscription's
+// start.
+func TestAgentModelMeterCredit(t *testing.T) {
+	start, periodEnd := time.Date(2026, 11, 2, 0, 0, 0, 0, time.UTC), time.Date(2026, 12, 2, 0, 0, 0, 0, time.UTC)
+	grant := func(id string, expires time.Time, voided bool) string {
+		exp, void := "null", "null"
+		if !expires.IsZero() {
+			exp = fmt.Sprint(expires.Unix())
+		}
+		if voided {
+			void = fmt.Sprint(start.Unix())
+		}
+		return fmt.Sprintf(`{"id":%q,"object":"billing.credit_grant","effective_at":%d,"expires_at":%s,"voided_at":%s,`+
+			`"applicability_config":{"scope":{"price_type":"metered"}}}`, id, start.Unix(), exp, void)
+	}
+	var stub *stripeStub
+	c, stub := newStripeTest(t, func(method, path string) (int, string) {
+		switch path {
+		case "/v1/subscriptions":
+			return 200, fmt.Sprintf(`{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","start_date":%d,`+
+				`"items":{"object":"list","data":[{"id":"si_1","object":"subscription_item","current_period_end":%d}]},`+
+				`"metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`, start.Unix(), periodEnd.Unix())
+		case "/v1/invoices":
+			return 200, `{"object":"list","has_more":false,"data":[]}`
+		case "/v1/billing/credit_grants":
+			return 200, `{"object":"list","has_more":false,"url":"/v1/billing/credit_grants","data":[` + strings.Join([]string{
+				grant("cg_soon", periodEnd.Add(-time.Hour), false), grant("cg_later", periodEnd.Add(time.Hour), false),
+				grant("cg_forever", time.Time{}, false), grant("cg_void", periodEnd.Add(-time.Hour), true),
+			}, ",") + `]}`
+		case "/v1/billing/credit_balance_summary":
+			queries := stub.queriesFor(path)
+			q, _ := url.ParseQuery(queries[len(queries)-1])
+			switch q.Get("filter[credit_grant]") {
+			case "":
+				return 200, creditBalanceJSON(5000)
+			case "cg_soon":
+				return 200, creditBalanceJSON(1500)
+			}
+		}
+		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	meter, err := c.AgentModelMeter(context.Background(), "tea-a")
+	if err != nil || !meter.CreditsRead || meter.CreditMicroUSD != 35_000_000 || !meter.BilledUntil.Equal(start) {
+		t.Fatalf("meter = %+v, %v; want $35 of credit ($50 less cg_soon's $15) and the window from the Subscription's start", meter, err)
+	}
+	if got := stub.queriesFor("/v1/billing/credit_balance_summary"); len(got) != 2 {
+		t.Fatalf("balance reads = %v, want the aggregate and cg_soon's only", got)
 	}
 }
 
