@@ -43,7 +43,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
-	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -969,22 +968,6 @@ func (s *Service) meterDatastoresThrough(ctx context.Context, datastores []datas
 // still knows an App was deleted for as long as it reports that App's holes.
 const retiredRecordRetention = catchupLimit + 2*time.Hour
 
-// retiredAppKinds are the meters a deleted App owes its final hours to. Pods
-// and build Jobs are named from the derived CR identity, but egress is keyed
-// by router names only the live CR supplies, so it is owed only when the live
-// meter recorded them (w6/m333). A deleted build source owes only its last
-// builds: a carrier never runs instances (w2/m254).
-func retiredAppKinds(r store.RetiredUsageResource) []string {
-	switch k, ok := ids.KindOf(r.ResourceID); {
-	case ok && k == ids.BuildSource:
-		return []string{store.UsageKindBuildSeconds}
-	case r.Egress != nil:
-		return appMeterKinds[:]
-	default:
-		return []string{store.UsageKindInstanceSeconds, store.UsageKindBuildSeconds}
-	}
-}
-
 // meterRetiredThrough meters each resource deleted within the catch-up window
 // through the hour it was deleted in (w4/m173): the live passes list only what
 // still exists. Each meter's cursor makes a repeat pass a no-op, and each
@@ -1019,7 +1002,7 @@ func (s *Service) meterRetiredThrough(ctx context.Context, live []store.App, las
 			continue
 		default:
 			app := store.App{ID: r.ResourceID, TenantID: r.WorkspaceID, Name: r.Name, Tier: r.Tier, CreatedAt: r.CreatedAt, Egress: r.Egress}
-			for _, kind := range retiredAppKinds(r) {
+			for _, kind := range store.RetiredAppKinds(r) {
 				s.catchUpAppMeter(ctx, app, kind, floor, through)
 			}
 		}
@@ -1074,19 +1057,13 @@ func (s *Service) reconcileSourceInventory(ctx context.Context, apps []store.App
 	}
 }
 
-var appMeterKinds = [...]string{
-	store.UsageKindInstanceSeconds,
-	store.UsageKindEgressBytes,
-	store.UsageKindBuildSeconds,
-}
-
 // processWindow measures one (app, window) triplet and upserts all three kinds.
 // It is kept as the direct one-window seam used by acceptance tests. The live
 // loop calls catchUpAppThrough so each meter owns an independent contiguous
 // cursor. A failure in one source never holds the other two meters back.
 func (s *Service) processWindow(ctx context.Context, app store.App, window time.Time) {
 	var wg sync.WaitGroup
-	for _, kind := range appMeterKinds {
+	for _, kind := range store.AppMeterKinds {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -1102,7 +1079,7 @@ func (s *Service) processWindow(ctx context.Context, app store.App, window time.
 // meters. The next hourly pass retries the failed window (restart not needed).
 func (s *Service) catchUpAppThrough(ctx context.Context, app store.App, last time.Time) {
 	var wg sync.WaitGroup
-	for _, kind := range appMeterKinds {
+	for _, kind := range store.AppMeterKinds {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()

@@ -696,7 +696,7 @@ func TestProcessWindowPersistsSuccessfulZeroAnchors(t *testing.T) {
 
 	svc.processWindow(context.Background(), app, window)
 
-	for _, kind := range appMeterKinds {
+	for _, kind := range store.AppMeterKinds {
 		tier := ""
 		if kind == store.UsageKindInstanceSeconds {
 			tier = app.Tier
@@ -751,7 +751,7 @@ func TestAppMeterCatchUpRetriesFailedMeterWithoutBlockingHealthyMeters(t *testin
 	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, st, prom.URL, prom.Client())
 
 	previous := time.Date(2026, 7, 14, 8, 0, 0, 0, time.UTC)
-	for _, kind := range appMeterKinds {
+	for _, kind := range store.AppMeterKinds {
 		tier := ""
 		if kind == store.UsageKindInstanceSeconds {
 			tier = app.Tier
@@ -792,7 +792,7 @@ func TestAppMeterCatchUpRetriesFailedMeterWithoutBlockingHealthyMeters(t *testin
 	// The next pass retries egress 09:00 before 10:00, while healthy meters add
 	// only their new 10:00 row. Idempotent keys leave a complete 3x3 grid.
 	svc.catchUpAppThrough(context.Background(), app, previous.Add(2*time.Hour))
-	for _, kind := range appMeterKinds {
+	for _, kind := range store.AppMeterKinds {
 		latest, err := st.LatestUsageWindow(context.Background(), store.ResourceKindService, app.ID, kind)
 		if err != nil || !latest.Equal(previous.Add(2*time.Hour)) {
 			t.Errorf("%s cursor after retry: want 10:00, got %v (err=%v)", kind, latest, err)

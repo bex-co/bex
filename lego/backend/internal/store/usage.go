@@ -397,6 +397,12 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 	if err != nil {
 		return UsageCoverage{}, err
 	}
+	// A deletion older than this ended its streams before the settled edge,
+	// so its holes are passed already.
+	retired, err := s.ListRetiredUsageResources(ctx, usageSettledBefore(latestClosed).Add(-time.Hour))
+	if err != nil {
+		return UsageCoverage{}, err
+	}
 	var sandboxTotals bool
 	if err := s.Pool.QueryRow(ctx, `
 		SELECT EXISTS (
@@ -406,7 +412,7 @@ func (s *PGStore) CurrentUsageCoverage(ctx context.Context, workspaceID string, 
 		)`, workspaceID, monthStart, latestClosed).Scan(&sandboxTotals); err != nil {
 		return UsageCoverage{}, err
 	}
-	return aggregateUsageCoverage(streamByKey, streamOrder, monthStart, latestClosed, sandboxTotals), nil
+	return aggregateUsageCoverage(streamByKey, streamOrder, monthStart, latestClosed, sandboxTotals, RetiredUsageDebtsOf(retired)), nil
 }
 
 // usageCoverageStreams loads the coverage streams expected anywhere in
@@ -491,7 +497,7 @@ func (s *PGStore) UnmeteredUsageHoles(ctx context.Context, now time.Time) ([]Usa
 	for _, key := range order {
 		stream := streams[key]
 		// From settled on, the watermark stops at the first unmetered hour.
-		hole, target, _ := evaluateStreamCoverage(stream, settled, latestClosed)
+		hole, target, _ := evaluateStreamCoverage(stream, settled, latestClosed, false)
 		if hole.Before(target) {
 			holes = append(holes, UsageHole{ResourceKind: stream.ResourceKind, ServiceID: stream.ServiceID,
 				Kind: stream.Kind, Source: stream.Source, Window: hole})
@@ -532,7 +538,12 @@ func usageSettledBefore(latestClosed time.Time) time.Time {
 // the stream is reported degraded for it. Before w4/496 one degraded hour on
 // November 1 read "complete only through 2026-11-01" all month. Degradation
 // after an earlier gap is still useful diagnostic evidence and is not lost.
-func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClosed time.Time) (observedThrough, target time.Time, healthy bool) {
+//
+// unfillable says no meter will ever write this stream's missing hours
+// (RetiredUsageDebts.Unfillable): its holes are passed at once, as settled
+// ones are, rather than holding `through` back for the 48 h until they settle
+// (w4/637).
+func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClosed time.Time, unfillable bool) (observedThrough, target time.Time, healthy bool) {
 	expectedStart := stream.ExpectedFrom.UTC().Truncate(time.Hour)
 	if expectedStart.Before(monthStart) {
 		expectedStart = monthStart
@@ -547,7 +558,7 @@ func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClose
 	for observedThrough.Before(target) {
 		state, exists := stream.Windows[observedThrough]
 		if !exists || (state != UsageSourceHealthy && state != UsageSourceDegraded) {
-			if !observedThrough.Before(settled) {
+			if !unfillable && !observedThrough.Before(settled) {
 				break
 			}
 			healthy = false // never metered: skipped for good
@@ -563,7 +574,7 @@ func evaluateStreamCoverage(stream *usageCoverageStream, monthStart, latestClose
 	return observedThrough, target, healthy
 }
 
-func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamOrder []string, monthStart, latestClosed time.Time, sandboxTotals bool) UsageCoverage {
+func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamOrder []string, monthStart, latestClosed time.Time, sandboxTotals bool, debts RetiredUsageDebts) UsageCoverage {
 	if len(streamOrder) == 0 {
 		return UsageCoverage{}
 	}
@@ -576,7 +587,8 @@ func aggregateUsageCoverage(streamByKey map[string]*usageCoverageStream, streamO
 	activeStreams := 0
 	for _, key := range streamOrder {
 		stream := streamByKey[key]
-		observedThrough, target, healthy := evaluateStreamCoverage(stream, monthStart, latestClosed)
+		observedThrough, target, healthy := evaluateStreamCoverage(stream, monthStart, latestClosed,
+			debts.Unfillable(stream.ResourceKind, stream.ServiceID, stream.Kind))
 		if !healthy {
 			degraded[stream.Source] = struct{}{}
 		}

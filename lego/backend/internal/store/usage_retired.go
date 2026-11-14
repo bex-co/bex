@@ -18,11 +18,13 @@ package store
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -55,6 +57,55 @@ type RetiredUsageResource struct {
 type EgressIdentity struct {
 	Routers []string
 	Direct  bool
+}
+
+// AppMeterKinds are the meters every App has.
+var AppMeterKinds = [...]string{
+	UsageKindInstanceSeconds,
+	UsageKindEgressBytes,
+	UsageKindBuildSeconds,
+}
+
+// RetiredAppKinds are the meters a deleted App owes its final hours to. Pods
+// and build Jobs are named from the derived CR identity, but egress is keyed
+// by router names only the live CR supplies, so it is owed only when the live
+// meter recorded them (w6/m333). A deleted build source owes only its last
+// builds: a carrier never runs instances (w2/m254).
+func RetiredAppKinds(r RetiredUsageResource) []string {
+	switch k, ok := ids.KindOf(r.ResourceID); {
+	case ok && k == ids.BuildSource:
+		return []string{UsageKindBuildSeconds}
+	case r.Egress != nil:
+		return AppMeterKinds[:]
+	default:
+		return []string{UsageKindInstanceSeconds, UsageKindBuildSeconds}
+	}
+}
+
+// RetiredUsageDebts are the meters each deleted App still owes hours to: its
+// RetiredAppKinds, and its disk, which the disk meter bills from the closed
+// disk period.
+type RetiredUsageDebts map[string][]string
+
+// RetiredUsageDebtsOf collects the debts of the Apps among retired.
+func RetiredUsageDebtsOf(retired []RetiredUsageResource) RetiredUsageDebts {
+	debts := RetiredUsageDebts{}
+	for _, r := range retired {
+		if r.ResourceKind == ResourceKindService {
+			debts[r.ResourceID] = append(RetiredAppKinds(r), UsageKindDiskGBSeconds)
+		}
+	}
+	return debts
+}
+
+// Unfillable reports whether no meter will ever write the hours a coverage
+// stream is missing: the stream is a deleted App's, in a kind the App is not
+// owed. Egress without a recorded identity is the usual one. Coverage passes
+// such a hole at once and reports the stream degraded, and the unmetered-hour
+// gauge leaves it out (w4/637): it is an undercount, not a delay.
+func (d RetiredUsageDebts) Unfillable(resourceKind, serviceID, kind string) bool {
+	owed, deleted := d[serviceID]
+	return deleted && resourceKind == ResourceKindService && !slices.Contains(owed, kind)
 }
 
 // RecordAppEgressIdentity keeps the egress identity the live meter resolved

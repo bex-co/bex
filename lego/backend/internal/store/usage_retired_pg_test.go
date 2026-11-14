@@ -249,3 +249,67 @@ func TestDeletedServiceEgressCoverageReadsHealthyPG(t *testing.T) {
 		}
 	}
 }
+
+// w4/637: a deleted App that never recorded an egress identity is not owed its
+// egress, so no meter will fill an egress hole it left inside the catch-up
+// window. Coverage passes that hole at once, naming the source degraded,
+// instead of holding the workspace's `through` back until it settles 48 h
+// later; a hole the App is still owed keeps holding it.
+func TestCoveragePassesADeletedAppsUnownedEgressHolePG(t *testing.T) {
+	st, pool, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	app, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "never-served", Type: "web_service", Image: "nginx:1", Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatalf("CreateApp: %v", err)
+	}
+	now := time.Date(2001, 1, 15, 12, 30, 0, 0, time.UTC)
+	latest := now.Truncate(time.Hour)
+	from, deleted := latest.Add(-6*time.Hour), latest.Add(-2*time.Hour)
+	hole := latest.Add(-4 * time.Hour)
+	record := func(kind, source string) {
+		t.Helper()
+		for w := from; !w.After(deleted); w = w.Add(time.Hour) {
+			if w.Equal(hole) {
+				continue
+			}
+			if err := st.RecordUsageSourceHealth(ctx, []UsageSourceRecord{{WorkspaceID: tenant.ID, ResourceKind: ResourceKindService, ServiceID: app.ID,
+				Kind: kind, WindowStart: w, UsageSourceObservation: UsageSourceObservation{Source: source, State: UsageSourceHealthy, ExpectedFrom: from}}}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	ref := UsageResourceRef{ResourceKind: ResourceKindService, ServiceID: app.ID}
+	closeAtDeletion := func() {
+		t.Helper()
+		if err := st.CloseUsageSourceStreams(ctx, ref, deleted.Add(time.Hour)); err != nil {
+			t.Fatalf("CloseUsageSourceStreams: %v", err)
+		}
+	}
+	record(UsageKindEgressBytes, UsageSourceHTTP)
+	if err := st.DeleteApp(ctx, app.ID); err != nil {
+		t.Fatalf("DeleteApp: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE usage_retired_resources SET retired_at = $2 WHERE resource_id = $1`, app.ID, deleted.Add(10*time.Minute)); err != nil {
+		t.Fatal(err)
+	}
+	closeAtDeletion()
+
+	got, err := st.CurrentUsageCoverage(ctx, tenant.ID, now)
+	if err != nil {
+		t.Fatalf("CurrentUsageCoverage: %v", err)
+	}
+	if !got.Through.Equal(latest) || got.Complete || !slices.Equal(got.DegradedSources, []string{UsageSourceHTTP}) {
+		t.Fatalf("an unowed egress hole: %+v, want through %v with http degraded", got, latest)
+	}
+
+	// Its instance hours are owed (the retired pass meters them), so the same
+	// hole there holds `through` until a meter fills it or it settles.
+	record(UsageKindInstanceSeconds, UsageSourceInstance)
+	closeAtDeletion()
+	if got, err = st.CurrentUsageCoverage(ctx, tenant.ID, now); err != nil {
+		t.Fatalf("CurrentUsageCoverage: %v", err)
+	}
+	if !got.Through.Equal(hole) {
+		t.Fatalf("an owed instance hole: through %v, want %v", got.Through, hole)
+	}
+}

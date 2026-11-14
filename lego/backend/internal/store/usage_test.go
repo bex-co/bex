@@ -21,6 +21,8 @@ import (
 	"slices"
 	"testing"
 	"time"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 func coverageStream(source string, expected time.Time, windows map[time.Time]string) *usageCoverageStream {
@@ -29,7 +31,7 @@ func coverageStream(source string, expected time.Time, windows map[time.Time]str
 
 func TestAggregateUsageCoverageRequiresExplicitEvidence(t *testing.T) {
 	month := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
-	if got := aggregateUsageCoverage(nil, nil, month, month.Add(3*time.Hour), false); got.Known {
+	if got := aggregateUsageCoverage(nil, nil, month, month.Add(3*time.Hour), false, nil); got.Known {
 		t.Fatalf("legacy/no evidence became known: %+v", got)
 	}
 
@@ -38,7 +40,7 @@ func TestAggregateUsageCoverageRequiresExplicitEvidence(t *testing.T) {
 			month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
 		}),
 	}
-	got := aggregateUsageCoverage(streams, []string{"instance"}, month, month.Add(3*time.Hour), false)
+	got := aggregateUsageCoverage(streams, []string{"instance"}, month, month.Add(3*time.Hour), false, nil)
 	if !got.Known || !got.Complete || !got.Through.Equal(month.Add(3*time.Hour)) || len(got.DegradedSources) != 0 {
 		t.Fatalf("healthy contiguous evidence: %+v", got)
 	}
@@ -54,7 +56,7 @@ func TestAggregateUsageCoverageStopsAtFirstGap(t *testing.T) {
 			month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
 		}),
 	}
-	got := aggregateUsageCoverage(streams, []string{"instance", "build"}, month, month.Add(3*time.Hour), false)
+	got := aggregateUsageCoverage(streams, []string{"instance", "build"}, month, month.Add(3*time.Hour), false, nil)
 	if !got.Known || got.Complete || !got.Through.Equal(month.Add(time.Hour)) {
 		t.Fatalf("internal gap was hidden by later MAX: %+v", got)
 	}
@@ -68,7 +70,7 @@ func TestAggregateUsageCoverageDegradedAndAbsentStreamsArePartial(t *testing.T) 
 		}),
 		"direct": coverageStream(UsageSourceDirect, month, map[time.Time]string{}),
 	}
-	got := aggregateUsageCoverage(streams, []string{"http", "direct"}, month, month.Add(2*time.Hour), false)
+	got := aggregateUsageCoverage(streams, []string{"http", "direct"}, month, month.Add(2*time.Hour), false, nil)
 	if !got.Known || got.Complete || !got.Through.Equal(month) || !slices.Equal(got.DegradedSources, []string{UsageSourceHTTP}) {
 		t.Fatalf("degraded/absent evidence: %+v", got)
 	}
@@ -82,13 +84,13 @@ func TestAggregateUsageCoverageEndedStreamDoesNotDragWatermark(t *testing.T) {
 	active := coverageStream(UsageSourceInstance, month, map[time.Time]string{
 		month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
 	})
-	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended, "active": active}, []string{"ended", "active"}, month, month.Add(3*time.Hour), false)
+	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended, "active": active}, []string{"ended", "active"}, month, month.Add(3*time.Hour), false, nil)
 	if !got.Complete || !got.Through.Equal(month.Add(3*time.Hour)) {
 		t.Fatalf("completed ended stream dragged coverage: %+v", got)
 	}
 
 	ended.ExpectedThrough = ptrTime(month.Add(2 * time.Hour))
-	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended, "active": active}, []string{"ended", "active"}, month, month.Add(3*time.Hour), false)
+	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended, "active": active}, []string{"ended", "active"}, month, month.Add(3*time.Hour), false, nil)
 	if got.Complete || !got.Through.Equal(month.Add(time.Hour)) {
 		t.Fatalf("uncertain deleted tail should constrain through to its first gap: %+v", got)
 	}
@@ -101,7 +103,7 @@ func TestAggregateUsageCoverageEndedDegradationIsReported(t *testing.T) {
 		month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceDegraded,
 	})
 	ended.ExpectedThrough = &endedAt
-	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended}, []string{"ended"}, month, month.Add(4*time.Hour), false)
+	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended}, []string{"ended"}, month, month.Add(4*time.Hour), false, nil)
 	if got.Complete || !got.Through.Equal(month.Add(4*time.Hour)) || !slices.Equal(got.DegradedSources, []string{UsageSourceHTTP}) {
 		t.Fatalf("ended degradation was hidden, or dragged through: %+v", got)
 	}
@@ -115,7 +117,7 @@ func TestAggregateUsageCoverageDegradedHourDoesNotStopTheWatermark(t *testing.T)
 	direct := coverageStream(UsageSourceDirect, month, map[time.Time]string{
 		month: UsageSourceDegraded, month.Add(time.Hour): UsageSourceHealthy, month.Add(2 * time.Hour): UsageSourceHealthy,
 	})
-	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"direct": direct}, []string{"direct"}, month, month.Add(3*time.Hour), false)
+	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"direct": direct}, []string{"direct"}, month, month.Add(3*time.Hour), false, nil)
 	if got.Complete || !got.Through.Equal(month.Add(3*time.Hour)) || !slices.Equal(got.DegradedSources, []string{UsageSourceDirect}) {
 		t.Fatalf("a metered degraded hour pinned the watermark: %+v", got)
 	}
@@ -123,7 +125,7 @@ func TestAggregateUsageCoverageDegradedHourDoesNotStopTheWatermark(t *testing.T)
 	unavailable := coverageStream(UsageSourceDirect, month, map[time.Time]string{
 		month: UsageSourceHealthy, month.Add(time.Hour): UsageSourceUnavailable, month.Add(2 * time.Hour): UsageSourceHealthy,
 	})
-	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"direct": unavailable}, []string{"direct"}, month, month.Add(3*time.Hour), false)
+	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"direct": unavailable}, []string{"direct"}, month, month.Add(3*time.Hour), false, nil)
 	if got.Complete || !got.Through.Equal(month.Add(time.Hour)) {
 		t.Fatalf("an unmetered hour must still stop the watermark: %+v", got)
 	}
@@ -139,7 +141,7 @@ func TestAggregateUsageCoverageSandboxAndBoundedDiagnostics(t *testing.T) {
 		streams[source] = coverageStream(source, month, map[time.Time]string{month: UsageSourceDegraded})
 		order = append(order, source)
 	}
-	got := aggregateUsageCoverage(streams, order, month, month.Add(time.Hour), true)
+	got := aggregateUsageCoverage(streams, order, month, month.Add(time.Hour), true, nil)
 	if got.Complete {
 		t.Fatalf("sandbox total was certified complete: %+v", got)
 	}
@@ -504,7 +506,7 @@ func TestAggregateUsageCoverageSettledHoleIsASkip(t *testing.T) {
 	}
 	delete(windows, month.Add(2*time.Hour)) // 70 h before latest: settled
 	settledHole := coverageStream(UsageSourceDisk, month, windows)
-	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"disk": settledHole}, []string{"disk"}, month, latest, false)
+	got := aggregateUsageCoverage(map[string]*usageCoverageStream{"disk": settledHole}, []string{"disk"}, month, latest, false, nil)
 	if got.Complete || !got.Through.Equal(latest) || !slices.Equal(got.DegradedSources, []string{UsageSourceDisk}) {
 		t.Fatalf("a settled hole: %+v, want through %v and disk degraded", got, latest)
 	}
@@ -515,7 +517,7 @@ func TestAggregateUsageCoverageSettledHoleIsASkip(t *testing.T) {
 	}
 	recent[month.Add(2*time.Hour)] = UsageSourceHealthy
 	delete(recent, latest.Add(-5*time.Hour)) // inside the catch-up window
-	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"disk": coverageStream(UsageSourceDisk, month, recent)}, []string{"disk"}, month, latest, false)
+	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"disk": coverageStream(UsageSourceDisk, month, recent)}, []string{"disk"}, month, latest, false, nil)
 	if got.Complete || !got.Through.Equal(latest.Add(-5*time.Hour)) {
 		t.Fatalf("a hole the rollup can still fill must stop the watermark: %+v", got)
 	}
@@ -525,7 +527,7 @@ func TestAggregateUsageCoverageSettledHoleIsASkip(t *testing.T) {
 	ended := coverageStream(UsageSourceDirect, month, map[time.Time]string{month: UsageSourceHealthy})
 	endedAt := month.Add(2 * time.Hour)
 	ended.ExpectedThrough = &endedAt
-	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended}, []string{"ended"}, month, latest, false)
+	got = aggregateUsageCoverage(map[string]*usageCoverageStream{"ended": ended}, []string{"ended"}, month, latest, false, nil)
 	if !got.Through.Equal(latest) || !slices.Equal(got.DegradedSources, []string{UsageSourceDirect}) {
 		t.Fatalf("a deleted App's unmetered last hour: %+v", got)
 	}
@@ -561,9 +563,76 @@ func TestAggregateUsageCoverageSettledBoundary(t *testing.T) {
 		} else {
 			w[tc.hole] = tc.state
 		}
-		got := aggregateUsageCoverage(map[string]*usageCoverageStream{"s": coverageStream(UsageSourceInstance, month, w)}, []string{"s"}, month, latest, false)
+		got := aggregateUsageCoverage(map[string]*usageCoverageStream{"s": coverageStream(UsageSourceInstance, month, w)}, []string{"s"}, month, latest, false, nil)
 		if got.Complete || !got.Through.Equal(tc.through) {
 			t.Errorf("%s: through %v (complete %v), want %v", name, got.Through, got.Complete, tc.through)
+		}
+	}
+}
+
+// w4/637: a hole RetiredUsageDebts.Unfillable names is never metered, so the
+// watermark passes it at once, like a settled one, and the source stays
+// degraded. A hole the App is owed, or a live App's, still stops the watermark
+// inside the catch-up window (w4/496).
+func TestAggregateUsageCoveragePassesAnUnfillableHole(t *testing.T) {
+	month := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	latest := month.Add(72 * time.Hour)
+	hole := latest.Add(-5 * time.Hour) // inside the catch-up window
+	stream := func(service, kind, source string) *usageCoverageStream {
+		w := map[time.Time]string{}
+		for h := month; h.Before(latest); h = h.Add(time.Hour) {
+			w[h] = UsageSourceHealthy
+		}
+		delete(w, hole)
+		return &usageCoverageStream{ResourceKind: ResourceKindService, ServiceID: service, Kind: kind, Source: source, ExpectedFrom: month, Windows: w}
+	}
+	// srv-gone was deleted with no egress identity recorded; srv-live exists.
+	debts := RetiredUsageDebtsOf([]RetiredUsageResource{{ResourceKind: ResourceKindService, ResourceID: "srv-gone"}})
+	for name, tc := range map[string]struct {
+		stream   *usageCoverageStream
+		through  time.Time
+		degraded []string
+	}{
+		"a deleted App's unowed egress passes": {stream("srv-gone", UsageKindEgressBytes, UsageSourceHTTP), latest, []string{UsageSourceHTTP}},
+		"a deleted App's owed instance stops":  {stream("srv-gone", UsageKindInstanceSeconds, UsageSourceInstance), hole, nil},
+		"a deleted App's owed disk stops":      {stream("srv-gone", UsageKindDiskGBSeconds, UsageSourceDisk), hole, nil},
+		"a live App's egress stops":            {stream("srv-live", UsageKindEgressBytes, UsageSourceHTTP), hole, nil},
+	} {
+		got := aggregateUsageCoverage(map[string]*usageCoverageStream{"s": tc.stream}, []string{"s"}, month, latest, false, debts)
+		if got.Complete || !got.Through.Equal(tc.through) || !slices.Equal(got.DegradedSources, tc.degraded) {
+			t.Errorf("%s: %+v, want through %v, degraded %v", name, got, tc.through, tc.degraded)
+		}
+	}
+}
+
+// RetiredUsageDebts.Unfillable is the one predicate coverage and the
+// unmetered-hour gauge share (w4/637): only a deleted App's kinds it is not
+// owed. Egress is owed once the live meter recorded its identity; a build
+// source owes only builds; a datastore's streams are never named.
+func TestRetiredUsageDebtsUnfillable(t *testing.T) {
+	buildSource := ids.New(ids.BuildSource)
+	debts := RetiredUsageDebtsOf([]RetiredUsageResource{
+		{ResourceKind: ResourceKindService, ResourceID: "srv-plain"},
+		{ResourceKind: ResourceKindService, ResourceID: "srv-egress", Egress: &EgressIdentity{Direct: true}},
+		{ResourceKind: ResourceKindService, ResourceID: buildSource},
+		{ResourceKind: ResourceKindPostgres, ResourceID: "dpg-gone"},
+	})
+	for _, tc := range []struct {
+		resourceKind, id, kind string
+		want                   bool
+	}{
+		{ResourceKindService, "srv-plain", UsageKindEgressBytes, true},
+		{ResourceKindService, "srv-plain", UsageKindInstanceSeconds, false},
+		{ResourceKindService, "srv-plain", UsageKindBuildSeconds, false},
+		{ResourceKindService, "srv-plain", UsageKindDiskGBSeconds, false},
+		{ResourceKindService, "srv-egress", UsageKindEgressBytes, false},
+		{ResourceKindService, buildSource, UsageKindInstanceSeconds, true},
+		{ResourceKindService, buildSource, UsageKindBuildSeconds, false},
+		{ResourceKindPostgres, "dpg-gone", UsageKindEgressBytes, false},
+		{ResourceKindService, "srv-live", UsageKindEgressBytes, false},
+	} {
+		if got := debts.Unfillable(tc.resourceKind, tc.id, tc.kind); got != tc.want {
+			t.Errorf("Unfillable(%s, %s, %s) = %v, want %v", tc.resourceKind, tc.id, tc.kind, got, tc.want)
 		}
 	}
 }
