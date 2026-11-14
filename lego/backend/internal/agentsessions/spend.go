@@ -58,7 +58,7 @@ type trustAdmission struct {
 }
 
 func (s *Service) trustAdmissionFor(ctx context.Context, workspaceID, agent string, byoKey bool) (trustAdmission, error) {
-	if byoKey || !s.platformCounted(workspaceID, agent) {
+	if !s.platformCounted(workspaceID, agent, byoKey) {
 		return trustAdmission{}, nil
 	}
 	status, err := agentsession.ReadSpendStatus(ctx, s.Spend, s.sheet(), workspaceID, s.Now().UTC())
@@ -83,6 +83,42 @@ func (a trustAdmission) refusal(live int) error {
 	return core.NewConflictError(TrustLimitCode,
 		fmt.Sprintf("this workspace can run %d agent sessions on the platform model at once %s (trust tier %s); wait for a running session to finish or stop one, then try again", a.limit, why, a.status.Tier.Name),
 		map[string]any{"live": live, "limit": a.limit, "trustTier": a.status.Tier.Name, "locked": a.status.Locked})
+}
+
+// MetaRouteCapacityCode refuses a platform-only (muse) session while the
+// platform-wide limit of live sessions on the shared Meta key is reached.
+const MetaRouteCapacityCode = "AGENT_SESSION_AGENT_AT_CAPACITY"
+
+// DefaultMetaRouteMaxSessions keeps the shared Meta key's live sessions
+// within muse-spark-1.3-contributor's 150 requests per minute per key, at the
+// ~5–20 requests per minute one busy session makes (ADR108).
+const DefaultMetaRouteMaxSessions = 8
+
+// enforceMetaRouteCapacity refuses starting, steering or resuming a session
+// of a platform-only agent (excludeID: the session being reactivated) when
+// the platform-wide live-session limit is reached. A best-effort pre-check:
+// a burst past it meets Meta's own 429, which fails the turn readably.
+func (s *Service) enforceMetaRouteCapacity(ctx context.Context, agent, excludeID string) error {
+	if !agentsession.OnMetaRoute(agent) {
+		return nil
+	}
+	profile, _ := agentsession.LookupAgentProfile(agent)
+	limit := s.MetaRouteMaxSessions
+	if limit <= 0 {
+		limit = DefaultMetaRouteMaxSessions
+	}
+	n, err := s.Store.CountActiveAgentSessions(ctx, "", store.AgentSessionCount{
+		AllWorkspaces: true, Agent: profile.ID, ExcludeID: excludeID,
+	})
+	if err != nil {
+		return mapStoreError("", err)
+	}
+	if n >= limit {
+		return core.NewConflictError(MetaRouteCapacityCode,
+			fmt.Sprintf("the %s agent is at its platform capacity of %d running sessions; try again when one finishes", profile.ID, limit),
+			map[string]any{"agent": profile.ID, "live": n, "limit": limit})
+	}
+	return nil
 }
 
 // enforceTrustConcurrency refuses a steer or resume of sessionID that would
@@ -179,8 +215,9 @@ func withSpend(view Environment, status agentsession.SpendStatus) Environment {
 }
 
 // platformCounted reports whether agent's sessions in workspaceID count
-// toward the trust tier unless the workspace set its own model key: the
-// platform route covers it and the spend store is wired.
-func (s *Service) platformCounted(workspaceID, agent string) bool {
-	return s.Spend != nil && agentsession.PlatformModelKeyReady(workspaceID, false) && agentsession.PinnedAgent(agent)
+// toward the trust tier: a bex-owned route serves them (byoKey: the
+// workspace set its own key, which takes the claude profile off its route)
+// and the spend store is wired.
+func (s *Service) platformCounted(workspaceID, agent string, byoKey bool) bool {
+	return s.Spend != nil && agentsession.PlatformRouteMeters(workspaceID, agent, byoKey)
 }

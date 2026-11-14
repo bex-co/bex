@@ -45,7 +45,9 @@ The profile declares `model: muse-spark-1.3-contributor`, the only model Muse se
 
 ### D5 — Platform route only
 
-The profile is `platformOnly`: it never runs on a workspace's own model key. Until a bex-owned route serves it in a workspace (w7/m391), `muse` is absent from that workspace's capabilities and a create is refused with `AGENT_SESSION_AGENT_UNAVAILABLE`, and the model credential mint refuses it rather than reading the workspace key.
+The profile is `platformOnly`: it never runs on a workspace's own model key. Until a bex-owned route serves it in a workspace, `muse` is absent from that workspace's capabilities and a create is refused with `AGENT_SESSION_AGENT_UNAVAILABLE`, and the model credential mint refuses it rather than reading the workspace key.
+
+The route (w7/m391) is bex-api's `BEX_AGENT_PLATFORM_META_KEY`, a bex-owned Meta Model API key from Secret `bex-agent-platform-model`/`meta-api-key`, serving the workspaces in `BEX_AGENT_PLATFORM_MODEL_WORKSPACES`. The mint hands the gateway that key for `api.meta.ai`, Bearer, pinned to `muse-spark-1.3-contributor`; the gateway refuses any other model, sends no OpenRouter provider object, and meters the Responses usage. Muse sessions are priced, capped, charged and counted toward the trust tier like the OpenRouter route ([ADR091](ADR091-agent-model-pricing.md) D8a), whether or not the workspace set a key of its own. `BEX_AGENT_META_ROUTE_MAX_SESSIONS` (default 8) caps live Muse sessions across all workspaces on the one key; past it create, steer and resume answer `409 AGENT_SESSION_AGENT_AT_CAPACITY`.
 
 ### D6 — Egress
 

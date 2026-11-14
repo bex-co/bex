@@ -226,6 +226,14 @@ type Config struct {
 	AgentPlatformModel           string
 	AgentPlatformModelWorkspaces []string
 	AgentPlatformModelKey        string
+	// AgentPlatformMetaKey (BEX_AGENT_PLATFORM_META_KEY, a secret: never log
+	// it) runs the platform-only muse profile on Meta's API in the
+	// BEX_AGENT_PLATFORM_MODEL_WORKSPACES workspaces (ADR108); empty ⇒ muse is
+	// offered nowhere. AgentMetaRouteMaxSessions
+	// (BEX_AGENT_META_ROUTE_MAX_SESSIONS) caps live muse sessions across every
+	// workspace on that one key; 0 ⇒ the service default.
+	AgentPlatformMetaKey      string
+	AgentMetaRouteMaxSessions int
 	// Derived from AgentModelProxyURL's origin (ADR062) so egress narrowing and
 	// the agentsessions Service always agree on the port; validated only when
 	// the OpenSandbox leg is on, like the inline parse it replaced.
@@ -846,6 +854,8 @@ func (p *parser) platformModelRoute(cfg *Config) {
 	cfg.AgentPlatformModelRoute = strings.TrimSpace(p.getenv(routeEnv))
 	cfg.AgentPlatformModel = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODEL"))
 	cfg.AgentPlatformModelKey = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_MODEL_KEY"))
+	cfg.AgentPlatformMetaKey = strings.TrimSpace(p.getenv("BEX_AGENT_PLATFORM_META_KEY"))
+	cfg.AgentMetaRouteMaxSessions, _ = p.positiveInt("BEX_AGENT_META_ROUTE_MAX_SESSIONS", agentsessions.DefaultMetaRouteMaxSessions)
 	cfg.AgentPlatformModelWorkspaces = nil
 	for _, v := range strings.Split(p.getenv(workspacesEnv), ",") {
 		if v = strings.TrimSpace(v); v == "" {

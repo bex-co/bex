@@ -203,6 +203,11 @@ func main() {
 		log.Printf("bex-api: PLATFORM model route %q active for the claude agent profile in %d allowlisted workspace(s): %s",
 			cfg.AgentPlatformModelRoute, len(cfg.AgentPlatformModelWorkspaces), strings.Join(cfg.AgentPlatformModelWorkspaces, ","))
 	}
+	// The muse profile (ADR108) runs only on this bex-owned Meta key, in the
+	// same allowlisted workspaces; the key is never logged.
+	if agentsession.EnablePlatformMetaRoute(cfg.AgentPlatformMetaKey, cfg.AgentPlatformModelWorkspaces) {
+		log.Printf("bex-api: PLATFORM Meta route active for the muse agent profile in %d allowlisted workspace(s)", len(cfg.AgentPlatformModelWorkspaces))
+	}
 	cpDBURI := cfg.CPDBURI
 	dashboardURL := cfg.DashboardURL
 	mobilePush, err := pushtransport.New(pushtransport.Config{
@@ -1565,6 +1570,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// this fixes). It is the ceiling over the inactivity bound, which one tool
 	// call may pause only so long, and never outlives the sandbox.
 	deps.AgentTurnTimeout = cfg.AgentTurnTimeout
+	deps.AgentMetaRouteMaxSessions = cfg.AgentMetaRouteMaxSessions
 	deps.AgentTurnIdleTimeout = cfg.AgentTurnIdleTimeout
 	deps.AgentToolCallTimeout = cfg.AgentToolCallTimeout
 	// Transient status-read failures fail a session only after this.

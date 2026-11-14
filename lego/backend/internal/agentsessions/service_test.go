@@ -137,7 +137,7 @@ func (f *fakeStore) AgentSessionSSHActivity(_ context.Context, resourceID string
 func (f *fakeStore) CountActiveAgentSessions(_ context.Context, workspaceID string, c store.AgentSessionCount) (int, error) {
 	n := 0
 	for _, row := range f.rows {
-		if row.WorkspaceID != workspaceID || !slices.Contains(store.ActiveAgentSessionPhases, row.Phase) ||
+		if (!c.AllWorkspaces && row.WorkspaceID != workspaceID) || !slices.Contains(store.ActiveAgentSessionPhases, row.Phase) ||
 			(c.WithSandbox && row.SandboxID == "") || row.ID == c.ExcludeID {
 			continue
 		}

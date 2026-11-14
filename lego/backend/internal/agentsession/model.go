@@ -364,6 +364,24 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		return ModelMintResponse{}, err
 	}
 	auditHost = host
+	// A platform-only profile (ADR108 D5) runs only on the Meta route's
+	// bex-owned key, pinned to its model and metered like the OpenRouter route below;
+	// it never runs on the workspace's own key, whatever the workspace stored.
+	if profile, _ := LookupAgentProfile(agent); profile.PlatformOnly {
+		key := metaRouteKey(req.Workspace, agent)
+		if key == "" || host != MetaModelHost {
+			return ModelMintResponse{}, ErrForbidden
+		}
+		if status, err = m.platformStatus(ctx, req.Workspace); err != nil {
+			return ModelMintResponse{}, err
+		}
+		if err := m.admitPlatformSpend(ctx, req.Workspace, session, status); err != nil {
+			return ModelMintResponse{}, err
+		}
+		return ModelMintResponse{
+			Credential: key, EndpointHost: host, Scheme: AuthSchemeBearer, PinnedModel: profile.Model,
+		}, nil
+	}
 	pathPrefix := ""
 	if host == OpenRouterHost {
 		pathPrefix = openRouterPathPrefix
@@ -374,33 +392,13 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// route is resolved for the workspace now, the same decision
 	// modelEndpointHost just made, so the host is OpenRouter here.
 	if route := routeFor(req.Workspace, agent, status.ModelKeySet); route != nil && route.platformKey != "" && host == OpenRouterHost {
-		// An unpaid failed invoice stops model spend at once (ADR091 D10.3),
-		// before the cap is even consulted.
-		if status.BalanceDue {
-			return ModelMintResponse{}, ErrBillingBalanceDue
-		}
-		// The unbilled spend reached the charge threshold: charge the card
-		// now, and serve this request only once it is paid.
-		if m.Charges != nil && status.ChargeDue() {
-			if status, err = m.chargeThreshold(ctx, req.Workspace); err != nil {
-				return ModelMintResponse{}, err
-			}
-		}
-		if status.Reached() {
-			return ModelMintResponse{}, ErrModelSpendCapReached
-		}
-		if err := m.checkSessionCeiling(ctx, session); err != nil {
+		if err := m.admitPlatformSpend(ctx, req.Workspace, session, status); err != nil {
 			return ModelMintResponse{}, err
 		}
 		return ModelMintResponse{
 			Credential: route.platformKey, EndpointHost: host, Scheme: AuthSchemeBearer,
 			PathPrefix: pathPrefix, PinnedModel: route.model,
 		}, nil
-	}
-	// A platform-only profile (ADR108 D5) never runs on the workspace's own
-	// key, whatever the workspace stored.
-	if profile, _ := LookupAgentProfile(agent); profile.PlatformOnly {
-		return ModelMintResponse{}, ErrForbidden
 	}
 	if m.Keys == nil {
 		return ModelMintResponse{}, fmt.Errorf("agent model credentials unavailable")
@@ -422,6 +420,27 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		return ModelMintResponse{}, ErrModelKeyMissing
 	}
 	return ModelMintResponse{Credential: credential, EndpointHost: host, Scheme: ResolveAuthScheme(host, credential), PathPrefix: pathPrefix}, nil
+}
+
+// admitPlatformSpend applies the platform key's spend gates to one exchange:
+// an unpaid failed invoice stops model spend at once (ADR091 D10.3), before
+// the cap is even consulted; unbilled spend at the charge threshold charges
+// the card now and serves the request only once it is paid; then the
+// workspace cap and the session's own ceiling.
+func (m *ModelMinter) admitPlatformSpend(ctx context.Context, workspaceID string, session store.AgentSession, status SpendStatus) error {
+	if status.BalanceDue {
+		return ErrBillingBalanceDue
+	}
+	if m.Charges != nil && status.ChargeDue() {
+		var err error
+		if status, err = m.chargeThreshold(ctx, workspaceID); err != nil {
+			return err
+		}
+	}
+	if status.Reached() {
+		return ErrModelSpendCapReached
+	}
+	return m.checkSessionCeiling(ctx, session)
 }
 
 // checkSessionCeiling refuses the mint once the session's recorded platform

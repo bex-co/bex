@@ -401,3 +401,60 @@ func TestByoRouteIsNotMetered(t *testing.T) {
 		t.Fatalf("BYO request altered: %s", forwarded)
 	}
 }
+
+// A muse exchange on the Meta route (ADR108) goes to api.meta.ai with the
+// bex-owned key as Bearer, keeps its body free of OpenRouter's provider
+// object, is refused for any other model, and its Responses usage is
+// recorded and priced from pricing.yaml (contributor rates × 1.3).
+func TestMetaRouteMetersAMuseResponsesExchange(t *testing.T) {
+	stream := `data: {"type":"response.created","response":{"id":"r"}}` + "\n\n" +
+		`data: {"type":"response.completed","response":{"id":"r","usage":{"input_tokens":1000000,"output_tokens":1000000,"input_tokens_details":{"cached_tokens":0}}}}` + "\n\n"
+	upstream := &cannedTransport{contentType: "text/event-stream", body: stream}
+	proxy, st := platformHarness(t, upstream)
+	agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET", []string{"tea-a"})
+	t.Cleanup(func() { agentsession.EnablePlatformMetaRoute("", nil) })
+	st.mu.Lock()
+	st.session.AgentConfig = json.RawMessage(`{"agent":"muse","modelEndpoint":"https://api.meta.ai/v1"}`)
+	st.mu.Unlock()
+
+	post := func(body string) *http.Response {
+		t.Helper()
+		base, err := agentsession.ModelProxyURL(proxy.URL, "tea-a-sandbox", "ags-one")
+		if err != nil {
+			t.Fatal(err)
+		}
+		req, _ := http.NewRequest(http.MethodPost, base+"/v1/responses", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+agentsession.ModelKeyPlaceholder("ags-one"))
+		resp, err := proxy.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+	if resp := post(`{"model":"muse-spark-1.3","input":"hi","stream":true}`); resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("standard-tier model status = %d, want 403", resp.StatusCode)
+	}
+	resp := post(`{"model":"muse-spark-1.3-contributor","input":"hi","stream":true}`)
+	relayed, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || string(relayed) != stream {
+		t.Fatalf("status %d, relayed %q", resp.StatusCode, relayed)
+	}
+	upstream.mu.Lock()
+	last, body := upstream.last, string(upstream.lastBody)
+	upstream.mu.Unlock()
+	if last.URL.Host != "api.meta.ai" || last.URL.Path != "/v1/responses" || last.Header.Get("Authorization") != "Bearer meta-PLATFORM-SECRET" {
+		t.Fatalf("upstream = %s %s auth-is-meta-key=%v", last.URL.Host, last.URL.Path, last.Header.Get("Authorization") == "Bearer meta-PLATFORM-SECRET")
+	}
+	if strings.Contains(body, `"provider"`) {
+		t.Fatalf("OpenRouter's data policy leaked into a Meta request: %s", body)
+	}
+	eventually(t, func() bool { got, _ := st.snapshot(); return len(got) == 1 })
+	got, _ := st.snapshot()
+	// 1M input × $0.10 + 1M output × $0.20 = $0.30 → × 1.3 = $0.39.
+	if u := got[0]; u.Model != "muse-spark-1.3-contributor" || u.InputTokens != 1_000_000 || u.OutputTokens != 1_000_000 ||
+		u.CostSource != store.AgentModelCostComputed || u.UpstreamCostMicroUSD != 300_000 || u.PriceMicroUSD != 390_000 {
+		t.Fatalf("recorded usage = %+v", u)
+	}
+}

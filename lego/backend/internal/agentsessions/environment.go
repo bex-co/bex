@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"maps"
 	"regexp"
@@ -495,6 +496,13 @@ func sessionEgress(env store.AgentEnvironment, allowlist []string) sessionegress
 	return sessionegress.Egress{FullInternet: env.NetworkTier == NetworkTierFull, Hosts: allowlist}
 }
 
+// modelPinnedError refuses an explicit model other than the one a session
+// must run.
+func modelPinnedError(message, pinned string) error {
+	return core.NewBadRequestError("AGENT_SESSION_MODEL_PINNED", message,
+		map[string]any{"field": "agentConfig.model", "pinnedModel": pinned})
+}
+
 // sessionModel resolves the model a session runs: the request's explicit
 // model, else the workspace default. The claude session of a workspace on
 // the platform route (one without its own model key) always runs the pinned
@@ -507,12 +515,18 @@ func sessionEgress(env store.AgentEnvironment, allowlist []string) sessionegress
 // drops the pinned OpenRouter model for the workspace default (empty: the
 // agent profile's), which its own provider serves.
 func sessionModel(workspaceID string, config AgentConfig, env store.AgentEnvironment, explicit bool) (string, error) {
+	// A profile with a release-locked model (ADR108 D4, muse) runs only it,
+	// whatever the workspace default.
+	if profile, _ := agentsession.LookupAgentProfile(config.Agent); profile.Model != "" {
+		if explicit && config.Model != "" && config.Model != profile.Model {
+			return "", modelPinnedError(fmt.Sprintf("the %s agent runs only model %s; omit agentConfig.model or set it to that model", profile.ID, profile.Model), profile.Model)
+		}
+		return profile.Model, nil
+	}
 	pinnedAgent := agentsession.PinnedAgent(config.Agent)
 	if pinned, ok := agentsession.PlatformPinnedModel(workspaceID, env.ModelKeySet()); ok && pinnedAgent {
 		if explicit && config.Model != "" && config.Model != pinned {
-			return "", core.NewBadRequestError("AGENT_SESSION_MODEL_PINNED",
-				"this workspace runs agents on the platform model; omit agentConfig.model or set it to the pinned model",
-				map[string]any{"field": "agentConfig.model", "pinnedModel": pinned})
+			return "", modelPinnedError("this workspace runs agents on the platform model; omit agentConfig.model or set it to the pinned model", pinned)
 		}
 		return pinned, nil
 	}

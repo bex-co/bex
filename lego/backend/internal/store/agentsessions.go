@@ -297,6 +297,10 @@ type AgentSessionCount struct {
 	// ExcludeID leaves one session out: the one a steer or resume reactivates
 	// must not count against itself.
 	ExcludeID string
+	// AllWorkspaces counts across every workspace (the workspace argument is
+	// ignored): a limit shared by one platform key, such as Meta's per-key
+	// rate limit for the muse profile (ADR108).
+	AllWorkspaces bool
 }
 
 // DefaultAgentBranchPrefix prefixes the branch a session gets when the caller
@@ -1059,10 +1063,16 @@ func (s *PGStore) CountActiveAgentSessions(ctx context.Context, workspaceID stri
 func countActiveAgentSessions(ctx context.Context, q interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, workspaceID string, c AgentSessionCount) (int, error) {
+	// Two statement texts, so a cached generic plan for the per-workspace
+	// count keeps its workspace index.
+	scope := `workspace_id = $1`
+	if c.AllWorkspaces {
+		scope = `$1::text IS NOT NULL`
+	}
 	var n int
 	err := q.QueryRow(ctx, `
 		SELECT count(*) FROM agent_sessions
-		WHERE workspace_id = $1 AND `+activeAgentSessionPhasesSQL+`
+		WHERE `+scope+` AND `+activeAgentSessionPhasesSQL+`
 		  AND (NOT $2::boolean OR sandbox_id <> '')
 		  AND ($3::text = '' OR agent_config->>'agent' = $3::text)
 		  AND id <> $4::text`,

@@ -223,11 +223,11 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "model not allowed: this workspace's platform model route only serves model "+credential.PinnedModel, http.StatusForbidden)
 		return
 	}
-	// A platform-route Messages exchange is metered (w10/m14 t003) and carries
-	// the platform data policy (t006). count_tokens is neither: it generates
-	// nothing and is not billed by the provider.
-	metered := credential.PinnedModel != "" && upstreamPath == "/v1/messages"
-	if metered {
+	// A platform-route inference exchange is metered (w10/m14 t003) and, on
+	// OpenRouter, carries the platform data policy (t006). count_tokens
+	// generates nothing and is not billed by the provider.
+	metered := credential.PinnedModel != "" && meteredOperation[credential.EndpointHost] == upstreamPath
+	if metered && credential.EndpointHost == agentsession.OpenRouterHost {
 		body = withPlatformDataPolicy(body)
 	}
 	// A mint-supplied path prefix (a model route's OpenRouter `/api`) is
@@ -581,6 +581,13 @@ func pinnedModelRequest(body []byte, pinned string) bool {
 var pathPrefixPattern = regexp.MustCompile(`^(?:/[A-Za-z0-9_-]+)*$`)
 
 var googleInferencePath = regexp.MustCompile(`^/v1beta/models/[A-Za-z0-9._:-]+:(generateContent|streamGenerateContent|countTokens)$`)
+
+// meteredOperation is each platform route's billed inference path: Messages
+// on OpenRouter, Responses on Meta (ADR108).
+var meteredOperation = map[string]string{
+	agentsession.OpenRouterHost: "/v1/messages",
+	agentsession.MetaModelHost:  "/v1/responses",
+}
 
 // allowedProviderOperation is the confused-deputy boundary: the sandbox can
 // invoke only inference operations needed by the installed adapters, not

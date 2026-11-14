@@ -588,6 +588,16 @@ spec:
                   name: bex-agent-platform-model
                   key: openrouter-api-key
                   optional: true
+            # ADR108: the platform-only muse profile runs on Meta's official
+            # API with this bex-owned key (muse-spark-1.3-contributor only),
+            # in the same allowlisted workspaces. Optional like the key above:
+            # absent, muse is offered nowhere.
+            - name: BEX_AGENT_PLATFORM_META_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-platform-model
+                  key: meta-api-key
+                  optional: true
             # Login-time invite redemption requires a Kratos-VERIFIED email
             # (w1/040, closing w1/m53's V1 window: an attacker who registered
             # with a victim's not-yet-signed-up invited address could otherwise

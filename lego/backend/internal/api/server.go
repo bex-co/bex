@@ -431,6 +431,9 @@ type Deps struct {
 	// AgentEnvironmentStore persists each workspace's agent environment
 	// (w10/m17); nil ⇒ defaults only.
 	AgentEnvironmentStore agentsessions.EnvironmentStore
+	// AgentMetaRouteMaxSessions caps live muse sessions across every workspace
+	// on the one Meta key (BEX_AGENT_META_ROUTE_MAX_SESSIONS); 0 ⇒ default.
+	AgentMetaRouteMaxSessions int
 	// AgentSpendStore reads the agent-model spend controls (ADR091 D5,
 	// D10.1): the trust tier's session limit and the environment's spend
 	// fields; nil ⇒ neither.
@@ -1141,6 +1144,8 @@ func NewServer(base *core.Base, d Deps) *Server {
 		SecretScopes:     d.AgentSecretScopeStore,
 		Automations:      d.AgentAutomationStore,
 		Feedback:         d.AgentFeedbackStore,
+
+		MetaRouteMaxSessions: d.AgentMetaRouteMaxSessions,
 	}
 	// A membership exit ends the sessions the member started (w5/186).
 	memberExit := agentsessions.MemberExit{Service: agentSessionsSvc}

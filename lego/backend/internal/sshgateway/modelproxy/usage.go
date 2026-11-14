@@ -58,9 +58,11 @@ const (
 	// its usage object; a Messages response is far smaller. Past it the
 	// exchange is relayed unchanged and its usage is dropped loudly.
 	maxMeteredJSONBytes = 8 << 20
-	// maxMeteredSSELine bounds one buffered SSE line. Usage rides on the small
-	// message_start / message_delta events; a longer line is skipped.
-	maxMeteredSSELine = 1 << 20
+	// maxMeteredSSELine bounds one buffered SSE line; a longer line is
+	// skipped. Anthropic usage rides on small message_start / message_delta
+	// events, but a Responses stream reports it on response.completed, which
+	// carries the whole response, so the bound matches a JSON body's.
+	maxMeteredSSELine = maxMeteredJSONBytes
 )
 
 // anthropicUsage is the Messages API usage object. Pointers, because
@@ -76,9 +78,34 @@ type anthropicUsage struct {
 	Cost                     *float64 `json:"cost"`
 }
 
+// responsesUsage is the Responses API usage object (Meta's API, ADR108):
+// input_tokens includes the cached prompt tokens it details.
+type responsesUsage struct {
+	InputTokens        *int64 `json:"input_tokens"`
+	OutputTokens       *int64 `json:"output_tokens"`
+	InputTokensDetails *struct {
+		CachedTokens *int64 `json:"cached_tokens"`
+	} `json:"input_tokens_details"`
+}
+
+// anthropic maps a Responses usage onto the meter's Messages shape: uncached
+// input, output and cache reads.
+func (u *responsesUsage) anthropic() *anthropicUsage {
+	if u == nil {
+		return nil
+	}
+	out := &anthropicUsage{InputTokens: u.InputTokens, OutputTokens: u.OutputTokens}
+	if d := u.InputTokensDetails; d != nil && d.CachedTokens != nil && u.InputTokens != nil {
+		cached := min(*d.CachedTokens, *u.InputTokens)
+		uncached := *u.InputTokens - cached
+		out.InputTokens, out.CacheReadInputTokens = &uncached, &cached
+	}
+	return out
+}
+
 // usageMeter is the tee side of a relayed platform-route response: it reads
 // the bytes the client is being sent, never delays or alters them, and
-// extracts the Anthropic usage. Write never fails, so a parse problem can
+// extracts the Anthropic or Responses usage. Write never fails, so a parse problem can
 // never break the relay.
 type usageMeter struct {
 	sse      bool
@@ -131,13 +158,18 @@ func (m *usageMeter) Write(p []byte) (int, error) {
 	return n, nil
 }
 
-var usageMarker = []byte(`"usage"`)
+var (
+	usageMarker     = []byte(`"usage"`)
+	nullUsageMarker = []byte(`"usage":null`)
+)
 
 // sseLine handles one complete SSE line. Only data lines that mention usage
 // are decoded, so the many content deltas of a long turn cost a byte scan.
 func (m *usageMeter) sseLine(line []byte) {
 	data, ok := bytes.CutPrefix(line, []byte("data:"))
-	if !ok || !bytes.Contains(data, usageMarker) {
+	// response.created / in_progress carry "usage":null on the whole
+	// response object: nothing to read, so it is not decoded.
+	if !ok || !bytes.Contains(data, usageMarker) || bytes.Contains(data, nullUsageMarker) {
 		return
 	}
 	var event struct {
@@ -145,7 +177,10 @@ func (m *usageMeter) sseLine(line []byte) {
 		Message struct {
 			Usage *anthropicUsage `json:"usage"`
 		} `json:"message"`
-		Usage *anthropicUsage `json:"usage"`
+		Usage    *anthropicUsage `json:"usage"`
+		Response struct {
+			Usage *responsesUsage `json:"usage"`
+		} `json:"response"`
 	}
 	if json.Unmarshal(bytes.TrimSpace(data), &event) != nil {
 		return
@@ -157,6 +192,10 @@ func (m *usageMeter) sseLine(line []byte) {
 		// Anthropic's message_delta usage is cumulative for the message, so a
 		// present count replaces the message_start one.
 		m.merge(event.Usage)
+	case "response.completed", "response.incomplete", "response.failed":
+		// A Responses stream reports the whole exchange's usage once, on its
+		// terminal event.
+		m.merge(event.Response.Usage.anthropic())
 	}
 }
 
@@ -185,12 +224,23 @@ func (m *usageMeter) result() (tokens [4]int64, cost *float64, ok, unparsed bool
 			return tokens, nil, false, true
 		}
 		var body struct {
-			Usage *anthropicUsage `json:"usage"`
+			Object string          `json:"object"`
+			Usage  json.RawMessage `json:"usage"`
 		}
 		if json.Unmarshal(m.jsonBuf.Bytes(), &body) != nil {
 			return tokens, nil, false, true
 		}
-		m.merge(body.Usage)
+		if body.Object == "response" {
+			var usage *responsesUsage
+			if json.Unmarshal(body.Usage, &usage) == nil {
+				m.merge(usage.anthropic())
+			}
+		} else {
+			var usage *anthropicUsage
+			if json.Unmarshal(body.Usage, &usage) == nil {
+				m.merge(usage)
+			}
+		}
 	}
 	if !m.seen {
 		return tokens, nil, false, true

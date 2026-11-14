@@ -255,6 +255,10 @@ type Service struct {
 	// nil Spend (store off) ⇒ no tier limit and no spend fields.
 	Spend SpendStore
 	Sheet *pricing.Sheet
+	// MetaRouteMaxSessions caps live sessions of the platform-only profiles
+	// across every workspace, because one bex-owned Meta key carries them all
+	// within Meta's per-key rate limit (ADR108); 0 ⇒ defaultMetaRouteMaxSessions.
+	MetaRouteMaxSessions int
 	// ModelCosts reads a session's platform-route model cost per turn
 	// (ADR091 D6). nil (store off) ⇒ every session reads zero cost.
 	ModelCosts ModelCostStore
@@ -641,12 +645,15 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
-	ceiling, err := parseSessionCeiling(req.MaxSpendUSD, sessionMetered(workspaceID, req.AgentConfig.Agent, env.ModelKeySet()))
+	ceiling, err := parseSessionCeiling(req.MaxSpendUSD, agentsession.PlatformRouteMeters(workspaceID, req.AgentConfig.Agent, env.ModelKeySet()))
 	if err != nil {
 		return View{}, err
 	}
 	admission, err := s.trustAdmissionFor(ctx, workspaceID, req.AgentConfig.Agent, env.ModelKeySet())
 	if err != nil {
+		return View{}, err
+	}
+	if err := s.enforceMetaRouteCapacity(ctx, req.AgentConfig.Agent, ""); err != nil {
 		return View{}, err
 	}
 	var parent *childContext
@@ -1429,7 +1436,7 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	// The BYO flag only matters where the trust tier counts platform-route
 	// sessions; read the environment for it there alone.
 	byoKey := false
-	if s.platformCounted(record.WorkspaceID, config.Agent) {
+	if s.platformCounted(record.WorkspaceID, config.Agent, false) {
 		workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
 		if err != nil {
 			return View{}, err
@@ -1437,6 +1444,9 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 		byoKey = workspaceEnv.ModelKeySet()
 	}
 	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent, byoKey); err != nil {
+		return View{}, err
+	}
+	if err := s.enforceMetaRouteCapacity(ctx, config.Agent, record.ID); err != nil {
 		return View{}, err
 	}
 	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
@@ -1809,6 +1819,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, err
 	}
 	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent, workspaceEnv.ModelKeySet()); err != nil {
+		return View{}, err
+	}
+	if err := s.enforceMetaRouteCapacity(ctx, config.Agent, record.ID); err != nil {
 		return View{}, err
 	}
 	if config.Model, err = sessionModel(record.WorkspaceID, config, workspaceEnv, false); err != nil {
