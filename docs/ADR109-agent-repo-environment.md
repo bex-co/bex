@@ -44,7 +44,7 @@ A workspace may declare one environment per repository (`owner/name`, normalized
 
 The driver runs the setup steps after the checkout (`ensureRepo`) and before the agent's turn, once per sandbox. Since every turn is a fresh sandbox (ADR059), that is once per turn.
 
-**Phase 2 closed the divergence ([ADR111](ADR111-agent-repo-environment-snapshots.md), w9/m407).** Devin runs setup when it builds a snapshot and boots every session from it. Phase 1 ran it at each turn's start instead, so each turn paid the setup's time. ADR111 builds an image from the setup steps and boots sessions from the newest matching build. This per-sandbox setup now runs only when no matching build exists: before the first build succeeds, after the steps change, or when the newest build failed.
+**Phase 2 closes the divergence ([ADR111](ADR111-agent-repo-environment-snapshots.md), w9/m407; until it ships, phase 1 diverges).** Devin runs setup when it builds a snapshot and boots every session from it. Phase 1 runs it at each turn's start instead, so each turn pays the setup's time. ADR111 builds an image from the setup steps and boots sessions from the newest matching build. This per-sandbox setup now runs only when no matching build exists: before the first build succeeds, after the steps change, or when the newest build failed.
 
 ### D3 — Limits
 
