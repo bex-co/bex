@@ -1,6 +1,6 @@
 # w2 · m361 — A just-deleted service's name can be reused at once, as on Render
 
-**Worker:** worker2 **Goal:** creating a service under the name of a service that was just deleted succeeds at once on every surface (REST, GraphQL, MCP, Blueprint, the dashboard and the pinned CLI), as on Render. The old service's teardown finishes on its own, and nothing of it (logs, metrics, events, registry images) is mixed into the new service. **Status:** blocked (t001–t004, t006–t008 done; w2/m365 `18b9e89d5` replaced the 20 s wait with an immediate re-create; t005 production walk runs as w2/m365 t006 after the batched deploy)
+**Worker:** worker2 **Goal:** creating a service under the name of a service that was just deleted succeeds at once on every surface (REST, GraphQL, MCP, Blueprint, the dashboard and the pinned CLI), as on Render. The old service's teardown finishes on its own, and nothing of it (logs, metrics, events, registry images) is mixed into the new service. **Status:** done (2026-11-14; w2/m365 `18b9e89d5` replaced the 20 s wait with an immediate re-create, and t005 was walked on production as w2/m365 t006)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Create: when the name's holder is being deleted, the new App gets a suffixed object name and keeps the requested name as its creation and shown name; uniqueness counts live services only — **DONE** | 75m | t001 |
 | t003 | Name resolution and Blueprints ignore an App being deleted; the same check for Postgres and Key Value names — **DONE** | 60m | t002 |
 | t004 | ADR018:81's open divergence is removed and `SERVICE_NAME_STILL_DELETING` retired — **DONE** | 20m | t003 |
-| t005 | Production walk: delete then recreate the same name within seconds by CLI and by Blueprint sync | 30m | t004 |
+| t005 | Production walk: delete then recreate the same name within seconds by CLI and by Blueprint sync — **DONE** (as w2/m365 t006) | 30m | t004 |
 | t006 | Render parity — **DONE** (with w2/m365 t007) | 20m | t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t007 |
-| t009 | Closeout | 10m | t008 |
+| t009 | Closeout — **DONE** | 10m | t008 |
 
 ## Definition of done
 
@@ -24,11 +24,11 @@
 - The new service reaches Live. The deleted one finishes its teardown. `GET` by the name and the dashboard show only the new service.
 - The new service's logs, metrics, events and deploys contain nothing from the deleted one.
 - Two live services in one workspace still cannot share a name: the existing 409 "already in use" stands, as Render requires.
-- ~~No surface answers `SERVICE_NAME_STILL_DELETING`. ADR018's "Address a service by name" row no longer lists the retry window.~~ Narrowed 2026-11-13 (see § Decision): for an ordinary teardown the create answers 201 and ADR018 records the wait as matching Render; a teardown longer than 20 s still answers it, carried by w2/084 as an open gap.
+- ~~No surface answers `SERVICE_NAME_STILL_DELETING`. ADR018's "Address a service by name" row no longer lists the retry window.~~ Narrowed 2026-11-13 (see § Decision): for an ordinary teardown the create answers 201 and ADR018 records the wait as matching Render; a teardown longer than 20 s still answers it, carried by w2/084 as an open gap. Met after all by w2/m365 (2026-11-14): no surface answers it, and ADR018 records the gap closed.
 
 ## Source + Goal linkage
 
-- **Source:** `/pm-brainstorm for w2` 2026-11-12, item 5, filed by `/pmx them all for w2`. It follows [w2/075](../done/075.md) (2026-11-08), which replaced a 500 with a named 409 and left the wait.
+- **Source:** `/pm-brainstorm for w2` 2026-11-12, item 5, filed by `/pmx them all for w2`. It follows [w2/075](../075.md) (2026-11-08), which replaced a 500 with a named 409 and left the wait.
 - **Render:**
   - [render.com/docs/projects](https://render.com/docs/projects): "All of a workspace's services must have unique names". That uniqueness covers live services.
   - w2/075's check: a same-named create is accepted at once after a delete. Only the `onrender.com` subdomain is unique and never reused, and a taken one gets a random suffix.
