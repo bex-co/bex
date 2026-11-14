@@ -1,6 +1,6 @@
 # w4 · m352 — A deploy cuts every open shell and SSH session within a minute and refuses new ones as "no running instance yet", while the instance keeps running and serving until the new release goes live
 
-**Worker:** worker4 **Goal:** a shell or SSH session lives as long as the instance it is attached to. A deploy's build, pre-deploy and rollout leave the serving instance's sessions open, and new sessions can open on it. A session ends when its instance stops, or when the caller loses access to it. Any refusal or end names its real reason in the dashboard. **Status:** todo (t001–t005 done; t006 live production replay open)
+**Worker:** worker4 **Goal:** a shell or SSH session lives as long as the instance it is attached to. A deploy's build, pre-deploy and rollout leave the serving instance's sessions open, and new sessions can open on it. A session ends when its instance stops, or when the caller loses access to it. Any refusal or end names its real reason in the dashboard. **Status:** blocked — release gate (t001–t005 done, code shipped 2026-11-14 by `/loopx w4`; t006 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 

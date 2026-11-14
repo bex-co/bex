@@ -1,6 +1,6 @@
 # w4 · m350 — A new image web service whose process listens on a port its image doesn't declare starts twice on its first deploy: the first instance is replaced about a minute in, and Live comes about 45 s later than for the same image on its declared port
 
-**Worker:** worker4 **Goal:** a first deploy rolls one ReplicaSet whichever port the image's HTTP listener turns out to be on. HTTP port discovery changes only the Services and the route, never the pod template, as Render's port scan routes to the port it finds without restarting the instance. **Status:** todo (t001–t004 done 2026-11-14; t005 replays the DoD after the next production deploy)
+**Worker:** worker4 **Goal:** a first deploy rolls one ReplicaSet whichever port the image's HTTP listener turns out to be on. HTTP port discovery changes only the Services and the route, never the pod template, as Render's port scan routes to the port it finds without restarting the instance. **Status:** blocked — release gate (t001–t004 done, code shipped 2026-11-14 by `/loopx w4`; t005 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 

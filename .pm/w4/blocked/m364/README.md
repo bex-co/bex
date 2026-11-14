@@ -1,6 +1,6 @@
 # w4 · m364 — Autoscaling never changes a service's instance count on production: the operator cannot read pod metrics, so an idle service with autoscaling on stays at 3 instances for 10+ minutes and a manual scale while autoscaling is on takes effect
 
-**Worker:** worker4 **Goal:** a service with autoscaling on runs the instance count its CPU and memory targets call for. It scales down to `min` once the 5-minute stabilization window passes on an idle service, scales up under load, and records `autoscaling_started`/`autoscaling_ended`. A manual scale while autoscaling is on is stored, as Render does, but does not change the running count. **Status:** todo (t001–t006 done; t007, the live production replay, pending)
+**Worker:** worker4 **Goal:** a service with autoscaling on runs the instance count its CPU and memory targets call for. It scales down to `min` once the 5-minute stabilization window passes on an idle service, scales up under load, and records `autoscaling_started`/`autoscaling_ended`. A manual scale while autoscaling is on is stored, as Render does, but does not change the running count. **Status:** blocked — release gate (t001–t006 done, code shipped 2026-11-14 by `/loopx w4`; t007 replays the live DoD after the next production deploy)
 
 ## Tasks (in order)
 
