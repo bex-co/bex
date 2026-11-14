@@ -1,4 +1,4 @@
-import { createHash, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { Configuration, OAuth2Api } from "@ory/client-fetch";
 import type { OAuth2ConsentRequest } from "@ory/client-fetch";
 import { fetchSession } from "@/common/server-fn/session";
@@ -199,15 +199,28 @@ async function sessionFor(request: Request): Promise<SessionState> {
 }
 
 /**
- * A CSRF token a cross-site attacker cannot forge: it hashes the challenge
+ * A CSRF token a cross-site attacker cannot forge: it covers the challenge
  * together with the Kratos **session id**, which is only readable server-side
  * with the (HttpOnly, CORS-protected) session cookie. Stateless — no extra
  * cookie to set, and it verifies identically on any dashboard replica. It is
  * defense in depth behind the same-origin check and the subject↔session
  * binding, not the only thing standing between an attacker and a grant.
+ *
+ * With `CONSENT_CSRF_SECRET` set (the same value on every replica) it is an
+ * HMAC under that secret, so the challenge, which travels in the URL, and a
+ * session id are not enough to compute it. Unset, it is the plain hash it was
+ * before (w21/m410 t005), so a deploy that has not provisioned the secret keeps
+ * working; the secret is what makes the token unforgeable by anyone who learns
+ * a session id.
  */
 function consentCsrfToken(challenge: string, sessionID: string): string {
-  return createHash("sha256").update(`${challenge}:${sessionID}`).digest("hex");
+  const input = `${challenge}:${sessionID}`;
+  const secret = process.env.CONSENT_CSRF_SECRET;
+  return (
+    secret
+      ? createHmac("sha256", secret).update(input)
+      : createHash("sha256").update(input)
+  ).digest("hex");
 }
 
 function csrfTokenMatches(

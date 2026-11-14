@@ -48,7 +48,11 @@ export function safeNext(
   // under the backslash rule, so require the resolved origin to match.
   if (resolved.origin !== base.origin) return FALLBACK;
 
-  return `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  const path = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  // `new URL` collapses dot segments after the guard above ran, so "/.//evil.com"
+  // resolves to the path "//evil.com": a protocol-relative authority to anything
+  // that uses the result as an href.
+  return path.startsWith("//") ? FALLBACK : path;
 }
 
 /**

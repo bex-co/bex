@@ -1,8 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { ASSETS_DIR } from "../assets-paths";
 import assetsMiss from "../middleware/assets-miss";
-import { buildRouteRules, buildSecurityHeaders } from "../security-headers";
+import {
+  buildRouteRules,
+  buildSecurityHeaders,
+  SECURITY_HEADER_NAMES,
+} from "../security-headers";
 
 const missStatus = (path: string) =>
   assetsMiss({ url: new URL(`https://dashboard.bex.co${path}`) })?.status;
@@ -13,6 +17,17 @@ function directive(headers: Record<string, string>, name: string): string {
 }
 
 describe("buildSecurityHeaders", () => {
+  it("emits exactly the headers the response-header plugin copies", () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const emitted = Object.keys(
+      buildSecurityHeaders("https://auth.bex.co", "https://auth.bex.co"),
+    )
+      .map((name) => name.toLowerCase())
+      .sort();
+    vi.unstubAllEnvs();
+    expect(emitted).toEqual([...SECURITY_HEADER_NAMES].sort());
+  });
+
   it("lets images load from the attachments bucket and nowhere new", () => {
     const img = directive(
       buildSecurityHeaders("https://auth.bex.co", "https://auth.bex.co"),
@@ -35,6 +50,16 @@ describe("buildSecurityHeaders", () => {
     expect(img).toContain(" https://store.example.com");
     expect(img).not.toContain("wasabisys");
     expect(img).not.toContain("/bucket");
+  });
+
+  // A <base> injected into markup would re-root every relative URL on the page
+  // (w21/m410 t003); the app uses none, so the policy forbids them.
+  it("pins the document's base URL to its own origin", () => {
+    const headers = buildSecurityHeaders(
+      "https://auth.bex.co",
+      "https://auth.bex.co",
+    );
+    expect(directive(headers, "base-uri")).toBe("base-uri 'self'");
   });
 
   it("does not widen the other directives", () => {

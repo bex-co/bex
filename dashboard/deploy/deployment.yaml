@@ -118,6 +118,17 @@ spec:
                   name: bex-ops
                   key: BEX_OPS_ROLE_TOKEN
                   optional: true
+            # HMAC key for the consent CSRF token (hydra-consent.ts, w21/m410 t005):
+            # the same value on every replica, from the out-of-band
+            # dashboard/dashboard-consent-csrf Secret (`openssl rand -hex 32`).
+            # Absent => the token is the plain hash it was before, so the deploy
+            # keeps working until the Secret is created.
+            - name: CONSENT_CSRF_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: dashboard-consent-csrf
+                  key: CONSENT_CSRF_SECRET
+                  optional: true
           ports:
             - name: http
               containerPort: 3000

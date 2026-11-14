@@ -44,6 +44,11 @@ self.addEventListener("notificationclick", (event) => {
   // Keep the navigation relative after validation. This makes the same-origin
   // property explicit at the sink instead of carrying a resolved authority.
   const url = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+  // A dot segment can collapse after the checks above ("/.//evil.com"), leaving
+  // a protocol-relative "//evil.com".
+  if (url.startsWith("//")) {
+    return;
+  }
   event.waitUntil(
     self.clients
       .matchAll({ type: "window", includeUncontrolled: true })

@@ -142,6 +142,25 @@ describe("revokeSession", () => {
     expect(res.status).toBe(403);
   });
 
+  it("refuses a body that is not declared as JSON with 415 and revokes nothing", async () => {
+    const calls = mockUpstreams({});
+    const req = new Request("https://dashboard.bex.co/api/x", {
+      method: "POST",
+      headers: {
+        "content-type": "text/plain",
+        origin: "https://dashboard.bex.co",
+        cookie: "ory_session=live",
+      },
+      body: JSON.stringify({ action: "revoke", id: "session-other" }),
+    });
+    const res = await revokeSession(req);
+    expect(res.status).toBe(415);
+    // The session lookup may run; nothing is revoked.
+    expect(
+      calls.filter(({ init }) => (init?.method ?? "GET") !== "GET"),
+    ).toEqual([]);
+  });
+
   it("refuses with no session", async () => {
     mockUpstreams({ whoamiOk: false });
     const res = await revokeSession(

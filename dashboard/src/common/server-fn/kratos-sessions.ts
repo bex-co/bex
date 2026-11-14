@@ -3,7 +3,7 @@ import { createFrontendApi } from "@/common/lib/ory/frontend";
 import { fetchSession } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
 import {
-  BodyTooLargeError,
+  boundedJsonErrorResponse,
   readBoundedJson,
 } from "@/common/server-fn/bounded-body";
 
@@ -87,10 +87,7 @@ export async function revokeSession(request: Request): Promise<Response> {
       SESSIONS_BODY_MAX,
     );
   } catch (err) {
-    if (err instanceof BodyTooLargeError) {
-      return new Response("request too large", { status: 413 });
-    }
-    return new Response("malformed request", { status: 400 });
+    return boundedJsonErrorResponse(err);
   }
 
   const frontend = createFrontendApi(cookie);

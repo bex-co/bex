@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   BodyTooLargeError,
+  UnsupportedMediaTypeError,
   readBoundedBody,
   readBoundedFormData,
   readBoundedJson,
@@ -99,6 +100,36 @@ describe("readBoundedBody", () => {
     );
     expect(body).toEqual({ action: "revoke", id: "abc" });
   });
+
+  // A cross-site <form> can POST text/plain with no CORS preflight; a body that
+  // is JSON has to say so (w21/m410 t002).
+  it.each([
+    [{ "content-type": "text/plain" }],
+    [{ "content-type": "application/x-www-form-urlencoded" }],
+    [{ "content-type": "multipart/form-data; boundary=x" }],
+    [{}],
+  ])("refuses a JSON read of %j", async (headers) => {
+    const req = new Request("https://dashboard.bex.co/x", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ action: "revoke" }),
+    });
+    await expect(readBoundedJson(req, 1 << 14)).rejects.toBeInstanceOf(
+      UnsupportedMediaTypeError,
+    );
+  });
+
+  it.each(["application/json", "Application/JSON; charset=utf-8"])(
+    "accepts a JSON read of %s",
+    async (type) => {
+      const req = new Request("https://dashboard.bex.co/x", {
+        method: "POST",
+        headers: { "content-type": type },
+        body: JSON.stringify({ ok: true }),
+      });
+      expect(await readBoundedJson(req, 1 << 14)).toEqual({ ok: true });
+    },
+  );
 
   it("rejects an oversized formData stream with BodyTooLargeError", async () => {
     const { request } = streamedRequest(1024); // unbounded, 2 KiB cap

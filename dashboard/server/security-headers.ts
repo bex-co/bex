@@ -8,6 +8,16 @@ import { ASSETS_DIR } from "./assets-paths";
 export const DEFAULT_ATTACHMENTS_ORIGIN =
   "https://s3.eu-central-2.wasabisys.com";
 
+/** The headers (lowercase) `buildSecurityHeaders` can emit. The response-header
+ * plugin copies exactly these onto a response the route rules missed; a test
+ * keeps the list equal to what the builder emits. */
+export const SECURITY_HEADER_NAMES: ReadonlySet<string> = new Set([
+  "x-content-type-options",
+  "x-frame-options",
+  "content-security-policy",
+  "strict-transport-security",
+]);
+
 export function buildSecurityHeaders(
   kratosPublicURL: string,
   kratosProxyTarget: string,
@@ -54,6 +64,12 @@ export function buildSecurityHeaders(
         : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
       "frame-src https://js.stripe.com https://hooks.stripe.com",
       "frame-ancestors 'none'",
+      // No <base> element is used, so an injected one cannot re-root the page's
+      // relative URLs. `form-action` is deliberately absent: Chrome applies it to
+      // the redirect chain after a form POST, and the consent and device
+      // decisions redirect to an OAuth client's own callback (dashboard/AGENTS.md,
+      // Content-Security-Policy).
+      "base-uri 'self'",
     ].join("; "),
   };
   if (process.env.NODE_ENV === "production") {

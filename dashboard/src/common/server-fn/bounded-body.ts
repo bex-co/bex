@@ -21,6 +21,20 @@ export class BodyTooLargeError extends Error {
 }
 
 /**
+ * Thrown by `readBoundedJson` for a request whose Content-Type is not
+ * `application/json`. Callers map it to a 415. A cross-site `<form>` can POST
+ * `text/plain` with no CORS preflight, so a handler that parses JSON must make
+ * the request say it is JSON, which only a `fetch` (and so a preflight the route
+ * never answers) can do cross-site.
+ */
+export class UnsupportedMediaTypeError extends Error {
+  constructor(contentType: string | null) {
+    super(`expected application/json, got ${contentType ?? "no content type"}`);
+    this.name = "UnsupportedMediaTypeError";
+  }
+}
+
+/**
  * Reads `request`'s body, throwing `BodyTooLargeError` as soon as more than
  * `limit` bytes have been seen. The stream is cancelled on overflow so the
  * remainder is never pulled into memory.
@@ -70,12 +84,18 @@ export async function readBoundedText(
   return new TextDecoder().decode(await readBoundedBody(request, limit));
 }
 
-/** Bounded body → parsed JSON. Throws `BodyTooLargeError` (413) on overflow or a
- * `SyntaxError` (the caller's malformed-body path) on invalid JSON. */
+/** Bounded body → parsed JSON. Throws `UnsupportedMediaTypeError` (415) before
+ * reading anything unless the request is declared `application/json`,
+ * `BodyTooLargeError` (413) on overflow, or a `SyntaxError` (the caller's
+ * malformed-body path) on invalid JSON. */
 export async function readBoundedJson<T>(
   request: Request,
   limit: number,
 ): Promise<T> {
+  const contentType = request.headers.get("content-type");
+  if (contentType?.split(";")[0].trim().toLowerCase() !== "application/json") {
+    throw new UnsupportedMediaTypeError(contentType);
+  }
   return JSON.parse(await readBoundedText(request, limit)) as T;
 }
 
@@ -100,4 +120,17 @@ export async function readBoundedFormData(
     body: new Blob([bytes], { type: contentType }),
   });
   return bounded.formData();
+}
+
+/** The response a JSON handler answers when `readBoundedJson` throws: 413 for an
+ * oversized body, 415 for a body not declared `application/json`, otherwise 400
+ * (a malformed body). Keeps the status mapping in one place. */
+export function boundedJsonErrorResponse(err: unknown): Response {
+  if (err instanceof BodyTooLargeError) {
+    return new Response("request too large", { status: 413 });
+  }
+  if (err instanceof UnsupportedMediaTypeError) {
+    return new Response("expected application/json", { status: 415 });
+  }
+  return new Response("malformed request", { status: 400 });
 }

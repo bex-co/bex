@@ -1,7 +1,7 @@
 // @vitest-environment node
 // Node, as in production: see bounded-body.test.ts for why jsdom cannot host
 // readBoundedFormData.
-import { createHash } from "node:crypto";
+import { createHash, createHmac } from "node:crypto";
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import {
   handleConsent,
@@ -151,8 +151,10 @@ beforeEach(() => {
   process.env.BEX_IDENTITY_CLAIMS_URL = CLAIMS_URL;
   delete process.env.BEX_REQUIRE_VERIFIED_EMAIL;
   delete process.env.OAUTH_PROFILE_CLAIMS_CLIENTS;
+  delete process.env.CONSENT_CSRF_SECRET;
 });
 afterEach(() => {
+  delete process.env.CONSENT_CSRF_SECRET;
   vi.unstubAllGlobals();
   delete process.env.HYDRA_ADMIN_URL;
   delete process.env.OAUTH_TRUSTED_CLIENTS;
@@ -662,6 +664,55 @@ describe("handleConsentDecision (POST)", () => {
     );
     expect(res.status).toBe(403);
     expect(accepts(calls)).toHaveLength(0);
+  });
+
+  // w21/m410 t005: the token hashed the challenge (in the URL) and the session id,
+  // with no secret of the dashboard's own. With CONSENT_CSRF_SECRET set it is an
+  // HMAC under that secret, so knowing the challenge and a session id is not
+  // enough to forge one.
+  describe("with CONSENT_CSRF_SECRET set", () => {
+    const keyed = (challenge = CHALLENGE, sessionID = SESSION_ID) =>
+      createHmac("sha256", "server-secret")
+        .update(`${challenge}:${sessionID}`)
+        .digest("hex");
+
+    it("accepts the token keyed with the secret", async () => {
+      process.env.CONSENT_CSRF_SECRET = "server-secret";
+      const calls = mockUpstreams({ lookupBody: consentRequest() });
+      const res = await handleConsentDecision(
+        decisionReq({ ...approve, csrf_token: keyed() }),
+      );
+      expect(res.status).toBe(303);
+      expect(accepts(calls)).toHaveLength(1);
+    });
+
+    it("refuses the unkeyed hash an attacker can compute from the challenge and a session id", async () => {
+      process.env.CONSENT_CSRF_SECRET = "server-secret";
+      const calls = mockUpstreams({ lookupBody: consentRequest() });
+      const res = await handleConsentDecision(
+        decisionReq({ ...approve, csrf_token: csrf() }),
+      );
+      expect(res.status).toBe(403);
+      expect(accepts(calls)).toHaveLength(0);
+    });
+
+    it("refuses a token keyed with another secret", async () => {
+      process.env.CONSENT_CSRF_SECRET = "another-secret";
+      const calls = mockUpstreams({ lookupBody: consentRequest() });
+      const res = await handleConsentDecision(
+        decisionReq({ ...approve, csrf_token: keyed() }),
+      );
+      expect(res.status).toBe(403);
+      expect(accepts(calls)).toHaveLength(0);
+    });
+
+    it("hands the keyed token to the consent form", async () => {
+      process.env.CONSENT_CSRF_SECRET = "server-secret";
+      mockUpstreams({ lookupBody: consentRequest() });
+      const view = await handleConsent(req(`?consent_challenge=${CHALLENGE}`));
+      expect(view).toMatchObject({ csrfToken: keyed() });
+      expect((view as { csrfToken: string }).csrfToken).not.toBe(csrf());
+    });
   });
 
   it("refuses a CSRF token minted for a different challenge", async () => {

@@ -391,6 +391,7 @@ export default defineConfig(({ mode }) => {
         plugins: [
           "./server/plugins/mobile-association-content-type.ts",
           "./server/plugins/html-never-public.ts",
+          "./server/plugins/security-headers-on-every-response.ts",
         ],
         // Global, not a `/assets/**` route: nitro-nightly 3.0.1-20260310
         // passes a routed middleware's `{ route, handler }` record to h3 as the

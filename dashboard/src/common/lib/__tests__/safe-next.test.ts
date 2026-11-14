@@ -23,6 +23,16 @@ describe("safeNext", () => {
       "\\/\\/evil.com",
       "\\\\evil.com",
       "/\\/\\evil.com",
+      // a dot segment that collapses into a protocol-relative authority: the
+      // leading-character guard passes, and `new URL` then resolves the path
+      // to `//evil.com` (w21/m410 t001)
+      "/.//evil.com",
+      "/./\\evil.com",
+      "/a/..//evil.com",
+      "/..//evil.com",
+      "/%2e//evil.com",
+      "/%2E/%2e//evil.com",
+      "/././/evil.com/path?x=1#h",
       // mixed-case scheme
       "HtTpS://evil.com",
       "JAVASCRIPT:alert(1)",
@@ -34,6 +44,22 @@ describe("safeNext", () => {
         expect(safeNext(value, ORIGIN)).toBe("/");
       });
     }
+  });
+
+  describe("never returns more than one leading slash", () => {
+    it.each(["/.//evil.com", "/a/..//evil.com", "/%2e//evil.com", "/..//x"])(
+      "%s",
+      (value) => {
+        expect(safeNext(value, ORIGIN)).not.toMatch(/^\/[/\\]/);
+      },
+    );
+  });
+
+  it("still collapses ordinary dot segments and keeps query and hash", () => {
+    expect(safeNext("/a/../b?x=1#h", ORIGIN)).toBe("/b?x=1#h");
+    expect(safeNext("/./deploys/../services/srv-1", ORIGIN)).toBe(
+      "/services/srv-1",
+    );
   });
 
   describe("falls back to / for empty / non-string input", () => {

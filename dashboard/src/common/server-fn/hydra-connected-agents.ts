@@ -4,7 +4,7 @@ import { fetchSession } from "@/common/server-fn/session";
 import { isSameOrigin } from "@/common/server-fn/same-origin";
 import { config } from "@/config/config";
 import {
-  BodyTooLargeError,
+  boundedJsonErrorResponse,
   readBoundedJson,
 } from "@/common/server-fn/bounded-body";
 import { safeHttpHref } from "@/common/lib/external-url";
@@ -140,10 +140,7 @@ export async function revokeConnectedAgent(
     );
     clientId = body.clientId ?? "";
   } catch (err) {
-    if (err instanceof BodyTooLargeError) {
-      return new Response("request too large", { status: 413 });
-    }
-    return new Response("malformed request", { status: 400 });
+    return boundedJsonErrorResponse(err);
   }
   if (!clientId) return new Response("missing clientId", { status: 400 });
 
