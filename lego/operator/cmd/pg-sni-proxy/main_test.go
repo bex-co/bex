@@ -30,6 +30,7 @@ import (
 	"net"
 	"net/netip"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -617,5 +618,118 @@ func TestRouterResolve_EmptyDomain(t *testing.T) {
 	}
 	if _, ok := r.resolve("mydb.db.bex.co", netip.MustParseAddr("1.1.1.1")); ok {
 		t.Error("resolve should fail when domain is empty")
+	}
+}
+
+// w21/m394 t017 (R25-13): the client's read deadline is cleared once its SNI is
+// resolved, and the proxy then waited for the backend's answer to its SSLRequest
+// with no deadline of its own. A backend that accepts the connection and never
+// answers pinned the global, source and route slots for ever, after the client
+// had gone.
+func TestStalledBackendSSLReplyReleasesTheSlots(t *testing.T) {
+	stalled, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted := make(chan struct{}, 1)
+	var held []net.Conn
+	var heldMu sync.Mutex
+	go func() {
+		for {
+			conn, err := stalled.Accept()
+			if err != nil {
+				return
+			}
+			heldMu.Lock()
+			held = append(held, conn)
+			heldMu.Unlock()
+			select {
+			case accepted <- struct{}{}:
+			default:
+			}
+		}
+	}()
+	t.Cleanup(func() {
+		_ = stalled.Close()
+		heldMu.Lock()
+		defer heldMu.Unlock()
+		for _, conn := range held {
+			_ = conn.Close()
+		}
+	})
+
+	router := newRouter("db.bex.co")
+	db := &appv1alpha1.Database{
+		ObjectMeta: metav1.ObjectMeta{Name: "mydb", Namespace: "default"},
+		Spec:       appv1alpha1.DatabaseSpec{Public: true, IPAllowList: []appv1alpha1.IPAllowEntry{{CIDR: "127.0.0.1/32"}}},
+	}
+	if err := router.set(db); err != nil {
+		t.Fatal(err)
+	}
+	router.mu.Lock()
+	for _, routes := range router.hosts {
+		for i := range routes {
+			routes[i].backend = stalled.Addr().String()
+		}
+	}
+	router.mu.Unlock()
+
+	previous := backendSSLReplyTimeout
+	backendSSLReplyTimeout = 300 * time.Millisecond
+	t.Cleanup(func() { backendSSLReplyTimeout = previous })
+
+	limiter := sniproxy.NewLimiter(2, 2)
+	limiter.SetRouteLimits(2, 2)
+	meter := sniproxy.NewByteMeter(prometheus.NewRegistry(), "pg_proxy", "postgres")
+	proxy, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = proxy.Close() })
+	handled := make(chan struct{})
+	go func() {
+		defer close(handled)
+		conn, err := proxy.Accept()
+		if err == nil {
+			handleConn(conn, router, meter, nil, limiter, 0, 0, testLogger{})
+		}
+	}()
+
+	client, err := net.Dial("tcp", proxy.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = client.Close() }()
+	_ = client.SetDeadline(time.Now().Add(3 * time.Second))
+	sslRequest := make([]byte, 8)
+	binary.BigEndian.PutUint32(sslRequest[0:4], uint32(sslRequestLen))
+	binary.BigEndian.PutUint32(sslRequest[4:8], uint32(sslRequestMagic))
+	if _, err := client.Write(sslRequest); err != nil {
+		t.Fatal(err)
+	}
+	reply := make([]byte, 1)
+	if _, err := io.ReadFull(client, reply); err != nil || reply[0] != sslByte {
+		t.Fatalf("proxy's SSLRequest answer = %v, %v", reply, err)
+	}
+	if _, err := client.Write(buildClientHello("mydb.db.bex.co")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-accepted:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the proxy never dialled the stalled backend")
+	}
+	_ = client.Close() // the client leaves; the backend still says nothing
+
+	select {
+	case <-handled:
+	case <-time.After(3 * time.Second):
+		t.Fatal("the connection still holds its slots long after the backend failed to answer the SSLRequest")
+	}
+	// Every slot is free again.
+	for range 2 {
+		if _, ok := limiter.AcquireGlobal(); !ok {
+			t.Fatal("a global slot is still held")
+		}
 	}
 }

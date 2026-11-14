@@ -21,6 +21,8 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+
+	"github.com/bex-co/bex/lego/types/netutil"
 )
 
 // Limiter bounds concurrent proxied connections. A global cap protects the
@@ -103,7 +105,7 @@ func (l *Limiter) AcquireSource(addr netip.Addr) (release func(), ok bool) {
 	if l == nil || l.maxSource <= 0 {
 		return func() {}, true
 	}
-	key := addr.Unmap()
+	key := netutil.SourceKey(addr)
 	l.mu.Lock()
 	if l.perSource[key] >= l.maxSource {
 		l.mu.Unlock()

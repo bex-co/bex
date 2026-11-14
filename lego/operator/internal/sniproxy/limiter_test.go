@@ -75,6 +75,38 @@ func TestLimiterPerSourceCapIsolatesClients(t *testing.T) {
 	}
 }
 
+// w21/m394 t017 (R25-12 mitigation): one IPv6 subscriber holds a whole /64, so a
+// per-source cap keyed on the exact address let a single client take 2^64
+// distinct "sources" and never meet the cap.
+func TestLimiterPerSourceKeysIPv6OnSlash64(t *testing.T) {
+	const perSource = 128
+	l := NewLimiter(0, perSource)
+	slash64 := func(prefix [8]byte, host int) netip.Addr {
+		var b [16]byte
+		copy(b[:8], prefix[:])
+		b[14], b[15] = byte(host>>8), byte(host)
+		return netip.AddrFrom16(b)
+	}
+	first := [8]byte{0x20, 0x01, 0x0d, 0xb8, 0, 1, 0, 2}
+	admitted := 0
+	for host := range 1024 {
+		if _, ok := l.AcquireSource(slash64(first, host)); ok {
+			admitted++
+		}
+	}
+	if admitted != perSource {
+		t.Fatalf("1024 addresses of one /64 admitted %d connections, want the per-source cap of %d", admitted, perSource)
+	}
+	// Another /64 is another source, and an IPv4-mapped form is its IPv4 address.
+	other := [8]byte{0x20, 0x01, 0x0d, 0xb8, 0, 1, 0, 3}
+	if _, ok := l.AcquireSource(slash64(other, 1)); !ok {
+		t.Fatal("a different /64 shares the first one's cap")
+	}
+	if _, ok := l.AcquireSource(netip.MustParseAddr("198.51.100.7")); !ok {
+		t.Fatal("an IPv4 source shares the IPv6 cap")
+	}
+}
+
 func TestLimiterDisabledDimensionsAlwaysAdmit(t *testing.T) {
 	l := NewLimiter(0, 0)
 	for range 1000 {

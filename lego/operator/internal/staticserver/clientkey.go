@@ -24,6 +24,8 @@ import (
 	"net/textproto"
 	"strings"
 	"sync"
+
+	"github.com/bex-co/bex/lego/types/netutil"
 )
 
 // trueClientIPHeader is canonical, so Header.Get does not rebuild the key on
@@ -95,7 +97,8 @@ func clientFrom(ctx context.Context) string {
 // clientKey names the client a request's origin fetches are charged to: the
 // True-Client-IP the Traefik clientipheaders plugin sets on every request that
 // reaches the static server, else the connection's peer address. IPv6 collapses
-// to its /64, so rotating through a prefix's addresses does not dodge the cap.
+// to its /64 (netutil.SourceKey), so rotating through a prefix's addresses does
+// not dodge the cap.
 // "" means no usable address; such a request is not limited by the client cap.
 func clientKey(r *http.Request) string {
 	if addr, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get(trueClientIPHeader))); err == nil {
@@ -112,10 +115,5 @@ func clientKey(r *http.Request) string {
 }
 
 func canonicalClient(addr netip.Addr) string {
-	addr = addr.Unmap().WithZone("")
-	if addr.Is6() {
-		p, _ := addr.Prefix(64) // a valid length for an IPv6 address
-		return p.String()
-	}
-	return addr.String()
+	return netutil.SourceKey(addr).String()
 }

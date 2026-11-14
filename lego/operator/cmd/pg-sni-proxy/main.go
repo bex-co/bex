@@ -79,6 +79,10 @@ const (
 	labelWorkspace           = "app.bex.co/workspace"
 )
 
+// backendSSLReplyTimeout bounds the wait for the backend's one-byte answer to
+// the proxy's SSLRequest. A variable so a test can shorten it.
+var backendSSLReplyTimeout = dialTimeout
+
 var scheme = runtime.NewScheme()
 
 func init() {
@@ -496,10 +500,15 @@ func handleConn(
 		if _, err := back.Write(peek[:]); err != nil {
 			return
 		}
+		// The client's deadline was cleared above, so bound the backend's
+		// one-byte answer here: a backend that accepts and never answers must
+		// not pin the global, source and route slots after the client leaves.
+		_ = back.SetReadDeadline(time.Now().Add(backendSSLReplyTimeout))
 		var resp [1]byte
 		if _, err := io.ReadFull(back, resp[:]); err != nil {
 			return
 		}
+		_ = back.SetReadDeadline(time.Time{})
 		if resp[0] != sslByte {
 			log.Info("backend declined SSL", "response", resp[0])
 			return

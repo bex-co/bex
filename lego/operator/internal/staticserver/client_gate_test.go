@@ -220,10 +220,10 @@ func TestClientKey(t *testing.T) {
 		{"no header uses the peer host", "", "10.0.0.9:4000", "10.0.0.9"},
 		{"unparseable header falls back to the peer", "not-an-ip", "10.0.0.9:4000", "10.0.0.9"},
 		{"IPv4-mapped IPv6 is the IPv4 address", "::ffff:198.51.100.7", "10.0.0.9:4000", "198.51.100.7"},
-		{"IPv6 collapses to its /64", "2001:db8:1:2:aaaa:bbbb:cccc:dddd", "10.0.0.9:4000", "2001:db8:1:2::/64"},
-		{"same /64, other interface id", "2001:db8:1:2::1", "10.0.0.9:4000", "2001:db8:1:2::/64"},
-		{"zone is dropped", "fe80::1%eth0", "10.0.0.9:4000", "fe80::/64"},
-		{"IPv6 peer without a header", "", "[2001:db8:9:9::5]:4000", "2001:db8:9:9::/64"},
+		{"IPv6 collapses to its /64", "2001:db8:1:2:aaaa:bbbb:cccc:dddd", "10.0.0.9:4000", "2001:db8:1:2::"},
+		{"same /64, other interface id", "2001:db8:1:2::1", "10.0.0.9:4000", "2001:db8:1:2::"},
+		{"zone is dropped", "fe80::1%eth0", "10.0.0.9:4000", "fe80::"},
+		{"IPv6 peer without a header", "", "[2001:db8:9:9::5]:4000", "2001:db8:9:9::"},
 		{"nothing usable", "", "pipe", ""},
 	}
 	for _, tc := range cases {
