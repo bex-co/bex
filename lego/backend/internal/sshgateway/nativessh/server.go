@@ -41,6 +41,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/proxyproto"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"github.com/bex-co/bex/lego/types/netutil"
 )
 
 const (
@@ -341,7 +342,7 @@ func (s *Server) serveConn(ctx context.Context, raw net.Conn, config *ssh.Server
 	// handshake reads anything.
 	source := ""
 	if addr, err := proxyproto.RemoteIP(transport.RemoteAddr()); err == nil {
-		source = addr.String()
+		source = netutil.SourceKey(addr).String() // an IPv6 client counts under its /64
 	}
 	if !preAuthSources.Acquire(source) {
 		s.Metrics.LimitRejected("preauth_source")

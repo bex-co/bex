@@ -250,3 +250,18 @@ func TestCredentialMuxRoutesEveryChildSessionMethod(t *testing.T) {
 		}
 	}
 }
+
+// R25-12 (w21/074): the listener's per-source cap counts an IPv6 client under its
+// /64, so rotating through the addresses of its own prefix does not dodge it.
+func TestConnectionSourceKeysIPv6OnItsSlash64(t *testing.T) {
+	tcp := func(addr string) net.Addr { return &net.TCPAddr{IP: net.ParseIP(addr), Port: 40000} }
+	if a, b := connectionSource(tcp("2001:db8:1:2::1")), connectionSource(tcp("2001:db8:1:2:ffff::9")); a != b {
+		t.Errorf("two addresses of one /64 are two sources: %q and %q", a, b)
+	}
+	if a, b := connectionSource(tcp("2001:db8:1:2::1")), connectionSource(tcp("2001:db8:1:3::1")); a == b {
+		t.Errorf("two /64s share a source: %q", a)
+	}
+	if a, b := connectionSource(tcp("203.0.113.1")), connectionSource(tcp("203.0.113.2")); a == b {
+		t.Errorf("two IPv4 addresses share a source: %q", a)
+	}
+}

@@ -39,3 +39,21 @@ func TestSourceKey(t *testing.T) {
 		t.Error("two different /64s share a key")
 	}
 }
+
+func TestSourceKeyString(t *testing.T) {
+	for in, want := range map[string]string{
+		"203.0.113.7":          "203.0.113.7",
+		"::ffff:203.0.113.7":   "203.0.113.7",
+		"2001:db8:1:2:ffff::9": "2001:db8:1:2::",
+		"fe80::1%eth0":         "fe80::",
+		"not an address":       "not an address",
+		"":                     "",
+		"unix:/run/ssh.sock":   "unix:/run/ssh.sock",
+		"2001:db8:1:2::1/64":   "2001:db8:1:2::1/64",
+		"[2001:db8:1:2::1]":    "[2001:db8:1:2::1]",
+	} {
+		if got := netutil.SourceKeyString(in); got != want {
+			t.Errorf("SourceKeyString(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

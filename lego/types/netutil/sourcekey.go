@@ -31,3 +31,13 @@ func SourceKey(addr netip.Addr) netip.Addr {
 	}
 	return addr
 }
+
+// SourceKeyString is SourceKey of an address spelled as a string, for callers
+// that hold a host or a client IP as text. Text that is not an IP address is
+// returned as it is, so such a client is still counted, under its own name.
+func SourceKeyString(host string) string {
+	if addr, err := netip.ParseAddr(host); err == nil {
+		return SourceKey(addr).String()
+	}
+	return host
+}

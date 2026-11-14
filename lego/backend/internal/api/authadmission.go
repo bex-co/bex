@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/types/netutil"
 )
 
 // authadmission.go bounds the work an UNAUTHENTICATED caller can impose on the
@@ -135,7 +136,7 @@ func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 	if a == nil {
 		return func() {}, nil
 	}
-	if a.failures != nil && a.failures.Bucket(a.TrustedProxies.ClientIP(r)).Tokens() < 1 {
+	if a.failures != nil && a.failures.Bucket(a.sourceKey(r)).Tokens() < 1 {
 		return nil, errAuthOverloaded
 	}
 	credential := a.credentialFingerprint(r)
@@ -163,11 +164,18 @@ func (a *AuthAdmission) admit(r *http.Request) (release func(), err error) {
 	}
 }
 
+// sourceKey is the client a per-source budget counts: the IP behind the trusted
+// proxies, with an IPv6 address collapsed to its /64 (netutil.SourceKey), so a
+// client cannot get a fresh budget for each address of its own prefix.
+func (a *AuthAdmission) sourceKey(r *http.Request) string {
+	return netutil.SourceKeyString(a.TrustedProxies.ClientIP(r))
+}
+
 func (a *AuthAdmission) credentialFingerprint(r *http.Request) string {
 	credential := presentedCredential(r)
 	value := credential.kind + ":" + credential.value
 	if credential.kind == "" {
-		value = "source:" + a.TrustedProxies.ClientIP(r)
+		value = "source:" + a.sourceKey(r)
 	}
 	mac := hmac.New(sha256.New, a.fingerprintKey[:])
 	_, _ = mac.Write([]byte(value))
@@ -201,7 +209,7 @@ func (a *AuthAdmission) penalize(r *http.Request) {
 	if a == nil || a.failures == nil {
 		return
 	}
-	a.failures.Bucket(a.TrustedProxies.ClientIP(r)).Allow()
+	a.failures.Bucket(a.sourceKey(r)).Allow()
 }
 
 // oversizedCredential reports whether a credential is too large to be worth

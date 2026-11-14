@@ -61,6 +61,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/webshell"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/env"
+	"github.com/bex-co/bex/lego/types/netutil"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -643,12 +644,14 @@ func (c *admittedConn) Close() error {
 	return err
 }
 
+// connectionSource is the client a listener's per-source cap counts: the peer
+// host, with an IPv6 address collapsed to its /64 (netutil.SourceKey).
 func connectionSource(addr net.Addr) string {
 	host, _, err := net.SplitHostPort(addr.String())
-	if err == nil {
-		return host
+	if err != nil {
+		host = addr.String()
 	}
-	return addr.String()
+	return netutil.SourceKeyString(host)
 }
 
 func healthzOK(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }

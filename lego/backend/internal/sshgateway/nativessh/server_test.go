@@ -22,6 +22,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/netip"
@@ -271,6 +272,55 @@ func TestGatewayPreAuthConnectionCapShedsExcessBeforeHandshake(t *testing.T) {
 	var ne net.Error
 	if errors.As(err, &ne) && ne.Timeout() {
 		t.Fatal("second connection was held through the handshake window; pre-auth cap did not shed it")
+	}
+}
+
+// R25-12 (w21/074): the pre-auth per-source cap counts an IPv6 client under its
+// /64. The source comes from a PROXY header a trusted edge sends, so three
+// addresses of one /64 share a cap of two and another /64 does not.
+func TestGatewayPreAuthPerSourceCapCountsAnIPv6ClientOnItsSlash64(t *testing.T) {
+	clientSigner := signer(t)
+	addr, stop := startGatewayConfigured(
+		t, &gatewaytest.FakeStore{}, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}, clientSigner,
+		func(server *Server) {
+			server.MaxPreAuthConns = 64
+			server.MaxPreAuthConnsPerSource = 2
+			server.HandshakeTimeout = 2 * time.Second
+			server.TrustedProxies = []netip.Prefix{netip.MustParsePrefix("127.0.0.0/8")}
+		},
+	)
+	defer stop()
+
+	// dial opens a connection that claims src through a PROXY header and says
+	// nothing else, so it stays in the handshake and holds its pre-auth slot.
+	dial := func(src string) net.Conn {
+		conn, err := net.Dial("tcp", addr)
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = conn.Close() })
+		if _, err := fmt.Fprintf(conn, "PROXY TCP6 %s 2001:db8::1 40000 22\r\n", src); err != nil {
+			t.Fatal(err)
+		}
+		return conn
+	}
+	admitted := func(conn net.Conn) bool {
+		_ = conn.SetReadDeadline(time.Now().Add(time.Second))
+		banner := make([]byte, 4)
+		_, err := io.ReadFull(conn, banner)
+		return err == nil && string(banner) == "SSH-"
+	}
+
+	for _, src := range []string{"2001:db8:1:2::1", "2001:db8:1:2::2"} {
+		if !admitted(dial(src)) {
+			t.Fatalf("a connection under the cap from %s was not admitted", src)
+		}
+	}
+	if admitted(dial("2001:db8:1:2:ffff::9")) {
+		t.Fatal("a third address of the same /64 was admitted: rotating addresses dodges the pre-auth cap")
+	}
+	if !admitted(dial("2001:db8:1:3::1")) {
+		t.Fatal("a different /64 was shed")
 	}
 }
 
