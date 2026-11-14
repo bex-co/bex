@@ -439,6 +439,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **321** — [A web service's own `Server` header reaches clients verbatim (`server: nginx/1.27.5`), where Render moves it to `x-render-origin-server` and sends `x-render-origin-server: Render` when the app sets none](321.md) (~45m) ← `/qa-find-bugs-cli` sweep 66c6 2026-11-14 (bex v0.6.0), minor.
+  - **Render:** a uvicorn app answers `x-render-origin-server: uvicorn`, and Express apps `x-render-origin-server: Render`. Static sites carry none.
+  - **bex:** an nginx image service answers `server: nginx/1.27.5` with no `x-render-origin-server`. The entrypoint edge plugin (`clientipheaders.go:92`) passes the response through untouched.
+  - **Fix:** a response-side rename, scoped to web-service routes only.
+
 - [x] **320** — [An unknown or deleted service's `*.onbex.co` host answers a bex-styled negotiated 404 page and skips the HTTPS redirect, where Render answers a plain-text `404 Not Found` after redirecting to HTTPS](done/320.md) (~30m) ← `/qa-find-bugs-cli` sweep 83e1 2026-11-13, minor.
   - **Render:** a nonexistent host 301s `http`→`https`, then answers `404 text/plain` `Not Found` with `nosniff` and `x-render-routing: no-server` for every `Accept`.
   - **bex:**
