@@ -12,11 +12,13 @@ set -euo pipefail
 #   BEX_WS_A_ADMIN_TOKEN   explicit admin in BEX_WORKSPACE_A
 #   BEX_WS_B_OWNER_TOKEN   ordinary member in BEX_WORKSPACE_B
 #
-# Set BEX_VERIFY_AGENT_DRIVER=1 after deploying w3/m37 to add a fourth sandbox
-# from the `agent` template. That leg proves the real image's headless ACP turn,
-# raw WebSocket bridge, and port-8787 gateway-only identity policy. It also
-# proves the image's driver refuses a standalone real-key launch: hosted agent
-# sandboxes only ever hold the model-proxy placeholder (ADR062, ADR090).
+# Set BEX_VERIFY_AGENT_DRIVER=1 to add the agent leg: a chat-only agent session
+# in workspace A (on a placeholder workspace model key) whose sandbox runs the
+# real agent image, as a user's session does (w7/m393). That leg proves the
+# image's headless ACP turn, raw WebSocket bridge, and port-8787 gateway-only
+# identity policy, runs the muse profile (ADR108), and proves the image's
+# driver refuses a standalone real-key launch: hosted agent sandboxes only ever
+# hold the model-proxy placeholder (ADR062, ADR090).
 #
 # Render's sandbox groups (w22/m311) are probed over REST with the same principals:
 # the first group made in workspace A is its default and a duplicate name is
@@ -86,7 +88,7 @@ sandbox_b_id=""
 sandbox_c_id=""
 sandbox_d_id=""
 sandbox_e_id=""
-sandbox_agent_id=""
+agent_session_id=""
 group_first_id=""
 group_limit_id=""
 group_default_id=""
@@ -137,7 +139,7 @@ cleanup() {
   [ -n "$sandbox_c_id" ] && api_call "$fixture_dir/owner-c.curl" POST "/v1/sandboxes/$sandbox_c_id/terminate?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/cleanup-c.json" >/dev/null
   [ -n "$sandbox_d_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_d_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-d.json" >/dev/null
   [ -n "$sandbox_e_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_e_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-e.json" >/dev/null
-  [ -n "$sandbox_agent_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_agent_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-agent.json" >/dev/null
+  [ -n "$agent_session_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/agent-sessions/$agent_session_id/cancel" "$fixture_dir/cleanup-agent.json" >/dev/null
   for group_sandbox in "$group_x1_id" "$group_x2_id" "$group_x3_id" "$group_y_id"; do
     [ -n "$group_sandbox" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$group_sandbox/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-group-sandbox.json" >/dev/null
   done
@@ -453,12 +455,19 @@ sandbox_d_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$
 # when a mint against it must still answer at once.
 sandbox_e_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-e.json" '{"type":"deny-all"}' '"idleTimeoutSeconds":300')"
 if [ "$verify_agent_driver" = 1 ]; then
-  expect_status 201 "$fixture_dir/owner-a.curl" POST "/v1/sandboxes" "$fixture_dir/sandbox-agent.json" \
-    --header 'Content-Type: application/json' \
-    --data "{\"ownerId\":\"$BEX_WORKSPACE_A\",\"template\":\"agent\",\"plan\":\"starter\",\"networkPolicy\":{\"default\":\"deny-all\"}}"
-  sandbox_agent_id="$(jq -er '.id' "$fixture_dir/sandbox-agent.json")"
-  [ "$(jq -r '.image' "$fixture_dir/sandbox-agent.json")" != "" ] \
-    || fail "agent template create returned no resolved image"
+  # The agent image's driver starts only with a session's env (model-proxy
+  # URL, session id, placeholder key), which a public sandbox create cannot
+  # give it (every BEX_* name is refused), so the leg starts a chat-only
+  # session the way production does. Its model key is a per-run placeholder:
+  # the turn fails upstream, which the leg does not need, and the sandbox
+  # stays up through the idle grace after it (BEX_AGENT_SANDBOX_IDLE_TTL).
+  expect_status 200 "$fixture_dir/admin-a.curl" PATCH "/v1/agent-environment?ownerId=$BEX_WORKSPACE_A" \
+    "$fixture_dir/agent-environment.json" --header 'Content-Type: application/json' \
+    --data "{\"modelApiKey\":\"isolation-matrix-placeholder-$run_id\"}"
+  expect_status 201 "$fixture_dir/owner-a.curl" POST "/v1/agent-sessions?ownerId=$BEX_WORKSPACE_A" \
+    "$fixture_dir/agent-session.json" --header 'Content-Type: application/json' \
+    --data '{"title":"isolation matrix agent leg","agentConfig":{"agent":"claude","task":"Reply with the word ok."}}'
+  agent_session_id="$(jq -er '.id' "$fixture_dir/agent-session.json")"
 fi
 [ "$(jq -r '.region' "$fixture_dir/sandbox-a.json")" = "$group_region" ] \
   || fail "sandbox A reads a region other than its group's ($group_region): $(head -c 300 "$fixture_dir/sandbox-a.json")"
@@ -511,6 +520,10 @@ done
 pass "create-time env is accepted, reserved names are refused, and no read returns a value"
 pass "owner isolation fails closed and can_manage is the sole override"
 
+batchsandbox_by_label() {
+  kubectl -n "$1" get batchsandboxes -l "$2" -o json 2>/dev/null | jq -r '.items[0].metadata.name // empty' || true
+}
+
 find_batchsandbox() {
   local namespace="$1" id="$2" owner="$3" template="$4" by_label
   if kubectl -n "$namespace" get batchsandbox "$id" >/dev/null 2>&1; then
@@ -518,7 +531,7 @@ find_batchsandbox() {
     return
   fi
   # The public `sbx-` id rides the bex.co/sandbox-id label (ADR042 D4).
-  by_label="$(kubectl -n "$namespace" get batchsandboxes -l "bex.co/sandbox-id=$id" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+  by_label="$(batchsandbox_by_label "$namespace" "bex.co/sandbox-id=$id")"
   if [ -n "$by_label" ]; then
     printf '%s\n' "$by_label"
     return
@@ -537,9 +550,29 @@ cr_b="$(find_batchsandbox "$namespace_a" "$sandbox_b_id" "$owner_b" base)"
 owner_c="$(jq -er '.owner' "$fixture_dir/sandbox-c.json")"
 cr_c="$(find_batchsandbox "$namespace_b" "$sandbox_c_id" "$owner_c" base)"
 cr_d="$(find_batchsandbox "$namespace_a" "$sandbox_d_id" "$owner_a" base)"
+
+# find_session_batchsandbox <namespace> <session id>: the BatchSandbox bex-api
+# created for an agent session, by its session label or the session's
+# sandboxId. The dispatch runs after create answers, so wait for it; the
+# session's last read is kept for the failure message.
+find_session_batchsandbox() {
+  local namespace="$1" session="$2" deadline=$((SECONDS + 300)) cr sandbox_id
+  while ((SECONDS < deadline)); do
+    cr="$(batchsandbox_by_label "$namespace" "bex.co/agent-session=$session")"
+    if [ -z "$cr" ] && [ "$(api_call "$fixture_dir/owner-a.curl" GET "/v1/agent-sessions/$session" \
+      "$fixture_dir/agent-session-read.json" || true)" = 200 ]; then
+      sandbox_id="$(jq -r '.sandboxId // empty' "$fixture_dir/agent-session-read.json")"
+      [ -z "$sandbox_id" ] || cr="$(batchsandbox_by_label "$namespace" "bex.co/sandbox-id=$sandbox_id")"
+    fi
+    [ -n "$cr" ] && { printf '%s\n' "$cr"; return; }
+    sleep 5
+  done
+  return 1
+}
+
 if [ "$verify_agent_driver" = 1 ]; then
-  owner_agent="$(jq -er '.owner' "$fixture_dir/sandbox-agent.json")"
-  cr_agent="$(find_batchsandbox "$namespace_a" "$sandbox_agent_id" "$owner_agent" agent)"
+  cr_agent="$(find_session_batchsandbox "$namespace_a" "$agent_session_id")" \
+    || fail "agent session $agent_session_id has no sandbox after 5 minutes: $(jq -c '{phase, state, status, failureReason, failureReasonCode}' "$fixture_dir/agent-session-read.json" 2>/dev/null)"
 fi
 
 find_ready_pod() {
