@@ -103,7 +103,7 @@ func mcpBindCallWorkspace(ctx context.Context, base *core.Base, method string, r
 		if err := mcpRequireScope(ctx, checkScope, call.Params.Name); err != nil {
 			return mcpCallError(ctx, err), nil
 		}
-		return next(ctx, method, req)
+		return next(mcpMarkCloudAgentsToolset(ctx, call.Params.Name), method, req)
 	}
 	resolved, workspaceID, err := takeMCPWorkspaceID(call)
 	if err != nil {
@@ -118,7 +118,7 @@ func mcpBindCallWorkspace(ctx context.Context, base *core.Base, method string, r
 	if err := mcpRequireScope(ctx, checkScope, call.Params.Name); err != nil {
 		return mcpCallError(ctx, err), nil
 	}
-	return next(ctx, method, resolved)
+	return next(mcpMarkCloudAgentsToolset(ctx, call.Params.Name), method, resolved)
 }
 
 func mcpRequireScope(ctx context.Context, checkScope func(context.Context, string) error, tool string) error {
@@ -129,6 +129,28 @@ func mcpRequireScope(ctx context.Context, checkScope func(context.Context, strin
 		return core.MCPError(err)
 	}
 	return nil
+}
+
+// mcpMarkCloudAgentsToolset carries a bex.cloud_agents admission from the
+// dispatch class check to the relation gate. The class gate lets that scope
+// through for a read/write tool in the cloud-agents toolset (ADR094 D9), but
+// the service verb then authorizes its own relation, which maps to bex.read or
+// bex.write — so without the same narrowing on the context every create,
+// operate or view inside a session would refuse a token holding only the scope
+// the caller consented to. Only a tool the toolset actually contains is marked;
+// an unrelated tool, a sensitive/mint class, or a token without the scope is
+// left untouched, and OpenFGA still decides the relation.
+func mcpMarkCloudAgentsToolset(ctx context.Context, tool string) context.Context {
+	id, ok := core.IdentityFrom(ctx)
+	if !ok {
+		return ctx
+	}
+	op := "MCP " + tool
+	if !cloudAgentsScopeCovers(id, op) {
+		return ctx
+	}
+	id.CloudAgentsToolset = true
+	return core.WithIdentity(ctx, id)
 }
 
 func toolsWithWorkspaceID(in *mcp.ListToolsResult) *mcp.ListToolsResult {

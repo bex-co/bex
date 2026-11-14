@@ -22,8 +22,10 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -160,6 +162,129 @@ func TestGrantAgentSessionWorkspaceWritesFirstClassParentTuple(t *testing.T) {
 	want := tupleKey{User: "workspace:tea-a", Relation: "workspace", Object: "agent_session:ags-1"}
 	if got != want {
 		t.Fatalf("tuple = %+v, want %+v", got, want)
+	}
+}
+
+// TestRevokeWorkspaceMemberDoesNotResurrectAnInflightPositive pins the
+// concurrency half of the same invariant: a Check that read upstream before the
+// revoke must not write its now-stale positive after the eviction, or the
+// revoked member keeps authorizing on this replica for the rest of
+// PositiveTTL — exactly the window CheckFresh exists to avoid elsewhere.
+func TestRevokeWorkspaceMemberDoesNotResurrectAnInflightPositive(t *testing.T) {
+	var hits atomic.Int32
+	started := make(chan struct{})
+	release := make(chan struct{})
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/stores":
+			_, _ = fmt.Fprint(w, `{"stores":[{"id":"store-1","name":"bex"}]}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-1/check":
+			if hits.Add(1) == 1 {
+				close(started)
+				<-release
+			}
+			_, _ = fmt.Fprint(w, `{"allowed":true}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-1/write":
+			_, _ = fmt.Fprint(w, `{}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	chk := NewOpenFGAChecker(srv.URL, "")
+	revoker := chk.(interface {
+		RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error
+	})
+	ctx := context.Background()
+
+	done := make(chan error, 1)
+	go func() {
+		ok, err := chk.Check(ctx, "user:mallory", core.RelCanView, "workspace:tea-a")
+		if err == nil && !ok {
+			err = fmt.Errorf("inflight check denied")
+		}
+		done <- err
+	}()
+	<-started
+	if err := revoker.RevokeWorkspaceMember(ctx, "tea-a", "user:mallory", "admin"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatalf("inflight check: %v", err)
+	}
+
+	// The eviction must win: the next decision re-consults upstream instead of
+	// serving the inflight answer.
+	if _, err := chk.Check(ctx, "user:mallory", core.RelCanView, "workspace:tea-a"); err != nil {
+		t.Fatal(err)
+	}
+	if got := hits.Load(); got != 2 {
+		t.Fatalf("upstream checks = %d, want 2 (inflight positive survived the revoke)", got)
+	}
+}
+
+// TestCheckAfterRevokeDoesNotJoinAPreRevokeInflightCall pins the coalescing
+// half: a Check that begins after RevokeWorkspaceMember returned must ask
+// upstream itself rather than share the answer of a call issued before the
+// revoke, which still says allowed.
+func TestCheckAfterRevokeDoesNotJoinAPreRevokeInflightCall(t *testing.T) {
+	var revoked atomic.Bool
+	started := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/stores":
+			_, _ = fmt.Fprint(w, `{"stores":[{"id":"store-1","name":"bex"}]}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-1/check":
+			if revoked.Load() {
+				_, _ = fmt.Fprint(w, `{"allowed":false}`)
+				return
+			}
+			once.Do(func() { close(started) })
+			<-release
+			_, _ = fmt.Fprint(w, `{"allowed":true}`)
+		case r.Method == http.MethodPost && r.URL.Path == "/stores/store-1/write":
+			revoked.Store(true)
+			_, _ = fmt.Fprint(w, `{}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	defer close(release)
+	chk := NewOpenFGAChecker(srv.URL, "")
+	revoker := chk.(interface {
+		RevokeWorkspaceMember(ctx context.Context, tenantID, subject, relation string) error
+	})
+	ctx := context.Background()
+
+	go func() { _, _ = chk.Check(ctx, "user:mallory", core.RelCanView, "workspace:tea-a") }()
+	<-started
+	if err := revoker.RevokeWorkspaceMember(ctx, "tea-a", "user:mallory", "admin"); err != nil {
+		t.Fatalf("revoke: %v", err)
+	}
+
+	type result struct {
+		ok  bool
+		err error
+	}
+	after := make(chan result, 1)
+	go func() {
+		ok, err := chk.Check(ctx, "user:mallory", core.RelCanView, "workspace:tea-a")
+		after <- result{ok, err}
+	}()
+	select {
+	case r := <-after:
+		if r.err != nil {
+			t.Fatalf("post-revoke check: %v", r.err)
+		}
+		if r.ok {
+			t.Fatal("post-revoke check allowed a revoked subject")
+		}
+	case <-time.After(3 * time.Second):
+		t.Fatal("post-revoke check joined the pre-revoke inflight call instead of asking upstream")
 	}
 }
 

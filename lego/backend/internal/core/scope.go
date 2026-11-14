@@ -49,7 +49,7 @@ const (
 	MaxOAuthClientIDLen = 128
 )
 
-// ClosedOAuthScopes is every scope the audit_events CHECK admits: the three
+// ClosedOAuthScopes is every scope the audit_events CHECK admits: the four
 // granular capabilities plus the platform-client compatibility alias. Adding
 // a scope requires a follow-on CHECK migration (0089's ARRAY; do not rewrite
 // 0089 after it has shipped). TestAuditRelationCheckMatchesRelCan pins this.
@@ -121,15 +121,15 @@ type OAuthGrant struct {
 	AcceptedAudience string
 }
 
-// HasGranular reports whether the grant carries at least one of the three
+// HasGranular reports whether the grant carries at least one of the four
 // least-privilege capabilities.
 func (g OAuthGrant) HasGranular() bool {
 	return HasGranularCapability(g.Scopes)
 }
 
 // HasGranularCapability reports whether a canonical scope string includes at
-// least one of bex.read / bex.write / bex.sensitive. Near-matches (prefix,
-// substring) do not count.
+// least one of bex.read / bex.write / bex.sensitive / bex.cloud_agents.
+// Near-matches (prefix, substring) do not count.
 func HasGranularCapability(canonical string) bool {
 	for _, s := range strings.Fields(canonical) {
 		if slices.Contains(granularScopes, s) {
@@ -187,12 +187,17 @@ func NormalizeOAuthGrant(scope string, audiences []string, clientID, resource st
 	if len(audiences) > MaxOAuthAudiences {
 		return OAuthGrant{}, fmt.Errorf("oauth audience list exceeds %d members", MaxOAuthAudiences)
 	}
+	// Bound every audience, not just the ones scanned before a match: an
+	// oversized entry after the accepted resource (or when this API accepted no
+	// resource at all) is still malformed input and must fail closed.
+	for _, a := range audiences {
+		if len(a) > MaxOAuthAudienceLen {
+			return OAuthGrant{}, fmt.Errorf("oauth audience exceeds %d bytes", MaxOAuthAudienceLen)
+		}
+	}
 	accepted := ""
 	if resource != "" {
 		for _, a := range audiences {
-			if len(a) > MaxOAuthAudienceLen {
-				return OAuthGrant{}, fmt.Errorf("oauth audience exceeds %d bytes", MaxOAuthAudienceLen)
-			}
 			if a == resource {
 				accepted = resource
 				break
@@ -237,6 +242,12 @@ func (id Identity) RequireOpClass(class string) error {
 // human OAuth delegation must hold the capability mapped to the relation, in
 // addition to OpenFGA. Sessions and machine keys are authenticated by their
 // own non-OAuth mechanisms. A public client id never substitutes for a scope.
+//
+// bex.cloud_agents is a narrowing, not a grant (ADR094 D9). A token that
+// requested it consented to the cloud-agents MCP toolset only, so the MCP seam
+// marks that call and it may stand in for the read/write capabilities those
+// tools' verbs map to. It never stands in for bex.sensitive, and OpenFGA still
+// decides every relation.
 func (id Identity) RequireCapability(relation string) error {
 	if id.CapabilityExempt() {
 		return nil
@@ -246,6 +257,10 @@ func (id Identity) RequireCapability(relation string) error {
 		return NewInsufficientScopeError("")
 	}
 	if ContainsScope(id.CanonicalScopes, want) {
+		return nil
+	}
+	if id.CloudAgentsToolset && (want == ScopeRead || want == ScopeWrite) &&
+		ContainsScope(id.CanonicalScopes, ScopeCloudAgents) {
 		return nil
 	}
 	return NewInsufficientScopeError(want)
