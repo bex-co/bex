@@ -17,7 +17,6 @@ limitations under the License.
 package agentcred
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -28,20 +27,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
-
-// PullRequestSyncer is bex-api's internal PR verb as the gateway sees it
-// (*agentsession.PullRequestClient). Every error it returns is a
-// *agentsession.PullRequestError safe to relay to the sandbox.
-type PullRequestSyncer interface {
-	Sync(context.Context, agentsession.PullRequestRequest) (agentsession.PullRequestResponse, error)
-}
-
-// PullRequestCommenter is bex-api's internal comment verb (ADR047 D11) as the
-// gateway sees it (*agentsession.PullRequestCommentClient). Every error it
-// returns is a *agentsession.PullRequestError safe to relay to the sandbox.
-type PullRequestCommenter interface {
-	Comment(context.Context, agentsession.PullRequestCommentRequest) (agentsession.PullRequestCommentResponse, error)
-}
 
 // servePullRequest is the PR-side twin of serveGit (ADR090): the same admit
 // gate — limiter, source-IP Pod binding, label-digest authorization, and

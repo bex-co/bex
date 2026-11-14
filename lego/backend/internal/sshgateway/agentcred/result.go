@@ -17,7 +17,6 @@ limitations under the License.
 package agentcred
 
 import (
-	"context"
 	"errors"
 	"io"
 	"log"
@@ -27,13 +26,6 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
-
-// ResultForwarder is bex-api's internal result verb as the gateway sees it
-// (*agentsession.ResultClient). Every error it returns is a
-// *agentsession.ResultError safe to relay to the sandbox.
-type ResultForwarder interface {
-	Submit(context.Context, agentsession.ResultEnvelope) (agentsession.ResultResponse, error)
-}
 
 // ResultHandler serves the sandbox's structured-result route (ADR094 D5).
 func (b *Broker) ResultHandler() http.Handler { return http.HandlerFunc(b.serveResult) }

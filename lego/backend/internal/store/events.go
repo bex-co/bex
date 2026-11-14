@@ -242,11 +242,10 @@ const (
 // it turned a setting (auto_deploy_enabled, edge_cache_enabled_to): on, off,
 // or none (false) for a row that records neither. The events feed and the
 // webhook dispatcher share it so the two cannot read a toggle differently.
-func ToggleEvent[T ~string](to *bool, on, off T) (T, bool) {
+func ToggleEvent(to *bool, on, off string) (string, bool) {
 	switch {
 	case to == nil:
-		var none T
-		return none, false
+		return "", false
 	case *to:
 		return on, true
 	default:
