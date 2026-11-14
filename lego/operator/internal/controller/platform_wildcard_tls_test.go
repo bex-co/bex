@@ -25,7 +25,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -152,7 +151,7 @@ func TestDroppedPlatformCertificateIsDeletedOnce(t *testing.T) {
 		}
 		return c
 	}
-	byIngress := &metav1.OwnerReference{APIVersion: "networking.k8s.io/v1", Kind: "Ingress", Name: "web", UID: "ing-uid", Controller: ptr.To(true)}
+	byIngress := &metav1.OwnerReference{APIVersion: "networking.k8s.io/v1", Kind: "Ingress", Name: "web", UID: "ing-uid", Controller: new(true)}
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app, ing,
 		certificate("web-tls", byIngress),
 		certificate("web-tls-old.example.com", nil),

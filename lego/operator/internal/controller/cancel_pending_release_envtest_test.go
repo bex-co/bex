@@ -299,7 +299,7 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 			"with its own settings, not the newer trigger's")
 
 		markEnvtestDeploymentReady(nn)
-		var served []string
+		served := make([]string, 0, 4)
 		for range 4 {
 			pass(1)
 			served = append(served, getApp().Status.ActiveRevision)

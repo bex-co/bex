@@ -44,6 +44,17 @@ func TestJobName(t *testing.T) {
 	}
 }
 
+// requireRenderPreDeployLimit pins the Job's deadline at Render's 30-minute
+// pre-deploy limit (render.com/docs/deploys); the backend's PreDeployGateTimeout
+// must stay longer than this. It is a helper so TestJobShape stays under the
+// cyclomatic-complexity limit.
+func requireRenderPreDeployLimit(t *testing.T, deadline *int64) {
+	t.Helper()
+	if deadline != nil && *deadline != 30*60 {
+		t.Errorf("activeDeadlineSeconds = %d, want 1800 (Render's 30-minute pre-deploy limit)", *deadline)
+	}
+}
+
 func TestJobShape(t *testing.T) {
 	j := Job(Options{
 		Name: "api", AppUID: "uid-api", Namespace: "builds", Workspace: "tea-1",
@@ -67,11 +78,7 @@ func TestJobShape(t *testing.T) {
 	if j.Spec.ActiveDeadlineSeconds == nil || j.Spec.TTLSecondsAfterFinished == nil {
 		t.Error("deadline + TTL must be set")
 	}
-	// Render's pre-deploy limit is 30 minutes (render.com/docs/deploys); the
-	// backend's PreDeployGateTimeout must stay longer than this.
-	if j.Spec.ActiveDeadlineSeconds != nil && *j.Spec.ActiveDeadlineSeconds != 30*60 {
-		t.Errorf("activeDeadlineSeconds = %d, want 1800 (Render's 30-minute pre-deploy limit)", *j.Spec.ActiveDeadlineSeconds)
-	}
+	requireRenderPreDeployLimit(t, j.Spec.ActiveDeadlineSeconds)
 	// Labels: service + component (for the backend's log selector) + workspace.
 	if j.Labels[LabelService] != "api" || j.Labels[LabelComponent] != ComponentValue || j.Labels[labelWorkspace] != "tea-1" {
 		t.Errorf("job labels = %v", j.Labels)
