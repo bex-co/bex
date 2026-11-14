@@ -34,6 +34,11 @@ Develop against `.pm/w10/dev-10/`, this worker's own isolated stack on the share
 - [x] **m17** — Simplify agent-session creation: task + repo + agent; workspace-level agent environment (network tiers, registries through the agent phase, default model) (11 tasks) → [`done/m17/`](done/m17/README.md) — done 2026-10-28 (verified in production)
 - [x] **m18** — Agent tool output: full output on demand, smaller inline transcript (8 tasks) → [`done/m18/`](done/m18/README.md) — done 2026-10-28 (verified in production)
 - [x] **m19** — Enforce the "Full internet" agent network tier through a gateway egress proxy (9 tasks) → [`done/m19/`](done/m19/README.md) — done 2026-10-28 (verified in production)
+- [ ] **m373** — [Service and deploy reads match Render's schema both ways; the rendertest allowlist excuses only signed-off divergences](m373/README.md) (10 tasks, ~6h10m) ← from `/pm-brainstorm for w10` 2026-11-13, filed by `/pmx them all to w10`; absorbs w4/626, w4/621, w4/606
+- [ ] **m374** — **BLOCKED (release gate: the batched production deploy must carry this commit, then a worker replays the live DoD as the QA user — no user action)** [A service's Metrics and Logs count every request and show only what its type can have](blocked/m374/README.md) (8 tasks; t001–t007 done)
+- [ ] **m375** — [Auto-deploy reads what will actually happen, as on Render](m375/README.md) (9 tasks, ~4h20m) ← from `/pm-brainstorm for w10` 2026-11-13, filed by `/pmx them all to w10`; absorbs w4/622; builds on w3/064 (w3, shipped `162cb9302`)
+- [ ] **m376** — [Absolute times read in the dashboard's language, and a custom range states its window](m376/README.md) (9 tasks, ~3h55m) ← from `/pm-brainstorm for w10` 2026-11-13, filed by `/pmx them all to w10`; absorbs w4/600, w4/619, w4/617
+- [ ] **m377** — [An unpaged Render-shaped list returns Render's first page of 20, as on Render](m377/README.md) (9 tasks, ~5h45m) ← user decision 2026-11-13 on [w22/007](../w22/done/007.md) ("Render 返回 20 条"), filed by `/pmx them all to w10`
 
 ## Inbox
 

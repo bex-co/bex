@@ -384,19 +384,33 @@ func (s *PGStore) MarkSandboxStorageReaped(ctx context.Context, workspaceID, obj
 }
 
 // SandboxStorageBytes is the stored bytes of a workspace's open, sized objects
-// plus its imported images (w2/m358): what the per-workspace cap reads. Imported
+// plus its imported images (w2/m358), counting an import still copying at its
+// declared size (round 24, S-3): what the per-workspace cap reads. Imported
 // images count toward the cap but are not billed (ADR104 § Images). An object
 // not sized yet counts for nothing, so a workspace can pass the cap by the
 // images still waiting for a size.
 func (s *PGStore) SandboxStorageBytes(ctx context.Context, workspaceID string) (int64, error) {
 	var bytes int64
-	err := s.Pool.QueryRow(ctx, `
-		SELECT ((SELECT COALESCE(sum(bytes), 0) FROM sandbox_storage_objects
-		        WHERE workspace_id = $1 AND ended_at IS NULL)
-		     + (SELECT COALESCE(sum(size_bytes), 0) FROM sandbox_builds
-		        WHERE workspace_id = $1 AND status = 'succeeded'))::bigint`, workspaceID).Scan(&bytes)
+	err := s.Pool.QueryRow(ctx, sandboxStorageBytesSQL, workspaceID).Scan(&bytes)
 	return bytes, err
 }
+
+// importedBuildSQL is the predicate of an import that holds registry bytes,
+// stored or still copying at its declared size: not failed, not deleted. The
+// sandbox_builds_stored index has exactly this predicate.
+const importedBuildSQL = `status <> 'failed' AND deleted_at IS NULL`
+
+// sandboxStorageBytesSQL is SandboxStorageBytes' sum, which CreateSandboxBuild
+// also reads under its workspace lock.
+const sandboxStorageBytesSQL = `
+	SELECT ((SELECT COALESCE(sum(bytes), 0) FROM sandbox_storage_objects
+	        WHERE workspace_id = $1 AND ended_at IS NULL)
+	     + (SELECT COALESCE(sum(size_bytes), 0) FROM sandbox_builds
+	        WHERE workspace_id = $1 AND ` + importedBuildSQL + `))::bigint`
+
+// platformImportedBytesSQL is the imported image bytes of every workspace
+// together, which CreateSandboxBuild's platform budget counts (w5/m383).
+const platformImportedBytesSQL = `SELECT COALESCE(sum(size_bytes), 0) FROM sandbox_builds WHERE ` + importedBuildSQL
 
 // accrueSandboxStorageTx adds o's seconds from its cursor through min(now,
 // ended_at) and advances the cursor. An unsized object accrues nothing and

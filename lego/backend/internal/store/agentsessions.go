@@ -202,6 +202,10 @@ type AgentSession struct {
 	// (ADR098 D1): workspace agent secret references and inline session
 	// secrets. Values live only in OpenBao; this never holds one.
 	SecretNames []string
+	// AppliedSecrets are the secrets the latest dispatch applied, each with
+	// its source (w9/m385): named, inline, or by a workspace or repo scope.
+	// Names only; written by SetAgentSessionAppliedSecrets.
+	AppliedSecrets []AppliedSecret
 	// InitialPrompt is create-only input used to atomically insert turn 1 with
 	// the session row. It is not an agent_sessions column and is never scanned.
 	InitialPrompt string
@@ -293,11 +297,20 @@ type AgentSessionCount struct {
 	// ExcludeID leaves one session out: the one a steer or resume reactivates
 	// must not count against itself.
 	ExcludeID string
+	// AllWorkspaces counts across every workspace (the workspace argument is
+	// ignored): a limit shared by one platform key, such as Meta's per-key
+	// rate limit for the muse profile (ADR108).
+	AllWorkspaces bool
 }
 
 // DefaultAgentBranchPrefix prefixes the branch a session gets when the caller
 // names none; it is the bex-agent/ prefix agentsession.ValidateBranch requires.
 const DefaultAgentBranchPrefix = "bex-agent/"
+
+// ErrAgentSessionBranchInUse is a create refused because another session in
+// the workspace holds the branch it named on the same repository (w5/m382;
+// see lockUnheldBranch for what holds a branch).
+var ErrAgentSessionBranchInUse = errors.New("agent session branch is held by another live session")
 
 // ErrAgentSessionIdempotencyKey is a create that lost the race for its key: a
 // session already holds it in this workspace. Callers look the holder up.
@@ -310,7 +323,8 @@ const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandb
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
 	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
-	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref`
+	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by, takeover_pr_number, takeover_head_ref,
+	applied_secrets`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
@@ -318,7 +332,8 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
 		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
-		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef)
+		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy, &s.TakeoverPR, &s.TakeoverHeadRef,
+		&s.AppliedSecrets)
 	return s, err
 }
 
@@ -328,6 +343,7 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 	in.ID = ids.New(ids.AgentSession)
 	// A repository session with no branch gets the session's own (ADR094 D3):
 	// an LLM caller should not have to invent a name that passes the prefix rule.
+	namedBranch := in.Branch != ""
 	if in.Repo != "" && in.Branch == "" {
 		in.Branch = DefaultAgentBranchPrefix + in.ID
 	}
@@ -392,6 +408,13 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 			return err
 		}
+		// After the insert, so a retry with the same idempotency key fails on
+		// its key (and replays) before it could be refused for the branch.
+		if namedBranch && in.Repo != "" {
+			if err := lockUnheldBranch(ctx, tx, in.WorkspaceID, in.Repo, in.Branch, in.ID, in.ParentSessionID != ""); err != nil {
+				return err
+			}
+		}
 		if in.InitialPrompt != "" {
 			_, err = tx.Exec(ctx, `
 				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required, skills)
@@ -411,7 +434,7 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		return insertAgentDispatch(ctx, tx, row, "")
 	})
 	if errors.Is(err, ErrAgentSessionIdempotencyKey) || errors.Is(err, ErrAgentSessionAdmissionLimit) ||
-		errors.Is(err, ErrAgentSessionPullRequestOwned) || isAgentSessionLineageRefusal(err) {
+		errors.Is(err, ErrAgentSessionPullRequestOwned) || errors.Is(err, ErrAgentSessionBranchInUse) || isAgentSessionLineageRefusal(err) {
 		return AgentSession{}, err
 	}
 	if err != nil {
@@ -464,7 +487,8 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
 		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
 		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID,
-		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef, &hash)
+		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &out.TakeoverPR, &out.TakeoverHeadRef,
+		&out.AppliedSecrets, &hash)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -764,6 +788,35 @@ func (s *PGStore) SetAgentSessionArchived(ctx context.Context, id string, archiv
 	return out, nil
 }
 
+// lockUnheldBranch serializes the creates that name branch of repo in a
+// workspace and refuses while another session there holds it (w5/m382), so
+// two sessions never push over each other or re-sync each other's pull
+// request. A session that is working holds its branch, archived or not
+// (archiving does not stop a turn). For a child, which its parent's agent
+// names, any session that could still push holds it too: a finished one can
+// be messaged again. A person's or an automation's create may reuse a
+// finished session's branch (an automation's next run does).
+func lockUnheldBranch(ctx context.Context, tx pgx.Tx, workspaceID, repo, branch, self string, child bool) error {
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+		"agent-session-branch:"+workspaceID+":"+repo+":"+branch); err != nil {
+		return err
+	}
+	holds := activeAgentSessionPhasesSQL
+	if child {
+		holds = "(" + holds + " OR (" + liveAgentSessionSQL + "))"
+	}
+	var held bool
+	if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM agent_sessions
+		WHERE workspace_id = $1 AND repo = $2 AND branch = $3 AND id <> $4 AND `+holds+`)`,
+		workspaceID, repo, branch, self).Scan(&held); err != nil {
+		return err
+	}
+	if held {
+		return ErrAgentSessionBranchInUse
+	}
+	return nil
+}
+
 // lockUnarchivedTakeover refuses to unarchive a takeover session while
 // another live session already works on its pull request: one in the
 // session's workspace, or in a workspace sharing a GitHub App installation
@@ -1010,10 +1063,16 @@ func (s *PGStore) CountActiveAgentSessions(ctx context.Context, workspaceID stri
 func countActiveAgentSessions(ctx context.Context, q interface {
 	QueryRow(context.Context, string, ...any) pgx.Row
 }, workspaceID string, c AgentSessionCount) (int, error) {
+	// Two statement texts, so a cached generic plan for the per-workspace
+	// count keeps its workspace index.
+	scope := `workspace_id = $1`
+	if c.AllWorkspaces {
+		scope = `$1::text IS NOT NULL`
+	}
 	var n int
 	err := q.QueryRow(ctx, `
 		SELECT count(*) FROM agent_sessions
-		WHERE workspace_id = $1 AND `+activeAgentSessionPhasesSQL+`
+		WHERE `+scope+` AND `+activeAgentSessionPhasesSQL+`
 		  AND (NOT $2::boolean OR sandbox_id <> '')
 		  AND ($3::text = '' OR agent_config->>'agent' = $3::text)
 		  AND id <> $4::text`,
@@ -1473,4 +1532,23 @@ func (s *PGStore) listenOnce(ctx context.Context, fn func(id string)) error {
 		}
 		fn(n.Payload)
 	}
+}
+
+// AppliedSecret is one secret a session's latest dispatch applied and why:
+// inline, explicit (named), repo or workspace. Never a value.
+type AppliedSecret struct {
+	Name   string `json:"name"`
+	Source string `json:"source"`
+}
+
+// SetAgentSessionAppliedSecrets records what the session's latest dispatch
+// applied (names and sources only).
+func (s *PGStore) SetAgentSessionAppliedSecrets(ctx context.Context, sessionID string, applied []AppliedSecret) error {
+	if applied == nil {
+		applied = []AppliedSecret{}
+	}
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET applied_secrets = $2 WHERE id = $1`, sessionID, applied); err != nil {
+		return fmt.Errorf("record agent session applied secrets: %w", err)
+	}
+	return nil
 }

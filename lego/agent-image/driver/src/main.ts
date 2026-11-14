@@ -34,7 +34,8 @@ async function main(): Promise<void> {
   let nextTurn = config.turn;
   let initialTurnOwned = false;
   let activeTurn:
-    Promise<Awaited<ReturnType<typeof runHeadlessTurn>>> | undefined;
+    | Promise<Awaited<ReturnType<typeof runHeadlessTurn>>>
+    | undefined;
   // Clone and configure the session checkout before a tenant process can run.
   // Live POST /turn calls await the same setup promise.
   const setup = (async () => {

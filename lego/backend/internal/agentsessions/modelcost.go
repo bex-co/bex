@@ -126,16 +126,19 @@ func microUSDString(micro int64) string {
 }
 
 // sessionModelSource is the model route a session was created on, from its
-// stored model endpoint: the platform route's endpoint ⇒ platform, else the
+// stored model endpoint: the platform route's endpoint, or a platform-only
+// agent (ADR108, never on the workspace's key) ⇒ platform, else the
 // workspace's own provider. A session with billed requests is platform even
 // if it was later re-dispatched onto the workspace's own key, so a non-zero
 // cost is never labelled as billed by the provider.
 func sessionModelSource(config json.RawMessage, requests int) ModelSource {
 	var stored struct {
+		Agent         string `json:"agent"`
 		ModelEndpoint string `json:"modelEndpoint"`
 	}
 	_ = json.Unmarshal(config, &stored)
-	if requests > 0 || agentsession.IsPlatformModelEndpoint(stored.ModelEndpoint) {
+	profile, _ := agentsession.LookupAgentProfile(stored.Agent)
+	if requests > 0 || profile.PlatformOnly || agentsession.IsPlatformModelEndpoint(stored.ModelEndpoint) {
 		return ModelSourcePlatform
 	}
 	return ModelSourceBYO

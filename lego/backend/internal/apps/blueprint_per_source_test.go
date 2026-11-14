@@ -84,7 +84,7 @@ func TestM153_TwoBlueprintsFromOneFileAreIndependent(t *testing.T) {
 	}
 
 	for _, id := range []string{a.Blueprint.ID, b.Blueprint.ID} {
-		if _, err := svc.ApproveBlueprint(ctx, id, "tea-a", nil); err != nil {
+		if _, err := svc.ApproveBlueprint(ctx, id, "tea-a", "", nil); err != nil {
 			t.Fatalf("approve %s: %v", id, err)
 		}
 	}
@@ -163,7 +163,7 @@ func TestM153_AnAdoptModeSecondCreateNeverTakesAManagedResource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", nil); err != nil {
+	if _, err := svc.ApproveBlueprint(ctx, first.Blueprint.ID, "tea-a", "", nil); err != nil {
 		t.Fatal(err)
 	}
 	firstID := ids.BlueprintStorageID(first.Blueprint.ID)
@@ -186,7 +186,7 @@ func TestM153_AnAdoptModeSecondCreateNeverTakesAManagedResource(t *testing.T) {
 	if !conflict {
 		t.Fatalf("the failed plan's notices = %+v, want an error naming api and the Blueprint that manages it", second.Notices)
 	}
-	if _, err := svc.ApproveBlueprint(ctx, second.Blueprint.ID, "tea-a", nil); err == nil {
+	if _, err := svc.ApproveBlueprint(ctx, second.Blueprint.ID, "tea-a", "", nil); err == nil {
 		t.Fatal("a plan that failed on a resource conflict was approved")
 	}
 	if owner, _ := st.GetBlueprintResourceOwner(ctx, "tea-a", store.BlueprintClaimService, "api"); owner != firstID {

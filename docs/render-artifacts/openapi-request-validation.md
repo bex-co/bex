@@ -107,10 +107,11 @@ Unknown-field rejection is a deliberate bex security extension. Render's public 
 
 ## Refresh history
 
-| date       | SHA-256     | ops | change               |
-| ---------- | ----------- | --- | -------------------- |
+| date | SHA-256 | ops | change |
+| --- | --- | --- | --- |
 | 2026-07-20 | `2d27d583…` | 207 | initial pin (w7/m49) |
-| 2026-09-11 | `c6851bc8…` | 208 | w6/073 — see below   |
+| 2026-09-11 | `c6851bc8…` | 208 | w6/073 — see below |
+| 2026-11-13 | `6229bc62…` | 263 | w3/m367 — round 7 ([ADR018](../ADR018-render-parity.md)) |
 
 ### 2026-09-11 (w6/073)
 

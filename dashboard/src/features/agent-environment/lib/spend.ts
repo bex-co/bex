@@ -17,6 +17,11 @@ export type SpendLevel = "ok" | "warning" | "reached";
 export interface SpendPosition {
   /** The workspace runs on the bex-provided model, so spend is capped. */
   platform: boolean;
+  /**
+   * The cap is the trust tier's charge point: reaching it charges the card,
+   * and sessions keep running once that charge is paid (ADR091 D10.2a).
+   */
+  chargePoint: boolean;
   monthToDateUsd: number;
   capUsd: number;
   /** Month-to-date as a share of the cap, clamped to [0, 1] for display. */
@@ -33,13 +38,22 @@ export function spendPosition(env: AgentEnvironmentView): SpendPosition | null {
   const cap = env.agentModelMonthlySpendCapUsd;
   if (used == null || cap == null) return null;
   const ratio = cap > 0 ? used / cap : 1;
+  // The server's verdict is the mint's: a workspace whose next request would
+  // charge its card is not reached. An older API sends none.
+  const reached = env.agentModelSpendCapReached ?? ratio >= 1;
   return {
     platform: env.modelSource === AgentModelSource.Platform,
+    chargePoint:
+      capCause(env) === "newWorkspace" &&
+      env.agentModelChargesAtThreshold === true,
     monthToDateUsd: used,
     capUsd: cap,
     fraction: Math.min(1, Math.max(0, ratio)),
-    level:
-      ratio >= 1 ? "reached" : ratio >= SPEND_WARNING_RATIO ? "warning" : "ok",
+    level: reached
+      ? "reached"
+      : ratio >= SPEND_WARNING_RATIO
+        ? "warning"
+        : "ok",
   };
 }
 

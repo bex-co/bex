@@ -61,12 +61,20 @@ type statusGit struct {
 // status file through the gateway exec boundary and, on a successful turn,
 // records the outcome — the PR the agent opened itself through the gateway PR
 // verb (ADR090), or a readable note on what it left undelivered — and tears the
-// sandbox down. It never calls GitHub. A failed turn or a lost sandbox surfaces
+// sandbox down. It never opens or edits a pull request; its one GitHub call
+// reads the session branch's head (verifiedHead). A failed turn or a lost sandbox surfaces
 // as a failed session with a named reason — never a hang. It performs NO tenant
 // authorization: it acts only on durable sessions the platform owns.
 type Completer struct {
-	Store    Store
-	Sandbox  SandboxLifecycle
+	Store   Store
+	Sandbox SandboxLifecycle
+	// Heads reads the session branch's head on GitHub
+	// (agentsession.BranchHeads). The completer records that head rather than
+	// the one the sandbox reports, since CI-failure steering keys on it
+	// (w5/m382). Nil (no GitHub App) keeps the reported head.
+	Heads interface {
+		Head(ctx context.Context, workspaceID, repository, branch string) (string, error)
+	}
 	Interval time.Duration
 	Now      func() time.Time
 	// MaxTranscriptBytes overrides the per-session cumulative transcript quota
@@ -506,10 +514,37 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 	}
 }
 
+// verifiedHead is the head to record for a turn whose sandbox reported
+// reported: GitHub's head of the session branch, so a sandbox cannot point
+// CI-failure steering at a commit that is not on its branch. When the sandbox
+// reported none, none is recorded (the previous head stays); when GitHub
+// cannot be read, none either, rather than the sandbox's word.
+func (c *Completer) verifiedHead(ctx context.Context, record store.AgentSession, reported string) string {
+	if !core.ValidCommitSHA(reported) {
+		return ""
+	}
+	if c.Heads == nil {
+		return reported
+	}
+	// Bounded like a status read: the loop is serial, and an unreadable head
+	// costs only the recording, never the finalize.
+	readCtx, cancel := context.WithTimeout(ctx, statusReadTimeout)
+	defer cancel()
+	head, err := c.Heads.Head(readCtx, record.WorkspaceID, record.Repo, record.Branch)
+	if err != nil || !core.ValidCommitSHA(head) {
+		log.Printf("agent-session completer: session branch head unreadable on GitHub; recording none (session=%s branch=%s): %v", record.ID, record.Branch, err)
+		return ""
+	}
+	if head != reported {
+		log.Printf("agent-session completer: sandbox reported head %s, GitHub has %s; recording GitHub's (session=%s branch=%s)", reported, head, record.ID, record.Branch)
+	}
+	return head
+}
+
 // complete finalizes a successful turn from what the agent itself delivered
 // (ADR090). The PR is the one bex-api recorded when the agent opened it through
-// the gateway PR verb; the driver's report only contributes the remote head and
-// its reasons the work is undelivered. Undelivered work never
+// the gateway PR verb; the driver's report contributes the remote head (verified
+// against GitHub, verifiedHead) and its reasons the work is undelivered. Undelivered work never
 // fails the turn — the agent answered, and the work stays in the sandbox until
 // it is closed after the idle TTL — it is named in the delivery note instead.
 func (c *Completer) complete(ctx context.Context, record store.AgentSession, report statusReport) {
@@ -522,10 +557,7 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		c.failMissingOutput(ctx, record)
 		return
 	}
-	headSHA := ""
-	if core.ValidCommitSHA(report.Git.RemoteHead) {
-		headSHA = report.Git.RemoteHead
-	}
+	headSHA := c.verifiedHead(ctx, record, report.Git.RemoteHead)
 	note := deliveryNote(report.Git)
 	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, headSHA, note, "")
 	if err != nil {

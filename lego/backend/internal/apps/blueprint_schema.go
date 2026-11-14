@@ -32,7 +32,7 @@ import (
 // dockerContext; w1/m170 before it). Production never downloads this
 // unversioned upstream document: a deliberate update must change both the
 // bytes and this constant, then pass capability-registry exhaustiveness tests.
-const RenderBlueprintSchemaSHA256 = "8a3fb8da6b4f55fe686fbefa790e011d3dd7895f013f355953c572a21ab6494a"
+const RenderBlueprintSchemaSHA256 = "6c6721a602ef6d368d5c9384c473cefaae99980e43dd4b1adcf8a2f258fc54f4"
 
 //go:embed schema/render.yaml.json
 var renderBlueprintSchemaSource []byte

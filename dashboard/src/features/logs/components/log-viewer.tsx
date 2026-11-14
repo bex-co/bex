@@ -25,6 +25,7 @@ import {
   type EventSourceFactory,
   type LiveStatus,
 } from "../hooks/use-live-logs";
+import { useCustomWindow } from "../hooks/use-custom-window";
 import { mergeLogLines } from "../lib/map";
 import {
   EMPTY_LOG_FILTERS,
@@ -35,6 +36,7 @@ import {
   lineFilterKey,
   liveTailUnsupported,
   type LogFilters,
+  withoutRequestFilters,
 } from "../types";
 import { LogFilterBar } from "./log-filter-bar";
 import { LogLineList } from "./log-line-list";
@@ -63,6 +65,12 @@ interface LogViewerProps {
    * the route can mirror the state into the query string.
    */
   onFiltersChange?: (filters: LogFilters, live: boolean) => void;
+  /**
+   * False for a service with no public requests: every view, whether from
+   * the URL or typed, drops the request type and request-line filters
+   * (LogFilterBar.servesRequests, w4/613).
+   */
+  servesRequests?: boolean;
 }
 
 /**
@@ -79,6 +87,7 @@ export function LogViewer({
   urlFilters = EMPTY_LOG_FILTERS,
   urlLive = true,
   onFiltersChange,
+  servesRequests = true,
 }: LogViewerProps) {
   const { t } = useTranslations();
   const urlKey = logStateKey(urlFilters, urlLive);
@@ -94,7 +103,13 @@ export function LogViewer({
     shown = viewFromUrl(urlFilters, urlLive);
     setState(shown);
   }
-  const { filters, live, committed } = shown;
+  const { live } = shown;
+  const filters = servesRequests
+    ? shown.filters
+    : withoutRequestFilters(shown.filters);
+  const committed = servesRequests
+    ? shown.committed
+    : { ...shown.committed, path: "", host: "" };
   urlEcho.showing(logStateKey({ ...filters, ...committed }, live));
 
   // An adopted URL sets each draft and its committed value together, which
@@ -182,22 +197,7 @@ export function LogViewer({
   // Request filters stream request lines from the store poll and a level
   // streams app lines (w8/m147); only a type that cannot carry an active
   // filter pauses the tail.
-  // A custom window that had already ended when it was applied is closed:
-  // nothing can stream into it, so the tail never opens (w21/016). A window
-  // ending in the future keeps tailing, bounded by its end below.
-  const customEndMs = "startTime" in range ? Date.parse(range.endTime) : null;
-  const rangeKey = JSON.stringify(range);
-  // The clock is sampled when the range is applied, not on every render.
-  const [appliedAt, setAppliedAt] = useState(() => ({
-    key: rangeKey,
-    now: Date.now(),
-  }));
-  let appliedNow = appliedAt.now;
-  if (appliedAt.key !== rangeKey) {
-    appliedNow = new Date().getTime();
-    setAppliedAt({ key: rangeKey, now: appliedNow });
-  }
-  const windowClosed = customEndMs !== null && customEndMs <= appliedNow;
+  const { customEndMs, windowClosed } = useCustomWindow(range);
   const filtersLiveSupported = !liveTailUnsupported(queryFilters);
   const liveSupported = filtersLiveSupported && !windowClosed;
   const liveOffReasonId = useId();
@@ -384,6 +384,7 @@ export function LogViewer({
         unsupportedReasonId={liveSupported ? undefined : liveOffReasonId}
         range={range}
         onRangeChange={onRangeChange}
+        servesRequests={servesRequests}
       />
       {/* With the tail off, the note says why, in every state — the switch it
           describes is disabled, so this is its only reachable reason, and

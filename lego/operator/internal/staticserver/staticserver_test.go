@@ -311,11 +311,40 @@ func TestUnknownHost404(t *testing.T) {
 	}
 }
 
-func TestMethodNotAllowed(t *testing.T) {
-	h, _ := newTestHandler(t, Site{}, map[string]Object{})
-	rec := do(h, http.MethodPost, "/")
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("POST / => %d, want 405", rec.Code)
+// w8/319: Render's edge answers any other method on a static site with a bare
+// 200 (no body, no content type, none of the site's headers), on every path,
+// whether a file is there or not (four Render sites, 24 probes, 2026-11-13).
+func TestOtherMethodsGetABareOK(t *testing.T) {
+	// A local rewrite serves GET only: another method is never rewritten.
+	// Redirects answer every method (TestRedirectAnswersEveryMethod).
+	h, _ := newTestHandler(t, Site{Headers: markerHeaders(), NoSPAFallback: true, Routes: []appv1alpha1.StaticRoute{
+		{Type: "rewrite", Source: "/*", Destination: "/index.html"},
+	}}, map[string]Object{
+		key("index.html"): {Body: []byte("HOME"), ContentType: "text/html"},
+		key("app.js"):     {Body: []byte("JS"), ContentType: "text/javascript"},
+		key("404.html"):   {Body: []byte("CUSTOM-404"), ContentType: "text/html"},
+	})
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch, http.MethodOptions} {
+		for _, p := range []string{"/", "/app.js", "/missing", "/spa/x"} {
+			rec := do(h, method, p)
+			if rec.Code != http.StatusOK || rec.Body.Len() != 0 || rec.Header().Get("Content-Length") != "0" {
+				t.Fatalf("%s %s => %d len %q body %q, want a bare 200", method, p, rec.Code, rec.Header().Get("Content-Length"), rec.Body)
+			}
+			for _, name := range []string{"Content-Type", "Allow", "X-Qa-Marker", "Strict-Transport-Security", "X-Content-Type-Options"} {
+				if got := rec.Header().Get(name); got != "" {
+					t.Fatalf("%s %s carried %s=%q, want no headers", method, p, name, got)
+				}
+			}
+		}
+	}
+}
+
+// A suspended site answers every method with its unavailable answer, never a
+// 200 that reads as live.
+func TestASuspendedSiteRefusesOtherMethodsToo(t *testing.T) {
+	h, _ := newTestHandler(t, Site{Unavailable: true}, map[string]Object{key("index.html"): {Body: []byte("HOME")}})
+	for _, method := range []string{http.MethodGet, http.MethodPost, http.MethodOptions} {
+		assertTemporarilyUnavailable(t, method+" / on a suspended site", do(h, method, "/"), false)
 	}
 }
 
@@ -648,14 +677,28 @@ func assertMarker(t *testing.T, rec *httptest.ResponseRecorder) {
 	}
 }
 
+// assertBareNotFound checks Render's answer to a miss on a site with no
+// 404.html (w8/322): a plain-text 404 with nosniff and none of the site's
+// rules.
+func assertBareNotFound(t *testing.T, rec *httptest.ResponseRecorder) {
+	t.Helper()
+	if rec.Code != http.StatusNotFound || rec.Body.String() != "Not Found\n" ||
+		rec.Header().Get("X-Content-Type-Options") != "nosniff" || rec.Header().Get("Content-Type") != "text/plain; charset=utf-8" {
+		t.Fatalf("miss = %d %q %v, want a bare 404 Not Found with nosniff", rec.Code, rec.Body, rec.Header())
+	}
+	for _, name := range []string{"X-Qa-Marker", "Strict-Transport-Security", "Cache-Control"} {
+		if got := rec.Header().Get(name); got != "" {
+			t.Errorf("%s = %q on a bare 404, want only nosniff", name, got)
+		}
+	}
+}
+
+// Error classes other than the bare 404 carry the site's matching rules
+// (w4/m101); Render's answers for them were not captured (w8/322).
 func TestErrorResponsesCarryCustomHeaders(t *testing.T) {
 	t.Run("404 miss", func(t *testing.T) {
 		h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
-		rec := do(h, http.MethodGet, "/nope.html")
-		if rec.Code != http.StatusNotFound {
-			t.Fatalf("code = %d, want 404", rec.Code)
-		}
-		assertMarker(t, rec)
+		assertBareNotFound(t, do(h, http.MethodGet, "/nope.html"))
 	})
 
 	t.Run("400 invalid redirect", func(t *testing.T) {
@@ -674,11 +717,7 @@ func TestErrorResponsesCarryCustomHeaders(t *testing.T) {
 		pad := maxObjectKeyBytes - len(key(""))
 		p := "/" + strings.Repeat("a", pad+1-len(".html")) + ".html"
 		h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
-		rec := do(h, http.MethodGet, p)
-		if rec.Code != http.StatusNotFound {
-			t.Fatalf("code = %d, want 404", rec.Code)
-		}
-		assertMarker(t, rec)
+		assertBareNotFound(t, do(h, http.MethodGet, p))
 	})
 
 	t.Run("404 overlong rewrite target", func(t *testing.T) {
@@ -688,11 +727,7 @@ func TestErrorResponsesCarryCustomHeaders(t *testing.T) {
 			Headers: markerHeaders(),
 			Routes:  []appv1alpha1.StaticRoute{{Type: "rewrite", Source: "/short", Destination: dest}},
 		}, nil)
-		rec := do(h, http.MethodGet, "/short")
-		if rec.Code != http.StatusNotFound {
-			t.Fatalf("code = %d, want 404", rec.Code)
-		}
-		assertMarker(t, rec)
+		assertBareNotFound(t, do(h, http.MethodGet, "/short"))
 	})
 
 	t.Run("413 oversize", func(t *testing.T) {
@@ -744,23 +779,12 @@ func TestErrorResponsesCarryCustomHeaders(t *testing.T) {
 	})
 }
 
-func TestUnresolvedHostAndMethodStayHeaderless(t *testing.T) {
+func TestUnresolvedHostStaysHeaderless(t *testing.T) {
 	h, _ := newTestHandler(t, Site{Headers: markerHeaders()}, nil)
 
-	req := httptest.NewRequest(http.MethodPost, "http://"+testHost+"/", nil)
-	req.Host = testHost
-	rec := httptest.NewRecorder()
-	h.ServeHTTP(rec, req)
-	if rec.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("POST => %d, want 405", rec.Code)
-	}
-	if got := rec.Header().Get("X-Qa-Marker"); got != "" {
-		t.Errorf("405 must stay headerless, got X-Qa-Marker=%q", got)
-	}
-
-	req = httptest.NewRequest(http.MethodGet, "http://unknown.onbex.co/nope.html", nil)
+	req := httptest.NewRequest(http.MethodGet, "http://unknown.onbex.co/nope.html", nil)
 	req.Host = "unknown.onbex.co"
-	rec = httptest.NewRecorder()
+	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("unknown host => %d, want 404", rec.Code)
@@ -768,17 +792,27 @@ func TestUnresolvedHostAndMethodStayHeaderless(t *testing.T) {
 	if got := rec.Header().Get("X-Qa-Marker"); got != "" {
 		t.Errorf("unknown-host 404 must stay headerless, got X-Qa-Marker=%q", got)
 	}
+	// The host is resolved before the method gate, so another method on an
+	// unknown host keeps the 404 (w8/319).
+	req = httptest.NewRequest(http.MethodPost, "http://unknown.onbex.co/", nil)
+	req.Host = "unknown.onbex.co"
+	rec = httptest.NewRecorder()
+	h.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("POST to an unknown host => %d, want 404", rec.Code)
+	}
 }
 
 // w4/581: an origin type that says nothing (none, application/octet-stream,
 // or the store's binary/octet-stream for an upload with no type) gives way to
 // the extension's IANA type, including the web types Go's table lacks; a
 // specific origin type still wins, and an unknown extension stays
-// application/octet-stream. binary/octet-stream is never served.
+// application/octet-stream. binary/octet-stream is served only where Render
+// serves it (w8/326, TestRenderExtensionTypes).
 func TestContentTypeForUntypedObjects(t *testing.T) {
 	for ext, want := range map[string]string{
 		".webp": "image/webp", ".woff": "font/woff", ".woff2": "font/woff2", ".ttf": "font/ttf", ".otf": "font/otf",
-		".map": "application/json", ".cjs": "text/javascript; charset=utf-8", ".yaml": "application/yaml", ".yml": "application/yaml",
+		".map": "application/json", ".yaml": "application/yaml", ".yml": "application/yaml",
 		".ogg": "audio/ogg", ".TTF": "font/ttf", ".unknownext": "application/octet-stream",
 	} {
 		for _, origin := range []string{"", "application/octet-stream", "binary/octet-stream"} {

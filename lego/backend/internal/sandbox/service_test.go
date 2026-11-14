@@ -242,9 +242,9 @@ func TestCreateRejectsUnpersistableRegionAndTimeout(t *testing.T) {
 		code string
 	}{
 		{name: "region", req: CreateRequest{Template: "node", Region: "not/a/label"}, code: "SANDBOX_REGION_INVALID"},
-		{name: "negative timeout", req: CreateRequest{Template: "node", TimeoutSeconds: ptr(-1)}, code: "SANDBOX_TIMEOUT_INVALID"},
-		{name: "excess timeout", req: CreateRequest{Template: "node", TimeoutSeconds: ptr(maxSandboxTimeout + 1)}, code: "SANDBOX_TIMEOUT_INVALID"},
-		{name: "timeout under a minute", req: CreateRequest{Template: "node", TimeoutSeconds: ptr(30)}, code: "SANDBOX_TIMEOUT_INVALID"},
+		{name: "negative timeout", req: CreateRequest{Template: "node", TimeoutSeconds: ptr(-1)}, code: "invalid_timeout_seconds"},
+		{name: "excess timeout", req: CreateRequest{Template: "node", TimeoutSeconds: ptr(maxSandboxTimeout + 1)}, code: "invalid_timeout_seconds"},
+		{name: "timeout under a minute", req: CreateRequest{Template: "node", TimeoutSeconds: ptr(30)}, code: "invalid_timeout_seconds"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := svc.Create(callerCtx(), tc.req)

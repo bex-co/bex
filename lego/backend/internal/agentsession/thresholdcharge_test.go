@@ -1,0 +1,296 @@
+/*
+Copyright 2026.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package agentsession
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"slices"
+	"testing"
+	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/store"
+)
+
+// chargerFake answers every threshold charge with outcome (or err), first
+// running onCharge (the charge's effect on the ledger).
+type chargerFake struct {
+	outcome  ThresholdChargeOutcome
+	err      error
+	onCharge func()
+	calls    []ThresholdCharge
+}
+
+func (f *chargerFake) ChargeThreshold(_ context.Context, c ThresholdCharge) (ThresholdChargeOutcome, error) {
+	f.calls = append(f.calls, c)
+	if f.onCharge != nil {
+		f.onCharge()
+	}
+	return f.outcome, f.err
+}
+
+// ADR091 D10.2a: a platform-route mint whose unbilled spend reaches the tier's
+// threshold charges the card in that request. Paid, the request is served (the
+// status is re-read: the workspace is T1, so T0's $10 ceiling no longer
+// binds); declined, it is refused with BILLING_BALANCE_DUE; undecided or
+// failed, with the spend cap. Without a charger (billing off), or for a
+// workspace bex cannot charge, T0 stops at $10.
+func TestMintChargesTheThresholdInTheRequest(t *testing.T) {
+	enablePlatformRoute(t, "tea-allow")
+	config, _ := json.Marshal(map[string]string{"agent": "claude"})
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
+	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"}
+	now := time.Date(2026, 11, 13, 10, 0, 0, 0, time.UTC)
+	ctx := context.Background()
+	minter := func(ledger *spendLedger, charger ThresholdCharger) *ModelMinter {
+		return &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: ledger,
+			Charges: charger, Now: func() time.Time { return now }}
+	}
+	atThreshold := func() *spendLedger {
+		return &spendLedger{plan: store.PlanPro, used: 10_000_000, chargeable: true}
+	}
+
+	t.Run("paid", func(t *testing.T) {
+		ledger := atThreshold()
+		charger := &chargerFake{outcome: ThresholdChargePaid, onCharge: func() {
+			ledger.trust, ledger.charged, ledger.chargeSeq = store.BillingTrust{LifetimePaidCents: 1000}, 10_000_000, 1
+		}}
+		m := minter(ledger, charger)
+		got, err := m.Mint(ctx, req)
+		if err != nil || got.Credential != testPlatformKey {
+			t.Fatalf("mint = %v platformKey=%t, want the request served", err, got.Credential == testPlatformKey)
+		}
+		want := []ThresholdCharge{{WorkspaceID: "tea-allow", At: now, SeenSeq: 0, UnbilledMicroUSD: 10_000_000}}
+		if !slices.Equal(charger.calls, want) {
+			t.Fatalf("charges = %+v, want %+v", charger.calls, want)
+		}
+		// The cached read, its fresh confirmation, and the re-read after
+		// the payment.
+		if ledger.reads != 3 {
+			t.Fatalf("spend reads = %d, want 3", ledger.reads)
+		}
+		// The next exchange uses the re-read (cached) T1 status: no charge.
+		ledger.used = 10_500_000
+		if _, err := m.Mint(ctx, req); err != nil || len(charger.calls) != 1 || ledger.reads != 3 {
+			t.Fatalf("next mint = %v after %d charges, %d reads", err, len(charger.calls), ledger.reads)
+		}
+	})
+
+	t.Run("declined", func(t *testing.T) {
+		ledger := atThreshold()
+		charger := &chargerFake{outcome: ThresholdChargeDeclined, onCharge: func() { ledger.due = true }}
+		m := minter(ledger, charger)
+		if _, err := m.Mint(ctx, req); !errors.Is(err, ErrBillingBalanceDue) {
+			t.Fatalf("mint = %v, want ErrBillingBalanceDue", err)
+		}
+		// The cache was dropped: the next mint reads the balance due and
+		// refuses without charging again.
+		if _, err := m.Mint(ctx, req); !errors.Is(err, ErrBillingBalanceDue) || len(charger.calls) != 1 {
+			t.Fatalf("next mint = %v after %d charges, want refused with no second charge", err, len(charger.calls))
+		}
+	})
+
+	for name, charger := range map[string]*chargerFake{
+		"undecided": {outcome: ThresholdChargePending},
+		"failed":    {err: errors.New("db down")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := minter(atThreshold(), charger).Mint(ctx, req); !errors.Is(err, ErrModelSpendCapReached) || errors.Is(err, ErrBillingBalanceDue) {
+				t.Fatalf("mint = %v, want ErrModelSpendCapReached", err)
+			}
+			if len(charger.calls) != 1 {
+				t.Fatalf("charges = %d, want 1", len(charger.calls))
+			}
+		})
+	}
+
+	t.Run("no charger stops at $10", func(t *testing.T) {
+		ledger := &spendLedger{plan: store.PlanPro, used: 9_999_999, chargeable: true}
+		m := minter(ledger, nil)
+		if got, err := m.Mint(ctx, req); err != nil || got.Credential != testPlatformKey {
+			t.Fatalf("at $9.99: %v", err)
+		}
+		m.ForgetSpend("tea-allow")
+		ledger.used = 10_000_000
+		if _, err := m.Mint(ctx, req); !errors.Is(err, ErrModelSpendCapReached) {
+			t.Fatalf("at $10 with no charger: %v, want the spend cap", err)
+		}
+	})
+
+	t.Run("never charged", func(t *testing.T) {
+		for name, ledger := range map[string]*spendLedger{
+			"not chargeable": {plan: store.PlanPro, used: 10_000_000},
+			"locked":         {plan: store.PlanPro, used: 10_000_000, chargeable: true, trust: store.BillingTrust{LifetimePaidCents: 1000, LockedUntil: store.LockedIndefinitely}},
+			"below":          {plan: store.PlanPro, used: 19_999_999, chargeable: true, charged: 10_000_000, chargeSeq: 1, trust: store.BillingTrust{LifetimePaidCents: 1000}},
+		} {
+			charger := &chargerFake{outcome: ThresholdChargePaid}
+			_, err := minter(ledger, charger).Mint(ctx, req)
+			if len(charger.calls) != 0 {
+				t.Fatalf("%s: charged %+v", name, charger.calls)
+			}
+			if name == "below" && err != nil {
+				t.Fatalf("below the T1 threshold (unbilled $9.99): %v, want served", err)
+			}
+			if name != "below" && !errors.Is(err, ErrModelSpendCapReached) {
+				t.Fatalf("%s: %v, want the T0 cap", name, err)
+			}
+		}
+	})
+
+	t.Run("a stale cached view is confirmed first", func(t *testing.T) {
+		ledger := atThreshold()
+		charger := &chargerFake{outcome: ThresholdChargePaid}
+		m := minter(ledger, charger)
+		if status, err := m.platformStatus(ctx, "tea-allow"); err != nil || !status.ChargeDue() {
+			t.Fatalf("primed status due=%t, %v", status.ChargeDue(), err)
+		}
+		// Another replica's charge paid meanwhile.
+		ledger.trust, ledger.charged, ledger.chargeSeq = store.BillingTrust{LifetimePaidCents: 1000}, 10_000_000, 1
+		if got, err := m.Mint(ctx, req); err != nil || got.Credential != testPlatformKey || len(charger.calls) != 0 {
+			t.Fatalf("mint = %v with %d charges, want served without charging twice", err, len(charger.calls))
+		}
+	})
+}
+
+// The threshold, unbilled spend and due flag a status carries.
+func TestSpendStatusChargeDue(t *testing.T) {
+	now := time.Date(2026, 11, 13, 0, 0, 0, 0, time.UTC)
+	status := SpendStatusOf(nil, store.AgentSpendInputs{Plan: store.PlanPro, MonthToDateMicroUSD: 34_000_000, WindowSpendMicroUSD: 34_000_000, ChargedMicroUSD: 10_000_000,
+		ChargeSeq: 1, Chargeable: true, Trust: store.BillingTrust{LifetimePaidCents: 1000}}, now)
+	if status.ThresholdMicroUSD == nil || *status.ThresholdMicroUSD != 25_000_000 || status.UnbilledMicroUSD() != 24_000_000 || status.ChargeDue() {
+		t.Fatalf("T1 at $24 unbilled = %+v, want threshold $25 and not due", status)
+	}
+	status.MonthToDate, status.WindowSpend = 35_000_000, 35_000_000
+	if !status.ChargeDue() {
+		t.Fatal("T1 at $25 unbilled is not due")
+	}
+	status.ChargedMicroUSD = 50_000_000
+	if status.UnbilledMicroUSD() != 0 {
+		t.Fatalf("unbilled = %d, want floored at 0", status.UnbilledMicroUSD())
+	}
+	t4 := SpendStatusOf(nil, store.AgentSpendInputs{Plan: store.PlanPro, MonthToDateMicroUSD: 1 << 40, WindowSpendMicroUSD: 1 << 40, Chargeable: true,
+		Trust: store.BillingTrust{LifetimePaidCents: 300_000, PaidCycleInvoices: 6}}, now)
+	if t4.ThresholdMicroUSD != nil || t4.ChargeDue() {
+		t.Fatalf("T4 = %+v, want no threshold", t4)
+	}
+}
+
+// ADR091 D10.2a: the charge window opens where a subscription invoice last
+// billed the meter, so neither the charge nor T0's ceiling holds
+// that invoice's usage against the workspace. A T0 workspace whose cycle
+// invoice billed $6 of the month and that spent $4 since is at $10 for its
+// own cap's month but at $4 unbilled: it is neither charged nor stopped. At
+// $10 unbilled it is charged; the workspace's own cap still counts the month.
+func TestSpendWindowExcludesWhatAnInvoiceBilled(t *testing.T) {
+	now := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+	in := store.AgentSpendInputs{Plan: store.PlanPro, MonthToDateMicroUSD: 10_000_000, WindowSpendMicroUSD: 4_000_000, Chargeable: true}
+	status := SpendStatusOf(nil, in, now)
+	if status.Tier.Name != "T0" || status.UnbilledMicroUSD() != 4_000_000 || status.ChargeDue() || status.Reached() {
+		t.Fatalf("T0 at $10 month, $4 unbilled = %+v, want neither due nor reached", status)
+	}
+	in.MonthToDateMicroUSD, in.WindowSpendMicroUSD = 16_000_000, 10_000_000
+	if status = SpendStatusOf(nil, in, now); !status.ChargeDue() {
+		t.Fatalf("T0 at $10 unbilled = %+v, want the charge due", status)
+	}
+	own := int64(12_000_000)
+	in.OverrideMicroUSD, in.WindowSpendMicroUSD = &own, 2_000_000
+	status = SpendStatusOf(nil, in, now)
+	if !status.Reached() || status.SpendCapReachedReason() != ModelSpendCapReachedReason {
+		t.Fatalf("$16 against a $12 own cap = reached %t (%q), want the workspace's own cap", status.Reached(), status.SpendCapReachedReason())
+	}
+}
+
+// A charge the charger finds not due (the window moved: a subscription
+// invoice billed the meter since the read) is re-read, and the request is
+// served on the narrower window without a charge.
+func TestMintRereadsWhenTheChargeIsNotDue(t *testing.T) {
+	enablePlatformRoute(t, "tea-allow")
+	config, _ := json.Marshal(map[string]string{"agent": "claude"})
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
+	now := time.Date(2026, 11, 16, 0, 30, 0, 0, time.UTC)
+	ledger := &spendLedger{plan: store.PlanPro, used: 10_000_000, chargeable: true}
+	charger := &chargerFake{outcome: ThresholdChargeNotDue, onCharge: func() { ledger.billed = 9_000_000 }}
+	m := &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: ledger,
+		Charges: charger, Now: func() time.Time { return now }}
+	got, err := m.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"})
+	if err != nil || got.Credential != testPlatformKey || len(charger.calls) != 1 {
+		t.Fatalf("mint = %v with %d charge calls, want served after one not-due answer", err, len(charger.calls))
+	}
+}
+
+// ADR091 D10.2a: billing credits pay agent-model usage before the card. The
+// charge point and T0's ceiling count only the window's spend that the
+// credits and the window's paid charges leave; the workspace's own cap still
+// counts the month's whole spend.
+func TestCreditsPayBeforeTheCard(t *testing.T) {
+	now := time.Date(2026, 11, 20, 0, 0, 0, 0, time.UTC)
+	in := store.AgentSpendInputs{Plan: store.PlanPro, MonthToDateMicroUSD: 12_000_000, WindowSpendMicroUSD: 12_000_000, CreditMicroUSD: 5_000_000, Chargeable: true}
+	status := SpendStatusOf(nil, in, now)
+	if status.UnbilledMicroUSD() != 7_000_000 || status.ChargeDue() || status.Reached() || status.RefusesAtCap() {
+		t.Fatalf("T0, $12 spent, $5 of credit = %+v, want $7 unbilled: neither charged nor stopped", status)
+	}
+	in.MonthToDateMicroUSD, in.WindowSpendMicroUSD = 15_000_000, 15_000_000
+	if status = SpendStatusOf(nil, in, now); status.UnbilledMicroUSD() != 10_000_000 || !status.ChargeDue() || status.RefusesAtCap() {
+		t.Fatalf("T0, $15 spent, $5 of credit = %+v, want the $10 the credit leaves due", status)
+	}
+	in.ChargedMicroUSD = 10_000_000
+	if status = SpendStatusOf(nil, in, now); status.UnbilledMicroUSD() != 0 || status.ChargeDue() {
+		t.Fatalf("after the $10 charge = %+v, want nothing unbilled", status)
+	}
+	in.CreditMicroUSD = 50_000_000
+	if status = SpendStatusOf(nil, in, now); status.UnbilledMicroUSD() != 0 {
+		t.Fatalf("credit above the spend = %+v, want unbilled floored at 0", status)
+	}
+	own := int64(14_000_000)
+	in.OverrideMicroUSD = &own
+	if status = SpendStatusOf(nil, in, now); !status.RefusesAtCap() || status.SpendCapReachedReason() != ModelSpendCapReachedReason {
+		t.Fatalf("$15 against a $14 own cap with credit = %+v, want the workspace's own cap", status)
+	}
+}
+
+// The mint passes the credit its read counted to the charger. A charger that
+// reads a different balance answers not due, and the request is served on
+// the re-read when the new balance covers the spend; a crossing past the
+// credit charges only what the credit leaves.
+func TestMintReadsTheCreditBeforeCharging(t *testing.T) {
+	enablePlatformRoute(t, "tea-allow")
+	config, _ := json.Marshal(map[string]string{"agent": "claude"})
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
+	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"}
+	now := time.Date(2026, 11, 20, 0, 30, 0, 0, time.UTC)
+	ledger := &spendLedger{plan: store.PlanPro, used: 12_000_000, chargeable: true}
+	charger := &chargerFake{outcome: ThresholdChargeNotDue, onCharge: func() { ledger.credit = 10_000_000 }}
+	m := &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: ledger,
+		Charges: charger, Now: func() time.Time { return now }}
+	if got, err := m.Mint(context.Background(), req); err != nil || got.Credential != testPlatformKey || len(charger.calls) != 1 {
+		t.Fatalf("mint = %v with %d charge calls, want served once the credit is read", err, len(charger.calls))
+	}
+	if c := charger.calls[0]; c.CreditMicroUSD != 0 || c.UnbilledMicroUSD != 12_000_000 {
+		t.Fatalf("first crossing = %+v, want $12 unbilled with no credit read yet", c)
+	}
+
+	ledger.used = 25_000_000
+	charger.outcome, charger.onCharge = ThresholdChargePaid, func() { ledger.charged, ledger.trust = 15_000_000, store.BillingTrust{LifetimePaidCents: 1500} }
+	m.ForgetSpend("tea-allow")
+	if got, err := m.Mint(context.Background(), req); err != nil || got.Credential != testPlatformKey || len(charger.calls) != 2 {
+		t.Fatalf("mint = %v with %d charge calls, want served after the charge", err, len(charger.calls))
+	}
+	if c := charger.calls[1]; c.CreditMicroUSD != 10_000_000 || c.UnbilledMicroUSD != 15_000_000 {
+		t.Fatalf("second crossing = %+v, want the $15 the $10 credit leaves", c)
+	}
+}

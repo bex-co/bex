@@ -137,6 +137,20 @@ var agentModelSourceGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 	},
 })
 
+var agentDataUseGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentDataUse",
+	Fields: graphql.Fields{
+		"agent": gqlutil.ReqStrField(func(v AgentDataUse) any { return v.Agent }),
+		"acknowledgedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentDataUse) any {
+			if v.AcknowledgedAt == nil {
+				return nil
+			}
+			return gqlTime(*v.AcknowledgedAt)
+		})},
+		"acknowledgedBy": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentDataUse) any { return optionalString(v.AcknowledgedBy) })},
+	},
+})
+
 var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentEnvironment",
 	Fields: graphql.Fields{
@@ -149,6 +163,8 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"modelKeySet":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelKeySet }),
 		"modelSource":   gqlutil.Typed(graphql.NewNonNull(agentModelSourceGQLEnum), func(v Environment) any { return v.ModelSource }),
 		"registryHosts": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.RegistryHosts }),
+		"enabledAgents": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The agent profiles members can start sessions with, as the workspace's admins chose.", Resolve: gqlutil.Field(func(v Environment) any { return v.EnabledAgents })},
+		"agentDataUse":  &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentDataUseGQLType))), Description: "Each agent profile whose model provider may train on what its sessions send, and the admin acknowledgement turning it on requires.", Resolve: gqlutil.Field(func(v Environment) any { return v.AgentDataUse })},
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any {
 			if v.UpdatedAt == nil {
 				return nil
@@ -161,9 +177,11 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"agentModelMaxSpendCapUsd":      optionalFloatField("The highest override an admin may set (10x the plan default).", func(v Environment) *float64 { return v.AgentModelMaxSpendCapUSD }),
 		"agentModelSpendMonthToDateUsd": optionalFloatField("Month-to-date agent-model spend in USD (UTC calendar month).", func(v Environment) *float64 { return v.AgentModelSpendMonthToDateUSD }),
 		"trustTier":                     &graphql.Field{Type: graphql.String, Description: "The workspace's billing trust tier (T0 new .. T4).", Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.TrustTier) })},
-		"nextChargeThresholdUsd":        optionalFloatField("The agent-model spend at which the card is charged mid-cycle; null at the top tier (month-end only).", func(v Environment) *float64 { return v.NextChargeThresholdUSD }),
+		"nextChargeThresholdUsd":        optionalFloatField("The agent-model spend beyond billing credits (which pay first) at which the card is charged mid-cycle; null at the top tier (month-end only).", func(v Environment) *float64 { return v.NextChargeThresholdUSD }),
 		"trustTierLocked":               optionalBoolField("A failed or disputed payment holds the workspace at the first trust tier.", func(v Environment) *bool { return v.TrustTierLocked }),
 		"agentModelSpendCapTierLimited": optionalBoolField("The trust tier's ceiling, not the plan default or override, sets the effective spend cap.", func(v Environment) *bool { return v.AgentModelSpendCapTierLimited }),
+		"agentModelSpendCapReached":     optionalBoolField("Platform-model requests are refused at the spend cap now. False while the next request would charge the card at the trust tier's threshold instead.", func(v Environment) *bool { return v.AgentModelSpendCapReached }),
+		"agentModelChargesAtThreshold":  optionalBoolField("Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold.", func(v Environment) *bool { return v.AgentModelChargesAtThreshold }),
 		"billingBalanceDue":             optionalBoolField("A failed invoice is unpaid, so platform-model requests are refused with BILLING_BALANCE_DUE until it is paid.", func(v Environment) *bool { return v.BillingBalanceDue }),
 	},
 })
@@ -196,6 +214,8 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"resetAgentModelMonthlySpendCap": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the spend cap to the plan default."},
 		"modelApiKey":                    &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet."},
 		"clearModelApiKey":               &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true removes the workspace's own model provider key."},
+		"enabledAgents":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first."},
+		"acknowledgeAgentDataUse":        &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Agent profiles from agentDataUse whose data use this admin acknowledges."},
 	},
 })
 
@@ -224,6 +244,13 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 	input.ModelAPIKey = gqlutil.StrPtr(raw, "modelApiKey")
 	if clear := gqlutil.BoolPtr(raw, "clearModelApiKey"); clear != nil {
 		input.ClearModelAPIKey = *clear
+	}
+	if agents, ok := raw["enabledAgents"].([]any); ok {
+		list := gqlutil.StringList(agents)
+		input.EnabledAgents = &list
+	}
+	if acks, ok := raw["acknowledgeAgentDataUse"].([]any); ok {
+		input.AcknowledgeAgentDataUse = gqlutil.StringList(acks)
 	}
 	if reset, ok := raw["resetAgentModelMonthlySpendCap"].(bool); ok {
 		input.ResetAgentModelMonthlySpendCap = reset
@@ -323,6 +350,7 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"maxSpendUSD":     gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
 		"tags":            &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
 		"secretNames":     &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
+		"appliedSecrets":  &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(appliedSecretGQLType))), Description: "The secrets the latest turn received, each with its source (inline, explicit, repo or workspace); values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.AppliedSecrets })},
 		"automationId":    &graphql.Field{Type: graphql.String, Description: "The agent automation (aut-…) that started this session, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.AutomationID })},
 		"createdBy":       &graphql.Field{Type: graphql.String, Description: "Who started the session: a member's identity id, or an API key's client id. An automation's sessions carry the automation's creator and a child session its parent's creator. Absent on sessions from before it was recorded.", Resolve: gqlutil.Field(func(v View) any { return v.CreatedBy })},
 		"parentSessionId": &graphql.Field{Type: graphql.String, Description: "The agent session (ags-…) that spawned this one, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.ParentSessionID })},
@@ -536,9 +564,20 @@ var agentSessionSecretGQLInput = graphql.NewInputObject(graphql.InputObjectConfi
 
 var agentSecretGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentSecret",
-	Description: "A workspace agent secret. Only its name is readable.",
+	Description: "A workspace agent secret: its name and scope. The value is never readable.",
 	Fields: graphql.Fields{
-		"name": gqlutil.ReqStrField(func(v AgentSecret) any { return v.Name }),
+		"name":  gqlutil.ReqStrField(func(v AgentSecret) any { return v.Name }),
+		"scope": &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "workspace (every session receives it), repo (sessions on `repo`) or explicit (only sessions that name it in secretNames).", Resolve: gqlutil.Field(func(v AgentSecret) any { return v.Scope })},
+		"repo":  gqlutil.OptionalStrField(func(v AgentSecret) any { return v.Repo }),
+	},
+})
+
+var appliedSecretGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentAppliedSecret",
+	Description: "A secret a session's latest turn received: its name and why.",
+	Fields: graphql.Fields{
+		"name":   gqlutil.ReqStrField(func(v AppliedSecret) any { return v.Name }),
+		"source": gqlutil.ReqStrField(func(v AppliedSecret) any { return v.Source }),
 	},
 })
 
@@ -767,14 +806,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 		"setAgentSecret": &graphql.Field{
 			Type:        graphql.NewNonNull(agentSecretGQLType),
-			Description: "Create or rotate a workspace agent secret (admins only). The value is write-only.",
+			Description: "Create, rotate or rescope a workspace agent secret (admins only). The value is write-only; omit it to change only the scope of an existing secret. A new secret without a scope is workspace-wide.",
 			Args: graphql.FieldConfigArgument{
 				"ownerId": gqlutil.Arg(graphql.String),
 				"name":    gqlutil.ReqArg(graphql.String),
-				"value":   gqlutil.ReqArg(graphql.String),
+				"value":   gqlutil.Arg(graphql.String),
+				"scope":   gqlutil.Arg(graphql.String),
+				"repo":    gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.SetAgentSecret(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "name"), gqlutil.Str(p.Args, "value"))
+				return s.SetAgentSecret(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "name"),
+					AgentSecretInput{Value: gqlutil.Str(p.Args, "value"), Scope: gqlutil.StrPtr(p.Args, "scope"), Repo: gqlutil.Str(p.Args, "repo")})
 			},
 		},
 		"deleteAgentSecret": &graphql.Field{

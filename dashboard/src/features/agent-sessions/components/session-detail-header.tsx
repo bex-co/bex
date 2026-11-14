@@ -10,7 +10,6 @@ import {
   GitBranch,
   GitPullRequest,
   Loader2,
-  KeyRound,
   MoreHorizontal,
   Tag,
   Terminal,
@@ -30,6 +29,7 @@ import {
 import { CopyButton } from "@/common/components/copy-button";
 import { SessionFilesButton } from "@/features/agent-sessions/components/session-files-sheet";
 import { SessionModelCost } from "@/features/agent-sessions/components/session-model-cost";
+import { SessionSecrets } from "@/features/agent-sessions/components/session-secrets";
 import {
   Tooltip,
   TooltipContent,
@@ -235,18 +235,7 @@ export function SessionDetailHeader({
               {session.tags.join(", ")}
             </span>
           ) : null}
-          {session.secretNames.length > 0 ? (
-            <span
-              className="inline-flex items-center gap-1"
-              title={session.secretNames.join(", ")}
-              data-testid="session-secret-names"
-            >
-              <KeyRound className="size-3" />
-              {t("agentSessions.metaSecrets", {
-                count: session.secretNames.length,
-              })}
-            </span>
-          ) : null}
+          <SessionSecrets session={session} />
           {session.isArchived ? (
             <Badge variant="secondary" className="gap-1">
               <Archive className="size-3" />

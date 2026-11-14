@@ -112,41 +112,19 @@ describe("Encode Utility", () => {
       expect(result).toBe("");
     });
 
-    it("should encode emoji characters", () => {
-      const input = "Hello 🍕 World";
-      const result = base64Encode(input);
-      expect(result).toBeTruthy();
-      expect(result.length).toBeGreaterThan(0);
-      // Should not throw InvalidCharacterError
-      expect(() => base64Encode(input)).not.toThrow();
-    });
-
-    it("should encode Chinese characters", () => {
-      const input = "你好世界";
-      const result = base64Encode(input);
-      expect(result).toBeTruthy();
-      expect(result.length).toBeGreaterThan(0);
-      expect(() => base64Encode(input)).not.toThrow();
-    });
-
-    it("should encode mixed UTF-8 characters", () => {
-      const input = "Café ☕ 咖啡馆 🍵";
-      const result = base64Encode(input);
-      expect(result).toBeTruthy();
-      expect(() => base64Encode(input)).not.toThrow();
-    });
-
-    it("should encode special Unicode symbols", () => {
-      const input = "→ ← ↑ ↓ ✓ ✗ ★ ♥ ♦ ♣ ♠";
-      const result = base64Encode(input);
-      expect(result).toBeTruthy();
-      expect(() => base64Encode(input)).not.toThrow();
-    });
-
     it("should handle newlines and tabs", () => {
-      const input = "line1\nline2\tcolumn";
-      const result = base64Encode(input);
-      expect(result).toBeTruthy();
+      // Pinned independently (Node's Buffer), so it cannot pass on a broken
+      // encoder the way a truthiness check could.
+      expect(base64Encode("line1\nline2\tcolumn")).toBe(
+        "bGluZTEKbGluZTIJY29sdW1u",
+      );
+    });
+
+    it("should encode multibyte characters as their UTF-8 bytes", () => {
+      // Also pinned with Node's Buffer: a symmetric bug (say, encoding UTF-16
+      // code units) would still round-trip through base64Decode.
+      expect(base64Encode("你好世界")).toBe("5L2g5aW95LiW55WM");
+      expect(base64Encode("Hello 🍕 World")).toBe("SGVsbG8g8J+NlSBXb3JsZA==");
     });
   });
 

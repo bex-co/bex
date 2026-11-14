@@ -50,10 +50,12 @@ grafana.ini:
     # no other local account can exist (users.allow_sign_up=false in base).
     disable_login_form: false
     # ADR088 §4: short sessions so an ops-workspace role change or removal
-    # takes effect at the next login (plus the 1h consent remember window),
-    # never days into a stale session.
-    login_maximum_lifetime_duration: 24h
-    login_maximum_inactive_lifetime_duration: 8h
+    # takes effect at the next login, within an hour (w5/m384, round 24; was
+    # 24h/8h). The consent gate re-checks ops membership on every accept,
+    # remembered consent included, so the next login is where it bites. The
+    # cost: a session ends every hour (a kiosk dashboard signs in again).
+    login_maximum_lifetime_duration: 1h
+    login_maximum_inactive_lifetime_duration: 1h
   auth.generic_oauth:
     enabled: true
     name: bex
@@ -64,8 +66,8 @@ grafana.ini:
     # use_refresh_token Grafana never re-runs OAuth mid-session; the session
     # simply persists to its own lifetimes. So a role change or removal takes
     # effect at the NEXT login (ADR088 §4) — worst case
-    # login_maximum_lifetime_duration 24h (8h inactive) plus the 1h consent
-    # remember window — and a refresh-token path would not tighten that:
+    # login_maximum_lifetime_duration, 1h — and a refresh-token path would
+    # not tighten that:
     # refresh renews tokens without re-running the consent gate. Immediate
     # revocation is an ops action: revoke the Hydra session/tokens and delete
     # the Grafana org user.
@@ -82,6 +84,9 @@ grafana.ini:
     allow_sign_up: true
     email_attribute_path: email
     name_attribute_path: name
+    # Explicit, not a chart default (round 24, w5/m384): never match an OAuth
+    # login to an existing Grafana user by email alone.
+    oauth_allow_insecure_email_lookup: false
     # Role mapping is defense in depth BEHIND the server-side consent gate,
     # not the gate itself (ADR088 §4): the consent acceptor stamps the
     # `ops_role` claim with the Grafana role (GrafanaAdmin|Editor|Viewer)

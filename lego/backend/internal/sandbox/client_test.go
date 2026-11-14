@@ -20,10 +20,12 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -295,5 +297,117 @@ func TestClientCreateMapsPodReadyTimeoutSignature(t *testing.T) {
 	body = `{"code":"KUBERNETES::INTERNAL","message":"boom"}`
 	if _, err := c.Create(context.Background(), "k", "img", []string{"sh"}, osResourceLimits{CPU: "500m", Memory: "512Mi"}, 0, nil, nil); err == nil || errors.Is(err, errPodReadyTimeout) {
 		t.Fatalf("non-timeout create error = %v, want a generic error without errPodReadyTimeout", err)
+	}
+}
+
+// pagedSandboxServer serves OpenSandbox 0.2.2's paged list: newest first,
+// page/pageSize query parameters (pageSize default 20), {items, pagination}.
+func pagedSandboxServer(t *testing.T, ids func() []string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet || r.URL.Path != "/sandboxes" {
+			http.NotFound(w, r)
+			return
+		}
+		page, size := 1, 20
+		if v := r.URL.Query().Get("page"); v != "" {
+			page, _ = strconv.Atoi(v)
+		}
+		if v := r.URL.Query().Get("pageSize"); v != "" {
+			size, _ = strconv.Atoi(v)
+		}
+		all := ids()
+		start, end := min((page-1)*size, len(all)), min(page*size, len(all))
+		items := make([]map[string]any, 0, end-start)
+		for _, id := range all[start:end] {
+			items = append(items, map[string]any{"id": id, "status": map[string]string{"state": "Running"}})
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"items": items,
+			"pagination": map[string]any{
+				"page": page, "pageSize": size, "totalItems": len(all),
+				"totalPages": (len(all) + size - 1) / size, "hasNextPage": end < len(all),
+			},
+		})
+	}))
+}
+
+// TestListReadsEveryPage is round 24's S-1: OpenSandbox answers 20 sandboxes
+// a page by default, and a first-page-only List hid every older sandbox from
+// the meter, the caps and teardown.
+func TestListReadsEveryPage(t *testing.T) {
+	ids := make([]string, 450)
+	for i := range ids {
+		ids[i] = fmt.Sprintf("sbx-%03d", i)
+	}
+	srv := pagedSandboxServer(t, func() []string { return ids })
+	defer srv.Close()
+
+	got, err := NewClient(srv.URL).List(context.Background(), "key")
+	if err != nil {
+		t.Fatalf("List: %v", err)
+	}
+	if len(got) != len(ids) || got[0].ID != "sbx-000" || got[len(got)-1].ID != "sbx-449" {
+		t.Fatalf("List returned %d sandboxes (%s…%s), want all %d", len(got), got[0].ID, got[len(got)-1].ID, len(ids))
+	}
+}
+
+// A sandbox created or deleted while List reads shifts others across pages,
+// so pages read across the change do not add up to the list: List reads it
+// again, and refuses a list that keeps changing.
+func TestListRereadsOrRefusesAListThatMovedWhileItRead(t *testing.T) {
+	base := make([]string, 250)
+	for i := range base {
+		base[i] = fmt.Sprintf("sbx-%03d", i)
+	}
+	for _, tc := range []struct {
+		name   string
+		change func(ids []string) []string
+		moves  int // reads after which the list keeps changing (0: every read)
+	}{
+		{name: "a create between pages", change: func(ids []string) []string { return append([]string{"sbx-new"}, ids...) }, moves: 1},
+		{name: "a delete between pages", change: func(ids []string) []string { return ids[1:] }, moves: 1},
+		{name: "a list that never settles", change: func(ids []string) []string { return append([]string{fmt.Sprintf("sbx-x%d", len(ids))}, ids...) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ids := slices.Clone(base)
+			calls := 0
+			srv := pagedSandboxServer(t, func() []string {
+				calls++
+				// Change between a read's first and second page.
+				if calls%2 == 0 && (tc.moves == 0 || calls/2 <= tc.moves) {
+					ids = tc.change(ids)
+				}
+				return ids
+			})
+			defer srv.Close()
+
+			got, err := NewClient(srv.URL).List(context.Background(), "key")
+			if tc.moves == 0 {
+				if err == nil {
+					t.Fatalf("List returned %d sandboxes from a list that never settled, want an error", len(got))
+				}
+				return
+			}
+			if err != nil || len(got) != len(ids) {
+				t.Fatalf("List = %d sandboxes (%v), want the settled list's %d after one re-read", len(got), err, len(ids))
+			}
+		})
+	}
+}
+
+// ListByMetadata asks the server to filter, so one sandbox costs one page.
+func TestListByMetadataSendsTheServerFilter(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.URL.Query().Get("metadata")
+		_, _ = io.WriteString(w, `{"items":[],"pagination":{"page":1,"pageSize":200,"totalItems":0,"totalPages":0,"hasNextPage":false}}`)
+	}))
+	defer srv.Close()
+	if _, err := NewClient(srv.URL).ListByMetadata(context.Background(), "key", map[string]string{"bex.co/sandbox-id": "sbx-abc"}); err != nil {
+		t.Fatal(err)
+	}
+	if got != "bex.co%2Fsandbox-id=sbx-abc" {
+		t.Fatalf("metadata filter = %q, want the URL-encoded key=value OpenSandbox parses", got)
 	}
 }

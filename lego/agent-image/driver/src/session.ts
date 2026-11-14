@@ -199,7 +199,8 @@ export async function runHeadlessTurn(
     if (stopError !== undefined) throw stopError;
   };
   let promptResponse:
-    Awaited<ReturnType<SessionProvider["prompt"]>> | undefined;
+    | Awaited<ReturnType<SessionProvider["prompt"]>>
+    | undefined;
   let delivery: DeliveryStatus | undefined;
   let output: { final: boolean; reminded: boolean } | undefined;
   const turnAbort = new AbortController();
@@ -296,7 +297,10 @@ export async function runHeadlessTurn(
             promptResponse = await sendPrompt(
               continuity.prompt,
               turn === config.turn
-                ? await attachmentBlocks(config.attachments, provider.imagePrompts)
+                ? await attachmentBlocks(
+                    config.attachments,
+                    provider.imagePrompts,
+                  )
                 : [],
             );
             if (config.outputSchema && config.resultUrl) {
@@ -304,7 +308,8 @@ export async function runHeadlessTurn(
               // inside the same turn and before the delivery check so that
               // check reads the final tree. bex-api fails the turn
               // STRUCTURED_OUTPUT_MISSING if it is still missing afterwards.
-              let final = (await readResultRecord(config.resultRecordPath)).final;
+              let final = (await readResultRecord(config.resultRecordPath))
+                .final;
               const reminded = config.outputRequired && !final;
               if (reminded) {
                 for (const chunk of mapper.flush()) writer.write(chunk);

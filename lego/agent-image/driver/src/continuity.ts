@@ -26,7 +26,10 @@
 import type { SessionProvider } from "./acp.js";
 
 export type ContinuityRung =
-  "session-load" | "transcript-reprime" | "task-redelivery" | "none";
+  | "session-load"
+  | "transcript-reprime"
+  | "task-redelivery"
+  | "none";
 
 export interface ContinuityResult {
   rung: ContinuityRung;

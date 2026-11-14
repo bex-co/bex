@@ -2,8 +2,8 @@
   "version": 1,
   "schema": {
     "source": "https://render.com/schema/render.yaml.json",
-    "retrievedAt": "2026-10-15",
-    "sha256": "8a3fb8da6b4f55fe686fbefa790e011d3dd7895f013f355953c572a21ab6494a"
+    "retrievedAt": "2026-11-13",
+    "sha256": "6c6721a602ef6d368d5c9384c473cefaae99980e43dd4b1adcf8a2f258fc54f4"
   },
   "fields": {
     "#/allOf/1/properties/previews": {
@@ -177,6 +177,72 @@
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
       "reason": "mapped through the reviewed, presence-aware Blueprint adapter"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/branch": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/buildCommand": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/buildFilter": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/dockerContext": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/dockerfilePath": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/image": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/registryCredential": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/repo": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/rootDir": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/allOf/1/then/properties/runtime": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "cronService's 'buildSource is linked' branch (Render, 2026-11-13): the pinned false-schema refuses this field beside buildSource, as Render does, because the build source provides it (w3/m367)"
+    },
+    "#/definitions/cronService/properties/buildSource": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintCronBuildSource",
+      "reason": "Render Build Sources feed cron jobs too (2026-11-13): the cron job runs the build source's image on its schedule (ADR097 § Blueprints, w3/m367)"
     },
     "#/definitions/database/properties/connectionPool": {
       "state": "translated",
@@ -1143,6 +1209,12 @@
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
       "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
+    },
+    "#/definitions/serverService/allOf/1/then/properties/rootDir": {
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: rootDir joined the fields Render refuses beside buildSource on 2026-11-13 (w3/m367)"
     },
     "#/definitions/serverService/properties/buildSource": {
       "state": "translated",

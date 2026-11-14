@@ -54,7 +54,7 @@ func TestRenderPostgresRecoveryAndCredentials(t *testing.T) {
 			return cl.Create(ctx, obj, opts...)
 		},
 	})
-	h, _ := serverWith(t, &core.Base{Client: cl, Namespace: "default"}, Deps{})
+	h, srv := serverWith(t, &core.Base{Client: cl, Namespace: "default"}, Deps{})
 	path := "/v1/postgres/" + db.Name
 	res := do(t, h, "GET", path+"/credentials", testToken, "")
 	if res.Code != 200 {
@@ -144,7 +144,7 @@ func TestRenderPostgresRecoveryAndCredentials(t *testing.T) {
 	}
 	// Recovery returns the same partial postgres detail as retrieve-postgres;
 	// only those existing, documented metadata omissions are allowed.
-	if errs := rendertest.Unallowed("retrieve-postgres", spec.validateStatus("recover-postgres", res.Code, res.Body.Bytes())); len(errs) > 0 {
+	if errs := rendertest.Unallowed("retrieve-postgres", spec.validateStatus("recover-postgres", res.Code, res.Body.Bytes()), unconfiguredSources(srv)...); len(errs) > 0 {
 		t.Fatal(errs)
 	}
 	var recovered struct {

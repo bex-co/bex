@@ -98,14 +98,15 @@ func TestTrustTierLimits(t *testing.T) {
 		}
 	}
 	t0 := tiers[0]
-	// T0 is charged at $10 and keeps working while that charge is unpaid, up
-	// to its $5 in-flight allowance (ADR091 D10.2a).
-	if t0.CapCeilingMicroUSD == nil || *t0.CapCeilingMicroUSD != USDToMicro(15) || t0.MaxConcurrentSessions != 2 {
-		t.Fatalf("T0 = %+v, want a $15 ceiling ($10 threshold + $5 allowance) and 2 sessions", t0)
+	// T0 is charged at $10 in the request that reaches it, and has no
+	// in-flight allowance: paying lifts the tier at once, and unpaid it stops
+	// at $10 (ADR091 D10.2a).
+	if t0.CapCeilingMicroUSD == nil || *t0.CapCeilingMicroUSD != USDToMicro(10) || t0.MaxConcurrentSessions != 2 {
+		t.Fatalf("T0 = %+v, want a $10 ceiling ($10 threshold, no allowance) and 2 sessions", t0)
 	}
 	pro := Default.AgentModelPlanSpendCapMicroUSD(store.PlanPro)
-	if got := t0.EffectiveCapMicroUSD(pro); got != USDToMicro(15) {
-		t.Fatalf("T0 Pro cap = %v, want $15", got)
+	if got := t0.EffectiveCapMicroUSD(pro); got != USDToMicro(10) {
+		t.Fatalf("T0 Pro cap = %v, want $10", got)
 	}
 	if got := tiers[1].EffectiveCapMicroUSD(pro); got != pro {
 		t.Fatalf("T1 Pro cap = %v, want the plan's %v", got, pro)

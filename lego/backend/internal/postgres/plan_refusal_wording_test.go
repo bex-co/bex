@@ -52,6 +52,23 @@ func TestPlanRefusalsNameThePlanAsTyped(t *testing.T) {
 			[]string{`plan "0.1c-256mb" has 0.1 CPU`, "remove read replicas before selecting this plan"}},
 		{"HA on create", CheckHighAvailabilityPlan("0.1c-256mb"),
 			[]string{`plan "0.1c-256mb" has 0.1 CPU`, "at least 1 CPU"}},
+		// w8/311: the paid-feature remedy fits what the request did.
+		{"pooling on a free create", CheckDatabaseAdmission(nil, appv1alpha1.DatabaseSpec{Plan: "free", Pooler: true}),
+			[]string{"connection pooling requires a paid Postgres plan; choose a paid plan (for example 0.1c-256mb) to enable connection pooling"}},
+		{"pooling turned on for a free database", CheckDatabaseAdmission(
+			&appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Plan: "free"}}, appv1alpha1.DatabaseSpec{Plan: "free", Pooler: true}),
+			[]string{"choose a paid plan (for example 0.1c-256mb) to enable connection pooling"}},
+		{"a pooled database moved to free", CheckDatabaseAdmission(
+			&appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Plan: "basic-256mb", Pooler: true}}, appv1alpha1.DatabaseSpec{Plan: "free", Pooler: true}),
+			[]string{"disable connection pooling before selecting the free plan"}},
+		{"autoscaling on a free create", CheckDatabaseAdmission(nil, appv1alpha1.DatabaseSpec{Plan: "free", DiskAutoscaling: true}),
+			[]string{"disk autoscaling requires a paid Postgres plan; choose a paid plan (for example 0.1c-256mb) to enable disk autoscaling"}},
+		{"autoscaling turned on for a free database", CheckDatabaseAdmission(
+			&appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Plan: "free"}}, appv1alpha1.DatabaseSpec{Plan: "free", DiskAutoscaling: true}),
+			[]string{"choose a paid plan (for example 0.1c-256mb) to enable disk autoscaling"}},
+		{"an autoscaling database moved to free", CheckDatabaseAdmission(
+			&appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Plan: "basic-256mb", DiskAutoscaling: true}}, appv1alpha1.DatabaseSpec{Plan: "free", DiskAutoscaling: true}),
+			[]string{"disable disk autoscaling before selecting the free plan"}},
 		{"HA enable on an existing database names its spec-based id", checkHighAvailabilityPatch(
 			&appv1alpha1.Database{Spec: appv1alpha1.DatabaseSpec{Plan: "basic-256mb"}}, nil, ptrBool(true)),
 			[]string{`plan "0.1c-256mb" has 0.1 CPU`}},

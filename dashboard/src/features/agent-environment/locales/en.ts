@@ -272,7 +272,7 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNextCharge": {
     message:
-      "Trust tier {tier}: your card is charged when agent model spend reaches {amount}.",
+      "Trust tier {tier}: billing credits pay agent model spend first; your card is charged when the spend they leave reaches {amount}.",
     description: "Trust tier with its mid-month charge point (ADR091 D10.1)",
   },
   "agentEnvironment.spendTierMonthEnd": {
@@ -281,7 +281,7 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.spendTierNew": {
     message:
-      "New workspaces are charged when agent model spend reaches {amount} and keep working while that charge settles; once it's paid, the limit rises to your plan's cap.",
+      "New workspaces are charged when agent model spend beyond any billing credits reaches {amount}: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",
     description:
       "Explains T0: charged at its threshold, working while the charge settles (ADR091 D10.2a)",
   },
@@ -378,11 +378,11 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   },
   "agentEnvironment.secrets.help": {
     message:
-      "Saving an existing name replaces its value. Sessions read the new value from their next turn.",
+      "Saving an existing name replaces its value. Sessions pick up changes from their next turn.",
     description: "Agent secrets card help line for admins",
   },
   "agentEnvironment.secrets.readOnly": {
-    message: "Only workspace admins can add or delete agent secrets.",
+    message: "Only workspace admins can add, change or delete agent secrets.",
     description: "Agent secrets card help line for non-admins",
   },
   "agentEnvironment.secrets.saved": {
@@ -430,6 +430,60 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.secrets.saveFailed": {
     message: "Couldn't save the change. Try again.",
     description: "Generic secret write failure",
+  },
+  "agentEnvironment.secrets.valueKeepPlaceholder": {
+    message: "Keep current value",
+    description:
+      "Agent secrets card: value placeholder when the name is an existing secret (empty keeps its value)",
+  },
+  "agentEnvironment.secrets.editLabel": {
+    message: "Edit {name}",
+    description:
+      "Accessible label of a secret's edit button (loads it into the form to rotate or rescope)",
+  },
+  "agentEnvironment.secrets.scopeLabel": {
+    message: "Scope",
+    description:
+      "Agent secrets card: accessible label of the scope picker (ADR098 D9)",
+  },
+  "agentEnvironment.secrets.scopeWorkspace": {
+    message: "All sessions",
+    description:
+      "Scope picker option: every session in the workspace receives the secret",
+  },
+  "agentEnvironment.secrets.scopeRepo": {
+    message: "One repository",
+    description:
+      "Scope picker option: sessions on one repository receive the secret",
+  },
+  "agentEnvironment.secrets.scopeExplicit": {
+    message: "Only when selected",
+    description:
+      "Scope picker option: only sessions that pick the secret receive it",
+  },
+  "agentEnvironment.secrets.scopeBadgeRepo": {
+    message: "Repository: {repo}",
+    description:
+      "Secret row badge: repo scope, naming the repository (owner/name)",
+  },
+  "agentEnvironment.secrets.repoLabel": {
+    message: "Repository",
+    description:
+      "Agent secrets card: accessible label of the repo scope's repository field",
+  },
+  "agentEnvironment.secrets.repoPlaceholder": {
+    message: "owner/name",
+    description: "Agent secrets card: repository field placeholder",
+  },
+  "agentEnvironment.secrets.repoEmpty": {
+    message: "No connected repository matches.",
+    description:
+      "Agent secrets card: repository picker with no matching connected repository",
+  },
+  "agentEnvironment.secrets.repoInvalid": {
+    message: "Enter the repository as owner/name.",
+    description:
+      "Repo scope validation error (also AGENT_SECRET_SCOPE_INVALID)",
   },
   "agentEnvironment.skills.title": {
     message: "Agent skills",
@@ -690,6 +744,42 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
   "agentEnvironment.skills.saveFailed": {
     message: "Couldn't save the change. Try again.",
     description: "Generic skill write failure",
+  },
+  "agentEnvironment.agentsTitle": {
+    message: "Available agents",
+    description: "Settings \u2192 Agents: availability section heading",
+  },
+  "agentEnvironment.agentsDescription": {
+    message:
+      "Choose which agents members can start sessions with. Running sessions keep running when you turn an agent off.",
+    description: "Settings \u2192 Agents: availability section description",
+  },
+  "agentEnvironment.agentsDataUseNote": {
+    message: "Its model provider may train on what its sessions send.",
+    description:
+      "Settings \u2192 Agents: note under an agent whose provider trains on session data (Muse Code)",
+  },
+  "agentEnvironment.agentsDataUseTitle": {
+    message: "Turn on {agent}?",
+    description:
+      "Confirm title before turning on an agent whose provider trains on session data",
+  },
+  "agentEnvironment.agentsDataUseBody.muse": {
+    message:
+      "This agent runs on Meta's contributor tier. Meta may use the prompts, code, files and context its sessions send, and the responses they get back, to train its models. Turning it on records that you, as an admin, acknowledge this for the workspace.",
+    description: "Confirm body: Muse Code's data-use acknowledgement (ADR108)",
+  },
+  "agentEnvironment.agentsDataUseConfirm": {
+    message: "Acknowledge and turn on",
+    description: "Confirm button: acknowledge data use and enable the agent",
+  },
+  "agentEnvironment.agentsSaved": {
+    message: "Available agents updated",
+    description: "Toast after an availability change",
+  },
+  "agentEnvironment.agentsSaveFailed": {
+    message: "Couldn't update the available agents. Try again.",
+    description: "Error after a failed availability change",
   },
 };
 

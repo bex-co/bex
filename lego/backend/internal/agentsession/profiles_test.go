@@ -170,3 +170,58 @@ func TestClaudeRuntimeEnvPreservesNativeTranscriptBeforeExit(t *testing.T) {
 		t.Fatal("Claude must flush native session state before returning the result the driver terminates on")
 	}
 }
+
+// The muse profile (ADR108) is the release contract its decisions rest on:
+// a pinned native binary for both image architectures, the contributor model,
+// platform-only, and Muse's own sandbox off under bex's.
+func TestMuseProfileContract(t *testing.T) {
+	profile, ok := LookupAgentProfile("muse")
+	if !ok {
+		t.Fatal("muse profile missing from manifest")
+	}
+	if profile.Executable != "/usr/local/bin/muse-code-acp" || profile.NPMPackage != "@bex-co/muse-code-acp@0.11.0" {
+		t.Fatalf("muse adapter = %q from %q", profile.Executable, profile.NPMPackage)
+	}
+	native := profile.NativeBinary
+	if native == nil || native.Path != "/opt/muse/muse" || profile.Env["MUSE_CODE_EXECUTABLE"] != native.Path {
+		t.Fatalf("muse native binary = %+v, env = %v", native, profile.Env)
+	}
+	for _, arch := range []string{"amd64", "arm64"} {
+		artifact, ok := native.Artifacts[arch]
+		if !ok || !strings.Contains(artifact.URL, "version="+native.Version) {
+			t.Fatalf("muse %s artifact = %+v, version %q", arch, artifact, native.Version)
+		}
+	}
+	if profile.Model != "muse-spark-1.3-contributor" || !profile.PlatformOnly {
+		t.Fatalf("muse model = %q, platformOnly = %v", profile.Model, profile.PlatformOnly)
+	}
+	if profile.SessionConfig["sandbox"] != "disabled" || profile.Env["MUSE_CODE_ACP_ALLOW_YOLO"] != "1" {
+		t.Fatalf("muse sandbox config = %v, env = %v", profile.SessionConfig, profile.Env)
+	}
+	endpoint, err := RegisteredModelEndpoint("tea-a", "muse", "", false)
+	if err != nil || endpoint != "https://"+MetaModelHost+"/v1" {
+		t.Fatalf("muse endpoint = %q, %v", endpoint, err)
+	}
+	// Until a bex-owned route serves it, no workspace can run it.
+	if ProfileServed("tea-a", "muse") {
+		t.Fatal("muse served without a route")
+	}
+	if !ProfileServed("tea-a", "codex") || ProfileServed("tea-a", "unknown") {
+		t.Fatal("ProfileServed must pass a BYO-capable profile and refuse an unknown one")
+	}
+	// A copy handed out cannot change the release contract.
+	native.Artifacts["amd64"] = NativeArtifact{}
+	profile.SessionConfig["sandbox"] = "enabled"
+	again, _ := LookupAgentProfile("muse")
+	if again.NativeBinary.Artifacts["amd64"].SHA256 == "" || again.SessionConfig["sandbox"] != "disabled" {
+		t.Fatal("lookup leaked a mutable view of the muse profile")
+	}
+}
+
+func TestResolveAuthSchemeMetaIsBearer(t *testing.T) {
+	for _, credential := range []string{"meta-key", "sk-ant-oat01-looks-like-anthropic"} {
+		if got := ResolveAuthScheme(MetaModelHost, credential); got != AuthSchemeBearer {
+			t.Fatalf("ResolveAuthScheme(meta, %q) = %q, want bearer", credential, got)
+		}
+	}
+}

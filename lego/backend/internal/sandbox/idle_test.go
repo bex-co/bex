@@ -144,6 +144,9 @@ func (f *fakeOpenSandbox) lifecycleCalls() []string {
 func (f *fakeOpenSandbox) view(id string, b *fakeBox) osSandbox {
 	created := b.created
 	out := osSandbox{ID: id, Metadata: b.metadata, Created: &created}
+	// The real server answers each sandbox's image, as created (w3/m367's
+	// image_in_use check reads it from the list).
+	out.Image.URI = b.image
 	out.Status.State = b.state
 	return out
 }

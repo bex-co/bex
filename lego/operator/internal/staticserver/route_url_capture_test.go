@@ -43,7 +43,7 @@ func TestRouteCaptureRedirectURLComponents(t *testing.T) {
 					h, _ := newTestHandler(t, Site{Routes: []appv1alpha1.StaticRoute{{Type: "redirect", Source: "/jump/*", Destination: destination}}}, map[string]Object{
 						key("docs/" + tc.decoded): {Body: []byte("intended file")},
 					})
-					response := do(h, method, "/jump/"+tc.encoded+"?visitor=ignored")
+					response := do(h, method, "/jump/"+tc.encoded+"?visitor=kept")
 					if response.Code != http.StatusMovedPermanently {
 						t.Fatalf("status=%d body=%q", response.Code, response.Body.String())
 					}
@@ -51,7 +51,7 @@ func TestRouteCaptureRedirectURLComponents(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if location.Path != "/docs/"+tc.decoded || location.RawQuery != "download=1" || location.Fragment != "section" || location.Host != "" {
+					if location.Path != "/docs/"+tc.decoded || location.RawQuery != "download=1&visitor=kept" || location.Fragment != "section" || location.Host != "" {
 						t.Fatalf("Location components=%+v", location)
 					}
 					followed := do(h, method, location.RequestURI())
@@ -127,12 +127,12 @@ func TestRouteCaptureRedirectRetainsLocalTargetGuard(t *testing.T) {
 
 func TestRouteCaptureDoesNotExpandQueryOrFragmentTokens(t *testing.T) {
 	h, _ := newTestHandler(t, Site{Routes: []appv1alpha1.StaticRoute{{Type: "redirect", Source: "/jump/*", Destination: "/docs/:splat?q=:splat/*#:splat/*"}}}, nil)
-	response := do(h, http.MethodGet, "/jump/a%3Fb.yaml?incoming=discarded")
+	response := do(h, http.MethodGet, "/jump/a%3Fb.yaml?incoming=appended")
 	location, err := url.Parse(response.Header().Get("Location"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if response.Code != http.StatusMovedPermanently || location.Path != "/docs/a?b.yaml" || location.RawQuery != "q=:splat/*" || location.Fragment != ":splat/*" {
+	if response.Code != http.StatusMovedPermanently || location.Path != "/docs/a?b.yaml" || location.RawQuery != "q=:splat/*&incoming=appended" || location.Fragment != ":splat/*" {
 		t.Fatalf("destination components expanded outside path: %d %+v", response.Code, location)
 	}
 }

@@ -299,7 +299,7 @@ func TestRenderConformance(t *testing.T) {
 	}}
 	eventID := ids.Derive(ids.Event, eventStore.rows[0].Key)
 
-	h, _ := serverWith(t,
+	h, srv := serverWith(t,
 		&core.Base{
 			Client: fakeClient(append([]client.Object{
 				conformApp(appName, appID),
@@ -323,6 +323,10 @@ func TestRenderConformance(t *testing.T) {
 			DeployStore:     deployStore,
 			EventStore:      eventStore,
 			APIKeys:         newFakeKeyStore(),
+			// Configured as production is, so region and dashboardUrl are
+			// held to Render's schema on every read below (w10/m373).
+			Region:       "fsn1",
+			DashboardURL: "https://dashboard.bex.co",
 		},
 	)
 
@@ -334,7 +338,7 @@ func TestRenderConformance(t *testing.T) {
 		if w.Code != 200 {
 			t.Fatalf("GET %s => %d (want 200): %s", path, w.Code, w.Body.String())
 		}
-		errs := rendertest.Unallowed(operationID, spec.validate(operationID, w.Body.Bytes()))
+		errs := rendertest.Unallowed(operationID, spec.validate(operationID, w.Body.Bytes()), unconfiguredSources(srv)...)
 		if len(errs) > 0 {
 			t.Errorf(
 				"Render schema violation(s) for %s (operationId=%s).\n"+
@@ -432,7 +436,7 @@ func TestRenderConformance(t *testing.T) {
 	t.Run("redis/writes", func(t *testing.T) {
 		validate := func(operationID string, status int, body []byte) {
 			t.Helper()
-			if errs := rendertest.Unallowed(operationID, spec.validateStatus(operationID, status, body)); len(errs) > 0 {
+			if errs := rendertest.Unallowed(operationID, spec.validateStatus(operationID, status, body), unconfiguredSources(srv)...); len(errs) > 0 {
 				t.Errorf("%s diverges from Render's schema:\n  %s", operationID, strings.Join(errs, "\n  "))
 			}
 		}
@@ -507,7 +511,7 @@ func TestRenderConformance(t *testing.T) {
 		if w.Code != http.StatusOK {
 			t.Fatalf("PUT secret-files = %d: %s", w.Code, w.Body.String())
 		}
-		if errs := rendertest.Unallowed("update-secret-files-for-service", spec.validate("update-secret-files-for-service", w.Body.Bytes())); len(errs) > 0 {
+		if errs := rendertest.Unallowed("update-secret-files-for-service", spec.validate("update-secret-files-for-service", w.Body.Bytes()), unconfiguredSources(srv)...); len(errs) > 0 {
 			t.Errorf("update-secret-files-for-service diverges: %v", errs)
 		}
 		w = do(t, h, "GET", "/v1/services/"+appName+"/secret-files", testToken, "")

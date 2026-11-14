@@ -159,7 +159,7 @@ func TestAgentSessionModelUsageGroupsByTurn(t *testing.T) {
 	}
 	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenant.ID) })
 	session, err := st.CreateAgentSession(ctx, AgentSession{
-		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
+		WorkspaceID: tenant.ID, Repo: "bex-co/example",
 		AgentConfig: []byte(`{"agent":"claude","task":"t"}`), InitialPrompt: "first",
 	})
 	if err != nil {
@@ -251,7 +251,7 @@ func TestAgentSessionModelUsageGroupsByTurn(t *testing.T) {
 	}
 	// A session with no requests reads no turns; an unknown one is not found.
 	idle, err := st.CreateAgentSession(ctx, AgentSession{
-		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
+		WorkspaceID: tenant.ID, Repo: "bex-co/example",
 		AgentConfig: []byte(`{"agent":"claude","task":"t"}`), InitialPrompt: "idle",
 	})
 	if err != nil {

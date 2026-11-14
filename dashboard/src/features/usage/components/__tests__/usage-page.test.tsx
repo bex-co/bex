@@ -208,6 +208,7 @@ describe("UsagePage", () => {
           invoices: [
             {
               id: "inv_1",
+              kind: "cycle",
               status: "paid",
               amountUsd: "75.48",
               creditsAppliedUsd: "0.00",

@@ -16,7 +16,11 @@ limitations under the License.
 
 package core
 
-import "strings"
+import (
+	"strings"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+)
 
 // CanonicalRepo normalizes a git URL to a comparable key "host/owner/repo":
 // lowercased, scheme (https/http/ssh/git) and any "user@" stripped, scp-style
@@ -77,4 +81,13 @@ func ValidCommitSHA(sha string) bool {
 		return false
 	}
 	return true
+}
+
+// GitBacked reports whether a deploy with commit was built from source: it
+// carries a commit, or its service a builds from a repo (a commit-less row of
+// a repo-backed service is still not an image deploy). Render's deploy has no
+// image for one ("Not present for Git-backed deploys"), so deploy views and
+// deploy events both omit it (w4/621). a may be nil when the service is gone.
+func GitBacked(a *appv1alpha1.App, commit string) bool {
+	return commit != "" || (a != nil && a.Spec.Repo != "")
 }

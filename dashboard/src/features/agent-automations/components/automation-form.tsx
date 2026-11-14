@@ -31,7 +31,8 @@ import {
   ComposerSkillChips,
   ComposerSkills,
 } from "@/features/agent-sessions/components/composer-skills";
-import { AGENT_OPTIONS } from "@/features/agent-sessions/lib/composer";
+import { selectableAgents } from "@/features/agent-sessions/lib/composer";
+import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import {
   FormField,
   FormSection,
@@ -66,7 +67,8 @@ interface AutomationFormProps {
   /** Saves; rejects with the mutation's error, which the form places. */
   onSave: (input: AgentAutomationInput) => Promise<void>;
   cancelTo:
-    { to: "/automations" } | { to: "/automations/$automationId"; id: string };
+    | { to: "/automations" }
+    | { to: "/automations/$automationId"; id: string };
 }
 
 /**
@@ -92,6 +94,7 @@ export function AutomationForm({
   const id = (name: string) => `${base}-${name}`;
   const formRef = useRef<HTMLFormElement>(null);
   const { currentWorkspaceId } = useWorkspace();
+  const { capabilities } = useAgentSessionCapabilities();
   const { repos } = useRepos();
   const [chosen, setValues] = useState<AutomationFormValues>(initial);
   // A create form leaves the zone "" until the person picks one; until then it
@@ -296,11 +299,13 @@ export function AutomationForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {AGENT_OPTIONS.map((agent) => (
-                  <SelectItem key={agent} value={agent}>
-                    {t(`agentSessions.agent.${agent}`)}
-                  </SelectItem>
-                ))}
+                {selectableAgents(capabilities?.agents, values.agent).map(
+                  (agent) => (
+                    <SelectItem key={agent} value={agent}>
+                      {t(`agentSessions.agent.${agent}`)}
+                    </SelectItem>
+                  ),
+                )}
               </SelectContent>
             </Select>
           </FormField>
@@ -379,6 +384,7 @@ export function AutomationForm({
               ownerId={currentWorkspaceId ?? null}
               value={{ secretNames: values.secretNames, secrets: [] }}
               onChange={(next) => change({ secretNames: next.secretNames })}
+              repo={values.repo || null}
               disabled={saving}
               workspaceOnly
             />

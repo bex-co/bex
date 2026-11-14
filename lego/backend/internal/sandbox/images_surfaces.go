@@ -31,7 +31,7 @@ import (
 // The REST, GraphQL and MCP surfaces of imported sandbox images (w2/m358).
 // All three call the same Service verbs, so a refusal carries one code.
 
-// registerImageREST mounts Render's three sandbox-build routes.
+// registerImageREST mounts Render's four sandbox-build routes.
 func (s *Service) registerImageREST(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/sandbox-groups/{sandboxGroupId}/builds", func(w http.ResponseWriter, r *http.Request) {
 		var req ImportImageRequest
@@ -61,6 +61,9 @@ func (s *Service) registerImageREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, envelopes)
 	})
+	mux.HandleFunc("DELETE /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteImage(r.Context(), r.PathValue("sandboxGroupId"), r.PathValue("buildId"))
+	}))
 	mux.HandleFunc("GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}", func(w http.ResponseWriter, r *http.Request) {
 		b, err := s.GetImage(r.Context(), r.PathValue("sandboxGroupId"), r.PathValue("buildId"))
 		if err != nil {
@@ -91,6 +94,7 @@ var sandboxImageGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"sourceDigest":   gqlutil.ReqStrField(func(b Build) any { return b.SourceDigest }),
 		"status":         gqlutil.ReqStrField(func(b Build) any { return b.Status }),
 		"failureReason":  gqlutil.StrField(func(b Build) any { return b.FailureReason }),
+		"failureCode":    gqlutil.StrField(func(b Build) any { return b.FailureCode }),
 		"createdAt":      gqlutil.TimeField(func(b Build) any { return b.CreatedAt }),
 		"finishedAt":     gqlutil.TimeField(func(b Build) any { return b.FinishedAt }),
 	},
@@ -129,6 +133,20 @@ func (s *Service) imageQueryFields() graphql.Fields {
 
 func (s *Service) imageMutationFields() graphql.Fields {
 	return graphql.Fields{
+		"deleteSandboxImage": &graphql.Field{
+			Type: graphql.NewNonNull(graphql.Boolean),
+			Args: graphql.FieldConfigArgument{
+				"sandboxGroupId": gqlutil.ReqArg(graphql.String),
+				"id":             gqlutil.ReqArg(graphql.String),
+				"ownerId":        gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.DeleteImage(ownerScoped(p), p.Args["sandboxGroupId"].(string), p.Args["id"].(string)); err != nil {
+					return nil, err
+				}
+				return true, nil
+			},
+		},
 		"importSandboxImage": &graphql.Field{
 			Type: sandboxImageGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -183,6 +201,13 @@ func (s *Service) registerImageMCP(server *mcp.Server) {
 		func(ctx context.Context, _ *mcp.CallToolRequest, in getImageArgs) (*mcp.CallToolResult, Build, error) {
 			b, err := s.GetImage(ctx, in.SandboxGroupID, in.ID)
 			return nil, b, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "delete_sandbox_image", Description: "Delete an image imported into a sandbox group, as Render's delete-sandbox-build. It no longer lists, reads or starts sandboxes, by id or by name; deleting it again succeeds. Refused with image_in_use while sandboxes that have not terminated were started from it: terminate them first."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in getImageArgs) (*mcp.CallToolResult, deleteResult, error) {
+			if err := s.DeleteImage(ctx, in.SandboxGroupID, in.ID); err != nil {
+				return nil, deleteResult{}, err
+			}
+			return nil, deleteResult{ID: in.ID, Deleted: true}, nil
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandbox_images", Description: "List the images imported into a sandbox group, newest first. Optional name keeps one image's versions; optional status keeps pending, running, succeeded or failed ones."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listImagesArgs) (*mcp.CallToolResult, listImagesResult, error) {

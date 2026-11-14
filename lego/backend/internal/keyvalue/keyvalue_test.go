@@ -793,6 +793,16 @@ func TestConnectionInfoGatesImmutableCredentialRevision(t *testing.T) {
 		t.Fatalf("a private store got an external endpoint: external %v, cli via SNI %v",
 			info.ExternalConnectionString != "", strings.Contains(info.CLICommand, "--sni"))
 	}
+	// w8/305: a restart (persistence change, resume) moves the phase off Ready
+	// but keeps the recorded revision, so the unchanged credentials stay
+	// readable.
+	kv.Status.Phase = appv1alpha1.KVPhaseProvisioning
+	if err := cl.Update(context.Background(), kv); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := svc.KeyValueConnectionInfo(context.Background(), kv.Name); err != nil || !strings.Contains(info.InternalConnectionString, "controller-owned-secret") {
+		t.Fatalf("restarting store's connection info = %+v, %v; want it served", info, err)
+	}
 	kv.Status.CredentialRevision = appv1alpha1.KeyValueCredentialRevision([]byte("different"))
 	if err := cl.Update(context.Background(), kv); err != nil {
 		t.Fatal(err)

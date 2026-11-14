@@ -6,8 +6,10 @@ import { LogFilterBar } from "../log-filter-bar";
 import { serverRendered } from "@/test/hydration";
 import {
   EMPTY_LOG_FILTERS,
+  LOG_TYPE_APP,
   LOG_TYPE_REQUEST,
   type LogFilters,
+  withoutRequestFilters,
 } from "../../types";
 
 // Radix Select uses the Pointer Capture API jsdom doesn't implement — same
@@ -36,7 +38,11 @@ vi.mock("../../hooks/use-log-label-values", () => ({
 }));
 
 function renderBar(
-  over: { filters?: Partial<LogFilters>; liveSupported?: boolean } = {},
+  over: {
+    filters?: Partial<LogFilters>;
+    liveSupported?: boolean;
+    servesRequests?: boolean;
+  } = {},
 ) {
   const onChange = vi.fn();
   const onLiveChange = vi.fn();
@@ -49,6 +55,7 @@ function renderBar(
       live={true}
       onLiveChange={onLiveChange}
       liveSupported={over.liveSupported ?? true}
+      servesRequests={over.servesRequests}
     />,
   );
   return { onChange, onLiveChange };
@@ -264,4 +271,40 @@ it("keeps the log search uneditable until hydration (w4/m219)", async () => {
   expect(search().disabled).toBe(false);
   await userEvent.type(search(), "timeout");
   expect(search().value).toBe("timeout");
+});
+
+// w4/613: a worker, cron job or private service gets no public requests, so
+// it is offered no request log type and no request-line filters.
+describe("LogFilterBar without request logs", () => {
+  it("offers no Request logs type and no method, status, path or host filter", async () => {
+    renderBar({ servesRequests: false });
+    await userEvent.click(screen.getByRole("combobox", { name: "Log type" }));
+    expect(screen.queryByRole("option", { name: /request/i })).toBeNull();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(screen.getByRole("button", { name: /filters/i }));
+    expect(screen.getByText("Level")).toBeInTheDocument();
+    expect(screen.getByText("Instance")).toBeInTheDocument();
+    for (const label of [
+      "Method",
+      "Status code",
+      "Request path",
+      "Request host",
+    ]) {
+      expect(screen.queryByText(label)).toBeNull();
+    }
+  });
+
+  it("reads a stale request-type link as application logs, without request filters", () => {
+    expect(
+      withoutRequestFilters({
+        ...EMPTY_LOG_FILTERS,
+        type: LOG_TYPE_REQUEST,
+        level: "error",
+        method: "GET",
+        statusCode: "500",
+        path: "/api",
+        host: "web.onbex.co",
+      }),
+    ).toEqual({ ...EMPTY_LOG_FILTERS, type: LOG_TYPE_APP, level: "error" });
+  });
 });

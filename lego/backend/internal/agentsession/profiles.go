@@ -54,6 +54,35 @@ type AgentProfile struct {
 	// resume rung inside one sandbox (w5/m84). A fresh sandbox has none, so a
 	// follow-up there primes from the durable transcript instead.
 	SessionState []string `json:"sessionState"`
+	// NativeBinary is a provider CLI shipped as a native binary rather than an
+	// npm package (ADR108 D2); the image build verifies and installs it.
+	NativeBinary *NativeBinary `json:"nativeBinary,omitempty"`
+	// Model is the only model the profile runs (ADR108 D4).
+	Model string `json:"model,omitempty"`
+	// PlatformOnly profiles run only on a bex-owned model route, never on a
+	// workspace's own key (ADR108 D5).
+	PlatformOnly bool `json:"platformOnly,omitempty"`
+	// RequiresDataUseAcknowledgement marks a profile whose model provider may
+	// train on what its sessions send: it stays off in a workspace until an
+	// admin acknowledges that (w7/m392; ADR108, Meta's contributor tier).
+	RequiresDataUseAcknowledgement bool `json:"requiresDataUseAcknowledgement,omitempty"`
+	// SessionConfig is the ACP session config the driver sets after
+	// session/new and session/load (ADR108 D3).
+	SessionConfig map[string]string `json:"sessionConfig,omitempty"`
+}
+
+// NativeBinary pins a downloaded executable: its version, install path and,
+// per image architecture (amd64, arm64), the URL and SHA-256 of the artifact.
+type NativeBinary struct {
+	Version   string                    `json:"version"`
+	Path      string                    `json:"path"`
+	Artifacts map[string]NativeArtifact `json:"artifacts"`
+}
+
+// NativeArtifact is one architecture's download.
+type NativeArtifact struct {
+	URL    string `json:"url"`
+	SHA256 string `json:"sha256"`
 }
 
 // ModelProxyRoute describes how the driver points a provider SDK at the gateway
@@ -74,6 +103,11 @@ var (
 	profileEndpointPattern   = regexp.MustCompile(`^https://[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+(?:/[a-zA-Z0-9_-]+)*$`)
 	profileSuffixPattern     = regexp.MustCompile(`^(?:/[a-zA-Z0-9_-]+)*$`)
 	envNamePattern           = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*$`)
+	configTokenPattern       = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9_-]*$`)
+	profileModelPattern      = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]*$`)
+	nativeURLPattern         = regexp.MustCompile(`^https://[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+/[!#-~]*$`)
+	nativeVersionPattern     = regexp.MustCompile(`^[0-9A-Za-z][0-9A-Za-z.+-]*$`)
+	nativePathPattern        = regexp.MustCompile(`^/opt/[a-z0-9-]+/[a-z0-9-]+$`)
 )
 
 func init() {
@@ -153,6 +187,32 @@ func validateAgentProfilesManifest(m AgentProfileManifest) error {
 				return fmt.Errorf("profile %q: model proxy env %q is invalid", id, name)
 			}
 		}
+		if err := validateOptionalProfileFields(profile); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateOptionalProfileFields(profile AgentProfile) error {
+	id := profile.ID
+	if native := profile.NativeBinary; native != nil {
+		if !nativeVersionPattern.MatchString(native.Version) || !nativePathPattern.MatchString(native.Path) || len(native.Artifacts) == 0 {
+			return fmt.Errorf("profile %q: invalid native binary", id)
+		}
+		for arch, artifact := range native.Artifacts {
+			if (arch != "amd64" && arch != "arm64") || !nativeURLPattern.MatchString(artifact.URL) || !sha256Hex.MatchString(artifact.SHA256) {
+				return fmt.Errorf("profile %q: invalid native binary artifact", id)
+			}
+		}
+	}
+	if profile.Model != "" && !profileModelPattern.MatchString(profile.Model) {
+		return fmt.Errorf("profile %q: invalid model", id)
+	}
+	for key, value := range profile.SessionConfig {
+		if !configTokenPattern.MatchString(key) || !configTokenPattern.MatchString(value) {
+			return fmt.Errorf("profile %q: invalid sessionConfig entry", id)
+		}
 	}
 	return nil
 }
@@ -173,6 +233,12 @@ func LookupAgentProfile(agent string) (AgentProfile, bool) {
 	profile.Args = slices.Clone(profile.Args)
 	profile.Env = maps.Clone(profile.Env)
 	profile.SessionState = slices.Clone(profile.SessionState)
+	profile.SessionConfig = maps.Clone(profile.SessionConfig)
+	if profile.NativeBinary != nil {
+		native := *profile.NativeBinary
+		native.Artifacts = maps.Clone(native.Artifacts)
+		profile.NativeBinary = &native
+	}
 	if profile.ModelProxy.BaseURLSuffix != nil {
 		value := *profile.ModelProxy.BaseURLSuffix
 		profile.ModelProxy.BaseURLSuffix = &value

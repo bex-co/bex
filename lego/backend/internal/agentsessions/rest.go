@@ -315,7 +315,7 @@ func (s *Service) registerSkillREST(mux *http.ServeMux) {
 }
 
 // registerSecretREST mounts the ADR098 D4 workspace agent secrets: reads
-// return names only.
+// return names and scopes (D9), never values.
 func (s *Service) registerSecretREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/agent-secrets", func(w http.ResponseWriter, r *http.Request) {
 		out, err := s.AgentSecrets(r.Context(), r.URL.Query().Get("ownerId"))
@@ -327,14 +327,16 @@ func (s *Service) registerSecretREST(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("PUT /v1/agent-secrets/{name}", func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
-			Value string `json:"value"`
+			Value string  `json:"value"`
+			Scope *string `json:"scope"`
+			Repo  string  `json:"repo"`
 		}
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
 		if err := core.DecodeJSON(r, &body); err != nil {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		out, err := s.SetAgentSecret(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("name"), body.Value)
+		out, err := s.SetAgentSecret(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("name"), AgentSecretInput{Value: body.Value, Scope: body.Scope, Repo: body.Repo})
 		if err != nil {
 			core.WriteErr(w, err)
 			return

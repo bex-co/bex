@@ -451,12 +451,22 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 	}
 }
 
+// renderDefaultBuildPlan is Render's default build plan (its buildPlan enum:
+// starter, performance), the only one bex offers. Every member of Render's
+// serviceDetails union requires the field (w4/626).
+const renderDefaultBuildPlan = "starter"
+
 // renderServiceDetails builds Render's serviceDetails map. Most keys are plain
 // omit-when-empty strings and travel through the table; the rest carry a
 // type-specific condition or a nested shape Render specifies exactly.
 func renderServiceDetails(a AppView, svcType, region string) map[string]any {
-	details := map[string]any{
-		"numInstances": int(a.Replicas),
+	details := map[string]any{"buildPlan": renderDefaultBuildPlan}
+	// numInstances is required on Render's web, private and worker members,
+	// the instance-bearing types autoscaling applies to, and absent from the
+	// cron and static ones: a cron job runs nothing between runs and a static
+	// site has no instances (w4/606).
+	if autoscalingEligible(svcType) {
+		details["numInstances"] = int(a.Replicas)
 	}
 	// The port is published for the types that have one, beside the
 	// internalAddress whose `<slug>:<port>` suffix used to be the only place a
@@ -489,11 +499,16 @@ func renderServiceDetails(a AppView, svcType, region string) map[string]any {
 		{"publishPath", a.PublishPath},                 // staticSiteDetails.publishPath (render-public-api-1.json)
 		{"preDeployCommand", a.PreDeployCommand},       // webServiceDetails.preDeployCommand (w1/m33)
 		{"initialDeployHook", a.InitialDeployHook},     // w2/m45: blueprint-only one-time first-deploy command
-		{"healthCheckPath", a.HealthCheckPath},
 	} {
 		if field.value != "" {
 			details[field.key] = field.value
 		}
+	}
+	// healthCheckPath is required on Render's webServiceDetails, so a web
+	// service states an unset path as "" (w4/626); the other types that accept
+	// a path (private service, static site) report it when set.
+	if svcType == renderWebService || a.HealthCheckPath != "" {
+		details["healthCheckPath"] = a.HealthCheckPath
 	}
 	// Render's serviceDetails carries url for web_service/static_site but
 	// OMITS it for private_service (captured 2026-07-26,

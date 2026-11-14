@@ -345,8 +345,9 @@ func (s *PGStore) FailAccountDeletion(ctx context.Context, subject, message stri
 }
 
 // RemoveAccountMember rechecks that another admin exists and removes the
-// deleting subject atomically. It is intentionally narrower than general
-// member removal and clears only the onboarding owner binding.
+// deleting subject atomically, ending their onboarding owner binding as
+// RemoveMember does (detachOwnerTx). Unlike RemoveMember it refuses unless
+// another human admin remains, whatever the departing member's role.
 func (s *PGStore) RemoveAccountMember(ctx context.Context, tenantID, subject string) error {
 	return pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, tenantID); err != nil {
@@ -366,8 +367,7 @@ func (s *PGStore) RemoveAccountMember(ctx context.Context, tenantID, subject str
 		if _, err := tx.Exec(ctx, `DELETE FROM tenant_members WHERE tenant_id = $1 AND subject = $2`, tenantID, subject); err != nil {
 			return err
 		}
-		_, err := tx.Exec(ctx, `UPDATE tenants SET owner_identity_id = NULL, updated_at = now() WHERE id = $1 AND owner_identity_id = $2`, tenantID, subject)
-		return err
+		return detachOwnerTx(ctx, tx, tenantID, subject)
 	})
 }
 

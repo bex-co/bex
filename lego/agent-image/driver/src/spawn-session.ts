@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 
-
 // spawn_session and get_child_session (ADR102 D9): a running agent starts a
 // child session and reads its own descendants. wait_child_sessions,
 // message_child_session and cancel_child_session (w9/m346) let it coordinate
@@ -71,7 +70,8 @@ export const spawnSessionToolDefinition = {
       task: {
         type: "string",
         minLength: 1,
-        description: "The child's complete task, written so it needs no other context.",
+        description:
+          "The child's complete task, written so it needs no other context.",
       },
       repo: {
         type: "string",
@@ -138,7 +138,11 @@ export const getChildSessionToolDefinition = {
     required: ["sessionId"],
     additionalProperties: false,
   },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+  annotations: {
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
 };
 
 const childIdProperty = {
@@ -177,7 +181,11 @@ export const waitChildSessionsToolDefinition = {
     required: ["childIds"],
     additionalProperties: false,
   },
-  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: true },
+  annotations: {
+    readOnlyHint: true,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
 };
 
 export const messageChildSessionToolDefinition = {
@@ -218,7 +226,11 @@ export const cancelChildSessionToolDefinition = {
     required: ["childId"],
     additionalProperties: false,
   },
-  annotations: { destructiveHint: true, idempotentHint: true, openWorldHint: true },
+  annotations: {
+    destructiveHint: true,
+    idempotentHint: true,
+    openWorldHint: true,
+  },
 };
 
 type Refusal = { ok: false; error: ToolError };
@@ -253,7 +265,9 @@ function toolArgs(
 const isSessionId = (value: unknown): value is string =>
   typeof value === "string" && sessionIdPattern.test(value);
 
-const spawnFields = Object.keys(spawnSessionToolDefinition.inputSchema.properties);
+const spawnFields = Object.keys(
+  spawnSessionToolDefinition.inputSchema.properties,
+);
 
 // validateSpawnInput mirrors the gateway's SpawnContent.Validate and its
 // strict body decoding before any network call. It returns the body to send.
@@ -279,7 +293,10 @@ export function validateSpawnInput(
   }
   const stringList = (value: unknown) =>
     Array.isArray(value) && value.every((item) => typeof item === "string");
-  if (tags !== undefined && (!stringList(tags) || (tags as string[]).length > maxTags)) {
+  if (
+    tags !== undefined &&
+    (!stringList(tags) || (tags as string[]).length > maxTags)
+  ) {
     return bad(`tags must be a list of at most ${maxTags} strings`);
   }
   if (secretNames !== undefined && !stringList(secretNames)) {
@@ -287,7 +304,9 @@ export function validateSpawnInput(
   }
   if (
     maxSpendUSD !== undefined &&
-    (typeof maxSpendUSD !== "number" || !Number.isFinite(maxSpendUSD) || maxSpendUSD <= 0)
+    (typeof maxSpendUSD !== "number" ||
+      !Number.isFinite(maxSpendUSD) ||
+      maxSpendUSD <= 0)
   ) {
     return bad("maxSpendUSD must be a number greater than 0");
   }
@@ -297,7 +316,9 @@ export function validateSpawnInput(
       Buffer.byteLength(idempotencyKey, "utf8") > maxIdempotencyKeyBytes ||
       !/^[\x20-\x7e]*$/.test(idempotencyKey)
     ) {
-      return bad(`idempotencyKey must be at most ${maxIdempotencyKeyBytes} printable ASCII characters`);
+      return bad(
+        `idempotencyKey must be at most ${maxIdempotencyKeyBytes} printable ASCII characters`,
+      );
     }
   }
   const body: Record<string, unknown> = {};
@@ -327,12 +348,23 @@ export async function spawnSession(
       headers: { "content-type": "application/json" },
       body: JSON.stringify(checked.body),
     },
-    { label: "spawn endpoint", fallbackCode: "unavailable", timeoutMs: requestTimeoutMs },
+    {
+      label: "spawn endpoint",
+      fallbackCode: "unavailable",
+      timeoutMs: requestTimeoutMs,
+    },
   );
   if (!reply.ok) return reply;
   const payload = reply.payload as Record<string, unknown> | undefined;
-  if (!payload || typeof payload.sessionId !== "string" || typeof payload.state !== "string") {
-    return refuse("unavailable", "spawn endpoint returned an unexpected response");
+  if (
+    !payload ||
+    typeof payload.sessionId !== "string" ||
+    typeof payload.state !== "string"
+  ) {
+    return refuse(
+      "unavailable",
+      "spawn endpoint returned an unexpected response",
+    );
   }
   return {
     ok: true,
@@ -356,8 +388,16 @@ function callSpawnRoute(
     `${endpoint.replace(/\/+$/, "")}/${segment}`,
     body === undefined
       ? { headers: { accept: "application/json" } }
-      : { headers: { "content-type": "application/json" }, body: JSON.stringify(body) },
-    { label: "spawn endpoint", fallbackCode: "unavailable", timeoutMs: requestTimeoutMs, method },
+      : {
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        },
+    {
+      label: "spawn endpoint",
+      fallbackCode: "unavailable",
+      timeoutMs: requestTimeoutMs,
+      method,
+    },
   );
 }
 
@@ -379,11 +419,16 @@ function asChildView(payload: unknown): Record<string, unknown> | undefined {
 function childOutcome(reply: GatewayReply): SpawnOutcome {
   if (!reply.ok) return reply;
   const view = asChildView(reply.payload);
-  if (!view) return refuse("unavailable", "spawn endpoint returned an unexpected response");
+  if (!view)
+    return refuse(
+      "unavailable",
+      "spawn endpoint returned an unexpected response",
+    );
   return { ok: true, result: view };
 }
 
-const noChildren = () => refuse("unavailable", "this session has no child sessions");
+const noChildren = () =>
+  refuse("unavailable", "this session has no child sessions");
 const badChildId = () => bad("childId must be an id returned by spawn_session");
 
 export async function getChildSession(
@@ -394,9 +439,13 @@ export async function getChildSession(
   if (!endpoint) {
     return refuse("unavailable", "this session has no child sessions to read");
   }
-  const sessionId = (args as Record<string, unknown> | null | undefined)?.sessionId;
+  const sessionId = (args as Record<string, unknown> | null | undefined)
+    ?.sessionId;
   if (!isSessionId(sessionId)) {
-    return refuse("invalid_request", "sessionId must be an id returned by spawn_session");
+    return refuse(
+      "invalid_request",
+      "sessionId must be an id returned by spawn_session",
+    );
   }
   return childOutcome(await callSpawnRoute(endpoint, sessionId, "GET"));
 }
@@ -405,7 +454,9 @@ export async function getChildSession(
 // body to send; an omitted timeout is left to the gateway's default.
 function validateWaitInput(
   args: unknown,
-): { ok: true; body: { childIds: string[]; timeoutSeconds?: number } } | Refusal {
+):
+  | { ok: true; body: { childIds: string[]; timeoutSeconds?: number } }
+  | Refusal {
   const checked = toolArgs(args, waitChildSessionsToolDefinition, "childIds");
   if (!checked.ok) return checked;
   const { childIds, timeoutSeconds } = checked.input;
@@ -415,7 +466,9 @@ function validateWaitInput(
     childIds.length > maxWaitChildren ||
     !childIds.every(isSessionId)
   ) {
-    return bad(`childIds must list 1 to ${maxWaitChildren} ids returned by spawn_session`);
+    return bad(
+      `childIds must list 1 to ${maxWaitChildren} ids returned by spawn_session`,
+    );
   }
   if (timeoutSeconds === undefined) return { ok: true, body: { childIds } };
   if (
@@ -456,20 +509,31 @@ export async function waitChildSessions(
     !Array.isArray(settled) ||
     !settled.every((item) => typeof item === "string")
   ) {
-    return refuse("unavailable", "spawn endpoint returned an unexpected response");
+    return refuse(
+      "unavailable",
+      "spawn endpoint returned an unexpected response",
+    );
   }
-  return { ok: true, result: { children, settled, timedOut: payload.timedOut } };
+  return {
+    ok: true,
+    result: { children, settled, timedOut: payload.timedOut },
+  };
 }
 
 // validateMessageInput mirrors the gateway's SpawnMessage.Validate.
 function validateMessageInput(
   args: unknown,
 ): { ok: true; childId: string; prompt: string } | Refusal {
-  const checked = toolArgs(args, messageChildSessionToolDefinition, "childId and prompt");
+  const checked = toolArgs(
+    args,
+    messageChildSessionToolDefinition,
+    "childId and prompt",
+  );
   if (!checked.ok) return checked;
   const { childId, prompt } = checked.input;
   if (!isSessionId(childId)) return badChildId();
-  if (typeof prompt !== "string" || !prompt.trim()) return bad("prompt is required");
+  if (typeof prompt !== "string" || !prompt.trim())
+    return bad("prompt is required");
   if (Buffer.byteLength(prompt, "utf8") > maxTaskBytes) {
     return refuse(
       "too_large",
@@ -489,7 +553,9 @@ export async function messageChildSession(
   const checked = validateMessageInput(args);
   if (!checked.ok) return checked;
   return childOutcome(
-    await callSpawnRoute(endpoint, checked.childId, "POST", { prompt: checked.prompt }),
+    await callSpawnRoute(endpoint, checked.childId, "POST", {
+      prompt: checked.prompt,
+    }),
   );
 }
 

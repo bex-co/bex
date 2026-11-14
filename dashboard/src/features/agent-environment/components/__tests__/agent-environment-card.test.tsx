@@ -114,10 +114,10 @@ describe("AgentEnvironmentCard", () => {
     expect(source).toHaveAttribute("aria-hidden", "true");
     expect(source).toHaveClass("text-transparent");
     const spend = screen.getByTestId("spend-cap-section-skeleton");
-    expect(spend).toHaveTextContent(/Trust tier T0: your card is charged/);
+    expect(spend).toHaveTextContent(/Trust tier T0: billing credits pay agent model spend first; your card is charged/);
     // The longer of the T0 and payment-locked explanations.
     expect(spend).toHaveTextContent(
-      /New workspaces are charged when agent model spend reaches/,
+      /New workspaces are charged when agent model spend beyond any billing credits reaches/,
     );
   });
 
@@ -383,10 +383,10 @@ describe("AgentEnvironmentCard", () => {
         screen.getByText(/Billed at the model provider's cost \+ 30%/),
       ).toBeInTheDocument();
       expect(screen.getByTestId("spend-tier")).toHaveTextContent(
-        "Trust tier T0: your card is charged when agent model spend reaches $10.00.",
+        "Trust tier T0: billing credits pay agent model spend first; your card is charged when the spend they leave reaches $10.00.",
       );
       expect(screen.getByTestId("spend-tier-note")).toHaveTextContent(
-        "New workspaces are charged when agent model spend reaches $10.00 and keep working while that charge settles; once it's paid, the limit rises to your plan's cap.",
+        "New workspaces are charged when agent model spend beyond any billing credits reaches $10.00: the card is charged right then, sessions keep running once it succeeds, and the limit rises to your plan's cap.",
       );
       expect(capField()).toHaveValue(20);
       expect(
@@ -531,6 +531,71 @@ describe("AgentEnvironmentCard", () => {
       const skeleton = within(screen.getByTestId("spend-cap-section-skeleton"));
       expect(skeleton.getByText("Terms")).toBeInTheDocument();
       expect(skeleton.queryByRole("link")).toBeNull();
+    });
+  });
+
+  // w7/m392: admins choose the available agents; Muse Code (whose provider
+  // may train on session data, ADR108) turns on only through an
+  // acknowledgement.
+  describe("available agents", () => {
+    const toggle = (name: string) => screen.getByRole("switch", { name });
+
+    it("turns an agent off by replacing the enabled list", async () => {
+      const { update, user } = setup();
+      expect(toggle("Codex")).toBeChecked();
+      expect(toggle("Muse Code")).not.toBeChecked();
+      await user.click(toggle("Codex"));
+      expect(update).toHaveBeenCalledWith({
+        enabledAgents: ["claude", "gemini"],
+      });
+    });
+
+    it("asks for the data-use acknowledgement before turning Muse Code on", async () => {
+      const { update, user } = setup();
+      await user.click(toggle("Muse Code"));
+      expect(update).not.toHaveBeenCalled();
+      const dialog = await screen.findByRole("alertdialog");
+      expect(
+        within(dialog).getByText(/Meta may use the prompts, code, files/),
+      ).toBeInTheDocument();
+      await user.click(
+        within(dialog).getByRole("button", { name: "Acknowledge and turn on" }),
+      );
+      expect(update).toHaveBeenCalledWith({
+        enabledAgents: ["claude", "codex", "gemini", "muse"],
+        acknowledgeAgentDataUse: ["muse"],
+      });
+    });
+
+    it("turns an acknowledged agent back on without asking again", async () => {
+      const { update, user } = setup(
+        agentEnvironment({
+          enabledAgents: ["claude"],
+          agentDataUse: [
+            {
+              __typename: "AgentDataUse",
+              agent: "muse",
+              acknowledgedAt: "2026-11-14T09:00:00Z",
+              acknowledgedBy: "usr-admin",
+            },
+          ],
+        }),
+      );
+      await user.click(toggle("Muse Code"));
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(update).toHaveBeenCalledWith({
+        enabledAgents: ["claude", "muse"],
+      });
+    });
+
+    it("shows non-admins the agents with every switch disabled", () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      setup();
+      for (const name of ["Claude", "Codex", "Gemini", "Muse Code"]) {
+        expect(toggle(name)).toBeDisabled();
+      }
     });
   });
 });

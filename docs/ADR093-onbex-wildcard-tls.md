@@ -8,7 +8,7 @@
 
 ## Context
 
-Traefik's default `TLSStore` serves a `*.onbex.co` wildcard for every SNI that has no certificate of its own. An unknown host therefore completes a trusted handshake and gets bex's 404, not `TRAEFIK DEFAULT CERT`. This matches Render: `https://<anything>.onrender.com/` returns 404 under a `DNS:*.onrender.com` certificate (checked 2026-10-31).
+Traefik's default `TLSStore` serves a `*.onbex.co` wildcard for every SNI that has no certificate of its own. An unknown host therefore completes a trusted handshake and gets Render's plain-text 404 (w8/320), not `TRAEFIK DEFAULT CERT`. This matches Render: `https://<anything>.onrender.com/` returns 404 under a `DNS:*.onrender.com` certificate (checked 2026-10-31).
 
 Today that wildcard is issued by hand outside bex and handled like a password:
 

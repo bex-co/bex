@@ -6,7 +6,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 
 - Each `ADR*.md` is self-contained; read the ADR directly for design + status.
 - Render-parity ledgers ([ADR018](ADR018-render-parity.md), [cli-compatibility-checklist.md](cli-compatibility-checklist.md)) are evidence-backed.
-- Security reviews form a chain ADR028 → ADR085, plus the focused ADR103 (see § Security lineage); read the latest for current residual.
+- Security reviews form a chain ADR028 → ADR085 → ADR107, plus the focused ADR103 (see § Security lineage); read the latest for current residual.
 
 ## Catalog — by topic
 
@@ -86,6 +86,8 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 
   Full CLI spec included. No server change except `forward`, which is gated on OD1 (reopening the forwarding ban for `ags-` loopback only).
 
+- [ADR108-muse-code-agent.md](ADR108-muse-code-agent.md) — accepted (2026-11-13, w7/m390) Meta's Muse Code as the `muse` Cloud Agent profile through the bex-co ACP adapter: pinned native binary (`nativeBinary`), Muse's own sandbox off under bex's, `muse-spark-1.3-contributor` only, platform route only (never a workspace key), `POST /v1/responses` on `api.meta.ai` through the gateway; probe evidence included
+
 - [ADR104-sandbox-render-parity.md](ADR104-sandbox-render-parity.md) — proposed (2026-11-08, refreshed against the repo 2026-11-10) the sandbox Render-parity contract, row by row: lifecycle and timeouts, network policy, snapshots, groups/limits, billing, SDK; ✅ only when verified live. Names the gaps with owners (sandbox groups, memory/process preservation, Docker-in-gVisor spike, billing meters (D8, decided: adopt Render's model), Hobby timeout cap, ADR018 rows to amend) and resource/abuse bounds (D11). Decisions pending: D5, D6 (after spike).
 - [ADR090-agent-owned-delivery.md](ADR090-agent-owned-delivery.md) — accepted (2026-10-22) agent-owned delivery: the agent commits, pushes and opens its draft PR (gateway `pull-request` verb + `bex` stdio MCP tool), platform system-prompt overlay, evidence + credential-scrub machinery deleted
 - [ADR092-postgres-extension-supply.md](ADR092-postgres-extension-supply.md) — accepted (2026-10-29) managed Postgres extensions as on Render: one bex-built CNPG operand image per major carrying PostGIS, pg_partman, pg_duckdb, pg_ivm, pg_similarity and TimescaleDB; owner enables per database with `CREATE EXTENSION` through a closed allowlist (supautils or pgextwlist) for non-trusted extensions; one approved rolling restart to adopt the image.
@@ -155,5 +157,6 @@ Each entry is a codex-security triage; earlier rounds' residuals are re-confirme
 - [ADR084-security-review-round22.md](ADR084-security-review-round22.md) — round 22: dnR05P triage; 3 security fixes, 5 boundary/correctness hardenings, 2 accepted residuals
 - [ADR085-security-review-round23.md](ADR085-security-review-round23.md) — round 23: 5PePz5 managed-Postgres credential resurrection fixed
 - [ADR103-security-review-static-rewrite-proxy.md](ADR103-security-review-static-rewrite-proxy.md) — focused review (2026-11-10, w3/m304): the static-site external-rewrite proxy; 3 fixed (internal header, per-site in-flight cap, oversize abort), 4 accepted residuals
+- [ADR107-security-review-round24.md](ADR107-security-review-round24.md) — round 24 (2026-11-13, w5/m371): the agent, sandbox and hosting surfaces shipped since round 23; 4 findings (1 high), all fixed (S-3 partly, remainder w5/189); hardening filed as w5/186–190
 
 Other docs: [PRFAQ001-bex-v1-hosting.md](PRFAQ001-bex-v1-hosting.md), [assets/](assets/) media.

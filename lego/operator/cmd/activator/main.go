@@ -169,7 +169,7 @@ func newHoldingHandler(c client.Client, cache *hostCache, log logr.Logger, hold 
 		app, ok := cache.lookup(host)
 		// The platform-host fallback route sends every unclaimed platform host
 		// here (w4/m235 t008). A host no public App owns, including a private
-		// service's or worker's would-be platform host, answers a bex 404 and
+		// service's or worker's would-be platform host, answers Render's 404 and
 		// never reaches the wake path below.
 		if !ok || !app.Spec.PubliclyRoutable() {
 			log.Info("no routed app found for host", "host", host)
@@ -405,17 +405,22 @@ const (
 	suspendedText       = "This service is suspended.\n"
 )
 
-// writeUnknownHostResponse answers a host no public service owns: a 404,
-// negotiated like the not-serving responses, instead of Traefik's raw "404
-// page not found".
+// writeUnknownHostResponse answers a host no public service owns as Render's
+// edge answers a host it routes nowhere (w8/320, captured 2026-11-13): 404
+// text/plain "Not Found" with nosniff, whatever the client accepts, and no
+// cache directive.
 func writeUnknownHostResponse(w http.ResponseWriter, r *http.Request) {
-	writeNegotiated(w, r, http.StatusNotFound, unknownHostPage, unknownHostJSON, unknownHostText)
+	h := w.Header()
+	h.Set("Content-Type", "text/plain; charset=utf-8")
+	h.Set("Content-Length", strconv.Itoa(len(unknownHostText)))
+	h.Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusNotFound)
+	if r.Method != http.MethodHead {
+		_, _ = io.WriteString(w, unknownHostText)
+	}
 }
 
-const (
-	unknownHostJSON = `{"error":"not found"}`
-	unknownHostText = "There is no service at this address.\n"
-)
+const unknownHostText = "Not Found\n"
 
 // writeFirstDeployResponse answers a public host whose first release has not
 // served yet (w4/m235): 503 with a Retry-After, negotiated like the suspended
@@ -907,23 +912,6 @@ const suspendedPage = `<!DOCTYPE html>
 <body><main><h1>This service is suspended.</h1>
 <p>Its owner suspended this service, so it is not currently serving traffic.
 It will be available again once the owner resumes it.</p></main></body>
-</html>`
-
-const unknownHostPage = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Not found</title>
-  <style>
-    body{font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100vh;margin:0;
-      background:#111827;color:#f9fafb}
-    main{max-width:36rem;padding:2rem;text-align:center}h1{font-size:1.75rem;margin-bottom:.75rem}
-    p{color:#d1d5db;line-height:1.6}
-  </style>
-</head>
-<body><main><h1>There is no service at this address.</h1>
-<p>Check the URL for a typo.</p></main></body>
 </html>`
 
 const firstDeployPage = `<!DOCTYPE html>

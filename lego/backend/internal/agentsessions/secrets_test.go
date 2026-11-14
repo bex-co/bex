@@ -60,7 +60,7 @@ func secretService() (*Service, *fakeModelKeys) {
 
 func TestAgentSecretsAreWriteOnlyAndAdminManaged(t *testing.T) {
 	svc, keys := secretService()
-	if _, err := svc.SetAgentSecret(caller("dev"), "tea-a", "STRIPE_KEY", stripeValue); err == nil {
+	if _, err := svc.SetAgentSecret(caller("dev"), "tea-a", "STRIPE_KEY", AgentSecretInput{Value: stripeValue}); err == nil {
 		t.Fatal("a developer set a workspace agent secret")
 	}
 	if _, err := svc.AgentSecrets(caller("viewer"), "tea-a"); err == nil {
@@ -75,7 +75,7 @@ func TestAgentSecretsAreWriteOnlyAndAdminManaged(t *testing.T) {
 		return rec
 	}
 	rec := serve(http.MethodPut, "/v1/agent-secrets/STRIPE_KEY?ownerId=tea-a", `{"value":"`+stripeValue+`"}`, "admin")
-	if rec.Code != http.StatusOK || rec.Body.String() != `{"name":"STRIPE_KEY"}`+"\n" {
+	if rec.Code != http.StatusOK || rec.Body.String() != `{"name":"STRIPE_KEY","scope":"explicit"}`+"\n" {
 		t.Fatalf("REST set = %d %q", rec.Code, rec.Body.String())
 	}
 	if keys.data[workspaceSecretPath("tea-a", "STRIPE_KEY")][agentSecretValueField] != stripeValue {
@@ -142,25 +142,25 @@ func TestAgentSecretNamesAndLimits(t *testing.T) {
 		"BEX_AGENT_PROMPT": "AGENT_SECRET_NAME_RESERVED", "anthropic_api_key": "AGENT_SECRET_NAME_RESERVED",
 		"PATH": "AGENT_SECRET_NAME_RESERVED", "HTTPS_PROXY": "AGENT_SECRET_NAME_RESERVED", "GIT_ASKPASS": "AGENT_SECRET_NAME_RESERVED",
 	} {
-		if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", name, "v"); codeOf(err) != code {
+		if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", name, AgentSecretInput{Value: "v"}); codeOf(err) != code {
 			t.Errorf("set %q = %v, want %s", name, err, code)
 		}
 	}
 	for _, value := range []string{"", "a\x00b", strings.Repeat("x", maxSecretValueBytes+1)} {
-		if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", "OK_NAME", value); codeOf(err) != "AGENT_SECRET_VALUE_INVALID" {
+		if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", "OK_NAME", AgentSecretInput{Value: value}); codeOf(err) != "AGENT_SECRET_VALUE_INVALID" {
 			t.Errorf("set value len %d = %v", len(value), err)
 		}
 	}
 	for i := range maxWorkspaceAgentSecrets {
-		if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", "S"+strings.Repeat("A", i), "value"); err != nil {
+		if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", "S"+strings.Repeat("A", i), AgentSecretInput{Value: "value"}); err != nil {
 			t.Fatal(err)
 		}
 	}
-	if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", "ONE_TOO_MANY", "value"); codeOf(err) != "AGENT_SECRET_LIMIT_EXCEEDED" {
+	if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", "ONE_TOO_MANY", AgentSecretInput{Value: "value"}); codeOf(err) != "AGENT_SECRET_LIMIT_EXCEEDED" {
 		t.Fatalf("51st secret = %v", err)
 	}
 	// Rotating an existing one is not a new secret.
-	if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", "SA", "rotated"); err != nil {
+	if _, err := svc.SetAgentSecret(caller("admin"), "tea-a", "SA", AgentSecretInput{Value: "rotated"}); err != nil {
 		t.Fatalf("rotate at the limit = %v", err)
 	}
 }

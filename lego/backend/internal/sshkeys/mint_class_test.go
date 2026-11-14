@@ -22,19 +22,9 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
-
-// fakePlatformResolver answers IsPlatformClient from a fixed map.
-type fakePlatformResolver map[string]bool
-
-func (f fakePlatformResolver) IsPlatformClient(_ context.Context, clientID string) (bool, error) {
-	return f[clientID], nil
-}
-
-func (f fakePlatformResolver) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
-	return f.IsPlatformClient(ctx, clientID)
-}
 
 // codex round-7 F3 — SSH-key enrollment is durable-credential minting.
 //
@@ -60,7 +50,7 @@ func TestCreateRequiresMintCredentialClass(t *testing.T) {
 		{
 			name:     "third-party OAuth human token",
 			id:       core.Identity{Subject: "user-a", Method: "oauth2", ClientID: "dcr-agent-7", Human: true},
-			platform: fakePlatformResolver{"platform-cli": true},
+			platform: coretest.PlatformClients{"platform-cli": true},
 			want:     core.ErrForbidden,
 		},
 		{
@@ -75,7 +65,7 @@ func TestCreateRequiresMintCredentialClass(t *testing.T) {
 				Subject: "user-a", Method: "oauth2", ClientID: "platform-cli",
 				Human: true, PlatformClient: true, CanonicalScopes: core.ScopeWrite,
 			},
-			platform: fakePlatformResolver{"platform-cli": true},
+			platform: coretest.PlatformClients{"platform-cli": true},
 			want:     nil,
 		},
 		{

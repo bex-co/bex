@@ -924,6 +924,14 @@ func (s *Service) Update(ctx context.Context, ownerID, id string, req UpdateRequ
 		if dest, err = parseDestination(*req.URL); err != nil {
 			return EndpointView{}, err
 		}
+		// Repointing an endpoint exports the workspace's activity stream to a
+		// new destination under its durable secret, as Create does: the same
+		// credential-class gate (round 24, hardening of H-1's class).
+		if dest != cur.URL {
+			if err := s.AuthorizeMintClass(ctx); err != nil {
+				return EndpointView{}, err
+			}
+		}
 	}
 	types := cur.EventTypes
 	if req.EventTypes != nil {
@@ -1039,6 +1047,12 @@ func (s *Service) mayManageWorkspace(ctx context.Context, tenantID string) bool 
 		return false
 	}
 	if err := id.RequireCapability(core.RelCanManage); err != nil {
+		return false
+	}
+	// The signing secret and full URL are the durable export Create gates on
+	// the credential class; a delegated third-party token reads them redacted
+	// (round 24, hardening of H-1's class).
+	if !id.MintClass() {
 		return false
 	}
 	check := s.Authz.Check

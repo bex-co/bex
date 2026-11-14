@@ -268,6 +268,25 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "Deploy timeline: graceful fallback when service-events query fails",
   },
+  "deploys.autoDeployOffTitle": {
+    message: "Auto-deploy is off",
+    description:
+      "Deploys page banner title when the service's auto-deploy is off (Render, w3/064)",
+  },
+  "deploys.autoDeployOffBody": {
+    message:
+      "Pushes to {branch} don't deploy this service. Deploy it manually, or turn auto-deploy back on.",
+    description: "Deploys page banner body; {branch} is the tracked git branch",
+  },
+  "deploys.autoDeployOffBodyNoBranch": {
+    message:
+      "Pushes don't deploy this service. Deploy it manually, or turn auto-deploy back on.",
+    description: "Deploys page banner body when the branch is unknown",
+  },
+  "deploys.autoDeployOffSettings": {
+    message: "Auto-Deploy settings",
+    description: "Deploys page banner link to the service Settings page",
+  },
   "deploys.listTitle": {
     message: "Deploys",
     description: "Deploys tab: card title over the deploy-history list",

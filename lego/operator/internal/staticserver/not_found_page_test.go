@@ -45,8 +45,12 @@ func TestMissServes404HTMLWithStatus404(t *testing.T) {
 		if rec.Code != http.StatusNotFound || rec.Body.String() != "custom 404" {
 			t.Errorf("GET %s => %d %q, want 404 custom 404", p, rec.Code, rec.Body)
 		}
-		if rec.Header().Get("X-Site") != "yes" || rec.Header().Get("Etag") != "" {
-			t.Errorf("GET %s headers = %v, want custom error headers and no validator", p, rec.Header())
+		// The page goes out with a published file's headers, as on Render
+		// (w8/322), but no validator.
+		hdr := rec.Header()
+		if hdr.Get("X-Site") != "yes" || hdr.Get("Etag") != "" || hdr.Get("Cache-Control") != defaultCacheControl ||
+			hdr.Get("Strict-Transport-Security") != defaultStrictTransportSecurity || hdr.Get("X-Content-Type-Options") != "nosniff" {
+			t.Errorf("GET %s headers = %v, want the site's rules, HSTS, the cache policy, nosniff and no validator", p, hdr)
 		}
 	}
 	head := do(h, http.MethodHead, "/no-such-page")
@@ -62,14 +66,31 @@ func TestMissServes404HTMLWithStatus404(t *testing.T) {
 	}
 }
 
+// The 404.html page takes the site's rules as a file does: one replaces its
+// cache policy, HSTS or type, and its length stays its own.
+func TestThe404PageTakesTheSitesRulesAsAFileDoes(t *testing.T) {
+	h, _ := newTestHandler(t, Site{NoSPAFallback: true, Headers: []appv1alpha1.StaticHeader{
+		{Path: "/*", Name: "Cache-Control", Value: "no-store"},
+		{Path: "/*", Name: "Strict-Transport-Security", Value: "max-age=60"},
+		{Path: "/*", Name: "Content-Type", Value: "text/plain; charset=utf-8"},
+		{Path: "/*", Name: "Content-Length", Value: "999"},
+	}}, map[string]Object{key("404.html"): {Body: []byte("custom 404"), ContentType: "text/html"}})
+	rec := do(h, http.MethodGet, "/missing")
+	hdr := rec.Header()
+	if rec.Code != http.StatusNotFound || rec.Body.String() != "custom 404" || hdr.Get("Cache-Control") != "no-store" ||
+		hdr.Get("Strict-Transport-Security") != "max-age=60" || hdr.Get("Content-Type") != "text/plain; charset=utf-8" || hdr.Get("Content-Length") != "10" {
+		t.Fatalf("miss = %d %q %v, want the page with the rules' cache policy, HSTS and type, and its own length", rec.Code, rec.Body, hdr)
+	}
+}
+
+// Render answers a miss on a site without a 404.html with a bare plain-text
+// 404: nosniff only, none of the site's rules (w8/322).
 func TestMissWithoutA404PageIsAPlain404(t *testing.T) {
-	h, _ := newTestHandler(t, Site{NoSPAFallback: true}, map[string]Object{
+	h, _ := newTestHandler(t, Site{NoSPAFallback: true, Headers: markerHeaders()}, map[string]Object{
 		key("index.html"): {Body: []byte("HOME"), ContentType: "text/html"},
 	})
 	for _, p := range []string{"/no-such-page", "/missing.css"} {
-		if rec := do(h, http.MethodGet, p); rec.Code != http.StatusNotFound || rec.Body.String() == "HOME" {
-			t.Errorf("GET %s => %d %q, want a plain 404", p, rec.Code, rec.Body)
-		}
+		assertBareNotFound(t, do(h, http.MethodGet, p))
 	}
 }
 

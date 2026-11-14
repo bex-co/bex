@@ -29,10 +29,13 @@ import (
 // the composed internal/api suites use (rendertest.Wrap): a service-handler
 // change that drifts a field fails the test that exercised it. The httptest
 // suites here drive the bare feature mux, without the production request gate,
-// so routes are matched by rendertest's MuxMatcher.
+// so routes are matched by rendertest's MuxMatcher. The bare mux runs without
+// the platform's resource-metadata wiring (region, dashboard URL, workspaces,
+// identities), so omissions those sources explain are excused here; the
+// composed internal/api suite holds a production-configured server to them.
 func validated(t testing.TB, mux *http.ServeMux) http.Handler {
 	t.Helper()
-	return rendertest.Wrap(t, mux, rendertest.Load(t).MuxMatcher(mux))
+	return rendertest.Wrap(t, mux, rendertest.Load(t).MuxMatcher(mux), rendertest.AllSources...)
 }
 
 // TestMain fails a full run that leaves an internal/apps Allowlist entry

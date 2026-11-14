@@ -471,6 +471,17 @@ type fakeLoki struct {
 	body        string
 }
 
+// answerSeries serves the stream listing a full page triggers (w21/063) for the
+// fakes that model the one stream {app: web, pod: web-1, container: app}, and
+// reports whether r was that listing.
+func answerSeries(w http.ResponseWriter, r *http.Request) bool {
+	if r.URL.Path != "/loki/api/v1/series" {
+		return false
+	}
+	_, _ = w.Write([]byte(`{"status":"success","data":[{"app":"web","pod":"web-1","container":"app"}]}`))
+	return true
+}
+
 func newFakeLoki(body string) *fakeLoki {
 	f := &fakeLoki{status: http.StatusOK, body: body}
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -574,6 +585,9 @@ func TestLokiSourceLocalTextSearchReachesMatchBehindRawPage(t *testing.T) {
 	}
 	serve := func(lines []line, requests *[]url.Values) *httptest.Server {
 		return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if answerSeries(w, r) {
+				return
+			}
 			v := r.URL.Query()
 			*requests = append(*requests, v)
 			start, _ := strconv.ParseInt(v.Get("start"), 10, 64)
@@ -1010,6 +1024,9 @@ func TestRawUnicodeHistoryAgreesAcrossAdapters(t *testing.T) {
 		lines = append(lines, line{base.Add(time.Second + time.Duration(i)*time.Millisecond).UnixNano(), fmt.Sprintf("padding-%04d", i)})
 	}
 	loki := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if answerSeries(w, r) {
+			return
+		}
 		v := r.URL.Query()
 		start, _ := strconv.ParseInt(v.Get("start"), 10, 64)
 		end, _ := strconv.ParseInt(v.Get("end"), 10, 64)

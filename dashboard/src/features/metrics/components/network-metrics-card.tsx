@@ -45,6 +45,13 @@ interface NetworkMetricsCardProps {
   window: UseMetricsOptions;
   /** Service events in the window, marked on every chart (route-derived). */
   markers?: ChartEventMarker[];
+  /**
+   * Whether the service can receive public HTTP requests (`publiclyRoutable`).
+   * A worker, cron job or private service gets none, so it is offered only
+   * Outbound Bandwidth, as Render shows request metrics for web services only
+   * (w4/613).
+   */
+  servesRequests?: boolean;
 }
 
 type GroupBy = "status" | "method" | "host" | undefined;
@@ -100,6 +107,7 @@ export function NetworkMetricsCard({
   resource,
   window,
   markers,
+  servesRequests = true,
 }: NetworkMetricsCardProps) {
   const { t } = useTranslations();
   // Render puts Group by on the Total Requests chart itself (not the page
@@ -123,7 +131,9 @@ export function NetworkMetricsCard({
   // Host: a dropdown discovered from the App's request-log hosts. Path: free
   // text (not discoverable) committed on Enter/blur, cleared with the × button.
   const [host, setHost] = useState(""); // "" = all
-  const discoveredHosts = useLogLabelValues(resource, "host");
+  const discoveredHosts = useLogLabelValues(resource, "host", {
+    skip: !servesRequests,
+  });
   const [pathInput, setPathInput] = useState("");
   const [path, setPath] = useState(""); // committed value driving the query
   const queryOpts = {
@@ -135,12 +145,14 @@ export function NetworkMetricsCard({
   const requests = useMetrics(resource, "http_requests", {
     ...queryOpts,
     groupBy,
+    skip: !servesRequests,
   });
   // Hobby has no latency metrics (Render: Pro and higher): one read shows the
   // plan notice, and polling it again would only repeat the refusal.
   const { currentWorkspace } = useWorkspace();
   const latency = useMetrics(resource, "http_latency", {
     ...queryOpts,
+    skip: !servesRequests,
     ...(proFeaturesPlan(currentWorkspace?.plan) ? {} : { pollIntervalMs: 0 }),
     ...(isAllPercentiles
       ? { quantiles: ALL_QUANTILES }
@@ -217,182 +229,195 @@ export function NetworkMetricsCard({
           <CardTitle>{t("metrics.networkTitle")}</CardTitle>
           <CardDescription>{t("metrics.networkDescription")}</CardDescription>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <Select
-            value={statusCode === "" ? STATUS_CODE_ALL : statusCode}
-            onValueChange={(v) => setStatusCode(v === STATUS_CODE_ALL ? "" : v)}
-          >
-            <SelectTrigger
-              size="sm"
-              className="w-36"
-              aria-label={t("metrics.statusCode")}
+        {servesRequests && (
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <Select
+              value={statusCode === "" ? STATUS_CODE_ALL : statusCode}
+              onValueChange={(v) =>
+                setStatusCode(v === STATUS_CODE_ALL ? "" : v)
+              }
             >
-              <span className="text-muted-foreground">
-                {t("metrics.statusCode")}
-              </span>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={STATUS_CODE_ALL}>
-                {t("metrics.statusCodeAll")}
-              </SelectItem>
-              {statusCodeOptions.map((code) => (
-                <SelectItem key={code} value={code}>
-                  {code}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={host === "" ? HOST_ALL : host}
-            onValueChange={(v) => setHost(v === HOST_ALL ? "" : v)}
-          >
-            <SelectTrigger
-              size="sm"
-              className="w-36"
-              aria-label={t("metrics.host")}
-            >
-              <span className="text-muted-foreground">{t("metrics.host")}</span>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={HOST_ALL}>{t("metrics.hostAll")}</SelectItem>
-              {discoveredHosts.map((h) => (
-                <SelectItem key={h} value={h}>
-                  {h}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <div className="relative">
-            <Input
-              value={pathInput}
-              onChange={(e) => setPathInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") setPath(pathInput.trim());
-              }}
-              onBlur={() => setPath(pathInput.trim())}
-              placeholder={t("metrics.pathPlaceholder")}
-              aria-label={t("metrics.path")}
-              className="h-8 w-40 pr-7"
-            />
-            {path !== "" && (
-              <button
-                type="button"
-                onClick={() => {
-                  setPath("");
-                  setPathInput("");
-                }}
-                aria-label={t("metrics.pathClear")}
-                className="absolute inset-y-0 right-1 flex items-center text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <MetricSection
-          eventLane
-          title={t("metrics.totalRequests")}
-          result={requests}
-          headerExtra={
-            <div className="flex items-center gap-2">
-              {requestCount > 0 && (
-                <span className="text-xs text-muted-foreground">
-                  {t("metrics.requestsCount", {
-                    // `count` (numeric) drives the native `_one`/`_other`
-                    // plural pick; `formatted` is what the message renders
-                    // ("7,266 requests").
-                    count: requestCount,
-                    formatted: requestCount.toLocaleString(),
-                  })}
-                </span>
-              )}
-              <Select
-                value={groupBy ?? GROUP_BY_ALL}
-                onValueChange={(v) =>
-                  setGroupBy(v === GROUP_BY_ALL ? undefined : (v as GroupBy))
-                }
-              >
-                <SelectTrigger
-                  size="sm"
-                  className="h-7 w-40"
-                  aria-label={t("metrics.groupBy")}
-                >
-                  <span className="text-muted-foreground">
-                    {t("metrics.groupBy")}
-                  </span>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={GROUP_BY_ALL}>
-                    {t("metrics.groupByAllRequests")}
-                  </SelectItem>
-                  <SelectItem value="status">
-                    {t("metrics.groupByStatus")}
-                  </SelectItem>
-                  <SelectItem value="method">
-                    {t("metrics.groupByMethod")}
-                  </SelectItem>
-                  <SelectItem value="host">
-                    {t("metrics.groupByHost")}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          }
-        >
-          <SvgBarChart
-            unit={requests.series[0]?.unit ?? "count"}
-            series={requestSeries}
-            markers={markers}
-            markersServiceId={resource}
-          />
-          <ChartLegend entries={requestSeries} />
-        </MetricSection>
-        <MetricSection
-          eventLane
-          title={t("metrics.responseTimes")}
-          result={latency}
-          planFeature={{
-            feature: "latencyMetrics",
-            message: t("metrics.latencyPlanRequired"),
-          }}
-          headerExtra={
-            <Select value={percentile} onValueChange={setPercentile}>
               <SelectTrigger
                 size="sm"
-                className="h-7 w-36"
-                aria-label={t("metrics.percentile")}
+                className="min-w-36"
+                aria-label={t("metrics.statusCode")}
               >
                 <span className="text-muted-foreground">
-                  {t("metrics.percentile")}
+                  {t("metrics.statusCode")}
                 </span>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {PERCENTILES.map((q) => (
-                  <SelectItem key={q.value} value={q.value}>
-                    {q.label}
+                <SelectItem value={STATUS_CODE_ALL}>
+                  {t("metrics.statusCodeAll")}
+                </SelectItem>
+                {statusCodeOptions.map((code) => (
+                  <SelectItem key={code} value={code}>
+                    {code}
                   </SelectItem>
                 ))}
-                <SelectItem value={PERCENTILE_ALL}>
-                  {t("metrics.percentileAll")}
-                </SelectItem>
               </SelectContent>
             </Select>
-          }
-        >
-          <SvgLineChart
-            unit={latency.series[0]?.unit ?? "seconds"}
-            series={latencySeries}
-            markers={markers}
-            markersServiceId={resource}
-          />
-          <ChartLegend entries={latencySeries} />
-        </MetricSection>
+            <Select
+              value={host === "" ? HOST_ALL : host}
+              onValueChange={(v) => setHost(v === HOST_ALL ? "" : v)}
+            >
+              <SelectTrigger
+                size="sm"
+                className="min-w-36 max-w-72"
+                aria-label={t("metrics.host")}
+                title={host || undefined}
+              >
+                <span className="text-muted-foreground">
+                  {t("metrics.host")}
+                </span>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={HOST_ALL}>{t("metrics.hostAll")}</SelectItem>
+                {discoveredHosts.map((h) => (
+                  <SelectItem key={h} value={h}>
+                    {h}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="relative">
+              <Input
+                value={pathInput}
+                onChange={(e) => setPathInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") setPath(pathInput.trim());
+                }}
+                onBlur={() => setPath(pathInput.trim())}
+                placeholder={t("metrics.pathPlaceholder")}
+                aria-label={t("metrics.path")}
+                className="h-8 w-40 pr-7"
+              />
+              {path !== "" && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPath("");
+                    setPathInput("");
+                  }}
+                  aria-label={t("metrics.pathClear")}
+                  className="absolute inset-y-0 right-1 flex items-center text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {servesRequests && (
+          <>
+            <MetricSection
+              eventLane
+              title={t("metrics.totalRequests")}
+              result={requests}
+              headerExtra={
+                <div className="flex items-center gap-2">
+                  {requestCount > 0 && (
+                    <span className="text-xs text-muted-foreground">
+                      {t("metrics.requestsCount", {
+                        // `count` (numeric) drives the native `_one`/`_other`
+                        // plural pick; `formatted` is what the message renders
+                        // ("7,266 requests").
+                        count: requestCount,
+                        formatted: requestCount.toLocaleString(),
+                      })}
+                    </span>
+                  )}
+                  <Select
+                    value={groupBy ?? GROUP_BY_ALL}
+                    onValueChange={(v) =>
+                      setGroupBy(
+                        v === GROUP_BY_ALL ? undefined : (v as GroupBy),
+                      )
+                    }
+                  >
+                    <SelectTrigger
+                      size="sm"
+                      className="h-7 min-w-40"
+                      aria-label={t("metrics.groupBy")}
+                    >
+                      <span className="text-muted-foreground">
+                        {t("metrics.groupBy")}
+                      </span>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={GROUP_BY_ALL}>
+                        {t("metrics.groupByAllRequests")}
+                      </SelectItem>
+                      <SelectItem value="status">
+                        {t("metrics.groupByStatus")}
+                      </SelectItem>
+                      <SelectItem value="method">
+                        {t("metrics.groupByMethod")}
+                      </SelectItem>
+                      <SelectItem value="host">
+                        {t("metrics.groupByHost")}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              }
+            >
+              <SvgBarChart
+                unit={requests.series[0]?.unit ?? "count"}
+                series={requestSeries}
+                markers={markers}
+                markersServiceId={resource}
+              />
+              <ChartLegend entries={requestSeries} />
+            </MetricSection>
+            <MetricSection
+              eventLane
+              title={t("metrics.responseTimes")}
+              result={latency}
+              planFeature={{
+                feature: "latencyMetrics",
+                message: t("metrics.latencyPlanRequired"),
+              }}
+              headerExtra={
+                <Select value={percentile} onValueChange={setPercentile}>
+                  <SelectTrigger
+                    size="sm"
+                    className="h-7 min-w-36"
+                    aria-label={t("metrics.percentile")}
+                  >
+                    <span className="text-muted-foreground">
+                      {t("metrics.percentile")}
+                    </span>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PERCENTILES.map((q) => (
+                      <SelectItem key={q.value} value={q.value}>
+                        {q.label}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={PERCENTILE_ALL}>
+                      {t("metrics.percentileAll")}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              }
+            >
+              <SvgLineChart
+                unit={latency.series[0]?.unit ?? "seconds"}
+                series={latencySeries}
+                markers={markers}
+                markersServiceId={resource}
+              />
+              <ChartLegend entries={latencySeries} />
+            </MetricSection>
+          </>
+        )}
         <MetricSection
           eventLane
           title={t("metrics.outboundBandwidth")}

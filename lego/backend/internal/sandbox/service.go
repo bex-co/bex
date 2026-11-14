@@ -403,8 +403,12 @@ func validateSandboxEnv(env map[string]string) error {
 // `snapshotId`/`snapshotName` create fields and every snapshot route.
 const codeSandboxSnapshotsUnsupported = "SANDBOX_SNAPSHOTS_UNSUPPORTED"
 
-// CodeInvalidSandboxName is Render's invalid_sandbox_name.
-const CodeInvalidSandboxName = "invalid_sandbox_name"
+// Render's create-sandbox refusal codes (its pinned errorCode vocabulary).
+const (
+	CodeInvalidSandboxName    = "invalid_sandbox_name"
+	CodeInvalidSandboxPlan    = "invalid_sandbox_plan"
+	CodeInvalidTimeoutSeconds = "invalid_timeout_seconds"
+)
 
 // maxSandboxName is Render's name bound, in characters.
 const maxSandboxName = 64
@@ -413,17 +417,23 @@ const maxSandboxName = 64
 // `sbx-` id, so the id stays the unambiguous handle.
 func validateSandboxName(name string) error {
 	if utf8.RuneCountInString(name) > maxSandboxName || strings.HasPrefix(name, ids.Sandbox.Prefix()+"-") {
-		return core.NewBadRequestError(CodeInvalidSandboxName,
-			fmt.Sprintf("sandbox name must be at most %d characters and must not start with %q", maxSandboxName, ids.Sandbox.Prefix()+"-"),
-			map[string]any{"field": "name", "maxLength": maxSandboxName})
+		return InvalidSandboxNameError()
 	}
 	return nil
+}
+
+// InvalidSandboxNameError is the name refusal, shared with the REST gate,
+// which refuses an over-long name before the Service sees it (w8/312).
+func InvalidSandboxNameError() error {
+	return core.NewBadRequestError(CodeInvalidSandboxName,
+		fmt.Sprintf("sandbox name must be at most %d characters and must not start with %q", maxSandboxName, ids.Sandbox.Prefix()+"-"),
+		map[string]any{"field": "name", "maxLength": maxSandboxName})
 }
 
 // invalidPlan is Render's invalid_sandbox_plan refusal: the message lists the
 // accepted plans.
 func invalidPlan(plan Plan) error {
-	return core.NewBadRequestError("SANDBOX_PLAN_INVALID",
+	return core.NewBadRequestError(CodeInvalidSandboxPlan,
 		fmt.Sprintf("unknown sandbox plan %q; use one of %s", plan, strings.Join(planNames(), ", ")),
 		map[string]any{"field": "plan", "supported": planNames()})
 }
@@ -673,16 +683,16 @@ func isPublicSandboxID(idStr string) bool {
 }
 
 // resolveSandbox fetches one OpenSandbox object by either id form (w9/m94
-// dual-accept). A substrate id is a direct Get; a public `sbx-` id is matched
-// against the tenant key's own list — the key scopes that list to the caller's
-// `<ws>-sandbox` namespace, so the scan is bounded by the workspace's live
-// sandbox capacity and can never see another tenant's object. It performs no
-// authorization; ownedSandbox owns the ownership boundary.
+// dual-accept). A substrate id is a direct Get; a public `sbx-` id is found
+// through OpenSandbox's metadata filter on the tenant key's own list (the key
+// scopes it to the caller's `<ws>-sandbox` namespace, so it never sees another
+// tenant's object), re-checked here in case a server ignores the filter. It
+// performs no authorization; ownedSandbox owns the ownership boundary.
 func (s *Service) resolveSandbox(ctx context.Context, key, idStr string) (osSandbox, error) {
 	if !isPublicSandboxID(idStr) {
 		return s.Client.Get(ctx, key, idStr)
 	}
-	rows, err := s.Client.List(ctx, key)
+	rows, err := s.Client.ListByMetadata(ctx, key, map[string]string{metadataPublicID: idStr})
 	if err != nil {
 		return osSandbox{}, err
 	}

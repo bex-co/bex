@@ -1046,6 +1046,22 @@ func (b *Base) AuthorizeKeyValueFresh(ctx context.Context, relation string, kv *
 // third-party client must not persist past its consent. Call it BEFORE the
 // verb's auditing Authorize: a class refusal is not a workspace decision and
 // deliberately leaves no event, the same way an unauthenticated request does.
+// MintClass reports whether id is of the credential class AuthorizeMintClass
+// admits, read from the already-authenticated identity without its fresh
+// re-checks (bearer revalidation, the live platform-registry lookup). It is
+// for display decisions on hot read paths, such as whether a reader sees an
+// export's secret; a verb that issues anything still calls AuthorizeMintClass.
+func (id Identity) MintClass() bool {
+	switch id.Method {
+	case "session":
+		return true
+	case "oauth2":
+		return id.Human && id.PlatformClient && HasGranularCapability(id.CanonicalScopes)
+	default:
+		return false
+	}
+}
+
 func (b *Base) AuthorizeMintClass(ctx context.Context) error {
 	if validate, ok := FreshBearerValidatorFrom(ctx); ok {
 		if err := validate(ctx); err != nil {

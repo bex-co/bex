@@ -105,3 +105,46 @@ func TestPGAgentSessionAdmissionLimitIsAtomic(t *testing.T) {
 		t.Fatalf("live sandboxes = %d, %v, want 1", n, err)
 	}
 }
+
+// AllWorkspaces counts one agent's active sessions across every workspace:
+// the shared Meta key's platform-wide muse limit (ADR108). The workspace
+// argument is ignored then, and only active sessions of that agent count.
+func TestPGAgentSessionCountAcrossWorkspaces(t *testing.T) {
+	s, pool, first := agentSessionPGStore(t, "count-all-a")
+	_, _, second := agentSessionPGStore(t, "count-all-b")
+	ctx := context.Background()
+	// A unique agent id keeps rows other tests left behind out of the count.
+	agent := "muse-" + first.ID
+	create := func(workspace, agent string) AgentSession {
+		t.Helper()
+		row, err := s.CreateAgentSession(ctx, AgentSession{
+			WorkspaceID: workspace, AgentConfig: []byte(`{"agent":"` + agent + `","task":"x"}`), InitialPrompt: "x",
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return row
+	}
+	a := create(first.ID, agent)
+	create(second.ID, agent)
+	create(second.ID, "claude")
+	done := create(first.ID, agent)
+	if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase = 'completed' WHERE id = $1`, done.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		c    AgentSessionCount
+		want int
+	}{
+		{AgentSessionCount{Agent: agent, AllWorkspaces: true}, 2},
+		{AgentSessionCount{Agent: agent, AllWorkspaces: true, ExcludeID: a.ID}, 1},
+		{AgentSessionCount{Agent: agent}, 1},
+	} {
+		if n, err := s.CountActiveAgentSessions(ctx, first.ID, tc.c); err != nil || n != tc.want {
+			t.Errorf("count %+v = %d, %v, want %d", tc.c, n, err, tc.want)
+		}
+	}
+	if n, err := s.CountActiveAgentSessions(ctx, "", AgentSessionCount{Agent: agent, AllWorkspaces: true}); err != nil || n != 2 {
+		t.Fatalf("count across workspaces with no workspace = %d, %v, want 2", n, err)
+	}
+}

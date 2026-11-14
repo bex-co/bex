@@ -409,22 +409,27 @@ func TestResolveNativeBun(t *testing.T) {
 		files   map[string]string
 		line    string // "" = not selected
 		source  string
+		exact   string // the release installed exactly (w8/315); "" = the line's reviewed patch
 		wantErr string
 	}{
-		{"sweep306 BUN_VERSION", map[string]string{"BUN_VERSION": "1.3.4"}, nil, "1.3", "BUN_VERSION=1.3.4", ""},
-		{"Render's default line (w5/m144)", map[string]string{"BUN_VERSION": "1.4.3"}, nil, "1.4", "BUN_VERSION=1.4.3", ""},
-		{"BUN_VERSION wins over the file", map[string]string{"BUN_VERSION": "1.2.20"}, map[string]string{".bun-version": "1.3.0\n"}, "1.2", "BUN_VERSION=1.2.20", ""},
-		{".bun-version", nil, map[string]string{".bun-version": "# pinned\nv1.2.21\n"}, "1.2", ".bun-version", ""},
-		{"bare major", map[string]string{"BUN_VERSION": "1"}, nil, "1.4", "BUN_VERSION=1", ""},
-		{"latest", map[string]string{"BUN_VERSION": "latest"}, nil, "1.4", "BUN_VERSION=latest", ""},
-		{"range", map[string]string{"BUN_VERSION": "~1.2.0"}, nil, "1.2", "BUN_VERSION=~1.2.0", ""},
-		{"text lockfile", nil, map[string]string{"bun.lock": "{}"}, "1.4", "bun.lock", ""},
-		{"binary lockfile", nil, map[string]string{"bun.lockb": "\x00"}, "1.4", "bun.lockb", ""},
-		{"file wins over a lockfile", nil, map[string]string{".bun-version": "1.2", "bun.lock": "{}"}, "1.2", ".bun-version", ""},
-		{"canary (Render 2026-10-16) starts on the default line", map[string]string{"BUN_VERSION": "canary"}, nil, "1.4", "BUN_VERSION=canary", ""},
-		{".bun-version canary", nil, map[string]string{".bun-version": "Canary\n"}, "1.4", ".bun-version", ""},
-		{"no opt-in", map[string]string{"NODE_VERSION": "22"}, map[string]string{"package.json": "{}"}, "", "", ""},
-		{"unsupported", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "", "", "BUN_VERSION=0.8.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3, 1.4 or canary"},
+		{"sweep306 BUN_VERSION", map[string]string{"BUN_VERSION": "1.3.4"}, nil, "1.3", "BUN_VERSION=1.3.4", "1.3.4", ""},
+		{"Render's elysiajs template (w8/315)", map[string]string{"BUN_VERSION": "1.3.0"}, nil, "1.3", "BUN_VERSION=1.3.0", "1.3.0", ""},
+		{"the reviewed patch", map[string]string{"BUN_VERSION": "1.4.4"}, nil, "1.4", "BUN_VERSION=1.4.4", "", ""},
+		{"Render's default line (w5/m144)", map[string]string{"BUN_VERSION": "1.4.3"}, nil, "1.4", "BUN_VERSION=1.4.3", "1.4.3", ""},
+		{"BUN_VERSION wins over the file", map[string]string{"BUN_VERSION": "1.2.20"}, map[string]string{".bun-version": "1.3.0\n"}, "1.2", "BUN_VERSION=1.2.20", "1.2.20", ""},
+		{".bun-version", nil, map[string]string{".bun-version": "# pinned\nv1.2.21\n"}, "1.2", ".bun-version", "1.2.21", ""},
+		{"bun-v prefix", map[string]string{"BUN_VERSION": "bun-v1.3.0"}, nil, "1.3", "BUN_VERSION=bun-v1.3.0", "1.3.0", ""},
+		{"a line", map[string]string{"BUN_VERSION": "1.3"}, nil, "1.3", "BUN_VERSION=1.3", "", ""},
+		{"bare major", map[string]string{"BUN_VERSION": "1"}, nil, "1.4", "BUN_VERSION=1", "", ""},
+		{"latest", map[string]string{"BUN_VERSION": "latest"}, nil, "1.4", "BUN_VERSION=latest", "", ""},
+		{"range", map[string]string{"BUN_VERSION": "~1.2.0"}, nil, "1.2", "BUN_VERSION=~1.2.0", "", ""},
+		{"text lockfile", nil, map[string]string{"bun.lock": "{}"}, "1.4", "bun.lock", "", ""},
+		{"binary lockfile", nil, map[string]string{"bun.lockb": "\x00"}, "1.4", "bun.lockb", "", ""},
+		{"file wins over a lockfile", nil, map[string]string{".bun-version": "1.2", "bun.lock": "{}"}, "1.2", ".bun-version", "", ""},
+		{"canary (Render 2026-10-16) starts on the default line", map[string]string{"BUN_VERSION": "canary"}, nil, "1.4", "BUN_VERSION=canary", "canary", ""},
+		{".bun-version canary", nil, map[string]string{".bun-version": "Canary\n"}, "1.4", ".bun-version", "canary", ""},
+		{"no opt-in", map[string]string{"NODE_VERSION": "22"}, map[string]string{"package.json": "{}"}, "", "", "", ""},
+		{"unsupported", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "", "", "", "BUN_VERSION=0.8.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3, 1.4 or canary"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			readFile := func(name string) ([]byte, bool) {
@@ -439,8 +444,8 @@ func TestResolveNativeBun(t *testing.T) {
 				}
 				return
 			}
-			if err != nil || found != (tc.line != "") || choice.Line != tc.line || choice.Source != tc.source {
-				t.Fatalf("= %+v, %v, %v; want line %q from %q", choice, found, err, tc.line, tc.source)
+			if err != nil || found != (tc.line != "") || choice.Line != tc.line || choice.Source != tc.source || choice.Exact != tc.exact {
+				t.Fatalf("= %+v, %v, %v; want line %q from %q, exact %q", choice, found, err, tc.line, tc.source, tc.exact)
 			}
 		})
 	}
@@ -450,8 +455,8 @@ func TestResolveNativeBun(t *testing.T) {
 	if reviewed, _ := nativeBun.find(nativeBun.defaultLine); canary.Image != reviewed.image || canary.Exact != "canary" {
 		t.Errorf("canary choice = %+v, want the reviewed default image with Exact canary", canary)
 	}
-	choice, _, _ := ResolveNativeBun(map[string]string{"BUN_VERSION": "1.3.4"}, func(string) ([]byte, bool) { return nil, false })
-	if got := choice.Narration(); got != "==> Using Bun 1.3 (from BUN_VERSION=1.3.4)" {
+	choice, _, _ := ResolveNativeBun(map[string]string{"BUN_VERSION": "1.3"}, func(string) ([]byte, bool) { return nil, false })
+	if got := choice.Narration(); got != "==> Using Bun 1.3 (from BUN_VERSION=1.3)" {
 		t.Errorf("narration = %q", got)
 	}
 }
@@ -462,7 +467,7 @@ func TestResolveNativeBun(t *testing.T) {
 func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 	o := nativeOptions()
 	o.Runtime = "node"
-	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3.4"}, map[string]string{".nvmrc": "22\n"})
+	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3"}, map[string]string{".nvmrc": "22\n"})
 	choices, err := ResolveNativeBuild("node", bundle, dockerfile, src)
 	if err != nil || len(choices) != 2 || choices[0].Label != "Node" || choices[0].Line != "22" || choices[1].Label != "Bun" || choices[1].Line != "1.3" {
 		t.Fatalf("choices = %+v, %v; want Node 22 then Bun 1.3", choices, err)
@@ -535,6 +540,33 @@ func TestResolveNativeBuildPinsBunCanary(t *testing.T) {
 	choices, err = ResolveNativeBuildExact(t.Context(), missing, time.Time{}, "node", bundle, dockerfile, src)
 	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image || !strings.Contains(choices[1].Narration(), "No official image oven/bun:canary") {
 		t.Fatalf("missing tag choices = %+v, %v", choices, err)
+	}
+}
+
+// w8/315: an exact BUN_VERSION installs that release's official image, pinned
+// by digest, as Render installs the exact version; a missing tag keeps the
+// reviewed line and says so.
+func TestResolveNativeBuildPinsAnExactBun(t *testing.T) {
+	o := nativeOptions()
+	o.Runtime = "node"
+	exact := &fakeExact{digests: map[string]string{bunRepo + ":1.3.0": exactDigest}}
+	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3.0"}, map[string]string{".nvmrc": "22\n"})
+	choices, err := ResolveNativeBuildExact(t.Context(), exact, time.Time{}, "node", bundle, dockerfile, src)
+	if err != nil || len(choices) != 2 || choices[1].Line != "1.3.0" || choices[1].Image != "oven/bun:1.3.0@"+exactDigest {
+		t.Fatalf("choices = %+v, %v; want Bun 1.3.0 pinned to its digest", choices, err)
+	}
+	if got := choices[1].Narration(); got != "==> Using Bun 1.3.0 (from BUN_VERSION=1.3.0)" {
+		t.Errorf("narration = %q", got)
+	}
+	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:1.3.0@"+exactDigest+" /usr/local/bin/bun") {
+		t.Fatalf("Dockerfile does not copy the exact Bun:\n%s", df)
+	}
+
+	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "1.3.0"}, nil)
+	choices, err = ResolveNativeBuildExact(t.Context(), &fakeExact{}, time.Time{}, "node", bundle, dockerfile, src)
+	reviewed, _ := nativeBun.find("1.3")
+	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image || !strings.Contains(choices[1].Narration(), "No official image oven/bun:1.3.0") {
+		t.Fatalf("missing tag choices = %+v, %v; want the reviewed 1.3 line, said", choices, err)
 	}
 }
 

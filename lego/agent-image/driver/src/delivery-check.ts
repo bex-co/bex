@@ -84,12 +84,7 @@ async function prLacksPushedHead(
   if (!(await hasCommit(config.cwd, prHead))) return false;
   if (!(await hasCommit(config.cwd, remoteHead))) return false;
   try {
-    await git(config.cwd, [
-      "merge-base",
-      "--is-ancestor",
-      remoteHead,
-      prHead,
-    ]);
+    await git(config.cwd, ["merge-base", "--is-ancestor", remoteHead, prHead]);
     return false;
   } catch {
     return true;

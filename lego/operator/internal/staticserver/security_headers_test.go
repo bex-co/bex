@@ -18,14 +18,14 @@ package staticserver
 
 import (
 	"net/http"
-	"strings"
 	"testing"
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// Render's static sites send HSTS and nosniff on every file (w8/194); an error
-// response gets nosniff only, and a saved header rule replaces either default.
+// Render's static sites send HSTS and nosniff on every file (w8/194); on this
+// older site a miss is the bare 404, with nosniff only (w8/322), and a saved
+// header rule replaces either default.
 func TestStaticResponsesCarryRendersSecurityHeaders(t *testing.T) {
 	h, _ := newTestHandler(t, Site{Headers: []appv1alpha1.StaticHeader{
 		{Path: "/custom/*", Name: "Strict-Transport-Security", Value: "max-age=60"},
@@ -61,12 +61,5 @@ func TestStaticResponsesCarryRendersSecurityHeaders(t *testing.T) {
 	check("304", rec304, hsts, "nosniff")
 	check("custom rule", doWith(h, http.MethodGet, "/custom/app.js", nil), "max-age=60", "custom")
 
-	miss := doWith(h, http.MethodGet, "/missing.js", nil)
-	if miss.Code != http.StatusNotFound {
-		t.Fatalf("miss => %d", miss.Code)
-	}
-	check("404", miss, "", "nosniff")
-	if strings.Contains(strings.Join(miss.Header().Values("Strict-Transport-Security"), ","), "max-age") {
-		t.Error("an error response carries HSTS")
-	}
+	assertBareNotFound(t, doWith(h, http.MethodGet, "/missing.js", nil))
 }

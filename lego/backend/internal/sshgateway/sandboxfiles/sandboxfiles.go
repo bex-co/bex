@@ -304,23 +304,44 @@ const cdParent = `cd_parent() {
 }
 `
 
+// destinationFree succeeds when entry $name may be published as $kind: a
+// directory only where nothing is, a file over nothing or a regular file, and
+// never through a symlink.
+const destinationFree = `destination_free() {
+  if [ "$kind" = directory ]; then
+    [ ! -e "$name" ] && [ ! -L "$name" ]
+  else
+    [ ! -L "$name" ] && { [ ! -e "$name" ] || [ -f "$name" ]; }
+  fi
+}
+`
+
+// checkScript refuses an upload's destination before any of its body is sent:
+// it runs without stdin, so a refusal never leaves an upload streaming into an
+// exec that will not read it (w8/313).
+const checkScript = cdParent + destinationFree + `set -eu
+cd_parent "$1"
+name=$2 kind=$3
+destination_free || exit 73
+`
+
 // Both supported images supply POSIX sh, tar, cat, wc, tr, rm, rmdir, mkdir,
 // chmod and Linux mv.
 // Untrusted paths are positional argv, never interpolated into shell source.
 // Extraction always starts in an empty private staging tree; existing target
 // trees are never merged, so their symlinks cannot redirect archive writes.
-const stageScript = cdParent + `set -eu
+// Every exit reads the rest of stdin first: the upload streams into it, and a
+// pods/exec stdin stream the remote stops reading stalls the exec rather than
+// ending it (w8/313).
+const stageScript = cdParent + destinationFree + `set -eu
+trap 'cat >/dev/null || :' EXIT
 cd_parent "$1"
 name=$2 stage=$3 kind=$4 size=$5
-if [ "$kind" = directory ]; then
-  [ ! -e "$name" ] && [ ! -L "$name" ] || exit 73
-else
-  [ ! -L "$name" ] && { [ ! -e "$name" ] || [ -f "$name" ]; } || exit 73
-fi
+destination_free || exit 73
 umask 077
 mkdir "$stage" || exit 73
 complete=0
-trap 'if [ "$complete" != 1 ]; then rm -rf -- "$stage"; fi' EXIT
+trap 'cat >/dev/null || :; [ "$complete" = 1 ] || rm -rf -- "$stage" || :' EXIT
 trap 'exit 1' HUP INT TERM
 if [ "$kind" = directory ]; then
   mkdir "$stage/tree"
@@ -334,16 +355,15 @@ complete=1
 
 // publishScript's $5 is the published entry's octal mode, chosen by the
 // gateway (the archive root's, or plainFileMode): staging runs under umask 077.
-const publishScript = cdParent + `set -eu
+const publishScript = cdParent + destinationFree + `set -eu
 cd_parent "$1"
 name=$2 stage=$3 kind=$4 mode=$5
 [ -d "$stage" ] && [ ! -L "$stage" ] || exit 73
+destination_free || exit 73
 if [ "$kind" = directory ]; then
-  [ ! -e "$name" ] && [ ! -L "$name" ] || exit 73
   chmod -- "$mode" "$stage/tree"
   mv -T -- "$stage/tree" "$name"
 else
-  [ ! -L "$name" ] && { [ ! -e "$name" ] || [ -f "$name" ]; } || exit 73
   chmod -- "$mode" "$stage/data"
   mv -T -- "$stage/data" "$name"
 fi
@@ -391,6 +411,10 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 	if r.ContentLength > files.MaxTransferBytes {
 		return errTooLarge
 	}
+	parent, name := path.Dir(destination), path.Base(destination)
+	if err := s.execute(ctx, target, shell(checkScript, parent, name, kind), nil, io.Discard); err != nil {
+		return err
+	}
 	input := io.Reader(&boundedReader{reader: r.Body, remaining: files.MaxTransferBytes})
 	if encoding == "gzip" {
 		gz, err := gzip.NewReader(input)
@@ -406,7 +430,6 @@ func (s *Server) upload(ctx context.Context, target apps.SSHInstanceTarget, dest
 		return err
 	}
 	stage := ".bex-copy-" + nonce
-	parent, name := path.Dir(destination), path.Base(destination)
 	published := false
 	// Cleanup is the only work permitted past request cancellation, is joined,
 	// and has its own short cap. A vanished pod may retain the hidden stage;

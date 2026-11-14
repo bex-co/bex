@@ -16,7 +16,10 @@ Enforce the layering: `operator → types ← backend`; `types` imports no sibli
 - Fix everything you find directly in the working tree. If a fix can't be finished safely in this run, revert only your partial work for that fix and list it under **Deferred** in the report — never leave the tree half-refactored.
 - Scope: parse `$ARGUMENTS` per Phase 1 — an optional path/module scope or skill-specific target. No argument = the skill's stated default (usually the whole repo via parallel agents per module: lego/types, lego/operator, lego/backend, lego/cli, dashboard).
 - False-positive discipline: if a finding is intentional, load-bearing, or ambiguous, skip it with a one-line reason — don't argue it into a change.
-- Every change must pass the verification gates for the modules it touched before being reported as done: operator `make test` + `make lint` (from `lego/operator/`), `cd lego/backend && go test ./...`, `cd lego/cli && go test ./...`, dashboard `yarn test` + typecheck.
+- Verify every change with targeted checks before reporting it done, and leave the full suites to CI. Run only what the change can break, one heavy command at a time: never two in parallel, never the same suite twice.
+  - Go: `gofmt -l` on the touched files; `go build` and `go vet` of the touched packages; `go test` of those packages and of the packages that import them (find importers with `grep -rl '"<import path>"' --include='*.go' lego/`).
+  - Dashboard: `yarn vitest related --run <changed files>`, `yarn eslint <changed files>`, and `yarn typecheck` when TypeScript changed.
+  - Never the module-wide suites: `make lint`, `make test`, `go test ./...`, the whole `yarn test` or `yarn lint`. CI runs them on the pull request, against the real Postgres, OpenFGA and OpenBao a sandbox lacks. A failed check comes back to the session as its next turn (ADR047 D11). A run that ships straight to main gets them from the ship skill's gates and main's CI.
 - Run `npx prettier@3.4.2 --write` on any markdown touched.
 - Before shipping, summarize results in commentary using: **Fixed** (file:line + one-line rationale) / **Deferred** (item + why) / **Skipped** (finding + reason) / **Gates** (commands run + outcomes).
 
@@ -42,7 +45,7 @@ Parallel agents compare dashboard logic against `lego/backend/internal/apps`: bl
 
 ## Phase 5 — Verify and report
 
-Types moves ripple: run all Go gates; `make lint` must pass WITH the new depguard rules; dashboard gates if touched. Report per the standard format.
+Types moves ripple: `go build ./...` and `go vet ./...` in every module that imports the moved code (this compiles their tests without running them), then the targeted tests. The new depguard rules are this routine's own output, so prove them once on the final tree. From each module that gained a rule, run `"$PWD/../operator/bin/golangci-lint" run --enable-only depguard` (from `lego/operator` itself, `bin/golangci-lint`; `make golangci-lint` there installs the pinned binary). Seed one violation it must flag, then revert it. The full `make lint` runs in CI. Dashboard: the targeted dashboard checks if touched. Report per the standard format.
 
 ## Final phase — Ship
 

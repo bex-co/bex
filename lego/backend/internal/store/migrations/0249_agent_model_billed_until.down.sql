@@ -1,0 +1,1 @@
+ALTER TABLE billing_provider_mappings DROP COLUMN agent_model_billed_until;

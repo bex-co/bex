@@ -52,10 +52,15 @@ export function ComposerSpendBanner({ gate }: { gate: ComposerSpendGate }) {
           </AlertTitle>
           <AlertDescription>
             <p>
-              {t("agentSessions.spendWarningBody", {
-                used: usd(position.monthToDateUsd),
-                cap: usd(position.capUsd),
-              })}
+              {t(
+                position.chargePoint
+                  ? "agentSessions.spendWarningBodyCharge"
+                  : "agentSessions.spendWarningBody",
+                {
+                  used: usd(position.monthToDateUsd),
+                  cap: usd(position.capUsd),
+                },
+              )}
             </p>
           </AlertDescription>
         </Alert>

@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -325,6 +326,9 @@ func TestRecoverCreatesNewInstanceLeavingSourceUntouched(t *testing.T) {
 	svc, cl := newServicePostgresResources()
 	seedDatabaseSpec(t, cl, "src-db", appv1alpha1.DatabaseSpec{
 		Plan: "basic-1gb", Version: "16", DatabaseName: "orders_data", DatabaseUser: "orders_owner",
+		// orders_owner was rotated out on the source; the restored instance
+		// still logs in as its owner.
+		DeletedUsers: []string{"leaked_login", "orders_owner"},
 	}, true)
 	seedBarmanRecoveryWindow(t, cl, "src-db", "2026-07-01T00:00:00Z", "2026-07-10T00:00:00Z")
 	ctx := context.Background()
@@ -350,6 +354,11 @@ func TestRecoverCreatesNewInstanceLeavingSourceUntouched(t *testing.T) {
 	}
 	if made.Spec.Plan != "basic-1gb" || made.Spec.Version != "16" {
 		t.Fatalf("new db should inherit source plan/version: %+v", made.Spec)
+	}
+	// w5/m384: a login retired after the target is retired again on the
+	// restored instance, not brought back by the backup.
+	if !slices.Equal(made.Spec.DeletedUsers, []string{"leaked_login"}) {
+		t.Fatalf("restored db retires %v, want the source's retired logins", made.Spec.DeletedUsers)
 	}
 	if made.Spec.DatabaseName != "orders_data" || made.Spec.DatabaseUser != "orders_owner" ||
 		v.DatabaseName != "orders_data" || v.DatabaseUser != "orders_owner" {

@@ -3,7 +3,7 @@
 # lowest-priority platform-host fallback Ingress (bex-platform-host-fallback,
 # w4/m235 t008), which sends a host no App route claims yet to the activator:
 # a just-created service answers its first-deploy response, and an unknown
-# host a bex 404 instead of Traefik's raw one.
+# host Render's plain-text 404 instead of Traefik's raw one (w8/320).
 apiVersion: traefik.io/v1alpha1
 kind: TLSStore
 metadata:

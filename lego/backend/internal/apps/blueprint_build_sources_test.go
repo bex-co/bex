@@ -494,3 +494,90 @@ buildSources:
 		t.Fatalf("fromService a service = %v, want a named refusal", err)
 	}
 }
+
+// cronBuildSourceBlueprint is Render's 2026-11-13 cronService.buildSource: a
+// cron job with no runtime of its own runs the build source's image on its
+// schedule (w3/m367).
+const cronBuildSourceBlueprint = `
+buildSources:
+  - name: mono
+    git:
+      repo: https://github.com/acme/mono
+      branch: main
+      runtime: node
+      buildCommand: npm ci && npm run build
+services:
+  - type: cron
+    name: nightly
+    buildSource: mono
+    schedule: "0 3 * * *"
+    startCommand: node jobs/nightly.js
+`
+
+func TestBlueprintCronBuildSource(t *testing.T) {
+	st := parseBlueprintStackForTest(t, cronBuildSourceBlueprint)
+	if len(st.services) != 1 || len(st.buildSources) != 1 {
+		t.Fatalf("stack = %+v", st)
+	}
+	cron := st.services[0]
+	if cron.req.Type != appv1alpha1.TypeCronJob || cron.req.blueprintBuildSource != "mono" || cron.req.Repo != "" || cron.req.Runtime != "" {
+		t.Fatalf("cron req = %+v, want a cron linked to mono with no source of its own", cron.req)
+	}
+
+	svc, _, ctx := newBuildSourceService(t)
+	res, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: cronBuildSourceBlueprint})
+	if err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	carrier := getTenantApp(t, svc.Client, "tea-a", res.BuildSources[0].ID)
+	app := getTenantApp(t, svc.Client, "tea-a", "nightly")
+	if app.Spec.Type != appv1alpha1.TypeCronJob || app.Spec.BuildSource == nil || app.Spec.BuildSource.Name != carrier.Name ||
+		app.Spec.Schedule != "0 3 * * *" || app.Spec.Repo != "" || app.Spec.Image != "" {
+		t.Fatalf("cron spec = %+v, want the schedule, linked to %s, no source of its own", app.Spec, carrier.Name)
+	}
+
+	// Render's allOf refuses each source field beside a cron's buildSource;
+	// without buildSource a cron still needs its runtime.
+	for _, field := range []string{"runtime: node", "repo: https://github.com/acme/other", "branch: main", "image:\n      url: docker.io/library/busybox:1.36",
+		"buildCommand: make", "buildFilter:\n      paths: [src/**]", "dockerContext: .", "dockerfilePath: ./Dockerfile", "rootDir: jobs", "registryCredential:\n      fromRegistryCreds:\n        name: creds"} {
+		manifest := strings.Replace(cronBuildSourceBlueprint, "    buildSource: mono\n", "    buildSource: mono\n    "+field+"\n", 1)
+		if _, problems := CompileBlueprintSource(manifest); len(problems) == 0 {
+			t.Errorf("%q beside a cron's buildSource compiled", strings.SplitN(field, ":", 2)[0])
+		}
+	}
+	if _, problems := CompileBlueprintSource("services:\n  - type: cron\n    name: nightly\n    schedule: \"0 3 * * *\"\n    repo: https://github.com/acme/mono\n    startCommand: node x.js\n"); len(problems) == 0 {
+		t.Error("a cron with neither runtime nor buildSource compiled")
+	}
+	// rootDir joined the fields refused beside a server's buildSource.
+	if _, problems := CompileBlueprintSource("services:\n  - type: web\n    name: web\n    buildSource: mono\n    rootDir: api\n    startCommand: node api.js\n"); len(problems) == 0 {
+		t.Error("rootDir beside a web service's buildSource compiled")
+	}
+}
+
+// A cron job linked to a build source exports buildSource and no source of its
+// own, and its export validates as a no-op plan (w3/m367).
+func TestGenerateBlueprintExportsACronBuildSource(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	ctx = core.WithWorkspace(ctx, "tea-a")
+	if _, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: cronBuildSourceBlueprint}); err != nil {
+		t.Fatal(err)
+	}
+	out, err := svc.GenerateBlueprint(ctx, GenerateBlueprintRequest{OwnerID: "tea-a", ServiceIDs: []string{"nightly"}})
+	if err != nil {
+		t.Fatalf("GenerateBlueprint: %v", err)
+	}
+	for _, want := range []string{"type: cron", "buildSource: mono", "schedule: 0 3 * * *", "name: mono"} {
+		if !strings.Contains(strings.ReplaceAll(out.Manifest, `"`, ""), want) {
+			t.Errorf("export lacks %q:\n%s", want, out.Manifest)
+		}
+	}
+	v, err := svc.ValidateBlueprint(ctx, "tea-a", out.Manifest, "")
+	if err != nil || !v.Valid || v.Plan == nil {
+		t.Fatalf("validate export = %+v, %v", v, err)
+	}
+	for _, a := range v.Plan.Actions {
+		if a.Operation != BlueprintPlanNoop {
+			t.Errorf("export re-plans %s %s as %s %v", a.Kind, a.Name, a.Operation, a.ChangedFields)
+		}
+	}
+}

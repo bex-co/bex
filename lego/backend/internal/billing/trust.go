@@ -51,7 +51,19 @@ type Trust struct {
 	// an hour later).
 	WriteOffs WriteOffStore
 	Invoices  TrustInvoices
-	Clock     func() time.Time
+	// ModelCharges settles the agent-model threshold charge ledger row of a
+	// charge invoice (ADR091 D10.2a) that Stripe decided after the mint gave
+	// up, or that the customer paid later on its hosted page; nil ⇒ the
+	// trust record alone is kept.
+	ModelCharges AgentModelChargeLedger
+	Clock        func() time.Time
+}
+
+// AgentModelChargeLedger settles a threshold charge by its invoice;
+// *store.PGStore satisfies it.
+type AgentModelChargeLedger interface {
+	SettleAgentModelChargeInvoice(ctx context.Context, invoiceID string, settlement store.AgentModelChargeSettlement) (store.AgentModelCharge, bool, error)
+	RecordAgentModelBilledUntil(ctx context.Context, workspaceID string, until time.Time) (bool, error)
 }
 
 // WriteOffStore records agent-model bad debt; *store.PGStore satisfies it.
@@ -68,6 +80,10 @@ type TrustInvoices interface {
 	// of the invoice failed, else the Customer's default card ("" ⇒ none),
 	// kept on the write-off for D10.6.
 	WrittenOffCardFingerprint(ctx context.Context, invoiceID, customerID string) (string, error)
+	// VoidAgentModelChargesBilledBy voids the workspace's open (declined)
+	// threshold charge invoices that a subscription invoice billing the
+	// meter through until bills again.
+	VoidAgentModelChargesBilledBy(ctx context.Context, workspaceID, customerID string, until time.Time) error
 }
 
 // TierChangedFunc is told a workspace's trust tier changed through a
@@ -116,7 +132,9 @@ func (t *Trust) now() time.Time {
 
 // HandleStripeEvent reduces one signature-verified event. Events that are not
 // bex's, or whose workspace is gone, are acknowledged; a store failure is
-// returned so Stripe retries.
+// returned so Stripe retries. A bex invoice is a Subscription contract
+// invoice or a standalone agent-model threshold charge invoice (named by its
+// own metadata); both feed the trust record the same way.
 func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) error {
 	if t == nil || t.Store == nil {
 		return fmt.Errorf("billing trust store unavailable")
@@ -137,18 +155,26 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 		if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
 			return fmt.Errorf("invalid invoice event: %w", err)
 		}
-		ws, _, ok := invoiceContract(&invoice)
+		ws, charge, ok := bexInvoiceWorkspace(&invoice)
 		if !ok || invoice.ID == "" {
 			return nil
 		}
 		workspaceID = ws
+		if err := t.recordMeterBilled(ctx, event.Type, ws, &invoice); err != nil {
+			return err
+		}
 		switch event.Type {
 		case stripe.EventTypeInvoiceCreated:
 			return t.finalizeThresholdInvoice(ctx, &invoice)
 		case stripe.EventTypeInvoiceMarkedUncollectible:
+			// A charge invoice rates no meter line, so it records no
+			// write-off: its unpaid usage is still on the meter.
 			return t.recordWriteOff(ctx, ws, &invoice, at)
 		case stripe.EventTypeInvoiceVoided:
-			return ignoreWorkspaceGone(t.Store.SettleBillingTrustInvoice(ctx, ws, invoice.ID, at))
+			if err := ignoreWorkspaceGone(t.Store.SettleBillingTrustInvoice(ctx, ws, invoice.ID, at)); err != nil || !charge {
+				return err
+			}
+			return t.settleModelCharge(ctx, &invoice, store.AgentModelChargeFailed, chargeFailureVoid, at)
 		case stripe.EventTypeInvoicePaymentFailed:
 			before, after, _, err = t.Store.RecordBillingTrustFailure(ctx, ws, invoice.ID, at)
 		default:
@@ -156,9 +182,22 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 			if payment.AmountCents <= 0 {
 				// Credits and $0 invoices are not payment history, but they
 				// do close the invoice for the balance-due refusal.
-				return ignoreWorkspaceGone(t.Store.SettleBillingTrustInvoice(ctx, ws, invoice.ID, payment.PaidAt))
+				err = ignoreWorkspaceGone(t.Store.SettleBillingTrustInvoice(ctx, ws, invoice.ID, payment.PaidAt))
+				if err != nil || !charge {
+					return err
+				}
+				return t.settleModelCharge(ctx, &invoice, store.AgentModelChargePaid, "", payment.PaidAt)
 			}
 			before, after, _, err = t.Store.RecordBillingTrustPayment(ctx, payment)
+		}
+		if err == nil && charge {
+			status, failure := store.AgentModelChargePaid, ""
+			if event.Type == stripe.EventTypeInvoicePaymentFailed {
+				status, failure = store.AgentModelChargeFailed, chargeFailurePaymentFailed
+			}
+			if err = t.settleModelCharge(ctx, &invoice, status, failure, at); err != nil {
+				return err
+			}
 		}
 	case stripe.EventTypeChargeDisputeCreated, stripe.EventTypeChargeDisputeClosed:
 		var dispute stripe.Dispute
@@ -193,6 +232,23 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 	return nil
 }
 
+// settleModelCharge settles the threshold charge whose invoice this is: a
+// failure Stripe decided after the mint stopped waiting, or a payment made
+// later on the invoice's hosted page (the sweep then nets it). An invoice the
+// ledger does not know is acknowledged.
+func (t *Trust) settleModelCharge(ctx context.Context, invoice *stripe.Invoice, status, failure string, at time.Time) error {
+	if t.ModelCharges == nil {
+		return nil
+	}
+	_, found, err := t.ModelCharges.SettleAgentModelChargeInvoice(ctx, invoice.ID, store.AgentModelChargeSettlement{
+		Status: status, HostedInvoiceURL: invoice.HostedInvoiceURL, Failure: failure, At: at,
+	})
+	if err == nil && !found {
+		log.Printf("billing trust: agent-model charge invoice %s is not in the charge ledger; acknowledged", invoice.ID)
+	}
+	return err
+}
+
 // trustPayment is invoice as trust history counts it, with paid_at from the
 // invoice's own transition, else fallback. Amount paid is gross: a later
 // refund stays counted, as the invoice.paid webhook counts it.
@@ -208,9 +264,9 @@ func trustPayment(invoice *stripe.Invoice, workspaceID string, fallback time.Tim
 }
 
 // paidInvoicePayment is a listed paid invoice as trust history, ok only for a
-// bex contract invoice with a positive amount paid.
+// bex invoice (a contract or a threshold charge) with a positive amount paid.
 func paidInvoicePayment(invoice *stripe.Invoice) (store.BillingTrustPayment, bool) {
-	workspaceID, _, ok := invoiceContract(invoice)
+	workspaceID, _, ok := bexInvoiceWorkspace(invoice)
 	if !ok || invoice.AmountPaid <= 0 {
 		return store.BillingTrustPayment{}, false
 	}
@@ -268,6 +324,33 @@ func ignoreWorkspaceGone(err error) error {
 		return nil
 	}
 	return err
+}
+
+// recordMeterBilled acts on a subscription invoice that billed the meter,
+// once it exists (created) and again once it is paid, in case the created
+// event is not delivered: it moves the workspace's charge window past it
+// (the charger also reads it from Stripe before each charge), and voids the
+// declined charge invoices whose usage it now bills, so that usage is never
+// owed twice.
+func (t *Trust) recordMeterBilled(ctx context.Context, eventType stripe.EventType, workspaceID string, invoice *stripe.Invoice) error {
+	if eventType != stripe.EventTypeInvoiceCreated && eventType != stripe.EventTypeInvoicePaid {
+		return nil
+	}
+	until := meterBilledUntil(invoice)
+	if until.IsZero() {
+		return nil
+	}
+	if t.ModelCharges != nil {
+		if _, err := t.ModelCharges.RecordAgentModelBilledUntil(ctx, workspaceID, until); err != nil {
+			return fmt.Errorf("record where %s was last billed: %w", workspaceID, err)
+		}
+	}
+	if t.Invoices != nil && invoice.Customer != nil {
+		if err := t.Invoices.VoidAgentModelChargesBilledBy(ctx, workspaceID, invoice.Customer.ID, until); err != nil {
+			return fmt.Errorf("void the agent-model charges %s bills again: %w", invoice.ID, err)
+		}
+	}
+	return nil
 }
 
 // finalizeThresholdInvoice finalizes a draft subscription_threshold invoice so

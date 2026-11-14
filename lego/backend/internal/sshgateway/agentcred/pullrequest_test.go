@@ -60,6 +60,10 @@ func (f *prForge) FastForwardBranch(context.Context, int64, string, string, stri
 	return "", errors.New("no taken-over pull request in the gateway tests")
 }
 
+func (f *prForge) BranchProtected(context.Context, int64, string, string, string) (bool, error) {
+	return false, nil
+}
+
 func (f *prForge) SyncDraftPullRequest(_ context.Context, _ int64, owner, repo, head, _, _ string) (github.DraftPullRequestResult, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()

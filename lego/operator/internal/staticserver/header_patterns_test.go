@@ -36,7 +36,10 @@ func TestHeaderPatternsServedResponses(t *testing.T) {
 		{Path: "/**/*.css", Name: "X-Nested-Css", Value: "yes"},
 		{Path: "/**/*", Name: "X-Nested-All", Value: "yes"},
 	}
-	h, _ := newTestHandler(t, Site{Headers: rules}, map[string]Object{
+	// Misses are served with the site's 404.html, which carries the rules
+	// matching the request path, as on Render (w8/322).
+	h, _ := newTestHandler(t, Site{Headers: rules, NoSPAFallback: true}, map[string]Object{
+		key("404.html"):           {Body: []byte("missing"), ContentType: "text/html"},
 		key("render.yaml"):        {Body: []byte("yaml")},
 		key("style.css"):          {Body: []byte("css")},
 		key("nested/config.yaml"): {Body: []byte("nested yaml")},
@@ -56,6 +59,7 @@ func TestHeaderPatternsServedResponses(t *testing.T) {
 		{"/nested/missing.yaml", "", "X-All X-Subtree X-Nested-Yaml X-Nested-All", 404},
 		{"/nested/deep/missing.css", "", "X-All X-Subtree X-Nested-Css X-Nested-All", 404},
 		{"/nested/", "directory", "X-All X-Subtree X-Nested-All", 200},
+		{"/nested", "directory", "X-All", 200}, // the bare path is outside /nested/* (w8/325)
 		{"/other/deep/", "", "X-All X-Nested-All", 404},
 		{"/nestedness/file.yaml", "", "X-All X-Nested-Yaml X-Nested-All", 404},
 		{"/", "", "X-All", 404},
@@ -80,6 +84,9 @@ func TestHeaderPatternsServedResponses(t *testing.T) {
 				}
 				if method == http.MethodGet && tc.status == 200 && response.Body.String() != tc.body {
 					t.Errorf("body=%q, want %q", response.Body.String(), tc.body)
+				}
+				if method == http.MethodGet && tc.status == http.StatusNotFound && response.Body.String() != "missing" {
+					t.Errorf("miss body=%q, want the site's 404.html", response.Body.String())
 				}
 			})
 		}
@@ -110,7 +117,7 @@ func TestHeaderPatternsPreserveRouteContract(t *testing.T) {
 		{"/render.yaml", "original", "global", "yes", "", 200},
 		{"/missing.yaml", "rewritten", "global", "yes", "", 200},
 		{"/nested/missing.yaml", "rewritten", "nested", "", "", 200},
-		{"/old/deep/file.yaml", "", "nested", "", "/archive/deep/file.yaml", 301},
+		{"/old/deep/file.yaml", "", "", "", "/archive/deep/file.yaml", 301}, // a 301 carries no rule (w8/324)
 	} {
 		for _, method := range []string{http.MethodGet, http.MethodHead} {
 			t.Run(method+tc.path, func(t *testing.T) {

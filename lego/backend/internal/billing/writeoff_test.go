@@ -53,6 +53,10 @@ func (f trustInvoicesFake) AgentModelInvoiceLines(_ context.Context, invoiceID s
 
 func (f trustInvoicesFake) FinalizeThresholdInvoice(context.Context, string) error { return nil }
 
+func (f trustInvoicesFake) VoidAgentModelChargesBilledBy(context.Context, string, string, time.Time) error {
+	return nil
+}
+
 func (f trustInvoicesFake) WrittenOffCardFingerprint(context.Context, string, string) (string, error) {
 	return "", nil
 }
@@ -334,10 +338,11 @@ func TestBalanceDueTracksEveryFailedInvoiceAgainstPostgres(t *testing.T) {
 	due(false, "the written-off invoice paid")
 }
 
-// Real DB: the threshold sweep syncs a workspace once per trust change,
-// skips Stripe when the recorded value already matches, backs a failure off
-// without blocking, keeps a workspace due when its trust changes during a
-// sync, and resyncs when a payment lock expires.
+// Real DB: the retired item-threshold sweep (ADR091 D10.2a) removes a
+// workspace's Stripe threshold once, backing a failure off without blocking;
+// after that a trust change, an expiring lock or a change committed during a
+// sync leaves it due but never reaches Stripe again (the recorded value is
+// already none).
 func TestAgentModelThresholdSweepAgainstPostgres(t *testing.T) {
 	pg, _ := writeOffTestStore(t)
 	ctx := context.Background()
@@ -369,28 +374,32 @@ func TestAgentModelThresholdSweepAgainstPostgres(t *testing.T) {
 	if !isDue() {
 		t.Fatal("a never-synced trust record is not due")
 	}
+	// Stripe refuses the removal; the retry waits for its backoff, then
+	// succeeds.
+	setter.fail[ws] = true
 	_ = th.RunOnce(ctx)
 	_ = th.RunOnce(ctx)
-	calls("25000000")
+	calls("none")
+	setter.fail[ws] = false
+	now = now.Add(2 * time.Minute)
+	_ = th.RunOnce(ctx)
+	calls("none", "none")
 	if isDue() {
 		t.Fatal("a synced workspace is still due")
 	}
 
-	// A failed charge: T0, $10. Stripe refuses; the retry waits for its
-	// backoff, then succeeds.
+	// A failed charge changes the trust record: due again, but none is
+	// already applied, so Stripe is not called.
 	failed := "in_failed_" + ws
 	// Failed 31 days ago, so a payment can settle it into a lock ending soon.
 	if _, _, _, err := pg.RecordBillingTrustFailure(ctx, ws, failed, now.Add(-31*24*time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	setter.fail[ws] = true
+	if !isDue() {
+		t.Fatal("a trust change is not due")
+	}
 	_ = th.RunOnce(ctx)
-	_ = th.RunOnce(ctx)
-	calls("25000000", "10000000")
-	setter.fail[ws] = false
-	now = now.Add(2 * time.Minute)
-	_ = th.RunOnce(ctx)
-	calls("25000000", "10000000", "10000000")
+	calls("none", "none")
 
 	// A trust change committed while a sync is in flight leaves it due.
 	if err := pg.WithAgentModelThresholdSync(ctx, ws, now, func(state store.AgentModelThresholdState) (*int64, error) {
@@ -408,15 +417,13 @@ func TestAgentModelThresholdSweepAgainstPostgres(t *testing.T) {
 	}
 
 	// Paying the failed invoice starts the 30-day lock, which ends a minute
-	// from now: still T0 ($10, already applied, so no Stripe call) until it
-	// expires, then T1 again.
+	// from now: not due until it expires, then due, and still no Stripe call.
 	if _, _, _, err := pg.RecordBillingTrustPayment(ctx, store.BillingTrustPayment{
 		InvoiceID: failed, WorkspaceID: ws, AmountCents: 1000, PaidAt: now.Add(-store.TrustLockAfterSettlement + time.Minute),
 	}); err != nil {
 		t.Fatal(err)
 	}
 	_ = th.RunOnce(ctx)
-	calls("25000000", "10000000", "10000000")
 	if isDue() {
 		t.Fatal("due before the lock expires")
 	}
@@ -425,5 +432,8 @@ func TestAgentModelThresholdSweepAgainstPostgres(t *testing.T) {
 		t.Fatal("not due after the lock expired")
 	}
 	_ = th.RunOnce(ctx)
-	calls("25000000", "10000000", "10000000", "25000000")
+	calls("none", "none")
+	if isDue() {
+		t.Fatal("still due after the sweep")
+	}
 }

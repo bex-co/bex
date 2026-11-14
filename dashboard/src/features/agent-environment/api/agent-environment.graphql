@@ -14,6 +14,15 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   modelKeySet
   modelSource
   registryHosts
+  # The agent profiles members can start sessions with, and each profile
+  # whose model provider may train on session data with its admin
+  # acknowledgement (w7/m392).
+  enabledAgents
+  agentDataUse {
+    agent
+    acknowledgedAt
+    acknowledgedBy
+  }
   updatedAt
   # Agent-model spend controls (ADR091 D5, D10.1); null when the store is off.
   # agentModelMonthlySpendCapUsd is the effective cap: min(the admin override
@@ -29,6 +38,12 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   nextChargeThresholdUsd
   # An unpaid failed invoice refuses platform-model requests (D10.3).
   billingBalanceDue
+  # The mint refuses new platform-model requests at the cap now; false while
+  # the next request would charge the card at the tier's threshold (D10.2a).
+  agentModelSpendCapReached
+  # Reaching nextChargeThresholdUsd charges the card and the workspace keeps
+  # working; false where bex cannot charge it or a payment hold applies.
+  agentModelChargesAtThreshold
 }
 
 query AgentEnvironment($ownerId: String!) {

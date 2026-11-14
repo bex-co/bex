@@ -27,6 +27,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -355,26 +356,119 @@ func (c *Client) Get(ctx context.Context, tenantKey, id string) (osSandbox, erro
 
 // List returns every sandbox visible to the tenant key (the server scopes to
 // the resolved namespace), each with its mapped status.
+//
+// OpenSandbox pages its list, 20 newest by default (round 24, S-1): reading
+// only the first page hid every older sandbox from the meter, the caps, the
+// idle sweeper, teardown and by-id resolution, so they ran unbilled and lost
+// their snapshots. A caller acting on absence, such as the meter ending what
+// it no longer sees, must never get a partial list, so a list that changed
+// while it was read is read again once and otherwise refused.
 func (c *Client) List(ctx context.Context, tenantKey string) ([]osSandbox, error) {
-	data, code, err := c.do(ctx, http.MethodGet, "/sandboxes", tenantKey, nil)
-	if err != nil {
-		return nil, err
+	return c.listAll(ctx, tenantKey, nil)
+}
+
+// ListByMetadata is List narrowed by OpenSandbox's server-side metadata filter
+// (an exact match on every key), applied before paging: one sandbox's public
+// id costs one small page, not the workspace's whole list.
+func (c *Client) ListByMetadata(ctx context.Context, tenantKey string, metadata map[string]string) ([]osSandbox, error) {
+	filter := url.Values{}
+	for k, v := range metadata {
+		filter.Set(k, v)
 	}
-	if code != http.StatusOK {
-		return nil, fmt.Errorf("opensandbox list: status %d", code)
+	return c.listAll(ctx, tenantKey, url.Values{"metadata": {filter.Encode()}})
+}
+
+func (c *Client) listAll(ctx context.Context, tenantKey string, query url.Values) ([]osSandbox, error) {
+	all, err := c.listPages(ctx, tenantKey, query)
+	if errors.Is(err, errListMoved) {
+		all, err = c.listPages(ctx, tenantKey, query)
 	}
-	// The server may return either a bare array or {items:[...]}.
+	return all, err
+}
+
+var errListMoved = errors.New("opensandbox list: the list changed while it was read")
+
+// listPages reads every page. Each page reports the list's total; a create or
+// delete between pages shifts a sandbox onto a page already read or past one
+// not yet read, and changes that total, so differing totals mean the pages do
+// not add up to the list.
+func (c *Client) listPages(ctx context.Context, tenantKey string, query url.Values) ([]osSandbox, error) {
+	var all []osSandbox
+	seen := map[string]bool{}
+	total := -1
+	q := url.Values{"pageSize": {strconv.Itoa(listPageSize)}}
+	for k, v := range query {
+		q[k] = v
+	}
+	for page := 1; page <= listMaxPages; page++ {
+		q.Set("page", strconv.Itoa(page))
+		data, code, err := c.do(ctx, http.MethodGet, "/sandboxes?"+q.Encode(), tenantKey, nil)
+		if err != nil {
+			return nil, err
+		}
+		if code != http.StatusOK {
+			return nil, fmt.Errorf("opensandbox list: status %d", code)
+		}
+		items, pagination, err := decodeSandboxList(data)
+		if err != nil {
+			return nil, err
+		}
+		for _, s := range items {
+			if !seen[s.ID] {
+				seen[s.ID] = true
+				all = append(all, s)
+			}
+		}
+		if pagination == nil {
+			// A server that does not page answers everything at once, but a
+			// full page with no paging data may be one page of many.
+			if len(items) >= listPageSize {
+				return nil, fmt.Errorf("opensandbox list: %d sandboxes with no paging data; cannot tell whether that is all", len(items))
+			}
+			return all, nil
+		}
+		if total >= 0 && pagination.TotalItems != total {
+			return nil, errListMoved
+		}
+		total = pagination.TotalItems
+		if !pagination.HasNextPage {
+			if len(all) != total {
+				return nil, errListMoved
+			}
+			return all, nil
+		}
+	}
+	return nil, fmt.Errorf("opensandbox list: more than %d pages", listMaxPages)
+}
+
+// listPageSize is OpenSandbox 0.2.2's largest pageSize (le=200); listMaxPages
+// (10,000 sandboxes) bounds a server that never says it is done and the
+// memory one list may take.
+const (
+	listPageSize = 200
+	listMaxPages = 50
+)
+
+type listPagination struct {
+	TotalItems  int  `json:"totalItems"`
+	HasNextPage bool `json:"hasNextPage"`
+}
+
+// decodeSandboxList reads a bare array (an unpaged server) or OpenSandbox's
+// {items, pagination}.
+func decodeSandboxList(data []byte) ([]osSandbox, *listPagination, error) {
 	var arr []osSandbox
 	if err := json.Unmarshal(data, &arr); err == nil {
-		return arr, nil
+		return arr, nil, nil
 	}
 	var wrap struct {
-		Items []osSandbox `json:"items"`
+		Items      []osSandbox     `json:"items"`
+		Pagination *listPagination `json:"pagination"`
 	}
 	if err := json.Unmarshal(data, &wrap); err != nil {
-		return nil, fmt.Errorf("opensandbox list: bad response")
+		return nil, nil, fmt.Errorf("opensandbox list: bad response")
 	}
-	return wrap.Items, nil
+	return wrap.Items, wrap.Pagination, nil
 }
 
 // Suspend pauses a sandbox (OpenSandbox rootfs snapshot, ADR042 D5). The

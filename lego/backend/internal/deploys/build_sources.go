@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -110,8 +111,9 @@ func (s *Service) buildSourceApp(ctx context.Context, relation, id string) (cont
 
 // TriggerBuild is Render's trigger-build-source-build: a new build of the
 // source's branch head even when an up-to-date build exists. Only a git
-// source builds.
-func (s *Service) TriggerBuild(ctx context.Context, id string) (BuildView, error) {
+// source builds. clearCache is Render's optional "clear" | "do_not_clear"
+// (round 7, w3/m367), honored as a service deploy's is; "" is do_not_clear.
+func (s *Service) TriggerBuild(ctx context.Context, id, clearCache string) (BuildView, error) {
 	ctx, carrier, err := s.buildSourceApp(ctx, core.LifecycleOrCreate(false), id)
 	if err != nil {
 		return BuildView{}, err
@@ -122,7 +124,7 @@ func (s *Service) TriggerBuild(ctx context.Context, id string) (BuildView, error
 	if err := s.RequireBillingMutation(ctx, carrier.Labels[core.LabelTenant]); err != nil {
 		return BuildView{}, err
 	}
-	d, err := s.triggerFetched(ctx, id, carrier, TriggerParams{}, store.TriggerAPI)
+	d, err := s.triggerFetched(ctx, id, carrier, TriggerParams{ClearCache: clearCache}, store.TriggerAPI)
 	if err != nil {
 		return BuildView{}, err
 	}
@@ -402,7 +404,13 @@ func toBuildList(builds []BuildView) []buildWithCursor {
 
 func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/build-sources/{buildSourceId}/builds", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
-		return s.TriggerBuild(r.Context(), r.PathValue("buildSourceId"))
+		var body struct {
+			ClearCache string `json:"clearCache"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+		}
+		return s.TriggerBuild(r.Context(), r.PathValue("buildSourceId"), body.ClearCache)
 	}))
 	mux.HandleFunc("GET /v1/build-sources/{buildSourceId}/builds", core.HandleMapped(http.StatusOK, func(r *http.Request) ([]BuildView, error) {
 		cursor, limit := core.PageParams(r.URL.Query())
@@ -473,12 +481,28 @@ func (s *Service) buildGQLQueryFields() graphql.Fields {
 
 func (s *Service) buildGQLMutationFields() graphql.Fields {
 	return graphql.Fields{
-		"triggerBuild": gqlutil.KeyVerb(buildGQLType, "buildSourceId", s.TriggerBuild),
+		"triggerBuild": &graphql.Field{
+			Type: buildGQLType,
+			Args: graphql.FieldConfigArgument{
+				"buildSourceId": gqlutil.ReqArg(graphql.String),
+				"clearCache":    gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.TriggerBuild(p.Context, p.Args["buildSourceId"].(string), gqlutil.Str(p.Args, "clearCache"))
+			},
+		},
 	}
 }
 
 type buildSourceArgs struct {
 	BuildSourceID string `json:"buildSourceId" jsonschema:"the build source id (bds-…)"`
+}
+
+type triggerBuildArgs struct {
+	buildSourceArgs
+	// ClearCache is a boolean, as on trigger_deploy (Render's MCP shape), or
+	// Render's REST strings clear and do_not_clear.
+	ClearCache any `json:"clearCache,omitempty" jsonschema:"true (or the REST string clear) builds without importing prior cached layers, as trigger_deploy's clearCache does"`
 }
 
 type listBuildsArgs struct {
@@ -499,9 +523,13 @@ type getBuildArgs struct {
 func (s *Service) registerBuildTools(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "trigger_build_source_build",
-		Description: "Build a git build source's branch head, even when an up-to-date build exists. When it succeeds, services linked to the source with auto-deploy on deploy the result. bex extension over Render's MCP.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in buildSourceArgs) (*mcp.CallToolResult, BuildView, error) {
-		b, err := s.TriggerBuild(ctx, in.BuildSourceID)
+		Description: "Build a git build source's branch head, even when an up-to-date build exists. clearCache: true (or the REST string clear) builds without prior cached layers, as Render's trigger-build-source-build. When it succeeds, services linked to the source with auto-deploy on deploy the result. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in triggerBuildArgs) (*mcp.CallToolResult, BuildView, error) {
+		clearCache, err := mcputil.BoolOrEnum("clearCache", in.ClearCache, "clear", "do_not_clear")
+		if err != nil {
+			return nil, BuildView{}, err
+		}
+		b, err := s.TriggerBuild(ctx, in.BuildSourceID, clearCache)
 		return nil, b, err
 	})
 	mcputil.AddTool(srv, &mcp.Tool{

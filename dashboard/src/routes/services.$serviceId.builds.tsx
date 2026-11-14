@@ -1,7 +1,9 @@
 import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
-import { DeployHistoryView } from "@/features/deploys/components/deploy-history-view";
-import { DeploysListSkeleton } from "@/common/components/route-skeletons";
+import {
+  DeployHistorySkeleton,
+  DeployHistoryView,
+} from "@/features/deploys/components/deploy-history-view";
 import { redirectHistoryTabByType } from "@/features/services/lib/service-root-redirect";
 import { parseDeployListSearch } from "@/features/deploys/lib/deploy-list-search";
 
@@ -11,7 +13,7 @@ export const Route = createFileRoute("/services/$serviceId/builds")({
   beforeLoad: ({ context, params }) =>
     redirectHistoryTabByType(context.client, params.serviceId, "builds"),
   component: RouteComponent,
-  pendingComponent: DeploysListSkeleton,
+  pendingComponent: DeployHistorySkeleton,
   validateSearch: parseDeployListSearch,
 });
 

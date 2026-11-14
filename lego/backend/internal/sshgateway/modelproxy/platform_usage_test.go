@@ -98,7 +98,7 @@ func (s *usageStore) RecordAgentModelUsage(_ context.Context, u store.AgentModel
 func (s *usageStore) AgentSpendInputs(context.Context, string, time.Time) (store.AgentSpendInputs, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return store.AgentSpendInputs{Plan: s.plan, Trust: s.trust, MonthToDateMicroUSD: s.usedMicro, BalanceDue: s.due}, nil
+	return store.AgentSpendInputs{Plan: s.plan, Trust: s.trust, MonthToDateMicroUSD: s.usedMicro, WindowSpendMicroUSD: s.usedMicro, BalanceDue: s.due}, nil
 }
 
 // now is the minter's clock; advance moves it past the mint's spend cache.
@@ -271,12 +271,12 @@ func TestPlatformRouteInjectsDataPolicyAndRefusesClientProvider(t *testing.T) {
 // A workspace under its spend cap is served; at the cap the mint is refused
 // with a typed 429 the agent CLI can show, and the session fails with the
 // readable spend-cap reason (ADR091 D5). A fresh Hobby workspace is T0: it is
-// charged at $10 and keeps working until $15 while that charge is unpaid
-// (D10.2a), so its cap is $15.
+// charged at $10 in the request that reaches it, and with no charge made
+// (this harness has no charger) it stops there (D10.2a), so its cap is $10.
 func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	upstream := &cannedTransport{contentType: "application/json", body: `{"usage":{"input_tokens":1,"output_tokens":1}}`}
 	proxy, st := platformHarness(t, upstream)
-	st.usedMicro = 14_999_999
+	st.usedMicro = 9_999_999
 	resp := requestBody(t, proxy, pinnedBody)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -284,7 +284,7 @@ func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	}
 
 	st.mu.Lock()
-	st.usedMicro = 15_000_000
+	st.usedMicro = 10_000_000
 	st.mu.Unlock()
 	st.advance(time.Minute) // past the mint's spend cache
 	upstream.last = nil
@@ -399,5 +399,62 @@ func TestByoRouteIsNotMetered(t *testing.T) {
 	forwarded, _ := io.ReadAll(capture.last.Body)
 	if string(forwarded) != `{"model":"claude-opus-4-5"}` || capture.last.Header.Get("Accept-Encoding") == "identity" {
 		t.Fatalf("BYO request altered: %s", forwarded)
+	}
+}
+
+// A muse exchange on the Meta route (ADR108) goes to api.meta.ai with the
+// bex-owned key as Bearer, keeps its body free of OpenRouter's provider
+// object, is refused for any other model, and its Responses usage is
+// recorded and priced from pricing.yaml (contributor rates × 1.3).
+func TestMetaRouteMetersAMuseResponsesExchange(t *testing.T) {
+	stream := `data: {"type":"response.created","response":{"id":"r"}}` + "\n\n" +
+		`data: {"type":"response.completed","response":{"id":"r","usage":{"input_tokens":1000000,"output_tokens":1000000,"input_tokens_details":{"cached_tokens":0}}}}` + "\n\n"
+	upstream := &cannedTransport{contentType: "text/event-stream", body: stream}
+	proxy, st := platformHarness(t, upstream)
+	agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET", []string{"tea-a"})
+	t.Cleanup(func() { agentsession.EnablePlatformMetaRoute("", nil) })
+	st.mu.Lock()
+	st.session.AgentConfig = json.RawMessage(`{"agent":"muse","modelEndpoint":"https://api.meta.ai/v1"}`)
+	st.mu.Unlock()
+
+	post := func(body string) *http.Response {
+		t.Helper()
+		base, err := agentsession.ModelProxyURL(proxy.URL, "tea-a-sandbox", "ags-one")
+		if err != nil {
+			t.Fatal(err)
+		}
+		req, _ := http.NewRequest(http.MethodPost, base+"/v1/responses", strings.NewReader(body))
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("Authorization", "Bearer "+agentsession.ModelKeyPlaceholder("ags-one"))
+		resp, err := proxy.Client().Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return resp
+	}
+	if resp := post(`{"model":"muse-spark-1.3","input":"hi","stream":true}`); resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("standard-tier model status = %d, want 403", resp.StatusCode)
+	}
+	resp := post(`{"model":"muse-spark-1.3-contributor","input":"hi","stream":true}`)
+	relayed, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK || string(relayed) != stream {
+		t.Fatalf("status %d, relayed %q", resp.StatusCode, relayed)
+	}
+	upstream.mu.Lock()
+	last, body := upstream.last, string(upstream.lastBody)
+	upstream.mu.Unlock()
+	if last.URL.Host != "api.meta.ai" || last.URL.Path != "/v1/responses" || last.Header.Get("Authorization") != "Bearer meta-PLATFORM-SECRET" {
+		t.Fatalf("upstream = %s %s auth-is-meta-key=%v", last.URL.Host, last.URL.Path, last.Header.Get("Authorization") == "Bearer meta-PLATFORM-SECRET")
+	}
+	if strings.Contains(body, `"provider"`) {
+		t.Fatalf("OpenRouter's data policy leaked into a Meta request: %s", body)
+	}
+	eventually(t, func() bool { got, _ := st.snapshot(); return len(got) == 1 })
+	got, _ := st.snapshot()
+	// 1M input × $0.10 + 1M output × $0.20 = $0.30 → × 1.3 = $0.39.
+	if u := got[0]; u.Model != "muse-spark-1.3-contributor" || u.InputTokens != 1_000_000 || u.OutputTokens != 1_000_000 ||
+		u.CostSource != store.AgentModelCostComputed || u.UpstreamCostMicroUSD != 300_000 || u.PriceMicroUSD != 390_000 {
+		t.Fatalf("recorded usage = %+v", u)
 	}
 }

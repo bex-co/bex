@@ -102,6 +102,25 @@ type Config struct {
 	DashboardBaseURL string
 }
 
+// DashboardConfigured reports whether DashboardBaseURL is an absolute URL
+// DashboardURL can build links on.
+func (c Config) DashboardConfigured() bool {
+	_, ok := c.dashboardBase()
+	return ok
+}
+
+func (c Config) dashboardBase() (*url.URL, bool) {
+	base := strings.TrimSpace(c.DashboardBaseURL)
+	if base == "" {
+		return nil, false
+	}
+	u, err := url.Parse(base)
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return nil, false
+	}
+	return u, true
+}
+
 // PlatformRegion returns the configured region after treating whitespace-only
 // configuration as unavailable.
 func (c Config) PlatformRegion() string { return strings.TrimSpace(c.Region) }
@@ -179,12 +198,8 @@ func ServiceDashboardRoute(serviceType string) string {
 // DashboardURL joins a known dashboard route and resource id onto the trusted
 // dashboard origin. Invalid/relative configuration and empty ids are omitted.
 func (c Config) DashboardURL(route, id string) string {
-	base := strings.TrimSpace(c.DashboardBaseURL)
-	if base == "" || id == "" {
-		return ""
-	}
-	u, err := url.Parse(base)
-	if err != nil || u.Scheme == "" || u.Host == "" {
+	u, ok := c.dashboardBase()
+	if !ok || id == "" {
 		return ""
 	}
 	u.Path = path.Join(u.Path, route, id)

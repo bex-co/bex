@@ -25,13 +25,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
 
+// stampedAPIVersion fills the stamped managedFields entry's apiVersion, which
+// the fake client requires to be non-empty. A typed fixture carries no
+// TypeMeta to read one from, and nothing bex reads uses it.
+const stampedAPIVersion = "v1"
+
 // CreationEpoch is the creationTimestamp the fake API server stamps.
 var CreationEpoch = time.Unix(1_700_000_000, 0).UTC()
 
-// Stamped gives every obj without one a creationTimestamp, as a real API
-// server guarantees for every stored object, and returns objs. It stamps in
-// place, as the fake client builder already sets resourceVersion on the
-// fixtures it is given, so a test updating its own fixture keeps working.
+// Stamped gives every obj without them a creationTimestamp and a managedFields
+// entry, as a real API server guarantees for every stored object, and returns
+// objs. It stamps in place, as the fake client builder already sets
+// resourceVersion on the fixtures it is given, so a test updating its own
+// fixture keeps working.
 // controller-runtime's fake client leaves the timestamp zero, and bex then
 // omits the createdAt Render requires, so a response from an unstamped
 // fixture fails validation for a reason production never sees.
@@ -43,7 +49,7 @@ func Stamped(objs ...client.Object) []client.Object {
 }
 
 // StampOnCreate is the interceptor half of Stamped: an object a test creates
-// through the fake client gets its creationTimestamp too.
+// through the fake client gets its creationTimestamp and managedFields too.
 var StampOnCreate = interceptor.Funcs{
 	Create: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.CreateOption) error {
 		stamp(obj)
@@ -52,7 +58,20 @@ var StampOnCreate = interceptor.Funcs{
 }
 
 func stamp(obj client.Object) {
-	if created := obj.GetCreationTimestamp(); created.IsZero() {
-		obj.SetCreationTimestamp(metav1.NewTime(CreationEpoch))
+	created := obj.GetCreationTimestamp()
+	if created.IsZero() {
+		created = metav1.NewTime(CreationEpoch)
+		obj.SetCreationTimestamp(created)
+	}
+	// A real API server records the writer of every stored object in
+	// managedFields, and bex reads an unannotated object's updatedAt from
+	// there (resourcemeta.UpdatedAt). The fake client records none, so without
+	// this an unstamped fixture omits the updatedAt Render requires, which
+	// production never does.
+	if len(obj.GetManagedFields()) == 0 {
+		obj.SetManagedFields([]metav1.ManagedFieldsEntry{{
+			Manager: "bex-api", Operation: metav1.ManagedFieldsOperationUpdate, APIVersion: stampedAPIVersion, Time: &created,
+			FieldsType: "FieldsV1", FieldsV1: &metav1.FieldsV1{Raw: []byte("{}")},
+		}})
 	}
 }

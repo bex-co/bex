@@ -92,11 +92,22 @@ type spendLedger struct {
 	byo      bool
 	err      error
 	reads    int
+	// The threshold charge inputs (ADR091 D10.2a). billed is the month's
+	// spend a subscription invoice already billed: the charge window holds
+	// used minus it. credit is the billing credit the charger recorded.
+	billed     int64
+	credit     int64
+	charged    int64
+	chargeSeq  int
+	pending    bool
+	chargeable bool
+	due        bool
 }
 
 func (q *spendLedger) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
 	q.reads++
-	return store.AgentSpendInputs{Plan: q.plan, Trust: q.trust, OverrideMicroUSD: q.override, MonthToDateMicroUSD: q.used, ModelKeySet: q.byo}, q.err
+	return store.AgentSpendInputs{Plan: q.plan, Trust: q.trust, OverrideMicroUSD: q.override, MonthToDateMicroUSD: q.used, ModelKeySet: q.byo,
+		WindowSpendMicroUSD: q.used - q.billed, CreditMicroUSD: q.credit, ChargedMicroUSD: q.charged, ChargeSeq: q.chargeSeq, ChargePending: q.pending, Chargeable: q.chargeable, BalanceDue: q.due}, q.err
 }
 
 // ADR091 D5/D10.1: the effective cap is min(override clamped to the plan's
@@ -111,15 +122,16 @@ func TestSpendCapEffectiveCap(t *testing.T) {
 		want   float64
 		reason string
 	}{
-		"T0 on Pro stops at $15 unpaid":   {spendLedger{plan: store.PlanPro}, 15, modelSpendNewWorkspaceReason},
-		"T0 override above is still $15":  {spendLedger{plan: store.PlanPro, override: usd(500)}, 15, modelSpendNewWorkspaceReason},
+		"T0 on Pro stops at $10 unpaid":   {spendLedger{plan: store.PlanPro}, 10, modelSpendNewWorkspaceReason},
+		"T0 override above is still $10":  {spendLedger{plan: store.PlanPro, override: usd(500)}, 10, modelSpendNewWorkspaceReason},
 		"T0 override below the ceiling":   {spendLedger{plan: store.PlanPro, override: usd(5)}, 5, ModelSpendCapReachedReason},
 		"T1 Hobby gets the plan cap":      {spendLedger{plan: store.PlanHobby, trust: t1}, 20, ModelSpendCapReachedReason},
 		"T1 Pro override raises it":       {spendLedger{plan: store.PlanPro, trust: t1, override: usd(1500)}, 1500, ModelSpendCapReachedReason},
 		"downgraded override is clamped":  {spendLedger{plan: store.PlanHobby, trust: t1, override: usd(1500)}, 200, ModelSpendCapReachedReason},
 		"T1 enterprise takes the top cap": {spendLedger{plan: store.PlanEnterprise, trust: t1}, 2000, ModelSpendCapReachedReason},
-		"locked T4 is back to T0's $15":   {spendLedger{plan: store.PlanScale, trust: store.BillingTrust{LifetimePaidCents: 1 << 30, PaidCycleInvoices: 10, LockedUntil: store.LockedIndefinitely}}, 15, modelSpendLockedReason},
-		"a dispute holds T4 at T0":        {spendLedger{plan: store.PlanScale, trust: store.BillingTrust{LifetimePaidCents: 1 << 30, PaidCycleInvoices: 10, DisputeID: "dp_1"}}, 15, modelSpendLockedReason},
+		"locked T4 is back to T0's $10":   {spendLedger{plan: store.PlanScale, trust: store.BillingTrust{LifetimePaidCents: 1 << 30, PaidCycleInvoices: 10, LockedUntil: store.LockedIndefinitely}}, 10, modelSpendLockedReason},
+		"a dispute holds T4 at T0":        {spendLedger{plan: store.PlanScale, trust: store.BillingTrust{LifetimePaidCents: 1 << 30, PaidCycleInvoices: 10, DisputeID: "dp_1"}}, 10, modelSpendLockedReason},
+		"a pending charge says so":        {spendLedger{plan: store.PlanPro, pending: true}, 10, modelSpendChargePendingReason},
 	} {
 		status, err := ReadSpendStatus(context.Background(), &tc.ledger, nil, "tea-a", now)
 		if err != nil || status.EffectiveCap != pricing.USDToMicro(tc.want) || status.SpendCapReachedReason() != tc.reason {

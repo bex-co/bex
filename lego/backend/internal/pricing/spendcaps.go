@@ -46,8 +46,10 @@ type Tier struct {
 	ChargeThresholdUSD *float64 `json:"chargeThresholdUsd"`
 	// CapCeilingMicroUSD is the most a workspace spends at this tier while its
 	// threshold charge is unpaid: the threshold plus the tier's in-flight
-	// allowance (ADR091 D10.2a). Paying the charge moves the workspace up a
-	// tier. nil means the plan (or override) cap applies unchanged.
+	// allowance (ADR091 D10.2a; T0's is 0, so its ceiling is its threshold).
+	// The charge is made in the request that reaches the threshold, and
+	// paying it moves the workspace up a tier. nil means the plan (or
+	// override) cap applies unchanged.
 	CapCeilingMicroUSD *int64 `json:"capCeilingMicroUsd"`
 	// MaxConcurrentSessions caps live platform-model sessions; 0 means the
 	// tier adds no limit.

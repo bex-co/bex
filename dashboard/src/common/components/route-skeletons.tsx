@@ -1761,9 +1761,17 @@ export function ServiceCreatePageSkeleton() {
   );
 }
 
-export function DeploysListSkeleton() {
+export function DeploysListSkeleton({
+  banner,
+}: {
+  /** The auto-deploy-off banner the ready page shows above the list
+   *  (w3/064): its own content is already known, so the pending state shows
+   *  it as is and matches at every width. */
+  banner?: React.ReactNode;
+} = {}) {
   return (
-    <PendingFrame route="deploys-list">
+    <PendingFrame route="deploys-list" className="space-y-4">
+      {banner ? <Region name="auto-deploy-off-banner">{banner}</Region> : null}
       <Region name="deploys-table">
         <TableCardSkeleton rows={3} columns={4} controls />
       </Region>
@@ -1860,12 +1868,15 @@ function MetricsCardSkeleton({
   sections,
   compact = false,
   eventLane = false,
+  controls = true,
 }: {
   sections: number;
   compact?: boolean;
   /** Service charts: the empty 24px event lane above a ratio-sized plot,
    *  as the ready MetricSection draws them (w4/446). */
   eventLane?: boolean;
+  /** False for a card whose ready header has no filter controls. */
+  controls?: boolean;
 }) {
   return (
     <Card>
@@ -1874,11 +1885,13 @@ function MetricsCardSkeleton({
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-4 w-64 max-w-full" />
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Skeleton className="h-9 w-40" />
-          <Skeleton className="h-9 w-36" />
-          <Skeleton className="h-9 w-40" />
-        </div>
+        {controls ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Skeleton className="h-9 w-40" />
+            <Skeleton className="h-9 w-36" />
+            <Skeleton className="h-9 w-40" />
+          </div>
+        ) : null}
       </CardHeader>
       <CardContent className="space-y-6">
         {Array.from({ length: sections }, (_, index) => (
@@ -1906,8 +1919,12 @@ function MetricsCardSkeleton({
 
 export function ServiceMetricsSkeleton({
   staticSite = false,
+  servesRequests = true,
 }: {
   staticSite?: boolean;
+  /** False for a worker, cron job or private service: its Network card is
+   *  Outbound Bandwidth alone, with no request controls (w4/613). */
+  servesRequests?: boolean;
 }) {
   return (
     <PendingFrame
@@ -1928,7 +1945,11 @@ export function ServiceMetricsSkeleton({
         </Region>
       ) : null}
       <Region name="network-metrics">
-        <MetricsCardSkeleton sections={3} eventLane />
+        <MetricsCardSkeleton
+          sections={servesRequests ? 3 : 1}
+          controls={servesRequests}
+          eventLane
+        />
       </Region>
     </PendingFrame>
   );
@@ -2896,7 +2917,12 @@ export function ServiceRouteContentSkeleton({
     case "logs":
       return <ServiceLogsSkeleton />;
     case "metrics":
-      return <ServiceMetricsSkeleton staticSite={base === "/static"} />;
+      return (
+        <ServiceMetricsSkeleton
+          staticSite={base === "/static"}
+          servesRequests={serviceType == null || publiclyRoutable(serviceType)}
+        />
+      );
     case "plan":
       return <ServicePlanSkeleton serviceType={serviceType} />;
     case "rules":

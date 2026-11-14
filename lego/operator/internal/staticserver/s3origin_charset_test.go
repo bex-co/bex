@@ -18,6 +18,7 @@ package staticserver
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"io"
 	"net/http"
@@ -75,10 +76,10 @@ func fakeS3Origin(t *testing.T, objects map[string]s3Object) (*S3Origin, func(ke
 	}
 }
 
-// A valid UTF-8 text/plain object that names no charset is declared UTF-8;
-// every other stored type, an explicit charset and bytes that are not UTF-8
-// keep what the origin sent. The bytes never change (w4/335).
-func TestS3OriginDeclaresUTF8OnlyOnUndeclaredUTF8PlainText(t *testing.T) {
+// A valid UTF-8 text/* object that names no charset is declared UTF-8, as on
+// Render (w8/323); every non-text type, an explicit charset and bytes that are
+// not UTF-8 keep what the origin sent. The bytes never change (w4/335).
+func TestS3OriginDeclaresUTF8OnUndeclaredUTF8Text(t *testing.T) {
 	latin1 := "caf\xe9\n"
 	cases := []struct {
 		name string
@@ -95,7 +96,13 @@ func TestS3OriginDeclaresUTF8OnlyOnUndeclaredUTF8PlainText(t *testing.T) {
 		{"invalid UTF-8", s3Object{contentType: "text/plain", body: latin1}, "text/plain"},
 		{"encoded body", s3Object{contentType: "text/plain", contentEncoding: "gzip", body: "hello\n"}, "text/plain"},
 		{"JSON", s3Object{contentType: "application/json", body: `{"name":"café"}`}, "application/json"},
-		{"other text type", s3Object{contentType: "text/csv", body: "café,1\n"}, "text/csv"},
+		{"HTML", s3Object{contentType: "text/html", body: "<p>café</p>"}, "text/html; charset=utf-8"},
+		{"CSS", s3Object{contentType: "text/css", body: "a::after{content:'→'}"}, "text/css; charset=utf-8"},
+		{"Markdown", s3Object{contentType: "text/markdown", body: "# café\n"}, "text/markdown; charset=utf-8"},
+		{"CSV", s3Object{contentType: "text/csv", body: "café,1\n"}, "text/csv; charset=utf-8"},
+		{"respelled HTML", s3Object{contentType: "TEXT/HTML", body: "<p>hi</p>"}, "text/html; charset=utf-8"},
+		{"Latin-1 CSV", s3Object{contentType: "text/csv", body: "caf\xe9,1\n"}, "text/csv"},
+		{"declared HTML charset", s3Object{contentType: "text/html; charset=windows-1252", body: "<p>hi</p>"}, "text/html; charset=windows-1252"},
 		{"binary", s3Object{contentType: "image/png", body: "\x89PNG\r\n"}, "image/png"},
 		{"octet-stream", s3Object{contentType: "application/octet-stream", body: utf8Text}, "application/octet-stream"},
 		{"malformed type", s3Object{contentType: "text/plain; =bad", body: utf8Text}, "text/plain; =bad"},
@@ -178,5 +185,23 @@ func TestStaticUTF8TextKeepsRangesAndCompression(t *testing.T) {
 	}
 	if body, err := io.ReadAll(brotli.NewReader(rec.Body)); err != nil || string(body) != long {
 		t.Errorf("br body decodes to %d bytes (%v), want the %d stored bytes", len(body), err, len(long))
+	}
+}
+
+// Any text type declared UTF-8 keeps it on a gzip variant (w8/323).
+func TestStaticUTF8CSSKeepsItsTypeUnderGzip(t *testing.T) {
+	css := strings.Repeat("a::after{content:'→ café'}\n", 60) // past the compression threshold
+	origin, _ := fakeS3Origin(t, map[string]s3Object{key("site.css"): {contentType: "text/css", body: css}})
+	h := New(staticResolver{host: testHost, site: Site{AppID: appID, Revision: rev}}, origin, 1<<20)
+	rec := doWith(h, http.MethodGet, "/site.css", http.Header{"Accept-Encoding": {"gzip"}})
+	if rec.Code != http.StatusOK || rec.Header().Get("Content-Encoding") != "gzip" || rec.Header().Get("Content-Type") != "text/css; charset=utf-8" {
+		t.Fatalf("gzip = %d encoding %q type %q, want 200 gzip text/css; charset=utf-8", rec.Code, rec.Header().Get("Content-Encoding"), rec.Header().Get("Content-Type"))
+	}
+	zr, err := gzip.NewReader(rec.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if body, err := io.ReadAll(zr); err != nil || string(body) != css {
+		t.Errorf("gzip body decodes to %d bytes (%v), want the %d stored bytes", len(body), err, len(css))
 	}
 }

@@ -699,6 +699,25 @@ groups:
           summary: "A build has been queued {{ $value | humanizeDuration }} waiting for capacity"
           description: "A build Job's pod has not been placed on a node. It will be failed by bex-api's 18m deploy gate if this continues, so act now: check the build pools (bex-tenant-lg warm, bex-tenant-burst elastic) for scale-from-zero failures, cluster-autoscaler events, and whether a taint/toleration or capacity-hint change made the 7Gi build request unschedulable. Runbook context: docs/ADR060-build-worker-reliability-and-performance.md D5/D8."
 
+      # How long an App change waits in the operator's work queue before a
+      # reconcile picks it up (w5/m370). A spec change (maintenance mode, a
+      # resume, a scale) reaches the cluster only through this queue; it was
+      # measured taking 55–80 s intermittently (w4/603, w21/012) while
+      # BEX_APP_RECONCILE_WORKERS was 2 for every App in every workspace.
+      - record: bex:operator_app_queue_wait_seconds:p95
+        expr: |
+          histogram_quantile(0.95,
+            sum by (le) (rate(workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app"}[5m]))
+          )
+      - alert: BexOperatorReconcileQueueSlow
+        expr: bex:operator_app_queue_wait_seconds:p95 > 15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "App changes wait {{ $value | humanizeDuration }} (p95) in the operator's queue"
+          description: "A settings change, a resume or a route repoint reaches the cluster only when the operator reconciles that App, and its queue p95 wait has been over 15 s for 10 minutes. Tenants see settings apply late and maintenance mode or resume answer from the old route. Read the Builds dashboard's operator panels: high queue depth with workers saturated means too few BEX_APP_RECONCILE_WORKERS (lego/operator/config/manager/manager.yaml) for the fleet; long reconcile times mean a slow pass. Context: .pm/w5/m370, w21/012."
+
       # The held half of the same wait (w6/m306, ADR060 D5). A release the
       # cluster ceiling holds, or one waiting on a datastore that is still
       # being created, has no build Job yet, so bex_build_queue_oldest_seconds

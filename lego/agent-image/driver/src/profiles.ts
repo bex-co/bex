@@ -24,6 +24,20 @@ export interface ModelProxyRoute {
   credentialEnv: string;
 }
 
+// A provider CLI shipped as a native binary rather than an npm package (ADR108
+// D2): the image build downloads the artifact for its architecture, checks its
+// SHA-256 and version, and installs it read-only at path.
+export interface NativeArtifact {
+  url: string;
+  sha256: string;
+}
+
+export interface NativeBinary {
+  version: string;
+  path: string;
+  artifacts: Partial<Record<"amd64" | "arm64", NativeArtifact>>;
+}
+
 export interface AgentProfile {
   id: string;
   executable: string;
@@ -35,6 +49,19 @@ export interface AgentProfile {
   permissionPolicy: "sandbox-auto-approve";
   sessionState: string[];
   modelProxy: ModelProxyRoute;
+  nativeBinary?: NativeBinary;
+  // The only model this profile runs (ADR108 D4). The driver applies it only
+  // to adapters it knows how to configure (MODEL_SETTINGS_PROFILES).
+  model?: string;
+  // Runs only on a bex-owned model route, never on a workspace's own key
+  // (ADR108 D5).
+  platformOnly?: boolean;
+  // Off in a workspace until an admin acknowledges that the model provider
+  // may train on what sessions send (bex-api's concern; w7/m392).
+  requiresDataUseAcknowledgement?: boolean;
+  // ACP session config options the driver sets after session/new and
+  // session/load (ADR108 D3).
+  sessionConfig?: Record<string, string>;
 }
 
 export interface AgentProfileManifest {
@@ -43,6 +70,74 @@ export interface AgentProfileManifest {
 }
 
 const envNamePattern = /^[A-Z_][A-Z0-9_]*(?![\s\S])/;
+const configTokenPattern = /^[A-Za-z][A-Za-z0-9_-]*(?![\s\S])/;
+const modelIdPattern = /^[a-z0-9][a-z0-9._-]*(?![\s\S])/;
+const nativeUrlPattern =
+  /^https:\/\/[a-z0-9]+(?:[.-][a-z0-9]+)*\.[a-z]+\/[!#-~]*(?![\s\S])/;
+const nativePathPattern = /^\/opt\/[a-z0-9-]+\/[a-z0-9-]+(?![\s\S])/;
+const nativeVersionPattern = /^[0-9A-Za-z][0-9A-Za-z.+-]*(?![\s\S])/;
+const nativeSHA256Pattern = /^[0-9a-f]{64}(?![\s\S])/;
+
+// Profiles whose adapter the driver can pin to the manifest's model: Muse
+// Code reads it from its settings file (acp.ts writeMuseModel). A model on any
+// other profile would be silently ignored, so it is refused.
+export const MODEL_SETTINGS_PROFILES: ReadonlySet<string> = new Set(["muse"]);
+
+function validateOptionalFields(id: string, profile: AgentProfile): void {
+  const native = profile.nativeBinary;
+  if (native !== undefined) {
+    const artifacts =
+      native && typeof native === "object" ? native.artifacts : undefined;
+    if (
+      !native ||
+      typeof native.version !== "string" ||
+      !nativeVersionPattern.test(native.version) ||
+      typeof native.path !== "string" ||
+      !nativePathPattern.test(native.path) ||
+      !artifacts ||
+      typeof artifacts !== "object" ||
+      Array.isArray(artifacts) ||
+      !Object.keys(artifacts).length
+    )
+      throw new Error(`profile ${id}: invalid native binary`);
+    for (const [arch, artifact] of Object.entries(artifacts)) {
+      if (
+        (arch !== "amd64" && arch !== "arm64") ||
+        !artifact ||
+        typeof artifact.url !== "string" ||
+        !nativeUrlPattern.test(artifact.url) ||
+        typeof artifact.sha256 !== "string" ||
+        !nativeSHA256Pattern.test(artifact.sha256)
+      )
+        throw new Error(`profile ${id}: invalid native binary artifact`);
+    }
+  }
+  if (
+    profile.model !== undefined &&
+    (typeof profile.model !== "string" ||
+      !modelIdPattern.test(profile.model) ||
+      !MODEL_SETTINGS_PROFILES.has(id))
+  )
+    throw new Error(`profile ${id}: invalid model`);
+  for (const flag of [
+    "platformOnly",
+    "requiresDataUseAcknowledgement",
+  ] as const)
+    if (profile[flag] !== undefined && typeof profile[flag] !== "boolean")
+      throw new Error(`profile ${id}: ${flag} must be a boolean`);
+  const config = profile.sessionConfig;
+  if (config === undefined) return;
+  if (!config || Array.isArray(config) || typeof config !== "object")
+    throw new Error(`profile ${id}: sessionConfig must be an object`);
+  for (const [key, value] of Object.entries(config)) {
+    if (
+      !configTokenPattern.test(key) ||
+      typeof value !== "string" ||
+      !configTokenPattern.test(value)
+    )
+      throw new Error(`profile ${id}: invalid sessionConfig entry`);
+  }
+}
 
 function manifestPath(): string {
   const here = path.dirname(fileURLToPath(import.meta.url));
@@ -175,6 +270,7 @@ export function validateAgentProfiles(manifest: AgentProfileManifest): void {
       if (Object.hasOwn(profile.env, name))
         throw new Error(`profile ${id}: bootstrap env overrides model routing`);
     }
+    validateOptionalFields(id, profile);
   }
 }
 

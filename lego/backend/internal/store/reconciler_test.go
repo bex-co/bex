@@ -1177,7 +1177,9 @@ func TestRecordDeployProjectsPreDeployStatus(t *testing.T) {
 // zero, malformed or empty start keeps it unknown, and an already-observed
 // in-progress start is never moved.
 func TestReconcileFastFailedPreDeployKeepsRecordedStart(t *testing.T) {
-	const recorded = "2026-10-15T21:12:42Z"
+	// recorded stands for the step's start as the operator records it: second
+	// precision, a moment after the row was created.
+	const recorded = "recorded"
 	type wantStart int
 	const (
 		unknownStart wantStart = iota
@@ -1205,13 +1207,18 @@ func TestReconcileFastFailedPreDeployKeepsRecordedStart(t *testing.T) {
 				t.Fatalf("create projection: %v", err)
 			}
 			open := onlyDeploy(t, st, row.ID)
+			stepStart := open.CreatedAt.Add(2 * time.Second).UTC().Truncate(time.Second)
+			startedAt := tc.startedAt
+			if startedAt == recorded {
+				startedAt = stepStart.Format(time.RFC3339)
+			}
 			var observed *time.Time
 			if tc.observeRun {
 				app := getApp(t, cl)
 				app.Status.ReleaseGeneration = open.Generation
 				app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
 					Job: "pre-web-gen-1", Generation: open.Generation,
-					Status: appv1alpha1.PreDeployRunning, StartedAt: tc.startedAt,
+					Status: appv1alpha1.PreDeployRunning, StartedAt: startedAt,
 				}
 				if err := cl.Status().Update(ctx, app); err != nil {
 					t.Fatal(err)
@@ -1229,8 +1236,8 @@ func TestReconcileFastFailedPreDeployKeepsRecordedStart(t *testing.T) {
 			app.Status.ReleaseGeneration = open.Generation
 			app.Status.PreDeploy = &appv1alpha1.PreDeployStatus{
 				Job: "pre-web-gen-1", Generation: open.Generation,
-				Status: appv1alpha1.PreDeployFailed, StartedAt: tc.startedAt,
-				FinishedAt: "2026-10-15T21:12:49Z",
+				Status: appv1alpha1.PreDeployFailed, StartedAt: startedAt,
+				FinishedAt: stepStart.Add(7 * time.Second).Format(time.RFC3339),
 			}
 			if err := cl.Status().Update(ctx, app); err != nil {
 				t.Fatal(err)
@@ -1244,9 +1251,8 @@ func TestReconcileFastFailedPreDeployKeepsRecordedStart(t *testing.T) {
 			}
 			switch tc.want {
 			case recordedStart:
-				want, _ := time.Parse(time.RFC3339, recorded)
-				if got.StartedAt == nil || !got.StartedAt.Equal(want) {
-					t.Errorf("started_at = %v, want the failed step's recorded %v", got.StartedAt, want)
+				if got.StartedAt == nil || !got.StartedAt.Equal(stepStart) {
+					t.Errorf("started_at = %v, want the failed step's recorded %v", got.StartedAt, stepStart)
 				}
 			case observedStart:
 				if got.StartedAt == nil || !got.StartedAt.Equal(*observed) {
@@ -2927,15 +2933,14 @@ func TestReconcileImageDeployFirstSeenLiveHasUnknownStart(t *testing.T) {
 // A dispatch record for another generation, or one with no parseable time, is
 // not evidence and leaves the start unknown.
 func TestReconcileImageDeployFirstSeenLiveUsesReleaseDispatch(t *testing.T) {
-	const recorded = "2026-11-01T02:13:59Z"
 	for _, tc := range []struct {
 		name   string
 		genOff int64
-		at     string
+		at     string // "" records a dispatch two seconds after the row was created
 		want   bool
 	}{
-		{name: "own release dispatch", at: recorded, want: true},
-		{name: "other generation's dispatch", genOff: -1, at: recorded},
+		{name: "own release dispatch", want: true},
+		{name: "other generation's dispatch", genOff: -1},
 		{name: "malformed dispatch time", at: "not-a-time"},
 		{name: "zero dispatch time", at: "0001-01-01T00:00:00Z"},
 	} {
@@ -2951,9 +2956,15 @@ func TestReconcileImageDeployFirstSeenLiveUsesReleaseDispatch(t *testing.T) {
 				t.Fatalf("create projection: %v", err)
 			}
 			open := onlyDeploy(t, st, row.ID)
+			dispatched := open.CreatedAt.Add(2 * time.Second).UTC().Truncate(time.Second)
+			// Second precision, after the row's creation, as the operator records it.
+			at := tc.at
+			if at == "" {
+				at = dispatched.Format(time.RFC3339)
+			}
 			app := getApp(t, cl)
 			liveStatus(app, open.Generation, image)
-			app.Status.ReleaseStart = &appv1alpha1.ReleaseStart{Generation: open.Generation + tc.genOff, StartedAt: tc.at}
+			app.Status.ReleaseStart = &appv1alpha1.ReleaseStart{Generation: open.Generation + tc.genOff, StartedAt: at}
 			if err := cl.Status().Update(ctx, app); err != nil {
 				t.Fatal(err)
 			}
@@ -2970,9 +2981,81 @@ func TestReconcileImageDeployFirstSeenLiveUsesReleaseDispatch(t *testing.T) {
 				}
 				return
 			}
-			want, _ := time.Parse(time.RFC3339, recorded)
-			if got.StartedAt == nil || !got.StartedAt.Equal(want) {
-				t.Fatalf("started_at = %v, want the release dispatch %v", got.StartedAt, want)
+			if got.StartedAt == nil || !got.StartedAt.Equal(dispatched) {
+				t.Fatalf("started_at = %v, want the release dispatch %v", got.StartedAt, dispatched)
+			}
+		})
+	}
+}
+
+// TestReconcileImageDeployFirstSeenRollingUsesReleaseDispatch is w4/609
+// (w5/m369): a deploy with no build window first seen mid-rollout starts at
+// the operator's dispatch of its own release, not at the pass that noticed it
+// 7–10 s after its instance was running. A dispatch recorded in the second
+// the row was created is held at the creation, so "==> Deploy queued" stays
+// first; another generation's dispatch is not evidence and leaves the pass's
+// clock.
+func TestReconcileImageDeployFirstSeenRollingUsesReleaseDispatch(t *testing.T) {
+	const (
+		startIsDispatch = iota
+		startIsCreation
+		startIsPassClock
+	)
+	for _, tc := range []struct {
+		name   string
+		offset time.Duration // dispatch relative to the row's creation, before truncation to the second
+		genOff int64
+		want   int
+	}{
+		{name: "own release dispatch", offset: 3 * time.Second, want: startIsDispatch},
+		{name: "dispatch in the creation second", offset: 0, want: startIsCreation},
+		{name: "other generation's dispatch", offset: 3 * time.Second, genOff: -1, want: startIsPassClock},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			rec, st, cl := newTestReconciler(t)
+			ten, _ := st.CreateTenant(ctx, "acme", "free")
+			row, _ := st.CreateApp(ctx, App{
+				TenantID: ten.ID, Name: "web", Image: "busybox:1.36", Port: 8080, Replicas: 1, Tier: "starter",
+			})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("create projection: %v", err)
+			}
+			open := onlyDeploy(t, st, row.ID)
+			dispatched := open.CreatedAt.Add(tc.offset).UTC().Truncate(time.Second)
+			app := getApp(t, cl)
+			app.Status.Phase = appv1alpha1.PhaseDeploying
+			app.Status.ReleaseGeneration = open.Generation
+			app.Status.Conditions = []metav1.Condition{{
+				Type: "Ready", Status: metav1.ConditionFalse, Reason: "Deploying", ObservedGeneration: app.Generation,
+			}}
+			app.Status.ReleaseStart = &appv1alpha1.ReleaseStart{
+				Generation: open.Generation + tc.genOff, StartedAt: dispatched.Format(time.RFC3339),
+			}
+			if err := cl.Status().Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			observed := time.Now()
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("observe rollout: %v", err)
+			}
+			got, _ := st.GetDeploy(ctx, row.ID, open.ID)
+			if got.Status != DeployUpdateInProgress || got.StartedAt == nil {
+				t.Fatalf("deploy = %+v, want update_in_progress with a start", got)
+			}
+			switch tc.want {
+			case startIsDispatch:
+				if !got.StartedAt.Equal(dispatched) {
+					t.Fatalf("started_at = %v, want the release dispatch %v", got.StartedAt, dispatched)
+				}
+			case startIsCreation:
+				if !got.StartedAt.Equal(open.CreatedAt) {
+					t.Fatalf("started_at = %v, want the row's creation %v (never before Deploy queued)", got.StartedAt, open.CreatedAt)
+				}
+			case startIsPassClock:
+				if got.StartedAt.Before(observed) {
+					t.Fatalf("started_at = %v, want this pass's clock (≥ %v): another generation's dispatch is not evidence", got.StartedAt, observed)
+				}
 			}
 		})
 	}
@@ -3004,6 +3087,8 @@ func TestReconcileBuildFirstSeenLiveUsesOwnBuildWindow(t *testing.T) {
 				t.Fatalf("create projection: %v", err)
 			}
 			open := onlyDeploy(t, st, row.ID)
+			// The build window is fixed in the past; the row must predate it.
+			backdateDeploy(t, st, open.ID, time.Since(time.Date(2026, 10, 3, 3, 32, 38, 0, time.UTC)))
 			app := getApp(t, cl)
 			liveStatus(app, open.Generation, "reg/web:gen-1@sha256:c0dd")
 			app.Status.BuildRun = &appv1alpha1.BuildRunStatus{

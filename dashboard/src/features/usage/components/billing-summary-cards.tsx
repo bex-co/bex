@@ -95,6 +95,11 @@ function invoiceMonth(periodStart: string): string {
   return periodLabel(periodStart.slice(0, 7));
 }
 
+/** A charge bex made when agent model spend reached its threshold (ADR091 D10.2a). */
+function isAgentModelCharge(inv: { kind?: string | null }): boolean {
+  return inv.kind === "agent_model_charge";
+}
+
 /**
  * Finalized invoice history. Renders only with real invoices: a workspace on
  * the price-sheet estimate alone has none, and an empty table would imply
@@ -104,12 +109,14 @@ export function InvoiceHistoryCard({ billing }: { billing: Billing | null }) {
   const { t, i18n } = useTranslations();
   const invoices = billing?.invoices ?? [];
   if (invoices.length === 0) return null;
+  const hasCharges = invoices.some(isAgentModelCharge);
   return (
     <Card>
       <CardHeader>
         <CardTitle>{t("usage.invoiceHistoryTitle")}</CardTitle>
         <CardDescription>
           {t("usage.invoiceHistoryDescription")}
+          {hasCharges ? ` ${t("usage.invoiceHistoryChargesNote")}` : null}
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -132,6 +139,11 @@ export function InvoiceHistoryCard({ billing }: { billing: Billing | null }) {
               <tr key={inv.id} className="border-b last:border-b-0">
                 <td className="py-2.5 font-medium">
                   {invoiceMonth(inv.periodStart) || "—"}
+                  {isAgentModelCharge(inv) ? (
+                    <Badge variant="outline" className="ml-2 font-normal">
+                      {t("usage.invoiceKindAgentModelCharge")}
+                    </Badge>
+                  ) : null}
                 </td>
                 <td className="py-2.5">
                   <Badge

@@ -1,0 +1,52 @@
+# w5/m370: the operator's App work queue alert fires on a sustained slow
+# queue, stays quiet on a healthy one, and does not fire on a brief spike.
+rule_files:
+  - alerting_rules.yml
+evaluation_interval: 1m
+tests:
+  - name: a queue that keeps App changes waiting 30 s fires after 10 minutes
+    interval: 1m
+    input_series:
+      # 60 changes a minute, every one waiting between 20 and 60 s.
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="10"}
+        values: 0x40
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="60"}
+        values: 0+60x40
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="+Inf"}
+        values: 0+60x40
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: BexOperatorReconcileQueueSlow
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: BexOperatorReconcileQueueSlow
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "App changes wait 57.5s (p95) in the operator's queue"
+              description: "A settings change, a resume or a route repoint reaches the cluster only when the operator reconciles that App, and its queue p95 wait has been over 15 s for 10 minutes. Tenants see settings apply late and maintenance mode or resume answer from the old route. Read the Builds dashboard's operator panels: high queue depth with workers saturated means too few BEX_APP_RECONCILE_WORKERS (lego/operator/config/manager/manager.yaml) for the fleet; long reconcile times mean a slow pass. Context: .pm/w5/m370, w21/012."
+  - name: a healthy queue stays quiet
+    interval: 1m
+    input_series:
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="1"}
+        values: 0+60x40
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="+Inf"}
+        values: 0+60x40
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: BexOperatorReconcileQueueSlow
+        exp_alerts: []
+  - name: a five-minute spike does not page
+    interval: 1m
+    input_series:
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="1"}
+        values: 0+60x20 1260+0x5 1260+60x15
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="60"}
+        values: 0+60x20 1260+60x5 1560+60x15
+      - series: workqueue_queue_duration_seconds_bucket{job="bex-operator",name="app",controller="app",le="+Inf"}
+        values: 0+60x20 1260+60x5 1560+60x15
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: BexOperatorReconcileQueueSlow
+        exp_alerts: []

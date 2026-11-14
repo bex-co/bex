@@ -572,6 +572,14 @@ describe("ServiceDetailHeader", () => {
     expect(screen.queryByText("Instances")).not.toBeInTheDocument();
   });
 
+  it("omits the Instances fact for a cron job, which runs nothing between runs (w4/606)", async () => {
+    renderHeader(svc({ type: "cron_job", replicas: 1, revision: "rev-1" }));
+
+    expect(await screen.findByText("Slug")).toBeInTheDocument();
+    expect(screen.getByText("Revision")).toBeInTheDocument();
+    expect(screen.queryByText("Instances")).not.toBeInTheDocument();
+  });
+
   it("omits the instance-type/plan chip for a static site (no /static plan route → would 404, w5/m57)", async () => {
     // A static_site is canonical under /static, which has no plan tab; the chip
     // linked to /services/<id>/plan and canonicalized to a nonexistent

@@ -287,15 +287,21 @@ func servingFixture(t *testing.T, bTrigger string, wrap func(client.WithWatch) c
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default", Clock: fixedNow}, Store: ds}, cl, ds
 }
 
-func assertRestartedGeneration(t *testing.T, cl client.Client, d DeployView, source int64, commit string) {
+func assertRestartedGeneration(t *testing.T, cl client.Client, ds *fakeStore, d DeployView, source int64, commit string) {
 	t.Helper()
 	got := getApp(t, cl, "web")
 	selected := got.Spec.ReleaseConfig
 	if selected == nil || selected.SourceGeneration != source || selected.Image != servingImage || !selected.PreserveGroupValues {
 		t.Fatalf("restart selected %+v, want source generation %d running %s", selected, source, servingImage)
 	}
-	if d.CommitID != commit || d.Image != servingImage {
-		t.Fatalf("restart row = commit %q image %q, want %q %q", d.CommitID, d.Image, commit, servingImage)
+	// The row's image is read from the store: a deploy carrying a commit is
+	// Git-backed, and its view omits the image as Render's does (w4/621).
+	row, err := ds.GetDeploy(context.Background(), d.ServiceID, d.ID)
+	if err != nil {
+		t.Fatalf("restart row %s: %v", d.ID, err)
+	}
+	if d.CommitID != commit || row.Image != servingImage || d.Image != "" {
+		t.Fatalf("restart row = commit %q stored image %q view image %q, want %q %q and no view image", d.CommitID, row.Image, d.Image, commit, servingImage)
 	}
 	if got.Spec.StartCommand != "serve --saved" || got.Spec.Image != "python:3.13-alpine" {
 		t.Fatalf("restart rewrote saved settings: %+v", got.Spec)
@@ -305,12 +311,12 @@ func assertRestartedGeneration(t *testing.T, cl client.Client, d DeployView, sou
 func TestRestartSelectsTheServingReleaseBeforeItsRowIsLive(t *testing.T) {
 	for _, trigger := range []string{store.TriggerRollback, store.TriggerAPI} {
 		t.Run(trigger, func(t *testing.T) {
-			svc, cl, _ := servingFixture(t, trigger, nil)
+			svc, cl, ds := servingFixture(t, trigger, nil)
 			d, err := svc.Restart(context.Background(), "web")
 			if err != nil {
 				t.Fatal(err)
 			}
-			assertRestartedGeneration(t, cl, d, 2, "b")
+			assertRestartedGeneration(t, cl, ds, d, 2, "b")
 		})
 	}
 }
@@ -325,7 +331,7 @@ func TestRestartSelectsTheSettledServingRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertRestartedGeneration(t, cl, d, 2, "b")
+	assertRestartedGeneration(t, cl, ds, d, 2, "b")
 }
 
 // When the serving release cannot be established, Restart is refused before
@@ -374,7 +380,7 @@ func TestRestartRefusesAnUnresolvableServingRelease(t *testing.T) {
 
 // Legacy status (no release generation) keeps the newest-Live selection.
 func TestRestartLegacyStatusSelectsTheNewestLiveRelease(t *testing.T) {
-	svc, cl, _ := servingFixture(t, store.TriggerAPI, nil)
+	svc, cl, ds := servingFixture(t, store.TriggerAPI, nil)
 	a := getApp(t, cl, "web")
 	a.Status.ReleaseGeneration = 0
 	if err := cl.Update(context.Background(), a); err != nil {
@@ -384,7 +390,7 @@ func TestRestartLegacyStatusSelectsTheNewestLiveRelease(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertRestartedGeneration(t, cl, d, 1, "a")
+	assertRestartedGeneration(t, cl, ds, d, 1, "a")
 }
 
 // advanceToB moves status from serving A (rev-1, B rolling out) to serving B.
@@ -436,7 +442,7 @@ func TestRestartReselectsAfterWaitingForTheLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertRestartedGeneration(t, cl, d, 2, "b")
+	assertRestartedGeneration(t, cl, ds, d, 2, "b")
 }
 
 // B starts serving between the locked re-read and the patch: the optimistic
@@ -444,7 +450,7 @@ func TestRestartReselectsAfterWaitingForTheLock(t *testing.T) {
 func TestRestartReselectsOnOptimisticConflict(t *testing.T) {
 	ctx := context.Background()
 	patches := 0
-	svc, cl, _ := servingFixture(t, store.TriggerAPI, func(c client.WithWatch) client.Client {
+	svc, cl, ds := servingFixture(t, store.TriggerAPI, func(c client.WithWatch) client.Client {
 		return interceptor.NewClient(c, interceptor.Funcs{
 			Patch: func(ctx context.Context, c client.WithWatch, obj client.Object, patch client.Patch, opts ...client.PatchOption) error {
 				if patches++; patches == 1 {
@@ -464,7 +470,7 @@ func TestRestartReselectsOnOptimisticConflict(t *testing.T) {
 	if patches < 2 {
 		t.Fatalf("patch attempts = %d, want a conflict retry", patches)
 	}
-	assertRestartedGeneration(t, cl, d, 2, "b")
+	assertRestartedGeneration(t, cl, ds, d, 2, "b")
 }
 
 // A suspended service's Restart refusal names the service the caller asked

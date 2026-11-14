@@ -70,7 +70,8 @@ const (
 	hexpmElixirRepo = "hexpm/elixir"
 	// hexpmErlangRepo supplies exact OTP builds for the common Bookworm base.
 	hexpmErlangRepo = "hexpm/erlang"
-	// bunRepo is Bun's official image, the one canary is resolved from.
+	// bunRepo is Bun's official image, which canary and exact releases are
+	// resolved from.
 	bunRepo = "oven/bun"
 )
 

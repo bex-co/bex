@@ -41,10 +41,11 @@ type fakeSpend struct {
 	trust      store.BillingTrust
 	used       int64
 	balanceDue bool
+	chargeable bool
 }
 
 func (f *fakeSpend) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
-	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, BalanceDue: f.balanceDue}, nil
+	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, WindowSpendMicroUSD: f.used, BalanceDue: f.balanceDue, Chargeable: f.chargeable}, nil
 }
 
 func spendEnvironmentService(plan string, trust store.BillingTrust) (*Service, *fakeSpend) {
@@ -58,7 +59,7 @@ func spendEnvironmentService(plan string, trust store.BillingTrust) (*Service, *
 var paidT1 = store.BillingTrust{LifetimePaidCents: 1000}
 
 // ADR091 D5/D10.1/D10.2a: the environment view carries the spend controls; a
-// T0 workspace is charged at $10 and stops at $15 while that charge is unpaid,
+// T0 workspace is charged at $10 and stops there while that charge is unpaid,
 // even on Pro, and a paid one gets its plan cap.
 func TestEnvironmentReportsSpendControls(t *testing.T) {
 	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
@@ -67,7 +68,7 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if *got.AgentModelMonthlySpendCapUSD != 15 || *got.AgentModelPlanSpendCapUSD != 200 || *got.TrustTier != "T0" ||
+	if *got.AgentModelMonthlySpendCapUSD != 10 || *got.AgentModelPlanSpendCapUSD != 200 || *got.TrustTier != "T0" ||
 		*got.NextChargeThresholdUSD != 10 || *got.AgentModelSpendMonthToDateUSD != 1.234567 ||
 		*got.AgentModelMaxSpendCapUSD != 2000 || got.AgentModelSpendCapOverrideUSD != nil ||
 		!*got.AgentModelSpendCapTierLimited || *got.TrustTierLocked || *got.BillingBalanceDue {
@@ -86,6 +87,62 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 	got, _ = svc.Environment(caller("viewer"), "tea-a")
 	if *got.TrustTier != "T0" || !*got.TrustTierLocked || !*got.BillingBalanceDue {
 		t.Fatalf("locked view = %+v", got)
+	}
+}
+
+// agentModelSpendCapReached is the mint's verdict (ADR091 D10.2a): a T0
+// workspace at its $10 threshold that bex can charge is not reached (its
+// next request charges the card), one bex cannot charge is, and so is a
+// workspace at its own cap.
+func TestEnvironmentReportsTheMintsCapVerdict(t *testing.T) {
+	svc, spend := spendEnvironmentService(store.PlanPro, store.BillingTrust{})
+	for _, tc := range []struct {
+		name       string
+		trust      store.BillingTrust
+		used       int64
+		chargeable bool
+		want       bool
+	}{
+		{"under the threshold", store.BillingTrust{}, 9_000_000, true, false},
+		{"T0 at $10, chargeable", store.BillingTrust{}, 10_000_000, true, false},
+		{"T0 at $10, not chargeable", store.BillingTrust{}, 10_000_000, false, true},
+		{"T1 at the Pro cap", paidT1, 200_000_000, true, true},
+	} {
+		spend.trust, spend.used, spend.chargeable = tc.trust, tc.used, tc.chargeable
+		got, err := svc.Environment(caller("viewer"), "tea-a")
+		if err != nil || got.AgentModelSpendCapReached == nil || *got.AgentModelSpendCapReached != tc.want {
+			t.Errorf("%s: reached = %v (%v), want %t", tc.name, got.AgentModelSpendCapReached, err, tc.want)
+		}
+		if got.AgentModelChargesAtThreshold == nil || *got.AgentModelChargesAtThreshold != tc.chargeable {
+			t.Errorf("%s: charges at threshold = %v, want %t", tc.name, got.AgentModelChargesAtThreshold, tc.chargeable)
+		}
+	}
+
+	// REST, MCP and GraphQL carry both verdicts: a chargeable T0 workspace
+	// at $10 is not refused, and reaching its threshold charges the card.
+	spend.trust, spend.used, spend.chargeable = store.BillingTrust{}, 10_000_000, true
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/agent-environment?ownerId=tea-a", nil).WithContext(caller("viewer")))
+	var view map[string]any
+	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &view) != nil ||
+		view["agentModelSpendCapReached"] != false || view["agentModelChargesAtThreshold"] != true {
+		t.Fatalf("REST = %d %s", rec.Code, rec.Body.String())
+	}
+	res, err := newMCPClient(t, caller("viewer"), svc).CallTool(caller("viewer"), &mcp.CallToolParams{Name: "get_agent_environment", Arguments: map[string]any{"ownerId": "tea-a"}})
+	if err != nil || res.IsError {
+		t.Fatalf("MCP = %+v, %v", res, err)
+	}
+	out, _ := res.StructuredContent.(map[string]any)
+	if out["agentModelSpendCapReached"] != false || out["agentModelChargesAtThreshold"] != true {
+		t.Fatalf("MCP = %+v", out)
+	}
+	r := graphql.Do(graphql.Params{Schema: environmentSchema(t, svc), Context: caller("viewer"),
+		RequestString: `{ agentEnvironment(ownerId: "tea-a") { agentModelSpendCapReached agentModelChargesAtThreshold } }`})
+	data, _ := r.Data.(map[string]any)
+	if env, _ := data["agentEnvironment"].(map[string]any); len(r.Errors) != 0 || env["agentModelSpendCapReached"] != false || env["agentModelChargesAtThreshold"] != true {
+		t.Fatalf("GraphQL = %#v %#v", r.Data, r.Errors)
 	}
 }
 

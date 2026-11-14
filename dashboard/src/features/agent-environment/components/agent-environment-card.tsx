@@ -25,6 +25,7 @@ import {
 import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agent-environment";
 import { ModelKeySection } from "@/features/agent-environment/components/model-key-section";
 import { SpendCapSection } from "@/features/agent-environment/components/spend-cap-section";
+import { AvailableAgentsSection } from "@/features/agent-environment/components/available-agents-section";
 import {
   AgentEnvironmentCardSkeleton,
   AgentSectionHeading,
@@ -330,6 +331,12 @@ function AgentEnvironmentForm({
         <ModelKeySection saved={saved} update={update} canManage={canManage} />
 
         <SpendCapSection saved={saved} update={update} canManage={canManage} />
+
+        <AvailableAgentsSection
+          saved={saved}
+          update={update}
+          canManage={canManage}
+        />
 
         {serverError?.field === "form" ? (
           <Alert variant="destructive">

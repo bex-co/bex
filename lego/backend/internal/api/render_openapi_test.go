@@ -42,14 +42,14 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(renderOpenAPISource); got != 441623 {
-		t.Fatalf("snapshot size = %d, want 441623", got)
+	if got := len(renderOpenAPISource); got != 472245 {
+		t.Fatalf("snapshot size = %d, want 472245", got)
 	}
 	if got := contract.document.OpenAPI; got != "3.0.2" {
 		t.Fatalf("OpenAPI = %q, want 3.0.2", got)
 	}
-	if got := contract.document.Paths.Len(); got != 160 {
-		t.Fatalf("paths = %d, want 160", got)
+	if got := contract.document.Paths.Len(); got != 164 {
+		t.Fatalf("paths = %d, want 164", got)
 	}
 	if got := len(contract.document.Components.Schemas); got != 170 {
 		t.Fatalf("schemas = %d, want 170", got)
@@ -63,8 +63,10 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 			}
 		}
 	}
-	if operations != 255 || requestBodies != 71 {
-		t.Fatalf("operations/request bodies = %d/%d, want 255/71", operations, requestBodies)
+	// The pin declares 74 request bodies; the runtime contract adds one more,
+	// renderRequestBodyExtensions' connect-sandbox-run body (round 7).
+	if operations != 263 || requestBodies != 74+len(renderRequestBodyExtensions) {
+		t.Fatalf("operations/request bodies = %d/%d, want 263/%d", operations, requestBodies, 74+len(renderRequestBodyExtensions))
 	}
 	if len(contract.document.Servers) != 0 {
 		t.Fatalf("runtime contract retained upstream servers: %#v", contract.document.Servers)

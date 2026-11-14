@@ -40,13 +40,14 @@ import (
 )
 
 const (
-	renderOpenAPISHA256 = "98b0ce65994172dd30ba4be596e96c2e9aa72f34f694e29d98198afe8af10b44"
+	renderOpenAPISHA256 = "6229bc62f2329a2a011c8b9e03547df46941e43074476c79e0c4fcb55cb31628"
 	renderAPIPrefix     = "/v1"
 )
 
 // renderOpenAPISource is Render's complete, unversioned public contract,
-// fetched on 2026-11-08 (round-6 drift: 252 -> 255 operations, Render's
-// sandbox builds; round 5 on 2026-11-02 was w2/m251: 208 -> 252, and the
+// fetched on 2026-11-13 (round-7 drift, w3/m367: 255 -> 263 operations, the
+// sandbox build delete and sandbox-group credentials; round 6 on 2026-11-08
+// added sandbox builds, round 5 on 2026-11-02 was w2/m251: 208 -> 252, and the
 // 2026-09-11 pin came from w6/073). It is embedded by the leaf asset
 // package so the test-only response validator (internal/rendertest) reads the
 // very same bytes.
@@ -284,6 +285,23 @@ var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
 	"update-registry-credential": {"expiresAt": {Value: openapi3.NewStringSchema()}},
 }
 
+// renderRequestBodyExtensions declares an optional JSON body on an operation
+// whose pinned Render schema declares none, for a client that still sends one.
+// Render's 2026-11-13 contract (round 7, w3/m367) dropped connect-sandbox-run's
+// {"command"} body, but the pinned CLI v2.36 still posts it (`sandboxes exec`,
+// pkg/sandbox/repo.go connect), and bex then binds the connect token to that
+// command; a mint without one takes the redeem's command (w3/065). Drop the
+// entry when the CLI pin stops sending it.
+var renderRequestBodyExtensions = map[string]func() *openapi3.Schema{
+	// Open, as the round-6 pin's body was, with the handler's ownerId (query
+	// or body) beside the command.
+	"connect-sandbox-run": func() *openapi3.Schema {
+		return openapi3.NewObjectSchema().
+			WithProperty("command", openapi3.NewStringSchema()).
+			WithProperty("ownerId", openapi3.NewStringSchema())
+	},
+}
+
 // legacyRedisOperations maps each of Render's deprecated /redis operations to
 // its Key Value twin (w3/m274). bex serves both spellings from the same
 // handlers, so every per-operation concession above applies to the pair
@@ -401,6 +419,9 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			}
 
 			remove := renderRequiredCompatibility[operationID]
+			if body, ok := renderRequestBodyExtensions[operationID]; ok && (operation.RequestBody == nil || operation.RequestBody.Value == nil) {
+				operation.RequestBody = &openapi3.RequestBodyRef{Value: openapi3.NewRequestBody().WithJSONSchema(body())}
+			}
 			if operation.RequestBody == nil || operation.RequestBody.Value == nil {
 				continue
 			}
@@ -716,7 +737,8 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// Datastore region filters accept repeated keys as well as comma lists.
 	// kin's explode=false decoder validates only the first repeated value, so
 	// combine them on the clone to check every region against the pinned enum.
-	if operationID := compatOperationID(route.Operation.OperationID); operationID == "list-postgres" || operationID == "list-key-value" {
+	operationID := compatOperationID(route.Operation.OperationID)
+	if operationID == "list-postgres" || operationID == "list-key-value" {
 		query := validationRequest.URL.Query()
 		if regions := query["region"]; len(regions) > 1 {
 			query.Set("region", strings.Join(regions, ","))
@@ -739,7 +761,12 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	r.ContentLength = validationRequest.ContentLength
 	if err != nil {
 		message := safeRenderValidationMessage(err)
-		if field, code := renderValidationCode(err); code != "" {
+		field, constraint := renderValidationField(err)
+		if override, ok := renderOperationRefusals[operationID][field]; ok && (override.constraint == "" || override.constraint == constraint) {
+			core.WriteErr(w, override.refuse(message))
+			return
+		}
+		if code := renderValidationErrorCodes[field]; code != "" {
 			core.WriteErr(w, core.NewBadRequestError(code, message, map[string]any{"field": field}))
 			return
 		}
@@ -878,33 +905,52 @@ func unsupportedQueryMessage(unknown []string, operationID string) string {
 }
 
 // renderValidationErrorCodes names the machine code a refused value of a
-// parameter (path, query or top-level body field) answers. The pinned OpenAPI's
-// `errorCode` vocabulary says an id that is not a well-formed `sbg-` identifier
-// is `invalid_sandbox_group_id`; and `update-sandbox-group` requires an integer
+// parameter (path, query or top-level body field) answers, for names that mean
+// the same thing in every operation. The pinned OpenAPI's `errorCode`
+// vocabulary says an id that is not a well-formed `sbg-` identifier is
+// `invalid_sandbox_group_id`; and `update-sandbox-group` requires an integer
 // `concurrencyLimit` of at least 1, which the gate refuses before the Service's
 // own check (SANDBOX_GROUP_LIMIT_INVALID) can. The gate otherwise answers a
 // codeless 400, so without these a malformed group id or an absent or zero limit
 // on REST would carry no code while GraphQL and MCP, which reach the Service's
-// own checks, do (w22/m311). Each name is unique to its operation in the pin.
+// own checks, do (w22/m311).
 var renderValidationErrorCodes = map[string]string{
 	"sandboxGroupId":   sandbox.CodeInvalidSandboxGroupID,
 	"concurrencyLimit": sandbox.CodeSandboxGroupLimitInvalid,
 }
 
-// renderValidationCode is the field and code of a request error that has one.
-func renderValidationCode(err error) (field, code string) {
+// renderOperationRefusal overrides the gate's answer for one operation's field,
+// optionally only for one schema constraint.
+type renderOperationRefusal struct {
+	constraint string // a schema keyword such as "maxLength"; "" for any
+	refuse     func(message string) error
+}
+
+// renderOperationRefusals are per-operation overrides for field names whose
+// meaning differs by operation: the Service's own refusal, so REST answers
+// what GraphQL and MCP do (w8/312). The gate refuses create-sandbox's
+// over-long name and list-sandbox-builds' unknown status before the Service.
+var renderOperationRefusals = map[string]map[string]renderOperationRefusal{
+	"create-sandbox": {"name": {constraint: "maxLength", refuse: func(string) error { return sandbox.InvalidSandboxNameError() }}},
+	"list-sandbox-builds": {"status": {refuse: func(message string) error {
+		return core.NewBadRequestError(sandbox.CodeInvalidBuildStatus, message, map[string]any{"field": "status", "supported": sandbox.BuildStatuses()})
+	}}},
+}
+
+// renderValidationField is the parameter or top-level body field a request
+// error refuses, and the schema keyword it failed for a body field.
+func renderValidationField(err error) (field, constraint string) {
 	var requestError *openapi3filter.RequestError
 	if !errors.As(err, &requestError) {
 		return "", ""
 	}
 	if requestError.Parameter != nil {
-		field = requestError.Parameter.Name
-		return field, renderValidationErrorCodes[field]
+		return requestError.Parameter.Name, ""
 	}
 	var schemaError *openapi3.SchemaError
 	if requestError.RequestBody != nil && errors.As(err, &schemaError) {
 		if pointer := schemaError.JSONPointer(); len(pointer) > 0 {
-			return pointer[0], renderValidationErrorCodes[pointer[0]]
+			return pointer[0], schemaError.SchemaField
 		}
 	}
 	return "", ""

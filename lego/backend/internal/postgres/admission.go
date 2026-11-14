@@ -109,14 +109,27 @@ func CheckDatabaseAdmission(current *appv1alpha1.Database, desired appv1alpha1.D
 		}
 	}
 	if checkAutoscaling && !tier.SupportsDiskAutoscaling() {
-		return core.NewBadRequestError("POSTGRES_DISK_AUTOSCALING_PLAN_UNSUPPORTED", "disk autoscaling requires a paid Postgres plan; disable disk autoscaling before selecting the free plan",
+		return core.NewBadRequestError("POSTGRES_DISK_AUTOSCALING_PLAN_UNSUPPORTED",
+			"disk autoscaling requires a paid Postgres plan; "+paidFeatureRemedy("disk autoscaling", current != nil && current.Spec.DiskAutoscaling, planChanged),
 			map[string]any{"field": "enableDiskAutoscaling", "plan": plan})
 	}
 	if checkPooler && !tier.SupportsConnectionPooling() {
-		return core.NewBadRequestError("POSTGRES_CONNECTION_POOL_PLAN_UNSUPPORTED", "connection pooling requires a paid Postgres plan; disable connection pooling before selecting the free plan",
+		return core.NewBadRequestError("POSTGRES_CONNECTION_POOL_PLAN_UNSUPPORTED",
+			"connection pooling requires a paid Postgres plan; "+paidFeatureRemedy("connection pooling", current != nil && current.Spec.Pooler, planChanged),
 			map[string]any{"field": "connectionPool", "plan": plan})
 	}
 	return nil
+}
+
+// paidFeatureRemedy fits a paid-only feature's refusal to what the request
+// did, as the read-replica refusal does (w8/246): moving a database that has
+// the feature onto the free plan drops it first; asking for it on a free plan
+// chooses a paid plan instead (w8/311).
+func paidFeatureRemedy(feature string, had, planChanged bool) string {
+	if had && planChanged {
+		return "disable " + feature + " before selecting the free plan"
+	}
+	return "choose a paid plan (for example 0.1c-256mb) to enable " + feature
 }
 
 // readReplicaNameMaxLength keeps a replica's external SNI label,

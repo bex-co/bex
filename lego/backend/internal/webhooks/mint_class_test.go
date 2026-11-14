@@ -22,18 +22,8 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 )
-
-// fakePlatformResolver answers IsPlatformClient from a fixed map.
-type fakePlatformResolver map[string]bool
-
-func (f fakePlatformResolver) IsPlatformClient(_ context.Context, clientID string) (bool, error) {
-	return f[clientID], nil
-}
-
-func (f fakePlatformResolver) IsPlatformClientFresh(ctx context.Context, clientID string) (bool, error) {
-	return f.IsPlatformClient(ctx, clientID)
-}
 
 // w4/079 — createWebhookEndpoint mints a show-once signing secret; delegated
 // OAuth callers must not satisfy AuthorizeMintClass (same bar as API keys).
@@ -52,7 +42,7 @@ func TestCreateRequiresMintCredentialClass(t *testing.T) {
 		{
 			name:     "third-party OAuth human token cannot mint webhook secret",
 			id:       core.Identity{Subject: "user-a", Method: "oauth2", ClientID: "dcr-agent-7", Human: true, CanonicalScopes: core.ScopeWrite},
-			platform: fakePlatformResolver{"platform-cli": true},
+			platform: coretest.PlatformClients{"platform-cli": true},
 			want:     core.ErrForbidden,
 		},
 		{
@@ -61,7 +51,7 @@ func TestCreateRequiresMintCredentialClass(t *testing.T) {
 				Subject: "user-a", Method: "oauth2", ClientID: "platform-cli",
 				Human: true, PlatformClient: true, CanonicalScopes: core.ScopeWrite,
 			},
-			platform: fakePlatformResolver{"platform-cli": true},
+			platform: coretest.PlatformClients{"platform-cli": true},
 			want:     nil,
 		},
 		{
@@ -91,5 +81,47 @@ func TestCreateRequiresMintCredentialClass(t *testing.T) {
 				t.Fatalf("denied credential class minted a webhook endpoint anyway: %d rows", len(st.rows))
 			}
 		})
+	}
+}
+
+// Round 24 (hardening of H-1's class): repointing an endpoint exports the
+// activity stream to a new destination under its durable secret, so a
+// delegated third-party token may rename or disable an endpoint but not move
+// it, and reads its URL and secret redacted.
+func TestRepointAndSecretReadRequireMintCredentialClass(t *testing.T) {
+	st := newFakeEndpointStore()
+	// user-a is the workspace admin, so only the credential class can decide.
+	s := &Service{
+		Base:  &core.Base{Namespace: "default", PlatformClients: coretest.PlatformClients{"platform-cli": true}, Authz: manageChecker{admin: "user-a"}},
+		Store: st,
+	}
+	session := core.WithIdentity(context.Background(), core.Identity{Subject: "user-a", Method: "session"})
+	created, err := s.Create(session, CreateRequest{
+		Name: "hook", URL: "https://example.com/h", EventTypes: []string{TypeDeployEnded}, Enabled: true,
+	})
+	if err != nil {
+		t.Fatalf("session Create: %v", err)
+	}
+	thirdParty := core.WithIdentity(context.Background(), core.Identity{
+		Subject: "user-a", Method: "oauth2", ClientID: "dcr-agent-7", Human: true, CanonicalScopes: core.ScopeWrite,
+	})
+	elsewhere := "https://attacker.example/collect"
+	if _, err := s.Update(thirdParty, "", created.ID, UpdateRequest{URL: &elsewhere}); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("third-party repoint => %v, want ErrForbidden", err)
+	}
+	renamed := "renamed"
+	if _, err := s.Update(thirdParty, "", created.ID, UpdateRequest{Name: &renamed}); err != nil {
+		t.Fatalf("third-party rename => %v, want success: only the destination is gated", err)
+	}
+	for id, row := range st.rows {
+		if row.URL != "https://example.com/h" {
+			t.Fatalf("endpoint %s repointed to %q by a refused token", id, row.URL)
+		}
+	}
+	if !s.mayManageWorkspace(session, "tea-1") {
+		t.Fatal("the admin's own session is not a manager; the check below would prove nothing")
+	}
+	if s.mayManageWorkspace(thirdParty, "tea-1") {
+		t.Fatal("a delegated third-party token is treated as a manager, so it reads the signing secret")
 	}
 }

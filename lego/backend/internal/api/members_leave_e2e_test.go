@@ -34,9 +34,10 @@ import (
 
 // members_leave_e2e_test.go is w5/m102's proof against REAL infrastructure —
 // live Postgres and live OpenFGA, enforced — driving the REAL REST router: a
-// member leaves, and both the row and the role tuple are gone; the owner and
-// the last admin are refused; and the leaver's very next resolution no longer
-// answers with the workspace they just left (the m13 stale-cache failure).
+// member leaves, and both the row and the role tuple are gone; the last admin
+// is refused; the leaver's very next resolution no longer answers with the
+// workspace they just left (the m13 stale-cache failure); and the workspace's
+// creator leaves like any admin, their binding ending with the row (w5/m372).
 //
 //	BEX_TEST_DB_URI=postgres://…/postgres?sslmode=disable \
 //	BEX_TEST_OPENFGA_URL=http://127.0.0.1:58085 \
@@ -121,17 +122,7 @@ func TestLeaveWorkspaceE2E(t *testing.T) {
 		return ok
 	}
 
-	// 1. The owner cannot leave — the binding would be stranded exactly as a
-	//    removal would strand it.
-	rec := e2eCall(mux, ctx, owner, "DELETE", leavePath, "")
-	if rec.Code != http.StatusConflict || codeOf(t, rec.Body.Bytes()) != members.ErrorOwnerCannotLeave {
-		t.Fatalf("owner leaving: %d %s", rec.Code, rec.Body)
-	}
-	if _, err := st.GetTenantMember(ctx, home.ID, owner); err != nil {
-		t.Fatalf("owner's row gone after a refused leave: %v", err)
-	}
-
-	// 2. Prime the resolver's caches the way a live request would, so step 4
+	// 1. Prime the resolver's caches the way a live request would, so step 3
 	//    proves eviction rather than an empty cache.
 	leaverID := core.Identity{Subject: leaver, Method: "session"}
 	if _, ok := resolver.Tenant(ctx, leaverID); !ok {
@@ -141,8 +132,8 @@ func TestLeaveWorkspaceE2E(t *testing.T) {
 		t.Fatalf("leaver is not a member of the workspace they are about to leave: %v %v", member, err)
 	}
 
-	// 3. The leave itself: row and tuple both gone.
-	rec = e2eCall(mux, ctx, leaver, "DELETE", leavePath, "")
+	// 2. The leave itself: row and tuple both gone.
+	rec := e2eCall(mux, ctx, leaver, "DELETE", leavePath, "")
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("leave: %d %s", rec.Code, rec.Body)
 	}
@@ -153,7 +144,7 @@ func TestLeaveWorkspaceE2E(t *testing.T) {
 		t.Error("role tuple survived the leave")
 	}
 
-	// 4. The m13 regression: the leaver's very NEXT resolution must not answer
+	// 3. The m13 regression: the leaver's very NEXT resolution must not answer
 	//    with the workspace they just left, and their membership positive for it
 	//    must be gone — no PositiveTTL window.
 	if member, err := resolver.IsMember(ctx, leaverID, home.ID); err != nil || member {
@@ -163,10 +154,7 @@ func TestLeaveWorkspaceE2E(t *testing.T) {
 		t.Errorf("post-leave resolution = %q (ok=%v), want the workspace they still belong to (%s)", got, ok, keep.ID)
 	}
 
-	// 5. The last admin cannot leave. admin2 is now the only admin of home
-	//    (the owner is an admin too, so demote the owner out of the count by
-	//    leaving them be and checking the true single-admin case on `keep`,
-	//    where the leaver is the sole admin of their own workspace).
+	// 4. The last admin cannot leave: the leaver is the sole admin of `keep`.
 	rec = e2eCall(mux, ctx, leaver, "DELETE", "/v1/workspaces/"+keep.ID+"/members/me", "")
 	if rec.Code != http.StatusBadRequest || codeOf(t, rec.Body.Bytes()) != members.ErrorLastAdmin {
 		t.Fatalf("last admin leaving: %d %s, want 400 coded %s", rec.Code, rec.Body, members.ErrorLastAdmin)
@@ -175,7 +163,7 @@ func TestLeaveWorkspaceE2E(t *testing.T) {
 		t.Fatalf("last admin's row gone after a refused leave: %v", err)
 	}
 
-	// 6. The route cannot be aimed at anyone else: "me" is a literal segment, so
+	// 5. The route cannot be aimed at anyone else: "me" is a literal segment, so
 	//    naming another subject falls through to the admin removal route, which
 	//    a non-member of that workspace is not authorized for.
 	rec = e2eCall(mux, ctx, leaver, "DELETE", "/v1/workspaces/"+home.ID+"/members/"+admin2, "")
@@ -184,5 +172,28 @@ func TestLeaveWorkspaceE2E(t *testing.T) {
 	}
 	if _, err := st.GetTenantMember(ctx, home.ID, admin2); err != nil {
 		t.Errorf("admin2's membership was affected: %v", err)
+	}
+
+	// 6. The workspace's creator leaves while admin2 remains an Admin, as on
+	//    Render: row, tuple and onboarding binding end together, and their next
+	//    session lands in a new personal workspace, not back in home.
+	rec = e2eCall(mux, ctx, owner, "DELETE", leavePath, "")
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("creator leaving: %d %s", rec.Code, rec.Body)
+	}
+	if _, err := st.GetTenantMember(ctx, home.ID, owner); err == nil {
+		t.Error("the creator's row survived their leave")
+	}
+	if hasTuple(t, owner, "admin", home.ID) {
+		t.Error("the creator's admin tuple survived their leave")
+	}
+	if b, err := st.TenantOwnerSubject(ctx, home.ID); err != nil || b != "" {
+		t.Errorf("owner binding after the creator left = %q (%v), want none", b, err)
+	}
+	if got, err := resolver.EnsureTenant(ctx, owner, "", false); err != nil || got == home.ID {
+		t.Errorf("the departed creator's next session resolved to %q (%v), want a new personal workspace", got, err)
+	}
+	if hasTuple(t, owner, "admin", home.ID) {
+		t.Error("onboarding re-granted the departed creator admin on home")
 	}
 }

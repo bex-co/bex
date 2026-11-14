@@ -118,7 +118,6 @@ const toolDefinition = {
   annotations: { idempotentHint: true, openWorldHint: true },
 };
 
-
 interface PullRequestResult {
   url: string;
   number: number;
@@ -130,7 +129,8 @@ interface PullRequestResult {
 }
 
 type ToolOutcome =
-  { ok: true; result: PullRequestResult } | { ok: false; error: ToolError };
+  | { ok: true; result: PullRequestResult }
+  | { ok: false; error: ToolError };
 
 function invalid(message: string, hint?: string): ToolOutcome {
   return {
@@ -183,7 +183,6 @@ export function validateInput(args: unknown): ToolOutcome | undefined {
 function upstreamError(message: string): ToolOutcome {
   return { ok: false, error: { code: "upstream_error", message } };
 }
-
 
 function asResult(value: unknown): PullRequestResult | undefined {
   if (!value || typeof value !== "object") return undefined;
@@ -287,19 +286,29 @@ export function availableTools(
 function serverInstructions(env: NodeJS.ProcessEnv): string {
   const lines: string[] = [];
   if (env.BEX_PR_ENDPOINT) {
-    lines.push(`Use ${toolName} after pushing the session branch to open or update its draft pull request.`);
+    lines.push(
+      `Use ${toolName} after pushing the session branch to open or update its draft pull request.`,
+    );
   }
   if (env.BEX_PR_COMMENT_ENDPOINT) {
-    lines.push(`Use ${replyOnPullRequestToolName} to answer pull request feedback on the session's pull request.`);
+    lines.push(
+      `Use ${replyOnPullRequestToolName} to answer pull request feedback on the session's pull request.`,
+    );
   }
   if (env.BEX_SHARE_ENDPOINT) {
-    lines.push(`Use ${shareFileToolName} to hand the user a file that should not be committed.`);
+    lines.push(
+      `Use ${shareFileToolName} to hand the user a file that should not be committed.`,
+    );
   }
   if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
-    lines.push(`Use ${submitResultToolName} to hand back this task's structured result.`);
+    lines.push(
+      `Use ${submitResultToolName} to hand back this task's structured result.`,
+    );
   }
   if (env.BEX_SPAWN_ENDPOINT) {
-    lines.push(`Use ${spawnSessionToolName} to hand a separate task to a child session, ${waitChildSessionsToolName} to wait until children finish instead of polling ${getChildSessionToolName}, and ${messageChildSessionToolName} or ${cancelChildSessionToolName} to follow up on or stop one.`);
+    lines.push(
+      `Use ${spawnSessionToolName} to hand a separate task to a child session, ${waitChildSessionsToolName} to wait until children finish instead of polling ${getChildSessionToolName}, and ${messageChildSessionToolName} or ${cancelChildSessionToolName} to follow up on or stop one.`,
+    );
   }
   return lines.join(" ");
 }
@@ -372,7 +381,10 @@ export async function handleMessage(
       if (!availableTools(env).some((tool) => tool.name === name)) {
         return rpcError(message.id, -32602, `unknown tool: ${String(name)}`);
       }
-      const outcome = await toolHandlers[name as string](message.params?.arguments, env);
+      const outcome = await toolHandlers[name as string](
+        message.params?.arguments,
+        env,
+      );
       const structured = outcome.ok ? outcome.result : { error: outcome.error };
       return rpcResult(message.id, {
         content: [{ type: "text", text: JSON.stringify(structured) }],

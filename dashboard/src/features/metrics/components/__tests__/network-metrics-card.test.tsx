@@ -94,6 +94,46 @@ describe("NetworkMetricsCard", () => {
     });
   });
 
+  // w4/613: a worker, cron job or private service gets no public requests,
+  // so it is offered only Outbound Bandwidth, and its request reads are off.
+  it("shows only Outbound Bandwidth, with no request controls or request reads, for a service without public requests", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    render(
+      <NetworkMetricsCard
+        resource="worker"
+        window={WINDOW}
+        servesRequests={false}
+      />,
+    );
+
+    expect(screen.getByText("Outbound Bandwidth")).toBeInTheDocument();
+    expect(screen.queryByText("Total Requests")).not.toBeInTheDocument();
+    expect(screen.queryByText("Response Times")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: "Status Code" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("combobox", { name: "Host" }),
+    ).not.toBeInTheDocument();
+    expect(latestOptions("http_requests")).toMatchObject({ skip: true });
+    expect(latestOptions("http_latency")).toMatchObject({ skip: true });
+    expect(latestOptions("bandwidth")?.skip).toBeUndefined();
+  });
+
+  // w4/614: the triggers size to their value instead of clipping it, and a
+  // long host keeps its full name in the trigger's title.
+  it("lets each Network filter trigger fit its selected value", () => {
+    mockUseMetrics.mockReturnValue(emptyResult());
+
+    renderCard();
+
+    for (const name of ["Status Code", "Host", "Group by", "Percentile"]) {
+      const trigger = screen.getByRole("combobox", { name });
+      expect(trigger.className).not.toMatch(/(^|\s)w-(36|40)(\s|$)/);
+    }
+  });
+
   it("queries the shared window for all three request metrics, and passes the default p90 quantile only to latency", () => {
     mockUseMetrics.mockReturnValue(emptyResult());
 

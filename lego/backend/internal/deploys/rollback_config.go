@@ -174,7 +174,7 @@ func (s *Service) restartSelectedRelease(ctx context.Context, service string, a 
 	if store.IsOpenDeployStatus(d.Status) {
 		s.notifyDeployStarted(ctx, a, service)
 	}
-	result := view(d)
+	result := view(a, d)
 	return &result, nil
 }
 

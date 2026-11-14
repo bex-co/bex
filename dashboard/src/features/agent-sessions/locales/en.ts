@@ -211,6 +211,10 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Codex",
     description: "Composer — agent option: codex",
   },
+  "agentSessions.agent.muse": {
+    message: "Muse Code",
+    description: "Composer — agent option: muse (Meta's Muse Code)",
+  },
   "agentSessions.submit": {
     message: "Start session",
     description: "Composer — submit button label",
@@ -460,6 +464,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.errors.AGENT_SESSION_CONFLICT": {
     message: "This session is busy with another operation. Try again shortly.",
     description: "Mapped message for AGENT_SESSION_CONFLICT",
+  },
+  "agentSessions.errors.AGENT_SESSION_BRANCH_IN_USE": {
+    message:
+      "Another session is already working on this branch. Send that session a message, or use another bex-agent/ branch.",
+    description: "Mapped message for AGENT_SESSION_BRANCH_IN_USE (w5/m382)",
   },
   "agentSessions.errors.AGENT_SESSION_NOT_STEERABLE": {
     message: "This session can't be steered in its current phase ({phase}).",
@@ -1056,6 +1065,12 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "{used} of {cap} used. New model requests stop at the cap.",
     description: "Composer warning body",
   },
+  "agentSessions.spendWarningBodyCharge": {
+    message:
+      "{used} of {cap} used. Billing credits pay first; once spend beyond them reaches {cap}, the card on file is charged and sessions keep running. New model requests stop only if the charge fails.",
+    description:
+      "Composer warning body when the cap is a new workspace's charge point (ADR091 D10.2a)",
+  },
   "agentSessions.spendReachedTitle.cap": {
     message: "Monthly agent model spend cap reached",
     description: "Composer refusal title: the workspace's own cap",
@@ -1326,6 +1341,40 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.secretsDuplicate": {
     message: "This session already has a secret with that name.",
     description: "Composer Secrets popover: duplicate inline secret name",
+  },
+  "agentSessions.secretsScopeRepo": {
+    message: "This repository",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to the chosen repository, included",
+  },
+  "agentSessions.secretsScopeOtherRepo": {
+    message: "Only on {repo}",
+    description:
+      "Composer Secrets popover: hint beside a secret scoped to another repository, not available here",
+  },
+  "agentSessions.appliedSecretsTitle": {
+    message: "Secrets in the latest turn",
+    description:
+      "Session header: heading of the applied-secrets popover (names and sources, never values)",
+  },
+  "agentSessions.appliedSecretSource.inline": {
+    message: "this session",
+    description:
+      "Applied secret source: an inline secret given to this session only",
+  },
+  "agentSessions.appliedSecretSource.explicit": {
+    message: "selected",
+    description: "Applied secret source: a workspace secret the session picked",
+  },
+  "agentSessions.appliedSecretSource.repo": {
+    message: "repository",
+    description:
+      "Applied secret source: a workspace secret scoped to the session's repository",
+  },
+  "agentSessions.appliedSecretSource.workspace": {
+    message: "workspace",
+    description:
+      "Applied secret source: a workspace secret every session receives",
   },
   "agentSessions.metaSecrets_one": {
     message: "{count} secret",

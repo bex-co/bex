@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"maps"
+	"math/rand/v2"
 	"slices"
 	"strconv"
 	"strings"
@@ -292,6 +293,8 @@ type Reconciler struct {
 	datastorePlacementCursor int
 
 	kick chan struct{}
+	// watchKicks spaces the passes the App status watch asks for.
+	watchKicks watchKickSpacing
 	// confirmPending coalesces confirmUnhealthySoon's scheduled pass.
 	confirmPending atomic.Bool
 }
@@ -335,7 +338,7 @@ func (r *Reconciler) confirmUnhealthySoon() {
 	}
 	time.AfterFunc(unhealthyConfirmAfter, func() {
 		r.confirmPending.Store(false)
-		r.Kick()
+		r.kickFrom(kickSourceConfirm)
 	})
 }
 
@@ -459,6 +462,68 @@ func NewReconciler(cl client.Client, store Store) *Reconciler {
 // calls it after every successful write so a POST is projected within
 // milliseconds instead of a resync period.
 func (r *Reconciler) Kick() {
+	r.kickFrom(kickSourceAPI)
+}
+
+// KickFromWatch is Kick for the App status watch (w5/m369): the operator wrote
+// a status this projector reads, so record it soon instead of on the resync.
+//
+// Watch kicks are spaced, API kicks are not. Every replica sees every status
+// change, and a fleet's statuses change often (cron runs, exits, wakes), so
+// unspaced they would run full passes back to back. A watch-asked pass waits
+// until max(minWatchPassGap, 3 × the last pass) after the last pass ended,
+// plus up to watchKickJitter so the replicas do not start in lockstep, and
+// every change seen meanwhile shares it.
+func (r *Reconciler) KickFromWatch() {
+	if delay, ok := r.watchKicks.schedule(time.Now()); ok {
+		time.AfterFunc(delay, func() {
+			r.watchKicks.fired()
+			r.kickFrom(kickSourceWatch)
+		})
+	}
+}
+
+const (
+	minWatchPassGap = time.Second
+	watchKickJitter = 250 * time.Millisecond
+)
+
+// watchKickSpacing holds at most one pending watch kick and the timing of the
+// last pass, which spaces it.
+type watchKickSpacing struct {
+	mu       sync.Mutex
+	pending  bool
+	lastEnd  time.Time
+	lastPass time.Duration
+}
+
+// schedule returns how long to wait before the watch kick, and false when one
+// is already pending.
+func (s *watchKickSpacing) schedule(now time.Time) (time.Duration, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.pending {
+		return 0, false
+	}
+	s.pending = true
+	delay := s.lastEnd.Add(max(minWatchPassGap, 3*s.lastPass)).Sub(now)
+	return max(delay, 0) + rand.N(watchKickJitter), true
+}
+
+func (s *watchKickSpacing) fired() {
+	s.mu.Lock()
+	s.pending = false
+	s.mu.Unlock()
+}
+
+func (s *watchKickSpacing) passEnded(end time.Time, took time.Duration) {
+	s.mu.Lock()
+	s.lastEnd, s.lastPass = end, took
+	s.mu.Unlock()
+}
+
+func (r *Reconciler) kickFrom(source kickSource) {
+	r.Metrics.kick(source)
 	select {
 	case r.kick <- struct{}{}:
 	default:
@@ -467,7 +532,20 @@ func (r *Reconciler) Kick() {
 
 // Run reconciles until ctx is done.
 func (r *Reconciler) Run(ctx context.Context) {
-	core.PollWake(ctx, "controlplane: reconcile", r.Resync, r.kick, r.ReconcileOnce)
+	core.PollWake(ctx, "controlplane: reconcile", r.Resync, r.kick, r.timedReconcileOnce)
+}
+
+// timedReconcileOnce is ReconcileOnce with its duration recorded, so the cost
+// of a pass is visible before and after the status watch makes passes more
+// frequent (w5/m369).
+func (r *Reconciler) timedReconcileOnce(ctx context.Context) error {
+	start := time.Now()
+	defer func() {
+		end := time.Now()
+		r.Metrics.Pass(end.Sub(start))
+		r.watchKicks.passEnded(end, end.Sub(start))
+	}()
+	return r.ReconcileOnce(ctx)
 }
 
 // indexManagedApps keys the managed CRs by their app-id label so create /
@@ -529,7 +607,9 @@ func (r *Reconciler) recordObservations(ctx context.Context, d DesiredApp, cur *
 	if err := r.Store.InsertServiceEventFacts(ctx, instanceExitFacts(d.ID, cur)); err != nil {
 		log.Printf("controlplane: record instance exits for %s: %v", d.ID, err)
 	}
-	obs := r.guardServiceObservation(ctx, observedServiceStateFor(d.ID, cur, len(open) > 0))
+	obs := observedServiceStateFor(d.ID, cur, len(open) > 0)
+	obs.SpecReadAt = d.ReadAt
+	obs = r.guardServiceObservation(ctx, obs)
 	if _, err := r.Store.RecordObservedServiceState(ctx, obs); err != nil {
 		log.Printf("controlplane: record observed service state %s: %v", d.ID, err)
 	}
@@ -688,6 +768,10 @@ func parseObservedTime(value string) (time.Time, bool) {
 // create / update / delete, then copies each CR's status back to its row.
 // Per-app failures are collected, not fatal — one bad row can't block the rest.
 func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
+	// Taken before the desired rows are read: every observation this pass
+	// records carries it, so a suspension flag written after the read wins
+	// over the pass's older view (deferStaleSuspension).
+	specReadAt := time.Now().UTC()
 	desired, err := r.Store.ListDesiredApps(ctx)
 	if err != nil {
 		return fmt.Errorf("list desired apps: %w", err)
@@ -723,6 +807,7 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	var errs []error
 	seen := make(map[string]bool, len(desired))
 	for _, d := range desired {
+		d.ReadAt = specReadAt
 		seen[d.ID] = true
 		if d.CreationPending {
 			r.settleAbandonedDeploys(ctx, d, openByApp[d.ID])
@@ -1015,22 +1100,22 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	default:
 		cancelReason = r.supersededCancelReason(ctx, open, cur)
 	}
-	// w6/m123, w4/m156: a build_failed or live close reached by a phase skip
-	// stamps started_at from the operator's recorded build window
-	// (generation-attributed, so it is this row's own even when the release
-	// has moved past it) — never from this transition's clock, which is the
-	// close's observation time. A pre_deploy_failed close falls back to its own
-	// failed step's recorded start (w4/316), and a live close with no build
-	// window (a prebuilt image) to the operator's dispatch of its release
-	// (w4/449). Without that evidence the start stays unknown.
+	// A row first seen past its start stamps started_at from the operator's
+	// generation-attributed record of it, never from this transition's clock:
+	// the build window (w6/m123, w4/m156; w8/287's deploy that waited behind a
+	// failed one read queued through a 50 s build), else a failed pre-deploy
+	// step's start (w4/316), else the dispatch of a release with no build (a
+	// prebuilt image, a restart, a rollback, a config change reusing the
+	// artifact: w4/449 for a live close, w4/609 for one still rolling, which
+	// otherwise started 7–10 s after its instance was running, w5/m369).
+	// Without that evidence the start stays unknown. The records have second
+	// precision, so a start is held at the row's creation: "==> Deploy queued"
+	// always comes first.
 	var startedAt *time.Time
 	switch status {
-	case DeployBuildFailed, DeployPreDeployInProgress, DeployUpdateInProgress:
-		// A row first seen past its build (w8/287: a deploy that waited
-		// behind a failed one read queued through a 50 s build) began when
-		// the build did, not on this pass.
+	case DeployBuildFailed:
 		startedAt = buildRunStart(cur, open)
-	case DeployLive:
+	case DeployPreDeployInProgress, DeployUpdateInProgress, DeployLive:
 		if startedAt = buildRunStart(cur, open); startedAt == nil {
 			startedAt = releaseDispatchStart(cur, open)
 		}
@@ -1038,6 +1123,9 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		if startedAt = buildRunStart(cur, open); startedAt == nil {
 			startedAt = failedPreDeployStart(cur, open)
 		}
+	}
+	if startedAt != nil && startedAt.Before(open.CreatedAt) {
+		startedAt = &open.CreatedAt
 	}
 	// w9/m345: a build refused for exhausted pipeline minutes is Render's
 	// pipeline_minutes_exhausted, beside the deploy_ended this close records.

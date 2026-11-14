@@ -17,6 +17,8 @@ import {
   type LogSearch,
 } from "@/features/logs/lib/log-search";
 import type { LogFilters } from "@/features/logs/types";
+import { useServer } from "@/features/services/hooks/use-server";
+import { publiclyRoutable } from "@/features/services/lib/service-type";
 import { ServiceLogsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/logs")({
@@ -98,7 +100,8 @@ function RouteComponent() {
 // only the viewer into the shared `<Outlet/>`. Exported taking `serviceId` as a
 // prop (like the Overview page) so the routing test can mount it under a
 // reconstructed router without the file Route's param context. A pure
-// passthrough — the optional props default inside LogViewer.
+// passthrough apart from the service type, which decides whether request
+// logs are offered; the optional props default inside LogViewer.
 export function ServiceLogsPage({
   serviceId,
   range,
@@ -114,6 +117,11 @@ export function ServiceLogsPage({
   urlLive?: boolean;
   onFiltersChange?: (filters: LogFilters, live: boolean) => void;
 }) {
+  // A worker, cron job or private service receives no public HTTP requests,
+  // so it is offered no request logs, as on Render (w4/613); a stale
+  // `?type=request` link reads its application logs. The layout mounts this
+  // tab once the service is loaded.
+  const { service } = useServer(serviceId, { poll: false });
   return (
     <LogViewer
       resource={serviceId}
@@ -122,6 +130,7 @@ export function ServiceLogsPage({
       urlFilters={urlFilters}
       urlLive={urlLive}
       onFiltersChange={onFiltersChange}
+      servesRequests={service == null || publiclyRoutable(service.type)}
     />
   );
 }

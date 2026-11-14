@@ -83,7 +83,7 @@ func TestExternalRewriteProxiesAnyMethodAtTheOriginalPath(t *testing.T) {
 		t.Errorf("upstream saw %d requests, want 1", hits.Load())
 	}
 
-	// GET works the same, and a method no rule claims stays a 405.
+	// GET works the same, and a method no rule claims gets the bare 200.
 	rr = httptest.NewRecorder()
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "https://site.onbex.co/api/ping", nil))
 	if rr.Code != http.StatusCreated || rr.Header().Get("X-Upstream-Path") != "/v1/ping" {
@@ -91,8 +91,8 @@ func TestExternalRewriteProxiesAnyMethodAtTheOriginalPath(t *testing.T) {
 	}
 	rr = httptest.NewRecorder()
 	h.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "https://site.onbex.co/other", nil))
-	if rr.Code != http.StatusMethodNotAllowed {
-		t.Errorf("POST to an unclaimed path = %d, want 405", rr.Code)
+	if rr.Code != http.StatusOK || rr.Body.Len() != 0 {
+		t.Errorf("POST to an unclaimed path = %d %q, want a bare 200", rr.Code, rr.Body)
 	}
 }
 

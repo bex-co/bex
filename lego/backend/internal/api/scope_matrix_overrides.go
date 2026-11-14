@@ -113,4 +113,17 @@ var scopeClassOverrides = map[string]string{
 	// Browser Web Shell ticket: can_view_sensitive, short-lived, not mint.
 	"REST POST /v1/services/{id}/shell-ticket": core.OpClassSensitive,
 	"GQL Mutation.createShellSession":          core.OpClassSensitive,
+
+	// Membership issuance (an invite, its resend, a role change) is mint too:
+	// it outlives the caller's credential (round 24, H-1).
+	"REST POST /v1/workspaces/{workspaceId}/members":                   core.OpClassMint,
+	"REST POST /v1/workspaces/{workspaceId}/invites/{inviteId}/resend": core.OpClassMint,
+	"REST PATCH /v1/owners/{ownerId}/members/{userId}":                 core.OpClassMint,
+	"REST PATCH /v1/workspaces/{workspaceId}/members/{subject}":        core.OpClassMint,
+	"GQL Mutation.inviteWorkspaceMember":                               core.OpClassMint,
+	"GQL Mutation.resendWorkspaceInvite":                               core.OpClassMint,
+	"GQL Mutation.changeWorkspaceMemberRole":                           core.OpClassMint,
+	"MCP invite_workspace_member":                                      core.OpClassMint,
+	"MCP resend_workspace_invite":                                      core.OpClassMint,
+	"MCP change_workspace_member_role":                                 core.OpClassMint,
 }

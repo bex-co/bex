@@ -122,7 +122,7 @@ type Service struct {
 	// every workspace deletable — zero behavior change.
 	OpsWorkspaceID string
 	// Members runs Render's member mutations through the members service
-	// (authorization, owner safeguards, audit); nil → ErrWorkspacesUnavailable.
+	// (authorization, self and last-admin safeguards, audit); nil → ErrWorkspacesUnavailable.
 	Members MemberMutator
 }
 
@@ -866,9 +866,11 @@ func (s *Service) ownerEmail(ctx context.Context, tenantID string) string {
 // performed, on a field billing and support read.
 //
 // The oldest-admin answer remains, as an explicit FALLBACK for workspaces that
-// have no binding at all (anything created through CreateWorkspace rather than
-// first-login onboarding). That is a contact address, not a claim of ownership,
-// and it is the only case where one is guessed.
+// have no binding: anything created through CreateWorkspace rather than
+// first-login onboarding, and, since w5/m372, a workspace whose creator was
+// removed, demoted or left (the store ends the binding then). That is a contact
+// address, not a claim of ownership, and it is the only case where one is
+// guessed.
 //
 // Best-effort throughout: a workspace is absent when Identities is nil, the
 // read fails, or the lookup misses (the honest subset IdentityReader

@@ -20,6 +20,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"slices"
 	"strings"
 	"sync"
@@ -53,7 +55,7 @@ func TestTriggerBuildDeploysTheCarrierAndReportsABuild(t *testing.T) {
 	svc, _ := newService(ds, sampleBuildSource("bds-git", "https://github.com/acme/web"))
 	ctx := context.Background()
 
-	b, err := svc.TriggerBuild(ctx, "bds-git")
+	b, err := svc.TriggerBuild(ctx, "bds-git", "")
 	if err != nil {
 		t.Fatalf("TriggerBuild: %v", err)
 	}
@@ -87,7 +89,7 @@ func TestTriggerBuildShipsAStagedGroupLink(t *testing.T) {
 	svc, cl := newService(ds, carrier)
 	ctx := context.Background()
 
-	if _, err := svc.TriggerBuild(ctx, "bds-git"); err != nil {
+	if _, err := svc.TriggerBuild(ctx, "bds-git", ""); err != nil {
 		t.Fatalf("TriggerBuild: %v", err)
 	}
 	var got appv1alpha1.App
@@ -108,13 +110,13 @@ func TestBuildRoutesRefuseServicesAndImageSources(t *testing.T) {
 	svc, _ := newService(ds, sampleApp("web", "srv-1"), sampleBuildSource("bds-img", ""))
 	ctx := context.Background()
 
-	if _, err := svc.TriggerBuild(ctx, "web"); !errors.Is(err, core.ErrNotFound) {
+	if _, err := svc.TriggerBuild(ctx, "web", ""); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("TriggerBuild on a service: want ErrNotFound, got %v", err)
 	}
 	if _, err := svc.ListBuilds(ctx, "web", "", 20); !errors.Is(err, core.ErrNotFound) {
 		t.Errorf("ListBuilds on a service: want ErrNotFound, got %v", err)
 	}
-	if _, err := svc.TriggerBuild(ctx, "bds-img"); !errors.Is(err, core.ErrBadRequest) {
+	if _, err := svc.TriggerBuild(ctx, "bds-img", ""); !errors.Is(err, core.ErrBadRequest) {
 		t.Errorf("TriggerBuild on an image source: want ErrBadRequest, got %v", err)
 	}
 	if len(ds.byApp["srv-1"])+len(ds.byApp["bds-img"]) != 0 {
@@ -127,7 +129,7 @@ func TestGetBuildRefusesIdsThatAreNotItsBuilds(t *testing.T) {
 	ds.mintIDs = true
 	svc, _ := newService(ds, sampleBuildSource("bds-git", "https://github.com/acme/web"), sampleBuildSource("bds-two", "https://github.com/acme/api"))
 	ctx := context.Background()
-	other, err := svc.TriggerBuild(ctx, "bds-two")
+	other, err := svc.TriggerBuild(ctx, "bds-two", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -160,7 +162,7 @@ func TestBuildVerbsAuditUnderTheirOwnNames(t *testing.T) {
 	svc, _ := newService(ds, sampleBuildSource("bds-git", "https://github.com/acme/web"))
 	sink := &deployHookAuditSink{}
 	svc.Audit = sink
-	if _, err := svc.TriggerBuild(context.Background(), "bds-git"); err != nil {
+	if _, err := svc.TriggerBuild(context.Background(), "bds-git", ""); err != nil {
 		t.Fatal(err)
 	}
 	if len(sink.events) == 0 || sink.events[0].Verb != "deploys.TriggerBuild" {
@@ -487,5 +489,55 @@ func TestFanoutCompletesPastPermanentRefusals(t *testing.T) {
 	}
 	if !permanentFanoutError(core.NewBillingEnforcedError()) || permanentFanoutError(errors.New("connection reset")) {
 		t.Fatal("billing enforcement must complete the fan-out and a transport error must retry it")
+	}
+}
+
+// Render's trigger-build-source-build takes an optional clearCache (round 7,
+// w3/m367): "clear" builds the carrier as a service deploy with clearCache
+// does, the default keeps the cache, and anything else is a 400, on REST too.
+func TestTriggerBuildHonorsClearCache(t *testing.T) {
+	ds := newFakeStore()
+	ds.mintIDs = true
+	svc, cl := newService(ds, sampleBuildSource("bds-git", "https://github.com/acme/web"))
+	ctx := context.Background()
+
+	if _, err := svc.TriggerBuild(ctx, "bds-git", "clear"); err != nil {
+		t.Fatalf("TriggerBuild clear: %v", err)
+	}
+	if rows := ds.byApp["bds-git"]; len(rows) != 1 || !rows[0].ClearCache {
+		t.Fatalf("carrier deploy rows = %+v, want one clearing the cache", rows)
+	}
+	var carrier appv1alpha1.App
+	if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "bds-git"}, &carrier); err != nil {
+		t.Fatal(err)
+	}
+	if carrier.Annotations[appv1alpha1.AnnotationClearCacheReleaseGeneration] == "" {
+		t.Errorf("carrier annotations = %v, want the release-scoped cache reset", carrier.Annotations)
+	}
+	kept, err := svc.TriggerBuild(ctx, "bds-git", "do_not_clear")
+	if err != nil {
+		t.Fatalf("TriggerBuild do_not_clear: %v", err)
+	}
+	for _, row := range ds.byApp["bds-git"] {
+		if row.ID == kept.BuildRun.ID && row.ClearCache {
+			t.Fatalf("do_not_clear build = %+v, want the cache kept", row)
+		}
+	}
+	if _, err := svc.TriggerBuild(ctx, "bds-git", "sometimes"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("unknown clearCache = %v, want a bad request", err)
+	}
+
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	for body, want := range map[string]int{`{"clearCache":"clear"}`: http.StatusCreated, ``: http.StatusCreated, `{"clearCache":"maybe"}`: http.StatusBadRequest} {
+		rr := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/v1/build-sources/bds-git/builds", strings.NewReader(body))
+		if body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		mux.ServeHTTP(rr, req)
+		if rr.Code != want {
+			t.Errorf("REST trigger with %q = %d %s, want %d", body, rr.Code, rr.Body.String(), want)
+		}
 	}
 }
