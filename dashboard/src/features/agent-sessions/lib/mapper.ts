@@ -21,15 +21,6 @@ const TERMINAL_PHASES: ReadonlySet<AgentSessionPhase> = new Set([
   "canceled",
 ]);
 
-/** The server's coarse states (ADR094 D7) after which nothing more happens on
- *  its own; `working` (and an unknown state, which the server also reports as
- *  `working`) is not one. */
-const TERMINAL_STATES: ReadonlySet<string> = new Set([
-  "succeeded",
-  "failed",
-  "canceled",
-]);
-
 /** Idle phases the GraphQL steer path accepts: a closed session continues in a
  *  fresh sandbox on the same branch (w10/m15). */
 const STEERABLE_PHASES: ReadonlySet<AgentSessionPhase> = new Set([
@@ -42,12 +33,6 @@ export function isTerminalPhase(phase: string): boolean {
   return TERMINAL_PHASES.has(phase as AgentSessionPhase);
 }
 
-/** True for the server's terminal `state`s (succeeded/failed/canceled) — the
- *  coarse answer a client reads instead of decoding `phase` (w21/m257). */
-export function isTerminalState(state: string): boolean {
-  return TERMINAL_STATES.has(state);
-}
-
 /** True when the steer/resume mutation would accept a new prompt (idle session). */
 export function isSteerablePhase(phase: string): boolean {
   return STEERABLE_PHASES.has(phase as AgentSessionPhase);
@@ -58,12 +43,6 @@ export function toAgentSessionView(
   wire: AgentSessionFieldsFragment,
 ): AgentSessionView {
   const phase = wire.phase as AgentSessionPhase;
-  // The server's coarse `state` answers "is it done?" (ADR094 D7); the lifecycle
-  // `phase` is decoded only for a partial cache entry that predates the field —
-  // the same fallback `isSteerable` keeps.
-  const terminal = wire.state
-    ? isTerminalState(wire.state)
-    : isTerminalPhase(phase);
   // agentConfig is non-null in a fully-materialized wire session, but a partial
   // cache entry (e.g. a create/steer mutation result read back mid-flight, before
   // the full fragment lands) can omit it. Default it rather than throw — a missing
@@ -111,8 +90,8 @@ export function toAgentSessionView(
     canceledAt: wire.canceledAt ?? null,
     archivedAt: wire.archivedAt ?? null,
     isArchived: wire.archivedAt != null,
-    isFinished: terminal,
-    isTerminal: terminal,
+    isFinished: isTerminalPhase(phase),
+    isTerminal: isTerminalPhase(phase),
     // The server computes steerability (w21/m257); the phase table is only the
     // fallback for a partial cache entry that predates the field.
     isSteerable: wire.steerable ?? isSteerablePhase(phase),
