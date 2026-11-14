@@ -248,11 +248,6 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet && r.Method != http.MethodHead {
-		h.serveOtherMethod(w, r)
-		return
-	}
-
 	site, ok := h.resolver.Resolve(hostOnly(r.Host))
 	if !ok {
 		http.Error(w, "no static site for host", http.StatusNotFound)
@@ -266,6 +261,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	requestPath := normalizePath(r.URL.Path)
 	if site.Unavailable {
 		serveSiteUnavailable(w, site, requestPath)
+		return
+	}
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		h.serveOtherMethod(w, r, site, requestPath)
 		return
 	}
 	// Git metadata is never part of a site (w4/565). Sites published before
@@ -337,7 +336,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fallbackPath := requestPath
-	if act == actRewrite && target.Host != "" {
+	if isExternalRewrite(act, target) {
 		// An external rewrite serves the destination URL's content here; Render
 		// does not rewrite the root path.
 		if requestPath == "/" {
@@ -378,15 +377,27 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.serveNotFound(w, r, site, requestPath)
 }
 
-// serveOtherMethod answers a method other than GET and HEAD. A site's objects
-// are read with those two; any other method is served only by an external
-// rewrite, Render's way to reach an API from a static site (w8/184).
-func (h *Handler) serveOtherMethod(w http.ResponseWriter, r *http.Request) {
-	if h.serveExternalRewriteForMethod(w, r) {
+// serveOtherMethod answers a method other than GET and HEAD on a live site. A
+// site's objects are read with those two; any other method reaches content
+// only through an external rewrite, Render's way to reach an API from a
+// static site (w8/184). Anything else gets Render's edge answer: a bare 200
+// with no body and none of the site's headers, on any path (w8/319, captured
+// on four Render static sites 2026-11-13).
+func (h *Handler) serveOtherMethod(w http.ResponseWriter, r *http.Request, site Site, requestPath string) {
+	// The root path is never rewritten, as on the GET path.
+	act, target, err := matchRoutes(site.Routes, requestPath)
+	if err == nil && isExternalRewrite(act, target) && requestPath != "/" {
+		h.serveExternalRewrite(w, r, site, requestPath, target)
 		return
 	}
-	w.Header().Set("Allow", "GET, HEAD")
-	http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	w.Header().Set("Content-Length", "0")
+	w.WriteHeader(http.StatusOK)
+}
+
+// isExternalRewrite reports whether a matched rule rewrites to a full URL,
+// which the static server proxies (w8/184).
+func isExternalRewrite(act routeAction, target *url.URL) bool {
+	return act == actRewrite && target.Host != ""
 }
 
 // serveNotFound answers a miss as Render does: 404 with the site's root
@@ -1010,9 +1021,9 @@ func applyErrorHeaders(h http.Header, headers []appv1alpha1.StaticHeader, reqPat
 
 // serveSiteError writes an error for a resolved site. Custom headers apply
 // before http.Error so every response class for a known site — including 404 —
-// carries the visitor's matching rules (w4/m101). Requests that never resolved
-// a site (405, unknown host) stay on bare http.Error: there are no rules, and
-// applying host-derived headers on unknown-host would be an existence oracle.
+// carries the visitor's matching rules (w4/m101). A request that never
+// resolved a site (an unknown host) stays on bare http.Error: there are no
+// rules, and applying host-derived headers there would be an existence oracle.
 func serveSiteError(w http.ResponseWriter, site Site, requestPath string, code int, msg string) {
 	applyErrorHeaders(w.Header(), site.Headers, requestPath)
 	http.Error(w, msg, code)
@@ -1129,21 +1140,4 @@ func drain(rc io.ReadCloser) ([]byte, error) {
 		return nil, ErrObjectTooLarge
 	}
 	return b, nil
-}
-
-// serveExternalRewriteForMethod serves a request whose method is neither GET
-// nor HEAD when an external rewrite rule claims its path. It reports whether it
-// answered; false leaves the caller's 405.
-func (h *Handler) serveExternalRewriteForMethod(w http.ResponseWriter, r *http.Request) bool {
-	site, ok := h.resolver.Resolve(hostOnly(r.Host))
-	if !ok || site.Unavailable {
-		return false
-	}
-	requestPath := normalizePath(r.URL.Path)
-	act, target, err := matchRoutes(site.Routes, requestPath)
-	if err != nil || act != actRewrite || target.Host == "" || requestPath == "/" {
-		return false
-	}
-	h.serveExternalRewrite(w, r, site, requestPath, target)
-	return true
 }
