@@ -187,14 +187,19 @@ type ReleaseConfigReference struct {
 
 // ActiveReleaseConfig returns the selection belonging to the current or newly
 // requested release. Operational metadata generations do not expire it; an
-// actual later deployment does. The operator adopts direct CR release edits in
-// status before consulting this helper.
+// actual later deployment does, once the operator adopts it: a selection the
+// operator adopted and still runs keeps resolving while a newer requested
+// release waits behind it (Render's Wait, w4/661). The operator adopts direct
+// CR release edits in status before consulting this helper.
 func (a *App) ActiveReleaseConfig() *ReleaseConfigReference {
 	ref := a.Spec.ReleaseConfig
 	if ref == nil || ref.Generation <= 0 || (ref.Image == "" && ref.StaticPrefix == "") {
 		return nil
 	}
 	gen := a.Status.ReleaseGeneration
+	if gen == ref.Generation && a.Status.SelectedReleaseGeneration == gen {
+		return ref
+	}
 	if requested, err := strconv.ParseInt(a.Annotations[AnnotationReleaseGeneration], 10, 64); err == nil && requested > gen {
 		gen = requested
 	}

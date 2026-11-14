@@ -867,10 +867,11 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		triggeredBy = core.SubjectFrom(ctx)
 	}
 	// Render's Wait (w4/652): an image override selects its own release,
-	// which the operator does not pin, so it waits behind the deploy in
-	// flight; so does any deploy behind a selected release in flight. A
-	// build-source fan-out ships one build to every linked service at once
-	// and still writes through (w4/661).
+	// which would override the release in flight, so it waits behind it; so
+	// does any deploy behind a selected release in flight, which the operator
+	// pins only once it adopted it (w4/661). A build-source fan-out ships one
+	// build to every linked service at once and writes through: the operator
+	// holds it behind an adopted selection.
 	if p.build == nil && !p.restart {
 		d, deferred, err := s.deferDeploy(ctx, a, store.Deploy{Trigger: trigger, Image: p.ImageURL, TriggeredBy: triggeredBy},
 			store.DeferredRequest{ImageURL: p.ImageURL, CommitID: p.CommitID, BuildID: p.BuildID, DeployMode: p.DeployMode, ClearCache: p.ClearCache},

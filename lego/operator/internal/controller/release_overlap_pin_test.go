@@ -196,6 +196,99 @@ func TestImageReleaseRollingOutWaitsForTheNewerTrigger(t *testing.T) {
 	}
 }
 
+// rollbackOverlapApp is a saved-image App whose generation-2 Rollback (a
+// release spec.releaseConfig selected) is in flight in phase, with a newer
+// deploy requested behind it that cleared the selection, as a git push, a
+// Blueprint sync or a build-source fan-out does. view is the Rollback's
+// adopted view.
+func rollbackOverlapApp(phase appv1alpha1.AppPhase) (app *appv1alpha1.App, view appv1alpha1.AppSpec) {
+	executing := appv1alpha1.AppSpec{Image: "docker.io/library/busybox:1.37", Port: 8080, RestartedAt: "2026-11-14T10:00:00Z",
+		ReleaseConfig: &appv1alpha1.ReleaseConfigReference{Generation: 2, SourceGeneration: 1, Image: "docker.io/library/busybox@sha256:old"}}
+	pinned := desiredAppReleaseIdentity(executing)
+	newer := executing
+	newer.ReleaseConfig, newer.RestartedAt = nil, "2026-11-14T10:00:10Z"
+	app = &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{
+			Generation:  3,
+			Annotations: map[string]string{appv1alpha1.AnnotationReleaseGeneration: "3"},
+		},
+		Spec: newer,
+		Status: appv1alpha1.AppStatus{
+			Phase:                      phase,
+			ArtifactFingerprint:        pinned.artifact,
+			ReleaseArtifactFingerprint: pinned.artifact,
+			ReleaseFingerprint:         pinned.release,
+			ReleaseGeneration:          2,
+			SelectedReleaseGeneration:  2,
+			ActiveRevision:             "rev-1",
+			Image:                      executing.Image,
+		},
+	}
+	return app, releaseView(newer, executing)
+}
+
+// Render's Wait holds a Rollback, Restart or image-override deploy in progress
+// like any other (w4/661): adopted and rolling out, it keeps its own selection
+// on its view while the newer deploy waits, and goes live first. Without its
+// view it cannot render its selection and is replaced, as is one the newer
+// deploy reached before it was adopted, one that served, and any under the
+// Override policy (w4/653).
+func TestSelectedReleaseRollingOutWaitsForTheNewerDeploy(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		app    func() (*appv1alpha1.App, *appv1alpha1.AppSpec)
+		pinned bool
+	}{
+		{"rolling out on its view", func() (*appv1alpha1.App, *appv1alpha1.AppSpec) {
+			app, view := rollbackOverlapApp(appv1alpha1.PhaseDeploying)
+			return app, &view
+		}, true},
+		{"with no recorded view", func() (*appv1alpha1.App, *appv1alpha1.AppSpec) {
+			app, _ := rollbackOverlapApp(appv1alpha1.PhaseDeploying)
+			return app, nil
+		}, false},
+		{"served", func() (*appv1alpha1.App, *appv1alpha1.AppSpec) {
+			app, view := rollbackOverlapApp(appv1alpha1.PhaseRunning)
+			app.Status.ActiveRevision = "rev-2"
+			return app, &view
+		}, false},
+		{"not adopted before the newer deploy", func() (*appv1alpha1.App, *appv1alpha1.AppSpec) {
+			app, _ := rollbackOverlapApp(appv1alpha1.PhaseRunning)
+			app.Status.ReleaseGeneration, app.Status.SelectedReleaseGeneration = 1, 0
+			return app, nil
+		}, false},
+		{"the workspace policy is Override", func() (*appv1alpha1.App, *appv1alpha1.AppSpec) {
+			app, view := rollbackOverlapApp(appv1alpha1.PhaseDeploying)
+			app.Labels = map[string]string{appv1alpha1.LabelOverlappingDeployPolicy: appv1alpha1.OverlappingDeployPolicyOverride}
+			return app, &view
+		}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app, view := tc.app()
+			decision := prepareAppReleaseDecision(app, view)
+			if tc.pinned {
+				if app.Status.ReleaseGeneration != 2 || app.Status.PendingReleaseGeneration != 3 || decision.releaseChanged || !decision.pinned {
+					t.Fatalf("release=%d pending=%d changed=%v pinned=%v, want the rollback pinned with 3 pending",
+						app.Status.ReleaseGeneration, app.Status.PendingReleaseGeneration, decision.releaseChanged, decision.pinned)
+				}
+				viewed := *app
+				viewed.Spec = *view
+				if ref := viewed.ActiveReleaseConfig(); ref == nil || ref.Image != "docker.io/library/busybox@sha256:old" {
+					t.Fatalf("the pinned rollback's view selects %+v, want its own image", ref)
+				}
+				return
+			}
+			if app.Status.ReleaseGeneration != 3 || app.Status.PendingReleaseGeneration != 0 || !decision.releaseChanged {
+				t.Fatalf("release=%d pending=%d changed=%v, want release 3 adopted",
+					app.Status.ReleaseGeneration, app.Status.PendingReleaseGeneration, decision.releaseChanged)
+			}
+			if app.ActiveReleaseConfig() != nil {
+				t.Fatal("the newer deploy kept the replaced selection")
+			}
+		})
+	}
+}
+
 // Render's Override policy (w4/653): a source build in flight is replaced by
 // the newer release at once, where Wait pins it.
 func TestOverridePolicyReplacesTheBuildInFlight(t *testing.T) {

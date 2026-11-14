@@ -371,26 +371,25 @@ type appReleaseDecision struct {
 	pinned bool
 }
 
-// releaseInFlight reports whether a source or saved-image release is still on
-// its way to serving (ADR060 §D1a, Render's Wait overlap policy): it builds, or
-// runs its pre-deploy step and rollout without having served yet. While true,
-// prepareAppReleaseDecision pins the release identity so a newer trigger cannot
-// abandon it, and its rollout is recorded in status.activeRevision before the
-// newer release counts (w8/m119; a prebuilt image since w4/635). A release that
-// settles failed, parks asleep, or whose own deploy is canceled leaves this
-// state; one a newer trigger reaches before it was adopted never entered it.
-// Suspended, direct-static-publish and selected (Rollback, Restart, an image
-// override) releases never pin: a newer trigger replaces them. bex-api holds a
-// selected deploy at the row level while another is in flight, and its own
-// deploys behind a selected one (w5/m284, w4/652), so here that is a direct CR
-// edit, a git push, a configuration change or a Blueprint sync (w4/654).
+// releaseInFlight reports whether a source, saved-image or selected release is
+// still on its way to serving (ADR060 §D1a, Render's Wait overlap policy): it
+// builds, or runs its pre-deploy step and rollout without having served yet.
+// While true, prepareAppReleaseDecision pins the release identity so a newer
+// trigger cannot abandon it, and its rollout is recorded in
+// status.activeRevision before the newer release counts (w8/m119; a prebuilt
+// image since w4/635; a Rollback, Restart or image override since w4/661). A
+// release that settles failed, parks asleep, or whose own deploy is canceled
+// leaves this state; one a newer trigger reaches before it was adopted never
+// entered it. Suspended and direct-static-publish releases never pin, and
+// neither does a selected one judged on a spec that no longer carries its
+// selection: only its adopted view (heldReleaseView) can render it.
 func releaseInFlight(app *appv1alpha1.App) bool {
 	// Render's Override policy (w4/653): the newest release replaces the one
 	// in flight at once, so nothing is held.
 	if app.Labels[appv1alpha1.LabelOverlappingDeployPolicy] == appv1alpha1.OverlappingDeployPolicyOverride {
 		return false
 	}
-	if selected := app.Status.SelectedReleaseGeneration; !pinnableRelease(app) || (selected != 0 && selected == app.Status.ReleaseGeneration) {
+	if selected := app.Status.SelectedReleaseGeneration; !pinnableRelease(app) || (selected != 0 && selected == app.Status.ReleaseGeneration && !selectedRelease(app)) {
 		return false
 	}
 	if canceled, ok := canceledReleaseGeneration(app); ok && canceled == app.Status.ReleaseGeneration {
@@ -431,10 +430,22 @@ func releaseSourceFixed(app *appv1alpha1.App) bool {
 }
 
 // pinnableRelease reports whether the App's release is one a pin can carry
-// through: a source build or a saved prebuilt image, whose build and runtime
-// come from its adopted spec and the pinned fingerprints alone.
+// through: a source build, a saved prebuilt image or a selected release, whose
+// build and runtime come from its adopted spec and the pinned fingerprints
+// alone.
 func pinnableRelease(app *appv1alpha1.App) bool {
-	return pinnableSourceRelease(app) || savedImageRelease(app)
+	return pinnableSourceRelease(app) || savedImageRelease(app) || selectedRelease(app)
+}
+
+// selectedRelease reports that the App's adopted release is the one its
+// spec.releaseConfig selects (a Rollback, a Restart, an image override, or an
+// environment save reusing the served build): its image and settings come from
+// that selection, which the adopted view keeps once a newer deploy clears it
+// from the saved spec (w4/661). A static site's restored publication is a copy
+// with no rollout to hold, and a suspended release none at all.
+func selectedRelease(app *appv1alpha1.App) bool {
+	ref := app.ActiveReleaseConfig()
+	return ref != nil && ref.Generation == app.Status.ReleaseGeneration && ref.StaticPrefix == "" && !app.Spec.Suspended
 }
 
 // pinnableSourceRelease reports whether the App's release is a source build a

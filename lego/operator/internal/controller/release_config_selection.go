@@ -165,6 +165,11 @@ func (r *AppReconciler) ensureSelectedReleaseConfig(ctx context.Context, app *ap
 		if err := r.copySelectedSources(ctx, app, ref, rec); err != nil {
 			return err
 		}
+		// The selection's own spec, for its pin to render once a newer deploy
+		// clears it from the saved spec (heldReleaseView, w4/661).
+		if desiredAppReleaseIdentity(app.Spec).release == app.Status.ReleaseFingerprint {
+			rec.adoptedIfAbsent = &app.Spec
+		}
 		if err := r.writeRuntimeConfigRecord(ctx, app, ref.Generation, rec); err != nil {
 			return err
 		}

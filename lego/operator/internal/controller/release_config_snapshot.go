@@ -458,6 +458,13 @@ func (r *AppReconciler) recordAdoptedRelease(ctx context.Context, app *appv1alph
 	if r.Mode != ModeKubernetes || gen <= 0 {
 		return nil
 	}
+	if ref := app.ActiveReleaseConfig(); ref != nil && ref.SourceGeneration > 0 {
+		// A selection's configuration and record are materialized from the
+		// release it selects (ensureSelectedReleaseConfig), which records its
+		// adopted spec with them; one written here first would stand in for
+		// that record.
+		return nil
+	}
 	if err := r.snapshotReleaseConfig(ctx, app, gen); err != nil {
 		return err
 	}

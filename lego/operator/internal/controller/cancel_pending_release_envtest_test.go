@@ -311,6 +311,76 @@ var _ = Describe("Canceling the pending release behind one in flight (w8/m117)",
 		Expect(templateRevision()).To(Equal("rev-2"))
 	})
 
+	// w4/661: a git push, a Blueprint sync or a build-source fan-out clears a
+	// Rollback's selection, and a configuration save rolls a release over it;
+	// either replaced the Rollback in progress. Under Render's Wait the
+	// Rollback goes live first, on its own image and settings, then the newer
+	// deploy runs.
+	DescribeTable("a Rollback rolling out serves before the newer deploy rolls out",
+		func(newer func(a *appv1alpha1.App)) {
+			appImage := func() string {
+				GinkgoHelper()
+				return findContainer(envtestDeployment(nn).Spec.Template.Spec.Containers, appContainerName).Image
+			}
+			createImageApp()
+			serveEnvtestRelease(nn, func() { pass(1) })
+			update(func(a *appv1alpha1.App) {
+				a.Spec.Image = "python:3.13-alpine"
+				a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(a.Generation+1, 10)
+			})
+			pass(2)
+			serveEnvtestRelease(nn, func() { pass(1) })
+			Expect(getApp().Status.ActiveRevision).To(Equal("rev-2"), "precondition: the image change serves")
+
+			By("rolling back to generation 1, as bex-api does")
+			update(func(a *appv1alpha1.App) {
+				release := a.Generation + 1
+				a.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: release, SourceGeneration: 1, Image: "python:3.12-alpine"}
+				a.Spec.RestartedAt = "2026-11-14T10:00:00Z"
+				a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(release, 10)
+			})
+			pass(2)
+			rollback := getApp().Status.ReleaseGeneration
+			Expect(getApp().Status.SelectedReleaseGeneration).To(Equal(rollback), "precondition: the rollback is adopted")
+			Expect(templateRevision()).To(Equal(fmt.Sprintf("rev-%d", rollback)))
+			Expect(appImage()).To(Equal("python:3.12-alpine"))
+
+			By("requesting a newer deploy while the rollback rolls out")
+			update(newer)
+			pass(2)
+			app := getApp()
+			Expect(app.Status.ReleaseGeneration).To(Equal(rollback), "the rollback in progress is not abandoned")
+			Expect(app.Status.PendingReleaseGeneration).To(Equal(rollback + 1))
+			Expect(templateRevision()).To(Equal(fmt.Sprintf("rev-%d", rollback)), "the Deployment keeps rolling the rollback")
+			Expect(appImage()).To(Equal("python:3.12-alpine"), "on its own image")
+			Expect(findContainer(envtestDeployment(nn).Spec.Template.Spec.Containers, appContainerName).Env).
+				NotTo(ContainElement(corev1.EnvVar{Name: "NEWER", Value: "1"}), "and its own settings")
+
+			markEnvtestDeploymentReady(nn)
+			served := make([]string, 0, 4)
+			for range 4 {
+				pass(1)
+				served = append(served, getApp().Status.ActiveRevision)
+			}
+			Expect(served).To(ContainElement(fmt.Sprintf("rev-%d", rollback)), "the rollback served before the newer deploy was adopted")
+			app = getApp()
+			Expect(app.Status.ReleaseGeneration).To(Equal(rollback+1), "the newer deploy runs once the rollback serves")
+			Expect(app.Status.PendingReleaseGeneration).To(BeZero())
+			Expect(templateRevision()).To(Equal(fmt.Sprintf("rev-%d", rollback+1)))
+			Expect(appImage()).To(Equal("python:3.13-alpine"), "the newer deploy runs the saved image")
+		},
+		Entry("a deploy that clears the selection (git push, Blueprint sync, build-source fan-out)", func(a *appv1alpha1.App) {
+			a.Spec.ReleaseConfig = nil
+			a.Spec.RestartedAt = "2026-11-14T10:00:10Z"
+			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "NEWER", Value: "1"}}
+			a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(a.Generation+1, 10)
+		}),
+		Entry("a configuration save, which leaves the selection in the spec", func(a *appv1alpha1.App) {
+			a.Spec.Env = []appv1alpha1.EnvVar{{Name: "NEWER", Value: "1"}}
+			a.Annotations[appv1alpha1.AnnotationReleaseGeneration] = strconv.FormatInt(a.Generation+1, 10)
+		}),
+	)
+
 	It("two image triggers before the first deploy starts still leave one deploy", func() {
 		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: "default",

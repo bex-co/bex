@@ -385,11 +385,13 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **666** — [Canceling a deploy queued behind a Rollback, Restart or image override in progress also ends that release](666.md) (~2h; minor) ← follow-up from w4/661, 2026-11-14
+- [ ] **667** — [An environment "Save and deploy" on a Git-backed service still replaces the deploy in progress, and picks the build that served at save time](667.md) (~2h; minor) ← follow-up from w4/661, 2026-11-14
 - [ ] **665** — [Since pin `c99e7815ebec`, a new image web service takes 2–5 minutes to go live (was about 75 s): its deploy waits 23–104 s before it starts, and its route takes about a minute to follow a detected port](665.md) (~1h30m; major, cause unverified — needs the operator reading w21/064 also waits on) ← live `/qa-find-bugs w4` loop rounds 361–362, 2026-11-14 UTC (pin `c99e7815ebec`)
 - [ ] **664** — [Scaling a healthy web service up records `server_failed` ("The instance failed its health check") and later `server_available`, though every existing instance kept serving](664.md) (~1h; minor to major) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`)
 - [ ] **663** — [While a pre-deploy command runs, the service's instance list includes the pre-deploy Job's pod: a first deploy lists an instance before anything serves, and the Web Shell picker offers it](663.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`)
 - [x] **662** — [The zh env-group card still says 链接/已链接 for Link and Linked, under headings and an Unlink button that say 关联](done/662.md) (~20m; minor) ← live `/qa-find-bugs w4` loop round 361, 2026-11-14 UTC (pin `c99e7815ebec`), residual of w4/646
-- [ ] **661** — [A git push, a configuration change that rolls a release, a Blueprint sync or a build-source fan-out still cancels a Rollback, Restart or image-override deploy in progress, where Render's Wait lets it finish](661.md) (~4h; minor) ← follow-up from w4/652, 2026-11-14
+- [x] **661** — [A git push, a configuration change that rolls a release, a Blueprint sync or a build-source fan-out still cancels a Rollback, Restart or image-override deploy in progress, where Render's Wait lets it finish](done/661.md) (~4h; minor) ← follow-up from w4/652, 2026-11-14
 - [x] **660** — [Render's MCP `list_services` accepts `includePreviews`; bex's takes no arguments](done/660.md) (~20m; minor, parity) ← follow-up from w4/m378, 2026-11-14
 - [x] **659** — [bex-only MCP tools keep a false comment that "MCP tool outputs must be JSON objects"](done/659.md) (~10m; minor) ← follow-up from w4/m378, 2026-11-14
 - [x] **658** — [The create-service form checks secret-file names but not the 1 MiB total, and relies on the server's 400](done/658.md) (~25m; minor) ← follow-up from w4/m363, 2026-11-14

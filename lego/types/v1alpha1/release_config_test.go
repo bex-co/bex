@@ -30,6 +30,11 @@ func TestReleaseConfigExpiresOnlyWhenAnotherReleaseIsRequested(t *testing.T) {
 	if app.ActiveReleaseConfig() != nil {
 		t.Fatal("normal deploy retained historical selection")
 	}
+	app.Status.SelectedReleaseGeneration = 7
+	if app.ActiveReleaseConfig() == nil {
+		t.Fatal("the adopted selection the operator still runs expired before it adopted the newer release (w4/661)")
+	}
+	app.Status.SelectedReleaseGeneration = 0
 	app.Spec.ReleaseConfig.Generation = 9
 	if app.ActiveReleaseConfig() == nil {
 		t.Fatal("fresh restart selection was ignored before operator adoption")

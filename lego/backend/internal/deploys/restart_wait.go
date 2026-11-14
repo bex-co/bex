@@ -37,14 +37,17 @@ import (
 // target deploy's build artifact") as for any other deploy
 // (render.com/docs/deploys, render.com/docs/rollbacks).
 //
-// The operator pins a source build or a saved prebuilt image in flight
-// (w8/m119, w4/635), but a release that selects its own runtime (Restart,
-// Rollback, an image override) is neither, so such a deploy waits here, at the
-// row level: it holds the latest-pending slot with no release and no App CR
-// change, and runs once nothing is in flight. A Restart waits behind any deploy
-// (w5/m284), restarting what serves once that deploy settles; a Rollback or an
-// image override waits behind any deploy, and any deploy this service opens
-// waits behind one of those (w4/652).
+// The operator pins the release in flight once it adopted it — a source build,
+// a saved prebuilt image, or a selected release (w8/m119, w4/635, w4/661) —
+// but a newer selection written to the App (Restart, Rollback, an image
+// override) overrides it, so such a deploy waits here, at the row level: it
+// holds the latest-pending slot with no release and no App CR change, and runs
+// once nothing is in flight. A Restart waits behind any deploy (w5/m284),
+// restarting what serves once that deploy settles; a Rollback or an image
+// override waits behind any deploy, and any deploy this service opens waits
+// behind one of those (w4/652), which also covers a selection the operator has
+// not adopted yet. A git push, a configuration save, a Blueprint sync and a
+// build-source fan-out write through and wait behind the operator's pin.
 
 // DeployDeferrer is the store capability a waiting deploy needs;
 // *store.PGStore provides it. Without it the deploy replaces the one in
