@@ -385,6 +385,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **668** — [A new Python service's build log reads "Using Python 3.14 (default)" though it runs 3.14.10: since w4/620 the narration names the line, not the patch, whenever Render's default equals the line's reviewed patch](668.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 368, 2026-11-14 UTC (pin `c99e7815ebec`)
 - [ ] **666** — [Canceling a deploy queued behind a Rollback, Restart or image override in progress also ends that release](666.md) (~2h; minor) ← follow-up from w4/661, 2026-11-14
 - [ ] **667** — [An environment "Save and deploy" on a Git-backed service still replaces the deploy in progress, and picks the build that served at save time](667.md) (~2h; minor) ← follow-up from w4/661, 2026-11-14
 - [x] **665** — [Since pin `c99e7815ebec`, a new image web service takes 2–5 minutes to go live (was about 75 s): its deploy waits 23–104 s before it starts, and its route takes about a minute to follow a detected port](done/665.md) (~1h30m; major, cause unverified — needs the operator reading w21/064 also waits on) ← live `/qa-find-bugs w4` loop rounds 361–362, 2026-11-14 UTC (pin `c99e7815ebec`)
