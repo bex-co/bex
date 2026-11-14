@@ -29,7 +29,7 @@ On production, with the released `bex` CLI against a new sandbox in `bex-canary`
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep 865a, 2026-11-12, in `bex-canary` (`tea-daif693dqjvc73e7as3g`) with release `bex` v0.5.0 (Render CLI v2.35.0 pin) against `https://api.bex.co/v1/`, human device login. The evidence is below.
-- **Goal linkage:** pillar 5 sandboxes and [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first). ADR104 D9 makes the Render SDK part of the contract, and its `exec` is the main programmatic path.
+- **Goal linkage:** pillar 5 sandboxes and [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first). ADR104 D9 makes the Render SDK part of the contract, and its `exec` is the main programmatic path.
 - **Expected outcome:** SDK and CLI scripts written for Render sandboxes run unchanged. A relative upload can be executed by a relative path, and bash syntax works.
 - **Why now:** the bug breaks the most basic sandbox workflow, including the CLI help's own example (`copy ./main.py sbx:main.py`, then `exec sbx -- python script.py`). w22/001 closed the `bash -c` question the wrong way on 2026-11-10, so nothing else on the board will catch it. The w32/m284 SDK walk would hit it on the first bash-syntax command.
 - **Render parity:** included. The change alters exec behavior on REST, GraphQL and MCP; the dashboard has no sandbox exec surface.

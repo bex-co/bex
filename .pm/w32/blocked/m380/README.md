@@ -1,19 +1,19 @@
 # w32 · m380 — A directory copied into or out of a sandbox keeps its symlinks and hard links, as on Render
 
-**Worker:** worker32 **Goal:** `bex sandboxes copy` (and the Render SDK's directory upload and download) transfers a directory that contains symbolic links or hard links. Links arrive as links, sockets and FIFOs are skipped, and a download that cannot be served answers its real cause instead of `409 file ticket already used` or `503 sandbox file gateway unavailable`. **Status:** todo
+**Worker:** worker32 **Goal:** `bex sandboxes copy` (and the Render SDK's directory upload and download) transfers a directory that contains symbolic links or hard links. Links arrive as links, sockets and FIFOs are skipped, and a download that cannot be served answers its real cause instead of `409 file ticket already used` or `503 sandbox file gateway unavailable`. **Status:** blocked (t001–t004, t007, t008 done; t005 waits on the production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | An uploaded directory archive keeps its symlinks (and hard links to its own files); special entries are skipped | 1.5h | — |
-| t002 | A downloaded directory archive carries the sandbox's symlinks and hard links; special entries are skipped | 1h | t001 |
-| t003 | A download that fails before its first byte answers its cause; bex-api never replays a file transfer to the gateway | 1h | — |
-| t004 | Blast radius: agent-session attachment and skill uploads, the destination-path symlink rule, limits, and the docs that grade copy | 30m | t001, t002, t003 |
+| t001 | An uploaded directory archive keeps its symlinks (and hard links to its own files); special entries are skipped — **DONE** | 1.5h | — |
+| t002 | A downloaded directory archive carries the sandbox's symlinks and hard links; special entries are skipped — **DONE** | 1h | t001 |
+| t003 | A download that fails before its first byte answers its cause; bex-api never replays a file transfer to the gateway — **DONE** | 1h | — |
+| t004 | Blast radius: agent-session attachment and skill uploads, the destination-path symlink rule, limits, and the docs that grade copy — **DONE** | 30m | t001, t002, t003 |
 | t005 | Production walk with the release CLI | 45m | t004 |
 | t006 | Render parity | 20m | t005 |
 | t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t006 |
 | t009 | Closeout | 10m | t007, t008 |
 
 ## Definition of done
@@ -29,7 +29,7 @@ On production, with the released `bex` CLI against a new sandbox in `bex-canary`
 ## Source + Goal linkage
 
 - **Source:** `/qa-find-bugs-cli` loop sweep 6c54, 2026-11-13, in `bex-canary` (`tea-daif693dqjvc73e7as3g`). It used release `bex` v0.5.0 (Render CLI v2.35.0 pin) and the HEAD build `head91f543f` (Render CLI v2.36.0, pin `4fd34231b637`) against `https://api.bex.co/v1/`, with a human device login, on production pin `5de3d5bcce8e`. The evidence is below.
-- **Goal linkage:** pillar 5 sandboxes and [ADR008 § Render parity first](../../../docs/ADR008-vision.md#render-parity-first). Copying a project in and its results out is the basic sandbox loop. Project trees routinely contain links: `node_modules/.bin`, Python virtualenvs, git checkouts with symlinked files, and hard-linked package stores.
+- **Goal linkage:** pillar 5 sandboxes and [ADR008 § Render parity first](../../../../docs/ADR008-vision.md#render-parity-first). Copying a project in and its results out is the basic sandbox loop. Project trees routinely contain links: `node_modules/.bin`, Python virtualenvs, git checkouts with symlinked files, and hard-linked package stores.
 - **Expected outcome:** any directory a user or agent copies in or out arrives with its links, as Render documents. A refused download names its cause.
 - **Why now:** today one link anywhere in a tree fails the whole transfer in either direction. The download failure masquerades as a spent ticket or an outage, so users cannot tell what to fix. w7/m150 recorded "links and special archive entries are refused" as a bound of its first implementation. No ADR018 row signs it off as a divergence.
 - **Render parity:** included. The change alters REST's connect-token file routes, which the CLI and SDK use. GraphQL and MCP have no file transfer, and the dashboard has no sandbox file surface.
@@ -100,3 +100,16 @@ GET  <uri for up-hardonly, no links> (HTTP/1.1) → 200 Content-Type: applicatio
 - A link that is archived after enough data has streamed would fail mid-response. The client would see a truncated gzip stream with part of the tree extracted. That is traced from `download`, not observed: in each test the sandbox's tar archived the link first.
 - Render's own handling of hard links on upload. The Render docs quote covers symlinks and special files only. Python's `tarfile` records a second link to an already archived inode as a hard link, so an SDK upload may carry them.
 - Whether Render keeps a symlink that points outside the destination. The pinned client creates one on download and refuses later writes through it.
+
+## Blast radius — t004 (2026-11-14)
+
+1. **Agent-session uploads stay valid.** Attachments and skills are archived by bex itself with directories and regular files only (`agentsessions/attachments_dispatch.go:205-209`; `skills_dispatch.go:257-262` uses the same `tarDir`/`tarFile`). `attachments_tar_test.go` still proves them with `sandboxfiles.ValidateArchive`. Nothing there relied on links being refused.
+2. **The destination-path rule stays.** `cdParent` (`sandboxfiles.go:291`) refuses an existing symlink among the ancestors of the path the caller names, and `destinationFree` and `downloadScript` refuse a symlink at that path. That is about where a transfer lands, which its ticket authorized, not about what the archive holds: following a link there would move the transfer to a path nobody authorized. Links inside the tree are extracted into an empty private stage, so they cannot redirect writes.
+3. **Caps.** `entries++` runs before the type switch, so links and skipped entries count toward the 10,000-entry cap (`TestArchiveEntryPolicyAndBudgets` now checks 10,001 symlinks and 10,001 FIFOs). A link entry is written with size 0, and Go's `tar.Reader` reads no body for header-only types, so a link carries no bytes against the 256 MiB budget.
+4. **Docs and fixture.** `docs/cli-compatibility-checklist.md` (`sandboxes copy`), `docs/render-artifacts/ea-sandbox.md` (the archive and download-error paragraphs) and `lego/cli/testdata/sandbox-file-contract.json` (`archivePolicy.symlinkPolicy`, `bexServerPolicy.archiveEntries`, `downloads`) state the new rule. ADR018 has a new sandbox row, "Links in a copied directory", marked 🚧 until t005. No document still says links are refused.
+
+## Parked 2026-11-14 (`/loopx w32`): t005 waits on the production deploy
+
+- **Shipped:** `d82e27ee2` (gateway archive rule, the pre-first-byte answer, bex-api's non-replayed hop, docs and the shared fixtures).
+- **Gate:** production deploys are batched: `deploy.yml` deploys a push, or the hourly schedule once the pin is 6 h old. No user decision is needed. Once `git merge-base --is-ancestor d82e27ee2 <pinned sha>` holds, a worker runs t005's walk with the released CLI, then t006 and t009.
+- **ADR018:** the new row "Links in a copied directory" reads 🚧 until t005 passes; t006 flips it.
