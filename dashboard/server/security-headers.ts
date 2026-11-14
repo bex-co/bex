@@ -15,13 +15,65 @@ export const SECURITY_HEADER_NAMES: ReadonlySet<string> = new Set([
   "x-content-type-options",
   "x-frame-options",
   "content-security-policy",
+  "content-security-policy-report-only",
   "strict-transport-security",
 ]);
+
+// The production bex-api's browser-facing Web Shell WebSocket (BEX_SHELL_WS_URL,
+// pinned by scripts/gitops-validate.sh); override with VITE_SHELL_WS_URL.
+export const DEFAULT_SHELL_WS_URL = "wss://ssh.bex.co/shell";
+
+/** The first-party URLs the browser connects to besides the Kratos origin. All
+ * come from the build env (vite.config.ts); a relative or missing one is the
+ * page's own origin or unknown. */
+export interface ConnectURLs {
+  apiURL?: string;
+  agentStreamURL?: string;
+  shellWsURL?: string;
+}
+
+function originOf(url: string | undefined): string | undefined {
+  if (!url) return undefined;
+  try {
+    return new URL(url).origin;
+  } catch {
+    return undefined; // a path such as "/graphql": the page's own origin
+  }
+}
+
+/** The connect-src a browser needs, as far as the code reaches: the page itself,
+ * Kratos, bex-api (GraphQL, REST, the agent stream and the live-log SSE), the Web
+ * Shell WebSocket, the attachments bucket (presigned uploads), Stripe.js's API
+ * (https://docs.stripe.com/security/guide, read 2026-11-14) and Cloudflare's
+ * beacon. Undefined without an API origin: a build that cannot name it would
+ * report every call, so it reports nothing. */
+function narrowedConnectSources(
+  kratosPublicURL: string,
+  attachmentsOrigin: string,
+  connect: ConnectURLs,
+): string | undefined {
+  const api = originOf(connect.apiURL);
+  if (!api) return undefined;
+  const origins = new Set(["'self'", api]);
+  for (const url of [
+    kratosPublicURL,
+    connect.agentStreamURL,
+    connect.shellWsURL || DEFAULT_SHELL_WS_URL,
+    attachmentsOrigin,
+  ]) {
+    const origin = originOf(url);
+    if (origin) origins.add(origin);
+  }
+  origins.add("https://api.stripe.com");
+  origins.add("https://cloudflareinsights.com");
+  return `connect-src ${[...origins].join(" ")}`;
+}
 
 export function buildSecurityHeaders(
   kratosPublicURL: string,
   kratosProxyTarget: string,
   attachmentsOrigin: string = DEFAULT_ATTACHMENTS_ORIGIN,
+  connect: ConnectURLs = {},
 ): Record<string, string> {
   // Kratos's settings/login flows return a UiNodeScriptAttributes node
   // (`<script src="{KRATOS_PUBLIC_URL}/.well-known/ory/webauthn.js">`) that Ory
@@ -37,21 +89,15 @@ export function buildSecurityHeaders(
     scriptOrigins.add(new URL(kratosProxyTarget).origin);
   }
 
-  // Standard hardening headers for every SSR response. HSTS only in production
-  // (NODE_ENV=production) — the dashboard runs over plain HTTP in dev, so setting
-  // HSTS there would break the dev server.
-  const headers: Record<string, string> = {
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    // TanStack Start SSR injects inline hydration scripts; inline styles come from
-    // Tailwind and shadcn/Radix. connect-src https:/wss: covers the API, auth,
-    // and Browser Web Shell origins without hard-coding their values here.
-    // Outside production, also allow plain-http localhost: `yarn dev:local`
-    // (dashboard/AGENTS.md's fast frontend loop) points VITE_API_URL straight at
-    // local-bex.mjs's wide-open-CORS stub on a different port (:8099) rather than
-    // through apiDevProxy's same-origin tunnel — without this the CSP silently
-    // blocks that fetch and every page hangs on "Select a workspace".
-    "Content-Security-Policy": [
+  // TanStack Start SSR injects inline hydration scripts; inline styles come from
+  // Tailwind and shadcn/Radix. Outside production, connect-src also allows
+  // plain-http localhost: `yarn dev:local` (dashboard/AGENTS.md's fast frontend
+  // loop) points VITE_API_URL straight at local-bex.mjs's wide-open-CORS stub on
+  // a different port (:8099) rather than through apiDevProxy's same-origin
+  // tunnel — without this the CSP silently blocks that fetch and every page
+  // hangs on "Select a workspace".
+  const policy = (connectSrc: string) =>
+    [
       "default-src 'self'",
       `script-src 'self' 'unsafe-inline' https://js.stripe.com ${[...scriptOrigins].join(" ")}`,
       "style-src 'self' 'unsafe-inline'",
@@ -59,9 +105,7 @@ export function buildSecurityHeaders(
       // attachments bucket's own origin (ADR095 D7), never from a bex origin.
       `img-src 'self' data: https://*.stripe.com ${new URL(attachmentsOrigin).origin}`,
       "font-src 'self'",
-      process.env.NODE_ENV === "production"
-        ? "connect-src 'self' https: wss:"
-        : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
+      connectSrc,
       "frame-src https://js.stripe.com https://hooks.stripe.com",
       "frame-ancestors 'none'",
       // No <base> element is used, so an injected one cannot re-root the page's
@@ -70,9 +114,35 @@ export function buildSecurityHeaders(
       // decisions redirect to an OAuth client's own callback (dashboard/AGENTS.md,
       // Content-Security-Policy).
       "base-uri 'self'",
-    ].join("; "),
+    ].join("; ");
+
+  // Standard hardening headers for every SSR response. HSTS only in production
+  // (NODE_ENV=production) — the dashboard runs over plain HTTP in dev, so setting
+  // HSTS there would break the dev server.
+  const production = process.env.NODE_ENV === "production";
+  const headers: Record<string, string> = {
+    "X-Content-Type-Options": "nosniff",
+    "X-Frame-Options": "DENY",
+    // connect-src https:/wss: still covers the API, auth, Stripe and Browser Web
+    // Shell origins without listing them; the narrowed list below reports
+    // against it until a sweep shows nothing it would refuse (w21/081).
+    "Content-Security-Policy": policy(
+      production
+        ? "connect-src 'self' https: wss:"
+        : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
+    ),
   };
-  if (process.env.NODE_ENV === "production") {
+  if (production) {
+    const narrowed = narrowedConnectSources(
+      kratosPublicURL,
+      attachmentsOrigin,
+      connect,
+    );
+    if (narrowed) {
+      headers["Content-Security-Policy-Report-Only"] = policy(narrowed);
+    }
+  }
+  if (production) {
     headers["Strict-Transport-Security"] =
       "max-age=63072000; includeSubDomains";
   }

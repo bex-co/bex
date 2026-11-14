@@ -359,6 +359,11 @@ export default defineConfig(({ mode }) => {
     kratosPublicURL,
     kratosProxyTarget,
     env.VITE_AGENT_ATTACHMENTS_ORIGIN || undefined,
+    {
+      apiURL: env.VITE_API_URL,
+      agentStreamURL: env.VITE_AGENT_STREAM_URL,
+      shellWsURL: env.VITE_SHELL_WS_URL || undefined,
+    },
   );
 
   return {
