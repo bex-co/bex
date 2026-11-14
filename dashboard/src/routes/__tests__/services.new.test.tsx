@@ -1449,6 +1449,11 @@ describe("NewServicePage", () => {
         await screen.findByRole("radio", { name: /Static Site/i }),
       );
       expect(screen.getByLabelText("Publish Directory")).toBeInTheDocument();
+      // The publish directory resolves from the Root Directory (w4/642).
+      expect(
+        screen.getByText(/or \. for the Root Directory itself/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/for the repository root\)/)).toBeNull();
       expect(screen.queryByText("Free")).not.toBeInTheDocument();
     });
 

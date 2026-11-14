@@ -4032,7 +4032,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldPublishPathRequired": {
     message:
-      "Required. Enter the built output directory to serve as the site root (e.g. dist, build, public, or . for the repository root).",
+      "Required. Enter the built output directory to serve as the site root, relative to the Root Directory (e.g. dist, build, public, or . for the Root Directory itself — the repository root when Root Directory is blank).",
     description:
       "Hint under the publish directory field while it is blank: the field is required, the placeholder is only an example",
   },

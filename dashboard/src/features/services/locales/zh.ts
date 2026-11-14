@@ -3946,7 +3946,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.createFieldPublishPathRequired": {
     message:
-      "必填。请输入作为站点根目录的构建输出目录（如 dist、build、public，或用 . 表示仓库根目录）。",
+      "必填。请输入作为站点根目录的构建输出目录，相对于根目录（Root Directory）（如 dist、build、public，或用 . 表示根目录本身；根目录留空时即仓库根目录）。",
     description:
       "Hint under the publish directory field while it is blank: the field is required, the placeholder is only an example",
   },
