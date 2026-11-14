@@ -63,6 +63,9 @@ type BlueprintSourceProblem struct {
 type BlueprintSource struct {
 	Value     any
 	Locations map[string]BlueprintSourceLocation
+	// keyLocations map each mapping entry's JSON Pointer to its key, which
+	// is what an unknown-property refusal names (w4/632).
+	keyLocations map[string]BlueprintSourceLocation
 	// authoredPaths maps normalized alias paths back to the customer's YAML.
 	authoredPaths map[string]string
 }
@@ -99,7 +102,7 @@ func CompileBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourc
 		}}
 	}
 	if err := schema.Validate(source.Value); err != nil {
-		problems = append(problems, blueprintSchemaProblems(err, source.Locations, source.Value)...)
+		problems = append(problems, blueprintSchemaProblems(err, source, source.Value)...)
 	}
 	problems = append(problems, blueprintCapabilityProblems(source.Value, nil, source.Locations, registry)...)
 	for i := range problems {
@@ -857,8 +860,9 @@ func parseBlueprintSource(manifest string) (*BlueprintSource, []BlueprintSourceP
 	if len(document.Content) != 1 {
 		return source, []BlueprintSourceProblem{{Code: "BLUEPRINT_YAML_EMPTY", Path: "#", Message: "Blueprint must contain one YAML document"}}
 	}
-	value, problems := yamlNodeToBlueprintValue(document.Content[0], nil, source.Locations, 0, &blueprintWalkBudget{})
-	source.Value = value
+	budget := &blueprintWalkBudget{keys: map[string]BlueprintSourceLocation{}}
+	value, problems := yamlNodeToBlueprintValue(document.Content[0], nil, source.Locations, 0, budget)
+	source.Value, source.keyLocations = value, budget.keys
 	return source, problems
 }
 
@@ -906,6 +910,9 @@ type blueprintWalkBudget struct {
 	nodes     int
 	resources int
 	bailed    bool
+	// keys records each mapping key's position under its entry's pointer.
+	// Keys are already charged as nodes, so the node budget bounds it.
+	keys map[string]BlueprintSourceLocation
 }
 
 // fail marks the walk bailed — every later yamlNodeToBlueprintValue call
@@ -977,26 +984,6 @@ func yamlSyntaxReason(err error) string {
 }
 
 var yamlSyntaxLine = regexp.MustCompile(`(?i)line\s+(\d+)`)
-
-var yamlUnknownAnchor = regexp.MustCompile(`unknown anchor '([^']+)' referenced`)
-
-func yamlSyntaxLocation(err error, manifest string) (line, column int) {
-	match := yamlSyntaxLine.FindStringSubmatch(err.Error())
-	if len(match) != 2 {
-		// yaml.v3 reports an alias to an undefined anchor without a position,
-		// so point at the first `*name` token in the source (w6/092).
-		if anchor := yamlUnknownAnchor.FindStringSubmatch(err.Error()); anchor != nil {
-			alias := regexp.MustCompile(`(?:^|[\s\[{,:-])(\*` + regexp.QuoteMeta(anchor[1]) + `)(?:$|[\s\]},])`)
-			if at := alias.FindStringSubmatchIndex(manifest); at != nil {
-				before := manifest[:at[2]]
-				return strings.Count(before, "\n") + 1, at[2] - strings.LastIndex(before, "\n")
-			}
-		}
-		return 0, 0
-	}
-	line, _ = strconv.Atoi(match[1])
-	return line, 1
-}
 
 func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[string]BlueprintSourceLocation, depth int, budget *blueprintWalkBudget) (any, []BlueprintSourceProblem) {
 	pointer := renderSchemaPointer(path)
@@ -1083,6 +1070,9 @@ func yamlNodeToBlueprintValue(node *yaml.Node, path []string, locations map[stri
 				continue
 			}
 			seen[key.Value] = BlueprintSourceLocation{Line: key.Line, Column: key.Column}
+			if budget.keys != nil {
+				budget.keys[childPointer] = seen[key.Value]
+			}
 			child, childProblems := yamlNodeToBlueprintValue(value, childPath, locations, depth+1, budget)
 			values[key.Value] = child
 			problems = append(problems, childProblems...)
@@ -1370,17 +1360,17 @@ func addBlueprintExtension(document, extension map[string]any) error {
 	return nil
 }
 
-func blueprintSchemaProblems(err error, locations map[string]BlueprintSourceLocation, instance any) []BlueprintSourceProblem {
+func blueprintSchemaProblems(err error, source *BlueprintSource, instance any) []BlueprintSourceProblem {
 	var validation *jsonschema.ValidationError
 	if !errors.As(err, &validation) {
 		return []BlueprintSourceProblem{{Code: "BLUEPRINT_SCHEMA_INVALID", Path: "#", Message: "Blueprint does not satisfy the reviewed Render schema"}}
 	}
 	var problems []BlueprintSourceProblem
-	appendBlueprintSchemaProblems(validation, locations, instance, &problems)
+	appendBlueprintSchemaProblems(validation, source, instance, &problems)
 	return problems
 }
 
-func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locations map[string]BlueprintSourceLocation, instance any, problems *[]BlueprintSourceProblem) {
+func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, source *BlueprintSource, instance any, problems *[]BlueprintSourceProblem) {
 	if len(validation.Causes) > 0 {
 		// A failed anyOf reports every alternative. Report the branch the
 		// instance actually declared (type/runtime const, or which env-var
@@ -1396,17 +1386,19 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locat
 			if typeLeaf := blueprintUnknownServiceTypeLeaf(cause, validation.InstanceLocation, branchInstance); typeLeaf != nil {
 				cause = typeLeaf
 			}
-			appendBlueprintSchemaProblems(cause, locations, instance, problems)
+			appendBlueprintSchemaProblems(cause, source, instance, problems)
 			return
 		}
 		for _, cause := range validation.Causes {
-			appendBlueprintSchemaProblems(cause, locations, instance, problems)
+			appendBlueprintSchemaProblems(cause, source, instance, problems)
 		}
 		return
 	}
 	path := renderSchemaPointer(validation.InstanceLocation)
+	unknownKey := false
 	if additional, ok := validation.ErrorKind.(*kind.AdditionalProperties); ok && len(additional.Properties) == 1 {
 		path = renderSchemaPointer(append(append([]string(nil), validation.InstanceLocation...), additional.Properties[0]))
+		unknownKey = true
 	}
 	// Only cronPlan lacks free among the service plan enums. A free cron is
 	// refused by the service stage beside a free worker or private service
@@ -1415,7 +1407,11 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locat
 	if got, ok := blueprintSchemaGotValue(validation.ErrorKind); ok && got == "free" && blueprintServicePlanLocation(validation.InstanceLocation) {
 		return
 	}
-	location := lookupBlueprintLocation(path, locations)
+	location := lookupBlueprintLocation(path, source.Locations)
+	// An unknown property's position is its key, not its value (w4/632).
+	if key, ok := source.keyLocations[path]; ok && unknownKey {
+		location = key
+	}
 	message := "Blueprint does not satisfy the reviewed Render schema"
 	if validation.ErrorKind != nil {
 		message = blueprintSchemaLeafMessage(validation)

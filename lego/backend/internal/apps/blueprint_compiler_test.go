@@ -223,7 +223,8 @@ services:
 	if problem == nil {
 		t.Fatalf("unknown-field problems = %+v", problems)
 	}
-	if problem.Path != "#/services/0/notARealRenderField" || problem.Line != 7 || problem.Column != 26 {
+	// The key the refusal names, not its value (w4/632).
+	if problem.Path != "#/services/0/notARealRenderField" || problem.Line != 7 || problem.Column != 5 {
 		t.Fatalf("unknown-field location = %+v", *problem)
 	}
 	if !strings.Contains(problem.Message, "notARealRenderField") {
