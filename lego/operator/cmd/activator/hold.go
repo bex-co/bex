@@ -56,8 +56,11 @@ const (
 	// endpoint propagates to kube-proxy after the pod turns ready.
 	dialRetryInterval = 250 * time.Millisecond
 	// proxyResponseHeaderTimeout is how long a woken App may take to start
-	// answering a proxied request: Render's 100-second HTTP request timeout.
-	proxyResponseHeaderTimeout = 100 * time.Second
+	// answering a proxied request: "Render web services allow HTTP responses to
+	// take up to 100 minutes", the same 6000s as Traefik's readTimeout on the
+	// tenant entrypoints (traefik.values.yaml, w8/207). It only bounds a silent
+	// exchange; its hold slot is released once the wake succeeds (w8/329).
+	proxyResponseHeaderTimeout = 100 * time.Minute
 )
 
 // holder holds requests for sleeping Apps and proxies them once awake.

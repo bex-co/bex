@@ -135,11 +135,12 @@ func TestUnansweringAppEndsAtTheResponseHeaderTimeout(t *testing.T) {
 	up := &hungUpstream{release: make(chan struct{})}
 	t.Cleanup(func() { close(up.release) })
 	handler, h := holdFor(t, up, 4)
-	if got := h.proxy.Transport.(*http.Transport).ResponseHeaderTimeout; got != proxyResponseHeaderTimeout {
-		t.Fatalf("transport ResponseHeaderTimeout = %v, want %v", got, proxyResponseHeaderTimeout)
+	// Render allows HTTP responses up to 100 minutes; a woken app gets that long
+	// too (w8/329).
+	if got := h.proxy.Transport.(*http.Transport).ResponseHeaderTimeout; got != 100*time.Minute {
+		t.Fatalf("transport ResponseHeaderTimeout = %v, want Render's 100 minutes", got)
 	}
-	// The production value is Render's 100 s request timeout; shorten it so the
-	// timeout path itself runs.
+	// Shorten it so the timeout path itself runs.
 	h.responseHeaderTimeout = 200 * time.Millisecond
 	h.proxy = h.newProxy()
 

@@ -439,10 +439,11 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **329** — [The activator now ends a waking request with 502 when the woken app takes over 100 seconds to answer; Render allows HTTP responses up to 100 minutes](329.md) (~15m) ← `/qa-find-bugs-cli` 2026-11-14 review of the next roll, minor.
+- [x] **329** — [The activator now ends a waking request with 502 when the woken app takes over 100 seconds to answer; Render allows HTTP responses up to 100 minutes](done/329.md) (~15m) ← `/qa-find-bugs-cli` 2026-11-14 review of the next roll, minor.
   - **Render:** "Render web services allow HTTP responses to take up to 100 minutes"; bex's tenant entrypoints match (w8/207, measured 400 s live).
   - **bex:** `0348c50c6` (w21/m394 t012) set `proxyResponseHeaderTimeout = 100 * time.Second` (`cmd/activator/hold.go:60`), commented "Render's 100-second HTTP request timeout".
   - **Fix:** 100 minutes; the slot release that fixes R25-02 stays.
+  - **DONE 2026-11-14.** `proxyResponseHeaderTimeout = 100 * time.Minute`; the test pins it. Production check owed after the activator rolls.
 
 - [x] **328** — [A new Python uv project with no `UV_VERSION` builds with uv 0.12.10; Render's default for services created since 2026-11-03 is uv 0.13.7](done/328.md) (~30m) ← `/qa-find-bugs-cli` sweep 5cf7 2026-11-14 (bex v0.6.0), minor.
   - **Render:** [uv-version](https://render.com/docs/uv-version) defaults by creation date: 0.13.7 since 2026-11-03, 0.12.24 from 2026-10-12, 0.12.10 from 2026-09-09.
