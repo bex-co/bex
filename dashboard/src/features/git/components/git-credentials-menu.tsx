@@ -95,7 +95,11 @@ export function GitCredentialsMenu() {
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-80 p-0">
+        <PopoverContent
+          align="end"
+          className="w-80 p-0"
+          aria-label={t("git.credentialsMenuLabel")}
+        >
           {unavailable ? (
             <MenuMessage
               icon={<ShieldAlert className="size-4" />}

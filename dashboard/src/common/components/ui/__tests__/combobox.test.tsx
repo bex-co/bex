@@ -70,6 +70,21 @@ describe("Combobox keyboard selection", () => {
     },
   );
 
+  // w4/607: the option list's panel was an unnamed dialog; it takes the
+  // combobox's own label.
+  it("names its open panel after the field", () => {
+    render(
+      <Combobox
+        options={options}
+        value=""
+        onValueChange={vi.fn()}
+        ariaLabel="Region"
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole("combobox"), { key: "ArrowDown" });
+    expect(screen.getByRole("dialog", { name: "Region" })).toBeInTheDocument();
+  });
+
   it("Escape closes and clears the highlight without selecting an option", () => {
     const onValueChange = vi.fn();
     render(

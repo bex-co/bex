@@ -241,6 +241,7 @@ export function Combobox({
         </PopoverAnchor>
 
         <PopoverContent
+          aria-label={ariaLabel ?? defaultPlaceholder}
           className="overflow-hidden p-0"
           style={{ width: popoverWidth ? `${popoverWidth}px` : undefined }}
           align="start"

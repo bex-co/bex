@@ -112,6 +112,10 @@ describe("GitCredentialsMenu", () => {
     render(<GitCredentialsMenu />);
     await user.click(screen.getByRole("button", { name: /Credentials/ }));
 
+    // w4/607: the panel was an unnamed dialog.
+    expect(
+      screen.getByRole("dialog", { name: "Credentials" }),
+    ).toBeInTheDocument();
     // Account link points at the account's GitHub page.
     const puncsky = screen.getByRole("link", { name: /puncsky/ });
     expect(puncsky).toHaveAttribute("href", "https://github.com/puncsky");

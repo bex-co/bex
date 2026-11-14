@@ -242,7 +242,11 @@ export function LogFilterBar({
             ) : null}
           </Button>
         </PopoverTrigger>
-        <PopoverContent align="end" className="w-72 space-y-3">
+        <PopoverContent
+          align="end"
+          className="w-72 space-y-3"
+          aria-label={t("logs.filtersButton")}
+        >
           <SelectFilterRow
             label={t("logs.levelLabel")}
             allLabel={t("logs.levelAll")}

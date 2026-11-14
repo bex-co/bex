@@ -5,7 +5,7 @@ import axe from "axe-core";
 // jsdom has no layout and no computed colour, so the rules that need either
 // (`color-contrast`, the landmark and heading rules that judge a whole page,
 // the experimental `label-content-name-mismatch`, which ends "incomplete" here)
-// are not run: contrast is t003's test of the colour tokens, and the label
+// are not run: contrast is `theme-contrast.test.ts`, which tests the colour tokens, and the label
 // check is `labelInNameViolations` below. What runs is the structural half,
 // which is the class the board's accessible-name notes were: a control, dialog,
 // image or field with no accessible name, an ARIA attribute or role that does

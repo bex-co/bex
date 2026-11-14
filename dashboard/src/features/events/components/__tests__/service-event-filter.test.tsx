@@ -25,6 +25,10 @@ describe("ServiceEventFilter", () => {
     render(<Harness />);
     await user.click(screen.getByRole("button", { name: "Filter events" }));
 
+    // w4/607: the panel was an unnamed dialog.
+    expect(
+      screen.getByRole("dialog", { name: "Filter events" }),
+    ).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Deploy" })).toBeChecked();
     expect(
       screen.getByRole("checkbox", { name: "Service Status" }),

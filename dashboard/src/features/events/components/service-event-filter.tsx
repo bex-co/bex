@@ -115,6 +115,7 @@ export function ServiceEventFilter({
           (w4/438). */}
       <PopoverContent
         align="end"
+        aria-label={t("services.eventsFilter")}
         className="max-h-[min(30rem,var(--radix-popover-content-available-height))] w-80 p-0"
       >
         <div className="bg-popover sticky top-0 z-10 space-y-2 border-b p-3">

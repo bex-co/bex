@@ -2,13 +2,10 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-// w21/m395 t003: the colour pairs the dashboard actually uses, in both themes,
-// against WCAG 2.1 AA: 4.5:1 for text, 3:1 for the parts of a control that
-// identify it (a focus ring). The pass in the page sweep cannot judge colour
-// (jsdom has none), so this reads the stylesheet's tokens and Tailwind's
-// palette and computes the ratios itself. Every board note on contrast (w21/019
-// and the fifteen before it) was found by a live sweep and fixed one class at a
-// time; this is what keeps a new colour from bringing one back.
+// The colour pairs the dashboard actually uses, in both themes, against WCAG
+// 2.1 AA: 4.5:1 for text, 3:1 for the part of a control that identifies it (the
+// focus ring). jsdom has no colour, so the page sweep cannot judge it: this
+// reads the stylesheet's tokens and Tailwind's palette and computes the ratios.
 
 const ROOT = resolve(import.meta.dirname, "../../..");
 const read = (path: string) => readFileSync(resolve(ROOT, path), "utf8");
@@ -28,7 +25,7 @@ const decode = (x: number) =>
   x <= 0.04045 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4;
 
 /** CSS `oklch(L C H)` to gamma-encoded sRGB, out-of-gamut values clipped. */
-export function oklch(lightness: number, chroma: number, hue: number): Rgb {
+function oklch(lightness: number, chroma: number, hue: number): Rgb {
   const a = chroma * Math.cos((hue * Math.PI) / 180);
   const b = chroma * Math.sin((hue * Math.PI) / 180);
   const l = (lightness + 0.3963377774 * a + 0.2158037573 * b) ** 3;
@@ -45,7 +42,7 @@ function luminance([r, g, b]: Rgb): number {
   return 0.2126 * decode(r) + 0.7152 * decode(g) + 0.0722 * decode(b);
 }
 
-export function contrast(a: Rgb, b: Rgb): number {
+function contrast(a: Rgb, b: Rgb): number {
   const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
   return (hi + 0.05) / (lo + 0.05);
 }
@@ -117,7 +114,7 @@ interface Pair {
   /** Text needs 4.5:1; the part of a control that identifies it, 3:1. */
   min: 4.5 | 3;
   /** Resolve both colours in a theme: foreground and the page it sits on. */
-  colours: (theme: Theme, tokens: Tokens) => { fg: Rgb; bg: Rgb };
+  colours: (tokens: Tokens) => { fg: Rgb; bg: Rgb };
 }
 
 const token = (tokens: Tokens, name: string): Colour => {
@@ -133,13 +130,13 @@ const colour = (name: string): Colour => {
 const tokenPair = (fg: string, bg: string, min: Pair["min"] = 4.5): Pair => ({
   name: `--${fg} on --${bg}`,
   min,
-  colours: (_theme, tokens) => ({
+  colours: (tokens) => ({
     fg: token(tokens, fg).rgb,
     bg: token(tokens, bg).rgb,
   }),
 });
 
-export const TOKEN_PAIRS: Pair[] = [
+const TOKEN_PAIRS: Pair[] = [
   tokenPair("foreground", "background"),
   tokenPair("foreground", "card"),
   tokenPair("card-foreground", "card"),
@@ -168,106 +165,90 @@ export const TOKEN_PAIRS: Pair[] = [
 // to this table instead of slipping past it.
 interface Status {
   name: string;
-  files: Array<{ path: string; contains: string[] }>;
+  file: { path: string; contains: string[] };
   light: { fg: string; tint?: [string, number] };
   dark: { fg: string; tint?: [string, number] };
   /** What the text sits on: the card, or the log viewport's tinted page. */
   on: "card" | "logViewport";
 }
 
-export const STATUS: Status[] = [
+const STATUS: Status[] = [
   {
     name: "log 2xx chip",
-    files: [
-      {
-        path: "src/features/logs/components/log-line-list.tsx",
-        contains: ["bg-green-500/15 text-green-800 dark:text-green-400"],
-      },
-    ],
+    file: {
+      path: "src/features/logs/components/log-line-list.tsx",
+      contains: ["bg-green-500/15 text-green-800 dark:text-green-400"],
+    },
     light: { fg: "green-800", tint: ["green-500", 0.15] },
     dark: { fg: "green-400", tint: ["green-500", 0.15] },
     on: "logViewport",
   },
   {
     name: "log 3xx chip",
-    files: [
-      {
-        path: "src/features/logs/components/log-line-list.tsx",
-        contains: ["bg-blue-500/15 text-blue-700 dark:text-blue-400"],
-      },
-    ],
+    file: {
+      path: "src/features/logs/components/log-line-list.tsx",
+      contains: ["bg-blue-500/15 text-blue-700 dark:text-blue-400"],
+    },
     light: { fg: "blue-700", tint: ["blue-500", 0.15] },
     dark: { fg: "blue-400", tint: ["blue-500", 0.15] },
     on: "logViewport",
   },
   {
     name: "log 4xx chip",
-    files: [
-      {
-        path: "src/features/logs/components/log-line-list.tsx",
-        contains: ["bg-amber-500/15 text-amber-800 dark:text-amber-400"],
-      },
-    ],
+    file: {
+      path: "src/features/logs/components/log-line-list.tsx",
+      contains: ["bg-amber-500/15 text-amber-800 dark:text-amber-400"],
+    },
     light: { fg: "amber-800", tint: ["amber-500", 0.15] },
     dark: { fg: "amber-400", tint: ["amber-500", 0.15] },
     on: "logViewport",
   },
   {
     name: "log 5xx chip",
-    files: [
-      {
-        path: "src/features/logs/components/log-line-list.tsx",
-        contains: ["bg-red-500/15 text-red-700 dark:text-red-400"],
-      },
-    ],
+    file: {
+      path: "src/features/logs/components/log-line-list.tsx",
+      contains: ["bg-red-500/15 text-red-700 dark:text-red-400"],
+    },
     light: { fg: "red-700", tint: ["red-500", 0.15] },
     dark: { fg: "red-400", tint: ["red-500", 0.15] },
     on: "logViewport",
   },
   {
     name: "project card health line",
-    files: [
-      {
-        path: "src/features/projects/components/project-card.tsx",
-        contains: ["text-emerald-700 dark:text-emerald-400"],
-      },
-    ],
+    file: {
+      path: "src/features/projects/components/project-card.tsx",
+      contains: ["text-emerald-700 dark:text-emerald-400"],
+    },
     light: { fg: "emerald-700" },
     dark: { fg: "emerald-400" },
     on: "card",
   },
   {
     name: "billing Partial data label",
-    files: [
-      {
-        path: "src/features/usage/components/charges-card.tsx",
-        contains: ["text-amber-700", "dark:text-amber-500"],
-      },
-    ],
+    file: {
+      path: "src/features/usage/components/charges-card.tsx",
+      contains: ["text-amber-700", "dark:text-amber-500"],
+    },
     light: { fg: "amber-700" },
     dark: { fg: "amber-500" },
     on: "card",
   },
   {
     name: "notifications 'bex extension' chip (text-primary on bg-primary/10)",
-    files: [
-      {
-        path: "src/features/notifications/components/push-notification-settings-panel.tsx",
-        contains: ["bg-primary/10", "text-primary"],
-      },
-    ],
+    file: {
+      path: "src/features/notifications/components/push-notification-settings-panel.tsx",
+      contains: ["bg-primary/10", "text-primary"],
+    },
     light: { fg: "--primary", tint: ["--primary", 0.1] },
     dark: { fg: "--primary", tint: ["--primary", 0.1] },
     on: "card",
   },
   {
     name: "success badge",
-    files: [
-      {
-        path: "src/common/components/ui/badge.tsx",
-        contains: ["bg-emerald-600/15 text-emerald-800 dark:text-emerald-400"],
-      },
-    ],
+    file: {
+      path: "src/common/components/ui/badge.tsx",
+      contains: ["bg-emerald-600/15 text-emerald-800 dark:text-emerald-400"],
+    },
     light: { fg: "emerald-800", tint: ["emerald-600", 0.15] },
     dark: { fg: "emerald-400", tint: ["emerald-600", 0.15] },
     on: "card",
@@ -277,44 +258,45 @@ export const STATUS: Status[] = [
 function statusColours(status: Status, theme: Theme, tokens: Tokens) {
   // A colour is a Tailwind palette entry (`amber-800`) or a stylesheet token
   // (`--primary`).
-  const resolve = (name: string): Colour =>
+  const lookup = (name: string): Colour =>
     name.startsWith("--") ? token(tokens, name.slice(2)) : colour(name);
-  const base = token(tokens, "background");
-  // The log viewport is `bg-muted/30` over the page.
   const page =
-    status.on === "card"
-      ? token(tokens, "card").rgb
-      : over({ ...token(tokens, "muted"), alpha: 0.3 }, base.rgb);
+    status.on === "card" ? token(tokens, "card").rgb : logViewport(tokens);
   const spec = status[theme];
   const bg = spec.tint
-    ? over({ ...resolve(spec.tint[0]), alpha: spec.tint[1] }, page)
+    ? over({ ...lookup(spec.tint[0]), alpha: spec.tint[1] }, page)
     : page;
-  return { fg: resolve(spec.fg).rgb, bg };
+  return { fg: lookup(spec.fg).rgb, bg };
+}
+
+// The log viewport is `bg-muted/30` over the page.
+function logViewport(tokens: Tokens): Rgb {
+  return over(
+    { ...token(tokens, "muted"), alpha: 0.3 },
+    token(tokens, "background").rgb,
+  );
 }
 
 // The log line's own dim text: the timestamp and instance id.
 const LOG_META: Pair = {
   name: "log line timestamp and instance id (--muted-foreground on the log viewport)",
   min: 4.5,
-  colours: (_theme, tokens) => ({
+  colours: (tokens) => ({
     fg: token(tokens, "muted-foreground").rgb,
-    bg: over(
-      { ...token(tokens, "muted"), alpha: 0.3 },
-      token(tokens, "background").rgb,
-    ),
+    bg: logViewport(tokens),
   }),
 };
 
 // ---- the check --------------------------------------------------------------
 
-export interface Failure {
+interface Failure {
   theme: Theme;
   pair: string;
   ratio: number;
   min: number;
 }
 
-export function failures(tokensByTheme: Record<Theme, Tokens>): Failure[] {
+function failures(tokensByTheme: Record<Theme, Tokens>): Failure[] {
   const found: Failure[] = [];
   for (const theme of ["light", "dark"] as const) {
     const tokens = tokensByTheme[theme];
@@ -324,7 +306,7 @@ export function failures(tokensByTheme: Record<Theme, Tokens>): Failure[] {
         found.push({ theme, pair, ratio: Math.round(ratio * 100) / 100, min });
     };
     for (const pair of [...TOKEN_PAIRS, LOG_META]) {
-      const { fg, bg } = pair.colours(theme, tokens);
+      const { fg, bg } = pair.colours(tokens);
       check(pair.name, pair.min, fg, bg);
     }
     for (const status of STATUS) {
@@ -374,29 +356,18 @@ describe("the stylesheet's colour pairs", () => {
   });
 
   it("fails when a token's lightness drops below the threshold, in the theme it drops in", () => {
-    const before = failures(TOKENS);
-    // What a change adds to the failures that were already there.
-    const added = (after: Failure[]) =>
-      after.filter(
-        (f) => !before.some((b) => b.theme === f.theme && b.pair === f.pair),
-      );
-
-    const lightened = added(
-      failures({
-        light: { ...LIGHT, "muted-foreground": "oklch(0.7 0.02 260)" },
-        dark: DARK,
-      }),
-    );
+    const lightened = failures({
+      light: { ...LIGHT, "muted-foreground": "oklch(0.7 0.02 260)" },
+      dark: DARK,
+    });
     expect(lightened.length).toBeGreaterThan(0);
     expect(lightened.every((f) => f.theme === "light")).toBe(true);
     expect(lightened.map((f) => f.pair).join("\n")).toMatch(/muted-foreground/);
 
-    const dimmed = added(
-      failures({
-        light: LIGHT,
-        dark: { ...DARK, "muted-foreground": "oklch(0.3 0.02 260)" },
-      }),
-    );
+    const dimmed = failures({
+      light: LIGHT,
+      dark: { ...DARK, "muted-foreground": "oklch(0.3 0.02 260)" },
+    });
     expect(dimmed.length).toBeGreaterThan(0);
     expect(dimmed.every((f) => f.theme === "dark")).toBe(true);
   });
@@ -411,7 +382,7 @@ describe("the stylesheet's colour pairs", () => {
 });
 
 describe("the status colours the components use", () => {
-  it.each(STATUS.flatMap((s) => s.files.map((f) => [s.name, f] as const)))(
+  it.each(STATUS.map((s) => [s.name, s.file] as const))(
     "%s is still spelled the way this table has it",
     (_name, file) => {
       const source = read(file.path);

@@ -1,6 +1,6 @@
 # w21 · m395 — Dashboard accessibility gates: lint, an axe pass over every page fixture, and a contrast test on the colour tokens
 
-**Worker:** worker21 **Goal:** a missing accessible name, a control whose name drops its visible text, or a text and background pair below WCAG AA fails `yarn lint` or `yarn test`, so the class is caught by the suite instead of a QA round. **Status:** todo (t001-t004 done)
+**Worker:** worker21 **Goal:** a missing accessible name, a control whose name drops its visible text, or a text and background pair below WCAG AA fails `yarn lint` or `yarn test`, so the class is caught by the suite instead of a QA round. **Status:** done (2026-11-14)
 
 ## Tasks (in order)
 
@@ -10,14 +10,15 @@
 | [t002](done/t002.md) | Run axe over every page-level fixture, in English and Chinese — **DONE** | 75m | — |
 | [t003](done/t003.md) | Test the colour tokens' contrast in both themes — **DONE** | 45m | — |
 | [t004](done/t004.md) | Fix what t001–t003 find, absorbing w4/607 and w4/612 — **DONE** | 90m | t001, t002, t003 |
-| [t005](t005.md) | Simplify | 15m | t004 |
-| [t006](t006.md) | Test coverage | 20m | t005 |
-| [t007](t007.md) | Closeout | 10m | t006 |
+| [t005](done/t005.md) | Simplify — **DONE** | 15m | t004 |
+| [t006](done/t006.md) | Test coverage — **DONE** | 20m | t005 |
+| [t007](done/t007.md) | Closeout — **DONE** | 10m | t006 |
 
 ## Findings (t001 to t003)
 
 - **Lint (t001):** 30 violations, 23 outside the tests; 10 left after `no-autofocus` checks DOM elements only, each a deliberate pattern with a one-line exception and its reason. No component needed a fix.
 - **axe sweep (t002):** 322 failing tests in 16 files at first, 53 distinct violations: two false positives in the check, two test mocks of `Link` that dropped `aria-label`, and three real defects, fixed there (the Search button's `Ctrl K` hint, an invalid `aria-controls` on the automations tabs, an empty `<h1>` in the detail skeleton).
+- **Absorbed notes (t004):** w4/607 (nine `PopoverContent` callers, eight of them unnamed dialogs) and w4/612 (the webhook event link's name dropped its visible text) were not fixed when they were absorbed, and are fixed in t004: the wrapper now requires a name, and the link's name starts with the visible event type.
 - **Contrast (t003):** one pair below AA, the light 2xx log chip at 3.98:1; fixed in t004 (`text-green-800`). Every other pair (the 19 token pairs, the log line's dim text and the other seven status colours) passes in both themes.
 
 ## Definition of done

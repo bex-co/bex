@@ -152,7 +152,7 @@ describe("WebhookDeliveriesCard", () => {
     expect(screen.getByText("Deploy Started")).toBeInTheDocument();
     expect(screen.getByText("Build Ended")).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open source event evt-failed" }),
+      screen.getByRole("link", { name: /open source event evt-failed$/ }),
     ).toHaveAttribute(
       "href",
       `${config.apiBaseUrl}/v1/events/evt-failed?ownerId=tea-1`,
@@ -265,12 +265,26 @@ describe("WebhookDeliveriesCard", () => {
     expect(screen.queryByText("(deleted)")).not.toBeInTheDocument();
   });
 
+  // w4/612: the link's aria-label replaced its visible text, so a screen reader
+  // never heard the event type and a speech-input user could not say it.
+  it("names each source-event link with its visible event type first", () => {
+    render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
+    const link = screen.getByRole("link", {
+      name: /open source event evt-failed$/,
+    });
+    const visible = (link.textContent ?? "").trim();
+    expect(visible).not.toBe("");
+    expect(link.getAttribute("aria-label")).toBe(
+      `${visible} — open source event evt-failed`,
+    );
+  });
+
   it("encodes the selected workspace in source-event links", () => {
     currentWorkspaceId = "tea-workspace+one";
     render(<WebhookDeliveriesCard endpointId="whk-1" endpointEnabled={true} />);
 
     expect(
-      screen.getByRole("link", { name: "Open source event evt-failed" }),
+      screen.getByRole("link", { name: /open source event evt-failed$/ }),
     ).toHaveAttribute(
       "href",
       `${config.apiBaseUrl}/v1/events/evt-failed?ownerId=tea-workspace%2Bone`,

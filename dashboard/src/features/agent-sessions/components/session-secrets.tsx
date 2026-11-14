@@ -60,7 +60,11 @@ export function SessionSecrets({ session }: { session: AgentSessionView }) {
           {t("agentSessions.metaSecrets", { count: applied.length })}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 space-y-2 text-sm">
+      <PopoverContent
+        align="start"
+        className="w-72 space-y-2 text-sm"
+        aria-label={t("agentSessions.appliedSecretsTitle")}
+      >
         <p className="font-medium">{t("agentSessions.appliedSecretsTitle")}</p>
         <ul
           className="space-y-1 text-xs"

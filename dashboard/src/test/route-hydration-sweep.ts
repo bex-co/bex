@@ -31,9 +31,13 @@ const EXEMPT: Record<string, string> = {
     "it holds the route's loader pending on purpose; a server render waits for loaders, so that state is never rendered",
 };
 
-// A fixture the accessibility pass cannot judge, with the reason. Empty until
-// the first sweep finds one (w21/m395 t002).
+// A fixture the accessibility pass cannot judge, with the reason.
 const A11Y_EXEMPT = new Map<string, string>();
+
+// axe's verdict is a function of the markup, and a file's tests often render the
+// same page again, so the result is kept per markup (a setup file is evaluated
+// once per test file).
+const a11yByMarkup = new Map<string, string[]>();
 
 // The two sides differ in zone and clock; the second also in language (the same
 // language on both sides, as in the app, where the server reads the viewer's
@@ -77,10 +81,12 @@ vi.mock("@testing-library/react", async (importOriginal) => {
   };
 });
 
-function pairFor(testName: string) {
+// The pair a test's own probe uses, and the other one.
+function pairsFor(testName: string) {
   let hash = 0;
   for (const char of testName) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
-  return PAIRS[hash % PAIRS.length];
+  const index = hash % PAIRS.length;
+  return { own: PAIRS[index], other: PAIRS[(index + 1) % PAIRS.length] };
 }
 
 // React's message opens with a generic paragraph; the tree diff that names the
@@ -107,38 +113,37 @@ afterEach(async () => {
   if (!swept() || elements.length === 0) return;
   // Only the first render of a test: later ones are the same page moved to
   // another state, and the test's mocks have usually been reset by now.
-  const { server, client } = pairFor(expect.getState().currentTestName ?? "");
-  const other = PAIRS.find((pair) => pair.client !== client)!;
+  const { own, other } = pairsFor(expect.getState().currentTestName ?? "");
+  const { server, client } = own;
+  const [element] = elements;
+  const a11yExempt = A11Y_EXEMPT.has(testFileName());
   // The test's own tree is still mounted here, and the probe's act() would flush
   // its pending updates against mocks the test has already reset.
   cleanup();
-  // The accessibility pass reads the hydrated page in both languages (w21/m395
-  // t002): the probe's own pair, then the other pair, whose hydration result is
-  // not judged (a fixture with state answers a second mount differently). The
-  // markup is copied while the tree is mounted (the body, so a dialog in a
-  // portal is included) and checked after it is gone: axe yields to the event
-  // loop, and doing that under a mounted Radix modal left its `pointer-events:
-  // none` on the page for the next test.
+  // The accessibility pass reads the hydrated page in both languages: the
+  // probe's own pair, then the other pair, whose hydration result is not judged
+  // (a fixture with state answers a second mount differently). The markup is
+  // copied while the tree is mounted (the body, so a dialog in a portal counts)
+  // and checked after it is gone: axe yields to the event loop, which under a
+  // mounted Radix modal leaves its `pointer-events: none` on the page.
   const snapshots: Array<{ language: string | undefined; html: string }> = [];
   const snapshot = (language: string | undefined) => () => {
     snapshots.push({ language, html: document.body.innerHTML });
   };
   let probe;
   try {
-    probe = await hydrateAcrossEnvironments(() => elements[0], {
+    probe = await hydrateAcrossEnvironments(() => element, {
       server,
       client,
-      inspect: A11Y_EXEMPT.has(testFileName())
-        ? undefined
-        : snapshot(client.language),
+      inspect: a11yExempt ? undefined : snapshot(client.language),
     });
   } catch {
     return;
   }
   if (probe.serverErrored) return;
-  if (!A11Y_EXEMPT.has(testFileName())) {
+  if (!a11yExempt) {
     try {
-      await hydrateAcrossEnvironments(() => elements[0], {
+      await hydrateAcrossEnvironments(() => element, {
         server: other.server,
         client: other.client,
         inspect: snapshot(other.client.language),
@@ -161,16 +166,20 @@ afterEach(async () => {
   }
   const accessibility: string[] = [];
   for (const { language, html } of snapshots) {
-    const host = document.createElement("div");
-    host.innerHTML = html;
-    document.body.appendChild(host);
-    try {
-      for (const found of await a11yViolations(host)) {
-        accessibility.push(`[${language}] ${found}`);
+    let found = a11yByMarkup.get(html);
+    if (!found) {
+      const host = document.createElement("div");
+      host.innerHTML = html;
+      document.body.appendChild(host);
+      try {
+        found = await a11yViolations(host);
+      } finally {
+        host.remove();
       }
-    } finally {
-      host.remove();
+      a11yByMarkup.set(html, found);
     }
+    for (const violation of found)
+      accessibility.push(`[${language}] ${violation}`);
   }
   if (accessibility.length > 0) {
     throw new Error(

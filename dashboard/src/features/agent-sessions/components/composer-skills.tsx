@@ -61,7 +61,11 @@ export function ComposerSkills({
           <Sparkles className="size-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 space-y-3">
+      <PopoverContent
+        align="start"
+        className="w-80 space-y-3"
+        aria-label={t("agentSessions.skillsButton")}
+      >
         <SkillsPanel ownerId={ownerId} value={value} onChange={onChange} />
       </PopoverContent>
     </Popover>

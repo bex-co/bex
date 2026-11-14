@@ -83,7 +83,11 @@ export function ComposerSecrets({
           <KeyRound className="size-4" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 space-y-4">
+      <PopoverContent
+        align="start"
+        className="w-80 space-y-4"
+        aria-label={t("agentSessions.secretsButton")}
+      >
         <SecretsPanel
           ownerId={ownerId}
           value={value}

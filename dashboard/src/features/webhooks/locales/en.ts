@@ -376,8 +376,9 @@ const enWebhooks: Record<string, TranslationEntry> = {
     description: "Delivery attempt HTTP status summary",
   },
   "webhooks.openSourceEvent": {
-    message: "Open source event {id}",
-    description: "Accessible label for the event hydration link",
+    message: "{label} — open source event {id}",
+    description:
+      "Accessible label for the event hydration link; it starts with the link's visible text, the event type (WCAG 2.5.3)",
   },
   "webhooks.requestPayload": {
     message: "Request payload",

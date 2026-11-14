@@ -95,6 +95,14 @@ describe("LogFilterBar (w5/008, simplified w7/m42)", () => {
   // while discovery authoritatively returned []. Every one of those five
   // selected to an empty page that read as "this service had no traffic".
   // A value the store says was never produced must not be offered.
+  // w4/607: the panel was an unnamed dialog.
+  it("names the Filters panel for assistive technology", async () => {
+    const user = userEvent.setup();
+    renderBar();
+    await user.click(screen.getByRole("button", { name: "Filters" }));
+    expect(screen.getByRole("dialog", { name: "Filters" })).toBeInTheDocument();
+  });
+
   it("drops the static fallbacks once discovery answers with no values", async () => {
     const user = userEvent.setup();
     discoveryResolved = true; // the store answered: this App produced none

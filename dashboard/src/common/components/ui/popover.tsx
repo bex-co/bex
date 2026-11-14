@@ -15,12 +15,23 @@ function PopoverTrigger({
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
+// Radix renders the panel as `role="dialog"` and names it only when a
+// PopoverTitle is mounted, so a caller that passes neither is an unnamed dialog
+// (w4/607). Requiring one of the two here makes the omission a type error.
+type PopoverContentProps = React.ComponentProps<
+  typeof PopoverPrimitive.Content
+> &
+  (
+    | { "aria-label": string; "aria-labelledby"?: never }
+    | { "aria-labelledby": string; "aria-label"?: never }
+  );
+
 function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
   ...props
-}: React.ComponentProps<typeof PopoverPrimitive.Content>) {
+}: PopoverContentProps) {
   return (
     <PopoverPrimitive.Portal>
       {/* Radix flips to the roomier side but cannot shrink the panel: cap it

@@ -83,7 +83,11 @@ export function SessionModelCost({ session }: { session: AgentSessionView }) {
           <span data-testid="session-cost-label">{label}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="start" className="w-80 space-y-3 text-sm">
+      <PopoverContent
+        align="start"
+        className="w-80 space-y-3 text-sm"
+        aria-label={t("agentSessions.costTitle")}
+      >
         <p className="font-medium">{t("agentSessions.costTitle")}</p>
         {hasTotal ? (
           <p className="text-muted-foreground text-xs">

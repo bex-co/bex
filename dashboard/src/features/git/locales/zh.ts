@@ -156,6 +156,11 @@ const zhGit: Record<string, TranslationEntry> = {
     description:
       "In-place credentials menu trigger on the source picker (w8/m31); {count} is the number of connected GitHub accounts",
   },
+  "git.credentialsMenuLabel": {
+    message: "凭据",
+    description:
+      "Accessible name of the credentials menu panel on the source picker; the trigger's label without its count",
+  },
   "git.credentialsAccountsHeading": {
     message: "账户与组织",
     description:

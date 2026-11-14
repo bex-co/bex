@@ -418,6 +418,7 @@ function DeliveryRow({
               rel="noreferrer"
               className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
               aria-label={t("webhooks.openSourceEvent", {
+                label: eventLabel,
                 id: delivery.eventId,
               })}
             >
