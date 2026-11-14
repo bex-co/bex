@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 )
 
 func TestPGInitialAppCreationBarrier(t *testing.T) {
@@ -70,5 +71,28 @@ func TestPGInitialAppCreationBarrier(t *testing.T) {
 	legacy, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "ordinary", Image: "nginx:alpine", Branch: "main", Tier: "free"})
 	if err != nil || legacy.CreationPending {
 		t.Fatalf("ordinary create changed: %+v %v", legacy, err)
+	}
+}
+
+// w4/638: a Git-backed service's first deploy keeps its resolved commit's
+// author time, as a later deploy of the same commit does.
+func TestPGFirstDeployKeepsTheCommitAuthorTime(t *testing.T) {
+	st := openLifecyclePG(t)
+	tenant := lifecycleTenant(t, st, "first-commit")
+	ctx := context.Background()
+	authored := time.Date(2026, 11, 13, 16, 49, 59, 0, time.UTC)
+	row, err := st.CreateApp(ctx, App{
+		TenantID: tenant.ID, Name: "git", Image: "nginx:alpine", Branch: "main", Tier: "free",
+		FirstDeployCommit: CommitInfo{Hash: "eaff00a60d398f6641dea074f813e37474299c3b", Message: "docs: x", AuthorAt: &authored},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	deploys, err := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	if err != nil || len(deploys) != 1 {
+		t.Fatalf("deploys = %+v, %v", deploys, err)
+	}
+	if got := deploys[0].CommitAuthorAt; got == nil || !got.Equal(authored) {
+		t.Fatalf("first deploy commit author time = %v, want %s", got, authored)
 	}
 }

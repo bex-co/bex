@@ -1142,8 +1142,12 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 				}
 			}
 			if _, err := tx.Exec(ctx,
-				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, status, triggered_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-				deployID, a.ID, TriggerCreate, a.Image, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message, DeployCreated, core.SubjectFrom(ctx)); err != nil {
+				// The resolved commit's author time and build, as every other
+				// deploy insert writes them (w4/638).
+				`INSERT INTO deploys (id, app_id, trigger, image, generation, commit, commit_message, commit_author_at, build_id, status, triggered_by)
+				 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULLIF($9, ''), $10, $11)`,
+				deployID, a.ID, TriggerCreate, a.Image, FirstDeployGeneration, a.FirstDeployCommit.Hash, a.FirstDeployCommit.Message,
+				a.FirstDeployCommit.AuthorAt, a.FirstDeployCommit.BuildID, DeployCreated, core.SubjectFrom(ctx)); err != nil {
 				return err
 			}
 			// Retain the name now, in the same transaction, so the service's
