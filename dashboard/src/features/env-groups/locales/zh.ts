@@ -534,22 +534,6 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     message: "无法删除 {key}",
     description: "Env-group variable delete error toast",
   },
-  "envGroups.fileSaveSuccess": {
-    message: "已保存 {name}",
-    description: "Env-group file save success toast",
-  },
-  "envGroups.fileSaveError": {
-    message: "无法保存 {name}",
-    description: "Env-group file save error toast",
-  },
-  "envGroups.fileDeleteSuccess": {
-    message: "已删除 {name}",
-    description: "Env-group file delete success toast",
-  },
-  "envGroups.fileDeleteError": {
-    message: "无法删除 {name}",
-    description: "Env-group file delete error toast",
-  },
 };
 
 export default zhEnvGroups;

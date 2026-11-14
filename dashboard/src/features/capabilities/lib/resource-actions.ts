@@ -130,33 +130,6 @@ export function decisionReady(
   );
 }
 
-/** Permitted AND nothing blocking for this exact target. Fail closed. */
-export function isExecutable(
-  snapshot: ResourceActionSnapshot | null,
-  workspaceId: string | null,
-  resourceId: string | null,
-  action: string,
-): boolean {
-  if (snapshot === null || workspaceId === null || resourceId === null) {
-    return false;
-  }
-  if (!KNOWN_ACTIONS.has(action)) return false;
-  return decisionReady(
-    resourceDecision(
-      snapshot,
-      workspaceId,
-      resourceId,
-      action as ResourceActionId,
-    ),
-  );
-}
-
-export function decisionDenied(
-  decision: ResourceActionDecision | null,
-): boolean {
-  return decision !== null && decision.outcome === "denied";
-}
-
 /**
  * Dashboard presentation: disable-with-reason (never hide). Denied /
  * unavailable / unbound stay visible with copy; ready enables; blocked keeps
