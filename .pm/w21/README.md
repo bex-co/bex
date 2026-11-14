@@ -93,3 +93,4 @@
 - [ ] **071** — The day-to-day `bex-operator` role grants cluster-wide `pods/exec`, and six platform namespaces have no NetworkPolicy → [`071.md`](071.md) (~1h30) ← from w21/m394 round 25 hardening
 - [ ] **072** — Dashboard hardening notes from the round-25 audit: redirect validation, same-origin, content type, CSP, error headers, the device page, the consent token and a localhost return URL → [`072.md`](072.md) (~2h) ← from w21/m394 round 25 hardening
 - [ ] **073** — Operator proxy, job and logging hardening notes from the round-25 audit → [`073.md`](073.md) (~2h) ← from w21/m394 round 25 hardening
+- [ ] **074** — The backend's per-source connection and admission caps key an IPv6 client on its exact address, so one /64 holds 2^64 "sources" → [`074.md`](074.md) (~45m) ← from w21/m394 t006 reuse review, 2026-11-14

@@ -516,13 +516,13 @@ func serveMaintenance(w http.ResponseWriter, r *http.Request, app *appv1alpha1.A
 	serveMaintenanceWithFetcher(w, r, app, fetch)
 }
 
-// maintenancePages is the process-wide custom-page snapshot cache shared by
-// every maintenance request (round-11 #4).
 // errCustomPageFetchBusy means every custom-page fetch slot is taken. The
 // fetcher serves a stale snapshot when it has one; otherwise the responder
 // answers the default maintenance page.
 var errCustomPageFetchBusy = errors.New("custom maintenance page fetch capacity reached")
 
+// maintenancePages is the process-wide custom-page snapshot cache shared by
+// every maintenance request (round-11 #4).
 var maintenancePages = newCustomPageCache()
 
 // customPageEntry is one cached origin snapshot. ok=false marks a fetch

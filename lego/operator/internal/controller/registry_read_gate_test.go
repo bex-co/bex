@@ -17,6 +17,7 @@ limitations under the License.
 package controller
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	. "github.com/onsi/gomega"
 	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -106,7 +108,7 @@ func TestRegistryReadGateBreaksAFailingHostWithBackoff(t *testing.T) {
 	clock.Advance(61 * time.Second)
 	for range 8 {
 		fail("tarpit.example")
-		clock.Advance(10 * time.Minute)
+		clock.Advance(imageRegistryRetryMax + time.Second) // past the window, inside the memory
 	}
 	fail("tarpit.example")
 	if _, wait, _ := g.acquire("tarpit.example", "ws-1"); wait != imageRegistryRetryMax {
@@ -123,6 +125,29 @@ func TestRegistryReadGateBreaksAFailingHostWithBackoff(t *testing.T) {
 		t.Fatal("a host that answered is still broken")
 	} else {
 		release(false)
+	}
+}
+
+func TestRegistryReadGateForgetsAHostThatStayedQuiet(t *testing.T) {
+	g, clock := newTestGate()
+	fail := func() {
+		t.Helper()
+		release, _, ok := g.acquire("tarpit.example", "ws-1")
+		if !ok {
+			t.Fatal("read refused")
+		}
+		release(true)
+	}
+	fail()
+	clock.Advance(31 * time.Second)
+	fail()
+	clock.Advance(61 * time.Second)
+	fail() // three failures in a row: a 120 s window
+	// Quiet for longer than the window plus the memory: the next failure is a first one.
+	clock.Advance(120*time.Second + registryHostMemory + time.Second)
+	fail()
+	if _, wait, ok := g.acquire("tarpit.example", "ws-1"); ok || wait != imageRegistryRetry {
+		t.Fatalf("after a long quiet: ok %v wait %v, want a fresh %v window", ok, wait, imageRegistryRetry)
 	}
 }
 
@@ -221,13 +246,8 @@ func TestTarpitRegistryCannotHoldEveryWorker(t *testing.T) {
 			}
 		})
 	}
-	deadline := time.Now().Add(5 * time.Second)
-	for tp.entered.Load() == 0 {
-		if time.Now().After(deadline) {
-			t.Fatal("no read reached the tarpit")
-		}
-		time.Sleep(2 * time.Millisecond)
-	}
+	NewWithT(t).Eventually(func() bool { return tp.entered.Load() > 0 }, 5*time.Second, 2*time.Millisecond).
+		Should(BeTrue(), "no read reached the tarpit")
 	// Let every other call finish: before the change each one waits inside.
 	time.Sleep(300 * time.Millisecond)
 	if peak := tp.peak.Load(); peak > 1 {
@@ -333,9 +353,38 @@ func TestImageRegistryWaitBacksOffPerApp(t *testing.T) {
 	if ready == nil || app.Status.Phase != appv1alpha1.PhaseDeploying {
 		t.Fatalf("phase %q ready %+v, want Deploying with a waiting reason", app.Status.Phase, ready)
 	}
-	// A successful read starts the App over.
-	r.registryReads().appSucceeded(app.Namespace + "/" + app.Name)
-	if res, _ := r.imageRegistryWait(t.Context(), app, transient()); res.RequeueAfter != imageRegistryRetry {
-		t.Fatalf("after a success the next requeue = %v, want %v", res.RequeueAfter, imageRegistryRetry)
+	// A read that answered, successfully or with a refusal, starts the App over.
+	for name, err := range map[string]error{"success": nil, "refusal": &registry.RefusedError{Status: http.StatusNotFound}} {
+		if res, waiting := r.imageRegistryWait(t.Context(), app, err); waiting {
+			t.Fatalf("%s waited %v", name, res.RequeueAfter)
+		}
+		if res, _ := r.imageRegistryWait(t.Context(), app, transient()); res.RequeueAfter != imageRegistryRetry {
+			t.Fatalf("after a %s the next requeue = %v, want %v", name, res.RequeueAfter, imageRegistryRetry)
+		}
+	}
+}
+
+// A read the controller itself cancelled (a shutdown, a requeue) is not the
+// registry's failure: it must not open the host's breaker.
+func TestACancelledReadDoesNotOpenTheBreaker(t *testing.T) {
+	tp := &tarpitTransport{fast: imageConfigRegistry(t, `"80/tcp":{}`), release: make(chan struct{})}
+	r := &AppReconciler{HTTPClient: &http.Client{Transport: tp}}
+	ctx, cancel := context.WithCancel(t.Context())
+	app := tarpitApp("ws-a", "cancelled", "tarpit.example/img:1")
+	done := make(chan error, 1)
+	go func() {
+		_, _, err := r.resolveImageNetwork(ctx, app, app.Spec.Image)
+		done <- err
+	}()
+	NewWithT(t).Eventually(func() bool { return tp.entered.Load() > 0 }, 5*time.Second, 2*time.Millisecond).
+		Should(BeTrue(), "the read never reached the tarpit")
+	cancel()
+	if err := <-done; err == nil {
+		t.Fatal("a cancelled read resolved")
+	}
+	if release, wait, ok := r.registryReads().acquire("tarpit.example", "ws-b"); !ok {
+		t.Fatalf("the host is closed for %v after a read this process cancelled", wait)
+	} else {
+		release(false)
 	}
 }

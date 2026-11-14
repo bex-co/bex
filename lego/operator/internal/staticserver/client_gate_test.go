@@ -26,6 +26,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	. "github.com/onsi/gomega"
 )
 
 // w21/m394 t009 (R25-05): the fetch gate bounds origin fetches per site (4)
@@ -86,22 +88,10 @@ func floodHeld(t *testing.T, h *Handler, origin *holdOrigin, client string, site
 			})
 		}
 	}
-	waitFor(t, "flood settled", func() bool { return origin.entered.Load()+shedCount.Load() >= int64(total) })
+	NewWithT(t).Eventually(func() bool { return origin.entered.Load()+shedCount.Load() >= int64(total) }, 5*time.Second, 2*time.Millisecond).Should(BeTrue(), "flood settled")
 	return int(shedCount.Load()), func() {
 		close(origin.release)
 		done.Wait()
-	}
-}
-
-// waitFor polls cond for up to 5 seconds.
-func waitFor(t *testing.T, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for !cond() {
-		if time.Now().After(deadline) {
-			t.Fatalf("timed out waiting for: %s", what)
-		}
-		time.Sleep(2 * time.Millisecond)
 	}
 }
 
@@ -158,7 +148,7 @@ func TestClientKeepsEnoughSlotsForAColdPage(t *testing.T) {
 			}
 		})
 	}
-	waitFor(t, "every cold fetch reaches the origin", func() bool { return origin.entered.Load() >= int64(defaultMaxClientFetches) })
+	NewWithT(t).Eventually(func() bool { return origin.entered.Load() >= int64(defaultMaxClientFetches) }, 5*time.Second, 2*time.Millisecond).Should(BeTrue(), "every cold fetch reaches the origin")
 	close(origin.release)
 	done.Wait()
 	if int(ok.Load()) != defaultMaxClientFetches {
@@ -183,7 +173,7 @@ func TestRequestWithoutAClientAddressIsNotClientLimited(t *testing.T) {
 			h.ServeHTTP(rec, req)
 		})
 	}
-	waitFor(t, "every request reaches the origin", func() bool { return origin.entered.Load() >= int64(n) })
+	NewWithT(t).Eventually(func() bool { return origin.entered.Load() >= int64(n) }, 5*time.Second, 2*time.Millisecond).Should(BeTrue(), "every request reaches the origin")
 	close(origin.release)
 	done.Wait()
 }

@@ -36,7 +36,7 @@ type cache struct {
 	mu             sync.Mutex
 	budget         int64
 	perSiteBudget  int64
-	negativeBudget int64 // per-site share for negative entries, inside perSiteBudget
+	negativeBudget int64 // per-site share for negative entries (about 3000), inside perSiteBudget
 	used           int64
 	siteUsed       map[string]int64
 	siteNegUsed    map[string]int64
@@ -66,9 +66,8 @@ func entryCharge(key string, obj Object) int64 {
 func newCache(budget int64) *cache {
 	perSiteBudget := min(budget, 32<<20)
 	return &cache{
-		budget:        budget,
-		perSiteBudget: perSiteBudget,
-		// About 3000 entries per site.
+		budget:         budget,
+		perSiteBudget:  perSiteBudget,
 		negativeBudget: min(perSiteBudget/8, 1<<20),
 		siteUsed:       map[string]int64{},
 		siteNegUsed:    map[string]int64{},

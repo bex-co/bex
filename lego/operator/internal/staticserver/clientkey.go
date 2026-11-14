@@ -40,46 +40,46 @@ var trueClientIPHeader = textproto.CanonicalMIMEHeaderKey("True-Client-IP")
 // to others. An over-cap request is shed like any overload: 503 + Retry-After.
 const defaultMaxClientFetches = 3
 
-// clientLimiter counts in-flight origin fetches per client. Like fetchGate it
-// never blocks: a client at its cap is shed. An entry exists only while the
-// client has a fetch in flight, so the map is bounded by the replica's slots.
-type clientLimiter struct {
+// keyedLimiter counts in-flight work per key: per client here, per site in
+// fetchGate. It never blocks: a key at its cap is shed. An entry exists only
+// while the key has work in flight, so the map is bounded by the replica's slots.
+type keyedLimiter struct {
 	mu       sync.Mutex
 	inflight map[string]int
 	max      int
 }
 
-// newClientLimiter builds a limiter; max <= 0 disables it.
-func newClientLimiter(maxPerClient int) *clientLimiter {
-	if maxPerClient <= 0 {
+// newKeyedLimiter builds a limiter; maxPerKey <= 0 disables it.
+func newKeyedLimiter(maxPerKey int) *keyedLimiter {
+	if maxPerKey <= 0 {
 		return nil
 	}
-	return &clientLimiter{inflight: map[string]int{}, max: maxPerClient}
+	return &keyedLimiter{inflight: map[string]int{}, max: maxPerKey}
 }
 
-func (l *clientLimiter) acquire(client string) bool {
+func (l *keyedLimiter) acquire(key string) bool {
 	if l == nil {
 		return true
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.inflight[client] >= l.max {
+	if l.inflight[key] >= l.max {
 		return false
 	}
-	l.inflight[client]++
+	l.inflight[key]++
 	return true
 }
 
-func (l *clientLimiter) release(client string) {
+func (l *keyedLimiter) release(key string) {
 	if l == nil {
 		return
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.inflight[client] <= 1 {
-		delete(l.inflight, client)
+	if l.inflight[key] <= 1 {
+		delete(l.inflight, key)
 	} else {
-		l.inflight[client]--
+		l.inflight[key]--
 	}
 }
 
@@ -102,18 +102,14 @@ func clientFrom(ctx context.Context) string {
 // "" means no usable address; such a request is not limited by the client cap.
 func clientKey(r *http.Request) string {
 	if addr, err := netip.ParseAddr(strings.TrimSpace(r.Header.Get(trueClientIPHeader))); err == nil {
-		return canonicalClient(addr)
+		return netutil.SourceKey(addr).String()
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err != nil {
 		host = r.RemoteAddr
 	}
 	if addr, err := netip.ParseAddr(host); err == nil {
-		return canonicalClient(addr)
+		return netutil.SourceKey(addr).String()
 	}
 	return ""
-}
-
-func canonicalClient(addr netip.Addr) string {
-	return netutil.SourceKey(addr).String()
 }

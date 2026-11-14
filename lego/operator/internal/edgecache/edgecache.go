@@ -474,7 +474,9 @@ const entryOverhead = 1024
 // cache keeps for it. store and removeLocked share it, so an entry is released
 // for exactly what it was charged.
 func entryCost(e *entry) int64 {
-	cost := int64(len(e.body)+len(e.key)) + entryOverhead
+	// Capacity, not length: the body comes from a bytes.Buffer, whose spare
+	// capacity stays allocated while the entry lives.
+	cost := int64(cap(e.body)+len(e.key)) + entryOverhead
 	for name, values := range e.header {
 		cost += int64(len(name))
 		for _, value := range values {

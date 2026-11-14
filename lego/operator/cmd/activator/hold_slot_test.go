@@ -32,6 +32,8 @@ import (
 
 	"github.com/go-logr/logr"
 
+	. "github.com/onsi/gomega"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -85,17 +87,6 @@ func jsonGet(path string) *http.Request {
 	return req
 }
 
-func waitUntil(t *testing.T, what string, cond func() bool) {
-	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for !cond() {
-		if time.Now().After(deadline) {
-			t.Fatalf("timed out waiting for: %s", what)
-		}
-		time.Sleep(5 * time.Millisecond)
-	}
-}
-
 // TestHungAppDoesNotPinHoldSlots: once the App is awake and the exchange is
 // proxied, its slot is free, so a request that never gets an answer cannot
 // starve other cold starts. The slot covers only the wait.
@@ -111,7 +102,8 @@ func TestHungAppDoesNotPinHoldSlots(t *testing.T) {
 		close(up.release)
 		done.Wait()
 	})
-	waitUntil(t, "both requests reach the app", func() bool { return up.hanging.Load() == 2 })
+	NewWithT(t).Eventually(func() int32 { return up.hanging.Load() }, 5*time.Second, 5*time.Millisecond).
+		Should(Equal(int32(2)), "both requests reach the app")
 
 	if n := len(h.total); n != 0 {
 		t.Fatalf("%d hold slots in use while two proxied exchanges hang, want 0", n)

@@ -764,9 +764,6 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if app.Spec.HasImagePorts() {
 		requested := image
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
-		if err == nil {
-			r.registryReads().appSucceeded(app.Namespace + "/" + app.Name)
-		}
 		if res, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
 			return res, nil
 		}

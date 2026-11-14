@@ -225,7 +225,7 @@ type Handler struct {
 	gate *fetchGate
 	// clients bounds the origin fetches one client holds at once, so it cannot
 	// take the gate's slots from other tenants' sites.
-	clients *clientLimiter
+	clients *keyedLimiter
 	// liveBodies bounds the total bytes of response bodies held live while being
 	// written to clients, extending memory accounting from fetch until the
 	// response write completes (the fetch gate alone releases at read time).
@@ -245,7 +245,7 @@ func New(resolver Resolver, origin Origin, cacheBytes int64) *Handler {
 		origin:     origin,
 		cache:      newCache(cacheBytes),
 		gate:       newFetchGate(defaultMaxConcurrentFetches, defaultMaxInflightBytes, defaultMaxSiteFetches),
-		clients:    newClientLimiter(defaultMaxClientFetches),
+		clients:    newKeyedLimiter(defaultMaxClientFetches),
 		liveBodies: semaphore.NewWeighted(defaultMaxLiveBodyBytes),
 		encodes:    newFetchGate(defaultMaxConcurrentEncodes, 0, defaultMaxSiteEncodes),
 		external:   newExternalProxy(netutil.UnsafeOriginIP),

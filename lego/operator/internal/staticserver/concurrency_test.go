@@ -173,6 +173,23 @@ func TestFetchGateReservesCapacityForAnotherSite(t *testing.T) {
 	g.release("site-a")
 }
 
+// A per-site cap of 0 means no per-site limit: only the global slots count.
+func TestFetchGateWithNoSiteCapIsBoundedByItsSlots(t *testing.T) {
+	g := newFetchGate(3, 0, 0)
+	for i := range 3 {
+		if !g.acquire("one-site") {
+			t.Fatalf("acquire %d of 3 refused with no per-site cap", i)
+		}
+	}
+	if g.acquire("another-site") {
+		t.Fatal("a fourth acquire passed the 3 global slots")
+	}
+	g.release("one-site")
+	if !g.acquire("another-site") {
+		t.Fatal("a released slot stayed taken")
+	}
+}
+
 func TestCacheEnforcesPerSiteBudget(t *testing.T) {
 	c := newCache(128 << 20)
 	body := make([]byte, 20<<20)

@@ -21,8 +21,8 @@
 | [t017](done/t017.md) | Fix the small hardening items the audit found: a deadline on the pg SSLRequest reply, `?lang=%`, and an IPv6 /64 per-source key — **DONE** | 45m | t003 |
 | [t005](done/t005.md) | Write ADR110 (ADR109 was taken) and update the review lineage — **DONE** | 45m | t004, t009, t010, t011, t012, t013, t014, t015, t016, t017 |
 | [t018](done/t018.md) | Render parity — **DONE** | 20m | t004, t009, t010, t011, t012, t013, t014, t015, t016, t017 |
-| [t006](t006.md) | Simplify | 15m | t005, t018 |
-| [t007](t007.md) | Test coverage | 20m | t006 |
+| [t006](done/t006.md) | Simplify — **DONE** | 15m | t005, t018 |
+| [t007](done/t007.md) | Test coverage — **DONE** | 20m | t006 |
 | [t008](t008.md) | Closeout | 10m | t007 |
 
 ## Findings

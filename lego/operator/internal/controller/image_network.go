@@ -630,6 +630,8 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 	}
 	var transient *registry.TransientError
 	if !errors.As(err, &transient) {
+		// The read answered (or failed for good): the App's failures start over.
+		r.registryReads().appSucceeded(app.Namespace + "/" + app.Name)
 		return ctrl.Result{}, false
 	}
 	logf.FromContext(ctx).Info("image registry read failed; retrying", "app", app.Name, "error", err.Error())
@@ -644,13 +646,13 @@ func (r *AppReconciler) imageRegistryWait(ctx context.Context, app *appv1alpha1.
 	return ctrl.Result{RequeueAfter: min(max(transient.RetryAfter, registryRetryDelay(failures)), imageRegistryRetryMax)}, true
 }
 
-const imageRegistryWaitMessage = "Waiting for the image registry to answer the image metadata read; bex retries it automatically"
-
 // imageRegistryRetry and imageRegistryRetryMax bound a throttled read's
 // requeue, whatever Retry-After the registry names.
 const (
 	imageRegistryRetry    = 30 * time.Second
 	imageRegistryRetryMax = 5 * time.Minute
+
+	imageRegistryWaitMessage = "Waiting for the image registry to answer the image metadata read; bex retries it automatically"
 )
 
 // imageMetadataFailureReason is the reason a failed image metadata read fails

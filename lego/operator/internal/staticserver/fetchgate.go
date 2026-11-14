@@ -17,8 +17,6 @@ limitations under the License.
 package staticserver
 
 import (
-	"sync"
-
 	"golang.org/x/sync/semaphore"
 )
 
@@ -44,12 +42,10 @@ const (
 // non-blocking: on overload acquire fails and the caller sheds with 503 rather
 // than parking unbounded goroutines/memory.
 type fetchGate struct {
-	mu         sync.Mutex
-	slots      chan struct{}
-	bytes      *semaphore.Weighted
-	weight     int64
-	perSite    map[string]int
-	maxPerSite int
+	slots  chan struct{}
+	bytes  *semaphore.Weighted
+	weight int64
+	sites  *keyedLimiter
 }
 
 // newFetchGate builds a gate. maxConcurrent <= 0 disables the gate entirely
@@ -64,10 +60,9 @@ func newFetchGate(maxConcurrent int, maxInflightBytes int64, perSite ...int) *fe
 		maxPerSite = perSite[0]
 	}
 	g := &fetchGate{
-		slots:      make(chan struct{}, maxConcurrent),
-		weight:     maxOriginObjectBytes,
-		perSite:    make(map[string]int),
-		maxPerSite: maxPerSite,
+		slots:  make(chan struct{}, maxConcurrent),
+		weight: maxOriginObjectBytes,
+		sites:  newKeyedLimiter(maxPerSite),
 	}
 	if maxInflightBytes > 0 {
 		g.bytes = semaphore.NewWeighted(maxInflightBytes)
@@ -81,22 +76,18 @@ func (g *fetchGate) acquire(site string) bool {
 	if g == nil {
 		return true
 	}
-	g.mu.Lock()
-	if g.maxPerSite > 0 && g.perSite[site] >= g.maxPerSite {
-		g.mu.Unlock()
+	if !g.sites.acquire(site) {
 		return false
 	}
-	g.perSite[site]++
-	g.mu.Unlock()
 	select {
 	case g.slots <- struct{}{}:
 	default:
-		g.releaseSite(site)
+		g.sites.release(site)
 		return false
 	}
 	if g.bytes != nil && !g.bytes.TryAcquire(g.weight) {
 		<-g.slots
-		g.releaseSite(site)
+		g.sites.release(site)
 		return false
 	}
 	return true
@@ -111,15 +102,5 @@ func (g *fetchGate) release(site string) {
 		g.bytes.Release(g.weight)
 	}
 	<-g.slots
-	g.releaseSite(site)
-}
-
-func (g *fetchGate) releaseSite(site string) {
-	g.mu.Lock()
-	if g.perSite[site] <= 1 {
-		delete(g.perSite, site)
-	} else {
-		g.perSite[site]--
-	}
-	g.mu.Unlock()
+	g.sites.release(site)
 }

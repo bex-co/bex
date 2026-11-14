@@ -27,18 +27,6 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 )
 
-// The operator reads a tenant's image registry inside an App reconcile worker
-// (resolveImageNetwork), and a registry that accepts a connection and never
-// answers holds that worker for the whole read budget, on every attempt, for
-// every App of the tenant. With two workers, about 14 such Apps kept both busy
-// and every other tenant's reconcile queued behind them (w21/m394 t014, R25-04).
-//
-// registryReadGate bounds the tenant-controlled part, without moving the
-// starvation onto other tenants' image deploys: one read at a time per registry
-// host and per workspace, a breaker per host that backs off exponentially after
-// a failed read, and a short busy answer, in place of waiting, whenever either
-// bound or the breaker says no. A busy answer frees the worker at once. Reads of
-// the platform's own registry are not tenant-controlled and do not pass through.
 const (
 	maxRegistryReadsPerHost      = 1
 	maxRegistryReadsPerWorkspace = 1
@@ -53,6 +41,15 @@ const (
 	registryHostSweepAt = 512
 )
 
+// registryReadGate bounds the tenant-controlled registry reads an App reconcile
+// makes (w21/m394 t014, R25-04): a registry that accepts a connection and never
+// answers would otherwise hold the worker for the whole read budget on every
+// attempt. One read at a time per registry host and per workspace, a breaker per
+// host that backs off exponentially after a failed read, and a short busy answer,
+// in place of waiting, whenever either bound or the breaker says no, which frees
+// the worker at once. There is deliberately no global slot: it would move the
+// starvation onto other tenants' image deploys. Reads of the platform's own
+// registry are not tenant-controlled and do not pass through.
 type registryReadGate struct {
 	mu          sync.Mutex
 	now         func() time.Time
@@ -92,6 +89,10 @@ func (g *registryReadGate) acquire(host, workspace string) (release func(failed 
 	defer g.mu.Unlock()
 	now := g.now()
 	h := g.hosts[host]
+	if h != nil && h.inflight == 0 && now.After(h.openUntil.Add(registryHostMemory)) {
+		delete(g.hosts, host) // quiet long enough: its failures are forgotten
+		h = nil
+	}
 	if h != nil && now.Before(h.openUntil) {
 		return nil, h.openUntil.Sub(now), false
 	}
