@@ -1290,7 +1290,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Accessible label for the shutdown-delay edit button",
   },
   "services.maxShutdownDelaySuccess": {
-    message: "最大关闭延迟已更新。",
+    message: "最大关闭延迟已更新，新的部署已开始。",
     description: "Toast after setMaxShutdownDelay succeeds",
   },
   "services.maxShutdownDelayRangeError": {
@@ -1329,7 +1329,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Settings tab: accessible label for the health-check path edit-pencil button",
   },
   "services.healthCheckPathSuccess": {
-    message: "健康检查路径已更新。",
+    message: "健康检查路径已更新，新的部署已开始。",
     description: "Toast after setHealthCheckPath succeeds",
   },
   "services.healthCheckPathError": {
@@ -2786,8 +2786,56 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Build & Deploy: accessible label for the pre-deploy edit-pencil button",
   },
+  "services.healthCheckPathConfirmTitle": {
+    message: "将健康检查路径更改为 {value}？",
+    description:
+      "Settings: Health Check Path change confirmation title (w4/616)",
+  },
+  "services.healthCheckPathConfirmEmpty": {
+    message: "TCP 检查",
+    description:
+      "Settings: empty Health Check Path phrase in its confirmation title",
+  },
+  "services.maxShutdownDelayConfirmTitle": {
+    message: "将最大关闭延迟更改为 {value} 秒？",
+    description:
+      "Settings: Max shutdown delay change confirmation title (w4/616)",
+  },
+  "services.preDeployConfirmTitle": {
+    message: "将预部署命令更改为 {value}？",
+    description:
+      "Settings: Pre-Deploy Command change confirmation title (w4/616)",
+  },
+  "services.preDeployConfirmEmpty": {
+    message: "无预部署命令",
+    description:
+      "Settings: empty Pre-Deploy Command phrase in its confirmation title",
+  },
+  "services.settingRedeployConfirmBody": {
+    message: "服务将使用新设置重新部署。现有请求完成后才会替换旧实例。",
+    description:
+      "Settings: confirmation body for a setting whose save starts a deploy (w4/616)",
+  },
+  "services.settingRedeployConfirmBodyNeverLive": {
+    message:
+      "服务会使用新的设置部署。目前还没有任何版本在运行——部署成功后才会上线。",
+    description:
+      "Settings: deploying-setting confirmation body for a service that has never gone live (w4/616)",
+  },
+  "services.preDeployConfirmBody": {
+    message:
+      "服务将重新部署，新命令会在新版本上线前运行。现有请求完成后才会替换旧实例。",
+    description:
+      "Settings: Pre-Deploy Command change confirmation body (w4/616)",
+  },
+  "services.preDeployConfirmBodyNeverLive": {
+    message:
+      "服务会部署，新命令会在版本上线前运行。目前还没有任何版本在运行——部署成功后才会上线。",
+    description:
+      "Settings: Pre-Deploy Command confirmation body for a service that has never gone live (w4/616)",
+  },
   "services.preDeploySuccess": {
-    message: "预部署命令已更新。",
+    message: "预部署命令已更新，新的部署已开始。",
     description: "Toast after setPreDeployCommand succeeds",
   },
   "services.preDeployError": {

@@ -1319,7 +1319,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Accessible label for the shutdown-delay edit button",
   },
   "services.maxShutdownDelaySuccess": {
-    message: "Max shutdown delay updated.",
+    message: "Max shutdown delay updated. A new deploy has started.",
     description: "Toast after setMaxShutdownDelay succeeds",
   },
   "services.maxShutdownDelayRangeError": {
@@ -1359,7 +1359,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Settings tab: accessible label for the health-check path edit-pencil button",
   },
   "services.healthCheckPathSuccess": {
-    message: "Health check path updated.",
+    message: "Health check path updated. A new deploy has started.",
     description: "Toast after setHealthCheckPath succeeds",
   },
   "services.healthCheckPathError": {
@@ -2550,7 +2550,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Build & Deploy: Docker Command input placeholder",
   },
   "services.startCommandConfirmTitle": {
-    message: "Change the start command to {value}?",
+    message: "Change the Start Command to {value}?",
     description: "Build & Deploy: command-change confirmation title",
   },
   "services.dockerCommandConfirmTitle": {
@@ -2611,7 +2611,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Build & Deploy: accessible build-command edit button label",
   },
   "services.buildCommandConfirmTitle": {
-    message: "Change build command to {value}?",
+    message: "Change the Build Command to {value}?",
     description: "Build & Deploy: build-command change confirmation title",
   },
   "services.buildCommandConfirmBody": {
@@ -2849,8 +2849,57 @@ const enServices: Record<string, TranslationEntry> = {
     description:
       "Build & Deploy: accessible label for the pre-deploy edit-pencil button",
   },
+  "services.healthCheckPathConfirmTitle": {
+    message: "Change the Health Check Path to {value}?",
+    description:
+      "Settings: Health Check Path change confirmation title (w4/616)",
+  },
+  "services.healthCheckPathConfirmEmpty": {
+    message: "a TCP check",
+    description:
+      "Settings: empty Health Check Path phrase in its confirmation title",
+  },
+  "services.maxShutdownDelayConfirmTitle": {
+    message: "Change the Max shutdown delay to {value} seconds?",
+    description:
+      "Settings: Max shutdown delay change confirmation title (w4/616)",
+  },
+  "services.preDeployConfirmTitle": {
+    message: "Change the Pre-Deploy Command to {value}?",
+    description:
+      "Settings: Pre-Deploy Command change confirmation title (w4/616)",
+  },
+  "services.preDeployConfirmEmpty": {
+    message: "no Pre-Deploy Command",
+    description:
+      "Settings: empty Pre-Deploy Command phrase in its confirmation title",
+  },
+  "services.settingRedeployConfirmBody": {
+    message:
+      "The service redeploys with the new setting. In-flight requests finish before old instances are replaced.",
+    description:
+      "Settings: confirmation body for a setting whose save starts a deploy (w4/616)",
+  },
+  "services.settingRedeployConfirmBodyNeverLive": {
+    message:
+      "The service deploys with the new setting. Nothing is serving yet — it goes live when a deploy succeeds.",
+    description:
+      "Settings: deploying-setting confirmation body for a service that has never gone live (w4/616)",
+  },
+  "services.preDeployConfirmBody": {
+    message:
+      "The service redeploys, and the new command runs before the new release goes live. In-flight requests finish before old instances are replaced.",
+    description:
+      "Settings: Pre-Deploy Command change confirmation body (w4/616)",
+  },
+  "services.preDeployConfirmBodyNeverLive": {
+    message:
+      "The service deploys, and the new command runs before the release goes live. Nothing is serving yet — it goes live when a deploy succeeds.",
+    description:
+      "Settings: Pre-Deploy Command confirmation body for a service that has never gone live (w4/616)",
+  },
   "services.preDeploySuccess": {
-    message: "Pre-Deploy Command updated.",
+    message: "Pre-Deploy Command updated. A new deploy has started.",
     description: "Toast after setPreDeployCommand succeeds",
   },
   "services.preDeployError": {

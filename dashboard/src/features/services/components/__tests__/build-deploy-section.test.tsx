@@ -794,7 +794,7 @@ describe("BuildDeploySection", () => {
     ).toHaveValue("");
   });
 
-  it("edits and saves the pre-deploy command via setPreDeployCommand (no confirm)", async () => {
+  it("confirms the deploy, then saves the pre-deploy command via setPreDeployCommand (w4/616)", async () => {
     const user = userEvent.setup();
     render(
       <BuildDeploySection
@@ -813,13 +813,25 @@ describe("BuildDeploySection", () => {
     await user.type(input, "  npm run migrate  ");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
 
+    // The save starts a deploy that runs the new command before it goes live.
+    const dialog = screen.getByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/Change the Pre-Deploy Command to/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/the new command runs before the new release/),
+    ).toBeInTheDocument();
+    expect(setPreDeployCommand).not.toHaveBeenCalled();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
+
     // A nonblank command reaches the mutation as typed, padding included
-    // (w8/m68); no confirm dialog for this field.
+    // (w8/m68).
     expect(setPreDeployCommand).toHaveBeenCalledWith(
       "app",
       "  npm run migrate  ",
     );
-    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   });
 
   // Build Filters editor (w1/m34).

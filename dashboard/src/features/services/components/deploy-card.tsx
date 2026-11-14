@@ -139,6 +139,16 @@ export function DeployCard({
             disabledReason={
               createDisabled ? createReason : t("services.preDeployPaidOnly")
             }
+            // The save starts a deploy that runs the new command first (w4/616).
+            confirm={{
+              title: (value) => t("services.preDeployConfirmTitle", { value }),
+              body: t(
+                live
+                  ? "services.preDeployConfirmBody"
+                  : "services.preDeployConfirmBodyNeverLive",
+              ),
+              emptyValue: t("services.preDeployConfirmEmpty"),
+            }}
             onSave={(value) => setPreDeployCommand(serviceId, value)}
           />
         )}

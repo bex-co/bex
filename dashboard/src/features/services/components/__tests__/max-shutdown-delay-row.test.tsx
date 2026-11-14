@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MaxShutdownDelayRow } from "@/features/services/components/max-shutdown-delay-row";
 
@@ -48,6 +48,16 @@ describe("MaxShutdownDelayRow", () => {
     await user.clear(input);
     await user.type(input, "120");
     await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+    // The save starts a deploy, so it confirms first (w4/616).
+    const dialog = screen.getByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Change the Max shutdown delay to 120 seconds?"),
+    ).toBeInTheDocument();
+    expect(setMaxShutdownDelay).not.toHaveBeenCalled();
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save changes" }),
+    );
 
     expect(setMaxShutdownDelay).toHaveBeenCalledWith("worker", 120);
     expect(onChanged).toHaveBeenCalledOnce();

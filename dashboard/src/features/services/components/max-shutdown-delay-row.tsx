@@ -7,6 +7,8 @@ export interface MaxShutdownDelayRowProps {
   /** Effective value from bex-api; null on legacy responses defaults to 30. */
   maxShutdownDelaySeconds: number | null | undefined;
   onChanged?: () => void;
+  /** A release has gone live; false means nothing keeps serving (w4/548). */
+  live?: boolean;
 }
 
 const MIN_DELAY = 1;
@@ -26,6 +28,7 @@ export function MaxShutdownDelayRow({
   serviceId,
   maxShutdownDelaySeconds,
   onChanged,
+  live = true,
 }: MaxShutdownDelayRowProps) {
   const { t } = useTranslations();
   const { setMaxShutdownDelay, busy } = useMaxShutdownDelay();
@@ -57,6 +60,15 @@ export function MaxShutdownDelayRow({
             })
           : null
       }
+      // The save starts a deploy, so it says so first (w4/616).
+      confirm={{
+        title: (value) => t("services.maxShutdownDelayConfirmTitle", { value }),
+        body: t(
+          live
+            ? "services.settingRedeployConfirmBody"
+            : "services.settingRedeployConfirmBodyNeverLive",
+        ),
+      }}
       onSave={async (value) => {
         const parsed = parseDelay(value);
         // validate() already blocks Save on an invalid draft; this is the type

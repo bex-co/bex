@@ -162,7 +162,7 @@ const ROWS = [
     document: SetBuildCommandDocument,
     renderRow: renderBuildCommand,
     sent: setter,
-    clearTitle: "Change build command to Runtime default?",
+    clearTitle: "Change the Build Command to Runtime default?",
   },
   {
     name: "Pre-Deploy Command",
@@ -172,6 +172,7 @@ const ROWS = [
     renderRow: (preDeployCommand: string | null) =>
       renderDeployCard("start", { preDeployCommand }),
     sent: setter,
+    clearTitle: "Change the Pre-Deploy Command to no Pre-Deploy Command?",
   },
   {
     name: "Start Command",
@@ -181,7 +182,7 @@ const ROWS = [
     renderRow: (command: string | null) =>
       renderDeployCard("start", { command }),
     sent: setter,
-    clearTitle: "Change the start command to the default command?",
+    clearTitle: "Change the Start Command to the default command?",
   },
   {
     name: "Dockerfile Docker Command",

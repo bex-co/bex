@@ -172,6 +172,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
                       serviceId={serviceId}
                       maxShutdownDelaySeconds={service.maxShutdownDelaySeconds}
                       onChanged={() => void refetch()}
+                      live={hasServed(service)}
                     />
                   )}
                 </div>
@@ -375,6 +376,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
               <HealthCheckPathRow
                 serviceId={serviceId}
                 healthCheckPath={service?.healthCheckPath}
+                live={!service || hasServed(service)}
               />
             </CardContent>
           </Card>

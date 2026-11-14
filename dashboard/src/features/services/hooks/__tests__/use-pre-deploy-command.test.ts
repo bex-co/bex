@@ -38,7 +38,9 @@ describe("usePreDeployCommand", () => {
     expect(mutate).toHaveBeenCalledWith({
       variables: { id: "app", command: "npm run migrate" },
     });
-    expect(toastSuccess).toHaveBeenCalledWith("Pre-Deploy Command updated.");
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Pre-Deploy Command updated. A new deploy has started.",
+    );
     expect(toastError).not.toHaveBeenCalled();
   });
 

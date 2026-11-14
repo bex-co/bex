@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HealthCheckPathRow } from "@/features/services/components/health-check-path-row";
 
@@ -27,6 +27,19 @@ describe("HealthCheckPathRow", () => {
     await user.type(input, "/ready");
     await user.click(screen.getByRole("button", { name: /save changes/i }));
 
+    // The save starts a deploy, so it confirms first (w4/616).
+    const dialog = screen.getByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Change the Health Check Path to /ready?"),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByText(/The service redeploys with the new setting/),
+    ).toBeInTheDocument();
+    expect(setHealthCheckPath).not.toHaveBeenCalled();
+    await user.click(
+      within(dialog).getByRole("button", { name: /save changes/i }),
+    );
+
     expect(setHealthCheckPath).toHaveBeenCalledWith("web", "/ready");
   });
 
@@ -46,8 +59,41 @@ describe("HealthCheckPathRow", () => {
       screen.getByRole("textbox", { name: "Health Check Path" }),
     );
     await user.click(screen.getByRole("button", { name: /save changes/i }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(
+      within(dialog).getByText("Change the Health Check Path to a TCP check?"),
+    ).toBeInTheDocument();
+    await user.click(
+      within(dialog).getByRole("button", { name: /save changes/i }),
+    );
 
     expect(setHealthCheckPath).toHaveBeenCalledWith("web", "");
+  });
+
+  it("saves nothing when the deploy confirmation is canceled (w4/616)", async () => {
+    const user = userEvent.setup();
+    render(
+      <HealthCheckPathRow
+        serviceId="web"
+        healthCheckPath="/healthz"
+        live={false}
+      />,
+    );
+
+    await user.click(
+      screen.getByRole("button", { name: "Edit Health Check Path" }),
+    );
+    const input = screen.getByRole("textbox", { name: "Health Check Path" });
+    await user.clear(input);
+    await user.type(input, "/ready");
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+    const dialog = screen.getByRole("alertdialog");
+    expect(
+      within(dialog).getByText(/Nothing is serving yet/),
+    ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+
+    expect(setHealthCheckPath).not.toHaveBeenCalled();
   });
 
   it("renders an absent path as empty rather than as /", () => {

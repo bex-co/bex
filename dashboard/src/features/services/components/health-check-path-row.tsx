@@ -7,6 +7,8 @@ export interface HealthCheckPathRowProps {
   serviceId: string;
   /** Current spec.healthCheckPath; null/empty means the TCP check (w7/m80). */
   healthCheckPath: string | null | undefined;
+  /** A release has gone live; false means nothing keeps serving (w4/548). */
+  live?: boolean;
 }
 
 /**
@@ -23,6 +25,7 @@ export interface HealthCheckPathRowProps {
 export function HealthCheckPathRow({
   serviceId,
   healthCheckPath,
+  live = true,
 }: HealthCheckPathRowProps) {
   const { t } = useTranslations();
   const { setHealthCheckPath, busy } = useHealthCheckPath();
@@ -45,6 +48,16 @@ export function HealthCheckPathRow({
       validate={(draft) => {
         const reason = healthCheckPathError(draft);
         return reason ? t(reason) : null;
+      }}
+      // The save starts a deploy, so it says so first (w4/616).
+      confirm={{
+        title: (value) => t("services.healthCheckPathConfirmTitle", { value }),
+        body: t(
+          live
+            ? "services.settingRedeployConfirmBody"
+            : "services.settingRedeployConfirmBodyNeverLive",
+        ),
+        emptyValue: t("services.healthCheckPathConfirmEmpty"),
       }}
       onSave={(value) => setHealthCheckPath(serviceId, value)}
     />

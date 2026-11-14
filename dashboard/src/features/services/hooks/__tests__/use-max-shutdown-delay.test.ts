@@ -38,7 +38,9 @@ describe("useMaxShutdownDelay", () => {
     expect(mutate).toHaveBeenCalledWith({
       variables: { id: "worker", seconds: 120 },
     });
-    expect(toastSuccess).toHaveBeenCalledWith("Max shutdown delay updated.");
+    expect(toastSuccess).toHaveBeenCalledWith(
+      "Max shutdown delay updated. A new deploy has started.",
+    );
   });
 
   it("returns false and reports a mutation failure", async () => {
