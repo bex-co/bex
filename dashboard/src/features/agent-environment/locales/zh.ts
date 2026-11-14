@@ -728,6 +728,42 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "无法保存更改，请重试。",
     description: "Generic skill write failure",
   },
+  "agentEnvironment.agentsTitle": {
+    message: "可用的智能体",
+    description: "Settings \u2192 Agents: availability section heading",
+  },
+  "agentEnvironment.agentsDescription": {
+    message:
+      "选择成员可以用来启动会话的智能体。关闭某个智能体后，正在运行的会话会继续运行。",
+    description: "Settings \u2192 Agents: availability section description",
+  },
+  "agentEnvironment.agentsDataUseNote": {
+    message: "其模型提供方可能使用会话发送的内容训练模型。",
+    description:
+      "Settings \u2192 Agents: note under an agent whose provider trains on session data (Muse Code)",
+  },
+  "agentEnvironment.agentsDataUseTitle": {
+    message: "开启 {agent}？",
+    description:
+      "Confirm title before turning on an agent whose provider trains on session data",
+  },
+  "agentEnvironment.agentsDataUseBody.muse": {
+    message:
+      "该智能体运行在 Meta 的贡献者层级上。Meta 可能使用其会话发送的提示词、代码、文件和上下文以及返回的回复来训练其模型。开启它即表示你作为管理员代表工作区确认这一点。",
+    description: "Confirm body: Muse Code's data-use acknowledgement (ADR108)",
+  },
+  "agentEnvironment.agentsDataUseConfirm": {
+    message: "确认并开启",
+    description: "Confirm button: acknowledge data use and enable the agent",
+  },
+  "agentEnvironment.agentsSaved": {
+    message: "可用的智能体已更新",
+    description: "Toast after an availability change",
+  },
+  "agentEnvironment.agentsSaveFailed": {
+    message: "无法更新可用的智能体，请重试。",
+    description: "Error after a failed availability change",
+  },
 };
 
 export default zhAgentEnvironment;

@@ -38,7 +38,19 @@ type AgentEnvironment struct {
 	// provider key (ADR091 D7); nil means no BYO key. The key itself lives
 	// only in OpenBao.
 	ModelKeySetAt *time.Time
-	UpdatedAt     time.Time
+	// DisabledAgents are the profile ids the workspace's admins turned off;
+	// DataUseAcks is each data-use acknowledgement an admin gave, by profile
+	// id (w7/m392).
+	DisabledAgents []string
+	DataUseAcks    map[string]AgentDataUseAck
+	UpdatedAt      time.Time
+}
+
+// AgentDataUseAck is one admin's acknowledgement that a profile's provider
+// may train on what its sessions send.
+type AgentDataUseAck struct {
+	At time.Time `json:"at"`
+	By string    `json:"by"`
 }
 
 // ModelKeySet reports whether the workspace has its own model provider key,
@@ -58,6 +70,12 @@ type AgentEnvironmentPatch struct {
 	// ModelKeySet records (true) or clears (false) the BYO model key flag;
 	// nil keeps it.
 	ModelKeySet *bool
+	// DisabledAgents replaces the turned-off profile ids; nil keeps them.
+	DisabledAgents *[]string
+	// AcknowledgeDataUse records an acknowledgement by AcknowledgedBy for each
+	// profile id that has none yet; an existing one is kept.
+	AcknowledgeDataUse []string
+	AcknowledgedBy     string
 }
 
 // GetAgentEnvironment returns the workspace's explicit row — ErrNotFound when
@@ -113,10 +131,10 @@ func (s *PGStore) UpsertAgentEnvironmentLocked(ctx context.Context, workspaceID 
 }
 
 // agentEnvironmentColumns are the columns AgentEnvironment.dest scans.
-const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, updated_at`
+const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks, updated_at`
 
 func (e *AgentEnvironment) dest() []any {
-	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.UpdatedAt}
+	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.DisabledAgents, &e.DataUseAcks, &e.UpdatedAt}
 }
 
 func upsertAgentEnvironment(ctx context.Context, q interface {
@@ -127,12 +145,21 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 	if patch.CustomHosts != nil {
 		hosts = nonNil(*patch.CustomHosts)
 	}
+	var disabled any
+	if patch.DisabledAgents != nil {
+		disabled = nonNil(*patch.DisabledAgents)
+	}
+	acks := map[string]AgentDataUseAck{}
+	for _, agent := range patch.AcknowledgeDataUse {
+		acks[agent] = AgentDataUseAck{At: time.Now().UTC(), By: patch.AcknowledgedBy}
+	}
 	e := AgentEnvironment{WorkspaceID: workspaceID}
 	err := q.QueryRow(ctx, `
-		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at)
+		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, disabled_agents, agent_data_use_acks)
 		VALUES ($1, COALESCE($2, 'registries'), COALESCE($3::text[], '{}'), COALESCE($4, ''),
 		        CASE WHEN $6::boolean THEN NULL ELSE $5::bigint END,
-		        CASE WHEN $7::boolean THEN now() END)
+		        CASE WHEN $7::boolean THEN now() END,
+		        COALESCE($8::text[], '{}'), $9::jsonb)
 		ON CONFLICT (workspace_id) DO UPDATE
 			SET network_tier  = COALESCE($2, agent_environments.network_tier),
 			    custom_hosts  = COALESCE($3::text[], agent_environments.custom_hosts),
@@ -143,9 +170,13 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 			    model_key_set_at = CASE
 			        WHEN $7::boolean IS NULL THEN agent_environments.model_key_set_at
 			        WHEN $7::boolean THEN now() END,
+			    disabled_agents = COALESCE($8::text[], agent_environments.disabled_agents),
+			    -- The stored acknowledgement wins: the first admin's is kept.
+			    agent_data_use_acks = $9::jsonb || agent_environments.agent_data_use_acks,
 			    updated_at    = now()
 		RETURNING `+agentEnvironmentColumns,
 		workspaceID, patch.NetworkTier, hosts, patch.DefaultModel, patch.SpendCapOverrideMicroUSD, patch.ClearSpendCapOverride, patch.ModelKeySet,
+		disabled, acks,
 	).Scan(e.dest()...)
 	if err != nil {
 		return AgentEnvironment{}, classify("agent environment", err)

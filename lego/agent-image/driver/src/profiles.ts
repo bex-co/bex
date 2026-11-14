@@ -56,6 +56,9 @@ export interface AgentProfile {
   // Runs only on a bex-owned model route, never on a workspace's own key
   // (ADR108 D5).
   platformOnly?: boolean;
+  // Off in a workspace until an admin acknowledges that the model provider
+  // may train on what sessions send (bex-api's concern; w7/m392).
+  requiresDataUseAcknowledgement?: boolean;
   // ACP session config options the driver sets after session/new and
   // session/load (ADR108 D3).
   sessionConfig?: Record<string, string>;
@@ -116,11 +119,12 @@ function validateOptionalFields(id: string, profile: AgentProfile): void {
       !MODEL_SETTINGS_PROFILES.has(id))
   )
     throw new Error(`profile ${id}: invalid model`);
-  if (
-    profile.platformOnly !== undefined &&
-    typeof profile.platformOnly !== "boolean"
-  )
-    throw new Error(`profile ${id}: platformOnly must be a boolean`);
+  for (const flag of [
+    "platformOnly",
+    "requiresDataUseAcknowledgement",
+  ] as const)
+    if (profile[flag] !== undefined && typeof profile[flag] !== "boolean")
+      throw new Error(`profile ${id}: ${flag} must be a boolean`);
   const config = profile.sessionConfig;
   if (config === undefined) return;
   if (!config || Array.isArray(config) || typeof config !== "object")

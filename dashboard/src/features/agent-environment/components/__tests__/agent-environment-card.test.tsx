@@ -533,4 +533,69 @@ describe("AgentEnvironmentCard", () => {
       expect(skeleton.queryByRole("link")).toBeNull();
     });
   });
+
+  // w7/m392: admins choose the available agents; Muse Code (whose provider
+  // may train on session data, ADR108) turns on only through an
+  // acknowledgement.
+  describe("available agents", () => {
+    const toggle = (name: string) => screen.getByRole("switch", { name });
+
+    it("turns an agent off by replacing the enabled list", async () => {
+      const { update, user } = setup();
+      expect(toggle("Codex")).toBeChecked();
+      expect(toggle("Muse Code")).not.toBeChecked();
+      await user.click(toggle("Codex"));
+      expect(update).toHaveBeenCalledWith({
+        enabledAgents: ["claude", "gemini"],
+      });
+    });
+
+    it("asks for the data-use acknowledgement before turning Muse Code on", async () => {
+      const { update, user } = setup();
+      await user.click(toggle("Muse Code"));
+      expect(update).not.toHaveBeenCalled();
+      const dialog = await screen.findByRole("alertdialog");
+      expect(
+        within(dialog).getByText(/Meta may use the prompts, code, files/),
+      ).toBeInTheDocument();
+      await user.click(
+        within(dialog).getByRole("button", { name: "Acknowledge and turn on" }),
+      );
+      expect(update).toHaveBeenCalledWith({
+        enabledAgents: ["claude", "codex", "gemini", "muse"],
+        acknowledgeAgentDataUse: ["muse"],
+      });
+    });
+
+    it("turns an acknowledged agent back on without asking again", async () => {
+      const { update, user } = setup(
+        agentEnvironment({
+          enabledAgents: ["claude"],
+          agentDataUse: [
+            {
+              __typename: "AgentDataUse",
+              agent: "muse",
+              acknowledgedAt: "2026-11-14T09:00:00Z",
+              acknowledgedBy: "usr-admin",
+            },
+          ],
+        }),
+      );
+      await user.click(toggle("Muse Code"));
+      expect(screen.queryByRole("alertdialog")).toBeNull();
+      expect(update).toHaveBeenCalledWith({
+        enabledAgents: ["claude", "muse"],
+      });
+    });
+
+    it("shows non-admins the agents with every switch disabled", () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      setup();
+      for (const name of ["Claude", "Codex", "Gemini", "Muse Code"]) {
+        expect(toggle(name)).toBeDisabled();
+      }
+    });
+  });
 });

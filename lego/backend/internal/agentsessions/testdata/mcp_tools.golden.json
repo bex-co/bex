@@ -2761,7 +2761,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold, whether a failed or disputed payment holds the tier (trustTierLocked), whether the tier's ceiling sets the cap (agentModelSpendCapTierLimited), whether new platform-model requests are refused at the cap now (agentModelSpendCapReached: false while the next request would charge the card at the tier's threshold instead), whether reaching the next charge threshold charges the card and the workspace keeps working (agentModelChargesAtThreshold), and whether an unpaid failed invoice refuses platform-model requests (billingBalanceDue).",
+    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold, whether a failed or disputed payment holds the tier (trustTierLocked), whether the tier's ceiling sets the cap (agentModelSpendCapTierLimited), whether new platform-model requests are refused at the cap now (agentModelSpendCapReached: false while the next request would charge the card at the tier's threshold instead), whether reaching the next charge threshold charges the card and the workspace keeps working (agentModelChargesAtThreshold), whether an unpaid failed invoice refuses platform-model requests (billingBalanceDue), the agent profiles members can start sessions with (enabledAgents), and each profile whose model provider may train on what its sessions send with the admin acknowledgement turning it on requires (agentDataUse).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -2775,6 +2775,38 @@
     "outputSchema": {
       "additionalProperties": false,
       "properties": {
+        "agentDataUse": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "acknowledgedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "acknowledgedBy": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "agent": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent",
+              "acknowledgedAt",
+              "acknowledgedBy"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "agentModelChargesAtThreshold": {
           "type": [
             "null",
@@ -2844,6 +2876,15 @@
             "string"
           ]
         },
+        "enabledAgents": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "modelKeySet": {
           "type": "boolean"
         },
@@ -2909,6 +2950,8 @@
         "modelKeySet",
         "modelSource",
         "registryHosts",
+        "enabledAgents",
+        "agentDataUse",
         "updatedAt",
         "agentModelMonthlySpendCapUsd",
         "agentModelPlanSpendCapUsd",
@@ -9506,10 +9549,20 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. agentModelMonthlySpendCapUsd sets the monthly agent-model spend cap in USD (more than 0, at most 10x the plan default; null or resetAgentModelMonthlySpendCap: true returns to the plan default). modelApiKey (write-only) sets or rotates the workspace's own model provider key, which then wins over the bex-provided model (no token billing, no spend cap); clearModelApiKey: true removes it. The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards; the spend cap applies within 20 seconds.",
+    "description": "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. agentModelMonthlySpendCapUsd sets the monthly agent-model spend cap in USD (more than 0, at most 10x the plan default; null or resetAgentModelMonthlySpendCap: true returns to the plan default). modelApiKey (write-only) sets or rotates the workspace's own model provider key, which then wins over the bex-provided model (no token billing, no spend cap); clearModelApiKey: true removes it. enabledAgents replaces the agent profiles members can start sessions with (the others are turned off; running sessions keep running); a profile listed in agentDataUse can be enabled only with acknowledgeAgentDataUse naming it, now or earlier. The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards; the spend cap applies within 20 seconds.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "acknowledgeAgentDataUse": {
+          "description": "agent profiles from agentDataUse whose data use this admin acknowledges: their model provider may train on the prompts, code, files, context and responses their sessions send",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "agentModelMonthlySpendCapUsd": {
           "description": "monthly agent-model spend cap in USD (admins only), up to 10x the plan default; null returns to the plan default",
           "type": [
@@ -9534,6 +9587,16 @@
           "type": [
             "null",
             "string"
+          ]
+        },
+        "enabledAgents": {
+          "description": "replaces the agent profiles members can start sessions with (admins only); the others are turned off, and running sessions keep running. A profile listed in agentDataUse can be enabled only once acknowledged",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
           ]
         },
         "modelApiKey": {
@@ -9563,6 +9626,38 @@
     "outputSchema": {
       "additionalProperties": false,
       "properties": {
+        "agentDataUse": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "acknowledgedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "acknowledgedBy": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "agent": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "agent",
+              "acknowledgedAt",
+              "acknowledgedBy"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "agentModelChargesAtThreshold": {
           "type": [
             "null",
@@ -9632,6 +9727,15 @@
             "string"
           ]
         },
+        "enabledAgents": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "modelKeySet": {
           "type": "boolean"
         },
@@ -9697,6 +9801,8 @@
         "modelKeySet",
         "modelSource",
         "registryHosts",
+        "enabledAgents",
+        "agentDataUse",
         "updatedAt",
         "agentModelMonthlySpendCapUsd",
         "agentModelPlanSpendCapUsd",

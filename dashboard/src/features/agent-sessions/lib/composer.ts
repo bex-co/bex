@@ -13,6 +13,13 @@ export const AGENT_OPTIONS = ["claude", "gemini", "codex", "muse"] as const;
 export type AgentOption = (typeof AGENT_OPTIONS)[number];
 
 /**
+ * The agents whose model provider may train on what their sessions send
+ * (agent-profiles.json requiresDataUseAcknowledgement; ADR108), for views
+ * drawn before the environment loads. A test holds it to the manifest.
+ */
+export const DATA_USE_AGENTS: ReadonlySet<AgentOption> = new Set(["muse"]);
+
+/**
  * The agents to offer: exactly the ones the workspace's capabilities list (the
  * server decides, e.g. a platform-only agent only where its route serves it).
  * `keep` stays listed so a current value (an automation saved with it) still

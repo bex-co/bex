@@ -14,6 +14,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
 import { TIERS } from "@/features/agent-environment/lib/environment";
 import { PricingWithTerms } from "@/features/legal/components/agent-model-terms-link";
+import {
+  AGENT_OPTIONS,
+  DATA_USE_AGENTS,
+} from "@/features/agent-sessions/lib/composer";
 
 /** One network-tier option's frame, shared by the ready card and this skeleton. */
 export const TIER_OPTION_CLASS =
@@ -271,6 +275,35 @@ export function AgentEnvironmentCardSkeleton() {
               </SkeletonText>
             </p>
           </div>
+        </div>
+        <div
+          className="space-y-3 border-t pt-6"
+          data-testid="available-agents-section-skeleton"
+        >
+          <AgentSectionHeading
+            title={t("agentEnvironment.agentsTitle")}
+            description={t("agentEnvironment.agentsDescription")}
+          />
+          <ul className="max-w-xl space-y-3">
+            {AGENT_OPTIONS.map((agent) => (
+              <li
+                key={agent}
+                className="flex items-start justify-between gap-4"
+              >
+                <div className="min-w-0 space-y-0.5">
+                  <StaticLabel>{t(`agentSessions.agent.${agent}`)}</StaticLabel>
+                  {DATA_USE_AGENTS.has(agent) ? (
+                    <p className="text-muted-foreground text-xs">
+                      <SkeletonText>
+                        {t("agentEnvironment.agentsDataUseNote")}
+                      </SkeletonText>
+                    </p>
+                  ) : null}
+                </div>
+                <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+              </li>
+            ))}
+          </ul>
         </div>
       </CardContent>
       <CardFooter className="justify-end border-t">

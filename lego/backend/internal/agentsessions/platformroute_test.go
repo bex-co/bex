@@ -25,6 +25,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 const platformKey = "sk-or-v1-PLATFORM-SECRET"
@@ -199,6 +200,7 @@ func TestCapabilitiesReportModelReadinessPerAgent(t *testing.T) {
 func TestPlatformOnlyAgentIsHiddenAndRefusedUntilARouteServesIt(t *testing.T) {
 	svc, st, _, lifecycle := fixture()
 	svc.ModelKeys = fixtureModelKeys("tea-a")
+	enableMuse(svc, "tea-a")
 	caps, err := svc.Capabilities(caller("alice"), "")
 	if err != nil {
 		t.Fatal(err)
@@ -222,6 +224,17 @@ func TestPlatformOnlyAgentIsHiddenAndRefusedUntilARouteServesIt(t *testing.T) {
 	}
 }
 
+// enableMuse records the admin acknowledgement muse needs (w7/m392), so the
+// tests below exercise the route rather than the workspace's choice.
+func enableMuse(svc *Service, workspaces ...string) {
+	envs := newFakeEnvironments()
+	for _, ws := range workspaces {
+		envs.rows[ws] = store.AgentEnvironment{WorkspaceID: ws, NetworkTier: NetworkTierRegistries,
+			DataUseAcks: map[string]store.AgentDataUseAck{"muse": {By: "admin"}}}
+	}
+	svc.Environments = envs
+}
+
 func enableMetaRoute(t *testing.T, workspaces ...string) {
 	t.Helper()
 	agentsession.EnablePlatformMetaRoute("meta-PLATFORM-SECRET", workspaces)
@@ -241,6 +254,7 @@ func TestMuseRunsOnTheMetaRouteWithItsPinnedModel(t *testing.T) {
 	enableMetaRoute(t, "tea-a")
 	svc, _, _, lifecycle := fixture()
 	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
+	enableMuse(svc, "tea-a")
 	caps, err := svc.Capabilities(caller("alice"), "")
 	if err != nil {
 		t.Fatal(err)
@@ -285,6 +299,7 @@ func TestMuseRunsOnTheMetaRouteWithItsPinnedModel(t *testing.T) {
 func TestMuseSessionsAreCappedAcrossWorkspaces(t *testing.T) {
 	enableMetaRoute(t, "tea-a", "tea-b")
 	svc, _, _, _ := fixture()
+	enableMuse(svc, "tea-a", "tea-b")
 	svc.MetaRouteMaxSessions = 2
 	first, err := svc.Create(caller("alice"), museInput())
 	if err != nil {

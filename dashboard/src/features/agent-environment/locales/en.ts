@@ -745,6 +745,42 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Couldn't save the change. Try again.",
     description: "Generic skill write failure",
   },
+  "agentEnvironment.agentsTitle": {
+    message: "Available agents",
+    description: "Settings \u2192 Agents: availability section heading",
+  },
+  "agentEnvironment.agentsDescription": {
+    message:
+      "Choose which agents members can start sessions with. Running sessions keep running when you turn an agent off.",
+    description: "Settings \u2192 Agents: availability section description",
+  },
+  "agentEnvironment.agentsDataUseNote": {
+    message: "Its model provider may train on what its sessions send.",
+    description:
+      "Settings \u2192 Agents: note under an agent whose provider trains on session data (Muse Code)",
+  },
+  "agentEnvironment.agentsDataUseTitle": {
+    message: "Turn on {agent}?",
+    description:
+      "Confirm title before turning on an agent whose provider trains on session data",
+  },
+  "agentEnvironment.agentsDataUseBody.muse": {
+    message:
+      "This agent runs on Meta's contributor tier. Meta may use the prompts, code, files and context its sessions send, and the responses they get back, to train its models. Turning it on records that you, as an admin, acknowledge this for the workspace.",
+    description: "Confirm body: Muse Code's data-use acknowledgement (ADR108)",
+  },
+  "agentEnvironment.agentsDataUseConfirm": {
+    message: "Acknowledge and turn on",
+    description: "Confirm button: acknowledge data use and enable the agent",
+  },
+  "agentEnvironment.agentsSaved": {
+    message: "Available agents updated",
+    description: "Toast after an availability change",
+  },
+  "agentEnvironment.agentsSaveFailed": {
+    message: "Couldn't update the available agents. Try again.",
+    description: "Error after a failed availability change",
+  },
 };
 
 export default enAgentEnvironment;

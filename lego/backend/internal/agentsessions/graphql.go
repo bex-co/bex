@@ -137,6 +137,20 @@ var agentModelSourceGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 	},
 })
 
+var agentDataUseGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentDataUse",
+	Fields: graphql.Fields{
+		"agent": gqlutil.ReqStrField(func(v AgentDataUse) any { return v.Agent }),
+		"acknowledgedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentDataUse) any {
+			if v.AcknowledgedAt == nil {
+				return nil
+			}
+			return gqlTime(*v.AcknowledgedAt)
+		})},
+		"acknowledgedBy": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v AgentDataUse) any { return optionalString(v.AcknowledgedBy) })},
+	},
+})
+
 var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentEnvironment",
 	Fields: graphql.Fields{
@@ -149,6 +163,8 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"modelKeySet":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelKeySet }),
 		"modelSource":   gqlutil.Typed(graphql.NewNonNull(agentModelSourceGQLEnum), func(v Environment) any { return v.ModelSource }),
 		"registryHosts": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.RegistryHosts }),
+		"enabledAgents": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Description: "The agent profiles members can start sessions with, as the workspace's admins chose.", Resolve: gqlutil.Field(func(v Environment) any { return v.EnabledAgents })},
+		"agentDataUse":  &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentDataUseGQLType))), Description: "Each agent profile whose model provider may train on what its sessions send, and the admin acknowledgement turning it on requires.", Resolve: gqlutil.Field(func(v Environment) any { return v.AgentDataUse })},
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any {
 			if v.UpdatedAt == nil {
 				return nil
@@ -198,6 +214,8 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"resetAgentModelMonthlySpendCap": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the spend cap to the plan default."},
 		"modelApiKey":                    &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet."},
 		"clearModelApiKey":               &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true removes the workspace's own model provider key."},
+		"enabledAgents":                  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first."},
+		"acknowledgeAgentDataUse":        &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Agent profiles from agentDataUse whose data use this admin acknowledges."},
 	},
 })
 
@@ -226,6 +244,13 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 	input.ModelAPIKey = gqlutil.StrPtr(raw, "modelApiKey")
 	if clear := gqlutil.BoolPtr(raw, "clearModelApiKey"); clear != nil {
 		input.ClearModelAPIKey = *clear
+	}
+	if agents, ok := raw["enabledAgents"].([]any); ok {
+		list := gqlutil.StringList(agents)
+		input.EnabledAgents = &list
+	}
+	if acks, ok := raw["acknowledgeAgentDataUse"].([]any); ok {
+		input.AcknowledgeAgentDataUse = gqlutil.StringList(acks)
 	}
 	if reset, ok := raw["resetAgentModelMonthlySpendCap"].(bool); ok {
 		input.ResetAgentModelMonthlySpendCap = reset

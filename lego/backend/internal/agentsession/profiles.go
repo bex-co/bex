@@ -62,6 +62,10 @@ type AgentProfile struct {
 	// PlatformOnly profiles run only on a bex-owned model route, never on a
 	// workspace's own key (ADR108 D5).
 	PlatformOnly bool `json:"platformOnly,omitempty"`
+	// RequiresDataUseAcknowledgement marks a profile whose model provider may
+	// train on what its sessions send: it stays off in a workspace until an
+	// admin acknowledges that (w7/m392; ADR108, Meta's contributor tier).
+	RequiresDataUseAcknowledgement bool `json:"requiresDataUseAcknowledgement,omitempty"`
 	// SessionConfig is the ACP session config the driver sets after
 	// session/new and session/load (ADR108 D3).
 	SessionConfig map[string]string `json:"sessionConfig,omitempty"`

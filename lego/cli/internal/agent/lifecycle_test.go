@@ -366,14 +366,16 @@ func TestSkillsCommands(t *testing.T) {
 }
 
 func TestEnvSet(t *testing.T) {
-	env := map[string]any{"networkTier": "standard", "modelSource": "platform", "agentModelMonthlySpendCapUsd": 50.0, "agentModelSpendMonthToDateUsd": 3.25}
+	env := map[string]any{"networkTier": "standard", "modelSource": "platform", "agentModelMonthlySpendCapUsd": 50.0, "agentModelSpendMonthToDateUsd": 3.25,
+		"enabledAgents": []any{"claude", "codex"}, "agentDataUse": []any{map[string]any{"agent": "muse", "acknowledgedAt": nil, "acknowledgedBy": nil}}}
 	f := newRouteFake(t, map[string]http.HandlerFunc{
 		"GET /v1/agent-environment":   answer(http.StatusOK, env),
 		"PATCH /v1/agent-environment": answer(http.StatusOK, env),
 	})
 	d := f.deps()
 	stdout, _, code := run(t, d, "-o", "text", "env")
-	if code != 0 || !strings.Contains(stdout, "$50.00 a month, $3.25 used this month") {
+	if code != 0 || !strings.Contains(stdout, "$50.00 a month, $3.25 used this month") || !strings.Contains(stdout, "claude, codex") ||
+		!strings.Contains(stdout, "needs an admin's --acknowledge-data-use to turn on") {
 		t.Fatalf("env:\n%s", stdout)
 	}
 	cases := []struct {
@@ -384,6 +386,8 @@ func TestEnvSet(t *testing.T) {
 		{[]string{"--spend-cap", "120"}, `{"agentModelMonthlySpendCapUsd":120}`},
 		{[]string{"--no-custom-hosts", "--default-model", ""}, `{"customHosts":[],"defaultModel":""}`},
 		{[]string{"--clear-model-key"}, `{"clearModelApiKey":true}`},
+		{[]string{"--agents", "claude,muse", "--acknowledge-data-use", "muse"}, `{"acknowledgeAgentDataUse":["muse"],"enabledAgents":["claude","muse"]}`},
+		{[]string{"--agents", ""}, `{"enabledAgents":[]}`},
 	}
 	for _, tc := range cases {
 		f.calls = nil

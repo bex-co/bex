@@ -120,3 +120,40 @@ func TestAgentEnvironmentUpsertIsPartialAndBounded(t *testing.T) {
 		t.Fatalf("environment survived its workspace: %v", err)
 	}
 }
+
+// w7/m392: the turned-off agents round-trip and a later partial update keeps
+// them; an acknowledgement is recorded once and the first one is kept.
+func TestAgentEnvironmentAgentAvailabilityRoundTrip(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "agent-availability")
+	ctx := context.Background()
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM agent_environments WHERE workspace_id = $1`, tenant.ID) })
+
+	disabled := []string{"codex", "muse"}
+	got, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledAgents: &disabled})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(got.DisabledAgents, disabled) || len(got.DataUseAcks) != 0 {
+		t.Fatalf("first write = %v / %v", got.DisabledAgents, got.DataUseAcks)
+	}
+	first, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{AcknowledgeDataUse: []string{"muse"}, AcknowledgedBy: "usr-first"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ack, ok := first.DataUseAcks["muse"]
+	if !ok || ack.By != "usr-first" || ack.At.IsZero() || !slices.Equal(first.DisabledAgents, disabled) {
+		t.Fatalf("after acknowledgement = %+v, disabled %v", first.DataUseAcks, first.DisabledAgents)
+	}
+	none := []string{}
+	again, err := s.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DisabledAgents: &none, AcknowledgeDataUse: []string{"muse"}, AcknowledgedBy: "usr-second"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(again.DisabledAgents) != 0 || again.DataUseAcks["muse"].By != "usr-first" || !again.DataUseAcks["muse"].At.Equal(ack.At) {
+		t.Fatalf("second write = %v / %+v, want the first acknowledgement kept", again.DisabledAgents, again.DataUseAcks)
+	}
+	read, err := s.GetAgentEnvironment(ctx, tenant.ID)
+	if err != nil || read.DataUseAcks["muse"].By != "usr-first" {
+		t.Fatalf("read = %+v, %v", read.DataUseAcks, err)
+	}
+}

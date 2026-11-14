@@ -1,18 +1,18 @@
 # w7 · m392 — Admins choose which Cloud Agents are available; Muse needs admin opt-in
 
-**Worker:** worker7 **Goal:** workspace admins decide which agent profiles members can use, as Devin admins do. Muse Code starts off in every workspace and an admin can turn it on only after acknowledging that Meta may train on what Muse sessions send. **Status:** todo
+**Worker:** worker7 **Goal:** workspace admins decide which agent profiles members can use, as Devin admins do. Muse Code starts off in every workspace and an admin can turn it on only after acknowledging that Meta may train on what Muse sessions send. **Status:** in progress (t001–t003 and t005–t007 done; t004 runs on production after the next deploy, then t008)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | `enabledAgents` and the Muse data-use acknowledgement on the agent environment (REST, GraphQL, MCP; admin-only) | 75m | w7/m390/t003 |
-| t002 | Enforcement: create, automation runs and child spawns refuse a disabled agent; capabilities filter it | 60m | t001 |
-| t003 | Settings → Agents toggles with the Muse notice; composer hides disabled agents; `bex agent env` | 60m | t001 |
+| t001 | `enabledAgents` and the Muse data-use acknowledgement on the agent environment (REST, GraphQL, MCP; admin-only) — **DONE** | 75m | w7/m390/t003 |
+| t002 | Enforcement: create, automation runs and child spawns refuse a disabled agent; capabilities filter it — **DONE** | 60m | t001 |
+| t003 | Settings → Agents toggles with the Muse notice; composer hides disabled agents; `bex agent env` — **DONE** | 60m | t001 |
 | t004 | Production check | 30m | t002, t003 |
-| t005 | Render parity (Devin reference) | 30m | t004 |
-| t006 | Simplify | 30m | t005 |
-| t007 | Test coverage | 45m | t005 |
+| t005 | Render parity (Devin reference) — **DONE** | 30m | t004 |
+| t006 | Simplify — **DONE** | 30m | t005 |
+| t007 | Test coverage — **DONE** | 45m | t005 |
 | t008 | Closeout | 10m | t006, t007 |
 
 ## Definition of done
@@ -32,3 +32,12 @@
 - **Render parity included** (Devin reference): new fields and refusals on REST, GraphQL, MCP, the dashboard and the CLI.
 - **Recommendation recorded, not a user sign-off:** Muse off by default with an admin acknowledgement. It rests on the tenant-consent point above and on Devin's admin-enabled preview agents; the alternative (on everywhere with only a terms disclosure) stays open for the user to choose instead. Other agents stay on by default.
 - **Anti-goal check:** this is an admin setting, not an approval flow or a per-turn prompt (DO_NOT_DO `#APPROVAL-MODE`), and not an internal allowlist.
+
+## Progress (2026-11-14)
+
+- **t001:** migration 0252 adds `agent_environments.disabled_agents` and `agent_data_use_acks` (`{agent: {at, by}}`); the manifest marks `muse` `requiresDataUseAcknowledgement`. The agent environment returns `enabledAgents` and `agentDataUse` and takes `enabledAgents` (replace) and `acknowledgeAgentDataUse` on REST, GraphQL and MCP, admin-only. Unknown ids or a stray acknowledgement: 400 `AGENT_ENVIRONMENT_AGENT_INVALID`; enabling Muse without its acknowledgement: 400 `AGENT_ENVIRONMENT_DATA_USE_UNACKNOWLEDGED`. The first admin's acknowledgement is kept, and an acknowledgement alone turns nothing on. Stored as the turned-off list, so a profile added later starts on unless it needs an acknowledgement.
+- **t002:** `resolveCreateModel` refuses a turned-off agent with 400 `AGENT_SESSION_AGENT_DISABLED`; every start path runs it (REST/GraphQL/MCP create, automation save and fire, child spawn, PR takeover), and steering a running session is unaffected. Capabilities list only enabled agents (one environment read, in parallel with GitHub).
+- **t003:** Settings → Agents gains "Available agents": a switch per agent (disabled for members), a confirm with the Muse data-use notice and the terms link before Muse turns on, a matching skeleton block, en/zh. Saving refreshes the composer's agent list. `bex agent env` shows the agents and data-use state; `bex agent env set --agents a,b --acknowledge-data-use muse`.
+- **t005 (Render parity, Devin reference):** REST, GraphQL and MCP share `Environment`/`EnvironmentInput` (the shape test and the MCP golden cover the new fields) and one create path; the CLI contract fixture carries them. Devin: "Admins control which agents are available" (https://docs.devin.ai/get-started/first-run.md); bex matches, with Muse off until acknowledged like Devin's admin-enabled previews. No ADR018 row changes.
+- **t006:** `/simplify` applied: capabilities read the environment once inside the errgroup; the acknowledgement-alone bug fixed; the patch is filled in place; the terms link and CLI helpers reused; per-agent confirm copy; the dashboard's data-use list is held to the manifest by a test (and the dashboard CI paths include the manifest).
+- **t007:** service (rules, admin-only, refusals, steer allowed, capabilities), real-DB store (round trip, first acknowledgement kept), dashboard (toggle off, confirm before Muse, no re-ask once acknowledged, members disabled, manifest parity) and CLI (flags, output, contract twin) tests.

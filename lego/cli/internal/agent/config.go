@@ -354,12 +354,18 @@ type agentEnvironment struct {
 	AgentModelMonthlySpendCapUSD  *float64 `json:"agentModelMonthlySpendCapUsd"`
 	AgentModelSpendMonthToDateUSD *float64 `json:"agentModelSpendMonthToDateUsd"`
 	TrustTier                     *string  `json:"trustTier"`
+	EnabledAgents                 []string `json:"enabledAgents"`
+	AgentDataUse                  []struct {
+		Agent          string     `json:"agent"`
+		AcknowledgedAt *time.Time `json:"acknowledgedAt"`
+		AcknowledgedBy *string    `json:"acknowledgedBy"`
+	} `json:"agentDataUse"`
 }
 
 func envCommand(d deps) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "env",
-		Short: "Show the workspace's agent environment: network, default model, spend cap",
+		Short: "Show the workspace's agent environment: network, default model, spend cap, agents",
 		Args:  cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			return workspaceShow(d, c, http.MethodGet, nil, nil, "read the agent environment", writeEnvironment, "agent-environment")
@@ -367,7 +373,7 @@ func envCommand(d deps) *cobra.Command {
 	}
 	var (
 		tier, model, spendCap string
-		hosts                 []string
+		hosts, agents, acks   []string
 		noHosts, keyStdin     bool
 		clearKey              bool
 	)
@@ -376,7 +382,9 @@ func envCommand(d deps) *cobra.Command {
 		Short: "Change the workspace's agent environment (admins)",
 		Long: "Changes only what the flags name. --spend-cap takes USD or `" + spendCapPlanDefault + "` (the\n" +
 			"plan's cap). The workspace's own model key is read from stdin or a hidden\n" +
-			"prompt with --model-key-stdin, never from an argument.",
+			"prompt with --model-key-stdin, never from an argument. --agents replaces the\n" +
+			"agents members can start sessions with; an agent whose model provider may\n" +
+			"train on session data also needs --acknowledge-data-use naming it.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
 			f := c.Flags()
@@ -416,6 +424,12 @@ func envCommand(d deps) *cobra.Command {
 				}
 				patch["modelApiKey"] = key
 			}
+			if f.Changed("agents") {
+				patch["enabledAgents"] = agents
+			}
+			if len(acks) > 0 {
+				patch["acknowledgeAgentDataUse"] = acks
+			}
 			if len(patch) == 0 {
 				return usageError("nothing to change: give a flag")
 			}
@@ -430,6 +444,8 @@ func envCommand(d deps) *cobra.Command {
 	f.StringVar(&spendCap, "spend-cap", "", "monthly agent-model spend cap in USD, or "+spendCapPlanDefault)
 	f.BoolVar(&keyStdin, "model-key-stdin", false, "set the workspace's own model API key, read from stdin")
 	f.BoolVar(&clearKey, "clear-model-key", false, "remove the workspace's own model API key")
+	f.StringSliceVar(&agents, "agents", nil, "the agents members can start sessions with, comma-separated; replaces the list (\"\" turns every agent off)")
+	f.StringArrayVar(&acks, "acknowledge-data-use", nil, "acknowledge, as an admin, that this agent's model provider may train on what its sessions send; repeatable")
 	root.AddCommand(set)
 	return root
 }
@@ -455,6 +471,20 @@ func writeEnvironment(w io.Writer, e agentEnvironment) error {
 	}
 	if e.TrustTier != nil {
 		tw.row("Trust tier", *e.TrustTier)
+	}
+	if e.EnabledAgents != nil {
+		tw.row("Agents", firstNonEmpty(strings.Join(e.EnabledAgents, ", "), "none"))
+	}
+	for _, use := range e.AgentDataUse {
+		state := "its provider may train on session data; needs an admin's --acknowledge-data-use to turn on"
+		if use.AcknowledgedAt != nil {
+			by := ""
+			if use.AcknowledgedBy != nil {
+				by = " by " + *use.AcknowledgedBy
+			}
+			state = fmt.Sprintf("data use acknowledged%s on %s", by, use.AcknowledgedAt.Local().Format(minuteLayout))
+		}
+		tw.row("Data use: "+use.Agent, state)
 	}
 	return tw.Flush()
 }

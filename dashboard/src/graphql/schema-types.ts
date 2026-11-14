@@ -242,8 +242,19 @@ export type AgentAutomationTriggerInput = {
   type: Scalars['String']['input'];
 };
 
+export type AgentDataUse = {
+  __typename: 'AgentDataUse';
+  acknowledgedAt: Maybe<Scalars['String']['output']>;
+  acknowledgedBy: Maybe<Scalars['String']['output']>;
+  agent: Scalars['String']['output'];
+};
+
 export type AgentEnvironment = {
   __typename: 'AgentEnvironment';
+  /** Each agent profile whose model provider may train on what its sessions send, and the admin acknowledgement turning it on requires. */
+  agentDataUse: Array<AgentDataUse>;
+  /** Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold. */
+  agentModelChargesAtThreshold: Maybe<Scalars['Boolean']['output']>;
   /** The highest override an admin may set (10x the plan default). */
   agentModelMaxSpendCapUsd: Maybe<Scalars['Float']['output']>;
   /** Effective monthly agent-model spend cap in USD: min(the admin override or the plan default, the trust tier's ceiling). */
@@ -252,8 +263,6 @@ export type AgentEnvironment = {
   agentModelPlanSpendCapUsd: Maybe<Scalars['Float']['output']>;
   /** The admin's spend cap override in USD; null means the plan default. */
   agentModelSpendCapOverrideUsd: Maybe<Scalars['Float']['output']>;
-  /** Reaching nextChargeThresholdUsd charges the workspace's card and it keeps working. False where bex cannot charge it (no subscription, excluded or comped), on its own model key, or under a payment hold. */
-  agentModelChargesAtThreshold: Maybe<Scalars['Boolean']['output']>;
   /** Platform-model requests are refused at the spend cap now. False while the next request would charge the card at the trust tier's threshold instead. */
   agentModelSpendCapReached: Maybe<Scalars['Boolean']['output']>;
   /** The trust tier's ceiling, not the plan default or override, sets the effective spend cap. */
@@ -264,6 +273,8 @@ export type AgentEnvironment = {
   billingBalanceDue: Maybe<Scalars['Boolean']['output']>;
   customHosts: Array<Scalars['String']['output']>;
   defaultModel: Maybe<Scalars['String']['output']>;
+  /** The agent profiles members can start sessions with, as the workspace's admins chose. */
+  enabledAgents: Array<Scalars['String']['output']>;
   modelKeySet: Scalars['Boolean']['output'];
   modelPinned: Scalars['Boolean']['output'];
   modelSource: AgentModelSource;
@@ -281,6 +292,8 @@ export type AgentEnvironment = {
 };
 
 export type AgentEnvironmentInput = {
+  /** Agent profiles from agentDataUse whose data use this admin acknowledges. */
+  acknowledgeAgentDataUse?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Monthly agent-model spend cap in USD (more than 0, at most 10x the plan default). */
   agentModelMonthlySpendCapUsd?: InputMaybe<Scalars['Float']['input']>;
   /** true removes the workspace's own model provider key. */
@@ -289,6 +302,8 @@ export type AgentEnvironmentInput = {
   customHosts?: InputMaybe<Array<Scalars['String']['input']>>;
   /** "" returns to the provider default. */
   defaultModel?: InputMaybe<Scalars['String']['input']>;
+  /** Replaces the agent profiles members can start sessions with; the others are turned off. A profile in agentDataUse needs its acknowledgement first. */
+  enabledAgents?: InputMaybe<Array<Scalars['String']['input']>>;
   /** Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet. */
   modelApiKey?: InputMaybe<Scalars['String']['input']>;
   networkTier?: InputMaybe<AgentNetworkTier>;
@@ -1932,6 +1947,7 @@ export type Mutation = {
   deleteRouterKey: Maybe<Scalars['Boolean']['output']>;
   deleteSSHKey: Scalars['Boolean']['output'];
   deleteSandboxGroup: Scalars['Boolean']['output'];
+  deleteSandboxImage: Scalars['Boolean']['output'];
   deleteSecretFile: Maybe<Scalars['Boolean']['output']>;
   deleteService: Maybe<Scalars['Boolean']['output']>;
   deleteWebhookEndpoint: Maybe<Scalars['Boolean']['output']>;
@@ -2600,6 +2616,13 @@ export type MutationDeleteSshKeyArgs = {
 export type MutationDeleteSandboxGroupArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationDeleteSandboxImageArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  sandboxGroupId: Scalars['String']['input'];
 };
 
 
@@ -3383,6 +3406,7 @@ export type MutationTerminateSandboxArgs = {
 
 export type MutationTriggerBuildArgs = {
   buildSourceId: Scalars['String']['input'];
+  clearCache?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -5017,6 +5041,7 @@ export type SandboxGroup = {
 export type SandboxImage = {
   __typename: 'SandboxImage';
   createdAt: Maybe<Scalars['String']['output']>;
+  failureCode: Maybe<Scalars['String']['output']>;
   failureReason: Maybe<Scalars['String']['output']>;
   finishedAt: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];

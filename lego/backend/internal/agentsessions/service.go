@@ -424,18 +424,6 @@ func (s *Service) modelAPIKey(ctx context.Context, workspaceID string) (string, 
 	return data[sandbox.ModelAPIKeyEnvVar], nil
 }
 
-// workspaceHasModelKey reports whether the workspace set its own model key:
-// its recorded flag, else (a key stored before the flag existed) the key in
-// OpenBao.
-func (s *Service) workspaceHasModelKey(ctx context.Context, workspaceID string) (bool, error) {
-	env, err := s.workspaceEnvironment(ctx, workspaceID)
-	if err != nil || env.ModelKeySet() {
-		return err == nil, err
-	}
-	key, err := s.modelAPIKey(ctx, workspaceID)
-	return key != "", err
-}
-
 // requireModelCredential refuses a turn whose agent has no model credential:
 // the platform route serves only the claude profile, so any other profile on a
 // workspace without its own key would start, sit in a sandbox and fail minutes
@@ -568,6 +556,11 @@ func (s *Service) resolveCreateModel(ctx context.Context, workspaceID string, re
 	env, err := s.workspaceEnvironment(ctx, workspaceID)
 	if err != nil {
 		return env, nil, err
+	}
+	if !agentEnabled(env, req.AgentConfig.Agent) {
+		return env, nil, core.NewBadRequestError(AgentDisabledCode,
+			fmt.Sprintf("the %s agent is turned off in this workspace; a workspace admin can turn it on in Settings → Agents", req.AgentConfig.Agent),
+			map[string]any{"field": "agentConfig.agent", "agent": req.AgentConfig.Agent})
 	}
 	if err := s.requireModelCredential(ctx, workspaceID, req.AgentConfig.Agent, env); err != nil {
 		return env, nil, err
@@ -929,10 +922,6 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if !ok {
 		return Capabilities{}, core.ErrForbidden
 	}
-	caps.Agents = slices.DeleteFunc(agentProfiles(), func(profile AgentProfile) bool {
-		return !agentsession.ProfileServed(workspaceID, profile.ID)
-	})
-
 	// A workspace on the platform model route (ADR090) is ready through the
 	// platform key or, once it set its own, through that. Any other workspace
 	// is ready through its recorded key flag, else its key in OpenBao, read
@@ -940,12 +929,21 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	// profile, so each profile reports its own readiness: the others need the
 	// workspace's key even on a routed workspace.
 	var ownKey bool
+	var env store.AgentEnvironment
 	var connection github.Connection
 	var group errgroup.Group
 	routed := agentsession.PlatformModelKeyReady(workspaceID, false)
 	group.Go(func() error {
+		// The environment decides which agents are offered (w7/m392), so its
+		// read fails the call. The workspace has its own key per the recorded
+		// flag, else (a key stored before the flag existed) the key in OpenBao.
 		var err error
-		ownKey, err = s.workspaceHasModelKey(ctx, workspaceID)
+		if env, err = s.workspaceEnvironment(ctx, workspaceID); err != nil || env.ModelKeySet() {
+			ownKey = err == nil
+			return err
+		}
+		key, err := s.modelAPIKey(ctx, workspaceID)
+		ownKey = key != ""
 		if err != nil && routed {
 			// The routed profile is ready without the key store; only the
 			// others' readiness is unknown, and reported as not ready.
@@ -967,6 +965,10 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if err := group.Wait(); err != nil {
 		return Capabilities{}, err
 	}
+	// Only the agents the workspace's admins left on that it can also run.
+	caps.Agents = slices.DeleteFunc(agentProfiles(), func(profile AgentProfile) bool {
+		return !agentEnabled(env, profile.ID) || !agentsession.ProfileServed(workspaceID, profile.ID)
+	})
 	caps.ModelKeyReady = ownKey || routed
 	for i := range caps.Agents {
 		// A platform-only agent is listed only where its route serves it, so the
