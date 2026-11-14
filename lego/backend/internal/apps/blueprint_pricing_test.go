@@ -223,6 +223,80 @@ func TestValidateBlueprintEstimatedPricingStaticSitesUnpriced(t *testing.T) {
 	}
 }
 
+// A Key Value line names its plan the way the Key Value plan picker does: a
+// size plan reads "3 GB", an underscore plan "Pro Plus". The compute
+// title-caser would render "3g" and "Pro_plus" beside it.
+func TestValidateBlueprintEstimatedPricingKeyValueTierLabels(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	manifest := `services:
+  - type: keyvalue
+    name: small
+    plan: 3g
+    ipAllowList: []
+  - type: keyvalue
+    name: large
+    plan: 10g
+    ipAllowList: []
+`
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+	if err != nil || !v.Valid || v.EstimatedPricing == nil {
+		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
+	}
+	want := map[string]struct{ tier, label string }{
+		"small": {tier: "3g", label: "3 GB"},
+		"large": {tier: "pro_plus", label: "Pro Plus"},
+	}
+	if len(v.EstimatedPricing.Lines) != len(want) {
+		t.Fatalf("lines = %+v, want %d entries", v.EstimatedPricing.Lines, len(want))
+	}
+	for _, l := range v.EstimatedPricing.Lines {
+		w, ok := want[l.Name]
+		if !ok || l.Tier != w.tier || l.TierLabel != w.label {
+			t.Errorf("line %q = tier %q label %q, want tier %q label %q", l.Name, l.Tier, l.TierLabel, w.tier, w.label)
+		}
+	}
+}
+
+// The estimate prices what the create would provision, so an omitted plan
+// takes the create path's default rather than a free tier: a plan-less web
+// service is starter ($4.90), a plan-less database is basic-256mb ($4.20 plus
+// its 1 GB floor at $0.21), and a plan-less Key Value store stays free.
+func TestValidateBlueprintEstimatedPricingOmittedPlansTakeCreateDefaults(t *testing.T) {
+	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default"}}
+	manifest := `services:
+  - name: web
+    type: web
+    runtime: image
+    image: {url: nginx:1}
+  - type: keyvalue
+    name: cache
+    ipAllowList: []
+databases:
+  - name: db
+`
+	v, err := svc.ValidateBlueprint(context.Background(), "", manifest, "")
+	if err != nil || !v.Valid || v.EstimatedPricing == nil {
+		t.Fatalf("ValidateBlueprint: validation=%+v err=%v", v, err)
+	}
+	want := map[string]struct{ tier, monthly string }{
+		"web":   {tier: "starter", monthly: "4.90"},
+		"db":    {tier: "basic-256mb", monthly: "4.41"},
+		"cache": {tier: "free", monthly: "0.00"},
+	}
+	if len(v.EstimatedPricing.Lines) != 2 {
+		t.Fatalf("lines = %+v, want the paid web and database lines only", v.EstimatedPricing.Lines)
+	}
+	for _, l := range v.EstimatedPricing.Lines {
+		w, ok := want[l.Name]
+		if !ok || l.Tier != w.tier || l.MonthlyUSD != w.monthly {
+			t.Errorf("line %q = tier %q %s/mo, want tier %q %s/mo", l.Name, l.Tier, l.MonthlyUSD, w.tier, w.monthly)
+		}
+	}
+	if v.EstimatedPricing.TotalUSD != "9.31" {
+		t.Errorf("TotalUSD = %s, want 9.31", v.EstimatedPricing.TotalUSD)
+	}
+}
+
 // --- adapters: the same object over GraphQL and REST ---
 
 func TestPreviewBlueprintCarriesEstimatedPricing(t *testing.T) {

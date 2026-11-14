@@ -80,3 +80,50 @@ func TestBlueprintKeyValueLargePlans(t *testing.T) {
 		t.Errorf("re-sync of the store's own paused plan => %v, want nil", err)
 	}
 }
+
+// A paused Key Value tier is refused at validation as the apply refuses it:
+// the create review must not say valid and price a store the sync then
+// rejects. A plan change onto it is refused the same way, while a store
+// already running it may re-declare its own plan.
+func TestValidateBlueprintRefusesPausedKeyValuePlan(t *testing.T) {
+	if !tiers.Valkey.Paused("pro_ultra") {
+		t.Skip("pro_ultra is no longer paused")
+	}
+	svc, cl := newService(nil)
+	ctx := context.Background()
+
+	v, err := svc.ValidateBlueprint(ctx, "", kvPlanManifest("40g"), "")
+	if err != nil {
+		t.Fatalf("ValidateBlueprint: %v", err)
+	}
+	if v.Valid || len(v.Errors) == 0 || v.Errors[0].Code != keyvalue.InstanceTypeUnavailableCode {
+		t.Fatalf("paused create = valid %v errors %+v, want %s", v.Valid, v.Errors, keyvalue.InstanceTypeUnavailableCode)
+	}
+	if v.EstimatedPricing != nil {
+		t.Errorf("an invalid manifest must carry no estimate, got %+v", v.EstimatedPricing)
+	}
+
+	res, err := svc.DeployStack(ctx, DeployRequest{Manifest: kvPlanManifest("standard")})
+	if err != nil {
+		t.Fatalf("deploy standard: %v", err)
+	}
+	v, err = svc.ValidateBlueprint(ctx, "", kvPlanManifest("40g"), "")
+	if err != nil {
+		t.Fatalf("ValidateBlueprint upgrade: %v", err)
+	}
+	if v.Valid || len(v.Errors) == 0 || v.Errors[0].Code != keyvalue.InstanceTypeUnavailableCode {
+		t.Fatalf("paused upgrade = valid %v errors %+v, want %s", v.Valid, v.Errors, keyvalue.InstanceTypeUnavailableCode)
+	}
+
+	var kv appv1alpha1.KeyValue
+	if err := cl.Get(ctx, key(res.KeyValues[0].ID), &kv); err != nil {
+		t.Fatal(err)
+	}
+	kv.Spec.Plan = "pro_ultra"
+	if err := cl.Update(ctx, &kv); err != nil {
+		t.Fatal(err)
+	}
+	if v, err := svc.ValidateBlueprint(ctx, "", kvPlanManifest("pro ultra"), ""); err != nil || !v.Valid {
+		t.Fatalf("re-declaring the store's own paused plan = valid %v errors %+v err %v", v.Valid, v.Errors, err)
+	}
+}
