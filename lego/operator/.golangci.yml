@@ -5,6 +5,7 @@ linters:
   default: none
   enable:
     - copyloopvar
+    - depguard
     - dupl
     - errcheck
     - ginkgolinter
@@ -24,6 +25,19 @@ linters:
     - unused
     - logcheck
   settings:
+    depguard:
+      rules:
+        # The workspace import DAG is operator → types ← backend (lego/AGENTS.md):
+        # this module is mechanism only — it reconciles App CRs into runtime
+        # objects and holds no business logic or DB access. Importing backend/
+        # would erase that split in one direction the compiler accepts. Deny the
+        # prefix so every subpackage is covered without listing them.
+        module-dag:
+          files:
+            - "$all"
+          deny:
+            - pkg: github.com/bex-co/bex/lego/backend
+              desc: "operator must not import backend; cross through lego/types and the App CR instead — see lego/AGENTS.md"
     custom:
       logcheck:
         type: "module"
