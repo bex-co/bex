@@ -380,7 +380,10 @@ type appReleaseDecision struct {
 // settles failed, parks asleep, or whose own deploy is canceled leaves this
 // state; one a newer trigger reaches before it was adopted never entered it.
 // Suspended, direct-static-publish and selected (Rollback, Restart, an image
-// override) releases never pin: a newer trigger replaces them.
+// override) releases never pin: a newer trigger replaces them. bex-api holds a
+// selected deploy at the row level while another is in flight, and its own
+// deploys behind a selected one (w5/m284, w4/652), so here that is a direct CR
+// edit, a git push, a configuration change or a Blueprint sync (w4/654).
 func releaseInFlight(app *appv1alpha1.App) bool {
 	if selected := app.Status.SelectedReleaseGeneration; !pinnableRelease(app) || (selected != 0 && selected == app.Status.ReleaseGeneration) {
 		return false

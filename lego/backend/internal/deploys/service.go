@@ -296,11 +296,11 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 		if err := core.NotFoundIfDeleting(a); err != nil {
 			return err
 		}
-		// A deferred Restart is checked under the lock, before the App
+		// A deferred deploy is checked under the lock, before the App
 		// changes: another replica may have run it already (w5/m284).
-		if id := store.DeferredRestartID(ctx); id != "" {
-			if checker, ok := s.Store.(deferredRestartChecker); ok {
-				if err := checker.CheckDeferredRestart(ctx, id, appID); err != nil {
+		if id := store.DeferredDeployID(ctx); id != "" {
+			if checker, ok := s.Store.(deferredDeployChecker); ok {
+				if err := checker.CheckDeferredDeploy(ctx, id, appID); err != nil {
 					return err
 				}
 			}
@@ -648,7 +648,7 @@ func (s *Service) Restart(ctx context.Context, service string) (DeployView, erro
 }
 
 // restartNow restarts the release serving now: Restart's path once no deploy
-// is in flight, and the deferred-restart worker's when one has settled.
+// is in flight, and the deferred-deploy worker's when one has settled.
 func (s *Service) restartNow(ctx context.Context, service string, a *appv1alpha1.App) (DeployView, error) {
 	var err error
 	if selected, err := s.restartSelectedRelease(ctx, service, a); selected != nil || err != nil {
@@ -859,6 +859,26 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 			return DeployView{}, err
 		}
 	}
+	// Deploy-hook URLs are unauthenticated; git paths use TriggerNewCommit
+	// elsewhere. Manual/API (and any other authenticated Trigger) stamps the
+	// request subject — including API keys — the same form audit uses (w4/072).
+	triggeredBy := ""
+	if trigger != store.TriggerDeployHook {
+		triggeredBy = core.SubjectFrom(ctx)
+	}
+	// Render's Wait (w4/652): an image override selects its own release,
+	// which the operator does not pin, so it waits behind the deploy in
+	// flight; so does any deploy behind a selected release in flight. A
+	// build-source fan-out ships one build to every linked service at once
+	// and still writes through (w4/661).
+	if p.build == nil && !p.restart {
+		d, deferred, err := s.deferDeploy(ctx, a, store.Deploy{Trigger: trigger, Image: p.ImageURL, TriggeredBy: triggeredBy},
+			store.DeferredRequest{ImageURL: p.ImageURL, CommitID: p.CommitID, BuildID: p.BuildID, DeployMode: p.DeployMode, ClearCache: p.ClearCache},
+			func(a *appv1alpha1.App) bool { return p.ImageURL != "" || a.ActiveReleaseConfig() != nil })
+		if deferred || err != nil {
+			return d, err
+		}
+	}
 	// Refresh the private-repo clone credential BEFORE the generation bump: the
 	// build this trigger starts must never run with the previous deploy's
 	// expired installation token. A mint failure fails the trigger loudly —
@@ -884,13 +904,6 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// as Render's does.
 	if build != nil && build.commit.Hash != "" {
 		commit = build.commit
-	}
-	// Deploy-hook URLs are unauthenticated; git paths use TriggerNewCommit
-	// elsewhere. Manual/API (and any other authenticated Trigger) stamps the
-	// request subject — including API keys — the same form audit uses (w4/072).
-	triggeredBy := ""
-	if trigger != store.TriggerDeployHook {
-		triggeredBy = core.SubjectFrom(ctx)
 	}
 	rowWrite := func() error {
 		// Rollback temporarily points a repo-backed service at the selected
@@ -1090,10 +1103,10 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if d.FinishedAt != nil {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
 	}
-	// A deferred Restart has no release yet (w5/m284): closing its row is the
-	// whole cancel, unless the worker promoted it meanwhile.
-	if q, ok := s.Store.(DeferredRestartQueue); ok && d.RestartDeferred {
-		won, err := q.CancelDeferredRestart(ctx, deployID, "")
+	// A deferred deploy has no release yet (w5/m284, w4/652): closing its row
+	// is the whole cancel, unless the worker promoted it meanwhile.
+	if q, ok := s.Store.(DeferredDeployQueue); ok && d.Deferred {
+		won, err := q.CancelDeferredDeploy(ctx, deployID, "")
 		if err != nil {
 			return DeployView{}, err
 		}
@@ -1110,7 +1123,7 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 			return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
 		}
 	}
-	if !d.RestartDeferred {
+	if !d.Deferred {
 		survivor, err := s.cancelSurvivor(ctx, a, appID, d)
 		if err != nil {
 			return DeployView{}, err
@@ -1232,6 +1245,12 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	if err := s.RequireBillingMutation(ctx, a.Labels[core.LabelTenant]); err != nil {
 		return DeployView{}, err
 	}
+	return s.rollbackFetched(ctx, service, a, deployID, o)
+}
+
+// rollbackFetched is Rollback past its authorization: the verb itself, and the
+// deferred-deploy worker's run of a Rollback that waited (w4/652).
+func (s *Service) rollbackFetched(ctx context.Context, service string, a *appv1alpha1.App, deployID string, o RollbackOptions) (DeployView, error) {
 	if s.Store == nil {
 		return DeployView{}, core.ErrDeploysUnavailable
 	}
@@ -1293,6 +1312,12 @@ func (s *Service) Rollback(ctx context.Context, service, deployID string, opts .
 	}
 	if err != nil {
 		return DeployView{}, err
+	}
+	// Render's Wait (w4/652): a rollback is "a new deploy using the target
+	// deploy's build artifact", so it waits behind the deploy in flight.
+	if d, deferred, err := s.deferDeploy(ctx, a, store.Deploy{Trigger: store.TriggerRollback, Image: selected.Image, RollbackOf: target.ID, TriggeredBy: core.SubjectFrom(ctx)},
+		store.DeferredRequest{DisableAutoDeploy: o.DisableAutoDeploy}, alwaysWaits); deferred || err != nil {
+		return d, err
 	}
 	disablesAutoDeploy := o.DisableAutoDeploy && a.Spec.AutoDeploy
 	fromTrigger := core.RenderAutoDeployTrigger(a.Spec.AutoDeploy, a.Spec.AutoDeployTrigger)

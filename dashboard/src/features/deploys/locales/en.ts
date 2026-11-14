@@ -672,6 +672,11 @@ const enDeploys: Record<string, TranslationEntry> = {
     description:
       "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_wait_timed_out, w4/591); params are the sentence's values",
   },
+  "deploys.reason.deploy_wait_timed_out": {
+    message: "the deploy this one waited for did not finish within {wait}",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason deploy_wait_timed_out, w4/652): a Rollback or another deploy that waited for the deploy in flight; params are the sentence's values",
+  },
   "deploys.reason.probe_other_waiting": {
     message:
       "the container is running but its {kind} health check has not succeeded, so the rollout is waiting: the configured health check. Check that the path returns a 2xx or 3xx status on the service's own port.{hint}",

@@ -28,32 +28,44 @@ import (
 )
 
 // deferringStore adds the Wait-policy capabilities PGStore has to fakeStore.
-type deferringStore struct{ *fakeStore }
+type deferringStore struct {
+	*fakeStore
+	requests map[string]store.DeferredRequest
+}
 
-func (f deferringStore) CreateDeferredRestart(_ context.Context, appID, triggeredBy string) (store.Deploy, bool, error) {
+func newDeferringStore() deferringStore {
+	return deferringStore{fakeStore: newFakeStore(), requests: map[string]store.DeferredRequest{}}
+}
+
+func (f deferringStore) CreateDeferredDeploy(_ context.Context, d store.Deploy, req store.DeferredRequest) (store.Deploy, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	busy := false
-	for _, d := range f.byApp[appID] {
-		busy = busy || (store.IsOpenDeployStatus(d.Status) && !d.OverlapPending)
+	for _, o := range f.byApp[d.AppID] {
+		busy = busy || (store.IsOpenDeployStatus(o.Status) && !o.OverlapPending)
 	}
 	if !busy {
 		return store.Deploy{}, false, nil
 	}
+	for i, o := range f.byApp[d.AppID] {
+		if o.Status == store.DeployQueued && o.OverlapPending {
+			f.byApp[d.AppID][i].Status, f.byApp[d.AppID][i].OverlapPending = store.DeployCanceled, false
+		}
+	}
 	f.nextID++
-	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: store.TriggerRestart, TriggeredBy: triggeredBy,
-		Status: store.DeployQueued, OverlapPending: true, RestartDeferred: true, CreatedAt: time.Now()}
-	f.byApp[appID] = append([]store.Deploy{d}, f.byApp[appID]...)
+	d.ID, d.Status, d.OverlapPending, d.Deferred, d.CreatedAt = fmt.Sprintf("dep-%d", f.nextID), store.DeployQueued, true, true, time.Now()
+	f.requests[d.ID] = req
+	f.byApp[d.AppID] = append([]store.Deploy{d}, f.byApp[d.AppID]...)
 	return d, true, nil
 }
 
-func (f deferringStore) ListDeferredRestarts(_ context.Context, _ int) ([]store.DeferredRestart, error) {
+func (f deferringStore) ListDeferredDeploys(_ context.Context, _ int) ([]store.DeferredDeploy, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	var out []store.DeferredRestart
+	var out []store.DeferredDeploy
 	for appID, rows := range f.byApp {
 		for _, d := range rows {
-			if !d.RestartDeferred || d.Status != store.DeployQueued {
+			if !d.Deferred || d.Status != store.DeployQueued {
 				continue
 			}
 			ready := true
@@ -62,16 +74,16 @@ func (f deferringStore) ListDeferredRestarts(_ context.Context, _ int) ([]store.
 					ready = false
 				}
 			}
-			out = append(out, store.DeferredRestart{Deploy: d, Ready: ready})
+			out = append(out, store.DeferredDeploy{Deploy: d, Request: f.requests[d.ID], Ready: ready})
 		}
 	}
 	return out, nil
 }
 
-func (f deferringStore) CancelDeferredRestart(_ context.Context, id, reason string) (bool, error) {
+func (f deferringStore) CancelDeferredDeploy(_ context.Context, id, reason string) (bool, error) {
 	won := false
 	f.set(id, func(d *store.Deploy) {
-		if d.RestartDeferred && d.Status == store.DeployQueued {
+		if d.Deferred && d.Status == store.DeployQueued {
 			d.Status, d.CancelReason, d.OverlapPending, won = store.DeployCanceled, reason, false, true
 		}
 	})
@@ -92,17 +104,30 @@ func (f deferringStore) set(id string, mutate func(*store.Deploy)) {
 
 // CreateDeploy promotes the deferred row its context names, as PGStore does.
 func (f deferringStore) CreateDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit store.CommitInfo, triggeredBy string, clearCache ...bool) (store.Deploy, error) {
-	id := store.DeferredRestartID(ctx)
-	if id == "" || trigger != store.TriggerRestart {
+	id := store.DeferredDeployID(ctx)
+	if id == "" {
 		return f.fakeStore.CreateDeploy(ctx, appID, trigger, image, generation, commit, triggeredBy, clearCache...)
 	}
+	return f.promote(id, image, generation, commit)
+}
+
+// CreateRollbackDeploy promotes the deferred rollback its context names.
+func (f deferringStore) CreateRollbackDeploy(ctx context.Context, appID, image, rollbackOf string, generation int64, commit store.CommitInfo, triggeredBy string) (store.Deploy, error) {
+	id := store.DeferredDeployID(ctx)
+	if id == "" {
+		return f.fakeStore.CreateRollbackDeploy(ctx, appID, image, rollbackOf, generation, commit, triggeredBy)
+	}
+	return f.promote(id, image, generation, commit)
+}
+
+func (f deferringStore) promote(id, image string, generation int64, commit store.CommitInfo) (store.Deploy, error) {
 	var promoted store.Deploy
 	f.set(id, func(d *store.Deploy) {
-		d.Status, d.OverlapPending, d.RestartDeferred, d.Generation, d.Image, d.Commit = store.DeployCreated, false, false, generation, image, commit.Hash
+		d.Status, d.OverlapPending, d.Deferred, d.Generation, d.Image, d.Commit = store.DeployCreated, false, false, generation, image, commit.Hash
 		promoted = *d
 	})
 	if promoted.ID == "" {
-		return store.Deploy{}, store.ErrDeferredRestartGone
+		return store.Deploy{}, store.ErrDeferredDeployGone
 	}
 	return promoted, nil
 }
@@ -111,7 +136,7 @@ func (f deferringStore) CreateDeploy(ctx context.Context, appID, trigger, image 
 // leaves it running, and then restarts what serves once it settled — the new
 // release, not the one serving when the restart was requested.
 func TestRestartWaitsForTheDeployInFlight(t *testing.T) {
-	ds := deferringStore{newFakeStore()}
+	ds := newDeferringStore()
 	const newCommit = "aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111"
 	seedDeploys(ds.fakeStore,
 		store.Deploy{ID: "dep-flight", Status: store.DeployBuildInProgress, Commit: newCommit, Generation: 3},
@@ -136,7 +161,7 @@ func TestRestartWaitsForTheDeployInFlight(t *testing.T) {
 		t.Fatalf("deploy in flight = %+v, want left running (Wait, not Override)", flight)
 	}
 
-	w := &DeferredRestartWorker{Svc: svc}
+	w := &DeferredDeployWorker{Svc: svc}
 	if err := w.tick(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +177,7 @@ func TestRestartWaitsForTheDeployInFlight(t *testing.T) {
 	if ran.ResourceVersion == before.ResourceVersion || ran.Spec.BuildCommit != newCommit {
 		t.Fatalf("after the deploy settled: buildCommit %q; want the restart to rebuild the now-serving %s", ran.Spec.BuildCommit, newCommit)
 	}
-	if row := ds.byApp["srv-1"][0]; row.ID != d.ID || row.Status != store.DeployCreated || row.RestartDeferred {
+	if row := ds.byApp["srv-1"][0]; row.ID != d.ID || row.Status != store.DeployCreated || row.Deferred {
 		t.Fatalf("restart row = %+v, want %s itself promoted", row, d.ID)
 	}
 }
@@ -160,7 +185,7 @@ func TestRestartWaitsForTheDeployInFlight(t *testing.T) {
 // A waiting restart whose service was suspended meanwhile is canceled with
 // the reason, not left queued.
 func TestDeferredRestartThatCannotRunIsCanceled(t *testing.T) {
-	ds := deferringStore{newFakeStore()}
+	ds := newDeferringStore()
 	seedDeploys(ds.fakeStore,
 		store.Deploy{ID: "dep-flight", Status: store.DeployBuildInProgress, Generation: 3},
 		store.Deploy{ID: "dep-live", Status: store.DeployLive, Commit: runningCommit, Generation: 2},
@@ -176,7 +201,7 @@ func TestDeferredRestartThatCannotRunIsCanceled(t *testing.T) {
 		t.Fatal(err)
 	}
 	ds.set("dep-flight", func(d *store.Deploy) { d.Status = store.DeployLive })
-	if err := (&DeferredRestartWorker{Svc: svc}).tick(context.Background()); err != nil {
+	if err := (&DeferredDeployWorker{Svc: svc}).tick(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if row := ds.byApp["srv-1"][0]; row.Status != store.DeployCanceled || row.CancelReason == "" {
@@ -186,7 +211,7 @@ func TestDeferredRestartThatCannotRunIsCanceled(t *testing.T) {
 
 // One that waits past MaxWait is canceled.
 func TestDeferredRestartGivesUpAfterMaxWait(t *testing.T) {
-	ds := deferringStore{newFakeStore()}
+	ds := newDeferringStore()
 	seedDeploys(ds.fakeStore,
 		store.Deploy{ID: "dep-flight", Status: store.DeployBuildInProgress, Generation: 3},
 		store.Deploy{ID: "dep-live", Status: store.DeployLive, Commit: runningCommit, Generation: 2},
@@ -195,7 +220,7 @@ func TestDeferredRestartGivesUpAfterMaxWait(t *testing.T) {
 	if _, err := svc.Restart(context.Background(), "web"); err != nil {
 		t.Fatal(err)
 	}
-	w := &DeferredRestartWorker{Svc: svc, MaxWait: time.Hour, Now: func() time.Time { return time.Now().Add(2 * time.Hour) }}
+	w := &DeferredDeployWorker{Svc: svc, MaxWait: time.Hour, Now: func() time.Time { return time.Now().Add(2 * time.Hour) }}
 	if err := w.tick(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -209,7 +234,7 @@ func TestDeferredRestartGivesUpAfterMaxWait(t *testing.T) {
 
 // One whose service was deleted meanwhile is canceled saying so.
 func TestDeferredRestartOfADeletedServiceIsCanceled(t *testing.T) {
-	ds := deferringStore{newFakeStore()}
+	ds := newDeferringStore()
 	seedDeploys(ds.fakeStore,
 		store.Deploy{ID: "dep-flight", Status: store.DeployBuildInProgress, Generation: 3},
 		store.Deploy{ID: "dep-live", Status: store.DeployLive, Commit: runningCommit, Generation: 2},
@@ -222,7 +247,7 @@ func TestDeferredRestartOfADeletedServiceIsCanceled(t *testing.T) {
 		t.Fatal(err)
 	}
 	ds.set("dep-flight", func(d *store.Deploy) { d.Status = store.DeployLive })
-	if err := (&DeferredRestartWorker{Svc: svc}).tick(context.Background()); err != nil {
+	if err := (&DeferredDeployWorker{Svc: svc}).tick(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	row := ds.byApp["srv-1"][0]

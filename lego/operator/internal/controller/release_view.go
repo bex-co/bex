@@ -58,7 +58,8 @@ func releaseView(saved, adopted appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 // the saved spec is still the release's own, and for a release adopted before
 // its spec was recorded, which keeps reading the saved spec (w8/124, m120). It
 // is also nil when the saved spec selects a release (Rollback, Restart): that
-// overrides the release in flight rather than waiting behind it, as before.
+// overrides the release in flight rather than waiting behind it. bex-api writes
+// such a selection only once nothing is in flight (w5/m284, w4/652).
 func (r *AppReconciler) heldReleaseView(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.AppSpec, error) {
 	if app.Status.Phase != appv1alpha1.PhaseBuilding && app.Status.Phase != appv1alpha1.PhaseDeploying {
 		return nil, nil

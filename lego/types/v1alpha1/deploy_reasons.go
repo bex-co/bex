@@ -97,6 +97,8 @@ const (
 	DeployReasonCanceledAlongNewer  = "canceled_along_with_newer"
 	DeployReasonRestartServiceGone  = "restart_service_gone"
 	DeployReasonRestartWaitTimedOut = "restart_wait_timed_out"
+	// w4/652: a Rollback or another deploy that waited, as a Restart does.
+	DeployReasonDeployWaitTimedOut = "deploy_wait_timed_out"
 )
 
 // w5/m356: the sentences that ride another reason's tail, a probe stall's
@@ -201,6 +203,7 @@ var deployReasonTemplates = map[string]string{
 	DeployReasonCanceledAlongNewer:  "Canceled along with a newer deploy",
 	DeployReasonRestartServiceGone:  "the service no longer exists",
 	DeployReasonRestartWaitTimedOut: "the deploy this restart waited for did not finish within {wait}",
+	DeployReasonDeployWaitTimedOut:  "the deploy this one waited for did not finish within {wait}",
 }
 
 // The parts' shared wording.

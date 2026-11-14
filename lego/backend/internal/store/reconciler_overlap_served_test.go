@@ -269,7 +269,7 @@ func TestReconcileLeavesADeferredRestartWaiting(t *testing.T) {
 	appID, _, _, _ := overlapFixture(t, ctx, rec, st, cl)
 	st.mu.Lock()
 	st.deploys["dep-deferred"] = Deploy{ID: "dep-deferred", AppID: appID, Trigger: TriggerRestart, Status: DeployQueued,
-		OverlapPending: true, RestartDeferred: true}
+		OverlapPending: true, Deferred: true}
 	st.mu.Unlock()
 	app := getApp(t, cl)
 	app.Status.Phase, app.Status.ReleaseGeneration, app.Status.ActiveRevision = appv1alpha1.PhaseRunning, 3, "rev-3"
@@ -279,7 +279,7 @@ func TestReconcileLeavesADeferredRestartWaiting(t *testing.T) {
 	if err := rec.ReconcileOnce(ctx); err != nil {
 		t.Fatal(err)
 	}
-	if got, _ := st.GetDeploy(ctx, appID, "dep-deferred"); got.Status != DeployQueued || !got.RestartDeferred {
-		t.Fatalf("deferred restart = %q (deferred %v), want left waiting", got.Status, got.RestartDeferred)
+	if got, _ := st.GetDeploy(ctx, appID, "dep-deferred"); got.Status != DeployQueued || !got.Deferred {
+		t.Fatalf("deferred restart = %q (deferred %v), want left waiting", got.Status, got.Deferred)
 	}
 }

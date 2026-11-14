@@ -798,9 +798,9 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 	}
 	openByApp := make(map[string][]Deploy, len(openDeploys))
 	for _, d := range openDeploys {
-		// A deferred Restart has no release to observe until it runs; its own
+		// A deferred deploy has no release to observe until it runs; its own
 		// worker promotes or cancels it (w5/m284).
-		if d.RestartDeferred {
+		if d.Deferred {
 			continue
 		}
 		openByApp[d.AppID] = append(openByApp[d.AppID], d)

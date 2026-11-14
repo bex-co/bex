@@ -122,9 +122,10 @@ type Server struct {
 	// nil / store-off ⇒ no-op.
 	BlueprintAutoSync *apps.BlueprintAutoSyncWorker
 	CheckedDeploys    *apps.CheckedDeployWorker
-	// DeferredRestarts runs each Restart that waited, under Render's Wait
-	// overlap policy, for the deploy in flight (w5/m284). Store-off ⇒ no-op.
-	DeferredRestarts *deploys.DeferredRestartWorker
+	// DeferredDeploys runs each deploy that waited, under Render's Wait
+	// overlap policy, for the deploy in flight: a Restart (w5/m284), a
+	// Rollback or an image override (w4/652). Store-off ⇒ no-op.
+	DeferredDeploys *deploys.DeferredDeployWorker
 	// DomainVerification is the sweep that promotes a pending custom-domain
 	// claim once its traffic DNS points at the service — Render's automatic
 	// verification (w5/m137). nil / store-off ⇒ no-op.
@@ -1202,7 +1203,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		DiskUsageAlerts:    newDiskUsage(appsSvc, d),
 		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
 		CheckedDeploys:     &apps.CheckedDeployWorker{Svc: appsSvc},
-		DeferredRestarts:   &deploys.DeferredRestartWorker{Svc: deploysSvc},
+		DeferredDeploys:    &deploys.DeferredDeployWorker{Svc: deploysSvc},
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},
 		ServiceRefs:        &apps.ServiceRefPropagator{Svc: appsSvc},
 		AgentSessionCompleter: &agentsessions.Completer{

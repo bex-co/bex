@@ -646,6 +646,11 @@ const zhDeploys: Record<string, TranslationEntry> = {
     description:
       "A canceled deploy's cancel reason by its code (bex-api DeployReason restart_wait_timed_out, w4/591); params are the sentence's values",
   },
+  "deploys.reason.deploy_wait_timed_out": {
+    message: "它所等待的部署未在 {wait}内完成",
+    description:
+      "A canceled deploy's cancel reason by its code (bex-api DeployReason deploy_wait_timed_out, w4/652): a Rollback or another deploy that waited for the deploy in flight; params are the sentence's values",
+  },
   "deploys.reason.probe_other_waiting": {
     message:
       "容器正在运行，但其{kind}健康检查尚未成功，发布正在等待：已配置的健康检查。请确认该路径在服务自身端口上返回 2xx 或 3xx 状态码。{hint}",
