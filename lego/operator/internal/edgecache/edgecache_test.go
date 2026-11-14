@@ -185,12 +185,21 @@ func TestTheCacheStaysWithinItsByteBound(t *testing.T) {
 	srv := httptest.NewServer(o)
 	t.Cleanup(srv.Close)
 	u, _ := url.Parse(srv.URL)
-	h := New(u, Config{Profile: ProfileAll, MaxBytes: 20, MaxObjectBytes: 1 << 10})
-	get(h, "GET", "http://app.test/aaaa", nil) // "body:/aaaa" = 10 bytes
+	// Learn what one of these entries is charged (body, key, headers and the
+	// entry's own structure), then size the cache to hold two of them.
+	probe := New(u, Config{Profile: ProfileAll, MaxBytes: 1 << 20, MaxObjectBytes: 1 << 10})
+	get(probe, "GET", "http://app.test/aaaa", nil)
+	one := probe.size
+	if one <= int64(len("body:/aaaa")) {
+		t.Fatalf("an entry is charged %d, want more than its body", one)
+	}
+	bound := 2*one + one/2
+	h := New(u, Config{Profile: ProfileAll, MaxBytes: bound, MaxObjectBytes: 1 << 10})
+	get(h, "GET", "http://app.test/aaaa", nil)
 	get(h, "GET", "http://app.test/bbbb", nil)
 	get(h, "GET", "http://app.test/cccc", nil) // evicts /aaaa
-	if h.size > 20 {
-		t.Fatalf("cache size %d over its 20-byte bound", h.size)
+	if h.size > bound {
+		t.Fatalf("cache size %d over its %d-byte bound", h.size, bound)
 	}
 	if s := get(h, "GET", "http://app.test/aaaa", nil).Header().Get(StatusHeader); s == "HIT" {
 		t.Fatal("the least recently used entry must have been evicted")

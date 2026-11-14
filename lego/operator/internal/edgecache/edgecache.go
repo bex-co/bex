@@ -48,6 +48,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"path"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -171,7 +172,19 @@ func New(upstream *url.URL, cfg Config) *Handler {
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			pr.SetURL(upstream)
 			pr.Out.Host = pr.In.Host
+			// ReverseProxy strips the inbound X-Forwarded-*. Traefik sets them
+			// and is the only edge that reaches this sidecar, so the app sees
+			// the client address and scheme the edge saw, as through the
+			// activator's proxy (ADR004; w21/m394 t015, R25-07): the inbound
+			// X-Forwarded-For is copied before SetXForwarded, which appends the
+			// peer, and an http or https X-Forwarded-Proto replaces its "http".
+			if forwardedFor := pr.In.Header.Values("X-Forwarded-For"); len(forwardedFor) > 0 {
+				pr.Out.Header["X-Forwarded-For"] = slices.Clone(forwardedFor)
+			}
 			pr.SetXForwarded()
+			if proto := strings.ToLower(pr.In.Header.Get("X-Forwarded-Proto")); proto == "https" || proto == "http" {
+				pr.Out.Header.Set("X-Forwarded-Proto", proto)
+			}
 		},
 		// Flush as bytes arrive, so streamed and long-poll responses flow.
 		FlushInterval:  -1,
@@ -425,9 +438,15 @@ func (h *Handler) store(e *entry) {
 	if old, ok := h.entries[e.key]; ok {
 		h.removeLocked(old)
 	}
-	cost := int64(len(e.body))
+	cost := entryCost(e)
 	if cost > h.cfg.MaxBytes {
 		return
+	}
+	// Expired entries leave first, from the cold end, whether or not their key
+	// is ever asked for again; then the least recently used make room.
+	now := h.cfg.Now()
+	for el := h.lru.Back(); el != nil && !now.Before(el.Value.(*entry).expires); el = h.lru.Back() {
+		h.removeLocked(el)
 	}
 	for h.size+cost > h.cfg.MaxBytes && h.lru.Len() > 0 {
 		h.removeLocked(h.lru.Back())
@@ -440,7 +459,29 @@ func (h *Handler) removeLocked(el *list.Element) {
 	e := el.Value.(*entry)
 	h.lru.Remove(el)
 	delete(h.entries, e.key)
-	h.size -= int64(len(e.body))
+	h.size -= entryCost(e)
+}
+
+// entryOverhead is the fixed cost charged for an entry's own structure, beyond
+// its body, key and headers: the list element, the two map slots, the entry and
+// the cloned header map. It was measured at about 756 bytes per entry (w21/m394
+// t015, R25-06) and is rounded up. Charging it makes the byte budget bound how
+// many entries the cache holds too, so a flood of unique tiny 404s cannot
+// exhaust the process's memory behind an honest-looking byte count.
+const entryOverhead = 1024
+
+// entryCost is what an entry is charged against the byte budget: everything the
+// cache keeps for it. store and removeLocked share it, so an entry is released
+// for exactly what it was charged.
+func entryCost(e *entry) int64 {
+	cost := int64(len(e.body)+len(e.key)) + entryOverhead
+	for name, values := range e.header {
+		cost += int64(len(name))
+		for _, value := range values {
+			cost += int64(len(value))
+		}
+	}
+	return cost
 }
 
 func writeEntry(w http.ResponseWriter, r *http.Request, e *entry, status string) {
