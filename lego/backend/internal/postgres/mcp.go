@@ -281,7 +281,8 @@ type recoverPostgresArgs struct {
 	Version    string `json:"version,omitempty" jsonschema:"the new instance's PostgreSQL version (omit to match the source)"`
 }
 
-// exportsResult wraps the export list (MCP outputs must be JSON objects).
+// exportsResult wraps the export list in an object, bex's choice for this
+// bex-only tool (w4/659).
 type exportsResult struct {
 	Exports []ExportView `json:"exports"`
 }

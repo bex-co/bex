@@ -422,7 +422,8 @@ type validateBlueprintArgs struct {
 
 type listBlueprintsArgs struct{}
 
-// listBlueprintsResult wraps the array — MCP tool outputs must be JSON objects.
+// listBlueprintsResult wraps the array in an object, bex's choice for this
+// bex-only tool (w4/659).
 type listBlueprintsResult struct {
 	Blueprints []BlueprintView `json:"blueprints"`
 }
@@ -587,7 +588,8 @@ type headersArgs struct {
 	Headers   []staticHeaderArg `json:"headers" jsonschema:"the full list of custom response-header rules to set (replaces the existing headers)"`
 }
 
-// routesResult / headersResult wrap the arrays — MCP tool outputs must be objects.
+// routesResult / headersResult wrap the arrays in objects, bex's choice for
+// these bex-only tools (w4/659).
 type routesResult struct {
 	Routes []StaticRouteView `json:"routes"`
 }
@@ -618,7 +620,8 @@ func headerArgViews(in []staticHeaderArg) []StaticHeaderView {
 	return out
 }
 
-// domainListResult wraps the array — MCP tool outputs must be JSON objects.
+// domainListResult wraps the array in an object, bex's choice for this
+// bex-only tool (w4/659).
 // Cursor is the last item's domain name; omit to get the next page.
 type domainListResult struct {
 	CustomDomains []renderCustomDomain `json:"customDomains"`
