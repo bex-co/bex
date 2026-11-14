@@ -65,6 +65,11 @@ func nativeGoRustPrimaryContract(runtime string, choice NativeChoice) (nativeGoR
 	if !fullVersion.MatchString(version) || !strings.HasPrefix(version, choice.Line+".") || !slices.Contains(strings.Split(environment["PATH"], ":"), binaryPath) {
 		return nativeGoRustPrimary{}, fmt.Errorf("selected primary version/PATH does not match its reviewed line")
 	}
+	// A line's recorded version is what its image carries; Rust's default log
+	// line names it (w8/327).
+	if line, _ := toolchain.find(choice.Line); line.version != "" && line.version != version {
+		return nativeGoRustPrimary{}, fmt.Errorf("the %s line names version %s, but its image sets %s=%s", runtime, line.version, key, version)
+	}
 	for name, value := range required {
 		if environment[name] != value {
 			return nativeGoRustPrimary{}, fmt.Errorf("selected primary %s changed", name)
@@ -222,7 +227,7 @@ func TestNativeGoRustCanonicalRecipesAndContracts(t *testing.T) {
 			metadata := fake.envByImage[line.image]
 			metadata.env = []string{"PATH=/go/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin", "GOLANG_VERSION=1.27.3", "GOTOOLCHAIN=local", "GOPATH=/go"}
 			if runtime == "rust" {
-				metadata.env = []string{"PATH=/usr/local/cargo/bin:/usr/local/bin:/usr/bin", "RUST_VERSION=1.96.0", "CARGO_HOME=/usr/local/cargo", "RUSTUP_HOME=/usr/local/rustup"}
+				metadata.env = []string{"PATH=/usr/local/cargo/bin:/usr/local/bin:/usr/bin", "RUST_VERSION=" + line.version, "CARGO_HOME=/usr/local/cargo", "RUSTUP_HOME=/usr/local/rustup"}
 			}
 			fake.envByImage[line.image] = metadata
 			o := nativeOptions()

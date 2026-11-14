@@ -235,7 +235,7 @@ func addNativeBun(dockerfile, baseImage, bunImage string) (string, error) {
 // build and runtime: a Rails, Django, Phoenix or Go/Rust web app builds its
 // frontend assets with them (w8/m77 Ruby/Python, w4/m213 Go/Rust/Elixir).
 // Primary Node already has them.
-var nativeJSCompanionRuntimes = map[string]bool{nativeRubyRuntime: true, nativePythonRuntime: true, "go": true, "rust": true, nativeElixirRuntime: true}
+var nativeJSCompanionRuntimes = map[string]bool{nativeRubyRuntime: true, nativePythonRuntime: true, "go": true, nativeRustRuntime: true, nativeElixirRuntime: true}
 
 // nativeYarnDir is Yarn 1 as the official Node 22/24 images ship it.
 const nativeYarnDir = "/opt/yarn-v1.22.22"

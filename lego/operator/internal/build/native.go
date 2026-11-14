@@ -74,6 +74,7 @@ const (
 	nativePythonRuntime = "python"
 	nativeRubyRuntime   = "ruby"
 	nativeElixirRuntime = "elixir"
+	nativeRustRuntime   = "rust"
 	// nativeRubyGems is Render's BUNDLE_PATH, beside the source tree.
 	nativeRubyGems = "/opt/render/project/.gems"
 	// Render's GOPATH, CARGO_HOME and RUSTUP_HOME (nativeBuildDefaults).
@@ -133,9 +134,11 @@ var nativeToolchains = map[string]nativeToolchain{
 		{line: "4.0", version: "4.0.9", image: "ruby:4.0-bookworm@sha256:470eb587e87c42ad9b0062ba9bc362d90d94fb67b09fecd6052b381d897d0777"},
 	}},
 	// Rust stays one stable image: rustup inside it applies Render's own
-	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself.
-	"rust": {label: "Rust", defaultLine: "1", lines: []nativeLine{
-		{line: "1", image: "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b"},
+	// RUSTUP_TOOLCHAIN / rust-toolchain signals itself. version is the image's
+	// RUST_VERSION, which the default's log line names (w8/327); refresh it
+	// with the digest.
+	nativeRustRuntime: {label: "Rust", defaultLine: "1", lines: []nativeLine{
+		{line: "1", version: "1.99.1", image: "rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b"},
 	}},
 }
 
@@ -162,7 +165,8 @@ type nativeToolchain struct {
 
 // nativeLine is one pinned toolchain line. version is the exact toolchain the
 // pinned image carries — what a version range is matched against; empty for a
-// runtime that offers no selection. otp is an Elixir line's Erlang/OTP major.
+// runtime that offers no selection, except Rust's, which only the build log
+// names (w8/327). otp is an Elixir line's Erlang/OTP major.
 type nativeLine struct {
 	line, version, otp, image, debian string
 	// upstream retains the reviewed official input when image is a verified
@@ -449,7 +453,7 @@ func nativeBuildDefaults(o Options) string {
 	case "go":
 		return "ENV GO111MODULE=on GOPATH=" + nativeGoPath + "\n" +
 			"ENV PATH=" + nativeGoPath + "/bin:$PATH\n"
-	case "rust":
+	case nativeRustRuntime:
 		return `RUN mkdir -p /opt/render/project && ln -s "$CARGO_HOME" ` + nativeCargoHome + ` && ln -s "$RUSTUP_HOME" ` + nativeRustupHome + "\n" +
 			"ENV CARGO_HOME=" + nativeCargoHome + " RUSTUP_HOME=" + nativeRustupHome + " ROCKET_ENV=prod\n"
 	case nativePythonRuntime:
