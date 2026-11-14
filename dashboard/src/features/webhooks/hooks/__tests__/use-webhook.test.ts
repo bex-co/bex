@@ -32,4 +32,20 @@ describe("useWebhook", () => {
     expect(options.skip).toBeFalsy();
     expect(result.current.loading).toBe(true);
   });
+
+  // w4/641: the detail page selects the endpoint's own workspace.
+  it("carries the endpoint's owning workspace onto the view", () => {
+    vi.mocked(useQuery).mockReturnValue({
+      data: {
+        webhookEndpoint: { id: "whk-1", name: "hook", ownerId: "tea-2" },
+      },
+      loading: false,
+      error: undefined,
+      refetch: vi.fn(),
+    } as never);
+
+    const { result } = renderHook(() => useWebhook("whk-1"));
+
+    expect(result.current.endpoint?.ownerId).toBe("tea-2");
+  });
 });

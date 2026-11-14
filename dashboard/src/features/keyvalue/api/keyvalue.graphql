@@ -31,6 +31,8 @@ query KeyValue($id: String!) {
   keyValue(id: $id) {
     id
     name
+    # The owning workspace, which the detail page makes the selection (w4/641).
+    ownerId
     plan
     version
     status

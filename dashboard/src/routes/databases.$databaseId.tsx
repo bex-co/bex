@@ -23,6 +23,7 @@ import { DatabaseMetadataCard } from "@/features/databases/components/database-m
 import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useDatabase } from "@/features/databases/hooks/use-database";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { useDatabaseLifecycle } from "@/features/databases/hooks/use-database-lifecycle";
 import { deriveStatus, sqlConsoleBlock } from "@/features/databases/lib/status";
 import { DatabaseStatusBadge } from "@/features/databases/components/database-status-badge";
@@ -136,15 +137,20 @@ function DatabaseDetailPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const router = useRouter();
-  const { database, loading, error, refetch } = useDatabase(databaseId);
+  const { database: loaded, loading, error, refetch } = useDatabase(databaseId);
   const lifecycle = useDatabaseLifecycle({ refetch });
+  // Judge this page's controls in the database's own workspace (w4/641, as
+  // w6/091 for services): until it is the selection, the skeleton stays up so
+  // no role-gated control paints for the wrong workspace first.
+  const adopting = useAdoptResourceWorkspace(databaseId, loaded?.ownerId);
+  const database = adopting ? null : loaded;
 
   // A dead id redirects home (w9/m55); a failed query stays put on the inline
   // error state so an outage never masquerades as a deleted database. A
   // roll-window loader failure re-runs once (w1/m52) so the title recovers.
-  useNotFoundRedirect(resourceNotFound(database, loading, error));
+  useNotFoundRedirect(resourceNotFound(loaded, loading, error));
   useLoaderErrorRetry(Route.useLoaderData(), databaseId);
-  const loadErrorVariant = resourceLoadErrorVariant(database, loading, error);
+  const loadErrorVariant = resourceLoadErrorVariant(loaded, loading, error);
 
   return (
     <DashboardLayout>

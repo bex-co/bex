@@ -22,6 +22,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { KeyValueMetadataCard } from "@/features/keyvalue/components/key-value-metadata-card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useKeyValue } from "@/features/keyvalue/hooks/use-key-value";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { KeyValueStatusBadge } from "@/features/keyvalue/components/key-value-status-badge";
 import { KeyValueDangerActions } from "@/features/keyvalue/components/key-value-danger-actions";
 import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
@@ -100,14 +101,19 @@ export function KeyValueDetailPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const router = useRouter();
-  const { keyValue, loading, error, refetch } = useKeyValue(keyValueId);
+  const { keyValue: loaded, loading, error, refetch } = useKeyValue(keyValueId);
+  // Judge this page's controls in the store's own workspace (w4/641, as
+  // w6/091 for services): until it is the selection, the skeleton stays up so
+  // no role-gated control paints for the wrong workspace first.
+  const adopting = useAdoptResourceWorkspace(keyValueId, loaded?.ownerId);
+  const keyValue = adopting ? null : loaded;
 
   // A dead id redirects home (w9/m55); a failed query stays put on the inline
   // error state so an outage never masquerades as a deleted store. A
   // roll-window loader failure re-runs once (w1/m52) so the title recovers.
-  useNotFoundRedirect(resourceNotFound(keyValue, loading, error));
+  useNotFoundRedirect(resourceNotFound(loaded, loading, error));
   useLoaderErrorRetry(Route.useLoaderData(), keyValueId);
-  const loadErrorVariant = resourceLoadErrorVariant(keyValue, loading, error);
+  const loadErrorVariant = resourceLoadErrorVariant(loaded, loading, error);
 
   return (
     <DashboardLayout>

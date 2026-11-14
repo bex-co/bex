@@ -46,6 +46,8 @@ export interface ReadReplicaView {
 
 /** The extra fields the detail query reads beyond the list projection. */
 export interface DatabaseDetailView extends DatabaseView {
+  /** The owning workspace (`tea-…`), which the detail page selects (w4/641). */
+  ownerId?: string | null;
   /** Why an unavailable database is unavailable (bex-api statusReason), else null. */
   statusReason?: string | null;
   /** The code of statusReason (the operator's Ready reason), else null. */

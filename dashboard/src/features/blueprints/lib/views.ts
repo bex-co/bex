@@ -28,6 +28,7 @@ import { nonNull } from "@/common/lib/non-null";
 interface BlueprintRowLike {
   id: string | null;
   name: string | null;
+  ownerId?: string | null;
   resourceSuffix?: string | null;
   repo?: string | null;
   branch?: string | null;
@@ -72,6 +73,7 @@ export function toBlueprintView(row: BlueprintRowLike): BlueprintView {
   return {
     id: row.id ?? "",
     name: row.name ?? "",
+    ownerId: "ownerId" in row ? row.ownerId || null : undefined,
     resourceSuffix: row.resourceSuffix ?? "",
     repo: row.repo ?? "",
     branch: row.branch ?? "",

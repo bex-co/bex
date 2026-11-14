@@ -39,6 +39,7 @@ import { blueprintResourceHref } from "@/features/blueprints/lib/resource-href";
 import { canonicalBlueprintLinkId } from "@/features/blueprints/lib/link-id";
 import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
 import { BlueprintPlanSummary } from "@/features/blueprints/components/blueprint-plan-summary";
 import { BlueprintErrorList } from "@/features/blueprints/components/blueprint-error-list";
@@ -197,7 +198,17 @@ export function BlueprintDetailPage() {
   const blueprintId = canonicalBlueprintLinkId(Route.useParams().blueprintId);
   const { t } = useTranslations();
   const router = useRouter();
-  const { blueprint, loading, error, refetch } = useBlueprint(blueprintId);
+  const {
+    blueprint: loaded,
+    loading,
+    error,
+    refetch,
+  } = useBlueprint(blueprintId);
+  // Judge this page's controls in the Blueprint's own workspace (w4/641, as
+  // w6/091 for services): until it is the selection, the skeleton stays up so
+  // no Sync or Disconnect paints for the wrong workspace first.
+  const adopting = useAdoptResourceWorkspace(blueprintId, loaded?.ownerId);
+  const blueprint = adopting ? null : loaded;
   const { sync, busy: syncBusy } = useSyncBlueprint();
   const { update, busy: updateBusy } = useUpdateBlueprint();
   const { disconnect, busy: disconnectBusy } = useDisconnectBlueprint();
@@ -246,9 +257,9 @@ export function BlueprintDetailPage() {
 
   const busy = syncBusy || updateBusy || disconnectBusy || plannedSync.busy;
 
-  useNotFoundRedirect(resourceNotFound(blueprint, loading, error));
+  useNotFoundRedirect(resourceNotFound(loaded, loading, error));
   useLoaderErrorRetry(Route.useLoaderData(), blueprintId);
-  const loadErrorVariant = resourceLoadErrorVariant(blueprint, loading, error);
+  const loadErrorVariant = resourceLoadErrorVariant(loaded, loading, error);
 
   // Capture a reviewed pin only from a valid preview for the current
   // blueprint settings. Do not overwrite an existing pin with a later fetch

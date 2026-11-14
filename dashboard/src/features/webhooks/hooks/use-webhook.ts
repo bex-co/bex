@@ -18,6 +18,7 @@ function toView(
   return {
     id: raw.id,
     name: raw.name ?? "",
+    ownerId: raw.ownerId || null,
     url: raw.url ?? "",
     eventTypes: (raw.eventTypes ?? []).filter((t): t is string => !!t),
     enabled: raw.enabled ?? false,

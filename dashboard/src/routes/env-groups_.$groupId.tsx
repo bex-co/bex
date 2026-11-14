@@ -32,6 +32,7 @@ import {
 import { classifySecretStoreError } from "@/features/services/lib/secret-store";
 import { useServices } from "@/features/services/hooks/use-services";
 import { useEnvGroupScopeIndex } from "@/features/env-groups/hooks/use-env-group-scope-index";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { EnvGroupDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -85,7 +86,12 @@ export function EnvGroupDetailPage() {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const router = useRouter();
-  const { group, loading, error, refetch } = useEnvGroup(groupId);
+  const { group: loaded, loading, error, refetch } = useEnvGroup(groupId);
+  // Judge this page's controls in the group's own workspace (w4/641, as
+  // w6/091 for services): until it is the selection, the skeleton stays up so
+  // no role-gated control paints for the wrong workspace first.
+  const adopting = useAdoptResourceWorkspace(groupId, loaded?.ownerId);
+  const group = adopting ? null : loaded;
   const {
     services,
     loading: servicesLoading,
@@ -134,7 +140,7 @@ export function EnvGroupDetailPage() {
   // error state so an outage never masquerades as a deleted group. A
   // roll-window loader failure re-runs once (w1/m52) so the title recovers.
   useNotFoundRedirect(
-    !deleteInFlight && !loading && !group && (notFound || !errorKind),
+    !deleteInFlight && !loading && !loaded && (notFound || !errorKind),
   );
   useLoaderErrorRetry(Route.useLoaderData(), groupId);
 
@@ -198,7 +204,7 @@ export function EnvGroupDetailPage() {
 
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-5xl space-y-6">
-          {(loading || notFound || !errorKind) && !group ? (
+          {(adopting || loading || notFound || !errorKind) && !group ? (
             <EnvGroupDetailContentSkeleton />
           ) : errorKind && !group ? (
             <div className="flex flex-col items-center gap-2 py-12 text-center">

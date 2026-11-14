@@ -72,6 +72,7 @@ export function toDatabaseDetailView(
 ): DatabaseDetailView {
   return {
     ...toDatabaseView(d),
+    ownerId: d.ownerId || null,
     statusReason: d.statusReason || null,
     statusReasonCode: d.statusReasonCode || null,
     databaseName: d.databaseName ?? null,

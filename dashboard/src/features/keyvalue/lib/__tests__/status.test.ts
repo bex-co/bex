@@ -91,6 +91,31 @@ describe("toKeyValueViews", () => {
     });
     expect(v.externalHost).toBeNull();
   });
+
+  // w4/641: the detail read's owner reaches the view the page adopts from.
+  it("carries the detail read's owning workspace onto the view", () => {
+    const v = toKeyValueView({
+      __typename: "KeyValue",
+      id: "kv1",
+      name: "kv1",
+      ownerId: "tea-2",
+      plan: "starter",
+      version: "8",
+      status: "available",
+      statusReason: null,
+      statusReasonCode: null,
+      suspended: "not_suspended",
+      createdAt: null,
+      updatedAt: null,
+      externalHost: null,
+      public: false,
+      region: null,
+      maxmemoryPolicy: null,
+      persistenceMode: null,
+      internalAuth: false,
+    });
+    expect(v.ownerId).toBe("tea-2");
+  });
 });
 
 describe("deriveStatus", () => {

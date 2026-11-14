@@ -86,6 +86,7 @@ describe("toDatabaseDetailView", () => {
       expiresAt: null,
       statusReason: null,
       statusReasonCode: null,
+      ownerId: "tea-1",
       id: "db1",
       name: "db1",
       plan: "free",
@@ -109,6 +110,7 @@ describe("toDatabaseDetailView", () => {
       region: null,
       readReplicas: null,
     });
+    expect(d.ownerId).toBe("tea-1");
     expect(d.databaseName).toBe("db1");
     expect(d.databaseUser).toBe("db1_user");
     expect(d.externalHost).toBe("db1.db.bex.co");
@@ -125,6 +127,7 @@ describe("toDatabaseDetailView", () => {
       expiresAt: null,
       statusReason: null,
       statusReasonCode: null,
+      ownerId: "tea-1",
       id: "db3",
       name: "db3",
       plan: "free",
@@ -158,6 +161,7 @@ describe("toDatabaseDetailView", () => {
       expiresAt: null,
       statusReason: null,
       statusReasonCode: null,
+      ownerId: "tea-1",
       id: "db2",
       name: "db2",
       plan: "free",
@@ -192,6 +196,7 @@ describe("toDatabaseDetailView", () => {
       expiresAt: null,
       statusReason: "The connection pooler could not be provisioned.",
       statusReasonCode: "PoolerFailed",
+      ownerId: "tea-1",
       id: "db4",
       name: "db4",
       plan: "free",
@@ -324,6 +329,7 @@ describe("toDatabaseDetailView high availability (w2/059)", () => {
       expiresAt: null,
       statusReason: null,
       statusReasonCode: null,
+      ownerId: "tea-1",
       id: "db",
       name: "db",
       plan: "1c-2g",

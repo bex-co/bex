@@ -11,6 +11,8 @@ export interface KeyValueView {
   /** Key Value store name — Render's opaque id; also the detail-page deep-link param. */
   id: string;
   name: string;
+  /** The owning workspace (`tea-…`); detail query only (w4/641). */
+  ownerId?: string | null;
   /** Render's keyValueStatus enum, verbatim (available/creating/unavailable). */
   status: string;
   /** Plan spelling from the tiers catalog (e.g. "free"), or null. */

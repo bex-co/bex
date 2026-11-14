@@ -10,6 +10,7 @@ import { WebhookDetailContext } from "@/features/webhooks/components/webhook-det
 import { WebhookDetailHeader } from "@/features/webhooks/components/webhook-detail-header";
 import { useWebhook } from "@/features/webhooks/hooks/use-webhook";
 import { useWebhookCreator } from "@/features/webhooks/hooks/use-webhook-creator";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 import { WebhookEndpointDocument } from "@/graphql/definitions";
 import {
   loadRouteResource,
@@ -68,7 +69,15 @@ function WebhookDetailShell() {
   const { webhookId } = Route.useParams();
   const { t } = useTranslations();
   const detail = useWebhook(webhookId);
-  const { endpoint, loading, notFound } = detail;
+  const { loading, notFound } = detail;
+  // Judge this page's controls in the endpoint's own workspace (w4/641, as
+  // w6/091 for services): until it is the selection, the shell skeleton stays
+  // up so no admin-only control or secret paints for the wrong workspace.
+  const adopting = useAdoptResourceWorkspace(
+    webhookId,
+    detail.endpoint?.ownerId,
+  );
+  const endpoint = adopting ? null : detail.endpoint;
   const creatorIdentity = useWebhookCreator(endpoint?.createdBy ?? "");
 
   // A dead id redirects home (w9/m55); a failed query stays put on the inline
@@ -103,7 +112,7 @@ function WebhookDetailShell() {
             </div>
           </div>
         </>
-      ) : loading || notFound ? (
+      ) : adopting || loading || notFound ? (
         <WebhookDetailShellSkeleton />
       ) : (
         <div className="flex flex-col items-center gap-2 py-12 text-center">

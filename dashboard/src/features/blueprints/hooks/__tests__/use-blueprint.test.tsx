@@ -76,4 +76,18 @@ describe("useBlueprint", () => {
       resources: null,
     });
   });
+
+  // w4/641: the detail page selects the Blueprint's own workspace.
+  it("carries the Blueprint's owning workspace onto the view", () => {
+    vi.mocked(useQuery).mockReturnValue({
+      data: { blueprint: { id: "exs-1", name: "Example", ownerId: "tea-2" } },
+      loading: false,
+      error: undefined,
+      refetch,
+    } as never);
+
+    const { result } = renderHook(() => useBlueprint("exs-1"));
+
+    expect(result.current.blueprint?.ownerId).toBe("tea-2");
+  });
 });

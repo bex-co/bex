@@ -31,6 +31,7 @@ export function toKeyValueView(
   return {
     id: d.id ?? "",
     name: d.name ?? d.id ?? "",
+    ownerId: "ownerId" in d ? d.ownerId || null : undefined,
     status: d.status ?? "",
     plan: d.plan ?? null,
     version: d.version ?? null,

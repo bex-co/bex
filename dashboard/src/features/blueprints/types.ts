@@ -7,6 +7,9 @@ export interface BlueprintResource {
 export interface BlueprintView {
   id: string;
   name: string;
+  /** The owning workspace (`tea-…`); the detail read selects it, the list
+   * leaves it null (w4/641). */
+  ownerId?: string | null;
   /**
    * The suffix this Blueprint adds to each resource name ("ab12"), which tells
    * apart several Blueprints made from one file (w8/m153). "" for a Blueprint

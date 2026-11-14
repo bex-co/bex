@@ -6,6 +6,8 @@
 export interface WebhookEndpointView {
   id: string;
   name: string;
+  /** The owning workspace (`tea-…`); detail read only (w4/641). */
+  ownerId?: string | null;
   url: string;
   eventTypes: string[];
   enabled: boolean;

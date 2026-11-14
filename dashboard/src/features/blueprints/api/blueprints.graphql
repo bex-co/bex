@@ -27,6 +27,8 @@ query Blueprint($id: String!, $ownerId: String) {
   blueprint(id: $id, ownerId: $ownerId) {
     id
     name
+    # The owning workspace, which the detail page makes the selection (w4/641).
+    ownerId
     resourceSuffix
     repo
     branch

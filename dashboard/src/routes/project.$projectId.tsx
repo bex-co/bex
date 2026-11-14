@@ -12,6 +12,7 @@ import {
 } from "@/common/lib/document-head";
 import { ProjectDocument } from "@/graphql/definitions";
 import { mapProject } from "@/features/projects/hooks/use-projects";
+import { useAdoptResourceWorkspace } from "@/features/workspaces/hooks/use-adopt-resource-workspace";
 
 /**
  * Chrome-preserving pending state at 0ms (the sidebar-navigation white-flash
@@ -62,9 +63,16 @@ function RouteComponent() {
   const projectResult = Route.useLoaderData();
   useNotFoundRedirect(projectResult.state === "not-found");
   useLoaderErrorRetry(projectResult, projectId);
+  // Judge every child page in the project's own workspace (w4/641, as w6/091
+  // for services): until it is the selection, the children stay on their
+  // pending skeleton so no role-gated control paints for the wrong workspace.
+  const adopting = useAdoptResourceWorkspace(
+    projectId,
+    projectResult.state === "ready" ? projectResult.resource.ownerId : null,
+  );
   return (
     <DashboardLayout>
-      <Outlet />
+      {adopting ? <ProjectRouteSkeleton /> : <Outlet />}
     </DashboardLayout>
   );
 }
