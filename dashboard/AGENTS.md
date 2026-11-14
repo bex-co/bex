@@ -94,6 +94,8 @@ cd dashboard && SCHEMA_JSON=/tmp/schema.json yarn codegen   # codegen.ts prefers
 
 `TestDumpGraphQLSchema` (`internal/api/schema_dump_test.go`) writes the server's introspection JSON; `codegen.ts` reads `SCHEMA_JSON` when set. Use this to **reconcile a hand-splice**: run it, then `git diff src/graphql/definitions.ts`. An empty diff means the hand-spliced types match what codegen produces (correct); any hunk is the drift to reconcile — **splice per-feature, never wholesale-accept the regenerated file** (`definitions.ts` is partly hand-maintained; a full-codegen overwrite can lose hand-maintained parts, so keep only the reconciled feature hunk and restore the rest).
 
+Every document is also validated against the served schema in `yarn test` (`src/graphql/__tests__/schema-validity.test.ts`, w21/066). The schema it reads is the golden SDL `lego/backend/internal/api/testdata/schema.graphql`, which `TestGraphQLSchemaMatchesTheGolden` keeps equal to what bex-api serves, so a backend schema change and the dashboard check meet in one commit. After an intended API change run `UPDATE_SCHEMA_GOLDEN=1 go test ./internal/api -run TestGraphQLSchemaMatchesTheGolden` from `lego/backend` and commit the file with it. A failure names the document, line and field.
+
 ## Visual layout pattern (w5/m2)
 
 Reused from `beancount-dashboard`'s reports/overview page and ledger-layout chrome — reference files (read-only, not in this repo): `.../src/features/reports/overview/{index.tsx,components/overview-stat-card.tsx,components/overview-metrics-panel.tsx}`, `.../src/common/components/ledger-layout/{index.tsx,layout-header.tsx}`. Reuse our own `Card`/shadcn primitives — don't import beancount's components or CSS.

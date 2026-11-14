@@ -1,0 +1,2870 @@
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type AcceptedWorkspaceInvite {
+  authorizationPending: Boolean
+  role: String
+  workspaceId: String
+  workspaceName: String
+}
+
+type AccountDeletion {
+  state: String!
+}
+
+type AccountDeletionPreview {
+  blocked: [AccountWorkspaceDisposition!]!
+  delete: [AccountWorkspaceDisposition!]!
+  leave: [AccountWorkspaceDisposition!]!
+}
+
+type AccountWorkspaceDisposition {
+  action: String!
+  id: String!
+  name: String!
+}
+
+type ActionDecision {
+  action: String!
+  outcome: String!
+  precondition: String
+  reason: String
+}
+
+type AgentAppliedSecret {
+  name: String!
+  source: String!
+}
+
+type AgentAttachment {
+  createdAt: String!
+  direction: String!
+  downloadUrl: String!
+  expiresAt: String
+  id: String!
+  mediaType: String!
+  name: String!
+  sessionId: String
+  sha256: String!
+  size: Float!
+  turn: Int
+}
+
+type AgentAttachmentLimits {
+  enabled: Boolean!
+  maxBytes: Float!
+  maxPerSession: Int!
+  maxPerTurn: Int!
+  maxSessionBytes: Float!
+}
+
+type AgentAutomation {
+  consecutiveFailures: Int!
+  createdAt: String
+  createdBy: String!
+  enabled: Boolean!
+  id: String!
+  lastFireAt: String
+  lastSessionId: String
+  name: String!
+  nextFireAt: String
+  notifications: AgentAutomationNotifications!
+  overlapPolicy: String!
+  ownerId: String!
+  pausedReason: String
+  template: AgentAutomationTemplate!
+  triggers: [AgentAutomationTrigger!]!
+  updatedAt: String
+  version: Int!
+}
+
+type AgentAutomationAgentConfig {
+  agent: String!
+  model: String
+  template: String
+}
+
+input AgentAutomationAgentConfigInput {
+  agent: String!
+  model: String
+  template: String
+}
+
+input AgentAutomationInput {
+  enabled: Boolean
+  ifVersion: Int
+  name: String
+  notifications: AgentAutomationNotificationsInput
+  template: AgentAutomationTemplateInput
+  triggers: [AgentAutomationTriggerInput!]
+}
+
+type AgentAutomationList {
+  automations: [AgentAutomation!]!
+  nextCursor: String
+  ownerId: String!
+}
+
+type AgentAutomationNotifications {
+  email: String!
+}
+
+input AgentAutomationNotificationsInput {
+  email: String!
+}
+
+type AgentAutomationRun {
+  automationId: String!
+  createdAt: String
+  error: String
+  fireAt: String
+  missedTicks: Int!
+  outcome: String!
+  sessionId: String
+  settledAt: String
+}
+
+type AgentAutomationRunList {
+  automationId: String!
+  nextCursor: String
+  runs: [AgentAutomationRun!]!
+}
+
+type AgentAutomationSchedule {
+  at: String
+  cron: String
+  endsAt: String
+  frequency: String!
+  minute: Int
+  runAt: String
+  timezone: String!
+  weekdays: [String!]
+}
+
+input AgentAutomationScheduleInput {
+  at: String
+  cron: String
+  endsAt: String
+  frequency: String!
+  minute: Int
+  runAt: String
+  timezone: String!
+  weekdays: [String!]
+}
+
+type AgentAutomationTemplate {
+  agentConfig: AgentAutomationAgentConfig!
+  branch: String
+  egressAllowlist: [String!]
+  maxSpendUSD: Float
+  outputRequired: Boolean
+  outputSchema: String
+  repo: String
+  secretNames: [String!]
+  skills: [AgentSessionSkill!]
+  tags: [String!]
+  task: String!
+  title: String
+}
+
+input AgentAutomationTemplateInput {
+  agentConfig: AgentAutomationAgentConfigInput!
+  branch: String
+  egressAllowlist: [String!]
+  maxSpendUSD: Float
+  outputRequired: Boolean
+  outputSchema: String
+  repo: String
+  secretNames: [String!]
+  skills: [AgentSessionSkillInput!]
+  tags: [String!]
+  task: String!
+  title: String
+}
+
+type AgentAutomationTrigger {
+  schedule: AgentAutomationSchedule
+  type: String!
+}
+
+input AgentAutomationTriggerInput {
+  schedule: AgentAutomationScheduleInput
+  type: String!
+}
+
+type AgentDataUse {
+  acknowledgedAt: String
+  acknowledgedBy: String
+  agent: String!
+}
+
+type AgentEnvironment {
+  agentDataUse: [AgentDataUse!]!
+  agentModelChargesAtThreshold: Boolean
+  agentModelCreditUsd: Float
+  agentModelMaxSpendCapUsd: Float
+  agentModelMonthlySpendCapUsd: Float
+  agentModelPlanSpendCapUsd: Float
+  agentModelSpendCapOverrideUsd: Float
+  agentModelSpendCapReached: Boolean
+  agentModelSpendCapTierLimited: Boolean
+  agentModelSpendMonthToDateUsd: Float
+  agentModelUnbilledUsd: Float
+  billingBalanceDue: Boolean
+  customHosts: [String!]!
+  defaultModel: String
+  enabledAgents: [String!]!
+  modelKeySet: Boolean!
+  modelPinned: Boolean!
+  modelSource: AgentModelSource!
+  networkTier: AgentNetworkTier!
+  nextChargeThresholdUsd: Float
+  ownerId: String!
+  pinnedModel: String
+  registryHosts: [String!]!
+  trustTier: String
+  trustTierLocked: Boolean
+  updatedAt: String
+}
+
+input AgentEnvironmentInput {
+  acknowledgeAgentDataUse: [String!]
+  agentModelMonthlySpendCapUsd: Float
+  clearModelApiKey: Boolean
+  customHosts: [String!]
+  defaultModel: String
+  enabledAgents: [String!]
+  modelApiKey: String
+  networkTier: AgentNetworkTier
+  resetAgentModelMonthlySpendCap: Boolean
+}
+
+enum AgentModelSource {
+  BYO
+  NONE
+  PLATFORM
+}
+
+type AgentModelUsage {
+  models: [AgentModelUsageBreakdown!]!
+  monthToDateUsd: String!
+}
+
+type AgentModelUsageBreakdown {
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  costUsd: String!
+  inputTokens: Float!
+  model: String!
+  outputTokens: Float!
+}
+
+enum AgentNetworkTier {
+  CUSTOM
+  FULL
+  REGISTRIES
+}
+
+type AgentRepoEnvironment {
+  checks: [AgentRepoStep!]!
+  ownerId: String!
+  repo: String!
+  setup: [AgentRepoStep!]!
+  updatedAt: String
+}
+
+type AgentRepoEnvironmentList {
+  environments: [AgentRepoEnvironment!]!
+  ownerId: String!
+}
+
+type AgentRepoStep {
+  name: String!
+  run: String!
+}
+
+input AgentRepoStepInput {
+  name: String!
+  run: String!
+}
+
+type AgentSecret {
+  name: String!
+  repo: String
+  scope: String!
+}
+
+type AgentSecretList {
+  ownerId: String!
+  secrets: [AgentSecret!]!
+}
+
+type AgentSession {
+  agentConfig: AgentSessionConfig!
+  appliedSecrets: [AgentAppliedSecret!]!
+  archivedAt: String
+  automationId: String
+  branch: String!
+  canceledAt: String
+  created: Boolean
+  createdAt: String!
+  createdBy: String
+  deliveryMode: String
+  deliveryNote: String
+  depth: Int!
+  expiresAt: String
+  failureReason: String
+  failureReasonCode: String
+  headSha: String
+  id: String!
+  maxSpendUSD: String
+  outcome: AgentSessionOutcome
+  ownerId: String!
+  parentSessionId: String
+  pendingMessages: Int!
+  phase: String!
+  prNumber: Int
+  prState: String
+  prStateAt: String
+  prUrl: String
+  queuedMessage: AgentSessionQueuedMessage
+  queuedMessages: [AgentSessionQueuedMessage!]
+  repo: String!
+  rootSessionId: String
+  sandboxId: String
+  secretNames: [String!]
+  sshAddress: String
+  state: String!
+  status: String!
+  steerable: Boolean!
+  streamUrl: String
+  tags: [String!]
+  ticket: String
+  title: String
+  turnOrigins: [AgentSessionTurnOrigin!]
+  turns: Int
+  updatedAt: String!
+  url: String
+}
+
+type AgentSessionCapabilities {
+  agents: [AgentSessionProfile!]!
+  attachments: AgentAttachmentLimits!
+  enabled: Boolean!
+  github: AgentSessionGitHubReadiness!
+  modelKeyReady: Boolean!
+  ready: Boolean!
+}
+
+type AgentSessionConfig {
+  agent: String!
+  model: String
+  modelEndpoint: String
+  task: String!
+  template: String
+}
+
+input AgentSessionConfigInput {
+  agent: String!
+  model: String
+  modelEndpoint: String
+  task: String!
+  template: String
+}
+
+type AgentSessionCost {
+  computeUSD: String!
+  modelUSD: String!
+  totalUSD: String!
+}
+
+type AgentSessionGitHubReadiness {
+  accountLogin: String
+  connected: Boolean!
+  installUrl: String
+}
+
+type AgentSessionModelCost {
+  costUsd: String!
+  modelSource: AgentModelSource!
+  requests: Int!
+  sessionId: String!
+  turns: [AgentSessionTurnModelCost!]!
+}
+
+type AgentSessionOutcome {
+  cost: AgentSessionCost
+  deliveryNote: String
+  failureReasonCode: String
+  files: [AgentSessionTurnAttachment!]
+  pullRequest: AgentSessionPullRequest
+  result: String
+  state: String!
+  steerable: Boolean!
+  summary: String
+  turn: Int
+}
+
+type AgentSessionProfile {
+  id: String!
+  label: String!
+  modelKeyReady: Boolean!
+}
+
+type AgentSessionPullRequest {
+  headSha: String
+  number: Int
+  state: String
+  url: String!
+}
+
+type AgentSessionQueuedMessage {
+  attachmentIds: [String!]
+  author: String!
+  blockedReason: String
+  createdAt: String
+  droppedReason: String
+  egressAllowlist: [String!]
+  hasOutputSchema: Boolean!
+  id: String!
+  position: Int!
+  prompt: String!
+  secretNames: [String!]
+  sessionId: String!
+  state: String!
+  turn: Int
+  updatedAt: String
+}
+
+input AgentSessionSecretInput {
+  name: String!
+  value: String!
+}
+
+type AgentSessionSkill {
+  arguments: String
+  name: String!
+}
+
+input AgentSessionSkillInput {
+  arguments: String
+  name: String!
+}
+
+type AgentSessionToolOutput {
+  outputs: [AgentSessionToolOutputField!]!
+  sessionId: String!
+  toolCallId: String!
+  turn: Int!
+}
+
+type AgentSessionToolOutputField {
+  field: String!
+  text: String!
+}
+
+type AgentSessionTranscriptPage {
+  nextAfterSeq: Int!
+  parts: [AgentSessionTranscriptPart!]!
+  turns: [AgentSessionTranscriptTurn!]!
+}
+
+type AgentSessionTranscriptPart {
+  createdAt: String!
+  part: String!
+  partIndex: Int!
+  partial: Boolean!
+  seq: Int!
+  turn: Int!
+}
+
+type AgentSessionTranscriptTurn {
+  attachments: [AgentSessionTurnAttachment!]!
+  completedAt: String
+  createdAt: String!
+  deliveryMode: String!
+  interrupted: Boolean!
+  outputRequired: Boolean!
+  outputSchema: String
+  prompt: String!
+  result: String
+  resultFinal: Boolean!
+  skills: [AgentSessionSkill!]!
+  transcriptComplete: Boolean!
+  transcriptTruncated: Boolean!
+  truncationReason: String!
+  turn: Int!
+}
+
+type AgentSessionTree {
+  rootSessionId: String!
+  sessions: [AgentSession!]!
+}
+
+type AgentSessionTurnAttachment {
+  id: String!
+  mediaType: String!
+  name: String!
+  size: Float!
+}
+
+type AgentSessionTurnModelCost {
+  cacheReadTokens: Float!
+  cacheWriteTokens: Float!
+  costUsd: String!
+  firstAt: String
+  inputTokens: Float!
+  lastAt: String
+  models: [String!]!
+  outputTokens: Float!
+  requests: Int!
+  turn: Int!
+}
+
+type AgentSessionTurnOrigin {
+  author: String
+  baseFailingRef: String
+  kind: String!
+  turn: Int!
+  url: String
+}
+
+type AgentSkill {
+  body: String
+  content: String
+  createdAt: String
+  description: String!
+  enabled: Boolean!
+  id: String!
+  name: String!
+  ownerId: String!
+  triggers: [String!]!
+  updatedAt: String
+  updatedBy: String
+  version: Int!
+}
+
+input AgentSkillInput {
+  body: String
+  content: String
+  description: String
+  enabled: Boolean
+  ifVersion: Int
+  name: String
+  triggers: [String!]
+}
+
+type AgentSkillList {
+  ownerId: String!
+  skills: [AgentSkill!]!
+}
+
+type AgentSkillVersion {
+  content: String
+  createdAt: String
+  createdBy: String
+  current: Boolean!
+  diff: String
+  message: String!
+  ownerId: String!
+  previousVersion: Int
+  shortId: String!
+  skillId: String!
+  version: Int!
+}
+
+type AgentSkillVersionList {
+  nextCursor: String
+  ownerId: String!
+  skillId: String!
+  versions: [AgentSkillVersion!]!
+}
+
+type ApiKey {
+  createdAt: String
+  createdBy: String
+  id: String
+  lastUsedAt: String
+  name: String
+  secret: String
+}
+
+type AuditLog {
+  action: String
+  actor: String
+  actorMethod: String
+  displayNameFrom: String
+  displayNameTo: String
+  domain: String
+  envGroupId: String
+  envGroupName: String
+  id: String
+  metadata: AuditLogMetadata
+  oauthAudience: String
+  oauthClientId: String
+  oauthScopes: [String]
+  relation: String
+  resource: String
+  status: String
+  targetName: String
+  timestamp: String
+}
+
+type AuditLogMetadata {
+  to: Boolean
+}
+
+type Autoscaling {
+  enabled: Boolean
+  maxInstances: Int
+  metricsUnavailable: Boolean
+  minInstances: Int
+  targetCPUPercent: Int
+  targetMemoryPercent: Int
+}
+
+type Billing {
+  credits: BillingCredits
+  currentCost: BillingAmount
+  invoices: [BillingInvoice]
+}
+
+type BillingAmount {
+  amountDueUsd: String
+  amountUsd: String
+  creditsAppliedUsd: String
+  currency: String
+  periodEnd: String
+  periodStart: String
+}
+
+type BillingCreditGrant {
+  expiresAt: String
+  name: String
+  remainingUsd: String
+}
+
+type BillingCredits {
+  availableUsd: String
+  currency: String
+  grants: [BillingCreditGrant]
+}
+
+type BillingHostedSession {
+  expiresAt: String
+  url: String
+}
+
+type BillingInvoice {
+  amountDueUsd: String
+  amountUsd: String
+  creditsAppliedUsd: String
+  currency: String
+  id: String
+  kind: String
+  periodEnd: String
+  periodStart: String
+  status: String
+}
+
+type BillingLifecycle {
+  allowedActions: [String]
+  enforcementOwned: Boolean
+  graceDeadline: String
+  reason: String
+  recoveryPending: Boolean
+  status: String
+  updatedAt: String
+}
+
+type BillingTaxReadiness {
+  configured: Boolean
+  enabled: Boolean
+  productTaxCode: String
+  reason: String
+  registrationCount: Int
+  taxBehavior: String
+}
+
+type Blueprint {
+  autoSync: Boolean
+  branch: String
+  createdAt: String
+  id: String
+  lastSync: String
+  manifest: String
+  name: String
+  ownerId: String
+  path: String
+  repo: String
+  resourceSuffix: String
+  resources: [BlueprintResource]
+  status: String
+  updatedAt: String
+}
+
+type BlueprintApprovedSync {
+  commitId: String
+  completedAt: String
+  dashboardUrl: String
+  id: String
+  startedAt: String
+  state: String
+}
+
+input BlueprintEnvVarValueInput {
+  key: String!
+  value: String!
+}
+
+type BlueprintEstimatedPricing {
+  lines: [BlueprintPricingLine]
+  totalUsd: String
+  variable: [BlueprintVariableCost]
+}
+
+type BlueprintManualEnvVar {
+  key: String
+  serviceName: String
+  serviceType: String
+}
+
+input BlueprintManualEnvVarInput {
+  key: String!
+  serviceName: String!
+  serviceType: String!
+  value: String
+}
+
+type BlueprintNotice {
+  column: Int
+  line: Int
+  message: String
+  path: String
+  severity: String
+}
+
+type BlueprintPlanAction {
+  changedFields: [BlueprintPlanFieldChange]
+  kind: String
+  message: String
+  name: String
+  operation: String
+  resourceId: String
+  sourcePath: String
+}
+
+type BlueprintPlanFieldChange {
+  path: String
+}
+
+type BlueprintPlanResult {
+  blueprint: Blueprint
+  notices: [BlueprintNotice]
+  planningOutcome: String
+  sync: BlueprintPlannedSync
+}
+
+type BlueprintPlannedSync {
+  actions: [BlueprintPlanAction]
+  commitId: String
+  completedAt: String
+  dashboardUrl: String
+  id: String
+  rawPlan: String
+  requiredManualEnvVars: [BlueprintManualEnvVar]
+  startedAt: String
+  state: String
+}
+
+type BlueprintPreview {
+  autoSync: Boolean
+  branch: String
+  commitId: String
+  error: String
+  existingResources: String
+  found: Boolean
+  manifest: String
+  matchedResources: [BlueprintResourceRef!]
+  reason: String
+  resourceSuffix: String
+  retryable: Boolean
+  suggestedName: String
+  validation: BlueprintValidation
+  warning: String
+}
+
+type BlueprintPricingLine {
+  instanceUsd: String
+  monthlyUsd: String
+  name: String
+  resourceKind: String
+  storageGb: Int
+  storageUsd: String
+  tier: String
+  tierLabel: String
+}
+
+type BlueprintResource {
+  id: String
+  name: String
+  type: String
+}
+
+type BlueprintResourceRef {
+  kind: String!
+  name: String!
+}
+
+type BlueprintSync {
+  commitId: String
+  completedAt: String
+  errorMessage: String
+  id: String
+  note: String
+  startedAt: String
+  state: String
+}
+
+type BlueprintValidation {
+  errorDetails: [BlueprintValidationError]
+  errors: [String]
+  estimatedPricing: BlueprintEstimatedPricing
+  plan: BlueprintValidationPlan
+  valid: Boolean
+}
+
+type BlueprintValidationError {
+  code: String
+  column: Int
+  error: String!
+  line: Int
+  path: String
+}
+
+type BlueprintValidationPlan {
+  actions: [BlueprintPlanAction]
+  databases: [String]
+  envGroups: [String]
+  keyValue: [String]
+  mode: String
+  services: [String]
+  syncFalseVars: [String]
+  totalActions: Int
+}
+
+type BlueprintVariableCost {
+  name: String
+  reason: String
+}
+
+type Build {
+  buildRun: BuildRun
+  buildSourceId: String
+  createdAt: String
+  cursor: String
+  id: String
+  image: BuildImage
+  updatedAt: String
+}
+
+type BuildDeployEndReason {
+  buildFailed: BuildDeployEndReasonId
+  failure: FailureReason
+  newBuild: BuildDeployEndReasonId
+  newDeploy: BuildDeployEndReasonId
+}
+
+type BuildDeployEndReasonId {
+  id: String
+}
+
+type BuildFilter {
+  ignoredPaths: [String]
+  paths: [String]
+}
+
+input BuildFilterInput {
+  ignoredPaths: [String]
+  paths: [String]
+}
+
+type BuildImage {
+  imageUrl: String
+  ref: String
+  registryCredentialId: String
+  sha: String
+}
+
+type BuildMinutes {
+  included: Float
+  used: Float
+}
+
+type BuildRun {
+  buildFinishedAt: String
+  buildStartedAt: String
+  commitId: String
+  commitUrl: String
+  id: String
+  runtime: String
+  status: String
+}
+
+type BuildSource {
+  createdAt: String
+  cursor: String
+  git: BuildSourceGit
+  id: String
+  image: BuildSourceImage
+  name: String
+  ownerId: String
+  projectId: String
+  serviceLinks: [BuildSourceServiceLink]
+  updatedAt: String
+}
+
+type BuildSourceGit {
+  branch: String
+  buildCommand: String
+  buildFilter: BuildFilter
+  dockerContext: String
+  dockerfilePath: String
+  region: String
+  registryCredentialId: String
+  repoUrl: String
+  rootDir: String
+  runtime: String
+}
+
+input BuildSourceGitInput {
+  branch: String
+  buildCommand: String
+  buildFilter: BuildFilterInput
+  dockerContext: String
+  dockerfilePath: String
+  region: String
+  registryCredentialId: String
+  repoUrl: String
+  rootDir: String
+  runtime: String
+}
+
+type BuildSourceImage {
+  imageUrl: String
+  ownerId: String
+  registryCredentialId: String
+}
+
+input BuildSourceImageInput {
+  imageUrl: String
+  ownerId: String
+  registryCredentialId: String
+}
+
+type BuildSourceServiceLink {
+  id: String
+  name: String
+}
+
+type CapabilityGrant {
+  action: String!
+  outcome: String!
+  reason: String
+}
+
+type ChargeLine {
+  costUsd: String
+  included: String
+  kind: String
+  quantity: String
+  rateUsd: String
+  tier: String
+  unit: String
+}
+
+type CronRun {
+  canceledBy: String
+  finishedAt: String
+  id: String
+  name: String
+  startedAt: String
+  status: String
+  triggeredBy: String
+}
+
+type CustomDomain {
+  certificateReason: String
+  certificateStatus: String
+  challengeRecord: DNSRecord
+  createdAt: String
+  dnsRecord: DNSRecord
+  domainType: String
+  edgeAddresses: [String]
+  id: String
+  name: String
+  redirectForName: String
+  server: CustomDomainServer
+  serverStatus: String
+  verificationStatus: String
+}
+
+type CustomDomainServer {
+  id: String
+  name: String
+}
+
+type DNSRecord {
+  name: String
+  type: String
+  value: String
+}
+
+type Database {
+  backupsEnabled: Boolean
+  blueprintId: String
+  connectionPool: String
+  createdAt: String
+  dashboardUrl: String
+  databaseName: String
+  databaseUser: String
+  defaultUser: String
+  diskAutoscalingEnabled: Boolean
+  diskSizeGB: Int
+  environmentId: String
+  expiresAt: String
+  externalCertificate: String
+  externalCertificateReason: String
+  externalHost: String
+  highAvailabilityEnabled: Boolean
+  highAvailabilityReady: Boolean
+  highAvailabilityRequested: Boolean
+  id: String
+  ipAllowList: [String]
+  ipAllowListEntries: [IPAllowListEntry]
+  name: String
+  ownerId: String
+  plan: String
+  poolerEnabled: Boolean
+  projectId: String
+  public: Boolean
+  readReplicas: [ReadReplicaView]
+  region: String
+  role: String
+  status: String
+  statusReason: String
+  statusReasonCode: String
+  suspended: String
+  suspenders: [String]
+  updatedAt: String
+  version: String
+}
+
+type DatabaseBackup {
+  createdAt: String
+  id: String
+  status: String
+}
+
+type DatabaseCredential {
+  default: Boolean!
+  username: String
+}
+
+type DatabaseExport {
+  createdAt: String
+  expiresAt: String
+  failureReason: String
+  filename: String
+  id: String
+  status: String
+  url: String
+  urlExpiresAt: String
+}
+
+type DatabaseInstanceType {
+  cpu: String
+  id: String
+  maxReadReplicas: Int
+  maxStorageGB: Int
+  memory: String
+  monthlyUsd: String
+  name: String
+  readReplicaMinStorageGB: Int
+  storageGB: Int
+  supportsConnectionPooling: Boolean
+  supportsDiskAutoscaling: Boolean
+  supportsHighAvailability: Boolean
+}
+
+type DatabaseLogEntry {
+  instance: String
+  message: String
+  timestamp: String
+  type: String
+}
+
+type DatabaseParameterOverride {
+  description: String
+  name: String
+  setting: String
+  source: String
+  unit: String
+}
+
+type DatabaseParameterSpec {
+  name: String
+  observationStatus: String!
+  observedSetting: String
+  observedUnit: String
+  value: String
+}
+
+type DatabaseProcess {
+  applicationName: String
+  durationSeconds: Int
+  masked: Boolean
+  pid: Int
+  query: String
+  state: String
+  userName: String
+  waitEvent: String
+  waitEventType: String
+}
+
+type DatabaseQueryResult {
+  columns: [String]
+  rowCount: Int
+  rows: [DatabaseQueryRow]
+  truncated: Boolean
+}
+
+type DatabaseQueryRow {
+  values: [String]
+}
+
+input DatabaseReadReplicaInput {
+  name: String!
+}
+
+type DatabaseRecoveryInfo {
+  backups: [DatabaseBackup]
+  earliestRecoveryTime: String
+  enabled: Boolean
+  latestRecoveryTime: String
+}
+
+type DatabaseSizeInfo {
+  name: String
+  sizeBytes: Int
+  sizePretty: String
+}
+
+type DatabaseSizes {
+  database: DatabaseSizeInfo
+  indexes: [IndexSizeInfo]
+  tables: [TableSizeInfo]
+}
+
+type DatabaseTableScan {
+  deadRows: Int
+  indexScanRows: Int
+  indexScans: Int
+  liveRows: Int
+  name: String
+  schema: String
+  seqScanRows: Int
+  seqScans: Int
+}
+
+type DatabaseTopQuery {
+  calls: Int
+  masked: Boolean
+  meanTimeMs: Float
+  query: String
+  rows: Int
+  sharedHitBlks: Int
+  sharedReadBlks: Int
+  totalTimeMs: Float
+}
+
+type DatabaseUser {
+  name: String
+}
+
+type DatabaseUserWithPassword {
+  name: String
+  password: String
+}
+
+input DatastoreMetricsQueryInput {
+  end: String
+  kind: String
+  name: String!
+  resolution: Int
+  resource: String!
+  start: String
+}
+
+type Deploy {
+  buildAvailable: Boolean
+  buildId: String
+  cancelReason: String
+  cancelReasonTemplate: DeployReason
+  commitCreatedAt: String
+  commitId: String
+  commitMessage: String
+  createdAt: String
+  failureReason: String
+  failureReasonTemplate: DeployReason
+  finishedAt: String
+  id: String
+  image: String
+  imageSha: String
+  preDeployStatus: String
+  rollbackOf: String
+  serviceId: String
+  stallReason: String
+  stallReasonTemplate: DeployReason
+  startedAt: String
+  status: String
+  trigger: String
+  updatedAt: String
+}
+
+type DeployHook {
+  url: String
+}
+
+type DeployReason {
+  code: String!
+  params: [DeployReasonParam!]!
+  parts: [DeployReason!]!
+  remainder: String!
+  text: String!
+}
+
+type DeployReasonParam {
+  name: String!
+  value: String!
+}
+
+type DeployTrigger {
+  clearCache: Boolean
+  deployHook: Boolean
+  deployedByRender: Boolean
+  envUpdated: Boolean
+  firstBuild: Boolean
+  manual: Boolean
+  rollback: Boolean
+  user: EventUser
+}
+
+type Disk {
+  createdAt: String
+  id: String
+  mountPath: String
+  name: String
+  serviceId: String
+  sizeGB: Int
+  updatedAt: String
+}
+
+type DiskSnapshot {
+  createdAt: String
+  instanceId: String
+  snapshotKey: String
+}
+
+type DiskSnapshotHealth {
+  dueBy: String
+  lastSnapshotAt: String
+  reason: String
+  state: String
+}
+
+type EdgeCacheTrigger {
+  manual: Boolean
+  system: Boolean
+  user: EventUser
+}
+
+type EnvGroup {
+  availability: String
+  createdAt: String
+  envVars: [EnvGroupVar]
+  environmentId: String
+  id: String
+  name: String
+  ownerId: String
+  revision: String
+  secretFiles: [EnvGroupSecretFile]
+  serviceLinks: [String]
+  updatedAt: String
+}
+
+type EnvGroupEnvironmentPatchResult {
+  affectedServiceIds: [String]
+  envVarKeys: [String]
+  failedServiceIds: [String]
+  pendingServiceIds: [String]
+  revision: String
+  rolledOut: Boolean
+  secretFileNames: [String]
+}
+
+type EnvGroupSecretFile {
+  content: String
+  name: String
+}
+
+input EnvGroupSecretFileInput {
+  content: String!
+  name: String!
+}
+
+input EnvGroupSecretFilePatchInput {
+  content: String
+  delete: Boolean
+  fromName: String
+  name: String!
+}
+
+type EnvGroupVar {
+  key: String
+  value: String
+}
+
+input EnvGroupVarInput {
+  generateValue: Boolean
+  key: String!
+  value: String
+}
+
+input EnvGroupVarPatchInput {
+  delete: Boolean
+  fromKey: String
+  generateValue: Boolean
+  key: String!
+  value: String
+}
+
+type EnvVar {
+  id: String
+  key: String
+  managedBy: String
+  revision: String
+  value: String
+}
+
+input EnvVarInput {
+  generateValue: Boolean
+  key: String!
+  value: String
+}
+
+type EnvVarListValue {
+  id: String
+  key: String
+  managedBy: String
+  value: String
+}
+
+type EnvVarWithCursor {
+  cursor: String
+  envVar: EnvVarListValue
+}
+
+type Environment {
+  createdAt: String
+  databaseIds: [String]
+  envGroupIds: [String]
+  id: String
+  ipAllowList: [String]
+  ipAllowListEntries: [IPAllowListEntry]
+  ipAllowListProxiedDomains: [String!]
+  keyValueIds: [String]
+  name: String
+  networkIsolationEnabled: Boolean
+  ownerId: String
+  projectId: String
+  protectedStatus: String
+  serviceIds: [String]
+}
+
+input EnvironmentEnvVarPatchInput {
+  delete: Boolean
+  fromKey: String
+  generateValue: Boolean
+  key: String!
+  value: String
+}
+
+type EnvironmentPatchResult {
+  envVarKeys: [String!]!
+  revision: String
+  rolledOut: Boolean!
+  rolloutError: String
+  secretFileNames: [String!]!
+}
+
+input EnvironmentSecretFilePatchInput {
+  content: String
+  delete: Boolean
+  fromName: String
+  name: String!
+}
+
+type EstimatedCost {
+  meters: [MeterEstimate]
+  resources: [ResourceEstimate]
+  totalUsd: String
+}
+
+type EventUser {
+  email: String
+  id: String
+}
+
+type FailureReason {
+  earlyExit: Boolean
+  evicted: Boolean
+  nonZeroExit: Int
+  oomKilled: OomKilled
+  timedOutSeconds: Int
+}
+
+type FreeInstanceHours {
+  included: Float
+  used: Float
+}
+
+type GeneratedBlueprint {
+  filename: String
+  manifest: String
+}
+
+type GitClaim {
+  claimUrl: String
+}
+
+type GitClaimCandidate {
+  accountLogin: String
+  installationId: Float
+}
+
+type GitClaimSelection {
+  candidates: [GitClaimCandidate]
+  expiresAt: String
+  id: String
+}
+
+type GitConnection {
+  accountLogin: String
+  connected: Boolean
+  createdAt: String
+  installUrl: String
+  installationId: Float
+}
+
+type IPAllowListEntry {
+  cidrBlock: String!
+  description: String
+}
+
+input IPAllowListEntryInput {
+  cidrBlock: String!
+  description: String
+}
+
+type IncludedBandwidth {
+  included: Float
+  used: Float
+}
+
+type IndexSizeInfo {
+  name: String
+  schema: String
+  sizeBytes: Int
+  sizePretty: String
+  table: String
+}
+
+type InstanceType {
+  available: Boolean!
+  cpu: String
+  id: String
+  memory: String
+  monthlyUsd: String
+  name: String
+  unavailableReason: String!
+  usdPerMinute: String
+}
+
+type Job {
+  createdAt: String
+  finishedAt: String
+  id: String
+  planId: String
+  serviceId: String
+  startCommand: String
+  startedAt: String
+  status: String
+}
+
+type KeyValue {
+  blueprintId: String
+  createdAt: String
+  dashboardUrl: String
+  environmentId: String
+  externalAccessRestarts: Boolean
+  externalCertificate: String
+  externalCertificateReason: String
+  externalHost: String
+  id: String
+  internalAuth: Boolean
+  ipAllowList: [String]
+  ipAllowListEntries: [IPAllowListEntry]
+  maxmemoryPolicy: String
+  name: String
+  ownerId: String
+  persistenceMode: String
+  plan: String
+  projectId: String
+  public: Boolean
+  region: String
+  status: String
+  statusReason: String
+  statusReasonCode: String
+  suspended: String
+  updatedAt: String
+  version: String
+}
+
+type KeyValueConnectionInfo {
+  cliCommand: String
+  externalCertificate: String
+  externalCertificateReason: String
+  externalConnectionString: String
+  internalConnectionString: String
+}
+
+type KeyValueInstanceType {
+  available: Boolean!
+  cpu: String
+  id: String
+  memory: String
+  monthlyUsd: String
+  name: String
+  storageGB: Int
+  unavailableReason: String!
+}
+
+type KeyValueLogEntry {
+  instance: String
+  message: String
+  timestamp: String
+  type: String
+}
+
+type LogEntry {
+  host: String
+  id: String
+  instance: String
+  level: String
+  message: String
+  method: String
+  path: String
+  requestId: String
+  statusCode: String
+  timestamp: String
+  type: String
+}
+
+type LogList {
+  hasMore: Boolean!
+  logs: [LogEntry]!
+  nextEndTime: String!
+  nextStartTime: String!
+}
+
+type LogRetention {
+  days: Int!
+  plan: String!
+  upgradeDays: Int
+  upgradePlan: String
+  visibleFrom: String
+}
+
+type MaintenanceMode {
+  enabled: Boolean!
+  uri: String!
+}
+
+input MaintenanceModeInput {
+  enabled: Boolean!
+  uri: String
+}
+
+type MeterEstimate {
+  costUsd: String
+  kind: String
+  resourceKind: String
+  tier: String
+}
+
+type MetricLabel {
+  field: String
+  value: String
+}
+
+type MetricSeries {
+  labels: [MetricLabel]
+  parameters: [MetricSeriesParameter]
+  unit: String
+  values: [MetricValue]
+}
+
+type MetricSeriesParameter {
+  quantile: Float
+}
+
+type MetricValue {
+  time: String
+  value: Float
+}
+
+input MetricsFilterInput {
+  field: String!
+  values: [String!]!
+}
+
+type MetricsFilterValues {
+  field: String
+  values: [String]
+}
+
+input MetricsFiltersQueryInput {
+  end: String
+  filters: [MetricsFilterInput!]!
+  outputFilters: [String!]!
+  ownerId: String
+  start: String
+  type: String
+}
+
+type MetricsFiltersResult {
+  values: [MetricsFilterValues]
+}
+
+input MetricsParameterInput {
+  quantile: Float
+}
+
+type MetricsPathFilterSuggestions {
+  paths: [String]
+}
+
+input MetricsPathFilterSuggestionsInput {
+  paths: [String]
+  serviceIDs: [String!]!
+}
+
+input MetricsQueryInput {
+  aggregateAllMethod: String
+  aggregateBy: [String]
+  aggregationMethod: String
+  end: String
+  filters: [MetricsFilterInput!]!
+  name: String!
+  parameters: [MetricsParameterInput]
+  percentage: Boolean
+  resolution: Int
+  start: String
+}
+
+type MonthToDateBandwidth {
+  degradedSources: [String]
+  egressBandwidthMB: Float
+  httpEgressBandwidthMB: Float
+  natEgressBandwidthMB: Float
+  privateLinkEgressBandwidthMB: Float
+  websocketEgressBandwidthMB: Float
+}
+
+type Mutation {
+  acceptWorkspaceInvite(token: String!): AcceptedWorkspaceInvite
+  addCustomDomain(confirm: String, id: String!, name: String!): CustomDomain
+  addDisk(mountPath: String!, name: String!, serviceId: String!, sizeGB: Int): Disk
+  approveBlueprint(id: String!, manualEnvVars: [BlueprintManualEnvVarInput], ownerId: String, syncId: String): BlueprintApprovedSync
+  archiveAgentSession(id: String!): AgentSession
+  attachAgentSession(action: String, id: String!): AgentSession
+  cancelAgentSession(id: String!): AgentSession
+  cancelCronJobRun(runId: String!, serviceId: String!): CronRun
+  cancelDeploy(deployId: String!, serviceId: String!): Deploy
+  cancelJob(jobId: String!, serviceId: String!): Job
+  cancelWorkspaceCreation(attemptId: String!): Boolean
+  changeWorkspaceMemberRole(role: String!, subject: String!, workspaceId: String!): WorkspaceMember
+  changeWorkspacePlan(id: String!, plan: String!): Workspace
+  claimGit(installationId: Float, ownerId: String): GitClaim
+  cloneEnvGroup(environmentId: String, id: String!, name: String!, ownerId: String): EnvGroup
+  connectGit(ownerId: String): GitConnection
+  createAgentAutomation(input: AgentAutomationInput!, ownerId: String): AgentAutomation!
+  createAgentSession(agentConfig: AgentSessionConfigInput!, attachmentIds: [String!], branch: String, egressAllowlist: [String!], idempotencyKey: String, maxSpendUSD: Float, outputRequired: Boolean, outputSchema: String, ownerId: String, parentSessionId: String, repo: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!], tags: [String!], title: String): AgentSession
+  createAgentSkill(input: AgentSkillInput!, ownerId: String): AgentSkill!
+  createApiKey(name: String!, ownerId: String): ApiKey
+  createBillingCheckoutSession(cancelUrl: String!, successUrl: String!, workspaceId: String!): BillingHostedSession
+  createBillingPortalSession(returnUrl: String!, workspaceId: String!): BillingHostedSession
+  createBlueprint(branch: String, confirm: String, envVarValues: [BlueprintEnvVarValueInput], existingResources: String, name: String, ownerId: String, path: String, repo: String!, resourceSuffix: String): Blueprint
+  createBuildSource(envGroupIds: [String!], envVars: [EnvVarInput], git: BuildSourceGitInput, image: BuildSourceImageInput, name: String!, ownerId: String!, projectId: String, secretFiles: [SecretFileInput], serviceIds: [String!]): BuildSource
+  createDatabase(connectionPool: String, databaseName: String, databaseUser: String, diskSizeGB: Int, dryRun: Boolean, enableDiskAutoscaling: Boolean, enableHighAvailability: Boolean, environmentId: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], name: String!, ownerId: String, plan: String, public: Boolean, readReplicas: [DatabaseReadReplicaInput!], region: String, version: String): Database
+  createDatabaseCredential(id: String!, username: String!): [DatabaseCredential]
+  createDatabaseExport(id: String!): DatabaseExport
+  createDatabaseUser(confirm: String, id: String!, name: String!): DatabaseUserWithPassword
+  createEnvGroup(envVars: [EnvGroupVarInput!], environmentId: String, name: String!, ownerId: String, secretFiles: [EnvGroupSecretFileInput!], serviceIds: [String!]): EnvGroup
+  createEnvironment(ipAllowList: [IPAllowListEntryInput!], name: String!, networkIsolationEnabled: Boolean, projectId: String!, protectedStatus: String): Environment
+  createJob(planId: String, serviceId: String!, startCommand: String!): Job
+  createKeyValue(dryRun: Boolean, environmentId: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maxmemoryPolicy: String, name: String!, ownerId: String, persistenceMode: String, plan: String, public: Boolean, region: String, storageGB: Int, version: String): KeyValue
+  createPlannedBlueprint(autoSync: Boolean, branch: String, existingResources: String, name: String!, ownerId: String, path: String, repo: String!): BlueprintPlanResult
+  createProject(environments: [ProjectEnvironmentInput!], name: String!, ownerId: String!): Project
+  createRegistryCredential(authToken: String!, expiresAt: String, host: String!, name: String, ownerId: String, username: String!): RegistryCredential
+  createRouterKey(name: String!, ownerId: String!): Boolean
+  createSSHKey(name: String!, publicKey: String!): SSHKey
+  createSandbox(buildId: String, buildName: String, env: [EnvVarInput!], idleTimeoutSeconds: Int, name: String, networkPolicy: SandboxNetworkPolicyInput, ownerId: String, plan: String, region: String, sandboxGroupId: String, template: String, timeoutSeconds: Int): Sandbox
+  createSandboxGroup(name: String!, ownerId: String, region: String): SandboxGroup
+  createService(autoDeploy: Boolean, autoDeployTrigger: String, branch: String, buildCommand: String, buildFilter: BuildFilterInput, builder: String, command: String, dockerContext: String, dockerfilePath: String, dryRun: Boolean, envVars: [EnvVarInput], environmentId: String, headers: [StaticHeaderInput], healthCheckPath: String, image: String, ipAllowList: [String], ipAllowListEntries: [IPAllowListEntryInput!], maintenanceMode: MaintenanceModeInput, maxShutdownDelaySeconds: Int, name: String!, notifyOnFail: String, ownerId: String, plan: String, port: Int, preDeployCommand: String, publishPath: String, region: String, registryCredentialId: String, replicas: Int, repo: String, rootDir: String, routes: [StaticRouteInput], runtime: String, schedule: String, secretFiles: [SecretFileInput], startCommand: String, type: String): Service
+  createShellSession(id: String!, instanceId: String): ShellSession
+  createWebhookEndpoint(enabled: Boolean, eventTypes: [String]!, name: String, ownerId: String, url: String!): WebhookEndpoint
+  createWorkspace(name: String!, plan: String): Workspace
+  deleteAccount(confirmation: String!): AccountDeletion
+  deleteAgentAttachment(id: String!): Boolean
+  deleteAgentAutomation(id: String!, ownerId: String): Boolean
+  deleteAgentRepoEnvironment(ownerId: String, repo: String!): Boolean
+  deleteAgentSecret(name: String!, ownerId: String): Boolean
+  deleteAgentSession(id: String!): Boolean
+  deleteAgentSkill(ownerId: String, skill: String!): Boolean
+  deleteBuildSource(id: String!): Boolean
+  deleteCustomDomain(id: String!, name: String!): Boolean
+  deleteDatabase(confirm: String, id: String!): Boolean
+  deleteDatabaseCredential(id: String!, username: String!): [DatabaseCredential]
+  deleteDatabaseUser(id: String!, name: String!): Boolean
+  deleteDisk(id: String!): Boolean
+  deleteEnvGroup(id: String!): Boolean
+  deleteEnvGroupSecretFile(id: String!, name: String!): Boolean
+  deleteEnvGroupVar(id: String!, key: String!): Boolean
+  deleteEnvVar(key: String!, serviceId: String!): Boolean
+  deleteEnvironment(id: String!): String
+  deleteKeyValue(confirm: String, id: String!): Boolean
+  deleteProject(id: String!): String
+  deleteQueuedAgentSessionMessage(id: String!, messageId: String!): Boolean
+  deleteRegistryCredential(id: String!, ownerId: String): Boolean
+  deleteRouterKey(id: String!, ownerId: String!): Boolean
+  deleteSSHKey(id: String!): Boolean!
+  deleteSandboxGroup(id: String!, ownerId: String): Boolean!
+  deleteSandboxImage(id: String!, ownerId: String, sandboxGroupId: String!): Boolean!
+  deleteSecretFile(name: String!, serviceId: String!): Boolean
+  deleteService(confirm: String, id: String!): Boolean
+  deleteWebhookEndpoint(id: String!, ownerId: String): Boolean
+  deleteWorkspace(confirmation: String!, id: String!): String
+  disableAutoscaling(id: String!): Boolean
+  disconnectBlueprint(id: String!, ownerId: String): Boolean
+  disconnectGit(installationId: Float, ownerId: String): Boolean
+  editQueuedAgentSessionMessage(id: String!, messageId: String!, prompt: String!): AgentSessionQueuedMessage!
+  enableKeyValueInternalAuth(id: String!): KeyValue
+  executeDatabaseQuery(allowWrites: Boolean, confirm: String, id: String!, sql: String!): DatabaseQueryResult
+  failoverDatabase(confirm: String, id: String!): Boolean
+  finalizeWorkspaceCreation(attemptId: String!): Workspace
+  importSandboxImage(name: String!, ownerId: String, registryPassword: String, registryUsername: String, sandboxGroupId: String!, sourceImage: String!): SandboxImage
+  interruptAgentSession(id: String!): AgentSession
+  inviteWorkspaceMember(email: String!, role: String!, workspaceId: String!): WorkspaceInvite
+  leaveWorkspace(workspaceId: String!): Boolean
+  linkBuildSource(buildSourceId: String!, dryRun: Boolean, serviceId: String!, startCommand: String): Service
+  linkEnvGroup(id: String!, serviceId: String!): Boolean
+  markPushNotificationRead(id: String!, ownerId: String): Boolean!
+  moveEnvGroup(confirm: String, environmentId: String!, id: String!): EnvGroup
+  moveQueuedAgentSessionMessage(id: String!, messageId: String!, position: Int!): [AgentSessionQueuedMessage!]!
+  patchEnvGroupEnvironment(envVars: [EnvGroupVarPatchInput!], expectedRevision: String, id: String!, saveMode: String!, secretFiles: [EnvGroupSecretFilePatchInput!]): EnvGroupEnvironmentPatchResult
+  patchServiceEnvironment(envVars: [EnvironmentEnvVarPatchInput!], expectedEnvRevision: String, saveMode: String!, secretFiles: [EnvironmentSecretFilePatchInput!], serviceId: String!): EnvironmentPatchResult!
+  pauseAgentAutomation(id: String!, ownerId: String): AgentAutomation!
+  planBlueprintSync(id: String!, ownerId: String): BlueprintPlanResult
+  prepareWorkspaceCreation(attemptId: String, billingEmail: String!, collectPaymentMethod: Boolean, name: String!, plan: String!): WorkspaceCreationAttempt
+  purgeServiceCache(confirm: String, id: String!): Service
+  recoverDatabase(id: String!, name: String!, plan: String, targetTime: String, version: String): Database
+  regenerateDeployHook(serviceId: String!): DeployHook
+  registerNotificationDeviceSubscription(deviceId: String!, ownerId: String, platform: String!, provider: String!, sessionId: String!, token: String!): NotificationDeviceSubscription
+  registerNotificationWebPushSubscription(auth: String!, browserId: String!, endpoint: String!, p256dh: String!): NotificationWebPushSubscription
+  removeWorkspaceMember(subject: String!, workspaceId: String!): String
+  renameDatabase(confirm: String, dryRun: Boolean, id: String!, name: String!): Database
+  renameEnvGroup(confirm: String, id: String!, name: String!): EnvGroup
+  renameEnvironment(confirm: String, id: String!, name: String!): Environment
+  renameKeyValue(confirm: String, dryRun: Boolean, id: String!, name: String!): KeyValue
+  renameProject(confirm: String, id: String!, name: String!): Project
+  renameWorkspace(confirm: String, id: String!, name: String!): Workspace
+  resendWebhookDelivery(attemptId: String!, endpointId: String!, idempotencyKey: String!, ownerId: String): WebhookDelivery
+  resendWorkspaceInvite(inviteId: String!, workspaceId: String!): WorkspaceInvite
+  restartDatabase(id: String!): Database
+  restartServer(serviceId: String!): Deploy
+  restoreDiskSnapshot(id: String!, snapshotKey: String!): Disk
+  resumeAgentAutomation(id: String!, ownerId: String): AgentAutomation!
+  resumeAgentSession(id: String!): AgentSession
+  resumeDatabase(id: String!): Database
+  resumeKeyValue(id: String!): KeyValue
+  resumeService(id: String!): Service
+  revokeApiKey(id: String!, ownerId: String): Boolean
+  revokeNotificationDeviceSubscriptions(ownerId: String): Int
+  revokeWorkspaceInvite(inviteId: String!, workspaceId: String!): String
+  rollbackService(confirm: String, deployId: String!, disableAutoDeploy: Boolean = false, serviceId: String!): Deploy
+  runAgentAutomation(id: String!, ownerId: String): AgentAutomationRun!
+  runCronJob(id: String!): CronRun
+  scaleService(id: String!, numInstances: Int!): Service
+  selectGitClaim(installationId: Float!, ownerId: String, selectionId: String!): GitConnection
+  setAgentRepoEnvironment(checks: [AgentRepoStepInput!]!, ownerId: String, repo: String!, setup: [AgentRepoStepInput!]!): AgentRepoEnvironment!
+  setAgentSecret(name: String!, ownerId: String, repo: String, scope: String, value: String): AgentSecret!
+  setAgentSessionTags(id: String!, tags: [String!]!): AgentSession
+  setAutoDeploy(enabled: Boolean!, id: String!): Service
+  setAutoDeployTrigger(id: String!, trigger: String!): Service
+  setAutoscaling(id: String!, maxInstances: Int!, minInstances: Int!, targetCPUPercent: Int, targetMemoryPercent: Int): Autoscaling
+  setBranch(branch: String!, confirm: String, id: String!): Service
+  setBuildCommand(command: String!, confirm: String, id: String!): Service
+  setBuildFilter(buildFilter: BuildFilterInput!, id: String!): Service
+  setCacheProfile(confirm: String, id: String!, profile: String!): Service
+  setDatabaseIpAllowList(cidrs: [String], entries: [IPAllowListEntryInput!], id: String!): Database
+  setDatabasePublic(id: String!, public: Boolean!): Database
+  setDatabaseReadReplicas(confirm: String, dryRun: Boolean, id: String!, readReplicas: [DatabaseReadReplicaInput!]!): Database
+  setDefaultSandboxGroup(id: String!, ownerId: String): SandboxGroup
+  setDisplayName(confirm: String, displayName: String!, id: String!): Service
+  setDockerContext(confirm: String, dockerContext: String!, id: String!): Service
+  setDockerfilePath(confirm: String, dockerfilePath: String!, id: String!): Service
+  setEnvGroupSecretFile(content: String, id: String!, name: String!): Boolean
+  setEnvGroupVar(generateValue: Boolean, id: String!, key: String!, value: String): Boolean
+  setEnvGroupVars(envVars: [EnvGroupVarInput!]!, id: String!): Boolean
+  setEnvVar(generateValue: Boolean, key: String!, serviceId: String!, value: String): Boolean
+  setEnvVars(envVars: [EnvVarInput!]!, serviceId: String!): Boolean
+  setEnvironmentACL(id: String!, ipAllowList: [String!], ipAllowListEntries: [IPAllowListEntryInput!], networkIsolationEnabled: Boolean!, protectedStatus: String!): Environment
+  setEnvironmentDatabases(databaseIds: [String!]!, id: String!): Environment
+  setEnvironmentEnvGroups(envGroupIds: [String!]!, id: String!): Environment
+  setEnvironmentKeyValues(id: String!, keyValueIds: [String!]!): Environment
+  setEnvironmentServices(id: String!, serviceIds: [String!]!): Environment
+  setHealthCheckPath(confirm: String, id: String!, path: String!): Service
+  setIdleTimeout(id: String!, idleTTLSeconds: Int!): Service
+  setImage(confirm: String, id: String!, image: String!, registryCredentialId: String): Service
+  setKeyValueIpAllowList(cidrs: [String], confirm: String, entries: [IPAllowListEntryInput!], id: String!): KeyValue
+  setKeyValueMaxmemoryPolicy(confirm: String, dryRun: Boolean, id: String!, maxmemoryPolicy: String!): KeyValue
+  setKeyValuePersistenceMode(confirm: String, dryRun: Boolean, id: String!, persistenceMode: String!): KeyValue
+  setKeyValuePublic(confirm: String, id: String!, public: Boolean!): KeyValue
+  setMaintenanceMode(confirm: String, id: String!, maintenanceMode: MaintenanceModeInput!): Service
+  setMaxShutdownDelay(id: String!, seconds: Int!): Service
+  setNotificationsToSend(confirm: String, id: String!, value: String!): Service
+  setNotifyOnFail(confirm: String, id: String!, value: String!): Service
+  setPipelineSpendLimit(spendLimitUsd: String, workspaceId: String!): PipelineSettings
+  setPort(id: String!, port: Int!): Service
+  setPreDeployCommand(command: String!, confirm: String, id: String!): Service
+  setProjectDatabases(databaseIds: [String!]!, id: String!): Project
+  setProjectKeyValues(id: String!, keyValueIds: [String!]!): Project
+  setProjectServices(id: String!, serviceIds: [String!]!): Project
+  setPublishPath(confirm: String, id: String!, publishPath: String!): Service
+  setRegistryCredential(confirm: String, id: String!, registryCredentialId: String!): Service
+  setRepo(branch: String, confirm: String, id: String!, repo: String!): Service
+  setRootDir(confirm: String, id: String!, rootDir: String!): Service
+  setRuntime(confirm: String, id: String!, runtime: String!): Service
+  setSecretFile(content: String, name: String!, serviceId: String!): Boolean
+  setServiceIpAllowList(cidrs: [String], entries: [IPAllowListEntryInput!], id: String!): Service
+  setStartCommand(command: String!, confirm: String, id: String!): Service
+  setStaticHeaders(headers: [StaticHeaderInput], id: String!): Service
+  setStaticRoutes(id: String!, routes: [StaticRouteInput]): Service
+  setSubdomainPolicy(confirm: String, id: String!, policy: String!): Service
+  setWebhookEndpointEnabled(enabled: Boolean!, id: String!, ownerId: String): WebhookEndpoint
+  setWorkspaceIPAllowList(id: String!, ipAllowList: [IPAllowListEntryInput!]!): Workspace
+  setWorkspaceOverlappingDeployPolicy(id: String!, policy: String!): Workspace
+  setWorkspaceRequireTwoFactor(enabled: Boolean!, workspaceId: String!): Workspace
+  steerAgentSession(attachmentIds: [String!], egressAllowlist: [String!], id: String!, idempotencyKey: String, outputRequired: Boolean, outputSchema: String, prompt: String!, secretNames: [String!], secrets: [AgentSessionSecretInput!], skills: [AgentSessionSkillInput!]): AgentSession
+  suspendDatabase(confirm: String, id: String!): Database
+  suspendKeyValue(confirm: String, id: String!): KeyValue
+  suspendService(confirm: String, id: String!): Service
+  syncBlueprint(bexYaml: String, commitId: String, confirm: String, id: String!, ownerId: String, path: String, repo: String): SyncBlueprintResult
+  takeOverAgentAutomation(id: String!, ownerId: String): AgentAutomation!
+  terminateSandbox(id: String!, ownerId: String): Boolean!
+  triggerBuild(buildSourceId: String!, clearCache: String): Build
+  triggerDeploy(buildId: String, clearCache: String, commitId: String, confirm: String, deployMode: String, imageUrl: String, serviceId: String!): Deploy
+  unarchiveAgentSession(id: String!): AgentSession
+  unlinkEnvGroup(id: String!, serviceId: String!): Boolean
+  unregisterNotificationDeviceSubscription(deviceId: String!, ownerId: String): Boolean
+  unregisterNotificationWebPushSubscription(browserId: String!): Boolean
+  updateAgentAutomation(id: String!, input: AgentAutomationInput!, ownerId: String): AgentAutomation!
+  updateAgentEnvironment(input: AgentEnvironmentInput!, ownerId: String): AgentEnvironment!
+  updateAgentSkill(input: AgentSkillInput!, ownerId: String, skill: String!): AgentSkill!
+  updateBlueprint(autoSync: Boolean, branch: String, id: String!, name: String, ownerId: String, path: String): Blueprint
+  updateBuildSource(git: BuildSourceGitInput, id: String!, image: BuildSourceImageInput, name: String): BuildSource
+  updateCronJob(command: String, confirm: String, id: String!, schedule: String!): Service
+  updateDatabaseConnectionPool(confirm: String, connectionPool: String!, dryRun: Boolean, id: String!): Database
+  updateDatabaseDiskAutoscaling(enabled: Boolean!, id: String!): Database
+  updateDatabaseDiskSize(confirm: String, diskSizeGB: Int!, dryRun: Boolean, id: String!): Database
+  updateDatabaseHighAvailability(confirm: String, dryRun: Boolean, enabled: Boolean!, id: String!): Database
+  updateDatabasePlan(confirm: String, dryRun: Boolean, id: String!, plan: String!): Database
+  updateDatabaseVersion(confirm: String, id: String!, version: String!): Database
+  updateDisk(id: String!, mountPath: String, name: String, sizeGB: Int): Disk
+  updateEnvironment(id: String!, ipAllowList: [String!], ipAllowListEntries: [IPAllowListEntryInput!], name: String, networkIsolationEnabled: Boolean, protectedStatus: String): Environment
+  updateKeyValuePlan(confirm: String, dryRun: Boolean, id: String!, plan: String!): KeyValue
+  updateNotificationSettings(deployFailed: Boolean!, deployStarted: Boolean!, deploySucceeded: Boolean!, ownerId: String): NotificationSettings
+  updateOwnerNotificationSettings(input: OwnerNotificationSettingsInput!, ownerId: String): OwnerNotificationSettings!
+  updatePushNotificationSettings(settings: PushNotificationSettingsInput!): PushNotificationSettings
+  updateRegistryCredential(authToken: String, expiresAt: String, id: String!, name: String, ownerId: String, username: String): RegistryCredential
+  updateRouterKey(allowCredentials: Boolean!, allowHeaders: String!, allowMethods: String!, allowOrigin: String!, id: String!, name: String!, ownerId: String!): Boolean
+  updateSandboxGroup(concurrencyLimit: Int!, id: String!, ownerId: String): SandboxGroup
+  updateServicePlan(confirm: String, dryRun: Boolean, id: String!, plan: String!): Service
+  updateWebhookEndpoint(enabled: Boolean, eventTypes: [String], id: String!, name: String, ownerId: String, url: String): WebhookEndpoint
+  verifyCustomDomain(confirm: String, id: String!, name: String!): CustomDomain
+}
+
+type NameAvailability {
+  available: Boolean
+  suggestion: String
+}
+
+type NotificationDeviceSubscription {
+  createdAt: String
+  deviceId: String
+  lastRegisteredAt: String
+  platform: String
+  preferenceRef: String
+  provider: String
+  updatedAt: String
+}
+
+type NotificationSettings {
+  deployFailed: Boolean
+  deployStarted: Boolean
+  deploySucceeded: Boolean
+}
+
+type NotificationWebPushSubscription {
+  browserId: String
+  createdAt: String
+  lastRegisteredAt: String
+  updatedAt: String
+}
+
+type OomKilled {
+  memoryLimit: String
+}
+
+type OutboundIPs {
+  dedicatedIpId: String
+  ips: [String]
+  type: String
+}
+
+type OwnerNotificationSettings {
+  emailEnabled: Boolean!
+  notificationsToSend: String!
+  ownerId: String!
+  previewNotificationsEnabled: Boolean!
+  slackEnabled: Boolean!
+}
+
+input OwnerNotificationSettingsInput {
+  emailEnabled: Boolean
+  notificationsToSend: String
+  previewNotificationsEnabled: Boolean
+}
+
+enum PaymentMethodRejection {
+  PREPAID_CARD
+  UNPAID_BALANCE
+}
+
+type PipelineSettings {
+  spendLimitUsd: String
+  workspaceId: String!
+}
+
+type PostgresConnectionInfo {
+  externalCertificate: String
+  externalCertificateReason: String
+  externalConnectionPoolString: String
+  externalConnectionString: String
+  internalConnectionPoolString: String
+  internalConnectionString: String
+  password: String
+  psqlCommand: String
+  readReplicaConnectionStrings: [ReplicaConnectionStrings]
+  serverCaCertificate: String
+}
+
+type Project {
+  createdAt: String
+  databaseIds: [String]
+  id: String
+  keyValueIds: [String]
+  name: String
+  ownerId: String
+  serviceIds: [String]
+  updatedAt: String
+}
+
+input ProjectEnvironmentInput {
+  name: String!
+}
+
+type PushEventUrgency {
+  event: PushNotificationEvent!
+  sent: Boolean!
+  urgency: PushNotificationUrgency!
+}
+
+type PushNotification {
+  body: String!
+  createdAt: String!
+  deepLink: String!
+  event: PushNotificationEvent!
+  id: String!
+  occurredAt: String!
+  readAt: String
+  resourceId: String!
+  resourceKind: String!
+  title: String!
+  urgency: PushNotificationUrgency!
+}
+
+type PushNotificationClockRange {
+  end: String!
+  start: String!
+  weekdays: [PushNotificationWeekday!]!
+}
+
+input PushNotificationClockRangeInput {
+  end: String!
+  start: String!
+  weekdays: [PushNotificationWeekday!]!
+}
+
+enum PushNotificationEvent {
+  AGENT_AUTOMATION_PAUSED
+  AGENT_FAILED
+  AGENT_NEEDS_DECISION
+  AGENT_PR_READY
+  CRON_FAILED
+  DEPLOY_FAILED
+  DEPLOY_STARTED
+  DEPLOY_SUCCEEDED
+  KEY_VALUE_AVAILABLE
+  KEY_VALUE_UNHEALTHY
+  POSTGRES_AVAILABLE
+  POSTGRES_BACKUP_FAILED
+  POSTGRES_RESTORE_FAILED
+  POSTGRES_UNAVAILABLE
+  POSTGRES_UPGRADE_FAILED
+  SERVER_AVAILABLE
+  SERVER_FAILED
+  SERVICE_RESUMED
+  SERVICE_SUSPENDED
+}
+
+type PushNotificationServiceOverride {
+  enabled: Boolean
+  events: [PushNotificationEvent!]
+  minimumUrgency: PushNotificationUrgency
+  serviceId: String!
+}
+
+input PushNotificationServiceOverrideInput {
+  enabled: Boolean
+  events: [PushNotificationEvent!]
+  minimumUrgency: PushNotificationUrgency
+  serviceId: String!
+}
+
+type PushNotificationSettings {
+  enabled: Boolean!
+  events: [PushNotificationEvent!]!
+  maxDeferralSeconds: Int!
+  minimumUrgency: PushNotificationUrgency!
+  quietHours: [PushNotificationClockRange!]!
+  serviceOverrides: [PushNotificationServiceOverride!]!
+  timeZone: String!
+  workingHours: [PushNotificationClockRange!]!
+}
+
+input PushNotificationSettingsInput {
+  enabled: Boolean!
+  events: [PushNotificationEvent!]!
+  maxDeferralSeconds: Int!
+  minimumUrgency: PushNotificationUrgency!
+  quietHours: [PushNotificationClockRangeInput!]!
+  serviceOverrides: [PushNotificationServiceOverrideInput!]!
+  timeZone: String!
+  workingHours: [PushNotificationClockRangeInput!]!
+}
+
+enum PushNotificationUrgency {
+  CRITICAL
+  IMPORTANT
+  ROUTINE
+}
+
+enum PushNotificationWeekday {
+  FRIDAY
+  MONDAY
+  SATURDAY
+  SUNDAY
+  THURSDAY
+  TUESDAY
+  WEDNESDAY
+}
+
+type Query {
+  accountDeletionPreview: AccountDeletionPreview
+  agentAttachment(id: String!): AgentAttachment
+  agentAutomation(id: String!, ownerId: String): AgentAutomation!
+  agentAutomationRuns(cursor: String, id: String!, limit: Int, ownerId: String): AgentAutomationRunList!
+  agentAutomations(cursor: String, limit: Int, mine: Boolean, ownerId: String): AgentAutomationList!
+  agentEnvironment(ownerId: String): AgentEnvironment!
+  agentRepoEnvironments(ownerId: String): AgentRepoEnvironmentList!
+  agentSecrets(ownerId: String): AgentSecretList!
+  agentSession(id: String!): AgentSession
+  agentSessionAttachments(cursor: String, direction: String, id: String!, limit: Int, turn: Int): [AgentAttachment!]!
+  agentSessionCapabilities(ownerId: String): AgentSessionCapabilities!
+  agentSessionModelCost(id: String!): AgentSessionModelCost!
+  agentSessionToolOutput(id: String!, toolCallId: String!, turn: Int!): AgentSessionToolOutput!
+  agentSessionTranscript(afterSeq: Int, id: String!, limit: Int): AgentSessionTranscriptPage!
+  agentSessionTree(id: String!): AgentSessionTree!
+  agentSessions(archived: String, automationId: String, createdAfter: String, createdBefore: String, createdBy: [String!], cursor: String, limit: Int, mine: Boolean, ownerId: String, parentSessionId: String, phases: [String!], prStates: [String!], repo: String, states: [String!], tag: String): [AgentSession!]!
+  agentSkill(ownerId: String, skill: String!): AgentSkill!
+  agentSkillVersion(id: String!, ownerId: String, version: Int!): AgentSkillVersion!
+  agentSkillVersions(cursor: String, id: String!, limit: Int, ownerId: String): AgentSkillVersionList!
+  agentSkills(ownerId: String): AgentSkillList!
+  apiKeys(ownerId: String): [ApiKey]
+  auditLogs(cursor: String, direction: String, endTime: String, limit: Int, ownerId: String!, startTime: String): [AuditLog]
+  autoscalingConfig(id: String!): Autoscaling
+  blueprint(id: String!, ownerId: String): Blueprint
+  blueprintPlannedSync(id: String!, ownerId: String): BlueprintPlannedSync
+  blueprintPreview(blueprintId: String, branch: String, existingResources: String, name: String, ownerId: String, path: String, repo: String!): BlueprintPreview
+  blueprintSyncs(cursor: String, id: String!, limit: Int, ownerId: String): [BlueprintSync]
+  blueprints(ownerId: String): [Blueprint]
+  build(buildSourceId: String!, id: String!): Build
+  buildSource(id: String!): BuildSource
+  buildSources(createdAfter: String, createdBefore: String, cursor: String, limit: Int, name: [String!], ownerId: String, projectId: String, updatedAfter: String, updatedBefore: String): [BuildSource]
+  builds(buildSourceId: String!, cursor: String, limit: Int): [Build]
+  cronJobRun(runId: String!, serviceId: String!): CronRun
+  cronJobRuns(cursor: String, limit: Int, serviceId: String!): [CronRun]
+  customDomain(confirm: String, id: String!, name: String!): CustomDomain
+  customDomains(cursor: String, domainType: String, id: String!, limit: Int, verificationStatus: String): [CustomDomain]
+  database(id: String!): Database
+  databaseActions(id: String!, ownerId: String): [ActionDecision!]!
+  databaseConnectionInfo(id: String!): PostgresConnectionInfo
+  databaseCredentials(id: String!): [DatabaseCredential]
+  databaseExports(id: String!): [DatabaseExport]
+  databaseInstanceTypes: [DatabaseInstanceType]
+  databaseIpAllowList(id: String!): [String]
+  databaseLogs(cursor: String, direction: String, endTime: String, id: String!, instance: [String], limit: Int, startTime: String, text: String): [DatabaseLogEntry]
+  databaseParameterOverrides(id: String!): [DatabaseParameterOverride]
+  databaseParameterSpec(id: String!): [DatabaseParameterSpec]
+  databaseProcesses(id: String!): [DatabaseProcess]
+  databaseRecoveryInfo(id: String!): DatabaseRecoveryInfo
+  databaseSizes(id: String!): DatabaseSizes
+  databaseTableScans(id: String!): [DatabaseTableScan]
+  databaseTopQueries(id: String!): [DatabaseTopQuery]
+  databaseUsers(id: String!): [DatabaseUser]
+  databases(cursor: String, limit: Int, ownerId: String): [Database]
+  datastoreMetrics(query: DatastoreMetricsQueryInput!): [MetricSeries]
+  deploy(deployId: String!, serviceId: String!): Deploy
+  deployActions(ownerId: String, serviceId: String!): [ActionDecision!]!
+  deployHook(serviceId: String!): DeployHook
+  deploys(createdAfter: String, createdBefore: String, cursor: String, finishedAfter: String, finishedBefore: String, limit: Int, serviceId: String!, status: [String], updatedAfter: String, updatedBefore: String): [Deploy]
+  disk(id: String!): Disk
+  diskSnapshotHealth(id: String!): DiskSnapshotHealth
+  diskSnapshots(id: String!): [DiskSnapshot]
+  disks(serviceId: String): [Disk]
+  envGroup(id: String!): EnvGroup
+  envGroupSecretFile(confirm: String, id: String!, name: String!): EnvGroupSecretFile
+  envGroupVar(confirm: String, id: String!, key: String!): EnvGroupVar
+  envGroups(cursor: String, limit: Int, ownerId: String): [EnvGroup]
+  envVars(cursor: String, limit: Int, serviceId: String!): [EnvVarWithCursor]
+  environment(id: String!): Environment
+  environments(cursor: String, limit: Int, projectId: String!): [Environment]
+  generateBlueprint(envGroupIds: [String], keyValueIds: [String], ownerId: String, postgresIds: [String], serviceIds: [String]): GeneratedBlueprint
+  gitClaimSelection(id: String!, ownerId: String): GitClaimSelection
+  gitConnection(ownerId: String): GitConnection
+  gitConnections(ownerId: String): [GitConnection]
+  instanceTypes: [InstanceType]
+  job(jobId: String!, serviceId: String!): Job
+  jobs(cursor: String, limit: Int, serviceId: String!): [Job]
+  keyValue(id: String!): KeyValue
+  keyValueActions(id: String!, ownerId: String): [ActionDecision!]!
+  keyValueConnectionInfo(id: String!): KeyValueConnectionInfo
+  keyValueInstanceTypes: [KeyValueInstanceType]
+  keyValueIpAllowList(id: String!): [String]
+  keyValueLogs(cursor: String, direction: String, endTime: String, id: String!, instance: [String], limit: Int, startTime: String, text: String): [KeyValueLogEntry]
+  keyValues(cursor: String, limit: Int, ownerId: String): [KeyValue]
+  logLabelValues(direction: String, endTime: String, host: [String!], instance: [String!], label: String!, level: [String!], method: [String!], path: [String!], resource: String!, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): [String!]
+  logRetention(resource: String!): LogRetention
+  logs(deployId: String, direction: String, endTime: String, host: [String!], instance: [String!], level: [String!], limit: Int, method: [String!], path: [String!], resource: String!, startTime: String, statusCode: [String!], text: String, textMode: String, type: String): LogList
+  metrics(query: MetricsQueryInput!): [MetricSeries]
+  metricsFilters(query: MetricsFiltersQueryInput!): MetricsFiltersResult
+  metricsPathFilterSuggestions(query: MetricsPathFilterSuggestionsInput!): MetricsPathFilterSuggestions
+  monthToDateBandwidth(resourceId: String!): MonthToDateBandwidth
+  notificationDeviceSubscriptions(ownerId: String): [NotificationDeviceSubscription]
+  notificationInbox(limit: Int = 50, ownerId: String): [PushNotification!]!
+  notificationSettings(ownerId: String): NotificationSettings
+  notificationWebPushSubscriptions: [NotificationWebPushSubscription]
+  ownerNotificationSettings(ownerId: String): OwnerNotificationSettings!
+  pipelineSettings(workspaceId: String!): PipelineSettings
+  project(id: String!): Project
+  projects(cursor: String, limit: Int, ownerId: String!): [Project]
+  pushEventUrgencies: [PushEventUrgency!]!
+  pushNotificationSettings: PushNotificationSettings
+  pushNotificationsAvailable(ownerId: String): Boolean!
+  registryCredential(id: String!, ownerId: String): RegistryCredential
+  registryCredentials(ownerId: String): [RegistryCredential]
+  repoBranches(ownerId: String, repo: String!): [String]
+  repoRuntimeDetection(branch: String!, ownerId: String, repo: String!, rootDir: String): RepoRuntimeDetection
+  repos(ownerId: String): [Repo]
+  routerAvailable(ownerId: String!): Boolean
+  routerOverview(ownerId: String!): RouterOverview
+  sandbox(id: String!, ownerId: String): Sandbox
+  sandboxExecution(executionId: String!, id: String!, ownerId: String): SandboxExecution
+  sandboxExecutions(cursor: String, id: String!, limit: Int, ownerId: String): [SandboxExecution]
+  sandboxGroup(id: String!, ownerId: String): SandboxGroup
+  sandboxGroups(cursor: String, limit: Int, ownerId: String): [SandboxGroup]
+  sandboxImage(id: String!, ownerId: String, sandboxGroupId: String!): SandboxImage
+  sandboxImages(cursor: String, limit: Int, name: String, ownerId: String, sandboxGroupId: String!, status: [String!]): [SandboxImage]
+  sandboxes(name: String, ownerId: String, sandboxGroupId: String, status: [String!]): [Sandbox]
+  secretFiles(cursor: String, limit: Int, serviceId: String!): [SecretFileWithCursor]
+  server(id: String!): Service
+  serverActions(id: String!, ownerId: String): [ActionDecision!]!
+  service(id: String!): Service
+  serviceEvent(id: String!, ownerId: String): ServiceEvent
+  serviceEvents(cursor: String, endTime: String, limit: Int, serviceId: String!, startTime: String, type: String): [ServiceEvent]
+  serviceInstances(id: String!): [ServiceInstance]
+  serviceNameAvailable(name: String!): NameAvailability
+  services(cursor: String, limit: Int, ownerId: String): [Service]
+  sshKeys: [SSHKey]
+  unreadPushNotificationCount(ownerId: String): Int!
+  usage(ownerId: String, period: String): UsageSummary
+  validateBlueprint(bexYaml: String!, blueprintId: String, ownerId: String): BlueprintValidation
+  viewerCapabilities(fresh: Boolean, ownerId: String): ViewerCapabilities
+  webPushAvailable(ownerId: String): Boolean!
+  webPushVapidPublicKey(ownerId: String): String
+  webhookDeliveries(cursor: String, endpointId: String!, limit: Int, ownerId: String, sentAfter: String, sentBefore: String, status: String): [WebhookDelivery]
+  webhookEndpoint(id: String!, ownerId: String): WebhookEndpoint
+  webhookEndpoints(ownerId: String): [WebhookEndpoint]
+  webhookEventTypes: [String]
+  workspace(id: String!): Workspace
+  workspaceBillingReadiness(workspaceId: String!): WorkspaceBillingReadiness
+  workspaceCreationAttempt(id: String!): WorkspaceCreationAttempt
+  workspaceCreationPolicy(plan: String!): WorkspaceCreationPolicy
+  workspaceEnvironments(cursor: String, limit: Int, ownerId: String!): [Environment]
+  workspaceInvitePreview(token: String!): WorkspaceInvitePreview
+  workspaceInvites(workspaceId: String!): [WorkspaceInvite]
+  workspaceLimits(ownerId: String!): ResourceLimits
+  workspaceMembers(workspaceId: String!): [WorkspaceMember]
+  workspaceSeatUsage(workspaceId: String!): WorkspaceSeatUsage
+  workspaces: [Workspace]
+}
+
+type ReadReplicaConnectionInfo {
+  externalHost: String
+  internalHost: String
+}
+
+type ReadReplicaView {
+  connectionInfo: ReadReplicaConnectionInfo
+  id: String
+  name: String
+}
+
+type RegistryCredential {
+  createdAt: String
+  expiresAt: String
+  host: String
+  id: String
+  name: String
+  ownerId: String
+  status: String
+  updatedAt: String
+  username: String
+}
+
+type ReplicaConnectionStrings {
+  externalConnectionString: String
+  internalConnectionString: String
+  name: String
+}
+
+type Repo {
+  accountLogin: String
+  cloneUrl: String
+  defaultBranch: String
+  fullName: String
+  htmlUrl: String
+  id: Float
+  installationId: Float
+  private: Boolean
+}
+
+type RepoRuntimeDetection {
+  matchedManifest: String
+  runtime: String
+}
+
+type ResourceCap {
+  freeLimit: Int
+  freeUsed: Int
+  limit: Int
+  terminating: Int
+  used: Int
+}
+
+type ResourceEstimate {
+  charges: [ChargeLine]
+  costUsd: String
+  deleted: Boolean
+  resourceKind: String
+  serviceId: String
+  serviceName: String
+}
+
+type ResourceLimits {
+  keyValues: ResourceCap
+  postgres: ResourceCap
+  services: ResourceCap
+}
+
+type RouterKey {
+  accessKey: String!
+  createdAt: String!
+  id: String!
+  name: String!
+  options: RouterOptions
+}
+
+type RouterOptions {
+  allowCredentials: Boolean!
+  allowHeaders: String!
+  allowMethods: String!
+  allowOrigin: String!
+}
+
+type RouterOverview {
+  keys: [RouterKey!]!
+  quota: RouterQuota
+}
+
+type RouterQuota {
+  observedAt: String!
+  windows: [RouterWindow!]!
+}
+
+type RouterWindow {
+  kind: String!
+  resetsAt: String!
+  utilizationBps: Float!
+}
+
+type SSHKey {
+  createdAt: String!
+  fingerprint: String!
+  id: String!
+  name: String!
+  publicKey: String!
+}
+
+type Sandbox {
+  createdAt: String
+  id: String!
+  idleTimeoutSeconds: Int
+  image: String
+  name: String
+  networkPolicy: SandboxNetworkPolicy
+  owner: String
+  plan: String
+  region: String
+  sandboxGroupId: String
+  status: String!
+  terminatedAt: String
+  timeoutSeconds: Int
+  workspace: String
+}
+
+type SandboxExecution {
+  command: String
+  exitCode: Int
+  id: String!
+  operation: String!
+  sandboxId: String!
+  startedAt: String
+  stoppedAt: String
+  type: String!
+  userId: String!
+}
+
+type SandboxGroup {
+  concurrencyLimit: Int!
+  createdAt: String
+  environmentId: String
+  id: String!
+  isDefault: Boolean!
+  name: String!
+  ownerId: String!
+  region: String!
+  updatedAt: String
+}
+
+type SandboxImage {
+  createdAt: String
+  failureCode: String
+  failureReason: String
+  finishedAt: String
+  id: String!
+  name: String!
+  sandboxGroupId: String!
+  source: SandboxImageSource!
+  sourceDigest: String!
+  status: String!
+}
+
+type SandboxImageSource {
+  image: String!
+  reference: String!
+  repository: String!
+}
+
+type SandboxNetworkPolicy {
+  default: String!
+  rules: [SandboxNetworkPolicyRule!]
+  type: String!
+}
+
+input SandboxNetworkPolicyInput {
+  default: String
+  rules: [SandboxNetworkPolicyRuleInput!]
+  type: String
+}
+
+type SandboxNetworkPolicyRule {
+  domain: String!
+  protocol: String!
+}
+
+input SandboxNetworkPolicyRuleInput {
+  domain: String!
+  protocol: String
+}
+
+type SecretFile {
+  content: String
+  id: String
+  name: String
+}
+
+input SecretFileInput {
+  content: String!
+  name: String!
+}
+
+type SecretFileListValue {
+  id: String
+  name: String
+}
+
+type SecretFileWithCursor {
+  cursor: String
+  secretFile: SecretFileListValue
+}
+
+type ServerPort {
+  port: Int
+  protocol: String
+}
+
+type Service {
+  autoDeploy: Boolean
+  autoDeployTrigger: String
+  autoscaling: Autoscaling
+  blueprintId: String
+  branch: String
+  buildCommand: String
+  buildFilter: BuildFilter
+  buildSourceId: String
+  builder: String
+  cacheProfile: String
+  command: String
+  configuredPort: Int
+  createdAt: String
+  dashboardUrl: String
+  disk: ServiceDisk
+  displayName: String
+  dockerContext: String
+  dockerfilePath: String
+  envVar(key: String!): EnvVar
+  envVarKeys: [EnvVar]
+  environmentId: String
+  headers: [StaticHeader]
+  healthCheckPath: String
+  id: String
+  idleTTLSeconds: Int
+  imagePath: String
+  imagePorts: Boolean
+  immutableName: String
+  internalAddress: String
+  ipAllowList: [String]
+  ipAllowListEntries: [IPAllowListEntry]
+  ipAllowListProxiedDomains: [String!]
+  lastSuccessfulRunAt: String
+  latestDeployId: String
+  linkedEnvGroupIds: [String]
+  maintenanceMode: MaintenanceMode
+  maxShutdownDelaySeconds: Int
+  name: String
+  nextRunAt: String
+  notificationsToSend: String
+  notifyOnFail: String
+  openPorts: [ServerPort!]
+  outboundIps: OutboundIPs
+  ownerId: String
+  phase: String
+  plan: String
+  port: Int
+  portConfigured: Boolean
+  preDeployCommand: String
+  projectId: String
+  publicRoutingNotice: String
+  publishPath: String
+  pushDeliveryMethod: String
+  region: String
+  registryCredentialId: String
+  renderSubdomainPolicy: String
+  replicas: Int
+  repo: String
+  revision: String
+  rootDir: String
+  routes: [StaticRoute]
+  runs: [CronRun]
+  runtime: String
+  schedule: String
+  secretFile(name: String!): SecretFile
+  secretFileNames: [SecretFile]
+  servingImage: String
+  slug: String
+  sshAddress: String
+  startCommand: String
+  suspended: String
+  suspenders: [String]
+  type: String
+  undeployedChanges: Boolean
+  undeployedChangesApplying: Boolean
+  undeployedChangesReason: String
+  updatedAt: String
+  url: String
+}
+
+type ServiceDisk {
+  mountPath: String
+  name: String
+  sizeGB: Int
+}
+
+type ServiceEvent {
+  cursor: String
+  details: ServiceEventDetails
+  id: String
+  serviceId: String
+  timestamp: String
+  type: String
+}
+
+type ServiceEventDetails {
+  actor: String
+  autoDeployDisabledReason: String
+  autoDeployTrigger: String
+  autoscalingCPUFrom: Int
+  autoscalingCPUTo: Int
+  autoscalingEnabledFrom: Boolean
+  autoscalingMaxFrom: Int
+  autoscalingMaxTo: Int
+  autoscalingMemoryFrom: Int
+  autoscalingMemoryTo: Int
+  autoscalingMinFrom: Int
+  autoscalingMinTo: Int
+  branchFrom: String
+  branchTo: String
+  cancelReason: String
+  cancelReasonTemplate: DeployReason
+  commitId: String
+  commitMessage: String
+  commitUrl: String
+  cronJobRunId: String
+  deployId: String
+  deployStatus: String
+  diskId: String
+  diskName: String
+  displayNameFrom: String
+  displayNameTo: String
+  domain: String
+  edgeCacheTrigger: EdgeCacheTrigger
+  enabled: Boolean
+  envGroupId: String
+  envGroupName: String
+  environmentFrom: String
+  environmentTo: String
+  exitCode: Int
+  failureReason: String
+  failureReasonTemplate: DeployReason
+  finishedAt: String
+  fromCount: Int
+  fromDiskSize: Int
+  fromReplicas: Int
+  fromSizeGB: Int
+  fromStatus: String
+  fromURI: String
+  fromVersion: String
+  fullDeployStatus: String
+  image: String
+  instanceCountFrom: Int
+  instanceCountTo: Int
+  instanceId: String
+  leaderId: String
+  maintenanceEnabled: Boolean
+  memoryLimit: String
+  message: String
+  mountPath: String
+  planFrom: String
+  planTo: String
+  preDeployStatus: String
+  projectFrom: String
+  projectTo: String
+  reason: BuildDeployEndReason
+  reasonCode: String
+  restartReason: String
+  resumedByUser: EventUser
+  sizeGB: Int
+  stallReason: String
+  stallReasonTemplate: DeployReason
+  startedAt: String
+  status: String
+  suspendedByUser: EventUser
+  thresholdPercent: Float
+  toCount: Int
+  toDiskSize: Int
+  toReplicas: Int
+  toStatus: String
+  toURI: String
+  toVersion: String
+  trigger: DeployTrigger
+  triggeredByUser: String
+  usagePercent: Float
+  user: EventUser
+}
+
+type ServiceInstance {
+  createdAt: String
+  id: String
+}
+
+type ServiceUsage {
+  deleted: Boolean
+  resourceKind: String
+  rows: [UsageRow]
+  serviceId: String
+  serviceName: String
+}
+
+type ShellSession {
+  expiresAt: String
+  ticket: String
+  url: String
+}
+
+type StaticHeader {
+  name: String
+  path: String
+  value: String
+}
+
+input StaticHeaderInput {
+  name: String!
+  path: String!
+  value: String!
+}
+
+type StaticRoute {
+  destination: String
+  source: String
+  type: String
+}
+
+input StaticRouteInput {
+  destination: String!
+  source: String!
+  type: String!
+}
+
+type SyncBlueprintResult {
+  blueprint: Blueprint
+  buildSources: [String]
+  databases: [String]
+  detachedResources: [BlueprintResource]
+  envGroups: [String]
+  keyValues: [String]
+  services: [Service]
+}
+
+type TableSizeInfo {
+  name: String
+  schema: String
+  sizeBytes: Int
+  sizePretty: String
+}
+
+type UsageCoverage {
+  degradedSources: [String!]!
+  state: String!
+  through: String
+}
+
+type UsageRow {
+  kind: String
+  tier: String
+  total: Float
+}
+
+type UsageSummary {
+  agentModel: AgentModelUsage!
+  billing: Billing
+  buildMinutes: BuildMinutes!
+  coverage: UsageCoverage!
+  estimatedCost: EstimatedCost
+  freeInstanceHours: FreeInstanceHours!
+  includedBandwidth: IncludedBandwidth!
+  period: String
+  services: [ServiceUsage]
+  workspaceId: String
+}
+
+type ViewerCapabilities {
+  canCreate: Boolean!
+  canManage: Boolean!
+  canManageBilling: Boolean!
+  canManageKeys: Boolean!
+  canOperate: Boolean!
+  canView: Boolean!
+  canViewLogs: Boolean!
+  canViewSensitive: Boolean!
+  fresh: Boolean!
+  grants: [CapabilityGrant!]!
+  role: String
+}
+
+type WebhookDelivery {
+  attemptNumber: Int
+  cursor: String
+  eventId: String
+  eventType: String
+  id: String
+  nextAttemptAt: String
+  parentStatus: String
+  requestBody: String
+  responseBody: String
+  sentAt: String
+  serviceId: String
+  serviceName: String
+  status: String
+  statusCode: Int
+  transportError: String
+}
+
+type WebhookEndpoint {
+  createdAt: String
+  createdBy: String
+  disabledReason: String
+  enabled: Boolean
+  eventTypes: [String]
+  id: String
+  latestParentStatus: String
+  latestSentAt: String
+  latestStatus: String
+  name: String
+  ownerId: String
+  secret: String
+  updatedAt: String
+  url: String
+}
+
+type Workspace {
+  createdAt: String
+  id: String
+  ipAllowList: [IPAllowListEntry!]!
+  name: String
+  overlappingDeployPolicy: String!
+  plan: String
+  requireTwoFactor: Boolean
+  role: String
+  slug: String
+}
+
+type WorkspaceBillingReadiness {
+  customerReady: Boolean
+  lifecycle: BillingLifecycle
+  mode: String
+  paymentMethodBrand: String
+  paymentMethodLast4: String
+  paymentMethodOnboardingRequired: Boolean
+  paymentMethodReady: Boolean
+  paymentMethodRejection: PaymentMethodRejection
+  paymentMethodRequired: Boolean
+  subscriptionReady: Boolean
+  tax: BillingTaxReadiness
+  workspaceId: String
+}
+
+type WorkspaceCreationAttempt {
+  billingEmail: String
+  clientSecret: String
+  id: String
+  name: String
+  paymentRequired: Boolean
+  plan: String
+  publishableKey: String
+  state: String
+}
+
+type WorkspaceCreationPolicy {
+  mode: String
+  paymentRequired: Boolean
+  providerAvailable: Boolean
+}
+
+type WorkspaceInvite {
+  createdAt: String
+  email: String
+  expiresAt: String
+  id: String
+  role: String
+}
+
+type WorkspaceInvitePreview {
+  alreadyMember: Boolean!
+  inviterEmail: String
+  role: String
+  workspaceId: String
+  workspaceName: String
+}
+
+type WorkspaceMember {
+  createdAt: String
+  email: String
+  identityResolved: Boolean!
+  isOwner: Boolean!
+  isSelf: Boolean!
+  mfaEnabled: Boolean
+  role: String
+  subject: String
+  userId: String
+}
+
+type WorkspaceSeatUsage {
+  limit: Int
+  used: Int
+}

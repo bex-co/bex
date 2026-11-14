@@ -81,3 +81,8 @@ export function goIntConstant(path: string, name: string): number {
   if (!match) throw new Error(`${path} declares no integer ${name}`);
   return Number(match[1]) * 2 ** Number(match[2] ?? 0);
 }
+
+/** A text file of the repository, by path from the repo root. */
+export function readRepoText(path: string): string {
+  return readFileSync(`${REPO_ROOT}/${path}`, "utf8");
+}

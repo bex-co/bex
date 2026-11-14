@@ -23,9 +23,6 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/testutil"
-
-	"github.com/bex-co/bex/lego/backend/internal/core"
-	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 )
 
 // TestDumpGraphQLSchema is a developer tool, not an assertion: set
@@ -37,14 +34,7 @@ func TestDumpGraphQLSchema(t *testing.T) {
 	if path == "" {
 		t.Skip("set SCHEMA_DUMP_PATH to dump the introspection JSON")
 	}
-	// Sandbox registers fields only when its client is wired. An empty client
-	// includes its schema without live calls.
-	base := &core.Base{Namespace: "default"}
-	srv := NewServer(base, Deps{SandboxClient: &sandbox.Client{}})
-	schema, err := srv.newSchema()
-	if err != nil {
-		t.Fatalf("build schema: %v", err)
-	}
+	schema := servedSchema(t)
 	res := graphql.Do(graphql.Params{Schema: schema, RequestString: testutil.IntrospectionQuery})
 	if len(res.Errors) > 0 {
 		t.Fatalf("introspection: %v", res.Errors)
