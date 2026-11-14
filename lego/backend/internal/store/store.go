@@ -118,7 +118,7 @@ type Tenant struct {
 	Plan        string    `json:"plan"`
 	CreatedAt   time.Time `json:"createdAt"`
 	// RequireTwoFactor is the workspace admin's "require two-factor
-	// authentication" setting (migration 0260).
+	// authentication" setting (migration 0261).
 	RequireTwoFactor bool `json:"requireTwoFactor"`
 }
 
@@ -1436,7 +1436,7 @@ func (s *PGStore) CreateDomain(ctx context.Context, appID, host string, primary 
 
 // expiredPendingClaim selects a domain row that is unverified and past the 48
 // hours that bound a reservation. created_at is the first claim's time even
-// across a delete and re-add (migration 0260), so deleting and adding a claim
+// across a delete and re-add (migration 0261), so deleting and adding a claim
 // again does not restart the bound. Verified rows never match.
 const expiredPendingClaim = `claim_state = 'pending' AND created_at < now() - interval '48 hours'`
 

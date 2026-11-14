@@ -83,7 +83,7 @@ type AuditRow struct {
 	EnvGroupID      string
 	EnvGroupName    string
 	// TwoFactorRequiredTo is the value a workspace admin set the two-factor
-	// requirement TO (migration 0260); nil for every other verb.
+	// requirement TO (migration 0261); nil for every other verb.
 	TwoFactorRequiredTo *bool
 }
 

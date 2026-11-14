@@ -27,7 +27,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
-// w22/m402 (migration 0260, docs/ADR012-auth.md §9a): a workspace's "require
+// w22/m402 (migration 0261, docs/ADR012-auth.md §9a): a workspace's "require
 // two-factor authentication" setting defaults to off, is written by
 // SetTenantRequireTwoFactor and comes back through every tenant read and the
 // enforcement point's own single-column read; the audit row of the change

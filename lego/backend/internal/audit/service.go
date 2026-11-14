@@ -96,7 +96,7 @@ type Event struct {
 	EnvGroupID      string
 	EnvGroupName    string
 	// TwoFactorRequiredTo is the value a workspace admin set the two-factor
-	// requirement TO (w22/m402, migration 0260); nil for every other verb.
+	// requirement TO (w22/m402, migration 0261); nil for every other verb.
 	TwoFactorRequiredTo *bool
 }
 
