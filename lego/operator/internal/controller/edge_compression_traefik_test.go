@@ -52,7 +52,7 @@ func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
 	}
 	text := bytes.Repeat([]byte("bex compression probe line\n"), 12000)
 	authored := gzipBytes(t, text)
-	origin := httptest.NewUnstartedServer(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+	origin := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		h := rw.Header()
 		switch req.URL.Path {
 		case "/text":
@@ -87,15 +87,7 @@ func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
 			return
 		}
 		_, _ = rw.Write(text)
-	}))
-	listener, err := net.Listen("tcp", "0.0.0.0:0")
-	if err != nil {
-		t.Fatal(err)
-	}
-	origin.Listener = listener
-	origin.Start()
-	t.Cleanup(origin.Close)
-
+	})
 	app := &appv1alpha1.App{}
 	app.Name = "probe"
 	names, specs := edgeCompressionMiddlewares(app)
@@ -103,30 +95,9 @@ func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
 	for i, name := range names {
 		middlewares[name] = specs[i]
 	}
-	routing := map[string]any{
-		"routers": map[string]any{"web": map[string]any{"rule": "PathPrefix(`/`)", "service": "origin", "middlewares": names}},
-		"services": map[string]any{"origin": map[string]any{"loadBalancer": map[string]any{"servers": []any{
-			map[string]any{"url": fmt.Sprintf("http://host.docker.internal:%d", listener.Addr().(*net.TCPAddr).Port)}}}}},
-	}
-	if len(middlewares) > 0 {
-		routing["middlewares"] = middlewares
-	}
-	dynamic, _ := json.Marshal(map[string]any{"http": routing})
-	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "dynamic.yml"), dynamic, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	port := freePort(t)
-	name := fmt.Sprintf("bex-edge-compress-it-%d", os.Getpid())
-	run := exec.Command("docker", "run", "-d", "--rm", "--name", name, "--add-host", "host.docker.internal:host-gateway",
-		"-p", fmt.Sprintf("%d:8000", port), "-v", dir+":/dynamic:ro",
-		edgeTraefikImage, "--entrypoints.web.address=:8000", "--providers.file.filename=/dynamic/dynamic.yml")
-	if out, err := run.CombinedOutput(); err != nil {
-		t.Fatalf("docker run: %v\n%s", err, out)
-	}
-	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
-	base := fmt.Sprintf("http://127.0.0.1:%d", port)
-	waitForRoute(t, name, base+"/text")
+	base := runEdgeTraefik(t, startEdgeOrigin(t, origin), edgeTraefikConfig{
+		label: "edge-compress", chain: names, middlewares: middlewares, readyPath: "/text",
+	})
 
 	for _, tc := range []struct {
 		name, path, acceptEncoding, rangeHeader string
@@ -235,6 +206,70 @@ func gunzipBytes(t *testing.T, b []byte) []byte {
 		t.Fatal(err)
 	}
 	return out
+}
+
+// startEdgeOrigin serves handler on every interface, so a Traefik container
+// reaches it through host.docker.internal, and returns its port.
+func startEdgeOrigin(t *testing.T, handler http.Handler) int {
+	t.Helper()
+	origin := httptest.NewUnstartedServer(handler)
+	listener, err := net.Listen("tcp", "0.0.0.0:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	origin.Listener = listener
+	origin.Start()
+	t.Cleanup(origin.Close)
+	return listener.Addr().(*net.TCPAddr).Port
+}
+
+// edgeTraefikConfig is one actual-proxy gate's Traefik: the router's
+// middleware chain, their definitions, and any extra docker or Traefik
+// arguments (a local plugin's mount and flags).
+type edgeTraefikConfig struct {
+	label                   string
+	chain                   []string
+	middlewares             map[string]any
+	dockerArgs, traefikArgs []string
+	readyPath               string
+}
+
+// runEdgeTraefik runs the deployed Traefik release in Docker, routing every
+// path through cfg's chain to the origin port, and returns its base URL once
+// cfg.readyPath answers 200.
+func runEdgeTraefik(t *testing.T, originPort int, cfg edgeTraefikConfig) string {
+	t.Helper()
+	routing := map[string]any{
+		"routers": map[string]any{"web": map[string]any{"rule": "PathPrefix(`/`)", "service": "origin", "middlewares": cfg.chain}},
+		"services": map[string]any{"origin": map[string]any{"loadBalancer": map[string]any{"servers": []any{
+			map[string]any{"url": fmt.Sprintf("http://host.docker.internal:%d", originPort)}}}}},
+	}
+	if len(cfg.middlewares) > 0 {
+		routing["middlewares"] = cfg.middlewares
+	}
+	dynamic, _ := json.Marshal(map[string]any{"http": routing})
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "dynamic.yml"), dynamic, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	port := freePort(t)
+	name := fmt.Sprintf("bex-%s-it-%d", cfg.label, os.Getpid())
+	args := make([]string, 0, 16+len(cfg.dockerArgs)+len(cfg.traefikArgs))
+	args = append(args, "run", "-d", "--rm", "--name", name, "--add-host", "host.docker.internal:host-gateway",
+		"-p", fmt.Sprintf("%d:8000", port), "-v", dir+":/dynamic:ro")
+	args = append(args, cfg.dockerArgs...)
+	args = append(args, edgeTraefikImage, "--entrypoints.web.address=:8000", "--providers.file.filename=/dynamic/dynamic.yml",
+		// The configuration never changes, so no inotify watch, which a host
+		// out of inotify instances cannot give.
+		"--providers.file.watch=false")
+	args = append(args, cfg.traefikArgs...)
+	if out, err := exec.Command("docker", args...).CombinedOutput(); err != nil {
+		t.Fatalf("docker run: %v\n%s", err, out)
+	}
+	t.Cleanup(func() { _ = exec.Command("docker", "rm", "-f", name).Run() })
+	base := fmt.Sprintf("http://127.0.0.1:%d", port)
+	waitForRoute(t, name, base+cfg.readyPath)
+	return base
 }
 
 func freePort(t *testing.T) int {

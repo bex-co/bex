@@ -70,7 +70,7 @@ func TestWebServiceEdgeCompressionProjection(t *testing.T) {
 	if err := cl.Get(ctx, nn, ing); err != nil {
 		t.Fatal(err)
 	}
-	want := "default-edge-compress@kubernetescrd,default-edge-ws-egress@kubernetescrd"
+	want := "default-edge-compress@kubernetescrd,default-edge-ws-egress@kubernetescrd,default-edge-origin-server@kubernetescrd"
 	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != want {
 		t.Fatalf("router middlewares = %q, want %q", got, want)
 	}
@@ -92,5 +92,48 @@ func TestEdgeTraefikImageIsTheDeployedPin(t *testing.T) {
 	}
 	if !strings.Contains(string(values), "\n  tag: "+strings.TrimPrefix(edgeTraefikImage, "traefik:")+"\n") {
 		t.Fatalf("edgeTraefikImage %q is not the image.tag pinned in traefik.values.yaml", edgeTraefikImage)
+	}
+}
+
+// w8/321: a web service's route ends with the edge plugin's origin-server
+// instance, which moves the app's Server header to X-Render-Origin-Server.
+// A static site's route never carries one, as Render's static sites carry no
+// such header.
+func TestOriginServerMiddlewareIsWebServiceOnly(t *testing.T) {
+	scheme := newIPAllowListScheme()
+	web := appWithAllowList("osweb", nil, appv1alpha1.TypeWebService)
+	static := appWithAllowList("osstatic", nil, appv1alpha1.TypeStaticSite)
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(web, static).Build()
+	r := &AppReconciler{Client: cl, Scheme: scheme, Mode: ModeKubernetes, BaseDomain: "onbex.co", ClusterIssuer: "letsencrypt-prod"}
+	ctx := context.Background()
+	for _, app := range []*appv1alpha1.App{web, static} {
+		if _, err := r.reconcileIngressWithMiddlewares(ctx, app, []string{app.Name + ".onbex.co"}, app.Name, 8080); err != nil {
+			t.Fatalf("%s: %v", app.Name, err)
+		}
+	}
+	mw := &unstructured.Unstructured{}
+	mw.SetGroupVersionKind(traefikHTTPMiddlewareGVK)
+	if err := cl.Get(ctx, types.NamespacedName{Name: "osweb-origin-server", Namespace: "default"}, mw); err != nil {
+		t.Fatal(err)
+	}
+	enabled, _, _ := unstructured.NestedBool(mw.Object, "spec", "plugin", "bexClientIPHeaders", "originServer")
+	if owners := mw.GetOwnerReferences(); !enabled || len(owners) != 1 || owners[0].Name != "osweb" {
+		t.Fatalf("origin-server middleware = %v owners %+v, want the plugin's originServer instance owned by the App", mw.Object["spec"], owners)
+	}
+	ing := &networkingv1.Ingress{}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "osweb", Namespace: "default"}, ing); err != nil {
+		t.Fatal(err)
+	}
+	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; !strings.HasSuffix(got, ",default-osweb-origin-server@kubernetescrd") {
+		t.Fatalf("web service middlewares = %q, want the origin-server instance last", got)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "osstatic-origin-server", Namespace: "default"}, mw); !apierrors.IsNotFound(err) {
+		t.Fatalf("static site origin-server middleware: %v, want none", err)
+	}
+	if err := cl.Get(ctx, types.NamespacedName{Name: "osstatic", Namespace: "default"}, ing); err != nil {
+		t.Fatal(err)
+	}
+	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; strings.Contains(got, "origin-server") {
+		t.Fatalf("static site middlewares = %q, want no origin-server instance", got)
 	}
 }

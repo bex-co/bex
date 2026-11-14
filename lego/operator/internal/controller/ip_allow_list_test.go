@@ -135,7 +135,7 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ingress not created: %v", err)
 	}
-	wantAnnotation := "default-ws-acl-ip-allow@kubernetescrd,default-ws-acl-compress@kubernetescrd,default-ws-acl-ws-egress@kubernetescrd"
+	wantAnnotation := "default-ws-acl-ip-allow@kubernetescrd,default-ws-acl-compress@kubernetescrd,default-ws-acl-ws-egress@kubernetescrd,default-ws-acl-origin-server@kubernetescrd"
 	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != wantAnnotation {
 		t.Fatalf("Ingress annotation %s = %q, want %q", traefikRouterMiddlewaresAnnotation, got, wantAnnotation)
 	}
@@ -157,7 +157,7 @@ func TestWebServiceIPAllowListMiddlewareProjection(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Ingress must survive after allowlist is cleared: %v", err)
 	}
-	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != "default-ws-acl-compress@kubernetescrd,default-ws-acl-ws-egress@kubernetescrd" {
+	if got := ing.Annotations[traefikRouterMiddlewaresAnnotation]; got != "default-ws-acl-compress@kubernetescrd,default-ws-acl-ws-egress@kubernetescrd,default-ws-acl-origin-server@kubernetescrd" {
 		t.Fatalf("Ingress must retain compression and WebSocket accounting after allowlist clear: %v", ing.Annotations)
 	}
 }
@@ -333,14 +333,14 @@ func TestEnvironmentIPAllowListChaining(t *testing.T) {
 		wantEnvMW bool
 	}{
 		{"both layers chain", []string{"10.0.0.0/8"}, []string{"203.0.113.0/24"},
-			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", true, true},
+			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", true, true},
 		{"own only", []string{"10.0.0.0/8"}, nil,
-			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", true, false},
+			"default-chain-acl-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", true, false},
 		{"env only", nil, []string{"203.0.113.0/24"},
-			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, true},
+			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", false, true},
 		{"env deny-all placeholder", nil, []string{"255.255.255.255/32"},
-			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, true},
-		{"no layers", nil, nil, "default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd", false, false},
+			"default-chain-acl-env-ip-allow@kubernetescrd,default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", false, true},
+		{"no layers", nil, nil, "default-chain-acl-compress@kubernetescrd,default-chain-acl-ws-egress@kubernetescrd,default-chain-acl-origin-server@kubernetescrd", false, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
