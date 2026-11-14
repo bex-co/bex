@@ -52,3 +52,34 @@ All on production, workspace `bex-canary`, with the QA account, after the deploy
 - **t005 (Render parity).** REST and MCP serve the same `toRenderDeploy` projection of one `DeployView`, GraphQL reads the same view, and events, webhooks and push read the same fact rows, so every surface moves together; the dashboard polls a deploy every 3 s (`dashboard/src/features/deploys/hooks/use-deploy.ts:16`). Render's observed behavior (a failed build reads Failed as its error prints; a deploy's start is the rollout's start) is now matched; nothing to file.
 - **t006 (Simplify).** Three reviewers (reuse, quality, efficiency). Applied: the spacing above, the hashed fingerprint, the fresh-start reset, the clean-close rule, `core.Poll`, no test seam in production code, one 410 check, one kube client, typed kick sources and a `confirm` source, `managedAppID` and `s.Now()` in `setSuspended`, the pass read time on `DesiredApp` instead of a parameter, the creation clamp for every start source, and reused test helpers (`onlyDeploy`, `backdateDeploy`, `waitFor`). Not applied: dropping the unknown-MODIFIED kick (kept as cheap insurance) and a dedicated `suspended_changed_at` column (the doc states the trade-off instead).
 - **t007 (Test coverage).** `TestStatusWatchClosesAFailedDeployWithoutWaitingForTheResync` (with its no-watch control), `TestStatusFingerprintNamesEveryStatusField`, `TestStatusFingerprintIgnoresWhatRecordsNothing`, `TestStatusWatchRestartsFreshAfterAnExpiredVersionAndKicksForWhatItMissed`, `TestWatchKicksAreSpacedByThePassTheyCause`, `TestSuspensionMarkRecordsTheQuickPair` and its real-Postgres twin, `TestReconcileImageDeployFirstSeenRollingUsesReleaseDispatch`, `TestSuspendMarksTheCheckpointAndKicksTheProjector`. `-race` clean; `make lint-backend` 0 issues; `scripts/gitops-validate.sh` passes.
+
+### 2026-11-14 — production replay data (QA loop rounds 338–339, pin `ac206b76841b`, which carries `f076e96e7`, `6b185606d` and `2b2cae902`)
+
+Workspace `bex-canary`, QA account. Fixtures, all deleted afterwards (`DELETE` 204, then `GET` 404):
+
+- Free Go web service `qa-20261114-r339-bad` (`srv-dbrrnp9rr8ts738m9n7g`), repo `https://github.com/bex-co/bex`, root `examples/hello-go`.
+- Free busybox image service `qa-20261114-r339-hook` (`srv-dbrrn6hrr8ts738m9n50`). It is also the webhook target, so every delivery answers 501 and is retried about 30 s later. The times below are each event's first attempt.
+- Workspace webhook `qa-20261114-r339-wh` (`whk-dbrrn6sl3h6c73b7q490`), on `build_*`, `deploy_*` and `service_suspended`/`service_resumed`.
+- Round 338's busybox service `qa-20261114-r338-susp` (bullet 3).
+
+REST was polled every 1 s.
+
+1. **Failed build — misses the 10 s bound by the operator's own delay, not bex-api's.**
+   - `buildCommand: go build -o app ./does-not-exist`. The build log printed `exited with code 1` at 01:41:55.630. `build_ended` is dated 01:41:58, back-dated by the fix.
+   - The operator's own `==> error: … exited with code 1` / `==> Build failed` lines are at **01:42:12.952**, 17.3 s later.
+   - bex-api followed in under a second: `deploy_ended` dated 01:42:12, and REST `build_failed` at 01:42:13 (+17.4 s from the exit).
+   - Both terminal webhooks were first delivered at 01:42:17 (+21.6 s; bound 15 s). Round 250 measured ~46 s.
+   - The remaining ~17 s sit between the build command's exit and the operator writing its verdict. That is the same side [w21/064](../../w21/blocked/064.md) found slow for the success path (blocked on an operator reading). Its "closes a failed build in seconds" did not hold in this run.
+2. **Successful deploy — `live` coincides with the operator's verdict, which itself trails the app.**
+   - Git deploy: the app printed `listening on 10000` at 01:45:46.8. REST `live` and `==> Your service is live` both came at 01:46:10.9 (+24 s).
+   - Image deploy on the busybox service: the app's first line at 01:46:50.4. `==> Detected HTTP on port 10000; serving it` and `live` came at 01:47:16.7 (+26 s).
+   - Ready itself is not visible from public surfaces. bex-api adds no measurable gap to the operator's verdict, and the operator-side lag is w21/064's.
+3. **Quick Suspend→Resume — holds.**
+   - Three runs 5 s apart on the busybox service (suspend 01:47:28 … resume 01:47:55): 6 events, alternating, in call order. The last `service_resumed` is dated at the wake's Ready (01:47:58), by design.
+   - The webhook received all six, first attempts 3–9 s after each call.
+   - Round 338: six runs 5 s apart gave 12 events, and three runs 30 s apart gave 6 ([w21/065](../../w21/done/065.md) § Live check).
+4. **Image deploy start — holds.** `dep-dbrrquprr8ts738m9ne0`: `startedAt` 01:46:43 is earlier than the new instance's `createdAt` 01:46:46. `==> Deploying image` (01:46:43) prints before the app's first line (01:46:50.4).
+5. **Not checked:** the pass-duration histogram on obs.bex.co. It is behind the ADR088 ops gate.
+6. **Fixtures:** all deleted (`GET` 404).
+
+**Verdict for t008:** bullets 3, 4 and 6 hold. Bullet 1 holds on bex-api's side (sub-second after the operator's verdict) but not end to end (17.4 s and 21.6 s against 10 s and 15 s). Bullet 2 is w21/064's operator-side lag. Bullet 5 needs the ops gate. The milestone stays blocked on w21/064 (operator side) and the obs.bex.co reading. Closing it as written would need bullets 1 and 2 met, or re-scoped to "bex-api adds ≤ 1 s to the operator's verdict" with the operator lag carried by w21/064.
