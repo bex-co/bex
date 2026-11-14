@@ -79,6 +79,43 @@ describe("parseDotenv", () => {
     }
   });
 
+  // w4/627: dotenv's third quote, for a value holding both ' and ".
+  it("reads a backtick-quoted value verbatim, like a single-quoted one", () => {
+    expect(
+      parseDotenv('QA_BT=`it\'s "both"`\nQA_RAW=`a\\nb $HOME` # note'),
+    ).toEqual([
+      { key: "QA_BT", value: 'it\'s "both"', line: 1 },
+      { key: "QA_RAW", value: "a\\nb $HOME", line: 2 },
+    ]);
+  });
+
+  it("keeps a two-line backtick value's line break", () => {
+    expect(parseDotenv("QA_ML=`one\ntwo`\nNEXT=2")).toEqual([
+      { key: "QA_ML", value: "one\ntwo", line: 1 },
+      { key: "NEXT", value: "2", line: 3 },
+    ]);
+  });
+
+  it("refuses text after a closing backtick", () => {
+    expect.assertions(2);
+    try {
+      parseDotenv("QA_BT=`a` b");
+    } catch (error) {
+      expect((error as DotenvParseError).reason).toBe("trailing");
+      expect((error as DotenvParseError).line).toBe(1);
+    }
+  });
+
+  it("refuses a backtick that never closes, naming its opening line", () => {
+    expect.assertions(2);
+    try {
+      parseDotenv("OK=1\nQA_BT=`open\nNEXT=2");
+    } catch (error) {
+      expect((error as DotenvParseError).reason).toBe("quote");
+      expect((error as DotenvParseError).line).toBe(2);
+    }
+  });
+
   it("still ends an unquoted value at its line", () => {
     expect(parseDotenv("A=one\ntwo=2")).toEqual([
       { key: "A", value: "one", line: 1 },

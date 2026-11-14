@@ -51,8 +51,11 @@ export class DotenvParseError extends Error {
  *
  * This is a deliberate superset of common dotenv parsers: a literal `\uXXXX`
  * a user typed into their own `.env` **is** expanded here, inside double
- * quotes only. Single-quoted and unquoted values are taken verbatim, which is
- * the escape hatch for anyone who means the backslash literally.
+ * quotes only. Single-quoted, backtick-quoted and unquoted values are taken
+ * verbatim, which is the escape hatch for anyone who means the backslash
+ * literally. A backtick is dotenv's third quote (dotenv ≥ 15), for a value
+ * holding both `'` and `"`: like a single-quoted value it may span lines, and a
+ * backtick with no closing one below it is an unterminated quote (w4/627).
  */
 export function parseDotenv(text: string): DotenvEntry[] {
   const entries = new Map<string, DotenvEntry>();
@@ -105,7 +108,10 @@ function parseValue(
   const input = source.trim();
   if (!input) return "";
   const quote = input[0];
-  if (quote !== '"' && quote !== "'") return stripInlineComment(input);
+  // A backtick is dotenv's third quote, for a value holding both ' and "; it
+  // reads like a single-quoted value (w4/627).
+  if (quote !== '"' && quote !== "'" && quote !== "`")
+    return stripInlineComment(input);
 
   let value = "";
   let close = -1;
