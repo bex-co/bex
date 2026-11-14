@@ -22,17 +22,8 @@ const VIEWPORT_HEIGHT = 520;
 const VIEWPORT_WIDTH = 800;
 const ROW_HEIGHT = 24;
 
-/** Row height the harness reports — matches the component's `estimateSize`. */
-export const VIRTUAL_ROW_HEIGHT = ROW_HEIGHT;
 /** Viewport height the harness reports. */
 export const VIRTUAL_VIEWPORT_HEIGHT = VIEWPORT_HEIGHT;
-
-/**
- * Roughly how many rows fit the synthetic viewport (used to bound assertions on
- * the rendered window — a virtualized list should render on this order, not the
- * whole buffer).
- */
-export const VIRTUAL_VISIBLE_ROWS = Math.ceil(VIEWPORT_HEIGHT / ROW_HEIGHT);
 
 function syntheticHeight(
   el: HTMLElement,

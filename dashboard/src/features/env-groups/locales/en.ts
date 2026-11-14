@@ -548,22 +548,6 @@ const enEnvGroups: Record<string, TranslationEntry> = {
     message: "Couldn't remove {key}",
     description: "Env-group variable delete error toast",
   },
-  "envGroups.fileSaveSuccess": {
-    message: "Saved {name}",
-    description: "Env-group file save success toast",
-  },
-  "envGroups.fileSaveError": {
-    message: "Couldn't save {name}",
-    description: "Env-group file save error toast",
-  },
-  "envGroups.fileDeleteSuccess": {
-    message: "Removed {name}",
-    description: "Env-group file delete success toast",
-  },
-  "envGroups.fileDeleteError": {
-    message: "Couldn't remove {name}",
-    description: "Env-group file delete error toast",
-  },
 };
 
 export default enEnvGroups;

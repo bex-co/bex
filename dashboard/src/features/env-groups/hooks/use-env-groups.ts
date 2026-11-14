@@ -7,7 +7,6 @@ import {
   CreateEnvGroupDocument,
   CloneEnvGroupDocument,
   DeleteEnvGroupDocument,
-  DeleteEnvGroupSecretFileDocument,
   DeleteEnvGroupVarDocument,
   EnvGroupDocument,
   EnvGroupSecretFileContentDocument,
@@ -17,7 +16,6 @@ import {
   MoveEnvGroupDocument,
   PatchEnvGroupEnvironmentDocument,
   RenameEnvGroupDocument,
-  SetEnvGroupSecretFileDocument,
   SetEnvGroupVarDocument,
   SetEnvGroupVarsDocument,
   UnlinkEnvGroupDocument,
@@ -614,71 +612,6 @@ export function useRevealEnvGroupSecretFile(groupId: string) {
     },
     [client, groupId],
   );
-}
-
-export function useEnvGroupSecretFileMutations(
-  groupId: string,
-  refetch: Refetch,
-  hasLinkedServices = false,
-) {
-  const { t } = useTranslations();
-  const [setEnvGroupSecretFile] = useMutation(SetEnvGroupSecretFileDocument);
-  const [deleteEnvGroupSecretFile] = useMutation(
-    DeleteEnvGroupSecretFileDocument,
-  );
-  const [busy, setBusy] = useState(false);
-
-  const setFile = useCallback(
-    async (name: string, content: string) => {
-      setBusy(true);
-      try {
-        await setEnvGroupSecretFile({
-          variables: { id: groupId, name, content },
-        });
-        await bestEffortRefetch(refetch);
-        if (hasLinkedServices) {
-          toast.success(t("envGroups.fileSaveSuccess", { name }), {
-            description: t("envGroups.rolloutNote"),
-          });
-        } else toast.success(t("envGroups.fileSaveSuccess", { name }));
-        return true;
-      } catch (err) {
-        toast.error(
-          mutationErrorMessage(err, t("envGroups.fileSaveError", { name })),
-        );
-        return false;
-      } finally {
-        setBusy(false);
-      }
-    },
-    [groupId, hasLinkedServices, refetch, setEnvGroupSecretFile, t],
-  );
-
-  const deleteFile = useCallback(
-    async (name: string) => {
-      setBusy(true);
-      try {
-        await deleteEnvGroupSecretFile({ variables: { id: groupId, name } });
-        await bestEffortRefetch(refetch);
-        if (hasLinkedServices) {
-          toast.success(t("envGroups.fileDeleteSuccess", { name }), {
-            description: t("envGroups.rolloutNote"),
-          });
-        } else toast.success(t("envGroups.fileDeleteSuccess", { name }));
-        return true;
-      } catch (err) {
-        toast.error(
-          mutationErrorMessage(err, t("envGroups.fileDeleteError", { name })),
-        );
-        return false;
-      } finally {
-        setBusy(false);
-      }
-    },
-    [deleteEnvGroupSecretFile, groupId, hasLinkedServices, refetch, t],
-  );
-
-  return { setFile, deleteFile, busy };
 }
 
 export function envVarKeys(group: EnvGroupView | null): EnvVarKey[] {
