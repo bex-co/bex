@@ -204,7 +204,12 @@ func readEverySurface(t *testing.T, svc *Service, now time.Time) map[string][]in
 	if err != nil || res.IsError {
 		t.Fatalf("MCP list_logs from 40 days ago = %+v, %v; want a clamped result", res, err)
 	}
-	var out listLogsResult
+	// list_logs answers the REST GET /v1/logs body (w4/m378).
+	var out struct {
+		Logs []struct {
+			Timestamp string `json:"timestamp"`
+		} `json:"logs"`
+	}
 	if err := json.Unmarshal([]byte(res.Content[0].(*mcp.TextContent).Text), &out); err != nil {
 		t.Fatal(err)
 	}
