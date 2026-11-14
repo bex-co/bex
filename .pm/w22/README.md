@@ -11,6 +11,10 @@
 
 - [ ] **m321** — [The storage meter's registry credentials: the operator mints a read user and a delete user for bex-api](blocked/m321/README.md) (8 tasks) ← promoted from w22/006 — **BLOCKED (deployed 2026-11-11, run 42982188589; checked on production the same day: the Secret holds both users, the reader reads and cannot delete, the reaper deletes only inside `snapshots/**`, and the size formula reads eight real repositories at 3.8 to 4.9 MB; the `BEX_SANDBOX_SNAPSHOT_REAP` switch is gone, so deleting follows the Secret; the first real reap then found that Zot's longest-match rule left both users locked out (403) of the 71 per-workspace `snapshots/<ws>-sandbox/**` patterns, fixed in the operator and proven on a real Zot, so what remains is deploying that fix and watching the six QA reap rows clear, then one real suspended sandbox followed from open to sized to accrued and one real tag deleted after its sandbox ends)**; t001–t004, t006 and t007 done and shipped
 
+- [ ] **m401** — [A registry outage pages within minutes: Zot's availability and the tenant image-pull path get alerts, panels and a drill](m401/README.md) (7 tasks, ~3h40m) ← from `/pm-brainstorm for w22` 2026-11-14, filed by `/pmx all to w22`; `PlatformDeploymentNotReady` never matches the Zot StatefulSet, and `PullAlways` (ADR022, w4/426) made Zot a run-time dependency of every Git-built start
+- [ ] **m402** — [Workspace admins can require 2FA, as on Render: a member without it is blocked, API keys and SSH included](m402/README.md) (10 tasks, ~6h50m) ← from `/pm-brainstorm for w22` 2026-11-14, filed by `/pmx all to w22`; render.com/docs/login-settings, the pinned OpenAPI's `ChangeTeam2FAEnforcementEvent`, ADR018 MFA row
+- [ ] **m403** — [A message sent to a running agent session is queued, and Stop ends only the current turn, as on Devin](m403/README.md) (10 tasks, ~7h20m) ← from `/pm-brainstorm for w22` 2026-11-14, filed by `/pmx all to w22`; ADR047 D9 (mid-run steering) and D11 (durable queue to model on), Devin release notes 2026-06 to 2026-11
+
 ## Inbox
 
 - [x] [001](done/001.md) — Pin sandbox `sh -c`, the list `limit` cap and the 40 GB filesystem with tests
@@ -21,3 +25,5 @@
 - [x] [006](done/006.md) — Provision the storage meter's registry users as operator-managed Zot credentials — promoted to **m321**
 - [x] [007](done/007.md) — Unparameterized lists return the full set where Render returns 20 — **decided 2026-11-13 by the user: Render's 20; filed as [w10/m377](../w10/m377/README.md)**
 - [ ] [008](blocked/008.md) — Enforce the 40 GB writable filesystem on sandbox pods, after checking kubelet's accounting under gVisor — **BLOCKED (a live gVisor sandbox node to read kubelet's ephemeral-storage accounting for a runsc pod (infra or the user))**
+- [ ] [009](009.md) — Widen the dashboard's `/agents` gate to every workspace, the day the platform model route widens (w10/m14 t007) ← from `/pm-brainstorm for w22` 2026-11-14
+- [ ] [010](010.md) — Pre-deploy commands get Render's 30 minutes, not 10 ← from `/pm-brainstorm for w22` 2026-11-14; render.com/docs/deploys
