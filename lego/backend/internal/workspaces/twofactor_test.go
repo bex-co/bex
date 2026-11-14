@@ -438,6 +438,8 @@ func TestExemptReadsLeakNothingAboutAWorkspaceToABlockedMember(t *testing.T) {
 
 	// What the exempt reads return is pinned to non-resource fields, so adding a
 	// field that exposes workspace contents is a decision, not an accident.
+	// IPAllowList (the inbound IP rules) is workspace configuration, so it is
+	// never filled for a blocked member: see the test below.
 	fieldNames := func(v any) []string {
 		var names []string
 		for field := range reflect.TypeOf(v).Fields() {
@@ -445,7 +447,7 @@ func TestExemptReadsLeakNothingAboutAWorkspaceToABlockedMember(t *testing.T) {
 		}
 		return names
 	}
-	if got, want := fieldNames(WorkspaceView{}), []string{"ID", "Name", "Slug", "Plan", "Role", "CreatedAt", "RequireTwoFactor"}; !slices.Equal(got, want) {
+	if got, want := fieldNames(WorkspaceView{}), []string{"ID", "Name", "Slug", "Plan", "Role", "CreatedAt", "IPAllowList", "RequireTwoFactor"}; !slices.Equal(got, want) {
 		t.Errorf("WorkspaceView fields = %v, want %v: List is exempt from the 2FA requirement", got, want)
 	}
 	if got, want := fieldNames(UserView{}), []string{"ID", "Email", "Name"}; !slices.Equal(got, want) {
@@ -542,5 +544,44 @@ func TestWorkspaceGraphQL_RequireTwoFactorFieldAndMutation(t *testing.T) {
 	missing := run("admin-1", fmt.Sprintf(`mutation { setWorkspaceRequireTwoFactor(workspaceId: %q) { id } }`, f.workspace))
 	if len(missing.Errors) == 0 {
 		t.Fatal("enabled is required: a call without it must be a validation error")
+	}
+}
+
+// A workspace's inbound IP rules are its configuration, not a fact a blocked
+// member needs to see why they are blocked, so neither the owners list, MCP's
+// list_workspaces (withIPAllowLists) nor the GraphQL ipAllowList field hands
+// them to a member the 2FA requirement refuses, while a compliant member and a
+// workspace that never opted in read them as before.
+func TestAWorkspacesIPRulesAreNotReadByABlockedMember(t *testing.T) {
+	f := newTwoFactorFixture(t)
+	ctx := ctxAs("viewer-1")
+	views := func(required bool) []WorkspaceView {
+		return []WorkspaceView{{ID: f.workspace, RequireTwoFactor: required}}
+	}
+
+	f.svc.Base.TwoFactor = refusingGate{}
+	blocked, err := f.svc.withIPAllowLists(ctx, views(true))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if blocked[0].IPAllowList != nil {
+		t.Errorf("a blocked member's view carries the inbound IP rules %v, want none", blocked[0].IPAllowList)
+	}
+	field := f.svc.workspaceType().Fields()["ipAllowList"]
+	if _, err := field.Resolve(graphql.ResolveParams{Source: WorkspaceView{ID: f.workspace, RequireTwoFactor: true}, Context: ctx}); !isCoded(err, core.ErrForbidden, core.CodeWorkspaceTwoFactorRequired) {
+		t.Errorf("ipAllowList for a blocked member = %v, want the coded 403", err)
+	}
+
+	// A workspace that did not opt in is read as before, even with the gate refusing.
+	open, err := f.svc.withIPAllowLists(ctx, views(false))
+	if err != nil || open[0].IPAllowList == nil {
+		t.Errorf("a workspace without the requirement: rules %v, err %v; want the rules", open[0].IPAllowList, err)
+	}
+
+	// A compliant member reads them.
+	f.svc.Base.TwoFactor = nil
+	ok, err := f.svc.withIPAllowLists(ctx, views(true))
+	if err != nil || ok[0].IPAllowList == nil {
+		t.Errorf("a compliant member: rules %v, err %v; want the rules", ok[0].IPAllowList, err)
 	}
 }

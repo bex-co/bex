@@ -60,6 +60,11 @@ func (s *Service) workspaceType() *graphql.Object {
 					Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(gqlutil.IPAllowEntryType))),
 					Resolve: func(p graphql.ResolveParams) (any, error) {
 						w, _ := p.Source.(WorkspaceView)
+						if w.RequireTwoFactor {
+							if err := s.CheckTwoFactor(p.Context, w.ID); err != nil {
+								return nil, err
+							}
+						}
 						if w.IPAllowList != nil {
 							return w.IPAllowList, nil
 						}

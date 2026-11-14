@@ -51,6 +51,7 @@ function workspace(
     plan,
     role: "admin",
     createdAt: null,
+    requireTwoFactor: false,
   };
 }
 

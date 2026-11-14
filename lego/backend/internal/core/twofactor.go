@@ -138,6 +138,22 @@ func (b *Base) requireTwoFactor(ctx context.Context, object string) error {
 	return b.TwoFactor.Check(ctx, workspaceID, id)
 }
 
+// CheckTwoFactor asks the gate whether the caller may read workspaceID's own
+// configuration, ignoring WithTwoFactorExempt. The exempt reads (the workspaces
+// list, currentUser) return only what a blocked member needs to see why; any
+// workspace configuration that rides along on a workspace object, such as its
+// inbound IP rules, is still refused to a blocked member and calls this.
+func (b *Base) CheckTwoFactor(ctx context.Context, workspaceID string) error {
+	if b == nil || b.TwoFactor == nil {
+		return nil
+	}
+	id, ok := IdentityFrom(ctx)
+	if !ok {
+		return nil
+	}
+	return b.TwoFactor.Check(ctx, workspaceID, id)
+}
+
 // RecordTwoFactorEnforcement records one successful change of a workspace's
 // two-factor setting: the verb's allowed row, carrying the value it was set
 // to. Paired with WithDeferredAllowedWriteAudit so a no-op change, which

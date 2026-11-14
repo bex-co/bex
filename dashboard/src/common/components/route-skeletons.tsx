@@ -1285,7 +1285,7 @@ export function WorkspaceSettingsPageSkeleton() {
       className="flex-1 overflow-auto p-4 sm:p-6"
     >
       <div className="mx-auto grid w-full max-w-4xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-        <ResponsiveSectionNavigationSkeleton count={9} />
+        <ResponsiveSectionNavigationSkeleton count={10} />
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
           <Region name="page-header" className="space-y-2">
             <Skeleton className="h-6 w-48" />
