@@ -67,6 +67,11 @@ func TestDatastoreEventDetailsOnRetrieve(t *testing.T) {
 		{"read replicas recorded before their counts", audit(core.AuditVerbPostgresReadReplicasChanged, "user-x", store.ServiceEventRow{}), `{}`},
 		{"disk autoscaling", audit(core.AuditVerbPostgresDiskAutoscalingChanged, "user-x", store.ServiceEventRow{}), `{}`},
 		{"upgrade started", fact(TypePostgresUpgradeStarted, versions), `{"fromVersion":"16","toVersion":"17"}`},
+		// w4/654: the caller of the version write the store joins.
+		{"upgrade started by its caller", fact(TypePostgresUpgradeStarted, store.ServiceEventRow{VersionFrom: "16", VersionTo: "17", Caller: "user-x"}),
+			`{` + user + `,"fromVersion":"16","toVersion":"17"}`},
+		{"upgrade succeeded names no user", fact(TypePostgresUpgradeSucceeded, store.ServiceEventRow{VersionFrom: "16", VersionTo: "17", Caller: "user-x"}),
+			`{"fromVersion":"16","toVersion":"17"}`},
 		{"upgrade succeeded", fact(TypePostgresUpgradeSucceeded, versions), `{"fromVersion":"16","toVersion":"17"}`},
 		{"upgrade failed", fact(TypePostgresUpgradeFailed, versions), `{"fromVersion":"16","toVersion":"17"}`},
 		{"key value config restart", audit(core.AuditVerbKeyValueConfigChanged, "user-x", store.ServiceEventRow{MaxmemoryPolicy: &policy, PersistenceMode: &persistence}),

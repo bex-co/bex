@@ -349,6 +349,11 @@ const (
 	AuditVerbPostgresReadReplicasChanged    = "postgres.SetReadReplicas"
 	AuditVerbPostgresDiskAutoscalingChanged = "postgres.SetDiskAutoscaling"
 	AuditVerbKeyValueConfigChanged          = "keyvalue.UpdateConfig"
+	// AuditVerbPostgresVersionChanged is the successful write of a new
+	// spec.version (w4/654). It is no event of its own: the upgrade's events
+	// are observed facts, and postgres_upgrade_started reads its user from
+	// the newest such row before it.
+	AuditVerbPostgresVersionChanged = "postgres.SetVersion"
 	// Team-membership effects (w1/m33). Invite and ChangeRole are spelled exactly
 	// as callerVerb() derives them (deferred-success recording, like SetPlan);
 	// AcceptInvite is recorded explicitly — redemption happens on the auth gate's
@@ -400,6 +405,7 @@ const (
 	// Field effects whose Render events carry no value of their own (w5/m138).
 	DatabaseReadReplicasChanged
 	DatabaseDiskAutoscalingChanged
+	DatabaseVersionChanged
 )
 
 var databaseAuditVerbs = map[DatabaseAuditEffect]string{
@@ -412,6 +418,7 @@ var databaseAuditVerbs = map[DatabaseAuditEffect]string{
 	DatabaseUpdated:                AuditVerbPostgresUpdated,
 	DatabaseReadReplicasChanged:    AuditVerbPostgresReadReplicasChanged,
 	DatabaseDiskAutoscalingChanged: AuditVerbPostgresDiskAutoscalingChanged,
+	DatabaseVersionChanged:         AuditVerbPostgresVersionChanged,
 }
 
 // KeyValueAuditEffect is the closed successful-write vocabulary for Key Value.

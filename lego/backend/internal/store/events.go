@@ -305,6 +305,22 @@ const cronRunEndedUser = `CASE WHEN f.fact_type = 'cron_job_run_ended' THEN COAL
                CASE WHEN f.status = '` + EventStatusCanceled + `' THEN NULLIF(ca.canceled_by, '') END,
                NULLIF(ca.triggered_by, ''), '') END`
 
+// upgradeStartedCallerJoin joins a postgres_upgrade_started datastore fact df
+// to the caller of the newest successful version write before it (w4/654): the
+// upgrade is observed, not requested, so the PATCH that set spec.version is
+// the only record of who started it.
+const upgradeStartedCallerJoin = `LEFT JOIN LATERAL (
+    SELECT ua.caller FROM audit_events ua
+    WHERE df.fact_type = '` + string(DatastoreFactPostgresUpgradeStarted) + `'
+      AND ua.target = 'database:' || df.datastore_id
+      AND ua.workspace_id = df.workspace_id
+      AND ua.verb = '` + core.AuditVerbPostgresVersionChanged + `'
+      AND ua.outcome = 'allowed'
+      AND ua.at <= df.at
+    ORDER BY ua.at DESC, ua.id DESC
+    LIMIT 1
+) uc ON true`
+
 // cronRunActorsJoin joins a cron_job_run_ended fact f to its run's actors.
 const cronRunActorsJoin = `LEFT JOIN cron_run_actors ca
   ON f.fact_type = 'cron_job_run_ended' AND f.run_id <> '' AND ca.app_id = f.app_id AND ca.run_id = f.run_id`
@@ -800,7 +816,7 @@ SELECT h.event_key AS key,
            WHEN h.source = '` + EventSourceAudit + `' THEN a.caller
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.triggered_by
            WHEN h.source = '` + EventSourceFact + `' AND ` + factCarriesDeployTrigger + ` THEN COALESCE(fd.triggered_by, '')
-           WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(` + cronRunEndedUser + `, '')
+           WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(` + cronRunEndedUser + `, uc.caller, '')
            ELSE ''
        END AS caller,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_from END AS plan_from,
@@ -875,6 +891,7 @@ LEFT JOIN datastore_event_facts df
 LEFT JOIN deploys fd
   ON h.source = '` + EventSourceFact + `' AND fd.id = COALESCE(f.deploy_id, '') AND COALESCE(f.deploy_id, '') <> ''
 ` + cronRunActorsJoin + `
+` + upgradeStartedCallerJoin + `
 WHERE (h.source = '` + EventSourceDeploy + `' AND d.id IS NOT NULL
        AND (h.phase = '` + EventPhaseStarted + `'
             OR (h.phase = '` + EventPhaseEnded + `' AND d.finished_at IS NOT NULL)))

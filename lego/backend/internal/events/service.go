@@ -1462,7 +1462,7 @@ func view(r store.ServiceEventRow, service string) Event {
 		ev.Details.CommitURL = r.CommitURL
 		ev.Details.Status = r.FactStatus
 		ev.Details.CronJobRunID = r.FactRunID
-		if ev.Type == TypeCronJobRunEnded {
+		if ev.Type == TypeCronJobRunEnded || ev.Type == TypePostgresUpgradeStarted {
 			ev.Details.User = callerRef(r.Caller)
 		}
 		if ev.Type == TypeCronJobRunStarted && r.FactRunID == "" {

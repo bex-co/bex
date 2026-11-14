@@ -45,6 +45,8 @@ func TestPGDatastoreEventFromValuesHydrate(t *testing.T) {
 	for i, ev := range []core.AuditEvent{
 		{Verb: core.AuditVerbPostgresDiskSizeChanged, DiskSizeFromGB: &ten, DiskSizeGB: &fifteen},
 		{Verb: core.AuditVerbPostgresReadReplicasChanged, ReadReplicasFrom: &zero, ReadReplicasTo: &two},
+		// w4/654: the version write the upgrade_started fact names its user from.
+		{Verb: core.AuditVerbPostgresVersionChanged},
 	} {
 		ev.Caller, ev.Resource, ev.Target, ev.TargetName = "fixture-owner", core.WorkspaceObject(tenant.ID), core.DatabaseTarget(name), "orders"
 		ev.Outcome, ev.At = core.AuditAllowed, at.Add(time.Duration(i)*time.Second)
@@ -94,6 +96,13 @@ func TestPGDatastoreEventFromValuesHydrate(t *testing.T) {
 		case e.FactType == string(DatastoreFactPostgresUpgradeStarted), e.FactType == string(DatastoreFactPostgresUpgradeSucceeded):
 			if e.VersionFrom != "16" || e.VersionTo != "17" {
 				t.Errorf("%s versions = %q -> %q, want 16 -> 17", e.FactType, e.VersionFrom, e.VersionTo)
+			}
+			wantCaller := ""
+			if e.FactType == string(DatastoreFactPostgresUpgradeStarted) {
+				wantCaller = "fixture-owner"
+			}
+			if e.Caller != wantCaller {
+				t.Errorf("%s caller = %q, want %q", e.FactType, e.Caller, wantCaller)
 			}
 		default:
 			continue

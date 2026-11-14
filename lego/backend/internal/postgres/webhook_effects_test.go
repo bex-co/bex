@@ -383,3 +383,52 @@ func TestConnectionInfoRecordsOneViewConnectionInfoEvent(t *testing.T) {
 		t.Fatalf("recorded %+v, want one ViewConnectionInfoEvent", sink.events)
 	}
 }
+
+// TestPostgresVersionWriteRecordsItsCaller is w4/654: both version entry
+// points record one postgres.SetVersion row once the write succeeds, which is
+// where postgres_upgrade_started reads its user; a refused upgrade records
+// none.
+func TestPostgresVersionWriteRecordsItsCaller(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		upgrade func(*Service, string, string) error
+	}{
+		{"SetVersion", func(svc *Service, name, target string) error {
+			_, err := svc.SetVersion(context.Background(), name, target)
+			return err
+		}},
+		{"UpdatePostgres", func(svc *Service, name, target string) error {
+			_, err := svc.UpdatePostgres(context.Background(), name, PostgresPatch{Version: &target})
+			return err
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			db := versionDatabase("dpg-upgrade", "free", "16", false)
+			db.Spec.Name = "orders"
+			svc, _ := newService(db)
+			sink := &webhookAuditSink{}
+			svc.Audit = sink
+
+			if err := tc.upgrade(svc, db.Name, "15"); codedErrorCode(err) != "POSTGRES_VERSION_NOT_NEWER" {
+				t.Fatalf("downgrade = %v, want POSTGRES_VERSION_NOT_NEWER", err)
+			}
+			if len(sink.events) != 0 {
+				t.Fatalf("refused upgrade recorded %+v", sink.events)
+			}
+			if err := tc.upgrade(svc, db.Name, "17"); err != nil {
+				t.Fatalf("upgrade: %v", err)
+			}
+			if len(sink.events) != 1 {
+				t.Fatalf("events = %+v, want one", sink.events)
+			}
+			event := sink.events[0]
+			if event.Verb != core.AuditVerbPostgresVersionChanged || event.Outcome != core.AuditAllowed ||
+				event.Target != core.DatabaseTarget(db.Name) {
+				t.Fatalf("event = %+v, want an allowed %s row for %s", event, core.AuditVerbPostgresVersionChanged, db.Name)
+			}
+			if _, ok := eventvocab.DatastoreAuditTypes()[event.Verb]; ok {
+				t.Errorf("%s projects to an event; the upgrade's events are observed facts", event.Verb)
+			}
+		})
+	}
+}

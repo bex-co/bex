@@ -1813,7 +1813,8 @@ func (s *Service) checkUpdate(ctx context.Context, d *appv1alpha1.Database, patc
 // recordUpdateEffects records what a successful PATCH actually changed, one
 // fixed verb per field whose change Render's datastore event vocabulary names
 // (plan, high availability, the connection pooler, disk size, read replicas,
-// disk autoscaling) — the maintenance-mode shape, where one atomic write emits
+// disk autoscaling, the version an upgrade starts toward) — the
+// maintenance-mode shape, where one atomic write emits
 // a row per field effect rather than a single undifferentiated Update. Fields
 // Render has no name for (rename, ip-allow-list, parameter overrides) keep the
 // generic DatabaseUpdated row, which is also what an idempotent PATCH records:
@@ -1848,6 +1849,10 @@ func (s *Service) recordUpdateEffects(ctx context.Context, d *appv1alpha1.Databa
 	}
 	if before.DiskAutoscaling != d.Spec.DiskAutoscaling {
 		s.RecordDatabaseEffect(ctx, d, core.DatabaseDiskAutoscalingChanged)
+		recorded = true
+	}
+	if before.Version != d.Spec.Version {
+		s.RecordDatabaseEffect(ctx, d, core.DatabaseVersionChanged)
 		recorded = true
 	}
 	if !recorded {
@@ -1962,9 +1967,11 @@ func (s *Service) validateVersionUpgrade(ctx context.Context, d *appv1alpha1.Dat
 //
 // It runs UpdatePostgres's checks for a version-only patch, so the protected
 // environment's "upgrade" confirmation and the billing gate apply here too
-// (w5/m116), while the audit trail keeps naming the verb the caller used.
+// (w5/m116), while the audit trail keeps naming the verb the caller used. The
+// row is recorded only once the write succeeds: postgres_upgrade_started names
+// its caller as the user (w4/654).
 func (s *Service) SetVersion(ctx context.Context, name, target string) (PostgresView, error) {
-	d, err := s.fetchDatabaseForRead(ctx, core.RelCanOperate, name)
+	ctx, d, err := s.fetchToChange(ctx, name, false, core.RelCanOperate)
 	if err != nil {
 		return PostgresView{}, err
 	}
@@ -1972,7 +1979,12 @@ func (s *Service) SetVersion(ctx context.Context, name, target string) (Postgres
 	if err := s.checkUpdate(ctx, d, patch); err != nil {
 		return PostgresView{}, err
 	}
-	return s.patchDatabaseObj(ctx, d, patch.apply, false)
+	view, err := s.patchDatabaseObj(ctx, d, patch.apply, false)
+	if err != nil {
+		return PostgresView{}, err
+	}
+	s.RecordDatabaseEffect(ctx, d, core.DatabaseVersionChanged)
+	return view, nil
 }
 
 // patchDatabaseObj applies mutate to an already-fetched Database and writes it
