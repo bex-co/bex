@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"regexp"
 	"slices"
 	"strconv"
@@ -216,8 +217,8 @@ type imageConfigDocument struct {
 	} `json:"config"`
 }
 
-func fetchOnce(ctx context.Context, client *http.Client, url, authorization, bearer string) ([]byte, int, http.Header, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+func fetchOnce(ctx context.Context, client *http.Client, target, authorization, bearer string) ([]byte, int, http.Header, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
 		return nil, 0, nil, err
 	}
@@ -244,8 +245,8 @@ func fetchOnce(ctx context.Context, client *http.Client, url, authorization, bea
 // challenge's service/scope and return the issued token. basic is "" for a
 // public image (w4/m243), or the workspace credential's Basic header for a
 // private one (w6/095); like the registry request itself, it travels only over
-// https. The realm must be https, or http on a loopback host (local registries
-// in tests).
+// https. The realm is the registry's word, so it is parsed and checked by
+// parseBearerRealm, and service and scope are escaped as query values.
 func bearerToken(ctx context.Context, client *http.Client, challenge, basic string) (string, error) {
 	if !strings.HasPrefix(challenge, "Bearer ") {
 		return "", fmt.Errorf("image metadata request returned status 401 without a Bearer challenge")
@@ -261,22 +262,19 @@ func bearerToken(ctx context.Context, client *http.Client, challenge, basic stri
 	if realm == "" {
 		return "", fmt.Errorf("registry Bearer challenge has no realm")
 	}
-	if !strings.HasPrefix(realm, "https://") && !strings.HasPrefix(realm, "http://127.0.0.1") && !strings.HasPrefix(realm, "http://localhost") {
-		return "", fmt.Errorf("registry Bearer realm is not https: %q", realm)
+	tokenURL, err := parseBearerRealm(realm)
+	if err != nil {
+		return "", err
 	}
-	sep := "?"
-	if strings.Contains(realm, "?") {
-		sep = "&"
-	}
-	url := realm
+	query := tokenURL.Query()
 	if params["service"] != "" {
-		url += sep + "service=" + params["service"]
-		sep = "&"
+		query.Set("service", params["service"])
 	}
 	if params["scope"] != "" {
-		url += sep + "scope=" + params["scope"]
+		query.Set("scope", params["scope"])
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	tokenURL.RawQuery = query.Encode()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, tokenURL.String(), nil)
 	if err != nil {
 		return "", err
 	}
@@ -309,6 +307,26 @@ func bearerToken(ctx context.Context, client *http.Client, challenge, basic stri
 		return body.AccessToken, nil
 	}
 	return "", fmt.Errorf("registry token response has no token")
+}
+
+// parseBearerRealm accepts a Bearer realm that is https, or http on exactly
+// 127.0.0.1, localhost or ::1 (local registries in tests), with no userinfo
+// and no fragment. A string-prefix test let `http://127.0.0.1@host/...`,
+// `127.0.0.1.attacker.example` and `127.0.0.100` through, and a tenant's registry
+// could aim the operator's plaintext GET at an in-cluster host (R25-03).
+func parseBearerRealm(realm string) (*url.URL, error) {
+	u, err := url.Parse(realm)
+	if err != nil || u.Host == "" || u.User != nil || u.Fragment != "" {
+		return nil, fmt.Errorf("registry Bearer realm is not a plain URL: %q", realm)
+	}
+	if u.Scheme != "https" && (u.Scheme != "http" || !isLoopbackRealmHost(u.Hostname())) {
+		return nil, fmt.Errorf("registry Bearer realm is not https: %q", realm)
+	}
+	return u, nil
+}
+
+func isLoopbackRealmHost(host string) bool {
+	return host == "127.0.0.1" || host == "localhost" || host == "::1"
 }
 
 // blobRedirectPolicy bounds blob-storage redirects (w8/201): a short https
