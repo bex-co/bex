@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"mime"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -115,20 +116,22 @@ func (o *S3Origin) Get(ctx context.Context, key string) (Object, error) {
 	// An encoded body's bytes are not its text, so they say nothing of its
 	// charset.
 	if aws.ToString(out.ContentEncoding) == "" {
-		ct = utf8PlainText(ct, body)
+		ct = declareUTF8Text(ct, body)
 	}
 	return Object{Body: body, ContentType: ct}, nil
 }
 
-// utf8PlainText declares UTF-8 on a text/plain type that names no charset when
-// the bytes are valid UTF-8. The publisher's uploader guesses a bare
-// text/plain, which a browser decodes as windows-1252, so UTF-8 text showed as
-// mojibake (w4/335). Judged once per fetch, before the object is cached: an
-// explicit charset, invalid UTF-8, a malformed type and every other type stay
-// as the origin sent them.
-func utf8PlainText(contentType string, body []byte) string {
+// declareUTF8Text declares UTF-8 on a text/* type that names no charset when the
+// bytes are valid UTF-8, as Render's static sites declare it on the text types
+// captured (text/html, text/css, text/markdown, text/plain; w8/323,
+// 2026-11-14). The publisher's uploader guesses a bare type, which a browser
+// may decode as windows-1252, so UTF-8 text showed as mojibake (w4/335, for
+// text/plain first). Judged once per fetch, before the object is cached:
+// an explicit charset, invalid UTF-8, a malformed type and every non-text
+// type stay as the origin sent them.
+func declareUTF8Text(contentType string, body []byte) string {
 	mediaType, params, err := mime.ParseMediaType(contentType)
-	if err != nil || mediaType != "text/plain" {
+	if err != nil || !strings.HasPrefix(mediaType, "text/") {
 		return contentType
 	}
 	if _, declared := params["charset"]; declared || !utf8.Valid(body) {
