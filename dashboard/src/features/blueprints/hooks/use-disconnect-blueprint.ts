@@ -1,3 +1,4 @@
+import { trackOwnDelete } from "@/common/lib/own-delete";
 import { useState, useCallback } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
@@ -22,7 +23,7 @@ export function useDisconnectBlueprint(): UseDisconnectBlueprintResult {
     async (id: string): Promise<boolean> => {
       setBusy(true);
       try {
-        await mutate({ variables: { id } });
+        await trackOwnDelete(() => mutate({ variables: { id } }));
         toast.success(t("blueprints.disconnectSuccess"));
         return true;
       } catch (err) {

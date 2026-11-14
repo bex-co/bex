@@ -1,3 +1,4 @@
+import { trackOwnDelete } from "@/common/lib/own-delete";
 import { placementErrorMessage } from "@/features/environments/lib/placement";
 import { nonNull } from "@/common/lib/non-null";
 import { useCallback, useRef, useState } from "react";
@@ -271,7 +272,7 @@ export function useEnvGroupMutations(
     async (id: string) => {
       setBusy(true);
       try {
-        await deleteEnvGroup({ variables: { id } });
+        await trackOwnDelete(() => deleteEnvGroup({ variables: { id } }));
         client.cache.modify({
           fields: {
             envGroups(existing, { readField }) {

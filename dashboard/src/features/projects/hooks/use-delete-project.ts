@@ -1,3 +1,4 @@
+import { trackOwnDelete } from "@/common/lib/own-delete";
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
@@ -29,7 +30,7 @@ export function useDeleteProject(): UseDeleteProjectResult {
     async (id: string, name: string) => {
       setDeleting(id);
       try {
-        await mutate({ variables: { id } });
+        await trackOwnDelete(() => mutate({ variables: { id } }));
         toast.success(t("projects.deleteSuccess", { name }));
         return true;
       } catch (err) {

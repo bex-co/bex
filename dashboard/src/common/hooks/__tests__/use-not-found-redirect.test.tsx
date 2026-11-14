@@ -14,6 +14,10 @@ import {
   useNotFoundRedirect,
 } from "../use-not-found-redirect";
 import { ServerError } from "@apollo/client/errors";
+import {
+  resetOwnDeletesForTests,
+  trackOwnDelete,
+} from "@/common/lib/own-delete";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const toastError = vi.fn();
@@ -49,6 +53,7 @@ function renderAt(notFound: boolean) {
 
 beforeEach(() => {
   toastError.mockReset();
+  resetOwnDeletesForTests();
 });
 
 describe("useNotFoundRedirect (w9/m55)", () => {
@@ -63,6 +68,41 @@ describe("useNotFoundRedirect (w9/m55)", () => {
       "That resource doesn't exist or was deleted.",
       { id: "resource-not-found" },
     );
+  });
+
+  // w4/645: a delete from the page's own danger card owns the toast and the
+  // navigation, so the page's polls reading its id as gone stay quiet.
+  it("stands down while this dashboard's own delete is in flight", async () => {
+    let finish: () => void = () => {};
+    const deleting = trackOwnDelete(
+      () => new Promise<void>((resolve) => (finish = resolve)),
+    );
+    renderAt(true);
+
+    expect(await screen.findByText("detail page")).toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+    finish();
+    await deleting;
+  });
+
+  it("stays quiet in the grace after an own delete succeeded", async () => {
+    await trackOwnDelete(async () => undefined);
+    renderAt(true);
+
+    expect(await screen.findByText("detail page")).toBeInTheDocument();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("re-arms at once when an own delete fails", async () => {
+    await expect(
+      trackOwnDelete(async () => {
+        throw new Error("refused");
+      }),
+    ).rejects.toThrow("refused");
+    renderAt(true);
+
+    expect(await screen.findByText("home page")).toBeInTheDocument();
+    expect(toastError).toHaveBeenCalledOnce();
   });
 
   it("stays put while the resource is not provably absent", async () => {

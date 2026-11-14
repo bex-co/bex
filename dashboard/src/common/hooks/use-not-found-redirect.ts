@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { translatedText } from "@/common/lib/document-head";
 import { isNotFoundError } from "@/common/lib/graphql-error";
 import { isUnauthenticatedError } from "@/common/apollo/auth-error-link";
+import { ownDeleteActive } from "@/common/lib/own-delete";
 
 /**
  * Has this detail query settled on "there is no such resource"? — the one
@@ -100,7 +101,9 @@ export function useNotFoundRedirect(
 ) {
   const navigate = useNavigate();
   useEffect(() => {
-    if (!notFound) return;
+    // A delete this dashboard started owns the toast and the navigation; the
+    // page's polls reading its id as gone meanwhile are expected (w4/645).
+    if (!notFound || ownDeleteActive()) return;
     toast.error(translatedText("common.resourceNotFoundToast"), {
       id: "resource-not-found",
     });

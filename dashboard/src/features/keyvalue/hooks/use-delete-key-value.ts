@@ -1,3 +1,4 @@
+import { trackOwnDelete } from "@/common/lib/own-delete";
 import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
@@ -35,7 +36,9 @@ export function useDeleteKeyValue(): UseDeleteKeyValueResult {
     async (id: string, name: string, confirmation?: string) => {
       setDeleting(id);
       try {
-        await mutate({ variables: { id, confirm: confirmation } });
+        await trackOwnDelete(() =>
+          mutate({ variables: { id, confirm: confirmation } }),
+        );
         toast.success(t("keyvalue.deleteSuccess", { name }));
         return { status: "success" } as const;
       } catch (err) {
