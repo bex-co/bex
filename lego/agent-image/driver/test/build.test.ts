@@ -228,7 +228,7 @@ test("a build clones the default branch, runs setup, scrubs its run state and id
   const children = spawnSync("pgrep", ["-lf", "-P", String(child.pid)])
     .stdout.toString()
     .split("\n")
-    .filter((line) => line.trim() && !/\/esbuild /.test(line));
+    .filter((line) => line.trim() && !/\besbuild\b/.test(line));
   assert.deepEqual(children, [], "a child is running");
   child.kill("SIGTERM");
   assert.equal(await exited, 0);
