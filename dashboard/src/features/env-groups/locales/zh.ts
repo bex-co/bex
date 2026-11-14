@@ -412,7 +412,7 @@ const zhEnvGroups: Record<string, TranslationEntry> = {
     description: "No linked services state",
   },
   "envGroups.servicesLoadError": {
-    message: "无法加载工作区服务。现有链接仍显示在下方。",
+    message: "无法加载工作区服务。现有关联仍显示在下方。",
     description: "Linked-services inventory error",
   },
   "envGroups.incompatibleLink": {

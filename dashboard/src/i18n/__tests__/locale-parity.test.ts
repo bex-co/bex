@@ -280,6 +280,21 @@ const SKIP_PLAN = new Set([
   "agent-automations",
 ]);
 
+// Linking an env group is 关联, as Unlink is 取消关联 (w4/662). Scoped to the
+// env-group messages: elsewhere "link" is a hyperlink (邀请链接).
+describe("zh links an env group one way (w4/662)", () => {
+  it.each(NAMESPACES)("$name", ({ name, en, zh }) => {
+    const misses = Object.entries(zh ?? {})
+      .filter(
+        ([key]) => key.startsWith("services.envGroup") || name === "env-groups",
+      )
+      .filter(([key]) => /\blink(s|ed)?\b/i.test(en?.[key]?.message ?? ""))
+      .filter(([, entry]) => entry.message.includes("链接"))
+      .map(([key, entry]) => `${key}: ${entry.message}`);
+    expect(misses).toEqual([]);
+  });
+});
+
 describe("zh renders each glossary term one way (w4/646)", () => {
   it.each(NAMESPACES)("$name", ({ name, en, zh }) => {
     const misses: string[] = [];

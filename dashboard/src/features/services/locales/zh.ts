@@ -1026,7 +1026,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Environment tab env-groups section title",
   },
   "services.envGroupsDescription": {
-    message: "可复用的环境变量与机密文件集合，可链接到此服务及其他服务。",
+    message: "可复用的环境变量与机密文件集合，可关联到此服务及其他服务。",
     description: "Environment tab env-groups section description",
   },
   "services.envGroupsEmptyTitle": {
@@ -1083,7 +1083,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Env-groups create-group validation message for an invalid name",
   },
   "services.envGroupLinked": {
-    message: "已链接",
+    message: "已关联",
     description:
       "Env-groups badge: this group is linked to the current service",
   },
@@ -1133,7 +1133,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Legend under a linked group's key list when at least one key is shadowed by a service variable",
   },
   "services.envGroupLink": {
-    message: "链接",
+    message: "关联",
     description: "Env-groups button: attach this group to the current service",
   },
   "services.envGroupUnlink": {
@@ -1142,7 +1142,7 @@ const zhServices: Record<string, TranslationEntry> = {
       "Env-groups button: detach this group from the current service",
   },
   "services.envGroupLinkAria": {
-    message: "链接 {name}",
+    message: "关联 {name}",
     description:
       "Accessible name of an env-group row's Link button on the service Environment tab, naming the group (w4/537)",
   },
@@ -1160,7 +1160,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Env-group delete-confirmation dialog title",
   },
   "services.envGroupDeleteConfirmBody": {
-    message: "该组将从所有链接到它的服务中移除。此操作无法撤销。",
+    message: "该组将从所有关联到它的服务中移除。此操作无法撤销。",
     description: "Env-group delete-confirmation dialog body",
   },
   "services.envGroupCreateSuccess": {
@@ -1180,11 +1180,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Toast on a failed env-group delete",
   },
   "services.envGroupLinkSuccess": {
-    message: "组已链接",
+    message: "组已关联",
     description: "Toast on a successful env-group link",
   },
   "services.envGroupLinkError": {
-    message: "无法链接该组",
+    message: "无法关联该组",
     description: "Toast on a failed env-group link",
   },
   "services.envGroupUnlinkSuccess": {
