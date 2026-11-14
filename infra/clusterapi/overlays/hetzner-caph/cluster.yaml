@@ -925,7 +925,11 @@ spec:
         kind: HCloudMachineTemplate
         name: bex-tenant-lg-k134-cx43
       version: v1.34.9
-  rolloutAfter: "2026-11-12T09:29:32Z" # CVE-2026-98432: roll every machine onto the kernel-6.8.0-149 snapshot (w1/144)
+  # CVE-2026-98432 (w1/144): the 2026-11-12 roll stalled when fsn1 had no cx43,
+  # so the node was rebooted in place onto 6.8.0-149 on 2026-11-14 and this went
+  # back to the 2026-11-02 value, which marks it up to date and keeps its
+  # server. A later value rolls it.
+  rolloutAfter: "2026-11-02T06:59:18Z"
 ---
 apiVersion: cluster.x-k8s.io/v1beta1
 kind: MachineDeployment
@@ -1517,7 +1521,12 @@ spec:
   # 3 = etcd quorum (rearchitecture decision 2) — CP is HA and tainted; the KCP
   # webhook forbids even counts with stacked etcd.
   replicas: 3
-  rolloutAfter: "2026-11-12T09:29:32Z" # CVE-2026-98432: roll every machine onto the kernel-6.8.0-149 snapshot (w1/144)
+  # CVE-2026-98432 (w1/144): the 2026-11-12 roll stalled when fsn1 had no cx33,
+  # so the control plane was rebooted in place onto 6.8.0-149 on 2026-11-14 and
+  # this went back to the 2026-11-02 value, which marks those machines up to
+  # date (one was still replaced while the stalled surge was cleared). A later
+  # value rolls them.
+  rolloutAfter: "2026-11-02T06:59:18Z"
   # Bumping this k8s version? Verify the stacked-etcd image and execute the
   # backup Job after the hop. The backup/restore client intentionally stays on
   # an etcd 3.6 image that contains both etcdctl and etcdutl.
