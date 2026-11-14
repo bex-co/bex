@@ -34,10 +34,13 @@ const (
 	// LabelDatabaseUID and LabelKeyValueUID are LabelAppUID's siblings for the
 	// two other parent kinds that own cleanup Jobs. All three bind a Job to one
 	// exact parent lifetime, so a recreated parent never adopts the old Job.
-	LabelDatabaseUID   = "app.bex.co/database-uid"
-	LabelKeyValueUID   = "app.bex.co/keyvalue-uid"
-	LabelComponent     = "app.bex.co/component"
-	LabelWorkspace     = "app.bex.co/workspace"
+	LabelDatabaseUID = "app.bex.co/database-uid"
+	LabelKeyValueUID = "app.bex.co/keyvalue-uid"
+	LabelComponent   = "app.bex.co/component"
+	LabelWorkspace   = "app.bex.co/workspace"
+	// LabelEnvironment is a pod's environment id, the identity an isolated
+	// environment's network boundary selects (w4/m342).
+	LabelEnvironment   = "app.bex.co/environment-id"
 	LabelAppNamespace  = "app.bex.co/app-namespace"
 	LabelVerifyImage   = "app.bex.co/verify-image"
 	VerifyImageEnabled = "enabled"

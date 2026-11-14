@@ -51,11 +51,22 @@ func keyValueInternalProxyPodLabels(kv *appv1alpha1.KeyValue) map[string]string 
 func (r *KeyValueReconciler) reconcileKeyValueInternalProxyPolicy(ctx context.Context, kv *appv1alpha1.KeyValue) error {
 	proxy := &metav1.LabelSelector{MatchLabels: map[string]string{labelKeyValueInternalProxy: kv.Name}}
 	backend := &metav1.LabelSelector{MatchLabels: map[string]string{labelKeyValue: kv.Name}}
-	clients := &metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{
-		Key: labelNetworkIsolation, Operator: metav1.LabelSelectorOpDoesNotExist,
-	}}}
+	// An isolated store admits its environment's pods by either environment
+	// label (environmentPeers). Outside isolation the clients are the pods of
+	// no isolated environment, which relabelAppPods marks, plus the store's own
+	// environment's pods: they still carry the isolation label for a pass after
+	// the environment's isolation is lifted, and must not lose the store
+	// meanwhile (w4/m342).
+	var clients []networkingv1.NetworkPolicyPeer
 	if env := kv.Labels[labelNetworkIsolation]; env != "" {
-		clients = &metav1.LabelSelector{MatchLabels: map[string]string{labelNetworkIsolation: env}}
+		clients = environmentPeers(env)
+	} else {
+		clients = []networkingv1.NetworkPolicyPeer{{PodSelector: &metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{
+			Key: labelNetworkIsolation, Operator: metav1.LabelSelectorOpDoesNotExist,
+		}}}}}
+		if env := kv.Labels[labelEnvironment]; env != "" {
+			clients = append(clients, environmentPeers(env)...)
+		}
 	}
 	udp, tcp := corev1.ProtocolUDP, corev1.ProtocolTCP
 	ports := []networkingv1.NetworkPolicyPort{
@@ -70,7 +81,7 @@ func (r *KeyValueReconciler) reconcileKeyValueInternalProxyPolicy(ctx context.Co
 			PodSelector: *proxy,
 			PolicyTypes: []networkingv1.PolicyType{networkingv1.PolicyTypeIngress, networkingv1.PolicyTypeEgress},
 			Ingress: []networkingv1.NetworkPolicyIngressRule{{
-				From:  []networkingv1.NetworkPolicyPeer{{PodSelector: clients}, {PodSelector: keyValueJobPeer(kv)}},
+				From:  append(clients, networkingv1.NetworkPolicyPeer{PodSelector: keyValueJobPeer(kv)}),
 				Ports: ports,
 			}},
 			Egress: []networkingv1.NetworkPolicyEgressRule{

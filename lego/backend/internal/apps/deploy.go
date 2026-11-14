@@ -1913,28 +1913,32 @@ func (s *Service) applyBlueprintGroupings(ctx context.Context, groupings []parse
 	if !ok {
 		return nil, core.ErrWorkspacesUnavailable
 	}
+	var out map[string]core.EnvironmentAssignment
+	var audits []groupingAuditEntry
+	var err error
 	if s.BlueprintGroupsTx != nil {
 		// One transaction for the whole grouping set: a mid-loop failure
 		// (store error, quota refusal, cancellation) rolls back every row
 		// from this sync instead of persisting a partial set (w8/m20 t001).
-		var out map[string]core.EnvironmentAssignment
-		var audits []groupingAuditEntry
-		err := s.BlueprintGroupsTx.RunGroupingTx(ctx, func(groups store.GroupingStore) error {
+		err = s.BlueprintGroupsTx.RunGroupingTx(ctx, func(groups store.GroupingStore) error {
 			var applyErr error
 			out, audits, applyErr = s.applyBlueprintGroupingsWith(ctx, groups, tenantID, groupings)
 			return applyErr
 		})
-		if err != nil {
-			return nil, err
-		}
-		s.emitGroupingAudits(ctx, tenantID, audits)
-		return out, nil
+	} else {
+		out, audits, err = s.applyBlueprintGroupingsWith(ctx, s.BlueprintGroups, tenantID, groupings)
 	}
-	out, audits, err := s.applyBlueprintGroupingsWith(ctx, s.BlueprintGroups, tenantID, groupings)
 	if err != nil {
 		return nil, err
 	}
 	s.emitGroupingAudits(ctx, tenantID, audits)
+	// A moved isolation boundary must stand before the sync's resources land
+	// in it (w4/m342).
+	if slices.ContainsFunc(audits, func(a groupingAuditEntry) bool { return a.isolationMoved }) {
+		if err := s.EnforceEnvironmentIsolation(ctx, tenantID); err != nil {
+			return nil, err
+		}
+	}
 	return out, nil
 }
 
@@ -1945,6 +1949,9 @@ type groupingAuditEntry struct {
 	action      string
 	project     string
 	environment string
+	// isolationMoved marks an environment created isolated or whose isolation
+	// flipped: the workspace's NetworkPolicies must re-converge.
+	isolationMoved bool
 }
 
 // emitGroupingAudits records the sync's grouping mutations in the audit log.
@@ -2089,10 +2096,14 @@ func (s *Service) applyBlueprintGroupingsWith(ctx context.Context, groups Bluepr
 			if err := groups.SetEnvironmentACL(ctx, environment.ID, desired.protectedStatus, desired.isolated, environment.IPAllowList); err != nil {
 				return nil, nil, fmt.Errorf("applying Blueprint environment %q controls: %w", grouping.environmentName, err)
 			}
+			isolationMoved := environment.NetworkIsolationEnabled != desired.isolated
 			environment.ProtectedStatus = desired.protectedStatus
 			environment.NetworkIsolationEnabled = desired.isolated
-			if !created {
-				audits = append(audits, groupingAuditEntry{action: "environment_controls_updated", project: grouping.projectName, environment: grouping.environmentName})
+			if created {
+				// The environment_created entry this iteration appended.
+				audits[len(audits)-1].isolationMoved = isolationMoved
+			} else {
+				audits = append(audits, groupingAuditEntry{action: "environment_controls_updated", project: grouping.projectName, environment: grouping.environmentName, isolationMoved: isolationMoved})
 			}
 		}
 		out[blueprintGroupingKey(grouping.projectName, grouping.environmentName)] = core.EnvironmentAssignment{

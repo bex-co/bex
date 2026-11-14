@@ -228,6 +228,12 @@ const LabelProject = "app.bex.co/project-id"
 // read-side adapters. Database/KeyValue CRs have no store row, so this label
 // is their source of association — set/
 // cleared by postgres.Service.SetEnvironmentID / keyvalue.Service.SetEnvironmentID.
+//
+// It is also every member pod's network identity (w4/m342): the operator
+// carries it onto App, Postgres and Key Value pods, and an isolated
+// environment's boundary selects pods by it. Membership writes stamp it on the
+// App CR synchronously (environments.Service.applyAppEnvironmentLabels, the
+// create and Blueprint paths) as well as through the projector.
 const LabelEnvironment = "app.bex.co/environment-id"
 
 // LabelBlueprint records the Git-connected Blueprint that manages a Service,
@@ -248,6 +254,10 @@ const LabelBlueprint = "bex.co/blueprint-id"
 // to scope that App's NetworkPolicy to same-environment peers instead of
 // same-workspace ones. Absent: no environment, or the environment has
 // isolation off — the App keeps ordinary same-workspace connectivity.
+//
+// Since w4/m342 the boundary itself selects pods by LabelEnvironment
+// (store.sameNamespaceNetworkPolicy); this label reaches App pods only as an
+// in-place relabel, never through a pod template, so a toggle restarts nothing.
 //
 // A distinct label from LabelEnvironment (not a reuse) because the two
 // features that separately needed "an environment id on a label" this same
@@ -434,7 +444,7 @@ type NamespaceEnsurer func(ctx context.Context, workspaceID string) error
 // or an empty/default tenant is a no-op, and a non-NotFound GET error is
 // ignored so the create itself surfaces the real failure exactly as before.
 func (b *Base) EnsureWorkspaceNamespace(ctx context.Context, tenantID string) error {
-	if b.EnsureNamespaces == nil || tenantID == "" || tenantID == DefaultTenant {
+	if !b.ensuresNamespacesFor(tenantID) {
 		return nil
 	}
 	err := b.Client.Get(ctx, client.ObjectKey{Name: b.TenantNamespace(tenantID)}, &corev1.Namespace{})
@@ -442,6 +452,29 @@ func (b *Base) EnsureWorkspaceNamespace(ctx context.Context, tenantID string) er
 		return nil
 	}
 	return b.EnsureNamespaces(ctx, tenantID)
+}
+
+// EnforceEnvironmentIsolation re-converges a workspace's namespace
+// NetworkPolicies after one of its environments' network isolation changed:
+// turned on or off, or an isolated environment created or deleted. The
+// boundary is those policies alone (store.environmentIsolationPolicies), so
+// converging them synchronously is what makes a toggle hold the moment the
+// request returns, rather than one namespace resync later (w4/m342). A nil
+// ensurer or an empty/default tenant is a no-op.
+func (b *Base) EnforceEnvironmentIsolation(ctx context.Context, tenantID string) error {
+	if b == nil || !b.ensuresNamespacesFor(tenantID) {
+		return nil
+	}
+	if err := b.EnsureNamespaces(ctx, tenantID); err != nil {
+		return fmt.Errorf("enforcing environment network isolation: %w", err)
+	}
+	return nil
+}
+
+// ensuresNamespacesFor reports whether tenantID's namespaces are this
+// process's to ensure: an ensurer is wired and the tenant is a real one.
+func (b *Base) ensuresNamespacesFor(tenantID string) bool {
+	return b.EnsureNamespaces != nil && tenantID != "" && tenantID != DefaultTenant
 }
 
 // TenantNamespace returns the namespace a workspace's hosting workloads live

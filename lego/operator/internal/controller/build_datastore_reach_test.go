@@ -341,7 +341,7 @@ func TestBuildDatastoreReachIsOwnWorkspaceOnly(t *testing.T) {
 	poolerA := endpoint{ns: wsA, labels: map[string]string{"cnpg.io/poolerName": "dpg-one-pooler"}}
 	kvA := endpoint{ns: wsA, labels: map[string]string{labelKeyValueInternalProxy: "red-one", labelWorkspace: wsA}}
 	pgB := endpoint{ns: wsB, labels: map[string]string{"app.bex.co/component": "database", labelWorkspace: wsB}}
-	prodPgA := endpoint{ns: wsA, labels: map[string]string{"app.bex.co/component": "database", labelWorkspace: wsA, labelNetworkIsolation: "evm-prod"}}
+	prodPgA := endpoint{ns: wsA, labels: map[string]string{"app.bex.co/component": "database", labelWorkspace: wsA, labelEnvironment: "evm-prod", labelNetworkIsolation: "evm-prod"}}
 	platform := endpoint{ns: "bex-system", labels: map[string]string{"control-plane": "controller-manager"}}
 	strangerBuild := endpoint{ns: reachBuildNs, labels: map[string]string{
 		appv1alpha1.LabelBuild: "mysite", execution.LabelAppUID: "uid-forged", execution.LabelComponent: "build", labelWorkspace: wsA}}

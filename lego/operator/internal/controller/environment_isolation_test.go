@@ -158,11 +158,12 @@ func TestEnvironmentPeerPolicyOnlyWhileIsolatedAndAdmitsOwnJobs(t *testing.T) {
 		t.Fatal(err)
 	}
 	peers := np.Spec.Ingress[0].From
-	if len(peers) != 2 || peers[0].PodSelector.MatchLabels[labelNetworkIsolation] != "env-a" {
-		t.Fatalf("peers = %+v, want the environment's Apps and the store's Jobs", peers)
+	// The environment's pods by either label (w4/m342), then the store's Jobs.
+	if len(peers) != 3 || peers[0].PodSelector.MatchLabels[labelNetworkIsolation] != "env-a" || peers[1].PodSelector.MatchLabels[labelEnvironment] != "env-a" {
+		t.Fatalf("peers = %+v, want the environment's pods and the store's Jobs", peers)
 	}
-	if peers[1].PodSelector.MatchLabels[labelKeyValue] != "cache" || len(peers[1].PodSelector.MatchExpressions) != 1 {
-		t.Fatalf("job peer = %+v", peers[1].PodSelector)
+	if peers[2].PodSelector.MatchLabels[labelKeyValue] != "cache" || len(peers[2].PodSelector.MatchExpressions) != 1 {
+		t.Fatalf("job peer = %+v", peers[2].PodSelector)
 	}
 
 	apply("")
@@ -253,8 +254,12 @@ func TestKeyValueInternalProxyPolicyProtectsBothConnectionHops(t *testing.T) {
 			podLabels map[string]string
 			want      bool
 		}{
-			{"env-a client", kv.Namespace, map[string]string{labelNetworkIsolation: "env-a"}, env == "env-a"},
+			// The store is in env-a: a pod of env-a whose isolation label has
+			// not been lifted yet keeps the store when isolation is off (w4/m342).
+			{"env-a client", kv.Namespace, map[string]string{labelNetworkIsolation: "env-a"}, env == "env-a" || env == ""},
 			{"env-b client", kv.Namespace, map[string]string{labelNetworkIsolation: "env-b"}, env == "env-b"},
+			{"env-b client by environment id", kv.Namespace, map[string]string{labelEnvironment: "env-b"}, env == "env-b" || env == ""},
+			{"env-c client still isolated", kv.Namespace, map[string]string{labelEnvironment: "env-c", labelNetworkIsolation: "env-c"}, false},
 			{"ordinary client", kv.Namespace, map[string]string{}, env == ""},
 			{"own backup", kv.Namespace, map[string]string{labelKeyValue: kv.Name, "app.bex.co/component": keyValueBackupComponent}, true},
 			{"other backup", kv.Namespace, map[string]string{labelKeyValue: "other", "app.bex.co/component": keyValueBackupComponent}, env == ""},

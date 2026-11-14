@@ -24,6 +24,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -534,6 +535,13 @@ func (s *Service) createWithEnvironments(ctx context.Context, workspaceID, name 
 		if err != nil {
 			return ProjectView{}, "", conflictOrMapError(err, name)
 		}
+		// An isolated environment's boundary must stand before its first
+		// service lands, not one namespace resync later (w4/m342).
+		if slices.ContainsFunc(environments, func(e EnvironmentInput) bool { return e.NetworkIsolationEnabled }) {
+			if err := s.EnforceEnvironmentIsolation(ctx, workspaceID); err != nil {
+				return ProjectView{}, "", err
+			}
+		}
 		return toView(p), workspaceID, nil
 	}
 	p, err := s.Store.CreateProject(ctx, workspaceID, name)
@@ -611,6 +619,10 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 
 func (s *Service) deleteProject(ctx context.Context, p store.Project, deleteServices bool) error {
 	id := p.ID
+	isolated, err := s.hasIsolatedEnvironment(ctx, p.ID)
+	if err != nil {
+		return err
+	}
 	var doomed []string
 	if deleteServices && s.Services != nil {
 		byProject, err := s.Store.ListServicesForProjects(ctx, []string{p.ID})
@@ -666,7 +678,29 @@ func (s *Service) deleteProject(ctx context.Context, p store.Project, deleteServ
 			}
 		}
 	}
-	return store.MapError(s.Store.DeleteProject(ctx, id))
+	if err := s.Store.DeleteProject(ctx, id); err != nil {
+		return store.MapError(err)
+	}
+	// The cascade deletes the project's environments, and an isolated one's
+	// boundary goes with it now rather than at the next resync (w4/m342).
+	if isolated {
+		return s.EnforceEnvironmentIsolation(ctx, p.TenantID)
+	}
+	return nil
+}
+
+// hasIsolatedEnvironment reports whether any of projectID's environments has
+// network isolation on; false when the store lists no environments.
+func (s *Service) hasIsolatedEnvironment(ctx context.Context, projectID string) (bool, error) {
+	lister, ok := s.Store.(projectEnvironmentLister)
+	if !ok {
+		return false, nil
+	}
+	environments, err := lister.ListEnvironmentsForProjects(ctx, []string{projectID})
+	if err != nil {
+		return false, err
+	}
+	return slices.ContainsFunc(environments, func(e store.Environment) bool { return e.NetworkIsolationEnabled }), nil
 }
 
 // DeleteIfEmpty is Render's project delete (w8/188): every environment of the

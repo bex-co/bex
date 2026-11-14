@@ -221,11 +221,12 @@ func appPodLabels(app *appv1alpha1.App, verifyImage bool) map[string]string {
 	if verifyImage {
 		labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
 	}
-	// Only present when the App's Environment has networkIsolationEnabled
-	// (w6/m19); reconcileNetworkPolicy's scopeSelector needs it on the pod
-	// template to actually select these pods.
-	if env := app.Labels[labelNetworkIsolation]; env != "" {
-		labels[labelNetworkIsolation] = env
+	// The environment's network boundary selects pods by their environment id,
+	// which an isolation toggle never changes (w4/m342). The isolation label
+	// itself is not projected: it reaches running pods in place
+	// (relabelAppPods), so a toggle rolls nothing.
+	if env := app.Labels[labelEnvironment]; env != "" {
+		labels[labelEnvironment] = env
 	}
 	return appPolicyLabels(app, labels)
 }

@@ -19,6 +19,7 @@ package environments
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -163,6 +164,56 @@ func TestDelete_ClearsLabelsFromMembers(t *testing.T) {
 	}
 	if got := getApp(t, cl, "web").Labels[core.LabelNetworkIsolation]; got != "" {
 		t.Errorf("web should have core.LabelNetworkIsolation cleared after its environment is deleted, got %q", got)
+	}
+}
+
+// w4/m342: the isolation boundary selects pods by their environment id, so a
+// membership write stamps core.LabelEnvironment on the App at once, and every
+// isolation change converges the workspace's policies before it returns.
+func TestIsolationIsEnforcedThroughPoliciesAndEnvironmentLabel(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, cl := newServiceWithClient(st, sampleApp("web"))
+	var ensured []string
+	svc.EnsureNamespaces = func(_ context.Context, workspaceID string) error {
+		ensured = append(ensured, workspaceID)
+		return nil
+	}
+
+	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"}); err != nil {
+		t.Fatalf("SetServices: %v", err)
+	}
+	if got := getApp(t, cl, "web").Labels[core.LabelEnvironment]; got != id.EnvironmentStorageID(e.ID) {
+		t.Errorf("a member's core.LabelEnvironment = %q, want %q", got, id.EnvironmentStorageID(e.ID))
+	}
+	if len(ensured) != 0 {
+		t.Errorf("a membership change in an open environment converges no policy, got %v", ensured)
+	}
+
+	for _, on := range []bool{true, false} {
+		ensured = nil
+		if _, err := svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, on, nil); err != nil {
+			t.Fatalf("SetACL(%v): %v", on, err)
+		}
+		if !slices.Equal(ensured, []string{"tea-a"}) {
+			t.Errorf("turning isolation %v must converge the workspace's policies once, got %v", on, ensured)
+		}
+		if got := getApp(t, cl, "web").Labels[core.LabelEnvironment]; got != id.EnvironmentStorageID(e.ID) {
+			t.Errorf("a toggle must keep the environment label, got %q", got)
+		}
+	}
+
+	svc.SetACL(ctxAs("user-a"), e.ID, ProtectedStatusUnprotected, true, nil)
+	ensured = nil
+	if err := svc.Delete(ctxAs("user-a"), e.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if !slices.Equal(ensured, []string{"tea-a"}) {
+		t.Errorf("deleting an isolated environment must converge the workspace's policies, got %v", ensured)
+	}
+	if _, ok := getApp(t, cl, "web").Labels[core.LabelEnvironment]; ok {
+		t.Error("a service whose environment is deleted must lose core.LabelEnvironment")
 	}
 }
 

@@ -145,10 +145,11 @@ func TestCronControlsOverPendingBuildKeepPriorTemplate(t *testing.T) {
 	}
 }
 
-// w4/m185 audit: cron pods carry the App's network-isolation label like
+// w4/m185 audit, w4/m342: cron pods carry the App's environment id like
 // Deployment pods, or an isolated cron could not reach its own environment's
-// services (their protected policies admit peers by this label).
-func TestIsolatedCronPodsCarryTheIsolationLabel(t *testing.T) {
+// services (the environment boundary admits peers by it); an isolation toggle
+// leaves the CronJob's template alone.
+func TestIsolatedCronPodsCarryTheEnvironmentLabel(t *testing.T) {
 	g := NewWithT(t)
 	ctx := context.Background()
 	scheme := wakeScheme()
@@ -159,6 +160,7 @@ func TestIsolatedCronPodsCarryTheIsolationLabel(t *testing.T) {
 	app.Spec.Expose = false
 	app.Spec.Schedule = "* * * * *"
 	app.Spec.Command = "echo isolated"
+	app.Labels[labelEnvironment] = "evm-a"
 	app.Labels[labelNetworkIsolation] = "evm-a"
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(app).
 		WithStatusSubresource(&appv1alpha1.App{}, &batchv1.Job{}).Build()
@@ -167,7 +169,9 @@ func TestIsolatedCronPodsCarryTheIsolationLabel(t *testing.T) {
 	reconcileTwice(t, r, nn)
 	var cron batchv1.CronJob
 	g.Expect(cl.Get(ctx, nn, &cron)).To(Succeed())
-	g.Expect(cron.Spec.JobTemplate.Spec.Template.Labels).To(HaveKeyWithValue(labelNetworkIsolation, "evm-a"))
+	g.Expect(cron.Spec.JobTemplate.Spec.Template.Labels).To(HaveKeyWithValue(labelEnvironment, "evm-a"))
+	g.Expect(cron.Spec.JobTemplate.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation))
+	template := cron.Spec.JobTemplate.Spec.Template.DeepCopy()
 
 	var live appv1alpha1.App
 	g.Expect(cl.Get(ctx, nn, &live)).To(Succeed())
@@ -175,5 +179,5 @@ func TestIsolatedCronPodsCarryTheIsolationLabel(t *testing.T) {
 	g.Expect(cl.Update(ctx, &live)).To(Succeed())
 	reconcileTwice(t, r, nn)
 	g.Expect(cl.Get(ctx, nn, &cron)).To(Succeed())
-	g.Expect(cron.Spec.JobTemplate.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation))
+	g.Expect(cron.Spec.JobTemplate.Spec.Template.Labels).To(Equal(template.Labels), "an isolation toggle must not touch the cron template")
 }

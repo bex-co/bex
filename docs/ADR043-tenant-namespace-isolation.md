@@ -159,6 +159,30 @@ A namespace labelled for **another** identity is never pruned, including by prod
 
 This is a scoping fix, not a security boundary: the identity label is tenant-unreachable but is not an authorization mechanism. D6's admission policy remains what confines the reconciler's authority — and it admits the new label, because [`bex-api-namespace-admission.yaml`](../deploy/gitops/base/bex-api-namespace-admission.yaml) asserts specific label **values** (`managed-by == bex-controlplane`, the Pod Security set, the workspace/regime/name agreement) and never a closed label **set**. Adding a label to a namespace the reconciler already owns is therefore admitted; a policy that had enumerated the exact label set would have failed every namespace write in production the moment this shipped.
 
+### D10 — An environment's network isolation is a policy edit, never a pod change
+
+_Added 2026-11-14 by w4/m342 after `/qa-find-bugs` round 177 (2026-11-12)._
+
+Inside `<ws>`, an environment with `networkIsolationEnabled` must keep its pods from the rest of the workspace and keep them reachable from each other. Until w4/m342 the boundary was a pod label. `allow-same-namespace` selected only pods **without** `app.bex.co/network-isolation`, and an isolated App got a per-App policy admitting same-label peers. The operator copied the label onto each App's pod template, so a toggle was a template change and rolled every service in the environment. Round 177 measured what that costs on production:
+
+- every service in the environment restarted, with no deploy row and no event;
+- turning isolation on left the isolated service reachable from outside until its last old pod was gone (+44 s there; up to a rollout plus the 300 s shutdown delay in general);
+- turning it off refused traffic to the service until its new pod was ready (+20 s);
+- in both directions an old-label pod and a new-label pod of two services in the same environment could not reach each other while the services rolled at different times.
+
+That rollout-based design is dropped. The boundary is now the workspace's NetworkPolicies alone, selected by a pod identity that a toggle never rewrites:
+
+- **Identity.** `app.bex.co/environment-id` is on every member pod whether or not its environment is isolated. Postgres and Key Value pods already carried it. App CRs carry it wherever membership is written (create, Blueprint, `SetServices`, environment and project delete, and the projector). The operator puts it on the Deployment template, the cron Job template and pre-deploy Job pods. It changes only on a move.
+- **Boundary (bex-api).** The NamespaceReconciler reads the workspace's isolated environment ids from the store:
+  - `allow-same-namespace` selects, and admits from and to, pods with `environment-id NotIn [isolated]` **and** `network-isolation NotIn [isolated]`. The second clause keeps out a pod from before this change that carries only the isolation label. `NotIn`, unlike the `DoesNotExist` it replaces, makes a stale isolation label of an environment no longer isolated harmless. With nothing isolated the selector is empty (every pod), because `NotIn` with no values is invalid.
+  - Each isolated environment gets `isolate-<env>`, which selects `environment-id=<env>`, and a transitional `isolate-<env>-legacy`, which selects `network-isolation=<env>`. Both admit ingress from and egress to peers `[environment-id=<env>, network-isolation=<env>]`. They carry `app.bex.co/isolated-environment` and the `bex-controlplane` managed-by label, which the D6 admission policy already admits in hosting namespaces.
+  - Write order keeps an environment's own traffic up through a toggle. The boundary policies are applied before `allow-same-namespace` narrows. Obsolete boundaries are pruned only after it widens.
+  - Environment create-with-isolation, `SetACL`/`PATCH`, environment delete, project create/delete and Blueprint grouping changes call `EnsureWorkspace` synchronously (`Base.EnforceEnvironmentIsolation`), so the boundary holds or lifts before the request returns.
+- **No restart (operator).** The Deployment template carries `environment-id` only and never `network-isolation`. A template that differs from the stored one only in those two labels keeps the stored values (`holdIsolationLabel`, the Key Value precedent from w8/220), so neither a toggle nor a move rolls a service. Every App pass relabels the App's running ReplicaSet, cron-run and pre-deploy pods in place to the CR's `environment-id` and `network-isolation` (`relabelAppPods`). The existing `bex-operator-pod-labels` admission policy admits exactly those two keys. This is also the migration: existing pods gain `environment-id` in place on the upgraded operator's first pass, and templates adopt it the next time they change for another reason. There is no fleet-wide rollout. `network-isolation` stays on pods as an in-place mirror while an operator and a bex-api of different releases can run side by side, and because the per-store client selectors below read it.
+- **Per-store policies.** The datastore peer policy, the Key Value internal-proxy client selector and the per-App protected policy admit an isolated environment's pods by either label. A non-isolated Key Value also admits its own environment's pods during the pass before their isolation label is lifted. A build's datastore reach targets an isolated App's environment by `environment-id`. The per-App protected policy stays for now as a deploy-ordering backstop.
+
+**Pre-deploy commands follow their service's environment.** A pre-deploy pod in an isolated environment now carries `environment-id`. That puts it inside the boundary: it can reach its own environment's datastores, which it could not before, and it can no longer reach the rest of the workspace.
+
 ## Engaging ADR022's objections to Option A
 
 ADR022 rejected namespace-per-workspace on four grounds. Each, re-examined:

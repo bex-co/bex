@@ -158,12 +158,13 @@ func (p generationOrDeletionPredicate) Update(e event.UpdateEvent) bool {
 		(e.ObjectOld == nil || e.ObjectOld.GetAnnotations()[annotRotateRegistryCreds] != registryCredentialRotateTrue)
 	scaledSelection := e.ObjectNew != nil && e.ObjectOld != nil &&
 		e.ObjectNew.GetAnnotations()[appv1alpha1.AnnotationReleaseConfigScaled] != e.ObjectOld.GetAnnotations()[appv1alpha1.AnnotationReleaseConfigScaled]
-	// An Environment's isolation toggle and a membership move change only this
-	// label, which bumps no generation: the event was filtered and a saved
-	// boundary waited for an unrelated reconcile, up to a Free service's 15
-	// minute idle timer (w4/m185).
+	// An Environment's isolation toggle and a membership move change only the
+	// environment labels, which bump no generation: the event was filtered and
+	// a saved boundary waited for an unrelated reconcile, up to a Free
+	// service's 15 minute idle timer (w4/m185). The pass relabels the running
+	// pods in place (w4/m342).
 	isolationChanged := e.ObjectNew != nil && e.ObjectOld != nil &&
-		e.ObjectNew.GetLabels()[labelNetworkIsolation] != e.ObjectOld.GetLabels()[labelNetworkIsolation]
+		!inPlaceLabelsEqual(e.ObjectNew.GetLabels(), e.ObjectOld.GetLabels())
 	// A cancel is a stamp, which bumps no generation either: the settle
 	// waited for a pod event or a requeue, 1.5-15 s on production, while the
 	// canceled release kept rolling toward traffic (w8/265).
@@ -229,14 +230,16 @@ func appIdentity(app *appv1alpha1.App) identity.Identity {
 // labelNetworkIsolation carries an App's environment id (w6/m19 protected-
 // environment ACLs), present on the App CR ONLY when that environment has
 // networkIsolationEnabled=true (environments.Service stamps/clears it —
-// internal/environments/service.go's setAppEnvironmentLabel). Kept in sync by
-// hand with core.LabelNetworkIsolation in the backend (same pattern as
-// labelWorkspace / core.LabelWorkspace) — a distinct label from the backend's
-// core.LabelEnvironment (w6/m20, unconditional Database/KeyValue environment
-// membership; Apps don't carry that one at all, only their own environment_id
-// store column). reconcileNetworkPolicy scopes the App's NetworkPolicy to
+// internal/environments/service.go's applyAppEnvironmentLabels). Kept in sync
+// by hand with core.LabelNetworkIsolation in the backend (same pattern as
+// labelWorkspace / core.LabelWorkspace) — a distinct label from
+// labelEnvironment (core.LabelEnvironment, unconditional membership, which
+// App CRs carry too). reconcileNetworkPolicy scopes the App's NetworkPolicy to
 // same-environment peers instead of same-workspace ones when this label is
-// present.
+// present. Since w4/m342 the workspace boundary selects pods by
+// labelEnvironment, so neither label rolls a pod: the template carries only
+// labelEnvironment, held lazily, and relabelAppPods mirrors both onto the
+// running pods in place.
 const labelNetworkIsolation = "app.bex.co/network-isolation"
 
 // labelPlatformAliasPurpose marks the only ExternalName Services the operator
@@ -489,7 +492,7 @@ type AppReconciler struct {
 // rewrite the namespace field to bex-system).
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=apps,resources=replicasets,verbs=get;list;watch
-// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch;patch
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // Persistent service disks (docs/ADR082-persistent-disks.md): the App controller
 // creates and grows the per-App PVC itself, and deletes it when the disk is
@@ -644,6 +647,13 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return res, err
 	}
 	if err := r.recordTLSSecretHistory(ctx, &app); err != nil {
+		return ctrl.Result{}, err
+	}
+	// The running pods' environment labels are operational, not part of a
+	// release: every pass moves them, ahead of any build, hold or gate, so a
+	// toggle or a move reaches a pod within the pass its event (or the pod's
+	// own creation) triggers (w4/m342).
+	if err := r.relabelAppPods(ctx, &app); err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -5071,11 +5081,12 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Deploying", "Reconciling CronJob for "+image)
 	}
 	labels := map[string]string{labelApp: app.Name, labelAppID: appIDOrName(app)}
-	// The protected policies admit peers by this label, as for Deployment pods
-	// (appPodLabels); without it an isolated cron could not reach its own
-	// environment's services (w4/m185 audit).
-	if env := app.Labels[labelNetworkIsolation]; env != "" {
-		labels[labelNetworkIsolation] = env
+	// The environment boundary admits peers by this label, as for Deployment
+	// pods (appPodLabels); without it an isolated cron could not reach its own
+	// environment's services (w4/m185 audit, w4/m342). A run in flight takes
+	// an isolation change in place (relabelAppPods).
+	if env := app.Labels[labelEnvironment]; env != "" {
+		labels[labelEnvironment] = env
 	}
 	if r.TenantSignKeySecret != "" {
 		labels[execution.LabelVerifyImage] = execution.VerifyImageEnabled
@@ -7166,6 +7177,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		AppUID:           string(app.UID),
 		Namespace:        ns,
 		Workspace:        app.Labels[labelWorkspace],
+		Environment:      app.Labels[labelEnvironment],
 		AppNamespace:     app.Namespace,
 		VerifyImage:      r.TenantSignKeySecret != "",
 		Image:            image,
@@ -7520,10 +7532,10 @@ func (r *AppReconciler) convergeServingRoute(ctx context.Context, app *appv1alph
 	scaled := dep.Spec.Replicas == nil || *dep.Spec.Replicas != plan.replicas
 	base := dep.DeepCopy()
 	// The served template keeps its release, but its pods carry the App's
-	// current isolation and free-plan labels, which the protected policies and
-	// the free-plan SMTP deny select by; neither may wait for the held release
-	// (w4/m185, w8/m127).
-	relabeled := syncPolicyLabels(&dep.Spec.Template, app)
+	// current free-plan label, which the free-plan SMTP deny selects by and
+	// which may not wait for the held release (w8/m127). Its environment labels
+	// reach the running pods in place instead (relabelAppPods, w4/m342).
+	relabeled := syncFreePlanLabel(&dep.Spec.Template, app)
 	if scaled || relabeled {
 		dep.Spec.Replicas = &plan.replicas
 		if err := r.Patch(ctx, dep, client.MergeFrom(base)); err != nil {
@@ -7611,12 +7623,10 @@ func (r *AppReconciler) ingressHasRoutes(ctx context.Context, namespace, name st
 	return true, nil
 }
 
-// syncPolicyLabels sets the App's network-isolation and free-plan labels on
-// tpl, or removes them, and reports whether tpl changed.
-func syncPolicyLabels(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
-	isolation := syncTemplateLabel(tpl, labelNetworkIsolation, app.Labels[labelNetworkIsolation])
-	plan := syncTemplateLabel(tpl, execution.LabelFreePlan, freePlanLabelValue(app))
-	return isolation || plan
+// syncFreePlanLabel sets the App's free-plan label on tpl, or removes it, and
+// reports whether tpl changed.
+func syncFreePlanLabel(tpl *corev1.PodTemplateSpec, app *appv1alpha1.App) bool {
+	return syncTemplateLabel(tpl, execution.LabelFreePlan, freePlanLabelValue(app))
 }
 
 // syncTemplateLabel sets key to want on tpl (removing it when want is empty)

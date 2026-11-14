@@ -141,10 +141,11 @@ func buildReachPorts() []networkingv1.NetworkPolicyPort {
 // buildReachTargets selects the workspace pods a build may reach, honoring a
 // protected environment exactly as allow-same-namespace does: an ordinary
 // App's build reaches only pods outside every isolated environment, and an
-// isolated App's build only pods of its own environment.
+// isolated App's build only pods of its own environment, by the environment-id
+// every datastore pod of it carries (w4/m342).
 func buildReachTargets(app *appv1alpha1.App) metav1.LabelSelector {
 	if env := app.Labels[labelNetworkIsolation]; env != "" {
-		return metav1.LabelSelector{MatchLabels: map[string]string{labelNetworkIsolation: env}}
+		return metav1.LabelSelector{MatchLabels: map[string]string{labelEnvironment: env}}
 	}
 	return metav1.LabelSelector{MatchExpressions: []metav1.LabelSelectorRequirement{{
 		Key: labelNetworkIsolation, Operator: metav1.LabelSelectorOpDoesNotExist,

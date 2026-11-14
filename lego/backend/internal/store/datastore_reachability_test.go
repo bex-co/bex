@@ -132,7 +132,7 @@ func ipBlockMatches(block *networkingv1.IPBlock, ip string) bool {
 // makes the link work, so the allow set must actually permit that traffic.
 func TestHostingAllowSetMakesCoLocatedDatastoresReachable(t *testing.T) {
 	const ws = "tea-reach"
-	policies := allowNetworkPolicies(WorkspaceNamespace(ws), RegimeHosting)
+	policies := allowNetworkPolicies(WorkspaceNamespace(ws), RegimeHosting, nil)
 
 	for _, tc := range []struct {
 		what string
@@ -166,7 +166,7 @@ func TestHostingAllowSetMakesCoLocatedDatastoresReachable(t *testing.T) {
 // "fix" it by punching a cross-namespace hole — that would re-open tenant
 // east-west reachability, which ADR043 D3 exists to close.
 func TestHostingAllowSetDeniesDatastoresInAnotherNamespace(t *testing.T) {
-	policies := allowNetworkPolicies(WorkspaceNamespace("tea-reach"), RegimeHosting)
+	policies := allowNetworkPolicies(WorkspaceNamespace("tea-reach"), RegimeHosting, nil)
 
 	dest := destination{
 		namespace:             "default", // where datastores wrongly lived
@@ -217,7 +217,7 @@ func hasIngressType(p *networkingv1.NetworkPolicy) bool {
 // bootstrap because a policy blocked its control traffic — once per tenant
 // namespace rather than once, so it gets its own named case.
 func TestHostingAdmitsDatastoreControlPlanes(t *testing.T) {
-	policies := allowNetworkPolicies(WorkspaceNamespace("tea-control"), RegimeHosting)
+	policies := allowNetworkPolicies(WorkspaceNamespace("tea-control"), RegimeHosting, nil)
 
 	for _, tc := range []struct {
 		peer string
@@ -238,7 +238,7 @@ func TestHostingAdmitsDatastoreControlPlanes(t *testing.T) {
 // everything. Another tenant's namespace is the case that matters — that is the
 // boundary ADR043 D3 exists to hold.
 func TestHostingDoesNotAdmitArbitraryNamespaces(t *testing.T) {
-	policies := allowNetworkPolicies(WorkspaceNamespace("tea-control"), RegimeHosting)
+	policies := allowNetworkPolicies(WorkspaceNamespace("tea-control"), RegimeHosting, nil)
 
 	for _, peer := range []string{WorkspaceNamespace("tea-other"), "tea-other-sandbox", "default", "bex-build", "kube-system"} {
 		if ingressAllowed(policies, destination{namespace: peer}) {
@@ -253,7 +253,7 @@ func TestHostingDoesNotAdmitArbitraryNamespaces(t *testing.T) {
 // (D6), so a leak would surface as a failing reconcile, not a quiet hole — but
 // failing here is far cheaper than failing in the cluster.
 func TestSandboxRegimeGainsNoDatastoreAllow(t *testing.T) {
-	if got := allowNetworkPolicies(SandboxNamespace("tea-control"), RegimeSandbox); len(got) != 0 {
+	if got := allowNetworkPolicies(SandboxNamespace("tea-control"), RegimeSandbox, nil); len(got) != 0 {
 		t.Errorf("sandbox regime generated %d allow policies, want 0", len(got))
 	}
 }
@@ -263,7 +263,7 @@ func TestSandboxRegimeGainsNoDatastoreAllow(t *testing.T) {
 // silently grant every in-cluster destination and the boundary would be gone
 // while both tests above still passed.
 func TestInternetEgressStillExceptsPrivateRanges(t *testing.T) {
-	policies := allowNetworkPolicies(WorkspaceNamespace("tea-reach"), RegimeHosting)
+	policies := allowNetworkPolicies(WorkspaceNamespace("tea-reach"), RegimeHosting, nil)
 
 	for _, ip := range []string{"10.43.0.17", "172.16.5.4", "192.168.1.9", "100.64.0.3", "169.254.169.254"} {
 		dest := destination{namespace: "elsewhere", ip: ip, port: 443}

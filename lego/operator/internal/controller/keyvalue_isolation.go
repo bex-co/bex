@@ -54,7 +54,8 @@ func keyValueJobPeer(kv *appv1alpha1.KeyValue) *metav1.LabelSelector {
 // the isolation label (w8/220) and the environment label itself (w4/451).
 // NetworkPolicies select pods by both, and both change when the store joins,
 // leaves or is isolated with an environment, so for an existing workload
-// neither may roll a pod: they are relabelled in place instead. The
+// neither may roll a pod: they are relabelled in place instead. App pods
+// follow the same rule since w4/m342 (relabelAppPods). The
 // bex-operator-pod-labels admission policy
 // (deploy/gitops/base/operator-pod-label-admission.yaml) must admit exactly
 // these keys, or the relabel is denied and the store reads Failed (w3/055).
@@ -76,7 +77,13 @@ func holdIsolationLabel(tmpl *corev1.PodTemplateSpec, existed bool, before *core
 }
 
 func setInPlaceLabels(tmpl *corev1.PodTemplateSpec, from map[string]string) {
-	labels := maps.Clone(tmpl.Labels)
+	tmpl.Labels = withInPlaceLabels(tmpl.Labels, from)
+}
+
+// withInPlaceLabels returns a copy of labels whose in-place keys carry from's
+// values, absent where from has none.
+func withInPlaceLabels(labels, from map[string]string) map[string]string {
+	labels = maps.Clone(labels)
 	if labels == nil {
 		labels = map[string]string{}
 	}
@@ -87,7 +94,7 @@ func setInPlaceLabels(tmpl *corev1.PodTemplateSpec, from map[string]string) {
 			labels[key] = v
 		}
 	}
-	tmpl.Labels = labels
+	return labels
 }
 
 func inPlaceLabelsEqual(a, b map[string]string) bool {
@@ -117,44 +124,40 @@ func templateEqualIgnoringIsolation(a, b *corev1.PodTemplateSpec) bool {
 // not restart a pod, so same-environment clients keep their path through an
 // isolation toggle (w8/220).
 func (r *KeyValueReconciler) syncKeyValuePodIsolation(ctx context.Context, kv *appv1alpha1.KeyValue) error {
-	if err := r.relabelIsolation(ctx, kv, client.MatchingLabels{labelKeyValue: kv.Name}, func(owner *metav1.OwnerReference) bool {
+	if err := relabelPodsInPlace(ctx, r.Client, kv.Namespace, client.MatchingLabels{labelKeyValue: kv.Name}, kv.Labels, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
 		return owner.Kind == "StatefulSet" && owner.Name == kv.Name
 	}); err != nil {
 		return err
 	}
 	// Proxy pods belong to the Deployment's ReplicaSets, which select them by the
 	// proxy label (never the isolation label), so a relabel keeps them owned.
-	return r.relabelIsolation(ctx, kv, client.MatchingLabels{labelKeyValueInternalProxy: kv.Name}, func(owner *metav1.OwnerReference) bool {
+	return relabelPodsInPlace(ctx, r.Client, kv.Namespace, client.MatchingLabels{labelKeyValueInternalProxy: kv.Name}, kv.Labels, func(pod *corev1.Pod, owner *metav1.OwnerReference) bool {
 		return owner.Kind == "ReplicaSet"
 	})
 }
 
-func (r *KeyValueReconciler) relabelIsolation(ctx context.Context, kv *appv1alpha1.KeyValue, selector client.MatchingLabels, owned func(*metav1.OwnerReference) bool) error {
+// relabelPodsInPlace sets the in-place labels of the running pods selector
+// matches in namespace to want's values (absent when want has none), for each
+// live pod with a controller owner that owned accepts. Patching metadata does
+// not restart a pod, and owners select their pods by other labels, so a
+// relabelled pod stays owned.
+func relabelPodsInPlace(ctx context.Context, cl client.Client, namespace string, selector client.MatchingLabels, want map[string]string, owned func(*corev1.Pod, *metav1.OwnerReference) bool) error {
 	var pods corev1.PodList
-	if err := r.List(ctx, &pods, client.InNamespace(kv.Namespace), selector); err != nil {
+	if err := cl.List(ctx, &pods, client.InNamespace(namespace), selector); err != nil {
 		return err
 	}
 	for i := range pods.Items {
 		pod := &pods.Items[i]
 		owner := metav1.GetControllerOf(pod)
-		if owner == nil || !owned(owner) || !pod.DeletionTimestamp.IsZero() {
+		if owner == nil || !owned(pod, owner) || !pod.DeletionTimestamp.IsZero() {
 			continue
 		}
-		if inPlaceLabelsEqual(pod.Labels, kv.Labels) {
+		if inPlaceLabelsEqual(pod.Labels, want) {
 			continue
 		}
 		patch := client.MergeFrom(pod.DeepCopy())
-		if pod.Labels == nil {
-			pod.Labels = map[string]string{}
-		}
-		for _, key := range inPlacePodLabels {
-			if v := kv.Labels[key]; v == "" {
-				delete(pod.Labels, key)
-			} else {
-				pod.Labels[key] = v
-			}
-		}
-		if err := client.IgnoreNotFound(r.Patch(ctx, pod, patch)); err != nil {
+		pod.Labels = withInPlaceLabels(pod.Labels, want)
+		if err := client.IgnoreNotFound(cl.Patch(ctx, pod, patch)); err != nil {
 			return err
 		}
 	}

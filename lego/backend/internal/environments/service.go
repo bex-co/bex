@@ -1046,7 +1046,15 @@ func (s *Service) deleteEnvironment(ctx context.Context, e store.Environment, de
 			return err
 		}
 	}
-	return store.MapError(s.Store.DeleteEnvironment(ctx, e.ID))
+	if err := s.Store.DeleteEnvironment(ctx, e.ID); err != nil {
+		return store.MapError(err)
+	}
+	// An isolated environment's boundary goes with it, now rather than at the
+	// next namespace resync (w4/m342).
+	if e.NetworkIsolationEnabled {
+		return s.EnforceEnvironmentIsolation(ctx, e.TenantID)
+	}
+	return nil
 }
 
 // deleteDatastores deletes every Postgres and Key Value currently in e through
@@ -1527,16 +1535,24 @@ func (s *Service) applyACL(ctx context.Context, e store.Environment, protectedSt
 	if err := s.Store.SetEnvironmentACL(ctx, e.ID, protectedStatus, networkIsolationEnabled, ipAllowList); err != nil {
 		return EnvironmentView{}, store.MapError(err)
 	}
+	toggled := e.NetworkIsolationEnabled != networkIsolationEnabled
 	e.ProtectedStatus, e.NetworkIsolationEnabled, e.IPAllowList = protectedStatus, networkIsolationEnabled, ipAllowList
+	// The boundary is the workspace's NetworkPolicies, which select pods by
+	// their environment id: converging them is the whole toggle, in effect on
+	// the running pods before this returns (w4/m342). The labels below only
+	// keep the operator's per-store policies and pod labels in step. A failed
+	// converge heals on the namespace reconciler's next resync.
+	if toggled {
+		if err := s.EnforceEnvironmentIsolation(ctx, e.TenantID); err != nil {
+			return EnvironmentView{}, err
+		}
+	}
 	sids, err := s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID)
 	if err != nil {
 		return EnvironmentView{}, err
 	}
-	// Always resync, regardless of which direction networkIsolationEnabled
-	// moved: applyAppEnvironmentLabels is a no-op patch for an App whose label
-	// already matches the target state, so this correctly (and cheaply)
-	// handles on->off, off->on, and unchanged alike without needing the
-	// pre-update value.
+	// Always resync the labels: applyAppEnvironmentLabels is a no-op patch
+	// for an App already in the target state.
 	if err := s.applyAppEnvironmentLabels(ctx, sids, e.ID, e.NetworkIsolationEnabled); err != nil {
 		return EnvironmentView{}, err
 	}
@@ -1833,30 +1849,38 @@ func (s *Service) patchApps(ctx context.Context, names []string, mutate func(a *
 	return nil
 }
 
-// applyAppEnvironmentLabels reconciles core.LabelNetworkIsolation on every
-// named App CR to (envID, isolated): present (= envID) when isolated, absent
+// applyAppEnvironmentLabels reconciles the environment labels on every named
+// App CR: core.LabelEnvironment to envID (absent for none), and
+// core.LabelNetworkIsolation present (= envID) when isolated, absent
 // otherwise. Callers pass ("", false) to clear unconditionally — a service
 // leaving its environment (SetServices) or the environment itself being
 // deleted (Delete) — or (e.ID, e.NetworkIsolationEnabled) to sync to an
 // environment's current state (SetServices' new members, SetACL's toggle).
+// The environment label is the pod identity the isolation boundary selects
+// (w4/m342), so a move stamps it at once rather than at the next projector
+// resync.
 func (s *Service) applyAppEnvironmentLabels(ctx context.Context, names []string, envID string, isolated bool) error {
-	want := isolated && envID != ""
+	want := map[string]string{
+		core.LabelEnvironment:      envID,
+		core.LabelNetworkIsolation: core.WithNetworkIsolation(envID, isolated),
+	}
 	return s.patchApps(ctx, names, func(a *appv1alpha1.App) bool {
-		if !want {
-			if _, ok := a.Labels[core.LabelNetworkIsolation]; !ok {
-				return false
+		changed := false
+		for key, value := range want {
+			if a.Labels[key] == value {
+				continue
 			}
-			delete(a.Labels, core.LabelNetworkIsolation)
-			return true
+			changed = true
+			if value == "" {
+				delete(a.Labels, key)
+				continue
+			}
+			if a.Labels == nil {
+				a.Labels = map[string]string{}
+			}
+			a.Labels[key] = value
 		}
-		if a.Labels[core.LabelNetworkIsolation] == envID {
-			return false
-		}
-		if a.Labels == nil {
-			a.Labels = map[string]string{}
-		}
-		a.Labels[core.LabelNetworkIsolation] = envID
-		return true
+		return changed
 	})
 }
 

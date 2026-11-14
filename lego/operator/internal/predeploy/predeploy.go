@@ -105,6 +105,7 @@ type Options struct {
 	AppUID       string   // immutable App UID; prevents same-name recreation from reusing stale artifacts
 	Namespace    string   // namespace the pre-deploy Job runs in
 	Workspace    string   // owning tenant id (app.bex.co/workspace label); empty = omitted
+	Environment  string   // the App's environment id (pod label only); empty = omitted
 	AppNamespace string   // namespace the App CR lives in; used for log attribution
 	VerifyImage  bool     // select the Pod for signature admission when signing is enabled
 	Image        string   // the new revision's image (same ref the Deployment will run)
@@ -191,6 +192,12 @@ func Job(o Options) *batchv1.Job {
 	}
 	if o.EgressAppID != "" {
 		podLabels[LabelEgressAppID] = o.EgressAppID
+	}
+	// A migration runs inside its service's environment: an isolated one's
+	// boundary admits it to that environment's datastores and keeps it from
+	// the rest of the workspace, as for the service's own pods.
+	if o.Environment != "" {
+		podLabels[execution.LabelEnvironment] = o.Environment
 	}
 	var owners []metav1.OwnerReference
 	// App owner references are valid only for co-located Jobs. They also bind

@@ -40,7 +40,8 @@ import (
 // network-isolation label, which bumps no generation, so the manager filtered
 // the event and the saved boundary waited for an unrelated reconcile, up to a
 // Free service's 15-minute idle timer. The label edit alone must converge the
-// owned policy and the pod template, well inside the ordinary requeue.
+// owned policy and the running pods' labels, well inside the ordinary requeue,
+// and (w4/m342) never touch the pod template.
 var _ = Describe("App network isolation label", func() {
 	It("converges the protected policy and pod labels from a label-only edit", func() {
 		skipNameValidation := true
@@ -74,9 +75,11 @@ var _ = Describe("App network isolation label", func() {
 		dep.Status.Replicas, dep.Status.UpdatedReplicas = 1, 1
 		dep.Status.ReadyReplicas, dep.Status.AvailableReplicas = 1, 1
 		Expect(k8sClient.Status().Update(ctx, dep)).To(Succeed())
+		controller := true
 		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{Name: nn.Name + "-pod", Namespace: nn.Namespace, Labels: dep.Spec.Template.Labels},
-			Spec:       corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "nginx:1"}}},
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name + "-pod", Namespace: nn.Namespace, Labels: dep.Spec.Template.Labels,
+				OwnerReferences: []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "ReplicaSet", Name: nn.Name + "-rs", UID: "rs-uid", Controller: &controller}}},
+			Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "nginx:1"}}},
 		}
 		Expect(k8sClient.Create(ctx, pod)).To(Succeed())
 		DeferCleanup(func() { _ = k8sClient.Delete(context.Background(), pod) })
@@ -107,13 +110,27 @@ var _ = Describe("App network isolation label", func() {
 			return current.Generation
 		}
 
+		// w4/m342: the running pod takes the label in place; the template, and
+		// so the ReplicaSet, never changes.
+		template, depGeneration := dep.Spec.Template.DeepCopy(), dep.Generation
+		podLabel := func(g Gomega) string {
+			live := &corev1.Pod{}
+			g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, live)).To(Succeed())
+			return live.Labels[labelNetworkIsolation]
+		}
+		templateUnchanged := func(g Gomega) {
+			g.Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+			g.Expect(dep.Generation).To(Equal(depGeneration), "a boundary change must not roll the Deployment")
+			g.Expect(dep.Spec.Template.Labels).To(Equal(template.Labels))
+		}
+
 		generation := setLabel("evm-a")
 		Eventually(func(g Gomega) {
 			np := &networkingv1.NetworkPolicy{}
 			g.Expect(k8sClient.Get(ctx, nn, np)).To(Succeed())
 			g.Expect(np.Spec.PodSelector.MatchLabels).To(HaveKeyWithValue(labelApp, nn.Name))
-			g.Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
-			g.Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelNetworkIsolation, "evm-a"))
+			g.Expect(podLabel(g)).To(Equal("evm-a"))
+			templateUnchanged(g)
 			current := &appv1alpha1.App{}
 			g.Expect(k8sClient.Get(ctx, nn, current)).To(Succeed())
 			g.Expect(current.Generation).To(Equal(generation), "a boundary change is not a release")
@@ -123,8 +140,25 @@ var _ = Describe("App network isolation label", func() {
 		Eventually(func(g Gomega) {
 			err := k8sClient.Get(ctx, nn, &networkingv1.NetworkPolicy{})
 			g.Expect(apierrors.IsNotFound(err)).To(BeTrue(), "policy must be removed: %v", err)
-			g.Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
-			g.Expect(dep.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation))
+			g.Expect(podLabel(g)).To(BeEmpty())
+			templateUnchanged(g)
+		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
+
+		// A move changes only the environment label: the label-only event
+		// still drives a pass that relabels the pod in place.
+		current := &appv1alpha1.App{}
+		Expect(k8sClient.Get(ctx, nn, current)).To(Succeed())
+		base := current.DeepCopy()
+		if current.Labels == nil {
+			current.Labels = map[string]string{}
+		}
+		current.Labels[labelEnvironment] = "evm-b"
+		Expect(k8sClient.Patch(ctx, current, client.MergeFrom(base))).To(Succeed())
+		Eventually(func(g Gomega) {
+			live := &corev1.Pod{}
+			g.Expect(k8sClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, live)).To(Succeed())
+			g.Expect(live.Labels).To(HaveKeyWithValue(labelEnvironment, "evm-b"))
+			templateUnchanged(g)
 		}, 10*time.Second, 100*time.Millisecond).Should(Succeed())
 	})
 })

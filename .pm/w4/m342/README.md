@@ -1,16 +1,16 @@
 # w4 · m342 — Turning an environment's network isolation on or off takes effect at once, restarts nothing, and never cuts the environment's own private traffic
 
-**Worker:** worker4 **Goal:** toggling "Block cross-environment connections" changes only network policy: the boundary holds or lifts within one reconcile, no service in the environment gets a new instance, and services inside the environment keep reaching each other throughout. **Status:** todo
+**Worker:** worker4 **Goal:** toggling "Block cross-environment connections" changes only network policy: the boundary holds or lifts within one reconcile, no service in the environment gets a new instance, and services inside the environment keep reaching each other throughout. **Status:** todo (t001–t005 done; t006 waits for the production deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| [t001](t001.md) | Every App pod carries its environment's stable id, set at creation and on a move only | 45m | — |
-| [t002](t002.md) | Isolation is policy-only: the toggle edits NetworkPolicies, never a pod template | 75m | t001 |
-| [t003](t003.md) | Datastores and cron pods follow the same identity, and existing pods migrate once | 40m | t002 |
-| [t004](t004.md) | Simplify | 15m | t003 |
-| [t005](t005.md) | Test coverage | 30m | t003 |
+| [t001](t001.md) | Every App pod carries its environment's stable id, set at creation and on a move only — **DONE** | 45m | — |
+| [t002](t002.md) | Isolation is policy-only: the toggle edits NetworkPolicies, never a pod template — **DONE** | 75m | t001 |
+| [t003](t003.md) | Datastores and cron pods follow the same identity, and existing pods migrate once — **DONE** | 40m | t002 |
+| [t004](t004.md) | Simplify — **DONE** | 15m | t003 |
+| [t005](t005.md) | Test coverage — **DONE** | 30m | t003 |
 | [t006](t006.md) | Closeout (live replay on production) | 30m | t004, t005 |
 
 ## Definition of done

@@ -147,7 +147,7 @@ func TestSandboxReconcilePrunesLegacyBroadPolicies(t *testing.T) {
 	namespace := SandboxNamespace(tn.ID)
 	// These are the exact policies emitted for sandbox namespaces before m35.
 	for _, legacy := range []*networkingv1.NetworkPolicy{
-		sameNamespaceNetworkPolicy(namespace),
+		sameNamespaceNetworkPolicy(namespace, nil),
 		dnsEgressNetworkPolicy(namespace),
 		{ObjectMeta: npMeta(namespace, "allow-opensandbox-server-execd")},
 	} {

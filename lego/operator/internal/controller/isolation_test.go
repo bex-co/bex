@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"maps"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -211,7 +212,7 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      name,
 					Namespace: envNS,
-					Labels:    map[string]string{labelWorkspace: workspace, labelNetworkIsolation: environment},
+					Labels:    map[string]string{labelWorkspace: workspace, labelEnvironment: environment, labelNetworkIsolation: environment},
 				},
 				Spec: appv1alpha1.AppSpec{Image: "traefik/whoami", Port: 80},
 			}
@@ -225,28 +226,92 @@ var _ = Describe("Tenant isolation (w7/m1)", func() {
 			}
 		})
 
-		It("propagates the environment label to the Deployment pod template", func() {
+		It("carries the environment id, never the isolation label, on the pod template", func() {
 			reconcileEnv(r, name)
 
 			dep := &appsv1.Deployment{}
 			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, dep)).To(Succeed())
-			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelNetworkIsolation, environment))
-			Expect(dep.Spec.Selector.MatchLabels).NotTo(HaveKey(labelNetworkIsolation),
+			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelEnvironment, environment))
+			Expect(dep.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation),
+				"an isolation toggle must never be a template change (w4/m342)")
+			Expect(dep.Spec.Selector.MatchLabels).NotTo(HaveKey(labelEnvironment),
 				"selector must remain stable, same rationale as labelWorkspace")
 		})
 
-		It("removing the environment label clears it from the pod template", func() {
+		// w4/m342: round 177 saw every isolation toggle roll each service of the
+		// environment, because the label was copied onto the pod template.
+		It("relabels running pods in place on a toggle or a move and never changes the template", func() {
 			reconcileEnv(r, name)
+			nn := types.NamespacedName{Name: name, Namespace: envNS}
+			dep := &appsv1.Deployment{}
+			Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+			template, generation := dep.Spec.Template.DeepCopy(), dep.Generation
 
+			controller := true
+			podLabels := maps.Clone(dep.Spec.Template.Labels)
+			delete(podLabels, labelEnvironment) // a pod from before environment-id
+			pod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: name + "-pod", Namespace: envNS, Labels: podLabels,
+					OwnerReferences: []metav1.OwnerReference{{
+						APIVersion: "apps/v1", Kind: "ReplicaSet", Name: name + "-rs", UID: "rs-uid", Controller: &controller,
+					}},
+				},
+				Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "app", Image: "traefik/whoami"}}},
+			}
+			Expect(k8sClient.Create(ctx, pod)).To(Succeed())
+			DeferCleanup(func() { _ = k8sClient.Delete(context.Background(), pod) })
+			podLabelsNow := func() map[string]string {
+				live := &corev1.Pod{}
+				Expect(k8sClient.Get(ctx, types.NamespacedName{Name: pod.Name, Namespace: envNS}, live)).To(Succeed())
+				return live.Labels
+			}
+			setLabels := func(labels map[string]string) {
+				app := &appv1alpha1.App{}
+				Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+				for k, v := range labels {
+					if v == "" {
+						delete(app.Labels, k)
+					} else {
+						app.Labels[k] = v
+					}
+				}
+				Expect(k8sClient.Update(ctx, app)).To(Succeed())
+				reconcileEnv(r, name)
+			}
+			templateUnchanged := func(when string) {
+				Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+				Expect(dep.Generation).To(Equal(generation), "%s must not roll the Deployment", when)
+				Expect(dep.Spec.Template.Labels).To(Equal(template.Labels), "%s must not change the pod template", when)
+			}
+
+			reconcileEnv(r, name)
+			Expect(podLabelsNow()).To(HaveKeyWithValue(labelEnvironment, environment),
+				"an existing pod gains environment-id in place, with no rollout")
+			Expect(podLabelsNow()).To(HaveKeyWithValue(labelNetworkIsolation, environment))
+
+			setLabels(map[string]string{labelNetworkIsolation: ""})
+			templateUnchanged("turning isolation off")
+			Expect(podLabelsNow()).NotTo(HaveKey(labelNetworkIsolation))
+			Expect(podLabelsNow()).To(HaveKeyWithValue(labelEnvironment, environment))
+
+			setLabels(map[string]string{labelNetworkIsolation: environment})
+			templateUnchanged("turning isolation on")
+			Expect(podLabelsNow()).To(HaveKeyWithValue(labelNetworkIsolation, environment))
+
+			setLabels(map[string]string{labelEnvironment: "env-testenv0002", labelNetworkIsolation: ""})
+			templateUnchanged("a move")
+			Expect(podLabelsNow()).To(HaveKeyWithValue(labelEnvironment, "env-testenv0002"))
+			Expect(podLabelsNow()).NotTo(HaveKey(labelNetworkIsolation))
+
+			// The template adopts the current environment on its next real change.
 			app := &appv1alpha1.App{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, app)).To(Succeed())
-			delete(app.Labels, labelNetworkIsolation)
+			Expect(k8sClient.Get(ctx, nn, app)).To(Succeed())
+			app.Spec.RestartedAt = "2026-11-14T00:00:00Z"
 			Expect(k8sClient.Update(ctx, app)).To(Succeed())
 			reconcileEnv(r, name)
-
-			dep := &appsv1.Deployment{}
-			Expect(k8sClient.Get(ctx, types.NamespacedName{Name: name, Namespace: envNS}, dep)).To(Succeed())
-			Expect(dep.Spec.Template.Labels).NotTo(HaveKey(labelNetworkIsolation))
+			Expect(k8sClient.Get(ctx, nn, dep)).To(Succeed())
+			Expect(dep.Spec.Template.Labels).To(HaveKeyWithValue(labelEnvironment, "env-testenv0002"))
 		})
 
 		It("allows only same-environment peers for a protected App", func() {

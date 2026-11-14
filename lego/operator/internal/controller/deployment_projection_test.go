@@ -95,9 +95,9 @@ func appContainerOf(t *testing.T, dep *appsv1.Deployment) corev1.Container {
 func TestSelectorStaysAppOnly(t *testing.T) {
 	app := projectionApp(func(a *appv1alpha1.App) {
 		a.Labels = map[string]string{
-			labelAppID:            "srv-abc",
-			labelWorkspace:        "tea-xyz",
-			labelNetworkIsolation: "env-1",
+			labelAppID:       "srv-abc",
+			labelWorkspace:   "tea-xyz",
+			labelEnvironment: "env-1",
 		}
 	})
 	dep := project(app, deploymentParams{image: "img", port: 8080, replicas: 1, verifyImage: true})
@@ -108,10 +108,24 @@ func TestSelectorStaysAppOnly(t *testing.T) {
 		t.Fatalf("selector = %v; want exactly %v", got, want)
 	}
 	// The same labels must nevertheless be on the pod template.
-	for _, key := range []string{labelWorkspace, labelNetworkIsolation, labelRevision, execution.LabelVerifyImage} {
+	for _, key := range []string{labelWorkspace, labelEnvironment, labelRevision, execution.LabelVerifyImage} {
 		if dep.Spec.Template.Labels[key] == "" {
 			t.Errorf("pod template is missing label %q", key)
 		}
+	}
+}
+
+// w4/m342: the environment id is the pod's network identity, and the
+// isolation label is never a template label, so a toggle is no rollout.
+func TestAppPodLabelsCarryTheEnvironmentNotItsIsolation(t *testing.T) {
+	got := appPodLabels(projectionApp(func(a *appv1alpha1.App) {
+		a.Labels = map[string]string{labelEnvironment: "evm-a", labelNetworkIsolation: "evm-a"}
+	}), false)
+	if got[labelEnvironment] != "evm-a" {
+		t.Errorf("environment label = %q, want evm-a", got[labelEnvironment])
+	}
+	if _, ok := got[labelNetworkIsolation]; ok {
+		t.Error("the isolation label must not be projected onto the pod template")
 	}
 }
 
@@ -140,7 +154,7 @@ func TestAppPodLabels(t *testing.T) {
 
 	t.Run("optional labels are omitted when their source is absent", func(t *testing.T) {
 		got := appPodLabels(projectionApp(), false)
-		for _, key := range []string{labelWorkspace, labelNetworkIsolation, execution.LabelVerifyImage} {
+		for _, key := range []string{labelWorkspace, labelEnvironment, labelNetworkIsolation, execution.LabelVerifyImage} {
 			if _, ok := got[key]; ok {
 				t.Errorf("label %q must not be stamped when unset", key)
 			}

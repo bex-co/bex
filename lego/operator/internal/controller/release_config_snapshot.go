@@ -734,6 +734,10 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		if restore != nil {
 			dep.Spec.Template = *restore.DeepCopy()
 		}
+		// The environment labels never roll a pod: a template that differs
+		// from the stored one only in them keeps the stored values, and the
+		// running pods are relabelled in place (relabelAppPods, w4/m342).
+		holdIsolationLabel(&dep.Spec.Template, prior != nil, prior, appTemplateEnvironmentLabels(app))
 		return controllerutil.SetControllerReference(app, dep, r.Scheme)
 	}); err != nil {
 		return err

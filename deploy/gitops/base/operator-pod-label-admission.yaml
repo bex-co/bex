@@ -1,7 +1,8 @@
-# The operator may relabel a running datastore pod with the network-isolation
-# and environment-id labels and nothing else (w8/m136, w4/451). Toggling an
-# environment's isolation, or moving a store between environments, must take
-# effect without restarting a Valkey pod, so the operator needs Pod
+# The operator may relabel a running datastore or App pod with the
+# network-isolation and environment-id labels and nothing else (w8/m136,
+# w4/451, w4/m342). Toggling an environment's isolation, or moving a store or
+# service between environments, must take effect without restarting a Valkey
+# or service pod, so the operator needs Pod
 # `patch` RBAC; RBAC cannot narrow a patch to one label, and an unrestricted pod
 # patch would also let compromised controller code rewrite a running container's
 # image. This policy closes that: for the exact operator identity a Pod UPDATE

@@ -84,24 +84,24 @@ func TestFreePlanLabelOnCronAndPreDeployPods(t *testing.T) {
 }
 
 // A held release's served template follows a plan change in both directions.
-func TestSyncPolicyLabelsFollowsThePlan(t *testing.T) {
+func TestSyncFreePlanLabelFollowsThePlan(t *testing.T) {
 	tpl := &corev1.PodTemplateSpec{}
 	tpl.Labels = map[string]string{labelApp: "hello"}
 	free := projectionApp(func(a *appv1alpha1.App) { a.Spec.Tier = tierFree })
 	paid := projectionApp(func(a *appv1alpha1.App) { a.Spec.Tier = "starter" })
-	if !syncPolicyLabels(tpl, free) || tpl.Labels[execution.LabelFreePlan] != execution.FreePlanValue {
+	if !syncFreePlanLabel(tpl, free) || tpl.Labels[execution.LabelFreePlan] != execution.FreePlanValue {
 		t.Fatalf("paid → free: labels %v", tpl.Labels)
 	}
-	if syncPolicyLabels(tpl, free) {
+	if syncFreePlanLabel(tpl, free) {
 		t.Fatal("an unchanged free plan reported a change")
 	}
-	if !syncPolicyLabels(tpl, paid) {
+	if !syncFreePlanLabel(tpl, paid) {
 		t.Fatal("free → paid reported no change")
 	}
 	if _, ok := tpl.Labels[execution.LabelFreePlan]; ok || tpl.Labels[labelApp] != "hello" {
 		t.Fatalf("free → paid: labels %v", tpl.Labels)
 	}
-	if syncPolicyLabels(tpl, paid) {
+	if syncFreePlanLabel(tpl, paid) {
 		t.Fatal("an unchanged paid plan reported a change")
 	}
 }

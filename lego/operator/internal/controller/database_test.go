@@ -698,7 +698,7 @@ func TestCNPGWorkspaceLabelPropagated(t *testing.T) {
 	if got := np.Spec.PodSelector.MatchLabels; len(got) != 1 || got[cnpgClusterLabel] != db.Name {
 		t.Errorf("peer policy selects %v, want only this database's own pods (a shared selector would admit another environment's Apps to it)", got)
 	}
-	if peers := np.Spec.Ingress[0].From; len(peers) != 2 || peers[0].PodSelector.MatchLabels[labelNetworkIsolation] != env || peers[1].PodSelector.MatchLabels[logicalExportDBLabel] != db.Name {
+	if peers := np.Spec.Ingress[0].From; len(peers) != 3 || peers[0].PodSelector.MatchLabels[labelNetworkIsolation] != env || peers[1].PodSelector.MatchLabels[labelEnvironment] != env || peers[2].PodSelector.MatchLabels[logicalExportDBLabel] != db.Name {
 		t.Errorf("peers = %+v, want the environment's Apps and this database's export Jobs", peers)
 	}
 }
