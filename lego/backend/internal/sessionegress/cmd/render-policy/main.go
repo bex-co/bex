@@ -34,9 +34,10 @@ import (
 func main() {
 	namespace := flag.String("namespace", "", "tenant namespace")
 	session := flag.String("session", "", "agent session id (the bex.co/agent-session label)")
-	phase := flag.String("phase", string(sessionegress.PhaseSetup), "setup or agent")
+	phase := flag.String("phase", string(sessionegress.PhaseSetup), "setup, agent or build (a repository environment builder: no model endpoint)")
 	model := flag.String("model", "https://api.anthropic.com", "the session's model endpoint")
 	allow := flag.String("allow", "", "comma-separated tenant destinations")
+	full := flag.Bool("full", false, "the full-internet posture")
 	// Production wires BEX_AGENT_MODEL_PROXY_URL on :8084, which bex-api-session-egress
 	// requires; 0 renders the legacy direct-model policy.
 	modelProxyPort := flag.Uint("model-proxy-port", 8084, "gateway model proxy port")
@@ -44,8 +45,10 @@ func main() {
 	if *namespace == "" || *session == "" {
 		fail(fmt.Errorf("-namespace and -session are required"))
 	}
-	if p := sessionegress.Phase(*phase); p != sessionegress.PhaseSetup && p != sessionegress.PhaseAgent {
-		fail(fmt.Errorf("-phase must be %q or %q, got %q", sessionegress.PhaseSetup, sessionegress.PhaseAgent, *phase))
+	switch sessionegress.Phase(*phase) {
+	case sessionegress.PhaseSetup, sessionegress.PhaseAgent, sessionegress.PhaseBuild:
+	default:
+		fail(fmt.Errorf("-phase must be %q, %q or %q, got %q", sessionegress.PhaseSetup, sessionegress.PhaseAgent, sessionegress.PhaseBuild, *phase))
 	}
 	if *modelProxyPort > math.MaxUint16 {
 		fail(fmt.Errorf("-model-proxy-port %d is not a port", *modelProxyPort))
@@ -62,7 +65,7 @@ func main() {
 	policy, err := sessionegress.RenderPolicy(
 		sessionegress.Config{ModelProxyPort: uint16(*modelProxyPort)},
 		*namespace, *session, sessionegress.Phase(*phase), *model,
-		sessionegress.Egress{Hosts: hosts},
+		sessionegress.Egress{Hosts: hosts, FullInternet: *full},
 	)
 	if err != nil {
 		fail(err)

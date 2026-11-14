@@ -232,6 +232,12 @@ spec:
     - name: full
       expression: >-
         variables.target.metadata.?annotations['bex.co/egress-posture'].orValue('') == 'full'
+    # A repository environment build's builder (ADR111 D11): the same policy
+    # shape without the model proxy hop or a model endpoint, since a build
+    # runs no agent.
+    - name: build
+      expression: >-
+        variables.target.metadata.?annotations['bex.co/egress-phase'].orValue('') == 'build'
     - name: canonicalNamespace
       expression: >-
         namespaceObject != null &&
@@ -248,14 +254,15 @@ spec:
         variables.target.metadata.name.matches('^agent-session-egress-[a-f0-9]{16}$') &&
         variables.target.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-session-egress' &&
         variables.session.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?$') && size(variables.session) <= 63 &&
-        variables.target.metadata.?annotations['bex.co/egress-phase'].orValue('') in ['setup', 'agent'] &&
+        variables.target.metadata.?annotations['bex.co/egress-phase'].orValue('') in ['setup', 'agent', 'build'] &&
         variables.target.metadata.?annotations['bex.co/egress-posture'].orValue('') in ['', 'full'] &&
-        size(variables.model) <= 253 &&
-        variables.model.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
-        !variables.model.endsWith('.localhost') && !variables.model.endsWith('.local') &&
-        !variables.model.endsWith('.internal') && !variables.model.endsWith('.cluster.local') &&
-        (request.operation == 'DELETE' ||
-         variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai']) &&
+        (variables.build ? variables.model == '' :
+         (size(variables.model) <= 253 &&
+          variables.model.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
+          !variables.model.endsWith('.localhost') && !variables.model.endsWith('.local') &&
+          !variables.model.endsWith('.internal') && !variables.model.endsWith('.cluster.local') &&
+          (request.operation == 'DELETE' ||
+           variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai']))) &&
         has(variables.target.spec.endpointSelector.matchLabels) &&
         size(variables.target.spec.endpointSelector.matchLabels) == 1 &&
         variables.target.spec.endpointSelector.matchLabels['bex.co/agent-session'] == variables.session &&
@@ -264,7 +271,7 @@ spec:
       message: session egress policy identity or exact endpoint selector is invalid
     - expression: >-
         request.operation == 'DELETE' ||
-        (has(variables.target.spec.egress) && size(variables.target.spec.egress) == 4 &&
+        (has(variables.target.spec.egress) && size(variables.target.spec.egress) == (variables.build ? 3 : 4) &&
          !has(variables.target.spec.egressDeny) &&
          variables.target.spec.egress.all(rule,
            !has(rule.toCIDR) && !has(rule.toCIDRSet) && !has(rule.toEntities) && !has(rule.toServices) &&
@@ -297,7 +304,7 @@ spec:
       message: public session egress must use exact non-provider DNS names with matching TLS SNI on TCP 443 (and none at all in the full posture)
     - expression: >-
         request.operation == 'DELETE' ||
-        (variables.target.spec.egress.filter(rule, has(rule.toEndpoints)).size() == (variables.full ? 4 : 3) &&
+        (variables.target.spec.egress.filter(rule, has(rule.toEndpoints)).size() == (variables.full ? 4 : 3) - (variables.build ? 1 : 0) &&
          variables.target.spec.egress.filter(rule, has(rule.toEndpoints)).all(rule,
            rule.toEndpoints.size() == 1 && has(rule.toPorts) && rule.toPorts.size() == 1 &&
            rule.toPorts[0].ports.size() == 1 &&
@@ -322,7 +329,7 @@ spec:
          variables.target.spec.egress.filter(rule,
            has(rule.toEndpoints) && rule.toPorts[0].ports[0].port == '8082').size() == 1 &&
          variables.target.spec.egress.filter(rule,
-           has(rule.toEndpoints) && rule.toPorts[0].ports[0].port == '8084').size() == 1 &&
+           has(rule.toEndpoints) && rule.toPorts[0].ports[0].port == '8084').size() == (variables.build ? 0 : 1) &&
          variables.target.spec.egress.filter(rule,
            has(rule.toEndpoints) && rule.toPorts[0].ports[0].port == '8085').size() == (variables.full ? 1 : 0))
       reason: Forbidden

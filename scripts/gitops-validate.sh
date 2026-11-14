@@ -2374,6 +2374,8 @@ for required_guard in \
   "filter(rule, has(rule.toEndpoints)).size() == (variables.full ? 4 : 3)" \
   "(variables.full && rule.toPorts[0].ports[0].port == '8085')" \
   "rule.toPorts[0].ports[0].port == '8085').size() == (variables.full ? 1 : 0)" \
+  "variables.build ? variables.model == ''" \
+  "rule.toPorts[0].ports[0].port == '8084').size() == (variables.build ? 0 : 1)" \
   "variables.model in ['api.anthropic.com', 'api.openai.com', 'generativelanguage.googleapis.com', 'openrouter.ai']" \
   "request.resource.resource != 'rolebindings'" \
   "request.operation == 'DELETE'" \
