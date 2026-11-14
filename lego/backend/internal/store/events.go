@@ -288,10 +288,11 @@ type ServiceEventFilter struct {
 	Limit int
 }
 
-// isPipelineMinutesFact is true for the fact row f of a pipeline_minutes_exhausted
-// event, the one fact that carries its refused deploy's trigger, opener and
-// clear-cache flag (w9/m345).
-const isPipelineMinutesFact = `f.fact_type = '` + string(EventFactPipelineMinutesExhausted) + `'`
+// factCarriesDeployTrigger is true for the fact rows f that carry their deploy's
+// trigger, opener and clear-cache flag: a pipeline_minutes_exhausted event's
+// refused deploy (w9/m345), and a build_started event's deploy, whose trigger
+// Render requires on Build Started (w4/639).
+const factCarriesDeployTrigger = `f.fact_type IN ('` + string(EventFactPipelineMinutesExhausted) + `', '` + string(EventFactBuildStarted) + `')`
 
 // serviceEventsQuery is the composed view: two projections of `deploys`, one of
 // `audit_events`, and one of `service_event_facts`, ordered by the feed's total
@@ -484,14 +485,14 @@ WITH feed AS (
            -- pipeline_minutes_exhausted carries its refused deploy's trigger
            -- (Render's details.trigger, w9/m345): the trigger, opener and
            -- clear-cache flag; every other fact carries none.
-           CASE WHEN ` + isPipelineMinutesFact + ` THEN COALESCE(dc.trigger, '') ELSE '' END,
+           CASE WHEN ` + factCarriesDeployTrigger + ` THEN COALESCE(dc.trigger, '') ELSE '' END,
            ''::text,
            ''::text,
            ''::text,
            COALESCE(dc.cancel_reason, ''),
            ''::text, -- stall_reason: a fact is a point observation
            ''::text,
-           CASE WHEN ` + isPipelineMinutesFact + ` THEN COALESCE(dc.triggered_by, '') ELSE '' END,
+           CASE WHEN ` + factCarriesDeployTrigger + ` THEN COALESCE(dc.triggered_by, '') ELSE '' END,
            NULL::text,
            NULL::text,
            NULL::integer,
@@ -526,7 +527,7 @@ WITH feed AS (
            f.status,
            f.exit_code,
            f.run_id,
-           ` + isPipelineMinutesFact + ` AND COALESCE(dc.clear_cache, false),
+           ` + factCarriesDeployTrigger + ` AND COALESCE(dc.clear_cache, false),
            NULL::text
     FROM service_event_facts f
     LEFT JOIN deploys dc ON dc.id = f.deploy_id AND f.deploy_id <> ''
@@ -744,7 +745,7 @@ SELECT h.event_key AS key,
        END AS deploy_id,
        CASE
            WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.trigger
-           WHEN h.source = '` + EventSourceFact + `' AND ` + isPipelineMinutesFact + ` THEN COALESCE(fd.trigger, '')
+           WHEN h.source = '` + EventSourceFact + `' AND ` + factCarriesDeployTrigger + ` THEN COALESCE(fd.trigger, '')
            ELSE ''
        END AS trigger,
        CASE
@@ -776,7 +777,7 @@ SELECT h.event_key AS key,
        CASE
            WHEN h.source = '` + EventSourceAudit + `' THEN a.caller
            WHEN h.source = '` + EventSourceDeploy + `' THEN d.triggered_by
-           WHEN h.source = '` + EventSourceFact + `' AND ` + isPipelineMinutesFact + ` THEN COALESCE(fd.triggered_by, '')
+           WHEN h.source = '` + EventSourceFact + `' AND ` + factCarriesDeployTrigger + ` THEN COALESCE(fd.triggered_by, '')
            ELSE ''
        END AS caller,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.plan_from END AS plan_from,
@@ -827,7 +828,7 @@ SELECT h.event_key AS key,
        CASE WHEN h.source = '` + EventSourceFact + `' THEN COALESCE(f.run_id, '') ELSE '' END AS fact_run_id,
        CASE
            WHEN h.source = '` + EventSourceDeploy + `' AND h.phase = '` + EventPhaseStarted + `' THEN d.clear_cache
-           WHEN h.source = '` + EventSourceFact + `' AND ` + isPipelineMinutesFact + ` THEN COALESCE(fd.clear_cache, false)
+           WHEN h.source = '` + EventSourceFact + `' AND ` + factCarriesDeployTrigger + ` THEN COALESCE(fd.clear_cache, false)
            ELSE false
        END AS clear_cache,
        CASE WHEN h.source = '` + EventSourceAudit + `' THEN a.disk_id END AS disk_id,

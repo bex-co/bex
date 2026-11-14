@@ -1454,9 +1454,10 @@ func view(r store.ServiceEventRow, service string) Event {
 			// superseding build or deploy, so it is the empty reason a plain
 			// success or failure carries on deploy_ended.
 			ev.Details.EndReason = &EndReason{}
-		case TypePipelineMinutesExhausted:
-			// The trigger of the deploy whose build was refused (w9/m345);
-			// the store joins that deploy's row.
+		case TypePipelineMinutesExhausted, TypeBuildStarted:
+			// The trigger of the deploy whose build was refused (w9/m345) or
+			// started (w4/639, Render's required Build Started trigger); the
+			// store joins that deploy's row.
 			ev.Details.Trigger = deployTrigger(r)
 		}
 	}

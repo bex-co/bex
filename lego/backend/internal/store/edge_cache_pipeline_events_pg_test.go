@@ -367,3 +367,55 @@ func TestPGPipelineMinutesRefusalRecordsOneEventBesideTheFailedDeploy(t *testing
 		t.Fatalf("an ordinary build failure recorded %d pipeline_minutes_exhausted rows", len(facts))
 	}
 }
+
+// w4/639: a build_started fact carries its deploy's trigger and opener on the
+// feed and by id, as Render's Build Started requires; build_ended still
+// carries none.
+func TestPGBuildStartedCarriesItsDeploysTrigger(t *testing.T) {
+	st, _, tenant := openDatastoreTestStore(t)
+	ctx := context.Background()
+	unique := ids.New(ids.Deploy)
+	app, err := st.CreateApp(ctx, App{TenantID: tenant.ID, Name: "built-" + unique[len(unique)-8:],
+		Repo: "https://github.com/bex-co/hello", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := st.CreateDeploy(ctx, app.ID, TriggerManual, "", 2, CommitInfo{}, "user-x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	if err := st.InsertServiceEventFacts(ctx, []ServiceEventFact{
+		{SourceKey: "build:" + d.ID + ":started", AppID: app.ID, Type: EventFactBuildStarted, At: now, DeployID: d.ID},
+		{SourceKey: "build:" + d.ID + ":ended", AppID: app.ID, Type: EventFactBuildEnded, At: now.Add(time.Second), DeployID: d.ID, Status: EventStatusFailed},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	rows, err := st.ListServiceEvents(ctx, app.ID, tenant.ID, ServiceEventFilter{
+		FactTypes: []string{string(EventFactBuildStarted), string(EventFactBuildEnded)}, Since: now.Add(-time.Hour)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("rows = %d, want build_started and build_ended", len(rows))
+	}
+	for _, r := range rows {
+		switch r.FactType {
+		case string(EventFactBuildStarted):
+			if r.Trigger != TriggerManual || r.Caller != "user-x" {
+				t.Errorf("build_started trigger %q caller %q, want manual by user-x", r.Trigger, r.Caller)
+			}
+			lookup, err := st.GetServiceEvent(ctx, tenant.ID, ids.Derive(ids.Event, r.Key))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if lookup.Event.Trigger != TriggerManual || lookup.Event.Caller != "user-x" {
+				t.Errorf("by-id build_started = %+v, want the deploy's trigger", lookup.Event)
+			}
+		case string(EventFactBuildEnded):
+			if r.Trigger != "" || r.Caller != "" {
+				t.Errorf("build_ended trigger %q caller %q, want none", r.Trigger, r.Caller)
+			}
+		}
+	}
+}

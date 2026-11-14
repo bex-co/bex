@@ -51,7 +51,9 @@ func TestRenderEventDetailsMatchTheirMember(t *testing.T) {
 	}{
 		{row: store.ServiceEventRow{Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-1", Trigger: store.TriggerManual, Caller: "usr-1"}, missing: []string{"trigger/user/email"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceDeploy, Phase: "ended", DeployID: "dep-1", Status: "live"}, missing: []string{"status"}},
-		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeBuildStarted, DeployID: "dep-1"}, missing: []string{"buildId", "trigger"}},
+		// w4/639: Build Started carries its deploy's trigger; buildId stays
+		// unrecorded (w3/m302 t002).
+		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeBuildStarted, DeployID: "dep-1"}, missing: []string{"buildId"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypeBuildEnded, DeployID: "dep-1", FactStatus: store.EventStatusSucceeded}, missing: []string{"buildId", "status"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePreDeployStarted, DeployID: "dep-1"}, missing: []string{"deployCommandExecutionId"}},
 		{row: store.ServiceEventRow{Source: store.EventSourceFact, FactType: TypePreDeployEnded, DeployID: "dep-1", FactStatus: store.EventStatusFailed}, missing: []string{"deployCommandExecutionId", "status"}},
