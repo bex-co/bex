@@ -23,6 +23,7 @@ import { cn } from "@/common/lib/utils/utils";
 import { TurnAttachments } from "@/features/agent-sessions/components/turn-attachments";
 import { TurnSkills } from "@/features/agent-sessions/components/turn-skills";
 import { TurnOrigins } from "@/features/agent-sessions/components/turn-origins";
+import { TurnInterruptedNote } from "@/features/agent-sessions/components/turn-interrupted-note";
 import { useAgentSessionTurnSkills } from "@/features/agent-sessions/hooks/use-agent-session-turn-skills";
 import { useAgentSessionTurnOrigins } from "@/features/agent-sessions/hooks/use-agent-session-turn-origins";
 import { AgentAttachmentDocument } from "@/graphql/definitions";
@@ -140,7 +141,15 @@ export interface SessionConversationImplProps {
    * note when unset (the injectable unit tests take the default).
    */
   terminalLabel?: string;
+  /**
+   * The durable turns a person stopped with Stop turn (ADR047 D12), each marked
+   * "interrupted" where it ends. Read by the wrapper from GraphQL: an
+   * interrupted turn settles as a completed one, so the stream cannot say.
+   */
+  interruptedTurns?: ReadonlySet<number>;
 }
+
+const NO_INTERRUPTED_TURNS: ReadonlySet<number> = new Set();
 
 // A transcript can be as large as the gateway allows (64 MiB / thousands of
 // parts). The client must not translate that straight into an unbounded React
@@ -168,6 +177,7 @@ export function SessionConversationImpl({
   onConversationStateChange,
   footer,
   terminalLabel,
+  interruptedTurns = NO_INTERRUPTED_TURNS,
 }: SessionConversationImplProps) {
   const { t } = useTranslations();
   // A stable transport per session: the injected one under test, else one built
@@ -481,6 +491,7 @@ export function SessionConversationImpl({
                 // other (finished) row is settled, so a trailing in_progress entry
                 // never spins — including historical plans once a new turn streams.
                 settled={!(isLoading && isLast)}
+                interruptedTurns={interruptedTurns}
               />
             );
           })}
@@ -589,6 +600,15 @@ function lastActivitySteps(blocks: DisplayBlock[]): ActivityStep[] {
   return block?.type === "activity" ? block.steps : [];
 }
 
+/** The durable turn the last prompt block of a row opened, if it names one. */
+function lastDurableTurn(blocks: DisplayBlock[]): number | null {
+  for (let i = blocks.length - 1; i >= 0; i--) {
+    const block = blocks[i];
+    if (block.type === "user" && block.turn !== null) return block.turn;
+  }
+  return null;
+}
+
 function toolStepCount(blocks: DisplayBlock[] | undefined): number {
   let count = 0;
   for (const block of blocks ?? []) {
@@ -662,7 +682,10 @@ type DisplayBlock =
   // fresh agent generation. Rendered as an honest system line so the UI never
   // implies conversational fidelity the agent doesn't have (w5/m84).
   | { type: "continuity"; key: string; rung: string }
-  | { type: "turn-error"; key: string; turn: number; errorText: string };
+  | { type: "turn-error"; key: string; turn: number; errorText: string }
+  // Where a durable turn ends inside a replay that joins several turns: just
+  // before the next turn's prompt. The last turn of a row ends with the row.
+  | { type: "turn-end"; key: string; turn: number };
 
 function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   const blocks: DisplayBlock[] = [];
@@ -696,6 +719,9 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
         part.data && typeof part.data === "object"
           ? (part.data as Record<string, unknown>)
           : {};
+      if (turn !== undefined) {
+        blocks.push({ type: "turn-end", key: `turn-end-${index}`, turn });
+      }
       blocks.push({
         type: "user",
         key: `user-${index}`,
@@ -910,6 +936,7 @@ const MessageRow = memo(function MessageRow({
   showCursor,
   settled,
   interrupted,
+  interruptedTurns,
 }: {
   sessionId: string;
   role: string;
@@ -917,8 +944,11 @@ const MessageRow = memo(function MessageRow({
   showCursor: boolean;
   settled: boolean;
   interrupted: boolean;
+  interruptedTurns: ReadonlySet<number>;
 }) {
   const isUser = role === "user";
+  // The row's last durable turn ends with the row, not before another prompt.
+  const lastTurn = lastDurableTurn(blocks);
 
   return (
     <div
@@ -989,6 +1019,11 @@ const MessageRow = memo(function MessageRow({
           if (block.type === "continuity") {
             return <ContinuityNote key={block.key} rung={block.rung} />;
           }
+          if (block.type === "turn-end") {
+            return interruptedTurns.has(block.turn) ? (
+              <TurnInterruptedNote key={block.key} turn={block.turn} />
+            ) : null;
+          }
           return (
             <Fragment key={block.key}>
               <ActivityGroup
@@ -1003,6 +1038,9 @@ const MessageRow = memo(function MessageRow({
             </Fragment>
           );
         })}
+        {lastTurn != null && interruptedTurns.has(lastTurn) ? (
+          <TurnInterruptedNote turn={lastTurn} />
+        ) : null}
       </div>
       {isUser && <UserAvatar />}
     </div>

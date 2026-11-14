@@ -41,7 +41,15 @@ const (
 	maxStreamEvent = 16 << 20
 
 	codeSessionNotAttachable = "AGENT_SESSION_NOT_ATTACHABLE"
-	codeSessionTurnInFlight  = "AGENT_SESSION_TURN_IN_FLIGHT"
+	// codeSessionTurnInFlight is an older server's answer to a message sent
+	// while a turn runs; the queue (ADR047 D12) replaced it with a 202.
+	codeSessionTurnInFlight = "AGENT_SESSION_TURN_IN_FLIGHT"
+
+	// The message queue's refusals (ADR047 D12).
+	codeQueueFull          = "AGENT_SESSION_QUEUE_FULL"
+	codeQueueInlineSecrets = "AGENT_SESSION_QUEUE_INLINE_SECRETS"
+	codeNoTurnRunning      = "AGENT_SESSION_NO_TURN_RUNNING"
+	codeTurnStarting       = "AGENT_SESSION_TURN_STARTING"
 )
 
 var (

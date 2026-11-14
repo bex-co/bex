@@ -755,7 +755,9 @@ func (f *PRFeedback) deliver(ctx context.Context, batch store.FeedbackBatch) {
 		}
 	}
 	steerCtx := core.WithWorkspace(core.WithIdentity(ctx, core.Identity{Subject: actor, Method: "session"}), session.WorkspaceID)
-	view, err := f.Sessions.Steer(steerCtx, SteerRequest{SessionID: session.ID, Prompt: feedbackPrompt(session, turn)})
+	// Feedback yields to a person's queued messages (ADR047 D12) instead of
+	// being queued among them.
+	view, err := f.Sessions.Steer(steerCtx, SteerRequest{SessionID: session.ID, Prompt: feedbackPrompt(session, turn), mode: steerYields})
 	switch {
 	case err == nil:
 		f.markDelivered(ctx, session.ID, turn, view.Turns)
@@ -806,9 +808,8 @@ func (f *PRFeedback) ciStreak(ctx context.Context, session store.AgentSession) (
 // the prompt itself is refused. Conflicts that clear on their own (a running
 // turn, the live-sandbox limit, the trust tier) are not.
 func finalSteerRefusal(err error) bool {
-	var coded *core.CodedError
-	if errors.As(err, &coded) && errors.Is(err, core.ErrConflict) {
-		return coded.Code == "AGENT_SESSION_NOT_STEERABLE" || coded.Code == "AGENT_SESSION_ARCHIVED"
+	if errors.Is(err, core.ErrConflict) {
+		return hasCode(err, codeNotSteerable) || hasCode(err, codeArchived)
 	}
 	return errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrNotFound) ||
 		errors.Is(err, core.ErrBadRequest) || errors.Is(err, core.ErrGone)

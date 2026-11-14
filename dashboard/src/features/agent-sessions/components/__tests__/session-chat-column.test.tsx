@@ -1,10 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { afterEach, describe, it, expect, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionChatColumn } from "@/features/agent-sessions/components/session-chat-column";
 import type {
   AgentSessionPhase,
   AgentSessionView,
+  QueuedMessageView,
 } from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
 
@@ -24,13 +25,41 @@ vi.mock("@/features/agent-sessions/components/session-conversation", () => ({
 vi.mock("@/features/agent-sessions/components/steering-composer", () => ({
   SteeringComposer: ({
     onOptimisticSteer,
+    queuedCount,
   }: {
     onOptimisticSteer?: (p: string | null) => void;
+    queuedCount?: number;
   }) => (
-    <button type="button" onClick={() => onOptimisticSteer?.("echoed prompt")}>
-      echo
-    </button>
+    <>
+      <button
+        type="button"
+        data-queued-count={queuedCount}
+        onClick={() => onOptimisticSteer?.("echoed prompt")}
+      >
+        echo
+      </button>
+      <button type="button" onClick={() => onOptimisticSteer?.(null)}>
+        withdraw
+      </button>
+    </>
   ),
+}));
+
+// The queue read (ADR047 D12) is its own GraphQL query; the column's logic is
+// what it does with the messages. The list renders its messages' prompts.
+const queue = vi.hoisted(() => ({ messages: [] as QueuedMessageView[] }));
+vi.mock("@/features/agent-sessions/hooks/use-agent-session-queue", () => ({
+  useAgentSessionQueue: () => queue.messages,
+}));
+vi.mock("@/features/agent-sessions/components/queued-messages", () => ({
+  QueuedMessageList: ({ messages }: { messages: QueuedMessageView[] }) =>
+    messages.length > 0 ? (
+      <ul data-testid="queue">
+        {messages.map((m) => (
+          <li key={m.id}>{m.prompt}</li>
+        ))}
+      </ul>
+    ) : null,
 }));
 vi.mock(
   "@/features/agent-sessions/components/structured-result-callout",
@@ -203,5 +232,75 @@ describe("SessionChatColumn lineage (ADR102)", () => {
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(panel.parentElement).toHaveClass("lg:flex-row");
+  });
+});
+
+describe("SessionChatColumn message queue (ADR047 D12)", () => {
+  const waiting = (id: string, prompt: string, position: number) => ({
+    id,
+    position,
+    prompt,
+    author: "alice",
+    attachmentCount: 0,
+    blockedReason: null,
+    createdAt: null,
+  });
+
+  afterEach(() => {
+    queue.messages = [];
+  });
+
+  it("shows no queue region for a session with nothing queued", () => {
+    render(column(view("running", { sandboxId: "sandbox-1" })));
+    expect(screen.queryByTestId("queue")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "echo" })).toHaveAttribute(
+      "data-queued-count",
+      "0",
+    );
+  });
+
+  it("lists the queued messages above the composer and tells it how many wait", () => {
+    queue.messages = [
+      waiting("aqm-1", "run the linter", 1),
+      waiting("aqm-2", "then the tests", 2),
+    ];
+    render(column(view("running", { sandboxId: "sandbox-1" })));
+
+    const list = screen.getByTestId("queue");
+    expect(list).toHaveTextContent("run the linter");
+    expect(list).toHaveTextContent("then the tests");
+    const composer = screen.getByRole("button", { name: "echo" });
+    expect(composer).toHaveAttribute("data-queued-count", "2");
+    // Above the composer in document order.
+    expect(
+      list.compareDocumentPosition(composer) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("keeps the queue and composer off an archived session", () => {
+    queue.messages = [waiting("aqm-1", "run the linter", 1)];
+    render(
+      column(
+        view("completed", {
+          sandboxId: null,
+          archivedAt: new Date().toISOString(),
+          isArchived: true,
+        }),
+      ),
+    );
+    expect(screen.queryByTestId("queue")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "echo" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("takes the optimistic echo back when the server queued the message instead", async () => {
+    const user = userEvent.setup();
+    render(column(view("completed", { sandboxId: "sandbox-1", turns: 1 })));
+    await user.click(screen.getByRole("button", { name: "echo" }));
+    expect(screen.getByText("echoed prompt")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "withdraw" }));
+    expect(screen.queryByText("echoed prompt")).not.toBeInTheDocument();
   });
 });

@@ -5,6 +5,7 @@
 import type {
   AgentSessionFieldsFragment,
   AgentSessionMintFieldsFragment,
+  AgentSessionQueuedMessageFieldsFragment,
 } from "@/graphql/definitions";
 import {
   parseAgentSessionPrState,
@@ -13,6 +14,8 @@ import {
   type AgentSessionPhase,
   type AgentSessionTicket,
   type AgentSessionView,
+  type QueuedMessageView,
+  type SteerResult,
 } from "@/features/agent-sessions/types";
 
 /** Phases after which the session will not change on its own. */
@@ -136,6 +139,44 @@ export function toAgentSessionTicket(
     url: wire.url ?? null,
     streamUrl: wire.streamUrl ?? null,
     expiresAt: wire.expiresAt ?? null,
+  };
+}
+
+/** Projects one queued message (ADR047 D12) onto its view. */
+export function toQueuedMessageView(
+  wire: AgentSessionQueuedMessageFieldsFragment,
+): QueuedMessageView {
+  return {
+    id: wire.id,
+    position: wire.position,
+    prompt: wire.prompt,
+    author: wire.author,
+    attachmentCount: wire.attachmentIds?.length ?? 0,
+    blockedReason: wire.blockedReason || null,
+    createdAt: wire.createdAt ?? null,
+  };
+}
+
+/** Maps a nullable queue to views, next to run first as the server orders it. */
+export function toQueuedMessageViews(
+  wire:
+    ReadonlyArray<AgentSessionQueuedMessageFieldsFragment> | null | undefined,
+): QueuedMessageView[] {
+  return (wire ?? []).map(toQueuedMessageView);
+}
+
+/** Maps a steer's payload: its ticket plus the message it queued, if any. */
+export function toSteerResult(
+  wire: AgentSessionFieldsFragment &
+    AgentSessionMintFieldsFragment & {
+      queuedMessage?: AgentSessionQueuedMessageFieldsFragment | null;
+    },
+): SteerResult {
+  return {
+    ...toAgentSessionTicket(wire),
+    queuedMessage: wire.queuedMessage
+      ? toQueuedMessageView(wire.queuedMessage)
+      : null,
   };
 }
 

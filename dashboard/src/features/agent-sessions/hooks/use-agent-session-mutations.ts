@@ -13,6 +13,7 @@ import {
   ResumeAgentSessionDocument,
   AttachAgentSessionDocument,
   CancelAgentSessionDocument,
+  InterruptAgentSessionDocument,
   ArchiveAgentSessionDocument,
   UnarchiveAgentSessionDocument,
   SetAgentSessionTagsDocument,
@@ -22,11 +23,17 @@ import {
 import {
   toAgentSessionTicket,
   toAgentSessionView,
+  toSteerResult,
 } from "@/features/agent-sessions/lib/mapper";
 import { toAgentSessionError } from "@/features/agent-sessions/lib/errors";
+import {
+  patchCachedQueue,
+  withQueuedMessage,
+} from "@/features/agent-sessions/lib/queue-cache";
 import type {
   AgentSessionTicket,
   AgentSessionView,
+  SteerResult,
 } from "@/features/agent-sessions/types";
 
 /** The composer's collected create fields (ADR047 D9 create form subset). */
@@ -73,23 +80,39 @@ export interface SteerOptions {
   attachmentIds?: string[];
   /** Workspace skills the follow-up turn must follow (ADR099 D4). */
   skills?: AgentSessionSkillInput[];
+  /**
+   * Makes a retried send of a message that was queued harmless (ADR047 D12):
+   * the server answers the message already queued. Sent only for a send the
+   * composer expects to queue; a send that starts a turn records no key.
+   */
+  idempotencyKey?: string;
 }
 
 export interface UseAgentSessionMutationsResult {
   /** Fires `createAgentSession`; resolves the new session + attach ticket. */
   create: (input: CreateAgentSessionInput) => Promise<AgentSessionTicket>;
-  /** Steers an idle session with a follow-up prompt (redispatch path). */
+  /**
+   * Steers a session with a follow-up prompt. An idle session starts a turn
+   * (redispatch); a session whose turn runs, or that has messages waiting,
+   * queues it instead and the result carries `queuedMessage` (ADR047 D12).
+   */
   steer: (
     id: string,
     prompt: string,
     options?: SteerOptions,
-  ) => Promise<AgentSessionTicket>;
+  ) => Promise<SteerResult>;
   /** Resumes an idle session (re-mints its attach ticket). */
   resume: (id: string) => Promise<AgentSessionTicket>;
   /** Reconnect-mints a running session's attach ticket (m43 reconnect). */
   attach: (id: string) => Promise<AgentSessionTicket>;
   /** Cancels a session; resolves the updated (canceling/canceled) view. */
   cancel: (id: string) => Promise<AgentSessionView>;
+  /**
+   * Stop turn (ADR047 D12): ends only the running turn, never the session. The
+   * call answers once the request is delivered; the turn settles within about
+   * 15 seconds and the session stays steerable with its queue in place.
+   */
+  interrupt: (id: string) => Promise<AgentSessionView>;
   /** Archives a session out of the working set (ADR065 D1); still viewable. */
   archive: (id: string) => Promise<AgentSessionView>;
   /** Returns an archived session to the working set. */
@@ -210,6 +233,12 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     "cancelAgentSession",
     reconcileSession,
   );
+  const interrupt = useByIdViewMutation(
+    InterruptAgentSessionDocument,
+    (d) => d.interruptAgentSession,
+    "interruptAgentSession",
+    reconcileSession,
+  );
   const archive = useByIdViewMutation(
     ArchiveAgentSessionDocument,
     (d) => d.archiveAgentSession,
@@ -268,7 +297,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
       id: string,
       prompt: string,
       options?: SteerOptions,
-    ): Promise<AgentSessionTicket> => {
+    ): Promise<SteerResult> => {
       try {
         const res = await paymentGate.run(() =>
           steerMutation({
@@ -282,20 +311,28 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
                 ? options.attachmentIds
                 : undefined,
               skills: options?.skills?.length ? options.skills : undefined,
+              idempotencyKey: options?.idempotencyKey || undefined,
             },
             fetchPolicy: "no-cache",
           }),
         );
         const session = res.data?.steerAgentSession;
         if (!session) throw new Error("steerAgentSession returned no session");
-        const ticket = toAgentSessionTicket(session);
+        const result = toSteerResult(session);
         reconcileSession(session);
-        return ticket;
+        // A queued message shows in the queue list at once, not on its next read.
+        const queued = session.queuedMessage;
+        if (queued) {
+          patchCachedQueue(client.cache, id, (queue) =>
+            withQueuedMessage(queue, queued),
+          );
+        }
+        return result;
       } catch (err) {
         throw toAgentSessionError(err);
       }
     },
-    [paymentGate, steerMutation, reconcileSession],
+    [client, paymentGate, steerMutation, reconcileSession],
   );
 
   const resume = useCallback(
@@ -370,6 +407,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     resume,
     attach,
     cancel,
+    interrupt,
     archive,
     unarchive,
     deleteSession,

@@ -51,6 +51,8 @@ bex logout
 
 `bex agent automations apply -f .bex/automations/` keeps Agent Automations in files; see [`bex agent automations`](../../docs/bex-cli.md#agent-automations-bex-agent-automations).
 
+`bex agent chat ags-…` attaches to a session live. A message typed while a turn runs is queued on the server (`queued — sends when this turn ends`, several can wait, and a later `chat` lists them), `/stop` ends only the running turn and leaves the session open, `/cancel` cancels after a confirmation, and Ctrl-C or `/quit` leave the session and its queue running; see [`bex agent chat`](../../docs/bex-cli.md#live-sessions-bex-agent-chat). `bex agent send` against a running session queues the message the same way.
+
 The login uses Bex's device-verification flow. It persists the upstream YAML schema under `~/.bex/cli.yaml` with mode `0600`; it does not touch `~/.render/cli.yaml` in normal use.
 
 Against the default Bex API, `bex services` and `bex deploys list` save `dashboard_url: https://dashboard.bex.co` into a config that has none yet (no login, or an environment credential), so their Dashboard action opens the Bex dashboard. A saved origin, a custom API host and the credential itself are never touched or persisted.

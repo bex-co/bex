@@ -136,8 +136,10 @@ func skillLimitError(msg string, limit int) error {
 	return core.NewBadRequestError("AGENT_SKILL_LIMIT_EXCEEDED", msg, map[string]any{"limit": limit})
 }
 
+const codeSkillNotFound = "AGENT_SKILL_NOT_FOUND"
+
 func errSkillNotFound(ref string) error {
-	return core.NewNotFoundError("AGENT_SKILL_NOT_FOUND", "no workspace skill has this id or name", map[string]any{"skill": ref})
+	return core.NewNotFoundError(codeSkillNotFound, "no workspace skill has this id or name", map[string]any{"skill": ref})
 }
 
 func errSkillConflict(msg string) error {

@@ -178,8 +178,10 @@ func secretLimitError(msg string, limit int) error {
 	return core.NewBadRequestError("AGENT_SECRET_LIMIT_EXCEEDED", msg, map[string]any{"limit": limit})
 }
 
+const codeSecretNotFound = "AGENT_SECRET_NOT_FOUND"
+
 func errSecretNotFound(name string) error {
-	return core.NewNotFoundError("AGENT_SECRET_NOT_FOUND", "no workspace agent secret has this name", map[string]any{"name": name})
+	return core.NewNotFoundError(codeSecretNotFound, "no workspace agent secret has this name", map[string]any{"name": name})
 }
 
 func errSecretsUnavailable() error {

@@ -105,6 +105,11 @@ export function agentSessionAvailabilityCopy(
     : null;
 }
 
+// The codes this file types: the session's own, and a queued message's
+// (`AGENT_QUEUED_MESSAGE_*`, ADR047 D12: not found, already dispatched, owned
+// attachments), which share the same `agentSessions.errors.*` messages.
+const AGENT_SESSION_CODE = /^AGENT_(SESSION|QUEUED_MESSAGE)_/;
+
 /** Pulls the flattened extension params (minus `code`) off one GraphQL error. */
 function extensionParams(
   extensions: Record<string, unknown> | undefined,
@@ -120,7 +125,8 @@ function extensionParams(
 
 /**
  * Normalizes an Apollo operation rejection into a typed agent-session error:
- * coded GraphQL failures preserve their `AGENT_SESSION_*` code (an
+ * coded GraphQL failures preserve their `AGENT_SESSION_*` or
+ * `AGENT_QUEUED_MESSAGE_*` code (an
  * unconfigured platform is AGENT_SESSION_NOT_CONFIGURED), and a cause-less
  * transport 503 becomes dependency-unavailable. Other failures, wording that
  * merely says "not configured" included, stay unchanged (w5/m130).
@@ -139,7 +145,7 @@ export function toAgentSessionError(err: unknown): unknown {
   if (CombinedGraphQLErrors.is(err)) {
     for (const item of err.errors) {
       const code = item.extensions?.["code"];
-      if (typeof code === "string" && code.startsWith("AGENT_SESSION_")) {
+      if (typeof code === "string" && AGENT_SESSION_CODE.test(code)) {
         return new AgentSessionError(
           code,
           item.message,

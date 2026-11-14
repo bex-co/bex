@@ -158,12 +158,15 @@ var (
 	// AgentAutomation is a workspace agent automation (ADR101): a schedule
 	// trigger plus a session template that starts agent sessions.
 	AgentAutomation = Kind{prefix: "aut", desc: "workspace agent automation"}
+	// AgentQueuedMessage is a message queued for an agent session while its
+	// turn runs (ADR047 D12).
+	AgentQueuedMessage = Kind{prefix: "aqm", desc: "queued agent-session message"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentAutomation, SandboxGroup, SandboxBuild, AgentQueuedMessage}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

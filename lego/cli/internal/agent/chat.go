@@ -34,9 +34,10 @@ import (
 // `bex agent chat` is ADR106 D2: a session live in the terminal. Line mode,
 // not a full-screen UI, so scrollback, tmux and pipes to tee keep working.
 // Public live turns are disabled (ADR047 D9), so a message typed while a turn
-// runs waits in the client and goes out by steer when the turn ends. Leaving
-// never cancels the session (ADR047: a client disconnect is not a cancel);
-// there are no permission prompts (DO_NOT_DO #APPROVAL-MODE).
+// runs is sent at once and queued by the server (ADR047 D12), which starts it
+// when the turn ends; the queue outlives this chat. Leaving never cancels the
+// session (ADR047: a client disconnect is not a cancel); there are no
+// permission prompts (DO_NOT_DO #APPROVAL-MODE).
 
 type chatOptions struct {
 	readOnly  bool
@@ -47,8 +48,8 @@ type chatOptions struct {
 // keeps running.
 var errDetached = errors.New("detached")
 
-const chatHelp = `Type a message and press Enter to send it; while a turn runs it waits
-and goes out when the turn ends. Commands:
+const chatHelp = `Type a message and press Enter to send it. While a turn runs it is queued on
+the server and runs when the turn ends; type more to queue more. Commands:
   /attach FILE        attach a file to the next message
   /skill NAME[:ARGS]  use a workspace skill in the next message
   /files [flags]      list (or --download DIR) the files the agent shared
@@ -59,6 +60,7 @@ and goes out when the turn ends. Commands:
   /pickup [--stash]   check out the session's branch in this directory
   /ssh                print the ssh command for the session's sandbox
   /archive            archive the session (it stops taking messages)
+  /stop               end the current turn only; the session stays open and its queue runs
   /cancel             cancel the session, after a confirmation
   /quit, /exit        leave; the session keeps running (also Ctrl-D, Ctrl-C)`
 
@@ -151,14 +153,17 @@ type chatState struct {
 	lines    <-chan string
 	renderer *chunkRenderer
 
-	pending   pendingMessage
-	summaries int // the last turn whose summary was printed
+	staged    message   // what /attach and /skill staged for the next message
+	held      []message // messages an older server refused for a running turn
+	summaries int       // the last turn whose summary was printed
 }
 
-// pendingMessage is the next message and what goes with it. Its files are
-// uploaded once, even when the send has to wait for a turn in flight.
-type pendingMessage struct {
+// message is one typed line and what goes with it. Its key is minted once, so
+// sending the line again cannot queue it twice, and its files are uploaded
+// once.
+type message struct {
 	prompt string
+	key    string
 	files  []string
 	ids    []string
 	skills []skillInvocation
@@ -177,6 +182,9 @@ func (ch *chatState) run() error {
 	if !ch.readOnly {
 		ch.say("(/help for commands; Ctrl-D or /quit leaves without cancelling)")
 	}
+	if s.PendingMessages > 0 {
+		ch.listQueued()
+	}
 	for {
 		s, err := ch.watchTurn()
 		if err != nil {
@@ -190,7 +198,9 @@ func (ch *chatState) run() error {
 			ch.say("The session is %s and takes no more messages.", s.State)
 			return nil
 		}
-		if ch.readOnly {
+		// The server starts a queued message's turn itself; this chat waits for
+		// it. With nothing queued it asks for the next message.
+		if ch.readOnly || s.PendingMessages > 0 {
 			err = ch.awaitNextTurn(s.Turns)
 		} else {
 			err = ch.sendNext()
@@ -198,6 +208,31 @@ func (ch *chatState) run() error {
 		if err != nil {
 			return err
 		}
+	}
+}
+
+// listQueued says what is still queued on the server, next first, so a chat
+// that attaches again shows what an earlier one left.
+func (ch *chatState) listQueued() {
+	queued, err := ch.a.api.queuedMessages(ch.a.ctx, ch.id)
+	if err != nil {
+		ch.say("queued messages: %v", err)
+		return
+	}
+	if len(queued) == 0 {
+		return
+	}
+	noun := "messages"
+	if len(queued) == 1 {
+		noun = "message"
+	}
+	ch.say("%d %s queued, next first:", len(queued), noun)
+	for i, m := range queued {
+		line := fmt.Sprintf("  %d. %s", i+1, clip(firstLine(m.Prompt), 100))
+		if m.BlockedReason != "" {
+			line += " (waiting: " + clip(firstLine(m.BlockedReason), 100) + ")"
+		}
+		ch.say("%s", line)
 	}
 }
 
@@ -220,7 +255,7 @@ func (ch *chatState) next(done <-chan struct{}, timer <-chan time.Time) (line st
 }
 
 // watchTurn shows the running turn until the session settles while taking
-// typed lines: commands run at once, a message waits for the turn's end.
+// typed lines: commands run at once, a message goes to the server's queue.
 func (ch *chatState) watchTurn() (session, error) {
 	ctx, cancel := context.WithCancel(ch.a.ctx)
 	defer cancel()
@@ -239,7 +274,7 @@ func (ch *chatState) watchTurn() (session, error) {
 			break
 		}
 		if lerr == nil {
-			lerr = ch.input(line, true)
+			_, lerr = ch.input(line)
 		}
 		if lerr != nil {
 			cancel()
@@ -256,40 +291,44 @@ func (ch *chatState) watchTurn() (session, error) {
 	return res.sessions[0], nil
 }
 
-// sendNext sends the pending message, or the next one typed.
+// sendNext is between turns with nothing queued on the server: it sends what
+// an older server made wait, then asks for messages until one goes out.
 func (ch *chatState) sendNext() error {
-	for ch.pending.prompt == "" {
+	moved, err := ch.sendHeld()
+	for !moved && err == nil {
 		_, _ = fmt.Fprint(ch.out, "> ")
-		line, _, err := ch.next(nil, nil)
-		if err == nil {
-			err = ch.input(line, false)
-		}
-		if err != nil {
-			return err
+		var line string
+		if line, _, err = ch.next(nil, nil); err == nil {
+			moved, err = ch.input(line)
 		}
 	}
-	p := &ch.pending
-	if p.ids == nil {
-		ids, err := uploadAll(ch.a.invocation, ch.a.owner, p.files)
-		if err != nil {
-			return err
-		}
-		p.ids = ids
-	}
-	_, _, err := ch.a.api.steer(ch.a.ctx, ch.id, steerRequest{Prompt: p.prompt, AttachmentIDs: p.ids, Skills: p.skills})
-	var apiErr *apiError
-	if errors.As(err, &apiErr) && apiErr.Code == codeSessionTurnInFlight {
-		return nil // a turn someone else started is running; send after it
-	}
-	if err != nil {
-		return err
-	}
-	ch.pending = pendingMessage{}
-	return nil
+	return err
 }
 
-// awaitNextTurn is read-only mode between turns: wait, backing off, for
-// someone else's next message to start a turn, still taking commands.
+// sendHeld sends the messages an older server refused for a running turn, in
+// order, until one starts a turn. moved is true when a turn runs or is still
+// in flight: the caller watches it.
+func (ch *chatState) sendHeld() (moved bool, err error) {
+	for len(ch.held) > 0 {
+		took, later, err := ch.post(&ch.held[0])
+		if err != nil {
+			return false, err
+		}
+		if later {
+			return true, nil
+		}
+		ch.held = ch.held[1:]
+		if took {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// awaitNextTurn is between turns when the next turn is not one this chat
+// starts: a message the server holds queued, or in read-only mode someone
+// else's. It waits, backing off, still taking commands and messages. It also
+// returns when the queue emptied without a turn (a message was removed).
 func (ch *chatState) awaitNextTurn(turns int) error {
 	var poll poller
 	delay := pollFirst
@@ -298,40 +337,78 @@ func (ch *chatState) awaitNextTurn(turns int) error {
 		if err != nil {
 			return err
 		}
-		if ok && (s.Turns > turns || !settled(s)) {
+		if ok && (s.Turns > turns || !settled(s) || (!ch.readOnly && s.PendingMessages == 0)) {
 			return nil
 		}
 		line, fired, err := ch.next(nil, time.After(delay))
 		if err != nil {
 			return err
 		}
-		if !fired {
-			if err := ch.input(line, true); err != nil {
-				return err
-			}
+		if fired {
+			delay = nextPoll(delay)
 			continue
 		}
-		delay = nextPoll(delay)
+		if moved, err := ch.input(line); err != nil || moved {
+			return err
+		}
 	}
 }
 
-// input handles one typed line: a command, or a message (held while a turn
-// runs, sent at once between turns).
-func (ch *chatState) input(line string, running bool) error {
+// input handles one typed line: a command, or a message, which goes to the
+// server at once. moved reports a message that changed what the session is
+// doing: it started a turn, the server queued it, or an older server will take
+// it once the turn in flight ends.
+func (ch *chatState) input(line string) (moved bool, err error) {
 	line = strings.TrimSpace(line)
 	switch {
 	case line == "":
 	case strings.HasPrefix(line, "/"):
-		return ch.command(strings.Fields(line))
+		err = ch.command(strings.Fields(line))
 	case ch.readOnly:
 		ch.say("read-only: messages are not sent (attach without --read-only to steer)")
 	default:
-		ch.pending.prompt = line
-		if running {
-			ch.say("queued — sends when this turn ends")
+		return ch.send(line)
+	}
+	return false, err
+}
+
+// send sends a typed line with what /attach and /skill staged for it.
+func (ch *chatState) send(prompt string) (moved bool, err error) {
+	m := ch.staged
+	m.prompt, m.key = prompt, ch.d.newKey()
+	ch.staged = message{}
+	took, later, err := ch.post(&m)
+	if later {
+		ch.held = append(ch.held, m)
+		ch.say("queued — sends when this turn ends")
+	}
+	return took || later, err
+}
+
+// post sends m. took is true when the server took it: it started a turn (200)
+// or queued the message (202, whose place is printed). later is true when an
+// older server refused it for the turn in flight. A refusal is printed, not
+// returned, so the chat goes on; a failure of the request itself ends it.
+func (ch *chatState) post(m *message) (took, later bool, err error) {
+	if m.ids == nil && len(m.files) > 0 {
+		if m.ids, err = uploadAll(ch.a.invocation, ch.a.owner, m.files); err != nil {
+			return false, false, err
 		}
 	}
-	return nil
+	s, _, err := ch.a.api.steer(ch.a.ctx, ch.id, steerRequest{Prompt: m.prompt, AttachmentIDs: m.ids, Skills: m.skills}, m.key)
+	var apiErr *apiError
+	switch {
+	case errors.As(err, &apiErr) && apiErr.Code == codeSessionTurnInFlight:
+		return false, true, nil
+	case errors.As(err, &apiErr):
+		ch.say("not sent: %v", apiErr)
+		return false, false, nil
+	case err != nil:
+		return false, false, err
+	case s.Queued != nil:
+		ch.say("queued — sends when this turn ends (position %d)", s.Queued.Position)
+	}
+	return true, false, nil
 }
 
 func (ch *chatState) command(words []string) error {
@@ -348,16 +425,16 @@ func (ch *chatState) command(words []string) error {
 				return nil
 			}
 		}
-		ch.pending.files, ch.pending.ids = append(ch.pending.files, rest...), nil
-		ch.say("%d file(s) go with the next message", len(ch.pending.files))
+		ch.staged.files, ch.staged.ids = append(ch.staged.files, rest...), nil
+		ch.say("%d file(s) go with the next message", len(ch.staged.files))
 	case "skill":
 		skills, err := parseSkills(rest)
 		if err != nil || len(skills) == 0 {
 			ch.say("usage: /skill NAME[:ARGUMENTS]")
 			return nil
 		}
-		ch.pending.skills = append(ch.pending.skills, skills...)
-		ch.say("the next message uses %d skill(s)", len(ch.pending.skills))
+		ch.staged.skills = append(ch.staged.skills, skills...)
+		ch.say("the next message uses %d skill(s)", len(ch.staged.skills))
 	case "ssh":
 		// chat reads the terminal's input itself, so an interactive ssh
 		// cannot share it; print the command to run beside the chat.
@@ -366,6 +443,8 @@ func (ch *chatState) command(words []string) error {
 		} else {
 			ch.say("In another terminal: ssh %s   (or `bex agent ssh %s`)", address, ch.id)
 		}
+	case "stop":
+		ch.stop()
 	case "cancel":
 		ch.say("Cancel %s? It stops and takes no more messages. [y/N]", ch.id)
 		answer, _, err := ch.next(nil, nil)
@@ -390,6 +469,25 @@ func (ch *chatState) command(words []string) error {
 		ch.sub(verb, rest...)
 	}
 	return nil
+}
+
+// stop ends the running turn only. It asks nothing, unlike /cancel: the session
+// stays open and keeps what it had queued.
+func (ch *chatState) stop() {
+	err := ch.a.api.interrupt(ch.a.ctx, ch.id)
+	var apiErr *apiError
+	switch {
+	case err == nil:
+		ch.say("Stopping the current turn. The session stays open and any queued messages run next; /cancel ends it.")
+	case errors.As(err, &apiErr) && apiErr.Code == codeNoTurnRunning:
+		ch.say("stop: no turn is running, so there is nothing to stop")
+	case errors.As(err, &apiErr) && apiErr.Code == codeTurnStarting:
+		ch.say("stop: the turn is still starting; try again once the agent is working")
+	case errors.As(err, &apiErr):
+		ch.say("stop: %v", apiErr)
+	default:
+		ch.say("stop: %v", err)
+	}
 }
 
 // sub runs `bex agent <verb> <id> args…` in place, so a chat command is the

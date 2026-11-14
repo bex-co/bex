@@ -63,6 +63,7 @@ type turnOutcome string
 
 const (
 	turnOutcomeCompleted          turnOutcome = "completed"
+	turnOutcomeInterrupted        turnOutcome = "interrupted"
 	turnOutcomeFailed             turnOutcome = "failed"
 	turnOutcomeLost               turnOutcome = "lost"
 	turnOutcomeCanceled           turnOutcome = "canceled"

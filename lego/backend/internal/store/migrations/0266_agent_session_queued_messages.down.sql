@@ -1,0 +1,3 @@
+DROP INDEX agent_session_queued_messages_idempotency_idx;
+DROP INDEX agent_session_queued_messages_pending_idx;
+DROP TABLE agent_session_queued_messages;

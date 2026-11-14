@@ -24,6 +24,26 @@ const codeIdempotencyKeyReused = "AGENT_SESSION_IDEMPOTENCY_KEY_REUSED"
 // bex will mint.
 var platformKeyPrefixes = []string{spawnKeyPrefix, takeoverKeyPrefix, automationKeyPrefix}
 
+// checkIdempotencyKey refuses a key that is too long, not printable ASCII, or
+// in a namespace bex mints its own keys in (unless bex is the caller).
+func checkIdempotencyKey(key string, platformKey bool) error {
+	if key == "" {
+		return nil
+	}
+	if len(key) > maxIdempotencyKeyLen {
+		return core.NewBadRequestError("AGENT_SESSION_IDEMPOTENCY_KEY_INVALID", "idempotency key must be 1-128 printable ASCII characters", nil)
+	}
+	if !platformKey && slices.ContainsFunc(platformKeyPrefixes, func(prefix string) bool { return strings.HasPrefix(key, prefix) }) {
+		return core.NewBadRequestError("AGENT_SESSION_IDEMPOTENCY_KEY_INVALID", "idempotency keys starting with "+strings.Join(platformKeyPrefixes, " or ")+" are reserved for the platform", nil)
+	}
+	for _, r := range key {
+		if r < 0x21 || r > 0x7e {
+			return core.NewBadRequestError("AGENT_SESSION_IDEMPOTENCY_KEY_INVALID", "idempotency key must be 1-128 printable ASCII characters", nil)
+		}
+	}
+	return nil
+}
+
 // idempotencyOf validates the client's key and digests the normalized request
 // it guards. The digest covers everything that shapes the session the client
 // asked for, so retrying the same intent matches and changing any of it does
@@ -33,16 +53,8 @@ func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurn
 	if key == "" {
 		return "", "", nil
 	}
-	if len(key) > maxIdempotencyKeyLen {
-		return "", "", core.NewBadRequestError("AGENT_SESSION_IDEMPOTENCY_KEY_INVALID", "idempotency key must be 1-128 printable ASCII characters", nil)
-	}
-	if !req.platformKey && slices.ContainsFunc(platformKeyPrefixes, func(prefix string) bool { return strings.HasPrefix(key, prefix) }) {
-		return "", "", core.NewBadRequestError("AGENT_SESSION_IDEMPOTENCY_KEY_INVALID", "idempotency keys starting with "+strings.Join(platformKeyPrefixes, " or ")+" are reserved for the platform", nil)
-	}
-	for _, r := range key {
-		if r < 0x21 || r > 0x7e {
-			return "", "", core.NewBadRequestError("AGENT_SESSION_IDEMPOTENCY_KEY_INVALID", "idempotency key must be 1-128 printable ASCII characters", nil)
-		}
+	if err := checkIdempotencyKey(key, req.platformKey); err != nil {
+		return "", "", err
 	}
 	egress := slices.Clone(req.EgressAllowlist)
 	slices.Sort(egress)

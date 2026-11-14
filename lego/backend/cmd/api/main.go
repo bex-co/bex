@@ -484,6 +484,9 @@ func main() {
 	// the other registries so ModelAuthFailer on :8091 can observe too (w5/m88).
 	srv.AgentSessionCompleter.Metrics = agentMetrics
 	srv.AgentSessions.Metrics = agentMetrics
+	// The message queue's depth, dispatch latency and blocked dispatches
+	// (ADR047 D12) sit beside the lifecycle series.
+	srv.AgentSessions.QueueMetrics = agentsessions.NewQueueMetrics(metricRegistry)
 	// The completer records the session branch's head as GitHub has it, not as
 	// the sandbox reports it (w5/m382).
 	if ghClient != nil {
@@ -918,6 +921,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentRepoEnvironmentStore = st // ADR109: repository environments
 	deps.AgentAutomationStore = st      // ADR101: agent automations
 	deps.AgentFeedbackStore = st        // ADR047 D11: PR feedback turn origins
+	deps.AgentQueueStore = st           // ADR047 D12: messages queued behind a running turn
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
@@ -1742,6 +1746,12 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 		// lease keeps replicas from steering one session twice.
 		if srv.PRFeedback != nil {
 			go srv.PRFeedback.Run(ctx)
+		}
+		// Messages people queued behind a running turn (ADR047 D12) run as
+		// their session settles, in order, one per turn. Every replica polls;
+		// the claim's SKIP LOCKED and the lease keep one message to one turn.
+		if srv.AgentSessions.QueueRunnable() {
+			go (&agentsessions.MessageQueue{Sessions: srv.AgentSessions, Store: st, Metrics: srv.AgentSessions.QueueMetrics}).Run(ctx)
 		}
 		// Every replica reads due pull request states; the claim's SKIP LOCKED
 		// keeps two from reading the same one.

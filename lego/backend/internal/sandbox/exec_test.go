@@ -414,6 +414,74 @@ func TestReadSessionTranscriptHarvestsLogOverExecBoundary(t *testing.T) {
 	}
 }
 
+// InterruptSessionTurn (ADR047 D12) writes the sentinel the driver watches, as
+// one exec command over the same system-subject boundary the status read uses:
+// the turn's number goes into the file beside the status file, whole.
+func TestInterruptSessionTurnWritesTheSentinelOverExecBoundary(t *testing.T) {
+	state := "running"
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/sandboxes/os-agent" {
+			sb := osSandbox{ID: "os-agent", Metadata: map[string]string{
+				metadataOwner: "id-a", metadataWorkspace: "tea-a", metadataRegime: metadataSandboxRegime,
+				metadataNetworkPolicy: string(NetworkPolicyDenyAll), agentsession.LabelSession: "ags-one",
+			}}
+			sb.Status.State = state
+			_ = json.NewEncoder(w).Encode(sb)
+			return
+		}
+		http.NotFound(w, r)
+	}))
+	defer upstream.Close()
+
+	secret := []byte("exec-secret")
+	var gotSubject string
+	var gotArgv []string
+	exit := 0
+	gateway := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		claims, err := sandboxexec.Verify(secret, r.Header.Get(sandboxexec.TicketHeader), time.Now())
+		if err != nil {
+			http.Error(w, "invalid ticket", http.StatusUnauthorized)
+			return
+		}
+		gotSubject, gotArgv = claims.Subject, claims.Command
+		w.Header().Set("Content-Type", "text/event-stream")
+		fmt.Fprintf(w, "event: exit\ndata: {\"exit_code\":%d}\n\n", exit)
+	}))
+	defer gateway.Close()
+
+	service := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: NewClient(upstream.URL),
+		Exec:   &ExecConfig{Secret: secret, GatewayURL: gateway.URL, Client: gateway.Client()},
+	}
+	lifecycle := &AgentSessionLifecycle{service: service}
+
+	if err := lifecycle.InterruptSessionTurn(context.Background(), "tea-a", "ags-one", "os-agent", 7); err != nil {
+		t.Fatalf("InterruptSessionTurn: %v", err)
+	}
+	if gotSubject != systemExecSubject {
+		t.Fatalf("ticket subject = %q, want %q", gotSubject, systemExecSubject)
+	}
+	want := "printf %d 7 > /var/run/bex-agent/interrupt.tmp && mv -f /var/run/bex-agent/interrupt.tmp /var/run/bex-agent/interrupt"
+	if len(gotArgv) != 3 || gotArgv[2] != want {
+		t.Fatalf("exec argv = %q, want the sentinel write %q", gotArgv, want)
+	}
+	// A write that fails is an error, not a silent no-op.
+	exit = 1
+	if err := lifecycle.InterruptSessionTurn(context.Background(), "tea-a", "ags-one", "os-agent", 7); err == nil {
+		t.Fatal("a failed sentinel write reported success")
+	}
+	// A sandbox that is gone, or bound to another session, is NotFound.
+	exit = 0
+	if err := lifecycle.InterruptSessionTurn(context.Background(), "tea-a", "ags-other", "os-agent", 7); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("a sandbox bound to another session = %v, want NotFound", err)
+	}
+	state = "terminated"
+	if err := lifecycle.InterruptSessionTurn(context.Background(), "tea-a", "ags-one", "os-agent", 7); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("a terminated sandbox = %v, want NotFound", err)
+	}
+}
+
 // contributorChecker models a workspace contributor: they hold can_operate /
 // can_view_logs but NOT can_create or can_view_sensitive — the exact role gap
 // round-13 #1 and round-16 #7 close (caller-selected sandbox commands are

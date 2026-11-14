@@ -26,6 +26,11 @@ var CloudAgentsTools = []string{
 	"get_agent_session",
 	"list_agent_sessions",
 	"send_agent_session_message",
+	"list_agent_session_queued_messages",
+	"edit_agent_session_queued_message",
+	"delete_agent_session_queued_message",
+	"move_agent_session_queued_message",
+	"interrupt_agent_session",
 	"get_agent_session_transcript",
 	"get_agent_session_tool_output",
 	"cancel_agent_session",
@@ -135,6 +140,7 @@ type attachTicketArgs struct {
 type steerArgs struct {
 	ID              string   `json:"id"`
 	Prompt          string   `json:"prompt"`
+	IdempotencyKey  string   `json:"idempotencyKey,omitempty" jsonschema:"makes a retried send harmless when the message is queued: the same key and message return the one already queued. 1-128 printable ASCII characters"`
 	EgressAllowlist []string `json:"egressAllowlist,omitempty"`
 	AttachmentIDs   []string `json:"attachmentIds,omitempty"`
 	// OutputSchema and OutputRequired: this turn's structured-output contract (ADR094 D5).
@@ -253,6 +259,9 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session", Description: "Inspect one cloud coding-agent session."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Get(ctx, in.ID)
+			if err == nil {
+				s.fillQueue(ctx, &out) // the MCP read inlines the messages that wait
+			}
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_tree", Description: "Read the whole tree of cloud coding-agent sessions a session belongs to (ADR102): pass any session id in the tree, get its root (rootSessionId) and every session below it (sessions), the root first and then by depth and creation time, each with its parentSessionId, depth, phase, state and outcome. Use it to see every child a session started in one call; list_agent_sessions with parentSessionId lists just the direct children."},
@@ -341,11 +350,12 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	// send_agent_session_message is the canonical name for a follow-up turn
 	// (ADR094 D2); steer_agent_session stays as an alias.
 	sendMessage := func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
-		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist, AttachmentIDs: in.AttachmentIDs, OutputSchema: in.OutputSchema, OutputRequired: in.OutputRequired, SessionSecretsInput: in.SessionSecretsInput, Skills: in.Skills})
+		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, IdempotencyKey: in.IdempotencyKey, EgressAllowlist: in.EgressAllowlist, AttachmentIDs: in.AttachmentIDs, OutputSchema: in.OutputSchema, OutputRequired: in.OutputRequired, SessionSecretsInput: in.SessionSecretsInput, Skills: in.Skills})
 		return nil, out, err
 	}
-	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled). Pass outputSchema to require a machine-readable result for this turn, read from outcome.result."}, sendMessage)
+	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session. On an idle session (state succeeded or failed) it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. While a turn is running, or behind messages already queued, it is queued instead: the answer carries queuedMessage (its id and place), and it runs as its own turn when the turn before it settles, one message per turn in order, at most 10 queued per session (AGENT_SESSION_QUEUE_FULL). The session must not be archived or canceled. Manage queued messages with list/edit/delete/move_agent_session_queued_message; interrupt_agent_session stops the running turn so a queued message runs now. Pass outputSchema to require a machine-readable result for this turn, read from outcome.result; inline secrets cannot be queued (name workspace secrets in secretNames)."}, sendMessage)
 	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."}, sendMessage)
+	s.registerQueueMCP(server)
 	s.registerAttachmentMCP(server)
 	s.registerSecretMCP(server)
 	s.registerRepoEnvironmentMCP(server)

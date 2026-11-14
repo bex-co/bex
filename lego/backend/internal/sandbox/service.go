@@ -1200,7 +1200,7 @@ func (s *Service) terminateObserved(ctx context.Context, key string, raw *osSand
 }
 
 // agentSessionStatusPath is the driver's machine-readable status file inside the
-// sandbox (BEX_AGENT_STATUS_FILE default, lego/agent-image/driver/src/config.mjs).
+// sandbox (BEX_AGENT_STATUS_FILE default, lego/agent-image/driver/src/config.ts).
 const agentSessionStatusPath = "/var/run/bex-agent/status.json"
 
 // ReadSessionStatus returns the raw driver status-file contents from the exact
@@ -1240,6 +1240,41 @@ func (l *AgentSessionLifecycle) ReadSessionStatus(ctx context.Context, workspace
 		return "", err
 	}
 	return result.Stdout, nil
+}
+
+// agentSessionInterruptPath is the sentinel file that ends the running turn
+// (ADR047 D12): it sits beside the driver's status file, holds the number of
+// the turn to end, and the driver watches it (lego/agent-image/driver/src/
+// interrupt.ts). A sentinel naming another turn is ignored, so a stale one can
+// never end a later turn.
+const agentSessionInterruptPath = "/var/run/bex-agent/interrupt"
+
+// InterruptSessionTurn asks the driver in the exact session sandbox to end
+// turn, and only that turn, by writing the sentinel the driver watches. There
+// is no bex-api to driver push channel, so it rides the gateway exec boundary
+// that ReadSessionStatus uses, as the same system subject: it re-validates the
+// sandbox binding and performs no user-facing authorization (its caller,
+// agentsessions.Service.Interrupt, has already authorized the member). The
+// sentinel is written whole, so the driver never reads a partial number. A
+// sandbox that is gone surfaces as NotFound.
+func (l *AgentSessionLifecycle) InterruptSessionTurn(ctx context.Context, workspaceID, sessionID, sandboxID string, turn int) error {
+	s := l.service
+	status, err := s.sessionSandboxState(ctx, workspaceID, sessionID, sandboxID)
+	if err != nil {
+		return err
+	}
+	if status == StatusTerminated || status == StatusErrored {
+		return sandboxNotFound(sandboxID)
+	}
+	result, err := s.sessionExec(ctx, workspaceID, sessionID, sandboxID,
+		fmt.Sprintf("printf %%d %d > %[2]s.tmp && mv -f %[2]s.tmp %[2]s", turn, agentSessionInterruptPath), maxExecOutputBytes)
+	if err != nil {
+		return err
+	}
+	if result.ExitCode != 0 {
+		return fmt.Errorf("%w: writing the interrupt sentinel exited %d", core.ErrSandboxesUnavailable, result.ExitCode)
+	}
+	return nil
 }
 
 // agentSessionLogPath is the driver's per-part conversation log inside

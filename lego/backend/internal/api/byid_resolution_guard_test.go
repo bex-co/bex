@@ -267,6 +267,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.AgentAttachment.Prefix():          {"agent-attachments", ""},
 	ids.AgentSkill.Prefix():               {"agent-skills", ""},
 	ids.AgentAutomation.Prefix():          {"agent-automations", ""},
+	ids.AgentQueuedMessage.Prefix():       {"agent-sessions", "addressed under its session, authorized on the session object"},
 	ids.BuildSource.Prefix():              {"", "build-source routes still answer a named 404; w2/m254 t003 adds their by-id family"},
 	ids.Build.Prefix():                    {"", "a build is addressed under its build source"},
 }

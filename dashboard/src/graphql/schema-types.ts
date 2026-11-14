@@ -418,12 +418,18 @@ export type AgentSession = {
   ownerId: Scalars['String']['output'];
   /** The agent session (ags-…) that spawned this one, when one did. */
   parentSessionId: Maybe<Scalars['String']['output']>;
+  /** How many queued messages wait to run as this session's next turns (ADR047 D12); set on lists and single-session reads. */
+  pendingMessages: Scalars['Int']['output'];
   phase: Scalars['String']['output'];
   prNumber: Maybe<Scalars['Int']['output']>;
   /** The pull request's state as bex last read it from GitHub: open (a draft too), merged or closed; null until first read. */
   prState: Maybe<Scalars['String']['output']>;
   prStateAt: Maybe<Scalars['String']['output']>;
   prUrl: Maybe<Scalars['String']['output']>;
+  /** The message a steerAgentSession queued behind the running turn instead of starting a turn; null when it started one. */
+  queuedMessage: Maybe<AgentSessionQueuedMessage>;
+  /** The messages waiting to run, next first; only on a single-session read. */
+  queuedMessages: Maybe<Array<AgentSessionQueuedMessage>>;
   repo: Scalars['String']['output'];
   /** The top of this session's tree, absent on a top-level session. */
   rootSessionId: Maybe<Scalars['String']['output']>;
@@ -529,6 +535,28 @@ export type AgentSessionPullRequest = {
   url: Scalars['String']['output'];
 };
 
+/** A message sent to an agent session while its turn ran, waiting to run as its own turn (ADR047 D12). */
+export type AgentSessionQueuedMessage = {
+  __typename: 'AgentSessionQueuedMessage';
+  attachmentIds: Maybe<Array<Scalars['String']['output']>>;
+  /** The member the turn runs as: who queued the message, or who last edited it. */
+  author: Scalars['String']['output'];
+  /** Why the last attempt to run it failed (a spend or live-sandbox limit); it is retried within seconds. */
+  blockedReason: Maybe<Scalars['String']['output']>;
+  createdAt: Maybe<Scalars['String']['output']>;
+  droppedReason: Maybe<Scalars['String']['output']>;
+  egressAllowlist: Maybe<Array<Scalars['String']['output']>>;
+  hasOutputSchema: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  position: Scalars['Int']['output'];
+  prompt: Scalars['String']['output'];
+  secretNames: Maybe<Array<Scalars['String']['output']>>;
+  sessionId: Scalars['String']['output'];
+  state: Scalars['String']['output'];
+  turn: Maybe<Scalars['Int']['output']>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+};
+
 /** An inline secret for one agent session (ADR098): the agent reads it as the env var name. Write-only. */
 export type AgentSessionSecretInput = {
   name: Scalars['String']['input'];
@@ -589,6 +617,8 @@ export type AgentSessionTranscriptTurn = {
   completedAt: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['String']['output'];
   deliveryMode: Scalars['String']['output'];
+  /** A person stopped the turn before it ended on its own (ADR047 D12). */
+  interrupted: Scalars['Boolean']['output'];
   outputRequired: Scalars['Boolean']['output'];
   /** The JSON Schema the turn was accepted with (ADR094 D5), as JSON text, or null for a free-form turn. */
   outputSchema: Maybe<Scalars['String']['output']>;
@@ -2012,6 +2042,8 @@ export type Mutation = {
   deleteEnvironment: Maybe<Scalars['String']['output']>;
   deleteKeyValue: Maybe<Scalars['Boolean']['output']>;
   deleteProject: Maybe<Scalars['String']['output']>;
+  /** Removes a pending message so it never runs. */
+  deleteQueuedAgentSessionMessage: Maybe<Scalars['Boolean']['output']>;
   deleteRegistryCredential: Maybe<Scalars['Boolean']['output']>;
   deleteRouterKey: Maybe<Scalars['Boolean']['output']>;
   deleteSSHKey: Scalars['Boolean']['output'];
@@ -2024,17 +2056,23 @@ export type Mutation = {
   disableAutoscaling: Maybe<Scalars['Boolean']['output']>;
   disconnectBlueprint: Maybe<Scalars['Boolean']['output']>;
   disconnectGit: Maybe<Scalars['Boolean']['output']>;
+  /** Replaces a pending message's prompt; the turn then runs as you. */
+  editQueuedAgentSessionMessage: AgentSessionQueuedMessage;
   enableKeyValueInternalAuth: Maybe<KeyValue>;
   executeDatabaseQuery: Maybe<DatabaseQueryResult>;
   failoverDatabase: Maybe<Scalars['Boolean']['output']>;
   finalizeWorkspaceCreation: Maybe<Workspace>;
   importSandboxImage: Maybe<SandboxImage>;
+  /** Stop turn: ends only the running turn. The session settles as completed with the turn interrupted and stays steerable; queued messages keep their place. Cancel, which ends the session, is unchanged. */
+  interruptAgentSession: Maybe<AgentSession>;
   inviteWorkspaceMember: Maybe<WorkspaceInvite>;
   leaveWorkspace: Maybe<Scalars['Boolean']['output']>;
   linkBuildSource: Maybe<Service>;
   linkEnvGroup: Maybe<Scalars['Boolean']['output']>;
   markPushNotificationRead: Scalars['Boolean']['output'];
   moveEnvGroup: Maybe<EnvGroup>;
+  /** Moves a pending message to a place in the queue (1 runs next; past the end is last) and returns the queue. Send now is interruptAgentSession, then a move to 1. */
+  moveQueuedAgentSessionMessage: Array<AgentSessionQueuedMessage>;
   patchEnvGroupEnvironment: Maybe<EnvGroupEnvironmentPatchResult>;
   patchServiceEnvironment: EnvironmentPatchResult;
   /** Stop an automation firing. */
@@ -2676,6 +2714,12 @@ export type MutationDeleteProjectArgs = {
 };
 
 
+export type MutationDeleteQueuedAgentSessionMessageArgs = {
+  id: Scalars['String']['input'];
+  messageId: Scalars['String']['input'];
+};
+
+
 export type MutationDeleteRegistryCredentialArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -2747,6 +2791,13 @@ export type MutationDisconnectGitArgs = {
 };
 
 
+export type MutationEditQueuedAgentSessionMessageArgs = {
+  id: Scalars['String']['input'];
+  messageId: Scalars['String']['input'];
+  prompt: Scalars['String']['input'];
+};
+
+
 export type MutationEnableKeyValueInternalAuthArgs = {
   id: Scalars['String']['input'];
 };
@@ -2778,6 +2829,11 @@ export type MutationImportSandboxImageArgs = {
   registryUsername?: InputMaybe<Scalars['String']['input']>;
   sandboxGroupId: Scalars['String']['input'];
   sourceImage: Scalars['String']['input'];
+};
+
+
+export type MutationInterruptAgentSessionArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -2817,6 +2873,13 @@ export type MutationMoveEnvGroupArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   environmentId: Scalars['String']['input'];
   id: Scalars['String']['input'];
+};
+
+
+export type MutationMoveQueuedAgentSessionMessageArgs = {
+  id: Scalars['String']['input'];
+  messageId: Scalars['String']['input'];
+  position: Scalars['Int']['input'];
 };
 
 
@@ -3460,6 +3523,7 @@ export type MutationSteerAgentSessionArgs = {
   attachmentIds?: InputMaybe<Array<Scalars['String']['input']>>;
   egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
   id: Scalars['String']['input'];
+  idempotencyKey?: InputMaybe<Scalars['String']['input']>;
   outputRequired?: InputMaybe<Scalars['Boolean']['input']>;
   outputSchema?: InputMaybe<Scalars['String']['input']>;
   prompt: Scalars['String']['input'];

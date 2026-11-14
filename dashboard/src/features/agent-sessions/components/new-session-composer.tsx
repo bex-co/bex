@@ -33,6 +33,7 @@ import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sess
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import { useAttachmentUploads } from "@/features/agent-sessions/hooks/use-attachment-uploads";
+import { useIdempotencyKey } from "@/features/agent-sessions/hooks/use-idempotency-key";
 import {
   AttachButton,
   AttachmentChips,
@@ -171,7 +172,7 @@ export function NewSessionComposer() {
 
   const source = useMemo(() => ({ repos, sessions }), [repos, sessions]);
 
-  const submitKey = useRef<{ fingerprint: string; key: string } | null>(null);
+  const submitKey = useIdempotencyKey();
 
   const submit = async (values: ComposerValues) => {
     setAvailabilityError(null);
@@ -206,26 +207,25 @@ export function NewSessionComposer() {
     // One key per distinct submit: a retry of the same content after a failure
     // reuses it (the server hands back the session it already created, `created:
     // false`, which is success here), edited content gets a fresh one.
-    const fingerprint = JSON.stringify([
-      currentWorkspaceId,
-      repo ?? "",
-      branch,
-      values.agent,
-      prompt,
-      sentAttachmentIds,
-      spendLimit.value,
-      // Values too, though the server's digest covers names only (ADR098 D2):
-      // a corrected value is a new request. The fingerprint never leaves memory.
-      [...secrets.secretNames].sort(),
-      [...secrets.secrets].sort((a, b) => a.name.localeCompare(b.name)),
-      composerSkillsFingerprint(skills),
-    ]);
-    if (submitKey.current?.fingerprint !== fingerprint) {
-      submitKey.current = { fingerprint, key: crypto.randomUUID() };
-    }
+    const idempotencyKey = submitKey.keyFor(
+      JSON.stringify([
+        currentWorkspaceId,
+        repo ?? "",
+        branch,
+        values.agent,
+        prompt,
+        sentAttachmentIds,
+        spendLimit.value,
+        // Values too, though the server's digest covers names only (ADR098 D2):
+        // a corrected value is a new request. The fingerprint never leaves memory.
+        [...secrets.secretNames].sort(),
+        [...secrets.secrets].sort((a, b) => a.name.localeCompare(b.name)),
+        composerSkillsFingerprint(skills),
+      ]),
+    );
     try {
       const ticket = await create({
-        idempotencyKey: submitKey.current.key,
+        idempotencyKey,
         ownerId: currentWorkspaceId,
         repo: repo ?? "",
         branch,
@@ -240,7 +240,7 @@ export function NewSessionComposer() {
       uploads.clear(sentAttachmentIds);
       setSecrets(EMPTY_COMPOSER_SECRETS);
       setSkills([]);
-      submitKey.current = null;
+      submitKey.release();
       await navigate({
         to: "/agents/$agentSessionId",
         params: { agentSessionId: ticket.session.id },
@@ -250,7 +250,7 @@ export function NewSessionComposer() {
     }
   };
   // handleSubmit runs per submit event, not during render, because the
-  // callback writes submitKey (react-hooks/refs).
+  // callback mints the submit key.
   const onSubmit = (event?: React.BaseSyntheticEvent) =>
     form.handleSubmit(submit)(event);
 

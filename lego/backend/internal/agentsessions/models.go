@@ -21,6 +21,7 @@ limitations under the License.
 package agentsessions
 
 import (
+	"context"
 	"encoding/json"
 	"time"
 )
@@ -96,9 +97,10 @@ const (
 // Driver turn states written to the sandbox status file
 // (lego/agent-image/driver/src/session.mjs); the Completer switches on these.
 const (
-	driverStateRunning   = "running"
-	driverStateSucceeded = "succeeded"
-	driverStateFailed    = "failed"
+	driverStateRunning     = "running"
+	driverStateSucceeded   = "succeeded"
+	driverStateInterrupted = "interrupted" // a person stopped the turn (ADR047 D12)
+	driverStateFailed      = "failed"
 )
 
 // AgentConfig is the stable cross-surface driver contract. Agent selects the
@@ -223,8 +225,20 @@ type CreateRequest struct {
 // phase 1). The BYO model key is sourced from OpenBao (ADR047 D7), never the
 // request, so no secret rides this input.
 type SteerRequest struct {
-	SessionID       string   `json:"-"`
-	Prompt          string   `json:"prompt,omitempty"`
+	SessionID string `json:"-"`
+	Prompt    string `json:"prompt,omitempty"`
+	// IdempotencyKey makes a retried send harmless when the message is queued
+	// (ADR047 D12): the same key and request return the message already
+	// queued, another request with it is refused. Optional, 1-128 printable
+	// ASCII characters, unique per session.
+	IdempotencyKey string `json:"idempotencyKey,omitempty"`
+	// mode and queuedMessageID are set by this package's own callers, never
+	// by a client. queuedMessageID names the queued message the dispatcher is
+	// delivering: the turn starts although messages are pending (it is the
+	// head of them), is refused while a turn runs, and records the message
+	// delivered in the transaction that starts it.
+	mode            steerMode
+	queuedMessageID string
 	EgressAllowlist []string `json:"egressAllowlist,omitempty"`
 	// AttachmentIDs are uploads to attach to this turn (ADR095 D3).
 	AttachmentIDs []string `json:"attachmentIds,omitempty"`
@@ -236,6 +250,19 @@ type SteerRequest struct {
 	// Skills are workspace skills this turn must use (ADR099 D4).
 	Skills []SkillInvocation `json:"skills,omitempty"`
 }
+
+// steerMode says what Steer does with a message that cannot start a turn now.
+type steerMode int
+
+const (
+	// steerQueues is every client's: a message sent while a turn runs, or
+	// behind messages already queued, is queued (ADR047 D12).
+	steerQueues steerMode = iota
+	// steerYields is PR feedback (ADR047 D11): it is never queued, and is
+	// refused while a turn runs or a person's messages are queued, so theirs
+	// go first.
+	steerYields
+)
 
 // SessionSecretsInput attaches secrets to a session (ADR098 D1), Devin's
 // secret_ids and session_secrets: references to workspace agent secrets and
@@ -304,8 +331,15 @@ type View struct {
 	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
 	// a pushed branch with no pull request. The work stays in the sandbox only
 	// until it is closed after the idle TTL. Empty when the agent delivered.
-	DeliveryNote  string `json:"deliveryNote,omitempty"`
-	FailureReason string `json:"failureReason,omitempty"`
+	DeliveryNote string `json:"deliveryNote,omitempty"`
+	// Queued is the message a steer queued instead of running (ADR047 D12);
+	// absent on every other answer. PendingMessages is how many messages wait
+	// to run next, set on single-session reads, steer answers and lists.
+	// QueuedMessages lists them, next first, on a single-session read.
+	Queued          *QueuedMessage  `json:"queuedMessage,omitempty"`
+	PendingMessages int             `json:"pendingMessages,omitempty"`
+	QueuedMessages  []QueuedMessage `json:"queuedMessages,omitempty"`
+	FailureReason   string          `json:"failureReason,omitempty"`
 	// FailureReasonCode is a stable code for the failure's cause when a client
 	// acts on it: SANDBOX_CAPACITY_LIMIT for a dispatch refused at the
 	// workspace's sandbox limit (w5/m132). Clients decide by it, never by the
@@ -342,6 +376,10 @@ type View struct {
 	// TurnOrigins say which turns PR feedback started (ADR047 D11): a review,
 	// a comment or a failed CI run. Only a single-session read carries them.
 	TurnOrigins []TurnOrigin `json:"turnOrigins,omitempty"`
+
+	// listQueue lists the pending messages on demand: set by a single-session
+	// read that counted them only.
+	listQueue func(context.Context) []QueuedMessage
 }
 
 // Outcome is the compact account of where a session stands (ADR094 D7): its
@@ -493,6 +531,9 @@ type TranscriptTurn struct {
 	TruncationReason    string     `json:"truncationReason,omitempty"`
 	CreatedAt           time.Time  `json:"createdAt"`
 	CompletedAt         *time.Time `json:"completedAt,omitempty"`
+	// Interrupted says a person stopped the turn before it ended on its own
+	// (ADR047 D12).
+	Interrupted bool `json:"interrupted"`
 	// Attachments are the files this turn attached (ADR095 D3); never null.
 	Attachments []TurnAttachment `json:"attachments"`
 	// OutputSchema is the JSON Schema the turn was accepted with (ADR094 D5),
@@ -528,4 +569,13 @@ type TranscriptPage struct {
 type AppliedSecret struct {
 	Name   string `json:"name"`
 	Source string `json:"source"`
+}
+
+// queued is the session's pending messages: those already listed, or listed
+// now by a read that counted them only.
+func (v View) queued(ctx context.Context) []QueuedMessage {
+	if v.QueuedMessages == nil && v.listQueue != nil {
+		return v.listQueue(ctx)
+	}
+	return v.QueuedMessages
 }

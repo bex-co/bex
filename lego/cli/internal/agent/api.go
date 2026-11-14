@@ -266,40 +266,107 @@ func decodeSession(raw []byte) (session, []byte, error) {
 	return s, raw, nil
 }
 
-// createAttempts bounds how often a create is repeated after a transport
-// failure or a gateway 5xx. The Idempotency-Key makes the repeat safe: the
-// API answers the first session instead of starting a second (ADR094 D4).
-const createAttempts = 3
+// postAttempts bounds how often a create is repeated after a transport failure
+// or a gateway 5xx. The Idempotency-Key makes the repeat safe: the API answers
+// the first session (create, ADR094 D4) instead of making a second.
+const postAttempts = 3
 
-func (a *api) create(ctx context.Context, owner string, in createRequest) (session, []byte, error) {
-	r := request{
-		path:   []string{"agent-sessions"},
-		query:  url.Values{"ownerId": {owner}},
-		header: http.Header{"Idempotency-Key": {in.IdempotencyKey}},
-	}
+// postKeyed posts r, which carries an Idempotency-Key, repeating a transient
+// failure with the same request. Only a request the key makes safe to repeat
+// goes through it: steer does not (see steer).
+func (a *api) postKeyed(ctx context.Context, r request, payload any) ([]byte, error) {
 	var lastErr error
-	for attempt := 1; attempt <= createAttempts; attempt++ {
-		raw, err := a.post(ctx, r, in)
+	for attempt := 1; attempt <= postAttempts; attempt++ {
+		raw, err := a.post(ctx, r, payload)
 		if err == nil {
-			return decodeSession(raw)
+			return raw, nil
 		}
 		lastErr = err
-		if !transient(err) || ctx.Err() != nil || attempt == createAttempts {
+		if !transient(err) || ctx.Err() != nil || attempt == postAttempts {
 			break
 		}
 		if err := a.sleep(ctx, retryAfter(err, time.Duration(attempt)*time.Second)); err != nil {
 			break
 		}
 	}
-	return session{}, nil, fmt.Errorf("create agent session: %w", lastErr)
+	return nil, lastErr
 }
 
-func (a *api) steer(ctx context.Context, id string, in steerRequest) (session, []byte, error) {
-	raw, err := a.post(ctx, request{path: []string{"agent-sessions", id, "steer"}}, in)
+func (a *api) create(ctx context.Context, owner string, in createRequest) (session, []byte, error) {
+	raw, err := a.postKeyed(ctx, request{
+		path:   []string{"agent-sessions"},
+		query:  url.Values{"ownerId": {owner}},
+		header: http.Header{"Idempotency-Key": {in.IdempotencyKey}},
+	}, in)
 	if err != nil {
-		return session{}, nil, fmt.Errorf("send to agent session %s: %w", id, err)
+		return session{}, nil, fmt.Errorf("create agent session: %w", err)
 	}
 	return decodeSession(raw)
+}
+
+// steer sends a message under key, one per typed line or send. A session whose
+// turn is running answers 202 and the message in session.Queued; otherwise it
+// starts a turn and answers 200.
+//
+// It is a single attempt, never repeated. The key makes a repeat safe only
+// against a message that is still queued: the server records no key for a send
+// that started a turn, so repeating one whose 200 was lost would queue the
+// message again, and it would run as a second turn. A transient failure is
+// reported instead, and the person decides whether to send again. The key is
+// still sent: the server dedupes a message that is still queued against it.
+func (a *api) steer(ctx context.Context, id string, in steerRequest, key string) (session, []byte, error) {
+	raw, err := a.post(ctx, request{
+		path:   []string{"agent-sessions", id, "steer"},
+		header: http.Header{"Idempotency-Key": {key}},
+	}, in)
+	if err != nil {
+		return session{}, nil, fmt.Errorf("send to agent session %s: %w", id, steerAdvice(err))
+	}
+	return decodeSession(raw)
+}
+
+// steerWording is the CLI's own text for the steer refusals whose API message
+// names a REST field or a dashboard control: it says what to do with this
+// command's flags.
+var steerWording = map[string]string{
+	codeQueueFull: "the session's queue is full; wait for a queued message to run, then send again",
+	codeQueueInlineSecrets: "a message with inline secrets cannot wait in the queue, because their values are never stored; " +
+		"name workspace secrets with --secret instead of --secret-from-env, or send it once the session is idle",
+}
+
+// steerAdvice is err with steerWording's text in place of the API's.
+func steerAdvice(err error) error {
+	var apiErr *apiError
+	if !errors.As(err, &apiErr) || steerWording[apiErr.Code] == "" {
+		return err
+	}
+	advised := *apiErr
+	advised.Message = steerWording[apiErr.Code]
+	return &advised
+}
+
+// queuedMessages lists the messages waiting on the session, next first.
+func (a *api) queuedMessages(ctx context.Context, id string) ([]queuedMessage, error) {
+	raw, err := a.getJSON(ctx, nil, "agent-sessions", id, "queued-messages")
+	if err != nil {
+		return nil, fmt.Errorf("list queued messages of agent session %s: %w", id, err)
+	}
+	var list struct {
+		QueuedMessages []queuedMessage `json:"queuedMessages"`
+	}
+	if err := json.Unmarshal(raw, &list); err != nil {
+		return nil, fmt.Errorf("list queued messages of agent session %s: %w", id, err)
+	}
+	return list.QueuedMessages, nil
+}
+
+// interrupt ends the session's running turn and nothing else (ADR047 D12);
+// the API answers once the request is delivered, the turn settles after.
+func (a *api) interrupt(ctx context.Context, id string) error {
+	if _, err := a.post(ctx, request{path: []string{"agent-sessions", id, "interrupt"}}, nil); err != nil {
+		return fmt.Errorf("stop agent session %s: %w", id, err)
+	}
+	return nil
 }
 
 func (a *api) cancel(ctx context.Context, id string) (session, []byte, error) {

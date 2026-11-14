@@ -119,6 +119,9 @@ type Store interface {
 	// MarkAgentSessionTurnHarvestFailed records a failed harvest on a turn no
 	// harvest has recorded a verdict on yet.
 	MarkAgentSessionTurnHarvestFailed(ctx context.Context, sessionID string, turn int, reason string) error
+	// MarkAgentSessionTurnInterrupted records that a person stopped the turn
+	// (ADR047 D12).
+	MarkAgentSessionTurnInterrupted(ctx context.Context, sessionID string, turn int) error
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	// Last complete items of one turn, newest first (ADR094 D7 outcome summary).
 	AgentSessionTurnTail(ctx context.Context, sessionID string, turn int, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
@@ -151,6 +154,9 @@ type SandboxLifecycle interface {
 	// over the same pods/exec boundary as ReadSessionStatus, so the
 	// Completer can persist the conversation before teardown (ADR051).
 	ReadSessionTranscript(ctx context.Context, workspaceID, sessionID, sandboxID string) (string, error)
+	// InterruptSessionTurn asks the driver in the sandbox to end turn, and
+	// only that turn (ADR047 D12), through the same boundary.
+	InterruptSessionTurn(ctx context.Context, workspaceID, sessionID, sandboxID string, turn int) error
 }
 
 // modelKeySecretPath delegates to the one shared definition in the agentsession
@@ -296,6 +302,13 @@ type Service struct {
 	// Feedback reads the PR feedback that started steering turns (ADR047
 	// D11) for a session read's turnOrigins; nil leaves them out.
 	Feedback FeedbackReader
+	// Queue is the durable queue of messages sent while a turn runs (ADR047
+	// D12). nil (store off) answers such a message with the in-flight
+	// refusal and offers no queue verbs.
+	Queue QueueStore
+	// QueueMetrics is the queue dispatcher's series, set beside Metrics and
+	// read by the dispatcher main starts; nil observes nothing.
+	QueueMetrics *QueueMetrics
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -337,7 +350,7 @@ func (s *Service) enforceLiveSandboxCap(ctx context.Context, workspaceID string)
 		return mapStoreError("", err)
 	}
 	if n >= s.MaxLiveSandboxes {
-		return core.NewConflictError("AGENT_SESSION_LIVE_LIMIT",
+		return core.NewConflictError(codeLiveLimit,
 			fmt.Sprintf("this workspace already has %d live agent-session sandboxes (limit %d); stop or cancel an idle session before starting another", n, s.MaxLiveSandboxes),
 			map[string]any{"live": n, "limit": s.MaxLiveSandboxes})
 	}
@@ -1140,6 +1153,7 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]View, error) {
 		}
 		out = append(out, view)
 	}
+	s.fillPendingMessages(ctx, out)
 	return out, nil
 }
 
@@ -1148,9 +1162,20 @@ func (s *Service) List(ctx context.Context, req ListRequest) ([]View, error) {
 // "archived sessions can be viewed but not modified or resumed". Unarchive
 // (and Cancel, the safety verb) stay allowed.
 func errArchived(phase string) error {
-	return core.NewConflictError("AGENT_SESSION_ARCHIVED",
+	return core.NewConflictError(codeArchived,
 		"agent session is archived; unarchive it before modifying it", map[string]any{"phase": phase})
 }
+
+// errNotSteerable is the refusal of a canceled (or canceling) session, which
+// takes no more messages and has no turn to stop.
+func errNotSteerable(phase string) error {
+	return core.NewConflictError(codeNotSteerable, "a canceled agent session cannot be steered", map[string]any{"phase": phase})
+}
+
+const (
+	codeArchived     = "AGENT_SESSION_ARCHIVED"
+	codeNotSteerable = "AGENT_SESSION_NOT_STEERABLE"
+)
 
 // Archive puts a session out of the working set (ADR065 D1). It is idempotent,
 // allowed in any phase, and never touches the lifecycle — but it zeroes the
@@ -1333,7 +1358,7 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			CompletedAt: turn.CompletedAt, Attachments: turnAttachments(turn.Attachments),
 			OutputSchema: jsonValue(turn.OutputSchema), OutputRequired: turn.OutputRequired,
 			Result: jsonValue(turn.Result), ResultFinal: turn.ResultFinal,
-			Skills: turnSkills(turn.Skills),
+			Skills: turnSkills(turn.Skills), Interrupted: turn.Interrupted,
 		})
 	}
 	for _, p := range parts {
@@ -1391,21 +1416,32 @@ func (s *Service) ToolOutput(ctx context.Context, sessionID string, turn int, to
 	return ToolOutput{SessionID: sessionID, Turn: turn, ToolCallID: toolCallID, Outputs: outputs}, nil
 }
 
-func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
-	// Authorize the named object before validating/fetching it: unauthorized and
-	// cross-workspace probes are a tuple denial, never a DB existence oracle.
-	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
-		return View{}, err
+// operableRecord authorizes relation on the session and loads it: the prefix
+// of every verb that reads or changes a session on the caller's own authority.
+// The named object is authorized before it is validated or fetched, so
+// unauthorized and cross-workspace probes are a tuple denial, never a DB
+// existence oracle.
+func (s *Service) operableRecord(ctx context.Context, relation, sessionID string) (store.AgentSession, error) {
+	if err := s.AuthorizeOn(ctx, relation, sessionObject(sessionID)); err != nil {
+		return store.AgentSession{}, err
 	}
 	if !s.enabled() {
-		return View{}, core.ErrAgentSessionsUnavailable
+		return store.AgentSession{}, core.ErrAgentSessionsUnavailable
 	}
 	if err := validateSessionID(sessionID); err != nil {
-		return View{}, err
+		return store.AgentSession{}, err
 	}
 	record, err := s.Store.GetAgentSession(ctx, sessionID)
 	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
+		return store.AgentSession{}, mapStoreError(sessionID, err)
+	}
+	return record, nil
+}
+
+func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
+	record, err := s.operableRecord(ctx, core.RelCanOperate, sessionID)
+	if err != nil {
+		return View{}, err
 	}
 	view, err := s.toView(record)
 	if err != nil {
@@ -1415,6 +1451,9 @@ func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
 	// pays them; list pages carry the outcome without them.
 	s.fillOutcome(ctx, record, view.Outcome)
 	view.TurnOrigins = s.turnOrigins(ctx, record.ID)
+	// One count; the messages themselves are listed by the surfaces that
+	// return them (fillQueue, View.queued).
+	s.fillQueueCount(ctx, &view)
 	return view, nil
 }
 
@@ -1498,18 +1537,9 @@ func (s *Service) runResume(ctx context.Context, record store.AgentSession) {
 }
 
 func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
-	if err := s.AuthorizeOn(ctx, core.RelCanOperate, sessionObject(sessionID)); err != nil {
-		return View{}, err
-	}
-	if !s.enabled() {
-		return View{}, core.ErrAgentSessionsUnavailable
-	}
-	if err := validateSessionID(sessionID); err != nil {
-		return View{}, err
-	}
-	record, err := s.Store.GetAgentSession(ctx, sessionID)
+	record, err := s.operableRecord(ctx, core.RelCanOperate, sessionID)
 	if err != nil {
-		return View{}, mapStoreError(sessionID, err)
+		return View{}, err
 	}
 	if record.Phase == PhaseCanceled {
 		return s.toView(record) // idempotent public cancel
@@ -1570,6 +1600,10 @@ func (s *Service) gitProxyURL() string {
 	return defaultCredentialURL
 }
 
+// driverTurn is the turn number the driver is started with (BEX_AGENT_TURN),
+// which the interrupt sentinel must name to end that turn.
+func driverTurn(record store.AgentSession) int { return max(1, record.Turns) }
+
 // driverEnv renders the non-secret environment the sandbox driver reads to run
 // one headless delivery turn (lego/agent-image/driver). The BYO model key never
 // enters this map or the sandbox; a session-bound placeholder is paired with the
@@ -1599,7 +1633,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 		"BEX_AGENT_SESSION_ID":       record.ID,
 		"BEX_AGENT_REPOSITORY":       record.Repo,
 		"BEX_AGENT_GRANT_PUBLIC_KEY": s.driverGrantPublicKey(),
-		"BEX_AGENT_TURN":             fmt.Sprintf("%d", max(1, record.Turns)),
+		"BEX_AGENT_TURN":             fmt.Sprintf("%d", driverTurn(record)),
 	}
 	// A steering turn re-dispatches a fresh sandbox: name the PR earlier turns
 	// opened so the agent updates it for the whole branch and the driver's
@@ -1770,8 +1804,23 @@ func (s *Service) driverGrantPublicKey() string {
 	return key
 }
 
-// codeTurnInFlight refuses a steer while a turn is running.
+// codeTurnInFlight refuses a steer while a turn is running: the answer when
+// there is no queue, and to the internal callers that must not queue.
 const codeTurnInFlight = "AGENT_SESSION_TURN_IN_FLIGHT"
+
+func errTurnInFlight(phase string) error {
+	return core.NewConflictError(codeTurnInFlight, "a turn is already running; wait for it to finish before steering", map[string]any{"phase": phase})
+}
+
+// validatePrompt trims a steering prompt and refuses one that is empty or over
+// 100 KB.
+func validatePrompt(prompt string) (string, error) {
+	prompt = strings.TrimSpace(prompt)
+	if prompt == "" || len(prompt) > 100_000 {
+		return "", core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "prompt is required", map[string]any{"field": "prompt"})
+	}
+	return prompt, nil
+}
 
 // Steer runs a follow-up prompt turn on an existing session (ADR047 D8 phase 1,
 // ADR047 D8 phase 1). In phase 1 a new prompt cannot ride the original sandbox — its
@@ -1792,9 +1841,12 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err := validateSessionID(req.SessionID); err != nil {
 		return View{}, err
 	}
-	prompt := strings.TrimSpace(req.Prompt)
-	if prompt == "" || len(prompt) > 100_000 {
-		return View{}, core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "prompt is required", map[string]any{"field": "prompt"})
+	prompt, err := validatePrompt(req.Prompt)
+	if err != nil {
+		return View{}, err
+	}
+	if err := checkIdempotencyKey(req.IdempotencyKey, false); err != nil {
+		return View{}, err
 	}
 	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
 		return View{}, err
@@ -1816,11 +1868,33 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if record.ArchivedAt != nil {
 		return View{}, errArchived(record.Phase) // ADR065 D1: unarchive first
 	}
-	switch record.Phase {
-	case PhaseCanceled, PhaseCanceling:
-		return View{}, core.NewConflictError("AGENT_SESSION_NOT_STEERABLE", "a canceled agent session cannot be steered", map[string]any{"phase": record.Phase})
-	case PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching:
-		return View{}, core.NewConflictError(codeTurnInFlight, "a turn is already running; wait for it to finish before steering", map[string]any{"phase": record.Phase})
+	if record.Phase == PhaseCanceled || record.Phase == PhaseCanceling {
+		return View{}, errNotSteerable(record.Phase)
+	}
+	inFlight := liveSandboxPhase(record.Phase)
+	// The dispatcher delivering a queued message (queuedMessageID) is itself
+	// the head of the queue, so it is never queued behind it.
+	canQueue := s.Queue != nil && req.queuedMessageID == ""
+	if canQueue {
+		// A message that cannot start a turn now is queued (ADR047 D12): a
+		// turn is running, or earlier messages wait their turn first. While a
+		// turn runs the count decides nothing, so only an idle session reads it.
+		waiting := inFlight
+		if !inFlight {
+			pending, err := s.Queue.CountQueuedAgentMessages(ctx, record.ID)
+			if err != nil {
+				return View{}, err
+			}
+			waiting = pending > 0
+		}
+		if waiting {
+			if req.mode == steerYields {
+				return View{}, errTurnInFlight(record.Phase)
+			}
+			return s.enqueueSteer(ctx, record, req)
+		}
+	} else if inFlight {
+		return View{}, errTurnInFlight(record.Phase)
 	}
 	if err := s.admitDispatch(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
@@ -1871,11 +1945,23 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, err
 	}
 	previousSandboxID := record.SandboxID
-	record, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching",
-		store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)}, output, secretNames, skills)
+	binding := store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)}
+	var begun store.AgentSession
+	if req.queuedMessageID != "" {
+		// The same transaction that starts the turn marks the message
+		// delivered, so it starts one turn however often it is attempted.
+		begun, err = s.Queue.BeginQueuedAgentSessionTurn(ctx, req.queuedMessageID, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
+	} else {
+		begun, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching", binding, output, secretNames, skills)
+	}
+	if errors.Is(err, store.ErrAgentSessionTurnState) && canQueue && req.mode == steerQueues {
+		// A turn started between the read and the write: queue behind it.
+		return s.enqueueSteer(ctx, record, req)
+	}
 	if err != nil {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
+	record = begun
 	env := s.withOutputEnv(s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv.ModelKeySet()), workspaceEnv.NetworkTier, record), record, output)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
@@ -2123,7 +2209,11 @@ func mapStoreError(id string, err error) error {
 			map[string]any{"field": "branch"})
 	}
 	if errors.Is(err, store.ErrAgentSessionPromptQuota) {
-		return core.NewConflictError("AGENT_SESSION_PROMPT_QUOTA", "agent session prompt history has reached its byte limit", map[string]any{"id": id, "maxBytes": store.MaxAgentSessionPromptBytes})
+		return core.NewConflictError(codePromptQuota, "agent session prompt history has reached its byte limit", map[string]any{"id": id, "maxBytes": store.MaxAgentSessionPromptBytes})
+	}
+	if errors.Is(err, store.ErrQueuedMessageNotPending) {
+		return core.NewConflictError(codeQueuedMessageGone, "the message was already dispatched, dropped or is being dispatched now, so it can no longer be changed",
+			map[string]any{"sessionId": id})
 	}
 	if errors.Is(err, store.ErrAgentSessionTurnState) {
 		return core.NewConflictError(codeTurnInFlight, "a turn is already running; wait for it to finish before steering", map[string]any{"id": id})

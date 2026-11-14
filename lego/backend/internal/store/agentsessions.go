@@ -121,6 +121,9 @@ type AgentSessionTurn struct {
 	ResultFinal    bool
 	// Skills are the skills this turn invoked explicitly (ADR099 D4).
 	Skills []TurnSkill
+	// Interrupted says a person stopped the turn before it ended on its own
+	// (ADR047 D12).
+	Interrupted bool
 }
 
 // AgentTurnOutput is the structured-output contract a turn is accepted with
@@ -534,6 +537,19 @@ func (s *PGStore) AgentSessionWorkspace(ctx context.Context, id string) (string,
 // union), so a refused turn attaches none; nil leaves them unchanged. skills
 // are the skills the turn invokes explicitly (ADR099 D4).
 func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
+	return s.beginAgentSessionTurn(ctx, "", id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+}
+
+// BeginQueuedAgentSessionTurn is BeginAgentSessionTurn for a turn that
+// delivers a queued message (ADR047 D12): the same transaction records the
+// message as delivered by the turn, so it starts one turn however often it is
+// attempted. A message that is no longer pending, because it was dropped or
+// already delivered, is ErrQueuedMessageNotPending and starts nothing.
+func (s *PGStore) BeginQueuedAgentSessionTurn(ctx context.Context, messageID, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
+	return s.beginAgentSessionTurn(ctx, messageID, id, prompt, deliveryMode, phase, status, attachments, output, secretNames, skills)
+}
+
+func (s *PGStore) beginAgentSessionTurn(ctx context.Context, queuedMessageID, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
 	var out AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var turns int
@@ -546,6 +562,18 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 		// the service's optimistic Get; only the first may persist a prompt.
 		if archivedAt != nil || (currentPhase != "completed" && currentPhase != "failed") {
 			return ErrAgentSessionTurnState
+		}
+		if queuedMessageID != "" {
+			tag, err := tx.Exec(ctx, `
+				UPDATE agent_session_queued_messages
+				SET delivered_turn=$3, delivered_at=now(), claimed_until=NULL, blocked_reason=''
+				WHERE id=$1 AND session_id=$2 AND `+pendingQueuedSQL, queuedMessageID, id, turns+1)
+			if err != nil {
+				return err
+			}
+			if tag.RowsAffected() == 0 {
+				return ErrQueuedMessageNotPending
+			}
 		}
 		if err := enforceAgentSessionPromptQuota(ctx, tx, id, prompt); err != nil {
 			return err
@@ -575,7 +603,7 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrAgentSessionPromptQuota) || errors.Is(err, ErrAgentSessionTurnState) || isAgentAttachmentRefusal(err) {
+		if errors.Is(err, ErrAgentSessionPromptQuota) || errors.Is(err, ErrAgentSessionTurnState) || errors.Is(err, ErrQueuedMessageNotPending) || isAgentAttachmentRefusal(err) {
 			return AgentSession{}, err
 		}
 		return AgentSession{}, classify("agent session turn", err)
@@ -604,7 +632,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		SELECT session_id, turn, prompt, delivery_mode,
 		       transcript_complete, transcript_truncated, truncation_reason,
 		       created_at, started_at, completed_at, attachments,
-		       output_schema, output_required, result, result_final, skills
+		       output_schema, output_required, result, result_final, skills, interrupted
 		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
@@ -616,7 +644,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		if err := rows.Scan(&turn.SessionID, &turn.Turn, &turn.Prompt, &turn.DeliveryMode,
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
 			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments,
-			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills); err != nil {
+			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills, &turn.Interrupted); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)
@@ -820,7 +848,10 @@ func (s *PGStore) SetAgentSessionArchived(ctx context.Context, id string, archiv
 			    updated_at = now()
 			WHERE id=$1
 			RETURNING `+agentSessionColumns, id, archived))
-		return err
+		if err != nil || !archived {
+			return err
+		}
+		return dropSessionQueued(ctx, tx, id, "the session was archived")
 	})
 	if errors.Is(err, ErrAgentSessionPullRequestOwned) {
 		return AgentSession{}, err
@@ -908,13 +939,21 @@ func (s *PGStore) ReplaceAgentSessionTags(ctx context.Context, id string, tags [
 // SetAgentSessionLifecycle advances the durable session state. canceled=true
 // stamps canceled_at exactly once; every transition advances updated_at.
 func (s *PGStore) SetAgentSessionLifecycle(ctx context.Context, id, sandboxID, phase, status string, canceled bool) (AgentSession, error) {
-	out, err := scanAgentSession(s.Pool.QueryRow(ctx, `
-		UPDATE agent_sessions
-		SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
-		    phase=$3, status=$4, updated_at=now(),
-		    canceled_at=CASE WHEN $5 THEN COALESCE(canceled_at, now()) ELSE canceled_at END
-		WHERE id=$1
-		RETURNING `+agentSessionColumns, id, sandboxID, phase, status, canceled))
+	var out AgentSession
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		var err error
+		out, err = scanAgentSession(tx.QueryRow(ctx, `
+			UPDATE agent_sessions
+			SET sandbox_id = CASE WHEN $2 <> '' THEN $2 ELSE sandbox_id END,
+			    phase=$3, status=$4, updated_at=now(),
+			    canceled_at=CASE WHEN $5 THEN COALESCE(canceled_at, now()) ELSE canceled_at END
+			WHERE id=$1
+			RETURNING `+agentSessionColumns, id, sandboxID, phase, status, canceled))
+		if err != nil || !canceled {
+			return err
+		}
+		return dropSessionQueued(ctx, tx, id, "the session was canceled")
+	})
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)
 	}
@@ -1270,6 +1309,9 @@ func (s *PGStore) SetAgentSessionCanceled(ctx context.Context, id string) (Agent
 			WHERE id=$1 AND phase <> 'canceled'
 			RETURNING `+agentSessionColumns, id))
 		if err != nil {
+			return err
+		}
+		if err := dropSessionQueued(ctx, tx, id, "the session was canceled"); err != nil {
 			return err
 		}
 		fact, err = stampTerminalTurn(ctx, tx, id, out.Turns, out.UpdatedAt)

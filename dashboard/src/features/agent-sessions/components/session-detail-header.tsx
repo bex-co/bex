@@ -5,6 +5,7 @@ import {
   ArchiveRestore,
   ArrowLeft,
   ChevronDown,
+  CircleStop,
   Code2,
   ExternalLink,
   GitBranch,
@@ -85,7 +86,8 @@ export interface SessionDetailHeaderProps {
  * while the session is non-terminal; once terminal it pins to the session's
  * own end timestamp (via the mapper). Cancel is offered only while the session can
  * still be stopped and is disabled with a reason once canceling/canceled — the
- * confirm copy states pushed work is preserved.
+ * confirm copy states pushed work is preserved. Beside it, while a turn is in
+ * flight, Stop turn (ADR047 D12) ends only that turn and asks no confirmation.
  */
 export function SessionDetailHeader({
   session,
@@ -94,7 +96,7 @@ export function SessionDetailHeader({
 }: SessionDetailHeaderProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { cancel, deleteSession } = useAgentSessionMutations();
+  const { cancel, interrupt, deleteSession } = useAgentSessionMutations();
   const handleArchiveChanged = useCallback(async () => {
     if (session.isArchived) {
       await onChanged?.();
@@ -106,6 +108,11 @@ export function SessionDetailHeader({
     useArchiveToggle(handleArchiveChanged);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [canceling, setCanceling] = useState(false);
+  const [stopping, setStopping] = useState(false);
+  // The turn a stop was delivered for: the turn ends at the driver's next
+  // poll and the Completer settles it within ~15 s, so the phase still reads
+  // running after the 202 and Stop turn must not offer itself again.
+  const [stoppedTurn, setStoppedTurn] = useState<number | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
@@ -153,6 +160,50 @@ export function SessionDetailHeader({
   const isCanceling = session.phase === "canceling";
   const cancelable = !session.isTerminal && !isCanceling;
   const showCancel = cancelable || isCanceling;
+
+  // Stop turn (ADR047 D12) is offered while a turn is in flight and works once
+  // its sandbox is up (the server refuses it as AGENT_SESSION_TURN_STARTING
+  // before then). It ends only the turn: the session stays open, steerable and
+  // keeps its queue, so unlike Cancel it asks for no confirmation.
+  const canStopNow = cancelable && session.phase === "running";
+  // A delivered stop rests until the turn is over: the phase is no longer
+  // running, or a later turn (the next queued message's) has begun.
+  const stopRequested =
+    stoppedTurn !== null &&
+    session.phase === "running" &&
+    session.turns === stoppedTurn;
+  const stopResting = stopping || stopRequested;
+  const handleStop = useCallback(async () => {
+    if (stopResting) return;
+    setStopping(true);
+    try {
+      await interrupt(session.id);
+      setStoppedTurn(session.turns);
+      toast.success(t("agentSessions.stopTurnSuccess"));
+    } catch (err) {
+      toast.error(agentSessionErrorMessage(err, t));
+    } finally {
+      setStopping(false);
+      // Whatever the answer, show what is true now: the turn is settling, or
+      // had already ended on its own.
+      void Promise.resolve(onChanged?.()).catch(() => undefined);
+    }
+  }, [interrupt, onChanged, session.id, session.turns, stopResting, t]);
+
+  // Cmd/Ctrl+Shift+Backspace stops the running turn from anywhere on the page
+  // (Devin's shortcut), without leaving the composer.
+  useEffect(() => {
+    if (!canStopNow) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key !== "Backspace" || !e.shiftKey || !(e.metaKey || e.ctrlKey)) {
+        return;
+      }
+      e.preventDefault();
+      if (!e.repeat) void handleStop();
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [canStopNow, handleStop]);
 
   async function handleConfirm() {
     setCanceling(true);
@@ -252,6 +303,21 @@ export function SessionDetailHeader({
       <SessionFilesButton sessionId={session.id} />
 
       <OpenInZedButton session={session} />
+
+      {cancelable ? (
+        <StopTurnButton
+          disabled={!canStopNow || stopResting}
+          stopping={stopResting}
+          reason={
+            !canStopNow
+              ? t("agentSessions.stopTurnStarting")
+              : stopRequested
+                ? t("agentSessions.stopTurnSuccess")
+                : t("agentSessions.stopTurnHint")
+          }
+          onClick={() => void handleStop()}
+        />
+      ) : null}
 
       {showCancel ? (
         <CancelButton
@@ -453,6 +519,52 @@ function HeaderPrBadge({ session }: { session: AgentSessionView }) {
       className="hidden shrink-0 sm:inline-flex"
       iconClassName="size-3.5"
     />
+  );
+}
+
+/**
+ * The Stop turn affordance (ADR047 D12): ends the running turn only. Its label
+ * and icon differ from Cancel's, which ends the session. The tooltip names the
+ * shortcut, or says why the button rests (the turn's sandbox is still starting,
+ * a stop is in flight or delivered and the turn has not ended yet). Narrow screens keep the icon alone, still named for
+ * assistive tech.
+ */
+function StopTurnButton({
+  disabled,
+  stopping,
+  reason,
+  onClick,
+}: {
+  disabled: boolean;
+  stopping: boolean;
+  reason: string;
+  onClick: () => void;
+}) {
+  const { t } = useTranslations();
+  const label = stopping
+    ? t("agentSessions.stoppingTurn")
+    : t("agentSessions.stopTurn");
+  return (
+    <Tooltip>
+      {/* A disabled button swallows pointer events, so wrap it for the tooltip. */}
+      <TooltipTrigger asChild>
+        <span className="shrink-0" tabIndex={disabled ? 0 : undefined}>
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={disabled}
+            onClick={onClick}
+            aria-label={label}
+            aria-keyshortcuts="Control+Shift+Backspace Meta+Shift+Backspace"
+            className="shrink-0"
+          >
+            {stopping ? <Loader2 className="animate-spin" /> : <CircleStop />}
+            <span className="hidden sm:inline">{label}</span>
+          </Button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{reason}</TooltipContent>
+    </Tooltip>
   );
 }
 

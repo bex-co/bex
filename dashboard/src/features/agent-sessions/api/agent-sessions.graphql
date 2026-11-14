@@ -78,6 +78,21 @@ fragment AgentSessionFields on AgentSession {
   archivedAt
 }
 
+# A message sent to a session while its turn ran, waiting to run as its own turn
+# (ADR047 D12). `position` is its 1-based place (1 runs next); `blockedReason`
+# is why the last attempt to run it failed (a spend or live-sandbox limit),
+# which the dispatcher retries within seconds. Only pending messages are listed.
+fragment AgentSessionQueuedMessageFields on AgentSessionQueuedMessage {
+  id
+  sessionId
+  position
+  prompt
+  author
+  attachmentIds
+  blockedReason
+  createdAt
+}
+
 # The short-lived attach ticket (+ gateway origin + expiry) the browser presents
 # to the m43 stream endpoint. Selected ONLY on the mint ops. `url` is the
 # phase-2 raw-ACP WebSocket gateway origin — not the phase-1 stream endpoint.
@@ -177,6 +192,21 @@ query AgentSessionTree($id: String!) {
   }
 }
 
+# The messages waiting behind the session's turn, next first (ADR047 D12). Its
+# own read, not part of AgentSession above: the detail page's poll and every
+# lifecycle result write that query whole, and the queue changes on its own
+# schedule (each send, edit, move, remove and each dispatch). Single-session
+# reads fill it; a list row carries only the count.
+query AgentSessionQueue($id: String!) {
+  agentSession(id: $id) {
+    id
+    pendingMessages
+    queuedMessages {
+      ...AgentSessionQueuedMessageFields
+    }
+  }
+}
+
 mutation CreateAgentSession(
   $ownerId: String
   $repo: String!
@@ -209,12 +239,17 @@ mutation CreateAgentSession(
   }
 }
 
+# A steer on a session whose turn is running (or that has messages waiting) is
+# queued, not refused (ADR047 D12): `queuedMessage` is then the queued message,
+# and null when the steer started a turn. `idempotencyKey` makes a retried send
+# of a queued message harmless.
 mutation SteerAgentSession(
   $id: String!
   $prompt: String!
   $egressAllowlist: [String!]
   $attachmentIds: [String!]
   $skills: [AgentSessionSkillInput!]
+  $idempotencyKey: String
 ) {
   steerAgentSession(
     id: $id
@@ -222,9 +257,13 @@ mutation SteerAgentSession(
     egressAllowlist: $egressAllowlist
     attachmentIds: $attachmentIds
     skills: $skills
+    idempotencyKey: $idempotencyKey
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields
+    queuedMessage {
+      ...AgentSessionQueuedMessageFields
+    }
   }
 }
 
@@ -247,6 +286,56 @@ mutation AttachAgentSession($id: String!) {
 mutation CancelAgentSession($id: String!) {
   cancelAgentSession(id: $id) {
     ...AgentSessionFields
+  }
+}
+
+# Stop turn (ADR047 D12): ends only the running turn, never the session. The
+# call answers once the request is delivered; the turn settles within about 15
+# seconds as completed with the turn interrupted, and the session stays
+# steerable with its queue in place. Cancel, above, is the terminal verb.
+# AGENT_SESSION_NO_TURN_RUNNING when idle; AGENT_SESSION_TURN_STARTING while the
+# turn's sandbox is not up yet.
+mutation InterruptAgentSession($id: String!) {
+  interruptAgentSession(id: $id) {
+    ...AgentSessionFields
+  }
+}
+
+# Replaces a pending message's prompt; the turn then runs as the editor.
+# AGENT_QUEUED_MESSAGE_DISPATCHED once it has started, and
+# AGENT_QUEUED_MESSAGE_ATTACHMENTS_OWNED for anyone but the sender of a
+# message that carries attachments.
+mutation EditQueuedAgentSessionMessage(
+  $id: String!
+  $messageId: String!
+  $prompt: String!
+) {
+  editQueuedAgentSessionMessage(
+    id: $id
+    messageId: $messageId
+    prompt: $prompt
+  ) {
+    ...AgentSessionQueuedMessageFields
+  }
+}
+
+mutation DeleteQueuedAgentSessionMessage($id: String!, $messageId: String!) {
+  deleteQueuedAgentSessionMessage(id: $id, messageId: $messageId)
+}
+
+# Puts a pending message at a 1-based place (1 runs next; past the end is last)
+# and answers the whole queue, next first.
+mutation MoveQueuedAgentSessionMessage(
+  $id: String!
+  $messageId: String!
+  $position: Int!
+) {
+  moveQueuedAgentSessionMessage(
+    id: $id
+    messageId: $messageId
+    position: $position
+  ) {
+    ...AgentSessionQueuedMessageFields
   }
 }
 
@@ -324,6 +413,21 @@ query AgentSessionTurnSkills($id: String!) {
         name
         arguments
       }
+    }
+  }
+}
+
+# Which turns a person stopped with Stop turn (ADR047 D12), so the transcript
+# can mark them "interrupted" rather than leave them looking cut off. Like the
+# two turn reads above it pages past every part. Its page size differs from
+# theirs (limit 2, not 1) only to keep it under its own cache key: `turns` has
+# no identity to merge by, so reads of one key that select different fields can
+# replace each other's list.
+query AgentSessionTurnInterrupts($id: String!) {
+  agentSessionTranscript(id: $id, afterSeq: 2147483647, limit: 2) {
+    turns {
+      turn
+      interrupted
     }
   }
 }

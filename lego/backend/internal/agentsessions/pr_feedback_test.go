@@ -491,6 +491,11 @@ func TestPRFeedbackDeliveryStepsAsTheCommenterOnce(t *testing.T) {
 	if st.delivered["suite:1"] != 2 || st.delivered["comment:2"] != 2 {
 		t.Fatalf("delivered = %v", st.delivered)
 	}
+	// Feedback gives way to a person's queued messages (ADR047 D12): it is
+	// never queued among them, and is refused while they wait.
+	if call.req.mode != steerYields {
+		t.Fatalf("feedback steers with mode %v, want steerYields", call.req.mode)
+	}
 }
 
 func TestPRFeedbackDeliveryRetriesLimitsAndStopsACILoop(t *testing.T) {

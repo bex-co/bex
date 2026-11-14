@@ -107,9 +107,11 @@ bex agent
 
 - **Input.** `chat` is a line-mode prompt under the stream, not a full-screen TUI, so output stays in scrollback and works in tmux, in SSH sessions and in pipes to `tee`.
   - The public live-turn path is disabled (`AGENT_SESSION_LIVE_TURN_UNAVAILABLE`, ADR047 D9), so a message typed while a turn runs is **queued on the server** ([ADR047 D12](ADR047-cloud-coding-agent-sessions.md), w22/m403), which replaces the client's earlier one-slot queue. `steer` answers `202` with the queued message.
-  - The server sends each queued message when the turn settles. Typing again adds another message instead of replacing the first, and the prompt shows `queued — sends when this turn ends`. A reattached `chat` lists what is still queued.
-  - A message typed while no turn runs is sent with `steer` at once.
-- **Detach is not cancel.** Ctrl-D, `/quit` or Ctrl-C detach and leave the session running. `/cancel` asks for confirmation and then calls the cancel verb. This is ADR047's "client disconnect ≠ cancel" rule.
+  - The server sends each queued message when the turn settles. Typing again adds another message instead of replacing the first, and the prompt shows `queued — sends when this turn ends (position N)`. Every typed line carries its own `Idempotency-Key`, so a send that is still queued is never queued twice. The CLI does not repeat a `steer` on its own: a send that starts a turn records no key, so a retry after a lost reply could run the message twice ([w22/014](../.pm/w22/014.md)). A server from before the queue answers `409 AGENT_SESSION_TURN_IN_FLIGHT` instead: `chat` then holds the lines in order and sends each when the turn ends.
+  - A reattached `chat` lists what is still queued (`GET /v1/agent-sessions/{id}/queued-messages`), next first, with the reason a message is waiting when the server blocked it. While messages are queued and no turn runs, `chat` waits for the turn the server starts from them instead of asking for input.
+  - A refused message prints why and the chat goes on: `AGENT_SESSION_QUEUE_FULL` (10 messages) asks the user to wait for one to run, and `AGENT_SESSION_QUEUE_INLINE_SECRETS` says an inline secret is never queued, so the user names a workspace secret with `--secret` or sends it once the session is idle. A message typed while no turn runs is sent with `steer` at once.
+  - `/stop` ends the running turn only (`POST /v1/agent-sessions/{id}/interrupt`, ADR047 D12). It asks for no confirmation because it is not `/cancel`: the session stays open and queued messages run next. `AGENT_SESSION_NO_TURN_RUNNING` and `AGENT_SESSION_TURN_STARTING` are explained in words.
+- **Detach is not cancel.** Ctrl-D, `/quit` or Ctrl-C detach and leave the session running, with its queue on the server. `/cancel` asks for confirmation and then calls the cancel verb. This is ADR047's "client disconnect ≠ cancel" rule.
 - **New sessions.** `bex agent chat --repo acme/api [task…]` creates the session with the `run` flags and an idempotency key, then attaches. With no task it asks for the first message.
 - **Not for scripts.** With no TTY, `chat` exits 2 and points to `run --follow`. `logs --follow` and `run`/`send --follow` move to the same SSE client with polling as the fallback, so CI sees the agent's output sooner and its exit codes do not change.
 
@@ -286,7 +288,7 @@ alias: bex agent attach
 
 | Input | Effect |
 | --- | --- |
-| text + Enter | if no turn is running, `steer` now; otherwise queue it (one slot) and send it when the turn ends |
+| text + Enter | `steer` now; while a turn runs the server queues it (`queued — sends when this turn ends (position N)`), and typing again adds another |
 | `/attach FILE` | stage an attachment for the next message (ADR095) |
 | `/skill NAME[:ARGS]` | stage a workspace skill for the next message (ADR099) |
 | `/files [--download DIR]` | as `bex agent files` |
@@ -294,11 +296,13 @@ alias: bex agent attach
 | `/ssh` | prints the `ssh` command for the sandbox: `chat` reads the terminal's input itself, so an interactive ssh cannot share it (run `bex agent ssh` beside the chat) |
 | `/pickup` | as `bex agent pickup` in the current directory |
 | `/tags TAG…`, `/tree`, `/cost`, `/archive` | as the D4 verbs |
+| `/stop` | end the current turn only, with no confirmation; the session stays open and its queue runs next |
 | `/cancel` | confirm, then cancel the session |
 | `/help` | list these commands |
 | `/quit`, `/exit`, Ctrl-D, Ctrl-C | detach; the session keeps running (line mode cannot tell an empty line from a typed one at Ctrl-C, so Ctrl-C always detaches) |
 
 - `--read-only` shows the stream with no input line, for watching a teammate's session that you have `can_operate` but not `can_create` on.
+- On attach, a session with queued messages lists them, next first, under the header.
 - Header line: `ags-… · owner/repo@bex-agent/… · model · state · $spent`.
 - Rendering: the agent's text, one line per tool call (`▸ Bash  go test ./...`), the turn boundary with outcome, the PR link and cost. Reasoning is shown only with `--reasoning`.
 - Without a TTY: exit 2, with `use bex agent run --follow`.

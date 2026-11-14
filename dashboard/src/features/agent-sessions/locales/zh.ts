@@ -400,6 +400,30 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "取消会话",
     description: "Cancel confirm dialog — proceed button",
   },
+  // Stop turn (ADR047 D12): ends only the running turn, never the session.
+  "agentSessions.stopTurn": {
+    message: "停止本轮",
+    description:
+      "Detail header — Stop turn button label: ends only the running turn, unlike Cancel which ends the session",
+  },
+  "agentSessions.stoppingTurn": {
+    message: "正在停止…",
+    description: "Detail header — Stop turn button label while the stop runs",
+  },
+  "agentSessions.stopTurnHint": {
+    message:
+      "只结束正在运行的这一轮。会话保持打开，排队的消息保持原有顺序。快捷键：Ctrl/Cmd+Shift+Backspace。",
+    description: "Detail header — tooltip on the Stop turn button",
+  },
+  "agentSessions.stopTurnStarting": {
+    message: "本轮仍在启动。运行起来后即可停止。",
+    description:
+      "Detail header — tooltip on the disabled Stop turn button while the sandbox starts",
+  },
+  "agentSessions.stopTurnSuccess": {
+    message: "正在停止本轮，约 15 秒内结束。",
+    description: "Detail header — toast after Stop turn is accepted",
+  },
   // Steering composer
   "agentSessions.steerTitle": {
     message: "引导该会话",
@@ -413,18 +437,20 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "发送后续指令，在同一分支上开始新一轮。",
     description: "Steering composer — textarea placeholder for an idle session",
   },
-  "agentSessions.steerPlaceholderLive": {
-    message: "发送消息以引导正在运行的智能体。",
-    description: "Steering composer — textarea placeholder for a live session",
+  "agentSessions.steerPlaceholderQueue": {
+    message: "排入一条消息。当前轮次结束后运行。",
+    description:
+      "Steering composer — textarea placeholder while a turn runs or messages wait (ADR047 D12)",
   },
   "agentSessions.steerHintIdle": {
     message:
       "该会话处于空闲状态——发送消息将在同一分支上的全新沙箱中继续这段对话。",
     description: "Steering composer — helper text for the redispatch route",
   },
-  "agentSessions.steerHintLive": {
-    message: "你的消息将作为实时轮次发送到对话中。",
-    description: "Steering composer — helper text for the live chat route",
+  "agentSessions.steerHintQueue": {
+    message: "智能体正在工作。你的消息已排队，将在本轮结束后作为单独一轮运行。",
+    description:
+      "Steering composer — helper text while a turn runs or messages wait (ADR047 D12)",
   },
   "agentSessions.steerDisabledCanceling": {
     message: "该会话正在取消。已推送的工作会保留。",
@@ -439,15 +465,6 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Steering composer — disabled reason when the m43 stream is down",
   },
-  "agentSessions.steerDisabledWaitForTurn": {
-    message: "请等待当前轮次结束后再发送后续消息。",
-    description:
-      "Composer disabled reason while the current durable agent turn is running",
-  },
-  "agentSessions.steerDisabledInFlight": {
-    message: "有一轮正在进行。请等待其完成后再发送。",
-    description: "Steering composer — disabled reason while a turn streams",
-  },
   "agentSessions.steerSubmit": {
     message: "发送",
     description: "Steering composer — submit button label",
@@ -459,6 +476,90 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.steerSuccess": {
     message: "已发送——正在重新调度新一轮。",
     description: "Steering composer — toast after a redispatch is accepted",
+  },
+  "agentSessions.steerQueued": {
+    message: "已排队，当前轮次结束后运行。",
+    description:
+      "Steering composer — toast after a message was queued behind a running turn (ADR047 D12)",
+  },
+  // Queued messages (ADR047 D12): the list above the composer.
+  "agentSessions.queueRegion": {
+    message: "排队的消息",
+    description: "Queued messages list — accessible name of the region",
+  },
+  "agentSessions.queueTitle_other": {
+    message: "{count} 条排队的消息",
+    description: "Queued messages list — heading with the count (plural)",
+  },
+  "agentSessions.queueHint": {
+    message: "它们会在当前轮次之后，按此顺序逐条运行。",
+    description:
+      "Queued messages list — one-line explanation next to the heading",
+  },
+  "agentSessions.queuePosition": {
+    message: "队列第 {position} 位",
+    description: "Queued messages list — tooltip on a row's place number",
+  },
+  "agentSessions.queueAttachments_other": {
+    message: "{count} 个附件",
+    description: "Queued message row — attachments that ride with it (plural)",
+  },
+  "agentSessions.queueBlocked": {
+    message: "暂时无法启动：{reason}。系统会自动重试。",
+    description:
+      "Queued message row — why the dispatcher could not start it (a spend ceiling or the live-sandbox limit)",
+  },
+  "agentSessions.queueSendNow": {
+    message: "立即发送",
+    description:
+      "Queued message row — stops the running turn and runs this message next",
+  },
+  "agentSessions.queueMoveUp": {
+    message: "上移",
+    description: "Queued message row — move one place earlier",
+  },
+  "agentSessions.queueMoveDown": {
+    message: "下移",
+    description: "Queued message row — move one place later",
+  },
+  "agentSessions.queueEdit": {
+    message: "编辑",
+    description: "Queued message row — edit the message in place",
+  },
+  "agentSessions.queueRemove": {
+    message: "移除",
+    description: "Queued message row — remove it so it never runs",
+  },
+  "agentSessions.queueEditLabel": {
+    message: "编辑排队的消息",
+    description: "Queued message row — accessible name of the edit box",
+  },
+  "agentSessions.queueEditSave": {
+    message: "保存",
+    description: "Queued message row — save the edit",
+  },
+  "agentSessions.queueEditSaveSendNow": {
+    message: "保存并立即发送",
+    description:
+      "Queued message row — save the edit, stop the running turn and run this message next",
+  },
+  "agentSessions.queueEditDiscard": {
+    message: "放弃",
+    description: "Queued message row — leave the edit without saving",
+  },
+  "agentSessions.queueEditHint": {
+    message:
+      "Enter 保存，Shift+Enter 换行，Ctrl/Cmd+Enter 保存并立即发送，Esc 放弃。",
+    description: "Queued message row — keyboard hints while editing",
+  },
+  "agentSessions.queueSendNowStopping": {
+    message: "正在停止当前轮次，这条消息接着运行。",
+    description: "Queued message row — toast after Send now stopped a turn",
+  },
+  "agentSessions.queueSendNowNext": {
+    message: "这条消息接着运行。",
+    description:
+      "Queued message row — toast after Send now when no turn was running",
   },
   // --- Typed AGENT_SESSION_* error messages (keyed by errors.ts messageKey) ---
   "agentSessions.errors.AGENT_SESSION_INPUT_INVALID": {
@@ -498,6 +599,42 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "已有一个轮次正在运行。请等待其完成后再发送。",
     description: "Mapped message for AGENT_SESSION_TURN_IN_FLIGHT",
   },
+  "agentSessions.errors.AGENT_SESSION_QUEUE_FULL": {
+    message:
+      "该会话已排了 {max} 条消息。请等待其中一条运行，或移除一条后再发送。",
+    description: "Mapped message for AGENT_SESSION_QUEUE_FULL (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_SESSION_QUEUE_INLINE_SECRETS": {
+    message:
+      "带有内联密钥的消息不能排队，因为密钥的值从不存储。请在会话空闲时发送，或改用工作区密钥。",
+    description:
+      "Mapped message for AGENT_SESSION_QUEUE_INLINE_SECRETS (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_QUEUED_MESSAGE_DISPATCHED": {
+    message: "这条消息已经开始运行，无法再修改。",
+    description:
+      "Mapped message for AGENT_QUEUED_MESSAGE_DISPATCHED (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_QUEUED_MESSAGE_NOT_FOUND": {
+    message: "这条消息已不在队列中。",
+    description:
+      "Mapped message for AGENT_QUEUED_MESSAGE_NOT_FOUND (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_QUEUED_MESSAGE_ATTACHMENTS_OWNED": {
+    message:
+      "这条消息带有发送者的附件，只有发送者可以编辑。你仍然可以移动或移除它。",
+    description:
+      "Mapped message for AGENT_QUEUED_MESSAGE_ATTACHMENTS_OWNED (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_SESSION_NO_TURN_RUNNING": {
+    message: "当前没有正在运行的轮次，无需停止。",
+    description:
+      "Mapped message for AGENT_SESSION_NO_TURN_RUNNING (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_SESSION_TURN_STARTING": {
+    message: "本轮仍在启动，暂时无法停止。请几秒后重试。",
+    description: "Mapped message for AGENT_SESSION_TURN_STARTING (ADR047 D12)",
+  },
   "agentSessions.errors.AGENT_SESSION_MODEL_ENDPOINT_INVALID": {
     message: "模型端点必须是有效的 HTTPS URL。",
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
@@ -532,6 +669,11 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.conversationEmpty": {
     message: "暂无对话。",
     description: "Shown when a session has produced no transcript parts",
+  },
+  "agentSessions.turnInterrupted": {
+    message: "第 {turn} 轮在完成前被中断。",
+    description:
+      "Transcript line at the end of a turn a person stopped with Stop turn (ADR047 D12); not a failure",
   },
   "agentSessions.turnError": {
     message: "第 {turn} 轮失败",

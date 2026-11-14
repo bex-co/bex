@@ -246,6 +246,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -263,6 +266,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -622,6 +838,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -639,6 +858,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -995,6 +1427,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -1012,6 +1447,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -2018,6 +2666,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -2035,6 +2686,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -2463,6 +3327,46 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
+    "description": "Remove a queued message so it never runs. AGENT_QUEUED_MESSAGE_DISPATCHED when it already ran, was dropped or is being started.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "the agent session id",
+          "type": "string"
+        },
+        "messageId": {
+          "description": "the queued message's id (aqm-…), from the queuedMessage a send returned or list_agent_session_queued_messages",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "messageId"
+      ],
+      "type": "object"
+    },
+    "name": "delete_agent_session_queued_message",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
     "description": "Delete a workspace skill (workspace admins only).",
     "inputSchema": {
       "additionalProperties": false,
@@ -2490,6 +3394,141 @@
       },
       "required": [
         "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Replace a queued message's text. The turn then runs as you, so you need the access a send needs. AGENT_QUEUED_MESSAGE_DISPATCHED when it already ran, was dropped or is being started.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "the agent session id",
+          "type": "string"
+        },
+        "messageId": {
+          "description": "the queued message's id (aqm-…), from the queuedMessage a send returned or list_agent_session_queued_messages",
+          "type": "string"
+        },
+        "prompt": {
+          "description": "the message's new text; the turn then runs as you",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "messageId",
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "name": "edit_agent_session_queued_message",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "attachmentIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "author": {
+          "type": "string"
+        },
+        "blockedReason": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "droppedReason": {
+          "type": "string"
+        },
+        "egressAllowlist": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "hasOutputSchema": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "position": {
+          "type": "integer"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "skills": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                "type": "string"
+              },
+              "name": {
+                "description": "a workspace skill name (list_agent_skills)",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "state": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "position",
+        "prompt",
+        "author",
+        "state",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     }
@@ -3332,6 +4371,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -3349,6 +4391,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -3863,6 +5118,9 @@
               "deliveryMode": {
                 "type": "string"
               },
+              "interrupted": {
+                "type": "boolean"
+              },
               "outputRequired": {
                 "type": "boolean"
               },
@@ -3917,6 +5175,7 @@
               "transcriptComplete",
               "transcriptTruncated",
               "createdAt",
+              "interrupted",
               "attachments",
               "skills"
             ],
@@ -4190,6 +5449,9 @@
               "parentSessionId": {
                 "type": "string"
               },
+              "pendingMessages": {
+                "type": "integer"
+              },
               "phase": {
                 "type": "string"
               },
@@ -4207,6 +5469,219 @@
               },
               "prUrl": {
                 "type": "string"
+              },
+              "queuedMessage": {
+                "additionalProperties": false,
+                "properties": {
+                  "attachmentIds": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "author": {
+                    "type": "string"
+                  },
+                  "blockedReason": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  },
+                  "droppedReason": {
+                    "type": "string"
+                  },
+                  "egressAllowlist": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "hasOutputSchema": {
+                    "type": "boolean"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "secretNames": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "skills": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "arguments": {
+                          "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "a workspace skill name (list_agent_skills)",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "turn": {
+                    "type": "integer"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionId",
+                  "position",
+                  "prompt",
+                  "author",
+                  "state",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "queuedMessages": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "attachmentIds": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "author": {
+                      "type": "string"
+                    },
+                    "blockedReason": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "droppedReason": {
+                      "type": "string"
+                    },
+                    "egressAllowlist": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "hasOutputSchema": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer"
+                    },
+                    "prompt": {
+                      "type": "string"
+                    },
+                    "secretNames": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "skills": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "arguments": {
+                            "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "a workspace skill name (list_agent_skills)",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "turn": {
+                      "type": "integer"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "sessionId",
+                    "position",
+                    "prompt",
+                    "author",
+                    "state",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
               },
               "repo": {
                 "type": "string"
@@ -4488,6 +5963,595 @@
         "message",
         "createdAt",
         "current"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Stop the running turn of a cloud coding-agent session and nothing else: the session settles within seconds as succeeded with the turn interrupted (turns[].interrupted), stays steerable, keeps what the agent already streamed and pushed, and keeps its queued messages, the first of which then runs. Unlike cancel_agent_session, which ends the session. AGENT_SESSION_NO_TURN_RUNNING when the session is idle; AGENT_SESSION_TURN_STARTING while the turn's sandbox is still starting.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "interrupt_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "appliedSecrets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "source"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "automationId": {
+          "type": "string"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "depth": {
+          "type": "integer"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "maxSpendUSD": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
+                "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "result": true,
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "parentSessionId": {
+          "type": "string"
+        },
+        "pendingMessages": {
+          "type": "integer"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prState": {
+          "type": "string"
+        },
+        "prStateAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "turnOrigins": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "author": {
+                "type": "string"
+              },
+              "baseFailingRef": {
+                "description": "for ci_failure: the base branch on whose latest commit at least one of the failing checks also failed, so the pull request did not cause that failure",
+                "type": "string"
+              },
+              "kind": {
+                "description": "pr_comment, pr_review or ci_failure",
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "turn",
+              "kind"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "appliedSecrets",
+        "status",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     }
@@ -5181,6 +7245,145 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
+    "description": "List the messages queued on a cloud coding-agent session while its turn ran, next to run first, each with its id, place, author and, when its last attempt to run was refused (a spend or live-sandbox limit), blockedReason. A message runs as its own turn when the turn before it settles.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "list_agent_session_queued_messages",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "queuedMessages"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
     "description": "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end).",
     "inputSchema": {
       "additionalProperties": false,
@@ -5493,6 +7696,9 @@
               "parentSessionId": {
                 "type": "string"
               },
+              "pendingMessages": {
+                "type": "integer"
+              },
               "phase": {
                 "type": "string"
               },
@@ -5510,6 +7716,219 @@
               },
               "prUrl": {
                 "type": "string"
+              },
+              "queuedMessage": {
+                "additionalProperties": false,
+                "properties": {
+                  "attachmentIds": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "author": {
+                    "type": "string"
+                  },
+                  "blockedReason": {
+                    "type": "string"
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  },
+                  "droppedReason": {
+                    "type": "string"
+                  },
+                  "egressAllowlist": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "hasOutputSchema": {
+                    "type": "boolean"
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer"
+                  },
+                  "prompt": {
+                    "type": "string"
+                  },
+                  "secretNames": {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "sessionId": {
+                    "type": "string"
+                  },
+                  "skills": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "arguments": {
+                          "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                          "type": "string"
+                        },
+                        "name": {
+                          "description": "a workspace skill name (list_agent_skills)",
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "turn": {
+                    "type": "integer"
+                  },
+                  "updatedAt": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "id",
+                  "sessionId",
+                  "position",
+                  "prompt",
+                  "author",
+                  "state",
+                  "createdAt",
+                  "updatedAt"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "queuedMessages": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "attachmentIds": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "author": {
+                      "type": "string"
+                    },
+                    "blockedReason": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "droppedReason": {
+                      "type": "string"
+                    },
+                    "egressAllowlist": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "hasOutputSchema": {
+                      "type": "boolean"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer"
+                    },
+                    "prompt": {
+                      "type": "string"
+                    },
+                    "secretNames": {
+                      "items": {
+                        "type": "string"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "sessionId": {
+                      "type": "string"
+                    },
+                    "skills": {
+                      "items": {
+                        "additionalProperties": false,
+                        "properties": {
+                          "arguments": {
+                            "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                            "type": "string"
+                          },
+                          "name": {
+                            "description": "a workspace skill name (list_agent_skills)",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "name"
+                        ],
+                        "type": "object"
+                      },
+                      "type": [
+                        "null",
+                        "array"
+                      ]
+                    },
+                    "state": {
+                      "type": "string"
+                    },
+                    "turn": {
+                      "type": "integer"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "sessionId",
+                    "position",
+                    "prompt",
+                    "author",
+                    "state",
+                    "createdAt",
+                    "updatedAt"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
               },
               "repo": {
                 "type": "string"
@@ -5831,6 +8250,156 @@
       "required": [
         "ownerId",
         "skills"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Move a queued message to a place in the queue (1 runs next; past the end is last) and get the queue back. To run a message now: interrupt_agent_session, then move it to 1.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "description": "the agent session id",
+          "type": "string"
+        },
+        "messageId": {
+          "description": "the queued message's id (aqm-…), from the queuedMessage a send returned or list_agent_session_queued_messages",
+          "type": "string"
+        },
+        "position": {
+          "description": "the place in the queue, counted from 1; 1 runs next and a number past the end puts it last",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "messageId",
+        "position"
+      ],
+      "type": "object"
+    },
+    "name": "move_agent_session_queued_message",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "queuedMessages"
       ],
       "type": "object"
     }
@@ -6660,6 +9229,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -6677,6 +9249,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -6859,7 +9644,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled). Pass outputSchema to require a machine-readable result for this turn, read from outcome.result.",
+    "description": "Send a follow-up message to a cloud coding-agent session. On an idle session (state succeeded or failed) it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. While a turn is running, or behind messages already queued, it is queued instead: the answer carries queuedMessage (its id and place), and it runs as its own turn when the turn before it settles, one message per turn in order, at most 10 queued per session (AGENT_SESSION_QUEUE_FULL). The session must not be archived or canceled. Manage queued messages with list/edit/delete/move_agent_session_queued_message; interrupt_agent_session stops the running turn so a queued message runs now. Pass outputSchema to require a machine-readable result for this turn, read from outcome.result; inline secrets cannot be queued (name workspace secrets in secretNames).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -6882,6 +9667,10 @@
           ]
         },
         "id": {
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "description": "makes a retried send harmless when the message is queued: the same key and message return the one already queued. 1-128 printable ASCII characters",
           "type": "string"
         },
         "outputRequired": {
@@ -7192,6 +9981,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -7209,6 +10001,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -7784,6 +10789,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -7801,6 +10809,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -8303,6 +11524,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -8320,6 +11544,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -8459,6 +11896,10 @@
           ]
         },
         "id": {
+          "type": "string"
+        },
+        "idempotencyKey": {
+          "description": "makes a retried send harmless when the message is queued: the same key and message return the one already queued. 1-128 printable ASCII characters",
           "type": "string"
         },
         "outputRequired": {
@@ -8769,6 +12210,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -8786,6 +12230,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"
@@ -9431,6 +13088,9 @@
         "parentSessionId": {
           "type": "string"
         },
+        "pendingMessages": {
+          "type": "integer"
+        },
         "phase": {
           "type": "string"
         },
@@ -9448,6 +13108,219 @@
         },
         "prUrl": {
           "type": "string"
+        },
+        "queuedMessage": {
+          "additionalProperties": false,
+          "properties": {
+            "attachmentIds": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "author": {
+              "type": "string"
+            },
+            "blockedReason": {
+              "type": "string"
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "droppedReason": {
+              "type": "string"
+            },
+            "egressAllowlist": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "hasOutputSchema": {
+              "type": "boolean"
+            },
+            "id": {
+              "type": "string"
+            },
+            "position": {
+              "type": "integer"
+            },
+            "prompt": {
+              "type": "string"
+            },
+            "secretNames": {
+              "items": {
+                "type": "string"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "sessionId": {
+              "type": "string"
+            },
+            "skills": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "arguments": {
+                    "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                    "type": "string"
+                  },
+                  "name": {
+                    "description": "a workspace skill name (list_agent_skills)",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            },
+            "updatedAt": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "id",
+            "sessionId",
+            "position",
+            "prompt",
+            "author",
+            "state",
+            "createdAt",
+            "updatedAt"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "queuedMessages": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "attachmentIds": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "author": {
+                "type": "string"
+              },
+              "blockedReason": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "droppedReason": {
+                "type": "string"
+              },
+              "egressAllowlist": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "hasOutputSchema": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "state": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "sessionId",
+              "position",
+              "prompt",
+              "author",
+              "state",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "repo": {
           "type": "string"

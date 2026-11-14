@@ -460,6 +460,16 @@ func (f *fakeStore) MarkAgentSessionTurnHarvestFailed(_ context.Context, id stri
 	return nil
 }
 
+func (f *fakeStore) MarkAgentSessionTurnInterrupted(_ context.Context, id string, turn int) error {
+	row, ok := f.turns[id][turn]
+	if !ok {
+		return store.ErrNotFound
+	}
+	row.Interrupted = true
+	f.turns[id][turn] = row
+	return nil
+}
+
 func (f *fakeStore) setTurnOutput(id string, turn int, output store.AgentTurnOutput) {
 	row := f.turns[id][turn]
 	row.OutputSchema, row.OutputRequired = output.Schema, output.Required
@@ -867,6 +877,14 @@ type fakeLifecycle struct {
 	createErr, resumeErr, cancelErr error
 	inventory                       func(context.Context) (sandbox.InventoryCounts, error)
 	cleanupErr                      error
+	// interrupts records InterruptSessionTurn calls (session, sandbox, turn).
+	interrupts   []string
+	interruptErr error
+}
+
+func (f *fakeLifecycle) InterruptSessionTurn(_ context.Context, _, sessionID, sandboxID string, turn int) error {
+	f.interrupts = append(f.interrupts, fmt.Sprintf("%s/%s/%d", sessionID, sandboxID, turn))
+	return f.interruptErr
 }
 
 func (f *fakeLifecycle) CreateAgentSessionSandbox(_ context.Context, _, _, _, repository, branch, modelEndpoint, modelAPIKey string, egress sessionegress.Egress, driverEnv map[string]string) (sandbox.Sandbox, error) {

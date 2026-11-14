@@ -53,7 +53,8 @@
       }
     },
     "parentSessionId": "ags-d0abc123def456ghij70",
-    "depth": 1
+    "depth": 1,
+    "pendingMessages": 1
   },
   "attachment": {
     "id": "att-d0abc123def456ghij78",
@@ -207,6 +208,27 @@
         "id": "claude",
         "label": "Claude Code",
         "modelKeyReady": true
+      }
+    ]
+  },
+  "queuedMessage": {
+    "id": "aqm-d0abc123def456ghij78",
+    "sessionId": "ags-d0abc123def456ghij78",
+    "position": 1,
+    "prompt": "Also add a regression test",
+    "blockedReason": "the workspace is at its live sandbox limit",
+    "state": "pending",
+    "createdAt": "2026-11-14T10:00:00Z"
+  },
+  "queuedMessageList": {
+    "queuedMessages": [
+      {
+        "id": "aqm-d0abc123def456ghij78",
+        "sessionId": "ags-d0abc123def456ghij78",
+        "position": 1,
+        "prompt": "Also add a regression test",
+        "state": "pending",
+        "createdAt": "2026-11-14T10:00:00Z"
       }
     ]
   }

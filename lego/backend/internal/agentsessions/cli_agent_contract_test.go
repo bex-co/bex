@@ -38,16 +38,18 @@ import (
 func TestShapesMatchCLIAgentContract(t *testing.T) {
 	golden := loadCLIFixture(t, "agent-cli-contract.json")
 	assertSections(t, golden, map[string]reflect.Type{
-		"session":          reflect.TypeFor[View](),
-		"attachment":       reflect.TypeFor[Attachment](),
-		"transcriptPage":   reflect.TypeFor[TranscriptPage](),
-		"tree":             reflect.TypeFor[Tree](),
-		"modelCost":        reflect.TypeFor[ModelCost](),
-		"secretList":       reflect.TypeFor[AgentSecretList](),
-		"skill":            reflect.TypeFor[AgentSkill](),
-		"skillVersionList": reflect.TypeFor[AgentSkillVersionList](),
-		"environment":      reflect.TypeFor[Environment](),
-		"capabilities":     reflect.TypeFor[Capabilities](),
+		"session":           reflect.TypeFor[View](),
+		"attachment":        reflect.TypeFor[Attachment](),
+		"transcriptPage":    reflect.TypeFor[TranscriptPage](),
+		"tree":              reflect.TypeFor[Tree](),
+		"modelCost":         reflect.TypeFor[ModelCost](),
+		"secretList":        reflect.TypeFor[AgentSecretList](),
+		"skill":             reflect.TypeFor[AgentSkill](),
+		"skillVersionList":  reflect.TypeFor[AgentSkillVersionList](),
+		"environment":       reflect.TypeFor[Environment](),
+		"capabilities":      reflect.TypeFor[Capabilities](),
+		"queuedMessage":     reflect.TypeFor[QueuedMessage](),
+		"queuedMessageList": reflect.TypeFor[QueuedMessageList](),
 	})
 
 	// The error envelope is written by core.WriteErr, not a struct.

@@ -408,6 +408,30 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Cancel session",
     description: "Cancel confirm dialog — proceed button",
   },
+  // Stop turn (ADR047 D12): ends only the running turn, never the session.
+  "agentSessions.stopTurn": {
+    message: "Stop turn",
+    description:
+      "Detail header — Stop turn button label: ends only the running turn, unlike Cancel which ends the session",
+  },
+  "agentSessions.stoppingTurn": {
+    message: "Stopping…",
+    description: "Detail header — Stop turn button label while the stop runs",
+  },
+  "agentSessions.stopTurnHint": {
+    message:
+      "Ends only the running turn. The session stays open and queued messages keep their place. Shortcut: Ctrl/Cmd+Shift+Backspace.",
+    description: "Detail header — tooltip on the Stop turn button",
+  },
+  "agentSessions.stopTurnStarting": {
+    message: "The turn is still starting. You can stop it once it is running.",
+    description:
+      "Detail header — tooltip on the disabled Stop turn button while the sandbox starts",
+  },
+  "agentSessions.stopTurnSuccess": {
+    message: "Stopping the turn. It ends within about 15 seconds.",
+    description: "Detail header — toast after Stop turn is accepted",
+  },
   // Steering composer
   "agentSessions.steerTitle": {
     message: "Steer this session",
@@ -422,18 +446,21 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "Send a follow-up instruction to start a new turn on the same branch.",
     description: "Steering composer — textarea placeholder for an idle session",
   },
-  "agentSessions.steerPlaceholderLive": {
-    message: "Send a message to steer the running agent.",
-    description: "Steering composer — textarea placeholder for a live session",
+  "agentSessions.steerPlaceholderQueue": {
+    message: "Queue a message. It runs when the current turn ends.",
+    description:
+      "Steering composer — textarea placeholder while a turn runs or messages wait (ADR047 D12)",
   },
   "agentSessions.steerHintIdle": {
     message:
       "This session is idle — sending a message continues the conversation in a fresh sandbox on the same branch.",
     description: "Steering composer — helper text for the redispatch route",
   },
-  "agentSessions.steerHintLive": {
-    message: "Your message is sent as a live turn in the conversation.",
-    description: "Steering composer — helper text for the live chat route",
+  "agentSessions.steerHintQueue": {
+    message:
+      "The agent is working. Your message is queued and runs as its own turn when this one ends.",
+    description:
+      "Steering composer — helper text while a turn runs or messages wait (ADR047 D12)",
   },
   "agentSessions.steerDisabledCanceling": {
     message:
@@ -450,16 +477,6 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Steering composer — disabled reason when the m43 stream is down",
   },
-  "agentSessions.steerDisabledWaitForTurn": {
-    message: "Wait for the current turn to finish before sending a follow-up.",
-    description:
-      "Composer disabled reason while the current durable agent turn is running",
-  },
-  "agentSessions.steerDisabledInFlight": {
-    message:
-      "A turn is in progress. Wait for it to finish before sending another.",
-    description: "Steering composer — disabled reason while a turn streams",
-  },
   "agentSessions.steerSubmit": {
     message: "Send",
     description: "Steering composer — submit button label",
@@ -471,6 +488,99 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.steerSuccess": {
     message: "Sent — redispatching a new turn.",
     description: "Steering composer — toast after a redispatch is accepted",
+  },
+  "agentSessions.steerQueued": {
+    message: "Queued. It runs when the current turn ends.",
+    description:
+      "Steering composer — toast after a message was queued behind a running turn (ADR047 D12)",
+  },
+  // Queued messages (ADR047 D12): the list above the composer.
+  "agentSessions.queueRegion": {
+    message: "Queued messages",
+    description: "Queued messages list — accessible name of the region",
+  },
+  "agentSessions.queueTitle_one": {
+    message: "{count} queued message",
+    description: "Queued messages list — heading with the count (singular)",
+  },
+  "agentSessions.queueTitle_other": {
+    message: "{count} queued messages",
+    description: "Queued messages list — heading with the count (plural)",
+  },
+  "agentSessions.queueHint": {
+    message: "They run one at a time, in this order, after the current turn.",
+    description:
+      "Queued messages list — one-line explanation next to the heading",
+  },
+  "agentSessions.queuePosition": {
+    message: "Place {position} in the queue",
+    description: "Queued messages list — tooltip on a row's place number",
+  },
+  "agentSessions.queueAttachments_one": {
+    message: "{count} attachment",
+    description:
+      "Queued message row — attachments that ride with it (singular)",
+  },
+  "agentSessions.queueAttachments_other": {
+    message: "{count} attachments",
+    description: "Queued message row — attachments that ride with it (plural)",
+  },
+  "agentSessions.queueBlocked": {
+    message: "Couldn't start yet: {reason}. It is retried automatically.",
+    description:
+      "Queued message row — why the dispatcher could not start it (a spend ceiling or the live-sandbox limit)",
+  },
+  "agentSessions.queueSendNow": {
+    message: "Send now",
+    description:
+      "Queued message row — stops the running turn and runs this message next",
+  },
+  "agentSessions.queueMoveUp": {
+    message: "Move up",
+    description: "Queued message row — move one place earlier",
+  },
+  "agentSessions.queueMoveDown": {
+    message: "Move down",
+    description: "Queued message row — move one place later",
+  },
+  "agentSessions.queueEdit": {
+    message: "Edit",
+    description: "Queued message row — edit the message in place",
+  },
+  "agentSessions.queueRemove": {
+    message: "Remove",
+    description: "Queued message row — remove it so it never runs",
+  },
+  "agentSessions.queueEditLabel": {
+    message: "Edit queued message",
+    description: "Queued message row — accessible name of the edit box",
+  },
+  "agentSessions.queueEditSave": {
+    message: "Save",
+    description: "Queued message row — save the edit",
+  },
+  "agentSessions.queueEditSaveSendNow": {
+    message: "Save and send now",
+    description:
+      "Queued message row — save the edit, stop the running turn and run this message next",
+  },
+  "agentSessions.queueEditDiscard": {
+    message: "Discard",
+    description: "Queued message row — leave the edit without saving",
+  },
+  "agentSessions.queueEditHint": {
+    message:
+      "Enter saves, Shift+Enter adds a line, Ctrl/Cmd+Enter saves and sends it now, Esc discards.",
+    description: "Queued message row — keyboard hints while editing",
+  },
+  "agentSessions.queueSendNowStopping": {
+    message: "Stopping the current turn. This message runs next.",
+    description: "Queued message row — toast after Send now stopped a turn",
+  },
+  "agentSessions.queueSendNowNext": {
+    message: "This message runs next.",
+    description:
+      "Queued message row — toast after Send now when no turn was running",
   },
   // --- Typed AGENT_SESSION_* error messages (keyed by errors.ts messageKey) ---
   "agentSessions.errors.AGENT_SESSION_INPUT_INVALID": {
@@ -512,6 +622,44 @@ const enAgentSessions: Record<string, TranslationEntry> = {
       "A turn is already running. Wait for it to finish before sending another.",
     description: "Mapped message for AGENT_SESSION_TURN_IN_FLIGHT",
   },
+  "agentSessions.errors.AGENT_SESSION_QUEUE_FULL": {
+    message:
+      "This session already has {max} messages queued. Wait for one to run, or remove one, then send again.",
+    description: "Mapped message for AGENT_SESSION_QUEUE_FULL (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_SESSION_QUEUE_INLINE_SECRETS": {
+    message:
+      "A message with inline secrets can't wait in the queue, because their values are never stored. Send it when the session is idle, or use a workspace secret.",
+    description:
+      "Mapped message for AGENT_SESSION_QUEUE_INLINE_SECRETS (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_QUEUED_MESSAGE_DISPATCHED": {
+    message:
+      "That message has already started running, so it can no longer be changed.",
+    description:
+      "Mapped message for AGENT_QUEUED_MESSAGE_DISPATCHED (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_QUEUED_MESSAGE_NOT_FOUND": {
+    message: "That message is no longer in the queue.",
+    description:
+      "Mapped message for AGENT_QUEUED_MESSAGE_NOT_FOUND (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_QUEUED_MESSAGE_ATTACHMENTS_OWNED": {
+    message:
+      "This message carries its sender's attachments, so only the sender can edit it. You can still move or remove it.",
+    description:
+      "Mapped message for AGENT_QUEUED_MESSAGE_ATTACHMENTS_OWNED (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_SESSION_NO_TURN_RUNNING": {
+    message: "No turn is running, so there is nothing to stop.",
+    description:
+      "Mapped message for AGENT_SESSION_NO_TURN_RUNNING (ADR047 D12)",
+  },
+  "agentSessions.errors.AGENT_SESSION_TURN_STARTING": {
+    message:
+      "The turn is still starting, so there is nothing to stop yet. Try again in a few seconds.",
+    description: "Mapped message for AGENT_SESSION_TURN_STARTING (ADR047 D12)",
+  },
   "agentSessions.errors.AGENT_SESSION_MODEL_ENDPOINT_INVALID": {
     message: "The model endpoint must be a valid HTTPS URL.",
     description: "Mapped message for AGENT_SESSION_MODEL_ENDPOINT_INVALID",
@@ -547,6 +695,11 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   "agentSessions.conversationEmpty": {
     message: "No conversation yet.",
     description: "Shown when a session has produced no transcript parts",
+  },
+  "agentSessions.turnInterrupted": {
+    message: "Turn {turn} was interrupted before it finished.",
+    description:
+      "Transcript line at the end of a turn a person stopped with Stop turn (ADR047 D12); not a failure",
   },
   "agentSessions.turnError": {
     message: "Turn {turn} failed",

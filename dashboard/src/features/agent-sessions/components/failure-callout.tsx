@@ -81,8 +81,15 @@ export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
   async function handleRetry() {
     setRetrying(true);
     try {
-      await steer(session.id, session.agentConfig.task);
-      toast.success(t("agentSessions.steerSuccess"));
+      const sent = await steer(session.id, session.agentConfig.task);
+      // Messages already waiting run first: the retry then joins them (D12).
+      toast.success(
+        t(
+          sent.queuedMessage
+            ? "agentSessions.steerQueued"
+            : "agentSessions.steerSuccess",
+        ),
+      );
       onRetried?.();
     } catch (err) {
       // Closing the ADR075 D7 payment dialog is a user choice, not a failure.

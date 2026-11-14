@@ -135,6 +135,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
+		s.fillQueue(r.Context(), &view) // the REST read inlines the messages that wait
 		core.WriteJSON(w, http.StatusOK, view)
 	})
 	// The tree the session belongs to (ADR102 D8), whichever node the id names.
@@ -230,13 +231,27 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		req.SessionID = r.PathValue("id")
+		// The header is the REST spelling of the body's idempotencyKey, as on
+		// create; it makes a retried send of a queued message harmless.
+		if key := r.Header.Get("Idempotency-Key"); key != "" {
+			if req.IdempotencyKey != "" && req.IdempotencyKey != key {
+				core.WriteErrStatus(w, http.StatusBadRequest, "Idempotency-Key header and idempotencyKey body field disagree")
+				return
+			}
+			req.IdempotencyKey = key
+		}
 		view, err := s.Steer(r.Context(), req)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, view)
+		status := http.StatusOK
+		if view.Queued != nil {
+			status = http.StatusAccepted // queued behind the running turn, not started (ADR047 D12)
+		}
+		core.WriteJSON(w, status, view)
 	})
+	s.registerQueueREST(mux)
 	s.registerAttachmentREST(mux)
 	s.registerSecretREST(mux)
 	s.registerRepoEnvironmentREST(mux)

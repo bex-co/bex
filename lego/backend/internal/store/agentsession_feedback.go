@@ -153,6 +153,10 @@ func (s *PGStore) ClaimDeliverableFeedback(ctx context.Context, now time.Time, l
 			             WHERE delivered_at IS NULL AND dropped_reason IS NULL
 			               AND (claimed_until IS NULL OR claimed_until < $1))
 			  AND phase = ANY($3) AND archived_at IS NULL
+			  -- A person's queued message goes first (ADR047 D12): the session
+			  -- takes no feedback turn while one waits.
+			  AND NOT EXISTS (SELECT 1 FROM agent_session_queued_messages m
+			                  WHERE m.session_id = agent_sessions.id AND m.`+pendingQueuedSQL+`)
 			ORDER BY updated_at
 			FOR UPDATE SKIP LOCKED
 			LIMIT $2`, now, clampLimit(limit), phases))

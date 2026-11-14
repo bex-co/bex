@@ -1322,6 +1322,7 @@ var readVerbs = map[string]bool{
 	"agentsessions.Capabilities":         true,
 	"agentsessions.List":                 true,
 	"agentsessions.Get":                  true,
+	"agentsessions.QueuedMessages":       true,
 	"agentsessions.Wait":                 true,
 	"agentsessions.Transcript":           true,
 	"agentsessions.ToolOutput":           true,

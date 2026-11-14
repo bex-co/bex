@@ -7,6 +7,8 @@ import { StructuredResultCallout } from "@/features/agent-sessions/components/st
 import { SessionSpendNote } from "@/features/agent-sessions/components/session-spend-note";
 import { FailureCallout } from "@/features/agent-sessions/components/failure-callout";
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
+import { QueuedMessageList } from "@/features/agent-sessions/components/queued-messages";
+import { useAgentSessionQueue } from "@/features/agent-sessions/hooks/use-agent-session-queue";
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
@@ -45,6 +47,8 @@ export interface SessionChatColumnProps {
  * - **Optimistic redispatch echo.** The idle→redispatch steer path echoes while
  *   provisioning. It hides as soon as the durable turn count advances; gateway
  *   replay then projects the persisted prompt as a `data-user-prompt` part.
+ *   A message sent while a turn runs is queued instead (ADR047 D12): it shows
+ *   in the queue list above the composer, never as an echo.
  */
 export function SessionChatColumn({
   session,
@@ -58,6 +62,9 @@ export function SessionChatColumn({
   const { t } = useTranslations();
   const [transportState, setTransportState] =
     useState<ConversationState>("not-started");
+  // The messages waiting behind the running turn (ADR047 D12): listed above the
+  // composer, which also needs to know a send would join them.
+  const queuedMessages = useAgentSessionQueue(session);
 
   const provisioningWithoutSandbox =
     !session.sandboxId &&
@@ -166,15 +173,25 @@ export function SessionChatColumn({
           the composer would be a dead input — the header's Unarchive is the way
           back (ADR065 D1). */}
       {session.isArchived ? null : (
-        <SteeringComposer
-          session={session}
-          chat={chat}
-          conversationState={conversationState}
-          onSteered={onChanged}
-          onOptimisticSteer={(prompt) =>
-            setPendingSteer(prompt ? { prompt, atTurns: session.turns } : null)
-          }
-        />
+        <>
+          <QueuedMessageList
+            session={session}
+            messages={queuedMessages}
+            onChanged={onChanged}
+          />
+          <SteeringComposer
+            session={session}
+            chat={chat}
+            conversationState={conversationState}
+            queuedCount={queuedMessages.length}
+            onSteered={onChanged}
+            onOptimisticSteer={(prompt) =>
+              setPendingSteer(
+                prompt ? { prompt, atTurns: session.turns } : null,
+              )
+            }
+          />
+        </>
       )}
     </>
   );

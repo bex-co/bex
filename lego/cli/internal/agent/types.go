@@ -58,6 +58,20 @@ type session struct {
 	Outcome           *outcome    `json:"outcome"`
 	ParentSessionID   string      `json:"parentSessionId"`
 	Depth             int         `json:"depth"`
+	// Queued is the message a steer queued instead of starting a turn
+	// (ADR047 D12); PendingMessages is how many wait to run on a session read.
+	Queued          *queuedMessage `json:"queuedMessage"`
+	PendingMessages int            `json:"pendingMessages"`
+}
+
+// queuedMessage is a message waiting in the session's server-side queue.
+// Position is its 1-based place: 1 runs next. BlockedReason is why the last
+// try to run it failed, when one did.
+type queuedMessage struct {
+	ID            string `json:"id"`
+	Position      int    `json:"position"`
+	Prompt        string `json:"prompt"`
+	BlockedReason string `json:"blockedReason"`
 }
 
 type agentConfig struct {

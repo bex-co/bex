@@ -8,6 +8,7 @@ import {
 import { useTranslations } from "@/common/hooks/use-translations";
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
+import { useAgentSessionInterruptedTurns } from "@/features/agent-sessions/hooks/use-agent-session-interrupted-turns";
 import type { MintedTicket } from "@/features/agent-sessions/lib/transport";
 import type {
   ConversationChatHandle,
@@ -57,6 +58,12 @@ export function SessionConversation({
 }: SessionConversationProps) {
   const { t } = useTranslations();
   const { attach } = useAgentSessionMutations();
+  // The turns Stop turn ended (ADR047 D12), marked in the transcript. Read here,
+  // beside the other Apollo hooks, so the stream-only impl stays GraphQL-free.
+  const interruptedTurns = useAgentSessionInterruptedTurns(
+    sessionId,
+    attachSignal,
+  );
   const [Impl, setImpl] =
     useState<ComponentType<SessionConversationImplProps> | null>(null);
 
@@ -108,6 +115,7 @@ export function SessionConversation({
       onConversationStateChange={onConversationStateChange}
       footer={footer}
       terminalLabel={terminalLabel}
+      interruptedTurns={interruptedTurns}
     />
   );
 }

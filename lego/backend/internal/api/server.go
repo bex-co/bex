@@ -470,6 +470,10 @@ type Deps struct {
 	// AgentFeedbackStore reads the PR feedback behind steering turns
 	// (w9/m344, ADR047 D11); nil leaves turnOrigins out.
 	AgentFeedbackStore agentsessions.FeedbackReader
+	// AgentQueueStore is the durable queue of messages sent while an agent
+	// turn runs (ADR047 D12); nil answers such a message with the
+	// in-flight refusal.
+	AgentQueueStore agentsessions.QueueStore
 	// AgentRegistryHosts is the session-egress package-registry catalog,
 	// reported by the agent environment for display.
 	AgentRegistryHosts       []string
@@ -1161,6 +1165,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		RepoEnvs:         d.AgentRepoEnvironmentStore,
 		Automations:      d.AgentAutomationStore,
 		Feedback:         d.AgentFeedbackStore,
+		Queue:            d.AgentQueueStore,
 
 		MetaRouteMaxSessions: d.AgentMetaRouteMaxSessions,
 	}

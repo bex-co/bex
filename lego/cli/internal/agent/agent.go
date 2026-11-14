@@ -682,7 +682,9 @@ func sendCommand(d deps) *cobra.Command {
 		Use:   "send <ags-id> [flags] <message…>",
 		Short: "Send a follow-up message to an agent session",
 		Long: "Starts the session's next turn with a message, the way a reply works in\n" +
-			"the dashboard. The session must be steerable (its last turn ended).",
+			"the dashboard. While a turn is running the server queues the message\n" +
+			"instead (at most 10 per session) and runs it when the turn ends; --wait and\n" +
+			"--follow then return at once, since the message's own turn has not started.",
 		Args: sessionArgs(-1),
 		RunE: func(c *cobra.Command, args []string) error {
 			id := args[0]
@@ -708,9 +710,17 @@ func sendCommand(d deps) *cobra.Command {
 					return err
 				}
 			}
-			steered, raw, err := inv.api.steer(inv.ctx, id, in)
+			steered, raw, err := inv.api.steer(inv.ctx, id, in, d.newKey())
 			if err != nil {
 				return err
+			}
+			if steered.Queued != nil {
+				note := fmt.Sprintf("Queued (position %d): it runs when the session's running turn ends.", steered.Queued.Position)
+				if waiting.blocking() {
+					note += " Not waiting: a queued message runs as its own turn."
+				}
+				_, _ = fmt.Fprintln(inv.errOut, note)
+				return inv.show(steered, raw)
 			}
 			if !waiting.blocking() {
 				return inv.show(steered, raw)

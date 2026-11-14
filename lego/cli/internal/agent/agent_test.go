@@ -411,14 +411,22 @@ func TestContractFixtureDecodes(t *testing.T) {
 		Session        session        `json:"session"`
 		Attachment     attachment     `json:"attachment"`
 		TranscriptPage transcriptPage `json:"transcriptPage"`
-		Error          json.RawMessage
+		QueuedMessage  queuedMessage  `json:"queuedMessage"`
+		QueuedList     struct {
+			QueuedMessages []queuedMessage `json:"queuedMessages"`
+		} `json:"queuedMessageList"`
+		Error json.RawMessage
 	}
 	if err := json.Unmarshal(raw, &golden); err != nil {
 		t.Fatal(err)
 	}
 	s := golden.Session
-	if s.ID == "" || s.OwnerID == "" || s.State != stateSucceeded || s.SSHAddress == "" || s.Outcome == nil {
+	if s.ID == "" || s.OwnerID == "" || s.State != stateSucceeded || s.SSHAddress == "" || s.Outcome == nil || s.PendingMessages != 1 {
 		t.Fatalf("session fields lost: %+v", s)
+	}
+	q := golden.QueuedMessage
+	if q.ID == "" || q.Position != 1 || q.Prompt == "" || q.BlockedReason == "" || len(golden.QueuedList.QueuedMessages) != 1 || golden.QueuedList.QueuedMessages[0].Prompt == "" {
+		t.Fatalf("queued message fields lost: %+v %+v", q, golden.QueuedList)
 	}
 	o := s.Outcome
 	if o.Turn != 1 || o.Summary == "" || o.PullRequest == nil || o.PullRequest.URL == "" || len(o.Files) != 1 || o.Files[0].ID == "" || len(o.Result) == 0 || o.Cost == nil || o.Cost.ModelUSD != "0.42" || o.Cost.ComputeUSD != "0.0895" || o.Cost.TotalUSD != "0.5095" {

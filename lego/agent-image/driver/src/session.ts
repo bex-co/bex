@@ -27,6 +27,12 @@ import {
   type DeliveryStatus,
 } from "./delivery-check.js";
 import { stampSourceTimestamp } from "./timestamp.js";
+import {
+  interruptPath,
+  interruptPollMs,
+  TurnInterrupted,
+  watchInterrupt,
+} from "./interrupt.js";
 import { describeError } from "./errors.js";
 import { writeJsonAtomic } from "./fs-util.js";
 import type { AgentDriverConfig } from "./config.js";
@@ -45,12 +51,20 @@ interface RunTurnOptions {
   closeHub?: boolean;
   onPart?: (part: UIMessagePart, frame?: string) => void;
   abortSignal?: AbortSignal;
+  // How often the interrupt sentinel is polled; tests shorten it.
+  interruptPollMs?: number;
 }
 
 interface StatusRecord {
-  state: "running" | "succeeded" | "failed";
+  state: "running" | "succeeded" | "interrupted" | "failed";
   [key: string]: unknown;
 }
+
+// How long an interrupted turn waits for the agent's last streamed parts to
+// land in the log, and for the facts about its checkout. Both are best effort:
+// a person stopped the turn, so neither may hold the stop up.
+const interruptDrainMs = 3_000;
+const interruptFactsMs = 15_000;
 
 const maxSessionLogBytes = 16 << 20;
 
@@ -59,7 +73,9 @@ const maxSessionLogBytes = 16 << 20;
 const repoSetupDone = new WeakSet<AgentDriverConfig>();
 
 export interface TurnResult extends StatusRecord {
-  state: "succeeded";
+  // "interrupted" is a turn a person stopped (ADR047 D12): the driver and its
+  // later turns carry on, so it settles like a success, not a failure.
+  state: "succeeded" | "interrupted";
   sessionId: string | null;
   resume: SessionProvider["resume"];
   usage: unknown;
@@ -75,6 +91,21 @@ async function writeStatus(
   status: StatusRecord,
 ): Promise<void> {
   await writeJsonAtomic(filename, status);
+}
+
+// within resolves with work's value, or with undefined once ms has passed.
+async function within<T>(work: Promise<T>, ms: number): Promise<T | undefined> {
+  let timer: NodeJS.Timeout | undefined;
+  try {
+    return await Promise.race([
+      work,
+      new Promise<undefined>((resolve) => {
+        timer = setTimeout(resolve, ms, undefined);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function cleanupFailure(original: unknown, cleanup: unknown): Error {
@@ -236,6 +267,63 @@ export async function runHeadlessTurn(
       rejectDeadline(error);
     },
   });
+  // A person stopping the turn (ADR047 D12) aborts it like an outside abort,
+  // but with a reason of its own, so the verdict below is not a failure.
+  const stopWatchingInterrupt = watchInterrupt(
+    interruptPath(config),
+    turn,
+    () => {
+      const error = new TurnInterrupted();
+      turnAbort.abort(error);
+      rejectDeadline(error);
+    },
+    options.interruptPollMs ?? interruptPollMs,
+  );
+  let executing: Promise<void> | undefined;
+  // settleInterrupted ends a turn a person stopped. The agent is stopped, its
+  // streamed parts are left in the log, and the checkout's facts are recorded
+  // so the delivery note names what the agent left undelivered. The driver
+  // never commits or pushes, here as at the end of any turn: only what the
+  // agent already pushed stays on the branch.
+  const settleInterrupted = async (): Promise<TurnResult> => {
+    try {
+      await stopProvider();
+    } catch {
+      // The agent's process tree is killed whether or not it said so.
+    }
+    if (executing) {
+      await within(
+        executing.then(
+          () => undefined,
+          () => undefined,
+        ),
+        interruptDrainMs,
+      );
+    }
+    try {
+      await turnLog.close();
+    } catch (logError) {
+      console.warn(`turn log flush failed: ${describeError(logError)}`);
+    }
+    let git: DeliveryStatus | undefined;
+    if (config.deliver) {
+      git = await within(
+        readGitFacts(config).then((facts) => ({
+          ...facts,
+          undelivered: undeliveredFacts(facts, config),
+        })),
+        interruptFactsMs,
+      ).catch(() => undefined);
+    }
+    const status: StatusRecord = {
+      state: "interrupted",
+      sessionId: provider?.sessionId ?? null,
+      ...(provider ? { resume: provider.resume } : {}),
+      ...(git ? { git } : {}),
+    };
+    await writeStatus(config.statusPath, status);
+    return { ...status, usage: promptResponse?.usage ?? {} } as TurnResult;
+  };
   try {
     if (!prompt)
       throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
@@ -377,7 +465,10 @@ export async function runHeadlessTurn(
       }
       if (turnError) throw turnError;
     };
-    await Promise.race([execute(), deadline]);
+    executing = execute();
+    await Promise.race([executing, deadline]);
+    // A stop that arrives after the agent finished changes nothing.
+    stopWatchingInterrupt();
     if (closeHub) hub.close();
 
     // The agent must be dead before the terminal verdict is written, so
@@ -399,6 +490,9 @@ export async function runHeadlessTurn(
     return { ...status, usage: promptResponse?.usage ?? {} } as TurnResult;
   } catch (error) {
     if (closeHub) hub.close();
+    if (turnAbort.signal.reason instanceof TurnInterrupted) {
+      return await settleInterrupted();
+    }
     let terminalError = error;
     try {
       await stopProvider();
@@ -421,6 +515,7 @@ export async function runHeadlessTurn(
     });
     throw terminalError;
   } finally {
+    stopWatchingInterrupt();
     bound.stop();
     options.abortSignal?.removeEventListener("abort", abortFromOutside);
     // Idempotent safety net for errors thrown before the success/catch path

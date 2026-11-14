@@ -534,6 +534,8 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 		c.harvestRunningTurn(ctx, record)
 	case driverStateSucceeded:
 		c.complete(ctx, record, report)
+	case driverStateInterrupted:
+		c.interrupted(ctx, record, report)
 	case driverStateFailed:
 		reason := strings.TrimSpace(report.Error)
 		if reason == "" {
@@ -590,6 +592,27 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		c.failMissingOutput(ctx, record)
 		return
 	}
+	c.settleCompleted(ctx, record, report, turnOutcomeCompleted)
+}
+
+// interrupted settles a turn a person stopped (ADR047 D12) as a completed
+// one, flagged interrupted: the session stays steerable and queued messages
+// run next, the reply the agent streamed is harvested like any turn's, and no
+// failure is recorded. A structured result the turn owed is not required of
+// it: it was stopped before it could submit one.
+func (c *Completer) interrupted(ctx context.Context, record store.AgentSession, report statusReport) {
+	// The flag first: a failed finalize is retried next tick, and the status
+	// file still reads interrupted, so the pair converges.
+	if err := c.Store.MarkAgentSessionTurnInterrupted(ctx, record.ID, record.Turns); err != nil {
+		log.Printf("agent-session completer: flagging the interrupted turn failed (session=%s): %v", record.ID, err)
+		return
+	}
+	c.settleCompleted(ctx, record, report, turnOutcomeInterrupted)
+}
+
+// settleCompleted finalizes a session as completed with what the sandbox
+// reported, records the outcome and tears the sandbox down.
+func (c *Completer) settleCompleted(ctx context.Context, record store.AgentSession, report statusReport, outcome turnOutcome) {
 	headSHA := c.verifiedHead(ctx, record, report.Git.RemoteHead)
 	note := deliveryNote(report.Git)
 	final, fact, err := c.Store.FinalizeAgentSession(ctx, record.ID, PhaseCompleted, headSHA, note, "")
@@ -599,8 +622,8 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 		}
 		return // retry next tick; the sandbox stays until the row is finalized
 	}
-	c.Metrics.observeTerminalTurn(turnOutcomeCompleted, fact)
-	log.Printf("agent-session completer: completed session=%s pr=%s head=%s dirty=%t unpushed=%d undelivered=%t", record.ID, final.PRURL, final.HeadSHA, report.Git.Dirty, report.Git.UnpushedCommits, note != "")
+	c.Metrics.observeTerminalTurn(outcome, fact)
+	log.Printf("agent-session completer: %s session=%s pr=%s head=%s dirty=%t unpushed=%d undelivered=%t", outcome, record.ID, final.PRURL, final.HeadSHA, report.Git.Dirty, report.Git.UnpushedCommits, note != "")
 	// Tear down against the FINALIZED row so the idle clock (record.UpdatedAt) is
 	// the turn-end time, not the stale pre-finalize timestamp; SandboxID survives
 	// finalize, so it is still present here.

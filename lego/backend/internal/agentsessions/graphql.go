@@ -418,6 +418,26 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return gqlTime(*v.ArchivedAt)
 		})},
+		"pendingMessages": &graphql.Field{Type: graphql.NewNonNull(graphql.Int),
+			Description: "How many queued messages wait to run as this session's next turns (ADR047 D12); set on lists and single-session reads.",
+			Resolve:     gqlutil.Field(func(v View) any { return v.PendingMessages })},
+		"queuedMessages": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(queuedMessageGQLType)),
+			Description: "The messages waiting to run, next first; only on a single-session read.",
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				v, ok := p.Source.(View)
+				if !ok {
+					return nil, nil
+				}
+				return v.queued(p.Context), nil
+			}},
+		"queuedMessage": &graphql.Field{Type: queuedMessageGQLType,
+			Description: "The message a steerAgentSession queued behind the running turn instead of starting a turn; null when it started one.",
+			Resolve: gqlutil.Field(func(v View) any {
+				if v.Queued == nil {
+					return nil
+				}
+				return *v.Queued
+			})},
 		"turnOrigins": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(agentSessionTurnOriginGQLType)),
 			Description: "Which turns PR feedback started (a review, a comment or a failed CI run); only on a single-session read.",
 			Resolve:     gqlutil.Field(func(v View) any { return v.TurnOrigins })},
@@ -506,6 +526,7 @@ var transcriptTurnGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return gqlTime(*v.CompletedAt)
 		})},
 		"outputSchema":   jsonTextField("The JSON Schema the turn was accepted with (ADR094 D5), as JSON text, or null for a free-form turn.", func(v TranscriptTurn) any { return v.OutputSchema }),
+		"interrupted":    &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "A person stopped the turn before it ended on its own (ADR047 D12).", Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.Interrupted })},
 		"outputRequired": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.OutputRequired })},
 		"result":         jsonTextField("The agent's last valid structured result for the turn as JSON text, readable while the turn runs, or null.", func(v TranscriptTurn) any { return v.Result }),
 		"resultFinal":    &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "The agent declared result final; only a final result becomes outcome.result.", Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.ResultFinal })},
@@ -853,6 +874,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"id":              gqlutil.ReqArg(graphql.String),
 				"prompt":          gqlutil.ReqArg(graphql.String),
+				"idempotencyKey":  &graphql.ArgumentConfig{Type: graphql.String, Description: "Makes a retried send harmless when the message is queued: the same key and message return the one already queued."},
 				"egressAllowlist": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"attachmentIds":   gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"outputSchema":    gqlutil.Arg(graphql.String),
@@ -866,7 +888,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
-				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
+				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
 			},
 		},
 		"setAgentRepoEnvironment": &graphql.Field{
@@ -994,5 +1016,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	}
 	maps.Copy(fields, s.skillMutations())
 	maps.Copy(fields, s.automationMutations())
+	maps.Copy(fields, s.queueMutations())
 	return fields
 }

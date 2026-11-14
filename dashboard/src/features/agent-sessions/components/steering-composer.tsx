@@ -14,6 +14,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import { useAttachmentUploads } from "@/features/agent-sessions/hooks/use-attachment-uploads";
+import { useIdempotencyKey } from "@/features/agent-sessions/hooks/use-idempotency-key";
 import {
   AttachButton,
   AttachmentChips,
@@ -25,6 +26,7 @@ import {
   ComposerSkills,
 } from "@/features/agent-sessions/components/composer-skills";
 import {
+  composerSkillsFingerprint,
   composerSkillsInput,
   composerSkillsValid,
   type ComposerSkill,
@@ -34,50 +36,54 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
 import type { ConversationState } from "@/features/agent-sessions/lib/conversation-state";
 
-/** The routed target of a steering message (ADR047 D9). */
-type SteerRoute = "chat" | "redispatch";
-
 export interface SteeringComposerProps {
   session: AgentSessionView;
   /**
-   * The live conversation's `useChat` handle, lifted from the column. Present
-   * only while the stream is healthy; `null` disables the live (chat POST) path.
+   * The live conversation's `useChat` handle, lifted from the column. The
+   * composer no longer sends through it: a message to a session whose turn
+   * runs is queued (ADR047 D12), and public live injection stays unavailable
+   * (D9). Kept as the seam for a future transactional live-turn protocol.
    */
-  chat: ConversationChatHandle | null;
+  chat?: ConversationChatHandle | null;
   conversationState?: ConversationState;
-  /** Re-read the session after a redispatch converges (turns/phase change). */
+  /** Re-read the session after a send (a turn started, or a message queued). */
   onSteered?: () => void;
   /**
-   * Optimistic echo for the **redispatch** path (w2/m64): called with the prompt
-   * the instant a redispatch steer is submitted so the detail page can show the
-   * message immediately (the idle path has no `useChat` optimism of its own),
-   * and with `null` to roll it back if the steer is rejected synchronously. The
-   * The disabled live path never calls this callback.
+   * Optimistic echo for a send that starts a turn (w2/m64): called with the
+   * prompt the instant it is submitted so the detail page can show the message
+   * immediately (the idle path has no `useChat` optimism of its own), and with
+   * `null` to take it back if the steer is rejected, or if the server queued
+   * the message instead (a queued message shows as a chip, not as a turn). A
+   * send the composer expects to queue never calls it.
    */
   onOptimisticSteer?: (prompt: string | null) => void;
+  /** How many messages already wait in the session's queue (ADR047 D12). */
+  queuedCount?: number;
 }
 
 /**
- * The bottom-docked chat composer (ADR047 § D9, w3/m44). One auto-growing
- * textarea (Enter-to-send, Shift+Enter for a newline) with two destinations
- * decided by the session's phase:
+ * The bottom-docked chat composer (ADR047 § D9, w3/m44; D12). One auto-growing
+ * textarea (Enter-to-send, Shift+Enter for a newline). Every message goes
+ * through the `steer` mutation, which the session's state routes:
  *
- * - a **live** (running/creating/resuming/redispatching) session → disabled until
- *   the current turn settles, because public live POST cannot atomically persist
- *   its prompt with control-plane turn state;
- * - an **idle** (completed/failed) session → the message redispatches a new
- *   turn via t001's `steer` mutation, and the header refetch surfaces the
- *   incremented `turns`.
+ * - an **idle** (completed/failed) session with nothing queued starts a new
+ *   turn, and the header refetch surfaces the incremented `turns`;
+ * - a session whose turn is **running** (creating/running/resuming/
+ *   redispatching), or one with messages already waiting, **queues** the
+ *   message. It appears at once in the queue list above the composer and runs
+ *   as its own turn when the current one settles.
  *
- * It is always rendered but disabled with a stated reason while the session is
- * `canceling`/`canceled` or while a turn is in flight.
+ * It stays enabled in every state that can take a message: only a canceling or
+ * canceled session disables it, with a stated reason (an archived session
+ * never mounts it). `steerable` is not the condition, since it is true only
+ * for an idle session.
  */
 export function SteeringComposer({
   session,
-  chat,
   conversationState,
   onSteered,
   onOptimisticSteer,
+  queuedCount = 0,
 }: SteeringComposerProps) {
   const { t } = useTranslations();
   const { steer } = useAgentSessionMutations();
@@ -94,16 +100,14 @@ export function SteeringComposer({
 
   const isCanceling = session.phase === "canceling";
   const isCanceled = session.phase === "canceled";
-  const turnInFlight =
-    chat?.status === "streaming" || chat?.status === "submitted";
-
-  // Route: idle (completed/failed) → durable redispatch mutation; every live
-  // phase stays disabled until it reaches one of those terminal states.
-  const route: SteerRoute = session.isSteerable ? "redispatch" : "chat";
-  // w5/m71 closes the gateway POST path because it could execute a prompt
-  // without atomically recording the turn. Follow-ups are accepted only after
-  // the current control-plane turn settles, through the durable Steer mutation.
-  const liveTurnUnavailable = route === "chat" && !isCanceling && !isCanceled;
+  const hardDisabled = isCanceling || isCanceled;
+  // A send queues while a turn runs, and behind messages that already wait (the
+  // server queues it then too, so a direct send cannot jump the queue).
+  const willQueue = !session.isSteerable || queuedCount > 0;
+  // One key per distinct queued send: a retry of the same message after a
+  // failure reuses it (the server hands back the message it already queued),
+  // an edited message gets a fresh one.
+  const submitKey = useIdempotencyKey();
 
   // A single reason string when the composer is hard-disabled; null when it's
   // ready to accept input.
@@ -113,22 +117,15 @@ export function SteeringComposer({
       ? t("agentSessions.steerDisabledCanceled")
       : conversationState === "broken"
         ? t("agentSessions.steerDisabledStream")
-        : liveTurnUnavailable
-          ? t("agentSessions.steerDisabledWaitForTurn")
-          : turnInFlight
-            ? t("agentSessions.steerDisabledInFlight")
-            : null;
+        : null;
 
-  const hardDisabled = isCanceling || isCanceled || liveTurnUnavailable;
-  const busy = pending || turnInFlight;
-  // Attachments ride only the durable redispatch path (the live path is off),
-  // and not while a send is in flight: a file added then would miss it.
+  // A file added while a send is in flight would miss it.
   const canAttach = Boolean(limits?.enabled) && !hardDisabled && !pending;
   const attachmentsBlock = uploads.uploading || uploads.hasErrors;
   const skillsInvalid = !composerSkillsValid(skills);
   const submitDisabled =
     hardDisabled ||
-    busy ||
+    pending ||
     attachmentsBlock ||
     skillsInvalid ||
     value.trim().length === 0;
@@ -139,10 +136,9 @@ export function SteeringComposer({
     : uploads.uploading
       ? t("agentSessions.attachmentsUploading")
       : null;
-  const routeHint =
-    route === "redispatch"
-      ? t("agentSessions.steerHintIdle")
-      : t("agentSessions.steerHintLive");
+  const routeHint = willQueue
+    ? t("agentSessions.steerHintQueue")
+    : t("agentSessions.steerHintIdle");
 
   function handleError(err: unknown) {
     setSubmitError(agentSessionErrorMessage(err, t));
@@ -151,36 +147,53 @@ export function SteeringComposer({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const prompt = value.trim();
-    if (!prompt || hardDisabled || busy || attachmentsBlock || skillsInvalid)
+    if (!prompt || hardDisabled || pending || attachmentsBlock || skillsInvalid)
       return;
     setSubmitError(null);
     setPending(true);
+    const queues = willQueue;
+    let echoed = false;
     try {
-      if (route === "redispatch") {
-        // Optimistically echo the prompt now — the redispatch runs fast then
-        // provisions in the background (w2/m64), so the message must appear
-        // immediately rather than after the round trip.
+      // Optimistically echo a send that starts a turn — it runs fast then
+      // provisions in the background (w2/m64), so the message must appear
+      // immediately rather than after the round trip. A queued one is a chip.
+      if (!queues) {
         onOptimisticSteer?.(prompt);
-        const sent = uploads.readyIds;
-        await steer(session.id, prompt, {
-          attachmentIds: sent,
-          ...(skills.length > 0 ? { skills: composerSkillsInput(skills) } : {}),
-        });
-        uploads.clear(sent);
-        setSkills([]);
-        toast.success(t("agentSessions.steerSuccess"));
-        onSteered?.();
-      } else {
-        // Defensive dead branch while liveTurnUnavailable is true. Keep the
-        // handle seam for a future transactional live-turn protocol.
-        if (!chat) return;
-        await chat.sendMessage(prompt);
+        echoed = true;
       }
+      const sent = uploads.readyIds;
+      let idempotencyKey: string | undefined;
+      if (queues) {
+        idempotencyKey = submitKey.keyFor(
+          JSON.stringify([
+            session.id,
+            prompt,
+            sent,
+            composerSkillsFingerprint(skills),
+          ]),
+        );
+      }
+      const result = await steer(session.id, prompt, {
+        attachmentIds: sent,
+        ...(skills.length > 0 ? { skills: composerSkillsInput(skills) } : {}),
+        ...(idempotencyKey ? { idempotencyKey } : {}),
+      });
+      submitKey.release();
+      uploads.clear(sent);
+      setSkills([]);
+      if (result.queuedMessage) {
+        // The server queued it (the session was busy after all): no turn began.
+        if (echoed) onOptimisticSteer?.(null);
+        toast.success(t("agentSessions.steerQueued"));
+      } else {
+        toast.success(t("agentSessions.steerSuccess"));
+      }
+      onSteered?.();
       setValue("");
     } catch (err) {
       // A synchronous rejection (conflict/unavailable) rolls the optimistic
       // echo back so a rejected message never lingers in the transcript.
-      if (route === "redispatch") onOptimisticSteer?.(null);
+      if (echoed) onOptimisticSteer?.(null);
       // Closing the ADR075 D7 payment dialog is a user choice, not a failure.
       if (!isPaymentOnboardingCancelled(err)) handleError(err);
     } finally {
@@ -226,7 +239,7 @@ export function SteeringComposer({
               {canAttach ? (
                 <AttachButton onFiles={uploads.add} disabled={pending} />
               ) : null}
-              {route === "redispatch" && !hardDisabled ? (
+              {!hardDisabled ? (
                 <ComposerSkills
                   ownerId={session.ownerId}
                   value={skills}
@@ -243,9 +256,9 @@ export function SteeringComposer({
                 rows={1}
                 disabled={hardDisabled}
                 placeholder={
-                  route === "redispatch"
-                    ? t("agentSessions.steerPlaceholderIdle")
-                    : t("agentSessions.steerPlaceholderLive")
+                  willQueue
+                    ? t("agentSessions.steerPlaceholderQueue")
+                    : t("agentSessions.steerPlaceholderIdle")
                 }
                 className="max-h-[200px] min-h-0 resize-none overflow-y-auto border-0 bg-transparent p-0 py-1.5 shadow-none focus-visible:ring-0 dark:bg-transparent"
               />

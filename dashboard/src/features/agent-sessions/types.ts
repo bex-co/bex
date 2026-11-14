@@ -231,9 +231,10 @@ export interface AgentSessionView {
   /** completed/failed/canceled — the session will not change further on its own. */
   isTerminal: boolean;
   /**
-   * True when the GraphQL steer/resume redispatch path accepts a new prompt: an
-   * idle (completed/failed), non-canceled session. A live (running) session is
-   * steered over the stream POST instead (t002), not this flag.
+   * True when a steer starts a turn now: an idle (completed/failed),
+   * non-archived session. It is not the test for whether a message is accepted:
+   * a session whose turn runs queues the message instead (ADR047 D12), so the
+   * composer is enabled for any session that is not canceled or archived.
    */
   isSteerable: boolean;
   /**
@@ -265,4 +266,34 @@ export interface AgentSessionTicket {
   url: string | null;
   streamUrl: string | null;
   expiresAt: string | null;
+}
+
+/**
+ * A message sent to a session while its turn ran, waiting to run as a turn of
+ * its own (ADR047 D12). The dispatcher takes the first one when the running
+ * turn settles.
+ */
+export interface QueuedMessageView {
+  id: string;
+  /** Its 1-based place in the queue; 1 runs next. */
+  position: number;
+  prompt: string;
+  /** The member the turn runs as: who queued it, or who last edited it. */
+  author: string;
+  /** How many files ride with it; only the sender may edit such a message. */
+  attachmentCount: number;
+  /**
+   * Why the last attempt to run it failed (a spend ceiling, the live-sandbox
+   * limit); the dispatcher retries within seconds. Null while nothing blocks it.
+   */
+  blockedReason: string | null;
+  createdAt: string | null;
+}
+
+/**
+ * What a steer answers: the session and its ticket as for any mint, plus the
+ * message it queued when the session was busy (null when it started a turn).
+ */
+export interface SteerResult extends AgentSessionTicket {
+  queuedMessage: QueuedMessageView | null;
 }
